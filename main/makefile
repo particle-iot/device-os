@@ -79,6 +79,10 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(USER_FLAVOR)
 
 USE_PRINTF_FLOAT ?= y
 
+ifeq ("$(PLATFORM)","tron")
+RTL_BINARY_FLASH_START = 0x60000
+endif
+
 # It's critical that user comes before wiring so that the setup()/loop() functions are linked in preference
 # to the weak functions from wiring
 MAKE_DEPENDENCIES = newlib_nano user wiring hal system services communication platform wiring_globals crypto

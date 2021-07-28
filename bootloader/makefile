@@ -3,6 +3,10 @@ BOOTLOADER_MODULE_PATH=.
 PLATFORM_DFU=0x8000000
 BUILD_PATH_EXT = $(BOOTLOADER_BUILD_PATH_EXT)
 
+ifeq ("$(PLATFORM)","tron")
+RTL_BINARY_FLASH_START = 0x4000
+endif
+
 DEPENDENCIES = platform hal services system dynalib
 MAKE_DEPENDENCIES = platform services
 # dependent on HAL headers, but not the library

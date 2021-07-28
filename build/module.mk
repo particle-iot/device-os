@@ -102,6 +102,18 @@ exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 none:
 	;
 
+ifeq ("$(PLATFORM)","tron")
+.PHONY: rtl-flash
+ifeq ("$(MODULE)","user-part")
+user_part_flash_start = $(subst 0x08,0x00,0x$(word 1,$(shell arm-none-eabi-objdump --syms $(TARGET_BASE).elf | grep 'link_module_start')))
+rtl-flash:
+	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(call user_part_flash_start)
+else
+rtl-flash:
+	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(RTL_BINARY_FLASH_START)
+endif
+endif
+
 st-flash: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing $(lastword $^) using st-flash to address $(PLATFORM_DFU)
 	st-flash write $(lastword $^) $(PLATFORM_DFU)

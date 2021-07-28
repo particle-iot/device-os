@@ -4,6 +4,7 @@ PROJECT_ROOT = ../../..
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
 PLATFORM_DFU = 0x8060000
+RTL_BINARY_FLASH_START = 0x60000
 
 DEPENDENCIES = newlib_nano modules/tron/user-part modules/tron/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto wiring_globals
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto wiring_globals
