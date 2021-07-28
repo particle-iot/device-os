@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define TOTAL_PINS          29
+#define TOTAL_PINS          30
 #define TOTAL_ANALOG_PINS   6
 #define FIRST_ANALOG_PIN    12
 
@@ -87,3 +87,5 @@
 #define RTS1                D2
 
 #define WKP                 D11
+
+#define ANTSW               29
