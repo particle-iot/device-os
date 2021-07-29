@@ -35,6 +35,7 @@
 #include "spark_macros.h"
 #include "system_network_internal.h"
 #include "system_threading.h"
+#include "check.h"
 #include <cstdio>
 #if HAL_PLATFORM_DCT
 #include "dct.h"
@@ -42,6 +43,7 @@
 #include "check.h"
 
 using namespace particle;
+using namespace particle::system;
 
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
@@ -58,6 +60,7 @@ volatile uint8_t SPARK_CLOUD_CONNECTED;
 volatile uint8_t SPARK_CLOUD_HANDSHAKE_PENDING = 0;
 volatile uint8_t SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
 volatile uint8_t SPARK_FLASH_UPDATE;
+volatile uint8_t SPARK_UPDATE_PENDING_EVENT_RECEIVED = 0;
 volatile uint32_t TimingFlashUpdateTimeout;
 
 static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
@@ -364,7 +367,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
     if (flags & 1) { // See ChunkedTransfer::handle_update_begin()
         f |= FirmwareUpdateFlag::VALIDATE_ONLY;
     }
-    return system::FirmwareUpdate::instance()->startUpdate(file.file_length, nullptr /* fileHash */, nullptr /* partialSize */, f);
+    return FirmwareUpdate::instance()->startUpdate(file.file_length, nullptr /* fileHash */, nullptr /* partialSize */, f);
 }
 
 int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved)
@@ -375,7 +378,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
     } else if (flags & protocol::UpdateFlag::VALIDATE_ONLY) {
         f |= FirmwareUpdateFlag::VALIDATE_ONLY;
     }
-    const int r = system::FirmwareUpdate::instance()->finishUpdate(f);
+    const int r = FirmwareUpdate::instance()->finishUpdate(f);
     if (!(f & FirmwareUpdateFlag::CANCEL)) {
         if (reserved) {
             const auto buf = (uint8_t*)reserved;
@@ -392,6 +395,22 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
 
 int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved)
 {
-    return system::FirmwareUpdate::instance()->saveChunk((const char*)chunk, file.chunk_size,
+    return FirmwareUpdate::instance()->saveChunk((const char*)chunk, file.chunk_size,
             file.chunk_address - file.file_address, 0 /* partialSize */);
+}
+
+int system_get_update_status(void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(system_get_update_status(reserved));
+    if (FirmwareUpdate::instance()->isRunning()) {
+        return SYSTEM_UPDATE_STATUS_IN_PROGRESS;
+    }
+    if (!SPARK_UPDATE_PENDING_EVENT_RECEIVED) {
+        return SYSTEM_UPDATE_STATUS_UNKNOWN;
+    }
+    uint8_t pending = 0;
+    CHECK(system_get_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, &pending, nullptr /* reserved */));
+    if (pending) {
+        return SYSTEM_UPDATE_STATUS_PENDING;
+    }
+    return SYSTEM_UPDATE_STATUS_NOT_AVAILABLE;
 }

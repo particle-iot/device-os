@@ -45,6 +45,7 @@
 #include "enumclass.h"
 #include "system_control.h"
 #include "scope_guard.h"
+#include "underlying_type.h"
 
 using spark::Vector;
 
@@ -113,6 +114,30 @@ private:
     ctrl_request_type type_;
     SystemControlRequestAclAction action_;
 };
+
+/**
+ * Firmware update status.
+ */
+enum class UpdateStatus: int {
+    /**
+     * The system will check for firmware updates when the device connects to the Cloud.
+     */
+    UNKNOWN = SYSTEM_UPDATE_STATUS_UNKNOWN,
+    /**
+     * No firmware update available.
+     */
+    NOT_AVAILABLE = SYSTEM_UPDATE_STATUS_NOT_AVAILABLE,
+    /**
+     * A firmware update is available.
+     */
+    PENDING = SYSTEM_UPDATE_STATUS_PENDING,
+    /**
+     * A firmware update is in progress.
+     */
+    IN_PROGRESS = SYSTEM_UPDATE_STATUS_IN_PROGRESS
+};
+
+PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(UpdateStatus)
 
 struct SleepResult {
     SleepResult() {}
@@ -737,6 +762,16 @@ public:
 
     inline uint8_t updatesForced() {
     	return get_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED) != 0;
+    }
+
+    /**
+     * Get the firmware update status.
+     *
+     * @return A value defined by the `UpdateStatus` enum or a negative result code in case of
+     *         an error.
+     */
+    int updateStatus() {
+        return system_get_update_status(nullptr /* reserved */);
     }
 
     inline void enableReset() {

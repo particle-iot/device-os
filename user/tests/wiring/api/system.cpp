@@ -286,6 +286,7 @@ void handler_event_data_param(system_event_t event, int data, void* param)
         case network_status_disconnected:
             break;
         }
+        break;
     }
     case cloud_status: {
         switch (data) {
@@ -295,6 +296,7 @@ void handler_event_data_param(system_event_t event, int data, void* param)
         case cloud_status_disconnecting:
             break;
         }
+        break;
     }
     default:
         break;
@@ -320,7 +322,7 @@ test(system_events)
                                setup_begin + setup_end + setup_update + network_credentials +
                                network_status + cloud_status + button_status + button_click + button_final_click +
                                reset + reset_pending + firmware_update + firmware_update_pending +
-                               all_events;
+                               firmware_update_status + all_events;
 
     API_COMPILE(System.on(my_events, handler));
     API_COMPILE(System.on(my_events, handler_event));
@@ -396,6 +398,14 @@ test(system_flags)
     API_COMPILE(System.enable(SYSTEM_FLAG_MAX));
     API_COMPILE(System.disable(SYSTEM_FLAG_MAX));
     API_COMPILE(System.enabled(SYSTEM_FLAG_MAX));
+}
+
+test(system_update)
+{
+    int r = 0;
+    API_COMPILE(r = System.updateStatus());
+    API_COMPILE(r == UpdateStatus::UNKNOWN || r == UpdateStatus::NOT_AVAILABLE || r == UpdateStatus::PENDING ||
+            r == UpdateStatus::IN_PROGRESS);
 }
 
 #if defined(USER_BACKUP_RAM)

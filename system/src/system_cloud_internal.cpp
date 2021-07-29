@@ -68,6 +68,8 @@ using namespace particle;
 using namespace particle::system;
 using particle::protocol::ProtocolError;
 
+extern volatile uint8_t SPARK_UPDATE_PENDING_EVENT_RECEIVED;
+
 namespace particle {
 
 namespace {
@@ -102,7 +104,13 @@ void systemEventHandler(const char* name, const char* data)
             system_set_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED, flagValue, nullptr);
         }
         else if (isSuffix(name, DEVICE_UPDATES_EVENT, UPDATES_PENDING_EVENT)) {
+            const auto statusBefore = system_get_update_status(nullptr);
+            SPARK_UPDATE_PENDING_EVENT_RECEIVED = 1;
             system_set_flag(SYSTEM_FLAG_OTA_UPDATE_PENDING, flagValue, nullptr);
+            const auto statusAfter = system_get_update_status(nullptr);
+            if (statusAfter != statusBefore) {
+                system_notify_event(firmware_update_status, statusAfter);
+            }
         }
     }
     else if (!strncmp(name, CLAIM_EVENTS, strlen(CLAIM_EVENTS))) {
