@@ -378,11 +378,6 @@ BleUuid::BleUuid(const hal_ble_uuid_t& uuid) {
     }
 }
 
-BleUuid::BleUuid(const BleUuid& uuid)
-        : type_(uuid.type_) {
-    memcpy(uuid128_, uuid.uuid128_, BLE_SIG_UUID_128BIT_LEN);
-}
-
 BleUuid::BleUuid(const uint8_t* uuid128, BleUuidOrder order) {
     if (uuid128) {
         if (order == BleUuidOrder::LSB) {
