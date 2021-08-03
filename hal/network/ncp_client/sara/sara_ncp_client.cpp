@@ -585,7 +585,7 @@ int SaraNcpClient::getIccid(char* buf, size_t size) {
     auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
     CHECK_PARSER_OK(respCfun.readResult());
     if (retCfun == 1 && cfunVal == 0) {
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4,0"));
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
     }
 
     auto res = getIccidImpl(buf, size);
@@ -593,7 +593,7 @@ int SaraNcpClient::getIccid(char* buf, size_t size) {
     // Modify CFUN back to 0 if it was changed previously,
     // as CFUN:0 is needed to prevent long reg problems on certain SIMs
     if (cfunVal == 0) {
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
     }
 
     return res;
@@ -1061,10 +1061,9 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         CHECK_PARSER_OK(respUmnoprof.readResult());
         // First time setup, or switching between official SIM on wrong profile?
         if (r == 1 && (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT ||
-                (netConf_.netProv() == CellularNetworkProvider::TWILIO &&
-                static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
-                (netConf_.netProv() == CellularNetworkProvider::KORE_ATT &&
-                static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
+                (netConf_.netProv() == CellularNetworkProvider::TWILIO && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
+                (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT) ||
+                (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE)) ) {
             int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
             // TWILIO Super SIM
             if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
@@ -1082,6 +1081,9 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
             // KORE AT&T or 3rd Party SIM
             else {
+                if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+                    newProf = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
+                }
                 // Hard code ATT for 05.12 firmware versions
                 if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512) {
                     if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
@@ -1101,7 +1103,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
             CHECK_PARSER_OK(respCfun.readResult());
             if (retCfun == 1 && cfunVal != 0) {
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
             }
             // This is a persistent setting
             parser_.execCommand(1000, "AT+UMNOPROF=%d", newProf);
@@ -1114,10 +1116,11 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             char ubandStr[24] = {};
             auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,]", ubandStr));
             CHECK_PARSER_OK(respBand.readResult());
-            if (netConf_.netProv() == CellularNetworkProvider::TWILIO && retBand == 1) {
+            if (retBand == 1 && ((netConf_.netProv() == CellularNetworkProvider::TWILIO) || 
+                    (netConf_.netProv() == CellularNetworkProvider::KORE_ATT && conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510)) ) {
                 char* pEnd = &ubandStr[0];
                 ubandUint64 = strtoull(ubandStr, &pEnd, 10);
-                // Only update if Twilio Super SIM and not set to correct bands
+                // Only update if not set to correct bands
                 if (pEnd - ubandStr > 0 && ubandUint64 != 6170) {
                     // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
                     parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
@@ -1128,7 +1131,11 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
         }
         if (reset) {
-            CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15,0"));
+            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+                CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15"));
+            } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+                CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=16"));
+            }
             HAL_Delay_Milliseconds(2000);
 
             CHECK(waitAtResponseFromPowerOn(state));
@@ -1414,7 +1421,7 @@ int SaraNcpClient::initReady(ModemState state) {
     }
 
     // Select MNO and band profiles depending on the configuration
-    if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+    if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410 || conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
         CHECK(selectNetworkProf(state));
     }
 
