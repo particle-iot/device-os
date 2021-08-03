@@ -727,6 +727,11 @@ TEST_CASE("Writing JSON") {
                     "\\u000f\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017\\u0018\\u0019\\u001a\\u001b\\u001c"
                     "\\u001d\\u001e\\u001f\"");
         }
+        SECTION("wiring String") {
+            String str("abcd");
+            json.value(str);
+            check(data).equals("\"abcd\"");
+        }
     }
 
     SECTION("array") {
@@ -743,9 +748,9 @@ TEST_CASE("Writing JSON") {
         }
         SECTION("primitive elements") {
             json.beginArray();
-            json.nullValue().value(true).value(2).value(3.14).value("abcd");
+            json.nullValue().value(true).value(2).value(3.14).value("abcd").value(String("abcd"));
             json.endArray();
-            check(data).equals("[null,true,2,3.14,\"abcd\"]");
+            check(data).equals("[null,true,2,3.14,\"abcd\",\"abcd\"]");
         }
         SECTION("nested array") {
             json.beginArray();
@@ -801,8 +806,9 @@ TEST_CASE("Writing JSON") {
             json.name("int").value(2);
             json.name("float").value(3.14);
             json.name("string").value("abcd");
+            json.name("wiring_string").value(String("abcd"));
             json.endObject();
-            check(data).equals("{\"null\":null,\"bool\":true,\"int\":2,\"float\":3.14,\"string\":\"abcd\"}");
+            check(data).equals("{\"null\":null,\"bool\":true,\"int\":2,\"float\":3.14,\"string\":\"abcd\",\"wiring_string\":\"abcd\"}");
         }
         SECTION("nested object") {
             json.beginObject();
