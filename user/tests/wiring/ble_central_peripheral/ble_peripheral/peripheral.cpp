@@ -1,5 +1,7 @@
 #include "Particle.h"
 #include "unit-test/unit-test.h"
+#include "util.h"
+#include "random.h"
 
 #if Wiring_BLE == 1
 void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, void* context);
@@ -62,7 +64,31 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
     }
 }
 
-test(BLE_01_Peripheral_Advertising) {
+using namespace particle::test;
+
+test(BLE_000_Peripheral_Cloud_Connect) {
+    subscribeEvents(BLE_ROLE_PERIPHERAL);
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, 10 * 60 * 1000));
+    assertTrue(publishBlePeerInfo());
+}
+
+test(BLE_00_Prepare) {
+#ifndef PARTICLE_TEST_RUNNER
+    for (int i = 0; i < 60; i++) {
+        assertTrue(publishBlePeerInfo());
+        if (getBleTestPeer().isValid()) {
+            break;
+        }
+        delay(1000);
+    }
+    assertTrue(getBleTestPeer().isValid());
+#else
+    assertTrue(waitFor(getBleTestPeer().isValid, 60 * 1000));
+#endif // PARTICLE_TEST_RUNNER
+}
+
+test(BLE_01_Advertising_Scan_Connect) {
     int ret;
     BleCharacteristic temp;
 
@@ -103,95 +129,115 @@ test(BLE_01_Peripheral_Advertising) {
     assertTrue(BLE.advertising());
 }
 
-test(BLE_02_Peripheral_Connected) {
+test(BLE_02_Connected) {
     assertTrue(waitFor(BLE.connected, 20000));
+}
+
+test(BLE_03_Read_Peer_characteristic_With_Read_Property) {
 }
 
 // For the first data transmission, we need to wait longer to make sure
 // the Central device has discovered the services and characteristics.
-test(BLE_03_Peripheral_Receive_Characteristic_With_Write_Property_Auto) {
+test(BLE_04_Write_Characteristic_With_Write_Property_Auto) {
     assertTrue(waitFor([]{ return str1Rec; }, 10000));
 }
 
-test(BLE_04_Peripheral_Receive_Characteristic_With_Write_Property_Ack) {
+test(BLE_05_Write_Characteristic_With_Write_Property_Ack) {
     assertTrue(waitFor([]{ return str2Rec; }, 2000));
 }
 
-test(BLE_05_Peripheral_Receive_Characteristic_With_Write_Wo_Rsp_Property_Auto) {
+test(BLE_06_Write_Characteristic_With_Write_Property_Nack) {
+}
+
+test(BLE_07_Write_Characteristic_With_Write_Wo_Rsp_Property_Auto) {
     assertTrue(waitFor([]{ return str3Rec; }, 2000));
 }
 
-test(BLE_06_Peripheral_Receive_Characteristic_With_Write_Wo_Rsp_Property_Nack) {
+test(BLE_08_Write_Characteristic_With_Write_Wo_Rsp_Property_Ack) {
+}
+
+test(BLE_09_Write_Characteristic_With_Write_Wo_Rsp_Property_Nack) {
     assertTrue(waitFor([]{ return str4Rec; }, 2000));
 }
 
-test(BLE_07_Peripheral_Receive_Characteristic_With_Write_Write_Wo_Rsp_Property_Auto) {
+test(BLE_10_Write_Characteristic_With_Write_Write_Wo_Rsp_Property_Auto) {
     assertTrue(waitFor([]{ return str5Rec; }, 2000));
 }
 
-test(BLE_08_Peripheral_Receive_Characteristic_With_Write_Write_Wo_Rsp_Property_Ack) {
+test(BLE_11_Write_Characteristic_With_Write_Write_Wo_Rsp_Property_Ack) {
     assertTrue(waitFor([]{ return str6Rec; }, 2000));
 }
 
-test(BLE_09_Peripheral_Receive_Characteristic_With_Write_Write_Wo_Rsp_Property_Nack) {
+test(BLE_12_Write_Characteristic_With_Write_Write_Wo_Rsp_Property_Nack) {
     assertTrue(waitFor([]{ return str7Rec; }, 2000));
 }
 
-test(BLE_10_Peripheral_Notify_Characteristic_With_Notify_Property_Auto) {
+test(BLE_13_Received_Characteristic_With_Notify_Property_Auto) {
     const String str("05a9ae9588dd");
     int ret = charNotify.setValue(str);
     assertTrue(ret == (int)str.length());
 }
 
-test(BLE_11_Peripheral_Notify_Characteristic_With_Notify_Property_Ack) {
-    const String str("b551f6ca1329");
-    int ret = charNotify.setValue(str, BleTxRxType::ACK);
-    assertTrue(ret < 0);
-}
-
-test(BLE_12_Peripheral_Notify_Characteristic_With_Notify_Property_Nack) {
+test(BLE_14_Received_Characteristic_With_Notify_Property_Nack) {
     const String str("4f62bd40046a");
     int ret = charNotify.setValue(str, BleTxRxType::NACK);
     assertTrue(ret == (int)str.length());
 }
 
-test(BLE_13_Peripheral_Notify_Characteristic_With_Indicate_Property_Auto) {
+test(BLE_15_Received_Characteristic_With_Indicate_Property_Auto) {
     const String str("6619918032a2");
     int ret = charIndicate.setValue(str);
     assertTrue(ret == (int)str.length());
 }
 
-test(BLE_14_Peripheral_Notify_Characteristic_With_Indicate_Property_Ack) {
+test(BLE_16_Received_Characteristic_With_Indicate_Property_Ack) {
     const String str("359b4deb3f37");
     int ret = charIndicate.setValue(str, BleTxRxType::ACK);
     assertTrue(ret == (int)str.length());
 }
 
-test(BLE_15_Peripheral_Notify_Characteristic_With_Indicate_Property_Nack) {
-    const String str("06d0be9e185b");
-    int ret = charIndicate.setValue(str, BleTxRxType::NACK);
-    assertTrue(ret < 0);
-}
-
-test(BLE_16_Peripheral_Notify_Characteristic_With_Notify_Indicate_Property_Auto) {
+test(BLE_17_Received_Characteristic_With_Notify_Indicate_Property_Auto) {
     const String str("a2ef18ec6eaa");
     int ret = charNotifyAndIndicate.setValue(str);
     assertTrue(ret == (int)str.length());
 }
 
-test(BLE_17_Peripheral_Notify_Characteristic_With_Notify_Indicate_Property_Ack) {
+test(BLE_18_Received_Characteristic_With_Notify_Indicate_Property_Ack) {
     const String str("7223b5dd3342");
     int ret = charNotifyAndIndicate.setValue(str, BleTxRxType::ACK);
     assertTrue(ret == (int)str.length());
 }
 
-test(BLE_18_Peripheral_Notify_Characteristic_With_Notify_Indicate_Property_Nack) {
+test(BLE_19_Received_Characteristic_With_Notify_Indicate_Property_Nack) {
     const String str("d4b4249bbbe3");
     int ret = charNotifyAndIndicate.setValue(str, BleTxRxType::NACK);
     assertTrue(ret == (int)str.length());
 }
 
-test(BLE_19_Peripheral_Pairing_Sync) {
+test(BLE_20_Peripheral_Notify_Characteristic_With_Notify_Property_Ack) {
+    const String str("b551f6ca1329");
+    int ret = charNotify.setValue(str, BleTxRxType::ACK);
+    // Fail
+    assertTrue(ret < 0);
+}
+
+test(BLE_21_Peripheral_Notify_Characteristic_With_Indicate_Property_Nack) {
+    const String str("06d0be9e185b");
+    int ret = charIndicate.setValue(str, BleTxRxType::NACK);
+    // Fail
+    assertTrue(ret < 0);
+}
+
+test(BLE_22_Discover_All_Services) {
+}
+
+test(BLE_23_Discover_All_Characteristics) {
+}
+
+test(BLE_24_Discover_Characteristics_Of_Service) {
+}
+
+test(BLE_25_Pairing_Sync) {
     // The central will perform some service and characteristic discovery tests
     // before starting the pairing tests
     assertTrue(waitFor([]{ return pairingStarted; }, 20000));
@@ -202,6 +248,7 @@ static bool pairingRequested = false;
 static int pairingStatus = -1;
 static bool lesc;
 static BlePeerDevice peer;
+
 const BlePairingIoCaps pairingIoCaps[5] = {
     BlePairingIoCaps::NONE,
     BlePairingIoCaps::DISPLAY_ONLY,
@@ -217,7 +264,8 @@ const char* ioCapsStr[5] = {
     "BlePairingIoCaps::KEYBOARD_DISPLAY"
 };
 
-static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm) {
+static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
+        BlePairingIoCaps ours = BlePairingIoCaps::NONE, BlePairingIoCaps theirs = BlePairingIoCaps::NONE) {
     pairingRequested = false;
     pairingStatus = -1;
 
@@ -225,17 +273,18 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm) {
         if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
             pairingRequested = true;
             peer = event.peer;
-            // Serial.println("Request received");
+            Serial.println("Request received");
         } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
             pairingStatus = event.payload.status.status;
             lesc = event.payload.status.lesc;
-            // Serial.println("status updateed");
+            Serial.println("status updateed");
         } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY || event.type == BlePairingEventType::NUMERIC_COMPARISON) {
             Serial.print("Passkey display: ");
             for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
                 Serial.printf("%c", event.payload.passkey[i]);
             }
             Serial.println("");
+#if !defined(PARTICLE_TEST_RUNNER) && 0
             if (event.type == BlePairingEventType::NUMERIC_COMPARISON) {
                 while (Serial.available()) {
                     Serial.read();
@@ -247,7 +296,23 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm) {
                 Serial.println("");
                 BLE.setPairingNumericComparison(event.peer, (c == 'y') ? true : false);
             }
+#else
+            Serial.printlnf("publish passkey");
+            assertTrue(publishPassKey((const char*)event.payload.passkey, event.payloadLen));
+            if (event.type == BlePairingEventType::NUMERIC_COMPARISON) {
+                String peerPassKey;
+                for (auto t = millis(); millis() - t < 60000;) {
+                    if (getBleTestPasskey(peerPassKey)) {
+                        break;
+                    }
+                    delay(50);
+                }
+                assertNotEqual(String(), peerPassKey);
+                BLE.setPairingNumericComparison(event.peer, peerPassKey == String((const char*)event.payload.passkey, event.payloadLen));
+            }
+#endif // PARTICLE_TEST_RUNNER
         } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
+#if !defined(PARTICLE_TEST_RUNNER) && 0
             while (Serial.available()) {
                 Serial.read();
             }
@@ -262,9 +327,31 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm) {
             }
             Serial.println("");
             BLE.setPairingPasskey(event.peer, passkey);
+#else
+            Serial.printlnf("passkey input");
+            String peerPassKey;
+            // Special case where both ends have KEYBOARD_ONLY capabilities:
+            // Generate random passkey, the side that is the requester will publish it
+            if (ours == theirs && ours == BlePairingIoCaps::KEYBOARD_ONLY && request) {
+                Random rand;
+                char passkey[BLE_PAIRING_PASSKEY_LEN + 1] = {};
+                const char dict[] = "0123456789";
+                rand.genAlpha(passkey, BLE_PAIRING_PASSKEY_LEN, dict, sizeof(dict) - 1);
+                assertTrue(publishPassKey(passkey, BLE_PAIRING_PASSKEY_LEN));
+                peerPassKey = String(passkey);
+            } else {
+                for (auto t = millis(); millis() - t < 60000;) {
+                    if (getBleTestPasskey(peerPassKey)) {
+                        break;
+                    }
+                    delay(50);
+                }
+            }
+            assertNotEqual(String(), peerPassKey);
+            BLE.setPairingPasskey(event.peer, (const uint8_t*)peerPassKey.c_str());
+#endif // PARTICLE_TEST_RUNNER
         }
     });
-
     assertTrue(waitFor(BLE.connected, 20000));
     {
         SCOPE_GUARD ({
@@ -292,23 +379,23 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm) {
     }
 }
 
-test(BLE_20_Peripheral_Pairing_Algorithm_Auto_Io_Caps) {
+test(BLE_26_Pairing_Algorithm_Auto_Io_Caps) {
     for (uint8_t p = 0; p < 5; p++) { // Peer I/O capabilities
         for (uint8_t l = 0; l < 5; l++) {
             assertEqual(BLE.setPairingIoCaps(pairingIoCaps[l]), (int)SYSTEM_ERROR_NONE); // Local I/O capabilities
-            Serial.printlnf("Local I/O Caps: %s", ioCapsStr[l]);
-            pairingTestRoutine(!(p % 2), BlePairingAlgorithm::AUTO);
+            Serial.printlnf("Local I/O Caps: %s, request = %d", ioCapsStr[l], !(p % 2));
+            pairingTestRoutine(!(p % 2), BlePairingAlgorithm::AUTO, pairingIoCaps[l], pairingIoCaps[p]);
         }
     }
 }
 
-test(BLE_21_Peripheral_Pairing_Algorithm_Legacy_Only) {
+test(BLE_27_Pairing_Algorithm_Legacy_Only) {
     assertEqual(BLE.setPairingIoCaps(BlePairingIoCaps::NONE), (int)SYSTEM_ERROR_NONE);
     assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::LEGACY_ONLY), (int)SYSTEM_ERROR_NONE);
     pairingTestRoutine(false, BlePairingAlgorithm::LEGACY_ONLY);
 }
 
-test(BLE_22_Peripheral_Pairing_Algorithm_Legacy_Only_Being_Rejected) {
+test(BLE_28_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     pairingRequested = false;
     BLE.onPairingEvent([&](const BlePairingEvent& event) {
         if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
@@ -334,7 +421,7 @@ test(BLE_22_Peripheral_Pairing_Algorithm_Legacy_Only_Being_Rejected) {
     }
 }
 
-test(BLE_23_Peripheral_Pairing_Receiption_Reject) {
+test(BLE_29_Initiate_Pairing_Being_Rejected) {
     pairingStatus = 0;
     BLE.onPairingEvent([&](const BlePairingEvent& event) {
         if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
@@ -356,7 +443,7 @@ test(BLE_23_Peripheral_Pairing_Receiption_Reject) {
     }
 }
 
-test(BLE_24_Peripheral_Initiate_Pairing_Being_Rejected) {
+test(BLE_30_Pairing_Receiption_Reject) {
     assertTrue(waitFor(BLE.connected, 20000));
     {
         SCOPE_GUARD ({
