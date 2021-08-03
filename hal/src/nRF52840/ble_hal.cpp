@@ -94,7 +94,7 @@ const hal_ble_attr_handle_t SERVICES_TOP_END_HANDLE = 0xFFFF;
 constexpr size_t BLE_EVT_DATA_POOL_SIZE = 2048;
 
 // Timeout for a BLE procedure.
-constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 30000;
+constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 60000;
 // Delay for GATT Client to send the ATT MTU exchanging request.
 constexpr uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
 
@@ -3916,9 +3916,10 @@ int hal_ble_stack_deinit(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_deinit().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK(BleObject::getInstance().broadcaster()->stopAdvertising());
     CHECK(BleObject::getInstance().observer()->stopScanning());
     CHECK(BleObject::getInstance().connMgr()->disconnectAll());
+    // Disconnected event may result in re-advertising.
+    CHECK(BleObject::getInstance().broadcaster()->stopAdvertising());
     return SYSTEM_ERROR_NONE;
 }
 
