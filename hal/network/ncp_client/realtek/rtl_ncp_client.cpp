@@ -38,6 +38,7 @@ extern "C" {
 #include "rtl8721dlp_sysreg.h"
 #include "rtl8721dhp_sysreg.h"
 #include "rtl8721dhp_rcc.h"
+#include "rtl8721d.h"
 } // extern "C"
 
 extern "C" void rtw_efuse_boot_write(void);
