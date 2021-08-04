@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,20 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "mbedtls_util.h"
-#include "timer_hal.h"
+#pragma once
 
-struct MbedTlsCallbackInitializer {
-    MbedTlsCallbackInitializer() {
-        mbedtls_callbacks_t cb = {0};
-        cb.version = 0;
-        cb.size = sizeof(cb);
-        // cb.mbedtls_md_list = mbedtls_md_list;
-        // cb.mbedtls_md_info_from_string = mbedtls_md_info_from_string;
-        // cb.mbedtls_md_info_from_type = mbedtls_md_info_from_type;
-        cb.millis = HAL_Timer_Get_Milli_Seconds;
-        mbedtls_set_callbacks(&cb, NULL);
-    }
-};
-
-MbedTlsCallbackInitializer s_mbedtls_callback_initializer;
+#include <string.h>
+#include <stdlib.h>
+#include "basic_types.h"

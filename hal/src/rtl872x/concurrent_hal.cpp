@@ -290,6 +290,12 @@ int os_mutex_lock(os_mutex_t mutex)
     return 0;
 }
 
+int os_mutex_lock_timeout(os_mutex_t mutex, system_tick_t timeout)
+{
+    xSemaphoreTake(static_cast<SemaphoreHandle_t>(mutex), timeout);
+    return 0;
+}
+
 int os_mutex_trylock(os_mutex_t mutex)
 {
     return xSemaphoreTake(static_cast<SemaphoreHandle_t>(mutex), 0)==pdFALSE;

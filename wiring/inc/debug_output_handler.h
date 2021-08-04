@@ -25,6 +25,12 @@
 #include "spark_wiring_logging.h"
 #include "rtt_output_stream.h"
 
+#if HAL_PLATFORM_RTL872X
+
+extern "C" uint32_t DiagPrintf(const char *fmt, ...);
+
+#endif // HAL_PLATFORM_RTL872X
+
 namespace spark {
 
 class SerialLogHandler: public StreamLogHandler {
@@ -112,6 +118,60 @@ private:
 };
 
 #endif // Wiring_Rtt
+
+#if HAL_PLATFORM_RTL872X
+
+class RtlDebugOutputStream: public Print {
+public:
+    RtlDebugOutputStream() {
+    }
+    virtual ~RtlDebugOutputStream() {
+    }
+
+    int open() {
+        return 0;
+    }
+    void close() {
+        return;
+    }
+
+    bool isOpen() {
+        return true;
+    }
+
+    // Reimplemented from `Print`
+    virtual size_t write(uint8_t c) override {
+        return write(&c, 1);
+    }
+    virtual size_t write(const uint8_t* data, size_t size) override {
+        for (size_t i = 0; i < size; i++) {
+            DiagPrintf("%c", (char)data[i]);
+        }
+        return size;
+    }
+};
+
+class RtlLogHandler: public StreamLogHandler {
+public:
+    explicit RtlLogHandler(LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
+            StreamLogHandler(strm_, level, filters) {
+        if (strm_.open() == 0) {
+            LogManager::instance()->addHandler(this);
+        }
+    }
+
+    virtual ~RtlLogHandler() {
+        if (strm_.isOpen()) {
+            LogManager::instance()->removeHandler(this);
+            strm_.close();
+        }
+    }
+
+private:
+    RtlDebugOutputStream strm_;
+};
+
+#endif // HAL_PLATFORM_RTL872X
 
 } // namespace spark
 

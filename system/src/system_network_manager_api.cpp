@@ -94,6 +94,7 @@ bool testAndClearListeningModeFlag() {
         uint8_t val = 0x00;
         system_get_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, &val, nullptr);
         if (val) {
+            LOG(INFO, "startup flag");
             system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr); // Clear startup flag
             return true;
         }
@@ -101,6 +102,7 @@ bool testAndClearListeningModeFlag() {
         val = 0x01;
         dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
         if (val == 0x00 || val == 0xff) {
+            LOG(INFO, "setup done not set");
             return true;
         }
     }
@@ -135,6 +137,10 @@ const CellularConfig* cellularConfig() {
 } /* anonymous */
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
+    // volatile uint32_t rtlContinue = 1;
+    // while (!rtlContinue) {
+    //     asm volatile ("nop");
+    // }
     NetworkManager::instance()->init();
     // Populate the list
     NetworkManager::instance()->disableInterface();
@@ -156,13 +162,20 @@ const void* network_config(network_handle_t network, uint32_t param, void* reser
 }
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
+    // volatile uint32_t rtlContinue = 0;
+    // while (!rtlContinue) {
+    //     asm volatile ("NOP");
+    // }
     /* TODO: WIFI_CONNECT_SKIP_LISTEN is unhandled */
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([network]() {
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
         s_forcedDisconnect = false;
 
-        if (testAndClearListeningModeFlag() || !NetworkManager::instance()->isConfigured()) {
+        bool val = testAndClearListeningModeFlag();
+        LOG(INFO, "testandclear %d %d", val, !NetworkManager::instance()->isConfigured());
+        val = val || !NetworkManager::instance()->isConfigured();
+        if (val) {
             /* Enter listening mode */
             network_listen(0, 0, 0);
             return;

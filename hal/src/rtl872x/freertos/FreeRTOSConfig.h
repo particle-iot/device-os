@@ -135,8 +135,8 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 // #define configTIMER_QUEUE_LENGTH						( 10 + 32 )
 // #define configTIMER_TASK_STACK_DEPTH					( 512  )
 #define configTIMER_TASK_PRIORITY						( configMAX_PRIORITIES - 1 )
-#define configTIMER_QUEUE_LENGTH						( 5 )
-#define configTIMER_TASK_STACK_DEPTH					( ( unsigned short ) (1024 / sizeof( portSTACK_TYPE )) )
+#define configTIMER_QUEUE_LENGTH						( 64 )
+#define configTIMER_TASK_STACK_DEPTH					( ( unsigned short ) (4096 / sizeof( portSTACK_TYPE )) )
 
 /* Set the following definitions to 1 to include the API function, or zero
  * to exclude the API function.  NOTE:  Setting an INCLUDE_ parameter to 0 is
@@ -250,7 +250,7 @@ standard names - or at least those used in the unmodified vector table. */
 #define traceLOW_POWER_IDLE_END()
 
 /* It's FreeRTOS related feature but it's not included in FreeRTOS design. */
-#define configUSE_WAKELOCK_PMU                  		1
+#define configUSE_WAKELOCK_PMU                  		0
 
 #endif /* __IASMARM__ */
 

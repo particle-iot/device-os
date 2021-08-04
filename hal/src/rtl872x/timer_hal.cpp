@@ -49,6 +49,9 @@
 #include "timer_hal.h"
 #include "service_debug.h"
 #include "hw_ticks.h"
+extern "C" {
+#include "rtl8721d.h"
+}
 
 // Particle-specific
 int hal_timer_init(const hal_timer_init_config_t* conf) {
@@ -60,7 +63,8 @@ int hal_timer_deinit(void* reserved) {
 }
 
 uint64_t hal_timer_micros(void* reserved) {
-    return 0;
+    // FIXME: wraps in 36 hours
+    return SYSTIMER_TickGet() * 31;
 }
 
 uint64_t hal_timer_millis(void* reserved) {

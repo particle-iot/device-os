@@ -11,6 +11,8 @@
 #ifndef __PLATFORM_OPTS_H__
 #define __PLATFORM_OPTS_H__
 
+#include "main.h"
+
 #include "platform_autoconf.h"
 #if defined CONFIG_BT && CONFIG_BT
 #include "platform_opts_bt.h"
@@ -67,10 +69,10 @@
 /**
  * For Wlan configurations
  */
-#define CONFIG_WLAN	0
+#define CONFIG_WLAN	1
 #if CONFIG_WLAN
-#define CONFIG_LWIP_LAYER	1
-#define CONFIG_INIT_NET		1 //init lwip layer when start up
+#define CONFIG_LWIP_LAYER	0
+#define CONFIG_INIT_NET		0 //init lwip layer when start up
 #define CONFIG_WIFI_IND_USE_THREAD	0	// wifi indicate worker thread
 
 //on/off relative commands in log service
@@ -91,7 +93,7 @@
 //#define CONFIG_BAIDU_DUER	1
 #define CONFIG_DMIC_SEL	0
 /* For WPS and P2P */
-#define CONFIG_ENABLE_WPS		1
+#define CONFIG_ENABLE_WPS		0
 #define CONFIG_ENABLE_P2P		0//on/off p2p cmd in log_service or interactive mode
 #define CONFIG_ENABLE_WPS_DISCOVERY	0
 #if CONFIG_ENABLE_P2P

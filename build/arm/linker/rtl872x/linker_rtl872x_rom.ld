@@ -1,6 +1,17 @@
 SECTIONS {
+    Rand = 0x10100765;
+    EFUSEPowerSwitch = 0x101009a9;
+    EFUSERead8 = 0x10100a31;
+    EFUSEWrite8 = 0x10100b1d;
+    EFUSE_PG_Packet = 0x10100c21;
+    EFUSE_LogicalMap_Read = 0x10100e99;
+    EFUSE_LogicalMap_Write = 0x10100fad;
+    DelayNop = 0x10100939;
+    DelayUs = 0x10100949;
+    DelayMs = 0x10100995;
     IS_FPGA_VERIF = 0x1000039c;
     CPU_ClkGet = 0x10104515;
+    SYSCFG_GetChipInfo = 0x101061b9;
     irq_table_init = 0x1010677d;
     irq_enable = 0x101069b9;
     irq_disable = 0x101069d5;
@@ -109,7 +120,6 @@ SECTIONS {
     RTIM_INTClearPendingBit = 0x10103611;
     RTIM_GetFlagStatus = 0x10103685;
     RTIM_GetINTStatus = 0x1010375d;
-    DelayUs = 0x10100949;
     ConfigDebugClose = 0x10000000;
     ConfigDebugBuffer = 0x10000004;
     ConfigDebugBufferGet = 0x10000008;

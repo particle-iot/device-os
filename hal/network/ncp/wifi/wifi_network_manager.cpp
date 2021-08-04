@@ -199,13 +199,13 @@ int WifiNetworkManager::connect(const char* ssid) {
         }
     }
     if (index == networks.size()) {
-        return SYSTEM_ERROR_NOT_FOUND;
+        // return SYSTEM_ERROR_NOT_FOUND;
     }
     // Connect to the network
     bool updateConfig = false;
     auto network = &networks.at(index);
     // Always perform a network scan for now, because ESP32 doesn't support 802.11v/k/r
-#if 0
+#if 1
     int r = client_->connect(network->ssid(), network->bssid(), network->security(), network->credentials());
 #else
     int r = SYSTEM_ERROR_INTERNAL;
@@ -339,6 +339,7 @@ bool WifiNetworkManager::hasNetworkConfig() {
     if (r < 0) {
         return false;
     }
+    LOG(INFO, "networks size %d", networks.size());
     return !networks.isEmpty();
 }
 

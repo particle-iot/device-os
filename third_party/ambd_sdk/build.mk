@@ -1,6 +1,7 @@
 TARGET_AMBD_SDK_SRC_PATH = $(AMBD_SDK_MODULE_PATH)/ambd_sdk
 TARGET_AMBD_SDK_SRC_SOC_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/soc/realtek/amebad
 TARGET_AMBD_SDK_SRC_OS_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/os
+TARGET_AMBD_SDK_COMMON_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/common
 
 #CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_common/rtl8721d_qdec.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_common/rtl8721d_i2c.c
@@ -78,6 +79,12 @@ CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_sleepcfg.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dhp_intfcfg.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_wificfg.c
 
+CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_conf.c
+CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_ind.c
+CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_util.c
+
+# INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/api/network/include
+
 
 # Out of the box this requires a few headers to define some basic types required
 # by osdep_service and the default implementation is for FreeRTOS.
@@ -87,6 +94,7 @@ ifeq ("$(BOOTLOADER_MODULE)","")
 CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_v10.2.0/Source/portable/GCC/RTL8721D_HP/non_secure/port.c
 CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_v10.2.0/Source/portable/GCC/RTL8721D_HP/non_secure/portasm.c
 CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/os_dep/osdep_service.c
+# CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_service.c
 endif
 
-CFLAGS += -Wno-error=deprecated
+CFLAGS += -Wno-error=deprecated -Wno-error=format

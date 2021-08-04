@@ -26,7 +26,7 @@
 #include "exflash_hal.h"
 
 // FIXME:
-// static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFFC;
+// static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;

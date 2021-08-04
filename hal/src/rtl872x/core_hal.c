@@ -290,7 +290,13 @@ static void prohibit_xip(void) {
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
+extern uint32_t DiagPrintf(const char *fmt, ...);
 void HAL_Core_Config(void) {
+    DiagPrintf("part1\r\n");
+    // volatile uint32_t rtlContinue = 0;
+    // while (!rtlContinue) {
+    //     asm("NOP");
+    // }
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 
 #ifdef DFU_BUILD_ENABLE
@@ -727,6 +733,7 @@ entry systemPartEntry = {
  * Called from startup_stm32f2xx.s at boot, main entry point.
  */
 int main(void) {
+    LOG(INFO, "main");
     init_malloc_mutex();
     xTaskCreate( application_task_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
 

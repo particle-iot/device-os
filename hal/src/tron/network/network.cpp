@@ -23,11 +23,11 @@
 #include "random.h"
 #include "check.h"
 #include <malloc.h>
-#include "network/ncp_client/esp32/esp32_ncp_client.h"
+#include "network/ncp_client/realtek/rtl_ncp_client.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/ncp.h"
 #include "debug.h"
-#include "esp32/esp32ncpnetif.h"
+#include "realtek/rtlncpnetif.h"
 #include "lwip_util.h"
 #include "core_hal.h"
 
@@ -40,9 +40,9 @@ namespace {
 
 /* en2 - Ethernet FeatherWing */
 BaseNetif* en2 = nullptr;
-/* wl3 - ESP32 NCP Station */
+/* wl3 - Realtek NCP Station */
 BaseNetif* wl3 = nullptr;
-/* wl4 - ESP32 NCP Access Point */
+/* wl4 - Realtek NCP Access Point */
 BaseNetif* wl4 = nullptr;
 
 class WifiNetworkManagerInit {
@@ -62,16 +62,16 @@ private:
 
     int init() {
         // Initialize NCP client
-        // std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) Esp32NcpClient);
-        // CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
-        // auto conf = NcpClientConfig()
-        //         .eventHandler(Esp32NcpNetif::ncpEventHandlerCb, wl3)
-        //         .dataHandler(Esp32NcpNetif::ncpDataHandlerCb, wl3);
-        // CHECK(ncpClient->init(std::move(conf)));
-        // // Initialize network manager
-        // mgr_.reset(new(std::nothrow) WifiNetworkManager(ncpClient.get()));
-        // CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
-        // ncpClient_ = std::move(ncpClient);
+        std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) RealtekNcpClient);
+        CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
+        auto conf = NcpClientConfig()
+                .eventHandler(RealtekNcpNetif::ncpEventHandlerCb, wl3)
+                .dataHandler(RealtekNcpNetif::ncpDataHandlerCb, wl3);
+        CHECK(ncpClient->init(std::move(conf)));
+        // Initialize network manager
+        mgr_.reset(new(std::nothrow) WifiNetworkManager(ncpClient.get()));
+        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
+        ncpClient_ = std::move(ncpClient);
         return 0;
     }
 };
@@ -105,17 +105,17 @@ int if_init_platform(void*) {
     reserve_netif_index();
 
     /* en2 - Ethernet FeatherWing (optional) */
-    uint8_t mac[6] = {};
+    uint8_t mac[6] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
     {
         // const uint32_t lsb = __builtin_bswap32(NRF_FICR->DEVICEADDR[0]);
         // const uint32_t msb = NRF_FICR->DEVICEADDR[1] & 0xffff;
         // memcpy(mac + 2, &lsb, sizeof(lsb));
         // mac[0] = msb >> 8;
         // mac[1] = msb;
-        // /* Drop 'multicast' bit */
-        // mac[0] &= 0b11111110;
-        // /* Set 'locally administered' bit */
-        // mac[0] |= 0b10;
+        /* Drop 'multicast' bit */
+        mac[0] &= 0b11111110;
+        /* Set 'locally administered' bit */
+        mac[0] |= 0b10;
     }
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
@@ -134,12 +134,12 @@ int if_init_platform(void*) {
         reserve_netif_index();
     }
 
-    /* wl3 - ESP32 NCP Station */
-    // wl3 = new Esp32NcpNetif();
-    // if (wl3) {
-    //     ((Esp32NcpNetif*)wl3)->setWifiManager(wifiNetworkManager());
-    //     ((Esp32NcpNetif*)wl3)->init();
-    // }
+    /* wl3 - Realtek NCP Station */
+    wl3 = new RealtekNcpNetif();
+    if (wl3) {
+        ((RealtekNcpNetif*)wl3)->setWifiManager(wifiNetworkManager());
+        ((RealtekNcpNetif*)wl3)->init();
+    }
 
     /* TODO: wl4 - ESP32 NCP Access Point */
     (void)wl4;
