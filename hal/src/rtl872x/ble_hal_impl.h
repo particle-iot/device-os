@@ -21,9 +21,6 @@
 
 #if HAL_PLATFORM_BLE
 
-#include "ble_gap.h"
-#include "ble_gatts.h"
-#include "sdk_config_system.h"
 
 
 /**< Number of microseconds in 0.625 milliseconds. */
@@ -35,7 +32,7 @@
 
 #define BLE_MSEC_TO_UNITS(TIME, RESOLUTION)         (((TIME) * 1000) / (RESOLUTION))
 
-#define BLE_MAX_LINK_COUNT                          ((NRF_SDH_BLE_CENTRAL_LINK_COUNT) + (NRF_SDH_BLE_PERIPHERAL_LINK_COUNT))
+#define BLE_MAX_LINK_COUNT                          4
 
 /* Maximum allowed BLE event callback that can be registered. */
 #define BLE_MAX_EVENT_CALLBACK_COUNT                10
@@ -53,19 +50,19 @@
 #define BLE_EVENT_THREAD_STACK_SIZE                 2048
 
 /* BLE invalid connection handle. */
-#define BLE_INVALID_CONN_HANDLE                     BLE_CONN_HANDLE_INVALID
+#define BLE_INVALID_CONN_HANDLE                     0xFFFF
 
 /* BLE invalid attribute handle. */
 #define BLE_INVALID_ATTR_HANDLE                     0x0000
 
 /* Maximum number of device address in the whitelist. */
-#define BLE_MAX_WHITELIST_ADDR_COUNT                BLE_GAP_WHITELIST_ADDR_MAX_COUNT
+#define BLE_MAX_WHITELIST_ADDR_COUNT                10
 
 /* Default advertising parameters */
 #define BLE_DEFAULT_ADVERTISING_INTERVAL            BLE_MSEC_TO_UNITS(100, BLE_UNIT_0_625_MS)   /* The advertising interval: 100ms (in units of 0.625 ms). */
 #define BLE_DEFAULT_ADVERTISING_TIMEOUT             BLE_MSEC_TO_UNITS(0, BLE_UNIT_10_MS)        /* The advertising duration: infinite (in units of 10 milliseconds). */
 
-#define BLE_MAX_TX_POWER                            (8)
+#define BLE_MAX_TX_POWER                            (0)
 
 /* Default scanning parameters */
 #define BLE_DEFAULT_SCANNING_TIMEOUT_MS             5000
@@ -76,10 +73,10 @@
 #define BLE_SCANNING_TIMEOUT_EXT_MS                 1000
 
 /* Maximum length of advertising and scan response data */
-#define BLE_MAX_ADV_DATA_LEN                        BLE_GAP_ADV_SET_DATA_SIZE_MAX
+#define BLE_MAX_ADV_DATA_LEN                        31
 
 /* Maximum length of the buffer to store scan report data */
-#define BLE_MAX_SCAN_REPORT_BUF_LEN                 BLE_GAP_SCAN_BUFFER_EXTENDED_MAX_SUPPORTED  /* Must support extended length for CODED_PHY scanning */
+#define BLE_MAX_SCAN_REPORT_BUF_LEN                 255  /* Must support extended length for CODED_PHY scanning */
 
 /* Connection Parameters limits */
 #define BLE_CONN_PARAMS_SLAVE_LATENCY_ERR           5
@@ -95,7 +92,7 @@
 #define BLE_DEFAULT_CONN_SUP_TIMEOUT                BLE_MSEC_TO_UNITS(5000, BLE_UNIT_10_MS)     /* The connection supervision timeout: 5s (in units of 10ms). */
 
 // Maximum supported size of an ATT packet in bytes (ATT_MTU)
-#define BLE_MAX_ATT_MTU_SIZE                        NRF_SDH_BLE_GATT_MAX_MTU_SIZE
+#define BLE_MAX_ATT_MTU_SIZE                        247
 
 // Minimum supported size of an ATT packet in bytes (ATT_MTU)
 #define BLE_MIN_ATT_MTU_SIZE                        23
@@ -118,8 +115,8 @@
 #define BLE_MAX_CHAR_COUNT                          23
 #define BLE_MAX_DESC_COUNT                          10
 
-#define BLE_MAX_PERIPHERAL_COUNT                    NRF_SDH_BLE_PERIPHERAL_LINK_COUNT
-#define BLE_MAX_CENTRAL_COUNT                       NRF_SDH_BLE_CENTRAL_LINK_COUNT
+#define BLE_MAX_PERIPHERAL_COUNT                    1
+#define BLE_MAX_CENTRAL_COUNT                       3
 
 
 typedef uint16_t hal_ble_attr_handle_t;

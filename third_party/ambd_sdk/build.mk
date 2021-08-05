@@ -2,6 +2,7 @@ TARGET_AMBD_SDK_SRC_PATH = $(AMBD_SDK_MODULE_PATH)/ambd_sdk
 TARGET_AMBD_SDK_SRC_SOC_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/soc/realtek/amebad
 TARGET_AMBD_SDK_SRC_OS_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/os
 TARGET_AMBD_SDK_COMMON_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/common
+TARGET_AMBD_SDK_BLUETOOTH_PATH = $(TARGET_AMBD_SDK_COMMON_PATH)/bluetooth/realtek/sdk
 
 #CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_common/rtl8721d_qdec.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_common/rtl8721d_i2c.c
@@ -48,6 +49,23 @@ ifneq ("$(BOOTLOADER_MODULE)","")
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_flash_hp.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_ram_hp.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_trustzone_hp.c
+else
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/platform_utils.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/rtk_coex.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/hci/bt_fwconfig.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/hci/bt_normal_patch.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/hci/hci_board.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/hci/hci_uart.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/vendor_cmd/vendor_cmd.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/os/freertos/osif_freertos.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/bt_uart_bridge.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/cycle_queue.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/hci_adapter.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/hci_process.c
+CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/trace_task.c
+# CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/misc/rtl8721d_ota.c
+CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/ftl/ftl.c
+CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/mbed/targets/hal/rtl8721d/flash_api.c
 endif
 else
 # KM0 (Cortex-M23)

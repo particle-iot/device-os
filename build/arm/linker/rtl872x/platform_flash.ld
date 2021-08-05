@@ -7,15 +7,17 @@ Modular firmware:                          Monolithic firmware:
 | Reserved (filesystem)                                                          |
 |                                                                                |
 +--------------------------------+ 0x08600000 +----------------------------------+
+| User part module info suffix   |            |                                  |
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
 | User part RAM data             |            |                                  |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
 | User part secure RAM code      |            |                                  |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
 | User part PSRAM code           |            | Monolithic firmware RAM data     |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
-| User part XIP code             |            |                                  |
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
 | User part dynalib table        |            |                                  |
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
+| User part XIP code             |            |                                  |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 | User part module info          |            |                                  |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
@@ -27,10 +29,10 @@ Modular firmware:                          Monolithic firmware:
 | System part 1 secure RAM code  |            |                                  |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
 | System part 1 PSRAM code       |            |                                  |
-+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
-| System part 1 XIP code         |            |                                  |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| System part 1 dynalib table    |            | Monolithic firmware XIP code     |
+| System part 1 dynalib table    |            |                                  |
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | Monolithic firmware XIP code     |
+| System part 1 XIP code         |            |                                  |
 +--------------------------------+ 0x08060026 +----------------------------------+
 | System part 1 entry            |            | Monolithic firmware entry        |
 +--------------------------------+ 0x08060018 +----------------------------------+

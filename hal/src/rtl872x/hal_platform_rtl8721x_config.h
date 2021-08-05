@@ -34,7 +34,7 @@
 
 #define HAL_IPv6 (1)
 
-// #define HAL_PLATFORM_BLE (1)
+#define HAL_PLATFORM_BLE (1)
 
 #define HAL_PLATFORM_WIFI (1)
 

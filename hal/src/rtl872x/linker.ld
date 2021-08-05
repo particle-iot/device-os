@@ -54,6 +54,7 @@ SECTIONS
         *(.image2.net.ram.text)
         *(.ram.text)
         *(.ram.text.*)
+        *(.BTTRACE)
 
         *(.gnu.linkonce.t.*)
         *(.glue_7)

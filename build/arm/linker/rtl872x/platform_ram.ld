@@ -38,13 +38,17 @@ x                                                                               
 +-----------------------------+ 0x02400000 +-------------------------------+ 0x02400000 +------------------------------------+
 |                             |            | User part PSRAM code          |            |                                    |
 |                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
+|                             |            | User part dynalib table       |            |                                    |
+|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
 |                             |            | User part static RAM alt      |            | Heap alt                           |
 |                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
 |        NOT USED             |            | Heap alt                      |            |                                    |
 |                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 |                             |            | System part 1 static RAM alt  |            | Monolithic firmware static RAM alt |
 |                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-|                             |            | System part 1 PSRAM code      |            | Monolithic firmware PSRAM code     |
+|                             |            | System part 1 PSRAM code      |            |                                    |
+|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
+|                             |            | System part 1 dynalib table   |            | Monolithic firmware PSRAM code     |
 |-----------------------------| 0x02000000 +-------------------------------+ 0x02000000 +------------------------------------+
 
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.

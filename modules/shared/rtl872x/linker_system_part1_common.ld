@@ -58,6 +58,7 @@ SECTIONS
         *(.boot.ram.text.*)
         *(.ram.text)
         *(.ram.text.*)
+        *(.BTTRACE)
 
         *(.gnu.linkonce.t.*)
         *(.glue_7)
