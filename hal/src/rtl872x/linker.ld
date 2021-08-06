@@ -51,8 +51,6 @@ SECTIONS
         /* Realtek specific */
         *(.image2.ram.text)
         *(.image2.ram.text.*)
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
         *(.ram.text)
         *(.ram.text.*)
 
@@ -134,8 +132,6 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_start = .;
         *(.data*)
-        *(.boot.ram.data) /* Realtek specific */
-        *(.boot.ram.data.*) /* Realtek specific */
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
@@ -148,8 +144,6 @@ SECTIONS
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_location = .;
         *(.bss*)
-        *(.boot.ram.bss) /* Realtek specific */
-        *(.boot.ram.bss*) /* Realtek specific */
         *(COMMON)
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
@@ -206,7 +200,7 @@ link_dynalib_start = 0;
 
 /* Heap location */
 link_heap_location     = link_bss_end;
-link_heap_location_end = platform_monolithic_firmware_stack_start;
+link_heap_location_end = platform_system_backup_ram_start;
 
 link_heap_location_alt     = link_bss_end_alt;
 link_heap_location_end_alt = platform_psram_end;
@@ -220,4 +214,4 @@ link_secure_stack_size     = platform_monolithic_firmware_secure_stack_size;
 link_secure_stack_location = platform_monolithic_firmware_secure_stack_start;
 link_secure_stack_end      = platform_monolithic_firmware_secure_stack_end;
 
-INCLUDE linker_rtl872x_rom.ld
+INCLUDE linker_rtl872x_rom_ns.ld

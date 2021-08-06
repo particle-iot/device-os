@@ -51,8 +51,8 @@ Note: Keep the diagrams up to date with the actual memory maps defined in this f
 */
 
 /* Total amount of RAM available on the MCU */
-platform_ram_size  = 480K;
-platform_ram_start = 0x10004000;
+platform_ram_size  = 476K;
+platform_ram_start = 0x10005000;
 platform_ram_end   = platform_ram_start + platform_ram_size;
 
 platform_secure_ram_size  = 12K;
@@ -103,7 +103,7 @@ platform_modular_firmware_secure_stack_start = platform_modular_firmware_secure_
  * platform_monolithic_firmware_stack_size is equal to 4K, which is defined in include.mk under hal/src/rtl872x.
  * platform_monolithic_firmware_stack_start is the lowest address of the stack. */
 platform_monolithic_firmware_stack_size  = __STACKSIZE__;
-platform_monolithic_firmware_stack_end   = platform_system_backup_ram_start;
+platform_monolithic_firmware_stack_end   = platform_ram_start;
 platform_monolithic_firmware_stack_start = platform_monolithic_firmware_stack_end - platform_monolithic_firmware_stack_size;
 
 platform_monolithic_firmware_secure_stack_size  = __STACKSIZE__;

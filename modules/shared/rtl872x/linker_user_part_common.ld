@@ -218,4 +218,4 @@ SECTIONS
 /* This can be used to calculate the OTA top boundary */
 link_user_part_flash_start = platform_user_part_flash_start;
 
-INCLUDE linker_rtl872x_rom.ld
+INCLUDE linker_rtl872x_rom_ns.ld

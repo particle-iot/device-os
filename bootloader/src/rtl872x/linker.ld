@@ -125,6 +125,12 @@ SECTIONS
         . = ALIGN(4);
     } > SECURE_RAM AT> APP_FLASH
 
+    .boot_ram :
+    {
+        *(.boot.ram.text)
+        *(.boot.ram.text.*)
+    } > SECURE_RAM AT> APP_FLASH
+
     .ram_copy_end :
     {
         link_rtl_ram_copy_end = .;
@@ -149,8 +155,7 @@ SECTIONS
         /* Realtek specific RAM code */
         *(.image2.ram.text)
         *(.image2.ram.text.*)
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
+
         *(.ram.text)
         *(.ram.text.*)
 
@@ -161,7 +166,7 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH
-    
+
     /* Zero initialised memory used for zero initialised variables */
     .bss :
     {
@@ -229,4 +234,4 @@ link_stack_size     = platform_bootloader_stack_size;
 link_stack_location = platform_bootloader_stack_start;
 link_stack_end      = platform_bootloader_stack_end;
 
-INCLUDE linker_rtl872x_rom.ld
+INCLUDE linker_rtl872x_rom_s.ld

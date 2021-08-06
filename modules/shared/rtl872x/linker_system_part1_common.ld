@@ -233,4 +233,4 @@ link_secure_stack_size     = platform_modular_firmware_secure_stack_size;
 link_secure_stack_location = platform_modular_firmware_secure_stack_start;
 link_secure_stack_end      = platform_modular_firmware_secure_stack_end;
 
-INCLUDE linker_rtl872x_rom.ld
+INCLUDE linker_rtl872x_rom_ns.ld
