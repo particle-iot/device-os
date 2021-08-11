@@ -475,4 +475,8 @@ cellular_result_t cellular_urcs_get(void* reserved)
     return 0;
 }
 
+int cellular_start_ncp_firmware_update(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

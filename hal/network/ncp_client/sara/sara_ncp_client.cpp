@@ -142,6 +142,8 @@ const int CCID_MAX_RETRY_CNT = 2;
 const int UCGED_FIRST_STR_BYTES = 11;
 const int UCGED_SECOND_STR_BYTES = 128;
 
+const int UUFWINSTALL_COMPLETE = 128;
+
 } // anonymous
 
 SaraNcpClient::SaraNcpClient() {
@@ -182,6 +184,9 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     savedNVMR510_ = false; // R510: Save connection state to NVM for fast cold boot registration times
     parserError_ = 0;
     ready_ = false;
+    firmwareUpdateR510_ = false;
+    firmwareInstallRespCodeR510_ = -1;
+    lastFirmwareInstallRespCodeR510_ = -1;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     ncpPowerState(modemPowerState() ? NcpPowerState::ON : NcpPowerState::OFF);
@@ -334,6 +339,45 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         return SYSTEM_ERROR_NONE;
     }, this));
+    // +UFWPREVAL: <progress%>
+    CHECK(parser_.addUrcHandler("+UFWPREVAL", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (SaraNcpClient*)data;
+        int respCode = -1;
+        char atResponse[32] = {};
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        int r = ::sscanf(atResponse, "+UFWPREVAL: %d", &respCode);
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        if (respCode >= 0 && respCode <= 100) {
+            self->firmwareInstallRespCodeR510_ = respCode;
+            self->firmwareUpdateR510_ = true;
+        }
+        LOG_DEBUG(TRACE, "UFWPREVAL matched: %d", self->firmwareInstallRespCodeR510_);
+
+        return SYSTEM_ERROR_NONE;
+    }, this));
+    // +UUFWINSTALL: <progress%>
+    CHECK(parser_.addUrcHandler("+UUFWINSTALL", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (SaraNcpClient*)data;
+        int respCode = -1;
+        char atResponse[32] = {};
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        int r = ::sscanf(atResponse, "+UUFWINSTALL: %d", &respCode);
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        if (respCode >= 0 && respCode <= UUFWINSTALL_COMPLETE) {
+            self->firmwareInstallRespCodeR510_ = respCode;
+            if (respCode == UUFWINSTALL_COMPLETE) {
+                self->firmwareUpdateR510_ = false;
+            } else {
+                self->firmwareUpdateR510_ = true;
+            }
+        }
+        LOG_DEBUG(TRACE, "UUFWINSTALL matched: %d", self->firmwareInstallRespCodeR510_);
+
+        return SYSTEM_ERROR_NONE;
+    }, this));
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -897,6 +941,10 @@ int SaraNcpClient::getSignalQuality(CellularSignalQuality* qual) {
 }
 
 int SaraNcpClient::checkParser() {
+    if (firmwareUpdateR510_) {
+        return SYSTEM_ERROR_NONE;
+    }
+
     CHECK_TRUE(pwrState_ == NcpPowerState::ON, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     if (ready_ && parserError_ != 0) {
@@ -916,7 +964,12 @@ int SaraNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) {
 }
 
 int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period) {
-    const auto t1 = HAL_Timer_Get_Milli_Seconds();
+    // If R510 firmware update, force extended timings
+    if (firmwareUpdateR510_) {
+        timeout = 300000;
+        period = 10000;
+    }
+    auto t1 = HAL_Timer_Get_Milli_Seconds();
     for (;;) {
         const int r = parser.execCommand(period, "AT");
         if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
@@ -924,6 +977,19 @@ int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsign
         }
         if (r == AtResponse::OK) {
             return SYSTEM_ERROR_NONE;
+        }
+        // R510 Firmware Update
+        if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+            if (firmwareInstallRespCodeR510_ != lastFirmwareInstallRespCodeR510_) {
+                t1 = HAL_Timer_Get_Milli_Seconds(); // If update is progressing, reset AT/OK wait timeout
+                lastFirmwareInstallRespCodeR510_ = firmwareInstallRespCodeR510_;
+            }
+            if (firmwareInstallRespCodeR510_ == UUFWINSTALL_COMPLETE) {
+                firmwareUpdateR510_ = false;
+                firmwareInstallRespCodeR510_ = -1;
+                lastFirmwareInstallRespCodeR510_ = -1;
+                break; // Install complete
+            }
         }
         const auto t2 = HAL_Timer_Get_Milli_Seconds();
         if (t2 - t1 >= timeout) {
@@ -993,7 +1059,7 @@ int SaraNcpClient::waitReady(bool powerOn) {
         LOG(ERROR, "No response from NCP");
     }
 
-    if (!ready_) {
+    if (!ready_ && !firmwareUpdateR510_) {
         // Disable voltage translator
         modemSetUartState(false);
         // Hard reset the modem
@@ -1322,6 +1388,10 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
             UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE :
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4;
 
+    if (firmwareUpdateR510_) {
+        attemptedBaudRate = UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE;
+    }
+
     CHECK(serial_->setBaudRate(attemptedBaudRate));
     CHECK(initParser(serial_.get()));
     skipAll(serial_.get(), 1000);
@@ -1329,26 +1399,33 @@ int SaraNcpClient::waitAtResponseFromPowerOn(ModemState& modemState) {
 
     int r = SYSTEM_ERROR_TIMEOUT;
 
-    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
-        r = waitAtResponse(20000);
+    if (firmwareUpdateR510_) {
+        r = waitAtResponse(300000,10000);
         if (!r) {
             modemState = ModemState::DefaultBaudrate;
         }
     } else {
-        LOG_DEBUG(TRACE, "Trying at %d baud rate", attemptedBaudRate);
-        r = waitAtResponse(10000);
-        if (r) {
-            CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
-            CHECK(initParser(serial_.get()));
-            skipAll(serial_.get());
-            parser_.reset();
-            LOG_DEBUG(TRACE, "Trying at %d baud rate", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
-            r = waitAtResponse(5000);
+        if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
+            r = waitAtResponse(20000);
             if (!r) {
                 modemState = ModemState::DefaultBaudrate;
             }
         } else {
-            modemState = ModemState::RuntimeBaudrate;
+            LOG_DEBUG(TRACE, "Trying at %d baud rate", attemptedBaudRate);
+            r = waitAtResponse(10000);
+            if (r) {
+                CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
+                CHECK(initParser(serial_.get()));
+                skipAll(serial_.get());
+                parser_.reset();
+                LOG_DEBUG(TRACE, "Trying at %d baud rate", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
+                r = waitAtResponse(5000);
+                if (!r) {
+                    modemState = ModemState::DefaultBaudrate;
+                }
+            } else {
+                modemState = ModemState::RuntimeBaudrate;
+            }
         }
     }
 
@@ -1541,6 +1618,10 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 :
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2;
 
+    if (firmwareUpdateR510_) {
+        runtimeBaudrate = UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE;
+    }
+
     // Feeling optimistic, try to see if the muxer is already available
     if (!muxer_.isRunning()) {
         LOG(TRACE, "Muxer is not currently running");
@@ -1640,6 +1721,19 @@ int SaraNcpClient::initMuxer() {
 
     // Set channel state handler
     muxer_.setChannelStateHandler(muxChannelStateCb, this);
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::startNcpFwUpdate() {
+    if (ncpId() != PLATFORM_NCP_SARA_R510) {
+        return SYSTEM_ERROR_NONE;
+    }
+    // Extend muxer timeout, used during modem FW updates
+    // muxer_.setKeepAlivePeriod(UBLOX_NCP_FW_UPDATE_KEEPALIVE_PERIOD);
+    // muxer_.setKeepAliveMaxMissed(UBLOX_NCP_FW_UPDATE_KEEPALIVE_MAX_MISSED);
+
+    firmwareUpdateR510_ = true;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2038,8 +2132,9 @@ int SaraNcpClient::checkRegistrationState() {
             // Switch to airplane mode / full functionality to save connection details for fast cold connection times.
             // This will skip setting the CONNECTED state and stay CONNECTING, since that's what will happen on the modem.
             if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510 && !savedNVMR510_) {
-                CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
-                CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1"));
+                // TODO: Completely remove CFUN=4/1 toggle after registration
+                // CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4,0"));
+                // CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
                 savedNVMR510_ = true;
                 return SYSTEM_ERROR_NONE;
             }
@@ -2056,6 +2151,12 @@ int SaraNcpClient::checkRegistrationState() {
 
 int SaraNcpClient::interveneRegistration() {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTING, SYSTEM_ERROR_NONE);
+
+    // FIXME: While Long Registration is an issue... this causes more trouble than it's worth
+    // TODO: Re-test for R510 when Long Registration is resolved
+    if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+        return SYSTEM_ERROR_NONE;
+    }
 
     if (netConf_.netProv() == CellularNetworkProvider::TWILIO && millis() - regStartTime_ <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {
         return 0;
@@ -2125,7 +2226,8 @@ int SaraNcpClient::checkRunningImsi() {
     // Else, if not registered, check after CHECK_IMSI_TIMEOUT is expired
     if ((imsiCheckTime_ == 0) || ((connState_ != NcpConnectionState::CONNECTED) &&
             (millis() - imsiCheckTime_ >= CHECK_IMSI_TIMEOUT))) {
-        CHECK_PARSER(parser_.execCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI"));
+        // Do not error on timeout
+        parser_.execCommand(UBLOX_CIMI_TIMEOUT, "AT+CIMI");
         imsiCheckTime_ = millis();
     }
     return 0;
@@ -2269,6 +2371,11 @@ int SaraNcpClient::modemPowerOn() {
 }
 
 int SaraNcpClient::modemPowerOff() {
+    if (firmwareUpdateR510_) {
+        CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+        return SYSTEM_ERROR_NONE;
+    }
+
     static std::once_flag f;
     std::call_once(f, [this]() {
         if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510 && modemPowerState()) {
@@ -2329,6 +2436,11 @@ int SaraNcpClient::modemPowerOff() {
 }
 
 int SaraNcpClient::modemSoftPowerOff() {
+    if (firmwareUpdateR510_) {
+        CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
+        return SYSTEM_ERROR_NONE;
+    }
+
     if (modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
         LOG(TRACE, "Try powering modem off using AT command");

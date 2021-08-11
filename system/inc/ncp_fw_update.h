@@ -19,6 +19,11 @@
 
 #include "hal_platform.h"
 #include "system_tick_hal.h"
+#include "at_parser.h"
+// #include "at_command.h"
+#include "at_response.h"
+
+#if HAL_PLATFORM_CELLULAR
 
 namespace particle {
 
@@ -26,18 +31,23 @@ namespace system {
 
 enum NcpFWUpdateState {
     FW_UPDATE_IDLE_STATE = 0,
-    FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE = 1,
-    FW_UPDATE_SETUP_STATE = 2,
-    FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECT_STATE = 3,
-    FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECTED_STATE = 4,
-    FW_UPDATE_DOWNLOAD_READY_STATE = 5,
-    FW_UPDATE_INSTALL_CELL_DISCONNECTING_STATE = 6,
-    FW_UPDATE_INSTALL_STATE_STARTING = 7,
-    FW_UPDATE_INSTALL_STATE_WAITING = 8,
-    FW_UPDATE_FINISHED_FACTORY_RESET_STATE = 9,
-    FW_UPDATE_FINISHED_CLOUD_CONNECTING_STATE = 10,
-    FW_UPDATE_FINISHED_CLOUD_CONNECTED_STATE = 11,
-    FW_UPDATE_FINISHED_STATE = 12,
+    FW_UPDATE_IDLE_STATE_1 = 101, // DEBUG
+    FW_UPDATE_IDLE_STATE_2 = 102, // DEBUG
+    FW_UPDATE_IDLE_STATE_3 = 103, // DEBUG
+    FW_UPDATE_SETUP_CLOUD_CONNECT_STATE = 1,
+    FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE = 2,
+    FW_UPDATE_SETUP_CLOUD_CONNECTED_STATE = 3,
+    FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECT_STATE = 4,
+    FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECTED_STATE = 5,
+    FW_UPDATE_DOWNLOAD_READY_STATE = 6,
+    FW_UPDATE_INSTALL_CELL_DISCONNECTING_STATE = 7,
+    FW_UPDATE_INSTALL_STATE_STARTING = 8,
+    FW_UPDATE_INSTALL_STATE_WAITING = 9,
+    FW_UPDATE_FINISHED_FACTORY_RESET_STATE = 10,
+    FW_UPDATE_FINISHED_POWERING_OFF_STATE = 11,
+    FW_UPDATE_FINISHED_CLOUD_CONNECTING_STATE = 12,
+    FW_UPDATE_FINISHED_CLOUD_CONNECTED_STATE = 13,
+    FW_UPDATE_FINISHED_STATE = 14,
 };
 enum NcpFWUpdateStatus {
     FW_UPDATE_NONE_STATUS = 0,
@@ -72,6 +82,7 @@ public:
 
 private:
 
+
     NcpFWUpdateState ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
     NcpFWUpdateStatus ncpFwUpdateStatus_ = FW_UPDATE_NONE_STATUS;
     int foatReady_;
@@ -93,6 +104,8 @@ private:
     static int cbUUFWINSTALL_(int type, const char* buf, int len, int* data);
     static int cbULSTFILE_(int type, const char* buf, int len, int* data);
     static int cbATI9_(int type, const char* buf, int len, int* val);
+    static int cbUPSND_(int type, const char* buf, int len, int* data);
+    static int httpRespCallback_(AtResponseReader* reader, const char* prefix, void* data);
     int getAppFirmwareVersion_();
     int setupHTTPSProperties_();
     void cooldown_(system_tick_t timer);
@@ -103,3 +116,5 @@ private:
 } // namespace system
 
 } // namespace particle
+
+#endif // #if HAL_PLATFORM_CELLULAR

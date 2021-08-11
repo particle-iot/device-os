@@ -491,7 +491,9 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
         system::FirmwareUpdate::instance()->process();
 
+#if HAL_PLATFORM_CELLULAR
         system::NcpFwUpdate::instance()->process();
+#endif
     }
     else
     {

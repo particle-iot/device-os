@@ -607,3 +607,12 @@ int cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, voi
 int cellular_urcs_get(void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
+
+int cellular_start_ncp_firmware_update(void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CHECK(client->startNcpFwUpdate());
+    return SYSTEM_ERROR_NONE;
+}
