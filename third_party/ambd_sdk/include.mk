@@ -42,8 +42,7 @@ INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/mbed/hal_ext
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/mbed/hal
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/fatfs
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/fatfs/r0.10c/include
-# INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/network/lwip/lwip_v2.0.2/src/include
-# INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/network/lwip/lwip_v2.0.2/src/include/lwip
+INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/ftl
 
 # Hack of the century!
 LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wlan.a
