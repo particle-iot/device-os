@@ -45,9 +45,9 @@ CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_cpft.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_lcdc.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_hp/rtl8721dhp_i2s.c
 ifneq ("$(BOOTLOADER_MODULE)","")
-CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_flash_hp.c
-CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_ram_hp.c
-CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_trustzone_hp.c
+# CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_flash_hp.c
+# CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_ram_hp.c
+# CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_trustzone_hp.c
 endif
 else
 # KM0 (Cortex-M23)
@@ -72,16 +72,18 @@ endif
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_flashcfg.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_pinmapcfg.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_pinmapcfg_qfn88_evb_v1.c
-CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dhp_boot_trustzonecfg.c
+# CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dhp_boot_trustzonecfg.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_ipccfg.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_sleepcfg.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_bootcfg.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dhp_intfcfg.c
-CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_wificfg.c
 
+ifeq ("$(BOOTLOADER_MODULE)","")
+CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_wificfg.c
 CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_conf.c
 CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_ind.c
 CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_util.c
+endif
 
 # INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/api/network/include
 

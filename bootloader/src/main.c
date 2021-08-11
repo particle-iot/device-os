@@ -32,8 +32,9 @@
 #include "button_hal.h"
 #include "dct.h"
 #include "feature_flags.h"
-#if PLATFORM_ID == 32
+#if PLATFORM_ID == PLATFORM_TRON
 #include "rtl8721d.h"
+#include "nonsecure.h"
 #endif
 
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
@@ -46,10 +47,17 @@
 
 void platform_startup();
 
+#if PLATFORM_ID == PLATFORM_TRON
+static void jump_to_system(uint32_t addr, uint32_t sp) {
+    nonsecure_jump_to_system(addr);
+    (void) sp;
+}
+#else
 __attribute__((naked)) static void jump_to_system(uint32_t addr, uint32_t sp) {
     asm("msr msp, %1\n"
         "bx %0\n" : : "r" (addr), "r" (sp));
 }
+#endif
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);

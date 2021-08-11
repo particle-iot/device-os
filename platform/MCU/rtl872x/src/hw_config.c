@@ -78,7 +78,7 @@ static void DWT_Init(void)
  * @retval None
  */
 volatile uint32_t rtlContinue = 0;
-__attribute__((section(".boot.ram.text"), noinline)) void Set_System(void)
+void Set_System(void)
 {
     // Disable MPU just in case for now
     mpu_disable();
@@ -89,22 +89,6 @@ __attribute__((section(".boot.ram.text"), noinline)) void Set_System(void)
     // __set_MSP(RTL_DEFAULT_MSP_S);
 
     _memcpy((void *)&flash_init_para, (const void *)BKUP_Read(BKUP_REG7), sizeof(FLASH_InitTypeDef));
-
-    /* Enable SecureFault, UsageFault, MemManageFault, BusFault */
-    SCB->SHCSR |= SCB_SHCSR_SECUREFAULTENA_Msk | SCB_SHCSR_USGFAULTENA_Msk | \
-        SCB_SHCSR_BUSFAULTENA_Msk | SCB_SHCSR_MEMFAULTENA_Msk;
-
-    /* Enable all access to FPU */
-    SCB->CPACR |= 0x00f00000;
-    SCB_NS->CPACR |=  0x00f00000;
-    SCB->NSACR |= BIT(10) | BIT(11); // enable non-secure to access VFP
-
-    // XXX: this is not strictly required right now
-    /* Set non-secure main stack (MSP_NS) */
-    __TZ_set_MSP_NS(MSP_RAM_HP_NS);
-
-    /* Set PSPS Temp */
-    __set_PSP(MSP_RAM_HP_NS-2048);
 
     Cache_Enable(ENABLE);
     SystemCoreClockUpdate();
