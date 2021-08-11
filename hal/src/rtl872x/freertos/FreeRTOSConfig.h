@@ -75,7 +75,7 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 #else
 #define configENABLE_TRUSTZONE							0
 #endif
-#define configRUN_FREERTOS_SECURE_ONLY					1
+#define configRUN_FREERTOS_SECURE_ONLY					0
 
 
 /* Constants related to the behaviour or the scheduler. */
@@ -181,10 +181,10 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 	#define configPRIO_BITS								3	 /* 8 priority levels. */
 #endif
 
-/* The lowest interrupt priority that can be used in a call to a "set priority"
- * function. */
-// #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY			7
-#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY			0xf
+/* The lowest interrupt priority that can be used in a call to a "set priority" function.
+ * For KM4, each interrupt can have one of 8 priorities (0, 1, 2 ..., 7)
+ */
+#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY         7
 
 /* The highest interrupt priority that can be used by any interrupt service
  * routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT
