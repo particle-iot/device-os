@@ -194,6 +194,98 @@ void UsageFault_Handler(void) {
     }
 }
 
+
+extern void INT_HardFault_C(uint32_t mstack[], uint32_t pstack[], uint32_t lr_value, uint32_t fault_id);
+
+void INT_HardFault_Patch_C(uint32_t mstack[], uint32_t pstack[], uint32_t lr_value, uint32_t fault_id)
+{
+    u8 IsPstack = 0;
+
+    DBG_8195A("\r\nHard Fault Patch (Non-secure)\r\n");
+
+    /* EXC_RETURN.S, 1: original is Secure, 0: original is Non-secure */
+    if (lr_value & BIT(6)) {                    //Taken from S
+        DBG_8195A("\nException taken from Secure to Non-secure.\nSecure stack is used to store context." 
+            "It can not be dumped from non-secure side for security reason!!!\n");
+
+        while(1);
+    } else {                                    //Taken from NS
+        if (lr_value & BIT(3)) {                //Thread mode
+            if (lr_value & BIT(2)) {            //PSP
+                IsPstack = 1;
+            }
+        }
+    }
+
+#if defined(CONFIG_EXAMPLE_CM_BACKTRACE) && CONFIG_EXAMPLE_CM_BACKTRACE
+    cm_backtrace_fault(IsPstack ? pstack : mstack, lr_value);
+    while(1);
+#else
+
+    if(IsPstack)
+        mstack = pstack;
+
+    INT_HardFault_C(mstack, pstack, lr_value, fault_id);
+#endif    
+    
+}
+
+void INT_HardFault_Patch(void)
+{
+    __ASM volatile(
+        "MRS R0, MSP\n\t"
+        "MRS R1, PSP\n\t"
+        "MOV R2, LR\n\t" /* second parameter is LR current value */
+        "MOV R3, #0\n\t"   
+        "SUB.W    R4, R0, #128\n\t"
+        "MSR MSP, R4\n\t"   // Move MSP to upper to for we can dump current stack contents without chage contents
+        "LDR R4,=INT_HardFault_Patch_C\n\t"
+        "BX R4\n\t"
+    );
+}
+
+void INT_UsageFault_Patch(void)
+{
+    __ASM volatile(
+        "MRS R0, MSP\n\t"
+        "MRS R1, PSP\n\t"
+        "MOV R2, LR\n\t" /* second parameter is LR current value */
+        "MOV R3, #1\n\t"   
+        "SUB.W    R4, R0, #128\n\t"
+        "MSR MSP, R4\n\t"   // Move MSP to upper to for we can dump current stack contents without chage contents
+        "LDR R4,=INT_HardFault_Patch_C\n\t"
+        "BX R4\n\t"
+    );
+}
+
+void INT_BusFault_Patch(void)
+{
+    __ASM volatile(
+        "MRS R0, MSP\n\t"
+        "MRS R1, PSP\n\t"
+        "MOV R2, LR\n\t" /* second parameter is LR current value */
+        "MOV R3, #2\n\t"   
+        "SUB.W    R4, R0, #128\n\t"
+        "MSR MSP, R4\n\t"   // Move MSP to upper to for we can dump current stack contents without chage contents
+        "LDR R4,=INT_HardFault_Patch_C\n\t"
+        "BX R4\n\t"
+    );
+}
+
+void INT_MemFault_Patch(void)
+{
+    __ASM volatile(
+        "MRS R0, MSP\n\t"
+        "MRS R1, PSP\n\t"
+        "MOV R2, LR\n\t" /* second parameter is LR current value */
+        "MOV R3, #3\n\t"   
+        "SUB.W    R4, R0, #128\n\t"
+        "MSR MSP, R4\n\t"   // Move MSP to upper to for we can dump current stack contents without chage contents
+        "LDR R4,=INT_HardFault_Patch_C\n\t"
+        "BX R4\n\t"
+    );
+}
+
 void SysTickOverride(void) {
     HAL_SysTick_Handler();
 }
@@ -210,7 +302,7 @@ void SysTickChain() {
 void HAL_Core_Init_finalize(void) {
     // uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     // isrs[IRQN_TO_IDX(SysTick_IRQn)] = (uint32_t)SysTickChain;
-    __NVIC_SetVector(SysTick_IRQn, (u32)(VOID*)SysTickChain);
+    __NVIC_SetVector(SysTick_IRQn, (u32)(void*)SysTickChain);
 }
 
 void HAL_Core_Init(void) {
@@ -228,9 +320,14 @@ void HAL_Core_Config_systick_configuration(void) {
  * the interrupt table if required.
  */
 void HAL_Core_Setup_override_interrupts(void) {
-    __NVIC_SetVector(SysTick_IRQn, (u32)(VOID*)SysTick_Handler);
-    __NVIC_SetVector(SVCall_IRQn, (u32)(VOID*)SVC_Handler);
-    __NVIC_SetVector(PendSV_IRQn, (u32)(VOID*)PendSV_Handler);
+    __NVIC_SetVector(SysTick_IRQn, (u32)(void*)SysTick_Handler);
+    __NVIC_SetVector(SVCall_IRQn, (u32)(void*)SVC_Handler);
+    __NVIC_SetVector(PendSV_IRQn, (u32)(void*)PendSV_Handler);
+
+    __NVIC_SetVector(HardFault_IRQn, (u32)(void*)INT_HardFault_Patch);
+    __NVIC_SetVector(MemoryManagement_IRQn, (u32)(void*)INT_MemFault_Patch);
+    __NVIC_SetVector(BusFault_IRQn, (u32)(void*)INT_BusFault_Patch);
+    __NVIC_SetVector(UsageFault_IRQn, (u32)(void*)INT_UsageFault_Patch);
 }
 
 void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
@@ -283,6 +380,21 @@ static void prohibit_xip(void) {
 }
 #endif // HAL_PLATFORM_PROHIBIT_XIP
 
+void debug_print_vector() {
+    #define NVIC_USER_IRQ_OFFSET 16
+
+    // Should use NewVectorTable of which the address is 0x10001000
+    uint32_t* vectors = (uint32_t*)SCB->VTOR;
+
+    DiagPrintf("SCB->VTOR: 0x%08X\r\n", SCB->VTOR);
+    DiagPrintf("Stack: 0x%08X\r\n", vectors[0]);
+    DiagPrintf("Reset_Handler: 0x%08X\r\n", vectors[1]);
+
+    for (int i = NonMaskableInt_IRQn_LP; i <= KM4_WAKE_EVENT_IRQ_LP; i++) {
+        DiagPrintf("IRQ: %d, 0x%08X\r\n", i, vectors[(int32_t)i + NVIC_USER_IRQ_OFFSET]);
+    }
+}
+
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
  * Description    : Called in startup routine, before calling C++ constructors.
@@ -297,6 +409,10 @@ void HAL_Core_Config(void) {
     // while (!rtlContinue) {
     //     asm("NOP");
     // }
+    irq_table_init(MSP_RAM_HP_NS);
+
+    // debug_print_vector();
+
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 
 #ifdef DFU_BUILD_ENABLE
@@ -885,7 +1001,7 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {
-    		info->largest_free_block_heap = pvPortLargestFreeBlock();
+            info->largest_free_block_heap = pvPortLargestFreeBlock();
     }
 
     return 0;
@@ -918,23 +1034,23 @@ SessionPersistDataOpaque session __attribute__((section(".backup_system")));
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
-	if (offset==0 && length==sizeof(SessionPersistDataOpaque))
-	{
-		memcpy(&session, buffer, length);
-		return 0;
-	}
-	return -1;
+    if (offset==0 && length==sizeof(SessionPersistDataOpaque))
+    {
+        memcpy(&session, buffer, length);
+        return 0;
+    }
+    return -1;
 }
 
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
 {
-	if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque) && session.size==sizeof(SessionPersistDataOpaque))
-	{
-		*length = sizeof(SessionPersistDataOpaque);
-		memcpy(buffer, &session, sizeof(session));
-		return 0;
-	}
-	return -1;
+    if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque) && session.size==sizeof(SessionPersistDataOpaque))
+    {
+        *length = sizeof(SessionPersistDataOpaque);
+        memcpy(buffer, &session, sizeof(session));
+        return 0;
+    }
+    return -1;
 }
 
 
@@ -942,12 +1058,12 @@ int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, si
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
-	return -1;
+    return -1;
 }
 
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
 {
-	return -1;
+    return -1;
 }
 
 #endif
