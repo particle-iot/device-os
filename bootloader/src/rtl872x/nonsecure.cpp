@@ -136,6 +136,13 @@ void nonsecure_jump_to_system(uint32_t addr) {
     volatile uint32_t NonSecure_ResetHandler;
     NonSecure_ResetHandler = cmse_nsfptr_create(addr);
 
+    // We found enabling cache in the system part1 will mess up RAM (e.g. LED configuration),
+    // it is probably caused by sharing some hal drivers in bootloader and Device OS,
+    // let's enable it in the bootloader
+    Cache_Enable(1);
+    Cache_Flush();
+    __DSB();
+
     // Start non-secure state software application
     jump_to_nonsecure(NonSecure_ResetHandler);
 }

@@ -80,9 +80,6 @@ static void DWT_Init(void)
 volatile uint32_t rtlContinue = 0;
 void Set_System(void)
 {
-    // Disable MPU just in case for now
-    mpu_disable();
-
     // FIXME: don't mess with MSP and IRQ table
     // for now we are using whatever ROM has configured for us
     // irq_table_init(RTL_DEFAULT_MSP_S);
@@ -90,7 +87,6 @@ void Set_System(void)
 
     _memcpy((void *)&flash_init_para, (const void *)BKUP_Read(BKUP_REG7), sizeof(FLASH_InitTypeDef));
 
-    Cache_Enable(ENABLE);
     SystemCoreClockUpdate();
 
     // force SP align to 8 byte not 4 byte (initial SP is 4 byte align)
