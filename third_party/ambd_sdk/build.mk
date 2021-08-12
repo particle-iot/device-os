@@ -62,10 +62,7 @@ CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_lp/rtl8721dlp_startup.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_lp/rtl8721dlp_pmc.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_lp/rtl8721dlp_pinmap.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/ram_lp/rtl8721dlp_system.c
-ifneq ("$(BOOTLOADER_MODULE)","")
-CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_flash_lp.c
-CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_ram_lp.c
-endif
+CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_wificfg.c
 endif
 
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721dlp_intfcfg.c
