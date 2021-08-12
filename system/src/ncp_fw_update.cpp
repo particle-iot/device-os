@@ -113,8 +113,8 @@ int g_respCode = 0;
 } // namespace
 
 NcpFwUpdate::NcpFwUpdate() {
-    ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
-    // ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECT_STATE; // DEBUG: uncomment this one to kick off update on boot
+    // ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
+    ncpFwUpdateState_ = FW_UPDATE_SETUP_QUALIFY_STATE; // DEBUG: uncomment this one to kick off update on boot
     ncpFwUpdateStatus_ = FW_UPDATE_NONE_STATUS;
     foatReady_ = 0;
     startInstallTimer_ = 0;
@@ -155,6 +155,42 @@ NcpFWUpdateStatus NcpFwUpdate::process() {
     } else {
     switch (ncpFwUpdateState_) {
 
+        case FW_UPDATE_SETUP_QUALIFY_STATE:
+            ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECT_STATE;
+            // Check NCP version
+            if (PLATFORM_NCP_SARA_R510 != platform_primary_ncp_identifier()) {
+                ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
+                break;
+            }
+            LOG(INFO, "PLATFORM_NCP == SARA_R510");
+            // Check system feature is enabled
+            // if (System.feature() != NCP_FW_UPDATE_ENABLED) {
+            //     ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
+            //     break;
+            // }
+            // Make sure device is on
+            if (!network_is_on(NETWORK_INTERFACE_CELLULAR, nullptr)) {
+                LOG(INFO, "Turing Modem ON...");
+                network_on(NETWORK_INTERFACE_CELLULAR, 0, 0, nullptr); // Cellular.on()
+            }
+            // TODO: unroll
+            if (!System.waitCondition(
+                    []{ return network_is_on(NETWORK_INTERFACE_CELLULAR, nullptr); }, 60000)
+                    ) {
+                ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
+                break;
+            }
+            LOG(INFO, "Modem is on!");
+            // Check firmware version requires an upgrade
+            firmwareVersion_ = getAppFirmwareVersion_();
+            LOG(INFO, "App firmware: %d", firmwareVersion_);
+            // If PLATFORM_NCP_SARA_R510 && fw_ver < 2 && fw_ver != 0
+            if (firmwareVersion_ != 2060001 && firmwareVersion_ != 99010001) {
+                ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
+            }
+            LOG(INFO, "Setup Fully Qualified!");
+            break;
+
         case FW_UPDATE_SETUP_CLOUD_CONNECT_STATE:
             if (!spark_cloud_flag_connected()) { // !Particle.connected()
                 LOG(INFO, "Connect to Cloud...");
@@ -174,28 +210,20 @@ NcpFWUpdateStatus NcpFwUpdate::process() {
 
         case FW_UPDATE_SETUP_CLOUD_CONNECTED_STATE:
             if (spark_cloud_flag_connected()) { // Particle.connected()
-                // Check firmware version
-                firmwareVersion_ = getAppFirmwareVersion_();
-                LOG(INFO, "App firmware: %d", firmwareVersion_);
-                // If PLATFORM_NCP_SARA_R510 && fw_ver < 2 && fw_ver != 0
-                if ((firmwareVersion_ == 2060001 || firmwareVersion_ == 99010001) && firmwareVersion_ != 0) {
-                    // Setup HTTPS
-                    int ret = setupHTTPSProperties_();
-                    if (!ret) {
-                        LOG(INFO, "HTTPS setup error: %d", ret);
-                        cooldown_(1000);
-                        break;
-                    }
-                    if (publishEvent(/*spark/device/*/"ncp/update", "started")) {
-                        ncpFwUpdateState_ = FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECT_STATE;
-                        LOG(INFO, "Ready to start download...");
-                        cooldown_(20000);
-                    } else {
-                        ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE;
-                        cooldown_(1000);
-                    }
+                // Setup HTTPS
+                int ret = setupHTTPSProperties_();
+                if (!ret) {
+                    LOG(INFO, "HTTPS setup error: %d", ret);
+                    cooldown_(1000);
+                    break;
+                }
+                if (publishEvent(/*spark/device/*/"ncp/update", "started")) {
+                    ncpFwUpdateState_ = FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECT_STATE;
+                    LOG(INFO, "Ready to start download...");
+                    cooldown_(20000);
                 } else {
-                    ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
+                    ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE;
+                    cooldown_(1000);
                 }
             } else {
                 ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE;
