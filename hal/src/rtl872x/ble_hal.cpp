@@ -38,6 +38,7 @@ void bt_coex_init(void);
 #include <gap.h>
 #include <gap_adv.h>
 #include <gap_bond_le.h>
+#include <gap_conn_le.h>
 #include <profile_server.h>
 #include <gap_msg.h>
 #include <simple_ble_service.h>
@@ -87,7 +88,7 @@ namespace {
 #define DEFAULT_ADVERTISING_INTERVAL_MAX            384 //240ms
 
 #define APP_TASK_PRIORITY             9//OS_THREAD_PRIORITY_NETWORK         //!< Task priorities
-#define APP_TASK_STACK_SIZE           256 * 4   //!<  Task stack size
+#define APP_TASK_STACK_SIZE           256 * 4 * 10   //!<  Task stack size
 #define MAX_NUMBER_OF_GAP_MESSAGE     0x20      //!<  GAP message queue size
 #define MAX_NUMBER_OF_IO_MESSAGE      0x20      //!<  IO message queue size
 #define MAX_NUMBER_OF_EVENT_MESSAGE   (MAX_NUMBER_OF_GAP_MESSAGE + MAX_NUMBER_OF_IO_MESSAGE)    //!< Event message queue size
@@ -98,6 +99,9 @@ StaticRecursiveMutex s_bleMutex;
 
 T_SERVER_ID simp_srv_id; /**< Simple ble service id*/
 T_SERVER_ID bas_srv_id;  /**< Battery service id */
+
+T_GAP_DEV_STATE gap_dev_state = {0, 0, 0, 0, 0};                 /**< GAP device state */
+T_GAP_CONN_STATE gap_conn_state = GAP_CONN_STATE_DISCONNECTED; /**< GAP connection state */
 
 void *app_task_handle = NULL;   //!< APP Task handle
 void *evt_queue_handle = NULL;  //!< Event queue handle
@@ -372,15 +376,309 @@ void app_le_profile_init(void) {
     server_register_app_cb(app_profile_callback);
 }
 
-void app_handle_io_msg(T_IO_MSG io_msg) {
+void app_handle_dev_state_evt(T_GAP_DEV_STATE new_state, uint16_t cause)
+{
+    LOG_DEBUG(TRACE, "app_handle_dev_state_evt: init state %d, adv state %d, cause 0x%x",
+                    new_state.gap_init_state, new_state.gap_adv_state, cause);
+    if (gap_dev_state.gap_init_state != new_state.gap_init_state)
+    {
+        if (new_state.gap_init_state == GAP_INIT_STATE_STACK_READY)
+        {
+            LOG_DEBUG(TRACE, "GAP stack ready");
+			LOG_DEBUG(TRACE, "\n\r[BLE peripheral] GAP stack ready\n\r");
+            /*stack ready*/
+            le_adv_start();
+        }
+    }
 
+    if (gap_dev_state.gap_adv_state != new_state.gap_adv_state)
+    {
+        if (new_state.gap_adv_state == GAP_ADV_STATE_IDLE)
+        {
+            if (new_state.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN)
+            {
+                LOG_DEBUG(TRACE, "GAP adv stoped: because connection created");
+				LOG_DEBUG(TRACE, "\n\rGAP adv stoped: because connection created\n\r");
+            }
+            else
+            {
+                LOG_DEBUG(TRACE, "GAP adv stoped");
+				LOG_DEBUG(TRACE, "\n\rGAP adv stopped\n\r");
+            }
+        }
+        else if (new_state.gap_adv_state == GAP_ADV_STATE_ADVERTISING)
+        {
+            LOG_DEBUG(TRACE, "GAP adv start");
+			LOG_DEBUG(TRACE, "\n\rGAP adv start\n\r");
+        }
+    }
+
+    gap_dev_state = new_state;
+}
+
+void app_handle_conn_state_evt(uint8_t conn_id, T_GAP_CONN_STATE new_state, uint16_t disc_cause)
+{
+    LOG_DEBUG(TRACE, "app_handle_conn_state_evt: conn_id %d old_state %d new_state %d, disc_cause 0x%x",
+                    conn_id, gap_conn_state, new_state, disc_cause);
+    switch (new_state)
+    {
+    case GAP_CONN_STATE_DISCONNECTED:
+        {
+            if ((disc_cause != (HCI_ERR | HCI_ERR_REMOTE_USER_TERMINATE))
+                && (disc_cause != (HCI_ERR | HCI_ERR_LOCAL_HOST_TERMINATE)))
+            {
+                LOG_DEBUG(TRACE, "app_handle_conn_state_evt: connection lost cause 0x%x", disc_cause);
+            }
+			LOG_DEBUG(TRACE, "\n\r[BLE peripheral] BT Disconnected, start ADV\n\r");
+            le_adv_start();
+        }
+        break;
+
+    case GAP_CONN_STATE_CONNECTED:
+        {
+            uint16_t conn_interval;
+            uint16_t conn_latency;
+            uint16_t conn_supervision_timeout;
+            uint8_t  remote_bd[6];
+            T_GAP_REMOTE_ADDR_TYPE remote_bd_type;
+
+            le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &conn_interval, conn_id);
+            le_get_conn_param(GAP_PARAM_CONN_LATENCY, &conn_latency, conn_id);
+            le_get_conn_param(GAP_PARAM_CONN_TIMEOUT, &conn_supervision_timeout, conn_id);
+            le_get_conn_addr(conn_id, remote_bd, (uint8_t *)&remote_bd_type);
+            LOG_DEBUG(TRACE, "GAP_CONN_STATE_CONNECTED:remote_bd %s, remote_addr_type %d, conn_interval 0x%x, conn_latency 0x%x, conn_supervision_timeout 0x%x",
+                            TRACE_BDADDR(remote_bd), remote_bd_type,
+                            conn_interval, conn_latency, conn_supervision_timeout);
+			LOG_DEBUG(TRACE, "\n\r[BLE peripheral] BT Connected\n\r");
+        }
+        break;
+
+    default:
+        break;
+    }
+    gap_conn_state = new_state;
+}
+
+void app_handle_authen_state_evt(uint8_t conn_id, uint8_t new_state, uint16_t cause)
+{
+    LOG_DEBUG(TRACE, "app_handle_authen_state_evt:conn_id %d, cause 0x%x", conn_id, cause);
+
+    switch (new_state)
+    {
+    case GAP_AUTHEN_STATE_STARTED:
+        {
+            LOG_DEBUG(TRACE, "app_handle_authen_state_evt: GAP_AUTHEN_STATE_STARTED");
+        }
+        break;
+
+    case GAP_AUTHEN_STATE_COMPLETE:
+        {
+            if (cause == GAP_SUCCESS)
+            {
+                LOG_DEBUG(TRACE, "Pair success\r\n");
+                LOG_DEBUG(TRACE, "app_handle_authen_state_evt: GAP_AUTHEN_STATE_COMPLETE pair success");
+
+            }
+            else
+            {
+                LOG_DEBUG(TRACE, "Pair failed: cause 0x%x\r\n", cause);
+                LOG_DEBUG(TRACE, "app_handle_authen_state_evt: GAP_AUTHEN_STATE_COMPLETE pair failed");
+            }
+        }
+        break;
+
+    default:
+        {
+            LOG_DEBUG(TRACE, "app_handle_authen_state_evt: unknown newstate %d", new_state);
+        }
+        break;
+    }
+}
+
+void app_handle_conn_mtu_info_evt(uint8_t conn_id, uint16_t mtu_size)
+{
+    LOG_DEBUG(TRACE, "app_handle_conn_mtu_info_evt: conn_id %d, mtu_size %d", conn_id, mtu_size);
+}
+
+void app_handle_conn_param_update_evt(uint8_t conn_id, uint8_t status, uint16_t cause)
+{
+    switch (status)
+    {
+    case GAP_CONN_PARAM_UPDATE_STATUS_SUCCESS:
+        {
+            uint16_t conn_interval;
+            uint16_t conn_slave_latency;
+            uint16_t conn_supervision_timeout;
+
+            le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &conn_interval, conn_id);
+            le_get_conn_param(GAP_PARAM_CONN_LATENCY, &conn_slave_latency, conn_id);
+            le_get_conn_param(GAP_PARAM_CONN_TIMEOUT, &conn_supervision_timeout, conn_id);
+            LOG_DEBUG(TRACE, "app_handle_conn_param_update_evt update success:conn_interval 0x%x, conn_slave_latency 0x%x, conn_supervision_timeout 0x%x",
+                            conn_interval, conn_slave_latency, conn_supervision_timeout);
+			LOG_DEBUG(TRACE, "app_handle_conn_param_update_evt update success:conn_interval 0x%x, conn_slave_latency 0x%x, conn_supervision_timeout 0x%x\r\n",
+                            conn_interval, conn_slave_latency, conn_supervision_timeout);
+        }
+        break;
+
+    case GAP_CONN_PARAM_UPDATE_STATUS_FAIL:
+        {
+            LOG_DEBUG(TRACE, "app_handle_conn_param_update_evt update failed: cause 0x%x", cause);	
+		    LOG_DEBUG(TRACE, "app_handle_conn_param_update_evt update failed: cause 0x%x", cause);
+        }
+        break;
+
+    case GAP_CONN_PARAM_UPDATE_STATUS_PENDING:
+        {
+            LOG_DEBUG(TRACE, "app_handle_conn_param_update_evt update pending.");
+		    LOG_DEBUG(TRACE, "\n\rble_central_app_handle_conn_param_update_evt update pending: conn_id %d\r\n", conn_id);
+        }
+        break;
+
+    default:
+        break;
+    }
+}
+
+void app_handle_gap_msg(T_IO_MSG *p_gap_msg)
+{
+    T_LE_GAP_MSG gap_msg;
+    uint8_t conn_id;
+    memcpy(&gap_msg, &p_gap_msg->u.param, sizeof(p_gap_msg->u.param));
+
+    LOG_DEBUG(TRACE, "app_handle_gap_msg: subtype %d", p_gap_msg->subtype);
+    switch (p_gap_msg->subtype)
+    {
+    case GAP_MSG_LE_DEV_STATE_CHANGE:
+        {
+            app_handle_dev_state_evt(gap_msg.msg_data.gap_dev_state_change.new_state,
+                                     gap_msg.msg_data.gap_dev_state_change.cause);
+        }
+        break;
+
+    case GAP_MSG_LE_CONN_STATE_CHANGE:
+        {
+            app_handle_conn_state_evt(gap_msg.msg_data.gap_conn_state_change.conn_id,
+                                      (T_GAP_CONN_STATE)gap_msg.msg_data.gap_conn_state_change.new_state,
+                                      gap_msg.msg_data.gap_conn_state_change.disc_cause);
+        }
+        break;
+
+    case GAP_MSG_LE_CONN_MTU_INFO:
+        {
+            app_handle_conn_mtu_info_evt(gap_msg.msg_data.gap_conn_mtu_info.conn_id,
+                                         gap_msg.msg_data.gap_conn_mtu_info.mtu_size);
+        }
+        break;
+
+    case GAP_MSG_LE_CONN_PARAM_UPDATE:
+        {
+            app_handle_conn_param_update_evt(gap_msg.msg_data.gap_conn_param_update.conn_id,
+                                             gap_msg.msg_data.gap_conn_param_update.status,
+                                             gap_msg.msg_data.gap_conn_param_update.cause);
+        }
+        break;
+
+    case GAP_MSG_LE_AUTHEN_STATE_CHANGE:
+        {
+            app_handle_authen_state_evt(gap_msg.msg_data.gap_authen_state.conn_id,
+                                        gap_msg.msg_data.gap_authen_state.new_state,
+                                        gap_msg.msg_data.gap_authen_state.status);
+        }
+        break;
+
+    case GAP_MSG_LE_BOND_JUST_WORK:
+        {
+            conn_id = gap_msg.msg_data.gap_bond_just_work_conf.conn_id;
+            le_bond_just_work_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+            LOG_DEBUG(TRACE, "GAP_MSG_LE_BOND_JUST_WORK");
+        }
+        break;
+
+    case GAP_MSG_LE_BOND_PASSKEY_DISPLAY:
+        {
+            uint32_t display_value = 0;
+            conn_id = gap_msg.msg_data.gap_bond_passkey_display.conn_id;
+            le_bond_get_display_key(conn_id, &display_value);
+            LOG_DEBUG(TRACE, "GAP_MSG_LE_BOND_PASSKEY_DISPLAY:passkey %d", display_value);
+            le_bond_passkey_display_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+		    LOG_DEBUG(TRACE, "GAP_MSG_LE_BOND_PASSKEY_DISPLAY:passkey %d", display_value);
+        }
+        break;
+
+    case GAP_MSG_LE_BOND_USER_CONFIRMATION:
+        {
+            uint32_t display_value = 0;
+            conn_id = gap_msg.msg_data.gap_bond_user_conf.conn_id;
+            le_bond_get_display_key(conn_id, &display_value);
+            LOG_DEBUG(TRACE, "GAP_MSG_LE_BOND_USER_CONFIRMATION: passkey %d", display_value);
+            LOG_DEBUG(TRACE, "GAP_MSG_LE_BOND_USER_CONFIRMATION: passkey %d", display_value);
+            //le_bond_user_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+        }
+        break;
+
+    case GAP_MSG_LE_BOND_PASSKEY_INPUT:
+        {
+            //uint32_t passkey = 888888;
+            conn_id = gap_msg.msg_data.gap_bond_passkey_input.conn_id;
+            LOG_DEBUG(TRACE, "GAP_MSG_LE_BOND_PASSKEY_INPUT: conn_id %d", conn_id);
+            //le_bond_passkey_input_confirm(conn_id, passkey, GAP_CFM_CAUSE_ACCEPT);
+		    LOG_DEBUG(TRACE, "GAP_MSG_LE_BOND_PASSKEY_INPUT: conn_id %d", conn_id);
+        }
+        break;
+#if F_BT_LE_SMP_OOB_SUPPORT
+    case GAP_MSG_LE_BOND_OOB_INPUT:
+        {
+            uint8_t oob_data[GAP_OOB_LEN] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            conn_id = gap_msg.msg_data.gap_bond_oob_input.conn_id;
+            LOG_DEBUG(TRACE, "GAP_MSG_LE_BOND_OOB_INPUT");
+            le_bond_set_param(GAP_PARAM_BOND_OOB_DATA, GAP_OOB_LEN, oob_data);
+            le_bond_oob_input_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+        }
+        break;
+#endif
+    default:
+        LOG_DEBUG(TRACE, "app_handle_gap_msg: unknown subtype %d", p_gap_msg->subtype);
+        break;
+    }
+}
+
+void app_handle_io_msg(T_IO_MSG io_msg) {
+    uint16_t msg_type = io_msg.type;
+
+    switch (msg_type)
+    {
+    case IO_MSG_TYPE_BT_STATUS:
+        {
+            app_handle_gap_msg(&io_msg);
+        }
+        break;
+    case IO_MSG_TYPE_AT_CMD:
+        break;
+    case IO_MSG_TYPE_QDECODE:
+        {
+            if (io_msg.subtype == 0) {
+                LOG_DEBUG(TRACE, "app_handle_io_msg(): le_adv_stop.");
+                le_adv_stop();
+            } else if (io_msg.subtype == 1) {
+                LOG_DEBUG(TRACE, "app_handle_io_msg(): le_adv_start.");
+                le_adv_start();
+            }
+        }
+        break;
+    default:
+        break;
+    }
 }
 
 void app_main_task(void *p_param) {
     (void)p_param;
     uint8_t event;
-    os_msg_queue_create(&io_queue_handle, MAX_NUMBER_OF_IO_MESSAGE, sizeof(T_IO_MSG));
-    os_msg_queue_create(&evt_queue_handle, MAX_NUMBER_OF_EVENT_MESSAGE, sizeof(uint8_t));
+    if (!os_msg_queue_create(&io_queue_handle, MAX_NUMBER_OF_IO_MESSAGE, sizeof(T_IO_MSG))) {
+        LOG_DEBUG(TRACE, "os_msg_queue_create() failed 1.");
+    }
+    if (!os_msg_queue_create(&evt_queue_handle, MAX_NUMBER_OF_EVENT_MESSAGE, sizeof(uint8_t))) {
+        LOG_DEBUG(TRACE, "os_msg_queue_create() failed 2.");
+    }
 
     gap_start_bt_stack(evt_queue_handle, io_queue_handle, MAX_NUMBER_OF_GAP_MESSAGE);
 

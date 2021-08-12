@@ -330,8 +330,11 @@ int RealtekNcpClient::rltkOn() {
 	RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
 	RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
 	RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
-    wifi_on(RTW_MODE_STA);
-    LOG(INFO, "rltkOn done");
+    if (wifi_on(RTW_MODE_STA) != RTW_SUCCESS) {
+        LOG(INFO, "wifi_on()");
+    } else {
+        LOG(INFO, "rltkOn done");
+    }
     ncpPowerState(NcpPowerState::ON);
     return 0;
 }
