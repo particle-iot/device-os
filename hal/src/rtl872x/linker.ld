@@ -51,6 +51,7 @@ SECTIONS
         /* Realtek specific */
         *(.image2.ram.text)
         *(.image2.ram.text.*)
+        *(.image2.net.ram.text)
         *(.ram.text)
         *(.ram.text.*)
 
