@@ -47,26 +47,25 @@
 
     TODO:
     ====================
-    - Implement ncpId() check for R510
-    - Implement reboot/exit Safe Mode
-    - Implement System feature flag
-    - Move ncp_fw_update.cpp to services/ instead of system/ since we have more space available there
-    - Add correct cipher settings
-    - Save state_ and status_ variables in retained system memory to ensure we complete step 11/12
-    - New system events must be worked into Device Service, add a story for this.
-    - Adjust the 40 minute timeout dynamically based on the progress of the INSTALL URCs?
-        - Gen 2
-        Done - Gen 3, extends timer 5 minutes for every received URC.
-    - When do we retry failures?  Quick loops can retry a few times, but long ones shouldn't
-    - Minimize logging output, move some statements to LOG_DEBUG
-    - Gen 3
-        done - allow normal connection first
-        don't need - disconnect PPP
-        done - enable PDP context with a few AT commands
-        done - try some AT+HTTP commands there
-        - ncpEventHandlerCb
-        - CEREG handlers
-        done - integrated into NcpFwUpdate
+    Done - Implement ncpId() check for R510
+    Done - Implement System feature flag
+    Done - Implement reboot/exit Safe Mode
+         - Move ncp_fw_update.cpp to services/ instead of system/ since we have more space available there
+    Done - Add correct cipher settings
+       ? - Save state_ and status_ variables in retained system memory to ensure we complete step 11/12
+         - New system events must be worked into Device Service, add a story for this.
+         - Adjust the 40 minute timeout dynamically based on the progress of the INSTALL URCs?
+            Done - Gen 3, extends timer 5 minutes for every received URC.
+                 - Gen 2, pull in same mechanism from Gen 3 here in NcpFwUpdate::process()
+         - When do we retry failures?  Quick loops can retry a few times, but long ones shouldn't
+         - Minimize logging output, move some statements to LOG_DEBUG
+    Done - Gen 3
+            Done - allow normal connection first
+            Don't need - disconnect PPP
+            Done - enable PDP context with a few AT commands
+            Done - try some AT+HTTP commands there
+            Done - integrated into NcpFwUpdate
+            Don't need - ncpEventHandlerCb
 
 */
 
@@ -109,12 +108,14 @@ namespace {
 
 HTTPSresponse g_httpsResp = {0};
 int g_respCode = 0;
+const system_tick_t NCP_FW_MODEM_POWER_ON_TIMEOUT = 60000;
+const uint32_t NCP_FW_UBLOX_R510_LATEST_VERSION = 99010001; // 2060001 or 99010001
 
 } // namespace
 
 NcpFwUpdate::NcpFwUpdate() {
     // ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
-    ncpFwUpdateState_ = FW_UPDATE_SETUP_QUALIFY_STATE; // DEBUG: uncomment this one to kick off update on boot
+    ncpFwUpdateState_ = FW_UPDATE_QUALIFY_FLAGS_STATE; // DEBUG: uncomment this one to kick off update on boot
     ncpFwUpdateStatus_ = FW_UPDATE_NONE_STATUS;
     foatReady_ = 0;
     startInstallTimer_ = 0;
@@ -155,60 +156,92 @@ NcpFWUpdateStatus NcpFwUpdate::process() {
     } else {
     switch (ncpFwUpdateState_) {
 
-        case FW_UPDATE_SETUP_QUALIFY_STATE:
-            ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECT_STATE;
+        case FW_UPDATE_QUALIFY_FLAGS_STATE:
+        {
+            ncpFwUpdateState_ = FW_UPDATE_QUALIFY_MODEM_ON_STATE;
             // Check NCP version
-            if (PLATFORM_NCP_SARA_R510 != platform_primary_ncp_identifier()) {
+            if (platform_primary_ncp_identifier() != PLATFORM_NCP_SARA_R510) {
                 ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
                 break;
             }
             LOG(INFO, "PLATFORM_NCP == SARA_R510");
             // Check system feature is enabled
-            // if (System.feature() != NCP_FW_UPDATE_ENABLED) {
-            //     ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
-            //     break;
-            // }
-            // Make sure device is on
-            if (!network_is_on(NETWORK_INTERFACE_CELLULAR, nullptr)) {
-                LOG(INFO, "Turing Modem ON...");
-                network_on(NETWORK_INTERFACE_CELLULAR, 0, 0, nullptr); // Cellular.on()
-            }
-            // TODO: unroll
-            if (!System.waitCondition(
-                    []{ return network_is_on(NETWORK_INTERFACE_CELLULAR, nullptr); }, 60000)
-                    ) {
+            if (!HAL_Feature_Get(FEATURE_NCP_FW_UPDATES)) {
+                LOG(INFO, "FEATURE_NCP_FW_UPDATES disabled");
                 ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
                 break;
             }
-            LOG(INFO, "Modem is on!");
-            // Check firmware version requires an upgrade
-            firmwareVersion_ = getAppFirmwareVersion_();
-            LOG(INFO, "App firmware: %d", firmwareVersion_);
-            // If PLATFORM_NCP_SARA_R510 && fw_ver < 2 && fw_ver != 0
-            if (firmwareVersion_ != 2060001 && firmwareVersion_ != 99010001) {
+            LOG(INFO, "FEATURE_NCP_FW_UPDATES enabled");
+            // Check if System.updatesEnabled()
+            uint8_t updatesEnabled = 0;
+            system_get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, &updatesEnabled, nullptr);
+            if (!updatesEnabled) {
+                LOG(INFO, "System updates disabled");
+                ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
+                break;
+            }
+            LOG(INFO, "System updates enabled");
+            // Make sure device is on
+            if (!network_is_on(NETWORK_INTERFACE_CELLULAR, nullptr)) { // !Cellular.isOn()
+                LOG(INFO, "Turning Modem ON...");
+                network_on(NETWORK_INTERFACE_CELLULAR, 0, 0, nullptr); // Cellular.on()
+            }
+            startInstallTimer_ = millis();
+        }
+        break;
+
+        case FW_UPDATE_QUALIFY_MODEM_ON_STATE:
+        {
+            if (network_is_on(NETWORK_INTERFACE_CELLULAR, nullptr)) { // Cellular.isOn()
+                LOG(INFO, "Modem is on!");
+                // Check firmware version requires an upgrade
+                firmwareVersion_ = getAppFirmwareVersion_();
+                LOG(INFO, "App firmware: %d", firmwareVersion_);
+                // if (firmwareVersion_ != 2060001 && firmwareVersion_ != 99010001) {
+                if (firmwareVersion_ == NCP_FW_UBLOX_R510_LATEST_VERSION) {
+                    LOG(INFO, "Modem has latest firmware version :)");
+                    ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
+                    break;
+                }
+                LOG(INFO, "Setup Fully Qualified!");
+                // If not in Safe Mode, reset now into Safe Mode!
+                if (system_mode() != System_Mode_TypeDef::SAFE_MODE) {
+                    LOG(INFO, "Resetting into Safe Mode!");
+                    delay(200);
+                    system_reset(SYSTEM_RESET_MODE_SAFE, 0, 0, SYSTEM_RESET_FLAG_NO_WAIT, nullptr);
+                    // Goodbye!  See you next time through in Safe Mode ;-)
+                }
+                ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECT_STATE;
+            } else if (millis() - startInstallTimer_ >= NCP_FW_MODEM_POWER_ON_TIMEOUT) {
+                LOG(ERROR, "Modem did not power on!");
                 ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
             }
-            LOG(INFO, "Setup Fully Qualified!");
-            break;
+        }
+        break;
 
         case FW_UPDATE_SETUP_CLOUD_CONNECT_STATE:
+        {
             if (!spark_cloud_flag_connected()) { // !Particle.connected()
                 LOG(INFO, "Connect to Cloud...");
                 spark_cloud_flag_connect(); // Particle.connect()
             }
             ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE;
-            break;
+        }
+        break;
 
         case FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE:
+        {
             if (spark_cloud_flag_connected()) { // Particle.connected()
                 LOG(INFO, "Connected to Cloud.");
                 ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECTED_STATE;
             } else {
                 spark_cloud_flag_connect(); // Particle.connect()
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_SETUP_CLOUD_CONNECTED_STATE:
+        {
             if (spark_cloud_flag_connected()) { // Particle.connected()
                 // Setup HTTPS
                 int ret = setupHTTPSProperties_();
@@ -228,9 +261,11 @@ NcpFWUpdateStatus NcpFwUpdate::process() {
             } else {
                 ncpFwUpdateState_ = FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE;
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECT_STATE:
+        {
             if (spark_cloud_flag_connected()) { // Particle.connected()
                 spark_cloud_flag_disconnect(); // Particle.disconnect()
             } else {
@@ -238,9 +273,11 @@ NcpFWUpdateStatus NcpFwUpdate::process() {
                 cellular_at_response_handler_set(ATResponseOut_, nullptr, nullptr);
                 cooldown_(20000);
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECTED_STATE:
+        {
             if (network_ready(0, 0, 0)) { // Cellular.ready()
                 ncpFwUpdateStatus_ = FW_UPDATE_DOWNLOADING_STATUS;
                 bool modemFirmwareDownloadComplete = false;
@@ -345,9 +382,11 @@ ccfdc48c0a45198d6e168b30d0740959  SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S
                 LOG(INFO, "Connecting Cellular...");
                 cooldown_(1000);
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_INSTALL_CELL_DISCONNECTING_STATE:
+        {
             if (network_ready(0, 0, 0)) { // Cellular.ready()
                 LOG(INFO, "Disconnecting Cellular...");
                 network_disconnect(0, NETWORK_DISCONNECT_REASON_USER, 0);
@@ -355,9 +394,11 @@ ccfdc48c0a45198d6e168b30d0740959  SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S
             } else {
                 ncpFwUpdateState_ = FW_UPDATE_INSTALL_STATE_STARTING;
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_INSTALL_STATE_STARTING:
+        {
             // TODO: make ncpFwUpdateStatus_ and ncpFwUpdateState_ retained variables and if we start up in 
             //       FW_UPDATE_UPDATING_STATUS, we need to resume waiting and prevent the mdm_hal/sara_ncp_client from
             //       resetting the modem.
@@ -397,9 +438,11 @@ ccfdc48c0a45198d6e168b30d0740959  SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S
             // DEBUG
             ncpFwUpdateState_ = FW_UPDATE_INSTALL_STATE_WAITING;  // DEBUG
 #endif
-            break;
+        }
+        break;
 
         case FW_UPDATE_INSTALL_STATE_WAITING:
+        {
             // Wait for the install to take place, 25 - 32 or more minutes!
             startingFirmwareVersion_ = firmwareVersion_;
             startInstallTimer_ = HAL_Timer_Get_Milli_Seconds();
@@ -457,9 +500,11 @@ ccfdc48c0a45198d6e168b30d0740959  SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S
                 // }
             }
             cellular_at_response_handler_set(nullptr, nullptr, nullptr); // cancel callback
-            break;
+        }
+        break;
 
         case FW_UPDATE_FINISHED_FACTORY_RESET_STATE:
+        {
             LOG(INFO, "Factory resetting modem...");
             if (RESP_OK == cellular_command(nullptr, nullptr, 10000, "AT+UFACTORY=2,2\r\n")) {
                 LOG(INFO, "Power cycling modem and reconnecting to Cloud...");
@@ -468,29 +513,35 @@ ccfdc48c0a45198d6e168b30d0740959  SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S
                 startInstallTimer_ = HAL_Timer_Get_Milli_Seconds();
                 ncpFwUpdateState_ = FW_UPDATE_FINISHED_POWERING_OFF_STATE;
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_FINISHED_POWERING_OFF_STATE:
+        {
             if (HAL_Timer_Get_Milli_Seconds() - startInstallTimer_ > 60000) {
                 LOG(ERROR, "Powering modem off timed out!");
                 ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
             }
             if (network_is_off(NETWORK_INTERFACE_CELLULAR, nullptr)) {
-                LOG(ERROR, "Powering modem off success");
+                LOG(INFO, "Powering modem off success");
                 ncpFwUpdateState_ = FW_UPDATE_FINISHED_CLOUD_CONNECTING_STATE;
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_FINISHED_CLOUD_CONNECTING_STATE:
+        {
             if (spark_cloud_flag_connected()) { // Particle.connected()
                 ncpFwUpdateState_ = FW_UPDATE_FINISHED_CLOUD_CONNECTED_STATE;
             } else {
                 spark_cloud_flag_connect(); // Particle.connect()
                 cooldown_(10000);
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_FINISHED_CLOUD_CONNECTED_STATE:
+        {
             if (spark_cloud_flag_connected()) { // Particle.connected()
                 if (publishEvent(/*spark/device/*/"ncp/update", (ncpFwUpdateStatus_ == FW_UPDATE_SUCCESS_STATUS) ? "success" : "failed")) {
                     ncpFwUpdateState_ = FW_UPDATE_FINISHED_STATE;
@@ -500,16 +551,29 @@ ccfdc48c0a45198d6e168b30d0740959  SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S
             } else {
                 ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
             }
-            break;
+        }
+        break;
 
         case FW_UPDATE_FINISHED_STATE:
+        {
             LOG(INFO, "Firmware update complete.");
             ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
-            break;
+        }
+        break;
 
         case FW_UPDATE_IDLE_STATE:
         default:
-            break;
+        {
+            if (system_mode() == System_Mode_TypeDef::SAFE_MODE) {
+                LOG(INFO, "Resetting out of Safe Mode!");
+                delay(200);
+                // Reset with graceful disconnect from Cloud
+                system_reset(SYSTEM_RESET_MODE_NORMAL, 0, 0, 0, nullptr);
+                // FIXME: We want to prevent getting stuck in Safe Mode,
+                // but we don't want to get into a constant SMH reset loop as well
+            }
+        }
+        break;
     } // switch end
     } // Not in cooldown
 

@@ -72,7 +72,8 @@ PARTICLE_STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
 typedef enum Feature_Flag {
     FEATURE_FLAG_RESET_INFO = 0x01,
     FEATURE_FLAG_ETHERNET_DETECTION = 0x02,
-    FEATURE_FLAG_LED_OVERRIDDEN = 0x04
+    FEATURE_FLAG_LED_OVERRIDDEN = 0x04,
+    FEATURE_FLAG_NCP_FW_UPDATES = 0x08,
 } Feature_Flag;
 
 /**

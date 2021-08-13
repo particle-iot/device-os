@@ -1223,8 +1223,11 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
         case FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK: {
             uint32_t value = enabled ? DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SET : DCT_EXT_LOW_SPEED_CLOCK_DISABLE_CLEAR;
             return dct_write_app_data(&value, DCT_EXT_LOW_SPEED_CLOCK_DISABLE_OFFSET, sizeof(value));
-        }
+		}
 #endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+		case FEATURE_NCP_FW_UPDATES: {
+            return Write_Feature_Flag(FEATURE_FLAG_NCP_FW_UPDATES, enabled, NULL);
+        }
     }
     return -1;
 }
@@ -1271,8 +1274,12 @@ bool HAL_Feature_Get(HAL_Feature feature)
             uint32_t value = 0;
             dct_read_app_data_copy(DCT_EXT_LOW_SPEED_CLOCK_DISABLE_OFFSET, &value, sizeof(value));
             return value == DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SET;
-        }
+     	}
 #endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+		case FEATURE_NCP_FW_UPDATES: {	
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_NCP_FW_UPDATES, &value) == 0) ? value : false;
+        }
     }
     return false;
 }
