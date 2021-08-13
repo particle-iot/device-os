@@ -224,7 +224,8 @@ typedef enum HAL_Feature {
     FEATURE_WIFI_POWERSAVE_CLOCK,    // [write only] enables/disables the WiFi powersave clock on the TESTMODE pin. This setting is persisted to the DCT.
     FEATURE_ETHERNET_DETECTION,      // [read/write] enables Ethernet FeatherWing detection on boot
     FEATURE_LED_OVERRIDDEN,           // [read/write] override system RGB signaling on boot.
-    FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK // [read/write] force usage of internal low speed clock
+    FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK, // [read/write] force usage of internal low speed clock
+    FEATURE_NCP_FW_UPDATES,          // [read/write] enables/disables NCP FW updates
 } HAL_Feature;
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled);
