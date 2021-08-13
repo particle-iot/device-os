@@ -43,8 +43,13 @@
 #define HAL_PLATFORM_CLOUD_TCP 0
 #endif
 
+#ifndef HAL_PLATFORM_NCP
 #define HAL_PLATFORM_NCP 	(0)
+#endif
+
+#ifndef HAL_PLATFORM_NCP_AT
 #define HAL_PLATFORM_NCP_AT (0)
+#endif
 
 #define HAL_PLATFORM_USB_CDC (1)
 

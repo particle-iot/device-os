@@ -84,6 +84,8 @@ DYNALIB_FN(36, hal_cellular, cellular_credentials_clear, int(void*))
 DYNALIB_FN(37, hal_cellular, cellular_global_identity, cellular_result_t(CellularGlobalIdentity*, void*))
 DYNALIB_FN(38, hal_cellular, cellular_registration_timeout_set, cellular_result_t(system_tick_t, void*))
 DYNALIB_FN(39, hal_cellular, cellular_urcs, cellular_result_t(bool, void*))
+DYNALIB_FN(40, hal_cellular, cellular_update_status, int(void*))
+DYNALIB_FN(41, hal_cellular, cellular_enable_updates, int(void*))
 
 DYNALIB_END(hal_cellular)
 
