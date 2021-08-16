@@ -68,7 +68,7 @@ private:
     system_tick_t timestampStarted_;
     system_tick_t timestampUpdate_;
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
     BleListeningModeHandler bleHandler_;
 #endif
 };

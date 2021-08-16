@@ -763,11 +763,6 @@ void app_setup_and_loop(void)
     initRadioAntenna();
 #endif
 
-#if HAL_PLATFORM_BLE
-    // FIXME: Move BLE and Thread initialization to an appropriate place
-    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
-#endif // HAL_PLATFORM_BLE
-
 #if SYSTEM_CONTROL_ENABLED
     system::SystemControl::instance()->init();
 #endif // SYSTEM_CONTROL_ENABLED

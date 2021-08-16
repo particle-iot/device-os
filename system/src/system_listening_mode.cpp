@@ -77,9 +77,9 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     system_notify_event(setup_begin, 0);
     timestampStarted_ = timestampUpdate_ = HAL_Timer_Get_Milli_Seconds();
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
     bleHandler_.enter();
-#endif /* HAL_PLATFORM_BLE */
+#endif /* HAL_PLATFORM_BLE_SETUP */
 
 #if (!HAL_PLATFORM_WIFI || (HAL_PLATFORM_WIFI && HAL_PLATFORM_WIFI_SCAN_ONLY))
     SystemSetupConsoleConfig config;
@@ -119,9 +119,9 @@ int ListeningModeHandler::exit() {
 
     system_notify_event(setup_end, HAL_Timer_Get_Milli_Seconds() - timestampStarted_);
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
     bleHandler_.exit();
-#endif /* HAL_PLATFORM_BLE */
+#endif /* HAL_PLATFORM_BLE_SETUP */
 
     return 0;
 }

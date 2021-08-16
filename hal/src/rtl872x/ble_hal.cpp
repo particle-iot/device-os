@@ -688,7 +688,6 @@ void app_main_task(void *p_param) {
     {
         if (os_msg_recv(evt_queue_handle, &event, 0xFFFFFFFF) == true)
         {
-            LOG_DEBUG(TRACE, "os_msg_recv: %d", event);
             if (event == EVENT_IO_TO_APP)
             {
                 T_IO_MSG io_msg;
@@ -700,10 +699,7 @@ void app_main_task(void *p_param) {
             else
             {
                 gap_handle_msg(event);
-                LOG_DEBUG(TRACE, "after gap_handle_msg().");
             }
-        } else {
-            LOG_DEBUG(TRACE, "os_msg_recv: none.");
         }
     }
 }
@@ -747,19 +743,7 @@ int hal_ble_stack_init(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_init().");
 
-	RCC_PeriphClockCmd(APBPeriph_VENDOR_REG, APBPeriph_VENDOR_REG_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_USI_REG, APBPeriph_USI_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_IRDA_REG, APBPeriph_IRDA_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_IPC, APBPeriph_IPC_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_GTIMER, APBPeriph_GTIMER_CLOCK, ENABLE);
 	RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, ENABLE);
-
-	/* close BT temp for simulation */
-	//RCC_PeriphClockCmd(APBPeriph_BT, APBPeriph_BT_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
 
     // ftl_init(ftl_phy_page_start_addr, ftl_phy_page_num);
     // LOG_DEBUG(TRACE, "ftl_init() done.");
@@ -771,7 +755,6 @@ int hal_ble_stack_init(void* reserved) {
     const auto client = mgr->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
     client->on();
-    LOG_DEBUG(TRACE, "wifi is on.");
 
 	//judge BLE central is already on
 	le_get_gap_param(GAP_PARAM_DEV_STATE , &new_state);
@@ -783,8 +766,6 @@ int hal_ble_stack_init(void* reserved) {
         gap_config_max_le_paired_device(BLE_MAX_LINK_COUNT);
         if (!bte_init()) {
             LOG_DEBUG(ERROR, "bte_init() FAILED!");
-        } else {
-            LOG_DEBUG(TRACE, "bte_init() SUCCEED!");
         }
         le_gap_init(BLE_MAX_LINK_COUNT);
         app_le_gap_init();
@@ -800,12 +781,9 @@ int hal_ble_stack_init(void* reserved) {
 		HAL_Delay_Milliseconds(100);
 		le_get_gap_param(GAP_PARAM_DEV_STATE , &new_state);
 	} while(new_state.gap_init_state != GAP_INIT_STATE_STACK_READY);
-    LOG_DEBUG(TRACE, "BLE stack is ready.");
 
 	/*Start BT WIFI coexistence*/
 	wifi_btcoex_set_bt_on();
-
-    LOG_DEBUG(TRACE, "hal_ble_stack_init() done.");
 
     return SYSTEM_ERROR_NONE;
 }

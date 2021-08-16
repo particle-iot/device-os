@@ -38,6 +38,8 @@
 
 #define HAL_PLATFORM_BLE (1)
 
+#define HAL_PLATFORM_BLE_SETUP (1)
+
 #define HAL_PLATFORM_NFC (1)
 
 #define HAL_PLATFORM_NRF52840 (1)

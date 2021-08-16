@@ -54,10 +54,10 @@
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
 #include "ble_hal.h"
 #include "system_control_internal.h"
-#endif /* HAL_PLATFORM_BLE */
+#endif /* HAL_PLATFORM_BLE_SETUP */
 
 using namespace particle;
 using spark::Network;
@@ -494,7 +494,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     {
         system_pending_shutdown(RESET_REASON_USER);
     }
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
     // TODO: Process BLE channel events in a separate thread
     system::SystemControl::instance()->run();
 #endif
