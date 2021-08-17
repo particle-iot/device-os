@@ -1210,7 +1210,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 // NOTE: [ch76449] R510S will not retain GPIO's HIGH after a cold boot
                 // Workaround: Set pin that needs to be HIGH to mode "Module status indication",
                 //             which will be set HIGH when the module is ON, and LOW when it's OFF.
-                const int internalSimMode = 10; // Module status indication mode
+                #if PLATFORM_ID == PLATFORM_BSOM
+                    const int internalSimMode = 255; // Pad disabled
+                #else
+                    const int internalSimMode = 10; // Module status indication mode
+                #endif
+               
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
