@@ -978,7 +978,7 @@ int FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
         return FLASH_ACCESS_RESULT_ERROR;
     }
 
-    return 0;
+    return FLASH_ACCESS_RESULT_OK;
 }
 
 int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)

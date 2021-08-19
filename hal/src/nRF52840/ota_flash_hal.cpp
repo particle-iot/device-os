@@ -338,7 +338,7 @@ uint16_t HAL_OTA_ChunkSize()
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 {
     const int r = FLASH_Begin(address, length);
-    if (r != 0) {
+    if (r != FLASH_ACCESS_RESULT_OK) {
         return false;
     }
     return true;
