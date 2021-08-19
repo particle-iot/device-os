@@ -149,6 +149,9 @@ const module_bounds_t module_radio_stack = {
 };
 PARTICLE_STATIC_ASSERT(radio_stack_start_address, MODULE_RADIO_STACK_START_ADDRESS == MBR_SIZE);
 
+// XXX: careful when adding new modules to this array without double checking
+// HAL_System_Info() behavior or any other function that relies in module_bounds_length and
+// the array itself.
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user, &module_factory
 #if defined(HYBRID_BUILD) // include the mono module so that the hybrid module validates. The reason to not do this all the time is because the

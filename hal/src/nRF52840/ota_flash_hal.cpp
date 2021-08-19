@@ -161,7 +161,7 @@ int fetch_device_public_key_ex(void)
     return 0; // flash_pub_key
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
@@ -169,24 +169,11 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
-#if defined(HYBRID_BUILD)
-            bool hybrid_module_found = false;
-#endif
+            memset(info->modules, 0, sizeof(hal_module_t) * count);
             for (unsigned i = 0; i < count; i++) {
                 const auto bounds = module_bounds[i];
                 const auto module = info->modules + i;
                 fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
-#if defined(HYBRID_BUILD)
-#ifndef MODULAR_FIRMWARE
-#error HYBRID_BUILD must be modular
-#endif
-                // change monolithic firmware to modular in the hybrid build.
-                if (!hybrid_module_found && info->modules[i].info.module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
-                    info->modules[i].info.module_function = MODULE_FUNCTION_SYSTEM_PART;
-                    info->modules[i].info.module_index = 1; 
-                    hybrid_module_found = true;
-                }
-#endif // HYBRID_BUILD
             }
         }
         HAL_OTA_Add_System_Info(info, construct, reserved);
@@ -197,6 +184,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         delete info->modules;
         info->modules = NULL;
     }
+    return 0;
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)

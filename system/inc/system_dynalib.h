@@ -110,6 +110,18 @@ DYNALIB_FN(BASE_IDX + 17, system, system_power_management_set_config, int(const 
 DYNALIB_FN(BASE_IDX1 + 0, system, system_sleep_ext, int(const hal_sleep_config_t*, hal_wakeup_source_base_t**, void*))
 DYNALIB_FN(BASE_IDX1 + 1, system, system_reset, int(unsigned, unsigned, unsigned, unsigned, void*))
 
+// XXX: This functionality is not available in this release line of Device OS, but to keep dynalib compatibility
+// we need to ensure that the placeholders for these functions exist.
+#if HAL_PLATFORM_POWER_MANAGEMENT
+DYNALIB_FN_PLACEHOLDER(BASE_IDX1 + 2, system) // int system_power_management_get_config(hal_power_config*, void*)
+#define BASE_IDX2 (BASE_IDX1 + 3)
+#else
+#define BASE_IDX2 (BASE_IDX1 + 2)
+#endif  // HAL_PLATFORM_POWER_MANAGEMENT
+
+DYNALIB_FN(BASE_IDX2 + 0, system, system_info_get, int(hal_system_info_t* info, uint32_t flags, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 1, system, system_info_free, int(hal_system_info_t* info, uint32_t flags, void* reserved))
+
 DYNALIB_END(system)
 
 #undef BASE_IDX

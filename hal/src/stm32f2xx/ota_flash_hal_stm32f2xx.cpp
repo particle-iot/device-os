@@ -77,7 +77,7 @@ void set_key_value(key_value* kv, const char* key, const char* value)
     strncpy(kv->value, value, sizeof(kv->value)-1);
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
@@ -97,6 +97,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->modules = nullptr;
     }
     HAL_OTA_Add_System_Info(info, construct, reserved);
+    return 0;
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)

@@ -6,6 +6,7 @@
 #include "static_assert.h"
 #include "appender.h"
 #include "system_defs.h"
+#include "ota_flash_hal.h"
 
 using particle::Appender;
 
@@ -171,6 +172,10 @@ int system_refresh_flag(system_flag_t flag);
  */
 int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, appender_fn append, void* append_data,
         void* reserved);
+
+
+int system_info_get(hal_system_info_t* info, uint32_t flags, void* reserved);
+int system_info_free(hal_system_info_t* info, uint32_t flags, void* reserved);
 
 #ifdef __cplusplus
 }

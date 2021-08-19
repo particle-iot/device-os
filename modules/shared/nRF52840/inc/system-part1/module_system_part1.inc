@@ -51,6 +51,7 @@ DYNALIB_TABLE_EXTERN(hal_mesh_deprecated);
 #endif // HAL_PLATFORM_MESH_DEPRECATED
 
 DYNALIB_TABLE_EXTERN(hal_posix_syscall);
+DYNALIB_TABLE_EXTERN(hal_storage);
 
 // strange that this is needed given that the entire block is scoped extern "C"
 // without it, the section name doesn't match *.system_part2_module as expected in the linker script
@@ -100,6 +101,16 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     , DYNALIB_TABLE_NAME(hal_mesh_deprecated)
 #endif // HAL_PLATFORM_MESH_DEPRECATED
     , DYNALIB_TABLE_NAME(hal_posix_syscall)
+#if PLATFORM_ID == PLATFORM_TRACKER
+    // This is a minimal wlan_hal that is as of right now only used on Tracker
+    // It exposes only necessary functionality for scanning and has to come at this position
+    // in order not to introduce dynalib incompatibility.
+    // XXX: This functionality is not available in the current release line of Device OS
+    // but to make sure that dynalib tables are compatible between release lines
+    // we have to add a placeholder here.
+    , NULL
+#endif // PLATFORM_TRACKER
+    , DYNALIB_TABLE_NAME(hal_storage)
 };
 
 #include "system_part1_loader.c"
