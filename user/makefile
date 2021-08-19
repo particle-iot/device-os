@@ -12,9 +12,11 @@ endif
 include ../build/platform-id.mk
 
 ifeq ("","$(SPARK_NO_PLATFORM)")
-DEPENDENCIES += platform dynalib
+DEPENDENCIES += platform
 CFLAGS += -DSPARK_PLATFORM
 endif
+
+DEPENDENCIES += dynalib
 
 WARNINGS_AS_ERRORS ?= n
 
