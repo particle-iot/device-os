@@ -24,11 +24,6 @@
 #include "check.h"
 #include <algorithm>
 
-void sFLASH_EraseSector(uint32_t SectorAddr);
-void sFLASH_EraseBulk(void);
-void sFLASH_WriteBuffer(const uint8_t *pBuffer, uint32_t WriteAddr, uint32_t NumByteToWrite);
-void sFLASH_ReadBuffer(uint8_t *pBuffer, uint32_t ReadAddr, uint32_t NumByteToRead);
-
 int hal_storage_read(hal_storage_id id, uintptr_t addr, uint8_t* buf, size_t size) {
     if (id == HAL_STORAGE_ID_INTERNAL_FLASH) {
         memcpy(buf, (void*)addr, size);
