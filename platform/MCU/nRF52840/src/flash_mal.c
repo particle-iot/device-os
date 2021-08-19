@@ -952,16 +952,43 @@ void FLASH_Restore(uint32_t FLASH_Address)
 #endif
 }
 
-void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
+int FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
 {
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
     Save_SystemFlags();
 
+    // Clear all non-factory module slots in the DCT
+    const size_t slot_count = MAX_MODULES_SLOT - GEN_START_SLOT;
+    size_t slot_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
+    for (size_t i = 0; i < slot_count; ++i) {
+        uint16_t magic_num = 0;
+        int r = dct_read_app_data_copy(slot_offs + offsetof(platform_flash_modules_t, magicNumber), &magic_num,
+                sizeof(magic_num));
+        if (r != 0) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        if (magic_num == 0xabcd) {
+            // Mark the slot as unused
+            magic_num = 0xffff;
+            r = dct_write_app_data(&magic_num, slot_offs + offsetof(platform_flash_modules_t, magicNumber),
+                    sizeof(magic_num));
+            if (r != 0) {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
+        }
+        slot_offs += sizeof(platform_flash_modules_t);
+    }
+
 #ifdef USE_SERIAL_FLASH
-    FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, imageSize);
+    const bool ok = FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, imageSize);
 #else
-    FLASH_EraseMemory(FLASH_INTERNAL, FLASH_Address, imageSize);
+    const bool ok = FLASH_EraseMemory(FLASH_INTERNAL, FLASH_Address, imageSize);
 #endif
+    if (!ok) {
+        return FLASH_ACCESS_RESULT_ERROR;
+    }
+
+    return 0;
 }
 
 int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
