@@ -1878,6 +1878,10 @@ int SaraNcpClient::enterDataMode() {
         CHECK(dataParser_.execCommand(20000, "ATH"));
     }
 
+    if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        parser_.execCommand(10000, "AT+UPORTFWD=100,%d", UBLOX_DEFAULT_CID); // Enable full cone NAT support
+    }
+
     auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
     if (resp.hasNextLine()) {
         char buf[64] = {};
