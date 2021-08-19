@@ -49,6 +49,8 @@
 #if HAL_PLATFORM_DCT
 #include "dct.h"
 #endif // HAL_PLATFORM_DCT
+#include "spark_wiring_json.h"
+#include "check.h"
 
 using namespace particle;
 
@@ -408,28 +410,26 @@ int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chu
 }
 
 class AppendBase {
-
-    appender_fn fn;
-    void* data;
-
 protected:
+    appender_fn fn_;
+    void* data_;
 
     template<typename T> inline bool writeDirect(const T& value) {
-		return fn(data, (const uint8_t*)&value, sizeof(value));
+		return fn_(data_, (const uint8_t*)&value, sizeof(value));
 	}
 
 public:
 
     AppendBase(appender_fn fn, void* data) {
-        this->fn = fn; this->data = data;
+        this->fn_ = fn; this->data_ = data;
     }
 
     bool write(const char* string) const {
-        return fn(data, (const uint8_t*)string, strlen(string));
+        return fn_(data_, (const uint8_t*)string, strlen(string));
     }
 
     bool write(char* string) const {
-        return fn(data, (const uint8_t*)string, strlen(string));
+        return fn_(data_, (const uint8_t*)string, strlen(string));
     }
 
     bool write(char c) {
@@ -456,81 +456,40 @@ public:
 
 };
 
+constexpr size_t APPENDJSON_PRINTF_BUFFER_SIZE = 64;
 
-class AppendJson : public AppendBase
-{
-	using super = AppendBase;
+class AppendJson: public spark::JSONWriter, public AppendBase {
 public:
-	AppendJson(appender_fn fn, void* data) : AppendBase(fn, data) {}
-
-    bool write_quoted(const char* value) {
-        return write('"') &&
-               write(value) &&
-               write('"');
+    AppendJson(appender_fn fn, void* data)
+            : AppendBase(fn, data),
+              state_(true) {
     }
 
-    bool write_attribute(const char* name) {
-        return
-                write_quoted(name) &&
-                write(':');
+    bool getState() const {
+        return state_;
     }
 
-    bool write_string(const char* name, const char* value) {
-        return write_attribute(name) &&
-               write_quoted(value) &&
-               next();
+protected:
+
+    virtual void write(const char *data, size_t size) override {
+        state_ = state_ && fn_(data_, (const uint8_t*)data, size);
     }
-
-    bool newline() { return true; /*return write("\r\n");*/ }
-
-    bool write_value(const char* name, int value) {
-        return write_attribute(name) &&
-               write(value) &&
-               next();
-    }
-
-    bool end_list() {
-        return write_attribute("_") &&
-               write_quoted("");
-    }
-
-    bool write(int value) {
-        char buf[12];
-        return write(itoa(value, buf, 10));
-    }
-
-    bool write(unsigned int value) {
-        char buf[12] = {};
-        snprintf(buf, sizeof(buf), "%u", value);
-        return write(buf);
-    }
-
-    inline bool write(char c) {
-    		return super::write(c);
-    }
-
-    inline bool write(const char* c) {
-    		return super::write(c);
-    }
-
-
-    bool next() { return write(',') && newline(); }
-
-    bool write_key_values(size_t count, const key_value* key_values)
-    {
-        bool result = true;
-        while (count-->0) {
-            result = result && write_key_value(key_values++);
+    virtual void printf(const char *fmt, ...) override {
+        char buf[APPENDJSON_PRINTF_BUFFER_SIZE] = {};
+        va_list args;
+        va_start(args, fmt);
+        const auto r = vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+        if (r > (int)sizeof(buf)) {
+            // Truncated
+            state_ = false;
+            return;
         }
-        return result;
+        write(buf, r);
     }
-
-    bool write_key_value(const key_value* kv)
-    {
-        return write_string(kv->key, kv->value);
-    }
+private:
+    bool state_;
 };
-
 
 const char* module_function_string(module_function_t func) {
     switch (func) {
@@ -574,95 +533,72 @@ bool is_module_function_valid(module_function_t func) {
     }
 }
 
-const char* module_name(uint8_t index, char* buf)
+bool module_info_to_json(AppendJson& json, const hal_module_t* module, uint32_t flags)
 {
-    return itoa(index, buf, 10);
-}
-
-bool module_info_to_json(appender_fn append, void* append_data, const hal_module_t* module, uint32_t flags)
-{
-    AppendJson json(append, append_data);
-    char buf[65];
-    bool result = true;
     const module_info_t* info = &module->info;
 
-    buf[64] = 0;
     bool output_uuid = (module_function(info) == MODULE_FUNCTION_USER_PART);
-    result &= json.write('{') && json.write_value("s", module->bounds.maximum_size) && json.write_string("l", module_store_string(module->bounds.store))
-            && json.write_value("vc",module->validity_checked) && json.write_value("vv", module->validity_result)
-      && (!output_uuid || json.write_string("u", bytes2hexbuf(module->suffix.sha, 32, buf)))
-      && (!info || (json.write_string("f", module_function_string(module_function(info)))
-                    && json.write_string("n", module_name(module_index(info), buf))
-                    && json.write_value("v", info->module_version)
-                    && (!(flags & MODULE_INFO_JSON_INCLUDE_PLATFORM_ID) || json.write_value("p", info->platform_id))))
-    // on the photon we have just one dependency, this will need generalizing for other platforms
-      && json.write_attribute("d") && json.write('[');
-
-    bool hasDependencies = false;
-    for (unsigned int d=0; d<2; d++) {
-        const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
-        module_function_t function = module_function_t(dependency.module_function);
-        if (is_module_function_valid(function)) {
-            // skip empty dependents
-            hasDependencies = true;
-        }
+    json.beginObject();
+    json.name("s").value(module->bounds.maximum_size);
+    json.name("l").value(module_store_string(module->bounds.store));
+    json.name("vc").value(module->validity_checked);
+    json.name("vv").value(module->validity_result);
+    if (output_uuid) {
+        char buf[sizeof(module_info_suffix_t::sha) * 2] = {};
+        json.name("u").value(bytes2hexbuf(module->suffix.sha, sizeof(module->suffix.sha), buf), sizeof(buf));
     }
-
-    bool cont = false;
-    for (unsigned int d=0; d<2 && info && hasDependencies; d++) {
-        const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
-        module_function_t function = module_function_t(dependency.module_function);
-        if (!is_module_function_valid(function)) {
-            // Skip empty dependencies to save on space
-            continue;
+    // FIXME?
+    if (info) {
+        json.name("f").value(module_function_string(module_function(info)));
+        json.name("n").value(module_index(info));
+        json.name("v").value(module_version(info));
+        if (flags & MODULE_INFO_JSON_INCLUDE_PLATFORM_ID) {
+            json.name("p", module_platform_id(info));
         }
-        if (cont) {
-            result &= json.write(',');
+        json.name("d");
+        json.beginArray();
+        for (unsigned d = 0; d < 2; d++) {
+            const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
+            module_function_t function = module_function_t(dependency.module_function);
+            if (is_module_function_valid(function)) {
+                json.beginObject();
+                json.name("f").value(module_function_string(function));
+                json.name("n").value(dependency.module_index);
+                json.name("v").value(dependency.module_version);
+                json.endObject();
+            }
         }
-        result &= json.write('{')
-                && json.write_string("f", module_function_string(function))
-                && json.write_string("n", module_name(dependency.module_index, buf))
-                && json.write_value("v", dependency.module_version)
-                && json.end_list() && json.write('}');
-        cont = true;
+        json.endArray();
     }
-    result &= json.write("]}");
-
-    return result;
+    json.endObject();
+    return json.getState();
 }
 
 bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_t& system)
 {
     AppendJson json(append, append_data);
-    bool result = true;
-    result &= json.write_value("p", system.platform_id)
-        && json.write_key_values(system.key_value_count, system.key_values)
-        && json.write_attribute("m")
-        && json.write('[');
-
-    bool cont = false;
+    json.name("p").value(system.platform_id);
+    for (unsigned i = 0; i < system.key_value_count; i++) {
+        json.name(system.key_values[i].key).value(system.key_values[i].value);
+    }
+    // Modules
+    json.name("m");
+    json.beginArray();
     for (unsigned i=0; i<system.module_count; i++) {
         const hal_module_t& module = system.modules[i];
-#ifdef HYBRID_BUILD
-        // FIXME: skip, otherwise we overflow MBEDTLS_SSL_MAX_CONTENT_LEN
-        if (module.info.module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
-            continue;
-        }
-#endif // HYBRID_BUILD
         if (!is_module_function_valid((module_function_t)module.info.module_function)) {
             // Skip modules that do not contain binary at all, otherwise we easily overflow
             // system describe message
             continue;
         }
-        if (cont) {
-            result &= json.write(',');
+        if (module.bounds.store == MODULE_STORE_FACTORY && (module.validity_result & MODULE_VALIDATION_INTEGRITY) == 0) {
+            // Specifically skip factory modules that do not look valid
+            continue;
         }
-        result &= module_info_to_json(append, append_data, &module, 0);
-        cont = true;
+        module_info_to_json(json, &module, 0);
     }
-
-    result &= json.write(']');
-    return result;
+    json.endArray();
+    return json.getState();
 }
 
 bool system_module_info(appender_fn append, void* append_data, void* reserved)
@@ -675,6 +611,16 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     bool result = system_info_to_json(append, append_data, info);
     HAL_System_Info(&info, false, NULL);
     return result;
+}
+
+int system_info_get(hal_system_info_t* info, uint32_t flags, void* reserved) {
+    CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
+    return HAL_System_Info(info, true, nullptr);
+}
+
+int system_info_free(hal_system_info_t* info, uint32_t flags, void* reserved) {
+    CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
+    return HAL_System_Info(info, false, nullptr);
 }
 
 bool append_system_version_info(Appender* appender)
@@ -784,20 +730,21 @@ public:
 	JsonDiagnosticsFormatter(AppendJson& appender_) : json(appender_) {}
 
 	inline bool openDocument() {
-	    return json.write('{');
+		json.beginObject();
+		return json.getState();
 	}
 
 	inline bool closeDocument() {
-		return json.end_list() && json.write('}'); // TODO: Use spark::JSONWriter
+		json.endObject();
+		return json.getState();
 	}
 
 	bool formatSourceError(const diag_source* src, int error) {
-	    return json.write_attribute(src->name) &&
-	            json.write('{') &&
-	            json.write_attribute("err") &&
-	            json.write(error) &&
-	            json.write('}') &&
-	            json.next();
+		json.name(src->name);
+		json.beginObject();
+		json.name("err").value(error);
+		json.endObject();
+		return json.getState();
 	}
 
 	inline bool isSourceOk(const diag_source* src) {
@@ -805,11 +752,13 @@ public:
 	}
 
 	inline bool formatSourceInt(const diag_source* src, AbstractIntegerDiagnosticData::IntType val) {
-		return json.write_value(src->name, val);
+		json.name(src->name).value(val);
+		return json.getState();
 	}
 
 	inline bool formatSourceUnsignedInt(const diag_source* src, AbstractUnsignedIntegerDiagnosticData::IntType val) {
-		return json.write_value(src->name, val);
+		json.name(src->name).value(val);
+		return json.getState();
 	}
 };
 

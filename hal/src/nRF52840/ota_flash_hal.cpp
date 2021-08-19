@@ -162,7 +162,7 @@ int fetch_device_public_key_ex(void)
     return 0; // flash_pub_key
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
@@ -170,9 +170,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
-#if defined(HYBRID_BUILD)
-            bool hybrid_module_found = false;
-#endif
             bool user_module_found = false;
             memset(info->modules, 0, sizeof(hal_module_t) * count);
             for (unsigned i = 0; i < count; i++) {
@@ -182,9 +179,11 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 // 128KB application will take precedence and the newer 256KB application will not
                 // be reported in the modules info. It will be missing from the System Describe,
                 // 'serial inspect` and any other facility that uses HAL_System_Info().
-                if (bounds->module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
+                if (bounds->store == MODULE_STORE_MAIN && bounds->module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
                     // Make sure that we report only single user part (either 128KB or 256KB) in the
                     // list of modules.
+                    // Make sure to still report correct bounds structure, normally it gets taken care of by fetch_module
+                    module->bounds = *bounds;
                     continue;
                 }
                 bool valid = fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
@@ -192,17 +191,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 if (valid && bounds->module_function == MODULE_FUNCTION_USER_PART) {
                     user_module_found = true;
                 }
-#if defined(HYBRID_BUILD)
-#ifndef MODULAR_FIRMWARE
-#error HYBRID_BUILD must be modular
-#endif
-                // change monolithic firmware to modular in the hybrid build.
-                if (!hybrid_module_found && info->modules[i].info.module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
-                    info->modules[i].info.module_function = MODULE_FUNCTION_SYSTEM_PART;
-                    info->modules[i].info.module_index = 1; 
-                    hybrid_module_found = true;
-                }
-#endif // HYBRID_BUILD
             }
         }
         HAL_OTA_Add_System_Info(info, construct, reserved);
@@ -213,6 +201,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         delete info->modules;
         info->modules = NULL;
     }
+    return 0;
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
