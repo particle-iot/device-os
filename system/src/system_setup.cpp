@@ -87,6 +87,8 @@ int is_empty(const char *s) {
   return 1;
 }
 
+using particle::Appender;
+
 class StreamAppender : public Appender
 {
     Stream& stream_;
