@@ -67,6 +67,7 @@ add_subdirectory(communication)
 add_subdirectory(services)
 add_subdirectory(wiring)
 add_subdirectory(hal)
+add_subdirectory(system)
 
 # Create `coverage` target in the `make` command
 add_custom_target( coverage
