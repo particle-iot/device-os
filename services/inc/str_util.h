@@ -18,6 +18,7 @@
 #pragma once
 
 #include <cstring>
+#include <cstdint>
 #include <cctype>
 
 namespace particle {
@@ -101,5 +102,33 @@ inline bool endsWith(const char* str, const char* suffix) {
  *         The value can be larger than the size of the destination buffer.
  */
 size_t escape(const char* src, const char* spec, char esc, char* dest, size_t destSize);
+
+/**
+ * Converts binary data to a hex-encoded string. The output is always null-terminated, unless the
+ * size of the destination buffer is 0.
+ *
+ * @param src Source data.
+ * @param srcSize Size of the source data.
+ * @param dest Destination buffer.
+ * @param destSize Size of the destination buffer.
+ *
+ * @return Number of characters written to the destination buffer, not including the trailing `\0`.
+ */
+inline size_t toHex(const void* src, size_t srcSize, char* dest, size_t destSize) {
+    static const char alpha[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+    size_t n = 0;
+    auto srcBytes = (const uint8_t*)src;
+    for (size_t i = 0; i < srcSize && n + 1 < destSize; ++i) {
+        const auto b = srcBytes[i];
+        dest[n++] = alpha[b >> 4];
+        dest[n++] = alpha[b & 0x0f];
+    }
+    if (n < destSize) {
+        dest[n] = '\0';
+    } else if (destSize > 0) {
+        dest[destSize - 1] = '\0';
+    }
+    return n;
+}
 
 } // particle
