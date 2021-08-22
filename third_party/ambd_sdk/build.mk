@@ -63,11 +63,6 @@ CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/cycle_queue.c
 CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/hci_adapter.c
 CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/hci_process.c
 CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/common/src/trace_task.c
-CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/src/ble/profile/server/bas.c
-CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/src/ble/profile/server/simple_ble_service.c
-# CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/misc/rtl8721d_ota.c
-# CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/ftl/ftl.c
-CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/mbed/targets/hal/rtl8721d/flash_api.c
 endif
 else
 # KM0 (Cortex-M23)

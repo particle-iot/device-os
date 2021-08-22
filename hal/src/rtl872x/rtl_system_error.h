@@ -15,14 +15,22 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NRF_SYSTEM_ERROR
-#define NRF_SYSTEM_ERROR
+#ifndef RTL_SYSTEM_ERROR
+#define RTL_SYSTEM_ERROR
 
 #include <stdint.h>
-#include "nrf_error.h"
+#include "gap.h"
 #include "system_error.h"
 
-system_error_t nrf_system_error(uint32_t error);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+system_error_t rtl_system_error(T_GAP_CAUSE error);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

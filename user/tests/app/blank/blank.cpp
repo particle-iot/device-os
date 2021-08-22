@@ -20,6 +20,8 @@
 
 RtlLogHandler dbg(LOG_LEVEL_ALL);
 
+SYSTEM_MODE(MANUAL);
+
 void setSetupDone() {
     // LOG(INFO, "set setup done");
     // // mark setup as done so mobile app commissioning flow isn't required
@@ -43,7 +45,7 @@ STARTUP(setSetupDone());
 
 /* executes once at startup */
 void setup() {
-
+    BLE.advertise();
 }
 
 /* executes continuously after setup() runs */
