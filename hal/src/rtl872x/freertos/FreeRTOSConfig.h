@@ -131,10 +131,10 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 
 /* Software timer definitions. */
 #define configUSE_TIMERS								1
-// #define configTIMER_TASK_PRIORITY                       1
+#define configTIMER_TASK_PRIORITY                       2
 // #define configTIMER_QUEUE_LENGTH						( 10 + 32 )
 // #define configTIMER_TASK_STACK_DEPTH					( 512  )
-#define configTIMER_TASK_PRIORITY						( configMAX_PRIORITIES - 1 )
+// #define configTIMER_TASK_PRIORITY						( configMAX_PRIORITIES - 1 )
 #define configTIMER_QUEUE_LENGTH						( 64 )
 #define configTIMER_TASK_STACK_DEPTH					( ( unsigned short ) (4096 / sizeof( portSTACK_TYPE )) )
 
