@@ -33,9 +33,9 @@ extern "C" {
 jsmnerr_t jsmn_parse_deprecated(jsmn_parser *parser, const char *js, size_t len,
         jsmntok_t *tokens, unsigned int num_tokens, void* reserved);
 
-#ifdef DYNALIB_EXPORT
+#if defined(DYNALIB_EXPORT) && defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 static_assert(sizeof(jsmnerr_t) == sizeof(int8_t), "size of jsmnerr_t used for compat jsmn_parse changed");
-#endif // DYNALIB_EXPORT
+#endif // defined(DYNALIB_EXPORT) && defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
 #ifdef __cplusplus
 }
