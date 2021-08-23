@@ -118,10 +118,12 @@ inline size_t toHex(const void* src, size_t srcSize, char* dest, size_t destSize
     static const char alpha[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
     size_t n = 0;
     auto srcBytes = (const uint8_t*)src;
-    for (size_t i = 0; i < srcSize && n + 1 < destSize; ++i) {
+    for (size_t i = 0; i < srcSize && n < destSize; ++i) {
         const auto b = srcBytes[i];
         dest[n++] = alpha[b >> 4];
-        dest[n++] = alpha[b & 0x0f];
+        if (n < destSize) {
+            dest[n++] = alpha[b & 0x0f];
+        }
     }
     if (n < destSize) {
         dest[n] = '\0';

@@ -205,12 +205,12 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         protocol->set_fast_ota(value);
         return 0;
     }
-    case Connection::DEVICE_INITIATED_DESCRIBE: {
+    case Connection::ENABLE_DEVICE_INITIATED_DESCRIBE: {
         protocol->enable_device_initiated_describe();
         return 0;
     }
     case Connection::COMPRESSED_OTA: {
-        protocol->enable_compressed_ota();
+        protocol->set_compressed_ota_enabled(value);
         return 0;
     }
     case Connection::SYSTEM_MODULE_VERSION: {
