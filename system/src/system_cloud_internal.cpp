@@ -1060,12 +1060,12 @@ void Spark_Protocol_Init(void)
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
         // Enable device-initiated describe messages
-        spark_protocol_set_connection_property(sp, protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
+        spark_protocol_set_connection_property(sp, protocol::Connection::ENABLE_DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
 
 #if HAL_PLATFORM_COMPRESSED_OTA
         // Enable compressed/combined OTA updates
         if (bootloader_get_version() >= COMPRESSED_OTA_MIN_BOOTLOADER_VERSION) {
-            spark_protocol_set_connection_property(sp, protocol::Connection::COMPRESSED_OTA, 0, nullptr, nullptr);
+            spark_protocol_set_connection_property(sp, protocol::Connection::COMPRESSED_OTA, 1, nullptr, nullptr);
         }
 #endif // HAL_PLATFORM_COMPRESSED_OTA
 

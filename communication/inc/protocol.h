@@ -343,9 +343,13 @@ public:
 		protocol_flags |= ProtocolFlag::DEVICE_INITIATED_DESCRIBE;
 	}
 
-	void enable_compressed_ota()
+	void set_compressed_ota_enabled(bool enabled)
 	{
-		protocol_flags |= ProtocolFlag::COMPRESSED_OTA;
+		if (enabled) {
+			protocol_flags |= ProtocolFlag::COMPRESSED_OTA;
+		} else {
+			protocol_flags &= ~ProtocolFlag::COMPRESSED_OTA;
+		}
 	}
 
 	void set_handlers(CommunicationsHandlers& handlers)

@@ -124,7 +124,7 @@ enum Enum
 {
     PING = 0, ///< Set keepalive interval.
     FAST_OTA = 1, ///< Enable/disable fast OTA.
-    DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages.
+    ENABLE_DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages.
     COMPRESSED_OTA = 3 ///< Enable support for compressed/combined OTA updates.
 };
 

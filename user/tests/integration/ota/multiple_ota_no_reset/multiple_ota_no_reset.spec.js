@@ -1,9 +1,9 @@
-suite('Multiple OTA updates without a system reset');
+suite('Multiple OTA updates with disabled resets');
 
 platform('gen2', 'gen3');
 systemThread('enabled');
 
-const { HalModuleParser, ModuleInfo, updateModulePrefix, updateModuleSuffix } = require('binary-version-reader');
+const { HalModuleParser, ModuleInfo, updateModulePrefix, updateModuleSuffix, updateModuleCrc32 } = require('binary-version-reader');
 const tempy = require('tempy');
 
 const { readFile } = require('fs').promises;
@@ -14,19 +14,33 @@ let auth = null;
 let device = null;
 let deviceId = null;
 
-async function flash(ctx, binFile, { expectedStatus = 'success' } = {}) {
+async function flash(ctx, binFile, { timeout = 120000, mayFail = false } = {}) {
 	const appName = path.basename(binFile, '.bin');
 	await api.flashDevice({ deviceId, files: { [appName]: binFile }, auth });
-	await waitFlashStatusEvent(ctx, expectedStatus);
-	await delay(1000);
+	const ok = await waitFlashStatusEvent(ctx, timeout);
+	if (!ok && !mayFail) {
+		throw new Error('Update failed');
+	}
+	return ok;
 }
 
-async function waitFlashStatusEvent(ctx, status) {
+async function waitFlashStatusEvent(ctx, timeout) {
+	let timeoutAt = Date.now() + timeout;
 	let data = null;
-	do {
-		data = await ctx.particle.receiveEvent('spark/flash/status');
+	for (;;) {
+		const t = timeoutAt - Date.now();
+		if (t <= 0) {
+			throw new Error("Event timeout");
+		}
+		data = await ctx.particle.receiveEvent('spark/flash/status', { timeout: t });
 		ctx.particle.log.verbose('spark/flash/status:', data);
-	} while (!data.startsWith(status));
+		if (data.startsWith('success')) {
+			return true;
+		}
+		if (data.startsWith('failed')) {
+			return false;
+		}
+	}
 }
 
 async function delay(ms) {
@@ -44,8 +58,8 @@ test('01_disable_resets_and_connect', async function () {
 	// See the test app
 });
 
-test('02_flash_binaries_and_reset', async function () {
-	// Get the module binary of the test application that is currently running on the device
+test('02_flash_binaries', async function () {
+	// Get the module binary of the test app that is currently running on the device
 	const origAppData = await readFile(device.testAppBinFile);
 	const parser = new HalModuleParser();
 	const { prefixInfo: origPrefix, suffixInfo: origSuffix } = await parser.parseBuffer({ fileBuffer: origAppData });
@@ -56,25 +70,33 @@ test('02_flash_binaries_and_reset', async function () {
 	suffix.fwUniqueId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 	expect(suffix.fwUniqueId).to.not.equal(origSuffix.fwUniqueId);
 	updateModuleSuffix(appData, suffix);
+	updateModuleCrc32(appData);
 	let appFile = await tempy.write(appData, { name: 'app1.bin' });
 	// The device should accept this update
 	await flash(this, appFile);
-	// The second binary has an incompatible platform ID
+	await delay(2000);
+	// The second binary has an incompatible platform ID and an invalid CRC checksum
 	appData = Buffer.from(origAppData);
-	const prefix = { ...origPrefix };
-	++prefix.platformID;
-	updateModulePrefix(appData, prefix);
 	suffix = { ...origSuffix };
 	suffix.fwUniqueId = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 	expect(suffix.fwUniqueId).to.not.equal(origSuffix.fwUniqueId);
 	updateModuleSuffix(appData, suffix);
+	updateModuleCrc32(appData);
+	const prefix = { ...origPrefix };
+	// The platform ID has all bits set so that the app can overwrite it without erasing the flash
+	prefix.platformID = 0xffff;
+	updateModulePrefix(appData, prefix);
 	appFile = await tempy.write(appData, { name: 'app2.bin' });
-	// The device should reject this update as well as clear the previously received one
-	await flash(this, appFile, { expectedStatus: 'failed' });
+	// The device may accept or reject this update depending on the platform and Device OS version.
+	// In either case, the previously received update should be invalidated
+	await flash(this, appFile, { mayFail: true });
+});
+
+test('03_fix_ota_binary_and_reset', async function () {
 	// Reset the device so that it can apply pending updates (it shouldn't have any)
 	await device.reset();
 });
 
-test('03_validate_module_info', async function () {
+test('04_validate_module_info', async function () {
 	// See the test app
 });
