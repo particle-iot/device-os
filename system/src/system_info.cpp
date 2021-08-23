@@ -21,6 +21,7 @@
 #include "spark_wiring_json.h"
 #include "spark_wiring_diagnostics.h"
 #include "spark_macros.h"
+#include <cstdio>
 
 namespace {
 
