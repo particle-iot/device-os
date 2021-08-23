@@ -228,6 +228,7 @@ spark::JSONValue spark::JSONValue::parseCopy(const char *json, size_t size) {
 
 bool spark::JSONValue::tokenize(const char *json, size_t size, jsmntok_t **tokens, size_t *count) {
     jsmn_parser parser;
+    parser.size = sizeof(jsmn_parser);
     jsmn_init(&parser, nullptr);
     const int n = jsmn_parse(&parser, json, size, nullptr, 0, nullptr); // Get number of tokens
     if (n <= 0) {
