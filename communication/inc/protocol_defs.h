@@ -149,8 +149,8 @@ enum Enum
 {
     PING = 0, ///< Keepalive interval (set).
     FAST_OTA = 1, ///< Enable/disable fast OTA (set).
-    DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages (set).
-    COMPRESSED_OTA = 3, ///< Enable support for compressed/combined OTA updates (set).
+    ENABLE_DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages (set).
+    COMPRESSED_OTA = 3, ///< Enable/disable support for compressed/combined OTA updates (set).
     SYSTEM_MODULE_VERSION = 4, ///< Module version of the system firmware (set).
     MAX_BINARY_SIZE = 5, ///< Maximum size of a firmware binary (set).
     OTA_CHUNK_SIZE = 6, ///< Size of an OTA update chunk (set).
