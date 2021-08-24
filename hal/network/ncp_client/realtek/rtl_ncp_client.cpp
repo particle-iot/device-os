@@ -31,6 +31,8 @@ LOG_SOURCE_CATEGORY("ncp.rltk.client");
 
 #include "wifi_conf.h"
 #include "wifi_constants.h"
+#include "lwip_rltk.h"
+
 #undef ON
 #undef OFF
 extern "C" {
@@ -154,21 +156,31 @@ NcpConnectionState RealtekNcpClient::connectionState() {
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
     const NcpClientLock lock(this);
     scan(nullptr, nullptr);
-    scan(nullptr, nullptr);
-    scan(nullptr, nullptr);
-    scan(nullptr, nullptr);
-    scan(nullptr, nullptr);
-    scan(nullptr, nullptr);
-scan(nullptr, nullptr);
+
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     LOG(INFO, "connecting");
     volatile uint32_t rtlContinue = 1;
     while (!rtlContinue) {
         asm volatile ("nop");
     }
-    auto r = wifi_connect((char*)"Particle", RTW_SECURITY_WPA2_AES_PSK, (char*)"changeme", strlen("Particle"),
-        strlen("changeme"), 0, nullptr);
-    LOG(INFO, "wifi_connect %d", r);
+
+    char ssid_name[] = "PCN";
+    char passwd[] = "makeitparticle!";
+    int security = RTW_SECURITY_WPA_WPA2_MIXED_PSK;
+
+    char mac[32] = {};
+    wifi_get_mac_address(mac);
+    int r = -1;
+    for (int i = 0; i < 3; i++) {
+        LOG(INFO, "AAA: try to connect to ssid: %s, passwd: %s, mac: %s", ssid_name, passwd, mac);
+        r = wifi_connect(ssid_name, security, passwd, strlen(ssid_name), strlen(passwd), -1, nullptr);
+        LOG(INFO, "BBB: connect result %d", r);
+        if (r == 0) {
+            break;
+        }
+        HAL_Delay_Milliseconds(1000);
+    }
+
     connectionState(NcpConnectionState::CONNECTED);
     return r;
 }
@@ -335,8 +347,34 @@ int RealtekNcpClient::updateFirmware(InputStream* file, size_t size) {
     return SYSTEM_ERROR_NONE;
 }
 int RealtekNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+	// struct eth_drv_sg sg_list[MAX_ETH_DRV_SG];
+	// int sg_len = 0;
+	// for (struct pbuf* q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
+	// 	sg_list[sg_len].buf = (unsigned int) q->payload;
+	// 	sg_list[sg_len++].len = q->len;
+	// }
+    (void) id;
+
+    struct eth_drv_sg sg_list[1];
+    int sg_len = 1;
+    sg_list[0].buf = (unsigned int)data;
+    sg_list[0].len = size;
+
+    // LOG(INFO, "lwip output, size: %ld, sg_len: %d, p->if_idx: %d", size, sg_len, p->if_idx);
+    LOG(INFO, "lwip output, size: %ld, sg_len: %d", size, sg_len);
+
+	if (sg_len) {
+        if (rltk_wlan_send(0, sg_list, sg_len, size) == 0) {
+            return SYSTEM_ERROR_NONE;
+        } else {
+            LOG(INFO, "rltk_wlan_send ERROR!!!, size: %d", size);
+            return SYSTEM_ERROR_INTERNAL;	// return a non-fatal error
+        }
+    }
+
     return SYSTEM_ERROR_NONE;
 }
+
 int RealtekNcpClient::dataChannelFlowControl(bool state) {
     return SYSTEM_ERROR_NONE;
 }

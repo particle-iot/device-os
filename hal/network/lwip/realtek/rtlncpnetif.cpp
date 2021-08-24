@@ -45,79 +45,9 @@ LOG_SOURCE_CATEGORY("net.rltkncp");
 #include "check.h"
 #include <lwip/stats.h>
 #include "memp_hook.h"
-#include "wifi_structures.h"
+#include "lwip_rltk.h"
 
 using namespace particle::net;
-
-extern "C" {
-
-// Some Realtek SDK-specific variables/functions in order not to compile in a bunch of unused sources
-rtw_mode_t wifi_mode = RTW_MODE_STA;
-
-unsigned char is_promisc_enabled(void) {
-    return 0;
-}
-
-int promisc_set(rtw_rcr_level_t enabled, void (*callback)(unsigned char*, unsigned int, void*), unsigned char len_used) {
-    return -1;
-}
-
-void eap_autoreconnect_hdl(uint8_t method_id) {
-
-}
-
-int get_eap_phase(void){
-	return 0;
-}
-
-int get_eap_method(void){
-	return 0;
-}
-
-void netif_post_sleep_processing(void) {
-}
-
-void netif_pre_sleep_processing(void) {
-
-}
-
-unsigned char* rltk_wlan_get_ip(int idx) {
-    return nullptr;
-}
-
-unsigned char* rltk_wlan_get_gw(int idx) {
-    return nullptr;
-}
-
-unsigned char* rltk_wlan_get_gwmask(int idx) {
-    return nullptr;
-}
-
-uint8_t roaming_awake_rssi_range = 0;
-uint8_t roaming_normal_rssi_range = 0;
-unsigned char roaming_type_flag = 0;
-
-void promisc_deinit(void *padapter) {
-}
-
-int promisc_recv_func(void *padapter, void *rframe) {
-    return 0;
-}
-
-void rltk_wlan_set_netif_info(int idx_wlan, void * dev, unsigned char * dev_addr) {
-    LOG(INFO, "rltk_wlan_set_netif_info %d", idx_wlan);
-}
-
-void netif_rx(int idx, unsigned int len) {
-    LOG(INFO, "netif_rx %d %u", idx, len);
-}
-
-int netif_is_valid_IP(int idx, unsigned char *ip_dest) {
-    LOG(INFO, "is_valid_ip %d", idx);
-    return 1;
-}
-
-} // extern "C"
 
 RealtekNcpNetif::RealtekNcpNetif()
         : BaseNetif(),
@@ -412,7 +342,6 @@ void RealtekNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
 }
 
 int RealtekNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx) {
-#if 0
     // This is a static method and the ctx may be nullptr if RealtekNcpNetif is not created but
     // we have accessed the NCP client for certain operations, such as getting the NCP firmware version.
     // Simply assert to catch the error if we're doing something wrong
@@ -431,7 +360,28 @@ int RealtekNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, 
         /* drop the padding word */
         pbuf_remove_header(p, ETH_PAD_SIZE);
 #endif /* ETH_PAD_SIZE */
-        memcpy(p->payload, data, size);
+        // memcpy(p->payload, data, size);
+        (void) data;
+        struct eth_drv_sg sg_list[MAX_ETH_DRV_SG];
+        int sg_len = 0;
+
+        // Create scatter list
+        for (pbuf* q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
+            sg_list[sg_len].buf = (unsigned int) q->payload;
+            sg_list[sg_len++].len = q->len;
+        }
+
+        // sg_list[0].buf = (unsigned int)data;
+        // sg_list[0].len = (unsigned int)size;
+
+        // if (p->if_idx == NETIF_NO_INDEX) {
+            // p->if_idx = netif_get_idx(self->interface());
+            p->if_idx = netif_get_index(self->interface());
+        // }
+
+        LOG(INFO, "lwip input, size: %ld, sg_len: %d p->if_idx: %d", size, sg_len, p->if_idx);
+
+        rltk_wlan_recv(netif_get_idx(self->interface()), sg_list, sg_len);
 #if ETH_PAD_SIZE
         /* reclaim the padding word */
         pbuf_add_header(p, ETH_PAD_SIZE);
@@ -455,7 +405,6 @@ int RealtekNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, 
         }
 #endif // DEBUG_BUILD
     }
-#endif
     return 0;
 }
 
@@ -477,16 +426,16 @@ err_t RealtekNcpNetif::linkOutput(pbuf* p) {
     pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */
 #endif
 
-    // if (p->len == p->tot_len) {
-    //     // non-queue packet
-    //     wifiMan_->ncpClient()->dataChannelWrite(0, (const uint8_t*)p->payload, p->tot_len);
-    // } else {
-    //     pbuf* q = pbuf_clone(PBUF_LINK, PBUF_RAM, p);
-    //     if (q) {
-    //         wifiMan_->ncpClient()->dataChannelWrite(0, (const uint8_t*)q->payload, q->tot_len);
-    //         pbuf_free(q);
-    //     }
-    // }
+    if (p->len == p->tot_len) {
+        // non-queue packet
+        wifiMan_->ncpClient()->dataChannelWrite(0, (const uint8_t*)p->payload, p->tot_len);
+    } else {
+        pbuf* q = pbuf_clone(PBUF_LINK, PBUF_RAM, p);
+        if (q) {
+            wifiMan_->ncpClient()->dataChannelWrite(0, (const uint8_t*)q->payload, q->tot_len);
+            pbuf_free(q);
+        }
+    }
 
 #if ETH_PAD_SIZE
     pbuf_add_header(p, ETH_PAD_SIZE); /* reclaim the padding word */

@@ -166,4 +166,61 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
     return nullptr;
 }
 
+unsigned char* rltk_wlan_get_ip(int idx) {
+    uint8_t* p = (uint8_t*)&wl3->interface()->ip_addr;
+    (void)p;
+    LOG(INFO, "rltk_wlan_get_ip: idx: %d, ip: %d, %d, %d, %d", idx, p[0], p[1], p[2], p[3]);
+
+    return (uint8_t *) &(wl3->interface()->ip_addr);
+}
+
+unsigned char* rltk_wlan_get_gw(int idx) {
+    LOG(INFO, "rltk_wlan_get_gw: 0x%x", wl3->interface()->gw.u_addr.ip4.addr);
+    return (uint8_t *) &(wl3->interface()->gw);
+}
+
+unsigned char* rltk_wlan_get_gwmask(int idx) {
+    LOG(INFO, "rltk_wlan_get_gwmask: 0x%x", wl3->interface()->netmask.u_addr.ip4.addr);
+    return (uint8_t *) &(wl3->interface()->netmask);
+}
+
+void rltk_wlan_set_netif_info(int idx_wlan, void * dev, unsigned char * dev_addr) {
+    LOG(INFO, "rltk_wlan_set_netif_info %d", idx_wlan);
+}
+
+void netif_rx(int idx, unsigned int len) {
+    // LOG(INFO, "netif_rx %d %u", idx, len);
+    RealtekNcpNetif::ncpDataHandlerCb(0, nullptr, len, wl3);
+}
+
+int netif_is_valid_IP(int idx, unsigned char *ip_dest) {
+	struct netif * pnetif = wl3->interface();
+
+	ip_addr_t addr = {};
+
+	u32_t *ip_dest_addr  = (u32_t*)ip_dest;
+
+	LOG(INFO, "netif_is_valid_IP, IP: %d.%d.%d.%d ",ip_dest[0],ip_dest[1],ip_dest[2],ip_dest[3]);
+
+    // Prevent the warning: “the address of XXX will never be NULL”
+    ip_addr_t* p = &addr;
+	ip_addr_set_ip4_u32(p, *ip_dest_addr);
+	if((ip_addr_get_ip4_u32(netif_ip_addr4(pnetif))) == 0)
+		return 1;
+
+	if(ip_addr_ismulticast(&addr) || ip_addr_isbroadcast(&addr,pnetif)){
+		return 1;
+	}
+
+	//if(ip_addr_netcmp(&(pnetif->ip_addr), &addr, &(pnetif->netmask))) //addr&netmask
+	//	return 1;
+
+	if(ip_addr_cmp(&(pnetif->ip_addr),&addr))
+		return 1;
+
+	LOG(INFO, "invalid IP: %d.%d.%d.%d ",ip_dest[0],ip_dest[1],ip_dest[2],ip_dest[3]);
+
+	return 0;
+}
+
 }
