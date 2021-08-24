@@ -14,7 +14,7 @@ struct eth_drv_sg {
 };
 
 #define MAX_ETH_DRV_SG	32
-#define MAX_ETH_MSG	1540
+#define MAX_ETH_MSG	1500
 
 extern struct sk_buff * rltk_wlan_get_recv_skb(int idx);
 extern struct sk_buff * rltk_wlan_alloc_skb(unsigned int total_len);
