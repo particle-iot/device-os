@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,34 +15,18 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <random>
-#include <string>
+#pragma once
 
-namespace particle {
+#include "dynalib.h"
 
-namespace test {
+#ifdef DYNALIB_EXPORT
+#include "storage_hal.h"
+#endif
 
-std::string randString(size_t size);
-std::default_random_engine& randGen();
+DYNALIB_BEGIN(hal_storage)
 
-template<typename T>
-T randNumber() {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
-}
+DYNALIB_FN(0, hal_storage, hal_storage_read, int(hal_storage_id, uintptr_t, uint8_t*, size_t))
+DYNALIB_FN(1, hal_storage, hal_storage_write, int(hal_storage_id, uintptr_t, const uint8_t*, size_t))
+DYNALIB_FN(2, hal_storage, hal_storage_erase, int(hal_storage_id, uintptr_t, size_t))
 
-template<typename T>
-T randNumber(T ref) {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
-}
-
-template<typename T>
-void setRandInt(T& v) {
-    std::uniform_int_distribution<T> dist;
-    v = dist(randGen());
-}
-
-} // namespace test
-
-} // namespace particle
+DYNALIB_END(hal_storage)

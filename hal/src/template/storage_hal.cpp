@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,34 +15,17 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <random>
-#include <string>
+#include "storage_hal.h"
+#include "system_error.h"
 
-namespace particle {
-
-namespace test {
-
-std::string randString(size_t size);
-std::default_random_engine& randGen();
-
-template<typename T>
-T randNumber() {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
+int hal_storage_read(hal_storage_id id, uintptr_t addr, uint8_t* buf, size_t size) {
+    return SYSTEM_ERROR_NOT_FOUND;
 }
 
-template<typename T>
-T randNumber(T ref) {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
+int hal_storage_write(hal_storage_id id, uintptr_t addr, const uint8_t* buf, size_t size) {
+    return SYSTEM_ERROR_NOT_FOUND;
 }
 
-template<typename T>
-void setRandInt(T& v) {
-    std::uniform_int_distribution<T> dist;
-    v = dist(randGen());
+int hal_storage_erase(hal_storage_id id, uintptr_t addr, size_t size) {
+    return SYSTEM_ERROR_NOT_FOUND;
 }
-
-} // namespace test
-
-} // namespace particle

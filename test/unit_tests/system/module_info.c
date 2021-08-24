@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,34 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <random>
-#include <string>
+#define MODULE_VERSION 0
+#define MODULE_FUNCTION 0
+#define MODULE_DEPENDENCY 0,0,0
+#define MODULE_DEPENDENCY2 0,0,0
 
-namespace particle {
-
-namespace test {
-
-std::string randString(size_t size);
-std::default_random_engine& randGen();
-
-template<typename T>
-T randNumber() {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
-}
-
-template<typename T>
-T randNumber(T ref) {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
-}
-
-template<typename T>
-void setRandInt(T& v) {
-    std::uniform_int_distribution<T> dist;
-    v = dist(randGen());
-}
-
-} // namespace test
-
-} // namespace particle
+#include "module_info.inc"

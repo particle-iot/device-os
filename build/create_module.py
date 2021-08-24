@@ -121,11 +121,13 @@ class ModuleDependency(StructSerializable):
         self.version = version
 
 class ModuleFooter(StructSerializable):
-    def __init__(self, sha=bytes(), reserved=0):
+    def __init__(self, sha=bytes(), reserved=0, product=False):
         super().__init__('<H32sH')
         self.reserved = reserved
         self.sha = sha
         self.fsize = self.size
+        if product:
+            self.fsize += 4
 
 class ModuleFlags(IntFlag):
     NONE = 0x00
@@ -175,7 +177,7 @@ class ModuleHeader(StructSerializable):
                 self[k] = v
 
 class Module(object):
-    def __init__(self, binary, address, platform, function, version, index=0, flags=None, dependencies=None, mcu=None):
+    def __init__(self, binary, address, platform, function, version, index=0, flags=None, dependencies=None, mcu=None, product=False):
         self.binary = binary
         self.address = address
         self.platform = platform
@@ -185,13 +187,14 @@ class Module(object):
         self.dependencies = dependencies
         self.mcu = mcu
         self.flags = flags
+        self.product = product
 
     def _generate(self):
         header = ModuleHeader(self.address, len(self.binary), self.version, self.platform, self.function, self.index,
                               flags=self.flags, dependencies=self.dependencies, mcu_target=self.mcu)
         output = header.dump() + self.binary
         sha256 = hashlib.sha256(self.binary).digest()
-        footer = ModuleFooter(sha256)
+        footer = ModuleFooter(sha256, product=self.product)
         output += footer.dump()
         crc32 = zlib.crc32(output)
         output += struct.pack('>L', crc32)
@@ -253,6 +256,7 @@ def main():
     parser.add_argument('--dependency', default=[], nargs=3, action='append', metavar=('FUNCTION', 'VERSION', 'INDEX'), help='Module dependency')
     parser.add_argument('--mcu', type=int, default=0, help='MCU target')
     parser.add_argument('--flag', default=[], help='Module flag', action='append', choices=flags)
+    parser.add_argument('--product', dest='product', action='store_true', help='Product firmware')
 
     args = parser.parse_args()
 
@@ -291,7 +295,8 @@ def main():
         if len(args.flag) == 0:
             flags = GEN3_RADIO_STACK_FLAGS
 
-    m = Module(bin, args.address, platform, function, version, args.index, flags, dependencies, mcu=args.mcu)
+    product = (args.product and (function == ModuleFunction.USER_PART))
+    m = Module(bin, args.address, platform, function, version, args.index, flags, dependencies, mcu=args.mcu, product=product)
     args.output.write(m.dump())
     print(m)
 

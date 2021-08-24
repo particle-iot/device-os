@@ -2,6 +2,11 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "random.h"
+#include "scope_guard.h"
+#include "ota_flash_hal.h"
+#include "storage_hal.h"
+#include "endian_util.h"
+#include "softcrc32.h"
 
 test(SYSTEM_01_freeMemory)
 {
@@ -131,3 +136,151 @@ test(SYSTEM_05_button_mirror_disable)
 #endif // defined(BUTTON1_MIRROR_SUPPORTED)
 
 #endif // !HAL_PLATFORM_NRF52840
+
+void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal_module_t** factory) {
+    for (unsigned i = 0; i < info.module_count; i++) {
+
+        if (info.modules[i].bounds.store == MODULE_STORE_FACTORY && !*factory) {
+            *factory = &info.modules[i];
+        } else if (info.modules[i].bounds.store == MODULE_STORE_MAIN && info.modules[i].bounds.module_function == MODULE_FUNCTION_USER_PART) {
+            // NOTE: there shouldn't be multiple user modules present, but just in case take the one with the highest index
+            if (!*user || info.modules[i].bounds.module_index > (*user)->bounds.module_index) {
+                *user = &info.modules[i];
+            }
+        }
+    }
+}
+
+test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
+{
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0, nullptr);
+    SCOPE_GUARD({
+        system_info_free_unstable(&info, nullptr);
+    });
+    assertFalse(info.modules == nullptr);
+    hal_module_t* user = nullptr;
+    hal_module_t* factory = nullptr;
+    findUserAndFactoryModules(info, &user, &factory);
+    assertFalse(user == nullptr);
+    assertFalse(factory == nullptr);
+
+    // Clear the session data
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
+    assertTrue(waitFor(Particle.disconnected, 1000));
+    // Copy current user-part into factory location
+    auto storageId = factory->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH ? HAL_STORAGE_ID_EXTERNAL_FLASH : HAL_STORAGE_ID_INTERNAL_FLASH;
+    assertEqual(factory->bounds.maximum_size, hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size));
+    module_info_t patchedModuleInfo = user->info;
+    module_info_suffix_t patchedModuleSuffix = user->suffix;
+    patchedModuleInfo.module_version = 123;
+    memset(patchedModuleSuffix.sha, 0x5a, sizeof(patchedModuleSuffix.sha));
+    // Using software implementation here bundled with the test, because the appropriate variant of HAL_Core_Compute_CRC32
+    // is not exposed (the one that takes the current remainder value) and some platforms have a hardware peripheral for CRC
+    // which complicates this even further.
+    uint32_t crc = 0;
+    if (user->module_info_offset > 0) {
+        crc = particle::softCrc32((const uint8_t*)user->bounds.start_address, user->module_info_offset, &crc);
+    }
+    size_t userModuleSize = (size_t)user->info.module_end_address - (size_t)user->info.module_start_address;
+    crc = particle::softCrc32((const uint8_t*)&patchedModuleInfo, sizeof(patchedModuleInfo), &crc);
+    crc = particle::softCrc32((const uint8_t*)user->bounds.start_address + user->module_info_offset + sizeof(patchedModuleInfo),
+            userModuleSize - sizeof(patchedModuleInfo) - user->module_info_offset - sizeof(patchedModuleSuffix), &crc);
+    crc = particle::softCrc32((const uint8_t*)&patchedModuleSuffix, sizeof(patchedModuleSuffix), &crc);
+    crc = particle::nativeToBigEndian(crc);
+
+    char buf[256]; // some platforms cannot write into e.g. an external flash directly from internal
+    size_t pos = 0;
+    while (pos < user->module_info_offset) {
+        size_t sz = std::min<size_t>(sizeof(buf), user->module_info_offset - pos);
+        memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
+        assertEqual(sz, hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz));
+        pos += sz;
+    }
+    assertEqual(sizeof(patchedModuleInfo), hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&patchedModuleInfo, sizeof(patchedModuleInfo)));
+    pos += sizeof(patchedModuleInfo);
+    while (pos < userModuleSize - sizeof(patchedModuleSuffix)) {
+        size_t sz = std::min<size_t>(sizeof(buf), userModuleSize - sizeof(patchedModuleSuffix) - pos);
+        memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
+        assertEqual(sz, hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz));
+        pos += sz;
+    }
+    assertEqual(sizeof(patchedModuleSuffix), hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&patchedModuleSuffix, sizeof(patchedModuleSuffix)));
+    pos += sizeof(patchedModuleSuffix);
+    assertEqual(sizeof(crc), hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&crc, sizeof(crc)));
+
+    // Re-request module info to check that the factory binary is in fact valid now
+    system_info_free_unstable(&info, nullptr);
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0, nullptr);
+    assertFalse(info.modules == nullptr);
+
+    factory = nullptr;
+    user = nullptr;
+    findUserAndFactoryModules(info, &user, &factory);
+    assertFalse(user == nullptr);
+    assertFalse(factory == nullptr);
+    assertEqual(factory->validity_checked, factory->validity_result);
+    assertNotEqual(factory->validity_checked, 0);
+    assertTrue(!memcmp(&factory->info, &patchedModuleInfo, sizeof(patchedModuleInfo)));
+    assertTrue(!memcmp(&factory->suffix, &patchedModuleSuffix, sizeof(patchedModuleSuffix)));
+
+    // Connect to the cloud, if there is a system describe overflow, we'll trigger assertion failure here
+    assertTrue(Particle.disconnected);
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, 60000));
+}
+
+test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but_invalid)
+{
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0, nullptr);
+    SCOPE_GUARD({
+        system_info_free_unstable(&info, nullptr);
+    });
+
+    assertFalse(info.modules == nullptr);
+    hal_module_t* user = nullptr;
+    hal_module_t* factory = nullptr;
+    findUserAndFactoryModules(info, &user, &factory);
+
+    assertFalse(user == nullptr);
+    assertFalse(factory == nullptr);
+
+    // Clear the session data
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
+    assertTrue(waitFor(Particle.disconnected, 1000));
+
+    // Copy HALF of current user-part into factory location
+    size_t toCopy = std::min<size_t>(((uintptr_t)user->info.module_end_address - (uintptr_t)user->info.module_start_address) / 2, factory->bounds.maximum_size);
+    auto storageId = factory->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH ? HAL_STORAGE_ID_EXTERNAL_FLASH : HAL_STORAGE_ID_INTERNAL_FLASH;
+    assertEqual(factory->bounds.maximum_size, hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size));
+    char buf[256]; // some platforms cannot write into e.g. an external flash directly from internal
+    for (size_t pos = 0; pos < toCopy; pos += sizeof(buf)) {
+        size_t sz = std::min(sizeof(buf), toCopy - pos);
+        memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
+        assertEqual(sz, hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz));
+    }
+    // Re-request module info to check that the factory binary is in fact invalid now
+    system_info_free_unstable(&info, nullptr);
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0, nullptr);
+    assertFalse(info.modules == nullptr);
+
+    factory = nullptr;
+    user = nullptr;
+    findUserAndFactoryModules(info, &user, &factory);
+    assertFalse(user == nullptr);
+    assertFalse(factory == nullptr);
+    assertNotEqual(factory->validity_checked, factory->validity_result);
+    assertNotEqual(factory->validity_checked, 0);
+
+    // Connect to the cloud, if there is a system describe overflow, we'll trigger assertion failure here
+    assertTrue(Particle.disconnected);
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, 60000));
+}

@@ -56,7 +56,7 @@ int get_module_crc_suffix(const module_bounds_t* bounds, const module_info_t* in
         // This should be done in fetch_module().
         return SYSTEM_ERROR_NOT_SUPPORTED;
     } else {
-        return FLASH_ModuleCrcSuffix(crc, suffix, bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, (uint32_t)info->module_end_address);
+        return FLASH_ModuleCrcSuffix(crc, suffix, bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, bounds->start_address + module_length(info));
     }
 }
 

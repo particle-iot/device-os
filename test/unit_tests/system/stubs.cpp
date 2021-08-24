@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,34 +15,17 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <random>
-#include <string>
+#include "ota_flash_hal.h"
+#include "diagnostics.h"
 
-namespace particle {
-
-namespace test {
-
-std::string randString(size_t size);
-std::default_random_engine& randGen();
-
-template<typename T>
-T randNumber() {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved) {
+    return 0;
 }
 
-template<typename T>
-T randNumber(T ref) {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
+int diag_enum_sources(diag_enum_sources_callback callback, size_t* count, void* data, void* reserved) {
+    return 0;
 }
 
-template<typename T>
-void setRandInt(T& v) {
-    std::uniform_int_distribution<T> dist;
-    v = dist(randGen());
+int diag_get_source(uint16_t id, const diag_source** src, void* reserved) {
+    return 0;
 }
-
-} // namespace test
-
-} // namespace particle

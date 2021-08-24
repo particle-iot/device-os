@@ -79,8 +79,10 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
             target->validity_result |= MODULE_VALIDATION_RANGE;
             target->validity_result |= (PLATFORM_ID==module_platform_id(info)) ? MODULE_VALIDATION_PLATFORM : 0;
             // the suffix ends at module_end, and the crc starts after module end
-            target->crc = *(module_info_crc_t*)module_end;
-            target->suffix = *(module_info_suffix_t*)(module_end-sizeof(module_info_suffix_t));
+            // Use actual module end pointer in current bounds, not in the target location
+            auto module_end_current_bounds = (const uint8_t*)bounds->start_address + module_length(info);
+            target->crc = *(module_info_crc_t*)module_end_current_bounds;
+            target->suffix = *(module_info_suffix_t*)(module_end_current_bounds-sizeof(module_info_suffix_t));
             if (validate_module_dependencies(bounds, userDepsOptional, target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
                 target->validity_result |= MODULE_VALIDATION_DEPENDENCIES | (target->validity_checked & MODULE_VALIDATION_DEPENDENCIES_FULL);
             }

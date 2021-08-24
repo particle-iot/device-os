@@ -45,6 +45,7 @@ typedef enum {
 } module_bounds_location_t;
 
 typedef struct {
+    // This struct is now used in dynalib, take caution when modifying these fields
     uint32_t maximum_size;      // the maximum allowable size for the entire module image
     uint32_t start_address;     // the designated start address for the module
     uint32_t end_address;       //
@@ -67,6 +68,7 @@ typedef enum {
 } module_validation_flags_t;
 
 typedef struct {
+    // This struct is now used in dynalib, take caution when modifying these fields
     module_bounds_t bounds;
     module_info_t info;
     module_info_crc_t crc;
@@ -104,7 +106,7 @@ typedef struct {
  * @param construct     {#code true} to fill the buffer, {@code false} to reclaim.
  * @param reserved      set to 0
  */
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved);
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved);
 
 bool HAL_Verify_User_Dependencies();
 

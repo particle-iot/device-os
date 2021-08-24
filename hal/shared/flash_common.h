@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HAL_NRF52840_FLASH_COMMON_H
-#define HAL_NRF52840_FLASH_COMMON_H
+#ifndef HAL_FLASH_COMMON_H
+#define HAL_FLASH_COMMON_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -46,11 +46,8 @@ int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_
  */
 int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size);
 
-int hal_exflash_lock(void);
-int hal_exflash_unlock(void);
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif /* HAL_NRF52840_FLASH_COMMON_H */
+#endif /* HAL_FLASH_COMMON_H */

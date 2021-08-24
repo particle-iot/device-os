@@ -16,6 +16,9 @@ const module_bounds_t module_user_mono = { 0x60000, 0x8020000, 0x8080000, MODULE
 const module_bounds_t module_factory_mono = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_MONO_FIRMWARE, 0, MODULE_STORE_FACTORY, 0, MODULE_BOUNDS_LOC_INTERNAL_FLASH };
 const module_bounds_t module_ota_mono = { 0x60000, 0x8080000, 0x80E0000, MODULE_FUNCTION_NONE, 0, MODULE_STORE_SCRATCHPAD, 0, MODULE_BOUNDS_LOC_INTERNAL_FLASH };
 
+// XXX: careful when adding new modules to this array without double checking
+// HAL_System_Info() behavior or any other function that relies in module_bounds_length and
+// the array itself.
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 const module_bounds_t* module_bounds[] = { &module_bootloader, &module_system_part1, &module_system_part2, &module_system_part3, &module_user, &module_factory, 0, MODULE_BOUNDS_LOC_INTERNAL_FLASH };
 #else

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,34 +15,26 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <random>
-#include <string>
+#pragma once
 
-namespace particle {
+#include <stdint.h>
+#include <stddef.h>
 
-namespace test {
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
-std::string randString(size_t size);
-std::default_random_engine& randGen();
+typedef enum hal_storage_id {
+    HAL_STORAGE_ID_INVALID = 0,
+    HAL_STORAGE_ID_INTERNAL_FLASH = 1,
+    HAL_STORAGE_ID_EXTERNAL_FLASH = 2,
+    HAL_STORAGE_ID_MAX = 0x7fffffff
+} hal_storage_id;
 
-template<typename T>
-T randNumber() {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
+int hal_storage_read(hal_storage_id id, uintptr_t addr, uint8_t* buf, size_t size);
+int hal_storage_write(hal_storage_id id, uintptr_t addr, const uint8_t* buf, size_t size);
+int hal_storage_erase(hal_storage_id id, uintptr_t addr, size_t size);
+
+#ifdef __cplusplus
 }
-
-template<typename T>
-T randNumber(T ref) {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
-}
-
-template<typename T>
-void setRandInt(T& v) {
-    std::uniform_int_distribution<T> dist;
-    v = dist(randGen());
-}
-
-} // namespace test
-
-} // namespace particle
+#endif // __cplusplus
