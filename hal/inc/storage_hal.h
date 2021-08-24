@@ -25,7 +25,7 @@ extern "C" {
 #endif // __cplusplus
 
 typedef enum hal_storage_id {
-    HAL_STORAGE_ID_DEFAULT = 0,
+    HAL_STORAGE_ID_INVALID = 0,
     HAL_STORAGE_ID_INTERNAL_FLASH = 1,
     HAL_STORAGE_ID_EXTERNAL_FLASH = 2,
     HAL_STORAGE_ID_MAX = 0x7fffffff

@@ -85,7 +85,7 @@ public:
               state_(true) {
     }
 
-    bool getState() const {
+    bool isOk() const {
         return state_;
     }
 
@@ -100,7 +100,7 @@ protected:
         va_start(args, fmt);
         const auto r = vsnprintf(buf, sizeof(buf), fmt, args);
         va_end(args);
-        if (r > (int)sizeof(buf)) {
+        if (r >= (int)sizeof(buf)) {
             // Truncated
             state_ = false;
             return;
@@ -204,12 +204,12 @@ public:
 
 	inline bool openDocument() {
 		json.beginObject();
-		return json.getState();
+		return json.isOk();
 	}
 
 	inline bool closeDocument() {
 		json.endObject();
-		return json.getState();
+		return json.isOk();
 	}
 
 	bool formatSourceError(const diag_source* src, int error) {
@@ -217,7 +217,7 @@ public:
 		json.beginObject();
 		json.name("err").value(error);
 		json.endObject();
-		return json.getState();
+		return json.isOk();
 	}
 
 	inline bool isSourceOk(const diag_source* src) {
@@ -226,12 +226,12 @@ public:
 
 	inline bool formatSourceInt(const diag_source* src, AbstractIntegerDiagnosticData::IntType val) {
 		json.name(src->name).value(val);
-		return json.getState();
+		return json.isOk();
 	}
 
 	inline bool formatSourceUnsignedInt(const diag_source* src, AbstractUnsignedIntegerDiagnosticData::IntType val) {
 		json.name(src->name).value(val);
-		return json.getState();
+		return json.isOk();
 	}
 };
 
@@ -282,9 +282,9 @@ public:
 
 bool module_info_to_json(AppendJson& json, const hal_module_t* module, uint32_t flags)
 {
-    const module_info_t* info = &module->info;
+    const module_info_t& info = module->info;
 
-    bool output_uuid = (module_function(info) == MODULE_FUNCTION_USER_PART);
+    bool output_uuid = (module_function(&info) == MODULE_FUNCTION_USER_PART);
     json.beginObject();
     json.name("s").value(module->bounds.maximum_size);
     json.name("l").value(module_store_string(module->bounds.store));
@@ -294,38 +294,34 @@ bool module_info_to_json(AppendJson& json, const hal_module_t* module, uint32_t 
         char buf[sizeof(module_info_suffix_t::sha) * 2] = {};
         json.name("u").value(bytes2hexbuf(module->suffix.sha, sizeof(module->suffix.sha), buf), sizeof(buf));
     }
-    // FIXME?
-    if (info) {
-        json.name("f").value(module_function_string(module_function(info)));
-        char tmp[4] = {};
-        snprintf(tmp, sizeof(tmp), "%u", (unsigned)module_index(info));
-        // FIXME: is this really supposed to be a string?
-        // json.name("n").value(module_index(info));
-        json.name("n").value(tmp);
-        json.name("v").value(module_version(info));
-        if (flags & MODULE_INFO_JSON_INCLUDE_PLATFORM_ID) {
-            json.name("p", module_platform_id(info));
-        }
-        json.name("d");
-        json.beginArray();
-        for (unsigned d = 0; d < 2; d++) {
-            const module_dependency_t& dependency = d == 0 ? info->dependency : info->dependency2;
-            module_function_t function = module_function_t(dependency.module_function);
-            if (is_module_function_valid(function)) {
-                json.beginObject();
-                json.name("f").value(module_function_string(function));
-                snprintf(tmp, sizeof(tmp), "%u", (unsigned)dependency.module_index);
-                // FIXME: is this really supposed to be a string?
-                // json.name("n").value(dependency.module_index);
-                json.name("n").value(tmp);
-                json.name("v").value(dependency.module_version);
-                json.endObject();
-            }
-        }
-        json.endArray();
+    json.name("f").value(module_function_string(module_function(&info)));
+    char tmp[4] = {};
+    snprintf(tmp, sizeof(tmp), "%u", (unsigned)module_index(&info));
+    // NOTE: yes, module index is supposed to be a string, not a Number
+    json.name("n").value(tmp);
+    json.name("v").value(module_version(&info));
+    if (flags & MODULE_INFO_JSON_INCLUDE_PLATFORM_ID) {
+        json.name("p", module_platform_id(&info));
     }
+    json.name("d");
+    json.beginArray();
+    for (unsigned d = 0; d < 2; d++) {
+        const module_dependency_t& dependency = d == 0 ? info.dependency : info.dependency2;
+        module_function_t function = module_function_t(dependency.module_function);
+        if (is_module_function_valid(function)) {
+            json.beginObject();
+            json.name("f").value(module_function_string(function));
+            snprintf(tmp, sizeof(tmp), "%u", (unsigned)dependency.module_index);
+            // FIXME: is this really supposed to be a string?
+            // json.name("n").value(dependency.module_index);
+            json.name("n").value(tmp);
+            json.name("v").value(dependency.module_version);
+            json.endObject();
+        }
+    }
+    json.endArray();
     json.endObject();
-    return json.getState();
+    return json.isOk();
 }
 
 bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_t& system)
@@ -352,7 +348,7 @@ bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_
         module_info_to_json(json, &module, 0);
     }
     json.endArray();
-    return json.getState();
+    return json.isOk();
 }
 
 bool system_module_info(appender_fn append, void* append_data, void* reserved)
@@ -361,18 +357,18 @@ bool system_module_info(appender_fn append, void* append_data, void* reserved)
     memset(&info, 0, sizeof(info));
     info.size = sizeof(info);
     info.flags = HAL_SYSTEM_INFO_FLAGS_CLOUD;
-    system_info_get(&info, 0, nullptr);
+    system_info_get_unstable(&info, 0, nullptr);
     bool result = system_info_to_json(append, append_data, info);
-    system_info_free(&info, nullptr);
+    system_info_free_unstable(&info, nullptr);
     return result;
 }
 
-int system_info_get(hal_system_info_t* info, uint32_t flags, void* reserved) {
+int system_info_get_unstable(hal_system_info_t* info, uint32_t flags, void* reserved) {
     CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
     return HAL_System_Info(info, true, nullptr);
 }
 
-int system_info_free(hal_system_info_t* info, void* reserved) {
+int system_info_free_unstable(hal_system_info_t* info, void* reserved) {
     CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
     return HAL_System_Info(info, false, nullptr);
 }

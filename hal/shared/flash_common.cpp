@@ -19,41 +19,6 @@
 #include <cstring>
 #include <algorithm>
 
-// Do not define Particle's STATIC_ASSERT() to avoid conflicts with the nRF SDK's own macro
-#define NO_STATIC_ASSERT
-#include "module_info.h"
-
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-
-#include "static_recursive_mutex.h"
-
-/* Because non-trivial designated initializers are not supported in GCC,
- * we can't have exflash_hal.c as exflash_hal.cpp and thus can't use
- * StaticRecursiveMutex in it.
- *
- * Initialize mutex here and provide helper functions for locking
- */
-static StaticRecursiveMutex s_exflash_mutex;
-
-int hal_exflash_lock(void) {
-    return !s_exflash_mutex.lock();
-}
-
-int hal_exflash_unlock(void) {
-    return !s_exflash_mutex.unlock();
-}
-
-#else
-
-__attribute__((weak)) int hal_exflash_lock(void) {
-    return 0;
-}
-
-__attribute__((weak)) int hal_exflash_unlock(void) {
-    return 0;
-}
-#endif /* MODULE_FUNCTION != MOD_FUNC_BOOTLOADER */
-
 int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size) {
     /* This function is used for unaligned writes to retrive the data from the flash
      * to keep unaligned unaffected bytes unmodified.

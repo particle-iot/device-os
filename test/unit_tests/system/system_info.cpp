@@ -94,9 +94,7 @@ bool parseModulesJson(const spark::JSONValue& modules, std::vector<hal_module_t>
                 parsed.info.module_function = (module_function_t)v;
                 hasFunction = true;
             } else if (modIter.name() == "n") {
-                // FIXME: is this really supposed to be a string?
-                // CHECK(modIter.value().isNumber());
-                // parsed.info.module_index = modIter.value().toInt();
+                // NOTE: yes, module index is supposed to be a string not a Number
                 CHECK(modIter.value().isString());
                 parsed.info.module_index = std::stoul(modIter.value().toString().data());
                 hasIndex = true;

@@ -29,10 +29,10 @@ namespace {
 SystemInfo::SystemInfo(MockRepository* mocks) :
         mocks_(mocks),
         platformId_(0) {
-    mocks->OnCallFunc(system_info_get).Do([this](hal_system_info_t* info, uint32_t flags, void* reserved) {
+    mocks->OnCallFunc(system_info_get_unstable).Do([this](hal_system_info_t* info, uint32_t flags, void* reserved) {
         return this->info_get(info, flags, reserved);
     });
-    mocks->OnCallFunc(system_info_free).Do([this](hal_system_info_t* info, void* reserved) {
+    mocks->OnCallFunc(system_info_free_unstable).Do([this](hal_system_info_t* info, void* reserved) {
         return this->info_free(info, reserved);
     });
 }
