@@ -171,7 +171,8 @@ test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
     assertTrue(waitFor(Particle.disconnected, 1000));
     // Copy current user-part into factory location
     auto storageId = factory->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH ? HAL_STORAGE_ID_EXTERNAL_FLASH : HAL_STORAGE_ID_INTERNAL_FLASH;
-    assertEqual(factory->bounds.maximum_size, hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size));
+    int r = hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    assertEqual(factory->bounds.maximum_size, r);
     module_info_t patchedModuleInfo = user->info;
     module_info_suffix_t patchedModuleSuffix = user->suffix;
     patchedModuleInfo.module_version = 123;
@@ -195,20 +196,25 @@ test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
     while (pos < user->module_info_offset) {
         size_t sz = std::min<size_t>(sizeof(buf), user->module_info_offset - pos);
         memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
-        assertEqual(sz, hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz));
+        r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz);
+        assertEqual(sz, r);
         pos += sz;
     }
-    assertEqual(sizeof(patchedModuleInfo), hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&patchedModuleInfo, sizeof(patchedModuleInfo)));
+    r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&patchedModuleInfo, sizeof(patchedModuleInfo));
+    assertEqual(sizeof(patchedModuleInfo), r);
     pos += sizeof(patchedModuleInfo);
     while (pos < userModuleSize - sizeof(patchedModuleSuffix)) {
         size_t sz = std::min<size_t>(sizeof(buf), userModuleSize - sizeof(patchedModuleSuffix) - pos);
         memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
-        assertEqual(sz, hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz));
+        r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz);
+        assertEqual(sz, r);
         pos += sz;
     }
-    assertEqual(sizeof(patchedModuleSuffix), hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&patchedModuleSuffix, sizeof(patchedModuleSuffix)));
+    r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&patchedModuleSuffix, sizeof(patchedModuleSuffix));
+    assertEqual(sizeof(patchedModuleSuffix), r);
     pos += sizeof(patchedModuleSuffix);
-    assertEqual(sizeof(crc), hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&crc, sizeof(crc)));
+    r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&crc, sizeof(crc));
+    assertEqual(sizeof(crc), r);
 
     // Re-request module info to check that the factory binary is in fact valid now
     system_info_free_unstable(&info, nullptr);
@@ -257,12 +263,14 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
     // Copy HALF of current user-part into factory location
     size_t toCopy = std::min<size_t>(((uintptr_t)user->info.module_end_address - (uintptr_t)user->info.module_start_address) / 2, factory->bounds.maximum_size);
     auto storageId = factory->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH ? HAL_STORAGE_ID_EXTERNAL_FLASH : HAL_STORAGE_ID_INTERNAL_FLASH;
-    assertEqual(factory->bounds.maximum_size, hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size));
+    int r = hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    assertEqual(factory->bounds.maximum_size, r);
     char buf[256]; // some platforms cannot write into e.g. an external flash directly from internal
     for (size_t pos = 0; pos < toCopy; pos += sizeof(buf)) {
         size_t sz = std::min(sizeof(buf), toCopy - pos);
         memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
-        assertEqual(sz, hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz));
+        r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz);
+        assertEqual(sz, r);
     }
     // Re-request module info to check that the factory binary is in fact invalid now
     system_info_free_unstable(&info, nullptr);
