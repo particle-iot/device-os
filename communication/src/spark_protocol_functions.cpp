@@ -24,8 +24,8 @@
 #include "debug.h"
 #include <stdlib.h>
 
-using particle::CompletionHandler;
-using particle::protocol::ProtocolError;
+using namespace particle;
+using namespace particle::protocol;
 
 #ifdef USE_MBEDTLS
 #include "mbedtls/rsa.h"
@@ -52,7 +52,7 @@ void default_random_seed_from_cloud(unsigned int seed)
 }
 
 int spark_protocol_to_system_error (int error_) {
-    return toSystemError(static_cast<particle::protocol::ProtocolError>(error_));
+    return toSystemError(static_cast<ProtocolError>(error_));
 }
 
 #if HAL_PLATFORM_CLOUD_TCP
@@ -193,16 +193,17 @@ void spark_protocol_get_product_details(ProtocolFacade* protocol, product_detail
 }
 
 int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned property_id,
-        unsigned data, const particle::protocol::connection_properties_t* conn_prop, void* reserved)
+        int value, const void* data, void* reserved)
 {
     ASSERT_ON_SYSTEM_THREAD();
     switch (property_id) {
-    case particle::protocol::Connection::PING: {
-        protocol->set_keepalive(data, conn_prop->keepalive_source);
+    case Connection::PING: {
+        const auto d = (const connection_properties_t*)data;
+        protocol->set_keepalive(value, d->keepalive_source);
         return 0;
     }
-    case particle::protocol::Connection::FAST_OTA: {
-        protocol->set_fast_ota(data);
+    case Connection::FAST_OTA: {
+        protocol->set_fast_ota(value);
         return 0;
     }
     case Connection::ENABLE_DEVICE_INITIATED_DESCRIBE: {
@@ -214,7 +215,7 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         return 0;
     }
     default:
-        return particle::protocol::ProtocolError::NOT_IMPLEMENTED;
+        return ProtocolError::NOT_IMPLEMENTED;
     }
 }
 int spark_protocol_command(ProtocolFacade* protocol, ProtocolCommands::Enum cmd, uint32_t value, const void* data)

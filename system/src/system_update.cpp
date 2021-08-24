@@ -39,6 +39,9 @@
 #include "dct.h"
 #endif // HAL_PLATFORM_DCT
 #include "check.h"
+#include "led_service.h"
+#include "spark_wiring_rgb.h"
+#include "spark_wiring_led.h"
 
 using namespace particle;
 

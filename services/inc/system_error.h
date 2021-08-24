@@ -37,6 +37,7 @@
         (LIMIT_EXCEEDED, "Limit exceeded", -200), \
         (END_OF_STREAM, "End of stream", -201), \
         (INVALID_STATE, "Invalid state", -210), \
+        (FLASH_IO, "Flash IO error", -219), \
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
         (FILE, "File error", -225), \
@@ -60,7 +61,9 @@
         (OTA_DEPENDENCY_CHECK_FAILED, "Module dependency check failed", -1340), \
         (OTA_INVALID_ADDRESS, "Invalid module address", -1350), \
         (OTA_INVALID_PLATFORM, "Invalid module platform", -1360), \
-        (OTA_INVALID_FORMAT, "Invalid module format", -1370)
+        (OTA_INVALID_FORMAT, "Invalid module format", -1370), \
+        (OTA_UPDATES_DISABLED, "Firmware updates are disabled", -1380), \
+        (OTA, "Firmware update error", -1390)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
