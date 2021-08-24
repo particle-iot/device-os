@@ -16,7 +16,7 @@ get_filename_component(
   ${CMAKE_CURRENT_LIST_DIR}/../..
   REALPATH
 )
-set(TEST_DIR ${DEVICE_OS_DIR}/test)
+set(TEST_DIR ${DEVICE_OS_DIR}/test/unit_tests)
 set(THIRD_PARTY_DIR ${DEVICE_OS_DIR}/third_party)
 
 # Add Boost from git submodule
