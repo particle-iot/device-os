@@ -93,7 +93,9 @@ ifeq ("$(BOOTLOADER_MODULE)","")
 CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_v10.2.0/Source/portable/GCC/RTL8721D_HP/non_secure/port.c
 CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_v10.2.0/Source/portable/GCC/RTL8721D_HP/non_secure/portasm.c
 CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/os_dep/osdep_service.c
-# CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_service.c
+CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/os_dep/device_lock.c
+CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_service.c
+CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/misc/rtl8721d_freertos_pmu.c
 endif
 
 CFLAGS += -Wno-error=deprecated -Wno-error=format
