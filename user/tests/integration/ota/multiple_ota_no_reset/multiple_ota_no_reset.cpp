@@ -22,12 +22,12 @@ retained char origAppHash[65] = {}; // Hex-encoded
 bool getAppHash(char* buf, size_t size) {
     hal_system_info_t info = {};
     info.size = sizeof(info);
-    const int r = system_info_get(&info, 0 /* flags */, nullptr /* reserved */);
+    const int r = system_info_get_unstable(&info, 0 /* flags */, nullptr /* reserved */);
     if (r != 0) {
         return false;
     }
     SCOPE_GUARD({
-        system_info_free(&info, nullptr /* reserved */);
+        system_info_free_unstable(&info, nullptr /* reserved */);
     });
     for (size_t i = 0; i < info.module_count; ++i) {
         const auto& module = info.modules[i];
