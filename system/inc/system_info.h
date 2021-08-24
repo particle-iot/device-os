@@ -111,9 +111,10 @@ bool append_system_version_info(particle::Appender* appender);
 
 bool system_module_info(appender_fn appender, void* append_data, void* reserved=NULL);
 
-int system_info_get(hal_system_info_t* info, uint32_t flags, void* reserved);
-
-int system_info_free(hal_system_info_t* info, void* reserved);
+// These functions are exported through dynalib but may be unstable due to the usage
+// of internal structures.
+int system_info_get_unstable(hal_system_info_t* info, uint32_t flags, void* reserved);
+int system_info_free_unstable(hal_system_info_t* info, void* reserved);
 
 /**
  * Formats the diagnostic data using an appender function.

@@ -22,6 +22,7 @@
 #include "spi_flash.h"
 #include "flash_mal.h"
 #include "check.h"
+#include "flash_common.h"
 #include <algorithm>
 
 int hal_storage_read(hal_storage_id id, uintptr_t addr, uint8_t* buf, size_t size) {
@@ -43,20 +44,28 @@ int hal_storage_write(hal_storage_id id, uintptr_t addr, const uint8_t* buf, siz
     if (id == HAL_STORAGE_ID_INTERNAL_FLASH) {
         FLASH_Unlock();
         FLASH_ClearFlags();
-        /* Data received are Word multiple */
-        FLASH_Status status = FLASH_COMPLETE;
-        for (size_t pos = 0; pos < size && status == FLASH_COMPLETE; pos += sizeof(uint32_t)) {
-            uint32_t tmp = 0xffffff;
-            memcpy(&tmp, buf + pos, std::min(sizeof(tmp), size - pos));
-            status = FLASH_ProgramWord(addr + pos, tmp);
-        }
+        int ret = hal_flash_common_write(addr, buf, size, [](uintptr_t addr, const uint8_t* data, size_t size) -> int {
+            // It's guaranteed that this function receives aligned addresses and word-aligned and padded data
+            for (size_t pos = 0; pos < size; pos += sizeof(uint32_t)) {
+                auto val = (const uint32_t*)(data + pos);
+                auto r = FLASH_ProgramWord(addr + pos, *val);
+                if (r != FLASH_COMPLETE) {
+                    return SYSTEM_ERROR_FLASH_IO;
+                }
+            }
+            return 0;
+        }, &hal_flash_common_dummy_read);
         FLASH_Lock();
-        CHECK_TRUE(status == FLASH_COMPLETE, SYSTEM_ERROR_FLASH_IO);
+        CHECK(ret);
         return size;
     }
 #ifdef USE_SERIAL_FLASH
     else if (id == HAL_STORAGE_ID_EXTERNAL_FLASH) {
-        sFLASH_WriteBuffer(buf, addr, size);
+        CHECK(hal_flash_common_write(addr, buf, size, [](uintptr_t addr, const uint8_t* data, size_t size) -> int {
+            // It's guaranteed that this function receives aligned addresses and 4-byte aligned data
+            sFLASH_WriteBuffer(data, addr, size);
+            return 0;
+        }, &hal_flash_common_dummy_read));
         return size;
     }
 #endif // USE_SERIAL_FLASH

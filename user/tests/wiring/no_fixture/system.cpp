@@ -155,9 +155,9 @@ test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
 {
     hal_system_info_t info = {};
     info.size = sizeof(info);
-    system_info_get(&info, 0, nullptr);
+    system_info_get_unstable(&info, 0, nullptr);
     SCOPE_GUARD({
-        system_info_free(&info, nullptr);
+        system_info_free_unstable(&info, nullptr);
     });
     assertFalse(info.modules == nullptr);
     hal_module_t* user = nullptr;
@@ -211,10 +211,10 @@ test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
     assertEqual(sizeof(crc), hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&crc, sizeof(crc)));
 
     // Re-request module info to check that the factory binary is in fact valid now
-    system_info_free(&info, nullptr);
+    system_info_free_unstable(&info, nullptr);
     memset(&info, 0, sizeof(info));
     info.size = sizeof(info);
-    system_info_get(&info, 0, nullptr);
+    system_info_get_unstable(&info, 0, nullptr);
     assertFalse(info.modules == nullptr);
 
     factory = nullptr;
@@ -237,9 +237,9 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
 {
     hal_system_info_t info = {};
     info.size = sizeof(info);
-    system_info_get(&info, 0, nullptr);
+    system_info_get_unstable(&info, 0, nullptr);
     SCOPE_GUARD({
-        system_info_free(&info, nullptr);
+        system_info_free_unstable(&info, nullptr);
     });
 
     assertFalse(info.modules == nullptr);
@@ -265,10 +265,10 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
         assertEqual(sz, hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz));
     }
     // Re-request module info to check that the factory binary is in fact invalid now
-    system_info_free(&info, nullptr);
+    system_info_free_unstable(&info, nullptr);
     memset(&info, 0, sizeof(info));
     info.size = sizeof(info);
-    system_info_get(&info, 0, nullptr);
+    system_info_get_unstable(&info, 0, nullptr);
     assertFalse(info.modules == nullptr);
 
     factory = nullptr;
