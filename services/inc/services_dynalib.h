@@ -115,7 +115,7 @@ DYNALIB_FN(55, services, pb_encode_varint, bool(pb_ostream_t*, pb_uint64_t))
 DYNALIB_FN_PLACEHOLDER(BASE_IDX + 0, services) // void set_system_error_message(const char*, ...)
 DYNALIB_FN_PLACEHOLDER(BASE_IDX + 1, services) // void clear_system_error_message()
 DYNALIB_FN_PLACEHOLDER(BASE_IDX + 2, services) // const char* get_system_error_message(int)
-DYNALIB_FN(BASE_IDX + 3, services, jsmn_parse, int(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
+DYNALIB_FN_PLACEHOLDER(BASE_IDX + 3, services) // int jsmn_parse(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*)
 
 DYNALIB_END(services)
 
