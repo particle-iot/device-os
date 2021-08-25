@@ -1,3 +1,5 @@
+#define PARTICLE_USE_UNSTABLE_API
+
 #include "application.h"
 #include "test.h"
 
