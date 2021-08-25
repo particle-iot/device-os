@@ -244,6 +244,25 @@
 - [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
 - [Gen 3] Fix an issue with `BLE.scan()` deadlocking [#2220](https://github.com/particle-iot/device-os/pull/2220)
 
+## 2.2.0-rc.2
+
+### ENHANCEMENTS
+
+- Refactor system describe/info JSON generation to reduce size and remove invalid modules from it [#2347](https://github.com/particle-iot/device-os/pull/2347) [#2349](https://github.com/particle-iot/device-os/pull/2349)
+
+### BUGFIXES
+
+- Clear module slots in DCT when preparing for an OTA update [#2346](https://github.com/particle-iot/device-os/pull/2346)
+- Do not reset the DTLS session on socket errors [#2335](https://github.com/particle-iot/device-os/pull/2335) [#2337](https://github.com/particle-iot/device-os/pull/2337)
+- [Argon / Tracker] Avoid power leakage through ESP32 `ESPBOOT` pin [#2342](https://github.com/particle-iot/device-os/pull/2342)
+- Fix parsing of JSON strings with more than 127 tokens [#2348](https://github.com/particle-iot/device-os/pull/2348)
+
+### INTERNAL
+
+- [CI] Generate public Codefresh URL in Slack notifications [#2333](https://github.com/particle-iot/device-os/pull/2333)
+- [Photon / P1] system part 2 size optimizations [#2349](https://github.com/particle-iot/device-os/pull/2349)
+- [Electron] Increase `MBEDTLS_SSL_MAX_CONTENT_LEN` to 900 [#2349](https://github.com/particle-iot/device-os/pull/2349)
+
 ## 2.2.0-rc.1
 
 ### FEATURES
