@@ -126,5 +126,6 @@ DYNALIB_END(system)
 
 #undef BASE_IDX
 #undef BASE_IDX1
+#undef BASE_IDX2
 
 #endif	/* SYSTEM_DYNALIB_H */
