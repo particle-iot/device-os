@@ -16,6 +16,7 @@
  */
 
 #include "spark_wiring_json.h"
+#include "jsmn_compat.h"
 
 #include <algorithm>
 
@@ -230,16 +231,20 @@ bool spark::JSONValue::tokenize(const char *json, size_t size, jsmntok_t **token
     jsmn_parser parser;
     parser.size = sizeof(jsmn_parser);
     jsmn_init(&parser, nullptr);
-    const int n = jsmn_parse(&parser, json, size, nullptr, 0, nullptr); // Get number of tokens
+    int nExt = -1;
+    int n = jsmn_parse_deprecated(&parser, json, size, nullptr, 0, &nExt); // Get number of tokens
     if (n <= 0) {
         return false; // Parsing error
+    }
+    if (nExt > n) {
+        n = nExt;
     }
     std::unique_ptr<jsmntok_t[]> t(new(std::nothrow) jsmntok_t[n]);
     if (!t) {
         return false;
     }
     jsmn_init(&parser, nullptr); // Reset parser
-    if (jsmn_parse(&parser, json, size, t.get(), n, nullptr) <= 0) {
+    if (jsmn_parse_deprecated(&parser, json, size, t.get(), n, nullptr) <= 0) {
         return false;
     }
     *tokens = t.release();
