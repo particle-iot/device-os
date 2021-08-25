@@ -55,7 +55,7 @@ public:
     constexpr FixedPointQ(float v) :
         value_(fromFloat(v)) {}
     constexpr FixedPointQ(double v) :
-        value_(fromFloat(v)) {}
+        value_(fromDouble(v)) {}
 
     StorageT value() const {
         return value_;
@@ -75,6 +75,10 @@ public:
 private:
     template<typename U>
     static constexpr StorageT fromFloat(const U v) {
+        return static_cast<StorageT>(v * constexpr_pow(2.0f, N));
+    }
+    template<typename U>
+    static constexpr StorageT fromDouble(const U v) {
         return static_cast<StorageT>(v * constexpr_pow(2.0, N));
     }
 
