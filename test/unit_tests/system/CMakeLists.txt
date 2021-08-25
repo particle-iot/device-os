@@ -6,6 +6,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_json.cpp
   ${DEVICE_OS_DIR}/hal/src/gcc/timer_hal.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
+  ${DEVICE_OS_DIR}/services/src/jsmn_compat.c
   system_info.cpp
   module_info.c
   stubs.cpp

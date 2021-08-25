@@ -20,6 +20,7 @@
 #include "spark_wiring_wifi_credentials.h"
 #include "mbedtls/aes.h"
 #include "device_code.h"
+#include "jsmn_compat.h"
 
 #if SOFTAP_HTTP
 # include "http_server.h"
@@ -178,7 +179,11 @@ protected:
         unsigned int n = 64;
         jsmntok_t* tokens = (jsmntok_t*)malloc(sizeof(jsmntok_t) * n);
         if (!tokens) return nullptr;
-        int ret = jsmn_parse(&parser, js, strlen(js), tokens, n, NULL);
+        int retExt = -1;
+        int ret = jsmn_parse_deprecated(&parser, js, strlen(js), tokens, n, &retExt);
+        if (ret > 0 && retExt > ret) {
+            ret = retExt;
+        }
         while (ret==JSMN_ERROR_NOMEM)
         {
             n = n * 2 + 1;
@@ -188,7 +193,7 @@ protected:
             		free(prev);
             		return nullptr;
             }
-            ret = jsmn_parse(&parser, js, strlen(js), tokens, n, NULL);
+            ret = jsmn_parse_deprecated(&parser, js, strlen(js), tokens, n, NULL);
         }
         return tokens;
     }
