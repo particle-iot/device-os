@@ -16,8 +16,17 @@
  */
 
 #include "jsmn_compat.h"
+#include <stdint.h>
 
 jsmnerr_t jsmn_parse_deprecated(jsmn_parser *parser, const char *js, size_t len,
         jsmntok_t *tokens, unsigned int num_tokens, void* reserved) {
-    return (jsmnerr_t)jsmn_parse(parser, js, len, tokens, num_tokens, reserved);
+    int r = jsmn_parse(parser, js, len, tokens, num_tokens, NULL);
+    if (reserved) {
+        int* ret = (int*)reserved;
+        *ret = r;
+    }
+    if (r > INT8_MAX) {
+        r = INT8_MAX;
+    }
+    return (jsmnerr_t)r;
 }
