@@ -241,7 +241,7 @@ static int configAnalogWakeupSource(const hal_wakeup_source_base_t* wakeupSource
             // Analog watchdog configuration
             ADC_AnalogWatchdogCmd(ADC1, ADC_AnalogWatchdog_SingleRegEnable);
             ADC_AnalogWatchdogSingleChannelConfig(ADC1, pinMap[analogWakeup->pin].adc_channel);
-            uint16_t th = (uint16_t)(analogWakeup->voltage * (4095 / 3300.0));
+            uint16_t th = (uint16_t)((analogWakeup->voltage * 4095) / 3300);
             th &= 0x00000FFF;
             switch (analogWakeup->trig) {
                 case HAL_SLEEP_LPCOMP_ABOVE: {
