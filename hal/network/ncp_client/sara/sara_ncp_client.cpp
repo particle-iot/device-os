@@ -1805,14 +1805,24 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         }
     }
 
-    // FIXME: Why does CGDCONT= seem to error on R410 and R510 if we don't do CFUN=0,0 first?
-    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
-    auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
-            UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
-            (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
-            netConf_.hasApn() ? netConf_.apn() : "");
-    const int r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    auto respCgdcont = parser_.sendCommand("AT+CGDCONT?");
+    char cgdcontVal[512] = {0};
+    char cgdcontFmt[20] = {0};
+    snprintf(cgdcontFmt, sizeof(cgdcontFmt), "+CGDCONT: %d,%%511s", UBLOX_DEFAULT_CID);
+    auto rCgdcont = respCgdcont.scanf(cgdcontFmt, cgdcontVal);
+    CHECK_PARSER_OK(respCgdcont.readResult());
+    if (rCgdcont && !strstr(cgdcontVal, netConf_.hasApn() ? netConf_.apn() : "CGDCONT")) {
+        if (ncpId() == PLATFORM_NCP_SARA_R510) { // CH76421
+            CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
+        }
+        auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
+                UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
+                (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
+                netConf_.hasApn() ? netConf_.apn() : "");
+        const int r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    }
+
     return SYSTEM_ERROR_NONE;
 }
 
