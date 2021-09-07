@@ -38,13 +38,27 @@ const uintptr_t HW_MODEL_OTP_ADDRESS = 0x00000024;
 
 } // namespace
 
+#define FAKE_DEVICE 1
+#if FAKE_DEVICE
+#define FAKE_DEVICE_ID      "e00fce6887102d82dd901328"
+#define FAKE_DEVICE_SN      "ARNKAB8427BN2LP"
+#define FAKE_DEVIVE_MS      "Y4WDPKSKLT4FT3R"
+#endif
+
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {
+#if FAKE_DEVICE
+    const char* id = FAKE_DEVICE_ID;
+    if (dest && destLen > 0) {
+        memcpy(dest, id, std::min(destLen, (unsigned)HAL_DEVICE_ID_SIZE));
+    }
+#else
     const uint32_t id[3] = { DEVICE_ID_PREFIX, 0xdeadbeef, 0xdeadbeef };
     static_assert(sizeof(id) == HAL_DEVICE_ID_SIZE, "");
     if (dest && destLen > 0) {
         memcpy(dest, id, std::min(destLen, sizeof(id)));
     }
+#endif
     return HAL_DEVICE_ID_SIZE;
 }
 
@@ -60,6 +74,9 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
 
 int hal_get_device_serial_number(char* str, size_t size, void* reserved)
 {
+#if FAKE_DEVICE
+    char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE + 1] = FAKE_DEVICE_SN;
+#else
     char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
 
     int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, SERIAL_NUMBER_OTP_ADDRESS,
@@ -68,6 +85,7 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
     if (r != 0 || !isPrintable(serial, sizeof(serial))) {
         return -1;
     }
+#endif
     if (str) {
         memcpy(str, serial, std::min(size, sizeof(serial)));
         // Ensure the output is null-terminated
@@ -113,6 +131,9 @@ int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved)
 int hal_get_device_secret(char* data, size_t size, void* reserved)
 {
     // Check if the device secret data is initialized in the DCT
+#if FAKE_DEVICE
+    char secret[HAL_DEVICE_SECRET_SIZE + 1] = FAKE_DEVIVE_MS;
+#else
     char secret[HAL_DEVICE_SECRET_SIZE] = {};
     static_assert(sizeof(secret) == DCT_DEVICE_SECRET_SIZE, "");
     int ret = dct_read_app_data_copy(DCT_DEVICE_SECRET_OFFSET, secret, sizeof(secret));
@@ -129,9 +150,12 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
             return SYSTEM_ERROR_NOT_FOUND;
         };
     }
-    memcpy(data, secret, std::min(size, sizeof(secret)));
-    if (size>HAL_DEVICE_SECRET_SIZE) {
-    	data[HAL_DEVICE_SECRET_SIZE] = 0;
+#endif
+    if (data && size > 0) {
+        memcpy(data, secret, std::min(size, sizeof(secret)));
+        if (size > HAL_DEVICE_SECRET_SIZE) {
+            data[HAL_DEVICE_SECRET_SIZE] = 0;
+        }
     }
     return HAL_DEVICE_SECRET_SIZE;
 }

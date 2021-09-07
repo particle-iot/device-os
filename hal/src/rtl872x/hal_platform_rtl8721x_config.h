@@ -36,6 +36,8 @@
 
 #define HAL_PLATFORM_BLE (1)
 
+#define HAL_PLATFORM_BLE_SETUP (1)
+
 #define HAL_PLATFORM_WIFI (1)
 
 #define HAL_PLATFORM_RTL872X (1)

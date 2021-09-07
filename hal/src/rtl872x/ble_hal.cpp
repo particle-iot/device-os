@@ -140,7 +140,7 @@ private:
     void* allEvtQueue_;
     void* ioEvtQueue_;
     static constexpr uint32_t BLE_EVENT_THREAD_STACK_SZIE = 10 * 1024;
-    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = 9; // Higher value, higher priority
+    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = 2; // Higher value, higher priority
     static constexpr uint8_t MAX_NUMBER_OF_GAP_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_IO_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_EVENT_MESSAGE = (MAX_NUMBER_OF_GAP_MESSAGE + MAX_NUMBER_OF_IO_MESSAGE);
@@ -160,8 +160,8 @@ public:
     ssize_t getAdvertisingData(uint8_t* buf, size_t len) const;
     int setScanResponseData(const uint8_t* buf, size_t len);
     ssize_t getScanResponseData(uint8_t* buf, size_t len) const;
-    int startAdvertising() const;
-    int stopAdvertising() const;
+    int startAdvertising(bool wait) const;
+    int stopAdvertising(bool wait) const;
 
     bool isAdvertising() const {
         return state_.gap_adv_state == GAP_ADV_STATE_ADVERTISING;
@@ -184,8 +184,8 @@ public:
     void handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause);
 
     int onPeripheralLinkEventCallback(hal_ble_on_link_evt_cb_t cb, void* context) {
-        periphLinkCallback_ = cb;
-        periphLinkCallbackContext_ = context;
+        std::pair<hal_ble_on_link_evt_cb_t, void*> callback(cb, context);
+        CHECK_TRUE(periphEvtCallbacks_.append(callback), SYSTEM_ERROR_NO_MEMORY);
         return SYSTEM_ERROR_NONE;
     }
 
@@ -199,8 +199,7 @@ private:
             : state_{},
               advParams_{},
               connParams_{},
-              periphLinkCallback_(nullptr),
-              periphLinkCallbackContext_(nullptr),
+              periphEvtCallbacks_{},
               connHandle_(BLE_INVALID_CONN_HANDLE),
               connecting_(false) {
         state_.gap_init_state = 0;
@@ -256,8 +255,7 @@ private:
     T_GAP_DEV_STATE state_;
     hal_ble_adv_params_t advParams_;
     hal_ble_conn_params_t connParams_;
-    hal_ble_on_link_evt_cb_t periphLinkCallback_;
-    void* periphLinkCallbackContext_;
+    Vector<std::pair<hal_ble_on_link_evt_cb_t, void*>> periphEvtCallbacks_;
     hal_ble_conn_handle_t connHandle_;
     bool connecting_;
     uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
@@ -530,6 +528,13 @@ int BleGap::setDeviceName(const char* deviceName, size_t len) const {
 
 int BleGap::setAdvertisingParameters(const hal_ble_adv_params_t* params) {
     CHECK_TRUE(params, SYSTEM_ERROR_INVALID_ARGUMENT);
+    bool advertising = isAdvertising();
+    SCOPE_GUARD ({
+        if (advertising) {
+            startAdvertising(true);
+        }
+    });
+    CHECK(stopAdvertising(true));
     memcpy(&advParams_, params, std::min(advParams_.size, params->size));
     uint8_t  advEvtType = toPlatformAdvEvtType(params->type);
     uint8_t  advDirectType = GAP_REMOTE_ADDR_LE_PUBLIC;
@@ -554,6 +559,13 @@ int BleGap::getAdvertisingParameters(hal_ble_adv_params_t* params) const {
 }
 
 int BleGap::setAdvertisingData(const uint8_t* buf, size_t len) {
+    bool advertising = isAdvertising();
+    SCOPE_GUARD ({
+        if (advertising) {
+            startAdvertising(true);
+        }
+    });
+    CHECK(stopAdvertising(true));
     if (buf != nullptr) {
         len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN);
         memcpy(advData_, buf, len);
@@ -575,6 +587,13 @@ ssize_t BleGap::getAdvertisingData(uint8_t* buf, size_t len) const {
 }
 
 int BleGap::setScanResponseData(const uint8_t* buf, size_t len) {
+    bool advertising = isAdvertising();
+    SCOPE_GUARD ({
+        if (advertising) {
+            startAdvertising(true);
+        }
+    });
+    CHECK(stopAdvertising(true));
     if (buf != nullptr) {
         len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN);
         memcpy(scanRespData_, buf, len);
@@ -595,7 +614,7 @@ ssize_t BleGap::getScanResponseData(uint8_t* buf, size_t len) const {
     return len;
 }
 
-int BleGap::startAdvertising() const {
+int BleGap::startAdvertising(bool wait) const {
     // The attribute table needs to be registered before BT stack starts.
     // Now we assume that the attribute table is finalized.
     // Register it to BT stack
@@ -606,13 +625,27 @@ int BleGap::startAdvertising() const {
     if (state_.gap_adv_state != GAP_ADV_STATE_ADVERTISING && state_.gap_adv_state != GAP_ADV_STATE_START) {
         CHECK(le_adv_start());
     }
+    if (wait) {
+        LOG_DEBUG(TRACE, "Starting advertising...");
+        while (state_.gap_adv_state != GAP_ADV_STATE_ADVERTISING) {
+            HAL_Delay_Milliseconds(100);
+        }
+    }
+    LOG_DEBUG(TRACE, "Advertising started");
     return SYSTEM_ERROR_NONE;
 }
 
-int BleGap::stopAdvertising() const {
+int BleGap::stopAdvertising(bool wait) const {
     if (state_.gap_adv_state == GAP_ADV_STATE_ADVERTISING || state_.gap_adv_state == GAP_ADV_STATE_START) {
         CHECK(le_adv_stop());
     }
+    if (wait) {
+        LOG_DEBUG(TRACE, "Stopping advertising...");
+        while (state_.gap_adv_state != GAP_ADV_STATE_IDLE) {
+            HAL_Delay_Milliseconds(100);
+        }
+    }
+    LOG_DEBUG(TRACE, "Advertising stopped");
     return SYSTEM_ERROR_NONE;
 }
 
@@ -655,15 +688,17 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 // placeholder
             }
             LOG_DEBUG(TRACE, "[BLE peripheral] Disconnected, handle:%d, cause:0x%x, re-start ADV", connHandle, discCause);
-            if (periphLinkCallback_) {
-                hal_ble_link_evt_t evt = {};
-                evt.type = BLE_EVT_DISCONNECTED;
-                evt.conn_handle = connHandle;
-                evt.params.disconnected.reason = (uint8_t)discCause;
-                periphLinkCallback_(&evt, periphLinkCallbackContext_);
+            for (const auto& callback : periphEvtCallbacks_) {
+                if (callback.first) {
+                    hal_ble_link_evt_t evt = {};
+                    evt.type = BLE_EVT_DISCONNECTED;
+                    evt.conn_handle = connHandle;
+                    evt.params.disconnected.reason = (uint8_t)discCause;
+                    callback.first(&evt, callback.second);
+                }
             }
             BleGatt::getInstance().removeSubscriber(connHandle);
-            startAdvertising();
+            startAdvertising(false);
             break;
         }
         case GAP_CONN_STATE_CONNECTED: {
@@ -677,20 +712,22 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             le_get_conn_param(GAP_PARAM_CONN_TIMEOUT, &connParams_.conn_sup_timeout, connHandle);
             LOG_DEBUG(TRACE, "[BLE peripheral] Connected, interval:0x%x, latency:0x%x, timeout:0x%x",
                             connParams_.max_conn_interval, connParams_.slave_latency, connParams_.conn_sup_timeout);
-            if (periphLinkCallback_) {
-                hal_ble_link_evt_t evt = {};
-                hal_ble_conn_info_t info = {};
-                info.version = BLE_API_VERSION;
-                info.size = sizeof(hal_ble_conn_info_t);
-                info.role = BLE_ROLE_PERIPHERAL;
-                info.conn_handle = connHandle;
-                info.conn_params = connParams_;
-                info.address = peerAddr;
-                info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
-                evt.type = BLE_EVT_CONNECTED;
-                evt.conn_handle = info.conn_handle;
-                evt.params.connected.info = &info;
-                periphLinkCallback_(&evt, periphLinkCallbackContext_);
+            for (const auto& callback : periphEvtCallbacks_) {
+                if (callback.first) {
+                    hal_ble_link_evt_t evt = {};
+                    hal_ble_conn_info_t info = {};
+                    info.version = BLE_API_VERSION;
+                    info.size = sizeof(hal_ble_conn_info_t);
+                    info.role = BLE_ROLE_PERIPHERAL;
+                    info.conn_handle = connHandle;
+                    info.conn_params = connParams_;
+                    info.address = peerAddr;
+                    info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
+                    evt.type = BLE_EVT_CONNECTED;
+                    evt.conn_handle = info.conn_handle;
+                    evt.params.connected.info = &info;
+                    callback.first(&evt, callback.second);
+                }
             }
             break;
         }
@@ -700,6 +737,15 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
 
 void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
     LOG_DEBUG(TRACE, "handleMtuUpdated: handle:%d, mtu_size:%d", connHandle, mtuSize);
+    for (const auto& callback : periphEvtCallbacks_) {
+        if (callback.first) {
+            hal_ble_link_evt_t evt = {};
+            evt.type = BLE_EVT_ATT_MTU_UPDATED;
+            evt.conn_handle = connHandle;
+            evt.params.att_mtu_updated.att_mtu_size = mtuSize;
+            callback.first(&evt, callback.second);
+        }
+    }
 }
 
 void BleGap::handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_t cause) {
@@ -749,7 +795,9 @@ void BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_
 
 T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
     T_APP_RESULT result = APP_RESULT_SUCCESS;
+#ifdef DEBUG_BUILD
     T_LE_CB_DATA *p_data = (T_LE_CB_DATA *)data;
+#endif
     switch (type) {
 #if F_BT_LE_4_2_DATA_LEN_EXT_SUPPORT
         case GAP_MSG_LE_DATA_LEN_CHANGE_INFO: {
@@ -781,26 +829,26 @@ int BleGatt::init() {
 }
 
 T_APP_RESULT BleGatt::gattServerEventCallback(T_SERVER_ID serviceId, void *pData) {
-    LOG(TRACE, "gattServerEventCallback()");
+    LOG_DEBUG(TRACE, "gattServerEventCallback()");
     T_APP_RESULT result = APP_RESULT_SUCCESS;
     if (serviceId == SERVICE_PROFILE_GENERAL_ID) {
         T_SERVER_APP_CB_DATA *pParam = (T_SERVER_APP_CB_DATA *)pData;
         switch (pParam->eventId) {
             case PROFILE_EVT_SRV_REG_COMPLETE: {// srv register result event.
-                LOG(TRACE, "PROFILE_EVT_SRV_REG_COMPLETE: result %d", pParam->event_data.service_reg_result);
+                LOG_DEBUG(TRACE, "PROFILE_EVT_SRV_REG_COMPLETE: result %d", pParam->event_data.service_reg_result);
                 break;
             }
             case PROFILE_EVT_SEND_DATA_COMPLETE: {
-                LOG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE: conn_id %d, cause: 0x%x, serviceId: %d, index: 0x%x, credits: %d",
+                LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE: conn_id %d, cause: 0x%x, serviceId: %d, index: 0x%x, credits: %d",
                             pParam->event_data.send_data_result.conn_id,
                             pParam->event_data.send_data_result.cause,
                             pParam->event_data.send_data_result.service_id,
                             pParam->event_data.send_data_result.attrib_idx,
                             pParam->event_data.send_data_result.credits);
                 if (pParam->event_data.send_data_result.cause == GAP_SUCCESS) {
-                    LOG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE success");
+                    LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE success");
                 } else {
-                    LOG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE failed");
+                    LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE failed");
                 }
                 break;
             }
@@ -855,7 +903,7 @@ T_APP_RESULT BleGatt::gattWriteAttrCallback(uint8_t connHandle, T_SERVER_ID serv
                     }
                     return cause;
                 }
-                LOG(TRACE, "Characteristic is not found");
+                LOG_DEBUG(TRACE, "Characteristic is not found");
                 break;
             }
             case WRITE_SIGNED_WITHOUT_RESPONSE: {
@@ -872,7 +920,7 @@ T_APP_RESULT BleGatt::gattWriteAttrCallback(uint8_t connHandle, T_SERVER_ID serv
 }
 
 void BleGatt::gattCccdUpdatedCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, uint16_t bits) {
-    LOG(TRACE, "gattCccdUpdatedCallback, id:%d, index:%d, cccd:%d", serviceId, index, bits);
+    LOG_DEBUG(TRACE, "gattCccdUpdatedCallback, id:%d, index:%d, cccd:%d", serviceId, index, bits);
     // Note: the index passed in is the CCCD attrribute index
     uint16_t valudIndex = index - 1;
     auto& services = BleGatt::getInstance().services();
@@ -886,10 +934,23 @@ void BleGatt::gattCccdUpdatedCallback(uint8_t connHandle, T_SERVER_ID serviceId,
             }
             config.subscriber.connHandle = connHandle;
             config.subscriber.config = (ble_sig_cccd_value_t)bits;
+            for (const auto& charact : svc.characteristics) {
+                if (charact.index != config.index) {
+                    continue;
+                }
+                if (charact.callback) {
+                    hal_ble_char_evt_t evt = {};
+                    evt.conn_handle = connHandle;
+                    evt.attr_handle = charact.handle + 1; // CCCD attribute handle
+                    evt.type = BLE_EVT_CHAR_CCCD_UPDATED;
+                    evt.params.cccd_config.value = config.subscriber.config;
+                    charact.callback(&evt, charact.context);
+                }
+            }
             return;
         }
     }
-    LOG(TRACE, "Failed to config CCCD, not found.");
+    LOG_DEBUG(TRACE, "Failed to config CCCD, not found.");
 }
 
 int BleGatt::addService(uint8_t type, const hal_ble_uuid_t* uuid, hal_ble_attr_handle_t* svcHandle) {
@@ -1222,13 +1283,13 @@ int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved) {
 int hal_ble_set_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_set_callback_on_adv_events().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_cancel_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_cancel_callback_on_adv_events().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_set_callback_on_periph_link_events(hal_ble_on_link_evt_cb_t callback, void* context, void* reserved) {
@@ -1283,13 +1344,13 @@ int hal_ble_gap_get_appearance(ble_sig_appearance_t* appearance, void* reserved)
 int hal_ble_gap_set_ppcp(const hal_ble_conn_params_t* ppcp, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_ppcp().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_gap_get_ppcp(hal_ble_conn_params_t* ppcp, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_ppcp().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_gap_add_whitelist(const hal_ble_addr_t* addr_list, size_t len, void* reserved) {
@@ -1307,13 +1368,13 @@ int hal_ble_gap_delete_whitelist(void* reserved) {
 int hal_ble_gap_set_tx_power(int8_t tx_power, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_tx_power().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_gap_get_tx_power(int8_t* tx_power, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_tx_power().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return 0;
 }
 
 int hal_ble_gap_set_advertising_parameters(const hal_ble_adv_params_t* adv_params, void* reserved) {
@@ -1362,26 +1423,26 @@ int hal_ble_gap_start_advertising(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_start_advertising().");
     CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
-    return BleGap::getInstance().startAdvertising();
+    return BleGap::getInstance().startAdvertising(true);
 }
 
 int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_auto_advertise().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_gap_get_auto_advertise(hal_ble_auto_adv_cfg_t* cfg, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_auto_advertise().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_gap_stop_advertising(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_stop_advertising().");
     CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
-    return BleGap::getInstance().stopAdvertising();
+    return BleGap::getInstance().stopAdvertising(true);
 }
 
 bool hal_ble_gap_is_advertising(void* reserved) {

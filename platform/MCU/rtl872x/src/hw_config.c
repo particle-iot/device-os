@@ -123,6 +123,9 @@ void Set_System(void)
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     hw_rtl_init_psram();
+#else
+    Cache_Enable(0);
+    Cache_Enable(1);
 #endif
 }
 

@@ -19,15 +19,11 @@
 
 #include "logging.h"
 
+extern "C" uint32_t Rand(void);
+
 void HAL_RNG_Configuration() {
-    // const auto ret = nrf_drv_rng_init(nullptr);
-    // if (ret != NRF_SUCCESS) {
-    //     LOG(ERROR, "nrf_drv_rng_init() failed: %d", (int)ret);
-    // }
 }
 
 uint32_t HAL_RNG_GetRandomNumber() {
-    uint32_t val = 0;
-    // nrf_drv_rng_block_rand((uint8_t*)&val, sizeof(val));
-    return val;
+    return Rand();
 }
