@@ -24,6 +24,11 @@
   ******************************************************************************
  */
 
+#ifdef __clang__
+// Needed for std::{min,max} in Clang
+#include <algorithm>
+#endif
+
 #include "spark_wiring_usbserial.h"
 #include "platform_headers.h"
 

@@ -193,6 +193,9 @@ typedef volatile uint32_t RwReg;
 // C++ only
 #ifdef __cplusplus
 
+#ifndef __clang__
+// Under clang, "math.h" does not put isnan/isinf inside the std namespace so this would fail
+
 #ifndef isnan
 using std::isnan;
 #endif
@@ -201,6 +204,7 @@ using std::isnan;
 using std::isinf;
 #endif
 
+#endif // __clang__
 
 // Hardware serial defines
 
