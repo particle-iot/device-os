@@ -202,11 +202,6 @@ typedef volatile uint32_t RwReg;
 // C++ only
 #ifdef __cplusplus
 
-// In order to support compiling with Clang, explicitly include cmath here since the Clang version
-// of the math.h header included above does not include cmath. This is a no-op compiling with GCC
-// since the GCC version of math.h includes cmath. Replacing the math.h include above
-#include <cmath>
-
 #ifndef isnan
 using std::isnan;
 #endif
@@ -214,6 +209,7 @@ using std::isnan;
 #ifndef isinf
 using std::isinf;
 #endif
+
 
 // Hardware serial defines
 
