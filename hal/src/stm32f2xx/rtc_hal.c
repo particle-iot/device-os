@@ -62,8 +62,10 @@ static volatile bool s_alarm_fired = false;
 static const system_tick_t LSE_STARTUP_TIME_MAX_US = 4000000;
 /* Datasheet lists 40us as maximum startup time 'guaranteed by design, not tested in production' */
 /* Using 1s just in case */
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
 static const system_tick_t LSI_STARTUP_TIME_MAX_US = 1000000;
 static const uint32_t HSE_RTC_PRESCALER = RCC_RTCCLKSource_HSE_Div25;
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
 
 static void hal_rtc_configure_clock();
 static void hal_rtc_configure();
@@ -118,7 +120,11 @@ static void hal_rtc_configure()
     {
         RTC_InitTypeDef RTC_InitStructure;
         uint32_t AsynchPrediv = 127; // 127 + 1
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
         uint32_t SynchPrediv = (RCC->BDCR & 0x00000300) != (HSE_RTC_PRESCALER & 0x300) ? 255 : 8124; // (255 + 1) or (8124 + 1)
+#else
+        uint32_t SynchPrediv = 255; // (255 + 1)
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
 
         /* Configure the RTC data register and RTC prescaler */
         RTC_InitStructure.RTC_AsynchPrediv = AsynchPrediv;
