@@ -555,6 +555,8 @@ static void enterPlatformStopMode() {
 
     /* Wait till PLL is used as system clock source */
     while (RCC_GetSYSCLKSource() != 0x08);
+
+    hal_rtc_internal_exit_sleep();
 }
 
 static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
@@ -617,13 +619,18 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     configGpioWakeupSource(config->wakeup_sources, extiPriority);
     uint8_t analogWakeup = 0;
     configAnalogWakeupSource(config->wakeup_sources, &analogWakeup);
-    configRtcWakeupSource(config->wakeup_sources);
     uint8_t usartWakeup = 0;
     configUsartWakeupSource(config->wakeup_sources, &usartWakeup);
     uint8_t networkWakeup = 0;
     configNetworkWakeupSource(config->wakeup_sources, &networkWakeup);
 
-    if (config->mode == HAL_SLEEP_MODE_STOP && (analogWakeup || usartWakeup || networkWakeup)) {
+    bool useWfi = config->mode == HAL_SLEEP_MODE_STOP && (analogWakeup || usartWakeup || networkWakeup);
+    if (!useWfi) {
+        hal_rtc_internal_enter_sleep();
+    }
+    configRtcWakeupSource(config->wakeup_sources);
+
+    if (useWfi) {
         if (usartWakeup || networkWakeup) {
             enterPlatformSleepMode(true);
         } else {
@@ -799,6 +806,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 }
 
 static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source) {
+    hal_rtc_internal_enter_sleep();
+
     bool enableWkpPin = false;
     auto wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
