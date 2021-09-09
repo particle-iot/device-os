@@ -37,6 +37,10 @@
 #include "debug.h"
 #include "system_error.h"
 #include <stdbool.h>
+#include "timer_hal.h"
+#include "hal_platform.h"
+#include "service_debug.h"
+#include "core_hal.h"
 
 /* Private typedef -----------------------------------------------------------*/
 
@@ -53,6 +57,17 @@ static time_t HAL_RTC_Time_Last_Set = 0;
 static hal_rtc_alarm_handler s_alarm_handler = NULL;
 static void* s_alarm_handler_context = NULL;
 static volatile bool s_alarm_fired = false;
+
+/* Datasheet specifies 2 seconds as typical startup time and no max, using 4 just in case */
+static const system_tick_t LSE_STARTUP_TIME_MAX_US = 4000000;
+/* Datasheet lists 40us as maximum startup time 'guaranteed by design, not tested in production' */
+/* Using 1s just in case */
+static const system_tick_t LSI_STARTUP_TIME_MAX_US = 1000000;
+static const uint32_t HSE_RTC_PRESCALER = RCC_RTCCLKSource_HSE_Div25;
+
+static void hal_rtc_configure_clock();
+static void hal_rtc_configure();
+static bool hal_rtc_switch_clock_source(uint32_t source);
 
 
 void setRTCTime(RTC_TimeTypeDef* RTC_TimeStructure, RTC_DateTypeDef* RTC_DateStructure)
@@ -84,20 +99,182 @@ void HAL_RTC_Initialize_UnixTime()
     /* Get calendar_time date struct values */
     RTC_DateStructure.RTC_WeekDay = 6;
     RTC_DateStructure.RTC_Date = 1;
-    RTC_DateStructure.RTC_Month = 0;
+    RTC_DateStructure.RTC_Month = 1;
     RTC_DateStructure.RTC_Year = 0;
 
     setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
 }
 
+static void hal_rtc_configure()
+{
+    /* Enable RTC Clock */
+    RCC_RTCCLKCmd(ENABLE);
+
+    /* Wait for RTC registers synchronization */
+    RTC_WaitForSynchro();
+
+    /* RTC register configuration done only once */
+    if (RTC_ReadBackupRegister(RTC_BKP_DR0) != 0xC1C1)
+    {
+        RTC_InitTypeDef RTC_InitStructure;
+        uint32_t AsynchPrediv = 127; // 127 + 1
+        uint32_t SynchPrediv = (RCC->BDCR & 0x00000300) != (HSE_RTC_PRESCALER & 0x300) ? 255 : 8124; // (255 + 1) or (8124 + 1)
+
+        /* Configure the RTC data register and RTC prescaler */
+        RTC_InitStructure.RTC_AsynchPrediv = AsynchPrediv;
+        RTC_InitStructure.RTC_SynchPrediv = SynchPrediv;
+        RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+
+        /* Check on RTC init */
+        if (RTC_Init(&RTC_InitStructure) != ERROR)
+        {
+            /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
+            /* Set date/time to 2000/01/01 00:00:00 */
+            HAL_RTC_Initialize_UnixTime();
+
+            /* Indicator for the RTC configuration */
+            RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
+        }
+    }
+}
+
+static void hal_rtc_configure_clock()
+{
+    bool lse_ready = false;
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+    bool lse_disabled = HAL_Feature_Get(FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK);
+    if (!lse_disabled) {
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+        lse_ready = hal_rtc_switch_clock_source(RCC_RTCCLKSource_LSE);
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+    }
+#else
+    SPARK_ASSERT(lse_ready);
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+    if (!lse_ready)
+    {
+
+        RCC_LSEConfig(RCC_LSE_OFF);
+        if (RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == RESET)
+        {
+            // Also enable LSI clock
+            RCC_LSICmd(ENABLE);
+            system_tick_t start = HAL_Timer_Get_Micro_Seconds();
+            while (RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == RESET) {
+                if (HAL_Timer_Get_Micro_Seconds() - start >= LSI_STARTUP_TIME_MAX_US) {
+                    SPARK_ASSERT(false);
+                    break;
+                }
+            }
+        }
+        // We are using 26MHz XTAL, in order to get down to 1Hz, use 25 here
+        // (127 + 1) as sync prescaler and (8124 + 1) as async
+        hal_rtc_switch_clock_source(RCC_RTCCLKSource_HSE_Div25);
+    }
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+}
+
+static bool hal_rtc_enable_lse() {
+    if (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET) {
+        /* Enable LSE */
+        RCC_LSEConfig(RCC_LSE_ON);
+
+        /* Wait till LSE is ready */
+        system_tick_t start = HAL_Timer_Get_Micro_Seconds();
+        while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
+        {
+            if (HAL_Timer_Get_Micro_Seconds() - start >= LSE_STARTUP_TIME_MAX_US) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+static bool hal_rtc_switch_clock_source(uint32_t source)
+{
+    if ((RCC->BDCR & 0x00000300) != (source & 0x300) && (RCC->BDCR & 0x00000300) != 0x000)
+    {
+        // Unforunately the only way to reconfigure clock source is to reset
+        // the backup domain.
+        // Before we do that, we need to cache backup registers and RTC time
+        int32_t state = HAL_disable_irq();
+        RTC_TimeTypeDef RTC_TimeStructure;
+        RTC_DateTypeDef RTC_DateStructure;
+        uint32_t backup_regs[20];
+        for (uint32_t reg = RTC_BKP_DR0; reg <= RTC_BKP_DR19; reg++)
+        {
+            backup_regs[reg] = RTC_ReadBackupRegister(reg);
+        }
+        RTC_GetTime(RTC_Format_BIN, &RTC_TimeStructure);
+        RTC_GetDate(RTC_Format_BIN, &RTC_DateStructure);
+        HAL_enable_irq(state);
+
+        RCC_BackupResetCmd(ENABLE);
+        RCC_BackupResetCmd(DISABLE);
+
+        if (source == RCC_RTCCLKSource_LSE) {
+            // We always have to enable LSE here as we've just reset the backup domain
+            if (!hal_rtc_enable_lse()) {
+                return false;
+            }
+        }
+
+        RCC_RTCCLKConfig(source);
+
+        hal_rtc_configure();
+
+        state = HAL_disable_irq();
+        // NOTE: ignoring RTC_BKP_DR0 as it keeps track of whether RTC has been configured
+        // and it will be set by hal_rtc_configure()
+        for (uint32_t reg = RTC_BKP_DR1; reg <= RTC_BKP_DR19; reg++)
+        {
+            RTC_WriteBackupRegister(reg, backup_regs[reg]);
+        }
+        setRTCTime(&RTC_TimeStructure, &RTC_DateStructure);
+        HAL_enable_irq(state);
+    }
+    else
+    {
+        if (source == RCC_RTCCLKSource_LSE) {
+            if (!hal_rtc_enable_lse()) {
+                return false;
+            }
+        }
+        RCC_RTCCLKConfig(source);
+    }
+    return true;
+}
+
+void hal_rtc_internal_enter_sleep()
+{
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+    if ((RCC->BDCR & 0x00000300) == (RCC_RTCCLKSource_HSE_Div26 & 0x00000300))
+    {
+        // If using HSE as clock source, we have to switch over to LSI when going into
+        // STOP or STANDBY sleep modes
+        hal_rtc_switch_clock_source(RCC_RTCCLKSource_LSI);
+    }
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+}
+
+void hal_rtc_internal_exit_sleep()
+{
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+    if ((RCC->BDCR & 0x00000300) == (RCC_RTCCLKSource_LSI))
+    {
+        hal_rtc_configure_clock();
+    }
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+}
 
 void hal_rtc_init(void)
 {
-    RTC_InitTypeDef RTC_InitStructure;
     EXTI_InitTypeDef EXTI_InitStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
-
-    __IO uint32_t AsynchPrediv = 0x7F, SynchPrediv = 0xFF;
 
     /* Configure EXTI Line17(RTC Alarm) to generate an interrupt on rising edge */
     EXTI_ClearITPendingBit(EXTI_Line17);
@@ -118,12 +295,15 @@ void hal_rtc_init(void)
     if(PWR_GetFlagStatus(PWR_FLAG_SB) != RESET)
     {
         /* System resumed from STANDBY mode */
+        /* Check if RTC is enabled */
+        if (RCC->BDCR & RCC_BDCR_RTCEN)
+        {
+            /* Wait for RTC APB registers synchronisation */
+            RTC_WaitForSynchro();
 
-        /* Wait for RTC APB registers synchronisation */
-        RTC_WaitForSynchro();
-
-        /* Clear the RTC Alarm Flag */
-        RTC_ClearFlag(RTC_FLAG_ALRAF);
+            /* Clear the RTC Alarm Flag */
+            RTC_ClearFlag(RTC_FLAG_ALRAF);
+        }
 
         /* Clear the EXTI Line 17 Pending bit (Connected internally to RTC Alarm) */
         EXTI_ClearITPendingBit(EXTI_Line17);
@@ -131,48 +311,9 @@ void hal_rtc_init(void)
         /* No need to configure the RTC as the RTC configuration(clock source, enable,
            prescaler,...) is kept after wake-up from STANDBY */
     }
-    else
-    {
-        /* StandBy flag is not set */
 
-        /* Enable LSE */
-        RCC_LSEConfig(RCC_LSE_ON);
-
-        /* Wait till LSE is ready */
-        while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
-        {
-            //Do nothing
-        }
-
-        /* Select LSE as RTC Clock Source */
-        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
-
-        /* Enable RTC Clock */
-        RCC_RTCCLKCmd(ENABLE);
-
-        /* Wait for RTC registers synchronization */
-        RTC_WaitForSynchro();
-
-        /* RTC register configuration done only once */
-        if (RTC_ReadBackupRegister(RTC_BKP_DR0) != 0xC1C1)
-        {
-            /* Configure the RTC data register and RTC prescaler */
-            RTC_InitStructure.RTC_AsynchPrediv = AsynchPrediv;
-            RTC_InitStructure.RTC_SynchPrediv = SynchPrediv;
-            RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
-
-            /* Check on RTC init */
-            if (RTC_Init(&RTC_InitStructure) != ERROR)
-            {
-                        /* Configure RTC Date and Time Registers if not set - Fixes #480, #580 */
-                        /* Set date/time to 2000/01/01 00:00:00 */
-                        HAL_RTC_Initialize_UnixTime();
-
-                        /* Indicator for the RTC configuration */
-                        RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
-            }
-        }
-    }
+    hal_rtc_configure_clock();
+    hal_rtc_configure();
 }
 
 int hal_rtc_get_time(struct timeval* tv, void* reserved) {
