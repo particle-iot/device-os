@@ -1,6 +1,7 @@
 suite('Electron enable external RTC clock (LSE)');
 
 platform('electron');
+systemThread('enabled');
 
 // This tag should be filtered out by default
 tag('electron_disable_external_rtc_clock');

@@ -44,14 +44,15 @@ test(01_connect_set_feature_reset) {
     }
 
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, 5 * 60 * 1000));
 
     if (!Particle.syncTimeDone()) {
         Particle.syncTime();
         assertTrue(waitFor(Particle.syncTimeDone, 30000));
-        assertTrue(Time.isValid());
-        sRtcTime = Time.now();
     }
+
+    assertTrue(Time.isValid());
+    sRtcTime = Time.now();
 
     // Test runner will reset the device after this
 }
@@ -69,7 +70,7 @@ test(02_validate) {
     system_tick_t t0 = 0, t1 = 0;
     time_t prev = Time.now();
     system_tick_t started = millis();
-    while(millis() - started < testSeconds * 1000) {
+    while(millis() - started < testSeconds * 1000 * 2) {
         auto now = Time.now();
         if (now > prev && t0 == 0) {
             t0 = millis();
@@ -79,6 +80,9 @@ test(02_validate) {
             break;
         }
     }
+
+    assertNotEqual(t0, 0);
+    assertNotEqual(t1, 0);
     assertMoreOrEqual((t1 - t0), testSeconds * 1000 * 9 / 10); // 5 -10%
     assertLessOrEqual((t1 - t0), testSeconds * 1000 * 11 / 10); // 5 +10%
 }
