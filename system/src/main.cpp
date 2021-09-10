@@ -85,6 +85,10 @@
 #include "network/ncp/cellular/ncp.h"
 #endif
 
+#if HAL_PLATFORM_CELLULAR
+#include "ncp_fw_update.h"
+#endif
+
 #if HAL_PLATFORM_RADIO_STACK
 #include "radio_common.h"
 #endif
@@ -797,6 +801,36 @@ void app_setup_and_loop(void)
     }
 
     Network_Setup(threaded);    // todo - why does this come before system thread initialization?
+
+#if HAL_PLATFORM_CELLULAR
+    NcpFwUpdateCallbacks ncpFwUpdateCallbacks;
+    memset(&ncpFwUpdateCallbacks, 0, sizeof(ncpFwUpdateCallbacks));
+    ncpFwUpdateCallbacks.size = sizeof(ncpFwUpdateCallbacks);
+    ncpFwUpdateCallbacks.platform_primary_ncp_identifier = platform_primary_ncp_identifier;
+    ncpFwUpdateCallbacks.HAL_Feature_Get = HAL_Feature_Get;
+    ncpFwUpdateCallbacks.system_get_flag = system_get_flag;
+    ncpFwUpdateCallbacks.spark_cloud_flag_connected = spark_cloud_flag_connected;
+    ncpFwUpdateCallbacks.spark_cloud_flag_connect = spark_cloud_flag_connect;
+    ncpFwUpdateCallbacks.spark_cloud_flag_disconnect = spark_cloud_flag_disconnect;
+    ncpFwUpdateCallbacks.publishEvent = publishEvent;
+#if HAL_PLATFORM_NCP_AT
+    ncpFwUpdateCallbacks.cellular_start_ncp_firmware_update = cellular_start_ncp_firmware_update;
+#else
+    ncpFwUpdateCallbacks.cellular_at_response_handler_set = cellular_at_response_handler_set;
+    ncpFwUpdateCallbacks.cellular_urcs_get = cellular_urcs_get;
+#endif
+    ncpFwUpdateCallbacks.cellular_command = cellular_command;
+    ncpFwUpdateCallbacks.network_connect = network_connect;
+    ncpFwUpdateCallbacks.network_disconnect = network_disconnect;
+    ncpFwUpdateCallbacks.network_ready = network_ready;
+    ncpFwUpdateCallbacks.network_on = network_on;
+    ncpFwUpdateCallbacks.network_off = network_off;
+    ncpFwUpdateCallbacks.network_is_on = network_is_on;
+    ncpFwUpdateCallbacks.network_is_off = network_is_off;
+    ncpFwUpdateCallbacks.system_reset = system_reset;
+    ncpFwUpdateCallbacks.system_mode = system_mode;
+    ncp_fw_udpate_init(&ncpFwUpdateCallbacks, nullptr);
+#endif
 
 #if PLATFORM_THREADING
     if (threaded)

@@ -73,7 +73,7 @@ public:
     virtual int enterDataMode() override;
     virtual int getMtu() override;
     virtual int urcs(bool enable) override;
-    virtual int startNcpFwUpdate() override;
+    virtual int startNcpFwUpdate(bool update) override;
 
 private:
     AtParser parser_;

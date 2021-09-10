@@ -275,7 +275,7 @@ cellular_result_t cellular_process(void* reserved, void* reserved1);
 /**
  * Start NCP FW Update
  */
-int cellular_start_ncp_firmware_update(void* reserved);
+int cellular_start_ncp_firmware_update(bool update = false, void* reserved = NULL);
 
 #ifdef __cplusplus
 }

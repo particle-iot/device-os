@@ -1124,8 +1124,17 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         auto respUmnoprof = parser_.sendCommand("AT+UMNOPROF?");
         reset = false;
         int curProf = static_cast<int>(UbloxSaraUmnoprof::NONE);
-        auto r = CHECK_PARSER(respUmnoprof.scanf("+UMNOPROF: %d", &curProf));
-        CHECK_PARSER_OK(respUmnoprof.readResult());
+        // auto r = CHECK_PARSER(respUmnoprof.scanf("+UMNOPROF: %d", &curProf));
+        auto r = respUmnoprof.scanf("+UMNOPROF: %d", &curProf);
+        // CHECK_PARSER_OK(respUmnoprof.readResult());
+        // If this command returns an ERROR, we can get stuck in an initialization loop.
+        // Let's try to avoid that with a soft reset, before retrying.
+        auto result = respUmnoprof.readResult();
+        if (result != AtResponse::OK) {
+            CHECK_PARSER_OK(parser_.execCommand("AT+UFACTORY=2,2"));
+            modemSoftPowerOff();
+            return SYSTEM_ERROR_AT_NOT_OK;
+        }
         // First time setup, or switching between official SIM on wrong profile?
         if (r == 1 && (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT ||
                 (netConf_.netProv() == CellularNetworkProvider::TWILIO && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
@@ -1199,9 +1208,9 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         }
         if (reset) {
             if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
-                CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=15"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
             } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
-                CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=16"));
+                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16"));
             }
             HAL_Delay_Milliseconds(2000);
 
@@ -1725,7 +1734,7 @@ int SaraNcpClient::initMuxer() {
     return SYSTEM_ERROR_NONE;
 }
 
-int SaraNcpClient::startNcpFwUpdate() {
+int SaraNcpClient::startNcpFwUpdate(bool update) {
     if (ncpId() != PLATFORM_NCP_SARA_R510) {
         return SYSTEM_ERROR_NONE;
     }
@@ -1733,7 +1742,7 @@ int SaraNcpClient::startNcpFwUpdate() {
     // muxer_.setKeepAlivePeriod(UBLOX_NCP_FW_UPDATE_KEEPALIVE_PERIOD);
     // muxer_.setKeepAliveMaxMissed(UBLOX_NCP_FW_UPDATE_KEEPALIVE_MAX_MISSED);
 
-    firmwareUpdateR510_ = true;
+    firmwareUpdateR510_ = update;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2058,6 +2067,11 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (connState_ == NcpConnectionState::CONNECTED) {
+        if (firmwareUpdateR510_) {
+            LOG(WARN, "Skipping PPP data connection to download NCP firmware");
+            return;
+        }
+
         // Open data channel and resume it just in case
         int r = muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL);
         if (r) {

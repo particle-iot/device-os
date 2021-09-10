@@ -608,11 +608,11 @@ int cellular_urcs_get(void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int cellular_start_ncp_firmware_update(void* reserved) {
+int cellular_start_ncp_firmware_update(bool update, void* reserved) {
     const auto mgr = cellularNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     const auto client = mgr->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
-    CHECK(client->startNcpFwUpdate());
+    CHECK(client->startNcpFwUpdate(update));
     return SYSTEM_ERROR_NONE;
 }

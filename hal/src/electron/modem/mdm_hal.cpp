@@ -898,18 +898,16 @@ bool MDMParser::_powerOn(void)
         _init = true;
     }
 
-    MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     bool continue_cancel = false;
     bool retried_after_reset = false;
     int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
 
     auto otp_ncp_id = platform_primary_ncp_identifier();
     _dev.dev = cellular_dev_from_ncp(otp_ncp_id);
-    LOG(INFO, "NCP ID OTP value: 0x%X _dev.dev set to 0x%X", otp_ncp_id, _dev.dev);
+    LOG(INFO,"Powering modem on, ncpId: 0x%02x", otp_ncp_id);
 
     while (i--) {
 
-        // FIXME: Qualify for R510 only, but we need to pull it from OTP flash
         if (_dev.dev == DEV_SARA_R510 && !powerState()) {
             HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(1500);
             HAL_GPIO_Write(PWR_UC, 1);
@@ -1723,6 +1721,11 @@ int MDMParser::_cbURAT(int type, const char *buf, int len, bool *matched_default
 }
 
 bool MDMParser::interveneRegistration(void) {
+    // FIXME: While Long Registration is an issue... this causes more trouble than it's worth
+    // TODO: Re-test for R510 when Long Registration is resolved
+    if (_dev.dev == DEV_SARA_R510) {
+        return true;
+    }
 
     CellularNetProv netProv = particle::detail::cellular_sim_to_network_provider_impl(_dev.imsi, _dev.ccid);
     if (netProv == CELLULAR_NETPROV_TWILIO && HAL_Timer_Get_Milli_Seconds() - _regStartTime <= REGISTRATION_TWILIO_HOLDOFF_TIMEOUT) {

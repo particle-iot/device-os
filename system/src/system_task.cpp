@@ -33,7 +33,6 @@
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "firmware_update.h"
-#include "ncp_fw_update.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "core_hal.h"
@@ -54,6 +53,7 @@
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
+#include "ncp_fw_update.h"
 
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
@@ -492,7 +492,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         system::FirmwareUpdate::instance()->process();
 
 #if HAL_PLATFORM_CELLULAR
-        system::NcpFwUpdate::instance()->process();
+        ncp_fw_udpate_process(nullptr);
 #endif
     }
     else

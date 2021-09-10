@@ -28,6 +28,7 @@
 #ifdef DYNALIB_EXPORT
 #include "nanopb_misc.h"
 #include <stdint.h>
+#include "ncp_fw_update_dynalib.h"
 #ifdef PB_WITHOUT_64BIT
 #define pb_int64_t int32_t
 #define pb_uint64_t uint32_t
@@ -114,6 +115,9 @@ DYNALIB_FN(BASE_IDX + 0, services, set_system_error_message, void(const char*, .
 DYNALIB_FN(BASE_IDX + 1, services, clear_system_error_message, void())
 DYNALIB_FN(BASE_IDX + 2, services, get_system_error_message, const char*(int))
 DYNALIB_FN(BASE_IDX + 3, services, jsmn_parse, int(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
+DYNALIB_FN(BASE_IDX + 4, services, ncp_fw_udpate_init, void(void*, void*))
+DYNALIB_FN(BASE_IDX + 5, services, ncp_fw_udpate_process, void(void*))
+DYNALIB_FN(BASE_IDX + 6, services, ncp_fw_udpate_check, int(const NcpFwUpdateConfig*, void*))
 
 DYNALIB_END(services)
 
