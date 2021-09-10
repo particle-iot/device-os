@@ -69,7 +69,6 @@ STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
 typedef enum Feature_Flag {
     FEATURE_FLAG_RESET_INFO = 0x01, // HAL_Feature::FEATURE_RESET_INFO
     FEATURE_FLAG_LED_OVERRIDDEN = 0x02,
-    FEATURE_FLAG_NCP_FW_UPDATES = 0x04,
 } Feature_Flag;
 
 /**
