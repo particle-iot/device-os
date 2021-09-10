@@ -1293,7 +1293,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 // NOTE: [ch76449] R510S will not retain GPIO's HIGH after a cold boot
                 // Workaround: Set pin that needs to be HIGH to mode "Module status indication",
                 //             which will be set HIGH when the module is ON, and LOW when it's OFF.
+// // FIXME: DEBUG!!!!!!!!!!!
+// #if PLATFORM_ID == PLATFORM_BSOM
+//                 const int internalSimMode = 255; // EVT3 HW issue: Pad disabled (use EXT SIM with solder jumper shorted)
+// #else
                 const int internalSimMode = 10; // Module status indication mode
+// #endif
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
@@ -1627,10 +1632,6 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 :
             UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2;
 
-    if (firmwareUpdateR510_) {
-        runtimeBaudrate = UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE;
-    }
-
     // Feeling optimistic, try to see if the muxer is already available
     if (!muxer_.isRunning()) {
         LOG(TRACE, "Muxer is not currently running");
@@ -1686,6 +1687,9 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    if (firmwareUpdateR510_) {
+        runtimeBaudrate = UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE;
+    }
     // We are not in the mulitplexed mode yet
     // Check if the modem is responsive at the runtime baudrate
     CHECK(serial_->setBaudRate(runtimeBaudrate));
@@ -1696,8 +1700,11 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
         state = ModemState::RuntimeBaudrate;
         return SYSTEM_ERROR_NONE;
     }
-
     LOG(TRACE, "Modem is not responsive @ %u baudrate", runtimeBaudrate);
+    if (firmwareUpdateR510_) {
+        state = ModemState::Unknown;
+        return SYSTEM_ERROR_UNKNOWN;
+    }
 
     // The modem is not responsive at the runtime baudrate, check default
     CHECK(serial_->setBaudRate(UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE));
@@ -1708,7 +1715,6 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
         state = ModemState::DefaultBaudrate;
         return SYSTEM_ERROR_NONE;
     }
-
     LOG(TRACE, "Modem is not responsive @ %u baudrate", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
 
     state = ModemState::Unknown;
@@ -1738,9 +1744,6 @@ int SaraNcpClient::startNcpFwUpdate(bool update) {
     if (ncpId() != PLATFORM_NCP_SARA_R510) {
         return SYSTEM_ERROR_NONE;
     }
-    // Extend muxer timeout, used during modem FW updates
-    // muxer_.setKeepAlivePeriod(UBLOX_NCP_FW_UPDATE_KEEPALIVE_PERIOD);
-    // muxer_.setKeepAliveMaxMissed(UBLOX_NCP_FW_UPDATE_KEEPALIVE_MAX_MISSED);
 
     firmwareUpdateR510_ = update;
 

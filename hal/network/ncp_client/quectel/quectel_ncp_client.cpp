@@ -1532,6 +1532,10 @@ int QuectelNcpClient::urcs(bool enable) {
     return SYSTEM_ERROR_NONE;
 }
 
+int QuectelNcpClient::startNcpFwUpdate(bool update) {
+    return 0;
+}
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;

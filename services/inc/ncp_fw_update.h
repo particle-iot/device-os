@@ -19,14 +19,7 @@
 
 #include "hal_platform.h"
 #include "system_tick_hal.h"
-#if HAL_PLATFORM_NCP_AT
-#include "at_parser.h"
-// #include "at_command.h"
-#include "at_response.h"
-#endif
-
 #include "core_hal.h"
-// #include "system_update.h"
 #include "system_defs.h"
 #include "system_mode.h"
 #include "system_network.h"
@@ -34,20 +27,18 @@
 #include "platform_ncp.h"
 #include "diagnostics.h"
 #include "spark_wiring_diagnostics.h"
-
 #include "ncp_fw_update_dynalib.h"
 
-#if HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_NCP
+#include "at_parser.h"
+#include "at_response.h"
+#endif // HAL_PLATFORM_NCP
+
+#if HAL_PLATFORM_NCP_FW_UPDATE
 
 struct NcpFwUpdateCallbacks {
     uint16_t size;
     uint16_t reserved;
-
-    // platform_ncp.h
-    PlatformNCPIdentifier (*platform_primary_ncp_identifier)(void);
-    
-    // core_hal.h
-    bool (*HAL_Feature_Get)(HAL_Feature feature);
 
     // System.updatesEnabled() / system_update.h
     int (*system_get_flag)(system_flag_t flag, uint8_t* value, void*);
@@ -60,26 +51,10 @@ struct NcpFwUpdateCallbacks {
     // system_cloud_internal.h
     bool (*publishEvent)(const char* event, const char* data, unsigned flags);
 
-    // cellular_hal.h
-    int (*cellular_command)(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms, const char* format, ...);
-    int (*cellular_at_response_handler_set)(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved);
-    int (*cellular_urcs_get)(void* reserved);
-    int (*cellular_start_ncp_firmware_update)(bool update, void* reserved);
-
-    // system_network.h
-    void (*network_connect)(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
-    void (*network_disconnect)(network_handle_t network, uint32_t reason, void* reserved);
-    bool (*network_ready)(network_handle_t network, uint32_t type, void* reserved);
-    void (*network_on)(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
-    void (*network_off)(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
-    bool (*network_is_on)(network_handle_t network, void* reserved);
-    bool (*network_is_off)(network_handle_t network, void* reserved);
-
     // system_mode.h
-    int (*system_reset)(unsigned mode, unsigned reason, unsigned value, unsigned flags, void* reserved);
     System_Mode_TypeDef (*system_mode)(void);
 };
-PARTICLE_STATIC_ASSERT(NcpFwUpdateCallbacks_size, sizeof(NcpFwUpdateCallbacks) == (sizeof(void*) * 21));
+PARTICLE_STATIC_ASSERT(NcpFwUpdateCallbacks_size, sizeof(NcpFwUpdateCallbacks) == (sizeof(void*) * 7));
 
 namespace particle {
 
@@ -89,11 +64,6 @@ const system_tick_t NCP_FW_MODEM_POWER_ON_TIMEOUT = 60000;
 const system_tick_t NCP_FW_MODEM_INSTALL_START_TIMEOUT = 5 * 60000;
 const system_tick_t NCP_FW_MODEM_INSTALL_FINISH_TIMEOUT = 30 * 60000;
 const system_tick_t NCP_FW_MODEM_CLOUD_CONNECT_TIMEOUT = 5 * 60000;
-
-// const uint32_t NCP_FW_UBLOX_R510_LATEST_VERSION = 2060001;
-// const uint32_t NCP_FW_UBLOX_R510_LATEST_VERSION = 99010001;
-const uint32_t NCP_FW_UBLOX_R510_LATEST_VERSION = 3150001;
-
 const uint32_t NCP_FW_UBLOX_R510_ENG_VERSION = 100000000;
 const int NCP_FW_UUFWINSTALL_COMPLETE = 128;
 
@@ -114,12 +84,11 @@ enum NcpFwUpdateState {
     FW_UPDATE_INSTALL_CELL_DISCONNECTED_STATE       = 13,
     FW_UPDATE_INSTALL_STATE_STARTING                = 14,
     FW_UPDATE_INSTALL_STATE_WAITING                 = 15,
-    FW_UPDATE_FINISHED_FACTORY_RESET_STATE          = 16,
-    FW_UPDATE_FINISHED_POWER_OFF_STATE              = 17,
-    FW_UPDATE_FINISHED_POWERING_OFF_STATE           = 18,
-    FW_UPDATE_FINISHED_CLOUD_CONNECTING_STATE       = 19,
-    FW_UPDATE_FINISHED_CLOUD_CONNECTED_STATE        = 20,
-    FW_UPDATE_FINISHED_IDLE_STATE                   = 21,
+    FW_UPDATE_FINISHED_POWER_OFF_STATE              = 16,
+    FW_UPDATE_FINISHED_POWERING_OFF_STATE           = 17,
+    FW_UPDATE_FINISHED_CLOUD_CONNECTING_STATE       = 18,
+    FW_UPDATE_FINISHED_CLOUD_CONNECTED_STATE        = 19,
+    FW_UPDATE_FINISHED_IDLE_STATE                   = 20,
 };
 
 enum NcpFwUpdateStatus {
@@ -134,10 +103,9 @@ enum NcpFwUpdateStatus {
     FW_UPDATE_FAILED_INSTALL_AT_ERROR_STATUS        = -5,
     FW_UPDATE_FAILED_SAME_VERSION_STATUS            = -6,
     FW_UPDATE_FAILED_INSTALL_TIMEOUT_STATUS         = -7,
-    FW_UPDATE_FAILED_FACTORY_RESET_RETRY_MAX_STATUS = -8,
-    FW_UPDATE_FAILED_POWER_OFF_TIMEOUT_STATUS       = -9,
-    FW_UPDATE_FAILED_CLOUD_CONNECT_TIMEOUT_STATUS   = -10,
-    FW_UPDATE_FAILED_PUBLISH_RESULT_STATUS          = -11,
+    FW_UPDATE_FAILED_POWER_OFF_TIMEOUT_STATUS       = -8,
+    FW_UPDATE_FAILED_CLOUD_CONNECT_TIMEOUT_STATUS   = -9,
+    FW_UPDATE_FAILED_PUBLISH_RESULT_STATUS          = -10,
 };
 
 struct HTTPSresponse {
@@ -152,15 +120,15 @@ struct HTTPSresponse {
 const int NCP_FW_DATA_HEADER = 0x5259ADE5;
 const int NCP_FW_DATA_FOOTER = 0x1337ACE5;
 struct NcpFwUpdateData {
-    uint32_t header; // NCP_FW_DATA_HEADER;
-    NcpFwUpdateState state; // FW_UPDATE_IDLE_STATE;
-    NcpFwUpdateStatus status; // FW_UPDATE_IDLE_STATUS;
-    int firmwareVersion; // 0;
-    int startingFirmwareVersion; // 0;
-    int updateVersion; // 0;
-    uint8_t isUserConfig; // 0;
-    NcpFwUpdateConfig userConfigData;
-    uint32_t footer; // NCP_FW_DATA_FOOTER;
+    uint32_t header;                   // NCP_FW_DATA_HEADER;
+    NcpFwUpdateState state;            // FW_UPDATE_IDLE_STATE;
+    NcpFwUpdateStatus status;          // FW_UPDATE_IDLE_STATUS;
+    int firmwareVersion;               // 0;
+    int startingFirmwareVersion;       // 0;
+    int updateVersion;                 // 0;
+    uint8_t isUserConfig;              // 0;
+    NcpFwUpdateConfig userConfigData;  // 0;
+    uint32_t footer;                   // NCP_FW_DATA_FOOTER;
 };
 
 /** 
@@ -172,30 +140,13 @@ struct NcpFwUpdateData {
  * };
  */
 const NcpFwUpdateConfig NCP_FW_UPDATE_CONFIG[] = {
-    { 3140001, 103140001, "SARA-R510S-01B-00-ES-0314A0001_SARA-R510S-01B-00-XX-0314ENG0099A0001.upd", "09c1a98d03c761bcbea50355f9b2a50f" },
-    { 103140001, 3140001, "SARA-R510S-01B-00-XX-0314ENG0099A0001_SARA-R510S-01B-00-ES-0314A0001.upd", "136caf2883457093c9e41fda3c6a44e3" },
-    { 2060001, 99010001, "SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S-00B-01_FW99.01_A00.01.upd", "ccfdc48c0a45198d6e168b30d0740959" },
-    { 99010001, 2060001, "SARA-R510S-00B-01_FW99.01_A00.01_SARA-R510S-00B-01_FW02.06_A00.01_IP.upd", "5fd6c0d3d731c097605895b86f28c2cf" },
+    // { 3140001, 103140001, "SARA-R510S-01B-00-ES-0314A0001_SARA-R510S-01B-00-XX-0314ENG0099A0001.upd", "09c1a98d03c761bcbea50355f9b2a50f" },
+    // { 103140001, 3140001, "SARA-R510S-01B-00-XX-0314ENG0099A0001_SARA-R510S-01B-00-ES-0314A0001.upd", "136caf2883457093c9e41fda3c6a44e3" },
+    // { 2060001, 99010001, "SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S-00B-01_FW99.01_A00.01.upd", "ccfdc48c0a45198d6e168b30d0740959" },
+    // { 99010001, 2060001, "SARA-R510S-00B-01_FW99.01_A00.01_SARA-R510S-00B-01_FW02.06_A00.01_IP.upd", "5fd6c0d3d731c097605895b86f28c2cf" },
 };
 
 const size_t NCP_FW_UPDATE_CONFIG_SIZE = sizeof(NCP_FW_UPDATE_CONFIG) / sizeof(NCP_FW_UPDATE_CONFIG[0]);
-
-// class NcpFwUpdateDiagnostics {
-// public:
-//     NcpFwUpdateDiagnostics() :
-//             status_(DIAG_ID_NETWORK_NCP_FW_UPDATE_STATUS, DIAG_NAME_NETWORK_NCP_FW_UPDATE_STATUS) {
-//     }
-
-//     NcpFwUpdateDiagnostics& status(NcpFwUpdateStatus status) {
-//         status_ = status;
-//         return *this;
-//     }
-
-//     static NcpFwUpdateDiagnostics* instance();
-
-// private:
-//     SimpleIntegerDiagnosticData status_;
-// };
 
 class NcpFwUpdate {
 public:
@@ -208,10 +159,8 @@ public:
     ~NcpFwUpdate();
 
     int checkUpdate(const NcpFwUpdateConfig* userConfigData);
-
-    int process();
     void init(NcpFwUpdateCallbacks* callbacks);
-
+    int process();
     int getStatusDiagnostics();
 
 private:
@@ -233,9 +182,6 @@ private:
     system_tick_t cooldownTimeout_;
     bool initialized_;
 
-    // particle::AbstractUnsignedIntegerDiagnosticData g_ncpFwUpdateDiagnostics(DIAG_ID_NETWORK_NCP_FW_UPDATE_STATUS, DIAG_NAME_NETWORK_NCP_FW_UPDATE_STATUS);
-
-
     union {
         NcpFwUpdateData var;
         uint8_t data[sizeof(NcpFwUpdateData)];
@@ -246,28 +192,19 @@ private:
      */
     NcpFwUpdateCallbacks* ncpFwUpdateCallbacks_;
 
-    // void dumpAtCmd_(const char* buf, int len);
-    static void ATResponseOut_(void* data, const char* msg);
     static int cbUUHTTPCR_(int type, const char* buf, int len, HTTPSresponse* data);
     static int cbUHTTPER_(int type, const char* buf, int len, HTTPSresponse* data);
-    static int cbUUFWINSTALL_(int type, const char* buf, int len, int* data);
     static int cbULSTFILE_(int type, const char* buf, int len, int* data);
     static int cbATI9_(int type, const char* buf, int len, int* val);
     static int cbUPSND_(int type, const char* buf, int len, int* data);
     static int cbCOPS_(int type, const char* buf, int len, int* data);
-#if HAL_PLATFORM_NCP_AT
     static int httpRespCallback_(AtResponseReader* reader, const char* prefix, void* data);
-    static int ufwprevalRespCallback_(AtResponseReader* reader, const char* prefix, void* data);
-    static int ufwinstallRespCallback_(AtResponseReader* reader, const char* prefix, void* data);
-    static int ccidCallback1_(AtResponseReader* reader, const char* prefix, void* data);
-    static int ccidCallback2_(AtResponseReader* reader, const char* prefix, void* data);
-#endif
     int getAppFirmwareVersion_();
     int setupHTTPSProperties_();
     void cooldown_(system_tick_t timer);
     void updateCooldown_();
     bool inCooldown_();
-    void validateRetained_();
+    void validateNcpFwUpdateData_();
     int firmwareUpdateForVersion_(const int version);
     int saveNcpFwUpdateData_();
     int recallNcpFwUpdateData_();
@@ -290,4 +227,4 @@ public:
 
 } // namespace particle
 
-#endif // #if HAL_PLATFORM_CELLULAR
+#endif // #if HAL_PLATFORM_NCP_FW_UPDATE

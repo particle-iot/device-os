@@ -32,9 +32,9 @@ typedef struct NcpFwUpdateConfig NcpFwUpdateConfig;
 extern "C" {
 #endif
 
-void ncp_fw_udpate_init(void* callbacks, void* reserved);
-void ncp_fw_udpate_process(void* reserved);
+#if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 int ncp_fw_udpate_check(const NcpFwUpdateConfig* data, void* reserved);
+#endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 
 #ifdef __cplusplus
 }

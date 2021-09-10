@@ -19,14 +19,6 @@ const CellularNetProvData CELLULAR_NET_PROVIDER_DATA[] = { DEFINE_NET_PROVIDER_D
 namespace
 {
 
-/**
- *  \returns true if the modem is SARA R410 or SARA R510 family
- */
-bool modemIsSaraRxFamily(const DevStatus* const status)
-{
-    return ((status->dev == DEV_SARA_R410) || (status->dev == DEV_SARA_R510));
-}
-
 const char* defaultOrUserApn(const CellularCredentials& cred)
 {
     if ((cred.apn && *cred.apn) || (cred.username && *cred.username) || (cred.password && *cred.password)) {
@@ -43,7 +35,7 @@ const char* defaultOrUserApn(const CellularCredentials& cred)
         if (cellularNetProv == CELLULAR_NETPROV_TELEFONICA) {
             // Determine APN based on Modem Type
             const DevStatus* const status = electronMDM.getDevStatus();
-            if (modemIsSaraRxFamily(status)) {
+            if (status->dev == DEV_SARA_R410) {
                 cellularNetProv = CELLULAR_NETPROV_KORE_ATT;
             }
         }
@@ -291,7 +283,7 @@ cellular_result_t cellular_data_usage_set_impl(CellularDataHal &data, const MDM_
 cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraRxFamily(status)) {
+    if (status->dev == DEV_SARA_R410) {
         return -1;
     }
 
@@ -338,7 +330,7 @@ cellular_result_t cellular_data_usage_get_impl(CellularDataHal& data, const MDM_
 cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraRxFamily(status)) {
+    if (status->dev == DEV_SARA_R410) {
         return -1;
     }
 
@@ -352,7 +344,7 @@ cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved)
 cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraRxFamily(status)) {
+    if (status->dev == DEV_SARA_R410) {
         return -1;
     }
 
@@ -363,7 +355,7 @@ cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved
 cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraRxFamily(status)) {
+    if (status->dev == DEV_SARA_R410) {
         return -1;
     }
 
@@ -374,7 +366,7 @@ cellular_result_t cellular_band_select_get(MDM_BandSelect* bands, void* reserved
 cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reserved)
 {
     const DevStatus* const status = electronMDM.getDevStatus();
-    if (modemIsSaraRxFamily(status)) {
+    if (status->dev == DEV_SARA_R410) {
         return -1;
     }
 
@@ -460,19 +452,6 @@ void cellular_set_power_mode(int mode, void* reserved)
 cellular_result_t cellular_process(void* reserved, void* reserved1)
 {
     return electronMDM.process();
-}
-
-cellular_result_t cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved)
-{
-    // Allow cb == NULL && data == NULL to cancel callback
-    electronMDM.setATresponseHandler((MDMParser::_CELLULAR_LOGGER_CB)cb, (void*)data);
-    return 0;
-}
-
-cellular_result_t cellular_urcs_get(void* reserved)
-{
-    electronMDM.urcsGet();
-    return 0;
 }
 
 int cellular_start_ncp_firmware_update(bool update, void* reserved) {

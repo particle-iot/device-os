@@ -440,18 +440,6 @@ public:
     */
     void setSMSreceivedHandler(_CELLULAR_SMS_CB cb = NULL, void* data = NULL);
 
-    /** callback function pointer typedef for AT COMMAND RESPONSE
-        \param void* for optional parameter
-        \param buf the received AT command response
-    */
-    typedef void (*_CELLULAR_LOGGER_CB)(void* data, const char* buf);
-
-    /** Set the AT command response callback handler
-        \param void* for optional parameter
-        \param buf the received AT command response
-    */
-    void setATresponseHandler(_CELLULAR_LOGGER_CB cb = NULL, void* data = NULL);
-
     /** Write formated date to the physical interface (printf style)
         \param fmt the format string
         \param .. variable arguments to be formated
@@ -526,17 +514,6 @@ public:
      */
     bool urcs(bool enable);
 
-    /**
-     * Get the URCs by calling waitFinalResp()
-     * \return AT response type
-     */
-    int urcsGet();
-
-    /**
-     *  \returns true if the modem is SARA R410 or SARA R510 family
-     */
-    bool modemIsSaraRxFamily();
-
 protected:
     /** Write bytes to the physical interface. This function should be
         implemented in a inherited class.
@@ -577,12 +554,6 @@ protected:
         \param index the index of the received SMS
     */
     void SMSreceived(int index);
-
-    /** Helper: Send AT command response to callback
-        \param buf the received line of data from the modem
-        \param number of characters in the buffer (not null terminated)
-    */
-    void logATcommandResponse(const char* buf, int len);
 
 protected:
     // String helper to prevent buffer overrun
@@ -630,7 +601,6 @@ protected:
     static int _cbUDOPN(int type, const char* buf, int len, CStringHelper* str);
     static int _cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUCGED(int type, const char* buf, int len, NetStatus* status);
-    static int _cbUCGEDR510(int type, const char* buf, int len, NetStatus* status);
     struct CGDCONTparam { char type[8]; char apn[32]; };
     static int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param);
     static int _cbURAT(int type, const char *buf, int len, bool *matched_default);
@@ -679,9 +649,6 @@ protected:
     // Cellular callback to notify of new SMS
     _CELLULAR_SMS_CB sms_cb;
     void* sms_data;
-    // Cellular logger to log AT command response
-    _CELLULAR_LOGGER_CB logger_cb;
-    void* logger_data;
     // management struture for sockets
     typedef struct {
         int handle;
@@ -708,7 +675,6 @@ protected:
     void _checkVerboseCxreg(void);
     bool _checkEpsReg(void);
     int _socketError(void);
-    void _fixSaraR510AccessTechnology(void);
     static MDMParser* inst;
     bool _init;
     bool _pwr;

@@ -600,14 +600,6 @@ int cellular_get_active_sim(int* simType, void* reserved) {
     return 0;
 }
 
-int cellular_at_response_handler_set(_CELLULAR_LOGGER_CB_MDM cb, void* data, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int cellular_urcs_get(void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
 int cellular_start_ncp_firmware_update(bool update, void* reserved) {
     const auto mgr = cellularNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
