@@ -1,3 +1,9 @@
+## 2.0.2-rc.1
+
+### FEATURES
+
+- [Electron] Optional feature to use HSE/LSI as RTC clock source instead of LSE (external 32KHz XTAL) [#2354](https://github.com/particle-iot/device-os/pull/2354)
+
 ## 2.0.1
 
 ### ENHANCEMENTS
