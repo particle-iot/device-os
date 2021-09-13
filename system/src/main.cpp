@@ -790,7 +790,6 @@ void app_setup_and_loop(void)
         HAL_Delay_Milliseconds(100);
         HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
     }
-
     Network_Setup(threaded);    // todo - why does this come before system thread initialization?
 
 #if PLATFORM_THREADING

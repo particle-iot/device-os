@@ -46,6 +46,7 @@ LOG_SOURCE_CATEGORY("net.rltkncp");
 #include <lwip/stats.h>
 #include "memp_hook.h"
 #include "lwip_rltk.h"
+#include "scope_guard.h"
 
 using namespace particle::net;
 
@@ -117,23 +118,7 @@ err_t RealtekNcpNetif::initInterface() {
 }
 
 int RealtekNcpNetif::queryMacAddress() {
-    // auto r = wifiMan_->ncpClient()->on();
-    // if (r) {
-    //     LOG(TRACE, "Failed to initialize Realtek NCP client: %d", r);
-    //     return r;
-    // }
-    MacAddress mac = {};
-    // if (!memcmp(interface()->hwaddr, mac.data, interface()->hwaddr_len)) {
-        // Query MAC address
-        int r = wifiMan_->ncpClient()->getMacAddress(&mac);
-        if (r) {
-            LOG(TRACE, "Failed to query Realtek MAC address: %d", r);
-            return r;
-        }
-        memcpy(interface()->hwaddr, mac.data, interface()->hwaddr_len);
-    // }
-
-    return r;
+    return 0;
 }
 
 void RealtekNcpNetif::setExpectedInternalState(NetifEvent ev) {
@@ -379,9 +364,9 @@ int RealtekNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, 
             p->if_idx = netif_get_index(self->interface());
         // }
 
-        LOG(INFO, "lwip input, size: %ld, sg_len: %d p->if_idx: %d", size, sg_len, p->if_idx);
+        //LOG(INFO, "lwip input, size: %ld, sg_len: %d p->if_idx: %d", size, sg_len, p->if_idx);
 
-        rltk_wlan_recv(netif_get_idx(self->interface()), sg_list, sg_len);
+        rltk_wlan_recv(0, sg_list, sg_len);
 #if ETH_PAD_SIZE
         /* reclaim the padding word */
         pbuf_add_header(p, ETH_PAD_SIZE);
@@ -393,17 +378,6 @@ int RealtekNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, 
             LOG_DEBUG(WARN, "Error inputing packet %d", err);
             pbuf_free(p);
         }
-    }
-
-    int poolAvail = MEMP_STATS_GET(avail, MEMP_PBUF_POOL) - MEMP_STATS_GET(used, MEMP_PBUF_POOL);
-
-    if (!p || err == ERR_MEM || poolAvail <= HAL_PLATFORM_PACKET_BUFFER_FLOW_CONTROL_THRESHOLD) {
-        self->wifiMan_->ncpClient()->dataChannelFlowControl(true);
-#ifdef DEBUG_BUILD
-        if (!p || err == ERR_MEM) {
-            LOG_DEBUG(WARN, "May have dropped %u bytes", size);
-        }
-#endif // DEBUG_BUILD
     }
     return 0;
 }
@@ -417,6 +391,7 @@ int RealtekNcpNetif::downImpl() {
 
 err_t RealtekNcpNetif::linkOutput(pbuf* p) {
     if (!(netif_is_up(interface()) && netif_is_link_up(interface()))) {
+        LOG(ERROR, "linkOutput up=%d link_up=%d", netif_is_up(interface()), netif_is_link_up(interface()));
         return ERR_IF;
     }
 
@@ -426,14 +401,26 @@ err_t RealtekNcpNetif::linkOutput(pbuf* p) {
     pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */
 #endif
 
-    if (p->len == p->tot_len) {
-        // non-queue packet
-        wifiMan_->ncpClient()->dataChannelWrite(0, (const uint8_t*)p->payload, p->tot_len);
-    } else {
-        pbuf* q = pbuf_clone(PBUF_LINK, PBUF_RAM, p);
-        if (q) {
-            wifiMan_->ncpClient()->dataChannelWrite(0, (const uint8_t*)q->payload, q->tot_len);
-            pbuf_free(q);
+    pbuf* qq = pbuf_clone(PBUF_LINK, PBUF_RAM, p);
+    SCOPE_GUARD({
+        if (qq) {
+            pbuf_free(qq);
+        }
+    });
+    p = qq;
+    struct eth_drv_sg sg_list[MAX_ETH_DRV_SG] = {};
+	int sg_len = 0;
+	for (struct pbuf* q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
+		sg_list[sg_len].buf = (unsigned int) q->payload;
+		sg_list[sg_len++].len = q->len;
+	}
+
+    // LOG(INFO, "lwip output, size: %ld, sg_len: %d, p->if_idx: %d", size, sg_len, p->if_idx);
+    LOG(INFO, "lwip output, size: %ld, sg_len: %d", p->tot_len, sg_len);
+
+	if (sg_len) {
+        if (rltk_wlan_send(0, sg_list, sg_len, p->tot_len)) {
+            LOG(ERROR, "rltk_wlan_send ERROR!!!, size: %d", p->tot_len);
         }
     }
 

@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <cstdint>
+#include <stdint.h>
 #include "basic_types.h"
 
 #ifdef __cplusplus

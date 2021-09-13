@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.ble");
 
@@ -1201,6 +1202,8 @@ ssize_t BleGatt::notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* bu
                 } else {
                     return 0;
                 }
+                // FIXME: this seems to help avoid getting errors from server_send_data
+                LOG(INFO, "notify %x %x %x %u %x", config.subscriber.connHandle, svc.id, config.index, attribute.value_len, type);
                 CHECK_TRUE(server_send_data(config.subscriber.connHandle, svc.id, config.index, (uint8_t*)attribute.p_value_context, attribute.value_len, type), SYSTEM_ERROR_INTERNAL);
                 return attribute.value_len;
             }
@@ -1250,6 +1253,7 @@ int hal_ble_exit_locked_mode(void* reserved) {
 }
 
 int hal_ble_stack_init(void* reserved) {
+#if 0
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_init().");
 
@@ -1267,6 +1271,7 @@ int hal_ble_stack_init(void* reserved) {
         CHECK(BleGatt::getInstance().init());
         s_bleStackInit = true;
     }
+#endif
     return SYSTEM_ERROR_NONE;
 }
 

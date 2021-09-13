@@ -167,7 +167,9 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     if (construct) {
         info->platform_id = PLATFORM_ID;
         uint8_t count = module_bounds_length;
-        info->modules = new hal_module_t[count];
+        // FIXME
+        // info->modules = new hal_module_t[count];
+        info->modules = nullptr;
         if (info->modules) {
             info->module_count = count;
 #if defined(HYBRID_BUILD)
@@ -210,7 +212,9 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     else
     {
         HAL_OTA_Add_System_Info(info, construct, reserved);
-        delete info->modules;
+        if (info->modules) {
+            delete info->modules;
+        }
         info->modules = NULL;
     }
 }

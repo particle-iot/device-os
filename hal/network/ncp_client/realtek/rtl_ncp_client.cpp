@@ -43,11 +43,64 @@ extern "C" {
 #include "rtl8721d.h"
 } // extern "C"
 
+#include "spark_wiring_vector.h"
+
 extern "C" void rtw_efuse_boot_write(void);
 
 namespace particle {
 
 namespace {
+
+int rtlSecurityToWifiSecurity(rtw_security_t rtlSec) {
+    switch (rtlSec) {
+    case RTW_SECURITY_OPEN: {
+        return (int)WifiSecurity::NONE;
+    }
+    case RTW_SECURITY_WEP_PSK: {
+        return (int)WifiSecurity::WEP;
+    }
+    case RTW_SECURITY_WPA_TKIP_PSK:
+    case RTW_SECURITY_WPA_AES_PSK:
+    case RTW_SECURITY_WPA_MIXED_PSK: {
+        return (int)WifiSecurity::WPA_PSK;
+    }
+    case RTW_SECURITY_WPA2_AES_PSK:
+    case RTW_SECURITY_WPA2_TKIP_PSK:
+    case RTW_SECURITY_WPA2_MIXED_PSK: {
+        return (int)WifiSecurity::WPA2_PSK;
+    }
+    case RTW_SECURITY_WPA_WPA2_TKIP_PSK:
+    case RTW_SECURITY_WPA_WPA2_AES_PSK:
+    case RTW_SECURITY_WPA_WPA2_MIXED_PSK: {
+        return (int)WifiSecurity::WPA_WPA2_PSK;
+    }
+    }
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+rtw_security_t wifiSecurityToRtlSecurity(WifiSecurity sec) {
+    switch (sec) {
+    case WifiSecurity::NONE: {
+        return RTW_SECURITY_OPEN;
+    }
+    case WifiSecurity::WEP: {
+        return RTW_SECURITY_WEP_PSK;
+    }
+    case WifiSecurity::WPA_PSK: {
+        // FIXME
+        return RTW_SECURITY_WPA_MIXED_PSK;
+    }
+    case WifiSecurity::WPA2_PSK: {
+        // FIXME
+        return RTW_SECURITY_WPA2_MIXED_PSK;
+    }
+    case WifiSecurity::WPA_WPA2_PSK: {
+        // FIXME
+        return RTW_SECURITY_WPA_WPA2_MIXED_PSK;
+    }
+    }
+    return RTW_SECURITY_UNKNOWN;
+}
 
 } // unnamed
 
@@ -92,6 +145,11 @@ int RealtekNcpClient::on() {
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
     CHECK(rltkOn());
     ncpState(NcpState::ON);
+    wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int buf_len, int flags, void* userdata) -> void {
+        LOG(INFO, "disconnected");
+        RealtekNcpClient* client = (RealtekNcpClient*)userdata;
+        client->connectionState(NcpConnectionState::DISCONNECTED);
+    }, (void*)this);
     return 0;
 }
 
@@ -155,7 +213,10 @@ NcpConnectionState RealtekNcpClient::connectionState() {
 
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
     const NcpClientLock lock(this);
-    scan(nullptr, nullptr);
+    // scan(nullptr, nullptr);
+
+    // off();
+    // on();
 
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     LOG(INFO, "connecting");
@@ -164,16 +225,12 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
         asm volatile ("nop");
     }
 
-    char ssid_name[] = "PCN";
-    char passwd[] = "makeitparticle!";
-    int security = RTW_SECURITY_WPA_WPA2_MIXED_PSK;
-
     char mac[32] = {};
     wifi_get_mac_address(mac);
     int r = -1;
     for (int i = 0; i < 3; i++) {
-        LOG(INFO, "AAA: try to connect to ssid: %s, passwd: %s, mac: %s", ssid_name, passwd, mac);
-        r = wifi_connect(ssid_name, security, passwd, strlen(ssid_name), strlen(passwd), -1, nullptr);
+        LOG(INFO, "AAA: try to connect to ssid: %s, passwd: %s, mac: %s", ssid, cred.password(), mac);
+        r = wifi_connect((char*)ssid, wifiSecurityToRtlSecurity(sec), (char*)cred.password(), strlen(ssid), strlen(cred.password()), -1, nullptr);
         LOG(INFO, "BBB: connect result %d", r);
         if (r == 0) {
             break;
@@ -181,7 +238,9 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
         HAL_Delay_Milliseconds(1000);
     }
 
-    connectionState(NcpConnectionState::CONNECTED);
+    if (r == 0) {
+        connectionState(NcpConnectionState::CONNECTED);
+    }
     return r;
 }
 
@@ -194,11 +253,21 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     while (!rtlContinue) {
         asm volatile ("nop");
     }
-    volatile uint32_t done = 0;
+    // off();
+    // on();
     LOG(INFO, "primask = %d", __get_PRIMASK());
-    auto r = wifi_scan_networks([](rtw_scan_handler_result_t* malloced_scan_result) -> rtw_result_t {
+    struct Context {
+        WifiScanCallback callback = nullptr;
+        void* data = nullptr;
+        volatile uint32_t done = 0;
+        Vector<WifiScanResult> results;
+    };
+    Context ctx;
+    ctx.callback = callback;
+    ctx.data = data;
+    int r = wifi_scan_networks([](rtw_scan_handler_result_t* malloced_scan_result) -> rtw_result_t {
         LOG(INFO, "scan callback");
-        volatile uint32_t* done = (volatile uint32_t*)malloced_scan_result->user_data;
+        Context* ctx = (Context*)malloced_scan_result->user_data;
         if (malloced_scan_result->scan_complete != RTW_TRUE) {
             rtw_scan_result_t* record = &malloced_scan_result->ap_details;
             record->SSID.val[record->SSID.len] = 0; /* Ensure the SSID is null terminated */
@@ -226,29 +295,35 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
 
             LOG(INFO, " %s ", record->SSID.val );
             LOG(INFO, "\r\n" );
+            MacAddress bssid = INVALID_MAC_ADDRESS;
+            memcpy(bssid.data, record->BSSID.octet, sizeof(bssid.data));
+
+            int sec = rtlSecurityToWifiSecurity(record->security);
+            if (sec >= 0) {
+                auto result = WifiScanResult().ssid((char*)record->SSID.val).bssid(bssid).security((WifiSecurity)sec).channel(record->channel)
+                        .rssi(record->signal_strength);
+                ctx->results.append(std::move(result));
+            }
+            // ctx->callback(std::move(result), ctx->data);
         } else {
-            *done = 1;
+            ctx->done = 1;
         }
         return RTW_SUCCESS;
-    }, (void*)&done);
-    while (!done) {
+    }, (void*)&ctx);
+    while (!ctx.done) {
         HAL_Delay_Milliseconds(100);
     }
-    LOG(INFO, "scan done %d", r);
+    LOG(INFO, "scan done %d %d", r, ctx.results.size());
+    for (int i = 0; i < ctx.results.size(); i++) {
+        callback(ctx.results[i], data);
+    }
     return 0;
 }
 
 int RealtekNcpClient::getMacAddress(MacAddress* addr) {
-    addr->data[0] = 0xaa;
-    addr->data[1] = 0xbb;
-    addr->data[2] = 0xcc;
-    addr->data[3] = 0xdd;
-    addr->data[4] = 0xee;
-    addr->data[5] = 0xfe;
-    /* Drop 'multicast' bit */
-    addr->data[0] &= 0b11111110;
-    /* Set 'locally administered' bit */
-    addr->data[0] |= 0b10;
+    char mac[6*2 + 5 + 1] = {};
+    wifi_get_mac_address(mac);
+    CHECK_TRUE(macAddressFromString(addr, mac), SYSTEM_ERROR_UNKNOWN);
     return 0;
 }
 
@@ -349,33 +424,9 @@ int RealtekNcpClient::getFirmwareModuleVersion(uint16_t* ver) {
 int RealtekNcpClient::updateFirmware(InputStream* file, size_t size) {
     return SYSTEM_ERROR_NONE;
 }
+
 int RealtekNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
-	// struct eth_drv_sg sg_list[MAX_ETH_DRV_SG];
-	// int sg_len = 0;
-	// for (struct pbuf* q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
-	// 	sg_list[sg_len].buf = (unsigned int) q->payload;
-	// 	sg_list[sg_len++].len = q->len;
-	// }
-    (void) id;
-
-    struct eth_drv_sg sg_list[1];
-    int sg_len = 1;
-    sg_list[0].buf = (unsigned int)data;
-    sg_list[0].len = size;
-
-    // LOG(INFO, "lwip output, size: %ld, sg_len: %d, p->if_idx: %d", size, sg_len, p->if_idx);
-    LOG(INFO, "lwip output, size: %ld, sg_len: %d", size, sg_len);
-
-	if (sg_len) {
-        if (rltk_wlan_send(0, sg_list, sg_len, size) == 0) {
-            return SYSTEM_ERROR_NONE;
-        } else {
-            LOG(INFO, "rltk_wlan_send ERROR!!!, size: %d", size);
-            return SYSTEM_ERROR_INTERNAL;	// return a non-fatal error
-        }
-    }
-
-    return SYSTEM_ERROR_NONE;
+	return 0;
 }
 
 int RealtekNcpClient::dataChannelFlowControl(bool state) {

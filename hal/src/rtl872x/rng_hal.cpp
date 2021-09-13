@@ -16,7 +16,6 @@
  */
 
 #include "rng_hal.h"
-
 #include "logging.h"
 
 extern "C" uint32_t Rand(void);

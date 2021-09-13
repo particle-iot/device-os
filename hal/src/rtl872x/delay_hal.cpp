@@ -17,7 +17,9 @@
 
 #define NO_STATIC_ASSERT
 #include "delay_hal.h"
+extern "C" {
 #include "rtl8721d.h"
+} // extern "C"
 #include "hw_config.h"
 #include "watchdog_hal.h"
 #include <limits.h>
@@ -31,17 +33,5 @@ void HAL_Delay_Milliseconds(uint32_t nTime)
 
 void HAL_Delay_Microseconds(uint32_t uSec)
 {
-    volatile uint32_t DWT_START = DWT->CYCCNT;
-    // keep DWT_TOTAL from overflowing (max 59.652323s w/72MHz SystemCoreClock)
-    if (uSec > (UINT_MAX / SYSTEM_US_TICKS))
-    {
-        uSec = (UINT_MAX / SYSTEM_US_TICKS);
-    }
-
-    volatile uint32_t DWT_TOTAL = (SYSTEM_US_TICKS * uSec);
-
-    while((DWT->CYCCNT - DWT_START) < DWT_TOTAL)
-    {
-        HAL_Notify_WDT();
-    }
+    DelayUs(uSec);
 }

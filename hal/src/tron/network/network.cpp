@@ -184,8 +184,12 @@ unsigned char* rltk_wlan_get_gwmask(int idx) {
     return (uint8_t *) &(wl3->interface()->netmask);
 }
 
-void rltk_wlan_set_netif_info(int idx_wlan, void * dev, unsigned char * dev_addr) {
-    LOG(INFO, "rltk_wlan_set_netif_info %d", idx_wlan);
+void rltk_wlan_set_netif_info(int idx_wlan, void* dev, unsigned char* dev_addr) {
+    LOG(INFO, "rltk_wlan_set_netif_info %d %02x:%02x:%02x:%02x:%02x:%02x", idx_wlan,
+        dev_addr[0], dev_addr[1], dev_addr[2], dev_addr[3], dev_addr[4], dev_addr[5]);
+    if (wl3) {
+        memcpy(wl3->interface()->hwaddr, dev_addr, sizeof(wl3->interface()->hwaddr));
+    }
 }
 
 void netif_rx(int idx, unsigned int len) {
@@ -194,33 +198,8 @@ void netif_rx(int idx, unsigned int len) {
 }
 
 int netif_is_valid_IP(int idx, unsigned char *ip_dest) {
-	struct netif * pnetif = wl3->interface();
-
-	ip_addr_t addr = {};
-
-	u32_t *ip_dest_addr  = (u32_t*)ip_dest;
-
-	LOG(INFO, "netif_is_valid_IP, IP: %d.%d.%d.%d ",ip_dest[0],ip_dest[1],ip_dest[2],ip_dest[3]);
-
-    // Prevent the warning: “the address of XXX will never be NULL”
-    ip_addr_t* p = &addr;
-	ip_addr_set_ip4_u32(p, *ip_dest_addr);
-	if((ip_addr_get_ip4_u32(netif_ip_addr4(pnetif))) == 0)
-		return 1;
-
-	if(ip_addr_ismulticast(&addr) || ip_addr_isbroadcast(&addr,pnetif)){
-		return 1;
-	}
-
-	//if(ip_addr_netcmp(&(pnetif->ip_addr), &addr, &(pnetif->netmask))) //addr&netmask
-	//	return 1;
-
-	if(ip_addr_cmp(&(pnetif->ip_addr),&addr))
-		return 1;
-
-	LOG(INFO, "invalid IP: %d.%d.%d.%d ",ip_dest[0],ip_dest[1],ip_dest[2],ip_dest[3]);
-
-	return 0;
+    // Let LwIP stack handle this
+	return 1;
 }
 
 }

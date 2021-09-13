@@ -36,6 +36,7 @@
 #include "inflate.h"
 #include "check.h"
 #include "rtl8721d.h"
+#include "rtl_header.h"
 
 // Decompression of firmware modules is only supported in the bootloader
 #if (HAL_PLATFORM_COMPRESSED_OTA) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
@@ -746,13 +747,12 @@ int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32
     
     if (flashDeviceID == FLASH_INTERNAL)
     {
-        // if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
-        // {
-        //     offset = 0x200;
-        //     startAddress += offset;
-        // }
-        // FIXME: RTL872x doesn't have vector table for now
-        int ret = hal_flash_read(startAddress, (uint8_t*)infoOut, sizeof(module_info_t));
+        size_t offset = 0;
+        rtl_binary_header* header = (rtl_binary_header*)startAddress;
+        if (header->signature_high == RTL_HEADER_SIGNATURE_HIGH && header->signature_low == RTL_HEADER_SIGNATURE_LOW) {
+            offset = sizeof(rtl_binary_header);
+        }
+        int ret = hal_flash_read(startAddress + offset, (uint8_t*)infoOut, sizeof(module_info_t));
         if (ret != SYSTEM_ERROR_NONE) {
             return ret;
         }
