@@ -65,6 +65,7 @@ static const system_tick_t LSE_STARTUP_TIME_MAX_US = 4000000;
 #if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
 static const system_tick_t LSI_STARTUP_TIME_MAX_US = 1000000;
 static const uint32_t HSE_RTC_PRESCALER = RCC_RTCCLKSource_HSE_Div25;
+static const uint32_t RTC_CLOCK_SOURCE_MASK = 0x300;
 #endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
 
 static void hal_rtc_configure_clock();
@@ -121,7 +122,8 @@ static void hal_rtc_configure()
         RTC_InitTypeDef RTC_InitStructure;
         uint32_t AsynchPrediv = 127; // 127 + 1
 #if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
-        uint32_t SynchPrediv = (RCC->BDCR & 0x00000300) != (HSE_RTC_PRESCALER & 0x300) ? 255 : 8124; // (255 + 1) or (8124 + 1)
+        bool hseClockSource = (RCC->BDCR & RTC_CLOCK_SOURCE_MASK) == (HSE_RTC_PRESCALER & RTC_CLOCK_SOURCE_MASK);
+        uint32_t SynchPrediv = hseClockSource ? 8124 : 255; // (8124 + 1) or (255 + 1)
 #else
         uint32_t SynchPrediv = 255; // (255 + 1)
 #endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
@@ -141,6 +143,16 @@ static void hal_rtc_configure()
             /* Indicator for the RTC configuration */
             RTC_WriteBackupRegister(RTC_BKP_DR0, 0xC1C1);
         }
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+        else if (hseClockSource)
+        {
+            // HSE clock source requires non-default RTC predivisor values
+            // Otherwise the clock will be running at a wrong frequency
+            RCC_BackupResetCmd(ENABLE);
+            RCC_BackupResetCmd(DISABLE);
+            SPARK_ASSERT(false);
+        }
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
     }
 }
 
@@ -202,7 +214,7 @@ static bool hal_rtc_enable_lse() {
 
 static bool hal_rtc_switch_clock_source(uint32_t source)
 {
-    if ((RCC->BDCR & 0x00000300) != (source & 0x300) && (RCC->BDCR & 0x00000300) != 0x000)
+    if ((RCC->BDCR & RTC_CLOCK_SOURCE_MASK) != (source & RTC_CLOCK_SOURCE_MASK) && (RCC->BDCR & RTC_CLOCK_SOURCE_MASK) != 0x000)
     {
         // Unforunately the only way to reconfigure clock source is to reset
         // the backup domain.
@@ -258,7 +270,7 @@ static bool hal_rtc_switch_clock_source(uint32_t source)
 void hal_rtc_internal_enter_sleep()
 {
 #if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
-    if ((RCC->BDCR & 0x00000300) == (RCC_RTCCLKSource_HSE_Div26 & 0x00000300))
+    if ((RCC->BDCR & RTC_CLOCK_SOURCE_MASK) == (RCC_RTCCLKSource_HSE_Div26 & RTC_CLOCK_SOURCE_MASK))
     {
         // If using HSE as clock source, we have to switch over to LSI when going into
         // STOP or STANDBY sleep modes
@@ -270,7 +282,7 @@ void hal_rtc_internal_enter_sleep()
 void hal_rtc_internal_exit_sleep()
 {
 #if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
-    if ((RCC->BDCR & 0x00000300) == (RCC_RTCCLKSource_LSI))
+    if ((RCC->BDCR & RTC_CLOCK_SOURCE_MASK) == (RCC_RTCCLKSource_LSI))
     {
         hal_rtc_configure_clock();
     }
@@ -297,6 +309,11 @@ void hal_rtc_init(void)
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
+    if (RCC->BDCR & RCC_BDCR_RTCEN) {
+        // May be required to read current calendar/time registers
+        RTC_WaitForSynchro();
+    }
+
     /* Check if the StandBy flag is set */
     if(PWR_GetFlagStatus(PWR_FLAG_SB) != RESET)
     {
@@ -304,9 +321,6 @@ void hal_rtc_init(void)
         /* Check if RTC is enabled */
         if (RCC->BDCR & RCC_BDCR_RTCEN)
         {
-            /* Wait for RTC APB registers synchronisation */
-            RTC_WaitForSynchro();
-
             /* Clear the RTC Alarm Flag */
             RTC_ClearFlag(RTC_FLAG_ALRAF);
         }
