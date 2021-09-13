@@ -10,7 +10,7 @@ test(FASTPIN_01_MaxDuration_PinSet) {
 
 #if HAL_PLATFORM_GEN == 3
     // expected max ticks of pinSetFast / pinResetFast on Gen3
-    const uint32_t MAX_DURATION_PINSET_TICKS = 63;
+    const uint32_t MAX_DURATION_PINSET_TICKS = 65;
 #elif HAL_PLATFORM_GEN == 2
     // expected max ticks of pinSetFast / pinResetFast on Gen2
     const uint32_t MAX_DURATION_PINSET_TICKS = 24;
@@ -40,7 +40,7 @@ test(FASTPIN_02_MaxDuration_PinReset) {
 
 #if HAL_PLATFORM_GEN == 3
     // expected max ticks of pinResetFast on Gen3
-    const uint32_t MAX_DURATION_PINRESET_TICKS = 60;
+    const uint32_t MAX_DURATION_PINRESET_TICKS = 65;
 #elif HAL_PLATFORM_GEN == 2
     // expected max ticks of pinResetFast on Gen2
     const uint32_t MAX_DURATION_PINRESET_TICKS = 25;
