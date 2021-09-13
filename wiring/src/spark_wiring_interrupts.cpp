@@ -33,8 +33,12 @@ static wiring_interrupt_handler_t* handlers[TOTAL_PINS];
 
 wiring_interrupt_handler_t* allocate_handler(uint16_t pin, wiring_interrupt_handler_t& fn)
 {
-    delete handlers[pin];
-    return handlers[pin] = new wiring_interrupt_handler_t(fn);
+    if (handlers[pin]) {
+        handlers[pin]->swap(fn);
+    } else {
+        handlers[pin] = new wiring_interrupt_handler_t(fn);
+    }
+    return handlers[pin];
 }
 
 void call_wiring_interrupt_handler(void* data)
@@ -105,10 +109,8 @@ bool detachInterrupt(uint16_t pin)
     if (SYSTEM_ERROR_NONE != HAL_Interrupts_Detach(pin)) {
         return false;
     }
-    if (handlers[pin]) {
-        delete handlers[pin];
-        handlers[pin] = nullptr;
-    }
+    // NB: We do not `delete handlers[pin]` here since this would cause an error
+    // when detachInterrupt is called in an ISR.
     return true;
 }
 
@@ -159,10 +161,9 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
  */
 bool detachSystemInterrupt(hal_irq_t irq)
 {
-    HAL_InterruptCallback prev = {};
-    const bool ok = HAL_Set_System_Interrupt_Handler(irq, NULL, &prev, NULL);
-    delete (wiring_interrupt_handler_t*)prev.data;
-    return ok;
+    // NB: We do not delete the previous handler here since this would cause an error
+    // when detachInterrupt is called in an ISR.
+    return HAL_Set_System_Interrupt_Handler(irq, NULL, NULL, NULL);
 }
 
 bool attachInterruptDirect(IRQn_Type irq, HAL_Direct_Interrupt_Handler handler, bool enable)
