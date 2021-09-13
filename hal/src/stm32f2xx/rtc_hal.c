@@ -214,6 +214,7 @@ static bool hal_rtc_enable_lse() {
 
 static bool hal_rtc_switch_clock_source(uint32_t source)
 {
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
     if ((RCC->BDCR & RTC_CLOCK_SOURCE_MASK) != (source & RTC_CLOCK_SOURCE_MASK) && (RCC->BDCR & RTC_CLOCK_SOURCE_MASK) != 0x000)
     {
         // Unforunately the only way to reconfigure clock source is to reset
@@ -256,6 +257,7 @@ static bool hal_rtc_switch_clock_source(uint32_t source)
         HAL_enable_irq(state);
     }
     else
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
     {
         if (source == RCC_RTCCLKSource_LSE) {
             if (!hal_rtc_enable_lse()) {
