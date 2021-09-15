@@ -173,6 +173,9 @@ test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
     // Copy current user-part into factory location
     auto storageId = factory->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH ? HAL_STORAGE_ID_EXTERNAL_FLASH : HAL_STORAGE_ID_INTERNAL_FLASH;
     int r = hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    SCOPE_GUARD({
+        hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    });
     assertEqual(factory->bounds.maximum_size, r);
     module_info_t patchedModuleInfo = user->info;
     module_info_suffix_t patchedModuleSuffix = user->suffix;
@@ -265,6 +268,9 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
     size_t toCopy = std::min<size_t>(((uintptr_t)user->info.module_end_address - (uintptr_t)user->info.module_start_address) / 2, factory->bounds.maximum_size);
     auto storageId = factory->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH ? HAL_STORAGE_ID_EXTERNAL_FLASH : HAL_STORAGE_ID_INTERNAL_FLASH;
     int r = hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    SCOPE_GUARD({
+        hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    });
     assertEqual(factory->bounds.maximum_size, r);
     char buf[256]; // some platforms cannot write into e.g. an external flash directly from internal
     for (size_t pos = 0; pos < toCopy; pos += sizeof(buf)) {
