@@ -159,6 +159,7 @@ private:
     int modemPowerOff();
     int modemSoftPowerOff();
     int modemHardReset(bool powerOff = false);
+    int modemEmergencyHardReset();
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
     void waitForPowerOff();

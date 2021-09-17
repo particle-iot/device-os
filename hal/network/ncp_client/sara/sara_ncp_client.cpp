@@ -1004,6 +1004,7 @@ int SaraNcpClient::waitReady(bool powerOn) {
         return SYSTEM_ERROR_NONE;
     }
 
+    static int waitReadyRetries = 0;
     ModemState modemState = ModemState::Unknown;
 
     // Just in case make sure that the voltage translator is on
@@ -1048,6 +1049,7 @@ int SaraNcpClient::waitReady(bool powerOn) {
         skipAll(serial_.get());
         parser_.reset();
         parserError_ = 0;
+        waitReadyRetries = 0;
         LOG(TRACE, "NCP ready to accept AT commands");
 
         auto r = initReady(modemState);
@@ -1065,6 +1067,10 @@ int SaraNcpClient::waitReady(bool powerOn) {
         // Hard reset the modem
         modemHardReset(true);
         ncpState(NcpState::OFF);
+        if (++waitReadyRetries >= 10) {
+            waitReadyRetries = 10;
+            modemEmergencyHardReset();
+        }
 
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -2545,6 +2551,35 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
             serial_->on(false);
         }
     }
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::modemEmergencyHardReset() {
+    if (ncpId() != PLATFORM_NCP_SARA_R510) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    LOG(TRACE, "Emergency hardware shutdown the modem");
+    const auto pwrState = modemPowerState();
+    // We can only reset the modem in the powered state
+    if (!pwrState) {
+        LOG(ERROR, "Modem is not powered on!");
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    // Low held on power pin
+    HAL_GPIO_Write(UBPWR, 0);
+    HAL_Delay_Milliseconds(500);
+    // Low held on reset pin
+    HAL_GPIO_Write(UBRST, 0);
+    // Release power pin after 23s (23.5)
+    HAL_Delay_Milliseconds(23000);
+    HAL_GPIO_Write(UBPWR, 1);
+    // Release reset pin after 1.5s (2s)
+    HAL_Delay_Milliseconds(2000);
+    HAL_GPIO_Write(UBRST, 1);
+
+    ncpPowerState(NcpPowerState::TRANSIENT_ON);
     return SYSTEM_ERROR_NONE;
 }
 
