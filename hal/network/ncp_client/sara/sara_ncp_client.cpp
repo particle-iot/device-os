@@ -181,7 +181,6 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     registeredTime_ = 0;
     memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
     oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
-    savedNVMR510_ = false; // R510: Save connection state to NVM for fast cold boot registration times
     parserError_ = 0;
     ready_ = false;
     firmwareUpdateR510_ = false;
@@ -745,9 +744,6 @@ int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     } else {
         CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     }
-    // FIXME: CREG is not set to verbose mode for Cat-M1/Cat-1 devices, can we really
-    // "fallback to CSD" here for gathering LAC and CID?
-    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
 
     switch (cgi->version)
     {
@@ -1145,7 +1141,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         if (r == 1 && (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT ||
                 (netConf_.netProv() == CellularNetworkProvider::TWILIO && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
                 (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT) ||
-                (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE)) ) {
+                (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
             int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
             // TWILIO Super SIM
             if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
@@ -1163,11 +1159,8 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
             // KORE AT&T or 3rd Party SIM
             else {
-                if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
-                    newProf = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
-                }
-                // Hard code ATT for 05.12 firmware versions
-                if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512) {
+                // Hard code ATT for R410 05.12 firmware versions or R510 Kore AT&T SIMs
+                if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512 || conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
                     if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
                         newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
                     }
@@ -1198,11 +1191,10 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             char ubandStr[24] = {};
             auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,]", ubandStr));
             CHECK_PARSER_OK(respBand.readResult());
-            if (retBand == 1 && ((netConf_.netProv() == CellularNetworkProvider::TWILIO) || 
-                    (netConf_.netProv() == CellularNetworkProvider::KORE_ATT && conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510)) ) {
+            if (netConf_.netProv() == CellularNetworkProvider::TWILIO && retBand == 1) {
                 char* pEnd = &ubandStr[0];
                 ubandUint64 = strtoull(ubandStr, &pEnd, 10);
-                // Only update if not set to correct bands
+                // Only update if Twilio Super SIM and not set to correct bands
                 if (pEnd - ubandStr > 0 && ubandUint64 != 6170) {
                     // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
                     parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
@@ -1299,12 +1291,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                 // NOTE: [ch76449] R510S will not retain GPIO's HIGH after a cold boot
                 // Workaround: Set pin that needs to be HIGH to mode "Module status indication",
                 //             which will be set HIGH when the module is ON, and LOW when it's OFF.
-// // FIXME: DEBUG!!!!!!!!!!!
-// #if PLATFORM_ID == PLATFORM_BSOM
-//                 const int internalSimMode = 255; // EVT3 HW issue: Pad disabled (use EXT SIM with solder jumper shorted)
-// #else
+// FIXME: DEBUG!!!!!!!!!!!
+#if PLATFORM_ID == PLATFORM_BSOM
+                const int internalSimMode = 255; // EVT3 HW issue: Pad disabled (use EXT SIM with solder jumper shorted)
+#else
                 const int internalSimMode = 10; // Module status indication mode
-// #endif
+#endif
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode));
@@ -1823,13 +1815,25 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         }
     }
 
-    auto respCgdcont = parser_.sendCommand("AT+CGDCONT?");
     char cgdcontVal[512] = {0};
     char cgdcontFmt[20] = {0};
+    int rCgdcont = 0;
+    bool setApn = false;
     snprintf(cgdcontFmt, sizeof(cgdcontFmt), "+CGDCONT: %d,%%511s", UBLOX_DEFAULT_CID);
-    auto rCgdcont = respCgdcont.scanf(cgdcontFmt, cgdcontVal);
+    auto respCgdcont = parser_.sendCommand("AT+CGDCONT?");
+    while (respCgdcont.hasNextLine()) {
+        rCgdcont = respCgdcont.scanf(cgdcontFmt, cgdcontVal);
+        if (rCgdcont == 1) { // Ignore scanf() errors
+            break;
+        }
+    }
+    if (cgdcontVal[0] == '\0' || !strstr(cgdcontVal, netConf_.hasApn() ? netConf_.apn() : "CGDCONT")) {
+        setApn = true;
+    }
     CHECK_PARSER_OK(respCgdcont.readResult());
-    if (rCgdcont && !strstr(cgdcontVal, netConf_.hasApn() ? netConf_.apn() : "CGDCONT")) {
+    // LOG(INFO,"setApn=%d, cgdcontVal=%s, netConf_.hasApn()=%d, hasApn_.apn()=%s, strstr=%d",
+    //         setApn, cgdcontVal, netConf_.hasApn(), netConf_.apn(), !strstr(cgdcontVal, netConf_.hasApn() ? netConf_.apn() : "CGDCONT"));
+    if (setApn) {
         if (ncpId() == PLATFORM_NCP_SARA_R510) { // CH76421
             CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
         }
@@ -2152,24 +2156,13 @@ void SaraNcpClient::resetRegistrationState() {
     regCheckTime_ = regStartTime_;
     imsiCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
-    savedNVMR510_ = false;
 }
 
-int SaraNcpClient::checkRegistrationState() {
+void SaraNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
         if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
             if (memoryIssuePresent_ && connState_ != NcpConnectionState::CONNECTED) {
                 registeredTime_ = millis(); // start registered timer for memory issue power off delays
-            }
-            // FIXME: Workaround for R510S NVM issue, avoid this step with updated firmware.
-            // Switch to airplane mode / full functionality to save connection details for fast cold connection times.
-            // This will skip setting the CONNECTED state and stay CONNECTING, since that's what will happen on the modem.
-            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510 && !savedNVMR510_) {
-                // TODO: Completely remove CFUN=4/1 toggle after registration
-                // CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4,0"));
-                // CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
-                savedNVMR510_ = true;
-                return SYSTEM_ERROR_NONE;
             }
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
@@ -2179,7 +2172,6 @@ int SaraNcpClient::checkRegistrationState() {
             connectionState(NcpConnectionState::CONNECTING);
         }
     }
-    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::interveneRegistration() {
