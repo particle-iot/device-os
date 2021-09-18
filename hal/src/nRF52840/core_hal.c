@@ -801,9 +801,6 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
         case FEATURE_LED_OVERRIDDEN: {
             return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, enabled, NULL);
         }
-        case FEATURE_NCP_FW_UPDATES: {
-            return Write_Feature_Flag(FEATURE_FLAG_NCP_FW_UPDATES, enabled, NULL);
-        }
     }
 
     return -1;
@@ -824,10 +821,6 @@ bool HAL_Feature_Get(HAL_Feature feature) {
         case FEATURE_LED_OVERRIDDEN: {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) ? value : false;
-        }
-        case FEATURE_NCP_FW_UPDATES: {
-            bool value = false;
-            return (Read_Feature_Flag(FEATURE_FLAG_NCP_FW_UPDATES, &value) == 0) ? value : false;
         }
     }
     return false;

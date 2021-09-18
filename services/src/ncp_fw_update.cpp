@@ -16,33 +16,41 @@
  */
 
 /*
-    R510 Firmware Update:
+    R510 Firmware Update Background Check:
     =====================
+    1.  Baked into sara_ncp_client.cpp init process
+    2.  When ATI9 is used to determine the modem version (thus, only when modem is on), 
+        check if there is an update firmware version available.
+    3.  Set a flag for Cellular.updatePending() if update available.
+
+
+    R510 Firmware Update
+    =====================
+    0.  (Blocking Call) Once Cellular.startUpdate() is called, initialize state_/status_ from Idle to Qualify.
     1.  Check ncpId() == PLATFORM_NCP_SARA_R510
     2.  Is System.enableUpdates() == true?
     3.  Check modem firmware version - compatible upgrade version will be baked into Device OS with MD5 sum.
     4.  Reboot into Safe Mode to start the update process
-    5.  Is Particle.connected()?
-    6.  Setup HTTPS security options
-    7.  When ready to start update process, publish a "spark/device/ncp/update" system event that Device OS has "started" a modem update.
-        Only try to update once per hour if something should fail the first time, so we're not stuck in a hard
-        loop offline?
-    8.  Disconnect the Cloud
-    9.  If an existing FOAT file is present, delete it since there is no way to validate what it is after it's present.
-    10. Start the download based on step 3, keep track of update version
-    11. Download is only complete when the the MD5SUM URC of the file is received and verified
-    12. Disconnect from the Cellular network
-    13. Apply the firmware update
-    14. Sit in a tight loop it will take about 18 to 20 minutes
+    5.  Particle.connect()
+    6.  Publish a "spark/device/ncp/update" system event that Device OS has "started" a modem update.
+    7.  Particle.disconnect()
+    8.  Disable PPP link and Cellular.connect(), timeout after 10 minutes
+    9.  Setup HTTPS security options
+    10. If an existing FOAT file is present, delete it since there is no way to validate what it is after it's present.
+    11. Start the download based our database entry
+    12. Download is only complete when the the MD5SUM URC of the file is received and verified
+    13. Cellular.disconnect()
+    14. Apply the firmware update
+    15. Sit in a tight loop while the modem is updating, it will take about 18 to 20 minutes
         a. waiting for final INSTALL URC of 128
         b. polling for AT/OK every 10 seconds
         c. monitoring a timeout counter of 40 minutes
-    15. Save the download/install result to be published once connected to the Cloud again
-    16. Power cycle the modem by switching it off, and..
-    17. Connect to the Cloud
-    18. Publish a "spark/device/ncp/update" system event that Device OS has finished with "success" or "failed"
-    19. Reset the system to exit Safe Mode
-    20. Add result status to device diagnostics
+    16. Save the download/install result to be published once connected to the Cloud again
+    17. Re-enable PPP link and Power off the modem
+    18. Particle.connect()
+    19. Publish a "spark/device/ncp/update" system event that Device OS has finished with "success" or "failed"
+    20. Reset the system to exit Safe Mode
+    21. On next init, add result status to device diagnostics
 
     TODO:
     ====================
@@ -52,7 +60,7 @@
     Done - Move ncp_fw_update.cpp to services/ instead of system/ since we have more space available there
     Done - Add correct cipher settings
     Done - Save state_, status_, firmwareVersion_ variables in retained system memory to ensure
-            Done - we complete step 11/12
+            Done - we complete step INSTALL/WAITING
             Done - we do enter and exit safe mode fw updating cleanly
             Done - we do not get stuck in a fail-retry loop
     Done - Refactor retained structure to use systemCache instead
@@ -61,25 +69,23 @@
             Done - Gen 3, extends timer 5 minutes for every received URC.
     Done - When do we retry failures?  Quick loops can retry a few times, but long ones shouldn't
     Done - Create a database of starting firmware version / desired firmware version / filename / MD5SUM value, similar to APN DB.
-         - Minimize logging output, move some statements to LOG_DEBUG
     Done - Make sure there is a final status log
     Done - Allow user firmware to pass a database entry that overrides the system firmware update database
     Done - Add final status to Device Diagnostics
-         - add modem version to Device Diagnostics?
-         - Make publishEvent's an async call with timeout?
-         - When do we clear the g_ncpFwUpdateRetained.state == FW_UPDATE_FINISHED_IDLE_STATE to kickoff a new update attempt?
+       ? - add modem version to Device Diagnostics
     Done - Remove callbacks
     Done - Remove Gen 2 code
     Done - Gen 3
-            Done - allow normal connection at first for publishing
-            Done - avoid connecting PPP for downloading
-            Done - enable PDP context with a few AT commands for downloading
+            Done - allow normal connection first
+            Done - optionally avoid connecting PPP
+            Done - enable PDP context with a few AT commands
     Done - Remove System feature flag
          - implement background update check, only perform checks if modem is on.
          - ncp_fw_udpate_check should drive an update check, implement no argument as system check
          - implement Cellular.updatesPending() API
          - implement Cellular.startUpdate() API
-
+         - add 10 minute cellular connect timeout when PPP link disabled
+         - add URC handler for +CGEV: ME PDN DEACT 1 or +CGEV: ME DETACH or +UUPSDD: 0 to wait for cellular disconnected
 */
 
 #include "logging.h"
@@ -337,13 +343,6 @@ int NcpFwUpdate::process() {
                 break;
             }
             LOG(INFO, "PLATFORM_NCP == SARA_R510");
-            // Check system feature is enabled
-            if (!HAL_Feature_Get(FEATURE_NCP_FW_UPDATES)) {
-                LOG(ERROR, "FEATURE_NCP_FW_UPDATES disabled");
-                ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
-                break;
-            }
-            LOG(INFO, "FEATURE_NCP_FW_UPDATES enabled");
             // Check if System.updatesEnabled()
             uint8_t updatesEnabled = 0;
             ncpFwUpdateCallbacks_->system_get_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, &updatesEnabled, nullptr);
@@ -483,6 +482,7 @@ int NcpFwUpdate::process() {
 
         case FW_UPDATE_DOWNLOAD_CELL_CONNECTING_STATE:
         {
+            // TODO: Add 10 minute timeout here
             if (!network_ready(0, 0, 0)) { // Cellular.ready()
                 LOG(INFO, "Connecting Cellular...");
                 cellular_start_ncp_firmware_update(true, nullptr); // ensure we don't connect PPP
