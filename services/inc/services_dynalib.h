@@ -28,6 +28,7 @@
 #ifdef DYNALIB_EXPORT
 #include "nanopb_misc.h"
 #include <stdint.h>
+#include "ncp_fw_update_dynalib.h"
 #ifdef PB_WITHOUT_64BIT
 #define pb_int64_t int32_t
 #define pb_uint64_t uint32_t

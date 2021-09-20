@@ -53,6 +53,7 @@
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
+#include "ncp_fw_update.h"
 
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
