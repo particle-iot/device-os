@@ -217,6 +217,12 @@ void rtlLowLevelInit() {
     if (ROM_SIM_ENABLE != 0x12345678) {
         BKUP_Set(BKUP_REG0, BIT_SW_SIM_RSVD);
     }
+
+    /* Disable RSIP if it is enabled. Not needed after KM0 boot */
+    if((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0 ) {
+        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
+    }
 }
 
 // app_pmu_init()

@@ -33,6 +33,41 @@ SECTIONS
     /* Module info */
     INCLUDE linker_module_info.ld
 
+    /* C++ exception handlers */
+    INCLUDE linker_arm_exception.ld
+
+    .xip_end :
+    {
+        . = ALIGN(16); /* The image end must be 16-bytes aligned. */
+        link_rtl_xip_end = .;
+        . = ALIGN(4);
+    } > APP_FLASH
+
+    PROVIDE (link_rtl_xip_size = link_rtl_xip_end - link_rtl_xip_start);
+    /*
+     ****************************** END OF XIP PARTITION *************************************/
+
+    .rtl_ram_image_header :
+    {
+        . = ALIGN(16); /* The image header must be 16-bytes aligned. */
+        KEEP (*(.rtl_header_ram))
+        . = ALIGN(4);
+    } > APP_FLASH
+
+    /******************************* START OF RAM COPY PARTITION ******************************
+     */
+    .ram_copy_start :
+    {
+        link_rtl_ram_copy_start = .;
+    } > SRAM
+
+    .rtl_start_table : /* Realtek specific */
+    {  
+        KEEP (*(.rtl_header_ram_start_table))
+        KEEP (*(.rtl_header_ram_valid_pattern))
+        KEEP (*(.rtl_header_ram_boot_export_table))
+    } > SRAM AT> APP_FLASH
+
     .text :
     {
         . = ALIGN(4);
@@ -80,41 +115,6 @@ SECTIONS
         link_destructors_end = .;
         
         . = ALIGN(4);
-    } > APP_FLASH
-
-    /* C++ exception handlers */
-    INCLUDE linker_arm_exception.ld
-
-    .xip_end :
-    {
-        . = ALIGN(16); /* The image end must be 16-bytes aligned. */
-        link_rtl_xip_end = .;
-        . = ALIGN(4);
-    } > APP_FLASH
-
-    PROVIDE (link_rtl_xip_size = link_rtl_xip_end - link_rtl_xip_start);
-    /*
-     ****************************** END OF XIP PARTITION *************************************/
-
-    .rtl_ram_image_header :
-    {
-        . = ALIGN(16); /* The image header must be 16-bytes aligned. */
-        KEEP (*(.rtl_header_ram))
-        . = ALIGN(4);
-    } > APP_FLASH
-
-    /******************************* START OF RAM COPY PARTITION ******************************
-     */
-    .ram_copy_start :
-    {
-        link_rtl_ram_copy_start = .;
-    } > SRAM
-
-    .rtl_start_table : /* Realtek specific */
-    {  
-        KEEP (*(.rtl_header_ram_start_table))
-        KEEP (*(.rtl_header_ram_valid_pattern))
-        KEEP (*(.rtl_header_ram_boot_export_table))
     } > SRAM AT> APP_FLASH
 
     .ram_copy_end :
