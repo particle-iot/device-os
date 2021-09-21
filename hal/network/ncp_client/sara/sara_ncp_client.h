@@ -119,6 +119,7 @@ private:
     bool firmwareUpdateR510_ = false;
     int firmwareInstallRespCodeR510_ = 0;
     int lastFirmwareInstallRespCodeR510_ = 0;
+    int waitReadyRetries_ = 0;
 
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
