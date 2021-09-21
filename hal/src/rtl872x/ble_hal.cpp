@@ -1253,7 +1253,6 @@ int hal_ble_exit_locked_mode(void* reserved) {
 }
 
 int hal_ble_stack_init(void* reserved) {
-#if 0
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_init().");
 
@@ -1271,7 +1270,6 @@ int hal_ble_stack_init(void* reserved) {
         CHECK(BleGatt::getInstance().init());
         s_bleStackInit = true;
     }
-#endif
     return SYSTEM_ERROR_NONE;
 }
 

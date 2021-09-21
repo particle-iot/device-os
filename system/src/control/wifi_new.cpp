@@ -83,11 +83,32 @@ int joinNewNetwork(ctrl_request* req) {
     MacAddress bssid = INVALID_MAC_ADDRESS;
     bssidFromPb(&bssid, pbReq.bssid);
     conf.bssid(bssid);
-    conf.security((WifiSecurity)pbReq.security);
-    conf.credentials(std::move(cred));
-    // Get current configuration
     const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    const auto ncpClient = wifiMgr->ncpClient();
+    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
+    const NcpClientLock lock(ncpClient);
+    // FIXME; the security sent from the mobile app is always zero.
+#if PLATFORM_ID == 32
+    // Scan for networks
+    Vector<WifiScanResult> networks;
+    CHECK(ncpClient->scan([](WifiScanResult network, void* data) -> int {
+        const auto networks = (Vector<WifiScanResult>*)data;
+        CHECK_TRUE(networks->append(std::move(network)), SYSTEM_ERROR_NO_MEMORY);
+        return 0;
+    }, &networks));
+    // FIXME: if none of the scanned neetworks matches, the secury is of the default value.
+    for (auto network : networks) {
+        if (!strcmp(dSsid.data, network.ssid())) {
+            conf.security((WifiSecurity)network.security());
+            break;
+        }
+    }
+#else
+    conf.security((WifiSecurity)pbReq.security);
+#endif
+    conf.credentials(std::move(cred));
+    // Get current configuration
     WifiNetworkConfig oldConf;
     const bool hasOldConf = (wifiMgr->getNetworkConfig(dSsid.data, &oldConf) == 0);
     // Set new configuration
@@ -100,12 +121,13 @@ int joinNewNetwork(ctrl_request* req) {
         }
     });
     // Connect to the network
-    const auto ncpClient = wifiMgr->ncpClient();
-    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
-    const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
     CHECK(ncpClient->disconnect());
     CHECK(wifiMgr->connect(dSsid.data));
+    // Note: we directly call into the NCP client's connect() function and bypass the system network manager.
+    // We need to disconnect the connection here to succeed the setup process, otherwise, the network manager
+    // won't do it for us due to the improvement that has been introduced in netif.
+    CHECK(ncpClient->disconnect());
     oldConfGuard.dismiss();
     return 0;
 }

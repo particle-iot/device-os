@@ -126,6 +126,7 @@ void Set_System(void)
 #else
     Cache_Enable(0);
     Cache_Enable(1);
+    DCache_Disable();
 #endif
     ICache_Enable();
 }

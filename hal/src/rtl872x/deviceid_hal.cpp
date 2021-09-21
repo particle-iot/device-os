@@ -40,25 +40,17 @@ const uintptr_t HW_MODEL_OTP_ADDRESS = 0x00000024;
 
 #define FAKE_DEVICE 1
 #if FAKE_DEVICE
-#define FAKE_DEVICE_ID      "e00fce6887102d82dd901328"
 #define FAKE_DEVICE_SN      "ARNKAB8427BN2LP"
 #define FAKE_DEVIVE_MS      "Y4WDPKSKLT4FT3R"
 #endif
 
 unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
 {
-#if FAKE_DEVICE
-    const char* id = FAKE_DEVICE_ID;
-    if (dest && destLen > 0) {
-        memcpy(dest, id, std::min(destLen, (unsigned)HAL_DEVICE_ID_SIZE));
-    }
-#else
-    const uint32_t id[3] = { DEVICE_ID_PREFIX, 0xdeadbeef, 0xdeadbeef };
+    const uint32_t id[3] = { DEVICE_ID_PREFIX, 0x822d1087, 0x281390dd };
     static_assert(sizeof(id) == HAL_DEVICE_ID_SIZE, "");
     if (dest && destLen > 0) {
         memcpy(dest, id, std::min(destLen, sizeof(id)));
     }
-#endif
     return HAL_DEVICE_ID_SIZE;
 }
 
