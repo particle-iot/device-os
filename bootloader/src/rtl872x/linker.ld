@@ -86,6 +86,58 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
+    /* Static RAM start */
+    INCLUDE linker_static_ram_start.ld
+
+    /* Non-zero initialised global and static variables */
+    .data :
+    {
+        /* This is the location in flash of the initial values of global variables */
+        link_global_data_initial_values = LOADADDR( .data ); 
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_start = .;
+
+        /* Realtek specific RAM code */
+        *(.image2.ram.text)
+        *(.image2.ram.text.*)
+        *(.boot.ram.text)
+        *(.boot.ram.text.*)
+        *(.ram.text)
+        *(.ram.text.*)
+
+        *(.data*)
+        *(.boot.ram.data) /* Realtek specific */
+        *(.boot.ram.data.*) /* Realtek specific */
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_end = .;
+    } > SRAM AT> APP_FLASH
+    
+    /* Zero initialised memory used for zero initialised variables */
+    .bss :
+    {
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .bss secion */
+        link_bss_location = .;
+        *(.bss*)
+        *(.boot.ram.bss) /* Realtek specific */
+        *(.boot.ram.bss*) /* Realtek specific */
+        *(COMMON)
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .bss secion */
+        link_bss_end = .;
+    } > SRAM AT> SRAM
+    
+    /* Static RAM end */
+    INCLUDE linker_static_ram_end.ld
+
+    /* User backup ram data */
+    INCLUDE linker_backup_ram_user.ld
+    
+    /* System backup ram data */
+    INCLUDE linker_backup_ram_system.ld
+
     .xip_end :
     {
         . = ALIGN(16); /* The image end must be 16-bytes aligned. */
@@ -125,72 +177,22 @@ SECTIONS
         . = ALIGN(4);
     } > SECURE_RAM AT> APP_FLASH
 
-    .boot_ram :
-    {
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
-    } > SECURE_RAM AT> APP_FLASH
-
     .ram_copy_end :
     {
         link_rtl_ram_copy_end = .;
     } > SECURE_RAM
 
+
     PROVIDE (link_rtl_ram_copy_size = link_rtl_ram_copy_end - link_rtl_ram_copy_start);
     /*
      ****************************** END OF RAM COPY PARTITION ********************************/
 
-    /* Static RAM start */
-    INCLUDE linker_static_ram_start.ld
-
-    /* Non-zero initialised global and static variables */
-    .data :
+    .rtl_flash_signature_footer :
     {
-        /* This is the location in flash of the initial values of global variables */
-        link_global_data_initial_values = LOADADDR( .data ); 
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
-        link_global_data_start = .;
+        link_rtl_secure_boot_footer = .;
+        KEEP (*(.rtl_footer_signature))
+    } > APP_FLASH
 
-        /* Realtek specific RAM code */
-        *(.image2.ram.text)
-        *(.image2.ram.text.*)
-
-        *(.ram.text)
-        *(.ram.text.*)
-
-        *(.data*)
-        *(.boot.ram.data) /* Realtek specific */
-        *(.boot.ram.data.*) /* Realtek specific */
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
-        link_global_data_end = .;
-    } > SRAM AT> APP_FLASH
-
-    /* Zero initialised memory used for zero initialised variables */
-    .bss :
-    {
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .bss secion */
-        link_bss_location = .;
-        *(.bss*)
-        *(.boot.ram.bss) /* Realtek specific */
-        *(.boot.ram.bss*) /* Realtek specific */
-        *(COMMON)
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .bss secion */
-        link_bss_end = .;
-    } > SRAM AT> SRAM
-    
-    /* Static RAM end */
-    INCLUDE linker_static_ram_end.ld
-
-    /* User backup ram data */
-    INCLUDE linker_backup_ram_user.ld
-    
-    /* System backup ram data */
-    INCLUDE linker_backup_ram_system.ld
-    
     /* Module end */
     INCLUDE linker_module_end.ld
 

@@ -10,6 +10,8 @@ SECTIONS {
     DelayUs = 0x10100949;
     DelayMs = 0x10100995;
     IS_FPGA_VERIF = 0x1000039c;
+    EFUSERead8 = 0x10100a31;
+    EFUSEWrite8 = 0x10100b1d;
     CPU_ClkGet = 0x10104515;
     SYSCFG_GetChipInfo = 0x101061b9;
     irq_table_init = 0x1010677d;

@@ -3,6 +3,8 @@ SECTIONS
     DelayNop = 0x14b5;
     DelayUs = 0x14c3;
     DelayMs = 0x1505;
+    EFUSERead8 = 0x159d;
+    EFUSEWrite8 = 0x1661;
     IS_FPGA_VERIF = 0x8055c;
     CPU_ClkSet = 0x4a11;
     CPU_ClkGet = 0x4a25;

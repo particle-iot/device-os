@@ -32,6 +32,11 @@ typedef struct rtl_binary_header {
     uint64_t reserved1;
 } rtl_binary_header;
 
+typedef struct rtl_secure_boot_footer {
+    uint32_t reserved[12];
+    uint8_t sb_sig[64];
+} rtl_secure_boot_footer;
+
 static const uint32_t RTL_HEADER_SIGNATURE_HIGH = 0x96969999;
 static const uint32_t RTL_HEADER_SIGNATURE_LOW = 0xfc66cc3f;
 // XXX:

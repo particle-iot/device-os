@@ -28,6 +28,7 @@ extern uintptr_t link_rtl_xip_start;
 extern uintptr_t link_rtl_xip_size;
 extern uintptr_t link_rtl_ram_copy_start;
 extern uintptr_t link_rtl_ram_copy_size;
+extern uintptr_t link_rtl_secure_boot_footer;
 
 extern "C" void Reset_Handler(void);
 
@@ -36,7 +37,7 @@ __attribute__((used, section(".rtl_header_xip"))) const rtl_binary_header rtlHea
     .signature_low = RTL_HEADER_SIGNATURE_LOW,
     .size = (uint32_t)&link_rtl_xip_size,
     .load_address = (uint32_t)&link_rtl_xip_start,
-    .sboot_address = 0xffffffff,
+    .sboot_address = (uint32_t)&link_rtl_secure_boot_footer,
     .reserved0 = 0xffffffff,
     .reserved1 = 0xffffffffffffffff
 };
@@ -49,6 +50,13 @@ __attribute__((used, section(".rtl_header_ram"))) const rtl_binary_header rtlHea
     .sboot_address = 0xffffffff,
     .reserved0 = 0xffffffff,
     .reserved1 = 0xffffffffffffffff
+};
+
+__attribute__((used, section(".rtl_footer_signature"))) const rtl_secure_boot_footer rtlSecureFooter = {
+    .reserved = {0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+                 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff},
+    .sb_sig = {}
 };
 
 __attribute__((used, section(".rtl_header_ram_boot_export_table"))) BOOT_EXPORT_SYMB_TABLE rtlBootExportTable = {
