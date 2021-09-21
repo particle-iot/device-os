@@ -344,6 +344,44 @@ int SaraNcpClient::initParser(Stream* stream) {
         }
         return SYSTEM_ERROR_NONE;
     }, this));
+    // +UFWPREVAL: <progress%>
+    CHECK(parser_.addUrcHandler("+UFWPREVAL", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (SaraNcpClient*)data;
+        int respCode = -1;
+        char atResponse[32] = {};
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        int r = ::sscanf(atResponse, "+UFWPREVAL: %d", &respCode);
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        if (respCode >= 0 && respCode <= 100) {
+            self->firmwareInstallRespCodeR510_ = respCode;
+            self->firmwareUpdateR510_ = true;
+        }
+        LOG_DEBUG(TRACE, "UFWPREVAL matched: %d", self->firmwareInstallRespCodeR510_);
+
+        return SYSTEM_ERROR_NONE;
+    }, this));
+    // +UUFWINSTALL: <progress%>
+    CHECK(parser_.addUrcHandler("+UUFWINSTALL", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        const auto self = (SaraNcpClient*)data;
+        int respCode = -1;
+        char atResponse[32] = {};
+        CHECK_PARSER_URC(reader->readLine(atResponse, sizeof(atResponse)));
+        int r = ::sscanf(atResponse, "+UUFWINSTALL: %d", &respCode);
+        CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+        if (respCode >= 0 && respCode <= UUFWINSTALL_COMPLETE) {
+            self->firmwareInstallRespCodeR510_ = respCode;
+            if (respCode == UUFWINSTALL_COMPLETE) {
+                self->firmwareUpdateR510_ = false;
+            } else {
+                self->firmwareUpdateR510_ = true;
+            }
+        }
+        LOG_DEBUG(TRACE, "UUFWINSTALL matched: %d", self->firmwareInstallRespCodeR510_);
+
+        return SYSTEM_ERROR_NONE;
+    }, this));
 
     return SYSTEM_ERROR_NONE;
 }
