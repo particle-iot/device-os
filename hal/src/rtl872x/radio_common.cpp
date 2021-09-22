@@ -40,20 +40,8 @@ radio_antenna_type currAntenna = DEFAULT_ANTENNA;
 #if HAL_PLATFORM_RADIO_ANTENNA_INTERNAL
 
 int selectInternalAntenna() {
-#if PLATFORM_ID == PLATFORM_ARGON
-    hal_gpio_mode(ANTSW1, OUTPUT);
-    hal_gpio_mode(ANTSW2, OUTPUT);
-    hal_gpio_write(ANTSW1, 0);
-    hal_gpio_write(ANTSW2, 1);
-#elif PLATFORM_ID == PLATFORM_BORON
-    hal_gpio_mode(ANTSW1, OUTPUT);
-    hal_gpio_write(ANTSW1, 1);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    hal_gpio_mode(ANTSW1, OUTPUT);
-    hal_gpio_write(ANTSW1, 1);
-#else
-// #error "Unsupported platform"
-#endif
+    hal_gpio_mode(ANTSW, OUTPUT);
+    hal_gpio_write(ANTSW, 0);
     currAntenna = RADIO_ANT_INTERNAL;
     return SYSTEM_ERROR_NONE;
 }
@@ -63,21 +51,8 @@ int selectInternalAntenna() {
 #if HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
 
 int selectExtenalAntenna() {
-#if PLATFORM_ID == PLATFORM_ARGON
-    hal_gpio_mode(ANTSW1, OUTPUT);
-    hal_gpio_mode(ANTSW2, OUTPUT);
-    hal_gpio_write(ANTSW1, 1);
-    hal_gpio_write(ANTSW2, 0);
-#elif PLATFORM_ID == PLATFORM_BORON
-    hal_gpio_mode(ANTSW1, OUTPUT);
-    hal_gpio_write(ANTSW1, 0);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    hal_gpio_mode(ANTSW1, OUTPUT);
-    hal_gpio_write(ANTSW1, 0);
-// SoM platforms have only an external antenna
-#elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
-// #error "Unsupported platform"
-#endif
+    hal_gpio_mode(ANTSW, OUTPUT);
+    hal_gpio_write(ANTSW, 1);
     currAntenna = RADIO_ANT_EXTERNAL;
     return SYSTEM_ERROR_NONE;
 }
@@ -125,22 +100,7 @@ int initRadioAntenna() {
 }
 
 int disableRadioAntenna() {
-#if PLATFORM_ID == PLATFORM_ARGON
-    hal_gpio_mode(ANTSW1, PIN_MODE_NONE);
-    hal_gpio_mode(ANTSW2, PIN_MODE_NONE);
-#elif PLATFORM_ID == PLATFORM_BORON
-    // There is a logic inverter between the ANTSW1 and the antenna switch.
-    // There is a pull-down resistor on ANTSW1, so we can safely configure the ANTSW1 to PIN_MODE_NONE.
-    hal_gpio_mode(ANTSW1, PIN_MODE_NONE);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    // There is a logic inverter between the ANTSW1 and the antenna switch.
-    // There is neither pull-up nor pull-down resistor on ANTSW1, if we set it to float,
-    // it will consume high current (~6mA)
-    hal_gpio_mode(ANTSW1, INPUT_PULLDOWN);
-// SoM platforms have only an external antenna
-#elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
-// #error "Unsupported platform"
-#endif
+    hal_gpio_mode(ANTSW, PIN_MODE_NONE);
     return SYSTEM_ERROR_NONE;
 }
 
