@@ -23,15 +23,15 @@ x                                                                               
 +-----------------------------+ 0x1007B380 +-------------------------------+ 0x1007B380 +------------------------------------+
 | System backup RAM           |            | System backup RAM             |            | System backup RAM                  |
 +-----------------------------+ 0x1007B000 +-------------------------------+ 0x1007B000 +------------------------------------+
-|                             |            | Non-secure main stack         |            | Non-secure main stack              |
-|                             | 0x1007A000 +-------------------------------+ 0x1007A000 +------------------------------------+
-| Heap                        |            | User part static RAM          |            |                                    |
-|                             |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
+|                             |            | User part static RAM          |            |                                    |
+| Heap                        |            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                    |
 |                             |            |                               |            | Heap                               |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | Heap                          |            |                                    |
 | Bootloader static RAM       |            |                               |            |                                    |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
 | Bootloader RAM code         |            | System part 1 static RAM      |            | Monolithic firmware static RAM     |
++-----------------------------+ 0x10005000 +-------------------------------+ 0x10005000 +------------------------------------+
+| Non-secure stack            |            | Non-secure stack              |            | Non-secure stack                   |
 +-----------------------------+ 0x10004000 +-------------------------------+ 0x10004000 +------------------------------------+
 x                                                                                                                            x
 x                                                                                                                            x
@@ -96,7 +96,7 @@ platform_system_backup_ram_start = platform_system_backup_ram_end - platform_sys
  * platform_modular_firmware_stack_size is equal to 4K, which is defined in part1_build.mk and user_build.mk under modules/shared/rtl872x.
  * platform_modular_firmware_stack_start is the lowest address of the stack. */
 platform_modular_firmware_stack_size  = __STACKSIZE__;
-platform_modular_firmware_stack_end   = platform_system_backup_ram_start;
+platform_modular_firmware_stack_end   = platform_ram_start;
 platform_modular_firmware_stack_start = platform_modular_firmware_stack_end - platform_modular_firmware_stack_size;
 
 platform_modular_firmware_secure_stack_size  = __STACKSIZE__;
@@ -128,7 +128,7 @@ platform_bootloader_stack_start = platform_bootloader_stack_end - platform_bootl
  * platform_user_part_static_ram_size is decreased to that just fits the user part's .data and .bss sections during the user part final link stage.
  * platform_user_part_static_ram_start is passed to system part 1 at startup for calculating the actual END of the heap for modular firmware. */
 platform_user_part_static_ram_size  = DEFINED(platform_user_part_static_ram_size) ? platform_user_part_static_ram_size : 128K;
-platform_user_part_static_ram_end   = platform_modular_firmware_stack_start;
+platform_user_part_static_ram_end   = platform_system_backup_ram_start;
 platform_user_part_static_ram_start = platform_user_part_static_ram_end - platform_user_part_static_ram_size;
 
 /* User part PSRAM */

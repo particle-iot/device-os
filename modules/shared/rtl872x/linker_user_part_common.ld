@@ -20,12 +20,12 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
-    /* Dynalib table */
-    .dynalib :
+    /* Dynalib table. It has to be 8-bytes aligned, otherwise, the dynalib behave weirdly */
+    .dynalib : ALIGN(8)
     {
         link_psram_code_flash_start = LOADADDR( .dynalib );
         link_dynalib_flash_start = LOADADDR( .dynalib );
-        . = ALIGN(4);
+        
         link_psram_code_start = .;
         link_dynalib_start = .;
         KEEP (*(*.user_part_module))
@@ -44,8 +44,7 @@ SECTIONS
         /* Realtek specific */
         *(.image2.ram.text)
         *(.image2.ram.text.*)
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
+        *(.image2.net.ram.text)
         *(.ram.text)
         *(.ram.text.*)
 
@@ -122,8 +121,6 @@ SECTIONS
         /* This is used by the user part preinit function in order to initialize the .data secion */
         link_global_data_start = .;
         *(.data*)
-        *(.boot.ram.data) /* Realtek specific */
-        *(.boot.ram.data.*) /* Realtek specific */
         . = ALIGN(4);
         /* This is used by the user part preinit function in order to initialize the .data secion */
         link_global_data_end = .;
@@ -136,8 +133,6 @@ SECTIONS
         /* This is used by the user part preinit function in order to initialize the .bss secion */
         link_bss_location = .;
         *(.bss*)
-        *(.boot.ram.bss) /* Realtek specific */
-        *(.boot.ram.bss*) /* Realtek specific */
         *(COMMON)
         . = ALIGN(4);
         /* This is used by the user part preinit function in order to initialize the .bss secion */

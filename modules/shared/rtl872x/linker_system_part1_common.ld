@@ -54,11 +54,9 @@ SECTIONS
         /* Realtek specific */
         *(.image2.ram.text)
         *(.image2.ram.text.*)
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
+        *(.image2.net.ram.text)
         *(.ram.text)
         *(.ram.text.*)
-        *(.image2.net.ram.text)
         *(.BTTRACE)
 
         *(.gnu.linkonce.t.*)
@@ -153,8 +151,6 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_start = .;
         *(.data*)
-        *(.boot.ram.data) /* Realtek specific */
-        *(.boot.ram.data.*) /* Realtek specific */
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
@@ -167,8 +163,6 @@ SECTIONS
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_location = .;
         *(.bss*)
-        *(.boot.ram.bss) /* Realtek specific */
-        *(.boot.ram.bss*) /* Realtek specific */
         *(COMMON)
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
