@@ -72,6 +72,65 @@ static void DWT_Init(void)
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
+u32 app_mpu_nocache_init(void) {
+    mpu_region_config mpu_cfg;
+    u32 mpu_entry = 0;
+
+    /* close nocache section in the lib_wlan.a */
+    mpu_entry = mpu_entry_alloc();
+    mpu_cfg.region_base = (uint32_t)__ram_nocache_start__;
+    mpu_cfg.region_size = __ram_nocache_end__ - __ram_nocache_start__;
+    mpu_cfg.xn = MPU_EXEC_ALLOW;
+    mpu_cfg.ap = MPU_UN_PRIV_RW;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+    if (mpu_cfg.region_size >= 32) {
+        mpu_region_cfg(mpu_entry, &mpu_cfg);
+    }
+
+    /* close 216K irom_ns cache */
+    mpu_entry = mpu_entry_alloc();
+    mpu_cfg.region_base = 0x1010A000;
+    mpu_cfg.region_size = 0x10140000 - 0x1010A000;
+    mpu_cfg.xn = MPU_EXEC_ALLOW;
+    mpu_cfg.ap = MPU_UN_PRIV_RW;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+    mpu_region_cfg(mpu_entry, &mpu_cfg);
+
+    /* close 80K drom_ns cache */
+    mpu_entry = mpu_entry_alloc();
+    mpu_cfg.region_base = 0x101C0000;
+    mpu_cfg.region_size = 0x101D4000 - 0x101C0000;
+    mpu_cfg.xn = MPU_EXEC_ALLOW;
+    mpu_cfg.ap = MPU_UN_PRIV_RW;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+    mpu_region_cfg(mpu_entry, &mpu_cfg);
+
+    /* set 1KB retention ram no-cache */
+    mpu_entry = mpu_entry_alloc();
+    mpu_cfg.region_base = 0x000C0000;
+    mpu_cfg.region_size = 0x400;
+    mpu_cfg.xn = MPU_EXEC_ALLOW;
+    mpu_cfg.ap = MPU_UN_PRIV_RW;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+    mpu_region_cfg(mpu_entry, &mpu_cfg);
+
+    /* set No-Security PSRAM Memory Write-Back */
+    mpu_entry = mpu_entry_alloc();
+    mpu_cfg.region_base = 0x02000000;
+    mpu_cfg.region_size = 0x400000;
+    mpu_cfg.xn = MPU_EXEC_ALLOW;
+    mpu_cfg.ap = MPU_UN_PRIV_RW;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_WB_T_RWA;
+    mpu_region_cfg(mpu_entry, &mpu_cfg);
+
+    return 0;
+}
+
 /**
  * @brief  Configures Main system clocks & power.
  * @param  None
@@ -124,9 +183,15 @@ void Set_System(void)
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     hw_rtl_init_psram();
 #else
+    // Disable cache
     Cache_Enable(0);
+
+    // Enable MPU and configure the nocache region
+    mpu_init();
+    app_mpu_nocache_init();
+
+    // Enable cache
     Cache_Enable(1);
-    DCache_Disable();
 #endif
     ICache_Enable();
 }
