@@ -74,6 +74,7 @@ public:
     virtual int getMtu() override;
     virtual int urcs(bool enable) override;
     virtual int startNcpFwUpdate(bool update) override;
+    virtual int getUbloxFirmwareVersion(uint32_t* version) override;
 
 private:
     AtParser parser_;
@@ -110,9 +111,9 @@ private:
     system_tick_t imsiCheckTime_;
     system_tick_t registeredTime_;
     system_tick_t powerOnTime_;
-    unsigned int fwVersion_ = 0;
-    bool memoryIssuePresent_;
-    bool oldFirmwarePresent_;
+    uint32_t fwVersion_ = 0;
+    bool R410MemoryIssuePresent_;
+    bool R410OldFirmwarePresent_;
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
@@ -163,7 +164,6 @@ private:
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
     void waitForPowerOff();
-    int getAppFirmwareVersion();
     int waitAtResponseFromPowerOn(ModemState& modemState);
     int disablePsmEdrx();
     int checkSimReadiness(bool checkForRfReset = false);

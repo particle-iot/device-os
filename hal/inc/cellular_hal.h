@@ -267,6 +267,11 @@ cellular_result_t cellular_process(void* reserved, void* reserved1);
  */
 int cellular_start_ncp_firmware_update(bool update = false, void* reserved = NULL);
 
+/**
+ * Get u-blox firmware version as a uint32_t
+ */
+int cellular_get_ublox_firmware_version(uint32_t* version, void* reserved = NULL);
+
 #ifdef __cplusplus
 }
 #endif

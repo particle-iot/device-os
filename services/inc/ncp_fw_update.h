@@ -195,11 +195,10 @@ private:
     static int cbUUHTTPCR_(int type, const char* buf, int len, HTTPSresponse* data);
     static int cbUHTTPER_(int type, const char* buf, int len, HTTPSresponse* data);
     static int cbULSTFILE_(int type, const char* buf, int len, int* data);
-    static int cbATI9_(int type, const char* buf, int len, int* val);
     static int cbUPSND_(int type, const char* buf, int len, int* data);
     static int cbCOPS_(int type, const char* buf, int len, int* data);
     static int httpRespCallback_(AtResponseReader* reader, const char* prefix, void* data);
-    int getAppFirmwareVersion_();
+    uint32_t getAppFirmwareVersion_();
     int setupHTTPSProperties_();
     void cooldown_(system_tick_t timer);
     void updateCooldown_();

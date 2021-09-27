@@ -92,11 +92,12 @@ inline system_tick_t millis() {
 const auto UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2 = 921600;
 const auto UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4 = 460800;
-const auto UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE = 200;
-const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN = 200;
-const auto UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX = 203;
-const auto UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01 = 204;
-const auto UBLOX_NCP_R4_APP_FW_VERSION_0512 = 219;
+const uint32_t UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE = 5060200;
+const uint32_t UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN = 5060200;
+const uint32_t UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX = 5080204; // less than this
+const uint32_t UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01 = 5080204;
+const uint32_t UBLOX_NCP_R4_APP_FW_VERSION_0512 = 5120219;
+const uint32_t UBLOX_ENG_VERSION = 100000000;
 
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -179,11 +180,11 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     powerOnTime_ = 0;
     registeredTime_ = 0;
     if (ncpId() == PLATFORM_NCP_SARA_R410) {
-        memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
-        oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
+        R410MemoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
+        R410OldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
     } else {
-        memoryIssuePresent_ = false;
-        oldFirmwarePresent_ = false;
+        R410MemoryIssuePresent_ = false;
+        R410OldFirmwarePresent_ = false;
     }
     parserError_ = 0;
     ready_ = false;
@@ -536,7 +537,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
 
-    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         if ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
             const int windowCount = ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) / UBLOX_NCP_R4_WINDOW_SIZE_MS);
             lastWindow_ += UBLOX_NCP_R4_WINDOW_SIZE_MS * windowCount;
@@ -559,7 +560,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
         LOG_DEBUG(WARN, "Remote side flow control");
         err = 0;
     }
-    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         bytesInWindow_ += size;
     }
     if (err) {
@@ -665,7 +666,7 @@ int SaraNcpClient::getImei(char* buf, size_t size) {
 }
 
 int SaraNcpClient::getTxDelayInDataChannel() {
-    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         return UBLOX_NCP_R4_WINDOW_SIZE_MS * 2;
     }
     return SYSTEM_ERROR_NONE;
@@ -1156,7 +1157,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
                 // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
                 // UMNOPROF=100 available. Default to UMNOPROF=0 in that case.
-                if (oldFirmwarePresent_) {
+                if (R410OldFirmwarePresent_) {
                     if (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT) {
                         break;
                     } else {
@@ -1169,7 +1170,8 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             // KORE AT&T or 3rd Party SIM
             else {
                 // Hard code ATT for R410 05.12 firmware versions or R510 Kore AT&T SIMs
-                if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512 || ncpId() == PLATFORM_NCP_SARA_R510) {
+                if ((ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_0512)
+                        || ncpId() == PLATFORM_NCP_SARA_R510) {
                     if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
                         newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
                     }
@@ -1477,33 +1479,61 @@ int SaraNcpClient::changeBaudRate(unsigned int baud) {
     return serial_->setBaudRate(baud);
 }
 
-int SaraNcpClient::getAppFirmwareVersion() {
+// public
+int SaraNcpClient::getUbloxFirmwareVersion(uint32_t* version) {
+    const NcpClientLock lock(this);
+    if (!version) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
     // ATI9 (get version and app version)
     // example output
-    // v113: "08.90,A01.13" G350 (newer)
-    //   v2: "08.70,A00.02" G350 (older)
-    // v200: "L0.0.00.00.05.06,A.02.00" (R410 memory issue)
-    // v202: "L0.0.00.00.05.07,A.02.02" (R410 demonstrator)
-    // v204: "L0.0.00.00.05.08,A.02.04" (R410 maintenance)
-    //   v1: "02.06,A00.01" (R510)
-    auto resp = parser_.sendCommand("ATI9");
+    // "02.05,A00.01" R510 (older)               - v2050001
+    // "02.06,A00.01" R510 (newer)               - v2060001
+    // "03.15_ENG0001,A00.01" (engineering)      - v103150001
+    // "03.15,A00.01" (newest)                   - v3150001
+    // "08.70,A00.02" G350 (older)               - v8700002
+    // "08.90,A01.13" G350 (newer)               - v8900113
+    // "L0.0.00.00.05.06,A.02.00" (memory issue) - v5060200
+    // "L0.0.00.00.05.07,A.02.02" (demonstrator) - v5070202
+    // "L0.0.00.00.05.08,A.02.04" (maintenance)  - v5080204
+    int major1 = 0;
+    int minor1 = 0;
+    int major2 = 0;
+    int minor2 = 0;
     int ver = 0;
-    int major = 0;
-    int minor = 0;
-    int n = CHECK_PARSER(resp.scanf("%*[^,],%*[A.]%d.%d", &major, &minor));
+    char eng[10] = {};
+    char atResponse[64] = {};
+    auto resp = parser_.sendCommand("ATI9");
+    CHECK_PARSER(resp.readLine(atResponse, sizeof(atResponse)));
+    LOG(INFO, "atResponse:[%s]", atResponse);
+    if (::sscanf(atResponse, "%*[\r\nL0.0.00.00.]%d.%d%*[,A.]%d.%d", &major1, &minor1, &major2, &minor2) == 4) {
+        ver = major1 * 1000000 + minor1 * 10000 + major2 * 100 + minor2;
+    } else if (::sscanf(atResponse, "%*[\r\nL0.0.00.00.]%d.%d%8[^,]%*[,A.]%d.%d", &major1, &minor1, eng, &major2, &minor2) == 5) {
+        ver = major1 * 1000000 + minor1 * 10000 + major2 * 100 + minor2;
+        if (strstr(eng, "_ENG")) {
+            ver += UBLOX_ENG_VERSION; // Add leading 1 for _ENGxxxx firmware
+        }
+    }
     int r = resp.readResult();
-    if (r == AtResponse::OK && n == 2) {
-        ver = major * 100 + minor;
+    if (r != AtResponse::OK) {
+        ver = 0;
     }
     LOG(TRACE, "App firmware: %d", ver); // will be reported as 0 in case of error
-    return ver;
+    *version = ver;
+
+    return SYSTEM_ERROR_NONE;
 }
 
 int SaraNcpClient::initReady(ModemState state) {
-    fwVersion_ = getAppFirmwareVersion();
+    if (getUbloxFirmwareVersion(&fwVersion_) != SYSTEM_ERROR_NONE) {
+        fwVersion_ = 0;
+    }
+    CHECK_TRUE(fwVersion_ != 0, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED); // XXX: The modem may get into a bad state without knowing what version we are operating with
+
     // L0.0.00.00.05.06,A.02.00 has a memory issue
-    memoryIssuePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE) : false;
-    oldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
+    R410MemoryIssuePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE) : false;
+    R410OldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard(state));
     // Make sure flow control is enabled as well
@@ -1517,8 +1547,9 @@ int SaraNcpClient::initReady(ModemState state) {
             CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
         } else {
             // There is a set of other revisions which do not have hardware flow control
-            if (!(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
-                    fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
+            if (ncpId() == PLATFORM_NCP_SARA_R410 &&
+                    !(fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MIN &&
+                    fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX)) {
                 // Change the baudrate to 460800
                 // NOTE: ignoring AT errors just in case to accommodate for some revisions
                 // potentially not supporting anything other than 115200
@@ -2111,7 +2142,7 @@ int SaraNcpClient::enterDataMode() {
 }
 
 int SaraNcpClient::getMtu() {
-    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         return UBLOX_NCP_R4_NO_HW_FLOW_CONTROL_MTU;
     }
     return 0;
@@ -2224,7 +2255,7 @@ void SaraNcpClient::resetRegistrationState() {
 void SaraNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
         if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
-            if (memoryIssuePresent_ && connState_ != NcpConnectionState::CONNECTED) {
+            if (R410MemoryIssuePresent_ && connState_ != NcpConnectionState::CONNECTED) {
                 registeredTime_ = millis(); // start registered timer for memory issue power off delays
             }
             connectionState(NcpConnectionState::CONNECTED);
@@ -2507,7 +2538,7 @@ int SaraNcpClient::modemPowerOff() {
             // If memory issue is present, ensure we don't force a power off too soon
             // to avoid hitting the 124 day memory housekeeping issue
             // TODO: Add ATOK check and AT+CPWROFF command attempt first?
-            if (memoryIssuePresent_) {
+            if (R410MemoryIssuePresent_) {
                 waitForPowerOff();
             }
             // R410
@@ -2606,7 +2637,7 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
     } else {
         // If memory issue is present, ensure we don't force a power off too soon
         // to avoid hitting the 124 day memory housekeeping issue
-        if (memoryIssuePresent_) {
+        if (R410MemoryIssuePresent_) {
             waitForPowerOff();
         }
         // R410 - Low pulse for 10s

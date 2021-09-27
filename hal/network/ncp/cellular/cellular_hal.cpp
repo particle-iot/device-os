@@ -608,3 +608,14 @@ int cellular_start_ncp_firmware_update(bool update, void* reserved) {
     CHECK(client->startNcpFwUpdate(update));
     return SYSTEM_ERROR_NONE;
 }
+
+int cellular_get_ublox_firmware_version(uint32_t* version, void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CHECK(client->getUbloxFirmwareVersion(version));
+    return SYSTEM_ERROR_NONE;
+}
+
+

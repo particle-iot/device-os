@@ -863,27 +863,6 @@ int NcpFwUpdate::cbULSTFILE_(int type, const char* buf, int len, int* data)
 }
 
 // static
-int NcpFwUpdate::cbATI9_(int type, const char* buf, int len, int* val)
-{
-    int major1 = 0;
-    int minor1 = 0;
-    int major2 = 0;
-    int minor2 = 0;
-    char eng[10] = {0};
-    if (val && (type == TYPE_PLUS || type == TYPE_UNKNOWN)) {
-        if (sscanf(buf, "%*[\r\nL0.0.00.00.]%d.%d%*[,A.]%d.%d", &major1, &minor1, &major2, &minor2) == 4) {
-            *val = major1 * 1000000 + minor1 * 10000 + major2 * 100 + minor2;
-        } else if (sscanf(buf, "%*[\r\nL0.0.00.00.]%d.%d%8[^,]%*[,A.]%d.%d", &major1, &minor1, eng, &major2, &minor2) == 5) {
-            *val = major1 * 1000000 + minor1 * 10000 + major2 * 100 + minor2;
-            if (strstr(eng, "_ENG")) {
-                *val += NCP_FW_UBLOX_R510_ENG_VERSION; // Add leading 1 for _ENGxxxx firmware
-            }
-        }
-    }
-    return WAIT;
-}
-
-// static
 int NcpFwUpdate::cbUPSND_(int type, const char* buf, int len, int* data)
 {
     int val = 0;
@@ -917,21 +896,13 @@ int NcpFwUpdate::cbCOPS_(int type, const char* buf, int len, int* data)
     return WAIT;
 }
 
-int NcpFwUpdate::getAppFirmwareVersion_() {
-    // ATI9 (get version and app version)
-    // example output
-    // "02.05,A00.01" R510 (older)               - v2050001
-    // "02.06,A00.01" R510 (newer)               - v2060001
-    // "03.15_ENG0001,A00.01" (engineering)      - v103150001
-    // "03.15,A00.01" (newest)                   - v3150001
-    // "08.70,A00.02" G350 (older)               - v8700002
-    // "08.90,A01.13" G350 (newer)               - v8900113
-    // "L0.0.00.00.05.06,A.02.00" (memory issue) - v5060200
-    // "L0.0.00.00.05.07,A.02.02" (demonstrator) - v5070202
-    // "L0.0.00.00.05.08,A.02.04" (maintenance)  - v5080204
-    int appVer = 0;
-    cellular_command((_CALLBACKPTR_MDM)cbATI9_, (void*)&appVer, 10000, "ATI9\r\n");
-    return appVer;
+uint32_t NcpFwUpdate::getAppFirmwareVersion_() {
+    uint32_t version = 0;
+    if (cellular_get_ublox_firmware_version(&version, nullptr) != SYSTEM_ERROR_NONE) {
+        return 0;
+    }
+
+    return version;
 }
 
 int NcpFwUpdate::setupHTTPSProperties_() {

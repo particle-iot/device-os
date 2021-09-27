@@ -1536,6 +1536,10 @@ int QuectelNcpClient::startNcpFwUpdate(bool update) {
     return 0;
 }
 
+int QuectelNcpClient::getUbloxFirmwareVersion(uint32_t* version) {
+    return 0;
+}
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
