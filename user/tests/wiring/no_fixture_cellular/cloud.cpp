@@ -42,7 +42,8 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
     });
     // Pull the rug, this should cause a socket error on recv/send
 #if HAL_PLATFORM_NCP_AT
-    assertEqual((int)RESP_OK, Cellular.command("AT+CFUN=0,0\r\n"));
+    // CFUN=0 is the same as CFUN=0,0 for R410.  Done this way because R510 errors with CFUN=0,0
+    assertEqual((int)RESP_OK, Cellular.command("AT+CFUN=0\r\n"));
     // Force a publish just in case
     (void)Particle.publish("test", "test");
     assertEqual((int)RESP_OK, Cellular.command("AT+CFUN=1,0\r\n"));
