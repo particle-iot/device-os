@@ -454,4 +454,8 @@ cellular_result_t cellular_process(void* reserved, void* reserved1)
     return electronMDM.process();
 }
 
+int cellular_start_ncp_firmware_update(bool update, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

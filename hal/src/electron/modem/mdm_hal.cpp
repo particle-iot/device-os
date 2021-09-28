@@ -41,6 +41,7 @@
 #include <mutex>
 #include "net_hal.h"
 #include <limits>
+#include "platform_ncp.h"
 
 std::recursive_mutex mdm_mutex;
 
@@ -851,11 +852,13 @@ bool MDMParser::_powerOn(void)
         _init = true;
     }
 
-    MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     bool continue_cancel = false;
     bool retried_after_reset = false;
-
     int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
+
+    auto otp_ncp_id = platform_primary_ncp_identifier();
+    // _dev.dev = cellular_dev_from_ncp(otp_ncp_id);
+    LOG(INFO, "Powering modem on, ncpId: 0x%02x", otp_ncp_id);
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
         HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);

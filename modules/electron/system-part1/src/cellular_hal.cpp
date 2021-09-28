@@ -8,3 +8,4 @@
 #include "../src/electron/inet_hal_new.cpp"
 #include "../src/electron/socket_hal.cpp"
 #include "../shared/cellular_sig_perc_mapping.cpp"
+#include "../src/electron/platform_ncp_electron.cpp"
