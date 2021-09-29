@@ -67,7 +67,7 @@
 #define Wiring_SetupButtonUX HAL_PLATFORM_SETUP_BUTTON_UX
 #endif
 
-#if HAL_PLATFORM_NRF52840
+#if HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1
 //#ifdef DEBUG_BUILD
