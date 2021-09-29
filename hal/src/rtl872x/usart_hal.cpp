@@ -36,11 +36,6 @@ extern "C" {
 #endif
 
 
-inline uint32_t pinToRtl(hal_pin_t pin) {
-    const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
-    return hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
-}
-
 class Usart {
 public:
     struct Config {
@@ -93,22 +88,22 @@ public:
         }
         // Configur TX/RX pins
         if (uartInstance == UART2_DEV) {
-            Pinmux_Config(pinToRtl(txPin_), PINMUX_FUNCTION_LOGUART);
-            Pinmux_Config(pinToRtl(rxPin_), PINMUX_FUNCTION_LOGUART);
+            Pinmux_Config(hal_pin_to_rtl_pin(txPin_), PINMUX_FUNCTION_LOGUART);
+            Pinmux_Config(hal_pin_to_rtl_pin(rxPin_), PINMUX_FUNCTION_LOGUART);
         } else {
-            Pinmux_Config(pinToRtl(txPin_), PINMUX_FUNCTION_UART);
-            Pinmux_Config(pinToRtl(rxPin_), PINMUX_FUNCTION_UART);
+            Pinmux_Config(hal_pin_to_rtl_pin(txPin_), PINMUX_FUNCTION_UART);
+            Pinmux_Config(hal_pin_to_rtl_pin(rxPin_), PINMUX_FUNCTION_UART);
         }
-        PAD_PullCtrl(pinToRtl(txPin_), GPIO_PuPd_UP);
-        PAD_PullCtrl(pinToRtl(rxPin_), GPIO_PuPd_UP);
+        PAD_PullCtrl(hal_pin_to_rtl_pin(txPin_), GPIO_PuPd_UP);
+        PAD_PullCtrl(hal_pin_to_rtl_pin(rxPin_), GPIO_PuPd_UP);
         // Configure CTS/RTS pins
         if (ctsPin_ != PIN_INVALID) {
-            Pinmux_Config(pinToRtl(ctsPin_), PINMUX_FUNCTION_UART_RTSCTS);
-            PAD_PullCtrl(pinToRtl(ctsPin_), GPIO_PuPd_UP);
+            Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_UART_RTSCTS);
+            PAD_PullCtrl(hal_pin_to_rtl_pin(ctsPin_), GPIO_PuPd_UP);
         }
         if (rtsPin_ != PIN_INVALID) {
-            Pinmux_Config(pinToRtl(rtsPin_), PINMUX_FUNCTION_UART_RTSCTS);
-            PAD_PullCtrl(pinToRtl(rtsPin_), GPIO_PuPd_UP);
+            Pinmux_Config(hal_pin_to_rtl_pin(rtsPin_), PINMUX_FUNCTION_UART_RTSCTS);
+            PAD_PullCtrl(hal_pin_to_rtl_pin(rtsPin_), GPIO_PuPd_UP);
         }
         UART_InitTypeDef uartInitStruct = {};
         UART_StructInit(&uartInitStruct);
@@ -193,13 +188,13 @@ public:
             RCC_PeriphClockCmd(APBPeriph_UART0, APBPeriph_UART0_CLOCK, DISABLE);
         }
         // Do not change the pull ability to not mess up the peer device.
-        Pinmux_Config(pinToRtl(txPin_), PINMUX_FUNCTION_GPIO);
-        Pinmux_Config(pinToRtl(rxPin_), PINMUX_FUNCTION_GPIO);
+        Pinmux_Config(hal_pin_to_rtl_pin(txPin_), PINMUX_FUNCTION_GPIO);
+        Pinmux_Config(hal_pin_to_rtl_pin(rxPin_), PINMUX_FUNCTION_GPIO);
         if (ctsPin_ != PIN_INVALID) {
-            Pinmux_Config(pinToRtl(ctsPin_), PINMUX_FUNCTION_GPIO);
+            Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_GPIO);
         }
         if (rtsPin_ != PIN_INVALID) {
-            Pinmux_Config(pinToRtl(rtsPin_), PINMUX_FUNCTION_GPIO);
+            Pinmux_Config(hal_pin_to_rtl_pin(rtsPin_), PINMUX_FUNCTION_GPIO);
         }
         config_ = {};
         rxBuffer_.reset();

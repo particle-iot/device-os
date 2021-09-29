@@ -93,11 +93,9 @@ void hal_interrupt_init(void) {
 
 void hal_interrupt_uninit(void) {
     // FIXME: when io expender is used, the TOTAL_PINS includes the pins on the expender
-    hal_pin_info_t* pinInfos = hal_pin_map();
     for (int i = 0; i < TOTAL_PINS; i++) {
         if (interruptsConfig[i].state == INT_STATE_ENABLED) {
-            const hal_pin_info_t* pinInfo = pinInfos + i;
-            const uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+            const uint32_t rtlPin = hal_pin_to_rtl_pin(i);
             GPIO_INTMode(rtlPin, DISABLE, 0, 0, 0);
             GPIO_INTConfig(rtlPin, DISABLE);
             interruptsConfig[i].state = INT_STATE_DISABLED;
@@ -114,7 +112,7 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (pinInfo->type == HAL_PIN_TYPE_MCU) {
 #endif
-        const uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+        const uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
 
         if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
                 (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
@@ -170,12 +168,12 @@ int hal_interrupt_detach(uint16_t pin) {
 
 int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
     CHECK_TRUE(hal_pin_is_valid(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
-    hal_pin_info_t* pinInfo = hal_pin_map() + pin;
-
+    
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    hal_pin_info_t* pinInfo = hal_pin_map() + pin;
     if (pinInfo->type == HAL_PIN_TYPE_MCU) {
 #endif
-        const uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+        const uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
         GPIO_INTMode(rtlPin, DISABLE, 0, 0, 0);
         GPIO_INTConfig(rtlPin, DISABLE);
         interruptsConfig[pin].state = INT_STATE_DISABLED;
@@ -226,13 +224,11 @@ void hal_interrupt_suspend(void) {
 }
 
 void hal_interrupt_restore(void) {
-    hal_pin_info_t* pinInfos = hal_pin_map();
     for (int i = 0; i < TOTAL_PINS; i++) {
         if (interruptsConfig[i].state == INT_STATE_SUSPENDED) {
             uint32_t trigger = 0, polarity = 0;
             parseMode(interruptsConfig[i].mode, &trigger, &polarity);
-            const hal_pin_info_t* pinInfo = pinInfos + i;
-            const uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+            const uint32_t rtlPin = hal_pin_to_rtl_pin(i);
             GPIO_INTMode(rtlPin, ENABLE, trigger, polarity, GPIO_INT_DEBOUNCE_ENABLE);
             GPIO_INTConfig(rtlPin, ENABLE);
             interruptsConfig[i].state = INT_STATE_ENABLED;

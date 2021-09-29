@@ -17,8 +17,9 @@
 
 #include "pinmap_hal.h"
 
-uint32_t hal_pin_to_rtl_pin(uint32_t port, uint32_t pin) {
-    return ((port << 5) | pin) & 0x0000003F;
+uint32_t hal_pin_to_rtl_pin(hal_pin_t pin) {
+    const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
+    return ((pinInfo->gpio_port << 5) | pinInfo->gpio_pin) & 0x0000003F;
 }
 
 PinFunction hal_pin_validate_function(hal_pin_t pin, PinFunction pin_function) {

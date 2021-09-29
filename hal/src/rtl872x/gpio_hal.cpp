@@ -49,7 +49,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         RCC_PeriphClockCmd(APBPeriph_GPIO, APBPeriph_GPIO_CLOCK, ENABLE);
 #endif
 
-        uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+        uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
 
         if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
                 (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
@@ -145,7 +145,7 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (pinInfo->type == HAL_PIN_TYPE_MCU) {
 #endif
-        uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+        uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
         // TODO: PWM have conflict with GPIO OUTPUT mode on Realtek
         if (pinInfo->pin_func == PF_PWM) {
             hal_gpio_mode(pin, OUTPUT);
@@ -176,7 +176,7 @@ int32_t hal_gpio_read(hal_pin_t pin) {
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (pinInfo->type == HAL_PIN_TYPE_MCU) {
 #endif
-        uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+        uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
 
         // TODO: verify reading output
         if ((pinInfo->pin_mode == INPUT) ||

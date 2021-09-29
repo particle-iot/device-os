@@ -52,7 +52,7 @@ typedef struct hal_pin_info_t {
 
 #include "pinmap_defines.h"
 
-uint32_t hal_pin_to_rtl_pin(uint32_t port, uint32_t pin);
+uint32_t hal_pin_to_rtl_pin(hal_pin_t pin);
 
 #ifdef __cplusplus
 }

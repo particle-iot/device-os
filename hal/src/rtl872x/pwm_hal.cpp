@@ -142,7 +142,7 @@ int pwmPinInit(uint16_t pin) {
         RTIM_CCStructInit(&ccInitStruct);
         RTIM_CCxInit(pwmInfo[instance].tim, &ccInitStruct, channel);
 
-        const uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+        const uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
         if (instance == KM0_PWM_INSTANCE) {
             Pinmux_Config(rtlPin, PINMUX_FUNCTION_PWM_LP);
         } else {
@@ -161,7 +161,7 @@ int pwmPinDeinit(uint16_t pin) {
     const uint8_t channel = pinInfo->pwm_channel;
 
     if (pwmInfo[instance].pins[channel] != PIN_INVALID) {
-        const uint32_t rtlPin = hal_pin_to_rtl_pin(pinInfo->gpio_port, pinInfo->gpio_pin);
+        const uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
         Pinmux_Config(rtlPin, PINMUX_FUNCTION_GPIO);
 
         pwmInfo[instance].pins[channel] = PIN_INVALID;
