@@ -1271,7 +1271,7 @@ bool HAL_Feature_Get(HAL_Feature feature)
             uint32_t value = 0;
             dct_read_app_data_copy(DCT_EXT_LOW_SPEED_CLOCK_DISABLE_OFFSET, &value, sizeof(value));
             return value == DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SET;
-     	}
+        }
 #endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
     }
     return false;

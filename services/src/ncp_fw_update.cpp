@@ -19,7 +19,7 @@
     R510 Firmware Update Background Check:
     =====================
     1.  Baked into sara_ncp_client.cpp init process
-    2.  When ATI9 is used to determine the modem version (thus, only when modem is on), 
+    2.  When ATI9 is used to determine the modem version (thus, only when modem is on),
         check if there is an update firmware version available.
     3.  Set a flag for Cellular.updatePending() if update available.
 
@@ -150,9 +150,9 @@ void NcpFwUpdate::init(NcpFwUpdateCallbacks* callbacks) {
             ncpFwUpdateState_ = FW_UPDATE_IDLE_STATE;
             if (ncpFwUpdateData_.var.status != FW_UPDATE_IDLE_STATUS) {
                 LOG(INFO, "Firmware update finished, %s status: %d", (ncpFwUpdateData_.var.status == FW_UPDATE_SUCCESS_STATUS) ? "success" : "failed", ncpFwUpdateData_.var.status);
-                
+
                 ncpFwUpdateStatusDiagnostics_ = ncpFwUpdateData_.var.status;
-                
+
                 ncpFwUpdateData_.var.status = FW_UPDATE_IDLE_STATUS;
                 saveNcpFwUpdateData_();
             }
@@ -218,7 +218,7 @@ int NcpFwUpdate::checkUpdate(const NcpFwUpdateConfig* userConfigData) {
     return 0;
 }
 
-void NcpFwUpdate::validateNcpFwUpdateData_() { 
+void NcpFwUpdate::validateNcpFwUpdateData_() {
     if (ncpFwUpdateData_.var.header != NCP_FW_DATA_HEADER || ncpFwUpdateData_.var.footer != NCP_FW_DATA_FOOTER) {
         memset(ncpFwUpdateData_.data, 0, sizeof(ncpFwUpdateData_.data));
         ncpFwUpdateData_.var.header = NCP_FW_DATA_HEADER;
@@ -241,7 +241,7 @@ int NcpFwUpdate::saveNcpFwUpdateData_() {
     } tempData;
     int result = SystemCache::instance().get(SystemCacheKey::NCP_FW_UPDATE_DATA, tempData.data, sizeof(tempData.data));
     if (result != sizeof(tempData.data) || /* memcmp(tempData.data, ncpFwUpdateData_.data, sizeof(tempData.data) != 0)) { // better but not working */
-            tempData.var.header != ncpFwUpdateData_.var.header || 
+            tempData.var.header != ncpFwUpdateData_.var.header ||
             tempData.var.footer != ncpFwUpdateData_.var.footer ||
             tempData.var.state  != ncpFwUpdateData_.var.state ||
             tempData.var.status != ncpFwUpdateData_.var.status ||
@@ -606,7 +606,7 @@ ccfdc48c0a45198d6e168b30d0740959  SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S
 
         case FW_UPDATE_INSTALL_CELL_DISCONNECTING_STATE:
         {
-            // FIXME: This needs to wait for 
+            // FIXME: This needs to wait for
             // 0000091895 [ncp.at] TRACE: < +CGEV: ME PDN DEACT 1
             // 0000091896 [ncp.at] TRACE: < +CGEV: ME DETACH
             // 0000091896 [ncp.at] TRACE: < +UUPSDD: 0
@@ -632,7 +632,7 @@ ccfdc48c0a45198d6e168b30d0740959  SARA-R510S-00B-01_FW02.06_A00.01_IP_SARA-R510S
             if (RESP_OK == cellular_command(nullptr, nullptr, 60000, "AT+UFWINSTALL=1,115200\r\n")) {
                 ncpFwUpdateData_.var.state = FW_UPDATE_INSTALL_STATE_WAITING;
                 ncpFwUpdateData_.var.status = ncpFwUpdateStatus_;
-                saveNcpFwUpdateData_();                
+                saveNcpFwUpdateData_();
                 // Wait for AT interface to become unresponsive, since we need to rely on that to break out of our install later
                 atResponsive_ = 1;
                 while (atResponsive_ && HAL_Timer_Get_Milli_Seconds() - atOkCheckTimer_ < NCP_FW_MODEM_INSTALL_START_TIMEOUT) {
