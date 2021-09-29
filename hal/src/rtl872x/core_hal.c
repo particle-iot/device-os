@@ -75,6 +75,7 @@ extern uintptr_t link_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
 extern uintptr_t link_user_part_flash_end[];
+extern uintptr_t link_module_info_crc_end[];
 
 static void* new_heap_end = &link_heap_location_end;
 
@@ -87,6 +88,7 @@ void* module_user_pre_init();
 
 extern void* dynalib_table_location; // user part dynalib location
 extern module_bounds_t module_user;
+extern module_bounds_t module_ota;
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -441,6 +443,11 @@ void HAL_Core_Config(void) {
     address = address - 4/*CRC*/ - sizeof(module_info_suffix_t);
 
     module_user.start_address = *((uint32_t*)address); // module start address
+
+    // OTA region
+    module_ota.end_address = module_user.start_address - 1;
+    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFE000) + 0x1000; // Not necessary, 4K aligned
+    SPARK_ASSERT(module_ota.end_address >= module_ota.start_address + 0x200000); // Should have 2M for the OTA region at the least
 
     address += 4;
     dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib table in flash

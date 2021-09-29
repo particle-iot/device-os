@@ -20,7 +20,7 @@ const module_bounds_t module_bootloader = {
 
 // OTA region, to be updated.
 module_bounds_t module_ota = {
-    .maximum_size = 0,
+    .maximum_size = 0x200000, //2M
     .start_address = 0,
     .end_address = 0,
     .module_function = MODULE_FUNCTION_NONE,
