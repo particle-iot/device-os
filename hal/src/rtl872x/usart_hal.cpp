@@ -58,6 +58,7 @@ public:
 
     int init(const hal_usart_buffer_config_t& conf) {
         if (isEnabled()) {
+            flush();
             CHECK(end());
         }
         if (isConfigured()) {
@@ -82,6 +83,7 @@ public:
         CHECK_TRUE(isConfigured(), SYSTEM_ERROR_INVALID_STATE);
         CHECK_TRUE(validateConfig(conf.config), SYSTEM_ERROR_INVALID_ARGUMENT);
         if (isEnabled()) {
+            flush();
             end();
         }
         auto uartInstance = uartTable_[index_].UARTx;
@@ -227,46 +229,15 @@ public:
         return r;
     }
 
-    void startTransmission() {
-        size_t consumable;
-        auto uartInstance = uartTable_[index_].UARTx;
-        if (!transmitting_ && (consumable = txBuffer_.consumable())) {
-            transmitting_ = true;
-            if (uartInstance != UART2_DEV) {
-                if (txDmaInitStruct_.GDMA_ChNum == 0xFF) {
-                    transmitting_ = false;
-                    return;
-                }
-                consumable = std::min(MAX_DMA_BLOCK_SIZE, consumable);
-                auto ptr = txBuffer_.consume(consumable);
-
-                DCache_CleanInvalidate((uint32_t)ptr, consumable);
-                
-                if (((consumable & 0x03) == 0) && (((uint32_t)(ptr) & 0x03) == 0)) {
-                    // 4-bytes aligned, move 4 bytes each transfer
-                    txDmaInitStruct_.GDMA_SrcMsize   = MsizeOne;
-                    txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthFourBytes;
-                    txDmaInitStruct_.GDMA_BlockSize = consumable >> 2;
-                } else {
-                    // Move 1 byte each transfer
-                    txDmaInitStruct_.GDMA_SrcMsize   = MsizeFour;
-                    txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
-                    txDmaInitStruct_.GDMA_BlockSize = consumable;
-                }
-                txDmaInitStruct_.GDMA_SrcAddr = (uint32_t)(ptr);
-                GDMA_Init(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, &txDmaInitStruct_);
-                GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, ENABLE);
-            } else {
-                // LOG UART doesn't support DMA transmission
-                consumable = std::min(MAX_UART_FIFO_SIZE, consumable);
-                auto ptr = txBuffer_.consume(consumable);
-                for (size_t i = 0; i < consumable; i++, ptr++) {
-                    UART_CharPut(uartInstance, *ptr);
-                }
-                UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+    ssize_t flush() {
+        while (true) {
+            startTransmission();
+            if (!isEnabled() || txBuffer_.empty()) {
+                break;
             }
-            curTxCount_ = consumable;
+            HAL_Delay_Milliseconds(10);
         }
+        return 0;
     }
 
     ssize_t data() {
@@ -434,6 +405,48 @@ private:
         }
         UART_TXDMACmd(uartInstance, DISABLE);
         UART_RXDMACmd(uartInstance, DISABLE);
+    }
+
+    void startTransmission() {
+        size_t consumable;
+        auto uartInstance = uartTable_[index_].UARTx;
+        if (!transmitting_ && (consumable = txBuffer_.consumable())) {
+            transmitting_ = true;
+            if (uartInstance != UART2_DEV) {
+                if (txDmaInitStruct_.GDMA_ChNum == 0xFF) {
+                    transmitting_ = false;
+                    return;
+                }
+                consumable = std::min(MAX_DMA_BLOCK_SIZE, consumable);
+                auto ptr = txBuffer_.consume(consumable);
+
+                DCache_CleanInvalidate((uint32_t)ptr, consumable);
+                
+                if (((consumable & 0x03) == 0) && (((uint32_t)(ptr) & 0x03) == 0)) {
+                    // 4-bytes aligned, move 4 bytes each transfer
+                    txDmaInitStruct_.GDMA_SrcMsize   = MsizeOne;
+                    txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthFourBytes;
+                    txDmaInitStruct_.GDMA_BlockSize = consumable >> 2;
+                } else {
+                    // Move 1 byte each transfer
+                    txDmaInitStruct_.GDMA_SrcMsize   = MsizeFour;
+                    txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
+                    txDmaInitStruct_.GDMA_BlockSize = consumable;
+                }
+                txDmaInitStruct_.GDMA_SrcAddr = (uint32_t)(ptr);
+                GDMA_Init(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, &txDmaInitStruct_);
+                GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, ENABLE);
+            } else {
+                // LOG UART doesn't support DMA transmission
+                consumable = std::min(MAX_UART_FIFO_SIZE, consumable);
+                auto ptr = txBuffer_.consume(consumable);
+                for (size_t i = 0; i < consumable; i++, ptr++) {
+                    UART_CharPut(uartInstance, *ptr);
+                }
+                UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+            }
+            curTxCount_ = consumable;
+        }
     }
 
     void startReceiver() {
@@ -643,7 +656,11 @@ int32_t hal_usart_available(hal_usart_interface_t serial) {
 }
 
 void hal_usart_flush(hal_usart_interface_t serial) {
-
+    auto usart = Usart::getInstance(serial);
+    if (!usart) {
+        return;
+    }
+    usart->flush();
 }
 
 bool hal_usart_is_enabled(hal_usart_interface_t serial) {
@@ -691,7 +708,6 @@ uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
     while (usart->space() <= 0) {
-        usart->startTransmission();
         HAL_Delay_Milliseconds(10);
     }
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
