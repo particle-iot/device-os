@@ -156,6 +156,15 @@ SECTIONS
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH
 
+    .lib_wlan.nocache.data :
+    {
+        . = ALIGN (32);
+        __ram_nocache_start__ = .;
+        *(.bdsram.data*)
+        . = ALIGN (32);
+        __ram_nocache_end__ = .;
+    } > SRAM AT> APP_FLASH
+
     /* Zero initialised memory used for zero initialised variables */
     .bss :
     {
