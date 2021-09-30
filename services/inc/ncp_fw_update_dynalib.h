@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 #if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
-int ncp_fw_udpate_check(const NcpFwUpdateConfig* data, void* reserved);
+int ncp_fw_udpate_config(const NcpFwUpdateConfig* data, void* reserved);
 #endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 
 #ifdef __cplusplus

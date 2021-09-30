@@ -88,9 +88,9 @@
 #if HAL_PLATFORM_NCP_FW_UPDATE
 #include "ncp_fw_update.h"
 
-// // FIXME: DEBUG!!!!!
+// UNCOMMENT TO DEBUG SAFE MODE
 // #include "debug_output_handler.h"
-// spark::Serial1LogHandler g_logHandlerSerial1(115200, LOG_LEVEL_ALL); // FIXME: DEBUG!!!!!
+// spark::Serial1LogHandler g_logHandlerSerial1(115200, LOG_LEVEL_ALL);
 #endif
 
 #if HAL_PLATFORM_RADIO_STACK

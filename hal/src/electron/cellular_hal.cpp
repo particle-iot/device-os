@@ -458,4 +458,12 @@ int cellular_start_ncp_firmware_update(bool update, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
+int cellular_update_status(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int cellular_enable_updates(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

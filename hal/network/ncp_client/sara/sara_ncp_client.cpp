@@ -46,6 +46,8 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include <lwip/memp.h>
 #include "enumclass.h"
 
+#include "ncp_fw_update.h"
+
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
@@ -1501,7 +1503,6 @@ int SaraNcpClient::getUbloxFirmwareVersion(uint32_t* version) {
     char atResponse[64] = {};
     auto resp = parser_.sendCommand("ATI9");
     CHECK_PARSER(resp.readLine(atResponse, sizeof(atResponse)));
-    LOG(INFO, "atResponse:[%s]", atResponse);
     if (::sscanf(atResponse, "%*[\r\nL0.0.00.00.]%d.%d%*[,A.]%d.%d", &major1, &minor1, &major2, &minor2) == 4) {
         ver = major1 * 1000000 + minor1 * 10000 + major2 * 100 + minor2;
     } else if (::sscanf(atResponse, "%*[\r\nL0.0.00.00.]%d.%d%8[^,]%*[,A.]%d.%d", &major1, &minor1, eng, &major2, &minor2) == 5) {
@@ -1524,11 +1525,16 @@ int SaraNcpClient::initReady(ModemState state) {
     if (getUbloxFirmwareVersion(&fwVersion_) != SYSTEM_ERROR_NONE) {
         fwVersion_ = 0;
     }
-    CHECK_TRUE(fwVersion_ != 0, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED); // XXX: The modem may get into a bad state without knowing what version we are operating with
+#if HAL_PLATFORM_NCP_FW_UPDATE
+    if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        CHECK(services::NcpFwUpdate::instance()->checkUpdate(fwVersion_));
+    }
+#endif
 
     // L0.0.00.00.05.06,A.02.00 has a memory issue
     R410MemoryIssuePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE) : false;
-    R410OldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
+    R410OldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ >= UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE &&
+                                                                     fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard(state));
     // Make sure flow control is enabled as well

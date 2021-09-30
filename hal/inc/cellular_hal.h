@@ -272,6 +272,16 @@ int cellular_start_ncp_firmware_update(bool update = false, void* reserved = NUL
  */
 int cellular_get_ublox_firmware_version(uint32_t* version, void* reserved = NULL);
 
+/**
+ * Get modem firmware update status result
+ */
+int cellular_update_status(void* reserved = NULL);
+
+/**
+ * Enable modem firmware updates (blocking call, requires a pending update)
+ */
+int cellular_enable_updates(void* reserved = NULL);
+
 #ifdef __cplusplus
 }
 #endif

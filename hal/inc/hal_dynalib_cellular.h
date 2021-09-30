@@ -95,6 +95,8 @@ DYNALIB_FN(BASE_CELL_IDX + 3, hal_cellular, cellular_powered, bool(void*))
 #endif // !HAL_PLATFORM_NCP
 
 DYNALIB_FN(BASE_CELL_IDX1 + 0, hal_cellular, cellular_urcs, cellular_result_t(bool, void*))
+DYNALIB_FN(BASE_CELL_IDX1 + 1, hal_cellular, cellular_update_status, int(void*))
+DYNALIB_FN(BASE_CELL_IDX1 + 2, hal_cellular, cellular_enable_updates, int(void*))
 
 DYNALIB_END(hal_cellular)
 

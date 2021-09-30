@@ -35,6 +35,8 @@
 #include "cellular_enums_hal.h"
 #include "cellular_ncp_dev_mapping.h"
 
+#include "ncp_fw_update.h"
+
 #include <limits>
 
 namespace {
@@ -618,4 +620,18 @@ int cellular_get_ublox_firmware_version(uint32_t* version, void* reserved) {
     return SYSTEM_ERROR_NONE;
 }
 
+int cellular_update_status(void* reserved) {
+#if HAL_PLATFORM_NCP_FW_UPDATE
+    return services::NcpFwUpdate::instance()->updateStatus();
+#else
+    return false;
+#endif
+}
 
+int cellular_enable_updates(void* reserved) {
+#if HAL_PLATFORM_NCP_FW_UPDATE
+    return services::NcpFwUpdate::instance()->enableUpdates();
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif
+}

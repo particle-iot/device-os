@@ -61,51 +61,58 @@ namespace particle {
 namespace services {
 
 const system_tick_t NCP_FW_MODEM_POWER_ON_TIMEOUT = 60000;
+const system_tick_t NCP_FW_MODEM_INSTALL_ATOK_INTERVAL = 10000;
 const system_tick_t NCP_FW_MODEM_INSTALL_START_TIMEOUT = 5 * 60000;
 const system_tick_t NCP_FW_MODEM_INSTALL_FINISH_TIMEOUT = 30 * 60000;
 const system_tick_t NCP_FW_MODEM_CLOUD_CONNECT_TIMEOUT = 5 * 60000;
-const uint32_t NCP_FW_UBLOX_R510_ENG_VERSION = 100000000;
+const system_tick_t NCP_FW_MODEM_CLOUD_DISCONNECT_TIMEOUT = 1 * 60000;
+const system_tick_t NCP_FW_MODEM_CELLULAR_CONNECT_TIMEOUT = 10 * 60000;
+const int NCP_FW_UBLOX_DEFAULT_CID = 1;
 const int NCP_FW_UUFWINSTALL_COMPLETE = 128;
 
 enum NcpFwUpdateState {
     FW_UPDATE_IDLE_STATE                            = 0,
     FW_UPDATE_QUALIFY_FLAGS_STATE                   = 1,
-    FW_UPDATE_QUALIFY_MODEM_ON_STATE                = 2,
-    FW_UPDATE_QUALIFY_RETRY_STATE                   = 3,
-    FW_UPDATE_SETUP_CLOUD_CONNECT_STATE             = 4,
-    FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE          = 5,
-    FW_UPDATE_SETUP_CLOUD_CONNECTED_STATE           = 6,
-    FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECT_STATE       = 7,
-    FW_UPDATE_DOWNLOAD_CELL_DISCONNECTING_STATE     = 8,
-    FW_UPDATE_DOWNLOAD_CELL_CONNECTING_STATE        = 9,
-    FW_UPDATE_DOWNLOAD_HTTPS_SETUP_STATE            = 10,
-    FW_UPDATE_DOWNLOAD_READY_STATE                  = 11,
-    FW_UPDATE_INSTALL_CELL_DISCONNECTING_STATE      = 12,
-    FW_UPDATE_INSTALL_CELL_DISCONNECTED_STATE       = 13,
-    FW_UPDATE_INSTALL_STATE_STARTING                = 14,
-    FW_UPDATE_INSTALL_STATE_WAITING                 = 15,
-    FW_UPDATE_FINISHED_POWER_OFF_STATE              = 16,
-    FW_UPDATE_FINISHED_POWERING_OFF_STATE           = 17,
-    FW_UPDATE_FINISHED_CLOUD_CONNECTING_STATE       = 18,
-    FW_UPDATE_FINISHED_CLOUD_CONNECTED_STATE        = 19,
-    FW_UPDATE_FINISHED_IDLE_STATE                   = 20,
+    FW_UPDATE_SETUP_CLOUD_CONNECT_STATE             = 2,
+    FW_UPDATE_SETUP_CLOUD_CONNECTING_STATE          = 3,
+    FW_UPDATE_SETUP_CLOUD_CONNECTED_STATE           = 4,
+    FW_UPDATE_DOWNLOAD_CLOUD_DISCONNECT_STATE       = 5,
+    FW_UPDATE_DOWNLOAD_CELL_DISCONNECTING_STATE     = 6,
+    FW_UPDATE_DOWNLOAD_CELL_CONNECTING_STATE        = 7,
+    FW_UPDATE_DOWNLOAD_HTTPS_SETUP_STATE            = 8,
+    FW_UPDATE_DOWNLOAD_READY_STATE                  = 9,
+    FW_UPDATE_INSTALL_CELL_DISCONNECTING_STATE      = 10,
+    FW_UPDATE_INSTALL_STATE_STARTING                = 11,
+    FW_UPDATE_INSTALL_STATE_WAITING                 = 12,
+    FW_UPDATE_FINISHED_POWER_OFF_STATE              = 13,
+    FW_UPDATE_FINISHED_POWERING_OFF_STATE           = 14,
+    FW_UPDATE_FINISHED_CLOUD_CONNECTING_STATE       = 15,
+    FW_UPDATE_FINISHED_CLOUD_CONNECTED_STATE        = 16,
+    FW_UPDATE_FINISHED_IDLE_STATE                   = 17,
 };
 
 enum NcpFwUpdateStatus {
-    FW_UPDATE_IDLE_STATUS                           = 0,
-    FW_UPDATE_DOWNLOADING_STATUS                    = 1,
-    FW_UPDATE_UPDATING_STATUS                       = 2,
-    FW_UPDATE_SUCCESS_STATUS                        = 3,
-    FW_UPDATE_NONE_STATUS                           = -1, // for diagnostics
-    FW_UPDATE_FAILED_STATUS                         = -2,
-    FW_UPDATE_FAILED_DOWNLOAD_RETRY_MAX_STATUS      = -3,
-    FW_UPDATE_FAILED_START_INSTALL_TIMEOUT_STATUS   = -4,
-    FW_UPDATE_FAILED_INSTALL_AT_ERROR_STATUS        = -5,
-    FW_UPDATE_FAILED_SAME_VERSION_STATUS            = -6,
-    FW_UPDATE_FAILED_INSTALL_TIMEOUT_STATUS         = -7,
-    FW_UPDATE_FAILED_POWER_OFF_TIMEOUT_STATUS       = -8,
-    FW_UPDATE_FAILED_CLOUD_CONNECT_TIMEOUT_STATUS   = -9,
-    FW_UPDATE_FAILED_PUBLISH_RESULT_STATUS          = -10,
+    FW_UPDATE_IDLE_STATUS                                           = 0,
+    FW_UPDATE_DOWNLOADING_STATUS                                    = 1,
+    FW_UPDATE_UPDATING_STATUS                                       = 2,
+    FW_UPDATE_SUCCESS_STATUS                                        = 3,
+    FW_UPDATE_NONE_STATUS                                           = -1, // for diagnostics
+    FW_UPDATE_FAILED_STATUS                                         = -2,
+    FW_UPDATE_FAILED_QUALIFY_FLAGS_STATUS                           = -3,
+    FW_UPDATE_FAILED_CLOUD_CONNECT_ON_ENTRY_TIMEOUT_STATUS          = -4,
+    FW_UPDATE_FAILED_PUBLISH_START_STATUS                           = -5,
+    FW_UPDATE_FAILED_SETUP_CELLULAR_DISCONNECT_TIMEOUT_STATUS       = -6,
+    FW_UPDATE_FAILED_CELLULAR_CONNECT_TIMEOUT_STATUS                = -7,
+    FW_UPDATE_FAILED_HTTPS_SETUP_STATUS                             = -8,
+    FW_UPDATE_FAILED_DOWNLOAD_RETRY_MAX_STATUS                      = -9,
+    FW_UPDATE_FAILED_INSTALL_CELLULAR_DISCONNECT_TIMEOUT_STATUS     = -10,
+    FW_UPDATE_FAILED_START_INSTALL_TIMEOUT_STATUS                   = -11,
+    FW_UPDATE_FAILED_INSTALL_AT_ERROR_STATUS                        = -12,
+    FW_UPDATE_FAILED_SAME_VERSION_STATUS                            = -13,
+    FW_UPDATE_FAILED_INSTALL_TIMEOUT_STATUS                         = -14,
+    FW_UPDATE_FAILED_POWER_OFF_TIMEOUT_STATUS                       = -15,
+    FW_UPDATE_FAILED_CLOUD_CONNECT_ON_EXIT_TIMEOUT_STATUS           = -16,
+    FW_UPDATE_FAILED_PUBLISH_RESULT_STATUS                          = -17,
 };
 
 struct HTTPSresponse {
@@ -126,12 +133,13 @@ struct NcpFwUpdateData {
     int firmwareVersion;               // 0;
     int startingFirmwareVersion;       // 0;
     int updateVersion;                 // 0;
+    uint8_t updateAvailable;           // SYSTEM_NCP_FW_UPDATE_STATUS_UNKNOWN;
     uint8_t isUserConfig;              // 0;
     NcpFwUpdateConfig userConfigData;  // 0;
     uint32_t footer;                   // NCP_FW_DATA_FOOTER;
 };
 
-/** 
+/**
  * struct NcpFwUpdateConfig {
  *     const uint32_t start_version;
  *     const uint32_t end_version;
@@ -155,21 +163,23 @@ public:
      */
     static NcpFwUpdate* instance();
 
-    NcpFwUpdate();
-    ~NcpFwUpdate();
-
-    int checkUpdate(const NcpFwUpdateConfig* userConfigData);
     void init(NcpFwUpdateCallbacks* callbacks);
     int process();
     int getStatusDiagnostics();
+    int setConfig(const NcpFwUpdateConfig* userConfigData = nullptr);
+    int checkUpdate(uint32_t version = 0);
+    int enableUpdates();
+    int updateStatus();
 
 private:
+    NcpFwUpdate();
+    ~NcpFwUpdate();
 
     NcpFwUpdateState ncpFwUpdateState_;
     NcpFwUpdateStatus ncpFwUpdateStatus_;
     NcpFwUpdateStatus ncpFwUpdateStatusDiagnostics_;
     int foatReady_;
-    system_tick_t startInstallTimer_;
+    system_tick_t startTimer_;
     system_tick_t atOkCheckTimer_;
     int lastRespCode_;
     int atResp_;
@@ -177,6 +187,7 @@ private:
     int startingFirmwareVersion_;
     int firmwareVersion_;
     int updateVersion_;
+    int updateAvailable_;
     bool isUserConfig_;
     system_tick_t cooldownTimer_;
     system_tick_t cooldownTimeout_;
@@ -198,6 +209,7 @@ private:
     static int cbUPSND_(int type, const char* buf, int len, int* data);
     static int cbCOPS_(int type, const char* buf, int len, int* data);
     static int httpRespCallback_(AtResponseReader* reader, const char* prefix, void* data);
+    static int cgevCallback_(AtResponseReader* reader, const char* prefix, void* data);
     uint32_t getAppFirmwareVersion_();
     int setupHTTPSProperties_();
     void cooldown_(system_tick_t timer);
