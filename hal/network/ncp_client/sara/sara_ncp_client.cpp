@@ -178,8 +178,13 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     imsiCheckTime_ = 0;
     powerOnTime_ = 0;
     registeredTime_ = 0;
-    memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
-    oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
+        oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
+    } else {
+        memoryIssuePresent_ = false;
+        oldFirmwarePresent_ = false;
+    }
     parserError_ = 0;
     ready_ = false;
     firmwareUpdateR510_ = false;
@@ -362,7 +367,7 @@ int SaraNcpClient::on() {
     }
 
     bool powerOn = (r == SYSTEM_ERROR_NONE);
-    if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+    if (ncpId() == PLATFORM_NCP_SARA_R510) {
         powerOn |= (powerState == NcpPowerState::TRANSIENT_ON);
     }
     CHECK(waitReady(powerOn));
@@ -707,7 +712,7 @@ int SaraNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     cgi_.cell_id = std::numeric_limits<CidType>::max();
     // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
     // fallback to CSD
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     } else {
@@ -940,7 +945,7 @@ int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsign
             return SYSTEM_ERROR_NONE;
         }
         // R510 Firmware Update
-        if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+        if (ncpId() == PLATFORM_NCP_SARA_R510) {
             if (firmwareInstallRespCodeR510_ != lastFirmwareInstallRespCodeR510_) {
                 t1 = HAL_Timer_Get_Milli_Seconds(); // If update is progressing, reset AT/OK wait timeout
                 lastFirmwareInstallRespCodeR510_ = firmwareInstallRespCodeR510_;
@@ -1097,7 +1102,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         // Let's try to avoid that with a soft reset, before retrying.
         auto result = respUmnoprof.readResult();
         if (result != AtResponse::OK) {
-            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+            if (ncpId() == PLATFORM_NCP_SARA_R510) {
                 CHECK_PARSER_OK(parser_.execCommand("AT+UFACTORY=2,2"));
             }
             modemSoftPowerOff();
@@ -1106,8 +1111,8 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         // First time setup, or switching between official SIM on wrong profile?
         if (r == 1 && (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT ||
                 (netConf_.netProv() == CellularNetworkProvider::TWILIO && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
-                (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT) ||
-                (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
+                (ncpId() == PLATFORM_NCP_SARA_R410 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT) ||
+                (ncpId() == PLATFORM_NCP_SARA_R510 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
             int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
             // TWILIO Super SIM
             if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
@@ -1126,7 +1131,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             // KORE AT&T or 3rd Party SIM
             else {
                 // Hard code ATT for R410 05.12 firmware versions or R510 Kore AT&T SIMs
-                if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512 || conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+                if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512 || ncpId() == PLATFORM_NCP_SARA_R510) {
                     if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
                         newProf = static_cast<int>(UbloxSaraUmnoprof::ATT);
                     }
@@ -1172,9 +1177,9 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
         }
         if (reset) {
-            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+            if (ncpId() == PLATFORM_NCP_SARA_R410) {
                 CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
-            } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+            } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
                 CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16"));
             }
             HAL_Delay_Milliseconds(2000);
@@ -1245,16 +1250,25 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
-            if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+            if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
                 const int internalSimMode = 0; // Output mode
                 const int internalSimValue = 1;
                 if (mode != internalSimMode || value != internalSimValue) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
                     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-                    reset = true;
+                    if (ncpId() == PLATFORM_NCP_SARA_R510) {
+                        // save 12 seconds by not resetting if we only have to change the output value LOW to HIGH
+                        if (mode != internalSimMode) {
+                            reset = true;
+                        }
+                    } else {
+                        reset = true;
+                    }
                 }
-            } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+            }
+        /* XXX: This mode 23,10 was broken as of R510 v3.15, now resulting in ERROR
+            else if (ncpId() == PLATFORM_NCP_SARA_R510) {
                 // NOTE: [ch76449] R510S will not retain GPIO's HIGH after a cold boot
                 // Workaround: Set pin that needs to be HIGH to mode "Module status indication",
                 //             which will be set HIGH when the module is ON, and LOW when it's OFF.
@@ -1265,7 +1279,9 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
                     reset = true;
                 }
-            } else {
+            }
+        */
+            else {
                 const int internalSimMode = 255; // disabled
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
@@ -1279,12 +1295,12 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     }
 
     if (reset) {
-        if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+        if (ncpId() == PLATFORM_NCP_SARA_R410) {
             // R410
             const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
             HAL_Delay_Milliseconds(10000);
-        } else if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+        } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
             // R510
             const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16"));
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -1333,11 +1349,13 @@ int SaraNcpClient::disablePsmEdrx() {
     resp = parser_.sendCommand("AT+CEDRXS?");
     while (resp.hasNextLine()) {
         unsigned act = 0;
-        auto r = resp.scanf("+CEDRXS: %u", &act);
-        if (r == 1) { // Ignore scanf() errors
+        unsigned eDRXCycle = 0;
+        unsigned pagingTimeWindow = 0;
+        // R410 disabled: +CEDRXS:
+        // R510 disabled: +CEDRXS: 4,"0000"
+        auto r = resp.scanf("+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow);
+        if (r >= 1 && (eDRXCycle != 0 || pagingTimeWindow != 0)) { // Ignore scanf() errors
             CHECK_TRUE(acts.append(act), SYSTEM_ERROR_NO_MEMORY);
-            // NOTE: R510 does not like the explicit CFUN=0,0 (x,0 is default, and we are intending on the default 0,0 but leaving as 0 for maximum compatibility)
-            CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
         }
     }
     CHECK_PARSER_OK(resp.readResult());
@@ -1441,9 +1459,8 @@ int SaraNcpClient::getAppFirmwareVersion() {
 int SaraNcpClient::initReady(ModemState state) {
     fwVersion_ = getAppFirmwareVersion();
     // L0.0.00.00.05.06,A.02.00 has a memory issue
-    memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
-    oldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ?
-            (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
+    memoryIssuePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE) : false;
+    oldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard(state));
     // Make sure flow control is enabled as well
@@ -1452,7 +1469,7 @@ int SaraNcpClient::initReady(ModemState state) {
     CHECK(waitAtResponse(10000));
 
     if (state != ModemState::MuxerAtChannel) {
-        if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
+        if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
             // Change the baudrate to 921600
             CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
         } else {
@@ -1476,7 +1493,7 @@ int SaraNcpClient::initReady(ModemState state) {
     }
 
     // Select MNO and band profiles depending on the configuration
-    if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410 || conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R510) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         CHECK(selectNetworkProf(state));
     }
 
@@ -1487,7 +1504,7 @@ int SaraNcpClient::initReady(ModemState state) {
     // Enable packet domain error reporting
     CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
 
-    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         // Force Cat M1-only mode
         // We may encounter a CME ERROR response with u-blox firmware 05.08,A.02.04 and in that case Cat-M1 mode is
         // already enforced properly based on the UMNOPROF setting.
@@ -1544,7 +1561,7 @@ int SaraNcpClient::initReady(ModemState state) {
     // Reinitialize parser with a muxer-based stream
     CHECK(initParser(muxerAtStream_.get()));
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         CHECK(waitAtResponse(10000));
     } else {
         CHECK(waitAtResponse(20000, 5000));
@@ -1854,7 +1871,7 @@ int SaraNcpClient::registerNet() {
 
     resetRegistrationState();
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
@@ -1883,7 +1900,7 @@ int SaraNcpClient::registerNet() {
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     }
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         r = CHECK_PARSER(parser_.execCommand("AT+CREG?"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG?"));
@@ -2171,7 +2188,7 @@ int SaraNcpClient::interveneRegistration() {
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
 
     // Intervention to speed up registration or recover in case of failure
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         // Only attempt intervention when in a sticky state
         // (over intervention interval and multiple URCs with the same state)
         if (csd_.sticky() && csd_.duration() >= timeout) {
@@ -2267,7 +2284,7 @@ int SaraNcpClient::processEventsImpl() {
         regCheckTime_ = millis();
     });
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410 && conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R510) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         CHECK_PARSER(parser_.execCommand("AT+CEER"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
@@ -2279,7 +2296,7 @@ int SaraNcpClient::processEventsImpl() {
         // Check the signal seen by the module while trying to register
         // Do not need to check for an OK, as this is just for debugging purpose,
         // and UCGED may sometimes return CME ERROR with low signal
-        if (conf_.ncpIdentifier() == PLATFORM_NCP_SARA_R410) {
+        if (ncpId() == PLATFORM_NCP_SARA_R410) {
             CHECK_PARSER(parser_.execCommand("AT+UCGED=5"));
         }
         CHECK_PARSER(parser_.execCommand("AT+UCGED?"));
@@ -2446,6 +2463,17 @@ int SaraNcpClient::modemPowerOff() {
             LOG(TRACE, "Modem powered off");
         } else {
             LOG(ERROR, "Failed to power off modem");
+            if (ncpId() == PLATFORM_NCP_SARA_R510) {
+                // XXX: modemHardReset() does not recover the modem
+                modemEmergencyHardReset();
+                // Modem will be OFF after emergency hard reset, but we set the state based on V_INT
+                if (modemPowerState()) {
+                    ncpPowerState(NcpPowerState::ON);
+                } else {
+                    ncpPowerState(NcpPowerState::OFF);
+                    LOG(TRACE, "Modem off after emergency hard reset");
+                }
+            }
         }
     } else {
         LOG(TRACE, "Modem already off");
