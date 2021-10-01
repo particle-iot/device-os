@@ -1331,11 +1331,13 @@ int SaraNcpClient::disablePsmEdrx() {
     resp = parser_.sendCommand("AT+CEDRXS?");
     while (resp.hasNextLine()) {
         unsigned act = 0;
-        auto r = resp.scanf("+CEDRXS: %u", &act);
-        if (r == 1) { // Ignore scanf() errors
+        unsigned eDRXCycle = 0;
+        unsigned pagingTimeWindow = 0;
+        // R410 disabled: +CEDRXS:
+        // R510 disabled: +CEDRXS: 4,"0000"
+        auto r = resp.scanf("+CEDRXS: %u,\"%d\",\"%d\"", &act, &eDRXCycle, &pagingTimeWindow);
+        if (r >= 1 && (eDRXCycle != 0 || pagingTimeWindow != 0)) { // Ignore scanf() errors
             CHECK_TRUE(acts.append(act), SYSTEM_ERROR_NO_MEMORY);
-            // NOTE: R510 does not like the explicit CFUN=0,0 (x,0 is default, and we are intending on the default 0,0 but leaving as 0 for maximum compatibility)
-            CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
         }
     }
     CHECK_PARSER_OK(resp.readResult());
@@ -1485,7 +1487,7 @@ int SaraNcpClient::initReady(ModemState state) {
     // Enable packet domain error reporting
     CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
 
-    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         // Force Cat M1-only mode
         // We may encounter a CME ERROR response with u-blox firmware 05.08,A.02.04 and in that case Cat-M1 mode is
         // already enforced properly based on the UMNOPROF setting.
