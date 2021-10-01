@@ -19,9 +19,11 @@ else
   apt-get -qq install git python3-pip libxml2-dev libxslt-dev)
 fi
 
-# upgrade pip to the latest stable version
-pip3 install --upgrade pip
 python3 --version
+
+# upgrade pip to the latest stable version
+pip3 install --upgrade pip==20.3.4
+
 
 pip3 install requests
 # install latest stable gcovr. Warning: may not support python3.5
