@@ -19,15 +19,13 @@ else
   apt-get -qq install git python3-pip libxml2-dev libxslt-dev)
 fi
 
-python3 --version
 
-# upgrade pip to the latest stable version
-pip3 install --upgrade pip==20.3.4
-
+pip3 install --upgrade pip
 
 pip3 install requests
 # install latest stable gcovr. Warning: may not support python3.5
-pip3 install gcovr
+pip3 install gcovr=5.0
+
 # install gcovr latest develop branch
 #pip3 install git+https://github.com/gcovr/gcovr.git
 # FIXME: MarkupSafe is broken on python3.5
