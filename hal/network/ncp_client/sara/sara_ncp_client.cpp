@@ -1248,16 +1248,25 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
         case SimType::INTERNAL:
         default: {
             LOG(INFO, "Using internal SIM card");
-            if (ncpId() == PLATFORM_NCP_SARA_R410) {
+            if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
                 const int internalSimMode = 0; // Output mode
                 const int internalSimValue = 1;
                 if (mode != internalSimMode || value != internalSimValue) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d,%d",
                             UBLOX_NCP_SIM_SELECT_PIN, internalSimMode, internalSimValue));
                     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-                    reset = true;
+                    if (ncpId() == PLATFORM_NCP_SARA_R510) {
+                        // save 12 seconds by not resetting if we only have to change the output value LOW to HIGH
+                        if (mode != internalSimMode) {
+                            reset = true;
+                        }
+                    } else {
+                        reset = true;
+                    }
                 }
-            } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+            }
+        /* XXX: This mode 23,10 was broken as of R510 v3.15, now resulting in ERROR
+            else if (ncpId() == PLATFORM_NCP_SARA_R510) {
                 // NOTE: [ch76449] R510S will not retain GPIO's HIGH after a cold boot
                 // Workaround: Set pin that needs to be HIGH to mode "Module status indication",
                 //             which will be set HIGH when the module is ON, and LOW when it's OFF.
@@ -1268,7 +1277,9 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
                     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
                     reset = true;
                 }
-            } else {
+            }
+        */
+            else {
                 const int internalSimMode = 255; // disabled
                 if (mode != internalSimMode) {
                     const int r = CHECK_PARSER(parser_.execCommand("AT+UGPIOC=%u,%d",
