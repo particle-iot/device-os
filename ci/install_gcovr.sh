@@ -20,7 +20,7 @@ else
 fi
 
 
-pip3 install --upgrade pip
+pip3 install --upgrade pip==20.3.4 
 
 pip3 install requests
 # install latest stable gcovr. Warning: may not support python3.5
