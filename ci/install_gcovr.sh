@@ -24,7 +24,7 @@ pip3 install --upgrade pip==20.3.4
 
 pip3 install requests
 # install latest stable gcovr. Warning: may not support python3.5
-pip3 install gcovr=5.0
+pip3 install gcovr==5.0
 
 # install gcovr latest develop branch
 #pip3 install git+https://github.com/gcovr/gcovr.git
