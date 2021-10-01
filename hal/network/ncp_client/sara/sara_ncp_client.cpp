@@ -178,8 +178,13 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     imsiCheckTime_ = 0;
     powerOnTime_ = 0;
     registeredTime_ = 0;
-    memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
-    oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        memoryIssuePresent_ = true; // default to safe state until we determine modem firmware version
+        oldFirmwarePresent_ = true; // default to safe state until we determine modem firmware version
+    } else {
+        memoryIssuePresent_ = false;
+        oldFirmwarePresent_ = false;
+    }
     parserError_ = 0;
     ready_ = false;
     firmwareUpdateR510_ = false;
@@ -1441,9 +1446,8 @@ int SaraNcpClient::getAppFirmwareVersion() {
 int SaraNcpClient::initReady(ModemState state) {
     fwVersion_ = getAppFirmwareVersion();
     // L0.0.00.00.05.06,A.02.00 has a memory issue
-    memoryIssuePresent_ = (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE);
-    oldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ?
-            (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
+    memoryIssuePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE) : false;
+    oldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard(state));
     // Make sure flow control is enabled as well
