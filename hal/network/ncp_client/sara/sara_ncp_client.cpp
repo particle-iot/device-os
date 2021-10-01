@@ -2463,6 +2463,17 @@ int SaraNcpClient::modemPowerOff() {
             LOG(TRACE, "Modem powered off");
         } else {
             LOG(ERROR, "Failed to power off modem");
+            if (ncpId() == PLATFORM_NCP_SARA_R510) {
+                // XXX: modemHardReset() does not recover the modem
+                modemEmergencyHardReset();
+                // Modem will be OFF after emergency hard reset, but we set the state based on V_INT
+                if (modemPowerState()) {
+                    ncpPowerState(NcpPowerState::ON);
+                } else {
+                    ncpPowerState(NcpPowerState::OFF);
+                    LOG(TRACE, "Modem off after emergency hard reset");
+                }
+            }
         }
     } else {
         LOG(TRACE, "Modem already off");
