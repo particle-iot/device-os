@@ -17,6 +17,7 @@
 
 #include "application.h"
 #include "test.h"
+#include "test_config.h"
 
 #ifndef PARTICLE_TEST_RUNNER
 #error "This test requires to be run under device-os-test"
@@ -25,6 +26,10 @@
 #ifndef TEST_ELECTRON_USE_HSE_LSI
 #define TEST_ELECTRON_USE_HSE_LSI (1)
 #endif // TEST_ELECTRON_USE_HSE_LSI
+
+#ifndef TEST_ELECTRON_VALIDATE_USES_HSE_LSI
+#define TEST_ELECTRON_VALIDATE_USES_HSE_LSI (0)
+#endif // TEST_ELECTRON_VALIDATE_USES_HSE_LSI
 
 namespace {
 
@@ -38,7 +43,9 @@ test(01_connect_set_feature_reset) {
         System.enableFeature(FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK);
         assertTrue(System.featureEnabled(FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK));
     } else {
-        assertEqual((RCC->BDCR & 0x300), (RCC_RTCCLKSource_HSE_Div2 & 0x300));
+        if (TEST_ELECTRON_VALIDATE_USES_HSE_LSI) {
+            assertEqual((RCC->BDCR & 0x300), (RCC_RTCCLKSource_HSE_Div2 & 0x300));
+        }
         System.disableFeature(FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK);
         assertFalse(System.featureEnabled(FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK));
     }
