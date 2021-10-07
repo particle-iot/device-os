@@ -325,6 +325,13 @@ int QuectelNcpClient::initParser(Stream* stream) {
         self->checkImsi_ = true;
         return SYSTEM_ERROR_NONE;
     }, this));
+
+    // "+CGEV: NW DETACH" URC seen when using eDRX
+    CHECK(parser_.addUrcHandler("+CGEV: NW DETACH", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
+        LOG(INFO,"CGEV network detach notice");
+        return SYSTEM_ERROR_NONE;
+    }, this));
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -645,7 +652,7 @@ int QuectelNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
     // fallback to CSD
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    //CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
 
     switch (cgi->version)
@@ -1279,9 +1286,9 @@ int QuectelNcpClient::registerNet() {
 
     // Register GPRS, LET, NB-IOT network
     r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    //r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
+    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1329,7 +1336,7 @@ int QuectelNcpClient::registerNet() {
     }
 
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    // CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
     regStartTime_ = millis();
@@ -1536,6 +1543,7 @@ int QuectelNcpClient::startNcpFwUpdate(bool update) {
     return 0;
 }
 
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
@@ -1736,9 +1744,10 @@ int QuectelNcpClient::processEventsImpl() {
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
     // Check GPRS, LET, NB-IOT network registration status
-    CHECK_PARSER(parser_.execCommand("AT+CEER"));
+    CHECK_PARSER(parser_.execCommand("AT+CEER"));// TODO unknown on BG95, BG77
+    CHECK_PARSER(parser_.execCommand("AT+CMEE?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    //CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     // Check the signal seen by the module while trying to register
     // Do not need to check for an OK, as this is just for debugging purpose
@@ -1821,6 +1830,7 @@ int QuectelNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
+        LOG(TRACE, "Powering modem on");
         // Power on, power on pulse >= 100ms
         // NOTE: The BGPWR pin is inverted
         HAL_GPIO_Write(BGPWR, 1);
