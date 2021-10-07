@@ -505,7 +505,13 @@ void QuectelNcpClient::processEvents() {
 }
 
 int QuectelNcpClient::ncpId() const {
-    return conf_.ncpIdentifier();
+    int filtered_val = conf_.ncpIdentifier();
+    // === DO NOT MERGE ===
+    // currently BG95 TSOMs are returning 0xFF
+    if (0xff == filtered_val) {
+        filtered_val = PLATFORM_NCP_QUECTEL_BG95;
+    }
+    return filtered_val;
 }
 
 int QuectelNcpClient::connect(const CellularNetworkConfig& conf) {
@@ -592,6 +598,7 @@ int QuectelNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     auto resp = parser_.sendCommand("AT+COPS?");
     r = CHECK_PARSER(resp.scanf("+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
                                     mobileNetworkCode, &act));
+    LOG(INFO, "cops resp: %d", r);
     CHECK_TRUE(r == 3, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -1018,7 +1025,22 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
     return serial_->setBaudRate(baud);
 }
 
+bool QuectelNcpClient::isQuecCatM1Device() {
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG96 ||
+        ncp_id == PLATFORM_NCP_QUECTEL_BG95 ||
+        ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
+}
+
+bool QuectelNcpClient::isQuecCat1Device() {
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_EG91_E || 
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA || 
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX);
+} 
+
 int QuectelNcpClient::initReady(ModemState state) {
+
     // Set modem full functionality
     int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -1049,7 +1071,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         // int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+        if (isQuecCatM1Device()) {
             // Force eDRX mode to be disabled.
             CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
 
@@ -1058,9 +1080,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         }
 
         // Select (U)SIM card in slot 1, EG91 has two SIM card slots
-        if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || \
-            ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA || \
-            ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+        if (isQuecCat1Device()) {
             CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
         }
 
@@ -1297,6 +1317,7 @@ int QuectelNcpClient::registerNet() {
     auto resp = parser_.sendCommand("AT+COPS?");
     int copsState = 2;
     r = CHECK_PARSER(resp.scanf("+COPS: %d", &copsState));
+    LOG(INFO, "cops resp: %d", r);
     CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -1309,7 +1330,8 @@ int QuectelNcpClient::registerNet() {
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     }
 
-    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+    // BG95 Note: This is undocumented for BG95/BG77
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) { 
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
         // Set to scan LTE only if not already set, take effect immediately
         auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
@@ -1325,8 +1347,12 @@ int QuectelNcpClient::registerNet() {
         // Configure Network Category to be Searched under LTE RAT
         // Set to use LTE Cat M1 if not already set, take effect immediately
         auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
+        // LOG(TRACE,"respOpMode: %s", respOpMode);
+
         int iotOpMode = -1;
         r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
+        // LOG(TRACE,"iotOpMode: %d", iotOpMode);
+
         CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
         r = CHECK_PARSER(respOpMode.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -1650,7 +1676,7 @@ int QuectelNcpClient::interveneRegistration() {
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
 
     // Intervention to speed up registration or recover in case of failure
-    if (ncpId() != PLATFORM_NCP_QUECTEL_BG96) {
+    if (!isQuecCatM1Device()) {
         if (eps_.sticky() && eps_.duration() >= timeout) {
             if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csd_.status() == eps_.status()) {
                 LOG(TRACE, "Sticky not registering state for %lu s, PLMN reselection", eps_.duration() / 1000);
