@@ -509,6 +509,7 @@ int QuectelNcpClient::ncpId() const {
     // === DO NOT MERGE ===
     // currently BG95 TSOMs are returning 0xFF
     if (0xff == filtered_val) {
+        LOG(TRACE, "Invalid OTP ncpId");
         filtered_val = PLATFORM_NCP_QUECTEL_BG95;
     }
     return filtered_val;
