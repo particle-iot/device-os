@@ -81,7 +81,7 @@ ifeq ("$(PLATFORM)","tracker")
 PLATFORM_ID=26
 endif
 
-ifeq ("$(PLATFORM)","tron")
+ifeq ("$(PLATFORM)","p2")
 PLATFORM_ID=32
 endif
 
@@ -341,7 +341,7 @@ PLATFORM_OPENTHREAD=nrf52840
 endif
 
 ifeq ("$(PLATFORM_ID)","32")
-PLATFORM=tron
+PLATFORM=p2
 PLATFORM_NAME=tron
 PLATFORM_GEN=4
 PLATFORM_MCU=rtl872x

@@ -102,7 +102,7 @@ exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 none:
 	;
 
-ifeq ("$(PLATFORM)","tron")
+ifeq ("$(PLATFORM)","p2")
 .PHONY: rtl-flash
 ifeq ("$(MODULE)","user-part")
 user_part_flash_start = $(subst 0x08,0x00,0x$(word 1,$(shell arm-none-eabi-objdump --syms $(TARGET_BASE).elf | grep 'link_module_start')))
@@ -195,7 +195,7 @@ size: $(TARGET_BASE).elf
 CRC_LEN = 4
 CRC_BLOCK_LEN = 38
 DEFAULT_SHA_256 = 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
-ifeq ("$(PLATFORM)","tron")
+ifeq ("$(PLATFORM)","p2")
 MOD_INFO_SUFFIX_LEN ?= 3400
 else
 MOD_INFO_SUFFIX_LEN ?= 2800

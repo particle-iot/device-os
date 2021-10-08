@@ -382,21 +382,6 @@ static void prohibit_xip(void) {
 }
 #endif // HAL_PLATFORM_PROHIBIT_XIP
 
-void debug_print_vector() {
-    #define NVIC_USER_IRQ_OFFSET 16
-
-    // Should use NewVectorTable of which the address is 0x10001000
-    uint32_t* vectors = (uint32_t*)SCB->VTOR;
-
-    DiagPrintf("SCB->VTOR: 0x%08X\r\n", SCB->VTOR);
-    DiagPrintf("Stack: 0x%08X\r\n", vectors[0]);
-    DiagPrintf("Reset_Handler: 0x%08X\r\n", vectors[1]);
-
-    for (int i = NonMaskableInt_IRQn_LP; i <= KM4_WAKE_EVENT_IRQ_LP; i++) {
-        DiagPrintf("IRQ: %d, 0x%08X\r\n", i, vectors[(int32_t)i + NVIC_USER_IRQ_OFFSET]);
-    }
-}
-
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
  * Description    : Called in startup routine, before calling C++ constructors.
@@ -404,16 +389,9 @@ void debug_print_vector() {
  * Output         : None.
  * Return         : None.
  *******************************************************************************/
-extern uint32_t DiagPrintf(const char *fmt, ...);
 void HAL_Core_Config(void) {
-    DiagPrintf("part1\r\n");
-    // volatile uint32_t rtlContinue = 0;
-    // while (!rtlContinue) {
-    //     asm("NOP");
-    // }
-    irq_table_init(MSP_RAM_HP_NS);
 
-    // debug_print_vector();
+    irq_table_init(MSP_RAM_HP_NS);
 
     DECLARE_SYS_HEALTH(ENTERED_SparkCoreConfig);
 
@@ -856,7 +834,6 @@ entry systemPartEntry = {
  * Called from startup_stm32f2xx.s at boot, main entry point.
  */
 int main(void) {
-    LOG(INFO, "main");
     init_malloc_mutex();
     xTaskCreate( application_task_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
 
