@@ -599,7 +599,7 @@ int QuectelNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
     auto resp = parser_.sendCommand("AT+COPS?");
     r = CHECK_PARSER(resp.scanf("+COPS: %*d,%*d,\"%3[0-9]%3[0-9]\",%d", mobileCountryCode,
                                     mobileNetworkCode, &act));
-    LOG(INFO, "cops resp: %d", r);
+    //LOG(INFO, "cops resp: %d", r);
     CHECK_TRUE(r == 3, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
