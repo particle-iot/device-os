@@ -509,8 +509,10 @@ int QuectelNcpClient::ncpId() const {
     // === DO NOT MERGE ===
     // currently BG95 TSOMs are returning 0xFF
     if (0xff == filtered_val) {
-        LOG(TRACE, "Invalid OTP ncpId");
-        filtered_val = PLATFORM_NCP_QUECTEL_BG95;
+        LOG(ERROR, "\r\n\r\nInvalid OTP ncpId!!!!!!!!!!!!!!!!!\r\n\r\n");
+        filtered_val = PLATFORM_NCP_QUECTEL_BG95_M1;
+        // filtered_val = PLATFORM_NCP_QUECTEL_EG91_NAX; // EG91-NAX programmed as 0x63 (EG91-NA), use this to test
+        LOG(INFO, "Current ncpId: 0x%02x", filtered_val);
     }
     return filtered_val;
 }
@@ -1029,16 +1031,17 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 bool QuectelNcpClient::isQuecCatM1Device() {
     int ncp_id = ncpId();
     return (ncp_id == PLATFORM_NCP_QUECTEL_BG96 ||
-        ncp_id == PLATFORM_NCP_QUECTEL_BG95 ||
-        ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
 }
 
 bool QuectelNcpClient::isQuecCat1Device() {
     int ncp_id = ncpId();
-    return (ncp_id == PLATFORM_NCP_QUECTEL_EG91_E || 
-            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA || 
-            ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX);
-} 
+    return (ncp_id == PLATFORM_NCP_QUECTEL_EG91_E ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX);
+}
 
 int QuectelNcpClient::initReady(ModemState state) {
 
@@ -1332,7 +1335,7 @@ int QuectelNcpClient::registerNet() {
     }
 
     // BG95 Note: This is undocumented for BG95/BG77
-    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) { 
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
         // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
         // Set to scan LTE only if not already set, take effect immediately
         auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
@@ -1857,7 +1860,6 @@ int QuectelNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
-        LOG(TRACE, "Powering modem on");
         // Power on, power on pulse >= 100ms
         // NOTE: The BGPWR pin is inverted
         HAL_GPIO_Write(BGPWR, 1);
@@ -1913,7 +1915,7 @@ int QuectelNcpClient::modemPowerOff() {
 int QuectelNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
-        
+
         LOG(TRACE, "Try powering modem off using AT command");
         if (!ready_) {
             LOG(ERROR, "NCP client is not ready");
