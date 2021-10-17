@@ -231,7 +231,7 @@ public:
                 break;
             }
             // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
-            uartTxRxIntHandler(usart);
+            uartTxRxIntHandler(this);
         }
         return 0;
     }

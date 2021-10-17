@@ -27,7 +27,6 @@ extern "C" {
 #include "pinmap_impl.h"
 #include "gpio_hal.h"
 #include "check.h"
-#include "rtl8721d.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
