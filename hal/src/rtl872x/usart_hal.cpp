@@ -225,12 +225,13 @@ public:
     }
 
     ssize_t flush() {
+        startTransmission();
         while (true) {
-            startTransmission();
             if (!isEnabled() || txBuffer_.empty()) {
                 break;
             }
-            HAL_Delay_Milliseconds(10);
+            // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+            uartTxRxIntHandler(usart);
         }
         return 0;
     }
@@ -293,6 +294,54 @@ public:
         };
         CHECK_TRUE(serial < sizeof(Usarts) / sizeof(Usarts[0]), nullptr);
         return &Usarts[serial];
+    }
+
+    static uint32_t uartTxRxIntHandler(void* data) {
+        auto uart = (Usart*)data;
+        auto uartInstance = uart->uartTable_[uart->index_].UARTx;
+        volatile uint8_t regIir = UART_IntStatus(uartInstance);
+        if ((regIir & RUART_IIR_INT_PEND) != 0) {
+            // No pending IRQ
+            return 0;
+        }
+        uint8_t intId = (regIir & RUART_IIR_INT_ID) >> 1;
+        switch (intId) {
+            case RUART_LP_RX_MONITOR_DONE: {
+                UART_RxMonitorSatusGet(uartInstance);
+                break;
+            }
+            case RUART_MODEM_STATUS: {
+                UART_ModemStatusGet(uartInstance);
+                break;
+            }
+            case RUART_RECEIVE_LINE_STATUS: {
+                UART_LineStatusGet(uartInstance);
+                break;
+            }
+            case RUART_TX_FIFO_EMPTY: {
+                UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+                if (uart->transmitting_) {
+                    uart->transmitting_ = false;
+                    uart->txBuffer_.consumeCommit(uart->curTxCount_);
+                    uart->startTransmission();
+                }
+                break;
+            }
+            case RUART_RECEIVER_DATA_AVAILABLE:
+            case RUART_TIME_OUT_INDICATION: {
+                UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+                if (uart->receiving_) {
+                    uart->receiving_ = false;
+                    uint8_t temp[MAX_UART_FIFO_SIZE];
+                    uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
+                    uart->rxBuffer_.put(temp, inFifo);
+                    uart->startReceiver();
+                }
+                break;
+            }
+            default: break;
+        }
+        return 0;
     }
 
 private:
@@ -522,54 +571,6 @@ private:
         return 0;
     }
 
-    static uint32_t uartTxRxIntHandler(void* data) {
-        auto uart = (Usart*)data;
-        auto uartInstance = uart->uartTable_[uart->index_].UARTx;
-        volatile uint8_t regIir = UART_IntStatus(uartInstance);
-        if ((regIir & RUART_IIR_INT_PEND) != 0) {
-            // No pending IRQ
-            return 0;
-        }
-        uint8_t intId = (regIir & RUART_IIR_INT_ID) >> 1;
-        switch (intId) {
-            case RUART_LP_RX_MONITOR_DONE: {
-                UART_RxMonitorSatusGet(uartInstance);
-                break;
-            }
-            case RUART_MODEM_STATUS: {
-                UART_ModemStatusGet(uartInstance);
-                break;
-            }
-            case RUART_RECEIVE_LINE_STATUS: {
-                UART_LineStatusGet(uartInstance);
-                break;
-            }
-            case RUART_TX_FIFO_EMPTY: {
-                UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
-                if (uart->transmitting_) {
-                    uart->transmitting_ = false;
-                    uart->txBuffer_.consumeCommit(uart->curTxCount_);
-                    uart->startTransmission();
-                }
-                break;
-            }
-            case RUART_RECEIVER_DATA_AVAILABLE:
-            case RUART_TIME_OUT_INDICATION: {
-                UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
-                if (uart->receiving_) {
-                    uart->receiving_ = false;
-                    uint8_t temp[MAX_UART_FIFO_SIZE];
-                    uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                    uart->rxBuffer_.put(temp, inFifo);
-                    uart->startReceiver();
-                }
-                break;
-            }
-            default: break;
-        }
-        return 0;
-    }
-
 private:
     hal_pin_t txPin_;
     hal_pin_t rxPin_;
@@ -703,7 +704,8 @@ uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
     while (usart->space() <= 0) {
-        HAL_Delay_Milliseconds(10);
+        // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+        usart->uartTxRxIntHandler(usart);
     }
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
 }
