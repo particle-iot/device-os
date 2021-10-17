@@ -76,6 +76,16 @@ int parseMode(InterruptMode mode, uint32_t* trigger, uint32_t* polarity) {
     return SYSTEM_ERROR_NONE;
 }
 
+void gpioIntHandler(void* data) {
+    uint16_t pin = (uint32_t)data;
+    if (!hal_pin_is_valid(pin)) {
+        return;
+    }
+    if (interruptsConfig[pin].callback.handler) {
+        interruptsConfig[pin].callback.handler(interruptsConfig[pin].callback.data);
+    }
+}
+
 } // anonymous
 
 void hal_interrupt_init(void) {
@@ -136,14 +146,14 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
 
-        GPIO_UserRegIrq(rtlPin, (VOID*)handler, nullptr);
+        GPIO_UserRegIrq(rtlPin, (VOID*)gpioIntHandler, (void*)((uint32_t)pin));
 
         GPIO_INTMode(rtlPin, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_ENABLE);
         GPIO_INTConfig(rtlPin, ENABLE);
 
         interruptsConfig[pin].state = INT_STATE_ENABLED;
         interruptsConfig[pin].callback.handler = handler;
-        interruptsConfig[pin].callback.data = nullptr;
+        interruptsConfig[pin].callback.data = data;
         interruptsConfig[pin].mode = mode;
         hal_pin_set_function(pin, PF_DIO);
 
@@ -233,16 +243,6 @@ void hal_interrupt_restore(void) {
             GPIO_INTConfig(rtlPin, ENABLE);
             interruptsConfig[i].state = INT_STATE_ENABLED;
         }
-    }
-}
-
-void hal_interrupt_trigger(uint16_t pin, void* reserved) {
-    if (!hal_pin_is_valid(pin)) {
-        return;
-    }
-
-    if (interruptsConfig[pin].callback.handler) {
-        interruptsConfig[pin].callback.handler(interruptsConfig[pin].callback.data);
     }
 }
 
