@@ -554,7 +554,8 @@ public:
 		return events.eventDataBytesAvailable(handle);
 	}
 
-	int add_subscription(const char* prefix, spark_protocol_subscription_fn fn, void* user_data) {
+	int add_subscription(const char* prefix, spark_protocol_subscription_fn fn, void* user_data)
+	{
 		return events.addSubscription(prefix, fn, user_data);
 	}
 
