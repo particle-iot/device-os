@@ -30,6 +30,7 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
+#include "scope_guard.h"
 
 namespace particle { namespace protocol {
 
@@ -44,6 +45,31 @@ enum HelloFlag {
 	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20,
 	HELLO_FLAG_COMPRESSED_OTA = 0x40,
 	HELLO_FLAG_OTA_PROTOCOL_V3 = 0x80
+};
+
+class DescribeAppender: public Appender {
+public:
+	using Appender::append;
+
+	explicit DescribeAppender(Description* desc) :
+			desc_(desc),
+			error_(ProtocolError::NO_ERROR) {
+	}
+
+	bool append(const uint8_t* data, size_t size) override {
+		if (error_ != ProtocolError::NO_ERROR) {
+			error_ = desc_->write((const char*)data, size);
+		}
+		return true;
+	}
+
+	ProtocolError error() const {
+		return error_;
+	}
+
+private:
+	Description* desc_;
+	ProtocolError error_;
 };
 
 } // namespace
@@ -79,7 +105,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	message_id_t msg_id = CoAP::message_id(queue);
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
-	if (CoAPType::is_reply(type)) {
+	if (type == CoAPType::ACK || type == CoAPType::RESET) {
 		LOG(TRACE, "Reply recieved: type=%d, code=%d", type, code);
 		// todo - this is a little too simple in the case of an empty ACK for a separate response
 		// the message should then be bound to the token. see CH19037
@@ -88,12 +114,14 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			code = CoAPCode::INTERNAL_SERVER_ERROR;
 		}
 		notify_message_complete(msg_id, code);
-		handle_app_state_reply(msg_id, code);
+		handle_app_state_reply(&message);
+		if (type == CoAPType::ACK) {
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
-			const ProtocolError error = firmwareUpdate.responseAck(&message);
-			if (error != ProtocolError::NO_ERROR) {
-				return error;
+			if (firmwareUpdate.isRunning()) {
+				const ProtocolError error = firmwareUpdate.responseAck(&message);
+				if (error != ProtocolError::NO_ERROR) {
+					return error;
+				}
 			}
 		}
 #endif
@@ -430,10 +458,9 @@ void Protocol::reset() {
 #endif
 	pinger.reset();
 	timesync_.reset();
+	description.reset();
 	ack_handlers.clear();
 	channel.reset();
-	app_describe_msg_id = INVALID_MESSAGE_HANDLE;
-	system_describe_msg_id = INVALID_MESSAGE_HANDLE;
 	subscription_msg_ids.clear();
 }
 
@@ -631,44 +658,33 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 	}
 }
 
-ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, Message& message,
-                                                      size_t header_size, int desc_flags)
-{
-    ProtocolError error;
-
-    BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
-    build_describe_message(appender, desc_flags);
-
-    if (appender.dataSize() > appender.bufferSize())
-    {
-        LOG(ERROR, "Describe message overflowed by %u bytes", (unsigned)(appender.dataSize() - appender.bufferSize()));
-        // There is no point in continuing to run, the device will be constantly reconnecting
-        // to the cloud. It's better to clearly indicate that the describe message is never going
-        // to go through to the cloud by going into a panic state, otherwise one would have to
-        // sift through logs to find 'Describe message overflowed by %d bytes' message to understand
-        // what's going on.
-        SPARK_ASSERT(false);
-    }
-
-    message.set_length(header_size + appender.dataSize());
-
-    LOG(INFO, "Posting '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
-        desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
-
-    error = channel.send(message);
-    if (error != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Channel failed to send message; error code: %d", (int)error);
-    } else if (descriptor.app_state_selector_info) {
-        const auto msg_id = message.get_id();
-        if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
-            app_describe_msg_id = msg_id;
-        }
-        if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
-            system_describe_msg_id = msg_id;
-        }
-    }
-
-    return error;
+ProtocolError Protocol::generate_and_send_description(int desc_flags, bool send_response, token_t response_token) {
+	LOG(INFO, "Sending '%s%s%s' Describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
+			desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
+	auto r = ProtocolError::NO_ERROR;
+	if (send_response) {
+		r = description.beginResponse(desc_flags, response_token);
+	} else {
+		r = description.beginRequest(desc_flags);
+	}
+	if (r != ProtocolError::NO_ERROR) {
+		return r;
+	}
+	NAMED_SCOPE_GUARD(g, {
+		description.cancel();
+	});
+	DescribeAppender appender(&description);
+	build_describe_message(appender, desc_flags);
+	if (appender.error() != ProtocolError::NO_ERROR) {
+		return appender.error();
+	}
+	r = description.send();
+	if (r != ProtocolError::NO_ERROR) {
+		LOG(ERROR, "Failed to send Describe message: %d", r);
+		return r;
+	}
+	g.dismiss();
+	return ProtocolError::NO_ERROR;
 }
 
 ProtocolError Protocol::post_description(int desc_flags, bool force)
@@ -693,13 +709,7 @@ ProtocolError Protocol::post_description(int desc_flags, bool force)
 	if (!desc_flags) {
 		return ProtocolError::NO_ERROR;
 	}
-	Message message;
-	const ProtocolError error = channel.create(message);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
-	}
-	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0 /* message_id */, desc_flags);
-	return generate_and_send_description(channel, message, header_size, desc_flags);
+	return generate_and_send_description(desc_flags);
 }
 
 ProtocolError Protocol::send_description_response(token_t token, message_id_t msg_id, int desc_flags)
@@ -715,13 +725,7 @@ ProtocolError Protocol::send_description_response(token_t token, message_id_t ms
 		return error;
 	}
 	// Send a response
-	error = channel.create(msg);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
-	}
-	const auto buf = msg.buf();
-	const size_t size = Messages::description_response(buf, 0 /* message_id */, token);
-	return generate_and_send_description(channel, msg, size, desc_flags);
+	return generate_and_send_description(desc_flags, true /* send_response */, token);
 }
 
 ProtocolError Protocol::send_subscription(const char *event_name, const char *device_id)
@@ -760,11 +764,13 @@ ProtocolError Protocol::send_subscriptions(bool force)
 	return error;
 }
 
-bool Protocol::handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code)
+bool Protocol::handle_app_state_reply(const Message* msg)
 {
 	if (!descriptor.app_state_selector_info) {
 		return false;
 	}
+	const auto msg_id = CoAP::message_id(msg->buf());
+	const auto code = CoAP::code(msg->buf());
 	// Update application state checksums
 	if (subscription_msg_ids.removeOne(msg_id)) { // Event subscriptions
 		if (!CoAPCode::is_success(code)) {
@@ -780,29 +786,27 @@ bool Protocol::handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code)
 		}
 		return true;
 	}
-	// A Describe message can carry both the system and application descriptions
-	if (msg_id == app_describe_msg_id || msg_id == system_describe_msg_id) {
-		if (msg_id == app_describe_msg_id) { // Application description
-			app_describe_msg_id = INVALID_MESSAGE_HANDLE;
-			if (CoAPCode::is_success(code)) {
-				LOG(TRACE, "Updating application DESCRIBE checksum");
-				channel.command(Channel::SAVE_SESSION);
-				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
-						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-				channel.command(Channel::LOAD_SESSION);
-			}
+	int descType = 0;
+	const auto r = description.processAck(msg, &descType);
+	if (r == ProtocolError::NO_ERROR) {
+		if (descType == DescriptionType::DESCRIBE_APPLICATION) {
+			LOG(TRACE, "Updating application DESCRIBE checksum");
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
+					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+			channel.command(Channel::LOAD_SESSION);
+			return true;
 		}
-		if (msg_id == system_describe_msg_id) { // System description
-			system_describe_msg_id = INVALID_MESSAGE_HANDLE;
-			if (CoAPCode::is_success(code)) {
-				LOG(TRACE, "Updating system DESCRIBE checksum");
-				channel.command(Channel::SAVE_SESSION);
-				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
-						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-				channel.command(Channel::LOAD_SESSION);
-			}
+		if (descType == DescriptionType::DESCRIBE_SYSTEM) {
+			LOG(TRACE, "Updating system DESCRIBE checksum");
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
+					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+			channel.command(Channel::LOAD_SESSION);
+			return true;
 		}
-		return true;
+	} else {
+		LOG(ERROR, "Failed to process Describe response: %d", (int)r);
 	}
 	return false;
 }

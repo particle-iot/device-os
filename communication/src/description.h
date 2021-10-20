@@ -35,16 +35,18 @@ class Message;
 class Description {
 public:
     explicit Description(Protocol* proto);
-    ~Description() = default;
+    ~Description();
 
-    int beginRequest(DescriptionType type);
-    int beginResponse(DescriptionType type, token_t token);
-    int write(const char* data, size_t size);
-    int send();
+    ProtocolError beginRequest(int type);
+    ProtocolError beginResponse(int type, token_t token);
+    ProtocolError write(const char* data, size_t size);
+    ProtocolError send();
     void cancel();
 
-    int processAck(Message* coapMsg, DescriptionType* type = nullptr);
-    int processTimeouts();
+    ProtocolError processAck(const Message* coapMsg, int* type = nullptr);
+    ProtocolError processTimeouts();
+
+    void reset();
 
 private:
     struct DescribeMessage; // Describe request or response
@@ -53,12 +55,8 @@ private:
     std::unique_ptr<DescribeMessage> curMsg_; // Describe request or response that is being serialized
     Protocol* proto_; // Protocol instance
 
-    int sendNext(DescribeMessage* msg);
+    ProtocolError sendNext(DescribeMessage* msg);
 };
-
-inline Description::Description(Protocol* proto) :
-        proto_(proto) {
-}
 
 } // namespace protocol
 

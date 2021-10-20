@@ -13,6 +13,7 @@
 #include "publisher.h"
 #include "subscriptions.h"
 #include "variables.h"
+#include "description.h"
 #include "hal_platform.h"
 #include "timesyncmanager.h"
 
@@ -113,13 +114,16 @@ class Protocol
 	Publisher publisher;
 
 	/**
+	 * Sends Describe messages.
+	 */
+	Description description;
+
+	/**
 	 * Manages time sync requests
 	 */
 	TimeSyncManager timesync_;
 
 	Vector<message_handle_t> subscription_msg_ids;
-	message_handle_t app_describe_msg_id;
-	message_handle_t system_describe_msg_id;
 
 	/**
 	 * Completion handlers for messages with confirmable delivery.
@@ -286,21 +290,19 @@ protected:
 	/**
 	 * @brief Generates and sends describe message
 	 *
-	 * @param channel The message channel used to send the message
-	 * @param message The message buffer used to store the message
-	 * @param header_size The offset at which to place the message payload
-	 * @param desc_flags The information description flags
+	 * @param desc_flags The information description flags.
 	 * @arg \p DESCRIBE_APPLICATION
 	 * @arg \p DESCRIBE_METRICS
 	 * @arg \p DESCRIBE_SYSTEM
+	 * @param send_response If true, send a CoAP response instead of a request (default: false).
+	 * @param response_token Token to be used in the response message.
 	 *
 	 * @returns \s ProtocolError result value
 	 * @retval \p particle::protocol::NO_ERROR
 	 *
 	 * @sa particle::protocol::ProtocolError
 	 */
-	ProtocolError generate_and_send_description(MessageChannel& channel, Message& message,
-												size_t header_size, int desc_flags);
+	ProtocolError generate_and_send_description(int desc_flags, bool send_response = false, token_t response_token = 0);
 
 	/**
 	 * Produces a describe message and transmits it as a separate response.
@@ -348,6 +350,7 @@ public:
 			product_firmware_version(PRODUCT_FIRMWARE_VERSION),
 			variables(this),
 			publisher(this),
+			description(this),
 			last_ack_handlers_update(0),
 			protocol_flags(0),
 			initialized(false),
@@ -560,11 +563,10 @@ public:
 	 *
 	 * This method updates the cached application state.
 	 *
-	 * @param msg_id ID of the original request message.
-	 * @param code Response code.
+	 * @param msg Response message.
 	 * @return `true` if the message has been handled or `false` otherwise.
 	 */
-	bool handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code);
+	bool handle_app_state_reply(const Message* msg);
 
 	inline void set_product_id(product_id_t product_id)
 	{

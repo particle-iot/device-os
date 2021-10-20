@@ -292,10 +292,11 @@ template<typename T> T* add_if_sufficient_describe(append_list<T>& list, const c
 		data.size = sizeof(data);
 		data.flags = protocol::DESCRIBE_APPLICATION;
 		if (!spark_protocol_get_describe_data(spark_protocol_instance(), &data, nullptr)) {
-			if (data.maximum_size<data.current_size) {
-				list.removeAt(list.size()-1);
-				result = nullptr;
-			}
+			// TODO: Add a feature macro for blockwise transfer
+			// if (data.maximum_size<data.current_size) {
+			//     list.removeAt(list.size()-1);
+			//     result = nullptr;
+			// }
 		}
 		else {
 			INFO("get describe data unsupported");
