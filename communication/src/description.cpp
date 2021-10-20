@@ -147,7 +147,7 @@ void Description::cancel() {
     curMsg_.reset();
 }
 
-int Description::processAck(Message* coapMsg) {
+int Description::processAck(Message* coapMsg, DescriptionType* type) {
     CoapMessageDecoder dec;
     int r = dec.decode((const char*)coapMsg->buf(), coapMsg->length());
     if (r < 0) {
@@ -167,16 +167,20 @@ int Description::processAck(Message* coapMsg) {
             break;
         }
     }
-    if (!msg) {
-        return ProtocolError::NO_ERROR;
+    DescriptionType t = DescriptionType::DESCRIBE_NONE;
+    if (msg) {
+        r = sendNext(msg);
+        if (r != ProtocolError::NO_ERROR) {
+            msgs_.removeAt(msgIndex);
+            return r;
+        }
+        if (msg->bufOffs >= msg->bufSize) {
+            t = msg->type;
+            msgs_.removeAt(msgIndex);
+        }
     }
-    r = sendNext(msg);
-    if (r != ProtocolError::NO_ERROR) {
-        msgs_.removeAt(msgIndex);
-        return r;
-    }
-    if (msg->bufOffs >= msg->bufSize) {
-        msgs_.removeAt(msgIndex);
+    if (type) {
+        *type = t;
     }
     return ProtocolError::NO_ERROR;
 }
