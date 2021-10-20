@@ -57,7 +57,7 @@ public:
 	}
 
 	bool append(const uint8_t* data, size_t size) override {
-		if (error_ != ProtocolError::NO_ERROR) {
+		if (error_ == ProtocolError::NO_ERROR) {
 			error_ = desc_->write((const char*)data, size);
 		}
 		return true;

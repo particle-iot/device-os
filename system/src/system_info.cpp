@@ -426,5 +426,6 @@ bool system_app_info(appender_fn appender, void* append_data, void* reserved) {
 		}
 		json.name(name).value(type);
 	}
+	json.endObject();
 	return true;
 }
