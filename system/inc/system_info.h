@@ -109,7 +109,8 @@ typedef enum {
 
 bool append_system_version_info(particle::Appender* appender);
 
-bool system_module_info(appender_fn appender, void* append_data, void* reserved=NULL);
+bool system_module_info(appender_fn appender, void* append_data, void* reserved);
+bool system_app_info(appender_fn appender, void* append_data, void* reserved);
 
 #if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 // These functions are exported through dynalib but may be unstable due to the usage
@@ -131,7 +132,7 @@ int system_info_free_unstable(hal_system_info_t* info, void* reserved);
 int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, appender_fn append, void* append_data,
         void* reserved);
 
-bool system_metrics(appender_fn appender, void* append_data, uint32_t flags, uint32_t page, void* reserved=NULL);
+bool system_metrics(appender_fn appender, void* append_data, uint32_t flags, uint32_t page, void* reserved);
 
 #ifdef __cplusplus
 }

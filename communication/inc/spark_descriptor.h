@@ -129,6 +129,8 @@ struct SparkDescriptor
      * @param context Context of the variable request. This argument needs to be passed to the completion callback.
      */
     void (*get_variable_async)(const char* key, GetVariableCallback callback, void* context);
+
+    bool (*append_app_info)(appender_fn appender, void* append, void* reserved);
 };
 
-PARTICLE_STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==64 || sizeof(void*)!=4);
