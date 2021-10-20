@@ -43,7 +43,7 @@ public:
     int send();
     void cancel();
 
-    int processAck(Message* coapMsg);
+    int processAck(Message* coapMsg, DescriptionType* type = nullptr);
     int processTimeouts();
 
 private:

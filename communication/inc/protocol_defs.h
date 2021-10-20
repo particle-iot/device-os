@@ -132,6 +132,7 @@ namespace ChunkReceivedCode {
 }
 
 enum DescriptionType {
+    DESCRIBE_NONE = 0,
     DESCRIBE_SYSTEM = 1<<0, // modules
     DESCRIBE_APPLICATION = 1<<1, // functions and variables
     DESCRIBE_METRICS = 1<<2, // metrics/diagnostics
