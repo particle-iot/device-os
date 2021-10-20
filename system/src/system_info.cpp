@@ -16,6 +16,7 @@
  */
 
 #include "system_info.h"
+#include "system_cloud_internal.h"
 #include "check.h"
 #include "bytes2hexbuf.h"
 #include "spark_wiring_json.h"
@@ -401,4 +402,29 @@ int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, ap
 bool system_metrics(appender_fn appender, void* append_data, uint32_t flags, uint32_t page, void* reserved) {
     const int ret = system_format_diag_data(nullptr, 0, flags, appender, append_data, nullptr);
     return ret == 0;
+}
+
+bool system_app_info(appender_fn appender, void* append_data, void* reserved) {
+	AppendJson json(appender, append_data);
+	json.name("f").beginArray();
+	const auto fnCount = cloudFunctionCount();
+	for (size_t i = 0; i < fnCount; ++i) {
+		const char* name = nullptr;
+		if (getCloudFunctionInfo(i, &name) != 0) {
+			return false;
+		}
+		json.value(name);
+	}
+	json.endArray();
+	json.name("v").beginObject();
+	const auto varCount = cloudVariableCount();
+	for (size_t i = 0; i < varCount; ++i) {
+		const char* name = nullptr;
+		int type = 0;
+		if (getCloudVariableInfo(i, &name, &type) != 0) {
+			return false;
+		}
+		json.name(name).value(type);
+	}
+	return true;
 }

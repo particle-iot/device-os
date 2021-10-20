@@ -78,6 +78,9 @@ constexpr const char DEVICE_UPDATES_EVENT[] = "particle/device/updates/";
 constexpr const char FORCED_EVENT[] = "forced";
 constexpr const char UPDATES_PENDING_EVENT[] = "pending";
 
+append_list<User_Var_Lookup_Table_t> vars(5);
+append_list<User_Func_Lookup_Table_t> funcs(5);
+
 inline bool isSuffix(const char* eventName, const char* prefix, const char* suffix) {
     // todo - sanity check parameters?
     return !strncmp(eventName+strlen(prefix), suffix, strlen(eventName)-strlen(prefix));
@@ -204,6 +207,39 @@ void clearSessionData() {
 #endif
 }
 
+size_t cloudVariableCount() {
+    return vars.size();
+}
+
+int getCloudVariableInfo(size_t index, const char** name, int* type) {
+    if (index >= vars.size()) {
+        return SYSTEM_ERROR_OUT_OF_RANGE;
+    }
+    const auto& info = vars[index];
+    if (name) {
+        *name = info.userVarKey;
+    }
+    if (type) {
+        *type = info.userVarType;
+    }
+    return 0;
+}
+
+size_t cloudFunctionCount() {
+    return funcs.size();
+}
+
+int getCloudFunctionInfo(size_t index, const char** name) {
+    if (index >= funcs.size()) {
+        return SYSTEM_ERROR_OUT_OF_RANGE;
+    }
+    const auto& info = funcs[index];
+    if (name) {
+        *name = info.userFuncKey;
+    }
+    return 0;
+}
+
 } // namespace particle
 
 extern uint8_t feature_cloud_udp;
@@ -236,9 +272,6 @@ ProtocolFacade* system_cloud_protocol_instance(void)
 		sp = spark_protocol_instance();
     return sp;
 }
-
-static append_list<User_Var_Lookup_Table_t> vars(5);
-static append_list<User_Func_Lookup_Table_t> funcs(5);
 
 User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
 {
@@ -1040,6 +1073,7 @@ void Spark_Protocol_Init(void)
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
         descriptor.append_system_info = system_module_info;
+        descriptor.append_app_info = system_app_info;
         descriptor.append_metrics = system_metrics;
         descriptor.call_event_handler = invokeEventHandler;
 #if HAL_PLATFORM_CLOUD_UDP

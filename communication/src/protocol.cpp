@@ -567,50 +567,55 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 		if (desc_flags & DESCRIBE_APPLICATION)
 		{
 			has_content = true;
-			appender.append("\"f\":[");
 
-			int num_keys = descriptor.num_functions();
-			int i;
-			for (i = 0; i < num_keys; ++i)
-			{
-				if (i)
-				{
-					appender.append(',');
-				}
-				appender.append('"');
+			if (descriptor.append_app_info) {
+				descriptor.append_app_info(Appender::callback, &appender, nullptr);
+			} else {
+				appender.append("\"f\":[");
 
-				const char* key = descriptor.get_function_key(i);
-				size_t function_name_length = strlen(key);
-				if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
+				int num_keys = descriptor.num_functions();
+				int i;
+				for (i = 0; i < num_keys; ++i)
 				{
-					function_name_length = MAX_FUNCTION_KEY_LENGTH;
+					if (i)
+					{
+						appender.append(',');
+					}
+					appender.append('"');
+
+					const char* key = descriptor.get_function_key(i);
+					size_t function_name_length = strlen(key);
+					if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
+					{
+						function_name_length = MAX_FUNCTION_KEY_LENGTH;
+					}
+					appender.append((const uint8_t*) key, function_name_length);
+					appender.append('"');
 				}
-				appender.append((const uint8_t*) key, function_name_length);
-				appender.append('"');
+
+				appender.append("],\"v\":{");
+
+				num_keys = descriptor.num_variables();
+				for (i = 0; i < num_keys; ++i)
+				{
+					if (i)
+					{
+						appender.append(',');
+					}
+					appender.append('"');
+					const char* key = descriptor.get_variable_key(i);
+					size_t variable_name_length = strlen(key);
+					SparkReturnType::Enum t = descriptor.variable_type(key);
+					if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
+					{
+						variable_name_length = MAX_VARIABLE_KEY_LENGTH;
+					}
+					appender.append((const uint8_t*) key, variable_name_length);
+					appender.append("\":");
+					appender.append('0' + (char) t);
+				}
+				appender.append('}');
 			}
-
-			appender.append("],\"v\":{");
-
-			num_keys = descriptor.num_variables();
-			for (i = 0; i < num_keys; ++i)
-			{
-				if (i)
-				{
-					appender.append(',');
-				}
-				appender.append('"');
-				const char* key = descriptor.get_variable_key(i);
-				size_t variable_name_length = strlen(key);
-				SparkReturnType::Enum t = descriptor.variable_type(key);
-				if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
-				{
-					variable_name_length = MAX_VARIABLE_KEY_LENGTH;
-				}
-				appender.append((const uint8_t*) key, variable_name_length);
-				appender.append("\":");
-				appender.append('0' + (char) t);
-			}
-			appender.append('}');
 		}
 
 		if (descriptor.append_system_info && (desc_flags & DESCRIBE_SYSTEM))
