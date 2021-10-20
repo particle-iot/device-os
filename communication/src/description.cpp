@@ -113,9 +113,8 @@ ProtocolError Description::write(const char* data, size_t size) {
     if (!curMsg_) {
         return ProtocolError::INVALID_STATE;
     }
-    const auto bufAvail = curMsg_->bufSize - curMsg_->bufOffs;
-    if (bufAvail < size) {
-        const auto bufSize = (curMsg_->bufSize + size - bufAvail + BUFFER_SIZE_INCREMENT - 1) / BUFFER_SIZE_INCREMENT *
+    if (curMsg_->bufOffs + size > curMsg_->bufSize) {
+        const auto bufSize = (curMsg_->bufOffs + size + BUFFER_SIZE_INCREMENT - 1) / BUFFER_SIZE_INCREMENT *
                 BUFFER_SIZE_INCREMENT;
         const auto buf = (char*)realloc(curMsg_->buf, bufSize);
         if (!buf) {
