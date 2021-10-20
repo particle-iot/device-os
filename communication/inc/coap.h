@@ -127,10 +127,6 @@ namespace CoAPType {
     RESET,
 	ERROR
   };
-
-  inline bool is_reply(CoAPType::Enum value) {
-	  return value==ACK || value==RESET;
-  }
 }
 
 class CoAP

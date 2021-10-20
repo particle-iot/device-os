@@ -56,11 +56,11 @@ struct Description::DescribeMessage {
     size_t bufSize; // Buffer size
     size_t bufOffs; // Current offset in the buffer
     unsigned blockIndex; // CoAP block index
-    DescriptionType type; // Description type
+    int type; // Description type
     token_t token; // CoAP message token
     bool isRequest; // Whether this message is a request or response
 
-    explicit DescribeMessage(DescriptionType type) :
+    explicit DescribeMessage(int type) :
             buf(nullptr),
             bufSize(0),
             bufOffs(0),
@@ -75,7 +75,14 @@ struct Description::DescribeMessage {
     }
 };
 
-int Description::beginRequest(DescriptionType type) {
+Description::Description(Protocol* proto) :
+        proto_(proto) {
+}
+
+Description::~Description() {
+}
+
+ProtocolError Description::beginRequest(int type) {
     if (curMsg_) {
         return ProtocolError::INVALID_STATE;
     }
@@ -88,7 +95,7 @@ int Description::beginRequest(DescriptionType type) {
     return ProtocolError::NO_ERROR;
 }
 
-int Description::beginResponse(DescriptionType type, token_t token) {
+ProtocolError Description::beginResponse(int type, token_t token) {
     if (curMsg_) {
         return ProtocolError::INVALID_STATE;
     }
@@ -102,7 +109,7 @@ int Description::beginResponse(DescriptionType type, token_t token) {
     return ProtocolError::NO_ERROR;
 }
 
-int Description::write(const char* data, size_t size) {
+ProtocolError Description::write(const char* data, size_t size) {
     if (!curMsg_) {
         return ProtocolError::INVALID_STATE;
     }
@@ -122,7 +129,7 @@ int Description::write(const char* data, size_t size) {
     return ProtocolError::NO_ERROR;
 }
 
-int Description::send() {
+ProtocolError Description::send() {
     if (!curMsg_) {
         return ProtocolError::INVALID_STATE;
     }
@@ -133,7 +140,7 @@ int Description::send() {
     }
     msg->bufSize = msg->bufOffs; // Actual size of the description data
     msg->bufOffs = 0;
-    const int r = sendNext(msg.get());
+    const auto r = sendNext(msg.get());
     if (r != ProtocolError::NO_ERROR) {
         return r;
     }
@@ -147,9 +154,12 @@ void Description::cancel() {
     curMsg_.reset();
 }
 
-int Description::processAck(Message* coapMsg, DescriptionType* type) {
+ProtocolError Description::processAck(const Message* coapMsg, int* type) {
+    if (msgs_.isEmpty()) {
+        return ProtocolError::NO_ERROR;
+    }
     CoapMessageDecoder dec;
-    int r = dec.decode((const char*)coapMsg->buf(), coapMsg->length());
+    const int r = dec.decode((const char*)coapMsg->buf(), coapMsg->length());
     if (r < 0) {
         return ProtocolError::MALFORMED_MESSAGE;
     }
@@ -167,9 +177,9 @@ int Description::processAck(Message* coapMsg, DescriptionType* type) {
             break;
         }
     }
-    DescriptionType t = DescriptionType::DESCRIBE_NONE;
+    int t = DescriptionType::DESCRIBE_NONE;
     if (msg) {
-        r = sendNext(msg);
+        const auto r = sendNext(msg);
         if (r != ProtocolError::NO_ERROR) {
             msgs_.removeAt(msgIndex);
             return r;
@@ -185,15 +195,19 @@ int Description::processAck(Message* coapMsg, DescriptionType* type) {
     return ProtocolError::NO_ERROR;
 }
 
-int Description::processTimeouts() {
-    // TODO
-    return ProtocolError::NO_ERROR;
+ProtocolError Description::processTimeouts() {
+    return ProtocolError::NO_ERROR; // TODO
 }
 
-int Description::sendNext(DescribeMessage* msg) {
+void Description::reset() {
+    msgs_.clear();
+    curMsg_.reset();
+}
+
+ProtocolError Description::sendNext(DescribeMessage* msg) {
     const auto channel = &proto_->getChannel();
     Message coapMsg;
-    int r = channel->create(coapMsg);
+    ProtocolError r = channel->create(coapMsg);
     if (r != ProtocolError::NO_ERROR) {
         return r;
     }
@@ -220,11 +234,11 @@ int Description::sendNext(DescribeMessage* msg) {
         enc.option(CoapOption::BLOCK1, block1);
     }
     enc.payload(msg->buf + msg->bufOffs, payloadSize);
-    r = enc.encode();
-    if (r < 0 || r > (int)coapMsg.capacity()) {
+    int n = enc.encode();
+    if (n < 0 || n > (int)coapMsg.capacity()) {
         return ProtocolError::INTERNAL;
     }
-    coapMsg.set_length(r);
+    coapMsg.set_length(n);
     r = channel->send(coapMsg);
     if (r != ProtocolError::NO_ERROR) {
         return r;
