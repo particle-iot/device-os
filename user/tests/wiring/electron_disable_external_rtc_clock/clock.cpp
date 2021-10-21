@@ -44,7 +44,7 @@ test(01_connect_set_feature_reset) {
     }
 
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 5 * 60 * 1000));
+    assertTrue(waitFor(Particle.connected, 9 * 60 * 1000));
 
     if (!Particle.syncTimeDone()) {
         Particle.syncTime();

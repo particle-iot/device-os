@@ -28,7 +28,7 @@ test(CLOUD_01_Particle_Connect_Does_Not_Block_In_SemiAutomatic_Mode) {
 
     Particle.connect();
     assertFalse(Particle.connected());
-
+	// Address this comment before merging! Replace 10s with 9m?
     waitFor(Particle.connected, 10000);
 }
 
@@ -41,7 +41,7 @@ test(CLOUD_04_socket_errors_do_not_cause_a_full_handshake) {
     const int GET_CLOUD_SOCKET_HANDLE_INTERNAL_ID = 3;
 
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 120000));
+    assertTrue(waitFor(Particle.connected, 9*60*1000));
 
     sock_handle_t cloudSock = (sock_handle_t)system_internal(GET_CLOUD_SOCKET_HANDLE_INTERNAL_ID, nullptr);
     assertTrue(socket_handle_valid(cloudSock));
@@ -71,7 +71,7 @@ test(CLOUD_04_socket_errors_do_not_cause_a_full_handshake) {
     (void)Particle.publish("test", "test");
     assertTrue(waitFor(handshakeState, 120000));
     assertEqual((int)handshakeState.handshakeType, (int)cloud_status_session_resume);
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, 9*60*1000));
 }
 
 #endif // HAL_PLATFORM_CLOUD_UDP
