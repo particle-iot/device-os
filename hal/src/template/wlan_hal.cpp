@@ -188,3 +188,13 @@ int wlan_set_hostname(const char* hostname, void* reserved)
     // Unsupported
     return -1;
 }
+
+int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna)
+{
+    return 0;
+}
+
+int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data)
+{
+	return -1;
+}

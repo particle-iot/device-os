@@ -64,7 +64,7 @@ bool hal_spi_is_enabled(hal_spi_interface_t spi)
     return false;
 }
 
-void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback)
+void hal_spi_transfer_dma(hal_spi_interface_t spi, const void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback)
 {
 }
 

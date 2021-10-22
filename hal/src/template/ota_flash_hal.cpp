@@ -118,3 +118,16 @@ int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flag
 {
     return 0;
 }
+
+int HAL_FLASH_ApplyPendingUpdate(bool dryRun, void* reserved)
+{
+    return SYSTEM_ERROR_UNKNOWN;
+}
+
+void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
+{
+}
+
+void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
+{
+}

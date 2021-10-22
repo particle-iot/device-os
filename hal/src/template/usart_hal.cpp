@@ -89,3 +89,17 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved)
 void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_t config, void *ptr)
 {
 }
+
+uint32_t hal_usart_write_nine_bits(hal_usart_interface_t serial, uint16_t data)
+{
+    return 0;
+}
+
+uint8_t hal_usart_break_detected(hal_usart_interface_t serial)
+{
+    return 0;
+}
+
+void hal_usart_send_break(hal_usart_interface_t serial, void* reserved)
+{
+}

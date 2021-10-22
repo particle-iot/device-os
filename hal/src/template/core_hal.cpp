@@ -213,3 +213,8 @@ void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
 {
     
 }
+
+uint16_t HAL_Bootloader_Get_Flag(BootloaderFlag flag)
+{
+    return 0;
+}
