@@ -5,6 +5,7 @@ START_YMODEM_FLASHER_SERIAL_SPEED=28800
 
 include $(COMMON_BUILD)/version.mk
 include $(COMMON_BUILD)/os.mk
+include $(COMMON_BUILD)/gcc-version.mk
 
 QUOTE='
 
@@ -63,7 +64,10 @@ CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1 -DPARTICLE=1
 CFLAGS += -Werror=return-type
 CFLAGS += -Wundef
+
+ifeq ($(shell test $(gcc_version) -lt $(call version_to_number,"11.0.0"); echo $$?),0)
 CFLAGS += -Wno-error=cast-function-type
+endif
 
 ifdef START_DFU_FLASHER_SERIAL_SPEED
 CFLAGS += -DSTART_DFU_FLASHER_SERIAL_SPEED=$(START_DFU_FLASHER_SERIAL_SPEED)

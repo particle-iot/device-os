@@ -35,3 +35,5 @@ ifeq ($(BUILD_STANDALONE_LIB),y)
 CFLAGS += -fPIC -fpic -rdynamic -fno-plt
 LDFLAGS += -fPIC -fpic -rdynamic -fno-plt
 endif
+
+include $(COMMON_BUILD)/gcc-version.mk
