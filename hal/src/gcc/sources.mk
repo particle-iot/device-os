@@ -2,8 +2,10 @@ CPPFLAGS += -DBOOST_ASIO_SEPARATE_COMPILATION
 
 # use the boost libraries
 $(info "BOOST $(BOOST_ROOT)")
+ifneq ("$(BOOST_ROOT)","")
 INCLUDE_DIRS += $(BOOST_ROOT)
 INCLUDE_DIRS += $(BOOST_ROOT)/libs/asio/include
+endif
 
 HAL_SRC_TEMPLATE_PATH = $(TARGET_HAL_PATH)/src/template
 HAL_SRC_GCC_PATH = $(TARGET_HAL_PATH)/src/gcc
@@ -29,11 +31,16 @@ remove_cpp = $(addsuffix .cpp,$(addprefix $(templatedir)/,$(overrides)))
 # remove files from template that have the same basename as an overridden file
 # e.g. if template contains core_hal.c, and gcc contains core_hal.cpp, the gcc module
 # will override
+ifneq ($(BUILD_STANDALONE_LIB),y)
+# Not using gcc-specific sources if building as a standalone static library
+# with template implementations and no dependency on boost or
+# other external libraries
 CSRC := $(filter-out $(remove_c),$(CSRC))
 CPPSRC := $(filter-out $(remove_cpp),$(CPPSRC))
 
 CSRC += $(call target_files,$(overridedir)/,*.c)
 CPPSRC += $(call target_files,$(overridedir)/,*.cpp)
+endif # ($(BUILD_STANDALONE_LIB),y)
 
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/util/,*.cpp)
 

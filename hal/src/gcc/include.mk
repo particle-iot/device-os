@@ -13,7 +13,10 @@ ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 
 LDFLAGS += -lc
 
-
+# Building as a standalone static library with default
+# template implementations and no dependency on boost or
+# other external libraries
+ifneq ($(BUILD_STANDALONE_LIB),y)
 # additional libraries required by gcc build
 ifdef SYSTEMROOT
 LIBS += boost_system-mgw48-mt-1_57 ws2_32 wsock32
@@ -23,6 +26,7 @@ endif
 LIBS += boost_program_options boost_random boost_thread
 
 LIB_DIRS += $(BOOST_ROOT)/stage/lib
+endif # $(BUILD_STANDALONE_LIB),y
 
 # gcc HAL is different for test driver and test subject
 ifeq "$(SPARK_TEST_DRIVER)" "1"

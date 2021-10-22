@@ -85,3 +85,7 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved)
 {
     return 0;
 }
+
+void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_t config, void *ptr)
+{
+}

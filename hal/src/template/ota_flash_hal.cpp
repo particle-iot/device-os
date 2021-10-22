@@ -105,4 +105,16 @@ uint16_t HAL_Get_Claim_Code(char* buffer, unsigned len)
     return 0;
 }
 
+void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
+{
+}
 
+bool HAL_IsDeviceClaimed(void* reserved)
+{
+    return false;
+}
+
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
+{
+    return 0;
+}

@@ -87,7 +87,14 @@ LIB_DIRS += $(dir $(LIB_DEPS))
 
 # Target this makefile is building.
 ifeq ("$(ARCH)","gcc")
+
+ifneq ($(BUILD_STANDALONE_LIB),y)
 TARGET=exe
+else
+TARGET=so
+TARGET_TYPE=so
+endif
+
 else
 TARGET=elf bin lst hex size
 endif

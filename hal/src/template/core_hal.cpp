@@ -136,11 +136,12 @@ unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved)
 }
 
 
+#ifndef PARTICLE_BUILD_STANDALONE_LIB
 int main()
 {
     while(1);
 }
-
+#endif // PARTICLE_BUILD_STANDALONE_LIB
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled)
 {
@@ -191,4 +192,24 @@ void HAL_Set_Event_Callback(HAL_Event_Callback callback, void* reserved) {
 }
 
 void hal_notify_event(int event, int flags, void* data) {
+}
+
+int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
+{
+    return -1;
+}
+
+int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
+{
+    return -1;
+}
+
+uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
+{
+    return -1;
+}
+
+void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
+{
+    
 }

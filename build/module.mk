@@ -99,6 +99,8 @@ hex: $(TARGET_BASE).hex
 lst: $(TARGET_BASE).lst
 exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 	@echo Built x-compile executable at $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
+so: $(TARGET_BASE)$(SHARED_LIBRARY_EXTENSION)
+	@echo Built shared library at $(TARGET_BASE)$(SHARED_LIBRARY_EXTENSION)
 none:
 	;
 
@@ -237,6 +239,13 @@ $(TARGET_BASE)$(EXECUTABLE_EXTENSION) : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
 	$(call echo,'Invoking: GCC C++ Linker')
 	$(VERBOSE)$(MKDIR) $(dir $@)
 	$(VERBOSE)$(CCACHE) $(CPP) $(CFLAGS) $(ALLOBJ) --output $@ $(LDFLAGS)
+	$(call echo,)
+
+$(TARGET_BASE)$(SHARED_LIBRARY_EXTENSION) : $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)
+	$(call echo,'Building target: $@')
+	$(call echo,'Invoking: GCC C++ Linker')
+	$(VERBOSE)$(MKDIR) $(dir $@)
+	$(VERBOSE)$(CCACHE) $(CPP) $(CFLAGS) -shared $(ALLOBJ) --output $@ $(LDFLAGS)
 	$(call echo,)
 
 

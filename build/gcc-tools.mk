@@ -31,5 +31,7 @@ CFLAGS += -Wno-return-type-c-linkage
 CPPFLAGS += -Wno-unused-private-field
 endif
 
-
-
+ifeq ($(BUILD_STANDALONE_LIB),y)
+CFLAGS += -fPIC -rdynamic
+LDFLAGS += -fPIC -rdynamic
+endif
