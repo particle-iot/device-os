@@ -171,6 +171,11 @@ void NcpFwUpdate::init(NcpFwUpdateCallbacks* callbacks) {
     } else {
         // Ensure we recall the previously set state
         ncpFwUpdateState_ = ncpFwUpdateData_.var.state;
+        // If we come up in Safe Mode as FINISHED, ensure we have an IDLE status
+        // to prevent a dependency issue causing a safe mode loop
+        if (ncpFwUpdateState_ == FW_UPDATE_FINISHED_IDLE_STATE) {
+            ncpFwUpdateData_.var.status = FW_UPDATE_IDLE_STATUS;
+        }
         ncpFwUpdateStatus_ = ncpFwUpdateData_.var.status;
         firmwareVersion_ = ncpFwUpdateData_.var.firmwareVersion;
         startingFirmwareVersion_ = ncpFwUpdateData_.var.startingFirmwareVersion;
