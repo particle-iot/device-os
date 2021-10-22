@@ -62,8 +62,8 @@ CFLAGS += -Wno-error=type-limits
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1 -DPARTICLE=1
 CFLAGS += -Werror=return-type
-
 CFLAGS += -Wundef
+CFLAGS += -Wno-error=cast-function-type
 
 ifdef START_DFU_FLASHER_SERIAL_SPEED
 CFLAGS += -DSTART_DFU_FLASHER_SERIAL_SPEED=$(START_DFU_FLASHER_SERIAL_SPEED)

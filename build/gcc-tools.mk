@@ -32,6 +32,6 @@ CPPFLAGS += -Wno-unused-private-field
 endif
 
 ifeq ($(BUILD_STANDALONE_LIB),y)
-CFLAGS += -fPIC -fpic -rdynamic
-LDFLAGS += -fPIC -fpic -rdynamic
+CFLAGS += -fPIC -fpic -rdynamic -fno-plt
+LDFLAGS += -fPIC -fpic -rdynamic -fno-plt
 endif
