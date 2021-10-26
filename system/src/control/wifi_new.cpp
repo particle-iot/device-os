@@ -106,6 +106,10 @@ int joinNewNetwork(ctrl_request* req) {
     CHECK(ncpClient->on());
     CHECK(ncpClient->disconnect());
     CHECK(wifiMgr->connect(dSsid.data));
+    // Note: we directly call into the NCP client's connect() function and bypass the system network manager.
+    // We need to disconnect the connection here to succeed the setup process, otherwise, the network manager
+    // won't do that for us due to the improvement that has been introduced in netif.
+    CHECK(ncpClient->disconnect());
     oldConfGuard.dismiss();
     return 0;
 }
