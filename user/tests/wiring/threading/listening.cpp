@@ -67,7 +67,7 @@ void listening_start_with_delay() {
         Particle.disconnect();
         network_power_cycle();
         Particle.connect();
-        waitFor(Particle.connected, 100000);
+        waitFor(Particle.connected, 9*60*1000);
     }
     assertTrue(Particle.connected()); // make sure we are not stuck trying to handshake before trying to enter listening mode
     listening_test_flag = false;
