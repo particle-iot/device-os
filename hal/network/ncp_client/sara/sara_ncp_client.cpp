@@ -1457,6 +1457,7 @@ int SaraNcpClient::getAppFirmwareVersion() {
 }
 
 int SaraNcpClient::initReady(ModemState state) {
+    CHECK(waitAtResponse(5000));
     fwVersion_ = getAppFirmwareVersion();
     // L0.0.00.00.05.06,A.02.00 has a memory issue
     memoryIssuePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE) : false;
