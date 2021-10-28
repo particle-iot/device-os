@@ -28,7 +28,6 @@ test(CLOUD_01_Particle_Connect_Does_Not_Block_In_SemiAutomatic_Mode) {
 
     Particle.connect();
     assertFalse(Particle.connected());
-	// Address this comment before merging! Replace 10s with 9m?
     waitFor(Particle.connected, 10000);
 }
 

@@ -91,7 +91,6 @@ test(THREAD_06_particle_process_behavior_when_threading_disabled)
 	SCOPE_GUARD({
 		// Make sure we restore cloud connection after exiting this test
 		Particle.connect();
-		// Address this comment before merging! Replace 20s with 9m?
 		waitFor(Particle.connected,20000);
 		assertTrue(Particle.connected());
 	});

@@ -211,7 +211,7 @@ test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 5 * 60 * 1000);
+        waitFor(Particle.connected, 9 * 60 * 1000);
     }
     assertTrue(Particle.connected());
     Particle.syncTime();
@@ -228,7 +228,7 @@ test(TIME_14_timeSyncedLast_works_correctly)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 120000);
+        waitFor(Particle.connected, 9*60*1000);
     }
     uint32_t mil = millis();
     Particle.syncTime();
@@ -240,7 +240,7 @@ test(TIME_15_RestoreSystemMode) {
     set_system_mode(AUTOMATIC);
     if (!Particle.connected()) {
         Particle.connect();
-        waitFor(Particle.connected, 120000);
+        waitFor(Particle.connected, 9*60*1000);
     }
 }
 
