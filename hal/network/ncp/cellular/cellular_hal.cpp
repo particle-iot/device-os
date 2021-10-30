@@ -611,26 +611,26 @@ int cellular_start_ncp_firmware_update(bool update, void* reserved) {
     return SYSTEM_ERROR_NONE;
 }
 
-int cellular_get_ublox_firmware_version(uint32_t* version, void* reserved) {
+int cellular_get_ncp_firmware_version(uint32_t* version, void* reserved) {
     const auto mgr = cellularNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     const auto client = mgr->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
-    CHECK(client->getUbloxFirmwareVersion(version));
+    CHECK(client->getNcpFirmwareVersion(version));
     return SYSTEM_ERROR_NONE;
 }
 
 int cellular_update_status(void* reserved) {
 #if HAL_PLATFORM_NCP_FW_UPDATE
-    return services::NcpFwUpdate::instance()->updateStatus();
+    return services::SaraNcpFwUpdate::instance()->updateStatus();
 #else
-    return false;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
 }
 
 int cellular_enable_updates(void* reserved) {
 #if HAL_PLATFORM_NCP_FW_UPDATE
-    return services::NcpFwUpdate::instance()->enableUpdates();
+    return services::SaraNcpFwUpdate::instance()->enableUpdates();
 #else
     return SYSTEM_ERROR_NOT_SUPPORTED;
 #endif

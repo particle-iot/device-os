@@ -162,7 +162,7 @@ typedef enum system_flag_t {
 /**
  * NCP Firmware Update Available Status for Cellular Wiring API Cellular.updateStatus()
  */
-typedef enum {
+typedef enum NcpFwUpdateAvailableStatus {
     /**
      * The system will check locally for firmware updates when the modem is initialized.
      */

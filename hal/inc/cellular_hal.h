@@ -265,22 +265,22 @@ cellular_result_t cellular_process(void* reserved, void* reserved1);
 /**
  * Start NCP FW Update
  */
-int cellular_start_ncp_firmware_update(bool update = false, void* reserved = NULL);
+int cellular_start_ncp_firmware_update(bool update, void* reserved);
 
 /**
- * Get u-blox firmware version as a uint32_t
+ * Get NCP firmware version as a uint32_t
  */
-int cellular_get_ublox_firmware_version(uint32_t* version, void* reserved = NULL);
+int cellular_get_ncp_firmware_version(uint32_t* version, void* reserved);
 
 /**
  * Get modem firmware update status result
  */
-int cellular_update_status(void* reserved = NULL);
+int cellular_update_status(void* reserved);
 
 /**
  * Enable modem firmware updates (blocking call, requires a pending update)
  */
-int cellular_enable_updates(void* reserved = NULL);
+int cellular_enable_updates(void* reserved);
 
 #ifdef __cplusplus
 }

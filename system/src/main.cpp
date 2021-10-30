@@ -807,16 +807,16 @@ void app_setup_and_loop(void)
     Network_Setup(threaded);    // todo - why does this come before system thread initialization?
 
 #if HAL_PLATFORM_NCP_FW_UPDATE
-    NcpFwUpdateCallbacks ncpFwUpdateCallbacks;
-    memset(&ncpFwUpdateCallbacks, 0, sizeof(ncpFwUpdateCallbacks));
-    ncpFwUpdateCallbacks.size = sizeof(ncpFwUpdateCallbacks);
-    ncpFwUpdateCallbacks.system_get_flag = system_get_flag;
-    ncpFwUpdateCallbacks.spark_cloud_flag_connected = spark_cloud_flag_connected;
-    ncpFwUpdateCallbacks.spark_cloud_flag_connect = spark_cloud_flag_connect;
-    ncpFwUpdateCallbacks.spark_cloud_flag_disconnect = spark_cloud_flag_disconnect;
-    ncpFwUpdateCallbacks.publishEvent = publishEvent;
-    ncpFwUpdateCallbacks.system_mode = system_mode;
-    services::NcpFwUpdate::instance()->init(&ncpFwUpdateCallbacks);
+    SaraNcpFwUpdateCallbacks saraNcpFwUpdateCallbacks;
+    memset(&saraNcpFwUpdateCallbacks, 0, sizeof(saraNcpFwUpdateCallbacks));
+    saraNcpFwUpdateCallbacks.size = sizeof(saraNcpFwUpdateCallbacks);
+    saraNcpFwUpdateCallbacks.system_get_flag = system_get_flag;
+    saraNcpFwUpdateCallbacks.spark_cloud_flag_connected = spark_cloud_flag_connected;
+    saraNcpFwUpdateCallbacks.spark_cloud_flag_connect = spark_cloud_flag_connect;
+    saraNcpFwUpdateCallbacks.spark_cloud_flag_disconnect = spark_cloud_flag_disconnect;
+    saraNcpFwUpdateCallbacks.publishEvent = publishEvent;
+    saraNcpFwUpdateCallbacks.system_mode = system_mode;
+    services::SaraNcpFwUpdate::instance()->init(saraNcpFwUpdateCallbacks);
 #endif
 
 #if PLATFORM_THREADING

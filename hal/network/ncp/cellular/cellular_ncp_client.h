@@ -133,7 +133,7 @@ public:
     virtual int getMtu() = 0;
     virtual int urcs(bool enable) = 0;
     virtual int startNcpFwUpdate(bool update) = 0;
-    virtual int getUbloxFirmwareVersion(uint32_t* version) = 0;
+    virtual int getNcpFirmwareVersion(uint32_t* version) = 0;
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :

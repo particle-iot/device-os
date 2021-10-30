@@ -74,7 +74,7 @@ public:
     virtual int getMtu() override;
     virtual int urcs(bool enable) override;
     virtual int startNcpFwUpdate(bool update) override;
-    virtual int getUbloxFirmwareVersion(uint32_t* version) override;
+    virtual int getNcpFirmwareVersion(uint32_t* version) override;
 
 private:
     AtParser parser_;
@@ -112,8 +112,8 @@ private:
     system_tick_t registeredTime_;
     system_tick_t powerOnTime_;
     uint32_t fwVersion_ = 0;
-    bool R410MemoryIssuePresent_;
-    bool R410OldFirmwarePresent_;
+    bool r410MemoryIssuePresent_;
+    bool r410OldFirmwarePresent_;
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;

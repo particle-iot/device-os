@@ -18,14 +18,15 @@
 #pragma once
 
 #ifdef __cplusplus
-struct NcpFwUpdateConfig {
-    int start_version;
-    int end_version;
+struct SaraNcpFwUpdateConfig {
+    uint16_t size;
+    uint32_t start_version;
+    uint32_t end_version;
     char filename[255 + 1];
     char md5sum[32 + 1];
 };
 #else
-typedef struct NcpFwUpdateConfig NcpFwUpdateConfig;
+typedef struct SaraNcpFwUpdateConfig SaraNcpFwUpdateConfig;
 #endif
 
 #ifdef __cplusplus
@@ -33,7 +34,7 @@ extern "C" {
 #endif
 
 #if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
-int ncp_fw_udpate_config(const NcpFwUpdateConfig* data, void* reserved);
+int sara_ncp_fw_update_config(const SaraNcpFwUpdateConfig* data, void* reserved);
 #endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 
 #ifdef __cplusplus

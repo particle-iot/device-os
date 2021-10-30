@@ -1536,7 +1536,7 @@ int QuectelNcpClient::startNcpFwUpdate(bool update) {
     return 0;
 }
 
-int QuectelNcpClient::getUbloxFirmwareVersion(uint32_t* version) {
+int QuectelNcpClient::getNcpFirmwareVersion(uint32_t* version) {
     return 0;
 }
 
