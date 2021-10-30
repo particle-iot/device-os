@@ -25,6 +25,7 @@
 #include "network/ncp/wifi/ncp.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/wifi_ncp_client.h"
+#include "system_network.h"
 
 #include "scope_guard.h"
 #include "check.h"
@@ -104,13 +105,18 @@ int joinNewNetwork(ctrl_request* req) {
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
+    // FIXME: synchronize NCP client / NcpNetif and system network manager state
+    network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
     CHECK(ncpClient->disconnect());
+    // FIXME: synchronize NCP client / NcpNetif and system network manager state
+    network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
+    NAMED_SCOPE_GUARD(networkDisconnectGuard, {
+        // FIXME: synchronize NCP client / NcpNetif and system network manager state
+        network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
+    });
     CHECK(wifiMgr->connect(dSsid.data));
-    // Note: we directly call into the NCP client's connect() function and bypass the system network manager.
-    // We need to disconnect the connection here to succeed the setup process, otherwise, the network manager
-    // won't do that for us due to the improvement that has been introduced in netif.
-    CHECK(ncpClient->disconnect());
     oldConfGuard.dismiss();
+    networkDisconnectGuard.dismiss();
     return 0;
 }
 
@@ -124,8 +130,17 @@ int joinKnownNetwork(ctrl_request* req) {
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
+    // FIXME: synchronize NCP client / NcpNetif and system network manager state
+    network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
     CHECK(ncpClient->disconnect());
+    // FIXME: synchronize NCP client / NcpNetif and system network manager state
+    network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
+    NAMED_SCOPE_GUARD(networkDisconnectGuard, {
+        // FIXME: synchronize NCP client / NcpNetif and system network manager state
+        network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
+    });
     CHECK(wifiMgr->connect(dSsid.data));
+    networkDisconnectGuard.dismiss();
     return 0;
 }
 

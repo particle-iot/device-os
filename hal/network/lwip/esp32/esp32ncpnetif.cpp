@@ -182,6 +182,11 @@ void Esp32NcpNetif::loop(void* arg) {
         self->wifiMan_->ncpClient()->enable(); // Make sure the client is enabled
         os_semaphore_take(self->netifSemaphore_, timeout, false);
 
+        // FIXME: this is run before any other actions is taken to make sure that this
+        // thread is not performing any state changes if something has acquired an exclusive
+        // lock to the NCP Client.
+        self->wifiMan_->ncpClient()->processEvents();
+
         // We shouldn't be enforcing state on boot!
         if (self->lastNetifEvent_ != NetifEvent::None) {
             if (self->expectedNcpState_ == NcpState::ON && self->wifiMan_->ncpClient()->ncpState() != NcpState::ON) {
@@ -211,8 +216,6 @@ void Esp32NcpNetif::loop(void* arg) {
                 }
             }
         }
-
-        self->wifiMan_->ncpClient()->processEvents();
     }
 
     self->downImpl();
