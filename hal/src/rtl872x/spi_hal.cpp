@@ -574,7 +574,7 @@ public:
                 }
                 SSI_SetDmaEnable(SPI_DEV_TABLE[spiInterface_].SPIx, ENABLE, BIT_SHIFT_DMACR_TDMAE);
                 SSI_TXGDMA_Init(spiInterface_, &txGdma_, this, (IRQ_FUN)dmaTxHandler, chunkBuffer_.txBuf, chunkBuffer_.txLength);
-                // LOG(INFO, "[int] spi dma tx chunk! index: %d, length: %d, data[0]: 0x%x, data[1]: 0x%x", \
+                // LOG(INFO, "[int] spi dma tx chunk! index: %d, length: %d, data[0]: 0x%x, data[1]: 0x%x",
                 //         chunkBuffer_.txIndex, chunkBuffer_.txLength, chunkBuffer_.txBuf[0], chunkBuffer_.txBuf[1]);
                 return;
             }
