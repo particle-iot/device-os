@@ -68,7 +68,7 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
 } // anonymous
 
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
-    const system_tick_t WAIT_TIMEOUT = 5 * 60 * 1000;
+    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
 
     Network.on();
     Network.connect();
@@ -230,7 +230,7 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 static bool s_networkStatusChanged = false;
 
 test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
-    const system_tick_t WAIT_TIMEOUT = 60 * 1000;
+    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
 
     SCOPE_GUARD({
         Particle.disconnect();
