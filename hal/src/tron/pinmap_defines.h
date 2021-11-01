@@ -62,16 +62,16 @@
 #define RGBB                27
 #define BTN                 28
 
-// SPI
-#define SS                  A2
-#define SCK                 A3
-#define MISO                A4
-#define MOSI                A5
-// Shared with UART1
-#define SS1                 D5
-#define SCK1                D4
-#define MISO1               D3
-#define MOSI1               D2
+// SPI, Shared with UART1
+#define SS                  D5
+#define SCK                 D4
+#define MISO                D3
+#define MOSI                D2
+
+#define SS1                 A2
+#define SCK1                A3
+#define MISO1               A4
+#define MOSI1               A5
 
 // I2C
 #define SDA                 D0
