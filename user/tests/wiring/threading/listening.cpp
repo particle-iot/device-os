@@ -62,7 +62,7 @@ void blocking_call() {
 }
 
 void listening_start_with_delay() {
-    waitFor(Particle.connected, 30000);
+    waitFor(Particle.connected, 60000);
     if (!Particle.connected()) {
         Particle.disconnect();
         network_power_cycle();
