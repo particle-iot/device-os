@@ -81,7 +81,7 @@ bool wifiPowersaveClockRunning(int mirror) {
 
 bool connectToCloud(void) {
 	Particle.connect();
-	if (!waitFor(Particle.connected, 9*60*1000)) {
+	if (!waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT)) {
 		Serial1.println("Cloud did not connect within 30s!");
 		return false;
 	}

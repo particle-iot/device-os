@@ -15,7 +15,7 @@ SYSTEM_THREAD(ENABLED);
  */
 test(sleep_0_device_wakes_from_deep_sleep_with_short_sleep_time)
 {
-    waitFor(Particle.connected, 9 * 60 * 1000);
+    waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
     if (magick == 0xdeadbeef) {
         magick = 0;
         // We should have woken up from deep sleep
@@ -182,7 +182,7 @@ test(sleep_2_udp_all_confirmable_messages_are_sent_before_sleep_step_1)
     // Connect
     //Serial.println("Connecting...");
     Particle.connect();
-    waitFor(Particle.connected, 9 * 60 * 1000);
+    waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
     assertTrue(Particle.connected());
     //Serial.println("Connected");
 
