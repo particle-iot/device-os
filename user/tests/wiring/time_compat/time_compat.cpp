@@ -56,7 +56,7 @@ STARTUP({
 
 test(TIME_COMPAT_00_TimeIsValid) {
     Particle.connect();
-    waitFor(Particle.connected, 9 * 60 * 1000);
+    waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
     assertTrue(Particle.connected());
     if (Particle.syncTimePending()) {
         waitFor(Particle.syncTimeDone, 120000);
@@ -265,7 +265,7 @@ test(TIME_COMPAT_04_RtcHal) {
 
 test(TIME_COMPAT_05_SyncTime) {
     Particle.connect();
-    waitFor(Particle.connected, 9 * 60 * 1000);
+    waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
     assertTrue(Particle.connected());
 
     time_t refTime = 1546300800; // 2019-01-01 00:00:00

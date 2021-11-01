@@ -83,7 +83,7 @@ test(THREAD_06_particle_process_behavior_when_threading_disabled)
 
 	// Make sure Particle is connected
 	Particle.connect();
-	waitFor(Particle.connected,9*60*1000);
+	waitFor(Particle.connected,HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
 	assertTrue(Particle.connected());
 
 	// Call disconnect from main thread
@@ -151,7 +151,7 @@ test(THREAD_07_particle_process_behavior_when_threading_enabled)
 
 	// Make sure Particle is connected
 	Particle.connect();
-	waitFor(Particle.connected,9*60*1000);
+	waitFor(Particle.connected,HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
 	assertTrue(Particle.connected());
 
 	// Schedule function on application thread that does not run for sometime because of hard delays
@@ -181,7 +181,7 @@ test(THREAD_07_particle_process_behavior_when_threading_enabled)
 		test_val = 0;
 		Particle.connect();
 		// Address this comment before merging! Replace 20s with 9m?
-		waitFor(Particle.connected,9*60*1000);
+		waitFor(Particle.connected,HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
 		assertTrue(Particle.connected());
 	});
 

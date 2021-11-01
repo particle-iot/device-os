@@ -240,7 +240,7 @@ test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
     // Connect to the cloud, if there is a system describe overflow, we'll trigger assertion failure here
     assertTrue(Particle.disconnected);
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 9*60*1000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
 }
 
 test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but_invalid)
@@ -297,5 +297,5 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
     // Connect to the cloud, if there is a system describe overflow, we'll trigger assertion failure here
     assertTrue(Particle.disconnected);
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 9*60*1000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
 }
