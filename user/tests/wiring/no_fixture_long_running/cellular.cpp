@@ -86,7 +86,7 @@ test(CELLULAR_01_device_will_connect_to_the_cloud_when_all_tcp_sockets_consumed)
         close_consumed_sockets(socks);
     });
     // And the device attempts to connect to the Cloud
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     // Then the device overcomes this socket obstacle and connects to the Cloud
     assertEqual(Particle.connected(), true);
 }
@@ -110,7 +110,7 @@ test(CELLULAR_02_device_will_connect_to_the_cloud_when_all_udp_sockets_consumed)
     });
     // And the device attempts to connect to the Cloud
     // Account for exponential backoff and potentially long registration
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     // Then the device overcomes this socket obstacle and connects to the Cloud
     assertEqual(Particle.connected(), true);
 }
@@ -142,7 +142,7 @@ void busyDelay(system_tick_t m) {
 test(CELLULAR_03_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected_modem_brown_out_occurs) {
     // Serial.println("the device will reconnect to the cloud within 2 min when unexpected modem brown out occurs");
     // Given the device is currently connected to the Cloud
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     // Using single threaded section to prevent the system from executing any modem operations
     SINGLE_THREADED_BLOCK() {
         // Disable UART interrupts so that we are not receiving any new data from the modem
@@ -184,7 +184,7 @@ test(CELLULAR_03_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected
 test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected_modem_power_off_occurs) {
     // Serial.println("the device will reconnect to the cloud when unexpected modem power off occurs, within 2min");
     // Given the device is currently connected to the Cloud
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Particle.connected());
 
     CellularDevice dev;
@@ -226,7 +226,7 @@ test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected
 }
 
 test(CELLULAR_05_device_will_poweroff_when_modem_is_not_responsive) {
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Particle.connected());
 
     // Using single threaded section to prevent the system from executing any modem operations
@@ -245,7 +245,7 @@ test(CELLULAR_05_device_will_poweroff_when_modem_is_not_responsive) {
     assertFalse(modemPowerState());
 
     // Make sure the device can reconnect
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Particle.connected());
 }
 

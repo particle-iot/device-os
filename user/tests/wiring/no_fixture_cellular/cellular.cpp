@@ -79,24 +79,24 @@ void checkIPAddress(const char* name, const IPAddress& address)
 
 test(CELLULAR_01_local_ip_cellular_config)
 {
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     checkIPAddress("local", Cellular.localIP());
 }
 
 test(CELLULAR_02_resolve) {
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     checkIPAddress("www.particle.io", Cellular.resolve("www.particle.io"));
 }
 
 test(CELLULAR_03_resolve) {
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     IPAddress addr = Cellular.resolve("this.is.not.a.real.host");
     assertEqual(addr, 0);
 }
 
 // Collects cellular signal strength and quality and validates Accesstechnology (RAT)
 test(CELLULAR_05_sigstr_is_valid) {
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Particle.connected());
     CellularSignal s;
     bool values_in_range = false;
@@ -159,7 +159,7 @@ test(CELLULAR_05_sigstr_is_valid) {
 }
 
 test(CELLULAR_06_on_off_validity_check) {
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Cellular.isOn());
     assertFalse(Cellular.isOff());
 
@@ -192,7 +192,7 @@ test(CELLULAR_06_on_off_validity_check) {
     ret = Cellular.command("AT\r\n");
     assertEqual(ret, (int)RESP_OK);
 
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 }
 
 #if HAL_PLATFORM_GEN == 2
@@ -212,7 +212,7 @@ static int callbackModemType(int type, const char* buf, int len, char* string) {
 #endif
 
 test(CELLULAR_07_urcs) {
-    connect_to_cloud(9*60*1000);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 
 #if HAL_PLATFORM_GEN == 2
     char string[16];
@@ -395,7 +395,7 @@ test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_control
 }
 
 test(MDM_03_restore_cloud_connection) {
-    connect_to_cloud(HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 }
 
 #endif // Wiring_Cellular == 1
