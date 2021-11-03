@@ -130,7 +130,7 @@ test(WIFI_06_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
     set_system_mode(SEMI_AUTOMATIC);
 
     Particle.connect();
-    waitFor(Particle.connected, 10000);
+    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 
     Particle.disconnect();
     waitFor(Particle.disconnected, 10000);
@@ -149,7 +149,7 @@ test(WIFI_06_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
     wlan_restart(NULL);
 
     Particle.connect();
-    waitFor(Particle.connected, 10000);
+    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 
     Particle.disconnect();
     waitFor(Particle.disconnected, 10000);
@@ -296,7 +296,7 @@ test(WIFI_15_entering_listening_mode_and_enabling_softap_closes_active_sockets_c
     WiFi.on();
     WiFi.connect();
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 30000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     IPAddress address;
     for (int i = 0; i < resolveAttempts; i++) {
@@ -323,7 +323,7 @@ test(WIFI_15_entering_listening_mode_and_enabling_softap_closes_active_sockets_c
     }
     WiFi.listen(false);
 
-    waitFor(Particle.connected, 30000);
+    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertFalse(client.connected());
     client.stop();
 }

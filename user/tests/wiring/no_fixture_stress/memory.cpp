@@ -156,5 +156,5 @@ test(SYSTEM_09_out_of_memory_restore_state)
 	// Restore connection to the cloud and network
 	Network.connect();
 	Particle.connect();
-	waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+	waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 }

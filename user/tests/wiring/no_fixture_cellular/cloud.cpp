@@ -23,7 +23,7 @@ HandshakeState handshakeState;
 
 test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshake) {
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     auto evHandler = [](system_event_t event, int param, void* ctx) {
         if (event == cloud_status) {
@@ -68,7 +68,7 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
 #endif // HAL_PLATFORM_NCP_AT
     assertTrue(waitFor(handshakeState, 120000));
     assertEqual((int)handshakeState.handshakeType, (int)cloud_status_session_resume);
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
 #endif // HAL_PLATFORM_CELLULAR

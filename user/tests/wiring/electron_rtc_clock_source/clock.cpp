@@ -51,7 +51,7 @@ test(01_connect_set_feature_reset) {
     }
 
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     if (!Particle.syncTimeDone()) {
         Particle.syncTime();

@@ -67,7 +67,7 @@ void listening_start_with_delay() {
         Particle.disconnect();
         network_power_cycle();
         Particle.connect();
-        waitFor(Particle.connected, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT);
+        waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     }
     assertTrue(Particle.connected()); // make sure we are not stuck trying to handshake before trying to enter listening mode
     listening_test_flag = false;
