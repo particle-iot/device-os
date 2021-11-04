@@ -188,7 +188,7 @@ int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 }
                 bool valid = fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
                 valid = valid && (module->validity_checked == module->validity_result);
-                if (bounds->module_function == MODULE_FUNCTION_USER_PART) {
+                if (bounds->store == MODULE_STORE_MAIN && bounds->module_function == MODULE_FUNCTION_USER_PART) {
                     if (valid) {
                         user_module_found = true;
                     } else {
