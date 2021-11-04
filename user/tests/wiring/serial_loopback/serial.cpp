@@ -26,6 +26,29 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+#ifndef USE_BUFFER_SIZE
+#warning "Using default 64 byte buffer"
+#define USE_BUFFER_SIZE SERIAL_BUFFER_SIZE
+#else
+hal_usart_buffer_config_t __attribute__((weak)) acquireSerial1Buffer()
+{
+#if !HAL_PLATFORM_USART_9BIT_SUPPORTED
+    const size_t bufferSize = USE_BUFFER_SIZE;
+#else
+    const size_t bufferSize = USE_BUFFER_SIZE * sizeof(uint16_t);
+#endif // HAL_PLATFORM_USART_9BIT_SUPPORTED
+    hal_usart_buffer_config_t config = {
+        .size = sizeof(hal_usart_buffer_config_t),
+        .rx_buffer = new (std::nothrow) uint8_t[bufferSize],
+        .rx_buffer_size = bufferSize,
+        .tx_buffer = new (std::nothrow) uint8_t[bufferSize],
+        .tx_buffer_size = bufferSize
+    };
+
+    return config;
+}
+#endif // USE_BUFFER_SIZE
+
 /*
  * Serial1 Test requires TX to be jumpered to RX as follows:
  * on the Photon
@@ -84,22 +107,8 @@ void printlnMasked(Stream& serial, char* str, uint16_t mask)
     serial.println();
 }
 
-
-test(SERIAL_ReadWriteSucceedsWithUserIntervention) {
-    //The following code will test all the important USB Serial routines
-    char test[] = "hello";
-    char message[10];
-    // when
-    consume(Serial);
-    Serial.print("Type the following message and press Enter : ");
-    Serial.println(test);
-    serialReadLine(&Serial, message, 9, 10000);//10 sec timeout
-    Serial.println("");
-    // then
-    assertTrue(strncmp(test, message, 5)==0);
-}
-
 test(SERIAL1_IncorrectConfigurationPassed) {
+    Serial1.end();
     Serial1.begin(9600, SERIAL_DATA_BITS_9 | SERIAL_PARITY_ODD | SERIAL_PARITY_EVEN | SERIAL_STOP_BITS_2);
     assertEqual(Serial1.isEnabled(), false);
 }
@@ -453,51 +462,106 @@ test(SERIAL1_ReadWriteParity9N2SucceedsInLoopbackWithTxRxShorted) {
 test(SERIAL1_AvailableForWriteWorksCorrectly) {
     Serial1.begin(9600);
     assertEqual(Serial1.isEnabled(), true);
-
-    // Initially there should be SERIAL_BUFFER_SIZE available in TX buffer
-    assertEqual(Serial1.availableForWrite(), SERIAL_BUFFER_SIZE);
+#if !HAL_PLATFORM_USART_9BIT_SUPPORTED
+    const size_t bufferSize = USE_BUFFER_SIZE;
+#else
+    const size_t bufferSize = USE_BUFFER_SIZE * sizeof(uint16_t);
+#endif // 
+    // Initially there should be bufferSize available in TX buffer
+    assertEqual(Serial1.availableForWrite(), bufferSize);
 
     // Disable Serial1 IRQ to prevent it from sending data
     NVIC_DisableIRQ(USART1_IRQn);
-    // Write (SERIAL_BUFFER_SIZE / 2) bytes into TX buffer
-    for (int i = 0; i < SERIAL_BUFFER_SIZE / 2; i++) {
+    // Write (bufferSize / 2) bytes into TX buffer
+    for (int i = 0; i < bufferSize / 2; i++) {
         Serial1.write('a');
     }
-    // There should be (SERIAL_BUFFER_SIZE / 2) bytes available in TX buffer
-    assertEqual(Serial1.availableForWrite(), SERIAL_BUFFER_SIZE / 2);
+    // There should be (bufferSize / 2) bytes available in TX buffer
+    assertEqual(Serial1.availableForWrite(), bufferSize / 2);
 
-    // Write (SERIAL_BUFFER_SIZE / 2 - 1) bytes into TX buffer
-    for (int i = 0; i < SERIAL_BUFFER_SIZE / 2 - 1; i++) {
+    // Write (bufferSize / 2 - 1) bytes into TX buffer
+    for (int i = 0; i < bufferSize / 2 - 1; i++) {
         Serial1.write('b');
     }
     // There should only be 1 byte available in TX buffer
     assertEqual(Serial1.availableForWrite(), 1);
     // Enable Serial1 IRQ again to send out the data from TX buffer
     NVIC_EnableIRQ(USART1_IRQn);
-    delay(100);
+    Serial1.flush();
 
-    // There should be SERIAL_BUFFER_SIZE available in TX buffer again
-    assertEqual(Serial1.availableForWrite(), SERIAL_BUFFER_SIZE);
+    // There should be bufferSize available in TX buffer again
+    assertEqual(Serial1.availableForWrite(), bufferSize);
 
-    // At this point tx_buffer->head = (SERIAL_BUFFER_SIZE - 1), tx_buffer->tail = (SERIAL_BUFFER_SIZE - 1)
+    // At this point tx_buffer->head = (bufferSize - 1), tx_buffer->tail = (bufferSize - 1)
     // Now test that availableForWrite() returns correct results for cases where tx_buffer->head < tx_buffer->tail
     // Disable Serial1 IRQ again to prevent it from sending data
     NVIC_DisableIRQ(USART1_IRQn);
-    // Write (SERIAL_BUFFER_SIZE / 2 + 1) bytes into TX buffer
-    for (int i = 0; i < SERIAL_BUFFER_SIZE / 2 + 1; i++) {
+    // Write (bufferSize / 2 + 1) bytes into TX buffer
+    for (int i = 0; i < bufferSize / 2 + 1; i++) {
         Serial1.write('c');
     }
-    // There should be (SERIAL_BUFFER_SIZE / 2) bytes available in TX buffer
-    assertEqual(Serial1.availableForWrite(), SERIAL_BUFFER_SIZE / 2);
+    // There should be (bufferSize / 2) bytes available in TX buffer
+    assertEqual(Serial1.availableForWrite(), bufferSize / 2);
     // Enable Serial1 IRQ again to send out the data from TX buffer
     NVIC_EnableIRQ(USART1_IRQn);
-    delay(100);
+    Serial1.flush();
 
-    // There should be SERIAL_BUFFER_SIZE available in TX buffer again
-    assertEqual(Serial1.availableForWrite(), SERIAL_BUFFER_SIZE);
+    // There should be bufferSize available in TX buffer again
+    assertEqual(Serial1.availableForWrite(), bufferSize);
 
     Serial1.end();
 }
+
+#if HAL_PLATFORM_USART_9BIT_SUPPORTED
+test(SERIAL1_AvailableForWriteIn9BitModeWorksCorrectly) {
+    Serial1.begin(9600, SERIAL_DATA_BITS_9);
+    assertEqual(Serial1.isEnabled(), true);
+    const size_t bufferSize = USE_BUFFER_SIZE;
+    // Initially there should be bufferSize available in TX buffer
+    assertEqual(Serial1.availableForWrite(), bufferSize);
+
+    // Disable Serial1 IRQ to prevent it from sending data
+    NVIC_DisableIRQ(USART1_IRQn);
+    // Write (bufferSize / 2) bytes into TX buffer
+    for (int i = 0; i < bufferSize / 2; i++) {
+        Serial1.write('a');
+    }
+    // There should be (bufferSize / 2) bytes available in TX buffer
+    assertEqual(Serial1.availableForWrite(), bufferSize / 2);
+
+    // Write (bufferSize / 2 - 1) bytes into TX buffer
+    for (int i = 0; i < bufferSize / 2 - 1; i++) {
+        Serial1.write('b');
+    }
+    // There should only be 1 byte available in TX buffer
+    assertEqual(Serial1.availableForWrite(), 1);
+    // Enable Serial1 IRQ again to send out the data from TX buffer
+    NVIC_EnableIRQ(USART1_IRQn);
+    Serial1.flush();
+
+    // There should be bufferSize available in TX buffer again
+    assertEqual(Serial1.availableForWrite(), bufferSize);
+
+    // At this point tx_buffer->head = (bufferSize - 1), tx_buffer->tail = (bufferSize - 1)
+    // Now test that availableForWrite() returns correct results for cases where tx_buffer->head < tx_buffer->tail
+    // Disable Serial1 IRQ again to prevent it from sending data
+    NVIC_DisableIRQ(USART1_IRQn);
+    // Write (bufferSize / 2 + 1) bytes into TX buffer
+    for (int i = 0; i < bufferSize / 2 + 1; i++) {
+        Serial1.write('c');
+    }
+    // There should be (bufferSize / 2) bytes available in TX buffer
+    assertEqual(Serial1.availableForWrite(), bufferSize / 2);
+    // Enable Serial1 IRQ again to send out the data from TX buffer
+    NVIC_EnableIRQ(USART1_IRQn);
+    Serial1.flush();
+
+    // There should be bufferSize available in TX buffer again
+    assertEqual(Serial1.availableForWrite(), bufferSize);
+
+    Serial1.end();
+}
+#endif // HAL_PLATFORM_USART_9BIT_SUPPORTED
 
 test(SERIAL1_LINMasterReadWriteBreakSucceedsInLoopbackWithTxRxShorted) {
     // Test for LIN mode
