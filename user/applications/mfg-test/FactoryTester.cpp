@@ -4,11 +4,16 @@
 #include "FactoryTester.h"
 #include "TesterCommandTypes.h"
 
-extern "C" {
-#define BOOLEAN AMBD_SDK_BOOLEAN
-#include "rtl8721d.h"
-#undef BOOLEAN
-}
+// Tron is platform 32
+#if PLATFORM_ID == PLATFORM_TRON 
+    extern "C" {
+    #define BOOLEAN AMBD_SDK_BOOLEAN
+    #include "rtl8721d.h"
+    #undef BOOLEAN
+    }
+#else
+    #define BIT(x)                  (1 << (x))
+#endif
 
 #define SERIAL    Serial1
 
@@ -46,11 +51,15 @@ extern "C" {
 #define EFUSE_SUCCESS 1
 #define EFUSE_FAILURE 0
 
-#define MOCK_LOGICAL_EFUSE 1 // For testing MTP data, like serial, hw data, 
+#define MOCK_EFUSE 1 // Use our own RAM buffer for efuse instead of wearing out the hardware MTP/OTP
 
 #define LOGICAL_EFUSE_SIZE 1024
 static uint8_t logicalEfuseBuffer[LOGICAL_EFUSE_SIZE];
+#define PHYSICAL_EFUSE_SIZE 512
+static uint8_t physicalEfuseBuffer[PHYSICAL_EFUSE_SIZE];
+
 static uint8_t userMTPBuffer[USER_MTP_DATA_LENGTH];
+
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -83,7 +92,8 @@ const TesterCommand commands[] = {
 };
 
 void FactoryTester::setup() {   
-    memset(logicalEfuseBuffer, 0x00, sizeof(logicalEfuseBuffer));
+    memset(logicalEfuseBuffer, 0xFF, sizeof(logicalEfuseBuffer));
+    memset(physicalEfuseBuffer, 0xFF, sizeof(physicalEfuseBuffer));
     memset(userMTPBuffer, 0x00, sizeof(userMTPBuffer));
     SERIAL.println("Tron Ready!");
 }
@@ -313,6 +323,20 @@ static int hex_to_bin(const char *s, char *buff, int length) {
 
 ////////////////////////////////////////// Tron Changes Below /////////////////////////////////////////////////////
 
+#if PLATFORM_ID != PLATFORM_TRON 
+    // Fake efuse functions for non tron platforms
+    #define L25EOUTVOLTAGE                      7
+
+    unsigned EFUSE_LMAP_READ(uint8_t * buffer){
+        return 0;
+    }
+
+    unsigned EFUSE_PMAP_READ8(uint32_t CtrlSetting, uint32_t Addr, uint8_t* Data, uint8_t L25OutVoltage){
+        return 0;
+    }
+#endif
+
+
 int FactoryTester::validateData(TesterCommandType commandType, int expected_token_length, uint8_t * output_bytes, int output_bytes_length, bool isHex) {
     int expectedTokenCount = 3; // Expect command verb, then data, then data repeated
     const char *myCommandVerb = this->getCommandVerb(commandType);
@@ -373,12 +397,17 @@ int FactoryTester::writeEfuse(bool physical, uint8_t * data, uint32_t length, ui
 
     if (physical) {
         for (i = 0; (i < length) && (eFuseWrite == EFUSE_SUCCESS); i++) {
-            //eFuseWrite = EFUSE_PMAP_WRITE8(0, address + i, &data[i], L25EOUTVOLTAGE); // TODO: UNCOMMENT OUT FOR ACTUAL EFUSE WRITES
+            #ifdef MOCK_EFUSE
+                physicalEfuseBuffer[address + i] = data[i];
+            #else
+                //eFuseWrite = EFUSE_PMAP_WRITE8(0, address + i, &data[i], L25EOUTVOLTAGE); // TODO: UNCOMMENT OUT FOR ACTUAL EFUSE WRITES
+            #endif
+            
             // SERIAL.printlnf("eFuse write byte 0x%02X @ 0x%X", data[i], (unsigned int)(address + i));
         }
     }
     else {
-        #ifdef MOCK_LOGICAL_EFUSE
+        #ifdef MOCK_EFUSE
             memcpy(logicalEfuseBuffer + address, data, length);
         #else 
             // eFuseWrite = EFUSE_LMAP_WRITE(address, length, data); // TODO: UNCOMMENT OUT FOR ACTUAL EFUSE WRITES         
@@ -403,13 +432,17 @@ int FactoryTester::readEfuse(bool physical, uint8_t * data, uint32_t length, uin
     uint32_t i = 0;
 
     if (physical) {
-        for (i = 0; (i < length) && (eFuseRead == EFUSE_SUCCESS); i++) {    
-            eFuseRead = EFUSE_PMAP_READ8(0, address + i, &data[i], L25EOUTVOLTAGE);
-            SERIAL.printlnf("readEfuse 0x%02X @ 0x%X", data[i], (unsigned int)(address + i));
+        for (i = 0; (i < length) && (eFuseRead == EFUSE_SUCCESS); i++) {
+            #ifdef MOCK_EFUSE
+                data[i] = physicalEfuseBuffer[address + i];
+            #else
+                eFuseRead = EFUSE_PMAP_READ8(0, address + i, &data[i], L25EOUTVOLTAGE);
+            #endif
+            //SERIAL.printlnf("readEfuse 0x%02X @ 0x%X", data[i], (unsigned int)(address + i));
         }
     }
     else {
-        #ifdef MOCK_LOGICAL_EFUSE
+        #ifdef MOCK_EFUSE
             memcpy(data, logicalEfuseBuffer + address, length);
         #else
             eFuseRead = EFUSE_LMAP_READ(logicalEfuseBuffer);
@@ -452,14 +485,19 @@ bool FactoryTester::bufferMTPData(uint8_t * data, int data_length, TesterMTPType
     memcpy(userMTPBuffer + offset, data, data_length);
 
     mtp_data_buffered |= (static_cast<unsigned>(mtp_type));
-    SERIAL.printlnf("mtp buffered: %d", mtp_data_buffered); // DEBUG
+    SERIAL.printlnf("mtp buffered: 0x%X", mtp_data_buffered); // DEBUG
 
-    // TODO: check if all MTP data set before writing
-    writeEfuse(false, userMTPBuffer, sizeof(userMTPBuffer), EFUSE_USER_MTP);
+    // Only write data to logical efuse once we have all the components. This is to minimize the number of writes to MTP 
+    if( (mtp_data_buffered & ALL_MTP_DATA_BUFFERED) == ALL_MTP_DATA_BUFFERED) {
+        writeEfuse(false, userMTPBuffer, sizeof(userMTPBuffer), EFUSE_USER_MTP);
+        mtp_data_buffered = 0;
+        return true;    
+    }
     return false;
 }
 
 int FactoryTester::SET_FLASH_ENCRYPTION_KEY(void) {
+    //SET_FLASH_ENCRYPTION_KEY:aAbBcCdDeEFf00123344556677889900:aAbBcCdDeEFf00123344556677889900;
     uint8_t flashEncryptionKey[FLASH_ENCRYPTION_KEY_LENGTH] = {0};
 
     // Check to make sure a key is not already written
@@ -481,7 +519,7 @@ int FactoryTester::SET_FLASH_ENCRYPTION_KEY(void) {
     {
         // Write flash encryption key lock bits
         uint8_t flashEncryptionKeyReadWriteForbidden = 0xDB; // Bit 2,5 = Read, Write Forbidden
-        eFuseWrite = this->writeEfuse(true, &flashEncryptionKeyReadWriteForbidden, sizeof(flashEncryptionKeyReadWriteForbidden), EFUSE_SEC_CONFIG_ADDR0);
+        eFuseWrite = this->writeEfuse(true, &flashEncryptionKeyReadWriteForbidden, sizeof(flashEncryptionKeyReadWriteForbidden), EFUSE_PROTECTION_CONFIGURATION_LOW);
     }
 
     return eFuseWrite;
@@ -498,7 +536,8 @@ int FactoryTester::ENABLE_FLASH_ENCRYPTION(void) {
     return this->writeEfuse(false, &systemConfigByte, sizeof(systemConfigByte), EFUSE_SYSTEM_CONFIG);
 }
 
-int FactoryTester::SET_SECURE_BOOT_KEY(void) {    
+int FactoryTester::SET_SECURE_BOOT_KEY(void) {
+    //SET_SECURE_BOOT_KEY:aAbBcCdDeEFf00123344556677889900aAbBcCdDeEFf00123344556677889900:aAbBcCdDeEFf00123344556677889900aAbBcCdDeEFf00123344556677889900;
     uint8_t secureBootKeyBytes[SECURE_BOOT_KEY_LENGTH];
 
     // Check to make sure a key is not already written
