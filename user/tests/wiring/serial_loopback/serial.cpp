@@ -30,7 +30,7 @@
 #warning "Using default 64 byte buffer"
 #define USE_BUFFER_SIZE SERIAL_BUFFER_SIZE
 #else
-hal_usart_buffer_config_t __attribute__((weak)) acquireSerial1Buffer()
+hal_usart_buffer_config_t acquireSerial1Buffer()
 {
 #if !HAL_PLATFORM_USART_9BIT_SUPPORTED
     const size_t bufferSize = USE_BUFFER_SIZE;
