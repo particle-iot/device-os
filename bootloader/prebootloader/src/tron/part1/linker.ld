@@ -6,27 +6,12 @@ MEMORY
 {
     INCLUDE memory_backup_ram.ld
   
-    SRAM      (xrw) : ORIGIN = platform_km0_bootloader_ram_start, LENGTH = platform_km0_bootloader_ram_size
-    APP_FLASH (rx)  : ORIGIN = platform_km0_bootloader_flash_start,      LENGTH = platform_km0_bootloader_flash_size
+    SRAM      (xrw) : ORIGIN = platform_km0_part1_ram_start,   LENGTH = platform_km0_part1_ram_size
+    APP_FLASH (rx)  : ORIGIN = platform_km0_part1_flash_start, LENGTH = platform_km0_part1_flash_size
 }
 
 SECTIONS
 {
-    .rtl_xip_image_header :
-    {
-        . = ALIGN(4);
-        KEEP (*(.rtl_header_xip))
-        . = ALIGN(4);
-        link_rtl_xip_start = .;
-    } > APP_FLASH
-
-    /****************************** START OF XIP PARTITION ***********************************
-     */
-    .xip_start :
-    {
-        link_rtl_xip_start = .;
-    } > APP_FLASH
-
     /* Module start */
     INCLUDE linker_module_start.ld
 
@@ -36,41 +21,29 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
-    .xip_end :
+    /* Dynalib table */
+    .dynalib : ALIGN(8)
     {
-        . = ALIGN(16); /* The image end must be 16-bytes aligned. */
-        link_rtl_xip_end = .;
+        link_dynalib_flash_start = LOADADDR( .dynalib );
         . = ALIGN(4);
-    } > APP_FLASH
-
-    PROVIDE (link_rtl_xip_size = link_rtl_xip_end - link_rtl_xip_start);
-    /*
-     ****************************** END OF XIP PARTITION *************************************/
-
-    .rtl_ram_image_header :
-    {
-        . = ALIGN(16); /* The image header must be 16-bytes aligned. */
-        KEEP (*(.rtl_header_ram))
-        . = ALIGN(4);
-    } > APP_FLASH
-
-    /******************************* START OF RAM COPY PARTITION ******************************
-     */
-    .ram_copy_start :
-    {
-        link_rtl_ram_copy_start = .;
-    } > SRAM
-
-    .rtl_start_table : /* Realtek specific */
-    {  
-        KEEP (*(.rtl_header_ram_start_table))
-        KEEP (*(.rtl_header_ram_valid_pattern))
-        KEEP (*(.rtl_header_ram_boot_export_table))
+        link_dynalib_start = . ;
+        KEEP (*(*.bootloader_part1_module))
+        link_dynalib_end = . ;
     } > SRAM AT> APP_FLASH
 
     .text :
     {
         . = ALIGN(4);
+        KEEP (*(.xip.text))
+        KEEP (*(*.dynalib_part1_preinit))
+        . = ALIGN(4);
+    } > APP_FLASH
+
+    .ram_text :
+    {
+        link_ram_copy_flash_start = LOADADDR( .ram_text );
+        . = ALIGN(4);
+        link_ram_copy_start = .;
         
         /* Code */
         link_code_start = .;
@@ -117,15 +90,6 @@ SECTIONS
         . = ALIGN(4);
     } > SRAM AT> APP_FLASH
 
-    .ram_copy_end :
-    {
-        link_rtl_ram_copy_end = .;
-    } > SRAM
-
-    PROVIDE (link_rtl_ram_copy_size = link_rtl_ram_copy_end - link_rtl_ram_copy_start);
-    /*
-     ****************************** END OF RAM COPY PARTITION ********************************/
-
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
 
@@ -152,6 +116,7 @@ SECTIONS
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
+        link_ram_copy_end = .;
     } > SRAM AT> APP_FLASH
     
     /* Zero initialised memory used for zero initialised variables */
@@ -203,9 +168,6 @@ SECTIONS
         *(.glue*)
     }
 }
-
-link_dynalib_flash_start = 0;
-link_dynalib_start = 0;
 
 /* Heap location */
 link_heap_location     = link_bss_end;

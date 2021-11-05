@@ -40,13 +40,13 @@ Modular firmware:                          Monolithic firmware:
 +--------------------------------+ 0x08060000 +----------------------------------+
 |                                                                                |
 |                                                                                |
-| KM0 monolithic firmware RAM data                                               |
+| KM0 part1 RAM data                                                             |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| KM0 monolithic firmware RAM code                                               |
+| KM0 part1 RAM code                                                             |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| KM0 monolithic firmware XIP code                                               |
+| KM0 part1 XIP code                                                             |
 +--------------------------------+ 0x08014018 +----------------------------------+
-| KM0 monolithic firmware module info                                            |
+| KM0 part1 module info                                                          |
 +--------------------------------+ 0x08014000 +----------------------------------+
 |                                                                                |
 |                                                                                |
@@ -68,19 +68,19 @@ Modular firmware:                          Monolithic firmware:
 +--------------------------------+ 0x08004000 +----------------------------------+
 |                                                                                |
 |                                                                                |
-| KM0 bootloader RAM data                                                        |
+| KM0 MBR RAM data                                                               |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| KM0 bootloader RAM code                                                        |
+| KM0 MBR RAM code                                                               |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| KM0 bootloader start table                                                     |
+| KM0 MBR start table                                                            |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| KM0 bootloader RAM header                                                      |
+| KM0 MBR RAM header                                                             |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| KM0 bootloader XIP code                                                        |
+| KM0 MBR XIP code                                                               |
 +--------------------------------+ 0x08000040 +----------------------------------+
-| KM0 bootloader module info                                                     |
+| KM0 MBR module info                                                            |
 +--------------------------------+ 0x08000020 +----------------------------------+
-| KM0 bootloader XIP header                                                      |
+| KM0 MBR XIP header                                                             |
 +--------------------------------+ 0x08000000 +----------------------------------+
 
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.
@@ -106,19 +106,19 @@ platform_flash_end   = platform_flash_start + platform_flash_size;
 
 
 /* KM0 bootloader */
-platform_km0_bootloader_flash_size  = 16K;
-platform_km0_bootloader_flash_start = platform_flash_start;
-platform_km0_bootloader_flash_end   = platform_km0_bootloader_flash_start + platform_km0_bootloader_flash_size;
+platform_km0_mbr_flash_size  = 16K;
+platform_km0_mbr_flash_start = platform_flash_start;
+platform_km0_mbr_flash_end   = platform_km0_mbr_flash_start + platform_km0_mbr_flash_size;
 
 /* KM0 bootloader module info */
-platform_km0_bootloader_module_info_flash_size  = platform_module_info_flash_size;
-platform_km0_bootloader_module_info_flash_start = platform_km0_bootloader_flash_start + platform_image_header_flash_size;
-platform_km0_bootloader_module_info_flash_end   = platform_km0_bootloader_module_info_flash_start + platform_km0_bootloader_module_info_flash_size;
+platform_km0_mbr_module_info_flash_size  = platform_module_info_flash_size;
+platform_km0_mbr_module_info_flash_start = platform_km0_mbr_flash_start + platform_image_header_flash_size;
+platform_km0_mbr_module_info_flash_end   = platform_km0_mbr_module_info_flash_start + platform_km0_mbr_module_info_flash_size;
 
 
 /* Bootloader */
 platform_bootloader_flash_size  = 64K;
-platform_bootloader_flash_start = platform_km0_bootloader_flash_end;
+platform_bootloader_flash_start = platform_km0_mbr_flash_end;
 platform_bootloader_flash_end   = platform_bootloader_flash_start + platform_bootloader_flash_size;
 
 /* Bootloader module info */
@@ -127,15 +127,18 @@ platform_bootloader_module_info_flash_start = platform_bootloader_flash_start + 
 platform_bootloader_module_info_flash_end   = platform_bootloader_module_info_flash_start + platform_bootloader_module_info_flash_size;
 
 
-/* KM0 monolithic firmware*/
-platform_km0_monolithic_firmware_flash_size  = 304K;
-platform_km0_monolithic_firmware_flash_start = platform_bootloader_flash_end;
-platform_km0_monolithic_firmware_flash_end   = platform_km0_monolithic_firmware_flash_start + platform_km0_monolithic_firmware_flash_size;
+/* KM0 part1 */
+platform_km0_part1_flash_size  = 304K;
+platform_km0_part1_flash_start = platform_bootloader_flash_end;
+platform_km0_part1_flash_end   = platform_km0_part1_flash_start + platform_km0_part1_flash_size;
 
-/* KM0 monolithic firmware module info */
-platform_km0_monolithic_firmware_module_info_flash_size  = platform_module_info_flash_size;
-platform_km0_monolithic_firmware_module_info_flash_start = platform_km0_monolithic_firmware_flash_start;
-platform_km0_monolithic_firmware_module_info_flash_end   = platform_km0_monolithic_firmware_module_info_flash_start + platform_km0_monolithic_firmware_module_info_flash_size;
+/* KM0 part1 module info */
+platform_km0_part1_module_info_flash_size  = platform_module_info_flash_size;
+platform_km0_part1_module_info_flash_start = platform_km0_part1_flash_start;
+platform_km0_part1_module_info_flash_end   = platform_km0_part1_module_info_flash_start + platform_km0_part1_module_info_flash_size;
+
+/* KM0 part1 dynalib location */
+platform_km0_part1_dynalib_table_flash_start = platform_km0_part1_module_info_flash_end;
 
 
 /* Reserved for filesystem */
@@ -157,7 +160,7 @@ platform_user_part_module_info_flash_end   = platform_user_part_module_info_flas
 
 /* System part 1 */
 platform_system_part1_flash_end   = platform_user_part_flash_start;
-platform_system_part1_flash_start = platform_km0_monolithic_firmware_flash_end;
+platform_system_part1_flash_start = platform_km0_part1_flash_end;
 platform_system_part1_flash_size  = platform_system_part1_flash_end - platform_system_part1_flash_start;
 
 /* System part 1 module info */
@@ -172,7 +175,7 @@ platform_system_part1_entry_flash_end   = platform_system_part1_entry_flash_star
 
 
 /* Monolithic firmware*/
-platform_monolithic_firmware_flash_start = platform_km0_monolithic_firmware_flash_end;
+platform_monolithic_firmware_flash_start = platform_km0_part1_flash_end;
 platform_monolithic_firmware_flash_end   = platform_reserved_flash_start;
 platform_monolithic_firmware_flash_size  = platform_monolithic_firmware_flash_end - platform_monolithic_firmware_flash_start;
 

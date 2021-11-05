@@ -91,8 +91,8 @@ extern "C" {
 extern char link_module_start;
 extern char link_module_end;
 #if PLATFORM_ID == 32
-extern char link_dynalib_start;
-extern char link_dynalib_flash_start;
+extern uintptr_t link_dynalib_start;
+extern uintptr_t link_dynalib_flash_start;
 #endif
 
 #ifndef MODULE_VERSION

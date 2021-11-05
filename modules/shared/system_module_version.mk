@@ -34,7 +34,8 @@ endif
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
 BOOTLOADER_VERSION ?= 1005
-PREBOOTLOADER_VERSION ?= 1
+PREBOOTLOADER_MBR_VERSION ?= 1
+PREBOOTLOADER_PART1_VERSION ?= 1
 
 # The version of the bootloader that the system firmware requires
 # NOTE: this will force the device into safe mode until this dependency is met, which is why

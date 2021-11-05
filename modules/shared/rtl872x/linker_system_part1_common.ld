@@ -36,7 +36,7 @@ SECTIONS
         KEEP (*(*.system_part1_module))
         link_dynalib_end = . ;
 
-        /* WARN: the load address must increase as well due to alognement of virtuall address,
+        /* WARN: the load address must increase as well due to alignement of virtual address,
          * otherwise, the length of code to be copied to PSRAM is incorrect! */
         FILL (0xff)
         . = ALIGN(16);

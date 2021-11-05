@@ -1,34 +1,25 @@
-MODULE=prebootloader
-PREBOOTLOADER_MODULE_PATH=.
 PROJECT_ROOT ?= ../..
-BUILD_PATH_EXT = $(PREBOOTLOADER_BUILD_PATH_EXT)
-RTL_BINARY_FLASH_START = 0x0
+COMMON_BUILD=$(PROJECT_ROOT)/build
 
-DEPENDENCIES = platform dynalib services
-MAKE_DEPENDENCIES = $(PLATFORM_DEPS)
-# dependent on headers, but not the libraries
-# LIBS +=
-LIB_DEPS += $(PLATFORM_LIB_DEPS)
-LIB_DIRS += $(dir $(LIB_DEPS))
+mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+current_dir := $(patsubst %/,%,$(dir $(mkfile_path)))
 
-export COMPILE_LTO=y
-export BOOTLOADER_MODULE=2
-
+include $(PROJECT_ROOT)/build/verbose.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
-# Include top level makefile which can override certain things
--include $(PREBOOTLOADER_MODULE_PATH)/src/$(PLATFORM_NAME)/tlm.mk
-# Reinitialize platform definitions if requested by tlm.mk (included_productid_mk=0)
-include $(PROJECT_ROOT)/build/platform-id.mk
+include $(PROJECT_ROOT)/build/macros.mk
+include $(PROJECT_ROOT)/build/module-defaults.mk
+include $(PROJECT_ROOT)/build/arm-tools.mk
 
-# Build bootloader as modular by default if the platform is modular
--include $(PROJECT_ROOT)/modules/$(PLATFORM_NAME)/modular.mk
+projects = $(sort $(wildcard $(current_dir)/src/$(PLATFORM_DYNALIB_MODULES)/*))
+makefiles = $(foreach module,$(projects),$(and $(strip $(subst $(MODULE_EXCLUDE),,$(notdir $(module)))),$(wildcard $(module)/makefile)))
 
-# Target this makefile is building.
-ifeq ("$(ARCH)","gcc")
-TARGET=none
-else
-TARGET=elf bin hex size lst
-endif
+SUBDIR_GOALS := $(MAKECMDGOALS)
+
+all: $(makefiles)
+
+$(makefiles):
+	$(call,echo,'Making module $@')
+	$(VERBOSE)$(MAKE) -C $(dir $@) $(SUBDIR_GOALS) $(MAKE_ARGS) $(MAKEOVERRIDES)
 
 
-include $(PROJECT_ROOT)/build/arm-tlm.mk
+.PHONY: clean all $(makefiles)
