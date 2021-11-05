@@ -10,6 +10,9 @@ bool isInRangeIncl(T value, T min, T max) {
 	return (value >= min) && (value <= max);
 }
 
+const auto APPLICATION_WDT_STACK_SIZE = 2048;
+const auto APPLICATION_WDT_TEST_RUNS = 10;
+
 } // anonymous
 
 #if PLATFORM_THREADING
@@ -83,7 +86,7 @@ test(THREAD_06_particle_process_behavior_when_threading_disabled)
 
 	// Make sure Particle is connected
 	Particle.connect();
-	waitFor(Particle.connected,20000);
+	waitFor(Particle.connected,HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 	assertTrue(Particle.connected());
 
 	// Call disconnect from main thread
@@ -91,7 +94,7 @@ test(THREAD_06_particle_process_behavior_when_threading_disabled)
 	SCOPE_GUARD({
 		// Make sure we restore cloud connection after exiting this test
 		Particle.connect();
-		waitFor(Particle.connected,20000);
+		waitFor(Particle.connected,120000);
 		assertTrue(Particle.connected());
 	});
 
@@ -151,7 +154,7 @@ test(THREAD_07_particle_process_behavior_when_threading_enabled)
 
 	// Make sure Particle is connected
 	Particle.connect();
-	waitFor(Particle.connected,20000);
+	waitFor(Particle.connected,HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 	assertTrue(Particle.connected());
 
 	// Schedule function on application thread that does not run for sometime because of hard delays
@@ -180,7 +183,8 @@ test(THREAD_07_particle_process_behavior_when_threading_enabled)
 		// Make sure we unblock the system thread and restore cloud connection after exiting this test
 		test_val = 0;
 		Particle.connect();
-		waitFor(Particle.connected,20000);
+		// Address this comment before merging! Replace 20s with 9m?
+		waitFor(Particle.connected,HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 		assertTrue(Particle.connected());
 	});
 
@@ -267,12 +271,12 @@ test(APPLICATION_WATCHDOG_01_fires_timeout)
 
 test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 {
-	for (int x=0; x<10; x++) {
+	for (int x=0; x<APPLICATION_WDT_TEST_RUNS; x++) {
 		timeout_called = 0;
 		unsigned t = 100;
 		uint32_t startTime;
 		// LOG_DEBUG(INFO, "S %d", millis());
-		ApplicationWatchdog wd(t, timeout, 2048);
+		ApplicationWatchdog wd(t, timeout, APPLICATION_WDT_STACK_SIZE);
 		startTime = millis();
 		// this for() loop should consume more than t(seconds), about 2x as much
 		for (int i=0; i<10; i++) {
@@ -303,9 +307,9 @@ test(APPLICATION_WATCHDOG_03_doesnt_leak_memory)
 
 	// Before Photon/P1 Thread fixes were introduced, we would lose approximately 20k
 	// of RAM due to 10 allocations of ApplicationWatchdog in APPLICATION_WATCHDOG_02.
-	// Taking fragmentation and other potential allocations into consideration, 2k seems like
+	// Taking fragmentation and other potential allocations into consideration, 10k seems like
 	// a good testing value.
-	assertMoreOrEqual(System.freeMemory(), s_ram_free_before - 2048);
+	assertMoreOrEqual(System.freeMemory(), s_ram_free_before - ((APPLICATION_WDT_STACK_SIZE * APPLICATION_WDT_TEST_RUNS)/2));
 }
 
 #endif
