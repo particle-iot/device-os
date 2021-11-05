@@ -1,5 +1,6 @@
 #include "application.h"
 #include "Particle.h"
+#include "check.h"
 
 #include "FactoryTester.h"
 #include "TesterCommandTypes.h"
@@ -15,9 +16,10 @@
     #define BIT(x)                  (1 << (x))
 #endif
 
-#define SERIAL    Serial1
+#define MOCK_EFUSE 1 // Use our own RAM buffer for efuse instead of wearing out the hardware MTP/OTP
 
-//////////////////////////// Tron specific stuff ////////////////////////////
+//#define SERIAL    Serial1
+#define SERIAL    Serial
 
 // eFuse data lengths
 #define SECURE_BOOT_KEY_LENGTH 32
@@ -51,17 +53,14 @@
 #define EFUSE_SUCCESS 1
 #define EFUSE_FAILURE 0
 
-#define MOCK_EFUSE 1 // Use our own RAM buffer for efuse instead of wearing out the hardware MTP/OTP
-
 #define LOGICAL_EFUSE_SIZE 1024
 static uint8_t logicalEfuseBuffer[LOGICAL_EFUSE_SIZE];
+
 #define PHYSICAL_EFUSE_SIZE 512
 static uint8_t physicalEfuseBuffer[PHYSICAL_EFUSE_SIZE];
 
+static unsigned mtp_data_buffered = 0;
 static uint8_t userMTPBuffer[USER_MTP_DATA_LENGTH];
-
-
-///////////////////////////////////////////////////////////////////////////
 
 struct TesterCommand {
     const char *name;
@@ -69,188 +68,226 @@ struct TesterCommand {
 };
 
 const TesterCommand commands[] = {
-        {"SET_FLASH_ENCRYPTION_KEY",     TesterCommandType::SET_FLASH_ENCRYPTION_KEY},
-        {"ENABLE_FLASH_ENCRYPTION",      TesterCommandType::ENABLE_FLASH_ENCRYPTION},
-        {"SET_SECURE_BOOT_KEY",          TesterCommandType::SET_SECURE_BOOT_KEY},
-        {"GET_SECURE_BOOT_KEY",          TesterCommandType::GET_SECURE_BOOT_KEY},
-        {"ENABLE_SECURE_BOOT",           TesterCommandType::ENABLE_SECURE_BOOT},
-        {"TEST_COMMAND",                 TesterCommandType::TEST_COMMAND},
-        // {"INFO",                TesterCommandType::INFO},
-        {"READ_SERIAL_NUMBER",  TesterCommandType::READ_SERIAL_NUMBER},
-        {"SET_SERIAL_NUMBER",   TesterCommandType::SET_SERIAL_NUMBER},
-        {"READ_MOBILE_SECRET",  TesterCommandType::READ_MOBILE_SECRET},
-        {"SET_MOBILE_SECRET",   TesterCommandType::SET_MOBILE_SECRET},
-        {"READ_HW_DATA",        TesterCommandType::READ_HW_DATA},
-        {"SET_HW_DATA",         TesterCommandType::SET_HW_DATA},
-        {"READ_HW_MODEL",       TesterCommandType::READ_HW_MODEL},
-        {"SET_HW_MODEL",        TesterCommandType::SET_HW_MODEL},
-        {"READ_WIFI_MAC",       TesterCommandType::READ_WIFI_MAC},
-        {"SET_WIFI_MAC",        TesterCommandType::SET_WIFI_MAC},
-        // FORCE_MTP_WRITE?
+        {"SET_FLASH_ENCRYPTION_KEY",    TesterCommandType::SET_FLASH_ENCRYPTION_KEY},
+        {"ENABLE_FLASH_ENCRYPTION",     TesterCommandType::ENABLE_FLASH_ENCRYPTION},
+        {"SET_SECURE_BOOT_KEY",         TesterCommandType::SET_SECURE_BOOT_KEY},
+        {"GET_SECURE_BOOT_KEY",         TesterCommandType::GET_SECURE_BOOT_KEY},
+        {"ENABLE_SECURE_BOOT",          TesterCommandType::ENABLE_SECURE_BOOT},
+        {"SET_SERIAL_NUMBER",           TesterCommandType::SET_SERIAL_NUMBER},
+        {"GET_SERIAL_NUMBER",           TesterCommandType::GET_SERIAL_NUMBER},
+        {"SET_MOBILE_SECRET",           TesterCommandType::SET_MOBILE_SECRET},
+        {"GET_MOBILE_SECRET",           TesterCommandType::GET_MOBILE_SECRET},
+        {"SET_HW_VERSION",              TesterCommandType::SET_HW_VERSION},
+        {"GET_HW_VERSION",              TesterCommandType::GET_HW_VERSION},
+        {"SET_HW_MODEL",                TesterCommandType::SET_HW_MODEL},
+        {"GET_HW_MODEL",                TesterCommandType::GET_HW_MODEL},
+        {"SET_WIFI_MAC",                TesterCommandType::SET_WIFI_MAC},
+        {"GET_WIFI_MAC",                TesterCommandType::GET_WIFI_MAC},
+        {"GET_DEVICE_ID",               TesterCommandType::GET_DEVICE_ID},
+        {"IS_READY",                    TesterCommandType::IS_READY},
+        {"TEST_COMMAND",                TesterCommandType::TEST_COMMAND},
         // Add commands above this line
-        {"",                    TesterCommandType::END}
+        {"",                            TesterCommandType::END}
 };
+
+// Wrapper for a control request handle
+class Request {
+public:
+    Request() :
+            req_(nullptr) {
+    }
+
+    ~Request() {
+        destroy();
+    }
+
+    int init(ctrl_request* req) {
+        if (req->request_size > 0) {
+            // Parse request
+            auto d = JSONValue::parse(req->request_data, req->request_size);
+            CHECK_TRUE(d.isObject(), SYSTEM_ERROR_BAD_DATA);
+            data_ = std::move(d);
+        }
+        req_ = req;
+        return 0;
+    }
+
+    void destroy() {
+        data_ = JSONValue();
+        if (req_) {
+            // Having a pending request at this point is an internal error
+            system_ctrl_set_result(req_, SYSTEM_ERROR_INTERNAL, nullptr, nullptr, nullptr);
+            req_ = nullptr;
+        }
+    }
+
+    template<typename EncodeFn>
+    int reply(EncodeFn fn) {
+        CHECK_TRUE(req_, SYSTEM_ERROR_INVALID_STATE);
+        // Calculate the size of the reply data
+        JSONBufferWriter writer(nullptr, 0);
+        fn(writer);
+        const size_t size = writer.dataSize();
+        CHECK_TRUE(size > 0, SYSTEM_ERROR_INTERNAL);
+        CHECK(system_ctrl_alloc_reply_data(req_, size, nullptr));
+        // Serialize the reply
+        writer = JSONBufferWriter(req_->reply_data, req_->reply_size);
+        fn(writer);
+        CHECK_TRUE(writer.dataSize() == size, SYSTEM_ERROR_INTERNAL);
+        return 0;
+    }
+
+    void done(int result, ctrl_completion_handler_fn fn = nullptr, void* data = nullptr) {
+        if (req_) {
+            system_ctrl_set_result(req_, result, fn, data, nullptr);
+            req_ = nullptr;
+            destroy();
+        }
+    }
+
+    const JSONValue& data() const {
+        return data_;
+    }
+
+private:
+    JSONValue data_;
+    ctrl_request* req_;
+};
+
+
+const String FactoryTester::PASS = "\"pass\"";
+const String FactoryTester::RESPONSE  = "\"response\"";
+const String FactoryTester::ERROR = "\"error\"";
+const String FactoryTester::ERROR_CODE = "\"error_code\"";
 
 void FactoryTester::setup() {   
     memset(logicalEfuseBuffer, 0xFF, sizeof(logicalEfuseBuffer));
     memset(physicalEfuseBuffer, 0xFF, sizeof(physicalEfuseBuffer));
     memset(userMTPBuffer, 0x00, sizeof(userMTPBuffer));
-    SERIAL.println("Tron Ready!");
+    SERIAL.printlnf("Tron Ready!");
 }
 
-void FactoryTester::loop() {
-    int c = -1;
-    if (this->serialAvailable()) {
-        c = this->serialRead();
-        char s[2];
-        s[0] = c;
-        s[1] = 0;
-        SERIAL.print(s);
-    }
+int FactoryTester::processUSBRequest(ctrl_request* request) {
+    char usb_buffer[256];
+    memset(usb_buffer, 0x00, sizeof(usb_buffer));
+    memcpy(usb_buffer, request->request_data, request->request_size);
+    SERIAL.printlnf("USB request size %d type %d request data length: %d data: %s", request->size, request->type, request->request_size, usb_buffer);
 
-    if (c != -1) {
-        checkSerial((char) c);
-    }
-}
+    //CHECK_TRUE(inited_, SYSTEM_ERROR_INVALID_STATE);
+    int result = -1;
+    this->command_response[0] = 0;
+    Request response;
+    CHECK(response.init(request));
 
-int FactoryTester::serialAvailable() {
-    int result = SERIAL.available();//user serial1
-    return result;
-}
+    JSONObjectIterator it(response.data());
+    while (it.next()) {
+        const char * currentKey = it.name().data();
+        const char * currentData = nullptr;
+        JSONType currentType = it.value().type(); // TODO: Figure out non-string data types
 
-int FactoryTester::serialRead() {
-    if (SERIAL.available()) {//user serial1
-        return SERIAL.read();
-    }
-    return 0;
-}
-
-
-/***
- *  if the command buffer ends with a semicolon, then lets check for a command, shall we?
- *  check through all our defined commands and see if we're in there!
- */
-TesterCommandType FactoryTester::getCommandType() {
-    command[cmd_index++] = 0;
-    cmd_index = 0;
-
-    int i = 0;
-    TesterCommand cmd = commands[i];
-    while (cmd.type != TesterCommandType::END) {
-        String nameStr = String(String(cmd.name) + ":");
-        const char *name = nameStr.c_str();
-
-        //SERIAL.println("comparing " + String(name) + " for " + String(command));
-
-        char *start = strstr(command, name);
-        if (start != NULL) {
-            //SERIAL.println("found it!");
-            return cmd.type;
+        if(currentType == JSONType::JSON_TYPE_STRING) {
+            currentData = it.value().toString().data();
         }
 
-        i++;
-        cmd = commands[i];
-    }
-    return TesterCommandType::NONE;
-}
+        SERIAL.printlnf("%s : %s, %d", currentKey, currentData, currentType); // DEBUG
 
-const char *FactoryTester::getCommandVerb(TesterCommandType someCmd) {
-
-    int i = 0;
-    TesterCommand cmd = commands[i];
-    while (cmd.type != TesterCommandType::END) {
-        if (cmd.type == someCmd) {
-            return cmd.name;
+        for (int i = 0; commands[i].type != TesterCommandType::END; i++) {
+            if(strcmp(currentKey, commands[i].name) == 0){
+                result = executeCommand(commands[i].type, currentData);
+            }    
         }
-        i++;
-        cmd = commands[i];
     }
 
-    return NULL;
+    bool responseMessage = (this->command_response[0] != 0);
+
+    // If error response, and no text specifed, use the text for the error code
+    if(result != 0 && !responseMessage){
+        strcpy(this->command_response, get_system_error_message(result));
+        responseMessage = true;
+    }
+
+    if(responseMessage){
+        SERIAL.printlnf("RESPONSE VALUE: %d %s", responseMessage, this->command_response); // DEBUG LINE    
+    }
+    
+    const int r = CHECK(
+        response.reply([result, responseMessage, this](JSONWriter& w) {
+        w.beginObject();
+            bool isSuccess = result >= 0;
+            w.name(PASS).value(isSuccess);
+            if(responseMessage) {
+                w.name(isSuccess ? RESPONSE : ERROR).value(this->command_response);
+                if(!isSuccess){
+                    w.name(ERROR_CODE).value(result);
+                }
+            }
+        w.endObject();
+    }));
+
+    response.done(r, nullptr);
+    return r;
 }
 
-void FactoryTester::checkSerial(char c) {
-    if (cmd_index == 0) {
-        memset(command, 0, cmd_length);
-    }
 
-    if (cmd_index < cmd_length) {
-        command[cmd_index++] = c;
-    } else {
-        cmd_index = 0;
-    }
+int FactoryTester::executeCommand(TesterCommandType command, const char * commandData) {
 
-    if (c != ';') {
-        return;
-    }
+    int result = -1;
 
-    SERIAL.println("checking command: " + (String)command);
-
-    TesterCommandType type = this->getCommandType();
-    bool wasValidCommand = (type != TesterCommandType::NONE) && (type != TesterCommandType::END);
-
-    const char *cmd_name;
-    if (wasValidCommand) {
-        cmd_name = this->getCommandVerb(type);
-        SERIAL.println(String(cmd_name) + "_OK:");
-    } else {
-        SERIAL.println("CMD_INVALID:");
-    }
-    // set to true if your command is async, and needs to respond with it's own ":CMD_FOO_DONE" response
-    bool commandSendsDone = false;
-
-
-    SERIAL.println(":INFO_END");
-
-    switch (type) {
-
+    // TODO: Refactor
+    switch (command) {
         case TesterCommandType::SET_FLASH_ENCRYPTION_KEY:
-            this->SET_FLASH_ENCRYPTION_KEY();
+            result = this->SET_FLASH_ENCRYPTION_KEY(commandData);
             break;
         case TesterCommandType::ENABLE_FLASH_ENCRYPTION:
-            this->ENABLE_FLASH_ENCRYPTION();
+            result = this->ENABLE_FLASH_ENCRYPTION();
             break;   
         case TesterCommandType::SET_SECURE_BOOT_KEY:
-            this->SET_SECURE_BOOT_KEY();
+            result = this->SET_SECURE_BOOT_KEY(commandData);
             break;   
         case TesterCommandType::GET_SECURE_BOOT_KEY:
-            this->GET_SECURE_BOOT_KEY();
+            result = this->GET_SECURE_BOOT_KEY();
             break;   
         case TesterCommandType::ENABLE_SECURE_BOOT:
-            this->ENABLE_SECURE_BOOT();
-            break;           
-        case TesterCommandType::TEST_COMMAND:
-            this->TEST_COMMAND();
+            result = this->ENABLE_SECURE_BOOT();
             break;
-        case TesterCommandType::READ_SERIAL_NUMBER:
-            this->READ_SERIAL_NUMBER();
+        case TesterCommandType::GET_SERIAL_NUMBER:
+            result = this->GET_SERIAL_NUMBER();
             break;
         case TesterCommandType::SET_SERIAL_NUMBER:
-            this->SET_SERIAL_NUMBER();
+            result = this->SET_SERIAL_NUMBER(commandData);
             break;   
-        case TesterCommandType::READ_MOBILE_SECRET:
-            this->READ_MOBILE_SECRET();
+        case TesterCommandType::GET_MOBILE_SECRET:
+            result = this->GET_MOBILE_SECRET();
             break;
         case TesterCommandType::SET_MOBILE_SECRET:
-            this->SET_MOBILE_SECRET();
+            result = this->SET_MOBILE_SECRET(commandData);
             break;  
-        case TesterCommandType::READ_HW_DATA:
-            this->READ_HW_DATA();
+        case TesterCommandType::GET_HW_VERSION:
+            result = this->GET_HW_VERSION();
             break;
-        case TesterCommandType::SET_HW_DATA:
-            this->SET_HW_DATA();
+        case TesterCommandType::SET_HW_VERSION:
+            result = this->SET_HW_VERSION(commandData);
             break;  
-        case TesterCommandType::READ_HW_MODEL:
-            this->READ_HW_MODEL();
+        case TesterCommandType::GET_HW_MODEL:
+            result = this->GET_HW_MODEL();
             break;
         case TesterCommandType::SET_HW_MODEL:
-            this->SET_HW_MODEL();
+            result = this->SET_HW_MODEL(commandData);
             break;
-        case TesterCommandType::READ_WIFI_MAC:
-            this->READ_WIFI_MAC();
+        case TesterCommandType::GET_WIFI_MAC:
+            result = this->GET_WIFI_MAC();
             break;
         case TesterCommandType::SET_WIFI_MAC:
-            this->SET_WIFI_MAC();
+            result = this->SET_WIFI_MAC(commandData);
+            break;
+        case TesterCommandType::GET_DEVICE_ID:
+            result = this->GET_DEVICE_ID();
+            break;
+        case TesterCommandType::IS_READY:
+            result = this->IS_READY();
+            break;
+        case TesterCommandType::TEST_COMMAND:
+            result = this->TEST_COMMAND();
             break;
         default:
         case TesterCommandType::NONE:
@@ -258,32 +295,7 @@ void FactoryTester::checkSerial(char c) {
             break;
     }
 
-    if (wasValidCommand && !commandSendsDone) {
-        cmd_name = this->getCommandVerb(type);
-        SERIAL.println(":" + String(cmd_name) + "_DONE");
-    }
-}
-
-/**
-    tokenize 'cmd' into a parts array delimited by ":" or ";"
-**/
-uint8_t FactoryTester::tokenizeCommand(char *cmd, char *parts[], unsigned max_parts) {
-    char *pch;
-    unsigned idx = 0;
-
-    for (unsigned i = 0; i < max_parts; i++) {
-        parts[i] = NULL;
-    }
-
-    pch = strtok(cmd, ":;");
-    while (pch != NULL) {
-        if (idx < max_parts) {
-            parts[idx++] = pch;
-        }
-        pch = strtok(NULL, ":;");
-    }
-
-    return idx;
+    return result;
 }
 
 static char hex_char(char c) {
@@ -321,7 +333,16 @@ static int hex_to_bin(const char *s, char *buff, int length) {
     return result;
 }
 
-////////////////////////////////////////// Tron Changes Below /////////////////////////////////////////////////////
+static int bin_to_hex(char * dest, int dest_length, const uint8_t * source, int source_length) {
+    if(source_length * 2 >= dest_length){
+        return -1;
+    }
+
+    for(int i = 0, j = 0; j < source_length; i += 2, j++){
+        snprintf(&dest[i], 3, "%02X", source[j]);
+    }
+    return 0;
+}
 
 #if PLATFORM_ID != PLATFORM_TRON 
     // Fake efuse functions for non tron platforms
@@ -336,68 +357,13 @@ static int hex_to_bin(const char *s, char *buff, int length) {
     }
 #endif
 
-
-int FactoryTester::validateData(TesterCommandType commandType, int expected_token_length, uint8_t * output_bytes, int output_bytes_length, bool isHex) {
-    int expectedTokenCount = 3; // Expect command verb, then data, then data repeated
-    const char *myCommandVerb = this->getCommandVerb(commandType);
-    char *parts[expectedTokenCount];
-    char *start = strstr(command, myCommandVerb);
-
-    // Verify correct number of tokens
-    int count = tokenizeCommand(start, parts, expectedTokenCount);
-    if (count != expectedTokenCount) {
-        SERIAL.printlnf("Validate Data FAILED: only %d tokens given", count);
-        return -1; 
-    }
-
-    // Verify length
-    uint8_t len = strlen(parts[1]);
-    uint8_t len1 = strlen(parts[2]);
-    uint32_t token_length_hex = isHex ? expected_token_length * 2 : expected_token_length;
-    if (len != token_length_hex || len1 != token_length_hex) {
-        SERIAL.printlnf("Validate Data FAILED: token length not correct, got %u and %u, expected: %lu", len, len1, token_length_hex);
-        return -1;
-    }
-
-    // Compare part[1] and part[2].
-    // TODO: Remove duplicate tokens if sent via USB?
-    if ( strcmp(parts[1], parts[2]) != 0 ) {
-        SERIAL.println("Validate Data FAILED: parts do not match");
-        return -1;
-    }
-
-    if (isHex) {
-        // Validate characters in the serial number.
-        for (uint8_t i = 0; i < len; i++) {
-            if (!isxdigit(parts[1][i])) {
-                SERIAL.printlnf("Validate Hex Data FAILED: invalid char value 0x%02X at index %d", parts[1][i], i);
-                return -1;        
-            }
-        }
-        
-        // Convert Hex string to binary data.
-        if (hex_to_bin(parts[1], (char *)output_bytes, output_bytes_length) == -1) {
-            SERIAL.printlnf("Validate Hex Data FAILED: hex_to_bin failed");
-            return -1;
-        }    
-    }
-    else {
-        // TODO: Validate case here? Make all toUpper()?
-        memcpy(output_bytes, parts[1], output_bytes_length);
-    }
-
-
-    return 0;
-}
-
-
 int FactoryTester::writeEfuse(bool physical, uint8_t * data, uint32_t length, uint32_t address) {    
     uint32_t eFuseWrite = EFUSE_SUCCESS;
     uint32_t i = 0;
 
     if (physical) {
         for (i = 0; (i < length) && (eFuseWrite == EFUSE_SUCCESS); i++) {
-            #ifdef MOCK_EFUSE
+            #if MOCK_EFUSE
                 physicalEfuseBuffer[address + i] = data[i];
             #else
                 //eFuseWrite = EFUSE_PMAP_WRITE8(0, address + i, &data[i], L25EOUTVOLTAGE); // TODO: UNCOMMENT OUT FOR ACTUAL EFUSE WRITES
@@ -407,7 +373,7 @@ int FactoryTester::writeEfuse(bool physical, uint8_t * data, uint32_t length, ui
         }
     }
     else {
-        #ifdef MOCK_EFUSE
+        #if MOCK_EFUSE
             memcpy(logicalEfuseBuffer + address, data, length);
         #else 
             // eFuseWrite = EFUSE_LMAP_WRITE(address, length, data); // TODO: UNCOMMENT OUT FOR ACTUAL EFUSE WRITES         
@@ -423,8 +389,7 @@ int FactoryTester::writeEfuse(bool physical, uint8_t * data, uint32_t length, ui
         }
     }
 
-    // 0 = success, 1 = failure
-    return !eFuseWrite;
+    return (eFuseWrite == EFUSE_SUCCESS) ? 0 : SYSTEM_ERROR_NOT_ALLOWED;
 }
 
 int FactoryTester::readEfuse(bool physical, uint8_t * data, uint32_t length, uint32_t address) {    
@@ -433,7 +398,7 @@ int FactoryTester::readEfuse(bool physical, uint8_t * data, uint32_t length, uin
 
     if (physical) {
         for (i = 0; (i < length) && (eFuseRead == EFUSE_SUCCESS); i++) {
-            #ifdef MOCK_EFUSE
+            #if MOCK_EFUSE
                 data[i] = physicalEfuseBuffer[address + i];
             #else
                 eFuseRead = EFUSE_PMAP_READ8(0, address + i, &data[i], L25EOUTVOLTAGE);
@@ -442,7 +407,7 @@ int FactoryTester::readEfuse(bool physical, uint8_t * data, uint32_t length, uin
         }
     }
     else {
-        #ifdef MOCK_EFUSE
+        #if MOCK_EFUSE
             memcpy(data, logicalEfuseBuffer + address, length);
         #else
             eFuseRead = EFUSE_LMAP_READ(logicalEfuseBuffer);
@@ -461,7 +426,7 @@ int FactoryTester::readEfuse(bool physical, uint8_t * data, uint32_t length, uin
     return !eFuseRead;
 }
 
-bool FactoryTester::bufferMTPData(uint8_t * data, int data_length, TesterMTPTypes mtp_type) {
+int FactoryTester::bufferMTPData(uint8_t * data, int data_length, TesterMTPTypes mtp_type) {
     int offset = 0;
 
     switch(mtp_type)
@@ -479,25 +444,76 @@ bool FactoryTester::bufferMTPData(uint8_t * data, int data_length, TesterMTPType
             offset = EFUSE_HARDWARE_MODEL_OFFSET;
             break;
         default:
-            return false;
+            return -1;
     }
     
     memcpy(userMTPBuffer + offset, data, data_length);
 
     mtp_data_buffered |= (static_cast<unsigned>(mtp_type));
-    SERIAL.printlnf("mtp buffered: 0x%X", mtp_data_buffered); // DEBUG
+    //SERIAL.printlnf("MTP buffered: 0x%X", mtp_data_buffered); // DEBUG
 
     // Only write data to logical efuse once we have all the components. This is to minimize the number of writes to MTP 
     if( (mtp_data_buffered & ALL_MTP_DATA_BUFFERED) == ALL_MTP_DATA_BUFFERED) {
-        writeEfuse(false, userMTPBuffer, sizeof(userMTPBuffer), EFUSE_USER_MTP);
         mtp_data_buffered = 0;
-        return true;    
+        //SERIAL.println("writing MTP data"); // DEBUG
+        return writeEfuse(false, userMTPBuffer, sizeof(userMTPBuffer), EFUSE_USER_MTP); // TODO: Return true/false on efuse write
     }
-    return false;
+    return 0;
 }
 
-int FactoryTester::SET_FLASH_ENCRYPTION_KEY(void) {
-    //SET_FLASH_ENCRYPTION_KEY:aAbBcCdDeEFf00123344556677889900:aAbBcCdDeEFf00123344556677889900;
+int FactoryTester::validateCommandData(const char * data, uint8_t * output_bytes, int output_bytes_length) {
+    int len = strlen(data);
+
+    // Validate length of data is as expected
+    int bytesLength = len / 2;
+    if(bytesLength > output_bytes_length) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    else if (bytesLength < output_bytes_length) {
+        return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+    }
+
+    // Validate characters in the serial number.
+    for (uint8_t i = 0; i < len; i++) {
+        if (!isxdigit(data[i])) {
+            SERIAL.printlnf("Validate Hex Data FAILED: invalid char value 0x%02X at index %d", data[i], i);
+            return SYSTEM_ERROR_BAD_DATA;        
+        }
+    }
+    
+    // Convert Hex string to binary data.
+    if (hex_to_bin(data, (char *)output_bytes, output_bytes_length) == -1) {
+        SERIAL.printlnf("Validate Hex Data FAILED: hex_to_bin failed");
+        return SYSTEM_ERROR_BAD_DATA;        
+    }
+
+    return 0;
+}
+
+int FactoryTester::validateCommandString(const char * data, int expectedLength) {
+    int length = strlen(data);
+
+    //SERIAL.printlnf("validate STR length: %d expectedlength %d", length, expectedLength);
+    // Validate length
+    if (length > expectedLength){
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    else if(length < expectedLength) {
+        return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+    }
+
+    // Validate string contents
+    for (int i = 0; i < length; i++){
+        if (!isalnum(data[i])) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+    }
+
+    return 0;
+}
+
+int FactoryTester::SET_FLASH_ENCRYPTION_KEY (const char * key) {
+    // { SET_FLASH_ENCRYPTION_KEY : aAbBcCdDeEFf00123344556677889900 }
     uint8_t flashEncryptionKey[FLASH_ENCRYPTION_KEY_LENGTH] = {0};
 
     // Check to make sure a key is not already written
@@ -505,12 +521,13 @@ int FactoryTester::SET_FLASH_ENCRYPTION_KEY(void) {
     for (int i = 0; i < FLASH_ENCRYPTION_KEY_LENGTH; i++) {
         if(flashEncryptionKey[i] != 0xFF) {
             SERIAL.printlnf("ERROR: Flash Encryption key already written! Index: %d, value 0x%02X", i, flashEncryptionKey[i]);
-            return -1;
+            return SYSTEM_ERROR_ALREADY_EXISTS;
         }
     }
 
-    if (validateData(TesterCommandType::SET_FLASH_ENCRYPTION_KEY, FLASH_ENCRYPTION_KEY_LENGTH, flashEncryptionKey, sizeof(flashEncryptionKey), true) != 0) {
-        return -1;
+    int result = validateCommandData(key, flashEncryptionKey, sizeof(flashEncryptionKey));
+    if ( result != 0) {
+        return result;
     }
 
     // Write flash encryption key to physical eFuse
@@ -528,16 +545,16 @@ int FactoryTester::SET_FLASH_ENCRYPTION_KEY(void) {
 int FactoryTester::ENABLE_FLASH_ENCRYPTION(void) {
     uint8_t systemConfigByte = 0;
     readEfuse(false, &systemConfigByte, 1, EFUSE_SYSTEM_CONFIG);
-    SERIAL.printlnf("System Config: %02X", systemConfigByte);
+    //SERIAL.printlnf("System Config: %02X", systemConfigByte);
 
     systemConfigByte |= (BIT(2));
-    SERIAL.printlnf("System Config: %02X", systemConfigByte);
+    //SERIAL.printlnf("System Config: %02X", systemConfigByte);
 
     return this->writeEfuse(false, &systemConfigByte, sizeof(systemConfigByte), EFUSE_SYSTEM_CONFIG);
 }
 
-int FactoryTester::SET_SECURE_BOOT_KEY(void) {
-    //SET_SECURE_BOOT_KEY:aAbBcCdDeEFf00123344556677889900aAbBcCdDeEFf00123344556677889900:aAbBcCdDeEFf00123344556677889900aAbBcCdDeEFf00123344556677889900;
+int FactoryTester::SET_SECURE_BOOT_KEY(const char * key) {
+    //{SET_SECURE_BOOT_KEY:aAbBcCdDeEFf00123344556677889900aAbBcCdDeEFf00123344556677889900}
     uint8_t secureBootKeyBytes[SECURE_BOOT_KEY_LENGTH];
 
     // Check to make sure a key is not already written
@@ -545,12 +562,13 @@ int FactoryTester::SET_SECURE_BOOT_KEY(void) {
     for (int i = 0; i < SECURE_BOOT_KEY_LENGTH; i++) {
         if(secureBootKeyBytes[i] != 0xFF) {
             SERIAL.printlnf("ERROR: Secure boot key already written! Index: %d, value 0x%02X", i, secureBootKeyBytes[i]);
-            return -1;
+            return SYSTEM_ERROR_ALREADY_EXISTS;
         }
     }
 
-    if (validateData(TesterCommandType::SET_SECURE_BOOT_KEY, SECURE_BOOT_KEY_LENGTH, secureBootKeyBytes, sizeof(secureBootKeyBytes), true) != 0) {
-        return -1;
+    int result = validateCommandData(key, secureBootKeyBytes, sizeof(secureBootKeyBytes));
+    if ( result != 0) {
+        return result;
     }
     
     // Write key data to physical eFuse
@@ -567,29 +585,25 @@ int FactoryTester::SET_SECURE_BOOT_KEY(void) {
 
 int FactoryTester::GET_SECURE_BOOT_KEY(void) {
     uint8_t boot_key[SECURE_BOOT_KEY_LENGTH];
-
     readEfuse(true, boot_key, sizeof(boot_key), EFUSE_SECURE_BOOT_KEY);
-    for(int i = 0; i < SECURE_BOOT_KEY_LENGTH; i++) {
-        // TODO: Use the boot key somewhere, if desired
-        SERIAL.printf("%02X", boot_key[i]);
-    }
 
-    return 0;
+    return bin_to_hex(this->command_response, this->cmd_length, boot_key, sizeof(boot_key));
 }
 
 int FactoryTester::ENABLE_SECURE_BOOT(void) {
-    uint8_t protectionConfigurationByte = 0;
-    readEfuse(true, &protectionConfigurationByte, 1, EFUSE_PROTECTION_CONFIGURATION_HIGH);
-    SERIAL.printlnf("Protection Byte: %02X", protectionConfigurationByte);
+    return SYSTEM_ERROR_NOT_ALLOWED;
 
-    protectionConfigurationByte &= ~(BIT(5));
-    SERIAL.printlnf("Protection Byte: %02X", protectionConfigurationByte);
+    // // SECURE BOOT WILL BE ENABLED AT A FUTURE DATE. EXAMPLE CODE TO DO SO ONLY
+    // uint8_t protectionConfigurationByte = 0;
+    // readEfuse(true, &protectionConfigurationByte, 1, EFUSE_PROTECTION_CONFIGURATION_HIGH);
 
-    // Write enable bit to physical eFuse
-    return this->writeEfuse(true, &protectionConfigurationByte, 1, EFUSE_PROTECTION_CONFIGURATION_HIGH);
+    // protectionConfigurationByte &= ~(BIT(5));
+
+    // // Write enable bit to physical eFuse
+    // return this->writeEfuse(true, &protectionConfigurationByte, 1, EFUSE_PROTECTION_CONFIGURATION_HIGH);
 }
 
-int FactoryTester::READ_SERIAL_NUMBER(void) {
+int FactoryTester::GET_SERIAL_NUMBER(void) {
     // P046WN148000000
     char fullSerialNumber[SERIAL_NUMBER_LENGTH + (EFUSE_WIFI_MAC_LENGTH * 2) + 1] = {0};
     readEfuse(false, (uint8_t *)fullSerialNumber, SERIAL_NUMBER_LENGTH, EFUSE_USER_MTP + EFUSE_SERIAL_NUMBER_OFFSET);
@@ -601,121 +615,115 @@ int FactoryTester::READ_SERIAL_NUMBER(void) {
         snprintf(&fullSerialNumber[SERIAL_NUMBER_LENGTH + i], 3, "%02X", mac[j]);
     }
 
-    SERIAL.printlnf("SERIAL_NUMBER: %s", fullSerialNumber);
+    strcpy(this->command_response, fullSerialNumber);
     return 0;
 }
 
-int FactoryTester::SET_SERIAL_NUMBER(void) {
-    //SET_SERIAL_NUMBER:P046WN148ABCDEF:P046WN148ABCDEF;
-
+int FactoryTester::SET_SERIAL_NUMBER(const char * serial_number) {
+    //{SET_SERIAL_NUMBER:'P046WN148ABCDEF'}
     // TODO: Consider taking 15 chars as input and writing to MAC address as well
     // OR: Only requiring 9 chars as input, and wifi mac explicitly sent elsewhere
-    static const int FULL_SERIAL_NUMBER_LENGTH = SERIAL_NUMBER_LENGTH + EFUSE_WIFI_MAC_LENGTH;
-    uint8_t serialNumber[FULL_SERIAL_NUMBER_LENGTH] = {0};
-
-    int result = validateData(TesterCommandType::SET_SERIAL_NUMBER, FULL_SERIAL_NUMBER_LENGTH, serialNumber, FULL_SERIAL_NUMBER_LENGTH, false);
+    int result = validateCommandString(serial_number, SERIAL_NUMBER_LENGTH + EFUSE_WIFI_MAC_LENGTH);
 
     if (result == 0) {
-        // Write validated input to eFuse
-        bufferMTPData(serialNumber, SERIAL_NUMBER_LENGTH, TesterMTPTypes::SERIAL_NUMBER);
+        result = bufferMTPData((uint8_t *)serial_number, SERIAL_NUMBER_LENGTH, TesterMTPTypes::SERIAL_NUMBER);
     }
-
+    
     return result;
 }
 
-int FactoryTester::READ_MOBILE_SECRET(void) {
+int FactoryTester::GET_MOBILE_SECRET(void) {
     char mobileSecret[MOBILE_SECRET_LENGTH+1] = {0};
     readEfuse(false, (uint8_t *)mobileSecret, MOBILE_SECRET_LENGTH, EFUSE_USER_MTP + EFUSE_MOBILE_SECRET_OFFSET);
-    SERIAL.printlnf("MOBILE_SECRET: %s", mobileSecret);
+    strcpy(this->command_response, mobileSecret);
     return 0;
 }
 
-int FactoryTester::SET_MOBILE_SECRET(void) {
-    //SET_MOBILE_SECRET:ABC123JKL000FFF:ABC123JKL000FFF;
-    char mobileSecret[MOBILE_SECRET_LENGTH+1] = {0};
-    int result = validateData(TesterCommandType::SET_MOBILE_SECRET, MOBILE_SECRET_LENGTH, (uint8_t*)mobileSecret, MOBILE_SECRET_LENGTH, false);
+int FactoryTester::SET_MOBILE_SECRET(const char * mobile_secret) {
+    //{SET_MOBILE_SECRET:'ABC123JKL000FFF'}
+    int result = validateCommandString(mobile_secret, MOBILE_SECRET_LENGTH);
 
-    if (result == 0) {
-        // Write validated input to eFuse
-        bufferMTPData((uint8_t *)mobileSecret, MOBILE_SECRET_LENGTH, TesterMTPTypes::MOBILE_SECRET);
+    if (result == 0){
+        result = bufferMTPData((uint8_t *)mobile_secret, MOBILE_SECRET_LENGTH, TesterMTPTypes::MOBILE_SECRET);    
     }
-
+    
     return result;
 }
 
-int FactoryTester::READ_HW_DATA(void) {
+int FactoryTester::GET_HW_VERSION(void) {
     uint8_t hardwareData[HARDWARE_DATA_LENGTH] = {0};
     readEfuse(false, hardwareData, HARDWARE_DATA_LENGTH, EFUSE_USER_MTP + EFUSE_HARDWARE_DATA_OFFSET);
 
-    SERIAL.print("HW_DATA: ");
-    for(int i = 0; i < HARDWARE_DATA_LENGTH; i++){
-        SERIAL.printf("%02X", hardwareData[i]);
-    }
-    SERIAL.println("");
-    return 0;
+    return bin_to_hex(this->command_response, this->cmd_length, hardwareData, sizeof(hardwareData));
 }
 
-int FactoryTester::SET_HW_DATA(void) {
-    // SET_HW_DATA:FF0ABC0D:FF0ABC0D;
+int FactoryTester::SET_HW_VERSION(const char * hardware_version) {
+    // {SET_HW_DATA:'FF0ABC0D'}
     uint8_t hardwareData[HARDWARE_DATA_LENGTH] = {0};
-    int result = validateData(TesterCommandType::SET_HW_DATA, HARDWARE_DATA_LENGTH, hardwareData, HARDWARE_DATA_LENGTH, true);
+    int result = validateCommandData(hardware_version, hardwareData, sizeof(hardwareData)); 
 
     if (result == 0) {
         // Write validated input to eFuse
-        bufferMTPData(hardwareData, HARDWARE_DATA_LENGTH, TesterMTPTypes::HARDWARE_DATA);
+        result = bufferMTPData(hardwareData, HARDWARE_DATA_LENGTH, TesterMTPTypes::HARDWARE_DATA);
     }
 
     return result;
 }
 
-int FactoryTester::READ_HW_MODEL(void) {
+int FactoryTester::GET_HW_MODEL(void) {
     uint8_t hardwareModel[HARDWARE_MODEL_LENGTH] = {0};
     readEfuse(false, hardwareModel, HARDWARE_MODEL_LENGTH, EFUSE_USER_MTP + EFUSE_HARDWARE_MODEL_OFFSET);
 
-    SERIAL.print("HW_MODEL: ");
-    for(int i = 0; i < HARDWARE_MODEL_LENGTH; i++){
-        SERIAL.printf("%02X", hardwareModel[i]);
-    }
-    SERIAL.println("");
-    return 0;
+    return bin_to_hex(this->command_response, this->cmd_length, hardwareModel, sizeof(hardwareModel));
 }
 
-int FactoryTester::SET_HW_MODEL(void) {
-    // SET_HW_MODEL:0DFF0ABC:0DFF0ABC;
-    uint8_t hardwareModel[HARDWARE_MODEL_LENGTH] = {0};
-    int result = validateData(TesterCommandType::SET_HW_MODEL, HARDWARE_MODEL_LENGTH, hardwareModel, HARDWARE_MODEL_LENGTH, true);
+int FactoryTester::SET_HW_MODEL(const char * hardware_model) {
+    // {SET_HW_MODEL:'0DFF0ABC'}
+    uint8_t hardwareModelBytes[HARDWARE_MODEL_LENGTH] = {0};
+    int result = validateCommandData(hardware_model, hardwareModelBytes, sizeof(hardwareModelBytes));
 
     if (result == 0) {
-        // Write validated input to eFuse
-        bufferMTPData(hardwareModel, HARDWARE_MODEL_LENGTH, TesterMTPTypes::HARDWARE_MODEL);
+        result = bufferMTPData(hardwareModelBytes, HARDWARE_MODEL_LENGTH, TesterMTPTypes::HARDWARE_MODEL);
     }
 
     return result;
 }
 
-int FactoryTester::READ_WIFI_MAC(void) {
+int FactoryTester::GET_WIFI_MAC(void) {
     uint8_t wifiMAC[EFUSE_WIFI_MAC_LENGTH] = {0};
     readEfuse(false, wifiMAC, EFUSE_WIFI_MAC_LENGTH, EFUSE_WIFI_MAC);
 
-    SERIAL.print("WIFI_MAC: ");
-    for(int i = 0; i < EFUSE_WIFI_MAC_LENGTH; i++){
-        SERIAL.printf("%02X", wifiMAC[i]);
-    }
-    SERIAL.println("");
-    return 0;
+    return bin_to_hex(this->command_response, this->cmd_length, wifiMAC, sizeof(wifiMAC));
 }
 
-int FactoryTester::SET_WIFI_MAC(void) {
-    // SET_WIFI_MAC:94944A0DFF0A:94944A0DFF0A;
+int FactoryTester::SET_WIFI_MAC(const char * wifi_mac) {
+    //{SET_WIFI_MAC:'94944A0DFF0A'}
     uint8_t wifiMAC[EFUSE_WIFI_MAC_LENGTH] = {0};
-    int result = validateData(TesterCommandType::SET_WIFI_MAC, EFUSE_WIFI_MAC_LENGTH, wifiMAC, EFUSE_WIFI_MAC_LENGTH, true);
+    int result = validateCommandData( wifi_mac, wifiMAC, sizeof(wifiMAC));
 
     if (result == 0) {
-        // Write validated input to eFuse
-        writeEfuse(false, wifiMAC, EFUSE_WIFI_MAC_LENGTH, EFUSE_WIFI_MAC);
+        result = writeEfuse(false, wifiMAC, EFUSE_WIFI_MAC_LENGTH, EFUSE_WIFI_MAC);
     }
-
     return result;
+}
+
+int FactoryTester::GET_DEVICE_ID(void) {
+    // TODO: Make this use real device ID HAL
+    // 0A10ACED202194944A0DFF0A
+    const char * deviceIDPrefix = "0A10ACED2021";
+    uint8_t wifiMAC[EFUSE_WIFI_MAC_LENGTH] = {0};
+    readEfuse(false, wifiMAC, EFUSE_WIFI_MAC_LENGTH, EFUSE_WIFI_MAC);
+
+    strcpy(this->command_response, deviceIDPrefix);
+
+    return bin_to_hex(this->command_response + strlen(deviceIDPrefix),
+                      this->cmd_length - strlen(deviceIDPrefix),
+                      wifiMAC, 
+                      sizeof(wifiMAC));
+}
+
+int FactoryTester::IS_READY(void) {
+    return 0;
 }
 
 void FactoryTester::print_mtp(void) {
@@ -729,65 +737,13 @@ void FactoryTester::print_mtp(void) {
 }
 
 int FactoryTester::TEST_COMMAND(void) {
-    uint8_t test_data[6];
-    readEfuse(false, test_data, sizeof(test_data), EFUSE_WIFI_MAC);
-    SERIAL.printlnf("WIFI MAC: %02X%02X%02X%02X%02X%02X", test_data[0], test_data[1], test_data[2], test_data[3], test_data[4], test_data[5]);
-    
-    readEfuse(true, test_data, 2, EFUSE_PROTECTION_CONFIGURATION_LOW);
-    SERIAL.printlnf("Security Bytes: %02X %02X", test_data[0], test_data[1]);
-
+    SERIAL.println("Raw MTP data");
     print_mtp();
-    uint8_t wifi_byte = 0x0A;
-    writeEfuse(false, &wifi_byte, 1, EFUSE_WIFI_MAC+5);
 
-    readEfuse(false, test_data, sizeof(test_data), EFUSE_WIFI_MAC);
-    SERIAL.printlnf("WIFI MAC: %02X%02X%02X%02X%02X%02X", test_data[0], test_data[1], test_data[2], test_data[3], test_data[4], test_data[5]);
-
-    ////////////////////////////////////////////////////////////
-    // LETS BLOW OUT USER MTP HELL YEA
-    // uint8_t user_mtp[32];
-    // memset(user_mtp, 0xFF, sizeof(user_mtp));
-
-    // // //writeEfuse(false, user_mtp, sizeof(user_mtp), EFUSE_USER_MTP);
-    // // //readEfuse(false, user_mtp, sizeof(user_mtp), EFUSE_USER_MTP);
-    // print_mtp();
-
-    // SERIAL.println("START MTP BURNOUT");
-
-    // bool quit = false;
-    // int full_iterations = 0;
-    // uint8_t test_pattern_a[] = {0xAA, 0xAA};
-    // uint8_t test_pattern_5[] = {0x55, 0x55};
-
-    // while(!quit) {
-    //     readEfuse(false, user_mtp, sizeof(user_mtp), EFUSE_USER_MTP);
-    //     for(int i = 0; i < 32; i += 2) {
-    //         uint8_t mtp_byte_current = user_mtp[i];
-    //         uint8_t * mtp_byte_new = 0;
-
-    //         if(mtp_byte_current == 0xFF) {
-    //             mtp_byte_new = test_pattern_a;
-    //         }
-    //         else if(mtp_byte_current == test_pattern_a[0]) {
-    //             mtp_byte_new = test_pattern_5;
-    //         }
-    //         else if(mtp_byte_current == test_pattern_5[0]) {
-    //             mtp_byte_new = test_pattern_a;
-    //         }
-
-    //         int writeResult = writeEfuse(false, mtp_byte_new, 2, EFUSE_USER_MTP+i);
-    //         readEfuse(false, user_mtp, sizeof(user_mtp), EFUSE_USER_MTP);
-    //         print_mtp( (16*full_iterations) + (i/2) + 1);
-
-    //         if((mtp_byte_new[0] != user_mtp[i]) || (full_iterations == 3) || (writeResult != 0) ) {
-    //             quit = true;
-    //             break;
-    //         }
-    //     }
-    //     full_iterations++;
-    // }
-    ////////////////////////////////////////////////////////////
-
-
+    SERIAL.printlnf("Buffered MTP data");
+    for (unsigned i = 0; i < sizeof(userMTPBuffer); i++){
+        SERIAL.printf("%02X", userMTPBuffer[i]);
+    }
+    SERIAL.println("");
     return 0;
 }

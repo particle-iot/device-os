@@ -29,5 +29,13 @@ void setup()
 
 void loop()
 {
-    tester.loop();
+
+}
+
+void ctrl_request_custom_handler(ctrl_request* req) {
+    const int r = tester.processUSBRequest(req);
+    // TODO: Test error condition
+    if (r < 0) {
+        system_ctrl_set_result(req, r, nullptr, nullptr, nullptr);
+    }
 }
