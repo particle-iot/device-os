@@ -5,17 +5,12 @@
 #if Wiring_Serial3
 
 // instantiate Serial3
-static hal_usart_ring_buffer_t serial3_rx_buffer;
-static hal_usart_ring_buffer_t serial3_tx_buffer;
-
 
 USARTSerial& __fetch_global_Serial3()
 {
-	static USARTSerial serial3(HAL_USART_SERIAL3, &serial3_rx_buffer, &serial3_tx_buffer);
+	static USARTSerial serial3(HAL_USART_SERIAL3, acquireSerial3Buffer());
 	return serial3;
 }
-
-
 
 void serialEventRun3()
 {

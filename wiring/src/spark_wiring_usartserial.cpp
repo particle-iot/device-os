@@ -31,12 +31,12 @@
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-USARTSerial::USARTSerial(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer)
+USARTSerial::USARTSerial(hal_usart_interface_t serial, const hal_usart_buffer_config_t& config)
 {
   _serial = serial;
   // Default is blocking mode
   _blocking = true;
-  hal_usart_init(serial, rx_buffer, tx_buffer);
+  hal_usart_init_ex(serial, &config, nullptr);
 }
 // Public Methods //////////////////////////////////////////////////////////////
 
@@ -121,32 +121,3 @@ void USARTSerial::breakTx() {
 bool USARTSerial::breakRx() {
   return (bool)hal_usart_break_detected(_serial);
 }
-
-#ifndef SPARK_WIRING_NO_USART_SERIAL
-// Preinstantiate Objects //////////////////////////////////////////////////////
-#if ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE))
-static hal_usart_ring_buffer_t serial1_rx_buffer;
-static hal_usart_ring_buffer_t serial1_tx_buffer;
-#else
-static hal_usart_ring_buffer_t* serial1_rx_buffer = nullptr;
-static hal_usart_ring_buffer_t* serial1_tx_buffer = nullptr;
-#endif
-
-USARTSerial& __fetch_global_Serial1()
-{
-#if ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE))
-	static USARTSerial serial1(HAL_USART_SERIAL1, &serial1_rx_buffer, &serial1_tx_buffer);
-#else
-  if (!serial1_rx_buffer) {
-    serial1_rx_buffer = new hal_usart_ring_buffer_t();
-  }
-  if (!serial1_tx_buffer) {
-    serial1_tx_buffer = new hal_usart_ring_buffer_t();
-  }
-  static USARTSerial serial1(HAL_USART_SERIAL1, serial1_rx_buffer, serial1_tx_buffer);
-#endif
-	return serial1;
-}
-
-// optional Serial2 is instantiated from libraries/Serial2/Serial2.h
-#endif
