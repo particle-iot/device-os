@@ -188,8 +188,17 @@ int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 }
                 bool valid = fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
                 valid = valid && (module->validity_checked == module->validity_result);
-                if (valid && bounds->module_function == MODULE_FUNCTION_USER_PART) {
-                    user_module_found = true;
+                if (bounds->store == MODULE_STORE_MAIN && bounds->module_function == MODULE_FUNCTION_USER_PART) {
+                    if (valid) {
+                        user_module_found = true;
+                    } else {
+                        // IMPORTANT: we should not be reporting invalid user module in the describe
+                        // as it may contain garbage data and may be presented as for example
+                        // system module with invalid dependency on some non-existent module
+                        // FIXME: we should potentially do a similar thing for other module types
+                        // but for now only tackling user modules
+                        memset(module, 0, sizeof(*module));
+                    }
                 }
             }
         }
