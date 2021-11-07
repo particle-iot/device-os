@@ -462,6 +462,9 @@ void HAL_Core_Config(void) {
     //   FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS,
     //   FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
     //   FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
+
+    InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
+    InterruptEn(IPC_IRQ, 5);
 }
 
 void HAL_Core_Setup(void) {
@@ -786,6 +789,19 @@ void __malloc_unlock(struct _reent *ptr) {
     }
 }
 
+#include "rtl_sdk_support.h"
+void bootloader_update_ipc_int(void *data, uint32_t irqStatus, uint32_t channel) {
+    uint32_t msgAddr = ipc_get_message(channel);
+    DCache_Invalidate(msgAddr, sizeof(uint32_t));
+    DiagPrintf("KM4 received bootloader update ACK: 0x%08X\n", msgAddr);
+}
+
+void km4_misc_ipc_int(void *data, uint32_t irqStatus, uint32_t channel) {
+    uint32_t msgAddr = ipc_get_message(channel);
+    DCache_Invalidate(msgAddr, sizeof(uint32_t));
+    DiagPrintf("KM4 received misc ACK: 0x%08X\n", msgAddr);
+}
+
 /**
  * The entrypoint to our application.
  * This should be called from the RTOS main thread once initialization has been
@@ -808,6 +824,13 @@ void application_start() {
         // Load last reset info from RCC / backup registers
         Init_Last_Reset_Info();
     }
+
+    ipc_channel_init(0, bootloader_update_ipc_int);
+    ipc_channel_init(1, km4_misc_ipc_int);
+    ipc_send_message(0, 0x12345678);
+    HAL_Delay_Microseconds(1000*500);
+    ipc_send_message(1, 0xABCDABCD);
+    while (1) {}
 
     app_setup_and_loop();
 }

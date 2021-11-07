@@ -16,6 +16,7 @@
  */
 
 #include "ameba_soc.h"
+#include "rtl_support.h"
 
 void pmu_acquire_wakelock(uint32_t nDeviceId) {
     // Stub
@@ -26,7 +27,30 @@ void pmu_release_wakelock(uint32_t nDeviceId) {
 }
 
 void ipc_table_init() {
-    // Stub
+    // stub
+}
+
+void rtlIpcInit() {
+    InterruptRegister((IRQ_FUN)IPC_INTHandler, IPC_IRQ_LP, (u32)IPCM4_DEV, 2);
+    InterruptEn(IPC_IRQ_LP, 2);
+}
+
+int rtlIpcChannelInit(uint8_t channel, rtl_ipc_callback_t callback) {
+    if (channel > 15) {
+        return -1;
+    }
+    IPC_INTUserHandler(channel, (void*)callback, NULL);
+    return 0;
+}
+
+void rtlIpcSendMessage(uint8_t channel, uint32_t message) {
+    IPCM0_DEV->IPCx_USR[channel] = message;	
+	IPC_INTRequest(IPCM0_DEV, channel);
+}
+
+uint32_t rtlIpcGetMessage(uint8_t channel) {
+    uint32_t msgAddr = IPCM4_DEV->IPCx_USR[channel];
+    return msgAddr;
 }
 
 extern CPU_PWR_SEQ SYSPLL_ON_SEQ[];
@@ -289,8 +313,6 @@ void rtlPmuInit()
 }
 
 void rtlPowerOnBigCore() {
-    InterruptRegister((IRQ_FUN)IPC_INTHandler, IPC_IRQ_LP, (u32)IPCM4_DEV, 2);
-    InterruptEn(IPC_IRQ_LP, 2);
     InterruptDis(UART_LOG_IRQ_LP);
 
     km4_flash_highspeed_init();

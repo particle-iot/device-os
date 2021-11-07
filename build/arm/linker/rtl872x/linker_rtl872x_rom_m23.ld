@@ -125,6 +125,17 @@ SECTIONS
     Pinmux_ConfigGet = 0x36fd;
     Pinmux_UartLogCtrl = 0x370d;
     Pinmux_SpicCtrl = 0x3749;
+    IPC_INTConfig = 0x3045;
+    IPC_IERSet = 0x3057;
+    IPC_IERGet = 0x305b;
+    IPC_INTRequest = 0x305f;
+    IPC_INTClear = 0x3067;
+    IPC_INTGet = 0x306f;
+    IPC_CPUID = 0x3073;
+    IPC_SEMGet = 0x307d;
+    IPC_SEMFree = 0x30c5;
+    IPC_INTHandler = 0x3129;
+    IPC_INTUserHandler = 0x3161;
 }
 
 /*SECTIONS
