@@ -3,29 +3,30 @@
 RESULT_STATUS="passed"
 RESULT_COLOR="#00ff00"
 
-failures=$(cat ${CF_VOLUME_PATH}/failures/* 2>/dev/null)
+failures=$(cat $1/* 2>/dev/null)
 
-if [ "${CF_PULL_REQUEST_CANNOT_BE_MERGED}" == "1" ] || [ "${failures}" != "" ]; then
+if [ "${CF_PULL_REQUEST_CANNOT_BE_MERGED}" == "1" ] || [ "${failures}" != "" ] || [ "${CIRCLE_ARTIFACTS_URL}" == "" ]; then
     RESULT_STATUS="failed"
     RESULT_COLOR="#ff0000"
 fi
 
-RESULT_TIME_ELAPSED=$(date -u -d @"$(expr $(date +%s) - ${CF_BUILD_TIMESTAMP} / 1000)" +"%T")
+RESULT_TIME_ELAPSED=$(date -u -d @"$(expr $(date +%s) - ${CIRCLE_BUILD_TIMESTAMP})" +"%T")
 
 RESULT_ADDITIONAL=""
 
-if [ "${CF_PULL_REQUEST_NUMBER}" != "" ]; then
-    RESULT_ADDITIONAL=" (<https://github.com/${CF_REPO_OWNER}/${CF_REPO_NAME}/pull/${CF_PULL_REQUEST_NUMBER}|PR ${CF_PULL_REQUEST_NUMBER}>)"
+if [ "${CIRCLE_PR_NUMBER}" != "" ]; then
+    RESULT_ADDITIONAL=" (<${CIRCLE_PULL_REQUEST}|PR ${CIRCLE_PR_NUMBER}>)"
 fi
 
-CF_BUILD_URL_PUBLIC=$(echo "${CF_BUILD_URL}" | sed -e 's|/build/|/public/accounts/particle/builds/|')
+REPOSITORY_URL="https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
+COMMIT_URL="${REPOSITORY_URL}/commit/${CIRCLE_SHA1}"
 
 BASE_BLOCK=$(cat <<EOF
 {
     "type": "section",
     "text": {
         "type": "mrkdwn",
-        "text": "Build <${CF_BUILD_URL_PUBLIC}|${CF_BUILD_ID}> of <${CF_COMMIT_URL}|${CF_BRANCH}>${RESULT_ADDITIONAL} by ${CF_BUILD_INITIATOR} ${RESULT_STATUS} in ${RESULT_TIME_ELAPSED}"
+        "text": "Build <${CIRCLE_WORKFLOW_URL}|${CIRCLE_BUILD_NUM}> of <${COMMIT_URL}|${CIRCLE_BRANCH}>${RESULT_ADDITIONAL} by ${CIRCLE_USERNAME} ${RESULT_STATUS} in ${RESULT_TIME_ELAPSED}"
     }
 }
 EOF
@@ -33,7 +34,7 @@ EOF
 
 ADDITIONAL_BLOCKS=""
 
-if [ "${failures}" != "" ]; then
+if [ "${RESULT_STATUS}" == "failed" ]; then
     # No more than 10 fields, unit tests separately
     if echo -e "${failures}" | grep -q "PLATFORM=\"unit-test\""; then
         msg=":scrum_closed: Unit tests"
@@ -81,6 +82,35 @@ EOF
 EOF
 )
 
+    if [ "${CIRCLE_ARTIFACTS_URL}" == "" ]; then
+        msg=":scrum_closed: Artifacts"
+    else
+        msg=":scrum_finished: Artifacts"
+    fi
+    ADDITIONAL_BLOCKS+=$(cat <<EOF
+,{
+    "type": "section",
+    "text": {
+        "type": "mrkdwn",
+        "text": "${msg}"
+    }
+}
+EOF
+)
+
+else
+    if [ "${CIRCLE_ARTIFACTS_URL}" != "" ]; then
+        ADDITIONAL_BLOCKS+=$(cat <<EOF
+,{
+    "type": "section",
+    "text": {
+        "type": "mrkdwn",
+        "text": "<${CIRCLE_ARTIFACTS_URL}|Artifacts>"
+    }
+}
+EOF
+)
+    fi
 fi
 
 result=$(cat <<EOF
