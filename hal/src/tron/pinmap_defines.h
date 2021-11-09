@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define TOTAL_PINS          30
+#define TOTAL_PINS          28
 #define TOTAL_ANALOG_PINS   6
 #define FIRST_ANALOG_PIN    12
 
@@ -45,22 +45,20 @@
 #define D20                 20
 #define D21                 21
 #define D22                 22
-#define D23                 23
-#define D24                 24
 
 // Analog pins
 #define A0                  D12
 #define A1                  D13
 #define A2                  D14
-#define A3                  D15
-#define A4                  D16
-#define A5                  D17
+#define A3                  D0
+#define A4                  D1
+#define A5                  D15
 
 // RGB and Button
-#define RGBR                25
-#define RGBG                26
-#define RGBB                27
-#define BTN                 28
+#define RGBR                23
+#define RGBG                24
+#define RGBB                25
+#define BTN                 26
 
 // SPI, Shared with UART1
 #define SS                  D5
@@ -88,4 +86,4 @@
 
 #define WKP                 D11
 
-#define ANTSW               29
+#define ANTSW               27
