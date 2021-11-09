@@ -2,7 +2,7 @@
     "version": "1.0.0",
     "toolchains": [
         {
-            "platforms": [6, 8, 10, 12, 13, 22, 23, 25, 26],
+            "platforms": [6, 8, 10, 12, 13, 22, 23, 25, 26, 32],
             "firmware": "deviceOS@source",
             "compilers": "gcc-arm@10.2.1",
             "tools": "buildtools@1.1.1",
@@ -54,6 +54,11 @@
         {
             "id": 26,
             "name": "tracker",
+            "generation": 3
+        },
+        {
+            "id": 32,
+            "name": "p2",
             "generation": 3
         }
     ],
