@@ -327,9 +327,9 @@ private:
     volatile hal_ble_auto_adv_cfg_t autoAdvCfg_;    /**< Automatic advertising configuration. */
     uint8_t advHandle_;                             /**< Advertising handle. */
     hal_ble_adv_params_t advParams_;                /**< Current advertising parameters. */
-    uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
+    uint8_t advData_[BLE_MAX_ADV_DATA_LEN_EXT];     /**< Current advertising data. */
     size_t advDataLen_;                             /**< Current advertising data length. */
-    uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
+    uint8_t scanRespData_[BLE_MAX_SCAN_REPORT_BUF_LEN];    /**< Current scan response data. */
     size_t scanRespDataLen_;                        /**< Current scan response data length. */
     int8_t txPower_;                                /**< TX Power. */
     bool advPending_;                               /**< Advertising is pending. */
@@ -391,7 +391,7 @@ private:
     volatile bool isScanning_;                              /**< If it is scanning or not. */
     hal_ble_scan_params_t scanParams_;                      /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                          /**< Semaphore to wait until the scan procedure completed. */
-    uint8_t scanReportBuff_[BLE_MAX_SCAN_REPORT_BUF_LEN];   /**< Buffer to hold the scanned report data. */
+    uint8_t scanReportBuff_[BLE_MAX_ADV_DATA_LEN_EXT];      /**< Buffer to hold the scanned report data. */
     ble_data_t bleScanData_;                                /**< BLE scanned data. */
     hal_ble_on_scan_result_cb_t scanResultCallback_;        /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
@@ -1090,7 +1090,7 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
     // It is invalid to provide the same data buffers while advertising.
     CHECK(suspend());
     if (buf != nullptr) {
-        len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN);
+        len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN_EXT);
         memcpy(advData_, buf, len);
     } else {
         len = 0;
@@ -1429,7 +1429,7 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
     scanResultCallback_ = callback;
     context_ = context;
     int ret = sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_);
-    // LOG_DEBUG(TRACE,"Ret code sd_ble_scan_start: %d", ret);  // Uncomment to get error code from starting scan
+    LOG_DEBUG(TRACE,"Ret code sd_ble_scan_start: %d", ret);  // Uncomment to get error code from starting scan
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isScanning_ = true;
     // If timeout is set to 0, it should scan indefinitely
