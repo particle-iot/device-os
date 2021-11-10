@@ -94,7 +94,7 @@ test(THREAD_06_particle_process_behavior_when_threading_disabled)
 	SCOPE_GUARD({
 		// Make sure we restore cloud connection after exiting this test
 		Particle.connect();
-		waitFor(Particle.connected,120000);
+		waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 		assertTrue(Particle.connected());
 	});
 

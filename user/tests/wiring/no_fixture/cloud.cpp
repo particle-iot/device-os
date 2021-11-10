@@ -28,7 +28,7 @@ test(CLOUD_01_Particle_Connect_Does_Not_Block_In_SemiAutomatic_Mode) {
 
     Particle.connect();
     assertFalse(Particle.connected());
-    waitFor(Particle.connected, 120000);
+    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 }
 
 test(CLOUD_03_Restore_System_Mode) {
