@@ -284,7 +284,7 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
                 Serial.printf("%c", event.payload.passkey[i]);
             }
             Serial.println("");
-#if !defined(PARTICLE_TEST_RUNNER) && 0
+#if !defined(PARTICLE_TEST_RUNNER)
             if (event.type == BlePairingEventType::NUMERIC_COMPARISON) {
                 while (Serial.available()) {
                     Serial.read();
@@ -312,7 +312,7 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
             }
 #endif // PARTICLE_TEST_RUNNER
         } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
-#if !defined(PARTICLE_TEST_RUNNER) && 0
+#if !defined(PARTICLE_TEST_RUNNER)
             while (Serial.available()) {
                 Serial.read();
             }
@@ -395,7 +395,7 @@ test(BLE_27_Pairing_Algorithm_Legacy_Only) {
     pairingTestRoutine(false, BlePairingAlgorithm::LEGACY_ONLY);
 }
 
-test(BLE_28_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
+test(BLE_28_Pairing_Algorithm_Lesc_Only_Reject_Legacy_Prepare) {
     pairingRequested = false;
     BLE.onPairingEvent([&](const BlePairingEvent& event) {
         if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
@@ -407,6 +407,9 @@ test(BLE_28_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     assertEqual(BLE.setPairingIoCaps(BlePairingIoCaps::NONE), (int)SYSTEM_ERROR_NONE);
     assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::LEGACY_ONLY), (int)SYSTEM_ERROR_NONE);
 
+}
+
+test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     assertTrue(waitFor(BLE.connected, 20000));
     {
         SCOPE_GUARD ({
@@ -421,7 +424,7 @@ test(BLE_28_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     }
 }
 
-test(BLE_29_Initiate_Pairing_Being_Rejected) {
+test(BLE_30_Initiate_Pairing_Being_Rejected) {
     pairingStatus = 0;
     BLE.onPairingEvent([&](const BlePairingEvent& event) {
         if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
@@ -443,7 +446,7 @@ test(BLE_29_Initiate_Pairing_Being_Rejected) {
     }
 }
 
-test(BLE_30_Pairing_Receiption_Reject) {
+test(BLE_31_Pairing_Receiption_Reject) {
     assertTrue(waitFor(BLE.connected, 20000));
     {
         SCOPE_GUARD ({

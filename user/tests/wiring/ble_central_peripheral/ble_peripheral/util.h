@@ -1,1 +1,1 @@
-../ble_central/util.h
+../../ble_common/util.h

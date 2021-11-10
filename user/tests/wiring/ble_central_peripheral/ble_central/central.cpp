@@ -57,7 +57,7 @@ static void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice&
 
 using namespace particle::test;
 
-test(BLE_000_Cloud_Connect) {
+test(BLE_000_Central_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, 10 * 60 * 1000));
@@ -96,7 +96,7 @@ test(BLE_01_Advertising_Scan_Connect) {
             for (int i = 0; i < count; i++) {
                 BleUuid foundServiceUUID;
                 size_t svcCount = results[i].advertisingData().serviceUUID(&foundServiceUUID, 1);
-#if defined(PARTICLE_TEST_RUNNER) || 1
+#if defined(PARTICLE_TEST_RUNNER)
                 if (results[i].address() != BleAddress(getBleTestPeer().address, results[i].address().type())) {
                     continue;
                 }
@@ -464,7 +464,10 @@ test(BLE_27_Pairing_Algorithm_Legacy_Only) {
     pairingTestRoutine(true, BlePairingAlgorithm::LEGACY_ONLY);
 }
 
-test(BLE_28_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
+test(BLE_28_Pairing_Algorithm_Lesc_Only_Reject_Legacy_Prepare) {
+}
+
+test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
     {
@@ -494,7 +497,7 @@ test(BLE_28_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     }
 }
 
-test(BLE_29_Initiate_Pairing_Being_Rejected) {
+test(BLE_30_Initiate_Pairing_Being_Rejected) {
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
     {
@@ -512,7 +515,7 @@ test(BLE_29_Initiate_Pairing_Being_Rejected) {
     }
 }
 
-test(BLE_30_Pairing_Receiption_Reject) {
+test(BLE_31_Pairing_Receiption_Reject) {
     pairingStatus = 0;
     BLE.onPairingEvent([&](const BlePairingEvent& event) {
         if (event.type == BlePairingEventType::REQUEST_RECEIVED) {
