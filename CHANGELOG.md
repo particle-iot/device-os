@@ -1,3 +1,36 @@
+## 3.2.0-rc.1
+
+### FEATURES
+
+- [wiring] `acquireSerialXBuffer()` API support for UART [#2375](https://github.com/particle-iot/device-os/pull/2375)
+- [Boron / B SoM ] Support for SARA R510 [#2359](https://github.com/particle-iot/device-os/pull/2359) [#2365](https://github.com/particle-iot/device-os/pull/2365)
+- [Electron] Optional feature to use HSE/LSI as RTC clock source instead of LSE (external 32KHz XTAL) [#2354](https://github.com/particle-iot/device-os/pull/2354)
+- [Gen 3] BLE: Add ability to set and scan extended advertisement size (when using Coded PHY) [#2331](https://github.com/particle-iot/device-os/pull/2331)
+
+### ENHANCEMENTS
+
+- Enable GCC `-Wextra` when building Device OS to enable additional diagnostics provided by GCC. Fix issues uncovered [#2340](https://github.com/particle-iot/device-os/pull/2340)
+- Refactor system describe/info JSON generation to reduce size and remove invalid modules from it [#2347](https://github.com/particle-iot/device-os/pull/2347) [#2349](https://github.com/particle-iot/device-os/pull/2349)
+- [Boron / B SoM / R510] Add additional modem responsiveness check on warm boot to avoid triggering R510-specific initialization issue [#2373](https://github.com/particle-iot/device-os/pull/2373)
+
+### BUGFIXES
+
+- [Gen 3] BLE: fix unintialized `scan_phys` in default scan parameters, preventing scanning from working unless `BLE.setScanPhy()` is manually set [#2338](https://github.com/particle-iot/device-os/pull/2338) [#2345](https://github.com/particle-iot/device-os/pull/2345)
+- [Argon / Tracker] Avoid power leakage through ESP32 `ESPBOOT` pin [#2342](https://github.com/particle-iot/device-os/pull/2342)
+- Fix parsing of JSON strings with more than 127 tokens [#2348](https://github.com/particle-iot/device-os/pull/2348)
+- Clear module slots in DCT when preparing for an OTA update [#2346](https://github.com/particle-iot/device-os/pull/2346)
+- [Gen 3] Increase BLE operation timeout to ensure that BLE events are correctly handled and do not trigger an assertion [#2371](https://github.com/particle-iot/device-os/pull/2371)
+- [Argon] Fix occasional WiFI setup issue over BLE [#2372](https://github.com/particle-iot/device-os/pull/2372)
+- [Gen 3] Ensure that invalid modules are not presented to the cloud in System Describe message [#2374](https://github.com/particle-iot/device-os/pull/2374)
+- [Gen 3] BLE: Fix copy-constructor and assignment operator issues in wiring APIs [#2376](https://github.com/particle-iot/device-os/pull/2376)
+
+### INTERNAL
+
+- [Photon / P1] system part 2 size optimizations [#2349](https://github.com/particle-iot/device-os/pull/2349)
+- Fix `gcovr` installation on CI [#2361](https://github.com/particle-iot/device-os/pull/2361) [#2364](https://github.com/particle-iot/device-os/pull/2364)
+- [test] Increase cloud connection timeout to 9 min for on-device tests where applicable [#2369](https://github.com/particle-iot/device-os/pull/2369)
+- [test] Enable `wiring/ble_central_peripheral` and `wiring/ble_scanner_broadcaster` tests to be run under `device-os-test-runner` [#2376](https://github.com/particle-iot/device-os/pull/2376)
+
 ## 3.1.0
 
 ### FEATURES
