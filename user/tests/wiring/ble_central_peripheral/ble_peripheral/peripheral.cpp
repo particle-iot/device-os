@@ -69,7 +69,7 @@ using namespace particle::test;
 test(BLE_000_Peripheral_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 10 * 60 * 1000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(publishBlePeerInfo());
 }
 
