@@ -2,6 +2,8 @@ suite('BLE scanner broadcaster');
 platform('gen3');
 fixture('ble_scanner', 'ble_broadcaster');
 systemThread('enabled');
+// This tag should be filtered out by default
+tag('fixture');
 
 const BASE_EVENT_NAME = 'ble-test/';
 
