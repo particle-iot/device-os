@@ -1040,7 +1040,7 @@ wiced_result_t sniff_security(SnifferInfo* info)
         wiced_rtos_get_semaphore(&info->complete, 30000);
     }
     wiced_rtos_deinit_semaphore(&info->complete);
-    if (!info->rssi)
+    if (!info->callback && !info->rssi)
         result = WICED_NOT_FOUND;
     return result;
 }
