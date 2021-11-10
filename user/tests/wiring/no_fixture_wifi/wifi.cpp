@@ -24,6 +24,15 @@
 #if Wiring_WiFi == 1
 
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
+
+test(WIFI_00_connect)
+{
+    WiFi.on();
+    WiFi.connect();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+}
+
 test(WIFI_01_resolve_3_levels)
 {
     IPAddress address = WiFi.resolve("pool.ntp.org");
