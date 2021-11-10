@@ -21,10 +21,10 @@ namespace {
 
 static hal_pin_info_t pinmap[TOTAL_PINS] = {
 /* User space */
-/* D0 / SDA      - 00 */ { RTL_PORT_A, 26, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 5,              },
-/* D1 / SCL      - 01 */ { RTL_PORT_A, 25, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 4,              },
-/* D2 /          - 02 */ { RTL_PORT_A, 16, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
-/* D3 /          - 03 */ { RTL_PORT_A, 17, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* D0 / A3       - 00 */ { RTL_PORT_B, 6,  PIN_MODE_NONE, PF_NONE, 2,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* D1 / A4       - 01 */ { RTL_PORT_B, 5,  PIN_MODE_NONE, PF_NONE, 1,                1,                 9,              },
+/* D2            - 02 */ { RTL_PORT_A, 16, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* D3            - 03 */ { RTL_PORT_A, 17, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
 /* D4            - 04 */ { RTL_PORT_A, 18, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
 /* D5            - 05 */ { RTL_PORT_A, 19, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
 /* D6            - 06 */ { RTL_PORT_B, 3,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
@@ -36,23 +36,21 @@ static hal_pin_info_t pinmap[TOTAL_PINS] = {
 /* A0            - 12 */ { RTL_PORT_B, 1,  PIN_MODE_NONE, PF_NONE, 4,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
 /* A1            - 13 */ { RTL_PORT_B, 2,  PIN_MODE_NONE, PF_NONE, 5,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
 /* A2            - 14 */ { RTL_PORT_B, 7,  PIN_MODE_NONE, PF_NONE, 3,                1,                 17,             },
-/* A3            - 15 */ { RTL_PORT_B, 6,  PIN_MODE_NONE, PF_NONE, 2,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
-/* A4            - 16 */ { RTL_PORT_B, 5,  PIN_MODE_NONE, PF_NONE, 1,                1,                 9,              },
-/* A5            - 17 */ { RTL_PORT_B, 4,  PIN_MODE_NONE, PF_NONE, 0,                1,                 8,              },
-/* S0            - 18 */ { RTL_PORT_A, 12, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 0,              },
-/* S1            - 19 */ { RTL_PORT_A, 13, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 1,              },
-/* S2            - 20 */ { RTL_PORT_A, 14, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
-/* S3            - 21 */ { RTL_PORT_B, 26, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
-/* S4            - 22 */ { RTL_PORT_A, 0,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
-/* S5            - 23 */ { RTL_PORT_B, 29, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
-/* S6            - 24 */ { RTL_PORT_B, 31, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* A5            - 15 */ { RTL_PORT_B, 4,  PIN_MODE_NONE, PF_NONE, 0,                1,                 8,              },
+/* S0            - 16 */ { RTL_PORT_A, 12, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 0,              },
+/* S1            - 17 */ { RTL_PORT_A, 13, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 1,              },
+/* S2            - 18 */ { RTL_PORT_A, 14, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* S3            - 19 */ { RTL_PORT_B, 26, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* S4            - 20 */ { RTL_PORT_A, 0,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* S5            - 21 */ { RTL_PORT_B, 29, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* S6            - 22 */ { RTL_PORT_B, 31, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
 
 /* System space */
-/* RGBR          - 25 */ { RTL_PORT_A, 30, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,              },
-/* RGBG          - 26 */ { RTL_PORT_B, 23, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,              },
-/* RGBB          - 27 */ { RTL_PORT_B, 22, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,              },
-/* MODE BUTTON   - 28 */ { RTL_PORT_A, 4,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
-/* ANTSW         - 29 */ { RTL_PORT_A, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* RGBR          - 23 */ { RTL_PORT_A, 30, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,              },
+/* RGBG          - 24 */ { RTL_PORT_B, 23, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,              },
+/* RGBB          - 25 */ { RTL_PORT_B, 22, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,              },
+/* MODE BUTTON   - 26 */ { RTL_PORT_A, 4,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
+/* ANTSW         - 27 */ { RTL_PORT_A, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE},
 };
 
 } // anonymous
