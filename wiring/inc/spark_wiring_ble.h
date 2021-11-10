@@ -170,6 +170,7 @@ enum class BlePairingAlgorithm : uint8_t {
 };
 
 enum class BlePairingEventType : uint8_t {
+    NONE = BLE_EVT_UNKNOWN,
     REQUEST_RECEIVED = BLE_EVT_PAIRING_REQUEST_RECEIVED,
     PASSKEY_DISPLAY = BLE_EVT_PAIRING_PASSKEY_DISPLAY,
     PASSKEY_INPUT = BLE_EVT_PAIRING_PASSKEY_INPUT,
@@ -299,7 +300,7 @@ class BleUuid {
 public:
     BleUuid();
     BleUuid(const hal_ble_uuid_t& uuid);
-    BleUuid(const BleUuid& uuid);
+    BleUuid(const BleUuid& uuid) = default;
     BleUuid(const uint8_t* uuid128, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(uint16_t uuid16);
@@ -339,12 +340,6 @@ public:
     }
 
     uint8_t operator[](uint8_t i) const;
-
-    BleUuid& operator=(BleUuid uuid) {
-        using std::swap;
-        swap(*this, uuid);
-        return *this;
-    }
 
     operator bool() const {
         return isValid();

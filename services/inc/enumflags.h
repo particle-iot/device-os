@@ -45,7 +45,6 @@ public:
 
     EnumFlags();
     EnumFlags(const T& value);
-    EnumFlags(const EnumFlags<T>& flags);
 
     EnumFlags<T>& set(const EnumFlags<T>& flags);
     EnumFlags<T>& clear(const EnumFlags<T>& flags);
@@ -77,8 +76,6 @@ public:
     bool operator>=(const EnumFlags<T>& flags) const;
     bool operator<(const EnumFlags<T>& flags) const;
     bool operator<=(const EnumFlags<T>& flags) const;
-
-    EnumFlags<T>& operator=(EnumFlags<T> flags);
 
     operator bool() const;
     bool operator!() const;
@@ -138,11 +135,6 @@ inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>
 template<typename T>
 inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::EnumFlags(const T& value) {
     value_ = static_cast<ValueType>(value);
-}
-
-template<typename T>
-inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::EnumFlags(const EnumFlags<T>& flags) {
-    value_ = flags.value_;
 }
 
 template<typename T>
@@ -265,13 +257,6 @@ inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::va
 template<typename T>
 inline bool particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator<=(const EnumFlags<T>& flags) const {
     return (value_ <= flags.value_);
-}
-
-template<typename T>
-inline particle::EnumFlags<T>& particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::operator=(EnumFlags<T> flags) {
-    using std::swap;
-    swap(*this, flags);
-    return *this;
 }
 
 template<typename T>
