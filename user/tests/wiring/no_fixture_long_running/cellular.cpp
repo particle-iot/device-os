@@ -181,7 +181,7 @@ test(CELLULAR_03_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected
     assertEqual(Particle.connected(), true);
 }
 
-test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected_modem_power_off_occurs) {
+test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_some_minutes_when_unexpected_modem_power_off_occurs) {
     // Serial.println("the device will reconnect to the cloud when unexpected modem power off occurs, within 2min");
     // Given the device is currently connected to the Cloud
     connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
@@ -221,8 +221,7 @@ test(CELLULAR_04_device_will_reconnect_to_the_cloud_within_2mins_when_unexpected
     system_tick_t start = millis();
     waitFor(Particle.disconnected, 60*1000);
     assertEqual(Particle.disconnected, true);
-    waitFor(Particle.connected, 2*60*1000 - (millis() - start));
-    assertEqual(Particle.connected(), true);
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
 test(CELLULAR_05_device_will_poweroff_when_modem_is_not_responsive) {
