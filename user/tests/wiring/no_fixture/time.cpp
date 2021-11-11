@@ -363,6 +363,7 @@ test(TIME_19_LocalTimeIsCloseToNtpTime) {
         if (!r) {
             break;
         }
+        delay(i * 1000);
     }
     assertEqual(0, r);
 

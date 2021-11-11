@@ -8,7 +8,7 @@
 
 namespace {
 
-const auto TCP_RETRY_ATTEMPTS = 5;
+const auto TCP_RETRY_ATTEMPTS = 10;
 
 } // anonymous
 
@@ -36,6 +36,7 @@ test(TCP_03_tcp_client_success_connect_valid_ip)
         if (ip > 0) {
             break;
         }
+        delay(i * 1000);
     }
     assertTrue(ip > 0);
     TCPClient client;

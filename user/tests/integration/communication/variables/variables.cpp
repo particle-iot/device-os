@@ -96,7 +96,7 @@ test(register_variables) {
 test(get_max_variable_value_size) {
     char str[16] = {};
     snprintf(str, sizeof(str), "%d", Particle.maxVariableValueSize());
-    Particle.publish("max_variable_value_size", str);
+    assertTrue((bool)Particle.publish("max_variable_value_size", str, WITH_ACK));
 }
 
 test(verify_max_variable_value_size) {
