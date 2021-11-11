@@ -370,6 +370,9 @@ test(TIME_19_LocalTimeIsCloseToNtpTime) {
     assertEqual(0, hal_rtc_get_time(&tv, nullptr));
     uint64_t now = tv.tv_sec * 1000000ULL + tv.tv_usec;
 
+    out->printlnf("Local time: %u", (unsigned)now);
+    out->printlnf("NTP time: %u", (unsigned)ntpTime);
+
     // Within 10 seconds
     const int64_t diff = std::chrono::microseconds(10s).count();
     assertLessOrEqual(std::abs((int64_t)now - (int64_t)ntpTime), diff);
