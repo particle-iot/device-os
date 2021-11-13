@@ -29,10 +29,9 @@ void rtlPmuInit();
 void rtlLowLevelInit();
 void rtlPowerOnBigCore();
 
-void rtlIpcInit();
-int rtlIpcChannelInit(uint8_t channel, rtl_ipc_callback_t callback);
-void rtlIpcSendMessage(uint8_t channel, uint32_t message);
-uint32_t rtlIpcGetMessage(uint8_t channel);
+int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback);
+void ipc_send_message(uint8_t channel, uint32_t message);
+uint32_t ipc_get_message(uint8_t channel);
 
 #ifdef __cplusplus
 }

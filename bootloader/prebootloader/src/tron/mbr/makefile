@@ -5,7 +5,7 @@ BOOTLOADER_SHARED_MODULAR = ../shared
 BUILD_PATH_EXT = $(PREBOOTLOADER_MBR_BUILD_PATH_EXT)
 RTL_BINARY_FLASH_START = 0x0
 
-DEPENDENCIES = platform dynalib services
+DEPENDENCIES = hal platform dynalib services
 MAKE_DEPENDENCIES = $(PLATFORM_DEPS)
 # dependent on headers, but not the libraries
 # LIBS +=

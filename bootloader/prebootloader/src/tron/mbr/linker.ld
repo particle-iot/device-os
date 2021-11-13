@@ -68,6 +68,15 @@ SECTIONS
         KEEP (*(.rtl_header_ram_boot_export_table))
     } > SRAM AT> APP_FLASH
 
+    /* Dynalib table */
+    .dynalib : ALIGN(8)
+    {
+        . = ALIGN(4);
+        link_dynalib_start = .;
+        KEEP (*(*.bootloader_mbr_module))
+        link_dynalib_end = .;
+    } > SRAM AT> APP_FLASH
+
     .text :
     {
         . = ALIGN(4);
@@ -205,7 +214,6 @@ SECTIONS
 }
 
 link_dynalib_flash_start = 0;
-link_dynalib_start = 0;
 
 /* Heap location */
 link_heap_location     = link_bss_end; /* For MBR, the heap location need to be calculated at runtime */
@@ -218,4 +226,4 @@ link_stack_end      = platform_km0_bootloader_stack_end;
 
 INCLUDE linker_rtl872x_rom_m23.ld
 
-INCLUDE module_part1_export.ld
+INCLUDE bootloader_part1_export.ld

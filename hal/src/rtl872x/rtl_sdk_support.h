@@ -20,8 +20,6 @@
 
 #include "stdint.h"
 
-#define BOOTLOADER_UPDATE_IPC_CHANNEL       0
-
 typedef void (*rtl_ipc_callback_t)(void *data, uint32_t irq_status, uint32_t channel);
 
 #ifdef __cplusplus

@@ -15,18 +15,25 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef PART1_DYNALIB_H
-#define	PART1_DYNALIB_H
+#ifndef MBR_DYNALIB_H
+#define	MBR_DYNALIB_H
+
 
 #include "dynalib.h"
 
-DYNALIB_BEGIN(part1)
+#ifdef DYNALIB_EXPORT
+#include "km0_km4_ipc.h"
+#endif
 
-DYNALIB_FN(0, part1, bootloader_part1_init, int(void))
-DYNALIB_FN(1, part1, bootloader_part1_setup, int(void))
-DYNALIB_FN(2, part1, bootloader_part1_loop, int(void))
+DYNALIB_BEGIN(mbr)
 
-DYNALIB_END(part1)
+DYNALIB_FN(0, mbr, km0_km4_ipc_on_request_received, int(uint8_t, km0_km4_ipc_msg_type_t, km0_km4_ipc_msg_callback_t, void*))
+DYNALIB_FN(1, mbr, km0_km4_ipc_send_request, int(uint8_t, km0_km4_ipc_msg_type_t, void*, uint32_t, km0_km4_ipc_msg_callback_t, void*))
+DYNALIB_FN(2, mbr, km0_km4_ipc_send_response, int(uint8_t, uint16_t, void*, uint32_t))
 
-#endif	/* PART1_DYNALIB_H */
+DYNALIB_END(mbr)
+
+
+
+#endif	/* MBR_DYNALIB_H */
 

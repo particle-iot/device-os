@@ -45,6 +45,7 @@
 #include "flash_common.h"
 #include "concurrent_hal.h"
 #include "user_hal.h"
+#include "km0_km4_ipc.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -465,6 +466,7 @@ void HAL_Core_Config(void) {
 
     InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
     InterruptEn(IPC_IRQ, 5);
+    km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
 }
 
 void HAL_Core_Setup(void) {
@@ -789,17 +791,9 @@ void __malloc_unlock(struct _reent *ptr) {
     }
 }
 
-#include "rtl_sdk_support.h"
-void bootloader_update_ipc_int(void *data, uint32_t irqStatus, uint32_t channel) {
-    uint32_t msgAddr = ipc_get_message(channel);
-    DCache_Invalidate(msgAddr, sizeof(uint32_t));
-    DiagPrintf("KM4 received bootloader update ACK: 0x%08X\n", msgAddr);
-}
-
-void km4_misc_ipc_int(void *data, uint32_t irqStatus, uint32_t channel) {
-    uint32_t msgAddr = ipc_get_message(channel);
-    DCache_Invalidate(msgAddr, sizeof(uint32_t));
-    DiagPrintf("KM4 received misc ACK: 0x%08X\n", msgAddr);
+#include "sleep_hal.h"
+void callback(km0_km4_ipc_msg_t* msg, void* context) {
+    DiagPrintf("KM4 call into callback\n");
 }
 
 /**
@@ -825,12 +819,27 @@ void application_start() {
         Init_Last_Reset_Info();
     }
 
-    ipc_channel_init(0, bootloader_update_ipc_int);
-    ipc_channel_init(1, km4_misc_ipc_int);
-    ipc_send_message(0, 0x12345678);
-    HAL_Delay_Microseconds(1000*500);
-    ipc_send_message(1, 0xABCDABCD);
-    while (1) {}
+    DelayMs(1000);
+
+    int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, (void*)0x12345678, sizeof(platform_flash_modules_t), callback, NULL);
+    DelayMs(100);
+    if (ret != 0) {
+        DiagPrintf("KM4 send request failed: %d\n", ret);
+    } else {
+        DiagPrintf("KM4 send request successfully\n");
+    }
+
+    DelayMs(2000);
+
+    ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_SLEEP, (void*)0x87654321, sizeof(hal_sleep_config_t), callback, NULL);
+    DelayMs(100);
+    if (ret != 0) {
+        DiagPrintf("KM4 send request failed: %d\n", ret);
+    } else {
+        DiagPrintf("KM4 send request successfully\n");
+    }
+
+    while (1);
 
     app_setup_and_loop();
 }

@@ -15,34 +15,39 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "stdbool.h"
 #include "rtl8721d.h"
-#include "rtl_support.h"
+#include "km0_km4_ipc.h"
 #include "platform_flash_modules.h"
-
-#define BOOTLOADER_UPDATE_IPC_CHANNEL       0
+#include "check.h"
 
 static volatile platform_flash_modules_t* flashModule = NULL;
+static volatile uint16_t bootloaderUpdateReqId = INVALID_IPC_REQ_ID;
 
-static void bootloaderUpdateIpcInt(void *data, uint32_t irqStatus, uint32_t channel) {
-    flashModule = (platform_flash_modules_t*)rtlIpcGetMessage(channel);
-    DCache_Invalidate((uint32_t)flashModule, sizeof(platform_flash_modules_t));
-    DiagPrintf("KM0 received flash module address: 0x%08X\n", flashModule);
+static void onRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
+    if (msg->data_len != sizeof(platform_flash_modules_t)) {
+        DiagPrintf("KM0: invalid IPC message length.\n");
+        return;
+    }
+    flashModule = (platform_flash_modules_t*)msg->data;
+    bootloaderUpdateReqId = msg->req_id;
+    DiagPrintf("KM0 received KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE: 0x%08X\n", (uint32_t)flashModule);
 }
 
 void bootloaderUpdateInit(void) {
-    rtlIpcChannelInit(BOOTLOADER_UPDATE_IPC_CHANNEL, bootloaderUpdateIpcInt);
+    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, onRequestReceived, NULL);
 }
 
 void bootloaderUpdateProcess(void) {
-    if (flashModule) {
-        // Echo response
-        DelayMs(100); // Just to not mess up log message
-        DiagPrintf("KM0 sends bootloader update ACK.\n");
-        DelayMs(100); // Just to not mess up log message
-        rtlIpcSendMessage(BOOTLOADER_UPDATE_IPC_CHANNEL, 0x9abcdef0);
+    // Handle bootloader update
+    if (bootloaderUpdateReqId != INVALID_IPC_REQ_ID && flashModule) {
+        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, bootloaderUpdateReqId, NULL, 0);
+        bootloaderUpdateReqId = INVALID_IPC_REQ_ID;
+
+        DCache_Invalidate((uint32_t)flashModule, sizeof(platform_flash_modules_t));
 
         // TODO: perform bootloader update
-
+        
         flashModule = NULL;
     }
 }
