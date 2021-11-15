@@ -17,7 +17,7 @@
 
 #include "ncp_fw_update.h"
 #include "system_error.h"
-#if HAL_PLATFORM_NCP_FW_UPDATE
+// #if HAL_PLATFORM_NCP_FW_UPDATE
 
 #include "logging.h"
 #define SARA_NCP_FW_UPDATE_LOG_CATEGORY "system.ncp.update"
@@ -463,11 +463,14 @@ int SaraNcpFwUpdate::process() {
                 //   FIXME: Note that this uses internals of the NCP client/parser and that a new cellular_hal API
                 //   should be added for this functionality later, as in all the other places we are using
                 //   cellular_commandas opposed to directly calling into ncp client/parser.
+// FIXME
+#ifndef UNIT_TEST
                 auto mgr = cellularNetworkManager();
                 auto client = mgr->ncpClient();
                 auto parser = client->atParser();
                 const NcpClientLock lock(client);
                 parser->addUrcHandler("+CGEV", cgevCallback, this);
+#endif // UNIT_TEST
                 cgevDeactProfile_ = 0;
                 startTimer_ = millis();
                 network_disconnect(0, NETWORK_DISCONNECT_REASON_USER, 0);
@@ -537,11 +540,14 @@ int SaraNcpFwUpdate::process() {
         // FIXME: Note that this uses internals of the NCP client/parser and that a new cellular_hal API
         // should be added for this functionality later, as in all the other places we are using
         // cellular_commandas opposed to directly calling into ncp client/parser.
+// FIXME
+#ifndef UNIT_TEST
         auto mgr = cellularNetworkManager();
         auto client = mgr->ncpClient();
         auto parser = client->atParser();
         const NcpClientLock lock(client);
         parser->addUrcHandler("+UUHTTPCR", httpRespCallback, this);
+#endif // UNIT_TEST
 
         NCPFW_LOG(INFO, "Starting download...");
 #if SARA_NCP_FW_UPDATE_ENABLE_DOWNLOAD
@@ -929,10 +935,13 @@ int SaraNcpFwUpdate::httpRespCallback(AtResponseReader* reader, const char* pref
     char s[40];
     char atResponse[64] = {};
     // FIXME: Can't get CHECK_PARSER_URC to work, do we need self->parserError(_r); ?
+// FIXME
+#ifndef UNIT_TEST
     const auto resp = reader->readLine(atResponse, sizeof(atResponse));
     if (resp < 0) {
         return resp;
     }
+#endif // UNIT_TEST
     // SUCCESS (r == 4)
     //      +UUHTTPCR: 0,100,1,200,"ccfdc48c0a45198d6e168b30d0740959"
     // ERROR (r == 3)
@@ -958,10 +967,13 @@ int SaraNcpFwUpdate::cgevCallback(AtResponseReader* reader, const char* prefix, 
     int profile;
     char atResponse[64] = {};
     // FIXME: Can't get CHECK_PARSER_URC to work, do we need self->parserError(_r); ?
+// FIXME
+#ifndef UNIT_TEST
     auto resp = reader->readLine(atResponse, sizeof(atResponse));
     if (resp < 0) {
         return resp;
     }
+#endif // UNIT_TEST
     int r = ::sscanf(atResponse, "+CGEV: ME PDN DEACT %d", &profile);
     // do not CHECK_TRUE as we intend to ignore +CGEV: ME DETACH
     if (r >= 1) {
@@ -993,10 +1005,10 @@ int sara_ncp_fw_update_config(const SaraNcpFwUpdateConfig* userConfigData, void*
     return particle::services::SaraNcpFwUpdate::instance()->setConfig(userConfigData);
 }
 
-#else // #if HAL_PLATFORM_NCP_FW_UPDATE
+// #else // #if HAL_PLATFORM_NCP_FW_UPDATE
 
-int sara_ncp_fw_update_config(const SaraNcpFwUpdateConfig* userConfigData, void* reserved) {
-    return SYSTEM_ERROR_NONE;
-}
+// int sara_ncp_fw_update_config(const SaraNcpFwUpdateConfig* userConfigData, void* reserved) {
+//     return SYSTEM_ERROR_NONE;
+// }
 
-#endif // #if HAL_PLATFORM_NCP_FW_UPDATE
+// #endif // #if HAL_PLATFORM_NCP_FW_UPDATE

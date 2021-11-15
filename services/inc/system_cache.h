@@ -17,7 +17,9 @@
 
 #pragma once
 
+#ifndef UNIT_TEST
 #include "tlv_file.h"
+#endif // UNIT_TEST
 
 namespace particle { namespace services {
 
@@ -45,8 +47,10 @@ public:
 protected:
     SystemCache();
 
+#ifndef UNIT_TEST
 private:
     settings::TlvFile tlv_;
+#endif // UNIT_TEST
 };
 
 } } // particle::service

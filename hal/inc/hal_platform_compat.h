@@ -64,8 +64,12 @@
 #define HAL_PLATFORM_NEWLIB (1)
 #endif
 
+#ifndef HAL_PLATFORM_NCP
 #define HAL_PLATFORM_NCP 	(0)
+#endif // HAL_PLATFORM_NCP
+#ifndef HAL_PLATFORM_NCP_AT
 #define HAL_PLATFORM_NCP_AT (0)
+#endif // HAL_PLATFORM_NCP_AT
 
 #define HAL_PLATFORM_DCT_NO_DEPRECATED (0)
 

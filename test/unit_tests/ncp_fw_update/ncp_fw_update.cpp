@@ -27,25 +27,33 @@
 
 #include <string>
 // #include <unordered_map>
+#include "system_mode.h"
 
+// class SaraNcpFwUpdateTest : public SaraNcpFwUpdate {
+// public:
+// //
+// };
 
 using namespace particle;
 
 TEST_CASE("SaraNcpFwUpdate") {
-    // MockRepository mocks;
     SECTION("init()") {
         SECTION("initialize callbacks") {
-            SaraNcpFwUpdateCallbacks saraNcpFwUpdateCallbacks;
-            memset(&saraNcpFwUpdateCallbacks, 0, sizeof(saraNcpFwUpdateCallbacks));
-            // saraNcpFwUpdateCallbacks.size = sizeof(saraNcpFwUpdateCallbacks);
-            // saraNcpFwUpdateCallbacks.system_get_flag = system_get_flag;
-            // saraNcpFwUpdateCallbacks.spark_cloud_flag_connected = spark_cloud_flag_connected;
-            // saraNcpFwUpdateCallbacks.spark_cloud_flag_connect = spark_cloud_flag_connect;
-            // saraNcpFwUpdateCallbacks.spark_cloud_flag_disconnect = spark_cloud_flag_disconnect;
-            // saraNcpFwUpdateCallbacks.publishEvent = publishEvent;
-            // saraNcpFwUpdateCallbacks.system_mode = system_mode;
-            // services::SaraNcpFwUpdate::instance()->init(saraNcpFwUpdateCallbacks);
-            // CHECK(strcmp(n.init(), "path/to/file") == 0);
+            SaraNcpFwUpdateCallbacks saraNcpFwUpdateCallbacks = {};
+            saraNcpFwUpdateCallbacks.size = sizeof(saraNcpFwUpdateCallbacks);
+            saraNcpFwUpdateCallbacks.system_get_flag = nullptr;
+            saraNcpFwUpdateCallbacks.spark_cloud_flag_connected = nullptr;
+            saraNcpFwUpdateCallbacks.spark_cloud_flag_connect = nullptr;
+            saraNcpFwUpdateCallbacks.spark_cloud_flag_disconnect = nullptr;
+            saraNcpFwUpdateCallbacks.publishEvent = nullptr;
+            saraNcpFwUpdateCallbacks.system_mode = nullptr;
+
+            MockRepository mocks;
+
+            mocks.ExpectCallFunc(system_mode).Do([&]() -> System_Mode_TypeDef {
+                return SAFE_MODE;
+            });
+            services::SaraNcpFwUpdate::instance()->init(saraNcpFwUpdateCallbacks);
         }
     }
 }

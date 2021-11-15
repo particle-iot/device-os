@@ -21,7 +21,7 @@
 #include "system_tick_hal.h"
 #include "system_defs.h"
 #include "system_mode.h"
-#include "system_network.h"
+// #include "system_network.h"
 #include "cellular_hal.h"
 #include "platform_ncp.h"
 #include "diagnostics.h"
@@ -135,7 +135,7 @@ public:
     int enableUpdates();
     int updateStatus();
 
-private:
+protected:
     struct SaraNcpFwUpdateData {
         uint16_t size;                          // sizeof(SaraNcpFwUpdateData)
         SaraNcpFwUpdateState state;             // FW_UPDATE_STATE_IDLE;
