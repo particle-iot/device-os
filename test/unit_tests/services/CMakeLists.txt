@@ -7,6 +7,8 @@ add_executable( ${target_name}
   ${TEST_DIR}/util/random.cpp
   ${DEVICE_OS_DIR}/services/src/simple_file_storage.cpp
   ${DEVICE_OS_DIR}/services/src/str_util.cpp
+  ${DEVICE_OS_DIR}/services/src/ncp_fw_update.cpp
+  ncp_fw_update.cpp
   simple_file_storage.cpp
   str_util.cpp
   varint.cpp
@@ -17,6 +19,7 @@ add_executable( ${target_name}
 target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
   PRIVATE HAL_PLATFORM_FILESYSTEM=1
+  PRIVATE HAL_PLATFORM_NCP_FW_UPDATE=1
 )
 
 # Set compiler flags specific to target

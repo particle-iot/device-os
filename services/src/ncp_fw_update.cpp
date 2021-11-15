@@ -35,7 +35,6 @@ LOG_SOURCE_CATEGORY(SARA_NCP_FW_UPDATE_LOG_CATEGORY);
 
 #include "check.h"
 #include "delay_hal.h"
-#include "platform_headers.h"
 #include "system_network.h"
 
 // Change to 0 for debugging faster

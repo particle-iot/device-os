@@ -19,7 +19,6 @@
 
 #include "hal_platform.h"
 #include "system_tick_hal.h"
-#include "core_hal.h"
 #include "system_defs.h"
 #include "system_mode.h"
 #include "system_network.h"
@@ -196,6 +195,7 @@ private:
     void logSaraNcpFwUpdateData(SaraNcpFwUpdateData& data);
 };
 
+#ifndef UNIT_TEST
 class NcpFwUpdateDiagnostics: public AbstractUnsignedIntegerDiagnosticData {
 public:
     NcpFwUpdateDiagnostics() :
@@ -207,6 +207,7 @@ public:
         return 0; // OK
     }
 };
+#endif // UNIT_TEST
 
 } // namespace services
 
