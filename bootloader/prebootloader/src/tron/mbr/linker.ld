@@ -86,6 +86,8 @@ SECTIONS
         *(.flashtext) /* Realtek specific */
         *(.text)
         *(.text.*)
+        *(.ram.text)
+        *(.ram.text.*)
         *(.gnu.linkonce.t.*)
         *(.glue_7)
         *(.glue_7t)

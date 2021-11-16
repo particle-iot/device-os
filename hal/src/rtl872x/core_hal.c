@@ -791,11 +791,6 @@ void __malloc_unlock(struct _reent *ptr) {
     }
 }
 
-#include "sleep_hal.h"
-void callback(km0_km4_ipc_msg_t* msg, void* context) {
-    DiagPrintf("KM4 call into callback\n");
-}
-
 /**
  * The entrypoint to our application.
  * This should be called from the RTOS main thread once initialization has been
@@ -818,28 +813,6 @@ void application_start() {
         // Load last reset info from RCC / backup registers
         Init_Last_Reset_Info();
     }
-
-    DelayMs(1000);
-
-    int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, (void*)0x12345678, sizeof(platform_flash_modules_t), callback, NULL);
-    DelayMs(100);
-    if (ret != 0) {
-        DiagPrintf("KM4 send request failed: %d\n", ret);
-    } else {
-        DiagPrintf("KM4 send request successfully\n");
-    }
-
-    DelayMs(2000);
-
-    ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_SLEEP, (void*)0x87654321, sizeof(hal_sleep_config_t), callback, NULL);
-    DelayMs(100);
-    if (ret != 0) {
-        DiagPrintf("KM4 send request failed: %d\n", ret);
-    } else {
-        DiagPrintf("KM4 send request successfully\n");
-    }
-
-    while (1);
 
     app_setup_and_loop();
 }

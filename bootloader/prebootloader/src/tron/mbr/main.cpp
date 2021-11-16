@@ -78,6 +78,13 @@ extern "C" int main() {
     rtlLowLevelInit();
     rtlPmuInit();
 
+    if (!bootloaderUpdateIfPending()) {
+        DiagPrintf("Failed to update Particle bootloader! Sleep now.\n");
+        while (true) {
+            __WFE();
+        }
+    }
+
     g_isPart1Valid = isPart1ImageValid();
     if (g_isPart1Valid) {
         // dynalib table point to flash
@@ -91,24 +98,22 @@ extern "C" int main() {
     rtlPowerOnBigCore();
 
     km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
+    bootloaderUpdateIpcInit();
 
     if (g_isPart1Valid) {
         // dynalib table point to SRAM
         dynalib_table_location = &link_part1_dynalib_table_ram_start;
-        bootloader_part1_init();
-    }
-
-    bootloaderUpdateInit();
-
-    if (g_isPart1Valid) {
+        bootloader_part1_init(); // It might get IPC involed, so it needs to be called after KM4 is powered on.
         bootloader_part1_setup();
     }
+
+    DiagPrintf("KM0 enters sleep.\n");
 
     while (true) {
         __WFE();
         __WFE(); // clear event
 
-        bootloaderUpdateProcess();
+        bootloaderUpdateIpcProcess();
         if (g_isPart1Valid) {
             bootloader_part1_loop();
         }

@@ -33,7 +33,9 @@
 typedef enum km0_km4_ipc_msg_type_t {
     KM0_KM4_IPC_MSG_RESP                = 0,
     KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE   = 1,
-    KM0_KM4_IPC_MSG_SLEEP               = 2,
+    KM0_KM4_IPC_MSG_KM0_PART1_UPDATE    = 2,
+    KM0_KM4_IPC_MSG_SLEEP               = 3,
+    KM0_KM4_IPC_MSG_RESET               = 4,
     KM0_KM4_IPC_MSG_MAX                 = 0x7FFF
 } km0_km4_ipc_msg_type_t;
 

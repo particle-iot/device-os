@@ -20,11 +20,29 @@
 #include "km0_km4_ipc.h"
 #include "platform_flash_modules.h"
 #include "check.h"
+#include "flash_hal.h"
+#include "boot_info.h"
+
+#define COPY_BLOCK_SIZE                 256
+
+#define OTA_REGION_LOWEST_ADDR          0x08060000
+#define KM4_BOOTLOADER_START_ADDR       0x08004000
+#define KM0_PART1_START_ADDR            0x08014000
 
 static volatile platform_flash_modules_t* flashModule = NULL;
 static volatile uint16_t bootloaderUpdateReqId = INVALID_IPC_REQ_ID;
+static int updateResult = 0;
+static bool bootInfoSectorErased = false;
+static volatile bool km4BldUpdate;
 
-static void onRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
+extern FLASH_InitTypeDef flash_init_para;
+
+static void onFlashModuleReceived(km0_km4_ipc_msg_t* msg, void* context) {
+    if ((uint32_t)context == 0x12345678) {
+        km4BldUpdate = true;
+    } else {
+        km4BldUpdate = false; // KM0 part1 image update
+    }
     if (msg->data_len != sizeof(platform_flash_modules_t)) {
         DiagPrintf("KM0: invalid IPC message length.\n");
         return;
@@ -34,20 +52,158 @@ static void onRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
     DiagPrintf("KM0 received KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE: 0x%08X\n", (uint32_t)flashModule);
 }
 
-void bootloaderUpdateInit(void) {
-    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, onRequestReceived, NULL);
+static void onResetRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
+    // TODO: 
 }
 
-void bootloaderUpdateProcess(void) {
-    // Handle bootloader update
-    if (bootloaderUpdateReqId != INVALID_IPC_REQ_ID && flashModule) {
-        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, bootloaderUpdateReqId, NULL, 0);
-        bootloaderUpdateReqId = INVALID_IPC_REQ_ID;
+static void flash_init(void) {
+    RCC_PeriphClockCmd(APBPeriph_FLASH, APBPeriph_FLASH_CLOCK_XTAL, ENABLE);
 
+    uint32_t Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_CLK_CTRL0);
+    Temp &= ~(BIT_MASK_FLASH_CLK_SEL << BIT_SHIFT_FLASH_CLK_SEL);
+    Temp |= BIT_SHIFT_FLASH_CLK_XTAL;
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_CLK_CTRL0, Temp);
+
+    FLASH_StructInit(&flash_init_para);
+    FLASH_Init(SpicOneBitMode);
+
+    uint8_t flashId[3];
+    FLASH_RxCmd(flash_init_para.FLASH_cmd_rd_id, 3, flashId);
+    if (flashId[0] == 0x20) {
+        flash_init_para.FLASH_cmd_chip_e = 0xC7;
+    }
+}
+
+static bool flash_write_update_info(void) {
+    DiagPrintf("Call into flash_write_update_info(), 0x%08X -> 0x%08X, length: 0x%08X\n",
+        flashModule->sourceAddress, flashModule->destinationAddress, flashModule->length);
+
+    if (!bootInfoSectorErased) {
+        flash_init();
+        DiagPrintf("Erasing the boot info sector...\n");
+        if (hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1) != 0) {
+            DiagPrintf("Erasing flash failed\n");
+            return false;
+        }
+        bootInfoSectorErased = true;
+    }
+
+    flash_update_info_t info;
+    uint32_t writeAddr;
+
+    memset(&info, 0x00, sizeof(info));
+
+    info.src_addr = flashModule->sourceAddress;
+    info.dest_addr = flashModule->destinationAddress;
+    info.size = flashModule->length;
+
+    if (km4BldUpdate) {
+        info.magic_num = KM0_UPDATE_MAGIC_NUMBER;
+        writeAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM4_BOOTLOADER_UPDATE_INFO_OFFSET;
+    } else {
+        info.magic_num = KM0_UPDATE_MAGIC_NUMBER;
+        writeAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_PART1_UPDATE_INFO_OFFSET;
+    }
+
+    if (hal_flash_write(writeAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
+        DiagPrintf("hal_flash_write() failed\n");
+        return false;
+    }
+    if (memcmp((uint8_t*)&info, (uint8_t*)writeAddr, sizeof(info))) {
+        DiagPrintf("Write boot info failed!\n");
+        return false;
+    }
+    return true;
+}
+
+static bool flash_copy(uintptr_t src_addr, uintptr_t dest_addr, size_t size) {
+    uint8_t buf[COPY_BLOCK_SIZE];
+    const uintptr_t src_end_addr = src_addr + size;
+
+    DiagPrintf("Call into flash_copy(), 0x%08X -> 0x%08X, length: 0x%08X\n", src_addr, dest_addr, size);
+
+    uint32_t sectorNum = (size / 4096) + (((size % 4096) > 0) ? 1 : 0);
+    if (hal_flash_erase_sector(dest_addr, sectorNum) != 0) {
+        DiagPrintf("Erasing flash failed\n");
+        return false;
+    }
+
+    while (src_addr < src_end_addr) {
+        size_t n = src_end_addr - src_addr;
+        if (n > sizeof(buf)) {
+            n = sizeof(buf);
+        }
+        if (hal_flash_read(src_addr, buf, n) != 0) {
+            DiagPrintf("hal_flash_read() failed\n");
+            return false;
+        }
+        if (hal_flash_write(dest_addr, buf, n) != 0) {
+            DiagPrintf("hal_flash_write() failed\n");
+            return false;
+        }
+        if (memcmp((uint8_t*)src_addr, (uint8_t*)dest_addr, n)) {
+            DiagPrintf("Copy failed!\n");
+            return false;
+        }
+        src_addr += n;
+        dest_addr += n;
+    }
+    return true;
+}
+
+void bootloaderUpdateIpcInit(void) {
+    flashModule = NULL;
+    bootloaderUpdateReqId = INVALID_IPC_REQ_ID;
+    bootInfoSectorErased = false;
+    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, onFlashModuleReceived, (void*)0x12345678);
+    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_KM0_PART1_UPDATE, onFlashModuleReceived, (void*)0xAABBCCDD);
+    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, onResetRequestReceived, NULL);
+}
+
+bool bootloaderUpdateIfPending(void) {
+    flash_init();
+
+    flash_update_info_t info;
+    for (uint8_t i = 0; i < 2; i++) {
+        uint32_t infoAddr, targetAddr;
+        if (i == 0) {
+            infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM4_BOOTLOADER_UPDATE_INFO_OFFSET;
+            targetAddr = KM4_BOOTLOADER_START_ADDR;
+        } else {
+            infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_PART1_UPDATE_INFO_OFFSET;
+            targetAddr = KM0_PART1_START_ADDR;
+        }
+        memcpy(&info, (void*)infoAddr, sizeof(info));
+        if (info.magic_num == KM0_UPDATE_MAGIC_NUMBER
+                && info.src_addr > OTA_REGION_LOWEST_ADDR
+                && info.dest_addr == targetAddr
+                && info.size > 0) {
+            if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
+                return false;
+            }
+            memset(&info, 0x00, sizeof(info));
+            if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
+                DiagPrintf("hal_flash_write() failed\n");
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void bootloaderUpdateIpcProcess(void) {
+    // Handle bootloader update
+    updateResult = 0;
+    if (bootloaderUpdateReqId != INVALID_IPC_REQ_ID && flashModule) {
         DCache_Invalidate((uint32_t)flashModule, sizeof(platform_flash_modules_t));
 
-        // TODO: perform bootloader update
-        
+        if (!flash_write_update_info()) {
+            updateResult = -1;
+        }
+
+        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, bootloaderUpdateReqId, &updateResult, sizeof(updateResult));
+
+        bootloaderUpdateReqId = INVALID_IPC_REQ_ID;
         flashModule = NULL;
     }
 }

@@ -15,21 +15,26 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOOTLOADER_UPDATE_H
-#define BOOTLOADER_UPDATE_H
 
-#include <stdint.h>
+#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define BOOT_INFO_FLASH_START_ADDR              0x0005F000
+#define BOOT_INFO_FLASH_XIP_START_ADDR          0x0805F000
 
-bool bootloaderUpdateIfPending(void);
-void bootloaderUpdateIpcInit(void);
-void bootloaderUpdateIpcProcess(void);
+#define KM0_UPDATE_MAGIC_NUMBER                 0x20211116
 
-#ifdef __cplusplus
-}
-#endif
+#define KM4_BOOTLOADER_UPDATE_INFO_OFFSET       0
+#define KM0_PART1_UPDATE_INFO_OFFSET            16
+#define TESTING_FIRMWARE_FLAG_OFFSET            32
 
-#endif // BOOTLOADER_UPDATE_H
+typedef struct {
+    uint32_t magic_num;
+    uint32_t src_addr;
+    uint32_t dest_addr;
+    uint32_t size;
+} flash_update_info_t;
+
+typedef struct {
+    uint8_t hw_tested;
+    uint8_t reserved[3];
+} mfg_flags;
