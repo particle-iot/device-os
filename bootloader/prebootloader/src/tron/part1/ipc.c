@@ -8,16 +8,30 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHAN'TABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define DYNALIB_EXPORT
-#include "mbr_dynalib.h"
+#include "ameba_soc.h"
+#include "rtl_sdk_support.h"
 
-__attribute__((externally_visible)) const void* const bootloader_mbr_module[] = {
-    DYNALIB_TABLE_NAME(mbr),
-};
+int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback) {
+    if (channel > 15) {
+        return -1;
+    }
+    IPC_INTUserHandler(channel, (void*)callback, NULL);
+    return 0;
+}
+
+void ipc_send_message(uint8_t channel, uint32_t message) {
+    IPCM0_DEV->IPCx_USR[channel] = message;
+    IPC_INTRequest(IPCM0_DEV, channel);
+}
+
+uint32_t ipc_get_message(uint8_t channel) {
+    uint32_t msgAddr = IPCM4_DEV->IPCx_USR[channel];
+    return msgAddr;
+}

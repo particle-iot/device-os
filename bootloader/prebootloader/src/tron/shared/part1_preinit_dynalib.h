@@ -22,7 +22,7 @@
 #include "dynalib.h"
 
 DYNALIB_BEGIN(part1_preinit)
-DYNALIB_FN(0, part1_preinit, bootloader_part1_preinit, int(uintptr_t*))
+DYNALIB_FN(0, part1_preinit, bootloader_part1_preinit, int(void))
 DYNALIB_END(part1_preinit)
 
 

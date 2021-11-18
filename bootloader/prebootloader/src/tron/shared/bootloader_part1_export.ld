@@ -7,3 +7,4 @@ PROVIDE (link_part1_dynalib_table_ram_start     = platform_km0_part1_dynalib_tab
 
 PROVIDE (link_dynalib_location_offset_part1_preinit = 0);
 PROVIDE (link_dynalib_location_offset_part1 = 4);
+PROVIDE (link_dynalib_location_offset_ipc = 8);

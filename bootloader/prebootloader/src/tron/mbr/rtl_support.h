@@ -19,8 +19,6 @@
 
 #include "stdint.h"
 
-typedef void (*rtl_ipc_callback_t)(void *data, uint32_t irq_status, uint32_t channel);
-
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -28,10 +26,6 @@ extern "C" {
 void rtlPmuInit();
 void rtlLowLevelInit();
 void rtlPowerOnBigCore();
-
-int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback);
-void ipc_send_message(uint8_t channel, uint32_t message);
-uint32_t ipc_get_message(uint8_t channel);
 
 #ifdef __cplusplus
 }

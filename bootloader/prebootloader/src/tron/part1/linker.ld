@@ -179,5 +179,3 @@ link_stack_location = platform_km0_bootloader_stack_start;
 link_stack_end      = platform_km0_bootloader_stack_end;
 
 INCLUDE linker_rtl872x_rom_m23.ld
-
-INCLUDE bootloader_mbr_export.ld

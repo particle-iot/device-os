@@ -16,4 +16,4 @@
  */
 
 #define DYNALIB_IMPORT
-#include "mbr_dynalib.h"
+#include "ipc_dynalib.h"

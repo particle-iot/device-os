@@ -68,15 +68,6 @@ SECTIONS
         KEEP (*(.rtl_header_ram_boot_export_table))
     } > SRAM AT> APP_FLASH
 
-    /* Dynalib table */
-    .dynalib : ALIGN(8)
-    {
-        . = ALIGN(4);
-        link_dynalib_start = .;
-        KEEP (*(*.bootloader_mbr_module))
-        link_dynalib_end = .;
-    } > SRAM AT> APP_FLASH
-
     .text :
     {
         . = ALIGN(4);
@@ -215,6 +206,7 @@ SECTIONS
     }
 }
 
+link_dynalib_start = 0;
 link_dynalib_flash_start = 0;
 
 /* Heap location */

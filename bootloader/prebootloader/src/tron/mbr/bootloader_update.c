@@ -53,7 +53,10 @@ static void onFlashModuleReceived(km0_km4_ipc_msg_t* msg, void* context) {
 }
 
 static void onResetRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
-    // TODO: 
+    if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM4_CTRL) & BIT_LSYS_HPLAT_CKE){
+        BOOT_ROM_CM4PON((u32)HSPWR_OFF_SEQ);
+    }
+    NVIC_SystemReset();
 }
 
 static void flash_init(void) {

@@ -30,24 +30,6 @@ void ipc_table_init() {
     // stub
 }
 
-int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback) {
-    if (channel > 15) {
-        return -1;
-    }
-    IPC_INTUserHandler(channel, (void*)callback, NULL);
-    return 0;
-}
-
-void ipc_send_message(uint8_t channel, uint32_t message) {
-    IPCM0_DEV->IPCx_USR[channel] = message;	
-	IPC_INTRequest(IPCM0_DEV, channel);
-}
-
-uint32_t ipc_get_message(uint8_t channel) {
-    uint32_t msgAddr = IPCM4_DEV->IPCx_USR[channel];
-    return msgAddr;
-}
-
 extern CPU_PWR_SEQ SYSPLL_ON_SEQ[];
 
 void BOOT_FLASH_Invalidate_Auto_Write(void)

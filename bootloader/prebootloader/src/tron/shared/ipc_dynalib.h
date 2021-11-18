@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MBR_DYNALIB_H
-#define	MBR_DYNALIB_H
+#ifndef IPC_DYNALIB_H
+#define IPC_DYNALIB_H
 
 
 #include "dynalib.h"
@@ -25,15 +25,16 @@
 #include "km0_km4_ipc.h"
 #endif
 
-DYNALIB_BEGIN(mbr)
+DYNALIB_BEGIN(ipc)
 
-DYNALIB_FN(0, mbr, km0_km4_ipc_on_request_received, int(uint8_t, km0_km4_ipc_msg_type_t, km0_km4_ipc_msg_callback_t, void*))
-DYNALIB_FN(1, mbr, km0_km4_ipc_send_request, int(uint8_t, km0_km4_ipc_msg_type_t, void*, uint32_t, km0_km4_ipc_msg_callback_t, void*))
-DYNALIB_FN(2, mbr, km0_km4_ipc_send_response, int(uint8_t, uint16_t, void*, uint32_t))
+DYNALIB_FN(0, ipc, km0_km4_ipc_init, int(uint8_t))
+DYNALIB_FN(1, ipc, km0_km4_ipc_on_request_received, int(uint8_t, km0_km4_ipc_msg_type_t, km0_km4_ipc_msg_callback_t, void*))
+DYNALIB_FN(2, ipc, km0_km4_ipc_send_request, int(uint8_t, km0_km4_ipc_msg_type_t, void*, uint32_t, km0_km4_ipc_msg_callback_t, void*))
+DYNALIB_FN(3, ipc, km0_km4_ipc_send_response, int(uint8_t, uint16_t, void*, uint32_t))
 
-DYNALIB_END(mbr)
+DYNALIB_END(ipc)
 
 
 
-#endif	/* MBR_DYNALIB_H */
+#endif	/* IPC_DYNALIB_H */
 

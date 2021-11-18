@@ -24,7 +24,6 @@ extern "C" {
 #include "bootloader_update.h"
 #include "km0_km4_ipc.h"
 
-bool g_isPart1Valid = false;
 
 __attribute__((used)) void* dynalib_table_location = 0; // part1 dynalib location
 
@@ -33,13 +32,13 @@ extern uintptr_t link_part1_flash_end;
 extern uintptr_t link_part1_module_info_flash_start;
 extern uintptr_t link_part1_dynalib_table_flash_start;
 extern uintptr_t link_part1_dynalib_table_ram_start;
-extern uintptr_t link_dynalib_start;
 
 extern "C" {
-int bootloader_part1_preinit(uintptr_t*);
+int bootloader_part1_preinit(void);
 int bootloader_part1_init(void);
 int bootloader_part1_setup(void);
 int bootloader_part1_loop(void);
+int km0_km4_ipc_init(uint8_t ch);
 }
 
 static uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
@@ -85,27 +84,27 @@ extern "C" int main() {
         }
     }
 
-    g_isPart1Valid = isPart1ImageValid();
-    if (g_isPart1Valid) {
-        // dynalib table point to flash
-        dynalib_table_location = &link_part1_dynalib_table_flash_start;
-        bootloader_part1_preinit(&link_dynalib_start);
-        DiagPrintf("KM0 part1 is initialized\n");
-    } else {
-        DiagPrintf("KM0 part1 is invalid!\n");
+    if (!isPart1ImageValid()) {
+        DiagPrintf("KM0 part1 is invalid. Sleep now.\n");
+        while (true) {
+            __WFE();
+        }
     }
+
+    // dynalib table point to flash
+    dynalib_table_location = &link_part1_dynalib_table_flash_start;
+    bootloader_part1_preinit();
+    DiagPrintf("KM0 part1 is initialized\n");
 
     rtlPowerOnBigCore();
 
     km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
     bootloaderUpdateIpcInit();
 
-    if (g_isPart1Valid) {
-        // dynalib table point to SRAM
-        dynalib_table_location = &link_part1_dynalib_table_ram_start;
-        bootloader_part1_init(); // It might get IPC involed, so it needs to be called after KM4 is powered on.
-        bootloader_part1_setup();
-    }
+    // dynalib table point to SRAM
+    dynalib_table_location = &link_part1_dynalib_table_ram_start;
+    bootloader_part1_init(); // It might get IPC involed, so it needs to be called after KM4 is powered on.
+    bootloader_part1_setup();
 
     DiagPrintf("KM0 enters sleep.\n");
 
@@ -114,9 +113,7 @@ extern "C" int main() {
         __WFE(); // clear event
 
         bootloaderUpdateIpcProcess();
-        if (g_isPart1Valid) {
-            bootloader_part1_loop();
-        }
+        bootloader_part1_loop();
     }
 
     return 0;

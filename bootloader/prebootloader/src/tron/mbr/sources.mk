@@ -6,7 +6,6 @@ CPPSRC += $(call target_files,$(PREBOOTLOADER_MBR_SRC_PATH)/,*.cpp)
 CSRC += $(PROJECT_ROOT)/hal/src/rtl872x/flash_hal.c
 CSRC += $(PROJECT_ROOT)/hal/src/rtl872x/exflash_hal.c
 
-CPPSRC += $(PROJECT_ROOT)/hal/src/rtl872x/km0_km4_ipc.cpp
 CPPSRC += $(PROJECT_ROOT)/hal/src/rtl872x/flash_common.cpp
 
 LDFLAGS += -T$(PREBOOTLOADER_MBR_SRC_PATH)/linker.ld
