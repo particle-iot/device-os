@@ -24,6 +24,7 @@
 #define COPY_BLOCK_SIZE                 256
 
 #define OTA_REGION_LOWEST_ADDR          0x08060000
+#define OTA_REGION_HIGHEST_ADDR         0x08600000
 #define KM4_BOOTLOADER_START_ADDR       0x08004000
 #define KM0_PART1_START_ADDR            0x08014000
 
@@ -99,6 +100,7 @@ bool bootloaderUpdateIfPending(void) {
         memcpy(&info, (void*)infoAddr, sizeof(info));
         if (info.magic_num == KM0_UPDATE_MAGIC_NUMBER
                 && info.src_addr > OTA_REGION_LOWEST_ADDR
+                && info.src_addr < OTA_REGION_HIGHEST_ADDR
                 && info.dest_addr == targetAddr
                 && info.size > 0) {
             if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {

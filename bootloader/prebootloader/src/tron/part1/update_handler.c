@@ -34,7 +34,7 @@ extern FLASH_InitTypeDef flash_init_para;
 extern CPU_PWR_SEQ HSPWR_OFF_SEQ[];
 
 static void onFlashModuleReceived(km0_km4_ipc_msg_t* msg, void* context) {
-    if ((uint32_t)context == 0x12345678) {
+    if ((uint32_t)context == KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE) {
         km4BldUpdate = true;
     } else {
         km4BldUpdate = false; // KM0 part1 image update
@@ -119,8 +119,8 @@ void bootloaderUpdateInit(void) {
     flashModule = NULL;
     bootloaderUpdateReqId = INVALID_IPC_REQ_ID;
     bootInfoSectorErased = false;
-    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, onFlashModuleReceived, (void*)0x12345678);
-    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_KM0_PART1_UPDATE, onFlashModuleReceived, (void*)0xAABBCCDD);
+    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, onFlashModuleReceived, (void*)KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE);
+    km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_KM0_PART1_UPDATE, onFlashModuleReceived, (void*)KM0_KM4_IPC_MSG_KM0_PART1_UPDATE);
     km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, onResetRequestReceived, NULL);
 }
 
