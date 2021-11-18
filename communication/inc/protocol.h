@@ -263,6 +263,11 @@ protected:
 	 */
 	ProtocolError event_loop_idle()
 	{
+		ProtocolError error = description.processTimeouts();
+		if (error)
+		{
+			return error;
+		}
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		if (firmwareUpdate.isRunning())
 		{
@@ -276,7 +281,7 @@ protected:
 #endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 		else
 		{
-			ProtocolError error = pinger.process(callbacks.millis() - last_message_millis, [this] {
+			error = pinger.process(callbacks.millis() - last_message_millis, [this] {
 				return ping();
 			});
 			if (error)
@@ -286,29 +291,6 @@ protected:
 		}
 		return NO_ERROR;
 	}
-
-	/**
-	 * @brief Generates and sends describe message
-	 *
-	 * @param desc_flags The information description flags.
-	 * @arg \p DESCRIBE_APPLICATION
-	 * @arg \p DESCRIBE_METRICS
-	 * @arg \p DESCRIBE_SYSTEM
-	 * @param send_response If true, send a CoAP response instead of a request (default: false).
-	 * @param response_token Token to be used in the response message.
-	 *
-	 * @returns \s ProtocolError result value
-	 * @retval \p particle::protocol::NO_ERROR
-	 *
-	 * @sa particle::protocol::ProtocolError
-	 */
-	ProtocolError generate_and_send_description(int desc_flags, bool send_response = false, token_t response_token = 0);
-
-	/**
-	 * Produces a describe message and transmits it as a separate response.
-	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
-	 */
-	ProtocolError send_description_response(token_t token, message_id_t msg_id, int desc_flags);
 
 	/**
 	 * Decodes and dispatches a received message to its handler.
@@ -632,6 +614,10 @@ public:
 
 	const SparkDescriptor& getDescriptor() const {
 		return descriptor;
+	}
+
+	const SparkCallbacks& get_callbacks() const {
+		return callbacks;
 	}
 
 	MessageChannel& getChannel() {

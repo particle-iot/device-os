@@ -47,31 +47,6 @@ enum HelloFlag {
 	HELLO_FLAG_OTA_PROTOCOL_V3 = 0x80
 };
 
-class DescribeAppender: public Appender {
-public:
-	using Appender::append;
-
-	explicit DescribeAppender(Description* desc) :
-			desc_(desc),
-			error_(ProtocolError::NO_ERROR) {
-	}
-
-	bool append(const uint8_t* data, size_t size) override {
-		if (error_ == ProtocolError::NO_ERROR) {
-			error_ = desc_->write((const char*)data, size);
-		}
-		return true;
-	}
-
-	ProtocolError error() const {
-		return error_;
-	}
-
-private:
-	Description* desc_;
-	ProtocolError error_;
-};
-
 } // namespace
 
 /**
@@ -143,7 +118,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			LOG(WARN, "Invalid DESCRIBE flags: 0x%02x", (unsigned)queue[8]);
 		}
 		LOG(INFO, "Received DESCRIBE request; flags: 0x%02x", (unsigned)descriptor_type);
-		error = send_description_response(token, msg_id, descriptor_type);
+		error = description.processRequest(message);
 		break;
 	}
 
@@ -575,118 +550,6 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	return error;
 }
 
-void Protocol::build_describe_message(Appender& appender, int desc_flags)
-{
-	// diagnostics must be requested in isolation to be a binary packet
-	if (descriptor.append_metrics && (desc_flags == DESCRIBE_METRICS))
-	{
-		appender.append(char(0));	// null byte means binary data
-		appender.append(char(DESCRIBE_METRICS));	// uint16 describes the type of binary packet
-		appender.append(char(0));	//
-		const int flags = 1;		// binary
-		const int page = 0;
-		descriptor.append_metrics(Appender::callback, &appender, flags, page, nullptr);
-	}
-	else {
-		appender.append("{");
-		bool has_content = false;
-
-		if (desc_flags & DESCRIBE_APPLICATION)
-		{
-			has_content = true;
-
-			if (descriptor.append_app_info) {
-				descriptor.append_app_info(Appender::callback, &appender, nullptr);
-			} else {
-				appender.append("\"f\":[");
-
-				int num_keys = descriptor.num_functions();
-				int i;
-				for (i = 0; i < num_keys; ++i)
-				{
-					if (i)
-					{
-						appender.append(',');
-					}
-					appender.append('"');
-
-					const char* key = descriptor.get_function_key(i);
-					size_t function_name_length = strlen(key);
-					if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
-					{
-						function_name_length = MAX_FUNCTION_KEY_LENGTH;
-					}
-					appender.append((const uint8_t*) key, function_name_length);
-					appender.append('"');
-				}
-
-				appender.append("],\"v\":{");
-
-				num_keys = descriptor.num_variables();
-				for (i = 0; i < num_keys; ++i)
-				{
-					if (i)
-					{
-						appender.append(',');
-					}
-					appender.append('"');
-					const char* key = descriptor.get_variable_key(i);
-					size_t variable_name_length = strlen(key);
-					SparkReturnType::Enum t = descriptor.variable_type(key);
-					if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
-					{
-						variable_name_length = MAX_VARIABLE_KEY_LENGTH;
-					}
-					appender.append((const uint8_t*) key, variable_name_length);
-					appender.append("\":");
-					appender.append('0' + (char) t);
-				}
-				appender.append('}');
-			}
-		}
-
-		if (descriptor.append_system_info && (desc_flags & DESCRIBE_SYSTEM))
-		{
-			if (has_content)
-			{
-				appender.append(',');
-			}
-			has_content = true;
-			descriptor.append_system_info(Appender::callback, &appender, nullptr);
-		}
-		appender.append('}');
-	}
-}
-
-ProtocolError Protocol::generate_and_send_description(int desc_flags, bool send_response, token_t response_token) {
-	LOG(INFO, "Sending '%s%s%s' Describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
-			desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
-	auto r = ProtocolError::NO_ERROR;
-	if (send_response) {
-		r = description.beginResponse(desc_flags, response_token);
-	} else {
-		r = description.beginRequest(desc_flags);
-	}
-	if (r != ProtocolError::NO_ERROR) {
-		return r;
-	}
-	NAMED_SCOPE_GUARD(g, {
-		description.cancel();
-	});
-	DescribeAppender appender(&description);
-	build_describe_message(appender, desc_flags);
-	if (appender.error() != ProtocolError::NO_ERROR) {
-		return appender.error();
-	}
-	r = description.send();
-	if (r != ProtocolError::NO_ERROR) {
-		LOG(ERROR, "Failed to send Describe message: %d", r);
-		return r;
-	}
-	g.dismiss();
-	return ProtocolError::NO_ERROR;
-}
-
 ProtocolError Protocol::post_description(int desc_flags, bool force)
 {
 	if (!force && descriptor.app_state_selector_info) {
@@ -709,23 +572,7 @@ ProtocolError Protocol::post_description(int desc_flags, bool force)
 	if (!desc_flags) {
 		return ProtocolError::NO_ERROR;
 	}
-	return generate_and_send_description(desc_flags);
-}
-
-ProtocolError Protocol::send_description_response(token_t token, message_id_t msg_id, int desc_flags)
-{
-	// Acknowledge the request
-	Message msg;
-	ProtocolError error = channel.create(msg);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
-	}
-	error = send_empty_ack(msg, msg_id);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
-	}
-	// Send a response
-	return generate_and_send_description(desc_flags, true /* send_response */, token);
+	return description.sendRequest(desc_flags);
 }
 
 ProtocolError Protocol::send_subscription(const char *event_name, const char *device_id)
@@ -786,10 +633,10 @@ bool Protocol::handle_app_state_reply(const Message* msg)
 		}
 		return true;
 	}
-	int descType = 0;
-	const auto r = description.processAck(msg, &descType);
-	if (r == ProtocolError::NO_ERROR) {
-		if (descType == DescriptionType::DESCRIBE_APPLICATION) {
+	int descFlags = 0;
+	const ProtocolError err = description.processAck(*msg, &descFlags);
+	if (err == ProtocolError::NO_ERROR) {
+		if (descFlags | DescriptionType::DESCRIBE_APPLICATION) {
 			LOG(TRACE, "Updating application DESCRIBE checksum");
 			channel.command(Channel::SAVE_SESSION);
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
@@ -797,7 +644,7 @@ bool Protocol::handle_app_state_reply(const Message* msg)
 			channel.command(Channel::LOAD_SESSION);
 			return true;
 		}
-		if (descType == DescriptionType::DESCRIBE_SYSTEM) {
+		if (descFlags | DescriptionType::DESCRIBE_SYSTEM) {
 			LOG(TRACE, "Updating system DESCRIBE checksum");
 			channel.command(Channel::SAVE_SESSION);
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
@@ -806,7 +653,7 @@ bool Protocol::handle_app_state_reply(const Message* msg)
 			return true;
 		}
 	} else {
-		LOG(ERROR, "Failed to process Describe response: %d", (int)r);
+		LOG(ERROR, "Failed to process Describe response: %d", (int)err);
 	}
 	return false;
 }
@@ -844,7 +691,7 @@ int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserv
 {
 	data->maximum_size = 768;  // a conservative guess based on dtls and lightssl encryption overhead and the CoAP data
 	BufferAppender appender(nullptr,  0);	// don't need to store the data, just count the size
-	build_describe_message(appender, data->flags);
+	description.serialize(&appender, data->flags);
 	data->current_size = appender.dataSize();
 	return 0;
 }
