@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -27,8 +27,11 @@
 
 namespace particle {
 
+class Appender;
+
 namespace protocol {
 
+class CoapMessageDecoder;
 class Protocol;
 class Message;
 
@@ -37,25 +40,49 @@ public:
     explicit Description(Protocol* proto);
     ~Description();
 
-    ProtocolError beginRequest(int type);
-    ProtocolError beginResponse(int type, token_t token);
-    ProtocolError write(const char* data, size_t size);
-    ProtocolError send();
-    void cancel();
-
-    ProtocolError processAck(const Message* coapMsg, int* type = nullptr);
+    ProtocolError sendRequest(int flags);
+    ProtocolError processRequest(const Message& msg);
+    ProtocolError processAck(const Message& msg, int* flags);
     ProtocolError processTimeouts();
+
+    ProtocolError serialize(Appender* appender, int flags);
 
     void reset();
 
 private:
-    struct DescribeMessage; // Describe request or response
+    struct Request {
+        Vector<char> data; // Describe data
+        message_id_t msgId; // Message ID of the last sent request
+        unsigned blockIndex; // Index of the next block to send
+        int flags; // Describe flags
+    };
 
-    Vector<std::unique_ptr<DescribeMessage>> msgs_; // Describe requests and responses that are being sent
-    std::unique_ptr<DescribeMessage> curMsg_; // Describe request or response that is being serialized
+    struct Response {
+        Vector<char> data; // Describe data
+        system_tick_t accessTime; // Last resource access time
+        unsigned blockCount; // Number of blocks comprising the resource data
+        unsigned reqCount; // Number of concurrent requests accessing this resource
+        unsigned etag; // ETag option
+        int flags; // Describe flags
+    };
+
+    struct Ack {
+        message_id_t msgId; // Message ID
+        int flags; // Describe flags
+    };
+
+    Vector<Request> reqs_; // Describe requests
+    Vector<Response> resps_; // Describe responses
+    Vector<Ack> acks_; // Expected acknowledgements
     Protocol* proto_; // Protocol instance
+    unsigned lastEtag_; // Last used ETag
 
-    ProtocolError sendNext(DescribeMessage* msg);
+    ProtocolError sendNextRequestBlock(Request* req, bool* hasMore);
+    ProtocolError sendResponseBlock(const Response& resp, token_t token, unsigned blockIndex, message_id_t* msgId, bool* hasMore);
+    ProtocolError sendErrorResponse(const CoapMessageDecoder& reqDec, CoapCode code);
+    ProtocolError sendEmptyAck(const CoapMessageDecoder& reqDec);
+    ProtocolError getDescribeData(Vector<char>* data, int flags);
+    system_tick_t millis() const;
 };
 
 } // namespace protocol
