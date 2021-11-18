@@ -16,6 +16,8 @@
  */
 
 #include "rtl8721d.h"
+#include "rtl_support.h"
+#include "km0_km4_ipc.h"
 #include "sleep_handler.h"
 #include "update_handler.h"
 
@@ -53,7 +55,15 @@ extern constructor_ptr_t link_constructors_end;
 #define link_constructors_size ((unsigned long)&link_constructors_end - (unsigned long)&link_constructors_location)
 
 int bootloader_part1_init(void) {
+    rtlLowLevelInit();
+    rtlPmuInit();
+
+    rtlPowerOnBigCore();
+
+    km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
+
     // invoke constructors
+    // It might get IPC involed, so it needs to be called after KM4 is powered on.
     int ctor_num;
     for (ctor_num = 0; ctor_num < (link_constructors_size / sizeof(constructor_ptr_t)); ctor_num++) {
         link_constructors_location[ctor_num]();
@@ -77,10 +87,8 @@ int bootloader_part1_loop(void) {
 #define DYNALIB_EXPORT
 #include "part1_preinit_dynalib.h"
 #include "part1_dynalib.h"
-#include "ipc_dynalib.h"
 
 __attribute__((externally_visible)) const void* const bootloader_part1_module[] = {
     DYNALIB_TABLE_NAME(part1_preinit),
     DYNALIB_TABLE_NAME(part1),
-    DYNALIB_TABLE_NAME(ipc),
 };

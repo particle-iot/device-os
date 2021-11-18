@@ -16,14 +16,11 @@
  */
 
 #include <cstdlib>
-#include "rtl_support.h"
 extern "C" {
 #include "rtl8721d.h"
 }
 #include "module_info.h"
 #include "bootloader_update.h"
-#include "km0_km4_ipc.h"
-
 
 __attribute__((used)) void* dynalib_table_location = 0; // part1 dynalib location
 
@@ -38,7 +35,6 @@ int bootloader_part1_preinit(void);
 int bootloader_part1_init(void);
 int bootloader_part1_setup(void);
 int bootloader_part1_loop(void);
-int km0_km4_ipc_init(uint8_t ch);
 }
 
 static uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
@@ -74,9 +70,6 @@ extern "C" int main() {
      * As a workaround, we can export run time APIs in part1.
      */
 
-    // rtlLowLevelInit();
-    // rtlPmuInit();
-
     if (!bootloaderUpdateIfPending()) {
         DiagPrintf("Failed to update Particle bootloader! Sleep now.\n");
         while (true) {
@@ -91,27 +84,18 @@ extern "C" int main() {
         }
     }
 
-    DiagPrintf("rtlLowLevelInit()\n");
-
-    rtlLowLevelInit();
-    rtlPmuInit();
-
     // dynalib table point to flash
     dynalib_table_location = &link_part1_dynalib_table_flash_start;
     bootloader_part1_preinit();
     DiagPrintf("KM0 part1 is initialized\n");
 
-    rtlPowerOnBigCore();
-
-    km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
-
     // dynalib table point to SRAM
     dynalib_table_location = &link_part1_dynalib_table_ram_start;
-    bootloader_part1_init(); // It might get IPC involed, so it needs to be called after KM4 is powered on.
+    bootloader_part1_init();
+
     bootloader_part1_setup();
 
     DiagPrintf("KM0 enters sleep.\n");
-
     while (true) {
         __WFE();
         __WFE(); // clear event
