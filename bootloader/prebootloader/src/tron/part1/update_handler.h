@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BOOTLOADER_UPDATE_H
-#define BOOTLOADER_UPDATE_H
+#ifndef UPDATE_HANDLER_H
+#define UPDATE_HANDLER_H
 
 #include <stdint.h>
 
@@ -24,10 +24,11 @@
 extern "C" {
 #endif
 
-bool bootloaderUpdateIfPending(void);
+void bootloaderUpdateInit(void);
+void bootloaderUpdateProcess(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // BOOTLOADER_UPDATE_H
+#endif // UPDATE_HANDLER_H

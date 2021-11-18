@@ -74,8 +74,8 @@ extern "C" int main() {
      * As a workaround, we can export run time APIs in part1.
      */
 
-    rtlLowLevelInit();
-    rtlPmuInit();
+    // rtlLowLevelInit();
+    // rtlPmuInit();
 
     if (!bootloaderUpdateIfPending()) {
         DiagPrintf("Failed to update Particle bootloader! Sleep now.\n");
@@ -91,6 +91,11 @@ extern "C" int main() {
         }
     }
 
+    DiagPrintf("rtlLowLevelInit()\n");
+
+    rtlLowLevelInit();
+    rtlPmuInit();
+
     // dynalib table point to flash
     dynalib_table_location = &link_part1_dynalib_table_flash_start;
     bootloader_part1_preinit();
@@ -99,7 +104,6 @@ extern "C" int main() {
     rtlPowerOnBigCore();
 
     km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
-    bootloaderUpdateIpcInit();
 
     // dynalib table point to SRAM
     dynalib_table_location = &link_part1_dynalib_table_ram_start;
@@ -112,7 +116,6 @@ extern "C" int main() {
         __WFE();
         __WFE(); // clear event
 
-        bootloaderUpdateIpcProcess();
         bootloader_part1_loop();
     }
 

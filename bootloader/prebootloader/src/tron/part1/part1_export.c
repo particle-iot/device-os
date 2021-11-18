@@ -17,6 +17,7 @@
 
 #include "rtl8721d.h"
 #include "sleep_handler.h"
+#include "update_handler.h"
 
 extern uintptr_t link_dynalib_flash_start;
 extern uintptr_t link_dynalib_start;
@@ -62,11 +63,13 @@ int bootloader_part1_init(void) {
 
 int bootloader_part1_setup(void) {
     sleepInit();
+    bootloaderUpdateInit();
     return 0;
 }
 
 int bootloader_part1_loop(void) {
     sleepProcess();
+    bootloaderUpdateProcess();
     return 0;
 }
 
