@@ -243,6 +243,7 @@ ProtocolError Description::processRequest(const Message& msg) {
     }
     if (hasMore) {
         if (respIndex >= resps_.size()) {
+            newResp.blockCount = (newResp.data.size() + BLOCK_SIZE - 1) / BLOCK_SIZE;
             if (!resps_.append(std::move(newResp))) {
                 return ProtocolError::NO_MEMORY;
             }
@@ -430,7 +431,7 @@ ProtocolError Description::sendNextRequestBlock(Request* req, bool* hasMoreArg) 
     CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
     enc.type(CoapType::CON);
     enc.code(CoapCode::POST);
-    enc.id(0); // Assigned by the message channel
+    enc.id(0); // Encoded by the message channel
     const auto token = proto_->get_next_token();
     enc.token((const char*)&token, sizeof(token));
     enc.option(CoapOption::URI_PATH, "d");
@@ -477,7 +478,7 @@ ProtocolError Description::sendResponseBlock(const Response& resp, token_t token
     CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
     enc.type(CoapType::CON);
     enc.code(CoapCode::CONTENT);
-    enc.id(0); // Assigned by the message channel
+    enc.id(0); // Encoded by the message channel
     enc.token((const char*)&token, sizeof(token));
     bool hasMore = false;
     size_t offs = blockIndex * BLOCK_SIZE;
@@ -523,7 +524,7 @@ ProtocolError Description::sendErrorResponse(const CoapMessageDecoder& reqDec, C
     CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
     enc.type((reqDec.type() == CoapType::CON) ? CoapType::ACK : CoapType::NON);
     enc.code(code);
-    enc.id(0); // Will be set by the message channel
+    enc.id(0); // Encoded by the message channel
     enc.token(reqDec.token(), reqDec.tokenSize());
     const int r = enc.encode();
     if (r < 0 || r > (int)msg.capacity()) {
@@ -531,6 +532,9 @@ ProtocolError Description::sendErrorResponse(const CoapMessageDecoder& reqDec, C
         return ProtocolError::INTERNAL;
     }
     msg.set_length(r);
+    if (reqDec.type() == CoapType::CON) {
+        msg.set_id(reqDec.id());
+    }
     err = channel->send(msg);
     if (err != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Failed to send message: %d", (int)err);
@@ -550,13 +554,14 @@ ProtocolError Description::sendEmptyAck(const CoapMessageDecoder& reqDec) {
     CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
     enc.type(CoapType::ACK);
     enc.code(CoapCode::EMPTY);
-    enc.id(reqDec.id());
+    enc.id(0); // Encoded by the message channel
     const int r = enc.encode();
     if (r < 0 || r > (int)msg.capacity()) {
         LOG(ERROR, "Failed to encode message: %d", r);
         return ProtocolError::INTERNAL;
     }
     msg.set_length(r);
+    msg.set_id(reqDec.id());
     err = channel->send(msg);
     if (err != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Failed to send message: %d", (int)err);
