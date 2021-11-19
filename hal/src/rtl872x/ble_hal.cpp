@@ -71,6 +71,7 @@ void bt_coex_init(void);
 #include "check.h"
 #include "scope_guard.h"
 #include "rtl_system_error.h"
+#include "radio_common.h"
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls_util.h"
@@ -1280,7 +1281,8 @@ int hal_ble_stack_deinit(void* reserved) {
 }
 
 int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK(selectRadioAntenna((radio_antenna_type)antenna));
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_set_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved) {
