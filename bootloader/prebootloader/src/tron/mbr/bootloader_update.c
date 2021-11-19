@@ -20,13 +20,12 @@
 #include "check.h"
 #include "flash_hal.h"
 #include "boot_info.h"
+#include "flash_mal.h"
 
 #define COPY_BLOCK_SIZE                 256
 
 #define OTA_REGION_LOWEST_ADDR          0x08060000
 #define OTA_REGION_HIGHEST_ADDR         0x08600000
-#define KM4_BOOTLOADER_START_ADDR       0x08004000
-#define KM0_PART1_START_ADDR            0x08014000
 
 
 extern FLASH_InitTypeDef flash_init_para;
@@ -92,10 +91,10 @@ bool bootloaderUpdateIfPending(void) {
         uint32_t infoAddr, targetAddr;
         if (i == 0) {
             infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM4_BOOTLOADER_UPDATE_INFO_OFFSET;
-            targetAddr = KM4_BOOTLOADER_START_ADDR;
+            targetAddr = KM4_BOOTLOADER_START_ADDRESS;
         } else {
             infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_PART1_UPDATE_INFO_OFFSET;
-            targetAddr = KM0_PART1_START_ADDR;
+            targetAddr = KM0_PART1_START_ADDRESS;
         }
         memcpy(&info, (void*)infoAddr, sizeof(info));
         if (info.magic_num == KM0_UPDATE_MAGIC_NUMBER

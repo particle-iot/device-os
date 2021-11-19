@@ -459,11 +459,6 @@ void HAL_Core_Config(void) {
         LED_On(PARTICLE_LED_RGB);
     }
 
-    // FLASH_AddToFactoryResetModuleSlot(
-    //   FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS,
-    //   FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
-    //   FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
-
     InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
     InterruptEn(IPC_IRQ, 5);
     km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
@@ -490,35 +485,6 @@ void HAL_Core_Setup(void) {
 }
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-bool HAL_Core_Validate_User_Module(void)
-{
-    bool valid = false;
-
-    //CRC verification Enabled by default
-    if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
-    {
-        //CRC check the user module and set to module_user_part_validated
-        valid = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
-                                  FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
-                && HAL_Verify_User_Dependencies();
-    }
-    else if(FLASH_isUserModuleInfoValid(FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
-    {
-        // If user application is invalid, we should at least enable
-        // the heap allocation for littlelf to set system flags.
-        malloc_enable(1);
-
-        //Reset and let bootloader perform the user module factory reset
-        //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
-        //saves precious system_part2 flash size i.e. fits in < 128KB
-        HAL_Core_Factory_Reset();
-
-        while(1);//Device should reset before reaching this line
-    }
-
-    return valid;
-}
-
 bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
 {
     const module_bounds_t* bounds = NULL;

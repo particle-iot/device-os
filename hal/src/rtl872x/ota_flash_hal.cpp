@@ -60,8 +60,6 @@ const uint16_t BOOTLOADER_MBR_UPDATE_MIN_VERSION = 1001; // 2.0.0-rc.1
 
 } // anonymous
 
-static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength);
-
 inline bool matches_mcu(uint8_t bounds_mcu, uint8_t actual_mcu) {
 	return bounds_mcu==HAL_PLATFORM_MCU_ANY || actual_mcu==HAL_PLATFORM_MCU_ANY || (bounds_mcu==actual_mcu);
 }
@@ -172,9 +170,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->modules = nullptr;
         if (info->modules) {
             info->module_count = count;
-#if defined(HYBRID_BUILD)
-            bool hybrid_module_found = false;
-#endif
             bool user_module_found = false;
             memset(info->modules, 0, sizeof(hal_module_t) * count);
             for (unsigned i = 0; i < count; i++) {
@@ -194,17 +189,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 if (valid && bounds->module_function == MODULE_FUNCTION_USER_PART) {
                     user_module_found = true;
                 }
-#if defined(HYBRID_BUILD)
-#ifndef MODULAR_FIRMWARE
-#error HYBRID_BUILD must be modular
-#endif
-                // change monolithic firmware to modular in the hybrid build.
-                if (!hybrid_module_found && info->modules[i].info.module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
-                    info->modules[i].info.module_function = MODULE_FUNCTION_SYSTEM_PART;
-                    info->modules[i].info.module_index = 1; 
-                    hybrid_module_found = true;
-                }
-#endif // HYBRID_BUILD
             }
         }
         HAL_OTA_Add_System_Info(info, construct, reserved);
@@ -329,32 +313,9 @@ bool HAL_Verify_User_Dependencies()
     return validate_module_dependencies(bounds, false, false);
 }
 
-bool HAL_OTA_CheckValidAddressRange(uint32_t startAddress, uint32_t length)
-{
-    uint32_t endAddress = startAddress + length;
-
-#ifdef USE_SERIAL_FLASH
-    if (startAddress == EXTERNAL_FLASH_OTA_ADDRESS && endAddress <= 0x400000)
-    {
-        return true;
-    }
-#else
-    if (startAddress == INTERNAL_FLASH_OTA_ADDRESS && endAddress < 0x0100000)
-    {
-        return true;
-    }
-#endif
-
-    return false;
-}
-
 uint32_t HAL_OTA_FlashAddress()
 {
-#ifdef USE_SERIAL_FLASH
-    return EXTERNAL_FLASH_OTA_ADDRESS;
-#else
     return module_ota.start_address;
-#endif
 }
 
 uint32_t HAL_OTA_FlashLength()
@@ -380,52 +341,7 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
 
 int HAL_OTA_Flash_Read(uintptr_t address, uint8_t* buffer, size_t size)
 {
-#ifdef USE_SERIAL_FLASH
-    return hal_exflash_read(address, buffer, size);
-#else
     return hal_flash_read(address, buffer, size);
-#endif
-}
-
-static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
-{
-    bool ok = false;
-    uint32_t attempt = 0;
-    for (;;) {
-        int fres = FLASH_ACCESS_RESULT_ERROR;
-        if (attempt++ > 0) {
-            // NOTE: we have to use app_util_ciritical_region_enter/exit here
-            // because it does not block SoftDevice interrupts (which we are dependent
-            // on for flash operations)
-            // uint8_t n;
-            // app_util_critical_region_enter(&n);
-            // If it's not the first flashing attempt, try with interrupts disabled
-            fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
-            // app_util_critical_region_exit(n);
-        } else {
-            fres = bootloader_update((const void*)mod->bounds.start_address, moduleLength + 4);
-        }
-        if (fres == FLASH_ACCESS_RESULT_OK) {
-            // Validate bootloader
-            hal_module_t module;
-            bool module_fetched = fetch_module(&module, &module_bootloader, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
-            if (module_fetched && (module.validity_checked == module.validity_result)) {
-                ok = true;
-                break;
-            }
-        }
-
-        if (fres == FLASH_ACCESS_RESULT_BADARG) {
-            // The bootloader is still intact, for some reason the module being copied has failed some checks.
-            break;
-        }
-
-        // Random backoff
-        system_tick_t period = random(BOOTLOADER_RANDOM_BACKOFF_MIN, BOOTLOADER_RANDOM_BACKOFF_MAX);
-        LOG_DEBUG(WARN, "Failed to flash bootloader. Retrying in %lu ms", period);
-        HAL_Delay_Milliseconds(period);
-    }
-    return ok ? (int)HAL_UPDATE_APPLIED : SYSTEM_ERROR_UNKNOWN;
 }
 
 namespace {
@@ -591,20 +507,6 @@ int HAL_FLASH_End(void* reserved)
             break;
         }
 #endif // HAL_PLATFORM_NCP_UPDATABLE
-        case MODULE_FUNCTION_BOOTLOADER: {
-            if (bootloader_get_version() < BOOTLOADER_MBR_UPDATE_MIN_VERSION) {
-                result = flash_bootloader(module, moduleSize);
-                break;
-            }
-            // Fall-through after we've patched the destination.
-            // We are going to put the bootloader module temporary into internal flash
-            // in place of the application (saving application into a different location on external flash).
-            // MODULE_VERIFY_DESTINATION_IS_START_ADDRESS check will normally fail for bootloaders that
-            // don't support updates via MBR, so we are not going to corrupt anything.
-            // const uintptr_t endAddress = (uintptr_t)module_user_compat.start_address + ((uintptr_t)info.module_end_address - (uintptr_t)info.module_start_address);
-            // info.module_start_address = (const void*)module_user_compat.start_address;
-            // info.module_end_address = (const void*)endAddress;
-        }
         default: { // User part, system part or a radio stack module or bootloader if MBR updates are supported
             uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
             if (info.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
