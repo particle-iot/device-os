@@ -36,10 +36,53 @@ SECTIONS
     .text :
     {
         . = ALIGN(4);
+        *(.xip.text)
+        . = ALIGN(4);
+    } > APP_FLASH
+
+    /* C++ exception handlers */
+    INCLUDE linker_arm_exception.ld
+
+    /* Static RAM start */
+    INCLUDE linker_static_ram_start.ld
+
+    /* Non-zero initialised global and static variables */
+    .data :
+    {
+        /* This is the location in flash of the initial values of global variables */
+        link_global_data_initial_values = LOADADDR( .data ); 
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_start = .;
+
+        link_ipc_data_start = .;
+        *(.boot.ipc_data)
+        FILL(0xff)
+        . = ALIGN(16);
+        link_ipc_data_end = .;
+
+        /* Realtek specific RAM code */
+        *(.image2.ram.text)
+        *(.image2.ram.text.*)
+        *(.boot.ram.text)
+        *(.boot.ram.text.*)
+        *(.ram.text)
+        *(.ram.text.*)
+
+        *(.data*)
+        *(.boot.ram.data) /* Realtek specific */
+        *(.boot.ram.data.*) /* Realtek specific */
+        . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .data secion */
+        link_global_data_end = .;
+    } > SRAM AT> APP_FLASH
+
+    .sram.text :
+    {
+        . = ALIGN(4);
         
         /* Code */
         link_code_start = .;
-        *(.xip.text) /* Reset_Handler */
         *(.flashtext) /* Realtek specific */
         *(.text)
         *(.text.*)
@@ -81,37 +124,6 @@ SECTIONS
         link_destructors_end = .;
         
         . = ALIGN(4);
-    } > APP_FLASH
-
-    /* C++ exception handlers */
-    INCLUDE linker_arm_exception.ld
-
-    /* Static RAM start */
-    INCLUDE linker_static_ram_start.ld
-
-    /* Non-zero initialised global and static variables */
-    .data :
-    {
-        /* This is the location in flash of the initial values of global variables */
-        link_global_data_initial_values = LOADADDR( .data ); 
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
-        link_global_data_start = .;
-
-        /* Realtek specific RAM code */
-        *(.image2.ram.text)
-        *(.image2.ram.text.*)
-        *(.boot.ram.text)
-        *(.boot.ram.text.*)
-        *(.ram.text)
-        *(.ram.text.*)
-
-        *(.data*)
-        *(.boot.ram.data) /* Realtek specific */
-        *(.boot.ram.data.*) /* Realtek specific */
-        . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
-        link_global_data_end = .;
     } > SRAM AT> APP_FLASH
     
     /* Zero initialised memory used for zero initialised variables */

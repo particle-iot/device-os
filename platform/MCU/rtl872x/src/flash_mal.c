@@ -42,6 +42,10 @@
 
 #define COPY_BLOCK_SIZE 256
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+__attribute__((section(".boot.ipc_data"))) platform_flash_modules_t sModule;
+#endif
+
 static bool flash_read(flash_device_t dev, uintptr_t addr, uint8_t* buf, size_t size) {
     bool ok = false;
     switch (dev) {
@@ -393,58 +397,33 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     return true;
 }
 
-volatile int ipcResult = -1;
-static void bldUpdateCallback(km0_km4_ipc_msg_t* msg, void* context) {
-    DCache_Invalidate((uint32_t)msg->data, sizeof(int));
-    ipcResult = *((int*)msg->data);
-    DiagPrintf("Bootloader update result: %d\n", ipcResult);
-}
-
 bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                          uint32_t length, uint8_t function, uint8_t flags) {
-    if ((destinationAddress == KM4_BOOTLOADER_START_ADDRESS || destinationAddress == KM0_PART1_START_ADDRESS) && function == MOD_FUNC_BOOTLOADER) {
-        // Send IPC message to KM0 to perform the bootloader update (including Particle bootloader and KM0 part1)
-        platform_flash_modules_t module = {};
-        module.sourceAddress = sourceAddress; // Change it to the address where you flash the Particle bootloader image
-        module.destinationAddress = destinationAddress;
-        module.length = length;
-        uint8_t ipcMsgType = (destinationAddress == KM4_BOOTLOADER_START_ADDRESS) ? KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE : KM0_KM4_IPC_MSG_KM0_PART1_UPDATE;
-        int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, ipcMsgType, &module,
-                                            sizeof(platform_flash_modules_t), bldUpdateCallback, NULL);
-        if (ret != 0 || ipcResult != 0) {
-            DiagPrintf("KM4 send request failed, ret = %d, ipcResult = %d\n", ret, ipcResult);
-            return false;
+    platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];
+    uint8_t flash_module_index = MAX_MODULES_SLOT;
+
+    //Read the flash modules info from the dct area
+    dct_read_app_data_copy(DCT_FLASH_MODULES_OFFSET, flash_modules, sizeof(flash_modules));
+
+    //fill up the next available modules slot and return true else false
+    //slot 0 is reserved for factory reset module so start from flash_module_index = 1
+    for (flash_module_index = GEN_START_SLOT; flash_module_index < MAX_MODULES_SLOT; flash_module_index++) {
+        if(flash_modules[flash_module_index].magicNumber == 0xABCD) {
+            continue;
         } else {
-            DiagPrintf("KM4 send request successfully\n");
+            flash_modules[flash_module_index].sourceDeviceID = sourceDeviceID;
+            flash_modules[flash_module_index].sourceAddress = sourceAddress;
+            flash_modules[flash_module_index].destinationDeviceID = destinationDeviceID;
+            flash_modules[flash_module_index].destinationAddress = destinationAddress;
+            flash_modules[flash_module_index].length = length;
+            flash_modules[flash_module_index].magicNumber = 0xABCD;
+            flash_modules[flash_module_index].module_function = function;
+            flash_modules[flash_module_index].flags = flags;
+            dct_write_app_data(&flash_modules[flash_module_index],
+                            offsetof(application_dct_t, flash_modules[flash_module_index]),
+                            sizeof(platform_flash_modules_t));
             return true;
-        }
-    } else {
-        platform_flash_modules_t flash_modules[MAX_MODULES_SLOT];
-        uint8_t flash_module_index = MAX_MODULES_SLOT;
-
-        //Read the flash modules info from the dct area
-        dct_read_app_data_copy(DCT_FLASH_MODULES_OFFSET, flash_modules, sizeof(flash_modules));
-
-        //fill up the next available modules slot and return true else false
-        //slot 0 is reserved for factory reset module so start from flash_module_index = 1
-        for (flash_module_index = GEN_START_SLOT; flash_module_index < MAX_MODULES_SLOT; flash_module_index++) {
-            if(flash_modules[flash_module_index].magicNumber == 0xABCD) {
-                continue;
-            } else {
-                flash_modules[flash_module_index].sourceDeviceID = sourceDeviceID;
-                flash_modules[flash_module_index].sourceAddress = sourceAddress;
-                flash_modules[flash_module_index].destinationDeviceID = destinationDeviceID;
-                flash_modules[flash_module_index].destinationAddress = destinationAddress;
-                flash_modules[flash_module_index].length = length;
-                flash_modules[flash_module_index].magicNumber = 0xABCD;
-                flash_modules[flash_module_index].module_function = function;
-                flash_modules[flash_module_index].flags = flags;
-                dct_write_app_data(&flash_modules[flash_module_index],
-                                offsetof(application_dct_t, flash_modules[flash_module_index]),
-                                sizeof(platform_flash_modules_t));
-                return true;
-            }
         }
     }
     return false;
@@ -453,6 +432,14 @@ bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t
 bool FLASH_IsFactoryResetAvailable(void) {
     return false;
 }
+
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+volatile int ipcResult = -1;
+static void bldUpdateCallback(km0_km4_ipc_msg_t* msg, void* context) {
+    DCache_Invalidate((uint32_t)msg->data, sizeof(int));
+    ipcResult = *((int*)msg->data);
+}
+#endif
 
 // This function is called in bootloader to perform the memory update process
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
@@ -466,10 +453,12 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
     }
     int result = FLASH_ACCESS_RESULT_OK;
     bool has_modules = false;
+    bool has_bootloader = false;
     size_t offs = module_offs;
     for (size_t i = 0; i < module_count; ++i) {
         platform_flash_modules_t* const module = &modules[i];
         if (module->magicNumber == 0xabcd) {
+            bool resetSlot = true;
             if (!has_modules) {
                 has_modules = true;
                 // Turn on RGB_COLOR_MAGENTA toggling during flash update
@@ -486,16 +475,43 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                     result = r;
                 }
             } else {
-                // It shouldn't get here
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+                // Send IPC message to KM0 to perform the memory copy
+                // Check if the memory copy can be performed.
+                if (verify_module(module->sourceDeviceID, module->sourceAddress, module->length, module->destinationDeviceID,
+                        module->destinationAddress, module->length, module->module_function, module->flags)) {
+                    uint8_t ipcMsgType = (module->destinationAddress == KM4_BOOTLOADER_START_ADDRESS) ? KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE : KM0_KM4_IPC_MSG_KM0_PART1_UPDATE;
+                    memcpy(&sModule, module, sizeof(platform_flash_modules_t));
+                    int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, ipcMsgType, &sModule,
+                                                        sizeof(platform_flash_modules_t), bldUpdateCallback, NULL);
+                    if (ret != 0 || ipcResult != 0) {
+                        result = FLASH_ACCESS_RESULT_ERROR;
+                        resetSlot = false;
+                    } else {
+                        has_bootloader = true;
+                    }
+                } else {
+                    result = FLASH_ACCESS_RESULT_BADARG;
+                }
+#else
+                result = FLASH_ACCESS_RESULT_BADARG; 
+#endif
             }
-            // Mark the slot as unused
-            module->magicNumber = 0xffff;
-            r = dct_write_app_data(&module->magicNumber, offs + offsetof(platform_flash_modules_t, magicNumber), sizeof(module->magicNumber));
-            if (r != 0 && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
-                result = FLASH_ACCESS_RESULT_ERROR;
+            if (resetSlot) {
+                // Mark the slot as unused
+                module->magicNumber = 0xffff;
+                r = dct_write_app_data(&module->magicNumber, offs + offsetof(platform_flash_modules_t, magicNumber), sizeof(module->magicNumber));
+                if (r != 0 && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                    result = FLASH_ACCESS_RESULT_ERROR;
+                }
             }
         }
         offs += sizeof(platform_flash_modules_t);
+    }
+    if (has_bootloader) {
+        // Reset
+        km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
+        while (1);
     }
     // Turn off RGB_COLOR_MAGENTA toggling
     if (has_modules && flashModulesCallback) {
