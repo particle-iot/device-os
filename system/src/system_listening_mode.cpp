@@ -34,6 +34,7 @@ LOG_SOURCE_CATEGORY("system.listen")
 #include "check.h"
 #include "system_event.h"
 #include "scope_guard.h"
+#include "core_hal.h"
 
 using particle::LEDStatus;
 
@@ -62,6 +63,11 @@ ListeningModeHandler* ListeningModeHandler::instance() {
 }
 
 int ListeningModeHandler::enter(unsigned int timeout) {
+    if (HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(ERROR, "Listening mode now allowed");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+
     if (active_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
