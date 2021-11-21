@@ -802,6 +802,9 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
         case FEATURE_LED_OVERRIDDEN: {
             return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, enabled, NULL);
         }
+        case FEATURE_DISABLE_LISTENING_MODE: {
+            return Write_Feature_Flag(FEATURE_FLAG_DISBLE_LISTENING_MODE, enabled, NULL);
+        }
     }
 
     return -1;
@@ -822,6 +825,10 @@ bool HAL_Feature_Get(HAL_Feature feature) {
         case FEATURE_LED_OVERRIDDEN: {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) ? value : false;
+        }
+        case FEATURE_DISABLE_LISTENING_MODE: {
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_DISBLE_LISTENING_MODE, &value) == 0) ? value : false;
         }
     }
     return false;
