@@ -40,12 +40,12 @@ public:
     explicit Description(Protocol* proto);
     ~Description();
 
-    ProtocolError sendRequest(int flags);
-    ProtocolError processRequest(const Message& msg);
-    ProtocolError processAck(const Message& msg, int* flags);
+    ProtocolError sendRequest(int descFlags);
+    ProtocolError receiveRequest(const Message& msg);
+    ProtocolError receiveAckOrRst(const Message& msg, int* descFlags);
     ProtocolError processTimeouts();
 
-    ProtocolError serialize(Appender* appender, int flags);
+    ProtocolError serialize(Appender* appender, int descFlags);
 
     void reset();
 

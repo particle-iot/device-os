@@ -114,7 +114,7 @@ class Protocol
 	Publisher publisher;
 
 	/**
-	 * Sends Describe messages.
+	 * Handles Describe requests.
 	 */
 	Description description;
 
@@ -540,7 +540,7 @@ public:
 	 * @param msg Response message.
 	 * @return `true` if the message has been handled or `false` otherwise.
 	 */
-	bool handle_app_state_reply(const Message* msg);
+	ProtocolError handle_app_state_reply(const Message& msg, bool* handled);
 
 	inline void set_product_id(product_id_t product_id)
 	{
@@ -612,7 +612,7 @@ public:
 		return next_token++;
 	}
 
-	const SparkDescriptor& getDescriptor() const {
+	const SparkDescriptor& get_descriptor() const {
 		return descriptor;
 	}
 
@@ -620,7 +620,7 @@ public:
 		return callbacks;
 	}
 
-	MessageChannel& getChannel() {
+	MessageChannel& get_channel() {
 		return channel;
 	}
 };

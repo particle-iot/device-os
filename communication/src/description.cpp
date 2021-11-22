@@ -135,10 +135,10 @@ Description::Description(Protocol* proto) :
 Description::~Description() {
 }
 
-ProtocolError Description::sendRequest(int flags) {
+ProtocolError Description::sendRequest(int descFlags) {
     Request req = {};
-    req.flags = flags;
-    ProtocolError err = getDescribeData(&req.data, flags);
+    req.flags = descFlags;
+    ProtocolError err = getDescribeData(&req.data, descFlags);
     if (err != ProtocolError::NO_ERROR) {
         return err;
     }
@@ -150,7 +150,7 @@ ProtocolError Description::sendRequest(int flags) {
     if (!hasMore) {
         Ack ack = {};
         ack.msgId = req.msgId;
-        ack.flags = flags;
+        ack.flags = descFlags;
         if (!acks_.append(std::move(ack))) {
             return ProtocolError::NO_MEMORY;
         }
@@ -160,7 +160,7 @@ ProtocolError Description::sendRequest(int flags) {
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Description::processRequest(const Message& msg) {
+ProtocolError Description::receiveRequest(const Message& msg) {
     CoapMessageDecoder dec;
     const int r = dec.decode((const char*)msg.buf(), msg.length());
     if (r < 0) {
@@ -272,7 +272,7 @@ ProtocolError Description::processRequest(const Message& msg) {
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Description::processAck(const Message& msg, int* flags) {
+ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
     if (reqs_.isEmpty() && acks_.isEmpty()) {
         return ProtocolError::NO_ERROR;
     }
@@ -310,7 +310,7 @@ ProtocolError Description::processAck(const Message& msg, int* flags) {
     for (int i = 0; i < acks_.size(); ++i) {
         if (acks_[i].msgId == dec.id()) {
             if (dec.type() == CoapType::ACK) {
-                *flags = acks_[i].flags;
+                *descFlags = acks_[i].flags;
             }
             acks_.removeAt(i);
             return ProtocolError::NO_ERROR;
@@ -337,9 +337,9 @@ ProtocolError Description::processTimeouts() {
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Description::serialize(Appender* appender, int flags) {
-    const auto& descriptor = proto_->getDescriptor();
-    if (flags == DescriptionType::DESCRIBE_METRICS) {
+ProtocolError Description::serialize(Appender* appender, int descFlags) {
+    const auto& descriptor = proto_->get_descriptor();
+    if (descFlags == DescriptionType::DESCRIBE_METRICS) {
         if (!descriptor.append_metrics) {
             return ProtocolError::NOT_IMPLEMENTED;
         }
@@ -354,12 +354,25 @@ ProtocolError Description::serialize(Appender* appender, int flags) {
             return ProtocolError::UNKNOWN;
         }
     } else {
-        if (!(flags & (DescriptionType::DESCRIBE_APPLICATION | DescriptionType::DESCRIBE_SYSTEM))) {
+        if (!(descFlags & (DescriptionType::DESCRIBE_APPLICATION | DescriptionType::DESCRIBE_SYSTEM))) {
             return ProtocolError::INTERNAL;
         }
         bool hasContent = false;
         appender->append("{");
-        if (flags & DescriptionType::DESCRIBE_APPLICATION) {
+        if (descFlags & DescriptionType::DESCRIBE_SYSTEM) {
+            if (!descriptor.append_system_info) {
+                return ProtocolError::NOT_IMPLEMENTED;
+            }
+            if (hasContent) {
+                appender->append(',');
+            }
+            const bool ok = descriptor.append_system_info(Appender::callback, appender, nullptr);
+            if (!ok) {
+                return ProtocolError::UNKNOWN;
+            }
+            hasContent = true;
+        }
+        if (descFlags & DescriptionType::DESCRIBE_APPLICATION) {
             if (descriptor.append_app_info) {
                 // Use the new callback
                 const bool ok = descriptor.append_app_info(Appender::callback, appender, nullptr /* reserved */);
@@ -367,6 +380,7 @@ ProtocolError Description::serialize(Appender* appender, int flags) {
                     return ProtocolError::UNKNOWN;
                 }
             } else {
+                // Use the compatibility callbacks
                 appender->append("\"f\":[");
                 int n = descriptor.num_functions();
                 for (int i = 0; i < n; ++i) {
@@ -395,19 +409,6 @@ ProtocolError Description::serialize(Appender* appender, int flags) {
             }
             hasContent = true;
         }
-        if (flags & DescriptionType::DESCRIBE_SYSTEM) {
-            if (!descriptor.append_system_info) {
-                return ProtocolError::NOT_IMPLEMENTED;
-            }
-            if (hasContent) {
-                appender->append(',');
-            }
-            const bool ok = descriptor.append_system_info(Appender::callback, appender, nullptr);
-            if (!ok) {
-                return ProtocolError::UNKNOWN;
-            }
-            hasContent = true;
-        }
         appender->append('}');
     }
     return ProtocolError::NO_ERROR;
@@ -421,7 +422,7 @@ void Description::reset() {
 
 // TODO: Decouple blockwise transfer from the Describe handling logic
 ProtocolError Description::sendNextRequestBlock(Request* req, bool* hasMoreArg) {
-    const auto channel = &proto_->getChannel();
+    const auto channel = &proto_->get_channel();
     Message msg;
     ProtocolError err = channel->create(msg);
     if (err != ProtocolError::NO_ERROR) {
@@ -468,7 +469,7 @@ ProtocolError Description::sendNextRequestBlock(Request* req, bool* hasMoreArg) 
 
 ProtocolError Description::sendResponseBlock(const Response& resp, token_t token, unsigned blockIndex, message_id_t* msgId,
         bool* hasMoreArg) {
-    const auto channel = &proto_->getChannel();
+    const auto channel = &proto_->get_channel();
     Message msg;
     ProtocolError err = channel->create(msg);
     if (err != ProtocolError::NO_ERROR) {
@@ -514,7 +515,7 @@ ProtocolError Description::sendResponseBlock(const Response& resp, token_t token
 }
 
 ProtocolError Description::sendErrorResponse(const CoapMessageDecoder& reqDec, CoapCode code) {
-    const auto channel = &proto_->getChannel();
+    const auto channel = &proto_->get_channel();
     Message msg;
     ProtocolError err = channel->create(msg);
     if (err != ProtocolError::NO_ERROR) {
@@ -544,7 +545,7 @@ ProtocolError Description::sendErrorResponse(const CoapMessageDecoder& reqDec, C
 }
 
 ProtocolError Description::sendEmptyAck(const CoapMessageDecoder& reqDec) {
-    const auto channel = &proto_->getChannel();
+    const auto channel = &proto_->get_channel();
     Message msg;
     ProtocolError err = channel->create(msg);
     if (err != ProtocolError::NO_ERROR) {

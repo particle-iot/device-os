@@ -88,10 +88,17 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			code = CoAPCode::INTERNAL_SERVER_ERROR;
 		}
 		notify_message_complete(msg_id, code);
-		handle_app_state_reply(&message);
+		bool handled = false;
+		ProtocolError error = handle_app_state_reply(message, &handled);
+		if (error != ProtocolError::NO_ERROR) {
+			return error;
+		}
+		if (handled) {
+			return ProtocolError::NO_ERROR;
+		}
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
-			const ProtocolError error = firmwareUpdate.responseAck(&message);
+			error = firmwareUpdate.responseAck(&message);
 			if (error != ProtocolError::NO_ERROR) {
 				return error;
 			}
@@ -115,7 +122,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			LOG(WARN, "Invalid DESCRIBE flags: 0x%02x", (unsigned)queue[8]);
 		}
 		LOG(INFO, "Received DESCRIBE request; flags: 0x%02x", (unsigned)descriptor_type);
-		error = description.processRequest(message);
+		error = description.receiveRequest(message);
 		break;
 	}
 
@@ -608,13 +615,13 @@ ProtocolError Protocol::send_subscriptions(bool force)
 	return error;
 }
 
-bool Protocol::handle_app_state_reply(const Message* msg)
+ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled)
 {
 	if (!descriptor.app_state_selector_info) {
-		return false;
+		return ProtocolError::NO_ERROR; // FIXME: Shouldn't be possible on Gen 2 or higher
 	}
-	const auto msg_id = CoAP::message_id(msg->buf());
-	const auto code = CoAP::code(msg->buf());
+	const auto msg_id = CoAP::message_id(msg.buf());
+	const auto code = CoAP::code(msg.buf());
 	// Update application state checksums
 	if (subscription_msg_ids.removeOne(msg_id)) { // Event subscriptions
 		if (!CoAPCode::is_success(code)) {
@@ -628,31 +635,32 @@ bool Protocol::handle_app_state_reply(const Message* msg)
 					SparkAppStateUpdate::PERSIST, crc, nullptr);
 			channel.command(Channel::LOAD_SESSION);
 		}
-		return true;
+		*handled = true;
 	}
-	int descFlags = 0;
-	const ProtocolError err = description.processAck(*msg, &descFlags);
-	if (err == ProtocolError::NO_ERROR) {
-		if (descFlags | DescriptionType::DESCRIBE_APPLICATION) {
-			LOG(TRACE, "Updating application DESCRIBE checksum");
-			channel.command(Channel::SAVE_SESSION);
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
-					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-			channel.command(Channel::LOAD_SESSION);
-			return true;
+	if (!*handled) {
+		int desc_flags = 0;
+		const ProtocolError err = description.receiveAckOrRst(msg, &desc_flags);
+		if (err != ProtocolError::NO_ERROR) {
+			LOG(ERROR, "Failed to process Describe ACK: %d", (int)err);
 		}
-		if (descFlags | DescriptionType::DESCRIBE_SYSTEM) {
+		if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
 			LOG(TRACE, "Updating system DESCRIBE checksum");
 			channel.command(Channel::SAVE_SESSION);
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
 					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
 			channel.command(Channel::LOAD_SESSION);
-			return true;
+			*handled = true;
 		}
-	} else {
-		LOG(ERROR, "Failed to process Describe response: %d", (int)err);
+		if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
+			LOG(TRACE, "Updating application DESCRIBE checksum");
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
+					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+			channel.command(Channel::LOAD_SESSION);
+			*handled = true;
+		}
 	}
-	return false;
+	return ProtocolError::NO_ERROR;
 }
 
 #if !HAL_PLATFORM_OTA_PROTOCOL_V3
