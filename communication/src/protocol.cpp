@@ -617,8 +617,8 @@ ProtocolError Protocol::send_subscriptions(bool force)
 
 ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled)
 {
-	if (!descriptor.app_state_selector_info) {
-		return ProtocolError::NO_ERROR; // FIXME: Shouldn't be possible on Gen 2 or higher
+	if (!descriptor.app_state_selector_info) { // FIXME: I don't think we need this on Gen 2 and newer platforms
+		return ProtocolError::NO_ERROR;
 	}
 	const auto msg_id = CoAP::message_id(msg.buf());
 	const auto code = CoAP::code(msg.buf());
@@ -643,6 +643,7 @@ ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled
 		if (err != ProtocolError::NO_ERROR) {
 			LOG(ERROR, "Failed to process Describe ACK: %d", (int)err);
 		}
+		// Technically, a Describe message can carry both the system and application descriptions
 		if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
 			LOG(TRACE, "Updating system DESCRIBE checksum");
 			channel.command(Channel::SAVE_SESSION);

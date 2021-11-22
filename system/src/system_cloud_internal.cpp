@@ -78,10 +78,6 @@ constexpr const char DEVICE_UPDATES_EVENT[] = "particle/device/updates/";
 constexpr const char FORCED_EVENT[] = "forced";
 constexpr const char UPDATES_PENDING_EVENT[] = "pending";
 
-// Note: These limits are also enforced by the server
-const size_t MAX_CLOUD_VARIABLE_COUNT = 64;
-const size_t MAX_CLOUD_FUNCTION_COUNT = 64;
-
 Vector<User_Var_Lookup_Table_t> g_cloudVars;
 Vector<User_Func_Lookup_Table_t> g_cloudFuncs;
 
@@ -289,21 +285,21 @@ User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
 
 User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey, const void* userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)
 {
-	User_Var_Lookup_Table_t item = {};
-	item.userVar = userVar;
-	item.userVarType = userVarType;
-	if (extra) {
-		item.update = extra->update;
-		if (offsetof(spark_variable_t, copy) + sizeof(spark_variable_t::copy) <= extra->size) {
-			item.copy = extra->copy;
-		}
-	}
-	memcpy(item.userVarKey, varKey, USER_VAR_KEY_LENGTH);
+    User_Var_Lookup_Table_t item = {};
+    item.userVar = userVar;
+    item.userVarType = userVarType;
+    if (extra) {
+        item.update = extra->update;
+        if (offsetof(spark_variable_t, copy) + sizeof(spark_variable_t::copy) <= extra->size) {
+            item.copy = extra->copy;
+        }
+    }
+    memcpy(item.userVarKey, varKey, USER_VAR_KEY_LENGTH);
 
     User_Var_Lookup_Table_t* result = find_var_by_key(varKey);
     if (result) {
         *result = item;
-    } else if ((size_t)g_cloudVars.size() < MAX_CLOUD_VARIABLE_COUNT) {
+    } else if ((size_t)g_cloudVars.size() < USER_VAR_MAX_COUNT) {
         if (g_cloudVars.append(std::move(item))) {
             result = &g_cloudVars.last();
         } else {
@@ -327,15 +323,15 @@ User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
 
 User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey, const cloud_function_descriptor* desc)
 {
-	User_Func_Lookup_Table_t item = {};
-	item.pUserFunc = desc->fn;
-	item.pUserFuncData = desc->data;
+    User_Func_Lookup_Table_t item = {};
+    item.pUserFunc = desc->fn;
+    item.pUserFuncData = desc->data;
     memcpy(item.userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
 
     User_Func_Lookup_Table_t* result = find_func_by_key(funcKey);
     if (result) {
-    	*result = item;
-    } else if ((size_t)g_cloudFuncs.size() < MAX_CLOUD_FUNCTION_COUNT) {
+        *result = item;
+    } else if ((size_t)g_cloudFuncs.size() < USER_FUNC_MAX_COUNT) {
         if (g_cloudFuncs.append(std::move(item))) {
             result = &g_cloudFuncs.last();
         } else {
@@ -376,11 +372,11 @@ uint32_t string_crc(const char* s)
  */
 uint32_t compute_functions_checksum()
 {
-	uint32_t checksum = 0;
-	for (const auto& func: g_cloudFuncs) {
-		checksum += string_crc(func.userFuncKey);
-	}
-	return checksum;
+    uint32_t checksum = 0;
+    for (const auto& func: g_cloudFuncs) {
+        checksum += string_crc(func.userFuncKey);
+    }
+    return checksum;
 }
 
 /**
@@ -389,12 +385,12 @@ uint32_t compute_functions_checksum()
  */
 uint32_t compute_variables_checksum()
 {
-	uint32_t checksum = 0;
-	for (const auto& var: g_cloudVars) {
-		checksum += string_crc(var.userVarKey);
-		checksum += crc(var.userVarType);
-	}
-	return checksum;
+    uint32_t checksum = 0;
+    for (const auto& var: g_cloudVars) {
+        checksum += string_crc(var.userVarKey);
+        checksum += crc(var.userVarType);
+    }
+    return checksum;
 }
 
 /**
