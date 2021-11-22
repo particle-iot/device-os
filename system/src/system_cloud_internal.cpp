@@ -485,46 +485,6 @@ void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handler
     }
 }
 
-int numUserFunctions(void)
-{
-    return cloudFunctionCount();
-}
-
-const char* getUserFunctionKey(int function_index)
-{
-    const char* name = nullptr;
-    getCloudFunctionInfo(function_index, &name);
-    return name;
-}
-
-int numUserVariables(void)
-{
-    return cloudVariableCount();
-}
-
-const char* getUserVariableKey(int variable_index)
-{
-    const char* name = nullptr;
-    getCloudVariableInfo(variable_index, &name);
-    return name;
-}
-
-SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
-{
-    switch (userVarType(varKey))
-    {
-        case 1:
-            return SparkReturnType::BOOLEAN;
-        case 4:
-            return SparkReturnType::STRING;
-        case 9:
-            return SparkReturnType::DOUBLE;
-        case 2:
-        default:
-            return SparkReturnType::INT;
-    }
-}
-
 #if HAL_PLATFORM_CLOUD_UDP
 
 using particle::protocol::SessionPersistOpaque;
@@ -1052,12 +1012,7 @@ void Spark_Protocol_Init(void)
         SparkDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
         descriptor.size = sizeof(descriptor);
-        descriptor.num_functions = numUserFunctions;
-        descriptor.get_function_key = getUserFunctionKey;
         descriptor.call_function = userFuncSchedule;
-        descriptor.num_variables = numUserVariables;
-        descriptor.get_variable_key = getUserVariableKey;
-        descriptor.variable_type = wrapVarTypeInEnum;
         descriptor.get_variable_async = getUserVar;
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;

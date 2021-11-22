@@ -694,6 +694,10 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 
 int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserved)
 {
+	// Note: This code is only used for backward compatibility between a newer communication
+	// module that supports blockwise Describe messages and an older system module that relies
+	// on the maximum size defined here to limit the numbers of functions and variables that
+	// can be registered by the application
 	data->maximum_size = 768;  // a conservative guess based on dtls and lightssl encryption overhead and the CoAP data
 	BufferAppender appender(nullptr,  0);	// don't need to store the data, just count the size
 	description.serialize(&appender, data->flags);

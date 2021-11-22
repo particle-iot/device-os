@@ -82,13 +82,13 @@ struct SparkDescriptor
     typedef void (*GetVariableCallback)(int error, int type, void* data, size_t size, void* context);
 
     size_t size;
-    int (*num_functions)(void);
-    const char* (*get_function_key)(int function_index);
+    int (*num_functions)(void); // Deprecated
+    const char* (*get_function_key)(int function_index); // Deprecated
     int (*call_function)(const char *function_key, const char *arg, FunctionResultCallback callback, void* reserved);
 
-    int (*num_variables)(void);
-    const char* (*get_variable_key)(int variable_index);
-    SparkReturnType::Enum (*variable_type)(const char *variable_key);
+    int (*num_variables)(void); // Deprecated
+    const char* (*get_variable_key)(int variable_index); // Deprecated
+    SparkReturnType::Enum (*variable_type)(const char *variable_key); // Deprecated
     const void *(*get_variable)(const char *variable_key); // Deprecated
 
     bool (*was_ota_upgrade_successful)(void);

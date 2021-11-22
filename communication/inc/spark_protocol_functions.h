@@ -210,6 +210,7 @@ typedef struct {
 	uint16_t maximum_size;
 } spark_protocol_describe_data;
 
+// Note: This function is deprecated, see Protocol::get_describe_data() for details
 int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* limits, void* reserved);
 
 /**
