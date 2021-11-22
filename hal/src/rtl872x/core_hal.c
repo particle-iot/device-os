@@ -544,7 +544,19 @@ void HAL_Core_Mode_Button_Reset(uint16_t button)
 }
 
 void HAL_Core_System_Reset(void) {
-    NVIC_SystemReset();
+    WDG_InitTypeDef WDG_InitStruct;
+    u32 CountProcess;
+    u32 DivFacProcess;
+    BKUP_Set(BKUP_REG0, BIT_KM4SYS_RESET_HAPPEN);
+    WDG_Scalar(50, &CountProcess, &DivFacProcess);
+    WDG_InitStruct.CountProcess = CountProcess;
+    WDG_InitStruct.DivFacProcess = DivFacProcess;
+    WDG_Init(&WDG_InitStruct);
+    WDG_Cmd(ENABLE);
+    DelayMs(500);
+    // It should have reset the device after this amount of delay. If not, try resetting device by KM0
+    km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
+    while (1);
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {

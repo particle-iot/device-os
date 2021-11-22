@@ -509,9 +509,7 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
         offs += sizeof(platform_flash_modules_t);
     }
     if (has_bootloader) {
-        // Reset
-        km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
-        while (1);
+        result = FLASH_ACCESS_RESULT_RESET_PENDING;
     }
     // Turn off RGB_COLOR_MAGENTA toggling
     if (has_modules && flashModulesCallback) {
