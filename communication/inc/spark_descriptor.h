@@ -130,6 +130,14 @@ struct SparkDescriptor
      */
     void (*get_variable_async)(const char* key, GetVariableCallback callback, void* context);
 
+    /**
+     * Serialize application info using the given appender function.
+     *
+     * @param appender Appender function.
+     * @param append Opaque data to be passed to appender function.
+     * @param reserved Reserved argument.
+     * @return true on success or false on failure.
+     */
     bool (*append_app_info)(appender_fn appender, void* append, void* reserved);
 };
 
