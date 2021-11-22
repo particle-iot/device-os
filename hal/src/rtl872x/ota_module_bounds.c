@@ -29,7 +29,7 @@ module_bounds_t module_ota = {
 #if HAL_PLATFORM_NCP
     ,.mcu_identifier = HAL_PLATFORM_MCU_ANY
 #endif
-    ,.location = MODULE_BOUNDS_LOC_EXTERNAL_FLASH
+    ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH // XIP
 };
 
 

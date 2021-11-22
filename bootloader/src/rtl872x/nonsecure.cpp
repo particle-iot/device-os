@@ -50,7 +50,7 @@ const TZ_CFG_TypeDef tz_config[]= {
     {0x40000000,            0x50000000-1,            0},  // entry0: Peripherals NS
     {0x1010A000,            0x101D4000-1,            0},  // entry1: IROM & DROM NS
     {0x100E0000,            0x10100000-1,            0},  // entry2: BT/WIFI Extention SRAM
-    {0x00000000,            0x08004000-1,            0},  // entry3: KM0 ROM, KM0 SRAM, Retention SRAM, PSRAM, KM0 FLASH
+    {0x00000000,            0x08060000-1,            0},  // entry3: KM0 ROM, KM0 SRAM, Retention SRAM, PSRAM, KM0 FLASH
     {0x08060000,            0x1007C000-1,            0},  // entry4: KM4 Flash, KM4 SRAM
     {0xFFFFFFFF,            0xFFFFFFFF,              0},  // entry5: None
     {0xFFFFFFFF,            0xFFFFFFFF,              0},  // entry6: None

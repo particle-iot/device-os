@@ -33,13 +33,6 @@ SECTIONS
     /* Module info */
     INCLUDE linker_module_info.ld
 
-    .text :
-    {
-        . = ALIGN(4);
-        *(.xip.text)
-        . = ALIGN(4);
-    } > APP_FLASH
-
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
@@ -185,7 +178,7 @@ SECTIONS
     .secure_ram_text : /* Realtek specific */
     {
         . = ALIGN(4);
-        /* Reserved */
+        *(.xip.text)
         . = ALIGN(4);
     } > SECURE_RAM AT> APP_FLASH
 

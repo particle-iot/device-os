@@ -165,9 +165,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     if (construct) {
         info->platform_id = PLATFORM_ID;
         uint8_t count = module_bounds_length;
-        // FIXME
-        // info->modules = new hal_module_t[count];
-        info->modules = nullptr;
+        info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
             bool user_module_found = false;
