@@ -12,6 +12,9 @@ MEMORY
 
 SECTIONS
 {
+    /* Module start */
+    INCLUDE linker_module_start.ld
+
     .rtl_xip_image_header :
     {
         . = ALIGN(4);
@@ -26,9 +29,6 @@ SECTIONS
     {
         link_rtl_xip_start = .;
     } > APP_FLASH
-
-    /* Module start */
-    INCLUDE linker_module_start.ld
 
     /* Module info */
     INCLUDE linker_module_info.ld

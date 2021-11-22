@@ -328,13 +328,21 @@ uint16_t HAL_OTA_ChunkSize()
 
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 {
-    FLASH_Begin(address, length);
+    if (module_ota.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
+        FLASH_Begin(FLASH_INTERNAL, address, length);
+    } else {
+        FLASH_Begin(FLASH_SERIAL, address, length);
+    }
     return true;
 }
 
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
 {
-    return FLASH_Update(pBuffer, address, length);
+    if (module_ota.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
+        return FLASH_Update(FLASH_INTERNAL, pBuffer, address, length);
+    } else {
+        return FLASH_Update(FLASH_SERIAL, pBuffer, address, length);
+    }
 }
 
 int HAL_OTA_Flash_Read(uintptr_t address, uint8_t* buffer, size_t size)
@@ -513,7 +521,8 @@ int HAL_FLASH_End(void* reserved)
             if (info.flags & MODULE_INFO_FLAG_COMPRESSED) {
                 slotFlags |= MODULE_COMPRESSED;
             }
-            const bool ok = FLASH_AddToNextAvailableModulesSlot(FLASH_SERIAL, module->bounds.start_address, FLASH_INTERNAL,
+            flash_device_t id = (module_ota.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) ? FLASH_INTERNAL : FLASH_SERIAL;
+            const bool ok = FLASH_AddToNextAvailableModulesSlot(id, module->bounds.start_address, FLASH_INTERNAL,
                     (uint32_t)info.module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
             if (!ok) {
                 SYSTEM_ERROR_MESSAGE("No module slot available");

@@ -425,7 +425,7 @@ void HAL_Core_Config(void) {
 
     // OTA region
     module_ota.end_address = module_user.start_address - 1;
-    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFE000) + 0x1000; // Not necessary, 4K aligned
+    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
     SPARK_ASSERT(module_ota.end_address >= module_ota.start_address + 0x200000); // Should have 2M for the OTA region at the least
 
     address += 4;

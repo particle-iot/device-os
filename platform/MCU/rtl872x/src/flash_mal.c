@@ -620,13 +620,14 @@ bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, u
 }
 
 bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length) {
-    if(flashDeviceID == FLASH_INTERNAL && length > 0) {
+    if (flashDeviceID == FLASH_INTERNAL && length > 0) {
         uint32_t expectedCRC = __REV((*(__IO uint32_t*)(startAddress + length)));
         uint32_t computedCRC = Compute_CRC32((uint8_t*)startAddress, length, NULL);
+        DiagPrintf("\nADDR: %08X, len: %08X, CRC: %08X, %08X\n", startAddress, length, expectedCRC, computedCRC);
         if (expectedCRC == computedCRC) {
             return true;
         }
-    } else if(flashDeviceID == FLASH_SERIAL && length > 0) {
+    } else if (flashDeviceID == FLASH_SERIAL && length > 0) {
 #ifdef USE_SERIAL_FLASH
         uint8_t serialFlashData[4]; // FIXME: Use XIP or a larger buffer
         hal_exflash_read((startAddress + length), serialFlashData, 4);
@@ -653,22 +654,26 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
     return false;
 }
 
-void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize) {
+void FLASH_Begin(flash_device_t flashDeviceID, uint32_t FLASH_Address, uint32_t imageSize) {
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
     Save_SystemFlags();
+    if (flashDeviceID == FLASH_INTERNAL) {
+        FLASH_EraseMemory(FLASH_INTERNAL, FLASH_Address, imageSize);
+    } else if (flashDeviceID == FLASH_SERIAL) {
 #ifdef USE_SERIAL_FLASH
-    FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, imageSize);
-#else
-    FLASH_EraseMemory(FLASH_INTERNAL, FLASH_Address, imageSize);
+        FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, imageSize);
 #endif
+    }
 }
 
-int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize) {
+int FLASH_Update(flash_device_t flashDeviceID, const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize) {
     int ret = -1;
+    if (flashDeviceID == FLASH_INTERNAL) {
+        ret = hal_flash_write(address, pBuffer, bufferSize);
+    } else if (flashDeviceID == FLASH_SERIAL) {
 #ifdef USE_SERIAL_FLASH
-    ret = hal_exflash_write(address, pBuffer, bufferSize);
-#else
-    ret = hal_flash_write(address, pBuffer, bufferSize);
+        ret = hal_exflash_write(address, pBuffer, bufferSize);
 #endif
+    }
     return ret;
 }

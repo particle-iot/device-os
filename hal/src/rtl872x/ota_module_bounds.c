@@ -18,6 +18,34 @@ const module_bounds_t module_bootloader = {
     ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH // XIP
 };
 
+// mbr
+const module_bounds_t module_mbr = {
+    .maximum_size = 0x00002000,
+    .start_address = 0x08000000,
+    .end_address = 0x08002000,
+    .module_function = MODULE_FUNCTION_BOOTLOADER,
+    .module_index = 1,
+    .store = MODULE_STORE_MAIN
+#if HAL_PLATFORM_NCP
+    ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
+    ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH // XIP
+};
+
+// km0 part1
+const module_bounds_t module_km0_part1 = {
+    .maximum_size = 0x4B000,
+    .start_address = 0x08014000,
+    .end_address = 0x0805F000,
+    .module_function = MODULE_FUNCTION_BOOTLOADER,
+    .module_index = 2,
+    .store = MODULE_STORE_MAIN
+#if HAL_PLATFORM_NCP
+    ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
+#endif
+    ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH // XIP
+};
+
 // OTA region, to be updated.
 module_bounds_t module_ota = {
     .maximum_size = 0x200000, //2M
@@ -77,9 +105,9 @@ const module_bounds_t module_user_mono = {
 
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_mbr, &module_km0_part1, &module_system_part1, &module_user
 #else
-const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono
+const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_mbr, &module_km0_part1, &module_user_mono
 #endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 };
 
