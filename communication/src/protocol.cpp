@@ -30,7 +30,6 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
-#include "scope_guard.h"
 
 namespace particle { namespace protocol {
 
@@ -90,13 +89,11 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 		notify_message_complete(msg_id, code);
 		handle_app_state_reply(&message);
-		if (type == CoAPType::ACK) {
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-			if (firmwareUpdate.isRunning()) {
-				const ProtocolError error = firmwareUpdate.responseAck(&message);
-				if (error != ProtocolError::NO_ERROR) {
-					return error;
-				}
+		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
+			const ProtocolError error = firmwareUpdate.responseAck(&message);
+			if (error != ProtocolError::NO_ERROR) {
+				return error;
 			}
 		}
 #endif

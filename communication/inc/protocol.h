@@ -199,14 +199,6 @@ protected:
 		protocol_flags = flags;
 	}
 
-	/**
-	 * Retrieves the next token.
-	 */
-	token_t get_next_token()
-	{
-		return next_token++;
-	}
-
 	ProtocolError handle_key_change(Message& message);
 
 	/**
@@ -611,6 +603,14 @@ public:
 	virtual int get_status(protocol_status* status) const = 0;
 
 	void notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode);
+
+	/**
+	 * Retrieves the next token.
+	 */
+	token_t get_next_token()
+	{
+		return next_token++;
+	}
 
 	const SparkDescriptor& getDescriptor() const {
 		return descriptor;
