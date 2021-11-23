@@ -226,6 +226,7 @@ int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed s
             }
         }
         if (buf) {
+#if HAL_PLATFORM_USB_COMPOSITE
             index++;
             particle::BufferAppender appender(buf, 0x09);
             appender.appendUInt8(0x09);                     /* bLength */
@@ -240,6 +241,7 @@ int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed s
             } else {
                 appender.appendUInt8(BMAXPOWER_100MA);
             }
+#endif // HAL_PLATFORM_USB_COMPOSITE
         }
         return pos;
     }
