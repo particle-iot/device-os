@@ -275,9 +275,9 @@ void spark_process(void)
 
 String spark_deviceID(void)
 {
-    unsigned len = HAL_device_ID(NULL, 0);
+    unsigned len = hal_get_device_id(NULL, 0);
     uint8_t id[len];
-    HAL_device_ID(id, len);
+    hal_get_device_id(id, len);
     return bytes2hex(id, len);
 }
 

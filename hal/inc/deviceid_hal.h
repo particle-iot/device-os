@@ -53,13 +53,13 @@ extern "C" {
  * To find out the size of the device ID, call this method with
  * {@code destLen}==0.
  */
-unsigned HAL_device_ID(uint8_t* dest, unsigned destLen);
+unsigned hal_get_device_id(uint8_t* dest, unsigned destLen);
 
 /**
  * Retrievse the platform ID of this device. This allows libraries above HAL
  * to not be compile-time dependent on the PRODUCT_ID symbol.
  */
-unsigned HAL_Platform_ID();
+unsigned hal_get_platform_id();
 
 /**
  *

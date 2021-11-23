@@ -63,7 +63,7 @@ using namespace particle::control::common;
 
 int getDeviceId(ctrl_request* req) {
     uint8_t id[HAL_DEVICE_ID_SIZE] = {};
-    const auto n = HAL_device_ID(id, sizeof(id));
+    const auto n = hal_get_device_id(id, sizeof(id));
     if (n != HAL_DEVICE_ID_SIZE) {
         return SYSTEM_ERROR_UNKNOWN;
     }

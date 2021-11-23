@@ -55,7 +55,7 @@ DYNALIB_FN(9, hal_core, HAL_Core_Execute_Stop_Mode, void(void))
 DYNALIB_FN(10, hal_core, HAL_Core_Enter_Standby_Mode, int(uint32_t, uint32_t))
 DYNALIB_FN(11, hal_core, HAL_Core_Execute_Standby_Mode, void(void))
 DYNALIB_FN(12, hal_core, HAL_Core_Compute_CRC32, uint32_t(const uint8_t*, uint32_t))
-DYNALIB_FN(13, hal_core, HAL_device_ID, unsigned(uint8_t*, unsigned))
+DYNALIB_FN(13, hal_core, hal_get_device_id, unsigned(uint8_t*, unsigned))
 
 DYNALIB_FN(14, hal_core, HAL_Get_Sys_Health, eSystemHealth(void))
 DYNALIB_FN(15, hal_core, HAL_Set_Sys_Health, void(eSystemHealth))

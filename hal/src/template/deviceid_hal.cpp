@@ -27,14 +27,14 @@
 #include "deviceid_hal.h"
 #include <stddef.h>
 
-unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
+unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
 {
     if (dest!=NULL && destLen>0)
         *dest = 0;
     return 0;
 }
 
-unsigned HAL_Platform_ID()
+unsigned hal_get_platform_id()
 {
     return PLATFORM_ID;
 }

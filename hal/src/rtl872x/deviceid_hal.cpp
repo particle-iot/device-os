@@ -68,7 +68,7 @@ int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
 
 } // Anonymous
 
-unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
+unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
 {
     // Device ID is composed of prefix and MAC address
     uint8_t id[2][6] = { DEVICE_ID_PREFIX, {0xff, 0xff, 0xff, 0xff, 0xff, 0xff} };
@@ -80,7 +80,7 @@ unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
     return HAL_DEVICE_ID_SIZE;
 }
 
-unsigned HAL_Platform_ID()
+unsigned hal_get_platform_id()
 {
     return PLATFORM_ID;
 }
