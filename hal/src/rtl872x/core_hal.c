@@ -544,6 +544,15 @@ void HAL_Core_Mode_Button_Reset(uint16_t button)
 }
 
 void HAL_Core_System_Reset(void) {
+    __DSB();
+    __ISB();
+
+    // Disable systick
+    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
+
+    // Disable global interrupt
+    __set_BASEPRI(1 << (8 - __NVIC_PRIO_BITS));
+
     WDG_InitTypeDef WDG_InitStruct;
     u32 CountProcess;
     u32 DivFacProcess;
@@ -554,9 +563,13 @@ void HAL_Core_System_Reset(void) {
     WDG_Init(&WDG_InitStruct);
     WDG_Cmd(ENABLE);
     DelayMs(500);
+    DiagPrintf("Failed to reset device using WDG.");
+
     // It should have reset the device after this amount of delay. If not, try resetting device by KM0
     km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
-    while (1);
+    while (1) {
+        __WFE();
+    }
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {

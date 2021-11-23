@@ -623,7 +623,6 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
     if (flashDeviceID == FLASH_INTERNAL && length > 0) {
         uint32_t expectedCRC = __REV((*(__IO uint32_t*)(startAddress + length)));
         uint32_t computedCRC = Compute_CRC32((uint8_t*)startAddress, length, NULL);
-        DiagPrintf("\nADDR: %08X, len: %08X, CRC: %08X, %08X\n", startAddress, length, expectedCRC, computedCRC);
         if (expectedCRC == computedCRC) {
             return true;
         }
