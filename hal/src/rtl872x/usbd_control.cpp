@@ -56,8 +56,13 @@ static const uint8_t MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR[] = {
 
 }
 
-ControlInterfaceClassDriver::ControlInterfaceClassDriver(Device* dev)
-        : ClassDriver(dev) {
+ControlInterfaceClassDriver::ControlInterfaceClassDriver()
+        : ClassDriver() {
+}
+
+ControlInterfaceClassDriver* ControlInterfaceClassDriver::instance() {
+    static ControlInterfaceClassDriver driver;
+    return &driver;
 }
 
 ControlInterfaceClassDriver::~ControlInterfaceClassDriver() {
@@ -114,6 +119,7 @@ int ControlInterfaceClassDriver::handleVendorRequest(SetupRequest* req) {
             }
             ret = requestCallback_(&request_, requestCallbackCtx_);
 
+
             if (ret == 0 && ((request_.data != nullptr && request_.wLength) || !request_.wLength)) {
                 if (request_.data != requestData_ &&
                     request_.wLength <= EP0_MAX_PACKET_SIZE && request_.wLength) {
@@ -122,7 +128,6 @@ int ControlInterfaceClassDriver::handleVendorRequest(SetupRequest* req) {
                     memcpy(requestData_, request_.data, request_.wLength);
                     request_.data = requestData_;
                 }
-
                 dev_->setupReply(req, request_.data, request_.wLength);
             } else {
                 ret = SYSTEM_ERROR_INTERNAL;
@@ -151,8 +156,7 @@ int ControlInterfaceClassDriver::handleVendorRequest(SetupRequest* req) {
         request_.data = nullptr;
         ret = requestCallback_(&request_, requestCallbackCtx_);
     }
-
-    return ret;
+    return ret == 0 ? ret : SYSTEM_ERROR_INTERNAL;
 }
 
 int ControlInterfaceClassDriver::setup(SetupRequest* req) {

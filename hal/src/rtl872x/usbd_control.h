@@ -30,7 +30,7 @@ namespace detail {
 
 class ControlInterfaceClassDriver : public particle::usbd::ClassDriver {
 public:
-    ControlInterfaceClassDriver(particle::usbd::Device* dev);
+    static ControlInterfaceClassDriver* instance();
     ~ControlInterfaceClassDriver();
 
     virtual int init(unsigned cfgIdx) override;
@@ -48,6 +48,9 @@ public:
 
     void setVendorRequestCallback(HAL_USB_Vendor_Request_Callback cb, void* ptr);
     void setVendorRequestStateCallback(HAL_USB_Vendor_Request_State_Callback cb, void* p);
+
+protected:
+    ControlInterfaceClassDriver();
 
 private:
     int handleMsftRequest(particle::usbd::SetupRequest* req);

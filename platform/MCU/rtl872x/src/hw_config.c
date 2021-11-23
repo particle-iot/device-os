@@ -190,6 +190,10 @@ void Set_System(void)
 	// 	"mov sp, r0\n"
 	// );
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    peripheralsClockEnable();
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+
     // mpu_init();
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
@@ -312,8 +316,6 @@ void Finish_Update()
     // FIXME: reset reason?
     HAL_Core_System_Reset_Ex(0, 0, NULL);
 }
-
-
 
 __attribute__((section(".retained_system_flags"))) platform_system_flags_t system_flags;
 

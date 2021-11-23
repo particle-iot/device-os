@@ -72,6 +72,7 @@ int Device::registerClass(ClassDriver* drv) {
     for (auto& cls: classDrivers_) {
         if (!cls) {
             cls = drv;
+            drv->setDeviceInstance(this);
             return 0;
         }
     }
@@ -271,7 +272,7 @@ int Device::getUnicodeString(const char* ascii, size_t len, uint8_t* buf, size_t
         }
     }
 
-    return (len + 2) * 2;
+    return len * 2 + 2;
 }
 
 int Device::getRawString(const char* data, size_t len, uint8_t* buf, size_t buflen) {
@@ -307,8 +308,8 @@ int Device::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t len) {
         return getUnicodeString(HAL_PLATFORM_USB_PRODUCT_STRING, sizeof(HAL_PLATFORM_USB_PRODUCT_STRING) - 1, buf, len);
     }
     case STRING_IDX_SERIAL: {
-        char deviceid[HAL_DEVICE_ID_SIZE * 2 + 1] = {};
-        return getUnicodeString(device_id_as_string(deviceid), sizeof(deviceid) - 1, buf, len);
+        char deviceid[HAL_DEVICE_ID_SIZE * 2] = {};
+        return getUnicodeString(device_id_as_string(deviceid), sizeof(deviceid), buf, len);
     }
     case STRING_IDX_CONFIG: {
         return getUnicodeString(HAL_PLATFORM_USB_CONFIGURATION_STRING, sizeof(HAL_PLATFORM_USB_CONFIGURATION_STRING) - 1, buf, len);
@@ -379,6 +380,13 @@ int Device::startOfFrame() {
 }
 
 int Device::setupRequest(SetupRequest* req) {
+    LOG(TRACE, "Setup request bmRequestType=%02x bRequest=%02x wValue=%04x wIndex=%04x wLength=%04x",
+        req->bmRequestType,
+        req->bRequest,
+        req->wValue,
+        req->wIndex,
+        req->wLength);
+
     for (auto& cls: classDrivers_) {
         if (cls && cls->isEnabled()) {
             int r = cls->setup(req);
@@ -477,10 +485,17 @@ int DeviceDriver::notifyDeviceState(DeviceState state) {
 
 // ClassDriver
 
+ClassDriver::ClassDriver() {
+}
+
 ClassDriver::ClassDriver(Device* dev)
         : dev_(dev) {
-
 }
+
+void ClassDriver::setDeviceInstance(Device* dev) {
+    dev_ = dev;
+}
+
 void ClassDriver::enable(bool state) {
     enabled_ = state;
 }

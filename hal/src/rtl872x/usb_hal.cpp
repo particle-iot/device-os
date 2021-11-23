@@ -19,13 +19,13 @@
 #include "usbd_device.h"
 #include "usbd_control.h"
 #include "usbd_driver.h"
+#include <mutex>
 
 using namespace particle::usbd;
 
 namespace {
 
 Device gUsbDevice;
-ControlInterfaceClassDriver gControlInstance(&gUsbDevice);
 
 #define LOBYTE(x)  ((uint8_t)(x & 0x00FF))
 #define HIBYTE(x)  ((uint8_t)((x & 0xFF00) >>8))
@@ -54,11 +54,15 @@ const uint8_t sDeviceDescriptor[] = {
 } // anonymous
 
 void HAL_USB_Init(void) {
-    gUsbDevice.setDeviceDescriptor(sDeviceDescriptor, sizeof(sDeviceDescriptor));
-    gUsbDevice.registerDriver(RtlUsbDriver::instance());
-    gUsbDevice.registerClass(&gControlInstance);
-    gControlInstance.enable(true);
-    HAL_USB_Attach();
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, []() {
+        gUsbDevice.setDeviceDescriptor(sDeviceDescriptor, sizeof(sDeviceDescriptor));
+        gUsbDevice.registerDriver(RtlUsbDriver::instance());
+        // gUsbDevice.registerClass(CdcClassDriver::instance());
+        gUsbDevice.registerClass(ControlInterfaceClassDriver::instance());
+        ControlInterfaceClassDriver::instance()->enable(true);
+        HAL_USB_Attach();
+    });
 }
 
 void HAL_USB_Attach() {
@@ -70,11 +74,11 @@ void HAL_USB_Detach() {
 }
 
 void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p) {
-    gControlInstance.setVendorRequestCallback(cb, p);
+    ControlInterfaceClassDriver::instance()->setVendorRequestCallback(cb, p);
 }
 
 void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Callback cb, void* p) {
-    gControlInstance.setVendorRequestStateCallback(cb, p);
+    ControlInterfaceClassDriver::instance()->setVendorRequestStateCallback(cb, p);
 }
 
 

@@ -249,8 +249,12 @@ private:
 
 class ClassDriver {
 public:
+    ClassDriver();
     ClassDriver(Device* dev);
     virtual ~ClassDriver() = default;
+
+    void setDeviceInstance(Device* dev);
+
     virtual int init(unsigned cfgIdx) = 0;
     virtual int deinit(unsigned cfgIdx) = 0;
     virtual int setup(SetupRequest* req) = 0;
