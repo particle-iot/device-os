@@ -104,14 +104,9 @@ none:
 
 ifeq ("$(PLATFORM)","p2")
 .PHONY: rtl-flash
-ifeq ("$(MODULE)","user-part")
-user_part_flash_start = $(subst 0x08,0x00,0x$(word 1,$(shell arm-none-eabi-objdump --syms $(TARGET_BASE).elf | grep 'link_module_start')))
+rtl_module_start_address = $(subst 0x08,0x00,$(call get_module_start_address))
 rtl-flash:
-	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(call user_part_flash_start)
-else
-rtl-flash:
-	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(RTL_BINARY_FLASH_START)
-endif
+	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(call rtl_module_start_address)
 endif
 
 st-flash: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
@@ -141,7 +136,11 @@ else
 endif
 endif
 	@echo Flashing using dfu:
+ifneq ($(PLATFORM_DFU),)
 	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $(lastword $^)
+else
+	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(call get_module_start_address)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $(lastword $^)
+endif
 
 # Program the device using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'

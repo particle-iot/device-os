@@ -15,6 +15,7 @@ AR = $(GCC_ARM_PATH)$(GCC_PREFIX)ar
 OBJCOPY = $(GCC_ARM_PATH)$(GCC_PREFIX)objcopy
 OBJDUMP = $(GCC_ARM_PATH)$(GCC_PREFIX)objdump
 SIZE = $(GCC_ARM_PATH)$(GCC_PREFIX)size
+READELF = $(GCC_ARM_PATH)$(GCC_PREFIX)readelf
 DFU = dfu-util
 DFUSUFFIX = dfu-suffix
 CURL = curl

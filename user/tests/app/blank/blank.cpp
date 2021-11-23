@@ -17,17 +17,12 @@
 
 #include "application.h"
 
-Serial1LogHandler l(115200, LOG_LEVEL_ALL);
+/* executes once at startup */
+void setup() {
 
-SYSTEM_MODE(MANUAL);
-
-/* This function is called once at start up ----------------------------------*/
-void setup()
-{
 }
 
-/* This function loops forever -----------------------------------------------*/
-void loop()
-{
-    // This will run in a loop
+/* executes continuously after setup() runs */
+void loop() {
+
 }

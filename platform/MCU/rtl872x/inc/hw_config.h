@@ -60,6 +60,7 @@ void Bootloader_Update_Version(uint16_t bootloaderVersion);
 
 uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize, uint32_t const *p_crc);
 
+void rtl_system_reset();
 
 #ifdef __cplusplus
 }

@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cstdarg>
 #include <cstdint>
+#include <cctype>
 extern "C" {
 #include "rtl8721d.h"
 }

@@ -36,6 +36,10 @@ public:
         }
     }
 
+    int32_t counter() {
+        return locked_;
+    }
+
     void unlock() {
         SPARK_ASSERT(locked_ > 0);
         if (--locked_ == 0) {

@@ -25,6 +25,7 @@
 #include "rgbled_hal.h"
 #include "exflash_hal.h"
 #include "km0_km4_ipc.h"
+#include "core_hal.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
@@ -297,7 +298,6 @@ void SysTick_Disable() {
 
 void Finish_Update()
 {
-#if 0
     //Set system flag to Enable IWDG in IWDG_Reset_Enable()
     //called in bootloader to recover from corrupt firmware
     system_flags.IWDG_Enable_SysFlag = 0xD001;
@@ -309,8 +309,8 @@ void Finish_Update()
 
     // USB_Cable_Config(DISABLE);
 
-    sd_nvic_SystemReset();
-#endif // 0
+    // FIXME: reset reason?
+    HAL_Core_System_Reset_Ex(0, 0, NULL);
 }
 
 

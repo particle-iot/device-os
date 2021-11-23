@@ -28,11 +28,14 @@
 #include "system_error.h"
 #include "rtl8721d.h"
 
+static bool is_block_erased(uintptr_t addr, size_t size);
+
+__attribute__((section(".ram.text"), noinline))
 static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
     // XXX: No way of knowing whether the write operation succeeded or not
     for (size_t b = 0; b < size;) {
-        size_t rem = MIN(4, (size - b));
-        // XXX: does this suppport up to 12 bytes?
+        size_t rem = MIN(8, (size - b));
+        // XXX: do not use 12 byte writes, sometimes we get deadlocked
         // TxData256 doesn't seem to work
         FLASH_TxData12B(addr + b, (uint8_t)rem, (uint8_t*)data + b);
         b += rem;
@@ -68,6 +71,7 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     return ret;
 }
 
+__attribute__((section(".ram.text"), noinline))
 static bool is_block_erased(uintptr_t addr, size_t size) {
     uint8_t* ptr = (uint8_t*)(SPI_FLASH_BASE + addr);
     for (size_t i = 0; i < size; i++) {
@@ -102,14 +106,17 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
     return err_code;
 }
 
+__attribute__((section(".ram.text"), noinline))
 int hal_exflash_erase_sector(uintptr_t start_addr, size_t num_sectors) {
     return erase_common(start_addr, num_sectors, EraseSector);
 }
 
+__attribute__((section(".ram.text"), noinline))
 int hal_exflash_erase_block(uintptr_t start_addr, size_t num_blocks) {
     return erase_common(start_addr, num_blocks, EraseBlock);
 }
 
+__attribute__((section(".ram.text"), noinline))
 int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data_size) {
     hal_exflash_lock();
     int ret = -1;

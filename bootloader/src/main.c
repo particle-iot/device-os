@@ -45,6 +45,11 @@
 #include "module.h"
 #endif
 
+#include "timer_hal.h"
+
+extern void DFU_Check_Reset();
+extern void HAL_DFU_Process();
+
 void platform_startup();
 
 #if PLATFORM_ID == PLATFORM_TRON
@@ -509,11 +514,12 @@ int main(void)
     // Main loop
     while (1)
     {
-        //Do nothing
+#if HAL_PLATFORM_BOOTLOADER_USB_PROCESS_IN_MAIN_THREAD
+        HAL_DFU_Process();
+        DFU_Check_Reset();
+#endif // HAL_PLATFORM_BOOTLOADER_USB_PROCESS_IN_MAIN_THREAD
     }
 }
-
-extern void DFU_Check_Reset();
 
 /*******************************************************************************
  * Function Name  : Timing_Decrement
@@ -547,7 +553,9 @@ void Timing_Decrement(void)
         }
     }
 
+#if !HAL_PLATFORM_BOOTLOADER_USB_PROCESS_IN_MAIN_THREAD
     DFU_Check_Reset();
+#endif // !HAL_PLATFORM_BOOTLOADER_USB_PROCESS_IN_MAIN_THREAD
 }
 
 #ifdef USE_FULL_ASSERT
