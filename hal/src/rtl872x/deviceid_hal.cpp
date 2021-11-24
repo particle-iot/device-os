@@ -19,37 +19,71 @@
 #include "exflash_hal.h"
 #include "str_util.h"
 #include "system_error.h"
+#include "check.h"
+#include "bytes2hexbuf.h"
 #ifndef HAL_DEVICE_ID_NO_DCT
 #include "dct.h"
 #endif /* HAL_DEVICE_ID_NO_DCT */
 
 #include <algorithm>
+#include <memory>
+
+extern "C" {
+#include "rtl8721d.h"
+#include "rtl8721d_efuse.h"
+}
 
 namespace {
 
 using namespace particle;
 
-#define DEVICE_ID_PREFIX    {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21}
+#define LOGICAL_EFUSE_SIZE      1024
+#define EFUSE_SUCCESS           1
+#define EFUSE_FAILURE           0
 
-const uintptr_t SERIAL_NUMBER_OTP_ADDRESS = 0x00000000;
-const uintptr_t DEVICE_SECRET_OTP_ADDRESS = 0x00000010;
-const uintptr_t HW_DATA_OTP_ADDRESS = 0x00000020;
-const uintptr_t HW_MODEL_OTP_ADDRESS = 0x00000024;
+#define WIFI_MAC_OFFSET         0x11A
+#define MOBILE_SECRET_OFFSET    0x160
+#define SERIAL_NUMBER_OFFSET    0x16F
+#define HARDWARE_DATA_OFFSET    0x178
+#define HARDWARE_MODEL_OFFSET   0x17B
 
-} // namespace
+#define WIFI_MAC_SIZE                   6
+#define SERIAL_NUMBER_FRONT_PART_SIZE   9
+#define HARDWARE_DATA_SIZE              4
+#define HARDWARE_MODEL_SIZE             4
+#define WIFI_OUID_SIZE                  3
+#define DEVICE_ID_PREFIX_SIZE           6
 
-unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
+const uint8_t DEVICE_ID_PREFIX[] = {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21};
+
+int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
+    std::unique_ptr<uint8_t[]> efuseBuf(new uint8_t[LOGICAL_EFUSE_SIZE]);
+    CHECK_TRUE(efuseBuf, SYSTEM_ERROR_NO_MEMORY);
+    memset(efuseBuf.get(), 0xFF, sizeof(efuseBuf));
+
+    auto ret = EFUSE_LMAP_READ(efuseBuf.get());
+    CHECK_TRUE(ret == EFUSE_SUCCESS, SYSTEM_ERROR_INTERNAL);
+
+    memcpy(buf, efuseBuf.get() + offset, size);
+
+    return SYSTEM_ERROR_NONE;
+};
+
+} // Anonymous
+
+unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
 {
     // Device ID is composed of prefix and MAC address
-    const uint8_t id[2][6] = { DEVICE_ID_PREFIX, {0xff, 0xff, 0xff, 0xff, 0xff, 0xff} };
-    static_assert(sizeof(id) == HAL_DEVICE_ID_SIZE, "");
+    uint8_t id[HAL_DEVICE_ID_SIZE] = {};
+    memcpy(id, DEVICE_ID_PREFIX, DEVICE_ID_PREFIX_SIZE);
+    CHECK_RETURN(readLogicalEfuse(WIFI_MAC_OFFSET, id + DEVICE_ID_PREFIX_SIZE, HAL_DEVICE_ID_SIZE - DEVICE_ID_PREFIX_SIZE), 0);
     if (dest && destLen > 0) {
         memcpy(dest, id, std::min(destLen, sizeof(id)));
     }
     return HAL_DEVICE_ID_SIZE;
 }
 
-unsigned HAL_Platform_ID()
+unsigned hal_get_platform_id()
 {
     return PLATFORM_ID;
 }
@@ -63,11 +97,15 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
 {
     char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
 
-    int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, SERIAL_NUMBER_OTP_ADDRESS,
-                                     (uint8_t*)serial, HAL_DEVICE_SERIAL_NUMBER_SIZE);
-
-    if (r != 0 || !isPrintable(serial, sizeof(serial))) {
-        return -1;
+    // Serial Number is composed of Product Code (4 bytes), Manufacturer ID (2 bytes), 
+    // Year (1 byte), Week (2 bytes) and Unique Code (6 bytes)
+    // We saved the front part (9 bytes) in the logical efuse,
+    // the Unique Code is generated from the 24 non-OUI bits of the MAC address
+    uint8_t wifiMacRandomBytes[WIFI_MAC_SIZE - WIFI_OUID_SIZE] = {};
+    CHECK(readLogicalEfuse(WIFI_MAC_OFFSET + WIFI_OUID_SIZE, wifiMacRandomBytes, sizeof(wifiMacRandomBytes)));
+    bytes2hexbuf(wifiMacRandomBytes, sizeof(wifiMacRandomBytes), &serial[SERIAL_NUMBER_FRONT_PART_SIZE]);
+    if (!isPrintable(serial, sizeof(serial))) {
+        return SYSTEM_ERROR_INTERNAL;
     }
     if (str) {
         memcpy(str, serial, std::min(size, sizeof(serial)));
@@ -84,10 +122,7 @@ int hal_get_device_hw_version(uint32_t* revision, void* reserved)
     // HW Data format: | NCP_ID | HW_VERSION | HW Feature Flags |
     //                 | byte 0 |   byte 1   |    byte 2/3      |
     uint8_t hw_data[4] = {};
-    int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, HW_DATA_OTP_ADDRESS, hw_data, 4);
-    if (r) {
-        return SYSTEM_ERROR_INTERNAL;
-    }
+    CHECK(readLogicalEfuse(HARDWARE_DATA_OFFSET, (uint8_t*)hw_data, HARDWARE_DATA_SIZE));
     if (hw_data[1] == 0xFF) {
         return SYSTEM_ERROR_BAD_DATA;
     }
@@ -100,10 +135,7 @@ int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved)
     // HW Model format: | Model Number LSB | Model Number MSB | Model Variant LSB | Model Variant MSB |
     //                  |      byte 0      |      byte 1      |      byte 2       |      byte 3       |
     uint8_t hw_model[4] = {};
-    int r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, HW_MODEL_OTP_ADDRESS, hw_model, 4);
-    if (r) {
-        return SYSTEM_ERROR_INTERNAL;
-    }
+    CHECK(readLogicalEfuse(HARDWARE_MODEL_OFFSET, (uint8_t*)hw_model, HARDWARE_MODEL_SIZE));
     // Model and variant values of 0xFFFF are acceptable
     *model = ((uint32_t)hw_model[1] << 8) | (uint32_t)hw_model[0];
     *variant = ((uint32_t)hw_model[3] << 8) | (uint32_t)hw_model[2];
@@ -122,10 +154,7 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
     }
     if (!isPrintable(secret, sizeof(secret))) {
         // Check the OTP memory
-        ret = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, DEVICE_SECRET_OTP_ADDRESS, (uint8_t*)secret, sizeof(secret));
-        if (ret < 0) {
-            return ret;
-        }
+        CHECK(readLogicalEfuse(MOBILE_SECRET_OFFSET, (uint8_t*)secret, sizeof(secret)));
         if (!isPrintable(secret, sizeof(secret))) {
             return SYSTEM_ERROR_NOT_FOUND;
         };

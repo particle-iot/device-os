@@ -456,7 +456,7 @@ int usb_hal_init(void) {
 
     // Create USB Serial string by Device ID
     uint8_t device_id[HAL_DEVICE_ID_SIZE] = {};
-    uint8_t device_id_len = HAL_device_ID(device_id, sizeof(device_id));
+    uint8_t device_id_len = hal_get_device_id(device_id, sizeof(device_id));
     memset(g_extern_serial_number, 0, sizeof(g_extern_serial_number));
     bytes2hexbuf_lower_case(device_id, MIN(device_id_len, sizeof(g_extern_serial_number) - 1), g_extern_serial_number);
 

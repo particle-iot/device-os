@@ -101,7 +101,7 @@ err_t Esp32NcpNetif::initInterface() {
     /* netif_.flags |= NETIF_FLAG_MLD6 */
 
     uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
-    uint8_t deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+    uint8_t deviceIdLen = hal_get_device_id(deviceId, sizeof(deviceId));
     hostname_ = std::make_unique<char[]>(deviceIdLen * 2 + 1);
     if (hostname_) {
         bytes2hexbuf_lower_case(deviceId, deviceIdLen, hostname_.get());
