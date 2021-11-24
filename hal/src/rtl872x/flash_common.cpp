@@ -18,6 +18,8 @@
 #include "flash_common.h"
 #include <cstring>
 #include <algorithm>
+#include "hal_irq_flag.h"
+#include "rtl8721d.h"
 
 // Do not define Particle's STATIC_ASSERT() to avoid conflicts with the nRF SDK's own macro
 #define NO_STATIC_ASSERT
@@ -35,25 +37,44 @@
  */
 static StaticRecursiveMutex s_exflash_mutex;
 
+__attribute__((section(".ram.text"), noinline))
 int hal_exflash_lock(void) {
     return !s_exflash_mutex.lock();
 }
 
+__attribute__((section(".ram.text"), noinline))
 int hal_exflash_unlock(void) {
     return !s_exflash_mutex.unlock();
 }
 
 #else
 
-__attribute__((weak)) int hal_exflash_lock(void) {
+#include "static_recursive_cs.h"
+
+static particle::StaticRecursiveCriticalSectionLock s_exflash_cs;
+static uint32_t s_systick_ctrl = 0;
+
+__attribute__((section(".ram.text"), noinline))
+int hal_exflash_lock(void) {
+    s_exflash_cs.lock();
+    if (s_exflash_cs.counter() == 1) {
+        s_systick_ctrl = SysTick->CTRL;
+    }
     return 0;
 }
 
-__attribute__((weak)) int hal_exflash_unlock(void) {
+__attribute__((section(".ram.text"), noinline))
+int hal_exflash_unlock(void) {
+    if (s_exflash_cs.counter() == 1) {
+        SysTick->CTRL = s_systick_ctrl;
+    }
+    s_exflash_cs.unlock();
     return 0;
 }
+
 #endif /* MODULE_FUNCTION != MOD_FUNC_BOOTLOADER */
 
+__attribute__((section(".ram.text"), noinline))
 int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size) {
     /* This function is used for unaligned writes to retrive the data from the flash
      * to keep unaligned unaffected bytes unmodified.
@@ -65,6 +86,7 @@ int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size) {
     return 0;
 }
 
+__attribute__((section(".ram.text"), noinline))
 static int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size,
                                 hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func)
 {
@@ -92,6 +114,7 @@ static int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size
     return 0;
 }
 
+__attribute__((section(".ram.text"), noinline))
 int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size,
                            hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func)
 {

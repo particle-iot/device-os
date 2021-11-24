@@ -93,7 +93,7 @@ platform_system_backup_ram_start = platform_system_backup_ram_end - platform_sys
 
 
 /* Modular firmware main stack
- * platform_modular_firmware_stack_size is equal to 4K, which is defined in part1_build.mk and user_build.mk under modules/shared/rtl872x.
+ * platform_modular_firmware_stack_size is equal to 8K, which is defined in part1_build.mk and user_build.mk under modules/shared/rtl872x.
  * platform_modular_firmware_stack_start is the lowest address of the stack. */
 platform_modular_firmware_stack_size  = __STACKSIZE__;
 platform_modular_firmware_stack_end   = platform_ram_start;

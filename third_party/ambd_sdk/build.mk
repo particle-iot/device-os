@@ -113,4 +113,4 @@ CSRC += $(TARGET_AMBD_SDK_SRC_OS_PATH)/freertos/freertos_service.c
 CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/misc/rtl8721d_freertos_pmu.c
 endif
 
-CFLAGS += -Wno-error=deprecated -Wno-error=format
+CFLAGS += -Wno-error=deprecated -Wno-error=format -Wno-error=unused-function -Wno-error=unused-variable

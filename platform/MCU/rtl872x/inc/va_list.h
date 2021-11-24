@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,21 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "logging.h"
+#pragma once
 
-LOG_SOURCE_CATEGORY("hal.usb.control");
-
-#include "usb_hal.h"
-#include "usbd_wcid.h"
-
-extern "C" int hal_usb_control_interface_init(void* reserved) {
-    return 0;
-}
-
-void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p) {
-
-}
-
-void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Callback cb, void* p) {
-
-}
+#include "swlib/string/va_list.h"

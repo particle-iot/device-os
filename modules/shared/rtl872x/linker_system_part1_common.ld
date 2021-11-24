@@ -55,6 +55,7 @@ SECTIONS
         *(.image2.ram.text)
         *(.image2.ram.text.*)
         *(.image2.net.ram.text)
+        *(.image2.net.ram.text.*)
         *(.ram.text)
         *(.ram.text.*)
         *(.BTTRACE)
@@ -69,6 +70,8 @@ SECTIONS
         link_const_data_start = .;
         *(.rodata)
         *(.rodata*)
+        *(.image2.net.ram.rodata*)
+        *(.image2.ram.rodata*)
         *(.gnu.linkonce.r.*)
         *(.boot.rodata) /* Realtek specific */
         *(.boot.rodata*) /* Realtek specific */

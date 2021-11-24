@@ -17,4 +17,14 @@
 
 #pragma once
 
+#ifndef isprint
+#define isprint
+#define isprint_remove
+#endif // ispsinrt
+
 #include "swlib/string/strproc.h"
+
+#ifdef isprint_remove
+#undef isprint
+#undef isprint_remove
+#endif // isprint_remove

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,126 +15,133 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-#include <string.h>
-#include <stdlib.h>
 #include "usb_hal.h"
-#include "usb_hal_cdc.h"
-#include "usb_settings.h"
+#include "usbd_device.h"
+#include "usbd_control.h"
+#include "usbd_driver.h"
 #include <mutex>
 
-#ifdef USB_CDC_ENABLE
+using namespace particle::usbd;
+
+namespace {
+
+Device gUsbDevice;
+
+#define LOBYTE(x)  ((uint8_t)(x & 0x00FF))
+#define HIBYTE(x)  ((uint8_t)((x & 0xFF00) >>8))
+
+const uint8_t sDeviceDescriptor[] = {
+    0x12,                       /*bLength */
+    DESCRIPTOR_DEVICE,          /*bDescriptorType*/
+    0x00,                       /*bcdUSB */
+    0x02,
+    0xef,                       /*bDeviceClass: Misc */
+    0x02,                       /*bDeviceSubClass*/
+    0x01,                       /*bDeviceProtocol*/
+    EP0_MAX_PACKET_SIZE,        /*bMaxPacketSize*/
+    LOBYTE(USBD_VID_SPARK),     /*idVendor*/
+    HIBYTE(USBD_VID_SPARK),     /*idVendor*/
+    LOBYTE(USBD_PID_CDC),       /*idProduct*/
+    HIBYTE(USBD_PID_CDC),       /*idProduct*/
+    LOBYTE(0x0250),             /*bcdDevice (2.50) */
+    HIBYTE(0x0250),             /*bcdDevice (2.50) */
+    STRING_IDX_MANUFACTURER,    /*Index of manufacturer  string*/
+    STRING_IDX_PRODUCT,         /*Index of product string*/
+    STRING_IDX_SERIAL,          /*Index of serial number string*/
+    0x01                        /*bNumConfigurations*/
+};
+
+} // anonymous
 
 void HAL_USB_Init(void) {
-    usb_hal_init();
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, []() {
+        gUsbDevice.setDeviceDescriptor(sDeviceDescriptor, sizeof(sDeviceDescriptor));
+        gUsbDevice.registerDriver(RtlUsbDriver::instance());
+        // gUsbDevice.registerClass(CdcClassDriver::instance());
+        gUsbDevice.registerClass(ControlInterfaceClassDriver::instance());
+        ControlInterfaceClassDriver::instance()->enable(true);
+        HAL_USB_Attach();
+    });
 }
 
 void HAL_USB_Attach() {
-    usb_hal_attach();
+    gUsbDevice.attach();
 }
 
 void HAL_USB_Detach() {
-    usb_hal_detach();
+    gUsbDevice.detach();
 }
 
-void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config) {
-    if ((config == NULL) ||
-        (config && (config->rx_buffer == NULL   ||
-                    config->rx_buffer_size == 0 ||
-                    config->tx_buffer == NULL   ||
-                    config->tx_buffer_size == 0)))
-    {
-		static uint8_t *p_tx_buffer = NULL;
-		static uint8_t *p_rx_buffer = NULL;
+void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p) {
+    ControlInterfaceClassDriver::instance()->setVendorRequestCallback(cb, p);
+}
 
-		if (p_tx_buffer == NULL) {
-			p_tx_buffer = (uint8_t *)malloc(USB_TX_BUFFER_SIZE);
-		}
-		if (p_rx_buffer == NULL) {
-			p_rx_buffer = (uint8_t *)malloc(USB_RX_BUFFER_SIZE);
-		}
-        usb_uart_init(p_rx_buffer, USB_RX_BUFFER_SIZE, p_tx_buffer, USB_TX_BUFFER_SIZE);
-    } else {
-        usb_uart_init(config->rx_buffer, config->rx_buffer_size, config->tx_buffer, config->tx_buffer_size);
-    }
+void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Callback cb, void* p) {
+    ControlInterfaceClassDriver::instance()->setVendorRequestStateCallback(cb, p);
+}
+
+
+void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config) {
+    return;
 }
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved) {
-    HAL_USB_Attach();
-    usb_uart_set_baudrate(baud);
+    return;
 }
 
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial) {
-    HAL_USB_Detach();
+    return;
 }
 
 unsigned int HAL_USB_USART_Baud_Rate(HAL_USB_USART_Serial serial) {
-    return usb_uart_get_baudrate();
-}
-
-int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial) {
-    return usb_uart_available_rx_data();
-}
-
-int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial) {
-    return usb_uart_available_tx_data();
-}
-
-int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek) {
-    if (usb_uart_available_rx_data() == 0) {
-        return -1;
-    }
-
-    if (peek) {
-        return usb_uart_peek_rx_data(0);
-    } else {
-        return usb_uart_get_rx_data();
-    }
-}
-
-int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
-    return usb_uart_send(&data, 1);
-}
-
-void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial) {
-    usb_uart_flush_tx_data();
-}
-
-bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial) {
-    return usb_hal_is_enabled();
-}
-
-bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial) {
-    return usb_hal_is_connected();
-}
-
-#endif
-
-void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
-{
-    // Old USB API, just for compatibility in main.cpp
-    // Enable Serial by default
-	HAL_USB_USART_LineCoding_BitRate_Handler(handler, NULL);
-}
-
-int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved) {
-    // Enable Serial by default
-    HAL_USB_USART_Init(HAL_USB_USART_SERIAL, nullptr);
-    HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, 9600, NULL);
-    usb_hal_set_bit_rate_changed_handler(handler);
     return 0;
 }
 
-int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved)
-{
+int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial) {
+    return -1;
+}
+
+int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial) {
+    return -1;
+}
+
+int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek) {
+    return -1;
+}
+
+int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
+    return -1;
+}
+
+void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial) {
+    return;
+}
+
+bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial) {
+    return false;
+}
+
+bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial) {
+    return false;
+}
+
+void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate)) {
+    return;
+}
+
+int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved) {
+    return 0;
+}
+
+int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved) {
     return 0;
 }
 
 HAL_USB_State HAL_USB_Get_State(void* reserved) {
-    return usb_hal_get_state();
+    return (HAL_USB_State)0;
 }
 
 int HAL_USB_Set_State_Change_Callback(HAL_USB_State_Callback cb, void* context, void* reserved) {
-    usb_hal_set_state_change_callback(cb, context, reserved);
     return 0;
 }

@@ -9,9 +9,8 @@ INCLUDE_DIRS += $(TARGET_AMBD_SDK_PATH)
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_SOC_PATH)/cmsis
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_SOC_PATH)/fwlib/include
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_SOC_PATH)/swlib/include
-INCLUDE_DIRS += $(TARGET_AMBD_SDK_SOC_PATH)/swlib/string
+#INCLUDE_DIRS += $(TARGET_AMBD_SDK_SOC_PATH)/swlib/string
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_SOC_PATH)/app/monitor/include
-INCLUDE_DIRS += $(TARGET_AMBD_SDK_SOC_PATH)/fwlib/usb_otg/device/inc
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_OS_PATH)/os_dep/include
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_OS_PATH)/freertos
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/api
@@ -43,6 +42,8 @@ INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/mbed/hal
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/fatfs
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/fatfs/r0.10c/include
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/ftl
+INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/usb/device_new/core
+INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/usb/common_new
 
 # Hack of the century!
 LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wlan.a
@@ -50,3 +51,4 @@ LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wps.a
 ifneq ("$(MODULE)", "user-part")
 LIBS_EXT_END += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/lib/btgap.a
 endif
+LIBS_EXT_END += -Wl,--wrap=usbd_hal_read_packet $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_usbd_new.a

@@ -20,10 +20,3 @@
 #include "flash_access.h"
 #include "dfu_hal.h"
 #include "dct_hal.h"
-
-void HAL_DFU_USB_Init(void) {
-}
-
-void DFU_Check_Reset(void) {
-
-}
