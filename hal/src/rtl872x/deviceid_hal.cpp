@@ -20,6 +20,7 @@
 #include "str_util.h"
 #include "system_error.h"
 #include "check.h"
+#include "bytes2hexbuf.h"
 #ifndef HAL_DEVICE_ID_NO_DCT
 #include "dct.h"
 #endif /* HAL_DEVICE_ID_NO_DCT */
@@ -36,8 +37,6 @@ namespace {
 
 using namespace particle;
 
-#define DEVICE_ID_PREFIX    {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21}
-
 #define LOGICAL_EFUSE_SIZE      1024
 #define EFUSE_SUCCESS           1
 #define EFUSE_FAILURE           0
@@ -52,6 +51,10 @@ using namespace particle;
 #define SERIAL_NUMBER_FRONT_PART_SIZE   9
 #define HARDWARE_DATA_SIZE              4
 #define HARDWARE_MODEL_SIZE             4
+#define WIFI_OUID_SIZE                  3
+#define DEVICE_ID_PREFIX_SIZE           6
+
+const uint8_t DEVICE_ID_PREFIX[] = {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21};
 
 int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
     std::unique_ptr<uint8_t[]> efuseBuf(new uint8_t[LOGICAL_EFUSE_SIZE]);
@@ -71,9 +74,9 @@ int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
 unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
 {
     // Device ID is composed of prefix and MAC address
-    uint8_t id[2][6] = { DEVICE_ID_PREFIX, {0xff, 0xff, 0xff, 0xff, 0xff, 0xff} };
-    static_assert(sizeof(id) == HAL_DEVICE_ID_SIZE, "");
-    CHECK_RETURN(readLogicalEfuse(WIFI_MAC_OFFSET, &id[1][0], WIFI_MAC_SIZE), 0);
+    uint8_t id[HAL_DEVICE_ID_SIZE] = {};
+    memcpy(id, DEVICE_ID_PREFIX, DEVICE_ID_PREFIX_SIZE);
+    CHECK_RETURN(readLogicalEfuse(WIFI_MAC_OFFSET, id + DEVICE_ID_PREFIX_SIZE, HAL_DEVICE_ID_SIZE - DEVICE_ID_PREFIX_SIZE), 0);
     if (dest && destLen > 0) {
         memcpy(dest, id, std::min(destLen, sizeof(id)));
     }
@@ -95,10 +98,12 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
     char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
 
     // Serial Number is composed of Product Code (4 bytes), Manufacturer ID (2 bytes), 
-    // Year (1 byte), Week (2 bytes) and MAC address (6 bytes)
-    // We saved the front part (9 bytes) in the logical efuse
-    CHECK(readLogicalEfuse(SERIAL_NUMBER_OFFSET, (uint8_t*)serial, SERIAL_NUMBER_FRONT_PART_SIZE));
-    CHECK(readLogicalEfuse(WIFI_MAC_OFFSET, (uint8_t*)&serial[SERIAL_NUMBER_FRONT_PART_SIZE], WIFI_MAC_SIZE));
+    // Year (1 byte), Week (2 bytes) and Unique Code (6 bytes)
+    // We saved the front part (9 bytes) in the logical efuse,
+    // the Unique Code is generated from the 24 non-OUI bits of the MAC address
+    uint8_t wifiMacRandomBytes[WIFI_MAC_SIZE - WIFI_OUID_SIZE] = {};
+    CHECK(readLogicalEfuse(WIFI_MAC_OFFSET + WIFI_OUID_SIZE, wifiMacRandomBytes, sizeof(wifiMacRandomBytes)));
+    bytes2hexbuf(wifiMacRandomBytes, sizeof(wifiMacRandomBytes), &serial[SERIAL_NUMBER_FRONT_PART_SIZE]);
     if (!isPrintable(serial, sizeof(serial))) {
         return SYSTEM_ERROR_INTERNAL;
     }
