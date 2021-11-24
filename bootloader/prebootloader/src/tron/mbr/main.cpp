@@ -69,16 +69,17 @@ extern "C" int main() {
      * FIXME: Do NOT allocate memory from heap in MBR, since the heap start address is incorrect!
      * As a workaround, we can export run time APIs in part1.
      */
+    DiagPrintf("[MBR] started.\n");
 
     if (!bootloaderUpdateIfPending()) {
-        DiagPrintf("Failed to update Particle bootloader! Sleep now.\n");
+        DiagPrintf("[MBR] failed to update firmware!\n");
         while (true) {
             __WFE();
         }
     }
 
     if (!isPart1ImageValid()) {
-        DiagPrintf("KM0 part1 is invalid. Sleep now.\n");
+        DiagPrintf("[MBR] part1 is invalid!\n");
         while (true) {
             __WFE();
         }
@@ -86,16 +87,18 @@ extern "C" int main() {
 
     // dynalib table point to flash
     dynalib_table_location = &link_part1_dynalib_table_flash_start;
+    DiagPrintf("[MBR] call into bootloader_part1_preinit()\n");
     bootloader_part1_preinit();
-    DiagPrintf("KM0 part1 is initialized\n");
 
     // dynalib table point to SRAM
     dynalib_table_location = &link_part1_dynalib_table_ram_start;
+    DiagPrintf("[MBR] call into bootloader_part1_init()\n");
     bootloader_part1_init();
 
+    DiagPrintf("[MBR] call into bootloader_part1_setup()\n");
     bootloader_part1_setup();
 
-    DiagPrintf("KM0 enters sleep.\n");
+    DiagPrintf("[MBR] enter sleep.\n");
     while (true) {
         __WFE();
         __WFE(); // clear event

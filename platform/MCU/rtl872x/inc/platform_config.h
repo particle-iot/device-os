@@ -31,10 +31,14 @@
 #define UI_TIMER_FREQUENCY                  100    /* 100Hz -> 10ms */
 #define BUTTON_DEBOUNCE_INTERVAL            (1000 / UI_TIMER_FREQUENCY)
 
+#define USE_SERIAL_FLASH
+
+#ifdef USE_SERIAL_FLASH
 #define sFLASH_PAGESIZE                     0x1000 /* 4096 bytes sector size that needs to be erased */
 #define sFLASH_PAGECOUNT                    2048   /* 8MByte storage */
 #define sFLASH_FILESYSTEM_PAGE_COUNT        (512) /* 2MB */
 #define sFLASH_FILESYSTEM_FIRST_PAGE        (sFLASH_PAGECOUNT - sFLASH_FILESYSTEM_PAGE_COUNT)
+#endif
 
 #define FLASH_UPDATE_MODULES
 
@@ -44,7 +48,7 @@
 #define SYSTICK_IRQ_PRIORITY                7      //CORTEX_M33 Systick Interrupt
 
 #if PLATFORM_ID == PLATFORM_TRON
-    #define INTERNAL_FLASH_SIZE             (0x600000)
+    #define INTERNAL_FLASH_SIZE             (0x800000)
 #else
     #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)
     #error "Unknown PLATFORM_ID"

@@ -49,28 +49,8 @@ static void onFlashModuleReceived(km0_km4_ipc_msg_t* msg, void* context) {
 }
 
 static void onResetRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
-    if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM4_CTRL) & BIT_LSYS_HPLAT_CKE){
-        BOOT_ROM_CM4PON((u32)HSPWR_OFF_SEQ);
-    }
+    BOOT_ROM_CM4PON((u32)HSPWR_OFF_SEQ);
     NVIC_SystemReset();
-}
-
-static void flash_init(void) {
-    RCC_PeriphClockCmd(APBPeriph_FLASH, APBPeriph_FLASH_CLOCK_XTAL, ENABLE);
-
-    uint32_t Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_CLK_CTRL0);
-    Temp &= ~(BIT_MASK_FLASH_CLK_SEL << BIT_SHIFT_FLASH_CLK_SEL);
-    Temp |= BIT_SHIFT_FLASH_CLK_XTAL;
-    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_CLK_CTRL0, Temp);
-
-    FLASH_StructInit(&flash_init_para);
-    FLASH_Init(SpicOneBitMode);
-
-    uint8_t flashId[3];
-    FLASH_RxCmd(flash_init_para.FLASH_cmd_rd_id, 3, flashId);
-    if (flashId[0] == 0x20) {
-        flash_init_para.FLASH_cmd_chip_e = 0xC7;
-    }
 }
 
 static bool flash_write_update_info(void) {
@@ -78,7 +58,6 @@ static bool flash_write_update_info(void) {
         flashModule->sourceAddress, flashModule->destinationAddress, flashModule->length);
 
     if (!bootInfoSectorErased) {
-        flash_init();
         DiagPrintf("Erasing the boot info sector...\n");
         if (hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1) != 0) {
             DiagPrintf("Erasing flash failed\n");

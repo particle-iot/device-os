@@ -24,7 +24,8 @@ extern "C" {
 #include "static_recursive_mutex.h"
 #include "km0_km4_ipc.h"
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+/* FIXME: MBR and KM0 part1 have MODULE_INDEX defined in makefile, but not for Particle bootloader */
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER && defined(MODULE_INDEX)
 #define WAIT_TIMED(timeout_ms, what) ({ \
     bool res = true;                                                            \
     res;                                                                        \
@@ -103,7 +104,7 @@ void km0Km4IpcIntHandler(void *data, uint32_t irqStatus, uint32_t channel) {
 
 
 Km0Km4IpcClass* Km0Km4IpcClass::getInstance(uint8_t channel) {
-    static Km0Km4IpcClass ipcs[] = {
+    static __attribute__((section(".boot.ipc_data"))) Km0Km4IpcClass ipcs[] = {
         {KM0_KM4_IPC_CHANNEL_GENERIC},
         // Add more channels if needed
     };

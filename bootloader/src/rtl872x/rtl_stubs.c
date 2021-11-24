@@ -18,10 +18,6 @@
 // #include "osdep_service.h"
 #include <stdint.h>
 
-int _rtl_printf(const char* fmt, ...) {
-    return 0;
-}
-
 // const struct osdep_service_ops osdep_service = {
 // };
 

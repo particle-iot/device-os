@@ -425,7 +425,7 @@ void HAL_Core_Config(void) {
 
     // OTA region
     module_ota.end_address = module_user.start_address - 1;
-    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFE000) + 0x1000; // Not necessary, 4K aligned
+    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
     SPARK_ASSERT(module_ota.end_address >= module_ota.start_address + 0x200000); // Should have 2M for the OTA region at the least
 
     address += 4;
@@ -459,11 +459,6 @@ void HAL_Core_Config(void) {
         LED_On(PARTICLE_LED_RGB);
     }
 
-    // FLASH_AddToFactoryResetModuleSlot(
-    //   FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS,
-    //   FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
-    //   FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
-
     InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
     InterruptEn(IPC_IRQ, 5);
     km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
@@ -490,35 +485,6 @@ void HAL_Core_Setup(void) {
 }
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-bool HAL_Core_Validate_User_Module(void)
-{
-    bool valid = false;
-
-    //CRC verification Enabled by default
-    if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, USER_FIRMWARE_IMAGE_LOCATION))
-    {
-        //CRC check the user module and set to module_user_part_validated
-        valid = FLASH_VerifyCRC32(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION,
-                                  FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION))
-                && HAL_Verify_User_Dependencies();
-    }
-    else if(FLASH_isUserModuleInfoValid(FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION))
-    {
-        // If user application is invalid, we should at least enable
-        // the heap allocation for littlelf to set system flags.
-        malloc_enable(1);
-
-        //Reset and let bootloader perform the user module factory reset
-        //Doing this instead of calling FLASH_RestoreFromFactoryResetModuleSlot()
-        //saves precious system_part2 flash size i.e. fits in < 128KB
-        HAL_Core_Factory_Reset();
-
-        while(1);//Device should reset before reaching this line
-    }
-
-    return valid;
-}
-
 bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
 {
     const module_bounds_t* bounds = NULL;
@@ -578,7 +544,32 @@ void HAL_Core_Mode_Button_Reset(uint16_t button)
 }
 
 void HAL_Core_System_Reset(void) {
-    NVIC_SystemReset();
+    __DSB();
+    __ISB();
+
+    // Disable systick
+    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
+
+    // Disable global interrupt
+    __set_BASEPRI(1 << (8 - __NVIC_PRIO_BITS));
+
+    WDG_InitTypeDef WDG_InitStruct;
+    u32 CountProcess;
+    u32 DivFacProcess;
+    BKUP_Set(BKUP_REG0, BIT_KM4SYS_RESET_HAPPEN);
+    WDG_Scalar(50, &CountProcess, &DivFacProcess);
+    WDG_InitStruct.CountProcess = CountProcess;
+    WDG_InitStruct.DivFacProcess = DivFacProcess;
+    WDG_Init(&WDG_InitStruct);
+    WDG_Cmd(ENABLE);
+    DelayMs(500);
+    DiagPrintf("Failed to reset device using WDG.");
+
+    // It should have reset the device after this amount of delay. If not, try resetting device by KM0
+    km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
+    while (1) {
+        __WFE();
+    }
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {

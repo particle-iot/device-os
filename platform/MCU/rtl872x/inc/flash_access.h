@@ -46,14 +46,6 @@ typedef int (*copymem_fn_t)(flash_device_t sourceDeviceID, uint32_t sourceAddres
                             flash_device_t destinationDeviceID, uint32_t destinationAddress,
                             uint32_t length, uint8_t module_function, uint8_t flags);
 
-
-/**
- * Determines if the memory copy can be performed.
- */
-int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                          uint32_t length, uint8_t module_function, uint8_t flags);
-
 int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags);
@@ -66,13 +58,7 @@ bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t
                                          flash_device_t destinationDeviceID, uint32_t destinationAddress,
                                          uint32_t length, uint8_t module_function, uint8_t flags);
 
-bool FLASH_AddToFactoryResetModuleSlot(flash_device_t sourceDeviceID, uint32_t sourceAddress,
-                                       flash_device_t destinationDeviceID, uint32_t destinationAddress,
-                                       uint32_t length, uint8_t module_function, uint8_t flags);
-
 bool FLASH_IsFactoryResetAvailable(void);
-bool FLASH_ClearFactoryResetModuleSlot(void);
-bool FLASH_RestoreFromFactoryResetModuleSlot(void);
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset);
@@ -83,13 +69,8 @@ uint16_t FLASH_ModuleVersion(flash_device_t flashDeviceID, uint32_t startAddress
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress);
 bool FLASH_VerifyCRC32(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length);
 
-// Old routine signature for Photon
-// void FLASH_ClearFlags(void);
-// void FLASH_Erase(void);
-// void FLASH_Backup(uint32_t FLASH_Address);
-// void FLASH_Restore(uint32_t FLASH_Address);
-void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize);
-int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize);
+void FLASH_Begin(flash_device_t flashDeviceID, uint32_t FLASH_Address, uint32_t imageSize);
+int FLASH_Update(flash_device_t flashDeviceID, const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize);
 void FLASH_End(void);
 
 

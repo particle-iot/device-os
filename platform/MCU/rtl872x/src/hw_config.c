@@ -24,6 +24,7 @@
 #include "service_debug.h"
 #include "rgbled_hal.h"
 #include "exflash_hal.h"
+#include "km0_km4_ipc.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
@@ -32,6 +33,10 @@ uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+
+extern uintptr_t link_ipc_data_start;
+extern uintptr_t link_ipc_data_end;
+
 static void hw_rtl_init_psram(void)
 {
     u32 temp;
@@ -61,7 +66,36 @@ static void hw_rtl_init_psram(void)
         PSRAM_PHY_REG_Write(REG_PSRAM_CAL_CTRL, temp);
     // }
 }
-#endif
+
+void peripheralsClockEnable(void) {
+	//RCC_PeriphClockCmd(APBPeriph_PSRAM, APBPeriph_PSRAM_CLOCK, ENABLE);//move into psram init, because 200ua leakage
+	//RCC_PeriphClockCmd(APBPeriph_AUDIOC, APBPeriph_AUDIOC_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_VENDOR_REG, APBPeriph_VENDOR_REG_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_USI_REG, APBPeriph_USI_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_IRDA_REG, APBPeriph_IRDA_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_IPC, APBPeriph_IPC_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_GTIMER, APBPeriph_GTIMER_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_SPI1, APBPeriph_SPI1_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_SPI0, APBPeriph_SPI0_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_UART0, APBPeriph_UART0_CLOCK, ENABLE);
+
+	/* close BT temp for simulation */
+	//RCC_PeriphClockCmd(APBPeriph_BT, APBPeriph_BT_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_LCDC, APBPeriph_LCDC_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
+	RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
+
+	//RCC_PeriphClockCmd(APBPeriph_SPORT, APBPeriph_SPORT_CLOCK, ENABLE);
+	//RCC_PeriphClockCmd(APBPeriph_OTG, APBPeriph_OTG_CLOCK, ENABLE);//move into otg init, because 150ua leakage
+	//RCC_PeriphClockCmd(APBPeriph_SDIOH, APBPeriph_SDIOH_CLOCK, ENABLE);//move into sd init, because 600ua leakage
+	RCC_PeriphClockCmd(APBPeriph_SDIOD, APBPeriph_SDIOD_CLOCK, ENABLE);
+}
+
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
 static void DWT_Init(void)
 {
@@ -157,6 +191,10 @@ void Set_System(void)
 
     // mpu_init();
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    peripheralsClockEnable();
+#endif
+
     uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833);
     temp |= BIT_RFAFE_IND_VIO1833;
     HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833, temp);
@@ -182,6 +220,17 @@ void Set_System(void)
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     hw_rtl_init_psram();
+
+    // set IDAU, the enabled regions are treated as Non-secure space
+    // KM0 needs to read IPC message that shoud be allocated in KM4 NS SRAM
+    IDAU_TypeDef* IDAU = ((IDAU_TypeDef *) KM4_IDAU_BASE);
+    IDAU->ENTRY[4].IDAU_BARx = (uint32_t)&link_ipc_data_start;
+    IDAU->ENTRY[4].IDAU_LARx = (uint32_t)&link_ipc_data_end;
+    IDAU->IDAU_CTRL |= BIT(4);
+
+    InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
+    InterruptEn(IPC_IRQ, 5);
+    km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
 #else
     // Disable cache
     Cache_Enable(0);
@@ -286,26 +335,6 @@ void Save_SystemFlags()
 
 bool FACTORY_Flash_Reset(void)
 {
-#if 0
-    bool success;
-
-    // Restore the Factory firmware using flash_modules application dct info
-    success = FLASH_RestoreFromFactoryResetModuleSlot();
-    //FLASH_AddToFactoryResetModuleSlot() is now called in HAL_Core_Config() in core_hal.c,
-    //So FLASH_Restore(INTERNAL_FLASH_FAC_ADDRESS) is not required and hence commented
-
-    system_flags.Factory_Reset_SysFlag = 0xFFFF;
-    if (success) {
-        system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
-        system_flags.dfu_on_no_firmware = 0;
-        SYSTEM_FLAG(Factory_Reset_Done_SysFlag) = 0x5A;
-        Finish_Update();
-    }
-    else {
-        Save_SystemFlags();
-    }
-    return success;
-#endif // 0
     return true;
 }
 

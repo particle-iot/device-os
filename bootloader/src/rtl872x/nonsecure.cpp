@@ -50,13 +50,14 @@ const TZ_CFG_TypeDef tz_config[]= {
     {0x40000000,            0x50000000-1,            0},  // entry0: Peripherals NS
     {0x1010A000,            0x101D4000-1,            0},  // entry1: IROM & DROM NS
     {0x100E0000,            0x10100000-1,            0},  // entry2: BT/WIFI Extention SRAM
-    {0x00000000,            0x08004000-1,            0},  // entry3: KM0 ROM, KM0 SRAM, Retention SRAM, PSRAM, KM0 FLASH
+    {0x00000000,            0x08060000-1,            0},  // entry3: KM0 ROM, KM0 SRAM, Retention SRAM, PSRAM, KM0 FLASH
     {0x08060000,            0x1007C000-1,            0},  // entry4: KM4 Flash, KM4 SRAM
     {0xFFFFFFFF,            0xFFFFFFFF,              0},  // entry5: None
     {0xFFFFFFFF,            0xFFFFFFFF,              0},  // entry6: None
     {0xFFFFFFFF,            0xFFFFFFFF,              0},  // entry7: None
 };
 
+__attribute__((always_inline)) inline
 void trustzone_configuration(void) {
     IDAU_TypeDef* IDAU = ((IDAU_TypeDef *) KM4_IDAU_BASE);
     for (int index = 0; index < IDAU_ENTRYS_NUM; index++) {
@@ -105,6 +106,7 @@ void trustzone_configuration(void) {
     NVIC->ITNS[1] = 0x0003FFFF; // IRQ 32~49: Non-Secure state, 50~63
 }
 
+__attribute__((always_inline)) inline
 void jump_to_nonsecure(u32 Addr) {
     __ASM volatile ("MOV r0, %0\n\t"
         "BLXNS   r0\n\t" : : "r" (Addr));
@@ -112,6 +114,7 @@ void jump_to_nonsecure(u32 Addr) {
 
 } // Anonymous
 
+__attribute__((used, section(".xip.text")))
 void nonsecure_jump_to_system(uint32_t addr) {
     // FIXME: Disable MPU just in case for now
     mpu_disable();
