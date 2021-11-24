@@ -17,6 +17,7 @@
 
 
 #include "system_update.h"
+#include "system_cloud_internal.h"
 #include <hippomocks.h>
 #include <iostream>
 #include <string>
@@ -25,6 +26,7 @@
 #include "spark_wiring_json.h"
 #include <limits>
 #include "hex_to_bytes.h"
+#include "string_appender.h"
 #include <map>
 
 #define CATCH_CONFIG_MAIN
@@ -521,7 +523,7 @@ TEST_CASE("system_module_info") {
         factory.validity_result = MODULE_VALIDATION_END;
         systemInfo.addModule(factory);
         CHECK(systemInfo.getOnlyPresentModules().size() == 2);
-        
+
         CHECK(system_module_info(appender.callback, &appender, nullptr));
         appender.finish();
 
@@ -537,11 +539,51 @@ TEST_CASE("system_module_info") {
         factory.validity_result = 0;
         systemInfo.addModuleThatShouldNotBePresentInJson(factory);
         CHECK(systemInfo.getOnlyPresentModules().size() == 1);
-        
+
         CHECK(system_module_info(appender.callback, &appender, nullptr));
         appender.finish();
 
         CHECK(validateSystemInfoJson(appender.buffer(), systemInfo));
     }
 
+}
+
+TEST_CASE("system_app_info") {
+    MockRepository mocks;
+    test::StringAppender appender;
+
+    SECTION("without functions and variables") {
+        mocks.OnCallFunc(cloudFunctionCount).Do([]() {
+            return 0;
+        });
+        mocks.OnCallFunc(cloudVariableCount).Do([]() {
+            return 0;
+        });
+        CHECK(system_app_info(appender.callback, &appender, nullptr));
+        CHECK(appender.data() == "\"f\":[],\"v\":{}");
+    }
+
+    SECTION("with functions and variables") {
+        mocks.OnCallFunc(cloudFunctionCount).Do([]() {
+            return 1;
+        });
+        mocks.OnCallFunc(getCloudFunctionInfo).Do([](size_t index, const char** name) {
+            switch (index) {
+                case 0: *name = "fn1"; return 0;
+                default: return -1;
+            }
+        });
+        mocks.OnCallFunc(cloudVariableCount).Do([]() {
+            return 2;
+        });
+        mocks.OnCallFunc(getCloudVariableInfo).Do([](size_t index, const char** name, int* type) {
+            switch (index) {
+                case 0: *name = "var1"; *type = 1; return 0;
+                case 1: *name = "var2"; *type = 2; return 0;
+                default: return -1;
+            }
+        });
+        CHECK(system_app_info(appender.callback, &appender, nullptr));
+        CHECK(appender.data() == "\"f\":[\"fn1\"],\"v\":{\"var1\":1,\"var2\":2}");
+    }
 }

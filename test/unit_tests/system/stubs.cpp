@@ -15,8 +15,29 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "system_cloud_internal.h"
 #include "ota_flash_hal.h"
 #include "diagnostics.h"
+
+namespace particle {
+
+size_t cloudVariableCount() {
+    return 0;
+}
+
+int getCloudVariableInfo(size_t index, const char** name, int* type) {
+    return SYSTEM_ERROR_OUT_OF_RANGE;
+}
+
+size_t cloudFunctionCount() {
+    return 0;
+}
+
+int getCloudFunctionInfo(size_t index, const char** name) {
+    return SYSTEM_ERROR_OUT_OF_RANGE;
+}
+
+} // namespace particle
 
 int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved) {
     return 0;

@@ -17,33 +17,30 @@
 
 #pragma once
 
-#include <random>
+#include "appender.h"
+
 #include <string>
 
 namespace particle {
 
 namespace test {
 
-std::string randString(size_t size);
-std::default_random_engine& randGen();
+class StringAppender: public Appender {
+public:
+    using Appender::append;
 
-template<typename T>
-T randNumber() {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
-}
+    bool append(const uint8_t* data, size_t size) override {
+        data_.append((const char*)data, size);
+        return true;
+    }
 
-template<typename T>
-T randNumber(T ref) {
-    std::uniform_int_distribution<T> dist;
-    return dist(randGen());
-}
+    const std::string& data() const {
+        return data_;
+    }
 
-template<typename T>
-void setRandInt(T& v) {
-    std::uniform_int_distribution<T> dist;
-    v = dist(randGen());
-}
+private:
+    std::string data_;
+};
 
 } // namespace test
 
