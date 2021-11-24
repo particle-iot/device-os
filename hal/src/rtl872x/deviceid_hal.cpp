@@ -24,6 +24,7 @@
 #ifndef HAL_DEVICE_ID_NO_DCT
 #include "dct.h"
 #endif /* HAL_DEVICE_ID_NO_DCT */
+#include "module_info.h"
 
 #include <algorithm>
 #include <memory>
@@ -57,14 +58,21 @@ using namespace particle;
 const uint8_t DEVICE_ID_PREFIX[] = {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21};
 
 int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
-    std::unique_ptr<uint8_t[]> efuseBuf(new uint8_t[LOGICAL_EFUSE_SIZE]);
-    CHECK_TRUE(efuseBuf, SYSTEM_ERROR_NO_MEMORY);
-    memset(efuseBuf.get(), 0xFF, sizeof(efuseBuf));
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    std::unique_ptr<uint8_t[]> efuseData(new uint8_t[LOGICAL_EFUSE_SIZE]);
+    CHECK_TRUE(efuseData, SYSTEM_ERROR_NO_MEMORY);
+    uint8_t* efuseBuf = efuseData.get();
+#else
+    // No heap in bootloader
+    static uint8_t efuseBuf[LOGICAL_EFUSE_SIZE];
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
-    auto ret = EFUSE_LMAP_READ(efuseBuf.get());
+    memset(efuseBuf, 0xff, LOGICAL_EFUSE_SIZE);
+
+    auto ret = EFUSE_LMAP_READ(efuseBuf);
     CHECK_TRUE(ret == EFUSE_SUCCESS, SYSTEM_ERROR_INTERNAL);
 
-    memcpy(buf, efuseBuf.get() + offset, size);
+    memcpy(buf, efuseBuf + offset, size);
 
     return SYSTEM_ERROR_NONE;
 };
