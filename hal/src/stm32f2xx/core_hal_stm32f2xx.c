@@ -415,7 +415,7 @@ void HAL_Core_Setup(void) {
         HAL_Core_System_Reset();
     }
 
-    HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
+    hal_save_device_id(DCT_DEVICE_ID_OFFSET);
 
     // Initialize stdlib PRNG with a seed from hardware RNG
     srand(HAL_RNG_GetRandomNumber());

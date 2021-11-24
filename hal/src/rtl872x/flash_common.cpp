@@ -49,6 +49,12 @@ int hal_exflash_unlock(void) {
 
 #else
 
+#include "service_debug.h"
+// FIXME: figure out panic_, assertion failures etc on KM0 side
+#if defined(MODULE_INDEX) && MODULE_INDEX > 0
+#undef SPARK_ASSERT
+#define SPARK_ASSERT(predicate)
+#endif // defined(MODULE_INDEX) && MODULE_INDEX > 0
 #include "static_recursive_cs.h"
 
 static particle::StaticRecursiveCriticalSectionLock s_exflash_cs;

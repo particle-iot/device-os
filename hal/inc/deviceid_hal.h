@@ -70,7 +70,7 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
  * Save the device ID to persistent storage so it can be retrieved via DCT. This is
  * done automatically by the system on startup.
  */
-void HAL_save_device_id(uint32_t offset);
+void hal_save_device_id(uint32_t offset);
 
 /**
  * Get the device's serial number.

@@ -18,9 +18,9 @@
 #include <cstdlib>
 #include "osdep_service.h"
 #include "simple_pool_allocator.h"
-#include "timer_hal.cpp"
 #include <atomic>
 #include "static_recursive_cs.h"
+#include "timer_hal.h"
 
 namespace {
 
