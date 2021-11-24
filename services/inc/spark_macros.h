@@ -19,6 +19,8 @@
 #ifndef SPARK_MACROS_H_
 #define SPARK_MACROS_H_
 
+#include "preprocessor.h"
+
 #if !defined(arraySize)
 #   define arraySize(a)            (sizeof((a))/sizeof((a[0])))
 #endif
