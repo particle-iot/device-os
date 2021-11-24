@@ -16,6 +16,7 @@
  */
 
 #include "ameba_soc.h"
+#include "rtl_support.h"
 
 void pmu_acquire_wakelock(uint32_t nDeviceId) {
     // Stub
@@ -26,7 +27,7 @@ void pmu_release_wakelock(uint32_t nDeviceId) {
 }
 
 void ipc_table_init() {
-    // Stub
+    // stub
 }
 
 extern CPU_PWR_SEQ SYSPLL_ON_SEQ[];

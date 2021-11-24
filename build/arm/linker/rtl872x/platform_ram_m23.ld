@@ -17,13 +17,19 @@ x                                                                               
 +-----------------------------+ 0x00090000 +---------------------------------------+
 | Main stack                  |            | Main stack                            |
 +-----------------------------+ 0x0008F000 +---------------------------------------+
+|                             |            |                                       |
 | Heap                        |            |                                       |
++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                       |
+| KM0 part1 static RAM        |            |                                       |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | Heap                                  |
-| KM0 bootloader static RAM   |            |                                       |
+| KM0 part1 RAM code          |            |                                       |
++-----------------------------+ 0x00086000 |                                       |
+|                             |            |                                       |
+| KM0 MBR static RAM          |            |                                       |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
-| KM0 bootloader RAM code     |            | KM0 monolithic firmware static RAM    |
+| KM0 MBR RAM code            |            | KM0 monolithic firmware static RAM    |
 +-----------------------------+            +---------------------------------------+
-| KM0 bootloader start table  |            | KM0 monolithic firmware RAM code      |
+| KM0 MBR start table         |            | KM0 monolithic firmware RAM code      |
 +-----------------------------+ 0x00082000 +---------------------------------------+
 
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.
@@ -73,9 +79,15 @@ platform_km0_bootloader_stack_start = platform_km0_bootloader_stack_end - platfo
 
 
 /* Bootloader RAM, contains static data and code */
-platform_km0_bootloader_ram_size  = platform_km0_ram_size - platform_km0_bootloader_stack_size;
-platform_km0_bootloader_ram_start = platform_km0_ram_start;
-platform_km0_bootloader_ram_end   = platform_km0_bootloader_ram_start + platform_km0_bootloader_ram_size;
+platform_km0_mbr_ram_size  = 16K;
+platform_km0_mbr_ram_start = platform_km0_ram_start;
+platform_km0_mbr_ram_end   = platform_km0_mbr_ram_start + platform_km0_mbr_ram_size;
+
+platform_km0_part1_ram_start = platform_km0_mbr_ram_end;
+platform_km0_part1_ram_end = platform_km0_bootloader_stack_start;
+platform_km0_part1_ram_size = platform_km0_part1_ram_end - platform_km0_part1_ram_start;
+
+platform_km0_part1_dynalib_table_ram_start = platform_km0_part1_ram_start;
 
 
 /* Monolithic firmware RAM, contains static data and code */

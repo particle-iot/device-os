@@ -15,16 +15,23 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "ameba_soc.h"
+#include "rtl_sdk_support.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
-void rtlPmuInit();
-void rtlLowLevelInit();
-void rtlPowerOnBigCore();
-
-#ifdef __cplusplus
+int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback) {
+    if (channel > 15) {
+        return -1;
+    }
+    IPC_INTUserHandler(channel, (void*)callback, NULL);
+    return 0;
 }
-#endif // __cplusplus
+
+void ipc_send_message(uint8_t channel, uint32_t message) {
+    IPCM0_DEV->IPCx_USR[channel] = message;
+    IPC_INTRequest(IPCM0_DEV, channel);
+}
+
+uint32_t ipc_get_message(uint8_t channel) {
+    uint32_t msgAddr = IPCM4_DEV->IPCx_USR[channel];
+    return msgAddr;
+}

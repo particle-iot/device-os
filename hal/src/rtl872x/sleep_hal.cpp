@@ -41,8 +41,22 @@
 #include "mcp23s17.h"
 #endif
 #endif
+#include "km0_km4_ipc.h"
 
 using namespace particle;
+
+
+static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
+    int ret = SYSTEM_ERROR_NONE;
+
+    return ret;
+}
+
+static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
+
+
+    return SYSTEM_ERROR_NONE;
+}
 
 int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) {
     return SYSTEM_ERROR_NONE;
@@ -54,5 +68,23 @@ int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t**
     // Check it again just in case.
     CHECK(hal_sleep_validate_config(config, nullptr));
 
-    return SYSTEM_ERROR_NONE;
+    int ret = SYSTEM_ERROR_NONE;
+
+    switch (config->mode) {
+        case HAL_SLEEP_MODE_STOP:
+        case HAL_SLEEP_MODE_ULTRA_LOW_POWER: {
+            ret = enterStopBasedSleep(config, wakeup_source);
+            break;
+        }
+        case HAL_SLEEP_MODE_HIBERNATE: {
+            ret = enterHibernateMode(config, wakeup_source);
+            break;
+        }
+        default: {
+            ret = SYSTEM_ERROR_NOT_SUPPORTED;
+            break;
+        }
+    }
+
+    return ret;
 }

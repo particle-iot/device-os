@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,19 +15,20 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "application.h"
+#ifndef UPDATE_HANDLER_H
+#define UPDATE_HANDLER_H
 
-Serial1LogHandler l(115200, LOG_LEVEL_ALL);
+#include <stdint.h>
 
-SYSTEM_MODE(MANUAL);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/* This function is called once at start up ----------------------------------*/
-void setup()
-{
+void bootloaderUpdateInit(void);
+void bootloaderUpdateProcess(void);
+
+#ifdef __cplusplus
 }
+#endif
 
-/* This function loops forever -----------------------------------------------*/
-void loop()
-{
-    // This will run in a loop
-}
+#endif // UPDATE_HANDLER_H

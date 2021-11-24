@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -8,26 +8,23 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * MERCHAN'TABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "application.h"
+#ifndef PART1_PREINIT_DYNALIB_H
+#define	PART1_PREINIT_DYNALIB_H
 
-Serial1LogHandler l(115200, LOG_LEVEL_ALL);
 
-SYSTEM_MODE(MANUAL);
+#include "dynalib.h"
 
-/* This function is called once at start up ----------------------------------*/
-void setup()
-{
-}
+DYNALIB_BEGIN(part1_preinit)
+DYNALIB_FN(0, part1_preinit, bootloader_part1_preinit, int(void))
+DYNALIB_END(part1_preinit)
 
-/* This function loops forever -----------------------------------------------*/
-void loop()
-{
-    // This will run in a loop
-}
+
+#endif	/* PART1_PREINIT_DYNALIB_H */
+

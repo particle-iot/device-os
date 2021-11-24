@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,19 +15,26 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "application.h"
 
-Serial1LogHandler l(115200, LOG_LEVEL_ALL);
+#pragma once
 
-SYSTEM_MODE(MANUAL);
+#define BOOT_INFO_FLASH_START_ADDR              0x0005F000
+#define BOOT_INFO_FLASH_XIP_START_ADDR          0x0805F000
 
-/* This function is called once at start up ----------------------------------*/
-void setup()
-{
-}
+#define KM0_UPDATE_MAGIC_NUMBER                 0x20211116
 
-/* This function loops forever -----------------------------------------------*/
-void loop()
-{
-    // This will run in a loop
-}
+#define KM4_BOOTLOADER_UPDATE_INFO_OFFSET       0
+#define KM0_PART1_UPDATE_INFO_OFFSET            16
+#define TESTING_FIRMWARE_FLAG_OFFSET            32
+
+typedef struct {
+    uint32_t magic_num;
+    uint32_t src_addr;
+    uint32_t dest_addr;
+    uint32_t size;
+} flash_update_info_t;
+
+typedef struct {
+    uint8_t hw_tested;
+    uint8_t reserved[3];
+} mfg_flags;

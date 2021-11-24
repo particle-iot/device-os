@@ -45,6 +45,7 @@
 #include "flash_common.h"
 #include "concurrent_hal.h"
 #include "user_hal.h"
+#include "km0_km4_ipc.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -462,6 +463,10 @@ void HAL_Core_Config(void) {
     //   FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS,
     //   FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
     //   FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
+
+    InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
+    InterruptEn(IPC_IRQ, 5);
+    km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
 }
 
 void HAL_Core_Setup(void) {
