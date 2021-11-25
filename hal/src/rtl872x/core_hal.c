@@ -561,6 +561,9 @@ void HAL_Core_System_Reset(void) {
     WDG_InitStruct.CountProcess = CountProcess;
     WDG_InitStruct.DivFacProcess = DivFacProcess;
     WDG_Init(&WDG_InitStruct);
+
+    // FIXME: seems to mess with RSIP configuration perhaps?
+    *(uint32_t*)0x480003F8 |= 1<<26;
     WDG_Cmd(ENABLE);
     DelayMs(500);
     DiagPrintf("Failed to reset device using WDG.");
