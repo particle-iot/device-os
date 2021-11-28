@@ -26,16 +26,11 @@ static volatile uint16_t sleepReqId = KM0_KM4_IPC_INVALID_REQ_ID;
 static int sleepResult = 0;
 
 static void onSleepRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
-    if (msg->data_len != sizeof(hal_sleep_config_t)) {
-        DiagPrintf("KM0: invalid IPC message length.\n");
-        return;
-    }
     sleepConfig = (hal_sleep_config_t*)msg->data;
     if (msg->data_len != sizeof(hal_sleep_config_t)) {
         sleepConfig = NULL;
     }
     sleepReqId = msg->req_id;
-    DiagPrintf("KM0 received KM0_KM4_IPC_MSG_SLEEP: 0x%08X\n", (uint32_t)sleepConfig);
 }
 
 void sleepInit(void) {

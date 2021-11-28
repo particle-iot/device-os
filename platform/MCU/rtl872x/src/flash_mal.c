@@ -488,7 +488,6 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                     int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, &sModule,
                                                         sizeof(platform_flash_modules_t), bldUpdateCallback, NULL);
                     if (ret != 0 || ipcResult != 0) {
-                        DiagPrintf("ret: %d, result: %d\n", ret, ipcResult);
                         result = FLASH_ACCESS_RESULT_ERROR;
                         resetSlot = false;
                     } else {

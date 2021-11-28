@@ -566,7 +566,6 @@ void HAL_Core_System_Reset(void) {
     *(uint32_t*)0x480003F8 |= 1<<26;
     WDG_Cmd(ENABLE);
     DelayMs(500);
-    DiagPrintf("Failed to reset device using WDG.");
 
     // It should have reset the device after this amount of delay. If not, try resetting device by KM0
     km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);

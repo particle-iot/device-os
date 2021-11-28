@@ -52,7 +52,6 @@ static void onFlashModuleReceived(km0_km4_ipc_msg_t* msg, void* context) {
         flashModule = NULL;
     }
     bootloaderUpdateReqId = msg->req_id;
-    DiagPrintf("KM0 received KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE: 0x%08X\n", (uint32_t)flashModule);
 }
 
 static void onResetRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
@@ -61,13 +60,8 @@ static void onResetRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
 }
 
 static bool flash_write_update_info(void) {
-    DiagPrintf("Call into flash_write_update_info(), 0x%08X -> 0x%08X, length: 0x%08X\n",
-        flashModule->sourceAddress, flashModule->destinationAddress, flashModule->length);
-
     if (!bootInfoSectorErased) {
-        DiagPrintf("Erasing the boot info sector...\n");
         if (hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1) != 0) {
-            DiagPrintf("Erasing flash failed\n");
             return false;
         }
         bootInfoSectorErased = true;
@@ -85,11 +79,9 @@ static bool flash_write_update_info(void) {
     info.crc32 = computeCrc32((const uint8_t*)&info, sizeof(flash_update_info_t) - 4);
 
     if (hal_flash_write(writeAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
-        DiagPrintf("hal_flash_write() failed\n");
         return false;
     }
     if (memcmp((uint8_t*)&info, (uint8_t*)writeAddr, sizeof(info))) {
-        DiagPrintf("Write boot info failed!\n");
         return false;
     }
     return true;
