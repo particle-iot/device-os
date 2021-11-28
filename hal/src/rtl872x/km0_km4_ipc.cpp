@@ -24,8 +24,10 @@ extern "C" {
 #include "static_recursive_mutex.h"
 #include "km0_km4_ipc.h"
 
+using namespace particle;
+
 /* FIXME: MBR and KM0 part1 have MODULE_INDEX defined in makefile, but not for Particle bootloader */
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER && defined(MODULE_INDEX)
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER && (defined(MODULE_INDEX) && MODULE_INDEX > 0)
 #define WAIT_TIMED(timeout_ms, what) ({ \
     bool res = true;                                                            \
     res;                                                                        \
@@ -47,13 +49,42 @@ extern "C" {
 })
 #endif
 
+#define ATOMIC_BLOCK() 	for (bool __todo=true; __todo;) for (AtomicSection __as; __todo; __todo=false)
+
 namespace {
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-class Km0Km4IpcLock {
+uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
+    uint32_t crc = 0xFFFFFFFF;
+    while (length > 0) {
+        crc ^= *address++;
+        for (uint8_t i = 0; i < 8; i++) {
+            uint32_t mask = ~((crc & 1) - 1);
+            crc = (crc >> 1) ^ (0xEDB88320 & mask);
+        }
+        length--;
+    }
+    return ~crc;
+}
 
+class AtomicSection {
+	int prev;
+public:
+	AtomicSection() {
+		prev = HAL_disable_irq();
+	}
+
+	~AtomicSection() {
+		HAL_enable_irq(prev);
+	}
 };
+
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+
+class Km0Km4IpcLock {
+};
+
 #else
+
 class Km0Km4IpcLock {
 public:
     Km0Km4IpcLock() :
@@ -91,13 +122,16 @@ private:
 };
 
 StaticRecursiveMutex Km0Km4IpcLock::mutex_;
-#endif // 
+
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
 void km0Km4IpcIntHandler(void *data, uint32_t irqStatus, uint32_t channel) {
     km0_km4_ipc_msg_t* message = (km0_km4_ipc_msg_t*)ipc_get_message(channel);
     DCache_Invalidate((uint32_t)message, sizeof(km0_km4_ipc_msg_t));
 
-    Km0Km4IpcClass::getInstance(channel)->processReceivedMessage(message);
+    if (message) {
+        Km0Km4IpcClass::getInstance(channel)->processReceivedMessage(message);
+    }
 }
 
 } // anonymous namespace
@@ -122,7 +156,7 @@ int Km0Km4IpcClass::init() {
 
 // The message must not be allocated from stack
 int Km0Km4IpcClass::sendRequest(km0_km4_ipc_msg_type_t type, void* data, uint32_t len, km0_km4_ipc_msg_callback_t respCallback, void* context) {
-    if (type == KM0_KM4_IPC_MSG_RESP || type == KM0_KM4_IPC_MSG_MAX) {
+    if (type == KM0_KM4_IPC_MSG_RESP || type >= KM0_KM4_IPC_MSG_MAX) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     Km0Km4IpcLock lock();
@@ -133,28 +167,24 @@ int Km0Km4IpcClass::sendRequest(km0_km4_ipc_msg_type_t type, void* data, uint32_
     km0Km4IpcMessage_.req_id = reqId_;
     km0Km4IpcMessage_.data = data;
     km0Km4IpcMessage_.data_len = len;
+    km0Km4IpcMessage_.data_crc32 = computeCrc32((const uint8_t*)data, len);
+    km0Km4IpcMessage_.crc32 = computeCrc32((const uint8_t*)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_) - 4);
     respCallback_ = respCallback;
     respCallbackContext_ = context;
-    if (!respCallback) {
-        expectedRespReqId_ = INVALID_IPC_REQ_ID;
-    } else {
-        expectedRespReqId_ = reqId_;
-    }
+
+    ATOMIC_BLOCK() { expectedRespReqId_ = reqId_; }
     ipc_send_message(channel_, (uint32_t)(&km0Km4IpcMessage_));
 
     int ret = SYSTEM_ERROR_NONE;
-    if (respCallback_) {
-        if (!WAIT_TIMED(KM0_KM4_IPC_TIMEOUT_MS, expectedRespReqId_ == reqId_)) {
-            ret = SYSTEM_ERROR_TIMEOUT;
-            goto done;
-        }
+    if (!WAIT_TIMED(KM0_KM4_IPC_TIMEOUT_MS, expectedRespReqId_ == reqId_)) {
+        ret = SYSTEM_ERROR_TIMEOUT;
     }
-done:
-    expectedRespReqId_ = INVALID_IPC_REQ_ID;
+
+    ATOMIC_BLOCK() { expectedRespReqId_ = KM0_KM4_IPC_INVALID_REQ_ID; }
     respCallback_ = nullptr;
     respCallbackContext_ = nullptr;
     reqId_++;
-    reqId_ = (reqId_ == INVALID_IPC_REQ_ID) ? 0 : reqId_;
+    reqId_ = (reqId_ == KM0_KM4_IPC_INVALID_REQ_ID) ? 0 : reqId_;
     return ret;
 }
 
@@ -167,6 +197,8 @@ int Km0Km4IpcClass::sendResponse(uint16_t reqId, void* data, uint32_t len) {
     km0Km4IpcMessage_.req_id = reqId;
     km0Km4IpcMessage_.data = data;
     km0Km4IpcMessage_.data_len = len;
+    km0Km4IpcMessage_.data_crc32 = computeCrc32((const uint8_t*)data, len);
+    km0Km4IpcMessage_.crc32 = computeCrc32((const uint8_t*)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_) - 4);
     ipc_send_message(channel_, (uint32_t)(&km0Km4IpcMessage_));
     return SYSTEM_ERROR_NONE;
 }
@@ -182,7 +214,7 @@ int Km0Km4IpcClass::onRequestReceived(km0_km4_ipc_msg_type_t type, km0_km4_ipc_m
     }
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     for (auto& handler : ipcRequestHandlers_) {
-        if (handler.type == KM0_KM4_IPC_MSG_MAX)  {
+        if (handler.type >= KM0_KM4_IPC_MSG_MAX)  {
             handler.type = type;
             handler.callback = callback;
             handler.context = context;
@@ -201,15 +233,17 @@ int Km0Km4IpcClass::onRequestReceived(km0_km4_ipc_msg_type_t type, km0_km4_ipc_m
 }
 
 void Km0Km4IpcClass::processReceivedMessage(km0_km4_ipc_msg_t* msg) {
-    if (!msg) {
-        return;
+    if (computeCrc32((const uint8_t*)msg, sizeof(km0_km4_ipc_msg_t) - 4) != msg->crc32
+            || computeCrc32((const uint8_t*)msg->data, msg->data_len) != msg->data_crc32) {
+        msg->data = nullptr;
+        msg->data_len = 0;
     }
     // Handler response
     if (msg->type == KM0_KM4_IPC_MSG_RESP && expectedRespReqId_ == msg->req_id) {
         if (respCallback_) {
             respCallback_(msg, respCallbackContext_);
         }
-        expectedRespReqId_ = INVALID_IPC_REQ_ID;
+        expectedRespReqId_ = KM0_KM4_IPC_INVALID_REQ_ID;
         return;
     }
     // Handle request
@@ -224,7 +258,7 @@ void Km0Km4IpcClass::processReceivedMessage(km0_km4_ipc_msg_t* msg) {
 Km0Km4IpcClass::Km0Km4IpcClass(uint8_t ipcChannel)
         : channel_(ipcChannel) {
     reqId_ = 0;
-    expectedRespReqId_ = INVALID_IPC_REQ_ID;
+    expectedRespReqId_ = KM0_KM4_IPC_INVALID_REQ_ID;
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     for (auto& handler : ipcRequestHandlers_) {
         handler.type = KM0_KM4_IPC_MSG_MAX;

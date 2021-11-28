@@ -26,18 +26,19 @@
 // Define more IPC channels if needed
 #define KM0_KM4_IPC_CHANNEL_GENERIC     0
 
-#define KM0_KM4_IPC_TIMEOUT_MS          2000
+#define KM0_KM4_IPC_TIMEOUT_MS          500
 
-#define INVALID_IPC_REQ_ID              0xFFFF
+#define KM0_KM4_IPC_INVALID_REQ_ID      0xFFFF
 
 typedef enum km0_km4_ipc_msg_type_t {
     KM0_KM4_IPC_MSG_RESP                = 0,
     KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE   = 1,
-    KM0_KM4_IPC_MSG_KM0_PART1_UPDATE    = 2,
-    KM0_KM4_IPC_MSG_SLEEP               = 3,
-    KM0_KM4_IPC_MSG_RESET               = 4,
+    KM0_KM4_IPC_MSG_SLEEP               = 2,
+    KM0_KM4_IPC_MSG_RESET               = 3,
     KM0_KM4_IPC_MSG_MAX                 = 0x7FFF
 } km0_km4_ipc_msg_type_t;
+
+static_assert(sizeof(km0_km4_ipc_msg_type_t) == 2, "size of km0_km4_ipc_msg_type_t is incorrect.");
 
 typedef struct km0_km4_ipc_msg_t {
     uint16_t size;
@@ -46,6 +47,8 @@ typedef struct km0_km4_ipc_msg_t {
     uint16_t req_id;
     void* data;                         // WARNING: The data must not be allocated from stack
     uint32_t data_len;
+    uint32_t data_crc32;                // of data payload
+    uint32_t crc32;                     // of this struct
 } km0_km4_ipc_msg_t;
 
 typedef void (*km0_km4_ipc_msg_callback_t)(km0_km4_ipc_msg_t* msg, void* context);
@@ -55,8 +58,9 @@ typedef void (*km0_km4_ipc_msg_callback_t)(km0_km4_ipc_msg_t* msg, void* context
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "spark_wiring_vector.h"
-using spark::Vector;
 #endif
+
+namespace particle {
 
 class Km0Km4IpcClass {
 public:
@@ -91,7 +95,7 @@ private:
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     km0_km4_ipc_request_handler_t ipcRequestHandlers_[10];
 #else
-    Vector<km0_km4_ipc_request_handler_t> ipcRequestHandlers_;
+    spark::Vector<km0_km4_ipc_request_handler_t> ipcRequestHandlers_;
 #endif
     // WARNING: it is allocated in static RAM and will be used for all IPC message exchanges.
     // We introduce Km0Km4IpcLock and a "blocked" parameter when sending IPC message to prevent this memory
@@ -100,6 +104,8 @@ private:
     km0_km4_ipc_msg_callback_t respCallback_;
     void* respCallbackContext_;
 };
+
+} // namespace::particle
 
 extern "C" {
 #endif

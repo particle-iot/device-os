@@ -436,8 +436,12 @@ bool FLASH_IsFactoryResetAvailable(void) {
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 volatile int ipcResult = -1;
 static void bldUpdateCallback(km0_km4_ipc_msg_t* msg, void* context) {
-    DCache_Invalidate((uint32_t)msg->data, sizeof(int));
-    ipcResult = *((int*)msg->data);
+    if (!msg->data) {
+        ipcResult = SYSTEM_ERROR_BAD_DATA;
+    } else {
+        DCache_Invalidate((uint32_t)msg->data, sizeof(int));
+        ipcResult = *((int*)msg->data);
+    }
 }
 #endif
 
@@ -480,11 +484,11 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                 // Check if the memory copy can be performed.
                 if (verify_module(module->sourceDeviceID, module->sourceAddress, module->length, module->destinationDeviceID,
                         module->destinationAddress, module->length, module->module_function, module->flags)) {
-                    uint8_t ipcMsgType = (module->destinationAddress == KM4_BOOTLOADER_START_ADDRESS) ? KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE : KM0_KM4_IPC_MSG_KM0_PART1_UPDATE;
                     memcpy(&sModule, module, sizeof(platform_flash_modules_t));
-                    int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, ipcMsgType, &sModule,
+                    int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, &sModule,
                                                         sizeof(platform_flash_modules_t), bldUpdateCallback, NULL);
                     if (ret != 0 || ipcResult != 0) {
+                        DiagPrintf("ret: %d, result: %d\n", ret, ipcResult);
                         result = FLASH_ACCESS_RESULT_ERROR;
                         resetSlot = false;
                     } else {
@@ -504,6 +508,9 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                 if (r != 0 && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
                     result = FLASH_ACCESS_RESULT_ERROR;
                 }
+            }
+            if (has_bootloader) {
+                break; // other valid module slots will be handled after reset
             }
         }
         offs += sizeof(platform_flash_modules_t);

@@ -30,6 +30,8 @@
 
 extern FLASH_InitTypeDef flash_init_para;
 
+extern uint32_t computeCrc32(const uint8_t *address, uint32_t length);
+
 static void flash_init(void) {
     RCC_PeriphClockCmd(APBPeriph_FLASH, APBPeriph_FLASH_CLOCK_XTAL, ENABLE);
 
@@ -87,30 +89,24 @@ static bool flash_copy(uintptr_t src_addr, uintptr_t dest_addr, size_t size) {
 bool bootloaderUpdateIfPending(void) {
     flash_init();
 
-    flash_update_info_t info;
-    for (uint8_t i = 0; i < 2; i++) {
-        uint32_t infoAddr, targetAddr;
-        if (i == 0) {
-            infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM4_BOOTLOADER_UPDATE_INFO_OFFSET;
-            targetAddr = KM4_BOOTLOADER_START_ADDRESS;
-        } else {
-            infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_PART1_UPDATE_INFO_OFFSET;
-            targetAddr = KM0_PART1_START_ADDRESS;
+    flash_update_info_t info = {};
+
+    uint32_t infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_BOOTLOADER_UPDATE_INFO_OFFSET;
+    memcpy(&info, (void*)infoAddr, sizeof(info));
+    if ((info.magic_num == KM0_BOOTLOADER_UPDATE_MAGIC_NUMBER && info.size > 0)
+            && (info.src_addr > OTA_REGION_LOWEST_ADDR && info.src_addr < OTA_REGION_HIGHEST_ADDR)
+            && (info.dest_addr == KM4_BOOTLOADER_START_ADDRESS || info.dest_addr == KM0_PART1_START_ADDRESS)) {
+        if (computeCrc32((const uint8_t*)&info, sizeof(flash_update_info_t) - 4) != info.crc32) {
+            DiagPrintf("[MBR] boot info crc invalid\n");
+            return false;
         }
-        memcpy(&info, (void*)infoAddr, sizeof(info));
-        if (info.magic_num == KM0_UPDATE_MAGIC_NUMBER
-                && info.src_addr > OTA_REGION_LOWEST_ADDR
-                && info.src_addr < OTA_REGION_HIGHEST_ADDR
-                && info.dest_addr == targetAddr
-                && info.size > 0) {
-            if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
-                return false;
-            }
-            memset(&info, 0x00, sizeof(info));
-            if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
-                DiagPrintf("[MBR] hal_flash_write() failed\n");
-                return false;
-            }
+        if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
+            return false;
+        }
+        memset(&info, 0x00, sizeof(info));
+        if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
+            DiagPrintf("[MBR] hal_flash_write() failed\n");
+            return false;
         }
     }
     return true;

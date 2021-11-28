@@ -18,23 +18,14 @@
 
 #pragma once
 
-#define BOOT_INFO_FLASH_START_ADDR              0x0005F000
-#define BOOT_INFO_FLASH_XIP_START_ADDR          0x0805F000
+#define KM0_BOOTLOADER_UPDATE_MAGIC_NUMBER      0x20211116
 
-#define KM0_UPDATE_MAGIC_NUMBER                 0x20211116
-
-#define KM4_BOOTLOADER_UPDATE_INFO_OFFSET       0
-#define KM0_PART1_UPDATE_INFO_OFFSET            16
-#define TESTING_FIRMWARE_FLAG_OFFSET            32
+#define KM0_BOOTLOADER_UPDATE_INFO_OFFSET       0
 
 typedef struct {
     uint32_t magic_num;
     uint32_t src_addr;
     uint32_t dest_addr;
     uint32_t size;
+    uint32_t crc32; /* of this struct */
 } flash_update_info_t;
-
-typedef struct {
-    uint8_t hw_tested;
-    uint8_t reserved[3];
-} mfg_flags;

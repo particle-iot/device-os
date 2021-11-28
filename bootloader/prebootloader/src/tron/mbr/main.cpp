@@ -37,7 +37,7 @@ int bootloader_part1_setup(void);
 int bootloader_part1_loop(void);
 }
 
-static uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
+extern "C" uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
     uint32_t crc = 0xFFFFFFFF;
     while (length > 0) {
         crc ^= *address++;
