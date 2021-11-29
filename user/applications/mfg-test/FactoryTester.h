@@ -17,10 +17,15 @@ private:
     static const unsigned cmd_length = 256;
     char command_response[cmd_length];
 
+    static const unsigned usb_buffer_length = 2048;
+    char usb_buffer[usb_buffer_length];
+
     static const String PASS;
     static const String RESPONSE;
     static const String ERROR;
     static const String ERROR_CODE;
+    static const String SET_DATA;
+
 
     int executeCommand(TesterCommandType command, const char * commandData);
 
@@ -61,6 +66,8 @@ public:
     int GET_DEVICE_ID();
     int IS_READY();
     int TEST_COMMAND();
+
+    char * get_command_response(void);
 };
 
 #endif	/* FACTORYTESTER_H */
