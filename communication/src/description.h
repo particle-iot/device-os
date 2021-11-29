@@ -52,7 +52,7 @@ public:
 private:
     struct Request {
         Vector<char> data; // Describe data
-        message_id_t msgId; // Message ID of the last sent request
+        message_id_t msgId; // Message ID of the last sent block request
         unsigned blockIndex; // Index of the next block to send
         int flags; // Describe flags
     };

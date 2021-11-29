@@ -61,10 +61,11 @@ const size_t REQUEST_COAP_OVERHEAD = 14;
  */
 const size_t RESPONSE_COAP_OVERHEAD = 16;
 
-const unsigned RESPONSE_TIMEOUT = 90000;
-
 static_assert(BLOCK_SIZE + REQUEST_COAP_OVERHEAD <= MBEDTLS_SSL_MAX_CONTENT_LEN &&
         BLOCK_SIZE + RESPONSE_COAP_OVERHEAD <= MBEDTLS_SSL_MAX_CONTENT_LEN, "BLOCK_SIZE is too large");
+
+const unsigned RESPONSE_TIMEOUT = 90000;
+const size_t INITIAL_BUFFER_SIZE = 256;
 
 class CharVectorAppender: public Appender {
 public:
@@ -81,7 +82,7 @@ public:
         }
         const size_t offs = vec_->size();
         if (vec_->capacity() - offs < size) {
-            const size_t n = std::max(std::max((size_t)vec_->capacity() * 3 / 2, offs + size), INITIAL_CAPACITY);
+            const size_t n = std::max(std::max((size_t)vec_->capacity() * 3 / 2, offs + size), INITIAL_BUFFER_SIZE);
             ok_ = vec_->reserve(n);
             if (!ok_) {
                 return false;
@@ -99,8 +100,6 @@ public:
 private:
     Vector<char>* vec_;
     bool ok_;
-
-    static const size_t INITIAL_CAPACITY = 256;
 };
 
 unsigned encodeBlockOption(unsigned num, bool m) {
@@ -141,6 +140,9 @@ ProtocolError Description::sendRequest(int descFlags) {
     ProtocolError err = getDescribeData(&req.data, descFlags);
     if (err != ProtocolError::NO_ERROR) {
         return err;
+    }
+    if (!reqs_.isEmpty() && !reqs_.append(std::move(req))) {
+        return ProtocolError::NO_MEMORY;
     }
     bool hasMore = false;
     err = sendNextRequestBlock(&req, &hasMore);
@@ -282,12 +284,12 @@ ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
         LOG(ERROR, "Failed to decode message: %d", r);
         return ProtocolError::MALFORMED_MESSAGE;
     }
-    for (int i = 0; i < reqs_.size(); ++i) {
-        auto& req = reqs_.at(i);
-        if (req.msgId == dec.id()) {
-            if (dec.type() == CoapType::ACK) {
+    if (!reqs_.isEmpty() && reqs_.first().msgId == dec.id()) {
+        if (dec.type() == CoapType::ACK) {
+            bool hasMore = false;
+            do {
                 // Send next block
-                bool hasMore = false;
+                auto& req = reqs_.first();
                 const ProtocolError err = sendNextRequestBlock(&req, &hasMore);
                 if (err != ProtocolError::NO_ERROR) {
                     return err;
@@ -299,12 +301,13 @@ ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
                     if (!acks_.append(std::move(ack))) {
                         return ProtocolError::NO_MEMORY;
                     }
-                    reqs_.removeAt(i);
+                    reqs_.takeFirst();
                 }
-            } else {
-                reqs_.removeAt(i);
-            }
+            } while (!hasMore && !reqs_.isEmpty());
             return ProtocolError::NO_ERROR;
+        } else {
+            reqs_.takeFirst();
+            return ProtocolError::MESSAGE_RESET;
         }
     }
     for (int i = 0; i < acks_.size(); ++i) {
