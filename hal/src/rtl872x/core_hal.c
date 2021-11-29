@@ -45,7 +45,6 @@
 #include "flash_common.h"
 #include "concurrent_hal.h"
 #include "user_hal.h"
-#include "km0_km4_ipc.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -458,10 +457,6 @@ void HAL_Core_Config(void) {
         LED_SetRGBColor(RGB_COLOR_WHITE);
         LED_On(PARTICLE_LED_RGB);
     }
-
-    InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
-    InterruptEn(IPC_IRQ, 5);
-    km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
 }
 
 void HAL_Core_Setup(void) {
@@ -541,37 +536,6 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration) {
 
 void HAL_Core_Mode_Button_Reset(uint16_t button)
 {
-}
-
-void HAL_Core_System_Reset(void) {
-    __DSB();
-    __ISB();
-
-    // Disable systick
-    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
-
-    // Disable global interrupt
-    __set_BASEPRI(1 << (8 - __NVIC_PRIO_BITS));
-
-    WDG_InitTypeDef WDG_InitStruct;
-    u32 CountProcess;
-    u32 DivFacProcess;
-    BKUP_Set(BKUP_REG0, BIT_KM4SYS_RESET_HAPPEN);
-    WDG_Scalar(50, &CountProcess, &DivFacProcess);
-    WDG_InitStruct.CountProcess = CountProcess;
-    WDG_InitStruct.DivFacProcess = DivFacProcess;
-    WDG_Init(&WDG_InitStruct);
-
-    // FIXME: seems to mess with RSIP configuration perhaps?
-    *(uint32_t*)0x480003F8 |= 1<<26;
-    WDG_Cmd(ENABLE);
-    DelayMs(500);
-
-    // It should have reset the device after this amount of delay. If not, try resetting device by KM0
-    km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
-    while (1) {
-        __WFE();
-    }
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {

@@ -33,7 +33,7 @@
 
 // Decompression of firmware modules is only supported in the bootloader
 #if (HAL_PLATFORM_COMPRESSED_OTA) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
-#define HAS_COMPRESSED_OTA 0 // Temporarily disable it for now, since the bootloader update doesn't perform memory copy
+#define HAS_COMPRESSED_OTA 1
 #else
 #define HAS_COMPRESSED_OTA 0
 #endif
