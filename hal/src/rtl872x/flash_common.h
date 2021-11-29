@@ -49,6 +49,8 @@ int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size);
 int hal_exflash_lock(void);
 int hal_exflash_unlock(void);
 
+uint32_t computeCrc32(const uint8_t *address, uint32_t length);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

@@ -21,6 +21,7 @@
 #include "flash_hal.h"
 #include "boot_info.h"
 #include "flash_mal.h"
+#include "flash_common.h"
 
 #define COPY_BLOCK_SIZE                 256
 
@@ -29,8 +30,6 @@
 
 
 extern FLASH_InitTypeDef flash_init_para;
-
-extern uint32_t computeCrc32(const uint8_t *address, uint32_t length);
 
 static void flash_init(void) {
     RCC_PeriphClockCmd(APBPeriph_FLASH, APBPeriph_FLASH_CLOCK_XTAL, ENABLE);

@@ -147,6 +147,19 @@ extern "C" int mbedtls_platform_set_calloc_free(void*(*)(size_t, size_t), void (
 }
 #endif // MBEDTLS_PLATFORM_MEMORY
 
+void ipc_table_init() {
+    // stub
+}
+
+void ipc_send_message(uint8_t channel, uint32_t message) {
+    // stub
+}
+
+uint32_t ipc_get_message(uint8_t channel) {
+    // stub
+    return 0;
+}
+
 
 int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback) {
     if (channel > 15) {
@@ -156,12 +169,12 @@ int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback) {
     return 0;
 }
 
-void ipc_send_message(uint8_t channel, uint32_t message) {
+void ipc_send_message_alt(uint8_t channel, uint32_t message) {
     IPCM4_DEV->IPCx_USR[channel] = message;	
 	IPC_INTRequest(IPCM4_DEV, channel);
 }
 
-uint32_t ipc_get_message(uint8_t channel) {
+uint32_t ipc_get_message_alt(uint8_t channel) {
     uint32_t msgAddr = IPCM0_DEV->IPCx_USR[channel];
     return msgAddr;
 }

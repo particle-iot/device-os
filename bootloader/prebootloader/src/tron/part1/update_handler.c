@@ -23,28 +23,15 @@
 #include "flash_hal.h"
 #include "flash_mal.h"
 #include "boot_info.h"
+#include "flash_common.h"
 
 
 static volatile platform_flash_modules_t* flashModule = NULL;
 static volatile uint16_t bootloaderUpdateReqId = KM0_KM4_IPC_INVALID_REQ_ID;
 static int updateResult = 0;
-static bool bootInfoSectorErased = false;
 
 extern FLASH_InitTypeDef flash_init_para;
 extern CPU_PWR_SEQ HSPWR_OFF_SEQ[];
-
-static uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
-    uint32_t crc = 0xFFFFFFFF;
-    while (length > 0) {
-        crc ^= *address++;
-        for (uint8_t i = 0; i < 8; i++) {
-            uint32_t mask = ~((crc & 1) - 1);
-            crc = (crc >> 1) ^ (0xEDB88320 & mask);
-        }
-        length--;
-    }
-    return ~crc;
-}
 
 static void onFlashModuleReceived(km0_km4_ipc_msg_t* msg, void* context) {
     flashModule = (platform_flash_modules_t*)msg->data;
@@ -60,11 +47,8 @@ static void onResetRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
 }
 
 static bool flash_write_update_info(void) {
-    if (!bootInfoSectorErased) {
-        if (hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1) != 0) {
-            return false;
-        }
-        bootInfoSectorErased = true;
+    if (hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1) != 0) {
+        return false;
     }
 
     flash_update_info_t info = {};
@@ -79,18 +63,24 @@ static bool flash_write_update_info(void) {
     info.crc32 = computeCrc32((const uint8_t*)&info, sizeof(flash_update_info_t) - 4);
 
     if (hal_flash_write(writeAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
-        return false;
+        goto err;
     }
     if (memcmp((uint8_t*)&info, (uint8_t*)writeAddr, sizeof(info))) {
-        return false;
+        goto err;
     }
+    goto done;
+
+err:
+    hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1);
+    return false;
+
+done:
     return true;
 }
 
 void bootloaderUpdateInit(void) {
     flashModule = NULL;
     bootloaderUpdateReqId = KM0_KM4_IPC_INVALID_REQ_ID;
-    bootInfoSectorErased = false;
     km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, onFlashModuleReceived, NULL);
     km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, onResetRequestReceived, NULL);
 }

@@ -92,6 +92,20 @@ int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size) {
     return 0;
 }
 
+// FIXME: move to somewhere proper
+extern "C" uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
+    uint32_t crc = 0xFFFFFFFF;
+    while (length > 0) {
+        crc ^= *address++;
+        for (uint8_t i = 0; i < 8; i++) {
+            uint32_t mask = ~((crc & 1) - 1);
+            crc = (crc >> 1) ^ (0xEDB88320 & mask);
+        }
+        length--;
+    }
+    return ~crc;
+}
+
 __attribute__((section(".ram.text"), noinline))
 static int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size,
                                 hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func)

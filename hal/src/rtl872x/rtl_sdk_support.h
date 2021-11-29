@@ -27,6 +27,11 @@ extern "C" {
 #endif
 
 int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback);
+void ipc_send_message_alt(uint8_t channel, uint32_t message);
+uint32_t ipc_get_message_alt(uint8_t channel);
+
+// SDK stub calls
+void ipc_table_init(void);
 void ipc_send_message(uint8_t channel, uint32_t message);
 uint32_t ipc_get_message(uint8_t channel);
 

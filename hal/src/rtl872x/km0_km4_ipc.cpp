@@ -19,6 +19,7 @@
 extern "C" {
 #include "rtl8721d.h"
 }
+#include "flash_common.h"
 #include "rtl_sdk_support.h"
 #include "check.h"
 #include "static_recursive_mutex.h"
@@ -52,19 +53,6 @@ using namespace particle;
 #define ATOMIC_BLOCK() 	for (bool __todo=true; __todo;) for (AtomicSection __as; __todo; __todo=false)
 
 namespace {
-
-uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
-    uint32_t crc = 0xFFFFFFFF;
-    while (length > 0) {
-        crc ^= *address++;
-        for (uint8_t i = 0; i < 8; i++) {
-            uint32_t mask = ~((crc & 1) - 1);
-            crc = (crc >> 1) ^ (0xEDB88320 & mask);
-        }
-        length--;
-    }
-    return ~crc;
-}
 
 class AtomicSection {
 	int prev;
@@ -126,7 +114,7 @@ StaticRecursiveMutex Km0Km4IpcLock::mutex_;
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
 void km0Km4IpcIntHandler(void *data, uint32_t irqStatus, uint32_t channel) {
-    km0_km4_ipc_msg_t* message = (km0_km4_ipc_msg_t*)ipc_get_message(channel);
+    km0_km4_ipc_msg_t* message = (km0_km4_ipc_msg_t*)ipc_get_message_alt(channel);
     DCache_Invalidate((uint32_t)message, sizeof(km0_km4_ipc_msg_t));
 
     if (message) {
@@ -173,7 +161,7 @@ int Km0Km4IpcClass::sendRequest(km0_km4_ipc_msg_type_t type, void* data, uint32_
     respCallbackContext_ = context;
 
     ATOMIC_BLOCK() { expectedRespReqId_ = reqId_; }
-    ipc_send_message(channel_, (uint32_t)(&km0Km4IpcMessage_));
+    ipc_send_message_alt(channel_, (uint32_t)(&km0Km4IpcMessage_));
 
     int ret = SYSTEM_ERROR_NONE;
     if (!WAIT_TIMED(KM0_KM4_IPC_TIMEOUT_MS, expectedRespReqId_ == reqId_)) {
@@ -199,7 +187,7 @@ int Km0Km4IpcClass::sendResponse(uint16_t reqId, void* data, uint32_t len) {
     km0Km4IpcMessage_.data_len = len;
     km0Km4IpcMessage_.data_crc32 = computeCrc32((const uint8_t*)data, len);
     km0Km4IpcMessage_.crc32 = computeCrc32((const uint8_t*)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_) - 4);
-    ipc_send_message(channel_, (uint32_t)(&km0Km4IpcMessage_));
+    ipc_send_message_alt(channel_, (uint32_t)(&km0Km4IpcMessage_));
     return SYSTEM_ERROR_NONE;
 }
 

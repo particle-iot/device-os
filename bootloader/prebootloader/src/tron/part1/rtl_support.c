@@ -30,6 +30,15 @@ void ipc_table_init() {
     // stub
 }
 
+void ipc_send_message(uint8_t channel, uint32_t message) {
+    // stub
+}
+
+uint32_t ipc_get_message(uint8_t channel) {
+    // stub
+    return 0;
+}
+
 extern CPU_PWR_SEQ SYSPLL_ON_SEQ[];
 
 void BOOT_FLASH_Invalidate_Auto_Write(void)

@@ -20,6 +20,7 @@ extern "C" {
 #include "rtl8721d.h"
 }
 #include "module_info.h"
+#include "flash_common.h"
 #include "bootloader_update.h"
 
 __attribute__((used)) void* dynalib_table_location = 0; // part1 dynalib location
@@ -35,19 +36,6 @@ int bootloader_part1_preinit(void);
 int bootloader_part1_init(void);
 int bootloader_part1_setup(void);
 int bootloader_part1_loop(void);
-}
-
-extern "C" uint32_t computeCrc32(const uint8_t *address, uint32_t length) {
-    uint32_t crc = 0xFFFFFFFF;
-    while (length > 0) {
-        crc ^= *address++;
-        for (uint8_t i = 0; i < 8; i++) {
-            uint32_t mask = ~((crc & 1) - 1);
-            crc = (crc >> 1) ^ (0xEDB88320 & mask);
-        }
-        length--;
-    }
-    return ~crc;
 }
 
 static bool isPart1ImageValid() {
@@ -67,12 +55,10 @@ static bool isPart1ImageValid() {
 extern "C" int main() {
     /*
      * FIXME: Do NOT allocate memory from heap in MBR, since the heap start address is incorrect!
-     * As a workaround, we can export run time APIs in part1.
+     * As a workaround, we can use AtomicSimpleStaticPool instead.
      */
     if (!bootloaderUpdateIfPending()) {
-        while (true) {
-            __WFE();
-        }
+        NVIC_SystemReset();
     }
 
     if (!isPart1ImageValid()) {
@@ -92,8 +78,9 @@ extern "C" int main() {
     bootloader_part1_setup();
 
     while (true) {
-        __WFE();
-        __WFE(); // clear event
+        __SEV(); // signal event, also signal to KM4
+        __WFE(); // clear event, immediately exits
+        __WFE(); // sleep, waiting for event
 
         bootloader_part1_loop();
     }

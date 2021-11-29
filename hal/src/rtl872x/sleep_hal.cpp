@@ -47,19 +47,17 @@ using namespace particle;
 
 
 static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
-    int ret = SYSTEM_ERROR_NONE;
 
-    return ret;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
 
-
-    return SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) {
-    return SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved) {
