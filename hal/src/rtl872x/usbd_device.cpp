@@ -110,6 +110,19 @@ DeviceState Device::getDeviceState() const {
     return DeviceState::NONE;
 }
 
+bool Device::lock() {
+    if (driver_) {
+        return driver_->lock();
+    }
+    return false;
+}
+
+void Device::unlock() {
+    if (driver_) {
+        driver_->unlock();
+    }
+}
+
 int Device::attach() {
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
     CHECK(driver_->attach());
@@ -159,34 +172,46 @@ int Device::clearStallEndpoint(unsigned ep) {
     return driver_->clearStallEndpoint(ep);
 }
 
-EndpointState Device::getEndpointState(unsigned ep) {
+EndpointStatus Device::getEndpointStatus(unsigned ep) {
     if (driver_) {
-        return driver_->getEndpointState(ep);
+        return driver_->getEndpointStatus(ep);
     }
-    return EndpointState::NONE;
+    return EndpointStatus::NONE;
+}
+
+int Device::setEndpointStatus(unsigned ep, EndpointStatus status) {
+    if (driver_) {
+        return driver_->setEndpointStatus(ep, status);
+    }
+    return SYSTEM_ERROR_INVALID_STATE;
 }
 
 int Device::transferIn(unsigned ep, const uint8_t* ptr, size_t size) {
+    LOG(INFO, "transferIn %02x %u", ep, size);
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
     return driver_->transferIn(ep, ptr, size);
 }
 
 int Device::transferOut(unsigned ep, uint8_t* ptr, size_t size) {
+    LOG(INFO, "transferOut %02x %u", ep, size);
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
     return driver_->transferOut(ep, ptr, size);
 }
 
 int Device::setupReply(SetupRequest* r, const uint8_t* data, size_t size) {
+    LOG(INFO, "setupReply %u", size);
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
     return driver_->setupReply(r, data, size);
 }
 
 int Device::setupReceive(SetupRequest* r, uint8_t* data, size_t size) {
+    LOG(INFO, "setupReceive %u", size);
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
     return driver_->setupReceive(r, data, size);
 }
 
 int Device::setupError(SetupRequest* r) {
+    LOG(INFO, "setupError");
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
     return driver_->setupError(r);
 }
@@ -208,21 +233,19 @@ int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed s
 #endif // HAL_PLATFORM_USB_COMPOSITE
         unsigned baseInterface = 0;
         unsigned baseString = STRING_IDX_INTERFACE;
-        unsigned epMask = 0;
+        CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
+        unsigned epMask = ~(driver_->getEndpointMask());
         for (auto& cls: classDrivers_) {
             if (cls && cls->isEnabled()) {
                 cls->setBaseIndices(baseInterface, baseString, epMask);
                 int r = cls->getConfigurationDescriptor(buf ? (buf + pos) : nullptr, len - pos, speed, index);
                 if (r >= 0) {
                     pos += r;
+                    baseInterface += cls->getNumInterfaces();
+                    baseString += cls->getNumStrings();
+                    auto mask = cls->getEndpointMask();
+                    epMask = driver_->updateEndpointMask(mask);
                 }
-                baseInterface += cls->getNumInterfaces();
-                baseString += cls->getNumStrings();
-                auto mask = cls->getEndpointMask();
-                if (epMask & mask) {
-                    LOG(ERROR, "USB endpoint conflict");
-                }
-                epMask |= mask;
             }
         }
         if (buf) {
@@ -351,8 +374,11 @@ int Device::setConfig(unsigned index) {
     for (auto& cls: classDrivers_) {
         if (cls && cls->isEnabled()) {
             int r = cls->init(index);
-            if (r) {
+            if (r < 0) {
                 lastError = r;
+                cls->deinit(index);
+            } else {
+                cls->configured(true);
             }
         }
     }
@@ -364,9 +390,10 @@ int Device::clearConfig(unsigned index) {
     for (auto& cls: classDrivers_) {
         if (cls && cls->isEnabled()) {
             int r = cls->deinit(index);
-            if (r) {
+            if (r < 0) {
                 lastError = r;
             }
+            cls->configured(false);
         }
     }
     return lastError;
@@ -401,7 +428,9 @@ int Device::setupRequest(SetupRequest* req) {
 }
 
 int Device::notifyEpTransferDone(unsigned ep, EndpointEvent event, size_t len) {
+    LOG(INFO, "ep transfer done %u %u", ep, len);
     for (auto& cls: classDrivers_) {
+        LOG(INFO, "cls %x %d", cls, cls ? cls->isEnabled() : 0);
         if (cls && cls->isEnabled()) {
             int r;
             if (ep & SetupRequest::DIRECTION_DEVICE_TO_HOST) {
@@ -409,14 +438,18 @@ int Device::notifyEpTransferDone(unsigned ep, EndpointEvent event, size_t len) {
             } else {
                 r = cls->dataOut(ep, event, len);
             }
+            LOG(INFO, "result %d", r);
             if (r >= 0) {
                 return r;
             }
         }
     }
+    LOG(INFO, "123");
     if (ep & 0x7f) {
+        LOG(INFO, "transfer done not found");
         return SYSTEM_ERROR_NOT_FOUND;
     }
+    LOG(INFO, "transfer done ok");
     return 0;
 }
 
@@ -506,9 +539,41 @@ bool ClassDriver::isEnabled() const {
     return enabled_;
 }
 
+void ClassDriver::configured(bool state) {
+    configured_ = state;
+}
+
+bool ClassDriver::isConfigured() const {
+    return configured_;
+}
+
 int ClassDriver::setBaseIndices(unsigned interface, unsigned string, unsigned epMask) {
     interfaceBase_ = interface;
     stringBase_ = string;
     endpointMask_ = epMask;
     return 0;
+}
+
+int ClassDriver::getNextAvailableEndpoint(EndpointDirection type, bool reserve) {
+    unsigned base = 1;
+    if (type == ENDPOINT_IN) {
+        base <<= ENDPOINT_MASK_OUT_BITPOS;
+    }
+    LOG(INFO, "getNext %08x", endpointMask_);
+    for (unsigned pos = 0; pos < ENDPOINT_MASK_OUT_BITPOS; pos++) {
+        bool epBit = endpointMask_ & (base << pos);
+        if (!epBit) {
+            // Available
+            if (reserve) {
+                endpointMask_ |= (base << pos);
+            }
+            // Endpoint 0 is default, not counted here
+            return ((pos + 1) | (int)type);
+        }
+    }
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+unsigned ClassDriver::getEndpointMask() const {
+    return endpointMask_;
 }

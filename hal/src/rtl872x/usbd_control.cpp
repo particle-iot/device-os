@@ -179,20 +179,22 @@ int ControlInterfaceClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEve
     // Data stage completed
     if (state_ == State::TX && stateCallback_) {
         stateCallback_(HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED, stateCallbackCtx_);
+        state_ = State::NONE;
+        counter_ = 0;
+        return 0;
     }
-    state_ = State::NONE;
-    counter_ = 0;
-    return 0;
+    return SYSTEM_ERROR_INVALID_STATE;
 }
 
 int ControlInterfaceClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_t len) {
     // Data stage completed
     if (state_ == State::RX && requestCallback_) {
         requestCallback_(&request_, requestCallbackCtx_);
+        state_ = State::NONE;
+        counter_ = 0;
+        return 0;
     }
-    state_ = State::NONE;
-    counter_ = 0;
-    return 0;
+    return SYSTEM_ERROR_INVALID_STATE;
 }
 
 int ControlInterfaceClassDriver::startOfFrame() {

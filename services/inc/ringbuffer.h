@@ -19,6 +19,7 @@
 #define SERVICES_RINGBUFFER_H
 
 #include <cstddef>
+#include <sys/types.h>
 #include "system_error.h"
 #include "check.h"
 

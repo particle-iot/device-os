@@ -18,6 +18,7 @@
 #include "usbd_driver.h"
 #include "system_error.h"
 #include "service_debug.h"
+#include <mutex>
 
 using namespace particle::usbd;
 
@@ -206,8 +207,14 @@ int RtlUsbDriver::clearStallEndpoint(unsigned ep) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-EndpointState RtlUsbDriver::getEndpointState(unsigned ep) {
-    return EndpointState::NONE;
+EndpointStatus RtlUsbDriver::getEndpointStatus(unsigned ep) {
+    // FIXME: there is an undocumented field in usbd_ep_t
+    return EndpointStatus::NONE;
+}
+
+int RtlUsbDriver::setEndpointStatus(unsigned ep, EndpointStatus status) {
+    // FIXME: there is an undocumented field in usbd_ep_t
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int RtlUsbDriver::transferIn(unsigned ep, const uint8_t* ptr, size_t size) {
@@ -248,8 +255,21 @@ unsigned RtlUsbDriver::getEndpointMask() const {
     return mask;
 }
 
+unsigned RtlUsbDriver::updateEndpointMask(unsigned mask) const {
+    for (size_t i = 0; i < USBD_MAX_ENDPOINTS; i++) {
+        if (mask & ((1 << i) | (1 << i) << ENDPOINT_MASK_OUT_BITPOS)) {
+            // It's not possible to use endpoint 0x01 and 0x81, they are one and the same
+            mask |= (1 << i);
+            mask |= (1 << i) << ENDPOINT_MASK_OUT_BITPOS;
+        }
+    }
+    return mask;
+}
+
 uint8_t* RtlUsbDriver::getDescriptorCb(usbd_desc_type_t desc, usbd_speed_type_t speed, uint16_t* len) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     auto type = rtlDescriptorTypeToDriver(desc);
     if (type < 0) {
         return nullptr;
@@ -271,18 +291,24 @@ uint8_t* RtlUsbDriver::getDescriptorCb(usbd_desc_type_t desc, usbd_speed_type_t 
 
 uint8_t RtlUsbDriver::setConfigCb(usb_dev_t* dev, uint8_t config) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     return CHECK_RTL_USB(self->setConfig(config));
 }
 
 uint8_t RtlUsbDriver::clearConfigCb(usb_dev_t* dev, uint8_t config) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     return CHECK_RTL_USB(self->clearConfig(config));
 }
 
 uint8_t RtlUsbDriver::setupCb(usb_dev_t* dev, usb_setup_req_t* req) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     static_assert(sizeof(SetupRequest) == sizeof(usb_setup_req_t), "SetupRequest and usb_setup_req_t are expected to be of the same size");
     CHECK_RTL_USB(self->setupRequest(&sLastUsbSetupRequest));
@@ -295,30 +321,40 @@ uint8_t RtlUsbDriver::setupCb(usb_dev_t* dev, usb_setup_req_t* req) {
 
 uint8_t RtlUsbDriver::sofCb(usb_dev_t* dev) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     return CHECK_RTL_USB(self->startOfFrame());
 }
 
 uint8_t RtlUsbDriver::suspendCb(usb_dev_t* dev) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     return CHECK_RTL_USB(self->notifySuspend());
 }
 
 uint8_t RtlUsbDriver::resumeCb(usb_dev_t* dev) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     return CHECK_RTL_USB(self->notifyResume());
 }
 
 uint8_t RtlUsbDriver::ep0DataInCb(usb_dev_t* dev) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     return CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_DEVICE_TO_HOST | 0x00, EndpointEvent::DONE, dev->ep0_data_len));
 }
 
 uint8_t RtlUsbDriver::ep0DataOutCb(usb_dev_t* dev) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     self->fixupReceivedData();
     return CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_HOST_TO_DEVICE | 0x00, EndpointEvent::DONE, dev->ep0_data_len));
@@ -326,15 +362,23 @@ uint8_t RtlUsbDriver::ep0DataOutCb(usb_dev_t* dev) {
 
 uint8_t RtlUsbDriver::epDataInCb(usb_dev_t* dev, uint8_t ep_num) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
-    return CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_DEVICE_TO_HOST | ep_num, EndpointEvent::DONE, dev->ep_in[ep_num & 0x7f].data_len));
+    // NOTE: no way to tell the size of the last transfer
+    CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_DEVICE_TO_HOST | ep_num, EndpointEvent::DONE, 0 /* dev->ep_in[ep_num & 0x7f].data_len */));
+    LOG(INFO, "epDataInCb %02x ok", ep_num);
+    return 0;
 }
 
 uint8_t RtlUsbDriver::epDataOutCb(usb_dev_t* dev, uint8_t ep_num, uint16_t len) {
     auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
+
     self->setDevReference(dev);
     self->fixupReceivedData();
-    return CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_HOST_TO_DEVICE | ep_num, EndpointEvent::DONE, len));
+    CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_HOST_TO_DEVICE | ep_num, EndpointEvent::DONE, len));
+    return 0;
 }
 
 void RtlUsbDriver::setDevReference(usb_dev_t* dev) {
@@ -353,4 +397,17 @@ void RtlUsbDriver::fixupReceivedData() {
         req->wValue = sLastUsbSetupRequest.wValue;
         fixupPtr_ = nullptr;
     }
+}
+
+bool RtlUsbDriver::lock() {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    mutex_.lock();
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    return true;
+}
+
+void RtlUsbDriver::unlock() {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    mutex_.unlock();
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 }
