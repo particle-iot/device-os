@@ -485,6 +485,14 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                 if (verify_module(module->sourceDeviceID, module->sourceAddress, module->length, module->destinationDeviceID,
                         module->destinationAddress, module->length, module->module_function, module->flags)) {
                     memcpy(&sModule, module, sizeof(platform_flash_modules_t));
+                    if (sModule.flags & MODULE_DROP_MODULE_INFO) {
+                        // Skip the module info header
+                        if (sModule.length < sizeof(module_info_t)) { // Sanity check
+                            result = FLASH_ACCESS_RESULT_BADARG;
+                        }
+                        sModule.sourceAddress += sizeof(module_info_t);
+                        sModule.length -= sizeof(module_info_t);
+                    }
                     int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, &sModule,
                                                         sizeof(platform_flash_modules_t), bldUpdateCallback, NULL);
                     if (ret != 0 || ipcResult != 0) {

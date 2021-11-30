@@ -178,7 +178,8 @@ SECTIONS
     .secure_ram_text : /* Realtek specific */
     {
         . = ALIGN(4);
-        *(.xip.text)
+        *(.xip.text) /* Reset_Handler */
+        *(.secure.ram.text)
         . = ALIGN(4);
     } > SECURE_RAM AT> APP_FLASH
 

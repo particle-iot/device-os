@@ -14,6 +14,11 @@ Bootloader:                                Monolithic firmware:
 +-----------------------------+ 0x1007B000 +---------------------------------------+
 x                                                                                  x
 x                                                                                  x
++-----------------------------+ 0x000C0400 +---------------------------------------+
+| Retention SRAM              |            | Retention SRAM                        |
++-----------------------------+ 0x000C0000 +---------------------------------------+
+x                                                                                  x
+x                                                                                  x
 +-----------------------------+ 0x00090000 +---------------------------------------+
 | Main stack                  |            | Main stack                            |
 +-----------------------------+ 0x0008F000 +---------------------------------------+
@@ -39,6 +44,10 @@ Note: Keep the diagrams up to date with the actual memory maps defined in this f
 platform_km0_ram_size  = 56K;
 platform_km0_ram_start = 0x00082000;
 platform_km0_ram_end   = platform_km0_ram_start + platform_km0_ram_size;
+
+platform_retention_ram_size = 1K;
+platform_retention_ram_start = 0x000C0000;
+platform_retention_ram_end = platform_retention_ram_start + platform_retention_ram_size;
 
 
 /* All backup RAM size */

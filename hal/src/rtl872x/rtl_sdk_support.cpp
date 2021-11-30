@@ -191,17 +191,19 @@ extern "C" void HAL_Core_System_Reset(void) {
     // Disable global interrupt
     __disable_irq();
 
-    WDG_InitTypeDef WDG_InitStruct;
+    WDG_InitTypeDef WDG_InitStruct = {};
     u32 CountProcess;
     u32 DivFacProcess;
     BKUP_Set(BKUP_REG0, BIT_KM4SYS_RESET_HAPPEN);
     WDG_Scalar(50, &CountProcess, &DivFacProcess);
     WDG_InitStruct.CountProcess = CountProcess;
     WDG_InitStruct.DivFacProcess = DivFacProcess;
+    WDG_InitStruct.RstAllPERI = 0;
     WDG_Init(&WDG_InitStruct);
 
-    // FIXME: seems to mess with RSIP configuration perhaps?
-    *(uint32_t*)0x480003F8 |= 1<<26;
+    __DSB();
+    __ISB();
+
     WDG_Cmd(ENABLE);
     DelayMs(500);
 

@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-bool bootloaderUpdateIfPending(void);
+bool bootloaderUpdateIfPending(bool rsipEnabled);
 
 #ifdef __cplusplus
 }

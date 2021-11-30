@@ -51,6 +51,7 @@ class Platform(IntEnum):
     BSOM = 23
     B5SOM = 25
     TRACKER = 26
+    P2 = 32
 
 class StructSerializable(struct.Struct):
     def __init__(self, fmt):
@@ -290,6 +291,11 @@ def main():
             bin = bin[GEN3_RADIO_STACK_MBR_OFFSET:]
         if len(args.flag) == 0:
             flags = GEN3_RADIO_STACK_FLAGS
+
+    # Firty hack
+    if platform == Platform.P2:
+        args.address = 0x08014000
+        flags = ModuleFlags.DROP_MODULE_INFO
 
     m = Module(bin, args.address, platform, function, version, args.index, flags, dependencies, mcu=args.mcu)
     args.output.write(m.dump())

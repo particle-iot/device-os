@@ -196,10 +196,6 @@ void Set_System(void)
 
     // mpu_init();
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-    peripheralsClockEnable();
-#endif
-
     uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833);
     temp |= BIT_RFAFE_IND_VIO1833;
     HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833, temp);

@@ -78,7 +78,10 @@ static bool flash_copy(uintptr_t src_addr, uintptr_t dest_addr, size_t size) {
     return true;
 }
 
-bool bootloaderUpdateIfPending(void) {
+bool bootloaderUpdateIfPending(bool rsipEnabled) {
+    int ret = true;
+    bool rsip = rsipEnabled;
+
     flash_init();
 
     flash_update_info_t info = {};
@@ -88,17 +91,30 @@ bool bootloaderUpdateIfPending(void) {
     if ((info.magic_num == KM0_BOOTLOADER_UPDATE_MAGIC_NUMBER && info.size > 0)
             && (info.src_addr > OTA_REGION_LOWEST_ADDR && info.src_addr < OTA_REGION_HIGHEST_ADDR)
             && (info.dest_addr == KM4_BOOTLOADER_START_ADDRESS || info.dest_addr == KM0_PART1_START_ADDRESS)) {
-        if (Compute_CRC32((const uint8_t*)&info, sizeof(flash_update_info_t) - sizeof(info.crc32), NULL) == info.crc32) {
-            if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
-                return false;
-            }
+        if (computeCrc32((const uint8_t*)&info, sizeof(flash_update_info_t) - 4) != info.crc32) {
+            return false;
+        }
+        if (rsip && (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+            uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+            HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
+            rsip = false;
+        }
+        if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
+            ret = false;
+            goto done;
+        }
+        memset(&info, 0x00, sizeof(info));
+        if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
+            ret = false;
+            goto done;
         }
     }
 
-    memset(&info, 0x00, sizeof(info));
-    if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
-        hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1);
+done:
+    if (rsipEnabled && !rsip && (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control | BIT_LSYS_PLFM_FLASH_SCE));
     }
 
-    return true;
+    return ret;
 }
