@@ -43,6 +43,7 @@ void loop()
                 Serial1.printlnf("WIFI MAC: %s", tester.get_command_response());
                 break;
             case 'i':
+                tester.TEST_COMMAND();
                 break;
             default:
                 break;

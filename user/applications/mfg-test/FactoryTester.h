@@ -20,20 +20,23 @@ private:
     static const unsigned usb_buffer_length = 2048;
     char usb_buffer[usb_buffer_length];
 
-    static const String PASS;
-    static const String RESPONSE;
-    static const String ERROR;
-    static const String ERROR_CODE;
+    static const String IS_READY;
     static const String SET_DATA;
+    static const String BURN_DATA;
+    static const String VALIDATE_BURNED_DATA;
 
+    static const String PASS;
+    static const String ERRORS;
+    static const String FIELD;
+    static const String MESSAGE;
+    static const String CODE;
 
-    int executeCommand(TesterCommandType command, const char * commandData);
+    int setData(MfgTestKeyType command, const char * commandData);
+    bool burnData(Vector<int> &resultCodes, Vector<String> &resultStrings);
+
 
     int validateCommandData(const char * data, uint8_t * output_bytes, int output_bytes_length);
     int validateCommandString(const char * data, int expectedLength);
-
-    int bufferMTPData(uint8_t * data, int data_length, TesterMTPTypes mtp_type);
-    void print_mtp(void);
 
     int writeEfuse(bool physical, uint8_t * data, uint32_t length, uint32_t address);
     int readEfuse(bool physical, uint8_t * data, uint32_t length, uint32_t address);
@@ -41,6 +44,7 @@ private:
 public:
     FactoryTester() {
         memset(command_response, 0, sizeof(command_response));
+        memset(usb_buffer, 0, sizeof(usb_buffer));
     };
 
     void setup();
@@ -64,7 +68,7 @@ public:
     int SET_WIFI_MAC(const char * wifi_mac);
     int GET_WIFI_MAC();
     int GET_DEVICE_ID();
-    int IS_READY();
+    //int IS_READY();
     int TEST_COMMAND();
 
     char * get_command_response(void);
