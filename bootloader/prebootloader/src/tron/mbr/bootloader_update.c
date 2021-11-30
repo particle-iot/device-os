@@ -78,9 +78,9 @@ static bool flash_copy(uintptr_t src_addr, uintptr_t dest_addr, size_t size) {
     return true;
 }
 
-bool bootloaderUpdateIfPending(bool rsipEnabled) {
+bool bootloaderUpdateIfPending(void) {
     int ret = true;
-    bool rsip = rsipEnabled;
+    bool enableRsip = false;
 
     flash_init();
 
@@ -94,10 +94,11 @@ bool bootloaderUpdateIfPending(bool rsipEnabled) {
         if (computeCrc32((const uint8_t*)&info, sizeof(flash_update_info_t) - 4) != info.crc32) {
             return false;
         }
-        if (rsip && (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+        if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+            // Temporarily disable RSIP for memory copying, should leave the image in the OTA region as-is
             uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
             HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
-            rsip = false;
+            enableRsip = true;
         }
         if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
             ret = false;
@@ -111,7 +112,7 @@ bool bootloaderUpdateIfPending(bool rsipEnabled) {
     }
 
 done:
-    if (rsipEnabled && !rsip && (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+    if (enableRsip) {
         uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control | BIT_LSYS_PLFM_FLASH_SCE));
     }

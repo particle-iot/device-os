@@ -79,9 +79,11 @@ extern "C" int main() {
      * As a workaround, we can use AtomicSimpleStaticPool instead.
      */
 
-    rsipMaskConfig();
+    if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+        rsipMaskConfig();
+    }
 
-    if (!bootloaderUpdateIfPending(true)) {
+    if (!bootloaderUpdateIfPending()) {
         NVIC_SystemReset();
     }
 
