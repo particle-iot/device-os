@@ -341,12 +341,6 @@ void rtlLowLevelInit() {
     
     app_start_autoicg();
     app_pmc_patch();
-
-    /* Disable RSIP if it is enabled. Not needed after KM0 boot */
-    if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0 ) {
-        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
-        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
-    }
 }
 
 // app_pmu_init()
@@ -414,6 +408,14 @@ void rtlPowerOnBigCore() {
     InterruptDis(UART_LOG_IRQ_LP);
 
     km4_flash_highspeed_init();
+
+    /* Disable RSIP if it is enabled. Not needed after KM0 boot */
+    // Note: it should be executed after km4_flash_highspeed_init(), otherwise, the flash
+    // speed is lowered down if AES encryption is enabled.
+    if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0 ) {
+        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
+    }
 
     // FIXME: This might not be working correctly?
     // if (!SOCPS_DsleepWakeStatusGet()) {
