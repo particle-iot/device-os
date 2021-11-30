@@ -53,12 +53,12 @@ static bool isPart1ImageValid() {
 }
 
 RSIP_MaskDef rsipMask[] = {
-	/*MaskAddr,		MaskSize*/
-	{0x08002000,	2},     //Entry 0: 4K system data & 4K backup
-	/* customer can set here */
-	{0x0805F000,	1},     //Entry 1: boot info sector
-	{0xFFFFFFFF,	0xFF}, 	//Entry 2: can be used by users
-	{0xFFFFFFFF, 	0xFF}, 	//Entry 3: Reserved by Realtek. If RDP is not used, this entry can be used by users.
+    /*MaskAddr,     MaskSize*/
+    {0x08002000,    2},     //Entry 0: 4K system data & 4K backup
+    /* customer can set here */
+    {0x0805F000,    1},     //Entry 1: boot info sector
+    {0xFFFFFFFF,    0xFF},  //Entry 2: can be used by users
+    {0xFFFFFFFF,    0xFF},  //Entry 3: Reserved by Realtek. If RDP is not used, this entry can be used by users.
 };
 
 extern "C" void rsipMaskConfig(void) {
@@ -67,13 +67,10 @@ extern "C" void rsipMaskConfig(void) {
             if ((rsipMask[i].MaskAddr >= SPI_FLASH_BASE) && (rsipMask[i].MaskAddr <= 0x0FFFFFFF)) {
                 RSIP_OTF_Mask(i, rsipMask[i].MaskAddr, rsipMask[i].MaskSize, ENABLE);
             }
-		} else {
-			break;
+        } else {
+            break;
         }
-	}
-    // Fix the issue that this bit is cleared if executing "*(uint32_t*)0x480003F8 |= 1<<26;" in HAL_Core_System_Reset()
-    RSIP_REG_TypeDef* RSIP = ((RSIP_REG_TypeDef *) RSIP_REG_BASE);
-    RSIP->REG_OTF_DEC_CTRL |= OTF_FEN_OTFDEC;
+    }
 }
 
 extern "C" int main() {
