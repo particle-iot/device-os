@@ -239,6 +239,10 @@ GEN3_RADIO_STACK_FLAGS = ModuleFlags.DROP_MODULE_INFO
 GEN3_RADIO_STACK_DEPENDENCY = ModuleDependency(ModuleFunction.BOOTLOADER, 501)
 GEN3_RADIO_STACK_DEPENDENCY2 = ModuleDependency(ModuleFunction.SYSTEM_PART, 1321, 1)
 
+RTL_PLATFORMS = [Platform.P2]
+RTL_MBR_OFFSET = 0x08000000
+RTL_KM0_PART1_OFFSET = 0x08014000
+
 def main():
     platforms = [x.name.lower() for x in Platform]
     functions = [x.name.lower() for x in ModuleFunction]
@@ -246,7 +250,7 @@ def main():
     parser = argparse.ArgumentParser(description='Convert a raw binary into a Particle module binary')
     parser.add_argument('input', metavar='INPUT', type=argparse.FileType('rb'), help='Input raw bin file')
     parser.add_argument('output', metavar='OUTPUT', type=argparse.FileType('wb'), help='Output Particle module bin file')
-    parser.add_argument('--address', default=0, type=partial(int, base=0), help='Start address of the module')
+    parser.add_argument('--address', default=0, help='Start address of the module')
     parser.add_argument('--version', default=0, type=int, help='Module version (automatically derived for Gen 3 SoftDevice)')
     parser.add_argument('--platform', required=True, help='Module platform name', choices=platforms)
     parser.add_argument('--function', required=True, help='Module function', choices=functions)
@@ -260,6 +264,11 @@ def main():
     dependencies = [parse_dependency(x) for x in args.dependency]
     platform = Platform[args.platform.upper()]
     function = ModuleFunction[args.function.upper()]
+    if (args.address.startswith("0x")):
+        address = int(args.address, 16)
+    else:
+        address = int(args.address, 10)
+    index = args.index
     flags = reduce(lambda x, y: x|y, [ModuleFlags[x.upper()] for x in args.flag], ModuleFlags.NONE)
     version = args.version
 
@@ -285,19 +294,22 @@ def main():
         (version,) = struct.unpack_from('<H', bin, GEN3_RADIO_STACK_VERSION_OFFSET)
         if len(dependencies) == 0:
             dependencies = [GEN3_RADIO_STACK_DEPENDENCY, GEN3_RADIO_STACK_DEPENDENCY2]
-        if args.address == 0:
+        if address == 0:
             # Skip MBR
-            args.address = GEN3_RADIO_STACK_MBR_OFFSET
+            address = GEN3_RADIO_STACK_MBR_OFFSET
             bin = bin[GEN3_RADIO_STACK_MBR_OFFSET:]
         if len(args.flag) == 0:
             flags = GEN3_RADIO_STACK_FLAGS
 
-    # Firty hack
-    if platform == Platform.P2:
-        args.address = 0x08014000
-        flags = ModuleFlags.DROP_MODULE_INFO
+    if platform in RTL_PLATFORMS and function == ModuleFunction.BOOTLOADER:
+        if address == RTL_MBR_OFFSET:
+            flags = ModuleFlags.DROP_MODULE_INFO
+            index = 1
+        if address == RTL_KM0_PART1_OFFSET:
+            flags = ModuleFlags.DROP_MODULE_INFO
+            index = 2
 
-    m = Module(bin, args.address, platform, function, version, args.index, flags, dependencies, mcu=args.mcu)
+    m = Module(bin, address, platform, function, version, index, flags, dependencies, mcu=args.mcu)
     args.output.write(m.dump())
     print(m)
 
