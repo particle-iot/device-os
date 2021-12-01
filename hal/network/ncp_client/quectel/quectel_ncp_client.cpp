@@ -1309,7 +1309,7 @@ int QuectelNcpClient::registerNet() {
     resetRegistrationState();
 
     // Register GPRS, LET, NB-IOT network
-    r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
+    // r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
     //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     //r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
     //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -1335,17 +1335,19 @@ int QuectelNcpClient::registerNet() {
     }
 
     // BG95 Note: This is undocumented for BG95/BG77
-    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
-        // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
-        // Set to scan LTE only if not already set, take effect immediately
-        auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
-        int nwScanMode = -1;
-        r = CHECK_PARSER(respNwMode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
-        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-        r = CHECK_PARSER(respNwMode.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-        if (nwScanMode != 3) {
-            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M1) {
+        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
+            // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
+            // Set to scan LTE only if not already set, take effect immediately
+            auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
+            int nwScanMode = -1;
+            r = CHECK_PARSER(respNwMode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
+            CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+            r = CHECK_PARSER(respNwMode.readResult());
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            if (nwScanMode != 3) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+            }
         }
 
         // Configure Network Category to be Searched under LTE RAT
