@@ -66,6 +66,7 @@ extern "C" {
 
 #ifdef USE_SERIAL_FLASH
 #define EXTERNAL_FLASH_SIZE             (sFLASH_PAGESIZE * sFLASH_PAGECOUNT)
+#define EXTERNAL_FLASH_XIP_BASE         (INTERNAL_FLASH_START)
 #endif
 
 #include "flash_access.h"
