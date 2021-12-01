@@ -32,12 +32,6 @@ namespace protocol {
 
 namespace {
 
-#if PLATFORM_GEN >= 3
-const size_t BLOCK_SIZE = 1024;
-#else
-const size_t BLOCK_SIZE = 512;
-#endif
-
 /**
  * Maximum CoAP overhead per Describe request message:
  *
@@ -61,10 +55,9 @@ const size_t REQUEST_COAP_OVERHEAD = 14;
  */
 const size_t RESPONSE_COAP_OVERHEAD = 16;
 
-static_assert(BLOCK_SIZE + REQUEST_COAP_OVERHEAD <= MBEDTLS_SSL_MAX_CONTENT_LEN &&
-        BLOCK_SIZE + RESPONSE_COAP_OVERHEAD <= MBEDTLS_SSL_MAX_CONTENT_LEN, "BLOCK_SIZE is too large");
+static_assert(COAP_BLOCK_SIZE + REQUEST_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE &&
+        COAP_BLOCK_SIZE + RESPONSE_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE, "COAP_BLOCK_SIZE is too large");
 
-const unsigned RESPONSE_TIMEOUT = 90000;
 const size_t INITIAL_BUFFER_SIZE = 256;
 
 class CharVectorAppender: public Appender {
@@ -104,8 +97,8 @@ private:
 
 unsigned encodeBlockOption(unsigned num, bool m) {
     // RFC 7959, 2.2. Structure of a Block Option
-    static_assert(BLOCK_SIZE == 1024 || BLOCK_SIZE == 512, "Unsupported BLOCK_SIZE");
-    const unsigned szx = (BLOCK_SIZE == 1024) ? 6 /* 1024 bytes */ : 5 /* 512 bytes */;
+    static_assert(COAP_BLOCK_SIZE == 1024 || COAP_BLOCK_SIZE == 512, "Unsupported COAP_BLOCK_SIZE");
+    const unsigned szx = (COAP_BLOCK_SIZE == 1024) ? 6 /* 1024 bytes */ : 5 /* 512 bytes */;
     unsigned blockOpt = (num << 4) | szx;
     if (m) {
         blockOpt |= 0x08;
@@ -114,9 +107,9 @@ unsigned encodeBlockOption(unsigned num, bool m) {
 }
 
 bool decodeBlockOption(unsigned blockOpt, unsigned* num, bool* m) {
-    static_assert(BLOCK_SIZE == 1024 || BLOCK_SIZE == 512, "Unsupported BLOCK_SIZE");
+    static_assert(COAP_BLOCK_SIZE == 1024 || COAP_BLOCK_SIZE == 512, "Unsupported COAP_BLOCK_SIZE");
     const unsigned szx = blockOpt & 0x07;
-    if (!((BLOCK_SIZE == 1024 && szx == 6 /* 1024 bytes */) || (BLOCK_SIZE == 512 && szx == 5 /* 512 bytes */))) {
+    if (!((COAP_BLOCK_SIZE == 1024 && szx == 6 /* 1024 bytes */) || (COAP_BLOCK_SIZE == 512 && szx == 5 /* 512 bytes */))) {
         return false; // Unsupported block size
     }
     *num = blockOpt >> 4;
@@ -245,7 +238,7 @@ ProtocolError Description::receiveRequest(const Message& msg) {
     }
     if (hasMore) {
         if (respIndex >= resps_.size()) {
-            newResp.blockCount = (newResp.data.size() + BLOCK_SIZE - 1) / BLOCK_SIZE;
+            newResp.blockCount = (newResp.data.size() + COAP_BLOCK_SIZE - 1) / COAP_BLOCK_SIZE;
             if (!resps_.append(std::move(newResp))) {
                 return ProtocolError::NO_MEMORY;
             }
@@ -330,7 +323,7 @@ ProtocolError Description::processTimeouts() {
     int i = 0;
     do {
         const auto& resp = resps_.at(i);
-        if (now - resp.accessTime >= RESPONSE_TIMEOUT) {
+        if (now - resp.accessTime >= COAP_BLOCKWISE_RESPONSE_TIMEOUT) {
             LOG(WARN, "Blockwise response timeout");
             resps_.removeAt(i);
         } else {
@@ -442,11 +435,11 @@ ProtocolError Description::sendNextRequestBlock(Request* req, bool* hasMoreArg) 
     const char uriQuery = req->flags;
     enc.option(CoapOption::URI_QUERY, &uriQuery, sizeof(uriQuery));
     bool hasMore = false;
-    size_t offs = req->blockIndex * BLOCK_SIZE;
+    size_t offs = req->blockIndex * COAP_BLOCK_SIZE;
     size_t payloadSize = req->data.size() - offs;
     if (payloadSize > enc.maxPayloadSize() || req->blockIndex > 0) {
-        if (payloadSize > BLOCK_SIZE) {
-            payloadSize = BLOCK_SIZE;
+        if (payloadSize > COAP_BLOCK_SIZE) {
+            payloadSize = COAP_BLOCK_SIZE;
         }
         hasMore = offs + payloadSize < (size_t)req->data.size();
         const auto blockOpt = encodeBlockOption(req->blockIndex, hasMore);
@@ -485,7 +478,7 @@ ProtocolError Description::sendResponseBlock(const Response& resp, token_t token
     enc.id(0); // Encoded by the message channel
     enc.token((const char*)&token, sizeof(token));
     bool hasMore = false;
-    size_t offs = blockIndex * BLOCK_SIZE;
+    size_t offs = blockIndex * COAP_BLOCK_SIZE;
     size_t payloadSize = resp.data.size() - offs;
     if (payloadSize > enc.maxPayloadSize() || blockIndex > 0) {
         // RFC 7959, 2.4: Block-wise transfers can be used to GET resources whose representations
@@ -493,8 +486,8 @@ ProtocolError Description::sendResponseBlock(const Response& resp, token_t token
         // resources. In the latter case, the Block2 Option SHOULD be used in conjunction with the
         // ETag Option
         enc.option(CoapOption::ETAG, resp.etag);
-        if (payloadSize > BLOCK_SIZE) {
-            payloadSize = BLOCK_SIZE;
+        if (payloadSize > COAP_BLOCK_SIZE) {
+            payloadSize = COAP_BLOCK_SIZE;
         }
         hasMore = offs + payloadSize < (size_t)resp.data.size();
         const auto blockOpt = encodeBlockOption(blockIndex, hasMore);

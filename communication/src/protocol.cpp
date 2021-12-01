@@ -299,7 +299,7 @@ void Protocol::init(const SparkCallbacks &callbacks,
 			descriptor.size);
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-	firmwareUpdate.init(&channel, this->callbacks);
+	SPARK_ASSERT(firmwareUpdate.init(&channel, this->callbacks) == ProtocolError::NO_ERROR);
 #else
 	chunkedTransferCallbacks.init(&this->callbacks);
 	chunkedTransfer.init(&chunkedTransferCallbacks);

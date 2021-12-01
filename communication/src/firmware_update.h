@@ -128,7 +128,7 @@ public:
     FirmwareUpdate();
     ~FirmwareUpdate();
 
-    int init(MessageChannel* channel, const SparkCallbacks& callbacks);
+    ProtocolError init(MessageChannel* channel, const SparkCallbacks& callbacks);
     void destroy();
 
     ProtocolError startRequest(Message* msg);

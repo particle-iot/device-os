@@ -15,6 +15,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/coap_message_encoder.cpp
   ${DEVICE_OS_DIR}/communication/src/coap_message_decoder.cpp
   ${DEVICE_OS_DIR}/communication/src/firmware_update.cpp
+  ${DEVICE_OS_DIR}/communication/src/description.cpp
   ${DEVICE_OS_DIR}/communication/src/protocol_util.cpp
   ${DEVICE_OS_DIR}/services/src/system_error.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
@@ -22,6 +23,8 @@ add_executable( ${target_name}
   util/coap_message.cpp
   util/coap_message_channel.cpp
   util/protocol_callbacks.cpp
+  util/descriptor_callbacks.cpp
+  util/protocol_stub.cpp
   coap_reliability.cpp
   coap.cpp
   forward_message_channel.cpp
@@ -33,6 +36,7 @@ add_executable( ${target_name}
   coap_message_encoder.cpp
   coap_message_decoder.cpp
   firmware_update.cpp
+  description.cpp
 )
 
 # Set defines specific to target
@@ -40,7 +44,8 @@ target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
   PRIVATE HAL_PLATFORM_OTA_PROTOCOL_V3=1
   PRIVATE HAL_PLATFORM_ERROR_MESSAGES=1
-  PRIVATE MBEDTLS_SSL_MAX_CONTENT_LEN=4096
+  PRIVATE COAP_BLOCK_SIZE=1024
+  PRIVATE MBEDTLS_SSL_MAX_CONTENT_LEN=1500
 )
 
 # Set compiler flags specific to target

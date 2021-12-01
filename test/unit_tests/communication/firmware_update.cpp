@@ -52,7 +52,7 @@ public:
     FirmwareUpdateWrapper() :
             lastMsgId_(0),
             lastMsgToken_('a' - 1) {
-        REQUIRE(init(&channel_, callbacks_.get()) >= 0);
+        REQUIRE(init(&channel_, callbacks_.get()) == 0);
     }
 
     ~FirmwareUpdateWrapper() {

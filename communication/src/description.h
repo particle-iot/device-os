@@ -22,8 +22,18 @@
 
 #include "spark_wiring_vector.h"
 
+#include "hal_platform.h"
+
 #include <memory>
 #include <cstdint>
+
+#ifndef COAP_BLOCK_SIZE
+#if HAL_PLATFORM_GEN >= 3
+#define COAP_BLOCK_SIZE 1024;
+#else
+#define COAP_BLOCK_SIZE 512;
+#endif
+#endif // !defined(COAP_BLOCK_SIZE)
 
 namespace particle {
 
@@ -34,6 +44,8 @@ namespace protocol {
 class CoapMessageDecoder;
 class Protocol;
 class Message;
+
+const system_tick_t COAP_BLOCKWISE_RESPONSE_TIMEOUT = 90000;
 
 class Description {
 public:
