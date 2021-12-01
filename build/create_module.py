@@ -28,7 +28,7 @@ import zlib
 import hashlib
 import json
 import sys
-from functools import reduce
+from functools import reduce, partial
 
 class ModuleFunction(IntEnum):
     NONE = 0
@@ -245,7 +245,7 @@ def main():
     parser = argparse.ArgumentParser(description='Convert a raw binary into a Particle module binary')
     parser.add_argument('input', metavar='INPUT', type=argparse.FileType('rb'), help='Input raw bin file')
     parser.add_argument('output', metavar='OUTPUT', type=argparse.FileType('wb'), help='Output Particle module bin file')
-    parser.add_argument('--address', default=0, type=int, help='Start address of the module')
+    parser.add_argument('--address', default=0, type=partial(int, base=0), help='Start address of the module')
     parser.add_argument('--version', default=0, type=int, help='Module version (automatically derived for Gen 3 SoftDevice)')
     parser.add_argument('--platform', required=True, help='Module platform name', choices=platforms)
     parser.add_argument('--function', required=True, help='Module function', choices=functions)
