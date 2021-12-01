@@ -29,8 +29,12 @@ void performXipRead() {
     }
 }
 
-__attribute__((section(".xip.text"))) void performXipReadFromXipCode() {
-    performXipRead();
+__attribute__((section(".xip.text"), noinline)) void performXipReadFromXipCode() {
+    for (uint32_t* addr = (uint32_t*)EXTERNAL_FLASH_XIP_BASE; !exit && addr < (uint32_t*)(EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_SIZE); addr++) {
+        // We need to be doing something useful here, so that XIP accesses are not optimized out
+        uint32_t result = HAL_Core_Compute_CRC32((const uint8_t*)addr, sizeof(*addr));
+        (void)HAL_Core_Compute_CRC32((const uint8_t*)&result, sizeof(result));
+    }
 }
 
 test(EXFLASH_00_ConcurrentXipAndWriteErasureUsageStress) {
