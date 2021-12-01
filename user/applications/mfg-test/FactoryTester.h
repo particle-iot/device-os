@@ -33,7 +33,7 @@ private:
 
     int setData(MfgTestKeyType command, const char * commandData);
     bool burnData(Vector<int> &resultCodes, Vector<String> &resultStrings);
-
+    bool validateData(Vector<int> &resultCodes, Vector<String> &resultStrings);
 
     int validateCommandData(const char * data, uint8_t * output_bytes, int output_bytes_length);
     int validateCommandString(const char * data, int expectedLength);

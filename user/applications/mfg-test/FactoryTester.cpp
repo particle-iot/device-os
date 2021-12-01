@@ -50,6 +50,9 @@
 #define EFUSE_PROTECTION_CONFIGURATION_LOW  0x1C0
 #define EFUSE_PROTECTION_CONFIGURATION_HIGH 0x1C1
 
+#define EFUSE_FLASH_ENCRYPTION_KEY_LOCK_BITS (~(BIT(5)|BIT(2))) // Clear Bit 2,5 = Read, Write Forbidden
+#define EFUSE_SECURE_BOOT_KEY_LOCK_BITS (~(BIT(6))) // Clear Bit 6 = Write Forbidden
+
 #define EFUSE_SUCCESS 1
 #define EFUSE_FAILURE 0
 
@@ -99,6 +102,14 @@ static EfuseData efuseFields[EFUSE_DATA_MAX] = {
     {MFG_TEST_HW_VERSION,           false, false, hardwareVersion,         HARDWARE_VERSION_LENGTH,     EFUSE_USER_MTP + EFUSE_HARDWARE_VERSION_OFFSET},
     {MFG_TEST_HW_MODEL,             false, false, hardwareModel,           HARDWARE_MODEL_LENGTH,       EFUSE_USER_MTP + EFUSE_HARDWARE_MODEL_OFFSET}
 };
+
+static void print_bytes(uint8_t * buffer, int length){
+    for(int i = 0; i < length; i++){
+        SERIAL.printf("%02X", buffer[i]);
+        delay(1);
+    }
+    SERIAL.println("");
+}
 
 // Wrapper for a control request handle
 class Request {
@@ -217,9 +228,16 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
         JSONType firstType = firstData.type();
 
         SERIAL.printlnf("%s : %s : %d", firstKey, firstData.toString().data(), firstType); // DEBUG
+        bool isSetData = !strcmp(firstKey, SET_DATA);
+        bool isValidateBurnedData = !strcmp(firstKey, VALIDATE_BURNED_DATA);
 
-        // Identify main command type
-        if(!strcmp(firstKey, SET_DATA) && (firstType == JSON_TYPE_OBJECT)) {
+        if((isSetData || isValidateBurnedData) && (firstType == JSON_TYPE_OBJECT)) {
+            // Invalidate all currently buffered data
+            for(int i = 0; i < EFUSE_DATA_MAX; i++){
+                memset(efuseFields[i].data, 0x00, efuseFields[i].length);
+            }
+
+            // Process keys in main object
             JSONObjectIterator innerIterator(firstData);
             while (innerIterator.next()) {
                 const char * innerKey = innerIterator.name().data();
@@ -246,9 +264,10 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
         else if(!strcmp(firstKey, BURN_DATA)){
             allPassed = burnData(resultCodes, resultStrings);
         }
-        else if(!strcmp(firstKey, VALIDATE_BURNED_DATA)){
-            // TODO: Read data from efuse into local buffers
-            // Parse each key, compare to buffer
+        
+        if(isValidateBurnedData && allPassed){
+            // Compare the burned data against the data we just buffered to RAM, if all data is valid
+            allPassed = validateData(resultCodes, resultStrings);
         }
     }
 
@@ -298,7 +317,6 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
 
 // Validate and buffer provisioning data RAM
 int FactoryTester::setData(MfgTestKeyType command, const char * commandData) {
-
     int result = -1;
 
     switch (command) {
@@ -397,7 +415,7 @@ int FactoryTester::writeEfuse(bool physical, uint8_t * data, uint32_t length, ui
     if (physical) {
         for (i = 0; (i < length) && (eFuseWrite == EFUSE_SUCCESS); i++) {
             #if MOCK_EFUSE
-                physicalEfuseBuffer[address + i] = data[i];
+                physicalEfuseBuffer[address + i] &= data[i];
             #else
                 //eFuseWrite = EFUSE_PMAP_WRITE8(0, address + i, &data[i], L25EOUTVOLTAGE); // TODO: UNCOMMENT OUT FOR ACTUAL EFUSE WRITES
             #endif
@@ -414,10 +432,7 @@ int FactoryTester::writeEfuse(bool physical, uint8_t * data, uint32_t length, ui
 
         // // Debug
         // SERIAL.printlnf("logical eFuse write @ 0x%X", (unsigned int)(address));
-        // for(unsigned i = 0; i < length; i++){
-        //     SERIAL.printf("%02X", data[i]);
-        // }
-        // SERIAL.println("");
+        // print_bytes(data, length);
     }
 
     return (eFuseWrite == EFUSE_SUCCESS) ? 0 : SYSTEM_ERROR_NOT_ALLOWED;
@@ -446,11 +461,6 @@ int FactoryTester::readEfuse(bool physical, uint8_t * data, uint32_t length, uin
                 memcpy(data, logicalEfuseBuffer + address, length);
             }
         #endif
-    }
-
-    if(eFuseRead == EFUSE_FAILURE)
-    {
-        SERIAL.println("Error Reading eFuse");
     }
 
     // 0 = success, 1 = failure
@@ -537,6 +547,8 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
     // Write all buffered data to appropriate efuse locations (physical and logical)
     for(int i = 0; i < EFUSE_DATA_MAX; i++){
         EfuseData data = efuseFields[i];
+        SERIAL.printlnf("burning %d data.address: 0x%x, data.length %d", i, data.address, data.length); // debug
+        delay(10);
 
         if(data.isPhysicaleFuse || (data.json_key == MFG_TEST_WIFI_MAC)){
             int efuseWriteResult = writeEfuse(data.isPhysicaleFuse, data.data, data.length, data.address);
@@ -564,6 +576,57 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
     return true;
 }
 
+bool FactoryTester::validateData(Vector<int> &resultCodes, Vector<String> &resultStrings) {
+    // TEST CASES:
+    // 1) Not all data set (ie some data invalid)
+    // 2) Fail to read efuse
+    // 3) Lock bits not correct
+    // 4) Efuse data not correct
+
+    bool allMatch = true;
+    uint8_t burnedEfuseDataBuffer[32];
+    int efuseReadResult;
+    int compareResult;
+
+    // For each efuse item
+    for(int i = 0; i < EFUSE_DATA_MAX; i++){
+        EfuseData data = efuseFields[i];
+        SERIAL.printlnf("validating %d data.address: 0x%x, data.length %d", i, data.address, data.length); // debug
+        delay(10);
+
+        // Read the item into a default buffer, using efuse data parameters
+        // TODO: Handle failure to read flash key as expected
+        efuseReadResult = readEfuse(data.isPhysicaleFuse, burnedEfuseDataBuffer, data.length, data.address);
+        if(efuseReadResult != 0){
+            resultCodes[data.json_key] = efuseReadResult;
+            resultStrings[data.json_key] = "eFuse read failure";
+            return false;
+        }
+
+        // Special case for checking bits in configuration byte        
+        if((i == EFUSE_DATA_FLASH_ENCRYPTION_LOCK_BITS) || (i == EFUSE_DATA_SECURE_BOOT_LOCK_BITS)){
+            if((burnedEfuseDataBuffer[0] & data.data[0]) != burnedEfuseDataBuffer[0]){
+                resultCodes[data.json_key] = -1;
+                resultStrings[data.json_key] = "Key lock bits not cleared";
+                allMatch = false;
+                SERIAL.printlnf("efuse Byte: %x data byte %x", burnedEfuseDataBuffer[0], data.data[0]);
+            }
+            continue;
+        }
+        
+        // Compare the default buffer to the ram buffer
+        compareResult = memcmp(burnedEfuseDataBuffer, data.data, data.length);
+        if(compareResult != 0){
+            resultCodes[data.json_key] = efuseReadResult;
+            resultStrings[data.json_key] = "burned data does not match";  
+            allMatch = false;
+
+            print_bytes(burnedEfuseDataBuffer, data.length);//debug
+    }
+
+    return allMatch;
+}
+
 int FactoryTester::SET_FLASH_ENCRYPTION_KEY (const char * key) {
     EfuseData * flashKeyEfuse = &efuseFields[EFUSE_DATA_FLASH_ENCRYPTION_KEY];
     EfuseData * lockBits = &efuseFields[EFUSE_DATA_FLASH_ENCRYPTION_LOCK_BITS];
@@ -587,7 +650,9 @@ int FactoryTester::SET_FLASH_ENCRYPTION_KEY (const char * key) {
 
     flashKeyEfuse->isValid = true;
     
-    lockBits->data[0] = 0xDB; // Bit 2,5 = Read, Write Forbidden
+    uint8_t configurationByte = 0xFF;
+    readEfuse(true, &configurationByte, 1, EFUSE_PROTECTION_CONFIGURATION_LOW);
+    lockBits->data[0] = configurationByte & EFUSE_FLASH_ENCRYPTION_KEY_LOCK_BITS;
     lockBits->isValid = true;
     return 0;
 }
@@ -626,7 +691,9 @@ int FactoryTester::SET_SECURE_BOOT_KEY(const char * key) {
 
     secureBootKeyEfuse->isValid = true;
 
-    lockBits->data[0] = 0xBF; // Bit 6 = Write Forbidden
+    uint8_t configurationByte = 0xFF;
+    readEfuse(true, &configurationByte, 1, EFUSE_PROTECTION_CONFIGURATION_LOW);
+    lockBits->data[0] = configurationByte & EFUSE_SECURE_BOOT_KEY_LOCK_BITS;
     lockBits->isValid = true;
     return 0;
 }
