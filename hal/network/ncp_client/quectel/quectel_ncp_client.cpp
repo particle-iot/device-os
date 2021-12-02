@@ -1862,13 +1862,23 @@ int QuectelNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
-        // Power on, power on pulse >= 100ms
-        // NOTE: The BGPWR pin is inverted
-        HAL_GPIO_Write(BGPWR, 1);
-        HAL_Delay_Milliseconds(200);
-        HAL_GPIO_Write(BGPWR, 0);
+        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 ) {
+            // Power on, power on pulse >= 100ms
+            // NOTE: The BGPWR pin is inverted
+            HAL_GPIO_Write(BGPWR, 1);
+            HAL_Delay_Milliseconds(200);
+            HAL_GPIO_Write(BGPWR, 0);
+        } else {
+            // Power on, power on pulse 500ms - 1000ms
+            // XXX: Keeping it halfway between 500ms and 650ms, to avoid the power OFF timing of >=650ms
+            // NOTE: The BGPWR pin is inverted
+            HAL_GPIO_Write(BGPWR, 1);
+            HAL_Delay_Milliseconds(575);
+            HAL_GPIO_Write(BGPWR, 0);
+        }
 
         // After power on the device, we can't assume the device is ready for operation:
+        // BG95: status pin ready requires >= 2.1s, uart ready requires >= 2.5s
         // BG96: status pin ready requires >= 4.8s, uart ready requires >= 4.9s
         // EG91: status pin ready requires >= 10s, uart ready requires >= 12s
         if (waitModemPowerState(1, 15000)) {
@@ -1891,13 +1901,23 @@ int QuectelNcpClient::modemPowerOff() {
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
 
         LOG(TRACE, "Powering modem off");
-        // Power off, power off pulse >= 650ms
-        // NOTE: The BGRST pin is inverted
-        HAL_GPIO_Write(BGPWR, 1);
-        HAL_Delay_Milliseconds(650);
-        HAL_GPIO_Write(BGPWR, 0);
+
+        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 ) {
+            // Power off, power off pulse >= 650ms
+            // NOTE: The BGRST pin is inverted
+            HAL_GPIO_Write(BGPWR, 1);
+            HAL_Delay_Milliseconds(650);
+            HAL_GPIO_Write(BGPWR, 0);
+        } else {
+            // Power off, power off pulse >= 650ms
+            // NOTE: The BGRST pin is inverted
+            HAL_GPIO_Write(BGPWR, 1);
+            HAL_Delay_Milliseconds(650);
+            HAL_GPIO_Write(BGPWR, 0);
+        }
 
         // Verify that the module was powered down by checking the status pin (BGVINT)
+        // BG95: >=1.3s
         // BG96: >=2s
         // EG91: >=30s
         if (waitModemPowerState(0, 30000)) {
