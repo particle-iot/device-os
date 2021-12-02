@@ -27,6 +27,14 @@ private:
 
     static const String PASS;
     static const String ERRORS;
+
+    static const String EFUSE_READ_FAILURE;
+    static const String EFUSE_WRITE_FAILURE;
+    static const String DATA_DOES_NOT_MATCH;
+    static const String NO_VALID_DATA_BUFFERED;
+    static const String RSIP_ENABLE_FAILURE;
+    static const String ALREADY_PROVISIONED;
+    
     static const String FIELD;
     static const String MESSAGE;
     static const String CODE;
@@ -34,6 +42,7 @@ private:
     int setData(MfgTestKeyType command, const char * commandData);
     bool burnData(Vector<int> &resultCodes, Vector<String> &resultStrings);
     bool validateData(Vector<int> &resultCodes, Vector<String> &resultStrings);
+    bool isProvisioned();
 
     int validateCommandData(const char * data, uint8_t * output_bytes, int output_bytes_length);
     int validateCommandString(const char * data, int expectedLength);

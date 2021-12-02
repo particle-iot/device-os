@@ -56,9 +56,11 @@
 #define EFUSE_SUCCESS 1
 #define EFUSE_FAILURE 0
 
+// Logical efuse buffer used for BOTH mocking and real efuse read operations
 #define LOGICAL_EFUSE_SIZE 1024
 static uint8_t logicalEfuseBuffer[LOGICAL_EFUSE_SIZE];
 
+// Physical buffer used ONLY for mocking physical efuse read/writes
 #define PHYSICAL_EFUSE_SIZE 512
 static uint8_t physicalEfuseBuffer[PHYSICAL_EFUSE_SIZE];
 
@@ -188,6 +190,13 @@ const String FactoryTester::VALIDATE_BURNED_DATA = "VALIDATE_BURNED_DATA";
 const String FactoryTester::PASS = "\"pass\"";
 const String FactoryTester::ERRORS = "\"errors\"";
 
+const String FactoryTester::EFUSE_READ_FAILURE = "\"Failed to read burned data\"";
+const String FactoryTester::EFUSE_WRITE_FAILURE = "\"Failed to burn data\"";
+const String FactoryTester::DATA_DOES_NOT_MATCH = "\"Burned data does not match\"";
+const String FactoryTester::NO_VALID_DATA_BUFFERED = "\"No valid data buffered\"";
+const String FactoryTester::RSIP_ENABLE_FAILURE = "\"Failed to enable RSIP\"";
+const String FactoryTester::ALREADY_PROVISIONED = "\"Already provisioned with same data\"";
+
 const String FactoryTester::FIELD  = "\"field\"";
 const String FactoryTester::MESSAGE  = "\"message\"";
 const String FactoryTester::CODE = "\"code\"";
@@ -208,18 +217,21 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
     SERIAL.printlnf("USB request size %d type %d request data length: %d ", request->size, request->type, request->request_size);// DEBUG
     SERIAL.printlnf("data: %s", usb_buffer); // DEBUG
 
-    delay(1000);// DEBUG
+    delay(100);// DEBUG
 
-    bool allPassed = true;
+    bool allPassed = false;
 
-    static const int keyCount = MFG_TEST_END;
-    Vector<int> resultCodes(keyCount);
-    Vector<String> resultStrings(keyCount);
+    static const int KEY_COUNT = MFG_TEST_END;
+    Vector<int> resultCodes(KEY_COUNT);
+    Vector<String> resultStrings(KEY_COUNT);
 
     this->command_response[0] = 0;
     Request response;
 
     CHECK(response.init(request));
+    bool isSetData;
+    bool isValidateBurnedData;
+    bool isSetDataAndProvisioned;
 
     JSONObjectIterator it(response.data());
     while (it.next()) {
@@ -228,14 +240,17 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
         JSONType firstType = firstData.type();
 
         SERIAL.printlnf("%s : %s : %d", firstKey, firstData.toString().data(), firstType); // DEBUG
-        bool isSetData = !strcmp(firstKey, SET_DATA);
-        bool isValidateBurnedData = !strcmp(firstKey, VALIDATE_BURNED_DATA);
+        isSetData = !strcmp(firstKey, SET_DATA);
+        isValidateBurnedData = !strcmp(firstKey, VALIDATE_BURNED_DATA);
+        isSetDataAndProvisioned = isSetData & isProvisioned();
 
-        if((isSetData || isValidateBurnedData) && (firstType == JSON_TYPE_OBJECT)) {
+        if(isSetData || isValidateBurnedData) {
             // Invalidate all currently buffered data
             for(int i = 0; i < EFUSE_DATA_MAX; i++){
+                efuseFields[i].isValid = false;
                 memset(efuseFields[i].data, 0x00, efuseFields[i].length);
             }
+            allPassed = true;
 
             // Process keys in main object
             JSONObjectIterator innerIterator(firstData);
@@ -244,10 +259,10 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
                 const char * innerData = (const char *)innerIterator.value().toString(); // TODO: non string types?
 
                 SERIAL.printlnf("%s : %s", innerKey, innerData); // DEBUG
-                delay(50);
+                delay(10);
 
                 // Parse data from each key
-                for (int i = 0; i < keyCount; i++) {
+                for (int i = 0; i < KEY_COUNT; i++) {
                     if(strcmp(innerKey, JSON_KEYS[i]) == 0){
                         int set_data_result = setData((MfgTestKeyType)i, innerData);
                         resultCodes[i] = set_data_result;
@@ -259,14 +274,14 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
             }
         }
         else if(!strcmp(firstKey, IS_READY)){
-            allPassed = true; // do nothing really
+            allPassed = true;
         }
         else if(!strcmp(firstKey, BURN_DATA)){
             allPassed = burnData(resultCodes, resultStrings);
         }
         
-        if(isValidateBurnedData && allPassed){
-            // Compare the burned data against the data we just buffered to RAM, if all data is valid
+        if(allPassed && (isValidateBurnedData || isSetDataAndProvisioned)) {
+            // Compare the burned data against the data we just buffered to RAM
             allPassed = validateData(resultCodes, resultStrings);
         }
     }
@@ -288,7 +303,7 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
 
     // Send json response
     const int r = CHECK(
-        response.reply([allPassed, resultCodes, resultStrings, this](JSONWriter& w) {
+        response.reply([allPassed, resultCodes, resultStrings, isSetDataAndProvisioned, this](JSONWriter& w) {
         w.beginObject();
             w.name(PASS).value(allPassed);
 
@@ -307,6 +322,9 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
                     }    
                 }
                 w.endArray();
+            }
+            else if(isSetDataAndProvisioned) {
+                w.name(MESSAGE).value(ALREADY_PROVISIONED);
             }
         w.endObject();
     }));
@@ -518,6 +536,28 @@ int FactoryTester::validateCommandString(const char * data, int expectedLength) 
     return 0;
 }
 
+// Return true if any data is written to efuse
+bool FactoryTester::isProvisioned() {
+    uint8_t burnedEfuseDataBuffer[32];
+    int efuseReadResult;
+
+    for(unsigned i = 0; i < EFUSE_DATA_MAX; i++){
+        EfuseData data = efuseFields[i];
+        efuseReadResult = readEfuse(data.isPhysicaleFuse, burnedEfuseDataBuffer, data.length, data.address);
+        if(efuseReadResult != 0){
+            // If any efuse data fails to read, it must be locked, and therefore provisioned
+            return true;
+        }
+
+        for(unsigned i = 0; i < data.length; i++) {
+            if(burnedEfuseDataBuffer[i] != 0xFF){ // TODO: How will this handle P2 units with WIFI mac already burned?
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStrings) {
     // TEST CASES
@@ -535,7 +575,7 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
         EfuseData data = efuseFields[i];
         if(!data.isValid) {
             resultCodes[data.json_key] = -1;
-            resultStrings[data.json_key] = "no valid data buffered";
+            resultStrings[data.json_key] = NO_VALID_DATA_BUFFERED;
             allBufferedDataValid = false;
         }
     }
@@ -554,7 +594,7 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
             int efuseWriteResult = writeEfuse(data.isPhysicaleFuse, data.data, data.length, data.address);
             if(efuseWriteResult != 0){
                 resultCodes[data.json_key] = efuseWriteResult;
-                resultStrings[data.json_key] = "eFuse write failure";
+                resultStrings[data.json_key] = EFUSE_WRITE_FAILURE;
                 return false;
             }
         }
@@ -569,13 +609,23 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
     efuseWriteResult = writeEfuse(false, userMTPBuffer, USER_MTP_DATA_LENGTH, EFUSE_USER_MTP);
     if(efuseWriteResult != 0){
         resultCodes[MFG_TEST_SERIAL_NUMBER] = efuseWriteResult;
-        resultStrings[MFG_TEST_SERIAL_NUMBER] = "User MTP logical eFuse write failure";
+        resultStrings[MFG_TEST_SERIAL_NUMBER] = EFUSE_WRITE_FAILURE;
         return false;
+    }
+
+    // Enable RSIP as last step if everything else succeeded
+    efuseWriteResult = ENABLE_FLASH_ENCRYPTION();
+    if(efuseWriteResult != 0) {
+        resultCodes[MFG_TEST_FLASH_ENCRYPTION_KEY] = -1;
+        resultStrings[MFG_TEST_FLASH_ENCRYPTION_KEY] = RSIP_ENABLE_FAILURE;
+        return false;   
     }
 
     return true;
 }
 
+// Read data from efuse, compare to ram buffers
+// If all data matches, return true, else false
 bool FactoryTester::validateData(Vector<int> &resultCodes, Vector<String> &resultStrings) {
     // TEST CASES:
     // 1) Not all data set (ie some data invalid)
@@ -594,34 +644,39 @@ bool FactoryTester::validateData(Vector<int> &resultCodes, Vector<String> &resul
         SERIAL.printlnf("validating %d data.address: 0x%x, data.length %d", i, data.address, data.length); // debug
         delay(10);
 
-        // Read the item into a default buffer, using efuse data parameters
+        // Check that all buffered data is valid, if not return    
+        if(!data.isValid) {
+            resultCodes[data.json_key] = -1;
+            resultStrings[data.json_key] = NO_VALID_DATA_BUFFERED;
+            allMatch = false;
+            continue;
+        }
+
+        // Read the item into a generic buffer, using efuse data parameters
         // TODO: Handle failure to read flash key as expected
         efuseReadResult = readEfuse(data.isPhysicaleFuse, burnedEfuseDataBuffer, data.length, data.address);
         if(efuseReadResult != 0){
-            resultCodes[data.json_key] = efuseReadResult;
-            resultStrings[data.json_key] = "eFuse read failure";
-            return false;
+            resultCodes[data.json_key] = -1;
+            resultStrings[data.json_key] = EFUSE_READ_FAILURE;
+            allMatch = false;
         }
 
         // Special case for checking bits in configuration byte        
-        if((i == EFUSE_DATA_FLASH_ENCRYPTION_LOCK_BITS) || (i == EFUSE_DATA_SECURE_BOOT_LOCK_BITS)){
-            if((burnedEfuseDataBuffer[0] & data.data[0]) != burnedEfuseDataBuffer[0]){
-                resultCodes[data.json_key] = -1;
-                resultStrings[data.json_key] = "Key lock bits not cleared";
-                allMatch = false;
-                SERIAL.printlnf("efuse Byte: %x data byte %x", burnedEfuseDataBuffer[0], data.data[0]);
-            }
-            continue;
+        if((i == EFUSE_DATA_FLASH_ENCRYPTION_LOCK_BITS) || (i == EFUSE_DATA_SECURE_BOOT_LOCK_BITS)) {
+            compareResult = ((burnedEfuseDataBuffer[0] & data.data[0]) != burnedEfuseDataBuffer[0]);
+        }
+        else {
+            // Compare the default buffer to the ram buffer
+            compareResult = memcmp(burnedEfuseDataBuffer, data.data, data.length);    
         }
         
-        // Compare the default buffer to the ram buffer
-        compareResult = memcmp(burnedEfuseDataBuffer, data.data, data.length);
-        if(compareResult != 0){
-            resultCodes[data.json_key] = efuseReadResult;
-            resultStrings[data.json_key] = "burned data does not match";  
+        if(compareResult != 0) {
+            resultCodes[data.json_key] = -1;
+            resultStrings[data.json_key] = DATA_DOES_NOT_MATCH;  
             allMatch = false;
 
             print_bytes(burnedEfuseDataBuffer, data.length);//debug
+        }
     }
 
     return allMatch;
@@ -633,15 +688,6 @@ int FactoryTester::SET_FLASH_ENCRYPTION_KEY (const char * key) {
     // TODO: Should good data be kept if given bad data? Or always invalidate buffered data when given new data?
     flashKeyEfuse->isValid = false; 
     lockBits->isValid = false;
-
-    // Check to make sure a key is not already written
-    readEfuse(true, flashKeyEfuse->data, flashKeyEfuse->length, flashKeyEfuse->address);
-    for (int i = 0; i < FLASH_ENCRYPTION_KEY_LENGTH; i++) {
-        if(flashKeyEfuse->data[i] != 0xFF) {
-            SERIAL.printlnf("ERROR: Flash Encryption key already written! Index: %d, value 0x%02X", i, flashKeyEfuse->data[i]);
-            return SYSTEM_ERROR_ALREADY_EXISTS;
-        }
-    }
 
     int result = validateCommandData(key, flashKeyEfuse->data, flashKeyEfuse->length);
     if(result != 0) {
@@ -660,10 +706,7 @@ int FactoryTester::SET_FLASH_ENCRYPTION_KEY (const char * key) {
 int FactoryTester::ENABLE_FLASH_ENCRYPTION(void) {
     uint8_t systemConfigByte = 0;
     readEfuse(false, &systemConfigByte, 1, EFUSE_SYSTEM_CONFIG);
-    //SERIAL.printlnf("System Config: %02X", systemConfigByte);
-
     systemConfigByte |= (BIT(2));
-    //SERIAL.printlnf("System Config: %02X", systemConfigByte);
 
     return this->writeEfuse(false, &systemConfigByte, sizeof(systemConfigByte), EFUSE_SYSTEM_CONFIG);
 }
@@ -674,15 +717,6 @@ int FactoryTester::SET_SECURE_BOOT_KEY(const char * key) {
 
     secureBootKeyEfuse->isValid = false; 
     lockBits->isValid = false;
-
-    // Check to make sure a key is not already written
-    readEfuse(true, secureBootKeyEfuse->data, secureBootKeyEfuse->length, secureBootKeyEfuse->address);
-    for (int i = 0; i < FLASH_ENCRYPTION_KEY_LENGTH; i++) {
-        if(secureBootKeyEfuse->data[i] != 0xFF) {
-            SERIAL.printlnf("ERROR: Flash Encryption key already written! Index: %d, value 0x%02X", i, secureBootKeyEfuse->data[i]);
-            return SYSTEM_ERROR_ALREADY_EXISTS;
-        }
-    }
 
     int result = validateCommandData(key, secureBootKeyEfuse->data, secureBootKeyEfuse->length);
     if(result != 0) {
