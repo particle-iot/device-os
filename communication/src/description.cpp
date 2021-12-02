@@ -24,6 +24,8 @@
 #include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
 
+#include "mbedtls_config.h"
+
 #include <algorithm>
 
 namespace particle {

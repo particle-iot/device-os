@@ -29,9 +29,9 @@
 
 #ifndef COAP_BLOCK_SIZE
 #if HAL_PLATFORM_GEN >= 3
-#define COAP_BLOCK_SIZE 1024;
+#define COAP_BLOCK_SIZE 1024
 #else
-#define COAP_BLOCK_SIZE 512;
+#define COAP_BLOCK_SIZE 512
 #endif
 #endif // !defined(COAP_BLOCK_SIZE)
 
