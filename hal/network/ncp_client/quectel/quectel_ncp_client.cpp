@@ -1776,7 +1776,9 @@ int QuectelNcpClient::processEventsImpl() {
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
     // Check GPRS, LET, NB-IOT network registration status
-    CHECK_PARSER(parser_.execCommand("AT+CEER"));// TODO unknown on BG95, BG77
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
+        CHECK_PARSER(parser_.execCommand("AT+CEER")); // Seems to stall the modem on BG95-MF
+    }
     CHECK_PARSER(parser_.execCommand("AT+CMEE?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     //CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
