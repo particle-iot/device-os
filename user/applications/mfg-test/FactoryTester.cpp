@@ -1,11 +1,11 @@
 #include "application.h"
 #include "Particle.h"
 #include "check.h"
+#include "deviceid_hal.h"
 
 #include "FactoryTester.h"
 #include "TesterCommandTypes.h"
 
-// Tron is platform 32
 #if PLATFORM_ID == PLATFORM_TRON 
     extern "C" {
     #define BOOLEAN AMBD_SDK_BOOLEAN
@@ -74,7 +74,7 @@ static uint8_t serialNumber[SERIAL_NUMBER_LENGTH];
 static uint8_t hardwareVersion[HARDWARE_VERSION_LENGTH];
 static uint8_t hardwareModel[HARDWARE_MODEL_LENGTH];
 
-const String JSON_KEYS[MFG_TEST_END] = {
+static const String JSON_KEYS[MFG_TEST_END] = {
     "flash_encryption_key",
     "secure_boot_key",
     "wifi_mac",
@@ -105,6 +105,7 @@ static EfuseData efuseFields[EFUSE_DATA_MAX] = {
     {MFG_TEST_HW_MODEL,             false, false, hardwareModel,           HARDWARE_MODEL_LENGTH,       EFUSE_USER_MTP + EFUSE_HARDWARE_MODEL_OFFSET}
 };
 
+// Debug helper
 static void print_bytes(uint8_t * buffer, int length){
     for(int i = 0; i < length; i++){
         SERIAL.printf("%02X", buffer[i]);
@@ -185,6 +186,7 @@ const String FactoryTester::IS_READY = "IS_READY";
 const String FactoryTester::SET_DATA = "SET_DATA";
 const String FactoryTester::BURN_DATA = "BURN_DATA";
 const String FactoryTester::VALIDATE_BURNED_DATA = "VALIDATE_BURNED_DATA";
+const String FactoryTester::GET_DEVICE_ID = "GET_DEVICE_ID";
 
 // Output strings
 const String FactoryTester::PASS = "\"pass\"";
@@ -214,56 +216,58 @@ void FactoryTester::setup() {
 int FactoryTester::processUSBRequest(ctrl_request* request) {
     memset(usb_buffer, 0x00, sizeof(usb_buffer));
     memcpy(usb_buffer, request->request_data, request->request_size);
+
     SERIAL.printlnf("USB request size %d type %d request data length: %d ", request->size, request->type, request->request_size);// DEBUG
     SERIAL.printlnf("data: %s", usb_buffer); // DEBUG
-
     delay(100);// DEBUG
-
-    bool allPassed = false;
 
     static const int KEY_COUNT = MFG_TEST_END;
     Vector<int> resultCodes(KEY_COUNT);
     Vector<String> resultStrings(KEY_COUNT);
-
     this->command_response[0] = 0;
+
     Request response;
-
     CHECK(response.init(request));
-    bool isSetData;
-    bool isValidateBurnedData;
-    bool isSetDataAndProvisioned;
 
+    bool allPassed = false;
+    bool isSetData = false;
+    bool isValidateBurnedData = false;
+    bool isSetDataAndProvisioned = false;
+    bool isGetDeviceId = false;
+
+    // Pick apart the JSON command
     JSONObjectIterator it(response.data());
     while (it.next()) {
-        const char * firstKey = it.name().data();
+        String firstKey(it.name().data());
         JSONValue firstData = it.value();
         JSONType firstType = firstData.type();
 
-        SERIAL.printlnf("%s : %s : %d", firstKey, firstData.toString().data(), firstType); // DEBUG
-        isSetData = !strcmp(firstKey, SET_DATA);
-        isValidateBurnedData = !strcmp(firstKey, VALIDATE_BURNED_DATA);
+        SERIAL.printlnf("%s : %s : %d", firstKey.c_str(), firstData.toString().data(), firstType); // DEBUG
+
+        isSetData = (firstKey == SET_DATA);
+        isValidateBurnedData = (firstKey == VALIDATE_BURNED_DATA);
         isSetDataAndProvisioned = isSetData & isProvisioned();
 
         if(isSetData || isValidateBurnedData) {
+            allPassed = true;
             // Invalidate all currently buffered data
             for(int i = 0; i < EFUSE_DATA_MAX; i++){
                 efuseFields[i].isValid = false;
                 memset(efuseFields[i].data, 0x00, efuseFields[i].length);
             }
-            allPassed = true;
 
             // Process keys in main object
             JSONObjectIterator innerIterator(firstData);
             while (innerIterator.next()) {
-                const char * innerKey = innerIterator.name().data();
+                String innerKey(innerIterator.name().data());
                 const char * innerData = (const char *)innerIterator.value().toString(); // TODO: non string types?
 
-                SERIAL.printlnf("%s : %s", innerKey, innerData); // DEBUG
+                SERIAL.printlnf("%s : %s", innerKey.c_str(), innerData); // DEBUG
                 delay(10);
 
                 // Parse data from each key
                 for (int i = 0; i < KEY_COUNT; i++) {
-                    if(strcmp(innerKey, JSON_KEYS[i]) == 0){
+                    if(innerKey == JSON_KEYS[i]) {
                         int set_data_result = setData((MfgTestKeyType)i, innerData);
                         resultCodes[i] = set_data_result;
                         resultStrings[i] = this->command_response[0] != 0 ? this->command_response : "";
@@ -273,11 +277,15 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
                 }
             }
         }
-        else if(!strcmp(firstKey, IS_READY)){
+        else if(firstKey == IS_READY){
             allPassed = true;
         }
-        else if(!strcmp(firstKey, BURN_DATA)){
+        else if(firstKey == BURN_DATA){
             allPassed = burnData(resultCodes, resultStrings);
+        }
+        else if(firstKey == GET_DEVICE_ID){
+            isGetDeviceId = true;
+            allPassed = getDeviceId();
         }
         
         if(allPassed && (isValidateBurnedData || isSetDataAndProvisioned)) {
@@ -286,24 +294,21 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
         }
     }
 
-
-    SERIAL.printlnf("allPassed: %d", allPassed); // DEBUG
-
     // DEBUG:
+    SERIAL.printlnf("allPassed: %d", allPassed); // DEBUG
     for (int i = 0; i < resultCodes.size(); i++){
         if (resultCodes[i] != 0xFF) {
-            SERIAL.printlnf("resultCodes: %d %d", i, resultCodes[i]); // DEBUG
-            delay(50);
+            SERIAL.printlnf("resultCodes: %d %d", i, resultCodes[i]);
+            delay(10);
         }
         if (resultStrings[i] != ""){
-            SERIAL.printlnf("resultStrings: %d %s", i, resultStrings[i].c_str()); // DEBUG
-            delay(50);
+            SERIAL.printlnf("resultStrings: %d %s", i, resultStrings[i].c_str());
+            delay(10);
         }
     }
 
-    // Send json response
-    const int r = CHECK(
-        response.reply([allPassed, resultCodes, resultStrings, isSetDataAndProvisioned, this](JSONWriter& w) {
+    // Response for IS_READY, SET_DATA, BURN_DATA, VALIDATE_BURNED_DATA
+    auto commandResponse = [allPassed, resultCodes, resultStrings, isSetDataAndProvisioned](JSONWriter& w) {
         w.beginObject();
             w.name(PASS).value(allPassed);
 
@@ -327,7 +332,25 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
                 w.name(MESSAGE).value(ALREADY_PROVISIONED);
             }
         w.endObject();
-    }));
+    };
+
+    // Separate response for GET_DEVICE_ID... kind of sloppy.
+    char * device_id = this->command_response;
+    auto getDeviceIdResponse = [device_id](JSONWriter& w){
+        w.beginObject();
+            w.name(PASS).value(true);
+            w.name("device_id").value(device_id);
+        w.endObject();
+    };
+
+    // Send response.
+    int r;
+    if(isGetDeviceId) {
+        r = CHECK(response.reply(getDeviceIdResponse));
+    }
+    else {
+        r = CHECK(response.reply(commandResponse));
+    }
 
     response.done(r);
     return r;
@@ -339,25 +362,25 @@ int FactoryTester::setData(MfgTestKeyType command, const char * commandData) {
 
     switch (command) {
         case MFG_TEST_FLASH_ENCRYPTION_KEY:
-            result = this->SET_FLASH_ENCRYPTION_KEY(commandData);
+            result = this->setFlashEncryptionKey(commandData);
             break;   
         case MFG_TEST_SECURE_BOOT_KEY:
-            result = this->SET_SECURE_BOOT_KEY(commandData);
+            result = this->setSecureBootKey(commandData);
             break;   
         case MFG_TEST_SERIAL_NUMBER:
-            result = this->SET_SERIAL_NUMBER(commandData);
+            result = this->setSerialNumber(commandData);
             break;   
         case MFG_TEST_MOBILE_SECRET:
-            result = this->SET_MOBILE_SECRET(commandData);
+            result = this->setMobileSecret(commandData);
             break;  
         case MFG_TEST_HW_VERSION:
-            result = this->SET_HW_VERSION(commandData);
+            result = this->setHardwareVersion(commandData);
             break;  
         case MFG_TEST_HW_MODEL:
-            result = this->SET_HW_MODEL(commandData);
+            result = this->setHardwareModel(commandData);
             break;
         case MFG_TEST_WIFI_MAC:
-            result = this->SET_WIFI_MAC(commandData);
+            result = this->setWifiMac(commandData);
             break;
         default:
         case MFG_TEST_END:
@@ -560,12 +583,6 @@ bool FactoryTester::isProvisioned() {
 }
 
 bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStrings) {
-    // TEST CASES
-    // 1) Buffered data is not all marked valid   X
-    // 2) Individual efuse write fails            X
-    // 3) User MTP logical efuse write fails      X
-    // 4) Everything works                        X    
-
     bool allBufferedDataValid = true;
     int efuseWriteResult;
     uint8_t userMTPBuffer[USER_MTP_DATA_LENGTH] = {0x00};
@@ -587,7 +604,7 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
     // Write all buffered data to appropriate efuse locations (physical and logical)
     for(int i = 0; i < EFUSE_DATA_MAX; i++){
         EfuseData data = efuseFields[i];
-        SERIAL.printlnf("burning %d data.address: 0x%x, data.length %d", i, data.address, data.length); // debug
+        SERIAL.printlnf("burning %d data.address: 0x%lx, data.length %lu", i, data.address, data.length); // debug
         delay(10);
 
         if(data.isPhysicaleFuse || (data.json_key == MFG_TEST_WIFI_MAC)){
@@ -614,7 +631,7 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
     }
 
     // Enable RSIP as last step if everything else succeeded
-    efuseWriteResult = ENABLE_FLASH_ENCRYPTION();
+    efuseWriteResult = setFlashEncryption();
     if(efuseWriteResult != 0) {
         resultCodes[MFG_TEST_FLASH_ENCRYPTION_KEY] = -1;
         resultStrings[MFG_TEST_FLASH_ENCRYPTION_KEY] = RSIP_ENABLE_FAILURE;
@@ -627,12 +644,6 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
 // Read data from efuse, compare to ram buffers
 // If all data matches, return true, else false
 bool FactoryTester::validateData(Vector<int> &resultCodes, Vector<String> &resultStrings) {
-    // TEST CASES:
-    // 1) Not all data set (ie some data invalid)
-    // 2) Fail to read efuse
-    // 3) Lock bits not correct
-    // 4) Efuse data not correct
-
     bool allMatch = true;
     uint8_t burnedEfuseDataBuffer[32];
     int efuseReadResult;
@@ -641,7 +652,7 @@ bool FactoryTester::validateData(Vector<int> &resultCodes, Vector<String> &resul
     // For each efuse item
     for(int i = 0; i < EFUSE_DATA_MAX; i++){
         EfuseData data = efuseFields[i];
-        SERIAL.printlnf("validating %d data.address: 0x%x, data.length %d", i, data.address, data.length); // debug
+        SERIAL.printlnf("validating %d data.address: 0x%lx, data.length %lu", i, data.address, data.length); // debug
         delay(10);
 
         // Check that all buffered data is valid, if not return    
@@ -652,8 +663,12 @@ bool FactoryTester::validateData(Vector<int> &resultCodes, Vector<String> &resul
             continue;
         }
 
+        // Flash encryption key is unreadable after data is burned, no way to explicitly validate it, skip it
+        if(i == EFUSE_DATA_FLASH_ENCRYPTION_KEY){
+            continue;
+        }
+
         // Read the item into a generic buffer, using efuse data parameters
-        // TODO: Handle failure to read flash key as expected
         efuseReadResult = readEfuse(data.isPhysicaleFuse, burnedEfuseDataBuffer, data.length, data.address);
         if(efuseReadResult != 0){
             resultCodes[data.json_key] = -1;
@@ -661,7 +676,7 @@ bool FactoryTester::validateData(Vector<int> &resultCodes, Vector<String> &resul
             allMatch = false;
         }
 
-        // Special case for checking bits in configuration byte        
+        // Special case for checking lock bits in configuration byte
         if((i == EFUSE_DATA_FLASH_ENCRYPTION_LOCK_BITS) || (i == EFUSE_DATA_SECURE_BOOT_LOCK_BITS)) {
             compareResult = ((burnedEfuseDataBuffer[0] & data.data[0]) != burnedEfuseDataBuffer[0]);
         }
@@ -682,10 +697,9 @@ bool FactoryTester::validateData(Vector<int> &resultCodes, Vector<String> &resul
     return allMatch;
 }
 
-int FactoryTester::SET_FLASH_ENCRYPTION_KEY (const char * key) {
+int FactoryTester::setFlashEncryptionKey (const char * key) {
     EfuseData * flashKeyEfuse = &efuseFields[EFUSE_DATA_FLASH_ENCRYPTION_KEY];
     EfuseData * lockBits = &efuseFields[EFUSE_DATA_FLASH_ENCRYPTION_LOCK_BITS];
-    // TODO: Should good data be kept if given bad data? Or always invalidate buffered data when given new data?
     flashKeyEfuse->isValid = false; 
     lockBits->isValid = false;
 
@@ -703,7 +717,7 @@ int FactoryTester::SET_FLASH_ENCRYPTION_KEY (const char * key) {
     return 0;
 }
 
-int FactoryTester::ENABLE_FLASH_ENCRYPTION(void) {
+int FactoryTester::setFlashEncryption(void) {
     uint8_t systemConfigByte = 0;
     readEfuse(false, &systemConfigByte, 1, EFUSE_SYSTEM_CONFIG);
     systemConfigByte |= (BIT(2));
@@ -711,7 +725,7 @@ int FactoryTester::ENABLE_FLASH_ENCRYPTION(void) {
     return this->writeEfuse(false, &systemConfigByte, sizeof(systemConfigByte), EFUSE_SYSTEM_CONFIG);
 }
 
-int FactoryTester::SET_SECURE_BOOT_KEY(const char * key) {
+int FactoryTester::setSecureBootKey(const char * key) {
     EfuseData * secureBootKeyEfuse = &efuseFields[EFUSE_DATA_SECURE_BOOT_KEY];
     EfuseData * lockBits = &efuseFields[EFUSE_DATA_SECURE_BOOT_LOCK_BITS];
 
@@ -767,7 +781,7 @@ int FactoryTester::GET_SERIAL_NUMBER(void) {
     return 0;
 }
 
-int FactoryTester::SET_SERIAL_NUMBER(const char * serial_number) {
+int FactoryTester::setSerialNumber(const char * serial_number) {
     // TODO: Consider taking 15 chars as input and writing to MAC address as well
     // OR: Only requiring 9 chars as input, and wifi mac explicitly sent elsewhere
     EfuseData * serialNumberData = &efuseFields[EFUSE_DATA_SERIAL_NUMBER];
@@ -788,7 +802,7 @@ int FactoryTester::GET_MOBILE_SECRET(void) {
     return 0;
 }
 
-int FactoryTester::SET_MOBILE_SECRET(const char * mobile_secret) {
+int FactoryTester::setMobileSecret(const char * mobile_secret) {
     EfuseData * mobileSecretData = &efuseFields[EFUSE_DATA_MOBILE_SECRET];
     int result = validateCommandString(mobile_secret, mobileSecretData->length);
 
@@ -807,7 +821,7 @@ int FactoryTester::GET_HW_VERSION(void) {
     return bin_to_hex(this->command_response, this->cmd_length, hardwareData, sizeof(hardwareData));
 }
 
-int FactoryTester::SET_HW_VERSION(const char * hardware_version) {
+int FactoryTester::setHardwareVersion(const char * hardware_version) {
     EfuseData * hardwareVersionData = &efuseFields[EFUSE_DATA_HARDWARE_VERSION];
     int result = validateCommandData(hardware_version, hardwareVersionData->data, hardwareVersionData->length);
     hardwareVersionData->isValid = (result == 0);
@@ -821,7 +835,7 @@ int FactoryTester::GET_HW_MODEL(void) {
     return bin_to_hex(this->command_response, this->cmd_length, hardwareModel, sizeof(hardwareModel));
 }
 
-int FactoryTester::SET_HW_MODEL(const char * hardware_model) {
+int FactoryTester::setHardwareModel(const char * hardware_model) {
     EfuseData * hardwareModelData = &efuseFields[EFUSE_DATA_HARDWARE_MODEL];
     int result = validateCommandData(hardware_model, hardwareModelData->data, hardwareModelData->length);
     hardwareModelData->isValid = (result == 0);
@@ -835,32 +849,27 @@ int FactoryTester::GET_WIFI_MAC(void) {
     return bin_to_hex(this->command_response, this->cmd_length, wifiMAC, sizeof(wifiMAC));
 }
 
-int FactoryTester::SET_WIFI_MAC(const char * wifi_mac) {
+int FactoryTester::setWifiMac(const char * wifi_mac) {
     EfuseData * wifimacData = &efuseFields[EFUSE_DATA_WIFI_MAC];
     int result = validateCommandData(wifi_mac, wifimacData->data, wifimacData->length);
     wifimacData->isValid = (result == 0);
     return result;
 }
 
-int FactoryTester::GET_DEVICE_ID(void) {
-    // TODO: Make this use real device ID HAL
-    // 0A10ACED202194944A0DFF0A
-    const char * deviceIDPrefix = "0A10ACED2021";
-    uint8_t wifiMAC[EFUSE_WIFI_MAC_LENGTH] = {0};
-    readEfuse(false, wifiMAC, EFUSE_WIFI_MAC_LENGTH, EFUSE_WIFI_MAC);
-
-    strcpy(this->command_response, deviceIDPrefix);
-
-    return bin_to_hex(this->command_response + strlen(deviceIDPrefix),
-                      this->cmd_length - strlen(deviceIDPrefix),
-                      wifiMAC, 
-                      sizeof(wifiMAC));
+int FactoryTester::getDeviceId(void) {
+    uint8_t deviceIdBuffer[HAL_DEVICE_ID_SIZE];
+    hal_get_device_id(deviceIdBuffer, sizeof(deviceIdBuffer));
+    return bin_to_hex(this->command_response, sizeof(this->command_response), 
+                      deviceIdBuffer, sizeof(deviceIdBuffer));
 }
 
-int FactoryTester::TEST_COMMAND(void) {
+int FactoryTester::testCommand(void) {
     for(int i = 0; i < EFUSE_DATA_MAX; i++){
-        SERIAL.printlnf("i: %d valid: %d", i, efuseFields[i].isValid);
-        SERIAL.printlnf("%02X%02X%02X%02X", efuseFields[i].data[0], efuseFields[i].data[1], efuseFields[i].data[2], efuseFields[i].data[3]);
+        EfuseData data = efuseFields[i];
+        SERIAL.printlnf("i: %d valid: %d", i, data.isValid);
+        if(data.isValid){
+            print_bytes(data.data, data.length);
+        }
         delay(10);
     }
 

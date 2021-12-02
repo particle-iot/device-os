@@ -24,6 +24,7 @@ private:
     static const String SET_DATA;
     static const String BURN_DATA;
     static const String VALIDATE_BURNED_DATA;
+    static const String GET_DEVICE_ID;
 
     static const String PASS;
     static const String ERRORS;
@@ -60,25 +61,27 @@ public:
 
     int processUSBRequest(ctrl_request* request);
 
-    /* Tester Commands */
-    int SET_FLASH_ENCRYPTION_KEY(const char * key);
-    int ENABLE_FLASH_ENCRYPTION();
-    int SET_SECURE_BOOT_KEY(const char * key);
+    // Provisioning Commands
+    int setFlashEncryptionKey(const char * key);
+    int setFlashEncryption();
+    int setSecureBootKey(const char * key);
+    int setSerialNumber(const char * serial_number);
+    int setMobileSecret(const char * mobile_secret);
+    int setHardwareVersion(const char * hardware_version);
+    int setHardwareModel(const char * hardware_model);
+    int setWifiMac(const char * wifi_mac);
+
+    int getDeviceId();
+
     int GET_SECURE_BOOT_KEY();
-    int ENABLE_SECURE_BOOT();
-    int SET_SERIAL_NUMBER(const char * serial_number);
     int GET_SERIAL_NUMBER();
-    int SET_MOBILE_SECRET(const char * mobile_secret);
     int GET_MOBILE_SECRET();
-    int SET_HW_VERSION(const char * hardware_version);
     int GET_HW_VERSION();
-    int SET_HW_MODEL(const char * hardware_model);
     int GET_HW_MODEL();
-    int SET_WIFI_MAC(const char * wifi_mac);
     int GET_WIFI_MAC();
-    int GET_DEVICE_ID();
-    //int IS_READY();
-    int TEST_COMMAND();
+    int ENABLE_SECURE_BOOT();
+
+    int testCommand();
 
     char * get_command_response(void);
 };

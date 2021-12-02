@@ -29,8 +29,6 @@ void setup()
 
 void loop()
 {
-    // delay(3000);
-    // Serial1.println("mfg test app loop");
     if(Serial1.available()){
         char received = Serial1.read();
         switch(received){
@@ -43,7 +41,9 @@ void loop()
                 Serial1.printlnf("WIFI MAC: %s", tester.get_command_response());
                 break;
             case 'i':
-                tester.TEST_COMMAND();
+                tester.testCommand();
+                tester.getDeviceId();
+                Serial1.printlnf("getDeviceId: %s", tester.get_command_response());
                 break;
             default:
                 break;
