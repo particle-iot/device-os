@@ -718,6 +718,7 @@ RunTimeInfoDiagnosticData g_usedRamDiagData(DIAG_ID_SYSTEM_USED_RAM, DIAG_NAME_S
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
+    LOG(TRACE, "TP1");
 #if HAL_PLATFORM_LWIP
     // This needs to be called prior to system_part2_post_init()
     // to make sure the network interface is initialized first.
@@ -768,7 +769,9 @@ void app_setup_and_loop(void)
     SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
 #endif // HAL_PLATFORM_BLE
 
+LOG(TRACE, "TP20");
 #if SYSTEM_CONTROL_ENABLED
+    LOG(TRACE, "TP21");
     system::SystemControl::instance()->init();
 #endif // SYSTEM_CONTROL_ENABLED
 

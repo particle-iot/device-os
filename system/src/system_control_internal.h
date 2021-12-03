@@ -56,7 +56,7 @@ private:
     UsbControlRequestChannel usbChannel_;
 #endif
 #if HAL_PLATFORM_BLE
-    BleControlRequestChannel bleChannel_;
+    //BleControlRequestChannel bleChannel_;
 #endif
     ctrl_request_handler_fn appReqHandler_;
 

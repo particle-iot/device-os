@@ -2070,6 +2070,62 @@ int BleLocalDevice::selectAntenna(BleAntennaType antenna) const {
     return hal_ble_select_antenna(static_cast<hal_ble_ant_type_t>(antenna), nullptr);
 }
 
+int BleLocalDevice::provisioningMode(bool enabled) const{
+    return system_ble_prov_mode(enabled, nullptr);
+}
+
+bool BleLocalDevice::getProvisioningStatus() const{
+    return system_get_ble_prov_status(nullptr);
+}
+
+int BleLocalDevice::blah_me(const uint8_t* buf) const {
+
+    // LOG(TRACE, "is it valid: %d", temp.isValid());
+    // LOG(TRACE, "type: %d", temp.type());
+    // for (int i=0; i<16; i++) {
+    //     LOG(TRACE, "tempUUID[%d]: %d", i, temp[i]);
+    // }
+
+    return system_set_prov_blah_me(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
+}
+
+int BleLocalDevice::setProvisioningServiceUuid(const uint8_t* buf) const {
+
+    // LOG(TRACE, "is it valid: %d", temp.isValid());
+    // LOG(TRACE, "type: %d", temp.type());
+    // for (int i=0; i<16; i++) {
+    //     LOG(TRACE, "tempUUID[%d]: %d", i, temp[i]);
+    // }
+
+    return system_set_prov_svc_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
+}
+
+int BleLocalDevice::setProvisioningTxUuid(const uint8_t* buf) const {
+
+    // LOG(TRACE, "is it valid: %d", temp.isValid());
+    // LOG(TRACE, "type: %d", temp.type());
+    // for (int i=0; i<16; i++) {
+    //     LOG(TRACE, "tempUUID[%d]: %d", i, temp[i]);
+    // }
+
+    return system_set_prov_tx_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
+}
+
+int BleLocalDevice::setProvisioningRxUuid(const uint8_t* buf) const {
+
+    // LOG(TRACE, "is it valid: %d", temp.isValid());
+    // LOG(TRACE, "type: %d", temp.type());
+    // for (int i=0; i<16; i++) {
+    //     LOG(TRACE, "tempUUID[%d]: %d", i, temp[i]);
+    // }
+
+    return system_set_prov_rx_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
+}
+
+int BleLocalDevice::setProvisioningAdvServiceUuid(const uint8_t* buf) const {
+    return system_set_prov_adv_svc_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
+}
+
 int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);

@@ -64,6 +64,7 @@ ListeningModeHandler* ListeningModeHandler::instance() {
 
 int ListeningModeHandler::enter(unsigned int timeout) {
     if (HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(INFO, "Unable to enter listening mode as the flag is set");
         return SYSTEM_ERROR_NOT_ALLOWED;
     }
 
@@ -83,7 +84,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     timestampStarted_ = timestampUpdate_ = HAL_Timer_Get_Milli_Seconds();
 
 #if HAL_PLATFORM_BLE
-    bleHandler_.enter();
+    BleListeningModeHandler::instance()->enter();
 #endif /* HAL_PLATFORM_BLE */
 
 #if (!HAL_PLATFORM_WIFI || (HAL_PLATFORM_WIFI && HAL_PLATFORM_WIFI_SCAN_ONLY))
@@ -125,7 +126,7 @@ int ListeningModeHandler::exit() {
     system_notify_event(setup_end, HAL_Timer_Get_Milli_Seconds() - timestampStarted_);
 
 #if HAL_PLATFORM_BLE
-    bleHandler_.exit();
+    BleListeningModeHandler::instance()->exit();
 #endif /* HAL_PLATFORM_BLE */
 
     return 0;

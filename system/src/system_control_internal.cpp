@@ -83,14 +83,16 @@ SystemControl::SystemControl() :
         usbChannel_(this),
 #endif
 #if HAL_PLATFORM_BLE
-        bleChannel_(this),
+        //bleChannel_(this),
 #endif
         appReqHandler_(nullptr) {
 }
 
 int SystemControl::init() {
 #if HAL_PLATFORM_BLE
-    const int ret = bleChannel_.init();
+    // BleListeningModeHandler::instance()->enter();
+    const int ret = BleControlRequestChannel::instance(this)->init();
+    //const int ret = bleChannel_.init();
     if (ret != 0) {
         return ret;
     }
@@ -100,7 +102,8 @@ int SystemControl::init() {
 
 void SystemControl::run() {
 #if HAL_PLATFORM_BLE
-    bleChannel_.run();
+    BleControlRequestChannel::instance(this)->run();
+    //bleChannel_.run();
 #endif
 }
 

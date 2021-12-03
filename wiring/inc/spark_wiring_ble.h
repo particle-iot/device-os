@@ -33,6 +33,7 @@
 #include "ble_hal.h"
 #include <memory>
 #include "enumflags.h"
+#include "system_ble_prov.h"
 
 using namespace std::placeholders;
 
@@ -316,7 +317,7 @@ public:
 
     uint16_t shorted() const;
 
-    size_t rawBytes(uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN]) const;
+    size_t rawBytes(uint8_t uuid128[BLE_SIG_UUID_128BIT_LEN]) const;    // XXX: may need to take the rawBytes
     const uint8_t* rawBytes() const;
 
     String toString(bool stripped = false) const;
@@ -347,7 +348,7 @@ public:
 
 private:
     void construct(const char* uuid);
-    void toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const;
+    void toBigEndian(uint8_t buf[BLE_SIG_UUID_128BIT_LEN]) const;   // XXX: is this important?
 
     static constexpr uint8_t BASE_UUID[BLE_SIG_UUID_128BIT_LEN] = {0xFB,0x34,0x9B,0x5F,0x80,0x00, 0x00,0x80, 0x00,0x10, 0x00,0x00, 0x00,0x00,0x00,0x00};
     static constexpr uint8_t UUID16_LO = 12;
@@ -443,6 +444,8 @@ public:
     size_t appendAppearance(ble_sig_appearance_t appearance);
 
     template<typename T>
+    // TODO: When in provisioning mode, should this call return an error or something if called _after_ prov mode is set
+    // Test this with a known good device-os version and see how it behaves if called _after_ listening mode
     size_t appendServiceUUID(T uuid, bool force = false) {
         BleUuid tempUUID(uuid);
         if (tempUUID.type() == BleUuidType::SHORT) {
@@ -927,6 +930,73 @@ public:
     int8_t txPower() const;
     int selectAntenna(BleAntennaType antenna) const;
 
+    // Access provisioning mode
+    int provisioningMode(bool enabled) const;
+    bool getProvisioningStatus() const;
+
+    // // Service UUID
+    // template<typename T>
+    // BleScanFilter& serviceUUID(T uuid) {
+    //     serviceUuids_.append(BleUuid(uuid));
+    //     return *this;
+    // }
+
+
+    // template<typename T>
+    // int scanWithFilter(const BleScanFilter& filter, void(T::*callback)(const BleScanResult&), T* instance) const {
+    //     return scanWithFilter(filter, (callback && instance) ? std::bind(callback, instance, _1) : (BleOnScanResultStdFunction)nullptr);
+    // }
+
+    // size_t appendServiceUUID(T uuid, bool force = false) {
+    //     BleUuid tempUUID(uuid);
+    //     if (tempUUID.type() == BleUuidType::SHORT) {
+    //         uint16_t uuid16 = tempUUID.shorted();
+    //         return append(BleAdvertisingDataType::SERVICE_UUID_16BIT_COMPLETE, reinterpret_cast<const uint8_t*>(&uuid16), sizeof(uint16_t), force);
+    //     }
+    //     else {
+    //         return append(BleAdvertisingDataType::SERVICE_UUID_128BIT_COMPLETE, tempUUID.rawBytes(), BLE_SIG_UUID_128BIT_LEN, force);
+    //     }
+    // }
+
+    template<typename T>
+    int blah_me(T uuid) const {
+        BleUuid tempUUID(uuid);
+        return blah_me(tempUUID.rawBytes());
+    }
+
+    template<typename T>
+    int setProvisioningServiceUuid(T uuid) const {
+        BleUuid tempUUID(uuid);
+        return setProvisioningServiceUuid(tempUUID.rawBytes());
+    }
+
+    template<typename T>
+    int setProvisioningTxUuid(T uuid) const {
+        BleUuid tempUUID(uuid);
+        return setProvisioningTxUuid(tempUUID.rawBytes());
+    }
+
+    template<typename T>
+    int setProvisioningRxUuid(T uuid) const {
+        BleUuid tempUUID(uuid);
+        return setProvisioningRxUuid(tempUUID.rawBytes());
+    }
+
+    template<typename T>
+    int setProvisioningAdvServiceUuid(T uuid) const {
+        BleUuid tempUUID(uuid);
+        return setProvisioningAdvServiceUuid(tempUUID.rawBytes());
+    }
+
+    // BleCharacteristic addCharacteristic(EnumFlags<BleCharacteristicProperty> properties, const char* desc, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr);
+
+    int blah_me(const uint8_t* buf) const;
+
+    int setProvisioningServiceUuid(const uint8_t* buf) const;
+    int setProvisioningTxUuid(const uint8_t* buf) const;
+    int setProvisioningRxUuid(const uint8_t* buf) const;
+    int setProvisioningAdvServiceUuid(const uint8_t* buf) const;
+
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;
     int setAdvertisingTimeout(uint16_t timeout) const;
@@ -992,7 +1062,7 @@ public:
 
     // Access local characteristics
     BleCharacteristic addCharacteristic(const BleCharacteristic& characteristic);
-    
+
     BleCharacteristic __attribute__((deprecated("The order of the first argument and second argument need to be swapped")))
     addCharacteristic(const char* desc, EnumFlags<BleCharacteristicProperty> properties, BleOnDataReceivedCallback callback = nullptr, void* context = nullptr) {
         return addCharacteristic(properties, desc, callback, context);

@@ -27,6 +27,7 @@ LOG_SOURCE_CATEGORY("system.listen.ble")
 #include "scope_guard.h"
 #include "device_code.h"
 #include "service_debug.h"
+#include "core_hal.h"
 
 namespace {
 
@@ -49,11 +50,33 @@ BleListeningModeHandler::BleListeningModeHandler()
 BleListeningModeHandler::~BleListeningModeHandler() {
 }
 
+BleListeningModeHandler* BleListeningModeHandler::instance() {
+  static BleListeningModeHandler blelstmodehndlr;
+  return &blelstmodehndlr;
+}
+
+bool BleListeningModeHandler::getProvModeStatus() {
+    return provMode_;
+}
+
+void BleListeningModeHandler::setProvModeStatus(bool enabled) {
+    provMode_ = enabled;
+}
+
+void BleListeningModeHandler::setCtrlSvcUuid(const uint8_t* buf, size_t len) {
+    memcpy(PROV_BLE_CTRL_REQ_SVC_UUID, buf, len);
+}
+
+void BleListeningModeHandler::getCtrlSvcUuid(uint8_t* buf, size_t len) {
+    memcpy(buf, PROV_BLE_CTRL_REQ_SVC_UUID, len);
+}
+
 int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
     Vector<uint8_t> tempAdvData;
     Vector<uint8_t> tempSrData;
+    uint8_t zeros[16] = {0};    // TODO: Test all possible test cases
 
     // AD Flag
     CHECK_TRUE(tempAdvData.append(0x02), SYSTEM_ERROR_NO_MEMORY);
@@ -78,9 +101,24 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
 
     // Particle Control Request Service 128-bits UUID
-    CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempSrData.append(BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+    // If PROV_BLE_CTRL_REQ_SVC_UUID is non-zero, use it if provisioning mode is active
+    // TODO: Use this only if provisioning mode is active. HOW? think it's fine now
+    // TODO: test for validity - is it already taken care of by the BLEUuid class?
+    if (memcmp(PROV_BLE_CTRL_REQ_SVC_UUID, zeros, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)) == 0) {
+        // if PROV_BLE_CTRL_REQ_SVC_UUID == 0, use BLE_CTRL_REQ_SVC_UUID irrepective of prov mode status
+        // coz the device requires an adv status none the less
+        CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+    } else {
+        if (provMode_) {
+            LOG(TRACE, "Using prov adv svc id");
+            // PROV_BLE_CTRL_REQ_SVC_UUID has some content. Use it only if prov mode is enabled
+            CHECK_TRUE(tempSrData.append(sizeof(PROV_BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
+            CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+            CHECK_TRUE(tempSrData.append(PROV_BLE_CTRL_REQ_SVC_UUID, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+        }
+    }
 
     ctrlReqAdvData_ = std::move(tempAdvData);
     ctrlReqSrData_ = std::move(tempSrData);
@@ -261,6 +299,13 @@ int BleListeningModeHandler::applyControlRequestAdvData() {
 }
 
 int BleListeningModeHandler::enter() {
+    // Enter listening mode handler only if FEATURE_FLAG_DISABLE_LISTENING_MODE is enabled
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(ERROR, "Cannot enter ble prov/lst mode when flag is not enabled");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+
+    LOG(TRACE, "Enter() on ble listening mode handler");
     exited_ = false;
 
     // Do not allow other thread to modify the BLE configurations.
@@ -294,6 +339,7 @@ int BleListeningModeHandler::enter() {
 }
 
 int BleListeningModeHandler::exit() {
+    LOG(TRACE, "Exit() on ble listening mode handler");
     if (exited_) {
         return SYSTEM_ERROR_NONE;
     }
@@ -353,5 +399,6 @@ void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, voi
 }
 
 bool BleListeningModeHandler::exited_ = true;
+bool BleListeningModeHandler::provMode_ = false;
 
 #endif /* HAL_PLATFORM_BLE */

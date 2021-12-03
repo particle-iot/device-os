@@ -69,7 +69,8 @@ private:
     system_tick_t timestampUpdate_;
 
 #if HAL_PLATFORM_BLE
-    BleListeningModeHandler bleHandler_;
+    //BleListeningModeHandler bleHandler_;	// FIXME: To use the BleListeningModeHandler instance() here 
+    // -> Edit: Think I can get rid of this entirely because bleHandler_ is changed to use instance where needed in other parts of the code
 #endif
 };
 

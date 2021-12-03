@@ -51,8 +51,7 @@ namespace system {
 // Class implementing a BLE control request channel
 class BleControlRequestChannel: public ControlRequestChannel {
 public:
-    explicit BleControlRequestChannel(ControlRequestHandler* handler);
-    ~BleControlRequestChannel();
+    static BleControlRequestChannel* instance(ControlRequestHandler* handler);
 
     int init();
     void destroy();
@@ -64,6 +63,22 @@ public:
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
+    // Add setter and getter for random_var_k / uuids
+    void setUuid(int var);
+    int getUuid();
+
+    void setProvSvcUuid(const uint8_t* buf, size_t len);
+    void setProvTxUuid(const uint8_t* buf, size_t len);
+    void setProvRxUuid(const uint8_t* buf, size_t len);
+
+    void getProvSvcUuid(uint8_t* buf, size_t len);
+    void getProvTxUuid(uint8_t* buf, size_t len);
+    void getProvRxUuid(uint8_t* buf, size_t len);
+
+
+protected:
+    explicit BleControlRequestChannel(ControlRequestHandler* handler);
+    ~BleControlRequestChannel();
 private:
     class HandshakeHandler;
     class JpakeHandler;
@@ -122,6 +137,22 @@ private:
     volatile size_t maxPacketSize_; // Maximum number of bytes that can be sent in a single notification packet
     volatile bool subscribed_; // Set to `true` if the client is subscribed to the notifications
     volatile bool writable_; // Set to `true` if the TX characteristic is writable
+
+    int random_var_k;
+
+    // Custom provisioning UUIDs
+    // // UUID of the control request service
+    // const uint8_t CTRL_SERVICE_UUID[] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f };
+    // // UUID of the protocol version characteristic
+    // const uint8_t VERSION_CHAR_UUID[] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x02, 0x00, 0xa9, 0x6f };
+    // // UUID of the characteristic used to send reply data
+    // const uint8_t SEND_CHAR_UUID[] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x03, 0x00, 0xa9, 0x6f };
+    // // UUID of the characteristic used to receive request data
+    // const uint8_t RECV_CHAR_UUID[] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x04, 0x00, 0xa9, 0x6f };
+    // TODO: Should we also add VERSION_CHAR_UUID?
+    uint8_t PROV_CTRL_SERVICE_UUID[16];   // FIXME: magic number    // FIXME: Follow BLE_CTRL_REQ_SVC_UUID format for init
+    uint8_t PROV_SEND_CHAR_UUID[16];   // FIXME: magic number       // FIXME: Follow BLE_CTRL_REQ_SVC_UUID format for init
+    uint8_t PROV_RECV_CHAR_UUID[16];   // FIXME: magic number       // FIXME: Follow BLE_CTRL_REQ_SVC_UUID format for init
 
     hal_ble_attr_handle_t sendCharHandle_; // TX characteristic handle
     hal_ble_attr_handle_t sendCharCccdHandle_; // TX characteristic CCCD handle

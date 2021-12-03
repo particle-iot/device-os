@@ -25,16 +25,27 @@
 #include <memory>
 #include "ble_hal.h"
 #include "spark_wiring_vector.h"
+#include "system_ble_prov.h"
 
 namespace particle { namespace system {
 
 class BleListeningModeHandler {
 public:
-    BleListeningModeHandler();
-    ~BleListeningModeHandler();
+    static BleListeningModeHandler* instance();
 
     int enter();
     int exit();
+
+    bool getProvModeStatus();
+    void setProvModeStatus(bool enabled);
+
+    void setCtrlSvcUuid(const uint8_t* buf, size_t len);
+    void getCtrlSvcUuid(uint8_t* buf, size_t len);
+
+protected:
+    // XXX: Moving these into protected because we have a static member instance now
+    BleListeningModeHandler();
+    ~BleListeningModeHandler();
 
 private:
     int constructControlRequestAdvData();
@@ -68,12 +79,17 @@ private:
     bool userAdv_;
     bool restoreUserConfig_;
     static bool exited_;
+    static bool provMode_;
+
+    uint8_t PROV_BLE_CTRL_REQ_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {0};
 
     Vector<uint8_t> ctrlReqAdvData_;
     Vector<uint8_t> ctrlReqSrData_;
 };
 
 } } /* particle::system */
+
+//int system_ble_prov_mode(bool enabled, void* reserved);
 
 #endif /* HAL_PLATFORM_BLE */
 
