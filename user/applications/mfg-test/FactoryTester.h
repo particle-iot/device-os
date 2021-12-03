@@ -73,14 +73,7 @@ public:
 
     int getDeviceId();
 
-    int GET_SECURE_BOOT_KEY();
-    int GET_SERIAL_NUMBER();
-    int GET_MOBILE_SECRET();
-    int GET_HW_VERSION();
-    int GET_HW_MODEL();
-    int GET_WIFI_MAC();
     int ENABLE_SECURE_BOOT();
-
     int testCommand();
 
     char * get_command_response(void);

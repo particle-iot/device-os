@@ -17,13 +17,12 @@ SYSTEM_MODE(MANUAL);
 SYSTEM_THREAD(ENABLED);
 
 FactoryTester tester;
-Serial1LogHandler logHandler(115200); // Baud rate
+
+Serial1LogHandler logHandler(115200, LOG_LEVEL_TRACE);
 
 void setup()
 {
-    Serial.begin(115200);
     Serial1.begin(115200);
-    
     tester.setup();
 }
 
@@ -32,18 +31,10 @@ void loop()
     if(Serial1.available()){
         char received = Serial1.read();
         switch(received){
-            case 's':
-                tester.GET_SERIAL_NUMBER();
-                Serial1.printlnf("SERIAL NUMBER: %s", tester.get_command_response());
-                break;
-            case 'w':
-                tester.GET_WIFI_MAC();
-                Serial1.printlnf("WIFI MAC: %s", tester.get_command_response());
-                break;
             case 'i':
                 tester.testCommand();
                 tester.getDeviceId();
-                Serial1.printlnf("getDeviceId: %s", tester.get_command_response());
+                Log.info("getDeviceId: %s", tester.get_command_response());
                 break;
             default:
                 break;
