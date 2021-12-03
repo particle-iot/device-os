@@ -662,8 +662,10 @@ int QuectelNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
     // fallback to CSD
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    //CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?")); // Seems to stall the modem on BG95-MF
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?")); // Seems to stall the modem on BG95-MF
+    }
 
     switch (cgi->version)
     {
@@ -1308,11 +1310,13 @@ int QuectelNcpClient::registerNet() {
 
     resetRegistrationState();
 
-    // Register GPRS, LET, NB-IOT network
-    // r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
-    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    //r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
-    //CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
+        // Register GPRS, LET, NB-IOT network
+        r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
     r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1367,8 +1371,10 @@ int QuectelNcpClient::registerNet() {
         }
     }
 
-    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
-    // CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    }
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
     regStartTime_ = millis();
@@ -1777,10 +1783,10 @@ int QuectelNcpClient::processEventsImpl() {
 
     // Check GPRS, LET, NB-IOT network registration status
     if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
-        CHECK_PARSER(parser_.execCommand("AT+CEER")); // Seems to stall the modem on BG95-MF
+        CHECK_PARSER(parser_.execCommand("AT+CEER"));  // Seems to stall the modem on BG95-MF
+        CHECK_PARSER(parser_.execCommand("AT+CMEE?")); // Seems to stall the modem on BG95-MF
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     }
-    CHECK_PARSER(parser_.execCommand("AT+CMEE?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     //CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     // Check the signal seen by the module while trying to register
