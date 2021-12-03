@@ -71,6 +71,6 @@ add_subdirectory(system)
 
 # Create `coverage` target in the `make` command
 add_custom_target( coverage
-  gcovr --root ${DEVICE_OS_DIR} --exclude ${TEST_DIR} --exclude ${THIRD_PARTY_DIR} -j 4 --print-summary --html-details ${DEVICE_OS_DIR}/coverage/
+  gcovr --root ${DEVICE_OS_DIR} --exclude ${TEST_DIR} --exclude ${THIRD_PARTY_DIR} -j 4 --print-summary --html-details ${DEVICE_OS_DIR}/build/coverage/
 )
 
