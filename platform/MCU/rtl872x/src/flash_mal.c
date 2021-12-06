@@ -54,7 +54,7 @@ __attribute__((section(".boot.ipc_data"))) platform_flash_modules_t sModule;
  * flash read operation is within the encrypted image's address range. Reading un-encrypted image
  * if RSIP is enabled may return garbage data. For example, take care Compute_CRC32().
  */
-static bool enable_rsip_if_disabled(uint32_t address, int* is) {
+bool enable_rsip_if_disabled(uint32_t address, int* is) {
     if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) == 0) {
         return false;
     }
@@ -74,7 +74,7 @@ static bool enable_rsip_if_disabled(uint32_t address, int* is) {
     return true;
 }
 
-static void disable_rsip_if_enabled(bool enabled, int is) {
+void disable_rsip_if_enabled(bool enabled, int is) {
     if (enabled) {
         uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
@@ -580,10 +580,10 @@ int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32
             offset = sizeof(rtl_binary_header);
         }
         int ret = hal_flash_read(startAddress + offset, (uint8_t*)infoOut, sizeof(module_info_t));
+        disable_rsip_if_enabled(enableRsip, is);
         if (ret != SYSTEM_ERROR_NONE) {
             return ret;
         }
-        disable_rsip_if_enabled(enableRsip, is);
     } else if (flashDeviceID == FLASH_SERIAL) {
 #ifdef USE_SERIAL_FLASH
         rtl_binary_header header = {};
@@ -624,24 +624,23 @@ int FLASH_ModuleCrcSuffix(module_info_crc_t* crc, module_info_suffix_t* suffix, 
         returrn SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
     }
+    int ret = SYSTEM_ERROR_NONE;
     if (read) {
         if (crc) {
-            int ret = read(endAddress, (uint8_t*)crc, sizeof(module_info_crc_t));
+            ret = read(endAddress, (uint8_t*)crc, sizeof(module_info_crc_t));
             if (ret != SYSTEM_ERROR_NONE) {
-                return ret;
+                goto done;
             }
         }
         if (suffix) {
             // suffix [endAddress] crc32
             endAddress = endAddress - sizeof(module_info_suffix_t);
-            int ret = read(endAddress, (uint8_t*)suffix, sizeof(module_info_suffix_t));
-            if (ret != SYSTEM_ERROR_NONE) {
-                return ret;
-            }
+            ret = read(endAddress, (uint8_t*)suffix, sizeof(module_info_suffix_t));
         }
     }
+done:
     disable_rsip_if_enabled(enableRsip, is);
-    return SYSTEM_ERROR_NONE;
+    return ret;
 }
 
 uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress) {
@@ -767,17 +766,11 @@ static const uint32_t crc32_tab[] = {
  * @retval 32-bit CRC
  */
 uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize, uint32_t const *p_crc) {
-    int is = 0;
-    bool enableRsip = enable_rsip_if_disabled((uint32_t)pBuffer, &is);
-
     uint32_t crc = (p_crc) ? *p_crc : 0;
     crc = crc ^ ~0U;
     while (bufferSize--) {
         crc = crc32_tab[(crc ^ *pBuffer++) & 0xFF] ^ (crc >> 8);
     }
-
-    disable_rsip_if_enabled(enableRsip, is);
-
     return crc ^ ~0U;
 }
 

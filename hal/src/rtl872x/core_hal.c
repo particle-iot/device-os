@@ -705,7 +705,11 @@ int HAL_Core_Get_Last_Reset_Info(int *reason, uint32_t *data, void *reserved) {
  */
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize) {
     // TODO: Use the peripheral lock?
-    return Compute_CRC32(pBuffer, bufferSize, NULL);
+    int is = 0;
+    bool enableRsip = enable_rsip_if_disabled((uint32_t)pBuffer, &is);
+    uint32_t crc32 = Compute_CRC32(pBuffer, bufferSize, NULL);
+    disable_rsip_if_enabled(enableRsip, is);
+    return crc32;
 }
 
 uint16_t HAL_Core_Mode_Button_Pressed_Time() {

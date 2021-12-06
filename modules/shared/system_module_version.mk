@@ -34,7 +34,7 @@ endif
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
 BOOTLOADER_VERSION ?= 1005
-ifeq ($(PLATFORM_GEN), 4)
+ifeq ($(PLATFORM_ID), 32)
 PREBOOTLOADER_MBR_VERSION ?= 1
 PREBOOTLOADER_PART1_VERSION ?= 1
 endif
@@ -46,12 +46,12 @@ ifeq ($(PLATFORM_GEN),2)
 BOOTLOADER_DEPENDENCY = 1003
 else ifeq ($(PLATFORM_GEN),3)
 BOOTLOADER_DEPENDENCY = 1005
-else ifeq ($(PLATFORM_GEN),4)
-BOOTLOADER_DEPENDENCY = 1005
-PREBOOTLOADER_PART1_DEPENDENCY = 1
 else
 # Some sensible default
 BOOTLOADER_DEPENDENCY = 0
+endif
+ifeq ($(PLATFORM_ID), 32)
+PREBOOTLOADER_PART1_DEPENDENCY = 1
 endif
 
 ifeq ($(PLATFORM_GEN),3)
@@ -86,6 +86,6 @@ SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_NCP_FIRMWARE},0,${ESP32_NCP
 endif
 endif
 
-ifeq ($(PLATFORM_GEN),4)
+ifeq ($(PLATFORM_ID), 32)
 SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
 endif
