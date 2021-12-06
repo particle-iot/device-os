@@ -10,7 +10,6 @@
 #define FACTORYTESTER_H
 
 #include "TesterCommandTypes.h"
-#include "TesterMTPTypes.h"
 
 class FactoryTester {
 private:
@@ -73,7 +72,6 @@ public:
 
     int getDeviceId();
 
-    int ENABLE_SECURE_BOOT();
     int testCommand();
 
     char * get_command_response(void);
