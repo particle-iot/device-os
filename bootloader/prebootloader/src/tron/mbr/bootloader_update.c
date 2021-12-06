@@ -100,18 +100,16 @@ bool bootloaderUpdateIfPending(void) {
             HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
             enableRsip = true;
         }
-        if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
-            ret = false;
-            goto done;
-        }
-        memset(&info, 0x00, sizeof(info));
-        if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
-            ret = false;
-            goto done;
+        ret = flash_copy(info.src_addr, info.dest_addr, info.size);
+        if (ret == true) {
+            memset(&info, 0x00, sizeof(info));
+            if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
+                hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1);
+                ret = false;
+            }
         }
     }
 
-done:
     if (enableRsip) {
         uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control | BIT_LSYS_PLFM_FLASH_SCE));

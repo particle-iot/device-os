@@ -44,7 +44,7 @@ test(SPIX_01_SPI_Begin_Without_Argument)
     assertEqual(info.ss_pin, D7);
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_TRON
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, D5);
 #else
 #error "Unknown platform!"
@@ -71,7 +71,7 @@ test(SPIX_02_SPI_Begin_With_Ss_Pin)
     assertEqual(info.ss_pin, D7);
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_TRON
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, D5);
 #else
 #error "Unknown platform!"
@@ -125,7 +125,7 @@ test(SPIX_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin, D7);
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_TRON
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, D5);
 #else
 #error "Unknown platform!"
@@ -148,7 +148,7 @@ test(SPIX_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin, D7);
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_TRON
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, D5);
 #else
 #error "Unknown platform!"
@@ -176,7 +176,7 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.ss_pin, D7);
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_TRON
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, D5);
 #else
 #error "Unknown platform!"
@@ -265,7 +265,7 @@ test(SPIX_06_SPI1_Begin_Without_Argument)
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
 
-#if PLATFORM_ID == PLATFORM_TRON
+#if PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, A2);
 #else
     // D5 is the default SS pin for all platforms except Tron
@@ -285,7 +285,7 @@ test(SPIX_07_SPI1_Begin_With_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_TRON
+#if PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, A2);
 #else
     // D5 is the default SS pin for all platforms except Tron
@@ -331,7 +331,7 @@ test(SPIX_08_SPI1_Begin_With_Mode)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_TRON
+#if PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, A2);
 #else
     // D5 is the default SS pin for all platforms except Tron
@@ -340,7 +340,7 @@ test(SPIX_08_SPI1_Begin_With_Mode)
     SPI1.end();
 
     // SPI1 can't work as slave on Tron
-#if PLATFORM_ID != PLATFORM_TRON
+#if PLATFORM_ID != PLATFORM_P2
     memset(&info, 0x00, sizeof(hal_spi_info_t));
     SPI1.begin(SPI_MODE_SLAVE);
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
@@ -363,7 +363,7 @@ test(SPIX_09_SPI1_Begin_With_Master_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_TRON
+#if PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, A2);
 #else
     // D5 is the default SS pin for all platforms except Tron
@@ -400,7 +400,7 @@ test(SPIX_09_SPI1_Begin_With_Master_Ss_Pin)
 }
 
 // SPI1 can't work as slave on Tron
-#if PLATFORM_ID != PLATFORM_TRON
+#if PLATFORM_ID != PLATFORM_P2
 test(SPIX_10_SPI1_Begin_With_Slave_Ss_Pin)
 {
     // Just in case
@@ -439,7 +439,7 @@ test(SPIX_10_SPI1_Begin_With_Slave_Ss_Pin)
     assertFalse(info.enabled);
     SPI1.end();
 }
-#endif // PLATFORM_ID != PLATFORM_TRON
+#endif // PLATFORM_ID != PLATFORM_P2
 #endif // Wiring_SPI1
 
 namespace {

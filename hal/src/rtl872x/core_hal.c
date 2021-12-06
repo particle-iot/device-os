@@ -420,26 +420,27 @@ void HAL_Core_Config(void) {
     uint8_t* address = (uint8_t*)&link_user_part_flash_end;
     address = address - 4/*CRC*/ - sizeof(module_info_suffix_t);
 
-    module_user.start_address = *((uint32_t*)address); // module start address
-
-    // OTA region
-    module_ota.end_address = module_user.start_address - 1;
     module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
-    SPARK_ASSERT(module_ota.end_address >= module_ota.start_address + 0x200000); // Should have 2M for the OTA region at the least
 
-    address += 4;
-    dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib table in flash
-
+    module_user.start_address = *((uint32_t*)address); // module start address
     hal_user_module_descriptor user_desc = {};
     if (!hal_user_module_get_descriptor(&user_desc)) {
+        address += 4;
+        dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib table in flash
+
         new_heap_end = user_desc.pre_init();
         if (new_heap_end > malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
+
+        address += 4;
+        dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib in PSRAM
+    } else {
+        module_user.start_address = (uint32_t)&link_user_part_flash_end;
     }
 
-    address += 4;
-    dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib in PSRAM
+    module_ota.end_address = module_user.start_address - 1;
+    SPARK_ASSERT(module_ota.end_address >= module_ota.start_address + 0x200000); // Should have 2M for the OTA region at the least
 
     // Enable malloc before littlefs initialization.
     malloc_enable(1);

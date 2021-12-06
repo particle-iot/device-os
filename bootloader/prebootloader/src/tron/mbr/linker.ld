@@ -20,7 +20,6 @@ SECTIONS
         . = ALIGN(4);
         KEEP (*(.rtl_header_xip))
         . = ALIGN(4);
-        link_rtl_xip_start = .;
     } > APP_FLASH
 
     /****************************** START OF XIP PARTITION ***********************************
