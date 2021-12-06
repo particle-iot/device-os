@@ -26,7 +26,7 @@
 // Define more IPC channels if needed
 #define KM0_KM4_IPC_CHANNEL_GENERIC     0
 
-#define KM0_KM4_IPC_TIMEOUT_MS          500
+#define KM0_KM4_IPC_TIMEOUT_MS          5000
 
 #define KM0_KM4_IPC_INVALID_REQ_ID      0xFFFF
 

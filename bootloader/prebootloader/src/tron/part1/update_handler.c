@@ -23,7 +23,7 @@
 #include "flash_hal.h"
 #include "flash_mal.h"
 #include "boot_info.h"
-#include "flash_common.h"
+#include "hw_config.h"
 
 
 static volatile platform_flash_modules_t* flashModule = NULL;
@@ -54,13 +54,11 @@ static bool flash_write_update_info(void) {
     flash_update_info_t info = {};
     uint32_t writeAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_BOOTLOADER_UPDATE_INFO_OFFSET;
 
-    memset(&info, 0x00, sizeof(info));
-
     info.src_addr = flashModule->sourceAddress;
     info.dest_addr = flashModule->destinationAddress;
     info.size = flashModule->length;
     info.magic_num = KM0_BOOTLOADER_UPDATE_MAGIC_NUMBER;
-    info.crc32 = computeCrc32((const uint8_t*)&info, sizeof(flash_update_info_t) - 4);
+    info.crc32 = Compute_CRC32((const uint8_t*)&info, sizeof(flash_update_info_t) - sizeof(info.crc32), NULL);
 
     if (hal_flash_write(writeAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
         goto err;

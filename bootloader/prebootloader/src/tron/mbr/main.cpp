@@ -20,7 +20,7 @@ extern "C" {
 #include "rtl8721d.h"
 }
 #include "module_info.h"
-#include "flash_common.h"
+#include "hw_config.h"
 #include "bootloader_update.h"
 
 __attribute__((used)) void* dynalib_table_location = 0; // part1 dynalib location
@@ -45,7 +45,7 @@ static bool isPart1ImageValid() {
             && ((uint32_t)info.module_end_address <= (uint32_t)&link_part1_flash_end)
             && (info.platform_id == PLATFORM_ID)) {
         uint32_t length = (uint32_t)info.module_end_address - (uint32_t)info.module_start_address;
-        uint32_t crc = computeCrc32((const uint8_t*)info.module_start_address, length);
+        uint32_t crc = Compute_CRC32((const uint8_t*)info.module_start_address, length, nullptr);
         uint32_t expectedCRC = __REV((*(__IO uint32_t*)((uint32_t)info.module_start_address + length)));
         return (crc == expectedCRC);
     }

@@ -19,7 +19,7 @@
 extern "C" {
 #include "rtl8721d.h"
 }
-#include "flash_common.h"
+#include "hw_config.h"
 #include "rtl_sdk_support.h"
 #include "check.h"
 #include "static_recursive_mutex.h"
@@ -50,21 +50,8 @@ using namespace particle;
 })
 #endif
 
-#define ATOMIC_BLOCK() 	for (bool __todo=true; __todo;) for (AtomicSection __as; __todo; __todo=false)
 
 namespace {
-
-class AtomicSection {
-	int prev;
-public:
-	AtomicSection() {
-		prev = HAL_disable_irq();
-	}
-
-	~AtomicSection() {
-		HAL_enable_irq(prev);
-	}
-};
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
@@ -155,12 +142,12 @@ int Km0Km4IpcClass::sendRequest(km0_km4_ipc_msg_type_t type, void* data, uint32_
     km0Km4IpcMessage_.req_id = reqId_;
     km0Km4IpcMessage_.data = data;
     km0Km4IpcMessage_.data_len = len;
-    km0Km4IpcMessage_.data_crc32 = computeCrc32((const uint8_t*)data, len);
-    km0Km4IpcMessage_.crc32 = computeCrc32((const uint8_t*)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_) - 4);
+    km0Km4IpcMessage_.data_crc32 = Compute_CRC32((const uint8_t*)data, len, nullptr);
+    km0Km4IpcMessage_.crc32 = Compute_CRC32((const uint8_t*)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_) - sizeof(km0_km4_ipc_msg_t::crc32), nullptr);
     respCallback_ = respCallback;
     respCallbackContext_ = context;
 
-    ATOMIC_BLOCK() { expectedRespReqId_ = reqId_; }
+    expectedRespReqId_ = reqId_;
     ipc_send_message_alt(channel_, (uint32_t)(&km0Km4IpcMessage_));
 
     int ret = SYSTEM_ERROR_NONE;
@@ -168,7 +155,7 @@ int Km0Km4IpcClass::sendRequest(km0_km4_ipc_msg_type_t type, void* data, uint32_
         ret = SYSTEM_ERROR_TIMEOUT;
     }
 
-    ATOMIC_BLOCK() { expectedRespReqId_ = KM0_KM4_IPC_INVALID_REQ_ID; }
+    expectedRespReqId_ = KM0_KM4_IPC_INVALID_REQ_ID;
     respCallback_ = nullptr;
     respCallbackContext_ = nullptr;
     reqId_++;
@@ -185,8 +172,8 @@ int Km0Km4IpcClass::sendResponse(uint16_t reqId, void* data, uint32_t len) {
     km0Km4IpcMessage_.req_id = reqId;
     km0Km4IpcMessage_.data = data;
     km0Km4IpcMessage_.data_len = len;
-    km0Km4IpcMessage_.data_crc32 = computeCrc32((const uint8_t*)data, len);
-    km0Km4IpcMessage_.crc32 = computeCrc32((const uint8_t*)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_) - 4);
+    km0Km4IpcMessage_.data_crc32 = Compute_CRC32((const uint8_t*)data, len, nullptr);
+    km0Km4IpcMessage_.crc32 = Compute_CRC32((const uint8_t*)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_) - sizeof(km0_km4_ipc_msg_t::crc32), nullptr);
     ipc_send_message_alt(channel_, (uint32_t)(&km0Km4IpcMessage_));
     return SYSTEM_ERROR_NONE;
 }
@@ -221,8 +208,9 @@ int Km0Km4IpcClass::onRequestReceived(km0_km4_ipc_msg_type_t type, km0_km4_ipc_m
 }
 
 void Km0Km4IpcClass::processReceivedMessage(km0_km4_ipc_msg_t* msg) {
-    if (computeCrc32((const uint8_t*)msg, sizeof(km0_km4_ipc_msg_t) - 4) != msg->crc32
-            || computeCrc32((const uint8_t*)msg->data, msg->data_len) != msg->data_crc32) {
+    if (msg->data == nullptr || msg->data_len == 0
+            || Compute_CRC32((const uint8_t*)msg, sizeof(km0_km4_ipc_msg_t) - sizeof(km0_km4_ipc_msg_t::crc32), nullptr) != msg->crc32
+            || Compute_CRC32((const uint8_t*)msg->data, msg->data_len, nullptr) != msg->data_crc32) {
         msg->data = nullptr;
         msg->data_len = 0;
     }
