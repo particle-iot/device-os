@@ -30,11 +30,17 @@ namespace particle { namespace system {
 
 class BleListeningModeHandler {
 public:
-    BleListeningModeHandler();
-    ~BleListeningModeHandler();
+    static BleListeningModeHandler* instance();
 
     int enter();
     int exit();
+
+    bool getProvModeStatus();
+    void setProvModeStatus(bool enabled);
+
+protected:
+    BleListeningModeHandler();
+    ~BleListeningModeHandler();
 
 private:
     int constructControlRequestAdvData();
@@ -68,6 +74,7 @@ private:
     bool userAdv_;
     bool restoreUserConfig_;
     static bool exited_;
+    static bool provMode_;
 
     Vector<uint8_t> ctrlReqAdvData_;
     Vector<uint8_t> ctrlReqSrData_;

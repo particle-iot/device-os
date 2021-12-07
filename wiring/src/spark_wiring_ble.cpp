@@ -2070,6 +2070,14 @@ int BleLocalDevice::selectAntenna(BleAntennaType antenna) const {
     return hal_ble_select_antenna(static_cast<hal_ble_ant_type_t>(antenna), nullptr);
 }
 
+int BleLocalDevice::provisioningMode(bool enabled) const{
+    return system_ble_prov_mode(enabled, nullptr);
+}
+
+bool BleLocalDevice::getProvisioningStatus() const{
+    return system_get_ble_prov_status(nullptr);
+}
+
 int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);

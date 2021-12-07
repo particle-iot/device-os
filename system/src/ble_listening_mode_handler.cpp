@@ -27,6 +27,7 @@ LOG_SOURCE_CATEGORY("system.listen.ble")
 #include "scope_guard.h"
 #include "device_code.h"
 #include "service_debug.h"
+#include "core_hal.h"
 
 namespace {
 
@@ -47,6 +48,19 @@ BleListeningModeHandler::BleListeningModeHandler()
 }
 
 BleListeningModeHandler::~BleListeningModeHandler() {
+}
+
+BleListeningModeHandler* BleListeningModeHandler::instance() {
+  static BleListeningModeHandler blelstmodehndlr;
+  return &blelstmodehndlr;
+}
+
+bool BleListeningModeHandler::getProvModeStatus() {
+    return provMode_;
+}
+
+void BleListeningModeHandler::setProvModeStatus(bool enabled) {
+    provMode_ = enabled;
 }
 
 int BleListeningModeHandler::constructControlRequestAdvData() {
@@ -198,7 +212,7 @@ int BleListeningModeHandler::applyControlRequestConfigurations() {
     advParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval = BLE_CTRL_REQ_ADV_INTERVAL;
-    advParams.timeout = BLE_CTRL_REQ_ADV_TIMEOUT;
+    advParams.timeout = provMode_ ? 0 : BLE_CTRL_REQ_ADV_TIMEOUT;
     advParams.inc_tx_power = false;
     CHECK(hal_ble_gap_set_advertising_parameters(&advParams, nullptr));
     CHECK(hal_ble_gap_set_auto_advertise(BLE_AUTO_ADV_ALWAYS, nullptr));
@@ -261,6 +275,13 @@ int BleListeningModeHandler::applyControlRequestAdvData() {
 }
 
 int BleListeningModeHandler::enter() {
+    // Enter listening mode handler only if FEATURE_FLAG_DISABLE_LISTENING_MODE is enabled
+    // Not really needed to check here because this check is already done in the previous calls
+    //if (HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+    //    LOG(ERROR, "BLE prov/listening mode not allowed");
+    //    return SYSTEM_ERROR_NOT_ALLOWED;
+    //}
+
     exited_ = false;
 
     // Do not allow other thread to modify the BLE configurations.
@@ -283,7 +304,9 @@ int BleListeningModeHandler::enter() {
     restoreUserConfig_ = true;
     CHECK(applyControlRequestAdvData());
     CHECK(applyControlRequestConfigurations());
-    CHECK(hal_ble_set_callback_on_adv_events(onBleAdvEvents, this, nullptr));
+    if (!provMode_) {
+        CHECK(hal_ble_set_callback_on_adv_events(onBleAdvEvents, this, nullptr));
+    }
     if (!preAdvertising_ && !preConnected_) {
         // Start advertising if it is neither connected nor advertising.
         CHECK(hal_ble_gap_start_advertising(nullptr));
@@ -321,7 +344,9 @@ int BleListeningModeHandler::exit() {
             LOG(ERROR, "Failed to restore user configuration.");
         }
     }
-    hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
+    if (!provMode_) {
+        hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
+    }
 
     exited_ = true;
     return SYSTEM_ERROR_NONE;
@@ -353,5 +378,6 @@ void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, voi
 }
 
 bool BleListeningModeHandler::exited_ = true;
+bool BleListeningModeHandler::provMode_ = false;
 
 #endif /* HAL_PLATFORM_BLE */

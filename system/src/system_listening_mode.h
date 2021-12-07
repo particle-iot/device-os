@@ -68,9 +68,6 @@ private:
     system_tick_t timestampStarted_;
     system_tick_t timestampUpdate_;
 
-#if HAL_PLATFORM_BLE
-    BleListeningModeHandler bleHandler_;
-#endif
 };
 
 } } /* particle::system */
