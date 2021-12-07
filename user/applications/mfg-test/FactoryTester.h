@@ -20,6 +20,7 @@ private:
     char usb_buffer[usb_buffer_length];
 
     static const String IS_READY;
+    static const String SET_PERMANENT_BURN;
     static const String SET_DATA;
     static const String BURN_DATA;
     static const String VALIDATE_BURNED_DATA;
@@ -38,6 +39,7 @@ private:
     static const String FIELD;
     static const String MESSAGE;
     static const String CODE;
+    static const String VERSION;
 
     int setData(MfgTestKeyType command, const char * commandData);
     bool burnData(Vector<int> &resultCodes, Vector<String> &resultStrings);

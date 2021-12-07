@@ -18,7 +18,14 @@
     #define BIT(x)                  (1 << (x))
 #endif
 
-#define MOCK_EFUSE 1 // Use our own RAM buffer for efuse instead of wearing out the hardware MTP/OTP
+#define MFG_TEST_APP_VERSION "1.0.0"
+
+//********************************* !IMPORTANT! *********************************
+// By default, we do not write data to logical/physical efuse (ie OTP memory).
+// If we are asked to BURN_DATA, the data will only be written to RAM buffers that mock the efuse implementation.
+// The mfg-cli must explicitly configure the firmware to write to efuse by sending the SET_PERMANENT_BURN message
+static bool PERMANENT_BURN = false;
+//********************************* !IMPORTANT! *********************************
 
 // eFuse data lengths
 #define SECURE_BOOT_KEY_LENGTH 32
@@ -34,7 +41,7 @@
 // Logical eFuse addresses
 #define EFUSE_SYSTEM_CONFIG 0x0E
 #define EFUSE_WIFI_MAC      0x11A
-#define EFUSE_USER_MTP      0x160  // TODO: Figure out if this really is MTP and if so, how many writes we have
+#define EFUSE_USER_MTP      0x160  // TODO: Figure out if how many writes we have
 
 #define EFUSE_WIFI_MAC_LENGTH 6
 
@@ -154,7 +161,7 @@ public:
     void done(int result, ctrl_completion_handler_fn fn = nullptr, void* data = nullptr) {
         if (req_) {
             String printResponse = String(req_->reply_data, req_->reply_size);
-            Log.trace("json resp size: %d string: %s", req_->reply_size, printResponse.c_str());
+            Log.info("json resp size: %d string: %s", req_->reply_size, printResponse.c_str());
             system_ctrl_set_result(req_, result, fn, data, nullptr);
             req_ = nullptr;
             destroy();
@@ -173,6 +180,7 @@ private:
 
 // Input strings
 const String FactoryTester::IS_READY = "IS_READY";
+const String FactoryTester::SET_PERMANENT_BURN = "SET_PERMANENT_BURN";
 const String FactoryTester::SET_DATA = "SET_DATA";
 const String FactoryTester::BURN_DATA = "BURN_DATA";
 const String FactoryTester::VALIDATE_BURNED_DATA = "VALIDATE_BURNED_DATA";
@@ -192,6 +200,7 @@ const String FactoryTester::ALREADY_PROVISIONED = "Already provisioned with same
 const String FactoryTester::FIELD  = "field";
 const String FactoryTester::MESSAGE  = "message";
 const String FactoryTester::CODE = "code";
+const String FactoryTester::VERSION = "version";
 
 
 void FactoryTester::setup() {   
@@ -207,7 +216,7 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
     memset(usb_buffer, 0x00, sizeof(usb_buffer));
     memcpy(usb_buffer, request->request_data, request->request_size);
 
-    Log.trace("USB req size %d type %d data size: %d ", request->size, request->type, request->request_size);
+    Log.info("USB req size %d type %d data size: %d ", request->size, request->type, request->request_size);
     Log.trace("USB data: %s", usb_buffer);
 
     Vector<int> resultCodes(MFG_TEST_END);
@@ -217,6 +226,7 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
     Request response;
     CHECK(response.init(request));
 
+    String command;
     bool allPassed = false;
     bool isSetData = false;
     bool isValidateBurnedData = false;
@@ -226,13 +236,13 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
     // Pick apart the JSON command
     JSONObjectIterator it(response.data());
     while (it.next()) {
-        String firstKey(it.name());
+        command = (String)it.name();
         JSONValue firstData(it.value());
 
-        Log.trace("Command %s", firstKey.c_str());
+        Log.info("Command %s", command.c_str());
 
-        isSetData = (firstKey == SET_DATA);
-        isValidateBurnedData = (firstKey == VALIDATE_BURNED_DATA);
+        isSetData = (command == SET_DATA);
+        isValidateBurnedData = (command == VALIDATE_BURNED_DATA);
         isSetDataAndProvisioned = (isSetData & isProvisioned());
 
         if(isSetData || isValidateBurnedData) {
@@ -263,15 +273,20 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
                 }
             }
         }
-        else if(firstKey == IS_READY){
+        else if(command == IS_READY){
             allPassed = true;
         }
-        else if(firstKey == BURN_DATA){
+        else if(command == BURN_DATA){
             allPassed = burnData(resultCodes, resultStrings);
         }
-        else if(firstKey == GET_DEVICE_ID){
+        else if(command == GET_DEVICE_ID){
             isGetDeviceId = true;
             allPassed = getDeviceId();
+        }
+        else if(command == SET_PERMANENT_BURN){
+            allPassed = true;
+            PERMANENT_BURN = true;
+            Log.warn("*** ENABLING PERMANENT BURN ***");
         }
         
         if(allPassed && (isValidateBurnedData || isSetDataAndProvisioned)) {
@@ -292,8 +307,8 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
         }    
     }
 
-    // Response for IS_READY, SET_DATA, BURN_DATA, VALIDATE_BURNED_DATA
-    auto commandResponse = [allPassed, resultCodes, resultStrings, isSetDataAndProvisioned](JSONWriter& w) {
+    // Response for IS_READY, SET_PERMANENT_BURN, SET_DATA, BURN_DATA, VALIDATE_BURNED_DATA
+    auto commandResponse = [allPassed, resultCodes, resultStrings, isSetDataAndProvisioned, command](JSONWriter& w) {
         w.beginObject();
         w.name(PASS).value(allPassed);
 
@@ -315,6 +330,9 @@ int FactoryTester::processUSBRequest(ctrl_request* request) {
         }
         else if(isSetDataAndProvisioned) {
             w.name(MESSAGE).value(ALREADY_PROVISIONED);
+        }
+        else if(command == IS_READY) {
+            w.name(VERSION).value(MFG_TEST_APP_VERSION);
         }
         w.endObject();
     };
@@ -386,19 +404,21 @@ int FactoryTester::writeEfuse(bool physical, uint8_t * data, uint32_t length, ui
 
     if (physical) {
         for (i = 0; (i < length) && (eFuseWrite == EFUSE_SUCCESS); i++) {
-            #if MOCK_EFUSE
-            physicalEfuseBuffer[address + i] &= data[i];
-            #else
-            eFuseWrite = EFUSE_PMAP_WRITE8(0, address + i, data[i], L25EOUTVOLTAGE);
-            #endif
+            if(PERMANENT_BURN) {
+                eFuseWrite = EFUSE_PMAP_WRITE8(0, address + i, data[i], L25EOUTVOLTAGE);    
+            }
+            else {
+                physicalEfuseBuffer[address + i] &= data[i];    
+            }
         }
     }
     else {
-        #if MOCK_EFUSE
-        memcpy(logicalEfuseBuffer + address, data, length);
-        #else 
-        eFuseWrite = EFUSE_LMAP_WRITE(address, length, data);
-        #endif
+        if(PERMANENT_BURN) {
+            eFuseWrite = EFUSE_LMAP_WRITE(address, length, data);
+        }
+        else {
+            memcpy(logicalEfuseBuffer + address, data, length);
+        }
     }
 
     if(eFuseWrite == EFUSE_SUCCESS){
@@ -424,22 +444,24 @@ int FactoryTester::readEfuse(bool physical, uint8_t * data, uint32_t length, uin
 
     if (physical) {
         for (i = 0; (i < length) && (eFuseRead == EFUSE_SUCCESS); i++) {
-            #if MOCK_EFUSE
-            data[i] = physicalEfuseBuffer[address + i];
-            #else
-            eFuseRead = EFUSE_PMAP_READ8(0, address + i, &data[i], L25EOUTVOLTAGE);
-            #endif
+            if(PERMANENT_BURN) {
+                eFuseRead = EFUSE_PMAP_READ8(0, address + i, &data[i], L25EOUTVOLTAGE);
+            }
+            else {
+                data[i] = physicalEfuseBuffer[address + i];
+            }
         }
     }
     else {
-        #if MOCK_EFUSE
-        memcpy(data, logicalEfuseBuffer + address, length);
-        #else
-        eFuseRead = EFUSE_LMAP_READ(logicalEfuseBuffer);
-        if(eFuseRead == EFUSE_SUCCESS) {
-            memcpy(data, logicalEfuseBuffer + address, length);
+        if(PERMANENT_BURN) {
+            eFuseRead = EFUSE_LMAP_READ(logicalEfuseBuffer);
+            if(eFuseRead == EFUSE_SUCCESS) {
+                memcpy(data, logicalEfuseBuffer + address, length);
+            }
         }
-        #endif
+        else {
+            memcpy(data, logicalEfuseBuffer + address, length);    
+        }
     }
 
     if(eFuseRead == EFUSE_FAILURE) {
@@ -461,7 +483,7 @@ int FactoryTester::validateCommandData(const char * data, uint8_t * output_bytes
         return SYSTEM_ERROR_NOT_ENOUGH_DATA;
     }
 
-    // Validate characters in the serial number.
+    // Ensure we only have hex characters in the string data.
     for (uint8_t i = 0; i < len; i++) {
         if (!isxdigit(data[i])) {
             Log.trace("Validate Hex Data FAILED: invalid char value 0x%02X at index %d", data[i], i);
@@ -529,6 +551,13 @@ bool FactoryTester::isProvisioned() {
     return false;
 }
 
+// This is the critical step where all the data buffered in RAM is burned to the appropriate physical and logical efuse locations
+// The general flow is
+// 1) Validate that ALL expected efuse data is buffered and validated, return immediately if this is not true
+// 2) Iterate over the buffered efuse data fields. Some of the fields need to be handled in special ways
+//    -Flash Encryption Key: The endianess of this key needs to be swapped before writing
+//    -Logical efuse data (EXCEPT WIFI MAC): In order to minimize writes to the User MTP section of logical efuse,
+//     all of the data is concatenated together and written to logical efuse in a single write operation
 bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStrings) {
     bool allBufferedDataValid = true;
     int efuseWriteResult;
@@ -553,6 +582,16 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
         EfuseData data = efuseFields[i];
 
         if(data.isPhysicaleFuse || (data.json_key == MFG_TEST_WIFI_MAC)){
+
+            // The flash encryption key byte order should be reversed when written to efuse
+            if(i == EFUSE_DATA_FLASH_ENCRYPTION_KEY){
+                uint8_t keyReversed[FLASH_ENCRYPTION_KEY_LENGTH] = {};
+                for(int j = 0; j < FLASH_ENCRYPTION_KEY_LENGTH; j++){
+                    keyReversed[FLASH_ENCRYPTION_KEY_LENGTH - j - 1] = data.data[j];
+                }
+                memcpy(data.data, keyReversed, FLASH_ENCRYPTION_KEY_LENGTH);
+            }
+
             efuseWriteResult = writeEfuse(data.isPhysicaleFuse, data.data, data.length, data.address);
             if(efuseWriteResult != 0){
                 resultCodes[data.json_key] = efuseWriteResult;
