@@ -33,6 +33,7 @@
 #include "ble_hal.h"
 #include <memory>
 #include "enumflags.h"
+#include "system_ble_prov.h"
 
 using namespace std::placeholders;
 
@@ -926,6 +927,10 @@ public:
     int txPower(int8_t* txPower) const;
     int8_t txPower() const;
     int selectAntenna(BleAntennaType antenna) const;
+
+    // Access provisioning mode
+    int provisioningMode(bool enabled) const;
+    bool getProvisioningStatus() const;
 
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;

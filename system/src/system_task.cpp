@@ -46,6 +46,7 @@
 #include "cellular_hal.h"
 #include "system_power.h"
 #include "simple_pool_allocator.h"
+#include "system_ble_prov.h"
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
@@ -469,6 +470,18 @@ void manage_listening_mode_flag() {
 #endif
 }
 
+void manage_ble_prov_mode() {
+    // Check the relevant feature flag. If it's cleared,
+    // make sure to turn off prov mode, and clear all
+    // its UUIDs and others
+    if (system_get_ble_prov_status(nullptr) && !HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        system_ble_prov_mode(false, nullptr);
+        // FIXME - IMPORTANT!!
+        // CLear any other relevant prov mode IDs here
+        // XXX: should I probably use one function in system_ble_prov_mode.cpp to clear everything?
+    }
+}
+
 static void process_isr_task_queue()
 {
     SystemISRTaskQueue.process();
@@ -513,6 +526,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 #if HAL_PLATFORM_BLE
     // TODO: Process BLE channel events in a separate thread
     system::SystemControl::instance()->run();
+    manage_ble_prov_mode();
 #endif
     system_shutdown_if_needed();
 }

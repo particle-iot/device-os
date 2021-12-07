@@ -38,6 +38,7 @@
 #include "system_led_signal.h"
 #include "system_setup.h"
 #include "system_power.h"
+#include "system_ble_prov.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -119,6 +120,9 @@ DYNALIB_FN(BASE_IDX1 + 2, system, system_power_management_get_config, int(hal_po
 
 DYNALIB_FN(BASE_IDX2 + 0, system, system_info_get_unstable, int(hal_system_info_t* info, uint32_t flags, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 1, system, system_info_free_unstable, int(hal_system_info_t* info, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 2, system, system_ble_prov_mode, int(bool enabled, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 3, system, system_get_ble_prov_status, bool(void* reserved))
+
 
 DYNALIB_END(system)
 

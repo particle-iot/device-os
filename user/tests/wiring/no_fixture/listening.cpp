@@ -20,6 +20,8 @@
 
 // TODO: Should we add a test case for the default case? For users that don't touch the flag
 
+SYSTEM_THREAD(ENABLED);
+
 // Dot not enter listening mode based on the flag
 test(LISTENING_00_DISABLE_LISTENING_MODE) {
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
@@ -48,4 +50,43 @@ test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
     delay(1500); // Time for system thread to process the flag
     assertFalse(Network.listening());
+}
+
+test(LISTENING_03_ENABLE_BLE_PROV_MODE_WHEN_FLAG_SET) {
+    System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    BLE.provisioningMode(true);
+    HAL_Delay_Milliseconds(100);
+    assertTrue(BLE.getProvisioningStatus());
+    assertTrue(BLE.advertising());
+    BLE.provisioningMode(false);
+    HAL_Delay_Milliseconds(100);
+    assertFalse(BLE.getProvisioningStatus());
+    assertFalse(BLE.advertising());
+}
+
+test(LISTENING_04_ENABLE_BLE_PROV_MODE_WHEN_FLAG_CLEARED) {
+    System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    assertEqual(BLE.provisioningMode(true), (int)SYSTEM_ERROR_NOT_ALLOWED);
+    HAL_Delay_Milliseconds(100);
+    assertFalse(BLE.getProvisioningStatus());
+    assertFalse(BLE.advertising());
+    BLE.provisioningMode(false);
+    HAL_Delay_Milliseconds(100);
+    assertFalse(BLE.getProvisioningStatus());
+    assertFalse(BLE.advertising());
+}
+
+test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
+    Network.listen();
+    HAL_Delay_Milliseconds(1000); // Time for system thread to enter listening mode
+    assertTrue(Network.listening());
+    System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    HAL_Delay_Milliseconds(1500); // Time for system thread to process the flag
+    assertFalse(Network.listening());
+    BLE.provisioningMode(true);
+    HAL_Delay_Milliseconds(100);
+    assertTrue(BLE.getProvisioningStatus());
+    BLE.provisioningMode(false);
+    HAL_Delay_Milliseconds(100);
+    assertFalse(BLE.getProvisioningStatus());
 }
