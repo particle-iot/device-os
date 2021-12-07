@@ -179,19 +179,19 @@ const String FactoryTester::VALIDATE_BURNED_DATA = "VALIDATE_BURNED_DATA";
 const String FactoryTester::GET_DEVICE_ID = "GET_DEVICE_ID";
 
 // Output strings
-const String FactoryTester::PASS = "\"pass\"";
-const String FactoryTester::ERRORS = "\"errors\"";
+const String FactoryTester::PASS = "pass";
+const String FactoryTester::ERRORS = "errors";
 
-const String FactoryTester::EFUSE_READ_FAILURE = "\"Failed to read burned data\"";
-const String FactoryTester::EFUSE_WRITE_FAILURE = "\"Failed to burn data\"";
-const String FactoryTester::DATA_DOES_NOT_MATCH = "\"Burned data does not match\"";
-const String FactoryTester::NO_VALID_DATA_BUFFERED = "\"No valid data buffered\"";
-const String FactoryTester::RSIP_ENABLE_FAILURE = "\"Failed to enable RSIP\"";
-const String FactoryTester::ALREADY_PROVISIONED = "\"Already provisioned with same data\"";
+const String FactoryTester::EFUSE_READ_FAILURE = "Failed to read burned data";
+const String FactoryTester::EFUSE_WRITE_FAILURE = "Failed to burn data";
+const String FactoryTester::DATA_DOES_NOT_MATCH = "Burned data does not match";
+const String FactoryTester::NO_VALID_DATA_BUFFERED = "No valid data buffered";
+const String FactoryTester::RSIP_ENABLE_FAILURE = "Failed to enable RSIP";
+const String FactoryTester::ALREADY_PROVISIONED = "Already provisioned with same data";
 
-const String FactoryTester::FIELD  = "\"field\"";
-const String FactoryTester::MESSAGE  = "\"message\"";
-const String FactoryTester::CODE = "\"code\"";
+const String FactoryTester::FIELD  = "field";
+const String FactoryTester::MESSAGE  = "message";
+const String FactoryTester::CODE = "code";
 
 
 void FactoryTester::setup() {   
@@ -553,7 +553,7 @@ bool FactoryTester::burnData(Vector<int> &resultCodes, Vector<String> &resultStr
         EfuseData data = efuseFields[i];
 
         if(data.isPhysicaleFuse || (data.json_key == MFG_TEST_WIFI_MAC)){
-            int efuseWriteResult = writeEfuse(data.isPhysicaleFuse, data.data, data.length, data.address);
+            efuseWriteResult = writeEfuse(data.isPhysicaleFuse, data.data, data.length, data.address);
             if(efuseWriteResult != 0){
                 resultCodes[data.json_key] = efuseWriteResult;
                 resultStrings[data.json_key] = EFUSE_WRITE_FAILURE;
