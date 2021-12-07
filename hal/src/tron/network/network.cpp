@@ -167,25 +167,19 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
 }
 
 unsigned char* rltk_wlan_get_ip(int idx) {
-    uint8_t* p = (uint8_t*)&wl3->interface()->ip_addr;
-    (void)p;
-    LOG(INFO, "rltk_wlan_get_ip: idx: %d, ip: %d, %d, %d, %d", idx, p[0], p[1], p[2], p[3]);
-
     return (uint8_t *) &(wl3->interface()->ip_addr);
 }
 
 unsigned char* rltk_wlan_get_gw(int idx) {
-    LOG(INFO, "rltk_wlan_get_gw: 0x%x", wl3->interface()->gw.u_addr.ip4.addr);
     return (uint8_t *) &(wl3->interface()->gw);
 }
 
 unsigned char* rltk_wlan_get_gwmask(int idx) {
-    LOG(INFO, "rltk_wlan_get_gwmask: 0x%x", wl3->interface()->netmask.u_addr.ip4.addr);
     return (uint8_t *) &(wl3->interface()->netmask);
 }
 
 void rltk_wlan_set_netif_info(int idx_wlan, void* dev, unsigned char* dev_addr) {
-    LOG(INFO, "rltk_wlan_set_netif_info %d %02x:%02x:%02x:%02x:%02x:%02x", idx_wlan,
+    LOG(INFO, "rltk_wlan_set_netif_info: %d, %02x:%02x:%02x:%02x:%02x:%02x", idx_wlan,
         dev_addr[0], dev_addr[1], dev_addr[2], dev_addr[3], dev_addr[4], dev_addr[5]);
     if (wl3) {
         memcpy(wl3->interface()->hwaddr, dev_addr, sizeof(wl3->interface()->hwaddr));
