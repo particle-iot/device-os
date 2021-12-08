@@ -26,7 +26,6 @@
 
 #include "spark_protocol_functions.h"
 
-
 struct __ApplicationProductID {
     __ApplicationProductID(product_id_t id) {
         spark_protocol_set_product_id(spark_protocol_instance(), id);
@@ -44,7 +43,9 @@ struct __ApplicationProductVersion {
 #endif
 
 #if PLATFORM_ID!=3
-#define PRODUCT_ID(x)           __ApplicationProductID __appProductID(x); __attribute__((externally_visible, section(".modinfo.product_id"))) uint16_t __system_product_id = (x);
+// FIXME: use product_id_t / product_version_t
+// FIXME: product is for now 16-bits and shifted to the necessary location so that it's parsable without any tooling changes
+#define PRODUCT_ID(x)           __ApplicationProductID __appProductID(x); __attribute__((externally_visible, section(".modinfo.product_id"))) uint32_t __system_product_id = ((uint32_t)(x)) << 16;
 #define PRODUCT_VERSION(x)       __ApplicationProductVersion __appProductVersion(x); __attribute__((externally_visible, section(".modinfo.product_version"))) uint16_t __system_product_version = (x);
 #else
 #define PRODUCT_ID(x)
@@ -52,4 +53,3 @@ struct __ApplicationProductVersion {
 #endif
 
 #endif	/* SPARK_WIRING_VERSION_H */
-

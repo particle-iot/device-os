@@ -417,30 +417,53 @@ void HAL_Core_Config(void) {
     HAL_RNG_Configuration();
 
 #if defined(MODULAR_FIRMWARE)
-    uint8_t* address = (uint8_t*)&link_user_part_flash_end;
-    address = address - 4/*CRC*/ - sizeof(module_info_suffix_t);
-
-    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
-
-    module_user.start_address = *((uint32_t*)address); // module start address
-    hal_user_module_descriptor user_desc = {};
-    if (!hal_user_module_get_descriptor(&user_desc)) {
-        address += 4;
-        dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib table in flash
-
-        new_heap_end = user_desc.pre_init();
-        if (new_heap_end > malloc_heap_end()) {
-            malloc_set_heap_end(new_heap_end);
+    const module_info_dynamic_location_ext_t* dyn = NULL;
+    const uint8_t* user_end = (const uint8_t*)module_user.end_address - sizeof(uint32_t);
+    const uint16_t* suffix_size = (const uint16_t*)(user_end - sizeof(uint16_t)) /* module_info_suffix_t::size */;
+    for (const uint8_t* addr = user_end - *suffix_size; addr < user_end - MODULE_INFO_SUFFIX_NONEXT_DATA_SIZE;) {
+        const module_info_extension_t* ext = (const module_info_extension_t*)(addr);
+        if (ext->type == MODULE_INFO_EXTENSION_DYNAMIC_LOCATION) {
+            if (ext->length >= sizeof(module_info_dynamic_location_ext_t)) {
+                dyn = (const module_info_dynamic_location_ext_t*)ext;
+                break;
+            }
+        } else if (ext->type == MODULE_INFO_EXTENSION_INVALID || ext->type == MODULE_INFO_EXTENSION_END) {
+            break;
         }
-
-        address += 4;
-        dynalib_table_location = (void*)(*((uint32_t*)address)); // dynalib in PSRAM
-    } else {
-        module_user.start_address = (uint32_t)&link_user_part_flash_end;
     }
 
-    module_ota.end_address = module_user.start_address - 1;
-    SPARK_ASSERT(module_ota.end_address >= module_ota.start_address + 0x200000); // Should have 2M for the OTA region at the least
+    // End of current system-part1 aligned to 4KB
+    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
+
+    if (dyn) {
+        uint32_t ota_end_address = (uint32_t)dyn->module_start_address - 1;
+        if (ota_end_address >= module_ota.start_address + 0x200000) {
+            // Should have 2M for the OTA region at the least
+            module_ota.end_address = ota_end_address;
+            module_user.start_address = (uint32_t)dyn->module_start_address;
+        } else {
+            // Invalid user module
+            dyn = NULL;
+        }
+    }
+
+    if (!dyn) {
+        module_user.start_address = module_user.end_address;
+    }
+
+    if (dyn) {
+        dynalib_table_location = (void*)dyn->dynalib_load_address; // dynalib table in flash
+
+        // This will also perform CRC checks etc
+        hal_user_module_descriptor user_desc = {};
+        if (!hal_user_module_get_descriptor(&user_desc)) {
+            new_heap_end = user_desc.pre_init();
+            if (new_heap_end > malloc_heap_end()) {
+                malloc_set_heap_end(new_heap_end);
+            }
+            dynalib_table_location = (void*)dyn->dynalib_start_address; // dynalib in PSRAM
+        }
+    }
 
     // Enable malloc before littlefs initialization.
     malloc_enable(1);

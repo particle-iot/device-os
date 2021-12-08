@@ -31,6 +31,7 @@ extern "C" {
 #include "static_assert.h"
 #include "stddef.h"
 #include <stdint.h>
+#include "hal_platform.h"
 
 typedef struct module_dependency_t {
     uint8_t module_function;        // module function, lowest 4 bits
@@ -200,21 +201,53 @@ typedef struct compressed_module_header {
     uint32_t original_size;
 } __attribute__((__packed__)) compressed_module_header;
 
+typedef enum module_info_extension_type_t {
+    MODULE_INFO_EXTENSION_END = 0x0000,
+    MODULE_INFO_EXTENSION_PRODUCT_DATA = 0x0001,
+    MODULE_INFO_EXTENSION_DYNAMIC_LOCATION = 0x0002,
+    MODULE_INFO_EXTENSION_INVALID = 0xffff
+} __attribute__((__packed__)) module_info_extension_type_t;
+
+typedef struct module_info_extension_t {
+    uint16_t type;
+    uint16_t length;
+} module_info_extension_t;
+
+#define MODULE_INFO_PRODUCT_ID_DEFAULT (0xffffffff)
+#define MODULE_INFO_PRODUCT_VERSION_DEFAULT (0xffff)
+
+typedef struct module_info_product_data_ext_t {
+    module_info_extension_t ext;
+    uint32_t id;
+    uint16_t version;
+} __attribute__((packed)) module_info_product_data_ext_t;
+static_assert(sizeof(module_info_product_data_ext_t) == sizeof(module_info_extension_t) + sizeof(uint16_t) + sizeof(uint32_t), "module_info_product_data_ext_t size changed");
+
+typedef struct module_info_dynamic_location_ext_t {
+    module_info_extension_t ext;
+    const void* module_start_address;
+    const void* dynalib_load_address;
+    const void* dynalib_start_address;
+} __attribute__((packed)) module_info_dynamic_location_ext_t;
 /*
  * The structure is a suffix to the module, placed before the end symbol
  */
 typedef struct module_info_suffix_t {
     // NB: NB: NB: add new members here
-#if PLATFORM_ID == 32
-    const void* module_start_address;
-    const void* dynalib_load_address;
-    const void* dynalib_start_address;
-#endif
+#if HAL_PLATFORM_MODULE_DYNAMIC_LOCATION
+    module_info_dynamic_location_ext_t ext_dynamic;
+#endif // HAL_PLATFORM_MODULE_DYNAMIC_LOCATION
+    // FIXME: Keeping this extension always present for now
+    module_info_product_data_ext_t ext_product;
     uint16_t reserved;
     uint8_t sha[32];
     uint16_t size;
     // NB: NB: NB: add new members to the start of this module definition, not the end!!
 } __attribute__((packed)) module_info_suffix_t;
+
+#define MODULE_INFO_SUFFIX_NONEXT_DATA_SIZE (36)
+
+static_assert(sizeof(module_info_suffix_t) - offsetof(module_info_suffix_t, ext_product) == MODULE_INFO_SUFFIX_NONEXT_DATA_SIZE + sizeof(module_info_product_data_ext_t), "product info in module suffix has been moved");
 
 /**
  * The structure appended to the end of the module.
@@ -226,7 +259,6 @@ typedef struct module_info_crc_t {
 extern const module_info_t module_info;
 extern const module_info_suffix_t module_info_suffix;
 extern const module_info_crc_t module_info_crc;
-
 
 #ifdef __cplusplus
 }

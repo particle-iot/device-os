@@ -31,6 +31,10 @@ bool validUserModuleInfoAtIndex(uint8_t index, module_info_t* info) {
         return false;
     }
 
+    if (bounds->start_address == bounds->end_address) {
+        return false;
+    }
+
     if (!FLASH_isUserModuleInfoValid(FLASH_INTERNAL, bounds->start_address, bounds->start_address)) {
         return false;
     }
