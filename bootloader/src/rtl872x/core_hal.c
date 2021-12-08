@@ -60,35 +60,7 @@ void HAL_Delay_Microseconds(uint32_t uSec) {
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
-    __DSB();
-    __ISB();
-
-    // Disable systick
-    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
-
-    // Disable global interrupt
-    __set_BASEPRI(1 << (8 - __NVIC_PRIO_BITS));
-
-    WDG_InitTypeDef WDG_InitStruct;
-    u32 CountProcess;
-    u32 DivFacProcess;
-    BKUP_Set(BKUP_REG0, BIT_KM4SYS_RESET_HAPPEN);
-    WDG_Scalar(50, &CountProcess, &DivFacProcess);
-    WDG_InitStruct.CountProcess = CountProcess;
-    WDG_InitStruct.DivFacProcess = DivFacProcess;
-    WDG_Init(&WDG_InitStruct);
-
-    // FIXME: seems to mess with RSIP configuration perhaps?
-    *(uint32_t*)0x480003F8 |= 1<<26;
-    WDG_Cmd(ENABLE);
-    DelayMs(500);
-    DiagPrintf("Failed to reset device using WDG.");
-
-    // It should have reset the device after this amount of delay. If not, try resetting device by KM0
-    km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
-    while (1) {
-        __WFE();
-    }
+    HAL_Core_System_Reset();
 }
 
 int HAL_Core_Enter_Panic_Mode(void* reserved) {

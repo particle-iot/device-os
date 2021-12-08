@@ -21,6 +21,7 @@
 #include "flash_hal.h"
 #include "boot_info.h"
 #include "flash_mal.h"
+#include "flash_common.h"
 
 #define COPY_BLOCK_SIZE                 256
 
@@ -52,11 +53,8 @@ static bool flash_copy(uintptr_t src_addr, uintptr_t dest_addr, size_t size) {
     uint8_t buf[COPY_BLOCK_SIZE];
     const uintptr_t src_end_addr = src_addr + size;
 
-    DiagPrintf("[MBR] copy image from 0x%08X to 0x%08X, length: 0x%08X ....", src_addr, dest_addr, size);
-
     uint32_t sectorNum = (size / 4096) + (((size % 4096) > 0) ? 1 : 0);
     if (hal_flash_erase_sector(dest_addr, sectorNum) != 0) {
-        DiagPrintf("[MBR] erasing flash failed\n");
         return false;
     }
 
@@ -66,52 +64,41 @@ static bool flash_copy(uintptr_t src_addr, uintptr_t dest_addr, size_t size) {
             n = sizeof(buf);
         }
         if (hal_flash_read(src_addr, buf, n) != 0) {
-            DiagPrintf("[MBR] hal_flash_read() failed\n");
             return false;
         }
         if (hal_flash_write(dest_addr, buf, n) != 0) {
-            DiagPrintf("[MBR] hal_flash_write() failed\n");
             return false;
         }
         if (memcmp((uint8_t*)src_addr, (uint8_t*)dest_addr, n)) {
-            DiagPrintf("[MBR] copy operation failed!\n");
             return false;
         }
         src_addr += n;
         dest_addr += n;
     }
-    DiagPrintf("Done\n");
     return true;
 }
 
 bool bootloaderUpdateIfPending(void) {
     flash_init();
 
-    flash_update_info_t info;
-    for (uint8_t i = 0; i < 2; i++) {
-        uint32_t infoAddr, targetAddr;
-        if (i == 0) {
-            infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM4_BOOTLOADER_UPDATE_INFO_OFFSET;
-            targetAddr = KM4_BOOTLOADER_START_ADDRESS;
-        } else {
-            infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_PART1_UPDATE_INFO_OFFSET;
-            targetAddr = KM0_PART1_START_ADDRESS;
-        }
-        memcpy(&info, (void*)infoAddr, sizeof(info));
-        if (info.magic_num == KM0_UPDATE_MAGIC_NUMBER
-                && info.src_addr > OTA_REGION_LOWEST_ADDR
-                && info.src_addr < OTA_REGION_HIGHEST_ADDR
-                && info.dest_addr == targetAddr
-                && info.size > 0) {
+    flash_update_info_t info = {};
+
+    uint32_t infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_BOOTLOADER_UPDATE_INFO_OFFSET;
+    memcpy(&info, (void*)infoAddr, sizeof(info));
+    if ((info.magic_num == KM0_BOOTLOADER_UPDATE_MAGIC_NUMBER && info.size > 0)
+            && (info.src_addr > OTA_REGION_LOWEST_ADDR && info.src_addr < OTA_REGION_HIGHEST_ADDR)
+            && (info.dest_addr == KM4_BOOTLOADER_START_ADDRESS || info.dest_addr == KM0_PART1_START_ADDRESS)) {
+        if (Compute_CRC32((const uint8_t*)&info, sizeof(flash_update_info_t) - sizeof(info.crc32), NULL) == info.crc32) {
             if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
-                return false;
-            }
-            memset(&info, 0x00, sizeof(info));
-            if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
-                DiagPrintf("[MBR] hal_flash_write() failed\n");
                 return false;
             }
         }
     }
+
+    memset(&info, 0x00, sizeof(info));
+    if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
+        hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1);
+    }
+
     return true;
 }

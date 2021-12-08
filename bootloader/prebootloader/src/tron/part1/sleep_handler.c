@@ -22,16 +22,15 @@
 #include "check.h"
 
 static volatile hal_sleep_config_t* sleepConfig = NULL;
-static volatile uint16_t sleepReqId = INVALID_IPC_REQ_ID;
+static volatile uint16_t sleepReqId = KM0_KM4_IPC_INVALID_REQ_ID;
+static int sleepResult = 0;
 
 static void onSleepRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
-    if (msg->data_len != sizeof(hal_sleep_config_t)) {
-        DiagPrintf("KM0: invalid IPC message length.\n");
-        return;
-    }
     sleepConfig = (hal_sleep_config_t*)msg->data;
+    if (msg->data_len != sizeof(hal_sleep_config_t)) {
+        sleepConfig = NULL;
+    }
     sleepReqId = msg->req_id;
-    DiagPrintf("KM0 received KM0_KM4_IPC_MSG_SLEEP: 0x%08X\n", (uint32_t)sleepConfig);
 }
 
 void sleepInit(void) {
@@ -40,14 +39,17 @@ void sleepInit(void) {
 
 void sleepProcess(void) {
     // Handle sleep
-    if (sleepReqId != INVALID_IPC_REQ_ID && sleepConfig) {
-        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sleepReqId, NULL, 0);
-        sleepReqId = INVALID_IPC_REQ_ID;
-
-        DCache_Invalidate((uint32_t)sleepConfig, sizeof(hal_sleep_config_t));
-
-        // TODO: perform sleep
-        
+    sleepResult = SYSTEM_ERROR_NONE;
+    if (sleepReqId != KM0_KM4_IPC_INVALID_REQ_ID) {
+        if (!sleepConfig) {
+            sleepResult = SYSTEM_ERROR_BAD_DATA;
+        } else {
+            DCache_Invalidate((uint32_t)sleepConfig, sizeof(hal_sleep_config_t));
+            // TODO: perform sleep
+            sleepResult = SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sleepReqId, &sleepResult, sizeof(sleepResult));
+        sleepReqId = KM0_KM4_IPC_INVALID_REQ_ID;
         sleepConfig = NULL;
     }
 }

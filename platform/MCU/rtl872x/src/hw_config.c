@@ -229,13 +229,14 @@ void Set_System(void)
     // set IDAU, the enabled regions are treated as Non-secure space
     // KM0 needs to read IPC message that shoud be allocated in KM4 NS SRAM
     IDAU_TypeDef* IDAU = ((IDAU_TypeDef *) KM4_IDAU_BASE);
-    IDAU->ENTRY[4].IDAU_BARx = (uint32_t)&link_ipc_data_start;
-    IDAU->ENTRY[4].IDAU_LARx = (uint32_t)&link_ipc_data_end;
-    IDAU->IDAU_CTRL |= BIT(4);
-
-    InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
-    InterruptEn(IPC_IRQ, 5);
-    km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
+    for (uint8_t i = 0; i < 7; i++) {
+        if ((IDAU->IDAU_CTRL & BIT(i)) == 0) {
+            IDAU->ENTRY[i].IDAU_BARx = (uint32_t)&link_ipc_data_start;
+            IDAU->ENTRY[i].IDAU_LARx = (uint32_t)&link_ipc_data_end;
+            IDAU->IDAU_CTRL |= BIT(i);
+            break;
+        }
+    }
 #else
     // Disable cache
     Cache_Enable(0);
@@ -248,6 +249,10 @@ void Set_System(void)
     Cache_Enable(1);
 #endif
     ICache_Enable();
+
+    InterruptRegister(IPC_INTHandler, IPC_IRQ, (u32)IPCM0_DEV, 5);
+    InterruptEn(IPC_IRQ, 5);
+    km0_km4_ipc_init(KM0_KM4_IPC_CHANNEL_GENERIC);
 }
 
 void Reset_System(void) {

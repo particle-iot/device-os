@@ -27,6 +27,7 @@ extern "C" {
 #include "rtl_sdk_support.h"
 #include "strproc.h"
 #include "service_debug.h"
+#include "km0_km4_ipc.h"
 
 
 extern "C" {
@@ -147,6 +148,19 @@ extern "C" int mbedtls_platform_set_calloc_free(void*(*)(size_t, size_t), void (
 }
 #endif // MBEDTLS_PLATFORM_MEMORY
 
+void ipc_table_init() {
+    // stub
+}
+
+void ipc_send_message(uint8_t channel, uint32_t message) {
+    // stub
+}
+
+uint32_t ipc_get_message(uint8_t channel) {
+    // stub
+    return 0;
+}
+
 
 int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback) {
     if (channel > 15) {
@@ -156,12 +170,44 @@ int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback) {
     return 0;
 }
 
-void ipc_send_message(uint8_t channel, uint32_t message) {
+void ipc_send_message_alt(uint8_t channel, uint32_t message) {
     IPCM4_DEV->IPCx_USR[channel] = message;	
 	IPC_INTRequest(IPCM4_DEV, channel);
 }
 
-uint32_t ipc_get_message(uint8_t channel) {
+uint32_t ipc_get_message_alt(uint8_t channel) {
     uint32_t msgAddr = IPCM0_DEV->IPCx_USR[channel];
     return msgAddr;
+}
+
+// FIXME: move it somewhere proper
+extern "C" void HAL_Core_System_Reset(void) {
+    __DSB();
+    __ISB();
+
+    // Disable systick
+    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
+
+    // Disable global interrupt
+    __disable_irq();
+
+    WDG_InitTypeDef WDG_InitStruct;
+    u32 CountProcess;
+    u32 DivFacProcess;
+    BKUP_Set(BKUP_REG0, BIT_KM4SYS_RESET_HAPPEN);
+    WDG_Scalar(50, &CountProcess, &DivFacProcess);
+    WDG_InitStruct.CountProcess = CountProcess;
+    WDG_InitStruct.DivFacProcess = DivFacProcess;
+    WDG_Init(&WDG_InitStruct);
+
+    // FIXME: seems to mess with RSIP configuration perhaps?
+    *(uint32_t*)0x480003F8 |= 1<<26;
+    WDG_Cmd(ENABLE);
+    DelayMs(500);
+
+    // It should have reset the device after this amount of delay. If not, try resetting device by KM0
+    km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
+    while (1) {
+        __WFE();
+    }
 }
