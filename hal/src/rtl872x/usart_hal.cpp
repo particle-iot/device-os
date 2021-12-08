@@ -43,6 +43,19 @@ public:
         unsigned int config;
     };
 
+    class AtomicBlock {
+    public:
+        AtomicBlock(Usart* instance)
+                : uart_(instance) {
+            NVIC_DisableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
+        }
+        ~AtomicBlock() {
+            NVIC_EnableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
+        }
+    private:
+        Usart* uart_;
+    };
+
     class RxLock {
     public:
         RxLock(Usart* instance)
@@ -265,6 +278,7 @@ public:
                 }
             }
             // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+            AtomicBlock atomic(this);
             uartTxRxIntHandler(this);
         }
         return 0;
@@ -275,8 +289,8 @@ public:
         auto uartInstance = uartTable_[index_].UARTx;
         ssize_t len = 0;
         if (receiving_) {
+            RxLock lk(this);
             if (uartInstance != UART2_DEV) {
-                RxLock lk(this);
                 len = rxBuffer_.data();
                 const uint32_t curAddr = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
                 GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
@@ -614,43 +628,33 @@ private:
 
     void rxLock(bool lock) {
         auto instance = uartTable_[index_].UARTx;
-        if (lock) {
-            if (instance != UART2_DEV) {
-                if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
+        if (instance != UART2_DEV) {
+            if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                if (lock) {
                     NVIC_DisableIRQ(GDMA_GetIrqNum(0, rxDmaInitStruct_.GDMA_ChNum));
-                }
-            } else {
-                UART_INTConfig(instance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, DISABLE);
-            }
-        } else {
-            if (instance != UART2_DEV) {
-                if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                } else {
                     NVIC_EnableIRQ(GDMA_GetIrqNum(0, rxDmaInitStruct_.GDMA_ChNum));
                 }
-            } else {
-                UART_INTConfig(instance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, ENABLE);
             }
+        } else {
+            UART_INTConfig(instance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, lock ? DISABLE : ENABLE);
         }
+        __ISB();
+        __DSB();
     }
 
     void txLock(bool lock) {
         auto instance = uartTable_[index_].UARTx;
-        if (lock) {
-            if (instance != UART2_DEV) {
-                if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
+        if (instance != UART2_DEV) {
+            if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                if (lock) {
                     NVIC_DisableIRQ(GDMA_GetIrqNum(0, txDmaInitStruct_.GDMA_ChNum));
-                }
-            } else {
-                UART_INTConfig(instance, RUART_IER_ETBEI, DISABLE);
-            }
-        } else {
-            if (instance != UART2_DEV) {
-                if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                } else {
                     NVIC_EnableIRQ(GDMA_GetIrqNum(0, txDmaInitStruct_.GDMA_ChNum));
                 }
-            } else {
-                UART_INTConfig(instance, RUART_IER_ETBEI, ENABLE);
             }
+        } else {
+            UART_INTConfig(instance, RUART_IER_ETBEI, lock ? DISABLE : ENABLE);
         }
     }
 
@@ -788,6 +792,7 @@ uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
     // Blocking!
     while (usart->space() <= 0) {
         // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+        Usart::AtomicBlock atomic(usart);
         usart->uartTxRxIntHandler(usart);
     }
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
