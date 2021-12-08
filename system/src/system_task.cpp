@@ -53,6 +53,7 @@
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
+#include "system_listening_mode.h"
 
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
@@ -455,6 +456,15 @@ void manage_cloud_connection(bool force_events)
     }
 }
 
+void manage_listening_mode_flag() {
+    // If device is in listening mode and 'FEATURE_FLAG_DISABLE_LISTENING_MODE' is enabled,
+    // make sure to come out of listening mode
+    if (particle::system::ListeningModeHandler::instance()->isActive() && HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        particle::system::ListeningModeHandler::instance()->exit();
+    }
+    HAL_Delay_Milliseconds(1);
+}
+
 static void process_isr_task_queue()
 {
     SystemISRTaskQueue.process();
@@ -489,6 +499,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_cloud_connection(force_events);
 
         system::FirmwareUpdate::instance()->process();
+
+        manage_listening_mode_flag();
     }
     else
     {
