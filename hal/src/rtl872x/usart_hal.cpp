@@ -277,7 +277,9 @@ public:
                     break;
                 }
             }
-            // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+            // FIXME: Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+            // Otherwise, the tx buffer is always full and device is blocked here.
+            // Adding a delay here instead seams to be helpful as well.
             AtomicBlock atomic(this);
             uartTxRxIntHandler(this);
         }
@@ -791,7 +793,9 @@ uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
     while (usart->space() <= 0) {
-        // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+        // FIXME: Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+        // Otherwise, the tx buffer is always full and device is blocked here.
+        // Adding a delay here instead seams to be helpful as well.
         Usart::AtomicBlock atomic(usart);
         usart->uartTxRxIntHandler(usart);
     }
