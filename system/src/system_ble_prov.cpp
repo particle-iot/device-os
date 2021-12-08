@@ -20,9 +20,13 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
     BleListeningModeHandler::instance()->setProvModeStatus(enabled);
     if (enabled) {
         LOG(TRACE, "Ble prov mode enabled");
+        BleControlRequestChannel::instance(SystemControl::instance())->initProfile(true);
         return BleListeningModeHandler::instance()->enter();
     } else {
         LOG(TRACE, "Ble prov mode disabled");
+        // Should we void all of the UUIDs upon exiting the prov mode
+        // The next time they enter prov mode, they might wanna use these?
+        BleControlRequestChannel::instance(SystemControl::instance())->initProfile(false);
         return BleListeningModeHandler::instance()->exit();
     }
 }

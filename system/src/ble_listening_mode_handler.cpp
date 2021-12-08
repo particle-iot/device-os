@@ -300,10 +300,11 @@ int BleListeningModeHandler::applyControlRequestAdvData() {
 
 int BleListeningModeHandler::enter() {
     // Enter listening mode handler only if FEATURE_FLAG_DISABLE_LISTENING_MODE is enabled
-    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
-        LOG(ERROR, "Cannot enter ble prov/lst mode when flag is not enabled");
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    }
+    // Not needed to check this here because it's already checked in the previous calls
+    //if (HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+    //    LOG(ERROR, "Cannot enter ble prov/lst mode when flag is not enabled");
+    //    return SYSTEM_ERROR_NOT_ALLOWED;
+    //}
 
     LOG(TRACE, "Enter() on ble listening mode handler");
     exited_ = false;

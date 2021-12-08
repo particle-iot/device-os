@@ -75,6 +75,7 @@ public:
     void getProvTxUuid(uint8_t* buf, size_t len);
     void getProvRxUuid(uint8_t* buf, size_t len);
 
+    int initProfile(bool setCustomUuids = false);
 
 protected:
     explicit BleControlRequestChannel(ControlRequestHandler* handler);
@@ -175,7 +176,6 @@ private:
     int dataReceived(const hal_ble_char_evt_t& event);
     int cccdChanged(const hal_ble_char_evt_t& event);
 
-    int initProfile();
 #if BLE_CHANNEL_SECURITY_ENABLED
     int initAesCcm();
     int initJpake();
