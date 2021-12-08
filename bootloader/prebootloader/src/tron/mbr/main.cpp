@@ -52,11 +52,37 @@ static bool isPart1ImageValid() {
     return false;
 }
 
+RSIP_MaskDef rsipMask[] = {
+    /*MaskAddr,     MaskSize*/
+    {0x08002000,    2},     //Entry 0: 4K system data & 4K backup
+    /* customer can set here */
+    {0x0805F000,    1},     //Entry 1: boot info sector
+    {0xFFFFFFFF,    0xFF},  //Entry 2: can be used by users
+    {0xFFFFFFFF,    0xFF},  //Entry 3: Reserved by Realtek. If RDP is not used, this entry can be used by users.
+};
+
+extern "C" void rsipMaskConfig(void) {
+    for (uint8_t i = 0; i < 3; i++) {
+        if (rsipMask[i].MaskAddr != 0xFFFFFFFF) {
+            if ((rsipMask[i].MaskAddr >= SPI_FLASH_BASE) && (rsipMask[i].MaskAddr <= 0x0FFFFFFF)) {
+                RSIP_OTF_Mask(i, rsipMask[i].MaskAddr, rsipMask[i].MaskSize, ENABLE);
+            }
+        } else {
+            break;
+        }
+    }
+}
+
 extern "C" int main() {
     /*
      * FIXME: Do NOT allocate memory from heap in MBR, since the heap start address is incorrect!
      * As a workaround, we can use AtomicSimpleStaticPool instead.
      */
+
+    if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+        rsipMaskConfig();
+    }
+
     if (!bootloaderUpdateIfPending()) {
         NVIC_SystemReset();
     }

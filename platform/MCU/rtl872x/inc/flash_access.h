@@ -73,6 +73,8 @@ void FLASH_Begin(flash_device_t flashDeviceID, uint32_t FLASH_Address, uint32_t 
 int FLASH_Update(flash_device_t flashDeviceID, const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize);
 void FLASH_End(void);
 
+bool enable_rsip_if_disabled(uint32_t address, int* is);
+void disable_rsip_if_enabled(bool enabled, int is);
 
 #ifdef __cplusplus
 }

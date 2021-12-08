@@ -59,8 +59,12 @@ extern "C" {
 //Main firmware begin address after 24 + 64KB from start of flash
 #define CORE_FW_ADDRESS                 ((uint32_t)0x08060000)
 #define KM4_BOOTLOADER_START_ADDRESS    ((uint32_t)0x08004000)
+#define KM0_MBR_START_ADDRESS           ((uint32_t)0x08000000)
 #define KM0_PART1_START_ADDRESS         ((uint32_t)0x08014000)
 #define BOOT_INFO_FLASH_XIP_START_ADDR  ((uint32_t)0x0805F000)
+
+#define KM0_MBR_IMAGE_SIZE              (0x2000)
+#define KM0_PART1_IMAGE_SIZE            (0x4B000)
 
 /* Internal Flash page size */
 #define INTERNAL_FLASH_PAGE_SIZE        ((uint32_t)sFLASH_PAGESIZE) //4K (256 sectors of 4K each used by main firmware)

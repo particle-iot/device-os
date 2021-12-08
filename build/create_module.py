@@ -51,6 +51,7 @@ class Platform(IntEnum):
     BSOM = 23
     B5SOM = 25
     TRACKER = 26
+    P2 = 32
 
 class StructSerializable(struct.Struct):
     def __init__(self, fmt):
@@ -238,6 +239,10 @@ GEN3_RADIO_STACK_FLAGS = ModuleFlags.DROP_MODULE_INFO
 GEN3_RADIO_STACK_DEPENDENCY = ModuleDependency(ModuleFunction.BOOTLOADER, 501)
 GEN3_RADIO_STACK_DEPENDENCY2 = ModuleDependency(ModuleFunction.SYSTEM_PART, 1321, 1)
 
+RTL_PLATFORMS = [Platform.P2]
+RTL_MBR_OFFSET = 0x08000000
+RTL_KM0_PART1_OFFSET = 0x08014000
+
 def main():
     platforms = [x.name.lower() for x in Platform]
     functions = [x.name.lower() for x in ModuleFunction]
@@ -259,6 +264,7 @@ def main():
     dependencies = [parse_dependency(x) for x in args.dependency]
     platform = Platform[args.platform.upper()]
     function = ModuleFunction[args.function.upper()]
+    index = args.index
     flags = reduce(lambda x, y: x|y, [ModuleFlags[x.upper()] for x in args.flag], ModuleFlags.NONE)
     version = args.version
 
@@ -291,7 +297,15 @@ def main():
         if len(args.flag) == 0:
             flags = GEN3_RADIO_STACK_FLAGS
 
-    m = Module(bin, args.address, platform, function, version, args.index, flags, dependencies, mcu=args.mcu)
+    if platform in RTL_PLATFORMS and function == ModuleFunction.BOOTLOADER:
+        if args.address == RTL_MBR_OFFSET:
+            flags = ModuleFlags.DROP_MODULE_INFO
+            index = 1
+        if args.address == RTL_KM0_PART1_OFFSET:
+            flags = ModuleFlags.DROP_MODULE_INFO
+            index = 2
+
+    m = Module(bin, args.address, platform, function, version, index, flags, dependencies, mcu=args.mcu)
     args.output.write(m.dump())
     print(m)
 

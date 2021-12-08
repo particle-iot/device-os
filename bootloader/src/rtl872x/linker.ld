@@ -39,6 +39,13 @@ SECTIONS
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
 
+    .text :
+    {
+        . = ALIGN(4);
+        *(.xip.text)
+        . = ALIGN(4);
+    } > APP_FLASH
+
     /* Non-zero initialised global and static variables */
     .data :
     {
@@ -178,7 +185,7 @@ SECTIONS
     .secure_ram_text : /* Realtek specific */
     {
         . = ALIGN(4);
-        *(.xip.text)
+        *(.secure.ram.text)
         . = ALIGN(4);
     } > SECURE_RAM AT> APP_FLASH
 

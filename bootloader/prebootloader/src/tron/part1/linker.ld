@@ -6,8 +6,9 @@ MEMORY
 {
     INCLUDE memory_backup_ram.ld
   
-    SRAM      (xrw) : ORIGIN = platform_km0_part1_ram_start,   LENGTH = platform_km0_part1_ram_size
-    APP_FLASH (rx)  : ORIGIN = platform_km0_part1_flash_start, LENGTH = platform_km0_part1_flash_size
+    SRAM          (xrw) : ORIGIN = platform_km0_part1_ram_start,   LENGTH = platform_km0_part1_ram_size
+    APP_FLASH     (rx)  : ORIGIN = platform_km0_part1_flash_start, LENGTH = platform_km0_part1_flash_size
+    RETENTION_RAM (xrw) : ORIGIN = platform_retention_ram_start,   LENGTH = platform_retention_ram_size
 }
 
 SECTIONS
@@ -133,6 +134,13 @@ SECTIONS
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;
     } > SRAM AT> SRAM
+
+    .ram_retention.entry : 
+	{
+        link_retention_ram_start = .;
+		KEEP(*(SORT(.retention.entry.data*)))
+        link_retention_ram_end = .;
+	} > RETENTION_RAM
     
     /* Static RAM end */
     INCLUDE linker_static_ram_end.ld

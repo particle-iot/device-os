@@ -17,32 +17,56 @@
 
 #include "ameba_soc.h"
 #include "rtl_support.h"
+#include "rtl8721d_system.h"
 
-void pmu_acquire_wakelock(uint32_t nDeviceId) {
-    // Stub
-}
+/* The binary data of generated ram_retention.bin should copy into retention_ram_patch_array. 
+   Then fill in the patch size at the second dword */
+const uint32_t retention_ram_patch_array[2][RETENTION_RAM_SYS_OFFSET / 4] = {
+    {
+        0x000c0009,
+        0x00000080,
+        0x2210f240,
+        0x0200f6c4,
+        0x49106813,
+        0xf240400b,
+        0x430b2100,
+        0x22906013,
+        0x05d22380,
+        0x045b6811,
+        0xd1124219,
+        0x6013430b,
+        0x3300f240,
+        0x0300f6c4,
+        0x4907681a,
+        0x601a400a,
+        0x3318f240,
+        0xf6c42101,
+        0x681a0300,
+        0x601a430a,
+        0x4770bf30,
+        0xfffff9ff,
+        0xdfffffff,
+    },
+    {
+        0x000c0009,
+        0x00000080,
+        0x2210f240,
+        0x0200f6c4,
+        0x49036813,
+        0xf240400b,
+        0x430b2100,
+        0x47706013,
+        0xfffff9ff,
+    }
+};
 
-void pmu_release_wakelock(uint32_t nDeviceId) {
-    // stub
-}
+uint32_t SDM32K_Read(uint32_t adress);
 
-void ipc_table_init() {
-    // stub
-}
-
-void ipc_send_message(uint8_t channel, uint32_t message) {
-    // stub
-}
-
-uint32_t ipc_get_message(uint8_t channel) {
-    // stub
-    return 0;
-}
-
+extern uintptr_t link_retention_ram_start;
 extern CPU_PWR_SEQ SYSPLL_ON_SEQ[];
 
-void BOOT_FLASH_Invalidate_Auto_Write(void)
-{
+
+static void invalidate_flash_auto_write(void) {
     /* Auto write related bits in valid command register are all set to 0,
         just need to invalidate write single and write enable cmd in auto mode. */
     SPIC_TypeDef *spi_flash = SPIC;
@@ -55,18 +79,17 @@ void BOOT_FLASH_Invalidate_Auto_Write(void)
     spi_flash->wr_enable = 0x0;
 }
 
-void BOOT_RAM_FuncEnable(void)
-{
-    u32 Temp = 0;
+static void boot_ram_function_enable(void) {
+    uint32_t temp = 0;
 
     /*Reset SIC function*/
-    Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_FUNC_EN0);
-    Temp &= ~BIT_LSYS_SIC_FEN;
-    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_FUNC_EN0, Temp);
+    temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_FUNC_EN0);
+    temp &= ~BIT_LSYS_SIC_FEN;
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_FUNC_EN0, temp);
     /*Reset SIC clock*/
-    Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_CLK_CTRL0);
-    Temp &= ~BIT_SIC_CLK_EN;
-    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_CLK_CTRL0, Temp);
+    temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_CLK_CTRL0);
+    temp &= ~BIT_SIC_CLK_EN;
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_CLK_CTRL0, temp);
 
     RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
     RCC_PeriphClockCmd(APBPeriph_GPIO, APBPeriph_GPIO_CLOCK, ENABLE);
@@ -92,8 +115,7 @@ void BOOT_RAM_FuncEnable(void)
     SDM32K_Enable(SDM32K_ALWAYS_CAL); /* 0.6ms */
 }
 
-void BOOT_FLASH_fasttimer_init(void)
-{
+static void fast_timer_init(void) {
     RTIM_TimeBaseInitTypeDef TIM_InitStruct;
 
     RCC_PeriphClockCmd(APBPeriph_GTIMER, APBPeriph_GTIMER_CLOCK, ENABLE);
@@ -107,12 +129,11 @@ void BOOT_FLASH_fasttimer_init(void)
     TIM_InitStruct.TIM_UpdateSource = TIM_UpdateSource_Overflow;
     TIM_InitStruct.TIM_ARRProtection = ENABLE;
 
-    RTIM_TimeBaseInit(TIMM05, &TIM_InitStruct, 0, (IRQ_FUN) NULL, (u32)NULL);
+    RTIM_TimeBaseInit(TIMM05, &TIM_InitStruct, 0, (IRQ_FUN) NULL, (uint32_t)NULL);
     RTIM_Cmd(TIMM05, ENABLE);
 }
 
-void BOOT_FLASH_DSLP_FlashInit(void)
-{
+static void dslp_flash_init(void) {
     RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
     FLASH_STRUCT_INIT_FUNC FLASH_StructInitTemp = (FLASH_STRUCT_INIT_FUNC)RRAM->FLASH_StructInit;
 
@@ -150,18 +171,16 @@ void BOOT_FLASH_DSLP_FlashInit(void)
     FLASH_Init(RRAM->FLASH_cur_bitmode);
 }
 
-
 /**
   * @brief  Get boot reason from AON & SYSON register, and back up to REG_LP_SYSTEM_CFG2
   * @param  NA
   * @retval 0.
   * @note this function is called once by bootloader when KM0 boot to flash, user can not use it.
   */
-u32 BOOT_FLASH_Reason_Set(void)
-{
-    u32 tmp_reason = 0;
-    u32 reason_aon = 0;
-    u32 temp_bootcfg = 0;
+static uint32_t boot_reason_set(void) {
+    uint32_t tmp_reason = 0;
+    uint32_t reason_aon = 0;
+    uint32_t temp_bootcfg = 0;
 
     /* get aon boot reason */
     reason_aon = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1);
@@ -170,7 +189,6 @@ u32 BOOT_FLASH_Reason_Set(void)
     tmp_reason = BACKUP_REG->DWORD[0] & BIT_MASK_BOOT_REASON;
     tmp_reason = tmp_reason << BIT_BOOT_REASON_SHIFT;
 
-    //DBG_8195A("BOOT_FLASH_Reason_Set: %x %x \n", reason_aon, tmp_reason);
     /* set dslp boot reason */
     if (reason_aon & BIT_AON_BOOT_EXIT_DSLP) {
         tmp_reason |= BIT_BOOT_DSLP_RESET_HAPPEN;
@@ -205,43 +223,129 @@ u32 BOOT_FLASH_Reason_Set(void)
     return 0;
 }
 
+static void app_start_autoicg(void) {
+    uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+    temp |= BIT_LSYS_PLFM_AUTO_ICG_EN;
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, temp);
+}
+
+static void app_load_patch_to_retention(uint32_t version) {
+    if (version <= 0x1){
+        _memcpy(&link_retention_ram_start, retention_ram_patch_array[0], RETENTION_RAM_SYS_OFFSET);
+    } else {
+        _memcpy(&link_retention_ram_start, retention_ram_patch_array[1], RETENTION_RAM_SYS_OFFSET);
+    }
+
+    uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1);
+    temp |= BIT_DSLP_RETENTION_RAM_PATCH;
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1, temp);
+}
+
+static void app_pmc_patch() {
+    /* flash pin floating issue */
+    //0x4800_00B0[31:0] = 0x0080_1A12
+    //0x4800_00B8[31:0] = 0x0A00_301A
+    //0x4800_00BC[31:0] = 0x0801_3802
+    //0x4800_00C0[31:0] = 0x00C0_0123
+    uint32_t version = SYSCFG_CUTVersion();
+
+    if (version <= 0x1){
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, 0xB0, 0x00801A12);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, 0xB8, 0x0A00301A);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, 0xBC, 0x08013802);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, 0xC0, 0x00C00123);
+    }
+
+    /*PMC cpu clock gate flow patch*/
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYSON_PMC_PATCH_GRP1_L, 0xD2004D84);
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYSON_PMC_PATCH_GRP1_H, 0x202);
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYSON_PMC_PATCH_GRP2_L, 0x1A0048B4);
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYSON_PMC_PATCH_GRP2_H, 0x08088849);
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYSON_PMC_PATCH_GRP3_L, 0x021A4D4C);
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYSON_PMC_PATCH_GRP4_L, 0x0080645B);
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYSON_PMC_PATCH_GRP5_L, 0x121A4C64);
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYSON_PMC_PATCH_GRP5_H, 0x0805C300);
+
+    /* SPIC clock source switch patch */
+    app_load_patch_to_retention(version);
+}
+
+
 // Copy-paste from BOOT_FLASH_Image1()
 void rtlLowLevelInit() {
-    BOOT_RAM_FuncEnable();
+    /*Get Chip Version*/
+    uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1);
+    temp &= (~(BIT_MASK_AON_CHIP_VERSION_SW << BIT_SHIFT_AON_CHIP_VERSION_SW));
+    if (0 != HAL_READ32(0, 0x1298)) {
+        temp |= (SYSCFG_CUT_VERSION_A << BIT_SHIFT_AON_CHIP_VERSION_SW);
+    } else {
+        temp |= (SYSCFG_CUT_VERSION_B << BIT_SHIFT_AON_CHIP_VERSION_SW);
+    }
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1, temp);
+
+    boot_ram_function_enable();
+
+    /* loguart use 40MHz */
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_GPIO_SHDN33_CTRL, 0xFFFF);
+
     /* temp for test */
-    BOOT_FLASH_fasttimer_init();
+    fast_timer_init();
 
     /* invalidate spic auto write */
-    BOOT_FLASH_Invalidate_Auto_Write();
+    invalidate_flash_auto_write();
 
     /* set dslp boot reason */
     if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1) & BIT_AON_BOOT_EXIT_DSLP) {
         /* open PLL */
-        BOOT_ROM_CM4PON((u32)SYSPLL_ON_SEQ);
-        BOOT_FLASH_DSLP_FlashInit();
+        BOOT_ROM_CM4PON((uint32_t)SYSPLL_ON_SEQ);
+        dslp_flash_init();
     }
 
-    BOOT_FLASH_Reason_Set();
+    boot_reason_set();
 
     /* for simulation set ASIC */
     if (ROM_SIM_ENABLE != 0x12345678) {
         BKUP_Set(BKUP_REG0, BIT_SW_SIM_RSVD);
     }
 
-    /* Disable RSIP if it is enabled. Not needed after KM0 boot */
-    if((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0 ) {
-        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
-        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
+    /* backup flash_init_para address for KM4 */
+    BKUP_Write(BKUP_REG7, (uint32_t)&flash_init_para);
+
+    // Copy-paste from app_start()
+
+    SystemCoreClockUpdate();
+
+    if (SOCPS_DsleepWakeStatusGet() == FALSE) {
+        OSC131K_Calibration(30000); /* PPM=30000=3% *//* 7.5ms */
+
+        /* fix OTA upgarte fail after version 6.2, because 32k is not enabled*/
+        temp = SDM32K_Read(REG_SDM_CTRL0);
+        if (!(temp & BIT_AON_SDM_ALWAYS_CAL_EN)) {
+            SDM32K_Enable(SDM32K_ALWAYS_CAL); /* 0.6ms */
+        }
+        
+        SDM32K_RTCCalEnable(ps_config.km0_rtc_calibration); /* 0.3ms */
+
+        temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1);
+        temp &= ~BIT_DSLP_RETENTION_RAM_PATCH;
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1, temp);
+        // Retention Ram reset
+        _memset((void*)RETENTION_RAM_BASE, 0, 1024);
+        assert_param(sizeof(RRAM_TypeDef) <= 0xB0);
+    } else {
+        SOCPS_DsleepWakeStatusSet(TRUE); /* KM4 boot check it */
     }
 
     OSC4M_Init();
     OSC2M_Calibration(OSC2M_CAL_CYC_128, 30000); /* PPM=30000=3% *//* 0.5 */
+    
+    app_start_autoicg();
+    app_pmc_patch();
 }
 
 // app_pmu_init()
-void rtlPmuInit()
-{
-    u32 Temp;
+void rtlPmuInit() {
+    uint32_t temp;
 
     if (BKUP_Read(BKUP_REG0) & BIT_SW_SIM_RSVD){
         return;
@@ -257,59 +361,88 @@ void rtlPmuInit()
     //2: 0.75V
     //1: 0.7V can not work normal
     //setting switch regulator PFM mode voltage
-    Temp=HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWR_PSW_CTRL);
-    Temp &= 0x00FF0000;
+    temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWR_PSW_CTRL);
+    temp &= 0x00FF0000;
 #ifdef CONFIG_VERY_LOW_POWER
-    Temp |= 0x3F007532;//8:1.05v 7:1.0v 6:0.95v 5:0.9v 4 stage waiting time 500us
-    //Temp |= 0x7F007532;//8:1.05v 7:1.0v 6:0.95v 5:0.9v 4 stage waiting time 2ms
+    temp |= 0x3F007532;//8:1.05v 7:1.0v 6:0.95v 5:0.9v 4 stage waiting time 500us
+    //temp |= 0x7F007532;//8:1.05v 7:1.0v 6:0.95v 5:0.9v 4 stage waiting time 2ms
 #else
-    Temp |= 0x3F007654;//>0.81V is safe for MP
-    //Temp |= 0x7F007654;//>0.81V is safe for MP
+    temp |= 0x3F007654;//>0.81V is safe for MP
+    //temp |= 0x7F007654;//>0.81V is safe for MP
 #endif
-    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWR_PSW_CTRL,Temp);
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWR_PSW_CTRL,temp);
 
     /* Enable PFM to PWM delay to fix voltage peak issue when PFM=>PWM */
-    Temp=HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_SWR_CTRL1);
-    Temp |= BIT_SWR_ENFPWMDELAY_H;
-    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_SWR_CTRL1,Temp);
+    temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_SWR_CTRL1);
+    temp |= BIT_SWR_ENFPWMDELAY_H;
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_SWR_CTRL1,temp);
 
     /* Set SWR ZCD & Voltage */
-    Temp=HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG1);
+    temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG1);
     if (wifi_config.wifi_ultra_low_power) {
-        Temp &= ~(0x0f);//SWR @ 1.05V
-        Temp |= (0x07);
-        Temp &= ~BIT_MASK_SWR_REG_ZCDC_H; /* reg_zcdc_H: EFUSE[5]BIT[6:5] 00 0.1u@PFM */ /* 4uA @ sleep mode */
+        temp &= ~(0x0f);//SWR @ 1.05V
+        temp |= (0x07);
+        temp &= ~BIT_MASK_SWR_REG_ZCDC_H; /* reg_zcdc_H: EFUSE[5]BIT[6:5] 00 0.1u@PFM */ /* 4uA @ sleep mode */
     } else {
         /* 2mA higher in active mode */
-        Temp &= ~BIT_MASK_SWR_REG_ZCDC_H; /* reg_zcdc_H: EFUSE[5]BIT[6:5] 00 0.1u@PFM */ /* 4uA @ sleep mode */
+        temp &= ~BIT_MASK_SWR_REG_ZCDC_H; /* reg_zcdc_H: EFUSE[5]BIT[6:5] 00 0.1u@PFM */ /* 4uA @ sleep mode */
     }
     /*Mask OCP setting, or some chip won't wake up after sleep*/
-    //Temp &= ~BIT_MASK_SWR_OCP_L1;
-    //Temp |= (0x03 << BIT_SHIFT_SWR_OCP_L1); /* PWM:600 PFM: 250, default OCP: BIT[10:8] 100 */
-    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG1,Temp);
+    //temp &= ~BIT_MASK_SWR_OCP_L1;
+    //temp |= (0x03 << BIT_SHIFT_SWR_OCP_L1); /* PWM:600 PFM: 250, default OCP: BIT[10:8] 100 */
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG1,temp);
 
     /* LDO & SWR switch time when DSLP, default is 0x200=5ms (unit is 1cycle of 100K=10us) */
-    Temp=HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_PMC_CTRL);
-    Temp &= ~(BIT_AON_MASK_PMC_PSW_STABLE << BIT_AON_SHIFT_PMC_PSW_STABLE);
-    Temp |= (0x60 << BIT_AON_SHIFT_PMC_PSW_STABLE);//set to 960us
-    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_PMC_CTRL,Temp);
+    temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_PMC_CTRL);
+    temp &= ~(BIT_AON_MASK_PMC_PSW_STABLE << BIT_AON_SHIFT_PMC_PSW_STABLE);
+    temp |= (0x60 << BIT_AON_SHIFT_PMC_PSW_STABLE);//set to 960us
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_PMC_CTRL,temp);
 
     /* shutdown internal test pad GPIOF9 to fix wowlan power leakage issue */
     HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_GPIO_F9_PAD_CTRL, 0x0000DC00);
 }
 
 void rtlPowerOnBigCore() {
-    InterruptRegister((IRQ_FUN)IPC_INTHandler, IPC_IRQ_LP, (u32)IPCM4_DEV, 2);
+    InterruptRegister((IRQ_FUN)IPC_INTHandler, IPC_IRQ_LP, (uint32_t)IPCM4_DEV, 2);
     InterruptEn(IPC_IRQ_LP, 2);
     InterruptDis(UART_LOG_IRQ_LP);
 
     km4_flash_highspeed_init();
 
+    /* Disable RSIP if it is enabled. Not needed after KM0 boot */
+    // Note: it should be executed after km4_flash_highspeed_init(), otherwise, the flash
+    // speed is lowered down if AES encryption is enabled.
+    if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0 ) {
+        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
+    }
+
     // FIXME: This might not be working correctly?
     // if (!SOCPS_DsleepWakeStatusGet()) {
         /* backup flash_init_para address for KM4 */
-        BKUP_Write(BKUP_REG7, (u32)&flash_init_para);
+        BKUP_Write(BKUP_REG7, (uint32_t)&flash_init_para);
     // }
 
     km4_boot_on();
+}
+
+void pmu_acquire_wakelock(uint32_t nDeviceId) {
+    // Stub
+}
+
+void pmu_release_wakelock(uint32_t nDeviceId) {
+    // stub
+}
+
+void ipc_table_init() {
+    // stub
+}
+
+void ipc_send_message(uint8_t channel, uint32_t message) {
+    // stub
+}
+
+uint32_t ipc_get_message(uint8_t channel) {
+    // stub
+    return 0;
 }

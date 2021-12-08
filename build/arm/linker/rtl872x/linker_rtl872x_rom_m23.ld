@@ -136,6 +136,13 @@ SECTIONS
     IPC_SEMFree = 0x30c5;
     IPC_INTHandler = 0x3129;
     IPC_INTUserHandler = 0x3161;
+    RSIP_Cmd = 0x3511;
+    RSIP_OTF_init = 0x3531;
+    RSIP_OTF_Cmd = 0x3595;
+    RSIP_OTF_Mask = 0x35a9;
+    RSIP_KEY_Request = 0x35e9;
+    RSIP_MMU_Config = 0x3625;
+    RSIP_MMU_Cmd = 0x3649;
 }
 
 /*SECTIONS

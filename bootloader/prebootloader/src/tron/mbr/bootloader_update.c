@@ -89,10 +89,24 @@ bool bootloaderUpdateIfPending(void) {
             && (info.src_addr > OTA_REGION_LOWEST_ADDR && info.src_addr < OTA_REGION_HIGHEST_ADDR)
             && (info.dest_addr == KM4_BOOTLOADER_START_ADDRESS || info.dest_addr == KM0_PART1_START_ADDRESS)) {
         if (Compute_CRC32((const uint8_t*)&info, sizeof(flash_update_info_t) - sizeof(info.crc32), NULL) == info.crc32) {
-            if (!flash_copy(info.src_addr, info.dest_addr, info.size)) {
+            bool enableRsip = false;
+            if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+                // Temporarily disable RSIP for memory copying, should leave the image in the OTA region as-is
+                uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+                HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
+                enableRsip = true;
+            }
+            bool ret = flash_copy(info.src_addr, info.dest_addr, info.size);
+            if (enableRsip) {
+                uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+                HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control | BIT_LSYS_PLFM_FLASH_SCE));
+            }
+            if (!ret) {
+                // Try rebooting
                 return false;
             }
         }
+        // fall through to invalidate boot info and return true to continue to run
     }
 
     memset(&info, 0x00, sizeof(info));

@@ -131,7 +131,7 @@ void jump_to_nonsecure(u32 Addr) {
 
 } // Anonymous
 
-__attribute__((used, section(".xip.text")))
+__attribute__((used, section(".secure.ram.text")))
 void nonsecure_jump_to_system(uint32_t addr) {
     // FIXME: Disable MPU just in case for now
     mpu_disable();
