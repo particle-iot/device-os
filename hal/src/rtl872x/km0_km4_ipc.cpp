@@ -208,9 +208,8 @@ int Km0Km4IpcClass::onRequestReceived(km0_km4_ipc_msg_type_t type, km0_km4_ipc_m
 }
 
 void Km0Km4IpcClass::processReceivedMessage(km0_km4_ipc_msg_t* msg) {
-    if (msg->data == nullptr || msg->data_len == 0
-            || Compute_CRC32((const uint8_t*)msg, sizeof(km0_km4_ipc_msg_t) - sizeof(km0_km4_ipc_msg_t::crc32), nullptr) != msg->crc32
-            || Compute_CRC32((const uint8_t*)msg->data, msg->data_len, nullptr) != msg->data_crc32) {
+    if (Compute_CRC32((const uint8_t*)msg, sizeof(km0_km4_ipc_msg_t) - sizeof(km0_km4_ipc_msg_t::crc32), nullptr) != msg->crc32
+            || (msg->data_len > 0 && (msg->data == nullptr || Compute_CRC32((const uint8_t*)msg->data, msg->data_len, nullptr) != msg->data_crc32))) {
         msg->data = nullptr;
         msg->data_len = 0;
     }
