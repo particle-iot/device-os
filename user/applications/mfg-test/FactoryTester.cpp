@@ -8,7 +8,7 @@
 #include "FactoryTester.h"
 #include "TesterCommandTypes.h"
 
-#if PLATFORM_ID == PLATFORM_TRON 
+#if PLATFORM_ID == PLATFORM_P2 
     extern "C" {
     #define BOOLEAN AMBD_SDK_BOOLEAN
     #include "rtl8721d.h"
