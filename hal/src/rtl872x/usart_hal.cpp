@@ -43,6 +43,45 @@ public:
         unsigned int config;
     };
 
+    class AtomicBlock {
+    public:
+        AtomicBlock(Usart* instance)
+                : uart_(instance) {
+            NVIC_DisableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
+        }
+        ~AtomicBlock() {
+            NVIC_EnableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
+        }
+    private:
+        Usart* uart_;
+    };
+
+    class RxLock {
+    public:
+        RxLock(Usart* instance)
+                : uart_(instance) {
+            uart_->rxLock(true);
+        }
+        ~RxLock() {
+            uart_->rxLock(false);
+        }
+    private:
+        Usart* uart_;
+    };
+
+    class TxLock {
+    public:
+        TxLock(Usart* instance)
+                : uart_(instance) {
+            uart_->txLock(true);
+        }
+        ~TxLock() {
+            uart_->txLock(false);
+        }
+    private:
+        Usart* uart_;
+    };
+
     bool isEnabled() const {
         return state_ == HAL_USART_STATE_ENABLED;
     }
@@ -208,6 +247,7 @@ public:
 
     ssize_t space() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        TxLock lk(this);
         return txBuffer_.space();
     }
 
@@ -218,7 +258,11 @@ public:
         const size_t writeSize = std::min((size_t)canWrite, size);
         CHECK_TRUE(writeSize > 0, SYSTEM_ERROR_NO_MEMORY);
         
-        ssize_t r = CHECK(txBuffer_.put(buffer, writeSize));
+        ssize_t r;
+        {
+            TxLock lk(this);
+            r = CHECK(txBuffer_.put(buffer, writeSize));
+        }
 
         startTransmission();
         return r;
@@ -227,10 +271,16 @@ public:
     ssize_t flush() {
         startTransmission();
         while (true) {
-            if (!isEnabled() || txBuffer_.empty()) {
-                break;
+            {
+                TxLock lk(this);
+                if (!isEnabled() || txBuffer_.empty()) {
+                    break;
+                }
             }
-            // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+            // FIXME: Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+            // Otherwise, the tx buffer is always full and device is blocked here.
+            // Adding a delay here instead seams to be helpful as well.
+            AtomicBlock atomic(this);
             uartTxRxIntHandler(this);
         }
         return 0;
@@ -241,6 +291,7 @@ public:
         auto uartInstance = uartTable_[index_].UARTx;
         ssize_t len = 0;
         if (receiving_) {
+            RxLock lk(this);
             if (uartInstance != UART2_DEV) {
                 len = rxBuffer_.data();
                 const uint32_t curAddr = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
@@ -272,6 +323,7 @@ public:
         const ssize_t maxRead = CHECK(data());
         const size_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
+        RxLock lk(this);
         ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
         if (!receiving_) {
             startReceiver();
@@ -284,6 +336,7 @@ public:
         const ssize_t maxRead = CHECK(data());
         const size_t peekSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
+        RxLock lk(this);
         return rxBuffer_.peek(buffer, peekSize);
     }
 
@@ -299,6 +352,10 @@ public:
     static uint32_t uartTxRxIntHandler(void* data) {
         auto uart = (Usart*)data;
         auto uartInstance = uart->uartTable_[uart->index_].UARTx;
+        if (uartInstance != UART2_DEV) {
+            // Only the LOG UART use interrupt mode
+            return 0;
+        }
         volatile uint8_t regIir = UART_IntStatus(uartInstance);
         if ((regIir & RUART_IIR_INT_PEND) != 0) {
             // No pending IRQ
@@ -571,6 +628,38 @@ private:
         return 0;
     }
 
+    void rxLock(bool lock) {
+        auto instance = uartTable_[index_].UARTx;
+        if (instance != UART2_DEV) {
+            if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                if (lock) {
+                    NVIC_DisableIRQ(GDMA_GetIrqNum(0, rxDmaInitStruct_.GDMA_ChNum));
+                } else {
+                    NVIC_EnableIRQ(GDMA_GetIrqNum(0, rxDmaInitStruct_.GDMA_ChNum));
+                }
+            }
+        } else {
+            UART_INTConfig(instance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, lock ? DISABLE : ENABLE);
+        }
+        __ISB();
+        __DSB();
+    }
+
+    void txLock(bool lock) {
+        auto instance = uartTable_[index_].UARTx;
+        if (instance != UART2_DEV) {
+            if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                if (lock) {
+                    NVIC_DisableIRQ(GDMA_GetIrqNum(0, txDmaInitStruct_.GDMA_ChNum));
+                } else {
+                    NVIC_EnableIRQ(GDMA_GetIrqNum(0, txDmaInitStruct_.GDMA_ChNum));
+                }
+            }
+        } else {
+            UART_INTConfig(instance, RUART_IER_ETBEI, lock ? DISABLE : ENABLE);
+        }
+    }
+
 private:
     hal_pin_t txPin_;
     hal_pin_t rxPin_;
@@ -704,7 +793,10 @@ uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
     while (usart->space() <= 0) {
-        // Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+        // FIXME: Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
+        // Otherwise, the tx buffer is always full and device is blocked here.
+        // Adding a delay here instead seams to be helpful as well.
+        Usart::AtomicBlock atomic(usart);
         usart->uartTxRxIntHandler(usart);
     }
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
