@@ -49,8 +49,8 @@ const module_bounds_t module_km0_part1 = {
 // OTA region, to be updated.
 module_bounds_t module_ota = {
     .maximum_size = 0x200000, //2M
-    .start_address = 0x08060000 - 0x200000,
-    .end_address = 0x08060000,
+    .start_address = 0x08260000,
+    .end_address = 0x08260000 + 0x200000,
     .module_function = MODULE_FUNCTION_NONE,
     .module_index = 0,
     .store = MODULE_STORE_SCRATCHPAD
