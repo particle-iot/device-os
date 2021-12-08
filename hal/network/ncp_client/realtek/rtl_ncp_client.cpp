@@ -115,8 +115,6 @@ RealtekNcpClient::~RealtekNcpClient() {
 }
 
 int RealtekNcpClient::init(const NcpClientConfig& conf) {
-    // rltkOff();
-
     conf_ = conf;
     ncpState_ = NcpState::OFF;
     prevNcpState_ = NcpState::OFF;
@@ -213,13 +211,8 @@ NcpConnectionState RealtekNcpClient::connectionState() {
 
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
     const NcpClientLock lock(this);
-    // scan(nullptr, nullptr);
-
-    // off();
-    // on();
 
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
-    LOG(INFO, "connecting");
     volatile uint32_t rtlContinue = 1;
     while (!rtlContinue) {
         asm volatile ("nop");
@@ -229,9 +222,8 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
     wifi_get_mac_address(mac);
     int r = -1;
     for (int i = 0; i < 3; i++) {
-        LOG(INFO, "AAA: try to connect to ssid: %s, passwd: %s, mac: %s", ssid, cred.password(), mac);
+        LOG(INFO, "Try to connect to ssid: %s, mac: %s", ssid, mac);
         r = wifi_connect((char*)ssid, wifiSecurityToRtlSecurity(sec), (char*)cred.password(), strlen(ssid), strlen(cred.password()), -1, nullptr);
-        LOG(INFO, "BBB: connect result %d", r);
         if (r == 0) {
             break;
         }
@@ -253,9 +245,7 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     while (!rtlContinue) {
         asm volatile ("nop");
     }
-    // off();
-    // on();
-    LOG(INFO, "primask = %d", __get_PRIMASK());
+
     struct Context {
         WifiScanCallback callback = nullptr;
         void* data = nullptr;

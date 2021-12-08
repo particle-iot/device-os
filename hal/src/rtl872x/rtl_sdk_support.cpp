@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define REALTEK_WIFI_LOG_ENABLE 0
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_INFO
 
 #include <cstdio>
@@ -132,11 +133,13 @@ int _rtl_snprintf(char* str, size_t size, const char* fmt, ...) {
 }
 
 extern "C" void rtl_wifi_log(const char* fmt, ...) {
+#if REALTEK_WIFI_LOG_ENABLE
     va_list args;
     va_start(args, fmt);
     LogAttributes attr = {};
     log_message_v(LOG_LEVEL_INFO, "rtl", &attr, nullptr, fmt, args);
     va_end(args);
+#endif
 }
 
 #ifndef MBEDTLS_PLATFORM_MEMORY

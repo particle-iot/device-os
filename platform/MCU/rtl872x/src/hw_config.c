@@ -32,6 +32,7 @@
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
+extern u32 ConfigDebugClose;
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
@@ -178,6 +179,9 @@ void Set_System(void)
     // for now we are using whatever ROM has configured for us
     // irq_table_init(RTL_DEFAULT_MSP_S);
     // __set_MSP(RTL_DEFAULT_MSP_S);
+
+    // Disable DiagPrintf
+    ConfigDebugClose = 1;
 
     _memcpy((void *)&flash_init_para, (const void *)BKUP_Read(BKUP_REG7), sizeof(FLASH_InitTypeDef));
 

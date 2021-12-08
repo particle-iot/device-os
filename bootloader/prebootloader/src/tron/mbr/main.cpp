@@ -32,6 +32,7 @@ extern uintptr_t link_part1_dynalib_table_flash_start;
 extern uintptr_t link_part1_dynalib_table_ram_start;
 
 extern "C" {
+extern u32 ConfigDebugClose;
 int bootloader_part1_preinit(void);
 int bootloader_part1_init(void);
 int bootloader_part1_setup(void);
@@ -78,11 +79,12 @@ extern "C" int main() {
      * FIXME: Do NOT allocate memory from heap in MBR, since the heap start address is incorrect!
      * As a workaround, we can use AtomicSimpleStaticPool instead.
      */
+    ConfigDebugClose = 1;
 
     if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
         rsipMaskConfig();
     }
-
+    
     if (!bootloaderUpdateIfPending()) {
         NVIC_SystemReset();
     }

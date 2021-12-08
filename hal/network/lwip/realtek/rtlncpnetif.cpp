@@ -356,15 +356,10 @@ int RealtekNcpNetif::ncpDataHandlerCb(int id, const uint8_t* data, size_t size, 
             sg_list[sg_len++].len = q->len;
         }
 
-        // sg_list[0].buf = (unsigned int)data;
-        // sg_list[0].len = (unsigned int)size;
+        // Assign interface
+        p->if_idx = netif_get_index(self->interface());
 
-        // if (p->if_idx == NETIF_NO_INDEX) {
-            // p->if_idx = netif_get_idx(self->interface());
-            p->if_idx = netif_get_index(self->interface());
-        // }
-
-        //LOG(INFO, "lwip input, size: %ld, sg_len: %d p->if_idx: %d", size, sg_len, p->if_idx);
+        // LOG(INFO, "lwip input, size: %ld, sg_len: %d p->if_idx: %d", size, sg_len, p->if_idx);
 
         rltk_wlan_recv(0, sg_list, sg_len);
 #if ETH_PAD_SIZE
@@ -409,16 +404,15 @@ err_t RealtekNcpNetif::linkOutput(pbuf* p) {
     });
     p = qq;
     struct eth_drv_sg sg_list[MAX_ETH_DRV_SG] = {};
-	int sg_len = 0;
-	for (struct pbuf* q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
-		sg_list[sg_len].buf = (unsigned int) q->payload;
-		sg_list[sg_len++].len = q->len;
-	}
+    int sg_len = 0;
+    for (struct pbuf* q = p; q != NULL && sg_len < MAX_ETH_DRV_SG; q = q->next) {
+        sg_list[sg_len].buf = (unsigned int) q->payload;
+        sg_list[sg_len++].len = q->len;
+    }
 
-    // LOG(INFO, "lwip output, size: %ld, sg_len: %d, p->if_idx: %d", size, sg_len, p->if_idx);
-    LOG(INFO, "lwip output, size: %ld, sg_len: %d", p->tot_len, sg_len);
+    // LOG(INFO, "lwip output, size: %ld, sg_len: %d", p->tot_len, sg_len);
 
-	if (sg_len) {
+    if (sg_len) {
         if (rltk_wlan_send(0, sg_list, sg_len, p->tot_len)) {
             LOG(ERROR, "rltk_wlan_send ERROR!!!, size: %d", p->tot_len);
         }
