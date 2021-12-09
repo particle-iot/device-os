@@ -98,6 +98,7 @@ bool testAndClearListeningModeFlag() {
             system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr); // Clear startup flag
             return true;
         }
+#if HAL_PLATFORM_DCT_SETUP_DONE
         // Check setup done flag
         val = 0x01;
         dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
@@ -105,6 +106,7 @@ bool testAndClearListeningModeFlag() {
             LOG(INFO, "setup done not set");
             return true;
         }
+#endif // HAL_PLATFORM_DCT_SETUP_DONE
     }
     return false;
 }
