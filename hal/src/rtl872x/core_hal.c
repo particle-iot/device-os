@@ -454,7 +454,7 @@ void HAL_Core_Config(void) {
     if (dyn) {
         // This will also perform CRC checks etc
         hal_user_module_descriptor user_desc = {};
-        if (!hal_user_module_get_descriptor(&user_desc) && 0) {
+        if (!hal_user_module_get_descriptor(&user_desc)) {
             dynalib_table_location = (void*)dyn->dynalib_load_address; // dynalib table in flash
             new_heap_end = user_desc.pre_init();
             if (new_heap_end < malloc_heap_end()) {
@@ -507,22 +507,21 @@ void HAL_Core_Setup(void) {
 bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
 {
     const module_bounds_t* bounds = NULL;
-    hal_module_t mod;
+    hal_module_t mod = {};
     bool module_fetched = false;
     bool valid = false;
 
     // First verify bootloader module
-    // The bootloader image starts with XIP header!!! Skip it for now,
-#if 0
     bounds = find_module_bounds(MODULE_FUNCTION_BOOTLOADER, 0, HAL_PLATFORM_MCU_DEFAULT);
-    module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+    if (bounds) {
+        module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+    }
 
     valid = module_fetched && (mod.validity_checked == mod.validity_result);
 
     if (!valid) {
         return valid;
     }
-#endif
 
     // Now check system-parts
     int i = 0;

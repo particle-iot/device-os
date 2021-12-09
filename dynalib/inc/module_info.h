@@ -232,6 +232,11 @@ typedef struct module_info_dynamic_location_ext_t {
 /*
  * The structure is a suffix to the module, placed before the end symbol
  */
+// FIXME: for now this struct needs to be kept the same size between modules
+// otherwise this may cause problems with flash_mal and other subsystems.
+// Going forward we should refactor things and have an "exported" version of the
+// struct created from based + extensions and some default for "importing" and basic
+// parsing.
 typedef struct module_info_suffix_t {
     // NB: NB: NB: add new members here
 #if HAL_PLATFORM_MODULE_DYNAMIC_LOCATION
