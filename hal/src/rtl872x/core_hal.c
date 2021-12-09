@@ -437,7 +437,7 @@ void HAL_Core_Config(void) {
 
     uint32_t ota_end_address = 0;
     if (dyn) {
-        ota_end_address = (uint32_t)dyn->module_start_address;
+        ota_end_address = ((uint32_t)dyn->module_start_address) & 0xFFFFF000; // Align to 4KB
         if (ota_end_address >= module_ota.start_address + 0x200000) {
             // Should have 2M for the OTA region at the least
             module_user.start_address = (uint32_t)dyn->module_start_address;
@@ -461,8 +461,10 @@ void HAL_Core_Config(void) {
                 malloc_set_heap_end(new_heap_end);
             }
             dynalib_table_location = (void*)dyn->dynalib_start_address; // dynalib in PSRAM
+            module_ota.end_address = ota_end_address;
+        } else {
+            module_ota.end_address = module_ota.start_address + module_ota.maximum_size;
         }
-        module_ota.end_address = ota_end_address;
     }
 
     // Enable malloc before littlefs initialization.
