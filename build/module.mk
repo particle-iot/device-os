@@ -223,11 +223,11 @@ endif
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
 	[ ! -f $@.product ] || rm $@.product
 	$(VERBOSE)$(OBJCOPY) $< --dump-section '.module_info_product=$@.product' > /dev/null 2>&1
-	if [ -s $@.product ]; then \
-		$(VERBOSE)$(OBJCOPY) $< --dump-section '.module_info_suffix=$@.suffix' && \
-		$(VERBOSE)$(OBJCOPY) $< --remove-section '.module_info_product' && \
-		$(VERBOSE)dd bs=1 if=$@.product of=$@.suffix seek=$$(($(call filesize,$@.suffix) - $(MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END))) conv=notrunc $(VERBOSE_REDIRECT) && \
-		$(VERBOSE)$(OBJCOPY) $< --update-section '.module_info_suffix=$@.suffix'; \
+	$(VERBOSE)if [ -s $@.product ]; then \
+		$(OBJCOPY) $< --dump-section '.module_info_suffix=$@.suffix' && \
+		$(OBJCOPY) $< --remove-section '.module_info_product' && \
+		dd bs=1 if=$@.product of=$@.suffix seek=$$(($(call filesize,$@.suffix) - $(MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END))) conv=notrunc $(VERBOSE_REDIRECT) && \
+		$(OBJCOPY) $< --update-section '.module_info_suffix=$@.suffix'; \
 	fi
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
 	$(VERBOSE)if [ -s $@.pre_crc ]; then \

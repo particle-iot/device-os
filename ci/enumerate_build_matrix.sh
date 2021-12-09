@@ -47,19 +47,21 @@ MAKE=runmake
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
-PLATFORM=( photon p1 electron argon boron asom bsom b5som )
+PLATFORM=( photon p1 electron argon boron asom bsom b5som p2 )
 # P1 bootloader built with gcc 4.8.4 doesn't fit flash, disabling for now
-PLATFORM_BOOTLOADER=( photon electron argon boron asom bsom b5som tracker )
+PLATFORM_BOOTLOADER=( photon electron argon boron asom bsom b5som tracker p2 )
+PLATFORM_PREBOOTLOADER=( p2 )
 APP=( "" tinker product_id_and_version)
 TEST=( wiring/api wiring/no_fixture wiring/no_fixture_long_running )
 
-MODULAR_PLATFORM=( photon p1 electron argon boron asom bsom b5som tracker )
+MODULAR_PLATFORM=( photon p1 electron argon boron asom bsom b5som tracker p2 )
 
 filterPlatform PLATFORM
 filterPlatform MODULAR_PLATFORM
 filterPlatform PLATFORM_BOOTLOADER
+filterPlatform PLATFORM_PREBOOTLOADER
 
-echo "running matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER"
+echo "running matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER PLATFORM_PREBOOTLOADER=$PLATFORM_PREBOOTLOADER"
 
 # Build the list of build jobs
 BUILD_JOBS=()
@@ -143,6 +145,12 @@ do
   BUILD_JOBS+=("bootloader ${#BUILD_JOBS[@]} ${cmd}")
 done
 
+for p in "${PLATFORM_PREBOOTLOADER[@]}"
+do
+  cmd="${MAKE} PLATFORM=\"$p\""
+  BUILD_JOBS+=("bootloader/prebootloader ${#BUILD_JOBS[@]} ${cmd}")
+done
+
 # enumerate the matrix, exit 1 if anything fails
 for db in "${DEBUG_BUILD[@]}"
 do
@@ -150,7 +158,7 @@ do
   do
     # Gen 3, Photon and Electron overflow with modular DEBUG_BUILD=y, so skip those
     if [[ "$db" = "y" ]]; then
-      if [[ "$p" = "photon" ]] || [[ "$p" = "p1" ]] || [[ "$p" = "electron" ]] || [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]] || [[ "$p" = "b5som" ]] || [[ "$p" = "tracker" ]]; then
+      if [[ "$p" = "photon" ]] || [[ "$p" = "p1" ]] || [[ "$p" = "electron" ]] || [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]] || [[ "$p" = "b5som" ]] || [[ "$p" = "tracker" ]] || [[ "$p" = "p2" ]]; then
         continue
       fi
     fi

@@ -7,7 +7,7 @@ usage: release-tests.sh [--dryrun] [--help]
                         [--filename=<test_parameter_file.json>]
                         --output-directory=<binary_output_directory>
                         --platform=<argon|asom|boron|bsom...
-                        |b5som|electron|p1|photon|tracker>
+                        |b5som|electron|p1|photon|tracker|p2>
                         --version=<semver_version_string>
 
 Generate the testing binaries belonging to a given platform.
@@ -107,7 +107,10 @@ function valid_platform ()
     platform=$1
 
     # Validate platform (result of expression returned to caller)
-    [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "electron" ] || [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "tracker" ]
+    [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || \
+            [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "electron" ] || \
+            [ "$platform" = "p1" ] || [ "$platform" = "photon" ] || [ "$platform" = "tracker" ] || \
+            [ "$platform" = "p2" ]
 }
 
 # Handle invalid arguments
@@ -156,6 +159,9 @@ case "$PLATFORM" in
         ;;
     "tracker")
         PLATFORM_ID="26"
+        ;;
+    "p2")
+        PLATFORM_ID="32"
         ;;
     *)
         echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
