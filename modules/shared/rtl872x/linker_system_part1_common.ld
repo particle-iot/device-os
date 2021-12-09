@@ -227,7 +227,7 @@ link_user_part_flash_end = platform_user_part_flash_end;
 
 /* Heap location */
 link_heap_location     = link_bss_end;
-link_heap_location_end = link_heap_location + platform_heap_min_size;
+link_heap_location_end = platform_system_backup_ram_start;
 
 link_heap_location_alt     = link_bss_end_alt;
 link_heap_location_end_alt = link_heap_location_alt + platform_heap_min_size;

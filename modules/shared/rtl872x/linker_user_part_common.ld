@@ -155,38 +155,14 @@ SECTIONS
     /* User backup ram data */
     INCLUDE linker_backup_ram_user.ld
 
+    .module_info_suffix_align :
+    {
+        FILL(0xffff)
+        . = DEFINED(platform_module_info_suffix_size) ? ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) - platform_module_info_suffix_size : .;
+    } > APP_FLASH
+
     /* Module end */
-    /* INCLUDE linker_module_end.ld */
-    .module_info_suffix :
-    {
-        . = ALIGN(., 2);
-        link_module_info_static_start = .;
-        SHORT (0xffff)
-        SHORT (0xffff)
-
-        KEEP (*.o(.modinfo.product_id))
-        KEEP (*.o(.modinfo.product_version))
-
-        /* To make sure the following sections are located at the end of APP_FLASH */
-        FILL (0xAA)
-        . = DEFINED(platform_user_part_trimmed) ? ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) - 52 : .; /* FIXME: magic number */
-
-        link_module_info_suffix_start = .;
-        KEEP (*.o(.modinfo.module_info_suffix))
-        link_module_info_suffix_end = .;
-    } > APP_FLASH
-
-    .module_end :
-    {
-        link_module_end = .;
-    } > APP_FLASH
-
-    .module_info_crc :
-    {
-        link_module_info_crc_start = .;
-        KEEP (*.o(.modinfo.module_info_crc))
-        link_module_info_crc_end = .;
-    } > APP_FLASH
+    INCLUDE linker_module_end.ld
 
     /DISCARD/ :
     {
@@ -212,5 +188,10 @@ SECTIONS
 
 /* This can be used to calculate the OTA top boundary */
 link_user_part_flash_start = platform_user_part_flash_start;
+
+ASSERT (
+    !DEFINED(platform_user_part_trimmed) || (link_module_info_crc_end == platform_user_part_flash_end),
+    "User module is not aligned to the end of its flash area"
+);
 
 INCLUDE linker_rtl872x_rom_ns.ld

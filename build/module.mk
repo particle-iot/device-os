@@ -194,13 +194,8 @@ size: $(TARGET_BASE).elf
 CRC_LEN = 4
 CRC_BLOCK_LEN = 38
 DEFAULT_SHA_256 = 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
-ifeq ("$(PLATFORM)","p2")
-MOD_INFO_SUFFIX_LEN ?= 3400
-else
-MOD_INFO_SUFFIX_LEN ?= 2800
-endif
-MOD_INFO_SUFFIX = $(DEFAULT_SHA_256)$(MOD_INFO_SUFFIX_LEN)
-CRC_BLOCK_CONTENTS = $(MOD_INFO_SUFFIX)78563412
+DEFAULT_CRC = 78563412
+MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END = 42
 
 # OS X + debian systems have shasum, RHEL + windows have sha256sum
 SHASUM_COMMAND_VERSION := $(shell shasum --version 2>/dev/null)
@@ -226,11 +221,19 @@ endif
 # Create a bin file from ELF file
 %.bin : %.elf
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
+	[ ! -f $@.product ] || rm $@.product
+	$(VERBOSE)$(OBJCOPY) $< --dump-section '.module_info_product=$@.product' > /dev/null 2>&1
+	if [ -s $@.product ]; then \
+		$(VERBOSE)$(OBJCOPY) $< --dump-section '.module_info_suffix=$@.suffix' && \
+		$(VERBOSE)$(OBJCOPY) $< --remove-section '.module_info_product' && \
+		$(VERBOSE)dd bs=1 if=$@.product of=$@.suffix seek=$$(($(call filesize,$@.suffix) - $(MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END))) conv=notrunc $(VERBOSE_REDIRECT) && \
+		$(VERBOSE)$(OBJCOPY) $< --update-section '.module_info_suffix=$@.suffix'; \
+	fi
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
 	$(VERBOSE)if [ -s $@.pre_crc ]; then \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) $@.pre_crc > $@.no_crc && \
 	tail -c $(CRC_BLOCK_LEN) $@.pre_crc > $@.crc_block && \
-	test "$(CRC_BLOCK_CONTENTS)" = `xxd -p -c 500 $@.crc_block` && \
+	test "$(DEFAULT_SHA_256)`xxd -s -6 -l 2 -p -c 500 $@.crc_block`$(DEFAULT_CRC)" = `xxd -p -c 500 $@.crc_block` && \
 	$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc $(VERBOSE_REDIRECT) && \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) $@.pre_crc > $@.no_crc && \
 	 $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc $(VERBOSE_REDIRECT);\

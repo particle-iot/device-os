@@ -29,6 +29,9 @@ namespace {
 
 int get_module_info(const module_bounds_t* bounds, module_info_t* infoOut, uint32_t* offset = nullptr) {
     // The bounds that contains a module with module info
+    if (bounds->start_address == bounds->end_address) {
+        return FLASH_ACCESS_RESULT_ERROR;
+    }
     return FLASH_ModuleInfo(infoOut, bounds->location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? FLASH_INTERNAL : FLASH_SERIAL, bounds->start_address, offset);
 }
 

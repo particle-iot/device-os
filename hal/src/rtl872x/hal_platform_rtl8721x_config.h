@@ -115,3 +115,8 @@
 #else
 #define HAL_PLATFORM_USB_COMPOSITE (1)
 #endif // defined(MODULE_FUNCTION) && MODULE_FUNCTION == 2 // MOD_FUNC_BOOTLOADER
+
+// FIXME: variable suffix size causes problems right now, some refatoring will have to be done
+// #if defined(MODULE_FUNCTION) && MODULE_FUNCTION == 5 // MOD_FUNC_USER_PART
+#define HAL_PLATFORM_MODULE_DYNAMIC_LOCATION (1)
+// #endif // defined(MODULE_FUNCTION) && MODULE_FUNCTION == 5 // MOD_FUNC_USER_PART

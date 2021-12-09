@@ -14,6 +14,9 @@
 #include "basic_types.h"
 #include "rtl_trace.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 u32 DiagPrintf(const char *fmt, ...);
 u32 DiagPrintfD(const char *fmt, ...);
 int DiagVSprintf(char *buf, const char *fmt, const int *dp);
@@ -177,5 +180,9 @@ extern u32 ConfigDebugBuffer;
 extern u32 ConfigDebugClose;
 extern u32 ConfigDebug[];
 
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif //_DIAG_H_
