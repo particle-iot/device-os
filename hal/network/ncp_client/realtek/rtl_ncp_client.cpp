@@ -237,7 +237,14 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
 }
 
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    int raw_rssi = 0;
+    int rc = wifi_get_rssi(&raw_rssi);
+    LOG(INFO,"raw_rssi: %d", raw_rssi);
+
+    if (RTW_SUCCESS == rc) {
+        info->rssi(raw_rssi);
+    }
+    return rc;
 }
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
