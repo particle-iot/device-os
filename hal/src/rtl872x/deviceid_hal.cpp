@@ -34,6 +34,7 @@ extern "C" {
 #include "rtl8721d_efuse.h"
 }
 
+
 namespace {
 
 using namespace particle;
@@ -103,25 +104,32 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
 
 int hal_get_device_serial_number(char* str, size_t size, void* reserved)
 {
-    char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
+    char fullSerialNumber[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
 
-    // Serial Number is composed of Product Code (4 bytes), Manufacturer ID (2 bytes), 
-    // Year (1 byte), Week (2 bytes) and Unique Code (6 bytes)
-    // We saved the front part (9 bytes) in the logical efuse,
-    // the Unique Code is generated from the 24 non-OUI bits of the MAC address
+    // Serial Number (15 chars) is comprised of:
+    // "Serial Number Front Part" (9 bytes): Product Code (4 chars), Manufacturer ID (2 chars), Year (1 chars), Week (2 chars)
+    // and Unique Code (6 hex chars) 
+    // We save the front part (9 bytes) in the logical efuse during manufacturing provisioning,
+    // the Unique Code is the 24 non-OUI bits of the MAC address, represented as a hex string
+    
+    CHECK(readLogicalEfuse(SERIAL_NUMBER_OFFSET, (uint8_t*)fullSerialNumber, SERIAL_NUMBER_FRONT_PART_SIZE));
+
+    // generate hex string from non-OUI MAC bytes
     uint8_t wifiMacRandomBytes[WIFI_MAC_SIZE - WIFI_OUID_SIZE] = {};
     CHECK(readLogicalEfuse(WIFI_MAC_OFFSET + WIFI_OUID_SIZE, wifiMacRandomBytes, sizeof(wifiMacRandomBytes)));
-    bytes2hexbuf(wifiMacRandomBytes, sizeof(wifiMacRandomBytes), &serial[SERIAL_NUMBER_FRONT_PART_SIZE]);
-    if (!isPrintable(serial, sizeof(serial))) {
+    bytes2hexbuf(wifiMacRandomBytes, sizeof(wifiMacRandomBytes), &fullSerialNumber[SERIAL_NUMBER_FRONT_PART_SIZE]);
+
+    if (!isPrintable(fullSerialNumber, sizeof(fullSerialNumber))) {
         return SYSTEM_ERROR_INTERNAL;
     }
     if (str) {
-        memcpy(str, serial, std::min(size, sizeof(serial)));
+        memcpy(str, fullSerialNumber, std::min(size, sizeof(fullSerialNumber)));
         // Ensure the output is null-terminated
-        if (sizeof(serial) < size) {
-            str[sizeof(serial)] = '\0';
+        if (sizeof(fullSerialNumber) < size) {
+            str[sizeof(fullSerialNumber)] = '\0';
         }
     }
+
     return HAL_DEVICE_SERIAL_NUMBER_SIZE;
 }
 
