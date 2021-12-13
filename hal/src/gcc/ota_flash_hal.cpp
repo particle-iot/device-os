@@ -121,7 +121,7 @@ void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
         *p = 0;
         break;
       }
-      // else fall through to default
+      // else fall through
 
     default:
       server_addr->addr_type = INVALID_INTERNET_ADDRESS;

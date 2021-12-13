@@ -443,7 +443,10 @@ private:
         {
             auto wrapper = new wiring_event_handler_t(handler);
             if (wrapper) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
                 success = spark_subscribe(eventName, (EventHandler)call_wiring_event_handler, wrapper, scope, deviceID, NULL);
+#pragma GCC diagnostic pop
             }
         }
         return success;
