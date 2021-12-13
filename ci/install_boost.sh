@@ -1,10 +1,10 @@
-BOOST_VERSION=1_72_0
+BOOST_VERSION=1_78_0
 
 export BOOST_ROOT=$HOME/.ci/boost/boost_$BOOST_VERSION
 export BOOST_LIBRARYDIR=$BOOST_ROOT/stage/lib
 mkdir -p $BOOST_ROOT
 test -d $BOOST_ROOT || ( echo "boost root $BOOST_ROOT not created." && exit 1)
-test -f $BOOST_ROOT/INSTALL || wget --quiet https://s3.amazonaws.com/spark-assets/boost_${BOOST_VERSION}.tar.gz -O - | tar -xz -C $BOOST_ROOT --strip-components 1
+test -f $BOOST_ROOT/INSTALL || wget --quiet https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_${BOOST_VERSION}.tar.gz -O - | tar -xz -C $BOOST_ROOT --strip-components 1
 
 if [[ $OSTYPE == darwin* ]]; then
   export DYLD_LIBRARY_PATH="${BOOST_LIBRARYDIR}:$DYLD_LIBRARY_PATH"
