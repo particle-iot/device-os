@@ -41,6 +41,9 @@ public:
 
     void setCtrlSvcUuid(const uint8_t* buf, size_t len);
     void getCtrlSvcUuid(uint8_t* buf, size_t len);
+    void clearCtrlSvcUuid(size_t len);
+
+    bool getPreAdvertisingFlag();
 
 protected:
     // XXX: Moving these into protected because we have a static member instance now
@@ -48,10 +51,10 @@ protected:
     ~BleListeningModeHandler();
 
 private:
+    int applyControlRequestConfigurations();
     int constructControlRequestAdvData();
     int cacheUserConfigurations();
     int restoreUserConfigurations();
-    int applyControlRequestConfigurations();
     int applyUserAdvData();
     int applyControlRequestAdvData();
     static void onBleAdvEvents(const hal_ble_adv_evt_t *event, void* context);

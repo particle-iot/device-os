@@ -75,7 +75,7 @@ public:
     void getProvTxUuid(uint8_t* buf, size_t len);
     void getProvRxUuid(uint8_t* buf, size_t len);
 
-    int initProfile(bool setCustomUuids = false);
+    bool getProfInitStatus();
 
 protected:
     explicit BleControlRequestChannel(ControlRequestHandler* handler);
@@ -140,6 +140,7 @@ private:
     volatile bool writable_; // Set to `true` if the TX characteristic is writable
 
     int random_var_k;
+    static bool initialized_;
 
     // Custom provisioning UUIDs
     // // UUID of the control request service
@@ -175,6 +176,8 @@ private:
     int gattParamChanged(const hal_ble_link_evt_t& event);
     int dataReceived(const hal_ble_char_evt_t& event);
     int cccdChanged(const hal_ble_char_evt_t& event);
+
+    int initProfile();
 
 #if BLE_CHANNEL_SECURITY_ENABLED
     int initAesCcm();

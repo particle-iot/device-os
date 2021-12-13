@@ -128,6 +128,7 @@ DYNALIB_FN(BASE_IDX2 + 6, system, system_set_prov_svc_uuid, int(const uint8_t* b
 DYNALIB_FN(BASE_IDX2 + 7, system, system_set_prov_tx_uuid, int(const uint8_t* buf, size_t len, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 8, system, system_set_prov_rx_uuid, int(const uint8_t* buf, size_t len, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 9, system, system_set_prov_adv_svc_uuid, int(const uint8_t* buf, size_t len, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 10, system, system_clear_prov_adv_svc_uuid, int(size_t len, void* reserved))
 
 DYNALIB_END(system)
 

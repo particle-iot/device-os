@@ -90,12 +90,14 @@ SystemControl::SystemControl() :
 
 int SystemControl::init() {
 #if HAL_PLATFORM_BLE
+if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
     // BleListeningModeHandler::instance()->enter();
     const int ret = BleControlRequestChannel::instance(this)->init();
     //const int ret = bleChannel_.init();
     if (ret != 0) {
         return ret;
     }
+}
 #endif
     return 0;
 }

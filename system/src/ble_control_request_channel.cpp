@@ -670,6 +670,10 @@ error:
     resetChannel();
 }
 
+bool BleControlRequestChannel::getProfInitStatus() {
+    return initialized_;
+}
+
 void BleControlRequestChannel::setUuid(int var) {
     random_var_k = var;
 }
@@ -1035,9 +1039,10 @@ int BleControlRequestChannel::cccdChanged(const hal_ble_char_evt_t& event) {
     return 0;
 }
 
-int BleControlRequestChannel::initProfile(bool setCustomUuids) {
+int BleControlRequestChannel::initProfile() {
     LOG(TRACE, "TP100");
     SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
+    bool provModeStatus = BleListeningModeHandler::instance()->getProvModeStatus();
 
     hal_ble_uuid_t halUuid;
     hal_ble_attr_handle_t serviceHandle;
@@ -1048,7 +1053,7 @@ int BleControlRequestChannel::initProfile(bool setCustomUuids) {
     // Add service
     halUuid = {};
     halUuid.type = BLE_UUID_TYPE_128BIT;
-    if (!setCustomUuids || memcmp(PROV_CTRL_SERVICE_UUID, zeros, sizeof(PROV_CTRL_SERVICE_UUID)) == 0) {
+    if (!provModeStatus || memcmp(PROV_CTRL_SERVICE_UUID, zeros, sizeof(PROV_CTRL_SERVICE_UUID)) == 0) {
         LOG(TRACE, "Using default svc id");
         memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
     } else {
@@ -1074,7 +1079,7 @@ int BleControlRequestChannel::initProfile(bool setCustomUuids) {
     char_init.version = BLE_API_VERSION;
     char_init.size = sizeof(hal_ble_char_init_t);
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-    if (!setCustomUuids || memcmp(PROV_SEND_CHAR_UUID, zeros, sizeof(PROV_SEND_CHAR_UUID)) == 0) {
+    if (!provModeStatus || memcmp(PROV_SEND_CHAR_UUID, zeros, sizeof(PROV_SEND_CHAR_UUID)) == 0) {
         LOG(TRACE, "Using default tx id");
         memcpy(char_init.uuid.uuid128, SEND_CHAR_UUID, sizeof(SEND_CHAR_UUID));
     } else {
@@ -1096,7 +1101,7 @@ int BleControlRequestChannel::initProfile(bool setCustomUuids) {
     char_init.version = BLE_API_VERSION;
     char_init.size = sizeof(hal_ble_char_init_t);
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-    if (!setCustomUuids || memcmp(PROV_RECV_CHAR_UUID, zeros, sizeof(PROV_RECV_CHAR_UUID)) == 0) {
+    if (!provModeStatus || memcmp(PROV_RECV_CHAR_UUID, zeros, sizeof(PROV_RECV_CHAR_UUID)) == 0) {
         LOG(TRACE, "Using default rx id");
         memcpy(char_init.uuid.uuid128, RECV_CHAR_UUID, sizeof(RECV_CHAR_UUID));
     } else {
@@ -1113,7 +1118,7 @@ int BleControlRequestChannel::initProfile(bool setCustomUuids) {
     recvCharHandle_ = attrHandles.value_handle;
 
     CHECK(hal_ble_set_callback_on_periph_link_events(onBleLinkEvents, this, nullptr));
-
+    initialized_ = true;
     return 0;
 }
 
@@ -1296,6 +1301,8 @@ void BleControlRequestChannel::onBleCharEvents(const hal_ble_char_evt_t *event, 
         }
     }
 }
+
+bool BleControlRequestChannel::initialized_ = false;
 
 } // particle::system
 

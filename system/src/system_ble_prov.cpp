@@ -6,6 +6,7 @@
 #include "logging.h"
 #include "ble_control_request_channel.h"
 #include "system_control_internal.h"
+#include "check.h"
 
 using namespace particle::system;
 
@@ -20,13 +21,17 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
     BleListeningModeHandler::instance()->setProvModeStatus(enabled);
     if (enabled) {
         LOG(TRACE, "Ble prov mode enabled");
-        BleControlRequestChannel::instance(SystemControl::instance())->initProfile(true);
+        BleControlRequestChannel::instance(SystemControl::instance())->init();
         return BleListeningModeHandler::instance()->enter();
     } else {
         LOG(TRACE, "Ble prov mode disabled");
         // Should we void all of the UUIDs upon exiting the prov mode
         // The next time they enter prov mode, they might wanna use these?
-        BleControlRequestChannel::instance(SystemControl::instance())->initProfile(false);
+        // if (previously advertising) -> figure this out somehow - think it's OK now
+        // if (BleListeningModeHandler::instance()->getPreAdvertisingFlag()) {
+        //     CHECK(BleListeningModeHandler::instance()->restoreUserConfigurations()); // exit and restore OR restore and exit?
+        //     // I think restore and exit because after exiting it might start off with the other adv
+        // }
         return BleListeningModeHandler::instance()->exit();
     }
 }
@@ -40,6 +45,10 @@ int system_set_provisioning_uuid(const char* serviceUuid, const char* txUuid, co
     // set member variables to non null values
     // if invalid values entered by user, set them to defaults
     // how to store uuids so that it is shared by BLEControlRequestChannel
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(TRACE, "Listening mode is not disabled. Cannot enter prov mode");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
 
     LOG(TRACE, "tp1 ble channel uuid: %d", BleControlRequestChannel::instance(SystemControl::instance())->getUuid());
 
@@ -59,8 +68,16 @@ int system_set_prov_blah_me(const uint8_t* buf, size_t len, void* reserved) {
 }
 
 int system_set_prov_svc_uuid(const uint8_t* buf, size_t len, void* reserved) {
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(TRACE, "Listening mode is not disabled. Cannot enter prov mode");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
     for (unsigned i=0; i<len; i++) {
         LOG(TRACE, "svc[%u]: %d", i, buf[i]);
+    }
+    if (BleControlRequestChannel::instance(SystemControl::instance())->getProfInitStatus()) {   // need to do this for all three at a time... how?
+        LOG(TRACE, "Ble control req channel already initialized");
+        return SYSTEM_ERROR_NOT_ALLOWED;
     }
     BleControlRequestChannel::instance(SystemControl::instance())->setProvSvcUuid(buf, len);
     // TODO: Store this in a relevant member variable
@@ -68,8 +85,16 @@ int system_set_prov_svc_uuid(const uint8_t* buf, size_t len, void* reserved) {
 }
 
 int system_set_prov_tx_uuid(const uint8_t* buf, size_t len, void* reserved) {
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(TRACE, "Listening mode is not disabled. Cannot enter prov mode");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
     for (unsigned i=0; i<len; i++) {
         LOG(TRACE, "tx[%u]: %d", i, buf[i]);
+    }
+    if (BleControlRequestChannel::instance(SystemControl::instance())->getProfInitStatus()) {
+        LOG(TRACE, "Ble control req channel already initialized");
+        return SYSTEM_ERROR_NOT_ALLOWED;
     }
     BleControlRequestChannel::instance(SystemControl::instance())->setProvTxUuid(buf, len);
     // TODO: Store this in a relevant member variable
@@ -77,8 +102,16 @@ int system_set_prov_tx_uuid(const uint8_t* buf, size_t len, void* reserved) {
 }
 
 int system_set_prov_rx_uuid(const uint8_t* buf, size_t len, void* reserved) {
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(TRACE, "Listening mode is not disabled. Cannot enter prov mode");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
     for (unsigned i=0; i<len; i++) {
         LOG(TRACE, "rx[%u]: %d", i, buf[i]);
+    }
+    if (BleControlRequestChannel::instance(SystemControl::instance())->getProfInitStatus()) {   // IMPORTANT: make it a single API call so that initialized_ is only called once
+        LOG(TRACE, "Ble control req channel already initialized");
+        return SYSTEM_ERROR_NOT_ALLOWED;
     }
     BleControlRequestChannel::instance(SystemControl::instance())->setProvRxUuid(buf, len);
     // TODO: Store this in a relevant member variable
@@ -86,6 +119,10 @@ int system_set_prov_rx_uuid(const uint8_t* buf, size_t len, void* reserved) {
 }
 
 int system_set_prov_adv_svc_uuid(const uint8_t* buf, size_t len, void* reserved) {
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(TRACE, "Listening mode is not disabled. Cannot enter prov mode");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
     for (unsigned i=0; i<len; i++) {
         LOG(TRACE, "advSvc[%u]: %d", i, buf[i]);
     }
@@ -93,5 +130,9 @@ int system_set_prov_adv_svc_uuid(const uint8_t* buf, size_t len, void* reserved)
     return SYSTEM_ERROR_NONE;
 }
 
+int system_clear_prov_adv_svc_uuid(size_t len, void* reserved) {
+    BleListeningModeHandler::instance()->clearCtrlSvcUuid(len);
+    return SYSTEM_ERROR_NONE;
+}
 
 #endif // HAL_PLATFORM_BLE

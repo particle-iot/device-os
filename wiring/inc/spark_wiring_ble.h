@@ -996,6 +996,7 @@ public:
     int setProvisioningTxUuid(const uint8_t* buf) const;
     int setProvisioningRxUuid(const uint8_t* buf) const;
     int setProvisioningAdvServiceUuid(const uint8_t* buf) const;
+    int clearProvisioningAdvServiceUuid() const;
 
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;

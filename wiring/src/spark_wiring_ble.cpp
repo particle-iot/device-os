@@ -2097,7 +2097,7 @@ int BleLocalDevice::setProvisioningServiceUuid(const uint8_t* buf) const {
     //     LOG(TRACE, "tempUUID[%d]: %d", i, temp[i]);
     // }
 
-    return system_set_prov_svc_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
+return system_set_prov_svc_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
 }
 
 int BleLocalDevice::setProvisioningTxUuid(const uint8_t* buf) const {
@@ -2124,6 +2124,10 @@ int BleLocalDevice::setProvisioningRxUuid(const uint8_t* buf) const {
 
 int BleLocalDevice::setProvisioningAdvServiceUuid(const uint8_t* buf) const {
     return system_set_prov_adv_svc_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
+}
+
+int BleLocalDevice::clearProvisioningAdvServiceUuid() const {
+    return system_clear_prov_adv_svc_uuid(BLE_SIG_UUID_128BIT_LEN, nullptr);
 }
 
 int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {

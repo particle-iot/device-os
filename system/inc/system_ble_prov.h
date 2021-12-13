@@ -21,6 +21,7 @@ int system_set_prov_svc_uuid(const uint8_t* buf, size_t len, void* reserved);
 int system_set_prov_tx_uuid(const uint8_t* buf, size_t len, void* reserved);
 int system_set_prov_rx_uuid(const uint8_t* buf, size_t len, void* reserved);
 int system_set_prov_adv_svc_uuid(const uint8_t* buf, size_t len, void* reserved);
+int system_clear_prov_adv_svc_uuid(size_t len, void* reserved);
 
 
 #ifdef __cplusplus

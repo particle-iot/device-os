@@ -71,6 +71,10 @@ void BleListeningModeHandler::getCtrlSvcUuid(uint8_t* buf, size_t len) {
     memcpy(buf, PROV_BLE_CTRL_REQ_SVC_UUID, len);
 }
 
+void BleListeningModeHandler::clearCtrlSvcUuid(size_t len) {
+    memset(PROV_BLE_CTRL_REQ_SVC_UUID, 0, len);
+}
+
 int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -95,29 +99,40 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
     uint16_t companyID = PARTICLE_COMPANY_ID;
 
     // Manufacturing specific data
-    CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + 1), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
+    if (!provMode_) {
+        LOG(TRACE, "Using default manufacturing specific data");
+        CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
+    } else {
+        LOG(TRACE, "Using setup code");
+        char code[SETUP_CODE_SIZE] = {};
+        CHECK(get_device_setup_code(code));
+        // FIX the below
+        CHECK_TRUE(tempAdvData.append(sizeof(code) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append((uint8_t*)&code, 6), SYSTEM_ERROR_NO_MEMORY);
+    }
 
     // Particle Control Request Service 128-bits UUID
     // If PROV_BLE_CTRL_REQ_SVC_UUID is non-zero, use it if provisioning mode is active
     // TODO: Use this only if provisioning mode is active. HOW? think it's fine now
     // TODO: test for validity - is it already taken care of by the BLEUuid class?
-    if (memcmp(PROV_BLE_CTRL_REQ_SVC_UUID, zeros, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)) == 0) {
+    // TODO: Rewirte this logic - if (provMode_ and PROV_BLE_CTRL_REQ_SVC_UUID != 0)
+    if (provMode_ && memcmp(PROV_BLE_CTRL_REQ_SVC_UUID, zeros, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)) != 0) {
+        LOG(TRACE, "Using prov adv svc id");
+        // PROV_BLE_CTRL_REQ_SVC_UUID has some content. Use it only if prov mode is enabled
+        CHECK_TRUE(tempSrData.append(sizeof(PROV_BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(PROV_BLE_CTRL_REQ_SVC_UUID, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+    } else {
+        LOG(TRACE, "Using default adv svc id");
         // if PROV_BLE_CTRL_REQ_SVC_UUID == 0, use BLE_CTRL_REQ_SVC_UUID irrepective of prov mode status
         // coz the device requires an adv status none the less
         CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempSrData.append(BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
-    } else {
-        if (provMode_) {
-            LOG(TRACE, "Using prov adv svc id");
-            // PROV_BLE_CTRL_REQ_SVC_UUID has some content. Use it only if prov mode is enabled
-            CHECK_TRUE(tempSrData.append(sizeof(PROV_BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
-            CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
-            CHECK_TRUE(tempSrData.append(PROV_BLE_CTRL_REQ_SVC_UUID, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
-        }
     }
 
     ctrlReqAdvData_ = std::move(tempAdvData);
@@ -148,7 +163,9 @@ int BleListeningModeHandler::cacheUserConfigurations() {
     CHECK(hal_ble_gap_get_auto_advertise(&preAutoAdv_, nullptr));
 
     // Current BLE status in user application
+    LOG(TRACE, "TP1 - preAdvertising_ : %d", preAdvertising_);
     preAdvertising_ = hal_ble_gap_is_advertising(nullptr);
+    LOG(TRACE, "TP2 - preAdvertising_ : %d", preAdvertising_);
     preConnected_ = hal_ble_gap_is_connected(nullptr, nullptr);
 
     preAdvData_ = std::move(tempAdvData);
@@ -159,6 +176,7 @@ int BleListeningModeHandler::cacheUserConfigurations() {
 int BleListeningModeHandler::restoreUserConfigurations() {
     LOG_DEBUG(TRACE, "Restore user's BLE configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
+    LOG(TRACE, "TP3 - preAdvertising_ : %d", preAdvertising_);
 
     // Do not allow other thread to modify the BLE configurations.
     BleLock lk;
@@ -236,7 +254,7 @@ int BleListeningModeHandler::applyControlRequestConfigurations() {
     advParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval = BLE_CTRL_REQ_ADV_INTERVAL;
-    advParams.timeout = BLE_CTRL_REQ_ADV_TIMEOUT;
+    advParams.timeout = provMode_ ? 0 : BLE_CTRL_REQ_ADV_TIMEOUT;
     advParams.inc_tx_power = false;
     CHECK(hal_ble_gap_set_advertising_parameters(&advParams, nullptr));
     CHECK(hal_ble_gap_set_auto_advertise(BLE_AUTO_ADV_ALWAYS, nullptr));
@@ -291,6 +309,11 @@ int BleListeningModeHandler::applyControlRequestAdvData() {
     });
 
     CHECK(hal_ble_exit_locked_mode(nullptr));
+    // LOG(TRACE, "\r\n Ctrl req adv data begin ");
+    // for (auto i = ctrlReqAdvData_.begin(); i != ctrlReqAdvData_.end(); ++i) {
+    //     LOG(TRACE, "ctrlReqAdvData_: %X", *i);
+    // }
+    // LOG(TRACE, "Ctrl req adv data end \r\n");
     CHECK(hal_ble_gap_set_advertising_data(ctrlReqAdvData_.data(), ctrlReqAdvData_.size(), nullptr));
     CHECK(hal_ble_gap_set_scan_response_data(ctrlReqSrData_.data(), ctrlReqSrData_.size(), nullptr));
     CHECK(hal_ble_enter_locked_mode(nullptr));
@@ -327,11 +350,17 @@ int BleListeningModeHandler::enter() {
     CHECK(cacheUserConfigurations());
     // Restore the user's BLE configurations on exited.
     restoreUserConfig_ = true;
-    CHECK(applyControlRequestAdvData());
-    CHECK(applyControlRequestConfigurations());
-    CHECK(hal_ble_set_callback_on_adv_events(onBleAdvEvents, this, nullptr));
+    CHECK(applyControlRequestAdvData());        // sets the advData_
+    CHECK(applyControlRequestConfigurations());     // sets the advParams_
+    if (!provMode_) {
+        LOG(TRACE, "setting callback events");
+        CHECK(hal_ble_set_callback_on_adv_events(onBleAdvEvents, this, nullptr));
+    } else {
+        LOG(TRACE, "Not setting BLE callback events");
+    }
     if (!preAdvertising_ && !preConnected_) {
         // Start advertising if it is neither connected nor advertising.
+        LOG(TRACE, "TP1 Start advertising");
         CHECK(hal_ble_gap_start_advertising(nullptr));
     }
 
@@ -368,9 +397,16 @@ int BleListeningModeHandler::exit() {
             LOG(ERROR, "Failed to restore user configuration.");
         }
     }
-    hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
+    if (!provMode_) {
+        LOG(TRACE, "Cancelling BLE callback events");
+        hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
+    } else {
+        hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
+        LOG(TRACE, "Not cancelling any BLE callback events - there were not set in the first place");
+    }
 
     exited_ = true;
+    provMode_ = false; // very important!
     return SYSTEM_ERROR_NONE;
 }
 
@@ -397,6 +433,10 @@ void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, voi
             break;
         }
     }
+}
+
+bool BleListeningModeHandler::getPreAdvertisingFlag() {
+    return preAdvertising_;
 }
 
 bool BleListeningModeHandler::exited_ = true;

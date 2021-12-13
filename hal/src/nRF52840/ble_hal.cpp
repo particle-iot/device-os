@@ -1175,6 +1175,11 @@ int BleObject::Broadcaster::startAdvertising() {
             connectedAdvParams_ = false;
         }
     }
+    //LOG(TRACE, "\r\n\r\nStart of advData_");
+    //for (int i=0; i<BLE_MAX_ADV_DATA_LEN_EXT; i++) {
+    //    LOG(TRACE, "advData_[%d] : %X", i, advData_[i]);
+    //}
+    //LOG(TRACE, "\r\nEnd of advData_\r\n\r\n");
     int ret = sd_ble_gap_adv_start(advHandle_, BLE_CONN_CFG_TAG);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isAdvertising_ = true;
