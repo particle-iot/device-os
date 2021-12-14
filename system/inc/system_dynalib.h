@@ -122,6 +122,7 @@ DYNALIB_FN(BASE_IDX2 + 0, system, system_info_get_unstable, int(hal_system_info_
 DYNALIB_FN(BASE_IDX2 + 1, system, system_info_free_unstable, int(hal_system_info_t* info, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 2, system, system_ble_prov_mode, int(bool enabled, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 3, system, system_get_ble_prov_status, bool(void* reserved))
+DYNALIB_FN(BASE_IDX2 + 4, system, system_set_prov_svc_uuid, int(const uint8_t* svcUuid, const uint8_t* txUuid, const uint8_t* rxUuid, size_t len, void* reserved))
 
 
 DYNALIB_END(system)
