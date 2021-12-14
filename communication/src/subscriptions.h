@@ -185,8 +185,11 @@ public:
 				{
 					if (event_handlers[i].handler_data)
 					{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
 						EventHandlerWithData handler =
 								(EventHandlerWithData) event_handlers[i].handler;
+#pragma GCC diagnostic pop
 						handler(event_handlers[i].handler_data,
 								(char *) event_name, (char *) data);
 					}

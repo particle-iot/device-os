@@ -45,9 +45,6 @@
 [submodule "third_party/catch2/catch2"]
 	path = third_party/catch2/catch2
 	url = https://github.com/particle-iot/Catch2.git
-	branch = particle
 [submodule "third_party/fakeit/fakeit"]
 	path = third_party/fakeit/fakeit
 	url = https://github.com/particle-iot/Fakeit.git
-	branch = particle
-

@@ -428,7 +428,10 @@ void invokeEventHandlerInternal(uint16_t handlerInfoSize, FilteringEventHandler*
 {
     if(handlerInfo->handler_data)
     {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
         EventHandlerWithData handler = (EventHandlerWithData) handlerInfo->handler;
+#pragma GCC diagnostic pop
         handler(handlerInfo->handler_data, event_name, data);
     }
     else

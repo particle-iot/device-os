@@ -528,11 +528,17 @@ public:
 
     // TODO: system_unsubscribe_event() isn't implemented yet.
     static void off(void(*handler)(system_event_t, int, void*)) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
         system_unsubscribe_event(all_events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
+#pragma GCC diagnostic pop
     }
 
     static void off(system_event_t events, void(*handler)(system_event_t, int, void*)) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
         system_unsubscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
+#pragma GCC diagnostic pop
     }
 
 

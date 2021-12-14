@@ -57,7 +57,7 @@ unsigned CoapMessageOption::decodeUInt(const std::string& data) {
 std::string CoapMessage::encode() const {
     std::string buf;
     for (;;) {
-        CoapMessageEncoder e(&buf.front(), buf.size());
+        CoapMessageEncoder e(buf.empty() ? nullptr : &buf.front(), buf.size());
         e.type(type());
         e.code(code());
         e.id(id());
