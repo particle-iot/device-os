@@ -29,6 +29,9 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
         // IMPORTANT: Set setProvModeStatus(true) before entering provisioning mode,
         // as certain operations in BleListeningModeHandler depend on the provMode_ flag
         BleListeningModeHandler::instance()->setProvModeStatus(true);
+        if (!BleControlRequestChannel::instance(SystemControl::instance())->getProfInitStatus()) {
+            BleControlRequestChannel::instance(SystemControl::instance())->init();
+        }
         auto r = BleListeningModeHandler::instance()->enter();
         if (r) {
             return r;

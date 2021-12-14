@@ -1995,6 +1995,10 @@ int BleLocalDevice::on() const {
 int BleLocalDevice::off() const {
     CHECK(hal_ble_stack_deinit(nullptr));
     {
+        // Disable BLE prov mode if enabled
+        if (getProvisioningStatus()) {
+            provisioningMode(false);
+        }
         WiringBleLock lk;
         impl()->peers().clear();
     }
