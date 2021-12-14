@@ -54,4 +54,17 @@ bool system_get_ble_prov_status(void* reserved) {
     return BleListeningModeHandler::instance()->getProvModeStatus();
 }
 
+int system_set_prov_svc_uuid(const uint8_t* svcUuid, const uint8_t* txUuid, const uint8_t* rxUuid, size_t len, void* reserved) {
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(TRACE, "Listening mode is not disabled. Cannot use prov mode APIs");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+    if (BleControlRequestChannel::instance(SystemControl::instance())->getProfInitStatus()) {
+        LOG(TRACE, "Ble control req channel prov UUIDs already initialized");      // XXX: What about other UUIDs set thru characteristic APIs?
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    BleControlRequestChannel::instance(SystemControl::instance())->setProvUuids(svcUuid, txUuid, rxUuid, len);
+    return SYSTEM_ERROR_NONE;
+}
+
 #endif // HAL_PLATFORM_BLE

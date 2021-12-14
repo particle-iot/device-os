@@ -55,9 +55,6 @@ private:
 #ifdef USB_VENDOR_REQUEST_ENABLE
     UsbControlRequestChannel usbChannel_;
 #endif
-#if HAL_PLATFORM_BLE
-    BleControlRequestChannel bleChannel_;
-#endif
     ctrl_request_handler_fn appReqHandler_;
 
     void processAppRequest(ctrl_request* req);

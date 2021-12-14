@@ -82,17 +82,21 @@ SystemControl::SystemControl() :
 #ifdef USB_VENDOR_REQUEST_ENABLE
         usbChannel_(this),
 #endif
-#if HAL_PLATFORM_BLE
-        bleChannel_(this),
-#endif
         appReqHandler_(nullptr) {
 }
 
 int SystemControl::init() {
 #if HAL_PLATFORM_BLE
-    const int ret = bleChannel_.init();
-    if (ret != 0) {
-        return ret;
+    // BleControlRequestChannel::init() should be called only once
+    // as characteristic UUIDs are currently called only once. If BLE prov mode
+    // is enabled, we need to make sure to call characteristic UUIDs in prov
+    // mode system calls for the first time instead of here.
+    // See system_ble_prov_mode()
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        const int ret = BleControlRequestChannel::instance(this)->init();
+        if (ret != 0) {
+            return ret;
+        }
     }
 #endif
     return 0;
@@ -100,7 +104,7 @@ int SystemControl::init() {
 
 void SystemControl::run() {
 #if HAL_PLATFORM_BLE
-    bleChannel_.run();
+    BleControlRequestChannel::instance(this)->run();
 #endif
 }
 

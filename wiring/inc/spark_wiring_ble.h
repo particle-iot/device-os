@@ -932,6 +932,16 @@ public:
     int provisioningMode(bool enabled) const;
     bool getProvisioningStatus() const;
 
+    template<typename T1, typename T2, typename T3>
+    int setProvisioningUuids(T1 svcUuid, T2 txUuid, T3 rxUuid) const {
+        BleUuid tempSvcUUID(svcUuid);
+        BleUuid tempTxUUID(txUuid);
+        BleUuid tempRxUUID(rxUuid);
+        return setProvisioningUuids(tempSvcUUID.rawBytes(), tempTxUUID.rawBytes(), tempRxUUID.rawBytes());
+    }
+
+    int setProvisioningUuids(const uint8_t* svcUuid, const uint8_t* txUuid, const uint8_t* rxUuid) const;
+
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;
     int setAdvertisingTimeout(uint16_t timeout) const;
