@@ -199,9 +199,14 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
     if (serial != HAL_USB_USART_SERIAL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    // Just in case for now
+    if ((__get_PRIMASK() & 1)) {
+        return -1;
+    }
     int32_t available = -1;
     do {
         available = HAL_USB_USART_Available_Data_For_Write(serial);
+        HAL_Delay_Milliseconds(1);
     } while (available < 1 && available != -1);
     if (HAL_USB_USART_Is_Connected(serial) && available > 0) {
         return getCdcClassDriver().write(&data, sizeof(data));
