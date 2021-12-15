@@ -28,23 +28,10 @@
 #include <algorithm>
 #include <cstring>
 
-namespace {
-
-using namespace particle;
-
-// TODO: Rename ssid_prefix to device_name in DCT?
-const auto DEVICE_NAME_DCT_SIZE = DCT_SSID_PREFIX_SIZE;
-const auto DEVICE_NAME_DCT_OFFSET = DCT_SSID_PREFIX_OFFSET;
-
-const auto DEVICE_NAME_MAX_SIZE = DEVICE_NAME_DCT_SIZE - 1;
-
-const auto SETUP_CODE_SIZE = DCT_DEVICE_CODE_SIZE;
-const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
-
-int getDeviceSetupCode(char* code) {
+int get_device_setup_code(char* code) {
     // Check if the device setup code is initialized in the DCT
     int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, SETUP_CODE_SIZE);
-    if (ret < 0 || !isPrintable(code, SETUP_CODE_SIZE)) {
+    if (ret < 0 || !particle::isPrintable(code, SETUP_CODE_SIZE)) {
         // Check the OTP memory
         char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
         ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
@@ -58,6 +45,16 @@ int getDeviceSetupCode(char* code) {
     }
     return 0;
 }
+
+namespace {
+
+using namespace particle;
+
+// TODO: Rename ssid_prefix to device_name in DCT?
+const auto DEVICE_NAME_DCT_SIZE = DCT_SSID_PREFIX_SIZE;
+const auto DEVICE_NAME_DCT_OFFSET = DCT_SSID_PREFIX_OFFSET;
+
+const auto DEVICE_NAME_MAX_SIZE = DEVICE_NAME_DCT_SIZE - 1;
 
 } // ::
 
@@ -85,7 +82,7 @@ int get_device_name(char* buf, size_t size) {
     if (nameSize == 0 || nameSize > DEVICE_NAME_MAX_SIZE || !isPrintable(name, nameSize)) {
         // Get device setup code
         char code[SETUP_CODE_SIZE] = {};
-        ret = getDeviceSetupCode(code);
+        ret = get_device_setup_code(code);
         if (ret < 0) {
             return ret;
         }
