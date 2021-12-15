@@ -20,6 +20,7 @@
 
 // TODO: Should we add a test case for the default case? For users that don't touch the flag
 
+// Dot not enter listening mode based on the flag
 test(LISTENING_00_DISABLE_LISTENING_MODE) {
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
     Network.listen();
@@ -27,6 +28,7 @@ test(LISTENING_00_DISABLE_LISTENING_MODE) {
     assertFalse(Network.listening());
 }
 
+// Enter listening mode based on the flag
 test(LISTENING_01_ENABLE_LISTENING_MODE) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     Network.listen();
@@ -37,3 +39,13 @@ test(LISTENING_01_ENABLE_LISTENING_MODE) {
     assertFalse(Network.listening());
 }
 
+// If the flag is enabled while device is in listening mode,
+// device-os should exit listening mode
+test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
+    Network.listen();
+    HAL_Delay_Milliseconds(1000); // Time for system thread to enter listening mode
+    assertTrue(Network.listening());
+    System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    HAL_Delay_Milliseconds(1500); // Time for system thread to process the flag
+    assertFalse(Network.listening());
+}
