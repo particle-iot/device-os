@@ -26,15 +26,6 @@ using namespace particle::usbd;
 
 namespace {
 
-/* Extended Compat ID OS Descriptor */
-static const uint8_t MSFT_EXTENDED_COMPAT_ID_DESCRIPTOR[] = {
-    USB_WCID_EXT_COMPAT_ID_OS_DESCRIPTOR(
-        0x02,
-        USB_WCID_DATA('W', 'I', 'N', 'U', 'S', 'B', '\0', '\0'),
-        USB_WCID_DATA(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
-    )
-};
-
 /* Extended Properties OS Descriptor */
 static const uint8_t MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR[] = {
     USB_WCID_EXT_PROP_OS_DESCRIPTOR(
@@ -80,14 +71,23 @@ int ControlInterfaceClassDriver::deinit(unsigned cfgIdx) {
 
 int ControlInterfaceClassDriver::handleMsftRequest(SetupRequest* req) {
     if (req->wIndex == 0x0004) {
-        dev_->setupReply(req, MSFT_EXTENDED_COMPAT_ID_DESCRIPTOR, req->wLength);
+        /* Extended Compat ID OS Descriptor */
+        const uint8_t extendedCompatId[] = {
+            USB_WCID_EXT_COMPAT_ID_OS_DESCRIPTOR(
+                (uint8_t)interfaceBase_,
+                USB_WCID_DATA('W', 'I', 'N', 'U', 'S', 'B', '\0', '\0'),
+                USB_WCID_DATA(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+            )
+        };
+        memcpy(requestData_, extendedCompatId, sizeof(extendedCompatId));
+        dev_->setupReply(req, requestData_, req->wLength);
     } else if (req->wIndex == 0x0005) {
         if ((req->wValue & 0xff) == 0x00) {
             dev_->setupReply(req, MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR, req->wLength);
         } else {
             // Send dummy
-            const uint8_t dummy[10] = {0};
-            dev_->setupReply(req, dummy, req->wLength);
+            memset(requestData_, 0, sizeof(requestData_));
+            dev_->setupReply(req, requestData_, req->wLength);
         }
     } else {
         dev_->setupError(req);

@@ -172,6 +172,9 @@ int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial) {
     if (serial != HAL_USB_USART_SERIAL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    if (!HAL_USB_USART_Is_Connected(serial)) {
+        return -1;
+    }
     return getCdcClassDriver().availableForWrite();
 }
 
@@ -196,7 +199,14 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
     if (serial != HAL_USB_USART_SERIAL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    return getCdcClassDriver().write(&data, sizeof(data));
+    int32_t available = -1;
+    do {
+        available = HAL_USB_USART_Available_Data_For_Write(serial);
+    } while (available < 1 && available != -1);
+    if (HAL_USB_USART_Is_Connected(serial) && available > 0) {
+        return getCdcClassDriver().write(&data, sizeof(data));
+    }
+    return -1;
 }
 
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial) {
@@ -221,10 +231,18 @@ bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial) {
 }
 
 void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate)) {
-    return;
+    // Old USB API, just for compatibility in main.cpp
+    // Enable Serial by default
+    HAL_USB_USART_LineCoding_BitRate_Handler(handler, NULL);
 }
 
 int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved) {
+    // Enable Serial by default
+    HAL_USB_USART_Init(HAL_USB_USART_SERIAL, nullptr);
+    HAL_USB_USART_Begin(HAL_USB_USART_SERIAL, 9600, nullptr);
+    getCdcClassDriver().onSetLineCoding([handler](cdc::LineCoding lineCoding) -> void {
+        handler(lineCoding.dwDTERate);
+    });
     return 0;
 }
 

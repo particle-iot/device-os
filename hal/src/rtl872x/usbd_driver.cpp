@@ -76,7 +76,18 @@ uint8_t endpointTypeToRtl(EndpointType type) {
     return 0;
 }
 
+const size_t RTL_USB_DEV_PCD_OFFSET = 0xd8;
+const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x15c;
+
 } // anonymous
+
+extern "C" {
+uint8_t usbd_pcd_ep_set_stall(void* pcd, uint8_t ep);
+uint8_t usbd_pcd_ep_clear_stall(void* pcd, uint8_t ep);
+uint8_t usbd_pcd_ep_flush(void* pcd, uint8_t ep);
+uint8_t usb_hal_flush_tx_fifo(uint32_t num);
+uint8_t usb_hal_write_packet(uint8_t *src, uint8_t ep_ch_num, uint16_t len);
+}
 
 RtlUsbDriver* RtlUsbDriver::instance() {
     static RtlUsbDriver driver;
@@ -145,15 +156,27 @@ int RtlUsbDriver::closeEndpoint(unsigned ep) {
 }
 
 int RtlUsbDriver::flushEndpoint(unsigned ep) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    SPARK_ASSERT(rtlDev_);
+    void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
+    usb_spinlock_t* lock = *((usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET));
+    // FIXME: magic number, for some reason usbd_pcd_ep_flush does not work correctly
+    const uint32_t USBD_FLUSH_ENDPOINT_WEIRD_MAGIC_NUMBER = 0x400;
+    usb_os_spinlock(lock);
+    auto r = usb_hal_flush_tx_fifo(USBD_FLUSH_ENDPOINT_WEIRD_MAGIC_NUMBER);
+    usb_os_spinunlock(lock);
+    return CHECK_RTL_USB_TO_SYSTEM(r);
 }
 
 int RtlUsbDriver::stallEndpoint(unsigned ep) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    SPARK_ASSERT(rtlDev_);
+    void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
+    return CHECK_RTL_USB_TO_SYSTEM(usbd_pcd_ep_set_stall(pcd, ep));
 }
 
 int RtlUsbDriver::clearStallEndpoint(unsigned ep) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    SPARK_ASSERT(rtlDev_);
+    void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
+    return CHECK_RTL_USB_TO_SYSTEM(usbd_pcd_ep_clear_stall(pcd, ep));
 }
 
 EndpointStatus RtlUsbDriver::getEndpointStatus(unsigned ep) {
@@ -168,6 +191,15 @@ int RtlUsbDriver::setEndpointStatus(unsigned ep, EndpointStatus status) {
 
 int RtlUsbDriver::transferIn(unsigned ep, const uint8_t* ptr, size_t size) {
     SPARK_ASSERT(rtlDev_);
+    if (ptr == nullptr && size == 0) {
+        // FIXME
+        void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
+        usb_spinlock_t* lock = *((usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET));
+        usb_os_spinlock(lock);
+        auto r = usb_hal_write_packet(nullptr, ep | SetupRequest::DIRECTION_DEVICE_TO_HOST, 0);
+        usb_os_spinunlock(lock);
+        return CHECK_RTL_USB_TO_SYSTEM(r);
+    }
     return CHECK_RTL_USB_TO_SYSTEM(usbd_ep_transmit(rtlDev_, ep | SetupRequest::DIRECTION_DEVICE_TO_HOST, (uint8_t*)ptr, size));
 }
 
@@ -312,7 +344,6 @@ uint8_t RtlUsbDriver::epDataInCb(usb_dev_t* dev, uint8_t ep_num) {
     self->setDevReference(dev);
     // NOTE: no way to tell the size of the last transfer
     CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_DEVICE_TO_HOST | ep_num, EndpointEvent::DONE, 0 /* dev->ep_in[ep_num & 0x7f].data_len */));
-    LOG(INFO, "epDataInCb %02x ok", ep_num);
     return 0;
 }
 

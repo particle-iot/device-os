@@ -240,6 +240,8 @@ public:
     bool lock();
     void unlock();
 
+    unsigned updateEndpointMask(unsigned mask);
+
 protected:
     friend class DeviceDriver;
     virtual int getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed speed = Speed::FULL, unsigned index = 0);
