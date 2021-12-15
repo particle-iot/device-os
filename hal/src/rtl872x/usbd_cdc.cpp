@@ -239,8 +239,6 @@ int CdcClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_
         return r;
     } else if (ep == epOutData_) {
         if (rxState_) {
-            if (rxBuffer_.acquirePending() != len) {
-            }
             rxBuffer_.acquireCommit(len, rxBuffer_.acquirePending() - len);
             setOpenState(true);
             rxState_ = false;

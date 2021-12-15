@@ -411,12 +411,6 @@ int Device::startOfFrame() {
 }
 
 int Device::setupRequest(SetupRequest* req) {
-        req->bmRequestType,
-        req->bRequest,
-        req->wValue,
-        req->wIndex,
-        req->wLength);
-
     for (auto& cls: classDrivers_) {
         if (cls && cls->isEnabled()) {
             int r = cls->setup(req);
