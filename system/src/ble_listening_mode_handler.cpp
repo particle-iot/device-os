@@ -63,8 +63,17 @@ void BleListeningModeHandler::setProvModeStatus(bool enabled) {
     provMode_ = enabled;
 }
 
+void BleListeningModeHandler::setProvAdvCtrlSvcUuid(const uint8_t* buf, size_t len) {
+    memcpy(PROV_BLE_CTRL_REQ_SVC_UUID, buf, len);
+}
+
+void BleListeningModeHandler::getProvAdvCtrlSvcUuid(uint8_t* buf, size_t len) {
+    memcpy(buf, PROV_BLE_CTRL_REQ_SVC_UUID, len);
+}
+
 int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t zeros[BLE_SIG_UUID_128BIT_LEN] = {0};
 
     Vector<uint8_t> tempAdvData;
     Vector<uint8_t> tempSrData;
@@ -92,9 +101,20 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
 
     // Particle Control Request Service 128-bits UUID
-    CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempSrData.append(BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+    if (provMode_ && memcmp(PROV_BLE_CTRL_REQ_SVC_UUID, zeros, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)) != 0) {
+        LOG(TRACE, "Using prov adv svc id");
+        // PROV_BLE_CTRL_REQ_SVC_UUID has some content (Is it needed to check for validity?).
+        // Use it only if prov mode is enabled
+        CHECK_TRUE(tempSrData.append(sizeof(PROV_BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(PROV_BLE_CTRL_REQ_SVC_UUID, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+    } else {
+        LOG(TRACE, "Using default adv svc id");
+        // if PROV_BLE_CTRL_REQ_SVC_UUID == 0, use BLE_CTRL_REQ_SVC_UUID irrepective of prov mode status
+        CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+    }
 
     ctrlReqAdvData_ = std::move(tempAdvData);
     ctrlReqSrData_ = std::move(tempSrData);

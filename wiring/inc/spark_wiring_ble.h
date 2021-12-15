@@ -942,6 +942,14 @@ public:
 
     int setProvisioningUuids(const uint8_t* svcUuid, const uint8_t* txUuid, const uint8_t* rxUuid) const;
 
+    template<typename T>
+    int setProvisioningAdvServiceUuid(T uuid) const {
+        BleUuid tempUUID(uuid);
+        return setProvisioningAdvServiceUuid(tempUUID.rawBytes());
+    }
+
+    int setProvisioningAdvServiceUuid(const uint8_t* buf) const;
+
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;
     int setAdvertisingTimeout(uint16_t timeout) const;

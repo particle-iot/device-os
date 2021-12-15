@@ -2087,6 +2087,10 @@ int BleLocalDevice::setProvisioningUuids(const uint8_t* svcUuid, const uint8_t* 
     return system_set_prov_svc_uuid(svcUuid, txUuid, rxUuid, BLE_SIG_UUID_128BIT_LEN, nullptr);
 }
 
+int BleLocalDevice::setProvisioningAdvServiceUuid(const uint8_t* buf) const {
+    return system_set_prov_adv_svc_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
+}
+
 int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {
     hal_ble_adv_params_t advParams = {};
     advParams.size = sizeof(hal_ble_adv_params_t);
