@@ -69,13 +69,11 @@ public:
     virtual bool lock() override;
     virtual void unlock() override;
 
-    void halReadPacketFixup(void* ptr);
-
 private:
     RtlUsbDriver();
     virtual ~RtlUsbDriver();
 
-    static uint8_t* getDescriptorCb(usbd_desc_type_t desc, usbd_speed_type_t speed, uint16_t* len);
+    static uint8_t* getDescriptorCb(usb_setup_req_t *req, usbd_speed_type_t speed, uint16_t* len);
     static uint8_t setConfigCb(usb_dev_t* dev, uint8_t config);
     static uint8_t clearConfigCb(usb_dev_t* dev, uint8_t config);
     static uint8_t setupCb(usb_dev_t* dev, usb_setup_req_t* req);
@@ -88,8 +86,6 @@ private:
     static uint8_t epDataOutCb(usb_dev_t* dev, uint8_t ep_num, uint16_t len);
 
     void setDevReference(usb_dev_t* dev);
-
-    void fixupReceivedData();
 
 private:
     usb_dev_t* rtlDev_ = nullptr;

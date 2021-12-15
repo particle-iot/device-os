@@ -66,6 +66,7 @@ SECTIONS {
     mpu_entry_free = 0x10102db5;
     mpu_entry_alloc = 0x10102dc1;
     DiagPrintf = 0x101003f5;
+    DiagVSprintf = 0x1010a12d;
     RCC_PeriphClockCmd = 0x10106021;
     RCC_PeriphClockSource_RTC = 0x101060b9;
     RCC_PeriphClockSource_I2C = 0x10106105;

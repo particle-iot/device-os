@@ -43,34 +43,6 @@ using namespace particle::usbd;
 
 namespace {
 
-SetupRequest sLastUsbSetupRequest = {};
-
-int rtlDescriptorTypeToDriver(usbd_desc_type_t desc) {
-    switch (desc) {
-    case USBD_DESC_DEVICE: {
-        return DESCRIPTOR_DEVICE;
-    }
-    case USBD_DESC_CONFIG: {
-        return DESCRIPTOR_CONFIGURATION;
-    }
-    case USBD_DESC_OTHER_SPEED_CONFIG: {
-        return DESCRIPTOR_OTHER_SPEED_CONFIGURATION;
-    }
-    case USBD_DESC_DEVICE_QUALIFIER: {
-        return DESCRIPTOR_DEVICE_QUALIFIER;
-    }
-    case USBD_DESC_LANGID_STR:
-    case USBD_DESC_MFG_STR:
-    case USBD_DESC_PRODUCT_STR:
-    case USBD_DESC_SN_STR:
-    case USBD_DESC_CONFIG_STR:
-    case USBD_DESC_INTERFACE_STR: {
-        return DESCRIPTOR_STRING;
-    }
-    }
-    return SYSTEM_ERROR_UNKNOWN;
-}
-
 Speed rtlSpeedToDriver(usbd_speed_type_t speed) {
     switch (speed) {
     case USBD_SPEED_HIGH: {
@@ -89,45 +61,22 @@ Speed rtlSpeedToDriver(usbd_speed_type_t speed) {
 uint8_t endpointTypeToRtl(EndpointType type) {
     switch (type) {
     case EndpointType::CONTROL: {
-        return USBD_EP_TYPE_CTRL;
+        return USB_CH_EP_TYPE_CTRL;
     }
     case EndpointType::INTERRUPT: {
-        return USBD_EP_TYPE_INTR;
+        return USB_CH_EP_TYPE_INTR;
     }
     case EndpointType::ISOCHRONOUS: {
-        return USBD_EP_TYPE_ISOC;
+        return USB_CH_EP_TYPE_ISOC;
     }
     case EndpointType::BULK: {
-        return USBD_EP_TYPE_BULK;
+        return USB_CH_EP_TYPE_BULK;
     }
     }
     return 0;
 }
 
 } // anonymous
-
-// FIXME: This is a nasty workaround for the SDK USB driver
-// where it fails to deliver requests for strings higher than STRING_IDX_SERIAL
-extern "C" {
-
-int usbd_hal_read_packet(void* pcd, void* ptr, uint32_t size);
-int __real_usbd_hal_read_packet(void* pcd, void* ptr, uint32_t size);
-
-int __wrap_usbd_hal_read_packet(void* pcd, void* ptr, uint32_t size) {
-    int r = __real_usbd_hal_read_packet(pcd, ptr, size);
-    if (size == sizeof(sLastUsbSetupRequest)) {
-        memcpy(&sLastUsbSetupRequest, ptr, sizeof(sLastUsbSetupRequest));
-        auto req = static_cast<SetupRequest*>(ptr);
-        if (req->bmRequestType == (SetupRequest::DIRECTION_DEVICE_TO_HOST | SetupRequest::RECIPIENT_DEVICE | SetupRequest::TYPE_STANDARD)
-                && req->bRequest == SetupRequest::REQUEST_GET_DESCRIPTOR && (req->wValue & 0xff) > STRING_IDX_SERIAL) {
-            req->wValue &= 0xff00;
-            RtlUsbDriver::instance()->halReadPacketFixup(ptr);
-        }
-    }
-    return r;
-}
-
-} // extern "C"
 
 RtlUsbDriver* RtlUsbDriver::instance() {
     static RtlUsbDriver driver;
@@ -266,20 +215,17 @@ unsigned RtlUsbDriver::updateEndpointMask(unsigned mask) const {
     return mask;
 }
 
-uint8_t* RtlUsbDriver::getDescriptorCb(usbd_desc_type_t desc, usbd_speed_type_t speed, uint16_t* len) {
+uint8_t* RtlUsbDriver::getDescriptorCb(usb_setup_req_t *req, usbd_speed_type_t speed, uint16_t* len) {
     auto self = instance();
     std::lock_guard<RtlUsbDriver> lk(*self);
 
-    auto type = rtlDescriptorTypeToDriver(desc);
-    if (type < 0) {
-        return nullptr;
-    }
+    uint8_t type = req->wValue >> 8;
     auto s = rtlSpeedToDriver(speed);
     int r = SYSTEM_ERROR_UNKNOWN;
     if (type != DESCRIPTOR_STRING) {
-        r = self->getDescriptor((DescriptorType)type, self->tempBuffer_, rtl::TEMP_BUFFER_SIZE, s, sLastUsbSetupRequest.wValue & 0xff);
+        r = self->getDescriptor((DescriptorType)type, self->tempBuffer_, rtl::TEMP_BUFFER_SIZE, s, req->wValue & 0xff);
     } else {
-        r = self->getString(sLastUsbSetupRequest.wValue & 0xff, sLastUsbSetupRequest.wIndex, self->tempBuffer_, rtl::TEMP_BUFFER_SIZE);
+        r = self->getString(req->wValue & 0xff, req->wIndex, self->tempBuffer_, rtl::TEMP_BUFFER_SIZE);
     }
     if (r < 0) {
         *len = 0;
@@ -311,7 +257,7 @@ uint8_t RtlUsbDriver::setupCb(usb_dev_t* dev, usb_setup_req_t* req) {
 
     self->setDevReference(dev);
     static_assert(sizeof(SetupRequest) == sizeof(usb_setup_req_t), "SetupRequest and usb_setup_req_t are expected to be of the same size");
-    CHECK_RTL_USB(self->setupRequest(&sLastUsbSetupRequest));
+    CHECK_RTL_USB(self->setupRequest((SetupRequest*)req));
     if (self->setupError_) {
         self->setupError_ = false;
         return HAL_ERR_HW;
@@ -356,7 +302,6 @@ uint8_t RtlUsbDriver::ep0DataOutCb(usb_dev_t* dev) {
     std::lock_guard<RtlUsbDriver> lk(*self);
 
     self->setDevReference(dev);
-    self->fixupReceivedData();
     return CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_HOST_TO_DEVICE | 0x00, EndpointEvent::DONE, dev->ep0_data_len));
 }
 
@@ -375,7 +320,6 @@ uint8_t RtlUsbDriver::epDataOutCb(usb_dev_t* dev, uint8_t ep_num, uint16_t len) 
     std::lock_guard<RtlUsbDriver> lk(*self);
 
     self->setDevReference(dev);
-    self->fixupReceivedData();
     CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_HOST_TO_DEVICE | ep_num, EndpointEvent::DONE, len));
     return 0;
 }
@@ -383,18 +327,6 @@ uint8_t RtlUsbDriver::epDataOutCb(usb_dev_t* dev, uint8_t ep_num, uint16_t len) 
 void RtlUsbDriver::setDevReference(usb_dev_t* dev) {
     if (!rtlDev_) {
         rtlDev_ = dev;
-    }
-}
-
-void RtlUsbDriver::halReadPacketFixup(void* ptr) {
-    fixupPtr_ = ptr;
-}
-
-void RtlUsbDriver::fixupReceivedData() {
-    if (fixupPtr_) {
-        auto req = static_cast<SetupRequest*>(fixupPtr_);
-        req->wValue = sLastUsbSetupRequest.wValue;
-        fixupPtr_ = nullptr;
     }
 }
 
