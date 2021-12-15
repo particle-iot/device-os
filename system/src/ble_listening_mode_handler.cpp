@@ -95,10 +95,21 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
     uint16_t companyID = PARTICLE_COMPANY_ID;
 
     // Manufacturing specific data
-    CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + 1), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
+    if (!provMode_) {
+        LOG(TRACE, "Using default manufacturing specific data");
+        CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
+    } else {
+        LOG(TRACE, "Using setup code");
+        char code[SETUP_CODE_SIZE] = {};
+        CHECK(get_device_setup_code(code));
+        // FIX the below
+        CHECK_TRUE(tempAdvData.append(sizeof(code) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempAdvData.append((uint8_t*)&code, 6), SYSTEM_ERROR_NO_MEMORY);
+    }
 
     // Particle Control Request Service 128-bits UUID
     if (provMode_ && memcmp(PROV_BLE_CTRL_REQ_SVC_UUID, zeros, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)) != 0) {
