@@ -312,6 +312,7 @@ uint8_t RtlUsbDriver::epDataInCb(usb_dev_t* dev, uint8_t ep_num) {
     self->setDevReference(dev);
     // NOTE: no way to tell the size of the last transfer
     CHECK_RTL_USB(self->notifyEpTransferDone(SetupRequest::DIRECTION_DEVICE_TO_HOST | ep_num, EndpointEvent::DONE, 0 /* dev->ep_in[ep_num & 0x7f].data_len */));
+    LOG(INFO, "epDataInCb %02x ok", ep_num);
     return 0;
 }
 

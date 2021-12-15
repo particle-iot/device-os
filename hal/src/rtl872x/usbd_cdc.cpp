@@ -56,6 +56,7 @@ CdcClassDriver::~CdcClassDriver() {
 }
 
 int CdcClassDriver::init(unsigned cfgIdx) {
+    LOG(INFO, "init %u", cfgIdx);
     // deinit(cfgIdx);
     CHECK_TRUE(epInInt_ != ENDPOINT_INVALID, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(epOutData_ != ENDPOINT_INVALID, SYSTEM_ERROR_INVALID_STATE);
@@ -65,11 +66,13 @@ int CdcClassDriver::init(unsigned cfgIdx) {
     CHECK(dev_->openEndpoint(epOutData_, EndpointType::BULK, cdc::MAX_DATA_PACKET_SIZE));
     CHECK(dev_->openEndpoint(epInInt_, EndpointType::BULK, cdc::MAX_CONTROL_PACKET_SIZE));
 
+    LOG(INFO, "open ok");
     startRx();
     return 0;
 }
 
 int CdcClassDriver::deinit(unsigned cfgIdx) {
+    LOG(INFO, "deinit %u", cfgIdx);
     if (isConfigured()) {
         if (txState_) {
             dev_->flushEndpoint(epInData_);
@@ -101,6 +104,7 @@ int CdcClassDriver::deinit(unsigned cfgIdx) {
 
 void CdcClassDriver::setOpenState(bool state) {
     if (state != open_) {
+        LOG(INFO, "setOpenState %d", state);
         if (state) {
 #if !HAL_PLATFORM_USB_SOF
             stopTxTimer();
@@ -140,6 +144,7 @@ int CdcClassDriver::setup(SetupRequest* req) {
         } else {
             currentRequest_ = req->bRequest;
             currentRequestLen_ = req->wLength;
+            LOG(INFO, "ep0 receive %u", req->wLength);
             if (req->wLength) {
                 return dev_->setupReceive(req, cmdBuffer_, std::min<size_t>(sizeof(cmdBuffer_), req->wLength));
             } else {
@@ -150,9 +155,11 @@ int CdcClassDriver::setup(SetupRequest* req) {
         // Standard
         switch (req->bRequest) {
         case SetupRequest::REQUEST_GET_INTERFACE: {
+            LOG(INFO, "get interface");
             return dev_->setupReply(req, &altSetting_, sizeof(altSetting_));
         }
         case SetupRequest::REQUEST_SET_INTERFACE: {
+            LOG(INFO, "set interface %u", req->wValue);
             if (req->wValue == 0) {
                 return dev_->setupReply(req, nullptr, 0);
             }
@@ -166,6 +173,7 @@ int CdcClassDriver::setup(SetupRequest* req) {
 int CdcClassDriver::handleInSetupRequest(SetupRequest* req) {
     switch (req->bRequest) {
     case cdc::GET_LINE_CODING: {
+        LOG(INFO, "get line coding %u", req->wLength);
         return dev_->setupReply(req, (const uint8_t*)&lineCoding_, sizeof(lineCoding_));
     }
     }
@@ -175,6 +183,7 @@ int CdcClassDriver::handleInSetupRequest(SetupRequest* req) {
 int CdcClassDriver::handleOutSetupRequest(SetupRequest* req) {
     switch (req->bRequest) {
     case cdc::SET_LINE_CODING: {
+        LOG(INFO, "set line coding %u", req->wLength);
         if (req->wLength >= sizeof(lineCoding_)) {
             memcpy(&lineCoding_, cmdBuffer_, sizeof(lineCoding_));
             if (onSetLineCoding_) {
@@ -186,6 +195,7 @@ int CdcClassDriver::handleOutSetupRequest(SetupRequest* req) {
         return 0;
     }
     case cdc::SET_CONTROL_LINE_STATE: {
+        LOG(INFO, "set control line state %u", req->wLength);
         if (req->wLength > 0) {
             controlState_ = cmdBuffer_[0];
         } else {
@@ -203,7 +213,7 @@ int CdcClassDriver::handleOutSetupRequest(SetupRequest* req) {
 }
 
 int CdcClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t len) {
-
+    //LOG(INFO, "dataIn ep=%u txState=%d", ep, txState_);
 
     if (ep != epInData_ && ep != epInInt_) {
         return SYSTEM_ERROR_UNKNOWN;
@@ -218,11 +228,13 @@ int CdcClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
 #endif // !HAL_PLATFORM_USB_SOF
 
     if (txBuffer_.consumePending() != len) {
+        LOG(WARN, "Pending TX bytes (%u) != transfer size (%u)", txBuffer_.consumePending(), len);
     }
 
     txBuffer_.consumeCommit(txBuffer_.consumePending());
     txState_ = false;
 
+    LOG(INFO, "consumed %u", txBuffer_.consumePending());
 
     startTx();
 
@@ -230,7 +242,9 @@ int CdcClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
 }
 
 int CdcClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_t len) {
+    LOG(INFO, "dataOut %u %u", ep, len);
     if (ep == 0 && currentRequest_ != cdc::INVALID_REQUEST && currentRequestLen_ > 0) {
+        LOG(INFO, "dataOut ep0");
         SetupRequest req = {};
         req.bRequest = currentRequest_;
         req.wLength = currentRequestLen_;
@@ -239,9 +253,12 @@ int CdcClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_
         currentRequestLen_ = 0;
         return r;
     } else if (ep == epOutData_) {
+        LOG(INFO, "dataOut epOutData %d", rxState_);
         if (rxState_) {
             if (rxBuffer_.acquirePending() != len) {
+                LOG(WARN, "Pending RX bytes (%u) != transfer size (%u)", rxBuffer_.acquirePending(), len);
             }
+            LOG(INFO, "commited %u", len);
             rxBuffer_.acquireCommit(len, rxBuffer_.acquirePending() - len);
             setOpenState(true);
             rxState_ = false;
@@ -257,6 +274,7 @@ int CdcClassDriver::startOfFrame() {
 }
 
 int CdcClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t length, Speed speed, unsigned index) {
+    LOG(INFO, "getConfig %u", index);
     BufferAppender appender(buf, length);
     // Interface Association Descriptor
     appender.appendUInt8(0x08);   // bLength: Configuration Descriptor size
@@ -331,7 +349,7 @@ int CdcClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t length, Spee
     appender.appendUInt8(0x00);          // bInterfaceProtocol:
     appender.appendUInt8(stringBase_);   // iInterface: Use the same string
 
-    uint8_t epOutData = CHECK(getNextAvailableEndpoint(ENDPOINT_OUT));
+    uint8_t epOutData = CHECK(getNextAvailableEndpoint(ENDPOINT_IN)) & 0x7f;
 
     // Bulk OUT endpoint descriptor
     appender.appendUInt8(0x07);                  // bLength: Endpoint Descriptor size
@@ -362,6 +380,7 @@ int CdcClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t length, Spee
     epOutData_ = epOutData;
     epInInt_ = epInt;
 
+    LOG(INFO, "config generated %u %02x %02x %02x", appender.dataSize(), epInData_, epOutData_, epInInt_);
 
     return appender.dataSize();
 }
@@ -380,6 +399,7 @@ int CdcClassDriver::startRx() {
     if (rxState_) {
         return 0;
     }
+    LOG(INFO, "startRx %u %u", rxBuffer_.size(), txBuffer_.size());
 
     // Updates current size
     rxBuffer_.acquireBegin();
@@ -388,6 +408,7 @@ int CdcClassDriver::startRx() {
     const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
     size_t rxSize = std::max(acquirable, acquirableWrapped);
 
+    LOG(INFO, "acquirable = %u acquirableWrapped = %u", acquirable, acquirableWrapped);
     
     if (rxSize < cdc::MAX_DATA_PACKET_SIZE) {
         rxState_ = false;
@@ -398,11 +419,14 @@ int CdcClassDriver::startRx() {
     rxState_ = true;
     rxSize = cdc::MAX_DATA_PACKET_SIZE;
     auto ptr = rxBuffer_.acquire(rxSize);
-    dev_->transferOut(epOutData_, ptr, rxSize);
+    LOG(INFO, "transferOut %02x %u", epOutData_, rxSize);
+    int r = dev_->transferOut(epOutData_, ptr, rxSize);
+    LOG(INFO, "transferOut result=%d", r);
     return 0;
 }
 
 int CdcClassDriver::startTx() {
+    LOG(INFO, "startTx %d %d", txState_, open_);
     if (txState_) {
         return 0;
     }
@@ -419,6 +443,7 @@ int CdcClassDriver::startTx() {
     txState_ = true;
     consumable = std::min(consumable, cdc::MAX_DATA_PACKET_SIZE);
     auto buf = txBuffer_.consume(consumable);
+    LOG(INFO, "transferIn %02x %u", epInData_, consumable);
     dev_->transferIn(epInData_, buf, consumable);
 
 #if !HAL_PLATFORM_USB_SOF
@@ -430,6 +455,7 @@ int CdcClassDriver::startTx() {
 
 #if !HAL_PLATFORM_USB_SOF
 void CdcClassDriver::txTimerCallback(os_timer_t timer) {
+    LOG(INFO, "txTimerCallback");
     void* timerId = nullptr;
     os_timer_get_id(timer, &timerId);
     if (timerId) {
@@ -465,6 +491,7 @@ int CdcClassDriver::getNumStrings() const {
 }
 
 int CdcClassDriver::initBuffers(void* rxBuffer, size_t rxBufferSize, void* txBuffer, size_t txBufferSize) {
+    LOG(INFO, "initbuffers");
     CHECK_FALSE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(rxBuffer, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(rxBufferSize, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -522,17 +549,19 @@ int CdcClassDriver::peek(uint8_t* buffer, size_t size) {
 }
 
 int CdcClassDriver::write(const uint8_t* buf, size_t len) {
+    LOG(INFO, "write %x %u %d", buf, len, isConfigured());
     CHECK_TRUE(isConfigured(), SYSTEM_ERROR_INVALID_STATE);
     const size_t canWrite = CHECK(availableForWrite());
     const size_t writeSize = std::min(canWrite, len);
+    LOG(INFO, "canWrite %u, write=%u", canWrite, writeSize);
     CHECK_TRUE(writeSize > 0, SYSTEM_ERROR_NO_MEMORY);
     {
         std::lock_guard<Device> lk(*dev_);
         CHECK(txBuffer_.put(buf, writeSize));
-        // FIXME: call from usbd task thread instead?
-        startTx();
+        LOG(INFO, "put ok");
     }
-    return writeSize;
+        startTx();
+        return writeSize;
 }
 
 void CdcClassDriver::flush() {
@@ -556,10 +585,12 @@ bool CdcClassDriver::buffersConfigured() const {
 
 #if !HAL_PLATFORM_USB_SOF
 int CdcClassDriver::startTxTimer() {
+    LOG(INFO, "tx timer started");
     return os_timer_change(txTimer_, OS_TIMER_CHANGE_START, false, HAL_PLATFORM_USB_CDC_TX_FAIL_TIMEOUT_MS, 0, nullptr);
 }
 
 int CdcClassDriver::stopTxTimer() {
+    LOG(INFO, "tx timer stopped");
     return os_timer_change(txTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
 }
 #endif // !HAL_PLATFORM_USB_SOF
