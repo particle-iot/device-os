@@ -37,6 +37,8 @@ public:
 
     bool getProvModeStatus();
     void setProvModeStatus(bool enabled);
+    void setProvAdvCtrlSvcUuid(const uint8_t* buf, size_t len);
+    void getProvAdvCtrlSvcUuid(uint8_t* buf, size_t len);
 
 protected:
     BleListeningModeHandler();
@@ -75,6 +77,8 @@ private:
     bool restoreUserConfig_;
     static bool exited_;
     static bool provMode_;
+
+    uint8_t PROV_BLE_CTRL_REQ_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {0};
 
     Vector<uint8_t> ctrlReqAdvData_;
     Vector<uint8_t> ctrlReqSrData_;

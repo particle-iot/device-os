@@ -89,4 +89,5 @@ test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
     BLE.provisioningMode(false);
     HAL_Delay_Milliseconds(100);
     assertFalse(BLE.getProvisioningStatus());
+    System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
 }
