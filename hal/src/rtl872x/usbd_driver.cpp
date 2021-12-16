@@ -98,6 +98,7 @@ int __real_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 
 int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
     int r = __real_usb_hal_read_packet(ptr, size, unknown);
+    bool fixed = false;
     if (size == sizeof(sLastUsbSetupRequest)) {
         auto req = static_cast<SetupRequest*>(ptr);
         memcpy(&sLastUsbSetupRequest, req, sizeof(sLastUsbSetupRequest));
@@ -105,9 +106,11 @@ int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
         if (req->bRequest == 0xee && req->bmRequestType == 0xc1 && req->wIndex == 0x0005) {
             // Patch recipient to be device instead of interface
             req->bmRequestType = 0xc0;
+            fixed = true;
             RtlUsbDriver::instance()->halReadPacketFixup(ptr);
         }
-    } else {
+    }
+    if (!fixed) {
         RtlUsbDriver::instance()->halReadPacketFixup(nullptr);
     }
     return r;
@@ -315,6 +318,8 @@ uint8_t RtlUsbDriver::setupCb(usb_dev_t* dev, usb_setup_req_t* req) {
     std::lock_guard<RtlUsbDriver> lk(*self);
 
     self->setDevReference(dev);
+    // No need to fixup for setup requests
+    self->halReadPacketFixup(nullptr);
     static_assert(sizeof(SetupRequest) == sizeof(usb_setup_req_t), "SetupRequest and usb_setup_req_t are expected to be of the same size");
     CHECK_RTL_USB(self->setupRequest(&sLastUsbSetupRequest));
     if (self->setupError_) {
