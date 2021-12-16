@@ -33,6 +33,11 @@
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
 extern u32 ConfigDebugClose;
+extern void HardFault_Handler(void) __attribute__(( naked ));
+extern void MemManage_Handler(void) __attribute__(( naked ));
+extern void BusFault_Handler(void) __attribute__(( naked ));
+extern void UsageFault_Handler(void) __attribute__(( naked ));
+
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
@@ -180,6 +185,13 @@ void Set_System(void)
     // irq_table_init(RTL_DEFAULT_MSP_S);
     // __set_MSP(RTL_DEFAULT_MSP_S);
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    __NVIC_SetVector(HardFault_IRQn, (u32)(void*)HardFault_Handler);
+    __NVIC_SetVector(MemoryManagement_IRQn, (u32)(void*)MemManage_Handler);
+    __NVIC_SetVector(BusFault_IRQn, (u32)(void*)BusFault_Handler);
+    __NVIC_SetVector(UsageFault_IRQn, (u32)(void*)UsageFault_Handler);
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+
     // Disable DiagPrintf
     ConfigDebugClose = 1;
 
@@ -197,8 +209,6 @@ void Set_System(void)
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     peripheralsClockEnable();
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-
-    // mpu_init();
 
     uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833);
     temp |= BIT_RFAFE_IND_VIO1833;

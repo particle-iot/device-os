@@ -25,10 +25,12 @@
 
 extern void Timing_Decrement(void);
 
-void HardFault_Handler( void ) __attribute__( ( naked ) );
+void HardFault_Handler(void) __attribute__(( naked ));
+void MemManage_Handler(void) __attribute__(( naked ));
+void BusFault_Handler(void) __attribute__(( naked ));
+void UsageFault_Handler(void) __attribute__(( naked ));
 
-__attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress )
-{
+__attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress, uint32_t panicCode ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
     away as the variables never actually get used.  If the debugger won't show the
     values of the variables, make them global my moving their declaration outside
@@ -59,59 +61,71 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
 
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes
-        UsageFault_Handler();
+        panicCode = UsageFault;
     }
-    else {
-        PANIC(HardFault,"HardFault");
 
-        /* Go to infinite loop when Hard Fault exception occurs */
-        while (1)
-        {
+    switch (panicCode) {
+        case HardFault: {
+            PANIC(panicCode, "HardFault");
+            break; 
         }
+        case MemManage: {
+            PANIC(panicCode, "MemManage");
+            break; 
+        }
+        case BusFault: {
+            PANIC(panicCode, "BusFault");
+            break; 
+        }
+        case UsageFault: {
+            PANIC(panicCode, "UsageFault");
+            break; 
+        }
+        default: {
+            // Shouldn't enter this case
+            PANIC(panicCode, "Unknown");
+            break;
+        }
+    }
+
+    /* Go to infinite loop when Hard Fault exception occurs */
+    while (1) {
+        ;
     }
 }
 
-
-void HardFault_Handler(void)
-{
+__attribute__(( naked )) void Fault_Handler(uint32_t panic_code) {
     __asm volatile
     (
+        " mov r1, r0                                                \n"
         " tst lr, #4                                                \n"
         " ite eq                                                    \n"
         " mrseq r0, msp                                             \n"
         " mrsne r0, psp                                             \n"
-        " ldr r1, [r0, #24]                                         \n"
-        " ldr r2, =handler2_address_const                           \n"
+        " ldr r2, handler2_address_const                            \n"
         " bx r2                                                     \n"
+        " .align 4                                                  \n"
         " handler2_address_const: .word prvGetRegistersFromStack    \n"
     );
 }
 
-void MemManage_Handler(void)
-{
+void HardFault_Handler(void) {
+    Fault_Handler(HardFault);
+}
+
+void MemManage_Handler(void) {
     /* Go to infinite loop when Memory Manage exception occurs */
-    PANIC(MemManage,"MemManage");
-    while (1)
-    {
-    }
+    Fault_Handler(MemManage);
 }
 
-void BusFault_Handler(void)
-{
+void BusFault_Handler(void) {
     /* Go to infinite loop when Bus Fault exception occurs */
-    PANIC(BusFault,"BusFault");
-    while (1)
-    {
-    }
+    Fault_Handler(BusFault);
 }
 
-void UsageFault_Handler(void)
-{
+void UsageFault_Handler(void) {
     /* Go to infinite loop when Usage Fault exception occurs */
-    PANIC(UsageFault,"UsageFault");
-    while (1)
-    {
-    }
+    Fault_Handler(UsageFault);
 }
 
 void SysTick_Handler(void)
