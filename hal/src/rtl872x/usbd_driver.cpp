@@ -107,6 +107,8 @@ int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
             req->bmRequestType = 0xc0;
             RtlUsbDriver::instance()->halReadPacketFixup(ptr);
         }
+    } else {
+        RtlUsbDriver::instance()->halReadPacketFixup(nullptr);
     }
     return r;
 }
