@@ -311,11 +311,11 @@ int CdcClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t length, Spee
     appender.appendUInt8(epInt);                 // bEndpointAddress
     appender.appendUInt8(0x03);                  // bmAttributes: Interrupt
     appender.appendUInt16LE(cdc::MAX_CONTROL_PACKET_SIZE); // wMaxPacketSize
-    if (speed == Speed::HIGH) {
+    // if (speed == Speed::HIGH) {
         appender.appendUInt8(0x10);              // bInterval
-    } else {
-        appender.appendUInt8(0xFF);              // bInterval
-    }
+    // } else {
+    //     appender.appendUInt8(0xFF);              // bInterval
+    // }
 
     // Data class interface descriptor
     appender.appendUInt8(0x09);          // bLength: Endpoint Descriptor size
@@ -336,11 +336,11 @@ int CdcClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t length, Spee
     appender.appendUInt8(epOutData);             // bEndpointAddress
     appender.appendUInt8(0x02);                  // bmAttributes: Bulk
     appender.appendUInt16LE(cdc::MAX_DATA_PACKET_SIZE); // wMaxPacketSize
-    if (speed == Speed::HIGH) {
+    // if (speed == Speed::HIGH) {
         appender.appendUInt8(0x10);              // bInterval
-    } else {
-        appender.appendUInt8(0xFF);              // bInterval
-    }
+    // } else {
+    //     appender.appendUInt8(0xFF);              // bInterval
+    // }
 
     uint8_t epInData = CHECK(getNextAvailableEndpoint(ENDPOINT_IN));
     // Bulk IN endpoint descriptor
@@ -349,11 +349,11 @@ int CdcClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t length, Spee
     appender.appendUInt8(epInData);              // bEndpointAddress
     appender.appendUInt8(0x02);                  // bmAttributes: Bulk
     appender.appendUInt16LE(cdc::MAX_DATA_PACKET_SIZE); // wMaxPacketSize
-    if (speed == Speed::HIGH) {
+    // if (speed == Speed::HIGH) {
         appender.appendUInt8(0x10);              // bInterval
-    } else {
-        appender.appendUInt8(0xFF);              // bInterval
-    }
+    // } else {
+    //     appender.appendUInt8(0xFF);              // bInterval
+    // }
 
     epInData_ = epInData;
     epOutData_ = epOutData;

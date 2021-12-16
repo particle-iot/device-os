@@ -221,7 +221,9 @@ int Device::setupError(SetupRequest* r) {
 
 int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed speed, unsigned index) {
     switch (type) {
-    case DESCRIPTOR_DEVICE: {
+    case DESCRIPTOR_DEVICE:
+    // Use same config
+    case DESCRIPTOR_OTHER_SPEED_CONFIGURATION: {
         auto sz = std::min(deviceDescriptorLen_, len);
         if (buf) {
             memcpy(buf, deviceDescriptor_, sz);
@@ -271,10 +273,16 @@ int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed s
         return pos;
     }
     case DESCRIPTOR_DEVICE_QUALIFIER: {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-    case DESCRIPTOR_OTHER_SPEED_CONFIGURATION: {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+        particle::BufferAppender appender(buf, 0x09);
+        appender.appendUInt8(0x09);
+        appender.appendUInt8(DESCRIPTOR_DEVICE_QUALIFIER);
+        appender.appendUInt8(0x00);
+        appender.appendUInt8(0x02);
+        appender.appendUInt8(0x00);
+        appender.appendUInt8(0x00);
+        appender.appendUInt8(0x40);
+        appender.appendUInt8(0x01);
+        appender.appendUInt8(0x00);
     }
     }
     return SYSTEM_ERROR_INVALID_ARGUMENT;

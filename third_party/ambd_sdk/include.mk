@@ -51,4 +51,4 @@ LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wps.a
 ifneq ("$(MODULE)", "user-part")
 LIBS_EXT_END += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/lib/btgap.a
 endif
-LIBS_EXT_END +=$(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_usbd_new.a
+LIBS_EXT_END += -Wl,--wrap=usb_hal_read_packet $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_usbd_new.a

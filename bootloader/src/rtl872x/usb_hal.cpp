@@ -48,8 +48,8 @@ const uint8_t sDeviceDescriptor[] = {
   HIBYTE(USBD_VID_SPARK),     /*idVendor*/
   LOBYTE(USBD_PID_DFU),       /*idProduct*/
   HIBYTE(USBD_PID_DFU),       /*idProduct*/
-  LOBYTE(0x0251),             /*bcdDevice (2.51) */
-  HIBYTE(0x0251),             /*bcdDevice (2.51) */
+  LOBYTE(0x0252),             /*bcdDevice (2.52) */
+  HIBYTE(0x0252),             /*bcdDevice (2.52) */
   STRING_IDX_MANUFACTURER,    /*Index of manufacturer  string*/
   STRING_IDX_PRODUCT,         /*Index of product string*/
   STRING_IDX_SERIAL,          /*Index of serial number string*/

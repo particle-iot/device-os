@@ -69,6 +69,8 @@ public:
     virtual bool lock() override;
     virtual void unlock() override;
 
+    void halReadPacketFixup(void* ptr);
+
 private:
     RtlUsbDriver();
     virtual ~RtlUsbDriver();
@@ -86,6 +88,7 @@ private:
     static uint8_t epDataOutCb(usb_dev_t* dev, uint8_t ep_num, uint16_t len);
 
     void setDevReference(usb_dev_t* dev);
+    void fixupReceivedData();
 
 private:
     usb_dev_t* rtlDev_ = nullptr;

@@ -83,7 +83,8 @@ int ControlInterfaceClassDriver::handleMsftRequest(SetupRequest* req) {
         dev_->setupReply(req, requestData_, req->wLength);
     } else if (req->wIndex == 0x0005) {
         if ((req->wValue & 0xff) == 0x00) {
-            dev_->setupReply(req, MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR, req->wLength);
+            memcpy(requestData_, MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR, sizeof(MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR));
+            dev_->setupReply(req, requestData_, req->wLength);
         } else {
             // Send dummy
             memset(requestData_, 0, sizeof(requestData_));

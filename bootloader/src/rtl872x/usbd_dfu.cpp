@@ -66,8 +66,8 @@ int DfuClassDriver::handleMsftRequest(SetupRequest* req) {
       dev_->setupReply(req, msftExtPropOsDescr_, req->wLength);
     } else {
       // Send dummy
-      const uint8_t dummy[10] = {0};
-      dev_->setupReply(req, dummy, req->wLength);
+      memset(transferBuf_, 0, sizeof(transferBuf_));
+      dev_->setupReply(req, transferBuf_, req->wLength);
     }
   } else {
     dev_->setupError(req);
