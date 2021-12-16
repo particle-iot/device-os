@@ -83,8 +83,8 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_FLAGS), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append(BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE), SYSTEM_ERROR_NO_MEMORY);
 
-    char devName[32] = {};
-    CHECK(get_device_name(devName, sizeof(devName)));
+    char devName[BLE_MAX_DEV_NAME_LEN] = {};
+    CHECK(hal_ble_gap_get_device_name(devName, BLE_MAX_DEV_NAME_LEN, nullptr));
 
     // Complete local name
     CHECK_TRUE(tempAdvData.append(strlen(devName) + 1), SYSTEM_ERROR_NO_MEMORY);
@@ -243,7 +243,7 @@ int BleListeningModeHandler::applyControlRequestConfigurations() {
     advParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
     advParams.filter_policy = BLE_ADV_FP_ANY;
     advParams.interval = BLE_CTRL_REQ_ADV_INTERVAL;
-    advParams.timeout = provMode_ ? 0 : BLE_CTRL_REQ_ADV_TIMEOUT;
+    advParams.timeout = BLE_CTRL_REQ_ADV_TIMEOUT;
     advParams.inc_tx_power = false;
     CHECK(hal_ble_gap_set_advertising_parameters(&advParams, nullptr));
     CHECK(hal_ble_gap_set_auto_advertise(BLE_AUTO_ADV_ALWAYS, nullptr));
@@ -335,9 +335,7 @@ int BleListeningModeHandler::enter() {
     restoreUserConfig_ = true;
     CHECK(applyControlRequestAdvData());
     CHECK(applyControlRequestConfigurations());
-    if (!provMode_) {
-        CHECK(hal_ble_set_callback_on_adv_events(onBleAdvEvents, this, nullptr));
-    }
+    CHECK(hal_ble_set_callback_on_adv_events(onBleAdvEvents, this, nullptr));
     if (!preAdvertising_ && !preConnected_) {
         // Start advertising if it is neither connected nor advertising.
         CHECK(hal_ble_gap_start_advertising(nullptr));
@@ -375,9 +373,7 @@ int BleListeningModeHandler::exit() {
             LOG(ERROR, "Failed to restore user configuration.");
         }
     }
-    if (!provMode_) {
-        hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
-    }
+    hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
 
     exited_ = true;
     return SYSTEM_ERROR_NONE;
