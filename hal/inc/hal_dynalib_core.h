@@ -87,6 +87,8 @@ DYNALIB_FN(37, hal_core, hal_get_device_hw_version, int(uint32_t*, void*))
 DYNALIB_FN(38, hal_core, hal_get_device_hw_model, int(uint32_t*, uint32_t*, void*))
 DYNALIB_FN(39, hal_core, hal_get_device_serial_number, int(char*, size_t, void*))
 DYNALIB_FN(40, hal_core, hal_get_device_secret, int(char*, size_t, void*))
+DYNALIB_FN(41, hal_core, hal_set_device_secret, int(char*, size_t, void*))
+DYNALIB_FN(42, hal_core, hal_clear_device_secret, int(void*))
 
 DYNALIB_END(hal_core)
 
