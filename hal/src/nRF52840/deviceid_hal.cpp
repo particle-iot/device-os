@@ -152,9 +152,6 @@ int hal_set_device_secret(char* data, size_t size, void* reserved) {
         return ret;
     }
 
-
-    char secret[HAL_DEVICE_SECRET_SIZE] = {};
-    ret = dct_read_app_data_copy(DCT_DEVICE_SECRET_OFFSET, (void*) secret, sizeof(secret));
     return SYSTEM_ERROR_NONE;
 }
 
