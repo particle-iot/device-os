@@ -86,6 +86,19 @@ int hal_get_device_secret(char* data, size_t size, void* reserved);
 /**
  * Get the device's hardware version.
  */
+// TODO: Move this function to an appropriate module
+int hal_set_device_secret(char* data, size_t size, void* reserved);
+
+/**
+ * Get the device's hardware version.
+ */
+// TODO: Move this function to an appropriate module
+int hal_clear_device_secret(void* reserved);
+
+
+/**
+ * Get the device's hardware version.
+ */
 int hal_get_device_hw_version(uint32_t* revision, void* reserved);
 
 /**
