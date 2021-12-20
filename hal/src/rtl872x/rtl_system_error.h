@@ -26,7 +26,8 @@
 extern "C" {
 #endif
 
-system_error_t rtl_system_error(T_GAP_CAUSE error);
+system_error_t rtl_ble_error_to_system(T_GAP_CAUSE error);
+system_error_t rtl_error_to_system(int error);
 
 #ifdef __cplusplus
 }

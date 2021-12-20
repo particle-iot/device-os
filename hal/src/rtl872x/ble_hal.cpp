@@ -94,7 +94,7 @@ namespace {
             const auto _ret = _expr; \
             if (_ret != GAP_CAUSE_SUCCESS) { \
                 _LOG_CHECKED_ERROR(_expr, rtl_system_error(_ret)); \
-                return rtl_system_error(_ret); \
+                return rtl_ble_error_to_system(_ret); \
             } \
             _ret; \
         })
