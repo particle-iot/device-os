@@ -1892,7 +1892,8 @@ int QuectelNcpClient::modemPowerOn() {
         if (waitModemPowerState(1, 15000)) {
             LOG(TRACE, "Modem powered on");
         } else {
-            LOG(ERROR, "Failed to power on modem");
+            LOG(ERROR, "Failed to power on modem, try hard reset");
+            modemHardReset(false);
         }
     } else {
         LOG(TRACE, "Modem already on");
@@ -1983,11 +1984,19 @@ int QuectelNcpClient::modemSoftPowerOff() {
 int QuectelNcpClient::modemHardReset(bool powerOff) {
     LOG(TRACE, "Hard resetting the modem");
 
-    // BG96 reset, 150ms <= reset pulse <= 460ms
-    // NOTE: The BGRST pin is inverted
-    HAL_GPIO_Write(BGRST, 1);
-    HAL_Delay_Milliseconds(400);
-    HAL_GPIO_Write(BGRST, 0);
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 ) {
+        // BG96 reset, 150ms <= reset pulse <= 460ms
+        // NOTE: The BGRST pin is inverted
+        HAL_GPIO_Write(BGRST, 1);
+        HAL_Delay_Milliseconds(400);
+        HAL_GPIO_Write(BGRST, 0);
+    } else {
+        // BG95 reset, 2s <= reset pulse <= 3.8s
+        // NOTE: The BGRST pin is inverted
+        HAL_GPIO_Write(BGRST, 1);
+        HAL_Delay_Milliseconds(2900);
+        HAL_GPIO_Write(BGRST, 0);
+    }
 
     LOG(TRACE, "Waiting the modem to restart.");
     if (waitModemPowerState(1, 30000)) {
