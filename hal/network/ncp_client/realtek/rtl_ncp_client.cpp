@@ -44,6 +44,7 @@ extern "C" {
 } // extern "C"
 
 #include "spark_wiring_vector.h"
+#include "rtl_system_error.h"
 
 extern "C" void rtw_efuse_boot_write(void);
 
@@ -122,7 +123,7 @@ int RealtekNcpClient::init(const NcpClientConfig& conf) {
     pwrState_ = NcpPowerState::OFF;
     // We know for a fact that ESP32 is off on boot because we've initialized ESPEN pin to output 0
     ncpPowerState(NcpPowerState::OFF);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void RealtekNcpClient::destroy() {
@@ -138,7 +139,7 @@ int RealtekNcpClient::on() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (ncpState_ == NcpState::ON) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
     CHECK(rltkOn());
@@ -148,7 +149,7 @@ int RealtekNcpClient::on() {
         RealtekNcpClient* client = (RealtekNcpClient*)userdata;
         client->connectionState(NcpConnectionState::DISCONNECTED);
     }, (void*)this);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int RealtekNcpClient::off() {
@@ -160,17 +161,17 @@ int RealtekNcpClient::off() {
     rltkOff();
     ncpState(NcpState::OFF);
     ncpPowerState(NcpPowerState::OFF);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int RealtekNcpClient::enable() {
     const NcpClientLock lock(this);
     if (ncpState_ != NcpState::DISABLED) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     ncpState_ = prevNcpState_;
     off();
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 void RealtekNcpClient::disable() {
@@ -198,11 +199,11 @@ int RealtekNcpClient::disconnect() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (connState_ == NcpConnectionState::DISCONNECTED) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     wifi_disconnect();
     connectionState(NcpConnectionState::DISCONNECTED);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 NcpConnectionState RealtekNcpClient::connectionState() {
@@ -220,31 +221,31 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
 
     char mac[32] = {};
     wifi_get_mac_address(mac);
-    int r = -1;
+    int rtlError = RTW_ERROR;
     for (int i = 0; i < 3; i++) {
         LOG(INFO, "Try to connect to ssid: %s, mac: %s", ssid, mac);
-        r = wifi_connect((char*)ssid, wifiSecurityToRtlSecurity(sec), (char*)cred.password(), strlen(ssid), strlen(cred.password()), -1, nullptr);
-        if (r == 0) {
+        rtlError = wifi_connect((char*)ssid, wifiSecurityToRtlSecurity(sec), (char*)cred.password(), strlen(ssid), strlen(cred.password()), -1, nullptr);
+        if (rtlError == RTW_SUCCESS) {
             break;
         }
         HAL_Delay_Milliseconds(1000);
     }
 
-    if (r == 0) {
+    if (rtlError == RTW_SUCCESS) {
         connectionState(NcpConnectionState::CONNECTED);
     }
-    return r;
+    return rtl_error_to_system(rtlError);
 }
 
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     int raw_rssi = 0;
-    int rc = wifi_get_rssi(&raw_rssi);
+    int rtlError = wifi_get_rssi(&raw_rssi);
     LOG(INFO,"raw_rssi: %d", raw_rssi);
 
-    if (RTW_SUCCESS == rc) {
+    if (RTW_SUCCESS == rtlError) {
         info->rssi(raw_rssi);
     }
-    return rc;
+    return rtl_error_to_system(rtlError);
 }
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
@@ -262,7 +263,7 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     Context ctx;
     ctx.callback = callback;
     ctx.data = data;
-    int r = wifi_scan_networks([](rtw_scan_handler_result_t* malloced_scan_result) -> rtw_result_t {
+    int rtlError = wifi_scan_networks([](rtw_scan_handler_result_t* malloced_scan_result) -> rtw_result_t {
         LOG(INFO, "scan callback");
         Context* ctx = (Context*)malloced_scan_result->user_data;
         if (malloced_scan_result->scan_complete != RTW_TRUE) {
@@ -310,18 +311,18 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     while (!ctx.done) {
         HAL_Delay_Milliseconds(100);
     }
-    LOG(INFO, "scan done %d %d", r, ctx.results.size());
+    LOG(INFO, "scan done %d %d", rtlError, ctx.results.size());
     for (int i = 0; i < ctx.results.size(); i++) {
         callback(ctx.results[i], data);
     }
-    return 0;
+    return rtl_error_to_system(rtlError);
 }
 
 int RealtekNcpClient::getMacAddress(MacAddress* addr) {
     char mac[6*2 + 5 + 1] = {};
     wifi_get_mac_address(mac);
     CHECK_TRUE(macAddressFromString(addr, mac), SYSTEM_ERROR_UNKNOWN);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 
@@ -385,7 +386,7 @@ int RealtekNcpClient::rltkOff() {
     wifi_off();
     LOG(INFO, "rltkOff done");
     ncpPowerState(NcpPowerState::OFF);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 
@@ -408,7 +409,7 @@ int RealtekNcpClient::rltkOn() {
         LOG(INFO, "rltkOn done");
     }
     ncpPowerState(NcpPowerState::ON);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int RealtekNcpClient::getFirmwareVersionString(char* buf, size_t size) {

@@ -16,8 +16,9 @@
  */
 
 #include "rtl_system_error.h"
+#include "wifi_constants.h"
 
-system_error_t rtl_system_error(T_GAP_CAUSE error) {
+system_error_t rtl_ble_error_to_system(T_GAP_CAUSE error) {
     switch (error) {
         case GAP_CAUSE_SUCCESS:
             return SYSTEM_ERROR_NONE;
@@ -41,6 +42,84 @@ system_error_t rtl_system_error(T_GAP_CAUSE error) {
         case GAP_CAUSE_CONN_LIMIT:
             return SYSTEM_ERROR_LIMIT_EXCEEDED;
         default:
+            return SYSTEM_ERROR_UNKNOWN;
+    }
+}
+
+system_error_t rtl_error_to_system(int error) {
+    switch (error) {
+        case RTW_SUCCESS:
+            return SYSTEM_ERROR_NONE;
+        case RTW_ERROR:
+        case RTW_BAD_VERSION:
+        case RTW_NONRESIDENT:
+            return SYSTEM_ERROR_INTERNAL;
+        case RTW_PENDING:
+        case RTW_NOT_AUTHENTICATED:
+        case RTW_NOT_KEYED:
+        case RTW_NOTUP:
+        case RTW_NOTDOWN:
+        case RTW_NOTAP:
+        case RTW_NOTSTA:
+        case RTW_RADIOOFF:
+        case RTW_NOTBANDLOCKED:
+        case RTW_NOCLK:
+        case RTW_NOTASSOCIATED:
+        case RTW_NOTREADY:
+        case RTW_WME_NOT_ENABLED:
+        case RTW_WLAN_DOWN:
+        case RTW_NODEVICE:
+        case RTW_UNFINISHED:
+        case RTW_DISABLED:
+        case RTW_BUFFER_UNAVAILABLE_TEMPORARY:
+        case RTW_BUFFER_UNAVAILABLE_PERMANENT:
+            return SYSTEM_ERROR_INVALID_STATE;
+        case RTW_INVALID_KEY:
+        case RTW_BADARG:
+        case RTW_BADOPTION:
+        case RTW_BADKEYIDX:
+        case RTW_BADRATESET:
+        case RTW_BADBAND:
+        case RTW_BUFTOOSHORT:
+        case RTW_BUFTOOLONG:
+        case RTW_BADSSIDLEN:
+        case RTW_OUTOFRANGECHAN:
+        case RTW_BADCHAN:
+        case RTW_BADADDR:
+        case RTW_BADLEN:
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        case RTW_WPS_PBC_OVERLAP:
+        case RTW_CONNECTION_LOST:
+        case RTW_NOT_WME_ASSOCIATION:
+            return SYSTEM_ERROR_NETWORK;
+        case RTW_DOES_NOT_EXIST:
+        case RTW_NOTFOUND:
+        case RTW_TSPEC_NOTFOUND:
+            return SYSTEM_ERROR_NOT_FOUND;
+        case RTW_IOCTL_FAIL:
+        case RTW_SDIO_ERROR:
+        case RTW_TXFAIL:
+        case RTW_RXFAIL:
+            return SYSTEM_ERROR_IO;
+        case RTW_BUSY:
+            return SYSTEM_ERROR_BUSY;
+        case RTW_UNSUPPORTED:
+        case RTW_ACM_NOTSUPPORTED:
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        case RTW_NORESOURCE:
+            return SYSTEM_ERROR_LIMIT_EXCEEDED;
+        case RTW_EPERM:
+            return SYSTEM_ERROR_NOT_ALLOWED;
+        case RTW_NOMEM:
+            return SYSTEM_ERROR_NO_MEMORY;
+        case RTW_RANGE:
+            return SYSTEM_ERROR_OUT_OF_RANGE;
+        case RTW_TIMEOUT:
+            return SYSTEM_ERROR_TIMEOUT;
+        case RTW_PARTIAL_RESULTS:
+            return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+        default:
+            // RTW_ASSOCIATED
             return SYSTEM_ERROR_UNKNOWN;
     }
 }
