@@ -240,11 +240,22 @@ int RtlUsbDriver::transferOut(unsigned ep, uint8_t* ptr, size_t size) {
 int RtlUsbDriver::setupReply(SetupRequest* r, const uint8_t* data, size_t size) {
     SPARK_ASSERT(rtlDev_);
     if (data && size) {
-        memcpy(tempBuffer_, data, std::min(size, rtl::TEMP_BUFFER_SIZE));
         if (r) {
+            // We cannot send more than r->wLength, otherwise the host will
+            // get OVERFLOW error
             size = std::min<size_t>(size, r->wLength);
         }
-        CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_transmit(rtlDev_, tempBuffer_, size));
+        if (size <= rtl::TEMP_BUFFER_SIZE) {
+            // For data that fits into temp buffer, we'll use it to simplify
+            // some common cases of returning not a lot of data generated on stack
+            memcpy(tempBuffer_, data, size);
+            CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_transmit(rtlDev_, tempBuffer_, size));
+        } else {
+            CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_transmit(rtlDev_, (uint8_t*)data, size));
+        }
+    } else if (data == nullptr && size == 0) {
+        // FIXME: doesn't work
+        // CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_transmit_status(rtlDev_));
     }
     return 0;
 }
@@ -252,7 +263,12 @@ int RtlUsbDriver::setupReply(SetupRequest* r, const uint8_t* data, size_t size) 
 
 int RtlUsbDriver::setupReceive(SetupRequest* r, uint8_t* data, size_t size) {
     SPARK_ASSERT(rtlDev_);
-    CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_receive(rtlDev_, data, size));
+    if (data && size) {
+        CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_receive(rtlDev_, data, size));
+    } else if (data == nullptr && size == 0) {
+        // FIXME: doesn't work
+        // CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_receive_status(rtlDev_));
+    }
     return 0;
 }
 
