@@ -61,6 +61,7 @@ enum SystemEvents {
     battery_state = 1<<16,
     power_source = 1<<17,
 	out_of_memory = 1<<18,			// heap request was not satisfied
+    ble_prov_mode = 1<<19,          // ble provisioning mode
 
     all_events = 0xFFFFFFFFFFFFFFFF
 };
@@ -97,7 +98,15 @@ enum SystemEventsParam {
     cloud_status_disconnecting      = 9,
 
     time_changed_manually = 0,
-    time_changed_sync = 1
+    time_changed_sync = 1,
+
+    // BLE provisioning mode
+    ble_prov_mode_connected = 1,
+    ble_prov_mode_disconnected = 2,
+    ble_prov_mode_handshake_failed = 3,
+    ble_prov_mode_handshake_error = 4,
+    ble_prov_mode_handshake_done = 5
+
 };
 
 /**

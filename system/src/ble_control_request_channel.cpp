@@ -41,6 +41,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 #include "mbedtls_util.h"
 
 #include "ble_listening_mode_handler.h"
+#include "system_event.h"
 
 #undef DEBUG // Legacy logging macro
 
@@ -613,12 +614,18 @@ void BleControlRequestChannel::run() {
         resetChannel();
         if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
             LOG(TRACE, "Connected");
+            if (BleListeningModeHandler::instance()->getProvModeStatus()) {
+                system_notify_event(ble_prov_mode, ble_prov_mode_connected, nullptr, nullptr, nullptr, NOTIFY_SYNCHRONOUSLY);
+            }
             ret = initChannel();
             if (ret != 0) {
                 goto error;
             }
         } else if (prevConnHandle != BLE_INVALID_CONN_HANDLE) {
             LOG(TRACE, "Disconnected");
+            if (BleListeningModeHandler::instance()->getProvModeStatus()) {
+                system_notify_event(ble_prov_mode, ble_prov_mode_disconnected, nullptr, nullptr, nullptr, NOTIFY_SYNCHRONOUSLY);
+            }
         }
     }
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
@@ -627,15 +634,24 @@ void BleControlRequestChannel::run() {
             // Process handshake packets
             ret = jpake_->run();
             if (ret < 0) {
+                if (BleListeningModeHandler::instance()->getProvModeStatus()) {
+                    system_notify_event(ble_prov_mode, ble_prov_mode_handshake_failed);
+                }
                 LOG(ERROR, "Handshake failed");
                 goto error;
             }
             if (ret == JpakeHandler::DONE) {
                 ret = initAesCcm();
                 if (ret != 0) {
+                    if (BleListeningModeHandler::instance()->getProvModeStatus()) {
+                        system_notify_event(ble_prov_mode, ble_prov_mode_handshake_error);
+                    }
                     goto error;
                 }
                 jpake_.reset();
+                if (BleListeningModeHandler::instance()->getProvModeStatus()) {
+                    system_notify_event(ble_prov_mode, ble_prov_mode_handshake_done);
+                }
                 LOG(TRACE, "Handshake done");
             }
         } else {
