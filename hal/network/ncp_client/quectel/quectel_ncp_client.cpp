@@ -1103,7 +1103,7 @@ int QuectelNcpClient::initReady(ModemState state) {
             default:
                 return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,1509,,,,,", portspeed));
+        r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,%u,,,,,", portspeed, QUECTEL_NCP_MAX_MUXER_FRAME_SIZE));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
         // Initialize muxer
@@ -1233,7 +1233,13 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
 
 int QuectelNcpClient::initMuxer() {
     muxer_.setStream(serial_.get());
-    muxer_.setMaxFrameSize(QUECTEL_NCP_MAX_MUXER_FRAME_SIZE);
+    // [TS 27.010] N1 in the AT+CMUX command defines the maximum number of octets that that may be contained in
+    // an information field. It does not include octets added for transparency purposes.
+    // XXX: We are not using any transparency (error-correction) mechanisms, so the maximum frame size should
+    // be limited to N1, however on some modems (e.g. BG95) this is not respected and the modem sends frames a
+    // bit larger than N1. To account for that we are initializing the muxer with a larger internal frame buffer,
+    // but negotiating a smaller maximum frame size (N1) with the modem in AT+CMUX
+    muxer_.setMaxFrameSize(QUECTEL_NCP_MAX_MUXER_FRAME_SIZE + 64);
     muxer_.setKeepAlivePeriod(QUECTEL_NCP_KEEPALIVE_PERIOD);
     muxer_.setKeepAliveMaxMissed(QUECTEL_NCP_KEEPALIVE_MAX_MISSED);
     muxer_.setMaxRetransmissions(gsm0710::proto::DEFAULT_N2);
