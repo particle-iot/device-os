@@ -79,12 +79,10 @@ int ControlInterfaceClassDriver::handleMsftRequest(SetupRequest* req) {
                 USB_WCID_DATA(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
             )
         };
-        memcpy(requestData_, extendedCompatId, sizeof(extendedCompatId));
-        dev_->setupReply(req, requestData_, req->wLength);
+        dev_->setupReply(req, extendedCompatId, sizeof(extendedCompatId));
     } else if (req->wIndex == 0x0005) {
         if ((req->wValue & 0xff) == 0x00) {
-            memcpy(requestData_, MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR, sizeof(MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR));
-            dev_->setupReply(req, requestData_, req->wLength);
+            dev_->setupReply(req, MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR, sizeof(MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR));
         } else {
             // Send dummy
             memset(requestData_, 0, sizeof(requestData_));
