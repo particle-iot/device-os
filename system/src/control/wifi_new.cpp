@@ -33,6 +33,7 @@
 #include "spark_wiring_vector.h"
 
 #include "wifi_new.pb.h"
+#include "system_event.h"
 
 #define PB(_name) particle_ctrl_wifi_##_name
 
@@ -115,6 +116,8 @@ int joinNewNetwork(ctrl_request* req) {
         network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
     });
     CHECK(wifiMgr->connect(dSsid.data));
+    // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
+    system_notify_event(network_credentials, network_credentials_added);
     oldConfGuard.dismiss();
     networkDisconnectGuard.dismiss();
     return 0;
