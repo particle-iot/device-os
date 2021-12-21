@@ -79,7 +79,7 @@ __attribute__(( naked )) void Fault_Handler(uint32_t panic_code) {
         " mrs r0, msp                                               \n"
         " ldr r2, handler2_address_const                            \n"
         " bx r2                                                     \n"
-        " .align 2                                                  \n"
+        " .balign 4                                                 \n"
         " handler2_address_const: .word prvGetRegistersFromStack    \n"
     );
 }
