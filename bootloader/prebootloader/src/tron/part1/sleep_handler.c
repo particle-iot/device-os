@@ -26,9 +26,9 @@ static volatile hal_sleep_config_t* sleepConfig = NULL;
 static volatile uint16_t sleepReqId = KM0_KM4_IPC_INVALID_REQ_ID;
 static int sleepResult = 0;
 
-extern void km4_power_gate(void);
 extern void km4_clock_gate(void);
 extern void km4_clock_on(void);
+extern void SOCPS_SetWakepin(uint32_t PinIdx, uint32_t Polarity);
 
 static void onSleepRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
     sleepConfig = (hal_sleep_config_t*)msg->data;
@@ -39,8 +39,85 @@ static void onSleepRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
 }
 
 void sleepInit(void) {
-    ConfigDebugClose = 1;
+    ConfigDebugClose = 0;
     km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_SLEEP, onSleepRequestReceived, NULL);
+}
+
+void configureDeepSleepWakeupSource(volatile hal_sleep_config_t* config) {
+    // if enable AON wake event, DLPS may can't stop at WFI. so we Disable AON wake event
+    SOCPS_SetWakeEvent(BIT_LP_WEVT_AON_MSK, DISABLE);
+    // Enable AON timer and AON GPIO wake event
+    SOCPS_SetWakeEventAON(BIT_AON_WAKE_TIM0_MSK | BIT_GPIO_WAKE_MSK, ENABLE);
+    /* clear all wakeup pin first, and then enable by config */
+	SOCPS_ClearWakePin();
+
+    const hal_wakeup_source_base_t* source = config->wakeup_sources;
+    while (source) {
+        if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+            const hal_wakeup_source_rtc_t* rtcWakeup = (const hal_wakeup_source_rtc_t*)source;
+            SOCPS_AONTimerCmd(DISABLE);
+            SOCPS_AONTimer(rtcWakeup->ms);
+            SOCPS_AONTimerCmd(ENABLE);
+        } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+            const hal_wakeup_source_gpio_t* gpioWakeup = (const hal_wakeup_source_gpio_t*)source;
+            uint32_t rtlPin = hal_pin_to_rtl_pin(gpioWakeup->pin);
+            uint8_t wakeupPinIndex = 0xFF;
+            for (uint8_t i = WAKUP_0; i <= WAKUP_3; i++) {
+                for (uint8_t j = PINMUX_S0; j <= PINMUX_S2; j++) {
+                    if (rtlPin == aon_wakepin[i][j]) {
+                        wakeupPinIndex = i;
+                        break;
+                    }
+                }
+                if (wakeupPinIndex != 0xFF) {
+                    break;
+                }
+            }
+            // FIXME: level wakeup
+            if(gpioWakeup->mode == RISING) {
+				PAD_PullCtrl(rtlPin, GPIO_PuPd_DOWN);
+			} else {
+				PAD_PullCtrl(rtlPin, GPIO_PuPd_UP);
+			}
+			Pinmux_Config(rtlPin, PINMUX_FUNCTION_WAKEUP);
+			SOCPS_SetWakepin(wakeupPinIndex, 1);
+        }
+        source = source->next;
+    }
+}
+
+// Copy and paste from SOCPS_DeepSleep_RAM()
+void enterDeepSleep() {
+	/* pin power leakage */
+	pinmap_deepsleep();
+	
+	/* clear wake event */
+	SOCPS_ClearWakeEvent();
+
+	/* Enable low power mode */
+	FLASH_DeepPowerDown(ENABLE);
+
+	/* set LP_LDO to 0.899V to fix RTC Calibration XTAL power leakage issue */
+	uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_LDO_CTRL1);
+	temp &= ~(BIT_MASK_LDO_LP_ADJ << BIT_SHIFT_LDO_LP_ADJ);
+	temp |= (0x09 << BIT_SHIFT_LDO_LP_ADJ); /* 0.899V, or ADC/XTAL will work abnormal in deepsleep mode */
+	temp &= (~BIT_LDO_PSRAM_EN);/*Close PSRAM power, or DSLP current will increase*/
+	HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_LDO_CTRL1,temp);
+
+	/* Shutdown LSPAD(no AON) at the end of DSLP flow */
+	/* Fix ACUT power leakage issue */
+	temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_PWR_CTRL);
+	temp &= ~BIT_DSLP_SNOOZE_MODE_LSPAD_SHUTDOWN;
+	HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_PWR_CTRL, temp);
+	
+	/* set power mode */
+	temp = HAL_READ32(SYSTEM_CTRL_BASE, REG_LP_PWRMGT_CTRL);
+	temp &= ~BIT_LSYS_PMC_PMEN_SLEP;
+	temp |= BIT_LSYS_PMC_PMEN_DSLP;
+	HAL_WRITE32(SYSTEM_CTRL_BASE, REG_LP_PWRMGT_CTRL, temp);
+
+	/* Wait CHIP enter deep sleep mode */
+	__WFI();
 }
 
 void sleepProcess(void) {
@@ -55,7 +132,6 @@ void sleepProcess(void) {
         km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sleepReqId, &sleepResult, sizeof(sleepResult));
         if (sleepResult == SYSTEM_ERROR_NONE) {
             DCache_Invalidate((uint32_t)sleepConfig, sizeof(hal_sleep_config_t));
-            DelayMs(1000);
             /*
              * We're using clock gate on KM4 for stop mode and ultra-low power mode,
              * since the power gate will deinitialize PSRAM and we have to re-initialize
@@ -74,14 +150,8 @@ void sleepProcess(void) {
 
                 SOCPS_SWRLDO_Suspend(DISABLE);
             } else {
-                DiagPrintf("KM0: suspend KM4 using power gate\n");
-                km4_power_gate();
-                uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_BOOT_CFG);
-                temp |= BIT_SOC_BOOT_WAKE_FROM_PS_HS;
-                HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_BOOT_CFG, temp);
-                DiagPrintf("KM0: Successfully suspend KM4\n");
-
-                SOCPS_DeepSleep_RAM();
+                configureDeepSleepWakeupSource(sleepConfig);
+                enterDeepSleep();
                 // It should not reach here
             }
             

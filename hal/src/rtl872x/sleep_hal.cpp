@@ -52,6 +52,32 @@ class SleepClass {
 public:
     int validateSleepConfig(const hal_sleep_config_t* config) {
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+        // Checks the sleep mode.
+        if (config->mode == HAL_SLEEP_MODE_NONE || config->mode >= HAL_SLEEP_MODE_MAX) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        // Checks the wakeup sources
+        auto wakeupSource = config->wakeup_sources;
+        uint16_t valid = 0;
+        while (wakeupSource) {
+            if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+                CHECK(validateGpioWakeupSource(config->mode, reinterpret_cast<const hal_wakeup_source_gpio_t*>(wakeupSource)));
+            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+                CHECK(validateRtcWakeupSource(config->mode, reinterpret_cast<const hal_wakeup_source_rtc_t*>(wakeupSource)));
+            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_USART) {
+                CHECK(validateUsartWakeupSource(config->mode, reinterpret_cast<const hal_wakeup_source_usart_t*>(wakeupSource)));
+            } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
+                CHECK(validateLpcompWakeupSource(config->mode, reinterpret_cast<const hal_wakeup_source_lpcomp_t*>(wakeupSource)));
+            } else {
+                return SYSTEM_ERROR_NOT_SUPPORTED;
+            }
+            valid++;
+            wakeupSource = wakeupSource->next;
+        }
+        // At least one wakeup source should be configured for stop and ultra-low power mode.
+        if ((config->mode == HAL_SLEEP_MODE_STOP || config->mode == HAL_SLEEP_MODE_ULTRA_LOW_POWER) && (!config->wakeup_sources || !valid)) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
         return SYSTEM_ERROR_NONE;
     }
 
@@ -88,12 +114,10 @@ public:
         __DSB();
         __ISB();
 
-        LOG(TRACE, "KM4: enters sleep");
         DelayMs(20);
         __SEV(); // signal event, also signal to KM0
         __WFE(); // clear event, immediately exits
         __WFE(); // sleep, waiting for event
-        LOG(TRACE, "KM4: wakes up");
         
         // Only if either stop mode or ultra-low power mode is used, we can get here,
         // which means that the PSRAM retention is enabled, we don't need to re-initialized PSRAM
@@ -105,6 +129,8 @@ public:
         }
         __DSB();
         __ISB();
+
+        LOG(TRACE, "KM4: wakes up");
 
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
         os_thread_scheduling(true, nullptr);
@@ -121,6 +147,56 @@ private:
             : ipcResult_(SYSTEM_ERROR_INTERNAL) {
     }
     ~SleepClass() = default;
+
+    int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
+        switch(gpio->mode) {
+            case RISING:
+            case FALLING:
+            case CHANGE: {
+                break;
+            }
+            default: {
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+        }
+        if (gpio->pin >= TOTAL_PINS) {
+            return SYSTEM_ERROR_LIMIT_EXCEEDED;
+        }
+        if (mode == HAL_SLEEP_MODE_HIBERNATE && gpio->pin != WKP) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int validateLpcompWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_lpcomp_t* lpcomp) {
+        if (hal_pin_validate_function(lpcomp->pin, PF_ADC) != PF_ADC) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (lpcomp->trig > HAL_SLEEP_LPCOMP_CROSS) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_rtc_t* rtc) {
+        if ((rtc->ms / 1000) == 0) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int validateUsartWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_usart_t* usart) {
+        if (!hal_usart_is_enabled(usart->serial)) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
 
     int notifyKm0AndSleep() {
         ipcResult_ = SYSTEM_ERROR_INTERNAL;
