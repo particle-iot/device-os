@@ -26,15 +26,6 @@ using namespace particle::usbd;
 
 namespace {
 
-/* Extended Compat ID OS Descriptor */
-static const uint8_t MSFT_EXTENDED_COMPAT_ID_DESCRIPTOR[] = {
-    USB_WCID_EXT_COMPAT_ID_OS_DESCRIPTOR(
-        0x02,
-        USB_WCID_DATA('W', 'I', 'N', 'U', 'S', 'B', '\0', '\0'),
-        USB_WCID_DATA(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
-    )
-};
-
 /* Extended Properties OS Descriptor */
 static const uint8_t MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR[] = {
     USB_WCID_EXT_PROP_OS_DESCRIPTOR(
@@ -80,14 +71,22 @@ int ControlInterfaceClassDriver::deinit(unsigned cfgIdx) {
 
 int ControlInterfaceClassDriver::handleMsftRequest(SetupRequest* req) {
     if (req->wIndex == 0x0004) {
-        dev_->setupReply(req, MSFT_EXTENDED_COMPAT_ID_DESCRIPTOR, req->wLength);
+        /* Extended Compat ID OS Descriptor */
+        const uint8_t extendedCompatId[] = {
+            USB_WCID_EXT_COMPAT_ID_OS_DESCRIPTOR(
+                (uint8_t)interfaceBase_,
+                USB_WCID_DATA('W', 'I', 'N', 'U', 'S', 'B', '\0', '\0'),
+                USB_WCID_DATA(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
+            )
+        };
+        dev_->setupReply(req, extendedCompatId, sizeof(extendedCompatId));
     } else if (req->wIndex == 0x0005) {
         if ((req->wValue & 0xff) == 0x00) {
-            dev_->setupReply(req, MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR, req->wLength);
+            dev_->setupReply(req, MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR, sizeof(MSFT_EXTENDED_PROPERTIES_OS_DESCRIPTOR));
         } else {
             // Send dummy
-            const uint8_t dummy[10] = {0};
-            dev_->setupReply(req, dummy, req->wLength);
+            memset(requestData_, 0, sizeof(requestData_));
+            dev_->setupReply(req, requestData_, req->wLength);
         }
     } else {
         dev_->setupError(req);
@@ -179,20 +178,22 @@ int ControlInterfaceClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEve
     // Data stage completed
     if (state_ == State::TX && stateCallback_) {
         stateCallback_(HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED, stateCallbackCtx_);
+        state_ = State::NONE;
+        counter_ = 0;
+        return 0;
     }
-    state_ = State::NONE;
-    counter_ = 0;
-    return 0;
+    return SYSTEM_ERROR_INVALID_STATE;
 }
 
 int ControlInterfaceClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_t len) {
     // Data stage completed
     if (state_ == State::RX && requestCallback_) {
         requestCallback_(&request_, requestCallbackCtx_);
+        state_ = State::NONE;
+        counter_ = 0;
+        return 0;
     }
-    state_ = State::NONE;
-    counter_ = 0;
-    return 0;
+    return SYSTEM_ERROR_INVALID_STATE;
 }
 
 int ControlInterfaceClassDriver::startOfFrame() {

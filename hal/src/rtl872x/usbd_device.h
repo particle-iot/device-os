@@ -77,7 +77,7 @@ struct SetupRequest {
 
 const size_t MAX_COMPOSITE_CLASS_DRIVERS = 5;
 
-enum class EndpointState {
+enum class EndpointStatus {
     NONE = 0,
     OK,
     DISABLED,
@@ -142,9 +142,14 @@ enum class EndpointType {
     BULK
 };
 
-const unsigned ENDPOINT_MASK_OUT_BITPOS = 16;
+enum EndpointDirection {
+    ENDPOINT_OUT = 0x00,
+    ENDPOINT_IN = 0x80
+};
 
+const unsigned ENDPOINT_MASK_OUT_BITPOS = 16;
 const unsigned EP0_MAX_PACKET_SIZE = 64;
+const uint8_t ENDPOINT_INVALID = 0xff;
 
 class DeviceDriver {
 public:
@@ -161,7 +166,8 @@ public:
     virtual int flushEndpoint(unsigned ep) = 0;
     virtual int stallEndpoint(unsigned ep) = 0;
     virtual int clearStallEndpoint(unsigned ep) = 0;
-    virtual EndpointState getEndpointState(unsigned ep) = 0;
+    virtual EndpointStatus getEndpointStatus(unsigned ep) = 0;
+    virtual int setEndpointStatus(unsigned ep, EndpointStatus status) = 0;
 
     virtual int transferIn(unsigned ep, const uint8_t* ptr, size_t size) = 0;
     virtual int transferOut(unsigned ep, uint8_t* ptr, size_t size) = 0;
@@ -173,6 +179,10 @@ public:
     void setDeviceInstance(Device* device);
 
     virtual unsigned getEndpointMask() const = 0;
+    virtual unsigned updateEndpointMask(unsigned mask) const = 0;
+
+    virtual bool lock() = 0;
+    virtual void unlock() = 0;
 
 protected:
     // Proxied methods to Device instance
@@ -214,7 +224,8 @@ public:
     int flushEndpoint(unsigned ep);
     int stallEndpoint(unsigned ep);
     int clearStallEndpoint(unsigned ep);
-    EndpointState getEndpointState(unsigned ep);
+    EndpointStatus getEndpointStatus(unsigned ep);
+    int setEndpointStatus(unsigned ep, EndpointStatus status);
 
     int transferIn(unsigned ep, const uint8_t* ptr, size_t size);
     int transferOut(unsigned ep, uint8_t* ptr, size_t size);
@@ -225,6 +236,11 @@ public:
 
     static int getUnicodeString(const char* ascii, size_t len, uint8_t* buf, size_t buflen);
     static int getRawString(const char* data, size_t len, uint8_t* buf, size_t buflen);
+
+    bool lock();
+    void unlock();
+
+    unsigned updateEndpointMask(unsigned mask);
 
 protected:
     friend class DeviceDriver;
@@ -267,11 +283,15 @@ public:
     void enable(bool state);
     bool isEnabled() const;
 
+    void configured(bool state);
+    bool isConfigured() const;
+
     virtual int setBaseIndices(unsigned interface, unsigned string, unsigned epMask);
+    virtual int getNextAvailableEndpoint(EndpointDirection type, bool reserve = true);
+    virtual unsigned getEndpointMask() const;
 
     virtual int getNumInterfaces() const = 0;
     virtual int getNumStrings() const = 0;
-    virtual unsigned getEndpointMask() const = 0;
 
 protected:
     Device* dev_ = nullptr;
@@ -279,6 +299,7 @@ protected:
     unsigned interfaceBase_ = 0;
     unsigned stringBase_ = 0;
     unsigned endpointMask_ = 0;
+    volatile bool configured_ = false;
 };
 
 } // namespace usbd

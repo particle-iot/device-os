@@ -110,6 +110,26 @@ DeviceState Device::getDeviceState() const {
     return DeviceState::NONE;
 }
 
+bool Device::lock() {
+    if (driver_) {
+        return driver_->lock();
+    }
+    return false;
+}
+
+void Device::unlock() {
+    if (driver_) {
+        driver_->unlock();
+    }
+}
+
+unsigned Device::updateEndpointMask(unsigned mask) {
+    if (driver_) {
+        return driver_->updateEndpointMask(mask);
+    }
+    return mask;
+}
+
 int Device::attach() {
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
     CHECK(driver_->attach());
@@ -159,11 +179,18 @@ int Device::clearStallEndpoint(unsigned ep) {
     return driver_->clearStallEndpoint(ep);
 }
 
-EndpointState Device::getEndpointState(unsigned ep) {
+EndpointStatus Device::getEndpointStatus(unsigned ep) {
     if (driver_) {
-        return driver_->getEndpointState(ep);
+        return driver_->getEndpointStatus(ep);
     }
-    return EndpointState::NONE;
+    return EndpointStatus::NONE;
+}
+
+int Device::setEndpointStatus(unsigned ep, EndpointStatus status) {
+    if (driver_) {
+        return driver_->setEndpointStatus(ep, status);
+    }
+    return SYSTEM_ERROR_INVALID_STATE;
 }
 
 int Device::transferIn(unsigned ep, const uint8_t* ptr, size_t size) {
@@ -194,7 +221,9 @@ int Device::setupError(SetupRequest* r) {
 
 int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed speed, unsigned index) {
     switch (type) {
-    case DESCRIPTOR_DEVICE: {
+    case DESCRIPTOR_DEVICE:
+    // Use same config
+    case DESCRIPTOR_OTHER_SPEED_CONFIGURATION: {
         auto sz = std::min(deviceDescriptorLen_, len);
         if (buf) {
             memcpy(buf, deviceDescriptor_, sz);
@@ -208,21 +237,19 @@ int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed s
 #endif // HAL_PLATFORM_USB_COMPOSITE
         unsigned baseInterface = 0;
         unsigned baseString = STRING_IDX_INTERFACE;
-        unsigned epMask = 0;
+        CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
+        unsigned epMask = ~(driver_->getEndpointMask());
         for (auto& cls: classDrivers_) {
             if (cls && cls->isEnabled()) {
                 cls->setBaseIndices(baseInterface, baseString, epMask);
                 int r = cls->getConfigurationDescriptor(buf ? (buf + pos) : nullptr, len - pos, speed, index);
                 if (r >= 0) {
                     pos += r;
+                    baseInterface += cls->getNumInterfaces();
+                    baseString += cls->getNumStrings();
+                    auto mask = cls->getEndpointMask();
+                    epMask |= mask;
                 }
-                baseInterface += cls->getNumInterfaces();
-                baseString += cls->getNumStrings();
-                auto mask = cls->getEndpointMask();
-                if (epMask & mask) {
-                    LOG(ERROR, "USB endpoint conflict");
-                }
-                epMask |= mask;
             }
         }
         if (buf) {
@@ -246,10 +273,16 @@ int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed s
         return pos;
     }
     case DESCRIPTOR_DEVICE_QUALIFIER: {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-    case DESCRIPTOR_OTHER_SPEED_CONFIGURATION: {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+        particle::BufferAppender appender(buf, 0x09);
+        appender.appendUInt8(0x09);
+        appender.appendUInt8(DESCRIPTOR_DEVICE_QUALIFIER);
+        appender.appendUInt8(0x00);
+        appender.appendUInt8(0x02);
+        appender.appendUInt8(0x00);
+        appender.appendUInt8(0x00);
+        appender.appendUInt8(0x40);
+        appender.appendUInt8(0x01);
+        appender.appendUInt8(0x00);
     }
     }
     return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -351,8 +384,11 @@ int Device::setConfig(unsigned index) {
     for (auto& cls: classDrivers_) {
         if (cls && cls->isEnabled()) {
             int r = cls->init(index);
-            if (r) {
+            if (r < 0) {
                 lastError = r;
+                cls->deinit(index);
+            } else {
+                cls->configured(true);
             }
         }
     }
@@ -364,9 +400,10 @@ int Device::clearConfig(unsigned index) {
     for (auto& cls: classDrivers_) {
         if (cls && cls->isEnabled()) {
             int r = cls->deinit(index);
-            if (r) {
+            if (r < 0) {
                 lastError = r;
             }
+            cls->configured(false);
         }
     }
     return lastError;
@@ -382,13 +419,6 @@ int Device::startOfFrame() {
 }
 
 int Device::setupRequest(SetupRequest* req) {
-    LOG(TRACE, "Setup request bmRequestType=%02x bRequest=%02x wValue=%04x wIndex=%04x wLength=%04x",
-        req->bmRequestType,
-        req->bRequest,
-        req->wValue,
-        req->wIndex,
-        req->wLength);
-
     for (auto& cls: classDrivers_) {
         if (cls && cls->isEnabled()) {
             int r = cls->setup(req);
@@ -506,9 +536,41 @@ bool ClassDriver::isEnabled() const {
     return enabled_;
 }
 
+void ClassDriver::configured(bool state) {
+    configured_ = state;
+}
+
+bool ClassDriver::isConfigured() const {
+    return configured_;
+}
+
 int ClassDriver::setBaseIndices(unsigned interface, unsigned string, unsigned epMask) {
     interfaceBase_ = interface;
     stringBase_ = string;
     endpointMask_ = epMask;
     return 0;
+}
+
+int ClassDriver::getNextAvailableEndpoint(EndpointDirection type, bool reserve) {
+    unsigned base = 1;
+    if (type == ENDPOINT_IN) {
+        base <<= ENDPOINT_MASK_OUT_BITPOS;
+    }
+    for (unsigned pos = 0; pos < ENDPOINT_MASK_OUT_BITPOS; pos++) {
+        bool epBit = endpointMask_ & (base << pos);
+        if (!epBit) {
+            // Available
+            if (reserve) {
+                endpointMask_ |= (base << pos);
+                endpointMask_ = dev_->updateEndpointMask(endpointMask_);
+            }
+            // Endpoint 0 is default, not counted here
+            return ((pos + 1) | (int)type);
+        }
+    }
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+unsigned ClassDriver::getEndpointMask() const {
+    return endpointMask_;
 }

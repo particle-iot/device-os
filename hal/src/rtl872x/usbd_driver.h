@@ -18,6 +18,11 @@
 #pragma once
 
 #include "usbd_device.h"
+#include "module_info.h"
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#include "spark_wiring_thread.h"
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 // Avoid bringing in usbd_os.h
 #define USB_HAL_H
@@ -48,7 +53,8 @@ public:
     virtual int flushEndpoint(unsigned ep) override;
     virtual int stallEndpoint(unsigned ep) override;
     virtual int clearStallEndpoint(unsigned ep) override;
-    virtual EndpointState getEndpointState(unsigned ep) override;
+    virtual EndpointStatus getEndpointStatus(unsigned ep) override;
+    virtual int setEndpointStatus(unsigned ep, EndpointStatus status) override;
 
     virtual int transferIn(unsigned ep, const uint8_t* ptr, size_t size) override;
     virtual int transferOut(unsigned ep, uint8_t* ptr, size_t size) override;
@@ -57,7 +63,11 @@ public:
     virtual int setupReceive(SetupRequest* r, uint8_t* data, size_t size) override;
     virtual int setupError(SetupRequest* r) override;
 
-    virtual unsigned getEndpointMask() const;
+    virtual unsigned getEndpointMask() const override;
+    virtual unsigned updateEndpointMask(unsigned mask) const override;
+
+    virtual bool lock() override;
+    virtual void unlock() override;
 
     void halReadPacketFixup(void* ptr);
 
@@ -65,7 +75,7 @@ private:
     RtlUsbDriver();
     virtual ~RtlUsbDriver();
 
-    static uint8_t* getDescriptorCb(usbd_desc_type_t desc, usbd_speed_type_t speed, uint16_t* len);
+    static uint8_t* getDescriptorCb(usb_setup_req_t *req, usbd_speed_type_t speed, uint16_t* len);
     static uint8_t setConfigCb(usb_dev_t* dev, uint8_t config);
     static uint8_t clearConfigCb(usb_dev_t* dev, uint8_t config);
     static uint8_t setupCb(usb_dev_t* dev, usb_setup_req_t* req);
@@ -78,7 +88,6 @@ private:
     static uint8_t epDataOutCb(usb_dev_t* dev, uint8_t ep_num, uint16_t len);
 
     void setDevReference(usb_dev_t* dev);
-
     void fixupReceivedData();
 
 private:
@@ -107,7 +116,7 @@ private:
         .set_config = &setConfigCb,
         .clear_config = &clearConfigCb,
         .setup = &setupCb,
-        .sof = &sofCb,
+        .sof = nullptr, // This is not delivered
         .suspend = &suspendCb,
         .resume = &resumeCb,
         .ep0_data_in = &ep0DataInCb,
@@ -117,6 +126,9 @@ private:
     };
 
     void* fixupPtr_ = nullptr;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    RecursiveMutex mutex_;
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 };
 
 } // namespace usbd
