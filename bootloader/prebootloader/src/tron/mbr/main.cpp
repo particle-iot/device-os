@@ -22,6 +22,7 @@ extern "C" {
 #include "module_info.h"
 #include "hw_config.h"
 #include "bootloader_update.h"
+#include "rtl_it.h"
 
 __attribute__((used)) void* dynalib_table_location = 0; // part1 dynalib location
 
@@ -75,6 +76,12 @@ extern "C" void rsipMaskConfig(void) {
 }
 
 extern "C" int main() {
+    // Override the fault handlers in case of getting stuck in the ROM
+    __NVIC_SetVector(HardFault_IRQn_LP, (uint32_t)HardFault_Handler);
+    __NVIC_SetVector(MemoryManagement_IRQn_LP, (uint32_t)MemManage_Handler);
+    __NVIC_SetVector(BusFault_IRQn_LP, (uint32_t)BusFault_Handler);
+    __NVIC_SetVector(UsageFault_IRQn_LP, (uint32_t)UsageFault_Handler);
+
     /*
      * FIXME: Do NOT allocate memory from heap in MBR, since the heap start address is incorrect!
      * As a workaround, we can use AtomicSimpleStaticPool instead.

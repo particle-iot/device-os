@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,18 +18,21 @@
 #include "rtl_it.h"
 #include <stdbool.h>
 #include <rtl8721d.h>
-#include "logging.h"
-#include "hw_config.h"
-#include "button_hal.h"
-#include "hal_platform_config.h"
-
-extern void Timing_Decrement(void);
 
 void HardFault_Handler(void) __attribute__(( naked ));
 void MemManage_Handler(void) __attribute__(( naked ));
 void BusFault_Handler(void) __attribute__(( naked ));
 void UsageFault_Handler(void) __attribute__(( naked ));
 
+#define HardFault           1
+#define NMIFault            2
+#define MemManage           3
+#define BusFault            4
+#define UsageFault          5
+
+extern CPU_PWR_SEQ HSPWR_OFF_SEQ[];
+
+// Use the same name as KM4 in case of forgetting bugfix
 __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress, uint32_t panicCode ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
     away as the variables never actually get used.  If the debugger won't show the
@@ -59,34 +62,9 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulF
         (void)r0; (void)r1; (void)r2; (void)r3; (void)r12; (void)lr; (void)pc; (void)psr;
     }
 
-    if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
-        // stay consistent with the core and cause 5 flashes
-        panicCode = UsageFault;
-    }
-
-    switch (panicCode) {
-        case HardFault: {
-            PANIC(panicCode, "HardFault");
-            break; 
-        }
-        case MemManage: {
-            PANIC(panicCode, "MemManage");
-            break; 
-        }
-        case BusFault: {
-            PANIC(panicCode, "BusFault");
-            break; 
-        }
-        case UsageFault: {
-            PANIC(panicCode, "UsageFault");
-            break; 
-        }
-        default: {
-            // Shouldn't enter this case
-            PANIC(panicCode, "Unknown");
-            break;
-        }
-    }
+    // Turn off KM4 and reboot KM0
+    BOOT_ROM_CM4PON((u32)HSPWR_OFF_SEQ);
+    NVIC_SystemReset();
 
     /* Go to infinite loop when Hard Fault exception occurs */
     while (1) {
@@ -98,10 +76,7 @@ __attribute__(( naked )) void Fault_Handler(uint32_t panic_code) {
     __asm volatile
     (
         " mov r1, r0                                                \n"
-        " tst lr, #4                                                \n"
-        " ite eq                                                    \n"
-        " mrseq r0, msp                                             \n"
-        " mrsne r0, psp                                             \n"
+        " mrs r0, msp                                               \n"
         " ldr r2, handler2_address_const                            \n"
         " bx r2                                                     \n"
         " .balign 4                                                 \n"
@@ -126,14 +101,4 @@ void BusFault_Handler(void) {
 void UsageFault_Handler(void) {
     /* Go to infinite loop when Usage Fault exception occurs */
     Fault_Handler(UsageFault);
-}
-
-void SysTick_Handler(void)
-{
-    System1MsTick();
-    Timing_Decrement();
-
-#if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK
-    hal_button_timer_handler();
-#endif
 }

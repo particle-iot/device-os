@@ -29,13 +29,6 @@ SECTIONS {
     __rom_bss_start_s__ = 0x1007c000;
     __ram_start_table_start__ = 0x1007d000;
     STACK_TOP = 0x1007effc;
-    __vectors_table = 0x1010a000;
-    NMI_Handler = 0x1010a111;
-    HardFault_Handler = 0x1010a115;
-    MemManage_Handler = 0x1010a119;
-    BusFault_Handler = 0x1010a11d;
-    UsageFault_Handler = 0x1010a121;
-    SecureFault_Handler = 0x1010a125;
     DiagVSprintf = 0x1010a12d;
     DiagPrintf = 0x1010a3f5;
     DiagPrintfD = 0x1010a445;

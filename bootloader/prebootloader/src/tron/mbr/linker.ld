@@ -67,7 +67,7 @@ SECTIONS
         KEEP (*(.rtl_header_ram_boot_export_table))
     } > SRAM AT> APP_FLASH
 
-    .text :
+    .text ALIGN(4) :
     {
         . = ALIGN(4);
         

@@ -48,15 +48,7 @@ uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR) {
 }
 
 void HAL_Delay_Microseconds(uint32_t uSec) {
-    volatile uint32_t DWT_START = DWT->CYCCNT;
-
-    if (uSec > (UINT_MAX / SYSTEM_US_TICKS)) {
-        uSec = (UINT_MAX / SYSTEM_US_TICKS);
-    }
-
-    volatile uint32_t DWT_TOTAL = (SYSTEM_US_TICKS * uSec);
-
-    while((DWT->CYCCNT - DWT_START) < DWT_TOTAL);
+    DelayUs(uSec);
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {

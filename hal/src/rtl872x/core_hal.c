@@ -55,20 +55,15 @@ static struct Last_Reset_Info {
     uint32_t data;
 } last_reset_info = { RESET_REASON_NONE, 0 };
 
-void HardFault_Handler( void ) __attribute__( ( naked ) );
-
-void HardFault_Handler(void);
-void MemManage_Handler(void);
-void BusFault_Handler(void);
-void UsageFault_Handler(void);
+void HardFault_Handler( void ) __attribute__(( naked ));
+void MemManage_Handler(void) __attribute__(( naked ));
+void BusFault_Handler(void) __attribute__(( naked ));
+void UsageFault_Handler(void) __attribute__(( naked ));
 
 void SysTick_Handler(void);
 void SVC_Handler(void);
 void PendSV_Handler(void);
 void SysTickOverride(void);
-
-void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info);
-void app_error_handler_bare(uint32_t err);
 
 extern char link_heap_location, link_heap_location_end;
 extern uintptr_t link_interrupt_vectors_location[];
@@ -90,7 +85,7 @@ extern void* dynalib_table_location; // user part dynalib location
 extern module_bounds_t module_user;
 extern module_bounds_t module_ota;
 
-__attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
+__attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress, uint32_t panicCode ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
     away as the variables never actually get used.  If the debugger won't show the
     values of the variables, make them global my moving their declaration outside
@@ -121,171 +116,71 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
 
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes
-        UsageFault_Handler();
-    } else {
-        PANIC(HardFault,"HardFault");
+        panicCode = UsageFault;
+    }
 
-        /* Go to infinite loop when Hard Fault exception occurs */
-        while (1) {
-            ;
+    switch (panicCode) {
+        case HardFault: {
+            PANIC(panicCode, "HardFault");
+            break; 
         }
+        case MemManage: {
+            PANIC(panicCode, "MemManage");
+            break; 
+        }
+        case BusFault: {
+            PANIC(panicCode, "BusFault");
+            break; 
+        }
+        case UsageFault: {
+            PANIC(panicCode, "UsageFault");
+            break; 
+        }
+        default: {
+            // Shouldn't enter this case
+            PANIC(panicCode, "Unknown");
+            break;
+        }
+    }
+
+    /* Go to infinite loop when Hard Fault exception occurs */
+    while (1) {
+        ;
     }
 }
 
-
-void HardFault_Handler(void) {
+__attribute__(( naked )) void Fault_Handler(uint32_t panic_code) {
     __asm volatile
     (
+        " mov r1, r0                                                \n"
         " tst lr, #4                                                \n"
         " ite eq                                                    \n"
         " mrseq r0, msp                                             \n"
         " mrsne r0, psp                                             \n"
-        " ldr r1, [r0, #24]                                         \n"
-        " ldr r2, =handler2_address_const                           \n"
+        " ldr r2, handler2_address_const                            \n"
         " bx r2                                                     \n"
+        " .balign 4                                                 \n"
         " handler2_address_const: .word prvGetRegistersFromStack    \n"
     );
 }
 
-void app_error_fault_handler(uint32_t _id, uint32_t _pc, uint32_t _info) {
-    volatile uint32_t id = _id;
-    volatile uint32_t pc = _pc;
-    volatile uint32_t info = _info;
-    (void)id; (void)pc; (void)info;
-    PANIC(HardFault,"HardFault");
-    while(1) {
-        ;
-    }
-}
-
-void app_error_handler_bare(uint32_t error_code) {
-    PANIC(HardFault,"HardFault");
-    while(1) {
-        ;
-    }
-}
-
-void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
-{
-    PANIC(HardFault,"HardFault");
-    while(1) {
-    }
+void HardFault_Handler(void) {
+    Fault_Handler(HardFault);
 }
 
 void MemManage_Handler(void) {
     /* Go to infinite loop when Memory Manage exception occurs */
-    PANIC(MemManage,"MemManage");
-    while (1) {
-        ;
-    }
+    Fault_Handler(MemManage);
 }
 
 void BusFault_Handler(void) {
     /* Go to infinite loop when Bus Fault exception occurs */
-    PANIC(BusFault,"BusFault");
-    while (1) {
-        ;
-    }
+    Fault_Handler(BusFault);
 }
 
 void UsageFault_Handler(void) {
     /* Go to infinite loop when Usage Fault exception occurs */
-    PANIC(UsageFault,"UsageFault");
-    while (1) {
-        ;
-    }
-}
-
-
-extern void INT_HardFault_C(uint32_t mstack[], uint32_t pstack[], uint32_t lr_value, uint32_t fault_id);
-
-void INT_HardFault_Patch_C(uint32_t mstack[], uint32_t pstack[], uint32_t lr_value, uint32_t fault_id)
-{
-    u8 IsPstack = 0;
-
-    DBG_8195A("\r\nHard Fault Patch (Non-secure)\r\n");
-
-    /* EXC_RETURN.S, 1: original is Secure, 0: original is Non-secure */
-    if (lr_value & BIT(6)) {                    //Taken from S
-        DBG_8195A("\nException taken from Secure to Non-secure.\nSecure stack is used to store context." 
-            "It can not be dumped from non-secure side for security reason!!!\n");
-
-        while(1);
-    } else {                                    //Taken from NS
-        if (lr_value & BIT(3)) {                //Thread mode
-            if (lr_value & BIT(2)) {            //PSP
-                IsPstack = 1;
-            }
-        }
-    }
-
-#if defined(CONFIG_EXAMPLE_CM_BACKTRACE) && CONFIG_EXAMPLE_CM_BACKTRACE
-    cm_backtrace_fault(IsPstack ? pstack : mstack, lr_value);
-    while(1);
-#else
-
-    if(IsPstack)
-        mstack = pstack;
-
-    INT_HardFault_C(mstack, pstack, lr_value, fault_id);
-#endif    
-    
-}
-
-void INT_HardFault_Patch(void)
-{
-    __ASM volatile(
-        "MRS R0, MSP\n\t"
-        "MRS R1, PSP\n\t"
-        "MOV R2, LR\n\t" /* second parameter is LR current value */
-        "MOV R3, #0\n\t"   
-        "SUB.W    R4, R0, #128\n\t"
-        "MSR MSP, R4\n\t"   // Move MSP to upper to for we can dump current stack contents without chage contents
-        "LDR R4,=INT_HardFault_Patch_C\n\t"
-        "BX R4\n\t"
-    );
-}
-
-void INT_UsageFault_Patch(void)
-{
-    __ASM volatile(
-        "MRS R0, MSP\n\t"
-        "MRS R1, PSP\n\t"
-        "MOV R2, LR\n\t" /* second parameter is LR current value */
-        "MOV R3, #1\n\t"   
-        "SUB.W    R4, R0, #128\n\t"
-        "MSR MSP, R4\n\t"   // Move MSP to upper to for we can dump current stack contents without chage contents
-        "LDR R4,=INT_HardFault_Patch_C\n\t"
-        "BX R4\n\t"
-    );
-}
-
-void INT_BusFault_Patch(void)
-{
-    __ASM volatile(
-        "MRS R0, MSP\n\t"
-        "MRS R1, PSP\n\t"
-        "MOV R2, LR\n\t" /* second parameter is LR current value */
-        "MOV R3, #2\n\t"   
-        "SUB.W    R4, R0, #128\n\t"
-        "MSR MSP, R4\n\t"   // Move MSP to upper to for we can dump current stack contents without chage contents
-        "LDR R4,=INT_HardFault_Patch_C\n\t"
-        "BX R4\n\t"
-    );
-}
-
-void INT_MemFault_Patch(void)
-{
-    __ASM volatile(
-        "MRS R0, MSP\n\t"
-        "MRS R1, PSP\n\t"
-        "MOV R2, LR\n\t" /* second parameter is LR current value */
-        "MOV R3, #3\n\t"   
-        "SUB.W    R4, R0, #128\n\t"
-        "MSR MSP, R4\n\t"   // Move MSP to upper to for we can dump current stack contents without chage contents
-        "LDR R4,=INT_HardFault_Patch_C\n\t"
-        "BX R4\n\t"
-    );
+    Fault_Handler(UsageFault);
 }
 
 void SysTickOverride(void) {
@@ -326,10 +221,10 @@ void HAL_Core_Setup_override_interrupts(void) {
     __NVIC_SetVector(SVCall_IRQn, (u32)(void*)SVC_Handler);
     __NVIC_SetVector(PendSV_IRQn, (u32)(void*)PendSV_Handler);
 
-    __NVIC_SetVector(HardFault_IRQn, (u32)(void*)INT_HardFault_Patch);
-    __NVIC_SetVector(MemoryManagement_IRQn, (u32)(void*)INT_MemFault_Patch);
-    __NVIC_SetVector(BusFault_IRQn, (u32)(void*)INT_BusFault_Patch);
-    __NVIC_SetVector(UsageFault_IRQn, (u32)(void*)INT_UsageFault_Patch);
+    __NVIC_SetVector(HardFault_IRQn, (u32)(void*)HardFault_Handler);
+    __NVIC_SetVector(MemoryManagement_IRQn, (u32)(void*)MemManage_Handler);
+    __NVIC_SetVector(BusFault_IRQn, (u32)(void*)BusFault_Handler);
+    __NVIC_SetVector(UsageFault_IRQn, (u32)(void*)UsageFault_Handler);
 }
 
 void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
