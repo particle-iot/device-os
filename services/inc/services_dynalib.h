@@ -53,7 +53,7 @@ DYNALIB_FN(10, services, LED_Fade, void(Led_TypeDef))
 DYNALIB_FN(11, services, Get_LED_Brightness, uint8_t(void))
 
 DYNALIB_FN(12, services, set_logger_output, void(debug_output_fn, LoggerOutputLevel)) // Deprecated
-DYNALIB_FN(13, services, panic_, void(ePanicCode, void*, void(*)(uint32_t)))
+DYNALIB_FN(13, services, panic_do, void(ePanicCode, void*, void(*)(uint32_t)))
 
 DYNALIB_FN(14, services, jsmn_init, void(jsmn_parser*, void*))
 DYNALIB_FN(15, services, jsmn_parse_deprecated, jsmnerr_t(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
@@ -114,6 +114,7 @@ DYNALIB_FN(BASE_IDX + 0, services, set_system_error_message, void(const char*, .
 DYNALIB_FN(BASE_IDX + 1, services, clear_system_error_message, void())
 DYNALIB_FN(BASE_IDX + 2, services, get_system_error_message, const char*(int))
 DYNALIB_FN(BASE_IDX + 3, services, jsmn_parse, int(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
+DYNALIB_FN(BASE_IDX + 4, services, panic_set_override, void(PanicHook))
 
 DYNALIB_END(services)
 

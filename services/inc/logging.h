@@ -222,8 +222,6 @@ const char* log_level_name(int level, void *reserved);
 void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_type log_write,
         log_enabled_callback_type log_enabled, void *reserved);
 
-extern void HAL_Delay_Microseconds(uint32_t delay);
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
@@ -433,7 +431,7 @@ static const char* const _log_category = NULL;
 #define PANIC(_code, _fmt, ...) \
         do { \
             LOG_DEBUG(PANIC, _fmt, ##__VA_ARGS__); \
-            panic_(_code, NULL, HAL_Delay_Microseconds); \
+            panic_do(_code, (void *)_fmt, NULL); \
         } while (0)
 
 #endif // _LOGGING_H

@@ -1,8 +1,18 @@
 /*
- * pnaic.c
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
  *
- *  Created on: Jan 31, 2014
- *      Author: david_s5
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
@@ -16,89 +26,74 @@
 #include "interrupts_hal.h"
 #include "hal_platform.h"
 #include "core_hal.h"
+#include "delay_hal.h"
+
+#define PANIC_LED_COLOR RGB_COLOR_RED
 
 LOG_SOURCE_CATEGORY("panic");
 
-#define LOOPSPERMSEC 5483
+static void panic_internal(const ePanicCode code, const void* extraInfo);
 
-typedef struct {
-        uint32_t  led;
-        uint16_t  count;
-} flash_codes_t;
-
-
-#define def_panic_codes(_class,led,code) {led, code},
-static const flash_codes_t flash_codes[] = {
-                 {0,0}, //NotUsedPanicCode
-#include "panic_codes.h"
-};
-#undef def_panic_codes
+static PanicHook panicHook = panic_internal;
 
 /****************************************************************************
 * Public Functions
 ****************************************************************************/
 
-void panic_(ePanicCode code, void* extraInfo, void (*HAL_Delay_Microseconds)(uint32_t))
+void panic_hook_set(const PanicHook overrideFunc)
 {
+    //store the new hook
+    panicHook = (overrideFunc != NULL) ? overrideFunc : panic_internal;
+}
 
-#if HAL_PLATFORM_CORE_ENTER_PANIC_MODE
+void panic_do(const ePanicCode code, void* extraInfo, void(*dummy)(uint32_t))
+{
+    #if HAL_PLATFORM_CORE_ENTER_PANIC_MODE
         HAL_Core_Enter_Panic_Mode(NULL);
-#else
+    #else
         HAL_disable_irq();
-#endif // HAL_PLATFORM_CORE_ENTER_PANIC_MODE
+    #endif // HAL_PLATFORM_CORE_ENTER_PANIC_MODE
 
-        // Flush any serial message to help the poor bugger debug this;
-        flash_codes_t pcd = flash_codes[code];
-        LED_SetRGBColor(RGB_COLOR_RED);
-        LED_SetBrightness(DEFAULT_LED_RGB_BRIGHTNESS);
-        LED_Signaling_Stop();
-        uint16_t c;
-        int loops = 2;
-        LOG_PRINT(TRACE, "!");
+    //run the panic!
+    panicHook(code, extraInfo);
+
+    //if it returns, run this code!
+    #if defined(RELEASE_BUILD) || PANIC_BUT_KEEP_CALM == 1
+        HAL_Core_System_Reset_Ex(RESET_REASON_PANIC, code, NULL);
+    #endif
+}
+
+/****************************************************************************
+* Private Functions
+****************************************************************************/
+
+static void panic_led_flash(const uint32_t onMS, const uint32_t ofMS, const uint32_t pauseMS) 
+{
+    for (uint16_t c = 3; c; c--) {
+        LED_On(PARTICLE_LED_RGB);
+        HAL_Delay_Microseconds(onMS);
         LED_Off(PARTICLE_LED_RGB);
-        while(loops) {
-                // preamble
-            for (c = 3; c; c--) {
-                LED_SetRGBColor(pcd.led);
-                LED_On(PARTICLE_LED_RGB);
-                HAL_Delay_Microseconds(MS2u(150));
-                LED_Off(PARTICLE_LED_RGB);
-                HAL_Delay_Microseconds(MS2u(100));
-            }
+        HAL_Delay_Microseconds(ofMS);
+    }
+    HAL_Delay_Microseconds(pauseMS);
+}
 
-            HAL_Delay_Microseconds(MS2u(100));
-            for (c = 3; c; c--) {
-                LED_SetRGBColor(pcd.led);
-                LED_On(PARTICLE_LED_RGB);
-                HAL_Delay_Microseconds(MS2u(300));
-                LED_Off(PARTICLE_LED_RGB);
-                HAL_Delay_Microseconds(MS2u(100));
-            }
-            HAL_Delay_Microseconds(MS2u(100));
+static void panic_internal(const ePanicCode code, const void* extraInfo)
+{
+    LED_SetRGBColor(RGB_COLOR_RED);
+    LED_SetBrightness(DEFAULT_LED_RGB_BRIGHTNESS);
+    LED_Signaling_Stop();
+    LOG_PRINT(TRACE, "!");
+    LED_Off(PARTICLE_LED_RGB);
+    LED_SetRGBColor(PANIC_LED_COLOR);
 
-            for (c = 3; c; c--) {
-                LED_SetRGBColor(pcd.led);
-                LED_On(PARTICLE_LED_RGB);
-                HAL_Delay_Microseconds(MS2u(150));
-                LED_Off(PARTICLE_LED_RGB);
-                HAL_Delay_Microseconds(MS2u(100));
-            }
-
-            // pause
-            HAL_Delay_Microseconds(MS2u(900));
-            // play code
-            for (c = code; c; c--) {
-                LED_SetRGBColor(pcd.led);
-                LED_On(PARTICLE_LED_RGB);
-                HAL_Delay_Microseconds(MS2u(300));
-                LED_Off(PARTICLE_LED_RGB);
-                HAL_Delay_Microseconds(MS2u(300));
-            }
-            // pause
-            HAL_Delay_Microseconds(MS2u(800));
-#if defined(RELEASE_BUILD) || PANIC_BUT_KEEP_CALM == 1
-            if (--loops == 0) HAL_Core_System_Reset_Ex(RESET_REASON_PANIC, code, NULL);
-#endif
-        }
-
+    int loops = 2;
+    while(loops) {
+        // preamble
+        panic_led_flash( MS2u(150), MS2u(100), MS2u(100) );
+        panic_led_flash( MS2u(300), MS2u(100), MS2u(100) );
+        panic_led_flash( MS2u(150), MS2u(100), MS2u(900) );
+        panic_led_flash( MS2u(300), MS2u(300), MS2u(800) );
+        loops--;
+    }
 }
