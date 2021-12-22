@@ -158,6 +158,8 @@ SECTIONS
         *(.image2.ram.data*)
         *(.image2.net.ram.data*)
         . = ALIGN(4);
+        *(.boot.ipc_data)
+        *(.ram.sleep*)
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH

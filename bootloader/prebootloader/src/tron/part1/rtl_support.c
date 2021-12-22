@@ -438,3 +438,12 @@ uint32_t ipc_get_message(uint8_t channel) {
     // stub
     return 0;
 }
+
+uint32_t pmu_exec_sleep_hook_funs(void) {
+    // stub
+    return PMU_MAX;
+}
+
+void pmu_exec_wakeup_hook_funs(uint32_t nDeviceIdMax) {
+    // stub
+}
