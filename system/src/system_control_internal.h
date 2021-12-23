@@ -51,6 +51,8 @@ public:
 
     static SystemControl* instance();
 
+    static Vector<uint16_t> vecCtrlReq;
+
 private:
 #ifdef USB_VENDOR_REQUEST_ENABLE
     UsbControlRequestChannel usbChannel_;

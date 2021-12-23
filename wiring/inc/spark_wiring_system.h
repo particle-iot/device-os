@@ -40,6 +40,7 @@
 #include <mutex>
 #include "spark_wiring_system_power.h"
 #include "system_sleep_configuration.h"
+#include "system_control.h"
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID != PLATFORM_GCC
 #define SYSTEM_HW_TICKS 1
@@ -849,6 +850,14 @@ public:
     }
 
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
+
+    int setControlRequestFilter(Vector<uint16_t> inputReq) {
+        return system_set_control_request_filter(inputReq, nullptr);
+    }
+
+    int clearControlRequestFilter() {
+        return system_clear_control_request_filter(nullptr);
+    }
 
 private:
     SystemSleepResult systemSleepResult_;
