@@ -142,7 +142,6 @@ int hal_set_device_secret(char* data, size_t size, void* reserved) {
     if (size > HAL_DEVICE_SECRET_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-
     if (data == nullptr) {
         return SYSTEM_ERROR_BAD_DATA;
     }
