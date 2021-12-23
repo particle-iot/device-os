@@ -1028,10 +1028,10 @@ int BleControlRequestChannel::initProfile() {
     halUuid.type = BLE_UUID_TYPE_128BIT;
     // Check that the provisioning service UUID has been customized and the device is in provisioning mode
     if (!provModeStatus || memcmp(PROV_CTRL_SERVICE_UUID, zeros, sizeof(PROV_CTRL_SERVICE_UUID)) == 0) {
-        LOG(TRACE, "Using default svc id");
+        LOG_DEBUG(TRACE, "Using default svc uuid");
         memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
     } else {
-        LOG(TRACE, "Using prov svc id");
+        LOG_DEBUG(TRACE, "Using prov svc uuid");
         memcpy(halUuid.uuid128, PROV_CTRL_SERVICE_UUID, sizeof(PROV_CTRL_SERVICE_UUID));
     }
     CHECK(hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, nullptr));
@@ -1055,10 +1055,10 @@ int BleControlRequestChannel::initProfile() {
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
     // Check that the provisioning TX UUID has been customized and the device is in provisioning mode
     if (!provModeStatus || memcmp(PROV_SEND_CHAR_UUID, zeros, sizeof(PROV_SEND_CHAR_UUID)) == 0) {
-        LOG(TRACE, "Using default tx id");
+        LOG_DEBUG(TRACE, "Using default tx uuid");
         memcpy(char_init.uuid.uuid128, SEND_CHAR_UUID, sizeof(SEND_CHAR_UUID));
     } else {
-        LOG(TRACE, "Using prov tx id");
+        LOG_DEBUG(TRACE, "Using prov tx uuid");
         memcpy(char_init.uuid.uuid128, PROV_SEND_CHAR_UUID, sizeof(PROV_SEND_CHAR_UUID));
     }
     char_init.properties = BLE_SIG_CHAR_PROP_NOTIFY;
@@ -1078,10 +1078,10 @@ int BleControlRequestChannel::initProfile() {
     char_init.uuid.type = BLE_UUID_TYPE_128BIT;
     // Check that the provisioning RX UUID has been customized and the device is in provisioning mode
     if (!provModeStatus || memcmp(PROV_RECV_CHAR_UUID, zeros, sizeof(PROV_RECV_CHAR_UUID)) == 0) {
-        LOG(TRACE, "Using default rx id");
+        LOG_DEBUG(TRACE, "Using default rx uuid");
         memcpy(char_init.uuid.uuid128, RECV_CHAR_UUID, sizeof(RECV_CHAR_UUID));
     } else {
-        LOG(TRACE, "Using prov rx id");
+        LOG_DEBUG(TRACE, "Using prov rx uuid");
         memcpy(char_init.uuid.uuid128, PROV_RECV_CHAR_UUID, sizeof(PROV_RECV_CHAR_UUID));
     }
     char_init.properties = BLE_SIG_CHAR_PROP_WRITE | BLE_SIG_CHAR_PROP_WRITE_WO_RESP;

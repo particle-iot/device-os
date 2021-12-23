@@ -476,9 +476,6 @@ void manage_ble_prov_mode() {
     // its UUIDs and others
     if (system_get_ble_prov_status(nullptr) && !HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
         system_ble_prov_mode(false, nullptr);
-        // FIXME - IMPORTANT!!
-        // CLear any other relevant prov mode IDs here
-        // XXX: should I probably use one function in system_ble_prov_mode.cpp to clear everything?
     }
 }
 

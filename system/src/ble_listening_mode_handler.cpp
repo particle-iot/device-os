@@ -96,13 +96,13 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
 
     // Manufacturing specific data
     if (!provMode_) {
-        LOG(TRACE, "Using default manufacturing specific data");
+        LOG_DEBUG(TRACE, "Using default manufacturing specific data");
         CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + 1), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
     } else {
-        LOG(TRACE, "Using setup code");
+        LOG_DEBUG(TRACE, "Using setup code");
         char code[SETUP_CODE_SIZE] = {};
         CHECK(get_device_setup_code(code));
         // FIX the below
@@ -113,14 +113,14 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
 
     // Particle Control Request Service 128-bits UUID
     if (provMode_ && memcmp(PROV_BLE_CTRL_REQ_SVC_UUID, zeros, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)) != 0) {
-        LOG(TRACE, "Using prov adv svc id");
+        LOG_DEBUG(TRACE, "Using prov adv svc uuid");
         // PROV_BLE_CTRL_REQ_SVC_UUID has some content (Is it needed to check for validity?).
         // Use it only if prov mode is enabled
         CHECK_TRUE(tempSrData.append(sizeof(PROV_BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempSrData.append(PROV_BLE_CTRL_REQ_SVC_UUID, sizeof(PROV_BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
     } else {
-        LOG(TRACE, "Using default adv svc id");
+        LOG_DEBUG(TRACE, "Using default adv svc uuid");
         // if PROV_BLE_CTRL_REQ_SVC_UUID == 0, use BLE_CTRL_REQ_SVC_UUID irrepective of prov mode status
         CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
@@ -306,13 +306,6 @@ int BleListeningModeHandler::applyControlRequestAdvData() {
 }
 
 int BleListeningModeHandler::enter() {
-    // Enter listening mode handler only if FEATURE_FLAG_DISABLE_LISTENING_MODE is enabled
-    // Not really needed to check here because this check is already done in the previous calls
-    //if (HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
-    //    LOG(ERROR, "BLE prov/listening mode not allowed");
-    //    return SYSTEM_ERROR_NOT_ALLOWED;
-    //}
-
     exited_ = false;
 
     // Do not allow other thread to modify the BLE configurations.

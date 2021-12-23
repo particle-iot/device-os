@@ -24,6 +24,7 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
         if (ListeningModeHandler::instance()->isActive() && HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
             LOG(TRACE, "Listening mode still active. Exiting listening mode before entering prov mode");
             ListeningModeHandler::instance()->exit();
+            // FIXME: Is delay needed here to check that the module actually exited listening mode
         }
         LOG(TRACE, "Enable BLE prov mode");
         // IMPORTANT: Set setProvModeStatus(true) before entering provisioning mode,
