@@ -6,7 +6,11 @@
 #include "system_control_internal.h"
 #include "system_listening_mode.h"
 
+namespace {
+
 using namespace particle::system;
+
+}   // namespace
 
 #if HAL_PLATFORM_BLE
 

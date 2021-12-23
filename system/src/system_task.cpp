@@ -471,12 +471,14 @@ void manage_listening_mode_flag() {
 }
 
 void manage_ble_prov_mode() {
+#if HAL_PLATFORM_BLE
     // Check the relevant feature flag. If it's cleared,
     // make sure to turn off prov mode, and clear all
     // its UUIDs and others
     if (system_get_ble_prov_status(nullptr) && !HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
         system_ble_prov_mode(false, nullptr);
     }
+#endif
 }
 
 static void process_isr_task_queue()

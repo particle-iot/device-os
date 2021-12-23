@@ -18,6 +18,8 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+#if HAL_PLATFORM_BLE
+
 // TODO: Should we add a test case for the default case? For users that don't touch the flag
 
 SYSTEM_THREAD(ENABLED);
@@ -91,3 +93,5 @@ test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
     assertFalse(BLE.getProvisioningStatus());
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
 }
+
+#endif
