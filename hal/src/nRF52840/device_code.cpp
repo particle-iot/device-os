@@ -28,6 +28,20 @@
 #include <algorithm>
 #include <cstring>
 
+namespace {
+
+using namespace particle;
+
+// TODO: Rename ssid_prefix to device_name in DCT?
+const auto DEVICE_NAME_DCT_SIZE = DCT_SSID_PREFIX_SIZE;
+const auto DEVICE_NAME_DCT_OFFSET = DCT_SSID_PREFIX_OFFSET;
+
+const auto DEVICE_NAME_MAX_SIZE = DEVICE_NAME_DCT_SIZE - 1;
+
+const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
+
+} // ::
+
 int get_device_setup_code(char* code) {
     // Check if the device setup code is initialized in the DCT
     int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, SETUP_CODE_SIZE);
@@ -45,18 +59,6 @@ int get_device_setup_code(char* code) {
     }
     return 0;
 }
-
-namespace {
-
-using namespace particle;
-
-// TODO: Rename ssid_prefix to device_name in DCT?
-const auto DEVICE_NAME_DCT_SIZE = DCT_SSID_PREFIX_SIZE;
-const auto DEVICE_NAME_DCT_OFFSET = DCT_SSID_PREFIX_OFFSET;
-
-const auto DEVICE_NAME_MAX_SIZE = DEVICE_NAME_DCT_SIZE - 1;
-
-} // ::
 
 bool fetch_or_generate_setup_ssid(device_code_t* code) {
     int ret = get_device_name((char*)code->value, sizeof(device_code_t::value));

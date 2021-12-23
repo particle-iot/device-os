@@ -20,7 +20,6 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "deviceid_hal.h"
-#include "dct.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,8 +33,8 @@ typedef struct device_code_t {
     uint8_t value[32];
 } device_code_t;
 
-const auto SETUP_CODE_SIZE = DCT_DEVICE_CODE_SIZE;
-const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
+// XXX: This constant is obtained from dct.h
+const auto SETUP_CODE_SIZE = 6;
 
 /**
  * Appends the device code to the end of the existing value. The length field must be set to the length of
