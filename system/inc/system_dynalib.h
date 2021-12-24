@@ -131,8 +131,9 @@ DYNALIB_FN(BASE_IDX2 + 5, system, system_set_prov_adv_svc_uuid, int(const uint8_
 #define BASE_IDX3 (BASE_IDX2 + 2)
 #endif  // HAL_PLATFORM_BLE
 
-DYNALIB_FN(BASE_IDX3 + 0, system, system_set_control_request_filter, int(Vector<uint16_t> inputReq, void* reserved))
-DYNALIB_FN(BASE_IDX3 + 1, system, system_clear_control_request_filter, int(void* reserved))
+DYNALIB_FN(BASE_IDX3 + 0, system, system_clear_control_request_filter, int(void* reserved))
+DYNALIB_FN(BASE_IDX3 + 1, system, system_set_control_request_filter, int(uint16_t reqType, void* reserved))
+
 
 DYNALIB_END(system)
 

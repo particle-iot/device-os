@@ -103,6 +103,13 @@ private:
     pin_t pin_ = std::numeric_limits<pin_t>::max();
 };
 
+
+typedef struct system_control_req_filter {
+    size_t size;
+    uint16_t *filteredReqIds;
+    size_t filteredReqIdsLen;
+} system_control_req_filter;
+
 inline SleepResult::SleepResult(WakeupReason r, system_error_t e, pin_t p)
     : reason_(r),
       err_(e),
@@ -847,8 +854,12 @@ public:
 
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
-    int setControlRequestFilter(Vector<uint16_t> inputReq) {
-        return system_set_control_request_filter(inputReq, nullptr);
+    int setControlRequestFilter(system_control_req_filter* filter) {
+        int ret = 0;
+        for(unsigned i=0; i<filter->filteredReqIdsLen; i++) {
+            ret = system_set_control_request_filter(filter->filteredReqIds[i], nullptr);
+        }
+        return ret;
     }
 
     int clearControlRequestFilter() {
