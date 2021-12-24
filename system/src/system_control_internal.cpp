@@ -399,12 +399,10 @@ void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handl
     particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
-int system_set_control_request_filter(Vector<uint16_t> inputReq, void* reserved) {
-    for (unsigned ele: inputReq) {
-        if (std::find(particle::system::SystemControl::vecCtrlReq.begin(), particle::system::SystemControl::vecCtrlReq.end(), ele) == particle::system::SystemControl::vecCtrlReq.end()) {
-            LOG_DEBUG(TRACE, "Adding a new req to control req filter: %u", ele);
-            particle::system::SystemControl::vecCtrlReq.insert(particle::system::SystemControl::vecCtrlReq.size(),ele);
-        }
+int system_set_control_request_filter(uint16_t reqType, void* reserved) {
+    if (std::find(particle::system::SystemControl::vecCtrlReq.begin(), particle::system::SystemControl::vecCtrlReq.end(), reqType) == particle::system::SystemControl::vecCtrlReq.end()) {
+        LOG_DEBUG(TRACE, "Adding a new req to control req filter: %u", reqType);
+        particle::system::SystemControl::vecCtrlReq.insert(particle::system::SystemControl::vecCtrlReq.size(),reqType);
     }
     return particle::system::SystemControl::vecCtrlReq.size();
 }
@@ -431,7 +429,7 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
 }
 
-int system_set_control_request_filter(Vector<uint16_t> inputReq, void* reserved) {
+int system_set_control_request_filter(uint16_t reqType, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
