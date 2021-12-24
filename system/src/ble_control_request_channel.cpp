@@ -615,7 +615,7 @@ void BleControlRequestChannel::run() {
         if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
             LOG(TRACE, "Connected");
             if (BleListeningModeHandler::instance()->getProvModeStatus()) {
-                system_notify_event(ble_prov_mode, ble_prov_mode_connected, nullptr, nullptr, nullptr, NOTIFY_SYNCHRONOUSLY);
+                system_notify_event(ble_prov_mode, ble_prov_mode_connected);
             }
             ret = initChannel();
             if (ret != 0) {
@@ -624,7 +624,7 @@ void BleControlRequestChannel::run() {
         } else if (prevConnHandle != BLE_INVALID_CONN_HANDLE) {
             LOG(TRACE, "Disconnected");
             if (BleListeningModeHandler::instance()->getProvModeStatus()) {
-                system_notify_event(ble_prov_mode, ble_prov_mode_disconnected, nullptr, nullptr, nullptr, NOTIFY_SYNCHRONOUSLY);
+                system_notify_event(ble_prov_mode, ble_prov_mode_disconnected);
             }
         }
     }

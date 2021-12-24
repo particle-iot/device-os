@@ -24,9 +24,6 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "spark_wiring_vector.h"
-
-using spark::Vector;
 
 #ifndef SYSTEM_CONTROL_ENABLED
 #if defined(USB_VENDOR_REQUEST_ENABLE) || HAL_PLATFORM_BLE
@@ -164,10 +161,10 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved);
 // while sending the reply
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved);
 
-// The control requests in the vector are filtered out from executing
+// The control requests in the list are filtered out from executing
 int system_set_control_request_filter(uint16_t reqType, void* reserved);
 
-// The control requests in the vector are cleared and all the control requests can be executed
+// The control requests in the list are cleared and all the control requests can be executed
 int system_clear_control_request_filter(void* reserved);
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
