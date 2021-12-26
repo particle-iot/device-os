@@ -40,13 +40,13 @@ static PanicHook panicHook = panic_internal;
 * Public Functions
 ****************************************************************************/
 
-void panic_hook_set(const PanicHook overrideFunc)
+void panic_set_hook(const PanicHook panicHookFunction, void* reserved)
 {
     //store the new hook
-    panicHook = (overrideFunc != NULL) ? overrideFunc : panic_internal;
+    panicHook = panicHookFunction;
 }
 
-void panic_do(const ePanicCode code, void* extraInfo, void(*dummy)(uint32_t))
+void panic_(const ePanicCode code, void* extraInfo, void(*unnamed)(uint32_t))
 {
     #if HAL_PLATFORM_CORE_ENTER_PANIC_MODE
         HAL_Core_Enter_Panic_Mode(NULL);
@@ -54,10 +54,15 @@ void panic_do(const ePanicCode code, void* extraInfo, void(*dummy)(uint32_t))
         HAL_disable_irq();
     #endif // HAL_PLATFORM_CORE_ENTER_PANIC_MODE
 
-    //run the panic!
-    panicHook(code, extraInfo);
+    //run the panic! this func doens't have to return and can handle the system
+    //state / exit method on its own
+    if( panicHook ) {
+        panicHook(code, extraInfo);
+    }
 
-    //if it returns, run this code!
+    //always run the internal function if the user func returns
+    panic_internal(code, extraInfo);
+
     #if defined(RELEASE_BUILD) || PANIC_BUT_KEEP_CALM == 1
         HAL_Core_System_Reset_Ex(RESET_REASON_PANIC, code, NULL);
     #endif

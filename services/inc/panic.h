@@ -22,29 +22,31 @@ extern "C" {
 #endif
 
 typedef enum {
-    HardFault,
-    NMIFault,
-    MemManage,
-    BusFault,
-    UsageFault,
-    InvalidLenth,
-    Exit,
-    OutOfHeap,
-    SPIOverRun,
-    AssertionFailure,
-    InvalidCase,
-    PureVirtualCall,
-    StackOverflow,
-    HeapError,
+    HardFault           = 1,
+    NMIFault            = 2,
+    MemManage           = 3,
+    BusFault            = 4,
+    UsageFault          = 5,
+    InvalidLenth        = 6,
+    Exit                = 7,
+    OutOfHeap           = 8,
+    SPIOverRun          = 9,
+    AssertionFailure    = 10,
+    InvalidCase         = 11,
+    PureVirtualCall     = 12,
+    StackOverflow       = 13,
+    HeapError           = 14,
 } ePanicCode;
 
 typedef void (*PanicHook)(const ePanicCode code, const void* extraInfo);
 
 //optional function to set a hook that replaces the core body of the panic function
-void panic_set_override(const PanicHook panicHook);
+#if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+void panic_set_hook(const PanicHook panicHookFunction, void* reserved);
+#endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 
 //actually trigger the panic function
-void panic_do(const ePanicCode code, void* extraInfo, void(*)(uint32_t));
+void panic_(const ePanicCode code, void* extraInfo, void(*)(uint32_t));
 
 #ifdef __cplusplus
 }
