@@ -34,7 +34,7 @@ LOG_SOURCE_CATEGORY("panic");
 
 static void panic_internal(const ePanicCode code, const void* extraInfo);
 
-static PanicHook panicHook = panic_internal;
+static PanicHook panicHook = NULL;
 
 /****************************************************************************
 * Public Functions
@@ -54,13 +54,14 @@ void panic_(const ePanicCode code, void* extraInfo, void(*unnamed)(uint32_t))
         HAL_disable_irq();
     #endif // HAL_PLATFORM_CORE_ENTER_PANIC_MODE
 
-    //run the panic! this func doens't have to return and can handle the system
-    //state / exit method on its own
+    //run the panic hook (if present)! this func doens't have to
+    //return and can handle the system state / exit method on its own if required
     if( panicHook ) {
         panicHook(code, extraInfo);
     }
 
     //always run the internal function if the user func returns
+    //this flashes the LEDs in the fixed panic pattern
     panic_internal(code, extraInfo);
 
     #if defined(RELEASE_BUILD) || PANIC_BUT_KEEP_CALM == 1
@@ -92,13 +93,12 @@ static void panic_internal(const ePanicCode code, const void* extraInfo)
     LED_Off(PARTICLE_LED_RGB);
     LED_SetRGBColor(PANIC_LED_COLOR);
 
-    int loops = 2;
-    while(loops) {
+    for(int i = 0; i < 2; i++)
+    {
         // preamble
         panic_led_flash( MS2u(150), MS2u(100), MS2u(100) );
         panic_led_flash( MS2u(300), MS2u(100), MS2u(100) );
         panic_led_flash( MS2u(150), MS2u(100), MS2u(900) );
         panic_led_flash( MS2u(300), MS2u(300), MS2u(800) );
-        loops--;
     }
 }
