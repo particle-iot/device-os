@@ -113,6 +113,8 @@ AtomicSimpleStaticPool SleepConfigShadow::staticPool_(staticBuffer_, sizeof(stat
 volatile hal_sleep_config_t* sleepConfig = nullptr;
 volatile uint16_t sleepReqId = KM0_KM4_IPC_INVALID_REQ_ID;
 int sleepResult = 0;
+uint32_t sleepDuration = 0;
+uint32_t sleepStart = 0;
 
 SleepConfigShadow sleepConfigShadow;
 
@@ -125,13 +127,16 @@ void onSleepRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
 }
 
 void configureSleepWakeupSource(const hal_sleep_config_t* config) {
+    sleepDuration = 0;
     const hal_wakeup_source_base_t* source = config->wakeup_sources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             const hal_wakeup_source_rtc_t* rtcWakeup = (const hal_wakeup_source_rtc_t*)source;
+            sleepDuration += rtcWakeup->ms;
             SOCPS_AONTimerCmd(DISABLE);
             SOCPS_AONTimer(rtcWakeup->ms);
             SOCPS_AONTimerCmd(ENABLE);
+            sleepStart = SYSTIMER_GetPassTime(0);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             const hal_wakeup_source_gpio_t* gpioWakeup = (const hal_wakeup_source_gpio_t*)source;
             uint32_t rtlPin = hal_pin_to_rtl_pin(gpioWakeup->pin);
@@ -296,17 +301,30 @@ void sleepProcess(void) {
                 SOCPS_SWRLDO_Suspend(ENABLE);
                 SOCPS_SleepInit();
                 configureSleepWakeupSource(config);
-                sleepConfigShadow.reset();
                 SOCPS_SleepCG();
                 SOCPS_SWRLDO_Suspend(DISABLE);
 
                 SOCPS_AONTimerCmd(DISABLE);
 
+                // Figure out the wakeup reason
+                uint32_t wakeReason = 0;
+                uint32_t sleepEnd = SYSTIMER_GetPassTime(0);
+                if ((sleepDuration > 0) && ((sleepEnd - sleepStart) >= sleepDuration)) {
+                    wakeReason |= BIT_HP_WEVT_TIMER_STS;
+                }
+                uint32_t intStatusA = HAL_READ32((uint32_t)GPIOA_BASE, 0x40);
+                uint32_t intStatusB = HAL_READ32((uint32_t)GPIOB_BASE, 0x40);
+                if (intStatusA != 0 || intStatusB != 0) {
+                    wakeReason |= BIT_HP_WEVT_GPIO_STS;
+                    // Let KM4 figure out the wakeup pin
+                }
+
+                sleepConfigShadow.reset();
+
                 int priMask = HAL_disable_irq();
                 // Copy and paste from km4_resume()
                 km4_clock_on();
-                // FIXME: figure out wakeup reason
-                HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_WAKE_EVENT_STATUS1, BIT_HP_WEVT_MISC_STS);
+                HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_WAKE_EVENT_STATUS1, wakeReason);
                 SOCPS_AudioLDO(ENABLE);
                 HAL_enable_irq(priMask);
             }

@@ -530,6 +530,7 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
     if (reset_reason == 0xffffffff) {
         reset_reason = BOOT_Reason();
     }
+    reset_reason = BOOT_Reason();
     switch(resetType) {
         case SOFTWARE_RESET: {
             return (reset_reason & (BIT_BOOT_KM4SYS_RESET_HAPPEN | BIT_BOOT_SYS_RESET_HAPPEN));
@@ -550,8 +551,9 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
         case POWER_DOWN_RESET: {
             return reset_reason == 0;
         }
-        default:
+        default: {
             return false;
+        }
     }
     return false;
 }

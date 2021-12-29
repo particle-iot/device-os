@@ -155,6 +155,9 @@ SECTIONS
     RSIP_KEY_Request = 0x35e9;
     RSIP_MMU_Config = 0x3625;
     RSIP_MMU_Cmd = 0x3649;
+    SYSTIMER_Init = 0x3839;
+    SYSTIMER_TickGet = 0x3885;
+    SYSTIMER_GetPassTime = 0x3899;
 }
 
 /*SECTIONS

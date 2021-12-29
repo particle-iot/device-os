@@ -87,7 +87,7 @@ public:
      * and copy code from flash to it. Power gate is used for hibernate mode.
      */
     __attribute__((section(".ram.sleep"), optimize("O0")))
-    int enter(const hal_sleep_config_t* config) {
+    int enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
         memcpy(&config_, config, sizeof(hal_sleep_config_t));
         DCache_Clean((uint32_t)&config_, sizeof(hal_sleep_config_t));
@@ -124,13 +124,38 @@ public:
         Cache_Enable(true);
         resumePsram();
 
+        // Read the int status before enabling interrupt.
+        uint32_t intStatusA = HAL_READ32((uint32_t)GPIOA_BASE, 0x40);
+        uint32_t intStatusB = HAL_READ32((uint32_t)GPIOB_BASE, 0x40);
+
         if ((priMask & 1) == 0) {
             __enable_irq();
         }
         __DSB();
         __ISB();
 
-        LOG(TRACE, "KM4: wakes up");
+        if (wakeupReason) {
+            uint32_t wakeEvent = HAL_READ32(SYSTEM_CTRL_BASE, REG_HS_WAKE_EVENT_STATUS1);
+            if (wakeEvent & BIT_HP_WEVT_TIMER_STS) {
+                constructWakeupReason((hal_wakeup_source_rtc_t**)wakeupReason, HAL_WAKEUP_SOURCE_TYPE_RTC, nullptr);
+            } else if (wakeEvent & BIT_HP_WEVT_GPIO_STS) {
+                const hal_wakeup_source_base_t* source = config_.wakeup_sources;
+                uint16_t wakeupPin = PIN_INVALID;
+                while (source) {
+                    if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+                        const hal_wakeup_source_gpio_t* gpioWakeup = (const hal_wakeup_source_gpio_t*)source;
+                        const hal_pin_info_t* pinInfo = hal_pin_map() + gpioWakeup->pin;
+                        if ((pinInfo->gpio_port == RTL_PORT_A && (intStatusA & (0x01 << pinInfo->gpio_pin)))
+                            || (pinInfo->gpio_port == RTL_PORT_B && (intStatusB & (0x01 << pinInfo->gpio_pin)))) {
+                            wakeupPin = gpioWakeup->pin;
+                            break;
+                        }
+                    }
+                    source = source->next;
+                }
+                constructWakeupReason((hal_wakeup_source_gpio_t**)wakeupReason, HAL_WAKEUP_SOURCE_TYPE_GPIO, &wakeupPin);
+            }
+        }
 
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
         os_thread_scheduling(true, nullptr);
@@ -178,7 +203,8 @@ private:
         if (mode == HAL_SLEEP_MODE_HIBERNATE) {
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
-        return SYSTEM_ERROR_NONE;
+        // TODO
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
     int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_rtc_t* rtc) {
@@ -194,6 +220,24 @@ private:
         }
         if (mode == HAL_SLEEP_MODE_HIBERNATE) {
             return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+        // TODO
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    template<typename T> int constructWakeupReason(T** wakeupReason, hal_wakeup_source_type_t type, void* data) {
+        auto wakeupSource = (T*)malloc(sizeof(T));
+        if (wakeupSource) {
+            wakeupSource->base.size = sizeof(T);
+            wakeupSource->base.version = HAL_SLEEP_VERSION;
+            wakeupSource->base.type = type;
+            wakeupSource->base.next = nullptr;
+            *wakeupReason = wakeupSource;
+            if (type == HAL_WAKEUP_SOURCE_TYPE_GPIO && data != nullptr) {
+                ((hal_wakeup_source_gpio_t*)wakeupSource)->pin = *((uint16_t*)data);
+            }
+        } else {
+            return SYSTEM_ERROR_NO_MEMORY;
         }
         return SYSTEM_ERROR_NONE;
     }
@@ -268,5 +312,5 @@ int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) 
 int hal_sleep_enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeup_source, void* reserved) {
     // Check it again just in case.
     CHECK(SleepClass::getInstance()->validateSleepConfig(config));
-    return SleepClass::getInstance()->enter(config);
+    return SleepClass::getInstance()->enter(config, wakeup_source);
 }

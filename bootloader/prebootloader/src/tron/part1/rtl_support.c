@@ -312,6 +312,14 @@ void rtlLowLevelInit() {
 
     SystemCoreClockUpdate();
 
+    if(BIT_BOOT_DSLP_RESET_HAPPEN & BOOT_Reason()) {
+        SOCPS_DsleepWakeStatusSet(TRUE);
+    } else {
+        SOCPS_DsleepWakeStatusSet(FALSE);
+    }
+
+    pinmap_init();
+
     if (SOCPS_DsleepWakeStatusGet() == FALSE) {
         OSC131K_Calibration(30000); /* PPM=30000=3% *//* 7.5ms */
 
@@ -330,8 +338,6 @@ void rtlLowLevelInit() {
         // Only clear sys stuff used by the SDK and part of RRAM_TypeDef again used by the SDK
         _memset((void*)RETENTION_RAM_BASE, 0, RETENTION_RAM_SYS_OFFSET + offsetof(RRAM_TypeDef, RRAM_USER_RSVD));
         assert_param(sizeof(RRAM_TypeDef) <= 0xB0);
-    } else {
-        SOCPS_DsleepWakeStatusSet(TRUE); /* KM4 boot check it */
     }
 
     OSC4M_Init();
@@ -405,7 +411,9 @@ void rtlPowerOnBigCore() {
     InterruptEn(IPC_IRQ_LP, 2);
     InterruptDis(UART_LOG_IRQ_LP);
 
-    km4_flash_highspeed_init();
+    if (SOCPS_DsleepWakeStatusGet() == FALSE) {
+        km4_flash_highspeed_init();
+    }
 
     /* Disable RSIP if it is enabled. Not needed after KM0 boot */
     // Note: it should be executed after km4_flash_highspeed_init(), otherwise, the flash
