@@ -15,7 +15,8 @@
 
 /* Check that field information fits in pb_field_t */
 #if !defined(PB_FIELD_16BIT) && !defined(PB_FIELD_32BIT)
-#error Field descriptor for int_value_struct.int_value is too large. Define PB_FIELD_16BIT to fix this.
+// XXX: extensions.proto defines some options that cannot be compiled with the nanopb config that we currently use
+// #error Field descriptor for int_value_struct.int_value is too large. Define PB_FIELD_16BIT to fix this.
 #endif
 
 

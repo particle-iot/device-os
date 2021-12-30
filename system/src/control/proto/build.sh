@@ -30,7 +30,8 @@ gen_proto() {
   protoc ${PROTOC_INCLUDE_PATH} --plugin=protoc-gen-nanopb=${PROTOC_NANOPB_PLUGIN} --nanopb_out=${DIR} "$1"
 }
 
-gen_proto "${PROTO_DIR}/extensions.proto"
+# XXX: extensions.proto defines some options that cannot be compiled with the nanopb config that we currently use
+# gen_proto "${PROTO_DIR}/extensions.proto"
 gen_proto "${PROTO_DIR}/common.proto"
 gen_proto "${PROTO_DIR}/control.proto"
 gen_proto "${PROTO_DIR}/config.proto"
