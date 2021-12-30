@@ -12,6 +12,8 @@
 # mkdir -p ~/Library/Python/2.7/lib/python/site-packages
 # echo 'import site; site.addsitedir("/usr/local/lib/python2.7/site-packages")' >> ~/Library/Python/2.7/lib/python/site-packages/homebrew.pth
 
+command -v protoc &> /dev/null || { echo "protoc not installed" 2>&1; exit 1; }
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 FIRMWARE_ROOT_DIR="${DIR}/../../../.."
@@ -25,11 +27,7 @@ PROTOC_INCLUDE_PATH="
   -I${NANOPB_PATH}/generator/proto"
 
 gen_proto() {
-  src_proto="$1"
-  dest_h=$(basename "$src_proto" .proto).pb.h
-  if [[ $src_proto -nt $DIR/$dest_h ]]; then
-    protoc ${PROTOC_INCLUDE_PATH} --plugin=protoc-gen-nanopb=${PROTOC_NANOPB_PLUGIN} --nanopb_out=${DIR} "$src_proto"
-  fi
+  protoc ${PROTOC_INCLUDE_PATH} --plugin=protoc-gen-nanopb=${PROTOC_NANOPB_PLUGIN} --nanopb_out=${DIR} "$1"
 }
 
 gen_proto "${PROTO_DIR}/extensions.proto"
