@@ -399,11 +399,13 @@ int Device::clearConfig(unsigned index) {
     int lastError = 0;
     for (auto& cls: classDrivers_) {
         if (cls && cls->isEnabled()) {
-            int r = cls->deinit(index);
-            if (r < 0) {
-                lastError = r;
+            if (cls->isConfigured()) {
+                int r = cls->deinit(index);
+                if (r < 0) {
+                    lastError = r;
+                }
+                cls->configured(false);
             }
-            cls->configured(false);
         }
     }
     return lastError;

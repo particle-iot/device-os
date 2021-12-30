@@ -129,6 +129,8 @@ private:
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     RecursiveMutex mutex_;
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+    volatile bool initialized_ = false;
 };
 
 } // namespace usbd
