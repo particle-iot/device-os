@@ -130,15 +130,28 @@ RtlUsbDriver::~RtlUsbDriver() {
 }
 
 int RtlUsbDriver::attach() {
+    if (initialized_) {
+        // Ignore
+        return 0;
+    }
+    initialized_ = true;
     // NOTE: these calls may fail
-    usbd_init(&usbdCfg_);
-    usbd_register_class(&classDrv_);
+    auto r = usbd_init(&usbdCfg_);
+    if (r) {
+        // LOG(ERROR, "usbd_init failed: %d", r);
+        initialized_ = false;
+        CHECK_RTL_USB_TO_SYSTEM(r);
+    } else {
+        usbd_register_class(&classDrv_);
+    }
+
     return 0;
 }
 
 int RtlUsbDriver::detach() {
     usbd_unregister_class();
     usbd_deinit();
+    initialized_ = true;
     return 0;
 }
 
