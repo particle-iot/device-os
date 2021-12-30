@@ -114,6 +114,7 @@ void hal_interrupt_uninit(void) {
     }
 }
 
+// FIXME: attaching interrupt on KM4 side will also enable interrupt on KM0 (since it can wake up KM0 for now)?
 int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* data, InterruptMode mode, hal_interrupt_extra_configuration_t* config) {
     CHECK_TRUE(hal_pin_is_valid(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
     hal_pin_info_t* pinInfo = hal_pin_map() + pin;
@@ -227,6 +228,9 @@ void hal_interrupt_disable_all(void) {
 void hal_interrupt_suspend(void) {
     for (int i = 0; i < TOTAL_PINS; i++) {
         if (interruptsConfig[i].state == INT_STATE_ENABLED) {
+            const uint32_t rtlPin = hal_pin_to_rtl_pin(i);
+            GPIO_INTMode(rtlPin, DISABLE, 0, 0, 0);
+            GPIO_INTConfig(rtlPin, DISABLE);
             interruptsConfig[i].state = INT_STATE_SUSPENDED;
         }
     }

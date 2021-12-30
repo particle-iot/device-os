@@ -102,17 +102,21 @@ public:
             return SYSTEM_ERROR_INTERNAL;
         }
 
+        int priMask = __get_PRIMASK();
+        __disable_irq();
+        __DSB();
+        __ISB();
+
+        hal_interrupt_suspend();
+
         Cache_Enable(false);
         if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
             suspendPsram(false);
         } else {
             suspendPsram(true);
         }
-        
-        int priMask = __get_PRIMASK();
-        __disable_irq();
-        __DSB();
-        __ISB();
+
+        // WARNING: any function being called after PSRAM is suspended should reside in SRAM
 
         DelayMs(20);
         __SEV(); // signal event, also signal to KM0
@@ -127,13 +131,6 @@ public:
         // Read the int status before enabling interrupt.
         uint32_t intStatusA = HAL_READ32((uint32_t)GPIOA_BASE, 0x40);
         uint32_t intStatusB = HAL_READ32((uint32_t)GPIOB_BASE, 0x40);
-
-        if ((priMask & 1) == 0) {
-            __enable_irq();
-        }
-        __DSB();
-        __ISB();
-
         if (wakeupReason) {
             uint32_t wakeEvent = HAL_READ32(SYSTEM_CTRL_BASE, REG_HS_WAKE_EVENT_STATUS1);
             if (wakeEvent & BIT_HP_WEVT_TIMER_STS) {
@@ -156,6 +153,14 @@ public:
                 constructWakeupReason((hal_wakeup_source_gpio_t**)wakeupReason, HAL_WAKEUP_SOURCE_TYPE_GPIO, &wakeupPin);
             }
         }
+
+        hal_interrupt_restore();
+
+        if ((priMask & 1) == 0) {
+            __enable_irq();
+        }
+        __DSB();
+        __ISB();
 
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
         os_thread_scheduling(true, nullptr);

@@ -261,7 +261,6 @@ void enterDeepSleep() {
 
 
 void sleepInit(void) {
-    ConfigDebugClose = 0;
     km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_SLEEP, onSleepRequestReceived, nullptr);
 }
 
