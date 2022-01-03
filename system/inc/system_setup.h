@@ -30,14 +30,6 @@
 #include "wlan_hal.h"
 #include <memory>
 
-#if PLATFORM_ID>2
-#define SETUP_OVER_SERIAL1 1
-#endif
-
-#ifndef SETUP_OVER_SERIAL1
-#define SETUP_OVER_SERIAL1 0
-#endif
-
 typedef int (*ConnectCallback)( void* data,
                                 const char *ssid,
                                 const char *password,
@@ -101,12 +93,6 @@ protected:
 
 private:
     USBSerial serial;
-#if SETUP_OVER_SERIAL1
-    bool serial1Enabled;
-    uint8_t magicPos;                   // how far long the magic key we are
-    // Opaque pointer
-    void* tester;
-#endif
 };
 
 #if Wiring_WiFi

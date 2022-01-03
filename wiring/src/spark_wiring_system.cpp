@@ -8,7 +8,6 @@
 #include "system_task.h"
 #include "system_control.h"
 #include "system_network.h"
-#include "spark_wiring_wifitester.h"
 
 #if Wiring_LogConfig
 extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
@@ -101,8 +100,7 @@ bool SystemClass::enableFeature(LoggingFeature) {
 #endif
 
 bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
-    WiFiTester::init();
-    return true;
+    return false;
 }
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
