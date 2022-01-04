@@ -18,6 +18,9 @@
 #pragma once
 
 #include "system_control.h"
+#include "spark_wiring_vector.h"
+
+using spark::Vector;
 
 #if SYSTEM_CONTROL_ENABLED
 
