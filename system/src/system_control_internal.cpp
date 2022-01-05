@@ -36,8 +36,6 @@
 #include "control/storage.h"
 #include "control/cloud.h"
 
-Vector<uint16_t> particle::system::SystemControl::vecCtrlReq;
-
 namespace particle {
 
 namespace system {
@@ -111,9 +109,19 @@ void SystemControl::run() {
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
-    if (std::find(particle::system::SystemControl::vecCtrlReq.begin(), particle::system::SystemControl::vecCtrlReq.end(), req->type) != particle::system::SystemControl::vecCtrlReq.end()) {
-        LOG(TRACE, "Control request %u filtered out", req->type);
-        return;
+    // All requests are allowed if vector is empty
+    // If vector is non-empty, only those requests in the vector are allowed. Others are filtered out
+    if (!vecCtrlReq_.isEmpty()) {
+        bool reqFound = false;
+        for (auto i=0; i<vecCtrlReq_.size() && !reqFound; i++) {
+            if (vecCtrlReq_[i] == req->type) {
+                reqFound = true;
+            }
+        }
+        if (!reqFound) {
+            LOG_DEBUG(TRACE, "Control req %u filtered out", req->type);
+            return;
+        }
     }
     switch (req->type) {
     case CTRL_REQUEST_DEVICE_ID: {
@@ -399,17 +407,26 @@ void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handl
     particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
-int system_set_control_request_filter(uint16_t reqType, void* reserved) {
-    if (std::find(particle::system::SystemControl::vecCtrlReq.begin(), particle::system::SystemControl::vecCtrlReq.end(), reqType) == particle::system::SystemControl::vecCtrlReq.end()) {
-        LOG_DEBUG(TRACE, "Adding a new req to control req filter: %u", reqType);
-        particle::system::SystemControl::vecCtrlReq.insert(particle::system::SystemControl::vecCtrlReq.size(),reqType);
+int system_ctrl_set_request_filter(uint16_t reqType, void* reserved) {
+    // check if the element is already there
+    for (auto t : particle::system::SystemControl::instance()->vecCtrlReq_) {
+        if (t == reqType) {
+            LOG(TRACE, "TP2 ctrl req already exists");
+            return SYSTEM_ERROR_ALREADY_EXISTS;
+        }
     }
-    return particle::system::SystemControl::vecCtrlReq.size();
+    auto ret = particle::system::SystemControl::instance()->vecCtrlReq_.append(reqType);
+    if (!ret) {
+        LOG(TRACE, "TP1 Memory error");
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    LOG(TRACE, "Added a new req to control req filter: %u", reqType);
+    return particle::system::SystemControl::instance()->vecCtrlReq_.size();
 }
 
-int system_clear_control_request_filter(void* reserved) {
-    particle::system::SystemControl::vecCtrlReq.clear();
-    return particle::system::SystemControl::vecCtrlReq.size();
+int system_ctrl_clear_request_filter(void* reserved) {
+    particle::system::SystemControl::instance()->vecCtrlReq_.clear();
+    return particle::system::SystemControl::instance()->vecCtrlReq_.size();
 }
 
 #else // !SYSTEM_CONTROL_ENABLED
@@ -429,11 +446,11 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
 }
 
-int system_set_control_request_filter(uint16_t reqType, void* reserved) {
+int system_ctrl_set_request_filter(uint16_t reqType, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int system_clear_control_request_filter(void* reserved) {
+int system_ctrl_clear_request_filter(void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 

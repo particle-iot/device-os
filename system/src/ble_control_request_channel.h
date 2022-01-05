@@ -63,8 +63,7 @@ public:
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
-    void setProvUuids(const uint8_t* svcUuid, const uint8_t* txUuid, const uint8_t* rxUuid, size_t len);
-    bool getProfInitStatus();
+    void setProvUuids(hal_ble_uuid_t svcUuid, hal_ble_uuid_t txUuid, hal_ble_uuid_t rxUuid);
 protected:
     explicit BleControlRequestChannel(ControlRequestHandler* handler);
     ~BleControlRequestChannel();
@@ -127,11 +126,11 @@ private:
     volatile bool subscribed_; // Set to `true` if the client is subscribed to the notifications
     volatile bool writable_; // Set to `true` if the TX characteristic is writable
 
-    static bool initialized_;
+    bool initialized_;
 
-    uint8_t PROV_CTRL_SERVICE_UUID[BLE_SIG_UUID_128BIT_LEN];
-    uint8_t PROV_SEND_CHAR_UUID[BLE_SIG_UUID_128BIT_LEN];
-    uint8_t PROV_RECV_CHAR_UUID[BLE_SIG_UUID_128BIT_LEN];
+    hal_ble_uuid_t provCtrlSvcUuid_{};
+    hal_ble_uuid_t provSendCharUuid_{};
+    hal_ble_uuid_t provRecvCharUuid_{};
 
     hal_ble_attr_handle_t sendCharHandle_; // TX characteristic handle
     hal_ble_attr_handle_t sendCharCccdHandle_; // TX characteristic CCCD handle

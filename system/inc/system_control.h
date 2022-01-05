@@ -162,10 +162,10 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved);
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved);
 
 // The control requests in the list are filtered out from executing
-int system_set_control_request_filter(uint16_t reqType, void* reserved);
+int system_ctrl_set_request_filter(uint16_t reqType, void* reserved);
 
 // The control requests in the list are cleared and all the control requests can be executed
-int system_clear_control_request_filter(void* reserved);
+int system_ctrl_clear_request_filter(void* reserved);
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 

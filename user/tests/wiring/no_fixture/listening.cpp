@@ -20,8 +20,7 @@
 
 #if HAL_PLATFORM_BLE
 
-// TODO: Should we add a test case for the default case? For users that don't touch the flag
-
+SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
 
 // Dot not enter listening mode based on the flag

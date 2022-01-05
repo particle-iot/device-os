@@ -84,13 +84,13 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved);
 int hal_get_device_secret(char* data, size_t size, void* reserved);
 
 /**
- * Get the device's hardware version.
+ * Set the device's secret.
  */
 // TODO: Move this function to an appropriate module
 int hal_set_device_secret(char* data, size_t size, void* reserved);
 
 /**
- * Get the device's hardware version.
+ * Get the device's secret.
  */
 // TODO: Move this function to an appropriate module
 int hal_clear_device_secret(void* reserved);
