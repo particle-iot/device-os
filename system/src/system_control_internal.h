@@ -18,17 +18,17 @@
 #pragma once
 
 #include "system_control.h"
-#include "spark_wiring_vector.h"
-
-using spark::Vector;
 
 #if SYSTEM_CONTROL_ENABLED
 
 #include "control_request_handler.h"
 #include "usb_control_request_channel.h"
 #include "ble_control_request_channel.h"
+#include "spark_wiring_vector.h"
 
 #include "debug.h"
+
+using spark::Vector;
 
 namespace particle {
 
@@ -54,7 +54,7 @@ public:
 
     static SystemControl* instance();
 
-    static Vector<uint16_t> vecCtrlReq;
+    Vector<uint16_t> vecCtrlReq_;
 
 private:
 #ifdef USB_VENDOR_REQUEST_ENABLE

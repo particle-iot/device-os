@@ -101,11 +101,10 @@ enum SystemEventsParam {
     time_changed_sync = 1,
 
     // BLE provisioning mode
-    ble_prov_mode_connected = 1,
-    ble_prov_mode_disconnected = 2,
-    ble_prov_mode_handshake_failed = 3,
-    ble_prov_mode_handshake_error = 4,
-    ble_prov_mode_handshake_done = 5
+    ble_prov_mode_connected = 0,
+    ble_prov_mode_disconnected = 1,
+    ble_prov_mode_handshake_failed = 2,
+    ble_prov_mode_handshake_done = 3
 
 };
 

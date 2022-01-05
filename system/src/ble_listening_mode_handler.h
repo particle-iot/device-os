@@ -78,7 +78,7 @@ private:
     static bool exited_;
     static bool provMode_;
 
-    uint8_t PROV_BLE_CTRL_REQ_SVC_UUID[BLE_SIG_UUID_128BIT_LEN] = {0};
+    uint8_t provBleCtrlReqSvcUuid_[BLE_SIG_UUID_128BIT_LEN] = {0};
 
     Vector<uint8_t> ctrlReqAdvData_;
     Vector<uint8_t> ctrlReqSrData_;

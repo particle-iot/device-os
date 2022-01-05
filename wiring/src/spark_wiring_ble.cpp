@@ -2082,11 +2082,6 @@ bool BleLocalDevice::getProvisioningStatus() const{
     return system_get_ble_prov_status(nullptr);
 }
 
-int BleLocalDevice::setProvisioningUuids(const uint8_t* svcUuid, const uint8_t* txUuid, const uint8_t* rxUuid) const {
-    // Assumes all the custom UUIDs are 128 byte long
-    return system_set_prov_svc_uuid(svcUuid, txUuid, rxUuid, BLE_SIG_UUID_128BIT_LEN, nullptr);
-}
-
 int BleLocalDevice::setProvisioningAdvServiceUuid(const uint8_t* buf) const {
     return system_set_prov_adv_svc_uuid(buf, BLE_SIG_UUID_128BIT_LEN, nullptr);
 }

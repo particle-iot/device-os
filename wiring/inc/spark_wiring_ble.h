@@ -937,10 +937,8 @@ public:
         BleUuid tempSvcUUID(svcUuid);
         BleUuid tempTxUUID(txUuid);
         BleUuid tempRxUUID(rxUuid);
-        return setProvisioningUuids(tempSvcUUID.rawBytes(), tempTxUUID.rawBytes(), tempRxUUID.rawBytes());
+        return system_set_prov_svc_uuid(tempSvcUUID.halUUID(), tempTxUUID.halUUID(), tempRxUUID.halUUID(), nullptr);
     }
-
-    int setProvisioningUuids(const uint8_t* svcUuid, const uint8_t* txUuid, const uint8_t* rxUuid) const;
 
     template<typename T>
     int setProvisioningAdvServiceUuid(T uuid) const {

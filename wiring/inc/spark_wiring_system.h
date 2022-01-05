@@ -861,13 +861,13 @@ public:
     int setControlRequestFilter(system_control_req_filter* filter) {
         int ret = 0;
         for(unsigned i=0; i<filter->filteredReqIdsLen; i++) {
-            ret = system_set_control_request_filter(filter->filteredReqIds[i], nullptr);
+            ret = system_ctrl_set_request_filter(filter->filteredReqIds[i], nullptr);
         }
         return ret;
     }
 
     int clearControlRequestFilter() {
-        return system_clear_control_request_filter(nullptr);
+        return system_ctrl_clear_request_filter(nullptr);
     }
 
 private:
