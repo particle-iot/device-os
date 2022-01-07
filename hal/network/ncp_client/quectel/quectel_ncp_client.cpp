@@ -1360,20 +1360,30 @@ int QuectelNcpClient::registerNet() {
             }
         }
 
-        // Configure Network Category to be Searched under LTE RAT
-        // Set to use LTE Cat M1 if not already set, take effect immediately
-        auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
-        // LOG(TRACE,"respOpMode: %s", respOpMode);
+        // FIXME: Once NCP_ID is fixed (unique) for BG95-M1 and BG95-MF,
+        // remove this CGMM polling for model number!!!
+        auto respCgmm = parser_.sendCommand(10000, "AT+CGMM");
+        char cgmmStr[32] = {};
+        auto retCgmm = CHECK_PARSER(respCgmm.scanf("%31[^\n]", cgmmStr));
+        CHECK_PARSER_OK(respCgmm.readResult());
+        // LOG(INFO, "CGMM: %s", cgmmStr);
+        if (retCgmm == 1 && strstr(cgmmStr, "BG95-MF")) {
 
-        int iotOpMode = -1;
-        r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
-        // LOG(TRACE,"iotOpMode: %d", iotOpMode);
+            // Configure Network Category to be Searched under LTE RAT
+            // Set to use LTE Cat M1 if not already set, take effect immediately
+            auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
+            // LOG(TRACE,"respOpMode: %s", respOpMode);
 
-        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-        r = CHECK_PARSER(respOpMode.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        if (iotOpMode != 0) {
-            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+            int iotOpMode = -1;
+            r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
+            // LOG(TRACE,"iotOpMode: %d", iotOpMode);
+
+            CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+            r = CHECK_PARSER(respOpMode.readResult());
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            if (iotOpMode != 0) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+            }
         }
     }
 
