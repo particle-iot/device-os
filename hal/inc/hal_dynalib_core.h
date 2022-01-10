@@ -65,7 +65,7 @@ DYNALIB_FN(18, hal_core, HAL_Bootloader_Get_Flag, uint16_t(BootloaderFlag))
 DYNALIB_FN(19, hal_core, HAL_Bootloader_Lock, void(bool))
 DYNALIB_FN(20, hal_core, HAL_Core_System_Reset_FlagSet, bool(RESET_TypeDef))
 DYNALIB_FN(21, hal_core, HAL_Core_Runtime_Info, uint32_t(runtime_info_t*, void*))
-DYNALIB_FN(22, hal_core, HAL_Set_System_Config, int(hal_system_config_t, const void*, unsigned))
+DYNALIB_FN(22, hal_core, HAL_Set_System_Config, int(hal_system_config_t, const void*, size_t))
 DYNALIB_FN(23, hal_core, HAL_Core_Enter_Safe_Mode, void(void*))
 DYNALIB_FN(24, hal_core, HAL_Feature_Get, bool(HAL_Feature))
 DYNALIB_FN(25, hal_core, HAL_Feature_Set, int(HAL_Feature, bool))
@@ -87,6 +87,8 @@ DYNALIB_FN(37, hal_core, hal_get_device_hw_version, int(uint32_t*, void*))
 DYNALIB_FN(38, hal_core, hal_get_device_hw_model, int(uint32_t*, uint32_t*, void*))
 DYNALIB_FN(39, hal_core, hal_get_device_serial_number, int(char*, size_t, void*))
 DYNALIB_FN(40, hal_core, hal_get_device_secret, int(char*, size_t, void*))
+
+DYNALIB_FN(41, hal_core, HAL_Get_System_Config, int(hal_system_config_t, void*, size_t*))
 
 DYNALIB_END(hal_core)
 

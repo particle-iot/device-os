@@ -260,7 +260,7 @@ int echo(ctrl_request* req) {
 }
 
 #if !HAL_PLATFORM_NRF52840
-
+/*
 int handleSetSecurityKeyRequest(ctrl_request* req) {
     particle_ctrl_SetSecurityKeyRequest pbReq = {};
     DecodedString pbKey(&pbReq.data);
@@ -286,8 +286,10 @@ int handleGetSecurityKeyRequest(ctrl_request* req) {
 
     return ret;
 }
-
+*/
 int handleSetServerAddressRequest(ctrl_request* req) {
+    return -1;
+/*
     particle_ctrl_SetServerAddressRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_SetServerAddressRequest_fields, &pbReq);
     if (ret == 0) {
@@ -314,9 +316,12 @@ int handleSetServerAddressRequest(ctrl_request* req) {
         }
     }
     return ret;
+*/
 }
 
 int handleGetServerAddressRequest(ctrl_request* req) {
+    return -1;
+/*
     particle_ctrl_GetServerAddressRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_GetServerAddressRequest_fields, &pbReq);
     if (ret == 0) {
@@ -344,8 +349,9 @@ int handleGetServerAddressRequest(ctrl_request* req) {
         }
     }
     return ret;
+*/
 }
-
+/*
 int handleSetServerProtocolRequest(ctrl_request* req) {
     particle_ctrl_SetServerProtocolRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_SetServerProtocolRequest_fields, &pbReq);
@@ -371,7 +377,7 @@ int handleGetServerProtocolRequest(ctrl_request* req) {
     const int ret = encodeReplyMessage(req, particle_ctrl_GetServerProtocolReply_fields, &pbRep);
     return ret;
 }
-
+*/
 int handleSetSoftapSsidRequest(ctrl_request* req) {
     particle_ctrl_SetSoftApSsidRequest pbReq = {};
     int ret = decodeRequestMessage(req, particle_ctrl_SetSoftApSsidRequest_fields, &pbReq);

@@ -152,7 +152,12 @@ bool HAL_Feature_Get(HAL_Feature feature)
     return false;
 }
 
-int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned length)
+int HAL_Set_System_Config(hal_system_config_t param, const void* data, size_t size)
+{
+    return -1;
+}
+
+int HAL_Get_System_Config(hal_system_config_t param, void* data, size_t* size)
 {
     return -1;
 }

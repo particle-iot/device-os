@@ -852,6 +852,10 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
     return length;
 }
 
+int HAL_Get_System_Config(hal_system_config_t param, void* data, size_t* size) {
+    return -1;
+}
+
 int fetch_system_properties(key_value* storage, int keyCount, uint16_t flags) {
 	int keys = 0;
 

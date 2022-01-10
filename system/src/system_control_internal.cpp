@@ -220,28 +220,12 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::handleIsClaimedRequest(req));
         break;
     }
-    case CTRL_REQUEST_SET_SECURITY_KEY: {
-        setResult(req, control::config::handleSetSecurityKeyRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_GET_SECURITY_KEY: {
-        setResult(req, control::config::handleGetSecurityKeyRequest(req));
-        break;
-    }
     case CTRL_REQUEST_SET_SERVER_ADDRESS: {
         setResult(req, control::config::handleSetServerAddressRequest(req));
         break;
     }
     case CTRL_REQUEST_GET_SERVER_ADDRESS: {
         setResult(req, control::config::handleGetServerAddressRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_SET_SERVER_PROTOCOL: {
-        setResult(req, control::config::handleSetServerProtocolRequest(req));
-        break;
-    }
-    case CTRL_REQUEST_GET_SERVER_PROTOCOL: {
-        setResult(req, control::config::handleGetServerProtocolRequest(req));
         break;
     }
     case CTRL_REQUEST_START_NYAN_SIGNAL: {

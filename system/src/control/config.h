@@ -38,12 +38,8 @@ int echo(ctrl_request* req);
 
 int handleSetClaimCodeRequest(ctrl_request* req);
 int handleIsClaimedRequest(ctrl_request* req);
-int handleSetSecurityKeyRequest(ctrl_request* req);
-int handleGetSecurityKeyRequest(ctrl_request* req);
 int handleSetServerAddressRequest(ctrl_request* req);
 int handleGetServerAddressRequest(ctrl_request* req);
-int handleSetServerProtocolRequest(ctrl_request* req);
-int handleGetServerProtocolRequest(ctrl_request* req);
 int handleStartNyanRequest(ctrl_request* req);
 int handleStopNyanRequest(ctrl_request* req);
 int handleSetSoftapSsidRequest(ctrl_request* req);
