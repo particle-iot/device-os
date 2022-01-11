@@ -158,6 +158,13 @@ SECTIONS
     SYSTIMER_Init = 0x3839;
     SYSTIMER_TickGet = 0x3885;
     SYSTIMER_GetPassTime = 0x3899;
+    mpu_enable = 0x3359;
+    mpu_disable = 0x3371;
+    mpu_init = 0x3385;
+    mpu_set_mem_attr = 0x33ad;
+    mpu_region_cfg = 0x3401;
+    mpu_entry_free = 0x34ed;
+    mpu_entry_alloc = 0x34f9;
 }
 
 /*SECTIONS

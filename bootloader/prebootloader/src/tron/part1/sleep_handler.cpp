@@ -34,6 +34,8 @@ extern "C" void SOCPS_SetWakepin(uint32_t PinIdx, uint32_t Polarity);
 
 namespace {
 
+// Note: We need to backup the sleep configuration on the KM0 side
+// The KM4 SRAM is suspended after KM4 is clock gated
 class SleepConfigShadow {
 public:
     SleepConfigShadow()

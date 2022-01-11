@@ -91,6 +91,15 @@ public:
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
         memcpy(&config_, config, sizeof(hal_sleep_config_t));
         DCache_Clean((uint32_t)&config_, sizeof(hal_sleep_config_t));
+
+        HAL_USB_Detach();
+
+        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+            if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
+                hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
+            }
+        }
+
         // Disable thread scheduling
         os_thread_scheduling(false, nullptr);
         // Disable SysTick
@@ -155,6 +164,8 @@ public:
         }
 
         hal_interrupt_restore();
+
+        HAL_USB_Attach();
 
         if ((priMask & 1) == 0) {
             __enable_irq();

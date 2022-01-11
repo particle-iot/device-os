@@ -61,6 +61,7 @@ const uint32_t retention_ram_patch_array[2][RETENTION_RAM_SYS_OFFSET / 4] = {
 };
 
 uint32_t SDM32K_Read(uint32_t adress);
+void SOCPS_SNOOZE_Config(uint32_t bitmask, uint32_t status);
 
 extern uintptr_t link_retention_ram_start;
 extern CPU_PWR_SEQ SYSPLL_ON_SEQ[];
@@ -270,6 +271,21 @@ static void app_pmc_patch() {
     app_load_patch_to_retention(version);
 }
 
+static uint32_t app_mpu_nocache_init(void) {
+	mpu_region_config mpu_cfg;
+	uint32_t mpu_entry = 0;
+
+	mpu_entry = mpu_entry_alloc();
+	mpu_cfg.region_base = 0x00000000;
+	mpu_cfg.region_size = 0x000C4000;
+	mpu_cfg.xn = MPU_EXEC_ALLOW;
+	mpu_cfg.ap = MPU_UN_PRIV_RW;
+	mpu_cfg.sh = MPU_NON_SHAREABLE;
+	mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+	mpu_region_cfg(mpu_entry, &mpu_cfg);
+
+	return 0;
+}
 
 // Copy-paste from BOOT_FLASH_Image1()
 void rtlLowLevelInit() {
@@ -342,9 +358,16 @@ void rtlLowLevelInit() {
 
     OSC4M_Init();
     OSC2M_Calibration(OSC2M_CAL_CYC_128, 30000); /* PPM=30000=3% *//* 0.5 */
+
+    SYSTIMER_Init(); /* 0.2ms */
+
+    SOCPS_SNOOZE_Config((BIT_XTAL_REQ_SNOOZE_MSK | BIT_CAPTOUCH_SNOOZE_MSK), ENABLE);
     
     app_start_autoicg();
     app_pmc_patch();
+
+    mpu_init();
+    app_mpu_nocache_init();
 }
 
 // app_pmu_init()
