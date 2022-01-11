@@ -800,8 +800,7 @@ int HAL_Set_System_Config(hal_system_config_t param, const void* data, size_t si
 {
     switch (param) {
     case SYSTEM_CONFIG_DEVICE_PRIVATE_KEY:
-    case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
-    case SYSTEM_CONFIG_SERVER_ADDRESS: {
+    case SYSTEM_CONFIG_SERVER_PUBLIC_KEY: {
         if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
             return SYSTEM_ERROR_INVALID_STATE; // Dual protocol support is deprecated
         }
@@ -815,11 +814,6 @@ int HAL_Set_System_Config(hal_system_config_t param, const void* data, size_t si
         case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
             offs = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
             actualSize = DCT_ALT_SERVER_PUBLIC_KEY_SIZE;
-            break;
-        case SYSTEM_CONFIG_SERVER_ADDRESS:
-            offs = DCT_ALT_SERVER_ADDRESS_OFFSET;
-            actualSize = DCT_ALT_SERVER_ADDRESS_SIZE;
-            static_assert(DCT_ALT_SERVER_ADDRESS_SIZE == sizeof(ServerAddress), "");
             break;
         }
         if (size != actualSize) {
@@ -829,13 +823,38 @@ int HAL_Set_System_Config(hal_system_config_t param, const void* data, size_t si
         cloud_disconnect(0 /* flags */, CLOUD_DISCONNECT_REASON_SETUP);
         const int r = dct_write_app_data(data, offs, size);
         if (r != 0) {
-            return SYSTEM_ERROR_FLASH_IO;
+            return SYSTEM_ERROR_IO;
         }
         system_pending_shutdown(RESET_REASON_SETUP);
-        return 0; // Unreachable
+        return 0;
     }
-    // TODO: Allowing to set SYSTEM_CONFIG_DEVICE_NAME will disrupt the BLE setup process as the
-    // existing mobile apps expect the device's peripheral name to follow a specific pattern
+    case SYSTEM_CONFIG_SERVER_ADDRESS: {
+        if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+            return SYSTEM_ERROR_INVALID_STATE; // Dual protocol support is deprecated
+        }
+        if (size != sizeof(ServerAddress)) {
+            return SYSTEM_ERROR_INVALID_SIZE;
+        }
+        std::unique_ptr<uint8_t[]> addrData(new(std::nothrow) uint8_t[DCT_ALT_SERVER_ADDRESS_SIZE]);
+        if (!addrData) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memset(addrData.get(), 0, DCT_ALT_SERVER_ADDRESS_SIZE);
+        CHECK(encodeServerAddressData((const ServerAddress*)data, addrData.get(), DCT_ALT_SERVER_ADDRESS_SIZE));
+        spark_cloud_flag_disconnect(); // Reset the autoconnect flag
+        cloud_disconnect(0 /* flags */, CLOUD_DISCONNECT_REASON_SETUP);
+        const int r = dct_write_app_data(addrData.get(), DCT_ALT_SERVER_ADDRESS_OFFSET, DCT_ALT_SERVER_ADDRESS_SIZE);
+        if (r != 0) {
+            return SYSTEM_ERROR_IO;
+        }
+        system_pending_shutdown(RESET_REASON_SETUP);
+        return 0;
+    }
+    case SYSTEM_CONFIG_DEVICE_NAME: {
+        // TODO: Allowing to set SYSTEM_CONFIG_DEVICE_NAME will disrupt the BLE setup process as
+        // the existing mobile apps expect device peripheral names to follow a specific pattern
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
     default:
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
@@ -845,9 +864,7 @@ int HAL_Get_System_Config(hal_system_config_t param, void* data, size_t size)
 {
     switch (param) {
     case SYSTEM_CONFIG_DEVICE_PRIVATE_KEY:
-    case SYSTEM_CONFIG_DEVICE_PUBLIC_KEY:
-    case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
-    case SYSTEM_CONFIG_SERVER_ADDRESS: {
+    case SYSTEM_CONFIG_SERVER_PUBLIC_KEY: {
         if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
             return SYSTEM_ERROR_INVALID_STATE; // Dual protocol support is deprecated
         }
@@ -858,26 +875,52 @@ int HAL_Get_System_Config(hal_system_config_t param, void* data, size_t size)
             offs = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
             actualSize = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
             break;
-        case SYSTEM_CONFIG_DEVICE_PUBLIC_KEY:
-            // The public key is extracted and stored in the DCT on startup
-            offs = DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET;
-            actualSize = DCT_ALT_DEVICE_PUBLIC_KEY_SIZE;
-            break;
         case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
             offs = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
             actualSize = DCT_ALT_SERVER_PUBLIC_KEY_SIZE;
             break;
-        case SYSTEM_CONFIG_SERVER_ADDRESS:
-            offs = DCT_ALT_SERVER_ADDRESS_OFFSET;
-            actualSize = DCT_ALT_SERVER_ADDRESS_SIZE;
-            static_assert(DCT_ALT_SERVER_ADDRESS_SIZE == sizeof(ServerAddress), "");
-            break;
         }
         const int r = dct_read_app_data_copy(offs, data, std::min(size, actualSize));
         if (r != 0) {
-            return SYSTEM_ERROR_FLASH_IO;
+            return SYSTEM_ERROR_IO;
         }
         return actualSize;
+    }
+    case SYSTEM_CONFIG_DEVICE_PUBLIC_KEY: {
+        if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+            return SYSTEM_ERROR_INVALID_STATE; // Dual protocol support is deprecated
+        }
+        // FIXME: We can't copy the public key from the DCT as is because it has padding bytes in
+        // the beginning of the data (see how mbedtls_pk_write_pubkey_der() works)
+        std::unique_ptr<uint8_t[]> priv(new(std::nothrow) uint8_t[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
+        const int r = dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, priv.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
+        if (r != 0) {
+            return SYSTEM_ERROR_IO;
+        }
+        std::unique_ptr<uint8_t[]> pub(new(std::nothrow) uint8_t[DCT_ALT_DEVICE_PUBLIC_KEY_SIZE]);
+        const int actualSize = extract_public_ec_key(pub.get(), DCT_ALT_DEVICE_PUBLIC_KEY_SIZE, priv.get());
+        if (actualSize < 0) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        memcpy(data, pub.get() + DCT_ALT_DEVICE_PUBLIC_KEY_SIZE - actualSize, std::min(size, (size_t)actualSize));
+        return actualSize;
+    }
+    case SYSTEM_CONFIG_SERVER_ADDRESS: {
+        if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+            return SYSTEM_ERROR_INVALID_STATE; // Dual protocol support is deprecated
+        }
+        std::unique_ptr<uint8_t[]> addrData(new(std::nothrow) uint8_t[DCT_ALT_SERVER_ADDRESS_SIZE]);
+        if (!addrData) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        const int r = dct_read_app_data_copy(DCT_ALT_SERVER_ADDRESS_OFFSET, addrData.get(), DCT_ALT_SERVER_ADDRESS_SIZE);
+        if (r != 0) {
+            return SYSTEM_ERROR_IO;
+        }
+        ServerAddress addr = {};
+        parseServerAddressData(&addr, addrData.get(), DCT_ALT_SERVER_ADDRESS_SIZE);
+        memcpy(data, &addr, std::min(size, sizeof(addr)));
+        return sizeof(addr);
     }
     case SYSTEM_CONFIG_DEVICE_NAME: {
         return get_device_name((char*)data, size);

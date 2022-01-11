@@ -106,7 +106,7 @@ inline int serverAddressToString(const ServerAddress& addr, char* str, size_t si
             return SYSTEM_ERROR_INTERNAL;
         }
         return n;
-    } else {
+    } else if (addr.addr_type == DOMAIN_NAME) {
         const size_t n = std::min((size_t)addr.length, size);
         memcpy(str, addr.domain, n);
         if (n < size) {
@@ -115,6 +115,8 @@ inline int serverAddressToString(const ServerAddress& addr, char* str, size_t si
             str[size - 1] = '\0';
         }
         return addr.length;
+    } else {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 }
 
