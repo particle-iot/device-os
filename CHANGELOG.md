@@ -1,3 +1,15 @@
+## 3.2.0
+
+### BUGFIXES
+
+- Fix hardfault handler to SOS again [#2381](https://github.com/particle-iot/device-os/pull/2381)
+- [Gen 3] Fix LittleFS truncate causing file corruption [#268](https://github.com/littlefs-project/littlefs/issues/268) [#2385](https://github.com/particle-iot/device-os/pull/2385)
+- [Gen 3] HAL - Only skip modules that fail integrity check from module info [#2387](https://github.com/particle-iot/device-os/pull/2387)
+
+### INTERNAL
+
+- Fix compilation errors on recent Linux distros with GCC 11 and updated system header files [#2383](https://github.com/particle-iot/device-os/pull/2383)
+
 ## 3.2.0-rc.1
 
 ### FEATURES
