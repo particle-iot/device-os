@@ -220,12 +220,32 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::handleIsClaimedRequest(req));
         break;
     }
+    case CTRL_REQUEST_SET_DEVICE_PRIVATE_KEY: {
+        setResult(req, control::config::setDevicePrivateKey(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_DEVICE_PRIVATE_KEY: {
+        setResult(req, control::config::getDevicePrivateKey(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_DEVICE_PUBLIC_KEY: {
+        setResult(req, control::config::getDevicePublicKey(req));
+        break;
+    }
+    case CTRL_REQUEST_SET_SERVER_PUBLIC_KEY: {
+        setResult(req, control::config::setServerPublicKey(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_SERVER_PUBLIC_KEY: {
+        setResult(req, control::config::getServerPublicKey(req));
+        break;
+    }
     case CTRL_REQUEST_SET_SERVER_ADDRESS: {
-        setResult(req, control::config::handleSetServerAddressRequest(req));
+        setResult(req, control::config::setServerAddress(req));
         break;
     }
     case CTRL_REQUEST_GET_SERVER_ADDRESS: {
-        setResult(req, control::config::handleGetServerAddressRequest(req));
+        setResult(req, control::config::getServerAddress(req));
         break;
     }
     case CTRL_REQUEST_START_NYAN_SIGNAL: {
@@ -236,10 +256,12 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::config::handleStopNyanRequest(req));
         break;
     }
+#if PLATFORM_ID == PLATFORM_PHOTON
     case CTRL_REQUEST_SET_SOFTAP_SSID: {
         setResult(req, control::config::handleSetSoftapSsidRequest(req));
         break;
     }
+#endif
     case CTRL_REQUEST_START_FIRMWARE_UPDATE: {
         setResult(req, control::startFirmwareUpdateRequest(req));
         break;

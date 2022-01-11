@@ -23,12 +23,12 @@
 
 #include "system_error.h"
 
-#include <stdint.h>
-#include <stddef.h>
+#include <algorithm>
+#include <cstdio>
+#include <cstdint>
+#include <cstddef>
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+namespace particle {
 
 inline void parseServerAddressData(ServerAddress* server_addr, const uint8_t* buf, int maxLength)
 {
@@ -98,9 +98,43 @@ inline int encodeServerAddressData(const ServerAddress* addr, uint8_t* buf, size
     return 0;
 }
 
-#ifdef	__cplusplus
+inline int serverAddressToString(const ServerAddress& addr, char* str, size_t size) {
+    if (addr.addr_type == IP_ADDRESS) {
+        const unsigned ip = addr.ip;
+        const int n = snprintf(str, size, "%u.%u.%u.%u", (ip >> 24) & 0xff, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff);
+        if (n < 0) {
+            return SYSTEM_ERROR_INTERNAL;
+        }
+        return n;
+    } else {
+        const size_t n = std::min((size_t)addr.length, size);
+        memcpy(str, addr.domain, n);
+        if (n < size) {
+            str[n] = '\0';
+        } else if (size > 0) {
+            str[size - 1] = '\0';
+        }
+        return addr.length;
+    }
 }
-#endif
+
+inline int serverAddressFromString(ServerAddress* addr, const char* str) {
+    unsigned n1 = 0, n2 = 0, n3 = 0, n4 = 0;
+    if (sscanf(str, "%u.%u.%u.%u", &n1, &n2, &n3, &n4) == 4) {
+        addr->addr_type = IP_ADDRESS;
+        addr->ip = ((n1 & 0xff) << 24) | ((n2 & 0xff) << 16) | ((n3 & 0xff) << 8) | (n4 & 0xff);
+    } else {
+        const size_t n = strlen(str);
+        if (n > sizeof(ServerAddress::domain)) {
+            return SYSTEM_ERROR_TOO_LARGE;
+        }
+        addr->addr_type = DOMAIN_NAME;
+        addr->length = n;
+        memcpy(addr->domain, str, n);
+    }
+    return 0;
+}
+
+} // namespace particle
 
 #endif	/* PARSE_SERVER_ADDRESS_H */
-

@@ -617,6 +617,44 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
 
 int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
 {
+/*
+    switch (param) {
+    case SYSTEM_CONFIG_DEVICE_PRIVATE_KEY:
+    case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
+    case SYSTEM_CONFIG_SERVER_ADDRESS: {
+        if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+            return SYSTEM_ERROR_NOT_SUPPORTED; // Dual protocol support is deprecated
+        }
+        size_t offs = 0;
+        size_t actualSize = 0;
+        switch (param) {
+        case SYSTEM_CONFIG_DEVICE_PRIVATE_KEY:
+            offs = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
+            actualSize = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
+            break;
+        case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
+            offs = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
+            actualSize = DCT_ALT_SERVER_PUBLIC_KEY_SIZE;
+            break;
+        case SYSTEM_CONFIG_SERVER_ADDRESS:
+            offs = DCT_ALT_SERVER_ADDRESS_OFFSET;
+            actualSize = DCT_ALT_SERVER_ADDRESS_SIZE;
+            static_assert(DCT_ALT_SERVER_ADDRESS_SIZE == sizeof(ServerAddress), "");
+            break;
+        }
+        const int r = dct_read_app_data_copy(offs, data, std::min(size, actualSize));
+        if (r != 0) {
+            return SYSTEM_ERROR_FLASH_IO;
+        }
+        return actualSize;
+    }
+    case SYSTEM_CONFIG_DEVICE_NAME: {
+        return get_device_name((char*)data, size);
+    }
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+*/
     unsigned offset = 0;
     unsigned length = 0;
     bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);

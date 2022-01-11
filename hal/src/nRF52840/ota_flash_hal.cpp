@@ -19,6 +19,9 @@
 
 LOG_SOURCE_CATEGORY("hal.ota")
 
+#include "system_cloud.h"
+#include "system_update.h"
+#include "device_code.h"
 #include "ota_flash_hal.h"
 #include "ota_flash_hal_impl.h"
 #include "dct_hal.h"
@@ -41,8 +44,7 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #include "service_debug.h"
 #include "spark_wiring_random.h"
 #include "delay_hal.h"
-// For ATOMIC_BLOCK
-#include "spark_wiring_interrupts.h"
+#include "spark_wiring_interrupts.h" // For ATOMIC_BLOCK
 #include "hal_platform.h"
 #include "platform_ncp.h"
 #include "deviceid_hal.h"
@@ -55,6 +57,8 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
 
 namespace {
+
+using namespace particle;
 
 const uint16_t BOOTLOADER_MBR_UPDATE_MIN_VERSION = 1001; // 2.0.0-rc.1
 
@@ -427,6 +431,9 @@ static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
 
 namespace {
 
+// TODO: Anything above 2 will almost certainly fail the dependency check
+const size_t MAX_COMBINED_MODULE_COUNT = 2;
+
 int validityResultToSystemError(unsigned result, unsigned checked) {
     if (result == checked) {
         return 0;
@@ -538,9 +545,6 @@ int validateModules(const hal_module_t* modules, size_t moduleCount) {
     }
     return 0;
 }
-
-// TODO: Anything above 2 will almost certainly fail the dependency check
-const size_t MAX_COMBINED_MODULE_COUNT = 2;
 
 } // namespace
 
@@ -792,68 +796,95 @@ void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
     }
 }
 
-int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
+int HAL_Set_System_Config(hal_system_config_t param, const void* data, size_t size)
 {
-    unsigned offset = 0;
-    unsigned length = 0;
-    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-
-    switch (config_item)
-    {
-    case SYSTEM_CONFIG_DEVICE_KEY:
-        if (udp) {
-            offset = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
-            length = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
-        } else {
-            offset = DCT_DEVICE_PRIVATE_KEY_OFFSET;
-            length = DCT_DEVICE_PRIVATE_KEY_SIZE;
+    switch (param) {
+    case SYSTEM_CONFIG_DEVICE_PRIVATE_KEY:
+    case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
+    case SYSTEM_CONFIG_SERVER_ADDRESS: {
+        if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+            return SYSTEM_ERROR_INVALID_STATE; // Dual protocol support is deprecated
         }
-        break;
-    case SYSTEM_CONFIG_SERVER_KEY:
-        if (udp) {
-            offset = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
-            // Server address for UDP devices is in a separate, adjacent DCT field unlike TCP devices.
-            // To update the server address along with the key, we need to write more data.
-            length = DCT_ALT_SERVER_PUBLIC_KEY_SIZE + DCT_ALT_SERVER_ADDRESS_SIZE;
-        } else {
-            offset = DCT_SERVER_PUBLIC_KEY_OFFSET;
-            length = DCT_SERVER_PUBLIC_KEY_SIZE;
+        size_t offs = 0;
+        size_t actualSize = 0;
+        switch (param) {
+        case SYSTEM_CONFIG_DEVICE_PRIVATE_KEY:
+            offs = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
+            actualSize = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
+            break;
+        case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
+            offs = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
+            actualSize = DCT_ALT_SERVER_PUBLIC_KEY_SIZE;
+            break;
+        case SYSTEM_CONFIG_SERVER_ADDRESS:
+            offs = DCT_ALT_SERVER_ADDRESS_OFFSET;
+            actualSize = DCT_ALT_SERVER_ADDRESS_SIZE;
+            static_assert(DCT_ALT_SERVER_ADDRESS_SIZE == sizeof(ServerAddress), "");
+            break;
         }
-        break;
-    case SYSTEM_CONFIG_SERVER_ADDRESS:
-        if (udp) {
-            offset = DCT_ALT_SERVER_ADDRESS_OFFSET;
-            length = DCT_ALT_SERVER_ADDRESS_SIZE;
-        } else {
-            offset = DCT_SERVER_ADDRESS_OFFSET;
-            length = DCT_SERVER_ADDRESS_SIZE;
+        if (size != actualSize) {
+            return SYSTEM_ERROR_INVALID_SIZE;
         }
-        break;
-    case SYSTEM_CONFIG_SOFTAP_PREFIX:
-        offset = DCT_SSID_PREFIX_OFFSET;
-        length = DCT_SSID_PREFIX_SIZE-1;
-        if (data_length>(unsigned)length)
-            data_length = length;
-        dct_write_app_data(&data_length, offset++, 1);
-        break;
-    case SYSTEM_CONFIG_SOFTAP_SUFFIX:
-        offset = DCT_DEVICE_CODE_OFFSET;
-        // copy the string with a zero terminator if less than the maximum width
-        data_length = std::min(DCT_DEVICE_CODE_SIZE, data_length+1);
-        length = data_length;
-        break;
-    case SYSTEM_CONFIG_SOFTAP_HOSTNAMES:
-        break;
+        spark_cloud_flag_disconnect(); // Reset the autoconnect flag
+        cloud_disconnect(0 /* flags */, CLOUD_DISCONNECT_REASON_SETUP);
+        const int r = dct_write_app_data(data, offs, size);
+        if (r != 0) {
+            return SYSTEM_ERROR_FLASH_IO;
+        }
+        system_pending_shutdown(RESET_REASON_SETUP);
+        return 0; // Unreachable
     }
-
-    if (length>0)
-        dct_write_app_data(data, offset, std::min<size_t>(data_length, length));
-
-    return length;
+    // TODO: Allowing to set SYSTEM_CONFIG_DEVICE_NAME will disrupt the BLE setup process as the
+    // existing mobile apps expect the device's peripheral name to follow a specific pattern
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
 }
 
-int HAL_Get_System_Config(hal_system_config_t param, void* data, size_t* size) {
-    return -1;
+int HAL_Get_System_Config(hal_system_config_t param, void* data, size_t size)
+{
+    switch (param) {
+    case SYSTEM_CONFIG_DEVICE_PRIVATE_KEY:
+    case SYSTEM_CONFIG_DEVICE_PUBLIC_KEY:
+    case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
+    case SYSTEM_CONFIG_SERVER_ADDRESS: {
+        if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+            return SYSTEM_ERROR_INVALID_STATE; // Dual protocol support is deprecated
+        }
+        size_t offs = 0;
+        size_t actualSize = 0;
+        switch (param) {
+        case SYSTEM_CONFIG_DEVICE_PRIVATE_KEY:
+            offs = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
+            actualSize = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
+            break;
+        case SYSTEM_CONFIG_DEVICE_PUBLIC_KEY:
+            // The public key is extracted and stored in the DCT on startup
+            offs = DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET;
+            actualSize = DCT_ALT_DEVICE_PUBLIC_KEY_SIZE;
+            break;
+        case SYSTEM_CONFIG_SERVER_PUBLIC_KEY:
+            offs = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
+            actualSize = DCT_ALT_SERVER_PUBLIC_KEY_SIZE;
+            break;
+        case SYSTEM_CONFIG_SERVER_ADDRESS:
+            offs = DCT_ALT_SERVER_ADDRESS_OFFSET;
+            actualSize = DCT_ALT_SERVER_ADDRESS_SIZE;
+            static_assert(DCT_ALT_SERVER_ADDRESS_SIZE == sizeof(ServerAddress), "");
+            break;
+        }
+        const int r = dct_read_app_data_copy(offs, data, std::min(size, actualSize));
+        if (r != 0) {
+            return SYSTEM_ERROR_FLASH_IO;
+        }
+        return actualSize;
+    }
+    case SYSTEM_CONFIG_DEVICE_NAME: {
+        return get_device_name((char*)data, size);
+    }
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
 }
 
 int fetch_system_properties(key_value* storage, int keyCount, uint16_t flags) {

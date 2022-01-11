@@ -63,7 +63,8 @@ typedef enum System_Reset_Reason {
     RESET_REASON_SAFE_MODE = 110, ///< Safe mode requested.
     RESET_REASON_DFU_MODE = 120, ///< DFU mode requested.
     RESET_REASON_PANIC = 130, ///< System panic.
-    RESET_REASON_USER = 140 ///< User-requested reset.
+    RESET_REASON_USER = 140, ///< User-requested reset.
+    RESET_REASON_SETUP = 141 ///< Reset due to configuration changes.
 } System_Reset_Reason;
 
 /**
@@ -77,7 +78,8 @@ typedef enum cloud_disconnect_reason {
     CLOUD_DISCONNECT_REASON_LISTENING = 4, ///< Disconnected to enter the listening mode.
     CLOUD_DISCONNECT_REASON_SYSTEM_RESET = 5, ///< Disconnected due to a system reset.
     CLOUD_DISCONNECT_REASON_SLEEP = 6, ///< Disconnected to enter a sleep mode.
-    CLOUD_DISCONNECT_REASON_UNKNOWN = 7 ///< Unspecified disconnection reason.
+    CLOUD_DISCONNECT_REASON_UNKNOWN = 7, ///< Unspecified disconnection reason.
+    CLOUD_DISCONNECT_REASON_SETUP = 8, ///< Disconnected due to configuration changes.
 } cloud_disconnect_reason;
 
 /**

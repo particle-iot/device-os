@@ -192,20 +192,61 @@ typedef enum HAL_SystemClock
  */
 unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved);
 
-
+/**
+ * System configuration parameters.
+ */
 typedef enum hal_system_config_t
 {
     SYSTEM_CONFIG_NONE = 0,
-    SYSTEM_CONFIG_DEVICE_KEY = 1,
-    SYSTEM_CONFIG_SERVER_KEY = 2,
+    SYSTEM_CONFIG_DEVICE_KEY = 1, // Deprecated
+    /**
+     * Device private key in DER format.
+     *
+     * The device will reset when this parameter is set.
+     */
+    SYSTEM_CONFIG_DEVICE_PRIVATE_KEY = 1,
+    SYSTEM_CONFIG_SERVER_KEY = 2, // Deprecated
+    /**
+     * Server public key in DER format.
+     *
+     * The device will reset when this parameter is set.
+     */
+    SYSTEM_CONFIG_SERVER_PUBLIC_KEY = 2,
+    /**
+     * Device name.
+     *
+     * This parameter is read-only on Gen 3 platforms.
+     */
+    SYSTEM_CONFIG_DEVICE_NAME = 3,
+    /**
+     * Prefix of the SoftAP's SSID.
+     *
+     * @deprecated Use `SYSTEM_CONFIG_DEVICE_NAME` instead.
+     */
     SYSTEM_CONFIG_SOFTAP_PREFIX = 3,
+    /**
+     * Suffix of the SoftAP's SSID.
+     *
+     * This parameter is supported only on Gen 2 platforms.
+     */
     SYSTEM_CONFIG_SOFTAP_SUFFIX = 4,
-    SYSTEM_CONFIG_SOFTAP_HOSTNAMES = 5,
-    SYSTEM_CONFIG_SERVER_ADDRESS = 6
+    SYSTEM_CONFIG_SOFTAP_HOSTNAMES = 5, // Deprecated
+    /**
+     * Server address (@ref ServerAddress).
+     *
+     * The device will reset when this parameter is set.
+     */
+    SYSTEM_CONFIG_SERVER_ADDRESS = 6,
+    /**
+     * Device public key.
+     *
+     * This parameter is read-only.
+     */
+    SYSTEM_CONFIG_DEVICE_PUBLIC_KEY = 7
 } hal_system_config_t;
 
 /**
- * Sets a system configuration parameter.
+ * Set a system configuration parameter.
  *
  * @param param Parameter to set.
  * @param data Parameter data.
@@ -215,14 +256,15 @@ typedef enum hal_system_config_t
 int HAL_Set_System_Config(hal_system_config_t param, const void* data, size_t size);
 
 /**
- * Gets a system configuration parameter.
+ * Get a system configuration parameter.
  *
  * @param param Parameter to get.
- * @param data Parameter data.
- * @param[in,out] size Size of the parameter data.
- * @return 0 on success or a negative value on failure (@ref system_error_t).
+ * @param data Destination buffer for the parameter data (can be `NULL`).
+ * @param size Buffer size.
+ * @return Actual size of the parameter data on success or a negative value on failure (@ref system_error_t).
+ *         Note: The returned value can be larger than the buffer size.
  */
-int HAL_Get_System_Config(hal_system_config_t param, void* data, size_t* size);
+int HAL_Get_System_Config(hal_system_config_t param, void* data, size_t size);
 
 typedef enum HAL_Feature {
     FEATURE_RETAINED_MEMORY=1,       // [write only] retained memory on backup power
