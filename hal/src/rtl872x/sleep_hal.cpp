@@ -29,6 +29,7 @@
 #include "timer_hal.h"
 #include "interrupts_hal.h"
 #include "concurrent_hal.h"
+#include "ble_hal.h"
 #include "check.h"
 #include "radio_common.h"
 #if HAL_PLATFORM_EXTERNAL_RTC
@@ -91,6 +92,13 @@ public:
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
         memcpy(&config_, config, sizeof(hal_sleep_config_t));
         DCache_Clean((uint32_t)&config_, sizeof(hal_sleep_config_t));
+
+        bool advertising = hal_ble_gap_is_advertising(nullptr) ||
+                           hal_ble_gap_is_connecting(nullptr, nullptr) ||
+                           hal_ble_gap_is_connected(nullptr, nullptr);
+        hal_ble_stack_deinit(nullptr);
+        // The delay is essential to make sure the resources are successfully freed.
+        DelayMs(1000);
 
         HAL_USB_Detach();
 
@@ -175,6 +183,13 @@ public:
 
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
         os_thread_scheduling(true, nullptr);
+
+        if (hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE) {
+            if (advertising) {
+                hal_ble_gap_start_advertising(nullptr);
+            }
+        }
+
         return SYSTEM_ERROR_NONE;
     }
 

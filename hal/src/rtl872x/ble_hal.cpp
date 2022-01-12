@@ -152,9 +152,9 @@ private:
 class BleGap {
 public:
     int init();
-    int start() const;
+    int start();
     int setAppearance(uint16_t appearance) const;
-    int setDeviceName(const char* deviceName, size_t len) const;
+    int setDeviceName(const char* deviceName, size_t len);
 
     int setAdvertisingParameters(const hal_ble_adv_params_t* params);
     int getAdvertisingParameters(hal_ble_adv_params_t* params) const;
@@ -203,8 +203,9 @@ private:
               connParams_{},
               periphEvtCallbacks_{},
               connHandle_(BLE_INVALID_CONN_HANDLE),
-              connecting_(false) {
-        state_.gap_init_state = 0;
+              connecting_(false),
+              devNameLen_(0) {
+        state_.gap_init_state = GAP_INIT_STATE_INIT;
 
         advParams_.version = BLE_API_VERSION;
         advParams_.size = sizeof(hal_ble_adv_params_t);
@@ -264,6 +265,8 @@ private:
     size_t advDataLen_;                             /**< Current advertising data length. */
     uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
     size_t scanRespDataLen_;                        /**< Current scan response data length. */
+    char devName_[BLE_MAX_DEV_NAME_LEN];            // null-terminated
+    size_t devNameLen_;
     static constexpr uint8_t MAX_LINK_COUNT = 4;
 };
 
@@ -355,9 +358,11 @@ private:
 };
 
 int BleEventDispatcher::init() {
-    CHECK_TRUE(os_msg_queue_create(&ioEvtQueue_, MAX_NUMBER_OF_IO_MESSAGE, sizeof(T_IO_MSG)), SYSTEM_ERROR_INTERNAL);
-    CHECK_TRUE(os_msg_queue_create(&allEvtQueue_, MAX_NUMBER_OF_EVENT_MESSAGE, sizeof(uint8_t)), SYSTEM_ERROR_INTERNAL);
-    CHECK_TRUE(os_task_create(&thread_, "bleEvtThread", bleEventDispatchThread, this, BLE_EVENT_THREAD_STACK_SZIE, BLE_EVENT_THREAD_PRIORITY), SYSTEM_ERROR_INTERNAL);
+    if (!thread_) {
+        CHECK_TRUE(os_msg_queue_create(&ioEvtQueue_, MAX_NUMBER_OF_IO_MESSAGE, sizeof(T_IO_MSG)), SYSTEM_ERROR_INTERNAL);
+        CHECK_TRUE(os_msg_queue_create(&allEvtQueue_, MAX_NUMBER_OF_EVENT_MESSAGE, sizeof(uint8_t)), SYSTEM_ERROR_INTERNAL);
+        CHECK_TRUE(os_task_create(&thread_, "bleEvtThread", bleEventDispatchThread, this, BLE_EVENT_THREAD_STACK_SZIE, BLE_EVENT_THREAD_PRIORITY), SYSTEM_ERROR_INTERNAL);
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -472,40 +477,51 @@ void BleEventDispatcher::bleEventDispatchThread(void *context) {
 }
 
 int BleGap::init() {
-    T_GAP_DEV_STATE state;
-    CHECK_RTL(le_get_gap_param(GAP_PARAM_DEV_STATE , &state));
-    if (state.gap_init_state == GAP_INIT_STATE_STACK_READY) {
+    CHECK_RTL(le_get_gap_param(GAP_PARAM_DEV_STATE , &state_));
+    if (state_.gap_init_state == GAP_INIT_STATE_STACK_READY) {
         return SYSTEM_ERROR_NONE;
     }
     gap_config_max_le_link_num(MAX_LINK_COUNT);
     gap_config_max_le_paired_device(MAX_LINK_COUNT);
     CHECK_TRUE(bte_init(), SYSTEM_ERROR_INTERNAL);
-    CHECK_TRUE(le_gap_init(MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
-    uint8_t mtuReq = false;
-    CHECK_RTL(le_set_gap_param(GAP_PARAM_SLAVE_INIT_GATT_MTU_REQ, sizeof(mtuReq), &mtuReq));
+    {
+        int ret = SYSTEM_ERROR_INTERNAL;
+        SCOPE_GUARD ({
+            if (ret != SYSTEM_ERROR_NONE) {
+                bte_deinit();
+            }
+        });
+        CHECK_TRUE(le_gap_init(MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
+        uint8_t mtuReq = false;
+        CHECK_RTL(le_set_gap_param(GAP_PARAM_SLAVE_INIT_GATT_MTU_REQ, sizeof(mtuReq), &mtuReq));
 
-    CHECK(setAppearance(GAP_GATT_APPEARANCE_UNKNOWN));
+        CHECK(setAppearance(GAP_GATT_APPEARANCE_UNKNOWN));
 
-    char devName[BLE_MAX_DEV_NAME_LEN] = {};
-    CHECK(get_device_name(devName, sizeof(devName)));
-    CHECK(setDeviceName(devName, strlen(devName)));
+        if (devNameLen_ == 0) {
+            int len = get_device_name(devName_, sizeof(devName_)); // null-terminated
+            CHECK(len);
+            devNameLen_ = std::min(len, (int)(sizeof(devName_) - 1));
+        }
+        CHECK(setDeviceName(devName_, strlen(devName_)));
 
-    CHECK(setAdvertisingParameters(&advParams_));
+        CHECK(setAdvertisingParameters(&advParams_));
 
-    /* register gap message callback */
-    le_register_app_cb(gapEventCallback);
+        /* register gap message callback */
+        le_register_app_cb(gapEventCallback);
+
+        ret = SYSTEM_ERROR_NONE;
+    }
     return SYSTEM_ERROR_NONE;
 }
 
-int BleGap::start() const {
-    if (state_.gap_init_state == 0) {
+int BleGap::start() {
+    if (state_.gap_init_state == GAP_INIT_STATE_INIT) {
         CHECK(BleEventDispatcher::getInstance().start());
         LOG_DEBUG(TRACE, "Waiting ready...");
-        T_GAP_DEV_STATE state;
         do {
             HAL_Delay_Milliseconds(100);
-            le_get_gap_param(GAP_PARAM_DEV_STATE , &state);
-        } while (state.gap_init_state != GAP_INIT_STATE_STACK_READY);
+            le_get_gap_param(GAP_PARAM_DEV_STATE , &state_);
+        } while (state_.gap_init_state != GAP_INIT_STATE_STACK_READY);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -515,16 +531,17 @@ int BleGap::setAppearance(uint16_t appearance) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleGap::setDeviceName(const char* deviceName, size_t len) const {
-    char name[BLE_MAX_DEV_NAME_LEN] = {};
+int BleGap::setDeviceName(const char* deviceName, size_t len) {
     if (deviceName == nullptr || len == 0) {
-        CHECK(get_device_name(name, sizeof(name)));
-        len = strlen(name);
+        CHECK(get_device_name(devName_, sizeof(devName_)));
+        len = strlen(devName_);
     } else {
-        len = std::min(len, sizeof(name));
-        memcpy(name, deviceName, len);
+        len = std::min(len, sizeof(devName_) - 1);
+        memcpy(devName_, deviceName, len);
+        devName_[len] = '\0';
     }
-    CHECK_RTL(le_set_gap_param(GAP_PARAM_DEVICE_NAME, std::min(BLE_MAX_DEV_NAME_LEN, (int)len), (void*)name));
+    devNameLen_ = len;
+    CHECK_RTL(le_set_gap_param(GAP_PARAM_DEVICE_NAME, std::min(BLE_MAX_DEV_NAME_LEN, (int)len), (void*)devName_));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -638,9 +655,10 @@ int BleGap::startAdvertising(bool wait) const {
 }
 
 int BleGap::stopAdvertising(bool wait) const {
-    if (state_.gap_adv_state == GAP_ADV_STATE_ADVERTISING || state_.gap_adv_state == GAP_ADV_STATE_START) {
-        CHECK(le_adv_stop());
+    if (state_.gap_adv_state != GAP_ADV_STATE_ADVERTISING && state_.gap_adv_state != GAP_ADV_STATE_START) {
+        return SYSTEM_ERROR_NONE;
     }
+    CHECK(le_adv_stop());
     if (wait) {
         LOG_DEBUG(TRACE, "Stopping advertising...");
         while (state_.gap_adv_state != GAP_ADV_STATE_IDLE) {
@@ -661,7 +679,7 @@ int BleGap::disconnect() const {
 void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
     LOG_DEBUG(TRACE, "GAP state updated, init:%d, adv:%d, adv-sub:%d, scan:%d, conn:%d, cause:%d",
                         newState.gap_init_state, newState.gap_adv_state, newState.gap_adv_sub_state, newState.gap_scan_state, newState.gap_conn_state, cause);
-    if (state_.gap_init_state == 0 && newState.gap_init_state == 1) {
+    if (state_.gap_init_state == GAP_INIT_STATE_INIT && newState.gap_init_state == GAP_INIT_STATE_STACK_READY) {
         LOG_DEBUG(TRACE, "Start BT co-existence.");
         bt_coex_init();
         wifi_btcoex_set_bt_on();
@@ -827,6 +845,7 @@ T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
 int BleGatt::init() {
     server_init(MAX_ALLOWED_BLE_SERVICES);
     server_register_app_cb(gattServerEventCallback);
+    serviceRegistered_ = false;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1264,7 +1283,9 @@ int hal_ble_stack_init(void* reserved) {
         CHECK_TRUE(mgr, SYSTEM_ERROR_INTERNAL);
         const auto client = mgr->ncpClient();
         CHECK_TRUE(client, SYSTEM_ERROR_INTERNAL);
-        CHECK(client->on());
+        if (client->ncpPowerState() != NcpPowerState::ON) {
+            CHECK(client->on());
+        }
 
         CHECK(BleEventDispatcher::getInstance().init());
         CHECK(BleGap::getInstance().init());
@@ -1277,7 +1298,12 @@ int hal_ble_stack_init(void* reserved) {
 int hal_ble_stack_deinit(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_deinit().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    CHECK(BleGap::getInstance().stopAdvertising(true));
+    CHECK(BleGap::getInstance().disconnect());
+    bte_deinit();
+    s_bleStackInit = false;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved) {
