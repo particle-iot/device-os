@@ -151,7 +151,7 @@ int RtlUsbDriver::attach() {
 int RtlUsbDriver::detach() {
     usbd_unregister_class();
     usbd_deinit();
-    initialized_ = true;
+    initialized_ = false;
     return 0;
 }
 
