@@ -932,21 +932,43 @@ public:
     int provisioningMode(bool enabled) const;
     bool getProvisioningStatus() const;
 
-    template<typename T1, typename T2, typename T3>
-    int setProvisioningUuids(T1 svcUuid, T2 txUuid, T3 rxUuid) const {
+    template<typename T>
+    int setProvisioningSvcUuid(T svcUuid) const {
         BleUuid tempSvcUUID(svcUuid);
-        BleUuid tempTxUUID(txUuid);
-        BleUuid tempRxUUID(rxUuid);
-        return system_set_prov_svc_uuid(tempSvcUUID.halUUID(), tempTxUUID.halUUID(), tempRxUUID.halUUID(), nullptr);
+        if (tempSvcUUID.isValid()) {
+            return system_set_custom_prov_svc_uuid(tempSvcUUID.halUUID(), nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     template<typename T>
-    int setProvisioningAdvServiceUuid(T uuid) const {
-        BleUuid tempUUID(uuid);
-        return setProvisioningAdvServiceUuid(tempUUID.rawBytes());
+    int setProvisioningTxUuid(T txUuid) const {
+        BleUuid tempTxUUID(txUuid);
+        if (tempTxUUID.isValid()) {
+            return system_set_custom_prov_tx_uuid(tempTxUUID.halUUID(), nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    int setProvisioningAdvServiceUuid(const uint8_t* buf) const;
+    template<typename T>
+    int setProvisioningRxUuid(T rxUuid) const {
+        BleUuid tempRxUUID(rxUuid);
+        if (tempRxUUID.isValid()) {
+            return system_set_custom_prov_rx_uuid(tempRxUUID.halUUID(), nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    template<typename T>
+    int setProvisioningVerUuid(T verUuid) const {
+        BleUuid tempVerUUID(verUuid);
+        if (tempVerUUID.isValid()) {
+            return system_set_custom_prov_ver_uuid(tempVerUUID.halUUID(), nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+
 
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;

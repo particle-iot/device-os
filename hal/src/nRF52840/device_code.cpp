@@ -42,19 +42,19 @@ const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
 
 } // ::
 
-int get_device_setup_code(char* code) {
+int get_device_setup_code(char* code, size_t size) {
     // Check if the device setup code is initialized in the DCT
-    int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, SETUP_CODE_SIZE);
-    if (ret < 0 || !particle::isPrintable(code, SETUP_CODE_SIZE)) {
+    int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, size);
+    if (ret < 0 || !particle::isPrintable(code, size)) {
         // Check the OTP memory
         char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
         ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
-        if (ret >= (int)SETUP_CODE_SIZE && (size_t)ret <= sizeof(serial)) {
+        if (ret >= (int)size && (size_t)ret <= sizeof(serial)) {
             // Use last characters of the serial number as the setup code
-            memcpy(code, &serial[ret - SETUP_CODE_SIZE], SETUP_CODE_SIZE);
+            memcpy(code, &serial[ret - size], size);
         } else {
             // Return a dummy setup code
-            memset(code, 'X', SETUP_CODE_SIZE);
+            memset(code, 'X', size);
         }
     }
     return 0;
@@ -84,7 +84,7 @@ int get_device_name(char* buf, size_t size) {
     if (nameSize == 0 || nameSize > DEVICE_NAME_MAX_SIZE || !isPrintable(name, nameSize)) {
         // Get device setup code
         char code[SETUP_CODE_SIZE] = {};
-        ret = get_device_setup_code(code);
+        ret = get_device_setup_code(code, SETUP_CODE_SIZE);
         if (ret < 0) {
             return ret;
         }

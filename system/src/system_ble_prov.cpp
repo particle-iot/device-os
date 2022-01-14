@@ -32,6 +32,8 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
         particle::system::BleControlRequestChannel::instance(particle::system::SystemControl::instance())->init();
         auto r = particle::system::BleListeningModeHandler::instance()->enter();
         if (r) {
+            LOG(TRACE, "Unable to enter BLE prov mode");
+            particle::system::BleListeningModeHandler::instance()->setProvModeStatus(false);
             return r;
         }
     } else {
@@ -55,22 +57,41 @@ bool system_get_ble_prov_status(void* reserved) {
     return particle::system::BleListeningModeHandler::instance()->getProvModeStatus();
 }
 
-int system_set_prov_svc_uuid(hal_ble_uuid_t svcUuid, hal_ble_uuid_t txUuid, hal_ble_uuid_t rxUuid, void* reserved) {
+int system_set_custom_prov_svc_uuid(hal_ble_uuid_t svcUuid, void* reserved) {
     if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
         LOG(TRACE, "Listening mode is not disabled. Cannot use prov mode APIs");
         return SYSTEM_ERROR_NOT_ALLOWED;
     }
-    particle::system::BleControlRequestChannel::instance(particle::system::SystemControl::instance())->setProvUuids(svcUuid, txUuid, rxUuid);
+    particle::system::BleControlRequestChannel::instance(particle::system::SystemControl::instance())->setProvSvcUuid(svcUuid);
     return SYSTEM_ERROR_NONE;
 }
 
-int system_set_prov_adv_svc_uuid(const uint8_t* buf, size_t len, void* reserved) {
+int system_set_custom_prov_tx_uuid(hal_ble_uuid_t txUuid, void* reserved) {
     if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
-        LOG(TRACE, "Listening mode is not disabled. Cannot use prov mode");
+        LOG(TRACE, "Listening mode is not disabled. Cannot use prov mode APIs");
         return SYSTEM_ERROR_NOT_ALLOWED;
     }
-    particle::system::BleListeningModeHandler::instance()->setProvAdvCtrlSvcUuid(buf, len);
+    particle::system::BleControlRequestChannel::instance(particle::system::SystemControl::instance())->setProvTxUuid(txUuid);
     return SYSTEM_ERROR_NONE;
 }
+
+int system_set_custom_prov_rx_uuid(hal_ble_uuid_t rxUuid, void* reserved) {
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(TRACE, "Listening mode is not disabled. Cannot use prov mode APIs");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+    particle::system::BleControlRequestChannel::instance(particle::system::SystemControl::instance())->setProvRxUuid(rxUuid);
+    return SYSTEM_ERROR_NONE;
+}
+
+int system_set_custom_prov_ver_uuid(hal_ble_uuid_t verUuid, void* reserved) {
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        LOG(TRACE, "Listening mode is not disabled. Cannot use prov mode APIs");
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+    particle::system::BleControlRequestChannel::instance(particle::system::SystemControl::instance())->setProvVerUuid(verUuid);
+    return SYSTEM_ERROR_NONE;
+}
+
 
 #endif // HAL_PLATFORM_BLE

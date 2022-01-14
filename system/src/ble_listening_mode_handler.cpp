@@ -28,6 +28,8 @@ LOG_SOURCE_CATEGORY("system.listen.ble")
 #include "device_code.h"
 #include "service_debug.h"
 #include "core_hal.h"
+#include "ble_control_request_channel.h"
+#include "system_control_internal.h"
 
 namespace {
 
@@ -44,7 +46,8 @@ BleListeningModeHandler::BleListeningModeHandler()
           preConnected_(false),
           preAutoAdv_(BLE_AUTO_ADV_ALWAYS),
           userAdv_(false),
-          restoreUserConfig_(false) {
+          restoreUserConfig_(false),
+          provMode_(false) {
 }
 
 BleListeningModeHandler::~BleListeningModeHandler() {
@@ -63,17 +66,8 @@ void BleListeningModeHandler::setProvModeStatus(bool enabled) {
     provMode_ = enabled;
 }
 
-void BleListeningModeHandler::setProvAdvCtrlSvcUuid(const uint8_t* buf, size_t len) {
-    memcpy(provBleCtrlReqSvcUuid_, buf, len);
-}
-
-void BleListeningModeHandler::getProvAdvCtrlSvcUuid(uint8_t* buf, size_t len) {
-    memcpy(buf, provBleCtrlReqSvcUuid_, len);
-}
-
 int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
-    uint8_t zeros[BLE_SIG_UUID_128BIT_LEN] = {0};
 
     Vector<uint8_t> tempAdvData;
     Vector<uint8_t> tempSrData;
@@ -96,29 +90,26 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
 
     // Manufacturing specific data
     char code[SETUP_CODE_SIZE] = {};
-    CHECK(get_device_setup_code(code));
+    CHECK(get_device_setup_code(code, SETUP_CODE_SIZE));
     CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + sizeof(code) + 1), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append((uint8_t*)&code, 6), SYSTEM_ERROR_NO_MEMORY);
 
-    // Particle Control Request Service 128-bits UUID
-    if (provMode_ && memcmp(provBleCtrlReqSvcUuid_, zeros, sizeof(provBleCtrlReqSvcUuid_)) != 0) {
-        LOG_DEBUG(TRACE, "Using prov adv svc uuid");
-        // provBleCtrlReqSvcUuid_ has some content (Is it needed to check for validity?).
-        // Use it only if prov mode is enabled
-        CHECK_TRUE(tempSrData.append(sizeof(provBleCtrlReqSvcUuid_) + 1), SYSTEM_ERROR_NO_MEMORY);
+    // Particle Control Request Service UUID. This will be overwritten by user's provisioning service ID if available
+    // FIXME: Addressing only 128-bit complete and 16-bit complete UUIDs
+    hal_ble_uuid_t bleCrtlReqSvcUuid = BleControlRequestChannel::instance(particle::system::SystemControl::instance())->getBleCtrlSvcUuid();
+    if (bleCrtlReqSvcUuid.type == BLE_UUID_TYPE_128BIT) {
+        CHECK_TRUE(tempSrData.append(sizeof(bleCrtlReqSvcUuid.uuid128) + 1), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
-        CHECK_TRUE(tempSrData.append(provBleCtrlReqSvcUuid_, sizeof(provBleCtrlReqSvcUuid_)), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(bleCrtlReqSvcUuid.uuid128, sizeof(bleCrtlReqSvcUuid.uuid128)), SYSTEM_ERROR_NO_MEMORY);
     } else {
-        LOG_DEBUG(TRACE, "Using default adv svc uuid");
-        // if provBleCtrlReqSvcUuid_ == 0, use BLE_CTRL_REQ_SVC_UUID irrepective of prov mode status
-        CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
-        CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
-        CHECK_TRUE(tempSrData.append(BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(sizeof(bleCrtlReqSvcUuid.uuid16) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append((uint8_t)bleCrtlReqSvcUuid.uuid16), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append((uint8_t)(bleCrtlReqSvcUuid.uuid16 >> 8)), SYSTEM_ERROR_NO_MEMORY);
     }
-
     ctrlReqAdvData_ = std::move(tempAdvData);
     ctrlReqSrData_ = std::move(tempSrData);
     return SYSTEM_ERROR_NONE;
@@ -390,6 +381,5 @@ void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, voi
 }
 
 bool BleListeningModeHandler::exited_ = true;
-bool BleListeningModeHandler::provMode_ = false;
 
 #endif /* HAL_PLATFORM_BLE */
