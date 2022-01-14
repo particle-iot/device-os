@@ -121,14 +121,16 @@ DYNALIB_FN(BASE_IDX1 + 2, system, system_power_management_get_config, int(hal_po
 DYNALIB_FN(BASE_IDX2 + 0, system, system_info_get_unstable, int(hal_system_info_t* info, uint32_t flags, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 1, system, system_info_free_unstable, int(hal_system_info_t* info, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 2, system, system_ctrl_clear_request_filter, int(void* reserved))
-DYNALIB_FN(BASE_IDX2 + 3, system, system_ctrl_set_request_filter, int(uint16_t reqType, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 3, system, system_ctrl_add_request_filter, int(uint16_t* reqItems, size_t cnt, void* reserved))
 
 #if HAL_PLATFORM_BLE
 DYNALIB_FN(BASE_IDX2 + 4, system, system_ble_prov_mode, int(bool enabled, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 5, system, system_get_ble_prov_status, bool(void* reserved))
-DYNALIB_FN(BASE_IDX2 + 6, system, system_set_prov_svc_uuid, int(hal_ble_uuid_t svcUuid, hal_ble_uuid_t txUuid, hal_ble_uuid_t rxUuid, void* reserved))
-DYNALIB_FN(BASE_IDX2 + 7, system, system_set_prov_adv_svc_uuid, int(const uint8_t* buf, size_t len, void* reserved))
-#define BASE_IDX3 (BASE_IDX2 + 8)
+DYNALIB_FN(BASE_IDX2 + 6, system, system_set_custom_prov_svc_uuid, int(hal_ble_uuid_t svcUuid, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 7, system, system_set_custom_prov_tx_uuid, int(hal_ble_uuid_t txUuid, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 8, system, system_set_custom_prov_rx_uuid, int(hal_ble_uuid_t rxUuid, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 9, system, system_set_custom_prov_ver_uuid, int(hal_ble_uuid_t verUuid, void* reserved))
+#define BASE_IDX3 (BASE_IDX2 + 10)
 #else
 #define BASE_IDX3 (BASE_IDX2 + 4)
 #endif  // HAL_PLATFORM_BLE

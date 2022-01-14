@@ -40,7 +40,6 @@ void setup() {
     // Must run before initialising BLE for the first time
     // Even better to call in STARTUP()
     BLE.setProvisioningUuids(serviceUuid, txUuid, rxUuid);
-    BLE.setProvisioningAdvServiceUuid(advServiceUuid);
     BLE.provisioningMode(true);
     LOG(TRACE, "BLE prov mode status: %d", BLE.provisioningStatus());
 

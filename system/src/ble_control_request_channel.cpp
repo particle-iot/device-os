@@ -95,18 +95,6 @@ struct __attribute__((packed)) HandshakeHeader {
 // Device setup protocol version
 const unsigned PROTOCOL_VERSION = 0x02;
 
-// UUID of the control request service
-const uint8_t CTRL_SERVICE_UUID[] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f };
-
-// UUID of the protocol version characteristic
-const uint8_t VERSION_CHAR_UUID[] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x02, 0x00, 0xa9, 0x6f };
-
-// UUID of the characteristic used to send reply data
-const uint8_t SEND_CHAR_UUID[] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x03, 0x00, 0xa9, 0x6f };
-
-// UUID of the characteristic used to receive request data
-const uint8_t RECV_CHAR_UUID[] = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x04, 0x00, 0xa9, 0x6f };
-
 // Size of the buffer pool
 const size_t BUFFER_POOL_SIZE = 1024;
 
@@ -564,9 +552,10 @@ BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handle
         subscribed_(false),
         writable_(false),
         initialized_(false),
-        provCtrlSvcUuid_{},
-        provSendCharUuid_{},
-        provRecvCharUuid_{},
+        bleCtrlSvcUuid_{.uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f },.type=BLE_UUID_TYPE_128BIT, 0},
+        bleVerCharUuid_{.uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x02, 0x00, 0xa9, 0x6f },.type=BLE_UUID_TYPE_128BIT, 0},
+        bleSendCharUuid_{.uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x03, 0x00, 0xa9, 0x6f },.type=BLE_UUID_TYPE_128BIT, 0},
+        bleRecvCharUuid_{.uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x04, 0x00, 0xa9, 0x6f },.type=BLE_UUID_TYPE_128BIT, 0},
         sendCharHandle_(BLE_INVALID_ATTR_HANDLE),
         recvCharHandle_(BLE_INVALID_ATTR_HANDLE) {
 }
@@ -615,18 +604,14 @@ void BleControlRequestChannel::run() {
         resetChannel();
         if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
             LOG(TRACE, "Connected");
-            if (BleListeningModeHandler::instance()->getProvModeStatus()) {
-                system_notify_event(ble_prov_mode, ble_prov_mode_connected);
-            }
+            system_notify_event(ble_prov_mode, ble_prov_mode_connected);
             ret = initChannel();
             if (ret != 0) {
                 goto error;
             }
         } else if (prevConnHandle != BLE_INVALID_CONN_HANDLE) {
             LOG(TRACE, "Disconnected");
-            if (BleListeningModeHandler::instance()->getProvModeStatus()) {
-                system_notify_event(ble_prov_mode, ble_prov_mode_disconnected);
-            }
+            system_notify_event(ble_prov_mode, ble_prov_mode_disconnected);
         }
     }
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
@@ -636,24 +621,18 @@ void BleControlRequestChannel::run() {
             ret = jpake_->run();
             if (ret < 0) {
                 LOG(ERROR, "Handshake failed");
-                if (BleListeningModeHandler::instance()->getProvModeStatus()) {
-                    system_notify_event(ble_prov_mode, ble_prov_mode_handshake_failed);
-                }
+                system_notify_event(ble_prov_mode, ble_prov_mode_handshake_failed);
                 goto error;
             }
             if (ret == JpakeHandler::DONE) {
                 ret = initAesCcm();
                 if (ret != 0) {
-                    if (BleListeningModeHandler::instance()->getProvModeStatus()) {
-                        system_notify_event(ble_prov_mode, ble_prov_mode_handshake_failed);
-                    }
+                    system_notify_event(ble_prov_mode, ble_prov_mode_handshake_failed);
                     goto error;
                 }
                 jpake_.reset();
                 LOG(TRACE, "Handshake done");
-                if (BleListeningModeHandler::instance()->getProvModeStatus()) {
-                    system_notify_event(ble_prov_mode, ble_prov_mode_handshake_done);
-                }
+                system_notify_event(ble_prov_mode, ble_prov_mode_handshake_done);
             }
         } else {
 #endif
@@ -686,46 +665,24 @@ error:
     resetChannel();
 }
 
-void BleControlRequestChannel::setProvUuids(hal_ble_uuid_t svcUuid, hal_ble_uuid_t txUuid, hal_ble_uuid_t rxUuid) {
-    size_t lenSvcUuid = (svcUuid.type == BLE_UUID_TYPE_128BIT) ?  BLE_SIG_UUID_128BIT_LEN : BLE_SIG_UUID_16BIT_LEN;
-    size_t lenTxUuid = (txUuid.type == BLE_UUID_TYPE_128BIT) ?  BLE_SIG_UUID_128BIT_LEN : BLE_SIG_UUID_16BIT_LEN;
-    size_t lenRxUuid = (rxUuid.type == BLE_UUID_TYPE_128BIT) ?  BLE_SIG_UUID_128BIT_LEN : BLE_SIG_UUID_16BIT_LEN;
+void BleControlRequestChannel::setProvSvcUuid(hal_ble_uuid_t svcUuid) {
+    bleCtrlSvcUuid_ = svcUuid;
+}
 
-    if (lenSvcUuid == BLE_SIG_UUID_128BIT_LEN) {
-        if (svcUuid.uuid128) {
-            provCtrlSvcUuid_.type = BLE_UUID_TYPE_128BIT;
-            memcpy(provCtrlSvcUuid_.uuid128, svcUuid.uuid128, lenSvcUuid);
-        }
-    } else {
-        if (svcUuid.uuid16) {
-            provCtrlSvcUuid_.type = BLE_UUID_TYPE_16BIT;
-            provCtrlSvcUuid_.uuid16 = svcUuid.uuid16;
-        }
-    }
+void BleControlRequestChannel::setProvTxUuid(hal_ble_uuid_t txUuid) {
+    bleSendCharUuid_ = txUuid;
+}
 
-    if (lenTxUuid == BLE_SIG_UUID_128BIT_LEN) {
-        if (txUuid.uuid128) {
-            provSendCharUuid_.type = BLE_UUID_TYPE_128BIT;
-            memcpy(provSendCharUuid_.uuid128, txUuid.uuid128, lenTxUuid);
-        }
-    } else {
-        if (txUuid.uuid16) {
-            provSendCharUuid_.type = BLE_UUID_TYPE_16BIT;
-            provSendCharUuid_.uuid16 = txUuid.uuid16;
-        }
-    }
+void BleControlRequestChannel::setProvRxUuid(hal_ble_uuid_t rxUuid) {
+    bleRecvCharUuid_ = rxUuid;
+}
 
-    if (lenRxUuid == BLE_SIG_UUID_128BIT_LEN) {
-        if (rxUuid.uuid128) {
-            provRecvCharUuid_.type = BLE_UUID_TYPE_128BIT;
-            memcpy(provRecvCharUuid_.uuid128, rxUuid.uuid128, lenRxUuid);
-        }
-    } else {
-        if (rxUuid.uuid16) {
-            provRecvCharUuid_.type = BLE_UUID_TYPE_16BIT;
-            provRecvCharUuid_.uuid16 = rxUuid.uuid16;
-        }
-    }
+void BleControlRequestChannel::setProvVerUuid(hal_ble_uuid_t verUuid) {
+    bleVerCharUuid_ = verUuid;
+}
+
+hal_ble_uuid_t BleControlRequestChannel::getBleCtrlSvcUuid() {
+    return bleCtrlSvcUuid_;
 }
 
 int BleControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {
@@ -1046,53 +1003,18 @@ int BleControlRequestChannel::initProfile() {
         LOG_DEBUG(TRACE, "BLE profile already initialized");
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    bool provModeStatus = BleListeningModeHandler::instance()->getProvModeStatus();
-
-    hal_ble_uuid_t halUuid;
     hal_ble_attr_handle_t serviceHandle;
     hal_ble_char_init_t char_init;
     hal_ble_char_handles_t attrHandles;
-    const uint8_t zeros[BLE_SIG_UUID_128BIT_LEN] = {0};
 
     // Add service
-    halUuid = {};
-    // Check if the device is in provisioning mode
-    if (!provModeStatus) {
-        LOG_DEBUG(TRACE, "Using default svc uuid");
-        halUuid.type = BLE_UUID_TYPE_128BIT;
-        memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
-    } else {
-        // Check that the provisioning service UUID has been customized, if not, use default
-        if (provCtrlSvcUuid_.type == BLE_UUID_TYPE_16BIT) {
-            if (provCtrlSvcUuid_.uuid16) {
-                LOG_DEBUG(TRACE, "Using 16b prov svc uuid");
-                halUuid.type = BLE_UUID_TYPE_16BIT;
-                halUuid.uuid16 = provCtrlSvcUuid_.uuid16;
-            } else {
-                LOG_DEBUG(TRACE, "Using default svc uuid");
-                halUuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
-            }
-        } else if (provCtrlSvcUuid_.type == BLE_UUID_TYPE_128BIT) {
-            if (memcmp(provCtrlSvcUuid_.uuid128, zeros, sizeof(provCtrlSvcUuid_.uuid128))) {
-                LOG_DEBUG(TRACE, "Using 128b prov svc uuid");
-                halUuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(halUuid.uuid128, provCtrlSvcUuid_.uuid128, sizeof(provCtrlSvcUuid_.uuid128));
-            } else {
-                LOG_DEBUG(TRACE, "Using default svc uuid");
-                halUuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(halUuid.uuid128, CTRL_SERVICE_UUID, sizeof(CTRL_SERVICE_UUID));
-            }
-        }
-    }
-    CHECK(hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &halUuid, &serviceHandle, nullptr));
+    CHECK(hal_ble_gatt_server_add_service(BLE_SERVICE_TYPE_PRIMARY, &bleCtrlSvcUuid_, &serviceHandle, nullptr));
 
     // Add version characteristic
     char_init = {};
     char_init.version = BLE_API_VERSION;
     char_init.size = sizeof(hal_ble_char_init_t);
-    char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-    memcpy(char_init.uuid.uuid128, VERSION_CHAR_UUID, sizeof(VERSION_CHAR_UUID));
+    char_init.uuid = bleVerCharUuid_;
     char_init.properties = BLE_SIG_CHAR_PROP_READ;
     char_init.service_handle = serviceHandle;
     char_init.description = nullptr;
@@ -1103,36 +1025,7 @@ int BleControlRequestChannel::initProfile() {
     char_init = {};
     char_init.version = BLE_API_VERSION;
     char_init.size = sizeof(hal_ble_char_init_t);
-
-    // Check if the device is in provisioning mode
-    if (!provModeStatus) {
-        LOG_DEBUG(TRACE, "Using default tx uuid");
-        char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-        memcpy(char_init.uuid.uuid128, SEND_CHAR_UUID, sizeof(SEND_CHAR_UUID));
-    } else {
-        // Check that the TX service UUID has been customized, if not, use default
-        if (provSendCharUuid_.type == BLE_UUID_TYPE_16BIT) {
-            if (provSendCharUuid_.uuid16) {
-                LOG_DEBUG(TRACE, "Using prov 16b tx uuid");
-                char_init.uuid.type = BLE_UUID_TYPE_16BIT;
-                char_init.uuid.uuid16 = provSendCharUuid_.uuid16;
-            } else {
-                LOG_DEBUG(TRACE, "Using default tx uuid");
-                char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(char_init.uuid.uuid128, SEND_CHAR_UUID, sizeof(SEND_CHAR_UUID));
-            }
-        } else if (provSendCharUuid_.type == BLE_UUID_TYPE_128BIT) {
-            if (memcmp(provSendCharUuid_.uuid128, zeros, sizeof(provSendCharUuid_.uuid128))) {
-                LOG_DEBUG(TRACE, "Using prov 128b tx uuid");
-                char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(char_init.uuid.uuid128, provSendCharUuid_.uuid128, sizeof(provSendCharUuid_.uuid128));
-            } else {
-                LOG_DEBUG(TRACE, "Using default tx uuid");
-                halUuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(char_init.uuid.uuid128, SEND_CHAR_UUID, sizeof(SEND_CHAR_UUID));
-            }
-        }
-    }
+    char_init.uuid = bleSendCharUuid_;
 
     char_init.properties = BLE_SIG_CHAR_PROP_NOTIFY;
     char_init.service_handle = serviceHandle;
@@ -1148,36 +1041,7 @@ int BleControlRequestChannel::initProfile() {
     char_init = {};
     char_init.version = BLE_API_VERSION;
     char_init.size = sizeof(hal_ble_char_init_t);
-
-    // Check if the device is in provisioning mode
-    if (!provModeStatus) {
-        LOG_DEBUG(TRACE, "Using default rx uuid");
-        char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-        memcpy(char_init.uuid.uuid128, RECV_CHAR_UUID, sizeof(RECV_CHAR_UUID));
-    } else {
-        // Check that the RX service UUID has been customized, if not, use default
-        if (provRecvCharUuid_.type == BLE_UUID_TYPE_16BIT) {
-            if (provRecvCharUuid_.uuid16) {
-                LOG_DEBUG(TRACE, "Using prov 16b rx uuid");
-                char_init.uuid.type = BLE_UUID_TYPE_16BIT;
-                char_init.uuid.uuid16 = provRecvCharUuid_.uuid16;
-            } else {
-                LOG_DEBUG(TRACE, "Using default rx uuid");
-                char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(char_init.uuid.uuid128, RECV_CHAR_UUID, sizeof(RECV_CHAR_UUID));
-            }
-        } else if (provRecvCharUuid_.type == BLE_UUID_TYPE_128BIT) {
-            if (memcmp(provRecvCharUuid_.uuid128, zeros, sizeof(provRecvCharUuid_.uuid128))) {
-                LOG_DEBUG(TRACE, "Using prov 128b rx uuid");
-                char_init.uuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(char_init.uuid.uuid128, provRecvCharUuid_.uuid128, sizeof(provRecvCharUuid_.uuid128));
-            } else {
-                LOG_DEBUG(TRACE, "Using default rx uuid");
-                halUuid.type = BLE_UUID_TYPE_128BIT;
-                memcpy(char_init.uuid.uuid128, RECV_CHAR_UUID, sizeof(RECV_CHAR_UUID));
-            }
-        }
-    }
+    char_init.uuid = bleRecvCharUuid_;
 
     char_init.properties = BLE_SIG_CHAR_PROP_WRITE | BLE_SIG_CHAR_PROP_WRITE_WO_RESP;
     char_init.service_handle = serviceHandle;

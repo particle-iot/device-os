@@ -856,9 +856,7 @@ public:
 
     int setControlRequestFilter(system_control_req_filter* filter) {
         int ret = 0;
-        for(unsigned i=0; i<filter->filteredReqIdsLen; i++) {
-            ret = system_ctrl_set_request_filter(filter->filteredReqIds[i], nullptr);
-        }
+        ret = system_ctrl_add_request_filter(filter->filteredReqIds, filter->filteredReqIdsLen, nullptr);
         return ret;
     }
 

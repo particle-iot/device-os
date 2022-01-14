@@ -90,7 +90,7 @@ int hal_get_device_secret(char* data, size_t size, void* reserved);
 int hal_set_device_secret(char* data, size_t size, void* reserved);
 
 /**
- * Get the device's secret.
+ * Clear the device's secret.
  */
 // TODO: Move this function to an appropriate module
 int hal_clear_device_secret(void* reserved);

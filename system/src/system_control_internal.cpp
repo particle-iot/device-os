@@ -113,13 +113,14 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     // If vector is non-empty, only those requests in the vector are allowed. Others are filtered out
     if (!vecCtrlReq_.isEmpty()) {
         bool reqFound = false;
-        for (auto i=0; i<vecCtrlReq_.size() && !reqFound; i++) {
-            if (vecCtrlReq_[i] == req->type) {
+        for (auto& type : vecCtrlReq_) {
+            if (type == req->type) {
                 reqFound = true;
+                break;
             }
         }
         if (!reqFound) {
-            LOG_DEBUG(TRACE, "Control req %u filtered out", req->type);
+            LOG(TRACE, "Control req %u filtered out", req->type);
             return;
         }
     }
@@ -407,20 +408,24 @@ void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handl
     particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
-int system_ctrl_set_request_filter(uint16_t reqType, void* reserved) {
-    // check if the element is already there
-    for (auto t : particle::system::SystemControl::instance()->vecCtrlReq_) {
-        if (t == reqType) {
-            LOG(TRACE, "TP2 ctrl req already exists");
-            return SYSTEM_ERROR_ALREADY_EXISTS;
+int system_ctrl_add_request_filter(uint16_t* reqItems, size_t cnt, void* reserved) {
+    // check if the element is already there. Check if the element is a valid element
+    for (unsigned i=0; i<cnt; i++) {
+        bool eleExists = false;
+        for (auto t : particle::system::SystemControl::instance()->vecCtrlReq_) {
+            if (t == reqItems[i]) {
+                eleExists = true;
+            }
         }
+        auto ret = 0;
+        if (!eleExists) {
+            ret = particle::system::SystemControl::instance()->vecCtrlReq_.append(reqItems[i]);
+        }
+        if (!ret) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        LOG(TRACE, "Added a new req to control req filter: %u", reqItems[i]);
     }
-    auto ret = particle::system::SystemControl::instance()->vecCtrlReq_.append(reqType);
-    if (!ret) {
-        LOG(TRACE, "TP1 Memory error");
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    LOG(TRACE, "Added a new req to control req filter: %u", reqType);
     return particle::system::SystemControl::instance()->vecCtrlReq_.size();
 }
 
@@ -446,7 +451,7 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
 }
 
-int system_ctrl_set_request_filter(uint16_t reqType, void* reserved) {
+int system_ctrl_add_request_filter(uint16_t* reqItems, size_t cnt, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
