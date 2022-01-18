@@ -47,8 +47,14 @@ public:
     ~RtlTimer() = default;
 
     int init(const hal_timer_init_config_t* conf) {
+        if (enabled_) {
+            deinit();
+        }
+
         if (conf) {
             usSystemTimeMicrosBase_ = conf->base_clock_offset;
+        } else {
+            usSystemTimeMicrosBase_ = 0;
         }
 
         overflowCounter_ = 0;
@@ -136,8 +142,6 @@ public:
 
         } else {
             RTIM_INTClear(TIMx[TIMER_INDEX]);
-            // Only use update interrupt, shouldn't enter here
-            SPARK_ASSERT(false);
         }
     }
 
