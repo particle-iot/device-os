@@ -3,7 +3,7 @@
 #
 
 transport select swd
-adapter speed 1000
+adapter speed 4000
 
 source [find target/swj-dp.tcl]
 
@@ -288,12 +288,18 @@ proc rtl872x_flash_write_bin_ext {file address auto_erase auto_verify} {
     # On Realtek MCU, the RAM address stats at 0x80000, which allows us to load a up-to-512KB file.
     # If the file is larger than 512KB, we'll split it into sevral 512KB pieces.
     set tmp_file_path "/tmp"
+    global tcl_platform
+    if {$tcl_platform(platform) eq "windows"} {
+        set tmp_file_path "C:/tmp"
+        file mkdir $tmp_file_path
+    }
+
     set file_counts 0
-    set f [open $file r]
+    set f [open $file rb]
     fconfigure $f -translation binary
     for {set i 0} {$i < $size} {set i [expr $i + [expr 512 * 1024]]} {
         set bin_data [read $f [expr 512 * 1024]]
-        set f_tmp [open "$tmp_file_path/op_file_$file_counts.bin" w]
+        set f_tmp [open "$tmp_file_path/op_file_$file_counts.bin" wb]
         puts $f_tmp $bin_data
         close $f_tmp
         incr file_counts
@@ -441,7 +447,7 @@ proc crc32 {instr} {
 }
 
 proc crc32_binary {file} {
-    set f [open $file r]
+    set f [open $file rb]
     fconfigure $f -translation binary
     set data [read $f]
     close $f
