@@ -289,6 +289,21 @@
 - [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
 - [Gen 3] Fix an issue with `BLE.scan()` deadlocking [#2220](https://github.com/particle-iot/device-os/pull/2220)
 
+## 2.3.0
+
+### FEATURES
+
+- [Boron / B SoM ] Support for SARA R510 [#2359](https://github.com/particle-iot/device-os/pull/2359) [#2365](https://github.com/particle-iot/device-os/pull/2365)
+- [Electron] Optional feature to use HSE/LSI as RTC clock source instead of LSE (external 32KHz XTAL) [#2354](https://github.com/particle-iot/device-os/pull/2354)
+
+### ENHANCEMENTS
+
+- [Boron / B SoM / R510] Add additional modem responsiveness check on warm boot to avoid triggering R510-specific initialization issue [#2373](https://github.com/particle-iot/device-os/pull/2373)
+
+### INTERNAL
+
+- Fix gcov installation [#2361](https://github.com/particle-iot/device-os/pull/2361)
+
 ## 2.3.0-rc.1
 
 ### FEATURES
@@ -298,7 +313,7 @@
 
 ### INTERNAL
 
-- Fix gcov installation [#2365](https://github.com/particle-iot/device-os/pull/2365)
+- Fix gcov installation [#2361](https://github.com/particle-iot/device-os/pull/2361)
 
 ## 2.2.0
 

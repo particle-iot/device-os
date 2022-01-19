@@ -139,6 +139,7 @@
 | 1006 | 2201 | 2.2.0-rc.2    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1006 | 2202 | 2.2.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1006 | 2300 | 2.3.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
+| 1006 | 2301 | 2.3.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1005 | 3000 | 3.0.0-alpha.1 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1005 | 3001 | 3.0.0-alpha.2 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1005 | 3002 | 3.0.0-beta.1  |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
