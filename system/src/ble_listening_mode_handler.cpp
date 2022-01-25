@@ -38,7 +38,7 @@ using namespace particle::ble;
 
 } // unnamed
 
-BleListeningModeHandler::BleListeningModeHandler()
+BleProvisioningModeHandler::BleProvisioningModeHandler()
         : preAdvParams_(),
           preTxPower_(0),
           prePpcp_(),
@@ -50,23 +50,23 @@ BleListeningModeHandler::BleListeningModeHandler()
           provMode_(false) {
 }
 
-BleListeningModeHandler::~BleListeningModeHandler() {
+BleProvisioningModeHandler::~BleProvisioningModeHandler() {
 }
 
-BleListeningModeHandler* BleListeningModeHandler::instance() {
-  static BleListeningModeHandler blelstmodehndlr;
+BleProvisioningModeHandler* BleProvisioningModeHandler::instance() {
+  static BleProvisioningModeHandler blelstmodehndlr;
   return &blelstmodehndlr;
 }
 
-bool BleListeningModeHandler::getProvModeStatus() {
+bool BleProvisioningModeHandler::getProvModeStatus() {
     return provMode_;
 }
 
-void BleListeningModeHandler::setProvModeStatus(bool enabled) {
+void BleProvisioningModeHandler::setProvModeStatus(bool enabled) {
     provMode_ = enabled;
 }
 
-int BleListeningModeHandler::constructControlRequestAdvData() {
+int BleProvisioningModeHandler::constructControlRequestAdvData() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
     Vector<uint8_t> tempAdvData;
@@ -115,7 +115,7 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::cacheUserConfigurations() {
+int BleProvisioningModeHandler::cacheUserConfigurations() {
     LOG_DEBUG(TRACE, "Cache user's BLE configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -146,7 +146,7 @@ int BleListeningModeHandler::cacheUserConfigurations() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::restoreUserConfigurations() {
+int BleProvisioningModeHandler::restoreUserConfigurations() {
     LOG_DEBUG(TRACE, "Restore user's BLE configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -195,7 +195,7 @@ int BleListeningModeHandler::restoreUserConfigurations() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::applyControlRequestConfigurations() {
+int BleProvisioningModeHandler::applyControlRequestConfigurations() {
     LOG_DEBUG(TRACE, "Apply BLE control request configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -240,7 +240,7 @@ int BleListeningModeHandler::applyControlRequestConfigurations() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::applyUserAdvData() {
+int BleProvisioningModeHandler::applyUserAdvData() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE((preAdvertising_ || preConnected_), SYSTEM_ERROR_INVALID_STATE);
     if (!userAdv_) {
@@ -266,7 +266,7 @@ int BleListeningModeHandler::applyUserAdvData() {
     return userAdv_ ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_INVALID_STATE;
 }
 
-int BleListeningModeHandler::applyControlRequestAdvData() {
+int BleProvisioningModeHandler::applyControlRequestAdvData() {
     LOG_DEBUG(TRACE, "Apply control request advertising data set.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -288,7 +288,7 @@ int BleListeningModeHandler::applyControlRequestAdvData() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::enter() {
+int BleProvisioningModeHandler::enter() {
     exited_ = false;
 
     // Do not allow other thread to modify the BLE configurations.
@@ -321,7 +321,7 @@ int BleListeningModeHandler::enter() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::exit() {
+int BleProvisioningModeHandler::exit() {
     if (exited_) {
         return SYSTEM_ERROR_NONE;
     }
@@ -355,11 +355,11 @@ int BleListeningModeHandler::exit() {
     return SYSTEM_ERROR_NONE;
 }
 
-void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, void* context) {
-    if (BleListeningModeHandler::exited_) {
+void BleProvisioningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, void* context) {
+    if (BleProvisioningModeHandler::exited_) {
         return;
     }
-    const auto handler = (BleListeningModeHandler*)context;
+    const auto handler = (BleProvisioningModeHandler*)context;
     switch (event->type) {
         case BLE_EVT_ADV_STOPPED: {
             LOG_DEBUG(TRACE, "BLE_EVT_ADV_STOPPED");
@@ -380,6 +380,6 @@ void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, voi
     }
 }
 
-bool BleListeningModeHandler::exited_ = true;
+bool BleProvisioningModeHandler::exited_ = true;
 
 #endif /* HAL_PLATFORM_BLE */
