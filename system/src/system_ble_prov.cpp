@@ -15,7 +15,7 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
             return SYSTEM_ERROR_NOT_ALLOWED;
     }
     if (enabled) {
-        if (particle::system::BleListeningModeHandler::instance()->getProvModeStatus()) {
+        if (particle::system::BleProvisioningModeHandler::instance()->getProvModeStatus()) {
             LOG(ERROR, "Provisioning mode already enabled");
             return SYSTEM_ERROR_INVALID_STATE;
         }
@@ -27,25 +27,25 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
         }
         LOG(TRACE, "Enable BLE prov mode");
         // IMPORTANT: Set setProvModeStatus(true) before entering provisioning mode,
-        // as certain operations in BleListeningModeHandler depend on the provMode_ flag
-        particle::system::BleListeningModeHandler::instance()->setProvModeStatus(true);
+        // as certain operations in BleProvisioningModeHandler depend on the provMode_ flag
+        particle::system::BleProvisioningModeHandler::instance()->setProvModeStatus(true);
         particle::system::BleControlRequestChannel::instance(particle::system::SystemControl::instance())->init();
-        auto r = particle::system::BleListeningModeHandler::instance()->enter();
+        auto r = particle::system::BleProvisioningModeHandler::instance()->enter();
         if (r) {
             LOG(TRACE, "Unable to enter BLE prov mode");
-            particle::system::BleListeningModeHandler::instance()->setProvModeStatus(false);
+            particle::system::BleProvisioningModeHandler::instance()->setProvModeStatus(false);
             return r;
         }
     } else {
-        if (!particle::system::BleListeningModeHandler::instance()->getProvModeStatus()) {
+        if (!particle::system::BleProvisioningModeHandler::instance()->getProvModeStatus()) {
             LOG(ERROR, "Provisioning mode already disabled");
             return SYSTEM_ERROR_INVALID_STATE;
         }
         LOG(TRACE, "Disable BLE prov mode");
         // IMPORTANT: Set setProvModeStatus(false) before exiting provsioning mode,
-        // as certain operations in BleListeningModeHandler depend on the provMode_ flag
-        particle::system::BleListeningModeHandler::instance()->setProvModeStatus(false);
-        auto r = particle::system::BleListeningModeHandler::instance()->exit();
+        // as certain operations in BleProvisioningModeHandler depend on the provMode_ flag
+        particle::system::BleProvisioningModeHandler::instance()->setProvModeStatus(false);
+        auto r = particle::system::BleProvisioningModeHandler::instance()->exit();
         if (r) {
             return r;
         }
@@ -54,7 +54,7 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
 }
 
 bool system_get_ble_prov_status(void* reserved) {
-    return particle::system::BleListeningModeHandler::instance()->getProvModeStatus();
+    return particle::system::BleProvisioningModeHandler::instance()->getProvModeStatus();
 }
 
 int system_set_custom_prov_svc_uuid(hal_ble_uuid_t svcUuid, void* reserved) {

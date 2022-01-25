@@ -28,9 +28,9 @@
 
 namespace particle { namespace system {
 
-class BleListeningModeHandler {
+class BleProvisioningModeHandler {
 public:
-    static BleListeningModeHandler* instance();
+    static BleProvisioningModeHandler* instance();
 
     int enter();
     int exit();
@@ -39,8 +39,8 @@ public:
     void setProvModeStatus(bool enabled);
 
 protected:
-    BleListeningModeHandler();
-    ~BleListeningModeHandler();
+    BleProvisioningModeHandler();
+    ~BleProvisioningModeHandler();
 
 private:
     int constructControlRequestAdvData();
