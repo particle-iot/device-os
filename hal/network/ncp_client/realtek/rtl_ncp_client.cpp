@@ -382,11 +382,11 @@ int RealtekNcpClient::rltkOff() {
 int RealtekNcpClient::rltkOn() {
     rtw_efuse_boot_write();
     RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_LCDC, APBPeriph_LCDC_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_LCDC, APBPeriph_LCDC_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
     wifi_on(RTW_MODE_STA);
     ncpPowerState(NcpPowerState::ON);
     return SYSTEM_ERROR_NONE;
@@ -404,7 +404,7 @@ int RealtekNcpClient::updateFirmware(InputStream* file, size_t size) {
 }
 
 int RealtekNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
-	return 0;
+    return 0;
 }
 
 int RealtekNcpClient::dataChannelFlowControl(bool state) {
