@@ -378,8 +378,8 @@ extern const unsigned char backup_tcp_public_server_address[18];
 #define TIMING_FLASH_UPDATE_TIMEOUT   (30000)  // 30sec
 #endif // HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
 
-#define USER_VAR_MAX_COUNT            (64)
-#define USER_FUNC_MAX_COUNT           (64)
+#define USER_VAR_MAX_COUNT            (100)
+#define USER_FUNC_MAX_COUNT           (100)
 
 #define USER_FUNC_ARG_LENGTH      (622) // FIXME: NOT USED
 #define USER_VAR_KEY_LENGTH       (64)
