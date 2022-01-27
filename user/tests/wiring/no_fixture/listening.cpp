@@ -24,7 +24,7 @@
 test(LISTENING_00_DISABLE_LISTENING_MODE) {
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
     Network.listen();
-    HAL_Delay_Milliseconds(1000); // Time for system thread to enter listening mode, if any
+    delay(1000); // Time for system thread to enter listening mode, if any
     assertFalse(Network.listening());
 }
 
@@ -32,10 +32,10 @@ test(LISTENING_00_DISABLE_LISTENING_MODE) {
 test(LISTENING_01_ENABLE_LISTENING_MODE) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     Network.listen();
-    HAL_Delay_Milliseconds(1000); // Time for system thread to enter listening mode
+    delay(1000); // Time for system thread to enter listening mode
     assertTrue(Network.listening());
     Network.listen(false);
-    HAL_Delay_Milliseconds(1000); // Time for system thread to exit listening mode
+    delay(1000); // Time for system thread to exit listening mode
     assertFalse(Network.listening());
 }
 
@@ -43,9 +43,9 @@ test(LISTENING_01_ENABLE_LISTENING_MODE) {
 // device-os should exit listening mode
 test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
     Network.listen();
-    HAL_Delay_Milliseconds(1000); // Time for system thread to enter listening mode
+    delay(1000); // Time for system thread to enter listening mode
     assertTrue(Network.listening());
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
-    HAL_Delay_Milliseconds(1500); // Time for system thread to process the flag
+    delay(1500); // Time for system thread to process the flag
     assertFalse(Network.listening());
 }

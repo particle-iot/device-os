@@ -64,7 +64,6 @@ ListeningModeHandler* ListeningModeHandler::instance() {
 
 int ListeningModeHandler::enter(unsigned int timeout) {
     if (HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
-        LOG(ERROR, "Listening mode not allowed");
         return SYSTEM_ERROR_NOT_ALLOWED;
     }
 
