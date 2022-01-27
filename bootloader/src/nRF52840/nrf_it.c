@@ -85,7 +85,7 @@ void HardFault_Handler(void)
         " ldr r1, [r0, #24]                                         \n"
         " ldr r2, handler2_address_const                            \n"
         " bx r2                                                     \n"
-        " .align 4                                                  \n"
+        " .balign 4                                                 \n"
         " handler2_address_const: .word prvGetRegistersFromStack    \n"
     );
 }

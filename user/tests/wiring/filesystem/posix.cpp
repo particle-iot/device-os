@@ -494,6 +494,99 @@ test(FS_POSIX_03_Truncate) {
     }
 }
 
+test(FS_POSIX_03_TruncateStress) {
+    // https://github.com/littlefs-project/littlefs/issues/268
+    const int num = 10;
+    const size_t dataSize = 8192;
+    const size_t truncateSize = 8192 / 32;
+
+    auto files = generateRandomFilenames(TEST_DIR, num);
+
+    static char randomData[dataSize] = {};
+    particle::Random rand;
+    rand.gen(randomData, sizeof(randomData));
+
+    spark::Vector<int> fds(num);
+
+    const int iterations = 20;
+
+    for (int iter = 0; iter < iterations; iter++) {
+        Serial.printlnf("iter=%d", iter);
+        // Create and write
+        for (int i = 0; i < num; i++) {
+            int fd = open(files[i], O_CREAT | O_RDWR | O_APPEND);
+            assertMoreOrEqual(fd, 0);
+            fds[i] = fd;
+
+            ssize_t r = write(fd, randomData, sizeof(randomData));
+            assertEqual(r, sizeof(randomData));
+        }
+
+        // Sync
+        for (int i = 0; i < num; i++) {
+            assertEqual(fsync(fds[i]), 0);
+        }
+
+        // Validate file size with stat
+        for (int i = 0; i < num; i++) {
+            struct stat st;
+            assertEqual(0, stat(files[i], &st));
+            assertEqual(st.st_size, sizeof(randomData));
+        }
+
+        ssize_t expectedSize = sizeof(randomData);
+        while (expectedSize > 0) {
+            for (int i = 0; i < num; i++) {
+                // Validate file size with seek
+                assertEqual(expectedSize, lseek(fds[i], 0, SEEK_END));
+                // Validate data
+                char chunk[1024] = {};
+                assertEqual(0, lseek(fds[i], 0, SEEK_SET));
+                for (ssize_t pos = 0; pos < expectedSize; pos += sizeof(chunk)) {
+                    size_t toRead = std::min<size_t>(expectedSize - pos, sizeof(chunk));
+                    Serial.printlnf("[%d] pos=%u/%u toRead=%u", i, pos, expectedSize, toRead);
+                    assertEqual(toRead, read(fds[i], chunk, toRead));
+                    assertEqual(0, memcmp(chunk, randomData + pos, toRead));
+                }
+            }
+
+            expectedSize -= truncateSize;
+            if (expectedSize >= 0) {
+                // ftruncate
+                for (int i = 0; i < num; i++) {
+                    Serial.printlnf("[%d] ftruncate %d", i, expectedSize);
+                    assertEqual(ftruncate(fds[i], expectedSize), 0);
+                }
+            }
+        }
+
+        // Close
+        for (int i = 0; i < num; i++) {
+            assertEqual(close(fds[i]), 0);
+        }
+
+        // Validate file size with stat
+        for (int i = 0; i < num; i++) {
+            struct stat st;
+            assertEqual(0, stat(files[i], &st));
+            assertEqual(st.st_size, 0);
+        }
+
+        // Unlink
+        for (int i = 0; i < num; i++) {
+            assertEqual(0, unlink(files[i]));
+            struct stat st;
+            assertNotEqual(0, stat(files[i], &st));
+        }
+
+        // truncate
+        for (int i = 0; i < num; i++) {
+            assertNotEqual(0, truncate(files[i], 0));
+        }
+    }
+}
+
+
 test(FS_POSIX_99_Cleanup) {
     assertTrue(dirExists(TEST_DIR));
     assertEqual(0, rmDir(TEST_DIR));
