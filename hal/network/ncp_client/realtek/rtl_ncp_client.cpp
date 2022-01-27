@@ -214,11 +214,6 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
     const NcpClientLock lock(this);
 
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
-    volatile uint32_t rtlContinue = 1;
-    while (!rtlContinue) {
-        asm volatile ("nop");
-    }
-
     char mac[32] = {};
     wifi_get_mac_address(mac);
     int rtlError = RTW_ERROR;
@@ -240,7 +235,6 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     int raw_rssi = 0;
     int rtlError = wifi_get_rssi(&raw_rssi);
-    LOG(INFO,"raw_rssi: %d", raw_rssi);
 
     if (RTW_SUCCESS == rtlError) {
         info->rssi(raw_rssi);
@@ -249,11 +243,6 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
 }
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
-    volatile uint32_t rtlContinue = 1;
-    while (!rtlContinue) {
-        asm volatile ("nop");
-    }
-
     struct Context {
         WifiScanCallback callback = nullptr;
         void* data = nullptr;
@@ -264,11 +253,11 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     ctx.callback = callback;
     ctx.data = data;
     int rtlError = wifi_scan_networks([](rtw_scan_handler_result_t* malloced_scan_result) -> rtw_result_t {
-        LOG(INFO, "scan callback");
         Context* ctx = (Context*)malloced_scan_result->user_data;
         if (malloced_scan_result->scan_complete != RTW_TRUE) {
             rtw_scan_result_t* record = &malloced_scan_result->ap_details;
             record->SSID.val[record->SSID.len] = 0; /* Ensure the SSID is null terminated */
+#ifdef DEBUG_BUILD
             LOG(INFO, "AP");
             LOG(INFO, "%s\t ", ( record->bss_type == RTW_BSS_TYPE_ADHOC ) ? "Adhoc" : "Infra" );
             LOG(INFO, MAC_FMT, MAC_ARG(record->BSSID.octet) );
@@ -293,6 +282,7 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
 
             LOG(INFO, " %s ", record->SSID.val );
             LOG(INFO, "\r\n" );
+#endif // DEBUG_BUILD
             MacAddress bssid = INVALID_MAC_ADDRESS;
             memcpy(bssid.data, record->BSSID.octet, sizeof(bssid.data));
 
@@ -311,7 +301,6 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     while (!ctx.done) {
         HAL_Delay_Milliseconds(100);
     }
-    LOG(INFO, "scan done %d %d", rtlError, ctx.results.size());
     for (int i = 0; i < ctx.results.size(); i++) {
         callback(ctx.results[i], data);
     }
@@ -391,23 +380,14 @@ int RealtekNcpClient::rltkOff() {
 
 
 int RealtekNcpClient::rltkOn() {
-    LOG(INFO, "rltkOn");
     rtw_efuse_boot_write();
-    volatile uint32_t rtlContinue = 1;
-    while (!rtlContinue) {
-        asm volatile ("nop");
-    }
     RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_LCDC, APBPeriph_LCDC_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
-	RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
-    if (wifi_on(RTW_MODE_STA) != RTW_SUCCESS) {
-        LOG(INFO, "wifi_on()");
-    } else {
-        LOG(INFO, "rltkOn done");
-    }
+    RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_LCDC, APBPeriph_LCDC_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
+    wifi_on(RTW_MODE_STA);
     ncpPowerState(NcpPowerState::ON);
     return SYSTEM_ERROR_NONE;
 }
@@ -424,7 +404,7 @@ int RealtekNcpClient::updateFirmware(InputStream* file, size_t size) {
 }
 
 int RealtekNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
-	return 0;
+    return 0;
 }
 
 int RealtekNcpClient::dataChannelFlowControl(bool state) {
