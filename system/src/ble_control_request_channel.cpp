@@ -40,7 +40,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #include "mbedtls_util.h"
 
-#include "ble_listening_mode_handler.h"
+#include "ble_provisioning_mode_handler.h"
 #include "system_event.h"
 
 #undef DEBUG // Legacy logging macro

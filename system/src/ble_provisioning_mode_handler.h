@@ -15,8 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef BLE_LISTENING_MODE_HANDLER_H
-#define BLE_LISTENING_MODE_HANDLER_H
+#ifndef BLE_PROVISIONING_MODE_HANDLER_H
+#define BLE_PROVISIONING_MODE_HANDLER_H
 
 #include "hal_platform.h"
 
@@ -84,4 +84,4 @@ private:
 
 #endif /* HAL_PLATFORM_BLE */
 
-#endif /* BLE_LISTENING_MODE_HANDLER_H */
+#endif /* BLE_PROVISIONING_MODE_HANDLER_H */

@@ -1969,20 +1969,20 @@ int BleLocalDevice::begin() const {
 int BleLocalDevice::end() const {
     /*
      * 1. Disconnects all the connections initiated by user application.
-     * 2. Disconnects Peripheral connection if it is not in the Listening mode.
-     * 3. Stops advertising if it is not in the Listening mode.
+     * 2. Disconnects Peripheral connection if it is not in the Listening/Provisioning mode.
+     * 3. Stops advertising if it is not in the Listening/Provisioning mode.
      * 4. Stops scanning if initiated.
      *
-     * FIXME: If device is broadcasting before entering the Listening mode and
-     * then this API is called during device in the Listening mode, device will
-     * restart broadcasting automatically when device exits the Listening mode.
+     * FIXME: If device is broadcasting before entering the Listening/Provisioning mode and
+     * then this API is called during device in the Listening/Provisioning mode, device will
+     * restart broadcasting automatically when device exits the Listening/Provisioning mode.
      */
-    disconnectAll(); // BLE HAL will guard that the Peripheral connection is remained if device is in the Listening mode.
+    disconnectAll(); // BLE HAL will guard that the Peripheral connection is remained if device is in the Listening/Provisioning mode.
     {
         WiringBleLock lk;
         impl()->peers().clear();
     }
-    stopAdvertising(); // BLE HAL will guard that device keeps broadcasting if device is in the Listening mode.
+    stopAdvertising(); // BLE HAL will guard that device keeps broadcasting if device is in the Listening/Provisioning mode.
     stopScanning();
     return SYSTEM_ERROR_NONE;
 }
