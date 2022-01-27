@@ -6,7 +6,7 @@ let api = null;
 let auth = null;
 let device = null;
 let deviceId = null;
-let maxVariableValueSize = 0;
+let limits = null;
 
 before(function() {
 	api = this.particle.apiClient.instance;
@@ -36,7 +36,7 @@ async function getVariableWithRetries({ deviceId, name, auth, retries = 10, dela
 	throw new Error('Error fetching variable from device');
 }
 
-test('register_variables', async function() {
+test('01_register_variables', async function() {
 	const resp = await api.getDevice({ deviceId, auth });
 	const vars = resp.body.variables;
 	expect(vars).to.include({
@@ -63,7 +63,7 @@ test('register_variables', async function() {
 	});
 });
 
-test('check_variable_values', async function() {
+test('02_check_variable_values', async function() {
 	const vals = {
 		'var_b': true,
 		'var_i': -2147483648,
@@ -94,24 +94,40 @@ test('check_variable_values', async function() {
 	expect(vars).to.include(vals);
 });
 
-test('get_max_variable_value_size', async function() {
-	const data = await this.particle.receiveEvent('max_variable_value_size');
-	maxVariableValueSize = Number.parseInt(data);
-	expect(maxVariableValueSize).to.be.above(794); // Maximum supported size of a variable value in pre-3.0.0 Device OS
-	console.log('Particle.maxVariableValueSize() returned', maxVariableValueSize);
+test('03_publish_variable_limits', async function() {
+	const data = await this.particle.receiveEvent('limits');
+	limits = JSON.parse(data);
+	expect(limits.max_num).to.equal(100);
+	expect(limits.max_name_len).to.equal(64);
+	expect(limits.max_val_len).to.be.above(794); // Maximum supported size of a variable value in pre-3.0.0 Device OS
+	console.log('Particle.maxVariableValueSize() returned', limits.max_val_len);
 });
 
-test('verify_max_variable_value_size', async function() {
+test('04_verify_max_variable_value_size', async function() {
 	// Original 1500-character string used in the application code
 	const str = 'XvFclXWVOG6n99rUYpsLzrp8VyPWdpKfm4z4SdX2GwxLwoJOSPpHL5jF6ajMaJhJdWUuDPSfmqoDmb5DQZRWZFM2f6tSsqmDzVPojUr5qZJQKEgb8WPndRRnD6y9AA5RPfkoqNZKfTgmDCWSGDHygLaFvYOUsM6ggZD8pBLnyrfs5c1fMrM6qZsRglUfaEit4hrDKfsdHoD2SUmdckgU6vqmYHpeVEwW6xitwwFRtyHSvCUb4XbZIWBHJypHEHS17wUpDbTPHcaowsod9Ogp1UjD2ybAUaNd1ul0yPvPigNAqdBsOQ8viVEnOyADAnf0TPQjaXEQ5LWgLJNIheO2qmniPFL9WSnQFPZSY7lwjANoK07ys62nRGoAgwS1sNL0LOvweWwklUxhVDw7foEWBDSXoLaaHieQ7sUvcxAH05S0LMd4m3QbFbkxwFnZPjqvdS98dtAIcvAZqGwbHtnGIInWT5LArXrsyAmiGouezRbgMwS6IFn6ObkGyvEmGqyIGmTdhGlDUSMVMzRXXKoXDn36yqKimGwLhiBKEc4oq7TpwfQ8P17DjO3rVC8hA9cf0UFNHSIhrK4bHtOKSoXEIDv4O4p86xG9oJ84yuUxz4psJHolfwFFlZ6m5csmSOk6urU3kpxh9FyuBnwGrICGIfTxMNfOU0EiV1ajMudqz9G2L2IBgxsqjKaOmeGjja4tgg9cW1UMFnEK9QaXs88kdUmXiJRnIHuZlCg1rOUvQgxmoUlPR7lZ9R6ZfWOivmX2gs7kxiSxK84JmVirVjqgE1gHASoSXjUj3YhJ5h0c6yR5QN6QrHc4zPN2jnI1Tukt8mS7WXbRmGPz31dZSUC9LYVqifY9bw77QYiqenXFbtX4vEeOKFxCvXbzZv3QKKCReobPu0eTM0iLNcrVXUocZXjOnfU7e42UrV8HBGrkB0ozu0mgmVcDlW0M5wp8gcx4ekXLlmvfYH0WO3YamV1ioraHwXJ0MmRSjaFuau7CqOZyUPfhspnM7Yo8yz8J58oVs7oxTzdkgINbr0zBclRyNY6Box9p1MMOtR5t5oNiRYs7g8WxIN4KCKY5CWnlUNUByCwNHhnEGRIIi5guZNt22FHsBPtoztLDwJ7YUY26GTJUypdXm3QOho3vw4IP68w651rcJU7SWX9aEw7pkTS7FqHYT0vsyt2H2Jzx5QQsBcbVei2RL9lgnNRB2UvxNSOyiifjeIECvapmMLiTdTYgq2ZVBDjoTJyZ5DPRdCsJlpKzlNvoomiXnIPyVfhMWhGk5IKieNvkYtTqQZEVhwysndg3MkQLHqlSpU061PPrEoPUtJSvX4c5JtBnISKDT3sFpIHnUayITBUjzKUpJABiPr8E2zBJP1WFJd5yWEBf1JsRBFmrnP7qq6b6zNraRw1NrBvxva04kxIcW8wiTuOkrvlGwChxy5vG4AtVVDga2TSDotdzu5W2mLW3QI9r05zNY0MWVPwpZVmbGZjcYBqE2As7Gl67';
 	const resp = await getVariableWithRetries({ deviceId, name: 'var_s', auth });
-	expect(resp.body.result).to.equal(str.slice(0, maxVariableValueSize));
+	expect(resp.body.result).to.equal(str.slice(0, limits.max_val_len));
 });
 
-test('empty_string_variable', async function() {
+test('05_empty_string_variable', async function() {
 	const resp = await getVariableWithRetries({ deviceId, name: 'var_s', auth });
 	expect(resp.body.result).to.equal('');
 });
 
-test('check_current_thread', async function() { // See variables.cpp
+test('06_check_current_thread', async function() {
+	// Reset the device before the next test
+	await device.reset();
+});
+
+test('07_register_many_variables', async function() {
+	const resp = await api.getDevice({ deviceId, auth });
+	const vars = resp.body.variables;
+	const expectedVars = {};
+	for (let i = 1; i <= limits.max_num; ++i) {
+		let name = 'var_' + i.toString().padStart(3, '0') + '_';
+		name += 'x'.repeat(Math.max(limits.max_name_len - name.length, 0));
+		expectedVars[name] = 'int32';
+	}
+	expect(vars).to.deep.equal(expectedVars);
 });
