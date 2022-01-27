@@ -53,7 +53,9 @@
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
+#if HAL_PLATFORM_IFAPI
 #include "system_listening_mode.h"
+#endif
 
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
@@ -457,12 +459,14 @@ void manage_cloud_connection(bool force_events)
 }
 
 void manage_listening_mode_flag() {
+#if HAL_PLATFORM_IFAPI
     // If device is in listening mode and 'FEATURE_FLAG_DISABLE_LISTENING_MODE' is enabled,
     // make sure to come out of listening mode
     if (particle::system::ListeningModeHandler::instance()->isActive() && HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
         particle::system::ListeningModeHandler::instance()->exit();
     }
     HAL_Delay_Milliseconds(1);
+#endif
 }
 
 static void process_isr_task_queue()
