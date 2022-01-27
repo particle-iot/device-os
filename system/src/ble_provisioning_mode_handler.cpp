@@ -18,7 +18,7 @@
 #include "logging.h"
 LOG_SOURCE_CATEGORY("system.listen.ble")
 
-#include "ble_listening_mode_handler.h"
+#include "ble_provisioning_mode_handler.h"
 
 #if HAL_PLATFORM_BLE
 
@@ -161,7 +161,7 @@ int BleProvisioningModeHandler::restoreUserConfigurations() {
     CHECK(hal_ble_gap_set_tx_power(preTxPower_, nullptr));
     CHECK(hal_ble_gap_set_auto_advertise(preAutoAdv_, nullptr));
 
-    // It is advertising when entering listening mode.
+    // It is advertising when entering listening/provisioning mode.
     if (preAdvertising_) {
         if (!hal_ble_gap_is_connected(nullptr, nullptr)) {
             CHECK(hal_ble_gap_start_advertising(nullptr));
@@ -169,7 +169,7 @@ int BleProvisioningModeHandler::restoreUserConfigurations() {
         // Currently it is connected. When disconnected, use previous automatic advertising scheme.
         return SYSTEM_ERROR_NONE;
     }
-    // It is connected but not advertising when entering listening mode.
+    // It is connected but not advertising when entering listening/provisioning mode.
     if (preConnected_) {
         if (!hal_ble_gap_is_connected(nullptr, nullptr)) {
             if (preAutoAdv_ == BLE_AUTO_ADV_ALWAYS) {
@@ -180,7 +180,7 @@ int BleProvisioningModeHandler::restoreUserConfigurations() {
         }
         return SYSTEM_ERROR_NONE;
     }
-    // It is neither connected nor advertising when entering listening mode.
+    // It is neither connected nor advertising when entering listening/provisioning mode.
     if (hal_ble_gap_is_connected(nullptr, nullptr)) {
         if (preAutoAdv_ == BLE_AUTO_ADV_ALWAYS) {
             // Do not automatically start advertising when disconnected.

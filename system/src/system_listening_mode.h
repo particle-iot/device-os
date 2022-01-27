@@ -28,7 +28,7 @@
 #include "system_setup.h"
 #include <memory>
 #include "system_tick_hal.h"
-#include "ble_listening_mode_handler.h"
+#include "ble_provisioning_mode_handler.h"
 
 namespace particle { namespace system {
 
