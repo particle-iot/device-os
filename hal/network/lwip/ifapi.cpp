@@ -302,6 +302,9 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
             newaddr.ip6_addr_data = &ip6_newaddr_data;
             ev_if_addr.oldaddr = &oldaddr;
             ev_if_addr.addr = &newaddr;
+            struct sockaddr_in6 addrs[2] = {};
+            oldaddr.addr = (sockaddr*)&addrs[0];
+            newaddr.addr = (sockaddr*)&addrs[1];
 
             netif_ip6_address_to_if_addr(netif, args->ipv6_addr_state_changed.addr_index, &oldaddr);
             netif_ip6_address_to_if_addr(netif, args->ipv6_addr_state_changed.addr_index, &newaddr);

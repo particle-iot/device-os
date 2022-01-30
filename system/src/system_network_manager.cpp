@@ -199,6 +199,7 @@ int NetworkManager::activateConnections() {
 
             /* FIXME */
             CHECKV(if_set_xflags(iface, IFXF_DHCP));
+            CHECKV(if_set_xflags(iface, IFXF_AUTOCONF6));
 
             /* TODO: establish lower layer connection, e.g. 802.11 */
 
@@ -829,6 +830,7 @@ int NetworkManager::syncInterfaceStates() {
                 if (state->enabled && !(flags & IFF_UP)) {
                     CHECKV(if_set_flags(iface, IFF_UP));
                     CHECKV(if_set_xflags(iface, IFXF_DHCP));
+                    CHECKV(if_set_xflags(iface, IFXF_AUTOCONF6));
                 } else if (!state->enabled && (flags & IFF_UP)) {
                     CHECKV(if_clear_flags(iface, IFF_UP));
                 }

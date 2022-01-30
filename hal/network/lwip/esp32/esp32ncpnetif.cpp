@@ -96,9 +96,7 @@ err_t Esp32NcpNetif::initInterface() {
     netif_.hwaddr_len = ETHARP_HWADDR_LEN;
     netif_.mtu = 1500;
     netif_.flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_IGMP;
-    /* FIXME: Remove once we enable IPv6 */
-    netif_.flags |= NETIF_FLAG_NO_ND6;
-    /* netif_.flags |= NETIF_FLAG_MLD6 */
+    netif_.flags |= NETIF_FLAG_MLD6;
 
     uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
     uint8_t deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
