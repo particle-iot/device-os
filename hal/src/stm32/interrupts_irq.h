@@ -16,11 +16,21 @@ extern "C" {
 
 #ifdef USE_STDPERIPH_DRIVER
 
+#ifdef __cplusplus
+#pragma GCC diagnostic push
+// Register storage is not allowed in ISO C++17
+#pragma GCC diagnostic ignored "-Wregister"
+#endif // defined(__cplusplus)
+
 #if defined(STM32F10X_MD) || defined(STM32F10X_HD)
 #include "stm32f10x.h"
 #else
 #include "stm32f2xx.h"
 #endif
+
+#ifdef __cplusplus
+#pragma GCC diagnostic pop
+#endif // defined(__cplusplus)
 
 typedef struct {
   IRQn_Type irq;

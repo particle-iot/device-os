@@ -28,101 +28,182 @@
 
 #include <algorithm>
 
+#define CHECK_PROTOCOL(_expr) \
+        do { \
+            const auto _r = _expr; \
+            if (_r != particle::protocol::ProtocolError::NO_ERROR) { \
+                return _r; \
+            } \
+        } while (false)
+
 namespace particle {
 
 namespace protocol {
 
 namespace {
 
-/**
- * Maximum CoAP overhead per Describe request message:
- *
- * - Message header: 4 bytes;
- * - Token: 1 bytes;
- * - Uri-Path (11): 2 bytes;
- * - Uri-Query (15): 2 bytes;
- * - Block1 (27): 4 bytes;
- * - Payload marker: 1 byte.
- */
-const size_t REQUEST_COAP_OVERHEAD = 14;
 
-/**
- * Maximum CoAP overhead per Describe response message:
- *
- * - Message header: 4 bytes;
- * - Token: 1 bytes;
- * - ETag (4): 5 bytes;
- * - Block2 (23): 5 bytes;
- * - Payload marker: 1 byte.
- */
-const size_t RESPONSE_COAP_OVERHEAD = 16;
+// Maximum CoAP overhead per Describe request message:
+//
+// - Message header: 4 bytes;
+// - Token: 1 byte;
+// - Uri-Path (11): 2 bytes;
+// - Uri-Query (15): 2 bytes;
+// - Block1 (27): 4 bytes;
+// - Payload marker: 1 byte.
+const size_t MAX_REQUEST_COAP_OVERHEAD = 14;
 
-static_assert(COAP_BLOCK_SIZE + REQUEST_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE &&
-        COAP_BLOCK_SIZE + RESPONSE_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE, "COAP_BLOCK_SIZE is too large");
+// Maximum CoAP overhead per Describe response message:
+//
+// - Message header: 4 bytes;
+// - Token: 1 byte;
+// - ETag (4): 5 bytes;
+// - Block2 (23): 5 bytes;
+// - Payload marker: 1 byte.
+const size_t MAX_RESPONSE_COAP_OVERHEAD = 16;
 
+// Minimum and maximum supported block sizes for blockwise transfers
+const size_t MIN_BLOCK_SIZE = 512;
+const size_t MAX_BLOCK_SIZE = 1024;
+
+static_assert(MIN_BLOCK_SIZE + MAX_REQUEST_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE &&
+        MIN_BLOCK_SIZE + MAX_RESPONSE_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE, "PROTOCOL_BUFFER_SIZE is too small");
+
+// Initial size of a dynamically allocated buffer for Describe data
 const size_t INITIAL_BUFFER_SIZE = 256;
 
-class CharVectorAppender: public Appender {
+// An appender class that writes the data to a fixed size buffer first and then to a dynamically
+// allocated buffer if the former has run out of space. The data from the fixed size buffer is
+// copied to the dynamically allocated one
+class BufferAppender2: public Appender {
 public:
     using Appender::append;
 
-    explicit CharVectorAppender(Vector<char>* vec) :
+    BufferAppender2(char* buf, size_t bufSize, Vector<char>* vec) :
+            buf_(buf),
+            bufOffs_(0),
+            bufSize_(bufSize),
+            dataSize_(0),
             vec_(vec),
             ok_(true) {
     }
 
     bool append(const uint8_t* data, size_t size) override {
+        dataSize_ += size;
         if (!ok_) {
-            return false;
+            return true; // This method never fails
         }
-        const size_t offs = vec_->size();
-        if (vec_->capacity() - offs < size) {
-            const size_t n = std::max(std::max((size_t)vec_->capacity() * 3 / 2, offs + size), INITIAL_BUFFER_SIZE);
-            ok_ = vec_->reserve(n);
+        if (buf_ && bufOffs_ < bufSize_) {
+            // Write to the fixed size buffer
+            const size_t n = std::min(size, bufSize_ - bufOffs_);
+            memcpy(buf_ + bufOffs_, data, n);
+            data += n;
+            size -= n;
+        }
+        if (!size) {
+            return true;
+        }
+        if (!vec_) {
+            // Fixed size buffer is full but additional buffer was not provided
+            ok_ = false;
+            return true;
+        }
+        const size_t vecOffs = vec_->size();
+        if (buf_ && bufSize_ > 0) {
+            // Copy the data serialized so far to the additional buffer
+            ok_ = resizeVector(vecOffs + bufSize_ + size);
             if (!ok_) {
-                return false;
+                return true;
             }
+            const auto vecData = vec_->data() + vecOffs;
+            memcpy(vecData, buf_, bufSize_);
+            memcpy(vecData + bufSize_, data, size);
+            buf_ = nullptr;
+            return true;
         }
-        vec_->resize(offs + size);
-        memcpy(vec_->data() + offs, data, size);
+        // Write to the additional buffer
+        ok_ = resizeVector(vecOffs + size);
+        if (!ok_) {
+            return true;
+        }
+        memcpy(vec_->data() + vecOffs, data, size);
         return true;
     }
 
-    bool isOk() const {
+    size_t size() const {
+        return dataSize_;
+    }
+
+    bool ok() const {
         return ok_;
     }
 
 private:
+    char* buf_;
+    size_t bufOffs_;
+    size_t bufSize_;
+    size_t dataSize_;
     Vector<char>* vec_;
     bool ok_;
+
+    bool resizeVector(size_t size) {
+        if ((size_t)vec_->capacity() < size) {
+            const size_t newCapacity = std::max(std::max((size_t)vec_->capacity() * 3 / 2, size), INITIAL_BUFFER_SIZE);
+            if (!vec_->reserve(newCapacity)) {
+                return false;
+            }
+        }
+        vec_->resize(size); // Cannot fail
+        return true;
+    }
 };
 
-unsigned encodeBlockOption(unsigned num, bool m) {
+unsigned encodeBlockOption(unsigned num, unsigned size, bool m) {
     // RFC 7959, 2.2. Structure of a Block Option
-    static_assert(COAP_BLOCK_SIZE == 1024 || COAP_BLOCK_SIZE == 512, "Unsupported COAP_BLOCK_SIZE");
-    const unsigned szx = (COAP_BLOCK_SIZE == 1024) ? 6 /* 1024 bytes */ : 5 /* 512 bytes */;
-    unsigned blockOpt = (num << 4) | szx;
+    static_assert(MIN_BLOCK_SIZE == 512 && MAX_BLOCK_SIZE == 1024, "This code needs to be updated accordingly");
+    SPARK_ASSERT(size == 1024 || size == 512);
+    size = (size == 1024) ? 6 : 5; // SZX
+    unsigned opt = (num << 4) | size;
     if (m) {
-        blockOpt |= 0x08;
+        opt |= 0x08;
     }
-    return blockOpt;
+    return opt;
 }
 
-bool decodeBlockOption(unsigned blockOpt, unsigned* num, bool* m) {
-    static_assert(COAP_BLOCK_SIZE == 1024 || COAP_BLOCK_SIZE == 512, "Unsupported COAP_BLOCK_SIZE");
-    const unsigned szx = blockOpt & 0x07;
-    if (!((COAP_BLOCK_SIZE == 1024 && szx == 6 /* 1024 bytes */) || (COAP_BLOCK_SIZE == 512 && szx == 5 /* 512 bytes */))) {
-        return false; // Unsupported block size
+bool decodeBlockOption(unsigned opt, unsigned* num, unsigned* size, bool* m) {
+    static_assert(MIN_BLOCK_SIZE == 512 && MAX_BLOCK_SIZE == 1024, "This code needs to be updated accordingly");
+    switch (opt & 0x07) { // SZX
+        case 6: *size = 1024; break;
+        case 5: *size = 512; break;
+        default: return false; // Unsupported block size
     }
-    *num = blockOpt >> 4;
-    *m = blockOpt & 0x08;
+    *num = opt >> 4;
+    *m = opt & 0x08;
     return true;
+}
+
+void initDescribeRequest(CoapMessageEncoder* enc, token_t token, int flags) {
+    enc->type(CoapType::CON);
+    enc->code(CoapCode::POST);
+    enc->id(0); // Encoded by the message channel
+    enc->token((const char*)&token, sizeof(token));
+    enc->option(CoapOption::URI_PATH, "d");
+    const char uriQuery = flags;
+    enc->option(CoapOption::URI_QUERY, &uriQuery, sizeof(uriQuery));
+}
+
+void initDescribeResponse(CoapMessageEncoder* enc, token_t token) {
+    enc->type(CoapType::CON);
+    enc->code(CoapCode::CONTENT);
+    enc->id(0); // Encoded by the message channel
+    enc->token((const char*)&token, sizeof(token));
 }
 
 } // namespace
 
 Description::Description(Protocol* proto) :
         proto_(proto),
+        blockSize_(0),
         lastEtag_(0) {
 }
 
@@ -130,29 +211,44 @@ Description::~Description() {
 }
 
 ProtocolError Description::sendRequest(int descFlags) {
-    Request req = {};
-    req.flags = descFlags;
-    ProtocolError err = getDescribeData(&req.data, descFlags);
-    if (err != ProtocolError::NO_ERROR) {
-        return err;
+    if (activeReq_.has_value()) {
+        // As per RFC 7959, 2.5, an endpoint cannot perform multiple concurrent blockwise transfers
+        // to the same resource. It's not known in advance (before serialization) whether a given
+        // Describe request will require blockwise transfer, so we're queueing all further Describe
+        // requests if there's a blockwise request that is being sent to the server already
+        if (!reqQueue_.contains(descFlags) && !reqQueue_.append(descFlags)) {
+            return ProtocolError::NO_MEMORY;
+        }
+        return ProtocolError::NO_ERROR;
     }
-    if (!reqs_.isEmpty() && !reqs_.append(std::move(req))) {
-        return ProtocolError::NO_MEMORY;
-    }
-    bool hasMore = false;
-    err = sendNextRequestBlock(&req, &hasMore);
-    if (err != ProtocolError::NO_ERROR) {
-        return err;
-    }
-    if (!hasMore) {
+    // Serialize a Describe request
+    Message msg;
+    CHECK_PROTOCOL(proto_->get_channel().create(msg));
+    CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
+    const auto token = proto_->get_next_token();
+    initDescribeRequest(&enc, token, descFlags);
+    const size_t msgOffs = enc.payloadData() - (char*)msg.buf();
+    Vector<char> buf;
+    size_t payloadSize = 0;
+    CHECK_PROTOCOL(getDescribeData(descFlags, &msg, msgOffs, &buf, &payloadSize));
+    if (!buf.isEmpty()) {
+        // Send a blockwise request
+        Request req = {};
+        req.data = std::move(buf);
+        req.flags = descFlags;
+        CHECK_PROTOCOL(sendNextRequestBlock(&req, &msg, token));
+        SPARK_ASSERT(!req.data.isEmpty());
+        activeReq_ = std::move(req);
+    } else {
+        // Send a regular request
+        enc.payloadSize(payloadSize);
+        CHECK_PROTOCOL(encodeAndSend(&enc, &msg));
         Ack ack = {};
-        ack.msgId = req.msgId;
+        ack.msgId = msg.get_id();
         ack.flags = descFlags;
         if (!acks_.append(std::move(ack))) {
             return ProtocolError::NO_MEMORY;
         }
-    } else if (!reqs_.append(std::move(req))) {
-        return ProtocolError::NO_MEMORY;
     }
     return ProtocolError::NO_ERROR;
 }
@@ -166,35 +262,45 @@ ProtocolError Description::receiveRequest(const Message& msg) {
     }
     // Describe requests are required to be confirmable and have a token
     if (dec.type() != CoapType::CON) {
-        LOG(WARN, "Unexpected message type: %u", (unsigned)dec.type());
+        LOG(WARN, "Unexpected request type: %u", (unsigned)dec.type());
         return sendErrorResponse(dec, CoapCode::BAD_REQUEST);
     }
     if (dec.tokenSize() != sizeof(token_t)) {
         LOG(WARN, "Unexpected token size: %u", (unsigned)dec.tokenSize());
         return sendErrorResponse(dec, CoapCode::BAD_REQUEST);
     }
-    token_t token = 0;
-    memcpy(&token, dec.token(), sizeof(token));
+    token_t reqToken = 0;
+    memcpy(&reqToken, dec.token(), sizeof(reqToken));
     auto iter = dec.findOption(CoapOption::URI_QUERY);
     if (!iter) {
         LOG(WARN, "Invalid message options");
         return sendErrorResponse(dec, CoapCode::BAD_REQUEST);
     }
     // Get Describe type
-    const int flags = iter.toUInt() & DescriptionType::DESCRIBE_MAX;
-    if (flags != DescriptionType::DESCRIBE_METRICS && !(flags | DescriptionType::DESCRIBE_SYSTEM) &&
-            !(flags | DescriptionType::DESCRIBE_APPLICATION)) {
+    const int descFlags = iter.toUInt() & DescriptionType::DESCRIBE_MAX;
+    if (descFlags != DescriptionType::DESCRIBE_METRICS && !(descFlags | DescriptionType::DESCRIBE_SYSTEM) &&
+            !(descFlags | DescriptionType::DESCRIBE_APPLICATION)) {
         LOG(WARN, "Invalid message options");
         return sendErrorResponse(dec, CoapCode::BAD_OPTION);
     }
+    size_t blockSize = 0;
+    CHECK_PROTOCOL(getBlockSize(&blockSize));
     // Check if it's a blockwise request
     unsigned blockIndex = 0;
     iter = dec.findOption(CoapOption::BLOCK2);
     if (iter) {
         const auto blockOpt = iter.toUInt();
-        bool hasMore = false;
-        if (!decodeBlockOption(blockOpt, &blockIndex, &hasMore)) {
+        unsigned recvBlockSize = 0;
+        bool hasMore = false; // Ignored
+        if (!decodeBlockOption(blockOpt, &blockIndex, &recvBlockSize, &hasMore)) {
             LOG(WARN, "Invalid message options");
+            return sendErrorResponse(dec, CoapCode::BAD_OPTION);
+        }
+        if (recvBlockSize != blockSize) {
+            // This is a deviation from RFC 7959 but we require the server, that knows the maximum
+            // size of a CoAP message supported by the device, to always use the maximum supported
+            // block size in its requests
+            LOG(WARN, "Unexpected block size: %u", recvBlockSize);
             return sendErrorResponse(dec, CoapCode::BAD_OPTION);
         }
     }
@@ -202,67 +308,85 @@ ProtocolError Description::receiveRequest(const Message& msg) {
     Response newResp = {};
     Response* resp = nullptr;
     int respIndex = 0;
-    for (; respIndex < resps_.size(); ++respIndex) {
-        if (resps_[respIndex].flags == flags) {
-            resp = &resps_[respIndex];
+    for (; respIndex < activeResps_.size(); ++respIndex) {
+        if (activeResps_[respIndex].flags == descFlags) {
+            resp = &activeResps_[respIndex];
             break;
         }
     }
+    Message respMsg;
+    CHECK_PROTOCOL(proto_->get_channel().create(respMsg));
+    CoapMessageEncoder enc((char*)respMsg.buf(), respMsg.capacity());
+    size_t payloadSize = 0;
     if (!resp) {
         if (blockIndex != 0) {
-            // Fail early as replying with a block of a newly serialized Describe data will cause
-            // a ETag mismatch error on the server
+            // Fail early as replying with new Describe data will anyway cause an ETag mismatch
+            // error on the server
             LOG(WARN, "Unexpected block index: %u", blockIndex);
             return sendErrorResponse(dec, CoapCode::NOT_FOUND);
         }
-        const ProtocolError err = getDescribeData(&newResp.data, flags);
-        if (err != ProtocolError::NO_ERROR) {
-            return err;
+        // Serialize a Describe response
+        initDescribeResponse(&enc, reqToken);
+        const size_t msgOffs = enc.payloadData() - (char*)respMsg.buf();
+        Vector<char> buf;
+        CHECK_PROTOCOL(getDescribeData(descFlags, &respMsg, msgOffs, &buf, &payloadSize));
+        if (!buf.isEmpty()) {
+            // Prepare a blockwise response
+            newResp.data = std::move(buf);
+            newResp.blockCount = (newResp.data.size() + blockSize - 1) / blockSize;
+            newResp.reqCount = 1;
+            newResp.etag = ++lastEtag_;
+            newResp.flags = descFlags;
+            resp = &newResp;
         }
-        newResp.flags = flags;
-        newResp.etag = ++lastEtag_;
-        resp = &newResp;
-    } else if (blockIndex >= resp->blockCount) {
-        LOG(WARN, "Unexpected block index: %u", blockIndex);
-        return sendErrorResponse(dec, CoapCode::NOT_FOUND);
-    }
-    // Acknowledge the request
-    ProtocolError err = sendEmptyAck(dec);
-    if (err != ProtocolError::NO_ERROR) {
-        return err;
-    }
-    // Send a response
-    message_id_t respMsgId = 0;
-    bool hasMore = false;
-    err = sendResponseBlock(*resp, token, blockIndex, &respMsgId, &hasMore);
-    if (err != ProtocolError::NO_ERROR) {
-        return err;
-    }
-    if (hasMore) {
-        if (respIndex >= resps_.size()) {
-            newResp.blockCount = (newResp.data.size() + COAP_BLOCK_SIZE - 1) / COAP_BLOCK_SIZE;
-            if (!resps_.append(std::move(newResp))) {
-                return ProtocolError::NO_MEMORY;
-            }
-            resp = &resps_.last();
-            respIndex = resps_.size() - 1;
+    } else {
+        if (blockIndex >= resp->blockCount) {
+            LOG(WARN, "Unexpected block index: %u", blockIndex);
+            return sendErrorResponse(dec, CoapCode::NOT_FOUND);
         }
+        // The server always requests response blocks sequentially and never re-requests the blocks
+        // that it has already received. It may however initiate a number of concurrent blockwise
+        // requests to get the same Describe data. As an optimization, we count the number of such
+        // concurrent requests based on whether the server has requested the first or the last block
+        // of the Describe data, and free the Describe data when there's no more blockwise requests
+        // accessing it.
+        //
+        // It's mentioned in the RFC that an endpoint has no way to perform multiple concurrent
+        // blockwise requests to the same resource using the Block2 option alone, but it's possible
+        // to do so given that concurrent requests use different tokens (see RFC 7959, 2.4)
         if (blockIndex == 0) {
             ++resp->reqCount;
         }
-        resp->accessTime = millis();
-    } else {
-        if (respIndex < resps_.size()) {
-            if (--resp->reqCount == 0) {
-                resps_.removeAt(respIndex);
-            } else {
-                resp->accessTime = millis();
-            }
+    }
+    // Acknowledge the request
+    const auto reqId = dec.id();
+    CHECK_PROTOCOL(sendEmptyAck(reqId));
+    if (resp) {
+        // Send a blockwise response
+        CHECK_PROTOCOL(sendResponseBlock(*resp, &respMsg, reqToken, blockIndex));
+        if (blockIndex == resp->blockCount - 1) {
+            --resp->reqCount;
         }
+        resp->lastAccessTime = millis();
+    } else {
+        // Send a regular response
+        enc.payloadSize(payloadSize);
+        CHECK_PROTOCOL(encodeAndSend(&enc, &respMsg));
+    }
+    const auto respId = respMsg.get_id();
+    if (!resp || blockIndex == resp->blockCount - 1) {
+        // Sent a regular response or the last block of a blockwise response
         Ack ack = {};
-        ack.msgId = respMsgId;
-        ack.flags = flags;
+        ack.msgId = respId;
+        ack.flags = descFlags;
         if (!acks_.append(std::move(ack))) {
+            return ProtocolError::NO_MEMORY;
+        }
+    }
+    if (resp) {
+        if (!resp->reqCount && respIndex < activeResps_.size()) {
+            activeResps_.removeAt(respIndex);
+        } else if (resp->reqCount && respIndex == activeResps_.size() && !activeResps_.append(std::move(newResp))) {
             return ProtocolError::NO_MEMORY;
         }
     }
@@ -270,7 +394,7 @@ ProtocolError Description::receiveRequest(const Message& msg) {
 }
 
 ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
-    if (reqs_.isEmpty() && acks_.isEmpty()) {
+    if (!activeReq_.has_value() && acks_.isEmpty()) {
         return ProtocolError::NO_ERROR;
     }
     CoapMessageDecoder dec;
@@ -279,59 +403,61 @@ ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
         LOG(ERROR, "Failed to decode message: %d", r);
         return ProtocolError::MALFORMED_MESSAGE;
     }
-    if (!reqs_.isEmpty() && reqs_.first().msgId == dec.id()) {
-        if (dec.type() == CoapType::ACK) {
-            bool hasMore = false;
-            do {
-                // Send next block
-                auto& req = reqs_.first();
-                const ProtocolError err = sendNextRequestBlock(&req, &hasMore);
-                if (err != ProtocolError::NO_ERROR) {
-                    return err;
-                }
-                if (!hasMore) {
-                    Ack ack = {};
-                    ack.msgId = req.msgId;
-                    ack.flags = req.flags;
-                    if (!acks_.append(std::move(ack))) {
-                        return ProtocolError::NO_MEMORY;
-                    }
-                    reqs_.takeFirst();
-                }
-            } while (!hasMore && !reqs_.isEmpty());
-            return ProtocolError::NO_ERROR;
-        } else {
-            reqs_.takeFirst();
+    const bool isRst = (dec.type() == CoapType::RST);
+    if (!isRst && dec.type() != CoapType::ACK) {
+        return ProtocolError::INTERNAL;
+    }
+    const auto ackId = dec.id();
+    if (activeReq_.has_value() && activeReq_->msgId == ackId) {
+        if (isRst) {
+            activeReq_.reset();
             return ProtocolError::MESSAGE_RESET;
         }
-    }
-    for (int i = 0; i < acks_.size(); ++i) {
-        if (acks_[i].msgId == dec.id()) {
-            if (dec.type() == CoapType::ACK) {
-                *descFlags = acks_[i].flags;
+        // Send the next block
+        Message msg;
+        CHECK_PROTOCOL(proto_->get_channel().create(msg));
+        const auto token = proto_->get_next_token();
+        CHECK_PROTOCOL(sendNextRequestBlock(&*activeReq_, &msg, token));
+        if (activeReq_->data.isEmpty()) {
+            Ack ack = {};
+            ack.msgId = activeReq_->msgId;
+            ack.flags = activeReq_->flags;
+            activeReq_.reset();
+            if (!acks_.append(std::move(ack))) {
+                return ProtocolError::NO_MEMORY;
             }
-            acks_.removeAt(i);
-            return ProtocolError::NO_ERROR;
+        }
+    } else {
+        for (int i = 0; i < acks_.size(); ++i) {
+            if (acks_[i].msgId == ackId) {
+                const auto flags = acks_[i].flags;
+                acks_.removeAt(i);
+                if (isRst) {
+                    return ProtocolError::MESSAGE_RESET;
+                }
+                *descFlags = flags;
+                break;
+            }
         }
     }
     return ProtocolError::NO_ERROR;
 }
 
 ProtocolError Description::processTimeouts() {
-    if (resps_.isEmpty()) {
+    if (activeResps_.isEmpty()) {
         return ProtocolError::NO_ERROR;
     }
     const auto now = millis();
     int i = 0;
     do {
-        const auto& resp = resps_.at(i);
-        if (now - resp.accessTime >= COAP_BLOCKWISE_RESPONSE_TIMEOUT) {
+        const auto& resp = activeResps_.at(i);
+        if (now - resp.lastAccessTime >= COAP_BLOCKWISE_RESPONSE_TIMEOUT) {
             LOG(WARN, "Blockwise response timeout");
-            resps_.removeAt(i);
+            activeResps_.removeAt(i);
         } else {
             ++i;
         }
-    } while (i < resps_.size());
+    } while (i < activeResps_.size());
     return ProtocolError::NO_ERROR;
 }
 
@@ -413,172 +539,127 @@ ProtocolError Description::serialize(Appender* appender, int descFlags) {
 }
 
 void Description::reset() {
-    reqs_.clear();
-    resps_.clear();
+    activeReq_.reset();
+    activeResps_.clear();
+    reqQueue_.clear();
     acks_.clear();
+    blockSize_ = 0;
 }
 
 // TODO: Decouple blockwise transfer from the Describe handling logic
-ProtocolError Description::sendNextRequestBlock(Request* req, bool* hasMoreArg) {
-    const auto channel = &proto_->get_channel();
-    Message msg;
-    ProtocolError err = channel->create(msg);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to create message");
-        return err;
-    }
-    CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
-    enc.type(CoapType::CON);
-    enc.code(CoapCode::POST);
-    enc.id(0); // Encoded by the message channel
-    const auto token = proto_->get_next_token();
-    enc.token((const char*)&token, sizeof(token));
-    enc.option(CoapOption::URI_PATH, "d");
-    const char uriQuery = req->flags;
-    enc.option(CoapOption::URI_QUERY, &uriQuery, sizeof(uriQuery));
+ProtocolError Description::sendNextRequestBlock(Request* req, Message* msg, token_t token) {
+    CoapMessageEncoder enc((char*)msg->buf(), msg->capacity());
+    initDescribeRequest(&enc, token, req->flags);
+    size_t blockSize = 0;
+    CHECK_PROTOCOL(getBlockSize(&blockSize));
+    size_t payloadSize = req->data.size();
     bool hasMore = false;
-    size_t offs = req->blockIndex * COAP_BLOCK_SIZE;
-    size_t payloadSize = req->data.size() - offs;
-    if (payloadSize > enc.maxPayloadSize() || req->blockIndex > 0) {
-        if (payloadSize > COAP_BLOCK_SIZE) {
-            payloadSize = COAP_BLOCK_SIZE;
-        }
-        hasMore = offs + payloadSize < (size_t)req->data.size();
-        const auto blockOpt = encodeBlockOption(req->blockIndex, hasMore);
-        enc.option(CoapOption::BLOCK1, blockOpt);
+    if (payloadSize > blockSize) {
+        payloadSize = blockSize;
+        hasMore = true;
     }
-    enc.payload(req->data.data() + offs, payloadSize);
-    const int r = enc.encode();
-    if (r < 0 || r > (int)msg.capacity()) {
-        LOG(ERROR, "Failed to encode message: %d", r);
-        return ProtocolError::INTERNAL;
-    }
-    msg.set_length(r);
-    err = channel->send(msg);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to send message: %d", (int)err);
-        return err;
-    }
-    req->msgId = msg.get_id();
-    ++req->blockIndex;
-    *hasMoreArg = hasMore;
+    const auto blockOpt = encodeBlockOption(req->nextBlockIndex, blockSize, hasMore);
+    enc.option(CoapOption::BLOCK1, blockOpt);
+    enc.payload(req->data.data(), payloadSize);
+    CHECK_PROTOCOL(encodeAndSend(&enc, msg));
+    req->msgId = msg->get_id();
+    const size_t newSize = req->data.size() - payloadSize;
+    memmove(req->data.data(), req->data.data() + payloadSize, newSize);
+    req->data.resize(newSize);
+    req->data.trimToSize(); // Ignore error
+    ++req->nextBlockIndex;
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Description::sendResponseBlock(const Response& resp, token_t token, unsigned blockIndex, message_id_t* msgId,
-        bool* hasMoreArg) {
-    const auto channel = &proto_->get_channel();
-    Message msg;
-    ProtocolError err = channel->create(msg);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to create message");
-        return err;
-    }
-    CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
-    enc.type(CoapType::CON);
-    enc.code(CoapCode::CONTENT);
-    enc.id(0); // Encoded by the message channel
-    enc.token((const char*)&token, sizeof(token));
-    bool hasMore = false;
-    size_t offs = blockIndex * COAP_BLOCK_SIZE;
+ProtocolError Description::sendResponseBlock(const Response& resp, Message* msg, token_t token, unsigned blockIndex) {
+    CoapMessageEncoder enc((char*)msg->buf(), msg->capacity());
+    initDescribeResponse(&enc, token);
+    enc.option(CoapOption::ETAG, resp.etag);
+    size_t blockSize = 0;
+    CHECK_PROTOCOL(getBlockSize(&blockSize));
+    size_t offs = blockIndex * blockSize;
     size_t payloadSize = resp.data.size() - offs;
-    if (payloadSize > enc.maxPayloadSize() || blockIndex > 0) {
-        // RFC 7959, 2.4: Block-wise transfers can be used to GET resources whose representations
-        // are entirely static (not changing over time at all ...), or for dynamically changing
-        // resources. In the latter case, the Block2 Option SHOULD be used in conjunction with the
-        // ETag Option
-        enc.option(CoapOption::ETAG, resp.etag);
-        if (payloadSize > COAP_BLOCK_SIZE) {
-            payloadSize = COAP_BLOCK_SIZE;
-        }
-        hasMore = offs + payloadSize < (size_t)resp.data.size();
-        const auto blockOpt = encodeBlockOption(blockIndex, hasMore);
-        enc.option(CoapOption::BLOCK2, blockOpt);
+    bool hasMore = false;
+    if (payloadSize > blockSize) {
+        payloadSize = blockSize;
+        hasMore = true;
     }
+    const auto blockOpt = encodeBlockOption(blockIndex, blockSize, hasMore);
+    enc.option(CoapOption::BLOCK2, blockOpt);
     enc.payload(resp.data.data() + offs, payloadSize);
-    const int r = enc.encode();
-    if (r < 0 || r > (int)msg.capacity()) {
-        LOG(ERROR, "Failed to encode message: %d", r);
-        return ProtocolError::INTERNAL;
-    }
-    msg.set_length(r);
-    err = channel->send(msg);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to send message: %d", (int)err);
-        return err;
-    }
-    *msgId = msg.get_id();
-    *hasMoreArg = hasMore;
+    CHECK_PROTOCOL(encodeAndSend(&enc, msg));
     return ProtocolError::NO_ERROR;
 }
 
 ProtocolError Description::sendErrorResponse(const CoapMessageDecoder& reqDec, CoapCode code) {
-    const auto channel = &proto_->get_channel();
-    Message msg;
-    ProtocolError err = channel->create(msg);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to create message");
-        return err;
+    const bool isCon = (reqDec.type() == CoapType::CON);
+    if (!isCon && reqDec.type() != CoapType::NON) {
+        return ProtocolError::INTERNAL;
     }
+    Message msg;
+    CHECK_PROTOCOL(proto_->get_channel().create(msg));
     CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
-    enc.type((reqDec.type() == CoapType::CON) ? CoapType::ACK : CoapType::NON);
+    enc.type(isCon ? CoapType::ACK : CoapType::NON);
     enc.code(code);
     enc.id(0); // Encoded by the message channel
     enc.token(reqDec.token(), reqDec.tokenSize());
-    const int r = enc.encode();
-    if (r < 0 || r > (int)msg.capacity()) {
-        LOG(ERROR, "Failed to encode message: %d", r);
-        return ProtocolError::INTERNAL;
-    }
-    msg.set_length(r);
-    if (reqDec.type() == CoapType::CON) {
+    if (isCon) {
         msg.set_id(reqDec.id());
     }
-    err = channel->send(msg);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to send message: %d", (int)err);
-        return err;
-    }
+    CHECK_PROTOCOL(encodeAndSend(&enc, &msg));
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Description::sendEmptyAck(const CoapMessageDecoder& reqDec) {
-    const auto channel = &proto_->get_channel();
+ProtocolError Description::sendEmptyAck(message_id_t msgId) {
     Message msg;
-    ProtocolError err = channel->create(msg);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to create message");
-        return err;
-    }
+    CHECK_PROTOCOL(proto_->get_channel().create(msg));
     CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
     enc.type(CoapType::ACK);
     enc.code(CoapCode::EMPTY);
     enc.id(0); // Encoded by the message channel
-    const int r = enc.encode();
-    if (r < 0 || r > (int)msg.capacity()) {
-        LOG(ERROR, "Failed to encode message: %d", r);
-        return ProtocolError::INTERNAL;
-    }
-    msg.set_length(r);
-    msg.set_id(reqDec.id());
-    err = channel->send(msg);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to send message: %d", (int)err);
-        return err;
-    }
+    msg.set_id(msgId);
+    CHECK_PROTOCOL(encodeAndSend(&enc, &msg));
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Description::getDescribeData(Vector<char>* data, int flags) {
-    CharVectorAppender appender(data);
-    const ProtocolError err = serialize(&appender, flags);
-    if (err != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Failed to serialize Describe data: %d", (int)err);
-        return err;
+ProtocolError Description::encodeAndSend(CoapMessageEncoder* enc, Message* msg) {
+    const size_t maxMsgSize = proto_->get_max_transmit_message_size();
+    const int r = enc->encode();
+    if (r < 0 || r > (int)maxMsgSize) {
+        LOG(ERROR, "Failed to encode message: %d; max message size: %u", r, (unsigned)maxMsgSize);
+        return ProtocolError::INTERNAL;
     }
-    if (!appender.isOk()) {
+    msg->set_length(r);
+    CHECK_PROTOCOL(proto_->get_channel().send(*msg));
+    return ProtocolError::NO_ERROR;
+}
+
+ProtocolError Description::getDescribeData(int flags, Message* msg, size_t msgOffs, Vector<char>* buf, size_t* size) {
+    const size_t maxMsgSize = proto_->get_max_transmit_message_size();
+    SPARK_ASSERT(msgOffs <= maxMsgSize);
+    BufferAppender2 appender((char*)msg->buf() + msgOffs, maxMsgSize - msgOffs, buf);
+    CHECK_PROTOCOL(serialize(&appender, flags));
+    if (!appender.ok()) {
         return ProtocolError::NO_MEMORY;
     }
+    *size = appender.size();
+    return ProtocolError::NO_ERROR;
+}
+
+ProtocolError Description::getBlockSize(size_t* size) {
+    if (!blockSize_) {
+        const size_t maxMsgSize = proto_->get_max_transmit_message_size();
+        const size_t coapOverhead = std::max(MAX_REQUEST_COAP_OVERHEAD, MAX_RESPONSE_COAP_OVERHEAD);
+        if (coapOverhead + 1024 <= maxMsgSize) {
+            blockSize_ = 1024;
+        } else if (coapOverhead + 512 <= maxMsgSize) {
+            blockSize_ = 512;
+        } else {
+            LOG(ERROR, "Failed to determine block size");
+            return ProtocolError::INTERNAL;
+        }
+    }
+    *size = blockSize_;
     return ProtocolError::NO_ERROR;
 }
 

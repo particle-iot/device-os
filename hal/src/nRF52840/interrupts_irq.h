@@ -23,7 +23,15 @@ extern "C" {
 #endif
 
 #ifdef USE_STDPERIPH_DRIVER
+#ifdef __cplusplus
+#pragma GCC diagnostic push
+// Register storage is not allowed in ISO C++17
+#pragma GCC diagnostic ignored "-Wregister"
+#endif // defined(__cplusplus)
 #include "nrf52840.h"
+#ifdef __cplusplus
+#pragma GCC diagnostic pop
+#endif // defined(__cplusplus)
 #endif /* USE_STDPERIPH_DRIVER */
 
 typedef enum hal_irq_t {

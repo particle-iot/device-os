@@ -706,4 +706,12 @@ int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserv
 	return 0;
 }
 
+size_t Protocol::get_max_transmit_message_size() const
+{
+	if (!max_transmit_message_size) {
+		return PROTOCOL_BUFFER_SIZE;
+	}
+	return max_transmit_message_size;
+}
+
 }}

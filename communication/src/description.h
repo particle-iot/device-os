@@ -25,15 +25,8 @@
 #include "hal_platform.h"
 
 #include <memory>
+#include <optional>
 #include <cstdint>
-
-#ifndef COAP_BLOCK_SIZE
-#if HAL_PLATFORM_GEN >= 3
-#define COAP_BLOCK_SIZE 1024
-#else
-#define COAP_BLOCK_SIZE 512
-#endif
-#endif // !defined(COAP_BLOCK_SIZE)
 
 namespace particle {
 
@@ -41,6 +34,7 @@ class Appender;
 
 namespace protocol {
 
+class CoapMessageEncoder;
 class CoapMessageDecoder;
 class Protocol;
 class Message;
@@ -63,17 +57,17 @@ public:
 
 private:
     struct Request {
-        Vector<char> data; // Describe data
+        Vector<char> data; // Remaining Describe data
         message_id_t msgId; // Message ID of the last sent block request
-        unsigned blockIndex; // Index of the next block to send
+        unsigned nextBlockIndex; // Index of the next block to send
         int flags; // Describe flags
     };
 
     struct Response {
         Vector<char> data; // Describe data
-        system_tick_t accessTime; // Last resource access time
-        unsigned blockCount; // Number of blocks comprising the resource data
-        unsigned reqCount; // Number of concurrent requests accessing this resource
+        system_tick_t lastAccessTime; // Last resource access time
+        unsigned blockCount; // Number of blocks required to send the Describe data
+        unsigned reqCount; // Number of concurrent blockwise requests accessing this resource
         unsigned etag; // ETag option
         int flags; // Describe flags
     };
@@ -83,17 +77,21 @@ private:
         int flags; // Describe flags
     };
 
-    Vector<Request> reqs_; // Describe requests
-    Vector<Response> resps_; // Describe responses
-    Vector<Ack> acks_; // Expected acknowledgements
+    std::optional<Request> activeReq_; // Blockwise Describe request that is being sent to the server
+    Vector<Response> activeResps_; // Blockwise Describe responses that are being sent to the server
+    Vector<int> reqQueue_; // Queued Describe requests (flags)
+    Vector<Ack> acks_; // Pending acknowledgements for device-originated messages
     Protocol* proto_; // Protocol instance
+    size_t blockSize_; // Block size for blockwise transfers (1024 or 512 bytes)
     unsigned lastEtag_; // Last used ETag
 
-    ProtocolError sendNextRequestBlock(Request* req, bool* hasMore);
-    ProtocolError sendResponseBlock(const Response& resp, token_t token, unsigned blockIndex, message_id_t* msgId, bool* hasMore);
+    ProtocolError sendNextRequestBlock(Request* req, Message* msg, token_t token);
+    ProtocolError sendResponseBlock(const Response& resp, Message* msg, token_t token, unsigned blockIndex);
     ProtocolError sendErrorResponse(const CoapMessageDecoder& reqDec, CoapCode code);
-    ProtocolError sendEmptyAck(const CoapMessageDecoder& reqDec);
-    ProtocolError getDescribeData(Vector<char>* data, int flags);
+    ProtocolError sendEmptyAck(message_id_t msgId);
+    ProtocolError encodeAndSend(CoapMessageEncoder* enc, Message* msg);
+    ProtocolError getDescribeData(int flags, Message* msg, size_t msgOffs, Vector<char>* buf, size_t* size);
+    ProtocolError getBlockSize(size_t* size);
     system_tick_t millis() const;
 };
 

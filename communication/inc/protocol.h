@@ -391,10 +391,7 @@ public:
 		max_transmit_message_size = size;
 	}
 
-	size_t get_max_transmit_message_size() const
-	{
-		return max_transmit_message_size;
-	}
+	size_t get_max_transmit_message_size() const;
 
 	size_t get_max_event_data_size() const {
 		// Check if there's a runtime limit
