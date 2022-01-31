@@ -75,10 +75,6 @@ enum LoggingFeature {
 };
 #endif
 
-enum WiFiTesterFeature {
-    FEATURE_WIFITESTER = 1
-};
-
 enum WakeupReason {
     WAKEUP_REASON_NONE = 0,
     WAKEUP_REASON_PIN = 1,
@@ -589,8 +585,6 @@ public:
 #if Wiring_LogConfig
     bool enableFeature(LoggingFeature feature);
 #endif
-
-    static bool enableFeature(const WiFiTesterFeature feature);
 
     String version() {
         SystemVersionInfo info;

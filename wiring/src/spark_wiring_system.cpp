@@ -99,10 +99,6 @@ bool SystemClass::enableFeature(LoggingFeature) {
 }
 #endif
 
-bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
-    return false;
-}
-
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {
         // pin
