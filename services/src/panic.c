@@ -73,9 +73,9 @@ void panic_(const ePanicCode code, void* extraInfo, void(*unnamed)(uint32_t))
 * Private Functions
 ****************************************************************************/
 
-static void panic_led_flash(const uint32_t onMS, const uint32_t ofMS, const uint32_t pauseMS) 
+static void panic_led_flash(const uint32_t loopCount, const uint32_t onMS, const uint32_t ofMS, const uint32_t pauseMS) 
 {
-    for (uint16_t c = 3; c; c--) {
+    for (uint32_t c = loopCount; c; c--) {
         LED_On(PARTICLE_LED_RGB);
         HAL_Delay_Microseconds(onMS);
         LED_Off(PARTICLE_LED_RGB);
@@ -95,10 +95,11 @@ static void panic_internal(const ePanicCode code, const void* extraInfo)
 
     for(int i = 0; i < 2; i++)
     {
-        // preamble
-        panic_led_flash( MS2u(150), MS2u(100), MS2u(100) );
-        panic_led_flash( MS2u(300), MS2u(100), MS2u(100) );
-        panic_led_flash( MS2u(150), MS2u(100), MS2u(900) );
-        panic_led_flash( MS2u(300), MS2u(300), MS2u(800) );
+        // preamble - SOS pattern
+        panic_led_flash( 3, MS2u(150), MS2u(100), MS2u(100) );
+        panic_led_flash( 3, MS2u(300), MS2u(100), MS2u(100) );
+        panic_led_flash( 3, MS2u(150), MS2u(100), MS2u(900) );
+        //flash the CODE in pulses
+        panic_led_flash( code, MS2u(300), MS2u(300), MS2u(800) );
     }
 }

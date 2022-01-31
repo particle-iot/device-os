@@ -66,3 +66,5 @@ cmake_install.cmake
 
 #direnv config files
 .envrc
+opt/
+node_modules/
