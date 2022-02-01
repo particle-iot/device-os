@@ -124,7 +124,8 @@ test('07_register_many_variables', async function() {
 	const resp = await api.getDevice({ deviceId, auth });
 	const vars = resp.body.variables;
 	const expectedVars = {};
-	for (let i = 1; i <= limits.max_num; ++i) {
+	const varCount = device.platform.is('gen2') ? 50 : limits.max_num;
+	for (let i = 1; i <= varCount; ++i) {
 		let name = 'var_' + i.toString().padStart(3, '0') + '_';
 		name += 'x'.repeat(Math.max(limits.max_name_len - name.length, 0));
 		expectedVars[name] = 'int32';

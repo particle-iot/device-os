@@ -42,7 +42,6 @@ namespace protocol {
 
 namespace {
 
-
 // Maximum CoAP overhead per Describe request message:
 //
 // - Message header: 4 bytes;
@@ -654,6 +653,7 @@ ProtocolError Description::getDescribeData(int flags, Message* msg, size_t msgOf
 }
 
 ProtocolError Description::getBlockSize(size_t* size) {
+    static_assert(MIN_BLOCK_SIZE == 512 && MAX_BLOCK_SIZE == 1024, "This code needs to be updated accordingly");
     if (!blockSize_) {
         const size_t maxMsgSize = proto_->get_max_transmit_message_size();
         const size_t coapOverhead = std::max(MAX_REQUEST_COAP_OVERHEAD, MAX_RESPONSE_COAP_OVERHEAD);

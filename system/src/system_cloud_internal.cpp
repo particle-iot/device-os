@@ -62,6 +62,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <algorithm>
 
 using namespace particle;
 using namespace particle::system;
@@ -294,7 +295,7 @@ User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey, const void* 
             item.copy = extra->copy;
         }
     }
-    memcpy(item.userVarKey, varKey, USER_VAR_KEY_LENGTH);
+    memcpy(item.userVarKey, varKey, std::min<size_t>(strlen(varKey), USER_VAR_KEY_LENGTH));
 
     User_Var_Lookup_Table_t* result = find_var_by_key(varKey);
     if (result) {
@@ -326,7 +327,7 @@ User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey, const clo
     User_Func_Lookup_Table_t item = {};
     item.pUserFunc = desc->fn;
     item.pUserFuncData = desc->data;
-    memcpy(item.userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
+    memcpy(item.userFuncKey, funcKey, std::min<size_t>(strlen(funcKey), USER_FUNC_KEY_LENGTH));
 
     User_Func_Lookup_Table_t* result = find_func_by_key(funcKey);
     if (result) {

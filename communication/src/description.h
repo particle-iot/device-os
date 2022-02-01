@@ -65,9 +65,9 @@ private:
 
     struct Response {
         Vector<char> data; // Describe data
-        system_tick_t lastAccessTime; // Last resource access time
-        unsigned blockCount; // Number of blocks required to send the Describe data
-        unsigned reqCount; // Number of concurrent blockwise requests accessing this resource
+        system_tick_t lastAccessTime; // Last time this Describe data was requested
+        unsigned blockCount; // Number of blocks required to transfer the Describe data
+        unsigned reqCount; // Number of concurrent blockwise transfers requesting the Describe data
         unsigned etag; // ETag option
         int flags; // Describe flags
     };
@@ -82,7 +82,7 @@ private:
     Vector<int> reqQueue_; // Queued Describe requests (flags)
     Vector<Ack> acks_; // Pending acknowledgements for device-originated messages
     Protocol* proto_; // Protocol instance
-    size_t blockSize_; // Block size for blockwise transfers (1024 or 512 bytes)
+    size_t blockSize_; // Block size used for blockwise transfers
     unsigned lastEtag_; // Last used ETag
 
     ProtocolError sendNextRequest(int flags);

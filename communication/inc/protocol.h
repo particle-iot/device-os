@@ -535,7 +535,7 @@ public:
 	 * This method updates the cached application state.
 	 *
 	 * @param msg Response message.
-	 * @return `true` if the message has been handled or `false` otherwise.
+	 * @param[out] handled Will be set to `true` if the message has been handled by this method.
 	 */
 	ProtocolError handle_app_state_reply(const Message& msg, bool* handled);
 

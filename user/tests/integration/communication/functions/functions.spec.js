@@ -54,7 +54,8 @@ test('06_register_many_functions', async function() {
 	const resp = await api.getDevice({ deviceId, auth });
 	const funcs = resp.body.functions;
 	const expectedFuncs = [];
-	for (let i = 1; i <= limits.max_num; ++i) {
+	const funcCount = device.platform.is('gen2') ? 50 : limits.max_num;
+	for (let i = 1; i <= funcCount; ++i) {
 		let name = 'fn_' + i.toString().padStart(3, '0') + '_';
 		name += 'x'.repeat(Math.max(limits.max_name_len - name.length, 0));
 		expectedFuncs.push(name);
