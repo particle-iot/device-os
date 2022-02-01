@@ -85,6 +85,7 @@ private:
     size_t blockSize_; // Block size for blockwise transfers (1024 or 512 bytes)
     unsigned lastEtag_; // Last used ETag
 
+    ProtocolError sendNextRequest(int flags);
     ProtocolError sendNextRequestBlock(Request* req, Message* msg, token_t token);
     ProtocolError sendResponseBlock(const Response& resp, Message* msg, token_t token, unsigned blockIndex);
     ProtocolError sendErrorResponse(const CoapMessageDecoder& reqDec, CoapCode code);

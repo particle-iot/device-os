@@ -31,12 +31,14 @@ using namespace particle::protocol::test;
 
 using namespace fakeit;
 
+const size_t BLOCK_SIZE = 1024;
+
 // Helper class for encoding Block1 and Block2 options
 class BlockOption {
 public:
     BlockOption() :
             index_(0),
-            size_(COAP_BLOCK_SIZE),
+            size_(BLOCK_SIZE),
             more_(false),
             valid_(false) {
     }
@@ -204,7 +206,7 @@ TEST_CASE("Description") {
 
     SECTION("can send a regular Describe request") {
         When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(COAP_BLOCK_SIZE, 'a');
+            auto s = std::string(BLOCK_SIZE, 'a');
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -217,7 +219,7 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
         CHECK((!m.hasOption(CoapOption::BLOCK1) && !m.hasOption(CoapOption::BLOCK2)));
-        CHECK(m.payload() == "{" + std::string(COAP_BLOCK_SIZE, 'a') + "}");
+        CHECK(m.payload() == "{" + std::string(BLOCK_SIZE, 'a') + "}");
         // Acknowledge the request
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         CHECK(d.describeAckFlags() == DescriptionType::DESCRIBE_SYSTEM);
@@ -238,7 +240,7 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
         CHECK(m.option(CoapOption::BLOCK1).toUInt() == BlockOption().index(0).more(true));
-        CHECK(m.payload() == "{" + std::string(COAP_BLOCK_SIZE - 1, 'a'));
+        CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         // The next block request must not be sent until the last sent request is acknowledged
         CHECK(!d.hasMessages());
         // Acknowledge the request
@@ -251,7 +253,7 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
         CHECK(m.option(CoapOption::BLOCK1).toUInt() == BlockOption().index(1).more(false));
-        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - COAP_BLOCK_SIZE + 1, 'a') + '}');
+        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         // Acknowledge the request
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         CHECK(d.describeAckFlags() == DescriptionType::DESCRIBE_SYSTEM);
@@ -259,7 +261,7 @@ TEST_CASE("Description") {
 
     SECTION("can send a regular Describe response") {
         When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(COAP_BLOCK_SIZE, 'a');
+            auto s = std::string(BLOCK_SIZE, 'a');
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -276,7 +278,7 @@ TEST_CASE("Description") {
         CHECK(m.code() == CoapCode::CONTENT);
         CHECK(m.token() == d.lastMessageToken());
         CHECK((!m.hasOption(CoapOption::BLOCK1) && !m.hasOption(CoapOption::BLOCK2)));
-        CHECK(m.payload() == "{" + std::string(COAP_BLOCK_SIZE, 'a') + "}");
+        CHECK(m.payload() == "{" + std::string(BLOCK_SIZE, 'a') + "}");
         // Acknowledge the response
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         CHECK(d.describeAckFlags() == DescriptionType::DESCRIBE_SYSTEM);
@@ -302,7 +304,7 @@ TEST_CASE("Description") {
         CHECK(m.token() == d.lastMessageToken());
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
-        CHECK(m.payload() == "{" + std::string(COAP_BLOCK_SIZE - 1, 'a'));
+        CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         // Acknowledge the response
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         CHECK(d.describeAckFlags() == 0);
@@ -322,10 +324,64 @@ TEST_CASE("Description") {
         CHECK(m.token() == d.lastMessageToken());
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(false));
-        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - COAP_BLOCK_SIZE + 1, 'a') + '}');
+        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         // Acknowledge the response
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         CHECK(d.describeAckFlags() == DescriptionType::DESCRIBE_SYSTEM);
+    }
+
+    SECTION("queues further Describe requests when a blockwise request is in progress") {
+        When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
+            auto s = std::string(PROTOCOL_BUFFER_SIZE, 'a');
+            append(arg, (const uint8_t*)s.data(), s.size());
+            return true;
+        });
+        When(Method(cb, appendAppInfo)).Do([](appender_fn append, void* arg, void* reserved) {
+            auto s = std::string(BLOCK_SIZE, 'b');
+            append(arg, (const uint8_t*)s.data(), s.size());
+            return true;
+        });
+        // Send a blockwise request to the server
+        d.get()->sendRequest(DescriptionType::DESCRIBE_SYSTEM);
+        // Receive the first block
+        auto m = d.receiveMessage();
+        CHECK(m.type() == CoapType::CON);
+        CHECK(m.code() == CoapCode::POST);
+        CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
+        CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
+        CHECK(m.option(CoapOption::BLOCK1).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
+        // Send another request to the server (a regular one)
+        d.get()->sendRequest(DescriptionType::DESCRIBE_APPLICATION);
+        // No new messages must be sent until the first block is acknowledged
+        CHECK(!d.hasMessages());
+        // Acknowledge the first block
+        d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+        CHECK(d.describeAckFlags() == 0);
+        // Receive the second block
+        m = d.receiveMessage();
+        CHECK(m.type() == CoapType::CON);
+        CHECK(m.code() == CoapCode::POST);
+        CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
+        CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
+        CHECK(m.option(CoapOption::BLOCK1).toUInt() == BlockOption().index(1).more(false));
+        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
+        // No new messages must be sent until the second block is acknowledged
+        CHECK(!d.hasMessages());
+        // Acknowledge the second block
+        d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+        CHECK(d.describeAckFlags() == DescriptionType::DESCRIBE_SYSTEM);
+        // Receive the second request
+        m = d.receiveMessage();
+        CHECK(m.type() == CoapType::CON);
+        CHECK(m.code() == CoapCode::POST);
+        CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
+        CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_APPLICATION);
+        CHECK((!m.hasOption(CoapOption::BLOCK1) && !m.hasOption(CoapOption::BLOCK2)));
+        CHECK(m.payload() == "{" + std::string(BLOCK_SIZE, 'b') + "}");
+        // Acknowledge the second request
+        d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+        CHECK(d.describeAckFlags() == DescriptionType::DESCRIBE_APPLICATION);
     }
 
     SECTION("can send multiple blockwise responses concurrently") {
@@ -353,7 +409,7 @@ TEST_CASE("Description") {
         CHECK(m.token() == token1);
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
-        CHECK(m.payload() == "{" + std::string(COAP_BLOCK_SIZE - 1, 'a'));
+        CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         id1 = m.id();
         // Receive the ACK and response for the second request
         m = d.receiveMessage();
@@ -366,7 +422,7 @@ TEST_CASE("Description") {
         CHECK(m.token() == token2);
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1)); // ETag is the same as in the other response
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
-        CHECK(m.payload() == "{" + std::string(COAP_BLOCK_SIZE - 1, 'a'));
+        CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         id2 = m.id();
         // Acknowledge both the responses
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(id1));
@@ -392,7 +448,7 @@ TEST_CASE("Description") {
         CHECK(m.token() == token1);
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(false));
-        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - COAP_BLOCK_SIZE + 1, 'a') + '}');
+        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         id1 = m.id();
         // Receive the ACK and response for the second request
         m = d.receiveMessage();
@@ -405,7 +461,7 @@ TEST_CASE("Description") {
         CHECK(m.token() == token2);
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1)); // ETag is the same as in the other response
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(false));
-        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - COAP_BLOCK_SIZE + 1, 'a') + '}');
+        CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         id2 = m.id();
         // Acknowledge both the responses
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(id1));
@@ -416,7 +472,7 @@ TEST_CASE("Description") {
         Verify(Method(cb, appendSystemInfo)).Once();
     }
 
-    SECTION("uses a different ETag with each newly generated Describe message") {
+    SECTION("uses a different ETag with each Describe response") {
         When(Method(cb, appendSystemInfo)).AlwaysDo([&](appender_fn append, void* arg, void* reserved) {
             auto s = std::string(PROTOCOL_BUFFER_SIZE, 'a');
             append(arg, (const uint8_t*)s.data(), s.size());
@@ -455,7 +511,7 @@ TEST_CASE("Description") {
     }
 
     SECTION("invalidates cached Describe data after a timeout") {
-        const auto payloadSize = COAP_BLOCK_SIZE * 4 - 100;
+        const auto payloadSize = BLOCK_SIZE * 4 - 100;
         When(Method(cb, appendSystemInfo)).AlwaysDo([=](appender_fn append, void* arg, void* reserved) {
             auto s = std::string(payloadSize, 'a');
             append(arg, (const uint8_t*)s.data(), s.size());

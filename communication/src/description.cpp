@@ -66,8 +66,13 @@ const size_t MAX_RESPONSE_COAP_OVERHEAD = 16;
 const size_t MIN_BLOCK_SIZE = 512;
 const size_t MAX_BLOCK_SIZE = 1024;
 
+#if PLATFORM_GEN >= 3
+static_assert(MAX_BLOCK_SIZE + MAX_REQUEST_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE &&
+        MAX_BLOCK_SIZE + MAX_RESPONSE_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE, "PROTOCOL_BUFFER_SIZE is too small");
+#else
 static_assert(MIN_BLOCK_SIZE + MAX_REQUEST_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE &&
         MIN_BLOCK_SIZE + MAX_RESPONSE_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE, "PROTOCOL_BUFFER_SIZE is too small");
+#endif
 
 // Initial size of a dynamically allocated buffer for Describe data
 const size_t INITIAL_BUFFER_SIZE = 256;
@@ -97,6 +102,7 @@ public:
             // Write to the fixed size buffer
             const size_t n = std::min(size, bufSize_ - bufOffs_);
             memcpy(buf_ + bufOffs_, data, n);
+            bufOffs_ += n;
             data += n;
             size -= n;
         }
@@ -211,44 +217,14 @@ Description::~Description() {
 }
 
 ProtocolError Description::sendRequest(int descFlags) {
-    if (activeReq_.has_value()) {
-        // As per RFC 7959, 2.5, an endpoint cannot perform multiple concurrent blockwise transfers
-        // to the same resource. It's not known in advance (before serialization) whether a given
-        // Describe request will require blockwise transfer, so we're queueing all further Describe
-        // requests if there's a blockwise request that is being sent to the server already
-        if (!reqQueue_.contains(descFlags) && !reqQueue_.append(descFlags)) {
-            return ProtocolError::NO_MEMORY;
-        }
-        return ProtocolError::NO_ERROR;
-    }
-    // Serialize a Describe request
-    Message msg;
-    CHECK_PROTOCOL(proto_->get_channel().create(msg));
-    CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
-    const auto token = proto_->get_next_token();
-    initDescribeRequest(&enc, token, descFlags);
-    const size_t msgOffs = enc.payloadData() - (char*)msg.buf();
-    Vector<char> buf;
-    size_t payloadSize = 0;
-    CHECK_PROTOCOL(getDescribeData(descFlags, &msg, msgOffs, &buf, &payloadSize));
-    if (!buf.isEmpty()) {
-        // Send a blockwise request
-        Request req = {};
-        req.data = std::move(buf);
-        req.flags = descFlags;
-        CHECK_PROTOCOL(sendNextRequestBlock(&req, &msg, token));
-        SPARK_ASSERT(!req.data.isEmpty());
-        activeReq_ = std::move(req);
-    } else {
-        // Send a regular request
-        enc.payloadSize(payloadSize);
-        CHECK_PROTOCOL(encodeAndSend(&enc, &msg));
-        Ack ack = {};
-        ack.msgId = msg.get_id();
-        ack.flags = descFlags;
-        if (!acks_.append(std::move(ack))) {
-            return ProtocolError::NO_MEMORY;
-        }
+    // As per RFC 7959, 2.5, an endpoint cannot perform multiple concurrent blockwise transfers to
+    // the same resource. It's not known in advance (before serialization) whether a given Describe
+    // request will require blockwise transfer, so we're queueing all further Describe requests if
+    // there's a blockwise request that is being sent to the server already
+    if (!activeReq_.has_value()) {
+        CHECK_PROTOCOL(sendNextRequest(descFlags));
+    } else if (!reqQueue_.contains(descFlags) && !reqQueue_.append(descFlags)) {
+        return ProtocolError::NO_MEMORY;
     }
     return ProtocolError::NO_ERROR;
 }
@@ -277,9 +253,9 @@ ProtocolError Description::receiveRequest(const Message& msg) {
         return sendErrorResponse(dec, CoapCode::BAD_REQUEST);
     }
     // Get Describe type
-    const int descFlags = iter.toUInt() & DescriptionType::DESCRIBE_MAX;
-    if (descFlags != DescriptionType::DESCRIBE_METRICS && !(descFlags | DescriptionType::DESCRIBE_SYSTEM) &&
-            !(descFlags | DescriptionType::DESCRIBE_APPLICATION)) {
+    const int flags = iter.toUInt() & DescriptionType::DESCRIBE_MAX;
+    if (flags != DescriptionType::DESCRIBE_METRICS && !(flags | DescriptionType::DESCRIBE_SYSTEM) &&
+            !(flags | DescriptionType::DESCRIBE_APPLICATION)) {
         LOG(WARN, "Invalid message options");
         return sendErrorResponse(dec, CoapCode::BAD_OPTION);
     }
@@ -309,41 +285,39 @@ ProtocolError Description::receiveRequest(const Message& msg) {
     Response* resp = nullptr;
     int respIndex = 0;
     for (; respIndex < activeResps_.size(); ++respIndex) {
-        if (activeResps_[respIndex].flags == descFlags) {
+        if (activeResps_[respIndex].flags == flags) {
             resp = &activeResps_[respIndex];
             break;
         }
     }
+    if ((!resp && blockIndex != 0) || (resp && blockIndex >= resp->blockCount)) {
+        // Fail early as replying with new Describe data will anyway cause an ETag mismatch
+        // error on the server
+        LOG(WARN, "Unexpected block index: %u", blockIndex);
+        return sendErrorResponse(dec, CoapCode::NOT_FOUND);
+    }
+    // Acknowledge the request
+    CHECK_PROTOCOL(sendEmptyAck(dec.id()));
+    // Prepare a response
     Message respMsg;
     CHECK_PROTOCOL(proto_->get_channel().create(respMsg));
     CoapMessageEncoder enc((char*)respMsg.buf(), respMsg.capacity());
     size_t payloadSize = 0;
     if (!resp) {
-        if (blockIndex != 0) {
-            // Fail early as replying with new Describe data will anyway cause an ETag mismatch
-            // error on the server
-            LOG(WARN, "Unexpected block index: %u", blockIndex);
-            return sendErrorResponse(dec, CoapCode::NOT_FOUND);
-        }
-        // Serialize a Describe response
         initDescribeResponse(&enc, reqToken);
         const size_t msgOffs = enc.payloadData() - (char*)respMsg.buf();
         Vector<char> buf;
-        CHECK_PROTOCOL(getDescribeData(descFlags, &respMsg, msgOffs, &buf, &payloadSize));
+        CHECK_PROTOCOL(getDescribeData(flags, &respMsg, msgOffs, &buf, &payloadSize));
         if (!buf.isEmpty()) {
             // Prepare a blockwise response
             newResp.data = std::move(buf);
             newResp.blockCount = (newResp.data.size() + blockSize - 1) / blockSize;
             newResp.reqCount = 1;
             newResp.etag = ++lastEtag_;
-            newResp.flags = descFlags;
+            newResp.flags = flags;
             resp = &newResp;
         }
     } else {
-        if (blockIndex >= resp->blockCount) {
-            LOG(WARN, "Unexpected block index: %u", blockIndex);
-            return sendErrorResponse(dec, CoapCode::NOT_FOUND);
-        }
         // The server always requests response blocks sequentially and never re-requests the blocks
         // that it has already received. It may however initiate a number of concurrent blockwise
         // requests to get the same Describe data. As an optimization, we count the number of such
@@ -358,9 +332,6 @@ ProtocolError Description::receiveRequest(const Message& msg) {
             ++resp->reqCount;
         }
     }
-    // Acknowledge the request
-    const auto reqId = dec.id();
-    CHECK_PROTOCOL(sendEmptyAck(reqId));
     if (resp) {
         // Send a blockwise response
         CHECK_PROTOCOL(sendResponseBlock(*resp, &respMsg, reqToken, blockIndex));
@@ -373,12 +344,11 @@ ProtocolError Description::receiveRequest(const Message& msg) {
         enc.payloadSize(payloadSize);
         CHECK_PROTOCOL(encodeAndSend(&enc, &respMsg));
     }
-    const auto respId = respMsg.get_id();
     if (!resp || blockIndex == resp->blockCount - 1) {
         // Sent a regular response or the last block of a blockwise response
         Ack ack = {};
-        ack.msgId = respId;
-        ack.flags = descFlags;
+        ack.msgId = respMsg.get_id();
+        ack.flags = flags;
         if (!acks_.append(std::move(ack))) {
             return ProtocolError::NO_MEMORY;
         }
@@ -405,6 +375,7 @@ ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
     }
     const bool isRst = (dec.type() == CoapType::RST);
     if (!isRst && dec.type() != CoapType::ACK) {
+        LOG(ERROR, "Unexpected message type: %u", (unsigned)dec.type());
         return ProtocolError::INTERNAL;
     }
     const auto ackId = dec.id();
@@ -413,23 +384,26 @@ ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
             activeReq_.reset();
             return ProtocolError::MESSAGE_RESET;
         }
-        // Send the next block
-        Message msg;
-        CHECK_PROTOCOL(proto_->get_channel().create(msg));
-        const auto token = proto_->get_next_token();
-        CHECK_PROTOCOL(sendNextRequestBlock(&*activeReq_, &msg, token));
-        if (activeReq_->data.isEmpty()) {
-            Ack ack = {};
-            ack.msgId = activeReq_->msgId;
-            ack.flags = activeReq_->flags;
+        if (!activeReq_->data.isEmpty()) {
+            // Send the next block of the current blockwise request
+            Message msg;
+            CHECK_PROTOCOL(proto_->get_channel().create(msg));
+            const auto token = proto_->get_next_token();
+            CHECK_PROTOCOL(sendNextRequestBlock(&*activeReq_, &msg, token));
+        } else {
+            // Received an ACK for the last block of the current blockwise request
+            const auto flags = activeReq_->flags;
             activeReq_.reset();
-            if (!acks_.append(std::move(ack))) {
-                return ProtocolError::NO_MEMORY;
+            if (!reqQueue_.isEmpty()) {
+                CHECK_PROTOCOL(sendNextRequest(reqQueue_.takeFirst()));
             }
+            *descFlags = flags;
         }
     } else {
         for (int i = 0; i < acks_.size(); ++i) {
             if (acks_[i].msgId == ackId) {
+                // Received an ACK for a regular request, regular response or the last block of a
+                // blockwise response
                 const auto flags = acks_[i].flags;
                 acks_.removeAt(i);
                 if (isRst) {
@@ -450,8 +424,8 @@ ProtocolError Description::processTimeouts() {
     const auto now = millis();
     int i = 0;
     do {
-        const auto& resp = activeResps_.at(i);
-        if (now - resp.lastAccessTime >= COAP_BLOCKWISE_RESPONSE_TIMEOUT) {
+        const auto t = activeResps_.at(i).lastAccessTime;
+        if (now - t >= COAP_BLOCKWISE_RESPONSE_TIMEOUT) {
             LOG(WARN, "Blockwise response timeout");
             activeResps_.removeAt(i);
         } else {
@@ -546,7 +520,40 @@ void Description::reset() {
     blockSize_ = 0;
 }
 
-// TODO: Decouple blockwise transfer from the Describe handling logic
+ProtocolError Description::sendNextRequest(int flags) {
+    SPARK_ASSERT(!activeReq_.has_value());
+    // Serialize a Describe request
+    Message msg;
+    CHECK_PROTOCOL(proto_->get_channel().create(msg));
+    CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
+    const auto token = proto_->get_next_token();
+    initDescribeRequest(&enc, token, flags);
+    const size_t msgOffs = enc.payloadData() - (char*)msg.buf();
+    Vector<char> buf;
+    size_t payloadSize = 0;
+    CHECK_PROTOCOL(getDescribeData(flags, &msg, msgOffs, &buf, &payloadSize));
+    if (!buf.isEmpty()) {
+        // Send a blockwise request
+        Request req = {};
+        req.data = std::move(buf);
+        req.flags = flags;
+        CHECK_PROTOCOL(sendNextRequestBlock(&req, &msg, token));
+        SPARK_ASSERT(!req.data.isEmpty());
+        activeReq_ = std::move(req);
+    } else {
+        // Send a regular request
+        enc.payloadSize(payloadSize);
+        CHECK_PROTOCOL(encodeAndSend(&enc, &msg));
+        Ack ack = {};
+        ack.msgId = msg.get_id();
+        ack.flags = flags;
+        if (!acks_.append(std::move(ack))) {
+            return ProtocolError::NO_MEMORY;
+        }
+    }
+    return ProtocolError::NO_ERROR;
+}
+
 ProtocolError Description::sendNextRequestBlock(Request* req, Message* msg, token_t token) {
     CoapMessageEncoder enc((char*)msg->buf(), msg->capacity());
     initDescribeRequest(&enc, token, req->flags);
@@ -626,7 +633,7 @@ ProtocolError Description::encodeAndSend(CoapMessageEncoder* enc, Message* msg) 
     const size_t maxMsgSize = proto_->get_max_transmit_message_size();
     const int r = enc->encode();
     if (r < 0 || r > (int)maxMsgSize) {
-        LOG(ERROR, "Failed to encode message: %d; max message size: %u", r, (unsigned)maxMsgSize);
+        LOG(ERROR, "Failed to encode message: %d", r);
         return ProtocolError::INTERNAL;
     }
     msg->set_length(r);
