@@ -330,7 +330,7 @@ AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 		d.protocolFlags(protocol_flags);
 	}
 	if (stateFlags & AppStateDescriptor::MAX_MESSAGE_SIZE) {
-		d.maxMessageSize(PROTOCOL_BUFFER_SIZE);
+		d.maxMessageSize(get_max_transmit_message_size());
 	}
 	if (stateFlags & AppStateDescriptor::MAX_BINARY_SIZE) {
 		d.maxBinarySize(max_binary_size);
