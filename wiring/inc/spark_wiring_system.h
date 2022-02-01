@@ -587,7 +587,11 @@ public:
         if (!handler) {
             return;
         }
-        off(all_events, handler);
+        SystemEventContext context = {};
+        context.version = SYSTEM_EVENT_CONTEXT_VERSION;
+        context.size = sizeof(context);
+        context.callable = (void*)handler;
+        system_unsubscribe_event(all_events, nullptr, &context);
     }
 
     static void off(system_event_t events) {

@@ -73,7 +73,9 @@ struct SystemEventSubscription {
 
 // for now a simple implementation
 spark::Vector<SystemEventSubscription> subscriptions;
+#if PLATFORM_THREADING
 RecursiveMutex sSubscriptionsMutex;
+#endif // PLATFORM_THREADING
 
 void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
     for (SystemEventSubscription& subscription : subscriptions) {
@@ -87,7 +89,9 @@ void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer
 void system_notify_event_async(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
     // run event notifications on the application thread
     APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_async(event, data, pointer, fn, fndata));
+#if PLATFORM_THREADING
     std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
+#endif // PLATFORM_THREADING
     system_notify_event_impl(event, data, pointer, fn, fndata);
 }
 
@@ -139,7 +143,9 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
     // NOTE: using both mutex and ATOMIC_BLOCK, as some of the events may be generated directly out of an ISR.
     // Modification of subscriptions normally happens from thread context, so for events generated outside ISR
     // context, only mutex acquisition is sufficient to keep things thread safe (see system_notify_event_async())
+#if PLATFORM_THREADING
     std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
+#endif // PLATFORM_THREADING
     int r = 0;
     ATOMIC_BLOCK() {
         r = subscriptions.append(SystemEventSubscription(events, handler, context)) ? 0 : SYSTEM_ERROR_NO_MEMORY;
@@ -156,7 +162,9 @@ void system_unsubscribe_event(system_event_t events, system_event_handler_t* han
     // NOTE: using both mutex and ATOMIC_BLOCK, as some of the events may be generated directly out of an ISR.
     // Modification of subscriptions normally happens from thread context, so for events generated outside ISR
     // context, only mutex acquisition is sufficient to keep things thread safe (see system_notify_event_async())
+#if PLATFORM_THREADING
     std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
+#endif // PLATFORM_THREADING
     ATOMIC_BLOCK() {
         auto it = std::remove_if(subscriptions.begin(), subscriptions.end(), [events, handler, context](const SystemEventSubscription& sub) {
             if (!sub.matchesEvent(events)) {
