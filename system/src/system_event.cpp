@@ -22,7 +22,10 @@
 #include "interrupts_hal.h"
 #include "system_task.h"
 #include <stdint.h>
-#include <vector>
+#include "spark_wiring_vector.h"
+#include "spark_wiring_interrupts.h"
+#include "spark_wiring_thread.h"
+#include <algorithm>
 
 namespace {
 
@@ -57,6 +60,10 @@ struct SystemEventSubscription {
         return matchesHandler(subscription.handler) && matchesEvent(subscription.events);
     }
 
+    bool matchesContext(const SystemEventContext* ctx) const {
+        return (ctx != nullptr) && (ctx->callable == context.callable);
+    }
+
     void notify(system_event_t event, uint32_t data, void* pointer) {
         if (matchesEvent(event)) {
             handler(event, data, pointer, &context);
@@ -65,7 +72,8 @@ struct SystemEventSubscription {
 };
 
 // for now a simple implementation
-std::vector<SystemEventSubscription> subscriptions;
+spark::Vector<SystemEventSubscription> subscriptions;
+RecursiveMutex sSubscriptionsMutex;
 
 void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
     for (SystemEventSubscription& subscription : subscriptions) {
@@ -79,6 +87,7 @@ void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer
 void system_notify_event_async(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
     // run event notifications on the application thread
     APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_async(event, data, pointer, fn, fndata));
+    std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
     system_notify_event_impl(event, data, pointer, fn, fndata);
 }
 
@@ -127,9 +136,15 @@ public:
  * @return {@code 0} if the system event handlers were registered successfully. Non-zero otherwise.
  */
 int system_subscribe_event(system_event_t events, system_event_handler_t* handler, SystemEventContext* context) {
-    size_t count = subscriptions.size();
-    subscriptions.push_back(SystemEventSubscription(events, handler, context));
-    return subscriptions.size() == (count + 1) ? 0 : -1;
+    // NOTE: using both mutex and ATOMIC_BLOCK, as some of the events may be generated directly out of an ISR.
+    // Modification of subscriptions normally happens from thread context, so for events generated outside ISR
+    // context, only mutex acquisition is sufficient to keep things thread safe (see system_notify_event_async())
+    std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
+    int r = 0;
+    ATOMIC_BLOCK() {
+        r = subscriptions.append(SystemEventSubscription(events, handler, context)) ? 0 : SYSTEM_ERROR_NO_MEMORY;
+    }
+    return r;
 }
 
 /**
@@ -137,7 +152,34 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
  * @param handler   The handler that will be unsubscribed.
  * @param reserved  Set to nullptr.
  */
-void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved) {
+void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, const SystemEventContext* context) {
+    // NOTE: using both mutex and ATOMIC_BLOCK, as some of the events may be generated directly out of an ISR.
+    // Modification of subscriptions normally happens from thread context, so for events generated outside ISR
+    // context, only mutex acquisition is sufficient to keep things thread safe (see system_notify_event_async())
+    std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
+    ATOMIC_BLOCK() {
+        auto it = std::remove_if(subscriptions.begin(), subscriptions.end(), [events, handler, context](const SystemEventSubscription& sub) {
+            if (!sub.matchesEvent(events)) {
+                return false;
+            }
+            // Remove all subscriptions for this event
+            if (!handler || sub.matchesHandler(handler)) {
+                if (!context || sub.matchesContext(context)) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        if (it != subscriptions.end()) {
+            // Call destructors
+            for (auto iter = it; iter != subscriptions.end(); iter++) {
+                if (iter->context.callable && iter->context.destructor) {
+                    iter->context.destructor(iter->context.callable);
+                }
+            }
+            subscriptions.removeAt(it - subscriptions.begin(), subscriptions.end() - it);
+        }
+    }
 }
 
 void system_notify_event(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata,
