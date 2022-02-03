@@ -45,7 +45,8 @@ typedef enum module_info_flags_t {
                                                 // and potentially module_info_suffix_t + CRC in the end of the binary (depending on platform/module)
                                                 // need to be skipped when copying/writing this module into its target location.
     MODULE_INFO_FLAG_COMPRESSED         = 0x02, // Indicates that the module data is compressed.
-    MODULE_INFO_FLAG_COMBINED           = 0x04  // Indicates that this module is combined with another module.
+    MODULE_INFO_FLAG_COMBINED           = 0x04,  // Indicates that this module is combined with another module.
+    MODULE_INFO_FLAG_ENCRYPTED          = 0x08
 } module_info_flags_t;
 
 /**

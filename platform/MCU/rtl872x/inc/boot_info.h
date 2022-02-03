@@ -27,5 +27,6 @@ typedef struct {
     uint32_t src_addr;
     uint32_t dest_addr;
     uint32_t size;
+    uint32_t flags; // Copy of platform_flash_modules_t.flags field which is copied from DCT, which is converted from module_info_t.flags
     uint32_t crc32; /* of this struct */
 } flash_update_info_t;

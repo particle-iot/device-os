@@ -131,6 +131,9 @@ class ModuleFooter(StructSerializable):
 class ModuleFlags(IntFlag):
     NONE = 0x00
     DROP_MODULE_INFO = 0x01
+    #COMPRESSED = 0x02
+    #COMBINED = 0x04
+    ENCRYPTED = 0x08
 
 class ModuleHeader(StructSerializable):
     def __init__(self, start, length, version, platform, function, index=0, flags=None,
@@ -299,10 +302,10 @@ def main():
 
     if platform in RTL_PLATFORMS and function == ModuleFunction.BOOTLOADER:
         if args.address == RTL_MBR_OFFSET:
-            flags = ModuleFlags.DROP_MODULE_INFO
+            flags |= ModuleFlags.DROP_MODULE_INFO
             index = 1
         if args.address == RTL_KM0_PART1_OFFSET:
-            flags = ModuleFlags.DROP_MODULE_INFO
+            flags |= ModuleFlags.DROP_MODULE_INFO
             index = 2
 
     m = Module(bin, args.address, platform, function, version, index, flags, dependencies, mcu=args.mcu)
