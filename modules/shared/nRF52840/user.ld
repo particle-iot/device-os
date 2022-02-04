@@ -54,6 +54,12 @@ SECTIONS
 
     }>APP_FLASH  AT> APP_FLASH
 
+    .note.gnu.build-id :
+    {
+        __start_gnu_build_id_start = .;
+        KEEP(*(.note.gnu.build-id))
+    } >APP_FLASH  AT> APP_FLASH
+
     /*
      * The .ARM.exidx and .ARM.extab sections are used for C++ exception handling.
      * It is located here for completeness. Bare-metal ARM projects

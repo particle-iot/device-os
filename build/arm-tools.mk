@@ -64,6 +64,9 @@ else
 LDFLAGS += -fno-lto
 endif
 
+#enable the build-id GCC feature
+LDFLAGS += -Wl,--build-id
+
 # We are using newlib-nano for all the platforms
 CFLAGS += --specs=nano.specs
 
