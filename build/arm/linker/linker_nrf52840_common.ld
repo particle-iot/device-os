@@ -81,6 +81,11 @@ SECTIONS
         __exidx_end = .;
     } >APP_FLASH
 
+    .note.gnu.build-id :
+    {
+        __start_gnu_build_id_start = .;
+        KEEP(*(.note.gnu.build-id))
+    } >APP_FLASH  AT> APP_FLASH
 
     /* This is the initialized data section
     The program executes knowing that the data is in the RAM
