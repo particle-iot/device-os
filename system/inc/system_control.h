@@ -138,6 +138,19 @@ typedef struct ctrl_request {
     void* channel; // Request channel (used internally)
 } ctrl_request;
 
+enum system_control_acl {
+    SYSTEM_CONTROL_ACL_NONE = 0,
+    SYSTEM_CONTROL_ACL_ACCEPT = 1,
+    SYSTEM_CONTROL_ACL_DENY = 2
+};
+
+struct system_control_filter {
+    uint16_t size;
+    ctrl_request_type req;
+    system_control_acl action;
+    struct system_control_filter* next;
+};
+
 // Callback invoked for control requests that should be processed in the application thread
 typedef void(*ctrl_request_handler_fn)(ctrl_request* req);
 
@@ -161,11 +174,8 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved);
 // while sending the reply
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved);
 
-// The control requests not in the list are filtered out from executing
-int system_ctrl_add_request_filter(uint16_t* reqItems, size_t cnt, void* reserved);
-
-// The control requests in the list are cleared and all the control requests can be executed
-int system_ctrl_clear_request_filter(void* reserved);
+// The control requests are either filtered out or allowed based on the settings of the system_control_filter members
+int system_ctrl_add_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved);
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 

@@ -2079,7 +2079,7 @@ int BleLocalDevice::provisioningMode(bool enabled) const{
 }
 
 bool BleLocalDevice::getProvisioningStatus() const{
-    return system_get_ble_prov_status(nullptr);
+    return system_ble_prov_get_status(nullptr);
 }
 
 int BleLocalDevice::setAdvertisingInterval(uint16_t interval) const {

@@ -28,7 +28,6 @@ LOG_SOURCE_CATEGORY("system.listen.ble")
 #include "device_code.h"
 #include "service_debug.h"
 #include "core_hal.h"
-#include "ble_control_request_channel.h"
 #include "system_control_internal.h"
 
 namespace {
@@ -77,8 +76,8 @@ int BleProvisioningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_FLAGS), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append(BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE), SYSTEM_ERROR_NO_MEMORY);
 
-    char devName[BLE_MAX_DEV_NAME_LEN] = {};
-    CHECK(hal_ble_gap_get_device_name(devName, BLE_MAX_DEV_NAME_LEN, nullptr));
+    char devName[BLE_MAX_DEV_NAME_LEN+1] = {};
+    CHECK(hal_ble_gap_get_device_name(devName, sizeof(devName), nullptr));
 
     // Complete local name
     CHECK_TRUE(tempAdvData.append(strlen(devName) + 1), SYSTEM_ERROR_NO_MEMORY);
@@ -89,17 +88,18 @@ int BleProvisioningModeHandler::constructControlRequestAdvData() {
     uint16_t companyID = PARTICLE_COMPANY_ID;
 
     // Manufacturing specific data
-    char code[SETUP_CODE_SIZE] = {};
-    CHECK(get_device_setup_code(code, SETUP_CODE_SIZE));
+    char code[HAL_SETUP_CODE_SIZE] = {};
+    CHECK(get_device_setup_code(code, sizeof(code)));
     CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + sizeof(code) + 1), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempAdvData.append((uint8_t*)&code, 6), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append((uint8_t*)&code, sizeof(code)), SYSTEM_ERROR_NO_MEMORY);
 
     // Particle Control Request Service UUID. This will be overwritten by user's provisioning service ID if available
     // FIXME: Addressing only 128-bit complete and 16-bit complete UUIDs
-    hal_ble_uuid_t bleCrtlReqSvcUuid = BleControlRequestChannel::instance(particle::system::SystemControl::instance())->getBleCtrlSvcUuid();
+    // hal_ble_uuid_t bleCrtlReqSvcUuid = BleControlRequestChannel::instance(particle::system::SystemControl::instance())->getBleCtrlSvcUuid(); -> 
+    hal_ble_uuid_t bleCrtlReqSvcUuid = SystemControl::instance()->getBleCtrlRequestChannel()->getBleCtrlSvcUuid();
     if (bleCrtlReqSvcUuid.type == BLE_UUID_TYPE_128BIT) {
         CHECK_TRUE(tempSrData.append(sizeof(bleCrtlReqSvcUuid.uuid128) + 1), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);

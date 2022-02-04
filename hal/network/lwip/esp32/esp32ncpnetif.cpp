@@ -192,7 +192,7 @@ void Esp32NcpNetif::loop(void* arg) {
             if (self->expectedNcpState_ == NcpState::ON && self->wifiMan_->ncpClient()->ncpState() != NcpState::ON) {
                 auto r = self->wifiMan_->ncpClient()->on();
                 if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
-                    LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
+                    LOG(ERROR, "Failed to initialize wifi NCP client: %d", r);
                 }
             }
             if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED &&

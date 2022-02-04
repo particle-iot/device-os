@@ -34,7 +34,7 @@ typedef struct device_code_t {
 } device_code_t;
 
 // XXX: This constant is obtained from dct.h
-#define SETUP_CODE_SIZE 6
+#define HAL_SETUP_CODE_SIZE 6
 
 /**
  * Appends the device code to the end of the existing value. The length field must be set to the length of
