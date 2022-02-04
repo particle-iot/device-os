@@ -189,9 +189,7 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY            configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY
 
 /* Enable stack overflow detection for debug builds (see rtos_hook.cpp) */
-#ifdef DEBUG_BUILD
 # define configCHECK_FOR_STACK_OVERFLOW 2
-#endif
 
 #define xPortPendSVHandler PendSV_Handler
 #define vPortSVCHandler SVC_Handler
