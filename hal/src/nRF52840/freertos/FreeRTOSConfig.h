@@ -159,16 +159,18 @@ extern void newlib_impure_ptr_change(struct _reent* r);
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 
-#define INCLUDE_vTaskPrioritySet        1
-#define INCLUDE_uxTaskPriorityGet       1
-#define INCLUDE_vTaskDelete             1
-#define INCLUDE_vTaskCleanUpResources   0
-#define INCLUDE_vTaskSuspend            1
-#define INCLUDE_vTaskDelayUntil         1
-#define INCLUDE_vTaskDelay              1
-#define INCLUDE_eTaskGetState           1
-#define INCLUDE_xTaskGetIdleTaskHandle  1
-#define INCLUDE_xTimerPendFunctionCall  1
+#define INCLUDE_vTaskPrioritySet                1
+#define INCLUDE_uxTaskPriorityGet               1
+#define INCLUDE_vTaskDelete                     1
+#define INCLUDE_vTaskCleanUpResources           0
+#define INCLUDE_vTaskSuspend                    1
+#define INCLUDE_vTaskDelayUntil                 1
+#define INCLUDE_vTaskDelay                      1
+#define INCLUDE_eTaskGetState                   1
+#define INCLUDE_xTaskGetIdleTaskHandle          1
+#define INCLUDE_xTimerPendFunctionCall          1
+#define INCLUDE_vTaskGetInfo                    1
+#define INCLUDE_uxTaskGetStackHighWaterMark     1
 
 /* The lowest interrupt priority that can be used in a call to a "set priority"
 function. */
@@ -190,6 +192,8 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 
 /* Enable stack overflow detection for debug builds (see rtos_hook.cpp) */
 # define configCHECK_FOR_STACK_OVERFLOW 2
+
+#define configRECORD_STACK_HIGH_ADDRESS 1
 
 #define xPortPendSVHandler PendSV_Handler
 #define vPortSVCHandler SVC_Handler

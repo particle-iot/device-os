@@ -30,6 +30,7 @@ typedef void* os_timer_t;
 
 typedef os_mutex_t __gthread_mutex_t;
 typedef os_mutex_recursive_t __gthread_recursive_mutex_t;
+typedef uintptr_t os_unique_id_t;
 
 
 /**
