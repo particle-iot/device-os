@@ -341,6 +341,14 @@ static const char* const _log_category = NULL;
             } \
         } while (0)
 
+#define LOG_C_VARG(_level, _category, _fmt, vargs) \
+        do { \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
+                _LOG_ATTR_INIT(_attr); \
+                log_message_v(LOG_LEVEL_##_level, _category, &_attr, NULL, _fmt, vargs ); \
+            } \
+        } while (0)
+
 #define LOG_ATTR_C(_level, _category, _attrs, _fmt, ...) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
