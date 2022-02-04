@@ -54,11 +54,19 @@ public:
 
     static SystemControl* instance();
 
-    Vector<uint16_t> vecCtrlReq_;
+    struct filterCtrlReq_ {
+        Vector<uint16_t> vecCtrlReq_;
+        bool acceptReq_;
+    } filterCtrlReq_;
+
+    BleControlRequestChannel* getBleCtrlRequestChannel();
 
 private:
 #ifdef USB_VENDOR_REQUEST_ENABLE
     UsbControlRequestChannel usbChannel_;
+#endif
+#if HAL_PLATFORM_BLE
+    BleControlRequestChannel bleChannel_;
 #endif
     ctrl_request_handler_fn appReqHandler_;
 
@@ -88,6 +96,10 @@ inline void SystemControl::setResult(ctrl_request* req, int result, ctrl_complet
         void* data) {
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
     channel->setResult(req, result, handler, data);
+}
+
+inline BleControlRequestChannel* SystemControl::getBleCtrlRequestChannel() {
+    return &bleChannel_;
 }
 
 } // particle::system

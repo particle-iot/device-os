@@ -935,8 +935,9 @@ public:
     template<typename T>
     int setProvisioningSvcUuid(T svcUuid) const {
         BleUuid tempSvcUUID(svcUuid);
+        auto svcHalUuid = tempSvcUUID.halUUID();
         if (tempSvcUUID.isValid()) {
-            return system_set_custom_prov_svc_uuid(tempSvcUUID.halUUID(), nullptr);
+            return system_ble_prov_set_custom_svc_uuid(&svcHalUuid, nullptr);
         }
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -944,8 +945,9 @@ public:
     template<typename T>
     int setProvisioningTxUuid(T txUuid) const {
         BleUuid tempTxUUID(txUuid);
+        auto txHalUuid = tempTxUUID.halUUID();
         if (tempTxUUID.isValid()) {
-            return system_set_custom_prov_tx_uuid(tempTxUUID.halUUID(), nullptr);
+            return system_ble_prov_set_custom_tx_uuid(&txHalUuid, nullptr);
         }
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -953,8 +955,9 @@ public:
     template<typename T>
     int setProvisioningRxUuid(T rxUuid) const {
         BleUuid tempRxUUID(rxUuid);
+        auto rxHalUuid = tempRxUUID.halUUID();
         if (tempRxUUID.isValid()) {
-            return system_set_custom_prov_rx_uuid(tempRxUUID.halUUID(), nullptr);
+            return system_ble_prov_set_custom_rx_uuid(&rxHalUuid, nullptr);
         }
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -962,13 +965,12 @@ public:
     template<typename T>
     int setProvisioningVerUuid(T verUuid) const {
         BleUuid tempVerUUID(verUuid);
+        auto verHalUuid = tempVerUUID.halUUID();
         if (tempVerUUID.isValid()) {
-            return system_set_custom_prov_ver_uuid(tempVerUUID.halUUID(), nullptr);
+            return system_ble_prov_set_custom_ver_uuid(&verHalUuid, nullptr);
         }
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-
-
 
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;

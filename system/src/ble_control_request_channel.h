@@ -51,7 +51,8 @@ namespace system {
 // Class implementing a BLE control request channel
 class BleControlRequestChannel: public ControlRequestChannel {
 public:
-    static BleControlRequestChannel* instance(ControlRequestHandler* handler);
+    explicit BleControlRequestChannel(ControlRequestHandler* handler);
+    ~BleControlRequestChannel();
 
     int init();
     void destroy();
@@ -63,15 +64,13 @@ public:
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
-    void setProvSvcUuid(hal_ble_uuid_t svcUuid);
-    void setProvTxUuid(hal_ble_uuid_t txUuid);
-    void setProvRxUuid(hal_ble_uuid_t rxUuid);
-    void setProvVerUuid(hal_ble_uuid_t verUuid);
+    void setProvSvcUuid(hal_ble_uuid_t* svcUuid);
+    void setProvTxUuid(hal_ble_uuid_t* txUuid);
+    void setProvRxUuid(hal_ble_uuid_t* rxUuid);
+    void setProvVerUuid(hal_ble_uuid_t* verUuid);
 
     hal_ble_uuid_t getBleCtrlSvcUuid();
-protected:
-    explicit BleControlRequestChannel(ControlRequestHandler* handler);
-    ~BleControlRequestChannel();
+
 private:
     class HandshakeHandler;
     class JpakeHandler;
@@ -133,10 +132,10 @@ private:
 
     bool initialized_;
 
-    hal_ble_uuid_t bleCtrlSvcUuid_{};
-    hal_ble_uuid_t bleVerCharUuid_{};
-    hal_ble_uuid_t bleSendCharUuid_{};
-    hal_ble_uuid_t bleRecvCharUuid_{};
+    hal_ble_uuid_t bleCtrlSvcUuid_;
+    hal_ble_uuid_t bleVerCharUuid_;
+    hal_ble_uuid_t bleSendCharUuid_;
+    hal_ble_uuid_t bleRecvCharUuid_;
 
     hal_ble_attr_handle_t sendCharHandle_; // TX characteristic handle
     hal_ble_attr_handle_t sendCharCccdHandle_; // TX characteristic CCCD handle

@@ -475,7 +475,7 @@ void manage_ble_prov_mode() {
     // Check the relevant feature flag. If it's cleared,
     // make sure to turn off prov mode, and clear all
     // its UUIDs and others
-    if (system_get_ble_prov_status(nullptr) && !HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+    if (system_ble_prov_get_status(nullptr) && !HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
         system_ble_prov_mode(false, nullptr);
     }
 #endif

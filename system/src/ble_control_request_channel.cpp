@@ -95,6 +95,34 @@ struct __attribute__((packed)) HandshakeHeader {
 // Device setup protocol version
 const unsigned PROTOCOL_VERSION = 0x02;
 
+// UUID of the control request service
+const hal_ble_uuid_t CTRL_SERVICE_UUID = {
+    .uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f },
+    .type = BLE_UUID_TYPE_128BIT,
+    .reserved = {0}
+};
+
+// UUID of the protocol version characteristic
+const hal_ble_uuid_t VERSION_CHAR_UUID = {
+    .uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x02, 0x00, 0xa9, 0x6f },
+    .type = BLE_UUID_TYPE_128BIT,
+    .reserved = {0}
+};
+
+// UUID of the characteristic used to send reply data
+const hal_ble_uuid_t SEND_CHAR_UUID = {
+    .uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x03, 0x00, 0xa9, 0x6f },
+    .type = BLE_UUID_TYPE_128BIT,
+    .reserved = {0}
+};
+
+// UUID of the characteristic used to receive request data
+const hal_ble_uuid_t RECV_CHAR_UUID = {
+    .uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x04, 0x00, 0xa9, 0x6f },
+    .type = BLE_UUID_TYPE_128BIT,
+    .reserved = {0}
+};
+
 // Size of the buffer pool
 const size_t BUFFER_POOL_SIZE = 1024;
 
@@ -552,21 +580,16 @@ BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handle
         subscribed_(false),
         writable_(false),
         initialized_(false),
-        bleCtrlSvcUuid_{.uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x01, 0x00, 0xa9, 0x6f },.type=BLE_UUID_TYPE_128BIT, 0},
-        bleVerCharUuid_{.uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x02, 0x00, 0xa9, 0x6f },.type=BLE_UUID_TYPE_128BIT, 0},
-        bleSendCharUuid_{.uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x03, 0x00, 0xa9, 0x6f },.type=BLE_UUID_TYPE_128BIT, 0},
-        bleRecvCharUuid_{.uuid128 = { 0xfc, 0x36, 0x6f, 0x54, 0x30, 0x80, 0xf4, 0x94, 0xa8, 0x48, 0x4e, 0x5c, 0x04, 0x00, 0xa9, 0x6f },.type=BLE_UUID_TYPE_128BIT, 0},
+        bleCtrlSvcUuid_{CTRL_SERVICE_UUID},
+        bleVerCharUuid_{VERSION_CHAR_UUID},
+        bleSendCharUuid_{SEND_CHAR_UUID},
+        bleRecvCharUuid_{RECV_CHAR_UUID},
         sendCharHandle_(BLE_INVALID_ATTR_HANDLE),
         recvCharHandle_(BLE_INVALID_ATTR_HANDLE) {
 }
 
 BleControlRequestChannel::~BleControlRequestChannel() {
     destroy();
-}
-
-BleControlRequestChannel* BleControlRequestChannel::instance(ControlRequestHandler* handler) {
-  static BleControlRequestChannel blectrlreqchnl(handler);
-  return &blectrlreqchnl;
 }
 
 int BleControlRequestChannel::init() {
@@ -665,20 +688,20 @@ error:
     resetChannel();
 }
 
-void BleControlRequestChannel::setProvSvcUuid(hal_ble_uuid_t svcUuid) {
-    bleCtrlSvcUuid_ = svcUuid;
+void BleControlRequestChannel::setProvSvcUuid(hal_ble_uuid_t* svcUuid) {
+    bleCtrlSvcUuid_ = *svcUuid;
 }
 
-void BleControlRequestChannel::setProvTxUuid(hal_ble_uuid_t txUuid) {
-    bleSendCharUuid_ = txUuid;
+void BleControlRequestChannel::setProvTxUuid(hal_ble_uuid_t* txUuid) {
+    bleSendCharUuid_ = *txUuid;
 }
 
-void BleControlRequestChannel::setProvRxUuid(hal_ble_uuid_t rxUuid) {
-    bleRecvCharUuid_ = rxUuid;
+void BleControlRequestChannel::setProvRxUuid(hal_ble_uuid_t* rxUuid) {
+    bleRecvCharUuid_ = *rxUuid;
 }
 
-void BleControlRequestChannel::setProvVerUuid(hal_ble_uuid_t verUuid) {
-    bleVerCharUuid_ = verUuid;
+void BleControlRequestChannel::setProvVerUuid(hal_ble_uuid_t* verUuid) {
+    bleVerCharUuid_ = *verUuid;
 }
 
 hal_ble_uuid_t BleControlRequestChannel::getBleCtrlSvcUuid() {

@@ -82,6 +82,9 @@ SystemControl::SystemControl() :
 #ifdef USB_VENDOR_REQUEST_ENABLE
         usbChannel_(this),
 #endif
+#if HAL_PLATFORM_BLE
+        bleChannel_(this),
+#endif
         appReqHandler_(nullptr) {
 }
 
@@ -93,7 +96,7 @@ int SystemControl::init() {
     // mode system calls for the first time instead of here.
     // See system_ble_prov_mode()
     if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
-        const int ret = BleControlRequestChannel::instance(this)->init();
+        const int ret = bleChannel_.init();
         if (ret != 0) {
             return ret;
         }
@@ -104,26 +107,30 @@ int SystemControl::init() {
 
 void SystemControl::run() {
 #if HAL_PLATFORM_BLE
-    BleControlRequestChannel::instance(this)->run();
+    bleChannel_.run();
 #endif
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
-    // All requests are allowed if vector is empty
-    // If vector is non-empty, only those requests in the vector are allowed. Others are filtered out
-    if (!vecCtrlReq_.isEmpty()) {
-        bool reqFound = false;
-        for (auto& type : vecCtrlReq_) {
-            if (type == req->type) {
-                reqFound = true;
-                break;
+	// Allow/Request requests based on the setControlRequestFilter system API
+    if (filterCtrlReq_.acceptReq_ == false) {
+        if (filterCtrlReq_.vecCtrlReq_.size() == 0) {
+            LOG(TRACE, "Rejecting all control requests");
+            // reject all requests
+            return;
+        } else {
+            // accept only those in the vector
+            if (!filterCtrlReq_.vecCtrlReq_.contains(req->type)) {
+                LOG(TRACE, "Rejecting control request - %d", (int)req->type);
+                return;
             }
         }
-        if (!reqFound) {
-            LOG(TRACE, "Control req %u filtered out", req->type);
-            return;
-        }
+    } else if (filterCtrlReq_.vecCtrlReq_.contains(req->type)) {
+        // reject only those in the vector
+        LOG(TRACE, "Rejecting control request - %d", (int)req->type);
+        return;
     }
+
     switch (req->type) {
     case CTRL_REQUEST_DEVICE_ID: {
         setResult(req, control::config::getDeviceId(req));
@@ -408,30 +415,42 @@ void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handl
     particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
-int system_ctrl_add_request_filter(uint16_t* reqItems, size_t cnt, void* reserved) {
-    // check if the element is already there. Check if the element is a valid element
-    for (unsigned i=0; i<cnt; i++) {
-        bool eleExists = false;
-        for (auto t : particle::system::SystemControl::instance()->vecCtrlReq_) {
-            if (t == reqItems[i]) {
-                eleExists = true;
+int system_ctrl_add_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved) {
+    if (default_action == SYSTEM_CONTROL_ACL_NONE) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    particle::system::SystemControl::instance()->filterCtrlReq_.vecCtrlReq_.clear();
+
+    // If default action is to accept requests, vecCtrlReq_ will contain requests that need to be rejected
+    if (default_action == SYSTEM_CONTROL_ACL_ACCEPT) {
+        particle::system::SystemControl::instance()->filterCtrlReq_.acceptReq_ = true;
+        while(filters != nullptr) {
+            if (filters->action == SYSTEM_CONTROL_ACL_DENY) {
+                auto ret = 0;
+                ret = particle::system::SystemControl::instance()->filterCtrlReq_.vecCtrlReq_.append(filters->req);
+                if (!ret) {
+                    return SYSTEM_ERROR_NO_MEMORY;
+                }
+            }
+            filters = filters->next;
+        }
+    }
+
+    // If default action is to reject requests, vecCtrlReq_ will contain requests that need to be allowed
+    if (default_action == SYSTEM_CONTROL_ACL_DENY) {
+        particle::system::SystemControl::instance()->filterCtrlReq_.acceptReq_ = false;
+        while(filters->next != nullptr) {
+            if (filters->action == SYSTEM_CONTROL_ACL_ACCEPT) {
+                auto ret = 0;
+                ret = particle::system::SystemControl::instance()->filterCtrlReq_.vecCtrlReq_.append(filters->req);
+                if (!ret) {
+                    return SYSTEM_ERROR_NO_MEMORY;
+                }
+                filters = filters->next;
             }
         }
-        auto ret = 0;
-        if (!eleExists) {
-            ret = particle::system::SystemControl::instance()->vecCtrlReq_.append(reqItems[i]);
-        }
-        if (!ret) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        LOG(TRACE, "Added a new req to control req filter: %u", reqItems[i]);
     }
-    return particle::system::SystemControl::instance()->vecCtrlReq_.size();
-}
-
-int system_ctrl_clear_request_filter(void* reserved) {
-    particle::system::SystemControl::instance()->vecCtrlReq_.clear();
-    return particle::system::SystemControl::instance()->vecCtrlReq_.size();
+    return 0;
 }
 
 #else // !SYSTEM_CONTROL_ENABLED
@@ -451,11 +470,7 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
 }
 
-int system_ctrl_add_request_filter(uint16_t* reqItems, size_t cnt, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int system_ctrl_clear_request_filter(void* reserved) {
+int system_ctrl_add_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 

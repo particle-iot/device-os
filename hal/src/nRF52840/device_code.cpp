@@ -44,8 +44,9 @@ const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
 
 int get_device_setup_code(char* code, size_t size) {
     // Check if the device setup code is initialized in the DCT
-    int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, size);
-    if (ret < 0 || !particle::isPrintable(code, size)) {
+    char setupCode[HAL_SETUP_CODE_SIZE] = {};
+    int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, setupCode, sizeof(setupCode));
+    if (ret < 0 || !particle::isPrintable(setupCode, sizeof(setupCode))) {
         // Check the OTP memory
         char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
         ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
@@ -56,6 +57,8 @@ int get_device_setup_code(char* code, size_t size) {
             // Return a dummy setup code
             memset(code, 'X', size);
         }
+    } else {
+        memcpy(code, setupCode, std::min(sizeof(setupCode), size));
     }
     return 0;
 }
@@ -83,23 +86,23 @@ int get_device_name(char* buf, size_t size) {
     char* const name = &dctName[1];
     if (nameSize == 0 || nameSize > DEVICE_NAME_MAX_SIZE || !isPrintable(name, nameSize)) {
         // Get device setup code
-        char code[SETUP_CODE_SIZE] = {};
-        ret = get_device_setup_code(code, SETUP_CODE_SIZE);
+        char code[HAL_SETUP_CODE_SIZE] = {};
+        ret = get_device_setup_code(code, sizeof(code));
         if (ret < 0) {
             return ret;
         }
         // Get platform name
         const char* const platform = PRODUCT_SERIES;
         nameSize = sizeof(PRODUCT_SERIES) - 1; // Exclude term. null
-        if (nameSize + SETUP_CODE_SIZE + 1 > DEVICE_NAME_MAX_SIZE) { // Reserve 1 character for '-'
-            nameSize = DEVICE_NAME_MAX_SIZE - SETUP_CODE_SIZE - 1;
+        if (nameSize + HAL_SETUP_CODE_SIZE + 1 > DEVICE_NAME_MAX_SIZE) { // Reserve 1 character for '-'
+            nameSize = DEVICE_NAME_MAX_SIZE - HAL_SETUP_CODE_SIZE - 1;
         }
         // Generate device name
         memcpy(name, platform, nameSize);
         name[0] = toupper(name[0]); // Ensure the first letter is capitalized
         name[nameSize++] = '-';
-        memcpy(name + nameSize, code, SETUP_CODE_SIZE);
-        nameSize += SETUP_CODE_SIZE;
+        memcpy(name + nameSize, code, HAL_SETUP_CODE_SIZE);
+        nameSize += HAL_SETUP_CODE_SIZE;
     }
     memcpy(buf, name, std::min(nameSize, size));
     // Ensure the output buffer is always null-terminated
