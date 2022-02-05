@@ -445,6 +445,7 @@ test(system_power_management) {
     API_COMPILE(conf.powerSourceMaxCurrent(1234));
     API_COMPILE(conf.batteryChargeVoltage(1234));
     API_COMPILE(conf.batteryChargeCurrent(1234));
+    API_COMPILE(conf.socBitPrecision(19));
     API_COMPILE(conf.feature(SystemPowerFeature::PMIC_DETECTION));
     API_COMPILE(conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST));
     API_COMPILE(conf.feature(SystemPowerFeature::DISABLE));
@@ -466,5 +467,6 @@ test(system_power_management) {
     API_COMPILE({ auto getSourceV = getConf.powerSourceMinVoltage(); (void)getSourceV; });
     API_COMPILE({ auto getBatteryA = getConf.batteryChargeCurrent(); (void)getBatteryA; });
     API_COMPILE({ auto getBatteryV = getConf.batteryChargeVoltage(); (void)getBatteryV; });
+    API_COMPILE({ auto getSocBitPrecision = getConf.socBitPrecision(); (void)getSocBitPrecision; });
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
