@@ -31,17 +31,22 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring.h"
 #include "spark_wiring_i2c.h"
+// Currently we only support one kind of fuel gauge 
+#include "spark_maxim_gauge_config.h"
 
 //Default MAX17043 I2C address
 #define MAX17043_ADDRESS  0x36
 
 // Register definitions
-#define VCELL_REGISTER    0x02
-#define SOC_REGISTER      0x04
-#define MODE_REGISTER     0x06
-#define VERSION_REGISTER  0x08
-#define CONFIG_REGISTER   0x0C
-#define COMMAND_REGISTER  0xFE
+#define VCELL_REGISTER          0x02
+#define SOC_REGISTER            0x04
+#define MODE_REGISTER           0x06
+#define VERSION_REGISTER        0x08
+#define CONFIG_REGISTER         0x0C
+#define OCV_REGISTER            0x0E
+#define TABLE_LOCK_REGISTER     0x3E
+#define MODEL_DATA_BLOCK        0x40
+#define COMMAND_REGISTER        0xFE
 
 /* detail functions defined for unit tests */
 namespace particle { namespace detail {
@@ -75,14 +80,33 @@ public:
     bool lock();
     bool unlock();
 
+    /**
+     * @brief Set the configuration of the fuel gauge
+     */
+    int setConfig(const PlatformFuelGaugeConfig_t &config);
+
+    /**
+     * @brief Set the validation interval for the battery model
+     * 
+     * @param seconds between validations
+     */
+    void setValidationInterval(uint32_t seconds); 
+
 private:
     static constexpr system_tick_t FUELGAUGE_DEFAULT_TIMEOUT = 10; // In millisecond
 
     int readRegister(byte startAddress, byte &MSB, byte &LSB);
     int writeRegister(byte address, byte MSB, byte LSB);
+    int writeBlock(byte address, const byte* block, size_t size);
+
+    int reloadModel();
+    void verifyModel(); 
+ 
 
     TwoWire& i2c_;
     bool lock_;
+    MaximFuelGaugeConfig_t config_;
+
 };
 
 #endif // __SPARK_WIRING_FUEL_H
