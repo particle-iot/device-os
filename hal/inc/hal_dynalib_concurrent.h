@@ -25,6 +25,8 @@
 #include "concurrent_hal.h"
 #endif
 
+#include "hal_platform.h"
+
 DYNALIB_BEGIN(hal_concurrent)
 
 #if PLATFORM_THREADING
@@ -71,7 +73,16 @@ DYNALIB_FN(32, hal_concurrent, os_semaphore_take, int(os_semaphore_t, system_tic
 DYNALIB_FN(33, hal_concurrent, os_semaphore_give, int(os_semaphore_t, bool))
 DYNALIB_FN(34, hal_concurrent, os_scheduler_get_state, os_scheduler_state_t(void*))
 DYNALIB_FN(35, hal_concurrent, os_queue_peek, int(os_queue_t, void* item, system_tick_t, void*))
+#if HAL_PLATFORM_CONCURRENT_DUMP_THREADS
 DYNALIB_FN(36, hal_concurrent, os_thread_dump, os_result_t(os_thread_t, os_thread_dump_callback_t, void *reserved))
+#define BASE_IDX 37
+#else
+#define BASE_IDX 36
+#endif // HAL_PLATFORM_CONCURRENT_DUMP_THREADS
+
+// Continue with BASE_IDX
+
+#undef BASE_IDX
 
 #endif // PLATFORM_THREADING
 
