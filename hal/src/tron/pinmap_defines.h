@@ -46,6 +46,14 @@
 #define D21                 21
 #define D22                 22
 
+#define S0                  D16
+#define S1                  D17
+#define S2                  D18
+#define S3                  D19
+#define S4                  D20
+#define S5                  D21
+#define S6                  D22
+
 // Analog pins
 #define A0                  D12
 #define A1                  D13
