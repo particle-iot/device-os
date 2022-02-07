@@ -50,7 +50,7 @@ typedef void* os_timer_t;
 
 typedef os_mutex_t __gthread_mutex_t;
 typedef os_mutex_recursive_t __gthread_recursive_mutex_t;
-
+typedef uint32_t os_unique_id_t;
 
 /**
  * Alias for a queue handle in FreeRTOS - all handles are pointers.
