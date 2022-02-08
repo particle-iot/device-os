@@ -95,6 +95,14 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
     }>APP_FLASH  AT> APP_FLASH
 
+    .note.gnu.build-id :
+    {
+        __start_gnu_build_id_start = .;
+        link_gnu_build_id_location_start = .;
+        KEEP(*(.note.gnu.build-id))
+        link_gnu_build_id_location_end = .;
+    } >APP_FLASH  AT> APP_FLASH
+
     .mem_section_dummy_rom :
     {
     }
