@@ -52,6 +52,7 @@ SECTIONS
         *(.image2.ram.text)
         *(.image2.ram.text.*)
         *(.image2.net.ram.text)
+        *(.image2.net.ram.text.*)
         *(.ram.text)
         *(.ram.text.*)
         *(.BTTRACE)
@@ -66,6 +67,8 @@ SECTIONS
         link_const_data_start = .;
         *(.rodata)
         *(.rodata*)
+        *(.image2.net.ram.rodata*)
+        *(.image2.ram.rodata*)
         *(.gnu.linkonce.r.*)
         *(.boot.rodata) /* Realtek specific */
         *(.boot.rodata*) /* Realtek specific */
@@ -134,6 +137,8 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_start = .;
         *(.data*)
+        *(.image2.ram.data*)
+        *(.image2.net.ram.data*)
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
@@ -144,6 +149,8 @@ SECTIONS
         . = ALIGN (32);
         __ram_nocache_start__ = .;
         *(.bdsram.data*)
+        *(.image2.ram.bdsram.data*)
+        *(.image2.net.ram.bdsram.data*)
         . = ALIGN (32);
         __ram_nocache_end__ = .;
     } > SRAM AT> APP_FLASH
@@ -155,6 +162,8 @@ SECTIONS
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_location = .;
         *(.bss*)
+        *(.image2.ram.bss*)
+        *(.image2.net.ram.bss*)
         *(COMMON)
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
