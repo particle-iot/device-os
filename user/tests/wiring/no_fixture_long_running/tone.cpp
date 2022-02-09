@@ -27,7 +27,7 @@
 #include "tone_hal.h"
 #include "unit-test/unit-test.h"
 
-#if defined(STM32F2XX)
+#if defined(STM32F2XX) || PLATFORM_ID == PLATFORM_P2
 static const hal_pin_t pin = D1;//pin under test
 #else
 static const hal_pin_t pin = A1;//pin under test

@@ -187,9 +187,9 @@ void hal_pwm_write_with_frequency_ext(uint16_t pin, uint32_t value, uint32_t fre
     uint8_t instance = pinInfo->pwm_instance;
     uint8_t channel = pinInfo->pwm_channel;
 
-    if (frequency < calculateMinFrequency(pwmInfo[instance].resolution) || frequency > calculateMaxFrequency(pwmInfo[instance].resolution)) {
-        return;
-    }
+    pwmInfo[instance].values[channel] = value;
+    pwmInfo[instance].desiredFreqs[channel] = frequency;
+
     if (value > (uint32_t)(1 << pwmInfo[instance].resolution)) {
         // FIXME: to not break the user experience we simply return.
         // But can we instead round the value to the maximum value?
@@ -204,9 +204,6 @@ void hal_pwm_write_with_frequency_ext(uint16_t pin, uint32_t value, uint32_t fre
 
     pwmPinInit(pin);
 
-    pwmInfo[instance].values[channel] = value;
-    pwmInfo[instance].desiredFreqs[channel] = frequency;
-
     uint32_t maxDesiredFreq = 0;
     for (uint8_t ch = 0; ch < MAX_PWM_CHANNEL_NUM; ch++) {
         if (pwmInfo[instance].pins[ch] == PIN_INVALID) {
@@ -216,6 +213,15 @@ void hal_pwm_write_with_frequency_ext(uint16_t pin, uint32_t value, uint32_t fre
             maxDesiredFreq = pwmInfo[instance].desiredFreqs[ch];
         }
     }
+    uint32_t minFreq = calculateMinFrequency(pwmInfo[instance].resolution);
+    if (maxDesiredFreq < minFreq) {
+        maxDesiredFreq = minFreq;
+    }
+    uint32_t maxFreq = calculateMaxFrequency(pwmInfo[instance].resolution);
+    if (maxDesiredFreq > maxFreq) {
+        maxDesiredFreq = maxFreq;
+    }
+
     if (maxDesiredFreq != pwmInfo[instance].frequency) {
         // WARN: Changing the prescaler, the frequency of other channels those use the same TIM
         // is changed to this frequency automatically.
@@ -253,10 +259,16 @@ void hal_pwm_update_duty_cycle_ext(uint16_t pin, uint32_t value) {
     const uint32_t channel = pinInfo->pwm_channel;
 
     if (value > (uint32_t)(1 << pwmInfo[instance].resolution)) {
-        // FIXME: return or set to the maximum value?
+        value = (uint32_t)(1 << pwmInfo[instance].resolution);
     }
 
+    if (pwmInfo[instance].state != PWM_STATE_ENABLED) {
+        if (pwmTimBaseInit(&pwmInfo[instance]) != 0) {
+            return;
+        }
+    }
     RTIM_CCRxSet(pwmInfo[instance].tim, value, channel);
+    pwmInfo[instance].values[channel] = value;
 }
 
 void hal_pwm_update_duty_cycle(uint16_t pin, uint16_t value) {
@@ -281,7 +293,8 @@ uint32_t hal_pwm_get_frequency_ext(uint16_t pin) {
     // And we should return the current actual output frequency
     const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
     const uint8_t instance = pinInfo->pwm_instance;
-    return pwmInfo[instance].frequency;
+    const uint8_t channel = pinInfo->pwm_channel;
+    return pwmInfo[instance].desiredFreqs[channel];
 }
 
 uint16_t hal_pwm_get_frequency(uint16_t pin) {
@@ -324,6 +337,12 @@ void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution) {
     
     const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
     const uint8_t instance = pinInfo->pwm_instance;
+
+    if (pwmInfo[instance].state != PWM_STATE_ENABLED) {
+        if (pwmTimBaseInit(&pwmInfo[instance]) != 0) {
+            return;
+        }
+    }
     
     uint32_t prePeriodCycles = (1 << pwmInfo[instance].resolution) - 1;
     uint32_t currPeriodCycles = (1 << resolution) - 1;
@@ -362,6 +381,10 @@ void hal_pwm_reset_pin(uint16_t pin) {
     const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
     const uint8_t instance = pinInfo->pwm_instance;
     const uint8_t channel = pinInfo->pwm_channel;
+
+    if (pwmInfo[instance].state != PWM_STATE_ENABLED) {
+        return;
+    }
 
     // Stop PWM
     RTIM_CCxCmd(pwmInfo[instance].tim, channel, TIM_CCx_Disable);
