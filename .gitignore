@@ -63,7 +63,6 @@ docs/doxygen/html/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-<<<<<<< HEAD
 
 #direnv config files
 .envrc
