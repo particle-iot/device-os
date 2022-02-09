@@ -36,7 +36,7 @@ SCENARIO("Fuel Gauge VCELL_REGISTER conversion should return 1.25mV per bit", "[
 SCENARIO("Fuel Gauge SoC conversion should return MSB.(LSB/256)%% by default", "[fuel_gauge]") {
     // MSB is the whole number
     // LSB is the decimal, resolution in units 1/256%
-    const bits_precision = 0;//default value
+    const byte bits_precision = 0;//default value
     REQUIRE(_getSoC(0x01, 0x80, bits_precision) == (float)1.5);
     REQUIRE(_getSoC(0x10, 0x29, bits_precision) == (float)16.16015625);
     REQUIRE(_getSoC(0x64, 0x00, bits_precision) == (float)100.0);
@@ -44,7 +44,7 @@ SCENARIO("Fuel Gauge SoC conversion should return MSB.(LSB/256)%% by default", "
 }
 
 SCENARIO("Fuel Gauge SoC conversion should return 18 bit values on demand", "[fuel_gauge]") {
-    const bits_precision = 18;
+    const byte bits_precision = 18;
     REQUIRE(_getSoC(0x01, 0x80, bits_precision) == (float)1.5);
     REQUIRE(_getSoC(0x10, 0x29, bits_precision) == (float)16.16015625);
     REQUIRE(_getSoC(0x64, 0x00, bits_precision) == (float)100.0);
@@ -52,7 +52,7 @@ SCENARIO("Fuel Gauge SoC conversion should return 18 bit values on demand", "[fu
 }
 
 SCENARIO("Fuel Gauge SoC conversion should return 19 bit values on demand", "[fuel_gauge]") {
-    const bits_precision = 19;
+    const byte bits_precision = 19;
     REQUIRE(_getSoC(0x01, 0x80, bits_precision) == (float)0.75);
     REQUIRE(_getSoC(0x10, 0x29, bits_precision) == (float)8.080078125);
     REQUIRE(_getSoC(0x64, 0x00, bits_precision) == (float)50.0);
