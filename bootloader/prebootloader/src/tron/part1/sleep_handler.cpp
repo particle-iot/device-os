@@ -163,6 +163,7 @@ void configureSleepWakeupSource(const hal_sleep_config_t* config) {
                 GPIO_InitStruct.GPIO_Mode = GPIO_Mode_INT;
             }
             GPIO_Init(&GPIO_InitStruct);
+            GPIO_INTConfig(rtlPin, ENABLE);
         }
         source = source->next;
     }

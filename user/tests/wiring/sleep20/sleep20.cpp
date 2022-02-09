@@ -43,6 +43,7 @@ void updateTime() {
 
 STARTUP(updateTime());
 
+#if PLATFORM_ID != PLATFORM_P2 // P2 will reset the retention SRAM after pressing the reset button
 test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup) {
     if (magick != 0xdeadbeef) {
         magick = 0xdeadbeef;
@@ -88,9 +89,17 @@ test(02_System_Sleep_Mode_Deep_Without_Wakeup) {
         assertEqual(System.resetReason(), (int)RESET_REASON_PIN_RESET);
     }
 }
+#else // PLATFORM_ID != PLATFORM_P2
+test(01_System_Sleep_Setup) {
+    if (magick != 0xdeadbeef) {
+        magick = 0xdeadbeef;
+        phase = 0xbeef0003;
+    }
+}
+#endif // PLATFORM_ID == PLATFORM_P2
 
 
-#if HAL_PLATFORM_GEN == 3
+#if HAL_PLATFORM_GEN == 3 && PLATFORM_ID != PLATFORM_P2
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
@@ -210,8 +219,9 @@ test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
     }
 }
 #endif // HAL_PLATFORM_EXTERNAL_RTC
+#endif // HAL_PLATFORM_GEN == 3 && PLATFORM_ID != PLATFORM_P2
 
-#elif HAL_PLATFORM_GEN == 2
+#if HAL_PLATFORM_GEN == 2 || PLATFORM_ID == PLATFORM_P2
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
@@ -321,7 +331,7 @@ test(07_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
               .duration(SLEEP_DURATION_S * 1000);
 #if HAL_PLATFORM_CELLULAR
         config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
-#elif HAL_PLATFORM_WIFI
+#elif HAL_PLATFORM_WIFI && PLLATFORM_ID != P2 // P2 doesn't support using network as wakeup source
         config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
 #endif
 
@@ -336,7 +346,7 @@ test(07_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
         assertLessOrEqual(exitTime - enterTime, SLEEP_DURATION_S + 1);
     }
 }
-#endif // HAL_PLATFORM_GEN
+#endif // HAL_PLATFORM_GEN == 2 || PLATFORM_ID == PLATFORM_P2
 
 test(08_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
@@ -382,6 +392,7 @@ test(11_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0) {
           .gpio(D0, RISING);
     SystemSleepResult result = System.sleep(config);
 
+    delay(1s); // FIXME: P2 specific due to USB thread
     waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -402,13 +413,14 @@ test(12_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
           .duration(3s);
     SystemSleepResult result = System.sleep(config);
 
+    delay(1s); // FIXME: P2 specific due to USB thread
     waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 }
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE && PLATFORM_ID != PLATFORM_P2
 test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after device being connected by BLE Central.");
     Serial.println("    >> Press any key now");
@@ -431,7 +443,7 @@ test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
 
     BLE.stopAdvertising();
 }
-#endif // HAL_PLATFORM_BLE
+#endif // HAL_PLATFORM_BLE && PLATFORM_ID != PLATFORM_P2
 
 test(14_System_Sleep_Mode_Stop_Wakeup_By_D0) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after you have a rising edge on D0.");
@@ -443,6 +455,7 @@ test(14_System_Sleep_Mode_Stop_Wakeup_By_D0) {
 
     SleepResult result = System.sleep(D0, RISING);
 
+    delay(1s); // FIXME: P2 specific due to USB thread
     waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -460,6 +473,7 @@ test(15_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
 
     SleepResult result = System.sleep(nullptr, 0, nullptr, 0, 3s);
 
+    delay(1s); // FIXME: P2 specific due to USB thread
     waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -479,6 +493,7 @@ test(16_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0
           .gpio(D0, RISING);
     SystemSleepResult result = System.sleep(config);
 
+    delay(1s); // FIXME: P2 specific due to USB thread
     waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -499,11 +514,14 @@ test(17_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rt
           .duration(3s);
     SystemSleepResult result = System.sleep(config);
 
+    delay(1s); // FIXME: P2 specific due to USB thread
     waitUntil(Serial.isConnected);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 }
+
+#if PLATFORM_ID != PLATFORM_P2
 
 #if HAL_PLATFORM_BLE
 test(18_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ble) {
@@ -568,7 +586,7 @@ test(20_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_An
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_LPCOMP);
 }
-#endif
+#endif // HAL_PLATFORM_GEN == 3 
 
 test(21_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after sending characters over Serial1 @115200bps");
@@ -616,7 +634,7 @@ test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Us
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
 }
-#endif
+#endif // HAL_PLATFORM_GEN == 3
 
 #if HAL_PLATFORM_CELLULAR
 test(23_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular) {
@@ -671,7 +689,7 @@ test(24_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ce
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
 }
-#endif
+#endif // HAL_PLATFORM_GEN == 3
 #endif // HAL_PLATFORM_CELLULAR
 
 #if HAL_PLATFORM_WIFI && HAL_PLATFORM_GEN == 3
@@ -726,6 +744,8 @@ test(26_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Wi
 }
 #endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_GEN == 3
 
+#endif // PLATFORM_ID != PLATFORM_P2
+
 test(27_System_Sleep_With_Configuration_Object_Execution_Time_Prepare) {
     /* This test should only be run with threading disabled */
     if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
@@ -743,7 +763,6 @@ test(27_System_Sleep_With_Configuration_Object_Execution_Time_Prepare) {
 
 test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     constexpr uint32_t SLEEP_DURATION_S = 3;
-    Serial.printf("    >> Device enters stop mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
     while (Serial.available() > 0) {
@@ -754,7 +773,8 @@ test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     Network.on();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
-    Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
+    Serial.println("    >> Connected to the cloud");
+    Serial.printf("    >> Enter stop mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
@@ -768,13 +788,14 @@ test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     SystemSleepResult result = System.sleep(config);
     time32_t exit = Time.now();
 
+    delay(1s); // FIXME: P2 specific due to USB thread
     waitUntil(Serial.isConnected);
     assertNotEqual(sNetworkOffTimestamp, 0);
     assertMoreOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S);
     if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
         assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S + 10 );
     } else {
-        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S * 3 / 2 );
+        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S + 2 );
     }
     Serial.printf("Sleep execution time: %ld s\r\n", exit - sNetworkOffTimestamp);
 
@@ -787,7 +808,6 @@ test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
 
 test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execution_Time) {
     constexpr uint32_t SLEEP_DURATION_S = 3;
-    Serial.printf("    >> Device enters ultra-low power mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
     while (Serial.available() > 0) {
@@ -798,7 +818,8 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     Network.on();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
-    Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
+    Serial.println("    >> Connected to the cloud");
+    Serial.printf("    >> Enter stop mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
@@ -812,30 +833,30 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     SystemSleepResult result = System.sleep(config);
     time32_t exit = Time.now();
 
+    delay(1s); // FIXME: P2 specific due to USB thread
     waitUntil(Serial.isConnected);
     assertNotEqual(sNetworkOffTimestamp, 0);
     assertMoreOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S);
     if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
         assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S + 10 );
     } else {
-        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S * 3 / 2 );
+        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S + 2 );
     }
     Serial.printf("Sleep execution time: %ld s\r\n", exit - sNetworkOffTimestamp);
 
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
-
-    // Make sure we reconnect back to the cloud
-    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
 }
 
 test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On) {
-    Serial.println("    >> Device enters stop mode. Please reconnect serial after device wakes up");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
     while (Serial.available() > 0) {
         (void)Serial.read();
     }
+
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, CLOUD_CONNECT_TIMEOUT));
 
     for (uint8_t i = 0; i < 2; i++) {
         // Make sure the modem is off first
@@ -858,9 +879,10 @@ test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
         }
 #endif
 
-        Serial.println("    >> Entering sleep...");
+        Serial.println("    >> Entering sleep... Please reconnect serial after 3 seconds");
         SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(3s));
 
+        delay(1s); // FIXME: P2 specific due to USB thread
         waitUntil(Serial.isConnected);
 
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -876,7 +898,6 @@ test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
 }
 
 test(31_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Off) {
-    Serial.println("    >> Device enters stop mode. Please reconnect serial after device wakes up");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
     while (Serial.available() > 0) {
@@ -904,9 +925,10 @@ test(31_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Of
         }
 #endif
 
-        Serial.println("    >> Entering sleep...");
+        Serial.println("    >> Entering sleep... Please reconnect serial after 3 seconds");
         SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(3s));
 
+        delay(1s); // FIXME: P2 specific due to USB thread
         waitUntil(Serial.isConnected);
 
         assertEqual(result.error(), SYSTEM_ERROR_NONE);

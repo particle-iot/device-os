@@ -246,8 +246,6 @@ void Set_System(void)
     /* Configure the Button */
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
 
-    SYSTIMER_Init();
-
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     hw_rtl_init_psram();
 

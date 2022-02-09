@@ -181,6 +181,10 @@ public:
         __DSB();
         __ISB();
 
+        // Clear int status
+        HAL_WRITE32((uint32_t)GPIOA_BASE, 0x4C, 0xFFFF);
+        HAL_WRITE32((uint32_t)GPIOB_BASE, 0x4C, 0xFFFF);
+
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
         os_thread_scheduling(true, nullptr);
 

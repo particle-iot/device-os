@@ -361,6 +361,8 @@ void rtlLowLevelInit() {
 
     SYSTIMER_Init(); /* 0.2ms */
 
+    SOCPS_AONTimerCmd(DISABLE);
+
     SOCPS_SNOOZE_Config((BIT_XTAL_REQ_SNOOZE_MSK | BIT_CAPTOUCH_SNOOZE_MSK), ENABLE);
     
     app_start_autoicg();

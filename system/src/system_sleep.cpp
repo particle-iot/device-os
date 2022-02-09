@@ -84,13 +84,15 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
             }
         }
 #endif
-#if PLATFORM_ID != PLATFORM_P2
+#if PLATFORM_ID == PLATFORM_P2
         // P2 doesn't need to turn off the modem manually
+        system_notify_event(network_status, network_status_off);
+#else
         network_off(index, 0, 0, NULL);
         LOG(TRACE, "Waiting interface %d to be off...", (int)index);
         // There might be up to 30s delay to turn off the modem for particular platforms.
         network_wait_off(index, 120000/*ms*/, nullptr);
-#endif // PLATFORM_ID != PLATFORM_P2
+#endif
     } else {
         LOG(TRACE, "Interface %d is off already", (int)index);
     }

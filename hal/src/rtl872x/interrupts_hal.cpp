@@ -238,10 +238,12 @@ void hal_interrupt_suspend(void) {
 
 void hal_interrupt_restore(void) {
     for (int i = 0; i < TOTAL_PINS; i++) {
+        const uint32_t rtlPin = hal_pin_to_rtl_pin(i);
+        // In case that interrupt is enabled by sleep
+        GPIO_INTConfig(rtlPin, DISABLE);
         if (interruptsConfig[i].state == INT_STATE_SUSPENDED) {
             uint32_t trigger = 0, polarity = 0;
             parseMode(interruptsConfig[i].mode, &trigger, &polarity);
-            const uint32_t rtlPin = hal_pin_to_rtl_pin(i);
             GPIO_INTMode(rtlPin, ENABLE, trigger, polarity, GPIO_INT_DEBOUNCE_ENABLE);
             GPIO_INTConfig(rtlPin, ENABLE);
             interruptsConfig[i].state = INT_STATE_ENABLED;
