@@ -31,8 +31,6 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring.h"
 #include "spark_wiring_i2c.h"
-// Currently we only support one kind of fuel gauge 
-#include "spark_maxim_gauge_config.h"
 
 //Default MAX17043 I2C address
 #define MAX17043_ADDRESS  0x36
@@ -81,16 +79,11 @@ public:
     bool unlock();
 
     /**
-     * @brief Set the configuration of the fuel gauge
-     */
-    int setConfig(const PlatformFuelGaugeConfig_t &config);
-
-    /**
-     * @brief Set the validation interval for the battery model
+     * @brief Set a custom bits precision for SoC calculation
      * 
-     * @param seconds between validations
+     * @param bits 
      */
-    void setValidationInterval(uint32_t seconds); 
+    void setCustomSoCPrecision(byte bits);
 
 private:
     static constexpr system_tick_t FUELGAUGE_DEFAULT_TIMEOUT = 10; // In millisecond
@@ -98,14 +91,12 @@ private:
     int readRegister(byte startAddress, byte &MSB, byte &LSB);
     int writeRegister(byte address, byte MSB, byte LSB);
     int writeBlock(byte address, const byte* block, size_t size);
-
-    int reloadModel();
-    void verifyModel(); 
  
 
     TwoWire& i2c_;
     bool lock_;
-    MaximFuelGaugeConfig_t config_;
+
+    byte soc_bits_;
 
 };
 
