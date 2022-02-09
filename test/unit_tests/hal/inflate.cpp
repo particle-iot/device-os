@@ -415,6 +415,7 @@ TEST_CASE("inflate_input()") {
         CHECK(r == INFLATE_DONE);
         CHECK(size == comp.size());
         CHECK(infl.output() == decomp);
+        CHECK(false);
     }
 
     SECTION("stress test") {
