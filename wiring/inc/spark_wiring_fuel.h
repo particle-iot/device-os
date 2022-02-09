@@ -90,7 +90,6 @@ private:
 
     int readRegister(byte startAddress, byte &MSB, byte &LSB);
     int writeRegister(byte address, byte MSB, byte LSB);
-    int writeBlock(byte address, const byte* block, size_t size);
  
 
     TwoWire& i2c_;

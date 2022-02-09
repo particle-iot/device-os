@@ -98,16 +98,17 @@ namespace particle { namespace detail {
     // Converts SOC_REGISTER reading to state of charge of the cell as a percentage
     float _getSoC(byte MSB, byte LSB, byte bits_resolution) {
         float soc_percent = 0;
-        if (bits_resolution == 18)  { 
-            soc_percent = (((uint32_t)MSB << 8) + LSB) / 256.0; 
-        } 
-        else if (bits_resolution == 19) { 
+
+        if (bits_resolution == 19) { 
             soc_percent = (((uint32_t)MSB << 8) + LSB) / 512.0; 
         }
-        //TODO any other options we want to support?
         else {
+            // Maxim ModelGauge doc only mentions 18 and 19 bit:
+            // This is the default calculation we've previously (with 18 bit).
+
             // MSB is the whole number
             // LSB is the decimal, resolution in units 1/256%
+            // equivalent to soc_percent = (((uint32_t)MSB << 8) + LSB) / 256.0;
             soc_percent = MSB + (LSB / 256.0);
         }
         return soc_percent;
@@ -301,20 +302,6 @@ int FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
     return SYSTEM_ERROR_NONE;
 }
 
-int FuelGauge::writeBlock(byte address, const byte* block, size_t size) {
-    std::lock_guard<FuelGauge> l(*this);
-    WireTransmission config(MAX17043_ADDRESS);
-    config.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
-    i2c_.beginTransmission(config);
-    i2c_.write(address);
-    size_t nwritten = i2c_.write((const uint8_t*)block, size);
-    CHECK_TRUE(i2c_.endTransmission(true) == 0, SYSTEM_ERROR_TIMEOUT);
-    if (nwritten != size) {
-        //TODO return an error?
-    }
-    return SYSTEM_ERROR_NONE;
-}
-
 bool FuelGauge::lock() {
     return i2c_.lock();
 }
@@ -325,6 +312,9 @@ bool FuelGauge::unlock() {
 
 
 void FuelGauge::setCustomSoCPrecision(byte bits) {
+
+    // TODO this is only persisted per instance, not system-wide
+
     soc_bits_ = bits;
 }
 
