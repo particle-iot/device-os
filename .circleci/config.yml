@@ -37,33 +37,9 @@ jobs:
             if [ "${failures}" != "" ]; then
               exit 0
             fi
-            bash \<<'EOF'
-              set -e
-              find $HOME/workspace/release
-              export RELEASE_REF=$(head -n 1 <(cat $HOME/workspace/release/*/ref))
-              RELEASE_PUBLISH=$(head -n 1 <(find $HOME/workspace/release/ -name 'release-publish.sh'))
-              cp $RELEASE_PUBLISH $HOME
-              mkdir -p $HOME/binaries-all/${RELEASE_REF}
-              pushd $HOME/binaries-all/${RELEASE_REF}
-              for z in $(find $HOME/workspace/release -name '*\+*.zip'|grep -v binaries); do
-                unzip $z -d .
-              done
-              cp -r $HOME/workspace/release/*/$RELEASE_REF/* ./
-              popd
-
-              export RELEASE_OUTPUT="$HOME/binaries-all/"
-              pushd $HOME
-              ./release-publish.sh --release-directory $RELEASE_OUTPUT
-              popd
-
-              mkdir -p $HOME/release
-              pushd $HOME/binaries-all/${RELEASE_REF}
-              zip $HOME/release/particle_device-os@${RELEASE_REF}.zip . --recurse-paths --quiet
-              popd
-              find $HOME/binaries-all
-              cp -r $HOME/workspace/release/coverage $HOME/release/
-              find $HOME/release
-            EOF
+            COMBINE_BINARIES=$(head -n 1 <(find $HOME/workspace/release/ -name 'combine_binaries.sh'))
+            RELEASE_REF=$(head -n 1 <(cat $HOME/workspace/release/*/ref))
+            $COMBINE_BINARIES $HOME/workspace/release $RELEASE_REF $HOME
             RESULT=$?
             if [ $RESULT -ne 0 ]; then
               exit 0
@@ -176,8 +152,10 @@ jobs:
             export BUILD_PLATFORM="<< parameters.platform >>"
             export BUILD_PLATFORM=$(echo "$BUILD_PLATFORM" | sed 's/ /_/g')
             mkdir -p $HOME/workspace/release/$BUILD_PLATFORM
-            docker cp build:/firmware/compiled-binaries/$(cat $HOME/device-os/.git/ref) $HOME/workspace/release/$BUILD_PLATFORM/ || true
+            export TAG=$(cat $HOME/device-os/.git/ref)
+            docker cp build:/firmware/compiled-binaries/$TAG $HOME/workspace/release/$BUILD_PLATFORM/ || true
             cp $HOME/device-os/build/release-publish.sh $HOME/workspace/release/$BUILD_PLATFORM/
+            cp $HOME/device-os/ci/combine_binaries.sh $HOME/workspace/release/$BUILD_PLATFORM/
             cp $HOME/device-os/ci/cf_generate_message.sh $HOME/workspace/release/$BUILD_PLATFORM/
             docker cp build:/firmware/build/coverage $HOME/workspace/release/
             cp $HOME/device-os/.git/ref $HOME/workspace/release/$BUILD_PLATFORM/ref
@@ -199,10 +177,10 @@ workflows:
           matrix:
             parameters:
               platform: ["photon", "p1", "electron", "argon", "boron", "bsom", "b5som", "tracker", "unit-test newhal gcc"]
+      - combine-binaries:
+          requires:
+            - build-and-test
       - report:
           requires:
             - build-and-test
             - combine-binaries
-      - combine-binaries:
-          requires:
-            - build-and-test
