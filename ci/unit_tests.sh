@@ -40,7 +40,7 @@ rm -rf .build/*
 mkdir -p .build/
 cd .build/
 cmake $cmake_args ..
-make all test coveralls
+make all test coverage
 
 cmake_unit_tests=$?
 

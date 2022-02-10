@@ -68,3 +68,7 @@ cmake_install.cmake
 .envrc
 opt/
 node_modules/
+
+# Code coverage
+coverage/
+

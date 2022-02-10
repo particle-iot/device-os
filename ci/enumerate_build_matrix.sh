@@ -65,8 +65,6 @@ echo "running matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATF
 BUILD_JOBS=()
 # Just in case remove build/jobs folder
 rm -rf build/jobs
-# Just in case remove .has_failures from root
-rm -f "${PWD}/.has_failures"
 
 # Build/install any necessary prerequisites first
 # gcovr for coverage reports

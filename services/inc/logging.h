@@ -438,10 +438,16 @@ static const char* const _log_category = NULL;
 #define LOG_DEBUG_PRINTF(_level, _fmt, ...) LOG_DEBUG_PRINTF_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
 #define LOG_DEBUG_DUMP(_level, _data, _size) LOG_DEBUG_DUMP_C(_level, LOG_THIS_CATEGORY(), _data, _size)
 
+#ifndef LOG_DISABLE
 #define PANIC(_code, _fmt, ...) \
         do { \
             LOG_DEBUG(PANIC, _fmt, ##__VA_ARGS__); \
             panic_(_code, (void *)_fmt, HAL_Delay_Microseconds); \
         } while (0)
-
+#else
+#define PANIC(_code, _fmt, ...) \
+        do { \
+            panic_(_code, NULL, HAL_Delay_Microseconds); \
+        } while (0)
+#endif // LOG_DISABLE
 #endif // _LOGGING_H
