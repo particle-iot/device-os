@@ -95,7 +95,7 @@ private:
     TwoWire& i2c_;
     bool lock_;
 
-    byte soc_bits_;
+    static byte soc_bits_;
 
 };
 

@@ -64,8 +64,7 @@ FuelGauge::FuelGauge(bool _lock)
 
 FuelGauge::FuelGauge(TwoWire& i2c, bool _lock)
     : i2c_(i2c),
-      lock_(_lock),
-      soc_bits_() {
+      lock_(_lock)  {
 
     if (lock_) {
         lock();
@@ -310,13 +309,12 @@ bool FuelGauge::unlock() {
     return i2c_.unlock();
 }
 
-
 void FuelGauge::setCustomSoCPrecision(byte bits) {
-
-    // TODO this is only persisted per instance, not system-wide
-
     soc_bits_ = bits;
 }
+
+// Initialize static member of FuelGauge
+byte FuelGauge::soc_bits_ = 0;
 
 
 
