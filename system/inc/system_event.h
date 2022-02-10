@@ -128,7 +128,7 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
 /**
  * Unsubscribes a handler from the given events.
  * @param handler   The handler that will be unsubscribed.
- * @param reserved  Set to NULL.
+ * @param context   Event subscription context.
  */
 void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, const SystemEventContext* context);
 

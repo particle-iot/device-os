@@ -344,7 +344,7 @@ test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
     assertTrue(waitFor(Particle.disconnected, 5000));
     assertEqual(sLastEvent, (int)cloud_status);
 
-    // System.off(all_events, handler)
+    // System.off(event)
     System.off(cloud_status);
     assertTrue(Particle.disconnected);
     sLastEvent = 0;
