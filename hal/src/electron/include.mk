@@ -51,6 +51,6 @@ LDFLAGS += -u uxTopUsedPriority
 # assembler startup script
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC)_electron.S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
-ASFLAGS +=  -Wa,--defsym,SPARK_INIT_STARTUP=1
+ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=1
 #
 endif
