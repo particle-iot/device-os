@@ -299,3 +299,95 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
+
+test(SYSTEM_08_system_event_subscription) {
+    int lastEvent = 0;
+    auto subscription = System.on(cloud_status, [&lastEvent](system_event_t ev) {
+        lastEvent = ev;
+    });
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    assertEqual(lastEvent, (int)cloud_status);
+
+    System.off(subscription);
+    assertTrue(Particle.disconnected);
+    lastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(lastEvent, 0);
+
+    subscription = System.on(cloud_status, [&lastEvent](system_event_t ev) {
+        lastEvent = ev;
+    });
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    assertEqual(lastEvent, (int)cloud_status);
+
+    System.off(cloud_status);
+    assertTrue(Particle.disconnected);
+    lastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(lastEvent, 0);
+}
+
+namespace {
+int sLastEvent = 0;
+} // anonymous
+
+test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
+    auto handler = [](system_event_t ev, int data, void*) {
+        sLastEvent = ev;
+    };
+    System.on(cloud_status, handler);
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    assertEqual(sLastEvent, (int)cloud_status);
+
+    // System.off(event)
+    System.off(cloud_status);
+    assertTrue(Particle.disconnected);
+    sLastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(sLastEvent, 0);
+
+    System.on(cloud_status, handler);
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    assertEqual(sLastEvent, (int)cloud_status);
+
+    // System.off(event, handler)
+    System.off(cloud_status, handler);
+    assertTrue(Particle.disconnected);
+    sLastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(sLastEvent, 0);
+
+    System.on(cloud_status, handler);
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    assertEqual(sLastEvent, (int)cloud_status);
+
+    // System.off(handler)
+    System.off(handler);
+    assertTrue(Particle.disconnected);
+    sLastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(sLastEvent, 0);
+
+    System.on(cloud_status, handler);
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    assertEqual(sLastEvent, (int)cloud_status);
+
+    // System.off(event)
+    System.off(cloud_status);
+    assertTrue(Particle.disconnected);
+    sLastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(sLastEvent, 0);
+}
