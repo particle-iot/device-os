@@ -24,13 +24,18 @@ add_executable( ${target_name}
   led_service.cpp
   fixed_queue.cpp
   dcd.cpp
+  eeprom_emulation.cpp
   main.cpp
 )
+
+get_filename_component(CURRENT_TEST_DIRECTORY_FULL "${CMAKE_CURRENT_SOURCE_DIR}"
+    ABSOLUTE)
 
 # Set defines specific to target
 target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
   PRIVATE HAL_PLATFORM_FILESYSTEM=1
+  PRIVATE TEST_DIRECTORY="${CURRENT_TEST_DIRECTORY_FULL}"
 )
 
 # Set compiler flags specific to target
