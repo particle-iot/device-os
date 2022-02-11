@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,14 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#define CATCH_CONFIG_MAIN
 
-#include "active_object.h"
-
-#define SYSTEM_THREAD_CURRENT() 1
-
-namespace particle {
-
-extern ISRTaskQueue SystemISRTaskQueue;
-
-} // particle
+#include <catch2/catch.hpp>

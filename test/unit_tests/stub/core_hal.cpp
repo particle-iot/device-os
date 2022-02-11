@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,14 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "core_hal.h"
 
-#include "active_object.h"
-
-#define SYSTEM_THREAD_CURRENT() 1
-
-namespace particle {
-
-extern ISRTaskQueue SystemISRTaskQueue;
-
-} // particle
+void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
+}
