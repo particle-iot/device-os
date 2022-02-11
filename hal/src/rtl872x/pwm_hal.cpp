@@ -84,7 +84,7 @@ bool isPwmPin(uint16_t pin) {
 
 uint8_t calculatePrescaler(uint16_t resolution, uint32_t frequency) {
     uint32_t periodCycles = RTL_XTAL_CLOCK_HZ / frequency;
-    uint8_t prescaler = periodCycles / ((1 << resolution) - 1);
+    uint8_t prescaler = periodCycles / (1 << resolution);
     if (prescaler != 0) {
         prescaler -= 1;
     }
@@ -92,11 +92,11 @@ uint8_t calculatePrescaler(uint16_t resolution, uint32_t frequency) {
 }
 
 uint32_t calculateMinFrequency(uint16_t resolution) {
-    return RTL_XTAL_CLOCK_HZ / MAX_PRESCALER / ((1 << resolution) -1);
+    return RTL_XTAL_CLOCK_HZ / MAX_PRESCALER / (1 << resolution);
 }
 
 uint32_t calculateMaxFrequency(uint16_t resolution) {
-    return RTL_XTAL_CLOCK_HZ / ((1 << resolution) -1);
+    return RTL_XTAL_CLOCK_HZ / (1 << resolution);
 }
 
 int pwmTimBaseInit(rtl_pwm_info_t* info) {
@@ -344,8 +344,8 @@ void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution) {
         }
     }
     
-    uint32_t prePeriodCycles = (1 << pwmInfo[instance].resolution) - 1;
-    uint32_t currPeriodCycles = (1 << resolution) - 1;
+    uint32_t prePeriodCycles = (1 << pwmInfo[instance].resolution);
+    uint32_t currPeriodCycles = (1 << resolution);
 
     RTIM_ChangePeriod(pwmInfo[instance].tim, (1 << resolution) - 1);
     pwmInfo[instance].resolution = resolution;
