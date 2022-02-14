@@ -59,7 +59,9 @@ public:
         bool acceptReq_;
     } filterCtrlReq_;
 
+#if HAL_PLATFORM_BLE
     BleControlRequestChannel* getBleCtrlRequestChannel();
+#endif
 
 private:
 #ifdef USB_VENDOR_REQUEST_ENABLE
@@ -98,9 +100,11 @@ inline void SystemControl::setResult(ctrl_request* req, int result, ctrl_complet
     channel->setResult(req, result, handler, data);
 }
 
+#if HAL_PLATFORM_BLE
 inline BleControlRequestChannel* SystemControl::getBleCtrlRequestChannel() {
     return &bleChannel_;
 }
+#endif
 
 } // particle::system
 
