@@ -74,9 +74,13 @@ int __gthread_mutex_timedlock (__gthread_mutex_t* mutex, const __gthread_time_t*
 
 int __gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t* mutex, const __gthread_time_t* timeout);
 
+#if MODULE_FUNCTION == 4 // MOD_FUNC_SYSTEM_PART
+// There is a symbol conflict with the SDK, so in system we use non-conflicting symbol names
+// but when importing into the app, we'll use the regular one.
 #define os_queue_peek           os_queue_peek_workaround
 #define os_mutex_create         os_mutex_create_workaround
 #define os_timer_create         os_timer_create_workaround
+#endif // MODULE_FUNCTION == MOD_FUNC_SYSTEM_PART
 
 #ifdef  __cplusplus
 }
