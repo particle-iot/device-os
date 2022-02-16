@@ -142,6 +142,10 @@ int RealtekNcpClient::on() {
         return SYSTEM_ERROR_NONE;
     }
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
+    // FIXME: sometimes after a reset wifi driver is not getting initialized properly
+    // this is a simple workaround for such a state.
+    CHECK(rltkOn());
+    CHECK(rltkOff());
     CHECK(rltkOn());
     ncpState(NcpState::ON);
     wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int buf_len, int flags, void* userdata) -> void {
@@ -217,13 +221,13 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
     char mac[32] = {};
     wifi_get_mac_address(mac);
     int rtlError = RTW_ERROR;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {
         LOG(INFO, "Try to connect to ssid: %s, mac: %s", ssid, mac);
         rtlError = wifi_connect((char*)ssid, wifiSecurityToRtlSecurity(sec), (char*)cred.password(), strlen(ssid), strlen(cred.password()), -1, nullptr);
-        if (rtlError == RTW_SUCCESS) {
+        if (rtlError == RTW_SUCCESS || rtlError != RTW_ERROR) {
             break;
         }
-        HAL_Delay_Milliseconds(1000);
+        HAL_Delay_Milliseconds(500);
     }
 
     if (rtlError == RTW_SUCCESS) {
@@ -303,6 +307,11 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     }
     for (int i = 0; i < ctx.results.size(); i++) {
         callback(ctx.results[i], data);
+    }
+    if (ctx.results.size() == 0) {
+        // Workaround for a weird state we might enter where the wifi driver
+        // is not returning any results
+        CHECK(off());
     }
     return rtl_error_to_system(rtlError);
 }
