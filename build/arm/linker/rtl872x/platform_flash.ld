@@ -130,7 +130,7 @@ platform_bootloader_module_info_flash_end   = platform_bootloader_module_info_fl
 
 
 /* KM0 part1 */
-platform_km0_part1_flash_size  = 304K;
+platform_km0_part1_flash_size  = 300K;
 platform_km0_part1_flash_start = platform_bootloader_flash_end;
 platform_km0_part1_flash_end   = platform_km0_part1_flash_start + platform_km0_part1_flash_size;
 
@@ -142,6 +142,10 @@ platform_km0_part1_module_info_flash_end   = platform_km0_part1_module_info_flas
 /* KM0 part1 dynalib location */
 platform_km0_part1_dynalib_table_flash_start = platform_km0_part1_module_info_flash_end;
 
+/* KM0 image update info sector */
+platform_km0_image_update_size  = 4K;
+platform_km0_image_update_start = platform_km0_part1_flash_end;
+platform_km0_image_update_end = platform_km0_image_update_start + platform_km0_image_update_size;
 
 /* Reserved for filesystem */
 platform_reserved_flash_size  = 2M;
@@ -162,7 +166,7 @@ platform_user_part_module_info_flash_end   = platform_user_part_module_info_flas
 
 /* System part 1 */
 platform_system_part1_flash_end   = platform_user_part_flash_start;
-platform_system_part1_flash_start = platform_km0_part1_flash_end;
+platform_system_part1_flash_start = platform_km0_image_update_end;
 platform_system_part1_flash_size  = platform_system_part1_flash_end - platform_system_part1_flash_start;
 
 /* System part 1 module info */

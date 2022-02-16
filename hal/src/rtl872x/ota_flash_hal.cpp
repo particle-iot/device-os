@@ -521,6 +521,10 @@ int HAL_FLASH_End(void* reserved)
             if (info.flags & MODULE_INFO_FLAG_COMPRESSED) {
                 slotFlags |= MODULE_COMPRESSED;
             }
+            if (info.flags & MODULE_INFO_FLAG_ENCRYPTED) {
+                slotFlags |= MODULE_ENCRYPTED;
+            }
+            LOG(INFO,"OTA module flags: 0x%X DCT slot flags: 0x%X", info.flags, slotFlags);
             flash_device_t id = (module_ota.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) ? FLASH_INTERNAL : FLASH_SERIAL;
             const bool ok = FLASH_AddToNextAvailableModulesSlot(id, module->bounds.start_address, FLASH_INTERNAL,
                     (uint32_t)info.module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);

@@ -58,6 +58,7 @@ static bool flash_write_update_info(void) {
     info.dest_addr = flashModule->destinationAddress;
     info.size = flashModule->length;
     info.magic_num = KM0_BOOTLOADER_UPDATE_MAGIC_NUMBER;
+    info.flags = flashModule->flags;
     info.crc32 = Compute_CRC32((const uint8_t*)&info, sizeof(flash_update_info_t) - sizeof(info.crc32), NULL);
 
     if (hal_flash_write(writeAddr, (const uint8_t*)&info, sizeof(info)) != 0) {

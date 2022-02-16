@@ -23,13 +23,13 @@
 #include "flash_mal.h"
 #include "flash_common.h"
 
-#define COPY_BLOCK_SIZE                 256
-
-#define OTA_REGION_LOWEST_ADDR          0x08060000
-#define OTA_REGION_HIGHEST_ADDR         0x08600000
-
-
 extern FLASH_InitTypeDef flash_init_para;
+
+extern uintptr_t link_system_part1_flash_start;
+extern uintptr_t link_user_part_flash_end;
+extern uintptr_t link_km0_mbr_flash_end;
+extern uintptr_t link_platform_flash_end;
+extern uintptr_t link_part1_module_info_flash_start;
 
 static void flash_init(void) {
     RCC_PeriphClockCmd(APBPeriph_FLASH, APBPeriph_FLASH_CLOCK_XTAL, ENABLE);
@@ -50,6 +50,7 @@ static void flash_init(void) {
 }
 
 static bool flash_copy(uintptr_t src_addr, uintptr_t dest_addr, size_t size) {
+    const uint32_t COPY_BLOCK_SIZE = 256; 
     uint8_t buf[COPY_BLOCK_SIZE];
     const uintptr_t src_end_addr = src_addr + size;
 
@@ -85,30 +86,68 @@ bool bootloaderUpdateIfPending(void) {
 
     uint32_t infoAddr = BOOT_INFO_FLASH_XIP_START_ADDR + KM0_BOOTLOADER_UPDATE_INFO_OFFSET;
     memcpy(&info, (void*)infoAddr, sizeof(info));
-    if ((info.magic_num == KM0_BOOTLOADER_UPDATE_MAGIC_NUMBER && info.size > 0)
-            && (info.src_addr > OTA_REGION_LOWEST_ADDR && info.src_addr < OTA_REGION_HIGHEST_ADDR)
-            && (info.dest_addr == KM4_BOOTLOADER_START_ADDRESS || info.dest_addr == KM0_PART1_START_ADDRESS)) {
-        if (Compute_CRC32((const uint8_t*)&info, sizeof(flash_update_info_t) - sizeof(info.crc32), NULL) == info.crc32) {
-            bool enableRsip = false;
-            if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
-                // Temporarily disable RSIP for memory copying, should leave the image in the OTA region as-is
-                uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
-                HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
-                enableRsip = true;
-            }
-            bool ret = flash_copy(info.src_addr, info.dest_addr, info.size);
-            if (enableRsip) {
-                uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
-                HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control | BIT_LSYS_PLFM_FLASH_SCE));
-            }
-            if (!ret) {
-                // Try rebooting
-                return false;
-            }
-        }
-        // fall through to invalidate boot info and return true to continue to run
+
+    // Validate flash_update_info_t integrity
+    if (info.magic_num != KM0_BOOTLOADER_UPDATE_MAGIC_NUMBER
+            || Compute_CRC32((const uint8_t*)&info, sizeof(flash_update_info_t) - sizeof(info.crc32), NULL) != info.crc32) {
+        goto invalidate;
     }
 
+    // flash_update_info_t looks valid
+    // Validate source location, source should be within a potential dynamic OTA location region
+    const uintptr_t ota_region_start = (uintptr_t)&link_system_part1_flash_start;
+    const uintptr_t ota_region_end = (uintptr_t)&link_user_part_flash_end;
+    if (!(info.src_addr >= ota_region_start && info.src_addr < ota_region_end
+            && info.size > 0 && info.src_addr + info.size <= ota_region_end)) {
+        goto invalidate;
+    }
+
+    // Check destination location, it should be within flash excluding MBR
+    if (!(info.dest_addr >= (uintptr_t)&link_km0_mbr_flash_end && info.dest_addr < (uintptr_t)&link_platform_flash_end
+            && info.dest_addr + info.size < (uintptr_t)&link_platform_flash_end)) {
+        goto invalidate;
+    }
+
+    // Destination-specific checks. 
+    // When updating KM0 part1, if the image is not encrypted and we have encryption enabled, then invalidate the update. 
+    // IE dont allow unencrypted updates once we enable encryption.
+    uint8_t userEfuse0 = 0xFF;
+    EFUSE_PMAP_READ8(0, USER_KEY_0_EFUSE_ADDRESS, &userEfuse0, L25EOUTVOLTAGE);
+    bool part1_encryption_enabled = !(userEfuse0 & PART1_ENCRYPTED_BIT);
+    bool pending_image_encrypted = (info.flags & MODULE_ENCRYPTED);
+    if (info.dest_addr == (uintptr_t)&link_part1_module_info_flash_start && (!pending_image_encrypted && part1_encryption_enabled)) {
+        goto invalidate;
+    }
+
+    bool enableRsip = false;
+    if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) != 0) {
+        // Temporarily disable RSIP for memory copying, should leave the image in the OTA region as-is
+        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
+        enableRsip = true;
+    }
+    
+    bool ret = flash_copy(info.src_addr, info.dest_addr, info.size);
+    if (enableRsip) {
+        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control | BIT_LSYS_PLFM_FLASH_SCE));
+    }
+
+    if (!ret) {
+        // Flash copy failed. Try rebooting
+        return false;
+    }
+
+    // Flash copy succeeded. If this is an encrypted part1 image, and encryption isnt enabled, enable it in pysical efuse
+    if (info.dest_addr == (uintptr_t)&link_part1_module_info_flash_start && pending_image_encrypted && !part1_encryption_enabled) {
+        userEfuse0 &= ~(PART1_ENCRYPTED_BIT);
+        bool success = (EFUSE_PMAP_WRITE8(0, USER_KEY_0_EFUSE_ADDRESS, userEfuse0, L25EOUTVOLTAGE) != 0);
+        if (!success) {
+            return false;
+        }
+    }
+
+invalidate:
     memset(&info, 0x00, sizeof(info));
     if (hal_flash_write(infoAddr, (const uint8_t*)&info, sizeof(info)) != 0) {
         hal_flash_erase_sector(BOOT_INFO_FLASH_XIP_START_ADDR, 1);
