@@ -18,6 +18,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include <cctype>
+#ifdef TINKER_FQC
+#include "fqc_request_handler.h"
+#endif
 
 struct PinMapping {
     const char* name;
@@ -85,7 +88,11 @@ const PinMapping g_pinmap[] = {
 const size_t g_pin_count = sizeof(g_pinmap) / sizeof(*g_pinmap);
 
 PRODUCT_ID(PLATFORM_ID);
+#ifdef TINKER_FQC
+PRODUCT_VERSION(4);
+#else
 PRODUCT_VERSION(3);
+#endif
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -115,6 +122,10 @@ STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 #ifndef PIN_INVALID
 #define PIN_INVALID (0xff)
 #endif // PIN_INVALID
+
+#ifdef TINKER_FQC
+SYSTEM_THREAD(ENABLED);
+#endif
 
 SYSTEM_MODE(AUTOMATIC);
 
@@ -264,3 +275,10 @@ int tinkerAnalogWrite(String command)
 
     return -1;
 }
+
+#ifdef TINKER_FQC
+// Handle FQC app specific USB requests
+void ctrl_request_custom_handler(ctrl_request* req) {
+    particle::RequestHandler::instance()->process(req);
+}
+#endif
