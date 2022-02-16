@@ -83,7 +83,7 @@ public:
 
 } // namespace
 
-#if !HAL_PLATFORM_NRF52840 // TODO
+#if HAL_PLATFORM_GEN == 2 // TODO
 
 int TestHandler::count = 0;
 
@@ -115,7 +115,7 @@ test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 #endif
 }
 
-#endif // !HAL_PLATFORM_NRF52840
+#endif // HAL_PLATFORM_GEN == 2
 
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 test(INTERRUPTS_04_attachInterruptDirect) {
