@@ -5,10 +5,6 @@ Bootloader:                                Monolithic firmware:
 
 +-----------------------------+ 0x1007C000 +---------------------------------------+
 | User backup RAM             |            | User backup RAM                       |
-+-----------------------------+ 0x1007B400 +---------------------------------------+
-| System flags                |            | System flags                          |
-+-----------------------------+ 0x1007B3C0 +---------------------------------------+
-| Backup registers            |            | Backup registers                      |
 +-----------------------------+ 0x1007B380 +---------------------------------------+
 | System backup RAM           |            | System backup RAM                     |
 +-----------------------------+ 0x1007B000 +---------------------------------------+
@@ -49,7 +45,7 @@ platform_retention_ram_size = 1K;
 platform_retention_ram_start = 0x000C0000;
 platform_retention_ram_end = platform_retention_ram_start + platform_retention_ram_size;
 
-
+/* FIXME: move to common file */
 /* All backup RAM size */
 platform_backup_ram_all_size = 4K;
 
@@ -58,21 +54,15 @@ platform_user_backup_ram_size  = 3K;
 platform_user_backup_ram_end   = 0x1007C000;
 platform_user_backup_ram_start = platform_user_backup_ram_end - platform_user_backup_ram_size;
 
-/* System flags */
-platform_system_flags_ram_size  = 64;
-platform_system_flags_ram_end   = platform_user_backup_ram_start;
-platform_system_flags_ram_start = platform_system_flags_ram_end - platform_system_flags_ram_size;
-
-/* Backup registers */
-platform_backup_registers_ram_size  = 64;
-platform_backup_registers_ram_end   = platform_system_flags_ram_start;
-platform_backup_registers_ram_start = platform_backup_registers_ram_end - platform_backup_registers_ram_size;
-
 /* System backup memory */
-platform_system_backup_ram_size  = platform_backup_ram_all_size - platform_user_backup_ram_size - platform_system_flags_ram_size - platform_backup_registers_ram_size;
-platform_system_backup_ram_end   = platform_backup_registers_ram_start;
+platform_system_backup_ram_size  = platform_backup_ram_all_size - platform_user_backup_ram_size;
+platform_system_backup_ram_end   = platform_user_backup_ram_start;
 platform_system_backup_ram_start = platform_system_backup_ram_end - platform_system_backup_ram_size;
 
+/* System retention RAM */
+platform_system_retention_ram_size = 120;
+platform_system_retention_ram_start = 0x000c0000 + 0x80 + 14 * 4;
+platform_system_retention_ram_end = platform_system_retention_ram_start + platform_system_retention_ram_size;
 
 /* Monolithic firmware main stack
  * platform_monolithic_firmware_stack_start is the lowest address of the stack. */

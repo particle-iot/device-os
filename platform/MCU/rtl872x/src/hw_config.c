@@ -177,7 +177,9 @@ u32 app_mpu_nocache_init(void) {
  * @param  None
  * @retval None
  */
-volatile uint32_t rtlContinue = 0;
+
+extern FLASH_InitTypeDef flash_init_para_km0;
+
 void Set_System(void)
 {
     // FIXME: don't mess with MSP and IRQ table
@@ -194,8 +196,7 @@ void Set_System(void)
 
     // Disable DiagPrintf
     ConfigDebugClose = 1;
-
-    _memcpy((void *)&flash_init_para, (const void *)BKUP_Read(BKUP_REG7), sizeof(FLASH_InitTypeDef));
+    _memcpy((void *)&flash_init_para, &flash_init_para_km0, sizeof(FLASH_InitTypeDef));
 
     SystemCoreClockUpdate();
 

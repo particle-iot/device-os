@@ -308,9 +308,6 @@ void rtlLowLevelInit() {
         BKUP_Set(BKUP_REG0, BIT_SW_SIM_RSVD);
     }
 
-    /* backup flash_init_para address for KM4 */
-    BKUP_Write(BKUP_REG7, (uint32_t)&flash_init_para);
-
     // Copy-paste from app_start()
 
     SystemCoreClockUpdate();
@@ -330,7 +327,10 @@ void rtlLowLevelInit() {
         temp &= ~BIT_DSLP_RETENTION_RAM_PATCH;
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1, temp);
         // Retention Ram reset
-        _memset((void*)RETENTION_RAM_BASE, 0, 1024);
+        // Only clear sys stuff used by the SDK and part of RRAM_TypeDef again used by the SDK
+        _memset((void*)RETENTION_RAM_BASE, 0, RETENTION_RAM_SYS_OFFSET + offsetof(RRAM_TypeDef, RRAM_USER_RSVD));
+        // Also clear part of "wifi fw"
+        _memset((void*)(RETENTION_RAM_BASE + RETENTION_RAM_WIFI_FW_OFFSET), 0, 32);
         assert_param(sizeof(RRAM_TypeDef) <= 0xB0);
     } else {
         SOCPS_DsleepWakeStatusSet(TRUE); /* KM4 boot check it */
@@ -416,12 +416,6 @@ void rtlPowerOnBigCore() {
         uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
     }
-
-    // FIXME: This might not be working correctly?
-    // if (!SOCPS_DsleepWakeStatusGet()) {
-        /* backup flash_init_para address for KM4 */
-        BKUP_Write(BKUP_REG7, (uint32_t)&flash_init_para);
-    // }
 
     km4_boot_on();
 }

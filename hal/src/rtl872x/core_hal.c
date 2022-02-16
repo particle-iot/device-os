@@ -46,8 +46,6 @@
 #include "concurrent_hal.h"
 #include "user_hal.h"
 
-#define BACKUP_REGISTER_NUM        10
-static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
 static volatile uint8_t rtos_started = 0;
 
 static struct Last_Reset_Info {
@@ -824,29 +822,6 @@ bool HAL_Feature_Get(HAL_Feature feature) {
     return false;
 }
 
-int32_t HAL_Core_Backup_Register(uint32_t BKP_DR) {
-    if ((BKP_DR == 0) || (BKP_DR > BACKUP_REGISTER_NUM)) {
-        return -1;
-    }
-
-    return BKP_DR - 1;
-}
-
-void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data) {
-    int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
-    if (BKP_DR_Index != -1) {
-        backup_register[BKP_DR_Index] = Data;
-    }
-}
-
-uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR) {
-    int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
-    if (BKP_DR_Index != -1) {
-        return backup_register[BKP_DR_Index];
-    }
-    return 0xFFFFFFFF;
-}
-
 extern size_t pvPortLargestFreeBlock();
 
 uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
@@ -900,13 +875,14 @@ int HAL_Core_Enter_Panic_Mode(void* reserved)
 #include "dtls_session_persist.h"
 #include <string.h>
 
-SessionPersistDataOpaque session __attribute__((section(".backup_system")));
+const uintptr_t SESSION_DATA_RETENTION_RAM = RETENTION_RAM_BASE + RETENTION_RAM_WIFI_FW_OFFSET + 32;
+static SessionPersistDataOpaque* s_persisted_session_data = (SessionPersistDataOpaque*)SESSION_DATA_RETENTION_RAM;
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
     if (offset==0 && length==sizeof(SessionPersistDataOpaque))
     {
-        memcpy(&session, buffer, length);
+        memcpy(s_persisted_session_data, buffer, length);
         return 0;
     }
     return -1;
@@ -914,10 +890,11 @@ int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, voi
 
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
 {
-    if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque) && session.size==sizeof(SessionPersistDataOpaque))
+    if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque)
+            && s_persisted_session_data->size==sizeof(SessionPersistDataOpaque))
     {
         *length = sizeof(SessionPersistDataOpaque);
-        memcpy(buffer, &session, sizeof(session));
+        memcpy(buffer, s_persisted_session_data, s_persisted_session_data->size);
         return 0;
     }
     return -1;
