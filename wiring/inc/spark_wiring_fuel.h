@@ -83,7 +83,7 @@ public:
      * 
      * @param bits 
      */
-    void setCustomSoCPrecision(byte bits);
+    static void setCustomSoCPrecision(byte bits);
 
 private:
     static constexpr system_tick_t FUELGAUGE_DEFAULT_TIMEOUT = 10; // In millisecond
