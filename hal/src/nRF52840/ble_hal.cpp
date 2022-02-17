@@ -95,8 +95,6 @@ constexpr size_t BLE_EVT_DATA_POOL_SIZE = 2048;
 
 // Timeout for a BLE procedure.
 constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 60000;
-// Delay for GATT Client to send the ATT MTU exchanging request.
-constexpr uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
 
 constexpr uint8_t BLE_ENC_MIN_KEY_SIZE = 7;
 constexpr uint8_t BLE_ENC_MAX_KEY_SIZE = 16;
@@ -413,8 +411,6 @@ public:
               connParamsUpdateSemaphore_(nullptr),
               connectSemaphore_(nullptr),
               disconnectSemaphore_(nullptr),
-              attMtuExchangeConnHandle_(BLE_INVALID_CONN_HANDLE),
-              attMtuExchangeTimer_(nullptr),
               ecdhContextInit_(false) {
         connectingAddr_ = {};
         pairingConfig_ = {
@@ -450,7 +446,7 @@ public:
     bool isPaired(hal_ble_conn_handle_t connHandle);
     bool valid(hal_ble_conn_handle_t connHandle);
     ssize_t getAttMtu(hal_ble_conn_handle_t connHandle);
-    int setDesiredAttMtu(size_t attMtu);
+    bool attMtuExchanged(hal_ble_conn_handle_t connHandle);
     int processConnectedEventFromThread(const ble_evt_t* event);
     int processDisconnectedEventFromThread(const ble_evt_t* event);
     int processConnParamsUpdatedEventFromThread(const ble_evt_t* event);
@@ -488,14 +484,12 @@ private:
     int publicKeysPrepare(BleConnection* connection);
     int computeDhkey(const uint8_t peerPublicKey[BLE_GAP_LESC_P256_PK_LEN], uint8_t dhKey[BLE_GAP_LESC_DHKEY_LEN]);
     int configureAttMtu(hal_ble_conn_handle_t connHandle, size_t effective);
-    bool attMtuExchanged(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(const hal_ble_addr_t* address);
     int addConnection(BleConnection&& connection);
     void removeConnection(hal_ble_conn_handle_t connHandle);
     void initiateConnParamsUpdateIfNeeded(const BleConnection* connection);
     bool isConnParamsFeeded(const hal_ble_conn_params_t* params) const;
-    static void onAttMtuExchangeTimerExpired(os_timer_t timer);
     static ble_gap_conn_params_t toPlatformConnParams(const hal_ble_conn_params_t* halConnParams);
     static hal_ble_conn_params_t toHalConnParams(const ble_gap_conn_params_t* params);
     static uint8_t toPlatformIoCaps(hal_ble_pairing_io_caps_t ioCaps);
@@ -515,19 +509,16 @@ private:
     os_semaphore_t connParamsUpdateSemaphore_;                  /**< Semaphore to wait until connection parameters updated. */
     os_semaphore_t connectSemaphore_;                           /**< Semaphore to wait until connection established. */
     os_semaphore_t disconnectSemaphore_;                        /**< Semaphore to wait until connection disconnected. */
-    volatile hal_ble_conn_handle_t attMtuExchangeConnHandle_;   /**< Current handle of the connection to execute ATT_MTU exchange procedure. */
-    os_timer_t attMtuExchangeTimer_;                            /**< Timer used for sending the exchanging ATT_MTU request after connection established. */
     // GATT Server and GATT client share the same ATT_MTU.
-    static size_t desiredAttMtu_;
     Vector<BleConnection> connections_;
     Vector<BleLinkEventHandler> peripheralLinkEventHandlers_;   /**< It is used for peripheral link only. */
     hal_ble_pairing_config_t pairingConfig_;
     mbedtls_ecdh_context ecdhContext_;
     volatile bool ecdhContextInit_;
     std::unique_ptr<ble_gap_lesc_p256_pk_t> localPublicKey_;
-};
 
-size_t BleObject::ConnectionsManager::desiredAttMtu_ = BLE_MAX_ATT_MTU_SIZE;
+    static constexpr uint8_t ATT_MTU_AUTO_EXCHANGE_RETRIES = 10;
+};
 
 class BleObject::GattServer {
 public:
@@ -549,6 +540,8 @@ public:
     ssize_t setValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len);
     ssize_t notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool ack);
     ssize_t getValue(hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
+    size_t getDesiredAttMtu() const;
+    int setDesiredAttMtu(size_t attMtu);
     int processDataWrittenEventFromThread(ble_evt_t* event);
 
 private:
@@ -582,7 +575,10 @@ private:
     os_semaphore_t hvxSemaphore_;                   /**< Semaphore to wait until the HVX operation completed. */
     Vector<hal_ble_attr_handle_t> services_;        /**< Added services. */
     Vector<BleCharacteristic> characteristics_;     /**< Added characteristic. */
+    static size_t desiredAttMtu_;
 };
+
+size_t BleObject::GattServer::desiredAttMtu_ = BLE_DEFAULT_ATT_MTU_SIZE;
 
 class BleObject::GattClient {
 public:
@@ -619,6 +615,7 @@ public:
     ssize_t writeAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool response);
     ssize_t readAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
     int configureRemoteCCCD(const hal_ble_cccd_config_t* config);
+    int exchangeAttMtu(hal_ble_conn_handle_t connHandle, size_t attMtu);
     int processSvcDiscEventFromThread(const ble_evt_t* event);
     int processCharDiscEventFromThread(const ble_evt_t* event);
     int processDescDiscEventFromThread(const ble_evt_t* event);
@@ -1732,11 +1729,6 @@ int BleObject::ConnectionsManager::init() {
         LOG(ERROR, "os_timer_create() failed.");
         goto error;
     }
-    if (os_timer_create(&attMtuExchangeTimer_, BLE_ATT_MTU_EXCHANGE_DELAY_MS, onAttMtuExchangeTimerExpired, this, true, nullptr)) {
-        attMtuExchangeTimer_ = nullptr;
-        LOG(ERROR, "os_timer_create() failed.");
-        goto error;
-    }
     connMgrImpl.instance = this;
     NRF_SDH_BLE_OBSERVER(bleConnectionManager, 1, processConnectionEvents, &connMgrImpl);
     connMgrInitialized_ = true;
@@ -1757,10 +1749,6 @@ error:
     if (connParamsUpdateTimer_) {
         os_timer_destroy(connParamsUpdateTimer_, nullptr);
         connParamsUpdateTimer_ = nullptr;
-    }
-    if (attMtuExchangeTimer_) {
-        os_timer_destroy(attMtuExchangeTimer_, nullptr);
-        attMtuExchangeTimer_ = nullptr;
     }
     return SYSTEM_ERROR_INTERNAL;
 }
@@ -2274,28 +2262,6 @@ bool BleObject::ConnectionsManager::isConnParamsFeeded(const hal_ble_conn_params
     return true;
 }
 
-int BleObject::ConnectionsManager::setDesiredAttMtu(size_t attMtu) {
-    desiredAttMtu_ = std::min(attMtu, (size_t)BLE_MAX_ATT_MTU_SIZE);
-    return SYSTEM_ERROR_NONE;
-}
-
-/*
- * A device's Exchange MTU Request shall contain the same MTU as the
- * device's Exchange MTU Response (i.e. the MTU shall be symmetric).
- */
-void BleObject::ConnectionsManager::onAttMtuExchangeTimerExpired(os_timer_t timer) {
-    ConnectionsManager* connMgr;
-    os_timer_get_id(timer, (void**)&connMgr);
-    if (connMgr->attMtuExchanged(connMgr->attMtuExchangeConnHandle_)) {
-        return;
-    }
-    LOG_DEBUG(TRACE, "Request to change ATT_MTU from %d to %d", BLE_DEFAULT_ATT_MTU_SIZE, connMgr->desiredAttMtu_);
-    int ret = sd_ble_gattc_exchange_mtu_request(connMgr->attMtuExchangeConnHandle_, connMgr->desiredAttMtu_);
-    if (ret != NRF_SUCCESS) {
-        LOG_DEBUG(TRACE, "sd_ble_gattc_exchange_mtu_request() failed: %d", ret);
-    }
-}
-
 void BleObject::ConnectionsManager::onConnParamsUpdateTimerExpired(os_timer_t timer) {
     ConnectionsManager* connMgr;
     os_timer_get_id(timer, (void**)&connMgr);
@@ -2366,13 +2332,6 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
         linkEvent.params.connected.info = &connection.info;
         notifyLinkEvent(linkEvent);
     }
-    if (desiredAttMtu_ > BLE_DEFAULT_ATT_MTU_SIZE) {
-        // FIXME: What if there is another new connection established before the timer expired?
-        if (!os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_START, false, 0, 0, nullptr)) {
-            LOG_DEBUG(TRACE, "Attempts to exchange ATT_MTU if needed.");
-            attMtuExchangeConnHandle_ = event->evt.gap_evt.conn_handle;
-        }
-    }
     // If the connection is initiated by Central.
     if (isConnecting_ && connection.info.role == BLE_ROLE_CENTRAL && addressEqual(connection.info.address, connectingAddr_)) {
         isConnecting_ = false;
@@ -2402,10 +2361,6 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
     if (centralConnParamUpdateHandle_ == connection->info.conn_handle) {
         centralConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
         os_semaphore_give(connParamsUpdateSemaphore_, false);
-    }
-    // If the ATT MTU exchanging procedure is on-going.
-    if (os_timer_is_active(attMtuExchangeTimer_, nullptr)) {
-        os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
     }
     // Remove the GATTS subscriber.
     BleObject::getInstance().gatts()->removeSubscriberFromAllCharacteristics(connection->info.conn_handle);
@@ -2616,12 +2571,13 @@ int BleObject::ConnectionsManager::processConnParamsUpdatedEventFromThread(const
 
 int BleObject::ConnectionsManager::processAttMtuExchangeEventFromThread(const ble_evt_t* event) {
     size_t effectAttMtu;
+    size_t desiredAttMtu = BleObject::getInstance().gatts()->getDesiredAttMtu();
     if (event->header.evt_id == BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST) {
         const ble_gatts_evt_exchange_mtu_request_t& mtuRequest = event->evt.gatts_evt.params.exchange_mtu_request;
-        effectAttMtu = std::min((size_t)mtuRequest.client_rx_mtu, desiredAttMtu_);
+        effectAttMtu = std::min((size_t)mtuRequest.client_rx_mtu, desiredAttMtu);
     } else if (event->header.evt_id == BLE_GATTC_EVT_EXCHANGE_MTU_RSP) {
         const ble_gattc_evt_exchange_mtu_rsp_t& attMtuRsp = event->evt.gattc_evt.params.exchange_mtu_rsp;
-        effectAttMtu = std::min((size_t)attMtuRsp.server_rx_mtu, desiredAttMtu_);
+        effectAttMtu = std::min((size_t)attMtuRsp.server_rx_mtu, desiredAttMtu);
     } else {
         return SYSTEM_ERROR_INTERNAL;
     }
@@ -2695,29 +2651,6 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
                     os_semaphore_give(connMgr->connectSemaphore_, false);
                 }
             }
-            break;
-        }
-        case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
-            LOG_DEBUG(TRACE, "BLE GATT Server event: exchange ATT MTU request: %d, desired: %d",
-                    event->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu, connMgr->desiredAttMtu_);
-            int ret = sd_ble_gatts_exchange_mtu_reply(event->evt.gatts_evt.conn_handle, connMgr->desiredAttMtu_);
-            if (ret != NRF_SUCCESS) {
-                LOG_DEBUG(TRACE, "sd_ble_gatts_exchange_mtu_reply() failed: %d", ret);
-                break;
-            }
-            BleObject::getInstance().dispatcher()->enqueue(event);
-            break;
-        }
-        case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
-            LOG_DEBUG(TRACE, "BLE GAP event: exchange MTU response.");
-            ble_evt_t* attMtuExchangeEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
-            if (!attMtuExchangeEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
-                SPARK_ASSERT(false);
-                break;
-            }
-            memcpy(attMtuExchangeEvent, event, sizeof(ble_evt_t));
-            BleObject::getInstance().dispatcher()->enqueue(&attMtuExchangeEvent);
             break;
         }
         default: {
@@ -2939,6 +2872,16 @@ ssize_t BleObject::GattServer::getValue(hal_ble_attr_handle_t attrHandle, uint8_
     return gattValue.len;
 }
 
+int BleObject::GattServer::setDesiredAttMtu(size_t attMtu) {
+    CHECK_TRUE(attMtu >= BLE_MIN_ATT_MTU_SIZE && attMtu <= BLE_MAX_ATT_MTU_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    desiredAttMtu_ = attMtu;
+    return SYSTEM_ERROR_NONE;
+}
+
+size_t BleObject::GattServer::getDesiredAttMtu() const {
+    return desiredAttMtu_;
+}
+
 bool BleObject::GattServer::findService(hal_ble_attr_handle_t svcHandle) const {
     for (const auto& handle : services_) {
         if (handle == svcHandle) {
@@ -3078,6 +3021,17 @@ void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void
                 gatts->isHvxing_ = false;
                 os_semaphore_give(gatts->hvxSemaphore_, false);
             }
+            break;
+        }
+        case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
+            LOG_DEBUG(TRACE, "BLE GATT Server event: exchange ATT MTU request: %d, desired: %d",
+                    event->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu, gatts->desiredAttMtu_);
+            int ret = sd_ble_gatts_exchange_mtu_reply(event->evt.gatts_evt.conn_handle, gatts->desiredAttMtu_);
+            if (ret != NRF_SUCCESS) {
+                LOG_DEBUG(TRACE, "sd_ble_gatts_exchange_mtu_reply() failed: %d", ret);
+                break;
+            }
+            BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
         case BLE_GATTS_EVT_TIMEOUT: {
@@ -3356,6 +3310,20 @@ int BleObject::GattClient::configureRemoteCCCD(const hal_ble_cccd_config_t* conf
         CHECK(addPublisher(config->conn_handle, config->value_handle, config->callback, config->context));
     } else {
         CHECK(removePublisher(config->conn_handle, config->value_handle));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleObject::GattClient::exchangeAttMtu(hal_ble_conn_handle_t connHandle, size_t attMtu) {
+    CHECK_FALSE(BleObject::getInstance().connMgr()->attMtuExchanged(connHandle), SYSTEM_ERROR_INVALID_STATE);
+    ssize_t curAttMtu = BleObject::getInstance().connMgr()->getAttMtu(connHandle);
+    CHECK_TRUE(curAttMtu >= BLE_MIN_ATT_MTU_SIZE, SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(curAttMtu != (ssize_t)attMtu, SYSTEM_ERROR_NONE);
+    LOG_DEBUG(TRACE, "Request to change ATT_MTU from %d to %d for connection: %d", curAttMtu, attMtu, connHandle);
+    int ret = sd_ble_gattc_exchange_mtu_request(connHandle, attMtu);
+    if (ret != NRF_SUCCESS) {
+        LOG(ERROR, "sd_ble_gattc_exchange_mtu_request() failed: %d.", ret);
+        return nrf_system_error(ret);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -3728,6 +3696,18 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             ble_gattc_evt_hvx_t& hvx = dataNotifiedEvent->evt.gattc_evt.params.hvx;
             memcpy(hvx.data, event->evt.gattc_evt.params.hvx.data, hvx.len);
             BleObject::getInstance().dispatcher()->enqueue(&dataNotifiedEvent);
+            break;
+        }
+        case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
+            LOG_DEBUG(TRACE, "BLE GAP event: exchange MTU response.");
+            ble_evt_t* attMtuExchangeEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
+            if (!attMtuExchangeEvent) {
+                LOG(ERROR, "Allocate memory for BLE event failed.");
+                SPARK_ASSERT(false);
+                break;
+            }
+            memcpy(attMtuExchangeEvent, event, sizeof(ble_evt_t));
+            BleObject::getInstance().dispatcher()->enqueue(&attMtuExchangeEvent);
             break;
         }
         case BLE_GATTC_EVT_TIMEOUT: {
@@ -4361,11 +4341,25 @@ bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void*
     return BleObject::getInstance().gattc()->discovering(conn_handle);
 }
 
-int hal_ble_gatt_set_att_mtu(size_t att_mtu, void* reserved) {
+int hal_ble_gatt_server_set_desire_att_mtu(size_t att_mtu, void* reserved) {
     BleLock lk;
-    LOG_DEBUG(TRACE, "ble_gatt_client_set_att_mtu().");
+    LOG_DEBUG(TRACE, "hal_ble_gatt_server_set_desire_att_mtu().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    return BleObject::getInstance().connMgr()->setDesiredAttMtu(att_mtu);
+    return BleObject::getInstance().gatts()->setDesiredAttMtu(att_mtu);
+}
+
+ssize_t hal_ble_gatt_get_att_mtu(hal_ble_conn_handle_t conn_handle, void* reserved) {
+    BleLock lk;
+    LOG_DEBUG(TRACE, "hal_ble_gatt_get_att_mtu().");
+    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleObject::getInstance().connMgr()->getAttMtu(conn_handle);
+}
+
+int hal_ble_gatt_client_att_mtu_exchange(hal_ble_conn_handle_t conn_handle, void* reserved) {
+    BleLock lk;
+    LOG_DEBUG(TRACE, "hal_ble_gatt_client_att_mtu_exchange().");
+    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleObject::getInstance().gattc()->exchangeAttMtu(conn_handle, BleObject::getInstance().gatts()->getDesiredAttMtu());
 }
 
 int hal_ble_gatt_client_configure_cccd(const hal_ble_cccd_config_t* config, void* reserved) {

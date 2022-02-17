@@ -21,6 +21,9 @@ public:
 
     void pairingEventHandler(const BlePairingEvent& event) {
     }
+
+    void attMtuExchangedHandler(const BlePeerDevice& peer, size_t attMtu) {
+    }
 };
 
 Handlers bleHandlerInstance;
@@ -56,6 +59,9 @@ void pairingEventHandlerFunc(const BlePairingEvent& event, void* context) {
     } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
 
     }
+}
+
+void attMtuExchangedHandlerFunc(const BlePeerDevice& peer, size_t attMtu, void* context) {
 }
 
 test(ble_characteristic_property) {
@@ -818,6 +824,15 @@ test(ble_local_device_class) {
     API_COMPILE({ BLE.onPairingEvent([](const BlePairingEvent&) {}); });
     API_COMPILE({ BLE.onPairingEvent(&Handlers::pairingEventHandler, &bleHandlerInstance); });
     API_COMPILE({ BLE.onPairingEvent(std::bind(&Handlers::pairingEventHandler, &bleHandlerInstance, _1)); });
+
+    API_COMPILE({ int ret = BLE.setDesiredAttMtu(123); (void)ret; });
+    API_COMPILE({ int ret = BLE.updateAttMtu(BlePeerDevice()); (void)ret; });
+    API_COMPILE({ size_t ret = BLE.getCurrentAttMtu(BlePeerDevice()); (void)ret; });
+    API_COMPILE({ BLE.onAttMtuExchanged(attMtuExchangedHandlerFunc); });
+    API_COMPILE({ BLE.onAttMtuExchanged(attMtuExchangedHandlerFunc, nullptr); });
+    API_COMPILE({ BLE.onAttMtuExchanged([](const BlePeerDevice&, size_t) {}); });
+    API_COMPILE({ BLE.onAttMtuExchanged(&Handlers::attMtuExchangedHandler, &bleHandlerInstance); });
+    API_COMPILE({ BLE.onAttMtuExchanged(std::bind(&Handlers::attMtuExchangedHandler, &bleHandlerInstance, _1, _2)); });
 }
 
 #endif

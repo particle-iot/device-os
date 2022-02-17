@@ -1132,6 +1132,14 @@ public:
         pairingEventCallback_ = callback;
     }
 
+    void onAttMtuExchangedCallback(BleOnAttMtutExchangedCallback callback, void* context) {
+        attMtuExchangedCallback_ = callback ? std::bind(callback, _1, _2, context) : (BleOnAttMtuExchangedStdFunction)nullptr;
+    }
+
+    void onAttMtuExchangedCallback(const BleOnAttMtuExchangedStdFunction& callback) {
+        attMtuExchangedCallback_ = callback;
+    }
+
     BlePeerDevice* findPeerDevice(BleConnectionHandle connHandle) {
         for (auto& peer : peers_) {
             if (peer.impl()->connHandle() == connHandle) {
@@ -1212,6 +1220,13 @@ public:
                 }
                 break;
             }
+            case BLE_EVT_ATT_MTU_UPDATED: {
+                BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
+                if (peer && impl->attMtuExchangedCallback_) {
+                    impl->attMtuExchangedCallback_(*peer, event->params.att_mtu_updated.att_mtu_size);
+                }
+                break;
+            }
             default: {
                 break;
             }
@@ -1225,6 +1240,7 @@ private:
     BleOnConnectedStdFunction connectedCallback_;
     BleOnDisconnectedStdFunction disconnectedCallback_;
     BleOnPairingEventStdFunction pairingEventCallback_;
+    BleOnAttMtuExchangedStdFunction attMtuExchangedCallback_;
 };
 
 
@@ -2594,6 +2610,26 @@ int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t
     ppcp.slave_latency = latency;
     ppcp.conn_sup_timeout = timeout;
     return hal_ble_gap_set_ppcp(&ppcp, nullptr);
+}
+
+int BleLocalDevice::setDesiredAttMtu(size_t mtu) const {
+    return hal_ble_gatt_server_set_desire_att_mtu(mtu, nullptr);
+}
+
+ssize_t BleLocalDevice::getCurrentAttMtu(const BlePeerDevice& peer) const {
+    return hal_ble_gatt_get_att_mtu(peer.impl()->connHandle(), nullptr);
+}
+
+int BleLocalDevice::updateAttMtu(const BlePeerDevice& peer) const {
+    return hal_ble_gatt_client_att_mtu_exchange(peer.impl()->connHandle(), nullptr);
+}
+
+void BleLocalDevice::onAttMtuExchanged(BleOnAttMtutExchangedCallback callback, void* context) const {
+    impl()->onAttMtuExchangedCallback(callback, context);
+}
+
+void BleLocalDevice::onAttMtuExchanged(const BleOnAttMtuExchangedStdFunction& callback) const {
+    impl()->onAttMtuExchangedCallback(callback);
 }
 
 bool BleLocalDevice::connected() const {

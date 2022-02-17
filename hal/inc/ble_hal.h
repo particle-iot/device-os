@@ -1068,13 +1068,33 @@ int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t c
 bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void* reserved);
 
 /**
- * Set the desired ATT_MTU size.
+ * Set the desired ATT_MTU size. The desired MTU size will be used when it received an ATT MTU exchange request.
  *
  * @param[in]   att_mtu     The desired ATT_MTU size.
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gatt_set_att_mtu(size_t att_mtu, void* reserved);
+int hal_ble_gatt_server_set_desire_att_mtu(size_t att_mtu, void* reserved);
+
+/**
+ * Send the ATT MTU exchange request
+ *
+ * @param[in]       conn_handle     BLE connection handle.
+ * @param[in,out]   att_mtu         The desired ATT_MTU size.
+ *
+ * @returns         0 on success, system_error_t on error.
+ */
+int hal_ble_gatt_client_att_mtu_exchange(hal_ble_conn_handle_t conn_handle, void* reserved);
+
+/**
+ * Get the current ATT_MTU size of a specific connection.
+ *
+ * @param[in]       conn_handle     BLE connection handle.
+ * @param[in,out]   att_mtu         Pointer to where the current ATT_MTU size will be stored.
+ *
+ * @returns         The currrent ATT MTU for the given connection.
+ */
+ssize_t hal_ble_gatt_get_att_mtu(hal_ble_conn_handle_t conn_handle, void* reserved);
 
 /**
  * Configure the Client Characteristic Configuration Descriptor.
