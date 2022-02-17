@@ -110,5 +110,9 @@ int system_ble_prov_set_custom_ver_uuid(hal_ble_uuid_t* verUuid, void* reserved)
     return SystemControl::instance()->getBleCtrlRequestChannel()->setProvVerUuid(verUuid);
 }
 
+int system_ble_prov_set_company_id(uint16_t companyId, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(system_ble_prov_set_company_id(companyId, reserved));
+    return SystemControl::instance()->getBleCtrlRequestChannel()->setCompanyId(companyId);
+}
 
 #endif // HAL_PLATFORM_BLE

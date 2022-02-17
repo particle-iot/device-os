@@ -584,6 +584,7 @@ BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handle
         bleVerCharUuid_{VERSION_CHAR_UUID},
         bleSendCharUuid_{SEND_CHAR_UUID},
         bleRecvCharUuid_{RECV_CHAR_UUID},
+        customCompanyId_{PARTICLE_COMPANY_ID},
         sendCharHandle_(BLE_INVALID_ATTR_HANDLE),
         recvCharHandle_(BLE_INVALID_ATTR_HANDLE) {
 }
@@ -722,6 +723,16 @@ int BleControlRequestChannel::setProvVerUuid(hal_ble_uuid_t* verUuid) {
 
 hal_ble_uuid_t BleControlRequestChannel::getBleCtrlSvcUuid() {
     return bleCtrlSvcUuid_;
+}
+
+int BleControlRequestChannel::setCompanyId(uint16_t companyId) {
+    // TODO: Add error checking for companyId
+    customCompanyId_ = companyId;
+    return SYSTEM_ERROR_NONE;
+}
+
+uint16_t BleControlRequestChannel::getCompanyId() {
+    return customCompanyId_;
 }
 
 int BleControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {

@@ -972,6 +972,10 @@ public:
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+    int setProvisioningCompanyId(uint16_t companyId) const {
+        return system_ble_prov_set_company_id(companyId, nullptr);
+    }
+
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;
     int setAdvertisingTimeout(uint16_t timeout) const;

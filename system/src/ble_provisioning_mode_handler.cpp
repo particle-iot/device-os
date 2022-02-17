@@ -85,7 +85,7 @@ int BleProvisioningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append((uint8_t*)devName, strlen(devName)), SYSTEM_ERROR_NO_MEMORY);
 
     uint16_t platformID = PLATFORM_ID;
-    uint16_t companyID = PARTICLE_COMPANY_ID;
+    uint16_t companyID = SystemControl::instance()->getBleCtrlRequestChannel()->getCompanyId();
 
     // Manufacturing specific data
     char code[HAL_SETUP_CODE_SIZE] = {};
@@ -98,7 +98,6 @@ int BleProvisioningModeHandler::constructControlRequestAdvData() {
 
     // Particle Control Request Service UUID. This will be overwritten by user's provisioning service ID if available
     // FIXME: Addressing only 128-bit complete and 16-bit complete UUIDs
-    // hal_ble_uuid_t bleCrtlReqSvcUuid = BleControlRequestChannel::instance(particle::system::SystemControl::instance())->getBleCtrlSvcUuid(); -> 
     hal_ble_uuid_t bleCrtlReqSvcUuid = SystemControl::instance()->getBleCtrlRequestChannel()->getBleCtrlSvcUuid();
     if (bleCrtlReqSvcUuid.type == BLE_UUID_TYPE_128BIT) {
         CHECK_TRUE(tempSrData.append(sizeof(bleCrtlReqSvcUuid.uuid128) + 1), SYSTEM_ERROR_NO_MEMORY);

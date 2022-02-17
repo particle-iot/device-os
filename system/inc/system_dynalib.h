@@ -129,7 +129,8 @@ DYNALIB_FN(BASE_IDX2 + 5, system, system_ble_prov_set_custom_svc_uuid, int(hal_b
 DYNALIB_FN(BASE_IDX2 + 6, system, system_ble_prov_set_custom_tx_uuid, int(hal_ble_uuid_t* txUuid, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 7, system, system_ble_prov_set_custom_rx_uuid, int(hal_ble_uuid_t* rxUuid, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 8, system, system_ble_prov_set_custom_ver_uuid, int(hal_ble_uuid_t* verUuid, void* reserved))
-#define BASE_IDX3 (BASE_IDX2 + 9)
+DYNALIB_FN(BASE_IDX2 + 9, system, system_ble_prov_set_company_id, int(uint16_t companyId, void* reserved))
+#define BASE_IDX3 (BASE_IDX2 + 10)
 #else
 #define BASE_IDX3 (BASE_IDX2 + 3)
 #endif  // HAL_PLATFORM_BLE
