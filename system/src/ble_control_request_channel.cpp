@@ -584,7 +584,6 @@ BleControlRequestChannel::BleControlRequestChannel(ControlRequestHandler* handle
         bleVerCharUuid_{VERSION_CHAR_UUID},
         bleSendCharUuid_{SEND_CHAR_UUID},
         bleRecvCharUuid_{RECV_CHAR_UUID},
-        customCompanyId_{PARTICLE_COMPANY_ID},
         sendCharHandle_(BLE_INVALID_ATTR_HANDLE),
         recvCharHandle_(BLE_INVALID_ATTR_HANDLE) {
 }
@@ -690,49 +689,31 @@ error:
 }
 
 int BleControlRequestChannel::setProvSvcUuid(hal_ble_uuid_t* svcUuid) {
-    if (!svcUuid) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+    CHECK_TRUE(svcUuid, SYSTEM_ERROR_INVALID_ARGUMENT);
     bleCtrlSvcUuid_ = *svcUuid;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleControlRequestChannel::setProvTxUuid(hal_ble_uuid_t* txUuid) {
-    if (!txUuid) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+    CHECK_TRUE(txUuid, SYSTEM_ERROR_INVALID_ARGUMENT);
     bleSendCharUuid_ = *txUuid;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleControlRequestChannel::setProvRxUuid(hal_ble_uuid_t* rxUuid) {
-    if (!rxUuid) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+    CHECK_TRUE(rxUuid, SYSTEM_ERROR_INVALID_ARGUMENT);
     bleRecvCharUuid_ = *rxUuid;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleControlRequestChannel::setProvVerUuid(hal_ble_uuid_t* verUuid) {
-    if (!verUuid) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+    CHECK_TRUE(verUuid, SYSTEM_ERROR_INVALID_ARGUMENT);
     bleVerCharUuid_ = *verUuid;
     return SYSTEM_ERROR_NONE;
 }
 
 hal_ble_uuid_t BleControlRequestChannel::getBleCtrlSvcUuid() {
     return bleCtrlSvcUuid_;
-}
-
-int BleControlRequestChannel::setCompanyId(uint16_t companyId) {
-    // TODO: Add error checking for companyId
-    customCompanyId_ = companyId;
-    return SYSTEM_ERROR_NONE;
-}
-
-uint16_t BleControlRequestChannel::getCompanyId() {
-    return customCompanyId_;
 }
 
 int BleControlRequestChannel::allocReplyData(ctrl_request* ctrlReq, size_t size) {

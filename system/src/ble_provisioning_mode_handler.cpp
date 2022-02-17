@@ -46,7 +46,8 @@ BleProvisioningModeHandler::BleProvisioningModeHandler()
           preAutoAdv_(BLE_AUTO_ADV_ALWAYS),
           userAdv_(false),
           restoreUserConfig_(false),
-          provMode_(false) {
+          provMode_(false),
+          customCompanyId_(PARTICLE_COMPANY_ID) {
 }
 
 BleProvisioningModeHandler::~BleProvisioningModeHandler() {
@@ -63,6 +64,15 @@ bool BleProvisioningModeHandler::getProvModeStatus() {
 
 void BleProvisioningModeHandler::setProvModeStatus(bool enabled) {
     provMode_ = enabled;
+}
+
+int BleProvisioningModeHandler::setCompanyId(uint16_t companyId) {
+    customCompanyId_ = companyId;
+    return SYSTEM_ERROR_NONE;
+}
+
+uint16_t BleProvisioningModeHandler::getCompanyId() {
+    return customCompanyId_;
 }
 
 int BleProvisioningModeHandler::constructControlRequestAdvData() {
@@ -85,7 +95,7 @@ int BleProvisioningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append((uint8_t*)devName, strlen(devName)), SYSTEM_ERROR_NO_MEMORY);
 
     uint16_t platformID = PLATFORM_ID;
-    uint16_t companyID = SystemControl::instance()->getBleCtrlRequestChannel()->getCompanyId();
+    uint16_t companyID = getCompanyId();
 
     // Manufacturing specific data
     char code[HAL_SETUP_CODE_SIZE] = {};

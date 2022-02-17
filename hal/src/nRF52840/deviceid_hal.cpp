@@ -140,8 +140,12 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
 
 int hal_set_device_secret(char* data, size_t size, void* reserved) {
     if (!data || size != HAL_DEVICE_SECRET_SIZE || !isPrintable(data, HAL_DEVICE_SECRET_SIZE)) {
+        if (!data) {
+            dct_write_app_data({0x00}, DCT_DEVICE_SECRET_OFFSET, HAL_DEVICE_SECRET_SIZE);
+        }
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+
     int ret = dct_write_app_data(data, DCT_DEVICE_SECRET_OFFSET, size);
     if (ret < 0) {
         dct_write_app_data({0x00}, DCT_DEVICE_SECRET_OFFSET, HAL_DEVICE_SECRET_SIZE);

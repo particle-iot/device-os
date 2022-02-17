@@ -140,8 +140,6 @@ private:
     hal_ble_uuid_t bleSendCharUuid_;
     hal_ble_uuid_t bleRecvCharUuid_;
 
-    uint16_t customCompanyId_;
-
     hal_ble_attr_handle_t sendCharHandle_; // TX characteristic handle
     hal_ble_attr_handle_t sendCharCccdHandle_; // TX characteristic CCCD handle
     hal_ble_attr_handle_t recvCharHandle_; // RX characteristic handle

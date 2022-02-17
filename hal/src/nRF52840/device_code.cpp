@@ -52,6 +52,7 @@ int get_device_setup_code(char* code, size_t size) {
         ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
         if ((size_t)ret >= sizeof(setupCode) && (size_t)ret <= sizeof(serial)) {
             // Use last characters of the serial number as the setup code
+            size = std::min(size, (size_t)HAL_SETUP_CODE_SIZE);
             memcpy(code, &serial[ret - size], size);
         } else {
             // Return a dummy setup code

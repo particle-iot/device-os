@@ -38,6 +38,9 @@ public:
     bool getProvModeStatus();
     void setProvModeStatus(bool enabled);
 
+    int setCompanyId(uint16_t companyId);
+    uint16_t getCompanyId();
+
 protected:
     BleProvisioningModeHandler();
     ~BleProvisioningModeHandler();
@@ -75,6 +78,7 @@ private:
     bool restoreUserConfig_;
     static bool exited_;
     bool provMode_;
+    uint16_t customCompanyId_;
 
     Vector<uint8_t> ctrlReqAdvData_;
     Vector<uint8_t> ctrlReqSrData_;

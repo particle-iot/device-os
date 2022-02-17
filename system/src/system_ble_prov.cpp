@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -112,7 +112,7 @@ int system_ble_prov_set_custom_ver_uuid(hal_ble_uuid_t* verUuid, void* reserved)
 
 int system_ble_prov_set_company_id(uint16_t companyId, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_ble_prov_set_company_id(companyId, reserved));
-    return SystemControl::instance()->getBleCtrlRequestChannel()->setCompanyId(companyId);
+    return BleProvisioningModeHandler::instance()->setCompanyId(companyId);
 }
 
 #endif // HAL_PLATFORM_BLE
