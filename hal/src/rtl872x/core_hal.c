@@ -525,29 +525,29 @@ void HAL_Core_Execute_Standby_Mode(void) {
 }
 
 bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
+    // NOTE: this is a no-op, BOOT_Reason() is normally used instead
     uint32_t reset_reason = SYSTEM_FLAG(RCC_CSR_SysFlag);
     if (reset_reason == 0xffffffff) {
-        // sd_power_reset_reason_get(&reset_reason);
+        reset_reason = BOOT_Reason();
     }
     switch(resetType) {
-        case PIN_RESET: {
-            // return reset_reason == NRF_POWER_RESETREAS_RESETPIN_MASK;
-        }
         case SOFTWARE_RESET: {
-            // return reset_reason == NRF_POWER_RESETREAS_SREQ_MASK;
+            return (reset_reason & (BIT_BOOT_KM4SYS_RESET_HAPPEN | BIT_BOOT_SYS_RESET_HAPPEN));
         }
         case WATCHDOG_RESET: {
-            // return reset_reason == NRF_POWER_RESETREAS_DOG_MASK;
+            return (reset_reason & (BIT_BOOT_KM4WDG_RESET_HAPPEN | BIT_BOOT_WDG_RESET_HAPPEN));
         }
         case POWER_MANAGEMENT_RESET: {
-            // SYSTEM OFF Mode
-            // return (reset_reason == NRF_POWER_RESETREAS_OFF_MASK) || (reset_reason == NRF_POWER_RESETREAS_LPCOMP_MASK);
+            // Deep sleep wake-up
+            return (reset_reason & BIT_BOOT_DSLP_RESET_HAPPEN);
         }
-        // If none of the reset sources are flagged, this indicates that
-        // the chip was reset from the on-chip reset generator,
-        // which will indicate a power-on-reset or a brownout reset.
-        case POWER_DOWN_RESET:
         case POWER_BROWNOUT_RESET: {
+            return (reset_reason & BIT_BOOT_BOD_RESET_HAPPEN);
+        }
+        // If none of the reset sources are flagged, this indicates
+        // a power-on reset or pin reset
+        case PIN_RESET:
+        case POWER_DOWN_RESET: {
             return reset_reason == 0;
         }
         default:
@@ -874,15 +874,17 @@ int HAL_Core_Enter_Panic_Mode(void* reserved)
 
 #include "dtls_session_persist.h"
 #include <string.h>
+#include "platform_headers.h"
 
-const uintptr_t SESSION_DATA_RETENTION_RAM = RETENTION_RAM_BASE + RETENTION_RAM_WIFI_FW_OFFSET + 32;
-static SessionPersistDataOpaque* s_persisted_session_data = (SessionPersistDataOpaque*)SESSION_DATA_RETENTION_RAM;
+// This is preserved across software resets, but cleared in deep sleep
+// or through an external reset
+retained_system SessionPersistDataOpaque session;
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
     if (offset==0 && length==sizeof(SessionPersistDataOpaque))
     {
-        memcpy(s_persisted_session_data, buffer, length);
+        memcpy(&session, buffer, length);
         return 0;
     }
     return -1;
@@ -890,16 +892,14 @@ int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, voi
 
 int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, size_t* length, void* reserved)
 {
-    if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque)
-            && s_persisted_session_data->size==sizeof(SessionPersistDataOpaque))
+    if (offset==0 && max_length>=sizeof(SessionPersistDataOpaque) && session.size==sizeof(SessionPersistDataOpaque))
     {
         *length = sizeof(SessionPersistDataOpaque);
-        memcpy(buffer, s_persisted_session_data, s_persisted_session_data->size);
+        memcpy(buffer, &session, sizeof(session));
         return 0;
     }
     return -1;
 }
-
 
 #else
 

@@ -78,6 +78,9 @@ platform_system_backup_ram_size  = platform_backup_ram_all_size - platform_user_
 platform_system_backup_ram_end   = platform_user_backup_ram_start;
 platform_system_backup_ram_start = platform_system_backup_ram_end - platform_system_backup_ram_size;
 
+platform_backup_ram_all_start = platform_system_backup_ram_start;
+platform_backup_ram_all_end = platform_system_backup_ram_start + platform_backup_ram_all_size;
+
 /* System retention RAM */
 platform_system_retention_ram_size = 120;
 platform_system_retention_ram_start = 0x000c0000 + 0x80 + 14 * 4;

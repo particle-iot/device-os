@@ -24,7 +24,7 @@ const size_t HAL_BACKUP_REGISTER_NUM = 10;
 static uint32_t* hal_backup_reg_location = (uint32_t*)((uintptr_t)&system_flags + sizeof(system_flags));
 
 // NOTE: we still have an option of using actual backup registers available on RTL872X
-// We made sure to free up all of them except for BKUP_REG1
+// We made sure to free up all of them except for BKUP_REG0
 int32_t HAL_Core_Backup_Register(uint32_t reg) {
     if ((reg == 0) || (reg > HAL_BACKUP_REGISTER_NUM)) {
         return -1;

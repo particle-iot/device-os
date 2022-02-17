@@ -329,8 +329,6 @@ void rtlLowLevelInit() {
         // Retention Ram reset
         // Only clear sys stuff used by the SDK and part of RRAM_TypeDef again used by the SDK
         _memset((void*)RETENTION_RAM_BASE, 0, RETENTION_RAM_SYS_OFFSET + offsetof(RRAM_TypeDef, RRAM_USER_RSVD));
-        // Also clear part of "wifi fw"
-        _memset((void*)(RETENTION_RAM_BASE + RETENTION_RAM_WIFI_FW_OFFSET), 0, 32);
         assert_param(sizeof(RRAM_TypeDef) <= 0xB0);
     } else {
         SOCPS_DsleepWakeStatusSet(TRUE); /* KM4 boot check it */

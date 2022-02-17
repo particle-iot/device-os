@@ -26,6 +26,7 @@
 #include "exflash_hal.h"
 #include "km0_km4_ipc.h"
 #include "core_hal.h"
+#include "backup_ram_hal.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
@@ -113,6 +114,9 @@ static void DWT_Init(void)
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
+extern uintptr_t platform_backup_ram_all_start[];
+extern uintptr_t platform_backup_ram_all_end;
+
 u32 app_mpu_nocache_init(void) {
     mpu_region_config mpu_cfg;
     u32 mpu_entry = 0;
@@ -167,6 +171,16 @@ u32 app_mpu_nocache_init(void) {
     mpu_cfg.ap = MPU_UN_PRIV_RW;
     mpu_cfg.sh = MPU_NON_SHAREABLE;
     mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_WB_T_RWA;
+    mpu_region_cfg(mpu_entry, &mpu_cfg);
+
+    /* Mark "backup" (not really backup, just some pages in SRAM) RAM as no-cache */
+    mpu_entry = mpu_entry_alloc();
+    mpu_cfg.region_base = (uintptr_t)&platform_backup_ram_all_start;
+    mpu_cfg.region_size = (uintptr_t)&platform_backup_ram_all_end - (uintptr_t)&platform_backup_ram_all_start;
+    mpu_cfg.xn = MPU_EXEC_ALLOW;
+    mpu_cfg.ap = MPU_UN_PRIV_RW;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
     mpu_region_cfg(mpu_entry, &mpu_cfg);
 
     return 0;
@@ -258,6 +272,7 @@ void Set_System(void)
 
     // Enable cache
     Cache_Enable(1);
+    hal_backup_ram_init();
 #endif
     ICache_Enable();
 
