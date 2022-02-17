@@ -2074,11 +2074,11 @@ int BleLocalDevice::selectAntenna(BleAntennaType antenna) const {
     return hal_ble_select_antenna(static_cast<hal_ble_ant_type_t>(antenna), nullptr);
 }
 
-int BleLocalDevice::provisioningMode(bool enabled) const{
+int BleLocalDevice::provisioningMode(bool enabled) const {
     return system_ble_prov_mode(enabled, nullptr);
 }
 
-bool BleLocalDevice::getProvisioningStatus() const{
+bool BleLocalDevice::getProvisioningStatus() const {
     return system_ble_prov_get_status(nullptr);
 }
 

@@ -60,7 +60,7 @@ enum SystemEvents {
     low_battery = 1<<15,            // generated when low battery condition is detected
     battery_state = 1<<16,
     power_source = 1<<17,
-	out_of_memory = 1<<18,			// heap request was not satisfied
+    out_of_memory = 1<<18,          // heap request was not satisfied
     ble_prov_mode = 1<<19,          // ble provisioning mode
 
     all_events = 0xFFFFFFFFFFFFFFFF

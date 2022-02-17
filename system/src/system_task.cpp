@@ -466,7 +466,6 @@ void manage_listening_mode_flag() {
     if (particle::system::ListeningModeHandler::instance()->isActive() && HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
         particle::system::ListeningModeHandler::instance()->exit();
     }
-    delay(1);
 #endif
 }
 

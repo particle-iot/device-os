@@ -117,7 +117,6 @@ int joinNewNetwork(ctrl_request* req) {
     ncpClient->disconnect(); // ignore the error
     network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
     // FIXME: We are wiating for ncpNetif to potentially fully disconnect
-    HAL_Delay_Milliseconds(200);
     // FIXME: synchronize NCP client / NcpNetif and system network manager state
     CHECK(ncpClient->enable());
     CHECK(ncpClient->on());

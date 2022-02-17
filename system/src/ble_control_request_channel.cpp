@@ -688,20 +688,36 @@ error:
     resetChannel();
 }
 
-void BleControlRequestChannel::setProvSvcUuid(hal_ble_uuid_t* svcUuid) {
+int BleControlRequestChannel::setProvSvcUuid(hal_ble_uuid_t* svcUuid) {
+    if (!svcUuid) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     bleCtrlSvcUuid_ = *svcUuid;
+    return SYSTEM_ERROR_NONE;
 }
 
-void BleControlRequestChannel::setProvTxUuid(hal_ble_uuid_t* txUuid) {
+int BleControlRequestChannel::setProvTxUuid(hal_ble_uuid_t* txUuid) {
+    if (!txUuid) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     bleSendCharUuid_ = *txUuid;
+    return SYSTEM_ERROR_NONE;
 }
 
-void BleControlRequestChannel::setProvRxUuid(hal_ble_uuid_t* rxUuid) {
+int BleControlRequestChannel::setProvRxUuid(hal_ble_uuid_t* rxUuid) {
+    if (!rxUuid) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     bleRecvCharUuid_ = *rxUuid;
+    return SYSTEM_ERROR_NONE;
 }
 
-void BleControlRequestChannel::setProvVerUuid(hal_ble_uuid_t* verUuid) {
+int BleControlRequestChannel::setProvVerUuid(hal_ble_uuid_t* verUuid) {
+    if (!verUuid) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     bleVerCharUuid_ = *verUuid;
+    return SYSTEM_ERROR_NONE;
 }
 
 hal_ble_uuid_t BleControlRequestChannel::getBleCtrlSvcUuid() {
@@ -750,6 +766,9 @@ int BleControlRequestChannel::initChannel() {
 }
 
 void BleControlRequestChannel::resetChannel() {
+    if (!initialized_) {
+        return;
+    }
 #if BLE_CHANNEL_SECURITY_ENABLED
     jpake_.reset();
     aesCcm_.reset();

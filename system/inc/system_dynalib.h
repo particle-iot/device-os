@@ -120,7 +120,7 @@ DYNALIB_FN(BASE_IDX1 + 2, system, system_power_management_get_config, int(hal_po
 
 DYNALIB_FN(BASE_IDX2 + 0, system, system_info_get_unstable, int(hal_system_info_t* info, uint32_t flags, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 1, system, system_info_free_unstable, int(hal_system_info_t* info, void* reserved))
-DYNALIB_FN(BASE_IDX2 + 2, system, system_ctrl_add_request_filter, int(system_control_acl default_action, system_control_filter* filters, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 2, system, system_ctrl_set_request_filter, int(system_control_acl default_action, system_control_filter* filters, void* reserved))
 
 #if HAL_PLATFORM_BLE
 DYNALIB_FN(BASE_IDX2 + 3, system, system_ble_prov_mode, int(bool enabled, void* reserved))

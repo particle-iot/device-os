@@ -76,7 +76,7 @@ int BleProvisioningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_FLAGS), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append(BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE), SYSTEM_ERROR_NO_MEMORY);
 
-    char devName[BLE_MAX_DEV_NAME_LEN+1] = {};
+    char devName[BLE_MAX_DEV_NAME_LEN + 1] = {};
     CHECK(hal_ble_gap_get_device_name(devName, sizeof(devName), nullptr));
 
     // Complete local name
@@ -107,8 +107,7 @@ int BleProvisioningModeHandler::constructControlRequestAdvData() {
     } else {
         CHECK_TRUE(tempSrData.append(sizeof(bleCrtlReqSvcUuid.uuid16) + 1), SYSTEM_ERROR_NO_MEMORY);
         CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
-        CHECK_TRUE(tempSrData.append((uint8_t)bleCrtlReqSvcUuid.uuid16), SYSTEM_ERROR_NO_MEMORY);
-        CHECK_TRUE(tempSrData.append((uint8_t)(bleCrtlReqSvcUuid.uuid16 >> 8)), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append((uint8_t*)&bleCrtlReqSvcUuid.uuid16, BLE_SIG_UUID_16BIT_LEN), SYSTEM_ERROR_NO_MEMORY);
     }
     ctrlReqAdvData_ = std::move(tempAdvData);
     ctrlReqSrData_ = std::move(tempSrData);

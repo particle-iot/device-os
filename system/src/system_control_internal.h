@@ -34,6 +34,11 @@ namespace particle {
 
 namespace system {
 
+typedef struct filterCtrlReq {
+        Vector<uint16_t> vecCtrlReq_;
+        bool acceptReq_;
+} filterCtrlReq;
+
 class SystemControl: public ControlRequestHandler {
 public:
     SystemControl();
@@ -54,10 +59,11 @@ public:
 
     static SystemControl* instance();
 
-    struct filterCtrlReq_ {
-        Vector<uint16_t> vecCtrlReq_;
-        bool acceptReq_;
-    } filterCtrlReq_;
+    filterCtrlReq* getFilterCtrlReq();
+    system_control_acl getDefaultFilterAction();
+    system_control_filter* getFiltersList();
+    void setDefaultFilterAction(system_control_acl act);
+    void setFiltersList(system_control_filter* filters);
 
 #if HAL_PLATFORM_BLE
     BleControlRequestChannel* getBleCtrlRequestChannel();
@@ -73,7 +79,34 @@ private:
     ctrl_request_handler_fn appReqHandler_;
 
     void processAppRequest(ctrl_request* req);
+
+    system_control_filter* filters_;
+    system_control_acl defaultFilterAction_;
 };
+
+inline void SystemControl::setDefaultFilterAction(system_control_acl act) {
+    defaultFilterAction_ = act;
+}
+
+inline system_control_acl SystemControl::getDefaultFilterAction() {
+    return defaultFilterAction_;
+}
+
+inline void SystemControl::setFiltersList(system_control_filter* filters) {
+    // Clear/free() the existing filters_
+    system_control_filter* tmp;
+    while (filters_ != nullptr)
+    {
+        tmp = filters_;
+        filters_ = filters_->next;
+        free(tmp);
+    }
+    filters_ = filters;
+}
+
+inline system_control_filter* SystemControl::getFiltersList() {
+    return filters_;
+}
 
 inline int SystemControl::setAppRequestHandler(ctrl_request_handler_fn handler) {
     appReqHandler_ = handler;

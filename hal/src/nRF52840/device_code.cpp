@@ -50,12 +50,12 @@ int get_device_setup_code(char* code, size_t size) {
         // Check the OTP memory
         char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
         ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
-        if (ret >= (int)size && (size_t)ret <= sizeof(serial)) {
+        if ((size_t)ret >= sizeof(setupCode) && (size_t)ret <= sizeof(serial)) {
             // Use last characters of the serial number as the setup code
             memcpy(code, &serial[ret - size], size);
         } else {
             // Return a dummy setup code
-            memset(code, 'X', size);
+            memset(code, 'X', std::min(sizeof(setupCode), size));
         }
     } else {
         memcpy(code, setupCode, std::min(sizeof(setupCode), size));

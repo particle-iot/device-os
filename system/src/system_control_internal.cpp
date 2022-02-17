@@ -112,23 +112,29 @@ void SystemControl::run() {
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
-	// Allow/Request requests based on the setControlRequestFilter system API
-    if (filterCtrlReq_.acceptReq_ == false) {
-        if (filterCtrlReq_.vecCtrlReq_.size() == 0) {
-            LOG(TRACE, "Rejecting all control requests");
-            // reject all requests
+
+    // Filter requests based on the setControlRequestFilter system API
+    system_control_filter* filter = getFiltersList();
+    if (!filter) {
+        if (getDefaultFilterAction() == (system_control_acl)SYSTEM_CONTROL_ACL_DENY) {
+            setResult(req, SYSTEM_ERROR_NOT_ALLOWED);
+            LOG(TRACE, "Rejecting control request: %d", req->type);
             return;
-        } else {
-            // accept only those in the vector
-            if (!filterCtrlReq_.vecCtrlReq_.contains(req->type)) {
-                LOG(TRACE, "Rejecting control request - %d", (int)req->type);
+        }
+    }
+    // search whether there is a matching entry in the list for the request type
+    while(filter != nullptr) {
+        if (filter->req == req->type) {
+            if ((filter->action == (system_control_acl)SYSTEM_CONTROL_ACL_DENY) && (getDefaultFilterAction() == (system_control_acl)SYSTEM_CONTROL_ACL_ACCEPT)) {
+                setResult(req, SYSTEM_ERROR_NOT_ALLOWED);
+                LOG(TRACE, "Rejecting control request: %d", req->type);
                 return;
+            } else if ((filter->action == (system_control_acl)SYSTEM_CONTROL_ACL_ACCEPT) && (getDefaultFilterAction() == (system_control_acl)SYSTEM_CONTROL_ACL_DENY)) {
+                // we proceed with the request
+                break;
             }
         }
-    } else if (filterCtrlReq_.vecCtrlReq_.contains(req->type)) {
-        // reject only those in the vector
-        LOG(TRACE, "Rejecting control request - %d", (int)req->type);
-        return;
+        filter = filter->next;
     }
 
     switch (req->type) {
@@ -415,41 +421,13 @@ void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handl
     particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
-int system_ctrl_add_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved) {
-    if (default_action == SYSTEM_CONTROL_ACL_NONE) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    particle::system::SystemControl::instance()->filterCtrlReq_.vecCtrlReq_.clear();
+int system_ctrl_set_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved) {
 
-    // If default action is to accept requests, vecCtrlReq_ will contain requests that need to be rejected
-    if (default_action == SYSTEM_CONTROL_ACL_ACCEPT) {
-        particle::system::SystemControl::instance()->filterCtrlReq_.acceptReq_ = true;
-        while(filters != nullptr) {
-            if (filters->action == SYSTEM_CONTROL_ACL_DENY) {
-                auto ret = 0;
-                ret = particle::system::SystemControl::instance()->filterCtrlReq_.vecCtrlReq_.append(filters->req);
-                if (!ret) {
-                    return SYSTEM_ERROR_NO_MEMORY;
-                }
-            }
-            filters = filters->next;
-        }
-    }
+    SYSTEM_THREAD_CONTEXT_SYNC(system_ctrl_set_request_filter(default_action, filters, reserved));
 
-    // If default action is to reject requests, vecCtrlReq_ will contain requests that need to be allowed
-    if (default_action == SYSTEM_CONTROL_ACL_DENY) {
-        particle::system::SystemControl::instance()->filterCtrlReq_.acceptReq_ = false;
-        while(filters->next != nullptr) {
-            if (filters->action == SYSTEM_CONTROL_ACL_ACCEPT) {
-                auto ret = 0;
-                ret = particle::system::SystemControl::instance()->filterCtrlReq_.vecCtrlReq_.append(filters->req);
-                if (!ret) {
-                    return SYSTEM_ERROR_NO_MEMORY;
-                }
-                filters = filters->next;
-            }
-        }
-    }
+    particle::system::SystemControl::instance()->setDefaultFilterAction(default_action);
+    particle::system::SystemControl::instance()->setFiltersList(filters);
+
     return 0;
 }
 
@@ -470,7 +448,7 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
 }
 
-int system_ctrl_add_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved) {
+int system_ctrl_set_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 

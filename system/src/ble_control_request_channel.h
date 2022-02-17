@@ -64,10 +64,10 @@ public:
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
-    void setProvSvcUuid(hal_ble_uuid_t* svcUuid);
-    void setProvTxUuid(hal_ble_uuid_t* txUuid);
-    void setProvRxUuid(hal_ble_uuid_t* rxUuid);
-    void setProvVerUuid(hal_ble_uuid_t* verUuid);
+    int setProvSvcUuid(hal_ble_uuid_t* svcUuid);
+    int setProvTxUuid(hal_ble_uuid_t* txUuid);
+    int setProvRxUuid(hal_ble_uuid_t* rxUuid);
+    int setProvVerUuid(hal_ble_uuid_t* verUuid);
 
     hal_ble_uuid_t getBleCtrlSvcUuid();
 

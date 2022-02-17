@@ -42,6 +42,8 @@
 #include "system_sleep_configuration.h"
 #include "system_control.h"
 #include "spark_wiring_vector.h"
+#include "enumclass.h"
+#include "system_control.h"
 
 using spark::Vector;
 
@@ -93,9 +95,9 @@ enum class SystemControlRequestAclAction {
     DENY = 2
 };
 
-class SystemControlRequestAclClass {
+class SystemControlRequestAcl {
     public:
-        SystemControlRequestAclClass(ctrl_request_type type, SystemControlRequestAclAction action) {
+        SystemControlRequestAcl(ctrl_request_type type, SystemControlRequestAclAction action) {
             type_ = type;
             action_ = action;
         };
@@ -879,35 +881,48 @@ public:
 
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
-    int setControlRequestFilter(SystemControlRequestAclAction defaultAction, Vector<SystemControlRequestAclClass> filters = {}) {
+    int setControlRequestFilter(SystemControlRequestAclAction defaultAction, Vector<SystemControlRequestAcl> filters = {}) {
 		// Add requests and their actions to the control filter
         system_control_acl default_action = (system_control_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(defaultAction);
         system_control_filter* first = nullptr;
         system_control_filter* current = nullptr;
 
-        for(int i=0; i<filters.size(); i++) {
+        for(int i=0; i < filters.size(); i++) {
             if (first == nullptr) {
                 first = (system_control_filter*)malloc(sizeof(system_control_filter));
                 if (!first) {
                     return SYSTEM_ERROR_NO_MEMORY;
                 }
+                first->size = sizeof(system_control_filter);
                 first->req = filters[i].type();
                 first->action = (system_control_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(filters[i].action());
-                LOG(TRACE, "TP1 - action: %d", first->action);
                 first->next = nullptr;
                 current = first;
             } else {
                 system_control_filter* temp = (system_control_filter*)malloc(sizeof(system_control_filter));
+                if (!temp) {
+                    return SYSTEM_ERROR_NO_MEMORY;
+                }
                 current->next = temp;
+                temp->size = sizeof(system_control_filter);
                 temp->req = filters[i].type();
                 temp->action = (system_control_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(filters[i].action());
-                LOG(TRACE, "TP2 - action: %d", temp->action);
                 temp->next = nullptr;
                 current = temp;
             }
         }
 
-        return system_ctrl_add_request_filter(default_action, first, nullptr);
+        auto ret = system_ctrl_set_request_filter(default_action, first, nullptr);
+        if (ret) {
+            system_control_filter* tmp;
+            while (first != nullptr)
+            {
+                tmp = first;
+                first = first->next;
+                free(tmp);
+            }
+        }
+        return ret;
     }
 
 private:
@@ -957,7 +972,6 @@ private:
 };
 
 extern SystemClass System;
-extern SystemControlRequestAclClass SystemControlRequestAcl;
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
