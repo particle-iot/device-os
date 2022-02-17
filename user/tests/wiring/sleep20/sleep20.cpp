@@ -43,7 +43,6 @@ void updateTime() {
 
 STARTUP(updateTime());
 
-#if PLATFORM_ID != PLATFORM_P2 // P2 will reset the retention SRAM after pressing the reset button
 test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup) {
     if (magick != 0xdeadbeef) {
         magick = 0xdeadbeef;
@@ -66,7 +65,7 @@ test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup) {
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
     } else if (phase == 0xbeef0002) {
         Serial.println("    >> Device is reset from hibernate mode.");
-        assertEqual(System.resetReason(), (int)RESET_REASON_PIN_RESET);
+        assertTrue(System.resetReason() == RESET_REASON_PIN_RESET || System.resetReason() == RESET_REASON_POWER_DOWN);
     }
 }
 
@@ -86,18 +85,9 @@ test(02_System_Sleep_Mode_Deep_Without_Wakeup) {
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
     } else if (phase == 0xbeef0003) {
         Serial.println("    >> Device is reset from hibernate mode.");
-        assertEqual(System.resetReason(), (int)RESET_REASON_PIN_RESET);
+        assertTrue(System.resetReason() == RESET_REASON_PIN_RESET || System.resetReason() == RESET_REASON_POWER_DOWN);
     }
 }
-#else // PLATFORM_ID != PLATFORM_P2
-test(01_System_Sleep_Setup) {
-    if (magick != 0xdeadbeef) {
-        magick = 0xdeadbeef;
-        phase = 0xbeef0003;
-    }
-}
-#endif // PLATFORM_ID == PLATFORM_P2
-
 
 #if HAL_PLATFORM_GEN == 3 && PLATFORM_ID != PLATFORM_P2
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0) {
@@ -331,7 +321,7 @@ test(07_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
               .duration(SLEEP_DURATION_S * 1000);
 #if HAL_PLATFORM_CELLULAR
         config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
-#elif HAL_PLATFORM_WIFI && PLLATFORM_ID != P2 // P2 doesn't support using network as wakeup source
+#elif HAL_PLATFORM_WIFI && PLATFORM_ID != PLATFORM_P2 // P2 doesn't support using network as wakeup source
         config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
 #endif
 

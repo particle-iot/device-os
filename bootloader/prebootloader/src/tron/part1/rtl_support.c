@@ -19,6 +19,8 @@
 #include "rtl_support.h"
 #include "rtl8721d_system.h"
 
+uint32_t tickless_debug = 0;
+
 /* The binary data of generated ram_retention.bin should copy into retention_ram_patch_array. 
    Then fill in the patch size at the second dword */
 const uint32_t retention_ram_patch_array[2][RETENTION_RAM_SYS_OFFSET / 4] = {

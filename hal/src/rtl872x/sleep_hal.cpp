@@ -46,6 +46,9 @@ extern "C" {
 #include "rtl8721d.h"
 }
 #include "km0_km4_ipc.h"
+#include "backup_ram_hal.h"
+#include "dct.h"
+#include "dct_hal.h"
 
 using namespace particle;
 
@@ -101,6 +104,13 @@ public:
         DelayMs(1500);
 
         HAL_USB_Detach();
+
+        if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
+            SYSTEM_FLAG(entered_hibernate) = 1;
+            dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
+            /* Backup (sic!) backup RAM into flash */
+            hal_backup_ram_sync();
+        }
 
         for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
             if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {

@@ -45,6 +45,7 @@
 #include "flash_common.h"
 #include "concurrent_hal.h"
 #include "user_hal.h"
+#include "backup_ram_hal.h"
 
 static volatile uint8_t rtos_started = 0;
 
@@ -392,6 +393,8 @@ void HAL_Core_Setup(void) {
     srand(HAL_RNG_GetRandomNumber());
 
     hal_rtc_init();
+
+    hal_backup_ram_init();
 
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();

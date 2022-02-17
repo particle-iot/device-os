@@ -29,7 +29,6 @@
 #include "usart_hal.h"
 #include "interrupts_hal.h"
 #include "check.h"
-#include "backup_ram_hal.h"
 
 // anonymous namespace
 namespace {
@@ -824,9 +823,6 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
         /* Disable WKUP pin */
         PWR_WakeUpPinCmd(DISABLE);
     }
-
-    /* Backup (sic!) backup RAM into flash */
-    hal_backup_ram_sync();
 
     /* Request to enter STANDBY mode */
     PWR_EnterSTANDBYMode();

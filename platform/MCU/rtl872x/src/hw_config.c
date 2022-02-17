@@ -26,7 +26,6 @@
 #include "exflash_hal.h"
 #include "km0_km4_ipc.h"
 #include "core_hal.h"
-#include "backup_ram_hal.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
@@ -270,7 +269,6 @@ void Set_System(void)
 
     // Enable cache
     Cache_Enable(1);
-    hal_backup_ram_init();
 #endif
     ICache_Enable();
 

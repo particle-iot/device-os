@@ -1,5 +1,6 @@
 SECTIONS
 {
+    NewVectorTable = 0x80000;
     DelayNop = 0x14b5;
     DelayUs = 0x14c3;
     DelayMs = 0x1505;
