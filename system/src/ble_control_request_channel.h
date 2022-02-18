@@ -71,9 +71,6 @@ public:
 
     hal_ble_uuid_t getBleCtrlSvcUuid();
 
-    int setCompanyId(uint16_t companyId);
-    uint16_t getCompanyId();
-
 private:
     class HandshakeHandler;
     class JpakeHandler;
