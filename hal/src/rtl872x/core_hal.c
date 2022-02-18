@@ -46,6 +46,7 @@
 #include "concurrent_hal.h"
 #include "user_hal.h"
 #include "backup_ram_hal.h"
+#include "heap_portable.h"
 
 static volatile uint8_t rtos_started = 0;
 
@@ -64,18 +65,20 @@ void SVC_Handler(void);
 void PendSV_Handler(void);
 void SysTickOverride(void);
 
-extern char link_heap_location, link_heap_location_end;
 extern uintptr_t link_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
 extern uintptr_t link_user_part_flash_end[];
 extern uintptr_t link_module_info_crc_end[];
+extern uintptr_t platform_system_backup_ram_start;
 
-static void* new_heap_end = &link_heap_location_end;
+#define HEAP_REGIONS 2
+// IMPORTANT: the region addresses should be in increasing order
+static const size_t HEAP_REGION_PSRAM = 0;
+static const size_t HEAP_REGION_SRAM = 1;
 
-extern void malloc_enable(uint8_t);
-extern void malloc_set_heap_end(void*);
-extern void* malloc_heap_end();
+static malloc_heap_region heap_regions[HEAP_REGIONS] = {};
+
 #if defined(MODULAR_FIRMWARE)
 void* module_user_pre_init();
 #endif
@@ -345,21 +348,34 @@ void HAL_Core_Config(void) {
         module_user.start_address = module_user.end_address;
     }
 
+    extern uintptr_t link_heap_location, link_heap_location_end;
+    extern uintptr_t link_heap_location_alt, link_heap_location_end_alt;
+
+    heap_regions[HEAP_REGION_SRAM].start = (void*)&link_heap_location;
+    heap_regions[HEAP_REGION_SRAM].end = (void*)&link_heap_location_end;
+
+    heap_regions[HEAP_REGION_PSRAM].start = (void*)&link_heap_location_alt;
+    heap_regions[HEAP_REGION_PSRAM].end = (void*)&link_heap_location_end_alt;
+
     if (dyn) {
         // This will also perform CRC checks etc
         hal_user_module_descriptor user_desc = {};
         if (!hal_user_module_get_descriptor(&user_desc)) {
             dynalib_table_location = (void*)dyn->dynalib_load_address; // dynalib table in flash
-            new_heap_end = user_desc.pre_init();
-            if (new_heap_end < malloc_heap_end()) {
-                malloc_set_heap_end(new_heap_end);
+            uintptr_t new_sram_heap_end = (uintptr_t)user_desc.pre_init();
+            if (new_sram_heap_end < (uintptr_t)heap_regions[HEAP_REGION_SRAM].end) {
+                heap_regions[HEAP_REGION_SRAM].end = (void*)new_sram_heap_end;
             }
             dynalib_table_location = (void*)dyn->dynalib_start_address; // dynalib in PSRAM
             module_ota.end_address = ota_end_address;
+
+            heap_regions[HEAP_REGION_PSRAM].end = (void*)dyn->dynalib_start_address;
         } else {
             module_ota.end_address = module_ota.start_address + module_ota.maximum_size;
         }
     }
+
+    malloc_set_heap_regions(heap_regions);
 
     // Enable malloc before littlefs initialization.
     malloc_enable(1);
@@ -835,7 +851,10 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     // fordblks  The total number of bytes in free blocks.
     info->freeheap = heapinfo.fordblks;
     if (offsetof(runtime_info_t, total_init_heap) + sizeof(info->total_init_heap) <= info->size) {
-        info->total_init_heap = (uintptr_t)new_heap_end - (uintptr_t)&link_heap_location;
+        info->total_init_heap = 0;
+        for (malloc_heap_region* r = heap_regions; r->start != NULL && r->end != NULL; r++) {
+            info->total_init_heap += (uintptr_t)r->end - (uintptr_t)r->start;
+        }
     }
 
     if (offsetof(runtime_info_t, total_heap) + sizeof(info->total_heap) <= info->size) {
@@ -847,11 +866,12 @@ uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
     }
 
     if (offsetof(runtime_info_t, user_static_ram) + sizeof(info->user_static_ram) <= info->size) {
-        // info->user_static_ram = (uintptr_t)&_Stack_Init - (uintptr_t)new_heap_end;
+        info->user_static_ram = (uintptr_t)&platform_system_backup_ram_start - (uintptr_t)heap_regions[HEAP_REGION_SRAM].end;
+        // TODO: PSRAM static RAM
     }
 
     if (offsetof(runtime_info_t, largest_free_block_heap) + sizeof(info->largest_free_block_heap) <= info->size) {
-            info->largest_free_block_heap = pvPortLargestFreeBlock();
+        info->largest_free_block_heap = pvPortLargestFreeBlock();
     }
 
     return 0;
