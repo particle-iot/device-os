@@ -65,7 +65,7 @@ LDFLAGS += -u uxTopUsedPriority
 # assembler startup script
 ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
-ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=0
+ASFLAGS +=  -Wa,--defsym,SPARK_INIT_STARTUP=1
 ASFLAGS += -D__STACKSIZE__=$(MAIN_STACK_SIZE) -D__STACK_SIZE=$(MAIN_STACK_SIZE)
 #
 endif
