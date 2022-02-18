@@ -144,13 +144,13 @@ platform_km0_part1_module_info_flash_end   = platform_km0_part1_module_info_flas
 /* KM0 part1 dynalib location */
 platform_km0_part1_dynalib_table_flash_start = platform_km0_part1_module_info_flash_end;
 
-platform_backup_ram_persisted_size = 4K;
-platform_backup_ram_persisted_start = platform_km0_part1_flash_end;
-platform_backup_ram_persisted_end = platform_backup_ram_persisted_start + platform_backup_ram_persisted_size;
+platform_backup_ram_persisted_flash_size = 4K;
+platform_backup_ram_persisted_flash_start = platform_km0_part1_flash_end;
+platform_backup_ram_persisted_flash_end = platform_backup_ram_persisted_flash_start + platform_backup_ram_persisted_flash_size;
 
 /* KM0 image update info sector */
 platform_km0_image_update_size  = 4K;
-platform_km0_image_update_start = platform_backup_ram_persisted_end;
+platform_km0_image_update_start = platform_backup_ram_persisted_flash_end;
 platform_km0_image_update_end = platform_km0_image_update_start + platform_km0_image_update_size;
 
 /* Reserved for filesystem */
