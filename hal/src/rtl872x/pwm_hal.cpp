@@ -34,7 +34,7 @@ extern "C" {
 #define MAX_PWM_CHANNEL_NUM     KM4_PWM_CHANNEL_NUM
 
 #define RTL_XTAL_CLOCK_HZ       40000000 // XTAL frequency: 40MHz
-#define RTL_PWM_TIM_RESOLUTION  16 // 16-bits timer
+#define RTL_PWM_TIM_MAX_RESOLUTION  16 // 16-bits timer
 
 #define MAX_PRESCALER           255
 
@@ -187,14 +187,14 @@ void hal_pwm_write_with_frequency_ext(uint16_t pin, uint32_t value, uint32_t fre
     uint8_t instance = pinInfo->pwm_instance;
     uint8_t channel = pinInfo->pwm_channel;
 
-    pwmInfo[instance].values[channel] = value;
     pwmInfo[instance].desiredFreqs[channel] = frequency;
 
-    if (value > (uint32_t)(1 << pwmInfo[instance].resolution)) {
-        // FIXME: to not break the user experience we simply return.
-        // But can we instead round the value to the maximum value?
-        return;
+    // For example, if resolution is 8-bits and the value is of 255, we should set CCRx to 256
+    // to make sure we're outputing 100% duty cycle.
+    if (value >= ((uint32_t)(1 << pwmInfo[instance].resolution) - 1)) {
+        value = (uint32_t)(1 << pwmInfo[instance].resolution);
     }
+    pwmInfo[instance].values[channel] = value;
 
     if (pwmInfo[instance].state != PWM_STATE_ENABLED) {
         if (pwmTimBaseInit(&pwmInfo[instance]) != 0) {
@@ -231,7 +231,15 @@ void hal_pwm_write_with_frequency_ext(uint16_t pin, uint32_t value, uint32_t fre
     }
     
     // Set the pulse width
-	RTIM_CCRxSet(pwmInfo[instance].tim, value, channel);
+    if (value == (uint32_t)(1 << RTL_PWM_TIM_MAX_RESOLUTION)) {
+        // CCRx is a 16-bits register, round it to 0 to output 100% duty cycle.
+        value = 0;
+        RTIM_CCxPolarityConfig(pwmInfo[instance].tim, TIM_CCPolarity_Low, channel);
+        RTIM_CCRxSet(pwmInfo[instance].tim, value, channel);
+    } else {
+        RTIM_CCxPolarityConfig(pwmInfo[instance].tim, TIM_CCPolarity_High, channel);
+        RTIM_CCRxSet(pwmInfo[instance].tim, value, channel);
+    }
 
     // Start PWM
     RTIM_CCxCmd(pwmInfo[instance].tim, channel, TIM_CCx_Enable);
@@ -258,17 +266,28 @@ void hal_pwm_update_duty_cycle_ext(uint16_t pin, uint32_t value) {
     const uint8_t instance = pinInfo->pwm_instance;
     const uint32_t channel = pinInfo->pwm_channel;
 
-    if (value > (uint32_t)(1 << pwmInfo[instance].resolution)) {
-        value = (uint32_t)(1 << pwmInfo[instance].resolution);
-    }
-
     if (pwmInfo[instance].state != PWM_STATE_ENABLED) {
         if (pwmTimBaseInit(&pwmInfo[instance]) != 0) {
             return;
         }
     }
-    RTIM_CCRxSet(pwmInfo[instance].tim, value, channel);
+
+    // For example, if resolution is 8-bits and the value is of 255, we should set CCRx to 256
+    // to make sure we're outputing 100% duty cycle.
+    if (value >= ((uint32_t)(1 << pwmInfo[instance].resolution) - 1)) {
+        value = (uint32_t)(1 << pwmInfo[instance].resolution);
+    }
     pwmInfo[instance].values[channel] = value;
+
+    if (value == (uint32_t)(1 << RTL_PWM_TIM_MAX_RESOLUTION)) {
+        // CCRx is a 16-bits register, round it to 0 to output 100% duty cycle.
+        value = 0;
+        RTIM_CCxPolarityConfig(pwmInfo[instance].tim, TIM_CCPolarity_Low, channel);
+        RTIM_CCRxSet(pwmInfo[instance].tim, value, channel);
+    } else {
+        RTIM_CCxPolarityConfig(pwmInfo[instance].tim, TIM_CCPolarity_High, channel);
+        RTIM_CCRxSet(pwmInfo[instance].tim, value, channel);
+    }
 }
 
 void hal_pwm_update_duty_cycle(uint16_t pin, uint16_t value) {
@@ -289,7 +308,7 @@ uint32_t hal_pwm_get_frequency_ext(uint16_t pin) {
     if (!isPwmPin(pin)) {
         return 0;
     }
-    // All of the channels using the same TIM are outputing the same frequency.
+    // FIXME: All of the channels using the same TIM are outputing the same frequency.
     // And we should return the current actual output frequency
     const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
     const uint8_t instance = pinInfo->pwm_instance;
@@ -331,7 +350,7 @@ uint8_t hal_pwm_get_resolution(uint16_t pin) {
 }
 
 void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution) {
-    if (!isPwmPin(pin)) {
+    if (!isPwmPin(pin) || resolution > RTL_PWM_TIM_MAX_RESOLUTION) {
         return;
     }
     
