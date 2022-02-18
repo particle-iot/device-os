@@ -187,7 +187,7 @@ platform_system_part1_entry_flash_end   = platform_system_part1_entry_flash_star
 
 
 /* Monolithic firmware*/
-platform_monolithic_firmware_flash_start = platform_km0_part1_flash_end;
+platform_monolithic_firmware_flash_start = platform_km0_image_update_end;
 platform_monolithic_firmware_flash_end   = platform_reserved_flash_start;
 platform_monolithic_firmware_flash_size  = platform_monolithic_firmware_flash_end - platform_monolithic_firmware_flash_start;
 
