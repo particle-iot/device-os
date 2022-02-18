@@ -8,6 +8,7 @@ SECTIONS {
     rand_seed = 0x10000020;
     RBSS_UDELAY_DIV = 0x10000034;
     flash_init_para = 0x10000038;
+    flash_init_para_km0 = 0x801f8;
     GDMA_Reg = 0x10000098;
     PortA_IrqHandler = 0x1000009c;
     PortA_IrqData = 0x1000011c;

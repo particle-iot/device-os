@@ -45,9 +45,8 @@
 #include "flash_common.h"
 #include "concurrent_hal.h"
 #include "user_hal.h"
+#include "backup_ram_hal.h"
 
-#define BACKUP_REGISTER_NUM        10
-static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
 static volatile uint8_t rtos_started = 0;
 
 static struct Last_Reset_Info {
@@ -395,6 +394,8 @@ void HAL_Core_Setup(void) {
 
     hal_rtc_init();
 
+    hal_backup_ram_init();
+
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();
 #endif
@@ -527,33 +528,35 @@ void HAL_Core_Execute_Standby_Mode(void) {
 }
 
 bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
+    // NOTE: this is a no-op, BOOT_Reason() is normally used instead
     uint32_t reset_reason = SYSTEM_FLAG(RCC_CSR_SysFlag);
     if (reset_reason == 0xffffffff) {
-        // sd_power_reset_reason_get(&reset_reason);
+        reset_reason = BOOT_Reason();
     }
+    reset_reason = BOOT_Reason();
     switch(resetType) {
-        case PIN_RESET: {
-            // return reset_reason == NRF_POWER_RESETREAS_RESETPIN_MASK;
-        }
         case SOFTWARE_RESET: {
-            // return reset_reason == NRF_POWER_RESETREAS_SREQ_MASK;
+            return (reset_reason & (BIT_BOOT_KM4SYS_RESET_HAPPEN | BIT_BOOT_SYS_RESET_HAPPEN));
         }
         case WATCHDOG_RESET: {
-            // return reset_reason == NRF_POWER_RESETREAS_DOG_MASK;
+            return (reset_reason & (BIT_BOOT_KM4WDG_RESET_HAPPEN | BIT_BOOT_WDG_RESET_HAPPEN));
         }
         case POWER_MANAGEMENT_RESET: {
-            // SYSTEM OFF Mode
-            // return (reset_reason == NRF_POWER_RESETREAS_OFF_MASK) || (reset_reason == NRF_POWER_RESETREAS_LPCOMP_MASK);
+            // Deep sleep wake-up
+            return (reset_reason & BIT_BOOT_DSLP_RESET_HAPPEN);
         }
-        // If none of the reset sources are flagged, this indicates that
-        // the chip was reset from the on-chip reset generator,
-        // which will indicate a power-on-reset or a brownout reset.
-        case POWER_DOWN_RESET:
         case POWER_BROWNOUT_RESET: {
+            return (reset_reason & BIT_BOOT_BOD_RESET_HAPPEN);
+        }
+        // If none of the reset sources are flagged, this indicates
+        // a power-on reset or pin reset
+        case PIN_RESET:
+        case POWER_DOWN_RESET: {
             return reset_reason == 0;
         }
-        default:
+        default: {
             return false;
+        }
     }
     return false;
 }
@@ -824,29 +827,6 @@ bool HAL_Feature_Get(HAL_Feature feature) {
     return false;
 }
 
-int32_t HAL_Core_Backup_Register(uint32_t BKP_DR) {
-    if ((BKP_DR == 0) || (BKP_DR > BACKUP_REGISTER_NUM)) {
-        return -1;
-    }
-
-    return BKP_DR - 1;
-}
-
-void HAL_Core_Write_Backup_Register(uint32_t BKP_DR, uint32_t Data) {
-    int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
-    if (BKP_DR_Index != -1) {
-        backup_register[BKP_DR_Index] = Data;
-    }
-}
-
-uint32_t HAL_Core_Read_Backup_Register(uint32_t BKP_DR) {
-    int32_t BKP_DR_Index = HAL_Core_Backup_Register(BKP_DR);
-    if (BKP_DR_Index != -1) {
-        return backup_register[BKP_DR_Index];
-    }
-    return 0xFFFFFFFF;
-}
-
 extern size_t pvPortLargestFreeBlock();
 
 uint32_t HAL_Core_Runtime_Info(runtime_info_t* info, void* reserved)
@@ -899,8 +879,11 @@ int HAL_Core_Enter_Panic_Mode(void* reserved)
 
 #include "dtls_session_persist.h"
 #include <string.h>
+#include "platform_headers.h"
 
-SessionPersistDataOpaque session __attribute__((section(".backup_system")));
+// This is preserved across software resets, but cleared in deep sleep
+// or through an external reset
+retained_system SessionPersistDataOpaque session;
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
@@ -922,7 +905,6 @@ int HAL_System_Backup_Restore(size_t offset, void* buffer, size_t max_length, si
     }
     return -1;
 }
-
 
 #else
 

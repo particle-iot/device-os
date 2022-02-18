@@ -40,6 +40,8 @@ Modular firmware:                          Monolithic firmware:
 +--------------------------------+ 0x08060000 +----------------------------------+
 | Boot info                                                                      |
 +--------------------------------+ 0x0805F000 +----------------------------------+
+| Backup RAM persistent backup                                                   |
++--------------------------------+ 0x0805E000 +----------------------------------+
 |                                                                                |
 |                                                                                |
 | KM0 part1 RAM data                                                             |
@@ -130,7 +132,7 @@ platform_bootloader_module_info_flash_end   = platform_bootloader_module_info_fl
 
 
 /* KM0 part1 */
-platform_km0_part1_flash_size  = 300K;
+platform_km0_part1_flash_size  = 296K;
 platform_km0_part1_flash_start = platform_bootloader_flash_end;
 platform_km0_part1_flash_end   = platform_km0_part1_flash_start + platform_km0_part1_flash_size;
 
@@ -142,9 +144,13 @@ platform_km0_part1_module_info_flash_end   = platform_km0_part1_module_info_flas
 /* KM0 part1 dynalib location */
 platform_km0_part1_dynalib_table_flash_start = platform_km0_part1_module_info_flash_end;
 
+platform_backup_ram_persisted_flash_size = 4K;
+platform_backup_ram_persisted_flash_start = platform_km0_part1_flash_end;
+platform_backup_ram_persisted_flash_end = platform_backup_ram_persisted_flash_start + platform_backup_ram_persisted_flash_size;
+
 /* KM0 image update info sector */
 platform_km0_image_update_size  = 4K;
-platform_km0_image_update_start = platform_km0_part1_flash_end;
+platform_km0_image_update_start = platform_backup_ram_persisted_flash_end;
 platform_km0_image_update_end = platform_km0_image_update_start + platform_km0_image_update_size;
 
 /* Reserved for filesystem */

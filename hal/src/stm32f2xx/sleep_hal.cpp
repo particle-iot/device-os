@@ -30,7 +30,6 @@
 #include "interrupts_hal.h"
 #include "check.h"
 
-
 // anonymous namespace
 namespace {
 

@@ -15,21 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "core_hal.h"
-#include "hw_ticks.h"
-#include <limits.h>
-#include "rtl8721d.h"
-#include "km0_km4_ipc.h"
+/* Define caddr_t as char* */
+#include <sys/types.h>
+#include <errno.h>
+#include <malloc.h>
+/* Define abort() */
+#include <stdlib.h>
 
-void HAL_Delay_Microseconds(uint32_t uSec) {
-    DelayUs(uSec);
-}
+extern "C" {
 
-void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
-    HAL_Core_System_Reset();
-}
+void *__dso_handle = nullptr;
 
-int HAL_Core_Enter_Panic_Mode(void* reserved) {
-    __disable_irq();
-    return 0;
 }

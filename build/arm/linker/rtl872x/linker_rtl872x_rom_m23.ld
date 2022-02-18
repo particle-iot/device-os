@@ -1,5 +1,6 @@
 SECTIONS
 {
+    NewVectorTable = 0x80000;
     DelayNop = 0x14b5;
     DelayUs = 0x14c3;
     DelayMs = 0x1505;
@@ -118,6 +119,18 @@ SECTIONS
     irq_clear_pending = 0x567d;
     irq_register = 0x5699;
     irq_unregister = 0x5711;
+    GPIO_INTMode = 0x2d15;
+    GPIO_INTConfig = 0x2da1;
+    GPIO_INTHandler = 0x2dcd;
+    GPIO_Direction = 0x2e71;
+    GPIO_Init = 0x2e9d;
+    GPIO_DeInit = 0x2f19;
+    GPIO_ReadDataBit = 0x2f7d;
+    GPIO_WriteBit = 0x2f9d;
+    GPIO_PortDirection = 0x2fc9;
+    GPIO_PortRead = 0x2fed;
+    GPIO_PortWrite = 0x2ffd;
+    GPIO_UserRegIrq = 0x3015;
     PAD_DrvStrength = 0x3665;
     PAD_PullCtrl = 0x3685;
     PAD_CMD = 0x36b1;
@@ -143,6 +156,16 @@ SECTIONS
     RSIP_KEY_Request = 0x35e9;
     RSIP_MMU_Config = 0x3625;
     RSIP_MMU_Cmd = 0x3649;
+    SYSTIMER_Init = 0x3839;
+    SYSTIMER_TickGet = 0x3885;
+    SYSTIMER_GetPassTime = 0x3899;
+    mpu_enable = 0x3359;
+    mpu_disable = 0x3371;
+    mpu_init = 0x3385;
+    mpu_set_mem_attr = 0x33ad;
+    mpu_region_cfg = 0x3401;
+    mpu_entry_free = 0x34ed;
+    mpu_entry_alloc = 0x34f9;
 }
 
 /*SECTIONS

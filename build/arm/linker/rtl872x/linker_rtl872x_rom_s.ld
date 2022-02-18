@@ -110,6 +110,7 @@ SECTIONS {
     FLASH_StructInit = 0x10101aed;
     FLASH_Init = 0x10101ba1;
     flash_init_para = 0x10000038;
+    flash_init_para_km0 = 0x801f8;
     SYSTIMER_Init = 0x101031c5;
     SYSTIMER_TickGet = 0x10103215;
     SYSTIMER_GetPassTime = 0x10103225;

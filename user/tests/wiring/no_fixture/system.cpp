@@ -82,7 +82,7 @@ test(SYSTEM_03_user_backup_ram)
 
 #endif // defined(USER_BACKUP_RAM)
 
-#if !HAL_PLATFORM_NRF52840 // TODO
+#if HAL_PLATFORM_STM32F2XX // TODO
 
 #if defined(BUTTON1_MIRROR_SUPPORTED) && PLATFORM_ID != PLATFORM_P1
 static int s_button_clicks = 0;
@@ -130,7 +130,7 @@ test(SYSTEM_05_button_mirror_disable)
 }
 #endif // defined(BUTTON1_MIRROR_SUPPORTED)
 
-#endif // !HAL_PLATFORM_NRF52840
+#endif // HAL_PLATFORM_STM32F2XX
 
 // platform supports out of memory notifiation
 

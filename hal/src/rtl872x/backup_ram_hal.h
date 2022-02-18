@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,21 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "core_hal.h"
-#include "hw_ticks.h"
-#include <limits.h>
-#include "rtl8721d.h"
-#include "km0_km4_ipc.h"
+#pragma once
 
-void HAL_Delay_Microseconds(uint32_t uSec) {
-    DelayUs(uSec);
-}
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
-void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
-    HAL_Core_System_Reset();
-}
+int hal_backup_ram_init(void);
+int hal_backup_ram_sync(void);
 
-int HAL_Core_Enter_Panic_Mode(void* reserved) {
-    __disable_irq();
-    return 0;
+#ifdef __cplusplus
 }
+#endif // __cplusplus

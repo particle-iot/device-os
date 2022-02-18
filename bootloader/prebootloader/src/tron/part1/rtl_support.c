@@ -19,6 +19,8 @@
 #include "rtl_support.h"
 #include "rtl8721d_system.h"
 
+uint32_t tickless_debug = 0;
+
 /* The binary data of generated ram_retention.bin should copy into retention_ram_patch_array. 
    Then fill in the patch size at the second dword */
 const uint32_t retention_ram_patch_array[2][RETENTION_RAM_SYS_OFFSET / 4] = {
@@ -61,6 +63,7 @@ const uint32_t retention_ram_patch_array[2][RETENTION_RAM_SYS_OFFSET / 4] = {
 };
 
 uint32_t SDM32K_Read(uint32_t adress);
+void SOCPS_SNOOZE_Config(uint32_t bitmask, uint32_t status);
 
 extern uintptr_t link_retention_ram_start;
 extern CPU_PWR_SEQ SYSPLL_ON_SEQ[];
@@ -270,6 +273,21 @@ static void app_pmc_patch() {
     app_load_patch_to_retention(version);
 }
 
+static uint32_t app_mpu_nocache_init(void) {
+	mpu_region_config mpu_cfg;
+	uint32_t mpu_entry = 0;
+
+	mpu_entry = mpu_entry_alloc();
+	mpu_cfg.region_base = 0x00000000;
+	mpu_cfg.region_size = 0x000C4000;
+	mpu_cfg.xn = MPU_EXEC_ALLOW;
+	mpu_cfg.ap = MPU_UN_PRIV_RW;
+	mpu_cfg.sh = MPU_NON_SHAREABLE;
+	mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+	mpu_region_cfg(mpu_entry, &mpu_cfg);
+
+	return 0;
+}
 
 // Copy-paste from BOOT_FLASH_Image1()
 void rtlLowLevelInit() {
@@ -308,12 +326,17 @@ void rtlLowLevelInit() {
         BKUP_Set(BKUP_REG0, BIT_SW_SIM_RSVD);
     }
 
-    /* backup flash_init_para address for KM4 */
-    BKUP_Write(BKUP_REG7, (uint32_t)&flash_init_para);
-
     // Copy-paste from app_start()
 
     SystemCoreClockUpdate();
+
+    if(BIT_BOOT_DSLP_RESET_HAPPEN & BOOT_Reason()) {
+        SOCPS_DsleepWakeStatusSet(TRUE);
+    } else {
+        SOCPS_DsleepWakeStatusSet(FALSE);
+    }
+
+    pinmap_init();
 
     if (SOCPS_DsleepWakeStatusGet() == FALSE) {
         OSC131K_Calibration(30000); /* PPM=30000=3% *//* 7.5ms */
@@ -330,17 +353,25 @@ void rtlLowLevelInit() {
         temp &= ~BIT_DSLP_RETENTION_RAM_PATCH;
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1, temp);
         // Retention Ram reset
-        _memset((void*)RETENTION_RAM_BASE, 0, 1024);
+        // Only clear sys stuff used by the SDK and part of RRAM_TypeDef again used by the SDK
+        _memset((void*)RETENTION_RAM_BASE, 0, RETENTION_RAM_SYS_OFFSET + offsetof(RRAM_TypeDef, RRAM_USER_RSVD));
         assert_param(sizeof(RRAM_TypeDef) <= 0xB0);
-    } else {
-        SOCPS_DsleepWakeStatusSet(TRUE); /* KM4 boot check it */
     }
 
     OSC4M_Init();
     OSC2M_Calibration(OSC2M_CAL_CYC_128, 30000); /* PPM=30000=3% *//* 0.5 */
+
+    SYSTIMER_Init(); /* 0.2ms */
+
+    SOCPS_AONTimerCmd(DISABLE);
+
+    SOCPS_SNOOZE_Config((BIT_XTAL_REQ_SNOOZE_MSK | BIT_CAPTOUCH_SNOOZE_MSK), ENABLE);
     
     app_start_autoicg();
     app_pmc_patch();
+
+    mpu_init();
+    app_mpu_nocache_init();
 }
 
 // app_pmu_init()
@@ -407,7 +438,9 @@ void rtlPowerOnBigCore() {
     InterruptEn(IPC_IRQ_LP, 2);
     InterruptDis(UART_LOG_IRQ_LP);
 
-    km4_flash_highspeed_init();
+    if (SOCPS_DsleepWakeStatusGet() == FALSE) {
+        km4_flash_highspeed_init();
+    }
 
     /* Disable RSIP if it is enabled. Not needed after KM0 boot */
     // Note: it should be executed after km4_flash_highspeed_init(), otherwise, the flash
@@ -416,12 +449,6 @@ void rtlPowerOnBigCore() {
         uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
     }
-
-    // FIXME: This might not be working correctly?
-    // if (!SOCPS_DsleepWakeStatusGet()) {
-        /* backup flash_init_para address for KM4 */
-        BKUP_Write(BKUP_REG7, (uint32_t)&flash_init_para);
-    // }
 
     km4_boot_on();
 }
@@ -445,4 +472,13 @@ void ipc_send_message(uint8_t channel, uint32_t message) {
 uint32_t ipc_get_message(uint8_t channel) {
     // stub
     return 0;
+}
+
+uint32_t pmu_exec_sleep_hook_funs(void) {
+    // stub
+    return PMU_MAX;
+}
+
+void pmu_exec_wakeup_hook_funs(uint32_t nDeviceIdMax) {
+    // stub
 }

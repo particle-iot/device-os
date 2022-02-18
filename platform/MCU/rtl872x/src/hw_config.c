@@ -113,6 +113,9 @@ static void DWT_Init(void)
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
+extern uintptr_t platform_backup_ram_all_start[];
+extern uintptr_t platform_backup_ram_all_end;
+
 u32 app_mpu_nocache_init(void) {
     mpu_region_config mpu_cfg;
     u32 mpu_entry = 0;
@@ -169,6 +172,16 @@ u32 app_mpu_nocache_init(void) {
     mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_WB_T_RWA;
     mpu_region_cfg(mpu_entry, &mpu_cfg);
 
+    /* Mark "backup" (not really backup, just some pages in SRAM) RAM as no-cache */
+    mpu_entry = mpu_entry_alloc();
+    mpu_cfg.region_base = (uintptr_t)&platform_backup_ram_all_start;
+    mpu_cfg.region_size = (uintptr_t)&platform_backup_ram_all_end - (uintptr_t)&platform_backup_ram_all_start;
+    mpu_cfg.xn = MPU_EXEC_ALLOW;
+    mpu_cfg.ap = MPU_UN_PRIV_RW;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+    mpu_region_cfg(mpu_entry, &mpu_cfg);
+
     return 0;
 }
 
@@ -177,7 +190,9 @@ u32 app_mpu_nocache_init(void) {
  * @param  None
  * @retval None
  */
-volatile uint32_t rtlContinue = 0;
+
+extern FLASH_InitTypeDef flash_init_para_km0;
+
 void Set_System(void)
 {
     // FIXME: don't mess with MSP and IRQ table
@@ -194,8 +209,7 @@ void Set_System(void)
 
     // Disable DiagPrintf
     ConfigDebugClose = 1;
-
-    _memcpy((void *)&flash_init_para, (const void *)BKUP_Read(BKUP_REG7), sizeof(FLASH_InitTypeDef));
+    _memcpy((void *)&flash_init_para, &flash_init_para_km0, sizeof(FLASH_InitTypeDef));
 
     SystemCoreClockUpdate();
 
@@ -230,8 +244,6 @@ void Set_System(void)
 
     /* Configure the Button */
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
-
-    SYSTIMER_Init();
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     hw_rtl_init_psram();
