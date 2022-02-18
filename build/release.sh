@@ -411,7 +411,7 @@ elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 22
     if [ "$MODULAR" = "n" ]; then
         declare -a apps=("tinker-serial1-debugging" "tinker-serial-debugging")
     else
-        declare -a apps=("tinker")
+        declare -a apps=("tinker" "tinker-fqc")
     fi
 
     for app in ${apps[@]}; do
