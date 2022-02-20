@@ -111,6 +111,8 @@ public:
                 size_t id_len = deviceID.length();
 
                 SystemVersionInfo sys_ver;
+                sys_ver.size = sizeof(SystemVersionInfo);
+
                 system_version_info(&sys_ver, nullptr);
                 uint8_t mv = BYTE_N(sys_ver.versionNumber, 3);
                 String majorVer = String::format(".v%d", mv);
@@ -211,6 +213,8 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
     SECTION("[UDP] Server public address is updated with major system version v1") {
         mock_system_version = SYSTEM_VERSION_DEFAULT(1, 2, 3);
         SystemVersionInfo sys_ver;
+        sys_ver.size = sizeof(SystemVersionInfo);
+
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
 
@@ -235,6 +239,8 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(2, 3, 4);
         SystemVersionInfo sys_ver;
+        sys_ver.size = sizeof(SystemVersionInfo);
+
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
 
@@ -259,6 +265,8 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(255, 3, 4);
         SystemVersionInfo sys_ver;
+        sys_ver.size = sizeof(SystemVersionInfo);
+
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
 
@@ -315,6 +323,8 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(255, 2, 3);
         SystemVersionInfo sys_ver;
+        sys_ver.size = sizeof(SystemVersionInfo);
+    
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
 
@@ -363,6 +373,8 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(255, 2, 3);
         SystemVersionInfo sys_ver;
+        sys_ver.size = sizeof(SystemVersionInfo);
+
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
 

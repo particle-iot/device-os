@@ -722,6 +722,8 @@ size_t system_interpolate_cloud_server_hostname(const char* var, size_t var_len,
         size_t id_len = deviceID.length();
 
         SystemVersionInfo sys_ver;
+        sys_ver.size = sizeof(SystemVersionInfo);
+
         system_version_info(&sys_ver, nullptr);
         uint8_t mv = BYTE_N(sys_ver.versionNumber, 3);
         String majorVer = String::format(".v%d", mv);
