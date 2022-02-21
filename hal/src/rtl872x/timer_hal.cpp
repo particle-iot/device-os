@@ -53,6 +53,7 @@
 #include "hw_ticks.h"
 extern "C" {
 #include "rtl8721d.h"
+#include "rtl8721d_delay.h"
 }
 
 namespace {
@@ -70,6 +71,10 @@ constexpr IRQn_Type TIMER_IRQ[] = {
     TIMER4_IRQ,
     TIMER5_IRQ
 };
+
+inline uint64_t calibrationTickToTimeUs(uint64_t tick) {
+    return tick * 1000000 / 32768;
+}
 
 class RtlTimer {
 public:
@@ -109,6 +114,10 @@ public:
         RTIM_TimeBaseInit(TIMx[TIMER_INDEX], &initStruct, TIMx_irq[TIMER_INDEX], interruptHandler, (uint32_t)this);
         enableOverflowInterrupt();
         enabled_ = true;
+
+        // Update calibration time
+        lastCalibrationTick_ = SYSTIMER_TickGet();
+
         return SYSTEM_ERROR_NONE;
     }
 
@@ -259,6 +268,19 @@ private:
                 // Mark that interrupt was handled.
                 clearOverflowPendingEvent();
 
+                // NOTE: we use SYSTIMER for calibration (32bit counter, 1tick = 31us, timeout = 36.984h).
+                //       In case of interrupt is disabled for long time, in the every interrupt, we'll perform
+                //       a comparsion of how many overflows should have happened in the elapsed period of time.
+                uint64_t currCalibrationTick = SYSTIMER_TickGet();
+                // Add 0x1_0000_0000 in case of SYSTIMER overflow
+                uint64_t calibrationTickElaped = (0x100000000 + currCalibrationTick - lastCalibrationTick_) & 0xFFFFFFFF;
+                if (calibrationTickToTimeUs(calibrationTickElaped) >= US_PER_OVERFLOW) {
+                    // no matter how many overflows occur, there is always one timeout interrupt captured and
+                    // added into overflowCounter_, we should exclude it
+                    overflowCounter_ += (calibrationTickToTimeUs(calibrationTickElaped) / US_PER_OVERFLOW - 1) * 2;
+                }
+                lastCalibrationTick_ = currCalibrationTick;
+
                 // Result should be incremented. overflowCounter_ will be incremented after mutex is released.
             } else {
                 // Either overflow handling is not needed OR we acquired the mutex just after it was released.
@@ -301,6 +323,7 @@ private:
     volatile uint32_t overflowCounter_ = 0;
     volatile int64_t  usSystemTimeMicrosBase_ = 0;  ///< Base offset for Particle-specific microsecond counter
     volatile uint8_t mutex_ = 0;
+    volatile uint64_t lastCalibrationTick_ = 0;
 };
 
 RtlTimer* getInstance() {
