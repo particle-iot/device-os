@@ -138,19 +138,19 @@ typedef struct ctrl_request {
     void* channel; // Request channel (used internally)
 } ctrl_request;
 
-typedef enum system_control_acl {
-    SYSTEM_CONTROL_ACL_NONE = 0,
-    SYSTEM_CONTROL_ACL_ACCEPT = 1,
-    SYSTEM_CONTROL_ACL_DENY = 2
-} system_control_acl;
+typedef enum system_ctrl_acl {
+    SYSTEM_CTRL_ACL_NONE = 0,
+    SYSTEM_CTRL_ACL_ACCEPT = 1,
+    SYSTEM_CTRL_ACL_DENY = 2
+} system_ctrl_acl;
 
-typedef struct system_control_filter {
+typedef struct system_ctrl_filter {
     uint16_t size;
     uint8_t version;
     uint16_t req;
-    system_control_acl action;
-    struct system_control_filter* next;
-} system_control_filter;
+    system_ctrl_acl action;
+    struct system_ctrl_filter* next;
+} system_ctrl_filter;
 
 // Callback invoked for control requests that should be processed in the application thread
 typedef void(*ctrl_request_handler_fn)(ctrl_request* req);
@@ -175,8 +175,8 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved);
 // while sending the reply
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved);
 
-// The control requests are either filtered out or allowed based on the settings of the system_control_filter members
-int system_ctrl_set_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved);
+// The control requests are either filtered out or allowed based on the settings of the system_ctrl_filter members
+int system_ctrl_set_request_filter(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved);
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 

@@ -34,11 +34,6 @@ namespace particle {
 
 namespace system {
 
-typedef struct filterCtrlReq {
-        Vector<uint16_t> vecCtrlReq_;
-        bool acceptReq_;
-} filterCtrlReq;
-
 class SystemControl: public ControlRequestHandler {
 public:
     SystemControl();
@@ -59,11 +54,10 @@ public:
 
     static SystemControl* instance();
 
-    filterCtrlReq* getFilterCtrlReq();
-    system_control_acl getDefaultFilterAction();
-    system_control_filter* getFiltersList();
-    void setDefaultFilterAction(system_control_acl act);
-    void setFiltersList(system_control_filter* filters);
+    system_ctrl_acl getDefaultFilterAction();
+    system_ctrl_filter* getFiltersList();
+    void setDefaultFilterAction(system_ctrl_acl act);
+    void setFiltersList(system_ctrl_filter* filters);
 
 #if HAL_PLATFORM_BLE
     BleControlRequestChannel* getBleCtrlRequestChannel();
@@ -80,21 +74,21 @@ private:
 
     void processAppRequest(ctrl_request* req);
 
-    system_control_filter* filters_;
-    system_control_acl defaultFilterAction_;
+    system_ctrl_filter* filters_;
+    system_ctrl_acl defaultFilterAction_;
 };
 
-inline void SystemControl::setDefaultFilterAction(system_control_acl act) {
+inline void SystemControl::setDefaultFilterAction(system_ctrl_acl act) {
     defaultFilterAction_ = act;
 }
 
-inline system_control_acl SystemControl::getDefaultFilterAction() {
+inline system_ctrl_acl SystemControl::getDefaultFilterAction() {
     return defaultFilterAction_;
 }
 
-inline void SystemControl::setFiltersList(system_control_filter* filters) {
+inline void SystemControl::setFiltersList(system_ctrl_filter* filters) {
     // Clear/free() the existing filters_
-    system_control_filter* tmp;
+    system_ctrl_filter* tmp;
     while (filters_ != nullptr)
     {
         tmp = filters_;
@@ -104,7 +98,7 @@ inline void SystemControl::setFiltersList(system_control_filter* filters) {
     filters_ = filters;
 }
 
-inline system_control_filter* SystemControl::getFiltersList() {
+inline system_ctrl_filter* SystemControl::getFiltersList() {
     return filters_;
 }
 

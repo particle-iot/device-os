@@ -44,6 +44,7 @@
 #include "spark_wiring_vector.h"
 #include "enumclass.h"
 #include "system_control.h"
+#include "scope_guard.h"
 
 using spark::Vector;
 
@@ -96,22 +97,21 @@ enum class SystemControlRequestAclAction {
 };
 
 class SystemControlRequestAcl {
-    public:
-        SystemControlRequestAcl(ctrl_request_type type, SystemControlRequestAclAction action) {
-            type_ = type;
-            action_ = action;
-        };
+public:
+    SystemControlRequestAcl(ctrl_request_type type, SystemControlRequestAclAction action) {
+        type_ = type;
+        action_ = action;
+    };
+    ctrl_request_type type() const {
+        return type_;
+    }
+    SystemControlRequestAclAction action() const {
+        return action_;
+    }
 
-        ctrl_request_type type() const {
-            return type_;
-        }
-        SystemControlRequestAclAction action() const {
-            return action_;
-        }
-
-    private:
-        ctrl_request_type type_;
-        SystemControlRequestAclAction action_;
+private:
+    ctrl_request_type type_;
+    SystemControlRequestAclAction action_;
 };
 
 struct SleepResult {
@@ -883,44 +883,38 @@ public:
 
     int setControlRequestFilter(SystemControlRequestAclAction defaultAction, Vector<SystemControlRequestAcl> filters = {}) {
 		// Add requests and their actions to the control filter
-        system_control_acl default_action = (system_control_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(defaultAction);
-        system_control_filter* first = nullptr;
-        system_control_filter* current = nullptr;
+        system_ctrl_acl default_action = (system_ctrl_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(defaultAction);
+        system_ctrl_filter* first = nullptr;
+        system_ctrl_filter* current = nullptr;
 
-        for(int i=0; i < filters.size(); i++) {
-            if (first == nullptr) {
-                first = (system_control_filter*)malloc(sizeof(system_control_filter));
-                if (!first) {
-                    return SYSTEM_ERROR_NO_MEMORY;
-                }
-                first->size = sizeof(system_control_filter);
-                first->req = filters[i].type();
-                first->action = (system_control_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(filters[i].action());
-                first->next = nullptr;
-                current = first;
+        NAMED_SCOPE_GUARD(cleanup, {
+            while (first) {
+                auto tmp = first->next;
+                free(first);
+                first = tmp;
+            }
+        });
+
+        for (const auto& filter: filters) {
+            auto f = (system_ctrl_filter*)malloc(sizeof(system_ctrl_filter));
+            if (!f) {
+                 return SYSTEM_ERROR_NO_MEMORY;
+            }
+            memset(f, 0, sizeof(system_ctrl_filter));
+            f->size = sizeof(system_ctrl_filter);
+            f->req = filter.type();
+            f->action = (system_ctrl_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(filter.action());
+            if (!current) {
+                first = current = f;
             } else {
-                system_control_filter* temp = (system_control_filter*)malloc(sizeof(system_control_filter));
-                if (!temp) {
-                    return SYSTEM_ERROR_NO_MEMORY;
-                }
-                current->next = temp;
-                temp->size = sizeof(system_control_filter);
-                temp->req = filters[i].type();
-                temp->action = (system_control_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(filters[i].action());
-                temp->next = nullptr;
-                current = temp;
+                current->next = f;
+                current = f;
             }
         }
 
         auto ret = system_ctrl_set_request_filter(default_action, first, nullptr);
-        if (ret) {
-            system_control_filter* tmp;
-            while (first != nullptr)
-            {
-                tmp = first;
-                first = first->next;
-                free(tmp);
-            }
+        if (!ret) {
+            cleanup.dismiss();
         }
         return ret;
     }

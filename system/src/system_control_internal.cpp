@@ -114,27 +114,19 @@ void SystemControl::run() {
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
 
     // Filter requests based on the setControlRequestFilter system API
-    system_control_filter* filter = getFiltersList();
-    if (!filter) {
-        if (getDefaultFilterAction() == (system_control_acl)SYSTEM_CONTROL_ACL_DENY) {
-            setResult(req, SYSTEM_ERROR_NOT_ALLOWED);
-            LOG(TRACE, "Rejecting control request: %d", req->type);
-            return;
-        }
-    }
-    // search whether there is a matching entry in the list for the request type
+    system_ctrl_filter* filter = getFiltersList();
+
     while(filter != nullptr) {
         if (filter->req == req->type) {
-            if ((filter->action == (system_control_acl)SYSTEM_CONTROL_ACL_DENY) && (getDefaultFilterAction() == (system_control_acl)SYSTEM_CONTROL_ACL_ACCEPT)) {
-                setResult(req, SYSTEM_ERROR_NOT_ALLOWED);
-                LOG(TRACE, "Rejecting control request: %d", req->type);
-                return;
-            } else if ((filter->action == (system_control_acl)SYSTEM_CONTROL_ACL_ACCEPT) && (getDefaultFilterAction() == (system_control_acl)SYSTEM_CONTROL_ACL_DENY)) {
-                // we proceed with the request
-                break;
-            }
+            break;
         }
-        filter = filter->next;
+    }
+
+    auto action = filter ? filter->action : getDefaultFilterAction();
+
+    if (action == SYSTEM_CTRL_ACL_DENY) {
+        setResult(req, SYSTEM_ERROR_NOT_ALLOWED);
+        return;
     }
 
     switch (req->type) {
@@ -421,7 +413,7 @@ void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handl
     particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
-int system_ctrl_set_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved) {
+int system_ctrl_set_request_filter(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved) {
 
     SYSTEM_THREAD_CONTEXT_SYNC(system_ctrl_set_request_filter(default_action, filters, reserved));
 
@@ -448,7 +440,7 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
 }
 
-int system_ctrl_set_request_filter(system_control_acl default_action, system_control_filter* filters, void* reserved) {
+int system_ctrl_set_request_filter(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 

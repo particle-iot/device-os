@@ -56,12 +56,17 @@ int get_device_setup_code(char* code, size_t size) {
             memcpy(code, &serial[ret - size], size);
         } else {
             // Return a dummy setup code
-            memset(code, 'X', std::min(sizeof(setupCode), size));
+            size = std::min(sizeof(setupCode), size);
+            memset(code, 'X', size);
         }
     } else {
-        memcpy(code, setupCode, std::min(sizeof(setupCode), size));
+        size = std::min(sizeof(setupCode), size);
+        memcpy(code, setupCode, size);
     }
-    return 0;
+    if (size < sizeof(setupCode)) {
+        code[size] = '\0';
+    }
+    return (ret < 0) ? ret : size;
 }
 
 bool fetch_or_generate_setup_ssid(device_code_t* code) {
@@ -88,9 +93,9 @@ int get_device_name(char* buf, size_t size) {
     if (nameSize == 0 || nameSize > DEVICE_NAME_MAX_SIZE || !isPrintable(name, nameSize)) {
         // Get device setup code
         char code[HAL_SETUP_CODE_SIZE] = {};
-        ret = get_device_setup_code(code, sizeof(code));
-        if (ret < 0) {
-            return ret;
+        int codeSize = get_device_setup_code(code, sizeof(code));
+        if (codeSize < 0) {
+            return codeSize;
         }
         // Get platform name
         const char* const platform = PRODUCT_SERIES;
@@ -102,8 +107,8 @@ int get_device_name(char* buf, size_t size) {
         memcpy(name, platform, nameSize);
         name[0] = toupper(name[0]); // Ensure the first letter is capitalized
         name[nameSize++] = '-';
-        memcpy(name + nameSize, code, HAL_SETUP_CODE_SIZE);
-        nameSize += HAL_SETUP_CODE_SIZE;
+        memcpy(name + nameSize, code, codeSize);
+        nameSize += codeSize;
     }
     memcpy(buf, name, std::min(nameSize, size));
     // Ensure the output buffer is always null-terminated
