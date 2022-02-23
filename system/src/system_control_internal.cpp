@@ -120,6 +120,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         if (filter->req == req->type) {
             break;
         }
+        filter = filter->next;
     }
 
     auto action = filter ? filter->action : getDefaultFilterAction();

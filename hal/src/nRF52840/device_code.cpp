@@ -45,28 +45,30 @@ const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
 int get_device_setup_code(char* code, size_t size) {
     // Check if the device setup code is initialized in the DCT
     char setupCode[HAL_SETUP_CODE_SIZE] = {};
+    size_t codeSize = 0;
     int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, setupCode, sizeof(setupCode));
     if (ret < 0 || !particle::isPrintable(setupCode, sizeof(setupCode))) {
         // Check the OTP memory
         char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
         ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
-        if ((size_t)ret >= sizeof(setupCode) && (size_t)ret <= sizeof(serial)) {
+        if ((ret > 0) && ((size_t)ret >= sizeof(setupCode)) && ((size_t)ret <= sizeof(serial))) {
             // Use last characters of the serial number as the setup code
-            size = std::min(size, (size_t)HAL_SETUP_CODE_SIZE);
-            memcpy(code, &serial[ret - size], size);
+            codeSize = std::min(size, (size_t)HAL_SETUP_CODE_SIZE);
+            memcpy(code, &serial[ret - sizeof(setupCode)], codeSize);
         } else {
             // Return a dummy setup code
-            size = std::min(sizeof(setupCode), size);
-            memset(code, 'X', size);
+            codeSize = std::min(sizeof(setupCode), size);
+            memset(code, 'X', codeSize);
         }
     } else {
-        size = std::min(sizeof(setupCode), size);
-        memcpy(code, setupCode, size);
+        codeSize = std::min(sizeof(setupCode), size);
+        memcpy(code, setupCode, codeSize);
     }
-    if (size < sizeof(setupCode)) {
-        code[size] = '\0';
+    // Null terminate if size of the code is less than the size allocated by DCT
+    if (codeSize < sizeof(setupCode)) {
+        code[codeSize] = '\0';
     }
-    return (ret < 0) ? ret : size;
+    return (ret < 0) ? ret : codeSize;
 }
 
 bool fetch_or_generate_setup_ssid(device_code_t* code) {
