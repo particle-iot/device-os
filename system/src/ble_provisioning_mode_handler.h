@@ -35,11 +35,11 @@ public:
     int enter();
     int exit();
 
-    bool getProvModeStatus();
+    bool getProvModeStatus() const;
     void setProvModeStatus(bool enabled);
 
     int setCompanyId(uint16_t companyId);
-    uint16_t getCompanyId();
+    uint16_t getCompanyId() const;
 
 protected:
     BleProvisioningModeHandler();

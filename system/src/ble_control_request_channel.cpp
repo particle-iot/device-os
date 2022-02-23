@@ -712,7 +712,7 @@ int BleControlRequestChannel::setProvVerUuid(hal_ble_uuid_t* verUuid) {
     return SYSTEM_ERROR_NONE;
 }
 
-hal_ble_uuid_t BleControlRequestChannel::getBleCtrlSvcUuid() {
+hal_ble_uuid_t BleControlRequestChannel::getBleCtrlSvcUuid() const {
     return bleCtrlSvcUuid_;
 }
 

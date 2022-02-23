@@ -58,7 +58,7 @@ BleProvisioningModeHandler* BleProvisioningModeHandler::instance() {
   return &blelstmodehndlr;
 }
 
-bool BleProvisioningModeHandler::getProvModeStatus() {
+bool BleProvisioningModeHandler::getProvModeStatus() const {
     return provMode_;
 }
 
@@ -71,7 +71,7 @@ int BleProvisioningModeHandler::setCompanyId(uint16_t companyId) {
     return SYSTEM_ERROR_NONE;
 }
 
-uint16_t BleProvisioningModeHandler::getCompanyId() {
+uint16_t BleProvisioningModeHandler::getCompanyId() const {
     return customCompanyId_;
 }
 

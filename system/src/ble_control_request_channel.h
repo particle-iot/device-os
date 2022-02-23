@@ -69,7 +69,7 @@ public:
     int setProvRxUuid(hal_ble_uuid_t* rxUuid);
     int setProvVerUuid(hal_ble_uuid_t* verUuid);
 
-    hal_ble_uuid_t getBleCtrlSvcUuid();
+    hal_ble_uuid_t getBleCtrlSvcUuid() const;
 
 private:
     class HandshakeHandler;
