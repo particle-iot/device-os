@@ -232,9 +232,15 @@ SECTIONS
         _sbss = ALIGN(., 4);
         link_bss_location = ALIGN(., 4);
         __bss_start__ = _sbss;
+        /* Store the BSS sections for the RTOS first */
+        __rtos_capture_start = .;
+         *tasks.o(.bss COMMON .bss*)
+         *timers*.o(.bss COMMON .bss*)
+        __rtos_capture_end = .;
         *(.bss*)
         *(COMMON)
         link_bss_end = .;
+
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         _ebss = . ;
