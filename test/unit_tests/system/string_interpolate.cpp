@@ -110,7 +110,7 @@ public:
                 String deviceID = spark_deviceID();
                 size_t id_len = deviceID.length();
 
-                SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+                SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
                 system_version_info(&sys_ver, nullptr);
                 uint8_t mv = BYTE_N(sys_ver.versionNumber, 3);
@@ -164,7 +164,7 @@ SCENARIO("can interpolate a simple ID into a larger buffer")
     {
         Mocks mocks;
         mock_system_version = SYSTEM_VERSION_DEFAULT(4, 5, 6);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
         char buf[40];
         char expected_buf[] = "abc123412341234123412341234.v4.123";
         size_t written;
@@ -187,7 +187,7 @@ SCENARIO("can interpolate a simple ID into a buffer that is exactly the size req
     {
         Mocks mocks;
         mock_system_version = SYSTEM_VERSION_DEFAULT(4, 5, 6);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver ={ sizeof(SystemVersionInfo), 0, 0, {0} };
         char buf[35];
         char expected_buf[] = "abc123412341234123412341234.v4.123";
         size_t written;
@@ -211,7 +211,7 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
 
     SECTION("[UDP] Server public address is updated with major system version v1") {
         mock_system_version = SYSTEM_VERSION_DEFAULT(1, 2, 3);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
@@ -236,7 +236,7 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
     SECTION("[UDP-MESH] Server public address is updated with major system version v2") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(2, 3, 4);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
@@ -261,7 +261,7 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
     SECTION("[UDP-MESH] Server public address is updated with major system version v255") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(255, 3, 4);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
@@ -286,7 +286,7 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
     SECTION("[TCP] Server public address is NOT updated with major system version") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(9, 1, 1);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         char expected_buf[] = "device.spark.io";
         memcpy(&server_addr, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
@@ -304,7 +304,7 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
     SECTION("system_string_interpolate() returns when passed a null pointer") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(1, 2, 3);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         char tmphost[sizeof(server_addr.domain) + 32] = {};
         string_interpolate_source_t fn = system_interpolate_cloud_server_hostname;
@@ -318,7 +318,7 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
     SECTION("system_string_interpolate() cannot force a buffer overflow") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(255, 2, 3);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;
@@ -367,7 +367,7 @@ TEST_CASE("testing system_interpolate_cloud_server_hostname") {
     SECTION("system_string_interpolate() $id token can be anywhere in the string") {
 
         mock_system_version = SYSTEM_VERSION_DEFAULT(255, 2, 3);
-        SystemVersionInfo sys_ver = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo sys_ver = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         int major_version = get_major_version(&sys_ver);
         int major_version_size = get_major_version_size(major_version) + 2;

@@ -669,14 +669,14 @@ public:
 #endif
 
     String version() {
-        SystemVersionInfo info = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo info = { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         system_version_info(&info, nullptr);
         return String(info.versionString);
     }
 
     uint32_t versionNumber() {
-        SystemVersionInfo info = SYSTEM_VERSION_INFO_INIT;
+        SystemVersionInfo info =  { sizeof(SystemVersionInfo), 0, 0, {0} };
 
         system_version_info(&info, nullptr);
         return info.versionNumber;

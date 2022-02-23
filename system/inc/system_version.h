@@ -347,8 +347,6 @@ typedef struct __attribute__((packed)) SystemVersionInfo
 
 } SystemVersionInfo;
 
-#define SYSTEM_VERSION_INFO_INIT  { .size = sizeof(SystemVersionInfo) }
-
 int system_version_info(SystemVersionInfo* target, void* reserved);
 
 #ifdef	__cplusplus
