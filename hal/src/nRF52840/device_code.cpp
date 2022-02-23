@@ -64,8 +64,8 @@ int get_device_setup_code(char* code, size_t size) {
         codeSize = std::min(sizeof(setupCode), size);
         memcpy(code, setupCode, codeSize);
     }
-    // Null terminate if size of the code is less than the size allocated by DCT
-    if (codeSize < sizeof(setupCode)) {
+    // Null terminate if passed buffer is greater than actual size
+    if (codeSize < size) {
         code[codeSize] = '\0';
     }
     return (ret < 0) ? ret : codeSize;
