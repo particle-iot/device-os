@@ -7,7 +7,7 @@
             "compilers": "gcc-arm@10.2.1",
             "tools": "buildtools@1.1.1",
             "scripts": "buildscripts@1.10.0",
-            "debuggers": "openocd@0.11.2-adhoc6ea4372.0"
+            "debuggers": "openocd@0.11.0-3"
         }
     ],
     "platforms": [
@@ -184,10 +184,10 @@
             "x64": [
                 {
                     "name": "openocd",
-                    "version": "0.11.2-adhoc6ea4372.0",
+                    "version": "0.11.0-3",
                     "main": "./bin",
-                    "url": "https://binaries.particle.io/openocd/windows/x64/openocd-v0.11.2-adhoc6ea4372.0.tar.gz",
-                    "sha256": "790954533100e5bd6c2e22085c6c7b099176c51d798fde9895779e12562ee134"
+                    "url": "https://binaries.particle.io/openocd/windows/x64/openocd-v0.11.0-3.tar.gz",
+                    "sha256": "a8af6a5f399fb81ba240ebcd289fe95d6fd5b24bc444bdc395c0e86fa9eae2cc"
                 }
             ],
             "x86": []
@@ -196,10 +196,10 @@
             "x64": [
                 {
                     "name": "openocd",
-                    "version": "0.11.2-adhoc6ea4372.0",
+                    "version": "0.11.0-3",
                     "main": "./bin",
-                    "url": "https://binaries.particle.io/openocd/darwin/x64/openocd-v0.11.2-adhoc6ea4372.0.tar.gz",
-                    "sha256": "c2b30c3e933d69c7b9608c7814dbc998e775a6c104c144c567f2835e3f0d862c"
+                    "url": "https://binaries.particle.io/openocd/darwin/x64/openocd-v0.11.0-3.tar.gz",
+                    "sha256": "b2c334ffe1d1cbd9e715d1169163af797e263c553346f3944364307a3fee6f35"
                 }
             ],
             "x86": []
@@ -208,10 +208,10 @@
             "x64": [
                 {
                     "name": "openocd",
-                    "version": "0.11.2-adhoc6ea4372.0",
+                    "version": "0.11.0-3",
                     "main": "./bin",
-                    "url": "https://binaries.particle.io/openocd/linux/x64/openocd-v0.11.2-adhoc6ea4372.0.tar.gz",
-                    "sha256": "42272bd1f012af43bb2fd80656e9f08a04e97bc8ffdc2d1e3e5062ea46ce657e"
+                    "url": "https://binaries.particle.io/openocd/linux/x64/openocd-v0.11.0-3.tar.gz",
+                    "sha256": "0c8ec8810c589e955aae8603cb93987896d2fd49cffd5e26a19d22cfde53f6da"
                 }
             ],
             "x86": []
