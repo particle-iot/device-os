@@ -58,7 +58,7 @@ SCENARIO("Backoff period should increase exponentially from 1s to 128s", "[syste
 SCENARIO("System version info is retrieved", "[system,version]") {
 
     SystemVersionInfo info = {};
-    sys_ver.size = sizeof(SystemVersionInfo);
+    info.size = sizeof(SystemVersionInfo);
 
     int size = system_version_info(&info, nullptr);
     REQUIRE(size==sizeof(info));
