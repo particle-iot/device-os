@@ -35,7 +35,7 @@ get_filename_component(CURRENT_TEST_DIRECTORY_FULL "${CMAKE_CURRENT_SOURCE_DIR}"
 target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
   PRIVATE HAL_PLATFORM_FILESYSTEM=1
-  PRIVATE TEST_DIRECTORY="${CURRENT_TEST_DIRECTORY_FULL}"
+  PRIVATE FIXTURES_DIRECTORY="${CURRENT_TEST_DIRECTORY_FULL}/fixtures"
 )
 
 # Set compiler flags specific to target

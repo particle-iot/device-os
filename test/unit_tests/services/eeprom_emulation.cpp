@@ -1185,7 +1185,7 @@ TEST_CASE("Migration from legacy format", "[eeprom]")
     TestEEPROM eeprom;
 
     // Load EEPROM extracted from a Photon into memory
-    loadEEPROMFromFile(TEST_DIRECTORY "/eeprom_page1.bin", eeprom, PageBase1, PageSize1);
+    loadEEPROMFromFile(FIXTURES_DIRECTORY "/eeprom_page1.bin", eeprom, PageBase1, PageSize1);
     eeprom.store.eraseSector(PageBase2);
 
     eeprom.init();
@@ -1246,8 +1246,8 @@ TEST_CASE("Recover from data corruption", "[eeprom]")
     TestEEPROM eeprom;
 
     // Load corrupted EEPROM extracted from a Photon into memory
-    loadEEPROMFromFile(TEST_DIRECTORY "/corrupted_eeprom_page1.bin", eeprom, PageBase1, PageSize1);
-    loadEEPROMFromFile(TEST_DIRECTORY "/corrupted_eeprom_page2.bin", eeprom, PageBase2, PageSize2);
+    loadEEPROMFromFile(FIXTURES_DIRECTORY "/corrupted_eeprom_page1.bin", eeprom, PageBase1, PageSize1);
+    loadEEPROMFromFile(FIXTURES_DIRECTORY "/corrupted_eeprom_page2.bin", eeprom, PageBase2, PageSize2);
 
     eeprom.init();
 
