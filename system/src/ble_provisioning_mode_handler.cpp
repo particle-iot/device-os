@@ -18,7 +18,7 @@
 #include "logging.h"
 LOG_SOURCE_CATEGORY("system.listen.ble")
 
-#include "ble_listening_mode_handler.h"
+#include "ble_provisioning_mode_handler.h"
 
 #if HAL_PLATFORM_BLE
 
@@ -27,6 +27,8 @@ LOG_SOURCE_CATEGORY("system.listen.ble")
 #include "scope_guard.h"
 #include "device_code.h"
 #include "service_debug.h"
+#include "core_hal.h"
+#include "system_control_internal.h"
 
 namespace {
 
@@ -35,7 +37,7 @@ using namespace particle::ble;
 
 } // unnamed
 
-BleListeningModeHandler::BleListeningModeHandler()
+BleProvisioningModeHandler::BleProvisioningModeHandler()
         : preAdvParams_(),
           preTxPower_(0),
           prePpcp_(),
@@ -43,13 +45,37 @@ BleListeningModeHandler::BleListeningModeHandler()
           preConnected_(false),
           preAutoAdv_(BLE_AUTO_ADV_ALWAYS),
           userAdv_(false),
-          restoreUserConfig_(false) {
+          restoreUserConfig_(false),
+          provMode_(false),
+          customCompanyId_(PARTICLE_COMPANY_ID) {
 }
 
-BleListeningModeHandler::~BleListeningModeHandler() {
+BleProvisioningModeHandler::~BleProvisioningModeHandler() {
 }
 
-int BleListeningModeHandler::constructControlRequestAdvData() {
+BleProvisioningModeHandler* BleProvisioningModeHandler::instance() {
+  static BleProvisioningModeHandler blelstmodehndlr;
+  return &blelstmodehndlr;
+}
+
+bool BleProvisioningModeHandler::getProvModeStatus() const {
+    return provMode_;
+}
+
+void BleProvisioningModeHandler::setProvModeStatus(bool enabled) {
+    provMode_ = enabled;
+}
+
+int BleProvisioningModeHandler::setCompanyId(uint16_t companyId) {
+    customCompanyId_ = companyId;
+    return SYSTEM_ERROR_NONE;
+}
+
+uint16_t BleProvisioningModeHandler::getCompanyId() const {
+    return customCompanyId_;
+}
+
+int BleProvisioningModeHandler::constructControlRequestAdvData() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
     Vector<uint8_t> tempAdvData;
@@ -60,8 +86,8 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_FLAGS), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append(BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE), SYSTEM_ERROR_NO_MEMORY);
 
-    char devName[32] = {};
-    CHECK(get_device_name(devName, sizeof(devName)));
+    char devName[BLE_MAX_DEV_NAME_LEN + 1] = {};
+    CHECK(hal_ble_gap_get_device_name(devName, sizeof(devName), nullptr));
 
     // Complete local name
     CHECK_TRUE(tempAdvData.append(strlen(devName) + 1), SYSTEM_ERROR_NO_MEMORY);
@@ -69,25 +95,35 @@ int BleListeningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append((uint8_t*)devName, strlen(devName)), SYSTEM_ERROR_NO_MEMORY);
 
     uint16_t platformID = PLATFORM_ID;
-    uint16_t companyID = PARTICLE_COMPANY_ID;
+    uint16_t companyID = getCompanyId();
 
     // Manufacturing specific data
-    CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + 1), SYSTEM_ERROR_NO_MEMORY);
+    char code[HAL_SETUP_CODE_SIZE] = {};
+    CHECK(get_device_setup_code(code, sizeof(code)));
+    CHECK_TRUE(tempAdvData.append(sizeof(platformID) + sizeof(companyID) + sizeof(code) + 1), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_MANUFACTURER_SPECIFIC_DATA), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append((uint8_t*)&companyID, 2), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append((uint8_t*)&platformID, sizeof(platformID)), SYSTEM_ERROR_NO_MEMORY);
+    CHECK_TRUE(tempAdvData.append((uint8_t*)&code, sizeof(code)), SYSTEM_ERROR_NO_MEMORY);
 
-    // Particle Control Request Service 128-bits UUID
-    CHECK_TRUE(tempSrData.append(sizeof(BLE_CTRL_REQ_SVC_UUID) + 1), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
-    CHECK_TRUE(tempSrData.append(BLE_CTRL_REQ_SVC_UUID, sizeof(BLE_CTRL_REQ_SVC_UUID)), SYSTEM_ERROR_NO_MEMORY);
-
+    // Particle Control Request Service UUID. This will be overwritten by user's provisioning service ID if available
+    // FIXME: Addressing only 128-bit complete and 16-bit complete UUIDs
+    hal_ble_uuid_t bleCrtlReqSvcUuid = SystemControl::instance()->getBleCtrlRequestChannel()->getBleCtrlSvcUuid();
+    if (bleCrtlReqSvcUuid.type == BLE_UUID_TYPE_128BIT) {
+        CHECK_TRUE(tempSrData.append(sizeof(bleCrtlReqSvcUuid.uuid128) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(bleCrtlReqSvcUuid.uuid128, sizeof(bleCrtlReqSvcUuid.uuid128)), SYSTEM_ERROR_NO_MEMORY);
+    } else {
+        CHECK_TRUE(tempSrData.append(sizeof(bleCrtlReqSvcUuid.uuid16) + 1), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append(BLE_SIG_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE), SYSTEM_ERROR_NO_MEMORY);
+        CHECK_TRUE(tempSrData.append((uint8_t*)&bleCrtlReqSvcUuid.uuid16, BLE_SIG_UUID_16BIT_LEN), SYSTEM_ERROR_NO_MEMORY);
+    }
     ctrlReqAdvData_ = std::move(tempAdvData);
     ctrlReqSrData_ = std::move(tempSrData);
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::cacheUserConfigurations() {
+int BleProvisioningModeHandler::cacheUserConfigurations() {
     LOG_DEBUG(TRACE, "Cache user's BLE configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -118,7 +154,7 @@ int BleListeningModeHandler::cacheUserConfigurations() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::restoreUserConfigurations() {
+int BleProvisioningModeHandler::restoreUserConfigurations() {
     LOG_DEBUG(TRACE, "Restore user's BLE configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -133,7 +169,7 @@ int BleListeningModeHandler::restoreUserConfigurations() {
     CHECK(hal_ble_gap_set_tx_power(preTxPower_, nullptr));
     CHECK(hal_ble_gap_set_auto_advertise(preAutoAdv_, nullptr));
 
-    // It is advertising when entering listening mode.
+    // It is advertising when entering listening/provisioning mode.
     if (preAdvertising_) {
         if (!hal_ble_gap_is_connected(nullptr, nullptr)) {
             CHECK(hal_ble_gap_start_advertising(nullptr));
@@ -141,7 +177,7 @@ int BleListeningModeHandler::restoreUserConfigurations() {
         // Currently it is connected. When disconnected, use previous automatic advertising scheme.
         return SYSTEM_ERROR_NONE;
     }
-    // It is connected but not advertising when entering listening mode.
+    // It is connected but not advertising when entering listening/provisioning mode.
     if (preConnected_) {
         if (!hal_ble_gap_is_connected(nullptr, nullptr)) {
             if (preAutoAdv_ == BLE_AUTO_ADV_ALWAYS) {
@@ -152,7 +188,7 @@ int BleListeningModeHandler::restoreUserConfigurations() {
         }
         return SYSTEM_ERROR_NONE;
     }
-    // It is neither connected nor advertising when entering listening mode.
+    // It is neither connected nor advertising when entering listening/provisioning mode.
     if (hal_ble_gap_is_connected(nullptr, nullptr)) {
         if (preAutoAdv_ == BLE_AUTO_ADV_ALWAYS) {
             // Do not automatically start advertising when disconnected.
@@ -167,7 +203,7 @@ int BleListeningModeHandler::restoreUserConfigurations() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::applyControlRequestConfigurations() {
+int BleProvisioningModeHandler::applyControlRequestConfigurations() {
     LOG_DEBUG(TRACE, "Apply BLE control request configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -212,7 +248,7 @@ int BleListeningModeHandler::applyControlRequestConfigurations() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::applyUserAdvData() {
+int BleProvisioningModeHandler::applyUserAdvData() {
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE((preAdvertising_ || preConnected_), SYSTEM_ERROR_INVALID_STATE);
     if (!userAdv_) {
@@ -238,7 +274,7 @@ int BleListeningModeHandler::applyUserAdvData() {
     return userAdv_ ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_INVALID_STATE;
 }
 
-int BleListeningModeHandler::applyControlRequestAdvData() {
+int BleProvisioningModeHandler::applyControlRequestAdvData() {
     LOG_DEBUG(TRACE, "Apply control request advertising data set.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
@@ -260,7 +296,7 @@ int BleListeningModeHandler::applyControlRequestAdvData() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::enter() {
+int BleProvisioningModeHandler::enter() {
     exited_ = false;
 
     // Do not allow other thread to modify the BLE configurations.
@@ -293,7 +329,7 @@ int BleListeningModeHandler::enter() {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleListeningModeHandler::exit() {
+int BleProvisioningModeHandler::exit() {
     if (exited_) {
         return SYSTEM_ERROR_NONE;
     }
@@ -327,11 +363,11 @@ int BleListeningModeHandler::exit() {
     return SYSTEM_ERROR_NONE;
 }
 
-void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, void* context) {
-    if (BleListeningModeHandler::exited_) {
+void BleProvisioningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, void* context) {
+    if (BleProvisioningModeHandler::exited_) {
         return;
     }
-    const auto handler = (BleListeningModeHandler*)context;
+    const auto handler = (BleProvisioningModeHandler*)context;
     switch (event->type) {
         case BLE_EVT_ADV_STOPPED: {
             LOG_DEBUG(TRACE, "BLE_EVT_ADV_STOPPED");
@@ -352,6 +388,6 @@ void BleListeningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, voi
     }
 }
 
-bool BleListeningModeHandler::exited_ = true;
+bool BleProvisioningModeHandler::exited_ = true;
 
 #endif /* HAL_PLATFORM_BLE */

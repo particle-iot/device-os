@@ -90,9 +90,16 @@ SystemControl::SystemControl() :
 
 int SystemControl::init() {
 #if HAL_PLATFORM_BLE
-    const int ret = bleChannel_.init();
-    if (ret != 0) {
-        return ret;
+    // BleControlRequestChannel::init() should be called only once
+    // as characteristic UUIDs are currently called only once. If BLE prov mode
+    // is enabled, we need to make sure to call characteristic UUIDs in prov
+    // mode system calls for the first time instead of here.
+    // See system_ble_prov_mode()
+    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        const int ret = bleChannel_.init();
+        if (ret != 0) {
+            return ret;
+        }
     }
 #endif
     return 0;
@@ -105,6 +112,24 @@ void SystemControl::run() {
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
+
+    // Filter requests based on the setControlRequestFilter system API
+    system_ctrl_filter* filter = getFiltersList();
+
+    while(filter != nullptr) {
+        if (filter->req == req->type) {
+            break;
+        }
+        filter = filter->next;
+    }
+
+    auto action = filter ? filter->action : getDefaultFilterAction();
+
+    if (action == SYSTEM_CTRL_ACL_DENY) {
+        setResult(req, SYSTEM_ERROR_NOT_ALLOWED);
+        return;
+    }
+
     switch (req->type) {
     case CTRL_REQUEST_DEVICE_ID: {
         setResult(req, control::config::getDeviceId(req));
@@ -389,6 +414,16 @@ void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handl
     particle::system::SystemControl::instance()->setResult(req, result, handler, data);
 }
 
+int system_ctrl_set_request_filter(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved) {
+
+    SYSTEM_THREAD_CONTEXT_SYNC(system_ctrl_set_request_filter(default_action, filters, reserved));
+
+    particle::system::SystemControl::instance()->setDefaultFilterAction(default_action);
+    particle::system::SystemControl::instance()->setFiltersList(filters);
+
+    return 0;
+}
+
 #else // !SYSTEM_CONTROL_ENABLED
 
 // System API
@@ -404,6 +439,10 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved) {
 }
 
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved) {
+}
+
+int system_ctrl_set_request_filter(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 #endif // !SYSTEM_CONTROL_ENABLED

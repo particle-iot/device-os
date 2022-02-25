@@ -301,12 +301,18 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
 }
 
 test(SYSTEM_08_system_event_subscription) {
+    SCOPE_GUARD({
+        System.off(all_events);
+    });
     int lastEvent = 0;
     auto subscription = System.on(cloud_status, [&lastEvent](system_event_t ev) {
         lastEvent = ev;
     });
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(lastEvent, (int)cloud_status);
 
     System.off(subscription);
@@ -314,6 +320,9 @@ test(SYSTEM_08_system_event_subscription) {
     lastEvent = 0;
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(lastEvent, 0);
 
     subscription = System.on(cloud_status, [&lastEvent](system_event_t ev) {
@@ -321,6 +330,9 @@ test(SYSTEM_08_system_event_subscription) {
     });
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(lastEvent, (int)cloud_status);
 
     System.off(cloud_status);
@@ -328,6 +340,9 @@ test(SYSTEM_08_system_event_subscription) {
     lastEvent = 0;
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(lastEvent, 0);
 }
 
@@ -336,12 +351,19 @@ int sLastEvent = 0;
 } // anonymous
 
 test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
+    SCOPE_GUARD({
+        System.off(all_events);
+    });
     auto handler = [](system_event_t ev, int data, void*) {
         sLastEvent = ev;
     };
-    System.on(cloud_status, handler);
+    assertTrue((bool)System.on(cloud_status, handler));
+    assertTrue(Particle.connected());
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(sLastEvent, (int)cloud_status);
 
     // System.off(event)
@@ -350,11 +372,17 @@ test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
     sLastEvent = 0;
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(sLastEvent, 0);
 
-    System.on(cloud_status, handler);
+    assertTrue((bool)System.on(cloud_status, handler));
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(sLastEvent, (int)cloud_status);
 
     // System.off(event, handler)
@@ -363,11 +391,17 @@ test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
     sLastEvent = 0;
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(sLastEvent, 0);
 
-    System.on(cloud_status, handler);
+    assertTrue((bool)System.on(cloud_status, handler));
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(sLastEvent, (int)cloud_status);
 
     // System.off(handler)
@@ -376,11 +410,17 @@ test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
     sLastEvent = 0;
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(sLastEvent, 0);
 
-    System.on(cloud_status, handler);
+    assertTrue((bool)System.on(cloud_status, handler));
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(sLastEvent, (int)cloud_status);
 
     // System.off(event)
@@ -389,5 +429,8 @@ test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
     sLastEvent = 0;
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
     assertEqual(sLastEvent, 0);
 }

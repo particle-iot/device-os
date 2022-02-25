@@ -34,6 +34,7 @@ LOG_SOURCE_CATEGORY("system.listen")
 #include "check.h"
 #include "system_event.h"
 #include "scope_guard.h"
+#include "core_hal.h"
 
 using particle::LEDStatus;
 
@@ -62,6 +63,10 @@ ListeningModeHandler* ListeningModeHandler::instance() {
 }
 
 int ListeningModeHandler::enter(unsigned int timeout) {
+    if (HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        return SYSTEM_ERROR_NOT_ALLOWED;
+    }
+
     if (active_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -78,7 +83,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     timestampStarted_ = timestampUpdate_ = HAL_Timer_Get_Milli_Seconds();
 
 #if HAL_PLATFORM_BLE
-    bleHandler_.enter();
+    BleProvisioningModeHandler::instance()->enter();
 #endif /* HAL_PLATFORM_BLE */
 
 #if (!HAL_PLATFORM_WIFI || (HAL_PLATFORM_WIFI && HAL_PLATFORM_WIFI_SCAN_ONLY))
@@ -120,7 +125,7 @@ int ListeningModeHandler::exit() {
     system_notify_event(setup_end, HAL_Timer_Get_Milli_Seconds() - timestampStarted_);
 
 #if HAL_PLATFORM_BLE
-    bleHandler_.exit();
+    BleProvisioningModeHandler::instance()->exit();
 #endif /* HAL_PLATFORM_BLE */
 
     return 0;

@@ -40,6 +40,13 @@
 #include <mutex>
 #include "spark_wiring_system_power.h"
 #include "system_sleep_configuration.h"
+#include "system_control.h"
+#include "spark_wiring_vector.h"
+#include "enumclass.h"
+#include "system_control.h"
+#include "scope_guard.h"
+
+using spark::Vector;
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID != PLATFORM_GCC
 #define SYSTEM_HW_TICKS 1
@@ -81,6 +88,30 @@ enum WakeupReason {
     WAKEUP_REASON_RTC = 2,
     WAKEUP_REASON_PIN_OR_RTC = 3,
     WAKEUP_REASON_UNKNOWN = 4
+};
+
+enum class SystemControlRequestAclAction {
+    NONE = 0,
+    ACCEPT = 1,
+    DENY = 2
+};
+
+class SystemControlRequestAcl {
+public:
+    SystemControlRequestAcl(ctrl_request_type type, SystemControlRequestAclAction action) {
+        type_ = type;
+        action_ = action;
+    };
+    ctrl_request_type type() const {
+        return type_;
+    }
+    SystemControlRequestAclAction action() const {
+        return action_;
+    }
+
+private:
+    ctrl_request_type type_;
+    SystemControlRequestAclAction action_;
 };
 
 struct SleepResult {
@@ -849,6 +880,44 @@ public:
     }
 
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
+
+    int setControlRequestFilter(SystemControlRequestAclAction defaultAction, Vector<SystemControlRequestAcl> filters = {}) {
+		// Add requests and their actions to the control filter
+        system_ctrl_acl default_action = (system_ctrl_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(defaultAction);
+        system_ctrl_filter* first = nullptr;
+        system_ctrl_filter* current = nullptr;
+
+        NAMED_SCOPE_GUARD(cleanup, {
+            while (first) {
+                auto tmp = first->next;
+                free(first);
+                first = tmp;
+            }
+        });
+
+        for (const auto& filter: filters) {
+            auto f = (system_ctrl_filter*)malloc(sizeof(system_ctrl_filter));
+            if (!f) {
+                 return SYSTEM_ERROR_NO_MEMORY;
+            }
+            memset(f, 0, sizeof(system_ctrl_filter));
+            f->size = sizeof(system_ctrl_filter);
+            f->req = filter.type();
+            f->action = (system_ctrl_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(filter.action());
+            if (!current) {
+                first = current = f;
+            } else {
+                current->next = f;
+                current = f;
+            }
+        }
+
+        auto ret = system_ctrl_set_request_filter(default_action, first, nullptr);
+        if (!ret) {
+            cleanup.dismiss();
+        }
+        return ret;
+    }
 
 private:
     SystemSleepResult systemSleepResult_;
