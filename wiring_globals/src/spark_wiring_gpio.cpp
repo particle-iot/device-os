@@ -192,11 +192,13 @@ int32_t digitalRead(hal_pin_t pin)
  */
 int32_t analogRead(hal_pin_t pin)
 {
+#if PLATFORM_ID != PLATFORM_P2
   // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
   if(pin < FIRST_ANALOG_PIN)
   {
     pin = pin + FIRST_ANALOG_PIN;
   }
+#endif
 
   // Safety check
   if( !pinAvailable(pin) ) {

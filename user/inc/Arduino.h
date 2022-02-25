@@ -91,7 +91,14 @@ inline void yield() {
 #endif
 
 #ifndef analogInputToDigitalPin
-#define analogInputToDigitalPin(p)  (((p < TOTAL_ANALOG_PINS) && (p >= 0)) ? (p) + FIRST_ANALOG_PIN : -1)
+#if PLATFORM_ID == PLATFORM_P2
+#define analogInputToDigitalPin(p)  ((p) == 3 ? 0 : \
+                                    ((p) == 4 ? 1 : \
+                                    ((p) == 5 ? 14 : \
+                                    ((((p) < TOTAL_ANALOG_PINS) && ((p) >= 0)) ? (p) + FIRST_ANALOG_PIN : -1))))
+#else
+#define analogInputToDigitalPin(p)  ((((p) < TOTAL_ANALOG_PINS) && ((p) >= 0)) ? (p) + FIRST_ANALOG_PIN : -1)
+#endif
 #endif
 
 // XXX

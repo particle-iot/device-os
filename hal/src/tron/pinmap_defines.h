@@ -17,9 +17,9 @@
 
 #pragma once
 
-#define TOTAL_PINS          28
+#define TOTAL_PINS          27
 #define TOTAL_ANALOG_PINS   6
-#define FIRST_ANALOG_PIN    12
+#define FIRST_ANALOG_PIN    11
 
 // Digital pins
 #define D0                  0
@@ -44,54 +44,53 @@
 #define D19                 19
 #define D20                 20
 #define D21                 21
-#define D22                 22
 
-#define S0                  D16
-#define S1                  D17
-#define S2                  D18
-#define S3                  D19
-#define S4                  D20
-#define S5                  D21
-#define S6                  D22
+#define S0                  D15
+#define S1                  D16
+#define S2                  D17
+#define S3                  D18
+#define S4                  D19
+#define S5                  D20
+#define S6                  D21
 
 // Analog pins
-#define A0                  D12
-#define A1                  D13
-#define A2                  D14
+#define A0                  D11
+#define A1                  D12
+#define A2                  D13
 #define A3                  D0
 #define A4                  D1
-#define A5                  D15
+#define A5                  D14
 
 // RGB and Button
-#define RGBR                23
-#define RGBG                24
-#define RGBB                25
-#define BTN                 26
+#define RGBR                22
+#define RGBG                23
+#define RGBB                24
+#define BTN                 25
 
 // SPI, Shared with UART1
-#define SS                  D5
-#define SCK                 D4
-#define MISO                D3
-#define MOSI                D2
+#define SS                  S3
+#define SCK                 S2
+#define MISO                S1
+#define MOSI                S0
 
-#define SS1                 A2
-#define SCK1                A3
-#define MISO1               A4
-#define MOSI1               A5
+#define SS1                 D5
+#define SCK1                D4
+#define MISO1               D3
+#define MOSI1               D2
 
 // I2C
 #define SDA                 D0
 #define SCL                 D1
 
 // UART
-#define TX                  D9
-#define RX                  D10
+#define TX                  D8
+#define RX                  D9
 // Shared with SPI1
 #define TX1                 D4
 #define RX1                 D5
 #define CTS1                D3
 #define RTS1                D2
 
-#define WKP                 D11
+#define WKP                 D10
 
-#define ANTSW               27
+#define ANTSW               26
