@@ -16,24 +16,6 @@ cd $ci_dir
 
 . test_setup.sh
 
-cd $testDir/unit || die "Hey where's the ./unit directory?"
-
-# clear out target directory
-[ ! -e obj ] || rm -rf obj
-
-target_file=obj/runner
-
-make all
-make_unit_tests=$?
-
-if [ -f "$target_file" ]; then
-
-    : ${TRAVIS_BUILD_NUMBER:="0"}
-
-    make run > obj/TEST-${TRAVIS_BUILD_NUMBER}.xml
-    make_unit_tests=$?
-fi
-
 # Run CMake-based unit tests
 cd $unit_test_dir
 rm -rf .build/*
@@ -44,7 +26,7 @@ make all test coverage
 
 cmake_unit_tests=$?
 
-if [[ ${make_unit_tests} -eq 0 ]] && [[ ${cmake_unit_tests} -eq 0 ]]; then
+if [[ ${cmake_unit_tests} -eq 0 ]]; then
     echo Yay! Unit tests PASSED!
 else
     echo Bummer. Unit tests FAILED.

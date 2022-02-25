@@ -375,7 +375,7 @@ int system_info_free_unstable(hal_system_info_t* info, void* reserved) {
 
 bool append_system_version_info(Appender* appender)
 {
-    bool result = appender->append("system firmware version: " stringify(SYSTEM_VERSION_STRING)
+    bool result = appender->append("system firmware version: " PP_STR(SYSTEM_VERSION_STRING)
 #if  defined(SYSTEM_MINIMAL)
 " minimal"
 #endif
