@@ -340,12 +340,10 @@ extern "C" {
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
-    uint16_t size = sizeof(SystemVersionInfo);
+    uint16_t size;
     uint16_t reserved;      // use this if you need to.
     uint32_t versionNumber;
     char     versionString[20];
-
-
 
 } SystemVersionInfo;
 
