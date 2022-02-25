@@ -20,8 +20,6 @@
 
 #if HAL_PLATFORM_BLE
 
-SYSTEM_THREAD(ENABLED);
-
 // Dot not enter listening mode based on the flag
 test(LISTENING_00_DISABLE_LISTENING_MODE) {
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
@@ -55,11 +53,11 @@ test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
 test(LISTENING_03_ENABLE_BLE_PROV_MODE_WHEN_FLAG_SET) {
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
     BLE.provisioningMode(true);
-    HAL_Delay_Milliseconds(100);
+    delay(100);
     assertTrue(BLE.getProvisioningStatus());
     assertTrue(BLE.advertising());
     BLE.provisioningMode(false);
-    HAL_Delay_Milliseconds(100);
+    delay(100);
     assertFalse(BLE.getProvisioningStatus());
     assertFalse(BLE.advertising());
 }
@@ -67,35 +65,37 @@ test(LISTENING_03_ENABLE_BLE_PROV_MODE_WHEN_FLAG_SET) {
 test(LISTENING_04_ENABLE_BLE_PROV_MODE_WHEN_FLAG_CLEARED) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     assertEqual(BLE.provisioningMode(true), (int)SYSTEM_ERROR_NOT_ALLOWED);
-    HAL_Delay_Milliseconds(100);
+    delay(100);
     assertFalse(BLE.getProvisioningStatus());
     assertFalse(BLE.advertising());
     BLE.provisioningMode(false);
-    HAL_Delay_Milliseconds(100);
+    delay(100);
     assertFalse(BLE.getProvisioningStatus());
     assertFalse(BLE.advertising());
 }
 
 test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
+    SCOPE_GUARD({
+        System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    });
     Network.listen();
-    HAL_Delay_Milliseconds(1000); // Time for system thread to enter listening mode
+    delay(1000); // Time for system thread to enter listening mode
     assertTrue(Network.listening());
     SCOPE_GUARD({
         // Make sure we restore cloud connection after exiting this test because we entered listening mode
         Particle.connect();
         waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
         assertTrue(Particle.connected());
-       });
+    });
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
-    HAL_Delay_Milliseconds(1500); // Time for system thread to process the flag
+    delay(1500); // Time for system thread to process the flag
     assertFalse(Network.listening());
     BLE.provisioningMode(true);
-    HAL_Delay_Milliseconds(100);
+    delay(100);
     assertTrue(BLE.getProvisioningStatus());
     BLE.provisioningMode(false);
-    HAL_Delay_Milliseconds(100);
+    delay(100);
     assertFalse(BLE.getProvisioningStatus());
-    System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
 }
 
 #endif
