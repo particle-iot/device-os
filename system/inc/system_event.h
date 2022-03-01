@@ -28,7 +28,7 @@ extern "C" {
 
 
 typedef uint64_t system_event_t;
-typedef void (system_event_handler_t)(system_event_t event, int param, void* pointer);
+typedef void (system_event_handler_t)(system_event_t event, int param, void* pointer, void* context);
 
 
 enum SystemEvents {
@@ -50,16 +50,18 @@ enum SystemEvents {
     cloud_status = 1<<6,             // parameter is 0 for disconnected, 1 for connecting, 8 for connected, 9 for disconnecting. other values reserved.
     button_status = 1<<7,            // parameter is >0 for time pressed in ms (when released) or 0 for just pressed.
     firmware_update = 1<<8,          // parameter is 0 for begin, 1 for OTA complete, -1 for error.
-    firmware_update_pending = 1<<9,
+    firmware_update_pending = 1<<9,	// notifies the application that an OTA update is pending and will be delivered when updates are enabled
     reset_pending = 1<<10,          // notifies that the system would like to shutdown (System.resetPending() return true)
-    reset = 1<<11,                  // notifies that the system will now reset on return from this event.
+    // todo - rename to system_reset, or otherwise avoid common name clashes
+	reset = 1<<11,                  // notifies that the system will now reset on return from this event.
     button_click = 1<<12,           // generated for every click in series - data is number of clicks in the lower 4 bits.
     button_final_click = 1<<13,     // generated for last click in series - data is the number of clicks in the lower 4 bits.
     time_changed = 1<<14,
     low_battery = 1<<15,            // generated when low battery condition is detected
     battery_state = 1<<16,
     power_source = 1<<17,
-	out_of_memory = 1<<18,			// heap request was not satisfied
+    out_of_memory = 1<<18,          // heap request was not satisfied
+    ble_prov_mode = 1<<19,          // ble provisioning mode
 
     all_events = 0xFFFFFFFFFFFFFFFF
 };
@@ -90,29 +92,53 @@ enum SystemEventsParam {
     // Cloud connection status
     cloud_status_disconnected       = 0,
     cloud_status_connecting         = 1,
+    cloud_status_handshake          = 2,
+    cloud_status_session_resume     = 3,
     cloud_status_connected          = 8,
     cloud_status_disconnecting      = 9,
 
     time_changed_manually = 0,
-    time_changed_sync = 1
+    time_changed_sync = 1,
+
+    // BLE provisioning mode
+    ble_prov_mode_connected = 0,
+    ble_prov_mode_disconnected = 1,
+    ble_prov_mode_handshake_failed = 2,
+    ble_prov_mode_handshake_done = 3
+
 };
 
+/**
+ * Flags altering the behavior of the `system_notify_event()` function.
+ */
+enum SystemNotifyEventFlag {
+    NOTIFY_SYNCHRONOUSLY = 0x01
+};
+
+#define SYSTEM_EVENT_CONTEXT_VERSION        (2)
+
+typedef struct SystemEventContext {
+    uint16_t version;
+    uint16_t size;
+    void* callable;
+    void (*destructor)(void* callable);
+} SystemEventContext;
 
 /**
  * Subscribes to the system events given
  * @param events    One or more system events. Multiple system events are specified using the + operator.
  * @param handler   The system handler function to call.
- * @param reserved  Set to NULL.
+ * @param context   Context along with the handler function.
  * @return {@code 0} if the system event handlers were registered successfully. Non-zero otherwise.
  */
-int system_subscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved);
+int system_subscribe_event(system_event_t events, system_event_handler_t* handler, SystemEventContext* context);
 
 /**
  * Unsubscribes a handler from the given events.
  * @param handler   The handler that will be unsubscribed.
- * @param reserved  Set to NULL.
+ * @param context   Event subscription context.
  */
-void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved);
+void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, const SystemEventContext* context);
 
 void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1);
 
@@ -122,9 +148,11 @@ void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1);
 
 
 /**
- * Notifies all subscribers about an event.
+ * Notifies all subscribers about an event. It is safe to call this function from an ISR.
  * @param event
  * @param data
  * @param pointer
+ * @param flags Event flags as defined by the `SystemNotifyEventFlag` enum.
  */
-void system_notify_event(system_event_t event, uint32_t data=0, void* pointer=nullptr, void (*fn)(void* data)=nullptr, void* fndata=nullptr);
+void system_notify_event(system_event_t event, uint32_t data = 0, void* pointer = nullptr,
+        void (*fn)(void* data) = nullptr, void* fndata = nullptr, unsigned flags = 0);

@@ -25,12 +25,12 @@
 #define	HAL_DYNALIB_CELLULAR_H
 
 #include "dynalib.h"
+#include "hal_platform.h"
 
-#if PLATFORM_ID == 10
+#if PLATFORM_ID == 10 || HAL_PLATFORM_CELLULAR
 
 #ifdef DYNALIB_EXPORT
 #include "cellular_hal.h"
-#include "cellular_internal.h"
 #include "inet_hal.h"
 #include "net_hal.h"
 #endif
@@ -54,7 +54,7 @@ DYNALIB_FN(13, hal_cellular, cellular_cancel, void(bool, bool, void*))
 DYNALIB_FN(14, hal_cellular, HAL_NET_SetNetWatchDog, uint32_t(uint32_t))
 DYNALIB_FN(15, hal_cellular, inet_gethostbyname, int(const char*, uint16_t, HAL_IPAddress*, network_interface_t, void*))
 DYNALIB_FN(16, hal_cellular, inet_ping, int(const HAL_IPAddress*, network_interface_t, uint8_t, void*))
-DYNALIB_FN(17, hal_cellular, cellular_signal, cellular_result_t(CellularSignalHal*, cellular_signal_t*))
+DYNALIB_FN(17, hal_cellular, cellular_signal, cellular_result_t(void*, cellular_signal_t*))
 DYNALIB_FN(18, hal_cellular, cellular_command, cellular_result_t(_CALLBACKPTR_MDM, void*, system_tick_t, const char*, ...))
 DYNALIB_FN(19, hal_cellular, cellular_data_usage_set, cellular_result_t(CellularDataHal*,void*))
 DYNALIB_FN(20, hal_cellular, cellular_data_usage_get, cellular_result_t(CellularDataHal*,void*))
@@ -66,15 +66,38 @@ DYNALIB_FN(25, hal_cellular, HAL_USART3_Handler_Impl, void(void*))
 DYNALIB_FN(26, hal_cellular, HAL_NET_SetCallbacks, void(const HAL_NET_Callbacks*, void*))
 DYNALIB_FN(27, hal_cellular, cellular_pause, cellular_result_t(void*))
 DYNALIB_FN(28, hal_cellular, cellular_resume, cellular_result_t(void*))
-DYNALIB_FN(29, hal_cellular, cellular_imsi_to_network_provider, cellular_result_t(void*))
-DYNALIB_FN(30, hal_cellular, cellular_network_provider_data_get, const CellularNetProvData(void*))
+DYNALIB_FN(29, hal_cellular, cellular_sim_to_network_provider, cellular_result_t(void*))
+DYNALIB_FN(30, hal_cellular, cellular_network_provider_data_get, CellularNetProvData(void*))
 DYNALIB_FN(31, hal_cellular, cellular_lock, int(void*))
 DYNALIB_FN(32, hal_cellular, cellular_unlock, void(void*))
 DYNALIB_FN(33, hal_cellular, cellular_set_power_mode, void(int mode, void* reserved))
+
+#if !HAL_PLATFORM_NCP
 DYNALIB_FN(34, hal_cellular, cellular_connect, cellular_result_t(void*))
 DYNALIB_FN(35, hal_cellular, cellular_disconnect, cellular_result_t(void*))
+#define BASE_CELL_IDX 36 // Base index for all subsequent functions
+#else // HAL_PLATFORM_NCP
+DYNALIB_FN(34, hal_cellular, cellular_set_active_sim, cellular_result_t(int, void*))
+DYNALIB_FN(35, hal_cellular, cellular_get_active_sim, cellular_result_t(int*, void*))
+DYNALIB_FN(36, hal_cellular, cellular_credentials_clear, int(void*))
+#define BASE_CELL_IDX 37 // Base index for all subsequent functions
+#endif // !HAL_PLATFORM_NCP
+
+DYNALIB_FN(BASE_CELL_IDX + 0, hal_cellular, cellular_global_identity, cellular_result_t(CellularGlobalIdentity*, void*))
+DYNALIB_FN(BASE_CELL_IDX + 1, hal_cellular, cellular_registration_timeout_set, cellular_result_t(system_tick_t, void*))
+
+#if !HAL_PLATFORM_NCP
+DYNALIB_FN(BASE_CELL_IDX + 2, hal_cellular, cellular_process, cellular_result_t(void*, void*))
+DYNALIB_FN(BASE_CELL_IDX + 3, hal_cellular, cellular_powered, bool(void*))
+#define BASE_CELL_IDX1 (BASE_CELL_IDX + 4)
+#else
+#define BASE_CELL_IDX1 (BASE_CELL_IDX + 2)
+#endif // !HAL_PLATFORM_NCP
+
+DYNALIB_FN(BASE_CELL_IDX1 + 0, hal_cellular, cellular_urcs, cellular_result_t(bool, void*))
+
 DYNALIB_END(hal_cellular)
 
-#endif  // PLATFORM_ID == 10
+#endif  // PLATFORM_ID == 10 || HAL_PLATFORM_CELLULAR
 
 #endif  // HAL_DYNALIB_CELLULAR_H

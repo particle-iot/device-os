@@ -1,14 +1,23 @@
 #include "platforms.h"
+#include "ota_flash_hal.h"
+#include "flash_mal.h"
+#include "module_info.h"
+#include "newlib_impure.h"
 
 #include <string.h>
 
-extern void** dynalib_location_user;
-
-static bool module_user_part_validated = false;
+#define MODULE_VERSION_V1_3_0 1320
 
 extern void malloc_enable(uint8_t);
 extern void malloc_set_heap_start(void*);
+extern void malloc_set_heap_end(void*);
 extern void* malloc_heap_start();
+
+extern void** dynalib_location_user;
+extern const module_bounds_t module_system_part1;
+extern const module_bounds_t module_system_part3;
+
+static bool module_user_part_validated = false;
 
 /**
  * Determines if the user module is present and valid.
@@ -26,9 +35,15 @@ bool is_user_module_valid()
 void system_part2_pre_init() {
     // initialize dependent modules
 #if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
-    module_system_part3_pre_init();
-#endif
+    // Starting from Device OS 1.2.0, module_system_part3_pre_init() on Electron returns the
+    // start address of the module's static RAM region. Device OS 1.3.0 relocates that region
+    // so that its start address also signifies the end address of the heap. The same applies
+    // to module_system_part1_pre_init() on Photon
+    void* const heap_end = module_system_part3_pre_init();
     module_system_part1_pre_init();
+#else
+    void* const heap_end = module_system_part1_pre_init();
+#endif
 
     HAL_Core_Config();
 
@@ -46,9 +61,9 @@ void system_part2_pre_init() {
     }
 
     if (bootloader_validated && is_user_module_valid()) {
-        void* new_heap_top = module_user_pre_init();
-        if (new_heap_top>malloc_heap_start()) {
-            malloc_set_heap_start(new_heap_top);
+        void* heap_start = module_user_pre_init();
+        if (heap_start > malloc_heap_start()) {
+            malloc_set_heap_start(heap_start);
         }
     }
     else {
@@ -56,10 +71,23 @@ void system_part2_pre_init() {
         set_system_mode(SAFE_MODE);
     }
 
+    // Override the end address of the heap depending on the module version of the system part 3
+    // on Electron and system part 1 on Photon
+#if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
+    const uintptr_t module_addr = module_system_part3.start_address;
+#else
+    const uintptr_t module_addr = module_system_part1.start_address;
+#endif
+    const module_info_t* const module_info = FLASH_ModuleInfo(FLASH_INTERNAL, module_addr, NULL);
+    if (module_info->module_version >= MODULE_VERSION_V1_3_0 && heap_end > malloc_heap_start()) {
+        malloc_set_heap_end(heap_end);
+    }
+
     malloc_enable(1);
 
-    // now call any C++ constructors in this module's dependencies
+    newlib_impure_ptr_change_module(_impure_ptr, sizeof(struct _reent), NEWLIB_VERSION_NUM);
 
+    // now call any C++ constructors in this module's dependencies
 #if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
     module_system_part3_init();
 #endif
@@ -111,6 +139,13 @@ void* module_system_part2_pre_init() {
     }
     memset(&link_bss_location, 0, link_bss_size);
     return link_end_of_static_ram;
+}
+
+void newlib_impure_ptr_change_module(struct _reent* r, size_t size, uint32_t version) {
+#if defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
+    module_system_part3_newlib_impure_set(r, size, version, NULL);
+#endif // defined(MODULE_HAS_SYSTEM_PART3) && MODULE_HAS_SYSTEM_PART3
+    module_system_part1_newlib_impure_set(r, size, version, NULL);
 }
 
 __attribute__((externally_visible, section(".module_pre_init"))) const void* system_part2_pre_init_fn = (const void*)system_part2_pre_init;

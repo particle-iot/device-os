@@ -30,6 +30,8 @@
 #define PARTICLE_WIRING_ARDUINO_COMPATIBILTY 0
 #endif
 
+#include <chrono>
+
 #include "system_version.h"
 
 #ifdef SPARK_PLATFORM
@@ -53,6 +55,8 @@
 #include "spark_wiring_i2c.h"
 #include "spark_wiring_servo.h"
 #include "spark_wiring_wifi.h"
+#include "spark_wiring_ble.h"
+#include "spark_wiring_nfc.h"
 #include "spark_wiring_network.h"
 #include "spark_wiring_client.h"
 #include "spark_wiring_startup.h"
@@ -86,6 +90,7 @@
 
 using namespace spark;
 using namespace particle;
+using namespace std::literals::chrono_literals;
 
 #include "spark_wiring_arduino.h"
 

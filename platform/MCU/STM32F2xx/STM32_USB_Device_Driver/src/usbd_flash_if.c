@@ -30,6 +30,15 @@
 #include "usbd_dfu_mal.h"
 #include "usb_bsp.h"
 #include "hw_config.h"
+#include "platforms.h"
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1
+#include "module_info.h"
+#include "dct.h"
+#include "ota_flash_hal.h"
+
+extern const module_bounds_t module_system_part1;
+extern const module_bounds_t module_system_part2;
+#endif
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -154,6 +163,17 @@ uint16_t FLASH_If_Write(uint32_t Add, uint32_t Len)
 
   /* Lock the internal flash */
   FLASH_Lock();
+
+  /* This make sure that after the system parts being updated,
+   * the address of DCT functions that resided in system parts are up to date,
+   * otherwise, bootloader cannot access the DCT after updating the system parts without a reset. */
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+  if (Add >= module_system_part1.start_address && Add < module_system_part2.end_address) {
+      dct_reload_functions();
+  }
+#endif
+#endif
 
   if (status != FLASH_COMPLETE) return MAL_FAIL;
 

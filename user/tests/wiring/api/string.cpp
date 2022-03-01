@@ -6,7 +6,7 @@ test(api_string) {
     API_COMPILE(String());
     API_COMPILE(String("abc"));
     API_COMPILE(String("abc", 3));
-    API_COMPILE(String(s)); // Copy constructor
+    API_COMPILE(String dummy(s)); // Copy constructor
     API_COMPILE(String(std::move(s))); // Move constructor
     API_COMPILE(String('a'));
     API_COMPILE(String(123, (unsigned)10 /* base */)); // FIXME: Ambiguous call
@@ -127,6 +127,6 @@ test(api_string) {
 
 test(api_string_constructor_printable) {
     IPAddress address;
-    API_COMPILE(String(address));
+    API_COMPILE(String dummy(address));
     (void)address;
 }

@@ -30,14 +30,6 @@
 #include "wlan_hal.h"
 #include <memory>
 
-#if PLATFORM_ID>2
-#define SETUP_OVER_SERIAL1 1
-#endif
-
-#ifndef SETUP_OVER_SERIAL1
-#define SETUP_OVER_SERIAL1 0
-#endif
-
 typedef int (*ConnectCallback)( void* data,
                                 const char *ssid,
                                 const char *password,
@@ -65,14 +57,21 @@ struct WiFiSetupConsoleConfig : SystemSetupConsoleConfig
 };
 #endif
 
-template<typename Config> class SystemSetupConsole
+class SystemSetupConsoleBase {
+public:
+    SystemSetupConsoleBase() = default;
+    virtual ~SystemSetupConsoleBase() = default;
+    virtual void loop(void) = 0;
+};
+
+template<typename Config> class SystemSetupConsole : public SystemSetupConsoleBase
 {
 public:
-    SystemSetupConsole(Config& config);
-    ~SystemSetupConsole();
+    SystemSetupConsole(const Config& config);
+    virtual ~SystemSetupConsole();
     virtual void loop(void);
 protected:
-    virtual void exit()=0;
+    virtual void exit();
     /**
      * Handle a character received over serial.
      */
@@ -85,7 +84,7 @@ protected:
      */
     virtual bool handle_peek(char c);
 
-    Config& config;
+    Config config;
     void print(const char *s);
     void read_line(char *dst, int max_len);
     void read_multiline(char *dst, int max_len);
@@ -94,12 +93,6 @@ protected:
 
 private:
     USBSerial serial;
-#if SETUP_OVER_SERIAL1
-    bool serial1Enabled;
-    uint8_t magicPos;                   // how far long the magic key we are
-    // Opaque pointer
-    void* tester;
-#endif
 };
 
 #if Wiring_WiFi
@@ -108,8 +101,8 @@ class WiFiSetupConsole : public SystemSetupConsole<WiFiSetupConsoleConfig>
     using super = SystemSetupConsole<WiFiSetupConsoleConfig>;
 
 public:
-    WiFiSetupConsole(WiFiSetupConsoleConfig& config);
-    ~WiFiSetupConsole();
+    WiFiSetupConsole(const WiFiSetupConsoleConfig& config);
+    virtual ~WiFiSetupConsole();
 
 protected:
     virtual void handle(char c) override;
@@ -141,14 +134,14 @@ class CellularSetupConsole : public SystemSetupConsole<CellularSetupConsoleConfi
     using super = SystemSetupConsole<CellularSetupConsoleConfig>;
 
 public:
-    CellularSetupConsole(CellularSetupConsoleConfig& config);
-    ~CellularSetupConsole();
+    CellularSetupConsole(const CellularSetupConsoleConfig& config);
+    virtual ~CellularSetupConsole();
 
     virtual void exit() override;
     virtual void handle(char c) override;
 };
 
-#endif
+#endif /* Wiring_Cellular */
 
 #ifdef __cplusplus
 extern "C" {

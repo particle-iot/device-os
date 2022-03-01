@@ -19,6 +19,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
+
 #include "protocol_defs.h"
 #include "file_transfer.h"
 #include "message_channel.h"
@@ -75,12 +79,22 @@ private:
 	 * Marks the indices of missed chunks not yet requested.
 	 */
 	chunk_index_t missed_chunk_index;
+	/**
+	 * Number of chunks received in the current flight of chunks (between UpdateBegin|UpdateDone and UpdateDone)
+	 */
+	chunk_index_t chunk_count;
+
 	unsigned short chunk_index;
 	unsigned short chunk_size;
 
 	uint8_t* bitmap;
 
 	Callbacks* callbacks;
+
+	bool fast_ota_override;
+	bool fast_ota_value;
+
+	system_tick_t update_begin_;
 
 protected:
 
@@ -110,7 +124,11 @@ protected:
 public:
 
 	ChunkedTransfer() :
-			updating(false), callbacks(nullptr)
+			updating(false),
+			callbacks(nullptr),
+			fast_ota_override(false),
+			fast_ota_value(true),
+			update_begin_(0)
 	{
 	}
 
@@ -132,9 +150,15 @@ public:
 
 	ProtocolError handle_update_done(token_t token, Message& message, MessageChannel& channel);
 
-	ProtocolError send_missing_chunks(MessageChannel& channel, size_t count);
+	ProtocolError send_missing_chunks(MessageChannel& channel, size_t& count);
 
 	ProtocolError idle(MessageChannel& channel);
+
+	void set_fast_ota(unsigned data)
+	{
+		fast_ota_value = (data > 0) ? true : false;
+		fast_ota_override = true;
+	}
 
 	bool is_updating()
 	{
@@ -156,3 +180,5 @@ public:
 
 }
 }
+
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3

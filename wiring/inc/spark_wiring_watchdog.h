@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "spark_wiring_thread.h"
 #include "delay_hal.h"
 #include "timer_hal.h"
@@ -49,6 +51,7 @@ public:
 	{
 		checkin();
 	}
+	ApplicationWatchdog(std::chrono::milliseconds ms, std::function<void(void)> fn, unsigned stack_size=DEFAULT_STACK_SIZE) : ApplicationWatchdog(ms.count(), fn, stack_size) {}
 
     // This constuctor helps to resolve overloaded function types, such as System.reset(), which is not always
     // possible in case of std::function
@@ -56,6 +59,7 @@ public:
         ApplicationWatchdog(timeout_ms, std::function<void()>(fn), stack_size)
     {
     }
+    ApplicationWatchdog(std::chrono::milliseconds ms, void (*fn)(), unsigned stack_size=DEFAULT_STACK_SIZE) : ApplicationWatchdog(ms.count(), fn, stack_size) {}
 
 	bool isComplete()
 	{

@@ -16,7 +16,7 @@ const module_bounds_t* get_module_bounds(uint8_t module_func, uint8_t module_ind
 }
 
 const module_info_t* get_module_info(const module_bounds_t* bounds) {
-    const module_info_t* module = FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address);
+    const module_info_t* module = FLASH_ModuleInfo(FLASH_INTERNAL, bounds->start_address, NULL);
     // Check primary module info
     if (!module || module->platform_id != PLATFORM_ID || module->module_function != bounds->module_function ||
             module->module_index != bounds->module_index) {
@@ -62,3 +62,31 @@ int get_main_module_version() {
     }
     return module->module_version;
 }
+
+#ifdef MONO_MFG_FIRMWARE_AT_USER_PART
+const module_info_t* get_mfg_firmware(void) {
+    // Dummy module bounds based on module_user with modified function type, index and end address
+    module_bounds_t module_mfg = module_user;
+    module_mfg.module_function = MODULE_FUNCTION_MONO_FIRMWARE;
+    module_mfg.module_index = 0;
+    module_mfg.end_address = module_factory.end_address;
+
+    // Fetch module info
+    const module_info_t* mod = get_module_info(&module_mfg);
+    if (!mod) {
+        return NULL;
+    }
+
+    // Check whether the module is built for that particular location in flash
+    if ((uintptr_t)mod->module_start_address != (uintptr_t)module_mfg.start_address) {
+        return NULL;
+    }
+
+    // Validate the module
+    if (verify_module(mod, &module_mfg)) {
+        return NULL;
+    }
+
+    return mod;
+}
+#endif // MONO_MFG_FIRMWARE_AT_USER_PART

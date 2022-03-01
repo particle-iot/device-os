@@ -26,6 +26,7 @@
 
 #include "rng_hal.h"
 #include "timer_hal.h"
+#include "system_error.h"
 
 int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
     while (size >= 4) {
@@ -42,7 +43,7 @@ int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
 #if !defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS) && PLATFORM_ID != 0
 
 // At least millis should be provided
-static mbedtls_callbacks_t s_callbacks = {0};
+static mbedtls_callbacks_t s_callbacks = {};
 
 __attribute__((weak)) int mbedtls_set_callbacks(mbedtls_callbacks_t* callbacks, void* reserved)
 {
@@ -54,12 +55,14 @@ __attribute__((weak)) mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved)
 {
     return &s_callbacks;
 }
-#endif // defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS) || PLATFORM_ID == 0
+#endif // defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS)
 
+#if PLATFORM_ID!=3
 unsigned long mbedtls_timing_hardclock()
 {
     return HAL_Timer_Microseconds();
 }
+#endif
 
 int mbedtls_x509_crt_pem_to_der(const char* pem_crt, size_t pem_len, uint8_t** der_crt, size_t* der_len)
 {
@@ -168,4 +171,15 @@ int mbedtls_x509_read_length(const uint8_t* der, size_t length, int concatenated
     }
 
     return total_len;
+}
+
+int mbedtls_to_system_error(int error)
+{
+    switch (error) {
+    case 0:
+        return SYSTEM_ERROR_NONE;
+    // TODO
+    default:
+        return SYSTEM_ERROR_CRYPTO;
+    }
 }

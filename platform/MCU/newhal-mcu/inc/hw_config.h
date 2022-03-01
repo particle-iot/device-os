@@ -12,7 +12,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-inline const module_info_t* FLASH_ModuleInfo(flash_device_t device, uint32_t address) { return (module_info_t*)0; }
+inline const module_info_t* FLASH_ModuleInfo(flash_device_t device, uint32_t address, uint32_t* offset) {
+    return NULL;
+}
 
 inline void Set_System() {}
 inline void SysTick_Configuration() {}
@@ -29,8 +31,13 @@ extern uint16_t tempFlag;
 
 #define CORE_FW_ADDRESS         0
 
-#define RESET                   0
 #define RCC_FLAG_IWDGRST        0
+
+// FIXME: These flag names are too common to be defined globally
+typedef enum FlagStatus {
+    RESET = 0,
+    SET = 1
+} FlagStatus;
 
 inline int RCC_GetFlagStatus(int reg) { return RESET; }
 inline void RCC_ClearFlag() {}
@@ -49,9 +56,6 @@ inline void BACKUP_Flash_Reset() {}
 inline void NVIC_SystemReset() {}
 inline void Finish_Update() {}
 inline void Bootloader_Update_Version(int version) {}
-
-#define BUTTON1                     1
-#define BUTTON1_PRESSED             1
 
 inline int BUTTON_GetState(int button) { return 0; }
 

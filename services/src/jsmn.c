@@ -57,7 +57,7 @@ static void jsmn_fill_token(jsmntok_t *token, jsmntype_t type,
 /**
  * Fills next available token with JSON primitive.
  */
-static jsmnerr_t jsmn_parse_primitive(jsmn_parser *parser, const char *js,
+static int jsmn_parse_primitive(jsmn_parser *parser, const char *js,
         size_t len, jsmntok_t *tokens, size_t num_tokens) {
     jsmntok_t *token;
     int start;
@@ -106,7 +106,7 @@ found:
 /**
  * Filsl next token with JSON string.
  */
-static jsmnerr_t jsmn_parse_string(jsmn_parser *parser, const char *js,
+static int jsmn_parse_string(jsmn_parser *parser, const char *js,
         size_t len, jsmntok_t *tokens, size_t num_tokens) {
     jsmntok_t *token;
 
@@ -173,9 +173,9 @@ static jsmnerr_t jsmn_parse_string(jsmn_parser *parser, const char *js,
 /**
  * Parse JSON string and fill tokens.
  */
-jsmnerr_t jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
+int jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
         jsmntok_t *tokens, unsigned int num_tokens, void* reserved) {
-    jsmnerr_t r;
+    int r;
     int i;
     jsmntok_t *token;
     int count = 0;

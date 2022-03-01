@@ -31,6 +31,15 @@ void operator delete[](void *p)
 	free(p);
 }
 
+void operator delete(void *p, size_t size)
+{
+	free(p);
+}
+
+void operator delete[](void *p, size_t size)
+{
+	free(p);
+}
 
 int _kill(int pid, int sig) __attribute((weak));
 
@@ -73,14 +82,20 @@ int __cxa_guard_acquire(__guard *g) {return !*(char *)(g);};
 void __cxa_guard_release (__guard *g) {*(char *)g = 1;};
 void __cxa_guard_abort (__guard *) {};
 
-/*
 int _write(int file, char *ptr, int len) { return 0; }
 int _read(int file, char *ptr, int len) { return 0; }
 int _close(int file) { return 0; }
 int _lseek(int file, int ptr, int dir) { return 0; }
 int _fstat(int file, void *sbuf) { return 0; }
 int _isatty(int file) { return 0; }
-*/
+
+#ifndef NEWLIB_ASSERT_FUNC_IMPORTED
+void __assert_func(const char *file, int line, const char* func, const char* expr) {
+    LOG(ERROR, "Assertion failed: %s:%d %s (%s)", file, line, func, expr);
+    PANIC(AssertionFailure, expr);
+    while(1);
+}
+#endif // NEWLIB_ASSERT_FUNC_IMPORTED
 
 } /* extern "C" */
 

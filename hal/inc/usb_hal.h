@@ -36,16 +36,31 @@
 
 /* Exported macros ------------------------------------------------------------*/
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "usb_config_hal.h"
 
 #ifdef USE_STDPERIPH_DRIVER
 // this is one way to determine if the platform module is being used or not
 #include "hw_config.h"
 #endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum HAL_USB_State {
+    HAL_USB_STATE_NONE = 0,
+    HAL_USB_STATE_DISABLED,
+    HAL_USB_STATE_DETACHED,
+    HAL_USB_STATE_ATTACHED,
+    HAL_USB_STATE_POWERED,
+    HAL_USB_STATE_DEFAULT,
+    HAL_USB_STATE_ADDRESSED,
+    HAL_USB_STATE_CONFIGURED,
+    HAL_USB_STATE_SUSPENDED
+} HAL_USB_State;
+
+typedef void (*HAL_USB_State_Callback)(HAL_USB_State state, void* data);
+int HAL_USB_Set_State_Change_Callback(HAL_USB_State_Callback cb, void* context, void* reserved);
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 typedef struct HAL_USB_SetupRequest {
@@ -165,6 +180,7 @@ void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Call
 void HAL_USB_Init();
 void HAL_USB_Attach();
 void HAL_USB_Detach();
+HAL_USB_State HAL_USB_Get_State(void* reserved);
 #endif
 
 #ifdef USB_CDC_ENABLE

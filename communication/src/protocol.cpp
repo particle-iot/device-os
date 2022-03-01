@@ -17,15 +17,36 @@
  ******************************************************************************
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "logging.h"
+
 LOG_SOURCE_CATEGORY("comm.protocol")
 
+#include "mbedtls_config.h"
+#include "protocol_defs.h"
 #include "protocol.h"
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
 
 namespace particle { namespace protocol {
+
+namespace {
+
+enum HelloFlag {
+	HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 0x01,
+	HELLO_FLAG_DIAGNOSTICS_SUPPORT = 0x02,
+	HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 0x04,
+	// Flag 0x08 is reserved to indicate support for the HandshakeComplete message
+	HELLO_FLAG_GOODBYE_SUPPORT = 0x10,
+	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20,
+	HELLO_FLAG_COMPRESSED_OTA = 0x40,
+	HELLO_FLAG_OTA_PROTOCOL_V3 = 0x80
+};
+
+} // namespace
 
 /**
  * Sends an empty acknowledgement for the given message
@@ -47,38 +68,86 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	pinger.message_received();
 	uint8_t* queue = message.buf();
 	message_type = Messages::decodeType(queue, message.length());
-	token_t token = queue[4];
+	// todo - not all requests/responses have tokens. These device requests do not use tokens:
+	// Update Done, ChunkMissed, event, ping, hello
+	token_t token = 0;
+	size_t token_len = CoAP::token(queue, &token);
+	if (token_len > 0 && token_len != sizeof(token_t)) {
+		LOG(ERROR, "Unsupported token length: %u", (unsigned)token_len);
+		token_len = 0;
+	}
 	message_id_t msg_id = CoAP::message_id(queue);
+	CoAPCode::Enum code = CoAP::code(queue);
+	CoAPType::Enum type = CoAP::type(queue);
+	if (CoAPType::is_reply(type)) {
+		LOG(TRACE, "Reply recieved: type=%d, code=%d", type, code);
+		// todo - this is a little too simple in the case of an empty ACK for a separate response
+		// the message should then be bound to the token. see CH19037
+		if (type == CoAPType::RESET) { // RST is sent with an empty code. It's like an unspecified error
+			LOG(TRACE, "Reset received, setting error code to internal server error.");
+			code = CoAPCode::INTERNAL_SERVER_ERROR;
+		}
+		notify_message_complete(msg_id, code);
+		handle_app_state_reply(msg_id, code);
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
+			const ProtocolError error = firmwareUpdate.responseAck(&message);
+			if (error != ProtocolError::NO_ERROR) {
+				return error;
+			}
+		}
+#endif
+	}
+
 	ProtocolError error = NO_ERROR;
 	//LOG(WARN,"message type %d", message_type);
+	// todo - would be good to separate requests from responses here.
 	switch (message_type)
 	{
 	case CoAPMessageType::DESCRIBE:
 	{
-		// 4 bytes header, 1 byte token, 2 bytes location path
-		// 2 bytes optional single character location path for describe flags
+		// 4 bytes header, 1 byte token, 2 bytes Uri-Path
+		// 2 bytes optional single character Uri-Query for describe flags
 		int descriptor_type = DESCRIBE_DEFAULT;
-		if (message.length()>8 && queue[8] <= DESCRIBE_MAX) {
+		if (message.length() > 8 && queue[8] <= DESCRIBE_MAX) {
 			descriptor_type = queue[8];
 		} else if (message.length() > 8) {
-			LOG(WARN, "Invalid DESCRIBE flags %02x", queue[8]);
+			LOG(WARN, "Invalid DESCRIBE flags: 0x%02x", (unsigned)queue[8]);
 		}
-		error = send_description(token, msg_id, descriptor_type);
+		LOG(INFO, "Received DESCRIBE request; flags: 0x%02x", (unsigned)descriptor_type);
+		error = send_description_response(token, msg_id, descriptor_type);
 		break;
 	}
 
 	case CoAPMessageType::FUNCTION_CALL:
+	{
+		if (!token_len) {
+			LOG(ERROR, "Missing request token");
+			return ProtocolError::MISSING_REQUEST_TOKEN;
+		}
 		return functions.handle_function_call(token, msg_id, message, channel,
 				descriptor.call_function);
+	}
 
 	case CoAPMessageType::VARIABLE_REQUEST:
 	{
-		char variable_key[MAX_VARIABLE_KEY_LENGTH+1];
-		variables.decode_variable_request(variable_key, message);
-		return variables.handle_variable_request(variable_key, message,
-				channel, token, msg_id,
-				descriptor.variable_type, descriptor.get_variable);
+		if (!token_len) {
+			LOG(ERROR, "Missing request token");
+			return ProtocolError::MISSING_REQUEST_TOKEN;
+		}
+		return variables.handle_request(message, token, msg_id);
 	}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	case CoAPMessageType::UPDATE_START_V3: {
+		return firmwareUpdate.startRequest(&message);
+	}
+	case CoAPMessageType::UPDATE_FINISH_V3: {
+		return firmwareUpdate.finishRequest(&message);
+	}
+	case CoAPMessageType::UPDATE_CHUNK_V3: {
+		return firmwareUpdate.chunkRequest(&message);
+	}
+#else
 	case CoAPMessageType::SAVE_BEGIN:
 		// fall through
 	case CoAPMessageType::UPDATE_BEGIN:
@@ -88,7 +157,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return chunkedTransfer.handle_chunk(token, message, channel);
 	case CoAPMessageType::UPDATE_DONE:
 		return chunkedTransfer.handle_update_done(token, message, channel);
-
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 	case CoAPMessageType::EVENT:
 		return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
 
@@ -126,10 +195,6 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		error = channel.send(message);
 		break;
 
-	case CoAPMessageType::EMPTY_ACK:
-		ack_handlers.setResult(msg_id);
-		break;
-
 	case CoAPMessageType::ERROR:
 	default:
 		; // drop it on the floor
@@ -137,6 +202,26 @@ ProtocolError Protocol::handle_received_message(Message& message,
 
 	// all's well
 	return error;
+}
+
+void Protocol::notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode) {
+	const auto codeClass = (int)responseCode >> 5;
+	const auto codeDetail = (int)responseCode & 0x1f;
+	LOG(TRACE, "message id %d complete with code %d.%02d", msg_id, codeClass, codeDetail);
+	if (CoAPCode::is_success(responseCode)) {
+		ack_handlers.setResult(msg_id);
+	} else {
+		int error = SYSTEM_ERROR_COAP;
+		switch (codeClass) {
+		case 4:
+			error = SYSTEM_ERROR_COAP_4XX;
+			break;
+		case 5:
+			error = SYSTEM_ERROR_COAP_5XX;
+			break;
+		}
+		ack_handlers.setError(msg_id, error);
+	}
 }
 
 ProtocolError Protocol::handle_key_change(Message& message)
@@ -206,43 +291,47 @@ void Protocol::init(const SparkCallbacks &callbacks,
 	copy_and_init(&this->descriptor, sizeof(this->descriptor), &descriptor,
 			descriptor.size);
 
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	firmwareUpdate.init(&channel, this->callbacks);
+#else
 	chunkedTransferCallbacks.init(&this->callbacks);
 	chunkedTransfer.init(&chunkedTransferCallbacks);
+#endif
 
 	initialized = true;
 }
 
-uint32_t Protocol::application_state_checksum(uint32_t (*calc_crc)(const uint8_t* data, uint32_t len), uint32_t subscriptions_crc,
-		uint32_t describe_app_crc, uint32_t describe_system_crc)
+AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 {
-	uint32_t chk[3];
-	chk[0] = subscriptions_crc;
-	chk[1] = describe_app_crc;
-	chk[2] = describe_system_crc;
-	return calc_crc((uint8_t*)chk, sizeof(chk));
-}
-
-void Protocol::update_subscription_crc()
-{
-	if (descriptor.app_state_selector_info)
-	{
-		uint32_t crc = subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc);
-		this->channel.command(Channel::SAVE_SESSION);
-		descriptor.app_state_selector_info(SparkAppStateSelector::SUBSCRIPTIONS, SparkAppStateUpdate::PERSIST, crc, nullptr);
-		this->channel.command(Channel::LOAD_SESSION);
+	if (!descriptor.app_state_selector_info) {
+		return AppStateDescriptor();
 	}
-}
-
-/**
- * Computes the current checksum from the application cloud state
- */
-uint32_t Protocol::application_state_checksum()
-{
-	return descriptor.app_state_selector_info ? application_state_checksum(callbacks.calculate_crc,
-			subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc),
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr),
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr))
-			: 0;
+	AppStateDescriptor d;
+	if (stateFlags & AppStateDescriptor::SYSTEM_MODULE_VERSION) {
+		d.systemVersion(system_version);
+	}
+	if (stateFlags & AppStateDescriptor::SYSTEM_DESCRIBE_CRC) {
+		d.systemDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE, 0, nullptr));
+	}
+	if (stateFlags & AppStateDescriptor::APP_DESCRIBE_CRC) {
+		d.appDescribeCrc(descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE, 0, nullptr));
+	}
+	if (stateFlags & AppStateDescriptor::SUBSCRIPTIONS_CRC) {
+		d.subscriptionsCrc(subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc));
+	}
+	if (stateFlags & AppStateDescriptor::PROTOCOL_FLAGS) {
+		d.protocolFlags(protocol_flags);
+	}
+	if (stateFlags & AppStateDescriptor::MAX_MESSAGE_SIZE) {
+		d.maxMessageSize(PROTOCOL_BUFFER_SIZE);
+	}
+	if (stateFlags & AppStateDescriptor::MAX_BINARY_SIZE) {
+		d.maxBinarySize(max_binary_size);
+	}
+	if (stateFlags & AppStateDescriptor::OTA_CHUNK_SIZE) {
+		d.otaChunkSize(ota_chunk_size);
+	}
+	return d;
 }
 
 /**
@@ -252,60 +341,100 @@ int Protocol::begin()
 {
 	LOG_CATEGORY("comm.protocol.handshake");
 	LOG(INFO,"Establish secure connection");
-	chunkedTransfer.reset();
-	pinger.reset();
-	timesync_.reset();
 
-	// FIXME: Pending completion handlers should be cancelled at the end of a previous session
-	ack_handlers.clear();
+	reset();
 	last_ack_handlers_update = callbacks.millis();
 
-	uint32_t channel_flags = 0;
-	ProtocolError error = channel.establish(channel_flags, application_state_checksum());
-	bool session_resumed = (error==SESSION_RESUMED);
+	ProtocolError error = channel.establish();
+	const bool session_resumed = (error == SESSION_RESUMED);
 	if (error && !session_resumed) {
-		LOG(ERROR,"handshake failed with code %d", error);
+		LOG(ERROR, "Handshake failed: %d", error);
 		return error;
 	}
 
-	if (session_resumed)
-	{
+	if (session_resumed) {
 		// for now, unconditionally move the session on resumption
 		channel.command(MessageChannel::MOVE_SESSION, nullptr);
-		if (channel_flags & SKIP_SESSION_RESUME_HELLO) {
-			flags |= SKIP_SESSION_RESUME_HELLO;
+		uint32_t stateFlags = 0xffffffffu; // Check all flags, not just recognized ones
+		if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
+			// The system controls when to send application Describe and subscriptions
+			stateFlags &= ~(AppStateDescriptor::APP_DESCRIBE_CRC | AppStateDescriptor::SUBSCRIPTIONS_CRC);
+		}
+		const auto currentState = app_state_descriptor(stateFlags);
+		const auto cachedState = channel.cached_app_state_descriptor();
+		if (currentState.equalsTo(cachedState, stateFlags)) {
+			LOG(INFO, "Skipping HELLO message");
+			error = ping(true);
+			if (error != ProtocolError::NO_ERROR) {
+				return error;
+			}
+			return ProtocolError::SESSION_RESUMED; // Not an error
+		} else {
+			// TODO: For now, make sure application Describe and subscriptions will be sent if the
+			// system state has changed
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::ALL, SparkAppStateUpdate::RESET, 0, nullptr);
+			channel.command(Channel::LOAD_SESSION);
 		}
 	}
 
-	// hello not needed because it's already been sent and the server maintains device state
-	if (session_resumed && channel.is_unreliable() && (flags & SKIP_SESSION_RESUME_HELLO))
-	{
-		ping(true);
-		LOG(INFO,"resumed session - not sending HELLO message");
-		return error;
-	}
-
-	// todo - this will return code 0 even when the session was resumed,
-	// causing all the application events to be sent.
-
-	LOG(INFO,"Sending HELLO message");
+	LOG(INFO, "Sending HELLO message");
 	error = hello(descriptor.was_ota_upgrade_successful());
-	if (error)
-	{
+	if (error) {
 		LOG(ERROR,"Could not send HELLO message: %d", error);
 		return error;
 	}
 
-	if (flags & REQUIRE_HELLO_RESPONSE) {
-		LOG(INFO,"Receiving HELLO response");
+	if (protocol_flags & ProtocolFlag::REQUIRE_HELLO_RESPONSE) {
+		LOG(INFO, "Receiving HELLO response");
 		error = hello_response();
-		if (error)
+		if (error) {
 			return error;
+		}
 	}
-	LOG(INFO,"Handshake completed");
+
+	LOG(INFO, "Handshake completed");
 	channel.notify_established();
-	flags |= SKIP_SESSION_RESUME_HELLO;
-	return error;
+
+	// An ACK or a response for the Hello message has already been received at this point, so we can
+	// update the cached session parameters
+	if (descriptor.app_state_selector_info) {
+		LOG(TRACE, "Updating cached session parameters");
+		channel.command(Channel::SAVE_SESSION);
+		// TODO: Update the underlying SessionPersist structure directly
+		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, protocol_flags, nullptr);
+		descriptor.app_state_selector_info(SparkAppStateSelector::SYSTEM_MODULE_VERSION, SparkAppStateUpdate::PERSIST, system_version, nullptr);
+		descriptor.app_state_selector_info(SparkAppStateSelector::MAX_MESSAGE_SIZE, SparkAppStateUpdate::PERSIST, PROTOCOL_BUFFER_SIZE, nullptr);
+		descriptor.app_state_selector_info(SparkAppStateSelector::MAX_BINARY_SIZE, SparkAppStateUpdate::PERSIST, max_binary_size, nullptr);
+		descriptor.app_state_selector_info(SparkAppStateSelector::OTA_CHUNK_SIZE, SparkAppStateUpdate::PERSIST, ota_chunk_size, nullptr);
+		channel.command(Channel::LOAD_SESSION);
+	}
+
+	if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
+		// Send system Describe
+		error = post_description(DescriptionType::DESCRIBE_SYSTEM, true /* force */);
+		if (error) {
+			return error;
+		}
+	}
+
+	// TODO: This will cause all the application events to be sent even if the session was resumed
+	return 0;
+}
+
+void Protocol::reset() {
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	firmwareUpdate.reset();
+#else
+	chunkedTransfer.reset();
+#endif
+	pinger.reset();
+	timesync_.reset();
+	ack_handlers.clear();
+	channel.reset();
+	app_describe_msg_id = INVALID_MESSAGE_HANDLE;
+	system_describe_msg_id = INVALID_MESSAGE_HANDLE;
+	subscription_msg_ids.clear();
 }
 
 /**
@@ -317,21 +446,33 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 	Message message;
 	channel.create(message);
 
-	uint8_t flags = was_ota_upgrade_successful ? 1 : 0;
-	flags |= 2;		// diagnostics support
+	uint16_t flags = HELLO_FLAG_DIAGNOSTICS_SUPPORT | HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT |
+			HELLO_FLAG_GOODBYE_SUPPORT;
+	if (was_ota_upgrade_successful) {
+		flags |= HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL;
+	}
+	if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
+		flags |= HELLO_FLAG_DEVICE_INITIATED_DESCRIBE;
+	}
+	if (protocol_flags & ProtocolFlag::COMPRESSED_OTA) {
+		flags |= HELLO_FLAG_COMPRESSED_OTA;
+	}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+	flags |= HELLO_FLAG_OTA_PROTOCOL_V3;
+#endif
 	size_t len = build_hello(message, flags);
 	message.set_length(len);
-	message.set_confirm_received(true);
+	message.set_confirm_received(true); // Send synchronously
 	last_message_millis = callbacks.millis();
 	return channel.send(message);
 }
 
 ProtocolError Protocol::hello_response()
 {
-	ProtocolError error = event_loop(CoAPMessageType::HELLO,  4000); // read the hello message from the server
+	ProtocolError error = event_loop(CoAPMessageType::HELLO, 4000); // read the hello message from the server
 	if (error)
 	{
-		LOG(ERROR,"Handshake: could not receive HELLO response %d", error);
+		LOG(ERROR, "Handshake: could not receive HELLO response %d", error);
 	}
 	return error;
 }
@@ -385,7 +526,7 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 		if (message.length())
 		{
 			error = handle_received_message(message, message_type);
-			LOG(INFO,"rcv'd message type=%d", (int)message_type);
+			LOG(TRACE, "rcv'd message type=%d", (int)message_type);
 		}
 		else
 		{
@@ -396,7 +537,11 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	if (error)
 	{
 		// bail if and only if there was an error
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+		firmwareUpdate.reset();
+#else
 		chunkedTransfer.cancel();
+#endif
 		LOG(ERROR,"Event loop error %d", error);
 		return error;
 	}
@@ -409,11 +554,11 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 	if (descriptor.append_metrics && (desc_flags == DESCRIBE_METRICS))
 	{
 		appender.append(char(0));	// null byte means binary data
-		appender.append(char(DESCRIBE_METRICS)); 									// uint16 describes the type of binary packet
+		appender.append(char(DESCRIBE_METRICS));	// uint16 describes the type of binary packet
 		appender.append(char(0));	//
 		const int flags = 1;		// binary
 		const int page = 0;
-		descriptor.append_metrics(append_instance, &appender, flags, page, nullptr);
+		descriptor.append_metrics(Appender::callback, &appender, flags, page, nullptr);
 	}
 	else {
 		appender.append("{");
@@ -471,55 +616,193 @@ void Protocol::build_describe_message(Appender& appender, int desc_flags)
 		if (descriptor.append_system_info && (desc_flags & DESCRIBE_SYSTEM))
 		{
 			if (has_content)
+			{
 				appender.append(',');
+			}
 			has_content = true;
-			descriptor.append_system_info(append_instance, &appender, nullptr);
+			descriptor.append_system_info(Appender::callback, &appender, nullptr);
 		}
 		appender.append('}');
 	}
 }
 
-/**
- * Produces and transmits a describe message.
- * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
- */
-ProtocolError Protocol::send_description(token_t token, message_id_t msg_id, int desc_flags)
+ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, Message& message,
+                                                      size_t header_size, int desc_flags)
 {
+    ProtocolError error;
+
+    BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
+    build_describe_message(appender, desc_flags);
+
+    if (appender.dataSize() > appender.bufferSize())
+    {
+        LOG(ERROR, "Describe message overflowed by %u bytes", (unsigned)(appender.dataSize() - appender.bufferSize()));
+        // There is no point in continuing to run, the device will be constantly reconnecting
+        // to the cloud. It's better to clearly indicate that the describe message is never going
+        // to go through to the cloud by going into a panic state, otherwise one would have to
+        // sift through logs to find 'Describe message overflowed by %d bytes' message to understand
+        // what's going on.
+        SPARK_ASSERT(false);
+    }
+
+    message.set_length(header_size + appender.dataSize());
+
+    LOG(INFO, "Posting '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
+        desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
+
+    error = channel.send(message);
+    if (error != ProtocolError::NO_ERROR) {
+        LOG(ERROR, "Channel failed to send message; error code: %d", (int)error);
+    } else if (descriptor.app_state_selector_info) {
+        const auto msg_id = message.get_id();
+        if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
+            app_describe_msg_id = msg_id;
+        }
+        if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
+            system_describe_msg_id = msg_id;
+        }
+    }
+
+    return error;
+}
+
+ProtocolError Protocol::post_description(int desc_flags, bool force)
+{
+	if (!force && descriptor.app_state_selector_info) {
+		const auto cachedState = channel.cached_app_state_descriptor();
+		if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
+			const auto currentState = app_state_descriptor(AppStateDescriptor::SYSTEM_DESCRIBE_CRC);
+			if (currentState.equalsTo(cachedState, AppStateDescriptor::SYSTEM_DESCRIBE_CRC)) {
+				LOG(INFO, "Checksum has not changed; not sending system DESCRIBE");
+				desc_flags &= ~DescriptionType::DESCRIBE_SYSTEM;
+			}
+		}
+		if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
+			const auto currentState = app_state_descriptor(AppStateDescriptor::APP_DESCRIBE_CRC);
+			if (currentState.equalsTo(cachedState, AppStateDescriptor::APP_DESCRIBE_CRC)) {
+				LOG(INFO, "Checksum has not changed; not sending application DESCRIBE");
+				desc_flags &= ~DescriptionType::DESCRIBE_APPLICATION;
+			}
+		}
+	}
+	if (!desc_flags) {
+		return ProtocolError::NO_ERROR;
+	}
 	Message message;
-	channel.create(message);
-	uint8_t* buf = message.buf();
-	message.set_id(msg_id);
-	size_t desc = Messages::description(buf, msg_id, token);
+	const ProtocolError error = channel.create(message);
+	if (error != ProtocolError::NO_ERROR) {
+		return error;
+	}
+	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0 /* message_id */, desc_flags);
+	return generate_and_send_description(channel, message, header_size, desc_flags);
+}
 
-	BufferAppender appender(buf + desc, message.capacity());
+ProtocolError Protocol::send_description_response(token_t token, message_id_t msg_id, int desc_flags)
+{
+	// Acknowledge the request
+	Message msg;
+	ProtocolError error = channel.create(msg);
+	if (error != ProtocolError::NO_ERROR) {
+		return error;
+	}
+	error = send_empty_ack(msg, msg_id);
+	if (error != ProtocolError::NO_ERROR) {
+		return error;
+	}
+	// Send a response
+	error = channel.create(msg);
+	if (error != ProtocolError::NO_ERROR) {
+		return error;
+	}
+	const auto buf = msg.buf();
+	const size_t size = Messages::description_response(buf, 0 /* message_id */, token);
+	return generate_and_send_description(channel, msg, size, desc_flags);
+}
 
-	build_describe_message(appender, desc_flags);
-
-	int msglen = appender.next() - (uint8_t*) buf;
-	message.set_length(msglen);
-	LOG(INFO,"Sending '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
-											  desc_flags & DESCRIBE_APPLICATION ? "A" : "",
-											  desc_flags & DESCRIBE_METRICS ? "M" : "");
-	ProtocolError error = channel.send(message);
-	if (error==NO_ERROR && descriptor.app_state_selector_info &&
-            (desc_flags & DESCRIBE_APPLICATION || desc_flags & DESCRIBE_SYSTEM))
-	{
-        this->channel.command(Channel::SAVE_SESSION);
-		if (desc_flags & DESCRIBE_APPLICATION)
-		{
-			// have sent the describe message to the cloud so update the crc
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-		}
-		if (desc_flags & DESCRIBE_SYSTEM)
-		{
-			// have sent the describe message to the cloud so update the crc
-			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM, SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-		}
-        this->channel.command(Channel::LOAD_SESSION);
+ProtocolError Protocol::send_subscription(const char *event_name, const char *device_id)
+{
+	const ProtocolError error = subscriptions.send_subscription(channel, event_name, device_id);
+	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
+		subscription_msg_ids.append(subscriptions.subscription_message_ids());
 	}
 	return error;
 }
 
+ProtocolError Protocol::send_subscription(const char *event_name, SubscriptionScope::Enum scope)
+{
+	const ProtocolError error = subscriptions.send_subscription(channel, event_name, scope);
+	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
+		subscription_msg_ids.append(subscriptions.subscription_message_ids());
+	}
+	return error;
+}
+
+ProtocolError Protocol::send_subscriptions(bool force)
+{
+	if (!force && descriptor.app_state_selector_info) {
+		const auto currentState = app_state_descriptor(AppStateDescriptor::SUBSCRIPTIONS_CRC);
+		const auto cachedState = channel.cached_app_state_descriptor();
+		if (currentState.equalsTo(cachedState, AppStateDescriptor::SUBSCRIPTIONS_CRC)) {
+			LOG(INFO, "Checksum has not changed; not sending subscriptions");
+			return ProtocolError::NO_ERROR;
+		}
+	}
+	LOG(INFO, "Sending subscriptions");
+	const ProtocolError error = subscriptions.send_subscriptions(channel);
+	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
+		subscription_msg_ids.append(subscriptions.subscription_message_ids());
+	}
+	return error;
+}
+
+bool Protocol::handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code)
+{
+	if (!descriptor.app_state_selector_info) {
+		return false;
+	}
+	// Update application state checksums
+	if (subscription_msg_ids.removeOne(msg_id)) { // Event subscriptions
+		if (!CoAPCode::is_success(code)) {
+			// Make sure the checksum won't be updated if any of the messages has been NAK'ed
+			subscription_msg_ids.clear();
+		} else if (subscription_msg_ids.isEmpty()) {
+			LOG(TRACE, "Updating subscriptions checksum");
+			const uint32_t crc = subscriptions.compute_subscriptions_checksum(callbacks.calculate_crc);
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::SUBSCRIPTIONS,
+					SparkAppStateUpdate::PERSIST, crc, nullptr);
+			channel.command(Channel::LOAD_SESSION);
+		}
+		return true;
+	}
+	// A Describe message can carry both the system and application descriptions
+	if (msg_id == app_describe_msg_id || msg_id == system_describe_msg_id) {
+		if (msg_id == app_describe_msg_id) { // Application description
+			app_describe_msg_id = INVALID_MESSAGE_HANDLE;
+			if (CoAPCode::is_success(code)) {
+				LOG(TRACE, "Updating application DESCRIBE checksum");
+				channel.command(Channel::SAVE_SESSION);
+				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
+						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+				channel.command(Channel::LOAD_SESSION);
+			}
+		}
+		if (msg_id == system_describe_msg_id) { // System description
+			system_describe_msg_id = INVALID_MESSAGE_HANDLE;
+			if (CoAPCode::is_success(code)) {
+				LOG(TRACE, "Updating system DESCRIBE checksum");
+				channel.command(Channel::SAVE_SESSION);
+				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
+						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+				channel.command(Channel::LOAD_SESSION);
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
 
 int Protocol::ChunkedTransferCallbacks::prepare_for_firmware_update(FileTransfer::Descriptor& data, uint32_t flags, void* reserved)
 {
@@ -546,14 +829,15 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 	return callbacks->millis();
 }
 
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
+
 int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserved)
 {
 	data->maximum_size = 768;  // a conservative guess based on dtls and lightssl encryption overhead and the CoAP data
-	BufferAppender2 appender(nullptr,  0);	// don't need to store the data, just count the size
+	BufferAppender appender(nullptr,  0);	// don't need to store the data, just count the size
 	build_describe_message(appender, data->flags);
 	data->current_size = appender.dataSize();
 	return 0;
 }
-
 
 }}

@@ -6,15 +6,19 @@
 
 #ifndef SPARK_WIRING_NO_SPI
 
-SPIClass SPI(HAL_SPI_INTERFACE1);
+namespace particle {
+namespace globals {
+
+::particle::SpiProxy<HAL_SPI_INTERFACE1> SPI;
 
 #if Wiring_SPI1
-SPIClass SPI1(HAL_SPI_INTERFACE2);
-#endif
+::particle::SpiProxy<HAL_SPI_INTERFACE2> SPI1;
+#endif // Wiring_SPI1
 
 #if Wiring_SPI2
-SPIClass SPI2(HAL_SPI_INTERFACE3);
-#endif
+::particle::SpiProxy<HAL_SPI_INTERFACE3> SPI2;
+#endif // Wiring_SPI2
+
+} } // particle::globals
 
 #endif //SPARK_WIRING_NO_SPI
-

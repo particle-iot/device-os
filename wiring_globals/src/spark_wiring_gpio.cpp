@@ -34,6 +34,7 @@
 #include "delay_hal.h"
 #include "pinmap_hal.h"
 #include "system_task.h"
+#include "enumclass.h"
 
 /*
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
@@ -73,38 +74,72 @@ PinMode getPinMode(uint16_t pin)
   return HAL_Get_Pin_Mode(pin);
 }
 
+
+#if HAL_PLATFORM_GEN == 3
+/*
+ * @brief Set the drive strength of the pin for OUTPUT modes
+ */
+int pinSetDriveStrength(pin_t pin, DriveStrength drive)
+{
+  if (pin >= TOTAL_PINS) {
+    return SYSTEM_ERROR_INVALID_ARGUMENT;
+  }
+
+  // Safety check
+  if (!pinAvailable(pin)) {
+    return SYSTEM_ERROR_INVALID_STATE;
+  }
+
+  auto mode = getPinMode(pin);
+
+  if (mode != OUTPUT && mode != OUTPUT_OPEN_DRAIN) {
+    return SYSTEM_ERROR_INVALID_STATE;
+  }
+
+  const hal_gpio_config_t conf = {
+    .size = sizeof(hal_gpio_config_t),
+    .version = HAL_GPIO_VERSION,
+    .mode = mode,
+    .set_value = 0,
+    .value = 0,
+    .drive_strength = particle::to_underlying(drive)
+  };
+  return HAL_Pin_Configure(pin, &conf, nullptr);
+}
+#endif // HAL_PLATFORM_GEN == 3
+
 /*
  * @brief Perform safety check on desired pin to see if it's already
  * being used.  Return 0 if used, otherwise return 1 if available.
  */
 bool pinAvailable(uint16_t pin) {
+  if (pin >= TOTAL_PINS) {
+    return false;
+  }
 
   // SPI safety check
 #ifndef SPARK_WIRING_NO_SPI
-  if(SPI.isEnabled() == true && (pin == SCK || pin == MOSI || pin == MISO))
+  if((pin == SCK || pin == MOSI || pin == MISO) && hal_spi_is_enabled(SPI.interface()) == true)
   {
-    return 0; // 'pin' is used
+    return false; // 'pin' is used
   }
 #endif
   // I2C safety check
 #ifndef SPARK_WIRING_NO_I2C
-  if(Wire.isEnabled() == true && (pin == SCL || pin == SDA))
+  if((pin == SCL || pin == SDA) && hal_i2c_is_enabled(Wire.interface(), nullptr) == true)
   {
-    return 0; // 'pin' is used
+    return false; // 'pin' is used
   }
 #endif
 #ifndef SPARK_WIRING_NO_USART_SERIAL
   // Serial1 safety check
-  if(Serial1.isEnabled() == true && (pin == RX || pin == TX))
+  if((pin == RX || pin == TX) && hal_usart_is_enabled(Serial1.interface()) == true)
   {
-    return 0; // 'pin' is used
+    return false; // 'pin' is used
   }
 #endif
 
-  if (pin >= TOTAL_PINS)
-    return 0;
-  else
-    return 1; // 'pin' is available
+  return true; // 'pin' is available
 }
 
 inline bool is_input_mode(PinMode mode) {
@@ -160,10 +195,12 @@ int32_t digitalRead(pin_t pin)
 int32_t analogRead(pin_t pin)
 {
   // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
+#if defined(FIRST_ANALOG_PIN) && FIRST_ANALOG_PIN > 0
   if(pin < FIRST_ANALOG_PIN)
   {
     pin = pin + FIRST_ANALOG_PIN;
   }
+#endif // defined(FIRST_ANALOG_PIN) && FIRST_ANALOG_PIN > 0
 
   // Safety check
   if( !pinAvailable(pin) ) {
@@ -175,7 +212,7 @@ int32_t analogRead(pin_t pin)
     return LOW;
   }
 
-  return HAL_ADC_Read(pin);
+  return hal_adc_read(pin);
 }
 
 /*
@@ -203,7 +240,7 @@ void analogWrite(pin_t pin, uint32_t value)
             return;
         }
 
-        HAL_PWM_Write_Ext(pin, value);
+        hal_pwm_write_ext(pin, value);
     }
 }
 
@@ -229,7 +266,7 @@ void analogWrite(pin_t pin, uint32_t value, uint32_t pwm_frequency)
             return;
         }
 
-        HAL_PWM_Write_With_Frequency_Ext(pin, value, pwm_frequency);
+        hal_pwm_write_with_frequency_ext(pin, value, pwm_frequency);
     }
 }
 
@@ -248,8 +285,8 @@ uint8_t analogWriteResolution(pin_t pin, uint8_t value)
   }
   else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
   {
-    HAL_PWM_Set_Resolution(pin, value);
-    return HAL_PWM_Get_Resolution(pin);
+    hal_pwm_set_resolution(pin, value);
+    return hal_pwm_get_resolution(pin);
   }
   
 
@@ -270,7 +307,7 @@ uint8_t analogWriteResolution(pin_t pin)
   }
   else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
   {
-    return HAL_PWM_Get_Resolution(pin);
+    return hal_pwm_get_resolution(pin);
   }
 
   return 0;
@@ -284,7 +321,7 @@ uint32_t analogWriteMaxFrequency(pin_t pin)
       return 0;
   }
 
-  return HAL_PWM_Get_Max_Frequency(pin);
+  return hal_pwm_get_max_frequency(pin);
 }
 
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder) {

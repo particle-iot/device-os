@@ -24,10 +24,15 @@
 #ifndef MODULE_INFO_HAL_H
 #define	MODULE_INFO_HAL_H
 
-#define MODULE_VERIFY_CRC                               1<<1
-#define MODULE_VERIFY_DESTINATION_IS_START_ADDRESS      1<<2
-#define MODULE_VERIFY_FUNCTION                          1<<3
-#define MODULE_VERIFY_LENGTH                            1<<3
+#define MODULE_VERIFY_CRC                               (1<<1)
+#define MODULE_VERIFY_DESTINATION_IS_START_ADDRESS      (1<<2)
+// FIXME: duplicate value. We're leaving this as-is for now in order to keep
+// the compatibility and keep the same behavior of checking both the function and length.
+// This should probably be changed to a single flag called MODULE_VERIFY_FUNCTION_AND_LENGTH
+#define MODULE_VERIFY_FUNCTION                          (1<<3)
+#define MODULE_VERIFY_LENGTH                            (1<<3)
+#define MODULE_DROP_MODULE_INFO                         (1<<4)
+#define MODULE_COMPRESSED                               (1<<5)
 
 #define MODULE_VERIFY_MASK \
             (MODULE_VERIFY_CRC | \

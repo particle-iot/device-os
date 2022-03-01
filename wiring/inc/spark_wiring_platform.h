@@ -2,6 +2,7 @@
 #define	SPARK_WIRING_PLATFORM_H
 
 #include "platforms.h"
+#include "hal_platform.h"
 #include "inet_hal.h"
 
 /**
@@ -12,37 +13,18 @@
 // components of the platform. (I.e. platform  defines comes from the HAL)
 
 
-#if PLATFORM_ID==0 || PLATFORM_ID==2     // core / core hd
-#define Wiring_WiFi 1
-#define Wiring_IPv6 0
-#define Wiring_Serial2 1
-#endif
-
 #if PLATFORM_ID==1      // unused
 #error Unkonwn platform ID
 #endif
 
-#if PLATFORM_ID==3      // gcc
+#if PLATFORM_ID==PLATFORM_GCC      // gcc
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1 // for testing purposes
 #endif
 
-#if PLATFORM_ID==4      // photon dev
-#define Wiring_WiFi 1
-#define Wiring_IPv6 1
-#define Wiring_SPI1 1
-#endif
-
-#if PLATFORM_ID==5
-#define Wiring_WiFi 1
-#define Wiring_IPv6 1
-#define Wiring_SPI1 1
-#define Wiring_Serial2 1
-#endif
-
-#if PLATFORM_ID==6      // photon
+#if PLATFORM_ID==PLATFORM_PHOTON_PRODUCTION      // photon
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
 #define Wiring_SPI1 1
@@ -54,17 +36,7 @@
 #define Wiring_WpaEnterprise 1
 #endif
 
-#if PLATFORM_ID==7
-#define Wiring_WiFi 1
-#define Wiring_IPv6 1
-#define Wiring_SPI1 1
-#define Wiring_Serial2 1
-#define Wiring_USBSerial1 1
-#define Wiring_Mouse 1
-#define Wiring_Keyboard 1
-#endif
-
-#if PLATFORM_ID==8      // P1 / bm14
+#if PLATFORM_ID==PLATFORM_P1      // P1 / bm14
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
 #define Wiring_SPI1 1
@@ -76,11 +48,7 @@
 #define Wiring_WpaEnterprise 1
 #endif
 
-#if PLATFORM_ID==9      // ethernet
-#define Wiring_IPv6 1
-#endif
-
-#if PLATFORM_ID==10      // electron
+#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION      // electron
 #define Wiring_Cellular 1
 #define Wiring_Serial2 1
 #define Wiring_Serial3 0 // Used internally by modem
@@ -91,12 +59,53 @@
 
 #define Wiring_Wire1 1
 #define Wiring_Wire3 1 /* System PMIC and Fuel Guage I2C3 */
-#define Wiring_SetupButtonUX 1
 #define Wiring_USBSerial1 1
 #define Wiring_Mouse 1
 #define Wiring_Keyboard 1
 #define Wiring_LogConfig 1
+
+#define Wiring_SetupButtonUX HAL_PLATFORM_SETUP_BUTTON_UX
 #endif
+
+#if HAL_PLATFORM_NRF52840
+#define Wiring_SPI1 1
+#define Wiring_LogConfig 1
+//#ifdef DEBUG_BUILD
+//#define Wiring_Rtt 1
+//#endif
+#endif
+
+#if HAL_PLATFORM_WIFI
+#define Wiring_WiFi 1
+#endif
+
+#if HAL_PLATFORM_BLE
+#define Wiring_BLE 1
+#endif
+
+#if HAL_PLATFORM_NFC
+#define Wiring_NFC 1
+#endif
+
+#if HAL_PLATFORM_CELLULAR
+#define Wiring_Cellular 1
+#endif
+
+#if HAL_PLATFORM_ETHERNET
+#define Wiring_Ethernet 1
+#endif
+
+#if HAL_PLATFORM_I2C2
+#define Wiring_Wire1 1
+#endif // HAL_PLATFORM_I2C2
+
+#if HAL_PLATFORM_I2C3
+#define Wiring_Wire3 1
+#endif // HAL_PLATFORM_I2C3
+
+#if HAL_PLATFORM_USART2
+#define Wiring_Serial2 1
+#endif // HAL_PLATFORM_USART2
 
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
@@ -118,8 +127,20 @@
 #define Wiring_WiFi 0
 #endif
 
+#ifndef Wiring_BLE
+#define Wiring_BLE 0
+#endif
+
+#ifndef Wiring_NFC
+#define Wiring_NFC 0
+#endif
+
 #ifndef Wiring_Cellular
 #define Wiring_Cellular 0
+#endif
+
+#ifndef Wiring_Ethernet
+#define Wiring_Ethernet 0
 #endif
 
 #ifndef Wiring_Serial2
@@ -151,12 +172,30 @@
 #endif
 
 #ifndef Wiring_IPv6
-#define Wiring_IPv6 0
+#define Wiring_IPv6 HAL_PLATFORM_IPV6
 #endif
 
 #ifndef Wiring_WpaEnterprise
 #define Wiring_WpaEnterprise 0
 #endif
+
+#ifndef Wiring_Rtt
+#define Wiring_Rtt 0
+#endif
+
+#ifndef Wiring_Keyboard
+#define Wiring_Keyboard 0
+#endif // Wiring_Keyboard
+
+#ifndef Wiring_Mouse
+#define Wiring_Mouse 0
+#endif // Wiring_Mouse
+
+#if HAL_PLATFORM_MESH_DEPRECATED
+#ifndef Wiring_Mesh
+#define Wiring_Mesh 0
+#endif // Wiring_Mesh
+#endif // HAL_PLATFORM_MESH_DEPRECATED
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
 

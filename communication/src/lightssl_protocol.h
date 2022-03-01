@@ -21,7 +21,7 @@
 
 #include "protocol_selector.h"
 
-#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_TCP
 
 #include <string.h>
 #include "protocol_defs.h"
@@ -31,6 +31,7 @@
 #include "protocol.h"
 #include "lightssl_message_channel.h"
 #include "coap_channel.h"
+#include "mbedtls_util.h"
 
 namespace particle {
 namespace protocol {
@@ -45,6 +46,7 @@ class LightSSLProtocol : public Protocol
 	}
 
 public:
+	static const unsigned DEFAULT_DISCONNECT_COMMAND_TIMEOUT = 5000;
 
 	LightSSLProtocol() : Protocol(channel) {}
 
@@ -54,7 +56,7 @@ public:
 	          const SparkDescriptor &descriptor) override
 	{
 		set_protocol_flags(REQUIRE_HELLO_RESPONSE);
-
+		mbedtls_default_rng(nullptr, &next_token, sizeof(next_token));
 		LightSSLMessageChannel::Callbacks channelCallbacks;
 		channelCallbacks.millis = callbacks.millis;
 		channelCallbacks.handle_seed = handle_seed;
@@ -65,21 +67,28 @@ public:
         initialize_ping(15000,10000);
 	}
 
-	size_t build_hello(Message& message, uint8_t flags) override
+	size_t build_hello(Message& message, uint16_t flags) override
 	{
 		product_details_t deets;
 		deets.size = sizeof(deets);
 		get_product_details(deets);
 
-		size_t len = Messages::hello(message.buf(), 0,
-				flags, PLATFORM_ID, deets.product_id,
-				deets.product_version, false, nullptr, 0);
+		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, system_version,
+				deets.product_id, deets.product_version, nullptr /* device_id */, 0 /* device_id_len */,
+				PROTOCOL_BUFFER_SIZE, max_binary_size, ota_chunk_size, false /* confirmable */);
 		return len;
 	}
 
-	virtual int command(ProtocolCommands::Enum command, uint32_t data) override;
+	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* data) override;
 
-	int wait_confirmable(uint32_t timeout=5000);
+	virtual int get_status(protocol_status* status) const override
+	{
+		SPARK_ASSERT(status);
+		status->flags = 0;
+		return 0;
+	}
+
+	int wait_confirmable(uint32_t timeout);
 
 };
 
@@ -87,4 +96,4 @@ public:
 
 }}
 
-#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#endif // HAL_PLATFORM_CLOUD_TCP

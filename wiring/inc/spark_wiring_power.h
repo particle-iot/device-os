@@ -24,12 +24,15 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_i2c.h"
-#include "spark_wiring_platform.h"
-
 #ifndef __SPARK_WIRING_POWER_H
 #define __SPARK_WIRING_POWER_H
+
+#include "spark_wiring_platform.h"
+
+#if HAL_PLATFORM_PMIC_BQ24195
+
+#include "spark_wiring.h"
+#include "spark_wiring_i2c.h"
 
 //Default PMIC (BQ24195) I2C address
 #define PMIC_ADDRESS                            0x6B
@@ -47,8 +50,6 @@
 #define FAULT_REGISTER                          0x09
 #define PMIC_VERSION_REGISTER                   0x0A
 
-
-
 class PMIC {
 
 public:
@@ -63,29 +64,34 @@ public:
     byte readInputSourceRegister(void);
     bool enableBuck(void);
     bool disableBuck(void);
+    bool isBuckEnabled();
     bool setInputCurrentLimit(uint16_t current);
     uint16_t getInputCurrentLimit(void);
     bool setInputVoltageLimit(uint16_t voltage);
-    byte getInputVoltageLimit(void);
+    uint16_t getInputVoltageLimit(void);
 
     // Power ON configuration register
     bool enableCharging(void);
     bool disableCharging(void);
+    bool isChargingEnabled(void);
     bool enableOTG(void);
     bool disableOTG(void);
     bool resetWatchdog(void);
     bool setMinimumSystemVoltage(uint16_t voltage);
     uint16_t getMinimumSystemVoltage();
     byte readPowerONRegister(void);
+    void reset();
 
     // Charge current control register
     bool setChargeCurrent(bool bit7, bool bit6, bool bit5, bool bit4, bool bit3, bool bit2);
+    bool setChargeCurrent(uint16_t current);
     byte getChargeCurrent(void);
+    uint16_t getChargeCurrentValue();
 
     //PreCharge/ Termination Current Control Register
     bool setPreChargeCurrent();
     byte getPreChargeCurrent();
-    bool setTermChargeCurrent();
+    bool setTermChargeCurrent(uint16_t current);
     byte getTermChargeCurrent();
 
     //Charge Voltage Control Register
@@ -97,7 +103,8 @@ public:
     byte readChargeTermRegister();
     bool disableWatchdog(void);
     bool setWatchdog(byte time);
-
+    bool enableSafetyTimer();
+    bool disableSafetyTimer();
 
 
     //Thermal Regulation Control Register
@@ -114,7 +121,9 @@ public:
     bool disableDPDM(void);
     bool enableBATFET(void);
     bool disableBATFET(void);
+    bool isBATFETEnabled();
     bool safetyTimer(); //slow/ normal
+    bool isInDPDM();
 
     bool enableChargeFaultINT();
     bool disableChargeFaultINT();
@@ -142,12 +151,15 @@ public:
 
 
 private:
+    static constexpr system_tick_t PMIC_DEFAULT_TIMEOUT = 10; // In millisecond
 
     byte readRegister(byte startAddress);
     void writeRegister(byte address, byte DATA);
 
     bool lock_;
 };
+
+#endif /* HAL_PLATFORM_PMIC_BQ24195 */
 
 #endif /* __SPARK_WIRING_POWER_H */
 

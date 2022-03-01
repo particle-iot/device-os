@@ -19,11 +19,9 @@
 
 #include <cstdint>
 
-namespace particle
-{
+namespace particle {
 
-inline int hexToNibble(char c)
-{
+inline int hexToNibble(char c) {
     if (c >= '0' && c <= '9') {
         return (c - '0');
     } else if (c >= 'a' && c <= 'f') {
@@ -34,8 +32,7 @@ inline int hexToNibble(char c)
     return -1;
 }
 
-inline size_t hexToBytes(const char* src, char* dest, size_t size)
-{
+inline size_t hexToBytes(const char* src, char* dest, size_t size) {
     size_t n = 0;
     while (n < size) {
         const int h = hexToNibble(*src++);
@@ -47,6 +44,7 @@ inline size_t hexToBytes(const char* src, char* dest, size_t size)
             break;
         }
         *dest++ = ((unsigned)h << 4) | (unsigned)l;
+        ++n;
     }
     return n;
 }

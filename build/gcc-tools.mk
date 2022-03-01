@@ -7,14 +7,14 @@ include $(COMMON_BUILD)/common-tools.mk
 # default flags for targeting ARM
 #
 
-GCC_OPTIMIZE=3
+GCC_OPTIMIZE=2
 ifeq ($(DEBUG_BUILD),y)
      GCC_OPTIMIZE=0
 endif
 
 # C compiler flags
 CFLAGS +=  -g3 -m64 -O$(GCC_OPTIMIZE) -gdwarf-2
-CFLAGS += -Wno-unused-local-typedefs
+CFLAGS += -Wno-unused-local-typedefs -Wno-pragmas
 ASFLAGS +=  -g3
 
 

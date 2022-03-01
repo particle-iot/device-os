@@ -25,6 +25,8 @@
 
 #ifndef SPARK_WIRING_H
 #define SPARK_WIRING_H
+/* Important that interrupts_hal.h is included first */
+#include "interrupts_hal.h"
 #include "pinmap_hal.h"
 #include "gpio_hal.h"
 #include "adc_hal.h"
@@ -41,12 +43,14 @@
 #include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cellular.h"
+#include "spark_wiring_ethernet.h"
 #include "spark_wiring_character.h"
 #include "spark_wiring_random.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_rgb.h"
 #include "spark_wiring_ticks.h"
+#include "spark_wiring_nfc.h"
 
 /* To prevent build error, we are undefining and redefining DAC here */
 #undef DAC
@@ -62,6 +66,12 @@ extern "C" {
 void setADCSampleTime(uint8_t ADC_SampleTime);
 int32_t analogRead(uint16_t pin);
 
+enum class DriveStrength: uint8_t {
+    DEFAULT    = HAL_GPIO_DRIVE_DEFAULT,
+    HIGH       = HAL_GPIO_DRIVE_HIGH,
+    STANDARD   = HAL_GPIO_DRIVE_STANDARD
+};
+
 /*
 * GPIO
 */
@@ -70,6 +80,9 @@ PinMode getPinMode(uint16_t pin);
 bool pinAvailable(uint16_t pin);
 void digitalWrite(uint16_t pin, uint8_t value);
 int32_t digitalRead(uint16_t pin);
+#if HAL_PLATFORM_GEN == 3
+int pinSetDriveStrength(pin_t pin, DriveStrength drive);
+#endif
 
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);

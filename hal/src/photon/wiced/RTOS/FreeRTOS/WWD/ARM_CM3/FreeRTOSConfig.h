@@ -87,6 +87,17 @@ extern "C" {
 #define INCLUDE_xTaskIsTaskFinished                 ( 1 )
 #define INCLUDE_xTaskGetCurrentTaskHandle           ( 1 )
 
+// Allocate newlib's reent structure for each task
+#define configUSE_NEWLIB_REENTRANT                  ( 1 )
+#define configNEWLIB_EXTERN                         ( 1 )
+
+#ifdef RTOS_FreeRTOS
+extern void reent_init_ptr(struct _reent* r, size_t size);
+extern void newlib_impure_ptr_change(struct _reent* r);
+#define traceTASK_SWITCHED_IN() newlib_impure_ptr_change(&(pxCurrentTCB->xNewLib_reent))
+#endif // RTOS_FreeRTOS
+
+
 /* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
  (lowest) to 0 (1?) (highest). */
 #define configKERNEL_INTERRUPT_PRIORITY             ( 0xF0 )

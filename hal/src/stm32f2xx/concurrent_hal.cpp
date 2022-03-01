@@ -24,6 +24,7 @@
 #include "concurrent_hal.h"
 
 #include "core_hal_stm32f2xx.h"
+#define NO_STATIC_ASSERT
 #include "static_assert.h"
 #include "delay_hal.h"
 #include "FreeRTOS.h"
@@ -90,10 +91,16 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
     if(priority >= configMAX_PRIORITIES) {
       priority = configMAX_PRIORITIES - 1;
     }
-    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_NAME_TYPE* const) name, (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority, thread);
+    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_NAME_TYPE*) name,
+            (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority,
+            reinterpret_cast<TaskHandle_t*>(thread) );
     return ( result != (signed portBASE_TYPE) pdPASS );
 }
 
+os_thread_t os_thread_current(void* reserved)
+{
+    return xTaskGetCurrentTaskHandle();
+}
 
 /**
  * Determines if the given thread is the one executing.
@@ -102,7 +109,7 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
  */
 bool os_thread_is_current(os_thread_t thread)
 {
-    return thread==xTaskGetCurrentTaskHandle();
+    return static_cast<TaskHandle_t>(thread) == xTaskGetCurrentTaskHandle();
 }
 
 
@@ -132,14 +139,14 @@ bool os_thread_current_within_stack()
  */
 os_result_t os_thread_join(os_thread_t thread)
 {
-#if PLATFORM_ID!=10
+#if PLATFORM_ID == 6 || PLATFORM_ID == 8
     while (xTaskIsTaskFinished(thread) != pdTRUE)
     {
         HAL_Delay_Milliseconds(10);
     }
     return 0;
 #else
-    while (eTaskGetState(thread) != eDeleted)
+    while (eTaskGetState(static_cast<TaskHandle_t>(thread)) != eDeleted)
     {
         HAL_Delay_Milliseconds(10);
     }
@@ -154,7 +161,7 @@ os_result_t os_thread_join(os_thread_t thread)
  */
 os_result_t os_thread_exit(os_thread_t thread)
 {
-    vTaskDelete(thread);
+    vTaskDelete(static_cast<TaskHandle_t>(thread));
     return 0;
 }
 
@@ -190,112 +197,23 @@ os_result_t os_thread_delay_until(system_tick_t *previousWakeTime, system_tick_t
     return 0;
 }
 
-/**
- * Map gthread handles to FreeRTOS task handles.
- */
-typedef TaskHandle_t __gthread_t;
-
-
-class ThreadQueue
+os_thread_notify_t os_thread_wait(system_tick_t ms, void* reserved)
 {
-    QueueHandle_t queue;
+    return ulTaskNotifyTake(pdTRUE, ms);
+}
 
-public:
-
-    ThreadQueue(UBaseType_t max_size) {
-        queue = xQueueCreate(max_size, sizeof(TaskHandle_t));
-    }
-
-    ~ThreadQueue() {
-        vQueueDelete(queue);
-    }
-
-
-    void enqueue(TicksType_t ticks=portMAX_DELAY) {
-        TaskHandle_t current = xTaskGetCurrentTaskHandle();
-        xQueueSend(queue, &current, ticks);
-    }
-
-    void sleep() {
-        enqueue();
-        vTaskSuspend(NULL);
-    }
-
-    bool wake() {
-        TaskHandle_t next;
-        if (xQueueReceive(queue, &next, 0)==pdTRUE) {
-            vTaskResume(next);
-            return true;
-        }
-        return false;
-    }
-
-    void wakeAll()
-    {
-        while (wake()) {}
-    }
-};
-
-
-class Lock
+int os_thread_notify(os_thread_t thread, void* reserved)
 {
-    SemaphoreHandle_t semaphore;
-
-public:
-
-    Lock() {
-        semaphore = xSemaphoreCreateMutex();
+    if (!HAL_IsISR()) {
+        auto r = xTaskNotifyGive(static_cast<TaskHandle_t>(thread));
+        return (r != pdTRUE);
+    } else {
+        BaseType_t woken = pdFALSE;
+        vTaskNotifyGiveFromISR(static_cast<TaskHandle_t>(thread), &woken);
+        portYIELD_FROM_ISR(woken);
+        return 0;
     }
-
-    void acquire() {
-        while (xSemaphoreTake(semaphore, portMAX_DELAY)==pdFALSE);
-    }
-
-    void release() {
-        xSemaphoreGive(semaphore);
-    }
-
-    ~Lock() {
-        vSemaphoreDelete(semaphore);
-    }
-};
-
-
-class ConditionVariable
-{
-    ThreadQueue queue;
-
-    typedef std::unique_lock<std::mutex> lock_t;
-public:
-    ConditionVariable(UBaseType_t max_size) : queue(max_size) {}
-
-    void wait(lock_t* lock)
-    {
-        taskENTER_CRITICAL();
-        lock->unlock();
-        queue.enqueue();
-        taskEXIT_CRITICAL();
-        vTaskSuspend(NULL);
-        lock->lock();
-    }
-
-    void signal()
-    {
-        taskENTER_CRITICAL();
-        queue.wake();
-        taskEXIT_CRITICAL();
-    }
-
-    void broadcast()
-    {
-        taskENTER_CRITICAL();
-        queue.wakeAll();
-        taskEXIT_CRITICAL();
-    }
-};
-
-static_assert(sizeof(__gthread_cond_t)==sizeof(ConditionVariable), "__gthread_cond_t must be the same size as ConditionVariable");
-
+}
 
 bool __gthread_equal(__gthread_t t1, __gthread_t t2)
 {
@@ -307,37 +225,6 @@ __gthread_t __gthread_self()
     return xTaskGetCurrentTaskHandle();
 }
 
-int os_condition_variable_create(condition_variable_t* cond)
-{
-    return (*cond = new ConditionVariable(10))==NULL;
-}
-
-void os_condition_variable_destroy(condition_variable_t cond)
-{
-    ConditionVariable* cv = (ConditionVariable*)cond;
-    cv->~ConditionVariable();
-}
-
-void os_condition_variable_wait(condition_variable_t cond, void* v)
-{
-    std::unique_lock<std::mutex>* lock = (std::unique_lock<std::mutex>*)v;
-    ConditionVariable* cv = (ConditionVariable*)cond;
-    cv->wait(lock);
-}
-
-void os_condition_variable_notify_one(condition_variable_t cond)
-{
-    ConditionVariable* cv = (ConditionVariable*)cond;
-    cv->signal();
-}
-
-void os_condition_variable_notify_all(condition_variable_t cond)
-{
-    ConditionVariable* cv = (ConditionVariable*)cond;
-    cv->broadcast();
-}
-
-
 int os_queue_create(os_queue_t* queue, size_t item_size, size_t item_count, void*)
 {
     *queue = xQueueCreate(item_count, item_size);
@@ -348,24 +235,41 @@ static_assert(portMAX_DELAY==CONCURRENT_WAIT_FOREVER, "expected portMAX_DELAY==C
 
 int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void*)
 {
-    if (HAL_IsISR()) {
+    if (!HAL_IsISR()) {
+        return xQueueSend(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    } else {
         BaseType_t woken = pdFALSE;
-        int res = xQueueSendFromISR(queue, item, &woken) != pdTRUE;
+        int res = xQueueSendFromISR(static_cast<QueueHandle_t>(queue), item, &woken) != pdTRUE;
         portYIELD_FROM_ISR(woken);
         return res;
-    } else {
-        return xQueueSend(queue, item, delay)!=pdTRUE;
     }
 }
 
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void*)
 {
-    return xQueueReceive(queue, item, delay)!=pdTRUE;
+    if (!HAL_IsISR()) {
+        return xQueueReceive(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    } else {
+        BaseType_t woken = pdFALSE;
+        int res = xQueueReceiveFromISR(static_cast<QueueHandle_t>(queue), item, &woken) != pdTRUE;
+        portYIELD_FROM_ISR(woken);
+        return res;
+    }
+}
+
+int os_queue_peek(os_queue_t queue, void* item, system_tick_t delay, void*)
+{
+    if (!HAL_IsISR()) {
+        return xQueuePeek(static_cast<QueueHandle_t>(queue), item, delay)!=pdTRUE;
+    } else {
+        // Delay is ignored
+        return xQueuePeekFromISR(static_cast<QueueHandle_t>(queue), item)!=pdTRUE;
+    }
 }
 
 int os_queue_destroy(os_queue_t queue, void*)
 {
-    vQueueDelete(queue);
+    vQueueDelete(static_cast<QueueHandle_t>(queue));
     return 0;
 }
 
@@ -383,19 +287,19 @@ int os_mutex_destroy(os_mutex_t mutex)
 
 int os_mutex_lock(os_mutex_t mutex)
 {
-    xSemaphoreTake(mutex, portMAX_DELAY);
+    xSemaphoreTake(static_cast<SemaphoreHandle_t>(mutex), portMAX_DELAY);
     return 0;
 }
 
 int os_mutex_trylock(os_mutex_t mutex)
 {
-    return xSemaphoreTake(mutex, 0)==pdFALSE;
+    return xSemaphoreTake(static_cast<SemaphoreHandle_t>(mutex), 0)==pdFALSE;
 }
 
 
 int os_mutex_unlock(os_mutex_t mutex)
 {
-    xSemaphoreGive(mutex);
+    xSemaphoreGive(static_cast<SemaphoreHandle_t>(mutex));
     return 0;
 }
 
@@ -406,24 +310,24 @@ int os_mutex_recursive_create(os_mutex_recursive_t* mutex)
 
 int os_mutex_recursive_destroy(os_mutex_recursive_t mutex)
 {
-    vSemaphoreDelete(mutex);
+    vSemaphoreDelete(static_cast<SemaphoreHandle_t>(mutex));
     return 0;
 }
 
 int os_mutex_recursive_lock(os_mutex_recursive_t mutex)
 {
-    xSemaphoreTakeRecursive(mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(static_cast<SemaphoreHandle_t>(mutex), portMAX_DELAY);
     return 0;
 }
 
 int os_mutex_recursive_trylock(os_mutex_recursive_t mutex)
 {
-    return (xSemaphoreTakeRecursive(mutex, 0)!=pdTRUE);
+    return (xSemaphoreTakeRecursive(static_cast<SemaphoreHandle_t>(mutex), 0)!=pdTRUE);
 }
 
 int os_mutex_recursive_unlock(os_mutex_recursive_t mutex)
 {
-    return xSemaphoreGiveRecursive(mutex)!=pdTRUE;
+    return xSemaphoreGiveRecursive(static_cast<SemaphoreHandle_t>(mutex))!=pdTRUE;
 }
 
 void os_thread_scheduling(bool enabled, void* reserved)
@@ -434,6 +338,11 @@ void os_thread_scheduling(bool enabled, void* reserved)
         vTaskSuspendAll();
 }
 
+os_scheduler_state_t os_scheduler_get_state(void* reserved)
+{
+    return (os_scheduler_state_t)xTaskGetSchedulerState();
+}
+
 int os_semaphore_create(os_semaphore_t* semaphore, unsigned max, unsigned initial)
 {
     *semaphore = xSemaphoreCreateCounting( ( max ), ( initial ) );
@@ -442,18 +351,32 @@ int os_semaphore_create(os_semaphore_t* semaphore, unsigned max, unsigned initia
 
 int os_semaphore_destroy(os_semaphore_t semaphore)
 {
-    vSemaphoreDelete(semaphore);
+    vSemaphoreDelete(static_cast<SemaphoreHandle_t>(semaphore));
     return 0;
 }
 
 int os_semaphore_take(os_semaphore_t semaphore, system_tick_t timeout, bool reserved)
 {
-    return (xSemaphoreTake(semaphore, timeout)!=pdTRUE);
+    if (!HAL_IsISR()) {
+        return (xSemaphoreTake(static_cast<SemaphoreHandle_t>(semaphore), timeout)!=pdTRUE);
+    } else {
+        BaseType_t woken = pdFALSE;
+        int res = xSemaphoreTakeFromISR(static_cast<SemaphoreHandle_t>(semaphore), &woken) != pdTRUE;
+        portYIELD_FROM_ISR(woken);
+        return res;
+    }
 }
 
 int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
 {
-    return xSemaphoreGive(semaphore)!=pdTRUE;
+    if (!HAL_IsISR()) {
+        return xSemaphoreGive(static_cast<SemaphoreHandle_t>(semaphore))!=pdTRUE;
+    } else {
+        BaseType_t woken = pdFALSE;
+        int res = xSemaphoreGiveFromISR(static_cast<SemaphoreHandle_t>(semaphore), &woken) != pdTRUE;
+        portYIELD_FROM_ISR(woken);
+        return res;
+    }
 }
 
 /**
@@ -461,13 +384,19 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
  */
 int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* const timer_id, bool one_shot, void* reserved)
 {
-    *timer = xTimerCreate((_CREATE_NAME_TYPE*)"", period, !one_shot, timer_id, callback);
+    *timer = xTimerCreate((_CREATE_NAME_TYPE*)"", period, !one_shot, timer_id, reinterpret_cast<TimerCallbackFunction_t>(callback));
     return *timer==NULL;
 }
 
 int os_timer_get_id(os_timer_t timer, void** timer_id)
 {
-    *timer_id = pvTimerGetTimerID(timer);
+    *timer_id = pvTimerGetTimerID(static_cast<TimerHandle_t>(timer));
+    return 0;
+}
+
+int os_timer_set_id(os_timer_t timer, void* timer_id)
+{
+    vTimerSetTimerID(static_cast<TimerHandle_t>(timer), timer_id);
     return 0;
 }
 
@@ -478,42 +407,43 @@ int os_timer_change(os_timer_t timer, os_timer_change_t change, bool fromISR, un
     {
     case OS_TIMER_CHANGE_START:
         if (fromISR)
-            return xTimerStartFromISR(timer, &woken)!=pdPASS;
+            return xTimerStartFromISR(static_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
         else
-            return xTimerStart(timer, block)!=pdPASS;
+            return xTimerStart(static_cast<TimerHandle_t>(timer), block)!=pdPASS;
 
     case OS_TIMER_CHANGE_RESET:
         if (fromISR)
-            return xTimerResetFromISR(timer, &woken)!=pdPASS;
+            return xTimerResetFromISR(static_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
         else
-            return xTimerReset(timer, block)!=pdPASS;
+            return xTimerReset(static_cast<TimerHandle_t>(timer), block)!=pdPASS;
 
     case OS_TIMER_CHANGE_STOP:
         if (fromISR)
-            return xTimerStopFromISR(timer, &woken)!=pdPASS;
+            return xTimerStopFromISR(static_cast<TimerHandle_t>(timer), &woken)!=pdPASS;
         else
-            return xTimerStop(timer, block)!=pdPASS;
+            return xTimerStop(static_cast<TimerHandle_t>(timer), block)!=pdPASS;
 
     case OS_TIMER_CHANGE_PERIOD:
         if (fromISR)
-            return xTimerChangePeriodFromISR(timer, period, &woken)!=pdPASS;
+            return xTimerChangePeriodFromISR(static_cast<TimerHandle_t>(timer), period, &woken)!=pdPASS;
         else
-            return xTimerChangePeriod(timer, period, block)!=pdPASS;
+            return xTimerChangePeriod(static_cast<TimerHandle_t>(timer), period, block)!=pdPASS;
     }
     return -1;
 }
 
 int os_timer_destroy(os_timer_t timer, void* reserved)
 {
-    return xTimerDelete(timer, CONCURRENT_WAIT_FOREVER)!=pdPASS;
+    return xTimerDelete(static_cast<TimerHandle_t>(timer), CONCURRENT_WAIT_FOREVER)!=pdPASS;
 }
 
 int os_timer_is_active(os_timer_t timer, void* reserved)
 {
-    return xTimerIsTimerActive(timer) != pdFALSE;
+    return xTimerIsTimerActive(static_cast<TimerHandle_t>(timer)) != pdFALSE;
 }
 
-static AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
+static particle::AtomicFlagMutex<os_result_t, os_thread_yield> flash_lock;
+
 void __flash_acquire() {
     if (!rtos_started) {
         return;

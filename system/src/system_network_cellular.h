@@ -20,6 +20,11 @@
 #pragma once
 
 #include "system_network_internal.h"
+
+/* FIXME: there should be a define that tells whether there is NetworkManager available
+ * or not */
+#if !HAL_PLATFORM_IFAPI
+
 #include "cellular_hal.h"
 #include "interrupts_hal.h"
 #include "spark_wiring_interrupts.h"
@@ -34,6 +39,7 @@ protected:
     virtual void on_finalize_listening(bool complete) override { /* n/a */ }
 
     virtual void on_start_listening() override {
+        connect_cancelled = false;
         cellular_cancel(false, true, NULL);  // resume
     }
 
@@ -48,13 +54,8 @@ protected:
 
     virtual void connect_init() override { /* n/a */ }
 
-    int connect_finalize() override {
-        ATOMIC_BLOCK() { connecting = true; }
-
-        int ret = cellular_connect(nullptr);
-
+    bool resume_if_needed() {
         bool require_resume = false;
-
         ATOMIC_BLOCK() {
             // ensure after connection exits the cancel flag is cleared if it was set during connection
             if (connect_cancelled) {
@@ -65,7 +66,17 @@ protected:
             connecting = false;
         }
         if (require_resume) {
-            cellular_cancel(false, HAL_IsISR(), NULL);
+            cellular_cancel(false, true, nullptr);
+        }
+        return require_resume;
+    }
+
+    int connect_finalize() override {
+        ATOMIC_BLOCK() { connecting = true; }
+
+        int ret = cellular_connect(nullptr);
+
+        if (resume_if_needed()) {
             ret = SYSTEM_ERROR_ABORTED; // FIXME: Return a HAL-specific error code
         }
 
@@ -73,6 +84,9 @@ protected:
     }
 
     int on_now() override {
+        // Resume unconditionally
+        connect_cancelled = false;
+        cellular_cancel(false, HAL_IsISR(), nullptr);
         cellular_result_t ret = cellular_on(nullptr);
         if (ret != 0) {
             return ret;
@@ -89,8 +103,16 @@ protected:
         cellular_off(nullptr);
     }
 
+    bool is_powered() override {
+        return cellular_powered(nullptr);
+    }
+
     void disconnect_now() override {
         cellular_disconnect(nullptr);
+    }
+
+    virtual int process_now() override {
+        return cellular_process(nullptr, nullptr);
     }
 
 public:
@@ -101,7 +123,7 @@ public:
         cb.notify_connected = HAL_NET_notify_connected;
         cb.notify_disconnected = HAL_NET_notify_disconnected;
         cb.notify_dhcp = HAL_NET_notify_dhcp;
-        cb.notify_can_shutdown = HAL_NET_notify_can_shutdown;
+        cb.notify_error = HAL_NET_notify_error;
         HAL_NET_SetCallbacks(&cb, nullptr);
     }
 
@@ -128,11 +150,13 @@ public:
     bool has_credentials() override
     {
         bool rv = cellular_sim_ready(NULL);
-        LOG(INFO,"%s", (rv)?"Sim Ready":"Sim not inserted? Detecting...");
         if (!rv) {
+            LOG(INFO, "Retrying SIM check");
             cellular_on(NULL);
             rv = cellular_sim_ready(NULL);
-            LOG(INFO,"%s", (rv)?"Sim Ready":"Sim not inserted.");
+            if (!rv) {
+                LOG(INFO, "SIM/modem not responsive or SIM not inserted/requires a PIN.");
+            }
         }
         return rv;
     }
@@ -141,10 +165,11 @@ public:
     void connect_cancel(bool cancel) override {
         // only cancel if presently connecting
         bool require_cancel = false;
+        CLR_WLAN_WD();
         ATOMIC_BLOCK() {
-            if (connecting)
+            if (connecting || !SPARK_WLAN_STARTED)
             {
-                if (cancel!=connect_cancelled) {
+                if (cancel != connect_cancelled) {
                     require_cancel = true;
                     connect_cancelled = cancel;
                 }
@@ -171,3 +196,4 @@ public:
     }
 };
 
+#endif /* !HAL_PLATFORM_IFAPI */

@@ -29,19 +29,17 @@
 #if Wiring_Cellular || defined(UNIT_TEST)
 
 #include "cellular_hal.h"
-#include "modem/enums_hal.h"
+#include "cellular_enums_hal.h"
 
 /*
  * CellularSignal
  */
 class CellularSignal : public particle::Signal, public Printable {
 public:
-    int rssi = 0;
-    int qual = 0;
-
     CellularSignal() {}
     CellularSignal(const cellular_signal_t& sig);
     virtual ~CellularSignal() {};
+    CellularSignal(const CellularSignal&) = default;
 
     bool fromHalCellularSignal(const cellular_signal_t& sig);
 
@@ -53,8 +51,11 @@ public:
 
     virtual size_t printTo(Print& p) const;
 
+    virtual bool isValid() const;
+    virtual operator bool() const;
+
 private:
-    cellular_signal_t sig_ = {0};
+    cellular_signal_t sig_ = {};
 };
 
 /*

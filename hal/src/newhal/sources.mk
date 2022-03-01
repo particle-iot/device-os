@@ -28,9 +28,7 @@ CPPSRC := $(filter-out $(remove_cpp),$(CPPSRC))
 CSRC += $(call target_files,$(overridedir)/,*.c)
 CPPSRC += $(call target_files,$(overridedir)/,*.cpp)
 
+CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/util/,*.cpp)
+
 # ASM source files included in this build.
 ASRC +=
-
-CPPFLAGS += -std=gnu++11
-
-

@@ -25,7 +25,7 @@ endif
 LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
 
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
-LDFLAGS += --specs=nano.specs --specs=$(NEWLIB_TWEAK_SPECS)
+LDFLAGS += --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -Wl,--whole-archive $(HAL_WICED_LIB_FILES) -Wl,--no-whole-archive
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 ifneq (,$(MODULE_HAS_SYSTEM_PART3))
@@ -51,5 +51,3 @@ SYSTEM_PART2_SRC_PATH = $(SYSTEM_PART2_MODULE_PATH)/src
 
 CPPSRC += $(call target_files,$(SYSTEM_PART2_SRC_PATH),*.cpp)
 CSRC += $(call target_files,$(SYSTEM_PART2_SRC_PATH),*.c)
-
-CPPFLAGS += -std=gnu++11

@@ -1,16 +1,13 @@
 #include <stddef.h>
 #include <string.h>
+#include <stdint.h>
 
 /**
  * An empty no arg, no result function
  */
 typedef void  (*constructor_ptr_t)(void);
 
-/**
- * Pointer to the reset handler;
- */
-extern void* dynamic_reset_handler_location;
-extern char stack_end;
+extern char _system_part3_static_ram_start;
 
 void* module_system_part3_pre_init();
 
@@ -37,7 +34,7 @@ void* module_system_part3_pre_init()
 
     memset(&link_bss_location, 0, link_bss_size );
 
-    return link_end_of_static_ram;
+    return &_system_part3_static_ram_start;
 }
 
 
@@ -58,6 +55,10 @@ void module_system_part3_init()
         link_constructors_location[ctor_num]();
     }
 
+}
+
+void module_system_part3_newlib_impure_set(struct _reent* r, size_t size, uint32_t version, void* ctx) {
+    _impure_ptr = r;
 }
 
 // todo - this file is a copy/paste of system_part1_loader.c

@@ -3,27 +3,29 @@
 # P1 external 1MB sFlash test
 #
 # 4KB quick test
-# ./p1flashtest quick
+# PORT=$port4p ./p1sflashtest quick
+# PORT=/dev/cu.usbmodem142411 ./p1sflashtest
 #
 # 1MB - 1 byte long test
-# ./p1flashtest
+# PORT=$port4p ./p1sflashtest
+# PORT=/dev/cu.usbmodem142411 ./p1sflashtest
 
+: ${PORT:?"REQUIRED"}
 QUICK_OPTION=$1
 
-# puts device in dfu mode
-dfu()
-{
-  local d=`dfu-util -l | grep d00`;
-  if [ -z "$d" ]; then
-    local x=`compgen -f -- "/dev/tty.usbmodem"`;
-    if [ -z "$x" ]; then
-      echo "No USB device found";
+# Finds and puts device in dfu mode automatically, must only have one device connected.
+# or select a specific device with a specified $PORT
+dfu() {
+  local x=`compgen -f -- "/dev/cu.usbmodem"`;
+  if [ -z "${x}" ]; then
+    echo "No USB device found";
+  else if [ ! -z "${PORT}" ]; then
+      eval $(stty -f ${PORT} 14400);
     else
-      eval $(stty -f $x 14400);
+      eval $(stty -f ${x} 14400);
     fi
-  else
-    echo "already in DFU mode!";
   fi
+  return 0;
 }
 
 # kicks device out of dfu mode, no matter which device it is (except for Core,
@@ -43,6 +45,7 @@ pass() {
   echo "888      d88P   888       \"888       \"888"
   echo "888     d8888888888 Y88b  d88P Y88b  d88P"
   echo "888    d88P     888  \"Y8888P\"   \"Y8888P\""
+  exit 0;
 }
 fail() {
   echo "8888888888     d8888 8888888 888      888"
@@ -53,6 +56,7 @@ fail() {
   echo "888       d88P   888   888   888      Y8P"
   echo "888      d8888888888   888   888       \" "
   echo "888     d88P     888 8888888 88888888 888"
+  exit 1;
 }
 
 main()
@@ -62,7 +66,7 @@ main()
 	else
 		size=1048575;
 	fi
-	cd /Users/brett/Downloads/binaries
+	cd ~/Downloads
 	dfu
 	sleep 1
 	rm random1mb*
@@ -73,12 +77,12 @@ main()
 	diff random1mb1.bin random1mb2.bin > compare1 2>&1
 	value1=$(<compare1)
 	#echo "$value1"
+  dfuq
 	if [ "$value1" == "" ]; then
 		pass
 	else
 		fail
 	fi
-	dfuq
 }
 
 main

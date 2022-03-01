@@ -20,6 +20,10 @@
 #pragma once
 
 #include "system_network_internal.h"
+/* FIXME: there should be a define that tells whether there is NetworkManager available
+ * or not */
+#if !HAL_PLATFORM_IFAPI
+
 #include "wlan_hal.h"
 #include "interrupts_hal.h"
 
@@ -89,14 +93,10 @@ protected:
     {
         if (complete)
             SPARK_WLAN_SmartConfigProcess();
-#if PLATFORM_ID<3 // this is needed to get the CC3000 to retry the wifi connection.
-        off();
-#endif
     }
 
     virtual void on_start_listening() override
     {
-        notify_cannot_shutdown();
         /* If WiFi module is connected, disconnect it */
         network_disconnect(0, NETWORK_DISCONNECT_REASON_LISTENING, NULL);
 
@@ -128,15 +128,32 @@ protected:
         wlan_disconnect_now();
     }
 
-    int on_now() override { return wlan_activate(); }
-    void off_now() override { wlan_deactivate(); }
+    int on_now() override {
+        int ret = wlan_activate();
+        if (ret == 0) {
+            powered = true; 
+        }
+        return ret;
+    }
+
+    void off_now() override {
+        if (wlan_deactivate() == 0) {
+            powered = false;
+        }
+    }
+
+    bool is_powered() override {
+        return powered;
+    }
 
     void on_setup_cleanup() override { wlan_smart_config_cleanup(); }
 
-
+    virtual int process_now() override {
+        // Nothing to do here
+        return 0;
+    }
 
 public:
-
 
     virtual void start_listening() override
     {
@@ -148,7 +165,6 @@ public:
 
         ManagedNetworkInterface::start_listening(console);
     }
-
 
     void connect_cancel(bool cancel) override
     {
@@ -220,5 +236,11 @@ public:
         return wlan_get_hostname(buf, buf_len, NULL);
     }
 
+private:
+    // It's tricky to detect the modem power state.
+    // We assume that every time the device being powered up, the module is powered on.
+    // The the power state then be tracked by the on_now() and off_now() APIs.
+    bool powered = true;
 };
 
+#endif /* !HAL_PLATFORM_IFAPI */

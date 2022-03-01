@@ -6,7 +6,7 @@ HAL_DYNALIB_MODULE_PATH=.
 TARGET_TYPE = a
 BUILD_PATH_EXT = $(HAL_DYNALIB_BUILD_PATH_EXT)
 
-DEPENDENCIES = hal dynalib platform
+DEPENDENCIES = hal services dynalib platform
 
 include ../build/arm-tlm.mk
 

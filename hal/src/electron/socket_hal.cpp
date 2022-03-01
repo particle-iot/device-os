@@ -54,17 +54,26 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
 
 sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
+    return socket_receivefrom_ex(sock, buffer, bufLen, flags, addr, addrsize, 0, nullptr);
+}
+
+sock_result_t socket_receivefrom_ex(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize, system_tick_t timeout, void* reserved)
+{
     int port;
     MDM_IP ip;
 
+    electronMDM.socketSetBlocking(sock, timeout);
+
     sock_result_t result = electronMDM.socketReadable(sock);
-	if (result<=0)			// error or no data
-		return result;
+    if (result < 0 || (timeout == 0 && result == 0)) { // error or no data
+        return result;
+    }
 
 	// have some data to let's get it.
 	result = electronMDM.socketRecvFrom(sock, &ip, &port, (char*)buffer, bufLen);
     if (result > 0) {
         uint32_t ipv4 = ip;
+        addr->sa_family = AF_INET;
         addr->sa_data[0] = (port>>8) & 0xFF;
         addr->sa_data[1] = port & 0xFF;
         addr->sa_data[2] = (ipv4 >> 24) & 0xFF;

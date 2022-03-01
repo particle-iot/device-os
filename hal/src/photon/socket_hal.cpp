@@ -89,7 +89,10 @@ struct tcp_packet_t
      */
     unsigned offset;
 
-    tcp_packet_t() {}
+    tcp_packet_t() :
+            packet(nullptr),
+            offset(0) {
+    }
 
     ~tcp_packet_t() {
         dispose_packet();
@@ -116,7 +119,7 @@ struct tcp_socket_t : public wiced_tcp_socket_t {
 
     tcp_socket_t() : open(false), closed_externally(false) {}
 
-    ~tcp_socket_t() { wiced_tcp_delete_socket(this); }
+    ~tcp_socket_t() {}
 
     void connected() { open = true; }
 
@@ -139,15 +142,20 @@ struct tcp_socket_t : public wiced_tcp_socket_t {
             wiced_tcp_disconnect(this);
             open = false;
         }
+        wiced_tcp_delete_socket(this);
+        memset(this, 0, sizeof(wiced_tcp_socket_t));
+        packet.dispose_packet();
     }
 };
 
 struct udp_socket_t : wiced_udp_socket_t
 {
-    ~udp_socket_t() { wiced_udp_delete_socket(this); }
+    ~udp_socket_t() {}
 
     void close()
     {
+        wiced_udp_delete_socket(this);
+        memset(this, 0, sizeof(wiced_udp_socket_t));
     }
 };
 
@@ -171,7 +179,6 @@ public:
         this->server = server;
         this->closed = false;
         this->closed_externally = false;
-        memset(&packet, 0, sizeof(packet));
     }
 
     wiced_tcp_socket_t* get_socket() { return socket; }
@@ -314,6 +321,7 @@ struct tcp_server_t : public wiced_tcp_server_t
             }
         }
         wiced_tcp_server_stop(this);
+        memset(this, 0, sizeof(wiced_tcp_server_t));
         os_mutex_recursive_unlock(accept_lock);
     }
 
@@ -829,8 +837,9 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
             bytes_read = read_packet_and_dispose(server_client->packet, buffer, len, server_client->get_socket(), _timeout);
         }
     }
-    if (bytes_read<0)
-    		DEBUG("socket_receive on %d returned %d", sd, bytes_read);
+    if (bytes_read<0) {
+        DEBUG("socket_receive on %d returned %d", sd, bytes_read);
+    }
     return bytes_read;
 }
 
@@ -1044,8 +1053,9 @@ sock_result_t socket_send_ex(sock_handle_t sd, const void* buffer, socklen_t len
             wiced_result = server_client->write(buffer, len, &written, flags, timeout);
             bytes_sent = (uint16_t)written;
         }
-        if (!wiced_result)
+        if (!wiced_result) {
             DEBUG("Write %d bytes to socket %d result=%d", (int)len, (int)sd, wiced_result);
+        }
         result = wiced_result ? as_sock_result(wiced_result) : bytes_sent;
     }
     return result;
@@ -1077,6 +1087,11 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
 
 sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
+    return socket_receivefrom_ex(sd, buffer, bufLen, flags, addr, addrsize, WICED_NO_WAIT, nullptr);
+}
+
+sock_result_t socket_receivefrom_ex(sock_handle_t sd, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize, system_tick_t timeout, void* reserved)
+{
     socket_t* socket = from_handle(sd);
     volatile wiced_result_t result = WICED_INVALID_SOCKET;
     uint16_t read_len = 0;
@@ -1084,11 +1099,12 @@ sock_result_t socket_receivefrom(sock_handle_t sd, void* buffer, socklen_t bufLe
         std::lock_guard<socket_t> lk(*socket);
         wiced_packet_t* packet = NULL;
         // UDP receive timeout changed to 0 sec so as not to block
-        if ((result=wiced_udp_receive(udp(socket), &packet, WICED_NO_WAIT))==WICED_SUCCESS) {
+        if ((result=wiced_udp_receive(udp(socket), &packet, timeout))==WICED_SUCCESS) {
             wiced_ip_address_t wiced_ip_addr;
             uint16_t port;
             if ((result=wiced_udp_packet_get_info(packet, &wiced_ip_addr, &port))==WICED_SUCCESS) {
                 uint32_t ipv4 = GET_IPV4_ADDRESS(wiced_ip_addr);
+                addr->sa_family = AF_INET;
                 addr->sa_data[0] = (port>>8) & 0xFF;
                 addr->sa_data[1] = port & 0xFF;
                 addr->sa_data[2] = (ipv4 >> 24) & 0xFF;

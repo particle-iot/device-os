@@ -23,6 +23,7 @@
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_logging.h"
+#include "rtt_output_stream.h"
 
 namespace spark {
 
@@ -65,6 +66,7 @@ public:
 };
 
 #if Wiring_USBSerial1
+
 class USBSerial1LogHandler: public StreamLogHandler {
 public:
     explicit USBSerial1LogHandler(LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
@@ -86,6 +88,30 @@ public:
 };
 
 #endif // Wiring_USBSerial1
+
+#if Wiring_Rtt
+
+class RttLogHandler: public StreamLogHandler {
+public:
+    explicit RttLogHandler(LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
+            StreamLogHandler(strm_, level, filters) {
+        if (strm_.open() == 0) {
+            LogManager::instance()->addHandler(this);
+        }
+    }
+
+    virtual ~RttLogHandler() {
+        if (strm_.isOpen()) {
+            LogManager::instance()->removeHandler(this);
+            strm_.close();
+        }
+    }
+
+private:
+    particle::RttOutputStream strm_;
+};
+
+#endif // Wiring_Rtt
 
 } // namespace spark
 

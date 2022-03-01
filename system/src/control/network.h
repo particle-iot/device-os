@@ -23,8 +23,7 @@ namespace particle {
 namespace control {
 namespace network {
 
-int handleGetConfigurationRequest(ctrl_request* req);
-int handleGetStatusRequest(ctrl_request* req);
-int handleSetConfigurationRequest(ctrl_request* req);
+int getInterfaceList(ctrl_request* req);
+int getInterface(ctrl_request* req);
 
 } } } /* namespace particle::control::network */

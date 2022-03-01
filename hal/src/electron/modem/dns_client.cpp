@@ -75,7 +75,8 @@ const uint16_t SERVER_PORT = 53;
 // Maximum host name length
 const size_t MAX_NAME_LENGTH = 255;
 // Maximum number of retries
-const unsigned MAX_RETRIES = 3;
+const unsigned MAX_DNS_QRY_RETRIES = 3;
+const unsigned MAX_SEND_TO_RETRIES = 1;
 // Buffer size
 const size_t BUFFER_SIZE = 512; // See RFC 1035 – 4.2.1. UDP usage
 
@@ -129,7 +130,9 @@ struct DnsQuery {
 class UdpSocket {
 public:
     UdpSocket() :
-            sock_(-1) {
+            sock_(MDM_SOCKET_ERROR),
+            oldModemStateChangeCount_(0),
+            newModemStateChangeCount_(0) {
     }
 
     ~UdpSocket() {
@@ -137,7 +140,10 @@ public:
     }
 
     int open() {
-        close();
+        _invalidateSocketIfNeeded();
+        if (sock_ >= 0) {
+            return 0; // already open
+        }
         const int sock = electronMDM.socketSocket(MDM_IPPROTO_UDP);
         if (sock < 0) {
             return sock;
@@ -147,27 +153,57 @@ public:
             return MDM_SOCKET_ERROR;
         }
         sock_ = sock;
+        oldModemStateChangeCount_ = newModemStateChangeCount_;
         return 0;
     }
 
     void close() {
-        if (sock_ >= 0) {
+        if (!_invalidateSocketIfNeeded() && sock_ >= 0) {
             electronMDM.socketFree(sock_);
-            sock_ = -1;
+            sock_ = MDM_SOCKET_ERROR;
         }
     }
 
     int sendTo(MDM_IP addr, int port, const char* data, size_t size) {
+        if (_invalidateSocketIfNeeded()) {
+            // do not try to free socket since it is invalidated
+            return MDM_SOCKET_ERROR;
+        }
         return electronMDM.socketSendTo(sock_, addr, port, data, size);
     }
 
     int recvFrom(MDM_IP* addr, int* port, char* data, size_t size) {
+        if (_invalidateSocketIfNeeded()) {
+            // do not try to free socket since it is invalidated
+            return MDM_SOCKET_ERROR;
+        }
+        // See if any data is waiting for us
+        int result = electronMDM.socketReadable(sock_);
+        if (result <= 0) {
+            return 0; // no data
+        }
+
         return electronMDM.socketRecvFrom(sock_, addr, port, data, size);
     }
 
 private:
+    bool _invalidateSocketIfNeeded() {
+        // Used to detect when the modem has been power cycled off/on/reset since the last time
+        // sock_ has been used, and if it has changed the sock_ handle is invalidated.
+        newModemStateChangeCount_ = electronMDM.getModemStateChangeCount();
+        if (oldModemStateChangeCount_ != newModemStateChangeCount_) {
+            sock_ = MDM_SOCKET_ERROR;
+            return 1;
+        }
+        return 0;
+    }
+
     int sock_;
+    int oldModemStateChangeCount_;
+    int newModemStateChangeCount_;
 };
+
+UdpSocket g_sock;
 
 inline uint16_t htons(uint16_t val) {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -373,10 +409,20 @@ int sendDnsQuery(UdpSocket* sock, DnsQuery* q) {
     tc.type = htons(DNS_RRTYPE_A);
     tc.cls = htons(DNS_RRCLASS_IN);
     memcpy(q->buf.get() + offs, &tc, sizeof(DnsTypeClass));
-    const int ret = sock->sendTo(SERVER_ADDRESS, SERVER_PORT, q->buf.get(), packetSize);
-    if (ret < 0) {
-        return ret;
-    }
+    unsigned send_retries = 0;
+    do {
+        const int ret = sock->sendTo(SERVER_ADDRESS, SERVER_PORT, q->buf.get(), packetSize);
+        if (ret < 0) {
+            sock->close();
+            if (send_retries >= MAX_SEND_TO_RETRIES) {
+                return ret;
+            }
+            sock->open();
+            send_retries++;
+        } else {
+            break;
+        }
+    } while (send_retries <= MAX_SEND_TO_RETRIES);
     return 0;
 }
 
@@ -405,8 +451,7 @@ int getHostByName(const char* name, MDM_IP* addr) {
     if (!q.buf) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    UdpSocket sock;
-    int ret = sock.open();
+    int ret = g_sock.open();
     if (ret < 0) {
         LOG(ERROR, "Unable to create socket");
         return ret;
@@ -415,14 +460,14 @@ int getHostByName(const char* name, MDM_IP* addr) {
     do {
         const system_tick_t timeout = (retries + 1) * 1000;
         LOG_DEBUG(TRACE, "Sending DNS query, timeout: %u", (unsigned)timeout);
-        ret = sendDnsQuery(&sock, &q);
+        ret = sendDnsQuery(&g_sock, &q);
         if (ret < 0) {
             return ret;
         }
         const system_tick_t timeStart = HAL_Timer_Get_Milli_Seconds();
         do {
             HAL_Delay_Milliseconds(200);
-            ret = recvDnsResponse(&sock, &q);
+            ret = recvDnsResponse(&g_sock, &q);
             if (ret < 0) {
                 return ret;
             }
@@ -433,7 +478,7 @@ int getHostByName(const char* name, MDM_IP* addr) {
             }
         } while (HAL_Timer_Get_Milli_Seconds() - timeStart < timeout);
         ++retries;
-    } while (retries <= MAX_RETRIES);
+    } while (retries <= MAX_DNS_QRY_RETRIES);
     return SYSTEM_ERROR_TIMEOUT;
 }
 

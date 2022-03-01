@@ -120,8 +120,9 @@ void wlan_set_error_count(uint32_t errorCount)
 {
 }
 
-void wlan_fetch_ipconfig(WLanConfig* config)
+int wlan_fetch_ipconfig(WLanConfig* config)
 {
+    return -1;
 }
 
 void SPARK_WLAN_SmartConfigProcess()
@@ -185,5 +186,9 @@ int wlan_get_hostname(char* buf, size_t len, void* reserved)
 int wlan_set_hostname(const char* hostname, void* reserved)
 {
     // Unsupported
+    return -1;
+}
+
+int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
     return -1;
 }

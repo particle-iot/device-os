@@ -25,7 +25,7 @@ LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/../../shared/stm32f2xx/part1.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/../../shared/stm32f2xx/part1_vtor_module.ld
 
 
-LDFLAGS += --specs=nano.specs -lnosys
+LDFLAGS += -lnosys
 LDFLAGS += $(WIFI_MODULE_WICED_LIB_FILES)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)

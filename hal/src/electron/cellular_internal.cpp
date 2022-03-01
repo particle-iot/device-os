@@ -8,25 +8,11 @@
 #include <limits>
 #include <cmath>
 #include "net_hal.h"
+#include "string.h"
 
-namespace detail {
-CellularNetProv _cellular_imsi_to_network_provider(const char* imsi) {
-    if (imsi && strlen(imsi) > 0) {
-        // convert to unsigned long long (imsi can be 15 digits)
-        unsigned long long imsi64 = strtoull(imsi, NULL, 10);
-        // LOG(INFO,"IMSI: %s %lu%lu", imsi, (uint32_t)(imsi64/100000000), (uint32_t)(imsi64-310260800000000));
-        // set network provider based on IMSI range
-        if (imsi64 >= 310260859000000 && imsi64 <= 310260859999999) {
-            return CELLULAR_NETPROV_TWILIO;
-        }
-        else {
-            return CELLULAR_NETPROV_TELEFONICA;
-        }
-    }
-    return CELLULAR_NETPROV_TELEFONICA; // default to telefonica
-}
+namespace particle { namespace detail {
 
-cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signal_t* signalext, bool strengthResult, const NetStatus& status) {
+cellular_result_t cellular_signal_impl(cellular_signal_t* signalext, bool strengthResult, const NetStatus& status) {
     // % * 100, see 3GPP TS 45.008 8.2.4
     // 0.14%, 0.28%, 0.57%, 1.13%, 2.26%, 4.53%, 9.05%, 18.10%
     static const uint16_t berMapping[] = {14, 28, 57, 113, 226, 453, 905, 1810};
@@ -35,11 +21,6 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
 
     if (strengthResult != true) {
         return SYSTEM_ERROR_UNKNOWN;
-    }
-
-    if (signal != nullptr) {
-        signal->rssi = status.rssi;
-        signal->qual = status.qual;
     }
 
     if (signalext != nullptr) {
@@ -54,9 +35,13 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
             signalext->rat = NET_ACCESS_TECHNOLOGY_UTRAN;
             break;
         case ACT_LTE:
-        case ACT_LTE_CAT_M1:
-        case ACT_LTE_CAT_NB1:
             signalext->rat = NET_ACCESS_TECHNOLOGY_LTE;
+            break;
+        case ACT_LTE_CAT_M1:
+            signalext->rat = NET_ACCESS_TECHNOLOGY_LTE_CAT_M1;
+            break;
+        case ACT_LTE_CAT_NB1:
+            signalext->rat = NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1;
             break;
         default:
             signalext->rat = NET_ACCESS_TECHNOLOGY_NONE;
@@ -90,37 +75,42 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
             }
 
             // RSSI in % [0, 100] based on [-111, -48] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rxlev != 99) ? status.rxlev * 65535 / 63 : std::numeric_limits<int32_t>::min();
+            // signalext->strength = (status.rxlev != 99) ? status.rxlev * 65535 / 63 : std::numeric_limits<int32_t>::min();
+            signalext->strength = (status.rxlev != 99) ? cellular_get_scaled_strn(signalext->rssi, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             // Quality based on RXQUAL in % [0, 100] mapped to [0, 65535] integer range
             signalext->quality = (status.rxqual != 99) ? (7 - status.rxqual) * 65535 / 7 : std::numeric_limits<int32_t>::min();
             break;
         case ACT_UTRAN:
             // Convert to dBm [-121, -25], see 3GPP TS 25.133 9.1.1.3
             // Reported multiplied by 100
-            signalext->rscp = (status.rscp != 255) ? (status.rscp - 116) * 100 : std::numeric_limits<int32_t>::min();
+            signalext->rscp = (status.rscp != 255) ? (status.rscp - 121) * 100 : std::numeric_limits<int32_t>::min();
             // Convert to Ec/Io (dB) [-24.5, 0], see 3GPP TS 25.133 9.1.2.3
             // Report multiplied by 100
             signalext->ecno = (status.ecno != 255) ? status.ecno * 50 - 2450 : std::numeric_limits<int32_t>::min();
 
             // RSCP in % [0, 100] based on [-121, -25] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rscp != 255) ? (status.rscp + 5) * 65535 / 96 : std::numeric_limits<int32_t>::min();
+            // signalext->strength = (status.rscp != 255) ? status.rscp * 65535 / 96 : std::numeric_limits<int32_t>::min();
+            signalext->strength = (status.rscp != 255) ? cellular_get_scaled_strn(signalext->rscp, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
-            signalext->quality = (status.ecno != 255) ? status.ecno * 65535 / 49 : std::numeric_limits<int32_t>::min();
+            // signalext->quality = (status.ecno != 255) ? status.ecno * 65535 / 49 : std::numeric_limits<int32_t>::min();
+            signalext->quality = (status.rsrq != 255) ? cellular_get_scaled_qual(signalext->ecno, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             break;
         case ACT_LTE:
         case ACT_LTE_CAT_M1:
         case ACT_LTE_CAT_NB1:
-            // Convert to dBm [-140, -44], see 3GPP TS 36.133 subclause 9.1.4
+            // Convert to dBm [-141, -44], see 3GPP TS 36.133 subclause 9.1.4
             // Reported multiplied by 100
             signalext->rsrp = (status.rsrp != 255) ? (status.rsrp - 141) * 100 : std::numeric_limits<int32_t>::min();
-            // Convert to dB [-19.5, -3], see 3GPP TS 36.133 subclause 9.1.7
+            // Convert to dB [-20, -3], see 3GPP TS 36.133 subclause 9.1.7
             // Report multiplied by 100
             signalext->rsrq = (status.rsrq != 255) ? status.rsrq * 50 - 2000 : std::numeric_limits<int32_t>::min();
 
-            // RSRP in % [0, 100] based on [-140, -44] range mapped to [0, 65535] integer range
-            signalext->strength = (status.rsrp != 255) ? status.rsrp * 65535 / 97 : std::numeric_limits<int32_t>::min();
+            // RSRP in % [0, 100] based on [-141, -44] range mapped to [0, 65535] integer range
+            // signalext->strength = (status.rsrp != 255) ? status.rsrp * 65535 / 97 : std::numeric_limits<int32_t>::min();
+            signalext->strength = (status.rsrp != 255) ? cellular_get_scaled_strn(signalext->rsrp, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             // Quality based on Ec/Io in % [0, 100] mapped to [0,65535] integer range
-            signalext->quality = (status.rsrq != 255) ? status.rsrq * 65535 / 34 : std::numeric_limits<int32_t>::min();
+            // signalext->quality = (status.rsrq != 255) ? status.rsrq * 65535 / 34 : std::numeric_limits<int32_t>::min();
+            signalext->quality = (status.rsrq != 255) ? cellular_get_scaled_qual(signalext->rsrq, static_cast<hal_net_access_tech_t>(signalext->rat)) : std::numeric_limits<int32_t>::min();
             break;
         default:
             res = SYSTEM_ERROR_UNKNOWN;
@@ -135,6 +125,6 @@ cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signa
     return res;
 }
 
-} // namespace detail
+}} // namespace particle detail
 
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

@@ -29,6 +29,14 @@
 #include "dct.h"
 #include "module_info.h"
 #include <string.h>
+#include "system_error.h"
+
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER && (PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1)
+#define LOAD_DCT_FUNCTIONS 1
+void dct_reload_functions();
+#else
+#define LOAD_DCT_FUNCTIONS 0
+#endif
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -59,7 +67,7 @@ uint16_t addressToSectorIndex(uint32_t address)
 uint32_t sectorIndexToStartAddress(uint16_t sector)
 {
 	return sector<5 ? sectorAddresses[sector] :
-			((sector-5)<<17)+0x8020000;
+			(((uint32_t)sector-5)<<17)+0x8020000;
 }
 
 static inline uint16_t InternalSectorToWriteProtect(uint32_t startAddress)
@@ -277,7 +285,7 @@ int FLASH_CheckCopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
             return FLASH_ACCESS_RESULT_BADARG;
         }
 
-        const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress);
+        const module_info_t* info = FLASH_ModuleInfo(sourceDeviceID, sourceAddress, NULL);
         if ((info->module_function != MODULE_FUNCTION_RESOURCE) && (info->platform_id != PLATFORM_ID))
         {
             return FLASH_ACCESS_RESULT_BADARG;
@@ -611,72 +619,86 @@ bool FLASH_RestoreFromFactoryResetModuleSlot(void)
     return !FLASH_ApplyFactoryResetImage(FLASH_CopyMemory);
 }
 
-//This function called in bootloader to perform the memory update process
-bool FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
+// This function is called in bootloader to perform the memory update process
+int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating))
 {
-    // Copy module info from DCT before updating any modules, since bootloader might load DCT
-    // functions dynamically. FAC_RESET_SLOT is reserved for factory reset module
-    const size_t max_module_count = MAX_MODULES_SLOT - GEN_START_SLOT;
-    platform_flash_modules_t modules[max_module_count];
+    // FAC_RESET_SLOT is reserved for factory reset module
+    const size_t module_count = MAX_MODULES_SLOT - GEN_START_SLOT;
     size_t module_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
-    size_t module_count = 0;
-    for (size_t i = 0; i < max_module_count; ++i) {
-        const size_t magic_num_offs = module_offs + offsetof(platform_flash_modules_t, magicNumber);
-        uint16_t magic_num = 0;
-        if (dct_read_app_data_copy(magic_num_offs, &magic_num, sizeof(magic_num)) != 0) {
-            return false;
-        }
-        if (magic_num == 0xabcd) {
-            // Copy module info
-            if (dct_read_app_data_copy(module_offs, &modules[module_count], sizeof(platform_flash_modules_t)) != 0) {
-                return false;
+    platform_flash_modules_t modules[module_count];
+    int r = dct_read_app_data_copy(module_offs, modules, sizeof(platform_flash_modules_t) * module_count);
+    if (r != 0) {
+        return FLASH_ACCESS_RESULT_ERROR;
+    }
+    int result = FLASH_ACCESS_RESULT_OK;
+    bool has_modules = false;
+    for (size_t i = 0; i < module_count; ++i) {
+        platform_flash_modules_t* const module = &modules[i];
+        if (module->magicNumber == 0xabcd) {
+            if (!has_modules) {
+                has_modules = true;
+                // Turn on RGB_COLOR_MAGENTA toggling during flash update
+                if (flashModulesCallback) {
+                    flashModulesCallback(true);
+                }
             }
-            // Mark slot as unused
-            magic_num = 0xffff;
-            if (dct_write_app_data(&magic_num, magic_num_offs, sizeof(magic_num)) != 0) {
-                return false;
+            // Copy memory from source to destination based on flash device ID
+            r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
+                    module->destinationAddress, module->length, module->module_function, module->flags);
+            if (r != FLASH_ACCESS_RESULT_OK && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                // Propagate errors, prioritize FLASH_ACCESS_RESULT_RESET_PENDING over errors
+                result = r;
             }
-            ++module_count;
+#if LOAD_DCT_FUNCTIONS
+            // DCT functions may need to be reloaded after updating a system module
+            if (!(module->flags & MODULE_VERIFY_FUNCTION) || module->module_function == MODULE_FUNCTION_SYSTEM_PART) {
+                dct_reload_functions();
+            }
+#endif
+            // Mark the slot as unused
+            module->magicNumber = 0xffff;
+            r = dct_write_app_data(&module->magicNumber, module_offs + offsetof(platform_flash_modules_t, magicNumber),
+                    sizeof(module->magicNumber));
+            if (r != 0 && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
+                result = FLASH_ACCESS_RESULT_ERROR;
+            }
         }
         module_offs += sizeof(platform_flash_modules_t);
     }
-    for (size_t i = 0; i < module_count; ++i) {
-        const platform_flash_modules_t* module = &modules[i];
-        // Turn On RGB_COLOR_MAGENTA toggling during flash updating
-        if (flashModulesCallback) {
-            flashModulesCallback(true);
-        }
-        // Copy memory from source to destination based on flash device id
-        FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
-                module->destinationAddress, module->length, module->module_function, module->flags);
-        // Turn Off RGB_COLOR_MAGENTA toggling
-        if (flashModulesCallback) {
-            flashModulesCallback(false);
-        }
+    // Turn off RGB_COLOR_MAGENTA toggling
+    if (has_modules && flashModulesCallback) {
+        flashModulesCallback(false);
     }
-    return true;
+    return result;
 }
 
-const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress)
+const module_info_t* FLASH_ModuleInfo(uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset)
 {
+    const module_info_t* info = NULL;
+    uint32_t offset = 0;
+
     if(flashDeviceID == FLASH_INTERNAL)
     {
         if (((*(__IO uint32_t*)startAddress) & APP_START_MASK) == 0x20000000)
         {
-            startAddress += 0x184;
+            offset = 0x184;
+            startAddress += offset;
         }
 
-        const module_info_t* module_info = (const module_info_t*)startAddress;
-
-        return module_info;
+        info = (const module_info_t*)startAddress;
     }
 
-    return NULL;
+    if (infoOffset && info)
+    {
+        *infoOffset = offset;
+    }
+
+    return info;
 }
 
 uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
 
     if (module_info != NULL)
     {
@@ -688,7 +710,7 @@ uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress)
 
 uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
 
     if (module_info != NULL)
     {
@@ -700,7 +722,7 @@ uint32_t FLASH_ModuleLength(uint8_t flashDeviceID, uint32_t startAddress)
 
 bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, uint32_t expectedAddress)
 {
-    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress);
+    const module_info_t* module_info = FLASH_ModuleInfo(flashDeviceID, startAddress, NULL);
 
     return (module_info != NULL
             && ((uint32_t)(module_info->module_start_address) == expectedAddress)
@@ -851,16 +873,43 @@ uint32_t FLASH_PagesMask(uint32_t imageSize, uint32_t pageSize)
     return numPages;
 }
 
-void FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
+int FLASH_Begin(uint32_t FLASH_Address, uint32_t imageSize)
 {
     system_flags.OTA_FLASHED_Status_SysFlag = 0x0000;
     Save_SystemFlags();
 
+    // Clear all non-factory module slots in the DCT
+    const size_t slot_count = MAX_MODULES_SLOT - GEN_START_SLOT;
+    size_t slot_offs = DCT_FLASH_MODULES_OFFSET + sizeof(platform_flash_modules_t) * GEN_START_SLOT;
+    for (size_t i = 0; i < slot_count; ++i) {
+        uint16_t magic_num = 0;
+        int r = dct_read_app_data_copy(slot_offs + offsetof(platform_flash_modules_t, magicNumber), &magic_num,
+                sizeof(magic_num));
+        if (r != 0) {
+            return FLASH_ACCESS_RESULT_ERROR;
+        }
+        if (magic_num == 0xabcd) {
+            // Mark the slot as unused
+            magic_num = 0xffff;
+            r = dct_write_app_data(&magic_num, slot_offs + offsetof(platform_flash_modules_t, magicNumber),
+                    sizeof(magic_num));
+            if (r != 0) {
+                return FLASH_ACCESS_RESULT_ERROR;
+            }
+        }
+        slot_offs += sizeof(platform_flash_modules_t);
+    }
+
 #ifdef USE_SERIAL_FLASH
-    FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, imageSize);
+    const bool ok = FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, imageSize);
 #else
-    FLASH_EraseMemory(FLASH_INTERNAL, FLASH_Address, imageSize);
+    const bool ok = FLASH_EraseMemory(FLASH_INTERNAL, FLASH_Address, imageSize);
 #endif
+    if (!ok) {
+        return FLASH_ACCESS_RESULT_ERROR;
+    }
+
+    return FLASH_ACCESS_RESULT_OK;
 }
 
 int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
@@ -899,15 +948,11 @@ int FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t bufferSize)
 
     if (bufferSize & 0x3) /* Not an aligned data */
     {
-        char buf[4];
-        memset(buf, 0xFF, 4);
-
-        for (index = bufferSize&3; index -->0; )
+        for (; index < bufferSize; index++)
         {
-            buf[index] = pBuffer[ (bufferSize & 0xFFFC)+index ];
+            FLASH_ProgramByte(address, pBuffer[index]);
+            ++address;
         }
-        FLASH_ProgramWord(address, *(uint32_t *)(pBuffer + index));
-
     }
 
     /* Lock the internal flash */
@@ -927,4 +972,33 @@ void FLASH_End(void)
 #else
     //FLASH_AddToNextAvailableModulesSlot() should be called in system_update.cpp
 #endif
+}
+
+int FLASH_ReadOTP(uint32_t offset, uint8_t* pBuffer, uint32_t bufferSize) {
+    if (OTP_START_ADD + offset + bufferSize > OTP_END_ADD) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    memcpy(pBuffer, (uint8_t*)(OTP_START_ADD + offset), bufferSize);
+
+    return 0;
+}
+
+int FLASH_WriteOTP(uint32_t offset, const uint8_t* pBuffer, uint32_t bufferSize) {
+    if (OTP_START_ADD + offset + bufferSize > OTP_END_ADD) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    uint8_t tmp = 0;
+    for (uint32_t i = 0; i < bufferSize; i++) {
+        FLASH_ReadOTP(offset + i, &tmp, 1);
+        if (tmp != 0xFF) {
+            // OPT is initialized already
+            return SYSTEM_ERROR_NOT_ALLOWED;
+        }
+    }
+
+    FLASH_Update(pBuffer, OTP_START_ADD + offset, bufferSize);
+
+    return 0;
 }

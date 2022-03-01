@@ -27,6 +27,7 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+#include "usbd_conf.h"
 #include "stm32_it.h"
 #include "usb_core.h"
 #include "usbd_core.h"

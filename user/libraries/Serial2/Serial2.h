@@ -6,15 +6,12 @@
 #if Wiring_Serial2
 
 // instantiate Serial2
-static Ring_Buffer serial2_rx_buffer;
-static Ring_Buffer serial2_tx_buffer;
 
 USARTSerial& __fetch_global_Serial2()
 {
-	static USARTSerial serial2(HAL_USART_SERIAL2, &serial2_rx_buffer, &serial2_tx_buffer);
+	static USARTSerial serial2(HAL_USART_SERIAL2, acquireSerial2Buffer());
 	return serial2;
 }
-
 
 void serialEventRun2()
 {

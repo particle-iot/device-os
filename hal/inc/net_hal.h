@@ -12,7 +12,7 @@ typedef struct {
     void (*notify_connected)(); // HAL_NET_notify_connected()
     void (*notify_disconnected)(); // HAL_NET_notify_disconnected()
     void (*notify_dhcp)(bool dhcp); // HAL_NET_notify_dhcp()
-    void (*notify_can_shutdown)(); // HAL_NET_notify_can_shutdown()
+    void (*notify_error)(); // HAL_NET_notify_error()
 } HAL_NET_Callbacks;
 
 uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInuS);
@@ -35,7 +35,7 @@ void HAL_NET_notify_disconnected();
  */
 void HAL_NET_notify_dhcp(bool dhcp);
 
-void HAL_NET_notify_can_shutdown();
+void HAL_NET_notify_error();
 
 typedef enum {
     NET_ACCESS_TECHNOLOGY_UNKNOWN = 0,
@@ -47,7 +47,10 @@ typedef enum {
     NET_ACCESS_TECHNOLOGY_UTRAN = 4,
     NET_ACCESS_TECHNOLOGY_WCDMA = 4,
     NET_ACCESS_TECHNOLOGY_CDMA = 5,
-    NET_ACCESS_TECHNOLOGY_LTE = 6
+    NET_ACCESS_TECHNOLOGY_LTE = 6,
+    NET_ACCESS_TECHNOLOGY_IEEE802154 = 7,
+    NET_ACCESS_TECHNOLOGY_LTE_CAT_M1 = 8,
+    NET_ACCESS_TECHNOLOGY_LTE_CAT_NB1 = 9,
 } hal_net_access_tech_t;
 
 #ifdef __cplusplus

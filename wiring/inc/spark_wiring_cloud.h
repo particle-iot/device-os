@@ -22,10 +22,13 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "spark_wiring_string.h"
 #include "events.h"
 #include "system_cloud.h"
 #include "system_sleep.h"
+#include "system_tick_hal.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_watchdog.h"
@@ -34,22 +37,12 @@
 #include "spark_wiring_global.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
+
 #include <functional>
-
-#define PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE \
-        PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.publish() will require event scope to be specified explicitly.");
-
-#define PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE \
-        PARTICLE_DEPRECATED_API("Beginning with 0.8.0 release, Particle.subscribe() will require event scope to be specified explicitly.");
+#include <type_traits>
 
 typedef std::function<user_function_int_str_t> user_std_function_int_str_t;
 typedef std::function<void (const char*, const char*)> wiring_event_handler_t;
-
-#ifdef SPARK_NO_CLOUD
-#define CLOUD_FN(x,y) (y)
-#else
-#define CLOUD_FN(x,y) (x)
-#endif
 
 #ifndef __XSTRING
 #define	__STRING(x)	#x		/* stringify without expanding x */
@@ -71,22 +64,49 @@ struct is_string_literal {
     static constexpr bool value = std::is_array<T>::value && std::is_same<typename std::remove_extent<T>::type, char>::value;
 };
 
-class CloudClass {
-
-
+class CloudDisconnectOptions {
 public:
+    CloudDisconnectOptions();
 
-    template <typename T, class ... Types>
-    static inline bool variable(const T &name, const Types& ... args)
+    CloudDisconnectOptions& graceful(bool enabled);
+    bool graceful() const;
+    bool isGracefulSet() const;
+
+    CloudDisconnectOptions& timeout(system_tick_t timeout);
+    CloudDisconnectOptions& timeout(std::chrono::milliseconds ms);
+    system_tick_t timeout() const;
+    bool isTimeoutSet() const;
+
+    CloudDisconnectOptions& clearSession(bool enabled);
+    bool clearSession() const;
+    bool isClearSessionSet() const;
+
+    spark_cloud_disconnect_options toSystemOptions() const;
+    static CloudDisconnectOptions fromSystemOptions(const spark_cloud_disconnect_options* options);
+
+private:
+    unsigned flags_; // TODO: Use std::optional (C++17)
+    system_tick_t timeout_;
+    bool graceful_;
+    bool clearSession_;
+
+    CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful, bool clearSession);
+};
+
+class CloudClass {
+public:
+    template <typename T, typename... ArgsT>
+    static inline bool variable(const T &name, ArgsT&&... args)
     {
         static_assert(!is_string_literal<T>::value || sizeof(name) <= USER_VAR_KEY_LENGTH + 1,
             "\n\nIn Particle.variable, name must be " __XSTRING(USER_VAR_KEY_LENGTH) " characters or less\n\n");
 
-        return _variable(name, args...);
+        return _variable(name, std::forward<ArgsT>(args)...);
     }
 
-
-    static inline bool _variable(const char* varKey, const bool& var)
+    // Prevent unsupported functions from being registered as boolean variables
+    template<typename T, std::enable_if_t<std::is_same<T, bool>::value, std::nullptr_t> = nullptr>
+    static inline bool _variable(const char* varKey, const T& var)
     {
         return _variable(varKey, &var, BOOLEAN);
     }
@@ -96,7 +116,7 @@ public:
         return _variable(varKey, &var, INT);
     }
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID!=20
     // compiling with gcc this function duplicates the previous one.
     static inline bool _variable(const char* varKey, const int32_t& var)
     {
@@ -146,19 +166,19 @@ public:
         return _variable(varKey, (const char*)userVar, userVarType);
     }
 
-    template<typename T> static inline bool _variable(const char *varKey, const typename T::varref userVar, const T& userVarType)
+    template<typename T> static inline bool _variable(const char *varKey, typename T::PointerType userVar, const T& userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, T::value(), NULL), false);
+        return spark_variable(varKey, (const void*)userVar, T::TYPE_ID, NULL);
     }
 
     static inline bool _variable(const char *varKey, const int32_t* userVar, const CloudVariableTypeInt& userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
+        return spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::TYPE_ID, NULL);
     }
 
     static inline bool _variable(const char *varKey, const uint32_t* userVar, const CloudVariableTypeInt& userVarType)
     {
-        return CLOUD_FN(spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::value(), NULL), false);
+        return spark_variable(varKey, (const void*)userVar, CloudVariableTypeInt::TYPE_ID, NULL);
     }
 
     // Return clear errors for common misuses of Particle.variable()
@@ -172,10 +192,10 @@ public:
     template<typename T>
     static inline bool _variable(const T *varKey, const String *userVar, const CloudVariableTypeString& userVarType)
     {
-        spark_variable_t extra;
+        spark_variable_t extra = {};
         extra.size = sizeof(extra);
         extra.update = update_string_variable;
-        return CLOUD_FN(spark_variable(varKey, userVar, CloudVariableTypeString::value(), &extra), false);
+        return spark_variable(varKey, userVar, CloudVariableTypeString::TYPE_ID, &extra);
     }
 
     template<typename T>
@@ -196,14 +216,11 @@ public:
 
     static bool _function(const char *funcKey, user_function_int_str_t* func)
     {
-        return CLOUD_FN(register_function(call_raw_user_function, (void*)func, funcKey), false);
+        return register_function(call_raw_user_function, (void*)func, funcKey);
     }
 
     static bool _function(const char *funcKey, user_std_function_int_str_t func, void* reserved=NULL)
     {
-#ifdef SPARK_NO_CLOUD
-        return false;
-#else
         bool success = false;
         if (func) // if the call-wrapper has wrapped a callable object
         {
@@ -213,7 +230,6 @@ public:
             }
         }
         return success;
-#endif
     }
 
     template <typename T>
@@ -229,7 +245,7 @@ public:
 
     inline particle::Future<bool> publish(const char *eventName, const char *eventData, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
     {
-        return publish(eventName, eventData, 60, flags1, flags2);
+        return publish(eventName, eventData, DEFAULT_CLOUD_EVENT_TTL, flags1, flags2);
     }
 
     inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
@@ -237,19 +253,43 @@ public:
         return publish_event(eventName, eventData, ttl, flags1 | flags2);
     }
 
-    // Deprecated methods
-    particle::Future<bool> publish(const char* name) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
-    particle::Future<bool> publish(const char* name, const char* data) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
-    particle::Future<bool> publish(const char* name, const char* data, int ttl) PARTICLE_DEPRECATED_API_DEFAULT_PUBLISH_SCOPE;
+    particle::Future<bool> publish(const char* name);
+    particle::Future<bool> publish(const char* name, const char* data);
+    particle::Future<bool> publish(const char* name, const char* data, int ttl);
+
+    /**
+     * @brief Publish vitals information
+     *
+     * Provides a mechanism to control the interval at which system
+     * diagnostic messages are sent to the cloud. Subsequently, this
+     * controls the granularity of detail on the fleet health metrics.
+     *
+     * @param[in] period_s The period (in seconds) at which vitals messages are to be sent
+     *                     to the cloud (default value: \p particle::NOW)
+     * @arg \p particle::NOW - A special value used to send vitals immediately
+     * @arg \p 0 - Publish a final message and disable periodic publishing
+     * @arg \p s - Publish an initial message and subsequent messages every \p s seconds thereafter
+     *
+     * @returns \p system_error_t result code
+     * @retval \p system_error_t::SYSTEM_ERROR_NONE
+     * @retval \p system_error_t::SYSTEM_ERROR_IO
+     *
+     * @note At call time, a blocking call is made on the application thread. Any subsequent
+     * timer-based calls are executed asynchronously.
+     *
+     * @note The periodic functionality is not available for the Spark Core.
+     */
+    int publishVitals(system_tick_t period_s = particle::NOW);
+    inline int publishVitals(std::chrono::seconds s) { return publishVitals(s.count()); }
 
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
-        return CLOUD_FN(spark_subscribe(eventName, handler, NULL, scope, NULL, NULL), false);
+        return spark_subscribe(eventName, handler, NULL, scope, NULL, NULL);
     }
 
     inline bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
-        return CLOUD_FN(spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL), false);
+        return spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL);
     }
 
     bool subscribe(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope)
@@ -276,30 +316,32 @@ public:
         return subscribe(eventName, std::bind(handler, instance, _1, _2), deviceID);
     }
 
-    // Deprecated methods
-    bool subscribe(const char* name, EventHandler handler) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
-    bool subscribe(const char* name, wiring_event_handler_t handler) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
+    bool subscribe(const char* name, EventHandler handler);
+    bool subscribe(const char* name, wiring_event_handler_t handler);
     template<typename T>
-    bool subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance) PARTICLE_DEPRECATED_API_DEFAULT_SUBSCRIBE_SCOPE;
+    bool subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance);
 
     void unsubscribe()
     {
-        CLOUD_FN(spark_unsubscribe(NULL), (void)0);
+        spark_unsubscribe(NULL);
     }
 
     bool syncTime(void)
     {
-        return CLOUD_FN(spark_sync_time(NULL), false);
+        if (!connected()) {
+            return false;
+        }
+        return spark_sync_time(NULL);
     }
 
     bool syncTimePending(void)
     {
-        return connected() && CLOUD_FN(spark_sync_time_pending(nullptr), false);
+        return connected() && spark_sync_time_pending(nullptr);
     }
 
     bool syncTimeDone(void)
     {
-        return !CLOUD_FN(spark_sync_time_pending(nullptr), false) || disconnected();
+        return !spark_sync_time_pending(nullptr) || disconnected();
     }
 
     system_tick_t timeSyncedLast(void)
@@ -311,7 +353,7 @@ public:
     system_tick_t timeSyncedLast(time_t& tm)
     {
         tm = 0;
-        return CLOUD_FN(spark_sync_time_last(&tm, nullptr), 0);
+        return spark_sync_time_last(nullptr, &tm);
     }
 
     static void sleep(long seconds) __attribute__ ((deprecated("Please use System.sleep() instead.")))
@@ -326,7 +368,7 @@ public:
     static void connect(void) {
         spark_cloud_flag_connect();
     }
-    static void disconnect(void) { spark_cloud_flag_disconnect(); }
+    static void disconnect(const CloudDisconnectOptions& options = CloudDisconnectOptions());
     static void process(void) {
     		application_checkin();
     		spark_process();
@@ -334,16 +376,55 @@ public:
     static String deviceID(void) { return SystemClass::deviceID(); }
 
 #if HAL_PLATFORM_CLOUD_UDP
-    static void keepAlive(unsigned sec)
+    inline static void keepAlive(unsigned sec)
     {
-        particle::protocol::connection_properties_t conn_prop = {0};
+        particle::protocol::connection_properties_t conn_prop = {};
         conn_prop.size = sizeof(conn_prop);
         conn_prop.keepalive_source = particle::protocol::KeepAliveSource::USER;
-        CLOUD_FN(spark_set_connection_property(particle::protocol::Connection::PING,
-                                               sec * 1000, &conn_prop, nullptr),
-                 (void)0);
+        spark_set_connection_property(SPARK_CLOUD_PING_INTERVAL, sec * 1000, &conn_prop, nullptr);
     }
+
+    inline static void keepAlive(std::chrono::seconds s) { keepAlive(s.count()); }
 #endif
+
+    /**
+     * Set the default cloud disconnection options.
+     *
+     * @param options Options.
+     *
+     * @see `disconnect()`
+     */
+    static void setDisconnectOptions(const CloudDisconnectOptions& options);
+    /**
+     * Get the maximum supported size of an event's payload data.
+     *
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
+     *
+     * @see `maxVariableValueSize()`
+     * @see `maxFunctionArgumentSize()`
+     */
+    static int maxEventDataSize();
+    /**
+     * Get the maximum supported size of a variable value.
+     *
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
+     *
+     * @see `maxEventDataSize()`
+     * @see `maxFunctionArgumentSize()`
+     */
+    static int maxVariableValueSize();
+    /**
+     * Get the maximum supported size of a function call argument.
+     *
+     * @note This method will return an error (a negative value) if the device is not connected to
+     * the Cloud.
+     *
+     * @see `maxEventDataSize()`
+     * @see `maxVariableValueSize()`
+     */
+    static int maxFunctionArgumentSize();
 
 private:
 
@@ -355,26 +436,20 @@ private:
 
     static particle::Future<bool> publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags);
 
-    static ProtocolFacade* sp()
-    {
-        return spark_protocol_instance();
-    }
-
     bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {
-#ifdef SPARK_NO_CLOUD
-        return false;
-#else
         bool success = false;
         if (handler) // if the call-wrapper has wrapped a callable object
         {
             auto wrapper = new wiring_event_handler_t(handler);
             if (wrapper) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
                 success = spark_subscribe(eventName, (EventHandler)call_wiring_event_handler, wrapper, scope, deviceID, NULL);
+#pragma GCC diagnostic pop
             }
         }
         return success;
-#endif
     }
 
     static const void* update_string_variable(const char* name, Spark_Data_TypeDef type, const void* var, void* reserved)
@@ -382,13 +457,147 @@ private:
         const String* s = (const String*)var;
         return s->c_str();
     }
-};
 
+    // This method takes an argument of any callable type that requires no arguments and returns
+    // a value of one of the supported variable types
+    template<typename T, typename CloudVariableType<typename std::result_of<T()>::type>::ValueType* = nullptr>
+    static bool _variable(const char *varKey, T&& fn)
+    {
+        return register_variable_fn(varKey, std::forward<T>(fn));
+    }
+
+    template<typename T>
+    static int copy_variable_value(const T& val, void*& data, size_t& size) {
+        size = sizeof(T);
+        data = malloc(sizeof(T));
+        if (!data) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memcpy(data, &val, sizeof(T));
+        return 0;
+    }
+
+    static int copy_variable_value(const char* str, void*& data, size_t& size) {
+        size = str ? strlen(str) : 0;
+        data = malloc(size);
+        if (!data) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memcpy(data, str, size);
+        return 0;
+    }
+
+    static int copy_variable_value(const String& str, void*& data, size_t& size) {
+        size = str.length();
+        data = malloc(size);
+        if (!data) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memcpy(data, str.c_str(), size);
+        return 0;
+    }
+
+    // Registers a function as a variable
+    template<typename T, std::enable_if_t<std::is_function<T>::value, std::nullptr_t> = nullptr>
+    static bool register_variable_fn(const char* varKey, const T& fn) {
+        using VariableType = CloudVariableType<typename std::result_of<T&()>::type>;
+        spark_variable_t extra = {};
+        extra.size = sizeof(extra);
+        extra.copy = [](const void* var, void** data, size_t* size) {
+            const auto fn = (const T*)var;
+            const typename VariableType::ValueType val = fn();
+            return copy_variable_value(val, *data, *size);
+        };
+        return spark_variable(varKey, (const void*)&fn, VariableType::TYPE_ID, &extra);
+    }
+
+    // Registers a callable object, e.g. an std::function, as a variable
+    template<typename T>
+    static bool register_variable_fn(const char* varKey, T&& fn) {
+        using CallableType = typename std::remove_reference<T>::type;
+        using VariableType = CloudVariableType<typename std::result_of<T()>::type>;
+        // Cloud variables cannot be unregistered so it's fine to allocate a copy of the callable on
+        // the heap and never free it
+        std::unique_ptr<CallableType> p(new(std::nothrow) CallableType(std::forward<T>(fn)));
+        if (!p) {
+            return false;
+        }
+        spark_variable_t extra = {};
+        extra.size = sizeof(extra);
+        extra.copy = [](const void* var, void** data, size_t* size) {
+            const auto p = (CallableType*)var;
+            const typename VariableType::ValueType val = (*p)();
+            return copy_variable_value(val, *data, *size);
+        };
+        const bool ok = spark_variable(varKey, p.get(), VariableType::TYPE_ID, &extra);
+        if (ok) {
+            p.release();
+        }
+        return ok;
+    }
+};
 
 extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;
 
-// Deprecated methods
+inline CloudDisconnectOptions::CloudDisconnectOptions() :
+        CloudDisconnectOptions(0, 0, false, false) {
+}
+
+inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful,
+        bool clearSession) :
+        flags_(flags),
+        timeout_(timeout),
+        graceful_(graceful),
+        clearSession_(clearSession) {
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::graceful(bool enabled) {
+    graceful_ = enabled;
+    flags_ |= SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL;
+    return *this;
+}
+
+inline bool CloudDisconnectOptions::graceful() const {
+    return graceful_;
+}
+
+inline bool CloudDisconnectOptions::isGracefulSet() const {
+    return (flags_ & SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL);
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(system_tick_t timeout) {
+    timeout_ = timeout;
+    flags_ |= SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT;
+    return *this;
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::timeout(std::chrono::milliseconds ms) {
+    return timeout(ms.count());
+}
+
+inline system_tick_t CloudDisconnectOptions::timeout() const {
+    return timeout_;
+}
+
+inline bool CloudDisconnectOptions::isTimeoutSet() const {
+    return (flags_ & SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT);
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::clearSession(bool enabled) {
+    clearSession_ = enabled;
+    flags_ |= SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION;
+    return *this;
+}
+
+inline bool CloudDisconnectOptions::clearSession() const {
+    return clearSession_;
+}
+
+inline bool CloudDisconnectOptions::isClearSessionSet() const {
+    return (flags_ & SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION);
+}
+
 inline particle::Future<bool> CloudClass::publish(const char* name) {
     return publish(name, PUBLIC);
 }

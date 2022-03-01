@@ -4,7 +4,7 @@
   * @authors  Zachary Crockett
   * @version V1.0.0
   * @date    10-Jan-2014
-  * @brief   Fixture for testing SparkProtocol
+  * @brief   Fixture for testing CoreProtocol
   ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -137,7 +137,7 @@ bool ConstructorFixture::nothing_to_receive = false;
 bool ConstructorFixture::function_called = false;
 int ConstructorFixture::variable_to_get = -98765;
 bool ConstructorFixture::signal_called_with = false;
-time_t ConstructorFixture::set_time_called_with = -1;
+int64_t ConstructorFixture::set_time_called_with = -1;
 EventHandlerCalledWith ConstructorFixture::event_handlers_called_with[2];
 
 ConstructorFixture::ConstructorFixture()
@@ -171,7 +171,7 @@ ConstructorFixture::ConstructorFixture()
   nothing_to_receive = false;
   function_called = false;
   variable_to_get = -98765;
-  spark_protocol.init(id, keys, callbacks, descriptor);
+  core_protocol.init(id, keys, callbacks, descriptor);
 }
 
 int ConstructorFixture::mock_send(const unsigned char *buf, uint32_t buflen)
@@ -304,7 +304,7 @@ int ConstructorFixture::mock_num_functions(void)
 void ConstructorFixture::mock_copy_function_key(char *dst, int i)
 {
   const char *funcs[1] = { "brew\0\0\0\0\0\0\0\0" };
-  memcpy(dst, funcs[i], SparkProtocol::MAX_FUNCTION_KEY_LENGTH);
+  memcpy(dst, funcs[i], CoreProtocol::MAX_FUNCTION_KEY_LENGTH);
 }
 
 int ConstructorFixture::mock_call_function(const char *function_key, const char *arg,
@@ -327,7 +327,7 @@ int ConstructorFixture::mock_num_variables(void)
 void ConstructorFixture::mock_copy_variable_key(char *dst, int i)
 {
   const char *vars[1] = { "temperature\0" };
-  memcpy(dst, vars[i], SparkProtocol::MAX_VARIABLE_KEY_LENGTH);
+  memcpy(dst, vars[i], CoreProtocol::MAX_VARIABLE_KEY_LENGTH);
 }
 
 const void *ConstructorFixture::mock_get_variable(const char *variable_key)
@@ -361,7 +361,7 @@ SparkReturnType::Enum ConstructorFixture::mock_variable_type(const char *variabl
   return SparkReturnType::INT;
 }
 
-void ConstructorFixture::mock_set_time(time_t t, unsigned int, void*)
+void ConstructorFixture::mock_set_time(uint32_t t, unsigned int, void*)
 {
   set_time_called_with = t;
 }

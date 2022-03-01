@@ -20,6 +20,8 @@
 #ifndef SPARK_WIRING_CELLULAR_H
 #define	SPARK_WIRING_CELLULAR_H
 
+#include <chrono>
+
 #include "spark_wiring_platform.h"
 #include "spark_wiring_network.h"
 #include "system_network.h"
@@ -34,9 +36,10 @@ namespace spark {
 
 class CellularClass : public NetworkClass
 {
-    CellularDevice device;
-
 public:
+    CellularClass() :
+            NetworkClass(NETWORK_INTERFACE_CELLULAR) {
+    }
 
     IPAddress localIP() {
         return IPAddress(((CellularConfig*)network_config(*this, 0, NULL))->nw.aucIP);
@@ -67,14 +70,23 @@ public:
     void setCredentials(const char* apn, const char* username, const char* password) {
         cellular_credentials_set(apn, username, password, nullptr);
     }
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+// FIXME: there should be a separate macro to indicate that this functionality
+// is available
+    void clearCredentials() {
+        cellular_credentials_clear(nullptr);
+    }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 
     void listen(bool begin=true) {
         network_listen(*this, begin ? 0 : 1, NULL);
     }
 
-    void setListenTimeout(uint16_t timeout) {
+    inline void setListenTimeout(uint16_t timeout) {
         network_set_listen_timeout(*this, timeout, NULL);
     }
+
+    inline void setListenTimeout(std::chrono::seconds s) { setListenTimeout(s.count()); }
 
     uint16_t getListenTimeout(void) {
         return network_get_listen_timeout(*this, 0, NULL);
@@ -90,6 +102,10 @@ public:
     }
 
     CellularSignal RSSI();
+
+    inline const CellularSignal getSignal() {
+        return RSSI();
+    }
 
     bool getDataUsage(CellularData &data_get);
     bool setDataUsage(CellularData &data_set);
@@ -126,12 +142,31 @@ public:
         return cellular_command((_CALLBACKPTR_MDM)cb, (void*)param, timeout_ms, format, Fargs...);
     }
 
+#if !HAL_USE_INET_HAL_POSIX
     IPAddress resolve(const char* name)
     {
         HAL_IPAddress ip = {0};
         return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL) != 0) ?
                 IPAddress(uint32_t(0)) : IPAddress(ip);
     }
+#endif // !HAL_USE_INET_HAL_POSIX
+
+#if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+// FIXME: there should be a separate macro to indicate that this functionality
+// is available
+    int setActiveSim(SimType sim) {
+        return cellular_set_active_sim(sim, nullptr);
+    }
+
+    SimType getActiveSim() const {
+        int sim = 0;
+        const int r = cellular_get_active_sim(&sim, nullptr);
+        if (r < 0) {
+            return INVALID_SIM;
+        }
+        return (SimType)sim;
+    }
+#endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 
     void lock()
     {

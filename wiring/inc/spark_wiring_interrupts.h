@@ -44,7 +44,7 @@ bool attachInterrupt(uint16_t pin, void (T::*handler)(), T *instance, InterruptM
     using namespace std::placeholders;
     return attachInterrupt(pin, std::bind(handler, instance), mode, priority, subpriority);
 }
-void detachInterrupt(uint16_t pin);
+bool detachInterrupt(uint16_t pin);
 void interrupts(void);
 void noInterrupts(void);
 

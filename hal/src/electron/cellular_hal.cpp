@@ -1,7 +1,9 @@
 #ifndef HAL_CELLULAR_EXCLUDE
 
+#include "check.h"
 #include "modem/mdm_hal.h"
 #include "cellular_hal.h"
+#include "cellular_hal_utilities.h"
 #include "cellular_internal.h"
 #include "system_error.h"
 
@@ -24,9 +26,18 @@ const char* defaultOrUserApn(const CellularCredentials& cred)
         return cred.apn;
     } else {
         // Determine APN based on IMSI
-        auto ret = cellular_imsi_to_network_provider(nullptr);
+        auto ret = cellular_sim_to_network_provider(nullptr);
         if (ret != 0) {
+            // Should never get here since we always return 0 from above
             return cred.apn;
+        }
+        // If we are potentially still defaulting to Telefonica, check for R410 modem type
+        if (cellularNetProv == CELLULAR_NETPROV_TELEFONICA) {
+            // Determine APN based on Modem Type
+            const DevStatus* const status = electronMDM.getDevStatus();
+            if (status->dev == DEV_SARA_R410) {
+                cellularNetProv = CELLULAR_NETPROV_KORE_ATT;
+            }
         }
         return CELLULAR_NET_PROVIDER_DATA[cellularNetProv].apn;
     }
@@ -36,7 +47,7 @@ const char* defaultOrUserApn(const CellularCredentials& cred)
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 
-static HAL_NET_Callbacks netCallbacks = { 0 };
+static HAL_NET_Callbacks netCallbacks = {};
 
 void HAL_NET_notify_connected()
 {
@@ -59,10 +70,10 @@ void HAL_NET_notify_dhcp(bool dhcp)
     }
 }
 
-void HAL_NET_notify_can_shutdown()
+void HAL_NET_notify_error()
 {
-    if (netCallbacks.notify_can_shutdown) {
-        netCallbacks.notify_can_shutdown();
+    if (netCallbacks.notify_error) {
+        netCallbacks.notify_error();
     }
 }
 
@@ -71,7 +82,7 @@ void HAL_NET_SetCallbacks(const HAL_NET_Callbacks* callbacks, void* reserved)
     netCallbacks.notify_connected = callbacks->notify_connected;
     netCallbacks.notify_disconnected = callbacks->notify_disconnected;
     netCallbacks.notify_dhcp = callbacks->notify_dhcp;
-    netCallbacks.notify_can_shutdown = callbacks->notify_can_shutdown;
+    netCallbacks.notify_error = callbacks->notify_error;
 }
 
 #else
@@ -97,6 +108,17 @@ cellular_result_t  cellular_init(void* reserved)
 cellular_result_t  cellular_off(void* reserved)
 {
     CHECK_SUCCESS(electronMDM.powerOff());
+    return 0;
+}
+
+bool cellular_powered(void* reserved)
+{
+    return electronMDM.powerState();
+}
+
+cellular_result_t cellular_urcs(bool enable, void* reserved)
+{
+    CHECK_SUCCESS(electronMDM.urcs(enable));
     return 0;
 }
 
@@ -145,11 +167,7 @@ cellular_result_t cellular_connect(void* reserved)
 {
     const CellularCredentials& cred = cellularCredentials;
     const char* apn = cred.apn;
-    const DevStatus* const status = electronMDM.getDevStatus();
-    if (status->dev != DEV_SARA_R410) {
-        // TODO: Look for an APN based on IMSI for LTE providers as well
-        apn = defaultOrUserApn(cred);
-    }
+    apn = defaultOrUserApn(cred);
     CHECK_SUCCESS(electronMDM.connect(apn, cred.username, cred.password));
     return 0;
 }
@@ -168,7 +186,12 @@ cellular_result_t cellular_device_info(CellularDevice* device, void* reserved)
     // this would benefit from an unsolicited event to call electronMDM.init() automatically on sim card insert)
     strncpy(device->imei, status->imei, sizeof(device->imei));
     strncpy(device->iccid, status->ccid, sizeof(device->iccid));
-    device->dev = status->dev;
+    if (device->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
+        device->dev = status->dev;
+    }
+    if (device->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
+        electronMDM.getExtRadioVer(device->radiofw, sizeof(device->radiofw));
+    }
     return 0;
 }
 
@@ -218,16 +241,16 @@ void cellular_cancel(bool cancel, bool calledFromISR, void*)
     }
 }
 
-cellular_result_t cellular_signal(CellularSignalHal* signal, cellular_signal_t* signalext)
+cellular_result_t cellular_signal(void* deprecated, cellular_signal_t* signalext)
 {
-    if (signal == nullptr && signalext == nullptr) {
+    if (deprecated != nullptr && signalext == nullptr) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    NetStatus status;
+    NetStatus status = {};
     bool r = electronMDM.getSignalStrength(status);
 
-    return detail::cellular_signal_impl(signal, signalext, r, status);
+    return particle::detail::cellular_signal_impl(signalext, r, status);
 }
 
 cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
@@ -240,7 +263,7 @@ cellular_result_t cellular_command(_CALLBACKPTR_MDM cb, void* param,
     return ret;
 }
 
-cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
+cellular_result_t cellular_data_usage_set_impl(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret)
 {
     if (!ret) {
         data.cid = -1; // let the caller know this object was not updated
@@ -268,10 +291,10 @@ cellular_result_t cellular_data_usage_set(CellularDataHal* data, void* reserved)
     MDM_DataUsage data_usage;
     bool rv = electronMDM.getDataUsage(data_usage);
     // Now process the Set request
-    return _cellular_data_usage_set(*data, data_usage, rv);
+    return cellular_data_usage_set_impl(*data, data_usage, rv);
 }
 
-cellular_result_t _cellular_data_usage_get(CellularDataHal& data, const MDM_DataUsage &data_usage, bool ret)
+cellular_result_t cellular_data_usage_get_impl(CellularDataHal& data, const MDM_DataUsage &data_usage, bool ret)
 {
     if (!ret) {
         data.cid = -1; // let the caller know this object was not updated
@@ -315,7 +338,7 @@ cellular_result_t cellular_data_usage_get(CellularDataHal* data, void* reserved)
     MDM_DataUsage data_usage;
     bool rv = electronMDM.getDataUsage(data_usage);
     // Now process the Get request
-    return _cellular_data_usage_get(*data, data_usage, rv);
+    return cellular_data_usage_get_impl(*data, data_usage, rv);
 }
 
 cellular_result_t cellular_band_select_set(MDM_BandSelect* bands, void* reserved)
@@ -351,7 +374,31 @@ cellular_result_t cellular_band_available_get(MDM_BandSelect* bands, void* reser
     return 0;
 }
 
-cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, void* data, void* reserved)
+cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi, void* reserved)
+{
+    // Validate Argument(s)
+    (void)reserved;
+    CHECK_TRUE((nullptr != cgi), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    // Load cached data into result struct
+    CHECK_TRUE(electronMDM.getCellularGlobalIdentity(*cgi), SYSTEM_ERROR_AT_NOT_OK);
+
+    // Validate cache
+    CHECK_TRUE(0 != cgi->mobile_country_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0 != cgi->mobile_network_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0xFFFF != cgi->location_area_code, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(0xFFFFFFFF != cgi->cell_id, SYSTEM_ERROR_BAD_DATA);
+
+    return SYSTEM_ERROR_NONE;
+}
+
+cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void*) {
+    // setting the registration timeout is not supported on the Electron/E-Series
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+cellular_result_t cellular_sms_received_handler_set(_CELLULAR_SMS_CB_MDM cb, void* data,
+                                                    void* reserved)
 {
     if (cb) {
         electronMDM.setSMSreceivedHandler((MDMParser::_CELLULAR_SMS_CB)cb, (void*)data);
@@ -372,14 +419,14 @@ cellular_result_t cellular_resume(void* reserved)
     return 0;
 }
 
-cellular_result_t cellular_imsi_to_network_provider(void* reserved)
+cellular_result_t cellular_sim_to_network_provider(void* reserved)
 {
     const DevStatus* status = electronMDM.getDevStatus();
-    cellularNetProv = detail::_cellular_imsi_to_network_provider(status->imsi);
+    cellularNetProv = particle::detail::cellular_sim_to_network_provider_impl(status->imsi, status->ccid);
     return 0;
 }
 
-const CellularNetProvData cellular_network_provider_data_get(void* reserved)
+CellularNetProvData cellular_network_provider_data_get(void* reserved)
 {
     return CELLULAR_NET_PROVIDER_DATA[cellularNetProv];
 }
@@ -400,6 +447,15 @@ void cellular_set_power_mode(int mode, void* reserved)
     if (mode >= 0 && mode <= 3) {
         electronMDM.setPowerMode(mode);
     }
+}
+
+cellular_result_t cellular_process(void* reserved, void* reserved1)
+{
+    return electronMDM.process();
+}
+
+int cellular_start_ncp_firmware_update(bool update, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 #endif // !defined(HAL_CELLULAR_EXCLUDE)

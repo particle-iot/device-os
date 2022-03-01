@@ -25,12 +25,12 @@
  ******************************************************************************
  */
 
-#include "spark_wiring.h"
-#include "spark_wiring_i2c.h"
-#include "spark_wiring_platform.h"
-
 #ifndef __SPARK_WIRING_FUEL_H
 #define __SPARK_WIRING_FUEL_H
+
+#include "spark_wiring_platform.h"
+#include "spark_wiring.h"
+#include "spark_wiring_i2c.h"
 
 //Default MAX17043 I2C address
 #define MAX17043_ADDRESS  0x36
@@ -44,10 +44,10 @@
 #define COMMAND_REGISTER  0xFE
 
 /* detail functions defined for unit tests */
-namespace detail {
+namespace particle { namespace detail {
     float _getVCell(byte MSB, byte LSB);
     float _getSoC(byte MSB, byte LSB);
-}
+}}
 
 class FuelGauge {
 public:
@@ -63,25 +63,26 @@ public:
     int getVersion();
     byte getCompensateValue();
     byte getAlertThreshold();
-    void setAlertThreshold(byte threshold);
+    int setAlertThreshold(byte threshold);
     boolean getAlert();
-    void clearAlert();
-    void reset();
-    void quickStart();
-    void sleep();
-    void wakeup();
+    int clearAlert();
+    int reset();
+    int quickStart();
+    int sleep();
+    int wakeup();
+    int readConfigRegister(byte &MSB, byte &LSB);
 
     bool lock();
     bool unlock();
 
 private:
+    static constexpr system_tick_t FUELGAUGE_DEFAULT_TIMEOUT = 10; // In millisecond
 
-    void readConfigRegister(byte &MSB, byte &LSB);
-    void readRegister(byte startAddress, byte &MSB, byte &LSB);
-    void writeRegister(byte address, byte MSB, byte LSB);
+    int readRegister(byte startAddress, byte &MSB, byte &LSB);
+    int writeRegister(byte address, byte MSB, byte LSB);
 
     TwoWire& i2c_;
     bool lock_;
 };
 
-#endif
+#endif // __SPARK_WIRING_FUEL_H

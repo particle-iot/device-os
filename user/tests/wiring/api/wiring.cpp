@@ -21,6 +21,18 @@ test(api_wiring_pinMode) {
     (void)mode;
 }
 
+#if HAL_PLATFORM_GEN == 3
+test(api_wiring_pinDriveStrength_OUTPUT) {
+    API_COMPILE(pinMode(D0, OUTPUT));
+    API_COMPILE(pinSetDriveStrength(D0, DriveStrength::HIGH));
+}
+
+test(api_wiring_pinDriveStrength_OUTPUT_OD) {
+    API_COMPILE(pinMode(D0, OUTPUT_OPEN_DRAIN));
+    API_COMPILE(pinSetDriveStrength(D0, DriveStrength::DEFAULT));
+}
+#endif // HAL_PLATFORM_GEN == 3
+
 test(api_wiring_analogWrite) {
   API_COMPILE(analogWrite(D0, 50));
   API_COMPILE(analogWrite(D0, 50, 10000));
@@ -49,8 +61,9 @@ test(api_wiring_interrupt) {
 
     API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING));
 
-
+#if PLATFORM_ID >= 6 && PLATFORM_ID <= 10
     API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM1_CC_IRQ, D0_callback));
+#endif // PLATFORM_ID >= 6 && PLATFORM_ID <= 10
 
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING, 14));
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING, 14, 0));
@@ -134,14 +147,13 @@ void TIM3_callback()
 {
 }
 
-#if PLATFORM_ID>=6
-// system interrupt not available for the core yet.
+#if PLATFORM_ID >= 6 && PLATFORM_ID <= 10
 test(api_wiring_system_interrupt) {
 
     API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM3_IRQ, TIM3_callback));
     API_COMPILE(detachSystemInterrupt(SysInterrupt_TIM3_IRQ));
 }
-#endif
+#endif // PLATFORM_ID >= 6 && PLATFORM_ID <= 10
 
 void externalLEDHandler(uint8_t r, uint8_t g, uint8_t b) {
 }
@@ -163,9 +175,22 @@ test(api_rgb) {
     API_COMPILE(flag=RGB.brightness());
     API_COMPILE(RGB.onChange(externalLEDHandler));
     API_COMPILE(RGB.onChange(&ExternalLed::handler, &externalLed));
+#if !HAL_PLATFORM_NRF52840 // (GEN 2)
     API_COMPILE(RGB.mirrorTo(A4, A5, A7));
     API_COMPILE(RGB.mirrorTo(A4, A5, A7, false));
     API_COMPILE(RGB.mirrorTo(A4, A5, A7, true, true));
+#else // HAL_PLATFORM_NRF52840 (GEN 3)
+#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
+    API_COMPILE(RGB.mirrorTo(A4, A5, A3));
+    API_COMPILE(RGB.mirrorTo(A4, A5, A3, false));
+    API_COMPILE(RGB.mirrorTo(A4, A5, A3, true, true));
+#else
+    // SoM
+    API_COMPILE(RGB.mirrorTo(A1, A0, A7));
+    API_COMPILE(RGB.mirrorTo(A1, A0, A7, false));
+    API_COMPILE(RGB.mirrorTo(A1, A0, A7, true, true));
+#endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#endif
     API_COMPILE(RGB.mirrorDisable());
     (void)flag; (void)value; // unused
 }
@@ -177,12 +202,54 @@ test(api_servo_trim)
     servo.setTrim(234);
 }
 
+TwoWire& testWire(TwoWire& wire)
+{
+    API_COMPILE(wire.begin());
+    API_COMPILE(wire.reset());
+    API_COMPILE(wire.end());
+
+    API_COMPILE(wire.setSpeed(123));
+    API_COMPILE(wire.setClock(123));
+    API_COMPILE(wire.enableDMAMode(true));
+    API_COMPILE(wire.stretchClock(true));
+    API_COMPILE(wire.begin(123));
+    API_COMPILE(wire.beginTransmission(123));
+    API_COMPILE({ uint8_t v = wire.endTransmission(); (void)v; });
+    API_COMPILE({ uint8_t v = wire.endTransmission(true); (void)v; });
+    API_COMPILE({ size_t v = wire.requestFrom(123, 123, true); (void)v; });
+    API_COMPILE({ size_t v = wire.requestFrom(123, 123); (void)v; });
+    API_COMPILE({ size_t v = wire.requestFrom((int)123, (int)123, (int)1); (void)v; });
+    API_COMPILE({ size_t v = wire.requestFrom((int)123, (int)123); (void)v; });
+    API_COMPILE({ size_t v = wire.write(123); (void)v; });
+    API_COMPILE({ size_t v = wire.write(nullptr, 123); (void)v; });
+    API_COMPILE({ int v = wire.available(); (void)v; });
+    API_COMPILE({ int v = wire.read(); (void)v; });
+    API_COMPILE({ int v = wire.peek(); (void)v; });
+    API_COMPILE(wire.flush());
+    API_COMPILE(wire.onReceive([](int) -> void {
+    }));
+    API_COMPILE(wire.onRequest([](void) -> void {
+    }));
+    API_COMPILE({ bool v = wire.lock(); (void)v; });
+    API_COMPILE({ bool v = wire.unlock(); (void)v; });
+    API_COMPILE(wire.reset());
+    API_COMPILE({ bool v = wire.isEnabled(); (void)v; });
+    API_COMPILE(wire.requestFrom(WireTransmission(123).timeout(123ms).quantity(123).stop(true)));
+    API_COMPILE(wire.beginTransmission(WireTransmission(123).timeout(123ms).quantity(123).stop(true)));
+    return wire;
+}
+
 test(api_wire)
 {
-    API_COMPILE(Wire.begin());
-    API_COMPILE(Wire.reset());
-    API_COMPILE(Wire.end());
+    API_COMPILE({ auto w = testWire(Wire); (void)w; });
+#if Wiring_Wire1
+    API_COMPILE({ auto w = testWire(Wire1); (void)w; });
+#endif // Wiring_Wire1
+#if Wiring_Wire3
+    API_COMPILE({ auto w = testWire(Wire3); (void)w; });
+#endif // Wiring_Wire1
 }
+
 
 test(api_map)
 {

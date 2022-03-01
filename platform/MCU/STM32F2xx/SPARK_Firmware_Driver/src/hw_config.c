@@ -46,7 +46,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 uint8_t USE_SYSTEM_FLAGS = 0;	//0, 1
-uint16_t sys_health_cache = 0; // Used by the SYS_HEALTH macros store new heath if higher
 
 button_config_t HAL_Buttons[] = {
     {
@@ -196,7 +195,7 @@ void Set_System(void)
     for(LEDx = 1; LEDx < LEDn * 2; ++LEDx)
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     {
-        //LED_USER initialization is skipped during system setup
+        //PARTICLE_LED_USER initialization is skipped during system setup
         //since PA13 pin is also JTMS-SWDIO. Initializing LED_USER
         //here will boycott JTAG programmer hence avoided.
         LED_Init(LEDx);
@@ -207,6 +206,11 @@ void Set_System(void)
 
     /* Internal Flash Erase/Program fails if this is not called */
     FLASH_ClearFlags();
+}
+
+void Reset_System(void)
+{
+    SysTick_Disable();
 }
 
 /*******************************************************************************
@@ -472,7 +476,7 @@ static void Led_Set_Value(Led_TypeDef led, uint16_t val)
  * @brief  Configures LED GPIO.
  * @param  Led: Specifies the Led to be configured.
  *   This parameter can be one of following parameters:
- *     @arg LED1, LED2, LED3, LED4
+ *     @arg PARTICLE_LED1, PARTICLE_LED2, PARTICLE_LED3, PARTICLE_LED4
  * @retval None
  */
 void LED_Init(Led_TypeDef Led)
@@ -540,9 +544,9 @@ void Set_RGB_LED_Values(uint16_t r, uint16_t g, uint16_t b)
 #endif
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-    Led_Set_Value(LED_RED + LED_MIRROR_OFFSET, r);
-    Led_Set_Value(LED_GREEN + LED_MIRROR_OFFSET, g);
-    Led_Set_Value(LED_BLUE + LED_MIRROR_OFFSET, b);
+    Led_Set_Value(PARTICLE_LED_RED + LED_MIRROR_OFFSET, r);
+    Led_Set_Value(PARTICLE_LED_GREEN + LED_MIRROR_OFFSET, g);
+    Led_Set_Value(PARTICLE_LED_BLUE + LED_MIRROR_OFFSET, b);
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 }
 
@@ -563,14 +567,14 @@ void Get_RGB_LED_Values(uint16_t* values)
 void Set_User_LED(uint8_t state)
 {
     if (state)
-        HAL_Leds_Default[LED_USER].port->BSRRL = HAL_Leds_Default[LED_USER].pin;
+        HAL_Leds_Default[PARTICLE_LED_USER].port->BSRRL = HAL_Leds_Default[PARTICLE_LED_USER].pin;
     else
-        HAL_Leds_Default[LED_USER].port->BSRRH = HAL_Leds_Default[LED_USER].pin;
+        HAL_Leds_Default[PARTICLE_LED_USER].port->BSRRH = HAL_Leds_Default[PARTICLE_LED_USER].pin;
 }
 
 void Toggle_User_LED()
 {
-    HAL_Leds_Default[LED_USER].port->ODR ^= HAL_Leds_Default[LED_USER].pin;
+    HAL_Leds_Default[PARTICLE_LED_USER].port->ODR ^= HAL_Leds_Default[PARTICLE_LED_USER].pin;
 }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 

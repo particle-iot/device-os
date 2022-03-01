@@ -57,15 +57,12 @@
 #include "hal_event.h"
 #include "system_error.h"
 
-#if PLATFORM_ID==PLATFORM_P1
+#if PLATFORM_ID == PLATFORM_P1
 #include "wwd_management.h"
 #include "wlan_hal.h"
 #endif
 
 extern char link_heap_location, link_heap_location_end;
-
-#define STOP_MODE_EXIT_CONDITION_PIN 0x01
-#define STOP_MODE_EXIT_CONDITION_RTC 0x02
 
 void HardFault_Handler( void ) __attribute__( ( naked ) );
 
@@ -125,6 +122,7 @@ void HardFault_Handler(void)
         " ldr r1, [r0, #24]                                         \n"
         " ldr r2, handler2_address_const                            \n"
         " bx r2                                                     \n"
+        " .balign 4                                                 \n"
         " handler2_address_const: .word prvGetRegistersFromStack    \n"
     );
 }
@@ -187,10 +185,6 @@ typedef struct Last_Reset_Info {
     uint32_t data;
 } Last_Reset_Info;
 
-typedef enum Feature_Flag {
-    FEATURE_FLAG_RESET_INFO = 0x01 // HAL_Feature::FEATURE_RESET_INFO
-} Feature_Flag;
-
 /* Private define ------------------------------------------------------------*/
 
 /* Private macro -------------------------------------------------------------*/
@@ -198,6 +192,9 @@ typedef enum Feature_Flag {
 /* Private variables ---------------------------------------------------------*/
 
 static Last_Reset_Info last_reset_info = { RESET_REASON_NONE, 0 };
+
+static volatile uint32_t feature_flags = 0;
+static volatile bool feature_flags_loaded = false;
 
 /* Private function prototypes -----------------------------------------------*/
 extern uint32_t HAL_Interrupts_Pin_IRQn(pin_t pin);
@@ -291,18 +288,26 @@ static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
             return result;
         }
     }
+    feature_flags = flags;
+    feature_flags_loaded = true;
     return 0;
 }
 
 static int Read_Feature_Flag(uint32_t flag, bool* value)
 {
-    if (HAL_IsISR()) {
-        return -1; // DCT cannot be accessed from an ISR
-    }
     uint32_t flags = 0;
-    const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
-    if (result != 0) {
-        return result;
+    if (!feature_flags_loaded) {
+        if (HAL_IsISR()) {
+            return -1; // DCT cannot be accessed from an ISR
+        }
+        const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+        if (result != 0) {
+            return result;
+        }
+        feature_flags = flags;
+        feature_flags_loaded = true;
+    } else {
+        flags = feature_flags;
     }
     *value = flags & flag;
     return 0;
@@ -337,49 +342,50 @@ void HAL_Core_Config(void)
     PWR_WakeUpPinCmd(DISABLE);
 
     //Wiring pins default to inputs
-#if !defined(USE_SWD_JTAG) && !defined(USE_SWD)
-    for (pin_t pin=0; pin<=19; pin++)
+    for (pin_t pin = 0; pin < TOTAL_ESSENTIAL_PINS; pin++) {
+#if defined(USE_SWD_JTAG) || defined(USE_SWD)
+        if (pin >= D3 && pin <= D7) { // JTAG pins
+            continue;
+        }
+#endif
         HAL_Pin_Mode(pin, INPUT);
-#if PLATFORM_ID==8 // Additional pins for P1
-    for (pin_t pin=24; pin<=29; pin++)
+    }
+
+#if HAS_EXTRA_PINS
+    for (pin_t pin = FIRST_EXTRA_PIN; pin <= LAST_EXTRA_PIN; pin++) {
         HAL_Pin_Mode(pin, INPUT);
+    }
+#endif
+
+#if PLATFORM_ID == PLATFORM_P1
     if (isWiFiPowersaveClockDisabled()) {
         HAL_Pin_Mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
     }
 #endif
-#if PLATFORM_ID==10 // Additional pins for Electron
-    for (pin_t pin=24; pin<=35; pin++)
-        HAL_Pin_Mode(pin, INPUT);
-#endif
-#endif
 
     HAL_Core_Config_systick_configuration();
 
-    HAL_RTC_Configuration();
+    hal_rtc_init();
 
     HAL_RNG_Configuration();
-
-    // Initialize system-part2 stdlib PRNG with a seed from hardware PRNG
-    // in case some system code happens to use rand()
-    srand(HAL_RNG_GetRandomNumber());
 
 #ifdef DFU_BUILD_ENABLE
     Load_SystemFlags();
 #endif
 
     // TODO: Use current LED theme
-    LED_SetRGBColor(RGB_COLOR_WHITE);
-    LED_On(LED_RGB);
+    if (HAL_Feature_Get(FEATURE_LED_OVERRIDDEN)) {
+        // Just in case
+        LED_Off(PARTICLE_LED_RGB);
+    } else {
+        LED_SetRGBColor(RGB_COLOR_WHITE);
+        LED_On(PARTICLE_LED_RGB);
+    }
 
     // override the WICED interrupts, specifically SysTick - there is a bug
     // where WICED isn't ready for a SysTick until after main() has been called to
     // fully intialize the RTOS.
     HAL_Core_Setup_override_interrupts();
-
-#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-    // write protect system module parts if not already protected
-    FLASH_WriteProtectMemory(FLASH_INTERNAL, CORE_FW_ADDRESS, USER_FIRMWARE_IMAGE_LOCATION - CORE_FW_ADDRESS, true);
-#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 #ifdef HAS_SERIAL_FLASH
     //Initialize Serial Flash
@@ -400,14 +406,20 @@ void HAL_Core_Setup(void) {
     /* Reset system to disable IWDG if enabled in bootloader */
     IWDG_Reset_Enable(0);
 
+    if (HAL_Feature_Get(FEATURE_LED_OVERRIDDEN)) {
+        LED_Signaling_Start();
+    }
+
     HAL_Core_Setup_finalize();
 
     if (bootloader_update_if_needed()) {
         HAL_Core_System_Reset();
     }
-    HAL_Bootloader_Lock(true);
 
     HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
+
+    // Initialize stdlib PRNG with a seed from hardware RNG
+    srand(HAL_RNG_GetRandomNumber());
 
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();
@@ -602,217 +614,37 @@ void HAL_Core_Enter_Safe_Mode(void* reserved)
     HAL_Core_System_Reset_Ex(RESET_REASON_SAFE_MODE, 0, NULL);
 }
 
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
+int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
 {
-    // Initial sanity check
-    if ((pins_count == 0 || mode_count == 0 || pins == NULL || mode == NULL) && seconds <= 0) {
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    }
-
-    // Validate pins and modes
-    if ((pins_count > 0 && pins == NULL) || (pins_count > 0 && mode_count == 0) || (mode_count > 0 && mode == NULL)) {
-        return SYSTEM_ERROR_NOT_ALLOWED;
-    }
-
-    for (unsigned i = 0; i < pins_count; i++) {
-        if (pins[i] >= TOTAL_PINS) {
-            return SYSTEM_ERROR_NOT_ALLOWED;
-        }
-    }
-
-    for (unsigned i = 0; i < mode_count; i++) {
-        switch(mode[i]) {
-            case RISING:
-            case FALLING:
-            case CHANGE:
-                break;
-            default:
-                return SYSTEM_ERROR_NOT_ALLOWED;
-        }
-    }
-
-    SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-
-    // Detach USB
-    HAL_USB_Detach();
-
-    // Flush all USARTs
-    for (int usart = 0; usart < TOTAL_USARTS; usart++)
-    {
-        if (HAL_USART_Is_Enabled(usart))
-        {
-            HAL_USART_Flush_Data(usart);
-        }
-    }
-
-    int32_t state = HAL_disable_irq();
-
-    uint32_t exit_conditions = 0x00;
-
-    // Suspend all EXTI interrupts
-    HAL_Interrupts_Suspend();
-
-    for (unsigned i = 0; i < pins_count; i++) {
-        pin_t wakeUpPin = pins[i];
-        InterruptMode edgeTriggerMode = (i < mode_count) ? mode[i] : mode[mode_count - 1];
-
-        PinMode wakeUpPinMode = INPUT;
-        /* Set required pinMode based on edgeTriggerMode */
-        switch(edgeTriggerMode)
-        {
-        case RISING:
-            wakeUpPinMode = INPUT_PULLDOWN;
-            break;
-        case FALLING:
-            wakeUpPinMode = INPUT_PULLUP;
-            break;
-        case CHANGE:
-        default:
-            wakeUpPinMode = INPUT;
-            break;
-        }
-
-        HAL_Pin_Mode(wakeUpPin, wakeUpPinMode);
-        HAL_InterruptExtraConfiguration irqConf = {0};
-        irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
-        irqConf.IRQChannelPreemptionPriority = 0;
-        irqConf.IRQChannelSubPriority = 0;
-        irqConf.keepHandler = 1;
-        irqConf.keepPriority = 1;
-        HAL_Interrupts_Attach(wakeUpPin, NULL, NULL, edgeTriggerMode, &irqConf);
-
-        exit_conditions |= STOP_MODE_EXIT_CONDITION_PIN;
-    }
-
-    // Configure RTC wake-up
-    if (seconds > 0) {
-        /*
-         * - To wake up from the Stop mode with an RTC alarm event, it is necessary to:
-         * - Configure the EXTI Line 17 to be sensitive to rising edges (Interrupt
-         * or Event modes) using the EXTI_Init() function.
-         *
-         */
-        HAL_RTC_Cancel_UnixAlarm();
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-
-        // Connect RTC to EXTI line
-        EXTI_InitTypeDef EXTI_InitStructure = {0};
-        EXTI_InitStructure.EXTI_Line = EXTI_Line17;
-        EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-        EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-        EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-        EXTI_Init(&EXTI_InitStructure);
-
-        exit_conditions |= STOP_MODE_EXIT_CONDITION_RTC;
-    }
-
-    HAL_Core_Execute_Stop_Mode();
-
-    int32_t reason = SYSTEM_ERROR_UNKNOWN;
-
-    if (exit_conditions & STOP_MODE_EXIT_CONDITION_PIN) {
-        STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
-        for (unsigned i = 0; i < pins_count; i++) {
-            pin_t wakeUpPin = pins[i];
-            if (EXTI_GetITStatus(PIN_MAP[wakeUpPin].gpio_pin) != RESET) {
-                reason = i + 1;
-            }
-            /* Detach the Interrupt pin */
-            HAL_Interrupts_Detach_Ext(wakeUpPin, 1, NULL);
-        }
-    }
-
-    if (exit_conditions & STOP_MODE_EXIT_CONDITION_RTC) {
-        if (NVIC_GetPendingIRQ(RTC_Alarm_IRQn)) {
-            reason = 0;
-        }
-        // No need to detach RTC Alarm from EXTI, since it will be detached in HAL_Interrupts_Restore()
-
-        // RTC Alarm should be canceled to avoid entering HAL_RTCAlarm_Handler or if we were woken up by pin
-        HAL_RTC_Cancel_UnixAlarm();
-    }
-
-    // Restore
-    HAL_Interrupts_Restore();
-
-    // Successfully exited STOP mode
-    HAL_enable_irq(state);
-
-    SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
-
-    HAL_USB_Attach();
-
-    return reason;
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds)
 {
-    InterruptMode m = (InterruptMode)edgeTriggerMode;
-    HAL_Core_Enter_Stop_Mode_Ext(&wakeUpPin, 1, &m, 1, seconds, NULL);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
 }
 
 void HAL_Core_Execute_Stop_Mode(void)
 {
-    /* Request to enter STOP mode with regulator in low power mode */
-    PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
-
-    /* At this stage the system has resumed from STOP mode */
-    /* Enable HSE, PLL and select PLL as system clock source after wake-up from STOP */
-
-    /* Enable HSE */
-    RCC_HSEConfig(RCC_HSE_ON);
-
-    /* Wait till HSE is ready */
-    if(RCC_WaitForHSEStartUp() != SUCCESS)
-    {
-        /* If HSE startup fails try to recover by system reset */
-        NVIC_SystemReset();
-    }
-
-    /* Enable PLL */
-    RCC_PLLCmd(ENABLE);
-
-    /* Wait till PLL is ready */
-    while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
-
-    /* Select PLL as system clock source */
-    RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-
-    /* Wait till PLL is used as system clock source */
-    while(RCC_GetSYSCLKSource() != 0x08);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
+int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 {
-    // Configure RTC wake-up
-    if (seconds > 0) {
-        HAL_RTC_Cancel_UnixAlarm();
-        HAL_RTC_Set_UnixAlarm((time_t) seconds);
-    }
-
-    HAL_Core_Execute_Standby_Mode_Ext(flags, NULL);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
+int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved)
 {
-    if ((flags & HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN) == 0) {
-    /* Enable WKUP pin */
-    PWR_WakeUpPinCmd(ENABLE);
-    } else {
-        /* Disable WKUP pin */
-        PWR_WakeUpPinCmd(DISABLE);
-    }
-
-    /* Request to enter STANDBY mode */
-    PWR_EnterSTANDBYMode();
-
-    /* Following code will not be reached */
-    while(1);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
+    return SYSTEM_ERROR_DEPRECATED;
 }
 
 void HAL_Core_Execute_Standby_Mode(void)
 {
-    HAL_Core_Execute_Standby_Mode_Ext(0, NULL);
+    // Deprecated. See: hal/src/stm32f2xx/sleep_hal.cpp
 }
 
 /**
@@ -1138,7 +970,7 @@ void TIM8_TRG_COM_TIM14_irq(void)
 
 void TIM8_CC_irq(void)
 {
-#if PLATFORM_ID == 10 // Electron
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION // Electron
     if(NULL != HAL_TIM8_Handler)
     {
         HAL_TIM8_Handler();
@@ -1364,7 +1196,7 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return Write_Feature_Flag(FEATURE_FLAG_RESET_INFO, enabled, NULL);
         }
 
-#if PLATFORM_ID==PLATFORM_P1
+#if PLATFORM_ID == PLATFORM_P1
         case FEATURE_WIFI_POWERSAVE_CLOCK:
         {
             wwd_set_wlan_sleep_clock_enabled(enabled);
@@ -1384,6 +1216,16 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled)
             return dct_write_app_data(&data, DCT_CLOUD_TRANSPORT_OFFSET, sizeof(data));
         }
 #endif // HAL_PLATFORM_CLOUD_UDP
+        case FEATURE_LED_OVERRIDDEN: {
+            // Inverted logic for this bit specifically
+            return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, !enabled, NULL);
+        }
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+        case FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK: {
+            uint32_t value = enabled ? DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SET : DCT_EXT_LOW_SPEED_CLOCK_DISABLE_CLEAR;
+            return dct_write_app_data(&value, DCT_EXT_LOW_SPEED_CLOCK_DISABLE_OFFSET, sizeof(value));
+		}
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
     }
     return -1;
 }
@@ -1417,6 +1259,21 @@ bool HAL_Feature_Get(HAL_Feature feature)
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_RESET_INFO, &value) == 0) ? value : false;
         }
+        case FEATURE_LED_OVERRIDDEN: {
+            bool value = false;
+            if (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) {
+                // Inverted logic for this bit specifically
+                value = !value;
+            }
+            return value;
+        }
+#if HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
+        case FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK: {
+            uint32_t value = 0;
+            dct_read_app_data_copy(DCT_EXT_LOW_SPEED_CLOCK_DISABLE_OFFSET, &value, sizeof(value));
+            return value == DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SET;
+     	}
+#endif // HAL_PLATFORM_INTERNAL_LOW_SPEED_CLOCK
     }
     return false;
 }
@@ -1525,10 +1382,10 @@ static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
             return GPIO_AF_TIM4;
         case (uint32_t)TIM5:
             return GPIO_AF_TIM5;
-#if PLATFORM_ID == 10
+#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
         case (uint32_t)TIM8:
             return GPIO_AF_TIM8;
-#endif // PLATFORM_ID == 10
+#endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     }
 
     return 0;
@@ -1536,7 +1393,7 @@ static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
 
 void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved) {
     (void)button; // unused
-    STM32_Pin_Info* pinmap = HAL_Pin_Map();
+    Hal_Pin_Info* pinmap = HAL_Pin_Map();
     if (pin > TOTAL_PINS)
         return;
 
@@ -1633,7 +1490,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
     if (pin > TOTAL_PINS)
         return;
 
-    STM32_Pin_Info* pinmap = HAL_Pin_Map();
+    Hal_Pin_Info* pinmap = HAL_Pin_Map();
 
     if (!pinmap[pin].timer_peripheral)
         return;
@@ -1683,6 +1540,12 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
     };
 
     LED_Mirror_Persist(led, &bootloader_conf);
+}
+
+int HAL_Core_Enter_Panic_Mode(void* reserved)
+{
+    __disable_irq();
+    return 0;
 }
 
 #if HAL_PLATFORM_CLOUD_UDP

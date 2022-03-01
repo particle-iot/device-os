@@ -19,19 +19,18 @@
 
 #pragma once
 
-//#include <stdio.h>
 #include <stdint.h>
 #include <stdarg.h>
 #include <string.h>
 
+#include "cellular_hal_cellular_global_identity.h"
 #include "pipe_hal.h"
 #include "electronserialpipe_hal.h"
 #include "pinmap_hal.h"
 #include "system_tick_hal.h"
-#include "enums_hal.h"
-
-/* Include for debug capabilty */
-#define MDM_DEBUG
+#include "cellular_enums_hal.h"
+#include "mdm_debug.h"
+#include "cellular_reg_status.h"
 
 /** basic modem parser class
 */
@@ -91,12 +90,14 @@ public:
 
     const DevStatus* getDevStatus() { return &_dev; }
 
+    void getExtRadioVer(char* verStr, int len) { strncpy(verStr, _verExtended, len); };
+
     /** register to the network
         \param status an optional structure to with network information
         \param timeout_ms -1 blocking, else non blocking timeout in ms
         \return true if successful and connected to network, false otherwise
     */
-    bool registerNet(const char* apn = nullptr, NetStatus* status = NULL, system_tick_t timeout_ms = 300000);
+    bool registerNet(const char* apn = nullptr, NetStatus* status = NULL, system_tick_t timeout_ms = 10 * 60 * 1000);
 
     /** check if the network is available
         \param status an optional structure to with network information
@@ -138,6 +139,30 @@ public:
     */
     bool getBandAvailable(MDM_BandSelect &data);
 
+    /**
+     * \brief Get the Cellular Global Identity
+     *
+     * \param[out] cgi A reference to a CellularGlobalIdentity
+     *                 structure in which to populate cached values.
+     *
+     * \returns A boolean indicating success
+     * \retval true Success
+     * \retval false Failure
+     */
+    bool getCellularGlobalIdentity(CellularGlobalIdentity& cgi);
+
+    /** Provides a way to keep track of if the power has been cycled off / on / reset,
+        which can be used to invalidate previous assumptions about the state of the modem.
+        \return _pwr_off_count value
+    */
+    int getModemStateChangeCount(void) const;
+
+    /** Power on the MT if necessary and then try powering off using AT command. This function has to be called prior to
+        switching off the supply.
+        \return true if successfully, false otherwise
+    */
+    bool softPowerOff(void);
+
     /** Power off the MT, This function has to be called prior to
         switching off the supply.
         \return true if successfully, false otherwise
@@ -147,6 +172,14 @@ public:
     /** Setup the PDP context
     */
     bool pdp(const char* apn = NULL);
+
+    /** Runs intervention commands to improve cellular registration process
+    */
+   bool interveneRegistration(void);
+
+   /** Reset the variables related to registration state
+   */
+   void resetRegState(void);
 
     // ----------------------------------------------------------------
     // Data Connection (GPRS)
@@ -469,6 +502,18 @@ public:
     /** Releases the modem lock. */
     void unlock();
 
+    int process();
+
+    /** Detects the modem power state
+    */
+    bool powerState(void);
+
+    /**
+     * Enable or disable modem URCs (used for keeping the MCU asleep)
+     * \return true if successful, false otherwise
+     */
+    bool urcs(bool enable);
+
 protected:
     /** Write bytes to the physical interface. This function should be
         implemented in a inherited class.
@@ -511,14 +556,41 @@ protected:
     void SMSreceived(int index);
 
 protected:
+    // String helper to prevent buffer overrun
+    struct CStringHelper {
+        CStringHelper(char* s, size_t sz)
+            : str{s},
+            size{sz} {
+        }
+        CStringHelper() = delete;
+
+        char* str;
+        size_t size;
+    };
+
     // parsing callbacks for different AT commands and their parameter arguments
-    static int _cbString(int type, const char* buf, int len, char* str);
+    static int _cbString(int type, const char* buf, int len, CStringHelper* str);
     static int _cbInt(int type, const char* buf, int len, int* val);
     // device
     static int _cbCGMM(int type, const char* buf, int len, DevStatus* s);
     static int _cbCPIN(int type, const char* buf, int len, Sim* sim);
-    static int _cbCCID(int type, const char* buf, int len, char* ccid);
+    static int _cbCCID(int type, const char* buf, int len, CStringHelper* ccid);
     // network
+    static int _cbUMNOPROF(int type, const char *buf, int len, int* i);
+    static int _cbCFUN(int type, const char* buf, int len, int* i);
+    static int _cbUBANDMASK(int type, const char *buf, int len, uint64_t* i);
+    #define MDM_R410_EDRX_ACTS_MAX (4) //!< maximum number of AcTs for eDRX mode on SARA-R410M-02B
+    // eDRX AcTs
+    struct EdrxActs {
+        int act[MDM_R410_EDRX_ACTS_MAX];
+        int count;
+
+        EdrxActs()
+        {
+            memset(this, 0, sizeof(*this));
+        }
+    };
+    static int _cbCEDRXS(int type, const char* buf, int len, EdrxActs* edrxActs);
     static int _cbUGCNTRD(int type, const char* buf, int len, MDM_DataUsage* data);
     static int _cbBANDAVAIL(int type, const char* buf, int len, MDM_BandSelect* data);
     static int _cbBANDSEL(int type, const char* buf, int len, MDM_BandSelect* data);
@@ -526,17 +598,30 @@ protected:
     static int _cbCOPS(int type, const char* buf, int len, NetStatus* status);
     static int _cbCNUM(int type, const char* buf, int len, char* num);
     static int _cbUACTIND(int type, const char* buf, int len, int* i);
-    static int _cbUDOPN(int type, const char* buf, int len, char* mccmnc);
+    static int _cbUDOPN(int type, const char* buf, int len, CStringHelper* str);
     static int _cbCGPADDR(int type, const char* buf, int len, MDM_IP* ip);
+    static int _cbUCGED(int type, const char* buf, int len, NetStatus* status);
     struct CGDCONTparam { char type[8]; char apn[32]; };
     static int _cbCGDCONT(int type, const char* buf, int len, CGDCONTparam* param);
+    static int _cbURAT(int type, const char *buf, int len, bool *matched_default);
     // sockets
     static int _cbCMIP(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUPSND(int type, const char* buf, int len, int* act);
     static int _cbUPSND(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUDNSRN(int type, const char* buf, int len, MDM_IP* ip);
     static int _cbUSOCR(int type, const char* buf, int len, int* handle);
-    static int _cbUSOCTL(int type, const char* buf, int len, int* handle);
+    static int _cbUSOER(int type, const char* buf, int len, int* err);
+    struct Usoctl {
+        int handle;
+        int param_id;
+        int param_val;
+
+        Usoctl()
+        {
+            memset(this, 0, sizeof(*this));
+        }
+    };
+    static int _cbUSOCTL(int type, const char* buf, int len, Usoctl* usoctl);
     typedef struct { char* buf; int len; } USORDparam;
     static int _cbUSORD(int type, const char* buf, int len, USORDparam* param);
     typedef struct { char* buf; MDM_IP ip; int port; int len; } USORFparam;
@@ -553,6 +638,11 @@ protected:
     static int _cbURDFILE(int type, const char* buf, int len, URDFILEparam* param);
     // variables
     DevStatus   _dev; //!< collected device information
+    char _verExtended[32]; //!< collected modem and application version string (ATI9)
+    bool _memoryIssuePresent; //!< flag to add specific delays when the firmware version with memory issue is present
+    bool _oldFirmwarePresent; //!< flag to add indicate specific issues present with older firmware versions
+    system_tick_t _timePowerOn; //!< timestamp when unit was powered on (to be used in conjunction with _memoryIssuePresent)
+    system_tick_t _timeRegistered; //!< timestamp when unit was registered on (to be used in conjunction with _memoryIssuePresent)
     NetStatus   _net; //!< collected network information
     MDM_IP       _ip;  //!< assigned ip address
     MDM_DataUsage _data_usage; //!< collected data usage information
@@ -571,25 +661,43 @@ protected:
     // LISA-U and SARA-G have 7 sockets
     SockCtrl _sockets[7];
     int _findSocket(int handle = MDM_SOCKET_ERROR/* = CREATE*/);
+    int _socketCleanupUnusedHandles(void);
     int _socketCloseHandleIfOpen(int socket);
-    int _socketCloseUnusedHandles(void);
+    int _socketCheckType(int);
     int _socketSocket(int socket, IpProtocol ipproto, int port);
     bool _socketFree(int socket);
     bool _powerOn(void);
+    void _incModemStateChangeCount(void);
     void _setBandSelectString(MDM_BandSelect &data, char* bands, int index=0); // private helper to create bands strings
+    int _checkAtResponse(bool fastTimeout = false);
+    bool _atOk(bool fastTimeout = false);
+    bool _checkModem(bool force = true);
+    void _checkVerboseCxreg(void);
+    bool _checkEpsReg(void);
+    int _socketError(void);
     static MDMParser* inst;
     bool _init;
     bool _pwr;
+    int _mdm_state_change_count;
     bool _activated;
     bool _attached;
     bool _attached_urc;
     int _power_mode;
     volatile bool _cancel_all_operations;
+    volatile uint32_t _error;
+    system_tick_t _lastProcess;
+    system_tick_t _lastVerboseCxregUpdate;
+    CellularRegistrationStatus csd_;
+    CellularRegistrationStatus psd_;
+    CellularRegistrationStatus eps_;
+    unsigned int _registrationInterventions;
+    system_tick_t _regStartTime;
+
 #ifdef MDM_DEBUG
     int _debugLevel;
-    system_tick_t _debugTime;
     void _debugPrint(int level, const char* color, const char* format, ...) __attribute__((format(printf, 4, 5)));
 #endif
+    uint32_t _resetFailureAttempts;
 };
 
 // -----------------------------------------------------------------------

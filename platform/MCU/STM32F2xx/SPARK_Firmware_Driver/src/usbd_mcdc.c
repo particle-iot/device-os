@@ -499,7 +499,7 @@ static void USBD_MCDC_Schedule_In(void *pdev, USBD_MCDC_Instance_Data* priv)
   if (priv->tx_state) {
     if (priv->serial_open) {
       priv->tx_failed_counter++;
-      if (priv->tx_failed_counter >= 1000) {
+      if (priv->tx_failed_counter >= HAL_PLATFORM_USB_CDC_TX_FAIL_TIMEOUT_MS) {
         USBD_MCDC_Change_Open_State(pdev, priv, 0);
       }
     }

@@ -20,7 +20,7 @@
 
 #include "protocol_selector.h"
 
-#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_TCP
 
 #include "service_debug.h"
 #include "handshake.h"
@@ -85,7 +85,7 @@ public:
 	void init(const uint8_t* core_private, const uint8_t* server_public,
 			const uint8_t* device_id, Callbacks& callbacks, message_id_t* counter);
 
-	virtual ProtocolError establish(uint32_t& flags, uint32_t app_crc) override
+	virtual ProtocolError establish() override
 	{
 		return handshake();
 	}
@@ -109,6 +109,16 @@ public:
 		return NO_ERROR;
 	}
 
+	void notify_client_messages_processed() override {
+	}
+
+	AppStateDescriptor cached_app_state_descriptor() const override {
+		return AppStateDescriptor();
+	}
+
+	void reset() override {
+	}
+
 protected:
 
 	ProtocolError set_key(const unsigned char *signed_encrypted_credentials);
@@ -129,4 +139,4 @@ protected:
 }
 }
 
-#endif // HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#endif // HAL_PLATFORM_CLOUD_TCP

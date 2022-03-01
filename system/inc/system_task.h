@@ -57,9 +57,12 @@ extern volatile uint32_t TimingFlashUpdateTimeout;
 
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
+extern volatile uint8_t SPARK_WLAN_CONNECT_RESTORE;
 extern volatile uint8_t SPARK_WLAN_STARTED;
 extern volatile uint8_t SPARK_CLOUD_SOCKETED;
 extern volatile uint8_t SPARK_CLOUD_CONNECTED;
+extern volatile uint8_t SPARK_CLOUD_HANDSHAKE_PENDING;
+extern volatile uint8_t SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE;
 extern volatile uint8_t SPARK_FLASH_UPDATE;
 
 extern volatile uint8_t Spark_Error_Count;
@@ -67,6 +70,9 @@ extern volatile uint8_t Cloud_Handshake_Error_Count;
 extern volatile uint8_t SYSTEM_POWEROFF;
 
 extern volatile system_tick_t spark_loop_total_millis;
+
+// This variable is set to true when the application's setup() function returns
+extern bool APPLICATION_SETUP_DONE;
 
 void system_delay_ms(unsigned long ms, bool no_background_loop);
 
@@ -104,6 +110,11 @@ void* system_pool_alloc(size_t size, void* reserved);
  * Frees the memory allocated with system_pool_alloc(). This function can be called from an ISR.
  */
 void system_pool_free(void* ptr, void* reserved);
+
+int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const char* event_name, const char* event_data, void* reserved);
+
+typedef int (*system_task_fn)();
 
 #ifdef __cplusplus
 }

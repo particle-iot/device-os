@@ -53,3 +53,22 @@ nbproject/
 build/target/
 build/cores/
 hal/soft-ap/.idea/
+cmake-build-debug
+.vscode
+
+# Doxygen documentation
+docs/doxygen/html/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+#direnv config files
+.envrc
+opt/
+node_modules/
+
+# Code coverage
+coverage/
+

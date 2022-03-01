@@ -33,7 +33,7 @@ LINKER_DEPS += $(SYSTEM_PART2_MODULE_PATH)/module_system_part2_export.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
 LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
 
-LDFLAGS += --specs=nano.specs -lnosys
+LDFLAGS += -lnosys
 LDFLAGS += -L$(SYSTEM_PART1_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART2_MODULE_PATH)
 LDFLAGS += -L$(SYSTEM_PART3_MODULE_PATH)
@@ -47,5 +47,3 @@ CSRC += $(call target_files,$(SYSTEM_PART1_MODULE_SRC_PATH),*.c)
 
 BUILTINS_EXCLUDE = malloc free realloc
 CFLAGS += $(addprefix -fno-builtin-,$(BUILTINS_EXCLUDE))
-
-CPPFLAGS += -std=gnu++11

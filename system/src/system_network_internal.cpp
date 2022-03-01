@@ -17,14 +17,51 @@
 
 #include "system_network_internal.h"
 
+#include "system_cloud.h"
+
+namespace particle {
+
 namespace {
 
-using namespace particle;
-
-NetworkDiagnostics g_networkDiagnostics;
+[[gnu::unused]] // Suppress a warning on the newhal platform
+bool turnOffNetworkIfNeeded(network_interface_index iface) {
+    if (network_ready(iface, NETWORK_READY_TYPE_ANY, nullptr) || network_connecting(iface, 0, nullptr)) {
+        network_off(iface, 0, 0, nullptr);
+        return true;
+    }
+    return false;
+}
 
 } // namespace
 
-particle::NetworkDiagnostics* particle::NetworkDiagnostics::instance() {
-    return &g_networkDiagnostics;
+void resetNetworkInterfaces() {
+    // FIXME: network_off() on Gen 3 disconnects the cloud only if the interface is set to NETWORK_INTERFACE_ALL
+    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, NETWORK_DISCONNECT_REASON_RESET);
+    // TODO: There's no cross-platform API to enumerate available network interfaces
+#if HAL_PLATFORM_ETHERNET
+    const bool resetEthernet = turnOffNetworkIfNeeded(NETWORK_INTERFACE_ETHERNET);
+#endif // HAL_PLATFORM_ETHERNET
+#if HAL_PLATFORM_CELLULAR
+    const bool resetCellular = turnOffNetworkIfNeeded(NETWORK_INTERFACE_CELLULAR);
+#endif // HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_WIFI
+    const bool resetWifi = turnOffNetworkIfNeeded(NETWORK_INTERFACE_WIFI_STA);
+#endif // HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_ETHERNET
+    if (resetEthernet) {
+        network_connect(NETWORK_INTERFACE_ETHERNET, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_ETHERNET
+#if HAL_PLATFORM_CELLULAR
+    if (resetCellular) {
+        network_connect(NETWORK_INTERFACE_CELLULAR, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_WIFI
+    if (resetWifi) {
+        network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
+    }
+#endif // HAL_PLATFORM_WIFI
 }
+
+} // namespace particle

@@ -32,7 +32,7 @@
  */
 void setADCSampleTime(uint8_t ADC_SampleTime)
 {
-    HAL_ADC_Set_Sample_Time(ADC_SampleTime);
+    hal_adc_set_sample_time(ADC_SampleTime);
 }
 
 int map(int value, int fromStart, int fromEnd, int toStart, int toEnd)

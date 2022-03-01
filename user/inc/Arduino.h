@@ -16,18 +16,16 @@
 #define ARDUINO 10800
 #endif
 
-#include "math.h"
+#include <math.h>
 
-#ifndef isnan
-#error isnan is not defined please ensure this header is included before any STL headers
-#endif
+// #ifndef isnan
+// #error isnan is not defined please ensure this header is included before any STL headers
+// #endif
 
 
 #include "avr/pgmspace.h"
 #include "spark_wiring_arduino_constants.h"
 #include "spark_wiring_arduino_binary.h"
-
-typedef particle::__SPISettings SPISettings;
 
 #undef F
 #define F(X) (reinterpret_cast<const __FlashStringHelper*>(X))
@@ -97,7 +95,7 @@ inline void yield() {
 #endif
 
 // XXX
-#if PLATFORM_ID == PLATFORM_SPARK_CORE || PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
 # ifndef digitalPinToPort
 # define digitalPinToPort(P)        ( HAL_Pin_Map()[P].gpio_peripheral )
@@ -120,7 +118,33 @@ inline void yield() {
 # define digitalPinHasPWM(P)        ( HAL_Validate_Pin_Function(P, PF_TIMER) == PF_TIMER )
 # endif
 
-#endif // PLATFORM_ID == PLATFORM_SPARK_CORE || PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+#elif HAL_PLATFORM_NRF52840
+
+# ifndef digitalPinToPort
+# define digitalPinToPort(P)        ( HAL_Pin_Map()[P].gpio_port ? NRF_P1 : NRF_P0 )
+# endif
+
+# ifndef digitalPinToBitMask
+# define digitalPinToBitMask(P)     ( HAL_Pin_Map()[P].gpio_pin )
+# endif
+
+# ifndef portOutputRegister
+# define portOutputRegister(port)   ( &(port->OUT) )
+# endif
+
+# ifndef portInputRegister
+# define portInputRegister(port)    ( &(port->IN) )
+# endif
+
+# ifndef portModeRegister
+# define portModeRegister(port)     ( &(port->DIR) )
+# endif
+
+# ifndef digitalPinHasPWM
+# define digitalPinHasPWM(P)        ( HAL_Validate_Pin_Function(P, PF_TIMER) == PF_TIMER )
+# endif
+
+#endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
 #ifndef _BV
 #define _BV(x)  (((uint32_t)1) << (x))
@@ -151,7 +175,9 @@ typedef volatile uint32_t RwReg;
 // Pins
 
 // LED
-#if PLATFORM_ID == PLATFORM_SPARK_CORE || PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || \
+    PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION || \
+    HAL_PLATFORM_NRF52840
 # ifndef LED_BUILTIN
 # define LED_BUILTIN D7
 # endif
@@ -160,17 +186,19 @@ typedef volatile uint32_t RwReg;
 # define ATN SS
 # endif
 
-#endif // PLATFORM_ID == PLATFORM_SPARK_CORE || PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+#endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION ||
+       // PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION ||
+       // HAL_PLATFORM_NRF52840
 
 // C++ only
 #ifdef __cplusplus
 
 #ifndef isnan
-using std::isnan
+using std::isnan;
 #endif
 
 #ifndef isinf
-using std::isinf
+using std::isinf;
 #endif
 
 

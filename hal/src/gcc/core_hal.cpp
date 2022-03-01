@@ -39,9 +39,11 @@
 #include <boost/crc.hpp>  // for boost::crc_32_type
 #include <sstream>
 #include <iomanip>
+#include "system_error.h"
 
 #include "eeprom_file.h"
 #include "eeprom_hal.h"
+#include "rtc_hal.h"
 
 using std::cout;
 
@@ -238,15 +240,16 @@ void HAL_Core_Execute_Stop_Mode(void)
     MSG("Stop mode not implemented.");
 }
 
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
+int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved)
 {
     MSG("Stop mode not implemented.");
     return -1;
 }
 
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
+int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags)
 {
     MSG("Standby mode not implemented.");
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 void HAL_Core_Execute_Standby_Mode(void)
@@ -340,6 +343,7 @@ void HAL_Notify_WDT()
 
 void HAL_Core_Init(void)
 {
+    hal_rtc_init();
 }
 
 void HAL_Bootloader_Lock(bool lock)
@@ -397,6 +401,7 @@ bool HAL_Feature_Get(HAL_Feature feature)
 
 #if HAL_PLATFORM_CLOUD_UDP
 
+#define NO_MBEDTLS_HEADERS
 #include "dtls_session_persist.h"
 SessionPersistDataOpaque session;
 

@@ -30,6 +30,7 @@ License along with this library; if not, see <http://www.gnu.org/licenses/>.
 #include "system_tick_hal.h"
 #include <string.h>
 #include <limits>
+#include <algorithm>
 
 #if Wiring_WiFi
 
@@ -136,6 +137,7 @@ namespace spark {
         return apScan.start();
     }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     int WiFiClass::getCredentials(WiFiAccessPoint* results, size_t result_count) {
         APList apList(results, result_count);
         return apList.start();
@@ -147,7 +149,7 @@ namespace spark {
             return sig;
         }
 
-        wlan_connected_info_t info = {0};
+        wlan_connected_info_t info = {};
         info.size = sizeof(info);
         int r = wlan_connected_info(nullptr, &info, nullptr);
         if (r == 0) {
@@ -158,7 +160,7 @@ namespace spark {
         sig.rssi = 2;
         return sig;
     }
-
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 /********************************* Bug Notice *********************************
 On occasion, "wlan_ioctl_get_scan_results" only returns a single bad entry
@@ -183,7 +185,7 @@ the same way.
 *****************************************************************************/
 
     WiFiClass WiFi;
-    NetworkClass& Network = WiFi;
+    // NetworkClass& Network = WiFi;
 }
 
 #endif

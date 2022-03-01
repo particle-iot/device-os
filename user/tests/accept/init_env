@@ -28,10 +28,6 @@ require_var PLATFORM
 # USB vendor/product ID
 if [ ! $USB_VENDOR_ID ] || [ ! $USB_PRODUCT_ID ]; then
   case $PLATFORM in
-    core)
-      USB_VENDOR_ID=1d50
-      USB_PRODUCT_ID=607d
-      ;;
     photon)
       USB_VENDOR_ID=2b04
       USB_PRODUCT_ID=c006

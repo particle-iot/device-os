@@ -1,4 +1,4 @@
-#if PLATFORM_ID!=3
+#if PLATFORM_ID!=3 && PLATFORM_ID!=20
 /*
  * Copyright (c) 2012, 2013 ARM Ltd
  * All rights reserved.
@@ -56,6 +56,7 @@
 #if defined(DEBUG) && DEBUG
 #include <assert.h>
 #else
+#undef assert
 #define assert(x) ((void)0)
 #endif
 
@@ -305,7 +306,7 @@ void * nano_malloc(RARG malloc_size_t s)
         int rem = r->size - alloc_size;
         if (rem >= 0)
         {
-            if (rem >= MALLOC_MINCHUNK)
+            if ((size_t)rem >= MALLOC_MINCHUNK)
             {
                 /* Find a chunk that much larger than required size, break
                 * it into two chunks and return the second one */

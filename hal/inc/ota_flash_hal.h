@@ -38,14 +38,22 @@
 extern "C" {
 #endif
 
+typedef enum {
+    MODULE_BOUNDS_LOC_INTERNAL_FLASH = 0,
+    MODULE_BOUNDS_LOC_EXTERNAL_FLASH = 1,
+    MODULE_BOUNDS_LOC_NCP_FLASH = 2,
+} module_bounds_location_t;
+
 typedef struct {
+    // This struct is now used in dynalib, take caution when modifying these fields
     uint32_t maximum_size;      // the maximum allowable size for the entire module image
     uint32_t start_address;     // the designated start address for the module
     uint32_t end_address;       //
     module_function_t module_function;
     uint8_t module_index;
     module_store_t store;
-
+    uint8_t mcu_identifier;		// which MCU is targeted by this module. 0 means main/primary MCU. HAL_PLATFORM_MCU_ANY
+    module_bounds_location_t location;
 } module_bounds_t;
 
 typedef enum {
@@ -60,12 +68,14 @@ typedef enum {
 } module_validation_flags_t;
 
 typedef struct {
+    // This struct is now used in dynalib, take caution when modifying these fields
     module_bounds_t bounds;
-    const module_info_t* info;      // pointer to the module info in the module, may be NULL
-    const module_info_crc_t* crc;
-    const module_info_suffix_t* suffix;
+    module_info_t info;
+    module_info_crc_t crc;
+    module_info_suffix_t suffix;
     uint16_t validity_checked;    // the flags that were checked
     uint16_t validity_result;     // the result of the checks
+    uint32_t module_info_offset;  // offset of the module info
 } hal_module_t;
 
 typedef struct key_value {
@@ -80,8 +90,15 @@ typedef struct {
     uint16_t module_count;      // number of modules in the array
     key_value* key_values;      // key_values, allocated by HAL_System_Info
     uint16_t key_value_count;   // number of key values
+    uint16_t flags;				// only when size > offsetof(flags) otherwise assume 0
 } hal_system_info_t;
 
+/**
+ * The flag indicates the content is for the cloud describe message.
+ * Some details may be omitted if they are already known in the cloud to reduce overhead.
+ * The Device Serial Number and Device Secret are not added as keys when this flag is set.
+ */
+#define HAL_SYSTEM_INFO_FLAGS_CLOUD (0x01)
 
 /**
  *
@@ -89,7 +106,7 @@ typedef struct {
  * @param construct     {#code true} to fill the buffer, {@code false} to reclaim.
  * @param reserved      set to 0
  */
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved);
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved);
 
 bool HAL_Verify_User_Dependencies();
 
@@ -113,7 +130,7 @@ uint16_t HAL_OTA_ChunkSize();
 
 flash_device_t HAL_OTA_FlashDevice();
 
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved);
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved);
 
 /**
  * Erase a region of flash in preparation for flashing content.
@@ -128,13 +145,31 @@ bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved);
  */
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved);
 
+/**
+ * Reads part of the OTA image.
+ * @returns Number of bytes read or a negative error code.
+ */
+int HAL_OTA_Flash_Read(uintptr_t address, uint8_t* buffer, size_t size);
+
 typedef enum {
-    HAL_UPDATE_ERROR,
-    HAL_UPDATE_APPLIED_PENDING_RESTART,
-    HAL_UPDATE_APPLIED
+    HAL_UPDATE_APPLIED = 0,
+    HAL_UPDATE_APPLIED_PENDING_RESTART = 1
 } hal_update_complete_t;
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* module);
+/**
+ * Apply the OTA update.
+ *
+ * @return A value defined by `hal_update_complete_t` or a negative result code in case of an error.
+ */
+int HAL_FLASH_End(void* reserved);
+
+/**
+ * @param module Optional pointer to a module that receives the module definition of the firmware that was flashed.
+ * @param dryRun when true, only test that the system has a pending update in memory. When false, the test is performed and the module
+ *   applied if valid (or the bootloader instructed to apply it.)
+ * @return A value defined by `hal_update_complete_t` or a negative result code in case of an error.
+ */
+int HAL_FLASH_ApplyPendingUpdate(bool dryRun, void* reserved);
 
 uint32_t HAL_FLASH_ModuleAddress(uint32_t address);
 uint32_t HAL_FLASH_ModuleLength(uint32_t address);
@@ -185,9 +220,9 @@ typedef struct __attribute__ ((__packed__)) ServerAddress_ {
   uint8_t padding[60];
 } ServerAddress;
 
-STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
-STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, domain)==2);
-STATIC_ASSERT(ServerAddress_size, sizeof(ServerAddress)==128);
+PARTICLE_STATIC_ASSERT(ServerAddress_ip_offset, offsetof(ServerAddress, ip)==2);
+PARTICLE_STATIC_ASSERT(ServerAddress_domain_offset, offsetof(ServerAddress, domain)==2);
+PARTICLE_STATIC_ASSERT(ServerAddress_size, sizeof(ServerAddress)==128);
 
 
 /* Length in bytes of DER-encoded 2048-bit RSA public key */
@@ -238,6 +273,9 @@ typedef struct {
  * @return {@code true} if the key was generated.
  */
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* generation);
+
+void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved);
+
 
 
 #ifdef	__cplusplus

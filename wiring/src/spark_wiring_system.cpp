@@ -8,7 +8,6 @@
 #include "system_task.h"
 #include "system_control.h"
 #include "system_network.h"
-#include "spark_wiring_wifitester.h"
 
 #if Wiring_LogConfig
 extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
@@ -16,11 +15,16 @@ extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
 
 SystemClass System;
 
-void SystemClass::factoryReset(void)
+void SystemClass::factoryReset(SystemResetFlags flags)
 {
     //This method will work only if the Core is supplied
     //with the latest version of Bootloader
-    HAL_Core_Factory_Reset();
+    system_reset(SYSTEM_RESET_MODE_FACTORY, 0, 0, flags.value(), nullptr);
+}
+
+void SystemClass::dfu(SystemResetFlags flags)
+{
+    system_reset(SYSTEM_RESET_MODE_DFU, 0, 0, flags.value(), nullptr);
 }
 
 void SystemClass::dfu(bool persist)
@@ -28,30 +32,55 @@ void SystemClass::dfu(bool persist)
     // true  - DFU mode persist if firmware upgrade is not completed
     // false - Briefly enter DFU bootloader mode (works with latest bootloader only )
     //         Subsequent reset or power off-on will execute normal firmware
-    HAL_Core_Enter_Bootloader(persist);
+    dfu(persist ? RESET_PERSIST_DFU : SystemResetFlags());
 }
 
-void SystemClass::reset(void)
+void SystemClass::reset()
 {
-    reset(0);
+    // We can't simply provide a default value for the argument of reset(SystemResetFlags) because
+    // the reference docs show that method used without arguments in the application watchdog example
+    reset(SystemResetFlags());
 }
 
-void SystemClass::reset(uint32_t data)
+void SystemClass::reset(SystemResetFlags flags)
 {
-    HAL_Core_System_Reset_Ex(RESET_REASON_USER, data, nullptr);
+    reset(0, flags);
+}
+
+void SystemClass::reset(uint32_t data, SystemResetFlags flags)
+{
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_USER, data, flags.value(), nullptr);
+}
+
+void SystemClass::enterSafeMode(SystemResetFlags flags)
+{
+    system_reset(SYSTEM_RESET_MODE_SAFE, 0, 0, flags.value(), nullptr);
+}
+
+SystemSleepResult SystemClass::sleep(const particle::SystemSleepConfiguration& config) {
+    if (!config.valid()) {
+        LOG(ERROR, "System sleep configuration is invalid.");
+        System.systemSleepResult_ = SystemSleepResult(SYSTEM_ERROR_INVALID_ARGUMENT);
+    } else {
+        SystemSleepResult result;
+        int ret = system_sleep_ext(config.halConfig(), result.halWakeupSource(), nullptr);
+        result.setError(static_cast<system_error_t>(ret));
+        System.systemSleepResult_ = result;
+    }
+    return System.systemSleepResult_;
 }
 
 SleepResult SystemClass::sleep(Spark_Sleep_TypeDef sleepMode, long seconds, SleepOptionFlags flags)
 {
-    system_sleep(sleepMode, seconds, flags.value(), NULL);
-    System.sleepResult_ = SleepResult();
-    return System.sleepResult_;
+    int ret = system_sleep(sleepMode, seconds, flags.value(), NULL);
+    System.systemSleepResult_ = SystemSleepResult(SleepResult(WAKEUP_REASON_NONE, static_cast<system_error_t>(ret)));
+    return System.systemSleepResult_;
 }
 
 SleepResult SystemClass::sleepPinImpl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, SleepOptionFlags flags) {
     int ret = system_sleep_pins(pins, pins_count, modes, modes_count, seconds, flags.value(), nullptr);
-    System.sleepResult_ = SleepResult(ret, pins, pins_count);
-    return System.sleepResult_;
+    System.systemSleepResult_ = SystemSleepResult(SleepResult(ret, pins, pins_count));
+    return System.systemSleepResult_;
 }
 
 uint32_t SystemClass::freeMemory()
@@ -69,11 +98,6 @@ bool SystemClass::enableFeature(LoggingFeature) {
     return true;
 }
 #endif
-
-bool SystemClass::enableFeature(const WiFiTesterFeature feature) {
-    WiFiTester::init();
-    return true;
-}
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {

@@ -24,12 +24,14 @@
  */
 
 #include "ota_flash_hal.h"
+#include "system_error.h"
 
-void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
     info->platform_id = PLATFORM_ID;
     info->module_count = 0;
     info->modules = NULL;
+    return 0;
 }
 
 
@@ -63,9 +65,9 @@ int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_vali
   return 0;
 }
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
+int HAL_FLASH_End(void* reserved)
 {
-    return HAL_UPDATE_ERROR;
+    return SYSTEM_ERROR_UNKNOWN;
 }
 
 void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)

@@ -48,6 +48,46 @@ The I2C address of BQ24195 is 0x6B
 
 
 #include "spark_wiring_power.h"
+
+#if HAL_PLATFORM_PMIC_BQ24195
+
+namespace {
+
+TwoWire* pmicWireInstance() {
+    switch (HAL_PLATFORM_PMIC_BQ24195_I2C) {
+        case HAL_I2C_INTERFACE1:
+        default: {
+            return &Wire;
+        }
+#if Wiring_Wire1
+        case HAL_I2C_INTERFACE2: {
+            return &Wire1;
+        }
+#endif // Wiring_Wire1
+#if Wiring_Wire3
+        case HAL_I2C_INTERFACE3: {
+            return &Wire3;
+        }
+#endif // Wiring_Wire3
+    }
+}
+
+uint32_t findClosestMatchingSum(uint32_t value, uint32_t baseOffset, uint32_t bits, uint32_t bitsBaseShift) {
+    uint32_t best = 0;
+    int bestDelta = 0x7fffffff;
+    for (uint32_t mask = 0; mask <= (uint32_t)((1 << bits) - 1); mask++) {
+        uint32_t sum = baseOffset + (mask << bitsBaseShift);
+        int delta = std::abs((int)sum - (int)value);
+        if (delta < bestDelta && sum <= value) {
+            best = mask;
+            bestDelta = delta;
+        }
+    }
+    return best;
+}
+
+} // anonymous
+
 #include <mutex>
 
 PMIC::PMIC(bool _lock) :
@@ -73,10 +113,10 @@ PMIC::~PMIC()
  *******************************************************************************/
 bool PMIC::begin()
 {
-#if Wiring_Wire3
-    Wire3.begin();
-#endif
-    return 1;
+    if (!pmicWireInstance()->isEnabled()) {
+        pmicWireInstance()->begin();
+    }
+    return pmicWireInstance()->isEnabled();
 }
 
 /*
@@ -207,11 +247,12 @@ bool PMIC::setInputVoltageLimit(uint16_t voltage) {
  * Input          :
  * Return         :
  *******************************************************************************/
-byte PMIC::getInputVoltageLimit(void) {
-
-    //TODO
-    return 1;
-
+uint16_t PMIC::getInputVoltageLimit(void) {
+    std::lock_guard<PMIC> l(*this);
+    uint8_t isr = readRegister(INPUT_SOURCE_REGISTER);
+    isr = (isr >> 3) & 0b1111;
+    const uint16_t baseValue = 3880;
+    return baseValue + isr * 80;
 }
 
 /*******************************************************************************
@@ -285,7 +326,7 @@ uint16_t PMIC::getInputCurrentLimit(void) {
         3000
     };
     byte raw = readInputSourceRegister();
-    raw &= 0x03;
+    raw &= 0x07;
     return mapping[raw];
 }
 
@@ -326,6 +367,11 @@ bool PMIC::disableBuck(void) {
     return 1;
 }
 
+bool PMIC::isBuckEnabled() {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(INPUT_SOURCE_REGISTER);
+    return !(DATA & 0x80);
+}
 
 /*
 
@@ -361,6 +407,13 @@ byte PMIC::readPowerONRegister(void) {
 
 }
 
+void PMIC::reset() {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(POWERON_CONFIG_REGISTER);
+    DATA |= 0x80;
+    writeRegister(POWERON_CONFIG_REGISTER, DATA);
+}
+
 /*******************************************************************************
  * Function Name  : enableCharging
  * Description    :
@@ -370,9 +423,14 @@ byte PMIC::readPowerONRegister(void) {
 bool PMIC::enableCharging() {
     std::lock_guard<PMIC> l(*this);
     byte DATA = readRegister(POWERON_CONFIG_REGISTER);
-    DATA = DATA & 0b11001111;
-    DATA = DATA | 0b00010000;
-    writeRegister(POWERON_CONFIG_REGISTER, DATA);
+    // Check charging bits 4 and 5 to see if charging is already enabled.  Skip if so.
+    if ((DATA & 0b00110000) != 0b00010000) {
+        // Mask charging bits
+        DATA = DATA & 0b11001111;
+        // Set charging to enabled
+        DATA = DATA | 0b00010000;
+        writeRegister(POWERON_CONFIG_REGISTER, DATA);
+    }
     return 1;
 }
 
@@ -385,8 +443,18 @@ bool PMIC::enableCharging() {
 bool PMIC::disableCharging() {
     std::lock_guard<PMIC> l(*this);
     byte DATA = readRegister(POWERON_CONFIG_REGISTER);
-    writeRegister(POWERON_CONFIG_REGISTER, (DATA & 0b11001111));
+    // Check charging bits 4 and 5 to see if charging is already disabled.  Skip if so.
+    if ((DATA & 0b00110000) != 0) {
+        // Clear bits 4 and 5
+        writeRegister(POWERON_CONFIG_REGISTER, (DATA & 0b11001111));
+    }
     return 1;
+}
+
+bool PMIC::isChargingEnabled(void) {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(POWERON_CONFIG_REGISTER);
+    return (DATA & 0b00110000) == 0b00010000;
 }
 
 /*******************************************************************************
@@ -559,6 +627,19 @@ byte PMIC::getChargeCurrent(void) {
 }
 
 /*******************************************************************************
+ * Function Name  : getChargeCurrentValue
+ * Description    : Returns charge current in mA
+ * Input          :
+ * Return         :
+ *******************************************************************************/
+uint16_t PMIC::getChargeCurrentValue(void) {
+    uint8_t ccr = readRegister(CHARGE_CURRENT_CONTROL_REGISTER);
+    const uint16_t baseValue = 512;
+    uint16_t v = (((uint16_t)ccr >> 2) & 0b111111) << 6;
+    return baseValue + v;
+}
+
+/*******************************************************************************
  * Function Name  : setChargeCurrent
  * Description    : The total charge current is the 512mA + the combination of the
                     current that the following bits represent
@@ -588,6 +669,36 @@ bool PMIC::setChargeCurrent(bool bit7, bool bit6, bool bit5, bool bit4, bool bit
     byte mask = DATA & 0b00000001;
     writeRegister(CHARGE_CURRENT_CONTROL_REGISTER, current | mask);
     return 1;
+}
+
+/*******************************************************************************
+ * Function Name  : setChargeCurrent
+ * Description    : The total charge current is the 512mA + the combination of the
+                    current that the following bits represent
+                    bit7 = 2048mA
+                    bit6 = 1024mA
+                    bit5 = 512mA
+                    bit4 = 256mA
+                    bit3 = 128mA
+                    bit2 = 64mA
+
+                    The resulting value will be the closest match not larger than
+                    input charge current
+ * Input          : charge current
+ * Return         : 0 Error, 1 Success
+ *******************************************************************************/
+bool PMIC::setChargeCurrent(uint16_t current) {
+    std::lock_guard<PMIC> l(*this);
+
+    const uint16_t baseValue = 512;
+
+    // Find closest matching value not larger than 'current'
+    uint8_t ccr = (uint8_t)(findClosestMatchingSum(current, baseValue, 6, 6) << 2);
+
+    uint8_t currentCcr = readRegister(CHARGE_CURRENT_CONTROL_REGISTER);
+    ccr |= (currentCcr & 0x01);
+    writeRegister(CHARGE_CURRENT_CONTROL_REGISTER, ccr);
+    return true;
 }
 
 /*
@@ -643,6 +754,8 @@ uint16_t PMIC::getChargeVoltageValue() {
                     bit4 = 64mV
                     bit3 = 32mV
                     bit2 = 16mV
+                    The resulting charge voltage will be the closest match not
+                    larger than the provided voltage
  * Input          : desired voltage (4208 or 4112 are the only options currently)
                     4208 is the default
                     4112 is a safer termination voltage if exposing the
@@ -651,24 +764,17 @@ uint16_t PMIC::getChargeVoltageValue() {
  *******************************************************************************/
 bool PMIC::setChargeVoltage(uint16_t voltage) {
     std::lock_guard<PMIC> l(*this);
-    byte DATA = readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER);
-    byte mask = DATA & 0b000000011;
 
-    switch (voltage) {
+    const uint16_t baseValue = 3504;
+    // Find closest matching charge voltage not larger than 'voltage'
+    uint8_t cvcr = (uint8_t)(findClosestMatchingSum(voltage, baseValue, 6, 4) << 2);
 
-        case 4112:
-        writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, (mask | 0b10011000));
-        break;
+    uint8_t currentCvcr = readRegister(CHARGE_VOLTAGE_CONTROL_REGISTER);
+    cvcr |= (currentCvcr & 0b11);
 
-        case 4208:
-        writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, (mask | 0b10110000));
-        break;
+    writeRegister(CHARGE_VOLTAGE_CONTROL_REGISTER, cvcr);
 
-        default:
-        return 0; // return error since the value passed didn't match
-    }
-
-    return 1; // value was written successfully
+    return true;
 }
 
 /*
@@ -713,6 +819,20 @@ byte PMIC::readChargeTermRegister(void) {
 
 }
 
+bool PMIC::setTermChargeCurrent(uint16_t current) {
+    std::lock_guard<PMIC> l(*this);
+
+    const uint16_t baseValue = 128;
+
+    // Find closest matching value not larger than 'current'
+    uint8_t ccr = (uint8_t)(findClosestMatchingSum(current, baseValue, 4, 7) << 0);
+
+    uint8_t currentCcr = readRegister(PRECHARGE_CURRENT_CONTROL_REGISTER);
+    ccr |= (currentCcr & 0xF0);
+    writeRegister(PRECHARGE_CURRENT_CONTROL_REGISTER, ccr);
+    return true;
+}
+
 /*******************************************************************************
  * Function Name  :
  * Description    :
@@ -731,6 +851,26 @@ bool PMIC::setWatchdog(byte time) {
     byte DATA = readRegister(CHARGE_TIMER_CONTROL_REGISTER);
     time &= 0b11;
     writeRegister(CHARGE_TIMER_CONTROL_REGISTER, (DATA & 0b11001110) | (time << 4));
+    return 1;
+}
+
+bool PMIC::disableSafetyTimer(void) {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(CHARGE_TIMER_CONTROL_REGISTER);
+    if (DATA & 0b00001000) {
+        DATA = DATA & 0b11110111; // clear bit 3
+        writeRegister(CHARGE_TIMER_CONTROL_REGISTER, DATA);
+    }
+    return 1;
+}
+
+bool PMIC::enableSafetyTimer(void) {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(CHARGE_TIMER_CONTROL_REGISTER);
+    if ((DATA & 0b00001000) == 0) {
+        DATA = DATA | 0b00001000; // set bit 3
+        writeRegister(CHARGE_TIMER_CONTROL_REGISTER, DATA);
+    }
     return 1;
 }
 
@@ -819,6 +959,12 @@ bool PMIC::disableBATFET(void) {
     return 1;
 }
 
+bool PMIC::isBATFETEnabled() {
+    std::lock_guard<PMIC> l(*this);
+    byte DATA = readRegister(MISC_CONTROL_REGISTER);
+    return !(DATA & 0b00100000);
+}
+
 /*******************************************************************************
  * Function Name  :
  * Description    :
@@ -829,6 +975,10 @@ byte PMIC::readOpControlRegister(void) {
 
     return readRegister(MISC_CONTROL_REGISTER);
 
+}
+
+bool PMIC::isInDPDM() {
+    return (readOpControlRegister() & 0x80);
 }
 
 uint16_t PMIC::getRechargeThreshold() {
@@ -953,6 +1103,10 @@ byte PMIC::getFault() {
 
 }
 
+bool PMIC::isWatchdogFault() {
+    return getFault() & 0x80;
+}
+
 /*
 
 //-----------------------------------------------------------------------------
@@ -1001,14 +1155,15 @@ byte PMIC::getVersion() {
 byte PMIC::readRegister(byte startAddress) {
     std::lock_guard<PMIC> l(*this);
     byte DATA = 0;
-#if Wiring_Wire3
-    Wire3.beginTransmission(PMIC_ADDRESS);
-    Wire3.write(startAddress);
-    Wire3.endTransmission(true);
+    WireTransmission config(PMIC_ADDRESS);
+    config.timeout(PMIC_DEFAULT_TIMEOUT);
+    pmicWireInstance()->beginTransmission(config);
+    pmicWireInstance()->write(startAddress);
+    pmicWireInstance()->endTransmission(true);
 
-    Wire3.requestFrom(PMIC_ADDRESS, 1, true);
-    DATA = Wire3.read();
-#endif
+    config.quantity(1);
+    pmicWireInstance()->requestFrom(config);
+    DATA = pmicWireInstance()->read();
     return DATA;
 }
 
@@ -1021,24 +1176,20 @@ byte PMIC::readRegister(byte startAddress) {
  *******************************************************************************/
 void PMIC::writeRegister(byte address, byte DATA) {
     std::lock_guard<PMIC> l(*this);
-#if Wiring_Wire3
-    Wire3.beginTransmission(PMIC_ADDRESS);
-    Wire3.write(address);
-    Wire3.write(DATA);
-    Wire3.endTransmission(true);
-#endif
+    WireTransmission config(PMIC_ADDRESS);
+    config.timeout(PMIC_DEFAULT_TIMEOUT);
+    pmicWireInstance()->beginTransmission(config);
+    pmicWireInstance()->write(address);
+    pmicWireInstance()->write(DATA);
+    pmicWireInstance()->endTransmission(true);
 }
 
 bool PMIC::lock() {
-#if Wiring_Wire3
-    return Wire3.lock();
-#endif
-    return false;
+    return pmicWireInstance()->lock();
 }
 
 bool PMIC::unlock() {
-#if Wiring_Wire3
-    return Wire3.unlock();
-#endif
-    return false;
+    return pmicWireInstance()->unlock();
 }
+
+#endif /* HAL_PLATFORM_PMIC_BQ24195 */

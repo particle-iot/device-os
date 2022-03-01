@@ -27,7 +27,7 @@ LOG_SOURCE_CATEGORY("crypto.compat")
 
 struct MbedTlsCallbackInitializer {
     MbedTlsCallbackInitializer() {
-        mbedtls_callbacks_t cb = {0};
+        mbedtls_callbacks_t cb = {};
         cb.version = 0;
         cb.size = sizeof(cb);
         cb.mbedtls_md_list = mbedtls_md_list;
@@ -694,7 +694,7 @@ static int mbedtls_to_x509_all(mbedtls_x509_crt* c, x509_cert* crt, int nonalloc
     return res;
 }
 
-static int32_t x509_parse_certificate_data_impl(x509_cert* crt, const unsigned char* p, uint32_t len, uint8_t force_alloc)
+static int32_t x509_parse_certificate_data_impl(x509_cert* crt, const unsigned char* p, uint32_t len)
 {
     int32_t ret = -1;
     uint32_t total_len = 0;
@@ -713,13 +713,9 @@ static int32_t x509_parse_certificate_data_impl(x509_cert* crt, const unsigned c
                 cc = cc->next;
                 mbedtls_x509_crt_init(cc);
             }
-            if (!force_alloc) {
-                cc->raw.p = (uint8_t*)p + total_len;
-                cc->raw.len = len - total_len;
-            }
-            ret = x509_crt_parse_der_core(cc, p + total_len, len - total_len);
+            ret = mbedtls_x509_crt_parse_der_nocopy(cc, p + total_len, len - total_len);
             if (ret == 0) {
-                total_len += c->raw.len;
+                total_len += cc->raw.len;
             } else {
                 if (prev) {
                     prev->next = NULL;
@@ -733,7 +729,7 @@ static int32_t x509_parse_certificate_data_impl(x509_cert* crt, const unsigned c
     }
 
     if (total_len > 0) {
-        ret = mbedtls_to_x509_all(c, crt, !force_alloc);
+        ret = mbedtls_to_x509_all(c, crt, 1 /* nonalloced */);
     } else {
         ret = 1;
     }
@@ -743,7 +739,7 @@ static int32_t x509_parse_certificate_data_impl(x509_cert* crt, const unsigned c
 
 int32_t x509_parse_certificate_data(x509_cert* crt, const unsigned char* p, uint32_t len)
 {
-    int ret = x509_parse_certificate_data_impl(crt, p, len, 0);
+    int ret = x509_parse_certificate_data_impl(crt, p, len);
     return ret;
 }
 
@@ -762,7 +758,7 @@ int32_t x509_parse_certificate(x509_cert* chain, const uint8_t* buf, uint32_t bu
     if (c) {
         if (x509_cert_is_pem(buf, buflen) != 0) {
             // This is probably DER
-            ret = x509_parse_certificate_data_impl(chain, buf, buflen, 0);
+            ret = x509_parse_certificate_data_impl(chain, buf, buflen);
         } else {
             // PEM
             ret = mbedtls_x509_crt_parse(c, buf, buflen);

@@ -141,6 +141,9 @@ test(USBSERIAL_03_isConnectedWorksCorrectly) {
     // Wait for 60 seconds maximum for the host to close the USB Serial port
     while(Serial.isConnected()) {
         assertTrue((millis() - mil) < 60000);
+        // We may have to send some data here as DTR is not always deasserted
+        Serial.print('.');
+        delay(1000);
     }
     // Wait for 60 seconds maximum for the host to open the USB Serial port again
     while(!Serial.isConnected()) {
@@ -148,6 +151,7 @@ test(USBSERIAL_03_isConnectedWorksCorrectly) {
     }
 
     delay(10);
+    Serial.println();
     Serial.println("Glad too see you back!");
 
     char test[] = "hello";
@@ -170,6 +174,9 @@ test(USBSERIAL_04_RxBufferFillsCompletely) {
     // Wait for 60 seconds maximum for the host to close the USB Serial port
     while(Serial.isConnected()) {
         assertTrue((millis() - mil) < 60000);
+        // We may have to send some data here as DTR is not always deasserted
+        Serial.print('.');
+        delay(1000);
     }
 
     Serial.end();

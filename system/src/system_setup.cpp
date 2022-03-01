@@ -38,29 +38,7 @@
 #include "spark_wiring_wifi_credentials.h"
 #include "system_ymodem.h"
 #include "mbedtls_util.h"
-
-#if SETUP_OVER_SERIAL1
-#define SETUP_LISTEN_MAGIC 1
-void loop_wifitester(int c);
-#include "spark_wiring_usartserial.h"
-
-static system_tester_handlers_t s_tester_handlers = {0};
-
-int system_set_tester_handlers(system_tester_handlers_t* handlers, void* reserved) {
-    memset(&s_tester_handlers, 0, sizeof(s_tester_handlers));
-    if (handlers != nullptr) {
-        memcpy(&s_tester_handlers, handlers, std::min(static_cast<uint16_t>(sizeof(s_tester_handlers)), handlers->size));
-    }
-    return 0;
-}
-
-#else /* SETUP_OVER_SERIAL1 */
-
-int system_set_tester_handlers(system_tester_handlers_t* handlers, void* reserved) {
-    return 1;
-}
-
-#endif /* SETUP_OVER_SERIAL1 */
+#include "ota_flash_hal.h"
 
 #ifndef SETUP_LISTEN_MAGIC
 #define SETUP_LISTEN_MAGIC 0
@@ -86,6 +64,8 @@ int is_empty(const char *s) {
   return 1;
 }
 
+using particle::Appender;
+
 class StreamAppender : public Appender
 {
     Stream& stream_;
@@ -103,15 +83,43 @@ public:
     }
 };
 
-#if SETUP_OVER_SERIAL1
-inline bool setup_serial1() {
-    uint8_t value = 0;
-    system_get_flag(SYSTEM_FLAG_WIFITESTER_OVER_SERIAL1, &value, nullptr);
-    return value;
-}
-#endif
+class WrappedStreamAppender : public StreamAppender
+{
+  bool wrotePrefix_;
+  const uint8_t* prefix_;
+  size_t prefixLength_;
+  const uint8_t* suffix_;
+  size_t suffixLenght_;
+public:
+  WrappedStreamAppender(
+      Stream& stream,
+      const uint8_t* prefix,
+      size_t prefixLength,
+      const uint8_t* suffix,
+      size_t suffixLenght) :
+    StreamAppender(stream),
+    wrotePrefix_(false),
+    prefix_(prefix),
+    prefixLength_(prefixLength),
+    suffix_(suffix),
+    suffixLenght_(suffixLenght)
+  {}
 
-template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config& config_)
+  ~WrappedStreamAppender() {
+    append(suffix_, suffixLenght_);
+  }
+
+  virtual bool append(const uint8_t* data, size_t length) override {
+    if (!wrotePrefix_) {
+      StreamAppender::append(prefix_, prefixLength_);
+      wrotePrefix_ = true;
+    }
+    return StreamAppender::append(data, length);
+  }
+};
+
+
+template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(const Config& config_)
     : config(config_)
 {
     WITH_LOCK(serial);
@@ -119,68 +127,20 @@ template <typename Config> SystemSetupConsole<Config>::SystemSetupConsole(Config
     {
         serial.begin(9600);
     }
-#if SETUP_OVER_SERIAL1
-    serial1Enabled = false;
-    magicPos = 0;
-    if (setup_serial1()) {
-            //WITH_LOCK(SETUP_SERIAL);
-            SETUP_SERIAL.begin(9600);
-    }
-    this->tester = nullptr;
-#endif
 }
 
 template <typename Config> SystemSetupConsole<Config>::~SystemSetupConsole()
 {
-#if SETUP_OVER_SERIAL1
-    if (tester != nullptr && s_tester_handlers.destroy) {
-        s_tester_handlers.destroy(this->tester, nullptr);
-    }
-#endif
+
 }
 
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
-#if SETUP_OVER_SERIAL1
-    //TRY_LOCK(SETUP_SERIAL)
-    {
-        if (setup_serial1() && s_tester_handlers.size != 0) {
-            int c = -1;
-            if (SETUP_SERIAL.available()) {
-                c = SETUP_SERIAL.read();
-            }
-            if (SETUP_LISTEN_MAGIC) {
-                static uint8_t magic_code[] = { 0xe1, 0x63, 0x57, 0x3f, 0xe7, 0x87, 0xc2, 0xa6, 0x85, 0x20, 0xa5, 0x6c, 0xe3, 0x04, 0x9e, 0xa0 };
-                if (!serial1Enabled) {
-                    if (c>=0) {
-                        if (c==magic_code[magicPos++]) {
-                            serial1Enabled = magicPos==sizeof(magic_code);
-                            if (serial1Enabled) {
-                                if (tester == nullptr && s_tester_handlers.create != nullptr) {
-                                    tester = s_tester_handlers.create(nullptr);
-                                }
-                                if (tester != nullptr && s_tester_handlers.setup) {
-                                    s_tester_handlers.setup(tester, SETUP_OVER_SERIAL1, nullptr);
-                                }
-                            }
-                        }
-                        else {
-                            magicPos = 0;
-                        }
-                        c = -1;
-                    }
-                }
-                else {
-                    if (tester != nullptr && s_tester_handlers.loop) {
-                        s_tester_handlers.loop(tester, c, nullptr);
-                    }
-                }
-            }
-        }
-    }
-#endif
-
-    TRY_LOCK(serial)
+    // FIXME: our TRY_LOCK() implementation uses std::unique_lock, which brings
+    // a lot of unnecessary checks that cause locales and c++ system_error to be
+    // compiled in. Just call try_lock() for now manually.
+    // TRY_LOCK(serial)
+    if (serial.try_lock())
     {
         if (serial.available())
         {
@@ -197,12 +157,19 @@ template<typename Config> void SystemSetupConsole<Config>::loop(void)
                 }
             }
         }
+        serial.unlock();
     }
 }
 
 template <typename Config>
 void SystemSetupConsole<Config>::cleanup()
 {
+}
+
+template <typename Config>
+void SystemSetupConsole<Config>::exit()
+{
+    network_listen(0, NETWORK_LISTEN_EXIT, nullptr);
 }
 
 template <typename Config>
@@ -216,25 +183,72 @@ bool SystemSetupConsole<Config>::handle_peek(char c)
     return false;
 }
 
+bool filter_key(const char* src, char* dest, size_t size) {
+	memcpy(dest, src, size);
+	if (!strcmp(src, "imei")) {
+		strcpy(dest, "IMEI");
+	}
+	else if (!strcmp(src, "iccid")) {
+		strcpy(dest, "ICCID");
+	}
+	else if (!strcmp(src, "sn")) {
+		strcpy(dest, "Serial Number");
+	}
+	else if (!strcmp(src, "ms")) {
+		strcpy(dest, "Device Secret");
+	}
+	else if (!strcmp(src, "cellfw")) {
+		strcpy(dest, "Cell Radio Version");
+	}
+	return false;
+}
+
 template<typename Config> void SystemSetupConsole<Config>::handle(char c)
 {
     if ('i' == c)
     {
-#if PLATFORM_ID<3
-        print("Your core id is ");
-#else
-        print("Your device id is ");
-#endif
-        String id = spark_deviceID();
-        print(id.c_str());
-        print("\r\n");
+    	// see if we have any additional properties. This is true
+    	// for Cellular and Gen 3 devices.
+    	hal_system_info_t info = {};
+    	info.size = sizeof(info);
+    	HAL_OTA_Add_System_Info(&info, true, nullptr);
+    	LOG(TRACE, "device info key/value count: %d", info.key_value_count);
+    	if (info.key_value_count) {
+    		print("Device ID: ");
+    		String id = spark_deviceID();
+			print(id.c_str());
+			print("\r\n");
+
+			for (int i=0; i<info.key_value_count; i++) {
+				char key[20];
+				if (!filter_key(info.key_values[i].key, key, sizeof(key))) {
+					print(key);
+					print(": ");
+					print(info.key_values[i].value);
+					print("\r\n");
+				}
+			}
+		}
+    	else {
+			print("Your device id is ");
+			String id = spark_deviceID();
+			print(id.c_str());
+			print("\r\n");
+    	}
+    	HAL_OTA_Add_System_Info(&info, false, nullptr);
     }
     else if ('m' == c)
     {
         print("Your device MAC address is\r\n");
-        IPConfig config;
-        config.size = sizeof(config);
-        network.get_ipconfig(&config);
+        IPConfig config = {};
+    #if !HAL_PLATFORM_WIFI    
+        auto conf = static_cast<const IPConfig*>(network_config(0, 0, 0));
+    #else
+        auto conf = static_cast<const IPConfig*>(network_config(NETWORK_INTERFACE_WIFI_STA, 0, 0));
+    #endif
+        if (conf && conf->size) {
+            memcpy(&config, conf, std::min(sizeof(config), (size_t)conf->size));
+        }
         const uint8_t* addr = config.nw.uaMacAddr;
         print(bytes2hex(addr++, 1).c_str());
         for (int i = 1; i < 6; i++)
@@ -255,10 +269,10 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('s' == c)
     {
-        StreamAppender appender(serial);
-        print("{");
-        system_module_info(append_instance, &appender);
-        print("}\r\n");
+        auto prefix = "{";
+        auto suffix = "}\r\n";
+        WrappedStreamAppender appender(serial, (const uint8_t*)prefix, strlen(prefix), (const uint8_t*)suffix, strlen(suffix));
+        system_module_info(Appender::callback, &appender);
     }
     else if ('v' == c)
     {
@@ -268,7 +282,7 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('L' == c)
     {
-        system_set_flag(SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE, 1, nullptr);
+        system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 1, nullptr);
         System.enterSafeMode();
     }
     else if ('c' == c)
@@ -344,7 +358,7 @@ template<typename Config> void SystemSetupConsole<Config>::read_multiline(char *
 
 #if Wiring_WiFi
 
-WiFiSetupConsole::WiFiSetupConsole(WiFiSetupConsoleConfig& config)
+WiFiSetupConsole::WiFiSetupConsole(const WiFiSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
 }
@@ -406,21 +420,12 @@ void WiFiSetupConsole::handle(char c)
             security_ = (WLanSecurityType)(security_type_string[0] - '0');
         }
 
-#if PLATFORM_ID<3
-        if (security_ == WLAN_SEC_WEP)
-        {
-            print("\r\n ** Even though the CC3000 supposedly supports WEP,");
-            print("\r\n ** we at Spark have never seen it work.");
-            print("\r\n ** If you control the network, we recommend changing it to WPA2.\r\n");
-        }
-#endif
-
         if (security_ != WLAN_SEC_UNSEC)
             password[0] = '1'; // non-empty password so security isn't set to None
 
         credentials.setSsid(ssid);
         credentials.setPassword(password);
-        credentials.setSecurity(security_);
+        credentials.setSecurity((spark::SecurityType)security_);
         credentials.setCipher(cipher_);
 
         // dry run
@@ -542,22 +547,12 @@ void WiFiSetupConsole::handle(char c)
         }
 #endif
 
-        print("Thanks! Wait "
-#if PLATFORM_ID<3
-    "about 7 seconds "
-#endif
-            "while I save those credentials...\r\n\r\n");
+        print("Thanks! Wait while I save those credentials...\r\n\r\n");
         creds = credentials.getHalCredentials();
         if (this->config.connect_callback2(this->config.connect_callback_data, &creds, false)==0)
         {
             print("Awesome. Now we'll connect!\r\n\r\n");
-            print("If you see a pulsing cyan light, your "
-    #if PLATFORM_ID==0
-                "Spark Core"
-    #else
-                "device"
-    #endif
-                "\r\n");
+            print("If you see a pulsing cyan light, your device \r\n");
             print("has connected to the Cloud and is ready to go!\r\n\r\n");
             print("If your LED flashes red or you encounter any other problems,\r\n");
             print("visit https://www.particle.io/support to debug.\r\n\r\n");
@@ -583,7 +578,7 @@ void WiFiSetupConsole::cleanup()
 
 void WiFiSetupConsole::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, 0);
 }
 
 #endif
@@ -591,7 +586,7 @@ void WiFiSetupConsole::exit()
 
 #if Wiring_Cellular
 
-CellularSetupConsole::CellularSetupConsole(CellularSetupConsoleConfig& config)
+CellularSetupConsole::CellularSetupConsole(const CellularSetupConsoleConfig& config)
  : SystemSetupConsole(config)
 {
 }
@@ -602,29 +597,20 @@ CellularSetupConsole::~CellularSetupConsole()
 
 void CellularSetupConsole::exit()
 {
-    network.listen(true);
+    network_listen(0, NETWORK_LISTEN_EXIT, 0);
 }
 
 void CellularSetupConsole::handle(char c)
 {
-    if (c=='i')
-    {
-        CellularDevice dev;
-        cellular_device_info(&dev, NULL);
-        String id = spark_deviceID();
-        print("Device ID: ");
-        print(id.c_str());
-        print("\r\n");
-        print("IMEI: ");
-        print(dev.imei);
-        print("\r\n");
-        print("ICCID: ");
-        print(dev.iccid);
-        print("\r\n");
-    }
-    else
-        super::handle(c);
+	super::handle(c);
 }
 
-
 #endif
+
+template class SystemSetupConsole<SystemSetupConsoleConfig>;
+
+
+//Depreciated / legacy command
+int system_set_tester_handlers(system_tester_handlers_t* handlers, void* reserved) {
+    return -1;
+}

@@ -38,28 +38,37 @@ typedef struct module_dependency_t {
     uint16_t module_version;        // version/release number of the module.
 } module_dependency_t;
 
+typedef enum module_info_flags_t {
+    MODULE_INFO_FLAG_NONE               = 0x00,
+    MODULE_INFO_FLAG_DROP_MODULE_INFO   = 0x01, // Indicates that the module_info_t header preceding the actual binary
+                                                // and potentially module_info_suffix_t + CRC in the end of the binary (depending on platform/module)
+                                                // need to be skipped when copying/writing this module into its target location.
+    MODULE_INFO_FLAG_COMPRESSED         = 0x02, // Indicates that the module data is compressed.
+    MODULE_INFO_FLAG_COMBINED           = 0x04  // Indicates that this module is combined with another module.
+} module_info_flags_t;
+
 /**
  * Describes the module info struct placed at the start of
  */
 typedef struct module_info_t {
     const void* module_start_address;   /* the first byte of this module in flash */
     const void* module_end_address;     /* the last byte (exclusive) of this smodule in flash. 4 byte crc starts here. */
-    uint8_t reserved;
-    uint8_t reserved2;
+    uint8_t reserved;                   /* Platform-specific definition (mcu_target on Gen3) */
+    uint8_t flags;                      /* module_info_flags_t */
     uint16_t module_version;            /* 16 bit version */
     uint16_t platform_id;               /* The platform this module was compiled for. */
     uint8_t  module_function;           /* The module function */
-    uint8_t  module_index;
+    uint8_t  module_index;              /* distinguish modules of the same type */
     module_dependency_t dependency;
     module_dependency_t dependency2;
-} module_info_t;
+} __attribute__((__packed__)) module_info_t;
 
-#define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected || sizeof(void*)!=4)
+#define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected || sizeof(void*)!=4)
 
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_start_address, 0);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_end_address, 4);
 STATIC_ASSERT_MODULE_INFO_OFFSET(reserved, 8);
-STATIC_ASSERT_MODULE_INFO_OFFSET(reserved2, 9);
+STATIC_ASSERT_MODULE_INFO_OFFSET(flags, 9);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_version, 10);
 STATIC_ASSERT_MODULE_INFO_OFFSET(platform_id, 12);
 STATIC_ASSERT_MODULE_INFO_OFFSET(module_function, 14);
@@ -67,7 +76,7 @@ STATIC_ASSERT_MODULE_INFO_OFFSET(module_index, 15);
 STATIC_ASSERT_MODULE_INFO_OFFSET(dependency, 16);
 STATIC_ASSERT_MODULE_INFO_OFFSET(dependency2, 20);
 
-STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(void*) != 4);
+PARTICLE_STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(void*) != 4);
 
 /**
  * Define the module function enum also as preprocessor symbols so we can
@@ -80,6 +89,8 @@ STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(void*) != 
 #define MOD_FUNC_SYSTEM_PART     4
 #define MOD_FUNC_USER_PART       5
 #define MOD_FUNC_SETTINGS        6
+#define MOD_FUNC_NCP_FIRMWARE    7
+#define MOD_FUNC_RADIO_STACK     8
 
 typedef enum module_function_t {
     MODULE_FUNCTION_NONE = MOD_FUNC_NONE,
@@ -99,8 +110,18 @@ typedef enum module_function_t {
     /* The module is a user part */
     MODULE_FUNCTION_USER_PART = MOD_FUNC_USER_PART,
 
-    /* Rewrite persisted settings */
-    MODULE_FUNCTION_SETTINGS = MOD_FUNC_SETTINGS
+    /* Rewrite persisted settings. (Not presently used?) */
+    MODULE_FUNCTION_SETTINGS = MOD_FUNC_SETTINGS,
+
+    /* Firmware targeted for the NCP. */
+    MODULE_FUNCTION_NCP_FIRMWARE = MOD_FUNC_NCP_FIRMWARE,
+
+    /* Radio stack module */
+    MODULE_FUNCTION_RADIO_STACK = MOD_FUNC_RADIO_STACK,
+
+    /* Maximum supported value */
+    MODULE_FUNCTION_MAX = MODULE_FUNCTION_RADIO_STACK
+
 } module_function_t;
 
 typedef enum {
@@ -132,6 +153,7 @@ module_function_t  module_function(const module_info_t* mi);
 module_store_t module_store(const module_info_t* mi);
 uint32_t module_length(const module_info_t* mi);
 uint8_t module_index(const module_info_t* mi);
+uint16_t module_version(const module_info_t* mi);
 
 uint16_t module_platform_id(const module_info_t* mi);
 
@@ -150,6 +172,36 @@ module_scheme_t module_scheme(const module_info_t* mi);
  * @return
  */
 uint8_t module_info_matches_platform(const module_info_t* mi);
+
+/**
+ * Compressed module header.
+ *
+ * In a compressed module, this header immediately follows the module info header (`module_info_t`) and
+ * precedes the compressed data.
+ */
+typedef struct compressed_module_header {
+    /**
+     * Header size.
+     */
+    uint16_t size;
+    /**
+     * Compression method.
+     *
+     * As of now, the only supported method is raw Deflate (0).
+     */
+    uint8_t method;
+    /**
+     * Base two logarithm of the window size used when compressing this module.
+     *
+     * For raw Deflate the valid range is [8, 15]. The value of 0 corresponds to the default window
+     * size of 15 bits.
+     */
+    uint8_t window_bits;
+    /**
+     * Size of the uncompressed data.
+     */
+    uint32_t original_size;
+} __attribute__((__packed__)) compressed_module_header;
 
 /*
  * The structure is a suffix to the module, placed before the end symbol
@@ -179,5 +231,5 @@ extern const module_info_crc_t module_info_crc;
 #endif
 
 
-#endif	/* MODULE_INFO_H */
+#endif /* MODULE_INFO_H */
 

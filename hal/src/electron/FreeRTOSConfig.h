@@ -103,8 +103,11 @@
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
+extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPendYield);
+#define portPRE_TASK_DELETE_HOOK(pvTaskToDelete, pxYieldPending) vApplicationTaskDeleteHook((pvTaskToDelete), (pxYieldPending))
+
 #define configUSE_PREEMPTION		1
-#define configUSE_IDLE_HOOK			0
+#define configUSE_IDLE_HOOK			1
 #define configUSE_TICK_HOOK			0
 #define configCPU_CLOCK_HZ			( ( unsigned long ) 120000000 )
 #define configTICK_RATE_HZ			( ( TickType_t ) 1000 )
@@ -131,7 +134,14 @@
 #define configTIMER_TASK_PRIORITY                   ( 2 )
 #define configTIMER_QUEUE_LENGTH                    ( 5 )
 #define configTIMER_TASK_STACK_DEPTH                ( ( unsigned short ) (1024 / sizeof( portSTACK_TYPE )) )
+#define configUSE_TASK_NOTIFICATIONS    (1)
 
+// Allocate newlib's reent structure for each task
+#define configUSE_NEWLIB_REENTRANT 1
+
+struct _reent;
+extern void newlib_impure_ptr_change(struct _reent* r);
+#define traceTASK_SWITCHED_IN() newlib_impure_ptr_change(&(pxCurrentTCB->xNewLib_reent))
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
@@ -144,6 +154,7 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelayUntil			1
 #define INCLUDE_vTaskDelay				1
 #define INCLUDE_eTaskGetState			1
+#define INCLUDE_xTaskGetIdleTaskHandle	1
 
 /* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
 (lowest) to 0 (1?) (highest). */

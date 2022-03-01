@@ -22,6 +22,9 @@
   License along with this library; if not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************
  */
+
+// FIXME: Avoid defining sockaddr twice. We should probably update gcc platform to use POSIX sockets
+#define HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR (1)
 #include "device_globals.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
@@ -303,7 +306,7 @@ sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
         sock_result_t result = write(socket, boost::asio::buffer(buffer, len));
         return result;
     }
-    catch (boost::system::system_error e)
+    catch (const boost::system::system_error& e)
     {
         return -1;
     }
@@ -323,11 +326,19 @@ sock_result_t socket_create_nonblocking_server(sock_handle_t sock, uint16_t port
 
 sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize)
 {
+    return socket_receivefrom_ex(sock, buffer, bufLen, flags, addr, addrsize, 0, nullptr);
+}
+
+sock_result_t socket_receivefrom_ex(sock_handle_t sock, void* buffer, socklen_t bufLen, uint32_t flags, sockaddr_t* addr, socklen_t* addrsize, system_tick_t timeout, void* reserved)
+{
 	ip::udp::endpoint endpoint;
 	auto& socket = udp_from(sock);
 
+	// FIXME: handle timeouts
+
 	int count = socket.receive_from(boost::asio::buffer(buffer, bufLen), endpoint, 0, ec);
 	if (addr && addrsize && *addrsize>=6u) {
+		addr->sa_family = AF_INET;
 		uint16_t port = endpoint.port();
 		addr->sa_data[0] = port >> 8;
 		addr->sa_data[1] = port & 0xFF;
@@ -342,12 +353,13 @@ sock_result_t socket_receivefrom(sock_handle_t sock, void* buffer, socklen_t buf
 
     if (result == boost::asio::error::would_block)
         return 0;
-   if (result==boost::asio::error::try_again)
+    if (result==boost::asio::error::try_again)
 	   return 0;
-	if (!result)
+	if (!result) {
 		DEBUG("count: %d", count);
-	else
+    } else {
 		DEBUG("result: %d %s", ec.value(), ec.message().c_str());
+    }
 
 	return result ? result : count;
 }
@@ -368,7 +380,7 @@ sock_result_t socket_sendto(sock_handle_t sd, const void* buffer, socklen_t len,
     if (result == boost::asio::error::would_block)
         return 0;
 
-	return result ? result : count;
+    return result ? result : count;
 }
 
 

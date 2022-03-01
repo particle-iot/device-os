@@ -16,4 +16,6 @@ $(error "Unknown architecture '$(ARCH)'");
 endif
 endif
 
+include $(COMMON_BUILD)/lang-std.mk
+
 include $(COMMON_BUILD)/module.mk

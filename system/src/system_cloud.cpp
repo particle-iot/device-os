@@ -25,9 +25,16 @@
  ******************************************************************************
  */
 
+#include <cstdarg>
+
+#include "logging.h"
+#include "protocol_defs.h"
 #include "spark_wiring_string.h"
+#include "spark_wiring_timer.h"
+#include "spark_wiring_cloud.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
+#include "system_publish_vitals.h"
 #include "system_task.h"
 #include "system_threading.h"
 #include "system_update.h"
@@ -38,9 +45,40 @@
 #include "deviceid_hal.h"
 #include "system_mode.h"
 
+#if PLATFORM_THREADING
+#include "spark_wiring_timer.h"
+#endif // PLATFORM_THREADING
+
 extern void (*random_seed_from_cloud_handler)(unsigned int);
 
-#ifndef SPARK_NO_CLOUD
+namespace
+{
+
+using namespace particle;
+using namespace particle::system;
+
+#if PLATFORM_THREADING
+VitalsPublisher<Timer> _vitals;
+#else  // not PLATFORM_THREADING
+VitalsPublisher<NullTimer> _vitals;
+#endif // PLATFORM_THREADING
+
+// These properties are forwarded to the protocol instance as is
+static_assert(SPARK_CLOUD_PING_INTERVAL == (int)protocol::Connection::PING,
+        "The value of SPARK_CLOUD_PING_INTERVAL has changed");
+static_assert(SPARK_CLOUD_FAST_OTA_ENABLED == (int)protocol::Connection::FAST_OTA,
+        "The value of SPARK_CLOUD_FAST_OTA_ENABLED has changed");
+
+
+int getConnectionProperty(protocol::Connection::Enum property, void* data, size_t* size) {
+    const int r = spark_protocol_get_connection_property(sp, property, data, size, nullptr /* reserved */);
+    if (r != 0) {
+        return SYSTEM_ERROR_PROTOCOL;
+    }
+    return 0;
+}
+
+} // namespace
 
 SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
 {
@@ -57,13 +95,36 @@ bool register_event(const char* eventName, SubscriptionScope::Enum event_scope, 
     return success;
 }
 
+int spark_publish_vitals(system_tick_t period_s_, void* reserved_)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_publish_vitals(period_s_, reserved_));
+    int result;
+
+    switch (period_s_)
+    {
+    case particle::NOW:
+        result = _vitals.publish();
+        break;
+    case 0:
+        _vitals.disablePeriodicPublish();
+        result = _vitals.publish();
+        break;
+    default:
+        _vitals.period(period_s_);
+        _vitals.enablePeriodicPublish();
+        result = _vitals.publish();
+    }
+
+    return result;
+}
+
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
 {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_subscribe(eventName, handler, handler_data, scope, deviceID, reserved));
     auto event_scope = convert(scope);
     bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
-    if (success && spark_cloud_flag_connected())
+    if (success && spark_cloud_flag_connected() && (system_mode() != AUTOMATIC || APPLICATION_SETUP_DONE))
     {
         register_event(eventName, event_scope, deviceID);
     }
@@ -73,7 +134,9 @@ bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_
 void spark_unsubscribe(void *reserved)
 {
     SYSTEM_THREAD_CONTEXT_ASYNC(spark_unsubscribe(reserved));
-    spark_protocol_remove_event_handlers(sp, NULL);
+    spark_protocol_remove_event_handlers(sp, NULL); // Clear all subscriptions
+    registerSystemSubscriptions(); // Re-add system subscriptions
+    // TODO: Notify the cloud that subscriptions have been cleared
 }
 
 static void spark_sync_time_impl()
@@ -94,10 +157,10 @@ bool spark_sync_time_pending(void* reserved)
     return spark_protocol_time_request_pending(sp, nullptr);
 }
 
-system_tick_t spark_sync_time_last(time_t* tm, void* reserved)
+system_tick_t spark_sync_time_last(time32_t* tm32, time_t* tm)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time_last(tm, reserved));
-    return spark_protocol_time_last_synced(sp, tm, nullptr);
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time_last(tm32, tm));
+    return spark_protocol_time_last_synced(sp, tm32, tm);
 }
 
 /**
@@ -113,9 +176,15 @@ inline uint32_t convert(uint32_t flags) {
 
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved)
 {
+    if (flags & PUBLISH_EVENT_FLAG_ASYNC) {
+        SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(spark_send_event(name, data, ttl, flags, reserved), true);
+    }
+    else {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
+    }
 
-    spark_protocol_send_event_data d = { sizeof(spark_protocol_send_event_data) };
+    spark_protocol_send_event_data d = {};
+    d.size = sizeof(d);
     if (reserved) {
         // Forward completion callback to the protocol implementation
         auto r = static_cast<const spark_send_event_data*>(reserved);
@@ -148,7 +217,8 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
 
     bool result;
     if (funcKey) {                          // old call, with funcKey != NULL
-        cloud_function_descriptor desc;
+        cloud_function_descriptor desc = {};
+        desc.size = sizeof(desc);
         desc.funcKey = funcKey;
         desc.fn = call_raw_user_function;
         desc.data = (void*)pFunc;
@@ -160,29 +230,48 @@ bool spark_function(const char *funcKey, p_user_function_int_str_t pFunc, void* 
     return result;
 }
 
-#endif
-
 bool spark_cloud_flag_connected(void)
 {
-    if (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED)
-        return true;
-    else
-        return false;
+    return (SPARK_CLOUD_SOCKETED && SPARK_CLOUD_CONNECTED);
+}
+
+int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* reserved)
+{
+    CloudDisconnectOptions opts;
+    if (options) {
+        opts = CloudDisconnectOptions::fromSystemOptions(options);
+    }
+    if (spark_cloud_flag_connected()) {
+        CloudConnectionSettings::instance()->setPendingDisconnectOptions(std::move(opts));
+        spark_cloud_flag_disconnect();
+    } else {
+        spark_cloud_flag_disconnect();
+        if (opts.isClearSessionSet() && opts.clearSession()) {
+            SYSTEM_THREAD_CONTEXT_SYNC_CALL([]() {
+                clearSessionData();
+                return 0;
+            }());
+            // Note: The above SYSTEM_THREAD_CONTEXT_SYNC_CALL() causes this function to return
+        }
+    }
+    return 0;
 }
 
 void spark_process(void)
 {
 	// application thread will pump application messages
 #if PLATFORM_THREADING
-    if (system_thread_get_state(NULL) && APPLICATION_THREAD_CURRENT())
-    {
-        ApplicationThread.process();
-        return;
+    if (APPLICATION_THREAD_CURRENT()) {
+        if (system_thread_get_state(NULL)) {
+            ApplicationThread.process();
+        } else {
+            Spark_Idle_Events(true);
+        }
     }
-#endif
-
+#else
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);
+#endif // PLATFORM_THREADING
 }
 
 String spark_deviceID(void)
@@ -193,17 +282,54 @@ String spark_deviceID(void)
     return bytes2hex(id, len);
 }
 
-int spark_set_connection_property(unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved)
+int spark_set_connection_property(unsigned property, unsigned value, const void* data, void* reserved)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property_id, data, conn_prop, reserved));
-    return spark_protocol_set_connection_property(sp, property_id, data, conn_prop, reserved);
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_set_connection_property(property, value, data, reserved));
+    switch (property) {
+    case SPARK_CLOUD_DISCONNECT_OPTIONS: {
+        const auto d = (const spark_cloud_disconnect_options*)data;
+        auto opts = CloudDisconnectOptions::fromSystemOptions(d);
+        CloudConnectionSettings::instance()->setDefaultDisconnectOptions(std::move(opts));
+        return 0;
+    }
+    // These properties are forwarded to the protocol instance as is
+    case SPARK_CLOUD_PING_INTERVAL:
+    case SPARK_CLOUD_FAST_OTA_ENABLED: {
+        const auto d = (const protocol::connection_properties_t*)data;
+        const auto r = spark_protocol_set_connection_property(sp, property, value, d, reserved);
+        return spark_protocol_to_system_error(r);
+    }
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+}
+
+int spark_get_connection_property(unsigned property, void* data, size_t* size, void* reserved)
+{
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_get_connection_property(property, data, size, reserved));
+    switch (property) {
+    case SPARK_CLOUD_MAX_EVENT_DATA_SIZE:
+        if (!SPARK_CLOUD_CONNECTED) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        return getConnectionProperty(protocol::Connection::MAX_EVENT_DATA_SIZE, data, size);
+    case SPARK_CLOUD_MAX_VARIABLE_VALUE_SIZE:
+        if (!SPARK_CLOUD_CONNECTED) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        return getConnectionProperty(protocol::Connection::MAX_VARIABLE_VALUE_SIZE, data, size);
+    case SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE:
+        if (!SPARK_CLOUD_CONNECTED) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        return getConnectionProperty(protocol::Connection::MAX_FUNCTION_ARGUMENT_SIZE, data, size);
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
 }
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved)
 {
-#ifndef SPARK_NO_CLOUD
     random_seed_from_cloud_handler = handler;
-#endif // SPARK_NO_CLOUD
-
     return 0;
 }

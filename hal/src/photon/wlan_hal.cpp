@@ -55,6 +55,8 @@
 #ifdef LWIP_DHCP
 #include "lwip/dhcp.h"
 #endif // LWIP_DHCP
+#include "tls_cipher_suites.h"
+#include "check.h"
 
 uint64_t tls_host_get_time_ms_local() {
     uint64_t time_ms;
@@ -185,7 +187,7 @@ bool initialize_dct(platform_dct_wifi_config_t* wifi_config, bool force=false)
     if (force || wifi_config->device_configured != WICED_TRUE ||
         wifi_config->country_code != country)
     {
-        if (!wifi_config->device_configured)
+        if (wifi_config->device_configured != WICED_TRUE)
         {
             memset(wifi_config, 0, sizeof(*wifi_config));
         }
@@ -554,10 +556,50 @@ int wlan_supplicant_stop()
 }
 
 int wlan_restart(void* reserved) {
+    // XXX: make sure to close all sockets, as wiced_wlan_connectivity_deinit() will deinitialize LwIP
+    // which in turn invalidates LwIP netconns in use by WICED sockets and our socket layer.
+    socket_close_all();
     wiced_wlan_connectivity_deinit();
     wiced_wlan_connectivity_init();
 
     return 0;
+}
+
+static bool is_ap_entry_valid(const wiced_config_ap_entry_t& ap) {
+    // Validate SSID
+    CHECK_TRUE(ap.details.SSID.length > 0 && ap.details.SSID.length <= sizeof(ap.details.SSID.value), false);
+    // Validate security/cipher type and security key
+    switch (ap.details.security) {
+        case WICED_SECURITY_WEP_PSK:
+        case WICED_SECURITY_WEP_SHARED:
+        case WICED_SECURITY_WPA_TKIP_PSK:
+        case WICED_SECURITY_WPA_AES_PSK:
+        case WICED_SECURITY_WPA_MIXED_PSK:
+        case WICED_SECURITY_WPA2_AES_PSK:
+        case WICED_SECURITY_WPA2_TKIP_PSK:
+        case WICED_SECURITY_WPA2_MIXED_PSK: {
+            // PSK types
+            CHECK_TRUE(ap.security_key_length > 0 && ap.security_key_length <= sizeof(ap.security_key), false);
+            break;
+        }
+        case WICED_SECURITY_OPEN:
+        case WICED_SECURITY_WPA_TKIP_ENT:
+        case WICED_SECURITY_WPA_AES_ENT:
+        case WICED_SECURITY_WPA_MIXED_ENT:
+        case WICED_SECURITY_WPA2_TKIP_ENT:
+        case WICED_SECURITY_WPA2_AES_ENT:
+        case WICED_SECURITY_WPA2_MIXED_ENT: {
+            // Ok
+            // WPA Enterprise credentials will be validated separately
+            break;
+        }
+        default: {
+            // Unknown
+            return false;
+        }
+    }
+
+    return true;
 }
 
 /*
@@ -565,7 +607,7 @@ int wlan_restart(void* reserved) {
  * WPA Enterprise supplicant.
  */
 static wiced_result_t wlan_join() {
-    runtime_info_t info = {0};
+    runtime_info_t info = {};
     info.size = sizeof(info);
     int attempt = WICED_JOIN_RETRY_ATTEMPTS;
     wiced_result_t result = WICED_ERROR;
@@ -583,7 +625,8 @@ static wiced_result_t wlan_join() {
         for (unsigned i = 0; i < CONFIG_AP_LIST_SIZE; i++) {
             const wiced_config_ap_entry_t& ap = wifi_config->stored_ap_list[i];
 
-            if (ap.details.SSID.length == 0) {
+            if (!is_ap_entry_valid(ap)) {
+                // Skip invalid entries
                 continue;
             }
 
@@ -813,11 +856,20 @@ wlan_result_t wlan_activate()
         wiced_network_register_link_callback(HAL_NET_notify_connected, HAL_NET_notify_disconnected,
                                              WICED_STA_INTERFACE);
     wlan_refresh_antenna();
+
+    // XXX: By default WICED sets maximum TLS version to 1.2, however testing WPA Enterprise authentication
+    // in various environemnts showed that its implementation is flawed at least in WICED 3.7.0-7.
+    // Limiting the maximum TLS version to 1.1 seems to resolve the issues for a number of the environemnts
+    // where the authentication was previously failing with TLS 1.2.
+    extern tls_version_num_t tls_maximum_version;
+    tls_maximum_version = TLS1_1;
+
     return result;
 }
 
 wlan_result_t wlan_deactivate()
 {
+    socket_close_all();
     wlan_disconnect_now();
 
     wiced_result_t result = wiced_wlan_connectivity_deinit();
@@ -826,7 +878,6 @@ wlan_result_t wlan_deactivate()
 
 wlan_result_t wlan_disconnect_now()
 {
-    /* socket_close_all(); */
     wlan_connect_cancel(false);
     wiced_result_t result = wiced_network_down(WICED_STA_INTERFACE);
     HAL_NET_notify_disconnected();
@@ -989,7 +1040,7 @@ wiced_result_t sniff_security(SnifferInfo* info)
         wiced_rtos_get_semaphore(&info->complete, 30000);
     }
     wiced_rtos_deinit_semaphore(&info->complete);
-    if (!info->rssi)
+    if (!info->callback && !info->rssi)
         result = WICED_NOT_FOUND;
     return result;
 }
@@ -1316,7 +1367,7 @@ inline void setAddress(wiced_ip_address_t* addr, HAL_IPAddress& target)
     HAL_IPV4_SET(&target, GET_IPV4_ADDRESS(*addr));
 }
 
-void wlan_fetch_ipconfig(WLanConfig* config)
+int wlan_fetch_ipconfig(WLanConfig* config)
 {
     wiced_ip_address_t addr;
     wiced_interface_t ifup = WICED_STA_INTERFACE;
@@ -1347,25 +1398,30 @@ void wlan_fetch_ipconfig(WLanConfig* config)
 #endif // LWIP_DHCP
     }
 
-    wiced_mac_t my_mac_address;
-    if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS)
-        memcpy(config->nw.uaMacAddr, &my_mac_address, 6);
+    // XXX: calling wiced_wifi_get_mac_address or potentially other functions
+    // before wiced_wlan_connectivity_initialized() returns true will lead to a hardfaul
+    if (wiced_wlan_connectivity_initialized()) {
+        wiced_mac_t my_mac_address;
+        if (wiced_wifi_get_mac_address( &my_mac_address)==WICED_SUCCESS)
+            memcpy(config->nw.uaMacAddr, &my_mac_address, 6);
 
-    wl_bss_info_t ap_info;
-    wiced_security_t sec;
+        wl_bss_info_t ap_info;
+        wiced_security_t sec;
 
-    if ( wwd_wifi_get_ap_info( &ap_info, &sec ) == WWD_SUCCESS )
-    {
-        uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
-        memcpy(config->uaSSID, ap_info.SSID, len);
-        config->uaSSID[len] = 0;
-
-        if (config->size >= WLanConfig_Size_V2)
+        if ( wwd_wifi_get_ap_info( &ap_info, &sec ) == WWD_SUCCESS )
         {
-            memcpy(config->BSSID, ap_info.BSSID.octet, sizeof(config->BSSID));
+            uint8_t len = std::min(ap_info.SSID_len, uint8_t(32));
+            memcpy(config->uaSSID, ap_info.SSID, len);
+            config->uaSSID[len] = 0;
+
+            if (config->size >= WLanConfig_Size_V2)
+            {
+                memcpy(config->BSSID, ap_info.BSSID.octet, sizeof(config->BSSID));
+            }
         }
     }
-    // todo DNS and DHCP servers
+
+    return 0;
 }
 
 void SPARK_WLAN_SmartConfigProcess()
@@ -1511,8 +1567,8 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie)
     memset(&info, 0, sizeof(info));
     info.callback = callback;
     info.callback_data = cookie;
-    int result =  sniff_security(&info);
-    return result < 0 ? result : info.count;
+    auto result = sniff_security(&info);
+    return result != WICED_SUCCESS ? -result : info.count;
 }
 
 /**
@@ -1562,5 +1618,5 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data)
         }
         wiced_dct_read_unlock(wifi_config, WICED_FALSE);
     }
-    return result < 0 ? result : count;
+    return result != WICED_SUCCESS ? -result : count;
 }

@@ -20,6 +20,7 @@
 #include "spark_wiring_cellular_printable.h"
 #include "spark_wiring_print.h"
 #include "string.h"
+#include <stdlib.h>
 #include <limits>
 
 #if Wiring_Cellular || defined(UNIT_TEST)
@@ -79,10 +80,30 @@ float CellularSignal::getQualityValue() const
 size_t CellularSignal::printTo(Print& p) const
 {
     size_t n = 0;
-    n += p.print((*this).rssi, DEC);
+    n += p.print(this->getStrengthValue(), 2);
     n += p.print(',');
-    n += p.print((*this).qual, DEC);
+    n += p.print(this->getQualityValue(), 2);
     return n;
+}
+
+bool CellularSignal::isValid() const
+{
+    return (sig_.rat != NET_ACCESS_TECHNOLOGY_NONE &&
+            sig_.rssi != std::numeric_limits<int32_t>::min() &&
+#if (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION)
+            // U-blox GSM radios may not always support quality as it depends on the packet switching mode
+            // at the time of network connection, which is not possible to query. For now, we will return "true"
+            // for GSM Electrons and will not check if quality is actually supported / valid.
+            // Hence, `isValid()` can return "true" for invalid signal value. To add a note in docs.
+            (sig_.rat == NET_ACCESS_TECHNOLOGY_GSM || sig_.qual != std::numeric_limits<int32_t>::min()));
+#else
+            sig_.qual != std::numeric_limits<int32_t>::min());
+#endif
+}
+
+CellularSignal::operator bool() const
+{
+    return isValid();
 }
 
 size_t CellularData::printTo(Print& p) const

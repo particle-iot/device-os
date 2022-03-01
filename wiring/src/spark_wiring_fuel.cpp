@@ -5,7 +5,7 @@
  * @version V1.0.0
  * @date    11-August-2015
  * @brief   driver for the fuel gauge IC  MAX17043
- 			MAX17043 datasheet: http://datasheets.maximintegrated.com/en/ds/MAX17043-MAX17044.pdf
+            MAX17043 datasheet: http://datasheets.maximintegrated.com/en/ds/MAX17043-MAX17044.pdf
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -25,15 +25,40 @@
  */
 
 #include "spark_wiring_fuel.h"
+
 #include <mutex>
 #include "spark_wiring_power.h"
+#include "check.h"
 
-FuelGauge::FuelGauge(bool _lock) :
-#if (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION)
-    FuelGauge(Wire3, _lock)
-#else
-    FuelGauge(Wire, _lock)
-#endif /* (PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION) */
+namespace {
+
+TwoWire* fuelWireInstance() {
+#if HAL_PLATFORM_FUELGAUGE_MAX17043
+    switch (HAL_PLATFORM_FUELGAUGE_MAX17043_I2C) {
+        case HAL_I2C_INTERFACE1:
+        default: {
+            return &Wire;
+        }
+#if Wiring_Wire1
+        case HAL_I2C_INTERFACE2: {
+            return &Wire1;
+        }
+#endif // Wiring_Wire1
+#if Wiring_Wire3
+        case HAL_I2C_INTERFACE3: {
+            return &Wire3;
+        }
+#endif // Wiring_Wire3
+    }
+#endif // HAL_PLATFORM_FUELGAUGE_MAX17043
+
+    return &Wire;
+}
+
+} // anonymous
+
+FuelGauge::FuelGauge(bool _lock)
+        : FuelGauge(*fuelWireInstance(), _lock)
 {
 }
 
@@ -56,53 +81,61 @@ FuelGauge::~FuelGauge()
 boolean FuelGauge::begin()
 {
     if (!i2c_.isEnabled()) {
-		i2c_.begin();
+        i2c_.begin();
     }
     return i2c_.isEnabled();
 }
 
-namespace detail {
-	// Converts VCELL_REGISTER reading to Battery Voltage
-	float _getVCell(byte MSB, byte LSB) {
-		// VCELL = 12-bit value, 1.25mV (1V/800) per bit
-		float value = (float)((MSB << 4) | (LSB >> 4));
-		return value / 800.0;
-	}
+namespace particle { namespace detail {
+    // Converts VCELL_REGISTER reading to Battery Voltage
+    float _getVCell(byte MSB, byte LSB) {
+        // VCELL = 12-bit value, 1.25mV (1V/800) per bit
+        float value = (float)((MSB << 4) | (LSB >> 4));
+        return value / 800.0;
+    }
 
-	// Converts SOC_REGISTER reading to state of charge of the cell as a percentage
-	float _getSoC(byte MSB, byte LSB) {
-		// MSB is the whole number
-		// LSB is the decimal, resolution in units 1/256%
-		float decimal = LSB / 256.0;
-		return MSB + decimal;
-	}
-} // namespace detail
+    // Converts SOC_REGISTER reading to state of charge of the cell as a percentage
+    float _getSoC(byte MSB, byte LSB) {
+        // MSB is the whole number
+        // LSB is the decimal, resolution in units 1/256%
+        float decimal = LSB / 256.0;
+        return MSB + decimal;
+    }
+}} // namespace particle detail
 
 // Read and return the cell voltage
 float FuelGauge::getVCell() {
 
-	byte MSB = 0;
-	byte LSB = 0;
+    byte MSB = 0;
+    byte LSB = 0;
 
-	readRegister(VCELL_REGISTER, MSB, LSB);
-	return detail::_getVCell(MSB, LSB);
+    if (readRegister(VCELL_REGISTER, MSB, LSB) != SYSTEM_ERROR_NONE) {
+        return -1.0f;
+    }
+    return particle::detail::_getVCell(MSB, LSB);
 }
 
 // Read and return the state of charge of the cell
 float FuelGauge::getSoC() {
 
-	byte MSB = 0;
-	byte LSB = 0;
+    byte MSB = 0;
+    byte LSB = 0;
 
-	readRegister(SOC_REGISTER, MSB, LSB);
-	return detail::_getSoC(MSB, LSB);
+    if(readRegister(SOC_REGISTER, MSB, LSB) != SYSTEM_ERROR_NONE) {
+        return -1.0f;
+    }
+    return particle::detail::_getSoC(MSB, LSB);
 }
 
 float FuelGauge::getNormalizedSoC() {
+#if HAL_PLATFORM_PMIC_BQ24195
     std::lock_guard<FuelGauge> l(*this);
     PMIC power(true);
 
     const float soc = getSoC() / 100.0f;
+    if (soc < 0) {
+        return -1.0f;
+    }
     const float termV = ((float)power.getChargeVoltageValue()) / 1000.0f;
     const float magicVoltageDiff = 0.1f;
     const float reference100PercentV = 4.2f;
@@ -121,126 +154,138 @@ float FuelGauge::getNormalizedSoC() {
     }
 
     return normalized * 100.0f;
+#else
+    return 0.0f;
+#endif // HAL_PLATFORM_PMIC_BQ24195
 }
 
 // Return the version number of the chip
 int FuelGauge::getVersion() {
 
-	byte MSB = 0;
-	byte LSB = 0;
+    byte MSB = 0;
+    byte LSB = 0;
 
-	readRegister(VERSION_REGISTER, MSB, LSB);
-	return (MSB << 8) | LSB;
+    CHECK(readRegister(VERSION_REGISTER, MSB, LSB));
+    return (MSB << 8) | LSB;
 }
 
 byte FuelGauge::getCompensateValue() {
+    byte MSB = 0;
+    byte LSB = 0;
 
-	byte MSB = 0;
-	byte LSB = 0;
-
-	readConfigRegister(MSB, LSB);
-	return MSB;
+    if (readConfigRegister(MSB, LSB) != SYSTEM_ERROR_NONE) {
+        return 0xFF;
+    }
+    return MSB;
 }
 
 byte FuelGauge::getAlertThreshold() {
+    byte MSB = 0;
+    byte LSB = 0;
 
-	byte MSB = 0;
-	byte LSB = 0;
-
-	readConfigRegister(MSB, LSB);
-	return 32 - (LSB & 0x1F);
+    if (readConfigRegister(MSB, LSB) != SYSTEM_ERROR_NONE) {
+        return 0xFF;
+    }
+    return 32 - (LSB & 0x1F);
 }
 
-void FuelGauge::setAlertThreshold(byte threshold) {
+int FuelGauge::setAlertThreshold(byte threshold) {
+    byte MSB = 0;
+    byte LSB = 0;
 
-	byte MSB = 0;
-	byte LSB = 0;
+    CHECK(readConfigRegister(MSB, LSB));
+    if(threshold > 32) {
+        threshold = 32;
+    }
+    threshold = 32 - threshold;
 
-	readConfigRegister(MSB, LSB);
-	if(threshold > 32) threshold = 32;
-	threshold = 32 - threshold;
-
-	writeRegister(CONFIG_REGISTER, MSB, (LSB & 0xE0) | threshold);
+    CHECK(writeRegister(CONFIG_REGISTER, MSB, (LSB & 0xE0) | threshold));
+    return SYSTEM_ERROR_NONE;
 }
 
 // Check if alert interrupt was generated
 boolean FuelGauge::getAlert() {
+    byte MSB = 0;
+    byte LSB = 0;
 
-	byte MSB = 0;
-	byte LSB = 0;
-
-	readConfigRegister(MSB, LSB);
-	return LSB & 0x20;
+    if (readConfigRegister(MSB, LSB) != SYSTEM_ERROR_NONE) {
+        return false;
+    }
+    return LSB & 0x20;
 }
 
-void FuelGauge::clearAlert() {
+int FuelGauge::clearAlert() {
+    byte MSB = 0;
+    byte LSB = 0;
 
-	byte MSB = 0;
-	byte LSB = 0;
-
-	readConfigRegister(MSB, LSB);
-
-	// Clear ALRT bit
-    writeRegister(CONFIG_REGISTER, MSB, LSB & ~(0x20));
+    CHECK(readConfigRegister(MSB, LSB));
+    // Clear ALRT bit
+    CHECK(writeRegister(CONFIG_REGISTER, MSB, LSB & ~(0x20)));
+    return SYSTEM_ERROR_NONE;
 }
 
-void FuelGauge::reset() {
-
-	writeRegister(COMMAND_REGISTER, 0x00, 0x54);
+int FuelGauge::reset() {
+    CHECK(writeRegister(COMMAND_REGISTER, 0x00, 0x54));
+    return SYSTEM_ERROR_NONE;
 }
 
-void FuelGauge::quickStart() {
-
-	writeRegister(MODE_REGISTER, 0x40, 0x00);
+int FuelGauge::quickStart() {
+    CHECK(writeRegister(MODE_REGISTER, 0x40, 0x00));
+    return SYSTEM_ERROR_NONE;
 }
 
-void FuelGauge::sleep() {
-
+int FuelGauge::sleep() {
     std::lock_guard<FuelGauge> l(*this);
-	byte MSB = 0;
-	byte LSB = 0;
+    byte MSB = 0;
+    byte LSB = 0;
 
-	readConfigRegister(MSB, LSB);
-
-	writeRegister(CONFIG_REGISTER, MSB, (LSB | 0b10000000));
-
+    CHECK(readConfigRegister(MSB, LSB));
+    CHECK(writeRegister(CONFIG_REGISTER, MSB, (LSB | 0b10000000)));
+    return SYSTEM_ERROR_NONE;
 }
 
-void FuelGauge::wakeup() {
+int FuelGauge::wakeup() {
     std::lock_guard<FuelGauge> l(*this);
-	byte MSB = 0;
-	byte LSB = 0;
+    byte MSB = 0;
+    byte LSB = 0;
 
-	readConfigRegister(MSB, LSB);
-
-	writeRegister(CONFIG_REGISTER, MSB, (LSB & 0b01111111));
-
+    CHECK(readConfigRegister(MSB, LSB));
+    CHECK(writeRegister(CONFIG_REGISTER, MSB, (LSB & 0b01111111)));
+    return SYSTEM_ERROR_NONE;
 }
 
 
-void FuelGauge::readConfigRegister(byte &MSB, byte &LSB) {
-	readRegister(CONFIG_REGISTER, MSB, LSB);
+int FuelGauge::readConfigRegister(byte &MSB, byte &LSB) {
+    return readRegister(CONFIG_REGISTER, MSB, LSB);
 }
 
 
-void FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
+int FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
     std::lock_guard<FuelGauge> l(*this);
-    i2c_.beginTransmission(MAX17043_ADDRESS);
+    WireTransmission config(MAX17043_ADDRESS);
+    config.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
+    i2c_.beginTransmission(config);
     i2c_.write(startAddress);
-    i2c_.endTransmission(true);
+    CHECK_TRUE(i2c_.endTransmission(true) == 0, SYSTEM_ERROR_TIMEOUT);
 
-    i2c_.requestFrom(MAX17043_ADDRESS, 2, true);
+    config.quantity(2);
+    CHECK_TRUE(i2c_.requestFrom(config) == 2, SYSTEM_ERROR_TIMEOUT);
     MSB = i2c_.read();
     LSB = i2c_.read();
+
+    return SYSTEM_ERROR_NONE;
 }
 
-void FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
+int FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
     std::lock_guard<FuelGauge> l(*this);
-    i2c_.beginTransmission(MAX17043_ADDRESS);
+    WireTransmission config(MAX17043_ADDRESS);
+    config.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
+    i2c_.beginTransmission(config);
     i2c_.write(address);
     i2c_.write(MSB);
     i2c_.write(LSB);
-    i2c_.endTransmission(true);
+    CHECK_TRUE(i2c_.endTransmission(true) == 0, SYSTEM_ERROR_TIMEOUT);
+    return SYSTEM_ERROR_NONE;
 }
 
 bool FuelGauge::lock() {
@@ -248,5 +293,5 @@ bool FuelGauge::lock() {
 }
 
 bool FuelGauge::unlock() {
-	return i2c_.unlock();
+    return i2c_.unlock();
 }

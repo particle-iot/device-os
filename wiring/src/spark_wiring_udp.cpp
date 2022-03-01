@@ -26,11 +26,17 @@
   ******************************************************************************
  */
 
+#include "hal_platform.h"
+
+#if HAL_USE_SOCKET_HAL_COMPAT
+
 #include "spark_wiring_udp.h"
 #include "socket_hal.h"
 #include "inet_hal.h"
 #include "spark_macros.h"
 #include "spark_wiring_network.h"
+#include "spark_wiring_constants.h"
+#include "system_defs.h"
 
 using namespace spark;
 
@@ -39,7 +45,14 @@ static bool inline isOpen(sock_handle_t sd)
    return sd != socket_handle_invalid();
 }
 
-UDP::UDP() : _sock(socket_handle_invalid()), _offset(0), _total(0), _buffer(0), _buffer_size(512)
+UDP::UDP() :
+        _sock(socket_handle_invalid()),
+        _offset(0),
+        _total(0),
+        _buffer(0),
+        _buffer_size(512),
+        _nif(NETWORK_INTERFACE_ALL),
+        _buffer_allocated(false)
 {
 }
 
@@ -72,6 +85,8 @@ void UDP::releaseBuffer()
 
 uint8_t UDP::begin(uint16_t port, network_interface_t nif)
 {
+    stop();
+
     bool bound = 0;
     if(Network.from(nif).ready())
     {
@@ -177,7 +192,7 @@ size_t UDP::write(const uint8_t *buffer, size_t size)
     return size;
 }
 
-int UDP::parsePacket()
+int UDP::parsePacket(system_tick_t timeout)
 {
     if (!_buffer && _buffer_size) {
         setBuffer(_buffer_size);
@@ -185,7 +200,7 @@ int UDP::parsePacket()
 
     flush_buffer();         // start a new read - discard the old data
     if (_buffer && _buffer_size) {
-        int result = receivePacket(_buffer, _buffer_size);
+        int result = receivePacket(_buffer, _buffer_size, timeout);
         if (result>0) {
             _total = result;
         }
@@ -193,7 +208,7 @@ int UDP::parsePacket()
     return available();
 }
 
-int UDP::receivePacket(uint8_t* buffer, size_t size)
+int UDP::receivePacket(uint8_t* buffer, size_t size, system_tick_t timeout)
 {
     int ret = -1;
     if(Network.from(_nif).ready() && isOpen(_sock) && buffer)
@@ -201,7 +216,7 @@ int UDP::receivePacket(uint8_t* buffer, size_t size)
         sockaddr_t remoteSockAddr;
         socklen_t remoteSockAddrLen = sizeof(remoteSockAddr);
 
-        ret = socket_receivefrom(_sock, buffer, size, 0, &remoteSockAddr, &remoteSockAddrLen);
+        ret = socket_receivefrom_ex(_sock, buffer, size, 0, &remoteSockAddr, &remoteSockAddrLen, timeout, nullptr);
         if (ret >= 0)
         {
             _remotePort = remoteSockAddr.sa_data[0] << 8 | remoteSockAddr.sa_data[1];
@@ -268,3 +283,5 @@ int UDP::leaveMulticast(const IPAddress& ip)
     HAL_IPAddress address = ip.raw();
     return socket_leave_multicast(&address, _nif, 0);
 }
+
+#endif // HAL_USE_SOCKET_HAL_COMPAT

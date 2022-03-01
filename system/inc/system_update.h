@@ -5,6 +5,8 @@
 #include "file_transfer.h"
 #include "static_assert.h"
 #include "appender.h"
+#include "system_defs.h"
+#include "system_info.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,9 +30,11 @@ bool system_firmwareUpdate(Stream* stream, void* reserved=NULL);
 
 
 struct system_file_transfer_t {
-    system_file_transfer_t() {
-        memset(this, 0, sizeof(*this));
-        size = sizeof(*this);
+    system_file_transfer_t()
+            : size{sizeof(*this)},
+              padding{0},
+              stream{nullptr},
+              descriptor{} {
     }
 
     uint16_t size;
@@ -39,21 +43,11 @@ struct system_file_transfer_t {
     FileTransfer::Descriptor descriptor;
 };
 
-STATIC_ASSERT(system_file_transfer_size, sizeof(system_file_transfer_t)==sizeof(FileTransfer::Descriptor)+8 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(system_file_transfer_size, sizeof(system_file_transfer_t)==sizeof(FileTransfer::Descriptor)+8 || sizeof(void*)!=4);
 
 bool system_fileTransfer(system_file_transfer_t* transfer, void* reserved=NULL);
 
 void system_lineCodingBitRateHandler(uint32_t bitrate);
-
-bool system_module_info(appender_fn appender, void* append_data, void* reserved=NULL);
-bool system_metrics(appender_fn appender, void* append_data, uint32_t flags, uint32_t page, void* reserved=NULL);
-bool append_system_version_info(Appender* appender);
-
-bool ota_update_info(appender_fn append, void* append_data, void* mod, bool full, void* reserved);
-
-typedef enum {
-    MODULE_INFO_JSON_INCLUDE_PLATFORM_ID = 0x0001
-} module_info_json_flags_t;
 
 /**
  *
@@ -71,7 +65,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
  * @param reserved NULL
  * @return 0 on success.
  */
-int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* module);
+int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
 
 /**
  * Provides a chunk of the file data.
@@ -112,10 +106,9 @@ typedef enum
 
     /**
      * A persistent flag that when set will cause the system to startup
-     * in listening mode if booting in safe mode. The flag is automatically
-     * cleared on reboot.
+     * in listening mode. The flag is automatically cleared on reboot.
      */
-    SYSTEM_FLAG_STARTUP_SAFE_LISTEN_MODE,
+    SYSTEM_FLAG_STARTUP_LISTEN_MODE,
 
 	/**
 	 * Enable/Disable use of serial1 during setup.
@@ -134,29 +127,28 @@ typedef enum
      */
     SYSTEM_FLAG_RESET_NETWORK_ON_CLOUD_ERRORS,
 
+    /**
+     * Enable/Disable runtime power management peripheral detection
+     */
+    SYSTEM_FLAG_PM_DETECTION,
+
+	/**
+	 * When 0, OTA updates are only applied when SYSTEM_FLAG_OTA_UPDATE_ENABLED is set.
+	 * When 1, OTA updates are applied irrespective of the value of SYSTEM_FLAG_OTA_UPDATE_ENABLED.
+	 */
+    SYSTEM_FLAG_OTA_UPDATE_FORCED,
+
     SYSTEM_FLAG_MAX
 
 } system_flag_t;
 
 
 void system_shutdown_if_needed();
-void system_pending_shutdown();
+void system_pending_shutdown(System_Reset_Reason reason);
 
 int system_set_flag(system_flag_t flag, uint8_t value, void* reserved);
 int system_get_flag(system_flag_t flag, uint8_t* value,void* reserved);
-
-/**
- * Formats the diagnostic data using an appender function.
- *
- * @param id Array of data source IDs. This argument can be set to NULL to format all registered data sources.
- * @param count Number of data source IDs in the array.
- * @param flags Formatting flags.
- * @param append Appender function.
- * @param append_data Opaque data passed to the appender function.
- * @param reserved Reserved argument (should be set to NULL).
- */
-int system_format_diag_data(const uint16_t* id, size_t count, unsigned flags, appender_fn append, void* append_data,
-        void* reserved);
+int system_refresh_flag(system_flag_t flag);
 
 #ifdef __cplusplus
 }

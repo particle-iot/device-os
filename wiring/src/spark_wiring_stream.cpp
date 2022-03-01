@@ -26,6 +26,7 @@
 
 #include "spark_wiring_stream.h"
 #include "spark_wiring.h"       // for millis())
+#include <cctype>
 
 #define PARSE_TIMEOUT 1000  // default number of milli-seconds to wait
 #define NO_SKIP_CHAR  1  // a magic char not found in a valid ASCII numeric field
@@ -95,7 +96,10 @@ bool Stream::find(char *target, size_t length)
 // as find but search ends if the terminator string is found
 bool  Stream::findUntil(char *target, char *terminator)
 {
-  return findUntil(target, strlen(target), terminator, strlen(terminator));
+  // Makes GCC 10 happy
+  const size_t targetLen = target ? strlen(target) : 0;
+  const size_t terminatorLen = terminator ? strlen(terminator) : 0;
+  return findUntil(target, targetLen, terminator, terminatorLen);
 }
 
 // reads data from the stream until the target string of the given length is found
@@ -107,7 +111,7 @@ bool Stream::findUntil(char *target, size_t targetLen, char *terminator, size_t 
   size_t termIndex = 0;
   int c;
 
-  if( *target == 0)
+  if(!target || *target == 0)
     return true;   // return true if target is a null string
   while( (c = timedRead()) > 0){
 
@@ -184,11 +188,10 @@ float Stream::parseFloat(char skipChar){
   bool isNegative = false;
   bool isFraction = false;
   long value = 0;
-  char c;
   float fraction = 1.0;
 
-  c = peekNextDigit();
-    // ignore non numeric leading characters
+  int c = peekNextDigit();
+  // ignore non numeric leading characters
   if(c < 0)
     return 0; // zero returned if timeout
 

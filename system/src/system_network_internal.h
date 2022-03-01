@@ -20,32 +20,31 @@
 #ifndef SYSTEM_NETWORK_INTERNAL_H
 #define	SYSTEM_NETWORK_INTERNAL_H
 
-#include "system_setup.h"
-#include "rgbled.h"
-#include "spark_wiring_led.h"
-#include "spark_wiring_ticks.h"
-#include "spark_wiring_diagnostics.h"
-#include "system_event.h"
-#include "system_cloud_internal.h"
+#include <stdint.h>
+#include "spark_macros.h"
+#include "hal_platform.h"
+#include "timer_hal.h"
 #include "system_network.h"
-#include "system_threading.h"
-#include "system_mode.h"
-#include "system_power.h"
 
-using namespace particle;
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+void manage_network_connection();
+void manage_smart_config();
+void manage_ip_config();
 
 enum eWanTimings
 {
     CONNECT_TO_ADDRESS_MAX = S2M(30),
     DISCONNECT_TO_RECONNECT = S2M(2),
+    POWER_ON_WD = S2M(600) // 10 mins
 };
 
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
+extern volatile uint8_t SPARK_WLAN_CONNECT_RESTORE;
 extern volatile uint8_t SPARK_WLAN_STARTED;
-
-void manage_smart_config();
-void manage_ip_config();
 
 extern uint32_t wlan_watchdog_duration;
 extern uint32_t wlan_watchdog_base;
@@ -71,6 +70,44 @@ inline void CLR_WLAN_WD() {
     WAN_WD_DEBUG("WD Cleared, was %d",wlan_watchdog_duration);
 }
 
+#ifdef __cplusplus
+} // extern "C"
+#endif /* __cplusplus */
+
+namespace particle {
+
+/**
+ * Reset all active network interfaces.
+ */
+void resetNetworkInterfaces();
+
+} // namespace particle
+
+/* FIXME: there should be a define that tells whether there is NetworkManager available
+ * or not */
+#if !HAL_PLATFORM_IFAPI
+
+#include "system_setup.h"
+#include "rgbled.h"
+#include "spark_wiring_led.h"
+#include "spark_wiring_ticks.h"
+#include "system_network_diagnostics.h"
+#include "system_event.h"
+#include "system_cloud_internal.h"
+#include "system_network.h"
+#include "system_threading.h"
+#include "system_mode.h"
+#include "system_power.h"
+
+#if HAL_PLATFORM_BLE
+#include "ble_hal.h"
+#endif // HAL_PLATFORM_BLE
+
+// FIXME
+#include "system_control_internal.h"
+
+using namespace particle;
+
 // #define DEBUG_NETWORK_STATE
 #ifdef DEBUG_NETWORK_STATE
 class ManagedNetworkInterface;
@@ -95,73 +132,6 @@ private:
 #define LOG_NETWORK_STATE()
 #endif
 
-namespace particle {
-
-class NetworkDiagnostics {
-public:
-    // Note: Use odd numbers to encode transitional states
-    enum Status {
-        TURNED_OFF = 0,
-        TURNING_ON = 1,
-        DISCONNECTED = 2,
-        CONNECTING = 3,
-        CONNECTED = 4,
-        DISCONNECTING = 5,
-        TURNING_OFF = 7
-    };
-
-    NetworkDiagnostics() :
-            status_(DIAG_ID_NETWORK_CONNECTION_STATUS, DIAG_NAME_NETWORK_CONNECTION_STATUS, TURNED_OFF),
-            disconnReason_(DIAG_ID_NETWORK_DISCONNECTION_REASON, DIAG_NAME_NETWORK_DISCONNECTION_REASON, NETWORK_DISCONNECT_REASON_NONE),
-            disconnCount_(DIAG_ID_NETWORK_DISCONNECTS, DIAG_NAME_NETWORK_DISCONNECTS),
-            connCount_(DIAG_ID_NETWORK_CONNECTION_ATTEMPTS, DIAG_NAME_NETWORK_CONNECTION_ATTEMPTS),
-            lastError_(DIAG_ID_NETWORK_CONNECTION_ERROR_CODE, DIAG_NAME_NETWORK_CONNECTION_ERROR_CODE) {
-    }
-
-    NetworkDiagnostics& status(Status status) {
-        status_ = status;
-        return *this;
-    }
-
-    NetworkDiagnostics& connectionAttempt() {
-        ++connCount_;
-        return *this;
-    }
-
-    NetworkDiagnostics& resetConnectionAttempts() {
-        connCount_ = 0;
-        return *this;
-    }
-
-    NetworkDiagnostics& disconnectionReason(network_disconnect_reason reason) {
-        disconnReason_ = reason;
-        return *this;
-    }
-
-    NetworkDiagnostics& disconnectedUnexpectedly() {
-        ++disconnCount_;
-        return *this;
-    }
-
-    NetworkDiagnostics& lastError(int error) {
-        lastError_ = error;
-        return *this;
-    }
-
-    static NetworkDiagnostics* instance();
-
-private:
-    // Some of the diagnostic data sources use the synchronization since they can be updated from
-    // the networking service thread
-    AtomicEnumDiagnosticData<Status> status_;
-    AtomicEnumDiagnosticData<network_disconnect_reason> disconnReason_;
-    AtomicIntegerDiagnosticData disconnCount_;
-    SimpleIntegerDiagnosticData connCount_;
-    SimpleIntegerDiagnosticData lastError_;
-};
-
-} // namespace particle
-
 /**
  * Internal network interface class to provide polymorphic behavior for each
  * network type.  This is not part of the dynalib so functions can freely evolve.
@@ -172,8 +142,10 @@ struct NetworkInterface
     virtual network_interface_t network_interface()=0;
     virtual void setup()=0;
 
-    virtual void on()=0;
+    virtual int on()=0;
+    virtual bool isOn()=0;
     virtual void off(bool disconnect_cloud=false)=0;
+    virtual bool isOff()=0;
     virtual void connect(bool listen_enabled=true)=0;
     virtual bool connecting()=0;
     virtual void connect_cancel(bool cancel)=0;
@@ -207,30 +179,30 @@ struct NetworkInterface
 
     virtual int set_hostname(const char* hostname)=0;
     virtual int get_hostname(char* buffer, size_t buffer_len, bool noDefault=false)=0;
-
+    virtual int process()=0;
 };
 
 
 class ManagedNetworkInterface : public NetworkInterface
 {
 private:
-    volatile uint8_t WLAN_DISCONNECT;
-    volatile uint8_t WLAN_DELETE_PROFILES;
-    volatile uint8_t WLAN_SMART_CONFIG_START; // Set to 'true' when listening mode is pending
-    volatile uint8_t WLAN_SMART_CONFIG_ACTIVE;
-    volatile uint8_t WLAN_SMART_CONFIG_FINISHED;
-    volatile uint8_t WLAN_CONNECTED;
-    volatile uint8_t WLAN_CONNECTING;
-    volatile uint8_t WLAN_DHCP_PENDING;
-    volatile uint8_t WLAN_CAN_SHUTDOWN;
-    volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT;
-#if PLATFORM_ID == 10 // Electron
+    volatile uint8_t WLAN_DISCONNECT = 0;
+    volatile uint8_t WLAN_DELETE_PROFILES = 0;
+    volatile uint8_t WLAN_SMART_CONFIG_START = 0; // Set to 'true' when listening mode is pending
+    volatile uint8_t WLAN_SMART_CONFIG_ACTIVE = 0;
+    volatile uint8_t WLAN_SMART_CONFIG_FINISHED = 0;
+    volatile uint8_t WLAN_CONNECTED = 0;
+    volatile uint8_t WLAN_CONNECTING = 0;
+    volatile uint8_t WLAN_DHCP_PENDING = 0;
+    volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT = 0;
+    volatile uint8_t WLAN_INITIALIZED = 0;
+#if PLATFORM_ID == PLATFORM_ELECTRON // Electron
     volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
 #else
     volatile uint32_t START_LISTENING_TIMER_MS = 0UL; // Disabled by default on Photon/P1/Core
 #endif
-    volatile uint32_t start_listening_timer_base;
-    volatile uint32_t start_listening_timer_duration;
+    volatile uint32_t start_listening_timer_base = 0;
+    volatile uint32_t start_listening_timer_duration = 0;
 
 #ifdef DEBUG_NETWORK_STATE
     friend class NetworkStateLogger;
@@ -290,7 +262,7 @@ protected:
         WLAN_SERIAL_CONFIG_DONE = 0;
         bool wlanStarted = SPARK_WLAN_STARTED;
 
-        cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_LISTENING);
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_LISTENING);
 
         if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
             LED_SIGNAL_START(LISTENING_MODE, NORMAL);
@@ -299,6 +271,11 @@ protected:
             // mode blocks an application code from running
             LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
         }
+
+#if HAL_PLATFORM_BLE
+        // Start advertising
+        ble_gap_start_advertising(nullptr);
+#endif // HAL_PLATFORM_BLE
 
         on_start_listening();
         start_listening_timer_create();
@@ -354,8 +331,18 @@ protected:
             if (is_start_listening_timeout()) {
                 start_listening_timeout();
             }
+#if HAL_PLATFORM_BLE
+            // TODO: Process BLE channel events in a separate thread
+            system::SystemControl::instance()->run();
+#endif
+            system_shutdown_if_needed();
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
+
+#if HAL_PLATFORM_BLE
+        // Stop advertising
+        ble_gap_stop_advertising();
+#endif // HAL_PLATFORM_BLE
 
         LED_SIGNAL_STOP(LISTENING_MODE);
 
@@ -390,6 +377,9 @@ protected:
 
     virtual int on_now()=0;
     virtual void off_now()=0;
+    virtual bool is_powered()=0;
+
+    virtual int process_now()=0;
 
     /**
      *
@@ -458,36 +448,64 @@ public:
         LOG_NETWORK_STATE();
         // INFO("ready(): %d; connecting(): %d; listening(): %d; WLAN_SMART_CONFIG_START: %d", (int)ready(), (int)connecting(),
         //        (int)listening(), (int)WLAN_SMART_CONFIG_START);
-        if (!ready() && !connecting() && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
+        if (!ready() && (!connecting() || !WLAN_INITIALIZED) && !listening() && !WLAN_SMART_CONFIG_START) // Don't try to connect if listening mode is active or pending
         {
             bool was_sleeping = SPARK_WLAN_SLEEP;
 
-            on(); // activate WiFi
+            int onRet = on(); // make sure that the NCP is powered on
 
             WLAN_DISCONNECT = 0;
-            connect_init();
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
 
+            // Only if power on succeeded
+            if (!onRet) {
+                CLR_WLAN_WD();
+                connect_init();
+            }
+
+            // This call has side-effects on cellular platforms, so we need to run even if we've failed to completely power-on
+            // 'Side-effects' as in has_credentials() actually modifies the state by calling cellular_on() on its own.
+            // FIXME: This behavior should be revisited later on.
             if (!has_credentials())
             {
+                // On cellular platforms we'll also get here if modem is not responsive or
+                // there is no SIM card or it has a PIN.
+
+                // FIXME: going into listening mode will cancel an ongoing connection
+                // attempt and unless there is cloud auto-connect flag is set,
+                // a manual call to connect() will have to be made by the application.
+                // This needs to be revisited along with was_sleeping behavior
                 if (listen_enabled) {
+                    CLR_WLAN_WD();
                     listen();
                 }
                 else if (was_sleeping) {
                     disconnect();
                 }
+                return;
             }
-            else
-            {
+
+            // XXX: We are trying to streamline the behavior on how we approach signaling and events between platforms
+            // Following pre-LTS Gen 2 and Gen 3 behavior: LED and system events follow administrative state,
+            // which means that we'll immediately go into connecting state even if HAL still needs to perform some low level
+            // initialization.
+            // This could be revisited in the future.
+            LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
+            const auto diag = NetworkDiagnostics::instance();
+            diag->status(NetworkDiagnostics::CONNECTING);
+            bool startedConnecting = !WLAN_CONNECTING;
+            WLAN_CONNECTING = 1;
+            if (startedConnecting) {
+                // Make sure this event is generated only when we transition into connecting state
+                system_notify_event(network_status, network_status_connecting);
+            }
+
+            if (!onRet) {
+                // We are powered on and can initiate a connection
                 config_hostname();
-                LED_SIGNAL_START(NETWORK_CONNECTING, NORMAL);
-                WLAN_CONNECTING = 1;
                 INFO("ARM_WLAN_WD 1");
                 ARM_WLAN_WD(CONNECT_TO_ADDRESS_MAX);    // reset the network if it doesn't connect within the timeout
-                const auto diag = NetworkDiagnostics::instance();
-                diag->status(NetworkDiagnostics::CONNECTING);
-                system_notify_event(network_status, network_status_connecting);
                 diag->connectionAttempt();
                 const int ret = connect_finalize();
                 if (ret != 0) {
@@ -497,7 +515,7 @@ public:
         }
     }
 
-    void disconnect(network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_NONE) override
+    void disconnect(network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_UNKNOWN) override
     {
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
@@ -508,8 +526,10 @@ public:
             WLAN_CONNECTING = 0;
             WLAN_CONNECTED = 0;
             WLAN_DHCP_PENDING = 0;
+            CLR_WLAN_WD();
+            LOG(INFO, "Clearing WLAN WD in disconnect()");
 
-            cloud_disconnect(true, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+            cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, reason);
             const auto diag = NetworkDiagnostics::instance();
             if (was_connected) {
                 diag->resetConnectionAttempts();
@@ -545,26 +565,64 @@ public:
         return (SPARK_WLAN_STARTED && WLAN_CONNECTING);
     }
 
-    void on() override
+    int on() override
     {
         LOG_NETWORK_STATE();
-        if (!SPARK_WLAN_STARTED)
+        if (!SPARK_WLAN_STARTED || !WLAN_INITIALIZED)
         {
+            bool startedPowerOn = !SPARK_WLAN_STARTED;
+            WLAN_INITIALIZED = 0;
             const auto diag = NetworkDiagnostics::instance();
             diag->status(NetworkDiagnostics::TURNING_ON);
-            system_notify_event(network_status, network_status_powering_on);
+            if (startedPowerOn) {
+                // Make sure to generate only one powering_on event.
+                // Subsequent power-on attempts after a failed one should
+                // not be generating these events.
+                system_notify_event(network_status, network_status_powering_on);
+            }
             config_clear();
             const int ret = on_now();
             if (ret != 0) {
                 diag->lastError(ret);
+                if (!wlan_watchdog_duration) {
+                    // Just in case arm WLAN WD
+                    ARM_WLAN_WD(POWER_ON_WD);
+                }
+            } else {
+                WLAN_INITIALIZED = 1;
             }
             update_config(true);
             SPARK_WLAN_STARTED = 1;
             SPARK_WLAN_SLEEP = 0;
-            LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
-            diag->status(NetworkDiagnostics::DISCONNECTED);
-            system_notify_event(network_status, network_status_on);
+            if (startedPowerOn) {
+                // Same as with powering_on event above, make sure
+                // that we generate this event only once.
+                // Subsequent power-on attempts after a failed one should
+                // not be generating these events.
+
+
+                // XXX: We are trying to streamline the behavior on how we approach signaling and events between platforms
+                // Following pre-LTS Gen 2 and Gen 3 behavior: LED and system events follow administrative state,
+                // which means that we'll immediately go into ON state even if HAL still needs to perform some low level
+                // initialization.
+                // This could be revisited in the future.
+                LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
+                diag->status(NetworkDiagnostics::DISCONNECTED);
+                system_notify_event(network_status, network_status_on);
+            }
+            return ret;
         }
+        return 0;
+    }
+
+    bool isOn() override
+    {
+        return WLAN_INITIALIZED && SPARK_WLAN_STARTED;
+    }
+
+    bool isOff() override
+    {
+        return !SPARK_WLAN_STARTED && !is_powered();
     }
 
     void off(bool disconnect_cloud=false) override
@@ -572,6 +630,9 @@ public:
         LOG_NETWORK_STATE();
         if (SPARK_WLAN_STARTED)
         {
+            CLR_WLAN_WD();
+            // TODO: We should report NETWORK_DISCONNECT_REASON_USER if the network interface is
+            // being turned off at the user's request
             disconnect(NETWORK_DISCONNECT_REASON_NETWORK_OFF);
 
             const auto diag = NetworkDiagnostics::instance();
@@ -580,11 +641,9 @@ public:
             off_now();
 
             SPARK_WLAN_SLEEP = 1;
-#ifndef SPARK_NO_CLOUD
             if (disconnect_cloud) {
                 spark_cloud_flag_disconnect();
             }
-#endif
             SPARK_WLAN_STARTED = 0;
             WLAN_DHCP_PENDING = 0;
             WLAN_CONNECTED = 0;
@@ -593,6 +652,8 @@ public:
             LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
             diag->status(NetworkDiagnostics::TURNED_OFF);
             system_notify_event(network_status, network_status_off);
+        } else if (!WLAN_INITIALIZED) {
+            off_now();
         }
     }
 
@@ -620,8 +681,7 @@ public:
     void notify_disconnected()
     {
         LOG_NETWORK_STATE();
-        // Don't close the socket on the callback since this causes a lockup on the Core
-        cloud_disconnect(false, false, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+        cloud_disconnect(0 /* flags */, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
         if (WLAN_CONNECTING || WLAN_CONNECTED) {
             // This code is executed only in case of an unsolicited disconnection, since the disconnect() method
             // resets the WLAN_CONNECTING and WLAN_CONNECTED flags prior to closing the connection
@@ -666,10 +726,7 @@ public:
             // final connection state for both dynamic and static IP configurations
             INFO("CLR_WLAN_WD 1, DHCP success");
             CLR_WLAN_WD();
-#if PLATFORM_ID != 0
-            /* XXX: this causes a deadlock on Core */
             update_config(true);
-#endif /* PLATFORM_ID != 0 */
             WLAN_CONNECTED = 1;
             WLAN_LISTEN_ON_FAILED_CONNECT = false;
             LED_SIGNAL_START(NETWORK_CONNECTED, BACKGROUND);
@@ -693,16 +750,10 @@ public:
         }
     }
 
-    void notify_can_shutdown()
+    void notify_error()
     {
-        WLAN_CAN_SHUTDOWN = 1;
+        // Do nothing
     }
-
-    void notify_cannot_shutdown()
-    {
-        WLAN_CAN_SHUTDOWN = 0;
-    }
-
 
     void listen_loop() override
     {
@@ -722,6 +773,22 @@ public:
             on_setup_cleanup();
             WLAN_SMART_CONFIG_FINISHED = 0;
         }
+    }
+
+    virtual int process()
+    {
+        // Requested to power-on, failed initial power-on, requested to connect as well
+        if ((SPARK_WLAN_STARTED && !WLAN_INITIALIZED) && WLAN_CONNECTING) {
+            // XXX: workaround for HAL relying on system layer to retry power-on
+            // and connection attempts on cellular platforms
+            connect();
+        }
+        auto r = process_now();
+        if (r) {
+            // Ask the system to reset us
+            SPARK_WLAN_RESET = 1;
+        }
+        return r;
     }
 };
 
@@ -795,7 +862,6 @@ inline void NetworkStateLogger::dump() const {
     NETWORK_STATE_PRINTF("WLAN_CONNECTED: %d\r\n", (int)nif_.WLAN_CONNECTED);
     NETWORK_STATE_PRINTF("WLAN_CONNECTING: %d\r\n", (int)nif_.WLAN_CONNECTING);
     NETWORK_STATE_PRINTF("WLAN_DHCP_PENDING: %d\r\n", (int)nif_.WLAN_DHCP_PENDING);
-    NETWORK_STATE_PRINTF("WLAN_CAN_SHUTDOWN: %d\r\n", (int)nif_.WLAN_CAN_SHUTDOWN);
     NETWORK_STATE_PRINTF("WLAN_LISTEN_ON_FAILED_CONNECT: %d\r\n", (int)nif_.WLAN_LISTEN_ON_FAILED_CONNECT);
     // Global flags
     NETWORK_STATE_PRINTF("SPARK_WLAN_RESET: %d\r\n", (int)SPARK_WLAN_RESET);
@@ -808,4 +874,6 @@ inline void NetworkStateLogger::dump() const {
 #undef NETWORK_STATE_PRINTF
 #endif // defined(DEBUG_NETWORK_STATE)
 
-#endif  /* SYSTEM_NETWORK_INTERNAL_H */
+#endif /* !HAL_PLATFORM_IFAPI */
+
+#endif /* SYSTEM_NETWORK_INTERNAL_H */

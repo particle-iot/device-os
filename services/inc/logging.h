@@ -341,6 +341,14 @@ static const char* const _log_category = NULL;
             } \
         } while (0)
 
+#define LOG_C_VARG(_level, _category, _fmt, vargs) \
+        do { \
+            if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
+                _LOG_ATTR_INIT(_attr); \
+                log_message_v(LOG_LEVEL_##_level, _category, &_attr, NULL, _fmt, vargs ); \
+            } \
+        } while (0)
+
 #define LOG_ATTR_C(_level, _category, _attrs, _fmt, ...) \
         do { \
             if (LOG_LEVEL_##_level >= LOG_COMPILE_TIME_LEVEL) { \
@@ -396,7 +404,7 @@ static const char* const _log_category = NULL;
 #define LOG_DUMP_C(_level, _category, _data, _size)
 #define LOG_ENABLED_C(_level, _category) (0)
 
-#endif
+#endif // not LOG_DISABLE
 
 #ifdef DEBUG_BUILD
 #define LOG_DEBUG_C(_level, _category, _fmt, ...) LOG_C(_level, _category, _fmt, ##__VA_ARGS__)
@@ -430,10 +438,16 @@ static const char* const _log_category = NULL;
 #define LOG_DEBUG_PRINTF(_level, _fmt, ...) LOG_DEBUG_PRINTF_C(_level, LOG_THIS_CATEGORY(), _fmt, ##__VA_ARGS__)
 #define LOG_DEBUG_DUMP(_level, _data, _size) LOG_DEBUG_DUMP_C(_level, LOG_THIS_CATEGORY(), _data, _size)
 
+#ifndef LOG_DISABLE
 #define PANIC(_code, _fmt, ...) \
         do { \
             LOG_DEBUG(PANIC, _fmt, ##__VA_ARGS__); \
+            panic_(_code, (void *)_fmt, HAL_Delay_Microseconds); \
+        } while (0)
+#else
+#define PANIC(_code, _fmt, ...) \
+        do { \
             panic_(_code, NULL, HAL_Delay_Microseconds); \
         } while (0)
-
+#endif // LOG_DISABLE
 #endif // _LOGGING_H

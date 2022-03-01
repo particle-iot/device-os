@@ -17,215 +17,252 @@
  ******************************************************************************
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
+#include "logging.h"
+LOG_SOURCE_CATEGORY("system.sleep");
 
 #include "system_sleep.h"
+#include "system_sleep_configuration.h"
 #include "system_network.h"
-#include "system_task.h"
+#include "system_power.h"
+#include "system_threading.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
-#include "system_network_internal.h"
-#include "system_threading.h"
-#include "rtc_hal.h"
-#include "core_hal.h"
-#include "led_service.h"
-#include <stddef.h>
-#include "spark_wiring_fuel.h"
+#include "system_mode.h"
+#include "firmware_update.h"
 #include "spark_wiring_system.h"
-#include "spark_wiring_platform.h"
-#include "system_power.h"
+#include "led_service.h"
+#include "system_task.h"
+#if HAL_PLATFORM_CELLULAR
+#include "cellular_hal.h"
+#endif // HAL_PLATFORM_CELLULAR
+#include "check.h"
+#include "system_network_manager.h"
 
-#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
-# include "parser.h"
+using namespace particle;
+using namespace particle::system;
+
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
+namespace {
+
+typedef struct {
+    bool suspended;
+    bool on;
+    bool connected;
+} network_status_t;
+
+network_status_t system_sleep_network_suspend(network_interface_index index) {
+    network_status_t status = {};
+    status.suspended = true;
+
+    // Disconnect from network
+    if (network_connecting(index, 0, nullptr) || network_ready(index, 0, nullptr)) {
+        if (network_connecting(index, 0, nullptr)) {
+            network_connect_cancel(index, 1, 0, 0);
+        }
+        network_disconnect(index, NETWORK_DISCONNECT_REASON_SLEEP, nullptr);
+        status.connected = true;
+    }
+
+    // Turn off the modem
+    if (!network_is_off(index, nullptr)) {
+#if PLATFORM_GEN == 2
+        if (!SPARK_WLAN_SLEEP) {
+            status.on = true;
+        }
 #endif
-
-
-struct WakeupState
-{
-    bool wifi;
-    bool wifiConnected;
-    bool cloud;
-};
-
-WakeupState wakeupState;
-
-static void network_suspend() {
-    // save the current state so it can be restored on wakeup
-#ifndef SPARK_NO_CLOUD
-    wakeupState.cloud = spark_cloud_flag_auto_connect();
+#if PLATFORM_GEN == 3
+        if_t iface;
+        if (!if_get_by_index(index, &iface)) {
+            if (NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP) ||
+                    NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_POWERING_UP)) {
+                status.on = true;
+            }
+        }
 #endif
-    wakeupState.wifi = !SPARK_WLAN_SLEEP;
-    wakeupState.wifiConnected = wakeupState.cloud || network_ready(0, 0, NULL) || network_connecting(0, 0, NULL);
-    // Disconnect the cloud and the network
-    network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
-#ifndef SPARK_NO_CLOUD
-    // Clear the auto connect status
-    spark_cloud_flag_disconnect();
-#endif
-    network_off(0, 0, 0, NULL);
+        network_off(index, 0, 0, NULL);
+        LOG(TRACE, "Waiting interface %d to be off...", (int)index);
+        // There might be up to 30s delay to turn off the modem for particular platforms.
+        network_wait_off(index, 120000/*ms*/, nullptr);
+    } else {
+        LOG(TRACE, "Interface %d is off already", (int)index);
+    }
+
+    return status;
 }
 
-static void network_resume() {
-    // Set the system flags that triggers the wifi/cloud reconnection in the background loop
-    if (wakeupState.wifiConnected || wakeupState.wifi)  // at present, no way to get the background loop to only turn on wifi.
+int system_sleep_network_resume(network_interface_index index, network_status_t status) {
+#if PLATFORM_GEN == 2
+    /* On Gen2, calling network_on() and network_connect() will block until the connection is established
+     * if single threaded, or this function is invoked synchronously by the system thread if system threading
+     * is enabled. In both case, that would block the user application. Setting a flag here to unblock the user
+     * application and restore the connection later. */
+    if (status.on) {
         SPARK_WLAN_SLEEP = 0;
-    if (wakeupState.cloud)
-        spark_cloud_flag_connect();
+    }
+    if (status.connected) {
+        SPARK_WLAN_CONNECT_RESTORE = 1;
+    }
+#else
+    if (status.on) {
+        network_on(index, 0, 0, nullptr);
+    }
+    if (status.connected) {
+        network_connect(index, 0, 0, nullptr);
+    }
+#endif
+    return SYSTEM_ERROR_NONE;
 }
 
-/*******************************************************************************
- * Function Name  : HAL_RTCAlarm_Handler
- * Description    : This function handles additional application requirements.
- * Input          : None.
- * Output         : None.
- * Return         : None.
- *******************************************************************************/
-extern "C" void HAL_RTCAlarm_Handler(void)
-{
-    /* Wake up from System.sleep mode(SLEEP_MODE_WLAN) */
-    network_resume();
-}
+} // anonymous namespacee
 
-void sleep_fuel_gauge()
-{
-    FuelGauge gauge;
+int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_ext_impl(config, reason, reserved));
 
-    gauge.sleep();
-}
+    // Validates the sleep configuration previous to disconnecting network,
+    // so that the network status remains if the configuration is invalid.
+    CHECK(hal_sleep_validate_config(config, nullptr));
 
-bool network_sleep_flag(uint32_t flags)
-{
-    return (flags & SLEEP_NETWORK_STANDBY.value()) == 0;
-}
+    // Cancel the firmware update
+    system::FirmwareUpdate::instance()->finishUpdate(FirmwareUpdateFlag::CANCEL);
 
-int system_sleep_impl(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
-{
-    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_impl(sleepMode, seconds, param, reserved));
-    // TODO - determine if these are valuable:
-    // - Currently publishes will get through with or without #1.
-    // - More data is consumed with #1.
-    // - Session is not resuming after waking from DEEP sleep,
-    //   so a full handshake currently outweighs leaving the
-    //   modem on for #2.
-    //
-    //---- #1
-    // If we're connected to the cloud, make sure all
-    // confirmable UDP messages are sent before sleeping
-    // if (spark_cloud_flag_connected()) {
-    //     Spark_Sleep();
+    SystemSleepConfigurationHelper configHelper(config);
+
+    bool reconnectCloud = false;
+    bool sendCloudPing = false;
+    // Disconnect from cloud is necessary.
+    if (configHelper.cloudDisconnectRequested()) {
+        unsigned duration = 0; // Sleep duration in seconds
+        const auto src = (const hal_wakeup_source_rtc_t*)configHelper.wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_RTC);
+        if (src) {
+            duration = src->ms / 1000;
+        }
+        // This flag seems to be redundant in the presence of Particle.setDisconnectOptions() and
+        // Particle.disconnect()
+        if (configHelper.sleepFlags().isSet(SystemSleepFlag::WAIT_CLOUD) && spark_cloud_flag_connected()) {
+            auto opts = CloudConnectionSettings::instance()->takePendingDisconnectOptions();
+            opts.graceful(true);
+            CloudConnectionSettings::instance()->setPendingDisconnectOptions(std::move(opts));
+        }
+        // The CLOUD_DISCONNECT_GRACEFULLY flag doesn't really enable graceful disconnection mode,
+        // it merely indicates that it is ok to disconnect gracefully in this specific case.
+        // Whether the system will actually disconnect from the cloud gracefully or not depends
+        // on the disconnection options that can be set via Particle.setDisconnectOptions() or
+        // Particle.disconnect().
+        //
+        // TODO: Rename CLOUD_DISCONNECT_GRACEFULLY to CLOUD_DISCONNECT_IMMEDIATELY and invert its
+        // meaning to avoid confusion
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SLEEP, NETWORK_DISCONNECT_REASON_NONE,
+                RESET_REASON_NONE, duration);
+        reconnectCloud = spark_cloud_flag_auto_connect();
+        // Clear the auto connect status
+        spark_cloud_flag_disconnect();
+    } else if (spark_cloud_flag_connected()) {
+        sendCloudPing = true;
+    }
+
+    // TODO: restore network state if network is disconnected but it failed to enter sleep mode.
+
+    // Network disconnect.
+    // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
+#if HAL_PLATFORM_CELLULAR
+    network_status_t cellularStatus = {};
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_CELLULAR)) {
+        if (configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
+            // Pause the modem Serial, while leaving the modem keeps running.
+            cellular_pause(nullptr);
+        } else {
+            cellularStatus = system_sleep_network_suspend(NETWORK_INTERFACE_CELLULAR);
+        }
+    } else {
+        cellular_urcs(false, nullptr);
+    }
+#endif // HAL_PLATFORM_CELLULAR
+
+#if HAL_PLATFORM_WIFI
+    network_status_t wifiStatus = {};
+    if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_WIFI_STA) &&
+          !configHelper.networkFlags(NETWORK_INTERFACE_CELLULAR).isSet(SystemSleepNetworkFlag::INACTIVE_STANDBY)) {
+        wifiStatus = system_sleep_network_suspend(NETWORK_INTERFACE_WIFI_STA);
+    }
+#endif // HAL_PLATFORM_WIFI
+
+#if HAL_PLATFORM_ETHERNET
+    // NOTE: wake-up by Ethernet interfaces is not implemented.
+    // For now we are always powering it off
+    network_status_t ethernetStatus = {};
+    // if (!configHelper.wakeupByNetworkInterface(NETWORK_INTERFACE_ETHERNET)) {
+        ethernetStatus = system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET);
     // }
-    //---- #2
-    // SLEEP_NETWORK_STANDBY can keep the modem on during DEEP sleep
-    // System.sleep(10) always powers down the network, even if SLEEP_NETWORK_STANDBY flag is used.
-    if (network_sleep_flag(param) || SLEEP_MODE_WLAN == sleepMode) {
-        network_suspend();
-    }
+#endif // HAL_PLATFORM_ETHERNET
 
-    switch (sleepMode)
-    {
-        case SLEEP_MODE_WLAN:
-            if (seconds)
-            {
-                HAL_RTC_Set_UnixAlarm((time_t) seconds);
-            }
-            break;
+    // Let the sleep HAL layer to turn off the NCP interface if necessary.
 
-        case SLEEP_MODE_DEEP:
-            if (network_sleep_flag(param))
-            {
-                network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
-                network_off(0, 0, 0, NULL);
-            }
-
-            system_power_management_sleep();
-            HAL_Core_Enter_Standby_Mode(seconds,
-                (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
-            break;
-
-#if Wiring_SetupButtonUX
-        case SLEEP_MODE_SOFTPOWEROFF:
-            network_disconnect(0, NETWORK_DISCONNECT_REASON_SLEEP, NULL);
-            network_off(0, 0, 0, NULL);
-            sleep_fuel_gauge();
-            system_power_management_sleep();
-            HAL_Core_Enter_Standby_Mode(seconds,
-                (param & SLEEP_DISABLE_WKP_PIN.value()) ? HAL_STANDBY_MODE_FLAG_DISABLE_WKP_PIN : 0);
-            break;
-#endif
-    }
-    return 0;
-}
-
-int system_sleep_pin_impl(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
-{
-    SYSTEM_THREAD_CONTEXT_SYNC(system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved));
-    // If we're connected to the cloud, make sure all
-    // confirmable UDP messages are sent before sleeping
-    if (spark_cloud_flag_connected()) {
-        Spark_Sleep();
-    }
-
-    bool network_sleep = network_sleep_flag(param);
-    if (network_sleep)
-    {
-        network_suspend();
-    }
-
-#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
-    if (!network_sleep_flag(param)) {
-        // Pause the modem Serial
-        cellular_pause(nullptr);
-    }
-#endif
-
+    // Stop RGB signaling
     led_set_update_enabled(0, nullptr); // Disable background LED updates
-    LED_Off(LED_RGB);    
-	system_power_management_sleep();
-    int ret = HAL_Core_Enter_Stop_Mode_Ext(pins, pins_count, modes, modes_count, seconds, nullptr);
+    LED_Off(PARTICLE_LED_RGB);
+
+    system_power_management_sleep(configHelper.wakeupByFuelGauge() ? false : true);
+
+    // Now enter sleep mode
+    int ret = hal_sleep_enter(config, reason, nullptr);
+
+    system_power_management_wakeup();
+
     led_set_update_enabled(1, nullptr); // Enable background LED updates
+    LED_On(PARTICLE_LED_RGB); // Turn RGB on in case that RGB is controlled by user application before entering sleep mode.
 
-#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
-    if (!network_sleep_flag(param)) {
-        // Pause the modem Serial
+    // Network resume
+    // FIXME: if_get_list() can be potentially used, instead of using pre-processor.
+#if HAL_PLATFORM_CELLULAR
+    if (cellularStatus.suspended) {
+        system_sleep_network_resume(NETWORK_INTERFACE_CELLULAR, cellularStatus);
+    } else {
         cellular_resume(nullptr);
+        cellular_urcs(true, nullptr);
     }
-#endif
+#endif // HAL_PLATFORM_CELLULAR
 
-    if (network_sleep)
-    {
-        network_resume();   // asynchronously bring up the network/cloud
+#if HAL_PLATFORM_WIFI
+    if (wifiStatus.suspended) {
+        system_sleep_network_resume(NETWORK_INTERFACE_WIFI_STA, wifiStatus);
+    }
+#endif // HAL_PLATFORM_WIFI
+
+#if HAL_PLATFORM_ETHERNET
+    if (ethernetStatus.suspended) {
+        system_sleep_network_resume(NETWORK_INTERFACE_ETHERNET, ethernetStatus);
+    }
+#endif // HAL_PLATFORM_ETHERNET
+
+    if (reconnectCloud) {
+        // Resume cloud connection.
+        spark_cloud_flag_connect();
+
+        // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
+        auto mode = system_mode();
+        if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && spark_cloud_flag_auto_connect()) {
+            waitFor(spark_cloud_flag_connected, 60000);
+        }
+    } else if (sendCloudPing) {
+        spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
     }
 
-    // if single-threaded, managed mode then reconnect to the cloud (for up to 60 seconds)
-    auto mode = system_mode();
-    if (system_thread_get_state(nullptr)==spark::feature::DISABLED && (mode==AUTOMATIC || mode==SEMI_AUTOMATIC) && spark_cloud_flag_auto_connect()) {
-        waitFor(spark_cloud_flag_connected, 60000);
-    }
-
-    if (spark_cloud_flag_connected()) {
-        Spark_Wake();
-    }
     return ret;
 }
 
-/**
- * Wraps the actual implementation, which has to return a value as part of the threaded implementation.
- */
-void system_sleep_pin(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds, uint32_t param, void* reserved)
-{
+int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
+    LOG(TRACE, "Entering system_sleep_ext()");
+#if HAL_PLATFORM_GEN == 2
     // Cancel current connection attempt to unblock the system thread
-    network.connect_cancel(true);
-    InterruptMode m = (InterruptMode)edgeTriggerMode;
-    system_sleep_pin_impl(&wakeUpPin, 1, &m, 1, seconds, param, reserved);
-}
-
-void system_sleep(Spark_Sleep_TypeDef sleepMode, long seconds, uint32_t param, void* reserved)
-{
-    network.connect_cancel(true);
-    system_sleep_impl(sleepMode, seconds, param, reserved);
-}
-
-int32_t system_sleep_pins(const uint16_t* pins, size_t pins_count, const InterruptMode* modes, size_t modes_count, long seconds, uint32_t param, void* reserved)
-{
-    network.connect_cancel(true);
-    return system_sleep_pin_impl(pins, pins_count, modes, modes_count, seconds, param, reserved);
+    // on Gen 2 platforms
+    if (network_connecting(NETWORK_INTERFACE_ALL, 0, nullptr)) {
+        network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, 0);
+    }
+#endif // HAL_PLATFORM_GEN == 2
+    return system_sleep_ext_impl(config, reason, reserved);
 }

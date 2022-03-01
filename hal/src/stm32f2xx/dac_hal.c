@@ -88,7 +88,7 @@ static void HAL_DAC_Init()
  */
 void HAL_DAC_Write(pin_t pin, uint16_t value)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (dacInitFirstTime == true)
     {
@@ -118,7 +118,7 @@ void HAL_DAC_Write(pin_t pin, uint16_t value)
 
 uint8_t HAL_DAC_Is_Enabled(pin_t pin)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (!dacInitFirstTime && HAL_Get_Pin_Mode(pin) == AN_OUTPUT)
     {
         if (DAC->CR & (DAC_CR_EN1 << PIN_MAP[pin].dac_channel))
@@ -130,7 +130,7 @@ uint8_t HAL_DAC_Is_Enabled(pin_t pin)
 
 uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if (!dacInitFirstTime && HAL_Get_Pin_Mode(pin) == AN_OUTPUT)
     {
         DAC_Cmd(PIN_MAP[pin].dac_channel, state ? ENABLE : DISABLE);
@@ -142,7 +142,7 @@ uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state)
 
 uint8_t HAL_DAC_Get_Resolution(pin_t pin)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
     {
@@ -158,7 +158,7 @@ uint8_t HAL_DAC_Get_Resolution(pin_t pin)
 
 void HAL_DAC_Set_Resolution(pin_t pin, uint8_t resolution)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
     {
@@ -172,7 +172,7 @@ void HAL_DAC_Set_Resolution(pin_t pin, uint8_t resolution)
 
 void HAL_DAC_Enable_Buffer(pin_t pin, uint8_t state)
 {
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
     {

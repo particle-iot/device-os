@@ -27,8 +27,6 @@
 #include "spark_wiring_string.h"
 
 
-#if PLATFORM_ID>=3
-
 test(STRING_01_float_conversion) {
     String one(1);
     assertEqual(String(1.000000, 0), one);
@@ -85,8 +83,6 @@ test(STRING_10_float) {
     assertEqual(123.456f, String("123.456").toFloat());
     assertEqual(123.00f, String("123abcd").toFloat());
 }
-
-#endif
 
 test(STRING_11_printable_constructor)
 {

@@ -19,23 +19,40 @@
 
 #include "lightssl_protocol.h"
 
-#if HAL_PLATFORM_CLOUD_TCP && PARTICLE_PROTOCOL
+#if HAL_PLATFORM_CLOUD_TCP
 
 namespace particle { namespace protocol {
-int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t data)
+
+int LightSSLProtocol::command(ProtocolCommands::Enum command, uint32_t value, const void* data)
 {
-  int result = UNKNOWN;
   switch (command) {
-  case ProtocolCommands::SLEEP:
-  case ProtocolCommands::DISCONNECT:
-    result = this->wait_confirmable();
-    break;
-  case ProtocolCommands::TERMINATE:
-    ack_handlers.clear();
-    result = NO_ERROR;
-    break;
+  case ProtocolCommands::SLEEP: // Deprecated
+  case ProtocolCommands::DISCONNECT: {
+    int r = ProtocolError::NO_ERROR;
+    unsigned timeout = DEFAULT_DISCONNECT_COMMAND_TIMEOUT;
+    if (data) {
+      const auto d = (const spark_disconnect_command*)data;
+      if (d->timeout != 0) {
+        timeout = d->timeout;
+      }
+      if (d->cloud_reason != CLOUD_DISCONNECT_REASON_NONE) {
+        r = send_goodbye((cloud_disconnect_reason)d->cloud_reason, (network_disconnect_reason)d->network_reason,
+            (System_Reset_Reason)d->reset_reason, d->sleep_duration);
+      }
+    }
+    if (r == ProtocolError::NO_ERROR) {
+      r = wait_confirmable(timeout);
+    }
+    reset();
+    return r;
   }
-  return result;
+  case ProtocolCommands::TERMINATE: {
+    reset();
+    return ProtocolError::NO_ERROR;
+  }
+  default:
+    return ProtocolError::UNKNOWN;
+  }
 }
 
 int LightSSLProtocol::wait_confirmable(uint32_t timeout)

@@ -28,6 +28,8 @@
 
 #include "spark_wiring_platform.h"
 
+#include <chrono>
+
 #if Wiring_WiFi
 
 #include "spark_wiring_network.h"
@@ -61,7 +63,7 @@ public:
     // virtual size_t printTo(Print& p) const;
 
 private:
-    wlan_connected_info_t inf_ = {0};
+    wlan_connected_info_t inf_ = {};
 };
 
 class IPAddress;
@@ -75,11 +77,35 @@ class WiFiClass : public NetworkClass
     }
 
 public:
-    WiFiClass() {}
-    ~WiFiClass() {}
+    WiFiClass() :
+            NetworkClass(NETWORK_INTERFACE_WIFI_STA) {
+    }
 
-    operator network_handle_t() {
-        return 0;
+    void on(void) {
+        network_on(*this, 0, 0, NULL);
+    }
+
+    void off(void) {
+        network_off(*this, 0, 0, NULL);
+    }
+
+    int scan(wlan_scan_result_t callback, void* cookie=NULL) {
+        return wlan_scan(callback, cookie);
+    }
+
+    int scan(WiFiAccessPoint* results, size_t result_count);
+
+    template <typename T>
+    int scan(void (*handler)(WiFiAccessPoint* ap, T* instance), T* instance) {
+        return scan((wlan_scan_result_t)handler, (void*)instance);
+    }
+
+    int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
+        return wlan_select_antenna(antenna);
+    }
+
+    WLanSelectAntenna_TypeDef getAntenna() {
+        return wlan_get_antenna(nullptr);
     }
 
     WLanConfig* wifi_config() {
@@ -95,6 +121,8 @@ public:
         memcpy(mac, wifi_config()->nw.uaMacAddr, 6);
         return mac;
     }
+
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 
     IPAddress localIP() {
         return IPAddress(wifi_config()->nw.aucIP);
@@ -150,14 +178,6 @@ public:
         return network_ready(*this, 0, NULL);
     }
 
-    void on(void) {
-        network_on(*this, 0, 0, NULL);
-    }
-
-    void off(void) {
-        network_off(*this, 0, 0, NULL);
-    }
-
     void listen(bool begin=true) {
         network_listen(*this, begin ? 0 : 1, NULL);
     }
@@ -165,6 +185,7 @@ public:
     void setListenTimeout(uint16_t timeout) {
         network_set_listen_timeout(*this, timeout, NULL);
     }
+    inline void setListenTimeout(std::chrono::seconds s) { setListenTimeout(s.count()); }
 
     uint16_t getListenTimeout(void) {
         return network_get_listen_timeout(*this, 0, NULL);
@@ -221,21 +242,16 @@ public:
         return network_clear_credentials(*this, 0, NULL, NULL);
     }
 
-    int selectAntenna(WLanSelectAntenna_TypeDef antenna) {
-        return wlan_select_antenna(antenna);
-    }
-
-    WLanSelectAntenna_TypeDef getAntenna() {
-        return wlan_get_antenna(nullptr);
-    }
-
+#if !HAL_USE_INET_HAL_POSIX
     IPAddress resolve(const char* name)
     {
-        HAL_IPAddress ip = {0};
+        HAL_IPAddress ip = {};
         return (inet_gethostbyname(name, strlen(name), &ip, *this, NULL) != 0) ?
                 IPAddress(uint32_t(0)) : IPAddress(ip);
     }
+#endif // !HAL_USE_INET_HAL_POSIX
 
+#if !HAL_PLATFORM_NCP
     void setStaticIP(const IPAddress& host, const IPAddress& netmask,
         const IPAddress& gateway, const IPAddress& dns)
     {
@@ -246,25 +262,16 @@ public:
     {
         setIPAddressSource(STATIC_IP);
     }
+#endif //!HAL_PLATFORM_NCP
 
     void useDynamicIP()
     {
         setIPAddressSource(DYNAMIC_IP);
     }
 
-    int scan(wlan_scan_result_t callback, void* cookie=NULL) {
-        return wlan_scan(callback, cookie);
-    }
-
-    int scan(WiFiAccessPoint* results, size_t result_count);
-
-    template <typename T>
-    int scan(void (*handler)(WiFiAccessPoint* ap, T* instance), T* instance) {
-        return scan((wlan_scan_result_t)handler, (void*)instance);
-    }
-
     int getCredentials(WiFiAccessPoint* results, size_t result_count);
 
+#if !HAL_PLATFORM_NCP
     String hostname()
     {
         const size_t maxHostname = 64;
@@ -282,6 +289,8 @@ public:
     {
         return network_set_hostname(*this, 0, hostname, nullptr);
     }
+#endif // !HAL_PLATFORM_NCP
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 };
 
 extern WiFiClass WiFi;

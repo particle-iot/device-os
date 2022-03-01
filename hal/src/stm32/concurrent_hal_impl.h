@@ -12,15 +12,16 @@ extern "C" {
 // so we cannot directly define __gthread_t as TaskHandle_t, however, we define it
 // here and statically assert that it is the same size.
 
-typedef void* __gthread_t;
-
 typedef void* os_thread_t;
+typedef os_thread_t __gthread_t;
 typedef int32_t os_result_t;
 typedef uint8_t os_thread_prio_t;
 /* Default priority is the same as the application thread */
 const os_thread_prio_t OS_THREAD_PRIORITY_DEFAULT = 2;
 const os_thread_prio_t OS_THREAD_PRIORITY_CRITICAL = 9;
 const size_t OS_THREAD_STACK_SIZE_DEFAULT = 3*1024;
+
+typedef uint32_t os_thread_notify_t;
 
 typedef void* os_mutex_t;
 typedef void* os_mutex_recursive_t;
@@ -29,6 +30,7 @@ typedef void* os_timer_t;
 
 typedef os_mutex_t __gthread_mutex_t;
 typedef os_mutex_recursive_t __gthread_recursive_mutex_t;
+typedef uintptr_t os_unique_id_t;
 
 
 /**
@@ -50,6 +52,8 @@ int __gthread_cond_timedwait (__gthread_cond_t *cond,
 
 
 int __gthread_mutex_timedlock (__gthread_mutex_t* mutex, const __gthread_time_t* timeout);
+
+int __gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t* mutex, const __gthread_time_t* timeout);
 
 #ifdef	__cplusplus
 }

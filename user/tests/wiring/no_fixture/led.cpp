@@ -1,10 +1,8 @@
 
-// not hardware specific so test on the photon only to free up space for the core
-#if PLATFORM_ID>=3
-
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "rgbled.h"
+#include "rgbled_hal.h"
 #include <stdio.h>
 
 #ifdef abs
@@ -100,13 +98,15 @@ test(LED_03_ControlledReturnsTrueWhenControlled) {
 }
 
 test(LED_04_ChangesWhenNotControlled) {
-    // when
-    RGB.control(false);
-    // then
     uint8_t rgbInitial[3];
     uint8_t rgbChanged[3];
+    // when
+    RGB.control(true);
+    RGB.color(1, 2, 3);
     LED_RGB_Get(rgbInitial);
-    delay(75);
+    RGB.control(false);
+    // then
+    delay(123);
     LED_RGB_Get(rgbChanged);
 
     assertFalse(rgbInitial[0]==rgbChanged[0] && rgbInitial[1]==rgbChanged[1] && rgbInitial[2]==rgbChanged[2]);
@@ -153,6 +153,8 @@ test(LED_06_SettingRGBAfterOverrideShouldChangeLED) {
 
 test(LED_07_SettingRGBWithoutOverrideShouldNotChangeLED) {
     // given
+    RGB.control(true);
+    RGB.color(1, 2, 3);
     RGB.control(false);
 
     // when
@@ -223,20 +225,28 @@ static void assertRgbLedMirrorPinsColor(const pin_t pins[3], uint16_t r, uint16_
     r = (uint16_t)((((uint32_t)(r)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
     g = (uint16_t)((((uint32_t)(g)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
     b = (uint16_t)((((uint32_t)(b)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
-    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[0])) - (int32_t)(r * ((1UL << HAL_PWM_Get_Resolution(pins[0])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
-    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[1])) - (int32_t)(g * ((1UL << HAL_PWM_Get_Resolution(pins[1])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
-    assertLessOrEqual(std::abs((int32_t)(HAL_PWM_Get_AnalogValue_Ext(pins[2])) - (int32_t)(b * ((1UL << HAL_PWM_Get_Resolution(pins[2])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[0])) - (int32_t)(r * ((1UL << hal_pwm_get_resolution(pins[0])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[1])) - (int32_t)(g * ((1UL << hal_pwm_get_resolution(pins[1])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[2])) - (int32_t)(b * ((1UL << hal_pwm_get_resolution(pins[2])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
 }
 
 test(LED_11_MirroringWorks) {
     RGB.control(true);
     RGB.brightness(255);
 
+#if !HAL_PLATFORM_NRF52840
     const pin_t pins[3] = {A4, A5, A7};
-
+#else
+# if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+    const pin_t pins[3] = {A4, A5, A3};
+# else
+    // SoM
+    const pin_t pins[3] = {A1, A0, A7};
+# endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#endif
     // Mirror to r=A4, g=A5, b=A7. Non-inverted (common cathode).
     // RGB led mirroring in bootloader is not enabled
-    RGB.mirrorTo(A4, A5, A7, false, false);
+    RGB.mirrorTo(pins[0], pins[1], pins[2], false, false);
 
     RGB.color(0, 0, 0);
     assertRgbLedMirrorPinsColor(pins, 0, 0, 0);
@@ -291,5 +301,3 @@ test(LED_12_NoLeakWhenOnChangeHandlerIsOverridden) {
     RGB.onChange(nullptr);
     assertEqual(OnChangeHandler::instanceCount(), 0); // Current handler has been destroyed
 }
-
-#endif // PLATFORM_ID >= 3

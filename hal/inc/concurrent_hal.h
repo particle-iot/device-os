@@ -87,6 +87,13 @@ os_result_t os_thread_create_with_stack(os_thread_t* result, const char* name,
         size_t stack_size, void* stack);
 
 /**
+ * Returns the current thread's handle.
+ * @param reserved This argument should be set to NULL.
+ * @return The thread handle.
+ */
+os_thread_t os_thread_current(void* reserved);
+
+/**
  * Determines if the given thread is the one executing.
  * @param   The thread to test.
  * @return {@code true} if the thread given is the one currently executing. {@code false} otherwise.
@@ -131,6 +138,29 @@ os_result_t os_thread_cleanup(os_thread_t thread);
  */
 os_result_t os_thread_yield(void);
 
+typedef struct {
+    size_t reserved;
+    os_thread_t thread;
+    const char* name;
+    os_unique_id_t id;
+    void* stack_base; //the allocated memory of the stack
+    size_t stack_size;
+    void* stack_current; //the current tasks stack pointer 
+    size_t stack_high_watermark; //the max amount of free stack memory that the RTOS has recorded
+ } os_thread_dump_info_t;
+
+typedef os_result_t (*os_thread_dump_callback_t)(os_thread_dump_info_t*, void *reserved);
+
+/**
+ * Returns a dump of the threads running in the system one by one, calling callback back along with
+ *   the reserved ptr
+ * @param thread to dump
+ * @param callback to invoke with the thread dump
+ * @param reserved param to pass the callback
+ * @return - os_result_t
+ */
+os_result_t os_thread_dump(os_thread_t thread, os_thread_dump_callback_t callback, void* reserved);
+
 /**
  * Delays the current task until a specified time to set up periodic tasks
  * @param previousWakeTime The time the thread last woke up.  May not be NULL.
@@ -140,6 +170,9 @@ os_result_t os_thread_yield(void);
  * @return 0 on success. 1 if previousWakeTime is NULL
  */
 os_result_t os_thread_delay_until(system_tick_t *previousWakeTime, system_tick_t timeIncrement);
+
+os_thread_notify_t os_thread_wait(system_tick_t ms, void* reserved);
+int os_thread_notify(os_thread_t thread, void* reserved);
 
 int os_condition_variable_create(condition_variable_t* var);
 void os_condition_variable_destroy(condition_variable_t var);
@@ -176,6 +209,15 @@ int os_queue_put(os_queue_t queue, const void* item, system_tick_t delay, void* 
  * @return
  */
 int os_queue_take(os_queue_t queue, void* item, system_tick_t delay, void* reserved);
+
+/**
+ * Return 0 on success.
+ * @param queue
+ * @param item
+ * @param delay
+ * @return
+ */
+int os_queue_peek(os_queue_t queue, void* item, system_tick_t delay, void* reserved);
 int os_queue_destroy(os_queue_t queue, void* reserved);
 
 int os_mutex_create(os_mutex_t* mutex);
@@ -200,22 +242,32 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved);
 # define _GLIBCXX_HAS_GTHREADS
 #endif // _GLIBCXX_HAS_GTHREADS
 
-#ifdef __cplusplus
-#if PLATFORM_ID!=3
-#include <bits/gthr.h>
-#endif
-#endif
-
 /**
  * Enables/disables pre-emptive context switching
  */
 void os_thread_scheduling(bool enabled, void* reserved);
+
+typedef enum {
+    OS_SCHEDULER_STATE_NOT_STARTED = 0,
+    OS_SCHEDULER_STATE_RUNNING     = 1,
+    OS_SCHEDULER_STATE_SUSPENDED   = 2
+} os_scheduler_state_t;
+
+/**
+ * Get task scheduler state.
+ */
+os_scheduler_state_t os_scheduler_get_state(void* reserved);
 
 /**
  * Create a new timer. Returns 0 on success.
  */
 int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* timer_id, bool one_shot, void* reserved);
 int os_timer_get_id(os_timer_t timer, void** timer_id);
+
+/**
+ * Sets a pointer to user data associated with the timer.
+ */
+int os_timer_set_id(os_timer_t timer, void* timer_id);
 
 typedef enum os_timer_change_t
 {
@@ -233,5 +285,10 @@ int os_timer_is_active(os_timer_t timer, void* reserved);
 }
 #endif
 
+#ifdef __cplusplus
+#if PLATFORM_ID!=3 && !defined(UNIT_TEST)
+#include <bits/gthr.h>
+#endif /* PLATFORM_ID!=3 && !defined(UNIT_TEST) */
+#endif /* __cplusplus */
 
 #endif	/* CONCURRENCY_HAL_H */

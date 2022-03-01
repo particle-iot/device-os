@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <stdint.h>
 
 /**
  * An empty no arg, no result function
@@ -15,7 +16,8 @@ typedef void  (*constructor_ptr_t)(void);
  * Pointer to the reset handler;
  */
 extern void* dynamic_reset_handler_location;
-extern char stack_end;
+extern char _stack_end;
+extern char _system_part1_static_ram_start;
 
 /**
  * No register saving needed.
@@ -35,7 +37,7 @@ void system_part1_reset_handler() {
  * The fake interrupt vectors table that redirects to part2.
  */
 __attribute__((externally_visible)) const void* const system_part1_boot_table[97] = {
-    &stack_end,
+    &_stack_end,
     &system_part1_reset_handler
 };
 
@@ -62,7 +64,7 @@ void* module_system_part1_pre_init()
 
     memset(&link_bss_location, 0, link_bss_size );
 
-    return link_end_of_static_ram;
+    return &_system_part1_static_ram_start;
 }
 
 
@@ -83,4 +85,8 @@ void module_system_part1_init()
         link_constructors_location[ctor_num]();
     }
 
+}
+
+void module_system_part1_newlib_impure_set(struct _reent* r, size_t size, uint32_t version, void* ctx) {
+    _impure_ptr = r;
 }

@@ -7,7 +7,7 @@
 On OSX:
 
 ```
- brew install gcc49
+ brew install gcc49 wget
  source ./ci/install_boost.sh
  ./ci/build_boost.sh
  export DYLD_LIBRARY_PATH=$BOOST_ROOT/stage/lib

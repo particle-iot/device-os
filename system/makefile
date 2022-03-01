@@ -7,8 +7,9 @@ ifeq ("","$(SPARK_NO_PLATFORM)")
 DEPENDENCIES += platform
 CFLAGS += -DSPARK_PLATFORM
 endif
-DEPENDENCIES = platform hal services nanopb communication wiring dynalib crypto
+DEPENDENCIES = platform hal services third_party/nanopb communication wiring dynalib crypto
 TARGET_TYPE = a
 
+MAKE_DEPENDENCIES =
 
 include ../build/arm-tlm.mk

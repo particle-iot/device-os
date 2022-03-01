@@ -11,7 +11,7 @@ LIB_DEPENDENCIES = services-dynalib system wiring crypto-dynalib crypto communic
 MAKE_DEPENDENCIES = newlib_nano $(LIB_DEPENDENCIES)
 
 # exclude hal_cellular and hal_usb
-GLOBAL_DEFINES += HAL_CELLULAR_EXCLUDE=1 HAL_USB_EXCLUDE=1 HAL_BOOTLOADER_EXCLUDE=1 MODULE_HAS_SYSTEM_PART3=1
+GLOBAL_DEFINES += HAL_CELLULAR_EXCLUDE=1 HAL_USB_EXCLUDE=1 HAL_BOOTLOADER_EXCLUDE=1 MODULE_HAS_SYSTEM_PART3=1 HAL_TIME_COMPAT_EXCLUDE=1
 
 
 include ../modular.mk
@@ -25,6 +25,10 @@ TARGET=elf bin lst hex size
 
 
 include $(PROJECT_ROOT)/build/arm-tlm.mk
+
+# NOTE: When compiling with LTO vTaskSwitchContext is getting linked out, despite the fact that it's
+# marked as used.
+LDFLAGS += -flto -Os -fuse-linker-plugin -Wl,--undefined=vTaskSwitchContext
 
 $(call check_modular)
 

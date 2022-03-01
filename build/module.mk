@@ -8,6 +8,18 @@ SOURCE_PATH ?= $(MODULE_PATH)
 # import this module's symbols
 include $(MODULE_PATH)/import.mk
 
+# FIXME: find a better place for this
+ifneq (,$(filter $(PLATFORM_ID),12 13 22 23 25 26))
+ifneq ("$(BOOTLOADER_MODULE)","1")
+export SOFTDEVICE_PRESENT=y
+CFLAGS += -DSOFTDEVICE_PRESENT=1
+ASFLAGS += -DSOFTDEVICE_PRESENT=1
+export SOFTDEVICE_VARIANT=s140
+CFLAGS += -D$(shell echo $(SOFTDEVICE_VARIANT) | tr a-z A-Z)
+PLATFORM_FREERTOS =
+endif
+endif
+
 # pull in the include.mk files from each dependency, and make them relative to
 # the dependency module directory
 DEPS_INCLUDE_SCRIPTS =$(foreach module,$(DEPENDENCIES),$(PROJECT_ROOT)/$(module)/import.mk)
@@ -28,9 +40,6 @@ ifneq (,$(GLOBAL_DEFINES))
 CFLAGS += $(addprefix -D,$(GLOBAL_DEFINES))
 export GLOBAL_DEFINES
 endif
-
-# _WINSOCK_H prevents select.h from being used which conflicts with CC3000 headers
-CFLAGS += -D_WINSOCK_H
 
 ifneq (,$(NO_GNU_EXTENSIONS))
 # Stick to POSIX-conforming API
@@ -69,20 +78,20 @@ INCLUDE_DIRS += $(addsuffix /src,$(MODULE_LIBSV2))
 
 
 # Collect all object and dep files
+ALLOBJ += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o)))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o))
 ALLOBJ += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o))
-ALLOBJ += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o)))
 
 # $(info allobj $(ALLOBJ))
 
+ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o.d)))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
-ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC:.S=.o.d)))
 
 CLOUD_FLASH_URL ?= https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
 
 # All Target
-all: $(MAKE_DEPENDENCIES) $(TARGET) postbuild
+all: prebuild $(MAKE_DEPENDENCIES) $(TARGET) postbuild
 
 elf: $(TARGET_BASE).elf
 bin: $(TARGET_BASE).bin
@@ -105,7 +114,7 @@ program-openocd: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 
 endif
 
-# Program the core using dfu-util. The core should have been placed
+# Program the device using dfu-util. The device should have been placed
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(MAKE_DEPENDENCIES) $(TARGET_BASE).dfu
 ifdef START_DFU_FLASHER_SERIAL_SPEED
@@ -122,7 +131,7 @@ endif
 	@echo Flashing using dfu:
 	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $(lastword $^)
 
-# Program the core using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
+# Program the device using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'
 program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
@@ -130,7 +139,7 @@ program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 
 program-serial: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-# Program core/photon using serial ymodem flasher.
+# Program the device using serial ymodem flasher.
 # Install 'sz' tool using: 'brew install lrzsz' on MAC OS X
 # PARTICLE_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
 ifeq ("$(wildcard $(PARTICLE_SERIAL_DEV))","")
@@ -291,8 +300,12 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
+.PHONY: all prebuild postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
 .SECONDARY:
+
+# Disable implicit builtin rules
+MAKEFLAGS += --no-builtin-rules
+.SUFFIXES:
 
 include $(COMMON_BUILD)/recurse.mk
 

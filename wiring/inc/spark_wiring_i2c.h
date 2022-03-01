@@ -30,15 +30,65 @@
 #include "spark_wiring_stream.h"
 #include "spark_wiring_platform.h"
 #include "i2c_hal.h"
+#include <chrono>
 
+class WireTransmission {
+public:
+  WireTransmission(uint8_t address)
+      : address_{address},
+        size_{0},
+        stop_{true},
+        timeout_{HAL_I2C_DEFAULT_TIMEOUT_MS} {
+  }
+
+  WireTransmission() = delete;
+
+  WireTransmission& quantity(size_t size) {
+    size_ = size;
+    return *this;
+  }
+
+  WireTransmission& timeout(system_tick_t ms) {
+    timeout_ = ms;
+    return *this;
+  }
+
+  WireTransmission& timeout(std::chrono::milliseconds ms) {
+    return timeout((system_tick_t)ms.count());
+  }
+
+  WireTransmission& stop(bool stop) {
+    stop_ = stop;
+    return *this;
+  }
+
+  hal_i2c_transmission_config_t halConfig() const {
+    hal_i2c_transmission_config_t conf = {
+      .size = sizeof(hal_i2c_transmission_config_t),
+      .version = 0,
+      .address = address_,
+      .reserved = {0},
+      .quantity = (uint32_t)size_,
+      .timeout_ms = timeout_,
+      .flags = (uint32_t)(stop_ ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0)
+    };
+    return conf;
+  }
+
+private:
+  uint8_t address_;
+  size_t size_;
+  bool stop_;
+  system_tick_t timeout_;
+};
 
 class TwoWire : public Stream
 {
 private:
-  HAL_I2C_Interface _i2c;
+  hal_i2c_interface_t _i2c;
 
 public:
-  TwoWire(HAL_I2C_Interface i2c);
+  TwoWire(hal_i2c_interface_t i2c, const hal_i2c_config_t& config);
   virtual ~TwoWire() {};
   inline void setClock(uint32_t speed) {
 	  setSpeed(speed);
@@ -51,13 +101,13 @@ public:
   void begin(int);
   void beginTransmission(uint8_t);
   void beginTransmission(int);
+  void beginTransmission(const WireTransmission& transfer);
   void end();
   uint8_t endTransmission(void);
   uint8_t endTransmission(uint8_t);
-  uint8_t requestFrom(uint8_t, uint8_t);
-  uint8_t requestFrom(uint8_t, uint8_t, uint8_t);
-  uint8_t requestFrom(int, int);
-  uint8_t requestFrom(int, int, int);
+  size_t requestFrom(uint8_t, size_t);
+  size_t requestFrom(uint8_t, size_t, uint8_t);
+  size_t requestFrom(const WireTransmission& transfer);
   virtual size_t write(uint8_t);
   virtual size_t write(const uint8_t *, size_t);
   virtual int available(void);
@@ -82,6 +132,10 @@ public:
    * Attempts to reset this I2C bus.
    */
   void reset();
+
+  hal_i2c_interface_t interface() const {
+    return _i2c;
+  }
 };
 
 /**
@@ -89,6 +143,8 @@ public:
  * So we provide a conditional compile to exclude it.
  */
 #ifndef SPARK_WIRING_NO_I2C
+
+hal_i2c_config_t __attribute__((weak)) acquireWireBuffer();
 
 #define Wire __fetch_global_Wire()
 TwoWire& __fetch_global_Wire();
@@ -100,6 +156,7 @@ TwoWire& __fetch_global_Wire();
 
 #define Wire1 __fetch_global_Wire1()
 TwoWire& __fetch_global_Wire1();
+hal_i2c_config_t __attribute__((weak)) acquireWire1Buffer();
 #endif  // Wiring_Wire1
 
 /* System PMIC and Fuel Guage I2C3 */
@@ -110,7 +167,7 @@ TwoWire& __fetch_global_Wire1();
 
 #define Wire3 __fetch_global_Wire3()
 TwoWire& __fetch_global_Wire3();
-
+hal_i2c_config_t __attribute__((weak)) acquireWire3Buffer();
 #endif  // Wiring_Wire3
 
 #endif

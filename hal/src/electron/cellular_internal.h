@@ -20,8 +20,9 @@
 #ifndef CELLULAR_INTERNAL_H
 #define	CELLULAR_INTERNAL_H
 
-#include "modem/enums_hal.h"
+#include "cellular_enums_hal.h"
 #include "cellular_hal_constants.h"
+#include "cellular_sig_perc_mapping.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,23 +31,19 @@ extern "C" {
 /**
  * Function for processing Set cellular data usage info, broken out for unit tests
  */
-cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
+cellular_result_t cellular_data_usage_set_impl(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
 
 /**
  * Function for processing Get cellular data usage info, broken out for unit tests
  */
-cellular_result_t _cellular_data_usage_set(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
+cellular_result_t cellular_data_usage_get_impl(CellularDataHal &data, const MDM_DataUsage &data_usage, bool ret);
 
 /* detail functions defined for unit tests */
-namespace detail {
-/**
- * Function for setting the cellular network provider based on the IMSI of the SIM card inserted, broken out for unit tests
- */
-CellularNetProv _cellular_imsi_to_network_provider(const char* imsi);
+namespace particle { namespace detail {
 
-cellular_result_t cellular_signal_impl(CellularSignalHal* signal, cellular_signal_t* signalext, bool strengthResult, const NetStatus& status);
+cellular_result_t cellular_signal_impl(cellular_signal_t* signalext, bool strengthResult, const NetStatus& status);
 
-} // namespace detail
+}} // namespace particle detail
 
 /**
  * Set cellular band select

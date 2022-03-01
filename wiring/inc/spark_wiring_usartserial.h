@@ -34,10 +34,10 @@
 class USARTSerial : public Stream
 {
 private:
-  HAL_USART_Serial _serial;
+  hal_usart_interface_t _serial;
   bool _blocking;
 public:
-  USARTSerial(HAL_USART_Serial serial, Ring_Buffer *rx_buffer, Ring_Buffer *tx_buffer);
+  USARTSerial(hal_usart_interface_t serial, const hal_usart_buffer_config_t& config);
   virtual ~USARTSerial() {};
   void begin(unsigned long);
   void begin(unsigned long, uint32_t);
@@ -68,6 +68,10 @@ public:
   operator bool();
 
   bool isEnabled(void);
+
+  hal_usart_interface_t interface() const {
+    return _serial;
+  }
 };
 
 #if Wiring_Serial2
@@ -102,25 +106,30 @@ inline void __handleSerialEvent(USARTSerial& serial, void (*handler)(void))
 #ifndef SPARK_WIRING_NO_USART_SERIAL
 #define Serial1 __fetch_global_Serial1()
 extern USARTSerial& __fetch_global_Serial1();
+hal_usart_buffer_config_t __attribute__((weak)) acquireSerial1Buffer();
 
 #if Wiring_Serial2
 #define Serial2 __fetch_global_Serial2()
 extern USARTSerial& __fetch_global_Serial2();
+hal_usart_buffer_config_t __attribute__((weak)) acquireSerial2Buffer();
 #endif
 
 #if Wiring_Serial3
 #define Serial3 __fetch_global_Serial3()
 extern USARTSerial& __fetch_global_Serial3();
+hal_usart_buffer_config_t __attribute__((weak)) acquireSerial3Buffer();
 #endif
 
 #if Wiring_Serial4
 #define Serial4 __fetch_global_Serial4()
 extern USARTSerial& __fetch_global_Serial4();
+hal_usart_buffer_config_t __attribute__((weak)) acquireSerial4Buffer();
 #endif
 
 #if Wiring_Serial5
 #define Serial5 __fetch_global_Serial5()
 extern USARTSerial& __fetch_global_Serial5();
+hal_usart_buffer_config_t __attribute__((weak)) acquireSerial5Buffer();
 #endif
 
 #endif

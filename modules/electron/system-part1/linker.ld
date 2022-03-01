@@ -1,11 +1,9 @@
+INCLUDE platform_ram.ld
+
 MEMORY
 {
     APP_FLASH (rx)  : ORIGIN = 0x08060000, LENGTH = 128K
-/*
- SRAM is located immediately below system-part2, whcih has a base address
- of 0x20200000-10K. 
-*/
-    SRAM      (rwx) : ORIGIN = 0x20020000-6K-10K, LENGTH = 6K
+    SRAM      (rwx) : ORIGIN = _system_part3_static_ram_start, LENGTH = _system_part3_static_ram_size
 }
 
 INCLUDE module_system_part1_export.ld

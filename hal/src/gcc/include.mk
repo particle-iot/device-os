@@ -2,12 +2,12 @@
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
 HAL_SRC_GCC_PATH = $(TARGET_HAL_PATH)/src/gcc
+HAL_INCL_NETWORK_PATH = $(TARGET_HAL_PATH)/network
+HAL_INCL_NETWORK_UTIL_PATH = $(TARGET_HAL_PATH)/network/util
 
-# if we are being compiled with platform as a dependency, then also include
-# implementation headers.
-ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_SRC_GCC_PATH)
-endif
+INCLUDE_DIRS += $(HAL_INCL_NETWORK_UTIL_PATH)
+INCLUDE_DIRS += $(HAL_INCL_NETWORK_PATH)
 
 ifneq (,$(findstring hal,$(MAKE_DEPENDENCIES)))
 
@@ -28,10 +28,4 @@ LIB_DIRS += $(BOOST_ROOT)/stage/lib
 ifeq "$(SPARK_TEST_DRIVER)" "1"
 HAL_TEST_FLAVOR+=-driver
 endif
-
-
-
 endif
-
-
-

@@ -23,6 +23,10 @@
 #ifndef MODULE_SYSTEM_PART3_INIT_H
 #define	MODULE_SYSTEM_PART3_INIT_H
 
+#include <sys/reent.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,6 +43,8 @@ void* module_system_part3_pre_init();
  * perform any final initialization of the module, such as calling constructors on static instances.
  */
 void module_system_part3_init();
+
+void module_system_part3_newlib_impure_set(struct _reent* r, size_t size, uint32_t version, void* ctx);
 
 #ifdef __cplusplus
 }

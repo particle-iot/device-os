@@ -4,7 +4,7 @@
   * @authors  Zachary Crockett
   * @version V1.0.0
   * @date    10-Jan-2014
-  * @brief   Fixture for testing SparkProtocol
+  * @brief   Fixture for testing CoreProtocol
   ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
 
@@ -27,7 +27,7 @@
 #define __CONSTRUCTOR_FIXTURE_H
 
 #include <stdint.h>
-#include "spark_protocol.h"
+#include "core_protocol.h"
 
 struct EventHandlerCalledWith
 {
@@ -73,8 +73,8 @@ struct ConstructorFixture
   static system_tick_t mock_millis(void);
   static bool mock_ota_status_check(void);
   static SparkReturnType::Enum mock_variable_type(const char *variable_key);
-  static void mock_set_time(time_t t, unsigned int param, void* reserved);
-  static time_t set_time_called_with;
+  static void mock_set_time(uint32_t t, unsigned int param, void* reserved);
+  static int64_t set_time_called_with;
   static EventHandlerCalledWith event_handlers_called_with[2];
   static void mock_event_handler_0(const char *event_name, const char *data);
   static void mock_event_handler_1(const char *event_name, const char *data);
@@ -83,7 +83,7 @@ struct ConstructorFixture
   SparkKeys keys;
   SparkCallbacks callbacks;
   SparkDescriptor descriptor;
-  SparkProtocol spark_protocol;
+  CoreProtocol core_protocol;
 };
 
 #endif // __CONSTRUCTOR_FIXTURE_H

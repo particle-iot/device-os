@@ -6,6 +6,7 @@
 #       based on the root of the project
 TARGET_SRC_PATH = src
 
+INCLUDE_DIRS += $(TARGET_SRC_PATH)
 
 # C source files included in this build.
 # CSRC +=
@@ -13,7 +14,6 @@ TARGET_SRC_PATH = src
 # C++ source files included in this build.
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
 CPPSRC += $(TARGET_SRC_PATH)/handshake.cpp
-CPPSRC += $(TARGET_SRC_PATH)/spark_protocol.cpp
 CPPSRC += $(TARGET_SRC_PATH)/events.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_protocol_functions.cpp
 CPPSRC += $(TARGET_SRC_PATH)/communication_dynalib.cpp
@@ -29,13 +29,17 @@ CPPSRC += $(TARGET_SRC_PATH)/chunked_transfer.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_channel.cpp
 CPPSRC += $(TARGET_SRC_PATH)/publisher.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol_defs.cpp
+CPPSRC += $(TARGET_SRC_PATH)/protocol_util.cpp
 CPPSRC += $(TARGET_SRC_PATH)/mbedtls_communication.cpp
 CPPSRC += $(TARGET_SRC_PATH)/communication_diagnostic.cpp
+CPPSRC += $(TARGET_SRC_PATH)/variables.cpp
+CPPSRC += $(TARGET_SRC_PATH)/coap_defs.cpp
+CPPSRC += $(TARGET_SRC_PATH)/coap_message_encoder.cpp
+CPPSRC += $(TARGET_SRC_PATH)/coap_message_decoder.cpp
+CPPSRC += $(TARGET_SRC_PATH)/firmware_update.cpp
 
 # ASM source files included in this build.
 ASRC +=
-
-CPPFLAGS += -std=gnu++11
 
 ifeq ($(PLATFORM_ID),6)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
@@ -43,6 +47,14 @@ endif
 
 ifeq ($(PLATFORM_ID),8)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
+endif
+
+ifneq (,$(filter $(PLATFORM_ID), 13 23 25 26))
+ifneq ($(DEBUG_BUILD),y)
+ifneq ($(HYBRID_BUILD),y)
+CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
+endif
+endif
 endif
 
 LOG_MODULE_CATEGORY = comm

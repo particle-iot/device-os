@@ -64,3 +64,9 @@ uint64_t hal_timer_millis(void* reserved)
 {
     return GetSystem1MsTick64();
 }
+
+uint64_t hal_timer_micros(void* reserved)
+{
+    // FIXME:
+    return HAL_Timer_Get_Micro_Seconds();
+}

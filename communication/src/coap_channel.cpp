@@ -26,6 +26,14 @@ namespace particle { namespace protocol {
 
 uint16_t CoAPMessage::message_count = 0;
 
+bool is_ack_or_reset(const uint8_t* buf, size_t len)
+{
+	if (len<1)
+		return false;
+	CoAPType::Enum type = CoAP::type(buf);
+	return type==CoAPType::ACK || type==CoAPType::RESET;
+}
+
 ProtocolError CoAPMessageStore::send_message(CoAPMessage* msg, Channel& channel)
 {
 	Message m((uint8_t*)msg->get_data(), msg->get_data_length(), msg->get_data_length());
@@ -48,10 +56,11 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 
 void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 {
-	g_unacknowledgedMessageCounter++;
 	msg.notify_timeout();
-	if (msg.is_request())
+	if (msg.is_request()) {
+		g_unacknowledgedMessageCounter++;
 		channel.command(MessageChannel::CLOSE);
+	}
 }
 
 /**
@@ -95,11 +104,18 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
 		// confirmable message, create a CoAPMessage for this
 		CoAPMessage* coapmsg = CoAPMessage::create(msg);
 		if (coapmsg==nullptr)
+		{
 			return INSUFFICIENT_STORAGE;
+		}
 		if (coapType==CoAPType::CON)
+		{
+			coapmsg->set_send_time(time);
 			coapmsg->prepare_retransmit(time);
+		}
 		else
+		{
 			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+		}
 		add(*coapmsg);
 	}
 	return NO_ERROR;
@@ -115,11 +131,17 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 	if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
 	{
 		message_id_t id = msg.get_id();
+		CoAPMessage* coap_msg = from_id(id);
+		if (coap_msg) {
+			g_coapRoundTripMSec = time - coap_msg->get_send_time();
+		}
 		if (msgtype==CoAPType::RESET) {
-			CoAPMessage* msg = from_id(id);
-			if (msg) {
-				msg->notify_delivered_nak();
+			if (coap_msg) {
+				coap_msg->notify_delivered_nak();
 			}
+			// a RESET indicates that the session is invalid.
+			// Currently the device never sends a RESET, but if it were to do that
+			// then we should track which direction we are sending
 			channel.command(Channel::DISCARD_SESSION, nullptr);
 		}
 		DEBUG("recieved ACK for message id=%x", id);
@@ -157,6 +179,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 
 bool CoAPMessageStore::has_unacknowledged_requests() const
 {
+	// TODO: Use a message counter
 	for (const CoAPMessage* msg = head; msg != nullptr; msg = msg->get_next()) {
 		if (is_confirmable((uint8_t*)msg->get_data()))
 			return true;

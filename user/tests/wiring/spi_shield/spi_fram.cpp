@@ -340,7 +340,7 @@ static void SPI_Test4_Prepare_SPI() {
     pinMode(MISO, AF_OUTPUT_DRAIN);
     pinMode(MOSI, AF_OUTPUT_DRAIN);
 
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     pin_t gpio_pin = PIN_MAP[MISO].gpio_pin;
     GPIO_TypeDef *gpio_port = PIN_MAP[MISO].gpio_peripheral;
 

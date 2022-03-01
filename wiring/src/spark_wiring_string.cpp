@@ -654,10 +654,7 @@ String String::substring(unsigned int left, unsigned int right) const
 	String out;
 	if (left > len) return out;
 	if (right > len) right = len;
-	char temp = buffer[right];  // save the replaced character
-	buffer[right] = '\0';
-	out = buffer + left;  // pointer arithmetic
-	buffer[right] = temp;  //restore character
+	out.copy(&buffer[left], right - left);
 	return out;
 }
 
@@ -729,9 +726,9 @@ String& String::remove(unsigned int index, unsigned int count){
 	if (index + count > len) { count = len - index; }
 	char *writeTo = buffer + index;
 	len = len - count;
-	strncpy(writeTo, buffer + index + count,len - index);
+	memmove(writeTo, buffer + index + count,len - index);
 	buffer[len] = 0;
-        return *this;
+	return *this;
 }
 
 String& String::toLowerCase(void)
@@ -833,9 +830,3 @@ String String::format(const char* fmt, ...)
     }
     return result;
 }
-
-std::ostream& operator << ( std::ostream& os, const String& value ) {
-    os << '"' << value.c_str() << '"';
-    return os;
-}
-

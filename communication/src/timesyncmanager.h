@@ -35,7 +35,7 @@ public:
     }
 
     template <typename Callback>
-    bool handle_time_response(time_t tm, system_tick_t mil, Callback set_time) {
+    bool handle_time_response(uint32_t tm, system_tick_t mil, Callback set_time) {
         LOG(INFO, "Received TIME response: %lu", (unsigned long)tm);
         set_time(tm, 0, NULL);
         expectingResponse_ = false;

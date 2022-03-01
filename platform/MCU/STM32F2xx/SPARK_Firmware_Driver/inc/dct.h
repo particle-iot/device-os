@@ -30,6 +30,7 @@ extern "C" {
 #include "hw_config.h"  // for button_config_t
 #include "rgbled_hal_impl.h" // for led_config_t
 #include <stdio.h>
+#include "power_hal.h"
 
 #define MAX_MODULES_SLOT    5 //Max modules
 #define FAC_RESET_SLOT      0 //Factory reset module index
@@ -65,6 +66,11 @@ STATIC_ASSERT(static_ip_config_size, sizeof(static_ip_config_t)==24);
 
 #define DCT_SERVER_ADDRESS_SIZE  (128)
 
+typedef enum Feature_Flag {
+    FEATURE_FLAG_RESET_INFO = 0x01, // HAL_Feature::FEATURE_RESET_INFO
+    FEATURE_FLAG_LED_OVERRIDDEN = 0x02,
+} Feature_Flag;
+
 /**
  * Custom extensions to the DCT data.
  */
@@ -74,7 +80,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t device_private_key[1216];   // sufficient for 2048 bits
     uint8_t device_public_key[384];     // sufficient for 2048 bits
     static_ip_config_t  ip_config;
-    uint8_t unused[96];
+    uint8_t unused[95];                 //
+    uint8_t ota_update_flag;            // should be 0xA5 to trigger an update from data stored in the update region
     uint32_t feature_flags[1];          // Configurable feature flags (see HAL_Feature_Set()). Default uninitialized value is 0xffffffff
     uint8_t country_code[4];            // WICED country code. Stored as bit-endian format: CH1/CH2/0/rev (max 255)
     uint8_t claim_code[63];             // claim code. no terminating null.
@@ -100,7 +107,10 @@ typedef struct __attribute__((packed)) application_dct {
     led_config_t led_mirror[4];          // LED mirroring configuration, to be used by bootloader
     uint8_t led_theme[64];               // LED signaling theme
     eap_config_t eap_config;             // WLAN EAP settings
-    uint8_t reserved2[272];
+    uint8_t device_secret[15];           // Device secret data (aka "mobile secret")
+    hal_power_config power_config;       // Power management configuration
+    uint32_t ext_low_speed_clock_disable;// Disable external low speed clock
+    uint8_t reserved2[221];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -111,6 +121,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_SERVER_PUBLIC_KEY_OFFSET (offsetof(application_dct_t, server_public_key))
 #define DCT_SERVER_ADDRESS_OFFSET ((DCT_SERVER_PUBLIC_KEY_OFFSET)+384)
 #define DCT_IP_CONFIG_OFFSET (offsetof(application_dct_t, ip_config))
+#define DCT_OTA_UPDATE_FLAG_OFFSET (offsetof(application_dct_t, ota_update_flag))
 #define DCT_FEATURE_FLAGS_OFFSET (offsetof(application_dct_t, feature_flags))
 #define DCT_COUNTRY_CODE_OFFSET (offsetof(application_dct_t, country_code))
 #define DCT_CLAIM_CODE_OFFSET (offsetof(application_dct_t, claim_code))
@@ -132,12 +143,16 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_MIRROR_OFFSET (offsetof(application_dct_t, led_mirror))
 #define DCT_LED_THEME_OFFSET (offsetof(application_dct_t, led_theme))
 #define DCT_EAP_CONFIG_OFFSET (offsetof(application_dct_t, eap_config))
+#define DCT_DEVICE_SECRET_OFFSET (offsetof(application_dct_t, device_secret))
+#define DCT_POWER_CONFIG_OFFSET (offsetof(application_dct_t, power_config))
+#define DCT_EXT_LOW_SPEED_CLOCK_DISABLE_OFFSET (offsetof(application_dct_t, ext_low_speed_clock_disable))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
 #define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::device_public_key))
 #define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::server_public_key))
 #define DCT_IP_CONFIG_SIZE (sizeof(application_dct_t::ip_config))
+#define DCT_OTA_UPDATE_FLAG_SIZE  (sizeof(application_dct_t::ota_update_flag))
 #define DCT_FEATURE_FLAGS_SIZE  (sizeof(application_dct_t::feature_flags))
 #define DCT_COUNTRY_CODE_SIZE  (sizeof(application_dct_t::country_code))
 #define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
@@ -159,6 +174,9 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_MIRROR_SIZE (sizeof(application_dct_t::led_mirror))
 #define DCT_LED_THEME_SIZE (sizeof(application_dct_t::led_theme))
 #define DCT_EAP_CONFIG_SIZE (sizeof(application_dct_t::eap_config))
+#define DCT_DEVICE_SECRET_SIZE (sizeof(application_dct_t::device_secret))
+#define DCT_POWER_CONFIG_SIZE (sizeof(application_dct_t::power_config))
+#define DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SIZE (sizeof(application_dct_t::ext_low_speed_clock_disable))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -171,6 +189,7 @@ STATIC_ASSERT_DCT_OFFSET(version, 32);
 STATIC_ASSERT_DCT_OFFSET(device_private_key, 34);
 STATIC_ASSERT_DCT_OFFSET(device_public_key, 1250 /*34+1216*/);
 STATIC_ASSERT_DCT_OFFSET(ip_config, 1634 /* 1250 + 384 */);
+STATIC_ASSERT_DCT_OFFSET(ota_update_flag, 1753);
 STATIC_ASSERT_DCT_OFFSET(feature_flags, 1754 /* 1634 + 120 */);
 STATIC_ASSERT_DCT_OFFSET(country_code, 1758 /* 1754 + 4 */);
 STATIC_ASSERT_DCT_OFFSET(claim_code, 1762 /* 1758 + 4 */);
@@ -196,8 +215,11 @@ STATIC_ASSERT_DCT_OFFSET(mode_button_mirror, 3631 /* 3630 + 1 */);
 STATIC_ASSERT_DCT_OFFSET(led_mirror, 3663 /* 3631 + 32 */);
 STATIC_ASSERT_DCT_OFFSET(led_theme, 3759 /* 3663 + 24 * 4 */);
 STATIC_ASSERT_DCT_OFFSET(eap_config, 3823 /* 3759 + 64 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 8119 /* 3823 + (196 + 4*1024 + 4) */);
-STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8119 + 272 */);
+STATIC_ASSERT_DCT_OFFSET(device_secret, 8119 /* 3823 + (196 + 4*1024 + 4) */);
+STATIC_ASSERT_DCT_OFFSET(power_config, 8134 /* 8119 + 15 */);
+STATIC_ASSERT_DCT_OFFSET(ext_low_speed_clock_disable, 8166 /* 8134 + 32 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 8170 /* 8166 + 4 */);
+STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8134 + 225 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
 STATIC_ASSERT_FLAGS_OFFSET(NVMEM_SPARK_Reset_SysFlag, 6);
@@ -212,6 +234,12 @@ STATIC_ASSERT_FLAGS_OFFSET(FeaturesEnabled_SysFlag, 19);
 STATIC_ASSERT_FLAGS_OFFSET(RCC_CSR_SysFlag, 20);
 STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
 
+#define DCT_OTA_UPDATE_FLAG_SET (0xA5)
+#define DCT_OTA_UPDATE_FLAG_CLEAR (0XFF)
+
+#define DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SET (0xFA17D15E)
+#define DCT_EXT_LOW_SPEED_CLOCK_DISABLE_CLEAR (0xFFFFFFFF)
+
 // Note: This function is deprecated, use dct_read_app_data_copy() or dct_read_app_data_lock() instead
 const void* dct_read_app_data(uint32_t offset);
 
@@ -220,6 +248,8 @@ const void* dct_read_app_data_lock(uint32_t offset);
 int dct_read_app_data_unlock(uint32_t offset);
 
 int dct_write_app_data( const void* data, uint32_t offset, uint32_t size );
+
+void dct_reload_functions();
 
 
 #ifdef	__cplusplus

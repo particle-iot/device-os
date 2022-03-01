@@ -7,21 +7,21 @@
 #include "core_hal.h"
 
 
-extern char link_heap_start;
+extern uintptr_t link_heap_start;
 
 /**
  * Locations of static memory regions from linker.
  */
-extern char link_global_data_initial_values;
-extern char link_global_data_start;
-extern char link_global_data_end;
-#define link_global_data_size (&link_global_data_end - &link_global_data_start)
+extern uintptr_t link_global_data_initial_values;
+extern uintptr_t link_global_data_start;
+extern uintptr_t link_global_data_end;
+#define link_global_data_size ((uintptr_t)&link_global_data_end - (uintptr_t)&link_global_data_start)
 
-extern char link_bss_location;
-extern char link_bss_end;
-#define link_bss_size (&link_bss_end - &link_bss_location)
+extern uintptr_t link_bss_location;
+extern uintptr_t link_bss_end;
+#define link_bss_size ((uintptr_t)&link_bss_end - (uintptr_t)&link_bss_location)
 
-extern char link_end_of_static_ram;
+extern uintptr_t link_end_of_static_ram;
 
 
 /**
@@ -58,8 +58,7 @@ void module_user_init()
     module_user_init_hook();
 
     // invoke constructors
-    int ctor_num;
-    for (ctor_num=0; ctor_num < link_constructors_size/sizeof(constructor_ptr_t); ctor_num++ )
+    for (size_t ctor_num=0; ctor_num < link_constructors_size/sizeof(constructor_ptr_t); ctor_num++ )
     {
         link_constructors_location[ctor_num]();
     }

@@ -25,6 +25,10 @@
   ******************************************************************************
  */
 
+#include "hal_platform.h"
+
+#if HAL_USE_SOCKET_HAL_COMPAT
+
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_network.h"
 #include "system_task.h"
@@ -49,24 +53,24 @@ TCPClient::TCPClient(sock_handle_t sock) :
   flush_buffer();
 }
 
+// return 0 on error, 1 on success
 int TCPClient::connect(const char* host, uint16_t port, network_interface_t nif)
 {
     stop();
-      int rv = 0;
-      if(Network.ready())
-      {
+    if (Network.ready())
+    {
         IPAddress ip_addr;
-
-        if((rv = inet_gethostbyname(host, strlen(host), ip_addr, nif, NULL)) == 0)
-        {
-                return connect(ip_addr, port, nif);
-        }
-        else
+        if (inet_gethostbyname(host, strlen(host), ip_addr, nif, NULL) == 0) {
+            return connect(ip_addr, port, nif);
+        } else {
             DEBUG("unable to get IP for hostname");
-      }
-      return rv;
+        }
+    }
+
+    return 0; // error, could not connect
 }
 
+// return 0 on error, 1 on success
 int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
 {
     stop();
@@ -98,6 +102,7 @@ int TCPClient::connect(IPAddress ip, uint16_t port, network_interface_t nif)
             DEBUG("sock %d connected=%d",d_->sock, connected);
             HAL_NET_SetNetWatchDog(ot);
             d_->remoteIP = ip;
+            nif_ = nif;
             if(!connected)
             {
                 stop();
@@ -151,7 +156,7 @@ int TCPClient::available()
         flush_buffer();
     }
 
-    if(Network.from(nif).ready() && isOpen(d_->sock))
+    if(Network.from(nif_).ready() && isOpen(d_->sock))
     {
         // Have room
         if ( d_->total < arraySize(d_->buffer))
@@ -223,7 +228,7 @@ uint8_t TCPClient::connected()
     {
       rv = available(); // Try CC3000
       if (!rv) {        // No more Data and CLOSE_WAIT
-          DEBUG("caling Stop No more Data and in CLOSE_WAIT");
+          DEBUG("calling .stop(), no more data, in CLOSE_WAIT");
           stop();       // Close our side
       }
   }
@@ -232,7 +237,7 @@ uint8_t TCPClient::connected()
 
 uint8_t TCPClient::status()
 {
-  return (isOpen(d_->sock) && Network.from(nif).ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(d_->sock)));
+  return (isOpen(d_->sock) && Network.from(nif_).ready() && (SOCKET_STATUS_ACTIVE == socket_active_status(d_->sock)));
 }
 
 TCPClient::operator bool()
@@ -244,3 +249,17 @@ IPAddress TCPClient::remoteIP()
 {
     return d_->remoteIP;
 }
+
+TCPClient::Data::Data(sock_handle_t sock)
+        : sock(sock),
+          offset(0),
+          total(0) {
+}
+
+TCPClient::Data::~Data() {
+    if (socket_handle_valid(sock)) {
+        socket_close(sock);
+    }
+}
+
+#endif // HAL_USE_SOCKET_HAL_COMPAT

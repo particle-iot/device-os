@@ -22,7 +22,11 @@
 #include <string.h>
 #include <stddef.h>
 
+#include <stdio.h>
+
 #include "service_debug.h"
+#include "interrupts_hal.h"
+#include "mdm_debug.h"
 
 #ifdef putc
 #undef putc
@@ -48,6 +52,7 @@ public:
         _a = b ? NULL : n ? new T[n + 1] : NULL;
         _r = 0;
         _w = 0;
+        _o = 0;
         _b = b ? b : _a;
         _s = n + 1;
     }
@@ -66,18 +71,37 @@ public:
     void dump(void)
     {
         int o = _r;
-        int MAX = size();
-        char temp1[MAX*3];
-        char temp2[4];
-        sprintf(temp1,"pipe: %d/%d ", size(), _s);
+        char temp1[1024];
+        char temp2[10];
+        sprintf(temp1, "pipe: %d/%d ", size(), _s);
         while (o != _w) {
+            // char ch = *buf++;
             T t = _b[o];
-            sprintf(temp2, "%0*X", sizeof(T)*2, t);
-            strcat(temp1, temp2);
+            if (((char)t > 0x1F) && ((char)t < 0x7F)) { // is printable
+                if      ((char)t == '%')  strcat(temp1, "%%");
+                else if ((char)t == '"')  strcat(temp1, "\\\"");
+                else if ((char)t == '\\') strcat(temp1, "\\\\");
+                else {
+                    sprintf(temp2, "%c", t);
+                    strcat(temp1, temp2);
+                }
+            } else {
+                if      ((char)t == '\a') strcat(temp1, "\\a"); // BEL (0x07)
+                else if ((char)t == '\b') strcat(temp1, "\\b"); // Backspace (0x08)
+                else if ((char)t == '\t') strcat(temp1, "\\t"); // Horizontal Tab (0x09)
+                else if ((char)t == '\n') strcat(temp1, "\\n"); // Linefeed (0x0A)
+                else if ((char)t == '\v') strcat(temp1, "\\v"); // Vertical Tab (0x0B)
+                else if ((char)t == '\f') strcat(temp1, "\\f"); // Formfeed (0x0C)
+                else if ((char)t == '\r') strcat(temp1, "\\r"); // Carriage Return (0x0D)
+                else {
+                    sprintf(temp2, "\\x%02x", (unsigned char)t);
+                    strcat(temp1, temp2);
+                }
+            }
             o = _inc(o);
         }
-        strcat(temp1,"\n");
-        DEBUG_D(temp1);
+        strcat(temp1, "\r\n");
+        MDM_PRINTF("%s", temp1);
     }
 
     // writing thread/context API
@@ -249,6 +273,17 @@ public:
     void done(void)
     {
         _r = _o;
+    }
+
+    /** reset all indexes to empty the pipe
+    */
+    void reset()
+    {
+        auto prev = HAL_disable_irq();
+        _r = 0;
+        _w = 0;
+        _o = 0;
+        HAL_enable_irq(prev);
     }
 
 private:

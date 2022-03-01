@@ -184,6 +184,16 @@ void* malloc_heap_start()
     return ucHeap;
 }
 
+void malloc_set_heap_end(void* addr)
+{
+    ucHeapEnd = addr;
+}
+
+void* malloc_heap_end()
+{
+    return ucHeapEnd;
+}
+
 size_t pvPortLargestFreeBlock()
 {
 	size_t largest = 0;

@@ -1,8 +1,14 @@
 CXX ?= g++
-CXXFLAGS ?= -g -Wall -W -Winline -ansi -std=c++11
+CXXFLAGS ?= -g -Wall -W -Winline
 CXXFLAGS += -I../hal/shared -I../services/inc -Ilib/tropicssl/include -Isrc -Itests/UnitTest++/src
 RM = rm
 CXXFLAGS += -DPLATFORM_ID=3
+
+COMMON_BUILD = ../build
+
+# Set C++ standard version
+include $(COMMON_BUILD)/lang-std.mk
+CXXFLAGS += $(CPPFLAGS)
 
 .SUFFIXES: .o .cpp
 
@@ -18,10 +24,10 @@ ssllib      = $(ssllibdir)/libtropicssl.a
 
 objects = \
         src/coap.o \
+        src/core_protocol.o \
         src/dsakeygen.o \
         src/events.o \
         src/handshake.o \
-        src/spark_protocol.o \
         src/spark_protocol_functions.o
 
 testobjects = tests/ConstructorFixture.o \
@@ -30,7 +36,7 @@ testobjects = tests/ConstructorFixture.o \
               tests/TestCoAP.o \
               tests/TestQueue.o \
               tests/TestStateMachine.o \
-              tests/TestSparkProtocol.o \
+              tests/TestCoreProtocol.o \
               tests/TestDescriptor.o \
               tests/TestUserFunctions.o \
               tests/TestEvents.o

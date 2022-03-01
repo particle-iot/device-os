@@ -7,11 +7,12 @@
 #include "filesystem.h"
 #include "bytes2hexbuf.h"
 
-void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
     info->platform_id = PLATFORM_ID;
     info->module_count = 0;
     info->modules = NULL;
+    return 0;
 }
 
 uint32_t HAL_OTA_FlashAddress()
@@ -46,19 +47,22 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return 0;
 }
 
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved)
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
 {
   return 0;
 }
 
- hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
+int HAL_FLASH_End(void* reserved)
 {
 	 fclose(output_file);
 	 output_file = NULL;
      return HAL_UPDATE_APPLIED;
 }
 
-
+int HAL_FLASH_ApplyPendingUpdate(bool dryRun, void* reserved)
+{
+    return SYSTEM_ERROR_UNKNOWN;
+}
 
 /**
  * Set the claim code for this device.
@@ -117,7 +121,7 @@ void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
         *p = 0;
         break;
       }
-      // else fall through to default
+      // else fall through
 
     default:
       server_addr->addr_type = INVALID_INTERNET_ADDRESS;
@@ -144,7 +148,7 @@ void HAL_FLASH_Read_ServerAddress(ServerAddress* server_addr)
 void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
 {
     int offset = (udp) ? SERVER_ADDRESS_OFFSET_EC : SERVER_ADDRESS_OFFSET;
-    memcpy(&deviceConfig.server_key+offset, buf, SERVER_ADDRESS_SIZE);
+    memcpy(deviceConfig.server_key+offset, buf, SERVER_ADDRESS_SIZE);
 }
 
 bool HAL_OTA_Flashed_GetStatus(void)
@@ -189,3 +193,6 @@ extern "C" void random_seed_from_cloud(unsigned int value)
 {
 }
 
+void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
+{
+}

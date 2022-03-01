@@ -26,66 +26,70 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spi_hal.h"
 
-void HAL_SPI_Init(HAL_SPI_Interface spi)
+void hal_spi_init(hal_spi_interface_t spi)
 {
 }
 
-void HAL_SPI_Begin(HAL_SPI_Interface spi, uint16_t pin)
+void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin)
 {
 }
 
-void HAL_SPI_Begin_Ext(HAL_SPI_Interface spi, SPI_Mode mode, uint16_t pin, void* reserved)
+void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, void* reserved)
 {
 }
 
-void HAL_SPI_End(HAL_SPI_Interface spi)
+void hal_spi_end(hal_spi_interface_t spi)
 {
 }
 
-void HAL_SPI_Set_Bit_Order(HAL_SPI_Interface spi, uint8_t order)
+void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order)
 {
 }
 
-void HAL_SPI_Set_Data_Mode(HAL_SPI_Interface spi, uint8_t mode)
+void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode)
 {
 }
 
-void HAL_SPI_Set_Clock_Divider(HAL_SPI_Interface spi, uint8_t rate)
+void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate)
 {
 }
 
-uint16_t HAL_SPI_Send_Receive_Data(HAL_SPI_Interface spi, uint16_t data)
+uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data)
 {
     return 0;
 }
 
-bool HAL_SPI_Is_Enabled(HAL_SPI_Interface spi)
+bool hal_spi_is_enabled(hal_spi_interface_t spi)
 {
     return false;
 }
 
-void HAL_SPI_DMA_Transfer(HAL_SPI_Interface spi, void* tx_buffer, void* rx_buffer, uint32_t length, HAL_SPI_DMA_UserCallback userCallback)
+void hal_spi_transfer_dma(hal_spi_interface_t spi, void* tx_buffer, void* rx_buffer, uint32_t length, hal_spi_dma_user_callback userCallback)
 {
 }
 
-void HAL_SPI_Info(HAL_SPI_Interface spi, hal_spi_info_t* info, void* reserved)
+void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved)
 {
 }
 
-void HAL_SPI_Set_Callback_On_Select(HAL_SPI_Interface spi, HAL_SPI_Select_UserCallback cb, void* reserved)
+void hal_spi_set_callback_on_selected(hal_spi_interface_t spi, hal_spi_select_user_callback cb, void* reserved)
 {
 }
 
-void HAL_SPI_DMA_Transfer_Cancel(HAL_SPI_Interface spi)
+void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi)
 {
 }
 
-int32_t HAL_SPI_DMA_Transfer_Status(HAL_SPI_Interface spi, HAL_SPI_TransferStatus* st)
+int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_status_t* st)
 {
     return 0;
 }
 
-int32_t HAL_SPI_Set_Settings(HAL_SPI_Interface spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved)
+int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8_t clockdiv, uint8_t order, uint8_t mode, void* reserved)
 {
   return 0;
+}
+
+int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
+    return 0;
 }

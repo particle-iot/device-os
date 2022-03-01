@@ -21,36 +21,25 @@
 #define	SYSTEM_CLOUD_INTERNAL_H
 
 #include "system_cloud.h"
-
+#include "ota_flash_hal.h"
+#include "socket_hal.h"
 #include "spark_wiring_diagnostics.h"
+#include "spark_wiring_cloud.h"
+#include "atomic_flag_mutex.h"
 
-/**
- * Functions for managing the cloud connection, performing cloud operations
- * and system upgrades.
- */
-
-int Internet_Test(void);
-
-void spark_cloud_udp_port_set(uint16_t port);
-int spark_cloud_socket_connect(void);
-int spark_cloud_socket_disconnect(bool graceful=true);
+void Spark_Signal(bool on, unsigned, void*);
+void Spark_SetTime(unsigned long dateTime);
+int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved);
+int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved);
 
 void Spark_Protocol_Init(void);
 int Spark_Handshake(bool presence_announce);
 bool Spark_Communication_Loop(void);
-void Multicast_Presence_Announcement(void);
-void Spark_Signal(bool on, unsigned, void*);
-void Spark_SetTime(unsigned long dateTime);
 void Spark_Process_Events();
-void Spark_Sleep();
-void Spark_Wake();
-void Spark_Abort();
 
-void system_set_time(time_t time, unsigned param, void* reserved);
+void system_set_time(uint32_t time, unsigned param, void* reserved);
 
 String bytes2hex(const uint8_t* buf, unsigned len);
-
-uint8_t spark_cloud_socket_closed();
 
 bool spark_function_internal(const cloud_function_descriptor* desc, void* reserved);
 int call_raw_user_function(void* data, const char* param, void* reserved);
@@ -64,6 +53,7 @@ struct User_Var_Lookup_Table_t
     char userVarKey[USER_VAR_KEY_LENGTH+1];
 
     const void* (*update)(const char* name, Spark_Data_TypeDef varType, const void* var, void* reserved);
+    int (*copy)(const void* var, void** data, size_t* size);
 };
 
 
@@ -79,14 +69,6 @@ User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey, const void* 
 User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey, const cloud_function_descriptor* desc);
 
 extern ProtocolFacade* sp;
-
-
-/**
- * regular async update to check that the cloud has been serviced recently.
- * After 15 seconds of inactivity, the LED status is changed to
- * @return
- */
-bool system_cloud_active();
 
 namespace particle {
 
@@ -145,13 +127,112 @@ private:
     // the networking service thread
     AtomicEnumDiagnosticData<Status> status_;
     AtomicEnumDiagnosticData<cloud_disconnect_reason> disconnReason_;
-    SimpleIntegerDiagnosticData disconnCount_;
-    SimpleIntegerDiagnosticData connCount_;
+    SimpleUnsignedIntegerDiagnosticData disconnCount_;
+    SimpleUnsignedIntegerDiagnosticData connCount_;
     SimpleIntegerDiagnosticData lastError_;
 };
 
+class CloudConnectionSettings {
+public:
+    // Default disconnection settings
+    static const bool DEFAULT_DISCONNECT_GRACEFULLY = false;
+    static const unsigned DEFAULT_DISCONNECT_TIMEOUT = 30000;
+    static const bool DEFAULT_DISCONNECT_CLEAR_SESSION = false;
+
+    CloudConnectionSettings() :
+            defaultDisconnectTimeout_(DEFAULT_DISCONNECT_TIMEOUT),
+            defaultDisconnectGracefully_(DEFAULT_DISCONNECT_GRACEFULLY),
+            defaultDisconnectClearSession_(DEFAULT_DISCONNECT_CLEAR_SESSION) {
+    }
+
+    void setDefaultDisconnectOptions(const CloudDisconnectOptions& options) {
+        if (options.isGracefulSet()) {
+            defaultDisconnectGracefully_ = options.graceful();
+        }
+        if (options.isTimeoutSet()) {
+            defaultDisconnectTimeout_ = options.timeout();
+        }
+        if (options.isClearSessionSet()) {
+            defaultDisconnectClearSession_ = options.clearSession();
+        }
+    }
+
+    bool defaultDisconnectGracefully() const {
+        return defaultDisconnectGracefully_;
+    }
+
+    void setPendingDisconnectOptions(CloudDisconnectOptions options) {
+        const std::lock_guard<SimpleAtomicFlagMutex> lock(mutex_);
+        pendingDisconnectOptions_ = std::move(options);
+    }
+
+    CloudDisconnectOptions takePendingDisconnectOptions() {
+        CloudDisconnectOptions pending;
+        {
+            std::lock_guard<SimpleAtomicFlagMutex> lock(mutex_);
+            using std::swap;
+            swap(pending, pendingDisconnectOptions_);
+        }
+        CloudDisconnectOptions result;
+        if (pending.isGracefulSet()) {
+            result.graceful(pending.graceful());
+        } else {
+            result.graceful(defaultDisconnectGracefully_);
+        }
+        if (pending.isTimeoutSet()) {
+            result.timeout(pending.timeout());
+        } else {
+            result.timeout(defaultDisconnectTimeout_);
+        }
+        if (pending.isClearSessionSet()) {
+            result.clearSession(pending.clearSession());
+        } else {
+            result.clearSession(defaultDisconnectClearSession_);
+        }
+        return result;
+    }
+
+    static CloudConnectionSettings* instance();
+
+private:
+    SimpleAtomicFlagMutex mutex_;
+    // Default disconnection options can only be set in the context of the system thread.
+    // defaultDisconnectGracefully_ may also be accessed from an ISR
+    unsigned defaultDisconnectTimeout_;
+    volatile bool defaultDisconnectGracefully_;
+    bool defaultDisconnectClearSession_;
+    // Pending disconnection options are set atomically and guarded by a spinlock
+    CloudDisconnectOptions pendingDisconnectOptions_;
+};
+
+// Use this function instead of Particle.publish() in the system code
+inline bool publishEvent(const char* event, const char* data = nullptr, unsigned flags = 0) {
+    return spark_send_event(event, data, DEFAULT_CLOUD_EVENT_TTL, flags | PUBLISH_EVENT_FLAG_PRIVATE, nullptr);
+}
+
+// Sends application DESCRIBE and subscriptions
+int sendApplicationDescription();
+
+// Subscribes to system cloud events
+void registerSystemSubscriptions();
+
+// Invalidates the cached session data
+void clearSessionData();
+
 } // namespace particle
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+size_t system_interpolate_cloud_server_hostname(const char* var, size_t var_len, char* buf, size_t buf_len);
+
+void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
+                const char* event_name, const char* event_data, void* reserved);
+
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif	/* SYSTEM_CLOUD_INTERNAL_H */
-

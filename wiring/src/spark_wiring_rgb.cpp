@@ -50,14 +50,14 @@ void RGBClass::color(int red, int green, int blue)
         return;
     }
     LED_SetSignalingColor(red << 16 | green << 8 | blue);
-    LED_On(LED_RGB);
+    LED_On(PARTICLE_LED_RGB);
 }
 
 void RGBClass::brightness(uint8_t brightness, bool update)
 {
     LED_SetBrightness(brightness);
     if (controlled() && update) {
-        LED_On(LED_RGB);
+        LED_On(PARTICLE_LED_RGB);
     }
 }
 
@@ -87,16 +87,16 @@ void RGBClass::onChange(raw_rgb_change_handler_t* handler)
 
 void RGBClass::mirrorTo(pin_t rpin, pin_t gpin, pin_t bpin, bool invert, bool bootloader)
 {
-    HAL_Core_Led_Mirror_Pin(LED_RED + LED_MIRROR_OFFSET, rpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
-    HAL_Core_Led_Mirror_Pin(LED_GREEN + LED_MIRROR_OFFSET, gpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
-    HAL_Core_Led_Mirror_Pin(LED_BLUE + LED_MIRROR_OFFSET, bpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+    HAL_Core_Led_Mirror_Pin(PARTICLE_LED_RED + LED_MIRROR_OFFSET, rpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+    HAL_Core_Led_Mirror_Pin(PARTICLE_LED_GREEN + LED_MIRROR_OFFSET, gpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
+    HAL_Core_Led_Mirror_Pin(PARTICLE_LED_BLUE + LED_MIRROR_OFFSET, bpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
 }
 
 void RGBClass::mirrorDisable(bool bootloader)
 {
-    HAL_Core_Led_Mirror_Pin_Disable(LED_RED + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
-    HAL_Core_Led_Mirror_Pin_Disable(LED_GREEN + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
-    HAL_Core_Led_Mirror_Pin_Disable(LED_BLUE + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
+    HAL_Core_Led_Mirror_Pin_Disable(PARTICLE_LED_RED + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
+    HAL_Core_Led_Mirror_Pin_Disable(PARTICLE_LED_GREEN + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
+    HAL_Core_Led_Mirror_Pin_Disable(PARTICLE_LED_BLUE + LED_MIRROR_OFFSET, (uint8_t)bootloader, nullptr);
 }
 
 void RGBClass::ledChangeHandler(void* data, uint8_t r, uint8_t g, uint8_t b, void* reserved)

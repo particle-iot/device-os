@@ -27,15 +27,6 @@ ifdef SPARK_TEST_DRIVER
 CFLAGS += -DSPARK_TEST_DRIVER=$(SPARK_TEST_DRIVER)
 endif
 
-ifeq ("$(SPARK_CLOUD)","n")
-CFLAGS += -DSPARK_NO_CLOUD
-endif
-
-ifeq ("$(SPARK_WIFI)","n")
-CFLAGS += -DPARTICLE_NO_NETWORK
-endif
-
-
 # disable COMPILE_LTO when JTAG is enabled since it obfuscates the symbol mapping
 # breaking step debugging
 ifeq ($(USE_SWD),y)
@@ -49,6 +40,7 @@ endif
 WARNINGS_AS_ERRORS ?= y
 ifeq ($(WARNINGS_AS_ERRORS),y)
 CFLAGS += -Werror
+CFLAGS += -Wextra
 endif
 
 # add include directories
@@ -56,9 +48,19 @@ CFLAGS += $(patsubst %,-I%,$(INCLUDE_DIRS)) -I.
 # Generate dependency files automatically.
 CFLAGS += -MD -MP -MF $@.d
 # Removed "-fdata-sections" as firmware doesn't work as expected
-CFLAGS += -ffunction-sections -fdata-sections -Wall -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0
+CFLAGS += -ffunction-sections -fdata-sections -Wall -Wno-switch -fmessage-length=0
+CFLAGS += -Wno-error=deprecated-declarations -Wno-error=unused-parameter
+# accepts any comment that contains something that matches (case insensitively) "falls?[ \t-]*thr(ough|u)" regular expression
+# FIXME: we are using GCC 4.9 on CI for GCC platform which does not support implicit-fallthrough options and others
+ifneq ($(PLATFORM_ID),3)
+CFLAGS += -Wimplicit-fallthrough=2
+CFLAGS += -Wno-expansion-to-defined -Wno-cast-function-type
+endif
+CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wno-error=type-limits
 CFLAGS += -fno-strict-aliasing
 CFLAGS += -DSPARK=1 -DPARTICLE=1
+CFLAGS += -Werror=return-type
 
 CFLAGS += -Wundef
 
@@ -69,7 +71,7 @@ ifdef START_YMODEM_FLASHER_SERIAL_SPEED
 CFLAGS += -DSTART_YMODEM_FLASHER_SERIAL_SPEED=$(START_YMODEM_FLASHER_SERIAL_SPEED)
 endif
 
-CONLYFLAGS += -Wno-pointer-sign -std=gnu99
+CONLYFLAGS += -Wno-pointer-sign
 
 LDFLAGS += $(LIBS_EXT)
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
@@ -98,6 +100,8 @@ else
 LDFLAGS += $(patsubst %,-l%,$(LIBS))
 endif
 
+LDFLAGS += $(LIBS_EXT_END)
+
 # Assembler flags
 ASFLAGS += -x assembler-with-cpp -fmessage-length=0
 
@@ -108,6 +112,7 @@ endif
 COMPILE_LTO ?= n
 ifeq (y,$(COMPILE_LTO))
 LTO_EXT = -lto
+CFLAGS += -DPARTICLE_COMPILE_LTO
 endif
 
 ifeq ("$(TARGET_TYPE)","a")

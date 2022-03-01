@@ -18,21 +18,26 @@
  */
 
 #include "active_object.h"
-
+#include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "debug.h"
+
+using namespace particle;
 
 #if PLATFORM_THREADING
 
 #include <string.h>
 #include "concurrent_hal.h"
 #include "timer_hal.h"
+#include "rng_hal.h"
 
 void ActiveObjectBase::start_thread()
 {
+    const auto r = os_thread_create(&_thread, "active_object", configuration.priority, run_active_object, this,
+            configuration.stack_size);
+    SPARK_ASSERT(r == 0);
     // prevent the started thread from running until the thread id has been assigned
     // so that calls to isCurrentThread() work correctly
-    set_thread(std::thread(run_active_object, this));
     while (!started) {
         os_thread_yield();
     }
@@ -46,20 +51,28 @@ void ActiveObjectBase::run()
     // std::lock_guard<std::mutex> lck (_start);
     started = true;
 
-    uint32_t last_background_run = 0;
+    // This ensures that rand() is properly seeded in the system thread
+    srand(HAL_RNG_GetRandomNumber());
+
+// FIXME: some other feature flag?
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
     for (;;)
     {
-    	uint32_t now;
-        if (!process())
-		{
-        	configuration.background_task();
-        }
-        else if ((now=HAL_Timer_Get_Milli_Seconds())-last_background_run > configuration.take_wait)
-        {
-        	last_background_run = now;
-        	configuration.background_task();
+        process();
+        configuration.background_task();
+    }
+#else // !HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+    uint32_t last_background_run = 0;
+    for (;;) {
+        uint32_t now;
+        if (!process()) {
+            configuration.background_task();
+        } else if ((now=HAL_Timer_Get_Milli_Seconds())-last_background_run > configuration.take_wait) {
+               last_background_run = now;
+               configuration.background_task();
         }
     }
+#endif // !HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 }
 
 bool ActiveObjectBase::process()
@@ -75,9 +88,10 @@ bool ActiveObjectBase::process()
     return result;
 }
 
-void ActiveObjectBase::run_active_object(ActiveObjectBase* object)
+void ActiveObjectBase::run_active_object(void* data)
 {
-    object->run();
+    const auto that = static_cast<ActiveObjectBase*>(data);
+    that->run();
 }
 
 #endif // PLATFORM_THREADING
@@ -93,15 +107,19 @@ void ISRTaskQueue::enqueue(Task* task) {
         task->next = nullptr;
         lastTask_ = task;
     }
+// FIXME: some other feature flag?
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+    SystemThread.notify();
+#endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 }
 
 bool ISRTaskQueue::process() {
     Task* task = nullptr;
+    if (!firstTask_) {
+        return false;
+    }
     ATOMIC_BLOCK() {
         // Take task object from the queue
-        if (!firstTask_) {
-            return false;
-        }
         task = firstTask_;
         firstTask_ = task->next;
         if (!firstTask_) {

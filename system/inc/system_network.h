@@ -27,30 +27,17 @@
 #include "inet_hal.h"
 #include "wlan_hal.h"
 #include "spark_macros.h"
+#include "system_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef PARTICLE_NO_NETWORK
-#define PARTICLE_NO_NETWORK 0
-#endif
-
-#if PARTICLE_NO_NETWORK
-#undef SPARK_NO_CLOUD
-#define SPARK_NO_CLOUD 1
-#endif
-
-typedef enum network_disconnect_reason {
-    NETWORK_DISCONNECT_REASON_NONE = 0,
-    NETWORK_DISCONNECT_REASON_ERROR = 1, // Disconnected due to an error
-    NETWORK_DISCONNECT_REASON_USER = 2, // Disconnected at the user's request
-    NETWORK_DISCONNECT_REASON_NETWORK_OFF = 3, // Disconnected due to the network shutdown
-    NETWORK_DISCONNECT_REASON_LISTENING = 4, // Disconnected due to the listening mode
-    NETWORK_DISCONNECT_REASON_SLEEP = 5, // Disconnected due to the sleep mode
-    NETWORK_DISCONNECT_REASON_RESET = 6 // Disconnected to recover from cloud connection errors
-} network_disconnect_reason;
-
+typedef enum network_ready_type {
+    NETWORK_READY_TYPE_ANY  = 0x00,
+    NETWORK_READY_TYPE_IPV4 = 0x01,
+    NETWORK_READY_TYPE_IPV6 = 0x02
+} network_ready_type;
 /**
  * network_handle_t used to differentiate between two networks
  * on the same device, e.g. WLAN and AP modes on Photon.
@@ -66,11 +53,15 @@ const network_interface_t NIF_DEFAULT = 0;
 const void* network_config(network_handle_t network, uint32_t param1, void* reserved);
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
+// NOTE: this API may be called from an ISR
 bool network_connecting(network_handle_t network, uint32_t param1, void* reserved);
 void network_disconnect(network_handle_t network, uint32_t reason, void* reserved);
-bool network_ready(network_handle_t network, uint32_t param1, void* reserved);
+bool network_ready(network_handle_t network, uint32_t type, void* reserved);
 void network_on(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 void network_off(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
+bool network_is_on(network_handle_t network, void* reserved);
+bool network_is_off(network_handle_t network, void* reserved);
+int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
 
 #define NETWORK_LISTEN_EXIT (1<<0)
 /**
@@ -84,6 +75,14 @@ void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void
 uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, void* reserved);
 bool network_listening(network_handle_t network, uint32_t param1, void* reserved);
 
+typedef enum {
+    NETWORK_LISTEN_COMMAND_NONE,
+    NETWORK_LISTEN_COMMAND_ENTER,
+    NETWORK_LISTEN_COMMAND_EXIT,
+    NETWORK_LISTEN_COMMAND_CLEAR_CREDENTIALS
+} network_listen_command_t;
+
+int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg);
 
 bool network_has_credentials(network_handle_t network, uint32_t param1, void* reserved);
 
@@ -105,11 +104,13 @@ void network_setup(network_handle_t network, uint32_t flags, void* reserved);
 
 int network_set_hostname(network_handle_t network, uint32_t flags, const char* hostname, void* reserved);
 int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer, size_t buffer_len, void* reserved);
+
+int network_wait_off(network_handle_t network, system_tick_t timeout, void*);
+
 /**
  * Disable automatic listening mode when no credentials are configured.
  */
 const int WIFI_CONNECT_SKIP_LISTEN = 1;
-
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,14 @@
+**/.git
+/ci
+/docs
+/misc
+/scripts
+/build/target
+/third_party/nrf5_sdk/nrf5_sdk/examples
+/third_party/nrf5_sdk/nrf5_sdk/components/802_15_4
+/third_party/nrf5_sdk/nrf5_sdk/components/toolchain/cmsis/dsp
+/third_party/freertos/freertos/FreeRTOS/Demo
+/user/applications/tinker/target
+/.workbench/manifest.json
+/.workbench/intellisense/asom.json
+

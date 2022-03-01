@@ -21,8 +21,9 @@ ASRC +=
 
 CPPSRC += $(call target_files,$(HAL_SRC_ELECTRON_PATH)/modem/,*.cpp)
 
-CSRC += $(addsuffix .c,$(addprefix $(HAL_RTOS_SRC)/,event_groups list queue tasks timers))
-CSRC += $(call target_files,$(HAL_RTOS_PORT)/,*.c)
-# use malloc/free
-CSRC += $(HAL_RTOS_SRC)/portable/MemMang/heap_4_lock.c
+CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/shared/,*.cpp)
 
+CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/util/,*.cpp)
+
+# use malloc/free
+CSRC += $(TARGET_HAL_PATH)/src/portable/FreeRTOS/heap_4_lock.c

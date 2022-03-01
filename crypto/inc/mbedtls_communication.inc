@@ -7,7 +7,7 @@
 #include <string.h>
 #include "mbedtls_util.h"
 
-#if defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS) || PLATFORM_ID == 0
+#if defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS)
 #define MBEDTLS_OVERRIDE_MD_LIST
 
 #include "mbedtls/version.h"

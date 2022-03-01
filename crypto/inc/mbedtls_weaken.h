@@ -89,6 +89,8 @@
 #pragma weak mbedtls_rsa_check_privkey
 #pragma weak mbedtls_rsa_check_pub_priv
 
+#pragma weak mbedtls_to_system_error
+
 #if PLATFORM_ID == 6 || PLATFORM_ID == 8
 // MD4
 #pragma weak mbedtls_md4_init
@@ -150,6 +152,12 @@
 #pragma weak mbedtls_sha512_update
 #pragma weak mbedtls_sha512_finish
 #pragma weak mbedtls_sha512_process
+
+// MD5 with return value
+#pragma weak mbedtls_md5_starts_ret
+#pragma weak mbedtls_md5_update_ret
+#pragma weak mbedtls_md5_finish_ret
+#pragma weak mbedtls_internal_md5_process
 
 #endif
 

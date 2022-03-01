@@ -5,22 +5,45 @@
 
 #if PLATFORM_THREADING
 
+#if PLATFORM_ID != 20
 #define THREAD_STACK_SIZE (5 * 1024)
+#else
+#define THREAD_STACK_SIZE (8 * 1024 * 1024)
+#endif
+
+namespace particle {
+
+namespace {
+
+os_mutex_recursive_t usb_serial_mutex;
 
 void system_thread_idle()
 {
     Spark_Idle_Events(true);
 }
 
+} // namespace
+
 ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idle,
 			100, /* take timeout */
 			0x7FFFFFFF, /* put timeout - wait forever */
 			50, /* queue size */
-			THREAD_STACK_SIZE /* stack size */)); // TODO: Use this value for threads spawned by ActiveObjectBase
+			THREAD_STACK_SIZE /* stack size */));
+
+os_mutex_recursive_t mutex_usb_serial()
+{
+    if (nullptr==usb_serial_mutex) {
+        os_mutex_recursive_create(&usb_serial_mutex);
+    }
+    return usb_serial_mutex;
+}
+
+} // namespace particle
 
 /**
  * Implementation to support gthread's concurrency primitives.
  */
+#if PLATFORM_ID != 20
 namespace std {
 
 #if 0
@@ -53,14 +76,6 @@ namespace std {
     {
         os_condition_variable_notify_all(_M_cond);
     }
-#endif
-
-    mutex& __get_once_mutex() {
-        static mutex __once;
-        return __once;
-    }
-
-    function<void()> __once_functor;
 
     __future_base::_Result_base::_Result_base() = default;
     __future_base::_Result_base::~_Result_base() = default;
@@ -101,6 +116,14 @@ namespace std {
             while (!startup.started) os_thread_yield();
         }
     }
+#endif // 0
+
+    function<void()> __once_functor;
+
+    mutex& __get_once_mutex() {
+        static mutex __once;
+        return __once;
+    }
 
     inline std::unique_lock<std::mutex>*& __get_once_functor_lock_ptr()
     {
@@ -113,29 +136,6 @@ namespace std {
         __get_once_functor_lock_ptr() = __ptr;
     }
 }
+#endif /* PLATFORM_ID != 20 */
 
-static os_mutex_recursive_t usb_serial_mutex;
-
-os_mutex_recursive_t mutex_usb_serial()
-{
-	if (nullptr==usb_serial_mutex) {
-		os_mutex_recursive_create(&usb_serial_mutex);
-	}
-	return usb_serial_mutex;
-}
-
-#endif
-
-
-
-void* system_internal(int item, void* reserved)
-{
-    switch (item) {
-#if PLATFORM_THREADING
-    case 0: return &ApplicationThread;
-    case 1: return &SystemThread;
-    case 2: return mutex_usb_serial();
-#endif
-    }
-    return nullptr;
-}
+#endif // PLATFORM_THREADING

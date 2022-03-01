@@ -1,9 +1,9 @@
-INCLUDE module_user_memory.ld
+INCLUDE platform_ram.ld
 
 MEMORY
 {
-    APP_FLASH (rx) : ORIGIN = user_module_app_flash_origin, LENGTH = user_module_app_flash_length
-    SRAM (rwx) : ORIGIN = user_module_sram_origin, LENGTH = user_module_sram_length
+    APP_FLASH (rx) : ORIGIN = 0x08080000, LENGTH = 128K
+    SRAM (rwx) : ORIGIN = _user_part_static_ram_start, LENGTH = _user_part_static_ram_size
     INCLUDE backup_ram_memory.ld
 }
 

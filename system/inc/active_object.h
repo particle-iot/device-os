@@ -30,6 +30,7 @@
 
 #include "channel.h"
 #include "concurrent_hal.h"
+#include "hal_platform.h"
 
 /**
  * Configuratino data for an active object.
@@ -45,6 +46,10 @@ struct ActiveObjectConfiguration
      * The function to run when there is nothing else to do.
      */
     background_task_t background_task;
+
+    /**
+     * Thread stack size.
+     */
     size_t stack_size;
 
     /**
@@ -63,12 +68,21 @@ struct ActiveObjectConfiguration
      */
     uint16_t queue_size;
 
-public:
-    ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, unsigned put_wait_,
-    			uint16_t queue_size_,
-            size_t stack_size_ =0) : background_task(task), stack_size(stack_size_),
-            take_wait(take_wait_), put_wait(put_wait_), queue_size(queue_size_) {}
+    /**
+     * Thread priority.
+     */
+    os_thread_prio_t priority;
 
+public:
+    ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, unsigned put_wait_, uint16_t queue_size_,
+            size_t stack_size_ = OS_THREAD_STACK_SIZE_DEFAULT, os_thread_prio_t priority = OS_THREAD_PRIORITY_DEFAULT) :
+            background_task(task),
+            stack_size(stack_size_),
+            take_wait(take_wait_),
+            put_wait(put_wait_),
+            queue_size(queue_size_),
+            priority(priority) {
+    }
 };
 
 /**
@@ -245,9 +259,7 @@ protected:
     /**
      * The thread that runs this active object.
      */
-    std::thread _thread;
-
-    std::thread::id _thread_id;
+    os_thread_t _thread;
 
     std::mutex _start;
 
@@ -265,32 +277,30 @@ protected:
     virtual bool take(Item& item)=0;
     virtual bool put(Item& item)=0;
 
-    void set_thread(std::thread&& thread)
-    {
-        this->_thread.swap(thread);
-        _thread_id = _thread.get_id();
-    }
-
     /**
      * Static thread entrypoint to run this active object loop.
      * @param obj
      */
-    static void run_active_object(ActiveObjectBase* obj);
+    static void run_active_object(void* data);
 
     void start_thread();
 
 public:
 
-    ActiveObjectBase(const ActiveObjectConfiguration& config) : configuration(config), started(false) {}
+    ActiveObjectBase(const ActiveObjectConfiguration& config) :
+            configuration(config),
+            _thread(OS_THREAD_INVALID_HANDLE),
+            started(false) {
+    }
 
     bool process();
 
     bool isCurrentThread() {
-        return _thread_id == std::this_thread::get_id();
+        return os_thread_is_current(_thread);
     }
 
     void setCurrentThread() {
-        _thread_id = std::this_thread::get_id();
+        _thread = os_thread_current(nullptr);
     }
 
     bool isStarted() {
@@ -362,9 +372,9 @@ public:
 
 class ActiveObjectQueue : public ActiveObjectBase
 {
-    os_queue_t  queue;
-
 protected:
+
+    os_queue_t  queue;
 
     virtual bool take(Item& result)
     {
@@ -373,7 +383,7 @@ protected:
 
     virtual bool put(Item& item)
     {
-    		return !os_queue_put(queue, &item, configuration.put_wait, nullptr);
+        return !os_queue_put(queue, &item, configuration.put_wait, nullptr);
     }
 
     void createQueue()
@@ -428,6 +438,34 @@ public:
 
     ActiveObjectThreadQueue(const ActiveObjectConfiguration& config) : ActiveObjectQueue(config) {}
 
+// FIXME: some other feature flag?
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+    virtual bool take(Item& result) override
+    {
+        auto r = os_thread_wait(configuration.take_wait, nullptr);
+        if (!os_queue_take(queue, &result, 0, nullptr)) {
+            return true;
+        }
+        return r;
+    }
+
+    virtual bool put(Item& item) override
+    {
+        bool r = ActiveObjectQueue::put(item);
+        if (r && _thread != OS_THREAD_INVALID_HANDLE) {
+            os_thread_notify(_thread, nullptr);
+        }
+        return r;
+    }
+
+    void notify()
+    {
+        if (_thread != OS_THREAD_INVALID_HANDLE) {
+            os_thread_notify(_thread, nullptr);
+        }
+    }
+#endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+
     void start()
     {
         createQueue();
@@ -452,6 +490,13 @@ public:
     struct Task {
         TaskFunc func;
         Task* next; // Next element in the queue
+
+        explicit Task(TaskFunc func = nullptr) :
+                func(func),
+                next(nullptr) {
+        }
+
+        virtual ~Task() = default;
     };
 
     ISRTaskQueue() :
@@ -463,6 +508,6 @@ public:
     bool process();
 
 private:
-    Task* firstTask_;
+    Task* volatile firstTask_;
     Task* lastTask_;
 };

@@ -37,10 +37,10 @@ void SysTickChain();
 /**
  * Start of interrupt vector table.
  */
-extern char link_interrupt_vectors_location;
+extern uintptr_t link_interrupt_vectors_location[];
 
-extern char link_ram_interrupt_vectors_location;
-extern char link_ram_interrupt_vectors_location_end;
+extern uintptr_t link_ram_interrupt_vectors_location[];
+extern uintptr_t link_ram_interrupt_vectors_location_end;
 
 const HAL_InterruptOverrideEntry hal_interrupt_overrides[] = {
     {HardFault_IRQn, HardFault_Handler},
@@ -70,9 +70,9 @@ void HAL_Core_Config_systick_configuration(void) {
 
 void HAL_Core_Setup_override_interrupts(void) {
 
-    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, &link_ram_interrupt_vectors_location_end-&link_ram_interrupt_vectors_location);
+    memcpy(&link_ram_interrupt_vectors_location, &link_interrupt_vectors_location, (uintptr_t)&link_ram_interrupt_vectors_location_end-(uintptr_t)&link_ram_interrupt_vectors_location);
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
-    for(int i = 0; i < sizeof(hal_interrupt_overrides)/sizeof(HAL_InterruptOverrideEntry); i++) {
+    for(size_t i = 0; i < sizeof(hal_interrupt_overrides)/sizeof(HAL_InterruptOverrideEntry); i++) {
         isrs[IRQN_TO_IDX(hal_interrupt_overrides[i].irq)] = (uint32_t)hal_interrupt_overrides[i].handler;
     }
     SCB->VTOR = (unsigned long)isrs;
@@ -85,7 +85,7 @@ void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
     if (irqn == SysTick_IRQn) {
         handler = (uint32_t)SysTickChain;
     } else {
-        for(int i = 0; i < sizeof(hal_interrupt_overrides)/sizeof(HAL_InterruptOverrideEntry); i++) {
+        for(size_t i = 0; i < sizeof(hal_interrupt_overrides)/sizeof(HAL_InterruptOverrideEntry); i++) {
             if (hal_interrupt_overrides[i].irq == irqn) {
                 handler = (uint32_t)hal_interrupt_overrides[i].handler;
                 break;
@@ -128,22 +128,6 @@ void HAL_Core_Setup_finalize(void)
     // ISR chain.)
     uint32_t* isrs = (uint32_t*)&link_ram_interrupt_vectors_location;
     isrs[IRQN_TO_IDX(SysTick_IRQn)] = (uint32_t)SysTickChain;
-
-#ifdef MODULAR_FIRMWARE
-    const uint32_t app_backup = 0x800C000;
-    // when unpacking from the combined image, we have the default application image stored
-    // in the eeprom region.
-    const module_info_t* app_info = FLASH_ModuleInfo(FLASH_INTERNAL, app_backup);
-    if (app_info->module_start_address==(void*)0x80A0000) {
-            LED_SetRGBColor(RGB_COLOR_GREEN);
-            uint32_t length = app_info->module_end_address-app_info->module_start_address+4;
-            if (length < 80*1024 && FLASH_CopyMemory(FLASH_INTERNAL, app_backup, FLASH_INTERNAL, 0x80E0000, length, MODULE_FUNCTION_USER_PART, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION) == FLASH_ACCESS_RESULT_OK) {
-                FLASH_CopyMemory(FLASH_INTERNAL, app_backup, FLASH_INTERNAL, 0x80A0000, length, MODULE_FUNCTION_USER_PART, MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION);
-                FLASH_EraseMemory(FLASH_INTERNAL, app_backup, length);
-            }
-            LED_SetRGBColor(RGB_COLOR_WHITE);
-        }
-#endif
 }
 
 /**

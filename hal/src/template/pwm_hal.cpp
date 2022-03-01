@@ -25,60 +25,65 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "pwm_hal.h"
-void HAL_PWM_Write(uint16_t pin, uint8_t value)
+void hal_pwm_write(uint16_t pin, uint8_t value)
 {
 }
 
-void HAL_PWM_Write_With_Frequency(uint16_t pin, uint8_t value, uint16_t pwm_frequency)
+void hal_pwm_write_with_frequency(uint16_t pin, uint8_t value, uint16_t pwm_frequency)
 {
 }
 
-uint16_t HAL_PWM_Get_Frequency(uint16_t pin)
+uint16_t hal_pwm_get_frequency(uint16_t pin)
 {
     return 0;
 }
 
-uint16_t HAL_PWM_Get_AnalogValue(uint16_t pin)
+uint16_t hal_pwm_get_analog_value(uint16_t pin)
 {
     return 0;
 }
 
-void HAL_PWM_Write_Ext(uint16_t pin, uint32_t value)
+void hal_pwm_write_ext(uint16_t pin, uint32_t value)
 {
 }
 
-void HAL_PWM_Write_With_Frequency_Ext(uint16_t pin, uint32_t value, uint32_t pwm_frequency)
+void hal_pwm_write_with_frequency_ext(uint16_t pin, uint32_t value, uint32_t pwm_frequency)
 {
 }
 
-uint32_t HAL_PWM_Get_Frequency_Ext(uint16_t pin)
+uint32_t hal_pwm_get_frequency_ext(uint16_t pin)
 {
     return 0;
 }
 
-uint32_t HAL_PWM_Get_AnalogValue_Ext(uint16_t pin)
+uint32_t hal_pwm_get_analog_value_ext(uint16_t pin)
 {
     return 0;
 }
 
-uint32_t HAL_PWM_Get_Max_Frequency(uint16_t pin)
+uint32_t hal_pwm_get_max_frequency(uint16_t pin)
 {
     return 0;
 }
 
-void HAL_PWM_UpdateDutyCycle(uint16_t pin, uint16_t value)
+void hal_pwm_update_duty_cycle(uint16_t pin, uint16_t value)
 {
 }
 
-void HAL_PWM_UpdateDutyCycle_Ext(uint16_t pin, uint32_t value)
+void hal_pwm_update_duty_cycle_ext(uint16_t pin, uint32_t value)
 {
 }
 
-uint8_t HAL_PWM_Get_Resolution(uint16_t pin)
+uint8_t hal_pwm_get_resolution(uint16_t pin)
 {
     return 0;
 }
 
-void HAL_PWM_Set_Resolution(uint16_t pin, uint8_t resolution)
+void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution)
 {
+}
+
+int hal_pwm_sleep(bool sleep, void* reserved)
+{
+    return 0;
 }

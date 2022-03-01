@@ -26,7 +26,7 @@
 
 test(api_ip_address) {
 
-    API_COMPILE(IPAddress(HAL_IPAddress()));
+    API_COMPILE(IPAddress dummy(HAL_IPAddress()));
 
 
 

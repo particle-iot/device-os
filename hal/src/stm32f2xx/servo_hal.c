@@ -51,7 +51,7 @@ void HAL_Servo_Attach(uint16_t pin)
     HAL_Pin_Mode(pin, AF_OUTPUT_PUSHPULL);
 
     // TIM clock enable
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_peripheral == TIM1)
     {
         TIM_CLK = SystemCoreClock;
@@ -142,7 +142,7 @@ void HAL_Servo_Attach(uint16_t pin)
 
 void HAL_Servo_Detach(uint16_t pin)
 {
-    const STM32_Pin_Info* pin_info = HAL_Pin_Map() + pin;
+    const Hal_Pin_Info* pin_info = HAL_Pin_Map() + pin;
 
     // Disable timer's channel
     switch (pin_info->timer_ch)
@@ -173,7 +173,7 @@ void HAL_Servo_Detach(uint16_t pin)
 void HAL_Servo_Write_Pulse_Width(uint16_t pin, uint16_t pulseWidth)
 {
     uint16_t SERVO_TIM_CCR = pulseWidth;
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
     {
@@ -196,7 +196,7 @@ void HAL_Servo_Write_Pulse_Width(uint16_t pin, uint16_t pulseWidth)
 uint16_t HAL_Servo_Read_Pulse_Width(uint16_t pin)
 {
     uint16_t SERVO_TIM_CCR = 0x0000;
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_ch == TIM_Channel_1)
     {
         SERVO_TIM_CCR = TIM_GetCapture1(PIN_MAP[pin].timer_peripheral);
@@ -222,7 +222,7 @@ uint16_t HAL_Servo_Read_Frequency(uint16_t pin)
     uint16_t TIM_ARR = 0;
     uint16_t Servo_Frequency = 0;
 
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     if(PIN_MAP[pin].timer_peripheral == TIM1)
     {
         TIM_ARR = PIN_MAP[pin].timer_peripheral->ARR;

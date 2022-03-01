@@ -57,6 +57,16 @@ void operator delete[](void *p)
 	free(p);
 }
 
+void operator delete(void *p, size_t size)
+{
+	free(p);
+}
+
+void operator delete[](void *p, size_t size)
+{
+	free(p);
+}
+
 
 /* Bare metal, no processes, so error */
 int _kill(int pid, int sig)
@@ -76,6 +86,11 @@ void _exit(int status) {
     while (1) {
         ;
     }
+}
+
+// Saves a few kB of flash.
+char* strerror(int errnum) {
+    return (char*)"";
 }
 
 /* Default implementation for call made to pure virtual function. */

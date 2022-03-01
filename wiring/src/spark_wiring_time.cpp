@@ -58,48 +58,16 @@ time_t dst_current_cache = 0;   // a cache of the DST offset currently being app
 
 /* Time utility functions */
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time);
-//static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time);
-//static struct tm Get_CalendarTime(void);
-//static void Set_CalendarTime(struct tm t);
 static void Refresh_UnixTime_Cache(time_t unix_time);
 
 /* Convert Unix/RTC time to Calendar time */
 static struct tm Convert_UnixTime_To_CalendarTime(time_t unix_time)
 {
-	struct tm *calendar_time;
-	calendar_time = localtime(&unix_time);
-	calendar_time->tm_year += 1900;
-	return *calendar_time;
-}
-
-/* Convert Calendar time to Unix/RTC time */
-/*
-static time_t Convert_CalendarTime_To_UnixTime(struct tm calendar_time)
-{
-	calendar_time.tm_year -= 1900;
-	time_t unix_time = mktime(&calendar_time);
-	return unix_time;
-}
-*/
-
-/* Get converted Calendar time */
-/*
- static struct tm Get_CalendarTime(void)
-{
-	time_t unix_time = HAL_RTC_Get_UnixTime();
-	unix_time += time_zone_cache;
-	struct tm calendar_time = Convert_UnixTime_To_CalendarTime(unix_time);
+	struct tm calendar_time;
+	localtime_r(&unix_time, &calendar_time);
+	calendar_time.tm_year += 1900;
 	return calendar_time;
 }
- */
-
-/* Set Calendar time as Unix/RTC time */
-/*
-static void Set_CalendarTime(struct tm calendar_time)
-{
-	HAL_RTC_Set_UnixTime(Convert_CalendarTime_To_UnixTime(calendar_time));
-}
-*/
 
 /* Refresh Unix/RTC time cache */
 static void Refresh_UnixTime_Cache(time_t unix_time)
@@ -249,15 +217,17 @@ int TimeClass::year(time_t t)
 }
 
 /* return the current time as seconds since Jan 1 1970 */
-time_t TimeClass::now()
+time32_t TimeClass::now()
 {
     (void)isValid();
-	return HAL_RTC_Get_UnixTime();
+    struct timeval tv = {};
+    hal_rtc_get_time(&tv, nullptr);
+    return tv.tv_sec;
 }
 
-time_t TimeClass::local()
+time32_t TimeClass::local()
 {
-	return HAL_RTC_Get_UnixTime()+time_zone_cache+dst_current_cache;
+	return now() + time_zone_cache + dst_current_cache;
 }
 
 /* set the time zone (+/-) offset from GMT */
@@ -307,49 +277,59 @@ uint8_t TimeClass::isDST()
 /* set the given time as unix/rtc time */
 void TimeClass::setTime(time_t t)
 {
-    HAL_RTC_Set_UnixTime(t);
-    system_notify_time_changed((uint32_t)time_changed_manually, nullptr, nullptr);
+    struct timeval tv = {
+        .tv_sec = t,
+        .tv_usec = 0
+    };
+    if (!hal_rtc_set_time(&tv, nullptr)) {
+        system_notify_time_changed((uint32_t)time_changed_manually, nullptr, nullptr);
+    }
 }
 
 /* return string representation for the given time */
 String TimeClass::timeStr(time_t t)
 {
-	t += time_zone_cache;
+    t += time_zone_cache;
     t += dst_current_cache;
-	tm* calendar_time = localtime(&t);
-        char* ascstr = asctime(calendar_time);
-        int len = strlen(ascstr);
-        ascstr[len-1] = 0; // remove final newline
-	return String(ascstr);
+    struct tm calendar_time = {};
+    localtime_r(&t, &calendar_time);
+    char ascstr[26] = {};
+    asctime_r(&calendar_time, ascstr);
+    int len = strlen(ascstr);
+    ascstr[len-1] = 0; // remove final newline
+    return String(ascstr);
 }
 
 String TimeClass::format(time_t t, const char* format_spec)
 {
-    if (format_spec==NULL)
+    if (format_spec == nullptr)
         format_spec = this->format_spec;
 
-    if (!format_spec || !strcmp(format_spec,TIME_FORMAT_DEFAULT)) {
+    if (!format_spec || !strcmp(format_spec, TIME_FORMAT_DEFAULT)) {
         return timeStr(t);
     }
     t += time_zone_cache;
     t += dst_current_cache;
-    tm* calendar_time = localtime(&t);
-    return timeFormatImpl(calendar_time, format_spec, time_zone_cache + dst_current_cache);
+    struct tm calendar_time = {};
+    localtime_r(&t, &calendar_time);
+    return timeFormatImpl(&calendar_time, format_spec, time_zone_cache + dst_current_cache);
 }
 
 String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time_zone)
 {
     char format_str[64];
-    strcpy(format_str, format);
-    size_t len = strlen(format_str);
+    // only copy up to n-1 to dest if no null terminator found
+    strncpy(format_str, format, sizeof(format_str) - 1); // Flawfinder: ignore (ch42318)
+    format_str[sizeof(format_str) - 1] = '\0'; // ensure null termination
+    size_t len = strlen(format_str); // Flawfinder: ignore (ch42318)
 
-    char time_zone_str[10];
+    char time_zone_str[16];
     // while we are not using stdlib for managing the timezone, we have to do this manually
     if (!time_zone) {
         strcpy(time_zone_str, "Z");
     }
     else {
-        snprintf(time_zone_str, 10, "%+03d:%02u", time_zone/3600, abs(time_zone/60)%60);
+        snprintf(time_zone_str, sizeof(time_zone_str), "%+03d:%02u", time_zone/3600, abs(time_zone/60)%60);
     }
 
     // replace %z with the timezone
@@ -364,20 +344,20 @@ String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time
         }
     }
 
-    char buf[50];
-    strftime(buf, 50, format_str, calendar_time);
+    char buf[50] = {};
+    strftime(buf, sizeof(buf), format_str, calendar_time);
     return String(buf);
 }
 
 bool TimeClass::isValid()
 {
-    bool rtcstate = HAL_RTC_Time_Is_Valid(nullptr);
+    bool rtcstate = hal_rtc_time_is_valid(nullptr);
     if (rtcstate)
         return rtcstate;
     if (System.mode() == AUTOMATIC && system_thread_get_state(nullptr) == spark::feature::DISABLED)
     {
         waitUntil(Particle.syncTimeDone);
-        return HAL_RTC_Time_Is_Valid(nullptr);
+        return hal_rtc_time_is_valid(nullptr);
     }
     return rtcstate;
 }

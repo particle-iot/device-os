@@ -35,7 +35,7 @@
 #define DIAG_NAME_NETWORK_CONNECTION_ATTEMPTS "net:connatt"
 #define DIAG_NAME_NETWORK_DISCONNECTION_REASON "net:dconnrsn"
 #define DIAG_NAME_NETWORK_IPV4_ADDRESS "net:ip:addr"
-#define DIAG_NAME_NETWORK_IPV4_GATEWAY "net.ip:gw"
+#define DIAG_NAME_NETWORK_IPV4_GATEWAY "net:ip:gw"
 #define DIAG_NAME_NETWORK_FLAGS "net:flags"
 #define DIAG_NAME_NETWORK_COUNTRY_CODE "net:cntry"
 #define DIAG_NAME_NETWORK_RSSI "net:rssi"
@@ -44,13 +44,19 @@
 #define DIAG_NAME_NETWORK_SIGNAL_QUALITY "net:sigqual"
 #define DIAG_NAME_NETWORK_SIGNAL_QUALITY_VALUE "net:sigqualv"
 #define DIAG_NAME_NETWORK_ACCESS_TECNHOLOGY "net:at"
+#define DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_COUNTRY_CODE "net:cell:cgi:mcc"
+#define DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_NETWORK_CODE "net:cell:cgi:mnc"
+#define DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_LOCATION_AREA_CODE "net:cell:cgi:lac"
+#define DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_CELL_ID "net:cell:cgi:ci"
 #define DIAG_NAME_CLOUD_CONNECTION_STATUS "cloud:stat"
 #define DIAG_NAME_CLOUD_CONNECTION_ERROR_CODE "cloud:err"
 #define DIAG_NAME_CLOUD_DISCONNECTS "cloud:dconn"
 #define DIAG_NAME_CLOUD_CONNECTION_ATTEMPTS "cloud:connatt"
 #define DIAG_NAME_CLOUD_DISCONNECTION_REASON "cloud:dconnrsn"
-#define DIAG_NAME_CLOUD_REPEATED_MESSAGES "coap:resend"
+#define DIAG_NAME_CLOUD_RETRANSMITTED_MESSAGES "coap:retransmit"
 #define DIAG_NAME_CLOUD_UNACKNOWLEDGED_MESSAGES "coap:unack"
+#define DIAG_NAME_CLOUD_TRANSMITTED_MESSAGES "coap:transmit"
+#define DIAG_NAME_CLOUD_COAP_ROUND_TRIP "coap:roundtrip"
 #define DIAG_NAME_CLOUD_RATE_LIMITED_EVENTS "pub:limit"
 #define DIAG_NAME_SYSTEM_TOTAL_RAM "sys:tram"
 #define DIAG_NAME_SYSTEM_USED_RAM "sys:uram"
@@ -85,22 +91,29 @@ typedef enum diag_id {
     DIAG_ID_NETWORK_SIGNAL_QUALITY = 34, // net:sigqual
     DIAG_ID_NETWORK_SIGNAL_QUALITY_VALUE = 35, // net:sigqualv
     DIAG_ID_NETWORK_ACCESS_TECNHOLOGY = 36, // net:at
+    DIAG_ID_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_COUNTRY_CODE = 40, // net:cell:cgi:mcc
+    DIAG_ID_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_NETWORK_CODE = 41, // net:cell:cgi:mnc
+    DIAG_ID_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_LOCATION_AREA_CODE = 42, // net:cell:cgi:lac
+    DIAG_ID_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_CELL_ID = 43, // net:cell:cgi:ci
     DIAG_ID_CLOUD_CONNECTION_STATUS = 10, // cloud:stat
     DIAG_ID_CLOUD_CONNECTION_ERROR_CODE = 13, // cloud:err
     DIAG_ID_CLOUD_DISCONNECTS = 14, // cloud:dconn
     DIAG_ID_CLOUD_CONNECTION_ATTEMPTS = 29, // cloud:connatt
     DIAG_ID_CLOUD_DISCONNECTION_REASON = 30, // cloud:dconnrsn
-    DIAG_ID_CLOUD_REPEATED_MESSAGES = 21, // coap:resend
+    DIAG_ID_CLOUD_RETRANSMITTED_MESSAGES = 21, // coap:retransmit
     DIAG_ID_CLOUD_UNACKNOWLEDGED_MESSAGES = 22, // coap:unack
+    DIAG_ID_CLOUD_TRANSMITTED_MESSAGES = 23, // coap:transmit
     DIAG_ID_CLOUD_RATE_LIMITED_EVENTS = 20, // pub:throttle
     DIAG_ID_SYSTEM_TOTAL_RAM = 25, // sys:tram
     DIAG_ID_SYSTEM_USED_RAM = 26, // sys:uram
+    DIAG_ID_CLOUD_COAP_ROUND_TRIP = 31, // coap:roundtrip
     DIAG_ID_USER = 32768 // Base value for application-specific source IDs
 } diag_id;
 
 // Data types
 typedef enum diag_type {
-    DIAG_TYPE_INT = 1 // 32-bit integer
+    DIAG_TYPE_INT = 1, // 32-bit signed integer
+    DIAG_TYPE_UINT = 2 // 32-bit unsigned integer
 } diag_type;
 
 // Data source commands

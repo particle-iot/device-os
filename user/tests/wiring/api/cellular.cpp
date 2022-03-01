@@ -53,6 +53,12 @@ test (api_cellular_on_off)
     API_COMPILE(Cellular.off());
 }
 
+test (api_cellular_is_on_off)
+{
+    API_COMPILE(Cellular.isOn());
+    API_COMPILE(Cellular.isOff());
+}
+
 test (api_cellular_listen)
 {
     bool result;
@@ -61,6 +67,7 @@ test (api_cellular_listen)
     API_COMPILE(Cellular.listen(false));
     API_COMPILE(result = Cellular.listening());
     API_COMPILE(Cellular.setListenTimeout(10));
+    API_COMPILE(Cellular.setListenTimeout(10s));
     API_COMPILE(val = Cellular.getListenTimeout());
     (void)result; // avoid unused warning
     (void)val;    //   |
@@ -141,6 +148,10 @@ test(api_cellular_resolve) {
 test(api_cellular_lock_unlock) {
     API_COMPILE(Cellular.lock());
     API_COMPILE(Cellular.unlock());
+}
+
+test(api_cellular_registration_timeout_set) {
+    API_COMPILE(cellular_registration_timeout_set(60 * 60 * 1000, nullptr)); // 60 minutes
 }
 
 #endif

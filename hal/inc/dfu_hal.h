@@ -33,7 +33,16 @@
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 uint8_t is_application_valid(uint32_t address);
 void HAL_DFU_USB_Init(void);
+void DFU_Check_Reset(void);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif /* __DFU_HAL_H */

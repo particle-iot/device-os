@@ -25,6 +25,9 @@
 #define HAL_DYNALIB_CAN_H
 
 #include "dynalib.h"
+#include "hal_platform.h"
+
+#if !HAL_PLATFORM_NRF52840
 
 #ifdef DYNALIB_EXPORT
 #include "can_hal.h"
@@ -44,6 +47,8 @@ DYNALIB_FN(8, hal_can, HAL_CAN_Is_Enabled, bool(HAL_CAN_Channel))
 DYNALIB_FN(9, hal_can, HAL_CAN_Error_Status, HAL_CAN_Errors(HAL_CAN_Channel))
 
 DYNALIB_END(hal_can)
+
+#endif
 
 #endif	/* HAL_DYNALIB_CAN_H */
 

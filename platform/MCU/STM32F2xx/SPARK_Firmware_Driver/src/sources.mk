@@ -40,5 +40,3 @@ ASRC +=
 
 # include common sources also
 include $(call rwildcard,$(PLATFORM_MCU_SHARED_STM32_PATH)/,sources.mk)
-
-CPPFLAGS += -std=c++11

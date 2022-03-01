@@ -43,7 +43,7 @@ typedef enum
     BKP_DR_07 = 0x07,
     BKP_DR_08 = 0x08,
     BKP_DR_09 = 0x09,
-    BKP_DR_10 = 0x10
+    BKP_DR_10 = 0x0a
 } BKP_DR_TypeDef;
 
 typedef enum
@@ -55,29 +55,6 @@ typedef enum
     POWER_DOWN_RESET = 0x05,
     POWER_BROWNOUT_RESET = 0x06
 } RESET_TypeDef;
-
-// Reason codes are exposed under identifier names via the cloud - ensure the mapping is
-// updated for newly added reason codes
-typedef enum System_Reset_Reason
-{
-    RESET_REASON_NONE = 0,
-    RESET_REASON_UNKNOWN = 10, // Unspecified reason
-    // Hardware
-    RESET_REASON_PIN_RESET = 20, // Reset from the NRST pin
-    RESET_REASON_POWER_MANAGEMENT = 30, // Low-power management reset
-    RESET_REASON_POWER_DOWN = 40, // Power-down reset
-    RESET_REASON_POWER_BROWNOUT = 50, // Brownout reset
-    RESET_REASON_WATCHDOG = 60, // Watchdog reset
-    // Software
-    RESET_REASON_UPDATE = 70, // Successful firmware update
-    RESET_REASON_UPDATE_ERROR = 80, // Generic update error
-    RESET_REASON_UPDATE_TIMEOUT = 90, // Update timeout
-    RESET_REASON_FACTORY_RESET = 100, // Factory reset requested
-    RESET_REASON_SAFE_MODE = 110, // Safe mode requested
-    RESET_REASON_DFU_MODE = 120, // DFU mode requested
-    RESET_REASON_PANIC = 130, // System panic (additional data may contain panic code)
-    RESET_REASON_USER = 140 // User-requested reset
-} System_Reset_Reason;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -112,6 +89,7 @@ typedef enum System_Reset_Reason
 #include "watchdog_hal.h"
 #include "core_subsys_hal.h"
 #include "interrupts_hal.h"
+#include "system_defs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -142,13 +120,17 @@ typedef enum {
 } hal_standby_mode_flag_t;
 
 void HAL_Core_Enter_Safe_Mode(void* reserved);
+bool HAL_Core_Enter_Safe_Mode_Requested(void);
 void HAL_Core_Enter_Bootloader(bool persist);
 void HAL_Core_Enter_Stop_Mode(uint16_t wakeUpPin, uint16_t edgeTriggerMode, long seconds);
-int32_t HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved);
+int HAL_Core_Enter_Stop_Mode_Ext(const uint16_t* pins, size_t pins_count, const InterruptMode* mode, size_t mode_count, long seconds, void* reserved);
 void HAL_Core_Execute_Stop_Mode(void);
-void HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags);
+int HAL_Core_Enter_Standby_Mode(uint32_t seconds, uint32_t flags);
 void HAL_Core_Execute_Standby_Mode(void);
-void HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved);
+int HAL_Core_Execute_Standby_Mode_Ext(uint32_t flags, void* reserved);
+
+int HAL_Core_Enter_Panic_Mode(void* reserved);
+
 uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize);
 
 typedef enum _BootloaderFlag_t {
@@ -219,8 +201,9 @@ typedef enum hal_system_config_t
 
     SYSTEM_CONFIG_SOFTAP_PREFIX,
     SYSTEM_CONFIG_SOFTAP_SUFFIX,
-    SYSTEM_CONFIG_SOFTAP_HOSTNAMES
-
+    SYSTEM_CONFIG_SOFTAP_HOSTNAMES,
+    
+    SYSTEM_CONFIG_SERVER_ADDRESS
 } hal_system_config_t;
 
 /**
@@ -236,9 +219,13 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
 typedef enum HAL_Feature {
     FEATURE_RETAINED_MEMORY=1,       // [write only] retained memory on backup power
     FEATURE_WARM_START,              // [read only] set to true if previous retained memory contents are available]
-	FEATURE_CLOUD_UDP,				// [read only] true if the UDP implementation should be used.
+    FEATURE_CLOUD_UDP,               // [read only] true if the UDP implementation should be used.
     FEATURE_RESET_INFO,              // [read/write] enables handling of last reset info (may affect backup registers)
-	FEATURE_WIFI_POWERSAVE_CLOCK,	// [write only] enables/disables the WiFi powersave clock on the TESTMODE pin. This setting is persisted to the DCT.
+    FEATURE_WIFI_POWERSAVE_CLOCK,    // [write only] enables/disables the WiFi powersave clock on the TESTMODE pin. This setting is persisted to the DCT.
+    FEATURE_ETHERNET_DETECTION,      // [read/write] enables Ethernet FeatherWing detection on boot
+    FEATURE_LED_OVERRIDDEN,           // [read/write] override system RGB signaling on boot.
+    FEATURE_DISABLE_EXTERNAL_LOW_SPEED_CLOCK, // [read/write] force usage of internal low speed clock
+    FEATURE_DISABLE_LISTENING_MODE  // [read/write] disables listening mode
 } HAL_Feature;
 
 int HAL_Feature_Set(HAL_Feature feature, bool enabled);

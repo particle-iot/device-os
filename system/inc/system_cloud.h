@@ -21,10 +21,18 @@
 #include "static_assert.h"
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
+#include "system_tick_hal.h"
+#include "system_defs.h"
+#include "protocol_defs.h"
 #include "completion_handler.h"
+
+#include <type_traits>
 #include <string.h>
 #include <time.h>
 #include <stdint.h>
+#include "time_compat.h"
+
+#define DEFAULT_CLOUD_EVENT_TTL 60
 
 enum ParticleKeyErrorFlag: uint32_t
 {
@@ -44,37 +52,100 @@ typedef enum
 	CLOUD_VAR_BOOLEAN = 1, CLOUD_VAR_INT = 2, CLOUD_VAR_STRING = 4, CLOUD_VAR_DOUBLE = 9
 } Spark_Data_TypeDef;
 
-struct CloudVariableTypeBase {};
-struct CloudVariableTypeBool : public CloudVariableTypeBase {
-    using vartype = bool;
-    using varref = const bool*;
-    CloudVariableTypeBool(){};
-    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_BOOLEAN; }
-};
-struct CloudVariableTypeInt : public CloudVariableTypeBase {
-    using vartype = int;
-    using varref = const int*;
-    CloudVariableTypeInt(){};
-    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_INT; }
-};
-struct CloudVariableTypeString : public CloudVariableTypeBase {
-    using vartype = const char*;
-    using varref = const char*;
-    CloudVariableTypeString(){};
-    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_STRING; }
-};
-struct CloudVariableTypeDouble : public CloudVariableTypeBase {
-    using vartype = double;
-    using varref = const double*;
+namespace particle {
+    static const system_tick_t NOW = static_cast<system_tick_t>(-1);
+}
 
-    CloudVariableTypeDouble(){};
-    static inline Spark_Data_TypeDef value() { return CLOUD_VAR_DOUBLE; }
+template<typename T, typename EnableT = void>
+struct CloudVariableType {
 };
+
+template<>
+struct CloudVariableType<bool> {
+    using ValueType = bool;
+    using PointerType = const bool*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_BOOLEAN;
+};
+
+template<typename T>
+struct CloudVariableType<T, std::enable_if_t<std::is_integral<T>::value && sizeof(T) <= sizeof(int)>> {
+    using ValueType = int;
+    using PointerType = const int*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_INT;
+};
+
+template<typename T>
+struct CloudVariableType<T, std::enable_if_t<std::is_floating_point<T>::value && sizeof(T) <= sizeof(double)>> {
+    using ValueType = double;
+    using PointerType = const double*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_DOUBLE;
+};
+
+template<>
+struct CloudVariableType<const char*> {
+    using ValueType = const char*;
+    using PointerType = const char*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+template<>
+struct CloudVariableType<char*> {
+    using ValueType = const char*;
+    using PointerType = char*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+template<>
+struct CloudVariableType<String> {
+    using ValueType = String;
+    using PointerType = const String*;
+
+    static const Spark_Data_TypeDef TYPE_ID = CLOUD_VAR_STRING;
+};
+
+typedef CloudVariableType<bool> CloudVariableTypeBool;
+typedef CloudVariableType<int> CloudVariableTypeInt;
+typedef CloudVariableType<double> CloudVariableTypeDouble;
+typedef CloudVariableType<const char*> CloudVariableTypeString;
 
 const CloudVariableTypeBool BOOLEAN;
 const CloudVariableTypeInt INT;
 const CloudVariableTypeString STRING;
 const CloudVariableTypeDouble DOUBLE;
+
+/**
+ * Flags for `cloud_disconnect()`.
+ */
+enum CloudDisconnectFlag {
+    CLOUD_DISCONNECT_GRACEFULLY = 0x01, ///< Disconnect gracefully.
+    CLOUD_DISCONNECT_DONT_CLOSE = 0x02 ///< Do not close the socket.
+};
+
+/**
+ * Close the cloud connection.
+ *
+ * @param flags Disconnection flags (a combination of flags defined by `cloud_disconnect_flag`).
+ * @param cloudReason Cloud disconnection reason.
+ * @param networkReason Network disconnection reason.
+ * @param resetReason System reset reason.
+ * @param sleepDuration Sleep duration in seconds.
+ */
+void cloud_disconnect(unsigned flags = 0, cloud_disconnect_reason cloudReason = CLOUD_DISCONNECT_REASON_UNKNOWN,
+        network_disconnect_reason networkReason = NETWORK_DISCONNECT_REASON_NONE,
+        System_Reset_Reason resetReason = RESET_REASON_NONE, unsigned sleepDuration = 0);
+
+inline void cloud_disconnect(unsigned flags, network_disconnect_reason networkReason) {
+    cloud_disconnect(flags, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT, networkReason, RESET_REASON_NONE, 0);
+}
+
+inline void cloud_disconnect(unsigned flags, System_Reset_Reason resetReason) {
+    cloud_disconnect(flags, CLOUD_DISCONNECT_REASON_SYSTEM_RESET, NETWORK_DISCONNECT_REASON_NONE, resetReason, 0);
+}
 
 #if PLATFORM_ID==3
 // avoid a c-linkage incompatible with C error on newer versions of gcc
@@ -85,28 +156,17 @@ String spark_deviceID(void);
 extern "C" {
 #endif
 
-typedef enum cloud_disconnect_reason {
-    CLOUD_DISCONNECT_REASON_NONE = 0,
-    CLOUD_DISCONNECT_REASON_ERROR = 1, // Disconnected due to an error
-    CLOUD_DISCONNECT_REASON_USER = 2, // Disconnected at the user's request
-    CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT = 3, // Disconnected due to the network disconnection
-    CLOUD_DISCONNECT_REASON_LISTENING = 4 // Disconnected due to the listening mode
-} cloud_disconnect_reason;
-
 #if PLATFORM_ID!=3
 String spark_deviceID(void);
 #endif
-
-void cloud_disconnect(bool closeSocket=true, bool graceful=false, cloud_disconnect_reason reason = CLOUD_DISCONNECT_REASON_NONE);
-void cloud_disconnect_graceful(bool closeSocket=true, cloud_disconnect_reason reason = CLOUD_DISCONNECT_REASON_NONE);
 
 class String;
 
 
 #if defined(PLATFORM_ID)
 
-#if PLATFORM_ID!=3
-STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
+#if !defined(UNIT_TEST) && PLATFORM_ID !=3 && PLATFORM_ID != 20
+PARTICLE_STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
 #endif
 
 #endif
@@ -115,8 +175,13 @@ const uint32_t PUBLISH_EVENT_FLAG_PUBLIC = 0x0;
 const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 0x1;
 const uint32_t PUBLISH_EVENT_FLAG_NO_ACK = 0x2;
 const uint32_t PUBLISH_EVENT_FLAG_WITH_ACK = 0x8;
+/**
+ * This is a stop-gap solution until all synchronous APIs return futures, allowing asynchronous operation.
+ */
+const uint32_t PUBLISH_EVENT_FLAG_ASYNC = EventType::ASYNC;
 
-STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
+
+PARTICLE_STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==EventType::NO_ACK);
 
 typedef void (*EventHandler)(const char* name, const char* data);
 
@@ -144,12 +209,24 @@ struct  cloud_function_descriptor {
      }
 };
 
-STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(cloud_function_descriptor_size, sizeof(cloud_function_descriptor)==16 || sizeof(void*)!=4);
 
 typedef struct spark_variable_t
 {
     uint16_t size;
-    const void* (*update)(const char* nane, Spark_Data_TypeDef type, const void* var, void* reserved);
+    const void* (*update)(const char* name, Spark_Data_TypeDef type, const void* var, void* reserved);
+
+    /**
+     * Copy variable data.
+     *
+     * The calling code takes ownership over the copied data.
+     *
+     * @param var Variable object.
+     * @param data[out] Variable data.
+     * @param size[out] Size of the variable data.
+     * @return 0 on success or a negative result code in case of an error.
+     */
+    int (*copy)(const void* var, void** data, size_t* size);
 } spark_variable_t;
 
 /**
@@ -177,13 +254,36 @@ typedef struct {
     void* handler_data;
 } spark_send_event_data;
 
+/**
+ * @brief Publish vitals information
+ *
+ * Provides a mechanism to control the interval at which system
+ * diagnostic messages are sent to the cloud. Subsequently, this
+ * controls the granularity of detail on the fleet health metrics.
+ *
+ * @param[in] period_s The period (in seconds) at which vitals messages
+ *                     are to be sent to the cloud
+ * @arg \p particle::NOW - A special value used to send vitals immediately
+ * @arg \p 0 - Publish a final message and disable periodic publishing
+ * @arg \p n - Publish an initial message and subsequent messages every \p n seconds thereafter
+ * @param[in,out] reserved Reserved for future use.
+ *
+ * @returns \p system_error_t result code
+ * @retval \p system_error_t::SYSTEM_ERROR_NONE
+ * @retval \p system_error_t::SYSTEM_ERROR_IO
+ *
+ * @note At call time, a blocking call is made on the application thread. Any subsequent
+ * timer-based calls are executed asynchronously.
+ *
+ */
+int spark_publish_vitals(system_tick_t period_s, void *reserved);
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
 bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
         Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
 void spark_unsubscribe(void *reserved);
 bool spark_sync_time(void *reserved);
 bool spark_sync_time_pending(void* reserved);
-system_tick_t spark_sync_time_last(time_t* tm, void* reserved);
+system_tick_t spark_sync_time_last(time32_t* tm32, time_t* tm);
 
 
 void spark_process(void);
@@ -197,21 +297,70 @@ void spark_cloud_flag_connect(void);
 /**
  * Sets the auto-connect state to false. The cloud will be disconnected by the system.
  */
-void spark_cloud_flag_disconnect(void);    // should be set connected since it manages the connection state)
+void spark_cloud_flag_disconnect(void);
 
 /**
  * Determines if the system will attempt to connect or disconnect from the cloud.
  */
 bool spark_cloud_flag_auto_connect(void);
 
+/**
+ * Option flags for `spark_cloud_disconnect_options`.
+ */
+typedef enum spark_cloud_disconnect_option_flag {
+    SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL = 0x01, ///< The `graceful` option is set.
+    SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT = 0x02, ///< The `timeout` option is set.
+    SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION = 0x04 ///< The `clear_session` option is set.
+} spark_cloud_disconnect_option_flag;
+
+/**
+ * Options for `spark_cloud_disconnect()`.
+ */
+typedef struct spark_cloud_disconnect_options {
+    uint16_t size; ///< Size of this structure.
+    uint8_t flags; ///< Option flags (see `spark_cloud_disconnect_option_flag`).
+    uint8_t graceful; ///< Enables graceful disconnection if set to a non-zero value.
+    uint32_t timeout; ///< Maximum time in milliseconds to wait for message acknowledgements.
+    uint8_t clear_session; ///< Clears the session after disconnecting if set to a non-zero value.
+} spark_cloud_disconnect_options;
+
+/**
+ * Disconnect from the cloud.
+ *
+ * @param options Options.
+ * @param reserved This argument should be set to NULL.
+ * @return 0 on success or a negative result code in case of an error.
+ */
+int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* reserved);
+
 ProtocolFacade* system_cloud_protocol_instance(void);
 
-int spark_set_connection_property(unsigned property_id, unsigned data, particle::protocol::connection_properties_t* conn_prop, void* reserved);
+/**
+ * Cloud connection properties.
+ *
+ * @see `spark_set_connection_property()`
+ * @see `spark_get_connection_property()`
+ */
+typedef enum spark_connection_property {
+    SPARK_CLOUD_PING_INTERVAL = 0, ///< Ping interval in milliseconds (set).
+    SPARK_CLOUD_FAST_OTA_ENABLED = 1, ///< Fast OTA override (set).
+    SPARK_CLOUD_DISCONNECT_OPTIONS = 2, ///< Default disconnection options (set).
+    SPARK_CLOUD_MAX_EVENT_DATA_SIZE = 3, ///< Maximum size of event data (get).
+    SPARK_CLOUD_MAX_VARIABLE_VALUE_SIZE = 4, ///< Maximum size of a variable value (get).
+    SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE = 5 ///< Maximum size of a function call argument (get).
+} spark_connection_property;
+
+int spark_set_connection_property(unsigned property, unsigned value, const void* data, void* reserved);
+int spark_get_connection_property(unsigned property, void* data, size_t* size, void* reserved);
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 
-extern const unsigned char backup_udp_public_server_key[91];
-extern const unsigned char backup_udp_public_server_address[22];
+extern const unsigned char backup_udp_public_server_key[];
+extern const size_t backup_udp_public_server_key_size;
+
+extern const unsigned char backup_udp_public_server_address[];
+extern const size_t backup_udp_public_server_address_size;
+
 extern const unsigned char backup_tcp_public_server_key[294];
 extern const unsigned char backup_tcp_public_server_address[18];
 
@@ -223,28 +372,20 @@ extern const unsigned char backup_tcp_public_server_address[18];
 #define SPARK_LOOP_DELAY_MILLIS       1000    //1sec
 #define SPARK_RECEIVE_DELAY_MILLIS    10      //10ms
 
-#if PLATFORM_ID==10
-#define TIMING_FLASH_UPDATE_TIMEOUT   90000   //90sec
-#else
-#define TIMING_FLASH_UPDATE_TIMEOUT   30000   //30sec
-#endif
+#if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
+#define TIMING_FLASH_UPDATE_TIMEOUT   (300000) // 300sec
+#else // HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
+#define TIMING_FLASH_UPDATE_TIMEOUT   (30000)  // 30sec
+#endif // HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
 
 #define USER_VAR_MAX_COUNT            (10)  // FIXME: NOT USED
 #define USER_FUNC_MAX_COUNT           (4)   // FIXME: NOT USED
 
-#if PLATFORM_ID<2
-    #define USER_FUNC_ARG_LENGTH      (64)  // FIXME: NOT USED
-    #define USER_VAR_KEY_LENGTH       (12)
-    #define USER_FUNC_KEY_LENGTH      (12)
-    #define USER_EVENT_NAME_LENGTH    (64)  // FIXME: NOT USED
-    #define USER_EVENT_DATA_LENGTH    (64)  // FIXME: NOT USED
-#else
-    #define USER_FUNC_ARG_LENGTH      (622) // FIXME: NOT USED
-    #define USER_VAR_KEY_LENGTH       (64)
-    #define USER_FUNC_KEY_LENGTH      (64)
-    #define USER_EVENT_NAME_LENGTH    (64)  // FIXME: NOT USED
-    #define USER_EVENT_DATA_LENGTH    (622) // FIXME: NOT USED
-#endif
+#define USER_FUNC_ARG_LENGTH      (622) // FIXME: NOT USED
+#define USER_VAR_KEY_LENGTH       (64)
+#define USER_FUNC_KEY_LENGTH      (64)
+#define USER_EVENT_NAME_LENGTH    (64)  // FIXME: NOT USED
+#define USER_EVENT_DATA_LENGTH    (622) // FIXME: NOT USED
 
 #ifdef __cplusplus
 }

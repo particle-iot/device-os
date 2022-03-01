@@ -442,6 +442,7 @@ static void USBD_GetDescriptor(USB_OTG_CORE_HANDLE  *pdev,
         pbuf = pdev->dev.usr_device->GetMsftStrDescriptor(pdev->cfg.speed, &len);
         break;
       }
+    // Fall-through
     default:
 #ifdef USB_SUPPORT_USER_STRING_DESC
       pbuf = pdev->dev.class_cb->GetUsrStrDescriptor(pdev->cfg.speed, (req->wValue) , &len);

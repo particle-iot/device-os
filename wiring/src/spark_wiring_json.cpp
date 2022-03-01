@@ -22,6 +22,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
+#include <cctype>
 
 namespace {
 
@@ -462,6 +463,27 @@ spark::JSONWriter& spark::JSONWriter::value(unsigned val) {
     return *this;
 }
 
+spark::JSONWriter& spark::JSONWriter::value(long val) {
+    writeSeparator();
+    printf("%ld", val);
+    state_ = NEXT;
+    return *this;
+}
+
+spark::JSONWriter& spark::JSONWriter::value(unsigned long val) {
+    writeSeparator();
+    printf("%lu", val);
+    state_ = NEXT;
+    return *this;
+}
+
+spark::JSONWriter& spark::JSONWriter::value(double val, int precision) {
+    writeSeparator();
+    printf("%.*lf", precision, val);
+    state_ = NEXT;
+    return *this;
+}
+
 spark::JSONWriter& spark::JSONWriter::value(double val) {
     writeSeparator();
     printf("%g", val);
@@ -521,7 +543,7 @@ void spark::JSONWriter::writeEscaped(const char *str, size_t size) {
     const char *s = str;
     while (s != end) {
         const char c = *s;
-        if (c == '"' || c == '\\' || (c >= 0 && c <= 0x1f)) {
+        if (c == '"' || c == '\\' || !std::isprint((unsigned char)c)) {
             write(str, s - str); // Write preceeding characters
             write('\\');
             switch (c) {

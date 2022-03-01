@@ -42,7 +42,7 @@ ElectronSerialPipe::~ElectronSerialPipe(void)
 
 void ElectronSerialPipe::begin(unsigned baud, bool hwFlowCtrl)
 {
-    //HAL_USART_Begin(HAL_USART_SERIAL3, baud);
+    //hal_usart_begin(HAL_USART_SERIAL3, baud);
     //USART_DeInit(USART3);
     end();
 
@@ -65,7 +65,7 @@ void ElectronSerialPipe::begin(unsigned baud, bool hwFlowCtrl)
     RCC->APB1ENR |= RCC_APB1Periph_USART3;
 
     // Connect USART pins to AFx
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
     if (hwFlowCtrl) {
         GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
@@ -92,17 +92,17 @@ void ElectronSerialPipe::begin(unsigned baud, bool hwFlowCtrl)
     // - Hardware flow control disabled for Serial1/2/4/5
     // - Hardware flow control enabled (RTS and CTS signals) for Serial3
     // - Receive and transmit enabled
-    USART_InitTypeDef USART_InitStructure = {};
-    USART_InitStructure.USART_BaudRate = baud;
-    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-    USART_InitStructure.USART_StopBits = USART_StopBits_1;
-    USART_InitStructure.USART_Parity = USART_Parity_No;
-    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-    USART_InitStructure.USART_HardwareFlowControl = hwFlowCtrl ? USART_HardwareFlowControl_RTS_CTS :
+    USART_InitTypeDef usartInitStructure = {};
+    usartInitStructure.USART_BaudRate = baud;
+    usartInitStructure.USART_WordLength = USART_WordLength_8b;
+    usartInitStructure.USART_StopBits = USART_StopBits_1;
+    usartInitStructure.USART_Parity = USART_Parity_No;
+    usartInitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    usartInitStructure.USART_HardwareFlowControl = hwFlowCtrl ? USART_HardwareFlowControl_RTS_CTS :
             USART_HardwareFlowControl_None;
 
     // Configure USART
-    USART_Init(USART3, &USART_InitStructure);
+    USART_Init(USART3, &usartInitStructure);
 
     // Enable the USART
     USART_Cmd(USART3, ENABLE);
@@ -147,8 +147,8 @@ void ElectronSerialPipe::end()
     HAL_Pin_Mode(TXD_UC, INPUT);
 
     // clear any pending data
-    _pipeTx.done();
-    _pipeRx.done();
+    _pipeTx.reset();
+    _pipeRx.reset();
     baud_ = 0;
     hwFlowCtrl_ = false;
     pause_ = false;
@@ -157,11 +157,19 @@ void ElectronSerialPipe::end()
 // tx channel
 int ElectronSerialPipe::writeable(void)
 {
+    if (baud_ == 0) {
+        return 0;
+    }
+
     return _pipeTx.free();
 }
 
 int ElectronSerialPipe::putc(int c)
 {
+    if (baud_ == 0) {
+        return EOF;
+    }
+
     c = _pipeTx.putc(c);
     txStart();
     return c;
@@ -171,6 +179,9 @@ int ElectronSerialPipe::put(const void* buffer, int length, bool blocking)
 {
     int count = length;
     const char* ptr = (const char*)buffer;
+    if (baud_ == 0) {
+        return EOF;
+    }
     if (count)
     {
         do
@@ -219,6 +230,10 @@ void ElectronSerialPipe::txStart(void)
 // rx channel
 int ElectronSerialPipe::readable(void)
 {
+    if (baud_ == 0) {
+        return 0;
+    }
+
     return _pipeRx.readable();
 }
 
@@ -231,7 +246,33 @@ int ElectronSerialPipe::getc(void)
 
 int ElectronSerialPipe::get(void* buffer, int length, bool blocking)
 {
+    if (baud_ == 0) {
+        return EOF;
+    }
+
     return _pipeRx.get((char*)buffer,length,blocking);
+}
+
+int ElectronSerialPipe::txSize(void)
+{
+    return _pipeTx.size();
+}
+
+int ElectronSerialPipe::rxSize(void)
+{
+    return _pipeRx.size();
+}
+
+void ElectronSerialPipe::txDump(void)
+{
+    MDM_PRINTF("TX ");
+    _pipeTx.dump();
+}
+
+void ElectronSerialPipe::rxDump(void)
+{
+    MDM_PRINTF("RX ");
+    _pipeRx.dump();
 }
 
 void ElectronSerialPipe::rxIrqBuf(void)
@@ -249,7 +290,7 @@ void ElectronSerialPipe::rxResume(void)
     if (hwFlowCtrl_ && pause_) {
         pause_ = false;
         HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
-        STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+        Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
         GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
     }
     USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);

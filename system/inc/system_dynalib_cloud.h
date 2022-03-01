@@ -25,6 +25,8 @@
 #define	SYSTEM_DYNALIB_CLOUD_H
 
 #include "dynalib.h"
+#include "system_tick_hal.h"
+#include "time_compat.h"
 
 #ifdef DYNALIB_EXPORT
 #include "system_cloud.h"
@@ -46,11 +48,13 @@ DYNALIB_FN(9, system_cloud, spark_subscribe, bool(const char*, EventHandler, voi
 DYNALIB_FN(10, system_cloud, spark_unsubscribe, void(void*))
 DYNALIB_FN(11, system_cloud, spark_sync_time, bool(void*))
 DYNALIB_FN(12, system_cloud, spark_sync_time_pending, bool(void*))
-DYNALIB_FN(13, system_cloud, spark_sync_time_last, system_tick_t(time_t*, void*))
-DYNALIB_FN(14, system_cloud, spark_set_connection_property, int(unsigned, unsigned, particle::protocol::connection_properties_t*, void*))
+DYNALIB_FN(13, system_cloud, spark_sync_time_last, system_tick_t(time32_t*, time_t*))
+DYNALIB_FN(14, system_cloud, spark_set_connection_property, int(unsigned, unsigned, const void*, void*))
 DYNALIB_FN(15, system_cloud, spark_set_random_seed_from_cloud_handler, int(void (*handler)(unsigned int), void*))
+DYNALIB_FN(16, system_cloud, spark_publish_vitals, int(system_tick_t, void*))
+DYNALIB_FN(17, system_cloud, spark_cloud_disconnect, int(const spark_cloud_disconnect_options*, void*))
+DYNALIB_FN(18, system_cloud, spark_get_connection_property, int(unsigned, void*, size_t*, void*))
 
 DYNALIB_END(system_cloud)
 
 #endif	/* SYSTEM_DYNALIB_CLOUD_H */
-

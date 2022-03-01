@@ -17,6 +17,9 @@
  ******************************************************************************
  */
 
+#include "logging.h"
+
+LOG_SOURCE_CATEGORY("hal.ota")
 
 #include "core_hal.h"
 #include "ota_flash_hal.h"
@@ -40,6 +43,8 @@
 #include "delay_hal.h"
 // For ATOMIC_BLOCK
 #include "spark_wiring_interrupts.h"
+#include "deviceid_hal.h"
+#include "check.h"
 
 #include <memory>
 
@@ -47,14 +52,14 @@
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
 
-static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength);
+static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength);
 
 /**
  * Finds the location where a given module is stored. The module is identified
  * by it's funciton and index.
  * @param module_function   The function of the module to find.
  * @param module_index      The function index of the module to find.
- * @return the module_bounds corresponding to the module, NULL when not found.
+ * @return the module_bounds corresponding to the module, nullptr when not found.
  */
 const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t module_index)
 {
@@ -62,7 +67,7 @@ const module_bounds_t* find_module_bounds(uint8_t module_function, uint8_t modul
         if (module_bounds[i]->module_function==module_function && module_bounds[i]->module_index==module_index)
             return module_bounds[i];
     }
-    return NULL;
+    return nullptr;
 }
 
 
@@ -72,7 +77,7 @@ void set_key_value(key_value* kv, const char* key, const char* value)
     strncpy(kv->value, value, sizeof(kv->value)-1);
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
@@ -89,9 +94,10 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
     else
     {
         delete info->modules;
-        info->modules = NULL;
+        info->modules = nullptr;
     }
     HAL_OTA_Add_System_Info(info, construct, reserved);
+    return 0;
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
@@ -110,9 +116,7 @@ bool validate_module_dependencies_full(const module_info_t* module, const module
     HAL_System_Info(&sysinfo, true, nullptr);
     for (unsigned i=0; i<sysinfo.module_count; i++) {
         const hal_module_t& smod = sysinfo.modules[i];
-        const module_info_t* info = smod.info;
-        if (!info)
-            continue;
+        const module_info_t* info = &smod.info;
 
         // Just in case
         if (!memcmp((const void*)&smod.bounds, (const void*)bounds, sizeof(module_bounds_t))) {
@@ -168,6 +172,9 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
             // so only user->system_part_2 is checked
             if (module->dependency.module_function != MODULE_FUNCTION_NONE) {
                 const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency.module_function, module->dependency.module_index);
+                if (!dependency_bounds) {
+                    return false;
+                }
                 const module_info_t* dependency = locate_module(dependency_bounds);
                 valid = dependency && (dependency->module_version>=module->dependency.module_version);
             } else {
@@ -179,6 +186,9 @@ bool validate_module_dependencies(const module_bounds_t* bounds, bool userOption
                 valid = valid && true;
             } else {
                 const module_bounds_t* dependency_bounds = find_module_bounds(module->dependency2.module_function, module->dependency2.module_index);
+                if (!dependency_bounds) {
+                    return false;
+                }
                 const module_info_t* dependency = locate_module(dependency_bounds);
                 valid = valid && dependency && (dependency->module_version>=module->dependency2.module_version);
             }
@@ -240,7 +250,10 @@ uint16_t HAL_OTA_ChunkSize()
 
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 {
-    FLASH_Begin(address, length);
+    const int r = FLASH_Begin(address, length);
+    if (r != FLASH_ACCESS_RESULT_OK) {
+        return false;
+    }
     return true;
 }
 
@@ -249,11 +262,11 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
     return FLASH_Update(pBuffer, address, length);
 }
 
-static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t moduleLength)
+static int flash_bootloader(const hal_module_t* mod, uint32_t moduleLength)
 {
-    hal_update_complete_t result = HAL_UPDATE_ERROR;
+    bool ok = false;
     uint32_t attempt = 0;
-    do {
+    for (;;) {
         int fres = FLASH_ACCESS_RESULT_ERROR;
         if (attempt++ > 0) {
             ATOMIC_BLOCK() {
@@ -268,14 +281,13 @@ static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t module
             hal_module_t module;
             bool module_fetched = fetch_module(&module, &module_bootloader, true, MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL);
             if (module_fetched && (module.validity_checked == module.validity_result)) {
-                result = HAL_UPDATE_APPLIED;
+                ok = true;
                 break;
             }
         }
 
         if (fres == FLASH_ACCESS_RESULT_BADARG) {
             // The bootloader is still intact, for some reason the module being copied has failed some checks.
-            result = HAL_UPDATE_ERROR;
             break;
         }
 
@@ -283,62 +295,107 @@ static hal_update_complete_t flash_bootloader(hal_module_t* mod, uint32_t module
         system_tick_t period = random(BOOTLOADER_RANDOM_BACKOFF_MIN, BOOTLOADER_RANDOM_BACKOFF_MAX);
         LOG_DEBUG(WARN, "Failed to flash bootloader. Retrying in %lu ms", period);
         HAL_Delay_Milliseconds(period);
-    } while ((result == HAL_UPDATE_ERROR));
-    return result;
-}
-
-int HAL_FLASH_OTA_Validate(hal_module_t* mod, bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
-    hal_module_t module;
-
-    bool module_fetched = fetch_module(&module, &module_ota, userDepsOptional, flags);
-
-    if (mod) {
-        memcpy(mod, &module, sizeof(hal_module_t));
     }
-
-    return (int)!module_fetched;
+    return ok ? (int)HAL_UPDATE_APPLIED : SYSTEM_ERROR_UNKNOWN;
 }
 
-hal_update_complete_t HAL_FLASH_End(hal_module_t* mod)
+namespace {
+
+int validityResultToSystemError(unsigned result, unsigned checked) {
+    if (result == checked) {
+        return 0;
+    }
+    if ((checked & MODULE_VALIDATION_INTEGRITY) && !(result & MODULE_VALIDATION_INTEGRITY)) {
+        return SYSTEM_ERROR_OTA_INTEGRITY_CHECK_FAILED;
+    }
+    if ((checked & MODULE_VALIDATION_DEPENDENCIES) && !(result & MODULE_VALIDATION_DEPENDENCIES)) {
+        return SYSTEM_ERROR_OTA_DEPENDENCY_CHECK_FAILED;
+    }
+    if ((checked & MODULE_VALIDATION_DEPENDENCIES_FULL) && !(result & MODULE_VALIDATION_DEPENDENCIES_FULL)) {
+        return SYSTEM_ERROR_OTA_DEPENDENCY_CHECK_FAILED;
+    }
+    if ((checked & MODULE_VALIDATION_RANGE) && !(result & MODULE_VALIDATION_RANGE)) {
+        return SYSTEM_ERROR_OTA_INVALID_ADDRESS;
+    }
+    if ((checked & MODULE_VALIDATION_PLATFORM) && !(result & MODULE_VALIDATION_PLATFORM)) {
+        return SYSTEM_ERROR_OTA_INVALID_PLATFORM;
+    }
+    return SYSTEM_ERROR_OTA_VALIDATION_FAILED;
+}
+
+int fetchAndValidateModule(hal_module_t* module, bool userDepsOptional, unsigned flags) {
+    if (!fetch_module(module, &module_ota, userDepsOptional, flags)) {
+        LOG(ERROR, "Unable to fetch module");
+        return SYSTEM_ERROR_OTA_MODULE_NOT_FOUND;
+    }
+    const auto info = &module->info;
+    LOG(INFO, "Validating module; type: %u; index: %u; version: %u", (unsigned)module_function(info),
+            (unsigned)module_index(info), (unsigned)module_version(info));
+    if (module->validity_result != module->validity_checked) {
+        LOG(ERROR, "Validation failed; result: 0x%02x; checked: 0x%02x", (unsigned)module->validity_result,
+                (unsigned)module->validity_checked);
+        return validityResultToSystemError(module->validity_result, module->validity_checked);
+    }
+    return 0;
+}
+
+} // namespace
+
+int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved) {
+    hal_module_t module = {};
+    CHECK(fetchAndValidateModule(&module, userDepsOptional, flags));
+    return 0;
+}
+
+int HAL_FLASH_End(void* reserved)
 {
-    hal_module_t module;
-    hal_update_complete_t result = HAL_UPDATE_ERROR;
-
-    bool module_fetched = !HAL_FLASH_OTA_Validate(&module, true, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES_FULL), NULL);
-	DEBUG("module fetched %d, checks=%d, result=%d", module_fetched, module.validity_checked, module.validity_result);
-    if (module_fetched && (module.validity_checked==module.validity_result))
-    {
-        uint32_t moduleLength = module_length(module.info);
-        module_function_t function = module_function(module.info);
-
-        // bootloader is copied directly
-        if (function==MODULE_FUNCTION_BOOTLOADER) {
-            result = flash_bootloader(&module, moduleLength);
+    hal_module_t module = {};
+    CHECK(fetchAndValidateModule(&module, true /* userDepsOptional */, (module_validation_flags_t)(MODULE_VALIDATION_INTEGRITY |
+            MODULE_VALIDATION_DEPENDENCIES_FULL)));
+    int result = SYSTEM_ERROR_UNKNOWN;
+    uint32_t moduleLength = module_length(&module.info);
+    module_function_t function = module_function(&module.info);
+    // bootloader is copied directly
+    if (function == MODULE_FUNCTION_BOOTLOADER) {
+        result = flash_bootloader(&module, moduleLength);
+    } else {
+        const uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
+        if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address, FLASH_INTERNAL,
+                (uint32_t)module.info.module_start_address, moduleLength + 4 /* CRC-32 */, function, slotFlags)) {
+            result = HAL_UPDATE_APPLIED_PENDING_RESTART;
         }
-        else
-        {
-            if (FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, module_ota.start_address,
-                FLASH_INTERNAL, uint32_t(module.info->module_start_address),
-                (moduleLength + 4),//+4 to copy the CRC too
-                function,
-                MODULE_VERIFY_CRC|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS|MODULE_VERIFY_FUNCTION)) { //true to verify the CRC during copy also
-                    result = HAL_UPDATE_APPLIED_PENDING_RESTART;
-                    DEBUG("OTA module applied - device will restart");
-            }
-        }
-
         FLASH_End();
     }
-    else
-    {
-    		WARN("OTA module not applied");
-    }
-    if (mod)
-    {
-        memcpy(mod, &module, sizeof(hal_module_t));
+    if (result < 0) {
+        LOG(ERROR, "Unable to apply module");
     }
     return result;
 }
+
+// Todo this code and much of the code here is duplicated between Gen2 and Gen3
+// This should be factored out into directory shared by both platforms.
+int HAL_FLASH_ApplyPendingUpdate(bool dryRun, void* reserved)
+{
+    uint8_t otaUpdateFlag = DCT_OTA_UPDATE_FLAG_CLEAR;
+    STATIC_ASSERT(sizeof(otaUpdateFlag)==DCT_OTA_UPDATE_FLAG_SIZE, "expected ota update flag size to be 1");
+    dct_read_app_data_copy(DCT_OTA_UPDATE_FLAG_OFFSET, &otaUpdateFlag, DCT_OTA_UPDATE_FLAG_SIZE);
+    int result = SYSTEM_ERROR_UNKNOWN;
+    if (otaUpdateFlag==DCT_OTA_UPDATE_FLAG_SET) {
+        if (dryRun) {
+            // todo - we should probably check the module integrity too
+            // ideally this parameter would be passed to HAL_FLASH_End to avoid duplication of logic here.
+            result = HAL_UPDATE_APPLIED;
+        }
+        else {
+            // clear the flag
+            otaUpdateFlag = DCT_OTA_UPDATE_FLAG_CLEAR;
+            dct_write_app_data(&otaUpdateFlag, DCT_OTA_UPDATE_FLAG_OFFSET, DCT_OTA_UPDATE_FLAG_SIZE);
+            result = HAL_FLASH_End(nullptr);
+        }
+    }
+    return result;
+}
+
 
 void copy_dct(void* target, uint16_t offset, uint16_t length) {
     dct_read_app_data_copy(offset, target, length);
@@ -433,11 +490,11 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
         int error  = 1;
 #if HAL_PLATFORM_CLOUD_UDP
         if (udp)
-        		error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL);
+        		error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, nullptr);
 #endif
 #if HAL_PLATFORM_CLOUD_TCP
 		if (!udp)
-			error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);
+			error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, nullptr);
 #endif
         if (!error) {
         		if (udp)
@@ -457,15 +514,6 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
 
 STATIC_ASSERT(Internet_Address_is_2_bytes_c1, sizeof(Internet_Address_TypeDef)==1);
 STATIC_ASSERT(ServerAddress_packed_c1, offsetof(ServerAddress, ip)==2);
-
-
-
-void check() {
-    // todo - why is this static assert giving a different result?
-    STATIC_ASSERT_EXPR(Internet_Address_is_2_bytes_c, sizeof(Internet_Address_TypeDef)==2);
-    STATIC_ASSERT_EXPR(ServerAddress_packed_c, offsetof(ServerAddress, ip)==4);
-}
-
 
 uint16_t HAL_Set_Claim_Code(const char* code)
 {
@@ -514,7 +562,7 @@ const uint8_t* fetch_server_public_key(uint8_t lock)
         return (const uint8_t*)dct_read_app_data_lock(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_SERVER_PUBLIC_KEY_OFFSET : DCT_SERVER_PUBLIC_KEY_OFFSET);
     } else {
         dct_read_app_data_unlock(0);
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -524,7 +572,7 @@ const uint8_t* fetch_device_private_key(uint8_t lock)
         return (const uint8_t*)dct_read_app_data_lock(HAL_Feature_Get(FEATURE_CLOUD_UDP) ? DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET : DCT_DEVICE_PRIVATE_KEY_OFFSET);
     } else {
         dct_read_app_data_unlock(0);
-        return NULL;
+        return nullptr;
     }
 }
 
@@ -532,20 +580,22 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
 {
     if (!lock) {
         dct_read_app_data_unlock(0);
-        return NULL;
+        return nullptr;
     }
 
-    uint8_t pubkey[DCT_DEVICE_PUBLIC_KEY_SIZE];
-    memset(pubkey, 0, sizeof(pubkey));
     bool udp = false;
 #if HAL_PLATFORM_CLOUD_UDP
     udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 #endif
+
+    size_t key_size = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_SIZE : DCT_DEVICE_PUBLIC_KEY_SIZE;
+    uint8_t pubkey[key_size] = {};
+
     const uint8_t* priv = fetch_device_private_key(1);
     int extracted_length = 0;
 #if HAL_PLATFORM_CLOUD_UDP
     if (udp) {
-        extracted_length = extract_public_ec_key(pubkey, sizeof(pubkey), priv);
+        extracted_length = extract_public_ec_key(pubkey, key_size, priv);
     }
 #endif
 #if HAL_PLATFORM_CLOUD_TCP
@@ -557,9 +607,8 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
     fetch_device_private_key(0);
 
     int offset = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET : DCT_DEVICE_PUBLIC_KEY_OFFSET;
-    size_t key_size = udp ? DCT_ALT_DEVICE_PUBLIC_KEY_SIZE : DCT_DEVICE_PUBLIC_KEY_SIZE;
     const uint8_t* flash_pub_key = (const uint8_t*)dct_read_app_data_lock(offset);
-    if ((extracted_length > 0) && memcmp(pubkey, flash_pub_key, sizeof(pubkey))) {
+    if ((extracted_length > 0) && memcmp(pubkey, flash_pub_key, key_size)) {
         dct_read_app_data_unlock(offset);
         dct_write_app_data(pubkey, offset, key_size);
         flash_pub_key = (const uint8_t*)dct_read_app_data_lock(offset);
@@ -571,22 +620,44 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
 int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
 {
     unsigned offset = 0;
-    unsigned length = -1;
+    unsigned length = 0;
+    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 
     switch (config_item)
     {
     case SYSTEM_CONFIG_DEVICE_KEY:
-        offset = DCT_DEVICE_PRIVATE_KEY_OFFSET;
-        length = DCT_DEVICE_PRIVATE_KEY_SIZE;
+        if (udp) {
+            offset = DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET;
+            length = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
+        } else {
+            offset = DCT_DEVICE_PRIVATE_KEY_OFFSET;
+            length = DCT_DEVICE_PRIVATE_KEY_SIZE;
+        }
         break;
     case SYSTEM_CONFIG_SERVER_KEY:
-        offset = DCT_SERVER_PUBLIC_KEY_OFFSET;
-        length = DCT_SERVER_PUBLIC_KEY_SIZE;
+        if (udp) {
+            offset = DCT_ALT_SERVER_PUBLIC_KEY_OFFSET;
+            // Server address for UDP devices is in a separate, adjacent DCT field unlike TCP devices.
+            // To update the server address along with the key, we need to write more data.
+            length = DCT_ALT_SERVER_PUBLIC_KEY_SIZE + DCT_ALT_SERVER_ADDRESS_SIZE;
+        } else {
+            offset = DCT_SERVER_PUBLIC_KEY_OFFSET;
+            length = DCT_SERVER_PUBLIC_KEY_SIZE;
+        }
+        break;
+    case SYSTEM_CONFIG_SERVER_ADDRESS:
+        if (udp) {
+            offset = DCT_ALT_SERVER_ADDRESS_OFFSET;
+            length = DCT_ALT_SERVER_ADDRESS_SIZE;
+        } else {
+            offset = DCT_SERVER_ADDRESS_OFFSET;
+            length = DCT_SERVER_ADDRESS_SIZE;
+        }
         break;
     case SYSTEM_CONFIG_SOFTAP_PREFIX:
         offset = DCT_SSID_PREFIX_OFFSET;
         length = DCT_SSID_PREFIX_SIZE-1;
-        if (data_length>length)
+        if (data_length>(unsigned)length)
             data_length = length;
         dct_write_app_data(&data_length, offset++, 1);
         break;
@@ -600,8 +671,8 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         break;
     }
 
-    if (length>=0)
-        dct_write_app_data(data, offset, length>data_length ? data_length : length);
+    if (length>0)
+        dct_write_app_data(data, offset, std::min<size_t>(data_length, length));
 
     return length;
 }
@@ -762,4 +833,43 @@ int store_server_address(server_protocol_type type, const ServerAddress* addr) {
         return ret;
     }
     return dct_write_app_data(buf.get(), offs, maxSize);
+}
+
+int fetch_system_properties(key_value* storage, int keyCount, uint16_t flags) {
+    int keys = 0;
+
+    if (storage) {
+        if (!(flags & HAL_SYSTEM_INFO_FLAGS_CLOUD) && keyCount && 0<hal_get_device_secret(storage[keys].value, sizeof(storage[0].value), nullptr)) {
+            storage[keys].key = "ms";
+            keyCount--;
+            keys++;
+        }
+        if (!(flags & HAL_SYSTEM_INFO_FLAGS_CLOUD) && keyCount && 0<hal_get_device_serial_number(storage[keys].value, sizeof(storage[0].value), nullptr)) {
+            storage[keys].key = "sn";
+            keyCount--;
+            keys++;
+        }
+        return keys;
+    }
+    else {
+        return 2;
+    }
+}
+
+int add_system_properties(hal_system_info_t* info, bool create, size_t additional) {
+    uint16_t flags = 0;
+    if (info->size >= sizeof(hal_system_info_t::flags) + offsetof(hal_system_info_t, flags)) {
+        flags = info->flags;
+    }
+
+    if (create) {
+        int keyCount = fetch_system_properties(nullptr, 0, flags);
+        info->key_values = new key_value[keyCount+additional];
+        info->key_value_count = fetch_system_properties(info->key_values, keyCount, flags);
+        return info->key_value_count;
+    } else {
+        delete[] info->key_values;
+        info->key_values = nullptr;
+        return 0;
+    }
 }

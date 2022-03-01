@@ -1,16 +1,18 @@
-#include "application.h"
+#include "Particle.h"
 
-// ALL_LEVEL, TRACE_LEVEL, DEBUG_LEVEL, WARN_LEVEL, ERROR_LEVEL, PANIC_LEVEL, NO_LOG_LEVEL
-//SerialDebugOutput debugOutput(9600, ALL_LEVEL);
+SerialLogHandler logHandler(LOG_LEVEL_ALL);
 
+#define FUNC_KEY_MIN "F"
+#define EVENT_NAME_MAX "1234567890123456789012345678901234567890123456789012345678901234"
+// 64
+#define FUNC_KEY_MAX "FUN646789012345678901234567890123456789012345678901234567890ABCD"
 
 bool variableBool = false;
-char variableString[1024];
-double variableDouble;
+String variableString;
+double variableDouble = 0.11;
 int variableInt;
 
 String next_cmd;
-
 
 int cmd(String arg)
 {
@@ -23,30 +25,29 @@ int cmd(String arg)
 int update(String data)
 {
     variableBool = !variableBool;
-    variableDouble += 0.25;
+    variableDouble += 0.11;
     variableInt += 1;
     return 0;
 }
 
 int updateString(String data)
 {
-    size_t len = data.length();
-    if (len>sizeof(variableString)-1)
-        len = sizeof(variableString)-1;
-    strncpy(variableString, data.c_str(), len);
-    variableString[len] = 0;
-    return data.length();
+    Serial.printlnf("[%s]", data.c_str());
+    // Let the String class provide protections here
+    variableString = data;
+    return variableString.length();
 }
 
 int setString(String data)
 {
-    int len = atoi(data.c_str());
+    Serial.printlnf("[%s]", data.c_str());
+    variableString = "";
+    int len = data.toInt();
     for (int i=0; i<len; i++)
     {
-        variableString[i] = 'A'+(i%26);
+        variableString.concat(char('A'+(i%26)));
     }
-    variableString[len] = 0;
-    return 0;
+    return variableString.length();
 }
 
 int checkString(String data)
@@ -63,19 +64,33 @@ int checkString(String data)
 
 void subscription(const char* name, const char* data)
 {
-	Serial.print("subscription received: ");
-	Serial.print(name);
-	Serial.print(" ");
-	Serial.print(data);
-	Serial.println();
+	// Serial.print("subscription received: ");
+	// Serial.print(name);
+	// Serial.print(" ");
+	// Serial.print(data);
+	// Serial.println();
 
 	updateString(data);
+}
+
+void subscription2(const char* name, const char* data)
+{
+    // Serial.print("subscription received: ");
+    // Serial.print(name);
+    // Serial.print(" ");
+    // Serial.print(data);
+    // Serial.println();
+
+    updateString(data);
 }
 
 bool disconnect = false;
 
 void setup()
 {
+    Serial.begin();
+
+    variableString.reserve(622);
     Particle.variable("bool", variableBool);
     Particle.variable("int", variableInt);
     Particle.variable("double", variableDouble);
@@ -85,23 +100,54 @@ void setup()
     Particle.function("update", update);
     Particle.function("setString", setString);
     Particle.function("checkString", checkString);
+    Particle.function(FUNC_KEY_MAX, updateString);
+    Particle.function(FUNC_KEY_MIN, updateString);
 
     Particle.function("cmd", cmd);
 
-    Particle.subscribe("cloudtest", subscription);
-
+    Particle.subscribe("cloudtest", subscription, MY_DEVICES);
+    Particle.subscribe(EVENT_NAME_MAX, subscription2, MY_DEVICES);
 }
+
+#if Wiring_Cellular
+/**
+ * Returns current modem type:
+ * DEV_UNKNOWN, DEV_SARA_G350, DEV_SARA_U260, DEV_SARA_U270, DEV_SARA_U201, DEV_SARA_R410
+ */
+int cellular_modem_type() {
+    CellularDevice device = {};
+    device.size = sizeof(device);
+    cellular_device_info(&device, NULL);
+
+    return device.dev;
+}
+#endif // Wiring_Cellular
 
 void do_cmd(String arg)
 {
 	if (arg.equals("bounce_pdp"))
 	{
 #if Wiring_Cellular
-		 Cellular.command(40*1000, "AT+UPSDA=0,4\r\n");
-		 Cellular.command(40*1000, "AT+UPSDA=0,3\r\n");
-		 Serial.println("bounced pdp context");
-		 disconnect = true;
- #endif
+        if (cellular_modem_type() == DEV_SARA_R410) {
+            return;
+        }
+        // Wait 10s for the function return value to be sent
+        for (system_tick_t s = millis(); millis() - s <= 10000UL; ) {
+            // Wish we had a waitFor(Particle.idle, 10000UL);
+            Particle.process();
+        }
+		cellular_command(nullptr, nullptr, 40*1000, "AT+UPSDA=0,4\r\n");
+		cellular_command(nullptr, nullptr, 40*1000, "AT+UPSDA=0,3\r\n");
+		Serial.println("bounced pdp context");
+		// disconnect = true;
+        // only delay for 20s on Cellular devices
+        for (system_tick_t s = millis(); millis() - s <= 20000UL; ) {
+            Particle.process();
+            if (Particle.connected()) {
+                break;
+            }
+        }
+ #endif // Wiring_Cellular
 	}
 	else if (arg.equals("bounce_connection"))
 	{

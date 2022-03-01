@@ -12,13 +12,6 @@
 #define TESTSERIAL2 Serial5
 #define TX1 C3
 #define TX2 C1
-#elif (PLATFORM_ID == 0)
-#include "Serial2/Serial2.h"
-#define TESTSERIAL1 Serial1
-#define TESTSERIAL2 Serial2
-#define TX1 TX
-#define TX2 D1
-#warning Core requires external pull-up resistor attached to TX or D1, as it doesn't support Open-Drain or Push-Pull mode with pull-up
 #else
 #error Unsupported platform
 #endif
@@ -102,7 +95,7 @@ void serialReadLineNoEcho(Stream *serialObj, char *dst, int max_len, system_tick
 void switchPinToAfOpenDrainWithPullUp(pin_t pin)
 {
 #if PLATFORM_ID != 0
-    STM32_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
     pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
     GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
     GPIO_InitTypeDef GPIO_InitStructure = {0};

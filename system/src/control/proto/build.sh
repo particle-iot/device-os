@@ -17,9 +17,12 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 FIRMWARE_ROOT_DIR="${DIR}/../../../.."
 
 PROTO_DIR="${FIRMWARE_ROOT_DIR}/proto/control"
-NANOPB_PATH="${FIRMWARE_ROOT_DIR}/nanopb/nanopb"
+NANOPB_PATH="${FIRMWARE_ROOT_DIR}/third_party/nanopb/nanopb"
 PROTOC_NANOPB_PLUGIN="${NANOPB_PATH}/generator/protoc-gen-nanopb"
-PROTOC_INCLUDE_PATH="-I${PROTO_DIR} -I${NANOPB_PATH}/generator -I${NANOPB_PATH}/generator/proto"
+PROTOC_INCLUDE_PATH="
+  -I${PROTO_DIR} \
+  -I${NANOPB_PATH}/generator \
+  -I${NANOPB_PATH}/generator/proto"
 
 gen_proto() {
   src_proto="$1"
@@ -29,9 +32,15 @@ gen_proto() {
   fi
 }
 
+gen_proto "${PROTO_DIR}/extensions.proto"
 gen_proto "${PROTO_DIR}/common.proto"
 gen_proto "${PROTO_DIR}/control.proto"
 gen_proto "${PROTO_DIR}/config.proto"
 gen_proto "${PROTO_DIR}/wifi.proto"
+gen_proto "${PROTO_DIR}/wifi_new.proto"
+gen_proto "${PROTO_DIR}/cellular.proto"
 gen_proto "${PROTO_DIR}/network.proto"
 gen_proto "${PROTO_DIR}/storage.proto"
+gen_proto "${PROTO_DIR}/mesh.proto"
+gen_proto "${PROTO_DIR}/cloud.proto"
+gen_proto "${PROTO_DIR}/internal.proto"

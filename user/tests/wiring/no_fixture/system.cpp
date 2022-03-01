@@ -1,9 +1,14 @@
+#define PARTICLE_USE_UNSTABLE_API
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "random.h"
+#include "scope_guard.h"
+#include "ota_flash_hal.h"
+#include "storage_hal.h"
+#include "endian_util.h"
+#include "softcrc32.h"
 
-
-#if PLATFORM_ID >= 3
 test(SYSTEM_01_freeMemory)
 {
     // this test didn't work on the core attempting to allocate the current value of
@@ -20,27 +25,35 @@ test(SYSTEM_01_freeMemory)
         assertLess(free2, free1);
     }
 }
-#endif
 
 test(SYSTEM_02_version)
 {
     uint32_t versionNumber = System.versionNumber();
-    // Serial.println(System.versionNumber()); // 328193 -> 0x00050201
-    // Serial.println(System.version().c_str()); // 0.5.2-rc.1
-    char expected[20];
-    if (SYSTEM_VERSION & 0xFF)
-        sprintf(expected, "%d.%d.%d-rc.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0));
-    else
+    // Serial.println(System.versionNumber()); // 16908417 -> 0x01020081
+    // Serial.println(System.version().c_str()); // 1.2.0-rc.1
+    char expected[64] = {};
+    // Order of testing here is important to retain
+    if ((versionNumber & 0xFF) == 0xFF) {
         sprintf(expected, "%d.%d.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1));
+    } else if ((versionNumber & 0xC0) == 0x00) {
+        sprintf(expected, "%d.%d.%d-alpha.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
+    } else if ((versionNumber & 0xC0) == 0x40) {
+        sprintf(expected, "%d.%d.%d-beta.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
+    } else if ((versionNumber & 0xC0) == 0x80) {
+        sprintf(expected, "%d.%d.%d-rc.%d", (int)BYTE_N(versionNumber,3), (int)BYTE_N(versionNumber,2), (int)BYTE_N(versionNumber,1), (int)BYTE_N(versionNumber,0) & 0x3F);
+    } else if ((versionNumber & 0xC0) >= 0xC0) {
+        Serial.println("expected \"alpha\", \"beta\", \"rc\", or \"default\" version!");
+        assertFalse(true);
+    }
 
-    assertTrue(strcmp(expected,System.version().c_str())==0);
+    assertEqual( expected, System.version().c_str());
 }
 
 // todo - use platform feature flags
-#if defined(STM32F2XX)
-    // subtract 4 bytes for signature (3068 bytes)
-    #define USER_BACKUP_RAM ((1024*3)-4)
-#endif // defined(STM32F2XX)
+#if HAL_PLATFORM_BACKUP_RAM
+	// subtract 64 bytes for test runner purposes
+    #define USER_BACKUP_RAM ((1024*3)-64)
+#endif // HAL_PLATFORM_BACKUP_RAM
 
 #if defined(USER_BACKUP_RAM)
 
@@ -64,20 +77,20 @@ test(SYSTEM_03_user_backup_ram)
     assertTrue(total_backup==(USER_BACKUP_RAM));
     assertTrue(total_ram==(USER_BACKUP_RAM));
 
-    if (int(&app_backup) < 0x40024000) {
-        Serial.printlnf("ERROR: expected app_backup in user backup memory, but was at %x", &app_backup);
-    }
-    assertTrue(int(&app_backup)>=0x40024000);
+	extern uintptr_t link_global_data_start;
+	extern uintptr_t link_bss_end;
 
-    if (int(&app_ram) >= 0x40024000) {
-        Serial.printlnf("ERROR: expected app_ram in user sram memory, but was at %x", &app_ram);
-    }
-    assertTrue(int(&app_ram)<0x40024000);
+	uintptr_t ramStart = (uintptr_t)&link_global_data_start;
+	uintptr_t ramEnd = (uintptr_t)&link_bss_end;
+
+	assertFalse((uintptr_t)app_backup >= ramStart && (uintptr_t)app_backup <= ramEnd);
 }
 
 #endif // defined(USER_BACKUP_RAM)
 
-#if defined(BUTTON1_MIRROR_SUPPORTED)
+#if !HAL_PLATFORM_NRF52840 // TODO
+
+#if defined(BUTTON1_MIRROR_SUPPORTED) && PLATFORM_ID != PLATFORM_P1
 static int s_button_clicks = 0;
 static void onButtonClick(system_event_t ev, int data) {
     s_button_clicks = data;
@@ -85,13 +98,6 @@ static void onButtonClick(system_event_t ev, int data) {
 
 test(SYSTEM_04_button_mirror)
 {
-    // Known bug:
-    // events posted from an ISR might not be delivered to the application queue
-    // when threading is enabled
-    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
-        skip();
-        return;
-    }
     System.buttonMirror(D1, FALLING, false);
     auto pinmap = HAL_Pin_Map();
     System.on(button_click, onButtonClick);
@@ -130,124 +136,301 @@ test(SYSTEM_05_button_mirror_disable)
 }
 #endif // defined(BUTTON1_MIRROR_SUPPORTED)
 
-#if PLATFORM_ID!=0
-// platform supports out of memory notifiation
+#endif // !HAL_PLATFORM_NRF52840
 
-bool oomEventReceived = false;
-size_t oomSizeReceived = 0;
-void handle_oom(system_event_t event, int param, void*) {
-	Serial.printlnf("got event %d %d", event, param);
-	if (out_of_memory==event) {
-		oomEventReceived = true;
-		oomSizeReceived = param;
-	}
-};
+void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal_module_t** factory) {
+    for (unsigned i = 0; i < info.module_count; i++) {
 
-void register_oom() {
-	oomEventReceived = false;
-	oomSizeReceived = 0;
-	System.on(out_of_memory, handle_oom);
+        if (info.modules[i].bounds.store == MODULE_STORE_FACTORY && !*factory) {
+            *factory = &info.modules[i];
+        } else if (info.modules[i].bounds.store == MODULE_STORE_MAIN && info.modules[i].bounds.module_function == MODULE_FUNCTION_USER_PART) {
+            // NOTE: there shouldn't be multiple user modules present, but just in case take the one with the highest index
+            if (!*user || info.modules[i].bounds.module_index > (*user)->bounds.module_index) {
+                *user = &info.modules[i];
+            }
+        }
+    }
 }
 
-void unregister_oom() {
-	System.off(out_of_memory, handle_oom);
-}
-
-
-test(SYSTEM_06_out_of_memory)
+test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
 {
-	const size_t size = 1024*1024*1024;
-	register_oom();
-	malloc(size);
-	Particle.process();
-	unregister_oom();
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0, nullptr);
+    SCOPE_GUARD({
+        system_info_free_unstable(&info, nullptr);
+    });
+    assertFalse(info.modules == nullptr);
+    hal_module_t* user = nullptr;
+    hal_module_t* factory = nullptr;
+    findUserAndFactoryModules(info, &user, &factory);
+    assertFalse(user == nullptr);
+    assertFalse(factory == nullptr);
 
-	assertTrue(oomEventReceived);
-	assertEqual(oomSizeReceived, size);
+    // Clear the session data
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
+    assertTrue(waitFor(Particle.disconnected, 1000));
+    // Copy current user-part into factory location
+    auto storageId = factory->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH ? HAL_STORAGE_ID_EXTERNAL_FLASH : HAL_STORAGE_ID_INTERNAL_FLASH;
+    int r = hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    SCOPE_GUARD({
+        hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    });
+    assertEqual(factory->bounds.maximum_size, r);
+    module_info_t patchedModuleInfo = user->info;
+    module_info_suffix_t patchedModuleSuffix = user->suffix;
+    patchedModuleInfo.module_version = 123;
+    memset(patchedModuleSuffix.sha, 0x5a, sizeof(patchedModuleSuffix.sha));
+    // Using software implementation here bundled with the test, because the appropriate variant of HAL_Core_Compute_CRC32
+    // is not exposed (the one that takes the current remainder value) and some platforms have a hardware peripheral for CRC
+    // which complicates this even further.
+    uint32_t crc = 0;
+    if (user->module_info_offset > 0) {
+        crc = particle::softCrc32((const uint8_t*)user->bounds.start_address, user->module_info_offset, &crc);
+    }
+    size_t userModuleSize = (size_t)user->info.module_end_address - (size_t)user->info.module_start_address;
+    crc = particle::softCrc32((const uint8_t*)&patchedModuleInfo, sizeof(patchedModuleInfo), &crc);
+    crc = particle::softCrc32((const uint8_t*)user->bounds.start_address + user->module_info_offset + sizeof(patchedModuleInfo),
+            userModuleSize - sizeof(patchedModuleInfo) - user->module_info_offset - sizeof(patchedModuleSuffix), &crc);
+    crc = particle::softCrc32((const uint8_t*)&patchedModuleSuffix, sizeof(patchedModuleSuffix), &crc);
+    crc = particle::nativeToBigEndian(crc);
+
+    char buf[256]; // some platforms cannot write into e.g. an external flash directly from internal
+    size_t pos = 0;
+    while (pos < user->module_info_offset) {
+        size_t sz = std::min<size_t>(sizeof(buf), user->module_info_offset - pos);
+        memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
+        r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz);
+        assertEqual(sz, r);
+        pos += sz;
+    }
+    r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&patchedModuleInfo, sizeof(patchedModuleInfo));
+    assertEqual(sizeof(patchedModuleInfo), r);
+    pos += sizeof(patchedModuleInfo);
+    while (pos < userModuleSize - sizeof(patchedModuleSuffix)) {
+        size_t sz = std::min<size_t>(sizeof(buf), userModuleSize - sizeof(patchedModuleSuffix) - pos);
+        memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
+        r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz);
+        assertEqual(sz, r);
+        pos += sz;
+    }
+    r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&patchedModuleSuffix, sizeof(patchedModuleSuffix));
+    assertEqual(sizeof(patchedModuleSuffix), r);
+    pos += sizeof(patchedModuleSuffix);
+    r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)&crc, sizeof(crc));
+    assertEqual(sizeof(crc), r);
+
+    // Re-request module info to check that the factory binary is in fact valid now
+    system_info_free_unstable(&info, nullptr);
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0, nullptr);
+    assertFalse(info.modules == nullptr);
+
+    factory = nullptr;
+    user = nullptr;
+    findUserAndFactoryModules(info, &user, &factory);
+    assertFalse(user == nullptr);
+    assertFalse(factory == nullptr);
+    assertEqual(factory->validity_checked, factory->validity_result);
+    assertNotEqual(factory->validity_checked, 0);
+    assertTrue(!memcmp(&factory->info, &patchedModuleInfo, sizeof(patchedModuleInfo)));
+    assertTrue(!memcmp(&factory->suffix, &patchedModuleSuffix, sizeof(patchedModuleSuffix)));
+
+    // Connect to the cloud, if there is a system describe overflow, we'll trigger assertion failure here
+    assertTrue(Particle.disconnected);
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
-test(SYSTEM_07_fragmented_heap) {
-	struct block {
-		char data[20];
-		block* next;
-	};
-	register_oom();
-
-	block* next = nullptr;
-
-	// exhaust memory
-	for (;;) {
-		block* b = new block();
-		if (!b) {
-			break;
-		} else {
-			b->next = next;
-			next = b;
-		}
-	}
-
-	assertTrue(oomEventReceived);
-	assertEqual(oomSizeReceived, sizeof(block));
-
-	runtime_info_t info;
-	info.size = sizeof(info);
-	HAL_Core_Runtime_Info(&info, nullptr);
-
-	// we can't really say about the free heap but the block size should be less
-	assertLessOrEqual(info.largest_free_block_heap, sizeof(block));
-	size_t low_heap = info.freeheap;
-
-	// free every 2nd block
-	block* head = next;
-	int count = 0;
-	for (;head;) {
-		block* free = head->next;
-		if (free) {
-			// skip the next block
-			head->next = free->next;
-			delete free;
-			count++;
-			head = head->next;
-		} else {
-			head = nullptr;
-		}
-	}
-
-	HAL_Core_Runtime_Info(&info, nullptr);
-	const size_t half_fragment_block_size = info.largest_free_block_heap;
-	const size_t half_fragment_free = info.freeheap;
-
-	unregister_oom();
-	register_oom();
-	block* b = new block[2];  // no room for 2 blocks
-	delete b;
-
-	// free the remaining blocks
-	for (;next;) {
-		block* b = next;
-		next = b->next;
-		delete b;
-	}
-
-	assertMoreOrEqual(half_fragment_block_size, sizeof(block));
-	assertLessOrEqual(half_fragment_block_size, 2*sizeof(block)+8 /* 8 byte overhead */);
-	assertMoreOrEqual(half_fragment_free, low_heap+(sizeof(block)*count));
-
-	assertTrue(oomEventReceived);
-	assertMoreOrEqual(oomSizeReceived, sizeof(block)*2);
-}
-
-test(SYSTEM_08_out_of_memory_not_raised_for_0_size_malloc)
+test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but_invalid)
 {
-	const size_t size = 0;
-	register_oom();
-	malloc(size);
-	Particle.process();
-	unregister_oom();
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0, nullptr);
+    SCOPE_GUARD({
+        system_info_free_unstable(&info, nullptr);
+    });
 
-	assertFalse(oomEventReceived);
+    assertFalse(info.modules == nullptr);
+    hal_module_t* user = nullptr;
+    hal_module_t* factory = nullptr;
+    findUserAndFactoryModules(info, &user, &factory);
+
+    assertFalse(user == nullptr);
+    assertFalse(factory == nullptr);
+
+    // Clear the session data
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
+    assertTrue(waitFor(Particle.disconnected, 1000));
+
+    // Copy HALF of current user-part into factory location
+    size_t toCopy = std::min<size_t>(((uintptr_t)user->info.module_end_address - (uintptr_t)user->info.module_start_address) / 2, factory->bounds.maximum_size);
+    auto storageId = factory->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH ? HAL_STORAGE_ID_EXTERNAL_FLASH : HAL_STORAGE_ID_INTERNAL_FLASH;
+    int r = hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    SCOPE_GUARD({
+        hal_storage_erase(storageId, factory->bounds.start_address, factory->bounds.maximum_size);
+    });
+    assertEqual(factory->bounds.maximum_size, r);
+    char buf[256]; // some platforms cannot write into e.g. an external flash directly from internal
+    for (size_t pos = 0; pos < toCopy; pos += sizeof(buf)) {
+        size_t sz = std::min(sizeof(buf), toCopy - pos);
+        memcpy(buf, (const char*)user->bounds.start_address + pos, sz);
+        r = hal_storage_write(storageId, factory->bounds.start_address + pos, (const uint8_t*)buf, sz);
+        assertEqual(sz, r);
+    }
+    // Re-request module info to check that the factory binary is in fact invalid now
+    system_info_free_unstable(&info, nullptr);
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0, nullptr);
+    assertFalse(info.modules == nullptr);
+
+    factory = nullptr;
+    user = nullptr;
+    findUserAndFactoryModules(info, &user, &factory);
+    assertFalse(user == nullptr);
+    assertFalse(factory == nullptr);
+    assertNotEqual(factory->validity_checked, factory->validity_result);
+    assertNotEqual(factory->validity_checked, 0);
+
+    // Connect to the cloud, if there is a system describe overflow, we'll trigger assertion failure here
+    assertTrue(Particle.disconnected);
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
+test(SYSTEM_08_system_event_subscription) {
+    SCOPE_GUARD({
+        System.off(all_events);
+    });
+    int lastEvent = 0;
+    auto subscription = System.on(cloud_status, [&lastEvent](system_event_t ev) {
+        lastEvent = ev;
+    });
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(lastEvent, (int)cloud_status);
 
+    System.off(subscription);
+    assertTrue(Particle.disconnected);
+    lastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(lastEvent, 0);
 
-#endif
+    subscription = System.on(cloud_status, [&lastEvent](system_event_t ev) {
+        lastEvent = ev;
+    });
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(lastEvent, (int)cloud_status);
+
+    System.off(cloud_status);
+    assertTrue(Particle.disconnected);
+    lastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(lastEvent, 0);
+}
+
+namespace {
+int sLastEvent = 0;
+} // anonymous
+
+test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
+    SCOPE_GUARD({
+        System.off(all_events);
+    });
+    auto handler = [](system_event_t ev, int data, void*) {
+        sLastEvent = ev;
+    };
+    assertTrue((bool)System.on(cloud_status, handler));
+    assertTrue(Particle.connected());
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(sLastEvent, (int)cloud_status);
+
+    // System.off(event)
+    System.off(cloud_status);
+    assertTrue(Particle.disconnected);
+    sLastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(sLastEvent, 0);
+
+    assertTrue((bool)System.on(cloud_status, handler));
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(sLastEvent, (int)cloud_status);
+
+    // System.off(event, handler)
+    System.off(cloud_status, handler);
+    assertTrue(Particle.disconnected);
+    sLastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(sLastEvent, 0);
+
+    assertTrue((bool)System.on(cloud_status, handler));
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(sLastEvent, (int)cloud_status);
+
+    // System.off(handler)
+    System.off(handler);
+    assertTrue(Particle.disconnected);
+    sLastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(sLastEvent, 0);
+
+    assertTrue((bool)System.on(cloud_status, handler));
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, 5000));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(sLastEvent, (int)cloud_status);
+
+    // System.off(event)
+    System.off(cloud_status);
+    assertTrue(Particle.disconnected);
+    sLastEvent = 0;
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // Events are delivered on application thread when threading is enabled, make sure to process queue
+    delay(100);
+    Particle.process();
+    assertEqual(sLastEvent, 0);
+}

@@ -17,7 +17,7 @@
 
 #include "spark_wiring_platform.h"
 
-#if Wiring_Cellular
+#if Wiring_Cellular && !HAL_PLATFORM_IFAPI
 
 #include "system_network_cellular.h"
 
@@ -26,4 +26,4 @@ extern "C" void HAL_USART3_Handler(void) {
     HAL_USART3_Handler_Impl(nullptr); // Provided by cellular HAL
 }
 
-#endif // Wiring_Cellular != 0
+#endif // Wiring_Cellular != 0 && !HAL_PLATFORM_IFAPI

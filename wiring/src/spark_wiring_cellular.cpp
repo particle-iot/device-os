@@ -21,28 +21,20 @@
 
 #if Wiring_Cellular
 
-#include "cellular_internal.h"
+// #include "cellular_internal.h"
 
 namespace spark {
 
     CellularSignal CellularClass::RSSI() {
         CellularSignal sig;
         if (!network_ready(*this, 0, NULL)) {
-            sig.rssi = 0;
             return sig;
         }
 
-        CellularSignalHal sig_hal = {0};
-        cellular_signal_t sigext = {0};
+        cellular_signal_t sigext = {};
         sigext.size = sizeof(sigext);
-        if (cellular_signal(&sig_hal, &sigext) != 0) {
-            sig.rssi = 1;
+        if (cellular_signal(nullptr, &sigext) != 0) {
             return sig;
-        }
-        sig.rssi = sig_hal.rssi;
-        sig.qual = sig_hal.qual;
-        if (sig.rssi == 0) {
-            sig.rssi = 2;
         }
         sig.fromHalCellularSignal(sigext);
         return sig;
@@ -150,7 +142,7 @@ namespace spark {
     }
 
     CellularClass Cellular;
-    NetworkClass& Network = Cellular;
+    // NetworkClass& Network = Cellular;
 }
 
 #endif

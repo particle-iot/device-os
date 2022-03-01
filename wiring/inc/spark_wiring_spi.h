@@ -43,14 +43,13 @@ enum FrequencyScale
     MHZ = KHZ*1000,
     SPI_CLK_SYSTEM = 0,         // represents the system clock speed
     SPI_CLK_ARDUINO = 16*MHZ,
-    SPI_CLK_CORE = 72*MHZ,
     SPI_CLK_PHOTON = 60*MHZ
 };
 
 namespace particle {
-class __SPISettings : public Printable {
+class SPISettings : public Printable {
 public:
-  __SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode)
+  SPISettings(uint32_t clock, uint8_t bitOrder, uint8_t dataMode)
     : default_{false},
       clock_{clock},
       bitOrder_{bitOrder},
@@ -58,11 +57,14 @@ public:
   {
   }
 
-  __SPISettings()
+  SPISettings()
   {
   }
 
-  bool operator==(const __SPISettings& other) const
+  virtual ~SPISettings() {
+  }
+
+  bool operator==(const SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -78,7 +80,7 @@ public:
     return false;
   }
 
-  bool operator>=(const __SPISettings& other) const
+  bool operator>=(const SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -94,7 +96,7 @@ public:
     return false;
   }
 
-  bool operator<=(const __SPISettings& other) const
+  bool operator<=(const SPISettings& other) const
   {
     if (default_ && other.default_)
       return true;
@@ -110,7 +112,7 @@ public:
     return false;
   }
 
-  bool operator!=(const __SPISettings& other) const
+  bool operator!=(const SPISettings& other) const
   {
     return !(other == *this);
   }
@@ -120,7 +122,8 @@ public:
     if (default_ && clock_ == 0)
       return p.print("<SPISettings default>");
     else
-      return p.printf("<SPISettings %s%lu %s MODE%d>", default_ ? "default " : "", clock_, bitOrder_ == MSBFIRST ? "MSB" : "LSB", dataMode_);
+      return p.printf("<SPISettings %s%u %s MODE%u>", default_ ? "default " : "", (unsigned int)clock_,
+          bitOrder_ == MSBFIRST ? "MSB" : "LSB", (unsigned int)dataMode_);
   }
 
   uint32_t getClock() const {
@@ -134,29 +137,50 @@ private:
   uint8_t bitOrder_ = 0;
   uint8_t dataMode_ = 0;
 };
+
+// Compatibility typedef
+typedef SPISettings __SPISettings;
+
 }
 
+// NOTE: when modifying this class (method signatures, adding/removing methods)
+// make sure to update spark_wiring_spi_proxy.h and wiring/api SPI tests to reflect these changes.
 class SPIClass {
 private:
-  HAL_SPI_Interface _spi;
+  hal_spi_interface_t _spi;
 
   /**
+   * \brief Divider Reference Clock
+   *
    * Set the divider reference clock.
    * The default is the system clock.
    */
-  unsigned dividerReference;
+  unsigned _dividerReference;
 
-#if PLATFORM_THREADING
-  Mutex mutex_;
+#if PLATFORM_THREADING && !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+  /**
+   * \brief Mutex for Gen2 platforms
+   *
+   * Enables Gen2 platforms to synchronize access to the SPI peripheral
+   */
+  RecursiveMutex _mutex;
 #endif
 
 public:
-  SPIClass(HAL_SPI_Interface spi);
-  virtual ~SPIClass() {};
+  SPIClass(hal_spi_interface_t spi);
+  ~SPIClass() = default;
+
+  // Prevent copying
+  SPIClass(const SPIClass&) = delete;
+  SPIClass& operator=(const SPIClass&) = delete;
+
+  hal_spi_interface_t interface() const {
+    return _spi;
+  }
 
   void begin();
   void begin(uint16_t);
-  void begin(SPI_Mode mode, uint16_t);
+  void begin(hal_spi_mode_t mode, uint16_t ss_pin = SPI_DEFAULT_SS);
   void end();
 
   void setBitOrder(uint8_t);
@@ -165,7 +189,7 @@ public:
   static void usingInterrupt(uint8_t) {};
 
   int32_t beginTransaction();
-  int32_t beginTransaction(const particle::__SPISettings& settings);
+  int32_t beginTransaction(const particle::SPISettings& settings);
   void endTransaction();
 
   /**
@@ -205,7 +229,7 @@ public:
   static void computeClockDivider(unsigned reference, unsigned targetSpeed, uint8_t& divider, unsigned& clock);
 
   byte transfer(byte _data);
-  void transfer(void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback);
+  void transfer(const void* tx_buffer, void* rx_buffer, size_t length, wiring_spi_dma_transfercomplete_callback_t user_callback);
 
   void attachInterrupt();
   void detachInterrupt();
@@ -218,49 +242,80 @@ public:
 
   bool trylock()
   {
-#if PLATFORM_THREADING
-    return mutex_.trylock();
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    hal_spi_acquire_config_t conf = {
+      .size = sizeof(conf),
+      .version = 0,
+      .timeout = 0
+    };
+    return hal_spi_acquire(_spi, &conf) == SYSTEM_ERROR_NONE;
+#elif PLATFORM_THREADING
+    return _mutex.trylock();
 #else
     return true;
 #endif
   }
 
-  void lock()
+  int lock()
   {
-#if PLATFORM_THREADING
-    mutex_.lock();
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    return hal_spi_acquire(_spi, nullptr);
+#elif PLATFORM_THREADING
+    _mutex.lock();
+    return 0;
+#else
+    return 0;
 #endif
   }
 
   void unlock()
   {
-#if PLATFORM_THREADING
-    mutex_.unlock();
+#if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
+    hal_spi_release(_spi, nullptr);
+#elif PLATFORM_THREADING
+    _mutex.unlock();
 #endif
   }
 };
 
 #ifndef SPARK_WIRING_NO_SPI
 
-extern SPIClass SPI;
+#include "spark_wiring_spi_proxy.h"
+
+namespace particle {
+namespace globals {
+
+extern ::particle::SpiProxy<HAL_SPI_INTERFACE1> SPI;
 
 #if Wiring_SPI1
 #ifdef SPI1
 #undef SPI1
-#endif  // SPI1
+#endif // SPI1
 
-extern SPIClass SPI1;
+extern ::particle::SpiProxy<HAL_SPI_INTERFACE2> SPI1;
 
-#endif  // Wiring_SPI1
+#endif // Wiring_SPI1
 
 #if Wiring_SPI2
 #ifdef SPI2
 #undef SPI2
-#endif  // SPI2
+#endif // SPI2
 
-extern SPIClass SPI2;
+extern ::particle::SpiProxy<HAL_SPI_INTERFACE3> SPI2;
 
-#endif  // Wiring_SPI2
+#endif // Wiring_SPI2
+
+} } // particle::globals
+
+using particle::globals::SPI;
+
+#if Wiring_SPI1
+using particle::globals::SPI1;
+#endif // Wiring_SPI1
+
+#if Wiring_SPI2
+using particle::globals::SPI2;
+#endif // Wiring_SPI1
 
 #endif  // SPARK_WIRING_NO_SPI
 

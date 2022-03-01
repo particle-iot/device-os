@@ -26,16 +26,16 @@
 #ifndef WATCHDOG_HAL_H
 #define	WATCHDOG_HAL_H
 
+#include <stdint.h>
 #include <stdbool.h>
 
 #ifdef	__cplusplus
 extern "C" {
 #endif
 
+void HAL_Watchdog_Init(uint32_t timeout_tick_ms);
 bool HAL_watchdog_reset_flagged();
-
 void HAL_Notify_WDT();
-
 
 #ifdef	__cplusplus
 }

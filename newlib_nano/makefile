@@ -6,6 +6,6 @@ NEWLIBNANO_MODULE_PATH=.
 TARGET_TYPE = a
 BUILD_PATH_EXT = $(NEWLIBNANO_BUILD_PATH_EXT)
 
-DEPENDENCIES = hal
+DEPENDENCIES = hal services platform
 
 include ../build/arm-tlm.mk

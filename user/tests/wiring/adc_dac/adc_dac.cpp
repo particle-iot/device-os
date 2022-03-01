@@ -53,19 +53,6 @@ test(ADC_NoAnalogReadWhenPinSelectedIsOutOfRange) {
     //To Do : Add test for remaining pins if required
 }
 
-#if (PLATFORM_ID == 0)
-test(ADC_AnalogReadOnPinWithVoltageDividerResultsInCorrectValue) {
-    pin_t pin = A5;//pin under test (Voltage divider with equal resistor values)
-    // when
-    int32_t ADCValue = analogRead(pin);
-    // then
-    assertTrue((ADCValue>2000)&&(ADCValue<2100));//ADCValue should be around 2048
-    //To Do : Add test for remaining pins if required
-}
-#endif
-
-
-#if (PLATFORM_ID >= 3)
 test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
     pin_t pin = A5;//pin under test
     // when
@@ -77,9 +64,7 @@ test(ADC_AnalogReadOnPinWithDACOutputResultsInCorrectValue) {
     assertTrue((ADCValue>2000)&&(ADCValue<2100));//ADCValue should be around 2048
     //To Do : Add test for remaining pins if required
 }
-#endif
 
-#if (PLATFORM_ID >= 3)
 test(ADC_AnalogReadOnPinWithDACShmoo) {
     pin_t pin1 = A5;
     pin_t pin2 = A1;
@@ -302,6 +287,3 @@ test(DAC_AnalogWriteWorksMixedWithDigitalRead) {
     analogWrite(pin, 500);
     assertEqual(HAL_Get_Pin_Mode(pin), AN_OUTPUT);
 }
-
-
-#endif

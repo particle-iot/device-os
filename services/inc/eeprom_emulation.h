@@ -668,8 +668,6 @@ public:
                                                             indexBegin,
                                                             indexBegin + length);
 
-            Address endAddress = getPageEnd(destinationPage);
-
             // Write new records to destination directly
             success = success && writeRangeDirect(writeAddress,
                                                   getPageEnd(destinationPage),

@@ -7,16 +7,16 @@ SECTIONS
     INCLUDE module_start.ld
     INCLUDE module_info.ld
 
-    .text :
+    .dynalib :
     {
-        expected_dynalib_start = ORIGIN (APP_FLASH) + 24 ;
+        expected_dynalib_start = ORIGIN(APP_FLASH) + 24 ;
         link_dynalib_start = .;
         KEEP(*(*.user_part_module))
         link_dynalib_end = . ;
-        link_length_start = .;
-        KEEP(*(*.user_part_length))
-        link_length_end = .;
+    } > APP_FLASH AT> APP_FLASH
 
+    .text :
+    {
         . = ALIGN(4);
 
         link_code_location = .;
@@ -120,12 +120,10 @@ SECTIONS
 
 }
 
-PROVIDE ( end = system_heap_end );
+ASSERT ( ORIGIN(SRAM) == _ram_start, "Origin of SRAM should be at _ram_start" );
 
-ASSERT ( ORIGIN(SRAM) == system_part1_module_ram_end, "Origin of SRAM should be at system_part1_module_ram_end" );
-
-min_heap_end = link_heap_start + min_heap_size;
-ASSERT ( min_heap_end <= system_static_ram_start, "Insufficient room for heap." );
+min_heap_end = link_heap_start + _heap_min_size;
+ASSERT ( min_heap_end <= _system_static_ram_start, "Insufficient room for heap." );
 
 ASSERT ( link_dynalib_start != link_dynalib_end , "Dynalib table not found" );
 
@@ -149,9 +147,9 @@ ASSERT ( link_module_info_crc_start < link_module_info_crc_end, "module info crc
 ASSERT ( user_module_info == link_module_info_start, "module info start not where expected" );
 ASSERT ( user_module_info_end == link_module_info_end, "module info end not where expected" );
 
-ASSERT ( ORIGIN(SRAM) == system_part1_module_ram_end, "ORIGIN of user SRAM should equal system_part1_module_ram_end" );
-
 user_sram_end =  ( ORIGIN(SRAM) + LENGTH(SRAM) );
-ASSERT ( user_sram_end == system_static_ram_start, "end of user SRAM should be at the start of system sram" );
+ASSERT ( user_sram_end == _system_static_ram_start, "end of user SRAM should be at the start of system sram" );
 
 ASSERT ( ( link_module_info_suffix_start - link_module_info_static_start ) == 4 || ( link_module_info_suffix_start - link_module_info_static_start ) == 8, "module info static details not linked" );
+
+ASSERT( ORIGIN(SRAM) >= _ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= _ram_end, "Static RAM region doesn't fit into RAM" );

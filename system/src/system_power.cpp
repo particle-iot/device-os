@@ -5,7 +5,7 @@
 #include "spark_wiring_fixed_point.h"
 #include "debug.h"
 
-#if Wiring_Cellular == 1
+#if HAL_PLATFORM_POWER_MANAGEMENT
 
 #include "system_power_manager.h"
 
@@ -16,7 +16,13 @@ BatteryChargeDiagnosticData::BatteryChargeDiagnosticData(uint16_t id, const char
 }
 
 int BatteryChargeDiagnosticData::get(IntType& val) {
+    // Do not report battery SoC in disconnected and unknown states
+    if (g_batteryState == BATTERY_STATE_DISCONNECTED || g_batteryState == BATTERY_STATE_UNKNOWN) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     FuelGauge fuel(true);
+    // Call begin here just in case to initialize I2C if needed
+    fuel.begin();
     float soc = fuel.getNormalizedSoC();
     val = particle::FixedPointUQ<8, 8>(soc);
     return SYSTEM_ERROR_NONE;
@@ -36,13 +42,39 @@ void system_power_management_init()
     PowerManager::instance()->init();
 }
 
-void system_power_management_sleep(bool sleep) {
-    PowerManager::instance()->sleep(sleep);
+void system_power_management_sleep(bool fuelGaugeSleep) {
+    PowerManager::instance()->sleep(fuelGaugeSleep);
 }
 
-#else /* Wiring_Cellular != 1 */
-
-void system_power_management_sleep(bool sleep) {
+void system_power_management_wakeup() {
+    PowerManager::instance()->wakeup();
 }
 
-#endif /* Wiring_Cellular == 1 */
+int system_power_management_set_config(const hal_power_config* conf, void* reserved) {
+    return PowerManager::instance()->setConfig(conf);
+}
+
+int system_power_management_get_config(hal_power_config* conf, void* reserved) {
+    return PowerManager::instance()->getConfig(conf);
+}
+
+#else /* !HAL_PLATFORM_POWER_MANAGEMENT */
+
+void system_power_management_init() {
+}
+
+void system_power_management_sleep(bool fuelGaugeSleep) {
+}
+
+void system_power_management_wakeup() {
+}
+
+int system_power_management_set_config(const hal_power_config* conf, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int system_power_management_get_config(hal_power_config* conf, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+#endif /* HAL_PLATFORM_POWER_MANAGEMENT */
