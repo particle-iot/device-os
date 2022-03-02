@@ -49,6 +49,8 @@ void mbedtls_ssl_update_out_pointers(mbedtls_ssl_context *ssl, mbedtls_ssl_trans
 #include <string.h>
 #include "dtls_session_persist.h"
 
+#include "str_util.h"
+
 namespace particle { namespace protocol {
 
 
@@ -205,17 +207,50 @@ SessionPersist sessionPersist;
 		return UNKNOWN; \
 	}
 
+namespace {
+
+const char* g_ignoredDebugMessages[] = {
+	"=> read",
+	"=> flush output",
+	"<= flush output",
+	"set_timer to 0 ms",
+	"=> read record",
+	"=> fetch input",
+	"in_left: 0,",
+	"f_recv_timeout: 0 ms",
+
+	"client state: 2",
+	"=> parse server hello",
+	"Next handshake message 0 not or only partially bufffered",
+	"Next handshake message 1 not or only partially bufffered",
+
+	"client state: 12",
+	"=> parse change cipher spec",
+	"=> ssl_load_buffered_messsage",
+	"CCS not seen in the current flight",
+	"<= ssl_load_buffered_message",
+	"f_recv_timeout: 3000 ms"
+};
+
 static void my_debug(void *ctx, int level,
 		const char *file, int line,
 		const char *str )
 {
+	for (size_t i = 0; i < sizeof(g_ignoredDebugMessages) / sizeof(g_ignoredDebugMessages[0]); ++i) {
+		if (startsWith(str, g_ignoredDebugMessages[i])) {
+			return;
+		}
+	}
 #if PLATFORM_ID!=3
 	DEBUG_D("%s:%04d: %s", file, line, str);
 #else
-	fprintf(stdout, "%s:%04d: %s", file, line, str);
+	const auto t = HAL_Timer_Milliseconds();
+	fprintf(stdout, "%010u [mbedtls] %s", (unsigned)t, str);
 	fflush(stdout);
 #endif
 }
+
+} // namespace
 
 ProtocolError DTLSMessageChannel::init(
 		const uint8_t* core_private, size_t core_private_len,
