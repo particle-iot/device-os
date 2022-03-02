@@ -495,7 +495,7 @@ proc crc32 {instr} {
 }
 
 proc crc32_binary {file} {
-    set f [open $file r]
+    set f [open $file rb]
     fconfigure $f -translation binary
     set data [read $f]
     close $f
