@@ -31,6 +31,10 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 #include "subscriptions.h"
 #include "functions.h"
 
+#if PLATFORM_ID == 3
+#include <ctime>
+#endif
+
 namespace particle { namespace protocol {
 
 namespace {
@@ -339,6 +343,9 @@ AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
  */
 int Protocol::begin()
 {
+#if PLATFORM_ID == 3
+	LOG(INFO, "Starting handshake; unix time: %u", (unsigned)std::time(nullptr));
+#endif
 	LOG_CATEGORY("comm.protocol.handshake");
 	LOG(INFO,"Establish secure connection");
 
