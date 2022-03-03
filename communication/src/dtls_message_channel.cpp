@@ -217,7 +217,7 @@ const char* g_ignoredDebugMessages[] = {
 	"=> read record",
 	"=> fetch input",
 	"in_left: 0,",
-	"f_recv_timeout: 0 ms",
+	"f_recv_timeout:",
 
 	"client state: 2",
 	"=> parse server hello",
@@ -228,8 +228,7 @@ const char* g_ignoredDebugMessages[] = {
 	"=> parse change cipher spec",
 	"=> ssl_load_buffered_messsage",
 	"CCS not seen in the current flight",
-	"<= ssl_load_buffered_message",
-	"f_recv_timeout: 3000 ms"
+	"<= ssl_load_buffered_message"
 };
 
 static void my_debug(void *ctx, int level,
