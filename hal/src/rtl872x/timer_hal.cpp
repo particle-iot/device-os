@@ -55,6 +55,7 @@ extern "C" {
 #include "rtl8721d.h"
 #include "rtl8721d_delay.h"
 }
+#include "interrupts_hal.h"
 
 namespace {
 
@@ -115,9 +116,6 @@ public:
         enableOverflowInterrupt();
         enabled_ = true;
 
-        // Update calibration time
-        lastCalibrationTick_ = SYSTIMER_TickGet();
-
         return SYSTEM_ERROR_NONE;
     }
 
@@ -134,7 +132,21 @@ public:
 
     int start() {
         CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+        lastOverflowSysTimer_ = 0;
+        lastOverflowTimer_ = 0;
+        overflowCounter_ = 0;
+        int s = HAL_disable_irq();
+        stop();
+        auto t0 = SYSTIMER_TickGet();
+        resetCounter();
+        __DMB();
+        // Wait for timer to actually get reset
+        while (SYSTIMER_TickGet() >= t0) {
+            ;
+        }
         RTIM_Cmd(TIMx[TIMER_INDEX], ENABLE);
+        RTIM_Cmd(TIMx[TIMER_INDEX], ENABLE);
+        HAL_enable_irq(s);
         return SYSTEM_ERROR_NONE;
     }
 
@@ -146,9 +158,10 @@ public:
 
     int setTime(uint64_t timeUs) {
         CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
-        resetCounter();
+        int s = HAL_disable_irq();
         usSystemTimeMicrosBase_ = timeUs;
-        overflowCounter_ = 0;
+        start();
+        HAL_enable_irq(s);
     }
 
     uint64_t getTime() {
@@ -158,11 +171,24 @@ public:
         uint32_t counterValue = getCounter();
         __DMB();
 
-        uint32_t offset2 = getOverflowCounter();
+        bool uncertain = false;
+        uint32_t offset2 = getOverflowCounter(&uncertain);
 
         if (offset1 != offset2) {
             // Overflow occured between the calls
             counterValue = getCounter();
+        }
+
+        if (uncertain) {
+            int s = HAL_disable_irq();
+            uint64_t curSysTimerUs = sysTimerUs();
+            if (curSysTimerUs < lastOverflowSysTimer_) {
+                // Wraparound
+                curSysTimerUs += 0xffffffff;
+            }
+            uint64_t t = usSystemTimeMicrosBase_ + lastOverflowTimer_ + (curSysTimerUs - lastOverflowSysTimer_);
+            HAL_enable_irq(s);
+            return t;
         }
 
         return usSystemTimeMicrosBase_ + offset2 * US_PER_OVERFLOW + ticksToTime(counterValue);
@@ -190,9 +216,15 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    inline uint64_t sysTimerUs() {
+        return (((uint64_t)SYSTIMER_TickGet()) * TIMER_TICK_US_X4) / 4;
+    }
+
 private:
     inline void resetCounter() {
         RTIM_Reset(TIMx[TIMER_INDEX]);
+        // Also reset SYSTIMER
+        RTIM_Reset(TIMM00);
     }
 
     inline uint32_t getCounter() {
@@ -251,7 +283,7 @@ private:
         return (uint64_t)offset * US_PER_OVERFLOW + ticksToTime(counter);
     }
 
-    uint32_t getOverflowCounter() {
+    uint32_t getOverflowCounter(bool* uncertain = nullptr) {
         uint32_t overflowCounter;
 
         // Get mutual access for writing to overflowCounter_ variable.
@@ -260,26 +292,33 @@ private:
 
             // Check if interrupt was handled already.
             if (getOverflowPendingEvent()) {
+                int s = HAL_disable_irq();
+                uint64_t curSysTimerUs = sysTimerUs();
+                if (curSysTimerUs < lastOverflowSysTimer_) {
+                    // Wraparound
+                    curSysTimerUs += 0xffffffff;
+                }
+                uint32_t curTimerTicks = getCounter();
+                uint64_t curTimerUs = rtcCounterAndTicksToUs((overflowCounter_ + 2) / 2, curTimerTicks);
+                uint64_t timeElapsedSysTimer = curSysTimerUs - lastOverflowSysTimer_;
+                uint64_t timeElapsedTimer = curTimerUs - lastOverflowTimer_;
+                if (timeElapsedSysTimer > timeElapsedTimer) {
+                    uint32_t diff = timeElapsedSysTimer - timeElapsedTimer;
+                    if (diff > US_PER_OVERFLOW) {
+                        // Adjust overflow counter
+                        overflowCounter_ += (diff / US_PER_OVERFLOW + 1) * 2;
+                    }
+                }
                 overflowCounter_++;
-                increasing = true;
-
-                __DMB();
-
+                lastOverflowSysTimer_ = curSysTimerUs;
+                lastOverflowTimer_ = rtcCounterAndTicksToUs((overflowCounter_ + 1) / 2, curTimerTicks);
+                HAL_enable_irq(s);
                 // Mark that interrupt was handled.
                 clearOverflowPendingEvent();
 
-                // NOTE: we use SYSTIMER for calibration (32bit counter, 1tick = 31us, timeout = 36.984h).
-                //       In case of interrupt is disabled for long time, in the every interrupt, we'll perform
-                //       a comparsion of how many overflows should have happened in the elapsed period of time.
-                uint64_t currCalibrationTick = SYSTIMER_TickGet();
-                // Add 0x1_0000_0000 in case of SYSTIMER overflow
-                uint64_t calibrationTickElaped = (0x100000000 + currCalibrationTick - lastCalibrationTick_) & 0xFFFFFFFF;
-                if (calibrationTickToTimeUs(calibrationTickElaped) >= US_PER_OVERFLOW) {
-                    // no matter how many overflows occur, there is always one timeout interrupt captured and
-                    // added into overflowCounter_, we should exclude it
-                    overflowCounter_ += (calibrationTickToTimeUs(calibrationTickElaped) / US_PER_OVERFLOW - 1) * 2;
-                }
-                lastCalibrationTick_ = currCalibrationTick;
+                increasing = true;
+
+                __DMB();
 
                 // Result should be incremented. overflowCounter_ will be incremented after mutex is released.
             } else {
@@ -305,7 +344,11 @@ private:
             // Failed to acquire mutex.
             if (getOverflowPendingEvent()) {
                 // Lower priority context is currently incrementing overflowCounter_ variable.
-                overflowCounter = (overflowCounter_ + 2) / 2;
+                // We cannot be certain about the current overflow value, so we'll need to use systimer instead
+                overflowCounter = 0;
+                if (uncertain) {
+                    *uncertain = true;
+                }
             } else if (overflowCounter_ & 0x01) {
                 overflowCounter = (overflowCounter_ + 2) / 2;
             } else {
@@ -323,7 +366,8 @@ private:
     volatile uint32_t overflowCounter_ = 0;
     volatile int64_t  usSystemTimeMicrosBase_ = 0;  ///< Base offset for Particle-specific microsecond counter
     volatile uint8_t mutex_ = 0;
-    volatile uint64_t lastCalibrationTick_ = 0;
+    volatile uint64_t lastOverflowSysTimer_ = 0;
+    volatile uint64_t lastOverflowTimer_ = 0;
 };
 
 RtlTimer* getInstance() {
