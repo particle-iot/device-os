@@ -84,6 +84,12 @@ set MSG_FLASH_DATA_BUF_SIZE             [expr {$MSG_BUF_SIZE / 1024 * 1024}]
 
 set rtl872x_ready                       0
 
+proc rtl872x_fixup_address {address} {
+    global FLASH_MMU_START_ADDR
+    if {$address >= $FLASH_MMU_START_ADDR} {
+        return [expr $address - $FLASH_MMU_START_ADDR]
+    }
+}
 
 proc openocd_read_register {reg} {
     set value ""
@@ -206,6 +212,7 @@ proc rtl872x_flash_read_id {} {
 proc rtl872x_flash_dump {address length} {
     global FLASH_MMU_START_ADDR
     rtl872x_init
+    set address [rtl872x_fixup_address $address]
     set address [expr $address + $FLASH_MMU_START_ADDR]
     openocd_print_memory $address $length
 }
@@ -255,6 +262,8 @@ proc rtl872x_flash_write_bin_ext {file address auto_erase auto_verify} {
 
     rtl872x_init
     set size [file size $file]
+
+    set address [rtl872x_fixup_address $address]
 
     echo ""
     echo "Downloading file: [file tail $file], Size: $size, Address: $address"
