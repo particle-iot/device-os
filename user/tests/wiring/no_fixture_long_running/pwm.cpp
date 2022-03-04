@@ -41,7 +41,7 @@ const PinMapping pwm_pins[] = {
         // PWM HAL also is not interrupt safe and RGB pins are modified in SysTick
         PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), /* PIN(D7), */ PIN(D8), PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #elif PLATFORM_ID == PLATFORM_P2
-        PIN(D1), PIN(D8), PIN(A2), PIN(A5), PIN(D16), PIN(D17) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
+        PIN(D1), PIN(A2), PIN(A5), PIN(D15), PIN(D16) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #else
 #error "Unsupported platform"
 #endif
