@@ -40,7 +40,7 @@ typedef struct malloc_heap_region {
     void* end;
 } malloc_heap_region;
 
-void malloc_set_heap_regions(const malloc_heap_region* regions);
+void malloc_set_heap_regions(const malloc_heap_region* regions, size_t count);
 
 #ifdef __cplusplus
 }
