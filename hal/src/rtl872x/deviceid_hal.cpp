@@ -183,5 +183,24 @@ int hal_get_device_secret(char* data, size_t size, void* reserved)
     }
     return HAL_DEVICE_SECRET_SIZE;
 }
+
+int hal_set_device_secret(char* data, size_t size, void* reserved) {
+    uint8_t blankSecret[DCT_DEVICE_SECRET_SIZE] = {0};
+    if ((data == nullptr) || (size == 0)) {
+        dct_write_app_data(blankSecret, DCT_DEVICE_SECRET_OFFSET, sizeof(blankSecret));
+        return SYSTEM_ERROR_NONE;
+    }
+
+    if (size != HAL_DEVICE_SECRET_SIZE || !isPrintable(data, HAL_DEVICE_SECRET_SIZE)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    int ret = dct_write_app_data(data, DCT_DEVICE_SECRET_OFFSET, size);
+    if (ret < 0) {
+        dct_write_app_data(blankSecret, DCT_DEVICE_SECRET_OFFSET, sizeof(blankSecret));
+    }
+    return ret;
+}
+
 #endif /* HAL_DEVICE_ID_NO_DCT */
 

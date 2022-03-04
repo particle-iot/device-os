@@ -101,6 +101,7 @@ int SystemControl::init() {
             return ret;
         }
     }
+#endif // HAL_PLATFORM_BLE
     return 0;
 }
 

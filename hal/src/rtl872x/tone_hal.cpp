@@ -26,7 +26,7 @@
 struct {
     os_timer_t  timer;
     uint8_t     pin;
-} g_tone[MAX_PWM_NUM] = {nullptr};
+} g_tone[MAX_PWM_NUM] = {nullptr, 0};
 
 static void stop_tone_timer(os_timer_t timer) {
     for (int i = 0; i < MAX_PWM_NUM; i++) {

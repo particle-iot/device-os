@@ -68,6 +68,12 @@ static_assert(sizeof(uint32_t)==sizeof(void*), "Requires uint32_t to be same siz
 #define _CREATE_NAME_TYPE const signed char
 #endif
 
+typedef struct {
+    os_thread_dump_callback_t callback;
+    os_thread_t thread;
+    void* data;
+} os_thread_dump_helper_t;
+
 namespace {
 
 StaticRecursiveMutex g_periphMutex;
@@ -91,7 +97,7 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
     if(priority >= configMAX_PRIORITIES) {
       priority = configMAX_PRIORITIES - 1;
     }
-    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_NAME_TYPE* const) name,
+    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_NAME_TYPE*) name,
             (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority,
             reinterpret_cast<TaskHandle_t*>(thread) );
     return ( result != (signed portBASE_TYPE) pdPASS );
@@ -118,6 +124,43 @@ os_result_t os_thread_yield(void)
     taskYIELD();
     return 0;
 }
+
+static BaseType_t os_thread_dump_helper(TaskStatus_t* const status, void* data)
+{
+    os_thread_dump_helper_t* h = (os_thread_dump_helper_t*)data;
+    os_thread_dump_info_t info;
+    memset( &info, 0, sizeof(os_thread_dump_info_t) );
+    info.thread = status->xHandle;
+    info.name = status->pcTaskName;
+    info.id = status->xTaskNumber;
+    info.stack_high_watermark = status->usStackHighWaterMark;
+
+    void *stack_end = NULL;
+    vTaskGetStackInfoParticle(status->xHandle, &info.stack_base, &info.stack_current, &stack_end);
+
+    //calculate the stack size
+    info.stack_size = (size_t)stack_end - (size_t)info.stack_base;
+
+    if (h->callback && (h->thread == OS_THREAD_INVALID_HANDLE || h->thread == status->xHandle)) {
+        return (BaseType_t)h->callback(&info, h->data);
+    }
+
+    return 0;
+}
+
+os_result_t os_thread_dump(os_thread_t thread, os_thread_dump_callback_t callback, void* ptr)
+{
+    // NOTE: callback is executed with thread scheduling disabled
+    // returning anything other than 0 in the callback will prevent further callback invocations,
+    // stopping iteration over the threads.
+    TaskStatus_t status;
+    memset( &status, 0, sizeof(TaskStatus_t) );
+    os_thread_dump_helper_t data = {callback, thread, ptr};
+    uxTaskGetSystemStateParticle(&status, 1, nullptr, os_thread_dump_helper, (void*)&data);
+
+    return 0;
+}
+
 
 /**
  * Determines if the thread stack is still within the allocated region.

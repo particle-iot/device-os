@@ -92,7 +92,7 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
     /* Round down to the nearest block */
     start_addr = ((start_addr / block_length) * block_length);
 
-    for (int i = 0; i < num_blocks; i++) {
+    for (size_t i = 0; i < num_blocks; i++) {
         if (!is_block_erased(start_addr + i * block_length, block_length)) {
             FLASH_Erase(len, start_addr + i * block_length);
         }

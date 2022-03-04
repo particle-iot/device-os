@@ -25,3 +25,4 @@ PROVIDE (link_dynalib_location_offset_hal_resolvapi        = 88);
 PROVIDE (link_dynalib_location_offset_hal_wlan             = 92);
 PROVIDE (link_dynalib_location_offset_hal_ble              = 96);
 PROVIDE (link_dynalib_location_offset_hal_posix_syscall    = 100);
+PROVIDE (link_dynalib_location_offset_hal_storage          = 104);

@@ -35,12 +35,14 @@ hal_button_config_t HAL_Buttons[] = {
         .interrupt_mode = BUTTON1_INTERRUPT_MODE,
         .active         = false,
         .debounce_time  = 0,
+        .padding        = {}
     },
     {
         .pin            = BUTTON1_MIRROR_PIN,
         .interrupt_mode = BUTTON1_MIRROR_INTERRUPT_MODE,
         .active         = false,
-        .debounce_time  = 0
+        .debounce_time  = 0,
+        .padding        = {}
     }
 };
 
@@ -197,7 +199,7 @@ void hal_button_timer_handler(void) {
 }
 
 void hal_button_exti_config(hal_button_t button, FunctionalState state) {
-    hal_interrupt_extra_configuration_t config = {0};
+    hal_interrupt_extra_configuration_t config = {};
     config.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
     config.keepHandler = false;
     config.flags = HAL_INTERRUPT_DIRECT_FLAG_NONE;

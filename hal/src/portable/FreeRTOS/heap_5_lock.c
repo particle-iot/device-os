@@ -153,7 +153,7 @@ void malloc_set_heap_regions(const malloc_heap_region* regions, size_t count)
 	}
     HeapRegion_t portRegions[count + 1];
     memset(portRegions, 0, sizeof(HeapRegion_t) * (count + 1));
-    for (const malloc_heap_region* r = regions; r - regions < count; r++) {
+    for (const malloc_heap_region* r = regions; (size_t)(r - regions) < count; r++) {
         portRegions[r - regions].pucStartAddress = r->start;
         portRegions[r - regions].xSizeInBytes = (uintptr_t)r->end - (uintptr_t)r->start;
     }

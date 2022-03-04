@@ -1,4 +1,4 @@
-VERSION_STRING = 3.2.0-p2.1
+VERSION_STRING = 3.2.1-p2.1
 
 # PRODUCT_FIRMWARE_VERSION reported by default
 # FIXME: Unclear if this is used, PRODUCT_FIRMWARE_VERSION defaults to 65535 every release
