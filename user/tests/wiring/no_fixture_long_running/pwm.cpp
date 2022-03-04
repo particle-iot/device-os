@@ -41,7 +41,7 @@ const PinMapping pwm_pins[] = {
         // PWM HAL also is not interrupt safe and RGB pins are modified in SysTick
         PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), /* PIN(D7), */ PIN(D8), PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #elif PLATFORM_ID == PLATFORM_P2
-        PIN(D1), PIN(A2), PIN(A5), PIN(D15), PIN(D16) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
+        PIN(D1), PIN(A2), PIN(A5), PIN(S0), PIN(S1) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #else
 #error "Unsupported platform"
 #endif
@@ -293,6 +293,8 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
     });
 }
 
+// FIXME: P2 doesn't support pulse in for now
+#if PLATFORM_ID != PLATFORM_P2
 test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
@@ -758,6 +760,7 @@ test(PWM_12_CompherensiveResolutionFrequency) {
         assertMoreOrEqual(resolution, 15);
     });
 }
+#endif // PLATFORM_ID != PLLATFORM_P2
 
 #if (PLATFORM_ID == PLATFORM_P1) // P1
 test(PWM_99_P1S6CleanupForP1) {

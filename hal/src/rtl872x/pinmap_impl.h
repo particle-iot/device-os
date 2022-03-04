@@ -34,6 +34,7 @@ typedef struct hal_pin_info_t {
 #if HAL_PLATFORM_IO_EXTENSION
     hal_pin_type_t      type;
 #endif // HAL_PLATFORM_IO_EXTENSION
+    uint32_t     user_data;
 } hal_pin_info_t;
 
 #define RTL_PORT_NONE       ((uint8_t)(0xFF))

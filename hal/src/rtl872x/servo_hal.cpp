@@ -33,9 +33,8 @@ void HAL_Servo_Detach(uint16_t pin) {
 
 void HAL_Servo_Write_Pulse_Width(uint16_t pin, uint16_t pulseWidth) {
     hal_pwm_set_resolution(pin, SERVO_PWM_RESOLUTION);
-    // hal_pin_info_t *pin_map = hal_pin_map();
-    // FIXME
-    // pin_map[pin].user_data = pulseWidth;
+    hal_pin_info_t *pin_map = hal_pin_map();
+    pin_map[pin].user_data = pulseWidth;
 
     uint32_t period_us = 1000000 / SERVO_TIM_PWM_FREQ;
     uint32_t pwm_duty_value = pulseWidth * SERVO_PWM_MAX_VALUE / period_us;
@@ -43,9 +42,8 @@ void HAL_Servo_Write_Pulse_Width(uint16_t pin, uint16_t pulseWidth) {
 }
 
 uint16_t HAL_Servo_Read_Pulse_Width(uint16_t pin) {
-    // hal_pin_info_t* pin_map = hal_pin_map();
-    // FIXME
-    // return pin_map[pin].user_data;
+    hal_pin_info_t* pin_map = hal_pin_map();
+    return pin_map[pin].user_data;
     return 0;
 }
 

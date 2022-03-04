@@ -30,7 +30,11 @@
 #if HAL_PLATFORM_GEN == 2
 static const hal_pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
 #elif HAL_PLATFORM_GEN == 3
+# if PLATFORM_ID == PLATFORM_P2
+static const hal_pin_t pin = D1, pin2 = D8;
+# else
 static const hal_pin_t pin = A0, pin2 = A1;
+# endif
 #else
 #error "Unsupported"
 #endif // HAL_PLATFORM_GEN
@@ -82,6 +86,8 @@ test(SERVO_04_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
     //To Do : Add test for remaining pins if required
 }
 
+// FIXME: P2 doesn't support pulseIn()
+#if PLATFORM_ID != PLATFORM_P2
 test(SERVO_05_DetachDoesntAffectAnotherServoUsingSameTimer) {
     const int pulseWidth = 2000;
     // Attach 1st servo
@@ -107,3 +113,4 @@ test(SERVO_05_DetachDoesntAffectAnotherServoUsingSameTimer) {
     servo2.detach();
     assertTrue(readPulseWidth > pulseWidth - 50 && readPulseWidth < pulseWidth + 50);
 }
+#endif // PLATFORM_ID != PLATFORM_P2
