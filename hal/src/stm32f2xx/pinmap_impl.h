@@ -23,9 +23,9 @@
 extern "C" {
 #endif
 
-typedef struct Hal_Pin_Info {
+typedef struct hal_pin_info_t {
     GPIO_TypeDef    *gpio_peripheral;
-    pin_t           gpio_pin;
+    hal_pin_t           gpio_pin;
     uint8_t         gpio_pin_source;
     uint8_t         adc_channel;
     uint8_t         dac_channel;
@@ -34,12 +34,12 @@ typedef struct Hal_Pin_Info {
     PinMode         pin_mode;
     uint16_t        timer_ccr;
     int32_t         user_property;
-} Hal_Pin_Info;
+} hal_pin_info_t;
 
 // For compatibility
-typedef Hal_Pin_Info STM32_Pin_Info;
+typedef hal_pin_info_t STM32_Pin_Info;
 
-Hal_Pin_Info *HAL_Pin_Map(void);
+hal_pin_info_t *hal_pin_map(void);
 
 extern void HAL_GPIO_Save_Pin_Mode(uint16_t pin);
 extern PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin);

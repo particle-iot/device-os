@@ -50,9 +50,9 @@ extern "C" {
 #endif
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-extern const led_config_t HAL_Leds_Default[];
+extern const hal_led_config_t HAL_Leds_Default[];
 #else
-extern led_config_t HAL_Leds_Default[];
+extern hal_led_config_t HAL_Leds_Default[];
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 /* Exported constants --------------------------------------------------------*/
@@ -78,11 +78,11 @@ void IWDG_Force_Enable(uint32_t msTimeout);
 
 void UI_Timer_Configure(void);
 
-void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
-void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
-uint8_t BUTTON_GetState(Button_TypeDef Button);
-uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
-void BUTTON_ResetDebouncedState(Button_TypeDef Button);
+void hal_button_init(hal_button_t Button, hal_button_mode_t Button_Mode);
+void hal_button_exti_config(hal_button_t Button, FunctionalState NewState);
+uint8_t hal_button_get_state(hal_button_t Button);
+uint16_t hal_button_get_debounce_time(hal_button_t Button);
+void hal_button_reset_debounced_state(hal_button_t Button);
 
 void LED_Init(Led_TypeDef Led);
 

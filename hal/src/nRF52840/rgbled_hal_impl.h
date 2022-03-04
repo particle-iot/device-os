@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 #define LED_CONFIG_STRUCT_VERSION           0x01
-typedef struct led_config_t {
+typedef struct hal_led_config_t {
     uint8_t             version;        // Struct version
     uint16_t            pin;
     union {
@@ -37,7 +37,7 @@ typedef struct led_config_t {
         };
     };
     uint8_t             padding[18];
-} led_config_t;
+} hal_led_config_t;
 
 #ifdef  __cplusplus
 }

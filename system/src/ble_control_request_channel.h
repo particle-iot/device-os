@@ -19,7 +19,7 @@
 
 #include "system_control.h"
 
-#if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE
+#if SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE_SETUP
 
 #include "control_request_handler.h"
 #include "simple_pool_allocator.h"
@@ -184,4 +184,4 @@ inline void BleControlRequestChannel::sendBuffer(Buffer* buf) {
 
 } // particle
 
-#endif // SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE
+#endif // SYSTEM_CONTROL_ENABLED && HAL_PLATFORM_BLE_SEETUP

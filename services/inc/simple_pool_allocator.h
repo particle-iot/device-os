@@ -202,6 +202,27 @@ public:
     }
 };
 
+class AtomicSimpleStaticPool : public SimpleBasePool {
+public:
+    AtomicSimpleStaticPool(void* ptr, size_t size) :
+        SimpleBasePool(ptr, size) {
+    }
+
+    virtual void* alloc(size_t size) override {
+        void* p = nullptr;
+        ATOMIC_BLOCK() {
+            p = SimpleBasePool::alloc(size);
+        }
+        return p;
+    }
+
+    virtual void free(void* ptr) override {
+        ATOMIC_BLOCK() {
+            SimpleBasePool::free(ptr);
+        }
+    }
+};
+
 class AtomicAllocedPool: public SimpleBasePool {
 public:
     virtual ~AtomicAllocedPool() {

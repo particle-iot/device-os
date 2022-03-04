@@ -99,10 +99,6 @@ void resetNetworkInterfaces();
 #include "system_mode.h"
 #include "system_power.h"
 
-#if HAL_PLATFORM_BLE
-#include "ble_hal.h"
-#endif // HAL_PLATFORM_BLE
-
 // FIXME
 #include "system_control_internal.h"
 
@@ -272,11 +268,6 @@ protected:
             LED_SIGNAL_START(LISTENING_MODE, CRITICAL);
         }
 
-#if HAL_PLATFORM_BLE
-        // Start advertising
-        ble_gap_start_advertising(nullptr);
-#endif // HAL_PLATFORM_BLE
-
         on_start_listening();
         start_listening_timer_create();
 
@@ -331,18 +322,9 @@ protected:
             if (is_start_listening_timeout()) {
                 start_listening_timeout();
             }
-#if HAL_PLATFORM_BLE
-            // TODO: Process BLE channel events in a separate thread
-            system::SystemControl::instance()->run();
-#endif
             system_shutdown_if_needed();
         // while (network_listening(0, 0, NULL))
         } start_listening_timer_destroy(); // immediately destroy timer if we are on our way out
-
-#if HAL_PLATFORM_BLE
-        // Stop advertising
-        ble_gap_stop_advertising();
-#endif // HAL_PLATFORM_BLE
 
         LED_SIGNAL_STOP(LISTENING_MODE);
 

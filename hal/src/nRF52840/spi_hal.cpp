@@ -183,7 +183,7 @@ static void spiSlaveEventHandler(nrfx_spis_evt_t const * p_event, void * p_conte
 
 static void spiOnSelectedHandler(void *data) {
     int spi = (int)data;
-    uint8_t state = !HAL_GPIO_Read(spiMap[spi].ss_pin);
+    uint8_t state = !hal_gpio_read(spiMap[spi].ss_pin);
     spiMap[spi].spi_ss_state = state;
     if (spiMap[spi].select_user_callback) {
         spiMap[spi].select_user_callback(state);
@@ -224,7 +224,7 @@ static inline uint8_t getNrfPinNum(uint8_t pin) {
         return NRFX_SPIM_PIN_NOT_USED;
     }
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
     return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 }
 
@@ -247,7 +247,7 @@ static void spiInit(hal_spi_interface_t spi, hal_spi_mode_t mode) {
         err_code = nrfx_spim_init(spiMap[spi].master, &spim_config, spiMasterEventHandler, (void *)((int)spi));
         SPARK_ASSERT(err_code == NRF_SUCCESS);
 
-        if (HAL_Pin_Is_Valid(spiMap[spi].ss_pin)) {
+        if (hal_pin_is_valid(spiMap[spi].ss_pin)) {
             hal_gpio_config_t conf = {
                 .size = sizeof(conf),
                 .version = HAL_GPIO_VERSION,
@@ -256,7 +256,7 @@ static void spiInit(hal_spi_interface_t spi, hal_spi_mode_t mode) {
                 .value = 1,
                 .drive_strength = HAL_GPIO_DRIVE_HIGH,
             };
-            HAL_Pin_Configure(spiMap[spi].ss_pin, &conf, nullptr);
+            hal_gpio_configure(spiMap[spi].ss_pin, &conf, nullptr);
         }
     } else {
         static const nrf_spis_mode_t nrf_spis_mode[4] = {NRF_SPIS_MODE_0, NRF_SPIS_MODE_1, NRF_SPIS_MODE_2, NRF_SPIS_MODE_3};
@@ -276,14 +276,14 @@ static void spiInit(hal_spi_interface_t spi, hal_spi_mode_t mode) {
         err_code = nrfx_spis_init(spiMap[spi].slave, &spis_config, spiSlaveEventHandler, (void *)((int) spi));
         SPARK_ASSERT(err_code == NRF_SUCCESS);
 
-        HAL_Pin_Mode(spiMap[spi].ss_pin, INPUT_PULLUP);
-        HAL_Interrupts_Attach(spiMap[spi].ss_pin, &spiOnSelectedHandler, (void*)(spi), CHANGE, nullptr);
+        hal_gpio_mode(spiMap[spi].ss_pin, INPUT_PULLUP);
+        hal_interrupt_attach(spiMap[spi].ss_pin, &spiOnSelectedHandler, (void*)(spi), CHANGE, nullptr);
     }
 
     // Set pin function
-    HAL_Set_Pin_Function(spiMap[spi].sck_pin, PF_SPI);
-    HAL_Set_Pin_Function(spiMap[spi].mosi_pin, PF_SPI);
-    HAL_Set_Pin_Function(spiMap[spi].miso_pin, PF_SPI);
+    hal_pin_set_function(spiMap[spi].sck_pin, PF_SPI);
+    hal_pin_set_function(spiMap[spi].mosi_pin, PF_SPI);
+    hal_pin_set_function(spiMap[spi].miso_pin, PF_SPI);
 }
 
 static void spiUninit(hal_spi_interface_t spi) {
@@ -291,16 +291,16 @@ static void spiUninit(hal_spi_interface_t spi) {
         nrfx_spim_uninit(spiMap[spi].master);
     } else {
         nrfx_spis_uninit(spiMap[spi].slave);
-        HAL_Interrupts_Detach(spiMap[spi].ss_pin);
+        hal_interrupt_detach(spiMap[spi].ss_pin);
     }
 
-    HAL_Pin_Mode(spiMap[spi].sck_pin, INPUT_PULLUP);
-    HAL_Pin_Mode(spiMap[spi].mosi_pin, PIN_MODE_NONE);
-    HAL_Pin_Mode(spiMap[spi].miso_pin, PIN_MODE_NONE);
+    hal_gpio_mode(spiMap[spi].sck_pin, INPUT_PULLUP);
+    hal_gpio_mode(spiMap[spi].mosi_pin, PIN_MODE_NONE);
+    hal_gpio_mode(spiMap[spi].miso_pin, PIN_MODE_NONE);
 
-    HAL_Set_Pin_Function(spiMap[spi].sck_pin, PF_NONE);
-    HAL_Set_Pin_Function(spiMap[spi].mosi_pin, PF_NONE);
-    HAL_Set_Pin_Function(spiMap[spi].miso_pin, PF_NONE);
+    hal_pin_set_function(spiMap[spi].sck_pin, PF_NONE);
+    hal_pin_set_function(spiMap[spi].mosi_pin, PF_NONE);
+    hal_pin_set_function(spiMap[spi].miso_pin, PF_NONE);
 }
 
 static uint32_t spiTransfer(hal_spi_interface_t spi, uint8_t *tx_buf, uint8_t *rx_buf, uint32_t size) {
@@ -399,7 +399,7 @@ void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pi
         spiMap[spi].ss_pin = pin;
     }
 
-    if (mode == SPI_MODE_SLAVE && !HAL_Pin_Is_Valid(spiMap[spi].ss_pin)) {
+    if (mode == SPI_MODE_SLAVE && !hal_pin_is_valid(spiMap[spi].ss_pin)) {
         // Slave mode requires a valid pin
         return;
     }
@@ -648,9 +648,9 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
         while (spiMap[spi].transmitting);
         spiUninit(spi);
         // spiUninit() clears pin function, retrieve it.
-        HAL_Set_Pin_Function(spiMap[spi].sck_pin, PF_SPI);
-        HAL_Set_Pin_Function(spiMap[spi].mosi_pin, PF_SPI);
-        HAL_Set_Pin_Function(spiMap[spi].miso_pin, PF_SPI);
+        hal_pin_set_function(spiMap[spi].sck_pin, PF_SPI);
+        hal_pin_set_function(spiMap[spi].mosi_pin, PF_SPI);
+        hal_pin_set_function(spiMap[spi].miso_pin, PF_SPI);
         spiMap[spi].state = HAL_SPI_STATE_SUSPENDED;
     } else {
         CHECK_TRUE(spiMap[spi].state == HAL_SPI_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
@@ -660,7 +660,7 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
 }
 
 int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t* conf) {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         os_mutex_recursive_t mutex = spiMap[spi].mutex;
         if (mutex) {
             // FIXME: os_mutex_recursive_lock doesn't take any arguments, using trylock for now
@@ -675,7 +675,7 @@ int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t*
 }
 
 int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved) {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         os_mutex_recursive_t mutex = spiMap[spi].mutex;
         if (mutex) {
             return os_mutex_recursive_unlock(mutex);

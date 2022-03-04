@@ -4,7 +4,7 @@
 /* For now, we remember only one handler, but in future this may be extended to a
  * dynamically linked list to allow for multiple handlers.
  */
-static HAL_InterruptCallback SystemInterruptHandlers[__Last_irq];
+static hal_interrupt_callback_t SystemInterruptHandlers[__Last_irq];
 
 
 inline bool is_valid_irq(hal_irq_t irq)
@@ -12,11 +12,11 @@ inline bool is_valid_irq(hal_irq_t irq)
     return irq<__Last_irq;
 }
 
-uint8_t HAL_Set_System_Interrupt_Handler(hal_irq_t irq, const HAL_InterruptCallback* callback, HAL_InterruptCallback* previous, void* reserved)
+uint8_t hal_interrupt_set_system_handler(hal_irq_t irq, const hal_interrupt_callback_t* callback, hal_interrupt_callback_t* previous, void* reserved)
 {
     if (!is_valid_irq(irq))
         return false;
-    HAL_InterruptCallback& cb = SystemInterruptHandlers[irq];
+    hal_interrupt_callback_t& cb = SystemInterruptHandlers[irq];
     if (previous)
         *previous = cb;
     if (callback)
@@ -29,24 +29,24 @@ uint8_t HAL_Set_System_Interrupt_Handler(hal_irq_t irq, const HAL_InterruptCallb
     return true;
 }
 
-uint8_t HAL_Get_System_Interrupt_Handler(hal_irq_t irq, HAL_InterruptCallback* callback, void* reserved)
+uint8_t hal_interrupt_get_system_handler(hal_irq_t irq, hal_interrupt_callback_t* callback, void* reserved)
 {
     if (!is_valid_irq(irq))
         return false;
 
     if (callback) {
-        HAL_InterruptCallback& cb = SystemInterruptHandlers[irq];
+        hal_interrupt_callback_t& cb = SystemInterruptHandlers[irq];
         *callback = cb;
     }
 
     return true;
 }
 
-void HAL_System_Interrupt_Trigger(hal_irq_t irq, void* reserved)
+void hal_interrupt_trigger_system(hal_irq_t irq, void* reserved)
 {
     if (is_valid_irq(irq))
     {
-        HAL_InterruptCallback& cb = SystemInterruptHandlers[irq];
+        hal_interrupt_callback_t& cb = SystemInterruptHandlers[irq];
         if (cb.handler)
             cb.handler(cb.data);
     }

@@ -92,11 +92,11 @@ void serialReadLineNoEcho(Stream *serialObj, char *dst, int max_len, system_tick
 }
 
 
-void switchPinToAfOpenDrainWithPullUp(pin_t pin)
+void switchPinToAfOpenDrainWithPullUp(hal_pin_t pin)
 {
 #if PLATFORM_ID != 0
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
+    hal_pin_t gpio_pin = PIN_MAP[pin].gpio_pin;
     GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
     GPIO_InitTypeDef GPIO_InitStructure = {0};
     GPIO_InitStructure.GPIO_Pin = gpio_pin;
@@ -115,7 +115,7 @@ void consume(Stream& serial)
     }
 }
 
-static bool pinIsFloating(const pin_t pin)
+static bool pinIsFloating(const hal_pin_t pin)
 {
 #if PLATFORM_ID != 0
     PinMode mode = getPinMode(pin);

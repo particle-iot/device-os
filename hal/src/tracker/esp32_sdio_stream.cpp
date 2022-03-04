@@ -36,7 +36,7 @@ const size_t SDIO_STREAM_BUFFER_SIZE_TX = 512;
 
 namespace particle {
 
-Esp32SdioStream::Esp32SdioStream(hal_spi_interface_t spi, uint32_t clock, pin_t csPin, pin_t intPin)
+Esp32SdioStream::Esp32SdioStream(hal_spi_interface_t spi, uint32_t clock, hal_pin_t csPin, hal_pin_t intPin)
         : enabled_(false) {
 
     rxBuf_.reset(new (std::nothrow) char[SDIO_STREAM_BUFFER_SIZE_RX]);

@@ -51,21 +51,21 @@ void ElectronSerialPipe::begin(unsigned baud, bool hwFlowCtrl)
 
     if (hwFlowCtrl) {
         // Configure USART RTS and CTS as alternate function push-pull
-        HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
-        HAL_Pin_Mode(CTS_UC, AF_OUTPUT_PUSHPULL);
+        hal_gpio_mode(RTS_UC, AF_OUTPUT_PUSHPULL);
+        hal_gpio_mode(CTS_UC, AF_OUTPUT_PUSHPULL);
     } else {
-        HAL_Pin_Mode(RTS_UC, OUTPUT);
-        HAL_GPIO_Write(RTS_UC, 0); // VERY IMPORTANT FOR CORRECT OPERATION W/O HW FLOW CONTROL!!
+        hal_gpio_mode(RTS_UC, OUTPUT);
+        hal_gpio_write(RTS_UC, 0); // VERY IMPORTANT FOR CORRECT OPERATION W/O HW FLOW CONTROL!!
     }
     // Configure USART Rx and Tx as alternate function push-pull, and enable GPIOA clock
-    HAL_Pin_Mode(RXD_UC, AF_OUTPUT_PUSHPULL);
-    HAL_Pin_Mode(TXD_UC, AF_OUTPUT_PUSHPULL);
+    hal_gpio_mode(RXD_UC, AF_OUTPUT_PUSHPULL);
+    hal_gpio_mode(TXD_UC, AF_OUTPUT_PUSHPULL);
 
     // Enable USART Clock
     RCC->APB1ENR |= RCC_APB1Periph_USART3;
 
     // Connect USART pins to AFx
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (hwFlowCtrl) {
         GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
@@ -140,11 +140,11 @@ void ElectronSerialPipe::end()
     RCC->APB1ENR &= ~RCC_APB1Periph_USART3;
 
     if (hwFlowCtrl_) {
-        HAL_Pin_Mode(CTS_UC, INPUT);
+        hal_gpio_mode(CTS_UC, INPUT);
     }
-    HAL_Pin_Mode(RTS_UC, INPUT);
-    HAL_Pin_Mode(RXD_UC, INPUT);
-    HAL_Pin_Mode(TXD_UC, INPUT);
+    hal_gpio_mode(RTS_UC, INPUT);
+    hal_gpio_mode(RXD_UC, INPUT);
+    hal_gpio_mode(TXD_UC, INPUT);
 
     // clear any pending data
     _pipeTx.reset();
@@ -289,8 +289,8 @@ void ElectronSerialPipe::rxResume(void)
 {
     if (hwFlowCtrl_ && pause_) {
         pause_ = false;
-        HAL_Pin_Mode(RTS_UC, AF_OUTPUT_PUSHPULL);
-        Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+        hal_gpio_mode(RTS_UC, AF_OUTPUT_PUSHPULL);
+        hal_pin_info_t* PIN_MAP = hal_pin_map();
         GPIO_PinAFConfig(PIN_MAP[RTS_UC].gpio_peripheral, PIN_MAP[RTS_UC].gpio_pin_source, GPIO_AF_USART3);
     }
     USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
@@ -300,8 +300,8 @@ void ElectronSerialPipe::rxPause(void)
 {
     if (hwFlowCtrl_ && !pause_) {
         pause_ = true;
-        HAL_Pin_Mode(RTS_UC, OUTPUT);
-        HAL_GPIO_Write(RTS_UC, 1);
+        hal_gpio_mode(RTS_UC, OUTPUT);
+        hal_gpio_write(RTS_UC, 1);
     }
     USART_ITConfig(USART3, USART_IT_RXNE, DISABLE);
 }

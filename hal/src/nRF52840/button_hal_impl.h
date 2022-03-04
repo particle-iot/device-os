@@ -33,7 +33,7 @@ typedef struct {
     volatile uint8_t      active;
     volatile uint16_t     debounce_time;
     uint8_t               padding[26];
-} button_config_t;
+} hal_button_config_t;
 
 #ifdef __cplusplus
 }

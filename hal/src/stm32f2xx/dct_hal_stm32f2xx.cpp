@@ -22,7 +22,7 @@ int dct_lock(int write) {
     if (!rtos_started) {
         return 0;
     }
-    SPARK_ASSERT(!HAL_IsISR());
+    SPARK_ASSERT(!hal_interrupt_is_isr());
     const bool ok = dctLock.lock(DCT_LOCK_TIMEOUT);
     SPARK_ASSERT(ok);
 #ifdef DEBUG_BUILD
@@ -36,7 +36,7 @@ int dct_unlock(int write) {
     if (!rtos_started) {
         return 0;
     }
-    SPARK_ASSERT(!HAL_IsISR());
+    SPARK_ASSERT(!hal_interrupt_is_isr());
     const bool ok = dctLock.unlock();
     SPARK_ASSERT(ok);
 #ifdef DEBUG_BUILD

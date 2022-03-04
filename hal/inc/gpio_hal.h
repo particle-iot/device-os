@@ -67,12 +67,14 @@ typedef struct {
 #define HAL_GPIO_VERSION_1 (1)
 #define HAL_GPIO_VERSION   (HAL_GPIO_VERSION_1)
 
-void HAL_Pin_Mode(pin_t pin, PinMode mode);
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved);
-PinMode HAL_Get_Pin_Mode(pin_t pin);
-void HAL_GPIO_Write(pin_t pin, uint8_t value);
-int32_t HAL_GPIO_Read(pin_t pin);
-uint32_t HAL_Pulse_In(pin_t pin, uint16_t value);
+void hal_gpio_mode(hal_pin_t pin, PinMode mode);
+int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reserved);
+PinMode hal_gpio_get_mode(hal_pin_t pin);
+void hal_gpio_write(hal_pin_t pin, uint8_t value);
+int32_t hal_gpio_read(hal_pin_t pin);
+uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value);
+
+#include "gpio_hal_compat.h"
 
 #ifdef __cplusplus
 }

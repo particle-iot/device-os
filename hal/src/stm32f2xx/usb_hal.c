@@ -505,13 +505,13 @@ static bool HAL_USB_WillPreempt()
         return false;
     }
 
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
 #ifdef USE_USB_OTG_FS
         int32_t irq = OTG_FS_IRQn;
 #else
         int32_t irq = OTG_HS_IRQn;
 #endif
-        if (!HAL_WillPreempt(irq, HAL_ServicedIRQn()))
+        if (!hal_interrupt_will_preempt(irq, hal_interrupt_serviced_irqn()))
             return false;
     }
 

@@ -73,6 +73,6 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
     11,          12,          3,           34,          30,          31,          29,          28,           /* P1.08 ~ P1.15 */
 };
 
-Hal_Pin_Info* HAL_Pin_Map(void) {
+hal_pin_info_t* hal_pin_map(void) {
     return s_pin_map;
 }

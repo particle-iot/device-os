@@ -10,11 +10,11 @@ static struct LedSetCallbacksInitializer {
     LedSetCallbacksInitializer() {
         LED_SetCallbacks({
             0x0001,
-            HAL_Led_Rgb_Set_Values,
-            HAL_Led_Rgb_Get_Values,
-            HAL_Led_Rgb_Get_Max_Value,
-            HAL_Led_User_Set,
-            HAL_Led_User_Toggle
+            hal_led_set_rgb_values,
+            hal_led_get_rgb_values,
+            hal_led_get_max_rgb_values,
+            hal_led_set_user,
+            hal_led_toggle_user
         }, NULL);
     }
 } s_LedSetCallbacksInitializer;
@@ -26,7 +26,7 @@ led_config_t HAL_Leds[LEDn] = {
 
 static void Set_LED_Value(Led_TypeDef led, uint16_t value)
 {
-    led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
+    hal_led_config_t* ledc = hal_led_get_configuration(led, NULL);
     const uint32_t pwmMax = (((uint32_t)1 << 15) - 1);
     uint32_t corrected = (uint32_t)value * pwmMax / Get_RGB_LED_Max_Value();
     if (ledc->is_hal_pin && ledc->is_active && ledc->is_pwm) {
@@ -36,7 +36,7 @@ static void Set_LED_Value(Led_TypeDef led, uint16_t value)
 
 static void Set_LED_State(Led_TypeDef led, uint8_t state)
 {
-    led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
+    hal_led_config_t* ledc = hal_led_get_configuration(led, NULL);
     if (state)
         ledc->port->BSRRL = ledc->pin;
     else
@@ -45,14 +45,14 @@ static void Set_LED_State(Led_TypeDef led, uint8_t state)
 
 static void Toggle_LED_State(Led_TypeDef led)
 {
-    led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
+    hal_led_config_t* ledc = hal_led_get_configuration(led, NULL);
     ledc->port->ODR ^= ledc->pin;
 }
 
 static void LED_Init_Hal(Led_TypeDef led)
 {
-    led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
-    HAL_Pin_Mode(ledc->hal_pin, (PinMode)ledc->hal_mode);
+    hal_led_config_t* ledc = hal_led_get_configuration(led, NULL);
+    hal_gpio_mode(ledc->hal_pin, (PinMode)ledc->hal_mode);
     if (ledc->hal_mode == AF_OUTPUT_PUSHPULL) {
         // Enable PWM
         // 15-bit resolution is supported by all PWM pins on STM32F2
@@ -66,7 +66,7 @@ static void LED_Init_Hal(Led_TypeDef led)
     }
 }
 
-void HAL_Led_Rgb_Set_Values(uint16_t r, uint16_t g, uint16_t b, void* reserved)
+void hal_led_set_rgb_values(uint16_t r, uint16_t g, uint16_t b, void* reserved)
 {
     Set_RGB_LED_Values(r, g, b);
 
@@ -75,27 +75,27 @@ void HAL_Led_Rgb_Set_Values(uint16_t r, uint16_t g, uint16_t b, void* reserved)
     Set_LED_Value((Led_TypeDef)(PARTICLE_LED_BLUE  + LED_MIRROR_OFFSET), b);
 }
 
-void HAL_Led_Rgb_Get_Values(uint16_t* rgb, void* reserved)
+void hal_led_get_rgb_values(uint16_t* rgb, void* reserved)
 {
     Get_RGB_LED_Values(rgb);
 }
 
-uint32_t HAL_Led_Rgb_Get_Max_Value(void* reserved)
+uint32_t hal_led_get_max_rgb_values(void* reserved)
 {
     return Get_RGB_LED_Max_Value();
 }
 
-void HAL_Led_User_Set(uint8_t state, void* reserved)
+void hal_led_set_user(uint8_t state, void* reserved)
 {
     Set_LED_State(PARTICLE_LED_USER, state);
 }
 
-void HAL_Led_User_Toggle(void* reserved)
+void hal_led_toggle_user(void* reserved)
 {
     Toggle_LED_State(PARTICLE_LED_USER);
 }
 
-led_config_t* HAL_Led_Set_Configuration(uint8_t led, led_config_t* conf, void* reserved)
+hal_led_config_t* hal_led_set_configuration(uint8_t led, hal_led_config_t* conf, void* reserved)
 {
     if (led < LED_MIRROR_OFFSET)
         return NULL;
@@ -103,14 +103,14 @@ led_config_t* HAL_Led_Set_Configuration(uint8_t led, led_config_t* conf, void* r
     return &HAL_Leds[led - LED_MIRROR_OFFSET];
 }
 
-led_config_t* HAL_Led_Get_Configuration(uint8_t led, void* reserved)
+hal_led_config_t* hal_led_get_configuration(uint8_t led, void* reserved)
 {
     if (led < LED_MIRROR_OFFSET)
-        return (led_config_t*)&HAL_Leds_Default[led];
+        return (hal_led_config_t*)&HAL_Leds_Default[led];
     return &HAL_Leds[led - LED_MIRROR_OFFSET];
 }
 
-void HAL_Led_Init(uint8_t led, led_config_t* conf, void* reserved)
+void hal_led_init(uint8_t led, hal_led_config_t* conf, void* reserved)
 {
     if (led < LED_MIRROR_OFFSET)
     {
@@ -119,7 +119,7 @@ void HAL_Led_Init(uint8_t led, led_config_t* conf, void* reserved)
     }
 
     if (conf) {
-        HAL_Led_Set_Configuration(led, conf, NULL);
+        hal_led_set_configuration(led, conf, NULL);
     }
     LED_Init_Hal((Led_TypeDef)led);
 }

@@ -47,6 +47,42 @@ LDFLAGS += -nostartfiles -Xlinker --gc-sections
 LDFLAGS += -Wl,--build-id
 endif
 
+#
+# default flags for targeting ARM Cortex-M33
+#
+ifeq ("$(ARM_CPU)","cortex-m33")
+CFLAGS += -g3 -gdwarf-2 -Os -mcpu=cortex-m33 -march=armv8-m.main+dsp -mthumb
+CFLAGS += -mcmse -mfloat-abi=hard -mfpu=fpv5-sp-d16
+
+# C++ specific flags
+CPPFLAGS += -fno-exceptions -fno-rtti -fcheck-new
+
+CONLYFLAGS +=
+
+ASFLAGS +=  -g3 -gdwarf-2 -mcpu=cortex-m33 -march=armv8-m.main+dsp -mthumb
+ASFLAGS += -mcmse -mfloat-abi=hard -mfpu=fpv5-sp-d16
+
+LDFLAGS += -nostartfiles -Xlinker --gc-sections
+endif
+
+#
+# default flags for targeting ARM Cortex-M23
+#
+ifeq ("$(ARM_CPU)","cortex-m23")
+CFLAGS += -g3 -gdwarf-2 -Os -mcpu=cortex-m23 -march=armv8-m.base -mthumb -D__ARM_FEATURE_DSP=0
+
+# C++ specific flags
+CPPFLAGS += -fno-exceptions -fno-rtti -fcheck-new
+
+CONLYFLAGS +=
+
+ASFLAGS +=  -g3 -gdwarf-2 -mcpu=cortex-m23 -march=armv8-m.base -mthumb -D__ARM_FEATURE_DSP=0
+
+LDFLAGS += -nostartfiles -Xlinker --gc-sections
+endif
+
+CFLAGS += -DARM_CPU_$(shell echo $(ARM_CPU) | tr '-' '_' | tr 'a-z' 'A-Z')
+
 # NOTE: this does not enable LTO! This allows to build object files
 # that can be linked with LTO enabled and disabled (https://gcc.gnu.org/onlinedocs/gccint/LTO-Overview.html)
 # If LTO is disabled, LTO information is simply discarded. These parameters

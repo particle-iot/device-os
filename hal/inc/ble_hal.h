@@ -23,7 +23,9 @@
 #if HAL_PLATFORM_BLE
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
+#include <sys/types.h>
 
 #include "ble_hal_defines.h"
 #include "ble_hal_impl.h"

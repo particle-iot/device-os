@@ -23,4 +23,4 @@ endif
 
 all:
 	@echo Creating $(MODULE_USER_MEMORY_FILE_GEN) ...
-	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",_user_part_static_ram_size = $(USER_SRAM_LENGTH);)
+	$(call WRITE_FILE_APPEND, "$(MODULE_USER_MEMORY_FILE_GEN)",platform_user_part_static_ram_size = $(USER_SRAM_LENGTH);)

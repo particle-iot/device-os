@@ -43,30 +43,30 @@ test(GPIO_01_PinModeSetResultsInCorrectMode) {
 #endif // !HAL_PLATFORM_NRF52840
     };
     int n = sizeof(mode) / sizeof(mode[0]);
-    pin_t pin = A0;//pin under test
+    hal_pin_t pin = A0;//pin under test
     for(int i=0;i<n;i++)
     {
         // when
         pinMode(pin, mode[i]);
         // then
-        assertEqual(HAL_Get_Pin_Mode(pin), mode[i]);
+        assertEqual(hal_gpio_get_mode(pin), mode[i]);
     }
     //To Do : Add test for remaining pins if required
 }
 
 test(GPIO_02_NoDigitalWriteWhenPinModeIsNotSetToOutput) {
-    pin_t pin = A0;//pin under test
+    hal_pin_t pin = A0;//pin under test
     // when
     // pin set to INPUT_PULLUP mode, to keep pin from floating and test failing
     pinMode(pin, INPUT_PULLUP);
     digitalWrite(pin, LOW);
     // then
-    assertNotEqual((PinState)HAL_GPIO_Read(pin), LOW);
+    assertNotEqual((PinState)hal_gpio_read(pin), LOW);
     //To Do : Add test for remaining pins if required
 }
 
 test(GPIO_03_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = TOTAL_PINS+1;//pin under test (not a valid user pin)
+    hal_pin_t pin = TOTAL_PINS+1;//pin under test (not a valid user pin)
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
@@ -76,7 +76,7 @@ test(GPIO_03_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
 }
 
 test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
-    pin_t pin = A0;//pin under test
+    hal_pin_t pin = A0;//pin under test
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
@@ -94,9 +94,9 @@ test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
 
 test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 #if !HAL_PLATFORM_NRF52840
-    pin_t pin = D1; // pin under test
+    hal_pin_t pin = D1; // pin under test
 #else
-    pin_t pin = D4; // pin under test
+    hal_pin_t pin = D4; // pin under test
 #endif
 
     uint32_t avgPulseHigh = 0;
@@ -118,9 +118,9 @@ test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 
 test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
 #if !HAL_PLATFORM_NRF52840
-    pin_t pin = D1; // pin under test
+    hal_pin_t pin = D1; // pin under test
 #else
-    pin_t pin = D4; // pin under test
+    hal_pin_t pin = D4; // pin under test
 #endif
 
     uint32_t avgPulseLow = 0;
@@ -141,7 +141,7 @@ test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
 }
 
 test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
-    pin_t pin = D1; // pin under test
+    hal_pin_t pin = D1; // pin under test
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
@@ -163,28 +163,28 @@ test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
 #if !HAL_PLATFORM_NRF52840
 
 test(GPIO_08_AnalogReadWorksMixedWithDigitalRead) {
-    pin_t pin = A0;
+    hal_pin_t pin = A0;
 
     // when
     pinMode(pin, INPUT_PULLUP);
     // then
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
 
     // 2 analogReads
     analogRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_INPUT);
+    assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
     analogRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_INPUT);
+    assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
     // 2 digitalReads
     digitalRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
     digitalRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
     // 2 analogReads again
     analogRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_INPUT);
+    assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
     analogRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_INPUT);
+    assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
 }
 
 #endif //  !HAL_PLATFORM_NRF52840

@@ -45,7 +45,7 @@ typedef struct {
     uint16_t exti_irqn;
     uint16_t exti_irq_prio;
     EXTITrigger_TypeDef exti_trigger;
-} button_config_t;
+} hal_button_config_t;
 
 #ifdef __cplusplus
 }

@@ -421,12 +421,12 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
 static bool usb_will_preempt(void)
 {
     // Ain't no one is preempting us if interrupts are currently disabled or basepri masked
-    if (HAL_IsIrqMasked(USBD_IRQn) || nrf_nvic_state.__cr_flag) {
+    if (hal_interrupt_is_irq_masked(USBD_IRQn) || nrf_nvic_state.__cr_flag) {
         return false;
     }
 
-    if (HAL_IsISR()) {
-        if (!HAL_WillPreempt(USBD_IRQn, HAL_ServicedIRQn())) {
+    if (hal_interrupt_is_isr()) {
+        if (!hal_interrupt_will_preempt(USBD_IRQn, hal_interrupt_serviced_irqn())) {
             return false;
         }
     }
@@ -456,7 +456,7 @@ int usb_hal_init(void) {
 
     // Create USB Serial string by Device ID
     uint8_t device_id[HAL_DEVICE_ID_SIZE] = {};
-    uint8_t device_id_len = HAL_device_ID(device_id, sizeof(device_id));
+    uint8_t device_id_len = hal_get_device_id(device_id, sizeof(device_id));
     memset(g_extern_serial_number, 0, sizeof(g_extern_serial_number));
     bytes2hexbuf_lower_case(device_id, MIN(device_id_len, sizeof(g_extern_serial_number) - 1), g_extern_serial_number);
 

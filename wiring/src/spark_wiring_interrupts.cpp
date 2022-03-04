@@ -58,7 +58,7 @@ void call_raw_interrupt_handler(void* data)
  * Return         : true if function handler was allocated, false otherwise.
  *******************************************************************************/
 
-HAL_InterruptExtraConfiguration* configure_interrupt(HAL_InterruptExtraConfiguration& extra, int8_t priority, uint8_t subpriority)
+hal_interrupt_extra_configuration_t* configure_interrupt(hal_interrupt_extra_configuration_t& extra, int8_t priority, uint8_t subpriority)
 {
   extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
   if (priority >= 0) {
@@ -71,11 +71,11 @@ HAL_InterruptExtraConfiguration* configure_interrupt(HAL_InterruptExtraConfigura
 
 bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode mode, int8_t priority, uint8_t subpriority)
 {
-    HAL_Interrupts_Detach(pin);
+    hal_interrupt_detach(pin);
     wiring_interrupt_handler_t* handler = allocate_handler(pin, fn);
     if (handler) {
-        HAL_InterruptExtraConfiguration extra = {};
-        if (SYSTEM_ERROR_NONE != HAL_Interrupts_Attach(pin, call_wiring_interrupt_handler, handler, mode, configure_interrupt(extra, priority, subpriority))) {
+        hal_interrupt_extra_configuration_t extra = {};
+        if (SYSTEM_ERROR_NONE != hal_interrupt_attach(pin, call_wiring_interrupt_handler, handler, mode, configure_interrupt(extra, priority, subpriority))) {
             return false;
         }
     }
@@ -84,9 +84,9 @@ bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode 
 
 bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode, int8_t priority, uint8_t subpriority)
 {
-    HAL_Interrupts_Detach(pin);
-    HAL_InterruptExtraConfiguration extra = {};
-    if (SYSTEM_ERROR_NONE != HAL_Interrupts_Attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra, priority, subpriority))) {
+    hal_interrupt_detach(pin);
+    hal_interrupt_extra_configuration_t extra = {};
+    if (SYSTEM_ERROR_NONE != hal_interrupt_attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra, priority, subpriority))) {
         return false;
     }
     return true;
@@ -102,7 +102,7 @@ bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMod
  *******************************************************************************/
 bool detachInterrupt(uint16_t pin)
 {
-    if (SYSTEM_ERROR_NONE != HAL_Interrupts_Detach(pin)) {
+    if (SYSTEM_ERROR_NONE != hal_interrupt_detach(pin)) {
         return false;
     }
     if (handlers[pin]) {
@@ -121,7 +121,7 @@ bool detachInterrupt(uint16_t pin)
 void noInterrupts(void)
 {
   //Only disable the interrupts that are exposed to the user
-  HAL_Interrupts_Disable_All();
+  hal_interrupt_disable_all();
 }
 
 
@@ -134,7 +134,7 @@ void noInterrupts(void)
 void interrupts(void)
 {
   //Only enable the interrupts that are exposed to the user
-  HAL_Interrupts_Enable_All();
+  hal_interrupt_enable_all();
 }
 
 /*
@@ -142,12 +142,12 @@ void interrupts(void)
  */
 bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
 {
-    HAL_InterruptCallback callback;
+    hal_interrupt_callback_t callback;
     callback.handler = call_wiring_interrupt_handler;
     wiring_interrupt_handler_t& h = handler;
     callback.data = new wiring_interrupt_handler_t(h);
-    HAL_InterruptCallback prev = {};
-    const bool ok = HAL_Set_System_Interrupt_Handler(irq, &callback, &prev, NULL);
+    hal_interrupt_callback_t prev = {};
+    const bool ok = hal_interrupt_set_system_handler(irq, &callback, &prev, NULL);
     delete (wiring_interrupt_handler_t*)prev.data;
     return ok;
 }
@@ -159,22 +159,22 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
  */
 bool detachSystemInterrupt(hal_irq_t irq)
 {
-    HAL_InterruptCallback prev = {};
-    const bool ok = HAL_Set_System_Interrupt_Handler(irq, NULL, &prev, NULL);
+    hal_interrupt_callback_t prev = {};
+    const bool ok = hal_interrupt_set_system_handler(irq, NULL, &prev, NULL);
     delete (wiring_interrupt_handler_t*)prev.data;
     return ok;
 }
 
-bool attachInterruptDirect(IRQn_Type irq, HAL_Direct_Interrupt_Handler handler, bool enable)
+bool attachInterruptDirect(IRQn_Type irq, hal_interrupt_direct_handler_t handler, bool enable)
 {
-    const bool ok = !HAL_Set_Direct_Interrupt_Handler(irq, handler, enable ? HAL_DIRECT_INTERRUPT_FLAG_ENABLE : HAL_DIRECT_INTERRUPT_FLAG_NONE, nullptr);
+    const bool ok = !hal_interrupt_set_direct_handler(irq, handler, enable ? HAL_INTERRUPT_DIRECT_FLAG_ENABLE : HAL_INTERRUPT_DIRECT_FLAG_NONE, nullptr);
     return ok;
 }
 
 bool detachInterruptDirect(IRQn_Type irq, bool disable)
 {
-    const bool ok = !HAL_Set_Direct_Interrupt_Handler(irq, nullptr,
-        HAL_DIRECT_INTERRUPT_FLAG_RESTORE | (disable ? HAL_DIRECT_INTERRUPT_FLAG_DISABLE : HAL_DIRECT_INTERRUPT_FLAG_NONE), nullptr);
+    const bool ok = !hal_interrupt_set_direct_handler(irq, nullptr,
+        HAL_INTERRUPT_DIRECT_FLAG_RESTORE | (disable ? HAL_INTERRUPT_DIRECT_FLAG_DISABLE : HAL_INTERRUPT_DIRECT_FLAG_NONE), nullptr);
 
     return ok;
 }

@@ -271,12 +271,12 @@ void configureTransmitReceive(hal_usart_interface_t serial, uint8_t transmit, ui
 void configurePinsMode(hal_usart_interface_t serial, uint32_t config) {
     if ((config & SERIAL_HALF_DUPLEX) == 0) {
         // Full duplex with push-pull
-        HAL_Pin_Mode(usartMap[serial]->rx_pin, AF_OUTPUT_PUSHPULL);
-        HAL_Pin_Mode(usartMap[serial]->tx_pin, AF_OUTPUT_PUSHPULL);
+        hal_gpio_mode(usartMap[serial]->rx_pin, AF_OUTPUT_PUSHPULL);
+        hal_gpio_mode(usartMap[serial]->tx_pin, AF_OUTPUT_PUSHPULL);
     } else if ((config & SERIAL_OPEN_DRAIN)) {
         // Half-duplex with open drain
-        HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
-        HAL_Pin_Mode(usartMap[serial]->tx_pin, AF_OUTPUT_DRAIN);
+        hal_gpio_mode(usartMap[serial]->rx_pin, INPUT);
+        hal_gpio_mode(usartMap[serial]->tx_pin, AF_OUTPUT_DRAIN);
     } else {
         // Half-duplex with push-pull
         /* RM0033 24.3.10:
@@ -284,12 +284,12 @@ void configurePinsMode(hal_usart_interface_t serial, uint32_t config) {
          * I/O in idle or in reception. It means that the I/O must be configured so that TX is
          * configured as floating input (or output high open-drain) when not driven by the USART
          */
-        HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
-        HAL_Pin_Mode(usartMap[serial]->tx_pin, AF_OUTPUT_PUSHPULL);
+        hal_gpio_mode(usartMap[serial]->rx_pin, INPUT);
+        hal_gpio_mode(usartMap[serial]->tx_pin, AF_OUTPUT_PUSHPULL);
         if (config & SERIAL_TX_PULL_UP) {
             // We ought to allow enabling pull-up or pull-down through HAL somehow
-            Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-            pin_t gpio_pin = PIN_MAP[usartMap[serial]->tx_pin].gpio_pin;
+            hal_pin_info_t* PIN_MAP = hal_pin_map();
+            hal_pin_t gpio_pin = PIN_MAP[usartMap[serial]->tx_pin].gpio_pin;
             GPIO_TypeDef *gpio_port = PIN_MAP[usartMap[serial]->tx_pin].gpio_peripheral;
             GPIO_InitTypeDef GPIO_InitStructure = {0};
             GPIO_InitStructure.GPIO_Pin = gpio_pin;
@@ -307,12 +307,12 @@ bool hardwareFlowControlSupported(hal_usart_interface_t serial) {
 }
 
 void usartEndImpl(hal_usart_interface_t serial, bool end) {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
     if (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL_RTS) {
         // nRTS is still under control of USART peripheral, release it.
         GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->rts_pin].gpio_pin_source, 0/*default after reset*/);
-        HAL_Pin_Mode(usartMap[serial]->rts_pin, OUTPUT);
-        HAL_GPIO_Write(usartMap[serial]->rts_pin, 1);
+        hal_gpio_mode(usartMap[serial]->rts_pin, OUTPUT);
+        hal_gpio_write(usartMap[serial]->rts_pin, 1);
     }
 
     // Wait for transmission of outgoing data
@@ -346,17 +346,17 @@ void usartEndImpl(hal_usart_interface_t serial, bool end) {
     GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->tx_pin].gpio_peripheral, usartMap[serial]->tx_pinsource, 0);
 
     // Switch pins to INPUT
-    HAL_Pin_Mode(usartMap[serial]->rx_pin, INPUT);
-    HAL_Pin_Mode(usartMap[serial]->tx_pin, end ? INPUT : INPUT_PULLUP);
+    hal_gpio_mode(usartMap[serial]->rx_pin, INPUT);
+    hal_gpio_mode(usartMap[serial]->tx_pin, end ? INPUT : INPUT_PULLUP);
 
     if (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL_RTS) {
         // NOTE: AF setting has already been reset above
-        HAL_Pin_Mode(usartMap[serial]->rts_pin, end ? INPUT : INPUT_PULLUP);
+        hal_gpio_mode(usartMap[serial]->rts_pin, end ? INPUT : INPUT_PULLUP);
     }
 
     if (usartMap[serial]->conf.config & SERIAL_FLOW_CONTROL_CTS) {
         GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->cts_pin].gpio_pin_source, 0);
-        HAL_Pin_Mode(usartMap[serial]->cts_pin, INPUT);
+        hal_gpio_mode(usartMap[serial]->cts_pin, INPUT);
     }
 }
 
@@ -437,7 +437,7 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
     *usartMap[serial]->apb_reg |=  usartMap[serial]->clock_enabled;
 
     // Connect USART pins to AFx
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
     GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->rx_pin].gpio_peripheral, usartMap[serial]->rx_pinsource, usartMap[serial]->af_map);
     GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->tx_pin].gpio_peripheral, usartMap[serial]->tx_pinsource, usartMap[serial]->af_map);
 
@@ -504,18 +504,18 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
 
     switch (usartInitStructure.USART_HardwareFlowControl) {
         case USART_HardwareFlowControl_CTS: {
-            HAL_Pin_Mode(usartMap[serial]->cts_pin, AF_OUTPUT_PUSHPULL);
+            hal_gpio_mode(usartMap[serial]->cts_pin, AF_OUTPUT_PUSHPULL);
             GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->cts_pin].gpio_pin_source, usartMap[serial]->af_map);
             break;
         }
         case USART_HardwareFlowControl_RTS: {
-            HAL_Pin_Mode(usartMap[serial]->rts_pin, AF_OUTPUT_PUSHPULL);
+            hal_gpio_mode(usartMap[serial]->rts_pin, AF_OUTPUT_PUSHPULL);
             GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->rts_pin].gpio_pin_source, usartMap[serial]->af_map);
             break;
         }
         case USART_HardwareFlowControl_RTS_CTS: {
-            HAL_Pin_Mode(usartMap[serial]->cts_pin, AF_OUTPUT_PUSHPULL);
-            HAL_Pin_Mode(usartMap[serial]->rts_pin, AF_OUTPUT_PUSHPULL);
+            hal_gpio_mode(usartMap[serial]->cts_pin, AF_OUTPUT_PUSHPULL);
+            hal_gpio_mode(usartMap[serial]->rts_pin, AF_OUTPUT_PUSHPULL);
             GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->cts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->cts_pin].gpio_pin_source, usartMap[serial]->af_map);
             GPIO_PinAFConfig(PIN_MAP[usartMap[serial]->rts_pin].gpio_peripheral, PIN_MAP[usartMap[serial]->rts_pin].gpio_pin_source, usartMap[serial]->af_map);
             break;

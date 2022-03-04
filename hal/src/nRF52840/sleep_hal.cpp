@@ -182,7 +182,7 @@ static void unbumpWakeupSourcesPriority(const hal_wakeup_source_base_t* wakeupSo
     }
 }
 
-static int constructGpioWakeupReason(hal_wakeup_source_base_t** wakeupReason, pin_t pin) {
+static int constructGpioWakeupReason(hal_wakeup_source_base_t** wakeupReason, hal_pin_t pin) {
     auto gpio = (hal_wakeup_source_gpio_t*)malloc(sizeof(hal_wakeup_source_gpio_t));
     if (gpio) {
         gpio->base.size = sizeof(hal_wakeup_source_gpio_t);
@@ -241,7 +241,7 @@ static int constructBleWakeupReason(hal_wakeup_source_base_t** wakeupReason) {
     return SYSTEM_ERROR_NONE;
 }
 
-static int constructLpcompWakeupReason(hal_wakeup_source_base_t** wakeupReason, pin_t pin) {
+static int constructLpcompWakeupReason(hal_wakeup_source_base_t** wakeupReason, hal_pin_t pin) {
     auto lpcomp = (hal_wakeup_source_lpcomp_t*)malloc(sizeof(hal_wakeup_source_lpcomp_t));
     if (lpcomp) {
         lpcomp->base.size = sizeof(hal_wakeup_source_lpcomp_t);
@@ -284,7 +284,7 @@ static const hal_wakeup_source_base_t* findWakeupSource(const hal_wakeup_source_
 
 static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
     uint32_t gpioIntenSet = 0;
-    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+    hal_pin_info_t* halPinMap = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -404,7 +404,7 @@ static void configGpioWakeupSource(const hal_wakeup_source_base_t* wakeupSources
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
 static void configGpioWakeupSourceExt(const hal_wakeup_source_base_t* wakeupSources, hal_sleep_mode_t sleepMode) {
-    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+    hal_pin_info_t* halPinMap = hal_pin_map();
     auto source = wakeupSources;
     bool config = false;
     uint8_t gpIntEn[2] = {0, 0};
@@ -491,7 +491,7 @@ static void configRtcWakeupSource(const hal_wakeup_source_base_t* wakeupSources)
 }
 
 static void configLpcompWakeupSource(const hal_wakeup_source_base_t* wakeupSources) {
-    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+    hal_pin_info_t* halPinMap = hal_pin_map();
     auto source = wakeupSources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
@@ -623,8 +623,8 @@ static bool isWokenUpByGpio(const hal_wakeup_source_gpio_t* gpioWakeup) {
     if (!NVIC_GetPendingIRQ(GPIOTE_IRQn)) {
         return false;
     }
-    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
-    pin_t wakeupPin;
+    hal_pin_info_t* halPinMap = hal_pin_map();
+    hal_pin_t wakeupPin;
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_MCU) {
@@ -656,7 +656,7 @@ static bool isWokenUpByGpio(const hal_wakeup_source_gpio_t* gpioWakeup) {
         // Check IN events
         for (unsigned i = 0; i < GPIOTE_CH_NUM; ++i) {
             if (NRF_GPIOTE->EVENTS_IN[i] && nrf_gpiote_int_is_enabled(NRF_GPIOTE_INT_IN0_MASK << i)) {
-                pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
+                hal_pin_t pin = NRF_PIN_LOOKUP_TABLE[nrf_gpiote_event_pin_get(i)];
                 if (pin == wakeupPin) {
                     return true;
                 }
@@ -764,7 +764,7 @@ static int validateBleWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
 }
 
 static int validateLpcompWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_lpcomp_t* lpcomp) {
-    if (HAL_Validate_Pin_Function(lpcomp->pin, PF_ADC) != PF_ADC) {
+    if (hal_pin_validate_function(lpcomp->pin, PF_ADC) != PF_ADC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (lpcomp->trig > HAL_SLEEP_LPCOMP_CROSS) {
@@ -980,7 +980,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     __disable_irq();
 
     // Suspend all GPIOTE interrupts
-    HAL_Interrupts_Suspend();
+    hal_interrupt_suspend();
 
     configGpioWakeupSource(config->wakeup_sources);
     configRtcWakeupSource(config->wakeup_sources);
@@ -1001,7 +1001,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     __ISB();
 
     hal_wakeup_source_type_t wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_UNKNOWN;
-    pin_t wakeupPin = PIN_INVALID;
+    hal_pin_t wakeupPin = PIN_INVALID;
     network_interface_index netif = NETWORK_INTERFACE_ALL;
 
     bool exitSleepMode = false;
@@ -1127,7 +1127,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     hal_timer_init(&halTimerConfig);
 
     // Restore GPIOTE cionfiguration
-    HAL_Interrupts_Restore();
+    hal_interrupt_restore();
 
     // Re-initialize external flash
     // If we fail to re-initialize it, there is no point in continuing to wake-up
@@ -1199,7 +1199,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 #if HAL_PLATFORM_MCP23S17
     uint8_t intStatus[2];
     Mcp23s17::getInstance().interruptsRestore(intStatus);
-    Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+    hal_pin_info_t* halPinMap = hal_pin_map();
     if (halPinMap[wakeupPin].type == HAL_PIN_TYPE_IO_EXPANDER) {
         // We need to identify the exact wakeup pin attached to the IO expander.
         source = config->wakeup_sources;
@@ -1302,7 +1302,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     nrf_lpcomp_disable();
 
     // Deconfigure any possible SENSE configuration
-    HAL_Interrupts_Suspend();
+    hal_interrupt_suspend();
 
     // Disable GPIOTE PORT interrupts
     nrf_gpiote_int_disable(GPIOTE_INTENSET_PORT_Msk);
@@ -1315,7 +1315,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
     auto wakeupSource = config->wakeup_sources;
     while (wakeupSource) {
         if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
-            Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+            hal_pin_info_t* halPinMap = hal_pin_map();
             auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
             nrf_gpio_pin_pull_t wakeupPinMode;
             nrf_gpio_pin_sense_t wakeupPinSense;
@@ -1357,7 +1357,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
         }
 #if HAL_PLATFORM_EXTERNAL_RTC
         else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
-            Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+            hal_pin_info_t* halPinMap = hal_pin_map();
             uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[RTC_INT].gpio_port, halPinMap[RTC_INT].gpio_pin);
             nrf_gpio_cfg_sense_input(nrfPin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
         }

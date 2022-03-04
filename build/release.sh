@@ -1,15 +1,15 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION=${VERSION:="3.2.0"}
+VERSION=${VERSION:="3.2.0-p2.1"}
 
 function display_help ()
 {
     echo '
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|asom|boron|bsom...
-                  |b5som|electron|p1|photon>...
-                  | --platform-id=<6|8|10|12|13|22|23|25|26>)
+                  |b5som|electron|p1|photon|p2>...
+                  | --platform-id=<6|8|10|12|13|22|23|25|26|32>)
                   [--debug] [--help] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -246,6 +246,10 @@ elif [ ! -z $PLATFORM ]; then
             PLATFORM_ID="26"
             GEN3=true
             ;;
+        "p2")
+            PLATFORM_ID="32"
+            GEN3=true
+            ;;
         *)
             echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
             exit 6
@@ -287,6 +291,10 @@ else
             ;;
         26)
             PLATFORM="tracker"
+            GEN3=true
+            ;;
+        32)
+            PLATFORM="p2"
             GEN3=true
             ;;
         *)
@@ -387,7 +395,7 @@ elif [ $PLATFORM_ID -eq 10 ]; then
     done
 
 # GEN3
-elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ]; then
+elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ] || [ $PLATFORM_ID -eq 32 ]; then
     # Configure
     if [ $DEBUG = true ]; then
         cd ../main
@@ -455,3 +463,21 @@ eval $MAKE_COMMAND
 
 # Migrate file(s) into output interface
 release_binary "bootloader" "bootloader" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+
+# Prebootloader
+if [ $PLATFORM_ID -eq 32 ]; then
+cd ../bootloader/prebootloader
+
+COMPILE_LTO="n"
+DEBUG_BUILD="n"
+SUFFIX="-m"
+
+MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=$COMPILE_LTO"
+echo $MAKE_COMMAND
+eval $MAKE_COMMAND
+
+# Migrate file(s) into output interface
+release_binary "prebootloader-mbr" "prebootloader-mbr" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+release_binary "prebootloader-part1" "prebootloader-part1" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+
+fi

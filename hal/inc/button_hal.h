@@ -28,34 +28,33 @@ extern "C" {
 #define BUTTONn                             1
 
 typedef enum {
-    BUTTON1 = 0,
-    BUTTON1_MIRROR = 1
-} Button_TypeDef;
+    HAL_BUTTON1 = 0,
+    HAL_BUTTON1_MIRROR = 1
+} hal_button_t;
 
 typedef enum {
-    BUTTON_MODE_GPIO = 0,
-    BUTTON_MODE_EXTI = 1
-} ButtonMode_TypeDef;
+    HAL_BUTTON_MODE_GPIO = 0,
+    HAL_BUTTON_MODE_EXTI = 1
+} hal_button_mode_t;
 
-void BUTTON_Init(Button_TypeDef Button, ButtonMode_TypeDef Button_Mode);
-void BUTTON_Uninit();
-void BUTTON_EXTI_Config(Button_TypeDef Button, FunctionalState NewState);
-uint8_t BUTTON_GetState(Button_TypeDef Button);
-uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button);
-void BUTTON_ResetDebouncedState(Button_TypeDef Button);
+void hal_button_init(hal_button_t button, hal_button_mode_t mode);
+void hal_button_uninit();
+void hal_button_exti_config(hal_button_t button, FunctionalState state);
+uint8_t hal_button_get_state(hal_button_t button);
+uint16_t hal_button_get_debounce_time(hal_button_t button);
+void hal_button_reset_debounced_state(hal_button_t button);
 
-void BUTTON_Init_Ext();
-uint8_t BUTTON_Is_Pressed(Button_TypeDef button);
-uint16_t BUTTON_Pressed_Time(Button_TypeDef button);
+void hal_button_init_ext();
+uint8_t hal_button_is_pressed(hal_button_t button);
+uint16_t hal_button_get_pressed_time(hal_button_t button);
 
-void BUTTON_Irq_Handler(uint16_t irqn);
-void BUTTON_Check_Irq(uint16_t button, uint16_t irqn);
-void BUTTON_Check_State(uint16_t button, uint8_t pressed);
-int BUTTON_Debounce();
+void hal_button_irq_handler(uint16_t irqn);
+void hal_button_check_irq(uint16_t button, uint16_t irqn);
+int hal_button_debounce();
 
-void BUTTON_Timer_Handler(void);
+void hal_button_timer_handler(void);
 
-extern button_config_t HAL_Buttons[];
+extern hal_button_config_t HAL_buttons[];
 
 #ifdef __cplusplus
 }

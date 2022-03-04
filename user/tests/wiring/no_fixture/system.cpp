@@ -88,7 +88,7 @@ test(SYSTEM_03_user_backup_ram)
 
 #endif // defined(USER_BACKUP_RAM)
 
-#if !HAL_PLATFORM_NRF52840 // TODO
+#if HAL_PLATFORM_STM32F2XX // TODO
 
 #if defined(BUTTON1_MIRROR_SUPPORTED) && PLATFORM_ID != PLATFORM_P1
 static int s_button_clicks = 0;
@@ -99,7 +99,7 @@ static void onButtonClick(system_event_t ev, int data) {
 test(SYSTEM_04_button_mirror)
 {
     System.buttonMirror(D1, FALLING, false);
-    auto pinmap = HAL_Pin_Map();
+    auto pinmap = hal_pin_map();
     System.on(button_click, onButtonClick);
 
     // "Click" setup button 3 times
@@ -136,7 +136,7 @@ test(SYSTEM_05_button_mirror_disable)
 }
 #endif // defined(BUTTON1_MIRROR_SUPPORTED)
 
-#endif // !HAL_PLATFORM_NRF52840
+#endif // HAL_PLATFORM_STM32F2XX
 
 void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal_module_t** factory) {
     for (unsigned i = 0; i < info.module_count; i++) {

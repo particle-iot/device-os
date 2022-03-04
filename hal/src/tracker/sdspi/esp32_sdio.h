@@ -30,7 +30,7 @@ namespace particle {
 
 class Esp32Sdio {
 public:
-    Esp32Sdio(hal_spi_interface_t spi, const hal_spi_info_t* conf, pin_t cs, pin_t intr);
+    Esp32Sdio(hal_spi_interface_t spi, const hal_spi_info_t* conf, hal_pin_t cs, hal_pin_t intr);
     ~Esp32Sdio();
 
     int init();
@@ -64,8 +64,8 @@ private:
 
 private:
     SpiConfigurationLock lock_;
-    pin_t csPin_;
-    pin_t intrPin_;
+    hal_pin_t csPin_;
+    hal_pin_t intrPin_;
     os_semaphore_t sem_;
 
     /* FIXME: SDSPI port functions do not have any kind of state arguments :( */

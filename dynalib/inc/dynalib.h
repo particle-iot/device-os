@@ -120,11 +120,12 @@ constexpr T2* dynalib_checked_cast(T2 *p) {
     #ifdef __arm__
 
         #define DYNALIB_BEGIN(tablename)    \
-            EXTERN_C const void* dynalib_location_##tablename;
+            EXTERN_C const void* link_dynalib_location_##tablename;
 
         #define __S(x) #x
         #define __SX(x) __S(x)
 
+        #if PLATFORM_ID == 32
         #define DYNALIB_FN_IMPORT(index, tablename, name, counter) \
             DYNALIB_STATIC_ASSERT(index == counter, "Index of the dynamically exported function has changed"); \
             const char check_name_##tablename_##name[0]={}; /* this will fail if the name is already defined */ \
@@ -132,17 +133,41 @@ constexpr T2* dynalib_checked_cast(T2 *p) {
             void name() { \
                 asm volatile ( \
                     ".equ offset, ( " __SX(counter) " * 4)\n" \
-                    ".extern dynalib_location_" #tablename "\n" \
+                    ".extern link_dynalib_location_offset_" #tablename "\n" \
+                    ".extern dynalib_table_location\n" \
+                    "push {r0, r3, lr}\n"           /* save register we will change plus storage for sp value */ \
+                                                /* pushes highest register first, so lowest register is at lowest memory address */ \
+                                                /* SP points to the last pushed item, which is r3. sp+4 is then the pushed lr value */ \
+                    "ldr r0, =dynalib_table_location\n" \
+                    "ldr r0, [r0]\n" /* value of dynalib_table_location variable */ \
+                    "ldr r3, =link_dynalib_location_offset_" #tablename "\n" \
+                    "add r3, r0, r3\n" \
+                    "ldr r3, [r3]\n"                    /* the address of the jump table */ \
+                    "ldr r3, [r3, #offset]\n"    /* the address at index __COUNTER__ */ \
+                    "str r3, [sp, #8]\n"                /* patch the link address on the stack */ \
+                    "pop {r0, r3, pc}\n"                    /* restore register and jump to function */ \
+                ); \
+            };
+        #else
+        #define DYNALIB_FN_IMPORT(index, tablename, name, counter) \
+            DYNALIB_STATIC_ASSERT(index == counter, "Index of the dynamically exported function has changed"); \
+            const char check_name_##tablename_##name[0]={}; /* this will fail if the name is already defined */ \
+            void name() __attribute__((naked)); \
+            void name() { \
+                asm volatile ( \
+                    ".equ offset, ( " __SX(counter) " * 4)\n" \
+                    ".extern link_dynalib_location_" #tablename "\n" \
                     "push {r3, lr}\n"           /* save register we will change plus storage for sp value */ \
                                                 /* pushes highest register first, so lowest register is at lowest memory address */ \
                                                 /* SP points to the last pushed item, which is r3. sp+4 is then the pushed lr value */ \
-                    "ldr r3, =dynalib_location_" #tablename "\n" \
+                    "ldr r3, =link_dynalib_location_" #tablename "\n" \
                     "ldr r3, [r3]\n"                    /* the address of the jump table */ \
                     "ldr r3, [r3, #offset]\n"    /* the address at index __COUNTER__ */ \
                     "str r3, [sp, #4]\n"                /* patch the link address on the stack */ \
                     "pop {r3, pc}\n"                    /* restore register and jump to function */ \
                 ); \
             };
+        #endif
 
         #define DYNALIB_FN(index, tablename, name, type) \
             DYNALIB_FN_IMPORT(index, tablename, name, __COUNTER__)

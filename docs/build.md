@@ -111,6 +111,8 @@ common are listed here:
 | boron    | 13          |
 | bsom     | 23          |
 | b5som    | 25          |
+| tracker  | 26          |
+| p2       | 32          |
 
 The platform is specified on the command line using the platform ID
 

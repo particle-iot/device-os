@@ -197,7 +197,7 @@ static volatile uint32_t feature_flags = 0;
 static volatile bool feature_flags_loaded = false;
 
 /* Private function prototypes -----------------------------------------------*/
-extern uint32_t HAL_Interrupts_Pin_IRQn(pin_t pin);
+extern uint32_t HAL_Interrupts_Pin_IRQn(hal_pin_t pin);
 
 void (*HAL_TIM1_Handler)(void);
 void (*HAL_TIM3_Handler)(void);
@@ -265,7 +265,7 @@ static void Init_Last_Reset_Info()
 
 static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value)
 {
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
         return -1; // DCT cannot be accessed from an ISR
     }
     uint32_t flags = 0;
@@ -297,7 +297,7 @@ static int Read_Feature_Flag(uint32_t flag, bool* value)
 {
     uint32_t flags = 0;
     if (!feature_flags_loaded) {
-        if (HAL_IsISR()) {
+        if (hal_interrupt_is_isr()) {
             return -1; // DCT cannot be accessed from an ISR
         }
         const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
@@ -342,24 +342,24 @@ void HAL_Core_Config(void)
     PWR_WakeUpPinCmd(DISABLE);
 
     //Wiring pins default to inputs
-    for (pin_t pin = 0; pin < TOTAL_ESSENTIAL_PINS; pin++) {
+    for (hal_pin_t pin = 0; pin < TOTAL_ESSENTIAL_PINS; pin++) {
 #if defined(USE_SWD_JTAG) || defined(USE_SWD)
         if (pin >= D3 && pin <= D7) { // JTAG pins
             continue;
         }
 #endif
-        HAL_Pin_Mode(pin, INPUT);
+        hal_gpio_mode(pin, INPUT);
     }
 
 #if HAS_EXTRA_PINS
-    for (pin_t pin = FIRST_EXTRA_PIN; pin <= LAST_EXTRA_PIN; pin++) {
-        HAL_Pin_Mode(pin, INPUT);
+    for (hal_pin_t pin = FIRST_EXTRA_PIN; pin <= LAST_EXTRA_PIN; pin++) {
+        hal_gpio_mode(pin, INPUT);
     }
 #endif
 
 #if PLATFORM_ID == PLATFORM_P1
     if (isWiFiPowersaveClockDisabled()) {
-        HAL_Pin_Mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
+        hal_gpio_mode(30, INPUT); // Wi-Fi Powersave clock is disabled, default to INPUT
     }
 #endif
 
@@ -416,7 +416,7 @@ void HAL_Core_Setup(void) {
         HAL_Core_System_Reset();
     }
 
-    HAL_save_device_id(DCT_DEVICE_ID_OFFSET);
+    hal_save_device_id(DCT_DEVICE_ID_OFFSET);
 
     // Initialize stdlib PRNG with a seed from hardware RNG
     srand(HAL_RNG_GetRandomNumber());
@@ -511,11 +511,11 @@ bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 {
     bool pressedState = false;
 
-    if(BUTTON_GetDebouncedTime(BUTTON1) >= pressedMillisDuration)
+    if(hal_button_get_debounce_time(HAL_BUTTON1) >= pressedMillisDuration)
     {
         pressedState = true;
     }
-    if(BUTTON_GetDebouncedTime(BUTTON1_MIRROR) >= pressedMillisDuration)
+    if(hal_button_get_debounce_time(HAL_BUTTON1_MIRROR) >= pressedMillisDuration)
     {
         pressedState = true;
     }
@@ -530,24 +530,24 @@ void HAL_Core_Mode_Button_Reset(uint16_t button)
 {
     HAL_Buttons[button].debounce_time = 0x00;
 
-    if (HAL_Buttons[BUTTON1].active + HAL_Buttons[BUTTON1_MIRROR].active == 0) {
+    if (HAL_Buttons[HAL_BUTTON1].active + HAL_Buttons[HAL_BUTTON1_MIRROR].active == 0) {
         /* Disable TIM2 CC1 Interrupt */
         TIM_ITConfig(TIM2, TIM_IT_CC1, DISABLE);
     }
 
-    HAL_Notify_Button_State((Button_TypeDef)button, false);
+    HAL_Notify_Button_State((hal_button_t)button, false);
 
     /* Enable Button Interrupt */
-    if (button != BUTTON1_MIRROR) {
-        BUTTON_EXTI_Config((Button_TypeDef)button, ENABLE);
+    if (button != HAL_BUTTON1_MIRROR) {
+        hal_button_exti_config((hal_button_t)button, ENABLE);
     } else {
-        HAL_InterruptExtraConfiguration irqConf = {0};
+        hal_interrupt_extra_configuration_t irqConf = {0};
         irqConf.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2;
         irqConf.IRQChannelPreemptionPriority = 0;
         irqConf.IRQChannelSubPriority = 0;
         irqConf.keepHandler = 1;
         irqConf.keepPriority = 1;
-        HAL_Interrupts_Attach(HAL_Buttons[button].hal_pin, NULL, NULL, HAL_Buttons[button].interrupt_mode, &irqConf);
+        hal_interrupt_attach(HAL_Buttons[button].hal_pin, NULL, NULL, HAL_Buttons[button].interrupt_mode, &irqConf);
     }
 
 }
@@ -721,7 +721,7 @@ uint8_t handle_timer(TIM_TypeDef* TIMx, uint16_t TIM_IT, hal_irq_t irq)
 {
     uint8_t result = (TIM_GetITStatus(TIMx, TIM_IT)!=RESET);
     if (result) {
-        HAL_System_Interrupt_Trigger(irq, NULL);
+        hal_interrupt_trigger_system(irq, NULL);
         TIM_ClearITPendingBit(TIMx, TIM_IT);
     }
     return result;
@@ -741,7 +741,7 @@ void SysTickOverride(void)
 
     HAL_SysTick_Handler();
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_SysTick, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_SysTick, NULL);
 }
 
 /**
@@ -749,9 +749,9 @@ void SysTickOverride(void)
  * @param  None
  * @retval None
  */
-void Handle_Mode_Button_EXTI_irq(Button_TypeDef button)
+void Handle_Mode_Button_EXTI_irq(hal_button_t button)
 {
-    if (button == BUTTON1_MIRROR || EXTI_GetITStatus(HAL_Buttons[button].exti_line) != RESET)
+    if (button == HAL_BUTTON1_MIRROR || EXTI_GetITStatus(HAL_Buttons[button].exti_line) != RESET)
     {
         /* Clear the EXTI line pending bit (cleared in WICED GPIO IRQ handler) */
         EXTI_ClearITPendingBit(HAL_Buttons[button].exti_line);
@@ -759,11 +759,11 @@ void Handle_Mode_Button_EXTI_irq(Button_TypeDef button)
         HAL_Buttons[button].debounce_time = 0x00;
         HAL_Buttons[button].active = 1;
 
-        /* Disable BUTTON1 Interrupt */
-        if (button != BUTTON1_MIRROR)
-            BUTTON_EXTI_Config(button, DISABLE);
+        /* Disable HAL_BUTTON1 Interrupt */
+        if (button != HAL_BUTTON1_MIRROR)
+            hal_button_exti_config(button, DISABLE);
         else
-            HAL_Interrupts_Detach_Ext(HAL_Buttons[button].hal_pin, 1, NULL);
+            hal_interrupt_detach_ext(HAL_Buttons[button].hal_pin, 1, NULL);
 
         /* Enable TIM2 CC1 Interrupt */
         TIM_ITConfig(TIM2, TIM_IT_CC1, ENABLE);
@@ -774,7 +774,7 @@ void Handle_Mode_Button_EXTI_irq(Button_TypeDef button)
 
 void ADC_irq()
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_ADC_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_ADC_IRQ, NULL);
 }
 
 /**
@@ -789,7 +789,7 @@ void TIM1_CC_irq(void)
         HAL_TIM1_Handler();
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_CC_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM1_CC_IRQ, NULL);
     uint8_t result =
     handle_timer(TIM1, TIM_IT_CC1, SysInterrupt_TIM1_Compare1) ||
     handle_timer(TIM1, TIM_IT_CC2, SysInterrupt_TIM1_Compare2) ||
@@ -807,38 +807,38 @@ void TIM2_irq(void)
 {
     if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET)
     {
-        if (HAL_Buttons[BUTTON1].active && BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)
+        if (HAL_Buttons[HAL_BUTTON1].active && hal_button_get_state(HAL_BUTTON1) == BUTTON1_PRESSED)
         {
-            if (!HAL_Buttons[BUTTON1].debounce_time)
+            if (!HAL_Buttons[HAL_BUTTON1].debounce_time)
             {
-                HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-                HAL_Notify_Button_State(BUTTON1, true);
+                HAL_Buttons[HAL_BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+                HAL_Notify_Button_State(HAL_BUTTON1, true);
             }
-            HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+            HAL_Buttons[HAL_BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
         }
-        else if (HAL_Buttons[BUTTON1].active)
+        else if (HAL_Buttons[HAL_BUTTON1].active)
         {
-            HAL_Buttons[BUTTON1].active = 0;
-            HAL_Core_Mode_Button_Reset(BUTTON1);
+            HAL_Buttons[HAL_BUTTON1].active = 0;
+            HAL_Core_Mode_Button_Reset(HAL_BUTTON1);
         }
 
-        if (HAL_Buttons[BUTTON1_MIRROR].port && HAL_Buttons[BUTTON1_MIRROR].active &&
-            BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) {
-            if (!HAL_Buttons[BUTTON1_MIRROR].debounce_time)
+        if (HAL_Buttons[HAL_BUTTON1_MIRROR].port && HAL_Buttons[HAL_BUTTON1_MIRROR].active &&
+            hal_button_get_state(HAL_BUTTON1_MIRROR) == (HAL_Buttons[HAL_BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) {
+            if (!HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time)
             {
-                HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-                HAL_Notify_Button_State(BUTTON1_MIRROR, true);
+                HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+                HAL_Notify_Button_State(HAL_BUTTON1_MIRROR, true);
             }
-            HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+            HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
         }
-        else if (HAL_Buttons[BUTTON1_MIRROR].port && HAL_Buttons[BUTTON1_MIRROR].active)
+        else if (HAL_Buttons[HAL_BUTTON1_MIRROR].port && HAL_Buttons[HAL_BUTTON1_MIRROR].active)
         {
-            HAL_Buttons[BUTTON1_MIRROR].active = 0;
-            HAL_Core_Mode_Button_Reset(BUTTON1_MIRROR);
+            HAL_Buttons[HAL_BUTTON1_MIRROR].active = 0;
+            HAL_Core_Mode_Button_Reset(HAL_BUTTON1_MIRROR);
         }
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM2_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM2_IRQ, NULL);
     uint8_t result =
     handle_timer(TIM2, TIM_IT_CC1, SysInterrupt_TIM2_Compare1) ||
     handle_timer(TIM2, TIM_IT_CC2, SysInterrupt_TIM2_Compare2) ||
@@ -861,7 +861,7 @@ void TIM3_irq(void)
         HAL_TIM3_Handler();
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM3_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM3_IRQ, NULL);
     uint8_t result =
     handle_timer(TIM3, TIM_IT_CC1, SysInterrupt_TIM3_Compare1) ||
     handle_timer(TIM3, TIM_IT_CC2, SysInterrupt_TIM3_Compare2) ||
@@ -884,7 +884,7 @@ void TIM4_irq(void)
         HAL_TIM4_Handler();
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM4_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM4_IRQ, NULL);
     uint8_t result =
     handle_timer(TIM4, TIM_IT_CC1, SysInterrupt_TIM4_Compare1) ||
     handle_timer(TIM4, TIM_IT_CC2, SysInterrupt_TIM4_Compare2) ||
@@ -908,7 +908,7 @@ void TIM5_irq(void)
         HAL_TIM5_Handler();
     }
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM5_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM5_IRQ, NULL);
     uint8_t result =
     handle_timer(TIM5, TIM_IT_CC1, SysInterrupt_TIM5_Compare1) ||
     handle_timer(TIM5, TIM_IT_CC2, SysInterrupt_TIM5_Compare2) ||
@@ -921,20 +921,20 @@ void TIM5_irq(void)
 
 void TIM6_DAC_irq(void)
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM6_DAC_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM6_DAC_IRQ, NULL);
     handle_timer(TIM6, TIM_IT_Update, SysInterrupt_TIM6_Update);
 }
 
 void TIM7_override(void)
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM7_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM7_IRQ, NULL);
     handle_timer(TIM7, TIM_IT_Update, SysInterrupt_TIM7_Update);
 }
 
 void TIM8_BRK_TIM12_irq(void)
 {
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_BRK_TIM12_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM8_BRK_TIM12_IRQ, NULL);
 
     uint8_t result =
     handle_timer(TIM8, TIM_IT_Break, SysInterrupt_TIM8_Break) ||
@@ -947,7 +947,7 @@ void TIM8_BRK_TIM12_irq(void)
 
 void TIM8_UP_TIM13_irq(void)
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_UP_TIM13_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM8_UP_TIM13_IRQ, NULL);
 
     uint8_t result =
     handle_timer(TIM8, TIM_IT_Update, SysInterrupt_TIM8_Update) ||
@@ -958,7 +958,7 @@ void TIM8_UP_TIM13_irq(void)
 
 void TIM8_TRG_COM_TIM14_irq(void)
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_TRG_COM_TIM14_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM8_TRG_COM_TIM14_IRQ, NULL);
 
     uint8_t result =
     handle_timer(TIM8, TIM_IT_Trigger, SysInterrupt_TIM8_Trigger) ||
@@ -977,7 +977,7 @@ void TIM8_CC_irq(void)
     }
 #endif
 
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM8_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM8_IRQ, NULL);
 
     uint8_t result =
     handle_timer(TIM8, TIM_IT_CC1, SysInterrupt_TIM8_Compare1) ||
@@ -989,7 +989,7 @@ void TIM8_CC_irq(void)
 
 void TIM1_BRK_TIM9_irq(void)
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_BRK_TIM9_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM1_BRK_TIM9_IRQ, NULL);
 
     uint8_t result =
     handle_timer(TIM1, TIM_IT_Break, SysInterrupt_TIM1_Break) ||
@@ -1002,7 +1002,7 @@ void TIM1_BRK_TIM9_irq(void)
 
 void TIM1_UP_TIM10_irq(void)
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_UP_TIM10_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM1_UP_TIM10_IRQ, NULL);
 
     uint8_t result =
     handle_timer(TIM1, TIM_IT_Update, SysInterrupt_TIM1_Update) ||
@@ -1013,7 +1013,7 @@ void TIM1_UP_TIM10_irq(void)
 
 void TIM1_TRG_COM_TIM11_irq(void)
 {
-    HAL_System_Interrupt_Trigger(SysInterrupt_TIM1_TRG_COM_TIM11_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_TIM1_TRG_COM_TIM11_IRQ, NULL);
 
     uint8_t result =
     handle_timer(TIM1, TIM_IT_Trigger, SysInterrupt_TIM1_Trigger) ||
@@ -1029,7 +1029,7 @@ void CAN1_TX_irq()
     {
         HAL_CAN1_TX_Handler();
     }
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_TX_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_CAN1_TX_IRQ, NULL);
 }
 
 void CAN1_RX0_irq()
@@ -1038,7 +1038,7 @@ void CAN1_RX0_irq()
     {
         HAL_CAN1_RX0_Handler();
     }
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_RX0_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_CAN1_RX0_IRQ, NULL);
 }
 
 void CAN1_RX1_irq()
@@ -1047,7 +1047,7 @@ void CAN1_RX1_irq()
     {
         HAL_CAN1_RX1_Handler();
     }
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_RX1_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_CAN1_RX1_IRQ, NULL);
 }
 
 void CAN1_SCE_irq()
@@ -1056,7 +1056,7 @@ void CAN1_SCE_irq()
     {
         HAL_CAN1_SCE_Handler();
     }
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN1_SCE_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_CAN1_SCE_IRQ, NULL);
 }
 
 void CAN2_TX_irq()
@@ -1065,7 +1065,7 @@ void CAN2_TX_irq()
     {
         HAL_CAN2_TX_Handler();
     }
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_TX_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_CAN2_TX_IRQ, NULL);
 }
 
 void CAN2_RX0_irq()
@@ -1074,7 +1074,7 @@ void CAN2_RX0_irq()
     {
         HAL_CAN2_RX0_Handler();
     }
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX0_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_CAN2_RX0_IRQ, NULL);
 }
 
 void CAN2_RX1_irq()
@@ -1083,7 +1083,7 @@ void CAN2_RX1_irq()
     {
         HAL_CAN2_RX1_Handler();
     }
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_RX1_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_CAN2_RX1_IRQ, NULL);
 }
 
 void CAN2_SCE_irq()
@@ -1092,7 +1092,7 @@ void CAN2_SCE_irq()
     {
         HAL_CAN2_SCE_Handler();
     }
-    HAL_System_Interrupt_Trigger(SysInterrupt_CAN2_SCE_IRQ, NULL);
+    hal_interrupt_trigger_system(SysInterrupt_CAN2_SCE_IRQ, NULL);
 }
 
 void HAL_Bootloader_Lock(bool lock)
@@ -1279,13 +1279,13 @@ bool HAL_Feature_Get(HAL_Feature feature)
 }
 
 void HAL_Core_Mode_Button_Mirror_Pressed(void* param) {
-    Handle_Mode_Button_EXTI_irq(BUTTON1_MIRROR);
+    Handle_Mode_Button_EXTI_irq(HAL_BUTTON1_MIRROR);
 }
 
 static void BUTTON_Mirror_Init() {
-    if (HAL_Buttons[BUTTON1_MIRROR].port) {
+    if (HAL_Buttons[HAL_BUTTON1_MIRROR].port) {
         PinMode pinMode = INPUT_PULLUP;
-        switch(HAL_Buttons[BUTTON1_MIRROR].interrupt_mode)
+        switch(HAL_Buttons[HAL_BUTTON1_MIRROR].interrupt_mode)
         {
         case RISING:
             pinMode = INPUT_PULLDOWN;
@@ -1296,30 +1296,30 @@ static void BUTTON_Mirror_Init() {
         }
 
         int32_t state = HAL_disable_irq();
-        HAL_Pin_Mode(HAL_Buttons[BUTTON1_MIRROR].hal_pin, pinMode);
-        HAL_Interrupts_Attach(HAL_Buttons[BUTTON1_MIRROR].hal_pin, HAL_Core_Mode_Button_Mirror_Pressed, NULL, HAL_Buttons[BUTTON1_MIRROR].interrupt_mode, NULL);
-        if (HAL_Buttons[BUTTON1_MIRROR].exti_line == HAL_Buttons[BUTTON1].exti_line) {
-            HAL_Buttons[BUTTON1].exti_port_source = HAL_Buttons[BUTTON1_MIRROR].exti_port_source;
-            HAL_Buttons[BUTTON1].exti_pin_source = HAL_Buttons[BUTTON1_MIRROR].exti_pin_source;
-            HAL_Buttons[BUTTON1].port = HAL_Buttons[BUTTON1_MIRROR].port;
+        hal_gpio_mode(HAL_Buttons[HAL_BUTTON1_MIRROR].hal_pin, pinMode);
+        hal_interrupt_attach(HAL_Buttons[HAL_BUTTON1_MIRROR].hal_pin, HAL_Core_Mode_Button_Mirror_Pressed, NULL, HAL_Buttons[HAL_BUTTON1_MIRROR].interrupt_mode, NULL);
+        if (HAL_Buttons[HAL_BUTTON1_MIRROR].exti_line == HAL_Buttons[HAL_BUTTON1].exti_line) {
+            HAL_Buttons[HAL_BUTTON1].exti_port_source = HAL_Buttons[HAL_BUTTON1_MIRROR].exti_port_source;
+            HAL_Buttons[HAL_BUTTON1].exti_pin_source = HAL_Buttons[HAL_BUTTON1_MIRROR].exti_pin_source;
+            HAL_Buttons[HAL_BUTTON1].port = HAL_Buttons[HAL_BUTTON1_MIRROR].port;
         }
         HAL_enable_irq(state);
     }
 }
 
-static void BUTTON_Mirror_Persist(button_config_t* conf) {
-    button_config_t saved_config;
+static void BUTTON_Mirror_Persist(hal_button_config_t* conf) {
+    hal_button_config_t saved_config;
     dct_read_app_data_copy(DCT_MODE_BUTTON_MIRROR_OFFSET, &saved_config, sizeof(saved_config));
 
     if (conf) {
-        if (saved_config.active == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(button_config_t)))
+        if (saved_config.active == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(hal_button_config_t)))
         {
-            dct_write_app_data((void*)conf, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
+            dct_write_app_data((void*)conf, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(hal_button_config_t));
         }
     } else {
         if (saved_config.active != 0xFF) {
-            memset((void*)&saved_config, 0xff, sizeof(button_config_t));
-            dct_write_app_data((void*)&saved_config, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
+            memset((void*)&saved_config, 0xff, sizeof(hal_button_config_t));
+            dct_write_app_data((void*)&saved_config, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(hal_button_config_t));
         }
     }
 }
@@ -1327,10 +1327,10 @@ static void BUTTON_Mirror_Persist(button_config_t* conf) {
 void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void* reserved) {
     (void)button; // unused
     int32_t state = HAL_disable_irq();
-    if (HAL_Buttons[BUTTON1_MIRROR].port) {
-        HAL_Interrupts_Detach_Ext(HAL_Buttons[BUTTON1_MIRROR].hal_pin, 1, NULL);
-        HAL_Buttons[BUTTON1_MIRROR].active = 0;
-        HAL_Buttons[BUTTON1_MIRROR].port = 0;
+    if (HAL_Buttons[HAL_BUTTON1_MIRROR].port) {
+        hal_interrupt_detach_ext(HAL_Buttons[HAL_BUTTON1_MIRROR].hal_pin, 1, NULL);
+        HAL_Buttons[HAL_BUTTON1_MIRROR].active = 0;
+        HAL_Buttons[HAL_BUTTON1_MIRROR].port = 0;
     }
     HAL_enable_irq(state);
 
@@ -1393,7 +1393,7 @@ static inline uint32_t Tim_Peripheral_To_Af(TIM_TypeDef* tim) {
 
 void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootloader, uint8_t button, void *reserved) {
     (void)button; // unused
-    Hal_Pin_Info* pinmap = HAL_Pin_Map();
+    hal_pin_info_t* pinmap = hal_pin_map();
     if (pin > TOTAL_PINS)
         return;
 
@@ -1403,7 +1403,7 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
     uint8_t gpio_port_source = Gpio_Peripheral_To_Port_Source(pinmap[pin].gpio_peripheral);
     uint32_t gpio_clk = Gpio_Peripheral_To_Clk(pinmap[pin].gpio_peripheral);
 
-    button_config_t conf = {
+    hal_button_config_t conf = {
         .port = pinmap[pin].gpio_peripheral,
         .pin = pinmap[pin].gpio_pin,
         .hal_pin = pin,
@@ -1416,11 +1416,11 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
         .exti_trigger = mode == RISING ? EXTI_Trigger_Rising : EXTI_Trigger_Falling
     };
 
-    HAL_Buttons[BUTTON1_MIRROR] = conf;
+    HAL_Buttons[HAL_BUTTON1_MIRROR] = conf;
 
     BUTTON_Mirror_Init();
 
-    if (pinmap[pin].gpio_pin == HAL_Buttons[BUTTON1].pin) {
+    if (pinmap[pin].gpio_pin == HAL_Buttons[HAL_BUTTON1].pin) {
         LOG(WARN, "Pin %d shares the same EXTI as SETUP/MODE button", pin);
         BUTTON_Mirror_Persist(NULL);
         return;
@@ -1431,8 +1431,8 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
         return;
     }
 
-    // Construct button_config_t for bootloader
-    button_config_t bootloader_conf = {
+    // Construct hal_button_config_t for bootloader
+    hal_button_config_t bootloader_conf = {
         .active = 0xAA,
         .port = pinmap[pin].gpio_peripheral,
         .pin = pinmap[pin].gpio_pin,
@@ -1445,27 +1445,27 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
         .exti_port_source = gpio_port_source,
         .exti_pin_source = pinmap[pin].gpio_pin_source,
         .exti_irqn = HAL_Interrupts_Pin_IRQn(pin),
-        .exti_irq_prio = HAL_Buttons[BUTTON1].exti_irq_prio,
+        .exti_irq_prio = HAL_Buttons[HAL_BUTTON1].exti_irq_prio,
         .exti_trigger = mode == RISING ? EXTI_Trigger_Rising : EXTI_Trigger_Falling
     };
 
     BUTTON_Mirror_Persist(&bootloader_conf);
 }
 
-static void LED_Mirror_Persist(uint8_t led, led_config_t* conf) {
-    const size_t offset = DCT_LED_MIRROR_OFFSET + ((led - LED_MIRROR_OFFSET) * sizeof(led_config_t));
-    led_config_t saved_config;
+static void LED_Mirror_Persist(uint8_t led, hal_led_config_t* conf) {
+    const size_t offset = DCT_LED_MIRROR_OFFSET + ((led - LED_MIRROR_OFFSET) * sizeof(hal_led_config_t));
+    hal_led_config_t saved_config;
     dct_read_app_data_copy(offset, &saved_config, sizeof(saved_config));
 
     if (conf) {
-        if (saved_config.version == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(led_config_t)))
+        if (saved_config.version == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(hal_led_config_t)))
         {
-            dct_write_app_data((void*)conf, offset, sizeof(led_config_t));
+            dct_write_app_data((void*)conf, offset, sizeof(hal_led_config_t));
         }
     } else {
         if (saved_config.version != 0xFF) {
-            memset((void*)&saved_config, 0xff, sizeof(led_config_t));
-            dct_write_app_data((void*)&saved_config, offset, sizeof(led_config_t));
+            memset((void*)&saved_config, 0xff, sizeof(hal_led_config_t));
+            dct_write_app_data((void*)&saved_config, offset, sizeof(hal_led_config_t));
         }
     }
 }
@@ -1473,10 +1473,10 @@ static void LED_Mirror_Persist(uint8_t led, led_config_t* conf) {
 void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* reserved)
 {
     int32_t state = HAL_disable_irq();
-    led_config_t* ledc = HAL_Led_Get_Configuration(led, NULL);
+    hal_led_config_t* ledc = hal_led_get_configuration(led, NULL);
     if (ledc->is_active) {
         ledc->is_active = 0;
-        HAL_Pin_Mode(ledc->hal_pin, INPUT);
+        hal_gpio_mode(ledc->hal_pin, INPUT);
     }
     HAL_enable_irq(state);
 
@@ -1485,12 +1485,12 @@ void HAL_Core_Led_Mirror_Pin_Disable(uint8_t led, uint8_t bootloader, void* rese
     }
 }
 
-void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
+void HAL_Core_Led_Mirror_Pin(uint8_t led, hal_pin_t pin, uint32_t flags, uint8_t bootloader, void* reserved)
 {
     if (pin > TOTAL_PINS)
         return;
 
-    Hal_Pin_Info* pinmap = HAL_Pin_Map();
+    hal_pin_info_t* pinmap = hal_pin_map();
 
     if (!pinmap[pin].timer_peripheral)
         return;
@@ -1498,7 +1498,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
     // NOTE: `flags` currently only control whether the LED state should be inverted
     // NOTE: All mirrored LEDs are currently PWM
 
-    led_config_t conf = {
+    hal_led_config_t conf = {
         .version = 0x01,
         .port = pinmap[pin].gpio_peripheral,
         .pin = pinmap[pin].gpio_pin,
@@ -1515,7 +1515,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
     };
 
     int32_t state = HAL_disable_irq();
-    HAL_Led_Init(led, &conf, NULL);
+    hal_led_init(led, &conf, NULL);
     HAL_enable_irq(state);
 
     if (!bootloader) {
@@ -1523,7 +1523,7 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, pin_t pin, uint32_t flags, uint8_t boo
         return;
     }
 
-    led_config_t bootloader_conf = {
+    hal_led_config_t bootloader_conf = {
         .version = 0x01,
         .port = pinmap[pin].gpio_peripheral,
         .pin = pinmap[pin].gpio_pin,

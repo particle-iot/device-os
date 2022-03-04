@@ -19,7 +19,7 @@
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 
-static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
+static hal_pin_info_t s_pin_map[TOTAL_PINS] = {
 /* User space */
 /* D0            - 00 */ { NRF_PORT_0, 3,  PIN_MODE_NONE, PF_NONE, 1,                0,                 0,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU, 0},
 /* D1            - 01 */ { NRF_PORT_0, 2,  PIN_MODE_NONE, PF_NONE, 0,                0,                 1,                8, EXTI_CHANNEL_NONE, HAL_PIN_TYPE_MCU, 0},
@@ -99,6 +99,6 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
 #endif // PLATFORM_ID == PLATFORM_TRACKER
 
 
-Hal_Pin_Info* HAL_Pin_Map(void) {
+hal_pin_info_t* hal_pin_map(void) {
     return s_pin_map;
 }

@@ -123,6 +123,6 @@ void SysTick_Handler(void)
     Timing_Decrement();
 
 #if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK
-    BUTTON_Timer_Handler();
+    hal_button_timer_handler();
 #endif
 }

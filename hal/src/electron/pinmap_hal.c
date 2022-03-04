@@ -40,7 +40,7 @@
  * GPIO_PinSource15: D5, LVLOE_UC
  */
 
-static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
+static hal_pin_info_t s_pin_map[TOTAL_PINS] = {
 /*
  * gpio_peripheral (GPIOA, GPIOB, GPIOC or GPIOD)
  * gpio_pin (0-15)
@@ -107,6 +107,6 @@ static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
 #endif
 };
 
-Hal_Pin_Info* HAL_Pin_Map() {
+hal_pin_info_t* hal_pin_map() {
     return s_pin_map;
 }

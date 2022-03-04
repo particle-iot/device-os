@@ -1,0 +1,218 @@
+/*
+ * Copyright (c) 2021 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#define REALTEK_WIFI_LOG_ENABLE 0
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_INFO
+
+#include <cstdio>
+#include <cstdarg>
+#include <cstdint>
+#include <cctype>
+extern "C" {
+#include "rtl8721d.h"
+}
+#include "rtl_sdk_support.h"
+#include "strproc.h"
+#include "service_debug.h"
+#include "km0_km4_ipc.h"
+
+
+extern "C" {
+
+// Declaring here in order not to include headers that have a lot of unnecessary includes
+// and also not exactly correct declarations.
+int _rtl_vsprintf(char *buf, size_t size, const char *fmt, va_list args);
+int _rtl_printf(const char* fmt, ...);
+int _rtl_sprintf(char* str, const char* fmt, ...);
+int _rtl_snprintf(char* str, size_t size, const char* fmt, ...);
+int _rtl_vsnprintf(char *buf, size_t size, const char *fmt, va_list args);
+int _rtl_sscanf(const char *buf, const char *fmt, ...);
+
+}
+
+extern "C" u32 DiagPrintf(const char *fmt, ...);
+extern "C" int DiagVSprintf(char *buf, const char *fmt, const int *dp);
+extern u32 ConfigDebugBuffer;
+extern u32 ConfigDebugClose;
+extern u32 ConfigDebug[];
+typedef u32 (*DIAG_PRINT_BUF_FUNC)(const char *fmt);
+extern DIAG_PRINT_BUF_FUNC ConfigDebugBufferGet;
+
+int _rtl_sscanf(const char *buf, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    const int n = vsscanf(buf, fmt, args);
+    va_end(args);
+    return n;
+}
+
+int _rtl_printf(const char* fmt, ...) {
+	u32 ret;
+	const char* fmt1;
+	log_buffer_t *buf = NULL;
+
+	fmt1 = fmt;
+	
+	for(; *fmt1 != '\0'; ++fmt1) {
+		if(*fmt1 == '"') {
+			do {
+				fmt1 ++;
+			} while(*fmt1 != '"');
+			fmt1 ++;
+		}
+		
+		if(*fmt1 != '%')
+			continue;
+		else
+			fmt1 ++;
+		
+		while(isdigit(*fmt1)){
+			fmt1 ++;
+		}
+		
+		if((*fmt1  == 's') || (*fmt1 == 'x') || (*fmt1 == 'X') || (*fmt1 == 'p') || (*fmt1 == 'P') || (*fmt1 == 'd') || (*fmt1 == 'c') || (*fmt1 == '%'))
+			continue;
+		else {
+			DiagPrintf("%s: format not support!\n", __func__);
+			break;
+		}
+	}
+	
+	if (ConfigDebugClose == 1)
+		return 0;
+
+	if (ConfigDebugBuffer == 1 && ConfigDebugBufferGet != NULL) {
+		buf = (log_buffer_t *)ConfigDebugBufferGet(fmt);
+	}
+
+	if (buf != NULL) {
+		return DiagVSprintf(buf->buffer, fmt, ((const int *)&fmt)+1);
+	} else {
+		ret = DiagVSprintf(NULL, fmt, ((const int *)&fmt)+1);
+
+		return ret;
+	}
+}
+
+int _rtl_sprintf(char* str, const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    const int n = vsprintf(str, fmt, args) ;
+    va_end(args);
+    return n;
+}
+
+int _rtl_vsprintf(char *buf, size_t size, const char *fmt, va_list args) {
+    return vsnprintf(buf, size, fmt, args);
+}
+
+int _rtl_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
+    return _rtl_vsprintf(buf, size, fmt, args);
+}
+
+int _rtl_snprintf(char* str, size_t size, const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    const int n = _rtl_vsprintf(str, size, fmt, args);
+    va_end(args);
+    return n;
+}
+
+extern "C" void rtl_wifi_log(const char* fmt, ...) {
+#if REALTEK_WIFI_LOG_ENABLE
+    va_list args;
+    va_start(args, fmt);
+    LogAttributes attr = {};
+    log_message_v(LOG_LEVEL_INFO, "rtl", &attr, nullptr, fmt, args);
+    va_end(args);
+#endif
+}
+
+#ifndef MBEDTLS_PLATFORM_MEMORY
+extern "C" int mbedtls_platform_set_calloc_free(void*(*)(size_t, size_t), void (*)(void*)) {
+    LOG(INFO, "mbedtls_platform_set_calloc_free");
+    // mbedtls_calloc_func = calloc_func;
+    // mbedtls_free_func = free_func;
+    return 0;
+}
+#endif // MBEDTLS_PLATFORM_MEMORY
+
+void ipc_table_init() {
+    // stub
+}
+
+void ipc_send_message(uint8_t channel, uint32_t message) {
+    // stub
+}
+
+uint32_t ipc_get_message(uint8_t channel) {
+    // stub
+    return 0;
+}
+
+
+int ipc_channel_init(uint8_t channel, rtl_ipc_callback_t callback) {
+    if (channel > 15) {
+        return -1;
+    }
+    IPC_INTUserHandler(channel, (void*)callback, NULL);
+    return 0;
+}
+
+void ipc_send_message_alt(uint8_t channel, uint32_t message) {
+    IPCM4_DEV->IPCx_USR[channel] = message;	
+	IPC_INTRequest(IPCM4_DEV, channel);
+}
+
+uint32_t ipc_get_message_alt(uint8_t channel) {
+    uint32_t msgAddr = IPCM0_DEV->IPCx_USR[channel];
+    return msgAddr;
+}
+
+// FIXME: move it somewhere proper
+extern "C" void HAL_Core_System_Reset(void) {
+    __DSB();
+    __ISB();
+
+    // Disable systick
+    SysTick->CTRL = SysTick->CTRL & ~SysTick_CTRL_ENABLE_Msk;
+
+    // Disable global interrupt
+    __disable_irq();
+
+    WDG_InitTypeDef WDG_InitStruct = {};
+    u32 CountProcess;
+    u32 DivFacProcess;
+    BKUP_Set(BKUP_REG0, BIT_KM4SYS_RESET_HAPPEN);
+    WDG_Scalar(50, &CountProcess, &DivFacProcess);
+    WDG_InitStruct.CountProcess = CountProcess;
+    WDG_InitStruct.DivFacProcess = DivFacProcess;
+    WDG_InitStruct.RstAllPERI = 0;
+    WDG_Init(&WDG_InitStruct);
+
+    __DSB();
+    __ISB();
+
+    WDG_Cmd(ENABLE);
+    DelayMs(500);
+
+    // It should have reset the device after this amount of delay. If not, try resetting device by KM0
+    km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_RESET, NULL, 0, NULL, NULL);
+    while (1) {
+        __WFE();
+    }
+}

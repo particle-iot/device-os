@@ -6,9 +6,6 @@
 #include <string.h>
 #include "core_hal.h"
 
-
-extern uintptr_t link_heap_start;
-
 /**
  * Locations of static memory regions from linker.
  */
@@ -21,7 +18,7 @@ extern uintptr_t link_bss_location;
 extern uintptr_t link_bss_end;
 #define link_bss_size ((uintptr_t)&link_bss_end - (uintptr_t)&link_bss_location)
 
-extern uintptr_t link_end_of_static_ram;
+extern uintptr_t link_static_ram_end;
 
 
 /**
@@ -42,7 +39,7 @@ void* module_user_pre_init() {
     }
 
     memset(&link_bss_location, 0, link_bss_size );
-    return &link_heap_start;
+    return &link_static_ram_end;
 }
 
 /**

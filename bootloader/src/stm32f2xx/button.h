@@ -7,16 +7,16 @@ extern "C" {
 
 #include "hw_config.h"
 
-void BUTTON_Init_Ext();
+void hal_button_init_ext();
 
-uint8_t BUTTON_Is_Pressed(Button_TypeDef button);
-uint16_t BUTTON_Pressed_Time(Button_TypeDef button);
+uint8_t hal_button_is_pressed(hal_button_t button);
+uint16_t hal_button_get_pressed_time(hal_button_t button);
 
 
-void BUTTON_Irq_Handler(uint16_t exti);
-void BUTTON_Check_Irq(uint16_t button, uint16_t exti);
-void BUTTON_Check_State(uint16_t button, uint8_t pressed);
-int BUTTON_Debounce();
+void hal_button_irq_handler(uint16_t exti);
+void hal_button_check_irq(uint16_t button, uint16_t exti);
+void hal_button_check_state(uint16_t button, uint8_t pressed);
+int hal_button_debounce();
 
 #ifdef __cplusplus
 }

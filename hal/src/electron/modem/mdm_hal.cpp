@@ -288,16 +288,16 @@ MDMParser::MDMParser(void)
 #endif
     _resetFailureAttempts = 0;
 
-    Hal_Pin_Info* pinMap = HAL_Pin_Map();
+    hal_pin_info_t* pinMap = hal_pin_map();
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
     pinMap[PWR_UC].gpio_peripheral->BSRRL = pinMap[PWR_UC].gpio_pin;
-    HAL_Pin_Mode(PWR_UC, OUTPUT);
+    hal_gpio_mode(PWR_UC, OUTPUT);
     pinMap[RESET_UC].gpio_peripheral->BSRRL = pinMap[RESET_UC].gpio_pin;
-    HAL_Pin_Mode(RESET_UC, OUTPUT);
+    hal_gpio_mode(RESET_UC, OUTPUT);
     pinMap[LVLOE_UC].gpio_peripheral->BSRRH = pinMap[LVLOE_UC].gpio_pin;
-    HAL_Pin_Mode(LVLOE_UC, OUTPUT);
-    HAL_Pin_Mode(RI_UC, INPUT_PULLDOWN);
+    hal_gpio_mode(LVLOE_UC, OUTPUT);
+    hal_gpio_mode(RI_UC, INPUT_PULLDOWN);
 }
 
 void MDMParser::setPowerMode(int mode) {
@@ -383,12 +383,12 @@ int MDMParser::_checkAtResponse(bool fastTimeout /* = false */)
     // R410 Power Savings Mode currently disabled, therefore this only affects all other modems
     if (resp == WAIT && _dev.dev != DEV_SARA_R410 && _dev.lpm == LPM_ACTIVE) {
         // if low power mode active, may have to wait up to 5s for OK response
-        int cts = HAL_GPIO_Read(CTS_UC); // 1: not ready, 0: ready
+        int cts = hal_gpio_read(CTS_UC); // 1: not ready, 0: ready
         system_tick_t t0 = HAL_Timer_Get_Milli_Seconds();
         // wait for any AT response and CTS ready, or timeout after 5s total (1s + 4s)
         while ((resp == WAIT || cts == 1) && !TIMEOUT(t0, 4000)) {
             resp = waitFinalResp(nullptr, nullptr, 200);
-            cts = HAL_GPIO_Read(CTS_UC);
+            cts = hal_gpio_read(CTS_UC);
         }
     }
 
@@ -798,9 +798,9 @@ void MDMParser::reset(void)
     if (_dev.dev == DEV_UNKNOWN || _dev.dev == DEV_SARA_R410) {
         delay = 10000; // SARA-R4: 10s
     }
-    HAL_GPIO_Write(RESET_UC, 0);
+    hal_gpio_write(RESET_UC, 0);
     HAL_Delay_Milliseconds(delay);
-    HAL_GPIO_Write(RESET_UC, 1);
+    hal_gpio_write(RESET_UC, 1);
     // reset power on and registered timers for memory issue power off delays
     _timePowerOn = 0;
     _timeRegistered = 0;
@@ -815,31 +815,31 @@ bool MDMParser::_powerOn(void)
     LOCK();
 
     /* Initialize I/O */
-    Hal_Pin_Info* PIN_MAP_PARSER = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP_PARSER = hal_pin_map();
     // This pin tends to stay low when floating on the output of the buffer (PWR_UB)
     // It shouldn't hurt if it goes low temporarily on STM32 boot, but strange behavior
     // was noticed when it was left to do whatever it wanted. By adding a 100k pull up
     // resistor all flakey behavior has ceased (i.e., the modem had previously stopped
     // responding to AT commands).  This is how we set it HIGH before enabling the OUTPUT.
     PIN_MAP_PARSER[PWR_UC].gpio_peripheral->BSRRL = PIN_MAP_PARSER[PWR_UC].gpio_pin;
-    HAL_Pin_Mode(PWR_UC, OUTPUT);
+    hal_gpio_mode(PWR_UC, OUTPUT);
     // This pin tends to stay high when floating on the output of the buffer (RESET_UB),
     // but we need to ensure it gets set high before being set to an OUTPUT.
     // If this pin goes LOW, the modem will be reset and all configuration will be lost.
     PIN_MAP_PARSER[RESET_UC].gpio_peripheral->BSRRL = PIN_MAP_PARSER[RESET_UC].gpio_pin;
-    HAL_Pin_Mode(RESET_UC, OUTPUT);
+    hal_gpio_mode(RESET_UC, OUTPUT);
 
     _dev.lpm = LPM_ENABLED;
 
-    HAL_Pin_Mode(LVLOE_UC, OUTPUT);
-    HAL_GPIO_Write(LVLOE_UC, 0);
+    hal_gpio_mode(LVLOE_UC, OUTPUT);
+    hal_gpio_write(LVLOE_UC, 0);
 
     // This connects to V_INT on the cellular modem. Monitoring V_INT can provide more
     // fine-grained detail on when the modem is powered-on (HIGH) or has completed a
     // power-off sequence and currently powered-off (LOW).
     // NOTE: Modem isn't necessarily ready to communicate on its AT interface when V_INT
     // first goes HIGH.
-    HAL_Pin_Mode(RI_UC, INPUT_PULLDOWN);
+    hal_gpio_mode(RI_UC, INPUT_PULLDOWN);
 
     if (!_init) {
         MDM_INFO("[ ElectronSerialPipe::begin ] pipeTx=%d pipeRx=%d", electronMDM.txSize(), electronMDM.rxSize());
@@ -861,12 +861,12 @@ bool MDMParser::_powerOn(void)
     LOG(INFO, "Powering modem on, ncpId: 0x%02x", otp_ncp_id);
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
-        HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
-        HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
+        hal_gpio_write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
+        hal_gpio_write(PWR_UC, 1); HAL_Delay_Milliseconds(10);
 
         // SARA-G35 >5ms, LISA-C2 > 150ms, LEON-G2 >5ms, SARA-R4 >= 150ms
-        HAL_GPIO_Write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
-        HAL_GPIO_Write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
+        hal_gpio_write(PWR_UC, 0); HAL_Delay_Milliseconds(150);
+        hal_gpio_write(PWR_UC, 1); HAL_Delay_Milliseconds(100);
 
         // purge any messages
         purge();
@@ -1283,7 +1283,7 @@ int MDMParser::getModemStateChangeCount(void) const {
 }
 
 bool MDMParser::powerState(void) {
-    auto state = HAL_GPIO_Read(RI_UC);
+    auto state = hal_gpio_read(RI_UC);
     if (state) {
         // RI is high, which means that V_INT is high as well
         // We are definitely powered on
@@ -1300,7 +1300,7 @@ bool MDMParser::powerState(void) {
     // because RI may be held low for over a second under some conditions
     // Sleeping for 1.1s and checking again
     HAL_Delay_Milliseconds(1100);
-    state = HAL_GPIO_Read(RI_UC);
+    state = hal_gpio_read(RI_UC);
     // If RI is still low - we are off
     // If RI is high - we are on
     if (getModemStateChangeCount() == 0) {
@@ -1429,12 +1429,12 @@ bool MDMParser::powerOff(void)
         // Skip power off sequence if power is already off
         if (_dev.dev != DEV_SARA_G350 && (power_state = powerState())) {
             MDM_INFO("%s Modem not responsive, trying PWR_UC...", POWER_OFF_MSG);
-            HAL_GPIO_Write(PWR_UC, 0);
+            hal_gpio_write(PWR_UC, 0);
             // >1.5 seconds on SARA R410M
             // >1 second on SARA U2
             // plus a little extra for good luck
             HAL_Delay_Milliseconds(1600);
-            HAL_GPIO_Write(PWR_UC, 1);
+            hal_gpio_write(PWR_UC, 1);
         }
     }
 
@@ -1463,9 +1463,9 @@ bool MDMParser::powerOff(void)
     _init = false;
     MDM_INFO("[ ElectronSerialPipe::end ] pipeTx=%d pipeRx=%d", electronMDM.txSize(), electronMDM.rxSize());
 
-    HAL_Pin_Mode(PWR_UC, INPUT);
-    HAL_Pin_Mode(RESET_UC, INPUT);
-    HAL_Pin_Mode(LVLOE_UC, INPUT);
+    hal_gpio_mode(PWR_UC, INPUT);
+    hal_gpio_mode(RESET_UC, INPUT);
+    hal_gpio_mode(LVLOE_UC, INPUT);
 
     ok = !_pwr;
 

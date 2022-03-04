@@ -42,7 +42,7 @@
 
 DYNALIB_BEGIN(hal_usart)
 
-#if defined (USB_CDC_ENABLE) && !HAL_PLATFORM_NRF52840
+#if defined (USB_CDC_ENABLE) && !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
 DYNALIB_FN(0, hal_usart, USB_USART_Init, void(uint32_t))
 DYNALIB_FN(1, hal_usart, USB_USART_Available_Data, uint8_t(void))
 DYNALIB_FN(2, hal_usart, USB_USART_Receive_Data, int32_t(uint8_t))
@@ -66,7 +66,7 @@ DYNALIB_FN(BASE_IDX + 8, hal_usart, hal_usart_is_enabled, bool(hal_usart_interfa
 DYNALIB_FN(BASE_IDX + 9, hal_usart, hal_usart_half_duplex, void(hal_usart_interface_t, bool))
 DYNALIB_FN(BASE_IDX + 10, hal_usart, hal_usart_available_data_for_write, int32_t(hal_usart_interface_t))
 
-#if defined (USB_CDC_ENABLE) && !HAL_PLATFORM_NRF52840
+#if defined (USB_CDC_ENABLE) && !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
 DYNALIB_FN(BASE_IDX + 11, hal_usart, USB_USART_Available_Data_For_Write, int32_t(void))
 DYNALIB_FN(BASE_IDX + 12, hal_usart, USB_USART_Flush_Data, void(void))
 #define BASE_IDX2 (BASE_IDX+13)

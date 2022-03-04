@@ -2330,15 +2330,15 @@ int SaraNcpClient::modemInit() const {
     };
 
     // Configure PWR_ON and RESET_N pins as OUTPUT and set to high by default
-    CHECK(HAL_Pin_Configure(UBPWR, &conf, nullptr));
-    CHECK(HAL_Pin_Configure(UBRST, &conf, nullptr));
+    CHECK(hal_gpio_configure(UBPWR, &conf, nullptr));
+    CHECK(hal_gpio_configure(UBRST, &conf, nullptr));
 
     // Configure BUFEN as Push-Pull Output and default to 1 (disabled)
-    CHECK(HAL_Pin_Configure(BUFEN, &conf, nullptr));
+    CHECK(hal_gpio_configure(BUFEN, &conf, nullptr));
 
     // Configure VINT as Input for modem power state monitoring
     conf.mode = INPUT;
-    CHECK(HAL_Pin_Configure(UBVINT, &conf, nullptr));
+    CHECK(hal_gpio_configure(UBVINT, &conf, nullptr));
 
     LOG(TRACE, "Modem low level initialization OK");
 
@@ -2372,22 +2372,22 @@ int SaraNcpClient::modemPowerOn() {
         if (ncpId() == PLATFORM_NCP_SARA_R410) {
             // R410
             // Low pulse 150-3200ms
-            HAL_GPIO_Write(UBPWR, 0);
+            hal_gpio_write(UBPWR, 0);
             HAL_Delay_Milliseconds(150);
-            HAL_GPIO_Write(UBPWR, 1);
+            hal_gpio_write(UBPWR, 1);
         } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
             // R510
             // Low pulse 1000-2000ms
-            HAL_GPIO_Write(UBPWR, 0);
+            hal_gpio_write(UBPWR, 0);
             HAL_Delay_Milliseconds(1500);
-            HAL_GPIO_Write(UBPWR, 1);
+            hal_gpio_write(UBPWR, 1);
         } else {
             // U201
             // Low pulse 50-80us
             ATOMIC_BLOCK() {
-                HAL_GPIO_Write(UBPWR, 0);
+                hal_gpio_write(UBPWR, 0);
                 HAL_Delay_Microseconds(50);
-                HAL_GPIO_Write(UBPWR, 1);
+                hal_gpio_write(UBPWR, 1);
             }
         }
 
@@ -2442,9 +2442,9 @@ int SaraNcpClient::modemPowerOff() {
         if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
             // U201
             // Low pulse 1s+
-            HAL_GPIO_Write(UBPWR, 0);
+            hal_gpio_write(UBPWR, 0);
             HAL_Delay_Milliseconds(1500);
-            HAL_GPIO_Write(UBPWR, 1);
+            hal_gpio_write(UBPWR, 1);
         } else {
             // If memory issue is present, ensure we don't force a power off too soon
             // to avoid hitting the 124 day memory housekeeping issue
@@ -2454,9 +2454,9 @@ int SaraNcpClient::modemPowerOff() {
             }
             // R410
             // Low pulse 1.5s+
-            HAL_GPIO_Write(UBPWR, 0);
+            hal_gpio_write(UBPWR, 0);
             HAL_Delay_Milliseconds(1600);
-            HAL_GPIO_Write(UBPWR, 1);
+            hal_gpio_write(UBPWR, 1);
         }
 
         // Verify that the module was powered down by checking the VINT pin up to 10 sec
@@ -2529,17 +2529,17 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
     LOG(TRACE, "Hard resetting the modem");
     if (ncpId() == PLATFORM_NCP_SARA_U201) {
         // Low pulse for 50ms
-        HAL_GPIO_Write(UBRST, 0);
+        hal_gpio_write(UBRST, 0);
         HAL_Delay_Milliseconds(50);
-        HAL_GPIO_Write(UBRST, 1);
+        hal_gpio_write(UBRST, 1);
         HAL_Delay_Milliseconds(1000);   // just in case
         ncpPowerState(NcpPowerState::TRANSIENT_ON); // TODO: Test this
         // NOTE: powerOff argument is ignored, modem will restart automatically
         // in all cases
     } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
-        HAL_GPIO_Write(UBRST, 0);
+        hal_gpio_write(UBRST, 0);
         HAL_Delay_Milliseconds(200);
-        HAL_GPIO_Write(UBRST, 1);
+        hal_gpio_write(UBRST, 1);
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
         // Note: No need to apply just-in-case delays, plus the radio seems to
         // reset a few times rapidly and is unresponsive to AT for a few runs.
@@ -2551,10 +2551,9 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
         if (memoryIssuePresent_) {
             waitForPowerOff();
         }
-        // R410 - Low pulse for 10s
-        HAL_GPIO_Write(UBRST, 0);
+        hal_gpio_write(UBRST, 0);
         HAL_Delay_Milliseconds(10000);
-        HAL_GPIO_Write(UBRST, 1);
+        hal_gpio_write(UBRST, 1);
         HAL_Delay_Milliseconds(1000);   // just in case
         // IMPORTANT: R4 is powered-off after applying RESET!
         if (!powerOff) {
@@ -2584,28 +2583,28 @@ int SaraNcpClient::modemEmergencyHardReset() {
     }
 
     // Low held on power pin
-    HAL_GPIO_Write(UBPWR, 0);
+    hal_gpio_write(UBPWR, 0);
     HAL_Delay_Milliseconds(500);
     // Low held on reset pin
-    HAL_GPIO_Write(UBRST, 0);
+    hal_gpio_write(UBRST, 0);
     // Release power pin after 23s (23.5)
     HAL_Delay_Milliseconds(23000);
-    HAL_GPIO_Write(UBPWR, 1);
+    hal_gpio_write(UBPWR, 1);
     // Release reset pin after 1.5s (2s)
     HAL_Delay_Milliseconds(2000);
-    HAL_GPIO_Write(UBRST, 1);
+    hal_gpio_write(UBRST, 1);
 
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
     return SYSTEM_ERROR_NONE;
 }
 
 bool SaraNcpClient::modemPowerState() const {
-    return HAL_GPIO_Read(UBVINT);
+    return hal_gpio_read(UBVINT);
 }
 
 int SaraNcpClient::modemSetUartState(bool state) const {
     LOG(TRACE, "Setting UART voltage translator state %d", state);
-    HAL_GPIO_Write(BUFEN, state ? 0 : 1);
+    hal_gpio_write(BUFEN, state ? 0 : 1);
     return SYSTEM_ERROR_NONE;
 }
 

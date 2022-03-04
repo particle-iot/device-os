@@ -58,10 +58,10 @@
 #include "system_listening_mode.h"
 #endif
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
 #include "ble_hal.h"
 #include "system_control_internal.h"
-#endif /* HAL_PLATFORM_BLE */
+#endif /* HAL_PLATFORM_BLE_SETUP */
 
 using namespace particle;
 using spark::Network;
@@ -521,7 +521,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     {
         system_pending_shutdown(RESET_REASON_USER);
     }
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
     // TODO: Process BLE channel events in a separate thread
     system::SystemControl::instance()->run();
     manage_ble_prov_mode();
@@ -597,7 +597,7 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 	// if not threading, or we are the application thread, then implement delay
 	// as a background message pump
 
-    if ((!PLATFORM_THREADING || APPLICATION_THREAD_CURRENT()) && !HAL_IsISR())
+    if ((!PLATFORM_THREADING || APPLICATION_THREAD_CURRENT()) && !hal_interrupt_is_isr())
     {
     		system_delay_pump(ms, force_no_background_loop);
     }

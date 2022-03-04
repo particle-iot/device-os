@@ -19,7 +19,7 @@
 
 SYSTEM_MODE(MANUAL);
 
-extern const pin_t g_pins[];
+extern const hal_pin_t g_pins[];
 extern const char* g_pin_names[];
 extern const size_t g_pin_count;
 
@@ -38,7 +38,7 @@ void countdown(int c) {
     }
 }
 
-const char* getPinName(pin_t pin) {
+const char* getPinName(hal_pin_t pin) {
     for (unsigned i = 0; i < g_pin_count; i++) {
         if (g_pins[i] == pin) {
             return g_pin_names[i];

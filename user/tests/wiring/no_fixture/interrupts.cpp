@@ -83,7 +83,7 @@ public:
 
 } // namespace
 
-#if !HAL_PLATFORM_NRF52840 // TODO
+#if HAL_PLATFORM_GEN == 2 // TODO
 
 int TestHandler::count = 0;
 
@@ -103,25 +103,25 @@ test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 #if /* defined(STM32F10X_MD) || defined(STM32F10X_HD) || */ defined(STM32F2XX)
 	volatile bool cont = false;
 	attachSystemInterrupt(SysInterrupt_SysTick, [&] {
-		assertTrue(HAL_IsISR());
-		assertEqual((IRQn)HAL_ServicedIRQn(), SysTick_IRQn);
+		assertTrue(hal_interrupt_is_isr());
+		assertEqual((IRQn)hal_interrupt_serviced_irqn(), SysTick_IRQn);
 		cont = true;
 	});
 	while (!cont);
 	detachSystemInterrupt(SysInterrupt_SysTick);
-	assertFalse(HAL_WillPreempt(SysTick_IRQn, SysTick_IRQn));
-	assertTrue(HAL_WillPreempt(NonMaskableInt_IRQn, SysTick_IRQn));
-	assertFalse(HAL_WillPreempt(SysTick_IRQn, NonMaskableInt_IRQn));
+	assertFalse(hal_interrupt_will_preempt(SysTick_IRQn, SysTick_IRQn));
+	assertTrue(hal_interrupt_will_preempt(NonMaskableInt_IRQn, SysTick_IRQn));
+	assertFalse(hal_interrupt_will_preempt(SysTick_IRQn, NonMaskableInt_IRQn));
 #endif
 }
 
-#endif // !HAL_PLATFORM_NRF52840
+#endif // HAL_PLATFORM_GEN == 2
 
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 test(INTERRUPTS_04_attachInterruptDirect) {
-	const pin_t pin = D1;
+	const hal_pin_t pin = D1;
 	const IRQn_Type irqn = EXTI9_5_IRQn;
-	auto pinmap = HAL_Pin_Map();
+	auto pinmap = hal_pin_map();
 	static const uint16_t exti_line = pinmap[pin].gpio_pin;
 	static volatile bool attachInterruptHandler = false;
 	static volatile bool attachInterruptDirectHandler = false;
@@ -206,7 +206,7 @@ test(INTERRUPTS_04_attachInterruptDirect) {
 }
 
 test(INTERRUPTS_04_attachInterruptDirect_1) {
-	const pin_t pin = D1;
+	const hal_pin_t pin = D1;
 
 	detachInterrupt(pin);
 }
@@ -214,7 +214,7 @@ test(INTERRUPTS_04_attachInterruptDirect_1) {
 
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 test(INTERRUPTS_05_attachInterruptD7) {
-	const pin_t pin = D7;
+	const hal_pin_t pin = D7;
 	bool res = attachInterrupt(pin, nullptr, FALLING);
 	bool tem = detachInterrupt(pin);
 	assertFalse(res);

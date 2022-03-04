@@ -196,7 +196,7 @@ void system_notify_event(system_event_t event, uint32_t data, void* pointer, voi
     // executed synchronously, possibly in the context of an ISR
     if (flags & NOTIFY_SYNCHRONOUSLY) {
         system_notify_event_impl(event, data, pointer, fn, fndata);
-    } else if (HAL_IsISR()) {
+    } else if (hal_interrupt_is_isr()) {
         void* space = (system_pool_alloc(sizeof(SystemEventTask), nullptr));
         if (space) {
             auto task = new (space) SystemEventTask(event, data, pointer, fn, fndata);

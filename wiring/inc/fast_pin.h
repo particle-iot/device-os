@@ -32,8 +32,8 @@ extern "C" {
  * by @pkourany on PR: https://github.com/spark/firmware/pull/556 */
 #define USE_BIT_BAND 0
 
-__attribute__((always_inline)) inline const Hal_Pin_Info* fastPinGetPinmap() {
-    static const Hal_Pin_Info* pinMap = HAL_Pin_Map();
+__attribute__((always_inline)) inline const hal_pin_info_t* fastPinGetPinmap() {
+    static const hal_pin_info_t* pinMap = hal_pin_map();
     return pinMap;
 }
 
@@ -67,21 +67,21 @@ where:
           (*(__IO uint32_t *) (PERIPH_BB_BASE | ((Addr - PERIPH_BASE) << 5) | ((Bit) << 2)))
 
 
-inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
-inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
-inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
+inline void pinSetFast(hal_pin_t _pin) __attribute__((always_inline));
+inline void pinResetFast(hal_pin_t _pin) __attribute__((always_inline));
+inline int32_t pinReadFast(hal_pin_t _pin) __attribute__((always_inline));
 
-inline void pinSetFast(pin_t _pin)
+inline void pinSetFast(hal_pin_t _pin)
 {
     GPIO_SetBit_BB((__IO uint32_t)&fastPinGetPinmap()[_pin].gpio_peripheral->ODR, fastPinGetPinmap()[_pin].gpio_pin_source);
 }
 
-inline void pinResetFast(pin_t _pin)
+inline void pinResetFast(hal_pin_t _pin)
 {
     GPIO_ResetBit_BB((__IO uint32_t)&fastPinGetPinmap()[_pin].gpio_peripheral->ODR, fastPinGetPinmap()[_pin].gpio_pin_source);
 }
 
-inline int32_t pinReadFast(pin_t _pin)
+inline int32_t pinReadFast(hal_pin_t _pin)
 {
     return GPIO_GetBit_BB((__IO uint32_t)&fastPinGetPinmap()[_pin].gpio_peripheral->IDR, fastPinGetPinmap()[_pin].gpio_pin_source);
 }
@@ -96,41 +96,41 @@ inline int32_t pinReadFast(pin_t _pin)
 
 #ifdef STM32F10X
 
-inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
-inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
-inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
+inline void pinSetFast(hal_pin_t _pin) __attribute__((always_inline));
+inline void pinResetFast(hal_pin_t _pin) __attribute__((always_inline));
+inline int32_t pinReadFast(hal_pin_t _pin) __attribute__((always_inline));
 
-inline void pinSetFast(pin_t _pin)
+inline void pinSetFast(hal_pin_t _pin)
 {
     fastPinGetPinmap()[_pin].gpio_peripheral->BSRR = fastPinGetPinmap()[_pin].gpio_pin;
 }
 
-inline void pinResetFast(pin_t _pin)
+inline void pinResetFast(hal_pin_t _pin)
 {
     fastPinGetPinmap()[_pin].gpio_peripheral->BRR = fastPinGetPinmap()[_pin].gpio_pin;
 }
 
-inline int32_t pinReadFast(pin_t _pin)
+inline int32_t pinReadFast(hal_pin_t _pin)
 {
     return ((fastPinGetPinmap()[_pin].gpio_peripheral->IDR & fastPinGetPinmap()[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
 #elif defined(STM32F2XX)
 
-inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
-inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
-inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
+inline void pinSetFast(hal_pin_t _pin) __attribute__((always_inline));
+inline void pinResetFast(hal_pin_t _pin) __attribute__((always_inline));
+inline int32_t pinReadFast(hal_pin_t _pin) __attribute__((always_inline));
 
-inline void pinSetFast(pin_t _pin)
+inline void pinSetFast(hal_pin_t _pin)
 {
     fastPinGetPinmap()[_pin].gpio_peripheral->BSRRL = fastPinGetPinmap()[_pin].gpio_pin;
 }
 
-inline void pinResetFast(pin_t _pin)
+inline void pinResetFast(hal_pin_t _pin)
 {
     fastPinGetPinmap()[_pin].gpio_peripheral->BSRRH = fastPinGetPinmap()[_pin].gpio_pin;
 }
 
-inline int32_t pinReadFast(pin_t _pin)
+inline int32_t pinReadFast(hal_pin_t _pin)
 {
 	return ((fastPinGetPinmap()[_pin].gpio_peripheral->IDR & fastPinGetPinmap()[_pin].gpio_pin) == 0 ? LOW : HIGH);
 }
@@ -139,24 +139,24 @@ inline int32_t pinReadFast(pin_t _pin)
 #include "nrf_gpio.h"
 #include "pinmap_impl.h"
 
-inline void pinSetFast(pin_t _pin) __attribute__((always_inline));
-inline void pinResetFast(pin_t _pin) __attribute__((always_inline));
-inline int32_t pinReadFast(pin_t _pin) __attribute__((always_inline));
+inline void pinSetFast(hal_pin_t _pin) __attribute__((always_inline));
+inline void pinResetFast(hal_pin_t _pin) __attribute__((always_inline));
+inline int32_t pinReadFast(hal_pin_t _pin) __attribute__((always_inline));
 
 
-inline void pinSetFast(pin_t _pin)
+inline void pinSetFast(hal_pin_t _pin)
 {
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(fastPinGetPinmap()[_pin].gpio_port, fastPinGetPinmap()[_pin].gpio_pin);
     nrf_gpio_pin_set(nrf_pin);
 }
 
-inline void pinResetFast(pin_t _pin)
+inline void pinResetFast(hal_pin_t _pin)
 {
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(fastPinGetPinmap()[_pin].gpio_port, fastPinGetPinmap()[_pin].gpio_pin);
     nrf_gpio_pin_clear(nrf_pin);
 }
 
-inline int32_t pinReadFast(pin_t _pin)
+inline int32_t pinReadFast(hal_pin_t _pin)
 {
     uint32_t nrf_pin = NRF_GPIO_PIN_MAP(fastPinGetPinmap()[_pin].gpio_port, fastPinGetPinmap()[_pin].gpio_pin);
     // Dummy read is needed because peripherals run at 16 MHz while the CPU runs at 64 MHz.
@@ -167,9 +167,9 @@ inline int32_t pinReadFast(pin_t _pin)
 #elif PLATFORM_ID==3 || PLATFORM_ID == 20
 
 // make them unresolved symbols so attempted use will result in a linker error
-void pinResetFast(pin_t _pin);
-void pinSetFast(pin_t _pin);
-void pinReadFast(pin_t _pin);
+void pinResetFast(hal_pin_t _pin);
+void pinSetFast(hal_pin_t _pin);
+void pinReadFast(hal_pin_t _pin);
 #elif PLATFORM_ID==PLATFORM_NEWHAL
     // no need to generate a warning for newhal
     #define pinSetFast(pin) digitalWrite(pin, HIGH)
@@ -182,7 +182,7 @@ void pinReadFast(pin_t _pin);
 
 #endif //USE_BIT_BAND
 
-inline void digitalWriteFast(pin_t pin, uint8_t value)
+inline void digitalWriteFast(hal_pin_t pin, uint8_t value)
 {
     if (value)
         pinSetFast(pin);

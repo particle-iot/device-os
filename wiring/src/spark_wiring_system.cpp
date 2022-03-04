@@ -128,7 +128,7 @@ bool SleepResult::wokenUpByPin() const {
     return reason_ == WAKEUP_REASON_PIN || reason_ == WAKEUP_REASON_PIN_OR_RTC;
 }
 
-pin_t SleepResult::pin() const {
+hal_pin_t SleepResult::pin() const {
     return pin_;
 }
 

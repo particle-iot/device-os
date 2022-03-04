@@ -169,7 +169,7 @@ public:
     void connect_cancel(bool cancel) override
     {
         if (cancel)
-            wlan_connect_cancel(HAL_IsISR());
+            wlan_connect_cancel(hal_interrupt_is_isr());
     }
 
     bool has_credentials() override

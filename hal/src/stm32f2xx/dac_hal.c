@@ -86,9 +86,9 @@ static void HAL_DAC_Init()
  * @brief Write the analog value to the pin.
  * DAC is 12-bit. Range of values: 0-4096
  */
-void HAL_DAC_Write(pin_t pin, uint16_t value)
+void HAL_DAC_Write(hal_pin_t pin, uint16_t value)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (dacInitFirstTime == true)
     {
@@ -96,10 +96,10 @@ void HAL_DAC_Write(pin_t pin, uint16_t value)
         dacInitFirstTime = false;
     }
 
-    if (HAL_Get_Pin_Mode(pin) != AN_OUTPUT)
+    if (hal_gpio_get_mode(pin) != AN_OUTPUT)
     {
         HAL_GPIO_Save_Pin_Mode(pin);
-        HAL_Pin_Mode(pin, AN_OUTPUT);
+        hal_gpio_mode(pin, AN_OUTPUT);
         HAL_DAC_Enable(pin, 1);
     }
 
@@ -116,10 +116,10 @@ void HAL_DAC_Write(pin_t pin, uint16_t value)
     }
 }
 
-uint8_t HAL_DAC_Is_Enabled(pin_t pin)
+uint8_t HAL_DAC_Is_Enabled(hal_pin_t pin)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    if (!dacInitFirstTime && HAL_Get_Pin_Mode(pin) == AN_OUTPUT)
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
+    if (!dacInitFirstTime && hal_gpio_get_mode(pin) == AN_OUTPUT)
     {
         if (DAC->CR & (DAC_CR_EN1 << PIN_MAP[pin].dac_channel))
             return 1;
@@ -128,10 +128,10 @@ uint8_t HAL_DAC_Is_Enabled(pin_t pin)
     return 0;
 }
 
-uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state)
+uint8_t HAL_DAC_Enable(hal_pin_t pin, uint8_t state)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    if (!dacInitFirstTime && HAL_Get_Pin_Mode(pin) == AN_OUTPUT)
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
+    if (!dacInitFirstTime && hal_gpio_get_mode(pin) == AN_OUTPUT)
     {
         DAC_Cmd(PIN_MAP[pin].dac_channel, state ? ENABLE : DISABLE);
         return 0;
@@ -140,9 +140,9 @@ uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state)
     return 1;
 }
 
-uint8_t HAL_DAC_Get_Resolution(pin_t pin)
+uint8_t HAL_DAC_Get_Resolution(hal_pin_t pin)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
     {
@@ -156,9 +156,9 @@ uint8_t HAL_DAC_Get_Resolution(pin_t pin)
     return 0;
 }
 
-void HAL_DAC_Set_Resolution(pin_t pin, uint8_t resolution)
+void HAL_DAC_Set_Resolution(hal_pin_t pin, uint8_t resolution)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
     {
@@ -170,9 +170,9 @@ void HAL_DAC_Set_Resolution(pin_t pin, uint8_t resolution)
     }
 }
 
-void HAL_DAC_Enable_Buffer(pin_t pin, uint8_t state)
+void HAL_DAC_Enable_Buffer(hal_pin_t pin, uint8_t state)
 {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (PIN_MAP[pin].dac_channel == DAC_Channel_1)
     {

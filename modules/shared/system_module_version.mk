@@ -1,6 +1,6 @@
 # Skip to next 100 every v0.x.0 release (e.g. 108 for v0.6.2 to 200 for v0.7.0-rc.1)
 # Bump by 1 for every prerelease or release with the same v0.x.* base.
-COMMON_MODULE_VERSION ?= 3201
+COMMON_MODULE_VERSION ?= 3210
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART2_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART3_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
@@ -34,20 +34,30 @@ endif
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
 BOOTLOADER_VERSION ?= 1100
+ifeq ($(PLATFORM_ID),32)
+PREBOOTLOADER_MBR_VERSION ?= 1
+PREBOOTLOADER_PART1_VERSION ?= 1
+endif
 
 # The version of the bootloader that the system firmware requires
 # NOTE: this will force the device into safe mode until this dependency is met, which is why
 # this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
 ifeq ($(PLATFORM_GEN),2)
 BOOTLOADER_DEPENDENCY = 1003
+else ifeq ($(PLATFORM_ID),32)
+BOOTLOADER_DEPENDENCY = 1006
 else ifeq ($(PLATFORM_GEN),3)
 BOOTLOADER_DEPENDENCY = 1100
 else
 # Some sensible default
 BOOTLOADER_DEPENDENCY = 0
 endif
+ifeq ($(PLATFORM_ID),32)
+PREBOOTLOADER_PART1_DEPENDENCY = 1
+endif
 
 ifeq ($(PLATFORM_GEN),3)
+ifeq ($(PLATFORM_MCU),nRF52840)
 # SoftDevice S140 7.0.1
 SOFTDEVICE_DEPENDENCY = 202
 
@@ -77,4 +87,10 @@ else
 ESP32_NCP_DEPENDENCY = 7
 SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_NCP_FIRMWARE},0,${ESP32_NCP_DEPENDENCY}
 endif
+endif
+endif # ($(PLATFORM_MCU),nRF52840)
+
+ifeq ($(PLATFORM_ID), 32)
+SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
+BOOTLOADER_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},2,${PREBOOTLOADER_PART1_DEPENDENCY}
 endif

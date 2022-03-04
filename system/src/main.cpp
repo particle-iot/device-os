@@ -284,7 +284,7 @@ void reset_button_click()
         button_final_clicks = clicks;
 #if HAL_PLATFORM_SETUP_BUTTON_UX
         // Certain numbers of clicks can be processed directly in ISR
-        system_handle_button_clicks(HAL_IsISR());
+        system_handle_button_clicks(hal_interrupt_is_isr());
 #endif
     }
 }
@@ -313,7 +313,7 @@ void handle_button_click(uint16_t depressed_duration)
 void HAL_Notify_Button_State(uint8_t button, uint8_t pressed)
 {
 #ifdef BUTTON1_MIRROR_SUPPORTED
-    if (button==0 || button == BUTTON1_MIRROR)
+    if (button==0 || button == HAL_BUTTON1_MIRROR)
 #else
     if (button==0)
 #endif
@@ -419,7 +419,7 @@ extern "C" void HAL_SysTick_Handler(void)
 #endif
 
 #if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK
-    BUTTON_Timer_Handler();
+    hal_button_timer_handler();
 #endif
 
     if (IS_BUTTON_TIMEOUT())
@@ -763,11 +763,6 @@ void app_setup_and_loop(void)
     initRadioAntenna();
 #endif
 
-#if HAL_PLATFORM_BLE
-    // FIXME: Move BLE and Thread initialization to an appropriate place
-    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
-#endif // HAL_PLATFORM_BLE
-
 #if SYSTEM_CONTROL_ENABLED
     system::SystemControl::instance()->init();
 #endif // SYSTEM_CONTROL_ENABLED
@@ -795,7 +790,6 @@ void app_setup_and_loop(void)
         HAL_Delay_Milliseconds(100);
         HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
     }
-
     Network_Setup(threaded);    // todo - why does this come before system thread initialization?
 
 #if PLATFORM_THREADING

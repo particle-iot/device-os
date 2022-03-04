@@ -115,7 +115,7 @@ void RTC_Alarm_irq(void);
 /**
  * A shared handler for the EXTI interrupt to process presses of the mode button.
  */
-void Handle_Mode_Button_EXTI_irq(Button_TypeDef button);
+void Handle_Mode_Button_EXTI_irq(hal_button_t button);
 
 /**
  * Handle short and generic tasks for the device HAL on 1ms ticks

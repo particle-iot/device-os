@@ -30,8 +30,9 @@ endif
 LINKER_FILE=$(SYSTEM_PART1_MODULE_PATH)/linker.ld
 LINKER_DEPS += $(LINKER_FILE)
 
+LINKER_DEPS += $(SHARED_MODULAR)/linker_system_part1_common.ld
 LINKER_DEPS += $(SYSTEM_PART1_MODULE_PATH)/module_system_part1_export.ld
-LINKER_DEPS += $(SHARED_MODULAR)/module_user_export.ld
+LINKER_DEPS += $(USER_PART_MODULE_PATH)/module_user_export.ld
 
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
 LDFLAGS += --specs=$(NEWLIB_TWEAK_SPECS)
@@ -43,6 +44,7 @@ LDFLAGS += -Wl,--defsym,PLATFORM_DFU=$(PLATFORM_DFU)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 
 # Minimum main stack size with S140 softdevice is 1536 bytes
+# __STACKSIZE__ is referenced by build/arm/linker/nrf52840/platform_ram.ld
 MAIN_STACK_SIZE = 2048
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=$(MAIN_STACK_SIZE)
 LDFLAGS += -Wl,--defsym,__STACK_SIZE=$(MAIN_STACK_SIZE)

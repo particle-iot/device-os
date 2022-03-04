@@ -200,7 +200,7 @@ test(sleep_2_udp_all_confirmable_messages_are_sent_before_sleep_step_1)
         }
         uint32_t ts = millis();
         // RTC wakeup only
-        System.sleep((pin_t*)nullptr, 0, RISING, 15, SLEEP_NETWORK_STANDBY);
+        System.sleep((hal_pin_t*)nullptr, 0, RISING, 15, SLEEP_NETWORK_STANDBY);
         assertTrue(Particle.connected());
         assertLessOrEqual(s_cloud_disconnected, ts);
     }

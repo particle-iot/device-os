@@ -38,29 +38,29 @@
 
 /* Private function prototypes -----------------------------------------------*/
 
-void HAL_DAC_Write(pin_t pin, uint16_t value)
+void HAL_DAC_Write(hal_pin_t pin, uint16_t value)
 {
 }
 
-uint8_t HAL_DAC_Is_Enabled(pin_t pin)
-{
-    return 0;
-}
-
-uint8_t HAL_DAC_Enable(pin_t pin, uint8_t state)
+uint8_t HAL_DAC_Is_Enabled(hal_pin_t pin)
 {
     return 0;
 }
 
-uint8_t HAL_DAC_Get_Resolution(pin_t pin)
+uint8_t HAL_DAC_Enable(hal_pin_t pin, uint8_t state)
 {
     return 0;
 }
 
-void HAL_DAC_Set_Resolution(pin_t pin, uint8_t resolution)
+uint8_t HAL_DAC_Get_Resolution(hal_pin_t pin)
+{
+    return 0;
+}
+
+void HAL_DAC_Set_Resolution(hal_pin_t pin, uint8_t resolution)
 {
 }
 
-void HAL_DAC_Enable_Buffer(pin_t pin, uint8_t state)
+void HAL_DAC_Enable_Buffer(hal_pin_t pin, uint8_t state)
 {
 }

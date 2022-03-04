@@ -103,7 +103,7 @@ using namespace particle::net;
 
 WizNetif* WizNetif::instance_ = nullptr;
 
-WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6])
+WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_pin_t interrupt, const uint8_t mac[6])
         : BaseNetif(),
           spi_(spi),
           cs_(cs),
@@ -124,10 +124,10 @@ WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interru
         .value = 1,
         .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
-    HAL_Pin_Configure(reset_, &conf, nullptr);
-    HAL_Pin_Configure(cs_, &conf, nullptr);
+    hal_gpio_configure(reset_, &conf, nullptr);
+    hal_gpio_configure(cs_, &conf, nullptr);
     /* There is an external 10k pull-up */
-    HAL_Pin_Mode(interrupt_, INPUT);
+    hal_gpio_mode(interrupt_, INPUT);
 
     SPARK_ASSERT(os_semaphore_create(&spiSem_, 1, 0) == 0);
 
@@ -144,11 +144,11 @@ WizNetif::WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interru
     reg_wizchip_cs_cbfunc(
         [](void) -> void {
             auto self = instance();
-            HAL_GPIO_Write(self->cs_, 0);
+            hal_gpio_write(self->cs_, 0);
         },
         [](void) -> void {
             auto self = instance();
-            HAL_GPIO_Write(self->cs_, 1);
+            hal_gpio_write(self->cs_, 1);
         }
     );
     reg_wizchip_spi_cbfunc(
@@ -223,9 +223,9 @@ WizNetif::~WizNetif() {
     hal_spi_end(spi_);
     hal_spi_release(spi_, nullptr);
 
-    HAL_Pin_Mode(reset_, INPUT);
-    HAL_Pin_Mode(cs_, INPUT);
-    HAL_Pin_Mode(interrupt_, INPUT);
+    hal_gpio_mode(reset_, INPUT);
+    hal_gpio_mode(cs_, INPUT);
+    hal_gpio_mode(interrupt_, INPUT);
 }
 
 err_t WizNetif::initCb(netif* netif) {
@@ -249,7 +249,7 @@ err_t WizNetif::initInterface() {
     netif_.linkoutput = &WizNetif::linkOutputCb;
 
     uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
-    uint8_t deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+    uint8_t deviceIdLen = hal_get_device_id(deviceId, sizeof(deviceId));
     hostname_ = std::make_unique<char[]>(deviceIdLen * 2 + 1);
     if (hostname_) {
         bytes2hexbuf_lower_case(deviceId, deviceIdLen, hostname_.get());
@@ -268,9 +268,9 @@ err_t WizNetif::initInterface() {
 }
 
 void WizNetif::hwReset() {
-    HAL_GPIO_Write(reset_, 0);
+    hal_gpio_write(reset_, 0);
     HAL_Delay_Milliseconds(1);
-    HAL_GPIO_Write(reset_, 1);
+    hal_gpio_write(reset_, 1);
     HAL_Delay_Milliseconds(1);
 }
 
@@ -337,7 +337,7 @@ int WizNetif::up() {
     int r = openRaw();
     if (!r) {
         /* Attach interrupt handler */
-        HAL_Interrupts_Attach(interrupt_, &WizNetif::interruptCb, this, FALLING, nullptr);
+        hal_interrupt_attach(interrupt_, &WizNetif::interruptCb, this, FALLING, nullptr);
         down_ = false;
     }
 
@@ -353,7 +353,7 @@ int WizNetif::down() {
     LwipTcpIpCoreLock lk;
     down_ = true;
     /* Detach interrupt handler */
-    HAL_Interrupts_Detach(interrupt_);
+    hal_interrupt_detach(interrupt_);
 
     return closeRaw();
 }

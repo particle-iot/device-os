@@ -61,7 +61,7 @@ static const uint8_t GPIO_IRQn[] = {
 
 // Create a structure for user ISR function pointers
 typedef struct exti_channel {
-    HAL_InterruptHandler fn;
+    hal_interrupt_handler_t fn;
     void* data;
 } exti_channel;
 
@@ -81,7 +81,7 @@ static exti_state exti_saved_state = {0};
 
 /* Private function prototypes -----------------------------------------------*/
 
-int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config)
+int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* data, InterruptMode mode, hal_interrupt_extra_configuration_t* config)
 {
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
   /* safety check that prevents users from attaching an interrupt to D7
@@ -98,7 +98,7 @@ int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data
   NVIC_InitTypeDef NVIC_InitStructure = {0};
 
   //Map the Spark pin to the appropriate port and pin on the STM32
-  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+  hal_pin_info_t* PIN_MAP = hal_pin_map();
   GPIO_TypeDef *gpio_port = PIN_MAP[pin].gpio_peripheral;
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
   uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;
@@ -195,13 +195,13 @@ int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data
   return SYSTEM_ERROR_NONE;
 }
 
-int HAL_Interrupts_Detach(uint16_t pin)
+int hal_interrupt_detach(uint16_t pin)
 {
-  return HAL_Interrupts_Detach_Ext(pin, 0, NULL);
+  return hal_interrupt_detach_ext(pin, 0, NULL);
 }
 
 
-int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
+int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 {
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
   /* safety check that prevents users from attaching an interrupt to D7
@@ -211,7 +211,7 @@ int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
   }
 #endif
   //Map the Spark Core pin to the appropriate pin on the STM32
-  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+  hal_pin_info_t* PIN_MAP = hal_pin_map();
   uint16_t gpio_pin = PIN_MAP[pin].gpio_pin;
   uint8_t GPIO_PinSource = PIN_MAP[pin].gpio_pin_source;
 
@@ -237,7 +237,7 @@ int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
   return SYSTEM_ERROR_NONE;
 }
 
-void HAL_Interrupts_Enable_All(void)
+void hal_interrupt_enable_all(void)
 {
   //Enable all EXTI interrupts disabled using noInterrupts()
 #if PLATFORM_ID == 10 // Electron
@@ -251,7 +251,7 @@ void HAL_Interrupts_Enable_All(void)
   NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
-void HAL_Interrupts_Disable_All(void)
+void hal_interrupt_disable_all(void)
 {
 #if PLATFORM_ID == 10 // Electron
   NVIC_DisableIRQ(EXTI0_IRQn);
@@ -264,7 +264,7 @@ void HAL_Interrupts_Disable_All(void)
   NVIC_DisableIRQ(EXTI15_10_IRQn);
 }
 
-void HAL_Interrupts_Suspend(void) {
+void hal_interrupt_suspend(void) {
   exti_saved_state.imr = EXTI->IMR;
   exti_saved_state.emr = EXTI->EMR;
   exti_saved_state.rtsr = EXTI->RTSR;
@@ -273,15 +273,15 @@ void HAL_Interrupts_Suspend(void) {
   EXTI_DeInit();
 }
 
-void HAL_Interrupts_Restore(void) {
+void hal_interrupt_restore(void) {
   EXTI->IMR = exti_saved_state.imr;
   EXTI->EMR = exti_saved_state.emr;
   EXTI->RTSR = exti_saved_state.rtsr;
   EXTI->FTSR = exti_saved_state.ftsr;
 }
 
-uint32_t HAL_Interrupts_Pin_IRQn(pin_t pin) {
-  Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+uint32_t HAL_Interrupts_Pin_IRQn(hal_pin_t pin) {
+  hal_pin_info_t* PIN_MAP = hal_pin_map();
   return GPIO_IRQn[PIN_MAP[pin].gpio_pin];
 }
 
@@ -296,14 +296,14 @@ uint32_t HAL_Interrupts_Pin_IRQn(pin_t pin) {
  *******************************************************************************/
 void HAL_EXTI_Handler(uint8_t EXTI_Line)
 {
-    HAL_Interrupts_Trigger(EXTI_Line, NULL);
+    hal_interrupt_trigger(EXTI_Line, NULL);
 }
 
-void HAL_Interrupts_Trigger(uint16_t EXTI_Line, void* reserved)
+void hal_interrupt_trigger(uint16_t EXTI_Line, void* reserved)
 {
   //fetch the user function pointer from the array
   void* data = exti_channels[EXTI_Line].data;
-  HAL_InterruptHandler userISR_Handle = exti_channels[EXTI_Line].fn;
+  hal_interrupt_handler_t userISR_Handle = exti_channels[EXTI_Line].fn;
 
   if (userISR_Handle)
   {
@@ -311,7 +311,7 @@ void HAL_Interrupts_Trigger(uint16_t EXTI_Line, void* reserved)
   }
 }
 
-int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved)
+int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handler_t handler, uint32_t flags, void* reserved)
 {
   if (irqn < NonMaskableInt_IRQn || irqn > HASH_RNG_IRQn) {
     return 1;
@@ -320,17 +320,17 @@ int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handle
   int32_t state = HAL_disable_irq();
   volatile uint32_t* isrs = (volatile uint32_t*)SCB->VTOR;
 
-  if (handler == NULL && (flags & HAL_DIRECT_INTERRUPT_FLAG_RESTORE)) {
+  if (handler == NULL && (flags & HAL_INTERRUPT_DIRECT_FLAG_RESTORE)) {
     // Restore
     HAL_Core_Restore_Interrupt(irqn);
   } else {
     isrs[IRQN_TO_IDX(irqn)] = (uint32_t)handler;
   }
 
-  if (flags & HAL_DIRECT_INTERRUPT_FLAG_DISABLE) {
+  if (flags & HAL_INTERRUPT_DIRECT_FLAG_DISABLE) {
     // Disable
     NVIC_DisableIRQ(irqn);
-  } else if (flags & HAL_DIRECT_INTERRUPT_FLAG_ENABLE) {
+  } else if (flags & HAL_INTERRUPT_DIRECT_FLAG_ENABLE) {
     NVIC_EnableIRQ(irqn);
   }
 

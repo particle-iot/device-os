@@ -51,7 +51,7 @@ int32_t hal_adc_read(uint16_t pin) {
     int16_t adcValue = 0;
     ret_code_t ret;
     nrf_saadc_input_t channel;
-    Hal_Pin_Info *PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t *PIN_MAP = hal_pin_map();
 
     switch (PIN_MAP[pin].adc_channel) {
         case 0: channel = NRF_SAADC_INPUT_AIN0; break;

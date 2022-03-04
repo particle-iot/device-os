@@ -241,7 +241,7 @@ public:
         return *this;
     }
 
-    SystemSleepConfiguration& gpio(pin_t pin, InterruptMode mode) {
+    SystemSleepConfiguration& gpio(hal_pin_t pin, InterruptMode mode) {
         if (valid_) {
             // Check if this pin has been featured.
             auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO);
@@ -270,21 +270,21 @@ public:
         return *this;
     }
 
-    SystemSleepConfiguration& gpios(const Vector<std::pair<pin_t, InterruptMode>>& pins) {
+    SystemSleepConfiguration& gpios(const Vector<std::pair<hal_pin_t, InterruptMode>>& pins) {
         for (const auto& pin : pins) {
             gpio(pin.first, pin.second);
         }
         return *this;
     }
 
-    SystemSleepConfiguration& gpios(const Vector<pin_t>& pins, InterruptMode mode) {
+    SystemSleepConfiguration& gpios(const Vector<hal_pin_t>& pins, InterruptMode mode) {
         for (const auto& pin : pins) {
             gpio(pin, mode);
         }
         return *this;
     }
 
-    SystemSleepConfiguration& gpios(const pin_t* pins, size_t count, InterruptMode mode) {
+    SystemSleepConfiguration& gpios(const hal_pin_t* pins, size_t count, InterruptMode mode) {
         for (size_t i = 0; i < count; i++) {
             gpio(pins[i], mode);
         }
@@ -315,7 +315,7 @@ public:
         return *this;
     }
 
-    SystemSleepConfiguration& analog(pin_t pin, uint16_t voltage, AnalogInterruptMode trig) {
+    SystemSleepConfiguration& analog(hal_pin_t pin, uint16_t voltage, AnalogInterruptMode trig) {
         if (valid_) {
             // Check if an analog pin has been configured as wakeup source.
             // Only one analog pin can be configured as wakeup source.

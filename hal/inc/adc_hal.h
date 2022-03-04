@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 void hal_adc_set_sample_time(uint8_t sample_time);
-int32_t hal_adc_read(pin_t pin);
+int32_t hal_adc_read(hal_pin_t pin);
 void hal_adc_dma_init();
 int hal_adc_sleep(bool sleep, void* reserved);
 

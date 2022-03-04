@@ -7,7 +7,7 @@
  */
 typedef void  (*constructor_ptr_t)(void);
 
-extern char _system_part3_static_ram_start;
+extern char link_static_ram_start;
 
 void* module_system_part3_pre_init();
 
@@ -23,8 +23,6 @@ extern void* link_bss_location;
 extern void* link_bss_end;
 #define link_bss_size ((size_t)&link_bss_end - (size_t)&link_bss_location)
 
-extern void* link_end_of_static_ram;
-
 void* module_system_part3_pre_init()
 {
     if ( (&link_global_data_start!=&link_global_data_initial_values) && (link_global_data_size != 0))
@@ -34,7 +32,7 @@ void* module_system_part3_pre_init()
 
     memset(&link_bss_location, 0, link_bss_size );
 
-    return &_system_part3_static_ram_start;
+    return &link_static_ram_start;
 }
 
 

@@ -69,11 +69,11 @@ void hal_adc_set_sample_time(uint8_t sample_time) {
  */
 int32_t hal_adc_read(uint16_t pin) {
     int i = 0;
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (PIN_MAP[pin].pin_mode != AN_INPUT) {
         HAL_GPIO_Save_Pin_Mode(pin);
-        HAL_Pin_Mode(pin, AN_INPUT);
+        hal_gpio_mode(pin, AN_INPUT);
     }
 
     if (adcState != HAL_ADC_STATE_ENABLED) {

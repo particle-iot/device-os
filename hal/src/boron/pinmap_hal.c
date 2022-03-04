@@ -123,6 +123,6 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
 
 #endif // PLATFORM_ID == PLATFORM_BSOM
 
-Hal_Pin_Info* HAL_Pin_Map(void) {
+hal_pin_info_t* hal_pin_map(void) {
     return s_pin_map;
 }

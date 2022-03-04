@@ -26,8 +26,8 @@
 
 namespace {
 
-uint32_t getPinAf(pin_t pin) {
-    auto pinmap = HAL_Pin_Map();
+uint32_t getPinAf(hal_pin_t pin) {
+    auto pinmap = hal_pin_map();
     auto gpiox = pinmap[pin].gpio_peripheral;
     auto pinSource = pinmap[pin].gpio_pin_source;
     auto afr = gpiox->AFR[pinSource >> 0x03];
