@@ -89,6 +89,7 @@ proc rtl872x_fixup_address {address} {
     if {$address >= $FLASH_MMU_START_ADDR} {
         return [expr $address - $FLASH_MMU_START_ADDR]
     }
+    return $address
 }
 
 proc openocd_read_register {reg} {
