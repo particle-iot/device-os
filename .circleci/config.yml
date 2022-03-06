@@ -176,7 +176,7 @@ workflows:
             - particle-ci-private
           matrix:
             parameters:
-              platform: ["photon", "p1", "electron", "argon", "boron", "bsom", "b5som", "tracker", "unit-test newhal gcc"]
+              platform: ["photon", "p1", "electron", "argon", "boron", "bsom", "b5som", "tracker", "p2", "unit-test newhal gcc"]
       - combine-binaries:
           requires:
             - build-and-test
