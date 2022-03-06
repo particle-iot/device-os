@@ -33,10 +33,10 @@ endif
 # Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
-BOOTLOADER_VERSION ?= 1100
+BOOTLOADER_VERSION ?= 1007
 ifeq ($(PLATFORM_ID),32)
-PREBOOTLOADER_MBR_VERSION ?= 1
-PREBOOTLOADER_PART1_VERSION ?= 1
+PREBOOTLOADER_MBR_VERSION ?= 2
+PREBOOTLOADER_PART1_VERSION ?= 2
 endif
 
 # The version of the bootloader that the system firmware requires
@@ -45,7 +45,7 @@ endif
 ifeq ($(PLATFORM_GEN),2)
 BOOTLOADER_DEPENDENCY = 1003
 else ifeq ($(PLATFORM_ID),32)
-BOOTLOADER_DEPENDENCY = 1006
+BOOTLOADER_DEPENDENCY = 1007
 else ifeq ($(PLATFORM_GEN),3)
 BOOTLOADER_DEPENDENCY = 1100
 else
@@ -53,7 +53,7 @@ else
 BOOTLOADER_DEPENDENCY = 0
 endif
 ifeq ($(PLATFORM_ID),32)
-PREBOOTLOADER_PART1_DEPENDENCY = 1
+PREBOOTLOADER_PART1_DEPENDENCY = 2
 endif
 
 ifeq ($(PLATFORM_GEN),3)
