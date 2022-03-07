@@ -33,14 +33,14 @@ test(GPIO_01_PinModeSetResultsInCorrectMode) {
             INPUT_PULLUP,
             INPUT_PULLDOWN,
             OUTPUT_OPEN_DRAIN,
-#if !HAL_PLATFORM_NRF52840
+#if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
             AF_OUTPUT_PUSHPULL,
             AN_INPUT
 #if (PLATFORM_ID == 6)
             ,
             AN_OUTPUT
 #endif
-#endif // !HAL_PLATFORM_NRF52840
+#endif // !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
     };
     int n = sizeof(mode) / sizeof(mode[0]);
     hal_pin_t pin = A0;//pin under test
@@ -160,7 +160,7 @@ test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
     assertLessOrEqual(millis()-startTime, 3150);
 }
 
-#if !HAL_PLATFORM_NRF52840
+#if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
 
 test(GPIO_08_AnalogReadWorksMixedWithDigitalRead) {
     hal_pin_t pin = A0;
@@ -187,4 +187,4 @@ test(GPIO_08_AnalogReadWorksMixedWithDigitalRead) {
     assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
 }
 
-#endif //  !HAL_PLATFORM_NRF52840
+#endif //  !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X

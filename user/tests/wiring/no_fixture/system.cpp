@@ -152,6 +152,7 @@ void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal
     }
 }
 
+#if !HAL_PLATFORM_RTL872X // P2 doesn't have factory module
 test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
 {
     hal_system_info_t info = {};
@@ -299,6 +300,7 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
+#endif // !HAL_PLATFORM_RTL872X
 
 test(SYSTEM_08_system_event_subscription) {
     SCOPE_GUARD({

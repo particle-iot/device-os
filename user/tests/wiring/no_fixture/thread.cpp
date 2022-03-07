@@ -293,7 +293,7 @@ test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 		waitForComplete(wd);
 		uint32_t endTime = millis();
 		const auto expected = t * 4; // should be t*4
-		const auto margin = expected / 100; // 1%
+		const auto margin = expected / 50; // 2%
 		assertMoreOrEqual(endTime - startTime, expected - margin);
 		assertLessOrEqual(endTime - startTime, expected + margin);
 		// LOG_DEBUG(INFO, "E %d",endTime-startTime);

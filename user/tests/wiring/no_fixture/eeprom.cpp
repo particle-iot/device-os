@@ -74,15 +74,16 @@ test(EEPROM_02_ReadWriteSucceedsForAllAddressWithInRange) {
 test(EEPROM_03_ReadWriteFailsForAnyAddressOutOfRange) {
     int EEPROM_SIZE = EEPROM.length();
     uint16_t address = 0;
-    uint8_t data = 0;
+    uint8_t base = (uint8_t)rand();
+    uint8_t data = base;
 
     // when
-    for(address=EEPROM_SIZE, data=0; address < EEPROM_SIZE+10; address++, data++)
+    for(address=EEPROM_SIZE, data=base; address < EEPROM_SIZE+10; address++, data++)
     {
         EEPROM.write(address, data);
     }
     // then
-    for(address=EEPROM_SIZE, data=0; address < EEPROM_SIZE+10; address++, data++)
+    for(address=EEPROM_SIZE, data=base; address < EEPROM_SIZE+10; address++, data++)
     {
         assertNotEqual(EEPROM.read(address), data);
     }

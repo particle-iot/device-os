@@ -102,6 +102,10 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    uint64_t usUnixtimeFromTimeval(const struct timeval* tv) {
+        return (tv->tv_sec * 1000000ULL + tv->tv_usec);
+    }
+
     int getTime(struct timeval* tv) {
         CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
 
@@ -167,11 +171,24 @@ public:
 
     int setAlarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context) {
         CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+        struct timeval alarmTv = *tv;
+        struct timeval now;
+        CHECK(hal_rtc_get_time(&now, nullptr));
+        if (flags & HAL_RTC_ALARM_FLAG_IN) {
+            timeradd(&alarmTv, &now, &alarmTv);
+        }
+
+        auto unixTimeMs = usUnixtimeFromTimeval(&now) / 1000;
+        auto alarmTimeMs = usUnixtimeFromTimeval(&alarmTv) / 1000;
+        if (alarmTimeMs <= unixTimeMs) {
+            // Too late to set such an alarm
+            return SYSTEM_ERROR_TIMEOUT;
+        }
 
         alarmHandler_ = handler;
         alarmContext_ = context;
         
-        struct tm* alarm = localtime(&tv->tv_sec);
+        struct tm* alarm = localtime(&alarmTv.tv_sec);
 
         /* set alarm */
         RTC_AlarmTypeDef RTC_AlarmStruct;
