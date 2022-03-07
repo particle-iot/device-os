@@ -64,7 +64,7 @@ int bootloader_part1_init(void) {
 
     // invoke constructors
     // It might get IPC involed, so it needs to be called after KM4 is powered on.
-    int ctor_num;
+    unsigned int ctor_num;
     for (ctor_num = 0; ctor_num < (link_constructors_size / sizeof(constructor_ptr_t)); ctor_num++) {
         link_constructors_location[ctor_num]();
     }

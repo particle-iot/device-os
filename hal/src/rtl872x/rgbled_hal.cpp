@@ -175,7 +175,7 @@ void hal_led_get_rgb_values(uint16_t* rgb, void* reserved) {
 }
 
 uint32_t hal_led_get_max_rgb_values(void* reserved) {
-    return (1 << hal_pwm_get_resolution(leds[PARTICLE_LED_RED].pin));
+    return (1 << hal_pwm_get_resolution(leds[PARTICLE_LED_RED].pin)) - 1;
 }
 
 void hal_led_set_user(uint8_t state, void* reserved) {

@@ -195,8 +195,8 @@ extern "C" void HAL_Core_System_Reset(void) {
     __disable_irq();
 
     WDG_InitTypeDef WDG_InitStruct = {};
-    u32 CountProcess;
-    u32 DivFacProcess;
+    u32 CountProcess = 0;
+    u32 DivFacProcess = 0;
     BKUP_Set(BKUP_REG0, BIT_KM4SYS_RESET_HAPPEN);
     WDG_Scalar(50, &CountProcess, &DivFacProcess);
     WDG_InitStruct.CountProcess = CountProcess;

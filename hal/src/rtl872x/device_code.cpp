@@ -69,7 +69,7 @@ int get_device_setup_code(char* code, size_t size) {
     if (codeSize < size) {
         code[codeSize] = '\0';
     }
-    return (ret < 0) ? ret : codeSize;
+    return codeSize;
 }
 
 bool fetch_or_generate_setup_ssid(device_code_t* code) {

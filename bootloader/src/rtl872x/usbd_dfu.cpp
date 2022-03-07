@@ -93,8 +93,10 @@ int DfuClassDriver::handleStandardRequest(SetupRequest* req) {
       if (req->wValue < HAL_PLATFORM_USB_DFU_INTERFACES) {
         alternativeSetting_ = req->wValue;
         dev_->setupReply(req, nullptr, 0);
-        break;
+      } else {
+          dev_->setupError(req);
       }
+      break;
     }
     default: {
       dev_->setupError(req);
