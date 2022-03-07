@@ -155,6 +155,7 @@ public:
     int start();
     int setAppearance(uint16_t appearance) const;
     int setDeviceName(const char* deviceName, size_t len);
+    int getDeviceName(char* deviceName, size_t len) const;
 
     int setAdvertisingParameters(const hal_ble_adv_params_t* params);
     int getAdvertisingParameters(hal_ble_adv_params_t* params) const;
@@ -542,6 +543,15 @@ int BleGap::setDeviceName(const char* deviceName, size_t len) {
     }
     devNameLen_ = len;
     CHECK_RTL(le_set_gap_param(GAP_PARAM_DEVICE_NAME, std::min(BLE_MAX_DEV_NAME_LEN, (int)len), (void*)devName_));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::getDeviceName(char* deviceName, size_t len) const {
+    CHECK_TRUE(deviceName, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint16_t nameLen = std::min(len - 1, devNameLen_); // Reserve 1 byte for the NULL-terminated character.
+    memcpy(deviceName, devName_, nameLen);
+    deviceName[nameLen] = '\0';
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1356,7 +1366,8 @@ int hal_ble_gap_set_device_name(const char* device_name, size_t len, void* reser
 int hal_ble_gap_get_device_name(char* device_name, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_device_name().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getDeviceName(device_name, len);
 }
 
 int hal_ble_gap_set_appearance(ble_sig_appearance_t appearance, void* reserved) {
