@@ -1,3 +1,3 @@
 suite('No fixture stress');
 
-platform('gen3');
+platform('gen3', 'gen2');

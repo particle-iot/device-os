@@ -21,3 +21,4 @@ PROVIDE (link_dynalib_location_hal_rgbled               = platform_system_part2_
 PROVIDE (link_dynalib_location_hal_bootloader           = platform_system_part2_dynalib_table_flash_start + 68);
 PROVIDE (link_dynalib_location_hal_dct                  = platform_system_part2_dynalib_table_flash_start + 72);
 PROVIDE (link_dynalib_location_system_module_part2      = platform_system_part2_dynalib_table_flash_start + 76);
+PROVIDE (dynalib_location_hal_storage                   = platform_system_part2_dynalib_table_flash_start + 80);

@@ -2,7 +2,6 @@
 # Define ARM tools
 #
 
-
 # Define the compiler/tools prefix
 GCC_PREFIX ?= arm-none-eabi-
 
@@ -43,6 +42,9 @@ ASFLAGS +=  -g3 -gdwarf-2 -mcpu=cortex-m4 -mthumb -mabi=aapcs
 ASFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 LDFLAGS += -nostartfiles -Xlinker --gc-sections
+
+#enable the build-id GCC feature 
+LDFLAGS += -Wl,--build-id
 endif
 
 #
@@ -86,8 +88,12 @@ CFLAGS += -DARM_CPU_$(shell echo $(ARM_CPU) | tr '-' '_' | tr 'a-z' 'A-Z')
 # If LTO is disabled, LTO information is simply discarded. These parameters
 # are only applied when compiling the sources. A separate setting during linking stage
 # would control whether LTO is enabled or not.
-CPPFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT
+#
+# -fno-use-cxa-atexit makes sure that destructors for statically created C++ objects are never called,
+# which saves us some flash space.
+CPPFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT -fno-use-cxa-atexit
 CONLYFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT
+LDFLAGS += -fno-use-cxa-atexit
 
 ifeq ($(COMPILE_LTO),y)
 LDFLAGS += -flto -Os -fuse-linker-plugin

@@ -162,7 +162,7 @@ int fetch_device_public_key_ex(void)
     return 0; // flash_pub_key
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
@@ -170,9 +170,6 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
-#if defined(HYBRID_BUILD)
-            bool hybrid_module_found = false;
-#endif
             bool user_module_found = false;
             memset(info->modules, 0, sizeof(hal_module_t) * count);
             for (unsigned i = 0; i < count; i++) {
@@ -182,27 +179,31 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
                 // 128KB application will take precedence and the newer 256KB application will not
                 // be reported in the modules info. It will be missing from the System Describe,
                 // 'serial inspect` and any other facility that uses HAL_System_Info().
-                if (bounds->module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
+                if (bounds->store == MODULE_STORE_MAIN && bounds->module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
                     // Make sure that we report only single user part (either 128KB or 256KB) in the
                     // list of modules.
+                    // Make sure to still report correct bounds structure, normally it gets taken care of by fetch_module
+                    module->bounds = *bounds;
                     continue;
                 }
                 bool valid = fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
-                valid = valid && (module->validity_checked == module->validity_result);
-                if (valid && bounds->module_function == MODULE_FUNCTION_USER_PART) {
-                    user_module_found = true;
+                // NOTE: fetch_module may return other validation flags in module->validity_checked
+                // and module->validity_result
+                // Here specifically we are only concerned whether the integrity check passes or not
+                // and skip such 'broken' modules from module info
+                valid = valid && (module->validity_result & MODULE_VALIDATION_INTEGRITY);
+                if (bounds->store == MODULE_STORE_MAIN && bounds->module_function == MODULE_FUNCTION_USER_PART) {
+                    if (valid) {
+                        user_module_found = true;
+                    } else {
+                        // IMPORTANT: we should not be reporting invalid user module in the describe
+                        // as it may contain garbage data and may be presented as for example
+                        // system module with invalid dependency on some non-existent module
+                        // FIXME: we should potentially do a similar thing for other module types
+                        // but for now only tackling user modules
+                        memset(module, 0, sizeof(*module));
+                    }
                 }
-#if defined(HYBRID_BUILD)
-#ifndef MODULAR_FIRMWARE
-#error HYBRID_BUILD must be modular
-#endif
-                // change monolithic firmware to modular in the hybrid build.
-                if (!hybrid_module_found && info->modules[i].info.module_function == MODULE_FUNCTION_MONO_FIRMWARE) {
-                    info->modules[i].info.module_function = MODULE_FUNCTION_SYSTEM_PART;
-                    info->modules[i].info.module_index = 1; 
-                    hybrid_module_found = true;
-                }
-#endif // HYBRID_BUILD
             }
         }
         HAL_OTA_Add_System_Info(info, construct, reserved);
@@ -213,6 +214,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         delete info->modules;
         info->modules = NULL;
     }
+    return 0;
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
@@ -365,7 +367,10 @@ uint16_t HAL_OTA_ChunkSize()
 
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 {
-    FLASH_Begin(address, length);
+    const int r = FLASH_Begin(address, length);
+    if (r != FLASH_ACCESS_RESULT_OK) {
+        return false;
+    }
     return true;
 }
 
@@ -592,7 +597,6 @@ int HAL_FLASH_End(void* reserved)
                 result = flash_bootloader(module, moduleSize);
                 break;
             }
-            // Fall-through after we've patched the destination.
             // We are going to put the bootloader module temporary into internal flash
             // in place of the application (saving application into a different location on external flash).
             // MODULE_VERIFY_DESTINATION_IS_START_ADDRESS check will normally fail for bootloaders that
@@ -601,6 +605,7 @@ int HAL_FLASH_End(void* reserved)
             info.module_start_address = (const void*)module_user_compat.start_address;
             info.module_end_address = (const void*)endAddress;
         }
+        // Fall through after we've patched the destination.
         default: { // User part, system part or a radio stack module or bootloader if MBR updates are supported
             uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
             if (info.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
@@ -794,7 +799,7 @@ void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
 int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
 {
     unsigned offset = 0;
-    unsigned length = -1;
+    unsigned length = 0;
     bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 
     switch (config_item)
@@ -831,7 +836,7 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
     case SYSTEM_CONFIG_SOFTAP_PREFIX:
         offset = DCT_SSID_PREFIX_OFFSET;
         length = DCT_SSID_PREFIX_SIZE-1;
-        if (data_length>length)
+        if (data_length>(unsigned)length)
             data_length = length;
         dct_write_app_data(&data_length, offset++, 1);
         break;
@@ -845,8 +850,8 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         break;
     }
 
-    if (length>=0)
-        dct_write_app_data(data, offset, length>data_length ? data_length : length);
+    if (length>0)
+        dct_write_app_data(data, offset, std::min<size_t>(data_length, length));
 
     return length;
 }

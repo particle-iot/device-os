@@ -55,10 +55,10 @@ static uint8_t sampleTime = ADC_SAMPLING_TIME;
  * @retval None
  */
 void hal_adc_set_sample_time(uint8_t sample_time) {
-    if (sample_time < ADC_SampleTime_3Cycles || sample_time > ADC_SampleTime_480Cycles) {
-        sampleTime = ADC_SAMPLING_TIME;
-    } else {
+    if (sample_time >= ADC_SampleTime_3Cycles && sample_time <= ADC_SampleTime_480Cycles) {
         sampleTime = sample_time;
+    } else {
+        sampleTime = ADC_SAMPLING_TIME;
     }
 }
 

@@ -100,6 +100,8 @@ int pinSetDriveStrength(hal_pin_t pin, DriveStrength drive)
     .size = sizeof(hal_gpio_config_t),
     .version = HAL_GPIO_VERSION,
     .mode = mode,
+    .set_value = 0,
+    .value = 0,
     .drive_strength = particle::to_underlying(drive)
   };
   return hal_gpio_configure(pin, &conf, nullptr);
@@ -194,10 +196,12 @@ int32_t analogRead(hal_pin_t pin)
 {
 #if PLATFORM_ID != PLATFORM_P2
   // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
+#if defined(FIRST_ANALOG_PIN) && FIRST_ANALOG_PIN > 0
   if(pin < FIRST_ANALOG_PIN)
   {
     pin = pin + FIRST_ANALOG_PIN;
   }
+#endif // defined(FIRST_ANALOG_PIN) && FIRST_ANALOG_PIN > 0
 #endif
 
   // Safety check

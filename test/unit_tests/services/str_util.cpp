@@ -22,7 +22,7 @@
 using namespace particle;
 
 TEST_CASE("escape()") {
-    char buf[10] = {};
+    char buf[100] = {};
 
     SECTION("source string can be empty") {
         auto n = escape("", "", '@', buf, sizeof(buf));
@@ -50,12 +50,53 @@ TEST_CASE("escape()") {
         CHECK(strcmp(buf, "abcd") == 0);
     }
     SECTION("destination buffer can be smaller than the source string") {
-        auto n = escape("abcdefghijklmnop", "ap", '@', buf, sizeof(buf));
+        auto n = escape("abcdefghijklmnop", "ap", '@', buf, 10);
         CHECK(n == 18); // Size of the entire escaped string
         CHECK(strcmp(buf, "@abcdefgh") == 0);
     }
     SECTION("destination buffer can be empty") {
         auto n = escape("abcd", "bd", '@', nullptr, 0);
         CHECK(n == 6);
+    }
+}
+
+TEST_CASE("toHex()") {
+    char buf[100] = {};
+
+    SECTION("source data can be empty") {
+        auto n = toHex(nullptr, 0, buf, sizeof(buf));
+        CHECK(n == 0);
+    }
+    SECTION("null-terminates the destination buffer") {
+        memset(buf, 0xff, sizeof(buf));
+        auto n = toHex(nullptr, 0, buf, sizeof(buf));
+        CHECK(n == 0);
+        CHECK(buf[0] == '\0');
+    }
+    SECTION("converts data to hex correctly") {
+        auto n = toHex("\x01\x23\x45\x67\x89\xab\xcd\xef", 8, buf, sizeof(buf));
+        CHECK(n == 16);
+        CHECK(strcmp(buf, "0123456789abcdef") == 0);
+    }
+    SECTION("destination buffer can be smaller than necessary to store the entire string") {
+        memset(buf, 0xff, sizeof(buf));
+        auto n = toHex("\x01\x23\x45\x67\x89\xab\xcd\xef", 8, buf, 1);
+        CHECK(n == 0);
+        CHECK(strcmp(buf, "") == 0);
+        n = toHex("\x01\x23\x45\x67\x89\xab\xcd\xef", 8, buf, 2);
+        CHECK(n == 1);
+        CHECK(strcmp(buf, "0") == 0);
+        n = toHex("\x01\x23\x45\x67\x89\xab\xcd\xef", 8, buf, 3);
+        CHECK(n == 2);
+        CHECK(strcmp(buf, "01") == 0);
+        n = toHex("\x01\x23\x45\x67\x89\xab\xcd\xef", 8, buf, 4);
+        CHECK(n == 3);
+        CHECK(strcmp(buf, "012") == 0);
+    }
+    SECTION("destination buffer can be empty") {
+        memset(buf, 0xff, sizeof(buf));
+        auto n = toHex("\x01\x23\x45\x67\x89\xab\xcd\xef", 8, buf, 0);
+        CHECK(n == 0);
+        CHECK((uint8_t)buf[0] == 0xff);
     }
 }

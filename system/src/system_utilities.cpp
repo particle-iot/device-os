@@ -50,7 +50,7 @@ int system_version_info(SystemVersionInfo* info, void* /*reserved*/)
         if (info->size>=28)
         {
             info->versionNumber = SYSTEM_VERSION;
-            strncpy(info->versionString, stringify(SYSTEM_VERSION_STRING), sizeof(info->versionString));
+            strncpy(info->versionString, PP_STR(SYSTEM_VERSION_STRING), sizeof(info->versionString));
         }
     }
     return sizeof(SystemVersionInfo);

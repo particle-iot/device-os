@@ -72,7 +72,7 @@ typedef enum {
 } USB_InSetupRequestState;
 
 static uint8_t USB_SetupRequest_Data[USBD_EP0_MAX_PACKET_SIZE];
-static HAL_USB_SetupRequest USB_SetupRequest = {{0}};
+static HAL_USB_SetupRequest USB_SetupRequest = {0};
 static volatile uint32_t USB_InSetupCounter = 0;
 static volatile USB_InSetupRequestState USB_InSetupRequest = USB_IN_SETUP_REQUEST_STATE_NONE;
 static HAL_USB_Vendor_Request_Callback USB_Vendor_Request_Callback = NULL;

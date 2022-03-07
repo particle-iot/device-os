@@ -25,6 +25,24 @@ namespace test {
 std::string randString(size_t size);
 std::default_random_engine& randGen();
 
+template<typename T>
+T randNumber() {
+    std::uniform_int_distribution<T> dist;
+    return dist(randGen());
+}
+
+template<typename T>
+T randNumber(T ref) {
+    std::uniform_int_distribution<T> dist;
+    return dist(randGen());
+}
+
+template<typename T>
+void setRandInt(T& v) {
+    std::uniform_int_distribution<T> dist;
+    v = dist(randGen());
+}
+
 } // namespace test
 
 } // namespace particle

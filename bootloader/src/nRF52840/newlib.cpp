@@ -45,6 +45,13 @@ void operator delete[](void *p)
 {
 }
 
+void operator delete(void *p, size_t size)
+{
+}
+
+void operator delete[](void *p, size_t size)
+{
+}
 
 int _kill(int pid, int sig) __attribute((weak));
 

@@ -24,6 +24,11 @@
 
 namespace {
 
+struct NetworkState {
+    volatile bool disconnected = false;
+};
+NetworkState networkState;
+
 template <typename T, typename DT>
 T divRoundClosest(T n, DT d) {
     return ((n + (d / 2)) / d);
@@ -63,7 +68,7 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
 } // anonymous
 
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
-    const system_tick_t WAIT_TIMEOUT = 5 * 60 * 1000;
+    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
 
     Network.on();
     Network.connect();
@@ -76,15 +81,9 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     waitFor(Network.ready, WAIT_TIMEOUT);
     assertTrue(Network.ready());
 
-    struct State {
-        volatile bool disconnected;
-    };
-    State state = {};
-
     auto evHandler = [](system_event_t event, int param, void* ctx) {
-        State* state = static_cast<State*>(ctx);
         if (event == network_status && param == network_status_disconnected) {
-            state->disconnected = true;
+            networkState.disconnected = true;
         }
     };
 
@@ -164,7 +163,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     if (millis() - start < MINIMUM_TEST_TIME) {
         delay(millis() - start);
     }
-    assertFalse((bool)state.disconnected);
+    assertFalse((bool)networkState.disconnected);
 #if PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM
     assertMoreOrEqual((mtu - IPV4_PLUS_UDP_HEADER_LENGTH), MBEDTLS_SSL_MAX_CONTENT_LEN);
 #else
@@ -231,7 +230,7 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 static bool s_networkStatusChanged = false;
 
 test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
-    const system_tick_t WAIT_TIMEOUT = 60 * 1000;
+    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
 
     SCOPE_GUARD({
         Particle.disconnect();

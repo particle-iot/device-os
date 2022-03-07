@@ -26,11 +26,10 @@ extern "C" {
 #include "check.h"
 
 void hal_gpio_mode(hal_pin_t pin, PinMode mode) {
-    const hal_gpio_config_t conf = {
-        .size = sizeof(conf),
-        .version = HAL_GPIO_VERSION,
-        .mode = mode
-    };
+    hal_gpio_config_t conf = {};
+    conf.size = sizeof(conf);
+    conf.version = HAL_GPIO_VERSION;
+    conf.mode = mode;
     hal_gpio_configure(pin, &conf, nullptr);
 }
 

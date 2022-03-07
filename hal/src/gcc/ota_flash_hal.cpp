@@ -7,11 +7,12 @@
 #include "filesystem.h"
 #include "bytes2hexbuf.h"
 
-void HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
     info->platform_id = PLATFORM_ID;
     info->module_count = 0;
     info->modules = NULL;
+    return 0;
 }
 
 uint32_t HAL_OTA_FlashAddress()
@@ -120,7 +121,7 @@ void parseServerAddressData(ServerAddress* server_addr, uint8_t* buf)
         *p = 0;
         break;
       }
-      // else fall through to default
+      // else fall through
 
     default:
       server_addr->addr_type = INVALID_INTERNET_ADDRESS;

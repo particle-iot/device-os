@@ -73,6 +73,7 @@ public:
     virtual int enterDataMode() override;
     virtual int getMtu() override;
     virtual int urcs(bool enable) override;
+    virtual int startNcpFwUpdate(bool update) override;
 
     auto getMuxer() {
         return &muxer_;

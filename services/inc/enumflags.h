@@ -20,6 +20,7 @@
 
 #include <type_traits>
 #include <cstddef>
+#include <algorithm>
 
 namespace particle {
 
@@ -44,7 +45,6 @@ public:
 
     EnumFlags();
     EnumFlags(const T& value);
-    EnumFlags(const EnumFlags<T>& flags);
 
     EnumFlags<T>& set(const EnumFlags<T>& flags);
     EnumFlags<T>& clear(const EnumFlags<T>& flags);
@@ -135,11 +135,6 @@ inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>
 template<typename T>
 inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::EnumFlags(const T& value) {
     value_ = static_cast<ValueType>(value);
-}
-
-template<typename T>
-inline particle::EnumFlags<T, typename std::enable_if_t<std::is_enum<T>::value>>::EnumFlags(const EnumFlags<T>& flags) {
-    value_ = flags.value_;
 }
 
 template<typename T>

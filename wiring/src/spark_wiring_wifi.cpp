@@ -149,7 +149,7 @@ namespace spark {
             return sig;
         }
 
-        wlan_connected_info_t info = {0};
+        wlan_connected_info_t info = {};
         info.size = sizeof(info);
         int r = wlan_connected_info(nullptr, &info, nullptr);
         if (r == 0) {

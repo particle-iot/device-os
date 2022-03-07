@@ -80,8 +80,12 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved);
 /**
  * Get the device secret data.
  */
-// TODO: Move this function to an appropriate module
 int hal_get_device_secret(char* data, size_t size, void* reserved);
+
+/**
+ * Set the device's secret.
+ */
+int hal_set_device_secret(char* data, size_t size, void* reserved);
 
 /**
  * Get the device's hardware version.
@@ -92,6 +96,8 @@ int hal_get_device_hw_version(uint32_t* revision, void* reserved);
  * Get the device's hardware model number and variant.
  */
 int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved);
+
+#include "deviceid_hal_compat.h"
 
 #ifdef	__cplusplus
 }

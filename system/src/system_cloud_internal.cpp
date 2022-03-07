@@ -312,7 +312,7 @@ User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
 
 User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey, const cloud_function_descriptor* desc)
 {
-	User_Func_Lookup_Table_t item = {0};
+	User_Func_Lookup_Table_t item = {};
 	item.pUserFunc = desc->fn;
 	item.pUserFuncData = desc->data;
     memcpy(item.userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
@@ -428,7 +428,10 @@ void invokeEventHandlerInternal(uint16_t handlerInfoSize, FilteringEventHandler*
 {
     if(handlerInfo->handler_data)
     {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
         EventHandlerWithData handler = (EventHandlerWithData) handlerInfo->handler;
+#pragma GCC diagnostic pop
         handler(handlerInfo->handler_data, event_name, data);
     }
     else
@@ -718,7 +721,9 @@ size_t system_interpolate_cloud_server_hostname(const char* var, size_t var_len,
         String deviceID = spark_deviceID();
         size_t id_len = deviceID.length();
 
-        SystemVersionInfo sys_ver;
+        SystemVersionInfo sys_ver = {};
+        sys_ver.size = sizeof(SystemVersionInfo);
+
         system_version_info(&sys_ver, nullptr);
         uint8_t mv = BYTE_N(sys_ver.versionNumber, 3);
         String majorVer = String::format(".v%d", mv);
@@ -1079,12 +1084,12 @@ void Spark_Protocol_Init(void)
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
         // Enable device-initiated describe messages
-        spark_protocol_set_connection_property(sp, protocol::Connection::DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
+        spark_protocol_set_connection_property(sp, protocol::Connection::ENABLE_DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
 
 #if HAL_PLATFORM_COMPRESSED_OTA
         // Enable compressed/combined OTA updates
         if (bootloader_get_version() >= COMPRESSED_OTA_MIN_BOOTLOADER_VERSION) {
-            spark_protocol_set_connection_property(sp, protocol::Connection::COMPRESSED_OTA, 0, nullptr, nullptr);
+            spark_protocol_set_connection_property(sp, protocol::Connection::COMPRESSED_OTA, 1, nullptr, nullptr);
         }
 #endif // HAL_PLATFORM_COMPRESSED_OTA
 
@@ -1152,11 +1157,19 @@ int Spark_Handshake(bool presence_announce)
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 
     if (err == protocol::SESSION_RESUMED) {
+        // XXX: ideally this event should be generated before we perform the handshake
+        // but the current semantic of indicating after the handshake/session-resumption are done
+        // also deserves a chance.
+        system_notify_event(cloud_status, cloud_status_session_resume);
         session_resumed = true;
     } else if (err != 0) {
         return spark_protocol_to_system_error(err);
     }
     if (!session_resumed) {
+        // XXX: ideally this event should be generated before we perform the handshake
+        // but the current semantic of indicating after the handshake/session-resumption are done
+        // also deserves a chance.
+        system_notify_event(cloud_status, cloud_status_handshake);
         char buf[CLAIM_CODE_SIZE + 1];
         if (!HAL_Get_Claim_Code(buf, sizeof(buf)) && buf[0] != 0 && (uint8_t)buf[0] != 0xff) {
             LOG(INFO,"Send spark/device/claim/code event for code %s", buf);

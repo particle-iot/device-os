@@ -99,7 +99,21 @@ bool testCloudConnectTimeFromColdBoot() {
     }
     const auto t2 = millis();
     // This will not be entirely accurate as we are capturing signal data after connection is made
-    const auto signal = network().RSSI();
+    auto signal = network().RSSI();
+#if Wiring_Cellular
+    if (!signal.isValid()) {
+        // FIXME: some platforms only provide signal data after 5-6 seconds
+        CellularDevice devInfo = {};
+        devInfo.size = sizeof(devInfo);
+        if (cellular_device_info(&devInfo, nullptr)) {
+            return false;
+        }
+        if (devInfo.dev == DEV_QUECTEL_BG96 || devInfo.dev == DEV_QUECTEL_EG91_NA) {
+            delay(6000);
+        }
+        signal = network().RSSI();
+    }
+#endif // Wiring_Cellular
     const auto t3 = millis();
     Particle.connect();
     waitFor(Particle.connected, WAIT_FOR_TIMEOUT);

@@ -62,8 +62,8 @@ typedef struct rtl_pwm_info_t {
 
 rtl_pwm_info_t pwmInfo[RTL_PWM_INSTANCE_NUM] = {
 //   tim,    irqn,       timIdx, resolution,            state,             frequency
-    {TIMM05, TIMER5_IRQ, 5,      10,          10,       PWM_STATE_UNKNOWN, DEFAULT_PWM_FREQ},
-    {TIM5,   TIMER5_IRQ, 5,      10,          10,       PWM_STATE_UNKNOWN, DEFAULT_PWM_FREQ}
+    {TIMM05, TIMER5_IRQ, 5,      10,          10,       PWM_STATE_UNKNOWN, DEFAULT_PWM_FREQ, {0}, {0}},
+    {TIM5,   TIMER5_IRQ, 5,      10,          10,       PWM_STATE_UNKNOWN, DEFAULT_PWM_FREQ, {0}, {0}}
 };
 
 bool isPwmPin(uint16_t pin) {

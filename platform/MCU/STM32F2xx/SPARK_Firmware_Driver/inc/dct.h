@@ -109,7 +109,8 @@ typedef struct __attribute__((packed)) application_dct {
     eap_config_t eap_config;             // WLAN EAP settings
     uint8_t device_secret[15];           // Device secret data (aka "mobile secret")
     hal_power_config power_config;       // Power management configuration
-    uint8_t reserved2[225];
+    uint32_t ext_low_speed_clock_disable;// Disable external low speed clock
+    uint8_t reserved2[221];
     // safe to add more data here or use up some of the reserved space to keep the end where it is
     uint8_t end[0];
 } application_dct_t;
@@ -144,6 +145,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_EAP_CONFIG_OFFSET (offsetof(application_dct_t, eap_config))
 #define DCT_DEVICE_SECRET_OFFSET (offsetof(application_dct_t, device_secret))
 #define DCT_POWER_CONFIG_OFFSET (offsetof(application_dct_t, power_config))
+#define DCT_EXT_LOW_SPEED_CLOCK_DISABLE_OFFSET (offsetof(application_dct_t, ext_low_speed_clock_disable))
 
 #define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
 #define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
@@ -174,6 +176,7 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_EAP_CONFIG_SIZE (sizeof(application_dct_t::eap_config))
 #define DCT_DEVICE_SECRET_SIZE (sizeof(application_dct_t::device_secret))
 #define DCT_POWER_CONFIG_SIZE (sizeof(application_dct_t::power_config))
+#define DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SIZE (sizeof(application_dct_t::ext_low_speed_clock_disable))
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
@@ -214,7 +217,8 @@ STATIC_ASSERT_DCT_OFFSET(led_theme, 3759 /* 3663 + 24 * 4 */);
 STATIC_ASSERT_DCT_OFFSET(eap_config, 3823 /* 3759 + 64 */);
 STATIC_ASSERT_DCT_OFFSET(device_secret, 8119 /* 3823 + (196 + 4*1024 + 4) */);
 STATIC_ASSERT_DCT_OFFSET(power_config, 8134 /* 8119 + 15 */);
-STATIC_ASSERT_DCT_OFFSET(reserved2, 8166 /* 8134 + 32 */);
+STATIC_ASSERT_DCT_OFFSET(ext_low_speed_clock_disable, 8166 /* 8134 + 32 */);
+STATIC_ASSERT_DCT_OFFSET(reserved2, 8170 /* 8166 + 4 */);
 STATIC_ASSERT_DCT_OFFSET(end, 8391 /* 8134 + 225 */);
 
 STATIC_ASSERT_FLAGS_OFFSET(Bootloader_Version_SysFlag, 4);
@@ -233,6 +237,8 @@ STATIC_ASSERT_FLAGS_OFFSET(reserved, 24);
 #define DCT_OTA_UPDATE_FLAG_SET (0xA5)
 #define DCT_OTA_UPDATE_FLAG_CLEAR (0XFF)
 
+#define DCT_EXT_LOW_SPEED_CLOCK_DISABLE_SET (0xFA17D15E)
+#define DCT_EXT_LOW_SPEED_CLOCK_DISABLE_CLEAR (0xFFFFFFFF)
 
 // Note: This function is deprecated, use dct_read_app_data_copy() or dct_read_app_data_lock() instead
 const void* dct_read_app_data(uint32_t offset);

@@ -53,6 +53,7 @@ const network_interface_t NIF_DEFAULT = 0;
 const void* network_config(network_handle_t network, uint32_t param1, void* reserved);
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
+// NOTE: this API may be called from an ISR
 bool network_connecting(network_handle_t network, uint32_t param1, void* reserved);
 void network_disconnect(network_handle_t network, uint32_t reason, void* reserved);
 bool network_ready(network_handle_t network, uint32_t type, void* reserved);

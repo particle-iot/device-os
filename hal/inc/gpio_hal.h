@@ -74,6 +74,8 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value);
 int32_t hal_gpio_read(hal_pin_t pin);
 uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value);
 
+#include "gpio_hal_compat.h"
+
 #ifdef __cplusplus
 }
 #endif

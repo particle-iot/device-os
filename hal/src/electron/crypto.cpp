@@ -3,7 +3,7 @@
 
 struct MbedTlsCallbackInitializer {
     MbedTlsCallbackInitializer() {
-        mbedtls_callbacks_t cb = {0};
+        mbedtls_callbacks_t cb = {};
         cb.version = 0;
         cb.size = sizeof(cb);
         // cb.mbedtls_md_list = mbedtls_md_list;

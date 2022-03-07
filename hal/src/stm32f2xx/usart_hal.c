@@ -52,6 +52,17 @@ typedef struct stm32_usart_config_t {
     uint32_t config;
 } stm32_usart_config_t;
 
+typedef struct stm32_usart_ring_buffer_t {
+    union {
+        uint8_t* buffer;
+        uint16_t* buffer16;
+    };
+    uint16_t buffer_size;
+    uint16_t size;
+    volatile uint16_t head;
+    volatile uint16_t tail;
+} stm32_usart_ring_buffer_t;
+
 /* Private variables ---------------------------------------------------------*/
 typedef struct stm32_usart_info_t {
     USART_TypeDef* peripheral;
@@ -72,9 +83,8 @@ typedef struct stm32_usart_info_t {
     uint8_t cts_pin;
     uint8_t rts_pin;
 
-    // Buffer pointers. These need to be global for IRQ handler access
-    hal_usart_ring_buffer_t* tx_buffer;
-    hal_usart_ring_buffer_t* rx_buffer;
+    stm32_usart_ring_buffer_t rx_buffer;
+    stm32_usart_ring_buffer_t tx_buffer;
 
     bool configured;
     volatile hal_usart_state_t state;
@@ -83,6 +93,8 @@ typedef struct stm32_usart_info_t {
     stm32_usart_config_t conf;
 } stm32_usart_info_t;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /*
  * USART mapping
  */
@@ -112,19 +124,51 @@ stm32_usart_info_t USART_MAP[HAL_PLATFORM_USART_NUM] = {
    ,{ UART5,  &RCC->APB1ENR, RCC_APB1Periph_UART5,  UART5_IRQn,  C1,     C0,     GPIO_PinSource12, GPIO_PinSource2,  GPIO_AF_UART5, PIN_INVALID, PIN_INVALID } // UART 5
 #endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 };
+#pragma GCC diagnostic pop
 
 static USART_InitTypeDef usartInitStructure;
 static stm32_usart_info_t *usartMap[HAL_PLATFORM_USART_NUM]; // pointer to USART_MAP[] containing USART peripheral register locations (etc)
 
 /* Private function prototypes -----------------------------------------------*/
-inline void storeChar(uint16_t c, hal_usart_ring_buffer_t *buffer) __attribute__((always_inline));
-inline void storeChar(uint16_t c, hal_usart_ring_buffer_t *buffer) {
-    unsigned i = (unsigned int)(buffer->head + 1) % SERIAL_BUFFER_SIZE;
+inline void storeChar(uint16_t c, stm32_usart_ring_buffer_t *buffer) __attribute__((always_inline));
+inline void storeChar(uint16_t c, stm32_usart_ring_buffer_t *buffer) {
+    unsigned i = (unsigned int)(buffer->head + 1) % buffer->size;
 
     if (i != buffer->tail) {
-        buffer->buffer[buffer->head] = c;
+        if (buffer->size == buffer->buffer_size) {
+            buffer->buffer[buffer->head] = c;
+        } else {
+            buffer->buffer16[buffer->head] = c;
+        }
         buffer->head = i;
     }
+}
+
+inline uint16_t fetchChar(stm32_usart_ring_buffer_t *buffer) __attribute__((always_inline));
+inline uint16_t fetchChar(stm32_usart_ring_buffer_t *buffer) {
+    uint16_t c = 0;
+
+    if (buffer->size == buffer->buffer_size) {
+        c = buffer->buffer[buffer->tail++];
+    } else {
+        c = buffer->buffer16[buffer->tail++];
+    }
+
+    buffer->tail %= buffer->size;
+    return c;
+}
+
+inline uint16_t peekChar(stm32_usart_ring_buffer_t *buffer) __attribute__((always_inline));
+inline uint16_t peekChar(stm32_usart_ring_buffer_t *buffer) {
+    uint16_t c = 0;
+
+    if (buffer->size == buffer->buffer_size) {
+        c = buffer->buffer[buffer->tail++];
+    } else {
+        c = buffer->buffer16[buffer->tail++];
+    }
+
+    return c;
 }
 
 static uint8_t calculateWordLength(uint32_t config, uint8_t noparity);
@@ -272,7 +316,7 @@ void usartEndImpl(hal_usart_interface_t serial, bool end) {
     }
 
     // Wait for transmission of outgoing data
-    while (usartMap[serial]->tx_buffer->head != usartMap[serial]->tx_buffer->tail);
+    while (usartMap[serial]->tx_buffer.head != usartMap[serial]->tx_buffer.tail);
 
     // Disable the USART
     USART_Cmd(usartMap[serial]->peripheral, DISABLE);
@@ -316,7 +360,14 @@ void usartEndImpl(hal_usart_interface_t serial, bool end) {
     }
 }
 
-void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer) {
+int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* conf, void* reserved) {
+    CHECK_TRUE(conf, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    CHECK_TRUE(conf->rx_buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(conf->rx_buffer_size, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(conf->tx_buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(conf->tx_buffer_size, SYSTEM_ERROR_INVALID_ARGUMENT);
+
     usartMap[serial]->configured = false;
 
     if (serial == HAL_USART_SERIAL1) {
@@ -334,16 +385,34 @@ void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_bu
     }
 #endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
-    usartMap[serial]->rx_buffer = rx_buffer;
-    usartMap[serial]->tx_buffer = tx_buffer;
-
-    memset(usartMap[serial]->rx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
-    memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
+    usartMap[serial]->rx_buffer.buffer = conf->rx_buffer;
+    usartMap[serial]->rx_buffer.size = conf->rx_buffer_size;
+    usartMap[serial]->rx_buffer.buffer_size = conf->rx_buffer_size;
+    usartMap[serial]->rx_buffer.head = 0;
+    usartMap[serial]->rx_buffer.tail = 0;
+    usartMap[serial]->tx_buffer.buffer = conf->tx_buffer;
+    usartMap[serial]->tx_buffer.size = conf->tx_buffer_size;
+    usartMap[serial]->tx_buffer.buffer_size = conf->tx_buffer_size;
+    usartMap[serial]->tx_buffer.head = 0;
+    usartMap[serial]->tx_buffer.tail = 0;
 
     usartMap[serial]->state = HAL_USART_STATE_DISABLED;
     usartMap[serial]->transmitting = false;
 
     usartMap[serial]->configured = true;
+    return 0;
+}
+
+void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer) {
+    hal_usart_buffer_config_t conf = {
+        .size = sizeof(hal_usart_buffer_config_t),
+        .rx_buffer = rx_buffer->buffer,
+        .rx_buffer_size = sizeof(rx_buffer->buffer),
+        .tx_buffer = tx_buffer->buffer,
+        .tx_buffer_size = sizeof(tx_buffer->buffer)
+    };
+
+    hal_usart_init_ex(serial, &conf, NULL);
 }
 
 void hal_usart_begin(hal_usart_interface_t serial, uint32_t baud) {
@@ -556,6 +625,18 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
     usartMap[serial]->state = HAL_USART_STATE_ENABLED;
     usartMap[serial]->transmitting = false;
 
+    if (calculateWordLength(config, 1) <= 8) {
+        usartMap[serial]->rx_buffer.size = usartMap[serial]->rx_buffer.buffer_size;
+        usartMap[serial]->tx_buffer.size = usartMap[serial]->tx_buffer.buffer_size;
+    } else {
+        usartMap[serial]->rx_buffer.size = usartMap[serial]->rx_buffer.buffer_size / 2;
+        usartMap[serial]->tx_buffer.size = usartMap[serial]->tx_buffer.buffer_size / 2;
+    }
+
+    // These should already be correctly initialized by hal_usart_init_ex or reset by hal_usart_end()
+    // usartMap[serial]->rx_buffer.head = usartMap[serial]->rx_buffer.tail = 0;
+    // usartMap[serial]->tx_buffer.head = usartMap[serial]->tx_buffer.tail = 0;
+
     // Enable USART Receive and Transmit interrupts
     USART_ITConfig(usartMap[serial]->peripheral, USART_IT_TXE, ENABLE);
     USART_ITConfig(usartMap[serial]->peripheral, USART_IT_RXNE, ENABLE);
@@ -569,11 +650,8 @@ void hal_usart_end(hal_usart_interface_t serial) {
     usartEndImpl(serial, true);
 
     // clear any received data
-    usartMap[serial]->rx_buffer->head = usartMap[serial]->rx_buffer->tail;
-    // Undo any pin re-mapping done for this USART
-    // ...
-    memset(usartMap[serial]->rx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
-    memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
+    usartMap[serial]->rx_buffer.head = usartMap[serial]->rx_buffer.tail = 0;
+    usartMap[serial]->tx_buffer.head = usartMap[serial]->tx_buffer.tail = 0;
 
     usartMap[serial]->state = HAL_USART_STATE_DISABLED;
     usartMap[serial]->transmitting = false;
@@ -590,33 +668,31 @@ uint32_t hal_usart_write_nine_bits(hal_usart_interface_t serial, uint16_t data) 
     data &= calculateDataBitsMask(usartMap[serial]->conf.config);
     // interrupts are off and data in queue;
     if ((USART_GetITStatus(usartMap[serial]->peripheral, USART_IT_TXE) == RESET)
-        && usartMap[serial]->tx_buffer->head != usartMap[serial]->tx_buffer->tail) {
+        && usartMap[serial]->tx_buffer.head != usartMap[serial]->tx_buffer.tail) {
         // Get him busy
         USART_ITConfig(usartMap[serial]->peripheral, USART_IT_TXE, ENABLE);
     }
 
-    unsigned i = (usartMap[serial]->tx_buffer->head + 1) % SERIAL_BUFFER_SIZE;
+    unsigned i = (usartMap[serial]->tx_buffer.head + 1) % usartMap[serial]->tx_buffer.size;
 
     // If the output buffer is full, there's nothing for it other than to
     // wait for the interrupt handler to empty it a bit
     // no space so or Called Off Panic with interrupt off get the message out!
     // make space Enter Polled IO mode
-    while (i == usartMap[serial]->tx_buffer->tail || ((__get_PRIMASK() & 1) && usartMap[serial]->tx_buffer->head != usartMap[serial]->tx_buffer->tail) ) {
+    while (i == usartMap[serial]->tx_buffer.tail || ((__get_PRIMASK() & 1) && usartMap[serial]->tx_buffer.head != usartMap[serial]->tx_buffer.tail) ) {
         // Interrupts are on but they are not being serviced because this was called from a higher
         // Priority interrupt
         if (USART_GetITStatus(usartMap[serial]->peripheral, USART_IT_TXE) && USART_GetFlagStatus(usartMap[serial]->peripheral, USART_FLAG_TXE)) {
             // protect for good measure
             USART_ITConfig(usartMap[serial]->peripheral, USART_IT_TXE, DISABLE);
             // Write out a byte
-            USART_SendData(usartMap[serial]->peripheral,  usartMap[serial]->tx_buffer->buffer[usartMap[serial]->tx_buffer->tail++]);
-            usartMap[serial]->tx_buffer->tail %= SERIAL_BUFFER_SIZE;
+            USART_SendData(usartMap[serial]->peripheral, fetchChar(&usartMap[serial]->tx_buffer));
             // unprotect
             USART_ITConfig(usartMap[serial]->peripheral, USART_IT_TXE, ENABLE);
         }
     }
 
-    usartMap[serial]->tx_buffer->buffer[usartMap[serial]->tx_buffer->head] = data;
-    usartMap[serial]->tx_buffer->head = i;
+    storeChar(data, &usartMap[serial]->tx_buffer);
     usartMap[serial]->transmitting = true;
     USART_ITConfig(usartMap[serial]->peripheral, USART_IT_TXE, ENABLE);
 
@@ -624,14 +700,15 @@ uint32_t hal_usart_write_nine_bits(hal_usart_interface_t serial, uint16_t data) 
 }
 
 int32_t hal_usart_available(hal_usart_interface_t serial) {
-    return (unsigned int)(SERIAL_BUFFER_SIZE + usartMap[serial]->rx_buffer->head - usartMap[serial]->rx_buffer->tail) % SERIAL_BUFFER_SIZE;
+    return (unsigned int)(usartMap[serial]->rx_buffer.size + usartMap[serial]->rx_buffer.head - usartMap[serial]->rx_buffer.tail) %
+            usartMap[serial]->rx_buffer.size;
 }
 
 int32_t hal_usart_available_data_for_write(hal_usart_interface_t serial) {
-    int32_t tail = usartMap[serial]->tx_buffer->tail;
-    int32_t available = SERIAL_BUFFER_SIZE - (usartMap[serial]->tx_buffer->head >= tail ?
-                                              usartMap[serial]->tx_buffer->head - tail :
-                                              (SERIAL_BUFFER_SIZE + usartMap[serial]->tx_buffer->head - tail) - 1);
+    int32_t tail = usartMap[serial]->tx_buffer.tail;
+    int32_t available = usartMap[serial]->tx_buffer.size - (usartMap[serial]->tx_buffer.head >= tail ?
+                                              usartMap[serial]->tx_buffer.head - tail :
+                                              (usartMap[serial]->tx_buffer.size + usartMap[serial]->tx_buffer.head - tail) - 1);
 
     return available;
 }
@@ -639,26 +716,24 @@ int32_t hal_usart_available_data_for_write(hal_usart_interface_t serial) {
 
 int32_t hal_usart_read(hal_usart_interface_t serial) {
     // if the head isn't ahead of the tail, we don't have any characters
-    if (usartMap[serial]->rx_buffer->head == usartMap[serial]->rx_buffer->tail) {
+    if (usartMap[serial]->rx_buffer.head == usartMap[serial]->rx_buffer.tail) {
         return -1;
     } else {
-        uint16_t c = usartMap[serial]->rx_buffer->buffer[usartMap[serial]->rx_buffer->tail];
-        usartMap[serial]->rx_buffer->tail = (unsigned int)(usartMap[serial]->rx_buffer->tail + 1) % SERIAL_BUFFER_SIZE;
-        return c;
+        return fetchChar(&usartMap[serial]->rx_buffer);
     }
 }
 
 int32_t hal_usart_peek(hal_usart_interface_t serial) {
-    if (usartMap[serial]->rx_buffer->head == usartMap[serial]->rx_buffer->tail) {
+    if (usartMap[serial]->rx_buffer.head == usartMap[serial]->rx_buffer.tail) {
         return -1;
     } else {
-        return usartMap[serial]->rx_buffer->buffer[usartMap[serial]->rx_buffer->tail];
+        return peekChar(&usartMap[serial]->rx_buffer);
     }
 }
 
 void hal_usart_flush(hal_usart_interface_t serial) {
     // Loop until USART DR register is empty
-    while ( usartMap[serial]->tx_buffer->head != usartMap[serial]->tx_buffer->tail );
+    while ( usartMap[serial]->tx_buffer.head != usartMap[serial]->tx_buffer.tail );
     // Loop until last frame transmission complete
     while (usartMap[serial]->transmitting && (USART_GetFlagStatus(usartMap[serial]->peripheral, USART_FLAG_TC) == RESET));
     usartMap[serial]->transmitting = false;
@@ -716,7 +791,7 @@ static void usartIntHandler(hal_usart_interface_t serial) {
         uint16_t c = USART_ReceiveData(usartMap[serial]->peripheral);
         // Remove parity bits from data
         c &= calculateDataBitsMask(usartMap[serial]->conf.config);
-        storeChar(c, usartMap[serial]->rx_buffer);
+        storeChar(c, &usartMap[serial]->rx_buffer);
     }
 
     uint8_t noecho = (usartMap[serial]->conf.config & (SERIAL_HALF_DUPLEX | SERIAL_HALF_DUPLEX_NO_ECHO)) == (SERIAL_HALF_DUPLEX | SERIAL_HALF_DUPLEX_NO_ECHO);
@@ -730,7 +805,7 @@ static void usartIntHandler(hal_usart_interface_t serial) {
 
     if (USART_GetITStatus(usartMap[serial]->peripheral, USART_IT_TXE) != RESET) {
         // Write byte to the transmit data register
-        if (usartMap[serial]->tx_buffer->head == usartMap[serial]->tx_buffer->tail) {
+        if (usartMap[serial]->tx_buffer.head == usartMap[serial]->tx_buffer.tail) {
             // Buffer empty, so disable the USART Transmit interrupt
             USART_ITConfig(usartMap[serial]->peripheral, USART_IT_TXE, DISABLE);
             if (noecho) {
@@ -741,8 +816,7 @@ static void usartIntHandler(hal_usart_interface_t serial) {
                 configureTransmitReceive(serial, 1, 0);
             }
             // There is more data in the output buffer. Send the next byte
-            USART_SendData(usartMap[serial]->peripheral, usartMap[serial]->tx_buffer->buffer[usartMap[serial]->tx_buffer->tail++]);
-            usartMap[serial]->tx_buffer->tail %= SERIAL_BUFFER_SIZE;
+            USART_SendData(usartMap[serial]->peripheral, fetchChar(&usartMap[serial]->tx_buffer));
         }
     }
 
@@ -757,7 +831,8 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
         CHECK_TRUE(usartMap[serial]->state == HAL_USART_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
         hal_usart_flush(serial);
         usartEndImpl(serial, false);
-        memset(usartMap[serial]->tx_buffer, 0, sizeof(hal_usart_ring_buffer_t));
+        usartMap[serial]->tx_buffer.head = 0;
+        usartMap[serial]->tx_buffer.tail = 0;
         usartMap[serial]->state = HAL_USART_STATE_SUSPENDED;
         usartMap[serial]->transmitting = false;
     } else {

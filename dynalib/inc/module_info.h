@@ -119,7 +119,10 @@ typedef enum module_function_t {
     MODULE_FUNCTION_NCP_FIRMWARE = MOD_FUNC_NCP_FIRMWARE,
 
     /* Radio stack module */
-    MODULE_FUNCTION_RADIO_STACK = MOD_FUNC_RADIO_STACK
+    MODULE_FUNCTION_RADIO_STACK = MOD_FUNC_RADIO_STACK,
+
+    /* Maximum supported value */
+    MODULE_FUNCTION_MAX = MODULE_FUNCTION_RADIO_STACK
 
 } module_function_t;
 

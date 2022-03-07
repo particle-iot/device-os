@@ -160,7 +160,7 @@ int fetch_device_public_key_ex(void)
     return 0; // flash_pub_key
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
@@ -168,24 +168,25 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->modules = new hal_module_t[count];
         if (info->modules) {
             info->module_count = count;
-            bool user_module_found = false;
             memset(info->modules, 0, sizeof(hal_module_t) * count);
             for (unsigned i = 0; i < count; i++) {
                 const auto bounds = module_bounds[i];
                 const auto module = info->modules + i;
-                // IMPORTANT: if both types of modules are present (legacy 128KB and newer 256KB),
-                // 128KB application will take precedence and the newer 256KB application will not
-                // be reported in the modules info. It will be missing from the System Describe,
-                // 'serial inspect` and any other facility that uses HAL_System_Info().
-                if (bounds->module_function == MODULE_FUNCTION_USER_PART && user_module_found) {
-                    // Make sure that we report only single user part (either 128KB or 256KB) in the
-                    // list of modules.
-                    continue;
-                }
                 bool valid = fetch_module(module, bounds, false, MODULE_VALIDATION_INTEGRITY);
-                valid = valid && (module->validity_checked == module->validity_result);
-                if (valid && bounds->module_function == MODULE_FUNCTION_USER_PART) {
-                    user_module_found = true;
+                // NOTE: fetch_module may return other validation flags in module->validity_checked
+                // and module->validity_result
+                // Here specifically we are only concerned whether the integrity check passes or not
+                // and skip such 'broken' modules from module info
+                valid = valid && (module->validity_result & MODULE_VALIDATION_INTEGRITY);
+                if (bounds->store == MODULE_STORE_MAIN && bounds->module_function == MODULE_FUNCTION_USER_PART) {
+                    if (!valid) {
+                        // IMPORTANT: we should not be reporting invalid user module in the describe
+                        // as it may contain garbage data and may be presented as for example
+                        // system module with invalid dependency on some non-existent module
+                        // FIXME: we should potentially do a similar thing for other module types
+                        // but for now only tackling user modules
+                        memset(module, 0, sizeof(*module));
+                    }
                 }
             }
         }
@@ -199,6 +200,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         }
         info->modules = NULL;
     }
+    return 0;
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
@@ -762,7 +764,7 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         break;
     }
 
-    if (length>=0)
+    if (length>0)
         dct_write_app_data(data, offset, length>data_length ? data_length : length);
 
     return length;

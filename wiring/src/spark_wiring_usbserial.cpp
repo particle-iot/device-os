@@ -122,7 +122,7 @@ unsigned int USBSerial::baud() {
 
 HAL_USB_USART_Config __attribute__((weak)) acquireSerialBuffer()
 {
-  HAL_USB_USART_Config conf = {0};
+  HAL_USB_USART_Config conf = {};
 
 #if defined(USB_SERIAL_USERSPACE_BUFFERS) && ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE))
   static uint8_t serial_rx_buffer[USB_RX_BUFFER_SIZE];
@@ -148,7 +148,7 @@ USBSerial& _fetch_usbserial()
 
 HAL_USB_USART_Config __attribute__((weak)) acquireUSBSerial1Buffer()
 {
-  HAL_USB_USART_Config conf = {0};
+  HAL_USB_USART_Config conf = {};
 
 #if defined(USB_SERIAL_USERSPACE_BUFFERS) && ((MODULE_FUNCTION == MOD_FUNC_USER_PART) || (MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE))
   static uint8_t usbserial1_rx_buffer[USB_RX_BUFFER_SIZE];

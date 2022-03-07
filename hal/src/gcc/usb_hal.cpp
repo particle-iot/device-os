@@ -53,8 +53,11 @@ void USB_USART_Init(uint32_t baudRate)
  *******************************************************************************/
 uint8_t USB_USART_Available_Data(void)
 {
-    struct pollfd stdin_poll = { .fd = STDIN_FILENO
-            , .events = POLLIN | POLLRDBAND | POLLRDNORM | POLLPRI };
+    struct pollfd stdin_poll = {
+        .fd = STDIN_FILENO,
+        .events = POLLIN | POLLRDBAND | POLLRDNORM | POLLPRI,
+        .revents = 0
+    };
     int ret = poll(&stdin_poll, 1, 0);
     return ret;
 }

@@ -200,6 +200,7 @@ inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
 #endif
 #endif // defined(USE_STDPERIPH_DRIVER)
 
+#include "interrupts_hal_compat.h"
 
 #ifdef __cplusplus
 }

@@ -24,8 +24,11 @@
 #include "control_request_handler.h"
 #include "usb_control_request_channel.h"
 #include "ble_control_request_channel.h"
+#include "spark_wiring_vector.h"
 
 #include "debug.h"
+
+using spark::Vector;
 
 namespace particle {
 
@@ -51,6 +54,15 @@ public:
 
     static SystemControl* instance();
 
+    system_ctrl_acl getDefaultFilterAction();
+    system_ctrl_filter* getFiltersList();
+    void setDefaultFilterAction(system_ctrl_acl act);
+    void setFiltersList(system_ctrl_filter* filters);
+
+#if HAL_PLATFORM_BLE
+    BleControlRequestChannel* getBleCtrlRequestChannel();
+#endif
+
 private:
 #ifdef USB_VENDOR_REQUEST_ENABLE
     UsbControlRequestChannel usbChannel_;
@@ -61,7 +73,34 @@ private:
     ctrl_request_handler_fn appReqHandler_;
 
     void processAppRequest(ctrl_request* req);
+
+    system_ctrl_filter* filters_;
+    system_ctrl_acl defaultFilterAction_;
 };
+
+inline void SystemControl::setDefaultFilterAction(system_ctrl_acl act) {
+    defaultFilterAction_ = act;
+}
+
+inline system_ctrl_acl SystemControl::getDefaultFilterAction() {
+    return defaultFilterAction_;
+}
+
+inline void SystemControl::setFiltersList(system_ctrl_filter* filters) {
+    // Clear/free() the existing filters_
+    system_ctrl_filter* tmp;
+    while (filters_ != nullptr)
+    {
+        tmp = filters_;
+        filters_ = filters_->next;
+        free(tmp);
+    }
+    filters_ = filters;
+}
+
+inline system_ctrl_filter* SystemControl::getFiltersList() {
+    return filters_;
+}
 
 inline int SystemControl::setAppRequestHandler(ctrl_request_handler_fn handler) {
     appReqHandler_ = handler;
@@ -87,6 +126,12 @@ inline void SystemControl::setResult(ctrl_request* req, int result, ctrl_complet
     const auto channel = static_cast<ControlRequestChannel*>(req->channel);
     channel->setResult(req, result, handler, data);
 }
+
+#if HAL_PLATFORM_BLE
+inline BleControlRequestChannel* SystemControl::getBleCtrlRequestChannel() {
+    return &bleChannel_;
+}
+#endif
 
 } // particle::system
 

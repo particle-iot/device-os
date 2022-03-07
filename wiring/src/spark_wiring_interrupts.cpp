@@ -74,7 +74,7 @@ bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode 
     hal_interrupt_detach(pin);
     wiring_interrupt_handler_t* handler = allocate_handler(pin, fn);
     if (handler) {
-        hal_interrupt_extra_configuration_t extra = {0};
+        hal_interrupt_extra_configuration_t extra = {};
         if (SYSTEM_ERROR_NONE != hal_interrupt_attach(pin, call_wiring_interrupt_handler, handler, mode, configure_interrupt(extra, priority, subpriority))) {
             return false;
         }
@@ -85,7 +85,7 @@ bool attachInterrupt(uint16_t pin, wiring_interrupt_handler_t fn, InterruptMode 
 bool attachInterrupt(uint16_t pin, raw_interrupt_handler_t handler, InterruptMode mode, int8_t priority, uint8_t subpriority)
 {
     hal_interrupt_detach(pin);
-    hal_interrupt_extra_configuration_t extra = {0};
+    hal_interrupt_extra_configuration_t extra = {};
     if (SYSTEM_ERROR_NONE != hal_interrupt_attach(pin, call_raw_interrupt_handler, (void*)handler, mode, configure_interrupt(extra, priority, subpriority))) {
         return false;
     }
@@ -146,7 +146,7 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
     callback.handler = call_wiring_interrupt_handler;
     wiring_interrupt_handler_t& h = handler;
     callback.data = new wiring_interrupt_handler_t(h);
-    hal_interrupt_callback_t prev = { 0 };
+    hal_interrupt_callback_t prev = {};
     const bool ok = hal_interrupt_set_system_handler(irq, &callback, &prev, NULL);
     delete (wiring_interrupt_handler_t*)prev.data;
     return ok;
@@ -159,7 +159,7 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
  */
 bool detachSystemInterrupt(hal_irq_t irq)
 {
-    hal_interrupt_callback_t prev = { 0 };
+    hal_interrupt_callback_t prev = {};
     const bool ok = hal_interrupt_set_system_handler(irq, NULL, &prev, NULL);
     delete (wiring_interrupt_handler_t*)prev.data;
     return ok;

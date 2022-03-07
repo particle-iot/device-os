@@ -91,7 +91,7 @@ os_result_t os_thread_create(os_thread_t* thread, const char* name, os_thread_pr
     if(priority >= configMAX_PRIORITIES) {
       priority = configMAX_PRIORITIES - 1;
     }
-    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_NAME_TYPE* const) name,
+    signed portBASE_TYPE result = xTaskCreate( (pdTASK_CODE)fun, (_CREATE_NAME_TYPE*) name,
             (stack_size/sizeof(portSTACK_TYPE)), thread_param, (unsigned portBASE_TYPE) priority,
             reinterpret_cast<TaskHandle_t*>(thread) );
     return ( result != (signed portBASE_TYPE) pdPASS );

@@ -96,6 +96,7 @@ int DfuClassDriver::handleStandardRequest(SetupRequest* req) {
         break;
       }
     }
+    // Fall-through
     default: {
       dev_->setupError(req);
       return 1;

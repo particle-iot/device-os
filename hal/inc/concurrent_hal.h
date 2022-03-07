@@ -138,6 +138,29 @@ os_result_t os_thread_cleanup(os_thread_t thread);
  */
 os_result_t os_thread_yield(void);
 
+typedef struct {
+    size_t reserved;
+    os_thread_t thread;
+    const char* name;
+    os_unique_id_t id;
+    void* stack_base; //the allocated memory of the stack
+    size_t stack_size;
+    void* stack_current; //the current tasks stack pointer 
+    size_t stack_high_watermark; //the max amount of free stack memory that the RTOS has recorded
+ } os_thread_dump_info_t;
+
+typedef os_result_t (*os_thread_dump_callback_t)(os_thread_dump_info_t*, void *reserved);
+
+/**
+ * Returns a dump of the threads running in the system one by one, calling callback back along with
+ *   the reserved ptr
+ * @param thread to dump
+ * @param callback to invoke with the thread dump
+ * @param reserved param to pass the callback
+ * @return - os_result_t
+ */
+os_result_t os_thread_dump(os_thread_t thread, os_thread_dump_callback_t callback, void* reserved);
+
 /**
  * Delays the current task until a specified time to set up periodic tasks
  * @param previousWakeTime The time the thread last woke up.  May not be NULL.

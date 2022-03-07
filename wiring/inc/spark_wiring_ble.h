@@ -33,6 +33,7 @@
 #include "ble_hal.h"
 #include <memory>
 #include "enumflags.h"
+#include "system_ble_prov.h"
 
 using namespace std::placeholders;
 
@@ -170,6 +171,7 @@ enum class BlePairingAlgorithm : uint8_t {
 };
 
 enum class BlePairingEventType : uint8_t {
+    NONE = BLE_EVT_UNKNOWN,
     REQUEST_RECEIVED = BLE_EVT_PAIRING_REQUEST_RECEIVED,
     PASSKEY_DISPLAY = BLE_EVT_PAIRING_PASSKEY_DISPLAY,
     PASSKEY_INPUT = BLE_EVT_PAIRING_PASSKEY_INPUT,
@@ -299,7 +301,7 @@ class BleUuid {
 public:
     BleUuid();
     BleUuid(const hal_ble_uuid_t& uuid);
-    BleUuid(const BleUuid& uuid);
+    BleUuid(const BleUuid& uuid) = default;
     BleUuid(const uint8_t* uuid128, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(const uint8_t* uuid128, uint16_t uuid16, BleUuidOrder order = BleUuidOrder::LSB);
     BleUuid(uint16_t uuid16);
@@ -486,8 +488,7 @@ private:
     Vector<BleUuid> serviceUUID(BleAdvertisingDataType type) const;
     static size_t locate(const uint8_t* buf, size_t len, BleAdvertisingDataType type, size_t* offset);
 
-    uint8_t selfData_[BLE_MAX_ADV_DATA_LEN];
-    size_t selfLen_;
+    Vector<uint8_t> selfData_;
 };
 
 
@@ -627,14 +628,15 @@ class BleService {
 public:
     BleService();
     BleService(const BleUuid& uuid);
+    BleService(const BleService&) = default;
     ~BleService() = default;
 
     BleUuid UUID() const;
 
-    BleService& operator=(const BleService& service);
-
     bool operator==(const BleService& service) const;
     bool operator!=(const BleService& service) const;
+
+    BleService& operator=(const BleService&) = default;
 
     BleServiceImpl* impl() const {
         return impl_.get();
@@ -793,7 +795,7 @@ public:
         customDataLen_ = len;
         return *this;
     }
-    const uint8_t* const customData(size_t* len) const {
+    const uint8_t* customData(size_t* len) const {
         *len = customDataLen_;
         return customData_;
     }
@@ -824,6 +826,7 @@ private:
 class BlePeerDevice {
 public:
     BlePeerDevice();
+    BlePeerDevice(const BlePeerDevice&) = default;
     ~BlePeerDevice();
 
     // Discover all services on peer device.
@@ -889,7 +892,7 @@ public:
         return isValid();
     }
 
-    BlePeerDevice& operator=(const BlePeerDevice& peer);
+    BlePeerDevice& operator=(const BlePeerDevice& peer) = default;
 
     BlePeerDeviceImpl* impl() const {
         return impl_.get();
@@ -924,6 +927,54 @@ public:
     int txPower(int8_t* txPower) const;
     int8_t txPower() const;
     int selectAntenna(BleAntennaType antenna) const;
+
+    // Access provisioning mode
+    int provisioningMode(bool enabled) const;
+    bool getProvisioningStatus() const;
+
+    template<typename T>
+    int setProvisioningSvcUuid(T svcUuid) const {
+        BleUuid tempSvcUUID(svcUuid);
+        auto svcHalUuid = tempSvcUUID.halUUID();
+        if (tempSvcUUID.isValid()) {
+            return system_ble_prov_set_custom_svc_uuid(&svcHalUuid, nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    template<typename T>
+    int setProvisioningTxUuid(T txUuid) const {
+        BleUuid tempTxUUID(txUuid);
+        auto txHalUuid = tempTxUUID.halUUID();
+        if (tempTxUUID.isValid()) {
+            return system_ble_prov_set_custom_tx_uuid(&txHalUuid, nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    template<typename T>
+    int setProvisioningRxUuid(T rxUuid) const {
+        BleUuid tempRxUUID(rxUuid);
+        auto rxHalUuid = tempRxUUID.halUUID();
+        if (tempRxUUID.isValid()) {
+            return system_ble_prov_set_custom_rx_uuid(&rxHalUuid, nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    template<typename T>
+    int setProvisioningVerUuid(T verUuid) const {
+        BleUuid tempVerUUID(verUuid);
+        auto verHalUuid = tempVerUUID.halUUID();
+        if (tempVerUUID.isValid()) {
+            return system_ble_prov_set_custom_ver_uuid(&verHalUuid, nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    int setProvisioningCompanyId(uint16_t companyId) const {
+        return system_ble_prov_set_company_id(companyId, nullptr);
+    }
 
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;

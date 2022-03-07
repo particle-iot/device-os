@@ -16,7 +16,7 @@ void DTLSProtocol::init(const char *id,
 	memcpy(device_id, id, sizeof(device_id));
 	// send a ping once every 23 minutes
 	initialize_ping(23*60*1000,30000);
-	DTLSMessageChannel::Callbacks channelCallbacks = {0};
+	DTLSMessageChannel::Callbacks channelCallbacks = {};
 	channelCallbacks.millis = callbacks.millis;
 	channelCallbacks.handle_seed = handle_seed;
 	channelCallbacks.receive = callbacks.receive;

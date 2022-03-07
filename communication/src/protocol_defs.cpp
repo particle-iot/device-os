@@ -48,6 +48,8 @@ system_error_t toSystemError(ProtocolError error) {
     case IO_ERROR_LIGHTSSL_RECEIVE:
     case IO_ERROR_LIGHTSSL_HANDSHAKE_NONCE:
     case IO_ERROR_LIGHTSSL_HANDSHAKE_RECV_KEY:
+    case IO_ERROR_SOCKET_SEND_FAILED:
+    case IO_ERROR_SOCKET_RECV_FAILED:
         return SYSTEM_ERROR_IO;
     case INVALID_STATE:
         return SYSTEM_ERROR_INVALID_STATE;
@@ -67,6 +69,8 @@ system_error_t toSystemError(ProtocolError error) {
         return SYSTEM_ERROR_INTERNAL;
     case OTA_UPDATE_ERROR:
         return SYSTEM_ERROR_OTA;
+    case IO_ERROR_REMOTE_END_CLOSED:
+        return SYSTEM_ERROR_END_OF_STREAM;
     default:
         return SYSTEM_ERROR_PROTOCOL; // Generic protocol error
     }

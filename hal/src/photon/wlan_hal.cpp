@@ -607,7 +607,7 @@ static bool is_ap_entry_valid(const wiced_config_ap_entry_t& ap) {
  * WPA Enterprise supplicant.
  */
 static wiced_result_t wlan_join() {
-    runtime_info_t info = {0};
+    runtime_info_t info = {};
     info.size = sizeof(info);
     int attempt = WICED_JOIN_RETRY_ATTEMPTS;
     wiced_result_t result = WICED_ERROR;
@@ -1040,7 +1040,7 @@ wiced_result_t sniff_security(SnifferInfo* info)
         wiced_rtos_get_semaphore(&info->complete, 30000);
     }
     wiced_rtos_deinit_semaphore(&info->complete);
-    if (!info->rssi)
+    if (!info->callback && !info->rssi)
         result = WICED_NOT_FOUND;
     return result;
 }
@@ -1567,8 +1567,8 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie)
     memset(&info, 0, sizeof(info));
     info.callback = callback;
     info.callback_data = cookie;
-    int result =  sniff_security(&info);
-    return result < 0 ? result : info.count;
+    auto result = sniff_security(&info);
+    return result != WICED_SUCCESS ? -result : info.count;
 }
 
 /**
@@ -1618,5 +1618,5 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data)
         }
         wiced_dct_read_unlock(wifi_config, WICED_FALSE);
     }
-    return result < 0 ? result : count;
+    return result != WICED_SUCCESS ? -result : count;
 }

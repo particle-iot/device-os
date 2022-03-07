@@ -73,6 +73,7 @@ public:
     virtual int enterDataMode() override;
     virtual int getMtu() override;
     virtual int urcs(bool enable) override;
+    virtual int startNcpFwUpdate(bool update) override;
 
 private:
     AtParser parser_;
@@ -115,6 +116,10 @@ private:
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
+    bool firmwareUpdateR510_ = false;
+    int firmwareInstallRespCodeR510_ = 0;
+    int lastFirmwareInstallRespCodeR510_ = 0;
+    int waitReadyRetries_ = 0;
 
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
@@ -154,6 +159,7 @@ private:
     int modemPowerOff();
     int modemSoftPowerOff();
     int modemHardReset(bool powerOff = false);
+    int modemEmergencyHardReset();
     bool modemPowerState() const;
     int modemSetUartState(bool state) const;
     void waitForPowerOff();

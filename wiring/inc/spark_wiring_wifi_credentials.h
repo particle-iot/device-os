@@ -157,7 +157,7 @@ public:
         memset((void*)&creds_, 0, sizeof(creds_));
     }
 private:
-    WLanCredentials creds_ = {0};
+    WLanCredentials creds_ = {};
 };
 
 class WiFiAllocatedCredentials : public WiFiCredentials {

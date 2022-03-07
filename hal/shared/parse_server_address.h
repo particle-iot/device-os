@@ -73,7 +73,7 @@ inline void parseServerAddressData(ServerAddress* server_addr, const uint8_t* bu
 
 inline int encodeServerAddressData(const ServerAddress* addr, uint8_t* buf, size_t bufSize) {
     // Size of the ServerAddress structure without the padding bytes
-    const size_t size = sizeof(ServerAddress) - sizeof(((ServerAddress){0}).padding);
+    const size_t size = sizeof(ServerAddress) - sizeof(ServerAddress::padding);
     if (bufSize < size) {
         return SYSTEM_ERROR_TOO_LARGE;
     }

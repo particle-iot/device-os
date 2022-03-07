@@ -262,6 +262,11 @@ cellular_result_t cellular_get_active_sim(int* sim_type, void* reserved);
  */
 cellular_result_t cellular_process(void* reserved, void* reserved1);
 
+/**
+ * Start NCP FW Update
+ */
+int cellular_start_ncp_firmware_update(bool update = false, void* reserved = NULL);
+
 #ifdef __cplusplus
 }
 #endif

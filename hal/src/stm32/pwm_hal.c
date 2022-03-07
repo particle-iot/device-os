@@ -103,7 +103,7 @@ void hal_pwm_write_with_frequency(uint16_t pin, uint8_t value, uint16_t pwm_freq
 void hal_pwm_write_with_frequency_ext(uint16_t pin, uint32_t value, uint32_t pwm_frequency) {
     if ((pwm_frequency == 0) ||
         (pwm_frequency > hal_pwm_get_max_frequency(pin)) ||
-        (value >= (1 << hal_pwm_get_resolution(pin)))) {
+        (value >= ((uint32_t)1 << hal_pwm_get_resolution(pin)))) {
         return;
     }
 

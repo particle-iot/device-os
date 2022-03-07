@@ -94,7 +94,7 @@ const hal_ble_attr_handle_t SERVICES_TOP_END_HANDLE = 0xFFFF;
 constexpr size_t BLE_EVT_DATA_POOL_SIZE = 2048;
 
 // Timeout for a BLE procedure.
-constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 30000;
+constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 60000;
 // Delay for GATT Client to send the ATT MTU exchanging request.
 constexpr uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
 
@@ -327,9 +327,9 @@ private:
     volatile hal_ble_auto_adv_cfg_t autoAdvCfg_;    /**< Automatic advertising configuration. */
     uint8_t advHandle_;                             /**< Advertising handle. */
     hal_ble_adv_params_t advParams_;                /**< Current advertising parameters. */
-    uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
+    uint8_t advData_[BLE_MAX_ADV_DATA_LEN_EXT];     /**< Current advertising data. */
     size_t advDataLen_;                             /**< Current advertising data length. */
-    uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
+    uint8_t scanRespData_[BLE_MAX_SCAN_REPORT_BUF_LEN];    /**< Current scan response data. */
     size_t scanRespDataLen_;                        /**< Current scan response data length. */
     int8_t txPower_;                                /**< TX Power. */
     bool advPending_;                               /**< Advertising is pending. */
@@ -344,6 +344,7 @@ public:
     Observer()
             : observerInitialized_(false),
               isScanning_(false),
+              scanParams_{},
               scanSemaphore_(nullptr),
               scanResultCallback_(nullptr),
               context_(nullptr),
@@ -355,6 +356,7 @@ public:
         scanParams_.interval = BLE_DEFAULT_SCANNING_INTERVAL;
         scanParams_.window = BLE_DEFAULT_SCANNING_WINDOW;
         scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
+        scanParams_.scan_phys = BLE_PHYS_AUTO;
         bleScanData_.p_data = scanReportBuff_;
         bleScanData_.len = sizeof(scanReportBuff_);
     }
@@ -389,7 +391,7 @@ private:
     volatile bool isScanning_;                              /**< If it is scanning or not. */
     hal_ble_scan_params_t scanParams_;                      /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                          /**< Semaphore to wait until the scan procedure completed. */
-    uint8_t scanReportBuff_[BLE_MAX_SCAN_REPORT_BUF_LEN];   /**< Buffer to hold the scanned report data. */
+    uint8_t scanReportBuff_[BLE_MAX_ADV_DATA_LEN_EXT];      /**< Buffer to hold the scanned report data. */
     ble_data_t bleScanData_;                                /**< BLE scanned data. */
     hal_ble_on_scan_result_cb_t scanResultCallback_;        /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
@@ -419,7 +421,8 @@ public:
             .version = BLE_API_VERSION,
             .size = sizeof(hal_ble_pairing_config_t),
             .io_caps = BLE_IO_CAPS_NONE,
-            .algorithm = BLE_PAIRING_ALGORITHM_AUTO
+            .algorithm = BLE_PAIRING_ALGORITHM_AUTO,
+            .reserved = {}
         };
     }
     ~ConnectionsManager() = default;
@@ -1087,7 +1090,7 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
     // It is invalid to provide the same data buffers while advertising.
     CHECK(suspend());
     if (buf != nullptr) {
-        len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN);
+        len = std::min(len, (size_t)BLE_MAX_ADV_DATA_LEN_EXT);
         memcpy(advData_, buf, len);
     } else {
         len = 0;
@@ -1426,7 +1429,7 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
     scanResultCallback_ = callback;
     context_ = context;
     int ret = sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_);
-    // LOG_DEBUG(TRACE,"Ret code sd_ble_scan_start: %d", ret);  // Uncomment to get error code from starting scan
+    LOG_DEBUG(TRACE,"Ret code sd_ble_scan_start: %d", ret);  // Uncomment to get error code from starting scan
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isScanning_ = true;
     // If timeout is set to 0, it should scan indefinitely
@@ -3913,9 +3916,10 @@ int hal_ble_stack_deinit(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_deinit().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK(BleObject::getInstance().broadcaster()->stopAdvertising());
     CHECK(BleObject::getInstance().observer()->stopScanning());
     CHECK(BleObject::getInstance().connMgr()->disconnectAll());
+    // Disconnected event may result in re-advertising.
+    CHECK(BleObject::getInstance().broadcaster()->stopAdvertising());
     return SYSTEM_ERROR_NONE;
 }
 

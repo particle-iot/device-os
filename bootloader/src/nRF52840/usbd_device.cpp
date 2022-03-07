@@ -901,7 +901,8 @@ void NrfDevice::setupReceive(SetupRequest* r, uint8_t* data, size_t size) {
     size_t rxSize = std::min((uint16_t)size, r->wLength);
     nrf_drv_usbd_transfer_t transfer = {
       .p_data = {.rx = data},
-      .size = rxSize
+      .size = rxSize,
+      .flags = 0
     };
     ret_code_t ret = nrf_drv_usbd_ep_transfer(NRF_DRV_USBD_EPOUT0, &transfer);
     ASSERT(ret == NRF_SUCCESS);

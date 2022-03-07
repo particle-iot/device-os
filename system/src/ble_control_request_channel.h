@@ -64,6 +64,13 @@ public:
     virtual void freeRequestData(ctrl_request* ctrlReq) override;
     virtual void setResult(ctrl_request* ctrlReq, int result, ctrl_completion_handler_fn handler, void* data) override;
 
+    int setProvSvcUuid(hal_ble_uuid_t* svcUuid);
+    int setProvTxUuid(hal_ble_uuid_t* txUuid);
+    int setProvRxUuid(hal_ble_uuid_t* rxUuid);
+    int setProvVerUuid(hal_ble_uuid_t* verUuid);
+
+    hal_ble_uuid_t getBleCtrlSvcUuid() const;
+
 private:
     class HandshakeHandler;
     class JpakeHandler;
@@ -122,6 +129,13 @@ private:
     volatile size_t maxPacketSize_; // Maximum number of bytes that can be sent in a single notification packet
     volatile bool subscribed_; // Set to `true` if the client is subscribed to the notifications
     volatile bool writable_; // Set to `true` if the TX characteristic is writable
+
+    bool initialized_;
+
+    hal_ble_uuid_t bleCtrlSvcUuid_;
+    hal_ble_uuid_t bleVerCharUuid_;
+    hal_ble_uuid_t bleSendCharUuid_;
+    hal_ble_uuid_t bleRecvCharUuid_;
 
     hal_ble_attr_handle_t sendCharHandle_; // TX characteristic handle
     hal_ble_attr_handle_t sendCharCccdHandle_; // TX characteristic CCCD handle

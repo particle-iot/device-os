@@ -115,6 +115,7 @@ Esp32NcpClient::~Esp32NcpClient() {
 int Esp32NcpClient::init(const NcpClientConfig& conf) {
     // Make sure ESP32 is powered down
     hal_gpio_mode(ESPBOOT, OUTPUT);
+    hal_gpio_write(ESPBOOT, 1);
 #if PLATFORM_ID == PLATFORM_ARGON
     hal_gpio_mode(ESPEN, OUTPUT_OPEN_DRAIN);
 #elif PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_TRACKER

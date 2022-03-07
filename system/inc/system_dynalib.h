@@ -38,6 +38,7 @@
 #include "system_led_signal.h"
 #include "system_setup.h"
 #include "system_power.h"
+#include "system_ble_prov.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -53,7 +54,7 @@ DYNALIB_FN(5, system, system_delay_ms, void(unsigned long, bool))
 DYNALIB_FN(6, system, system_sleep, int(Spark_Sleep_TypeDef, long, uint32_t, void*))
 DYNALIB_FN(7, system, system_sleep_pin, int(uint16_t, uint16_t, long, uint32_t, void*))
 DYNALIB_FN(8, system, system_subscribe_event, int(system_event_t, system_event_handler_t*, SystemEventContext*))
-DYNALIB_FN(9, system, system_unsubscribe_event, void(system_event_t, system_event_handler_t*, void*))
+DYNALIB_FN(9, system, system_unsubscribe_event, void(system_event_t, system_event_handler_t*, const SystemEventContext*))
 DYNALIB_FN(10, system, system_button_pushed_duration, uint16_t(uint8_t, void*))
 DYNALIB_FN(11, system, system_thread_set_state, void(spark::feature::State, void*))
 DYNALIB_FN(12, system, system_version_info, int(SystemVersionInfo*, void*))
@@ -116,6 +117,23 @@ DYNALIB_FN(BASE_IDX1 + 2, system, system_power_management_get_config, int(hal_po
 #else
 #define BASE_IDX2 (BASE_IDX1 + 2)
 #endif  // HAL_PLATFORM_POWER_MANAGEMENT
+
+DYNALIB_FN(BASE_IDX2 + 0, system, system_info_get_unstable, int(hal_system_info_t* info, uint32_t flags, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 1, system, system_info_free_unstable, int(hal_system_info_t* info, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 2, system, system_ctrl_set_request_filter, int(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved))
+
+#if HAL_PLATFORM_BLE
+DYNALIB_FN(BASE_IDX2 + 3, system, system_ble_prov_mode, int(bool enabled, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 4, system, system_ble_prov_get_status, bool(void* reserved))
+DYNALIB_FN(BASE_IDX2 + 5, system, system_ble_prov_set_custom_svc_uuid, int(hal_ble_uuid_t* svcUuid, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 6, system, system_ble_prov_set_custom_tx_uuid, int(hal_ble_uuid_t* txUuid, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 7, system, system_ble_prov_set_custom_rx_uuid, int(hal_ble_uuid_t* rxUuid, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 8, system, system_ble_prov_set_custom_ver_uuid, int(hal_ble_uuid_t* verUuid, void* reserved))
+DYNALIB_FN(BASE_IDX2 + 9, system, system_ble_prov_set_company_id, int(uint16_t companyId, void* reserved))
+#define BASE_IDX3 (BASE_IDX2 + 10)
+#else
+#define BASE_IDX3 (BASE_IDX2 + 3)
+#endif  // HAL_PLATFORM_BLE
 
 DYNALIB_END(system)
 

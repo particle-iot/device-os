@@ -29,6 +29,7 @@ extern "C" {
 typedef struct hal_pin_info_t hal_pin_info_t;
 
 typedef uint16_t hal_pin_t;
+typedef hal_pin_t pin_t; // __attribute__((deprecated("Use hal_pin_t instead")));
 
 #if HAL_PLATFORM_IO_EXTENSION
 typedef enum hal_pin_type_t {

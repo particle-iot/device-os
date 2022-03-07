@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "deviceid_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +32,9 @@ typedef struct device_code_t {
     uint8_t length;
     uint8_t value[32];
 } device_code_t;
+
+// XXX: This constant is obtained from dct.h
+#define HAL_SETUP_CODE_SIZE 6
 
 /**
  * Appends the device code to the end of the existing value. The length field must be set to the length of
@@ -45,6 +49,8 @@ bool fetch_or_generate_setup_ssid(device_code_t* value);
 extern bool fetch_or_generate_ssid_prefix(device_code_t* value);
 
 int get_device_name(char* buf, size_t size);
+
+int get_device_setup_code(char* code, size_t size);
 
 #ifdef __cplusplus
 }

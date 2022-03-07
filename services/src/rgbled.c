@@ -11,6 +11,9 @@
 #include "rgbled_hal.h"
 #include "module_info.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+
 LedCallbacks LED_Callbacks = {
     .version = 0x0000,
     .Led_Rgb_Set_Values = (void(*)(uint16_t r, uint16_t g, uint16_t b, void*))Set_RGB_LED_Values,
@@ -21,6 +24,8 @@ LedCallbacks LED_Callbacks = {
     .Led_User_Toggle = (void(*)(void*))Toggle_User_LED
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 };
+
+#pragma GCC diagnostic pop
 
 volatile uint8_t led_rgb_brightness = DEFAULT_LED_RGB_BRIGHTNESS;
 

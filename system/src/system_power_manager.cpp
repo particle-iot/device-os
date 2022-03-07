@@ -77,7 +77,9 @@ constexpr hal_power_config defaultPowerConfig = {
   .vin_min_voltage = DEFAULT_INPUT_VOLTAGE_LIMIT,
   .vin_max_current = DEFAULT_INPUT_CURRENT_LIMIT,
   .charge_current = DEFAULT_CHARGE_CURRENT,
-  .termination_voltage = DEFAULT_TERMINATION_VOLTAGE
+  .termination_voltage = DEFAULT_TERMINATION_VOLTAGE,
+  .reserved2 = 0,
+  .reserved3 = {0}
 };
 
 uint16_t mapInputVoltageLimit(uint16_t value) {

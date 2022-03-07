@@ -19,14 +19,9 @@ static struct LedSetCallbacksInitializer {
     }
 } s_LedSetCallbacksInitializer;
 
-hal_led_config_t HAL_Leds[] = {
+led_config_t HAL_Leds[LEDn] = {
     // Normal LEDs are defined in HAL_Leds_Default
-
     // Mirrored LEDs
-    {0},
-    {0},
-    {0},
-    {0}
 };
 
 static void Set_LED_Value(Led_TypeDef led, uint16_t value)

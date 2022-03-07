@@ -20,6 +20,10 @@
 #define	SYSTEM_THREADING_H
 
 #include "active_object.h"
+#include "system_error.h"
+
+#include <utility>
+#include <new>
 
 #if PLATFORM_THREADING
 
@@ -130,7 +134,47 @@ os_mutex_recursive_t mutex_usb_serial();
 
 namespace particle {
 
+namespace detail {
+
+struct CallableTaskBase: ISRTaskQueue::Task {
+    virtual void call() = 0;
+};
+
+template<typename F>
+struct CallableTask: CallableTaskBase {
+    F fn;
+
+    explicit CallableTask(F&& fn) : fn(std::move(fn)) {
+    }
+
+    void call() override {
+        fn();
+    }
+};
+
+} // namespace detail
+
 extern ISRTaskQueue SystemISRTaskQueue;
+
+/**
+ * Asynchronously invokes a function in the context of the system thread via the ISR task queue.
+ *
+ * @note This function allocates memory and thus it cannot be called from an ISR.
+ */
+template<typename F>
+int invokeAsync(F&& fn) {
+    // Not using std::function here as it's not exception-safe
+    auto task = new(std::nothrow) detail::CallableTask<F>(std::move(fn));
+    if (!task) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    task->func = [](ISRTaskQueue::Task* task) {
+        static_cast<detail::CallableTaskBase*>(task)->call();
+        delete task;
+    };
+    SystemISRTaskQueue.enqueue(task);
+    return 0;
+}
 
 } // namespace particle
 

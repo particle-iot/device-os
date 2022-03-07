@@ -34,7 +34,8 @@ hal_led_config_t leds[LEDn] = {
                 .is_active = 1,
                 .is_inverted = 0
             },
-        }
+        },
+        .padding = {0}
     },
     {
         .version = LED_CONFIG_STRUCT_VERSION,
@@ -44,7 +45,8 @@ hal_led_config_t leds[LEDn] = {
                 .is_active = 1,
                 .is_inverted = 1
             },
-        }
+        },
+        .padding = {0}
     },
     {
         .version = LED_CONFIG_STRUCT_VERSION,
@@ -54,7 +56,8 @@ hal_led_config_t leds[LEDn] = {
                 .is_active = 1,
                 .is_inverted = 1
             },
-        }
+        },
+        .padding = {0}
     },
     {
         .version = LED_CONFIG_STRUCT_VERSION,
@@ -64,7 +67,8 @@ hal_led_config_t leds[LEDn] = {
                 .is_active = 1,
                 .is_inverted = 1
             },
-        }
+        },
+        .padding = {0}
     },
 };
 
@@ -227,16 +231,11 @@ void HAL_Core_Led_Mirror_Pin(uint8_t led, hal_pin_t pin, uint32_t flags, uint8_t
     // NOTE: `flags` currently only control whether the LED state should be inverted
     // NOTE: All mirrored LEDs are currently PWM
 
-    hal_led_config_t conf = {
-        .version = 0x01,
-        .pin = pin,
-        {
-            {
-                .is_active = 1,
-                .is_inverted = (uint8_t)flags
-            },
-        }
-    };
+    hal_led_config_t conf = {};
+    conf.version = 0x01;
+    conf.pin = pin;
+    conf.is_active = 1;
+    conf.is_inverted = (uint8_t)flags;
 
     // int32_t state = HAL_disable_irq();
     hal_led_init(led, &conf, nullptr);

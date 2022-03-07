@@ -337,6 +337,7 @@ int QuectelNcpClient::on() {
         return SYSTEM_ERROR_NONE;
     }
     // Power on the modem
+    LOG(TRACE, "Powering modem on, ncpId: 0x%02x", ncpId());
     auto r = modemPowerOn();
     if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
         return r;
@@ -1531,6 +1532,10 @@ int QuectelNcpClient::urcs(bool enable) {
     return SYSTEM_ERROR_NONE;
 }
 
+int QuectelNcpClient::startNcpFwUpdate(bool update) {
+    return 0;
+}
+
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
@@ -1761,7 +1766,8 @@ int QuectelNcpClient::modemInit() const {
         .version = HAL_GPIO_VERSION,
         .mode = INPUT_PULLUP,
         .set_value = false,
-        .value = 0
+        .value = 0,
+        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
     // Configure VINT as Input for modem power state monitoring
     // NOTE: The BGVINT pin is inverted
@@ -1815,7 +1821,6 @@ int QuectelNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
-        LOG(TRACE, "Powering modem on");
         // Power on, power on pulse >= 100ms
         // NOTE: The BGPWR pin is inverted
         hal_gpio_write(BGPWR, 1);

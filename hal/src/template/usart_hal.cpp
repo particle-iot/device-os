@@ -26,6 +26,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usart_hal.h"
 
+int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*)
+{
+    return 0;
+}
+
 void hal_usart_init(hal_usart_interface_t serial, hal_usart_ring_buffer_t *rx_buffer, hal_usart_ring_buffer_t *tx_buffer)
 {
 }

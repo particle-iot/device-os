@@ -57,6 +57,9 @@ enum ProtocolError
     NO_MEMORY = 30,
     INTERNAL = 31,
     OTA_UPDATE_ERROR = 32, // Generic OTA update error
+    IO_ERROR_SOCKET_SEND_FAILED = 33,
+    IO_ERROR_SOCKET_RECV_FAILED = 34,
+    IO_ERROR_REMOTE_END_CLOSED = 35,
     // NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp
     UNKNOWN = 0x7FFFF
 };
@@ -146,8 +149,8 @@ enum Enum
 {
     PING = 0, ///< Keepalive interval (set).
     FAST_OTA = 1, ///< Enable/disable fast OTA (set).
-    DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages (set).
-    COMPRESSED_OTA = 3, ///< Enable support for compressed/combined OTA updates (set).
+    ENABLE_DEVICE_INITIATED_DESCRIBE = 2, ///< Enable device-initiated describe messages (set).
+    COMPRESSED_OTA = 3, ///< Enable/disable support for compressed/combined OTA updates (set).
     SYSTEM_MODULE_VERSION = 4, ///< Module version of the system firmware (set).
     MAX_BINARY_SIZE = 5, ///< Maximum size of a firmware binary (set).
     OTA_CHUNK_SIZE = 6, ///< Size of an OTA update chunk (set).

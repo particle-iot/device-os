@@ -211,7 +211,7 @@ test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 5 * 60 * 1000);
+        waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     }
     assertTrue(Particle.connected());
     Particle.syncTime();
@@ -228,7 +228,7 @@ test(TIME_14_timeSyncedLast_works_correctly)
     if (!Particle.connected())
     {
         Particle.connect();
-        waitFor(Particle.connected, 120000);
+        waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     }
     uint32_t mil = millis();
     Particle.syncTime();
@@ -240,7 +240,7 @@ test(TIME_15_RestoreSystemMode) {
     set_system_mode(AUTOMATIC);
     if (!Particle.connected()) {
         Particle.connect();
-        waitFor(Particle.connected, 120000);
+        waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     }
 }
 
@@ -363,12 +363,16 @@ test(TIME_19_LocalTimeIsCloseToNtpTime) {
         if (!r) {
             break;
         }
+        delay(i * 1000);
     }
     assertEqual(0, r);
 
     struct timeval tv = {};
     assertEqual(0, hal_rtc_get_time(&tv, nullptr));
     uint64_t now = tv.tv_sec * 1000000ULL + tv.tv_usec;
+
+    out->printlnf("Local time: %u", (unsigned)now);
+    out->printlnf("NTP time: %u", (unsigned)ntpTime);
 
     // Within 10 seconds
     const int64_t diff = std::chrono::microseconds(10s).count();

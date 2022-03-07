@@ -41,25 +41,36 @@ const auto DEVICE_NAME_MAX_SIZE = DEVICE_NAME_DCT_SIZE - 1;
 const auto SETUP_CODE_SIZE = DCT_DEVICE_CODE_SIZE;
 const auto SETUP_CODE_DCT_OFFSET = DCT_DEVICE_CODE_OFFSET;
 
-int getDeviceSetupCode(char* code) {
+} // ::
+
+int get_device_setup_code(char* code, size_t size) {
     // Check if the device setup code is initialized in the DCT
-    int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, code, SETUP_CODE_SIZE);
-    if (ret < 0 || !isPrintable(code, SETUP_CODE_SIZE)) {
+    char setupCode[HAL_SETUP_CODE_SIZE] = {};
+    size_t codeSize = 0;
+    int ret = dct_read_app_data_copy(SETUP_CODE_DCT_OFFSET, setupCode, sizeof(setupCode));
+    if (ret < 0 || !particle::isPrintable(setupCode, sizeof(setupCode))) {
         // Check the OTP memory
         char serial[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
         ret = hal_get_device_serial_number(serial, sizeof(serial), nullptr);
-        if (ret >= (int)SETUP_CODE_SIZE && (size_t)ret <= sizeof(serial)) {
+        if ((ret > 0) && ((size_t)ret >= sizeof(setupCode)) && ((size_t)ret <= sizeof(serial))) {
             // Use last characters of the serial number as the setup code
-            memcpy(code, &serial[ret - SETUP_CODE_SIZE], SETUP_CODE_SIZE);
+            codeSize = std::min(size, (size_t)HAL_SETUP_CODE_SIZE);
+            memcpy(code, &serial[ret - sizeof(setupCode)], codeSize);
         } else {
             // Return a dummy setup code
-            memset(code, 'X', SETUP_CODE_SIZE);
+            codeSize = std::min(sizeof(setupCode), size);
+            memset(code, 'X', codeSize);
         }
+    } else {
+        codeSize = std::min(sizeof(setupCode), size);
+        memcpy(code, setupCode, codeSize);
     }
-    return 0;
+    // Null terminate if passed buffer is greater than actual size
+    if (codeSize < size) {
+        code[codeSize] = '\0';
+    }
+    return (ret < 0) ? ret : codeSize;
 }
-
-} // ::
 
 bool fetch_or_generate_setup_ssid(device_code_t* code) {
     int ret = get_device_name((char*)code->value, sizeof(device_code_t::value));
@@ -85,7 +96,7 @@ int get_device_name(char* buf, size_t size) {
     if (nameSize == 0 || nameSize > DEVICE_NAME_MAX_SIZE || !isPrintable(name, nameSize)) {
         // Get device setup code
         char code[SETUP_CODE_SIZE] = {};
-        ret = getDeviceSetupCode(code);
+        ret = get_device_setup_code(code, sizeof(code));
         if (ret < 0) {
             return ret;
         }

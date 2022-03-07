@@ -251,7 +251,7 @@ static esp_err_t poll_data_token(uint8_t* extra_ptr, size_t* extra_size)
 {
     uint8_t t_rx[8];
     esp_err_t ret;
-    uint8_t count_time = 0;
+    size_t count_time = 0;
 
     do {
         memset(t_rx, SDSPI_MOSI_IDLE_VAL, sizeof(t_rx));
@@ -264,7 +264,7 @@ static esp_err_t poll_data_token(uint8_t* extra_ptr, size_t* extra_size)
 
         bool found = false;
 
-        for (int byte_idx = 0; byte_idx < sizeof(t_rx); byte_idx++) {
+        for (size_t byte_idx = 0; byte_idx < sizeof(t_rx); byte_idx++) {
             uint8_t rd_data = t_rx[byte_idx];
 
             if (rd_data == TOKEN_BLOCK_START) {
@@ -369,7 +369,7 @@ static esp_err_t start_command_read_blocks(sdspi_hw_cmd_t* cmd,
         const uint8_t* extra_data_ptr = NULL;
         bool need_poll = true;
 
-        for (int i = 0; i < pre_scan_data_size; ++i) {
+        for (size_t i = 0; i < pre_scan_data_size; ++i) {
             if (pre_scan_data_ptr[i] == TOKEN_BLOCK_START) {
                 extra_data_size = pre_scan_data_size - i - 1;
                 extra_data_ptr = pre_scan_data_ptr + i + 1;

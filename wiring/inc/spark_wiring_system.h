@@ -40,6 +40,13 @@
 #include <mutex>
 #include "spark_wiring_system_power.h"
 #include "system_sleep_configuration.h"
+#include "system_control.h"
+#include "spark_wiring_vector.h"
+#include "enumclass.h"
+#include "system_control.h"
+#include "scope_guard.h"
+
+using spark::Vector;
 
 #if defined(SPARK_PLATFORM) && PLATFORM_ID != PLATFORM_GCC
 #define SYSTEM_HW_TICKS 1
@@ -75,16 +82,36 @@ enum LoggingFeature {
 };
 #endif
 
-enum WiFiTesterFeature {
-    FEATURE_WIFITESTER = 1
-};
-
 enum WakeupReason {
     WAKEUP_REASON_NONE = 0,
     WAKEUP_REASON_PIN = 1,
     WAKEUP_REASON_RTC = 2,
     WAKEUP_REASON_PIN_OR_RTC = 3,
     WAKEUP_REASON_UNKNOWN = 4
+};
+
+enum class SystemControlRequestAclAction {
+    NONE = 0,
+    ACCEPT = 1,
+    DENY = 2
+};
+
+class SystemControlRequestAcl {
+public:
+    SystemControlRequestAcl(ctrl_request_type type, SystemControlRequestAclAction action) {
+        type_ = type;
+        action_ = action;
+    };
+    ctrl_request_type type() const {
+        return type_;
+    }
+    SystemControlRequestAclAction action() const {
+        return action_;
+    }
+
+private:
+    ctrl_request_type type_;
+    SystemControlRequestAclAction action_;
 };
 
 struct SleepResult {
@@ -277,6 +304,29 @@ private:
     SleepResult compatResult_;
 };
 
+class SystemEventSubscription {
+public:
+    SystemEventSubscription(system_event_t events = (system_event_t)0, void* callable = nullptr)
+            : events_(events),
+              callable_(callable) {
+    }
+
+    operator bool() const {
+        return callable_ != nullptr;
+    }
+
+    void* getCallable() const {
+        return callable_;
+    }
+
+    system_event_t getEvents() const {
+        return events_;
+    }
+
+private:
+    system_event_t events_;
+    void* callable_;
+};
 
 class SystemClass {
 public:
@@ -450,7 +500,7 @@ public:
     }
 
     template<typename T>
-    static bool on(system_event_t events, void (T::*handler)(system_event_t, int, void*), T* instance) {
+    static SystemEventSubscription on(system_event_t events, void (T::*handler)(system_event_t, int, void*), T* instance) {
         using namespace std::placeholders;
         auto callback = std::bind(handler, instance, _1, _2, _3);
         auto wrapper = [callback](system_event_t event, int data, void* pointer) {
@@ -460,7 +510,7 @@ public:
     }
 
     template<typename T>
-    static bool on(system_event_t events, void (T::*handler)(system_event_t, int), T* instance) {
+    static SystemEventSubscription on(system_event_t events, void (T::*handler)(system_event_t, int), T* instance) {
         using namespace std::placeholders;
         auto callback = std::bind(handler, instance, _1, _2);
         auto wrapper = [callback](system_event_t event, int data, void* pointer) {
@@ -470,7 +520,7 @@ public:
     }
 
     template<typename T>
-    static bool on(system_event_t events, void (T::*handler)(system_event_t), T* instance) {
+    static SystemEventSubscription on(system_event_t events, void (T::*handler)(system_event_t), T* instance) {
         using namespace std::placeholders;
         auto callback = std::bind(handler, instance, _1);
         auto wrapper = [callback](system_event_t event, int data, void* pointer) {
@@ -480,7 +530,7 @@ public:
     }
 
     template<typename T>
-    static bool on(system_event_t events, void (T::*handler)(), T* instance) {
+    static SystemEventSubscription on(system_event_t events, void (T::*handler)(), T* instance) {
         auto callback = std::bind(handler, instance);
         auto wrapper = [callback](system_event_t event, int data, void* pointer) {
             callback();
@@ -488,53 +538,118 @@ public:
         return on(events, wrapper);
     }
 
-    static bool on(system_event_t events, std::function<void(system_event_t, int, void*)> handler) {
-        // Copy the function object to heap
-        if (!handler) {
-            return false;
-        }
-        auto wrapper = new std::function<void(system_event_t, int, void*)>(handler); // This may leak memory.
-        if (!wrapper) {
-            return false;
-        }
-        SystemEventContext context = {
-            .version = SYSTEM_EVENT_CONTEXT_VERSION,
-            .size = sizeof(context),
-            .callable = wrapper
-        };
-        return system_subscribe_event(events, subscribedEventHandler, &context);
-    }
-
-    static bool on(system_event_t events, std::function<void(system_event_t, int)> handler) {
+    static SystemEventSubscription on(system_event_t events, std::function<void(system_event_t, int)> handler) {
         auto wrapper = [handler](system_event_t events, int data, void* pointer) {
             handler(events, data);
         };
         return on(events, wrapper);
     }
 
-    static bool on(system_event_t events, std::function<void(system_event_t)> handler) {
+    static SystemEventSubscription on(system_event_t events, std::function<void(system_event_t)> handler) {
         auto wrapper = [handler](system_event_t events, int data, void* pointer) {
             handler(events);
         };
         return on(events, wrapper);
     }
 
-    static bool on(system_event_t events, std::function<void()> handler) {
+    static SystemEventSubscription on(system_event_t events, std::function<void()> handler) {
         auto wrapper = [handler](system_event_t events, int data, void* pointer) {
             handler();
         };
         return on(events, wrapper);
     }
 
-    // TODO: system_unsubscribe_event() isn't implemented yet.
+    using SystemOnThreeArgumentFuncPtr = void(system_event_t, int, void*);
+    template <typename F, std::enable_if_t<!std::is_assignable<SystemOnThreeArgumentFuncPtr*&, F>::value &&
+            std::is_convertible<F, std::function<SystemOnThreeArgumentFuncPtr>>::value, bool> = true>
+    static SystemEventSubscription on(system_event_t events, F handler) {
+        return on(events, std::function<SystemOnThreeArgumentFuncPtr>(handler));
+    }
+
+    // All the above System.on() methods delegate to this overload which allocates
+    // a wrapper callable on heap.
+    static SystemEventSubscription on(system_event_t events, std::function<SystemOnThreeArgumentFuncPtr> handler) {
+        // Copy the function object to heap
+        SystemEventSubscription sub;
+        SystemEventContext context = {};
+        context.version = SYSTEM_EVENT_CONTEXT_VERSION;
+        context.size = sizeof(context);
+
+        auto wrapper = new std::function<void(system_event_t, int, void*)>(handler);
+        if (!wrapper) {
+            return sub;
+        }
+        context.callable = wrapper;
+        context.destructor = [](void* callable) -> void {
+            auto callableWrapper = reinterpret_cast<decltype(wrapper)>(callable);
+            delete callableWrapper;
+        };
+        auto r = system_subscribe_event(events, subscribedEventHandler, &context);
+        if (r) {
+            delete wrapper;
+        } else {
+            sub = SystemEventSubscription(events, context.callable);
+        }
+        return sub;
+    }
+
+    // This overload takes non-capturing lambdas or C function pointers, which do not require a wrapper.
+    // It exists for compatibility with System.off() that takes a C function pointer as an argument
+    template <typename F, std::enable_if_t<std::is_assignable<SystemOnThreeArgumentFuncPtr*&, F>::value, bool> = true>
+    static SystemEventSubscription on(system_event_t events, F&& handler) {
+        SystemEventSubscription sub;
+        if (!handler) {
+            return sub;
+        }
+        auto callable = static_cast<SystemOnThreeArgumentFuncPtr*>(handler);
+        SystemEventContext context = {};
+        context.version = SYSTEM_EVENT_CONTEXT_VERSION;
+        context.size = sizeof(context);
+        context.callable = (void*)callable;
+        auto r = system_subscribe_event(events, subscribedEventHandlerCompat, &context);
+        if (!r) {
+            sub = SystemEventSubscription(events, context.callable);
+        }
+        return sub;
+    }
+
+    __attribute__((deprecated("Use System.off(const SystemEventSubscription&)")))
     static void off(void(*handler)(system_event_t, int, void*)) {
-        system_unsubscribe_event(all_events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
+        if (!handler) {
+            return;
+        }
+        SystemEventContext context = {};
+        context.version = SYSTEM_EVENT_CONTEXT_VERSION;
+        context.size = sizeof(context);
+        context.callable = (void*)handler;
+        system_unsubscribe_event(all_events, nullptr, &context);
     }
 
+    static void off(system_event_t events) {
+        system_unsubscribe_event(events, nullptr, nullptr);
+    }
+
+    __attribute__((deprecated("Use System.off(const SystemEventSubscription&)")))
     static void off(system_event_t events, void(*handler)(system_event_t, int, void*)) {
-        system_unsubscribe_event(events, reinterpret_cast<system_event_handler_t*>(handler), nullptr);
+        SystemEventContext context = {};
+        context.version = SYSTEM_EVENT_CONTEXT_VERSION;
+        context.size = sizeof(context);
+        context.callable = (void*)handler;
+        if (handler) {
+            system_unsubscribe_event(events, nullptr, &context);
+        } else {
+            system_unsubscribe_event(events, nullptr, nullptr);
+        }
     }
 
+
+    static void off(const SystemEventSubscription& subscription) {
+        SystemEventContext context = {};
+        context.version = SYSTEM_EVENT_CONTEXT_VERSION;
+        context.size = sizeof(context);
+        context.callable = subscription.getCallable();
+        system_unsubscribe_event(subscription.getEvents(), nullptr, &context);
+    }
 
     static uint32_t freeMemory();
 
@@ -584,16 +699,18 @@ public:
     bool enableFeature(LoggingFeature feature);
 #endif
 
-    static bool enableFeature(const WiFiTesterFeature feature);
-
     String version() {
-        SystemVersionInfo info;
+        SystemVersionInfo info = {};
+        info.size = sizeof(SystemVersionInfo);
+
         system_version_info(&info, nullptr);
         return String(info.versionString);
     }
 
     uint32_t versionNumber() {
-        SystemVersionInfo info;
+        SystemVersionInfo info = {};
+        info.size = sizeof(SystemVersionInfo);
+
         system_version_info(&info, nullptr);
         return info.versionNumber;
     }
@@ -764,6 +881,44 @@ public:
 
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
+    int setControlRequestFilter(SystemControlRequestAclAction defaultAction, Vector<SystemControlRequestAcl> filters = {}) {
+		// Add requests and their actions to the control filter
+        system_ctrl_acl default_action = (system_ctrl_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(defaultAction);
+        system_ctrl_filter* first = nullptr;
+        system_ctrl_filter* current = nullptr;
+
+        NAMED_SCOPE_GUARD(cleanup, {
+            while (first) {
+                auto tmp = first->next;
+                free(first);
+                first = tmp;
+            }
+        });
+
+        for (const auto& filter: filters) {
+            auto f = (system_ctrl_filter*)malloc(sizeof(system_ctrl_filter));
+            if (!f) {
+                 return SYSTEM_ERROR_NO_MEMORY;
+            }
+            memset(f, 0, sizeof(system_ctrl_filter));
+            f->size = sizeof(system_ctrl_filter);
+            f->req = filter.type();
+            f->action = (system_ctrl_acl)static_cast<typename std::underlying_type<SystemControlRequestAclAction>::type>(filter.action());
+            if (!current) {
+                first = current = f;
+            } else {
+                current->next = f;
+                current = f;
+            }
+        }
+
+        auto ret = system_ctrl_set_request_filter(default_action, first, nullptr);
+        if (!ret) {
+            cleanup.dismiss();
+        }
+        return ret;
+    }
+
 private:
     SystemSleepResult systemSleepResult_;
 
@@ -792,6 +947,21 @@ private:
             return;
         }
         (*handler)(events, data, pointer);
+    }
+
+    static void subscribedEventHandlerCompat(system_event_t events, int data, void* pointer, void* context) {
+        if (!context) {
+            return;
+        }
+        auto pContext = static_cast<const SystemEventContext*>(context);
+        if (!pContext->callable) {
+            return;
+        }
+        auto handler = reinterpret_cast<void(*)(system_event_t, int, void*)>(pContext->callable);
+        if (!handler) {
+            return;
+        }
+        handler(events, data, pointer);
     }
 };
 

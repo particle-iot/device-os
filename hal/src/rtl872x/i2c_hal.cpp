@@ -193,13 +193,12 @@ public:
         end();
 
         // Just in case make sure that the pins are correctly configured (they should anyway be at this point)
-        hal_gpio_config_t conf = {
-            .size = sizeof(conf),
-            .version = HAL_GPIO_VERSION,
-            .mode = OUTPUT_OPEN_DRAIN_PULLUP,
-            .set_value = true,
-            .value = 1
-        };
+        hal_gpio_config_t conf = {};
+        conf.size = sizeof(conf);
+        conf.version = HAL_GPIO_VERSION;
+        conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
+        conf.set_value = true;
+        conf.value = 1;
         hal_gpio_configure(sdaPin_, &conf, nullptr);
         conf.value = hal_gpio_read(sclPin_);
         hal_gpio_configure(sclPin_, &conf, nullptr);

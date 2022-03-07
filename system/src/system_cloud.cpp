@@ -183,7 +183,8 @@ bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flag
     SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
     }
 
-    spark_protocol_send_event_data d = { sizeof(spark_protocol_send_event_data) };
+    spark_protocol_send_event_data d = {};
+    d.size = sizeof(d);
     if (reserved) {
         // Forward completion callback to the protocol implementation
         auto r = static_cast<const spark_send_event_data*>(reserved);

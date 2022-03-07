@@ -55,8 +55,7 @@ void module_user_init()
     module_user_init_hook();
 
     // invoke constructors
-    int ctor_num;
-    for (ctor_num=0; ctor_num < link_constructors_size/sizeof(constructor_ptr_t); ctor_num++ )
+    for (size_t ctor_num=0; ctor_num < link_constructors_size/sizeof(constructor_ptr_t); ctor_num++ )
     {
         link_constructors_location[ctor_num]();
     }

@@ -77,7 +77,7 @@ void set_key_value(key_value* kv, const char* key, const char* value)
     strncpy(kv->value, value, sizeof(kv->value)-1);
 }
 
-void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
+int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
 {
     if (construct) {
         info->platform_id = PLATFORM_ID;
@@ -97,6 +97,7 @@ void HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved)
         info->modules = nullptr;
     }
     HAL_OTA_Add_System_Info(info, construct, reserved);
+    return 0;
 }
 
 bool validate_module_dependencies_full(const module_info_t* module, const module_bounds_t* bounds)
@@ -249,7 +250,10 @@ uint16_t HAL_OTA_ChunkSize()
 
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 {
-    FLASH_Begin(address, length);
+    const int r = FLASH_Begin(address, length);
+    if (r != FLASH_ACCESS_RESULT_OK) {
+        return false;
+    }
     return true;
 }
 
@@ -616,7 +620,7 @@ const uint8_t* fetch_device_public_key(uint8_t lock)
 int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
 {
     unsigned offset = 0;
-    unsigned length = -1;
+    unsigned length = 0;
     bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
 
     switch (config_item)
@@ -653,7 +657,7 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
     case SYSTEM_CONFIG_SOFTAP_PREFIX:
         offset = DCT_SSID_PREFIX_OFFSET;
         length = DCT_SSID_PREFIX_SIZE-1;
-        if (data_length>length)
+        if (data_length>(unsigned)length)
             data_length = length;
         dct_write_app_data(&data_length, offset++, 1);
         break;
@@ -667,8 +671,8 @@ int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, uns
         break;
     }
 
-    if (length>=0)
-        dct_write_app_data(data, offset, length>data_length ? data_length : length);
+    if (length>0)
+        dct_write_app_data(data, offset, std::min<size_t>(data_length, length));
 
     return length;
 }

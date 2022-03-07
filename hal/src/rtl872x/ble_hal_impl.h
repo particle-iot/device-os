@@ -78,6 +78,10 @@
 /* Maximum length of the buffer to store scan report data */
 #define BLE_MAX_SCAN_REPORT_BUF_LEN                 255  /* Must support extended length for CODED_PHY scanning */
 
+/* Maximum length for CODED_PHY */
+#define BLE_MAX_ADV_DATA_LEN_EXT                    255
+#define BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE        238
+
 /* Connection Parameters limits */
 #define BLE_CONN_PARAMS_SLAVE_LATENCY_ERR           5
 #define BLE_CONN_PARAMS_TIMEOUT_ERR                 100

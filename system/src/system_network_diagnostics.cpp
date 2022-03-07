@@ -86,7 +86,7 @@ public:
     }
 
 #if HAL_PLATFORM_CELLULAR
-    const cellular_result_t getCGI(CellularGlobalIdentity& cgi)
+    cellular_result_t getCGI(CellularGlobalIdentity& cgi)
     {
         cellular_result_t result = SYSTEM_ERROR_NONE;
         system_tick_t ms = millis();
@@ -109,8 +109,7 @@ public:
 private:
 #if Wiring_Cellular
     CellularSignal sig_;
-    CellularGlobalIdentity cgi_{.size = sizeof(CellularGlobalIdentity),
-                                .version = CGI_VERSION_LATEST};
+    CellularGlobalIdentity cgi_ = {};
 #elif Wiring_WiFi
     WiFiSignal sig_;
 #endif

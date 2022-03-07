@@ -148,8 +148,9 @@ void HardFault_Handler(void) {
         " mrseq r0, msp                                             \n"
         " mrsne r0, psp                                             \n"
         " ldr r1, [r0, #24]                                         \n"
-        " ldr r2, =handler2_address_const                           \n"
+        " ldr r2, handler2_address_const                            \n"
         " bx r2                                                     \n"
+        " .balign 4                                                 \n"
         " handler2_address_const: .word prvGetRegistersFromStack    \n"
     );
 }
@@ -245,7 +246,8 @@ void HAL_Core_Setup_override_interrupts(void) {
     SCB->VTOR = 0x0;
 
     /* Init softdevice */
-    sd_mbr_command_t com = {SD_MBR_COMMAND_INIT_SD, };
+    sd_mbr_command_t com = {};
+    com.command = SD_MBR_COMMAND_INIT_SD;
     uint32_t ret = sd_mbr_command(&com);
     SPARK_ASSERT(ret == NRF_SUCCESS);
     /* Forward unhandled interrupts to the application */
@@ -802,6 +804,9 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
         case FEATURE_LED_OVERRIDDEN: {
             return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, enabled, NULL);
         }
+        case FEATURE_DISABLE_LISTENING_MODE: {
+            return Write_Feature_Flag(FEATURE_FLAG_DISBLE_LISTENING_MODE, enabled, NULL);
+        }
     }
 
     return -1;
@@ -822,6 +827,10 @@ bool HAL_Feature_Get(HAL_Feature feature) {
         case FEATURE_LED_OVERRIDDEN: {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) ? value : false;
+        }
+        case FEATURE_DISABLE_LISTENING_MODE: {
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_DISBLE_LISTENING_MODE, &value) == 0) ? value : false;
         }
     }
     return false;

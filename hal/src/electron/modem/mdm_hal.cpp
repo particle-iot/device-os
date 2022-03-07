@@ -41,6 +41,7 @@
 #include <mutex>
 #include "net_hal.h"
 #include <limits>
+#include "platform_ncp.h"
 
 std::recursive_mutex mdm_mutex;
 
@@ -716,8 +717,9 @@ int MDMParser::_cbString(int type, const char* buf, int len, CStringHelper* str)
     if (str && str->str && (str->size > 1) && (type == TYPE_UNKNOWN)) {
         char format[32] = {};
         snprintf(format, sizeof(format), "\r\n%%%us\r\n", str->size - 1);
-        if (sscanf(buf, format, str->str) == 1)
+        if (sscanf(buf, format, str->str) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }
@@ -725,8 +727,9 @@ int MDMParser::_cbString(int type, const char* buf, int len, CStringHelper* str)
 int MDMParser::_cbInt(int type, const char* buf, int len, int* val)
 {
     if (val && (type == TYPE_UNKNOWN)) {
-        if (sscanf(buf, "\r\n%d\r\n", val) == 1)
+        if (sscanf(buf, "\r\n%d\r\n", val) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }
@@ -849,11 +852,13 @@ bool MDMParser::_powerOn(void)
         _init = true;
     }
 
-    MDM_INFO("\r\n[ Modem::powerOn ] = = = = = = = = = = = = = =");
     bool continue_cancel = false;
     bool retried_after_reset = false;
-
     int i = MDM_POWER_ON_MAX_ATTEMPTS_BEFORE_RESET; // When modem not responsive on boot, AT/OK tries 25x (for ~30s) before hard reset
+
+    auto otp_ncp_id = platform_primary_ncp_identifier();
+    // _dev.dev = cellular_dev_from_ncp(otp_ncp_id);
+    LOG(INFO, "Powering modem on, ncpId: 0x%02x", otp_ncp_id);
     while (i--) {
         // SARA-U2/LISA-U2 50..80us
         hal_gpio_write(PWR_UC, 0); HAL_Delay_Milliseconds(50);
@@ -2647,8 +2652,9 @@ int MDMParser::_cbUDOPN(int type, const char* buf, int len, CStringHelper* str)
     if (str && str->str && (str->size > 1) && (type == TYPE_PLUS)) {
         char format[32] = {};
         snprintf(format, sizeof(format), "\r\n+UDOPN: 0,\"%%%u[^\"]\"", str->size - 1);
-        if (sscanf(buf, format, str->str) == 1)
+        if (sscanf(buf, format, str->str) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }
@@ -2695,8 +2701,9 @@ int MDMParser::_cbCMIP(int type, const char* buf, int len, MDM_IP* ip)
 int MDMParser::_cbUPSND(int type, const char* buf, int len, int* act)
 {
     if ((type == TYPE_PLUS) && act) {
-        if (sscanf(buf, "\r\n+UPSND: %*d,%*d,%d", act) == 1)
+        if (sscanf(buf, "\r\n+UPSND: %*d,%*d,%d", act) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }
@@ -2850,8 +2857,9 @@ int MDMParser::_cbUSOCR(int type, const char* buf, int len, int* handle)
 {
     if ((type == TYPE_PLUS) && handle) {
         // +USOCR: socket
-        if (sscanf(buf, "\r\n+USOCR: %d", handle) == 1)
+        if (sscanf(buf, "\r\n+USOCR: %d", handle) == 1) {
             /*nothing*/;
+        }
     }
     return WAIT;
 }

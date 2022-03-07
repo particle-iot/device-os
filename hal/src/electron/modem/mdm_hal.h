@@ -508,6 +508,10 @@ public:
     */
     bool powerState(void);
 
+    /**
+     * Enable or disable modem URCs (used for keeping the MCU asleep)
+     * \return true if successful, false otherwise
+     */
     bool urcs(bool enable);
 
 protected:

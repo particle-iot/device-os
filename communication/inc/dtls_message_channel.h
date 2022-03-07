@@ -109,8 +109,8 @@ private:
     /**
      * C function to call the send/recv methods on a DTLSMessageChannel instance.
      */
-    static int send_(void* ctx, const uint8_t* data, size_t len);
-    static int recv_(void* ctx, uint8_t* data, size_t len);
+    static int sendCallback(void* ctx, const uint8_t* data, size_t len);
+    static int recvCallback(void* ctx, uint8_t* data, size_t len);
 
     int send(const uint8_t* data, size_t len);
     int recv(uint8_t* data, size_t len);

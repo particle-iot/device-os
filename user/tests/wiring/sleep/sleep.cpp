@@ -15,7 +15,7 @@ SYSTEM_THREAD(ENABLED);
  */
 test(sleep_0_device_wakes_from_deep_sleep_with_short_sleep_time)
 {
-    waitFor(Particle.connected, 5 * 60 * 1000);
+    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     if (magick == 0xdeadbeef) {
         magick = 0;
         // We should have woken up from deep sleep
@@ -182,7 +182,7 @@ test(sleep_2_udp_all_confirmable_messages_are_sent_before_sleep_step_1)
     // Connect
     //Serial.println("Connecting...");
     Particle.connect();
-    waitFor(Particle.connected, 5 * 60 * 1000);
+    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Particle.connected());
     //Serial.println("Connected");
 

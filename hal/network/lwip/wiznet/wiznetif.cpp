@@ -121,7 +121,8 @@ WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_p
         .version = HAL_GPIO_VERSION,
         .mode = OUTPUT,
         .set_value = true,
-        .value = 1
+        .value = 1,
+        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
     hal_gpio_configure(reset_, &conf, nullptr);
     hal_gpio_configure(cs_, &conf, nullptr);
