@@ -321,13 +321,14 @@ int RequestHandler::bleScan(Request* req) {
     return 0;
 }
 
-// Skip 6 and 7 since they are SWC+SWD
-// Skip 9 and 10 since they are Uart TX+RX
-// The pin order denotes how they are jumpered together. IE pin 0 and pin 1 are jumpered together.
-// The pin order reflects which pins are physically next to each other on the P2 jig and can be easily jumpered together. 
-// Only pins D11 (11) and S4 (20) require a hookup wire rather than jumper since they are not next to each other
-// TODO: How to test remaining odd pin left out? (pin 22)
-static const Vector<uint16_t> p2_digital_pins = {0, 1, 2, 19, 13, 18, 16, 17, 15, 8, 14, 21, 12, 3, 4, 5, 11, 20};
+// Skip 6 and 7 since they are SWC+SWD (PB3, PA27)
+// Skip 8 and 9 since they are Uart TX+RX (PA7, PA8)
+// The pin order denotes how they are jumpered together. IE pin 14 (PB4) and pin 21 (PB31) are jumpered together.
+// The pin order largely reflects which pins are physically next to each other on the P2 jig and can be easily jumpered together. 
+// Two sets of pins are not adjacent and require a hookup wire:
+// - Pin19 (PA0) + Pin10 (PA15 ie WKP/D10)
+// - Pin14 (PB4) + Pin21 (PB31)
+static const Vector<uint16_t> p2_digital_pins = {14, 21, 10, 19, 0, 1, 15, 16, 17, 12, 18, 2, 4, 5, 3, 11, 13, 20 };
 
 bool assertAllPinsLow(uint16_t exceptPinA, uint16_t exceptPinB, uint16_t * errorPin) {
     for(auto pin : p2_digital_pins) {
