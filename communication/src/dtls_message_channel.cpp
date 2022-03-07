@@ -303,7 +303,16 @@ ProtocolError DTLSMessageChannel::init(
 
 inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
-	return callbacks.send(data, len, callbacks.tx_context);
+	uint8_t d[len + DEVICE_ID_LEN + 2];
+	d[0] = 253;
+	memcpy(d + 1, data, len);
+	memcpy(d + len + 1, device_id, DEVICE_ID_LEN);
+	d[len + DEVICE_ID_LEN + 1] = DEVICE_ID_LEN;
+	int r = callbacks.send(d, len + DEVICE_ID_LEN + 2, callbacks.tx_context);
+	if (r == (int)(len + DEVICE_ID_LEN + 2)) { // Hide the increased length
+		r = len;
+	}
+	return r;
 }
 
 void DTLSMessageChannel::reset_session()
