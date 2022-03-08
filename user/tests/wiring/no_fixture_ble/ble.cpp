@@ -19,6 +19,8 @@
 #include "unit-test/unit-test.h"
 
 #if Wiring_BLE == 1
+
+#if PLATFORM_ID != PLATFORM_P2 // P2 doesn't support setting device address
 test(BLE_01_Set_BLE_Device_Address) {
     int ret;
     BleAddress defaultAddr = BLE.address();
@@ -72,6 +74,7 @@ test(BLE_01_Set_BLE_Device_Address) {
     getAddr = BLE.address();
     assertTrue(getAddr == defaultAddr);
 }
+#endif // PLATFORM_ID != PLATFORM_P2
 
 test(BLE_02_Set_BLE_Device_Name) {
     int ret;
@@ -115,6 +118,7 @@ test(BLE_02_Set_BLE_Device_Name) {
     assertTrue(getName == defaultName);
 }
 
+#if PLATFORM_ID != PLATFORM_P2 // P2 doesn't support setting TX power
 test(BLE_03_Set_BLE_Tx_Power) {
     int ret;
     int8_t getTxPower;
@@ -175,6 +179,7 @@ test(BLE_03_Set_BLE_Tx_Power) {
     assertEqual(ret, 0);
     assertEqual(getTxPower, 8);
 }
+#endif // PLATFORM_ID != PLATFORM_P2
 
 test(BLE_04_Select_BLE_Antenna) {
 #if HAL_PLATFORM_RADIO_ANTENNA_EXTERNAL
