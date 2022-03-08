@@ -738,6 +738,9 @@ void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order) {
     auto config = spiInstance->config();
     config.bitOrder = order;
     spiInstance->setConfig(config);
+    if (spiInstance->isEnabled()) {
+        spiInstance->begin(config);
+    }
 }
 
 void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode) {
@@ -748,6 +751,9 @@ void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode) {
     auto config = spiInstance->config();
     config.dataMode = mode;
     spiInstance->setConfig(config);
+    if (spiInstance->isEnabled()) {
+        spiInstance->begin(config);
+    }
 }
 
 void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate) {
@@ -758,6 +764,9 @@ void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate) {
     auto config = spiInstance->config();
     config.clockDiv = rate;
     spiInstance->setConfig(config);
+    if (spiInstance->isEnabled()) {
+        spiInstance->begin(config);
+    }
 }
 
 uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
@@ -876,7 +885,10 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
     }
 
     auto spiInstance = CHECK_TRUE_RETURN(getInstance(spi), SYSTEM_ERROR_NOT_FOUND);
-    return spiInstance->begin(config);
+    if (spiInstance->isEnabled()) {
+        spiInstance->begin(config);
+    }
+    return 0;
 }
 
 int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
