@@ -33,4 +33,4 @@
 #define HAL_PLATFORM_USB_PRODUCT_STRING "P2 DFU Mode"
 #endif // defined(MODULE_FUNCTION) && MODULE_FUNCTION != 2 // MOD_FUNC_BOOTLOADER
 
-#define PRODUCT_SERIES "P series"
+#define PRODUCT_SERIES "Pseries"
