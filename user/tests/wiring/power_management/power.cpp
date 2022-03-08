@@ -204,6 +204,7 @@ test(POWER_01_PoweredByUsbHostAndBatteryStateIsValid) {
     assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
     assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
     assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+    assertEqual(cfg.socBitPrecision(), particle::power::DEFAULT_SOC_18_BIT_PRECISION);
 
     // Allow some time for the power management subsystem to settle
     waitFor(powerManagementSettled, 10000);
@@ -344,6 +345,7 @@ test(POWER_06_PoweredByVinAndBatteryStateIsValid) {
     assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
     assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
     assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+    assertEqual(cfg.socBitPrecision(), particle::power::DEFAULT_SOC_18_BIT_PRECISION);
 
     // Allow some time for the power management subsystem to settle
     waitFor(powerManagementSettled, 10000);
@@ -475,6 +477,7 @@ test(POWER_11_ApplyingDefaultPowerManagementConfigurationInRuntimeWorksAsIntende
     assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
     assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
     assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+    assertEqual(cfg.socBitPrecision(), particle::power::DEFAULT_SOC_18_BIT_PRECISION);
 
     PMIC power(true);
     assertEqual(power.getInputCurrentLimit(), particle::power::DEFAULT_INPUT_CURRENT_LIMIT);
@@ -575,6 +578,7 @@ test(POWER_14_PmicDetectionFlagIsCompatibleWithOldDeviceOsVersions) {
     assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
     assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
     assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+    assertEqual(cfg.socBitPrecision(), particle::power::DEFAULT_SOC_18_BIT_PRECISION);
 
     // Feature enabled
     uint8_t v;
@@ -618,6 +622,7 @@ test(POWER_15_DisableFeatureFlag) {
         assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
         assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
         assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+        assertEqual(cfg.socBitPrecision(), particle::power::DEFAULT_SOC_18_BIT_PRECISION);
 
         assertEqual(System.batteryState(), (int)BATTERY_STATE_UNKNOWN);
         assertEqual(System.powerSource(), (int)POWER_SOURCE_UNKNOWN);
