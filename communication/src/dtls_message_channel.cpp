@@ -51,6 +51,20 @@ void mbedtls_ssl_update_out_pointers(mbedtls_ssl_context *ssl, mbedtls_ssl_trans
 
 #include "str_util.h"
 
+#if PLATFORM_ID == 3
+
+#include <random>
+
+void fillRandom(uint8_t* data, size_t size) {
+	static std::random_device dev("/dev/urandom");
+	static std::uniform_int_distribution<int> dist(0, 255);
+	for (size_t i = 0; i < size; ++i) {
+		data[i] = dist(dev);
+	}
+}
+
+#endif // PLATFORM_ID == 3
+
 namespace particle { namespace protocol {
 
 
@@ -303,13 +317,26 @@ ProtocolError DTLSMessageChannel::init(
 
 inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
-	uint8_t d[len + DEVICE_ID_LEN + 2];
+#if PLATFORM_ID == 3
+	const size_t randLen = 8;
+#else
+	const size_t randLen = 0;
+#endif
+	uint8_t d[len + randLen + DEVICE_ID_LEN + 2];
 	d[0] = 253;
 	memcpy(d + 1, data, len);
-	memcpy(d + len + 1, device_id, DEVICE_ID_LEN);
-	d[len + DEVICE_ID_LEN + 1] = DEVICE_ID_LEN;
-	int r = callbacks.send(d, len + DEVICE_ID_LEN + 2, callbacks.tx_context);
-	if (r == (int)(len + DEVICE_ID_LEN + 2)) { // Hide the increased length
+#if PLATFORM_ID == 3
+	fillRandom(d + len + 1, randLen);
+#endif
+	memcpy(d + len + randLen + 1, device_id, DEVICE_ID_LEN);
+	d[len + randLen + DEVICE_ID_LEN + 1] = DEVICE_ID_LEN;
+	int r = callbacks.send(d, len + randLen + DEVICE_ID_LEN + 2, callbacks.tx_context);
+	if (r == (int)(len + randLen + DEVICE_ID_LEN + 2)) { // Hide the increased length
+		if (randLen > 0) {
+			char randHex[randLen * 2 + 1] = {};
+			toHex(d + len + 1, randLen, randHex, sizeof(randHex));
+			LOG(INFO, "Sent packet; tag: %s", randHex);
+		}
 		r = len;
 	}
 	return r;
