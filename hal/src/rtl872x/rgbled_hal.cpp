@@ -106,12 +106,12 @@ void initLedPin(Led_TypeDef led) {
         return;
     }
 
-    hal_gpio_mode(leds[led].pin, OUTPUT);
     if (leds[led].is_inverted) {
         hal_gpio_write(leds[led].pin, 1);
     } else {
         hal_gpio_write(leds[led].pin, 0);
     }
+    hal_gpio_mode(leds[led].pin, OUTPUT);
 }
 
 void rgbUninit() {
