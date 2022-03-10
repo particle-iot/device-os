@@ -53,6 +53,7 @@ struct Configuration
     std::string periph_directory;
     uint16_t log_level = 0;
     ProtocolFactory protocol = PROTOCOL_LIGHTSSL;
+    uint16_t src_port;
 };
 
 
@@ -65,6 +66,7 @@ struct DeviceConfig
     uint8_t device_key[1024];
     uint8_t server_key[1024];
     ProtocolFactory protocol;
+    uint16_t src_port;
 
     size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen);
 

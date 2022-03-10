@@ -95,6 +95,7 @@ public:
             ("server_key,sk", po::value<string>(&config.server_key)->default_value("server_key.der"), "the filename containing the server public key")
             ("state,s", po::value<string>(&config.periph_directory)->default_value("state"), "the directory where device state and peripherals is stored")
 			("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_LIGHTSSL), "the cloud communication protocol to use")
+            ("src_port", po::value<uint16_t>(&config.src_port)->default_value(0), "source port number")
 			;
 
         command_line_options.add(program_options).add(device_options);
@@ -201,5 +202,6 @@ void DeviceConfig::read(Configuration& configuration)
     setLoggerLevel(LoggerOutputLevel(NO_LOG_LEVEL-configuration.log_level));
 
     this->protocol = configuration.protocol;
+    this->src_port = configuration.src_port;
 }
 

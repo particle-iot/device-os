@@ -34,6 +34,10 @@
 #include "endian_util.h"
 #include "simple_ntp_client.h"
 
+#if PLATFORM_ID == PLATFORM_GCC
+#include "device_config.h"
+#endif
+
 namespace {
 
 struct SystemCloudState {
@@ -113,8 +117,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
     uint16_t dport = particle::bigEndianToNative(*((uint16_t*)saddr.sa_data));
 
 #if PLATFORM_ID == PLATFORM_GCC
-    // Use ephemeral port
-    uint16_t bport = 0;
+    uint16_t bport = deviceConfig.src_port;
 #else
     uint16_t bport = dport;
 #endif // PLATFORM_ID == PLATFORM_GCC
