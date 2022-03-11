@@ -300,55 +300,55 @@ test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
+namespace {
+int sLastEvent = 0;
+int sLastParam = 0;
+bool checkLastParamCloudDisconnected() {
+    return sLastParam == cloud_status_disconnected;
+}
+bool checkLastParamCloudConnected() {
+    return sLastParam == cloud_status_connected;
+}
+} // anonymous
+
 test(SYSTEM_08_system_event_subscription) {
     SCOPE_GUARD({
         System.off(all_events);
     });
-    int lastEvent = 0;
-    auto subscription = System.on(cloud_status, [&lastEvent](system_event_t ev) {
-        lastEvent = ev;
+    // Disconnect to reset test
+    auto subscription = System.on(cloud_status, [&sLastEvent, &sLastParam](system_event_t ev, int data) {
+        sLastEvent = ev;
+        sLastParam = data;
     });
+    sLastParam = cloud_status_disconnecting;
     Particle.disconnect();
-    assertTrue(waitFor(Particle.disconnected, 5000));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(lastEvent, (int)cloud_status);
+    assertTrue(waitFor(checkLastParamCloudDisconnected, 5000));
+    assertTrue(Particle.disconnected);
 
     System.off(subscription);
-    assertTrue(Particle.disconnected);
-    lastEvent = 0;
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(lastEvent, 0);
+    assertFalse(waitFor(checkLastParamCloudConnected, 1000)); // should not fire cloud_status_connected
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
 
-    subscription = System.on(cloud_status, [&lastEvent](system_event_t ev) {
-        lastEvent = ev;
+    // Disconnect to reset test
+    subscription = System.on(cloud_status, [&sLastEvent, &sLastParam](system_event_t ev, int data) {
+        sLastEvent = ev;
+        sLastParam = data;
     });
+    sLastParam = cloud_status_disconnecting;
     Particle.disconnect();
-    assertTrue(waitFor(Particle.disconnected, 5000));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(lastEvent, (int)cloud_status);
+    assertTrue(waitFor(checkLastParamCloudDisconnected, 5000));
+    assertTrue(Particle.disconnected);
 
     System.off(cloud_status);
-    assertTrue(Particle.disconnected);
-    lastEvent = 0;
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(lastEvent, 0);
+    assertFalse(waitFor(checkLastParamCloudConnected, 1000)); // should not fire cloud_status_connected
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
 }
-
-namespace {
-int sLastEvent = 0;
-} // anonymous
 
 test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
     SCOPE_GUARD({
@@ -356,81 +356,65 @@ test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
     });
     auto handler = [](system_event_t ev, int data, void*) {
         sLastEvent = ev;
+        sLastParam = data;
     };
+    // Disconnect to reset test
     assertTrue((bool)System.on(cloud_status, handler));
-    assertTrue(Particle.connected());
+    sLastParam = cloud_status_disconnecting;
     Particle.disconnect();
-    assertTrue(waitFor(Particle.disconnected, 5000));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(sLastEvent, (int)cloud_status);
+    assertTrue(waitFor(checkLastParamCloudDisconnected, 5000));
+    assertTrue(Particle.disconnected);
 
     // System.off(event)
     System.off(cloud_status);
-    assertTrue(Particle.disconnected);
-    sLastEvent = 0;
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(sLastEvent, 0);
+    assertFalse(waitFor(checkLastParamCloudConnected, 1000)); // should not fire cloud_status_connected
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
 
+    // Disconnect to reset test
     assertTrue((bool)System.on(cloud_status, handler));
+    sLastParam = cloud_status_disconnecting;
     Particle.disconnect();
-    assertTrue(waitFor(Particle.disconnected, 5000));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(sLastEvent, (int)cloud_status);
+    assertTrue(waitFor(checkLastParamCloudDisconnected, 5000));
+    assertTrue(Particle.disconnected);
 
     // System.off(event, handler)
     System.off(cloud_status, handler);
-    assertTrue(Particle.disconnected);
-    sLastEvent = 0;
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(sLastEvent, 0);
+    assertFalse(waitFor(checkLastParamCloudConnected, 1000)); // should not fire cloud_status_connected
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
 
+    // Disconnect to reset test
     assertTrue((bool)System.on(cloud_status, handler));
+    sLastParam = cloud_status_disconnecting;
     Particle.disconnect();
-    assertTrue(waitFor(Particle.disconnected, 5000));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(sLastEvent, (int)cloud_status);
+    assertTrue(waitFor(checkLastParamCloudDisconnected, 5000));
+    assertTrue(Particle.disconnected);
 
     // System.off(handler)
     System.off(handler);
-    assertTrue(Particle.disconnected);
-    sLastEvent = 0;
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(sLastEvent, 0);
+    assertFalse(waitFor(checkLastParamCloudConnected, 1000)); // should not fire cloud_status_connected
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
 
+    // Disconnect to reset test
     assertTrue((bool)System.on(cloud_status, handler));
+    sLastParam = cloud_status_disconnecting;
     Particle.disconnect();
-    assertTrue(waitFor(Particle.disconnected, 5000));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(sLastEvent, (int)cloud_status);
+    assertTrue(waitFor(checkLastParamCloudDisconnected, 5000));
+    assertTrue(Particle.disconnected);
 
     // System.off(event)
     System.off(cloud_status);
-    assertTrue(Particle.disconnected);
-    sLastEvent = 0;
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // Events are delivered on application thread when threading is enabled, make sure to process queue
-    delay(100);
-    Particle.process();
-    assertEqual(sLastEvent, 0);
+    assertFalse(waitFor(checkLastParamCloudConnected, 1000)); // should not fire cloud_status_connected
+    assertEqual(sLastParam, (int)cloud_status_disconnected);
 }
