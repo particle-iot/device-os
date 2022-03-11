@@ -25,8 +25,18 @@ test(slo_startup_stats) {
     
     // get the total in-flash size of the sample application (from which "free flash" is
     // implied)
+    #if PLATFORM_ID == PLATFORM_P2
+    #if defined(MODULAR_FIRMWARE)
+    uint32_t user_module_start = module_user.start_address;
+    #else
+    uint32_t user_module_start = CORE_FW_ADDRESS;
+    #else
+    uint32_t user_module_start = USER_FIRMWARE_IMAGE_LOCATION;
+    #endif
+
+
     size_t app_flash_size =
-        FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION) +
+        FLASH_ModuleLength(FLASH_INTERNAL, user_module_start) +
         sizeof(uint32_t);
 
     String stats = String::format("{\"free_mem\": %u, \"app_flash_size\": %u}",

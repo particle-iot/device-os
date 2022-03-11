@@ -106,10 +106,16 @@ test(TIMER_04_not_started)
 void create_timers_with_delay(unsigned block_for, int& fails)
 {
 	// the exact amount of timers needed is based on the size of the
-	// timer queue.
+	// timer queue as defined in configTIMER_QUEUE_LENGTH
+	#if PLATFORM_ID == PLATFORM_P2
+	int timer_queue_size = 64;
+	#else 
+	int timer_queue_size = 5;
+	#endif
+
 	fails = 0;
-	Timer* timers[10];
-	for (int i=0; i<5; i++)
+	Timer* timers[timer_queue_size*2];
+	for (int i=0; i<timer_queue_size; i++)
 	{
 		Timer* t = new Timer(1, [] { HAL_Delay_Milliseconds(50); }, true);
 		bool started = t->start();
