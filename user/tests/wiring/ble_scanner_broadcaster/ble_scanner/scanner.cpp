@@ -77,7 +77,7 @@ test(BLE_01_Scanner_Blocked_Timeout_Simulate) {
     ret = BLE.setScanParameters(&setScanParams);
     assertEqual(ret, 0);
 
-    #ifndef CONFIG_PLATFORM_8721D
+    #if HAL_PLATFORM_NRF52840
     NVIC_DisableIRQ(SD_EVT_IRQn);
     #endif
 
@@ -89,7 +89,7 @@ test(BLE_01_Scanner_Blocked_Timeout_Simulate) {
     assertMoreOrEqual(now - start, 3000);
     assertLessOrEqual(now - start, 4500);
 
-    #ifndef CONFIG_PLATFORM_8721D
+    #if HAL_PLATFORM_NRF52840
     NVIC_EnableIRQ(SD_EVT_IRQn);
     #endif
 }

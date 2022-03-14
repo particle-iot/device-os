@@ -16,6 +16,8 @@ extern "C" int hal_flash_read(uintptr_t addr, uint8_t* buf, size_t size) {
     return SYSTEM_ERROR_NONE;
 }
 
+extern uintptr_t link_user_module_start_address;
+
 test(slo_startup_stats) {
     Particle.connect();
     waitFor(Particle.connected, 10 * 60 * 1000);
@@ -27,9 +29,10 @@ test(slo_startup_stats) {
     // implied)
     #if PLATFORM_ID == PLATFORM_P2
     #if defined(MODULAR_FIRMWARE)
-    uint32_t user_module_start = module_user.start_address;
+    uint32_t user_module_start = (uint32_t)&link_user_module_start_address;
     #else
     uint32_t user_module_start = CORE_FW_ADDRESS;
+    #endif
     #else
     uint32_t user_module_start = USER_FIRMWARE_IMAGE_LOCATION;
     #endif

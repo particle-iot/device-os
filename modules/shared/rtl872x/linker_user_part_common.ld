@@ -189,6 +189,8 @@ SECTIONS
 /* This can be used to calculate the OTA top boundary */
 link_user_part_flash_start = platform_user_part_flash_start;
 
+PROVIDE (link_user_module_start_address = link_module_start);
+
 ASSERT (
     !DEFINED(platform_user_part_trimmed) || (link_module_info_crc_end == platform_user_part_flash_end),
     "User module is not aligned to the end of its flash area"
