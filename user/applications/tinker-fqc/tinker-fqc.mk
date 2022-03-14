@@ -18,15 +18,5 @@ ifeq ($(strip $(APPSOURCES)),)
 $(error "No sources found in $(TINKER_PATH)")
 endif
 
-$(info $$FQC_PATH is [${FQC_PATH}])
-#$(info $$INCLUDE_DIRS is [${INCLUDE_DIRS}])
-$(info $$APPSOURCES is [${APPSOURCES}])
-$(info $$CPPSRC is [${CPPSRC}])
-$(info $$CSRC is [${CPPSRC}])
-
-
-CFLAGS += -DTINKER_FQC
-CXXFLAGS += -DTINKER_FQC
-
 CFLAGS += -DLOG_SERIAL
 CXXFLAGS += -DLOG_SERIAL
