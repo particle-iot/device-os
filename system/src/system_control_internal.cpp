@@ -95,7 +95,7 @@ int SystemControl::init() {
     // is enabled, we need to make sure to call characteristic UUIDs in prov
     // mode system calls for the first time instead of here.
     // See system_ble_prov_mode()
-    if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+    if (system_mode() == SAFE_MODE || !HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
         const int ret = bleChannel_.init();
         if (ret != 0) {
             return ret;
