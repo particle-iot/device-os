@@ -39,15 +39,13 @@ namespace {
 class SleepConfigShadow {
 public:
     SleepConfigShadow()
-            : config_(nullptr),
-              shadow_(nullptr) {
+            : shadow_(nullptr) {
     }
     ~SleepConfigShadow() {}
 
     int init(hal_sleep_config_t* config) {
         CHECK_TRUE(config != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
         int ret = SYSTEM_ERROR_INTERNAL;
-        config_ = config;
 
         SCOPE_GUARD ({
             if (ret != SYSTEM_ERROR_NONE) {
@@ -57,10 +55,10 @@ public:
 
         shadow_ = (hal_sleep_config_t*)staticPool_.alloc(sizeof(hal_sleep_config_t));
         CHECK_TRUE(shadow_, SYSTEM_ERROR_NO_MEMORY);
-        memcpy(shadow_, (const void*)config_, sizeof(hal_sleep_config_t));
-        shadow_->wakeup_sources = nullptr;
+        memcpy(shadow_, (const void*)config, sizeof(hal_sleep_config_t));
+        shadow_->wakeup_sources = nullptr; // config->wakeup_sources is now pointing to KM4 SRAM, we cannot assign it to shadow_.
 
-        const hal_wakeup_source_base_t* source = config_->wakeup_sources;
+        const hal_wakeup_source_base_t* source = config->wakeup_sources;
         while (source) {
             if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
                 CHECK(copyWakeupSource((const hal_wakeup_source_rtc_t*)source));
@@ -73,7 +71,6 @@ public:
     }
 
     void reset() {
-        config_ = nullptr;
         if (!shadow_) {
             return;
         }
@@ -105,7 +102,6 @@ private:
 
     static uint8_t staticBuffer_[1024];
     static AtomicSimpleStaticPool staticPool_;
-    hal_sleep_config_t* config_;
     hal_sleep_config_t* shadow_;
 };
 

@@ -136,14 +136,13 @@ public:
 
         hal_interrupt_suspend();
 
-        Cache_Enable(false);
+        // WARNING: any function/data being called/accessed in/after PSRAM being suspended should reside in SRAM
+        ICache_Disable();
         if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
             suspendPsram(false);
         } else {
             suspendPsram(true);
         }
-
-        // WARNING: any function being called after PSRAM is suspended should reside in SRAM
 
         DelayMs(20);
         __SEV(); // signal event, also signal to KM0
@@ -152,7 +151,7 @@ public:
         
         // Only if either stop mode or ultra-low power mode is used, we can get here,
         // which means that the PSRAM retention is enabled, we don't need to re-initialized PSRAM
-        Cache_Enable(true);
+        ICache_Enable();
         resumePsram();
 
         // Read the int status before enabling interrupt.
