@@ -57,6 +57,11 @@ void SystemClass::enterSafeMode(SystemResetFlags flags)
     system_reset(SYSTEM_RESET_MODE_SAFE, 0, 0, flags.value(), nullptr);
 }
 
+#if HAL_PLATFORM_RTL872X
+uint8_t particle::SystemSleepConfiguration::sleepConfigurationBuffer_[SLEEP_CONFIG_BUFFER_LEN];
+AtomicSimpleStaticPool particle::SystemSleepConfiguration::sleepConfigurationPool_(sleepConfigurationBuffer_, sizeof(sleepConfigurationBuffer_));
+#endif
+
 SystemSleepResult SystemClass::sleep(const particle::SystemSleepConfiguration& config) {
     if (!config.valid()) {
         LOG(ERROR, "System sleep configuration is invalid.");
