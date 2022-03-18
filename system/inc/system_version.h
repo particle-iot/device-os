@@ -173,6 +173,7 @@ extern "C" {
 #define SYSTEM_VERSION_v220RC2      SYSTEM_VERSION_RC(2, 2, 0, 2)
 #define SYSTEM_VERSION_v220         SYSTEM_VERSION_DEFAULT(2, 2, 0)
 #define SYSTEM_VERSION_v230RC1      SYSTEM_VERSION_RC(2, 3, 0, 1)
+#define SYSTEM_VERSION_v230         SYSTEM_VERSION_DEFAULT(2, 3, 0)
 #define SYSTEM_VERSION_v300ALPHA1   SYSTEM_VERSION_ALPHA(3, 0, 0, 1)
 #define SYSTEM_VERSION_v300ALPHA2   SYSTEM_VERSION_ALPHA(3, 0, 0, 2)
 #define SYSTEM_VERSION_v300BETA1   SYSTEM_VERSION_BETA(3, 0, 0, 1)
@@ -185,7 +186,8 @@ extern "C" {
 #define SYSTEM_VERSION_v310         SYSTEM_VERSION_DEFAULT(3, 1, 0)
 #define SYSTEM_VERSION_v320RC1        SYSTEM_VERSION_RC(3, 2, 0, 1)
 #define SYSTEM_VERSION_v320         SYSTEM_VERSION_DEFAULT(3, 2, 0)
-#define SYSTEM_VERSION SYSTEM_VERSION_v320
+#define SYSTEM_VERSION_v330RC1        SYSTEM_VERSION_RC(3, 3, 0, 1)
+#define SYSTEM_VERSION SYSTEM_VERSION_v330RC1
 
 /**
  * Previously we would set the least significant byte to 0 for the final release, but to make
@@ -323,6 +325,7 @@ extern "C" {
 #define SYSTEM_VERSION_220RC2
 #define SYSTEM_VERSION_220
 #define SYSTEM_VERSION_230RC1
+#define SYSTEM_VERSION_230
 #define SYSTEM_VERSION_300ALPHA1
 #define SYSTEM_VERSION_300ALPHA2
 #define SYSTEM_VERSION_300BETA1
@@ -335,15 +338,14 @@ extern "C" {
 #define SYSTEM_VERSION_310
 #define SYSTEM_VERSION_320RC1
 #define SYSTEM_VERSION_320
+#define SYSTEM_VERSION_330RC1
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
-    uint16_t size = sizeof(SystemVersionInfo);
+    uint16_t size;
     uint16_t reserved;      // use this if you need to.
     uint32_t versionNumber;
     char     versionString[20];
-
-
 
 } SystemVersionInfo;
 

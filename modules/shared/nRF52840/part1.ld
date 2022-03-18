@@ -95,6 +95,14 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
     }>APP_FLASH  AT> APP_FLASH
 
+    .note.gnu.build-id :
+    {
+        __start_gnu_build_id_start = .;
+        link_gnu_build_id_location_start = .;
+        KEEP(*(.note.gnu.build-id))
+        link_gnu_build_id_location_end = .;
+    } >APP_FLASH  AT> APP_FLASH
+
     .mem_section_dummy_rom :
     {
     }
@@ -224,9 +232,15 @@ SECTIONS
         _sbss = ALIGN(., 4);
         link_bss_location = ALIGN(., 4);
         __bss_start__ = _sbss;
+        /* Store the BSS sections for the RTOS first */
+        __rtos_capture_start = .;
+         *tasks.o(.bss COMMON .bss*)
+         *timers*.o(.bss COMMON .bss*)
+        __rtos_capture_end = .;
         *(.bss*)
         *(COMMON)
         link_bss_end = .;
+
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         _ebss = . ;

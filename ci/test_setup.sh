@@ -14,7 +14,6 @@ export target_dir=$build/target
 export target=core-firmware.bin
 export events=$ci_dir/events.log
 export target_file=$target_dir/main/platform-0/tests/$platform/$suite/main.bin
-export testDir=$user/tests
 
 # Path to CMake-based unit tests
 export unit_test_dir=$ci_dir/../test/unit_tests

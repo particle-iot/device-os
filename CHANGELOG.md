@@ -1,3 +1,31 @@
+## 3.3.0-rc.1
+
+### FEATURES
+
+- [Gen3] BLE Provisioning Mode [#2382](https://github.com/particle-iot/device-os/pull/2382) [#2379](https://github.com/particle-iot/device-os/pull/2379) [#2405](https://github.com/particle-iot/device-os/pull/2405)
+- System.off() API support for unsubscribing from system events/handlers [#2390](https://github.com/particle-iot/device-os/pull/2390)
+
+### ENHANCEMENTS
+
+- Enables stack overflow detection in all builds [#2392](https://github.com/particle-iot/device-os/pull/2392)
+- Adds LOG_C_VARG() logging macro to support vargs from user apps [#2393](https://github.com/particle-iot/device-os/pull/2393)
+- Adds os_thread_dump* introspection functions to wrap the FreeRTOS functions [#2394](https://github.com/particle-iot/device-os/pull/2394)
+- [ci] Migration to CircleCI [#2395](https://github.com/particle-iot/device-os/pull/2395)
+- Adds ability to override the panic handler in user applications [#2384](https://github.com/particle-iot/device-os/pull/2384)
+- [gen3] SystemPowerConfiguration::socBitPrecision(uint8_t bits)) API added [#2401](https://github.com/particle-iot/device-os/pull/2401)
+
+### BUGFIXES
+
+- Thread/interrupt safety for system_event_t subscriptions [#2390](https://github.com/particle-iot/device-os/pull/2390)
+
+### INTERNAL
+
+- Removes WiFiTesting mode and Setup over Serial1 [#2386](https://github.com/particle-iot/device-os/pull/2386)
+- [gen3] Add GCC feature 'build-id' into the system part1, monolithic and user apps [#2391](https://github.com/particle-iot/device-os/pull/2391) [#2400](https://github.com/particle-iot/device-os/pull/2400)
+- Moves legacy makefile-based unit tests to CMake [#2396](https://github.com/particle-iot/device-os/pull/2396)
+- Makes system_version.h compliant with C; Coalesce FreeRTOS task list internals into single location [#2399](https://github.com/particle-iot/device-os/pull/2399)
+- Improves reliability of a few tests [#2406](https://github.com/particle-iot/device-os/pull/2406)
+
 ## 3.2.0
 
 ### BUGFIXES
@@ -289,6 +317,21 @@
 - [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
 - [Gen 3] Fix an issue with `BLE.scan()` deadlocking [#2220](https://github.com/particle-iot/device-os/pull/2220)
 
+## 2.3.0
+
+### FEATURES
+
+- [Boron / B SoM ] Support for SARA R510 [#2359](https://github.com/particle-iot/device-os/pull/2359) [#2365](https://github.com/particle-iot/device-os/pull/2365)
+- [Electron] Optional feature to use HSE/LSI as RTC clock source instead of LSE (external 32KHz XTAL) [#2354](https://github.com/particle-iot/device-os/pull/2354)
+
+### ENHANCEMENTS
+
+- [Boron / B SoM / R510] Add additional modem responsiveness check on warm boot to avoid triggering R510-specific initialization issue [#2373](https://github.com/particle-iot/device-os/pull/2373)
+
+### INTERNAL
+
+- Fix gcov installation [#2361](https://github.com/particle-iot/device-os/pull/2361)
+
 ## 2.3.0-rc.1
 
 ### FEATURES
@@ -298,7 +341,7 @@
 
 ### INTERNAL
 
-- Fix gcov installation [#2365](https://github.com/particle-iot/device-os/pull/2365)
+- Fix gcov installation [#2361](https://github.com/particle-iot/device-os/pull/2361)
 
 ## 2.2.0
 

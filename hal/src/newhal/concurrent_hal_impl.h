@@ -16,6 +16,7 @@ typedef void* os_semaphore_t;
 typedef void* os_mutex_recursive_t;
 typedef struct timespec __gthread_time_t;
 typedef void* os_thread_notify_t;
+typedef uintptr_t os_unique_id_t;
 
 #define OS_THREAD_PRIORITY_DEFAULT (0)
 #define OS_THREAD_STACK_SIZE_DEFAULT (0)

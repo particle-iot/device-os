@@ -17,4 +17,12 @@
 
 #pragma once
 
+#include "active_object.h"
+
 #define SYSTEM_THREAD_CURRENT() 1
+
+namespace particle {
+
+extern ISRTaskQueue SystemISRTaskQueue;
+
+} // particle

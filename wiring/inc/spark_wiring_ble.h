@@ -33,6 +33,7 @@
 #include "ble_hal.h"
 #include <memory>
 #include "enumflags.h"
+#include "system_ble_prov.h"
 
 using namespace std::placeholders;
 
@@ -926,6 +927,54 @@ public:
     int txPower(int8_t* txPower) const;
     int8_t txPower() const;
     int selectAntenna(BleAntennaType antenna) const;
+
+    // Access provisioning mode
+    int provisioningMode(bool enabled) const;
+    bool getProvisioningStatus() const;
+
+    template<typename T>
+    int setProvisioningSvcUuid(T svcUuid) const {
+        BleUuid tempSvcUUID(svcUuid);
+        auto svcHalUuid = tempSvcUUID.halUUID();
+        if (tempSvcUUID.isValid()) {
+            return system_ble_prov_set_custom_svc_uuid(&svcHalUuid, nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    template<typename T>
+    int setProvisioningTxUuid(T txUuid) const {
+        BleUuid tempTxUUID(txUuid);
+        auto txHalUuid = tempTxUUID.halUUID();
+        if (tempTxUUID.isValid()) {
+            return system_ble_prov_set_custom_tx_uuid(&txHalUuid, nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    template<typename T>
+    int setProvisioningRxUuid(T rxUuid) const {
+        BleUuid tempRxUUID(rxUuid);
+        auto rxHalUuid = tempRxUUID.halUUID();
+        if (tempRxUUID.isValid()) {
+            return system_ble_prov_set_custom_rx_uuid(&rxHalUuid, nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    template<typename T>
+    int setProvisioningVerUuid(T verUuid) const {
+        BleUuid tempVerUUID(verUuid);
+        auto verHalUuid = tempVerUUID.halUUID();
+        if (tempVerUUID.isValid()) {
+            return system_ble_prov_set_custom_ver_uuid(&verHalUuid, nullptr);
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    int setProvisioningCompanyId(uint16_t companyId) const {
+        return system_ble_prov_set_company_id(companyId, nullptr);
+    }
 
     // Access advertising parameters
     int setAdvertisingInterval(uint16_t interval) const;

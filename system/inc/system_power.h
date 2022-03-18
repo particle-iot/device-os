@@ -71,6 +71,8 @@ constexpr uint16_t DEFAULT_INPUT_CURRENT_LIMIT = 900; // 900mA
 constexpr uint16_t DEFAULT_INPUT_VOLTAGE_LIMIT = 3880; // 3.88V
 constexpr uint16_t DEFAULT_CHARGE_CURRENT = 896; // 896mA
 constexpr uint16_t DEFAULT_TERMINATION_VOLTAGE = 4112; // 4.112V
+constexpr uint8_t DEFAULT_SOC_18_BIT_PRECISION = 18; // 18 is default, but may be 18 or 19 when a custom model is loaded
+constexpr uint8_t SOC_19_BIT_PRECISION = 19; // 19 is the only other valid value, for now
 
 } } // particle::power
 

@@ -222,7 +222,7 @@ test(system_thread_setting) {
 
 test(system_version) {
 
-    API_COMPILE(Serial.println(stringify(SYSTEM_VERSION_STRING)));
+    API_COMPILE(Serial.println(PP_STR(SYSTEM_VERSION_STRING)));
     API_COMPILE(Serial.println(SYSTEM_VERSION));
 }
 
@@ -338,6 +338,39 @@ test(system_events)
     API_COMPILE(System.on(my_events, [](system_event_t events, int data) {}));
     API_COMPILE(System.on(my_events, [](system_event_t events) {}));
     API_COMPILE(System.on(my_events, []() {}));
+    API_COMPILE(System.on(my_events, [&](system_event_t events, int data, void* pointer) {}));
+    API_COMPILE(System.on(my_events, [&](system_event_t events, int data) {}));
+    API_COMPILE(System.on(my_events, [&](system_event_t events) {}));
+    API_COMPILE(System.on(my_events, [&]() {}));
+
+    API_COMPILE(System.off(my_events));
+    API_COMPILE(System.off(handler_event_data_param));
+    API_COMPILE(System.off(my_events, handler_event_data_param));
+    SystemEventSubscription sub;
+    API_COMPILE(sub = System.on(my_events, [&](system_event_t events, int data, void* pointer) {}));
+    API_COMPILE(System.off(sub));
+
+    API_COMPILE({ auto r = System.on(my_events, handler) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, handler_event) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, handler_event_data) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, handler_event_data_param) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, &EventsHandler::handler3, &handlerInstance) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, &EventsHandler::handler2, &handlerInstance) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, &EventsHandler::handler1, &handlerInstance) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, &EventsHandler::handler0, &handlerInstance) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, std::bind(&EventsHandler::handler3, &handlerInstance, _1, _2, _3)) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, std::function<void(system_event_t, int)>(std::bind(&EventsHandler::handler2, &handlerInstance, _1, _2))) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, std::function<void(system_event_t)>(std::bind(&EventsHandler::handler1, &handlerInstance, _1))) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, std::function<void()>(std::bind(&EventsHandler::handler0, &handlerInstance))) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, [](system_event_t events, int data, void* pointer) {}) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, [](system_event_t events, int data) {}) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, [](system_event_t events) {}) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, []() {}) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, [&](system_event_t events, int data, void* pointer) {}) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, [&](system_event_t events, int data) {}) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, [&](system_event_t events) {}) == true; (void)r; });
+    API_COMPILE({ auto r = System.on(my_events, [&]() {}) == true; (void)r; });
+
     (void)clicks; // avoid unused variable warning
 }
 
@@ -412,6 +445,7 @@ test(system_power_management) {
     API_COMPILE(conf.powerSourceMaxCurrent(1234));
     API_COMPILE(conf.batteryChargeVoltage(1234));
     API_COMPILE(conf.batteryChargeCurrent(1234));
+    API_COMPILE(conf.socBitPrecision(19));
     API_COMPILE(conf.feature(SystemPowerFeature::PMIC_DETECTION));
     API_COMPILE(conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST));
     API_COMPILE(conf.feature(SystemPowerFeature::DISABLE));
@@ -433,5 +467,6 @@ test(system_power_management) {
     API_COMPILE({ auto getSourceV = getConf.powerSourceMinVoltage(); (void)getSourceV; });
     API_COMPILE({ auto getBatteryA = getConf.batteryChargeCurrent(); (void)getBatteryA; });
     API_COMPILE({ auto getBatteryV = getConf.batteryChargeVoltage(); (void)getBatteryV; });
+    API_COMPILE({ auto getSocBitPrecision = getConf.socBitPrecision(); (void)getSocBitPrecision; });
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT

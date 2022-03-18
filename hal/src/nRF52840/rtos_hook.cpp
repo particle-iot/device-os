@@ -30,11 +30,9 @@ std::atomic_bool sRestoreIdleThreadPriority(false);
 
 extern "C" {
 
-#ifdef DEBUG_BUILD
 void vApplicationStackOverflowHook(TaskHandle_t, char*) {
     PANIC(StackOverflow, "Stack overflow detected");
 }
-#endif /* DEBUG_BUILD */
 
 void vApplicationMallocFailedHook(size_t xWantedSize) {
     hal_notify_event(HAL_EVENT_OUT_OF_MEMORY, xWantedSize, 0);

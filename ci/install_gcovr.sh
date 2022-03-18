@@ -37,7 +37,4 @@ pip3 install gcovr==5.0
 # install gcovr latest develop branch directly from github
 # pip3 install git+https://github.com/gcovr/gcovr.git
 
-# FIXME: MarkupSafe is broken on python3.5
-ln -s /usr/local/lib/python3.5/dist-packages/MarkupSafe-0.0.0.dist-info /usr/local/lib/python3.5/dist-packages/MarkupSafe-2.0.0.dist-info
-
 gcovr --version

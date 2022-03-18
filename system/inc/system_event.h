@@ -60,7 +60,8 @@ enum SystemEvents {
     low_battery = 1<<15,            // generated when low battery condition is detected
     battery_state = 1<<16,
     power_source = 1<<17,
-	out_of_memory = 1<<18,			// heap request was not satisfied
+    out_of_memory = 1<<18,          // heap request was not satisfied
+    ble_prov_mode = 1<<19,          // ble provisioning mode
 
     all_events = 0xFFFFFFFFFFFFFFFF
 };
@@ -97,7 +98,14 @@ enum SystemEventsParam {
     cloud_status_disconnecting      = 9,
 
     time_changed_manually = 0,
-    time_changed_sync = 1
+    time_changed_sync = 1,
+
+    // BLE provisioning mode
+    ble_prov_mode_connected = 0,
+    ble_prov_mode_disconnected = 1,
+    ble_prov_mode_handshake_failed = 2,
+    ble_prov_mode_handshake_done = 3
+
 };
 
 /**
@@ -107,12 +115,13 @@ enum SystemNotifyEventFlag {
     NOTIFY_SYNCHRONOUSLY = 0x01
 };
 
-#define SYSTEM_EVENT_CONTEXT_VERSION        (1)
+#define SYSTEM_EVENT_CONTEXT_VERSION        (2)
 
 typedef struct SystemEventContext {
     uint16_t version;
     uint16_t size;
     void* callable;
+    void (*destructor)(void* callable);
 } SystemEventContext;
 
 /**
@@ -127,9 +136,9 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
 /**
  * Unsubscribes a handler from the given events.
  * @param handler   The handler that will be unsubscribed.
- * @param reserved  Set to NULL.
+ * @param context   Event subscription context.
  */
-void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, void* reserved);
+void system_unsubscribe_event(system_event_t events, system_event_handler_t* handler, const SystemEventContext* context);
 
 void system_notify_time_changed(uint32_t data, void* reserved, void* reserved1);
 

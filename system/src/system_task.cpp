@@ -46,6 +46,7 @@
 #include "cellular_hal.h"
 #include "system_power.h"
 #include "simple_pool_allocator.h"
+#include "system_ble_prov.h"
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
@@ -53,6 +54,9 @@
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
+#if HAL_PLATFORM_IFAPI
+#include "system_listening_mode.h"
+#endif
 
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
@@ -455,6 +459,27 @@ void manage_cloud_connection(bool force_events)
     }
 }
 
+void manage_listening_mode_flag() {
+#if HAL_PLATFORM_IFAPI
+    // If device is in listening mode and 'FEATURE_FLAG_DISABLE_LISTENING_MODE' is enabled,
+    // make sure to come out of listening mode
+    if (particle::system::ListeningModeHandler::instance()->isActive() && HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        particle::system::ListeningModeHandler::instance()->exit();
+    }
+#endif
+}
+
+void manage_ble_prov_mode() {
+#if HAL_PLATFORM_BLE
+    // Check the relevant feature flag. If it's cleared,
+    // make sure to turn off prov mode, and clear all
+    // its UUIDs and others
+    if (system_ble_prov_get_status(nullptr) && !HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
+        system_ble_prov_mode(false, nullptr);
+    }
+#endif
+}
+
 static void process_isr_task_queue()
 {
     SystemISRTaskQueue.process();
@@ -489,6 +514,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_cloud_connection(force_events);
 
         system::FirmwareUpdate::instance()->process();
+
+        if (system_mode() != SAFE_MODE) {
+            manage_listening_mode_flag();
+        }
     }
     else
     {
@@ -497,6 +526,9 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 #if HAL_PLATFORM_BLE
     // TODO: Process BLE channel events in a separate thread
     system::SystemControl::instance()->run();
+    if (system_mode() != SAFE_MODE) {
+        manage_ble_prov_mode();
+    }
 #endif
     system_shutdown_if_needed();
 }

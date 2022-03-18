@@ -63,3 +63,12 @@ docs/doxygen/html/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
+
+#direnv config files
+.envrc
+opt/
+node_modules/
+
+# Code coverage
+coverage/
+

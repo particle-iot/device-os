@@ -2,7 +2,6 @@
 # Define ARM tools
 #
 
-
 # Define the compiler/tools prefix
 GCC_PREFIX ?= arm-none-eabi-
 
@@ -43,6 +42,9 @@ ASFLAGS +=  -g3 -gdwarf-2 -mcpu=cortex-m4 -mthumb -mabi=aapcs
 ASFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 LDFLAGS += -nostartfiles -Xlinker --gc-sections
+
+#enable the build-id GCC feature 
+LDFLAGS += -Wl,--build-id
 endif
 
 # NOTE: this does not enable LTO! This allows to build object files
