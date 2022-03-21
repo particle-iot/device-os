@@ -447,7 +447,7 @@ public:
     //     return 0;
     // }
 
-    __attribute__(( optimize("-O0") )) void startTransmission() {
+    void startTransmission() {
         AtomicSection lk;
 
         if (status_.transmitting) {
@@ -575,9 +575,11 @@ public:
             if (dmaRxCount < chunkBuffer_.rxLength) {
                 fifoRxCount = SSI_ReceiveData(SPI_DEV_TABLE[spiInterface_].SPIx, &chunkBuffer_.rxBuf[dmaRxCount], chunkBuffer_.rxLength - dmaRxCount);
                 bytesToCopy = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, dmaRxCount + fifoRxCount);
+                if (bufferConfig_.rxBuf) {
                     DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
                     memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, bytesToCopy);
                     DCache_Invalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
+                }
                 chunkBuffer_.rxIndex += bytesToCopy;
 
             } else {

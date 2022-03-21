@@ -347,7 +347,6 @@ test(01_SPI_Master_Slave_Slave_Receiption)
      * require TX and RX buffers to be configured before CS goes low
      */
     while(SPI_Selected_State == 0);
-    SPI_Selected_State = 0;
 
     memset(SPI_Slave_Rx_Buffer_Supper, 0, sizeof(SPI_Slave_Rx_Buffer_Supper));
 
@@ -366,7 +365,6 @@ test(02_SPI_Master_Slave_Slave_Const_String_Transfer_DMA)
     * require TX and RX buffers to be configured before CS goes low
     */
     while(SPI_Selected_State == 0);
-    SPI_Selected_State = 0;
 
     // FIXME: The rx_buffer has to be nullptr, otherwise, the the rx_buffer will overflow
     // as the length of the rx buffer given in this file is not equal to the length of tx data
