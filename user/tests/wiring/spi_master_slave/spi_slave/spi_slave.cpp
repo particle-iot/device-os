@@ -15,7 +15,23 @@
 #error Define USE_CS
 #endif // #ifndef USE_CS
 
-#if HAL_PLATFORM_NRF52840
+#if (PLATFORM_ID == PLATFORM_P2)
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS SS
+#pragma message "Compiling for SPI, MY_CS set to SS"
+#elif (USE_SPI == 1)
+#define MY_SPI SPI1
+#define MY_CS SS1
+#pragma message "Compiling for SPI1, MY_CS set to SS1"
+#elif (USE_SPI == 2)
+#error "SPI2 not supported for p2"
+#else
+#error "Not supported for P2"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
+#elif (PLATFORM_ID == HAL_PLATFORM_NRF52840)
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI, but SPI slave is not supported on Gen3
 #error "SPI slave is not supported on SPI instance on Gen3 platforms. Please specify USE_SPI=SPI1."
 #endif
@@ -84,7 +100,7 @@
 #error "Not supported for Gen 2"
 #endif // (USE_SPI == 0)
 
-#endif // #if HAL_PLATFORM_NRF52840
+#endif // #if PLATFORM_P2
 
 #if defined(_SPI) && (USE_CS != 255)
 #pragma message "Overriding default CS selection"
@@ -172,6 +188,10 @@
  * MOSI D12 <-------> D3 MOSI     MOSI D3 <---------> D3 MOSI
  * SCK  D13 <-------> D2 SCK      SCK  D2 <---------> D2 SCK
  *
+ *********************************************************************************************
+ *
+ * TODO: P2 Wiring diagrams
+ * 
  *********************************************************************************************
  */
 
