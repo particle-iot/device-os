@@ -320,6 +320,7 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
         digitalWrite(MY_CS, HIGH);
         delay(SPI_DELAY);
         digitalWrite(MY_CS, LOW);
+        delay(SPI_DELAY);
 
         memcpy(SPI_Master_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
         memcpy(SPI_Master_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
@@ -572,6 +573,7 @@ test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
     digitalWrite(MY_CS, HIGH);
     delay(SPI_DELAY);
     digitalWrite(MY_CS, LOW);
+    delay(SPI_DELAY);
 
     // Gen3: Send a big chunk of const data to verify truncated transfer
     DMA_Completed_Flag = 0;
@@ -585,7 +587,7 @@ test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
     assertEqual(MY_SPI.available(), strlen(txString));
 }
 
-test(25_SPI_Master_Slave_Master_Receiption)
+test(25_SPI_Master_Slave_Master_Reception)
 {
     memset(SPI_Master_Rx_Buffer_Supper, '\0', sizeof(SPI_Master_Rx_Buffer_Supper));
 
@@ -597,6 +599,7 @@ test(25_SPI_Master_Slave_Master_Receiption)
     digitalWrite(MY_CS, HIGH);
     delay(SPI_DELAY);
     digitalWrite(MY_CS, LOW);
+    delay(SPI_DELAY);
 
     DMA_Completed_Flag = 0;
 
