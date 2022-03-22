@@ -29,7 +29,7 @@
 #include "spark_wiring_vector.h"
 #include "enumflags.h"
 #if HAL_PLATFORM_RTL872X
-#include "simple_pool_allocator.h"
+#include "system_task.h"
 #endif
 
 #define SYSTEM_SLEEP_NETWORK_FLAG_SUPPORTED_VER     (3)
@@ -207,7 +207,7 @@ public:
         while (wakeupSource) {
             auto next = wakeupSource->next;
 #if HAL_PLATFORM_RTL872X
-            sleepConfigurationPool_.free(wakeupSource);
+            system_pool_free(wakeupSource, nullptr);
 #else
             delete wakeupSource;
 #endif
@@ -262,7 +262,7 @@ public:
             }
             // Otherwise, configure this pin as wakeup source.
 #if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_gpio_t*)sleepConfigurationPool_.alloc(sizeof(hal_wakeup_source_gpio_t));
+            auto wakeupSource = (hal_wakeup_source_gpio_t*)system_pool_alloc(sizeof(hal_wakeup_source_gpio_t), nullptr);
 #else
             auto wakeupSource = new(std::nothrow) hal_wakeup_source_gpio_t();
 #endif
@@ -312,7 +312,7 @@ public:
             }
             // Otherwise, configure RTC as wakeup source.
 #if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_rtc_t*)sleepConfigurationPool_.alloc(sizeof(hal_wakeup_source_rtc_t));
+            auto wakeupSource = (hal_wakeup_source_rtc_t*)system_pool_alloc(sizeof(hal_wakeup_source_rtc_t), nullptr);
 #else
             auto wakeupSource = new(std::nothrow) hal_wakeup_source_rtc_t();
 #endif
@@ -344,7 +344,7 @@ public:
             }
             // Otherwise, configure analog pin as wakeup source.
 #if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_lpcomp_t*)sleepConfigurationPool_.alloc(sizeof(hal_wakeup_source_lpcomp_t));
+            auto wakeupSource = (hal_wakeup_source_lpcomp_t*)system_pool_alloc(sizeof(hal_wakeup_source_lpcomp_t), nullptr);
 #else
             auto wakeupSource = new(std::nothrow) hal_wakeup_source_lpcomp_t();
 #endif
@@ -381,7 +381,7 @@ public:
             }
             // Otherwise, configure USART as wakeup source.
 #if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_usart_t*)sleepConfigurationPool_.alloc(sizeof(hal_wakeup_source_usart_t));
+            auto wakeupSource = (hal_wakeup_source_usart_t*)system_pool_alloc(sizeof(hal_wakeup_source_usart_t), nullptr);
 #else
             auto wakeupSource = new(std::nothrow) hal_wakeup_source_usart_t();
 #endif
@@ -413,7 +413,7 @@ public:
                 wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
             }
 #if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_network_t*)sleepConfigurationPool_.alloc(sizeof(hal_wakeup_source_network_t));
+            auto wakeupSource = (hal_wakeup_source_network_t*)system_pool_alloc(sizeof(hal_wakeup_source_network_t), nullptr);
 #else
             auto wakeupSource = new(std::nothrow) hal_wakeup_source_network_t();
 #endif
@@ -442,7 +442,7 @@ public:
             }
             // Otherwise, configure BLE as wakeup source.
 #if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_base_t*)sleepConfigurationPool_.alloc(sizeof(hal_wakeup_source_base_t));
+            auto wakeupSource = (hal_wakeup_source_base_t*)system_pool_alloc(sizeof(hal_wakeup_source_base_t), nullptr);
 #else
             auto wakeupSource = new(std::nothrow) hal_wakeup_source_base_t();
 #endif
@@ -463,13 +463,6 @@ public:
 private:
     hal_sleep_config_t config_;
     bool valid_;
-#if HAL_PLATFORM_RTL872X
-    static constexpr uint16_t SLEEP_CONFIG_BUFFER_LEN = 512;
-    static uint8_t sleepConfigurationBuffer_[SLEEP_CONFIG_BUFFER_LEN];
-    static AtomicSimpleStaticPool sleepConfigurationPool_;
-#endif
 };
-
-
 
 } /* namespace particle */
