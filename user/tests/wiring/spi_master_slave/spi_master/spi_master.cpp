@@ -192,7 +192,17 @@
  *
  *********************************************************************************************
  *
- * TODO: P2 Wiring diagrams
+ * P2 Wiring diagrams
+ * 
+ * SPI1/SPI1                       SPI/SPI1 (SPI can't be used as slave)
+ * Master: SPI1  (USE_SPI=SPI1)    Master: SPI (USE_SPI=SPI)
+ * Slave:  SPI1  (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
+ * 
+ * Master             Slave       Master              Slave
+ * CS   D5 <-------> D5 CS        CS   S3 <---------> D5 CS
+ * MISO D4 <-------> D4 MISO      MISO S1 <---------> D4 MISO
+ * MOSI D3 <-------> D3 MOSI      MOSI S0 <---------> D3 MOSI
+ * SCK  D2 <-------> D2 SCK       SCK  S2 <---------> D2 SCK
  * 
  *********************************************************************************************
  */

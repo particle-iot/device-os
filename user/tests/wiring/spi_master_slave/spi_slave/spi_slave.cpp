@@ -18,9 +18,7 @@
 #if (PLATFORM_ID == PLATFORM_P2)
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
-#define MY_SPI SPI
-#define MY_CS SS
-#pragma message "Compiling for SPI, MY_CS set to SS"
+#error "SPI not supported as slave for p2"
 #elif (USE_SPI == 1)
 #define MY_SPI SPI1
 #define MY_CS SS1
@@ -190,7 +188,17 @@
  *
  *********************************************************************************************
  *
- * TODO: P2 Wiring diagrams
+ * P2 Wiring diagrams
+ * 
+ * SPI1/SPI1                       SPI/SPI1 (SPI can't be used as slave)
+ * Master: SPI1  (USE_SPI=SPI1)    Master: SPI (USE_SPI=SPI)
+ * Slave:  SPI1  (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
+ * 
+ * Master             Slave       Master              Slave
+ * CS   D5 <-------> D5 CS        CS   S3 <---------> D5 CS
+ * MISO D4 <-------> D4 MISO      MISO S1 <---------> D4 MISO
+ * MOSI D3 <-------> D3 MOSI      MOSI S0 <---------> D3 MOSI
+ * SCK  D2 <-------> D2 SCK       SCK  S2 <---------> D2 SCK
  * 
  *********************************************************************************************
  */

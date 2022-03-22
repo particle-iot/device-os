@@ -180,9 +180,11 @@ void clockDivToRtlClockDiv(uint32_t clockDiv, uint32_t* rtlClockDivider) {
 
 class Spi {
 public:
-    Spi(const hal_spi_interface_t spiIndex, int prio,
+    Spi(hal_spi_interface_t spiInterface, int rtlSpiIndex, uint32_t spiInputClock, int prio,
             hal_pin_t csPin, hal_pin_t clkPin, hal_pin_t mosiPin, hal_pin_t misoPin)
-            : spiInterface_(spiIndex),
+            : spiInterface_(spiInterface),
+              rtlSpiIndex_(rtlSpiIndex),
+              spiInputClock_(spiInputClock), 
               prio_(prio),
               csPin_(csPin),
               sclkPin_(clkPin),
@@ -229,7 +231,7 @@ public:
         // Start address of chunk buffer should be 32-byte aligned
         SPARK_ASSERT(((uint32_t)chunkBuffer_.txBuf & 0x1f) == 0);
         SPARK_ASSERT(((uint32_t)chunkBuffer_.rxBuf & 0x1f) == 0);
-        CHECK_TRUE(validateConfig(spiInterface_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(validateConfig(rtlSpiIndex_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
 
         if (isEnabled()) {
             CHECK(end());
@@ -256,7 +258,7 @@ public:
         SSI_StructInit(&SSI_InitStruct);
 
         // Enable SPI Clock
-        if (spiInterface_ == HAL_SPI_INTERFACE1) {
+        if (rtlSpiIndex_ == 0) {
             RCC_PeriphClockCmd(APBPeriph_SPI0, APBPeriph_SPI0_CLOCK, ENABLE);
         } else {
             RCC_PeriphClockCmd(APBPeriph_SPI1, APBPeriph_SPI1_CLOCK, ENABLE);
@@ -265,11 +267,10 @@ public:
         // Configure GPIO and Role
         if (config_.spiMode == SPI_MODE_MASTER) {
             SSI_InitStruct.SPI_Role = SSI_MASTER;
-            // SSI_SetRole() doesn' work with HAL_SPI_INTERFACE2(SSI_SPI1)
-            if (spiInterface_ == HAL_SPI_INTERFACE1) {
-                SSI_SetRole(SPI_DEV_TABLE[spiInterface_].SPIx, SSI_MASTER);
+            // NOTE: Extra setting for SPI0_DEV, please refer to rtl8721dhp_ssi.c
+            if (rtlSpiIndex_ == 0) {
+                SSI_SetRole(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, SSI_MASTER);
             }
-
             // FIXME: a noise is observed on the MOSI pin, adding a pullup here is not ideal,
             // fix it when we find a better way e.g. improve driving strength
             hal_gpio_mode(mosiPin_, INPUT_PULLUP);
@@ -281,21 +282,24 @@ public:
             hal_gpio_mode(csPin_, OUTPUT);
         } else {
             SSI_InitStruct.SPI_Role = SSI_SLAVE;
-            SSI_SetRole(SPI_DEV_TABLE[spiInterface_].SPIx, SSI_SLAVE);
+            // NOTE: Extra setting for SPI0_DEV, please refer to rtl8721dhp_ssi.c
+            if (rtlSpiIndex_ == 0) {
+                SSI_SetRole(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, SSI_SLAVE);
+            }
             Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_SPIS);
             Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(mosiPin_), PINMUX_FUNCTION_SPIS);
             Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_SPIS);
             hal_gpio_mode(csPin_, INPUT_PULLUP);
             hal_interrupt_attach(csPin_, onSelectedHandler, this, CHANGE, nullptr);
         }
-        SSI_Init(SPI_DEV_TABLE[spiInterface_].SPIx, &SSI_InitStruct);
+        SSI_Init(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, &SSI_InitStruct);
 
         uint32_t phase = SCPH_TOGGLES_IN_MIDDLE;
         uint32_t polarity = SCPOL_INACTIVE_IS_LOW;
         spiModeToPolAndPha(config_.dataMode, &polarity, &phase);
-        SSI_SetSclkPhase(SPI_DEV_TABLE[spiInterface_].SPIx, phase);
-        SSI_SetSclkPolarity(SPI_DEV_TABLE[spiInterface_].SPIx, polarity);
-        SSI_SetDataFrameSize(SPI_DEV_TABLE[spiInterface_].SPIx, DEFAULT_DATA_BITS);
+        SSI_SetSclkPhase(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, phase);
+        SSI_SetSclkPolarity(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, polarity);
+        SSI_SetDataFrameSize(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DEFAULT_DATA_BITS);
         if (polarity == SCPOL_INACTIVE_IS_LOW) {
             PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_DOWN);
         } else {
@@ -311,28 +315,28 @@ public:
         if (config_.spiMode == SPI_MODE_MASTER) {
             u32 rtlClockDivider = 256;
             clockDivToRtlClockDiv(config_.clockDiv, &rtlClockDivider);
-            SSI_SetBaudDiv(SPI_DEV_TABLE[spiInterface_].SPIx, rtlClockDivider);
+            SSI_SetBaudDiv(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, rtlClockDivider);
         }
 
         // Set bit order
         if (config_.bitOrder == MSBFIRST) {
-            SSI_SetDataSwap(SPI_DEV_TABLE[spiInterface_].SPIx, BIT_CTRLR0_TXBITSWP, DISABLE);
-            SSI_SetDataSwap(SPI_DEV_TABLE[spiInterface_].SPIx, BIT_CTRLR0_RXBITSWP, DISABLE);
+            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, DISABLE);
+            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, DISABLE);
         } else {
-            SSI_SetDataSwap(SPI_DEV_TABLE[spiInterface_].SPIx, BIT_CTRLR0_TXBITSWP, ENABLE);
-            SSI_SetDataSwap(SPI_DEV_TABLE[spiInterface_].SPIx, BIT_CTRLR0_RXBITSWP, ENABLE);
+            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, ENABLE);
+            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, ENABLE);
         }
 
         // Enable SPI DMA
-        SSI_SetDmaEnable(SPI_DEV_TABLE[spiInterface_].SPIx, ENABLE, BIT_SHIFT_DMACR_TDMAE);
-        SSI_SetDmaEnable(SPI_DEV_TABLE[spiInterface_].SPIx, ENABLE, BIT_SHIFT_DMACR_RDMAE);
+        SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_TDMAE);
+        SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_RDMAE);
 
         // TODO: delete: we don't use SPI interrupt
-        SSI_INTConfig(SPI_DEV_TABLE[spiInterface_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
-        SSI_INTConfig(SPI_DEV_TABLE[spiInterface_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
-        InterruptRegister(interruptHandler, SPI_DEV_TABLE[spiInterface_].IrqNum, (u32)this, prio_);
-        NVIC_ClearPendingIRQ(SPI_DEV_TABLE[spiInterface_].IrqNum);
-        InterruptDis(SPI_DEV_TABLE[spiInterface_].IrqNum);
+        SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
+        SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
+        InterruptRegister(interruptHandler, SPI_DEV_TABLE[rtlSpiIndex_].IrqNum, (u32)this, prio_);
+        NVIC_ClearPendingIRQ(SPI_DEV_TABLE[rtlSpiIndex_].IrqNum);
+        InterruptDis(SPI_DEV_TABLE[rtlSpiIndex_].IrqNum);
 
         // Clear dma interrupt
         GDMA_ClearINT(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
@@ -357,15 +361,15 @@ public:
         AtomicSection lk;
 
         // TODO: delete: we don't use SPI interrupt
-        InterruptDis(SPI_DEV_TABLE[spiInterface_].IrqNum);
-        InterruptUnRegister(SPI_DEV_TABLE[spiInterface_].IrqNum);
-        SSI_INTConfig(SPI_DEV_TABLE[spiInterface_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
-        SSI_INTConfig(SPI_DEV_TABLE[spiInterface_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
-        SSI_Cmd(SPI_DEV_TABLE[spiInterface_].SPIx, DISABLE);
+        InterruptDis(SPI_DEV_TABLE[rtlSpiIndex_].IrqNum);
+        InterruptUnRegister(SPI_DEV_TABLE[rtlSpiIndex_].IrqNum);
+        SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
+        SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
+        SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE);
 
         /* Set SSI DMA Disable */
-        SSI_SetDmaEnable(SPI_DEV_TABLE[spiInterface_].SPIx, DISABLE, BIT_SHIFT_DMACR_RDMAE);
-        SSI_SetDmaEnable(SPI_DEV_TABLE[spiInterface_].SPIx, DISABLE, BIT_SHIFT_DMACR_TDMAE);
+        SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_RDMAE);
+        SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_TDMAE);
 
         GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
         GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
@@ -419,22 +423,22 @@ public:
             ;
         }
 
-        // //LOG_DEBUG(INFO, "+++transfer(data): 0x%x", SSI_Readable(SPI_DEV_TABLE[spiInterface_].SPIx));
+        // //LOG_DEBUG(INFO, "+++transfer(data): 0x%x", SSI_Readable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx));
 
         // Wait until SPI is writeable
-        while (!SSI_Writeable(SPI_DEV_TABLE[spiInterface_].SPIx)) {
+        while (!SSI_Writeable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx)) {
             ;
         }
-        SSI_WriteData(SPI_DEV_TABLE[spiInterface_].SPIx, data);
+        SSI_WriteData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, data);
 
         // Wait until SPI is readable
-        while (!SSI_Readable(SPI_DEV_TABLE[spiInterface_].SPIx)) {
+        while (!SSI_Readable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx)) {
             ;
         }
 
-        // //LOG_DEBUG(INFO, "---transfer(data): 0x%x", SSI_Readable(SPI_DEV_TABLE[spiInterface_].SPIx));
+        // //LOG_DEBUG(INFO, "---transfer(data): 0x%x", SSI_Readable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx));
 
-        return (uint8_t)SSI_ReadData(SPI_DEV_TABLE[spiInterface_].SPIx);
+        return (uint8_t)SSI_ReadData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
     }
 
 
@@ -573,7 +577,7 @@ public:
             size_t fifoRxCount = 0;
             size_t bytesToCopy = 0;
             if (dmaRxCount < chunkBuffer_.rxLength) {
-                fifoRxCount = SSI_ReceiveData(SPI_DEV_TABLE[spiInterface_].SPIx, &chunkBuffer_.rxBuf[dmaRxCount], chunkBuffer_.rxLength - dmaRxCount);
+                fifoRxCount = SSI_ReceiveData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, &chunkBuffer_.rxBuf[dmaRxCount], chunkBuffer_.rxLength - dmaRxCount);
                 bytesToCopy = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, dmaRxCount + fifoRxCount);
                 if (bufferConfig_.rxBuf) {
                     DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
@@ -624,8 +628,8 @@ public:
 
         // Reset SPI in case the data in the buffer is not read completely in the last transfer
         transferDmaCancel();
-        SSI_Cmd(SPI_DEV_TABLE[spiInterface_].SPIx, DISABLE);
-        SSI_Cmd(SPI_DEV_TABLE[spiInterface_].SPIx, ENABLE);
+        SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE);
+        SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE);
 
         bufferConfig_.rxBuf = rxBuf;
         bufferConfig_.rxLength = size;
@@ -652,8 +656,8 @@ public:
 
         // //LOG_DEBUG(INFO, "transferDmaCancel!");
         /* Disable interrupt */
-        // SSI_INTConfig(SPI_DEV_TABLE[spiInterface_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
-        // SSI_INTConfig(SPI_DEV_TABLE[spiInterface_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
+        // SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
+        // SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
 
         /* Clear Pending ISR */
         GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
@@ -669,10 +673,10 @@ public:
 
         // Flush fifo
         u32 rxFifoLevel;
-        while (SSI_Readable(SPI_DEV_TABLE[spiInterface_].SPIx)) {
-            rxFifoLevel = SSI_GetRxCount(SPI_DEV_TABLE[spiInterface_].SPIx);
+        while (SSI_Readable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx)) {
+            rxFifoLevel = SSI_GetRxCount(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
             for (u32 i = 0; i < rxFifoLevel; i++) {
-                SSI_ReadData(SPI_DEV_TABLE[spiInterface_].SPIx);
+                SSI_ReadData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
             }
         }
 
@@ -684,13 +688,17 @@ public:
     }
 
     int setConfig(SpiConfig& config) {
-        CHECK_TRUE(validateConfig(spiInterface_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(validateConfig(rtlSpiIndex_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
         memcpy(&config_, &config, sizeof(SpiConfig));
         return SYSTEM_ERROR_NONE;
     }
 
     SpiStatus status() const {
         return status_;
+    }
+
+    uint32_t getSpiInputClock() const {
+        return spiInputClock_;
     }
 
     hal_pin_t csPin() const {
@@ -720,8 +728,8 @@ public:
     }
 
     void interruptHandlerImpl() {
-        u32 interruptStatus = SSI_GetIsr(SPI_DEV_TABLE[spiInterface_].SPIx);
-        SSI_SetIsrClean(SPI_DEV_TABLE[spiInterface_].SPIx, interruptStatus);
+        u32 interruptStatus = SSI_GetIsr(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
+        SSI_SetIsrClean(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, interruptStatus);
 
         // TXE: If the master initiates a transfer to the SPI slave when no data exists in the transmit FIFO,
         //      an error flag (TXE) is set in the SPI status register
@@ -777,14 +785,14 @@ public:
         if (isDmaBufferConfigured()) {
             if (status_.csPinSelected) {
                 status_.userDmaCbHandled = false;
-                SSI_Cmd(SPI_DEV_TABLE[spiInterface_].SPIx, ENABLE);
+                SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE);
 
                 // Releaod DMA buffer
                 startTransmission();
                 startReceiver();
             } else {
                 stopTransfer();
-                SSI_Cmd(SPI_DEV_TABLE[spiInterface_].SPIx, DISABLE);
+                SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE);
                 if (status_.userDmaCbHandled == false) {
                     // SPI master sends the data that is less than the buffer size in the SPI slave
                     if (callbackConfig_.dmaUserCb) {
@@ -795,7 +803,7 @@ public:
         }
     }
 
-    static bool validateConfig(hal_spi_interface_t spi, const SpiConfig& config) {
+    static bool validateConfig(int rtlSpiIndex, const SpiConfig& config) {
         CHECK_TRUE(config.spiMode == SPI_MODE_MASTER ||
                    config.spiMode == SPI_MODE_SLAVE, false);
         CHECK_TRUE(config.dataMode == SPI_MODE0 ||
@@ -804,8 +812,8 @@ public:
                    config.dataMode == SPI_MODE3, false);
         CHECK_TRUE(config.bitOrder == MSBFIRST ||
                    config.bitOrder == LSBFIRST, false);
-        // SPI0 can work as master and slave while SPI1 can only work as slave.
-        CHECK_FALSE(spi == HAL_SPI_INTERFACE2 && config.spiMode == SPI_MODE_SLAVE, false);
+        // SPI0 can work as master and slave while SPI1 can only work as master.
+        CHECK_FALSE(rtlSpiIndex == 1 && config.spiMode == SPI_MODE_SLAVE, false);
         return true;
     }
 
@@ -846,8 +854,8 @@ private:
 
         _memset(&txDmaInitStruct_, 0, sizeof(GDMA_InitTypeDef));
         txDmaInitStruct_.GDMA_DIR = TTFCMemToPeri;
-        txDmaInitStruct_.GDMA_DstHandshakeInterface = SPI_DEV_TABLE[spiInterface_].Tx_HandshakeInterface;
-        txDmaInitStruct_.GDMA_DstAddr = (u32)&SPI_DEV_TABLE[spiInterface_].SPIx->DR;
+        txDmaInitStruct_.GDMA_DstHandshakeInterface = SPI_DEV_TABLE[rtlSpiIndex_].Tx_HandshakeInterface;
+        txDmaInitStruct_.GDMA_DstAddr = (u32)&SPI_DEV_TABLE[rtlSpiIndex_].SPIx->DR;
         txDmaInitStruct_.GDMA_Index = 0;
         txDmaInitStruct_.GDMA_ChNum = txGdmaChannel;
         txDmaInitStruct_.GDMA_IsrType = (BlockType|TransferType|ErrType);
@@ -861,8 +869,8 @@ private:
         _memset(&rxDmaInitStruct_, 0, sizeof(GDMA_InitTypeDef));
         rxDmaInitStruct_.GDMA_DIR = TTFCPeriToMem;
         rxDmaInitStruct_.GDMA_ReloadSrc = 0;
-        rxDmaInitStruct_.GDMA_SrcHandshakeInterface = SPI_DEV_TABLE[spiInterface_].Rx_HandshakeInterface;
-        rxDmaInitStruct_.GDMA_SrcAddr = (u32)&SPI_DEV_TABLE[spiInterface_].SPIx->DR;
+        rxDmaInitStruct_.GDMA_SrcHandshakeInterface = SPI_DEV_TABLE[rtlSpiIndex_].Rx_HandshakeInterface;
+        rxDmaInitStruct_.GDMA_SrcAddr = (u32)&SPI_DEV_TABLE[rtlSpiIndex_].SPIx->DR;
         rxDmaInitStruct_.GDMA_Index = 0;
         rxDmaInitStruct_.GDMA_ChNum = rxGdmaChannel;
         rxDmaInitStruct_.GDMA_IsrType = (BlockType|TransferType|ErrType);
@@ -881,6 +889,8 @@ private:
 
 private:
     hal_spi_interface_t     spiInterface_;
+    int                     rtlSpiIndex_;
+    uint32_t                spiInputClock_;
     int                     prio_;
     hal_pin_t               csPin_;
     hal_pin_t               sclkPin_;
@@ -904,8 +914,8 @@ private:
 
 Spi* getInstance(hal_spi_interface_t spi) {
     static Spi spiMap[] = {
-        {HAL_SPI_INTERFACE1, CFG_SPI_PRIORITY, SS, SCK, MOSI, MISO},
-        {HAL_SPI_INTERFACE2, CFG_SPI_PRIORITY, SS1, SCK1, MOSI1, MISO1}
+        {HAL_SPI_INTERFACE1, 1, 100*1000*1000, CFG_SPI_PRIORITY, SS, SCK, MOSI, MISO},
+        {HAL_SPI_INTERFACE2, 0, 50*1000*1000, CFG_SPI_PRIORITY, SS1, SCK1, MOSI1, MISO1}
     };
 
     CHECK_TRUE(spi < sizeof(spiMap) / sizeof(spiMap[0]), nullptr);
@@ -1014,10 +1024,9 @@ void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved)
         return;
     }
 
-    info->system_clock = (spi == HAL_SPI_INTERFACE1) ? 100 * 1000 * 1000 : 50 * 1000 * 1000;
-
     auto spiInstance = getInstance(spi);
     auto config = spiInstance->config();
+    info->system_clock = spiInstance->getSpiInputClock();
     if (info->version >= HAL_SPI_INFO_VERSION_1) {
         int32_t state = HAL_disable_irq();
         if (spiInstance->isEnabled()) {
@@ -1136,20 +1145,13 @@ int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved) {
 
 int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* reserved) {
     CHECK_TRUE(clock > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
-
-    // IpClk for SPI1 is 50MHz and IpClk for SPI0 is 100MHz
-    u32 IpClk;
-    if (spi == HAL_SPI_INTERFACE1) {
-        IpClk = 100000000;
-    } else {
-        IpClk = 50000000;
-    }
-
-    // "clock" should be less or equal to half of the SPI IpClk.
-    CHECK_TRUE(clock <= IpClk, SYSTEM_ERROR_INVALID_ARGUMENT);
+    auto spiInstance = CHECK_TRUE_RETURN(getInstance(spi), SYSTEM_ERROR_NOT_FOUND);
+    auto spiInputClock = spiInstance->getSpiInputClock();
+    // "clock" should be less or equal to half of the SPI input clock.
+    CHECK_TRUE(clock <= spiInputClock, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     // Integer division results in clean values
-    switch (IpClk / clock) {
+    switch (spiInputClock / clock) {
     case 2:
         return SPI_CLOCK_DIV2;
     case 4:
