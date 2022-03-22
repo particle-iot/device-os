@@ -331,7 +331,7 @@ public:
         SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_TDMAE);
         SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_RDMAE);
 
-        // TODO: delete: we don't use SPI interrupt
+        // We don't use SPI interrupt
         SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
         SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
         InterruptRegister(interruptHandler, SPI_DEV_TABLE[rtlSpiIndex_].IrqNum, (u32)this, prio_);
@@ -359,13 +359,6 @@ public:
         }
 
         AtomicSection lk;
-
-        // TODO: delete: we don't use SPI interrupt
-        InterruptDis(SPI_DEV_TABLE[rtlSpiIndex_].IrqNum);
-        InterruptUnRegister(SPI_DEV_TABLE[rtlSpiIndex_].IrqNum);
-        SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
-        SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
-        SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE);
 
         /* Set SSI DMA Disable */
         SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_RDMAE);
@@ -423,8 +416,6 @@ public:
             ;
         }
 
-        // //LOG_DEBUG(INFO, "+++transfer(data): 0x%x", SSI_Readable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx));
-
         // Wait until SPI is writeable
         while (!SSI_Writeable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx)) {
             ;
@@ -436,20 +427,8 @@ public:
             ;
         }
 
-        // //LOG_DEBUG(INFO, "---transfer(data): 0x%x", SSI_Readable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx));
-
         return (uint8_t)SSI_ReadData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
     }
-
-
-    // Return bytes to be received
-    // size_t rxChunk() {
-    //     AtomicSection lk;
-
-    //     CHECK_TRUE(status_.receiving == false, 0);
-
-    //     return 0;
-    // }
 
     void startTransmission() {
         AtomicSection lk;
@@ -459,15 +438,6 @@ public:
         }
 
         if (chunkBuffer_.txIndex >= bufferConfig_.txLength) {
-            // NOTE: dmaUserCb is called in receiver interrupt
-            // //LOG_DEBUG(INFO, "startTransmission finished! sent length: %d", chunkBuffer_.txIndex);
-
-            // if (bufferConfig_.txBuf) {
-            //     LOG_PRINTF(INFO, "tx: %d, ", chunkBuffer_.txIndex);
-            //     LOG_DUMP(INFO, (void*)bufferConfig_.txBuf, chunkBuffer_.txIndex);
-            //     LOG_PRINTF(INFO, "\r\n");
-            // }
-
             chunkBuffer_.txIndex = 0;
             return;
         }
@@ -513,10 +483,6 @@ public:
         status_.transferredLength = chunkBuffer_.rxIndex;
 
         if (chunkBuffer_.rxIndex >= bufferConfig_.rxLength) {
-            // LOG_PRINTF(INFO, "rx: %d, ", chunkBuffer_.rxIndex);
-            // LOG_DUMP(INFO, (void*)bufferConfig_.rxBuf, chunkBuffer_.rxIndex);
-            // LOG_PRINTF(INFO, "\r\n");
-
             chunkBuffer_.rxIndex = 0;
 
             if (config_.spiMode == SPI_MODE_MASTER) {
@@ -537,8 +503,6 @@ public:
             //        If the user uses Non-four-byte alignment buffer, the user callback will be called after CS pin is pulled high.
             chunkBuffer_.rxLength = CFG_CHUNK_BUF_SIZE;
         }
-
-        //LOG_DEBUG(INFO, "start to receive new chunk, index: %d, length: %d", chunkBuffer_.rxIndex, chunkBuffer_.rxLength);
 
         //  8~4 bits mode
         rxDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
@@ -568,9 +532,6 @@ public:
             return SYSTEM_ERROR_INVALID_STATE;
         }
 
-        // Clear Pending ISR, free RX DMA resource
-        // GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
-        // uint32_t dmaStopAddress = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
         if (status_.receiving) {
             uint32_t dmaStopAddress = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
             size_t dmaRxCount = dmaStopAddress ? (dmaStopAddress - (uint32_t)chunkBuffer_.rxBuf) : 0;
@@ -587,20 +548,13 @@ public:
                 chunkBuffer_.rxIndex += bytesToCopy;
 
             } else {
-                //LOG_DEBUG(ERROR, "dmaStopAddress is not reliable.");
+                LOG_DEBUG(ERROR, "dmaStopAddress is not reliable.");
             }
 
             status_.transferredLength = chunkBuffer_.rxIndex;
-            // //LOG_DEBUG(INFO, "stopTransfer, status_.receiving: %d, transferredLength:  %d, dmaStopAddress: 0x%x, chunkBuffer_.rxBuf: 0x%x", 
-            //     status_.receiving, status_.transferredLength, dmaStopAddress, chunkBuffer_.rxBuf);
-            //LOG_DEBUG(INFO, "dmaRxCount: %ld, fifoRxCount: %ld, bytesToCopy: %ld", dmaRxCount, fifoRxCount, bytesToCopy);
-            // LOG_PRINTF(INFO, "rx: %d, ", chunkBuffer_.rxIndex);
-            // LOG_DUMP(INFO, (void*)bufferConfig_.rxBuf, chunkBuffer_.rxIndex);
-            // LOG_PRINTF(INFO, "\r\n");
         }
 
         // TX data has been moved to DMA peripheral, force to clean it
-        // Clear Pending ISR, free TX DMA resource
         GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
         GDMA_ClearINT(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
         GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
@@ -640,8 +594,6 @@ public:
         status_.configuredTransferLength = size;
         status_.transferredLength = 0;
 
-        //LOG_DEBUG(INFO, "transferDma, buffer length: %ld!!!", size);
-
         chunkBuffer_.txIndex = 0;
         chunkBuffer_.rxIndex = 0;
 
@@ -653,11 +605,6 @@ public:
 
     int transferDmaCancel() {
         AtomicSection lk;
-
-        // //LOG_DEBUG(INFO, "transferDmaCancel!");
-        /* Disable interrupt */
-        // SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
-        // SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_TXOIM | BIT_IMR_TXEIM), DISABLE);
 
         /* Clear Pending ISR */
         GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
@@ -731,12 +678,8 @@ public:
         u32 interruptStatus = SSI_GetIsr(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
         SSI_SetIsrClean(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, interruptStatus);
 
-        // TXE: If the master initiates a transfer to the SPI slave when no data exists in the transmit FIFO,
-        //      an error flag (TXE) is set in the SPI status register
-        //LOG_DEBUG(INFO, "[int] spi int: 0x%08x", interruptStatus);
-
         if (interruptStatus & (BIT_ISR_TXOIS | BIT_ISR_RXUIS | BIT_ISR_RXOIS | BIT_ISR_MSTIS)) {
-            //LOG_DEBUG(WARN, "SPI error 0x%08x", interruptStatus);
+            LOG_DEBUG(WARN, "SPI error 0x%08x", interruptStatus);
         }
     }
 
@@ -749,7 +692,6 @@ public:
         status_.transmitting = false;
 
         chunkBuffer_.txIndex += chunkBuffer_.txLength;
-        //LOG_DEBUG(INFO, "[int] spi dma tx done! isr: 0x%x, index: %d", isrTypeMap, chunkBuffer_.txIndex);
     
         startTransmission();
     }
@@ -770,14 +712,12 @@ public:
             DCache_Invalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
         }
         chunkBuffer_.rxIndex += copyLength;
-        //LOG_DEBUG(INFO, "[int] spi dma rx done! index: %d, copyLength: %d", chunkBuffer_.rxIndex, copyLength);
 
         startReceiver();
     }
 
     void onSelectedHandlerImpl() {
         status_.csPinSelected = !hal_gpio_read(csPin_);
-        //LOG_DEBUG(INFO, "[GPIO int] cs selected: %d %s", status_.csPinSelected, status_.csPinSelected ? "+++++++" : "------");
         if (callbackConfig_.selectUserCb) {
             (*callbackConfig_.selectUserCb)(status_.csPinSelected);
         }
