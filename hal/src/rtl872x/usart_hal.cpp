@@ -483,8 +483,8 @@ private:
         rxDmaInitStruct_.GDMA_DstInc = IncType;
         rxDmaInitStruct_.GDMA_SrcInc = NoChange;
 
-        NVIC_SetPriority(GDMA_GetIrqNum(0, txDmaInitStruct_.GDMA_ChNum), 12);
-        NVIC_SetPriority(GDMA_GetIrqNum(0, rxDmaInitStruct_.GDMA_ChNum), 12);
+        NVIC_SetPriority(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum), 12);
+        NVIC_SetPriority(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum), 12);
         return true;
     }
 
@@ -633,9 +633,9 @@ private:
         if (instance != UART2_DEV) {
             if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
                 if (lock) {
-                    NVIC_DisableIRQ(GDMA_GetIrqNum(0, rxDmaInitStruct_.GDMA_ChNum));
+                    NVIC_DisableIRQ(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum));
                 } else {
-                    NVIC_EnableIRQ(GDMA_GetIrqNum(0, rxDmaInitStruct_.GDMA_ChNum));
+                    NVIC_EnableIRQ(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum));
                 }
             }
         } else {
@@ -650,9 +650,9 @@ private:
         if (instance != UART2_DEV) {
             if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
                 if (lock) {
-                    NVIC_DisableIRQ(GDMA_GetIrqNum(0, txDmaInitStruct_.GDMA_ChNum));
+                    NVIC_DisableIRQ(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum));
                 } else {
-                    NVIC_EnableIRQ(GDMA_GetIrqNum(0, txDmaInitStruct_.GDMA_ChNum));
+                    NVIC_EnableIRQ(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum));
                 }
             }
         } else {
@@ -797,6 +797,7 @@ uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
         // Otherwise, the tx buffer is always full and device is blocked here.
         // Adding a delay here instead seams to be helpful as well.
         Usart::AtomicBlock atomic(usart);
+        HAL_Delay_Milliseconds(1);
         usart->uartTxRxIntHandler(usart);
     }
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
