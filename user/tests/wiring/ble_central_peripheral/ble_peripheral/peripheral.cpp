@@ -474,6 +474,10 @@ test(BLE_32_Att_Mtu_Exchange) {
         Serial.printlnf("ATT MTU: %d", attMtu);
     });
 
+    SCOPE_GUARD ({
+        BLE.onAttMtuExchanged(nullptr, nullptr);
+    });
+
     assertTrue(waitFor(BLE.connected, 20000));
     {
         SCOPE_GUARD ({

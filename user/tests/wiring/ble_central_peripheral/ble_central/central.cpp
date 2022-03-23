@@ -550,6 +550,10 @@ test(BLE_32_Att_Mtu_Exchange) {
         effectiveAttMtu = attMtu;
     });
 
+    SCOPE_GUARD ({
+        BLE.onAttMtuExchanged(nullptr, nullptr);
+    });
+
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
     {
