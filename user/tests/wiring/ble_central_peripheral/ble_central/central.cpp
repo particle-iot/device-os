@@ -57,11 +57,15 @@ static void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice&
 
 using namespace particle::test;
 
+constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 100;
+constexpr uint16_t PEER_DESIRED_ATT_MTU = 123;
+
 test(BLE_000_Central_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(publishBlePeerInfo());
+    assertEqual(BLE.setDesiredAttMtu(LOCAL_DESIRED_ATT_MTU), (int)SYSTEM_ERROR_NONE);
 }
 
 test(BLE_00_Prepare) {
@@ -438,7 +442,7 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
             assertTrue(waitFor([&]{ return pairingRequested; }, 5000));
         }
         assertTrue(BLE.isPairing(peer));
-        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 60000));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
         assertTrue(BLE.isPaired(peer));
         assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
         if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
@@ -542,14 +546,10 @@ test(BLE_31_Pairing_Receiption_Reject) {
 }
 
 test(BLE_32_Att_Mtu_Exchange) {
-#define LOCAL_DESIRED_ATT_MTU 100
-#define PEER_DESIRED_ATT_MTU 123
-
     BLE.onAttMtuExchanged([&](const BlePeerDevice& p, size_t attMtu) {
         effectiveAttMtu = attMtu;
     });
 
-    assertEqual(BLE.setDesiredAttMtu(LOCAL_DESIRED_ATT_MTU), (int)SYSTEM_ERROR_NONE);
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
     {

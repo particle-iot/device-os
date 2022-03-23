@@ -2613,7 +2613,7 @@ int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t
 }
 
 int BleLocalDevice::setDesiredAttMtu(size_t mtu) const {
-    return hal_ble_gatt_server_set_desire_att_mtu(mtu, nullptr);
+    return hal_ble_gatt_server_set_desired_att_mtu(mtu, nullptr);
 }
 
 ssize_t BleLocalDevice::getCurrentAttMtu(const BlePeerDevice& peer) const {

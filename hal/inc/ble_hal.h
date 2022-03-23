@@ -1074,7 +1074,7 @@ bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void*
  *
  * @returns     0 on success, system_error_t on error.
  */
-int hal_ble_gatt_server_set_desire_att_mtu(size_t att_mtu, void* reserved);
+int hal_ble_gatt_server_set_desired_att_mtu(size_t att_mtu, void* reserved);
 
 /**
  * Send the ATT MTU exchange request

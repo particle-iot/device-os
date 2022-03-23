@@ -66,6 +66,9 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
 
 using namespace particle::test;
 
+constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 123;
+constexpr uint16_t PEER_DESIRED_ATT_MTU = 100;
+
 test(BLE_000_Peripheral_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
@@ -86,6 +89,7 @@ test(BLE_00_Prepare) {
 #else
     assertTrue(waitFor(getBleTestPeer().isValid, 60 * 1000));
 #endif // PARTICLE_TEST_RUNNER
+    assertEqual(BLE.setDesiredAttMtu(LOCAL_DESIRED_ATT_MTU), (int)SYSTEM_ERROR_NONE);
 }
 
 test(BLE_01_Advertising_Scan_Connect) {
@@ -465,9 +469,6 @@ test(BLE_31_Pairing_Receiption_Reject) {
 }
 
 test(BLE_32_Att_Mtu_Exchange) {
-#define LOCAL_DESIRED_ATT_MTU 123
-#define PEER_DESIRED_ATT_MTU 100
-
     BLE.onAttMtuExchanged([&](const BlePeerDevice& p, size_t attMtu) {
         effectiveAttMtu = attMtu;
         Serial.printlnf("ATT MTU: %d", attMtu);
@@ -479,11 +480,6 @@ test(BLE_32_Att_Mtu_Exchange) {
             assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
             assertFalse(BLE.connected());
         });
-
-        peer = BLE.peerCentral();
-        assertEqual(BLE.setDesiredAttMtu(LOCAL_DESIRED_ATT_MTU), (int)SYSTEM_ERROR_NONE);
-        assertEqual(BLE.updateAttMtu(peer), (int)SYSTEM_ERROR_NONE);
-
         assertTrue(waitFor([]{ return effectiveAttMtu == PEER_DESIRED_ATT_MTU; }, 5000));
     }
 }

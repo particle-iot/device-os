@@ -81,7 +81,7 @@ DYNALIB_FN(48, hal_ble, hal_ble_gatt_client_discover_service_by_uuid, int(hal_bl
 DYNALIB_FN(49, hal_ble, hal_ble_gatt_client_discover_characteristics, int(hal_ble_conn_handle_t, const hal_ble_svc_t*, hal_ble_on_disc_char_cb_t, void*, void*))
 DYNALIB_FN(50, hal_ble, hal_ble_gatt_client_discover_characteristics_by_uuid, int(hal_ble_conn_handle_t, const hal_ble_svc_t*, const hal_ble_uuid_t*, hal_ble_on_disc_char_cb_t, void*, void*))
 DYNALIB_FN(51, hal_ble, hal_ble_gatt_client_is_discovering, bool(hal_ble_conn_handle_t, void*))
-DYNALIB_FN(52, hal_ble, hal_ble_gatt_server_set_desire_att_mtu, int(size_t, void*))
+DYNALIB_FN(52, hal_ble, hal_ble_gatt_server_set_desired_att_mtu, int(size_t, void*))
 DYNALIB_FN(53, hal_ble, hal_ble_gatt_client_configure_cccd_deprecated, int(hal_ble_conn_handle_t, hal_ble_attr_handle_t, ble_sig_cccd_value_t, void*))
 DYNALIB_FN(54, hal_ble, hal_ble_gatt_client_write_with_response, ssize_t(hal_ble_conn_handle_t, hal_ble_attr_handle_t, const uint8_t*, size_t, void*))
 DYNALIB_FN(55, hal_ble, hal_ble_gatt_client_write_without_response, ssize_t(hal_ble_conn_handle_t, hal_ble_attr_handle_t, const uint8_t*, size_t, void*))
