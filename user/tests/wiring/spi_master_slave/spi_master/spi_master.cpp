@@ -200,9 +200,9 @@
  * 
  * Master             Slave       Master              Slave
  * CS   D5 <-------> D5 CS        CS   S3 <---------> D5 CS
- * MISO D4 <-------> D4 MISO      MISO S1 <---------> D4 MISO
- * MOSI D3 <-------> D3 MOSI      MOSI S0 <---------> D3 MOSI
- * SCK  D2 <-------> D2 SCK       SCK  S2 <---------> D2 SCK
+ * MISO D4 <-------> D3 MISO      MISO S1 <---------> D3 MISO
+ * MOSI D3 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
+ * SCK  D2 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
  * 
  *********************************************************************************************
  */
