@@ -38,6 +38,7 @@ void bt_coex_init(void);
 #include <trace_app.h>
 #include <gap.h>
 #include <gap_adv.h>
+#include <gap_scan.h>
 #include <gap_bond_le.h>
 #include <gap_conn_le.h>
 #include <profile_server.h>
@@ -93,7 +94,7 @@ namespace {
         ({ \
             const auto _ret = _expr; \
             if (_ret != GAP_CAUSE_SUCCESS) { \
-                _LOG_CHECKED_ERROR(_expr, rtl_system_error(_ret)); \
+                _LOG_CHECKED_ERROR(_expr, rtl_ble_error_to_system(_ret)); \
                 return rtl_ble_error_to_system(_ret); \
             } \
             _ret; \
@@ -112,6 +113,10 @@ bool isUuidEqual(const hal_ble_uuid_t* uuid1, const hal_ble_uuid_t* uuid2) {
     } else {
         return uuid1->uuid16 == uuid2->uuid16;
     }
+}
+
+bool addressEqual(const hal_ble_addr_t& srcAddr, const hal_ble_addr_t& destAddr) {
+    return (srcAddr.addr_type == destAddr.addr_type && !memcmp(srcAddr.addr, destAddr.addr, BLE_SIG_ADDR_LEN));
 }
 
 } //anonymous namespace
@@ -170,6 +175,12 @@ public:
         return state_.gap_adv_state == GAP_ADV_STATE_ADVERTISING;
     }
 
+    bool scanning();
+    int setScanParams(const hal_ble_scan_params_t* params);
+    int getScanParams(hal_ble_scan_params_t* params) const;
+    int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
+    int stopScanning();
+
     int disconnect() const;
 
     bool connected() const {
@@ -201,6 +212,11 @@ private:
     BleGap()
             : state_{},
               advParams_{},
+              isScanning_(false),
+              scanParams_{},
+              scanSemaphore_(nullptr),
+              scanResultCallback_(nullptr),
+              context_(nullptr),
               connParams_{},
               periphEvtCallbacks_{},
               connHandle_(BLE_INVALID_CONN_HANDLE),
@@ -216,6 +232,15 @@ private:
         advParams_.filter_policy = BLE_ADV_FP_ANY;
         advParams_.inc_tx_power = false;
         advParams_.primary_phy = 0; // Not used
+
+        scanParams_.version = BLE_API_VERSION;
+        scanParams_.size = sizeof(hal_ble_scan_params_t);
+        scanParams_.active = true;
+        scanParams_.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+        scanParams_.interval = BLE_DEFAULT_SCANNING_INTERVAL;
+        scanParams_.window = BLE_DEFAULT_SCANNING_WINDOW;
+        scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
+        scanParams_.scan_phys = BLE_PHYS_AUTO;
 
         memset(advData_, 0x00, sizeof(advData_));
         memset(scanRespData_, 0x00, sizeof(scanRespData_));
@@ -254,10 +279,23 @@ private:
         }
     }
 
+    void notifyScanResult(T_LE_SCAN_INFO* advReport);
+    hal_ble_scan_result_evt_t* getPendingResult(const hal_ble_addr_t& address);
+    int addPendingResult(const hal_ble_scan_result_evt_t& resultEvt);
+    void removePendingResult(const hal_ble_addr_t& address);
+    void clearPendingResult();
+
     static T_APP_RESULT gapEventCallback(uint8_t type, void *data);
 
     T_GAP_DEV_STATE state_;
     hal_ble_adv_params_t advParams_;
+    volatile bool isScanning_;                      /**< If it is scanning or not. */
+    hal_ble_scan_params_t scanParams_;              /**< BLE scanning parameters. */
+    os_semaphore_t scanSemaphore_;                  /**< Semaphore to wait until the scan procedure completed. */
+    hal_ble_on_scan_result_cb_t scanResultCallback_;    /**< Callback function on scan result. */
+    void* context_;                                     /**< Context of the scan result callback function. */
+    Vector<hal_ble_addr_t> cachedDevices_;
+    Vector<hal_ble_scan_result_evt_t> pendingResults_;
     hal_ble_conn_params_t connParams_;
     Vector<std::pair<hal_ble_on_link_evt_cb_t, void*>> periphEvtCallbacks_;
     hal_ble_conn_handle_t connHandle_;
@@ -490,8 +528,17 @@ int BleGap::init() {
         SCOPE_GUARD ({
             if (ret != SYSTEM_ERROR_NONE) {
                 bte_deinit();
+                if (scanSemaphore_) {
+                    os_semaphore_destroy(scanSemaphore_);
+                    scanSemaphore_ = nullptr;
+                }
             }
         });
+        if (os_semaphore_create(&scanSemaphore_, 1, 0)) {
+            scanSemaphore_ = nullptr;
+            LOG(ERROR, "os_semaphore_create() failed");
+            return SYSTEM_ERROR_INTERNAL;
+        }
         CHECK_TRUE(le_gap_init(MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
         uint8_t mtuReq = false;
         CHECK_RTL(le_set_gap_param(GAP_PARAM_SLAVE_INIT_GATT_MTU_REQ, sizeof(mtuReq), &mtuReq));
@@ -506,6 +553,7 @@ int BleGap::init() {
         CHECK(setDeviceName(devName_, strlen(devName_)));
 
         CHECK(setAdvertisingParameters(&advParams_));
+        CHECK(setScanParams(&scanParams_));
 
         /* register gap message callback */
         le_register_app_cb(gapEventCallback);
@@ -669,7 +717,7 @@ int BleGap::startAdvertising(bool wait) const {
     CHECK(BleGap::getInstance().start());
 
     if (state_.gap_adv_state != GAP_ADV_STATE_ADVERTISING && state_.gap_adv_state != GAP_ADV_STATE_START) {
-        CHECK(le_adv_start());
+        CHECK_RTL(le_adv_start());
     }
     if (wait) {
         LOG_DEBUG(TRACE, "Starting advertising...");
@@ -685,7 +733,7 @@ int BleGap::stopAdvertising(bool wait) const {
     if (state_.gap_adv_state != GAP_ADV_STATE_ADVERTISING && state_.gap_adv_state != GAP_ADV_STATE_START) {
         return SYSTEM_ERROR_NONE;
     }
-    CHECK(le_adv_stop());
+    CHECK_RTL(le_adv_stop());
     if (wait) {
         LOG_DEBUG(TRACE, "Stopping advertising...");
         while (state_.gap_adv_state != GAP_ADV_STATE_IDLE) {
@@ -696,9 +744,173 @@ int BleGap::stopAdvertising(bool wait) const {
     return SYSTEM_ERROR_NONE;
 }
 
+bool BleGap::scanning() {
+    return isScanning_;
+}
+
+int BleGap::setScanParams(const hal_ble_scan_params_t* params) {
+    CHECK_TRUE(params, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->interval >= BLE_SCAN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->interval <= BLE_SCAN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->window >= BLE_SCAN_WINDOW_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->window <= BLE_SCAN_WINDOW_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(params->window <= params->interval, SYSTEM_ERROR_INVALID_ARGUMENT);
+    memcpy(&scanParams_, params, std::min(scanParams_.size, params->size));
+    scanParams_.size = sizeof(hal_ble_scan_params_t);
+    scanParams_.version = BLE_API_VERSION;
+    uint8_t filterDuplicate = GAP_SCAN_FILTER_DUPLICATE_ENABLE;
+    CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_MODE, sizeof(uint8_t), &scanParams_.active));
+    CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_INTERVAL, sizeof(uint16_t), &scanParams_.interval));
+    CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_WINDOW, sizeof(uint16_t), &scanParams_.window));
+    CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_FILTER_POLICY, sizeof(uint8_t), &scanParams_.filter_policy));
+    CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_FILTER_DUPLICATES, sizeof(uint8_t), &filterDuplicate));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
+    CHECK_TRUE(params, SYSTEM_ERROR_INVALID_ARGUMENT);
+    memcpy(params, &scanParams_, std::min(scanParams_.size, params->size));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
+    CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
+    SCOPE_GUARD ({
+        if (isScanning_) {
+            isScanning_ = false;
+            le_scan_stop();
+            clearPendingResult();
+        }
+    });
+    // Starts the BT stack
+    CHECK(BleGap::getInstance().start());
+    scanResultCallback_ = callback;
+    context_ = context;
+    CHECK_RTL(le_scan_start());
+    isScanning_ = true;
+    // To be consistent with Gen3, the scan proceedure is blocked for now,
+    // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
+    os_semaphore_take(scanSemaphore_, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::stopScanning() {
+    if (!isScanning_) {
+        return SYSTEM_ERROR_NONE;
+    }
+    os_semaphore_give(scanSemaphore_, false);
+    return SYSTEM_ERROR_NONE;
+}
+
+// This function is called from thread
+void BleGap::notifyScanResult(T_LE_SCAN_INFO* advReport) {
+    if (!isScanning_ || !scanResultCallback_) {
+        return;
+    }
+
+    hal_ble_addr_t newAddr = {};
+    newAddr.addr_type = (ble_sig_addr_type_t)advReport->remote_addr_type;
+    memcpy(newAddr.addr, advReport->bd_addr, BLE_SIG_ADDR_LEN);
+
+    hal_ble_scan_result_evt_t* pendingResult = getPendingResult(newAddr);
+    if (advReport->adv_type != GAP_ADV_EVT_TYPE_SCAN_RSP) {
+        if (pendingResult || advReport->data_len < 3) { // The advertising data should at least contains AD flag (len + type + AD flag)
+            // Repeated adv packet
+            return;
+        }
+        hal_ble_scan_result_evt_t result = {};
+        result.rssi = advReport->rssi;
+        if ((advReport->adv_type == GAP_ADV_EVT_TYPE_UNDIRECTED) || (advReport->adv_type == GAP_ADV_EVT_TYPE_DIRECTED)) {
+            result.type.connectable = true;
+            result.type.scannable = true;
+        } else {
+            result.type.connectable = false;
+            result.type.scannable = false;
+        }
+        if (advReport->adv_type == GAP_ADV_EVT_TYPE_SCANNABLE) {
+            result.type.scannable = true;
+        }
+        if (advReport->adv_type == GAP_ADV_EVT_TYPE_DIRECTED) {
+            result.type.directed = true;
+        } else {
+            result.type.directed = false;
+        }
+        result.type.extended_pdu = false;
+        result.peer_addr = newAddr;
+        result.adv_data_len = advReport->data_len;
+        result.adv_data = advReport->data;
+        if (!scanParams_.active || !result.type.scannable) {
+            // No scan response data is expected.
+            scanResultCallback_(&result, context_);
+            return;
+        }
+        uint8_t* advData = (uint8_t*)malloc(result.adv_data_len);
+        if (!advData) {
+            return;
+        }
+        memcpy(advData, result.adv_data, result.adv_data_len);
+        result.adv_data = advData;
+        if (addPendingResult(result) != SYSTEM_ERROR_NONE) {
+            free(advData);
+        }
+    } else {
+        if (!pendingResult) {
+            // We received the scan response data, but the advertising data should come first. Abort it.
+            return;
+        }
+        pendingResult->sr_data_len = advReport->data_len;
+        pendingResult->sr_data = advReport->data;
+        scanResultCallback_(pendingResult, context_);
+        removePendingResult(newAddr);
+    }
+}
+
+hal_ble_scan_result_evt_t* BleGap::getPendingResult(const hal_ble_addr_t& address) {
+    for (auto& result : pendingResults_) {
+        if (addressEqual(result.peer_addr, address)) {
+            return &result;
+        }
+    }
+    return nullptr;
+}
+
+int BleGap::addPendingResult(const hal_ble_scan_result_evt_t& result) {
+    if (getPendingResult(result.peer_addr) != nullptr) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    CHECK_TRUE(pendingResults_.append(result), SYSTEM_ERROR_NO_MEMORY);
+    return SYSTEM_ERROR_NONE;
+}
+
+void BleGap::removePendingResult(const hal_ble_addr_t& address) {
+    // Note: this function isn't responsible for freeing the memory allocated for the advertising data.
+    for (int i = 0; i < pendingResults_.size(); i = i) {
+        if (addressEqual(pendingResults_[i].peer_addr, address)) {
+            if (pendingResults_[i].adv_data) {
+                free(pendingResults_[i].adv_data);
+            }
+            pendingResults_.removeAt(i);
+            continue;
+        }
+        i++;
+    }
+}
+
+void BleGap::clearPendingResult() {
+    // Note: this function is responsible for freeing the memory allocated for the advertising data.
+    for (const auto& result : pendingResults_) {
+        // Notify the pending results, in case that they are not expecting scan response data.
+        scanResultCallback_(&result, context_);
+        if (result.adv_data) {
+            free(result.adv_data);
+        }
+    }
+    pendingResults_.clear();
+}
+
 int BleGap::disconnect() const {
     if (connHandle_ != BLE_INVALID_CONN_HANDLE) {
-        CHECK(le_disconnect(connHandle_));
+        CHECK_RTL(le_disconnect(connHandle_));
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -860,7 +1072,11 @@ T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
                             p_data->p_le_modify_white_list_rsp->operation, p_data->p_le_modify_white_list_rsp->cause);
             break;
         }
-
+        case GAP_MSG_LE_SCAN_INFO: {
+            LOG_DEBUG(TRACE, "gapEventCallback, GAP_MSG_LE_SCAN_INFO");
+            BleGap::getInstance().notifyScanResult(((T_LE_CB_DATA *)data)->p_le_scan_info);
+            break;
+        }
         default: {
             LOG_DEBUG(TRACE, "gapEventCallback: unhandled type 0x%x", type);
             break;
@@ -1513,30 +1729,35 @@ bool hal_ble_gap_is_advertising(void* reserved) {
 int hal_ble_gap_set_scan_parameters(const hal_ble_scan_params_t* scan_params, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_scan_parameters().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().setScanParams(scan_params);
 }
 
 int hal_ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_scan_parameters().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getScanParams(scan_params);
 }
 
 int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_start_scan().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().startScanning(callback, context);
 }
 
 bool hal_ble_gap_is_scanning(void* reserved) {
     BleLock lk;
-    return false;
+    CHECK_TRUE(s_bleStackInit, false);
+    return BleGap::getInstance().scanning();
 }
 
 int hal_ble_gap_stop_scan(void* reserved) {
     // Do not acquire the lock here, otherwise another thread cannot cancel the scanning.
     LOG_DEBUG(TRACE, "hal_ble_gap_stop_scan().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().stopScanning();
 }
 
 int hal_ble_gap_connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* conn_handle, void* reserved) {
