@@ -294,7 +294,6 @@ private:
     os_semaphore_t scanSemaphore_;                  /**< Semaphore to wait until the scan procedure completed. */
     hal_ble_on_scan_result_cb_t scanResultCallback_;    /**< Callback function on scan result. */
     void* context_;                                     /**< Context of the scan result callback function. */
-    Vector<hal_ble_addr_t> cachedDevices_;
     Vector<hal_ble_scan_result_evt_t> pendingResults_;
     hal_ble_conn_params_t connParams_;
     Vector<std::pair<hal_ble_on_link_evt_cb_t, void*>> periphEvtCallbacks_;
