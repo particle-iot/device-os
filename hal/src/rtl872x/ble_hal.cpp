@@ -212,6 +212,7 @@ private:
     BleGap()
             : state_{},
               advParams_{},
+              advTimeoutTimer_(nullptr),
               isScanning_(false),
               scanParams_{},
               scanSemaphore_(nullptr),
@@ -286,9 +287,11 @@ private:
     void clearPendingResult();
 
     static T_APP_RESULT gapEventCallback(uint8_t type, void *data);
+    static void onAdvTimeoutTimerExpired(os_timer_t timer);
 
     T_GAP_DEV_STATE state_;
     hal_ble_adv_params_t advParams_;
+    os_timer_t advTimeoutTimer_;                    /**< Timer for advertising timeout.  */
     volatile bool isScanning_;                      /**< If it is scanning or not. */
     hal_ble_scan_params_t scanParams_;              /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                  /**< Semaphore to wait until the scan procedure completed. */
@@ -306,6 +309,7 @@ private:
     char devName_[BLE_MAX_DEV_NAME_LEN + 1];        // null-terminated
     size_t devNameLen_;
     static constexpr uint8_t MAX_LINK_COUNT = 4;
+    static constexpr uint16_t BLE_ADV_TIMEOUT_EXT_MS = 50;
 };
 
 
@@ -531,11 +535,20 @@ int BleGap::init() {
                     os_semaphore_destroy(scanSemaphore_);
                     scanSemaphore_ = nullptr;
                 }
+                if (advTimeoutTimer_) {
+                    os_timer_destroy(advTimeoutTimer_, nullptr);
+                    advTimeoutTimer_ = nullptr;
+                }
             }
         });
         if (os_semaphore_create(&scanSemaphore_, 1, 0)) {
             scanSemaphore_ = nullptr;
             LOG(ERROR, "os_semaphore_create() failed");
+            return SYSTEM_ERROR_INTERNAL;
+        }
+        if (os_timer_create(&advTimeoutTimer_, BLE_DEFAULT_ADVERTISING_TIMEOUT * 10, onAdvTimeoutTimerExpired, this, true, nullptr)) {
+            advTimeoutTimer_ = nullptr;
+            LOG(ERROR, "os_timer_create() failed.");
             return SYSTEM_ERROR_INTERNAL;
         }
         CHECK_TRUE(le_gap_init(MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
@@ -567,7 +580,7 @@ int BleGap::start() {
         CHECK(BleEventDispatcher::getInstance().start());
         LOG_DEBUG(TRACE, "Waiting ready...");
         do {
-            HAL_Delay_Milliseconds(100);
+            HAL_Delay_Milliseconds(10);
             le_get_gap_param(GAP_PARAM_DEV_STATE , &state_);
         } while (state_.gap_init_state != GAP_INIT_STATE_STACK_READY);
     }
@@ -715,13 +728,22 @@ int BleGap::startAdvertising(bool wait) const {
     // Starts the BT stack
     CHECK(BleGap::getInstance().start());
 
+    SCOPE_GUARD ({
+        if (!isAdvertising() && os_timer_is_active(advTimeoutTimer_, nullptr)) {
+            os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
+        }
+    });
+    if (os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_PERIOD, hal_interrupt_is_isr() ? true : false, advParams_.timeout * 10 + BLE_ADV_TIMEOUT_EXT_MS, 0, nullptr)) {
+        LOG(ERROR, "Failed to start timer.");
+        return SYSTEM_ERROR_INTERNAL;
+    }
     if (state_.gap_adv_state != GAP_ADV_STATE_ADVERTISING && state_.gap_adv_state != GAP_ADV_STATE_START) {
         CHECK_RTL(le_adv_start());
     }
     if (wait) {
         LOG_DEBUG(TRACE, "Starting advertising...");
         while (state_.gap_adv_state != GAP_ADV_STATE_ADVERTISING) {
-            HAL_Delay_Milliseconds(100);
+            HAL_Delay_Milliseconds(10);
         }
     }
     LOG_DEBUG(TRACE, "Advertising started");
@@ -733,14 +755,25 @@ int BleGap::stopAdvertising(bool wait) const {
         return SYSTEM_ERROR_NONE;
     }
     CHECK_RTL(le_adv_stop());
+    if (os_timer_is_active(advTimeoutTimer_, nullptr)) {
+        os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
+    }
     if (wait) {
         LOG_DEBUG(TRACE, "Stopping advertising...");
         while (state_.gap_adv_state != GAP_ADV_STATE_IDLE) {
-            HAL_Delay_Milliseconds(100);
+            HAL_Delay_Milliseconds(10);
         }
     }
     LOG_DEBUG(TRACE, "Advertising stopped");
     return SYSTEM_ERROR_NONE;
+}
+
+void BleGap::onAdvTimeoutTimerExpired(os_timer_t timer) {
+    BleGap* gap;
+    os_timer_get_id(timer, (void**)&gap);
+    if (gap->isAdvertising()) {
+        gap->stopAdvertising(true);
+    }
 }
 
 bool BleGap::scanning() {
