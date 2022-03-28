@@ -2035,7 +2035,7 @@ int BleLocalDevice::setDeviceName(const char* name, size_t len) const {
 }
 
 int BleLocalDevice::setDeviceName(const char* name) const {
-    return setDeviceName(name, strnlen(name, BLE_MAX_DEV_NAME_LEN));
+    return setDeviceName(name, name ? strnlen(name, BLE_MAX_DEV_NAME_LEN) : 0);
 }
 
 int BleLocalDevice::setDeviceName(const String& name) const {

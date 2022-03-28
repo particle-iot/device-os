@@ -110,6 +110,11 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 #define configUSE_MUTEXES								1
 #define configUSE_APPLICATION_TASK_TAG					0
 #define configUSE_NEWLIB_REENTRANT						1
+
+struct _reent;
+extern void newlib_impure_ptr_change(struct _reent* r);
+#define traceTASK_SWITCHED_IN() newlib_impure_ptr_change(&(pxCurrentTCB->xNewLib_reent))
+
 // #define configUSE_CO_ROUTINES							1 ///
 #define configUSE_CO_ROUTINES							0 ///
 #define configMAX_CO_ROUTINE_PRIORITIES 				( 2 )

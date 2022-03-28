@@ -174,7 +174,9 @@ int RealtekNcpClient::enable() {
         return SYSTEM_ERROR_NONE;
     }
     ncpState_ = prevNcpState_;
-    off();
+    // Why do we need this? The Wi-Fi driver seams to take some time to be ready after turning on again.
+    // This may break the Wi-Fi provisinoning experience. See joinNewNetwork() in wifi_new.cpp.
+    // off();
     return SYSTEM_ERROR_NONE;
 }
 

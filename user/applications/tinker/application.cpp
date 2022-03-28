@@ -18,8 +18,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include <cctype>
-#ifdef TINKER_FQC
-#include "fqc_request_handler.h"
+#if HAL_PLATFORM_RTL872X
+#include "request_handler.h"
 #endif
 
 struct PinMapping {
@@ -88,7 +88,7 @@ const PinMapping g_pinmap[] = {
 const size_t g_pin_count = sizeof(g_pinmap) / sizeof(*g_pinmap);
 
 PRODUCT_ID(PLATFORM_ID);
-#ifdef TINKER_FQC
+#if HAL_PLATFORM_RTL872X
 PRODUCT_VERSION(4);
 #else
 PRODUCT_VERSION(3);
@@ -118,7 +118,7 @@ STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 #define PIN_INVALID (0xff)
 #endif // PIN_INVALID
 
-#ifdef TINKER_FQC
+#if HAL_PLATFORM_RTL872X
 SYSTEM_THREAD(ENABLED);
 #endif
 
@@ -271,8 +271,8 @@ int tinkerAnalogWrite(String command)
     return -1;
 }
 
-#ifdef TINKER_FQC
-// Handle FQC app specific USB requests
+#if HAL_PLATFORM_RTL872X
+// Tinker app specific USB requests. For P2 these are FQC commands
 void ctrl_request_custom_handler(ctrl_request* req) {
     particle::RequestHandler::instance()->process(req);
 }

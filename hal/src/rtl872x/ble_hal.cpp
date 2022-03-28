@@ -155,6 +155,7 @@ public:
     int start();
     int setAppearance(uint16_t appearance) const;
     int setDeviceName(const char* deviceName, size_t len);
+    int getDeviceName(char* deviceName, size_t len) const;
 
     int setAdvertisingParameters(const hal_ble_adv_params_t* params);
     int getAdvertisingParameters(hal_ble_adv_params_t* params) const;
@@ -265,7 +266,7 @@ private:
     size_t advDataLen_;                             /**< Current advertising data length. */
     uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
     size_t scanRespDataLen_;                        /**< Current scan response data length. */
-    char devName_[BLE_MAX_DEV_NAME_LEN];            // null-terminated
+    char devName_[BLE_MAX_DEV_NAME_LEN + 1];        // null-terminated
     size_t devNameLen_;
     static constexpr uint8_t MAX_LINK_COUNT = 4;
 };
@@ -533,20 +534,46 @@ int BleGap::setAppearance(uint16_t appearance) const {
 
 int BleGap::setDeviceName(const char* deviceName, size_t len) {
     if (deviceName == nullptr || len == 0) {
-        CHECK(get_device_name(devName_, sizeof(devName_)));
-        len = strlen(devName_);
+        int ret = get_device_name(devName_, sizeof(devName_)); // null-terminated
+        CHECK(ret);
+        devNameLen_ = std::min(ret, (int)(sizeof(devName_) - 1));
     } else {
-        len = std::min(len, sizeof(devName_) - 1);
-        memcpy(devName_, deviceName, len);
-        devName_[len] = '\0';
+        devNameLen_ = std::min(len, sizeof(devName_) - 1);
+        memcpy(devName_, deviceName, devNameLen_);
+        devName_[devNameLen_] = '\0';
     }
-    devNameLen_ = len;
-    CHECK_RTL(le_set_gap_param(GAP_PARAM_DEVICE_NAME, std::min(BLE_MAX_DEV_NAME_LEN, (int)len), (void*)devName_));
+    CHECK_RTL(le_set_gap_param(GAP_PARAM_DEVICE_NAME, std::min(BLE_MAX_DEV_NAME_LEN, (int)devNameLen_), (void*)devName_));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::getDeviceName(char* deviceName, size_t len) const {
+    CHECK_TRUE(deviceName, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint16_t nameLen = std::min(len - 1, devNameLen_); // Reserve 1 byte for the NULL-terminated character.
+    memcpy(deviceName, devName_, nameLen);
+    deviceName[nameLen] = '\0';
     return SYSTEM_ERROR_NONE;
 }
 
 int BleGap::setAdvertisingParameters(const hal_ble_adv_params_t* params) {
-    CHECK_TRUE(params, SYSTEM_ERROR_INVALID_ARGUMENT);
+    hal_ble_adv_params_t tempParams = {};
+    tempParams.version = BLE_API_VERSION;
+    tempParams.size = sizeof(hal_ble_adv_params_t);
+    if (params == nullptr) {
+        tempParams.type = BLE_ADV_CONNECTABLE_SCANNABLE_UNDIRECRED_EVT;
+        tempParams.filter_policy = BLE_ADV_FP_ANY;
+        tempParams.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
+        tempParams.timeout = BLE_DEFAULT_ADVERTISING_TIMEOUT;
+        tempParams.inc_tx_power = false;
+        tempParams.primary_phy = BLE_PHYS_AUTO;
+    } else {
+        memcpy(&tempParams, params, std::min(tempParams.size, params->size));
+        if (tempParams.primary_phy != BLE_PHYS_AUTO && tempParams.primary_phy != BLE_PHYS_1MBPS && tempParams.primary_phy != BLE_PHYS_CODED) {
+            LOG(ERROR, "primary_phy value not supported");
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+    }
+
     bool advertising = isAdvertising();
     SCOPE_GUARD ({
         if (advertising) {
@@ -554,13 +581,13 @@ int BleGap::setAdvertisingParameters(const hal_ble_adv_params_t* params) {
         }
     });
     CHECK(stopAdvertising(true));
-    memcpy(&advParams_, params, std::min(advParams_.size, params->size));
-    uint8_t  advEvtType = toPlatformAdvEvtType(params->type);
+    memcpy(&advParams_, &tempParams, std::min(advParams_.size, tempParams.size));
+    uint8_t  advEvtType = toPlatformAdvEvtType(advParams_.type);
     uint8_t  advDirectType = GAP_REMOTE_ADDR_LE_PUBLIC;
     uint8_t  advDirectAddr[GAP_BD_ADDR_LEN] = { 0 };
     uint8_t  advChannMap = GAP_ADVCHAN_ALL;
-    uint8_t  advFilterPolicy = params->filter_policy;
-    uint16_t advInterval = params->interval;
+    uint8_t  advFilterPolicy = advParams_.filter_policy;
+    uint16_t advInterval = advParams_.interval;
     CHECK_RTL(le_adv_set_param(GAP_PARAM_ADV_EVENT_TYPE, sizeof(advEvtType), &advEvtType));
     CHECK_RTL(le_adv_set_param(GAP_PARAM_ADV_DIRECT_ADDR_TYPE, sizeof(advDirectType), &advDirectType));
     CHECK_RTL(le_adv_set_param(GAP_PARAM_ADV_DIRECT_ADDR, sizeof(advDirectAddr), advDirectAddr));
@@ -1356,7 +1383,8 @@ int hal_ble_gap_set_device_name(const char* device_name, size_t len, void* reser
 int hal_ble_gap_get_device_name(char* device_name, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_device_name().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getDeviceName(device_name, len);
 }
 
 int hal_ble_gap_set_appearance(ble_sig_appearance_t appearance, void* reserved) {

@@ -787,15 +787,15 @@ static int Write_Feature_Flag(uint32_t flag, bool value, bool *prev_value) {
 }
 
 static int Read_Feature_Flag(uint32_t flag, bool* value) {
-    // if (hal_interrupt_is_isr()) {
-    //     return -1; // DCT cannot be accessed from an ISR
-    // }
-    // uint32_t flags = 0;
-    // const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
-    // if (result != 0) {
-    //     return result;
-    // }
-    // *value = !(flags & flag);
+    if (hal_interrupt_is_isr()) {
+        return -1; // DCT cannot be accessed from an ISR
+    }
+    uint32_t flags = 0;
+    const int result = dct_read_app_data_copy(DCT_FEATURE_FLAGS_OFFSET, &flags, sizeof(flags));
+    if (result != 0) {
+        return result;
+    }
+    *value = !(flags & flag);
     return 0;
 }
 
@@ -822,6 +822,9 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
         case FEATURE_LED_OVERRIDDEN: {
             return Write_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, enabled, NULL);
         }
+        case FEATURE_DISABLE_LISTENING_MODE: {
+            return Write_Feature_Flag(FEATURE_FLAG_DISBLE_LISTENING_MODE, enabled, NULL);
+        }
     }
 
     return -1;
@@ -842,6 +845,10 @@ bool HAL_Feature_Get(HAL_Feature feature) {
         case FEATURE_LED_OVERRIDDEN: {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_LED_OVERRIDDEN, &value) == 0) ? value : false;
+        }
+        case FEATURE_DISABLE_LISTENING_MODE: {
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_DISBLE_LISTENING_MODE, &value) == 0) ? value : false;
         }
     }
     return false;

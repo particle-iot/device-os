@@ -67,6 +67,7 @@ uint8_t ledAdjust(uint8_t value, uint8_t brightness=255) {
 }
 
 test(LED_01_Updated) {
+    constexpr uint8_t error = 1;
     // Force the LED to show a breathing pattern for this test
     LEDStatus status(LED_PATTERN_FADE, LED_PRIORITY_IMPORTANT);
     status.setActive();
@@ -79,7 +80,8 @@ test(LED_01_Updated) {
     RGB.onChange(NULL);
 
     // onChange callback is called every 25ms, so 500ms / 25ms = 20
-    assertMoreOrEqual((end-start), uint32_t(20));
+    assertMoreOrEqual((end-start), uint32_t(20) - 1);
+    assertLessOrEqual((end-start), uint32_t(20) + 1);
 }
 
 

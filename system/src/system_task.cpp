@@ -515,7 +515,9 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
         system::FirmwareUpdate::instance()->process();
 
-        manage_listening_mode_flag();
+        if (system_mode() != SAFE_MODE) {
+            manage_listening_mode_flag();
+        }
     }
     else
     {
@@ -524,7 +526,9 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 #if HAL_PLATFORM_BLE_SETUP
     // TODO: Process BLE channel events in a separate thread
     system::SystemControl::instance()->run();
-    manage_ble_prov_mode();
+    if (system_mode() != SAFE_MODE) {
+        manage_ble_prov_mode();
+    }
 #endif
     system_shutdown_if_needed();
 }

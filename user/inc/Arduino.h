@@ -151,6 +151,34 @@ inline void yield() {
 # define digitalPinHasPWM(P)        ( hal_pin_validate_function(P, PF_TIMER) == PF_TIMER )
 # endif
 
+#elif HAL_PLATFORM_RTL872X
+
+extern GPIO_TypeDef* PORT_AB[2];
+
+# ifndef digitalPinToPort
+# define digitalPinToPort(P)        ( PORT_AB[hal_pin_map()[(P)].gpio_port] ) 
+# endif
+
+# ifndef digitalPinToBitMask
+# define digitalPinToBitMask(P)     ( hal_pin_map()[(P)].gpio_pin )
+# endif
+
+# ifndef portOutputRegister
+# define portOutputRegister(port)   ( &( port->PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ].DR ) ) 
+# endif
+
+# ifndef portInputRegister
+# define portInputRegister(port)    ( &( port->EXT_PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ] ) )
+# endif
+
+# ifndef portModeRegister
+# define portModeRegister(port)     ( &( port->PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ].DDR ) )
+# endif
+
+# ifndef digitalPinHasPWM
+# define digitalPinHasPWM(P)        ( hal_pin_validate_function(P, PF_TIMER) == PF_TIMER )
+# endif
+
 #endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
 #ifndef _BV
@@ -184,7 +212,7 @@ typedef volatile uint32_t RwReg;
 // LED
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || \
     PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION || \
-    HAL_PLATFORM_NRF52840
+    HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 # ifndef LED_BUILTIN
 # define LED_BUILTIN D7
 # endif
@@ -195,7 +223,7 @@ typedef volatile uint32_t RwReg;
 
 #endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION ||
        // PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION ||
-       // HAL_PLATFORM_NRF52840
+       // HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 
 // C++ only
 #ifdef __cplusplus
