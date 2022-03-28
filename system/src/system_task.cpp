@@ -719,10 +719,10 @@ namespace {
 
 // Memory pool for small and short-lived allocations
 #if HAL_PLATFORM_RTL872X
-uint8_t __attribute__((aligned(4))) s_buffer[1024];
+uint8_t __attribute__((aligned(4))) s_buffer[HAL_PLATFORM_SYSTEM_POOL_SIZE];
 SimpleStaticPool g_memPool(s_buffer, sizeof(s_buffer));
 #else
-SimpleAllocedPool g_memPool(512);
+SimpleAllocedPool g_memPool(HAL_PLATFORM_SYSTEM_POOL_SIZE);
 #endif
 
 } // namespace

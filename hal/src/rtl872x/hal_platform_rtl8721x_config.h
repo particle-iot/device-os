@@ -124,3 +124,5 @@
 // No SOF support :(
 #define HAL_PLATFORM_USB_SOF (0)
 
+#define HAL_PLATFORM_SYSTEM_POOL_SIZE 1024
+
