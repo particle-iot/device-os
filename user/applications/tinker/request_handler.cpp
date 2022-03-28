@@ -350,15 +350,15 @@ void configureAllPinsInput(void) {
 }
 
 const String pinNumberToPinName(uint16_t pinNumber) {
-    #if HAL_PLATFORM_RTL872X
+#if HAL_PLATFORM_RTL872X
     hal_pin_info_t pinInfo = hal_pin_map()[pinNumber];
 
     String portName = pinInfo.gpio_port == RTL_PORT_A ? "PA" : "PB";
     portName += pinInfo.gpio_pin;
     return portName;
-    #else
+#else
     return String(pinNumber);
-    #endif
+#endif
 }
 
 bool assertPinStates(uint16_t outputPin, uint16_t inputPin, bool expectedState, uint16_t * errorPin){
