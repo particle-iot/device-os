@@ -37,6 +37,8 @@ BleCharacteristic peerCharWriteWoRsp;
 
 using namespace particle::test;
 
+// TODO: P2 needs to support BLE central role to perform this test
+
 test(BLE_000_Scanner_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
@@ -59,6 +61,7 @@ test(BLE_00_Prepare) {
 #endif // PARTICLE_TEST_RUNNER
 }
 
+#if HAL_PLATFORM_NRF52840
 test(BLE_01_Scanner_Blocked_Timeout_Simulate) {
     Serial.println("This is BLE scanner.");
     
@@ -86,6 +89,7 @@ test(BLE_01_Scanner_Blocked_Timeout_Simulate) {
 
     NVIC_EnableIRQ(SD_EVT_IRQn);
 }
+#endif // HAL_PLATFORM_NRF52840
 
 test(BLE_02_Broadcaster_Prepare) {
 }
@@ -254,6 +258,7 @@ test(BLE_12_Scanner_Scan_With_Custom_Data) {
     assertEqual(results.size(), 0);
 }
 
+#if HAL_PLATFORM_NRF52840
 test(BLE_13_Scanner_Scan_On_Coded_Phy) {
     assertTrue(BLE.connected());
 
@@ -290,5 +295,6 @@ test(BLE_14_Scanner_Scan_Extended) {
     Vector<BleScanResult> results = BLE.scanWithFilter(BleScanFilter().customData(buf, BLE_MAX_ADV_DATA_LEN_EXT_CONNECTABLE - 5));
     assertEqual(results.size(), 1);
 }
+#endif // HAL_PLATFORM_NRF52840
 
 #endif // #if Wiring_BLE == 1

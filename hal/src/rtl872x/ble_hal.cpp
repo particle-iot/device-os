@@ -733,11 +733,13 @@ int BleGap::startAdvertising(bool wait) const {
             os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
         }
     });
-    if (os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_PERIOD, hal_interrupt_is_isr() ? true : false, advParams_.timeout * 10 + BLE_ADV_TIMEOUT_EXT_MS, 0, nullptr)) {
-        LOG(ERROR, "Failed to start timer.");
-        return SYSTEM_ERROR_INTERNAL;
-    }
     if (state_.gap_adv_state != GAP_ADV_STATE_ADVERTISING && state_.gap_adv_state != GAP_ADV_STATE_START) {
+        if (advParams_.timeout != 0) { // 0 for advertising infinitely
+            if (os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_PERIOD, hal_interrupt_is_isr() ? true : false, advParams_.timeout * 10 + BLE_ADV_TIMEOUT_EXT_MS, 0, nullptr)) {
+                LOG(ERROR, "Failed to start timer.");
+                return SYSTEM_ERROR_INTERNAL;
+            }
+        }
         CHECK_RTL(le_adv_start());
     }
     if (wait) {
@@ -915,8 +917,7 @@ int BleGap::addPendingResult(const hal_ble_scan_result_evt_t& result) {
 }
 
 void BleGap::removePendingResult(const hal_ble_addr_t& address) {
-    // Note: this function isn't responsible for freeing the memory allocated for the advertising data.
-    for (int i = 0; i < pendingResults_.size(); i = i) {
+    for (int i = 0; i < pendingResults_.size();) {
         if (addressEqual(pendingResults_[i].peer_addr, address)) {
             if (pendingResults_[i].adv_data) {
                 free(pendingResults_[i].adv_data);
@@ -929,7 +930,6 @@ void BleGap::removePendingResult(const hal_ble_addr_t& address) {
 }
 
 void BleGap::clearPendingResult() {
-    // Note: this function is responsible for freeing the memory allocated for the advertising data.
     for (const auto& result : pendingResults_) {
         // Notify the pending results, in case that they are not expecting scan response data.
         scanResultCallback_(&result, context_);
