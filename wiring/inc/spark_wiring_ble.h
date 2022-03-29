@@ -206,12 +206,14 @@ typedef void (*BleOnScanResultCallbackRef)(const BleScanResult& result, void* co
 typedef void (*BleOnConnectedCallback)(const BlePeerDevice& peer, void* context);
 typedef void (*BleOnDisconnectedCallback)(const BlePeerDevice& peer, void* context);
 typedef void (*BleOnPairingEventCallback)(const BlePairingEvent& event, void* context);
+typedef void (*BleOnAttMtutExchangedCallback)(const BlePeerDevice& peer, size_t attMtu, void* context);
 
 typedef std::function<void(const uint8_t*, size_t, const BlePeerDevice& peer)> BleOnDataReceivedStdFunction;
 typedef std::function<void(const BleScanResult& result)> BleOnScanResultStdFunction;
 typedef std::function<void(const BlePeerDevice& peer)> BleOnConnectedStdFunction;
 typedef std::function<void(const BlePeerDevice& peer)> BleOnDisconnectedStdFunction;
 typedef std::function<void(const BlePairingEvent& event)> BleOnPairingEventStdFunction;
+typedef std::function<void(const BlePeerDevice& peer, size_t attMtu)> BleOnAttMtuExchangedStdFunction;
 
 class BleAdvertisingParams : public hal_ble_adv_params_t {
 };
@@ -1103,6 +1105,16 @@ public:
 
     // Access connection parameters
     int setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const;
+    int setDesiredAttMtu(size_t mtu) const;
+    int updateAttMtu(const BlePeerDevice& peer) const;
+    ssize_t getCurrentAttMtu(const BlePeerDevice& peer) const;
+    void onAttMtuExchanged(BleOnAttMtutExchangedCallback callback, void* context = nullptr) const;
+    void onAttMtuExchanged(const BleOnAttMtuExchangedStdFunction& callback) const;
+
+    template<typename T>
+    void onAttMtuExchanged(void(T::*callback)(const BlePeerDevice& peer, size_t attMtu), T* instance) const {
+        return onAttMtuExchanged((callback && instance) ? std::bind(callback, instance, _1, _2) : (BleOnAttMtuExchangedStdFunction)nullptr);
+    }
 
     // Connection control
     BlePeerDevice connect(const BleAddress& addr, const BleConnectionParams* params, bool automatic = true) const;

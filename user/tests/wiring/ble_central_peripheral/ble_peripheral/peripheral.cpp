@@ -66,6 +66,9 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
 
 using namespace particle::test;
 
+constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 123;
+constexpr uint16_t PEER_DESIRED_ATT_MTU = 100;
+
 test(BLE_000_Peripheral_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
@@ -86,6 +89,7 @@ test(BLE_00_Prepare) {
 #else
     assertTrue(waitFor(getBleTestPeer().isValid, 60 * 1000));
 #endif // PARTICLE_TEST_RUNNER
+    assertEqual(BLE.setDesiredAttMtu(LOCAL_DESIRED_ATT_MTU), (int)SYSTEM_ERROR_NONE);
 }
 
 test(BLE_01_Advertising_Scan_Connect) {
@@ -248,6 +252,7 @@ static bool pairingRequested = false;
 static int pairingStatus = -1;
 static bool lesc;
 static BlePeerDevice peer;
+static size_t effectiveAttMtu = 0;
 
 const BlePairingIoCaps pairingIoCaps[5] = {
     BlePairingIoCaps::NONE,
@@ -277,7 +282,7 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
             pairingStatus = event.payload.status.status;
             lesc = event.payload.status.lesc;
-            Serial.println("status updateed");
+            Serial.println("status updated");
         } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY || event.type == BlePairingEventType::NUMERIC_COMPARISON) {
             Serial.print("Passkey display: ");
             for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
@@ -367,7 +372,7 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
             assertTrue(waitFor([&]{ return pairingRequested; }, 20000));
         }
         assertTrue(BLE.isPairing(peer));
-        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 60000));
         assertTrue(BLE.isPaired(peer));
         assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
         if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
@@ -460,6 +465,26 @@ test(BLE_31_Pairing_Receiption_Reject) {
         assertTrue(BLE.isPairing(peer));
         assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
         assertFalse(BLE.isPaired(peer));
+    }
+}
+
+test(BLE_32_Att_Mtu_Exchange) {
+    BLE.onAttMtuExchanged([&](const BlePeerDevice& p, size_t attMtu) {
+        effectiveAttMtu = attMtu;
+        Serial.printlnf("ATT MTU: %d", attMtu);
+    });
+
+    SCOPE_GUARD ({
+        BLE.onAttMtuExchanged(nullptr, nullptr);
+    });
+
+    assertTrue(waitFor(BLE.connected, 20000));
+    {
+        SCOPE_GUARD ({
+            assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
+            assertFalse(BLE.connected());
+        });
+        assertTrue(waitFor([]{ return effectiveAttMtu == PEER_DESIRED_ATT_MTU; }, 5000));
     }
 }
 
