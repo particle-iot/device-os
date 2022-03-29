@@ -15,7 +15,21 @@
 #error Define USE_CS
 #endif // #ifndef USE_CS
 
-#if HAL_PLATFORM_NRF52840
+#if (PLATFORM_ID == PLATFORM_P2)
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#error "SPI not supported as slave for p2"
+#elif (USE_SPI == 1)
+#define MY_SPI SPI1
+#define MY_CS SS1
+#pragma message "Compiling for SPI1, MY_CS set to SS1"
+#elif (USE_SPI == 2)
+#error "SPI2 not supported for p2"
+#else
+#error "Not supported for P2"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
+#elif (PLATFORM_ID == HAL_PLATFORM_NRF52840)
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI, but SPI slave is not supported on Gen3
 #error "SPI slave is not supported on SPI instance on Gen3 platforms. Please specify USE_SPI=SPI1."
 #endif
@@ -84,7 +98,7 @@
 #error "Not supported for Gen 2"
 #endif // (USE_SPI == 0)
 
-#endif // #if HAL_PLATFORM_NRF52840
+#endif // #if PLATFORM_P2
 
 #if defined(_SPI) && (USE_CS != 255)
 #pragma message "Overriding default CS selection"
@@ -173,6 +187,20 @@
  * SCK  D13 <-------> D2 SCK      SCK  D2 <---------> D2 SCK
  *
  *********************************************************************************************
+ *
+ * P2 Wiring diagrams
+ * 
+ * SPI1/SPI1                       SPI/SPI1 (SPI can't be used as slave)
+ * Master: SPI1  (USE_SPI=SPI1)    Master: SPI (USE_SPI=SPI)
+ * Slave:  SPI1  (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
+ * 
+ * Master             Slave       Master              Slave
+ * CS   D5 <-------> D5 CS        CS   S3 <---------> D5 CS
+ * MISO D4 <-------> D3 MISO      MISO S1 <---------> D3 MISO
+ * MOSI D3 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
+ * SCK  D2 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
+ * 
+ *********************************************************************************************
  */
 
 #ifdef MY_SPI
@@ -200,8 +228,7 @@ QsLDslIOHOKbfqB8njXotpE3Dz46Wi6QtpinLsSiviZmz62qLW5Pd9M7SDCarrxFk8SBHyJl2KdjH\
 
 static void SPI_On_Select(uint8_t state)
 {
-    if (state)
-        SPI_Selected_State = state;
+    SPI_Selected_State = state;
 }
 
 static void SPI_DMA_Completed_Callback()
@@ -263,7 +290,6 @@ test(00_SPI_Master_Slave_Slave_Transfer)
          * require TX and RX buffers to be configured before CS goes low
          */
         while(SPI_Selected_State == 0);
-        SPI_Selected_State = 0;
 
         /* Receive up to TRANSFER_LENGTH_2 bytes */
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, TRANSFER_LENGTH_2, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
@@ -329,7 +355,6 @@ test(01_SPI_Master_Slave_Slave_Receiption)
      * require TX and RX buffers to be configured before CS goes low
      */
     while(SPI_Selected_State == 0);
-    SPI_Selected_State = 0;
 
     memset(SPI_Slave_Rx_Buffer_Supper, 0, sizeof(SPI_Slave_Rx_Buffer_Supper));
 
@@ -348,7 +373,6 @@ test(02_SPI_Master_Slave_Slave_Const_String_Transfer_DMA)
     * require TX and RX buffers to be configured before CS goes low
     */
     while(SPI_Selected_State == 0);
-    SPI_Selected_State = 0;
 
     // FIXME: The rx_buffer has to be nullptr, otherwise, the the rx_buffer will overflow
     // as the length of the rx buffer given in this file is not equal to the length of tx data
