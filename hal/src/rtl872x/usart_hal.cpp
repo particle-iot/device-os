@@ -253,6 +253,13 @@ public:
 
     ssize_t write(const uint8_t* buffer, size_t size) {
         CHECK_TRUE(buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        auto uartInstance = uartTable_[index_].UARTx;
+        if (uartInstance != UART2_DEV && hal_interrupt_is_isr()) {
+            // FIXME: logging from ISR
+            return 0;
+        }
+
         const ssize_t canWrite = CHECK(space());
         
         const size_t writeSize = std::min((size_t)canWrite, size);
@@ -277,11 +284,7 @@ public:
                     break;
                 }
             }
-            // FIXME: Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
-            // Otherwise, the tx buffer is always full and device is blocked here.
-            // Adding a delay here instead seams to be helpful as well.
-            AtomicBlock atomic(this);
-            uartTxRxIntHandler(this);
+            CHECK(pollStatus());
         }
         return 0;
     }
@@ -338,6 +341,24 @@ public:
         CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(this);
         return rxBuffer_.peek(buffer, peekSize);
+    }
+
+    int pollStatus() {
+        auto uartInstance = uartTable_[index_].UARTx;
+        if (uartInstance != UART2_DEV) {
+            // FIXME: logging from ISR
+            if (hal_interrupt_is_isr()) {
+                return SYSTEM_ERROR_INVALID_STATE;
+            } else {
+                // The delay function will call into taskEXIT_CRITICAL() to enable activation of exceptions.
+                // We need this if LOG_FROM_ISR is defined, see spark_wiring_logging.cpp.
+                HAL_Delay_Milliseconds(1);
+            }
+        } else {
+            AtomicBlock atomic(this);
+            uartTxRxIntHandler(this);
+        }
+        return SYSTEM_ERROR_NONE;
     }
 
     static Usart* getInstance(hal_usart_interface_t serial) {
@@ -793,12 +814,7 @@ uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
     while (usart->space() <= 0) {
-        // FIXME: Poll the status just in case that the interrupt handler is not invoked even if there is int pending.
-        // Otherwise, the tx buffer is always full and device is blocked here.
-        // Adding a delay here instead seams to be helpful as well.
-        Usart::AtomicBlock atomic(usart);
-        HAL_Delay_Milliseconds(1);
-        usart->uartTxRxIntHandler(usart);
+        CHECK_RETURN(usart->pollStatus(), 0);
     }
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
 }
