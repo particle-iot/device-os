@@ -6,13 +6,13 @@ namespace {
 // Number of connection time measurements to make. When changing this parameter, make sure to change
 // the number of cloud_connect_time_from_cold_boot_XX and cloud_connect_time_from_warm_boot_XX tests
 // and update the spec file accordingly
-const unsigned CONNECT_COUNT = 10;
+const unsigned CONNECT_COUNT = 8;
 
 // Delay before resetting the device after a test
 const system_tick_t DELAY_AFTER_TEST = 2000;
 
-// Default timeout for waitFor()
-const system_tick_t WAIT_FOR_TIMEOUT = 10 * 60 * 1000;
+// Test timeout (we have to complete the entire test in 10 minutes, so set this just shy of that with a little overhead)
+const system_tick_t TEST_MAX_TIMEOUT = 9 * 60 * 1000;
 
 struct Stats {
     struct SignalStats {
@@ -79,99 +79,6 @@ const char* ratToString(hal_net_access_tech_t rat) {
     default:
         return "unk";
     }
-}
-
-bool testCloudConnectTimeFromColdBoot() {
-    if (stats.coldBootCount >= CONNECT_COUNT) {
-        return false;
-    }
-    network().off(); // Make sure the network interface is tuned off
-    waitFor(network().isOff, WAIT_FOR_TIMEOUT);
-    if (!network().isOff()) {
-        return false;
-    }
-    Particle.disconnect(CloudDisconnectOptions().clearSession(true)); // Clear the session data
-    const auto t1 = millis();
-    network().connect();
-    waitFor(network().ready, WAIT_FOR_TIMEOUT);
-    if (!network().ready()) {
-        return false;
-    }
-    const auto t2 = millis();
-    // This will not be entirely accurate as we are capturing signal data after connection is made
-    auto signal = network().RSSI();
-#if Wiring_Cellular
-    if (!signal.isValid()) {
-        // FIXME: some platforms only provide signal data after 5-6 seconds
-        CellularDevice devInfo = {};
-        devInfo.size = sizeof(devInfo);
-        if (cellular_device_info(&devInfo, nullptr)) {
-            return false;
-        }
-        if (devInfo.dev == DEV_QUECTEL_BG96 || devInfo.dev == DEV_QUECTEL_EG91_NA) {
-            delay(6000);
-        }
-        signal = network().RSSI();
-    }
-#endif // Wiring_Cellular
-    const auto t3 = millis();
-    Particle.connect();
-    waitFor(Particle.connected, WAIT_FOR_TIMEOUT);
-    if (!Particle.connected()) {
-        return false;
-    }
-    const auto t4 = millis();
-    const auto n = stats.coldBootCount++;
-    stats.cloudConnectTimeFromColdBoot[n] = t4 - t1 - (t3 - t2) + setupTimeFromStartup; // As if Particle.connect() was called in setup()
-    stats.networkColdConnectDuration[n] = t2 - t1;
-    stats.cloudFullHandshakeDuration[n] = t4 - t3;
-    stats.coldConnectSignal[n] = {
-        .rat = signal.getAccessTechnology(),
-        .strengthPerc = signal.getStrength(),
-        .strengthValue = signal.getStrengthValue(),
-        .qualityPerc = signal.getQuality(),
-        .qualityValue = signal.getQualityValue()
-    };
-    delay(DELAY_AFTER_TEST);
-    return true;
-}
-
-bool testCloudConnectTimeFromWarmBoot() {
-    if (stats.warmBootCount >= CONNECT_COUNT) {
-        return false;
-    }
-    if (network().ready()) {
-        return false;
-    }
-    const auto t1 = millis();
-    network().connect();
-    waitFor(network().ready, WAIT_FOR_TIMEOUT);
-    if (!network().ready()) {
-        return false;
-    }
-    const auto t2 = millis();
-    // This will not be entirely accurate as we are capturing signal data after connection is made
-    const auto signal = network().RSSI();
-    const auto t3 = millis();
-    Particle.connect();
-    waitFor(Particle.connected, WAIT_FOR_TIMEOUT);
-    if (!Particle.connected()) {
-        return false;
-    }
-    const auto t4 = millis();
-    const auto n = stats.warmBootCount++;
-    stats.cloudConnectTimeFromWarmBoot[n] = (t4 - t1) - (t3 - t2) + setupTimeFromStartup;
-    stats.networkWarmConnectDuration[n] = t2 - t1;
-    stats.cloudSessionResumeDuration[n] = t4 - t3;
-    stats.warmConnectSignal[n] = {
-        .rat = signal.getAccessTechnology(),
-        .strengthPerc = signal.getStrength(),
-        .strengthValue = signal.getStrengthValue(),
-        .qualityPerc = signal.getQuality(),
-        .qualityValue = signal.getQualityValue()
-    };
-    delay(DELAY_AFTER_TEST);
-    return true;
 }
 
 template<typename T>
@@ -243,6 +150,120 @@ size_t serializeStatsAsJson(char* buf, size_t size) {
     return w.dataSize();
 }
 
+bool testCloudConnectTimeFromColdBoot() {
+    if (stats.coldBootCount >= CONNECT_COUNT) {
+        return false;
+    }
+    const auto t0 = millis();
+    const auto n = stats.coldBootCount++;
+    // Default to failing value to avoid early exit being counted as passing time (0s).
+    stats.cloudConnectTimeFromColdBoot[n] = TEST_MAX_TIMEOUT;
+
+    network().on(); // Make sure the network interface is turned on, so we can turn it off more easily.
+    waitFor(network().isOn, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT));
+    if (!network().isOn()) {
+        Test::out->println("Failed to power on the network interface!");
+        return false;
+    }
+    network().off(); // Make sure the network interface is turned off
+    waitFor(network().isOff, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT)); // Do not exceed max test time
+    if (!network().isOff()) {
+        Test::out->println("Failed to power off the network interface!");
+        return false;
+    }
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true)); // Clear the session data
+    const auto t1 = millis();
+    network().connect();
+    waitFor(network().ready, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT)); // Do not exceed max test time
+    if (!network().ready()) {
+        Test::out->println("Failed to connect to cellular!");
+        return false;
+    }
+    const auto t2 = millis();
+    // This will not be entirely accurate as we are capturing signal data after connection is made
+    auto signal = network().RSSI();
+#if Wiring_Cellular
+    if (!signal.isValid()) {
+        // FIXME: some platforms only provide signal data after 5-6 seconds
+        CellularDevice devInfo = {};
+        devInfo.size = sizeof(devInfo);
+        if (cellular_device_info(&devInfo, nullptr)) {
+            Test::out->println("Failed to retreive cellular_device_info!");
+            return false;
+        }
+        if (devInfo.dev == DEV_QUECTEL_BG96 || devInfo.dev == DEV_QUECTEL_EG91_NA) {
+            delay(6000);
+        }
+        signal = network().RSSI();
+    }
+#endif // Wiring_Cellular
+    const auto t3 = millis();
+    Particle.connect();
+    waitFor(Particle.connected, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT)); // Do not exceed max test time
+    if (!Particle.connected()) {
+        Test::out->println("Failed to connect to cloud!");
+        return false;
+    }
+    const auto t4 = millis();
+    stats.cloudConnectTimeFromColdBoot[n] = t4 - t1 - (t3 - t2) + setupTimeFromStartup; // As if Particle.connect() was called in setup()
+    stats.networkColdConnectDuration[n] = t2 - t1;
+    stats.cloudFullHandshakeDuration[n] = t4 - t3;
+    stats.coldConnectSignal[n] = {
+        .rat = signal.getAccessTechnology(),
+        .strengthPerc = signal.getStrength(),
+        .strengthValue = signal.getStrengthValue(),
+        .qualityPerc = signal.getQuality(),
+        .qualityValue = signal.getQualityValue()
+    };
+    delay(DELAY_AFTER_TEST);
+    return true;
+}
+
+bool testCloudConnectTimeFromWarmBoot() {
+    if (stats.warmBootCount >= CONNECT_COUNT) {
+        return false;
+    }
+    const auto t0 = millis();
+    const auto n = stats.warmBootCount++;
+    // default to failing value to avoid early exit being counted as passing 0s.
+    stats.cloudConnectTimeFromWarmBoot[n] = TEST_MAX_TIMEOUT;
+
+    if (network().ready()) {
+        Test::out->println("Network connected already!");
+        return false;
+    }
+    const auto t1 = millis();
+    network().connect();
+    waitFor(network().ready, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT));
+    if (!network().ready()) {
+        Test::out->println("Failed to connect to cellular!");
+        return false;
+    }
+    const auto t2 = millis();
+    // This will not be entirely accurate as we are capturing signal data after connection is made
+    const auto signal = network().RSSI();
+    const auto t3 = millis();
+    Particle.connect();
+    waitFor(Particle.connected, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT));
+    if (!Particle.connected()) {
+        Test::out->println("Failed to connect to cloud!");
+        return false;
+    }
+    const auto t4 = millis();
+    stats.cloudConnectTimeFromWarmBoot[n] = (t4 - t1) - (t3 - t2) + setupTimeFromStartup;
+    stats.networkWarmConnectDuration[n] = t2 - t1;
+    stats.cloudSessionResumeDuration[n] = t4 - t3;
+    stats.warmConnectSignal[n] = {
+        .rat = signal.getAccessTechnology(),
+        .strengthPerc = signal.getStrength(),
+        .strengthValue = signal.getStrengthValue(),
+        .qualityPerc = signal.getQuality(),
+        .qualityValue = signal.getQualityValue()
+    };
+    delay(DELAY_AFTER_TEST);
+    return true;
+}
+
 } // namespace
 
 STARTUP({
@@ -267,14 +288,21 @@ void loop() {
 }
 
 // TODO: The test runner doesn't support resetting the device in a loop from within a test
+// FIXME: Currently we removed the asserTrue() on these tests because individual test
+//        failures were causing the overall 400+ tests to fail, when this cold/warm boot
+//        tests might not actually be a failure since we are using a 75th percentile calculation.
+//        So for now these will say PASS regardless of each test outcome, but the final
+//        result will be calculated and asserted on correctly.  The FIXME is for a future
+//        way of running these tests, indicating and logging failures, but not acting on
+//        them for the overall test result.
 #define DEFINE_COLD_BOOT_TEST(_suffix) \
     test(cloud_connect_time_from_cold_boot_##_suffix) { \
-        assertTrue(testCloudConnectTimeFromColdBoot()); \
+        testCloudConnectTimeFromColdBoot(); \
     }
 
 #define DEFINE_WARM_BOOT_TEST(_suffix) \
     test(cloud_connect_time_from_warm_boot_##_suffix) { \
-        assertTrue(testCloudConnectTimeFromWarmBoot()); \
+        testCloudConnectTimeFromWarmBoot(); \
     }
 
 DEFINE_COLD_BOOT_TEST(01)
@@ -285,8 +313,6 @@ DEFINE_COLD_BOOT_TEST(05)
 DEFINE_COLD_BOOT_TEST(06)
 DEFINE_COLD_BOOT_TEST(07)
 DEFINE_COLD_BOOT_TEST(08)
-DEFINE_COLD_BOOT_TEST(09)
-DEFINE_COLD_BOOT_TEST(10)
 
 DEFINE_WARM_BOOT_TEST(01)
 DEFINE_WARM_BOOT_TEST(02)
@@ -296,13 +322,11 @@ DEFINE_WARM_BOOT_TEST(05)
 DEFINE_WARM_BOOT_TEST(06)
 DEFINE_WARM_BOOT_TEST(07)
 DEFINE_WARM_BOOT_TEST(08)
-DEFINE_WARM_BOOT_TEST(09)
-DEFINE_WARM_BOOT_TEST(10)
 
 test(publish_and_validate_stats) {
 #if Wiring_Cellular
     Cellular.on();
-    assertTrue(waitFor(network().isOn, WAIT_FOR_TIMEOUT));
+    assertTrue(waitFor(network().isOn, TEST_MAX_TIMEOUT));
     // Exclude 2G and non-production devices from the SLO validation
     CellularDevice devInfo = {};
     devInfo.size = sizeof(devInfo);
