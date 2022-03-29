@@ -1,3 +1,39 @@
+## 3.3.0
+
+### FEATURES
+
+- [Gen3] BLE Provisioning Mode [#2382](https://github.com/particle-iot/device-os/pull/2382) [#2379](https://github.com/particle-iot/device-os/pull/2379) [#2405](https://github.com/particle-iot/device-os/pull/2405)
+- System.off() API support for unsubscribing from system events/handlers [#2390](https://github.com/particle-iot/device-os/pull/2390)
+- CoAP Blockwise transfer for Describe messages [#2377](https://github.com/particle-iot/device-os/pull/2377) [#2417](https://github.com/particle-iot/device-os/pull/2417)
+
+### ENHANCEMENTS
+
+- Enables stack overflow detection in all builds [#2392](https://github.com/particle-iot/device-os/pull/2392)
+- Adds LOG_C_VARG() logging macro to support vargs from user apps [#2393](https://github.com/particle-iot/device-os/pull/2393)
+- Adds os_thread_dump* introspection functions to wrap the FreeRTOS functions [#2394](https://github.com/particle-iot/device-os/pull/2394)
+- [ci] Migration to CircleCI [#2395](https://github.com/particle-iot/device-os/pull/2395)
+- Adds ability to override the panic handler in user applications [#2384](https://github.com/particle-iot/device-os/pull/2384)
+- [gen3] SystemPowerConfiguration::socBitPrecision(uint8_t bits)) API added [#2401](https://github.com/particle-iot/device-os/pull/2401)
+
+### BUGFIXES
+
+- Thread/interrupt safety for system_event_t subscriptions [#2390](https://github.com/particle-iot/device-os/pull/2390)
+- [gen3] BLE: introduce wiring APIs to change ATT MTU [#2398](https://github.com/particle-iot/device-os/pull/2398)
+- [gen3] Dummy setup code should not return error [#2411](https://github.com/particle-iot/device-os/pull/2411)
+
+### INTERNAL
+
+- Removes WiFiTesting mode and Setup over Serial1 [#2386](https://github.com/particle-iot/device-os/pull/2386)
+- [gen3] Add GCC feature 'build-id' into the system part1, monolithic and user apps [#2391](https://github.com/particle-iot/device-os/pull/2391) [#2400](https://github.com/particle-iot/device-os/pull/2400)
+- Moves legacy makefile-based unit tests to CMake [#2396](https://github.com/particle-iot/device-os/pull/2396)
+- Makes system_version.h compliant with C; Coalesce FreeRTOS task list internals into single location [#2399](https://github.com/particle-iot/device-os/pull/2399)
+- Improves reliability of a few tests [#2406](https://github.com/particle-iot/device-os/pull/2406)
+- [test] fixes integration slo/connect_time [#2412](https://github.com/particle-iot/device-os/pull/2412)
+- [ci] fixes gcovr report generation [#2409](https://github.com/particle-iot/device-os/pull/2409)
+- Updates C++ standard version to C++17 (gnu variant) [#2414](https://github.com/particle-iot/device-os/pull/2414)
+- [test] improves wiring/no_fixture_long_running NETWORK_XX test timing [#2415](https://github.com/particle-iot/device-os/pull/2415)
+- [test] improves wiring/no_fixture LISTENING & NETWORK test timing [#2416](https://github.com/particle-iot/device-os/pull/2416)
+
 ## 3.3.0-rc.1
 
 ### FEATURES
