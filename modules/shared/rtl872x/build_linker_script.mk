@@ -1,7 +1,8 @@
 WRITE_FILE_CREATE = $(shell echo "$(2)" > $(1))
 WRITE_FILE_APPEND = $(shell echo "$(2)" >> $(1))
 
-ifeq ($(OS),Windows_NT)
+GAWK_VERSION := $(shell gawk --version 2>/dev/null)
+ifdef GAWK_VERSION
 AWK = gawk
 else
 AWK = awk
