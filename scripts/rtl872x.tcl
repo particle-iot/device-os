@@ -401,7 +401,22 @@ proc rtl872x_read_efuse_mac {} {
 
 proc rtl872x_wdg_reset {} {
     global RTL872x_REG_BOOT_CFG
-    set WDG_BASE 				0x40002800
+    global RTL872x_REG_AON_PM_OPT
+
+    set reg_val [openocd_read_register $RTL872x_REG_BOOT_CFG]
+    set reg_val [expr $reg_val & 0x0000FFFF]
+    set reg_val [expr $reg_val & ~(0x01 << 26)]
+    echo "boot cfg reg write: [format {0x%08X} $reg_val]"
+    mww $RTL872x_REG_BOOT_CFG $reg_val
+
+    # Perform HW reset
+    set reg_val [openocd_read_register $RTL872x_REG_AON_PM_OPT]
+    set reg_val [expr $reg_val | (1 << 1)]
+    mww $RTL872x_REG_AON_PM_OPT $reg_val
+
+    # Perform WDG reset as well just in case. WDG reset alone
+    # may leave the device in non-functioning state
+	set WDG_BASE 				0x40002800
     set WDG_BIT_ENABLE			[expr (0x00000001 << 16)]
     set WDG_BIT_CLEAR			[expr (0x00000001 << 24)]
     set WDG_BIT_RST_MODE		[expr (0x00000001 << 30)]
@@ -410,13 +425,6 @@ proc rtl872x_wdg_reset {} {
     set wdg_reg $WDT_DIV_FRAC
     set wdg_reg [expr $wdg_reg & ~(0x00FF0000)]
     set wdg_reg [expr $wdg_reg | ($WDG_BIT_CLEAR | $WDG_BIT_RST_MODE | $WDG_BIT_ISR_CLEAR | $WDG_BIT_ENABLE)]
-
-    set reg_val [openocd_read_register $RTL872x_REG_BOOT_CFG]
-    set reg_val [expr $reg_val & 0x0000FFFF]
-    set reg_val [expr $reg_val & ~(0x01 << 26)]
-    echo "boot cfg reg write: [format {0x%08X} $reg_val]"
-    mww $RTL872x_REG_BOOT_CFG $reg_val
-
     mww $WDG_BASE $wdg_reg
 }
 
