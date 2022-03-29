@@ -257,7 +257,7 @@ public:
         auto uartInstance = uartTable_[index_].UARTx;
         if (uartInstance != UART2_DEV && hal_interrupt_is_isr()) {
             // FIXME: logging from ISR
-            return 0;
+            return SYSTEM_ERROR_NOT_SUPPORTED;
         }
 
         const ssize_t canWrite = CHECK(space());
