@@ -4,7 +4,6 @@
 
 namespace particle {
 
-
 class BurninTest {
 public:
     BurninTest();
@@ -13,21 +12,14 @@ public:
     void setup();
     void loop();
 
-private:
-
-    static const uint32_t CHUNK_DATA_SIZE = 508;
-    struct memory_chunk {
-    	char data[CHUNK_DATA_SIZE];
-		memory_chunk * next;
-    };
-
-	enum BurninTestState {
+	enum class BurninTestState : uint32_t {
+		NONE,
 		DISABLED,
 		IN_PROGRESS,
 		FAILED,
 	};
 
-	enum BurninTestName {
+	enum class BurninTestName : uint32_t {
 		NONE,
 		GPIO,
 		WIFI_SCAN,
@@ -37,7 +29,13 @@ private:
 		CPU_LOAD
 	};
 
-	bool enabled;
+private:
+
+    static const uint32_t CHUNK_DATA_SIZE = 508;
+    struct memory_chunk {
+    	char data[CHUNK_DATA_SIZE];
+		memory_chunk * next;
+    };
 
 	static void led_loop(void * arg);
     os_thread_t led_thread_ = nullptr;
@@ -48,10 +46,9 @@ private:
 	uint64_t next_blink_millis;
 	uint64_t next_status_report_millis;
 
-	
-
 	typedef bool (BurninTest::*burnin_test_function)();
 	Vector<burnin_test_function> tests;
+	Vector<String> test_names;
 
 	bool test_gpio();
 	bool test_wifi_scan();

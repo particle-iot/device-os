@@ -14,44 +14,64 @@ namespace particle {
 BurninTest Burnin;
 
 // Retained state variables
-static retained uint32_t BurninState;
-static retained uint32_t LastBurnInTest;
-// TODO: retained error message to print? 
+static retained BurninTest::BurninTestState BurninState;
+static retained BurninTest::BurninTestName LastBurnInTest;
+// Retained error message to print
+static retained String BurninErrorMessage;
 
 BurninTest::BurninTest() {
 	tests = {
-		// &particle::BurninTest::test_gpio,
-		// &particle::BurninTest::test_wifi_scan,
-		// &particle::BurninTest::test_ble_scan,
+		&particle::BurninTest::test_gpio,
+		&particle::BurninTest::test_wifi_scan,
+		&particle::BurninTest::test_ble_scan,
 		&particle::BurninTest::test_sram,
-		// &particle::BurninTest::test_spi_flash,
-		// &particle::BurninTest::test_cpu_load,
+		&particle::BurninTest::test_spi_flash,
+		&particle::BurninTest::test_cpu_load,
 	};
+
+	test_names = {"NONE", "GPIO", "WIFI_SCAN", "BLE_SCAN", "SRAM", "SPI_FLASH", "CPU_LOAD"};
 }
 
 BurninTest::~BurninTest() {
 }
 
 void BurninTest::setup() {
-    // TODO: Detect pulse in, enable burnin mode. Else return
-	enabled = true;
+    // Read the SWD pin for a 1khz pulse. If present, enter burnin mode.
+    hal_pin_t trigger_pin = D7; // A27 aka SWD
+    PinMode trigger_pin_mode_at_start = getPinMode(trigger_pin);
+	pinMode(trigger_pin, INPUT);
+	Log.info("trigger_pin_mode_at_start %d", trigger_pin_mode_at_start);
 
-	//System.enableFeature(FEATURE_RETAINED_MEMORY); // TODO: Implement feature flag for P2 (backup ram uses flash page)
+    unsigned long pulse_width_micros = pulseIn(trigger_pin, HIGH);
+    // Margin of error for rtl872xD tick/microsecond counter
+    const unsigned long error_margin_micros = 31;
+    const unsigned long expected_pulse_width_micros = 500;
+
+    Log.info("trigger_pin %d pulse_width_micros: %lu ", trigger_pin, pulse_width_micros);
+    if((pulse_width_micros > (expected_pulse_width_micros + error_margin_micros)) ||
+       (pulse_width_micros < (expected_pulse_width_micros - error_margin_micros))) {
+		BurninState = BurninTestState::DISABLED;
+       	pinMode(trigger_pin, trigger_pin_mode_at_start);
+    	return;
+    }
+
+	// TODO: Implement feature flag for P2 (backup ram uses flash page)?
+	//System.enableFeature(FEATURE_RETAINED_MEMORY); 
 
 	// Detect if backup SRAM has a failed test in it (IE state is "TEST FAILED")
-	Log.info("BurninState: %lu", BurninState);
+	Log.info("BurninState: %d ErrorMessage: %s", (int)BurninState, BurninErrorMessage.c_str());
 
 	if(BurninState == BurninTestState::IN_PROGRESS) {
-		Log.info("Previous test failed: %lu", LastBurnInTest);
+		Log.warn("Previous test failed: %s", test_names[(int)LastBurnInTest].c_str());
 		BurninState = BurninTestState::FAILED;
-		enabled = false;
 	}
 	else if(BurninState == BurninTestState::FAILED) { 
 		Log.info("Resetting from failed test state");
-		//BurninState = BurninTestState::IN_PROGRESS;
+		BurninState = BurninTestState::IN_PROGRESS;
 	}
-
-	BurninState = BurninTestState::IN_PROGRESS;
+	else {
+		BurninState = BurninTestState::IN_PROGRESS;
+	}
 
 	// TODO: LEDStatus is overriden when in listening mode. If that ever gets fixed we can simplify LED management
 	// LEDStatus tests_running(RGB_COLOR_GREEN, LED_PATTERN_BLINK, LED_SPEED_NORMAL, LED_PRIORITY_CRITICAL);
@@ -78,10 +98,6 @@ static uint32_t print_runtime_info(void) {
 }
 
 void BurninTest::loop() {
-	if(!enabled){
-		return;
-	}
-
 	switch(BurninState){
 		case BurninTestState::DISABLED:
 			return;
@@ -95,10 +111,10 @@ void BurninTest::loop() {
 
 			if (!test_passed) {
 				BurninState = BurninTestState::FAILED;
-				Log.error("test failed: %lu", LastBurnInTest);
+				Log.error("test failed: %s", test_names[(int)LastBurnInTest].c_str());
 			}
 			else {
-				Log.info("test passed: %lu", LastBurnInTest);
+				Log.info("test passed: %s", test_names[(int)LastBurnInTest].c_str());
 			}
 
 			Log.info("Heap delta: %.0f\n", ((double)heap_end) - ((double)heap_start));
@@ -106,18 +122,24 @@ void BurninTest::loop() {
 		break;
 		case BurninTestState::FAILED:
 		{
-			// TODO: log failure text every X seconds to UART
+			// log failure text every X seconds to UART
+			Log.error("***BURNIN_FAILED***, test, %s, message, %s", 
+				test_names[(int)LastBurnInTest].c_str(),
+				BurninErrorMessage.c_str());
+			delay(5000);
 		}
 		break;
 		default:
 		break;
 	}
 
-	static int loops = 0;
-	if(loops++ > 50) {
-		enabled = false;
-		//System.reset(); // retention SRAM *will* persist with system reset, but not with reset button press
-	}
+	// // DEBUG: Stop tests after a bit
+	// static int loops = 0;
+	// if(loops++ > 50) {
+	// 	BurninState = BurninTestState::FAILED;
+	// 	// retention SRAM *will* persist with system reset, but not with reset button press
+	// 	//System.reset(); 
+	// }
 }
 
 
@@ -156,7 +178,7 @@ void BurninTest::led_loop(void * arg) {
 		if(BurninState == BurninTestState::FAILED) {
 			RGB.color(255, 0, 0);
 		}
-		// If running = blink green
+		// If running = blink led
 		else if (BurninState == BurninTestState::IN_PROGRESS) {
 			// Time to blink?
 			if (current_millis > self->next_blink_millis) {
@@ -194,16 +216,14 @@ bool BurninTest::test_gpio() {
 	//Log.info("ioTest is valid: %d isObject() %d", gpioTestCommand.isValid(), gpioTestCommand.isObject());
 
 	if(FqcTest::instance()->process(gpioTestCommand)) {
-		Log.info("IO Test handled");
 		String testResult = String(FqcTest::instance()->reply());
 		if(testResult == gpio_test_pass_response) {
-			Log.info("IO Test PASSED");
 			testPassed = true;
 		}
 		// TODO: else log GPIO test that failed for debug message
 	}
 	else {
-		Log.info("IO Test not handled");	
+		Log.warn("IO Test not handled");	
 	}
 
 	return testPassed;
@@ -211,13 +231,12 @@ bool BurninTest::test_gpio() {
 
 bool BurninTest::test_wifi_scan() {
 	LastBurnInTest = BurninTestName::WIFI_SCAN;
-	Log.info("test_wifi_scan");
 	return true;
 }
 
 bool BurninTest::test_ble_scan() {
 	LastBurnInTest = BurninTestName::BLE_SCAN;
-	Log.info("test_ble_scan");
+	//BurninErrorMessage = "fake ble scan failure";
 	return true;
 }
 
@@ -303,19 +322,16 @@ bool BurninTest::test_spi_flash(){
 		Log.info("module size : 0x%08lX", module_size);
 
 		uint32_t calculated_crc = HAL_Core_Compute_CRC32((uint8_t *)module_header->module_start_address, module_size);
-		Log.info("calculated crc: 0x%08lX", calculated_crc);
-
 		uint32_t module_crc = *(uint32_t *)(module_header->module_end_address);
 		uint8_t * reverse_crc = (uint8_t *)&module_crc;
 		std::reverse(reverse_crc, reverse_crc + 4);
-		Log.info("module crc: 0x%08lX", module_crc);
+		Log.info("calculated crc: 0x%08lX module crc: 0x%08lX", calculated_crc, module_crc);
 
 		if(calculated_crc != module_crc) {
 			test_passed = false;
 			// TODO: log module that failed
 			break;
 		}
-		Log.info("equal?: %d", calculated_crc == module_crc);
 	}
 
 	// TODO: user module: start with suffix, find module header, go from there
@@ -325,7 +341,6 @@ bool BurninTest::test_spi_flash(){
 
 bool BurninTest::test_cpu_load() {
 	LastBurnInTest = BurninTestName::CPU_LOAD;
-	Log.info("test_cpu_load");
 	return true;
 }
 
