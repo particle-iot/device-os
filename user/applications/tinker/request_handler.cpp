@@ -349,6 +349,18 @@ void configureAllPinsInput(void) {
     }
 }
 
+const String pinNumberToPinName(uint16_t pinNumber) {
+#if HAL_PLATFORM_RTL872X
+    hal_pin_info_t pinInfo = hal_pin_map()[pinNumber];
+
+    String portName = pinInfo.gpio_port == RTL_PORT_A ? "PA" : "PB";
+    portName += pinInfo.gpio_pin;
+    return portName;
+#else
+    return String(pinNumber);
+#endif
+}
+
 bool assertPinStates(uint16_t outputPin, uint16_t inputPin, bool expectedState, uint16_t * errorPin){
     bool inputPinCorrect = (digitalRead(inputPin) == expectedState);
     bool otherPinsLow = assertAllPinsLow(outputPin, inputPin, errorPin);
@@ -425,9 +437,9 @@ int RequestHandler::ioTest(Request* req) {
         const auto gpioErrorResponse = [pinA, pinB, errorPin, failedTest](JSONWriter& w){
             w.beginObject();
             w.name("pass").value(false);
-            w.name("pinA").value(pinA);
-            w.name("pinB").value(pinB);
-            w.name("errorPin").value(errorPin);
+            w.name("pinA").value(pinNumberToPinName(pinA));
+            w.name("pinB").value(pinNumberToPinName(pinB));
+            w.name("errorPin").value(pinNumberToPinName(errorPin));
             w.name("message").value(failedTest);
             w.endObject();
         };
