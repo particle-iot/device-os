@@ -212,54 +212,46 @@ int32_t hal_gpio_read(hal_pin_t pin) {
 }
 
 uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
-    static const unsigned long THREE_SECONDS_IN_MICROSECONDS = 3000000;
+    const uint64_t THREE_SECONDS_IN_MICROSECONDS = 3000000;
     #define FAST_READ(pin) ((gpiobase->EXT_PORT[0] >> pin) & 1UL)
 
     if (!hal_pin_is_valid(pin)) {
         return 0;
     }
 
-#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
-#endif
-        hal_pin_info_t* pin_info = hal_pin_map() + pin;
-        uint32_t rtlPin = pin_info->gpio_pin;
-        GPIO_TypeDef * gpiobase = ((pin_info->gpio_port == RTL_PORT_A) ? GPIOA_BASE : GPIOB_BASE);
+    hal_pin_info_t* pin_info = hal_pin_map() + pin;
+    uint32_t rtlPin = pin_info->gpio_pin;
+    GPIO_TypeDef * gpiobase = ((pin_info->gpio_port == RTL_PORT_A) ? GPIOA_BASE : GPIOB_BASE);
 
-        volatile uint64_t timeout_start = hal_timer_micros(nullptr);
+    volatile uint64_t timeout_start = hal_timer_micros(nullptr);
 
-        /* If already on the value we want to measure, wait for the next one.
-        * Time out after 3 seconds so we don't block the background tasks
-        */
-        while (FAST_READ(rtlPin) == value) {
-            if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
-                return 0;
-            }
+    /* If already on the value we want to measure, wait for the next one.
+    * Time out after 3 seconds so we don't block the background tasks
+    */
+    while (FAST_READ(rtlPin) == value) {
+        if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
+            return 0;
         }
-
-        /* Wait until the start of the pulse.
-        * Time out after 3 seconds so we don't block the background tasks
-        */
-        while (FAST_READ(rtlPin) != value) {
-            if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
-                return 0;
-            }
-        }
-
-        /* Wait until this value changes, this will be our elapsed pulse width.
-        * Time out after 3 seconds so we don't block the background tasks
-        */
-        volatile uint32_t pulse_start = hal_timer_micros(nullptr);
-        while (FAST_READ(rtlPin) == value) {
-            if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
-                return 0;
-            }
-        }
-
-        return (hal_timer_micros(nullptr) - pulse_start);
-#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    } else {
-        return 0;
     }
-#endif
+
+    /* Wait until the start of the pulse.
+    * Time out after 3 seconds so we don't block the background tasks
+    */
+    while (FAST_READ(rtlPin) != value) {
+        if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
+            return 0;
+        }
+    }
+
+    /* Wait until this value changes, this will be our elapsed pulse width.
+    * Time out after 3 seconds so we don't block the background tasks
+    */
+    volatile uint64_t pulse_start = hal_timer_micros(nullptr);
+    while (FAST_READ(rtlPin) == value) {
+        if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
+            return 0;
+        }
+    }
+
+    return (hal_timer_micros(nullptr) - pulse_start);
 }

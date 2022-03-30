@@ -101,9 +101,9 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
-//#ifdef LOG_SERIAL1
+#ifdef LOG_SERIAL1
 Serial1LogHandler g_logSerial1(115200, LOG_LEVEL_ALL);
-//#endif // LOG_SERIAL1
+#endif // LOG_SERIAL1
 
 #ifdef LOG_SERIAL
 SerialLogHandler g_logSerial(LOG_LEVEL_ALL);
@@ -139,8 +139,6 @@ hal_pin_t lookupPinByName(const String& name) {
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-    //WiFi.clearCredentials();
-
     //Setup the Tinker application here
 
     //Register all the Tinker functions

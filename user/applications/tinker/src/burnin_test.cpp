@@ -14,24 +14,25 @@ namespace particle {
 BurninTest Burnin;
 
 // Retained state variables
-// TODO: Make sure we are not excessively wearing out flash by using these state variables on p2
 static retained BurninTest::BurninTestState BurninState;
 static retained BurninTest::BurninTestName LastBurnInTest;
 static retained uint32_t FailureUptimeMillis;
-// Retained error message to print
-static retained String BurninErrorMessage;
+static retained char BurninErrorMessage[1024];
+
+// TODO: instantiate at runtime instead
+Serial1LogHandler logger(115200, LOG_LEVEL_ALL);
 
 BurninTest::BurninTest() {
-	tests = {
-		&particle::BurninTest::test_gpio,
-		&particle::BurninTest::test_wifi_scan,
-		&particle::BurninTest::test_ble_scan,
-		&particle::BurninTest::test_sram,
-		&particle::BurninTest::test_spi_flash,
-		&particle::BurninTest::test_cpu_load,
+	tests_ = {
+		&particle::BurninTest::testGpio,
+		&particle::BurninTest::testWifiScan,
+		&particle::BurninTest::testBleScan,
+		&particle::BurninTest::testSram,
+		&particle::BurninTest::testSpiFlash,
+		&particle::BurninTest::testCpuLoad,
 	};
 
-	test_names = {"NONE", "GPIO", "WIFI_SCAN", "BLE_SCAN", "SRAM", "SPI_FLASH", "CPU_LOAD"};
+	test_names_ = {"NONE", "GPIO", "WIFI_SCAN", "BLE_SCAN", "SRAM", "SPI_FLASH", "CPU_LOAD"};
 }
 
 BurninTest::~BurninTest() {
@@ -44,11 +45,11 @@ void BurninTest::setup() {
 	pinMode(trigger_pin, INPUT);
 	//Log.info("trigger_pin_mode_at_start %d", trigger_pin_mode_at_start);
 
-    unsigned long pulse_width_micros = pulseIn(trigger_pin, HIGH);
+    uint32_t pulse_width_micros = pulseIn(trigger_pin, HIGH);
     // Margin of error for rtl872xD tick/microsecond counter
-    const unsigned long error_margin_micros = 31;
+    const uint32_t error_margin_micros = (31 * 2);
     // 1KHZ square wave at 50% duty cycle = 500us pulses
-    const unsigned long expected_pulse_width_micros = 500;
+    const uint32_t expected_pulse_width_micros = 500;
 
     Log.info("trigger_pin %d pulse_width_micros: %lu ", trigger_pin, pulse_width_micros);
     if((pulse_width_micros > (expected_pulse_width_micros + error_margin_micros)) ||
@@ -60,17 +61,14 @@ void BurninTest::setup() {
     	return;
     }
 
-	// TODO: Implement feature flag for P2 (backup ram uses flash page)?
-	//System.enableFeature(FEATURE_RETAINED_MEMORY); 
-
 	// Detect if backup SRAM has a failed test in it (IE state is "TEST FAILED")
-	Log.info("BurninState: %d ErrorMessage: %s", (int)BurninState, BurninErrorMessage.c_str());
+	Log.info("BurninState: %d ErrorMessage: %s", (int)BurninState, BurninErrorMessage);
 
 	if(BurninState == BurninTestState::IN_PROGRESS) {
-		Log.warn("Previous test failed: %s", test_names[(int)LastBurnInTest].c_str());
+		Log.warn("Previous test failed: %s", test_names_[(int)LastBurnInTest].c_str());
 		BurninState = BurninTestState::FAILED;
 	}
-	else if(BurninState == BurninTestState::FAILED) { 
+	else if(BurninState == BurninTestState::FAILED) {
 		Log.info("Resetting from failed test state");
 		BurninState = BurninTestState::IN_PROGRESS;
 	}
@@ -79,17 +77,14 @@ void BurninTest::setup() {
 		FailureUptimeMillis = 0;
 	}
 
-	// TODO: LEDStatus is overriden when in listening mode. If that ever gets fixed we can simplify LED management
-	// LEDStatus tests_running(RGB_COLOR_GREEN, LED_PATTERN_BLINK, LED_SPEED_NORMAL, LED_PRIORITY_CRITICAL);
-	// tests_running.setActive(true);
 	RGB.control(true);
-	start_time_millis = System.millis();
-	next_blink_millis = start_time_millis + BLINK_PERIOD_MILLIS;
-	next_status_report_millis = start_time_millis + BLINK_PERIOD_STATUS_REPORT_MILLIS;
-    os_thread_create(&led_thread_, "led", OS_THREAD_PRIORITY_DEFAULT, led_loop, this, OS_THREAD_STACK_SIZE_DEFAULT);
+	start_time_millis_ = System.millis();
+	next_blink_millis_ = start_time_millis_ + BLINK_PERIOD_MILLIS;
+	next_status_report_millis_ = start_time_millis_ + BLINK_PERIOD_STATUS_REPORT_MILLIS;
+    os_thread_create(&led_thread_, "led", OS_THREAD_PRIORITY_DEFAULT, ledLoop, this, OS_THREAD_STACK_SIZE_DEFAULT);
 }
 
-static uint32_t print_runtime_info(void) {
+static uint32_t printRuntimeInfo(void) {
     runtime_info_t info;
     memset(&info, 0, sizeof(info));
     info.size = sizeof(info);
@@ -110,7 +105,7 @@ void BurninTest::loop() {
 		case BurninTestState::IN_PROGRESS:
 		{
 			// pick random test to run, run it
-			auto test = tests[random(tests.size())];
+			auto test = tests_[random(tests_.size())];
 			uint32_t heap_start = System.freeMemory();
 			bool test_passed = (this->*test)();
 			uint32_t heap_end = System.freeMemory();
@@ -118,10 +113,10 @@ void BurninTest::loop() {
 			if (!test_passed) {
 				BurninState = BurninTestState::FAILED;
 				FailureUptimeMillis = millis();
-				Log.error("test failed: %s", test_names[(int)LastBurnInTest].c_str());
+				Log.error("test failed: %s", test_names_[(int)LastBurnInTest].c_str());
 			}
 			else {
-				Log.info("test passed: %s", test_names[(int)LastBurnInTest].c_str());
+				Log.info("test passed: %s", test_names_[(int)LastBurnInTest].c_str());
 			}
 
 			Log.info("Heap delta: %.0f\n", ((double)heap_end) - ((double)heap_start)); // Debug
@@ -132,8 +127,8 @@ void BurninTest::loop() {
 			// log failure text every X seconds to UART
 			Log.error("***BURNIN_FAILED***, UptimeMillis, %lu, test, %s, message, %s", 
 				FailureUptimeMillis,
-				test_names[(int)LastBurnInTest].c_str(),
-				BurninErrorMessage.c_str());
+				test_names_[(int)LastBurnInTest].c_str(),
+				BurninErrorMessage);
 			delay(5000);
 		}
 		break;
@@ -143,7 +138,7 @@ void BurninTest::loop() {
 }
 
 
-static int blue_blinks_from_runtime(uint64_t run_time_millis) {
+static int blueBlinksFromRuntime(uint64_t run_time_millis) {
 	//#define HOURS_TO_MILLIS(hours) (hours * 60 * 60 * 1000)
 	#define HOURS_TO_MILLIS(hours) (hours * 1000) // DEBUG: Based on seconds instead
 
@@ -158,12 +153,20 @@ static int blue_blinks_from_runtime(uint64_t run_time_millis) {
 	}
 }
 
-static void set_led_blue_or_green(bool blue){
-	blue ? RGB.color(0, 0, 255) : RGB.color(0, 255, 0);
+static void setLed(bool on, bool blue){
+	if(!on){
+		RGB.color(0, 0, 0);
+	}
+	else if(blue) {
+		RGB.color(0, 0, 255);
+	}
+	else {
+		RGB.color(0, 255, 0);
+	}
 }
 
 // Blink LED / signal uptime / failure state
-void BurninTest::led_loop(void * arg) {
+void BurninTest::ledLoop(void * arg) {
     BurninTest* self = static_cast<BurninTest*>(arg);
 
     while (true) {
@@ -181,22 +184,23 @@ void BurninTest::led_loop(void * arg) {
 		// If running = blink led
 		else if (BurninState == BurninTestState::IN_PROGRESS) {
 			// Time to blink?
-			if (current_millis > self->next_blink_millis) {
+			if (current_millis > self->next_blink_millis_) {
 				// Time to report status? 
-				if ((current_millis > self->next_status_report_millis) && (blink_blue_count == 0)) {
+				if ((current_millis > self->next_status_report_millis_) && (blink_blue_count == 0)) {
 					blink_blue = true;
-					blink_blue_count = blue_blinks_from_runtime(current_millis - self->start_time_millis);
+					blink_blue_count = blueBlinksFromRuntime(current_millis - self->start_time_millis_);
 				}
-				led_on ? set_led_blue_or_green(blink_blue) : RGB.color(0, 0, 0);
+
+				setLed(led_on, blink_blue);
 				led_on = !led_on;
-				self->next_blink_millis = current_millis + BLINK_PERIOD_MILLIS;
+				self->next_blink_millis_ = current_millis + BLINK_PERIOD_MILLIS;
 
 				// Count down blue blinks, stop reporting status when done 
 				if (blink_blue && !led_on) {
 					blink_blue_count -= 1;
 					if (blink_blue_count == 0) {
 						blink_blue = false;
-						self->next_status_report_millis = current_millis + BLINK_PERIOD_STATUS_REPORT_MILLIS;
+						self->next_status_report_millis_ = current_millis + BLINK_PERIOD_STATUS_REPORT_MILLIS;
 					}
 				}
 			}
@@ -205,46 +209,50 @@ void BurninTest::led_loop(void * arg) {
 }
 
 
-bool BurninTest::test_gpio() {
+bool BurninTest::testGpio() {
 	LastBurnInTest = BurninTestName::GPIO;
 
-	const char * gpio_test_command = "{\"IO_TEST\":\"\"}";
+	char buffer[256] = {};
+	JSONBufferWriter writer(buffer, sizeof(buffer)-1);
+	writer.beginObject().name("IO_TEST").value("").endObject();
+
 	const char * gpio_test_pass_response = "{\"pass\":true}";
 	bool testPassed = true;
 
-	JSONValue gpioTestCommand = JSONValue::parseCopy(gpio_test_command);
+	JSONValue gpioTestCommand = JSONValue::parseCopy(buffer);
 	FqcTest::instance()->process(gpioTestCommand);
 	String testResult = String(FqcTest::instance()->reply());
 	if (testResult != gpio_test_pass_response) {
 		testPassed = false;
-		BurninErrorMessage = testResult;
-		Log.error(BurninErrorMessage);
+		strlcpy(BurninErrorMessage, testResult.c_str(), sizeof(BurninErrorMessage));
 	}
 	
 	return testPassed;
 }
 
-bool BurninTest::test_wifi_scan() {
+bool BurninTest::testWifiScan() {
 	LastBurnInTest = BurninTestName::WIFI_SCAN;
 
-	const char * wifi_scan_command = "{\"WIFI_SCAN_NETWORKS\":\"\"}";
+	char buffer[256] = {};
+	JSONBufferWriter writer(buffer, sizeof(buffer)-1);
+	writer.beginObject().name("WIFI_SCAN_NETWORKS").value("").endObject();
+
 	const char * wifi_scan_pass_response = "{\"pass\":true";
 	bool testPassed = true;
 
-	JSONValue wifiScanCommand = JSONValue::parseCopy(wifi_scan_command);
+	JSONValue wifiScanCommand = JSONValue::parseCopy(buffer);
 	FqcTest::instance()->process(wifiScanCommand);
 	String testResult = String(FqcTest::instance()->reply());
 	if(!testResult.startsWith(wifi_scan_pass_response))
 	{
 		testPassed = false;
-		BurninErrorMessage = testResult;
-		Log.error(BurninErrorMessage);
+		strlcpy(BurninErrorMessage, testResult.c_str(), sizeof(BurninErrorMessage));
 	}
 
 	return testPassed;
 }
 
-bool BurninTest::test_ble_scan() {
+bool BurninTest::testBleScan() {
 	LastBurnInTest = BurninTestName::BLE_SCAN;
 	// TODO:
 	return true;
@@ -252,21 +260,20 @@ bool BurninTest::test_ble_scan() {
 
 
 // Linked list based, using fixed sized mallocs
-bool BurninTest::test_sram() {
+bool BurninTest::testSram() {
 	LastBurnInTest = BurninTestName::SRAM;
 	const uint32_t MAX_CHUNK_SIZE = 1024;
 	bool test_passed = true;
- 	Random rng = Random();
-	memory_chunk* root = nullptr;
+ 	Random rng;
+	MemoryChunk* root = nullptr;
     size_t total_memory_allocated = 0;
     size_t chunk_count = 0;
 
     // Generate a random test pattern
     char * test_pattern = (char *)malloc(MAX_CHUNK_SIZE);
     if(!test_pattern) {
-    	BurninErrorMessage = "Failed to alloc test pattern chunk";
-    	Log.error(BurninErrorMessage);
-		print_runtime_info();
+		strlcpy(BurninErrorMessage, "Failed to alloc test pattern chunk", sizeof(BurninErrorMessage));
+		printRuntimeInfo();
     	test_passed = false;
     	// return early, no other allocations to free
     	return test_passed; 
@@ -276,16 +283,16 @@ bool BurninTest::test_sram() {
    
     // Exhaust most of memory
 	while(System.freeMemory() > (MAX_CHUNK_SIZE * 3)){
-		memory_chunk* b = new memory_chunk();
+		MemoryChunk* b = new MemoryChunk();
 		if (!b) {
-			BurninErrorMessage = "Failed to alloc test chunk of size: ";
-			BurninErrorMessage += String(sizeof(memory_chunk), DEC);
-    		Log.error(BurninErrorMessage);
-			print_runtime_info();
+			String errorMessage = "Failed to alloc test chunk of size: ";
+			errorMessage += String(sizeof(MemoryChunk), DEC);
+			strlcpy(BurninErrorMessage, errorMessage.c_str(), sizeof(BurninErrorMessage));
+			printRuntimeInfo();
     		test_passed = false;
 			break;
 		} else {
-			total_memory_allocated += sizeof(memory_chunk);
+			total_memory_allocated += sizeof(MemoryChunk);
 			chunk_count++;
 	    	memcpy(b->data, test_pattern, CHUNK_DATA_SIZE);
 			b->next = root;
@@ -295,36 +302,38 @@ bool BurninTest::test_sram() {
 
     Log.info("Allocated %u chunks with total size %u, free memory now %lu", chunk_count, total_memory_allocated, System.freeMemory());
 
-	memory_chunk* current = root;
+	MemoryChunk* current = root;
 	while(test_passed && current) {
 		if(memcmp(current->data, test_pattern, CHUNK_DATA_SIZE) != 0) {
-			BurninErrorMessage = "Chunk failed to match test pattern. ptr @:0x";
-			BurninErrorMessage += String(current->data, HEX);
-			Log.error(BurninErrorMessage);
+			String errorMessage = "Chunk failed to match test pattern. ptr @:0x";
+			errorMessage += String(current->data, HEX);
+			strlcpy(BurninErrorMessage, errorMessage.c_str(), sizeof(BurninErrorMessage));
 			test_passed = false;
 			break;		
 		}
 		current = current->next;
 	}
 
-    // Free all allocated memory
-	free(test_pattern);
+    SCOPE_GUARD({
+	    // Free all allocated memory
+		free(test_pattern);
 
-	current = root;
-	while(current) {
-		memory_chunk* block_to_free = current;
-		current = current->next;
-		delete block_to_free;
-	}
-
+		current = root;
+		while(current) {
+			MemoryChunk* block_to_free = current;
+			current = current->next;
+			delete block_to_free;
+		}
+	});
 	return test_passed;
 }
 
-bool BurninTest::test_spi_flash(){
+bool BurninTest::testSpiFlash(){
 	LastBurnInTest = BurninTestName::SPI_FLASH;
 	bool test_passed = true;
 
 	// MBR part1, Bootloader, System Parts
+	// TODO: Dont use P2 specific addresses
 	Vector<uint32_t> module_addresses = {0x08014000, 0x08004020, 0x08060000 /*0x08000000*/};
 
 	for (auto & address : module_addresses) {
@@ -345,11 +354,12 @@ bool BurninTest::test_spi_flash(){
 		if(calculated_crc != module_crc) {
 			test_passed = false;
 			// log module that failed
-			BurninErrorMessage = String(module_start, HEX);
-			BurninErrorMessage += String(" module crc: ");
-			BurninErrorMessage += String(module_crc, HEX);
-			BurninErrorMessage += String(" calculated crc: ");
-			BurninErrorMessage += String(calculated_crc, HEX);
+			String errorMessage = String(module_start, HEX);
+			errorMessage += String(" module crc: ");
+			errorMessage += String(module_crc, HEX);
+			errorMessage += String(" calculated crc: ");
+			errorMessage += String(calculated_crc, HEX);
+			strlcpy(BurninErrorMessage, errorMessage.c_str(), sizeof(BurninErrorMessage));
 			break;
 		}
 	}
@@ -359,7 +369,7 @@ bool BurninTest::test_spi_flash(){
 	return test_passed;
 }
 
-bool BurninTest::test_cpu_load() {
+bool BurninTest::testCpuLoad() {
 	LastBurnInTest = BurninTestName::CPU_LOAD;
 	// TODO:
 	return true;
