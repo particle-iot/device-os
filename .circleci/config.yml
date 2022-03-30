@@ -120,7 +120,7 @@ jobs:
             cd $HOME/device-os
             git submodule update --init --recursive
             if [ -z "$CIRCLE_TAG" ]; then
-              export ARTIFACT_TAG=$(echo "$CIRCLE_BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's,/,-,g')-$(git rev-parse --short HEAD)
+              export ARTIFACT_TAG=$(echo "$CIRCLE_BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-zA-Z0-9]/-/g')-$(git rev-parse --short HEAD)
             else
               export ARTIFACT_TAG=$CIRCLE_TAG
             fi
