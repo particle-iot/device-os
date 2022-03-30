@@ -64,6 +64,12 @@
 
 #define BLE_MAX_TX_POWER                            (0)
 
+#define BLE_SCAN_INTERVAL_MIN                       0x0004
+#define BLE_SCAN_INTERVAL_MAX                       0x4000
+#define BLE_SCAN_WINDOW_MIN                         0x0004
+#define BLE_SCAN_WINDOW_MAX                         0x4000
+#define BLE_SCAN_TIMEOUT_UNLIMITED                  0
+
 /* Default scanning parameters */
 #define BLE_DEFAULT_SCANNING_TIMEOUT_MS             5000
 #define BLE_DEFAULT_SCANNING_INTERVAL               BLE_MSEC_TO_UNITS(100, BLE_UNIT_0_625_MS)   /* The scan interval: 100ms (in units of 0.625 ms). */
