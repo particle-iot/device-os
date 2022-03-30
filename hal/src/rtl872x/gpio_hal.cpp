@@ -215,9 +215,8 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
     static const unsigned long THREE_SECONDS_IN_MICROSECONDS = 3000000;
     #define FAST_READ(pin) ((gpiobase->EXT_PORT[0] >> pin) & 1UL)
 
-    // TODO: FIX DEBUG RETURN VALUES
     if (!hal_pin_is_valid(pin)) {
-        return 1;
+        return 0;
     }
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -234,7 +233,7 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
         */
         while (FAST_READ(rtlPin) == value) {
             if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
-                return 2;
+                return 0;
             }
         }
 
@@ -243,7 +242,7 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
         */
         while (FAST_READ(rtlPin) != value) {
             if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
-                return 3;
+                return 0;
             }
         }
 
@@ -253,14 +252,14 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
         volatile uint32_t pulse_start = hal_timer_micros(nullptr);
         while (FAST_READ(rtlPin) == value) {
             if (hal_timer_micros(nullptr) - timeout_start > THREE_SECONDS_IN_MICROSECONDS) {
-                return 4;
+                return 0;
             }
         }
 
         return (hal_timer_micros(nullptr) - pulse_start);
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     } else {
-        return 5;
+        return 0;
     }
 #endif
 }
