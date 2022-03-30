@@ -58,6 +58,4 @@ endif
 endif
 endif
 
-CPPFLAGS += -std=gnu++17
-
 LOG_MODULE_CATEGORY = comm
