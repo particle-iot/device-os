@@ -3,6 +3,8 @@
 
 #if PLATFORM_THREADING
 
+#include "FreeRTOS.h"
+
 uint32_t timer_callback_called;
 void timer_callback()
 {
@@ -107,11 +109,7 @@ void create_timers_with_delay(unsigned block_for, int& fails)
 {
 	// the exact amount of timers needed is based on the size of the
 	// timer queue as defined in configTIMER_QUEUE_LENGTH
-	#if PLATFORM_ID == PLATFORM_P2
-	int timer_queue_size = 64;
-	#else 
-	int timer_queue_size = 5;
-	#endif
+	int timer_queue_size = configTIMER_QUEUE_LENGTH;
 
 	fails = 0;
 	Timer* timers[timer_queue_size*2];
