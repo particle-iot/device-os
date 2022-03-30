@@ -718,7 +718,8 @@ void cancel_connection()
 namespace {
 
 // Memory pool for small and short-lived allocations
-SimpleAllocedPool g_memPool(512);
+uint8_t __attribute__((aligned(4))) s_buffer[HAL_PLATFORM_SYSTEM_POOL_SIZE];
+SimpleStaticPool g_memPool(s_buffer, sizeof(s_buffer));
 
 } // namespace
 
