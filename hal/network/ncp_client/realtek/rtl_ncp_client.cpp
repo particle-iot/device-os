@@ -249,6 +249,7 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
 }
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
+    const NcpClientLock lock(this);
     struct Context {
         WifiScanCallback callback = nullptr;
         void* data = nullptr;
