@@ -40,9 +40,9 @@ BurninTest::~BurninTest() {
 void BurninTest::setup() {
     // Read the trigger pin for a 1khz pulse. If present, enter burnin mode.
     hal_pin_t trigger_pin = D7; // PA27 aka SWD
-    //PinMode trigger_pin_mode_at_start = getPinMode(trigger_pin);
+    PinMode trigger_pin_mode_at_start = getPinMode(trigger_pin);
 	pinMode(trigger_pin, INPUT);
-	// Log.info("trigger_pin_mode_at_start %d", trigger_pin_mode_at_start);
+	//Log.info("trigger_pin_mode_at_start %d", trigger_pin_mode_at_start);
 
     unsigned long pulse_width_micros = pulseIn(trigger_pin, HIGH);
     // Margin of error for rtl872xD tick/microsecond counter
@@ -56,7 +56,7 @@ void BurninTest::setup() {
 		BurninState = BurninTestState::DISABLED;
 		// TODO: Figure out how to leave device in programmable state with SWD pin
 		// Re-configure for SWD instead of GPIO?
-       	pinMode(trigger_pin, INPUT_PULLUP); 
+       	pinMode(trigger_pin, trigger_pin_mode_at_start); 
     	return;
     }
 
