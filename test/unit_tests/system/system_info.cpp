@@ -26,7 +26,7 @@
 #include "spark_wiring_json.h"
 #include <limits>
 #include "hex_to_bytes.h"
-#include "string_appender.h"
+#include "util/string_appender.h"
 #include <map>
 
 #define CATCH_CONFIG_MAIN
