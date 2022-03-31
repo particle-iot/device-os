@@ -8,6 +8,31 @@ let device = null;
 let deviceId = null;
 let limits = null;
 
+async function delayMs(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function getDeviceFunctionsWithRetries({ deviceId, auth, expectedFuncNum = 0, retries = 10, delay = 1000 } = {}) {
+	let lastError;
+	for (let i = 0; i < retries; i++) {
+		try {
+			const resp = await api.getDevice({ deviceId, auth });
+			const funcs = resp.body.functions;
+			if (expectedFuncNum > 0 && funcs.length !== expectedFuncNum) {
+				throw new Error('Number of functions returned from device does not match expected');
+			}
+			return resp;
+		} catch (e) {
+			lastError = e;
+		}
+		await delayMs(i * delay);
+	}
+	if (lastError) {
+		throw lastError;
+	}
+	throw new Error('Error fetching functions from device');
+}
+
 before(function() {
 	api = this.particle.apiClient.instance;
 	auth = this.particle.apiClient.token;
@@ -16,9 +41,10 @@ before(function() {
 });
 
 test('01_register_functions', async function() {
-	const resp = await api.getDevice({ deviceId, auth });
+	const expectedFuncs = ['fn_1', 'fn_2'];
+	const resp = await getDeviceFunctionsWithRetries({ deviceId, auth, expectedFuncNum: expectedFuncs.length });
 	const funcs = resp.body.functions;
-	expect(funcs).to.include.members(['fn_1', 'fn_2']);
+	expect(funcs).to.include.members(expectedFuncs);
 });
 
 test('02_publish_function_limits', async function() {
@@ -51,10 +77,10 @@ test('05_check_current_thread', async function () {
 });
 
 test('06_register_many_functions', async function() {
-	const resp = await api.getDevice({ deviceId, auth });
+	const funcCount = device.platform.is('gen2') ? 50 : limits.max_num;
+	const resp = await getDeviceFunctionsWithRetries({ deviceId, auth, expectedFuncNum: funcCount });
 	const funcs = resp.body.functions;
 	const expectedFuncs = [];
-	const funcCount = device.platform.is('gen2') ? 50 : limits.max_num;
 	for (let i = 1; i <= funcCount; ++i) {
 		let name = 'fn_' + i.toString().padStart(3, '0') + '_';
 		name += 'x'.repeat(Math.max(limits.max_name_len - name.length, 0));
