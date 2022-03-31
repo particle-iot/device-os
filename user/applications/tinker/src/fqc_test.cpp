@@ -1,4 +1,5 @@
 #include "fqc_test.h"
+#include "burnin_test.h"
 
 #include "spark_wiring.h"
 #include "spark_wiring_ble.h"
@@ -73,6 +74,9 @@ bool FqcTest::process(JSONValue test){
         return wifiNetcat(test);
     } else if (has(test, "WIFI_SCAN_NETWORKS")) { 
         return wifiScanNetworks(test);
+    } else if (has(test, "BURNIN_TEST")) { 
+        BurninTest::instance()->setup(true);
+        return true;
     }
 
     return false;

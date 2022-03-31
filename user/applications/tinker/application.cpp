@@ -20,6 +20,7 @@
 #include <cctype>
 #if HAL_PLATFORM_RTL872X
 #include "request_handler.h"
+#include "src/burnin_test.h"
 #endif
 
 struct PinMapping {
@@ -146,12 +147,20 @@ void setup()
 
     Particle.function("analogread", tinkerAnalogRead);
     Particle.function("analogwrite", tinkerAnalogWrite);
+
+#if HAL_PLATFORM_RTL872X
+    BurninTest::instance()->setup();
+#endif
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
     //This will run in a loop
+
+#if HAL_PLATFORM_RTL872X
+    BurninTest::instance()->loop();
+#endif
 }
 
 /*******************************************************************************
