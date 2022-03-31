@@ -9,9 +9,49 @@ tag_filters: &tag_filters
       only:
         - /.+/
 
+orbs:
+  win: circleci/windows@2.4.0
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
+  build-for-windows:
+    executor:
+      name: win/default
+      size: xlarge
+    parameters:
+      tasks:
+        type: string
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - install-prtcl-windows
+      - test-localcompiler-windows:
+          tasks: << parameters.tasks >>
+  build-for-darwin:
+    macos:
+      xcode: "13.2.1"
+    parameters:
+      tasks:
+        type: string
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - install-prtcl-darwin
+      - test-localcompiler-nix:
+          tasks: << parameters.tasks >>
+  build-for-ubuntu:
+    machine:
+      image: ubuntu-2004:current
+    parameters:
+      tasks:
+        type: string
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - install-prtcl-ubuntu
+      - test-localcompiler-nix:
+          tasks: << parameters.tasks >>
   combine-binaries:
     docker:
       - image: alpine:latest
@@ -166,10 +206,83 @@ jobs:
           paths:
             - release
 
+commands:
+  install-prtcl-ubuntu:
+    steps:
+      - run:
+          name: "Install `prtcl` CLI (ubuntu)"
+          command: |
+            sudo apt-get update -q
+            sudo apt-get install -qy zlib1g-dev jq
+            sudo curl https://prtcl.s3.amazonaws.com/install-apt.sh | sh
+            echo ":::: done!"
+  install-prtcl-darwin:
+    steps:
+      - run:
+          name: "Install `prtcl` CLI (darwin)"
+          command: |
+            brew tap particle-iot/brew && brew install prtcl jq
+            echo ":::: done!"
+  install-prtcl-windows:
+    steps:
+      - run:
+          name: "Install `prtcl` CLI (windows)"
+          command: |
+            if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+                echo ":::: Insufficient privileges! Must be Admin"
+                exit 1;
+            }
+
+            $ErrorActionPreference = "Stop"
+            echo ":::: Downloading CLI installer..."
+            Invoke-WebRequest "https://prtcl.s3.amazonaws.com/prtcl-x64.exe" -OutFile "./prtcl-x64.exe"
+
+            echo ":::: Installing CLI..."
+            Start-Process ".\prtcl-x64.exe" -argumentlist "/S" -Wait
+            echo ":::: done!"
+          environment:
+            PRTCL_DISABLE_AUTOUPDATE: "1"
+  test-localcompiler-nix:
+    parameters:
+      tasks:
+        type: string
+    steps:
+      - run:
+          name: "Test Local Compilation Tasks"
+          no_output_timeout: "10m"
+          command: scripts/test-build-tasks.sh ~/project "<< parameters.tasks >>"
+          environment:
+            PRTCL_DISABLE_AUTOUPDATE: "1"
+  test-localcompiler-windows:
+    parameters:
+      tasks:
+        type: string
+    steps:
+      - run:
+          name: "Test Local Compilation Tasks"
+          no_output_timeout: "20m"
+          command: pwsh scripts/test-build-tasks.ps1 $home\project "<< parameters.tasks >>"
+          environment:
+            PRTCL_DISABLE_AUTOUPDATE: "1"
 
 workflows:
   build-and-test:
     jobs:
+      - build-for-windows:
+          <<: *tag_filters
+          matrix:
+            parameters:
+              tasks: ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
+      - build-for-ubuntu:
+          <<: *tag_filters
+          matrix:
+            parameters:
+              tasks: ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
+      - build-for-darwin:
+          <<: *tag_filters
+          matrix:
+            parameters:
+              tasks: ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
       - build-and-test:
           <<: *tag_filters
           context:
@@ -184,3 +297,4 @@ workflows:
           requires:
             - build-and-test
             - combine-binaries
+
