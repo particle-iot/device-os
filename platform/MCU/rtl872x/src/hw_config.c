@@ -193,6 +193,80 @@ u32 app_mpu_nocache_init(void) {
 
 extern FLASH_InitTypeDef flash_init_para_km0;
 
+void SOCPS_AudioLDO(u32 NewStatus) {
+    u32 temp = 0;
+    static u32 PadPower = 0;
+
+    if (NewStatus == DISABLE) {
+        // 0x4800_0344[8] = 0; 1: Enable Audio bandgap, 0: disable;
+        temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL);
+        temp &= ~(BIT_LSYS_AC_MBIAS_POW | BIT_LSYS_AC_LDO_POW);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL, temp);
+        // store pad power
+        PadPower = (temp >> BIT_LSYS_SHIFT_AC_LDO_REG) &  BIT_LSYS_MASK_AC_LDO_REG;
+
+        // 0x4800_0280[2:0] = 0, disable BG
+        temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_SYSPLL_CTRL0);
+        temp &= ~(BIT_LP_PLL_BG_EN | BIT_LP_PLL_BG_I_EN | BIT_LP_PLL_MBIAS_EN);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_SYSPLL_CTRL0, temp);
+    } else {
+        // if (wifi_config.wifi_ultra_low_power) {
+        //     return;
+        // }
+        // /* if audio not use, save power */
+        // if (ps_config.km0_audio_pad_enable == FALSE) {
+        //     return;
+        // }
+
+        temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL);
+        if ((temp & BIT_LSYS_AC_LDO_POW) != 0) {
+            return;
+        }
+
+        // 0x4800_0280[2:0] = 0b111, enable BG
+        temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_SYSPLL_CTRL0);
+        temp |= (BIT_LP_PLL_BG_EN | BIT_LP_PLL_BG_I_EN | BIT_LP_PLL_MBIAS_EN);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_SYSPLL_CTRL0, temp);
+
+        // 0x4800_0344[8] = 1; 1: Enable Audio bandgap, 0: disable;
+        temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL);
+        temp |= BIT_LSYS_AC_MBIAS_POW;
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL, temp);
+
+        // Delay 5us, 0x4800_0344[0] = 1'b1 (BIT_LSYS_AC_LDO_POW)
+        DelayUs(5);
+
+        // enable Audio LDO.
+        temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL);
+        temp &= ~(BIT_LSYS_MASK_AC_LDO_REG << BIT_LSYS_SHIFT_AC_LDO_REG);
+        // restore the pad power
+        temp |= (PadPower) << BIT_LSYS_SHIFT_AC_LDO_REG;
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL, temp);
+
+        temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL);
+        temp |= BIT_LSYS_AC_LDO_POW;
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL, temp);
+    }
+}
+
+void app_audio_pad_enable(void) {
+    u32 temp = 0;
+
+    // 0x4800_0208[28] = 1; 1: enable Audio & GPIO shared PAD, 0: shutdown;
+    temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_FUNC_EN0);
+    temp |= BIT_SYS_AMACRO_EN;
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_FUNC_EN0, temp);
+
+    // 0x4800_0344[9] = 1; 1: Enable Audio pad function, 0: disable;
+    temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL);
+    temp |= BIT_LSYS_AC_ANA_PORB;
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AUDIO_SHARE_PAD_CTRL, temp);
+
+    /* When Audio Pad(GPIOD_0~6) used as GPIO, output voltage can reach 3.064V(A-Cut)/3.3V(B-Cut), */
+    /* which can be configured by 0x4800_0344[7:1] */
+    SOCPS_AudioLDO(ENABLE);
+}
+
 void Set_System(void)
 {
     // FIXME: don't mess with MSP and IRQ table
@@ -222,6 +296,7 @@ void Set_System(void)
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     peripheralsClockEnable();
+    app_audio_pad_enable();
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
     uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833);
