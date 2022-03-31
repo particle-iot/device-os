@@ -23,6 +23,7 @@
 #include "spark_wiring_ticks.h"
 #include "spark_wiring_ipaddress.h"
 #include "spark_wiring_led.h"
+#include "spark_wiring_vector.h"
 #include "system_cloud_internal.h"
 #include "system_mode.h"
 #include "system_task.h"
@@ -30,7 +31,6 @@
 #include "system_user.h"
 #include "spark_wiring_string.h"
 #include "spark_protocol_functions.h"
-#include "append_list.h"
 #include "core_hal.h"
 #include "deviceid_hal.h"
 #include "ota_flash_hal.h"
@@ -62,6 +62,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <algorithm>
 
 using namespace particle;
 using namespace particle::system;
@@ -77,6 +78,9 @@ constexpr const char KEY_RESTORE_EVENT[] = "spark/device/key/restore";
 constexpr const char DEVICE_UPDATES_EVENT[] = "particle/device/updates/";
 constexpr const char FORCED_EVENT[] = "forced";
 constexpr const char UPDATES_PENDING_EVENT[] = "pending";
+
+Vector<User_Var_Lookup_Table_t> g_cloudVars;
+Vector<User_Func_Lookup_Table_t> g_cloudFuncs;
 
 inline bool isSuffix(const char* eventName, const char* prefix, const char* suffix) {
     // todo - sanity check parameters?
@@ -204,6 +208,39 @@ void clearSessionData() {
 #endif
 }
 
+size_t cloudVariableCount() {
+    return g_cloudVars.size();
+}
+
+int getCloudVariableInfo(size_t index, const char** name, int* type) {
+    if (index >= (size_t)g_cloudVars.size()) {
+        return SYSTEM_ERROR_OUT_OF_RANGE;
+    }
+    const auto& info = g_cloudVars.at(index);
+    if (name) {
+        *name = info.userVarKey;
+    }
+    if (type) {
+        *type = info.userVarType;
+    }
+    return 0;
+}
+
+size_t cloudFunctionCount() {
+    return g_cloudFuncs.size();
+}
+
+int getCloudFunctionInfo(size_t index, const char** name) {
+    if (index >= (size_t)g_cloudFuncs.size()) {
+        return SYSTEM_ERROR_OUT_OF_RANGE;
+    }
+    const auto& info = g_cloudFuncs.at(index);
+    if (name) {
+        *name = info.userFuncKey;
+    }
+    return 0;
+}
+
 } // namespace particle
 
 extern uint8_t feature_cloud_udp;
@@ -237,92 +274,72 @@ ProtocolFacade* system_cloud_protocol_instance(void)
     return sp;
 }
 
-static append_list<User_Var_Lookup_Table_t> vars(5);
-static append_list<User_Func_Lookup_Table_t> funcs(5);
-
 User_Var_Lookup_Table_t* find_var_by_key(const char* varKey)
 {
-    for (int i = vars.size(); i-->0; )
-    {
-        if (0 == strncmp(vars[i].userVarKey, varKey, USER_VAR_KEY_LENGTH))
-        {
-            return &vars[i];
+    for (auto& var: g_cloudVars) {
+        if (strncmp(var.userVarKey, varKey, USER_VAR_KEY_LENGTH) == 0) {
+            return &var;
         }
     }
-    return NULL;
-}
-
-template<typename T> T* add_if_sufficient_describe(append_list<T>& list, const char* name, const char* itemType, const T& value) {
-	T* result = list.add(value);
-	if (result) {
-		spark_protocol_describe_data data;
-		data.size = sizeof(data);
-		data.flags = protocol::DESCRIBE_APPLICATION;
-		if (!spark_protocol_get_describe_data(spark_protocol_instance(), &data, nullptr)) {
-			if (data.maximum_size<data.current_size) {
-				list.removeAt(list.size()-1);
-				result = nullptr;
-			}
-		}
-		else {
-			INFO("get describe data unsupported");
-		}
-	}
-	if (!result) {
-		ERROR("Cannot add %s named %d: insufficient storage", itemType, name);
-	}
-	return result;
+    return nullptr;
 }
 
 User_Var_Lookup_Table_t* find_var_by_key_or_add(const char* varKey, const void* userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)
 {
-	User_Var_Lookup_Table_t item = {};
-	item.userVar = userVar;
-	item.userVarType = userVarType;
-	if (extra) {
-		item.update = extra->update;
-		if (offsetof(spark_variable_t, copy) + sizeof(spark_variable_t::copy) <= extra->size) {
-			item.copy = extra->copy;
-		}
-	}
-	memcpy(item.userVarKey, varKey, USER_VAR_KEY_LENGTH);
+    User_Var_Lookup_Table_t item = {};
+    item.userVar = userVar;
+    item.userVarType = userVarType;
+    if (extra) {
+        item.update = extra->update;
+        if (offsetof(spark_variable_t, copy) + sizeof(spark_variable_t::copy) <= extra->size) {
+            item.copy = extra->copy;
+        }
+    }
+    memcpy(item.userVarKey, varKey, std::min<size_t>(strlen(varKey), USER_VAR_KEY_LENGTH));
 
     User_Var_Lookup_Table_t* result = find_var_by_key(varKey);
-
-    if (!result) {
-    	result = add_if_sufficient_describe(vars, varKey, "variable", item);
-    }
-    else {
-    	*result = item;
+    if (result) {
+        *result = item;
+    } else if ((size_t)g_cloudVars.size() < USER_VAR_MAX_COUNT) {
+        if (g_cloudVars.append(std::move(item))) {
+            result = &g_cloudVars.last();
+        } else {
+            LOG(ERROR, "Memory allocation error");
+        }
+    } else {
+        LOG(ERROR, "Too many cloud variables");
     }
     return result;
 }
 
 User_Func_Lookup_Table_t* find_func_by_key(const char* funcKey)
 {
-    for (int i = funcs.size(); i-->0; )
-    {
-        if (0 == strncmp(funcs[i].userFuncKey, funcKey, USER_FUNC_KEY_LENGTH))
-        {
-            return &funcs[i];
+    for (auto& func: g_cloudFuncs) {
+        if (strncmp(func.userFuncKey, funcKey, USER_FUNC_KEY_LENGTH) == 0) {
+            return &func;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 User_Func_Lookup_Table_t* find_func_by_key_or_add(const char* funcKey, const cloud_function_descriptor* desc)
 {
-	User_Func_Lookup_Table_t item = {};
-	item.pUserFunc = desc->fn;
-	item.pUserFuncData = desc->data;
-    memcpy(item.userFuncKey, desc->funcKey, USER_FUNC_KEY_LENGTH);
+    User_Func_Lookup_Table_t item = {};
+    item.pUserFunc = desc->fn;
+    item.pUserFuncData = desc->data;
+    memcpy(item.userFuncKey, funcKey, std::min<size_t>(strlen(funcKey), USER_FUNC_KEY_LENGTH));
 
     User_Func_Lookup_Table_t* result = find_func_by_key(funcKey);
     if (result) {
-    	*result = item;
-    }
-    else {
-    	result = add_if_sufficient_describe(funcs, funcKey, "function", item);
+        *result = item;
+    } else if ((size_t)g_cloudFuncs.size() < USER_FUNC_MAX_COUNT) {
+        if (g_cloudFuncs.append(std::move(item))) {
+            result = &g_cloudFuncs.last();
+        } else {
+            LOG(ERROR, "Memory allocation error");
+        }
+    } else {
+        LOG(ERROR, "Too many cloud functions");
     }
     return result;
 }
@@ -356,12 +373,11 @@ uint32_t string_crc(const char* s)
  */
 uint32_t compute_functions_checksum()
 {
-	uint32_t checksum = 0;
-	for (int i = funcs.size(); i-->0; )
-    {
-		checksum += string_crc(funcs[i].userFuncKey);
+    uint32_t checksum = 0;
+    for (const auto& func: g_cloudFuncs) {
+        checksum += string_crc(func.userFuncKey);
     }
-	return checksum;
+    return checksum;
 }
 
 /**
@@ -370,13 +386,12 @@ uint32_t compute_functions_checksum()
  */
 uint32_t compute_variables_checksum()
 {
-	uint32_t checksum = 0;
-	for (int i = vars.size(); i-->0; )
-	{
-		checksum += string_crc(vars[i].userVarKey);
-		checksum += crc(vars[i].userVarType);
-	}
-	return checksum;
+    uint32_t checksum = 0;
+    for (const auto& var: g_cloudVars) {
+        checksum += string_crc(var.userVarKey);
+        checksum += crc(var.userVarType);
+    }
+    return checksum;
 }
 
 /**
@@ -464,42 +479,6 @@ void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handler
         String name(event_name);
         String data(event_data);
         APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, data, reserved));
-    }
-}
-
-int numUserFunctions(void)
-{
-    return funcs.size();
-}
-
-const char* getUserFunctionKey(int function_index)
-{
-    return funcs[function_index].userFuncKey;
-}
-
-int numUserVariables(void)
-{
-    return vars.size();
-}
-
-const char* getUserVariableKey(int variable_index)
-{
-    return vars[variable_index].userVarKey;
-}
-
-SparkReturnType::Enum wrapVarTypeInEnum(const char *varKey)
-{
-    switch (userVarType(varKey))
-    {
-        case 1:
-            return SparkReturnType::BOOLEAN;
-        case 4:
-            return SparkReturnType::STRING;
-        case 9:
-            return SparkReturnType::DOUBLE;
-        case 2:
-        default:
-            return SparkReturnType::INT;
     }
 }
 
@@ -1030,16 +1009,12 @@ void Spark_Protocol_Init(void)
         SparkDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
         descriptor.size = sizeof(descriptor);
-        descriptor.num_functions = numUserFunctions;
-        descriptor.get_function_key = getUserFunctionKey;
         descriptor.call_function = userFuncSchedule;
-        descriptor.num_variables = numUserVariables;
-        descriptor.get_variable_key = getUserVariableKey;
-        descriptor.variable_type = wrapVarTypeInEnum;
         descriptor.get_variable_async = getUserVar;
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
         descriptor.append_system_info = system_module_info;
+        descriptor.append_app_info = system_app_info;
         descriptor.append_metrics = system_metrics;
         descriptor.call_event_handler = invokeEventHandler;
 #if HAL_PLATFORM_CLOUD_UDP

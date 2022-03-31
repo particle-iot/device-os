@@ -219,6 +219,11 @@ void registerSystemSubscriptions();
 // Invalidates the cached session data
 void clearSessionData();
 
+size_t cloudVariableCount();
+int getCloudVariableInfo(size_t index, const char** name, int* type = nullptr);
+size_t cloudFunctionCount();
+int getCloudFunctionInfo(size_t index, const char** name);
+
 } // namespace particle
 
 #ifdef __cplusplus

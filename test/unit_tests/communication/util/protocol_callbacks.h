@@ -29,7 +29,7 @@ namespace protocol {
 
 namespace test {
 
-// Helper class for mocking the protocol callbacks
+// Helper class for mocking the protocol callbacks (SparkCallbacks)
 class ProtocolCallbacks {
 public:
     ProtocolCallbacks();

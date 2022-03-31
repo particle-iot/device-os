@@ -45,6 +45,9 @@ add_definitions(-DRELEASE_BUILD)
 add_definitions(-DUNIT_TEST)
 add_definitions(-DBOOST_NO_AUTO_PTR)
 
+# Disable warnings caused by std::uncaught_exception() used in Hippomocks
+add_compile_options(-Wno-deprecated-declarations)
+
 if (CMAKE_COMPILER_IS_GNUCXX)
   set(GCOV_ENABLE TRUE)
 endif()

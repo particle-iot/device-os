@@ -68,6 +68,10 @@ public:
     // Note: The returned message size can be larger than the size of the destination buffer
     int encode();
 
+    // Returns the size of an encoded option or a negative value if the arguments are invalid
+    static int optionSize(unsigned opt, unsigned prevOpt, size_t optSize);
+    static int uintOptionSize(unsigned opt, unsigned prevOpt, unsigned val);
+
 private:
     enum Flag {
         HEADER_ENCODED = 0x01,

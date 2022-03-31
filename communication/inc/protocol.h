@@ -13,6 +13,7 @@
 #include "publisher.h"
 #include "subscriptions.h"
 #include "variables.h"
+#include "description.h"
 #include "hal_platform.h"
 #include "timesyncmanager.h"
 
@@ -113,13 +114,16 @@ class Protocol
 	Publisher publisher;
 
 	/**
+	 * Handles Describe requests.
+	 */
+	Description description;
+
+	/**
 	 * Manages time sync requests
 	 */
 	TimeSyncManager timesync_;
 
 	Vector<message_handle_t> subscription_msg_ids;
-	message_handle_t app_describe_msg_id;
-	message_handle_t system_describe_msg_id;
 
 	/**
 	 * Completion handlers for messages with confirmable delivery.
@@ -195,14 +199,6 @@ protected:
 		protocol_flags = flags;
 	}
 
-	/**
-	 * Retrieves the next token.
-	 */
-	token_t get_next_token()
-	{
-		return next_token++;
-	}
-
 	ProtocolError handle_key_change(Message& message);
 
 	/**
@@ -259,6 +255,11 @@ protected:
 	 */
 	ProtocolError event_loop_idle()
 	{
+		ProtocolError error = description.processTimeouts();
+		if (error)
+		{
+			return error;
+		}
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		if (firmwareUpdate.isRunning())
 		{
@@ -272,7 +273,7 @@ protected:
 #endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 		else
 		{
-			ProtocolError error = pinger.process(callbacks.millis() - last_message_millis, [this] {
+			error = pinger.process(callbacks.millis() - last_message_millis, [this] {
 				return ping();
 			});
 			if (error)
@@ -282,31 +283,6 @@ protected:
 		}
 		return NO_ERROR;
 	}
-
-	/**
-	 * @brief Generates and sends describe message
-	 *
-	 * @param channel The message channel used to send the message
-	 * @param message The message buffer used to store the message
-	 * @param header_size The offset at which to place the message payload
-	 * @param desc_flags The information description flags
-	 * @arg \p DESCRIBE_APPLICATION
-	 * @arg \p DESCRIBE_METRICS
-	 * @arg \p DESCRIBE_SYSTEM
-	 *
-	 * @returns \s ProtocolError result value
-	 * @retval \p particle::protocol::NO_ERROR
-	 *
-	 * @sa particle::protocol::ProtocolError
-	 */
-	ProtocolError generate_and_send_description(MessageChannel& channel, Message& message,
-												size_t header_size, int desc_flags);
-
-	/**
-	 * Produces a describe message and transmits it as a separate response.
-	 * @param desc_flags Flags describing the information to provide. A combination of {@code DESCRIBE_APPLICATION) and {@code DESCRIBE_SYSTEM) flags.
-	 */
-	ProtocolError send_description_response(token_t token, message_id_t msg_id, int desc_flags);
 
 	/**
 	 * Decodes and dispatches a received message to its handler.
@@ -348,6 +324,7 @@ public:
 			product_firmware_version(PRODUCT_FIRMWARE_VERSION),
 			variables(this),
 			publisher(this),
+			description(this),
 			last_ack_handlers_update(0),
 			protocol_flags(0),
 			initialized(false),
@@ -414,10 +391,7 @@ public:
 		max_transmit_message_size = size;
 	}
 
-	size_t get_max_transmit_message_size() const
-	{
-		return max_transmit_message_size;
-	}
+	size_t get_max_transmit_message_size() const;
 
 	size_t get_max_event_data_size() const {
 		// Check if there's a runtime limit
@@ -560,11 +534,10 @@ public:
 	 *
 	 * This method updates the cached application state.
 	 *
-	 * @param msg_id ID of the original request message.
-	 * @param code Response code.
-	 * @return `true` if the message has been handled or `false` otherwise.
+	 * @param msg Response message.
+	 * @param[out] handled Will be set to `true` if the message has been handled by this method.
 	 */
-	bool handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code);
+	ProtocolError handle_app_state_reply(const Message& msg, bool* handled);
 
 	inline void set_product_id(product_id_t product_id)
 	{
@@ -628,11 +601,23 @@ public:
 
 	void notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode);
 
-	const SparkDescriptor& getDescriptor() const {
+	/**
+	 * Retrieves the next token.
+	 */
+	token_t get_next_token()
+	{
+		return next_token++;
+	}
+
+	const SparkDescriptor& get_descriptor() const {
 		return descriptor;
 	}
 
-	MessageChannel& getChannel() {
+	const SparkCallbacks& get_callbacks() const {
+		return callbacks;
+	}
+
+	MessageChannel& get_channel() {
 		return channel;
 	}
 };

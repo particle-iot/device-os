@@ -82,13 +82,13 @@ struct SparkDescriptor
     typedef void (*GetVariableCallback)(int error, int type, void* data, size_t size, void* context);
 
     size_t size;
-    int (*num_functions)(void);
-    const char* (*get_function_key)(int function_index);
+    int (*num_functions)(void); // Deprecated
+    const char* (*get_function_key)(int function_index); // Deprecated
     int (*call_function)(const char *function_key, const char *arg, FunctionResultCallback callback, void* reserved);
 
-    int (*num_variables)(void);
-    const char* (*get_variable_key)(int variable_index);
-    SparkReturnType::Enum (*variable_type)(const char *variable_key);
+    int (*num_variables)(void); // Deprecated
+    const char* (*get_variable_key)(int variable_index); // Deprecated
+    SparkReturnType::Enum (*variable_type)(const char *variable_key); // Deprecated
     const void *(*get_variable)(const char *variable_key); // Deprecated
 
     bool (*was_ota_upgrade_successful)(void);
@@ -129,6 +129,16 @@ struct SparkDescriptor
      * @param context Context of the variable request. This argument needs to be passed to the completion callback.
      */
     void (*get_variable_async)(const char* key, GetVariableCallback callback, void* context);
+
+    /**
+     * Serialize application info using the given appender function.
+     *
+     * @param appender Appender function.
+     * @param append Opaque data to be passed to appender function.
+     * @param reserved Reserved argument.
+     * @return true on success or false on failure.
+     */
+    bool (*append_app_info)(appender_fn appender, void* append, void* reserved);
 };
 
-PARTICLE_STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==60 || sizeof(void*)!=4);
+PARTICLE_STATIC_ASSERT(SparkDescriptor_size, sizeof(SparkDescriptor)==64 || sizeof(void*)!=4);

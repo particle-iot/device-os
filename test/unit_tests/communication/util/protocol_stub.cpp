@@ -15,38 +15,22 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "system_cloud_internal.h"
-#include "ota_flash_hal.h"
-#include "diagnostics.h"
+#include "protocol_stub.h"
 
 namespace particle {
 
-size_t cloudVariableCount() {
-    return 0;
+namespace protocol {
+
+namespace test {
+
+ProtocolStub::ProtocolStub(CoapMessageChannel* channel) :
+        Protocol(*channel),
+        channel_(channel) {
+    Protocol::init(cb_.get(), desc_.get());
 }
 
-int getCloudVariableInfo(size_t index, const char** name, int* type) {
-    return SYSTEM_ERROR_OUT_OF_RANGE;
-}
+} // namespace test
 
-size_t cloudFunctionCount() {
-    return 0;
-}
-
-int getCloudFunctionInfo(size_t index, const char** name) {
-    return SYSTEM_ERROR_OUT_OF_RANGE;
-}
+} // namespace protocol
 
 } // namespace particle
-
-int HAL_System_Info(hal_system_info_t* info, bool construct, void* reserved) {
-    return 0;
-}
-
-int diag_enum_sources(diag_enum_sources_callback callback, size_t* count, void* data, void* reserved) {
-    return 0;
-}
-
-int diag_get_source(uint16_t id, const diag_source** src, void* reserved) {
-    return 0;
-}

@@ -69,10 +69,10 @@ inline unsigned trailingOneBits(uint32_t v) {
 
 } // namespace
 
-int FirmwareUpdate::init(MessageChannel* channel, const SparkCallbacks& callbacks) {
+ProtocolError FirmwareUpdate::init(MessageChannel* channel, const SparkCallbacks& callbacks) {
     channel_ = channel;
     callbacks_ = &callbacks;
-    return 0;
+    return ProtocolError::NO_ERROR;
 }
 
 void FirmwareUpdate::destroy() {
