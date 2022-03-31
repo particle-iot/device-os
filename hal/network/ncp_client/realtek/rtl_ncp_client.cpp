@@ -250,6 +250,7 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     const NcpClientLock lock(this);
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     struct Context {
         WifiScanCallback callback = nullptr;
         void* data = nullptr;

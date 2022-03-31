@@ -45,7 +45,7 @@ test(SPIX_01_SPI_Begin_Without_Argument)
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, S3);
 #else
 #error "Unknown platform!"
 #endif
@@ -72,7 +72,7 @@ test(SPIX_02_SPI_Begin_With_Ss_Pin)
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, S3);
 #else
 #error "Unknown platform!"
 #endif
@@ -126,7 +126,7 @@ test(SPIX_03_SPI_Begin_With_Mode)
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, S3);
 #else
 #error "Unknown platform!"
 #endif
@@ -149,7 +149,7 @@ test(SPIX_03_SPI_Begin_With_Mode)
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, S3);
 #else
 #error "Unknown platform!"
 #endif
@@ -177,7 +177,7 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
 #elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
     assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, S3);
 #else
 #error "Unknown platform!"
 #endif
@@ -266,7 +266,7 @@ test(SPIX_06_SPI1_Begin_Without_Argument)
     assertEqual(info.mode, SPI_MODE_MASTER);
 
 #if PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, A2);
+    assertEqual(info.ss_pin, D5);
 #else
     // D5 is the default SS pin for all platforms except Tron
     assertEqual(info.ss_pin, D5);
@@ -286,7 +286,7 @@ test(SPIX_07_SPI1_Begin_With_Ss_Pin)
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
 #if PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, A2);
+    assertEqual(info.ss_pin, D5);
 #else
     // D5 is the default SS pin for all platforms except Tron
     assertEqual(info.ss_pin, D5);
@@ -332,7 +332,7 @@ test(SPIX_08_SPI1_Begin_With_Mode)
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
 #if PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, A2);
+    assertEqual(info.ss_pin, D5);
 #else
     // D5 is the default SS pin for all platforms except Tron
     assertEqual(info.ss_pin, D5);
@@ -364,7 +364,7 @@ test(SPIX_09_SPI1_Begin_With_Master_Ss_Pin)
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
 #if PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, A2);
+    assertEqual(info.ss_pin, D5);
 #else
     // D5 is the default SS pin for all platforms except Tron
     assertEqual(info.ss_pin, D5);
@@ -472,6 +472,17 @@ constexpr unsigned int SPI_CLOCK_SPEED = 7500000; // 7.5MHz
 constexpr unsigned int SPI_NODMA_OVERHEAD = 1600; // 1.6us ~= 190 clock cycles @ 120MHz
 constexpr unsigned int SPI_DMA_OVERHEAD = 11500; // 11.5us ~= 1380 clock cycles @ 120MHz
 #endif // HAL_PLATFORM_RTL872X
+
+#if !HAL_PLATFORM_RTL872X
+using SpixTestLock = SingleThreadedSection;
+#else
+// On RTL872x platforms USB interrupts are processed in a thread, so USB comms will
+// be broken for the duration of the test which can cause test runner failures
+// FIXME: disabling for now
+struct SpixTestLock {
+
+};
+#endif // !HAL_PLATFORM_RTL872X
 
 } // anonymous
 

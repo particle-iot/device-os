@@ -76,8 +76,13 @@ test(BLE_01_Scanner_Blocked_Timeout_Simulate) {
     setScanParams.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     ret = BLE.setScanParameters(&setScanParams);
     assertEqual(ret, 0);
-    
+
+#if HAL_PLATFORM_NRF52840
     NVIC_DisableIRQ(SD_EVT_IRQn);
+#elif HAL_PLATFORM_RTL872X
+    // TODO: double check
+    NVIC_DisableIRQ(BT2WL_STS_IRQ);
+#endif
 
     system_tick_t start = millis();
     Vector<BleScanResult> result = BLE.scan();
@@ -87,7 +92,12 @@ test(BLE_01_Scanner_Blocked_Timeout_Simulate) {
     assertMoreOrEqual(now - start, 3000);
     assertLessOrEqual(now - start, 4500);
 
+#if HAL_PLATFORM_NRF52840
     NVIC_EnableIRQ(SD_EVT_IRQn);
+#elif HAL_PLATFORM_RTL872X
+    // TODO: double check
+    NVIC_DisableIRQ(BT2WL_STS_IRQ);
+#endif
 }
 #endif // HAL_PLATFORM_NRF52840
 

@@ -3,6 +3,8 @@
 
 #if PLATFORM_THREADING
 
+#include "FreeRTOS.h"
+
 uint32_t timer_callback_called;
 void timer_callback()
 {
@@ -106,10 +108,12 @@ test(TIMER_04_not_started)
 void create_timers_with_delay(unsigned block_for, int& fails)
 {
 	// the exact amount of timers needed is based on the size of the
-	// timer queue.
+	// timer queue as defined in configTIMER_QUEUE_LENGTH
+	int timer_queue_size = configTIMER_QUEUE_LENGTH;
+
 	fails = 0;
-	Timer* timers[10];
-	for (int i=0; i<5; i++)
+	Timer* timers[timer_queue_size*2];
+	for (int i=0; i<timer_queue_size; i++)
 	{
 		Timer* t = new Timer(1, [] { HAL_Delay_Milliseconds(50); }, true);
 		bool started = t->start();
