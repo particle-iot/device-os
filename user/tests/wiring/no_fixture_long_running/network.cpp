@@ -68,7 +68,8 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
 } // anonymous
 
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
-    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
 
     Network.on();
     Network.connect();
@@ -179,7 +180,8 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR
 
 test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
-    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
     const system_tick_t NCP_FAILURE_TIMEOUT = 15000;
 
     Network.on();
@@ -230,7 +232,8 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 static bool s_networkStatusChanged = false;
 
 test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
-    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
 
     SCOPE_GUARD({
         Particle.disconnect();
