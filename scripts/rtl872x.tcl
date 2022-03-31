@@ -426,6 +426,11 @@ proc rtl872x_wdg_reset {} {
     set wdg_reg [expr $wdg_reg & ~(0x00FF0000)]
     set wdg_reg [expr $wdg_reg | ($WDG_BIT_CLEAR | $WDG_BIT_RST_MODE | $WDG_BIT_ISR_CLEAR | $WDG_BIT_ENABLE)]
     mww $WDG_BASE $wdg_reg
+
+    # Reset this bit back to 0 otherwise reset button doesn't work
+    set reg_val [openocd_read_register $RTL872x_REG_AON_PM_OPT]
+    set reg_val [expr $reg_val & ~(1 << 1)]
+    mww $RTL872x_REG_AON_PM_OPT $reg_val
 }
 
 #
