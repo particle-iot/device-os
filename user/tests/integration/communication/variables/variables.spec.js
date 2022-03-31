@@ -19,6 +19,28 @@ async function delayMs(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+async function getDeviceVariablesWithRerties({ deviceId, auth, expectedVarNum = 0, retries = 10, delay = 1000 } = {}) {
+	let lastError;
+	for (let i = 0; i < retries; i++) {
+		try {
+			const resp = await api.getDevice({ deviceId, auth });
+			const vars = resp.body.variables;
+			if (expectedVarNum > 0 && Object.keys(vars).length !== expectedVarNum) {
+				throw new Error('Number of variables returned from device does not match expected');
+			}
+			return resp;
+		} catch (e) {
+			lastError = e;
+		}
+		await delayMs(i * delay);
+	}
+	if (lastError) {
+		throw lastError;
+	}
+	throw new Error('Error fetching variables from device');
+}
+
+
 async function getVariableWithRetries({ deviceId, name, auth, retries = 10, delay = 1000 } = {}) {
 	let lastError;
 	for (let i = 0; i < retries; i++) {
@@ -37,9 +59,7 @@ async function getVariableWithRetries({ deviceId, name, auth, retries = 10, dela
 }
 
 test('01_register_variables', async function() {
-	const resp = await api.getDevice({ deviceId, auth });
-	const vars = resp.body.variables;
-	expect(vars).to.include({
+	const expectedVars = {
 		'var_b': 'bool',
 		'var_i': 'int32',
 		'var_d': 'double',
@@ -60,7 +80,10 @@ test('01_register_variables', async function() {
 		'std_fn_d': 'double',
 		'std_fn_c': 'string',
 		'std_fn_s': 'string'
-	});
+	};
+	const resp = await getDeviceVariablesWithRerties({ deviceId, auth, expectedVarNum: Object.keys(expectedVars).length });
+	const vars = resp.body.variables;
+	expect(vars).to.include(expectedVars);
 });
 
 test('02_check_variable_values', async function() {
@@ -121,10 +144,10 @@ test('06_check_current_thread', async function() {
 });
 
 test('07_register_many_variables', async function() {
-	const resp = await api.getDevice({ deviceId, auth });
+	const varCount = device.platform.is('gen2') ? 50 : limits.max_num;
+	const resp = await getDeviceVariablesWithRerties({ deviceId, auth, expectedVarNum: varCount });
 	const vars = resp.body.variables;
 	const expectedVars = {};
-	const varCount = device.platform.is('gen2') ? 50 : limits.max_num;
 	for (let i = 1; i <= varCount; ++i) {
 		let name = 'var_' + i.toString().padStart(3, '0') + '_';
 		name += 'x'.repeat(Math.max(limits.max_name_len - name.length, 0));
