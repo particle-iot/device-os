@@ -473,6 +473,17 @@ constexpr unsigned int SPI_NODMA_OVERHEAD = 1600; // 1.6us ~= 190 clock cycles @
 constexpr unsigned int SPI_DMA_OVERHEAD = 11500; // 11.5us ~= 1380 clock cycles @ 120MHz
 #endif // HAL_PLATFORM_RTL872X
 
+#if !HAL_PLATFORM_RTL872X
+using SpixTestLock = SingleThreadedSection;
+#else
+// On RTL872x platforms USB interrupts are processed in a thread, so USB comms will
+// be broken for the duration of the test which can cause test runner failures
+// FIXME: disabling for now
+struct SpixTestLock {
+
+};
+#endif // !HAL_PLATFORM_RTL872X
+
 } // anonymous
 
 test(SPIX_11_SPI_Clock_Speed)
