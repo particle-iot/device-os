@@ -32,7 +32,7 @@
 #include "spark_wiring_interrupts.h"
 
 // Uncomment to enable logging in interrupt handlers
-#define LOG_FROM_ISR
+// #define LOG_FROM_ISR
 
 #if defined(LOG_FROM_ISR) && PLATFORM_ID != 3
 // When compiled with LOG_FROM_ISR defined use ATOMIC_BLOCK

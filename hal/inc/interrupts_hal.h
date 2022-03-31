@@ -159,11 +159,40 @@ static inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
 
 #elif defined(CONFIG_PLATFORM_8721D)
 
-bool hal_interrupt_is_isr();
-int32_t hal_interrupt_serviced_irqn();
-uint32_t hal_interrupt_get_basepri();
-bool hal_interrupt_is_irq_masked(int32_t irqn);
-bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2);
+
+static inline bool hal_interrupt_is_isr() {
+    return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+
+static inline int32_t hal_interrupt_serviced_irqn() {
+    return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) - 16;
+}
+
+static inline uint32_t hal_interrupt_get_basepri() {
+    return (__get_BASEPRI() >> (8 - __NVIC_PRIO_BITS));
+}
+
+static inline bool hal_interrupt_is_irq_masked(int32_t irqn) {
+    uint32_t basepri = hal_interrupt_get_basepri();
+    return __get_PRIMASK() || (basepri > 0 && NVIC_GetPriority((IRQn_Type)irqn) >= basepri);
+}
+
+static inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
+    if (irqn1 == irqn2) {
+        return false;
+    }
+
+    uint32_t priorityGroup = NVIC_GetPriorityGrouping();
+    uint32_t priority1 = NVIC_GetPriority((IRQn_Type)irqn1);
+    uint32_t priority2 = NVIC_GetPriority((IRQn_Type)irqn2);
+    uint32_t p1, sp1, p2, sp2;
+    NVIC_DecodePriority(priority1, priorityGroup, &p1, &sp1);
+    NVIC_DecodePriority(priority2, priorityGroup, &p2, &sp2);
+    if (p1 < p2) {
+        return true;
+    }
+    return false;
+}
 
 #elif PLATFORM_ID == PLATFORM_NEWHAL
 

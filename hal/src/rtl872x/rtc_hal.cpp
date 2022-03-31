@@ -185,41 +185,25 @@ public:
             return SYSTEM_ERROR_TIMEOUT;
         }
 
-        struct timeval alarm = *tv;
-        struct timeval now = {};
-        getTime(&now);
-        if (flags & HAL_RTC_ALARM_FLAG_IN) {
-            timeradd(&alarm, &now, &alarm);
-        }
-
-        if (alarm.tv_sec <= now.tv_sec) {
-            // Too late to set such an alarm
-            return SYSTEM_ERROR_TIMEOUT;
-        }
-
         alarmHandler_ = handler;
         alarmContext_ = context;
-        
-        struct tm* alarmDatetime = localtime(&tv->tv_sec);
+
+        struct tm* alarm = localtime(&alarmTv.tv_sec);
 
         /* set alarm */
         RTC_AlarmTypeDef RTC_AlarmStruct;
         RTC_AlarmStructInit(&RTC_AlarmStruct);
         RTC_AlarmStruct.RTC_AlarmTime.RTC_H12_PMAM = RTC_H12_AM;
-        RTC_AlarmStruct.RTC_AlarmTime.RTC_Days = alarmDatetime->tm_yday;
-        RTC_AlarmStruct.RTC_AlarmTime.RTC_Hours = alarmDatetime->tm_hour;
-        RTC_AlarmStruct.RTC_AlarmTime.RTC_Minutes = alarmDatetime->tm_min;
-        RTC_AlarmStruct.RTC_AlarmTime.RTC_Seconds = alarmDatetime->tm_sec;
-
+        RTC_AlarmStruct.RTC_AlarmTime.RTC_Days = alarm->tm_yday;
+        RTC_AlarmStruct.RTC_AlarmTime.RTC_Hours = alarm->tm_hour;
+        RTC_AlarmStruct.RTC_AlarmTime.RTC_Minutes = alarm->tm_min;
+        RTC_AlarmStruct.RTC_AlarmTime.RTC_Seconds = alarm->tm_sec;
         RTC_AlarmStruct.RTC_AlarmMask = RTC_AlarmMask_None;
         RTC_AlarmStruct.RTC_Alarm2Mask = RTC_Alarm2Mask_None;
-
         RTC_SetAlarm(RTC_Format_BIN, &RTC_AlarmStruct);
-
         RTC_AlarmCmd(ENABLE);
         InterruptRegister(rtcAlarmHandler, RTC_IRQ, (uint32_t)this, CFG_RTC_PRIORITY);
         InterruptEn(RTC_IRQ, CFG_RTC_PRIORITY);
-
         return SYSTEM_ERROR_NONE;
     }
 

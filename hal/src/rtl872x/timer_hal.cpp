@@ -312,9 +312,9 @@ private:
                 overflowCounter_++;
                 lastOverflowSysTimer_ = curSysTimerUs;
                 lastOverflowTimer_ = rtcCounterAndTicksToUs((overflowCounter_ + 1) / 2, curTimerTicks);
-                HAL_enable_irq(s);
                 // Mark that interrupt was handled.
                 clearOverflowPendingEvent();
+                HAL_enable_irq(s);
 
                 increasing = true;
 
