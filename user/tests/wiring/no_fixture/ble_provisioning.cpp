@@ -20,10 +20,15 @@
 
 #if HAL_PLATFORM_BLE
 
-// Dot not enter listening mode based on the flag
+// Do not enter listening mode based on the flag
 test(LISTENING_00_DISABLE_LISTENING_MODE) {
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
     Network.listen();
+    SCOPE_GUARD({
+        System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+        Network.listen(false);
+        delay(1000);
+    });
     delay(1000); // Time for system thread to enter listening mode, if any
     assertFalse(Network.listening());
 }
@@ -32,6 +37,10 @@ test(LISTENING_00_DISABLE_LISTENING_MODE) {
 test(LISTENING_01_ENABLE_LISTENING_MODE) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     Network.listen();
+    SCOPE_GUARD({
+        Network.listen(false);
+        delay(1000);
+    });
     delay(1000); // Time for system thread to enter listening mode
     assertTrue(Network.listening());
     Network.listen(false);
@@ -43,9 +52,16 @@ test(LISTENING_01_ENABLE_LISTENING_MODE) {
 // device-os should exit listening mode
 test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
     Network.listen();
+    SCOPE_GUARD({
+        Network.listen(false);
+        delay(1000);
+    });
     delay(1000); // Time for system thread to enter listening mode
     assertTrue(Network.listening());
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    SCOPE_GUARD({
+        System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    });
     delay(1500); // Time for system thread to process the flag
     assertFalse(Network.listening());
 }
@@ -53,6 +69,10 @@ test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
 test(LISTENING_03_ENABLE_BLE_PROV_MODE_WHEN_FLAG_SET) {
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
     BLE.provisioningMode(true);
+    SCOPE_GUARD({
+        BLE.provisioningMode(false);
+        System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    });
     delay(100);
     assertTrue(BLE.getProvisioningStatus());
     assertTrue(BLE.advertising());
@@ -75,6 +95,8 @@ test(LISTENING_04_ENABLE_BLE_PROV_MODE_WHEN_FLAG_CLEARED) {
 }
 
 test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
     SCOPE_GUARD({
         System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     });
@@ -82,9 +104,11 @@ test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
     delay(1000); // Time for system thread to enter listening mode
     assertTrue(Network.listening());
     SCOPE_GUARD({
+        Network.listen(false);
+        delay(1000);
         // Make sure we restore cloud connection after exiting this test because we entered listening mode
         Particle.connect();
-        waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+        waitFor(Particle.connected, WAIT_TIMEOUT);
         assertTrue(Particle.connected());
     });
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);

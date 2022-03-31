@@ -19,6 +19,11 @@
 #include "unit-test/unit-test.h"
 
 test(NETWORK_00_UDP_begin_does_not_leak_sockets_without_calling_stop) {
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
+    Network.on();
+    Network.connect();
+    waitFor(Network.ready, WAIT_TIMEOUT);
     // Arbitrary number that is large enough to showcase the issue
 #if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
     // There is a limited number of sockets available on Electrons, since we are using
@@ -41,6 +46,11 @@ test(NETWORK_00_UDP_begin_does_not_leak_sockets_without_calling_stop) {
 }
 
 test(NETWORK_01_UDP_sockets_can_be_read_with_timeout) {
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
+    Network.on();
+    Network.connect();
+    waitFor(Network.ready, WAIT_TIMEOUT);
     auto udp = std::make_unique<UDP>();
     assertTrue((bool)udp);
 
