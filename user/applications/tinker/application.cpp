@@ -148,7 +148,9 @@ void setup()
     Particle.function("analogread", tinkerAnalogRead);
     Particle.function("analogwrite", tinkerAnalogWrite);
 
-    Burnin.setup();
+#if HAL_PLATFORM_RTL872X
+    BurninTest::instance()->setup();
+#endif
 }
 
 /* This function loops forever --------------------------------------------*/
@@ -156,9 +158,9 @@ void loop()
 {
     //This will run in a loop
 
-    // TODO: Run burnin on own thread? (see concurrent dynalib)
-    delay(250);
-    Burnin.loop();
+#if HAL_PLATFORM_RTL872X
+    BurninTest::instance()->loop();
+#endif
 }
 
 /*******************************************************************************

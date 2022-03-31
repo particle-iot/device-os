@@ -9,7 +9,9 @@ public:
     BurninTest();
     ~BurninTest();
 
-    void setup();
+    static BurninTest* instance();
+
+    void setup(bool forceEnable = false);
     void loop();
 
 	enum class BurninTestState : uint32_t {
@@ -50,15 +52,14 @@ private:
 	Vector<burnin_test_function> tests_;
 	Vector<String> test_names_;
 
+	bool callFqcTest(String testName);
+
 	bool testGpio();
 	bool testWifiScan();
 	bool testBleScan();
 	bool testSram();
 	bool testSpiFlash();
 	bool testCpuLoad();
-
 };
-
-extern BurninTest Burnin;
 
 }

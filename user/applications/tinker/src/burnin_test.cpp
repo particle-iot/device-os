@@ -10,17 +10,11 @@
 
 namespace particle {
 
-// Global instance of this class called from the application
-BurninTest Burnin;
-
 // Retained state variables
 static retained BurninTest::BurninTestState BurninState;
 static retained BurninTest::BurninTestName LastBurnInTest;
 static retained uint32_t FailureUptimeMillis;
 static retained char BurninErrorMessage[1024];
-
-// TODO: instantiate at runtime instead
-Serial1LogHandler logger(115200, LOG_LEVEL_ALL);
 
 BurninTest::BurninTest() {
 	tests_ = {
@@ -38,28 +32,37 @@ BurninTest::BurninTest() {
 BurninTest::~BurninTest() {
 }
 
-void BurninTest::setup() {
-    // Read the trigger pin for a 1khz pulse. If present, enter burnin mode.
+BurninTest* BurninTest::instance() {
+    static BurninTest tester;
+    return &tester;
+}
+
+void BurninTest::setup(bool forceEnable) {
+	uint32_t pulse_width_micros = 0;
     hal_pin_t trigger_pin = D7; // PA27 aka SWD
-    PinMode trigger_pin_mode_at_start = getPinMode(trigger_pin);
-	pinMode(trigger_pin, INPUT);
-	//Log.info("trigger_pin_mode_at_start %d", trigger_pin_mode_at_start);
 
-    uint32_t pulse_width_micros = pulseIn(trigger_pin, HIGH);
-    // Margin of error for rtl872xD tick/microsecond counter
-    const uint32_t error_margin_micros = (31 * 2);
-    // 1KHZ square wave at 50% duty cycle = 500us pulses
-    const uint32_t expected_pulse_width_micros = 500;
+	if (!forceEnable) {
+		// Read the trigger pin for a 1khz pulse. If present, enter burnin mode.
+		pinMode(trigger_pin, INPUT);
 
-    Log.info("trigger_pin %d pulse_width_micros: %lu ", trigger_pin, pulse_width_micros);
-    if((pulse_width_micros > (expected_pulse_width_micros + error_margin_micros)) ||
-       (pulse_width_micros < (expected_pulse_width_micros - error_margin_micros))) {
-		BurninState = BurninTestState::DISABLED;
-		// TODO: Figure out how to leave device in programmable state with SWD pin
-		// Re-configure for SWD instead of GPIO?
-       	pinMode(trigger_pin, trigger_pin_mode_at_start); 
-    	return;
-    }
+	    pulse_width_micros = pulseIn(trigger_pin, HIGH);
+	    // Margin of error for rtl872xD tick/microsecond counter
+	    const uint32_t error_margin_micros = (31 * 2);
+	    // 1KHZ square wave at 50% duty cycle = 500us pulses
+	    const uint32_t expected_pulse_width_micros = 500;
+
+	    if((pulse_width_micros > (expected_pulse_width_micros + error_margin_micros)) ||
+	       (pulse_width_micros < (expected_pulse_width_micros - error_margin_micros))) {
+			BurninState = BurninTestState::DISABLED;
+			// TODO: Figure out how to leave device in programmable state with SWD pin
+	    	pinMode(trigger_pin, PIN_MODE_NONE);
+	    	return;
+	    }
+
+	}
+
+	static Serial1LogHandler logger(115200, LOG_LEVEL_ALL);
+    Log.info("*** BURN IN START *** trigger_pin %d pulse_width_micros: %lu ", trigger_pin, pulse_width_micros);
 
 	// Detect if backup SRAM has a failed test in it (IE state is "TEST FAILED")
 	Log.info("BurninState: %d ErrorMessage: %s", (int)BurninState, BurninErrorMessage);
@@ -137,16 +140,12 @@ void BurninTest::loop() {
 	}
 }
 
-
 static int blueBlinksFromRuntime(uint64_t run_time_millis) {
-	//#define HOURS_TO_MILLIS(hours) (hours * 60 * 60 * 1000)
-	#define HOURS_TO_MILLIS(hours) (hours * 1000) // DEBUG: Based on seconds instead
-
-	if(run_time_millis >= HOURS_TO_MILLIS(72)){
+	if(run_time_millis >= std::chrono::duration_cast<std::chrono::milliseconds>(72h).count()){
 		return 4;
-	} else if(run_time_millis >= HOURS_TO_MILLIS(48)){
+	} else if(run_time_millis >= std::chrono::duration_cast<std::chrono::milliseconds>(48h).count()){
 		return 3;
-	} else if(run_time_millis >= HOURS_TO_MILLIS(24)){
+	} else if(run_time_millis >= std::chrono::duration_cast<std::chrono::milliseconds>(24h).count()){
 		return 2;
 	} else {
 		return 1;
@@ -209,47 +208,43 @@ void BurninTest::ledLoop(void * arg) {
 }
 
 
-bool BurninTest::testGpio() {
-	LastBurnInTest = BurninTestName::GPIO;
+static JSONValue getValue(const JSONValue& obj, const char* name) {
+    JSONObjectIterator it(obj);
+    while (it.next()) {
+        if (it.name() == name) {
+            return it.value();
+        }
+    }
+    return JSONValue();
+}
 
-	char buffer[256] = {};
-	JSONBufferWriter writer(buffer, sizeof(buffer)-1);
-	writer.beginObject().name("IO_TEST").value("").endObject();
-
-	const char * gpio_test_pass_response = "{\"pass\":true}";
+bool BurninTest::callFqcTest(String testName){
 	bool testPassed = true;
+	char buffer[256] = {};
+
+	JSONBufferWriter writer(buffer, sizeof(buffer)-1);
+	writer.beginObject().name(testName).value("").endObject();
 
 	JSONValue gpioTestCommand = JSONValue::parseCopy(buffer);
 	FqcTest::instance()->process(gpioTestCommand);
-	String testResult = String(FqcTest::instance()->reply());
-	if (testResult != gpio_test_pass_response) {
+
+	JSONValue testResult = getValue(JSONValue::parseCopy(FqcTest::instance()->reply()), "pass");
+	if(!testResult.isValid() || testResult.toString() != "true") {
+		strlcpy(BurninErrorMessage, FqcTest::instance()->reply(), sizeof(BurninErrorMessage));
 		testPassed = false;
-		strlcpy(BurninErrorMessage, testResult.c_str(), sizeof(BurninErrorMessage));
 	}
 	
 	return testPassed;
 }
 
+bool BurninTest::testGpio() {
+	LastBurnInTest = BurninTestName::GPIO;
+	return callFqcTest("IO_TEST");
+}
+
 bool BurninTest::testWifiScan() {
 	LastBurnInTest = BurninTestName::WIFI_SCAN;
-
-	char buffer[256] = {};
-	JSONBufferWriter writer(buffer, sizeof(buffer)-1);
-	writer.beginObject().name("WIFI_SCAN_NETWORKS").value("").endObject();
-
-	const char * wifi_scan_pass_response = "{\"pass\":true";
-	bool testPassed = true;
-
-	JSONValue wifiScanCommand = JSONValue::parseCopy(buffer);
-	FqcTest::instance()->process(wifiScanCommand);
-	String testResult = String(FqcTest::instance()->reply());
-	if(!testResult.startsWith(wifi_scan_pass_response))
-	{
-		testPassed = false;
-		strlcpy(BurninErrorMessage, testResult.c_str(), sizeof(BurninErrorMessage));
-	}
-
-	return testPassed;
+	return callFqcTest("WIFI_SCAN_NETWORKS");
 }
 
 bool BurninTest::testBleScan() {
@@ -258,11 +253,9 @@ bool BurninTest::testBleScan() {
 	return true;
 }
 
-
-// Linked list based, using fixed sized mallocs
 bool BurninTest::testSram() {
 	LastBurnInTest = BurninTestName::SRAM;
-	const uint32_t MAX_CHUNK_SIZE = 1024;
+
 	bool test_passed = true;
  	Random rng;
 	MemoryChunk* root = nullptr;
@@ -270,7 +263,7 @@ bool BurninTest::testSram() {
     size_t chunk_count = 0;
 
     // Generate a random test pattern
-    char * test_pattern = (char *)malloc(MAX_CHUNK_SIZE);
+    char * test_pattern = (char *)malloc(CHUNK_DATA_SIZE);
     if(!test_pattern) {
 		strlcpy(BurninErrorMessage, "Failed to alloc test pattern chunk", sizeof(BurninErrorMessage));
 		printRuntimeInfo();
@@ -278,18 +271,13 @@ bool BurninTest::testSram() {
     	// return early, no other allocations to free
     	return test_passed; 
     }
- 
- 	rng.gen(test_pattern, sizeof(test_pattern));
+ 	rng.gen(test_pattern, CHUNK_DATA_SIZE);
    
-    // Exhaust most of memory
-	while(System.freeMemory() > (MAX_CHUNK_SIZE * 3)){
+   	printRuntimeInfo();
+    // Exhaust memory, leaving some free space for OS operation
+    while(System.freeMemory() > (10 * 1024)) {
 		MemoryChunk* b = new MemoryChunk();
 		if (!b) {
-			String errorMessage = "Failed to alloc test chunk of size: ";
-			errorMessage += String(sizeof(MemoryChunk), DEC);
-			strlcpy(BurninErrorMessage, errorMessage.c_str(), sizeof(BurninErrorMessage));
-			printRuntimeInfo();
-    		test_passed = false;
 			break;
 		} else {
 			total_memory_allocated += sizeof(MemoryChunk);
@@ -299,7 +287,7 @@ bool BurninTest::testSram() {
 			root = b;
 		}
 	}
-
+	printRuntimeInfo();
     Log.info("Allocated %u chunks with total size %u, free memory now %lu", chunk_count, total_memory_allocated, System.freeMemory());
 
 	MemoryChunk* current = root;
@@ -332,9 +320,13 @@ bool BurninTest::testSpiFlash(){
 	LastBurnInTest = BurninTestName::SPI_FLASH;
 	bool test_passed = true;
 
+#if HAL_PLATFORM_RTL872X
 	// MBR part1, Bootloader, System Parts
-	// TODO: Dont use P2 specific addresses
-	Vector<uint32_t> module_addresses = {0x08014000, 0x08004020, 0x08060000 /*0x08000000*/};
+	Vector<uint32_t> module_addresses = {KM0_PART1_START_ADDRESS, 0x08004020, CORE_FW_ADDRESS /*0x08000000*/};
+#else
+	// TODO: Non P2 platforms
+	Vector<uint32_t> module_addresses = {};
+#endif
 
 	for (auto & address : module_addresses) {
 		module_info_t *module_header = (module_info_t*)(address);
@@ -363,8 +355,6 @@ bool BurninTest::testSpiFlash(){
 			break;
 		}
 	}
-
-	// TODO: user module: start with suffix, find module header, go from there
 
 	return test_passed;
 }
