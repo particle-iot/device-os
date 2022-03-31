@@ -41,6 +41,7 @@ DYNALIB_TABLE_EXTERN(hal_wlan);
 DYNALIB_TABLE_EXTERN(hal_ble);
 #endif // HAL_PLATFORM_BLE
 DYNALIB_TABLE_EXTERN(hal_posix_syscall);
+DYNALIB_TABLE_EXTERN(hal_storage);
 
 // strange that this is needed given that the entire block is scoped extern "C"
 // without it, the section name doesn't match *.system_part2_module as expected in the linker script
@@ -80,7 +81,8 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
 #if HAL_PLATFORM_BLE
     , DYNALIB_TABLE_NAME(hal_ble)
 #endif // HAL_PLATFORM_BLE
-    , DYNALIB_TABLE_NAME(hal_posix_syscall)
+    , DYNALIB_TABLE_NAME(hal_posix_syscall),
+    DYNALIB_TABLE_NAME(hal_storage)
 };
 
 #include "system_part1_loader.c"

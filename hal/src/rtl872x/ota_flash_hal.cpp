@@ -330,10 +330,14 @@ uint16_t HAL_OTA_ChunkSize()
 
 bool HAL_FLASH_Begin(uint32_t address, uint32_t length, void* reserved)
 {
+    int r = 0;
     if (module_ota.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
-        FLASH_Begin(FLASH_INTERNAL, address, length);
+        r = FLASH_Begin(FLASH_INTERNAL, address, length);
     } else {
-        FLASH_Begin(FLASH_SERIAL, address, length);
+        r = FLASH_Begin(FLASH_SERIAL, address, length);
+    }
+    if (r != FLASH_ACCESS_RESULT_OK) {
+        return false;
     }
     return true;
 }

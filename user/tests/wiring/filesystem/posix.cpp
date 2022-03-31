@@ -511,7 +511,7 @@ test(FS_POSIX_03_TruncateStress) {
     const int iterations = 20;
 
     for (int iter = 0; iter < iterations; iter++) {
-        Serial.printlnf("iter=%d", iter);
+        // Serial.printlnf("iter=%d", iter);
         // Create and write
         for (int i = 0; i < num; i++) {
             int fd = open(files[i], O_CREAT | O_RDWR | O_APPEND);
@@ -544,7 +544,7 @@ test(FS_POSIX_03_TruncateStress) {
                 assertEqual(0, lseek(fds[i], 0, SEEK_SET));
                 for (ssize_t pos = 0; pos < expectedSize; pos += sizeof(chunk)) {
                     size_t toRead = std::min<size_t>(expectedSize - pos, sizeof(chunk));
-                    Serial.printlnf("[%d] pos=%u/%u toRead=%u", i, pos, expectedSize, toRead);
+                    // Serial.printlnf("[%d] pos=%u/%u toRead=%u", i, pos, expectedSize, toRead);
                     assertEqual(toRead, read(fds[i], chunk, toRead));
                     assertEqual(0, memcmp(chunk, randomData + pos, toRead));
                 }
@@ -554,7 +554,7 @@ test(FS_POSIX_03_TruncateStress) {
             if (expectedSize >= 0) {
                 // ftruncate
                 for (int i = 0; i < num; i++) {
-                    Serial.printlnf("[%d] ftruncate %d", i, expectedSize);
+                    // Serial.printlnf("[%d] ftruncate %d", i, expectedSize);
                     assertEqual(ftruncate(fds[i], expectedSize), 0);
                 }
             }
