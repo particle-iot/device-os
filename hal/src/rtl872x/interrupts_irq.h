@@ -27,6 +27,7 @@ extern "C" {
 #ifdef USE_STDPERIPH_DRIVER
 // FIXME
 typedef int32_t IRQn_Type;
+#if defined (ARM_CORE_CM4)
 #ifdef AMEBAD_TODO
 #ifndef __ARMV8MML_REV
 #define __ARMV8MML_REV                 0x0000U  /*!< ARMV8MML Core Revision                                                    */
@@ -69,6 +70,29 @@ typedef int32_t IRQn_Type;
 #include <arm_cmse.h>   /* Use CMSE intrinsics */
 #include "core_armv8mml.h"
 #include "core_cache.h"
+#else
+#ifndef __ARMV8MBL_REV
+#define __ARMV8MBL_REV                 0x0000U  /*!< ARMV8MBL Core Revision                                                    */
+#endif // __ARMV8MBL_REV
+#ifndef __NVIC_PRIO_BITS
+#define __NVIC_PRIO_BITS               2        /*!< Number of Bits used for Priority Levels                                   */
+#endif // __NVIC_PRIO_BITS
+#ifndef __Vendor_SysTickConfig
+#define __Vendor_SysTickConfig         0        /*!< Set to 1 if different SysTick Config is used                              */
+#endif // __Vendor_SysTickConfig
+#ifndef __VTOR_PRESENT
+#define __VTOR_PRESENT                 1        /*!< Set to 1 if CPU supports Vector Table Offset Register                     */
+#endif // __VTOR_PRESENT
+#ifndef __SAU_REGION_PRESENT
+#define __SAU_REGION_PRESENT           0        /*!< SAU present or not                                                        */
+#endif // __SAU_REGION_PRESENT
+
+#ifndef __MPU_PRESENT
+#define __MPU_PRESENT                  1         /**< Defines if an MPU is present or not */
+#endif // __MPU_PRESENT
+#include "core_armv8mbl.h"
+#include "core_cache.h"
+#endif // #if defined (ARM_CORE_CM4)
 #endif /* USE_STDPERIPH_DRIVER */
 
 typedef enum hal_irq_t {
