@@ -187,7 +187,7 @@ public:
 
         alarmHandler_ = handler;
         alarmContext_ = context;
-        
+
         struct tm* alarm = localtime(&alarmTv.tv_sec);
 
         /* set alarm */
@@ -198,16 +198,12 @@ public:
         RTC_AlarmStruct.RTC_AlarmTime.RTC_Hours = alarm->tm_hour;
         RTC_AlarmStruct.RTC_AlarmTime.RTC_Minutes = alarm->tm_min;
         RTC_AlarmStruct.RTC_AlarmTime.RTC_Seconds = alarm->tm_sec;
-
         RTC_AlarmStruct.RTC_AlarmMask = RTC_AlarmMask_None;
         RTC_AlarmStruct.RTC_Alarm2Mask = RTC_Alarm2Mask_None;
-
         RTC_SetAlarm(RTC_Format_BIN, &RTC_AlarmStruct);
-
         RTC_AlarmCmd(ENABLE);
         InterruptRegister(rtcAlarmHandler, RTC_IRQ, (uint32_t)this, CFG_RTC_PRIORITY);
         InterruptEn(RTC_IRQ, CFG_RTC_PRIORITY);
-
         return SYSTEM_ERROR_NONE;
     }
 

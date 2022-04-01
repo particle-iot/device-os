@@ -28,7 +28,8 @@
 
 // FIXME: breaks USB comms as USB interrupts are processed in a thread
 #if HAL_PLATFORM_RTL872X
-#undef SINGLE_THREADED_BLOCK()
+#undef SINGLE_THREADED_BLOCK
+#define SINGLE_THREADED_BLOCK()
 #endif // HAL_PLATFORM_RTL872X
 
 test(GPIO_01_PinModeSetResultsInCorrectMode) {

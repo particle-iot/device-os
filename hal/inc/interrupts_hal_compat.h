@@ -23,97 +23,97 @@ typedef hal_interrupt_direct_flags_t HAL_Direct_Interrupt_Flags __attribute__((d
 typedef hal_interrupt_callback_t HAL_InterruptCallback __attribute__((deprecated("Use hal_interrupt_callback_t")));
 typedef hal_interrupt_extra_configuration_t HAL_InterruptExtraConfiguration __attribute__((deprecated(("Use hal_interrupt_extra_configuration_t"))));
 
-inline void __attribute__((deprecated("Use hal_interrupt_init() instead"), always_inline))
+static inline void __attribute__((deprecated("Use hal_interrupt_init() instead"), always_inline))
 HAL_Interrupts_Init(void) {
     hal_interrupt_init();
 }
 
-inline void __attribute__((deprecated("Use hal_interrupt_uninit() instead"), always_inline))
+static inline void __attribute__((deprecated("Use hal_interrupt_uninit() instead"), always_inline))
 HAL_Interrupts_Uninit(void) {
     hal_interrupt_uninit();
 }
 
-inline int __attribute__((deprecated("Use hal_interrupt_attach() instead"), always_inline))
+static inline int __attribute__((deprecated("Use hal_interrupt_attach() instead"), always_inline))
 HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config) {
     return hal_interrupt_attach(pin, handler, data, mode, config);
 }
 
-inline int __attribute__((deprecated("Use hal_interrupt_detach() instead"), always_inline))
+static inline int __attribute__((deprecated("Use hal_interrupt_detach() instead"), always_inline))
 HAL_Interrupts_Detach(uint16_t pin) {
     return hal_interrupt_detach(pin);
 }
 
-inline int __attribute__((deprecated("Use hal_interrupt_detach_ext() instead"), always_inline))
+static inline int __attribute__((deprecated("Use hal_interrupt_detach_ext() instead"), always_inline))
 HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
     return hal_interrupt_detach_ext(pin, keepHandler, reserved);
 }
 
-inline void __attribute__((deprecated("Use hal_interrupt_enable_all() instead"), always_inline))
+static inline void __attribute__((deprecated("Use hal_interrupt_enable_all() instead"), always_inline))
 HAL_Interrupts_Enable_All(void) {
     hal_interrupt_enable_all();
 }
 
-inline void __attribute__((deprecated("Use hal_interrupt_disable_all() instead"), always_inline))
+static inline void __attribute__((deprecated("Use hal_interrupt_disable_all() instead"), always_inline))
 HAL_Interrupts_Disable_All(void) {
     hal_interrupt_disable_all();
 }
 
-inline void __attribute__((deprecated("Use hal_interrupt_suspend() instead"), always_inline))
+static inline void __attribute__((deprecated("Use hal_interrupt_suspend() instead"), always_inline))
 HAL_Interrupts_Suspend(void) {
     hal_interrupt_suspend();
 }
 
-inline void __attribute__((deprecated("Use hal_interrupt_restore() instead"), always_inline))
+static inline void __attribute__((deprecated("Use hal_interrupt_restore() instead"), always_inline))
 HAL_Interrupts_Restore(void) {
     hal_interrupt_restore();
 }
 
-inline void __attribute__((deprecated("Use hal_interrupt_trigger() instead"), always_inline))
+static inline void __attribute__((deprecated("Use hal_interrupt_trigger() instead"), always_inline))
 HAL_Interrupts_Trigger(uint16_t pin, void* reserved) {
     hal_interrupt_trigger(pin, reserved);
 }
 
-inline uint8_t __attribute__((deprecated("Use hal_interrupt_set_system_handler() instead"), always_inline))
+static inline uint8_t __attribute__((deprecated("Use hal_interrupt_set_system_handler() instead"), always_inline))
 HAL_Set_System_Interrupt_Handler(hal_irq_t irq, const HAL_InterruptCallback* callback, HAL_InterruptCallback* previous, void* reserved) {
     return hal_interrupt_set_system_handler(irq, callback, previous, reserved);
 }
 
-inline uint8_t __attribute__((deprecated("Use hal_interrupt_get_system_handler() instead"), always_inline))
+static inline uint8_t __attribute__((deprecated("Use hal_interrupt_get_system_handler() instead"), always_inline))
 HAL_Get_System_Interrupt_Handler(hal_irq_t irq, HAL_InterruptCallback* callback, void* reserved) {
     return hal_interrupt_get_system_handler(irq, callback, reserved);
 }
 
-inline void __attribute__((deprecated("Use hal_interrupt_trigger_system() instead"), always_inline))
+static inline void __attribute__((deprecated("Use hal_interrupt_trigger_system() instead"), always_inline))
 HAL_System_Interrupt_Trigger(hal_irq_t irq, void* reserved) {
     hal_interrupt_trigger_system(irq, reserved);
 }
 
-inline int __attribute__((deprecated("Use hal_interrupt_set_direct_handler() instead"), always_inline))
+static inline int __attribute__((deprecated("Use hal_interrupt_set_direct_handler() instead"), always_inline))
 HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved) {
     return hal_interrupt_set_direct_handler(irqn, handler, flags, reserved);
 }
 
-inline bool __attribute__((deprecated("Use hal_interrupt_is_isr() instead"), always_inline))
+static inline bool __attribute__((deprecated("Use hal_interrupt_is_isr() instead"), always_inline))
 HAL_IsISR() {
     return hal_interrupt_is_isr();
 }
 
-inline int32_t __attribute__((deprecated("Use hal_interrupt_serviced_irqn() instead"), always_inline))
+static inline int32_t __attribute__((deprecated("Use hal_interrupt_serviced_irqn() instead"), always_inline))
 HAL_ServicedIRQn() {
     return hal_interrupt_serviced_irqn();
 }
 
-inline uint32_t __attribute__((deprecated("Use hal_interrupt_get_basepri() instead"), always_inline))
+static inline uint32_t __attribute__((deprecated("Use hal_interrupt_get_basepri() instead"), always_inline))
 HAL_GetBasePri() {
     return hal_interrupt_get_basepri();
 }
 
-inline bool __attribute__((deprecated("Use hal_interrupt_is_irq_masked() instead"), always_inline))
+static inline bool __attribute__((deprecated("Use hal_interrupt_is_irq_masked() instead"), always_inline))
 HAL_IsIrqMasked(int32_t irqn) {
     return hal_interrupt_is_irq_masked(irqn);
 }
 
-inline bool __attribute__((deprecated("Use hal_interrupt_will_preempt() instead"), always_inline))
+static inline bool __attribute__((deprecated("Use hal_interrupt_will_preempt() instead"), always_inline))
 HAL_WillPreempt(int32_t irqn1, int32_t irqn2) {
     return hal_interrupt_will_preempt(irqn1, irqn2);
 }
