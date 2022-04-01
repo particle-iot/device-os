@@ -27,7 +27,7 @@ extern "C" {
 #ifdef USE_STDPERIPH_DRIVER
 // FIXME
 typedef int32_t IRQn_Type;
-#if defined (ARM_CORE_CM4)
+#if defined (ARM_CPU_CORTEX_M33)
 #ifdef AMEBAD_TODO
 #ifndef __ARMV8MML_REV
 #define __ARMV8MML_REV                 0x0000U  /*!< ARMV8MML Core Revision                                                    */
@@ -92,7 +92,7 @@ typedef int32_t IRQn_Type;
 #endif // __MPU_PRESENT
 #include "core_armv8mbl.h"
 #include "core_cache.h"
-#endif // #if defined (ARM_CORE_CM4)
+#endif // #if defined (ARM_CPU_CORTEX_M33)
 #endif /* USE_STDPERIPH_DRIVER */
 
 typedef enum hal_irq_t {

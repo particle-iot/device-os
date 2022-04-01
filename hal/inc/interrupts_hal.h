@@ -169,7 +169,7 @@ static inline int32_t hal_interrupt_serviced_irqn() {
 }
 
 static inline uint32_t hal_interrupt_get_basepri() {
-#if defined (ARM_CORE_CM4)
+#if defined (ARM_CPU_CORTEX_M33)
     return (__get_BASEPRI() >> (8 - __NVIC_PRIO_BITS));
 #else
     return 0;
@@ -188,7 +188,7 @@ static inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
 
     uint32_t priority1 = NVIC_GetPriority((IRQn_Type)irqn1);
     uint32_t priority2 = NVIC_GetPriority((IRQn_Type)irqn2);
-#if defined (ARM_CORE_CM4)
+#if defined (ARM_CPU_CORTEX_M33)
     uint32_t priorityGroup = NVIC_GetPriorityGrouping();
     uint32_t p1, sp1, p2, sp2;
     NVIC_DecodePriority(priority1, priorityGroup, &p1, &sp1);
@@ -200,7 +200,7 @@ static inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
     if (priority1 < priority2) {
         return true;
     }
-#endif // defined (ARM_CORE_CM4)
+#endif // defined (ARM_CPU_CORTEX_M33)
     return false;
 }
 
