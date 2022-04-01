@@ -158,6 +158,7 @@
 | 1100 | 3200 | 3.2.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3201 | 3.2.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1007 | 3210 | 3.2.1-p2.1    |      P2 |
+| 1007 | 3211 | 3.2.1-p2.1    |      P2 |
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
 

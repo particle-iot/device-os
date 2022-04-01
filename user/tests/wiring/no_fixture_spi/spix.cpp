@@ -499,7 +499,7 @@ test(SPIX_11_SPI_Clock_Speed)
 
 test(SPIX_12_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 1;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
 
@@ -519,7 +519,7 @@ test(SPIX_12_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
 
 test(SPIX_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 1;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
 
@@ -541,7 +541,7 @@ test(SPIX_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
 
 test(SPIX_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 2;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
 
@@ -564,7 +564,7 @@ test(SPIX_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
 
 test(SPIX_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 1;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
@@ -585,7 +585,7 @@ test(SPIX_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
 
 test(SPIX_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 1;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
@@ -608,7 +608,7 @@ test(SPIX_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
 
 test(SPIX_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 2;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
@@ -631,7 +631,7 @@ test(SPIX_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
 
 test(SPIX_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 16;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
@@ -654,7 +654,7 @@ test(SPIX_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
 
 test(SPIX_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 128;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
@@ -677,7 +677,7 @@ test(SPIX_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
 
 test(SPIX_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
 {
-    SINGLE_THREADED_SECTION();
+    SpixTestLock lk;
     constexpr unsigned int transferSize = 1024;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
