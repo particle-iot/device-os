@@ -53,8 +53,17 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
 
         if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
-                (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
-            Pinmux_Swdoff();
+            (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
+            if (mode == PIN_MODE_SWD) {
+                //"Pinmux_Swdon"
+                u32 Temp = 0;
+                Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);
+                Temp |= (BIT_LSYS_SWD_PMUX_EN);    
+                HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN, Temp);
+            }
+            else {
+                Pinmux_Swdoff();    
+            }
         }
 
         // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
