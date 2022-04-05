@@ -1,6 +1,7 @@
 #pragma once
 
 #include "spark_wiring_vector.h"
+#include "debug_output_handler.h"
 
 namespace particle {
 
@@ -51,6 +52,7 @@ private:
 	typedef bool (BurninTest::*burnin_test_function)();
 	Vector<burnin_test_function> tests_;
 	Vector<String> test_names_;
+    std::unique_ptr<Serial1LogHandler> logger_;
 
 	bool callFqcTest(String testName);
 
