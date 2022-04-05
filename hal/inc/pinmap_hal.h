@@ -52,6 +52,7 @@ typedef enum PinMode {
     AN_OUTPUT = 7,          // Used internally for DAC Output,
     OUTPUT_OPEN_DRAIN = AF_OUTPUT_DRAIN,
     OUTPUT_OPEN_DRAIN_PULLUP = 8,
+    PIN_MODE_SWD = 9,
     PIN_MODE_NONE = 0xFF
 } PinMode;
 

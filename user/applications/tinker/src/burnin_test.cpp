@@ -44,8 +44,9 @@ void BurninTest::setup(bool forceEnable) {
 	if (!forceEnable) {
 		// Read the trigger pin for a 1khz pulse. If present, enter burnin mode.
 		pinMode(trigger_pin, INPUT);
-
 	    pulse_width_micros = pulseIn(trigger_pin, HIGH);
+	    pinMode(trigger_pin, PIN_MODE_SWD);
+
 	    // Margin of error for rtl872xD tick/microsecond counter
 	    const uint32_t error_margin_micros = (31 * 2);
 	    // 1KHZ square wave at 50% duty cycle = 500us pulses
@@ -54,11 +55,8 @@ void BurninTest::setup(bool forceEnable) {
 	    if((pulse_width_micros > (expected_pulse_width_micros + error_margin_micros)) ||
 	       (pulse_width_micros < (expected_pulse_width_micros - error_margin_micros))) {
 			BurninState = BurninTestState::DISABLED;
-			// TODO: Figure out how to leave device in programmable state with SWD pin
-	    	pinMode(trigger_pin, PIN_MODE_NONE);
 	    	return;
 	    }
-
 	}
 
 	static Serial1LogHandler logger(115200, LOG_LEVEL_ALL);
