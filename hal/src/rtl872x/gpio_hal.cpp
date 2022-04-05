@@ -35,6 +35,15 @@ void hal_gpio_mode(hal_pin_t pin, PinMode mode) {
     hal_gpio_configure(pin, &conf, nullptr);
 }
 
+// RTL872XD has two SWD ports. Default is PA27, but PB3 can be configured as alternate SWD as well
+static bool isSwdPin(hal_pin_info_t* pinInfo){
+    if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
+        (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
+        return true;
+    }
+    return false;
+}
+
 int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
     CHECK_TRUE(hal_pin_is_valid(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(conf, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -52,18 +61,8 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
 
         uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
 
-        if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
-            (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
-            if (mode == PIN_MODE_SWD) {
-                //"Pinmux_Swdon"
-                u32 Temp = 0;
-                Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);
-                Temp |= (BIT_LSYS_SWD_PMUX_EN);    
-                HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN, Temp);
-            }
-            else {
-                Pinmux_Swdoff();    
-            }
+        if (isSwdPin(pinInfo)) {
+            Pinmux_Swdoff();
         }
 
         // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
@@ -106,6 +105,16 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             case OUTPUT_OPEN_DRAIN_PULLUP: {
                 GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
                 GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
+                break;
+            }
+            case PIN_MODE_SWD: {
+                if (isSwdPin(pinInfo)) {
+                    //"Pinmux_Swdon"
+                    u32 Temp = 0;
+                    Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);
+                    Temp |= (BIT_LSYS_SWD_PMUX_EN);    
+                    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN, Temp);
+                }
                 break;
             }
             case PIN_MODE_NONE: {
