@@ -71,6 +71,7 @@ int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t pa
  * @param reserved
  */
 void network_listen(network_handle_t network, uint32_t flags, void* reserved);
+int network_listen_sync(network_handle_t network, uint32_t flags, void* reserved);
 void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void* reserved);
 uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, void* reserved);
 bool network_listening(network_handle_t network, uint32_t param1, void* reserved);
