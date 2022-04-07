@@ -253,15 +253,7 @@ public:
 
     ssize_t write(const uint8_t* buffer, size_t size) {
         CHECK_TRUE(buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
-
-        auto uartInstance = uartTable_[index_].UARTx;
-        if (uartInstance != UART2_DEV && hal_interrupt_is_isr()) {
-            // FIXME: logging from ISR
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-
         const ssize_t canWrite = CHECK(space());
-        
         const size_t writeSize = std::min((size_t)canWrite, size);
         CHECK_TRUE(writeSize > 0, SYSTEM_ERROR_NO_MEMORY);
         
@@ -346,16 +338,10 @@ public:
     int pollStatus() {
         auto uartInstance = uartTable_[index_].UARTx;
         if (uartInstance != UART2_DEV) {
-            // FIXME: logging from ISR
-            if (hal_interrupt_is_isr()) {
-                return SYSTEM_ERROR_INVALID_STATE;
-            } else {
-                // The delay function will call into taskEXIT_CRITICAL() to enable activation of exceptions.
-                // We need this if LOG_FROM_ISR is defined, see spark_wiring_logging.cpp.
-                HAL_Delay_Milliseconds(1);
-            }
+            TxLock lk(this);
+            uartTxDmaCompleteHandler(this);
         } else {
-            AtomicBlock atomic(this);
+            AtomicBlock atomic(this); // Do not use TxLock(), otherwise INT status won't be set.
             uartTxRxIntHandler(this);
         }
         return SYSTEM_ERROR_NONE;
@@ -616,18 +602,25 @@ private:
 
     static uint32_t uartTxDmaCompleteHandler(void* data) {
         auto uart = (Usart*)data;
+        auto uartInstance = uart->uartTable_[uart->index_].UARTx;
+        if (uartInstance == UART2_DEV) {
+            // LOG UART doesn't use DMA mode
+            return 0;
+        }
         if (!uart->transmitting_) {
             return 0;
         }
-        uart->transmitting_ = false;
-        auto txDmaInitStruct = &uart->txDmaInitStruct_;
-        // Clean Auto Reload Bit
-        GDMA_ChCleanAutoReload(txDmaInitStruct->GDMA_Index, txDmaInitStruct->GDMA_ChNum, CLEAN_RELOAD_DST);
-        // Clear Pending ISR
-        GDMA_ClearINT(txDmaInitStruct->GDMA_Index, txDmaInitStruct->GDMA_ChNum);
-        GDMA_Cmd(txDmaInitStruct->GDMA_Index, txDmaInitStruct->GDMA_ChNum, DISABLE);
-        uart->txBuffer_.consumeCommit(uart->curTxCount_);
-        uart->startTransmission();
+        if (GDMA_BASE->STATUS_TFR != 0x00000000 || GDMA_BASE->STATUS_BLOCK != 0x00000000 || GDMA_BASE->STATUS_ERR != 0x00000000) {
+            uart->transmitting_ = false;
+            auto txDmaInitStruct = &uart->txDmaInitStruct_;
+            // Clean Auto Reload Bit
+            GDMA_ChCleanAutoReload(txDmaInitStruct->GDMA_Index, txDmaInitStruct->GDMA_ChNum, CLEAN_RELOAD_DST);
+            // Clear Pending ISR
+            GDMA_ClearINT(txDmaInitStruct->GDMA_Index, txDmaInitStruct->GDMA_ChNum);
+            GDMA_Cmd(txDmaInitStruct->GDMA_Index, txDmaInitStruct->GDMA_ChNum, DISABLE);
+            uart->txBuffer_.consumeCommit(uart->curTxCount_);
+            uart->startTransmission();
+        }
         return 0;
     }
 
