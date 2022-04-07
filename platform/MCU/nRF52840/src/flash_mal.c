@@ -270,13 +270,19 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 
     if (flashDeviceID == FLASH_INTERNAL)
     {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
         return (startAddress >= 0x00000000 && endAddress <= 0x100000) ||
                (startAddress >= 0x12000000 && endAddress <= 0x20000000);
+#pragma GCC diagnostic pop
     }
     else if (flashDeviceID == FLASH_SERIAL)
     {
 #ifdef USE_SERIAL_FLASH
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
         return startAddress >= 0x00000000 && endAddress <= EXTERNAL_FLASH_SIZE;
+#pragma GCC diagnostic pop
 #else
         return false;
 #endif
