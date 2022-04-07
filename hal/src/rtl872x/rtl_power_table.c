@@ -60,16 +60,18 @@ enum odm_pw_lmt_rfpath_type {
 };
 
 const u32 array_mp_8721d_phy_reg_pg_type1[] = {
-    0, 0, 0, 0x00000e08, 0x0000ff00, 0x00004000,
-    0, 0, 0, 0x0000086c, 0xffffff00, 0x36404000,
-    0, 0, 0, 0x00000e00, 0xffffffff, 0x38383838,
-    0, 0, 0, 0x00000e04, 0xffffffff, 0x34343638,
-    0, 0, 0, 0x00000e10, 0xffffffff, 0x36363636,
-    0, 0, 0, 0x00000e14, 0xffffffff, 0x32323436,
-    1, 0, 0, 0x00000e00, 0xffffffff, 0x32343436,
-    1, 0, 0, 0x00000e04, 0xffffffff, 0x28283032,
-    1, 0, 0, 0x00000e10, 0xffffffff, 0x30323232,
-    1, 0, 0, 0x00000e14, 0xffffffff, 0x26262830
+    // 2.4GHz
+    0, 0, 0, 0x00000e08, 0x0000ff00, 0x00004000,    // 11b: 1M
+    0, 0, 0, 0x0000086c, 0xffffff00, 0x36363800,    // 11b: 11M 5.5M 2M
+    0, 0, 0, 0x00000e00, 0xffffffff, 0x36383840,    // 11g: 18M 12M 9M 6M
+    0, 0, 0, 0x00000e04, 0xffffffff, 0x34343436,    // 11g: 54M 48M 36M 24M
+    0, 0, 0, 0x00000e10, 0xffffffff, 0x34363638,    // 11n: MCS3 MCS2 MCS1 MCS0
+    0, 0, 0, 0x00000e14, 0xffffffff, 0x32323234,    // 11n: MCS7 MCS6 MCS5 MCS4
+    // 5GHz
+    1, 0, 0, 0x00000e00, 0xffffffff, 0x32343436,    // 11a: 18M 12M 9M 6M
+    1, 0, 0, 0x00000e04, 0xffffffff, 0x28283032,    // 11a: 54M 48M 36M 24M
+    1, 0, 0, 0x00000e10, 0xffffffff, 0x30323234,    // 11n: MCS3 MCS2 MCS1 MCS0
+    1, 0, 0, 0x00000e14, 0xffffffff, 0x26262830     // 11n: MCS7 MCS6 MCS5 MCS4
 };
 u32 arraylength_8721d_phy_reg_pg_type1 = sizeof(array_mp_8721d_phy_reg_pg_type1)  / sizeof(u32);
 
