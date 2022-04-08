@@ -26,6 +26,7 @@
 #include "interrupts_hal.h"
 #include "usart_hal_private.h"
 #include "timer_hal.h"
+#include "service_debug.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -359,10 +360,7 @@ public:
     static uint32_t uartTxRxIntHandler(void* data) {
         auto uart = (Usart*)data;
         auto uartInstance = uart->uartTable_[uart->index_].UARTx;
-        if (uartInstance != UART2_DEV) {
-            // Only the LOG UART use interrupt mode
-            return 0;
-        }
+        SPARK_ASSERT(uartInstance == UART2_DEV);
         volatile uint8_t regIir = UART_IntStatus(uartInstance);
         if ((regIir & RUART_IIR_INT_PEND) != 0) {
             // No pending IRQ
@@ -603,10 +601,7 @@ private:
     static uint32_t uartTxDmaCompleteHandler(void* data) {
         auto uart = (Usart*)data;
         auto uartInstance = uart->uartTable_[uart->index_].UARTx;
-        if (uartInstance == UART2_DEV) {
-            // LOG UART doesn't use DMA mode
-            return 0;
-        }
+        SPARK_ASSERT(uartInstance != UART2_DEV);
         if (!uart->transmitting_) {
             return 0;
         }
@@ -626,6 +621,8 @@ private:
 
     static uint32_t uartRxDmaCompleteHandler(void* data) {
         auto uart = (Usart*)data;
+        auto uartInstance = uart->uartTable_[uart->index_].UARTx;
+        SPARK_ASSERT(uartInstance != UART2_DEV);
         if (!uart->receiving_) {
             return 0;
         }
