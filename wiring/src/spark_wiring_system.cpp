@@ -15,46 +15,46 @@ extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
 
 SystemClass System;
 
-void SystemClass::factoryReset(SystemResetFlags flags)
+int SystemClass::factoryReset(SystemResetFlags flags)
 {
     //This method will work only if the Core is supplied
     //with the latest version of Bootloader
-    system_reset(SYSTEM_RESET_MODE_FACTORY, 0, 0, flags.value(), nullptr);
+    return system_reset(SYSTEM_RESET_MODE_FACTORY, 0, 0, flags.value(), nullptr);
 }
 
-void SystemClass::dfu(SystemResetFlags flags)
+int SystemClass::dfu(SystemResetFlags flags)
 {
-    system_reset(SYSTEM_RESET_MODE_DFU, 0, 0, flags.value(), nullptr);
+    return system_reset(SYSTEM_RESET_MODE_DFU, 0, 0, flags.value(), nullptr);
 }
 
-void SystemClass::dfu(bool persist)
+int SystemClass::dfu(bool persist)
 {
     // true  - DFU mode persist if firmware upgrade is not completed
     // false - Briefly enter DFU bootloader mode (works with latest bootloader only )
     //         Subsequent reset or power off-on will execute normal firmware
-    dfu(persist ? RESET_PERSIST_DFU : SystemResetFlags());
+    return dfu(persist ? RESET_PERSIST_DFU : SystemResetFlags());
 }
 
-void SystemClass::reset()
+int SystemClass::reset()
 {
     // We can't simply provide a default value for the argument of reset(SystemResetFlags) because
     // the reference docs show that method used without arguments in the application watchdog example
-    reset(SystemResetFlags());
+    return reset(SystemResetFlags());
 }
 
-void SystemClass::reset(SystemResetFlags flags)
+int SystemClass::reset(SystemResetFlags flags)
 {
-    reset(0, flags);
+    return reset(0, flags);
 }
 
-void SystemClass::reset(uint32_t data, SystemResetFlags flags)
+int SystemClass::reset(uint32_t data, SystemResetFlags flags)
 {
-    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_USER, data, flags.value(), nullptr);
+    return system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_USER, data, flags.value(), nullptr);
 }
 
-void SystemClass::enterSafeMode(SystemResetFlags flags)
+int SystemClass::enterSafeMode(SystemResetFlags flags)
 {
-    system_reset(SYSTEM_RESET_MODE_SAFE, 0, 0, flags.value(), nullptr);
+    return system_reset(SYSTEM_RESET_MODE_SAFE, 0, 0, flags.value(), nullptr);
 }
 
 SystemSleepResult SystemClass::sleep(const particle::SystemSleepConfiguration& config) {
