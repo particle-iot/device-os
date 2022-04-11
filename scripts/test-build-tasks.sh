@@ -10,7 +10,7 @@ hasCmd(){
 if [ $# -lt 1 ]; then
 	echo ":::: Error: Missing script arguments!"
 	echo ":::: Fix: \`deviceOSPath\` is required - e.g. \`~/path/to/device-os\`"
-	echo ":::: Usage: <script> <deviceOSPath> [<tasks>]"
+	echo ":::: Usage: <script> <deviceOSPath> [<platform>] [<tasks>]"
 	exit 1
 fi
 
@@ -27,15 +27,25 @@ if ! hasCmd jq; then
 	exit 1
 fi
 
-# run the required local compilation tasks
+# setup variables
 deviceOSPath=$1
 deviceOSSource="source:${deviceOSPath}"
 tinkerPath="${deviceOSPath}/user/applications/tinker/"
-toolchain="$(prtcl toolchain:view ${deviceOSSource} --json)"
-platforms=$(echo $toolchain | jq '.platforms' | jq 'map(.name)')
+platforms=()
 
 if [ $# -gt 1 ]; then
-	declare -a tasks=($2)
+	declare -a platforms=($2)
+else
+	toolchain="$(prtcl toolchain:view ${deviceOSSource} --json)"
+	platformsStr=$(echo $toolchain | jq '.platforms' | jq 'map(.name)')
+
+	while read p; do
+		platforms+=($(echo ${p} | tr -d '"'))
+	done < <(echo $platformsStr | jq -c '.[]')
+fi
+
+if [ $# -gt 2 ]; then
+	declare -a tasks=($3)
 else
 	tasks=(
 		'compile:user'
@@ -48,12 +58,14 @@ else
 fi
 
 echo ":::: Using prtcl $(prtcl version)"
-echo ":::: Using Device OS at ${deviceOSPath}"
+echo ":::: Using Device OS at: ${deviceOSPath}"
+echo ":::: Targeting platforms: ${platforms[@]}"
+echo ":::: Running tasks: ${tasks[@]}"
 
+# install toolchain and run specified tasks
 prtcl toolchain:install ${deviceOSSource} --quiet
 
-echo $platforms | jq -c '.[]' | while read p; do
-	platform=$(echo ${p} | tr -d '"')
+for platform in "${platforms[@]}"; do
 	echo ":::: Testing build tasks for ${platform}"
 	echo
 
