@@ -76,24 +76,6 @@ extern "C" {
     res;                                                                        \
 })
 
-class I2cLock {
-public:
-    I2cLock() = delete;
-
-    I2cLock(hal_i2c_interface_t i2c)
-            : i2c_(i2c) {
-        hal_i2c_lock(i2c, nullptr);
-    }
-
-    ~I2cLock() {
-        hal_i2c_unlock(i2c_, nullptr);
-    }
-
-private:
-    hal_i2c_interface_t i2c_;
-};
-
-
 class I2cClass {
 public:
     bool isConfigured() const {
@@ -105,6 +87,12 @@ public:
     }
 
     int init(const hal_i2c_config_t* conf) {
+        os_thread_scheduling(false, nullptr);
+        if (!mutex_) {
+            os_mutex_recursive_create(&mutex_);
+        }
+        lock();
+        os_thread_scheduling(true, nullptr);
         if (isConfigured()) {
             CHECK(deInit());
         }
@@ -119,6 +107,7 @@ public:
         }
         I2C_StructInit(&i2cInitStruct_);
         configured_ = true;
+        unlock();
         return SYSTEM_ERROR_NONE;
     }
 
@@ -409,6 +398,20 @@ public:
         onReceived_ = function;
     }
 
+    int lock() {
+        if (mutex_ && !hal_interrupt_is_isr()) {
+            return os_mutex_recursive_lock(mutex_);
+        }
+        return -1;
+    }
+
+    int unlock() {
+        if (mutex_ && !hal_interrupt_is_isr()) {
+            return os_mutex_recursive_unlock(mutex_);
+        }
+        return -1;
+    }
+
     static I2cClass* getInstance(hal_i2c_interface_t i2c) {
         static I2cClass i2cs[] = {
             { I2C0_DEV, SDA, SCL }
@@ -426,7 +429,8 @@ private:
               heapBuffer_(false),
               i2cInitStruct_(),
               onRequested_(nullptr),
-              onReceived_(nullptr) {
+              onReceived_(nullptr),
+              mutex_(nullptr) {
     }
     ~I2cClass() = default;
 
@@ -516,6 +520,25 @@ private:
 
     void (*onRequested_)(void);
     void (*onReceived_)(int);
+
+    os_mutex_recursive_t mutex_;
+};
+
+class I2cLock {
+public:
+    I2cLock() = delete;
+
+    I2cLock(I2cClass* i2c)
+            : i2c_(i2c) {
+        i2c_->lock();
+    }
+
+    ~I2cLock() {
+        i2c_->unlock();
+    }
+
+private:
+    I2cClass* i2c_;
 };
 
 
@@ -529,6 +552,7 @@ void hal_i2c_set_speed(hal_i2c_interface_t i2c, uint32_t speed, void* reserved) 
     if (!instance) {
         return;
     }
+    I2cLock lk(instance);
     instance->setSpeed(speed);
 }
 
@@ -541,6 +565,7 @@ void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address
     if (!instance) {
         return;
     }
+    I2cLock lk(instance);
     instance->begin(mode, address);
 }
 
@@ -549,6 +574,7 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
     if (!instance) {
         return;
     }
+    I2cLock lk(instance);
     if (hal_i2c_is_enabled(i2c, nullptr)) {
         instance->end();
     }
@@ -572,6 +598,7 @@ int32_t hal_i2c_request_ex(hal_i2c_interface_t i2c, const hal_i2c_transmission_c
     if (!hal_i2c_is_enabled(i2c, nullptr) || !config) {
         return 0;
     }
+    I2cLock lk(instance);
     return instance->requestFrom(config);
 }
 
@@ -580,6 +607,7 @@ void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const 
     if (!instance) {
         return;
     }
+    I2cLock lk(instance);
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
         return;
     }
@@ -591,6 +619,7 @@ uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* re
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
         return 8;
     }
+    I2cLock lk(instance);
     instance->endTransmission(stop);
     return 0;
 }
@@ -600,21 +629,25 @@ uint32_t hal_i2c_write(hal_i2c_interface_t i2c, uint8_t data, void* reserved) {
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
         return 0;
     }
+    I2cLock lk(instance);
     return instance->write(data);
 }
 
 int32_t hal_i2c_available(hal_i2c_interface_t i2c, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
     return instance->available();
 }
 
 int32_t hal_i2c_read(hal_i2c_interface_t i2c, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
     return instance->read();
 }
 
 int32_t hal_i2c_peek(hal_i2c_interface_t i2c, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
     return instance->peek();
 }
 
@@ -623,11 +656,13 @@ void hal_i2c_flush(hal_i2c_interface_t i2c, void* reserved) {
     if (!instance) {
         return;
     }
+    I2cLock lk(instance);
     instance->flush();
 }
 
 bool hal_i2c_is_enabled(hal_i2c_interface_t i2c, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), false);
+    I2cLock lk(instance);
     return instance->isEnabled();
 }
 
@@ -636,6 +671,7 @@ void hal_i2c_set_callback_on_received(hal_i2c_interface_t i2c, void (*function)(
     if (!instance) {
         return;
     }
+    I2cLock lk(instance);
     instance->setOnReceivedCallback(function);
 }
 
@@ -644,6 +680,7 @@ void hal_i2c_set_callback_on_requested(hal_i2c_interface_t i2c, void (*function)
     if (!instance) {
         return;
     }
+    I2cLock lk(instance);
     instance->setOnRequestedCallback(function);
 }
 
@@ -653,32 +690,19 @@ void hal_i2c_enable_dma_mode(hal_i2c_interface_t i2c, bool enable, void* reserve
 
 uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 1);
+    I2cLock lk(instance);
     instance->reset();
     return 0;
 }
 
 int32_t hal_i2c_lock(hal_i2c_interface_t i2c, void* reserved) {
-    // auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-    return 0;
-    // if (!hal_interrupt_is_isr()) {
-        // os_mutex_recursive_t mutex = i2cMap[i2c].mutex;
-        // if (mutex) {
-        //     return os_mutex_recursive_lock(mutex);
-        // }
-    // }
-    // return -1;
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    return instance->lock();
 }
 
 int32_t hal_i2c_unlock(hal_i2c_interface_t i2c, void* reserved) {
-    // auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-    return 0;
-    // if (!hal_interrupt_is_isr()) {
-        // os_mutex_recursive_t mutex = i2cMap[i2c].mutex;
-        // if (mutex) {
-        //     return os_mutex_recursive_unlock(mutex);
-        // }
-    // }
-    // return -1;
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    return instance->unlock();
 }
 
 int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
