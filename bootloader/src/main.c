@@ -1,26 +1,26 @@
 /**
  ******************************************************************************
  * @file    main.c
- * @authors  Satish Nair, Zachary Crockett and Mohit Bhoite
+ * @authors Satish Nair, Zachary Crockett and Mohit Bhoite
  * @version V1.0.0
  * @date    30-April-2013
  * @brief   main file
  ******************************************************************************
-  Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.
-
-  This program is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation, either
-  version 3 of the License, or (at your option) any later version.
-
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
-
-  You should have received a copy of the GNU Lesser General Public
-  License along with this program; if not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************
+ *
+ * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
 /* Includes ------------------------------------------------------------------*/
@@ -32,14 +32,6 @@
 #include "button_hal.h"
 #include "dct.h"
 #include "feature_flags.h"
-
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
-#define USE_LED_THEME
-#include "led_signal.h"
-
-#define CHECK_FIRMWARE
-#include "module.h"
-#endif
 
 void platform_startup();
 
@@ -176,35 +168,12 @@ int main(void)
         features = 0xFF;        // ignore - corrupt. Top 4 bits should be the inverse of the bottom 4
     }
 
-#ifdef USE_LED_THEME
-    // Load LED theme colors
-    get_led_theme_colors(&FirmwareUpdateColor, &SafeModeColor, &DFUModeColor);
-#endif
-
     //--------------------------------------------------------------------------
 
     /*
      * Check that firmware is valid at this address.
      */
     ApplicationAddress = CORE_FW_ADDRESS;
-
-#if defined(MONO_MFG_FIRMWARE_AT_USER_PART) && defined(CHECK_FIRMWARE)
-    {
-        const module_info_t* mfg_mod = get_mfg_firmware();
-        if (mfg_mod) {
-            platform_system_flags_t temp_flags = {};
-            // Additionally load some system flags from DCT
-            if (!dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &temp_flags, sizeof(temp_flags))) {
-                if (temp_flags.NVMEM_SPARK_Reset_SysFlag != 0xffff && temp_flags.NVMEM_SPARK_Reset_SysFlag != 0x0000) {
-                    SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = temp_flags.NVMEM_SPARK_Reset_SysFlag;
-                }
-                if (temp_flags.Factory_Reset_SysFlag != 0xffff && temp_flags.Factory_Reset_SysFlag != 0x0000) {
-                    SYSTEM_FLAG(Factory_Reset_SysFlag) = temp_flags.Factory_Reset_SysFlag;
-                }
-            }
-        }
-    }
-#endif // defined(MONO_MFG_FIRMWARE_AT_USER_PART) && defined(CHECK_FIRMWARE)
 
     // 0x0005 is written to the backup register at the end of firmware update.
     // if the register reads 0x0005, it signifies that the firmware update
@@ -436,32 +405,12 @@ int main(void)
         }
 #endif
 
-#if defined(MONO_MFG_FIRMWARE_AT_USER_PART) && defined(CHECK_FIRMWARE)
-        {
-            const module_info_t* mfg_mod = get_mfg_firmware();
-            if (mfg_mod) {
-                ApplicationAddress = (uint32_t)mfg_mod->module_start_address;
-            }
-        }
-#endif // defined(MONO_MFG_FIRMWARE_AT_USER_PART) && defined(CHECK_FIRMWARE)
-
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
         if (is_application_valid(ApplicationAddress))
         {
-            uint8_t disable_iwdg = 0;
-#ifdef CHECK_FIRMWARE
-            // Pre-0.7.0 firmwares were expecting IWDG flag to be set in the DCT, now it's stored in
-            // the backup registers. As a workaround, we disable IWDG if an older firmware is detected
-            const int module_ver = get_main_module_version();
-            if (module_ver >= 0 && module_ver < SYSTEM_MODULE_VERSION_0_7_0_RC1) {
-                disable_iwdg = 1;
-            }
-#endif
-            if (!disable_iwdg) {
-                // Set IWDG Timeout to 5 secs based on platform specific system flags
-                IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
-            }
+            // Set IWDG Timeout to 5 secs based on platform specific system flags
+            IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
 
             Reset_System();
 
