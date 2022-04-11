@@ -19,6 +19,10 @@ Original Author: Shay Gal-on
 #include <stdio.h>
 #include <stdlib.h>
 #include "coremark.h"
+#include "logging.h"
+
+// Function to get microseconds
+extern uint64_t hal_timer_micros();
 
 #if VALIDATION_RUN
 volatile ee_s32 seed1_volatile = 0x3415;
@@ -51,13 +55,26 @@ volatile ee_s32 seed5_volatile = 0;
    does not occur. If there are issues with the return value overflowing,
    increase this value.
         */
-#define NSECS_PER_SEC              CLOCKS_PER_SEC
-#define CORETIMETYPE               clock_t
-#define GETMYTIME(_t)              (*_t = clock())
+#define CORETIMETYPE               uint32_t
+#define GETMYTIME(_t)              (*_t = (uint32_t)hal_timer_micros())
 #define MYTIMEDIFF(fin, ini)       ((fin) - (ini))
-#define TIMER_RES_DIVIDER          1
-#define SAMPLE_TIME_IMPLEMENTATION 1
-#define EE_TICKS_PER_SEC           (NSECS_PER_SEC / TIMER_RES_DIVIDER)
+#define EE_TICKS_PER_SEC           (1000000UL)
+
+void coremark_set_iterations(uint32_t iterations) {
+    seed4_volatile = iterations;
+}
+
+void ee_printf(const char * format, ...){
+    va_list vl;
+    va_start(vl, format);
+
+    char tmp[LOG_MAX_STRING_LENGTH] = {};
+    strncpy(tmp, format, sizeof(tmp));
+    tmp[strcspn(tmp, "\n")] = 0;
+
+    LOG_C_VARG(INFO, "coremark", tmp, vl);
+    va_end(vl);
+}
 
 /** Define Host specific (POSIX), or target specific global time variables. */
 static CORETIMETYPE start_time_val, stop_time_val;

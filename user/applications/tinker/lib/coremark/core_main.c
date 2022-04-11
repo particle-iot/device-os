@@ -106,13 +106,13 @@ char *mem_name[3] = { "Static", "Heap", "Stack" };
 
 #if MAIN_HAS_NOARGC
 MAIN_RETURN_TYPE
-main(void)
+coremark_main(void)
 {
     int   argc = 0;
     char *argv[1];
 #else
 MAIN_RETURN_TYPE
-main(int argc, char *argv[])
+coremark_main(int argc, char *argv[])
 {
 #endif
     ee_u16       i, j = 0, num_algorithms = 0;
@@ -358,9 +358,9 @@ for (i = 0; i < MULTITHREAD; i++)
     ee_printf("CoreMark Size    : %lu\n", (long unsigned)results[0].size);
     ee_printf("Total ticks      : %lu\n", (long unsigned)total_time);
 #if HAS_FLOAT
-    ee_printf("Total time (secs): %f\n", time_in_secs(total_time));
+    ee_printf("Total time (secs): %Lf\n", time_in_secs(total_time));
     if (time_in_secs(total_time) > 0)
-        ee_printf("Iterations/Sec   : %f\n",
+        ee_printf("Iterations/Sec   : %Lf\n",
                   default_num_contexts * results[0].iterations
                       / time_in_secs(total_time));
 #else
@@ -406,7 +406,7 @@ for (i = 0; i < MULTITHREAD; i++)
 #if HAS_FLOAT
         if (known_id == 3)
         {
-            ee_printf("CoreMark 1.0 : %f / %s %s",
+            ee_printf("CoreMark 1.0 : %Lf / %s %s",
                       default_num_contexts * results[0].iterations
                           / time_in_secs(total_time),
                       COMPILER_VERSION,

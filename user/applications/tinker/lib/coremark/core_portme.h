@@ -25,6 +25,26 @@ Original Author: Shay Gal-on
 /************************/
 /* Data types and settings */
 /************************/
+#ifndef CORE_DEBUG
+#define CORE_DEBUG 0
+#endif
+#ifndef VALIDATION_RUN
+#define VALIDATION_RUN 0
+#endif
+#ifndef PERFORMANCE_RUN
+#define PERFORMANCE_RUN 1
+#endif
+#ifndef PROFILE_RUN
+#define PROFILE_RUN 0
+#endif
+#ifndef ITERATIONS
+#define ITERATIONS 5000
+#endif
+#ifndef COMPILER_REQUIRES_SORT_RETURN
+#define COMPILER_REQUIRES_SORT_RETURN 0
+#endif
+
+
 /* Configuration : HAS_FLOAT
         Define to 1 if the platform supports floating point.
 */
@@ -36,48 +56,49 @@ Original Author: Shay Gal-on
         and implementation of functions thereof.
 */
 #ifndef HAS_TIME_H
-#define HAS_TIME_H 1
+#define HAS_TIME_H 0
 #endif
 /* Configuration : USE_CLOCK
         Define to 1 if platform has the time.h header file,
         and implementation of functions thereof.
 */
 #ifndef USE_CLOCK
-#define USE_CLOCK 1
+#define USE_CLOCK 0
 #endif
 /* Configuration : HAS_STDIO
         Define to 1 if the platform has stdio.h.
 */
 #ifndef HAS_STDIO
-#define HAS_STDIO 1
+#define HAS_STDIO 0
 #endif
 /* Configuration : HAS_PRINTF
         Define to 1 if the platform has stdio.h and implements the printf
    function.
 */
 #ifndef HAS_PRINTF
-#define HAS_PRINTF 1
+#define HAS_PRINTF 0
 #endif
 
 /* Configuration : CORE_TICKS
         Define type of return from the timing functions.
  */
 #include <time.h>
-typedef clock_t CORE_TICKS;
+typedef uint32_t CORE_TICKS;
 
 /* Definitions : COMPILER_VERSION, COMPILER_FLAGS, MEM_LOCATION
         Initialize these strings per platform
 */
 #ifndef COMPILER_VERSION
 #ifdef __GNUC__
-#define COMPILER_VERSION "GCC"__VERSION__
+#define COMPILER_VERSION "GCC" __VERSION__
 #else
 #define COMPILER_VERSION "Please put compiler version here (e.g. gcc 4.1)"
 #endif
 #endif
 #ifndef COMPILER_FLAGS
+/* "Please put compiler flags here (e.g. -o3)" */
 #define COMPILER_FLAGS \
-    FLAGS_STR /* "Please put compiler flags here (e.g. -o3)" */
+        "CFLAGS: TODO"
 #endif
 #ifndef MEM_LOCATION
 #define MEM_LOCATION "STACK"
@@ -166,7 +187,7 @@ typedef size_t         ee_size_t;
    greater then 1.
 */
 #ifndef MAIN_HAS_NOARGC
-#define MAIN_HAS_NOARGC 0
+#define MAIN_HAS_NOARGC 1
 #endif
 
 /* Configuration : MAIN_HAS_NORETURN
@@ -193,6 +214,9 @@ typedef struct CORE_PORTABLE_S
 /* target specific init/fini */
 void portable_init(core_portable *p, int *argc, char *argv[]);
 void portable_fini(core_portable *p);
+int coremark_main(void);
+void ee_printf(const char * format, ...);
+void coremark_set_iterations(uint32_t iterations);
 
 #if !defined(PROFILE_RUN) && !defined(PERFORMANCE_RUN) \
     && !defined(VALIDATION_RUN)

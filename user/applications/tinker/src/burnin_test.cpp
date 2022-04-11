@@ -7,6 +7,9 @@
 
 #include "fqc_test.h"
 #include "burnin_test.h"
+extern "C" {
+#include "lib/coremark/core_portme.h"
+}
 
 #if HAL_PLATFORM_RTL872X
 extern uintptr_t platform_km0_part1_flash_start;
@@ -379,7 +382,10 @@ bool BurninTest::testSpiFlash(){
 
 bool BurninTest::testCpuLoad() {
 	LastBurnInTest = BurninTestName::CPU_LOAD;
-	// TODO: Coremark test? Matrix multiplication, long list traversal, state machines, etc. 
+
+	// 4500 iterations is about enough to meet the 10 second test duration minimum
+	coremark_set_iterations(random(4500, 6000));
+	coremark_main();
 	return true;
 }
 
