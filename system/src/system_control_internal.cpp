@@ -160,27 +160,31 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
     case CTRL_REQUEST_RESET: {
-        HAL_Delay_Milliseconds(1000);
-        auto res = System.reset();
-        setResult(req, res);
+        setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
+            System.reset();
+        });
         break;
     }
     case CTRL_REQUEST_FACTORY_RESET: {
-        HAL_Delay_Milliseconds(1000);
-        auto res = System.factoryReset();
-        setResult(req, res);
+        setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
+            System.factoryReset();
+        });
         break;
     }
     case CTRL_REQUEST_DFU_MODE: {
-        HAL_Delay_Milliseconds(1000);
-        auto res = System.dfu(false);
-        setResult(req, res);
+        setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
+            System.dfu(false);
+        });
         break;
     }
     case CTRL_REQUEST_SAFE_MODE: {
-        HAL_Delay_Milliseconds(1000);
-        auto res = System.enterSafeMode();
-        setResult(req, res);
+        setResult(req, SYSTEM_ERROR_NONE, [](int result, void* data) {
+            HAL_Delay_Milliseconds(1000);
+            System.enterSafeMode();
+        });
         break;
     }
     case CTRL_REQUEST_START_LISTENING: {

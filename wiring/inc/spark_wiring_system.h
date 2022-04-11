@@ -343,14 +343,14 @@ public:
         return system_firmwareUpdate(serialObj);
     }
 
-    static int factoryReset(SystemResetFlags flags = SystemResetFlags());
-    static int dfu(SystemResetFlags flags = SystemResetFlags());
-    static int dfu(bool persist);
-    static int reset();
-    static int reset(SystemResetFlags flags);
-    static int reset(uint32_t data, SystemResetFlags flags = SystemResetFlags());
+    static void factoryReset(SystemResetFlags flags = SystemResetFlags());
+    static void dfu(SystemResetFlags flags = SystemResetFlags());
+    static void dfu(bool persist);
+    static void reset();
+    static void reset(SystemResetFlags flags);
+    static void reset(uint32_t data, SystemResetFlags flags = SystemResetFlags());
 
-    static int enterSafeMode(SystemResetFlags flags = SystemResetFlags());
+    static void enterSafeMode(SystemResetFlags flags = SystemResetFlags());
 
 #if SYSTEM_HW_TICKS
     static inline uint32_t ticksPerMicrosecond() {
