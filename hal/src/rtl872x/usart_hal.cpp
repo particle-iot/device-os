@@ -540,6 +540,7 @@ private:
                     txDmaInitStruct_.GDMA_BlockSize = consumable;
                 }
                 txDmaInitStruct_.GDMA_SrcAddr = (uint32_t)(ptr);
+                curTxCount_ = consumable;
                 GDMA_Init(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, &txDmaInitStruct_);
                 GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, ENABLE);
             } else {
@@ -549,9 +550,9 @@ private:
                 for (size_t i = 0; i < consumable; i++, ptr++) {
                     UART_CharPut(uartInstance, *ptr);
                 }
+                curTxCount_ = consumable;
                 UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
             }
-            curTxCount_ = consumable;
         }
     }
 
