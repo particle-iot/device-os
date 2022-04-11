@@ -187,6 +187,11 @@ void network_listen(network_handle_t network, uint32_t flags, void*)
     }
 }
 
+int network_listen_sync(network_handle_t network, uint32_t flags, void*) {
+    network_listen(network, flags, nullptr);
+    return 0;
+}
+
 void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void*)
 {
     return nif(network).set_listen_timeout(timeout);

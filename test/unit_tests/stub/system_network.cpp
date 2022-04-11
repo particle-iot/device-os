@@ -41,6 +41,10 @@ bool network_connecting(network_handle_t network, uint32_t param1, void* reserve
 void network_disconnect(network_handle_t network, uint32_t reason, void* reserved) {
 }
 
+int network_listen_sync(network_handle_t network, uint32_t flags, void* reserved) {
+    return 0;
+}
+
 void network_listen(network_handle_t network, uint32_t flags, void* reserved) {
 }
 
