@@ -47,13 +47,11 @@ BurninTest* BurninTest::instance() {
 }
 
 void BurninTest::setup(bool forceEnable) {
-	uint32_t pulse_width_micros = 0;
-
 	if (!forceEnable) {
 	    hal_pin_t trigger_pin = D7; // PA27 aka SWD
 		// Read the trigger pin for a 1khz pulse. If present, enter burnin mode.
 		pinMode(trigger_pin, INPUT);
-	    pulse_width_micros = pulseIn(trigger_pin, HIGH);
+	    uint32_t pulse_width_micros = pulseIn(trigger_pin, HIGH);
 	    pinMode(trigger_pin, PIN_MODE_SWD);
 
 	    const uint32_t error_margin_micros = 31;
@@ -66,12 +64,11 @@ void BurninTest::setup(bool forceEnable) {
 	    	return;
 	    }
 	}
-    
-    logger_ = std::make_unique<Serial1LogHandler>(115200, LOG_LEVEL_INFO);
-    Log.info("*** BURN IN START *** pulse_width_micros: %lu ", pulse_width_micros);
 
+    logger_ = std::make_unique<Serial1LogHandler>(115200, LOG_LEVEL_INFO);
+    
 	// Detect if backup SRAM has a failed test in it (IE state is "TEST FAILED")
-	Log.info("BurninState: %d ErrorMessage: %s", (int)BurninState, BurninErrorMessage);
+	Log.info("BURN IN START: ResetReason: %d State: %d ErrorMessage: %s", System.resetReason(), (int)BurninState, BurninErrorMessage);
 
 	if(BurninState == BurninTestState::IN_PROGRESS) {
 		Log.warn("Previous test failed: %s", test_names_[(int)LastBurnInTest].c_str());
@@ -114,11 +111,11 @@ void BurninTest::loop() {
 			return;
 		case BurninTestState::IN_PROGRESS:
 		{
-			UptimeMillis = millis();
-
 			// pick random test to run, run it
 			auto test = tests_[random(tests_.size())];
 			bool test_passed = (this->*test)();
+
+			UptimeMillis = millis();
 
 			if (!test_passed) {
 				BurninState = BurninTestState::FAILED;
@@ -132,9 +129,10 @@ void BurninTest::loop() {
 		case BurninTestState::FAILED:
 		{
 			// log failure text every X seconds to UART
-			Log.error("***BURNIN_FAILED***, UptimeMillis, %lu, test, %s, message, %s", 
+			Log.error("FAILED: Uptime: %lu Test: %s ResetReason %d Message: %s", 
 				UptimeMillis,
 				test_names_[(int)LastBurnInTest].c_str(),
+				System.resetReason(),
 				BurninErrorMessage);
 			delay(5000);
 		}
@@ -232,9 +230,17 @@ bool BurninTest::callFqcTest(String testName){
 	JSONValue gpioTestCommand = JSONValue::parseCopy(buffer);
 	FqcTest::instance()->process(gpioTestCommand);
 
-	JSONValue testResult = getValue(JSONValue::parseCopy(FqcTest::instance()->reply()), "pass");
-	if(!testResult.isValid() || testResult.toString() != "true") {
-		strlcpy(BurninErrorMessage, FqcTest::instance()->reply(), sizeof(BurninErrorMessage));
+	char * fqcTestRawReply = FqcTest::instance()->reply();
+	JSONValue testResult = getValue(JSONValue::parseCopy(fqcTestRawReply), "pass");
+	if (!testResult.isValid()) {
+		const char* jsonPassString = "\"pass\":true";
+		if(!strstr(fqcTestRawReply, jsonPassString)) {
+			strlcpy(BurninErrorMessage, fqcTestRawReply, sizeof(BurninErrorMessage));
+			testPassed = false;
+		}
+	}
+	else if(testResult.toString() != "true") {
+		strlcpy(BurninErrorMessage, fqcTestRawReply, sizeof(BurninErrorMessage));
 		testPassed = false;
 	}
 	
