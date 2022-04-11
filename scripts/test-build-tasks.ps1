@@ -1,6 +1,7 @@
 param (
 	[Parameter(Mandatory = $true, Position = 0)][string]$deviceOSPath,
-	[Parameter(Mandatory = $false, Position = 1)][string]$taksList
+	[Parameter(Mandatory = $false, Position = 1)][string]$platformList,
+	[Parameter(Mandatory = $false, Position = 2)][string]$taksList
 )
 
 function run(){
@@ -22,10 +23,22 @@ function run(){
 	}
 }
 
+# setup variables
 $ErrorActionPreference = "Stop"
-$deviceOSSource="source:${deviceOSPath}"
-$tinkerPath="$($deviceOSPath)\user\applications\tinker\"
-$toolchain = run prtcl toolchain:view $deviceOSSource --json
+$deviceOSSource = "source:${deviceOSPath}"
+$tinkerPath = "$($deviceOSPath)\user\applications\tinker\"
+$platforms = @()
+$tasks = @()
+
+if ($platformList){
+	$platforms = $platformList.split(' ')
+} else {
+	$toolchain = run prtcl toolchain:view $deviceOSSource --json
+	$json = $toolchain | ConvertFrom-Json
+	foreach ($p in $json.platforms){
+		$platforms += $p.name
+	}
+}
 
 if ($taksList){
 	$tasks = $taksList.split(' ')
@@ -42,16 +55,18 @@ if ($taksList){
 
 echo ":::: Using prtcl $(prtcl version)"
 echo ":::: Using Device OS at $($deviceOSPath)"
+echo ":::: Targeting platforms: $($platforms)"
+echo ":::: Running tasks: $($tasks)"
 
+# install toolchain and run specified tasks
 run prtcl toolchain:install $deviceOSSource --quiet
 
-$json = $toolchain | ConvertFrom-Json
-foreach ($platform in $json.platforms){
-	echo ":::: Testing build tasks for $($platform.name)"
+foreach ($platform in $platforms){
+	echo ":::: Testing build tasks for $($platform)"
 	echo ""
 
 	foreach ($task in $tasks){
-		run prtcl $task $deviceOSSource $platform.name $tinkerPath --quiet
+		run prtcl $task $deviceOSSource $platform $tinkerPath --quiet
 
 		if ($LASTEXITCODE -ne 0){
 			throw "Failure! Exit code is $LASTEXITCODE"
