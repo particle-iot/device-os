@@ -1,6 +1,6 @@
 suite('Cloud variables')
 
-platform('gen2', 'gen3');
+platform('gen3');
 
 let api = null;
 let auth = null;
@@ -144,7 +144,7 @@ test('06_check_current_thread', async function() {
 });
 
 test('07_register_many_variables', async function() {
-	const varCount = device.platform.is('gen2') ? 50 : limits.max_num;
+	const varCount = limits.max_num;
 	const resp = await getDeviceVariablesWithRerties({ deviceId, auth, expectedVarNum: varCount });
 	const vars = resp.body.variables;
 	const expectedVars = {};

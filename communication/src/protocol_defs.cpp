@@ -23,9 +23,11 @@ namespace particle {
 
 namespace protocol {
 
+#if PLATFORM_GEN >= 3
 static_assert(MAX_EVENT_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_EVENT_MESSAGE_SIZE is too large");
 static_assert(MAX_FUNCTION_CALL_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_FUNCTION_CALL_MESSAGE_SIZE is too large");
 static_assert(MAX_VARIABLE_VALUE_MESSAGE_SIZE <= PROTOCOL_BUFFER_SIZE, "MAX_VARIABLE_VALUE_MESSAGE_SIZE is too large");
+#endif // PLATFORM_GEN >= 3
 
 system_error_t toSystemError(ProtocolError error) {
     switch (error) {
