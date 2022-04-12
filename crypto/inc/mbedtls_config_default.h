@@ -21,9 +21,6 @@
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-#include "mbedtls_config_photon.h"
-#else
 
 /*
  * This set of compile-time options may be used to enable
@@ -2611,10 +2608,6 @@
 // data that can be fit into a 1024-byte DTLS packet while still having some
 // space left for DTLS and CoAP extensions that we may employ in the future.
 //
-// Electron doesn't support packets larger than 1024 bytes due to the
-// limitations of the AT command interface, and we're using the same limit on
-// Photon for consistency across Gen 2 platforms.
-//
 // Application data: 960 bytes;
 // Nonce and authentication tag: 16 bytes for AEAD_AES_128_CCM_8;
 // DTLS header: 13 bytes;
@@ -2668,5 +2661,3 @@
 #include "mbedtls/check_config.h"
 
 #endif /* MBEDTLS_CONFIG_DEFAULT_H */
-
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8

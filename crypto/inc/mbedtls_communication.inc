@@ -46,10 +46,6 @@ static const int supported_digests[] = {
 #if defined(MBEDTLS_SHA1_C)
         MBEDTLS_MD_SHA1,
 #endif
-#if defined(MBEDTLS_SHA256_C) && defined(PLATFORM_ID) && PLATFORM_ID == 10
-        MBEDTLS_MD_SHA256,
-        MBEDTLS_MD_SHA224,
-#endif
         MBEDTLS_MD_NONE
 };
 
@@ -75,12 +71,6 @@ const mbedtls_md_info_t *mbedtls_md_info_from_string( const char *md_name )
     if( !strcmp( "SHA1", md_name ) || !strcmp( "SHA", md_name ) )
         return mbedtls_md_info_from_type( MBEDTLS_MD_SHA1 );
 #endif
-#if defined(MBEDTLS_SHA256_C) && defined(PLATFORM_ID) && PLATFORM_ID == 10
-    if( !strcmp( "SHA224", md_name ) )
-        return mbedtls_md_info_from_type( MBEDTLS_MD_SHA224 );
-    if( !strcmp( "SHA256", md_name ) )
-        return mbedtls_md_info_from_type( MBEDTLS_MD_SHA256 );
-#endif
     return( NULL );
 }
 
@@ -95,12 +85,6 @@ const mbedtls_md_info_t *mbedtls_md_info_from_type( mbedtls_md_type_t md_type )
 #if defined(MBEDTLS_SHA1_C)
         case MBEDTLS_MD_SHA1:
             return( &mbedtls_sha1_info );
-#endif
-#if defined(MBEDTLS_SHA256_C) && defined(PLATFORM_ID) && PLATFORM_ID == 10
-        case MBEDTLS_MD_SHA224:
-            return( &mbedtls_sha224_info );
-        case MBEDTLS_MD_SHA256:
-            return( &mbedtls_sha256_info );
 #endif
         default:
             return( NULL );
