@@ -2,7 +2,7 @@
     "version": "1.0.0",
     "toolchains": [
         {
-            "platforms": [6, 8, 10, 12, 13, 23, 25, 26],
+            "platforms": [12, 13, 23, 25, 26],
             "firmware": "deviceOS@source",
             "compilers": "gcc-arm@10.2.1",
             "tools": "buildtools@1.1.1",
@@ -11,21 +11,6 @@
         }
     ],
     "platforms": [
-        {
-            "id": 6,
-            "name": "photon",
-            "generation": 2
-        },
-        {
-            "id": 8,
-            "name": "p1",
-            "generation": 2
-        },
-        {
-            "id": 10,
-            "name": "electron",
-            "generation": 2
-        },
         {
             "id": 12,
             "name": "argon",
