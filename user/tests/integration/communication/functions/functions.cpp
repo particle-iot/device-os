@@ -62,13 +62,7 @@ test(05_check_current_thread) {
 }
 
 test(06_register_many_functions) {
-#if PLATFORM_GEN >= 3
     const unsigned funcCount = USER_FUNC_MAX_COUNT;
-#else
-    // Register less functions to avoid exhausting memory on a Gen 2 device
-    const unsigned funcCount = 50;
-    static_assert(funcCount <= USER_FUNC_MAX_COUNT, "");
-#endif
     char name[USER_FUNC_KEY_LENGTH + 1] = {};
     for (unsigned i = 1; i <= funcCount; ++i) {
         const int n = snprintf(name, sizeof(name), "fn_%03u_", i);

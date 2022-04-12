@@ -31,13 +31,8 @@
 #include "mbedtls/rsa.h"
 #define rsa_context mbedtls_rsa_context
 #else
-# if PLATFORM_ID == 6 || PLATFORM_ID == 8
-#  include "wiced_security.h"
-#  include "crypto_open/bignum.h"
-# else
 #  include "tropicssl/rsa.h"
 #  include "tropicssl/sha1.h"
-# endif
 #endif
 
 #ifdef __cplusplus
