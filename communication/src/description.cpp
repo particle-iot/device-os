@@ -68,10 +68,7 @@ const size_t MAX_BLOCK_SIZE = 1024;
 #if PLATFORM_GEN >= 3
 static_assert(MAX_BLOCK_SIZE + MAX_REQUEST_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE &&
         MAX_BLOCK_SIZE + MAX_RESPONSE_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE, "PROTOCOL_BUFFER_SIZE is too small");
-#else
-static_assert(MIN_BLOCK_SIZE + MAX_REQUEST_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE &&
-        MIN_BLOCK_SIZE + MAX_RESPONSE_COAP_OVERHEAD <= PROTOCOL_BUFFER_SIZE, "PROTOCOL_BUFFER_SIZE is too small");
-#endif
+#endif // PLATFORM_GEN >= 3
 
 // Initial size of a dynamically allocated buffer for Describe data
 const size_t INITIAL_BUFFER_SIZE = 256;

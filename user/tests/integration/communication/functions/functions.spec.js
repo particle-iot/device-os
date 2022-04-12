@@ -1,6 +1,6 @@
 suite('Cloud functions')
 
-platform('gen2', 'gen3');
+platform('gen3');
 
 let api = null;
 let auth = null;
@@ -77,7 +77,7 @@ test('05_check_current_thread', async function () {
 });
 
 test('06_register_many_functions', async function() {
-	const funcCount = device.platform.is('gen2') ? 50 : limits.max_num;
+	const funcCount = limits.max_num;
 	const resp = await getDeviceFunctionsWithRetries({ deviceId, auth, expectedFuncNum: funcCount });
 	const funcs = resp.body.functions;
 	const expectedFuncs = [];
