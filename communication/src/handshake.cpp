@@ -32,10 +32,8 @@
 #include "mbedtls_compat.h"
 #include "mbedtls_util.h"
 #else
-# if PLATFORM_ID != 6 && PLATFORM_ID != 8
 #  define rsa_mode_t int
 #  define rsa_hash_id_t int
-# endif
 #endif
 
 int ciphertext_from_nonce_and_id(const unsigned char *nonce,
@@ -72,14 +70,10 @@ int decipher_aes_credentials(const unsigned char *private_key,
   int ret = mbedtls_rsa_pkcs1_decrypt(&rsa, mbedtls_default_rng, nullptr, MBEDTLS_RSA_PRIVATE, &len, ciphertext,
                               aes_credentials, 40);
 #else
-# if PLATFORM_ID == 6 || PLATFORM_ID == 8
-  int32_t len = 128;
-# else
   int len = 128;
-# endif
   int ret = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &len, ciphertext,
                               aes_credentials, 40);
-#endif
+#endif  // USE_MBEDTLS
   rsa_free(&rsa);
   return ret;
 }
@@ -92,7 +86,7 @@ void calculate_ciphertext_hmac(const unsigned char *ciphertext,
   mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA1), hmac_key, 40, ciphertext, 128, hmac);
 #else
   sha1_hmac(hmac_key, 40, ciphertext, 128, hmac);
-#endif
+#endif // USE_MBEDTLS
 }
 
 int verify_signature(const unsigned char *signature,
@@ -108,7 +102,7 @@ int verify_signature(const unsigned char *signature,
 #else
   int ret = rsa_pkcs1_verify(&rsa, (rsa_mode_t)RSA_PUBLIC, (rsa_hash_id_t)RSA_RAW, 20,
                              expected_hmac, signature);
-#endif
+#endif // USE_MBEDTLS
 
   rsa_free(&rsa);
   return ret;
@@ -121,13 +115,9 @@ void init_rsa_context_with_public_key(rsa_context *rsa,
   mbedtls_rsa_init(rsa, MBEDTLS_RSA_PKCS_V15, 0);
 #else
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
-#endif
+#endif // USE_MBEDTLS
 
-#if !defined(USE_MBEDTLS) && (PLATFORM_ID == 6 || PLATFORM_ID == 8)
-  rsa->length = 256;
-#else
   rsa->len = 256;
-#endif
   mpi_read_binary(&rsa->N, pubkey + 33, 256);
   mpi_read_string(&rsa->E, 16, "10001");
 }
@@ -147,12 +137,7 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
   rsa_init(rsa, RSA_PKCS_V15, RSA_RAW, NULL, NULL);
 #endif
 
-#if !defined(USE_MBEDTLS) && (PLATFORM_ID == 6 || PLATFORM_ID == 8)
-  rsa->length = 128;
-#else
   rsa->len = 128;
-#endif
-
   int i = 9;
   if (private_key[i] & 1)
   {

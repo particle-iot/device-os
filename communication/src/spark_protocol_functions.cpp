@@ -32,13 +32,8 @@ using namespace particle::protocol;
 #include "mbedtls_util.h"
 #include "mbedtls_compat.h"
 #else
-# if PLATFORM_ID == 6 || PLATFORM_ID == 8
-#  include "wiced_security.h"
-#  include "crypto_open/bignum.h"
-# else
 #  include "tropicssl/rsa.h"
 #  include "tropicssl/sha1.h"
-# endif
 #endif
 
 /**
@@ -65,11 +60,7 @@ int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key, uint8_t* 
     int err = mbedtls_rsa_pkcs1_decrypt(&rsa, mbedtls_default_rng, nullptr, MBEDTLS_RSA_PRIVATE, &size, ciphertext, plaintext, plaintext_len);
     plaintext_len = size;
 #else
-# if PLATFORM_ID == 6 || PLATFORM_ID == 8
-    int err = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, &plaintext_len, ciphertext, plaintext, plaintext_len);
-# else
     int err = rsa_pkcs1_decrypt(&rsa, RSA_PRIVATE, (int*)&plaintext_len, ciphertext, plaintext, (int)plaintext_len);
-# endif
 #endif // USE_MBEDTLS
     rsa_free(&rsa);
     return err ? -abs(err) : plaintext_len;

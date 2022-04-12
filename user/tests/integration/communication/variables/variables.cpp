@@ -123,13 +123,7 @@ test(06_check_current_thread) {
 }
 
 test(07_register_many_variables) {
-#if PLATFORM_GEN >= 3
     const unsigned varCount = USER_VAR_MAX_COUNT;
-#else
-    // Register less variables to avoid exhausting memory on a Gen 2 device
-    const unsigned varCount = 50;
-    static_assert(varCount <= USER_VAR_MAX_COUNT, "");
-#endif
     char name[USER_VAR_KEY_LENGTH + 1] = {};
     for (unsigned i = 1; i <= varCount; ++i) {
         const int n = snprintf(name, sizeof(name), "var_%03u_", i);
