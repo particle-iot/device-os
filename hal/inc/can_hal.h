@@ -33,17 +33,7 @@
 #include "pinmap_hal.h"
 
 /* Exported defines ----------------------------------------------------------*/
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8 // Photon and P1
- #define TOTAL_CAN   1
- #define HAL_HAS_CAN_D1_D2
-#elif PLATFORM_ID == 10 // Electron
- #define TOTAL_CAN   2
- #define HAL_HAS_CAN_D1_D2
- #define HAL_HAS_CAN_C4_C5
-#else
-  // Core 
- #define TOTAL_CAN   0
-#endif
+#define TOTAL_CAN   0
 
 /* Exported constants --------------------------------------------------------*/
 

@@ -20,13 +20,13 @@
 
 #include "platforms.h"
 
-#if PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL
+#if PLATFORM_ID == PLATFORM_GCC || PLATFORM_ID == PLATFORM_NEWHAL
 /* FIXME: create platform-specific hal_platform_config.h header for each of these platforms */
 #include "hal_platform_compat.h"
 #else
 /* Include platform-specific configuration header */
 #include "hal_platform_config.h"
-#endif /* PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL */
+#endif /* PLATFORM_ID == PLATFORM_NEWHAL */
 
 #ifndef PRODUCT_SERIES
 #error "PRODUCT_SERIES is not defined!"
