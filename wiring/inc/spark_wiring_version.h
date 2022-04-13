@@ -43,13 +43,13 @@ struct __ApplicationProductVersion {
 #undef PRODUCT_ID
 #endif
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID != PLATFORM_GCC
 #define PRODUCT_ID(x)           __ApplicationProductID __appProductID(x); __attribute__((externally_visible, section(".modinfo.product_id"))) uint16_t __system_product_id = (x);
 #define PRODUCT_VERSION(x)       __ApplicationProductVersion __appProductVersion(x); __attribute__((externally_visible, section(".modinfo.product_version"))) uint16_t __system_product_version = (x);
 #else
 #define PRODUCT_ID(x)
 #define PRODUCT_VERSION(x)
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 #endif	/* SPARK_WIRING_VERSION_H */
 

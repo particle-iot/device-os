@@ -23,7 +23,7 @@
 #include <chrono>
 #include <functional>
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID != PLATFORM_GCC
 
 #include "stddef.h"
 #include "concurrent_hal.h"
@@ -139,7 +139,7 @@ private:
 
 };
 
-#endif // PLATFORM_ID!=3
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 #if (0 == PLATFORM_THREADING)
 namespace particle
