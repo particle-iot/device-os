@@ -27,6 +27,13 @@
 #include "bootloader_hal.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_bootloader)
 
 DYNALIB_FN(0, hal_bootloader, HAL_Bootloader_Image, const uint8_t*(uint32_t*, void*))

@@ -8,7 +8,7 @@ add_executable( ${target_name}
 
 # Set defines specific to target
 target_compile_definitions( ${target_name}
-  PRIVATE PLATFORM_ID=6
+  PRIVATE PLATFORM_ID=3
 )
 
 # Set compiler flags specific to target

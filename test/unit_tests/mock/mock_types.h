@@ -13,7 +13,9 @@ namespace mock_type
 class Timer
 {
 public:
-    Timer(unsigned, ::Timer::timer_callback_fn, bool)
+    typedef std::function<void(void)> timer_callback_fn;
+
+    Timer(unsigned, Timer::timer_callback_fn, bool)
     {
     }
 
