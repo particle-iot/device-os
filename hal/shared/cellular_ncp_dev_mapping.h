@@ -26,9 +26,6 @@ inline Dev cellular_dev_from_ncp(PlatformNCPIdentifier identifer) {
     case PLATFORM_NCP_SARA_U201:
         device = DEV_SARA_U201;
         break;
-    case PLATFORM_NCP_SARA_G350:
-        device = DEV_SARA_G350;
-        break;
     case PLATFORM_NCP_SARA_R410:
         device = DEV_SARA_R410;
         break;

@@ -4,7 +4,6 @@ set(target_name cellular)
 include_directories(
   ${DEVICE_OS_DIR}/hal/inc/
   ${DEVICE_OS_DIR}/hal/shared/
-  ${DEVICE_OS_DIR}/hal/src/electron/
   ${DEVICE_OS_DIR}/services/inc/
   ${DEVICE_OS_DIR}/wiring/inc/
   ${DEVICE_OS_DIR}/hal/network
@@ -12,8 +11,6 @@ include_directories(
 
 # Create test executable
 add_executable( ${target_name}
-  ${DEVICE_OS_DIR}/hal/src/electron/cellular_internal.cpp
-  ${DEVICE_OS_DIR}/hal/src/electron/cellular_hal_utilities.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_cellular_printable.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_print.cpp
   ${DEVICE_OS_DIR}/hal/network/ncp/cellular/network_config_db.cpp
@@ -23,7 +20,7 @@ add_executable( ${target_name}
 
 # Set defines specific to target
 target_compile_definitions( ${target_name}
-  PRIVATE PLATFORM_ID=10
+  PRIVATE PLATFORM_ID=3
 )
 
 # Set compiler flags specific to target
