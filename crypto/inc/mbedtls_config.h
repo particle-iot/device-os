@@ -25,16 +25,13 @@
 #define MBEDTLS_CONFIG_H
 
 /* For new platforms the configuration file resides in hal */
-#if PLATFORM_ID < 12 || PLATFORM_ID == 60000
+#if PLATFORM_ID == 3 || PLATFORM_ID == 60000
 #include "mbedtls_config_default.h"
 #else
 #include "mbedtls_config_platform.h"
-#endif /* PLATFORM_ID < 12 || PLATFORM_ID == 60000 */
+#endif /* PLATFORM_ID == 3 || PLATFORM_ID == 60000 */
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10
-#include "mbedtls_weaken.h"
-#endif /* PLATFORM_ID == 6 || PLATFORM_ID == 8 || PLATFORM_ID == 10 */
 #endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 #endif /* MBEDTLS_CONFIG_H */

@@ -40,7 +40,7 @@ int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
     return 0;
 }
 
-#if !defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS) && PLATFORM_ID != 0
+#if !defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS)
 
 // At least millis should be provided
 static mbedtls_callbacks_t s_callbacks = {};
