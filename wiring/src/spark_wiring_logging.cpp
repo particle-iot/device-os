@@ -34,13 +34,13 @@
 // Uncomment to enable logging in interrupt handlers
 // #define LOG_FROM_ISR
 
-#if defined(LOG_FROM_ISR) && PLATFORM_ID != 3
+#if defined(LOG_FROM_ISR) && PLATFORM_ID != PLATFORM_GCC
 // When compiled with LOG_FROM_ISR defined use ATOMIC_BLOCK
 #define LOG_WITH_LOCK(x) ATOMIC_BLOCK()
 #else
 // Otherwise use mutex
 #define LOG_WITH_LOCK(x) WITH_LOCK(x)
-#endif
+#endif // defined(LOG_FROM_ISR) && PLATFORM_ID != PLATFORM_GCC
 
 namespace {
 
@@ -300,7 +300,7 @@ typedef FactoryDeleter<Print, OutputStreamFactory, &OutputStreamFactory::destroy
 
 #endif // Wiring_LogConfig
 
-#if PLATFORM_ID == 3
+#if PLATFORM_ID == PLATFORM_GCC
 // GCC on some platforms doesn't provide strchrnul()
 inline const char* strchrnul(const char *s, char c) {
     while (*s && *s != c) {
@@ -308,7 +308,7 @@ inline const char* strchrnul(const char *s, char c) {
     }
     return s;
 }
-#endif
+#endif // PLATFORM_ID == PLATFORM_GCC
 
 // Iterates over subcategory names separated by '.' character
 const char* nextSubcategoryName(const char* &category, size_t &size) {
@@ -477,7 +477,7 @@ void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const 
     if (stream_ == &Serial && Network.listening()) {
         return; // Do not mix logging and serial console output
     }
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC
     const char *s = nullptr;
     // Timestamp
     if (attr.has_time) {
@@ -546,7 +546,7 @@ void spark::JSONStreamLogHandler::logMessage(const char *msg, LogLevel level, co
     if (this->stream() == &Serial && Network.listening()) {
         return; // Do not mix logging and serial console output
     }
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC
     JSONStreamWriter json(*this->stream());
     json.beginObject();
     // Level
@@ -617,7 +617,7 @@ spark::DefaultLogHandlerFactory* spark::DefaultLogHandlerFactory::instance() {
 
 // spark::DefaultOutputStreamFactory
 Print* spark::DefaultOutputStreamFactory::createStream(const char *type, const JSONValue &params) {
-#if PLATFORM_ID != 3
+#if PLATFORM_ID != PLATFORM_GCC
     if (strcmp(type, "Serial") == 0) {
         Serial.begin();
         return &Serial;
@@ -634,12 +634,12 @@ Print* spark::DefaultOutputStreamFactory::createStream(const char *type, const J
         Serial1.begin(baud);
         return &Serial1;
     }
-#endif // PLATFORM_ID != 3
+#endif // PLATFORM_ID != PLATFORM_GCC
     return nullptr;
 }
 
 void spark::DefaultOutputStreamFactory::destroyStream(Print *stream) {
-#if PLATFORM_ID != 3
+#if PLATFORM_ID != PLATFORM_GCC
     if (stream == &Serial) {
         // FIXME: Uninitializing Serial detaches a Gen 3 device from the host
 #if !HAL_PLATFORM_NRF52840
@@ -657,7 +657,7 @@ void spark::DefaultOutputStreamFactory::destroyStream(Print *stream) {
         Serial1.end();
         return;
     }
-#endif // PLATFORM_ID != 3
+#endif // PLATFORM_ID != PLATFORM_GCC
     OutputStreamFactory::destroyStream(stream);
 }
 
