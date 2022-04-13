@@ -55,6 +55,7 @@ typedef struct {
     bool connected;
 } network_status_t;
 
+#if PLATFORM_ID != PLATFORM_GCC
 network_status_t system_sleep_network_suspend(network_interface_index index) {
     network_status_t status = {};
     status.suspended = true;
@@ -117,6 +118,7 @@ int system_sleep_network_resume(network_interface_index index, network_status_t 
 #endif
     return SYSTEM_ERROR_NONE;
 }
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 } // anonymous namespacee
 

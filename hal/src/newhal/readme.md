@@ -9,9 +9,9 @@ This folder contains the sources to bootstrap development of a new HAL implement
 - duplicate `platform/MCU/newhal-mcu` to a new folder and rename to match the `PLATFORM_MCU` value for your product (in product-id.mk)
 - duplicate `build/arm/linker/linker_newhalcpu.ld` and rename, substituting newhalcpu for the value of `STM32_DEVICE` for your product.
 - duplicate `build/arm/startup/linker_newhalcpu.S` and rename, substituting newhalcpu for the value of `STM32_DEVICE` for your product.
-- create a new symbolic reference for your new platform in `firmware/platform/shared/platforms.h` that uses the same PLATFORM_ID you created earlier (e.g. `#define PLATFORM_ELECTRON_PRODUCTION 10`).
+- create a new symbolic reference for your new platform in `firmware/platform/shared/platforms.h` that uses the same PLATFORM_ID you created earlier (e.g. `#define PLATFORM_BORON 13`).
 - add your new symbolic reference to `platform_config.h` to keep this from throwing an error, optionally add it in the appropriate places and configure all of the pin/port/interrupt mapping.
-- test build - `make v=1 PLATFORM_ID=<your platform id> clean all` should now build the empty bootloader and firmware.
+- test build - `make clean all -s PLATFORM_ID=<your platform id>` should now build the empty bootloader and firmware.
 
 ### Development typically starts off without a bootloader, focusing initially on building the firmware by porting the HAL to your target device.
 
@@ -22,9 +22,9 @@ This folder contains the sources to bootstrap development of a new HAL implement
 - add memory regions, linker sections (interrupt vector table, .text, .rodata, .data, .bss, etc..), entry function etc. to the `linker.ld` script located `here hal/src/<yourproduct>`. Alternatively you may rename this file, and point to it from the `INCLUDE.mk` file located in the same place. Make sure to also include the directory `hal/src/<yourproduct>` in the commented out `LDFLAGS += -L/some/directory` in `INCLUDE.mk`. If you are unfamiliar with the terminology in a linker script, this is a good reference on the [linker command language](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts).
 - Do not move on until: 1) all ASSERT commands at the end of the linker script pass.  2) functions may be missing from the `hal/src/template` files, which will generate `undefined references` until you add them in their respective template files.  3) the `main` build target completes and starts to have a filesize as follows:
 ```
-mv ../build/target/main/platform-10/main.bin.pre_crc ../build/target/main/platform-10/main.bin
+mv ../build/target/main/platform-13/main.bin.pre_crc ../build/target/main/platform-13/main.bin
    text	   data	    bss	    dec	    hex	filename
-  13096	    224	   2156	  15476	   3c74	../build/target/main/platform-10/main.elf
+  13096	    224	   2156	  15476	   3c74	../build/target/main/platform-13/main.elf
 ```
 - copy individual files from `hal/src/template` to your hal implementation folder. It's ok to rename the file from .c to .cpp and vice-versa.
 - implement the function bodies in the chosen file

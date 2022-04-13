@@ -27,13 +27,20 @@
 #include "dynalib.h"
 #include "hal_platform.h"
 
-#if PLATFORM_ID == 10 || HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_CELLULAR
 
 #ifdef DYNALIB_EXPORT
 #include "cellular_hal.h"
 #include "inet_hal.h"
 #include "net_hal.h"
 #endif
+
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
 
 DYNALIB_BEGIN(hal_cellular)
 
@@ -71,33 +78,15 @@ DYNALIB_FN(30, hal_cellular, cellular_network_provider_data_get, CellularNetProv
 DYNALIB_FN(31, hal_cellular, cellular_lock, int(void*))
 DYNALIB_FN(32, hal_cellular, cellular_unlock, void(void*))
 DYNALIB_FN(33, hal_cellular, cellular_set_power_mode, void(int mode, void* reserved))
-
-#if !HAL_PLATFORM_NCP
-DYNALIB_FN(34, hal_cellular, cellular_connect, cellular_result_t(void*))
-DYNALIB_FN(35, hal_cellular, cellular_disconnect, cellular_result_t(void*))
-#define BASE_CELL_IDX 36 // Base index for all subsequent functions
-#else // HAL_PLATFORM_NCP
 DYNALIB_FN(34, hal_cellular, cellular_set_active_sim, cellular_result_t(int, void*))
 DYNALIB_FN(35, hal_cellular, cellular_get_active_sim, cellular_result_t(int*, void*))
 DYNALIB_FN(36, hal_cellular, cellular_credentials_clear, int(void*))
-#define BASE_CELL_IDX 37 // Base index for all subsequent functions
-#endif // !HAL_PLATFORM_NCP
-
-DYNALIB_FN(BASE_CELL_IDX + 0, hal_cellular, cellular_global_identity, cellular_result_t(CellularGlobalIdentity*, void*))
-DYNALIB_FN(BASE_CELL_IDX + 1, hal_cellular, cellular_registration_timeout_set, cellular_result_t(system_tick_t, void*))
-
-#if !HAL_PLATFORM_NCP
-DYNALIB_FN(BASE_CELL_IDX + 2, hal_cellular, cellular_process, cellular_result_t(void*, void*))
-DYNALIB_FN(BASE_CELL_IDX + 3, hal_cellular, cellular_powered, bool(void*))
-#define BASE_CELL_IDX1 (BASE_CELL_IDX + 4)
-#else
-#define BASE_CELL_IDX1 (BASE_CELL_IDX + 2)
-#endif // !HAL_PLATFORM_NCP
-
-DYNALIB_FN(BASE_CELL_IDX1 + 0, hal_cellular, cellular_urcs, cellular_result_t(bool, void*))
+DYNALIB_FN(37, hal_cellular, cellular_global_identity, cellular_result_t(CellularGlobalIdentity*, void*))
+DYNALIB_FN(38, hal_cellular, cellular_registration_timeout_set, cellular_result_t(system_tick_t, void*))
+DYNALIB_FN(39, hal_cellular, cellular_urcs, cellular_result_t(bool, void*))
 
 DYNALIB_END(hal_cellular)
 
-#endif  // PLATFORM_ID == 10 || HAL_PLATFORM_CELLULAR
+#endif  // HAL_PLATFORM_CELLULAR
 
 #endif  // HAL_DYNALIB_CELLULAR_H

@@ -23,7 +23,6 @@
 
 #include "concurrent_hal.h"
 
-// #include "core_hal_stm32f2xx.h"
 #define NO_STATIC_ASSERT
 #include "static_assert.h"
 #include "delay_hal.h"
@@ -32,7 +31,6 @@
 #include "task.h"
 #include "semphr.h"
 #include "timers.h"
-// #include "stm32f2xx.h"
 #include "interrupts_hal.h"
 #include <mutex>
 #include <atomic>
@@ -42,10 +40,6 @@
 #include "logging.h"
 #include "static_recursive_mutex.h"
 #include "service_debug.h"
-
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-# include "wwd_rtos_interface.h"
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
@@ -182,19 +176,11 @@ bool os_thread_current_within_stack()
  */
 os_result_t os_thread_join(os_thread_t thread)
 {
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-    while (xTaskIsTaskFinished(thread) != pdTRUE)
-    {
-        HAL_Delay_Milliseconds(10);
-    }
-    return 0;
-#else
     while (eTaskGetState(static_cast<TaskHandle_t>(thread)) != eDeleted)
     {
         HAL_Delay_Milliseconds(10);
     }
     return 0;
-#endif
 }
 
 /**
@@ -215,11 +201,6 @@ os_result_t os_thread_exit(os_thread_t thread)
  */
 os_result_t os_thread_cleanup(os_thread_t thread)
 {
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-    if (!thread || os_thread_is_current(thread))
-        return 1;
-    host_rtos_delete_terminated_thread((host_thread_type_t*)&thread);
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
     return 0;
 }
 

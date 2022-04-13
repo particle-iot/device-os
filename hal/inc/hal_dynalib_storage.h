@@ -23,6 +23,13 @@
 #include "storage_hal.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_storage)
 
 DYNALIB_FN(0, hal_storage, hal_storage_read, int(hal_storage_id, uintptr_t, uint8_t*, size_t))

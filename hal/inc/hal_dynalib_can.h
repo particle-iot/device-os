@@ -33,6 +33,13 @@
 #include "can_hal.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_can)
 
 DYNALIB_FN(0, hal_can, HAL_CAN_Init, void(HAL_CAN_Channel, uint16_t, uint16_t, void*))
