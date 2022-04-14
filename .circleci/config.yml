@@ -1,0 +1,464 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+
+# Explicit tag filters to trigger workflows on tags
+tag_filters: &tag_filters
+  filters:
+    tags:
+      only:
+        - /.+/
+
+orbs:
+  win: circleci/windows@2.4.0
+
+aliases:
+  - &tasks ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
+  - &platforms ["photon", "p1", "electron", "argon", "boron", "bsom", "b5som", "tracker"]
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  setup-workspace:
+    machine:
+      image: ubuntu-2004:current
+    steps:
+      - run:
+          name: "Create Tested Platforms Files in Workspace"
+          command: |
+            mkdir -p $HOME/workspace/tested-platforms
+            ls -la $HOME/workspace
+            ls -la $HOME/workspace/tested-platforms
+            echo ":::: done!"
+      - persist_to_workspace:
+          root: ~/workspace
+          paths:
+            - tested-platforms
+  validate-toolchain-platforms:
+    machine:
+      image: ubuntu-2004:current
+    steps:
+      - attach_workspace:
+          at: ~/workspace
+      - checkout
+      - install-prtcl-ubuntu
+      - run:
+          name: "Check if all toolchain platforms were tested"
+          command: |
+            ls -la $HOME/workspace
+            ls -la $HOME/workspace/tested-platforms
+            echo
+            deviceOSPath=~/project
+            deviceOSSource="source:${deviceOSPath}"
+            toolchain="$(prtcl toolchain:view ${deviceOSSource} --json)"
+            platformsStr=$(echo $toolchain | jq '.platforms' | jq 'map(.name)')
+            platforms=()
+            while read p; do
+                platforms+=($(echo ${p} | tr -d '"'))
+            done < <(echo $platformsStr | jq -c '.[]')
+            echo ":::: Found toolchain platforms: ${platforms[@]}"
+            oses=(
+              'darwin-x64'
+              'ubuntu-x64'
+              'windows-x64'
+            )
+            for os in "${oses[@]}"; do
+              for platform in "${platforms[@]}"; do
+                dir="${HOME}/workspace/tested-platforms"
+                prefix="${os}-${platform}"
+                pattern="${prefix}-*"
+                echo ":::: Checking for results matching '${dir}/${pattern}'"
+                results=$(find $dir -maxdepth 1 -name "${pattern}" -type f)
+                count=0
+                if [ -n "${results}" ]; then
+                  count=$(echo "$results" | wc -l)
+                fi
+                echo ":::: Found ${count} results:"
+                echo "$results"
+                echo
+                if [ $count -lt 1 ]; then
+                  echo ":::: Missing tests for ${platform}!"
+                  exit 1
+                fi
+              done
+            done
+            echo ":::: done!"
+  build-for-windows:
+    executor:
+      name: win/default
+      size: xlarge
+    parameters:
+      tasks:
+        type: string
+      platform:
+        type: string
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - install-prtcl-windows
+      - test-localcompiler-windows:
+          tasks: << parameters.tasks >>
+          platform: << parameters.platform >>
+      - save-platform-to-workspace:
+          os: windows-x64
+          tasks: << parameters.tasks >>
+          platform: << parameters.platform >>
+  build-for-darwin:
+    macos:
+      xcode: "13.2.1"
+    parameters:
+      tasks:
+        type: string
+      platform:
+        type: string
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - install-prtcl-darwin
+      - test-localcompiler-nix:
+          tasks: << parameters.tasks >>
+          platform: << parameters.platform >>
+      - save-platform-to-workspace:
+          os: darwin-x64
+          tasks: << parameters.tasks >>
+          platform: << parameters.platform >>
+  build-for-ubuntu:
+    machine:
+      image: ubuntu-2004:current
+    parameters:
+      tasks:
+        type: string
+      platform:
+        type: string
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - install-prtcl-ubuntu
+      - test-localcompiler-nix:
+          tasks: << parameters.tasks >>
+          platform: << parameters.platform >>
+      - save-platform-to-workspace:
+          os: ubuntu-x64
+          tasks: << parameters.tasks >>
+          platform: << parameters.platform >>
+  combine-binaries:
+    docker:
+      - image: alpine:latest
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+    steps:
+      - run:
+          name: "Prepare"
+          command: |
+            apk add --no-cache bash zip unzip
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: "Combine binaries"
+          shell: /bin/bash
+          command: |
+            for f in $(find $HOME/workspace/release -name '*has_failures'); do
+              cat $f >> $HOME/has_failures
+            done
+            failures=$(cat $HOME/has_failures)
+            if [ "${failures}" != "" ]; then
+              exit 0
+            fi
+            COMBINE_BINARIES=$(head -n 1 <(find $HOME/workspace/release/ -name 'combine_binaries.sh'))
+            RELEASE_REF=$(head -n 1 <(cat $HOME/workspace/release/*/ref))
+            $COMBINE_BINARIES $HOME/workspace/release $RELEASE_REF $HOME
+            RESULT=$?
+            if [ $RESULT -ne 0 ]; then
+              exit 0
+            fi
+            echo "${CIRCLE_BUILD_NUM}" > $HOME/workspace/release/binaries_build_num
+            exit 0
+      - persist_to_workspace:
+          root: ~/workspace
+          paths:
+            - release
+      - store_artifacts:
+          path: ~/release
+  report:
+    docker:
+      - image: alpine:latest
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    resource_class: small
+    working_directory: ~/device-os
+    steps:
+      - attach_workspace:
+          at: ~/workspace
+      - run:
+          name: "Make a report"
+          command: |
+            apk add --no-cache bash curl
+            export CIRCLE_BUILD_TIMESTAMP=$(head -n 1 <(cat $HOME/workspace/release/timestamp_* | sort -n))
+            mkdir $HOME/failures
+            for f in $(find $HOME/workspace/release -name '*has_failures'); do
+              cat $f >> $HOME/failures/has_failures
+            done
+            if [ -f $HOME/workspace/release/binaries_build_num ]; then
+              export CIRCLE_ARTIFACTS_URL="https://app.circleci.com/jobs/github/particle-iot/device-os/$(cat $HOME/workspace/release/binaries_build_num)/artifacts"
+            fi
+            export CIRCLE_WORKFLOW_URL="https://app.circleci.com/pipelines/workflows/${CIRCLE_WORKFLOW_ID}"
+            GENERATE_MESSAGE=$(head -n 1 <(find $HOME/workspace/release/ -name 'cf_generate_message.sh'))
+            bash ${GENERATE_MESSAGE} $HOME/failures
+            export SLACK_MESSAGE=$(bash ${GENERATE_MESSAGE} $HOME/failures)
+            curl -X POST -H "Content-type: application/json" --data "${SLACK_MESSAGE}" ${SLACK_WEBHOOK_URL}
+            for f in $(find $HOME/workspace/release -name '*has_failures'); do
+              failure=$(cat $f)
+              if [ "${failure}" != "" ]; then
+                cat "$(dirname $f)/log"
+              fi
+            done
+            echo "${SLACK_MESSAGE}" | grep 'failed in' && exit 1 || exit 0
+  build-and-test:
+    docker:
+      - image: docker:stable-git
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    working_directory: ~/device-os
+    resource_class: small
+    parameters:
+      platform:
+        type: string
+    steps:
+      - checkout
+      # https://support.circleci.com/hc/en-us/articles/360050934711
+      - setup_remote_docker:
+          version: 19.03.13
+      - run:
+          name: "Install bash"
+          command: |
+            TIMESTAMP_FILE=timestamp_$RANDOM
+            mkdir -p $HOME/workspace/release
+            date +%s > $HOME/workspace/release/$TIMESTAMP_FILE
+            apk -q update && apk -q add bash
+      - run:
+          name: "Fetch dependencies"
+          shell: /bin/bash
+          command: |
+            cd $HOME
+            source $HOME/device-os/.buildpackrc
+            git clone git@github.com:particle-iot/firmware-buildpack-builder.git -b "$BUILDPACK_BUILDER_VERSION"
+            cd $HOME/device-os
+            git submodule update --init --recursive
+            if [ -z "$CIRCLE_TAG" ]; then
+              export ARTIFACT_TAG=$(echo "$CIRCLE_BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-zA-Z0-9]/-/g')-$(git rev-parse --short HEAD)
+            else
+              export ARTIFACT_TAG=$CIRCLE_TAG
+            fi
+            echo "$ARTIFACT_TAG" > $HOME/device-os/.git/ref
+      - run:
+          name: "Run tests / build for platforms"
+          shell: /bin/bash
+          command: |
+            cd $HOME/device-os
+            export FIRMWARE_PATH=$HOME/device-os
+            export TAG=$(cat $HOME/device-os/.git/ref)
+            export DOCKER_IMAGE_NAME=particle/cf-device-os-buildpack
+            mkdir -p ~/failures
+            export BUILD_PLATFORM="<< parameters.platform >>"
+            export BUILDPACK_NORM=1
+            export BUILD_PLATFORM_NORMALIZED=$(echo "$BUILD_PLATFORM" | sed 's/ /_/g')
+            export EXTRA_ARG="--env DEVICE_OS_CI_API_TOKEN=$DEVICE_OS_CI_API_TOKEN --env CI_BUILD_RELEASE=1 --name build --env VERSION=$TAG"
+            mkdir -p $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED
+            $HOME/firmware-buildpack-builder/scripts/ci | tee $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED/log | tee >(grep -E '^has_failures [0-9]+ ' > $HOME/failures/has_failures); export TMPRESULT=${PIPESTATUS[0]}
+            cp -r $HOME/failures/* $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED/ || true
+            export RESULT=${TMPRESULT}
+            echo ${RESULT}
+            # exit ${RESULT}
+            exit 0
+      - run:
+          shell: /bin/bash
+          name: Copy artifacts
+          command: |
+            export BUILD_PLATFORM="<< parameters.platform >>"
+            export BUILD_PLATFORM=$(echo "$BUILD_PLATFORM" | sed 's/ /_/g')
+            mkdir -p $HOME/workspace/release/$BUILD_PLATFORM
+            export TAG=$(cat $HOME/device-os/.git/ref)
+            docker cp build:/firmware/compiled-binaries/$TAG $HOME/workspace/release/$BUILD_PLATFORM/ || true
+            cp $HOME/device-os/build/release-publish.sh $HOME/workspace/release/$BUILD_PLATFORM/
+            cp $HOME/device-os/ci/combine_binaries.sh $HOME/workspace/release/$BUILD_PLATFORM/
+            cp $HOME/device-os/ci/cf_generate_message.sh $HOME/workspace/release/$BUILD_PLATFORM/
+            docker cp build:/firmware/build/coverage $HOME/workspace/release/
+            cp $HOME/device-os/.git/ref $HOME/workspace/release/$BUILD_PLATFORM/ref
+            find $HOME/workspace/release
+            exit 0
+      - persist_to_workspace:
+          root: ~/workspace
+          paths:
+            - release
+
+commands:
+  install-prtcl-ubuntu:
+    steps:
+      - run:
+          name: "Install `prtcl` CLI (ubuntu)"
+          command: |
+            sudo apt-get update -q
+            sudo apt-get install -qy zlib1g-dev jq
+            sudo curl https://prtcl.s3.amazonaws.com/install-apt.sh | sh
+            echo ":::: done!"
+  install-prtcl-darwin:
+    steps:
+      - run:
+          name: "Install `prtcl` CLI (darwin)"
+          command: |
+            brew tap particle-iot/brew && brew install prtcl jq
+            echo ":::: done!"
+  install-prtcl-windows:
+    steps:
+      - run:
+          name: "Install `prtcl` CLI (windows)"
+          command: |
+            if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+                echo ":::: Insufficient privileges! Must be Admin"
+                exit 1;
+            }
+
+            $ErrorActionPreference = "Stop"
+            echo ":::: Downloading CLI installer..."
+            Invoke-WebRequest "https://prtcl.s3.amazonaws.com/prtcl-x64.exe" -OutFile "./prtcl-x64.exe"
+
+            echo ":::: Installing CLI..."
+            Start-Process ".\prtcl-x64.exe" -argumentlist "/S" -Wait
+            echo ":::: done!"
+          environment:
+            PRTCL_DISABLE_AUTOUPDATE: "1"
+  test-localcompiler-nix:
+    parameters:
+      tasks:
+        type: string
+      platform:
+        type: string
+    steps:
+      - run:
+          name: "Test Local Compilation Tasks"
+          no_output_timeout: "10m"
+          command: scripts/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>"
+          environment:
+            PRTCL_DISABLE_AUTOUPDATE: "1"
+  test-localcompiler-windows:
+    parameters:
+      tasks:
+        type: string
+      platform:
+        type: string
+    steps:
+      - run:
+          name: "Test Local Compilation Tasks"
+          no_output_timeout: "20m"
+          command: pwsh scripts/test-build-tasks.ps1 $home\project "<< parameters.platform >>" "<< parameters.tasks >>"
+          environment:
+            PRTCL_DISABLE_AUTOUPDATE: "1"
+  save-platform-to-workspace:
+    parameters:
+      os:
+        type: string
+      tasks:
+        type: string
+      platform:
+        type: string
+    steps:
+      - attach_workspace:
+          at: ~/workspace
+      - when:
+          condition:
+            or:
+              - equal: [ 'ubuntu-x64', << parameters.os >> ]
+              - equal: [ 'darwin-x64', << parameters.os >> ]
+          steps:
+            - run:
+                name: "Save Platform to Workspace (*nix)"
+                command: |
+                  os="<< parameters.os >>"
+                  tasks="<< parameters.tasks >>"
+                  platform="<< parameters.platform >>"
+                  dir="${HOME}/workspace/tested-platforms"
+                  filename="${os}-${platform}-$(echo $tasks | tr -d ' ":')"
+                  filepath="${dir}/${filename}"
+                  echo ":::: Adding: ${filepath}"
+                  touch $filepath
+                  ls -la $dir
+                  echo ":::: done!"
+      - when:
+          condition:
+            and:
+              - equal: [ 'windows-x64', << parameters.os >> ]
+          steps:
+            - run:
+                name: "Save Platform to Workspace (windows)"
+                shell: powershell.exe
+                command: |
+                  $ErrorActionPreference = "Stop"
+                  $os = "<< parameters.os >>"
+                  $tasks = "<< parameters.tasks >>"
+                  $platform = "<< parameters.platform >>"
+                  $dir = "$($home)\workspace\tested-platforms"
+                  $filename = "$($os)-$($platform)-$($tasks -replace '[ :"]','')"
+                  $filepath = "$($dir)\$($filename)"
+                  echo ":::: Adding: $($filepath)"
+                  New-Item $filepath -type file
+                  Get-ChildItem -Force $dir
+                  echo ":::: done!"
+      - persist_to_workspace:
+          root: ~/workspace
+          paths:
+            - tested-platforms
+workflows:
+  build-and-test:
+    jobs:
+      - setup-workspace:
+          <<: *tag_filters
+      - build-for-windows:
+          <<: *tag_filters
+          matrix:
+            parameters:
+              tasks: *tasks
+              platform: *platforms
+          requires:
+            - setup-workspace
+      - build-for-ubuntu:
+          <<: *tag_filters
+          matrix:
+            parameters:
+              tasks: *tasks
+              platform: *platforms
+          requires:
+            - setup-workspace
+      - build-for-darwin:
+          <<: *tag_filters
+          matrix:
+            parameters:
+              tasks: *tasks
+              platform: *platforms
+          requires:
+            - setup-workspace
+      - validate-toolchain-platforms:
+          <<: *tag_filters
+          requires:
+            - setup-workspace
+            - build-for-windows
+            - build-for-ubuntu
+            - build-for-darwin
+      - build-and-test:
+          <<: *tag_filters
+          context:
+            - particle-ci-private
+          matrix:
+            parameters:
+              platform: ["photon", "p1", "electron", "argon", "boron", "bsom", "b5som", "tracker", "unit-test newhal gcc"]
+      - combine-binaries:
+          requires:
+            - build-and-test
+      - report:
+          requires:
+            - build-and-test
+            - combine-binaries
+

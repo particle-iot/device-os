@@ -1,0 +1,51 @@
+#!/bin/bash
+
+set -e
+
+require_var PLATFORM
+
+usage() {
+  echo "$(basename $0) [options] <app directory>"
+  echo "Options:"
+  echo "-t <target directory> (directory for target files)"
+  exit 1
+}
+
+# Default parameters
+target_dir=
+
+# Parse arguments
+while getopts ":t:" opt; do
+  case $opt in
+    t)
+      target_dir="$OPTARG"
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+shift $((OPTIND-1))
+
+# Path to this script
+this_dir=$(cd $(dirname "$0") && pwd)
+
+# Path to firmware's main directory
+main_dir=$(cd "$this_dir/../../../../main" && pwd)
+
+# Path to directory for target files
+if [ "target_dir" ]; then
+  target_dir=$(cd "$target_dir" && pwd)
+  export TARGET_DIR="$target_dir"
+fi
+
+# Path to application
+app_dir="$1"
+[ "app_dir" ] || error "Application directory is not specified"
+app_dir=$(cd "$app_dir" && pwd)
+export APPDIR="$app_dir"
+
+# Build and flash the application
+cd "$main_dir"
+make -s all program-dfu

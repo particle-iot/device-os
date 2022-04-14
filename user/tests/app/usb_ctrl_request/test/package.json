@@ -1,0 +1,21 @@
+{
+  "name": "usb-request-test",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "mocha --compilers js:babel-register"
+  },
+  "dependencies": {
+    "babel-preset-env": "^1.6.0",
+    "babel-register": "^6.26.0",
+    "bluebird": "^3.5.0",
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "lodash": "^4.17.4",
+    "mocha": "^3.5.0",
+    "randomstring": "^1.1.5",
+    "semver": "^5.4.1",
+    "usb": "^1.2.0",
+    "verror": "^1.10.0"
+  }
+}

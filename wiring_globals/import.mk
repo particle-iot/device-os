@@ -1,0 +1,5 @@
+WIRING_GLOBALS_MODULE_PATH ?= $(PROJECT_ROOT)/wiring_globals
+include $(call rwildcard,$(WIRING_GLOBALS_MODULE_PATH)/,include.mk)
+
+WIRING_GLOBALS_LIB_DIR = $(BUILD_PATH_BASE)/wiring_globals/$(BUILD_TARGET_PLATFORM)
+WIRING_GLOBALS_LIB_DEP = $(WIRING_GLOBALS_LIB_DIR)/libwiring_globals.a

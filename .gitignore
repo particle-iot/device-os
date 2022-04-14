@@ -1,0 +1,74 @@
+# Object files
+*.o
+
+# Libraries
+*.lib
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug folder
+Debug/*
+
+# Releases folder
+Release/*
+build/releases/*
+
+# build folder
+*.map
+*.lst
+*.d
+*.o
+
+# Unit test build folder
+user/tests/unit/obj/*
+
+# Platform-specific settings
+.settings/*
+.cproject
+.project
+.DS_Store
+
+# Raisonance RIDE Project
+RIDE/*
+
+# backup folder
+backup/*
+
+# Arduino libraries
+libraries/Arduino/
+
+# TropicSSL libraries
+libraries/Tropicssl/
+ci/test-reports/
+nbproject/
+build/target/
+build/cores/
+hal/soft-ap/.idea/
+cmake-build-debug
+.vscode
+
+# Doxygen documentation
+docs/doxygen/html/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+
+#direnv config files
+.envrc
+opt/
+node_modules/
+
+# Code coverage
+coverage/
+

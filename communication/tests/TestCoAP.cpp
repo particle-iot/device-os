@@ -1,0 +1,618 @@
+#include "UnitTest++.h"
+#include "core_protocol.h"
+
+struct CoAPFixture
+{
+  static uint8_t private_key[613];
+  static uint8_t pubkey[295];
+  static const uint8_t signed_encrypted_credentials[385];
+  CoreProtocol core_protocol;
+  CoAPMessageType::Enum message_type;
+
+  void init();
+};
+
+uint8_t CoAPFixture::private_key[613] =
+  "\x30\x82\x02\x5F\x02\x01\x00\x02\x81\x81\x00\xE7\x62\xA1\xF3\xA9"
+  "\x9C\xFD\x57\x46\xE6\xF8\xBC\x11\x71\x6E\x6B\xF6\x05\x48\x82\x3F"
+  "\x2A\x11\xD1\x56\x87\x39\x00\x86\xF8\xFB\x5B\x67\xA0\xEA\x0B\xE9"
+  "\xAA\x7D\xD1\xBB\x25\x7C\x72\x34\x8C\x36\xC9\x7E\xA8\x28\x5F\x56"
+  "\xFD\x37\x8D\xDE\xB4\xF2\xD5\x73\x3B\x41\xA8\xCF\x7C\xA8\xAB\xA6"
+  "\x6B\xEE\x04\x1B\x01\x1B\x95\x7C\xBE\xEA\xF9\x03\xA4\x27\x73\xA4"
+  "\x2F\x0B\x2A\x46\x15\x7E\x65\x9C\x42\xE9\x6A\x60\x5D\x32\x17\x08"
+  "\x8A\x58\xF6\x01\x80\x27\xDA\x53\x76\x7A\x6D\x11\xE0\x9B\x75\x52"
+  "\xA6\x74\xED\xC4\xAF\xC2\x02\x89\x06\xF3\x2F\x02\x03\x01\x00\x01"
+  "\x02\x81\x81\x00\xB2\x36\xE0\xC0\x18\x9A\x86\xF2\x2A\xF5\x09\x0D"
+  "\x69\x6D\xF1\x7B\x8B\xD0\xC3\xE9\x35\x97\x44\x83\xF4\xDE\x4F\xC4"
+  "\x1D\x31\x36\x00\x4F\xCF\xBB\x94\x93\x53\xB2\x76\xD0\x6A\xED\xEF"
+  "\xD4\x93\x4E\x3B\x61\xA7\x48\xF9\x2D\xB9\xF8\x88\xF7\xC8\x6C\xE4"
+  "\x84\x4D\x56\xA2\xA4\x7F\x62\x40\xA7\xCD\xE8\x85\x84\x77\xCF\x82"
+  "\xCA\x46\x99\x78\xFA\x08\xEA\x75\x03\xDB\xAB\x85\xD0\x03\xE4\x23"
+  "\x23\xAC\x9C\x5E\x58\x9A\xA0\xA5\xB6\xFC\x11\x0B\xC2\x92\x33\x6D"
+  "\xE5\xEE\x8E\x84\x49\x69\x07\xAA\x8D\x23\xE6\x15\x09\x2C\xC4\xDB"
+  "\x6A\x94\x24\x69\x02\x41\x00\xFD\x39\x74\xA2\x40\xE8\xB3\xC5\x7B"
+  "\x05\xA7\x60\xFC\xD5\xAC\x58\x8C\x71\x74\xD3\x6A\x23\x7A\xE8\x7C"
+  "\x82\x32\x57\xE2\xD4\x3E\xBB\x14\xFD\x05\xE0\xB7\x20\xF0\x31\xB8"
+  "\xDE\x4F\xBB\x6D\xBB\xC2\xBB\xC6\xD5\x32\x26\x32\x8E\xD8\x02\xBD"
+  "\xC0\x9F\x82\xC5\xA1\x38\xC5\x02\x41\x00\xE9\xEB\xE5\x8B\x08\x26"
+  "\xC3\xE5\x73\x64\x13\x8F\xF7\xA3\xCE\x2A\x76\x34\x5D\x23\x99\xAD"
+  "\x5B\x35\xE2\xFC\x55\xA6\x21\xE8\xAB\x59\x6E\x9E\x54\x44\x1D\x5B"
+  "\x98\x10\xC5\x4D\x89\xEA\x75\xC9\x4D\x1E\x4E\xD3\x8E\xA8\x99\x8C"
+  "\xD3\xB8\xE8\x76\xFF\x86\x36\x4F\xF3\x63\x02\x41\x00\xA3\x28\x89"
+  "\x19\x1E\x7F\x91\x8D\x95\xB5\xCF\xE2\x33\x26\xAE\x14\xA3\xF1\x5A"
+  "\x97\xFA\x14\x80\x56\x1A\x1B\x7D\xBA\x99\x01\xAE\xA5\xB6\x61\x4D"
+  "\x8F\x3C\x0F\xB2\x14\x27\x8C\xBE\x8D\x02\xA8\x6F\x51\xB4\x4C\x9C"
+  "\x32\x76\x73\x09\x85\xC2\xA3\xC1\x63\x6E\x59\x72\x0D\x02\x41\x00"
+  "\xBA\xA7\x36\xC4\x57\xBE\xC6\xF5\xA1\xBB\xAB\x38\x67\x7B\xD7\x98"
+  "\x5E\x35\xAE\x54\x27\xDE\x02\x37\xDF\x65\x45\xDA\x88\x98\x25\x91"
+  "\xF9\x08\x71\x68\xE0\x9C\x23\x9C\xCE\x32\xEE\xE7\x9D\x11\x01\x6E"
+  "\x3B\xAB\xE7\xDB\x74\x9A\xC0\x9E\x7D\x2F\xE6\xF8\xEB\x01\xA4\xCD"
+  "\x02\x41\x00\xB0\x7F\x8E\x50\xE0\x97\x7A\x52\xEF\x52\xE3\xC2\x9D"
+  "\xAA\xEA\x68\xB2\x14\xFE\xCD\xAC\xBA\x7E\x46\x94\x47\x2E\xFC\xD7"
+  "\xBF\x50\x51\x40\xC3\x93\x7A\x48\xA6\x96\x9C\x67\xB2\x19\xEF\x03"
+  "\xD4\x28\x56\x28\xAB\x82\x3D\x68\x2F\xDD\x5F\x89\x51\x07\xE8\xA2"
+  "\x7F\x40\xA8\x00";
+
+uint8_t CoAPFixture::pubkey[295] =
+  "\x30\x82\x01\x22\x30\x0D\x06\x09\x2A\x86\x48\x86\xF7\x0D\x01\x01"
+  "\x01\x05\x00\x03\x82\x01\x0F\x00\x30\x82\x01\x0A\x02\x82\x01\x01"
+  "\x00\xC3\x3B\x27\xC2\x86\xDF\x93\x31\xD9\xDA\x83\xD1\x4D\x05\x88"
+  "\x57\x7D\x4A\xE5\xA1\x9D\x6C\xC3\x58\x88\x92\x25\xFD\x06\xD0\xEA"
+  "\xFD\x37\x2D\x55\x21\x92\x69\x99\x47\x7A\x52\x5C\xAB\xA3\x57\x7F"
+  "\x93\xF9\xD8\x9C\x1D\x8F\x0D\x8A\xEA\xB4\xA1\xC2\x75\x10\x27\x79"
+  "\xB4\x9D\x9B\x08\xB2\x6E\x59\x4C\x16\x7D\x8D\x1E\x7F\x09\x24\x86"
+  "\x6B\x5C\xAB\x72\xCA\x93\xA6\x08\xBF\x1A\x9B\x72\xBD\x43\xC7\xCA"
+  "\x1A\x31\x37\x37\xC9\xD3\x5F\xC6\x36\xC3\xA4\xD4\x09\x0E\x3E\x21"
+  "\x4C\x51\x4A\x35\x83\xF0\xB9\xE9\xF3\x00\x9D\xD7\x78\x79\xFA\x8D"
+  "\x47\xB3\x40\x50\xC4\x7C\xC5\xD6\x1B\xA5\x63\x28\x85\xFC\x97\x57"
+  "\x58\x38\x37\x63\xAF\x57\xDF\x9C\x6B\x35\xA1\x61\xC6\x78\x53\x6B"
+  "\x5D\x84\x72\x48\x1B\x92\xDB\xF1\xCB\x13\x8F\x93\x70\xEE\x81\x5F"
+  "\xF0\x39\x79\x8C\xAD\xD3\x48\xF1\x65\xFF\x1C\x24\x00\x3E\xE5\x6F"
+  "\xF7\x36\xAC\x97\xCB\x5A\x45\xBF\x6B\x11\xDD\x62\x4B\xD8\xC2\xD0"
+  "\xE7\xF0\x24\x77\x9F\x91\x53\x17\x25\xF0\xAB\x79\xAD\xC0\x3A\x33"
+  "\x12\xF6\x28\x63\x13\x45\x71\x19\x91\x6F\xD7\xD2\x7F\x5E\xD4\xED"
+  "\x52\xAF\x6D\xAA\xA0\xC5\x16\x2C\xC2\x72\x1B\x95\x14\xA3\x2D\x6D"
+  "\x4B\x02\x03\x01\x00\x01";
+
+const uint8_t CoAPFixture::signed_encrypted_credentials[385] =
+  "\x9C\xA1\xBF\xE4\xB9\x7A\xE4\x14\xCF\xEF\x96\xF9\x06\x9F\x15\x1D"
+  "\x4A\x0B\x87\x8B\x96\xF2\x9A\x8B\xB6\xD5\x4E\x25\x39\xB6\xAA\x39"
+  "\x13\xC4\x62\x74\x54\xEA\x7F\x87\xB4\xDF\x7B\x61\xE9\x31\x09\xDD"
+  "\xF6\xB4\xF2\x40\x5F\xAF\x5F\xD3\x82\x14\x36\x3B\x51\x5E\x85\x17"
+  "\x89\x6F\x0D\x8B\x35\x5C\xE8\x00\x4F\xB9\x66\xEF\xDE\xBA\x29\x61"
+  "\xD2\x1A\x9D\xEA\xDD\xF4\x3A\x53\xD4\x81\x6E\xEE\xC4\x25\x64\xFF"
+  "\x3F\x5B\x84\x6D\x23\xB8\x6C\x67\x59\x17\x0B\xCF\xE3\x44\x6F\xCF"
+  "\x60\xC2\x7E\x11\x31\x1C\x2C\x68\xA5\xB4\x7E\x6A\x74\x9C\x22\xB0"
+  // signature
+  "\x79\xBE\x35\x93\x87\x9A\x4F\x91\xC7\xD7\x40\x89\x0F\x78\x26\x9A"
+  "\x43\xF8\x3E\x5F\xD3\xD1\xC1\x3A\xE9\xC7\x72\x6C\xE9\x16\x2B\x60"
+  "\xCD\x0E\x73\x7C\xBA\xE9\xF3\x5E\xB3\x8B\xE8\xE9\xAA\xF2\x4F\x2B"
+  "\x62\x90\x2A\x84\xC6\x8C\x65\xED\xC4\xD6\x4F\xDF\x8B\x62\x66\x9E"
+  "\x59\x3E\xCD\x72\x12\xB4\xD9\x8E\xF0\x87\x22\x49\x47\x33\xC8\x44"
+  "\x92\x65\xA4\xFF\xD6\xB5\xFC\xF7\xBB\x93\xC4\x39\xF5\xCC\xF0\x3F"
+  "\xB7\x66\xD9\xE0\xDC\xF3\x45\x30\xDE\x7B\x8D\xC3\x1B\xC5\x5B\xB8"
+  "\xC5\x9D\xF9\xAE\x0E\x8F\x1F\x86\x04\xEF\xA1\x50\x9E\x93\x43\xB2"
+  "\x82\xBA\x35\x6D\x65\xBE\x08\x3C\x14\x27\xBD\xD5\x97\x38\x7E\x63"
+  "\xB9\x3E\x02\xA0\xD3\xF6\x99\xAF\xC5\x9C\xB3\x3F\x1E\x45\x53\x11"
+  "\x3D\x89\xE8\x9E\x47\xFD\x2B\x14\x32\xAF\xBA\xB1\x69\x87\x38\x9F"
+  "\x4E\x50\x45\x15\xF4\xEE\xA9\x96\xB0\xF3\x1A\xDB\x28\xDD\xD8\x82"
+  "\xE0\x68\x9A\x06\xC7\x68\x60\x0E\x75\xED\x10\x79\xEC\xDA\x6E\x24"
+  "\xE0\x9D\xA7\x8F\x31\x2A\x2F\xDA\x77\xEE\xBD\x28\xC0\x3E\xDE\x27"
+  "\xCE\x1D\xAD\xC2\x18\xEB\x07\x27\xC5\x1C\xC3\x38\xC3\xE6\xB7\xAD"
+  "\xBB\x85\xAC\xE2\xAB\xDA\x30\xBF\x02\xC6\x34\xC7\x99\x1E\x7F\x83";
+
+int mock_send(const unsigned char *buf, uint32_t buflen)
+{
+  unsigned const char *prevent_warnings = buf;
+  prevent_warnings += buflen;
+  return 0;
+}
+
+int mock_receive(unsigned char *buf, uint32_t buflen)
+{
+  unsigned char *prevent_warnings = buf;
+  prevent_warnings += buflen;
+  return 0;
+}
+
+system_tick_t mock_millis(void)
+{
+  static system_tick_t tick = 0;
+  return ++tick;
+}
+
+int mock_call_function(const char *, const char *, SparkDescriptor::FunctionResultCallback callback, void *)
+{
+  int result = 0;
+  callback(&result, SparkReturnType::INT);
+  return 0;
+}
+
+int mock_num_functions()
+{
+  return 1;
+}
+
+void mock_copy_function_key(char *dst, int)
+{
+  memcpy(dst, "brew", 5);
+}
+
+int mock_num_variables()
+{
+  return 1;
+}
+
+void mock_copy_variable_key(char *dst, int)
+{
+  memcpy(dst, "temperature", 12);
+}
+
+SparkReturnType::Enum mock_variable_type(const char *)
+{
+  return SparkReturnType::INT;
+}
+
+void CoAPFixture::init()
+{
+  const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+  SparkKeys keys;
+  keys.server_public = pubkey;
+  keys.core_private = private_key;
+
+  SparkCallbacks callbacks;
+  callbacks.send = mock_send;
+  callbacks.receive = mock_receive;
+  callbacks.millis = mock_millis;
+
+  SparkDescriptor descriptor;
+  descriptor.call_function = mock_call_function;
+  descriptor.num_functions = mock_num_functions;
+  descriptor.num_variables = mock_num_variables;
+  descriptor.variable_type = mock_variable_type;
+
+  core_protocol.init(id, keys, callbacks, descriptor);
+  core_protocol.set_key(signed_encrypted_credentials);
+}
+
+
+SUITE(CoAP)
+{
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageReturnsCoAPMessageTypeFunction)
+  {
+    uint8_t ciphertext[32] = {
+      0xd7, 0xd1, 0x1c, 0x1c, 0x2d, 0xde, 0x7d, 0x09,
+      0x42, 0x49, 0x0d, 0x4b, 0x4f, 0x44, 0x19, 0xc3,
+      0x17, 0x00, 0x0f, 0xcf, 0xb2, 0x58, 0x85, 0x2d,
+      0xdb, 0x2d, 0xf7, 0xf8, 0x15, 0x61, 0x25, 0x9b };
+    init();
+    message_type = core_protocol.received_message(ciphertext, 32);
+    CHECK_EQUAL(CoAPMessageType::FUNCTION_CALL, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageReturnsCoAPMessageTypeVariable)
+  {
+    uint8_t ciphertext[32] = {
+      0x28, 0x40, 0x39, 0x27, 0x2a, 0x1b, 0x3f, 0xb3,
+      0xfa, 0x1c, 0xb3, 0x83, 0x66, 0x25, 0xc5, 0xba,
+      0xf8, 0x73, 0x98, 0xc3, 0xe6, 0x8e, 0x7c, 0x34,
+      0xea, 0xb8, 0x8c, 0xec, 0x2b, 0xd5, 0x25, 0xb0 };
+    init();
+    message_type = core_protocol.received_message(ciphertext, 32);
+    CHECK_EQUAL(CoAPMessageType::VARIABLE_REQUEST, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesKeyChange)
+  {
+    uint8_t ciphertext[528] = {
+      0xA5, 0x8C, 0x0B, 0x2B, 0xAE, 0xAC, 0x2A, 0xB4,
+      0x10, 0xFE, 0x8C, 0xFB, 0x77, 0xC4, 0x92, 0x7B,
+      0x8E, 0xB4, 0x4D, 0x59, 0x16, 0xDA, 0x41, 0x54,
+      0x35, 0x7C, 0xAC, 0x15, 0x7A, 0x06, 0xB3, 0x39,
+      0x30, 0x96, 0xB3, 0x45, 0x70, 0x90, 0xFE, 0x92,
+      0xAA, 0x83, 0x1A, 0xD9, 0x94, 0x30, 0xF8, 0x72,
+      0x0C, 0xE3, 0x1A, 0x2D, 0x6B, 0x85, 0xC3, 0x70,
+      0x15, 0xA7, 0x09, 0xDF, 0x5F, 0xF0, 0xA4, 0xA3,
+      0x9D, 0x93, 0x6D, 0x6E, 0xD7, 0x0E, 0x7F, 0x21,
+      0x44, 0xEF, 0x71, 0xC9, 0xC5, 0xEA, 0x5A, 0x86,
+      0x70, 0x5F, 0x17, 0xCC, 0x66, 0x23, 0xD5, 0xAC,
+      0x85, 0xA0, 0x42, 0xE4, 0x8A, 0xF1, 0x68, 0x4B,
+      0x62, 0x0F, 0x99, 0x88, 0x1A, 0x07, 0x59, 0x1A,
+      0x7D, 0x21, 0x53, 0x86, 0x3A, 0xD6, 0x64, 0x91,
+      0xAE, 0x4F, 0x0C, 0x48, 0xDB, 0x61, 0xA1, 0xD1,
+      0xA0, 0x3A, 0x6F, 0x05, 0x55, 0x8B, 0xAF, 0x3B,
+      0x5F, 0xE5, 0x26, 0xCA, 0x0C, 0x07, 0x01, 0x96,
+      0xF4, 0xD2, 0xA0, 0x4B, 0x15, 0x94, 0x25, 0x6D,
+      0xDF, 0xB1, 0x63, 0xCB, 0xB7, 0xAE, 0x2D, 0xB6,
+      0xF6, 0x1F, 0x26, 0x7F, 0x50, 0xDD, 0xAC, 0x43,
+      0x9A, 0xED, 0xDB, 0x0C, 0x11, 0x3F, 0xC6, 0x97,
+      0xEA, 0x6B, 0x0D, 0xD2, 0x1E, 0x8D, 0xB4, 0x37,
+      0xF6, 0x7B, 0x0A, 0x7E, 0x67, 0x9F, 0x53, 0x11,
+      0x4E, 0xBD, 0xB8, 0x25, 0xE8, 0xFE, 0xF8, 0x3A,
+      0xF3, 0xF5, 0x1A, 0x65, 0xA3, 0xAB, 0xCB, 0x3F,
+      0x7D, 0x57, 0x95, 0xA8, 0x37, 0x41, 0x2C, 0x18,
+      0x7C, 0x60, 0x75, 0x0A, 0x40, 0xA8, 0x56, 0x46,
+      0x56, 0x54, 0xDC, 0xFA, 0x93, 0xE0, 0xCC, 0xB4,
+      0x06, 0x6B, 0x32, 0x4D, 0x55, 0x20, 0xEF, 0x2E,
+      0xAD, 0x4E, 0xD8, 0x3C, 0xBD, 0x0B, 0x36, 0x1A,
+      0x7D, 0x17, 0x7A, 0xC4, 0x59, 0xCF, 0x37, 0xA1,
+      0x74, 0xA7, 0xCD, 0x93, 0x57, 0x84, 0xD6, 0x82,
+      0xCE, 0xDB, 0xF7, 0x2B, 0x9C, 0x2D, 0x0A, 0xF0,
+      0x2C, 0x3A, 0x72, 0xA2, 0xDE, 0x79, 0xEF, 0x53,
+      0x61, 0xC7, 0x17, 0xE9, 0x5D, 0xDF, 0x9D, 0xC3,
+      0x8F, 0x95, 0x30, 0xBC, 0xCB, 0xAC, 0x7B, 0x8D,
+      0x17, 0x25, 0xF3, 0x39, 0x30, 0xC0, 0xA0, 0x37,
+      0x08, 0x06, 0x5D, 0x3F, 0xC5, 0x7F, 0x85, 0x61,
+      0xD4, 0xB2, 0xEB, 0x1C, 0xA8, 0x48, 0x62, 0xCC,
+      0xDD, 0x7B, 0xBA, 0x57, 0x78, 0xA2, 0xDE, 0x3C,
+      0x74, 0x2F, 0xEE, 0x4D, 0x49, 0x5B, 0x06, 0x79,
+      0x07, 0x3A, 0x87, 0xD2, 0xB9, 0x09, 0x75, 0x84,
+      0x50, 0x6D, 0x15, 0x8D, 0x62, 0x88, 0x48, 0xC3,
+      0x31, 0x71, 0x44, 0x14, 0x61, 0x97, 0x22, 0x37,
+      0x4D, 0x46, 0xB9, 0x20, 0xFF, 0x3A, 0x2B, 0x44,
+      0x69, 0xA0, 0x6B, 0x22, 0xF6, 0x3A, 0x9F, 0xEF,
+      0x20, 0xE8, 0xF1, 0x68, 0x8B, 0x0E, 0xB4, 0xDC,
+      0x0D, 0x11, 0x4A, 0x0D, 0x87, 0xED, 0x8D, 0x64,
+      0x7B, 0x12, 0xE8, 0x5C, 0x2A, 0x7D, 0x45, 0x2E,
+      0x7B, 0x78, 0x4F, 0x87, 0x3C, 0x20, 0xF7, 0xFB,
+      0xC2, 0x6F, 0x3E, 0xC0, 0x7B, 0x58, 0xFD, 0x93,
+      0xDD, 0x98, 0xC3, 0x7E, 0xE9, 0xC5, 0x48, 0xC4,
+      0x08, 0x15, 0xD1, 0xE0, 0x50, 0xCB, 0xCD, 0x99,
+      0xED, 0xBE, 0xB2, 0x12, 0xD8, 0x0A, 0x44, 0xF9,
+      0x8A, 0x90, 0xA7, 0x99, 0x85, 0x91, 0xBF, 0x9D,
+      0x79, 0xC0, 0xD7, 0x7A, 0x48, 0x0C, 0x5C, 0x88,
+      0x84, 0x6B, 0x28, 0x4E, 0xF8, 0x4F, 0x70, 0xC7,
+      0xAB, 0x6E, 0x28, 0x71, 0x14, 0x7F, 0x79, 0xEE,
+      0x45, 0x9D, 0xE0, 0xAC, 0xEE, 0xD2, 0x86, 0xF3,
+      0xAA, 0x7E, 0xA8, 0x37, 0xF4, 0x95, 0x76, 0x31,
+      0xAB, 0x7A, 0xE0, 0x1F, 0x90, 0x74, 0x93, 0x06,
+      0x5A, 0x60, 0xC5, 0x25, 0xAB, 0x3D, 0xDE, 0x2B,
+      0x52, 0xD0, 0xDC, 0x82, 0x20, 0x5F, 0x90, 0x13,
+      0xA4, 0xCC, 0x82, 0xD9, 0x13, 0xDE, 0x38, 0x19,
+      0xF2, 0x52, 0x8B, 0x73, 0xE0, 0xEC, 0xA2, 0x5E,
+      0xAB, 0x0B, 0x54, 0x0E, 0x0D, 0xA8, 0x5A, 0x6F };
+    init();
+    message_type = core_protocol.received_message(ciphertext, 528);
+    CHECK_EQUAL(CoAPMessageType::KEY_CHANGE, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesUpdateBegin)
+  {
+    uint8_t ciphertext[16] = {
+      0x32, 0x28, 0x65, 0x77, 0x5B, 0xEE, 0xA8, 0x08,
+      0xA9, 0xC6, 0x2F, 0x76, 0x44, 0x1A, 0xFF, 0x91 };
+    init();
+    message_type = core_protocol.received_message(ciphertext, 16);
+    CHECK_EQUAL(CoAPMessageType::UPDATE_BEGIN, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesChunk)
+  {
+    uint8_t ciphertext[96] = {
+      0x59, 0xE4, 0xEA, 0xC2, 0xE2, 0x4B, 0x0D, 0xEE,
+      0xDC, 0x0F, 0x9C, 0x08, 0x02, 0x21, 0xA8, 0xB3,
+      0xCC, 0xE4, 0xE2, 0xA8, 0x7E, 0xE4, 0x9A, 0xC3,
+      0xD6, 0x14, 0x4A, 0x8B, 0x2F, 0xCF, 0x45, 0xEE,
+      0xC8, 0x14, 0x13, 0x50, 0x17, 0xBA, 0xD6, 0x14,
+      0xCA, 0xA0, 0xF5, 0x54, 0x40, 0xFC, 0x1F, 0xE2,
+      0x9B, 0xD0, 0xD5, 0x6D, 0x59, 0xEE, 0xE5, 0xC6,
+      0x21, 0x19, 0x5D, 0x0D, 0x12, 0xCF, 0x9D, 0x48,
+      0xD6, 0x75, 0x7B, 0x23, 0x6E, 0x31, 0xB7, 0x85,
+      0x7E, 0x3D, 0xAB, 0x54, 0x7D, 0x27, 0x32, 0x70,
+      0xA2, 0x08, 0x1C, 0xB1, 0x99, 0xDE, 0xF1, 0x63,
+      0x5A, 0x33, 0x92, 0xDB, 0xE3, 0xC5, 0xDF, 0x6D };
+    init();
+    message_type = core_protocol.received_message(ciphertext, 96);
+    CHECK_EQUAL(CoAPMessageType::CHUNK, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesUpdateDone)
+  {
+    uint8_t ciphertext[16] = {
+      0x5C, 0xC2, 0x80, 0x64, 0xAC, 0x11, 0xF4, 0x33,
+      0x32, 0x82, 0x05, 0x7A, 0x9E, 0x8F, 0xAD, 0x2A };
+    init();
+    message_type = core_protocol.received_message(ciphertext, 16);
+    CHECK_EQUAL(CoAPMessageType::UPDATE_DONE, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesDescribe)
+  {
+    uint8_t ciphertext[16] = {
+      0xd5, 0xb7, 0xf7, 0xfe, 0x9f, 0x2d, 0xca, 0xac,
+      0xda, 0x15, 0x10, 0xa3, 0x27, 0x8b, 0xa7, 0xa9 };
+    init();
+    message_type = core_protocol.received_message(ciphertext, 16);
+    CHECK_EQUAL(CoAPMessageType::DESCRIBE, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ReceivedMessageRecognizesHello)
+  {
+    uint8_t ciphertext[16] = {
+      0x89, 0x5f, 0xeb, 0x18, 0x07, 0xba, 0x1d, 0xbf,
+      0x11, 0x26, 0x55, 0x04, 0x75, 0x28, 0x2a, 0xef };
+    init();
+    message_type = core_protocol.received_message(ciphertext, 16);
+    CHECK_EQUAL(CoAPMessageType::HELLO, message_type);
+  }
+
+  TEST_FIXTURE(CoAPFixture, HelloMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0x3d, 0xc4, 0xa4, 0x21, 0xb8, 0x30, 0x9b, 0x9d,
+      0xc8, 0x4b, 0x70, 0x07, 0x33, 0xc1, 0xff, 0x3e };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.hello(buf, false);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, KeyChangedMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0x67, 0x64, 0x33, 0xa9, 0x58, 0x12, 0xca, 0x37,
+      0x5f, 0x12, 0x59, 0x3b, 0x3e, 0x32, 0x64, 0xd3 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.key_changed(buf, 0x99);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, FunctionReturnIntMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0x73, 0x9b, 0xa0, 0xad, 0xa9, 0xff, 0x01, 0x3d,
+      0xcd, 0xc3, 0x18, 0xe4, 0x3e, 0x5a, 0x92, 0xe6 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.function_return(buf, 0xc3, 42);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, VariableValueBoolMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0xae, 0x35, 0x85, 0xd5, 0x6b, 0xc0, 0x6d, 0xd0,
+      0xd6, 0x25, 0x75, 0xb9, 0xd2, 0x9c, 0x36, 0x42 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.variable_value(buf, 0x5f, 0xf6, 0x49, false);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, VariableValueIntMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0xbe, 0x47, 0x34, 0x62, 0x85, 0xc0, 0x7b, 0x92,
+      0x21, 0xc8, 0x9a, 0xc4, 0x91, 0x96, 0xf5, 0xf6 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.variable_value(buf, 0x88, 0x97, 0xb2, -98765);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, VariableValueDoubleMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0x00, 0x06, 0x3d, 0xb5, 0xcc, 0xda, 0xf9, 0xce,
+      0x81, 0x26, 0x01, 0x97, 0xbb, 0x64, 0x8d, 0x97 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.variable_value(buf, 0x5d, 0xab, 0xce,-104.858);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, VariableValueStringMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0x89, 0x21, 0x18, 0xc6, 0x35, 0x2f, 0xe7, 0xa0,
+      0xeb, 0x6f, 0x7b, 0x0b, 0xb6, 0x31, 0xa2, 0x12 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.variable_value(buf, 0x5c, 0xf6, 0x49, "woot", 4);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, VariableValueLongStringMatchesOpenSSL)
+  {
+    uint8_t expected[240] = {
+      0x9D, 0xBA, 0x43, 0xC4, 0xCD, 0xA6, 0xE6, 0x27,
+      0x77, 0x78, 0x35, 0x49, 0x9A, 0xCD, 0x76, 0x7B,
+      0x53, 0x16, 0x6A, 0xC8, 0x63, 0xAE, 0xE5, 0x00,
+      0x31, 0xB0, 0xEE, 0xE7, 0x19, 0xD1, 0x26, 0xEA,
+      0xF9, 0x5D, 0xB6, 0xD4, 0x6A, 0xD7, 0x32, 0x8D,
+      0x10, 0xA2, 0xDC, 0x30, 0xD3, 0x1D, 0xBE, 0x1F,
+      0x93, 0x61, 0x65, 0xA4, 0x16, 0x9F, 0x31, 0x18,
+      0xAC, 0xAC, 0x91, 0xF2, 0x16, 0x3D, 0x15, 0xC7,
+      0x7A, 0xA8, 0x9A, 0x99, 0xBC, 0x64, 0x83, 0x69,
+      0xFF, 0xB3, 0xAC, 0x9D, 0xDA, 0x18, 0x75, 0xF9,
+      0x6C, 0x55, 0x21, 0xCE, 0x6B, 0xA9, 0xB4, 0x83,
+      0x46, 0x19, 0x0E, 0x8E, 0x8B, 0x1E, 0x8E, 0x25,
+      0x9B, 0x20, 0x6F, 0x34, 0x57, 0xC5, 0x4B, 0xD2,
+      0x6C, 0x6B, 0x5F, 0x56, 0x0E, 0xC4, 0x9F, 0xBF,
+      0xE4, 0xE8, 0x81, 0xE2, 0xC3, 0xDE, 0xBC, 0xCD,
+      0x90, 0x19, 0x90, 0x39, 0x3C, 0x8F, 0xDD, 0xEF,
+      0x1C, 0x1B, 0x6B, 0x00, 0xA3, 0x18, 0x76, 0x7A,
+      0xAE, 0xBD, 0x98, 0xDC, 0xF8, 0x4C, 0x61, 0xAF,
+      0xB9, 0x17, 0xA1, 0xC6, 0xB2, 0x7F, 0xE7, 0xA6,
+      0xCA, 0x23, 0xAF, 0xBE, 0x78, 0xA8, 0xFF, 0x5A,
+      0xE1, 0xDE, 0x5E, 0x9A, 0x5E, 0x8E, 0x31, 0x50,
+      0xF9, 0x10, 0x03, 0x94, 0x7D, 0xFC, 0x4E, 0x19,
+      0x15, 0x07, 0xAF, 0xBC, 0x70, 0x72, 0xA4, 0xE2,
+      0x09, 0xDD, 0xBC, 0x6C, 0xE6, 0x6F, 0xA3, 0x81,
+      0x52, 0x0E, 0x3C, 0x55, 0x28, 0x9F, 0x3A, 0x2C,
+      0x6A, 0x14, 0x9E, 0xF9, 0xB4, 0x5D, 0x54, 0xB2,
+      0x41, 0x94, 0xE2, 0x51, 0x88, 0x6E, 0x5A, 0x04,
+      0x3D, 0x3A, 0x8C, 0x03, 0x6A, 0x77, 0xF0, 0x04,
+      0x41, 0x44, 0x20, 0xDF, 0x24, 0x1D, 0x8F, 0x18,
+      0x3E, 0x8D, 0x3F, 0x02, 0x91, 0xF0, 0x79, 0x5C };
+    unsigned char buf[240];
+    memset(buf, 0, 240);
+    init();
+    const char *the_string = "Hey, wow, this is like a super long string. It just goes on and on and on... I just like don't know why anyone tries to send things like this in a constrained environment, but whatevs. Peeps be thinkin' outside the box.";
+    int buffer_length = core_protocol.variable_value(buf, 0x5c, 0xf6, 0x49, the_string, strlen(the_string));
+    CHECK_ARRAY_EQUAL(expected, buf, buffer_length);
+  }
+
+  TEST_FIXTURE(CoAPFixture, ChunkReceivedMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0x26, 0x03, 0x6a, 0x64, 0x8b, 0xba, 0xc7, 0x42,
+      0xc9, 0xfa, 0x78, 0x7b, 0xf9, 0x25, 0x51, 0x01 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.chunk_received(buf, 0x01, ChunkReceivedCode::OK);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, UpdateReadyMatchesOpenSSL)
+  {
+    uint8_t expected[16] = {
+      0xf8, 0xe2, 0xf5, 0xc5, 0x50, 0xa3, 0x12, 0x03,
+      0xd0, 0xa0, 0xf9, 0x98, 0xe5, 0x48, 0x58, 0x71 };
+    unsigned char buf[16];
+    memset(buf, 0, 16);
+    init();
+    core_protocol.update_ready(buf, 0x10);
+    CHECK_ARRAY_EQUAL(expected, buf, 16);
+  }
+
+  TEST_FIXTURE(CoAPFixture, DescriptionMatchesOpenSSL)
+  {
+    uint8_t expected[48] = {
+      0xac, 0xc9, 0x8f, 0x76, 0x26, 0x76, 0xc9, 0x53,
+      0xf5, 0xc2, 0x2a, 0x20, 0x70, 0xe6, 0x60, 0x28,
+      0x5a, 0xa0, 0x95, 0x15, 0x1c, 0x4a, 0xdc, 0x53,
+      0x19, 0xbf, 0x95, 0x44, 0x6c, 0xe5, 0x50, 0x59,
+      0xf9, 0x26, 0xd4, 0x04, 0x36, 0x9b, 0x97, 0xef,
+      0x4d, 0xe7, 0x45, 0xc6, 0xce, 0x13, 0xb3, 0x5d };
+    unsigned char buf[48];
+    memset(buf, 0, 48);
+    init();
+    core_protocol.description(buf, 0x66, 0xf6, 0x49, CoreProtocol::DESCRIBE_APPLICATION);
+    CHECK_ARRAY_EQUAL(expected, buf, 48);
+  }
+
+  TEST_FIXTURE(CoAPFixture, PresenceAnnouncementReturns19)
+  {
+    const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    unsigned char buf[19];
+    init();
+    int len = core_protocol.presence_announcement(buf, id);
+    CHECK_EQUAL(19, len);
+  }
+
+  TEST_FIXTURE(CoAPFixture, PresenceAnnouncementMatchesExpected)
+  {
+    uint8_t expected[19] = {
+      0x50, 0x02, 0x00, 0x00, 0xb1, 'h', 0xff,
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    const char id[12] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    unsigned char buf[19];
+    memset(buf, 0, 19);
+    init();
+    core_protocol.presence_announcement(buf, id);
+    CHECK_ARRAY_EQUAL(expected, buf, 19);
+  }
+
+  TEST(OptionLength12)
+  {
+    unsigned char option[2];
+    option[0] = 12;
+    unsigned char *option_start = &option[0];
+    size_t option_len = CoAP::option_decode(&option_start);
+    size_t expected = 12;
+    CHECK_EQUAL(expected, option_len);
+  }
+
+  TEST(OptionLength12Pointer)
+  {
+    unsigned char option[2];
+    option[0] = 12;
+    unsigned char *option_start = option;
+    CoAP::option_decode(&option_start);
+    CHECK_EQUAL(option + 1, option_start);
+  }
+
+  TEST(OptionLength13)
+  {
+    unsigned char option[3];
+    option[0] = 13;
+    option[1] = 0;
+    unsigned char *option_start = option;
+    size_t option_len = CoAP::option_decode(&option_start);
+    size_t expected = 13;
+    CHECK_EQUAL(expected, option_len);
+  }
+
+  TEST(OptionLength13Pointer)
+  {
+    unsigned char option[3];
+    option[0] = 13;
+    option[1] = 0;
+    unsigned char *option_start = option;
+    CoAP::option_decode(&option_start);
+    CHECK_EQUAL(option + 2, option_start);
+  }
+
+  TEST(OptionLength268)
+  {
+    unsigned char option[3];
+    option[0] = 13;
+    option[1] = 255;
+    unsigned char *option_start = option;
+    size_t option_len = CoAP::option_decode(&option_start);
+    size_t expected = 268;
+    CHECK_EQUAL(expected, option_len);
+  }
+
+  TEST(OptionLength268Pointer)
+  {
+    unsigned char option[3];
+    option[0] = 13;
+    option[1] = 255;
+    unsigned char *option_start = option;
+    CoAP::option_decode(&option_start);
+    CHECK_EQUAL(option + 2, option_start);
+  }
+
+  TEST(OptionLength269)
+  {
+    unsigned char option[4];
+    option[0] = 14;
+    option[1] = 0;
+    option[2] = 0;
+    unsigned char *option_start = option;
+    size_t option_len = CoAP::option_decode(&option_start);
+    size_t expected = 269;
+    CHECK_EQUAL(expected, option_len);
+  }
+
+  TEST(OptionLength269Pointer)
+  {
+    unsigned char option[4];
+    option[0] = 14;
+    option[1] = 0;
+    option[2] = 0;
+    unsigned char *option_start = option;
+    CoAP::option_decode(&option_start);
+    CHECK_EQUAL(option + 3, option_start);
+  }
+
+  TEST(ReservedOptionLengthReturnsZero)
+  {
+    unsigned char option = 15;
+    unsigned char *option_start = &option;
+    size_t option_length = CoAP::option_decode(&option_start);
+    size_t expected = 0;
+    CHECK_EQUAL(expected, option_length);
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "description": "Device OS Integration Tests",
+  "private": true,
+  "dependencies": {
+    "binary-version-reader": "^1.0.1",
+    "tempy": "^1.0.1"
+  }
+}

@@ -1,0 +1,6 @@
+*link:
+%(nano_link) %:replace-outfile(-lc -lc_s) %:replace-outfile(-lg -lnewlib_nano) %:replace-outfile(-lrdimon -lrdimon_s) %:replace-outfile(-lstdc++ -lstdc++_s) %:replace-outfile(-lsupc++ -lsupc++_s)
+
+*lib:
+-lnewlib_nano %{!shared:%{g*:-lg_s} %{!p:%{!pg:-lc_s}}%{p:-lc_p}%{pg:-lc_p}}
+

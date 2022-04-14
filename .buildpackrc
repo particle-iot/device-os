@@ -1,0 +1,24 @@
+# This file is used by https://github.com/particle-iot/firmware-buildpack-builder to
+# build Docker images containing all toolchains and sources nessesary for
+# compilation.
+#
+# Additionally release/prerelease information is used to automatically create
+# build targets in Particle Cloud when pushing a tag.
+
+export BUILDPACK_BUILDER_VERSION=0.2.0
+
+# GCC version is no longer managed by this variable.
+# GCC dependencies come from .workbench/manifest.json
+export BUILDPACK_VARIATION=manifest
+
+# Platforms for which this firmware is considered stable
+export RELEASE_PLATFORMS=( )
+
+# Platforms for which this firmware is considered experimental
+export PRERELEASE_PLATFORMS=( photon p1 electron argon boron bsom b5som tracker )
+# Note: a single platform should be only in release or prerelease list. If
+# added to both it will be considered a prerelease
+
+# Platforms which require modules to be prebuilt
+export MODULAR_PLATFORMS=( photon p1 electron argon boron bsom b5som tracker )
+

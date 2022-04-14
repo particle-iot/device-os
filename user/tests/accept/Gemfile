@@ -1,0 +1,8 @@
+source 'https://rubygems.org'
+gem 'aruba', '~> 0.14.1'
+gem 'rspec-expectations', '~> 3.5.0'
+gem 'concurrent-ruby', '~> 1.0.2'
+gem 'em-rubyserial', '~> 0.0.2'
+gem 'diff_dirs', '~> 0.1.2'
+gem 'hex_string', '~> 1.0.1'
+gem 'particle-spec', git: 'git@github.com:spark/particle-spec.git' # an internal Gem for simplifying TDD/BDD with Particle Platform

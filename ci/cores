@@ -1,0 +1,12 @@
+# associates platform names with the core it runs on
+declare -A name
+
+name[core-v1]=ci-mat
+name[core-mem-test]=ci-mat
+#name[core-v1-fixture1]=
+
+
+if [[ $SPARK_USER =~ mat.* ]]; then
+name[core-v1]=JTAG
+fi
+

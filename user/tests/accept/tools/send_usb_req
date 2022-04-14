@@ -1,0 +1,137 @@
+#!/bin/bash
+
+set -e
+require_tool usbtool
+require_var USB_VENDOR_ID
+require_var USB_PRODUCT_ID
+
+# Default parameters
+usb_req=80
+usb_val=0
+usb_index=10
+req_type=reqrep
+max_size=4096
+timeout=3000
+hex_flag=
+
+usage() {
+  echo "$(basename $0) [options] [data]"
+  echo "Options:"
+  echo "-r <request> (request field; default: $usb_req)"
+  echo "-v <value> (value field; default: $usb_val)"
+  echo "-i <index> (index field; default: $usb_index)"
+  echo "-d <type> (request type: in, out, reqrep; default: $req_type)"
+  echo "-n <size> (maximum number of bytes to receive; default: $max_size)"
+  echo "-t <timeout> (timeout in milliseconds; default: $timeout)"
+  echo "-x (use hex-encoded data format)"
+  exit 1
+}
+
+# Sends host-to-device request
+send_out_req() {
+  if [ "$1" ]; then
+    data_arg="-d $1"
+  else
+    data_arg=
+  fi
+  usbtool -v 0x$USB_VENDOR_ID -p 0x$USB_PRODUCT_ID $data_arg control out vendor device $usb_req $usb_val $usb_index
+}
+
+# Sends device-to-host request
+send_in_req() {
+  usbtool -v 0x$USB_VENDOR_ID -p 0x$USB_PRODUCT_ID -n $max_size control in vendor device $usb_req $usb_val $usb_index
+}
+
+# Prints current UNIX time with nanosecond precision
+timestamp() {
+  if [ $(uname) == "Darwin" ]; then
+    date "+%s.000"
+  else
+    date "+%s.%N"
+  fi
+}
+
+# Returns 0 if first argument is less than second argument
+less_than() {
+  return $(echo "$1 >= $2" | bc)
+}
+
+# Parse arguments
+while getopts ":r:v:i:d:n:t:x" opt; do
+  case $opt in
+    r)
+      usb_req=$OPTARG
+      ;;
+    v)
+      usb_val=$OPTARG
+      ;;
+    i)
+      usb_index=$OPTARG
+      ;;
+    d)
+      req_type=$OPTARG
+      ;;
+    n)
+      max_size=$OPTARG
+      ;;
+    t)
+      timeout=$OPTARG
+      ;;
+    x)
+      hex_flag=1
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+shift $((OPTIND-1))
+
+if [ $req_type != in ] && [ $req_type != out ] && [ $req_type != reqrep ]; then
+  error "Invalid request type: $req_type"
+fi
+
+if [ $req_type == reqrep ] || [ $req_type == out ]; then
+  data="$1"
+  if [ "$data" ]; then
+    if [ ! $hex_flag ]; then
+      # "abc" -> "616263"
+      data=$(printf "$data" | xxd -p | tr -d '\n')
+    fi
+    # "616263" -> "0x61,0x62,0x63"
+    data=$(printf "$data" | fold -w 2 | paste -s -d ',' -| sed 's/\([^,]*\)/0x\1/g')
+  fi
+
+  # Send host-to-device request
+  send_out_req "$data" > /dev/null
+fi
+
+if [ $req_type == reqrep ] || [ $req_type == in ]; then
+  if [ $req_type == reqrep ]; then
+    # Convert milliseconds to seconds
+    timeout=$(echo "scale=3;$timeout/1000" | bc)
+    time_end=$(echo "$(timestamp) + $timeout" | bc)
+
+    # Keep sending device-to-host requests until a reply is received
+    while : ; do
+      sleep 0.1
+      data=$(send_in_req 2>/dev/null) && break
+      less_than $(timestamp) $time_end || error "Request timeout"
+    done
+  else
+    # Send device-to-host request
+    data=$(send_in_req)
+  fi
+
+  if [ "$data" ]; then
+    # "0x61 0x62 0x63" -> "616263"
+    data=$(printf "$data" | tr -d ' \n' | sed 's/0x//g')
+    if [ ! $hex_flag ]; then
+      # "616263" -> "abc"
+      data=$(printf "$data" | xxd -r -p)
+    fi
+    # Print reply data
+    echo "$data"
+  fi
+fi

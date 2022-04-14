@@ -1,0 +1,3 @@
+aes_padded_ccm_ctr_self_test
+rsa_self_test
+dhm_self_test

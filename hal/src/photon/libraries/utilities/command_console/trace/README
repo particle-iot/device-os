@@ -1,0 +1,76 @@
+===============================================================================
+                                THREAD TRACING
+===============================================================================
+
+1. INTRODUCTION
+Thread tracing is provided using several separate components that are "glued
+together" to form the thread trace functionality. This has been done with a
+simplistic API to allow for easy expansion.
+
+Trace functionality can be configured in the makefile (trace.mk). In
+particular, it is possible to enable/disable buffered tracing, buffered trace
+printing, and GPIO tracing (these will be explained in further detail in this
+document).
+
+
+2. API
+A) console_trace.h
+    This is the highest level (and most simplistic) API to provide functions to
+    the console application. It consists of the following functions:
+        - start_trace
+        - trace
+        - stop_trace
+
+B) trace_action.h
+    This only provides the trace_action_t enumeration, which describes all of
+    the possible states that we may want to differentiate when tracing. These
+    are assigned a hexadecimal value to ensure that they can be stored in a
+    single half-byte, which is assumed for buffered tracing.
+
+C) trace.h
+    Defines methods that a trace method must implement. Note that "tracing" is
+    broken up into two parts - tracing and processing. Additionally, there is a
+    notion of "flushing" trace data prematurely.
+
+    All available trace combinations (a trace process function is paired with
+    a parent trace method) are stored in a table of trace_t structures. When
+    the trace command is issued from the console, this table is consulted in
+    order to determine which trace functions should be used.
+
+    trace_start_function_t
+    trace_stop_function_t
+    trace_process_function_t
+    trace_cleanup_function_t
+    trace_preprocess_function_t
+    trace_cleanup_function_t
+
+    The order of execution of the trace functions is as follows:
+        1. trace_start_function_t
+        2. set_trace_hooks
+        3. COMMAND
+        4. unset_trace_hooks
+        5. trace_stop_function_t
+        6. trace_process_function_t
+        7. trace_cleanup_function_t
+
+    trace_flush_function_t
+
+D) trace_hook.h
+    This file provides function prototypes for "hook functions" for the
+    scheduler to call to perform the tracing actions.
+
+    Two API functions are provided to start and stop tracing:
+        void set_trace_hooks( trace_task_hook_f task, trace_tick_hook_f tick );
+            Starts tracing. Every time a task is switched out/in, the task hook
+            function will be called. Every time the scheduler "ticks", the tick
+            hook will be called.
+        void unset_trace_hooks( void );
+            Stops tracing, by setting the task and tick hooks to NULL.
+
+E) $(RTOS)_trace.h
+    This contains any #define or #include statements specific to an RTOS. This
+    is an attempt to allow the same trace methods to be used for multiple
+    RTOSes.
+
+
+3. USAGE AND EXAMPLES
