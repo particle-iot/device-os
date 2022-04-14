@@ -43,7 +43,6 @@ enum FrequencyScale
     MHZ = KHZ*1000,
     SPI_CLK_SYSTEM = 0,         // represents the system clock speed
     SPI_CLK_ARDUINO = 16*MHZ,
-    SPI_CLK_PHOTON = 60*MHZ
 };
 
 namespace particle {
@@ -157,15 +156,6 @@ private:
    */
   unsigned _dividerReference;
 
-#if PLATFORM_THREADING && !HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
-  /**
-   * \brief Mutex for Gen2 platforms
-   *
-   * Enables Gen2 platforms to synchronize access to the SPI peripheral
-   */
-  RecursiveMutex _mutex;
-#endif
-
 public:
   SPIClass(hal_spi_interface_t spi);
   ~SPIClass() = default;
@@ -249,32 +239,25 @@ public:
       .timeout = 0
     };
     return hal_spi_acquire(_spi, &conf) == SYSTEM_ERROR_NONE;
-#elif PLATFORM_THREADING
-    return _mutex.trylock();
-#else
+#elif !PLATFORM_THREADING
     return true;
-#endif
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
   }
 
   int lock()
   {
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     return hal_spi_acquire(_spi, nullptr);
-#elif PLATFORM_THREADING
-    _mutex.lock();
+#elif !PLATFORM_THREADING
     return 0;
-#else
-    return 0;
-#endif
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
   }
 
   void unlock()
   {
 #if HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
     hal_spi_release(_spi, nullptr);
-#elif PLATFORM_THREADING
-    _mutex.unlock();
-#endif
+#endif // HAL_PLATFORM_SPI_HAL_THREAD_SAFETY
   }
 };
 

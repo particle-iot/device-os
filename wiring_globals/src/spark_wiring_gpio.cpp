@@ -217,7 +217,6 @@ int32_t analogRead(pin_t pin)
 
 /*
  * @brief Should take an integer 0-255 and create a 500Hz PWM signal with a duty cycle from 0-100%.
- * On Photon, DAC1 and DAC2 act as true analog outputs(values: 0 to 4095) using onchip DAC peripheral
  */
 void analogWrite(pin_t pin, uint32_t value)
 {
