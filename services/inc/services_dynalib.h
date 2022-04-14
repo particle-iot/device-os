@@ -83,41 +83,12 @@ DYNALIB_FN(36, services, diag_register_source, int(const diag_source*, void*))
 DYNALIB_FN(37, services, diag_enum_sources, int(diag_enum_sources_callback, size_t*, void*, void*))
 DYNALIB_FN(38, services, diag_get_source, int(uint16_t, const diag_source**, void*))
 DYNALIB_FN(39, services, diag_command, int(int, void*, void*))
-// Export only on Photon and P1
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-DYNALIB_FN(40, services, _printf_float, int(struct _reent*, struct _prt_data_t*, FILE*, int(*pfunc)(struct _reent* , FILE*, const char*, size_t), va_list*))
-
-// Nanopb
-// Helper functions
-DYNALIB_FN(41, services, pb_ostream_init, pb_ostream_t*(void*))
-DYNALIB_FN(42, services, pb_ostream_free, bool(pb_ostream_t*, void*))
-DYNALIB_FN(43, services, pb_istream_init, pb_istream_t*(void*))
-DYNALIB_FN(44, services, pb_istream_free, bool(pb_istream_t*, void*))
-DYNALIB_FN(45, services, pb_ostream_from_buffer_ex, bool(pb_ostream_t*, pb_byte_t*, size_t, void*))
-DYNALIB_FN(46, services, pb_istream_from_buffer_ex, bool(pb_istream_t*, const pb_byte_t*, size_t, void*))
-// Encoding/decoding
-DYNALIB_FN(47, services, pb_encode, bool(pb_ostream_t*, const pb_field_t[], const void*))
-DYNALIB_FN(48, services, pb_get_encoded_size, bool(size_t*, const pb_field_t[], const void*))
-DYNALIB_FN(49, services, pb_encode_tag_for_field, bool(pb_ostream_t*, const pb_field_t*))
-DYNALIB_FN(50, services, pb_encode_submessage, bool(pb_ostream_t*, const pb_field_t[], const void*))
-DYNALIB_FN(51, services, pb_decode_noinit, bool(pb_istream_t*, const pb_field_t[], void*))
-DYNALIB_FN(52, services, pb_read, bool(pb_istream_t*, pb_byte_t*, size_t))
-DYNALIB_FN(53, services, pb_encode_string, bool(pb_ostream_t*, const pb_byte_t*, size_t))
-DYNALIB_FN(54, services, pb_encode_tag, bool(pb_ostream_t*, pb_wire_type_t, uint32_t))
-DYNALIB_FN(55, services, pb_encode_varint, bool(pb_ostream_t*, pb_uint64_t))
-# define BASE_IDX 56
-#else
-# define BASE_IDX 40
-#endif
-
-DYNALIB_FN(BASE_IDX + 0, services, set_system_error_message, void(const char*, ...))
-DYNALIB_FN(BASE_IDX + 1, services, clear_system_error_message, void())
-DYNALIB_FN(BASE_IDX + 2, services, get_system_error_message, const char*(int))
-DYNALIB_FN(BASE_IDX + 3, services, jsmn_parse, int(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
-DYNALIB_FN(BASE_IDX + 4, services, panic_set_hook, void(const PanicHook, void*))
+DYNALIB_FN(40, services, set_system_error_message, void(const char*, ...))
+DYNALIB_FN(41, services, clear_system_error_message, void())
+DYNALIB_FN(42, services, get_system_error_message, const char*(int))
+DYNALIB_FN(43, services, jsmn_parse, int(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
+DYNALIB_FN(44, services, panic_set_hook, void(const PanicHook, void*))
 
 DYNALIB_END(services)
-
-#undef BASE_IDX
 
 #endif	/* SERVICES_DYNALIB_H */

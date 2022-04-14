@@ -78,17 +78,6 @@
  * this, if a write doesn't read back correctly, a page swap will be
  * done.
  *
- * On the STM32 microcontroller, the Flash memory cannot be read while
- * being programmed which means the application is frozen while writing
- * or erasing the Flash (no interrupts are serviced). Flash writes are
- * fast (~10 us), but erases take 200ms or more (depending on the sector
- * size). To avoid intermittent pauses in the user application due to
- * page erases during the page swap, the hasPendingErase() and
- * performPendingErase() APIs exist to allow the user application to
- * schedule when an old page can be erased. If the user application does
- * not call performPendingErase() before the next page swap, the
- * alternate page will be erased just before the page swap.
- *
  */
 
 template <typename Store, uintptr_t PageBase1, size_t PageSize1, uintptr_t PageBase2, size_t PageSize2>
