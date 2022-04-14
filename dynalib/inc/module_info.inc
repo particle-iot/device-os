@@ -23,14 +23,15 @@
  */
 
 #include "module_info.h"
+#include "platforms.h"
 
-#if PLATFORM_ID==3 || PLATFORM_ID == 20
+#if PLATFORM_ID == PLATFORM_GCC
 #define _ARM_SECTION(x)
 char link_module_start;
 char link_module_end;
 #else
 #define _ARM_SECTION(x) ,x
-#endif
+#endif // PLATFORM_ID == PLATFORM_GCC
 
 
 module_function_t module_function_(uint8_t f) {
@@ -115,7 +116,7 @@ extern char link_module_end;
 #error MODULE_DEPENDENCY2 not defined
 #endif
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID != PLATFORM_GCC
 __attribute__((section(".modinfo.module_info"), used))
 
 const module_info_t module_info = {
@@ -150,4 +151,4 @@ __attribute__((section(".modinfo.module_info_crc"), used)) const module_info_crc
 }
 #endif // __cplusplus
 
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC

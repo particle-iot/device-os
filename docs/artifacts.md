@@ -8,14 +8,14 @@ Artifact Name Composition
 
 |artifact name|@|semantic version|.|file extension|
 |:-:|:-:|:-:|:-:|:-:|
-|electron-bootloader|@|1.0.1-rc.1+lto.debug.jtag|.|bin|
+|boron-bootloader|@|1.0.1-rc.1|.|bin|
 
-**E.g.** `electron-bootloader@1.0.1-rc.1+lto.debug.jtag.bin`
+**E.g.** `boron-bootloader@1.0.1-rc.1.bin`
 
 #### Filename Composition
 
 - Artifact Name
-  - Platform Name (`electron`)
+  - Platform Name (`boron`)
   - Module Name (`bootloader`)
 - Semantic Version
   - Major Version (`1`)
@@ -43,9 +43,9 @@ Folder Hierarchy
 
 |evaluated semantic version|/|platform|/|binary descriptor|
 |:-:|:-:|:-:|:-:|:-:|
-|1.0.1|/|electron|/|debug|
+|1.0.1|/|boron|/|debug|
 
-**E.g.** `1.0.1/electron/debug`
+**E.g.** `1.0.1/boron/debug`
 
 ### Hierarchical Composition
 
@@ -54,7 +54,7 @@ Folder Hierarchy
   - Minor Version (`0`)
   - Patch Version (`1`)
   - [_OPTIONAL_] Pre-release Tag (_none_)
-- Platform Name (`electron`)
+- Platform Name (`boron`)
 - Binary Descriptor (`debug`)
 
 Zip Artifacts
@@ -62,9 +62,9 @@ Zip Artifacts
 
 |company|_|product|@|evaluated semantic version|+|platform|.|content|.|file_extension|
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-|particle|_|device-os|@|1.0.1|+|electron|.|binaries|.|zip|
+|particle|_|device-os|@|1.0.1|+|boron|.|binaries|.|zip|
 
-**E.g.** `particle_device-os@1.0.1+electron.binaries.zip`
+**E.g.** `particle_device-os@1.0.1+boron.binaries.zip`
 
 ### Zip Filename Composition
 
@@ -77,7 +77,7 @@ Zip Artifacts
   - Patch Version (`1`)
   - [_OPTIONAL_] Prerelease Tag (_none_)
 - Filter
-  - [_OPTIONAL_] Platform Name (`electron`)
+  - [_OPTIONAL_] Platform Name (`boron`)
   - [_OPTIONAL_] Content Type (`binaries`)
 - File Extension (`bin`)
 
