@@ -71,6 +71,7 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
 
     // Turn off the modem
     if (!network_is_off(index, nullptr)) {
+#if HAL_PLATFORM_IFAPI
         if_t iface;
         if (!if_get_by_index(index, &iface)) {
             if (NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP) ||
@@ -78,6 +79,7 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
                 status.on = true;
             }
         }
+#endif
         network_off(index, 0, 0, NULL);
         LOG(TRACE, "Waiting interface %d to be off...", (int)index);
         // There might be up to 30s delay to turn off the modem for particular platforms.
