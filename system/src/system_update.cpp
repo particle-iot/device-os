@@ -211,9 +211,7 @@ void set_start_ymodem_flasher_serial_speed(uint32_t speed)
 
 bool system_firmwareUpdate(Stream* stream, void* reserved)
 {
-#if PLATFORM_ID>2
     set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
-#endif
     system_file_transfer_t tx;
     tx.descriptor.store = FileTransfer::Store::FIRMWARE;
     tx.stream = stream;
