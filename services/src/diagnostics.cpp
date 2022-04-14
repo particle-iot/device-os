@@ -16,12 +16,10 @@
  */
 
 #include "diagnostics.h"
-
 #include "spark_wiring_vector.h"
-
 #include "system_error.h"
-
 #include <algorithm>
+#include "platforms.h"
 
 namespace {
 
@@ -77,12 +75,12 @@ public:
 
     int command(int cmd, void* data) {
         switch (cmd) {
-#if PLATFORM_ID == 3
+#if PLATFORM_ID == PLATFORM_GCC
         case DIAG_SERVICE_CMD_RESET:
             srcs_.clear();
             started_ = 0;
             break;
-#endif
+#endif // PLATFORM_ID == PLATFORM_GCC
         case DIAG_SERVICE_CMD_START:
             started_ = 1;
             break;
