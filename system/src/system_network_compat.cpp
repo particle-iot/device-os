@@ -18,7 +18,6 @@
  */
 
 #include "hal_platform.h"
-
 /* FIXME: there should be a define that tells whether there is NetworkManager available
  * or not */
 #if !HAL_PLATFORM_IFAPI

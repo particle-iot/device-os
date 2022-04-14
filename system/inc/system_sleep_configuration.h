@@ -97,7 +97,7 @@ public:
             }
             wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO, wakeup->next);
         }
-#endif
+#endif // HAL_PLATFORM_FUELGAUGE_MAX17043
         return false;
     }
 

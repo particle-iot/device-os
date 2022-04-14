@@ -5,11 +5,7 @@
 
 #if PLATFORM_THREADING
 
-#if PLATFORM_ID != 20
 #define THREAD_STACK_SIZE (5 * 1024)
-#else
-#define THREAD_STACK_SIZE (8 * 1024 * 1024)
-#endif
 
 namespace particle {
 
@@ -43,7 +39,6 @@ os_mutex_recursive_t mutex_usb_serial()
 /**
  * Implementation to support gthread's concurrency primitives.
  */
-#if PLATFORM_ID != 20
 namespace std {
 
 #if 0
@@ -136,6 +131,5 @@ namespace std {
         __get_once_functor_lock_ptr() = __ptr;
     }
 }
-#endif /* PLATFORM_ID != 20 */
 
 #endif // PLATFORM_THREADING
