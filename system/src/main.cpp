@@ -89,10 +89,10 @@
 #include "radio_common.h"
 #endif
 
-#if PLATFORM_ID == 3
+#if PLATFORM_ID == PLATFORM_GCC
 // Application loop uses std::this_thread::sleep_for() to workaround 100% CPU usage on the GCC platform
 #include <thread>
-#endif
+#endif // PLATFORM_ID == PLATFORM_GCC
 
 using namespace spark;
 using namespace particle;
@@ -516,7 +516,7 @@ void app_loop(bool threaded)
         }
     }
     } while(false);
-#if PLATFORM_ID == 3 && SUSPEND_APPLICATION_THREAD_LOOP_COUNT
+#if PLATFORM_ID == PLATFORM_GCC && SUSPEND_APPLICATION_THREAD_LOOP_COUNT
     // Suspend thread execution for some minimum time on every Nth loop iteration in order to workaround
     // 100% CPU usage on the virtual device platform
     static uint32_t loops = 0;
@@ -524,7 +524,7 @@ void app_loop(bool threaded)
         loops = 0;
         std::this_thread::sleep_for(std::chrono::nanoseconds(1));
     }
-#endif // PLATFORM_ID == 3
+#endif // PLATFORM_ID == PLATFORM_GCC && SUSPEND_APPLICATION_THREAD_LOOP_COUNT
 }
 
 

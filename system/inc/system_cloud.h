@@ -147,29 +147,29 @@ inline void cloud_disconnect(unsigned flags, System_Reset_Reason resetReason) {
     cloud_disconnect(flags, CLOUD_DISCONNECT_REASON_SYSTEM_RESET, NETWORK_DISCONNECT_REASON_NONE, resetReason, 0);
 }
 
-#if PLATFORM_ID==3
+#if PLATFORM_ID == PLATFORM_GCC
 // avoid a c-linkage incompatible with C error on newer versions of gcc
 String spark_deviceID(void);
-#endif
+#endif // PLATFORM_ID == PLATFORM_GCC
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID != PLATFORM_GCC
 String spark_deviceID(void);
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 class String;
 
 
 #if defined(PLATFORM_ID)
 
-#if !defined(UNIT_TEST) && PLATFORM_ID !=3 && PLATFORM_ID != 20
+#if !defined(UNIT_TEST) && PLATFORM_ID != PLATFORM_GCC
 PARTICLE_STATIC_ASSERT(spark_data_typedef_is_1_byte, sizeof(Spark_Data_TypeDef)==1);
-#endif
+#endif // !defined(UNIT_TEST) && PLATFORM_ID != PLATFORM_GCC
 
-#endif
+#endif // defined(PLATFORM_ID)
 
 const uint32_t PUBLISH_EVENT_FLAG_PUBLIC = 0x0;
 const uint32_t PUBLISH_EVENT_FLAG_PRIVATE = 0x1;
@@ -374,7 +374,7 @@ extern const unsigned char backup_tcp_public_server_address[18];
 
 #if HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
 #define TIMING_FLASH_UPDATE_TIMEOUT   (300000) // 300sec
-#else // HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
+#else // likely newhal and gcc
 #define TIMING_FLASH_UPDATE_TIMEOUT   (30000)  // 30sec
 #endif // HAL_PLATFORM_CELLULAR || HAL_PLATFORM_NCP
 
