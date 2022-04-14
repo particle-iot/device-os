@@ -40,7 +40,7 @@ Open up a terminal window, and switch branch to 'release/stable'
 Navigate to the `modules` folder under firmware
 (i.e. `cd firmware/modules`) and type:
 
-    make clean all PLATFORM=photon -s program-dfu
+    make clean all -s PLATFORM=boron program-dfu
 
 This will clean build the system firmware and the default main application (`firmware/user/src/application.cpp`) which contains Tinker, but you may overwrite this with your own application and add any required dependencies. The `-s` silences the verbose output, so be patient while it builds.  If your device is in DFU mode, it will then download the 3 binaries one at a time.  For more custom application location solutions, see the [makefile documentation](build.md) and learn how to use the `APP=myapp` option.
 
@@ -80,7 +80,7 @@ the various libraries that make up the firmware.
 | **wiring** | the Wiring API |
 | **user** | contains the default application code (Tinker) and your own applications |
 | **main** | top-level project to build the firmware for a device |
-| **modules** | dynamically linked modules for the Photon/PØ/P1 |
+| **modules** | dynamically linked modules |
 
 Within each library, the structure is
 
@@ -115,14 +115,15 @@ A flash of white then flashing green can happen when you get this wrong. You wan
 2. Open up a terminal window on your computer and type this command to find out if the device indeed being detected correctly.
 
    `dfu-util -l`
-   you should get something similar to this in return:
+   you should get something similar to this in return (e.g. for Boron):
    ```
-   Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=0, name="@Internal Flash  /0x08000000/20*001Ka,108*001Kg"
-   Found DFU: [1d50:607f] devnum=0, cfg=1, intf=0, alt=1, name="@SPI Flash : SST25x/0x00000000/512*04Kg"
+   Found DFU: [2b04:d00d] ver=0251, devnum=18, cfg=1, intf=0, path="0-3.4.2", alt=2, name="@External Flash   /0x80000000/1024*004Kg", serial="123412341234123412341234"
+   Found DFU: [2b04:d00d] ver=0251, devnum=18, cfg=1, intf=0, path="0-3.4.2", alt=1, name="@DCD Flash   /0x00000000/1*016Ke", serial="123412341234123412341234"
+   Found DFU: [2b04:d00d] ver=0251, devnum=18, cfg=1, intf=0, path="0-3.4.2", alt=0, name="@Internal Flash   /0x00000000/1*004Ka,47*004Kg,192*004Kg,4*004Kg,4*004Kg,8*004Ka", serial="123412341234123412341234"
    ```
 
    - Windows users will need to use the Zatig utility to replace the USB driver as described earlier
-   - Linux users who encounter someting like: `dfu-util: Cannot open DFU device 2b04:d00a` can try `sudo dfu-util -l` or if you use the Particle CLI command `particle flash --usb` or `particle update` it will add the device udev rules automatically for you.
+   - Linux users who encounter someting like: `dfu-util: Cannot open DFU device 2b04:d00d` can try `sudo dfu-util -l` or if you use the Particle CLI command `particle flash --usb` or `particle update` it will add the device udev rules automatically for you.
 
 
 3. Now, from the `main/` folder in your firmware repository and use the following command to transfer the *.bin* file into the device.
@@ -138,4 +139,4 @@ the `dfu-util` command. You can ignore this message for now.  We're not sure wha
 
 * If you are having trouble with dfu-util, (like invalid dfuse address), try a newer version of dfu-util. v0.7 works well.
 
-**Still having troubles?** Checkout our [resources page](https://www.particle.io/resources), hit us up on IRC, etc.
+**Still having troubles?** Checkout our [Docs](https://docs.particle.io/).
