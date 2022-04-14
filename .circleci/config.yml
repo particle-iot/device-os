@@ -9,137 +9,138 @@ tag_filters: &tag_filters
       only:
         - /.+/
 
-orbs:
-  win: circleci/windows@2.4.0
+# orbs:
+#   win: circleci/windows@2.4.0
 
-aliases:
-  - &tasks ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
-  - &platforms ["argon", "boron", "bsom", "b5som", "tracker"]
+# aliases:
+#   - &tasks ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
+#   - &platforms ["argon", "boron", "bsom", "b5som", "tracker"]
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  setup-workspace:
-    machine:
-      image: ubuntu-2004:current
-    steps:
-      - run:
-          name: "Create Tested Platforms Files in Workspace"
-          command: |
-            mkdir -p $HOME/workspace/tested-platforms
-            ls -la $HOME/workspace
-            ls -la $HOME/workspace/tested-platforms
-            echo ":::: done!"
-      - persist_to_workspace:
-          root: ~/workspace
-          paths:
-            - tested-platforms
-  validate-toolchain-platforms:
-    machine:
-      image: ubuntu-2004:current
-    steps:
-      - attach_workspace:
-          at: ~/workspace
-      - checkout
-      - install-prtcl-ubuntu
-      - run:
-          name: "Check if all toolchain platforms were tested"
-          command: |
-            ls -la $HOME/workspace
-            ls -la $HOME/workspace/tested-platforms
-            echo
-            deviceOSPath=~/project
-            deviceOSSource="source:${deviceOSPath}"
-            toolchain="$(prtcl toolchain:view ${deviceOSSource} --json)"
-            platformsStr=$(echo $toolchain | jq '.platforms' | jq 'map(.name)')
-            platforms=()
-            while read p; do
-                platforms+=($(echo ${p} | tr -d '"'))
-            done < <(echo $platformsStr | jq -c '.[]')
-            echo ":::: Found toolchain platforms: ${platforms[@]}"
-            oses=(
-              'darwin-x64'
-              'ubuntu-x64'
-              'windows-x64'
-            )
-            for os in "${oses[@]}"; do
-              for platform in "${platforms[@]}"; do
-                dir="${HOME}/workspace/tested-platforms"
-                prefix="${os}-${platform}"
-                pattern="${prefix}-*"
-                echo ":::: Checking for results matching '${dir}/${pattern}'"
-                results=$(find $dir -maxdepth 1 -name "${pattern}" -type f)
-                count=0
-                if [ -n "${results}" ]; then
-                  count=$(echo "$results" | wc -l)
-                fi
-                echo ":::: Found ${count} results:"
-                echo "$results"
-                echo
-                if [ $count -lt 1 ]; then
-                  echo ":::: Missing tests for ${platform}!"
-                  exit 1
-                fi
-              done
-            done
-            echo ":::: done!"
-  build-for-windows:
-    executor:
-      name: win/default
-    parameters:
-      tasks:
-        type: string
-      platform:
-        type: string
-    steps:
-      - checkout
-      - run: git submodule update --init --recursive
-      - install-prtcl-windows
-      - test-localcompiler-windows:
-          tasks: << parameters.tasks >>
-          platform: << parameters.platform >>
-      - save-platform-to-workspace:
-          os: windows-x64
-          tasks: << parameters.tasks >>
-          platform: << parameters.platform >>
-  build-for-darwin:
-    macos:
-      xcode: "13.2.1"
-    parameters:
-      tasks:
-        type: string
-      platform:
-        type: string
-    steps:
-      - checkout
-      - run: git submodule update --init --recursive
-      - install-prtcl-darwin
-      - test-localcompiler-nix:
-          tasks: << parameters.tasks >>
-          platform: << parameters.platform >>
-      - save-platform-to-workspace:
-          os: darwin-x64
-          tasks: << parameters.tasks >>
-          platform: << parameters.platform >>
-  build-for-ubuntu:
-    machine:
-      image: ubuntu-2004:current
-    parameters:
-      tasks:
-        type: string
-      platform:
-        type: string
-    steps:
-      - checkout
-      - run: git submodule update --init --recursive
-      - install-prtcl-ubuntu
-      - test-localcompiler-nix:
-          tasks: << parameters.tasks >>
-          platform: << parameters.platform >>
-      - save-platform-to-workspace:
-          os: ubuntu-x64
-          tasks: << parameters.tasks >>
-          platform: << parameters.platform >>
+  # setup-workspace:
+  #   machine:
+  #     image: ubuntu-2004:current
+  #   steps:
+  #     - run:
+  #         name: "Create Tested Platforms Files in Workspace"
+  #         command: |
+  #           mkdir -p $HOME/workspace/tested-platforms
+  #           ls -la $HOME/workspace
+  #           ls -la $HOME/workspace/tested-platforms
+  #           echo ":::: done!"
+  #     - persist_to_workspace:
+  #         root: ~/workspace
+  #         paths:
+  #           - tested-platforms
+  # validate-toolchain-platforms:
+  #   machine:
+  #     image: ubuntu-2004:current
+  #   steps:
+  #     - attach_workspace:
+  #         at: ~/workspace
+  #     - checkout
+  #     - install-prtcl-ubuntu
+  #     - run:
+  #         name: "Check if all toolchain platforms were tested"
+  #         command: |
+  #           ls -la $HOME/workspace
+  #           ls -la $HOME/workspace/tested-platforms
+  #           echo
+  #           deviceOSPath=~/project
+  #           deviceOSSource="source:${deviceOSPath}"
+  #           toolchain="$(prtcl toolchain:view ${deviceOSSource} --json)"
+  #           platformsStr=$(echo $toolchain | jq '.platforms' | jq 'map(.name)')
+  #           platforms=()
+  #           while read p; do
+  #               platforms+=($(echo ${p} | tr -d '"'))
+  #           done < <(echo $platformsStr | jq -c '.[]')
+  #           echo ":::: Found toolchain platforms: ${platforms[@]}"
+  #           oses=(
+  #             'darwin-x64'
+  #             'ubuntu-x64'
+  #             'windows-x64'
+  #           )
+  #           for os in "${oses[@]}"; do
+  #             for platform in "${platforms[@]}"; do
+  #               dir="${HOME}/workspace/tested-platforms"
+  #               prefix="${os}-${platform}"
+  #               pattern="${prefix}-*"
+  #               echo ":::: Checking for results matching '${dir}/${pattern}'"
+  #               results=$(find $dir -maxdepth 1 -name "${pattern}" -type f)
+  #               count=0
+  #               if [ -n "${results}" ]; then
+  #                 count=$(echo "$results" | wc -l)
+  #               fi
+  #               echo ":::: Found ${count} results:"
+  #               echo "$results"
+  #               echo
+  #               if [ $count -lt 1 ]; then
+  #                 echo ":::: Missing tests for ${platform}!"
+  #                 exit 1
+  #               fi
+  #             done
+  #           done
+  #           echo ":::: done!"
+  # build-for-windows:
+  #   executor:
+  #     name: win/default
+  #     size: xlarge
+  #   parameters:
+  #     tasks:
+  #       type: string
+  #     platform:
+  #       type: string
+  #   steps:
+  #     - checkout
+  #     - run: git submodule update --init --recursive
+  #     - install-prtcl-windows
+  #     - test-localcompiler-windows:
+  #         tasks: << parameters.tasks >>
+  #         platform: << parameters.platform >>
+  #     - save-platform-to-workspace:
+  #         os: windows-x64
+  #         tasks: << parameters.tasks >>
+  #         platform: << parameters.platform >>
+  # build-for-darwin:
+  #   macos:
+  #     xcode: "13.2.1"
+  #   parameters:
+  #     tasks:
+  #       type: string
+  #     platform:
+  #       type: string
+  #   steps:
+  #     - checkout
+  #     - run: git submodule update --init --recursive
+  #     - install-prtcl-darwin
+  #     - test-localcompiler-nix:
+  #         tasks: << parameters.tasks >>
+  #         platform: << parameters.platform >>
+  #     - save-platform-to-workspace:
+  #         os: darwin-x64
+  #         tasks: << parameters.tasks >>
+  #         platform: << parameters.platform >>
+  # build-for-ubuntu:
+  #   machine:
+  #     image: ubuntu-2004:current
+  #   parameters:
+  #     tasks:
+  #       type: string
+  #     platform:
+  #       type: string
+  #   steps:
+  #     - checkout
+  #     - run: git submodule update --init --recursive
+  #     - install-prtcl-ubuntu
+  #     - test-localcompiler-nix:
+  #         tasks: << parameters.tasks >>
+  #         platform: << parameters.platform >>
+  #     - save-platform-to-workspace:
+  #         os: ubuntu-x64
+  #         tasks: << parameters.tasks >>
+  #         platform: << parameters.platform >>
   combine-binaries:
     docker:
       - image: alpine:latest
@@ -295,177 +296,157 @@ jobs:
             - release
 
 commands:
-  install-prtcl-ubuntu:
-    steps:
-      - run:
-          name: "Install `prtcl` CLI (ubuntu)"
-          command: |
-            printf 'Acquire::http::Timeout "30";\nAcquire::ftp::Timeout "30";\nAcquire::Retries "5";\n' | sudo tee /etc/apt/apt.conf.d/99timeout > /dev/null
-            sudo apt-get update -q
-            sudo apt-get install -qy zlib1g-dev jq
-            sudo curl https://prtcl.s3.amazonaws.com/install-apt.sh | sh
-            echo ":::: done!"
-  install-prtcl-darwin:
-    steps:
-      - run:
-          name: "Install `prtcl` CLI (darwin)"
-          command: |
-            brew tap particle-iot/brew && brew install prtcl jq
-            echo ":::: done!"
-  install-prtcl-windows:
-    steps:
-      - run:
-          name: "Install `prtcl` CLI (windows)"
-          command: |
-            if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-                echo ":::: Insufficient privileges! Must be Admin"
-                exit 1;
-            }
+  # install-prtcl-ubuntu:
+  #   steps:
+  #     - run:
+  #         name: "Install `prtcl` CLI (ubuntu)"
+  #         command: |
+  #           printf 'Acquire::http::Timeout "30";\nAcquire::ftp::Timeout "30";\nAcquire::Retries "5";\n' | sudo tee /etc/apt/apt.conf.d/99timeout > /dev/null
+  #           sudo apt-get update -q
+  #           sudo apt-get install -qy zlib1g-dev jq
+  #           sudo curl https://prtcl.s3.amazonaws.com/install-apt.sh | sh
+  #           echo ":::: done!"
+  # install-prtcl-darwin:
+  #   steps:
+  #     - run:
+  #         name: "Install `prtcl` CLI (darwin)"
+  #         command: |
+  #           brew tap particle-iot/brew && brew install prtcl jq
+  #           echo ":::: done!"
+  # install-prtcl-windows:
+  #   steps:
+  #     - run:
+  #         name: "Install `prtcl` CLI (windows)"
+  #         command: |
+  #           if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+  #               echo ":::: Insufficient privileges! Must be Admin"
+  #               exit 1;
+  #           }
 
-            $ErrorActionPreference = "Stop"
-            echo ":::: Downloading CLI installer..."
-            Invoke-WebRequest "https://prtcl.s3.amazonaws.com/prtcl-x64.exe" -OutFile "./prtcl-x64.exe"
+  #           $ErrorActionPreference = "Stop"
+  #           echo ":::: Downloading CLI installer..."
+  #           Invoke-WebRequest "https://prtcl.s3.amazonaws.com/prtcl-x64.exe" -OutFile "./prtcl-x64.exe"
 
-            echo ":::: Installing CLI..."
-            Start-Process ".\prtcl-x64.exe" -argumentlist "/S" -Wait
-            echo ":::: done!"
-          environment:
-            PRTCL_DISABLE_AUTOUPDATE: "1"
-  test-localcompiler-nix:
-    parameters:
-      tasks:
-        type: string
-      platform:
-        type: string
-    steps:
-      - run:
-          name: "Test Local Compilation Tasks"
-          no_output_timeout: "10m"
-          command: scripts/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>"
-          environment:
-            PRTCL_DISABLE_AUTOUPDATE: "1"
-  test-localcompiler-windows:
-    parameters:
-      tasks:
-        type: string
-      platform:
-        type: string
-    steps:
-      - run:
-          name: "Test Local Compilation Tasks"
-          no_output_timeout: "20m"
-          command: pwsh scripts/test-build-tasks.ps1 $home\project "<< parameters.platform >>" "<< parameters.tasks >>"
-          environment:
-            PRTCL_DISABLE_AUTOUPDATE: "1"
-  save-platform-to-workspace:
-    parameters:
-      os:
-        type: string
-      tasks:
-        type: string
-      platform:
-        type: string
-    steps:
-      - attach_workspace:
-          at: ~/workspace
-      - when:
-          condition:
-            or:
-              - equal: [ 'ubuntu-x64', << parameters.os >> ]
-              - equal: [ 'darwin-x64', << parameters.os >> ]
-          steps:
-            - run:
-                name: "Save Platform to Workspace (*nix)"
-                command: |
-                  os="<< parameters.os >>"
-                  tasks="<< parameters.tasks >>"
-                  platform="<< parameters.platform >>"
-                  dir="${HOME}/workspace/tested-platforms"
-                  filename="${os}-${platform}-$(echo $tasks | tr -d ' ":')"
-                  filepath="${dir}/${filename}"
-                  echo ":::: Adding: ${filepath}"
-                  touch $filepath
-                  ls -la $dir
-                  echo ":::: done!"
-      - when:
-          condition:
-            and:
-              - equal: [ 'windows-x64', << parameters.os >> ]
-          steps:
-            - run:
-                name: "Save Platform to Workspace (windows)"
-                shell: powershell.exe
-                command: |
-                  $ErrorActionPreference = "Stop"
-                  $os = "<< parameters.os >>"
-                  $tasks = "<< parameters.tasks >>"
-                  $platform = "<< parameters.platform >>"
-                  $dir = "$($home)\workspace\tested-platforms"
-                  $filename = "$($os)-$($platform)-$($tasks -replace '[ :"]','')"
-                  $filepath = "$($dir)\$($filename)"
-                  echo ":::: Adding: $($filepath)"
-                  New-Item $filepath -type file
-                  Get-ChildItem -Force $dir
-                  echo ":::: done!"
-      - persist_to_workspace:
-          root: ~/workspace
-          paths:
-            - tested-platforms
+  #           echo ":::: Installing CLI..."
+  #           Start-Process ".\prtcl-x64.exe" -argumentlist "/S" -Wait
+  #           echo ":::: done!"
+  #         environment:
+  #           PRTCL_DISABLE_AUTOUPDATE: "1"
+  # test-localcompiler-nix:
+  #   parameters:
+  #     tasks:
+  #       type: string
+  #     platform:
+  #       type: string
+  #   steps:
+  #     - run:
+  #         name: "Test Local Compilation Tasks"
+  #         no_output_timeout: "10m"
+  #         command: scripts/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>"
+  #         environment:
+  #           PRTCL_DISABLE_AUTOUPDATE: "1"
+  # test-localcompiler-windows:
+  #   parameters:
+  #     tasks:
+  #       type: string
+  #     platform:
+  #       type: string
+  #   steps:
+  #     - run:
+  #         name: "Test Local Compilation Tasks"
+  #         no_output_timeout: "20m"
+  #         command: pwsh scripts/test-build-tasks.ps1 $home\project "<< parameters.platform >>" "<< parameters.tasks >>"
+  #         environment:
+  #           PRTCL_DISABLE_AUTOUPDATE: "1"
+  # save-platform-to-workspace:
+  #   parameters:
+  #     os:
+  #       type: string
+  #     tasks:
+  #       type: string
+  #     platform:
+  #       type: string
+  #   steps:
+  #     - attach_workspace:
+  #         at: ~/workspace
+  #     - when:
+  #         condition:
+  #           or:
+  #             - equal: [ 'ubuntu-x64', << parameters.os >> ]
+  #             - equal: [ 'darwin-x64', << parameters.os >> ]
+  #         steps:
+  #           - run:
+  #               name: "Save Platform to Workspace (*nix)"
+  #               command: |
+  #                 os="<< parameters.os >>"
+  #                 tasks="<< parameters.tasks >>"
+  #                 platform="<< parameters.platform >>"
+  #                 dir="${HOME}/workspace/tested-platforms"
+  #                 filename="${os}-${platform}-$(echo $tasks | tr -d ' ":')"
+  #                 filepath="${dir}/${filename}"
+  #                 echo ":::: Adding: ${filepath}"
+  #                 touch $filepath
+  #                 ls -la $dir
+  #                 echo ":::: done!"
+  #     - when:
+  #         condition:
+  #           and:
+  #             - equal: [ 'windows-x64', << parameters.os >> ]
+  #         steps:
+  #           - run:
+  #               name: "Save Platform to Workspace (windows)"
+  #               shell: powershell.exe
+  #               command: |
+  #                 $ErrorActionPreference = "Stop"
+  #                 $os = "<< parameters.os >>"
+  #                 $tasks = "<< parameters.tasks >>"
+  #                 $platform = "<< parameters.platform >>"
+  #                 $dir = "$($home)\workspace\tested-platforms"
+  #                 $filename = "$($os)-$($platform)-$($tasks -replace '[ :"]','')"
+  #                 $filepath = "$($dir)\$($filename)"
+  #                 echo ":::: Adding: $($filepath)"
+  #                 New-Item $filepath -type file
+  #                 Get-ChildItem -Force $dir
+  #                 echo ":::: done!"
+  #     - persist_to_workspace:
+  #         root: ~/workspace
+  #         paths:
+  #           - tested-platforms
 workflows:
-  test-build-system:
-    when:
-      or:
-        - matches:
-            pattern: "^main$"
-            value: << pipeline.git.branch >>
-        - matches:
-            pattern: "^master$"
-            value: << pipeline.git.branch >>
-        - matches:
-            pattern: "^develop$"
-            value: << pipeline.git.branch >>
-        - matches:
-            pattern: "^test/v.*"
-            value: << pipeline.git.branch >>
-        - matches:
-            pattern: "^release/.*"
-            value: << pipeline.git.branch >>
     jobs:
-      - setup-workspace:
-          <<: *tag_filters
-      - build-for-windows:
-          <<: *tag_filters
-          matrix:
-            parameters:
-              tasks: *tasks
-              platform: *platforms
-          requires:
-            - setup-workspace
-      - build-for-ubuntu:
-          <<: *tag_filters
-          matrix:
-            parameters:
-              tasks: *tasks
-              platform: *platforms
-          requires:
-            - setup-workspace
-      - build-for-darwin:
-          <<: *tag_filters
-          matrix:
-            parameters:
-              tasks: *tasks
-              platform: *platforms
-          requires:
-            - setup-workspace
-      - validate-toolchain-platforms:
-          <<: *tag_filters
-          requires:
-            - setup-workspace
-            - build-for-windows
-            - build-for-ubuntu
-            - build-for-darwin
-  build-and-test:
-    jobs:
+      # - setup-workspace:
+      #     <<: *tag_filters
+      # - build-for-windows:
+      #     <<: *tag_filters
+      #     matrix:
+      #       parameters:
+      #         tasks: *tasks
+      #         platform: *platforms
+      #     requires:
+      #       - setup-workspace
+      # - build-for-ubuntu:
+      #     <<: *tag_filters
+      #     matrix:
+      #       parameters:
+      #         tasks: *tasks
+      #         platform: *platforms
+      #     requires:
+      #       - setup-workspace
+      # - build-for-darwin:
+      #     <<: *tag_filters
+      #     matrix:
+      #       parameters:
+      #         tasks: *tasks
+      #         platform: *platforms
+      #     requires:
+      #       - setup-workspace
+      # - validate-toolchain-platforms:
+      #     <<: *tag_filters
+      #     requires:
+      #       - setup-workspace
+      #       - build-for-windows
+      #       - build-for-ubuntu
+      #       - build-for-darwin
       - build-and-test:
           <<: *tag_filters
           context:
