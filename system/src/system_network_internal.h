@@ -196,10 +196,10 @@ private:
     volatile uint8_t WLAN_DHCP_PENDING = 0;
     volatile uint8_t WLAN_LISTEN_ON_FAILED_CONNECT = 0;
     volatile uint8_t WLAN_INITIALIZED = 0;
-#if PLATFORM_ID == PLATFORM_ELECTRON // Electron
-    volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default on Electron
+#if HAL_PLATFORM_CELLULAR
+    volatile uint32_t START_LISTENING_TIMER_MS = 300000UL; // 5 minute default for Cellular devices
 #else
-    volatile uint32_t START_LISTENING_TIMER_MS = 0UL; // Disabled by default on Photon/P1/Core
+    volatile uint32_t START_LISTENING_TIMER_MS = 0UL; // Disabled for Wi-Fi devices
 #endif
     volatile uint32_t start_listening_timer_base = 0;
     volatile uint32_t start_listening_timer_duration = 0;

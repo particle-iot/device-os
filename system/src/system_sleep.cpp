@@ -71,12 +71,7 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
 
     // Turn off the modem
     if (!network_is_off(index, nullptr)) {
-#if PLATFORM_GEN == 2
-        if (!SPARK_WLAN_SLEEP) {
-            status.on = true;
-        }
-#endif
-#if PLATFORM_GEN == 3
+#if HAL_PLATFORM_IFAPI
         if_t iface;
         if (!if_get_by_index(index, &iface)) {
             if (NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP) ||
@@ -97,25 +92,12 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
 }
 
 int system_sleep_network_resume(network_interface_index index, network_status_t status) {
-#if PLATFORM_GEN == 2
-    /* On Gen2, calling network_on() and network_connect() will block until the connection is established
-     * if single threaded, or this function is invoked synchronously by the system thread if system threading
-     * is enabled. In both case, that would block the user application. Setting a flag here to unblock the user
-     * application and restore the connection later. */
-    if (status.on) {
-        SPARK_WLAN_SLEEP = 0;
-    }
-    if (status.connected) {
-        SPARK_WLAN_CONNECT_RESTORE = 1;
-    }
-#else
     if (status.on) {
         network_on(index, 0, 0, nullptr);
     }
     if (status.connected) {
         network_connect(index, 0, 0, nullptr);
     }
-#endif
     return SYSTEM_ERROR_NONE;
 }
 #endif // PLATFORM_ID != PLATFORM_GCC
@@ -259,12 +241,5 @@ int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_ba
 
 int system_sleep_ext(const hal_sleep_config_t* config, hal_wakeup_source_base_t** reason, void* reserved) {
     LOG(TRACE, "Entering system_sleep_ext()");
-#if HAL_PLATFORM_GEN == 2
-    // Cancel current connection attempt to unblock the system thread
-    // on Gen 2 platforms
-    if (network_connecting(NETWORK_INTERFACE_ALL, 0, nullptr)) {
-        network_connect_cancel(NETWORK_INTERFACE_ALL, 1, 0, 0);
-    }
-#endif // HAL_PLATFORM_GEN == 2
     return system_sleep_ext_impl(config, reason, reserved);
 }

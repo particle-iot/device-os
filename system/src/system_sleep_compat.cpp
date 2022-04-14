@@ -29,9 +29,6 @@
 #include "cellular_hal.h"
 #endif // HAL_PLATFORM_CELLULAR
 #include "spark_wiring_system.h"
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-# include "parser.h"
-#endif
 #include "system_sleep_configuration.h"
 #include "check.h"
 
@@ -64,6 +61,7 @@ static void network_resume() {
     if (wakeupState.wifi) {
         SPARK_WLAN_SLEEP = 0;
     }
+    // Outdated - Fix with GCC refactoring
     // Gen2-only: Set the system flags that triggers the wifi/cloud reconnection in the background loop
     // FIXME: Gen3 won't automatically restore the modem state and network connection if cloud auto-connect flag is not set.
     // See manage_network_connection() in system_network_manager_api.cpp.
