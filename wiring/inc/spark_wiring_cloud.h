@@ -116,13 +116,13 @@ public:
         return _variable(varKey, &var, INT);
     }
 
-#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != 20
+#if PLATFORM_ID != PLATFORM_GCC
     // compiling with gcc this function duplicates the previous one.
     static inline bool _variable(const char* varKey, const int32_t& var)
     {
         return _variable(varKey, &var, INT);
     }
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC
 
     static inline bool _variable(const char* varKey, const uint32_t& var)
     {
@@ -132,7 +132,7 @@ public:
 #if PLATFORM_ID != PLATFORM_GCC
     static bool _variable(const char* varKey, const float& var)
     __attribute__((error("Please change the variable from type `float` to `double` for use with Particle.variable().")));
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC
 
     static inline bool _variable(const char* varKey, const double& var)
     {

@@ -38,6 +38,7 @@
 #include "nrf_delay.h"
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"
+#include "platforms.h"
 
 using namespace particle::usbd;
 
@@ -136,17 +137,17 @@ private:
 #define USBD_LANGID_STRING              "\x09\x04"  //U.S. English
 #define USBD_MANUFACTURER_STRING        "Particle"
 
-#if PLATFORM_ID == 12
+#if PLATFORM_ID == PLATFORM_ARGON
 # define USBD_PRODUCT_NAME              "Argon"
-#elif PLATFORM_ID == 13
+#elif PLATFORM_ID == PLATFORM_BORON
 # define USBD_PRODUCT_NAME              "Boron"
-#elif PLATFORM_ID == 22
+#elif PLATFORM_ID == PLATFORM_ASOM
 # define USBD_PRODUCT_NAME              "A SoM"
-#elif PLATFORM_ID == 23
+#elif PLATFORM_ID == PLATFORM_BSOM
 # define USBD_PRODUCT_NAME              "B SoM"
-#elif PLATFORM_ID == 25
+#elif PLATFORM_ID == PLATFORM_B5SOM
 # define USBD_PRODUCT_NAME              "B5 SoM"
-#elif PLATFORM_ID == 26
+#elif PLATFORM_ID == PLATFORM_TRACKER
 # define USBD_PRODUCT_NAME              "Tracker"
 #endif
 #define USBD_PRODUCT_STRING             USBD_PRODUCT_NAME " " "DFU Mode"

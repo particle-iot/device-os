@@ -120,7 +120,7 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
     HAL_Pin_Mode(ESPEN, OUTPUT_OPEN_DRAIN);
 #elif PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_TRACKER
     HAL_Pin_Mode(ESPEN, OUTPUT);
-#endif
+#endif // PLATFORM_ID == PLATFORM_ARGON
     espOff();
 
 #if !HAL_PLATFORM_WIFI_NCP_SDIO
