@@ -86,7 +86,6 @@ jobs:
   build-for-windows:
     executor:
       name: win/default
-      size: xlarge
     parameters:
       tasks:
         type: string
@@ -412,7 +411,24 @@ commands:
           paths:
             - tested-platforms
 workflows:
-  build-and-test:
+  test-build-system:
+    when:
+      or:
+        - matches:
+            pattern: "^main$"
+            value: << pipeline.git.branch >>
+        - matches:
+            pattern: "^master$"
+            value: << pipeline.git.branch >>
+        - matches:
+            pattern: "^develop$"
+            value: << pipeline.git.branch >>
+        - matches:
+            pattern: "^test/v.*"
+            value: << pipeline.git.branch >>
+        - matches:
+            pattern: "^release/.*"
+            value: << pipeline.git.branch >>
     jobs:
       - setup-workspace:
           <<: *tag_filters
@@ -447,6 +463,8 @@ workflows:
             - build-for-windows
             - build-for-ubuntu
             - build-for-darwin
+  build-and-test:
+    jobs:
       - build-and-test:
           <<: *tag_filters
           context:
