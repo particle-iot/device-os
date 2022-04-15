@@ -34,5 +34,3 @@ catch_discover_tests( ${target_name}
 )
 
 add_subdirectory(simple_ntp_client)
-add_subdirectory(stm32f2x)
-

@@ -21,7 +21,6 @@ target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/communication/inc/
   PRIVATE ${DEVICE_OS_DIR}/hal/inc/
   PRIVATE ${DEVICE_OS_DIR}/hal/shared/
-  PRIVATE ${DEVICE_OS_DIR}/hal/src/stm32/
   PRIVATE ${DEVICE_OS_DIR}/services/inc/
   PRIVATE ${DEVICE_OS_DIR}/system/inc/
   PRIVATE ${DEVICE_OS_DIR}/system/src/
