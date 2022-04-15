@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "platforms.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -286,9 +287,9 @@ int os_timer_is_active(os_timer_t timer, void* reserved);
 #endif
 
 #ifdef __cplusplus
-#if PLATFORM_ID!=3 && !defined(UNIT_TEST)
+#if PLATFORM_ID != PLATFORM_GCC && !defined(UNIT_TEST)
 #include <bits/gthr.h>
-#endif /* PLATFORM_ID!=3 && !defined(UNIT_TEST) */
+#endif /* PLATFORM_ID != PLATFORM_GCC && !defined(UNIT_TEST) */
 #endif /* __cplusplus */
 
 #endif	/* CONCURRENCY_HAL_H */

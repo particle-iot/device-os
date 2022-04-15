@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include "platforms.h"
 
 namespace EventType {
   enum Enum : char {
@@ -63,7 +64,7 @@ namespace EventType {
   }
 } // namespace EventType
 
-#if PLATFORM_ID!=3 && PLATFORM_ID != 20
+#if PLATFORM_ID != PLATFORM_GCC
 static_assert(sizeof(EventType::Enum)==1, "EventType size is 1");
 #endif
 

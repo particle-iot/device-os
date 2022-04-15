@@ -48,6 +48,7 @@ void mbedtls_ssl_update_out_pointers(mbedtls_ssl_context *ssl, mbedtls_ssl_trans
 #include <stdio.h>
 #include <string.h>
 #include "dtls_session_persist.h"
+#include "platforms.h"
 
 namespace particle { namespace protocol {
 
@@ -209,12 +210,12 @@ static void my_debug(void *ctx, int level,
 		const char *file, int line,
 		const char *str )
 {
-#if PLATFORM_ID!=3
+#if PLATFORM_ID != PLATFORM_GCC
 	DEBUG_D("%s:%04d: %s", file, line, str);
 #else
 	fprintf(stdout, "%s:%04d: %s", file, line, str);
 	fflush(stdout);
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC
 }
 
 ProtocolError DTLSMessageChannel::init(
