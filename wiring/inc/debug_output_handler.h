@@ -93,6 +93,28 @@ public:
 
 #endif // Wiring_Serial2
 
+#if Wiring_Serial3
+
+class Serial3LogHandler: public StreamLogHandler {
+public:
+    explicit Serial3LogHandler(LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
+            Serial3LogHandler(9600, level, filters) {
+    }
+
+    explicit Serial3LogHandler(int baud, LogLevel level = LOG_LEVEL_INFO, LogCategoryFilters filters = {}) :
+            StreamLogHandler(Serial3, level, filters) {
+        Serial3.begin(baud);
+        LogManager::instance()->addHandler(this);
+    }
+
+    virtual ~Serial3LogHandler() {
+        LogManager::instance()->removeHandler(this);
+        Serial3.end();
+    }
+};
+
+#endif // Wiring_Serial3
+
 #if Wiring_USBSerial1
 
 class USBSerial1LogHandler: public StreamLogHandler {

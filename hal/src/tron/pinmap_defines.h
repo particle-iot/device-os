@@ -67,7 +67,7 @@
 #define RGBB                24
 #define BTN                 25
 
-// SPI, Shared with UART1
+// SPI, Shared with UART2
 #define SS                  S3
 #define SCK                 S2
 #define MISO                S1
@@ -90,6 +90,11 @@
 #define RX1                 D5
 #define CTS1                D3
 #define RTS1                D2
+// Shared with SPI
+#define TX2                 S0
+#define RX2                 S1
+#define CTS2                D10
+#define RTS2                S2
 
 #define WKP                 D10
 

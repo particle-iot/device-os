@@ -126,7 +126,7 @@ public:
         if (uartInstance == UART0_DEV) {
             RCC_PeriphClockCmd(APBPeriph_UART0, APBPeriph_UART0_CLOCK, ENABLE);
         }
-        // Configur TX/RX pins
+        // Configure TX/RX pins
         if (uartInstance == UART2_DEV) {
             Pinmux_Config(hal_pin_to_rtl_pin(txPin_), PINMUX_FUNCTION_LOGUART);
             Pinmux_Config(hal_pin_to_rtl_pin(rxPin_), PINMUX_FUNCTION_LOGUART);
@@ -192,7 +192,7 @@ public:
             UART_BreakCtl(uartInstance, 0);
         }
 
-        if (uartInstance != UART2_DEV) {
+        if (!useInterrupt()) {
             // Configuring DMA
             if (!initDmaChannels()) {
                 end();
@@ -213,7 +213,7 @@ public:
     int end() {
         CHECK_TRUE(state_ != HAL_USART_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE);
         auto uartInstance = uartTable_[index_].UARTx;
-        if (uartInstance != UART2_DEV) {
+        if (!useInterrupt()) {
             deinitDmaChannels();
         } else {
             InterruptDis(uartTable_[index_].IrqNum);
@@ -288,7 +288,7 @@ public:
         ssize_t len = 0;
         if (receiving_) {
             RxLock lk(this);
-            if (uartInstance != UART2_DEV) {
+            if (!useInterrupt()) {
                 len = rxBuffer_.data();
                 const uint32_t curAddr = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
                 GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
@@ -337,8 +337,7 @@ public:
     }
 
     int pollStatus() {
-        auto uartInstance = uartTable_[index_].UARTx;
-        if (uartInstance != UART2_DEV) {
+        if (!useInterrupt()) {
             TxLock lk(this);
             uartTxDmaCompleteHandler(this);
         } else {
@@ -351,7 +350,8 @@ public:
     static Usart* getInstance(hal_usart_interface_t serial) {
         static Usart Usarts[] = {
             {2, TX,  RX,  PIN_INVALID, PIN_INVALID}, // LOG UART
-            {0, TX1, RX1, CTS1,        RTS1} // UART0
+            {0, TX1, RX1, CTS1,        RTS1}, // UART0
+            {3, TX2, RX2, CTS2,        RTS2} // LP_UART
         };
         CHECK_TRUE(serial < sizeof(Usarts) / sizeof(Usarts[0]), nullptr);
         return &Usarts[serial];
@@ -360,7 +360,7 @@ public:
     static uint32_t uartTxRxIntHandler(void* data) {
         auto uart = (Usart*)data;
         auto uartInstance = uart->uartTable_[uart->index_].UARTx;
-        SPARK_ASSERT(uartInstance == UART2_DEV);
+        SPARK_ASSERT(uart->useInterrupt());
         volatile uint8_t regIir = UART_IntStatus(uartInstance);
         if ((regIir & RUART_IIR_INT_PEND) != 0) {
             // No pending IRQ
@@ -427,6 +427,14 @@ private:
         }
     }
     ~Usart() = default;
+
+    bool useInterrupt() {
+        auto instance = uartTable_[index_].UARTx;
+        if (instance == UART2_DEV || instance == UART3_DEV) {
+            return true;
+        }
+        return false;
+    }
 
     bool validateConfig(unsigned int config) {
         CHECK_TRUE((config & SERIAL_DATA_BITS) == SERIAL_DATA_BITS_7 ||
@@ -518,7 +526,7 @@ private:
         auto uartInstance = uartTable_[index_].UARTx;
         if (!transmitting_ && (consumable = txBuffer_.consumable())) {
             transmitting_ = true;
-            if (uartInstance != UART2_DEV) {
+            if (!useInterrupt()) {
                 if (txDmaInitStruct_.GDMA_ChNum == 0xFF) {
                     transmitting_ = false;
                     return;
@@ -562,7 +570,7 @@ private:
         }
         receiving_ = true;
         auto uartInstance = uartTable_[index_].UARTx;
-        if (uartInstance != UART2_DEV) {
+        if (!useInterrupt()) {
             if (rxDmaInitStruct_.GDMA_ChNum == 0xFF) {
                 receiving_ = false;
                 return;
@@ -601,8 +609,7 @@ private:
 
     static uint32_t uartTxDmaCompleteHandler(void* data) {
         auto uart = (Usart*)data;
-        auto uartInstance = uart->uartTable_[uart->index_].UARTx;
-        SPARK_ASSERT(uartInstance != UART2_DEV);
+        SPARK_ASSERT(!uart->useInterrupt());
         if (!uart->transmitting_) {
             return 0;
         }
@@ -622,8 +629,7 @@ private:
 
     static uint32_t uartRxDmaCompleteHandler(void* data) {
         auto uart = (Usart*)data;
-        auto uartInstance = uart->uartTable_[uart->index_].UARTx;
-        SPARK_ASSERT(uartInstance != UART2_DEV);
+        SPARK_ASSERT(!uart->useInterrupt());
         if (!uart->receiving_) {
             return 0;
         }
@@ -642,7 +648,7 @@ private:
 
     void rxLock(bool lock) {
         auto instance = uartTable_[index_].UARTx;
-        if (instance != UART2_DEV) {
+        if (!useInterrupt()) {
             if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
                 if (lock) {
                     NVIC_DisableIRQ(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum));
@@ -659,7 +665,7 @@ private:
 
     void txLock(bool lock) {
         auto instance = uartTable_[index_].UARTx;
-        if (instance != UART2_DEV) {
+        if (!useInterrupt()) {
             if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
                 if (lock) {
                     NVIC_DisableIRQ(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum));
