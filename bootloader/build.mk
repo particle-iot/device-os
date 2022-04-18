@@ -1,6 +1,6 @@
 CFLAGS += -DUSE_STDPERIPH_DRIVER
 
-ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
+ASRC += $(COMMON_BUILD)/arm/startup/startup_$(MCU_DEVICE_LC).S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 
 # Linker flags

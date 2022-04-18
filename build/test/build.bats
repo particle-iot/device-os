@@ -1,4 +1,3 @@
-
 load build
 
 @test "make is version 3.81" {

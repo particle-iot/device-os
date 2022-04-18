@@ -387,7 +387,7 @@ make
 ## Platform Specific vs Platform Agnostic builds
 
 Currently the low level hardware specific details are abstracted away in the HAL (Hardware Abstraction Layer) implementation.
-Most platforms do provide access to the low-level hardware, e.g. via the CMSIS library on STM32.
+Most platforms do provide access to the low-level hardware, e.g. via the CMSIS library on NRF52, etc..
 You should however try to make use of the HAL functions and methods instead of making direct hardware calls, which will ensure your code is more future proof by being easier to port to other platforms.
 To build the firmware as platform agnostic, first run `make clean`, then simply include `SPARK_NO_PLATFORM=y` in the make command.
 This is also a great way to find all of the places in your code that make hardware specific calls, as they will generate an error when building as platform agnostic.

@@ -720,7 +720,7 @@ void application_task_start(void* arg) {
 }
 
 /**
- * Called from startup_stm32f2xx.s at boot, main entry point.
+ * Called from startup_${MCU_DEVICE_LC}.s at boot, main entry point.
  */
 int main(void) {
     init_malloc_mutex();

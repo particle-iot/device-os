@@ -9,10 +9,6 @@ RECURSIVE = YES
 
 EXCLUDE_PATTERNS = \
   */third_party/* \
-  */hal/src/photon/wiced/* \
-  */hal/src/electron/rtos/* \
-  */platform/MCU/STM32F1xx/CMSIS/* \
-  */platform/MCU/STM32F2xx/CMSIS/* \
   */user/tests/* \
   */communication/tests/* \
   */test/*
