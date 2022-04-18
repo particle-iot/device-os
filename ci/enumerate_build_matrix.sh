@@ -156,12 +156,6 @@ do
   done
 done
 
-# Photon minimal build
-if platform photon; then
-  cmd="${MAKE} PLATFORM=\"photon\" COMPILE_LTO=\"n\" MINIMAL=y"
-  BUILD_JOBS+=("modules ${#BUILD_JOBS[@]} ${cmd}")
-fi
-
 NPROC=$(nproc)
 
 # Export necessary functions
