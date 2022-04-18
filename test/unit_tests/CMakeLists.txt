@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.2)
 project(unit_tests)
 
-# NOTE: Keep this in sync with lang-std.mk
+# NOTE: Keep this in sync with build/lang-std.mk
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)

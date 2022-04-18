@@ -88,7 +88,7 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
 
-CLOUD_FLASH_URL ?= https://api.spark.io/v1/devices/$(SPARK_CORE_ID)\?access_token=$(SPARK_ACCESS_TOKEN)
+CLOUD_FLASH_URL ?= https://api.particle.io/v1/devices/$(PARTICLE_DEVICE_ID)\?access_token=$(PARTICLE_ACCESS_TOKEN)
 
 # All Target
 all: prebuild $(MAKE_DEPENDENCIES) $(TARGET) postbuild
@@ -101,18 +101,6 @@ exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 	@echo Built x-compile executable at $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 none:
 	;
-
-st-flash: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
-	@echo Flashing $(lastword $^) using st-flash to address $(PLATFORM_DFU)
-	st-flash write $(lastword $^) $(PLATFORM_DFU)
-
-ifneq ("$(OPENOCD_HOME)","")
-
-program-openocd: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
-	@echo Flashing $(lastword $^) using openocd to address $(PLATFORM_DFU)
-	$(OPENOCD_HOME)/openocd -f $(OPENOCD_HOME)/tcl/interface/ftdi/particle-ftdi.cfg -f $(OPENOCD_HOME)/tcl/target/stm32f2x.cfg  -c "init; reset halt" -c "flash protect 0 0 11 off" -c "program $(lastword $^) $(PLATFORM_DFU) reset exit"
-
-endif
 
 # Program the device using dfu-util. The device should have been placed
 # in bootloader mode before invoking 'make program-dfu'
@@ -131,10 +119,10 @@ endif
 	@echo Flashing using dfu:
 	$(DFU) -d $(USBD_VID_SPARK):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $(lastword $^)
 
-# Program the device using the cloud. SPARK_CORE_ID and SPARK_ACCESS_TOKEN must
+# Program the device using the cloud. PARTICLE_DEVICE_ID and PARTICLE_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'
 program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
-	@echo Flashing using cloud API, CORE_ID=$(SPARK_CORE_ID):
+	@echo Flashing using cloud API, CORE_ID=$(PARTICLE_DEVICE_ID):
 	$(CURL) -X PUT -F file=@$(lastword $^) -F file_type=binary $(CLOUD_FLASH_URL)
 
 program-serial: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
@@ -300,7 +288,7 @@ clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 
-.PHONY: all prebuild postbuild none elf bin hex size program-dfu program-cloud st-flash program-serial
+.PHONY: all prebuild postbuild none elf bin hex size program-dfu program-cloud program-serial
 .SECONDARY:
 
 # Disable implicit builtin rules

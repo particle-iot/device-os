@@ -5,9 +5,6 @@ PROVIDE ( _Stack_Init = __Stack_Init ) ;
 
 
 /* include the memory spaces definitions sub-script */
-/*
-Linker subscript for STM32F205xx definitions with 1024K Flash and 128K RAM
-*/
 
 /* higher address of the user mode stack */
 /* end of 256K SRAM - backup sram pages */

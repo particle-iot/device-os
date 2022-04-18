@@ -2,13 +2,17 @@
 
 ## Setup
 
-Install BATS.
+Install BATS
+
+```
+brew install bats
+```
 
 ## Running
 
 ```
 cd build/test
-bats build.bats
+./runall.bash
 ```
 
 That's it. :-)

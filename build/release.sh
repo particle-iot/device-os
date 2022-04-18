@@ -8,8 +8,8 @@ function display_help ()
     echo '
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|asom|boron|bsom...
-                  |b5som|electron|p1|photon>...
-                  | --platform-id=<6|8|10|12|13|22|23|25|26>)
+                  |b5som>...
+                  | --platform-id=<12|13|22|23|25|26>)
                   [--debug] [--help] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -210,18 +210,6 @@ if [ -z $PLATFORM ] && [ -z $PLATFORM_ID ]; then
     exit 5
 elif [ ! -z $PLATFORM ]; then
     case "$PLATFORM" in
-        "photon")
-            PLATFORM_ID="6"
-            GEN3=false
-            ;;
-        "p1")
-            PLATFORM_ID="8"
-            GEN3=false
-            ;;
-        "electron")
-            PLATFORM_ID="10"
-            GEN3=false
-            ;;
         "argon")
             PLATFORM_ID="12"
             GEN3=true
@@ -253,18 +241,6 @@ elif [ ! -z $PLATFORM ]; then
     esac
 else
     case "$PLATFORM_ID" in
-        6)
-            PLATFORM="photon"
-            GEN3=false
-            ;;
-        8)
-            PLATFORM="p1"
-            GEN3=false
-            ;;
-        10)
-            PLATFORM="electron"
-            GEN3=false
-            ;;
         12)
             PLATFORM="argon"
             GEN3=true
@@ -328,66 +304,8 @@ rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 # Build Platform System #
 #########################
 
-# Photon (6), P1 (8)
-if [ $PLATFORM_ID -eq 6 ] || [ $PLATFORM_ID -eq 8 ]; then
-    # Configure
-    if [ $DEBUG = true ]; then
-        cd ../main
-        MODULAR="n"
-        SUFFIX=""
-    else
-        cd ../modules
-        MODULAR="y"
-        SUFFIX="-m"
-    fi
-
-    # Compose, echo and execute the `make` command
-    MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
-    if [ "$MODULAR" = "n" ]; then
-        MAKE_COMMAND+=" APP=tinker-serial1-debugging"
-    else
-        MAKE_COMMAND+=" APP=tinker"
-    fi
-    echo $MAKE_COMMAND
-    eval $MAKE_COMMAND
-
-    # Migrate file(s) into output interface
-    if [ "$MODULAR" = "n" ]; then
-        release_binary "tinker-serial1-debugging" "tinker-serial1-debugging" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-    else
-        release_binary "system-part1" "system-part1" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-        release_binary "system-part2" "system-part2" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-        release_binary "user-part" "tinker" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-    fi
-
-# Electron (10)
-elif [ $PLATFORM_ID -eq 10 ]; then
-    # Configure
-    cd ../modules
-    MODULAR="y"
-    if [ $DEBUG = true ]; then
-        declare -a debugBuildOptions=("y" "n")
-    else
-        declare -a debugBuildOptions=("n")
-    fi
-
-    for debugBuildOption in ${debugBuildOptions[@]}; do
-        DEBUG_BUILD=$debugBuildOption
-
-        # Compose, echo and execute the `make` command
-        MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n APP=tinker"
-        echo $MAKE_COMMAND
-        eval $MAKE_COMMAND
-
-        # Migrate file(s) into output interface
-        release_binary "system-part1" "system-part1" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-        release_binary "system-part2" "system-part2" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-        release_binary "system-part3" "system-part3" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-        release_binary "user-part" "tinker" "-m" "$DEBUG_BUILD" "$USE_SWD_JTAG"
-    done
-
 # GEN3
-elif [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ]; then
+if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ]; then
     # Configure
     if [ $DEBUG = true ]; then
         cd ../main
