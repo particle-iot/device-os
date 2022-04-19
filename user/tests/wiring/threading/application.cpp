@@ -24,7 +24,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-// make clean all TEST=wiring/threading PLATFORM=electron -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y
+// make clean all TEST=wiring/threading PLATFORM=boron -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y
 //
 // Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 //     { "comm", LOG_LEVEL_NONE }, // filter out comm messages

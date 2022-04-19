@@ -32,6 +32,8 @@ PlatformNCPIdentifier platform_ncp_identifier(module_info_t* mi) {
         case PLATFORM_NCP_QUECTEL_EG91_EX:
         case PLATFORM_NCP_SARA_U260:
         case PLATFORM_NCP_SARA_U270:
+        case PLATFORM_NCP_BROADCOM_BCM9WCDUSI09:
+        case PLATFORM_NCP_BROADCOM_BCM9WCDUSI14:
             ncp = static_cast<PlatformNCPIdentifier>(mi->reserved);
             break;
         }

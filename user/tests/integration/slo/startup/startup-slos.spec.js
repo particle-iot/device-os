@@ -2,27 +2,19 @@
 //
 // Device OS releases should guarantee a minimum RAM for user applications
 //   Given canonical example firmware
-//   100% of Device OS releases will provide at least 60 kB of available RAM for user applications (exception 40k for Photon + P1)
+//   100% of Device OS releases will provide at least 60 kB of available RAM for user applications
 //
 // Device OS releases should guarantee sufficient flash space for user applications
 //   The size of a relevant canonical app, which includes library overhead required by Device OS, does not increase more than 15% each release.
 
 suite('Device startup service level objectives (SLOs)');
 
-platform('gen2', 'gen3');
+platform('gen3');
 // Enabling system thread, in order to account for its overhead in the measurements
 systemThread('enabled');
 
 // Parameters validated by this test
 const THRESHOLDS = {
-    // P1 application is larger compared to Photon because of external flash support
-    p1: {
-        targetAppFlashSize: 20474,
-        targetFreeRam: 40000
-    },
-    photon: {
-        targetFreeRam: 40000
-    },
     // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
     default: {
         targetAppFlashSize: 18105,

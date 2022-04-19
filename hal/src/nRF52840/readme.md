@@ -9,7 +9,7 @@ This folder contains the sources to bootstrap development of a new HAL implement
 - duplicate `platform/MCU/newhal-mcu` to a new folder and rename to match the `PLATFORM_MCU` value for your product (in product-id.mk)
 - duplicate `build/arm/linker/linker_newhalcpu.ld` and rename, substituting newhalcpu for the value of `MCU_DEVICE` for your product.
 - duplicate `build/arm/startup/linker_newhalcpu.S` and rename, substituting newhalcpu for the value of `MCU_DEVICE` for your product.
-- create a new symbolic reference for your new platform in `firmware/platform/shared/platforms.h` that uses the same PLATFORM_ID you created earlier (e.g. `#define PLATFORM_ELECTRON_PRODUCTION 10`).
+- create a new symbolic reference for your new platform in `firmware/platform/shared/platforms.h` that uses the same PLATFORM_ID you created earlier (e.g. `#define PLATFORM_BORON 13`).
 - add your new symbolic reference to `platform_config.h` to keep this from throwing an error, optionally add it in the appropriate places and configure all of the pin/port/interrupt mapping.
 - test build - `make v=1 PLATFORM_ID=<your platform id> clean all` should now build the empty bootloader and firmware.
 

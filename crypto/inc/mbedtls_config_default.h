@@ -2033,9 +2033,9 @@
  *
  */
 // FIXME: some platforms cannot include platforms.h here
-#if PLATFORM_ID != 3
+#if PLATFORM_ID != PLATFORM_GCC
 #define MBEDTLS_OID_OPTIMIZE_STRINGS
-#endif // PLATFORM_ID != 3
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 /**
  * \def MBEDTLS_PADLOCK_C
@@ -2641,6 +2641,8 @@
 #include "mbedtls/target_config.h"
 #endif
 
+#include "platforms.h"
+
 /*
  * Allow user to override any previous default.
  *
@@ -2654,9 +2656,9 @@
 #include MBEDTLS_USER_CONFIG_FILE
 #endif
 
-#if !(PLATFORM_ID == 3 && defined(__clang__))
+#if !(PLATFORM_ID == PLATFORM_GCC && defined(__clang__))
 #include "mbedtls_weaken.h"
-#endif // !(PLATFORM_ID == 3 && defined(__clang__))
+#endif // !(PLATFORM_ID == PLATFORM_GCC && defined(__clang__))
 
 #include "mbedtls/check_config.h"
 

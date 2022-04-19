@@ -27,12 +27,10 @@
 #include "servo_hal.h"
 #include "unit-test/unit-test.h"
 
-#if HAL_PLATFORM_GEN == 2
-static const pin_t pin = D0, pin2 = D1; // Pins sharing the same hardware timer
-#elif HAL_PLATFORM_GEN == 3
+#if HAL_PLATFORM_GEN == 3
 static const pin_t pin = A0, pin2 = A1;
 #else
-#error "Unsupported"
+#error "Unsupported platform"
 #endif // HAL_PLATFORM_GEN
 
 test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
@@ -43,7 +41,7 @@ test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
     pin_t pin = D0;
 # endif
 #else
-    pin_t pin = D5;
+    #error "Unsupported platform"
 #endif
     Servo testServo;
     // when

@@ -15,7 +15,7 @@ export BUILDPACK_VARIATION=manifest
 export RELEASE_PLATFORMS=( )
 
 # Platforms for which this firmware is considered experimental
-export PRERELEASE_PLATFORMS=( photon p1 electron argon boron bsom b5som tracker )
+export PRERELEASE_PLATFORMS=( argon boron bsom b5som tracker )
 # Note: a single platform should be only in release or prerelease list. If
 # added to both it will be considered a prerelease
 

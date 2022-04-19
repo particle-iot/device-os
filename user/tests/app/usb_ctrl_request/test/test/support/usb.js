@@ -5,12 +5,7 @@ import * as util from 'util';
 
 // Regular expressions matching vendor/product IDs of the Particle USB devices
 const usbIdRegex = [
-  // Core
-  {
-    idVendor: /1d50/,
-    idProduct: /607[df]/
-  },
-  // Photon/P1/Electron
+  // Gen 3
   {
     idVendor: /2b04/,
     idProduct: /[cd]00?/

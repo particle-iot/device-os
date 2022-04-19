@@ -35,19 +35,6 @@ bool tmEqual(const struct tm& lh, const struct tm& rh) {
         lh.tm_isdst == rh.tm_isdst;
 }
 
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-// Emulates localtime behavior on older versions of toolchain
-struct tm* localtime32(const time32_t* tim_p) {
-    // _impure_ptr is module/part-specific right now
-    // In order not to allocate unnecessary stuff, as a hack
-    // we will here temporarily use what localtime() returned us
-    time_t tim = static_cast<time_t>(*tim_p);
-    auto localTm = localtime(&tim);
-
-    return localtime32_r(tim_p, localTm);
-}
-#endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-
 } // anonymous
 
 STARTUP({
@@ -65,41 +52,8 @@ test(TIME_COMPAT_00_TimeIsValid) {
     assertTrue(Time.isValid());
 }
 
-test(TIME_COMPAT_01_DynalibNewlib32BitTimeTFunctionsWorkCorrectly) {
-    // This test only applies to Electron where localtime_r and mktime are exported in
-    // services2 dynalib
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-    time_t refTime = 1514764800; // 2018/01/01 00:00:00
-    time32_t refTime32 = (time32_t)refTime;
-    uint32_t garbage = 0xffffffff;
-    (void)garbage;
-    struct tm tm = {};
-    struct tm tm32 = {};
-
-    assertEqual(refTime, static_cast<time_t>(refTime32));
-
-    // localtime_r vs localtime32_r
-    assertTrue(localtime_r(&refTime, &tm) == &tm);
-    assertTrue(localtime32_r(&refTime32, &tm32) == &tm32);
-    assertTrue(tmEqual(tm, tm32));
-
-    // localtime vs localtime32
-    auto localTm = localtime(&refTime);
-    assertTrue(localTm != nullptr);
-    memcpy(&tm, localTm, sizeof(struct tm));
-    auto localTm32 = localtime32(&refTime32);
-    assertTrue(localTm32 != nullptr);
-    memcpy(&tm32, localTm32, sizeof(struct tm));
-    assertTrue(tmEqual(tm, tm32));
-
-    auto mkTimeResult = mktime(&tm);
-    auto mkTimeResult32 = mktime32(&tm32);
-    assertEqual(mkTimeResult, static_cast<time_t>(mkTimeResult32));
-#endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-}
-
 #if HAL_USE_SOCKET_HAL_POSIX
-test(TIME_COMPAT_02_SocketSelect) {
+test(TIME_COMPAT_01_SocketSelect) {
     int s = sock_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     SCOPE_GUARD({
         if (s >= 0) {
@@ -137,7 +91,7 @@ test(TIME_COMPAT_02_SocketSelect) {
     assertMoreOrEqual(millis() - ms, 1990);
 }
 
-test(TIME_COMPAT_03_SocketSetGetSockOptRcvTimeo) {
+test(TIME_COMPAT_02_SocketSetGetSockOptRcvTimeo) {
     int s = sock_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     SCOPE_GUARD({
         if (s >= 0) {

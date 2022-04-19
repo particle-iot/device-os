@@ -6,7 +6,7 @@
 - libraries - supporting libraries for test code
 - reflection - back to back tests running on two cores (driver/subject arrangement)
 - unit - gcc compiled unit tests
-- wiring - on-device integration tests running on a regular Core, Photon or P1 (Electron to be tested.)
+- wiring - on-device integration tests running on Gen3 devices
 
 
 ## Platform Tests
@@ -104,11 +104,3 @@ A number of manually executable test applications are located in the `user/tests
 cd main
 make APP=../tests/app/<appname> all program-dfu
 ```
-
-## Scripts
-
-A number of self contained Bash scripts that facilitate various tests on Mac OSX systems:
-
-- p1sflashtest - P1 external 1MB sFlash test
-- upgrade-downgrade - Module dependency validation test, for upgrading and downgrading via OTA/Ymodem
-- country-updown - Test for Country Code issue on Photon/P1

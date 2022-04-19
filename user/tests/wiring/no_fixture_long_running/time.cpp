@@ -30,7 +30,7 @@ test(TIME_01_SyncTimeInAutomaticMode) {
         Particle.connect();
         waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
         assertTrue(Particle.connected());
-        // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
+        // Just in case send sync time request (Device might not send it after handshake if the session was resumed)
         if (!Particle.syncTimePending()) {
             Particle.syncTime();
         }
@@ -67,7 +67,7 @@ test(TIME_02_SyncTimeInManualMode) {
         waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
         assertTrue(Particle.connected());
 
-        // Just in case send sync time request (Electron might not send it after handshake if the session was resumed)
+        // Just in case send sync time request (Device might not send it after handshake if the session was resumed)
         // Serial.println("SYNC TIME");
         if (!Particle.syncTimePending()) {
             Particle.syncTime();

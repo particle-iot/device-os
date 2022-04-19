@@ -25,7 +25,7 @@ test(DELAY_01_delay_1ms_is_within_tolerance)
 #if HAL_PLATFORM_NRF52840
     const uint32_t delay_us_error = 200; // 20%
 #else
-    const uint32_t delay_us_error = 50; // 5%
+    #error "Unsupported platform"
 #endif
 
     DelayTest dt(10);

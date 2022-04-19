@@ -34,12 +34,9 @@ test(GPIO_01_PinModeSetResultsInCorrectMode) {
             INPUT_PULLDOWN,
             OUTPUT_OPEN_DRAIN,
 #if !HAL_PLATFORM_NRF52840
-            AF_OUTPUT_PUSHPULL,
-            AN_INPUT
-#if (PLATFORM_ID == 6)
-            ,
-            AN_OUTPUT
-#endif
+            // AF_OUTPUT_PUSHPULL,
+            // AN_INPUT
+            #error "Unsupported platform"
 #endif // !HAL_PLATFORM_NRF52840
     };
     int n = sizeof(mode) / sizeof(mode[0]);
@@ -93,10 +90,10 @@ test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
 }
 
 test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
-#if !HAL_PLATFORM_NRF52840
-    pin_t pin = D1; // pin under test
-#else
+#if HAL_PLATFORM_NRF52840
     pin_t pin = D4; // pin under test
+#else
+    #error "Unsupported platform"
 #endif
 
     uint32_t avgPulseHigh = 0;
@@ -117,12 +114,11 @@ test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 }
 
 test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
-#if !HAL_PLATFORM_NRF52840
-    pin_t pin = D1; // pin under test
-#else
+#if HAL_PLATFORM_NRF52840
     pin_t pin = D4; // pin under test
+#else
+    #error "Unsupported platform"
 #endif
-
     uint32_t avgPulseLow = 0;
     // when
     SINGLE_THREADED_BLOCK() {
@@ -159,32 +155,3 @@ test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
     assertMoreOrEqual(millis()-startTime, 2850);
     assertLessOrEqual(millis()-startTime, 3150);
 }
-
-#if !HAL_PLATFORM_NRF52840
-
-test(GPIO_08_AnalogReadWorksMixedWithDigitalRead) {
-    pin_t pin = A0;
-
-    // when
-    pinMode(pin, INPUT_PULLUP);
-    // then
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
-
-    // 2 analogReads
-    analogRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_INPUT);
-    analogRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_INPUT);
-    // 2 digitalReads
-    digitalRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
-    digitalRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
-    // 2 analogReads again
-    analogRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_INPUT);
-    analogRead(pin);
-    assertEqual(HAL_Get_Pin_Mode(pin), AN_INPUT);
-}
-
-#endif //  !HAL_PLATFORM_NRF52840
