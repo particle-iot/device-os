@@ -2,4 +2,4 @@
 CPPFLAGS += -std=gnu++17
 CONLYFLAGS += -std=gnu11
 
-# NOTE: Keep this in sync with test/CMakeLists.txt
+# NOTE: Keep this in sync with test/unit_tests/CMakeLists.txt

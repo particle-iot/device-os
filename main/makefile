@@ -6,15 +6,6 @@ include ../build/platform-id.mk
 include ../build/top-level-module.mk
 include ../build/macros.mk
 
-ifeq ($(PLATFORM_ID),6)
-MODULAR?=y
-endif
-ifeq ($(PLATFORM_ID),8)
-MODULAR?=y
-endif
-ifeq ($(PLATFORM_ID),10)
-MODULAR?=y
-endif
 ifeq ($(PLATFORM_ID),12)
 MODULAR?=y
 endif
@@ -67,7 +58,7 @@ include $(COMMON_BUILD)/recurse.mk
 include $(COMMON_BUILD)/verbose.mk
 
 
-.PHONY: st-flash program-dfu clean all
+.PHONY: program-dfu clean all
 
 else
 

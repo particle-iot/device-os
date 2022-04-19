@@ -1,4 +1,5 @@
-#if PLATFORM_ID!=3 && PLATFORM_ID!=20
+#include "platforms.h"
+#if PLATFORM_ID != PLATFORM_GCC
 /*
  * Copyright (c) 2012, 2013 ARM Ltd
  * All rights reserved.
@@ -669,9 +670,10 @@ void * nano_pvalloc(RARG size_t s)
 }
 #endif /* DEFINE_PVALLOC */
 
-#else
+#else // PLATFORM_ID == PLATFORM_GCC
 
 void empty_function_so_lib_isnt_empty_under_gcc_build()
 {
 }
-#endif
+
+#endif // PLATFORM_ID != PLATFORM_GCC

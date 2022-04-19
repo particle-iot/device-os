@@ -20,5 +20,5 @@ export PRERELEASE_PLATFORMS=( photon p1 electron argon boron bsom b5som tracker 
 # added to both it will be considered a prerelease
 
 # Platforms which require modules to be prebuilt
-export MODULAR_PLATFORMS=( photon p1 electron argon boron bsom b5som tracker )
+export MODULAR_PLATFORMS=( argon boron bsom b5som tracker )
 

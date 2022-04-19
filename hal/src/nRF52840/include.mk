@@ -45,7 +45,7 @@ ifneq (,$(HAL_LINK))
 LINKER_FILE=$(HAL_SRC_INCL_PATH)/app_no_bootloader.ld
 LINKER_DEPS=$(LINKER_FILE)
 
-LDFLAGS += -L$(COMMON_BUILD)/arm/linker/$(STM32_DEVICE_LC)
+LDFLAGS += -L$(COMMON_BUILD)/arm/linker/$(MCU_DEVICE_LC)
 LINKER_DEPS += $(NEWLIB_TWEAK_SPECS)
 LDFLAGS += --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -T$(LINKER_FILE)
@@ -66,7 +66,7 @@ LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 LDFLAGS += -u uxTopUsedPriority
 #
 # assembler startup script
-ASRC += $(COMMON_BUILD)/arm/startup/startup_$(STM32_DEVICE_LC).S
+ASRC += $(COMMON_BUILD)/arm/startup/startup_$(MCU_DEVICE_LC).S
 ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=0
 ASFLAGS += -D__STACKSIZE__=$(MAIN_STACK_SIZE) -D__STACK_SIZE=$(MAIN_STACK_SIZE)
