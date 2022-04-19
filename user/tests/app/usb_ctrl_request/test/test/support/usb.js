@@ -9,11 +9,6 @@ const usbIdRegex = [
   {
     idVendor: /1d50/,
     idProduct: /607[df]/
-  },
-  // Photon/P1/Electron
-  {
-    idVendor: /2b04/,
-    idProduct: /[cd]00?/
   }
 ];
 

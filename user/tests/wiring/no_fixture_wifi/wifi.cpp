@@ -101,11 +101,6 @@ test(WIFI_04_config)
     checkEtherAddress(ether);
     assertTrue(!memcmp(ether, ether2, 6));
 
-#if !HAL_PLATFORM_NCP
-    // FIXME: this is not available on Gen 3 devices yet
-    checkIPAddress("dnsServer", WiFi.dnsServerIP());
-    checkIPAddress("dhcpServer", WiFi.dhcpServerIP());
-#endif // !HAL_PLATFORM_NCP
 }
 
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
@@ -121,76 +116,9 @@ test(WIFI_05_scan)
     assertMoreOrEqual(apsFound, 1);
 }
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-
-test(WIFI_06_reconnections_that_use_wlan_restart_dont_cause_memory_leaks)
-{
-    /* This test should only be run with threading disabled */
-    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
-        skip();
-        return;
-    }
-
-    assertTrue(Particle.connected());
-
-    Particle.disconnect();
-    waitFor(Particle.disconnected, 10000);
-    assertTrue(Particle.disconnected());
-
-    WiFi.disconnect();
-    uint32_t ms = millis();
-    while (WiFi.ready()) {
-        if (millis() - ms >= 10000) {
-            assertTrue(false);
-        }
-    }
-
-    set_system_mode(SEMI_AUTOMATIC);
-
-    Particle.connect();
-    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
-
-    Particle.disconnect();
-    waitFor(Particle.disconnected, 10000);
-    assertTrue(Particle.disconnected());
-
-    WiFi.disconnect();
-    ms = millis();
-    while (WiFi.ready()) {
-        if (millis() - ms >= 10000) {
-            assertTrue(false);
-        }
-    }
-
-    uint32_t freeRam1 = System.freeMemory();
-
-    wlan_restart(NULL);
-
-    Particle.connect();
-    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
-
-    Particle.disconnect();
-    waitFor(Particle.disconnected, 10000);
-    assertTrue(Particle.disconnected());
-
-    WiFi.disconnect();
-    ms = millis();
-    while (WiFi.ready()) {
-        if (millis() - ms >= 10000) {
-            assertTrue(false);
-        }
-    }
-
-    uint32_t freeRam2 = System.freeMemory();
-
-    assertMoreOrEqual(freeRam2, freeRam1);
-}
-
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
-
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 
-test(WIFI_07_restore_connection)
+test(WIFI_06_restore_connection)
 {
     set_system_mode(AUTOMATIC);
     if (!Particle.connected())
@@ -199,39 +127,9 @@ test(WIFI_07_restore_connection)
     }
 }
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-
-#if !HAL_PLATFORM_NCP
-test(WIFI_08_reset_hostname)
-{
-    assertEqual(WiFi.setHostname(NULL), 0);
-}
-
-test(WIFI_09_default_hostname_equals_device_id)
-{
-    String hostname = WiFi.hostname();
-    String devId = System.deviceID();
-    assertEqual(hostname, devId);
-}
-
-test(WIFI_10_custom_hostname_can_be_set)
-{
-    String hostname("testhostname");
-    assertEqual(WiFi.setHostname(hostname), 0);
-    assertEqual(WiFi.hostname(), hostname);
-}
-
-test(WIFI_11_restore_default_hostname)
-{
-    assertEqual(WiFi.setHostname(NULL), 0);
-}
-#endif //!HAL_PLATFORM_NCP
-
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
-
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
-test(WIFI_12_scan_returns_zero_result_or_error_when_wifi_is_off)
+test(WIFI_07_scan_returns_zero_result_or_error_when_wifi_is_off)
 {
     WiFiAccessPoint results[5];
     WiFi.off();
@@ -248,7 +146,7 @@ test(WIFI_12_scan_returns_zero_result_or_error_when_wifi_is_off)
 
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 
-test(WIFI_13_restore_connection)
+test(WIFI_08_restore_connection)
 {
     if (!Particle.connected())
     {
@@ -256,7 +154,7 @@ test(WIFI_13_restore_connection)
     }
 }
 
-test(WIFI_14_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
+test(WIFI_09_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
     Particle.disconnect();
     WiFi.disconnect();
     WiFi.off();
@@ -308,51 +206,6 @@ test(WIFI_14_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
     const uint8_t bssidRefFf[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     assertTrue(!memcmp(bssidRef, bssid, sizeof(bssidRef)) || !memcmp(bssidRefFf, bssid, sizeof(bssidRefFf)));
 }
-
-#if HAL_PLATFORM_GEN == 2 // Photon and P1
-
-test(WIFI_15_entering_listening_mode_and_enabling_softap_closes_active_sockets_cleanly) {
-    const char testHost[] = "google.com";
-    const uint16_t testPort = 80;
-    const int resolveAttempts = 5;
-    const auto listenTime = 2s;
-
-    WiFi.on();
-    WiFi.connect();
-    Particle.connect();
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-
-    IPAddress address;
-    for (int i = 0; i < resolveAttempts; i++) {
-        address = WiFi.resolve(testHost);
-        if (address) {
-            break;
-        }
-    }
-    assertNotEqual(address, 0);
-
-    TCPClient client;
-    assertEqual(1, client.connect(address, testPort));
-    assertTrue(client.connected());
-
-    WiFi.setListenTimeout(listenTime);
-    WiFi.listen(true);
-    if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
-        delay(listenTime);
-    } else {
-        // We need to make sure that background loop runs
-        for (int i = 0; i < 5; i++) {
-            Particle.process();
-        }
-    }
-    WiFi.listen(false);
-
-    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
-    assertFalse(client.connected());
-    client.stop();
-}
-
-#endif // HAL_PLATFORM_GEN == 2
 
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 

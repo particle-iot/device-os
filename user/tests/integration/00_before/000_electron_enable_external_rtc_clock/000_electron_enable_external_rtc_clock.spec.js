@@ -1,1 +1,0 @@
-../../../wiring/electron_rtc_clock_source/000_electron_enable_external_rtc_clock.spec.js

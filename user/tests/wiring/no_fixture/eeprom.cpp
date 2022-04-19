@@ -35,7 +35,7 @@ struct EEPROMCustomObject{
 test(EEPROM_01_Capacity) {
 #if HAL_PLATFORM_FILESYSTEM // Gen 3
   uint16_t expectedCapacity = 4096;
-#else // Photon/P1/Electron
+#else // Non-FS platforms
   uint16_t expectedCapacity = 2048;
 #endif
   assertEqual(EEPROM.length(), expectedCapacity);

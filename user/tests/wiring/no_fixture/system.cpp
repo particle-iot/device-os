@@ -88,56 +88,6 @@ test(SYSTEM_03_user_backup_ram)
 
 #endif // defined(USER_BACKUP_RAM)
 
-#if !HAL_PLATFORM_NRF52840 // TODO
-
-#if defined(BUTTON1_MIRROR_SUPPORTED) && PLATFORM_ID != PLATFORM_P1
-static int s_button_clicks = 0;
-static void onButtonClick(system_event_t ev, int data) {
-    s_button_clicks = data;
-}
-
-test(SYSTEM_04_button_mirror)
-{
-    System.buttonMirror(D1, FALLING, false);
-    auto pinmap = HAL_Pin_Map();
-    System.on(button_click, onButtonClick);
-
-    // "Click" setup button 3 times
-    // First click
-    pinMode(D1, INPUT_PULLDOWN);
-    // Just in case manually trigger EXTI interrupt
-    EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
-    delay(300);
-    pinMode(D1, INPUT_PULLUP);
-    delay(100);
-
-    // Second click
-    pinMode(D1, INPUT_PULLDOWN);
-    // Just in case manually trigger EXTI interrupt
-    EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
-    delay(300);
-    pinMode(D1, INPUT_PULLUP);
-    delay(100);
-
-    // Third click
-    pinMode(D1, INPUT_PULLDOWN);
-    // Just in case manually trigger EXTI interrupt
-    EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
-    delay(300);
-    pinMode(D1, INPUT_PULLUP);
-    delay(300);
-
-    assertEqual(s_button_clicks, 3);
-}
-
-test(SYSTEM_05_button_mirror_disable)
-{
-    System.disableButtonMirror(false);
-}
-#endif // defined(BUTTON1_MIRROR_SUPPORTED)
-
-#endif // !HAL_PLATFORM_NRF52840
-
 void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal_module_t** factory) {
     for (unsigned i = 0; i < info.module_count; i++) {
 
@@ -152,7 +102,7 @@ void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal
     }
 }
 
-test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
+test(SYSTEM_04_system_describe_is_not_overflowed_when_factory_module_present)
 {
     hal_system_info_t info = {};
     info.size = sizeof(info);
@@ -243,7 +193,7 @@ test(SYSTEM_06_system_describe_is_not_overflowed_when_factory_module_present)
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
-test(SYSTEM_07_system_describe_is_not_overflowed_when_factory_module_present_but_invalid)
+test(SYSTEM_05_system_describe_is_not_overflowed_when_factory_module_present_but_invalid)
 {
     hal_system_info_t info = {};
     info.size = sizeof(info);
@@ -311,7 +261,7 @@ bool checkLastParamCloudConnected() {
 }
 } // anonymous
 
-test(SYSTEM_08_system_event_subscription) {
+test(SYSTEM_06_system_event_subscription) {
     SCOPE_GUARD({
         System.off(all_events);
     });
@@ -350,7 +300,7 @@ test(SYSTEM_08_system_event_subscription) {
     assertEqual(sLastParam, (int)cloud_status_disconnected);
 }
 
-test(SYSTEM_09_system_event_subscription_funcptr_or_non_capturing_lambda) {
+test(SYSTEM_07_system_event_subscription_funcptr_or_non_capturing_lambda) {
     SCOPE_GUARD({
         System.off(all_events);
     });

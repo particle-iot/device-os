@@ -2,8 +2,8 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-// make clean all TEST=wiring/no_fixture PLATFORM=electron -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y
-// make clean all TEST=wiring/no_fixture PLATFORM=electron -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y USE_THREADING=y
+// make clean all TEST=wiring/no_fixture PLATFORM=argon -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y
+// make clean all TEST=wiring/no_fixture PLATFORM=argon -s COMPILE_LTO=n program-dfu DEBUG_BUILD=y USE_THREADING=y
 //
 // Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 //     { "comm", LOG_LEVEL_NONE }, // filter out comm messages

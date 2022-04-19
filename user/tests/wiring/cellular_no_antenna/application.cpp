@@ -21,8 +21,8 @@
 
 SYSTEM_MODE(MANUAL);
 
-// make clean all TEST=wiring/cellular_no_antenna PLATFORM=electron -s COMPILE_LTO=n program-dfu
-// make clean all TEST=wiring/cellular_no_antenna PLATFORM=electron -s COMPILE_LTO=n program-dfu USE_THREADING=y
+// make clean all TEST=wiring/cellular_no_antenna PLATFORM=boron -s COMPILE_LTO=n program-dfu
+// make clean all TEST=wiring/cellular_no_antenna PLATFORM=boron -s COMPILE_LTO=n program-dfu USE_THREADING=y
 //
 // Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 //     { "comm", LOG_LEVEL_NONE }, // filter out comm messages
