@@ -81,7 +81,7 @@ const chunk_index_t MAX_CHUNKS        = 65535;
 const size_t MISSED_CHUNKS_TO_SEND = 20;
 #else
 const size_t MISSED_CHUNKS_TO_SEND = 40;
-#endif
+#endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
 
 const size_t MINIMUM_CHUNK_INCREASE = 2u;
 const size_t MAX_EVENT_TTL_SECONDS = 16777215;

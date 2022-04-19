@@ -26,7 +26,7 @@
 #else
 /* Include platform-specific configuration header */
 #include "hal_platform_config.h"
-#endif /* PLATFORM_ID == PLATFORM_NEWHAL */
+#endif /* PLATFORM_ID == PLATFORM_GCC || PLATFORM_ID == PLATFORM_NEWHAL */
 
 #ifndef PRODUCT_SERIES
 #error "PRODUCT_SERIES is not defined!"

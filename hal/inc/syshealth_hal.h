@@ -27,6 +27,7 @@
 #define	SYSHEALTH_HAL_H
 
 #include "static_assert.h"
+#include "platforms.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -48,7 +49,7 @@ typedef enum eSystemHealth_ {
   CLEARED_WATCHDOG=0xFFFF
 } eSystemHealth;
 
-#if PLATFORM_ID!=3 && PLATFORM_ID!=20
+#if PLATFORM_ID != PLATFORM_GCC
 // gcc enums are at least an int wide
 PARTICLE_STATIC_ASSERT(system_health_16_bits, sizeof(eSystemHealth)==2);
 #endif

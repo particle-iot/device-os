@@ -1971,7 +1971,7 @@ uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
         sconf = SERIAL_8N1;
         LOG(TRACE, "Disable Hardware Flow control!");
     }
-#endif
+#endif // PLATFORM_ID == PLATFORM_B5SOM
 
     return sconf;
 }

@@ -40,6 +40,8 @@
 #ifndef APP_USBD_STRING_CONFIG_H
 #define APP_USBD_STRING_CONFIG_H
 
+#include "platforms.h"
+
 /**
  * @defgroup app_usbd_string_conf USBD string configuration
  * @ingroup app_usbd_string_desc
@@ -80,13 +82,13 @@
  *
  * List of product names defined the same way like in @ref APP_USBD_STRINGS_MANUFACTURER
  */
-#if PLATFORM_ID == 12 // Argon
+#if PLATFORM_ID == PLATFORM_ARGON
 #define APP_USBD_STRINGS_PRODUCT         \
     APP_USBD_STRING_DESC("Argon CDC Mode")
 #else // Argon SoM
 #define APP_USBD_STRINGS_PRODUCT         \
     APP_USBD_STRING_DESC("A SoM CDC Mode")
-#endif
+#endif // PLATFORM_ID == PLATFORM_ARGON
 
 
 /**
@@ -128,7 +130,7 @@
  *                Then use X(USBD_STRING_WINUSB, =0xEE, (APP_USBD_STRING_DESC(...)))
  * - @c ...     : List of string descriptors for each defined language.
  */
-#if PLATFORM_ID == 12 // Argon
+#if PLATFORM_ID == PLATFORM_ARGON
 #define APP_USBD_STRINGS_USER \
     X(APP_USER_1, , APP_USBD_STRING_DESC("Argon Serial")) \
     X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("Argon Control Interface")) \
@@ -138,7 +140,7 @@
     X(APP_USER_1, , APP_USBD_STRING_DESC("A SoM Serial")) \
     X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("A SoM Control Interface")) \
     X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
-#endif
+#endif // PLATFORM_ID == PLATFORM_ARGON
 
 /** @} */
 #endif /* APP_USBD_STRING_CONFIG_H */
