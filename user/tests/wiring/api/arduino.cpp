@@ -95,6 +95,12 @@ test(trigs) {
 	API_COMPILE((void)tan(0.5));
 }
 
+test(LED_BUILTIN) {
+	if (LED_BUILTIN>0) {
+
+	}
+}
+
 test(sqrt) {
 	sqrt(2.0);
 }

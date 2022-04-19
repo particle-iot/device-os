@@ -86,14 +86,14 @@ test (wifi_api_listen)
 
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
-#if PLATFORM_ID>=12
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 test(api_wifi_selectantenna)
 {
     API_COMPILE(WiFi.selectAntenna(ANT_AUTO));
     API_COMPILE(WiFi.selectAntenna(ANT_INTERNAL));
     API_COMPILE(WiFi.selectAntenna(ANT_EXTERNAL));
 }
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 test(api_wifi_set_credentials)

@@ -390,8 +390,6 @@ test(system_flags)
     API_COMPILE(System.enabled(SYSTEM_FLAG_MAX));
 }
 
-// todo - use platform feature flags
-
 #if defined(USER_BACKUP_RAM)
 static retained uint8_t app_backup[USER_BACKUP_RAM];
 

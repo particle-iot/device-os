@@ -115,6 +115,18 @@ test(SPIX_03_SPI_Begin_With_Mode)
     SPI.end();
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
+
+    // HAL_SPI_INTERFACE1 does not support slave mode on Gen3 device
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+    assertEqual(info.ss_pin, D14);
+#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
+    assertEqual(info.ss_pin, D8);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
+#else
+    #error "platform not supported!"
+#endif
+    SPI.end();
 }
 
 test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)

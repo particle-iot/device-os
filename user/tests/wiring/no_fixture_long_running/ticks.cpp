@@ -157,7 +157,16 @@ test(TICKS_01_millis_micros_baseline_test)
     assertMoreOrEqual(micros() - startMicros, DELAY);
 }
 
-test(TICKS_03_millis_and_micros_along_with_high_priority_interrupts)
+// TODO millis_and_micros_rollover test for nRF52 platforms
+
+// // the __advance_system1MsTick isn't dynamically linked so we build this as a monolithic app
+// #include "hw_ticks.h"
+// test(TICKS_02_millis_and_micros_rollover)
+// {
+// }
+// #endif
+
+test(TICKS_02_millis_and_micros_along_with_high_priority_interrupts)
 {
     const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();
@@ -165,7 +174,7 @@ test(TICKS_03_millis_and_micros_along_with_high_priority_interrupts)
     assertMoreOrEqual(millis()-start, TWO_MINUTES);
 }
 
-test(TICKS_04_millis_and_micros_monotonically_increases)
+test(TICKS_03_millis_and_micros_monotonically_increases)
 {
     const system_tick_t TWO_MINUTES = 2 * 60 * 1000;
     system_tick_t start = millis();

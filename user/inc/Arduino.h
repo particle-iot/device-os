@@ -151,6 +151,18 @@ typedef volatile uint32_t RwReg;
 
 // Pins
 
+// LED
+#if HAL_PLATFORM_NRF52840
+# ifndef LED_BUILTIN
+# define LED_BUILTIN D7
+# endif
+
+# ifndef ATN
+# define ATN SS
+# endif
+
+#endif // HAL_PLATFORM_NRF52840
+
 // C++ only
 #ifdef __cplusplus
 

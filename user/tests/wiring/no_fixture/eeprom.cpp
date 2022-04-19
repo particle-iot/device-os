@@ -36,7 +36,7 @@ test(EEPROM_01_Capacity) {
 #if HAL_PLATFORM_FILESYSTEM // Gen 3
   uint16_t expectedCapacity = 4096;
 #else // Non-FS platforms
-  uint16_t expectedCapacity = 2048;
+  #error "platform not supported!"
 #endif
   assertEqual(EEPROM.length(), expectedCapacity);
 }
