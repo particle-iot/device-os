@@ -19,26 +19,14 @@ std::pair<pin_t, pin_t> i2cToSdaSclPins(hal_i2c_interface_t i2c) {
             return {PMIC_SDA, PMIC_SCL};
 #else
             return {D2, D3};
-#endif
+#endif //PLATFORM_ID == PLATFORM_BORON && PLATFORM_TRACKER
         }
         case HAL_I2C_INTERFACE3: {
             return {D9, D8};
         }
     }
 #else
-    switch (i2c) {
-        case HAL_I2C_INTERFACE1: {
-            return {D0, D1};
-        }
-#if PLATFORM_ID == PLATFORM_ELECTRON
-        case HAL_I2C_INTERFACE2: {
-            return {C4, C5};
-        }
-        case HAL_I2C_INTERFACE3: {
-            return {PM_SDA_UC, PM_SCL_UC};
-        }
-#endif // PLATFORM_ID == PLATFORM_ELECTRON
-    }
+    #error "Unsupported platform"
 #endif // HAL_PLATFORM_GEN == 3
     return {PIN_INVALID, PIN_INVALID};
 }

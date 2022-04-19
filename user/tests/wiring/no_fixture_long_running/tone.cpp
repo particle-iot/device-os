@@ -27,11 +27,7 @@
 #include "tone_hal.h"
 #include "unit-test/unit-test.h"
 
-#if defined(STM32F2XX)
-static const pin_t pin = D1;//pin under test
-#else
 static const pin_t pin = A1;//pin under test
-#endif
 
 test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
@@ -41,7 +37,7 @@ test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
     pin_t pin = D0;
 # endif
 #else
-    pin_t pin = D5;
+    #error "Unsupported platform"
 #endif
     uint32_t frequency = 500;
     uint32_t duration = 100;

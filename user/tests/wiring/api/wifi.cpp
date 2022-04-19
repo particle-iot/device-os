@@ -86,14 +86,14 @@ test (wifi_api_listen)
 
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
-#if PLATFORM_ID>=4
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 test(api_wifi_selectantenna)
 {
     API_COMPILE(WiFi.selectAntenna(ANT_AUTO));
     API_COMPILE(WiFi.selectAntenna(ANT_INTERNAL));
     API_COMPILE(WiFi.selectAntenna(ANT_EXTERNAL));
 }
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 test(api_wifi_set_credentials)
@@ -111,20 +111,6 @@ test(api_wifi_set_security)
     credentials.setSecurity(WPA2);
 }
 
-#if !HAL_PLATFORM_NCP
-test(api_wifi_setStaticIP)
-{
-    IPAddress myAddress(192,168,1,100);
-    IPAddress netmask(255,255,255,0);
-    IPAddress gateway(192,168,1,1);
-    IPAddress dns(192,168,1,1);
-    WiFi.setStaticIP(myAddress, netmask, gateway, dns);
-
-    // now let's use the configured IP
-    WiFi.useStaticIP();
-    WiFi.useDynamicIP();
-}
-#endif // !HAL_PLATFORM_NCP
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 test(api_wifi_scan_buffer)
@@ -223,16 +209,6 @@ test(api_wifi_get_credentials)
     }
 }
 
-#if !HAL_PLATFORM_NCP
-test(api_wifi_hostname)
-{
-    String hostname;
-    const char shostname[] = "testhostname";
-    API_COMPILE(hostname = WiFi.hostname());
-    API_COMPILE(WiFi.setHostname(hostname));
-    API_COMPILE(WiFi.setHostname(shostname));
-}
-#endif // !HAL_PLATFORM_NCP
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 #endif

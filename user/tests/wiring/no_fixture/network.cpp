@@ -25,15 +25,7 @@ test(NETWORK_00_UDP_begin_does_not_leak_sockets_without_calling_stop) {
     Network.connect();
     waitFor(Network.ready, WAIT_TIMEOUT);
     // Arbitrary number that is large enough to showcase the issue
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-    // There is a limited number of sockets available on Electrons, since we are using
-    // the internal modem TCP/IP stack. Reducing the number of iterations, because each
-    // UDP.begin() call will cause a call into the modem using AT commands.
-    // 10 should be enough to showcase the issue.
-    int maxIterations = 10;
-#else
     int maxIterations = 1000;
-#endif // PLATFORM_ID == PLATFORM_ELECTRON
 
     auto udp = std::make_unique<UDP>();
     assertTrue((bool)udp);

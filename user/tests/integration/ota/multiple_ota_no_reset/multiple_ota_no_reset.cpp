@@ -12,9 +12,6 @@ namespace {
 #if PLATFORM_GEN == 3
 const auto OTA_SECTION_STORAGE = HAL_STORAGE_ID_EXTERNAL_FLASH;
 const auto OTA_SECTION_ADDRESS = EXTERNAL_FLASH_OTA_ADDRESS;
-#elif PLATFORM_ID == PLATFORM_ELECTRON || PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1
-const auto OTA_SECTION_STORAGE = HAL_STORAGE_ID_INTERNAL_FLASH;
-const auto OTA_SECTION_ADDRESS = 0x080c0000; // See the platform's ota_module_bounds.c
 #else
 #error "Unsupported platform"
 #endif

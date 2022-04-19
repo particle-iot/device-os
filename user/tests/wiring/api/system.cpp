@@ -245,10 +245,6 @@ test(system_waitfor) {
 test(system_config_set) {
 
     API_COMPILE(System.set(SYSTEM_CONFIG_DEVICE_KEY, NULL, 123));
-#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION
-    API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_PREFIX, "hello"));
-    API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_SUFFIX, "hello"));
-#endif
 }
 
 /*
@@ -393,12 +389,6 @@ test(system_flags)
     API_COMPILE(System.disable(SYSTEM_FLAG_MAX));
     API_COMPILE(System.enabled(SYSTEM_FLAG_MAX));
 }
-
-// todo - use platform feature flags
-#if defined(STM32F2XX)
-    // subtract 4 bytes for signature (3068 bytes)
-    #define USER_BACKUP_RAM ((1024*3)-4)
-#endif // defined(STM32F2XX)
 
 #if defined(USER_BACKUP_RAM)
 static retained uint8_t app_backup[USER_BACKUP_RAM];

@@ -111,7 +111,7 @@ void loop() {
         Log.info("Wake the device up via the D8 pin");
         System.sleep(SLEEP_MODE_DEEP);
 #else
-        System.sleep(SLEEP_MODE_DEEP, 3);
+        #error "Unsupported platform"
 #endif
         break;
     }

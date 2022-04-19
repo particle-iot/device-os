@@ -51,7 +51,6 @@ hal_usart_buffer_config_t acquireSerial1Buffer()
 
 /*
  * Serial1 Test requires TX to be jumpered to RX as follows:
- * on the Photon
  *           WIRE
  * (TX) --==========-- (RX)
  *

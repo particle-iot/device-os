@@ -1,13 +1,13 @@
 SERIAL testing hardware requirements
 ------------------------------------
 
-Connect a jumper to TX and RX pins i.e. TX-RX lines should be shorted on Photon
+Connect a jumper to TX and RX pins i.e. TX-RX lines should be shorted
 
 ```none
 TX <-------> RX
 ```
 
-Flashing the wiring/serial_loopback files to the photon
+Flashing the wiring/serial_loopback files
 -------------------------------------------------------
 
 ```none
