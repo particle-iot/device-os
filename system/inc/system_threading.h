@@ -33,7 +33,7 @@
 #include <mutex>
 #include <future>
 
-#if !defined(PARTICLE_GTHREAD_INCLUDED) && PLATFORM_ID != 20
+#if !defined(PARTICLE_GTHREAD_INCLUDED)
 #error "GTHREAD header not included. This is required for correct mutex implementation on embedded platforms."
 #endif
 

@@ -27,6 +27,7 @@
 #include "rng_hal.h"
 #include "timer_hal.h"
 #include "system_error.h"
+#include "platforms.h"
 
 int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
     while (size >= 4) {
@@ -57,7 +58,7 @@ __attribute__((weak)) mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved)
 }
 #endif // defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS)
 
-#if PLATFORM_ID!=3
+#if PLATFORM_ID != PLATFORM_GCC
 unsigned long mbedtls_timing_hardclock()
 {
     return HAL_Timer_Microseconds();
