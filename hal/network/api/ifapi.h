@@ -213,13 +213,41 @@ struct if_event {
     };
 };
 
+typedef enum if_dhcp_state_t {
+    IF_DHCP_STATE_OFF             = 0,
+    IF_DHCP_STATE_REQUESTING      = 1,
+    IF_DHCP_STATE_INIT            = 2,
+    IF_DHCP_STATE_REBOOTING       = 3,
+    IF_DHCP_STATE_REBINDING       = 4,
+    IF_DHCP_STATE_RENEWING        = 5,
+    IF_DHCP_STATE_SELECTING       = 6,
+    IF_DHCP_STATE_INFORMING       = 7,
+    IF_DHCP_STATE_CHECKING        = 8,
+    IF_DHCP_STATE_PERMANENT       = 9,
+    IF_DHCP_STATE_BOUND           = 10,
+    IF_DHCP_STATE_RELEASING       = 11,
+    IF_DHCP_STATE_BACKING_OFF     = 12
+} if_dhcp_state_t;
+
+struct if_req_dhcp_state {
+    if_dhcp_state_t state;
+    struct sockaddr_in server_ip;
+    struct sockaddr_in offered_ip;
+    struct sockaddr_in offered_mask;
+    struct sockaddr_in offered_gw;
+    uint32_t t0_lease;
+    uint32_t t1_renew;
+    uint32_t t2_rebind;
+};
+
 typedef void (*if_event_handler_t)(void* arg, if_t iface, const struct if_event* ev);
 
 typedef struct if_event_power_state if_req_power;
 
 typedef enum if_req_t {
     IF_REQ_NONE        = 0,
-    IF_REQ_POWER_STATE = 1
+    IF_REQ_POWER_STATE = 1,
+    IF_REQ_DHCP_STATE  = 2
 } if_req_t;
 
 int if_init(void);
