@@ -32,6 +32,7 @@
 #include <cstring>
 
 #include "softap_http.h"
+#include "resolvapi.h"
 
 namespace {
 
@@ -230,6 +231,31 @@ int wlan_fetch_ipconfig(WLanConfig* conf) {
     memcpy(&conf->nw.aucDefaultGateway.ipv4, &sockAddr->sin_addr, sizeof(sockAddr->sin_addr));
     conf->nw.aucDefaultGateway.ipv4 = reverseByteOrder(conf->nw.aucDefaultGateway.ipv4);
     conf->nw.aucDefaultGateway.v = 4;
+    // DNS
+    resolv_dns_servers* dns = {};
+    CHECK(resolv_get_dns_servers(&dns));
+    // Take only the first one
+    for (auto s = dns; s != nullptr; s = s->next) {
+        // Only IPv4 for now
+        if (s->server && s->server->sa_family == AF_INET) {
+            sockAddr = (const sockaddr_in*)s->server;
+            memcpy(&conf->nw.aucDNSServer.ipv4, &sockAddr->sin_addr, sizeof(sockAddr->sin_addr));
+            conf->nw.aucDNSServer.ipv4 = reverseByteOrder(conf->nw.aucDNSServer.ipv4);
+            conf->nw.aucDNSServer.v = 4;
+            break;
+        }
+    }
+    CHECK(resolv_free_dns_servers(dns));
+    // DHCP
+    if_req_dhcp_state dhcp = {};
+    if (!if_request(iface, IF_REQ_DHCP_STATE, &dhcp, sizeof(dhcp), nullptr)) {
+        if ((dhcp.state == IF_DHCP_STATE_BOUND) || (dhcp.state == IF_DHCP_STATE_RENEWING) ||
+                (dhcp.state == IF_DHCP_STATE_REBINDING)) {
+            memcpy(&conf->nw.aucDHCPServer.ipv4, &dhcp.server_ip.sin_addr, sizeof(dhcp.server_ip.sin_addr));
+            conf->nw.aucDHCPServer.ipv4 = reverseByteOrder(conf->nw.aucDHCPServer.ipv4);
+            conf->nw.aucDHCPServer.v = 4;
+        }
+    }
     // SSID
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);

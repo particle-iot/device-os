@@ -1173,6 +1173,30 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) 
             }
             break;
         }
+        case IF_REQ_DHCP_STATE: {
+            if (reqsize != sizeof(if_req_dhcp_state)) {
+                return -1;
+            }
+
+            auto dreq = (if_req_dhcp_state*)req;
+            LwipTcpIpCoreLock lk;
+            auto dhcp = netif_dhcp_data(iface);
+            if (!dhcp) {
+                return -1;
+            }
+            // Can map directly
+            dreq->state = (if_dhcp_state_t)dhcp->state;
+            if (dhcp_supplied_address(iface)) {
+                dreq->t0_lease = dhcp->offered_t0_lease;
+                dreq->t1_renew = dhcp->offered_t1_renew;
+                dreq->t2_rebind = dhcp->offered_t2_rebind;
+                IP4ADDR_PORT_TO_SOCKADDR(&dreq->server_ip, ip_2_ip4(&dhcp->server_ip_addr), 0);
+                IP4ADDR_PORT_TO_SOCKADDR(&dreq->offered_ip, &dhcp->offered_ip_addr, 0);
+                IP4ADDR_PORT_TO_SOCKADDR(&dreq->offered_mask, &dhcp->offered_sn_mask, 0);
+                IP4ADDR_PORT_TO_SOCKADDR(&dreq->offered_gw, &dhcp->offered_gw_addr, 0);
+            }
+            return 0;
+        }
 
         default: {
             return -1;

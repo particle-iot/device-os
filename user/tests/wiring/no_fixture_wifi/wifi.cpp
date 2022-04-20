@@ -101,11 +101,8 @@ test(WIFI_04_config)
     checkEtherAddress(ether);
     assertTrue(!memcmp(ether, ether2, 6));
 
-#if !HAL_PLATFORM_NCP
-    // FIXME: this is not available on Gen 3 devices yet
     checkIPAddress("dnsServer", WiFi.dnsServerIP());
     checkIPAddress("dhcpServer", WiFi.dhcpServerIP());
-#endif // !HAL_PLATFORM_NCP
 }
 
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
