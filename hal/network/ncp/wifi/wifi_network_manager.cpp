@@ -338,7 +338,6 @@ bool WifiNetworkManager::hasNetworkConfig() {
     if (r < 0) {
         return false;
     }
-    LOG(INFO, "networks size %d", networks.size());
     return !networks.isEmpty();
 }
 

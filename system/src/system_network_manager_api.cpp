@@ -175,7 +175,6 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         s_forcedDisconnect = false;
 
         bool val = testAndClearListeningModeFlag();
-        LOG(INFO, "testandclear %d %d", val, !NetworkManager::instance()->isConfigured());
         val = val || !NetworkManager::instance()->isConfigured();
         if (val) {
             /* Enter listening mode */
