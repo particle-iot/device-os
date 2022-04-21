@@ -51,6 +51,12 @@ void mbedtls_ssl_update_out_pointers(mbedtls_ssl_context *ssl, mbedtls_ssl_trans
 
 namespace particle { namespace protocol {
 
+namespace {
+
+// A custom content type for session resumption packets
+const unsigned ALT_CID_CONTENT_TYPE = 253;
+
+} // namespace
 
 uint32_t compute_checksum(uint32_t(*calculate_crc)(const uint8_t* data, uint32_t len), const uint8_t* server, size_t server_len, const uint8_t* device, size_t device_len)
 {
@@ -269,6 +275,13 @@ ProtocolError DTLSMessageChannel::init(
 
 inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 {
+	if (move_session && len > 0 && data[0] == MBEDTLS_SSL_MSG_CID) {
+		const auto d = const_cast<uint8_t*>(data);
+		d[0] = ALT_CID_CONTENT_TYPE;
+		const auto r = callbacks.send(d, len, callbacks.tx_context);
+		d[0] = MBEDTLS_SSL_MSG_CID;
+		return r;
+	}
 	return callbacks.send(data, len, callbacks.tx_context);
 }
 
