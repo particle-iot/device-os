@@ -22,16 +22,6 @@ public:
 		FAILED,
 	};
 
-	enum class BurninTestName : uint32_t {
-		NONE,
-		GPIO,
-		WIFI_SCAN,
-		BLE_SCAN,
-		SRAM,
-		SPI_FLASH,
-		CPU_LOAD
-	};
-
 private:
 
     static const uint32_t CHUNK_DATA_SIZE = 508;

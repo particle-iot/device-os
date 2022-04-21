@@ -21,7 +21,7 @@ namespace particle {
 
 // Retained state variables
 static retained BurninTest::BurninTestState BurninState;
-static retained BurninTest::BurninTestName LastBurnInTest;
+static retained char LastBurnInTest[16];
 static retained uint32_t UptimeMillis;
 static retained char BurninErrorMessage[1024];
 
@@ -35,7 +35,14 @@ BurninTest::BurninTest() {
 		&particle::BurninTest::testCpuLoad,
 	};
 
-	test_names_ = {"NONE", "GPIO", "WIFI_SCAN", "BLE_SCAN", "SRAM", "SPI_FLASH", "CPU_LOAD"};
+	test_names_ = {
+		"GPIO", 
+		"WIFI_SCAN", 
+		"BLE_SCAN", 
+		"SRAM", 
+		"SPI_FLASH", 
+		"CPU_LOAD"
+	};
 }
 
 BurninTest::~BurninTest() {
@@ -71,11 +78,11 @@ void BurninTest::setup(bool forceEnable) {
 	Log.info("BURN IN START: ResetReason: %d State: %d ErrorMessage: %s", System.resetReason(), (int)BurninState, BurninErrorMessage);
 
 	if(BurninState == BurninTestState::IN_PROGRESS) {
-		Log.warn("Previous test failed: %s", test_names_[(int)LastBurnInTest].c_str());
+		Log.warn("Previous test failed: %s", LastBurnInTest);
 		BurninState = BurninTestState::FAILED;
 	}
 	else if(BurninState == BurninTestState::FAILED) {
-		Log.info("Resetting from failed test state");
+		Log.info("Resetting from failed test state: %s", LastBurnInTest);
 		BurninState = BurninTestState::IN_PROGRESS;
 		UptimeMillis = 0;
 	}
@@ -111,18 +118,22 @@ void BurninTest::loop() {
 			return;
 		case BurninTestState::IN_PROGRESS:
 		{
-			// pick random test to run, run it
-			auto test = tests_[random(tests_.size())];
-			bool test_passed = (this->*test)();
-
 			UptimeMillis = millis();
+			auto startMillis = UptimeMillis;
+
+			// pick random test to run, run it
+			auto test_number = random(tests_.size());
+			auto test = tests_[test_number];
+			strlcpy(LastBurnInTest, test_names_[test_number].c_str(), sizeof(LastBurnInTest));
+			Log.info("Running test: %s", LastBurnInTest);
+			bool test_passed = (this->*test)();
 
 			if (!test_passed) {
 				BurninState = BurninTestState::FAILED;
-				Log.error("Uptime: %lu test failed: %s\n", UptimeMillis, test_names_[(int)LastBurnInTest].c_str());
+				Log.error("Elapsed: %lu test failed: %s\n", millis() - startMillis, LastBurnInTest);
 			}
 			else {
-				Log.info("Uptime: %lu test passed: %s\n", UptimeMillis, test_names_[(int)LastBurnInTest].c_str());
+				Log.info("Elapsed: %lu test passed: %s\n", millis() - startMillis, LastBurnInTest);
 			}
 		}
 		break;
@@ -131,7 +142,7 @@ void BurninTest::loop() {
 			// log failure text every X seconds to UART
 			Log.error("FAILED: Uptime: %lu Test: %s ResetReason %d Message: %s", 
 				UptimeMillis,
-				test_names_[(int)LastBurnInTest].c_str(),
+				LastBurnInTest,
 				System.resetReason(),
 				BurninErrorMessage);
 			delay(5000);
@@ -248,33 +259,34 @@ bool BurninTest::callFqcTest(String testName){
 }
 
 bool BurninTest::testGpio() {
-	LastBurnInTest = BurninTestName::GPIO;
 	return callFqcTest("IO_TEST");
 }
 
 bool BurninTest::testWifiScan() {
-	LastBurnInTest = BurninTestName::WIFI_SCAN;
 	return callFqcTest("WIFI_SCAN_NETWORKS");
 }
 
 bool BurninTest::testBleScan() {
-	LastBurnInTest = BurninTestName::BLE_SCAN;
-
 	const size_t SCAN_RESULT_MAX = 30;
 	BleScanResult scanResults[SCAN_RESULT_MAX];
 	BLE.on();
 	BLE.setScanTimeout(50);
 	int count = BLE.scan(scanResults, SCAN_RESULT_MAX);
-	Log.info("Found %d beacons", count);
+	if (count < 0) {
+		Log.error("BLE scan failed: %s", get_system_error_message(count));
+	}
+	else {
+		Log.info("Found %d beacons", count);
 
-	for (int ii = 0; ii < count; ii++) {
-		uint8_t buf[BLE_MAX_ADV_DATA_LEN];
-		size_t len = scanResults[ii].advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, BLE_MAX_ADV_DATA_LEN);
-		Log.info("Beacon %d: rssi %d Advertising Data Len %u", ii, scanResults[ii].rssi(), len);
-		if (len > 0) {
-			Log.print("Advertising Data: ");
-			Log.dump(buf, len);	
-			Log.print("\r\n");
+		for (int ii = 0; ii < count; ii++) {
+			uint8_t buf[BLE_MAX_ADV_DATA_LEN];
+			size_t len = scanResults[ii].advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, BLE_MAX_ADV_DATA_LEN);
+			Log.info("Beacon %d: rssi %d Advertising Data Len %u", ii, scanResults[ii].rssi(), len);
+			if (len > 0) {
+				Log.print("Advertising Data: ");
+				Log.dump(buf, len);	
+				Log.print("\r\n");
+			}
 		}
 	}
 
@@ -283,8 +295,6 @@ bool BurninTest::testBleScan() {
 }
 
 bool BurninTest::testSram() {
-	LastBurnInTest = BurninTestName::SRAM;
-
 	bool test_passed = true;
  	Random rng;
 	MemoryChunk* root = nullptr;
@@ -346,7 +356,6 @@ bool BurninTest::testSram() {
 }
 
 bool BurninTest::testSpiFlash(){
-	LastBurnInTest = BurninTestName::SPI_FLASH;
 	bool test_passed = true;
 
 #if HAL_PLATFORM_RTL872X
@@ -387,8 +396,6 @@ bool BurninTest::testSpiFlash(){
 }
 
 bool BurninTest::testCpuLoad() {
-	LastBurnInTest = BurninTestName::CPU_LOAD;
-
 	// 4500 iterations is about enough to meet the 10 second test duration minimum
 	coremark_set_iterations(random(4500, 6000));
 	coremark_main();
