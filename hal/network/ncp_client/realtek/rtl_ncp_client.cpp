@@ -121,8 +121,21 @@ int RealtekNcpClient::init(const NcpClientConfig& conf) {
     prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
     pwrState_ = NcpPowerState::OFF;
-    // We know for a fact that ESP32 is off on boot because we've initialized ESPEN pin to output 0
-    ncpPowerState(NcpPowerState::OFF);
+    // NOTE: BLE stack depends on WiFi stack being initialized
+    // rltk_wlan_init() is sufficient, however wifi_on() may
+    // also call into rltk_wlan_deinit() under some error conditions
+    // so for now in order to avoid that we completely start wifi stack
+    // here, and probably should enter powersave? TODO: test. Weirdly rltk_rf_off/on don't work.
+    // TODO: this probably has some power consumption consequences
+    rtw_efuse_boot_write();
+    RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_LCDC, APBPeriph_LCDC_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
+    RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
+    SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
+    rltkOff();
     return SYSTEM_ERROR_NONE;
 }
 
@@ -385,7 +398,8 @@ void RealtekNcpClient::connectionState(NcpConnectionState state) {
 
 int RealtekNcpClient::rltkOff() {
     LOG(INFO, "rltkOff");
-    wifi_off();
+    // This doesn't work
+    // wifi_rf_off();
     LOG(INFO, "rltkOff done");
     ncpPowerState(NcpPowerState::OFF);
     return SYSTEM_ERROR_NONE;
@@ -393,14 +407,8 @@ int RealtekNcpClient::rltkOff() {
 
 
 int RealtekNcpClient::rltkOn() {
-    rtw_efuse_boot_write();
-    RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
-    RCC_PeriphClockCmd(APBPeriph_GDMA0, APBPeriph_GDMA0_CLOCK, ENABLE);
-    RCC_PeriphClockCmd(APBPeriph_LCDC, APBPeriph_LCDC_CLOCK, ENABLE);
-    RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
-    RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
-    RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
-    wifi_on(RTW_MODE_STA);
+    // This doesn't work
+    // wifi_rf_on();
     ncpPowerState(NcpPowerState::ON);
     return SYSTEM_ERROR_NONE;
 }

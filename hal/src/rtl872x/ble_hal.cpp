@@ -27,10 +27,13 @@ LOG_SOURCE_CATEGORY("hal.ble");
 extern "C" {
 #endif
 #include "rtl8721d.h"
-void bt_coex_init(void);
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+extern "C" {
+#include "rtk_coex.h"
+}
 
 #include <platform_opts_bt.h>
 #include <os_sched.h>
@@ -55,6 +58,7 @@ void bt_coex_init(void);
 #include "rtk_coex.h"
 #include "ftl_int.h"
 #include "rtl8721d.h"
+#include "bt_intf.h"
 
 //FIXME
 #include "app_msg.h"
@@ -546,7 +550,9 @@ int BleGap::init() {
             LOG(ERROR, "os_semaphore_create() failed");
             return SYSTEM_ERROR_INTERNAL;
         }
-        if (os_timer_create(&advTimeoutTimer_, BLE_DEFAULT_ADVERTISING_TIMEOUT * 10, onAdvTimeoutTimerExpired, this, true, nullptr)) {
+        auto advTimeout = BLE_DEFAULT_ADVERTISING_TIMEOUT * 10;
+        // FreeRTOS timers are not supposed to be created with 0 timeout, enabling configASSERT will trigger it
+        if (os_timer_create(&advTimeoutTimer_, advTimeout == 0 ? 0xffffffff: advTimeout, onAdvTimeoutTimerExpired, this, true, nullptr)) {
             advTimeoutTimer_ = nullptr;
             LOG(ERROR, "os_timer_create() failed.");
             return SYSTEM_ERROR_INTERNAL;
@@ -811,8 +817,19 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
     SCOPE_GUARD ({
         if (isScanning_) {
-            isScanning_ = false;
-            le_scan_stop();
+            const int LE_SCAN_STOP_RETRIES = 10;
+            for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
+                // This has seen failing a number of times at least
+                // with btgap logging enabled. Retry a few times just in case,
+                // otherwise the next scan operation fails with invalid state.
+                auto r = le_scan_stop();
+                if (r == GAP_CAUSE_SUCCESS) {
+                    isScanning_ = false;
+                    break;
+                }
+                HAL_Delay_Milliseconds(10);
+            }
+            SPARK_ASSERT(!isScanning_);
             clearPendingResult();
         }
     });
@@ -1554,14 +1571,11 @@ int hal_ble_stack_init(void* reserved) {
     if (!s_bleStackInit) {
         RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, ENABLE);
 
+        // Access wifiNetworkManager() to make sure that RealtekNcpClient is initialized
+        // and WiFi stack has been initialized as well, as there is a dependency on its state
+        // for btgap to function correctly.
         const auto mgr = wifiNetworkManager();
         CHECK_TRUE(mgr, SYSTEM_ERROR_INTERNAL);
-        const auto client = mgr->ncpClient();
-        CHECK_TRUE(client, SYSTEM_ERROR_INTERNAL);
-        if (client->ncpPowerState() != NcpPowerState::ON) {
-            CHECK(client->on());
-        }
-
         CHECK(BleEventDispatcher::getInstance().init());
         CHECK(BleGap::getInstance().init());
         CHECK(BleGatt::getInstance().init());
@@ -1577,6 +1591,8 @@ int hal_ble_stack_deinit(void* reserved) {
     CHECK(BleGap::getInstance().stopAdvertising(true));
     CHECK(BleGap::getInstance().disconnect());
     bte_deinit();
+    // Just in case
+    wifi_btcoex_set_bt_off();
     s_bleStackInit = false;
     return SYSTEM_ERROR_NONE;
 }
