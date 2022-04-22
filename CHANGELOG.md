@@ -1,3 +1,40 @@
+## 4.0.0-alpha.1
+
+> ## :warning: Please note this is in internal release, do not use on production devices!
+
+### DEPRECATION
+
+- [deprecation][gen2] supply secure [#2442](https://github.com/particle-iot/device-os/pull/2442)
+- [deprecation] Adds warning to some deprecated API's that will be removed in Device OS 5.x [#2445](https://github.com/particle-iot/device-os/pull/2445)
+- [deprecation] PRODUCT_ID macro [#2446](https://github.com/particle-iot/device-os/pull/2446)
+- [deprecation] remove setup_done flag and add deprecation notice [#2447](https://github.com/particle-iot/device-os/pull/2447)
+
+### FEATURES
+
+- [ota] new API System.updateStatus() [#2344](https://github.com/particle-iot/device-os/pull/2344)
+
+### ENHANCEMENTS
+
+- [gen3] wifi: add dhcp dns info to wifi config [#2440](https://github.com/particle-iot/device-os/pull/2440)
+- [ota] Additional state for firmware update checks [#2344](https://github.com/particle-iot/device-os/pull/2344)
+- Use a custom content type with CID packets when resuming the session [#2441](https://github.com/particle-iot/device-os/pull/2441)
+
+### BUGFIXES
+
+- [gen3] fixes hardfault during low level USB peripheral initialization under an atomic section [#2448](https://github.com/particle-iot/device-os/pull/2448)
+- [gen3] Device unable to enter listening mode with button press [#2451](https://github.com/particle-iot/device-os/pull/2451)
+- Return relevant error from control request to enter listening mode [#2419](https://github.com/particle-iot/device-os/pull/2419)
+
+
+### INTERNAL
+
+- [ci] minor update sc-101315/device-os-manifest [#2449](https://github.com/particle-iot/device-os/pull/2449)
+- [ci] chore/ci-less-frequent-cross-platform-build-checks [#2434](https://github.com/particle-iot/device-os/pull/2434)
+- [docs] Update dependencies for ARM GCC 10.2.1 [#2431](https://github.com/particle-iot/device-os/pull/2431)
+- [gen3] suppress certain reviewed GCC warnings [sc-100940] [#2420](https://github.com/particle-iot/device-os/pull/2420)
+- [ci] feature/sc-100324/ci-build-cross-platform [#2418](https://github.com/particle-iot/device-os/pull/2418)
+- [test] Wi-Fi resolve test improvements [#2454](https://github.com/particle-iot/device-os/pull/2454)
+
 ## 3.3.0
 
 ### FEATURES
