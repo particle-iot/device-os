@@ -7,7 +7,45 @@
             "compilers": "gcc-arm@10.2.1",
             "tools": "buildtools@1.1.1",
             "scripts": "buildscripts@1.10.0",
-            "debuggers": "openocd@0.11.2-adhoc6ea4372.0"
+            "debuggers": "openocd@0.11.0-particle.4"
         }
-    ]
+    ],
+    "debuggers": {
+        "windows": {
+            "x64": [
+                {
+                    "name": "openocd",
+                    "version": "0.11.0-particle.4",
+                    "main": "./bin",
+                    "url": "https://binaries.particle.io/openocd/windows/x64/0.11.0-particle.4.tar.gz",
+                    "sha256": "e26c52b8020ab96b76e6c60a8189ddd54e3c84f3cc5c06054b1cf9a9c505fcbc"
+                }
+            ],
+            "x86": []
+        },
+        "darwin": {
+            "x64": [
+                {
+                    "name": "openocd",
+                    "version": "0.11.0-particle.4",
+                    "main": "./bin",
+                    "url": "https://binaries.particle.io/openocd/darwin/x64/0.11.0-particle.4.tar.gz",
+                    "sha256": "ce42e9988b071f7089fa6d72cd219de00b25fb9ae252641fe76b46afd28ac505"
+                }
+            ],
+            "x86": []
+        },
+        "linux": {
+            "x64": [
+                {
+                    "name": "openocd",
+                    "version": "0.11.0-particle.4",
+                    "main": "./bin",
+                    "url": "https://binaries.particle.io/openocd/linux/x64/0.11.0-particle.4.tar.gz",
+                    "sha256": "e6ecdc1becb554b71f9733d0a73784942f1a0ac8060108bd0026bd5afd4113bd"
+                }
+            ],
+            "x86": []
+        }
+    }
 }
