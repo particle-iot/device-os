@@ -32,6 +32,7 @@
 #define PLATFORM_ELECTRON_PRODUCTION        (PLATFORM_ELECTRON)
 #define PLATFORM_ARGON                      12
 #define PLATFORM_BORON                      13
+#define PLATFORM_ESOMX                      15
 #define PLATFORM_ASOM                       22
 #define PLATFORM_BSOM                       23
 #define PLATFORM_B5SOM                      25

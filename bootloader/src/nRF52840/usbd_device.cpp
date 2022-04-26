@@ -140,6 +140,8 @@ private:
 # define USBD_PRODUCT_NAME              "Argon"
 #elif PLATFORM_ID == 13
 # define USBD_PRODUCT_NAME              "Boron"
+#elif PLATFORM_ID == 15
+# define USBD_PRODUCT_NAME              "E SoM X"
 #elif PLATFORM_ID == 22
 # define USBD_PRODUCT_NAME              "A SoM"
 #elif PLATFORM_ID == 23

@@ -37,6 +37,8 @@
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
+#include "platforms.h"
+
 #ifndef APP_USBD_STRING_CONFIG_H
 #define APP_USBD_STRING_CONFIG_H
 
@@ -80,14 +82,21 @@
  *
  * List of product names defined the same way like in @ref APP_USBD_STRINGS_MANUFACTURER
  */
-#if PLATFORM_ID == 13 // Boron
+#if PLATFORM_ID == PLATFORM_BORON
 #define APP_USBD_STRINGS_PRODUCT         \
     APP_USBD_STRING_DESC("Boron CDC Mode")
-#else // Boron SoM
+#elif PLATFORM_ID == PLATFORM_ESOMX
+#define APP_USBD_STRINGS_PRODUCT         \
+    APP_USBD_STRING_DESC("E SoM X CDC Mode")
+#elif PLATFORM_ID == PLATFORM_BSOM
 #define APP_USBD_STRINGS_PRODUCT         \
     APP_USBD_STRING_DESC("B SoM CDC Mode")
+#elif PLATFORM_ID == PLATFORM_B5SOM
+#define APP_USBD_STRINGS_PRODUCT         \
+    APP_USBD_STRING_DESC("B5 SoM CDC Mode")
+#else 
+    #error "Unknown boron variant"
 #endif
-
 
 /**
  * @brief Define whether @ref APP_USBD_STRINGS_PRODUCT is created by @ref APP_USBD_STRING_DESC
@@ -128,16 +137,28 @@
  *                Then use X(USBD_STRING_WINUSB, =0xEE, (APP_USBD_STRING_DESC(...)))
  * - @c ...     : List of string descriptors for each defined language.
  */
-#if PLATFORM_ID == 13 // Boron
+#if PLATFORM_ID == PLATFORM_BORON
 #define APP_USBD_STRINGS_USER \
     X(APP_USER_1, , APP_USBD_STRING_DESC("Boron Serial")) \
     X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("Boron Control Interface")) \
     X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
-#else
+#elif PLATFORM_ID == PLATFORM_BSOM
 #define APP_USBD_STRINGS_USER \
     X(APP_USER_1, , APP_USBD_STRING_DESC("B SoM Serial")) \
     X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("B SoM Control Interface")) \
     X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
+#elif PLATFORM_ID == PLATFORM_B5SOM
+#define APP_USBD_STRINGS_USER \
+    X(APP_USER_1, , APP_USBD_STRING_DESC("B5 SoM Serial")) \
+    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("B5 SoM Control Interface")) \
+    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
+#elif PLATFORM_ID == PLATFORM_ESOMX
+#define APP_USBD_STRINGS_USER \
+    X(APP_USER_1, , APP_USBD_STRING_DESC("E SoM X Serial")) \
+    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("E SoM X Control Interface")) \
+    X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
+#else 
+    #error "Unknown boron variant"
 #endif
 
 /** @} */
