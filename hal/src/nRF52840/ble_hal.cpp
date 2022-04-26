@@ -1940,7 +1940,8 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
 int BleObject::ConnectionsManager::getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info) {
     const BleConnection* connection = fetchConnection(connHandle);
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    memcpy(info, &connection->info, std::min(connection->info.size, connection->info.size));
+    uint16_t size = std::min(connection->info.size, info->size);
+    memcpy(info, &connection->info, size);
     return SYSTEM_ERROR_NONE;
 }
 
