@@ -21,9 +21,13 @@
 test(rtc_hal_backwards_compatibility) {
     // These APIs are exposed to user application.
     // Deprecated *dynalib* APIs for backwards compatibility
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    // These APIs are known deprecated APIs, we don't need to see this warning in tests
     API_COMPILE(HAL_RTC_Configuration());
     API_COMPILE({ auto v = HAL_RTC_Get_UnixTime(); (void)v; });
     API_COMPILE(HAL_RTC_Set_UnixTime(12345));
     API_COMPILE(HAL_RTC_Cancel_UnixAlarm());
     API_COMPILE({auto v = HAL_RTC_Time_Is_Valid(nullptr); (void)v; });
+#pragma GCC diagnostic pop
 }

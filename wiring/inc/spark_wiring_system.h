@@ -598,9 +598,13 @@ public:
     template <typename F, std::enable_if_t<std::is_assignable<SystemOnThreeArgumentFuncPtr*&, F>::value, bool> = true>
     static SystemEventSubscription on(system_event_t events, F&& handler) {
         SystemEventSubscription sub;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress"
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
         if (!handler) {
             return sub;
         }
+#pragma GCC diagnostic pop
         auto callable = static_cast<SystemOnThreeArgumentFuncPtr*>(handler);
         SystemEventContext context = {};
         context.version = SYSTEM_EVENT_CONTEXT_VERSION;

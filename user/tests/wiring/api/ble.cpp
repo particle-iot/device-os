@@ -434,8 +434,12 @@ test(ble_characteristic_class) {
 
     API_COMPILE({ BleCharacteristic c = characteristic; });
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    // These APIs are known deprecated APIs, we don't need to see this warning in tests
     API_COMPILE({ bool ret = characteristic.valid(); (void)ret; });
     API_COMPILE({ bool ret = characteristic.isValid(); (void)ret; });
+#pragma GCC diagnostic pop
 
     API_COMPILE({ BleUuid uuid = characteristic.UUID(); });
 
