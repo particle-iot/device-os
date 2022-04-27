@@ -35,6 +35,8 @@ void ipc_table_init(void);
 void ipc_send_message(uint8_t channel, uint32_t message);
 uint32_t ipc_get_message(uint8_t channel);
 
+void wifi_set_country_code(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -29,11 +29,8 @@ extern "C" {
 #include "strproc.h"
 #include "service_debug.h"
 #include "km0_km4_ipc.h"
+#include "wifi_conf.h"
 
-#include "logging.h"
-#include "interrupts_hal.h"
-#include "osdep_service.h"
-#include "concurrent_hal.h"
 
 extern "C" {
 
@@ -221,57 +218,10 @@ extern "C" void HAL_Core_System_Reset(void) {
     }
 }
 
-extern "C" {
-
-#if 0 // Enable to get btgap logs
-
-/* Internal function that is used by internal macro DBG_DIRECT. */
-void log_direct(uint32_t info, const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    LOG_C_VARG(INFO, "rtl", fmt, args);
-    va_end(args);
-}
-
-/* Internal function that is used by internal macro DBG_BUFFER. */
-void trace_log_buffer(uint32_t info, uint32_t log_str_index, uint8_t param_num, ...) {
-    va_list args;
-    va_start(args, param_num);
-    LOG_C_VARG(INFO, "rtl", (const char*)log_str_index, args);
-    va_end(args);
-}
-
-/* Internal function that is used by internal macro DBG_SNOOP. */
-void log_snoop(uint32_t info, uint16_t length, uint8_t *p_snoop) {
-    LOG_DUMP(INFO, p_snoop, length);
-    LOG_PRINT(INFO, "\r\n");
-}
-
-/* Internal function that is used by public macro TRACE_BDADDR. */
-const char *trace_bdaddr(uint32_t info, char *bd_addr) {
-    LOG(INFO, "%02x:%02x:%02x:%02x:%02x:%02x",
-        bd_addr[0],
-        bd_addr[1],
-        bd_addr[2],
-        bd_addr[3],
-        bd_addr[4],
-        bd_addr[5]);
-    return "<bdaddr>";
-}
-
-/* Internal function that is used by public macro TRACE_STRING. */
-const char *trace_string(uint32_t info, char *p_data) {
-    LOG(INFO, "%s", p_data);
-    return p_data;
-}
-
-/* Internal function that is used by public macro TRACE_BINARY. */
-const char *trace_binary(uint32_t info, uint16_t length, uint8_t *p_data) {
-    LOG_DUMP(INFO, p_data, length);
-    LOG_PRINT(INFO, "\r\n");
-    return "<binary>";
-}
-
-#endif // 0
-
+void wifi_set_country_code(void) {
+    // Channel Plan choices:
+    //   - USA/Canada:  0x3F (2G_03 & 5G_22)
+    //   - EU:          0x26 (2G_01 & 5G_02)
+    // Reference: WS-200923-Willis-Efuse_Channel_Plan_new_define-R54(32562).xlsx
+    SPARK_ASSERT(wifi_change_channel_plan(0x3F) == RTW_SUCCESS);
 }
