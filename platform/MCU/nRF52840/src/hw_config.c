@@ -194,7 +194,8 @@ void Reset_System(void) {
     // despite the fact that we are specifically waiting for LFCLK to start in Set_System()
 
 #if !(PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
-        PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM) || MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM) || \
+        PLATFORM_ID == PLATFORM_ESOMX || MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     NVIC_DisableIRQ(POWER_CLOCK_IRQn);
 #else
     // In order to remove the intermediate dependency in the bootloader on 1.1.0 where
