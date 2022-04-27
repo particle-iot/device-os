@@ -289,6 +289,7 @@ system_tick_t spark_protocol_time_last_synced(ProtocolFacade* protocol, time32_t
     return ms;
 }
 
+// Note: This function is deprecated, see Protocol::get_describe_data() for details
 int spark_protocol_get_describe_data(ProtocolFacade* protocol, spark_protocol_describe_data* data, void* reserved)
 {
 	return protocol->get_describe_data(data, reserved);

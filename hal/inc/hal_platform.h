@@ -263,14 +263,6 @@
 #define HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR (0)
 #endif // HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR
 
-#ifndef HAL_PLATFORM_COMPRESSED_BINARIES
-#define HAL_PLATFORM_COMPRESSED_BINARIES (0)
-#elif HAL_PLATFORM_COMPRESSED_BINARIES
-// TODO: This feature macro was used to enable rudimentary support for compressed firmware
-// binaries, which is incompatible with OTA updates. We need to remove that code
-#warning "HAL_PLATFORM_COMPRESSED_BINARIES is deprecated"
-#endif // HAL_PLATFORM_COMPRESSED_BINARIES
-
 #ifndef HAL_PLATFORM_COMPRESSED_OTA
 #define HAL_PLATFORM_COMPRESSED_OTA (0)
 #endif // HAL_PLATFORM_COMPRESSED_OTA
