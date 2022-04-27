@@ -300,6 +300,7 @@ commands:
       - run:
           name: "Install `prtcl` CLI (ubuntu)"
           command: |
+            printf 'Acquire::http::Timeout "30";\nAcquire::ftp::Timeout "30";\nAcquire::Retries "5";\n' | sudo tee /etc/apt/apt.conf.d/99timeout > /dev/null
             sudo apt-get update -q
             sudo apt-get install -qy zlib1g-dev jq
             sudo curl https://prtcl.s3.amazonaws.com/install-apt.sh | sh
