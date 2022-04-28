@@ -168,41 +168,25 @@ int getDeviceMode(ctrl_request* req) {
 }
 
 int setDeviceSetupDone(ctrl_request* req) {
-#if HAL_PLATFORM_DCT_SETUP_DONE
+    // This functionality is currently deprecated.
+    // Do not perform any DCT accesses. Instead return an appropriate error code
     PB(SetDeviceSetupDoneRequest) pbReq = {};
     int ret = decodeRequestMessage(req, PB(SetDeviceSetupDoneRequest_fields), &pbReq);
     if (ret != 0) {
         return ret;
     }
-    LOG_DEBUG(TRACE, "%s device setup flag", pbReq.done ? "Setting" : "Clearing");
-    const uint8_t val = pbReq.done ? 0x01 : 0xff;
-    ret = dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
-    if (ret != 0) {
-        return ret;
-    }
-    return 0;
-#else
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif // HAL_PLATFORM_DCT_SETUP_DONE
+    return (pbReq.done ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_NOT_SUPPORTED);
 }
 
 int isDeviceSetupDone(ctrl_request* req) {
-#if HAL_PLATFORM_DCT_SETUP_DONE
-    uint8_t val = 0;
-    int ret = dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
-    if (ret != 0) {
-        return ret;
-    }
     PB(IsDeviceSetupDoneReply) pbRep = {};
-    pbRep.done = (val == 0x01) ? true : false;
-    ret = encodeReplyMessage(req, PB(IsDeviceSetupDoneReply_fields), &pbRep);
+    // This functionality is currently deprecated. Hard code setup-done to always return true
+    pbRep.done = true;
+    int ret = encodeReplyMessage(req, PB(IsDeviceSetupDoneReply_fields), &pbRep);
     if (ret != 0) {
         return ret;
     }
     return 0;
-#else
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif // HAL_PLATFORM_DCT_SETUP_DONE
 }
 
 int setStartupMode(ctrl_request* req) {
