@@ -73,7 +73,6 @@ const PinMapping g_pinmap[] = {
 
 const size_t g_pin_count = sizeof(g_pinmap) / sizeof(*g_pinmap);
 
-PRODUCT_ID(PLATFORM_ID);
 PRODUCT_VERSION(3);
 
 /* Function prototypes -------------------------------------------------------*/

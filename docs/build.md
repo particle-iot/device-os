@@ -67,7 +67,6 @@ to indicate Safe Mode when the application firmware isn't run.
 
 - `v` - verbose - set to 1 to trigger verbose output
 - `PLATFORM`/`PLATFORM_ID`: specifies the target platform, either as a name or as an ID.
-- `PRODUCT_ID`: specifies the target product ID.
 - `PRODUCT_FIRMWARE_VERSION`: specifies the firmware version that is sent to the cloud.
     Value from 0 to 65535.
 - `GCC_PREFIX`: a prefix added to the ARM toolchain. Allows custom locations to be specified if
@@ -206,16 +205,9 @@ make
 Will build the main firmware, and all the modules the main firmware depends on.
 
 
-## Product ID
+## Product Version
 
-The Product ID and product firmware version
-is specified in your application code via the macros:
-
-```
-PRODUCT_ID(id);
-```
-
-and
+The product firmware version is specified in your application code via the macro:
 
 ```
 PRODUCT_VERSION(version)
