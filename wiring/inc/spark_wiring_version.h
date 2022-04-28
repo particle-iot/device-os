@@ -44,8 +44,38 @@ struct __ApplicationProductVersion {
 #endif
 
 #if PLATFORM_ID!=3
-#define PRODUCT_ID(x)           __ApplicationProductID __appProductID(x); __attribute__((externally_visible, section(".modinfo.product_id"))) uint16_t __system_product_id = (x);
-#define PRODUCT_VERSION(x)       __ApplicationProductVersion __appProductVersion(x); __attribute__((externally_visible, section(".modinfo.product_version"))) uint16_t __system_product_version = (x);
+#define PRODUCT_ID(x) _Pragma ("GCC error \"The PRODUCT_ID macro must be removed from your firmware source code. \
+The same compiled firmware binary may be used in multiple products that share the same platform and functionality.\"")
+/*
+ * PRODUCT_ID and PRODUCT_VERSION will be added to the beginning of the suffix by the linker.
+ *
+ * The following is an example of where the two 16-bit values live at the end of the binary,
+ * in the 40 byte suffix.
+ *
+ * This is for a Boron PLATFORM_ID 13, and code with version 3.
+ * product_id (0D,00) and product_version (03,00)
+ *
+ * 0D,00,03,00,00,00,66,B6,B7,8F,3E,A4,8E,10,1B,30,FE,2A,C1,29,22,08,
+ * 5A,8A,43,ED,93,1C,DA,3A,8D,50,13,48,80,D3,7F,74,28,00,4B,C2,BA,F6
+ *
+ * Here's the beautified view:
+ *
+ * suffixInfo: {
+ *    productId: 13,
+ *    productVersion: 3,
+ *    fwUniqueId: '66b6b78f3ea48e101b30fe2ac12922085a8a43ed931cda3a8d50134880d37f74',
+ *    reserved: 0,
+ *    suffixSize: 40,
+ *    crcBlock: '4bc2baf6'
+ * }
+ *
+ */
+#define PRODUCT_VERSION(x) \
+        __ApplicationProductVersion __appProductVersion(x); \
+        __attribute__((externally_visible, section(".modinfo.product_version"))) uint16_t __system_product_version = (x); \
+        /* PRODUCT_ID used to do the following with a dynamic ID, but now we hardcode the PLATFORM_ID as the PRODUCT_ID. */ \
+        __ApplicationProductID __appProductID(PLATFORM_ID); \
+        __attribute__((externally_visible, section(".modinfo.product_id"))) uint16_t __system_product_id = (PLATFORM_ID);
 #else
 #define PRODUCT_ID(x)
 #define PRODUCT_VERSION(x)
