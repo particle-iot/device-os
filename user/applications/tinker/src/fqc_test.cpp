@@ -423,8 +423,15 @@ bool FqcTest::wifiScanNetworks(JSONValue req) {
     // Scan for all APs
     Vector<WiFiAccessPoint> networks;
 
+    WiFi.on();
+
     int result_count = WiFi.scan(wifi_scan_callback, &networks);
-    Log.info("Found %d networks total", result_count);
+    if (result_count > 0) {
+        Log.info("Found %d networks total", result_count);
+    }
+    else {
+        Log.warn("Wifi scan failed: %s", get_system_error_message(result_count));
+    }
 
     // Serialize to JSON and return this list over USB, like the regular WIFI scan does
     writer.beginObject();
