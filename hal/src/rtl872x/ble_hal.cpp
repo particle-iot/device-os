@@ -440,7 +440,7 @@ private:
     os_semaphore_t stateSemaphore_;
 
     static constexpr system_tick_t BLE_WAIT_STATE_POLL_PERIOD_MS = 10;
-    static constexpr system_tick_t BLE_STATE_DEFAULT_TIMEOUT = 0xffffffff;
+    static constexpr system_tick_t BLE_STATE_DEFAULT_TIMEOUT = 5000;
 };
 
 
