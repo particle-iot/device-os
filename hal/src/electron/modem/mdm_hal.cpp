@@ -2422,7 +2422,7 @@ int MDMParser::_cbCSQ(int type, const char* buf, int len, NetStatus* status)
                 status->rsrq = (b != 99) ? (b * 34)/7 : 255;  // [0, 7] -> [0,34]
                 break;
             default:
-                // Unknown access tecnhology
+                // Unknown access technology
                 status->asu = std::numeric_limits<int32_t>::min();
                 status->aqual = std::numeric_limits<int32_t>::min();
                 break;
