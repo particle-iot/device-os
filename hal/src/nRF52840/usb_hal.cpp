@@ -22,6 +22,8 @@
 #include "usb_hal_cdc.h"
 #include "usb_settings.h"
 #include <mutex>
+#include <nrf52840.h>
+#include <nrf_nvic.h>
 
 #ifdef USB_CDC_ENABLE
 
@@ -38,6 +40,18 @@ void HAL_USB_Detach() {
 }
 
 void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config* config) {
+    /*
+     * Note: This function will call into SD API, which requires the SVC interrupt to be enabled,
+     * otherwise, device runs into hardfault. Without the workaround, When LOG_FROM_ISR is defined,
+     * device will run into hardfault due to the following code in spark_wiring_logging.cpp:
+     *
+     * if (stream_ == &Serial && Network.listening()) {
+     *     return; // Do not mix logging and serial console output
+     * }
+     */
+    int st = __get_BASEPRI();
+    __set_BASEPRI(5 << (8 - __NVIC_PRIO_BITS)); // The SVC interrupt priority is 4
+
     if ((config == NULL) ||
         (config && (config->rx_buffer == NULL   ||
                     config->rx_buffer_size == 0 ||
@@ -57,6 +71,8 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
     } else {
         usb_uart_init(config->rx_buffer, config->rx_buffer_size, config->tx_buffer, config->tx_buffer_size);
     }
+
+    __set_BASEPRI(st);
 }
 
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved) {
