@@ -32,6 +32,8 @@ extern "C" {
 
 #include "logging.h"
 #include "interrupts_hal.h"
+#include "osdep_service.h"
+#include "concurrent_hal.h"
 
 extern "C" {
 
@@ -220,6 +222,16 @@ extern "C" void HAL_Core_System_Reset(void) {
 }
 
 extern "C" {
+
+void __real_rtw_coex_wifi_info_update(void* queue);
+
+void __wrap_rtw_coex_wifi_info_update(void* queue) {
+    // Just a precaution as we've seen this happening
+    if (queue) {
+        __real_rtw_coex_wifi_info_update(queue);
+    }
+}
+
 
 #if 0 // Enable to get btgap logs
 

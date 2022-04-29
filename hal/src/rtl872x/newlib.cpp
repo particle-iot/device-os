@@ -1,6 +1,7 @@
 #include "service_debug.h"
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 #include "delay_hal.h"
 
 /**
@@ -77,6 +78,16 @@ void __assert_func(const char *file, int line, const char* func, const char* exp
 // Saves a few kB of flash.
 char* strerror(int errnum) {
     return (char*)"";
+}
+
+// There is a bug in newlib in how it manages fake stdin/stdout/stderr
+// and we'll leak memory. Stub it out
+int __wrap_puts(const char* s) {
+    return -1;
+}
+
+int __wrap_printf(const char* fmt, ...) {
+    return -1;
 }
 
 } /* extern "C" */

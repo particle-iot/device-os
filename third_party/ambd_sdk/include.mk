@@ -46,6 +46,7 @@ INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/usb/device_new/core
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/usb/common_new
 
 # Hack of the century!
+LIBS_EXT_END += -Wl,--wrap=rtw_coex_wifi_info_update
 LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wlan.a
 LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wps.a
 ifneq ("$(MODULE)", "user-part")

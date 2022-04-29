@@ -230,24 +230,24 @@ NcpConnectionState RealtekNcpClient::connectionState() {
 }
 
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
-    const NcpClientLock lock(this);
-
-    CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
-    char mac[32] = {};
-    wifi_get_mac_address(mac);
     int rtlError = RTW_ERROR;
     for (int i = 0; i < 2; i++) {
-        LOG(INFO, "Try to connect to ssid: %s, mac: %s", ssid, mac);
-        rtlError = wifi_connect((char*)ssid, wifiSecurityToRtlSecurity(sec), (char*)cred.password(), strlen(ssid), strlen(cred.password()), -1, nullptr);
-        if (rtlError == RTW_SUCCESS || rtlError != RTW_ERROR) {
-            break;
+        {
+            const NcpClientLock lock(this);
+            CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
+
+            LOG(INFO, "Try to connect to ssid: %s", ssid);
+            rtlError = wifi_connect((char*)ssid, wifiSecurityToRtlSecurity(sec), (char*)cred.password(), strlen(ssid), strlen(cred.password()), -1, nullptr);
+            if (rtlError == RTW_SUCCESS) {
+                connectionState(NcpConnectionState::CONNECTED);
+                break;
+            } else if (rtlError != RTW_ERROR) {
+                break;
+            }
         }
         HAL_Delay_Milliseconds(500);
     }
 
-    if (rtlError == RTW_SUCCESS) {
-        connectionState(NcpConnectionState::CONNECTED);
-    }
     return rtl_error_to_system(rtlError);
 }
 
