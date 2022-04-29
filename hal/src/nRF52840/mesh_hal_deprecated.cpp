@@ -23,7 +23,8 @@
 
 using namespace particle;
 
-int mesh_select_antenna_deprecated(int antenna, void* reserved) {
-	CHECK(selectRadioAntenna((radio_antenna_type)antenna));
-	return 0;
+int __attribute__((deprecated("Will be removed in 5.x!")))
+mesh_select_antenna_deprecated(int antenna, void* reserved) {
+    CHECK(selectRadioAntenna((radio_antenna_type)antenna));
+    return 0;
 }

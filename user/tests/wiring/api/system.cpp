@@ -274,6 +274,9 @@ void handler_event_data(system_event_t event, int data)
 
 void handler_event_data_param(system_event_t event, int data, void* param)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+    // These cases are designed to all fall through
     switch (event) {
     case network_status: {
         switch (data) {
@@ -300,6 +303,7 @@ void handler_event_data_param(system_event_t event, int data, void* param)
     default:
         break;
     }
+#pragma GCC diagnostic pop
 }
 
 class EventsHandler {
@@ -344,8 +348,12 @@ test(system_events)
     API_COMPILE(System.on(my_events, [&]() {}));
 
     API_COMPILE(System.off(my_events));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    // These APIs are known deprecated APIs, we don't need to see this warning in tests
     API_COMPILE(System.off(handler_event_data_param));
     API_COMPILE(System.off(my_events, handler_event_data_param));
+#pragma GCC diagnostic pop
     SystemEventSubscription sub;
     API_COMPILE(sub = System.on(my_events, [&](system_event_t events, int data, void* pointer) {}));
     API_COMPILE(System.off(sub));

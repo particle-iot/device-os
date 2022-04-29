@@ -21,26 +21,26 @@
 #include "time_compat.h"
 
 // Deprecated *dynalib* APIs for backwards compatibility
-inline void __attribute__((deprecated("use hal_rtc_init() instead"), always_inline))
+inline void __attribute__((deprecated("Will be removed in 5.x! use hal_rtc_init() instead"), always_inline))
 HAL_RTC_Configuration(void) {
     hal_rtc_init();
 }
 
-// There is no replacement for these
-inline time32_t __attribute__((deprecated, always_inline)) HAL_RTC_Get_UnixTime(void) {
+// There is no replacement
+inline time32_t __attribute__((deprecated("Will be removed in 5.x!"), always_inline)) HAL_RTC_Get_UnixTime(void) {
     return hal_rtc_get_unixtime_deprecated();
 }
-
-inline void __attribute__((deprecated, always_inline)) HAL_RTC_Set_UnixTime(time32_t value) {
+// There is no replacement
+inline void __attribute__((deprecated("Will be removed in 5.x!"), always_inline)) HAL_RTC_Set_UnixTime(time32_t value) {
     hal_rtc_set_unixtime_deprecated(value);
 }
 
-inline void __attribute__((deprecated("use hal_rtc_cancel_alarm() instead"), always_inline))
+inline void __attribute__((deprecated("Will be removed in 5.x! use hal_rtc_cancel_alarm() instead"), always_inline))
 HAL_RTC_Cancel_UnixAlarm(void) {
     hal_rtc_cancel_alarm();
 }
 
-inline uint8_t __attribute__((deprecated("use hal_rtc_time_is_valid() instead"), always_inline))
+inline uint8_t __attribute__((deprecated("Will be removed in 5.x! use hal_rtc_time_is_valid() instead"), always_inline))
 HAL_RTC_Time_Is_Valid(void* reserved) {
     return (uint8_t)hal_rtc_time_is_valid(reserved);
 }

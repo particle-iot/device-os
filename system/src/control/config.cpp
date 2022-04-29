@@ -126,9 +126,6 @@ int getNcpFirmwareVersion(ctrl_request* req) {
 
 int getSystemCapabilities(ctrl_request* req) {
     PB(GetSystemCapabilitiesReply) pbRep = {};
-#if HAL_PLATFORM_COMPRESSED_BINARIES
-    pbRep.flags |= PB(SystemCapabilityFlag_COMPRESSED_OTA);
-#endif
     CHECK(encodeReplyMessage(req, PB(GetSystemCapabilitiesReply_fields), &pbRep));
     return 0;
 }
