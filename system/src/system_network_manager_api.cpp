@@ -97,12 +97,6 @@ bool testAndClearListeningModeFlag() {
             system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr); // Clear startup flag
             return true;
         }
-        // Check setup done flag
-        val = 0x01;
-        dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
-        if (val == 0x00 || val == 0xff) {
-            return true;
-        }
     }
     return false;
 }
