@@ -34,10 +34,8 @@
 
 DYNALIB_BEGIN(hal_dct)
 
-#if HAL_PLATFORM_DCT_NO_DEPRECATED
 DYNALIB_FN(0, hal_dct, dct_read_app_data_copy, int(uint32_t, void*, size_t))
 DYNALIB_FN(1, hal_dct, dct_write_app_data, int(const void*, uint32_t, uint32_t))
 DYNALIB_FN(2, hal_dct, fetch_or_generate_setup_ssid, bool(device_code_t*))
-#else
-#endif // HAL_PLATFORM_DCT_NO_DEPRECATED
+
 DYNALIB_END(hal_dct)

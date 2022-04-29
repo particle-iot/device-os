@@ -27,11 +27,6 @@
 extern "C" {
 #endif
 
-// Note: These functions are deprecated, use dct_read_app_data_copy()
-const void* dct_read_app_data(uint32_t offset) __attribute__((deprecated));
-const void* dct_read_app_data_lock(uint32_t offset) __attribute__((deprecated));
-int dct_read_app_data_unlock(uint32_t offset) __attribute__((deprecated));
-
 int dct_read_app_data_copy(uint32_t offset, void* ptr, size_t size);
 int dct_write_app_data(const void* data, uint32_t offset, uint32_t size);
 int dct_lock(int write);
