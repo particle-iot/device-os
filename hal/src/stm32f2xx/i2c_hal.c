@@ -826,6 +826,14 @@ void hal_i2c_flush(hal_i2c_interface_t i2c, void* reserved) {
     // XXX: to be implemented.
 }
 
+bool hal_i2c_get_config(hal_i2c_interface_t i2c, hal_i2c_config_t* config, void* reserved) {
+    config->rx_buffer = i2cMap[i2c]->rxBuffer;
+    config->rx_buffer_size = i2cMap[i2c]->rxBufferSize;
+    config->tx_buffer = i2cMap[i2c]->txBuffer;
+    config->tx_buffer_size = i2cMap[i2c]->txBufferSize;
+    return true;
+}
+
 bool hal_i2c_is_enabled(hal_i2c_interface_t i2c, void* reserved) {
     return i2cMap[i2c]->state == HAL_I2C_STATE_ENABLED;
 }

@@ -619,6 +619,17 @@ void hal_i2c_flush(hal_i2c_interface_t i2c, void* reserved) {
     i2cMap[i2c].tx_index_tail = 0;
 }
 
+bool hal_i2c_get_config(hal_i2c_interface_t i2c, hal_i2c_config_t* config, void* reserved) {
+    if (i2c >= HAL_PLATFORM_I2C_NUM) {
+        return false;
+    }
+    config->rx_buffer = i2cMap[i2c].rx_buf;
+    config->rx_buffer_size = i2cMap[i2c].rx_buf_size;
+    config->tx_buffer = i2cMap[i2c].tx_buf;
+    config->tx_buffer_size = i2cMap[i2c].tx_buf_size;
+    return true;
+}
+
 bool hal_i2c_is_enabled(hal_i2c_interface_t i2c,void* reserved) {
     return i2cMap[i2c].state == HAL_I2C_STATE_ENABLED;
 }

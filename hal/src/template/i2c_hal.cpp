@@ -93,6 +93,11 @@ void hal_i2c_flush(hal_i2c_interface_t i2c,void* reserved)
   // XXX: to be implemented.
 }
 
+bool hal_i2c_get_config(hal_i2c_interface_t i2c, hal_i2c_config_t* config, void* reserved)
+{
+  return false;
+}
+
 bool hal_i2c_is_enabled(hal_i2c_interface_t i2c,void* reserved)
 {
     return false;
