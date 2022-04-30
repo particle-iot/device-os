@@ -118,8 +118,11 @@ typedef struct hal_usart_ring_buffer_t {
 } hal_usart_ring_buffer_t;
 
 typedef enum hal_usart_interface_t {
-    HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
-    HAL_USART_SERIAL2 = 1     //maps to USART_RGBG_RGBB
+    HAL_USART_SERIAL1 = 0,    // maps to USART_TX_RX
+    HAL_USART_SERIAL2 = 1,    // maps to USART_RGBG_RGBB
+    HAL_USART_SERIAL3 = 2,    // maps to ?
+    HAL_USART_SERIAL4 = 3,    // maps to ?
+    HAL_USART_SERIAL5 = 4     // maps to ?
 } hal_usart_interface_t;
 
 typedef enum hal_usart_state_t {

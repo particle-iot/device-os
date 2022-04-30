@@ -30,6 +30,8 @@
 #ifndef MBEDTLS_CONFIG_DEFAULT_H
 #define MBEDTLS_CONFIG_DEFAULT_H
 
+#include "platforms.h"
+
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE 1
 #endif
@@ -2032,7 +2034,6 @@
  * Remove unused functions from oid.c that cause unused strings to get pulled in
  *
  */
-// FIXME: some platforms cannot include platforms.h here
 #if PLATFORM_ID != PLATFORM_GCC
 #define MBEDTLS_OID_OPTIMIZE_STRINGS
 #endif // PLATFORM_ID != PLATFORM_GCC
@@ -2640,8 +2641,6 @@
 #if defined(TARGET_LIKE_MBED)
 #include "mbedtls/target_config.h"
 #endif
-
-#include "platforms.h"
 
 /*
  * Allow user to override any previous default.

@@ -4,7 +4,7 @@ This directory holds the firmware libraries used for the communication between P
 
 ## SECURITY OVERVIEW
 
-The following applies to the UDP connection used by default on Gen3+ devices. The Electron uses standard DTLS.
+The following applies to the UDP connection used by default on Gen3+ devices.
 
 The initial handshaking process creates an encrypted session using DTLS over UDP (datagram TLS) on Gen 3+ devices. This assures that your data cannot be monitored or tampered with in transit. The Particle cloud connection uses the CoAP (constrained application protocol) over DTLS. All features like Publish, Subscribe, Particle Functions and Variables, and OTA firmware updates occur over a single CoAP connection.
 

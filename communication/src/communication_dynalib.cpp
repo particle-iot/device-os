@@ -3,10 +3,6 @@
 #include "service_debug.h"
 #include "protocol_selector.h"
 
-#ifdef USE_MBEDTLS
-// TODO
-#endif // USE_MBEDTLS
-
 #define DYNALIB_EXPORT
 #include "communication_dynalib.h"
 #define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS

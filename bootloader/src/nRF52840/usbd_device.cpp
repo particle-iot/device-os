@@ -163,8 +163,8 @@ const uint8_t s_deviceDescriptor[] = {
   0x00,                       /*bDeviceSubClass*/
   0x00,                       /*bDeviceProtocol*/
   NRF_DRV_USBD_EPSIZE,        /*bMaxPacketSize*/
-  LOBYTE(USBD_VID_SPARK),     /*idVendor*/
-  HIBYTE(USBD_VID_SPARK),     /*idVendor*/
+  LOBYTE(USBD_VID_PARTICLE),     /*idVendor*/
+  HIBYTE(USBD_VID_PARTICLE),     /*idVendor*/
   LOBYTE(USBD_PID_DFU),       /*idProduct*/
   HIBYTE(USBD_PID_DFU),       /*idProduct*/
   LOBYTE(0x0251),             /*bcdDevice (2.51) */

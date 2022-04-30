@@ -32,9 +32,9 @@ using namespace particle::protocol;
 #include "mbedtls_util.h"
 #include "mbedtls_compat.h"
 #else
-#  include "tropicssl/rsa.h"
-#  include "tropicssl/sha1.h"
-#endif
+#include "tropicssl/rsa.h"
+#include "tropicssl/sha1.h"
+#endif // USE_MBEDTLS
 
 /**
  * Handle the cryptographically secure random seed from the cloud by using

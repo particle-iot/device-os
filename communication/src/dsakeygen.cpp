@@ -34,8 +34,8 @@
 #include "mbedtls/rsa.h"
 #include "mbedtls_compat.h"
 #else
-#  include "tropicssl/rsa.h"
-#endif
+#include "tropicssl/rsa.h"
+#endif // USE_MBEDTLS
 
 using namespace std;
 

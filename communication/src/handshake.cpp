@@ -32,9 +32,9 @@
 #include "mbedtls_compat.h"
 #include "mbedtls_util.h"
 #else
-#  define rsa_mode_t int
-#  define rsa_hash_id_t int
-#endif
+#define rsa_mode_t int
+#define rsa_hash_id_t int
+#endif // USE_MBEDTLS
 
 int ciphertext_from_nonce_and_id(const unsigned char *nonce,
                                  const unsigned char *id,
