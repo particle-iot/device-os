@@ -27,7 +27,7 @@ private:
     uint8_t tcpServer[4];
     int tcpPort;
     JSONBufferWriter writer; 
-    char json_response_buffer[1024];
+    char json_response_buffer[2048];
     TCPClient tcpClient;
     bool inited_;
     

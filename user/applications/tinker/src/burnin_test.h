@@ -1,6 +1,7 @@
 #pragma once
 
 #include "spark_wiring_vector.h"
+#include "debug_output_handler.h"
 
 namespace particle {
 
@@ -19,16 +20,6 @@ public:
 		DISABLED,
 		IN_PROGRESS,
 		FAILED,
-	};
-
-	enum class BurninTestName : uint32_t {
-		NONE,
-		GPIO,
-		WIFI_SCAN,
-		BLE_SCAN,
-		SRAM,
-		SPI_FLASH,
-		CPU_LOAD
 	};
 
 private:
@@ -51,6 +42,7 @@ private:
 	typedef bool (BurninTest::*burnin_test_function)();
 	Vector<burnin_test_function> tests_;
 	Vector<String> test_names_;
+    std::unique_ptr<Serial1LogHandler> logger_;
 
 	bool callFqcTest(String testName);
 

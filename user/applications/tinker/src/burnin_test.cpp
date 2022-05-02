@@ -1,19 +1,28 @@
 #include "application.h"
 
-#include "burnin_test.h"
-#include "fqc_test.h"
-
 #include "spark_wiring_logging.h"
 #include "spark_wiring_random.h"
 #include "spark_wiring_led.h"
 #include "random.h"
 
+#include "fqc_test.h"
+#include "burnin_test.h"
+extern "C" {
+#include "lib/coremark/core_portme.h"
+}
+
+#if HAL_PLATFORM_RTL872X
+extern uintptr_t platform_km0_part1_flash_start;
+extern uintptr_t platform_bootloader_module_info_flash_start;
+extern uintptr_t platform_system_part1_flash_start;
+#endif
+
 namespace particle {
 
 // Retained state variables
 static retained BurninTest::BurninTestState BurninState;
-static retained BurninTest::BurninTestName LastBurnInTest;
-static retained uint32_t FailureUptimeMillis;
+static retained char LastBurnInTest[16];
+static retained uint32_t UptimeMillis;
 static retained char BurninErrorMessage[1024];
 
 BurninTest::BurninTest() {
@@ -26,7 +35,14 @@ BurninTest::BurninTest() {
 		&particle::BurninTest::testCpuLoad,
 	};
 
-	test_names_ = {"NONE", "GPIO", "WIFI_SCAN", "BLE_SCAN", "SRAM", "SPI_FLASH", "CPU_LOAD"};
+	test_names_ = {
+		"GPIO", 
+		"WIFI_SCAN", 
+		"BLE_SCAN", 
+		"SRAM", 
+		"SPI_FLASH", 
+		"CPU_LOAD"
+	};
 }
 
 BurninTest::~BurninTest() {
@@ -38,17 +54,14 @@ BurninTest* BurninTest::instance() {
 }
 
 void BurninTest::setup(bool forceEnable) {
-	uint32_t pulse_width_micros = 0;
-    hal_pin_t trigger_pin = D7; // PA27 aka SWD
-
 	if (!forceEnable) {
+	    hal_pin_t trigger_pin = D7; // PA27 aka SWD
 		// Read the trigger pin for a 1khz pulse. If present, enter burnin mode.
 		pinMode(trigger_pin, INPUT);
-	    pulse_width_micros = pulseIn(trigger_pin, HIGH);
+	    uint32_t pulse_width_micros = pulseIn(trigger_pin, HIGH);
 	    pinMode(trigger_pin, PIN_MODE_SWD);
 
-	    // Margin of error for rtl872xD tick/microsecond counter
-	    const uint32_t error_margin_micros = (31 * 2);
+	    const uint32_t error_margin_micros = 31;
 	    // 1KHZ square wave at 50% duty cycle = 500us pulses
 	    const uint32_t expected_pulse_width_micros = 500;
 
@@ -59,23 +72,23 @@ void BurninTest::setup(bool forceEnable) {
 	    }
 	}
 
-	static Serial1LogHandler logger(115200, LOG_LEVEL_ALL);
-    Log.info("*** BURN IN START *** trigger_pin %d pulse_width_micros: %lu ", trigger_pin, pulse_width_micros);
-
+    logger_ = std::make_unique<Serial1LogHandler>(115200, LOG_LEVEL_INFO);
+    
 	// Detect if backup SRAM has a failed test in it (IE state is "TEST FAILED")
-	Log.info("BurninState: %d ErrorMessage: %s", (int)BurninState, BurninErrorMessage);
+	Log.info("BURN IN START: ResetReason: %d State: %d ErrorMessage: %s", System.resetReason(), (int)BurninState, BurninErrorMessage);
 
 	if(BurninState == BurninTestState::IN_PROGRESS) {
-		Log.warn("Previous test failed: %s", test_names_[(int)LastBurnInTest].c_str());
+		Log.warn("Previous test failed: %s", LastBurnInTest);
 		BurninState = BurninTestState::FAILED;
 	}
 	else if(BurninState == BurninTestState::FAILED) {
-		Log.info("Resetting from failed test state");
+		Log.info("Resetting from failed test state: %s", LastBurnInTest);
 		BurninState = BurninTestState::IN_PROGRESS;
+		UptimeMillis = 0;
 	}
 	else {
 		BurninState = BurninTestState::IN_PROGRESS;
-		FailureUptimeMillis = 0;
+		UptimeMillis = 0;
 	}
 
 	RGB.control(true);
@@ -105,30 +118,32 @@ void BurninTest::loop() {
 			return;
 		case BurninTestState::IN_PROGRESS:
 		{
+			UptimeMillis = millis();
+			auto startMillis = UptimeMillis;
+
 			// pick random test to run, run it
-			auto test = tests_[random(tests_.size())];
-			uint32_t heap_start = System.freeMemory();
+			auto test_number = random(tests_.size());
+			auto test = tests_[test_number];
+			strlcpy(LastBurnInTest, test_names_[test_number].c_str(), sizeof(LastBurnInTest));
+			Log.info("Running test: %s", LastBurnInTest);
 			bool test_passed = (this->*test)();
-			uint32_t heap_end = System.freeMemory();
 
 			if (!test_passed) {
 				BurninState = BurninTestState::FAILED;
-				FailureUptimeMillis = millis();
-				Log.error("test failed: %s", test_names_[(int)LastBurnInTest].c_str());
+				Log.error("Elapsed: %lu test failed: %s\n", millis() - startMillis, LastBurnInTest);
 			}
 			else {
-				Log.info("test passed: %s", test_names_[(int)LastBurnInTest].c_str());
+				Log.info("Elapsed: %lu test passed: %s\n", millis() - startMillis, LastBurnInTest);
 			}
-
-			Log.info("Heap delta: %.0f\n", ((double)heap_end) - ((double)heap_start)); // Debug
 		}
 		break;
 		case BurninTestState::FAILED:
 		{
 			// log failure text every X seconds to UART
-			Log.error("***BURNIN_FAILED***, UptimeMillis, %lu, test, %s, message, %s", 
-				FailureUptimeMillis,
-				test_names_[(int)LastBurnInTest].c_str(),
+			Log.error("FAILED: Uptime: %lu Test: %s ResetReason %d Message: %s", 
+				UptimeMillis,
+				LastBurnInTest,
+				System.resetReason(),
 				BurninErrorMessage);
 			delay(5000);
 		}
@@ -226,9 +241,17 @@ bool BurninTest::callFqcTest(String testName){
 	JSONValue gpioTestCommand = JSONValue::parseCopy(buffer);
 	FqcTest::instance()->process(gpioTestCommand);
 
-	JSONValue testResult = getValue(JSONValue::parseCopy(FqcTest::instance()->reply()), "pass");
-	if(!testResult.isValid() || testResult.toString() != "true") {
-		strlcpy(BurninErrorMessage, FqcTest::instance()->reply(), sizeof(BurninErrorMessage));
+	char * fqcTestRawReply = FqcTest::instance()->reply();
+	JSONValue testResult = getValue(JSONValue::parseCopy(fqcTestRawReply), "pass");
+	if (!testResult.isValid()) {
+		const char* jsonPassString = "\"pass\":true";
+		if(!strstr(fqcTestRawReply, jsonPassString)) {
+			strlcpy(BurninErrorMessage, fqcTestRawReply, sizeof(BurninErrorMessage));
+			testPassed = false;
+		}
+	}
+	else if(testResult.toString() != "true") {
+		strlcpy(BurninErrorMessage, fqcTestRawReply, sizeof(BurninErrorMessage));
 		testPassed = false;
 	}
 	
@@ -236,24 +259,42 @@ bool BurninTest::callFqcTest(String testName){
 }
 
 bool BurninTest::testGpio() {
-	LastBurnInTest = BurninTestName::GPIO;
 	return callFqcTest("IO_TEST");
 }
 
 bool BurninTest::testWifiScan() {
-	LastBurnInTest = BurninTestName::WIFI_SCAN;
 	return callFqcTest("WIFI_SCAN_NETWORKS");
 }
 
 bool BurninTest::testBleScan() {
-	LastBurnInTest = BurninTestName::BLE_SCAN;
-	// TODO:
+	const size_t SCAN_RESULT_MAX = 30;
+	BleScanResult scanResults[SCAN_RESULT_MAX];
+	BLE.on();
+	BLE.setScanTimeout(50);
+	int count = BLE.scan(scanResults, SCAN_RESULT_MAX);
+	if (count < 0) {
+		Log.error("BLE scan failed: %s", get_system_error_message(count));
+	}
+	else {
+		Log.info("Found %d beacons", count);
+
+		for (int ii = 0; ii < count; ii++) {
+			uint8_t buf[BLE_MAX_ADV_DATA_LEN];
+			size_t len = scanResults[ii].advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, BLE_MAX_ADV_DATA_LEN);
+			Log.info("Beacon %d: rssi %d Advertising Data Len %u", ii, scanResults[ii].rssi(), len);
+			if (len > 0) {
+				Log.print("Advertising Data: ");
+				Log.dump(buf, len);	
+				Log.print("\r\n");
+			}
+		}
+	}
+
+	BLE.off();
 	return true;
 }
 
 bool BurninTest::testSram() {
-	LastBurnInTest = BurninTestName::SRAM;
-
 	bool test_passed = true;
  	Random rng;
 	MemoryChunk* root = nullptr;
@@ -315,12 +356,11 @@ bool BurninTest::testSram() {
 }
 
 bool BurninTest::testSpiFlash(){
-	LastBurnInTest = BurninTestName::SPI_FLASH;
 	bool test_passed = true;
 
 #if HAL_PLATFORM_RTL872X
 	// MBR part1, Bootloader, System Parts
-	Vector<uint32_t> module_addresses = {KM0_PART1_START_ADDRESS, 0x08004020, CORE_FW_ADDRESS /*0x08000000*/};
+	Vector<uint32_t> module_addresses = {(uint32_t)&platform_km0_part1_flash_start, (uint32_t)&platform_bootloader_module_info_flash_start, (uint32_t)&platform_system_part1_flash_start};
 #else
 	// TODO: Non P2 platforms
 	Vector<uint32_t> module_addresses = {};
@@ -331,9 +371,7 @@ bool BurninTest::testSpiFlash(){
 		uint32_t module_start =  (uint32_t)module_header->module_start_address;
 		uint32_t module_end = (uint32_t)module_header->module_end_address;
 		uint32_t module_size = module_end - module_start;
-		Log.info("module start: 0x%08lX", module_start);
-		Log.info("module end  : 0x%08lX", module_end);
-		Log.info("module size : 0x%08lX", module_size);
+		Log.info("module start: 0x%08lX end: 0x%08lX size: 0x%08lX", module_start, module_end, module_size);
 
 		uint32_t calculated_crc = HAL_Core_Compute_CRC32((uint8_t *)module_header->module_start_address, module_size);
 		uint32_t module_crc = *(uint32_t *)(module_header->module_end_address);
@@ -358,8 +396,9 @@ bool BurninTest::testSpiFlash(){
 }
 
 bool BurninTest::testCpuLoad() {
-	LastBurnInTest = BurninTestName::CPU_LOAD;
-	// TODO:
+	// 4500 iterations is about enough to meet the 10 second test duration minimum
+	coremark_set_iterations(random(4500, 6000));
+	coremark_main();
 	return true;
 }
 

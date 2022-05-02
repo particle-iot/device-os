@@ -1,10 +1,10 @@
-#include "fqc_test.h"
-#include "burnin_test.h"
-
 #include "spark_wiring.h"
 #include "spark_wiring_ble.h"
 #include "spark_wiring_logging.h"
 #include "spark_wiring_json.h"
+
+#include "fqc_test.h"
+#include "burnin_test.h"
 
 namespace particle {
 
@@ -281,7 +281,7 @@ static bool assertPinStates(uint16_t outputPin, uint16_t inputPin, bool expected
     bool inputPinCorrect = (digitalRead(inputPin) == expectedState);
     bool otherPinsLow = assertAllPinsLow(outputPin, inputPin, errorPin);
 
-    Log.info("Out:%u In:%u expectedState:%u actual state: %ld otherPinsLow:%u errorPin:%u", outputPin, inputPin, expectedState, digitalRead(inputPin), otherPinsLow, *errorPin);
+    Log.trace("Out:%u In:%u expectedState:%u actual state: %ld otherPinsLow:%u errorPin:%u", outputPin, inputPin, expectedState, digitalRead(inputPin), otherPinsLow, *errorPin);
 
     if(!inputPinCorrect){
         Log.warn("pin %u could not drive pin %u %s", outputPin, inputPin, expectedState ? "HIGH" : "LOW");
@@ -423,8 +423,15 @@ bool FqcTest::wifiScanNetworks(JSONValue req) {
     // Scan for all APs
     Vector<WiFiAccessPoint> networks;
 
+    WiFi.on();
+
     int result_count = WiFi.scan(wifi_scan_callback, &networks);
-    Log.info("Found %d networks total", result_count);
+    if (result_count > 0) {
+        Log.info("Found %d networks total", result_count);
+    }
+    else {
+        Log.warn("Wifi scan failed: %s", get_system_error_message(result_count));
+    }
 
     // Serialize to JSON and return this list over USB, like the regular WIFI scan does
     writer.beginObject();
