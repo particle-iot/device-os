@@ -206,6 +206,10 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
     int32_t available = -1;
     do {
         available = HAL_USB_USART_Available_Data_For_Write(serial);
+        if (available > 0) {
+            break;
+        }
+        // TODO: check thread priorities here and delay only conditionally?
         HAL_Delay_Milliseconds(1);
     } while (available < 1 && available != -1);
     if (HAL_USB_USART_Is_Connected(serial) && available > 0) {

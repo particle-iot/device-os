@@ -9,6 +9,10 @@ include $(COMMON_BUILD)/common-tools.mk
 
 AR = $(GCC_ARM_PATH)$(GCC_PREFIX)gcc-ar
 
+# Newlib has a bug in fake stdin/stdout/stderr implementation and leaks memory
+# Stub printf/fprintf out
+CFLAGS += -fno-builtin-puts -fno-builtin-printf -Wl,--wrap=puts -Wl,--wrap=printf
+
 #
 # default flags for targeting ARM Cortex-M3
 #

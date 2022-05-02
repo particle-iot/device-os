@@ -47,7 +47,7 @@
 #define BLE_MAX_DESC_LEN                            20
 
 /* BLE event thread stack size */
-#define BLE_EVENT_THREAD_STACK_SIZE                 2048
+#define BLE_EVENT_THREAD_STACK_SIZE                 (10 * 1024)
 
 /* BLE invalid connection handle. */
 #define BLE_INVALID_CONN_HANDLE                     0xFFFF

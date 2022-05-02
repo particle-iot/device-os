@@ -26,6 +26,7 @@
 
 /* Define abort() */
 #include <stdlib.h>
+#include <stdio.h>
 #include "debug.h"
 
 void *__dso_handle;
@@ -89,6 +90,16 @@ void _exit(int status) {
 // Saves a few kB of flash.
 char* strerror(int errnum) {
     return (char*)"";
+}
+
+// There is a bug in newlib in how it manages fake stdin/stdout/stderr
+// and we'll leak memory. Stub it out
+int __wrap_puts(const char* s) {
+    return -1;
+}
+
+int __wrap_printf(const char* fmt, ...) {
+    return -1;
 }
 
 /* Default implementation for call made to pure virtual function. */
