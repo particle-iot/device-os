@@ -18,7 +18,7 @@
                     "version": "0.11.0-particle.4",
                     "main": "./bin",
                     "url": "https://binaries.particle.io/openocd/windows/x64/0.11.0-particle.4.tar.gz",
-                    "sha256": "e26c52b8020ab96b76e6c60a8189ddd54e3c84f3cc5c06054b1cf9a9c505fcbc"
+                    "sha256": "ab361ce38844c1e0e3a26a5c5d3d81369d7d535727bee666cbcac4e7b840cec8"
                 }
             ],
             "x86": []
@@ -30,7 +30,7 @@
                     "version": "0.11.0-particle.4",
                     "main": "./bin",
                     "url": "https://binaries.particle.io/openocd/darwin/x64/0.11.0-particle.4.tar.gz",
-                    "sha256": "ce42e9988b071f7089fa6d72cd219de00b25fb9ae252641fe76b46afd28ac505"
+                    "sha256": "18fb02b10b49d970897f60eebc15fb16d953888ac88bd98fe16341060f99cefa"
                 }
             ],
             "x86": []
@@ -42,7 +42,7 @@
                     "version": "0.11.0-particle.4",
                     "main": "./bin",
                     "url": "https://binaries.particle.io/openocd/linux/x64/0.11.0-particle.4.tar.gz",
-                    "sha256": "e6ecdc1becb554b71f9733d0a73784942f1a0ac8060108bd0026bd5afd4113bd"
+                    "sha256": "dea873870d5cf8b981ae7ffc53b1f5b78ad135d48316ff99d689de91c0c4dc70"
                 }
             ],
             "x86": []
