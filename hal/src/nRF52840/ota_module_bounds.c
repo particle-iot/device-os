@@ -168,10 +168,6 @@ PARTICLE_STATIC_ASSERT(radio_stack_start_address, MODULE_RADIO_STACK_START_ADDRE
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 // Make module_user_compat should appear in the list before module_user
 const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_system_part1, &module_user_compat, &module_user, &module_factory
-#if defined(HYBRID_BUILD) // include the mono module so that the hybrid module validates. The reason to not do this all the time is because the
-        // list of modules becomes somewhat confusing (with the same address range covered by 2 distinct definitions.)
-,&module_user_mono
-#endif // defined(HYBRID_BUILD)
 #else
 const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_user_mono
 #endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */

@@ -42,11 +42,10 @@ CPPSRC += $(TARGET_SRC_PATH)/description.cpp
 # ASM source files included in this build.
 ASRC +=
 
+# if PLATFORM_ID matches 13 23 25 or 26, and not DEBUG_BUILD=y, set LOG_LEVEL_ERROR
 ifneq (,$(filter $(PLATFORM_ID), 13 23 25 26))
 ifneq ($(DEBUG_BUILD),y)
-ifneq ($(HYBRID_BUILD),y)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
-endif
 endif
 endif
 

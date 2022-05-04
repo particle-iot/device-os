@@ -9,11 +9,9 @@ include $(call rwildcard,$(HAL_PLATFORM_SRC_PATH)/,sources.mk)
 
 LOG_MODULE_CATEGORY = hal
 
-# if PLATFORM_ID matches 13 23 25 or 26, and not DEBUG_BUILD or HYBRID_BUILD, set LOG_LEVEL_ERROR
+# if PLATFORM_ID matches 13 23 25 or 26, and not DEBUG_BUILD=y, set LOG_LEVEL_ERROR
 ifneq (,$(filter $(PLATFORM_ID),13 23 25 26))
 ifneq ($(DEBUG_BUILD),y)
-ifneq ($(HYBRID_BUILD),y)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
-endif
 endif
 endif
