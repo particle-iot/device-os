@@ -95,8 +95,15 @@ using spark::Vector;
 using namespace particle;
 using namespace particle::ble;
 
+struct pcoex_reveng {
+    uint32_t state;
+    uint32_t unknown;
+    _mutex* mutex;
+};
+
+extern "C" pcoex_reveng* pcoex[4];
+
 extern "C" Rltk_wlan_t rltk_wlan_info[NET_IF_NUM];
-extern "C" int rtw_coex_run_enable(void* priv, uint32_t state);
 extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
 extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
 
@@ -113,6 +120,24 @@ namespace {
         })
 
 StaticRecursiveMutex s_bleMutex;
+
+void rtwCoexRunDisable() {
+    os_thread_scheduling(false, nullptr);
+    auto p = pcoex[0];
+    if (p && (p->state & 0x000000ff) != 0x00) {
+        p->state &= 0xffffff00;
+    }
+    os_thread_scheduling(true, nullptr);
+}
+
+void rtwCoexRunEnable() {
+    os_thread_scheduling(false, nullptr);
+    auto p = pcoex[0];
+    if (p) {
+        p->state |= 0x01;
+    }
+    os_thread_scheduling(true, nullptr);
+}
 
 bool isUuidEqual(const hal_ble_uuid_t* uuid1, const hal_ble_uuid_t* uuid2) {
     if (uuid1->type != uuid2->type) {
@@ -719,9 +744,12 @@ int BleGap::start() {
     gap_config_max_le_link_num(MAX_LINK_COUNT);
     gap_config_max_le_paired_device(MAX_LINK_COUNT);
 
+    rtwCoexRunDisable();
+
     CHECK_TRUE(bte_init(), SYSTEM_ERROR_INTERNAL);
     btStackStarted_ = true;
     bt_coex_init();
+
     // NOTE: we will miss some of the initial events between bte_init() and when we start the event dispatcher
     CHECK(BleEventDispatcher::getInstance().start());
     CHECK_TRUE(le_gap_init(MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
@@ -760,17 +788,18 @@ int BleGap::stop() {
         // a site survey command and handling its coexistence hooks.
         // Acquire NCP client lock here to block until connection process finishes
         {
-            const NcpClientLock lock(wifiNetworkManager()->ncpClient());
-            rtw_coex_run_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
-            // This seems to help avoid rtw mailbox coex thread from hitting a race condition
-            // while deinitializing and accessing an invalid mutex/semaphore/queue
-            // An alternative could be to try to run rtw_if_wifi_delete_task() before performing
-            // any cleanup, but this also seems to work just fine
-            HAL_Delay_Milliseconds(100);
+            // This call makes rtw_coex_run_enable(123, false) not cleanup the mutex
+            // which might be still accessed by other coexistence tasks
+            // but still allows rtw_coex_bt_enable to deinitialize BT coexistence.
+            // Subsequently we restore the state with rtwCoexRunEnable() and rtw_coex_wifi_enable
+            // will call into rtw_coex_run_enable(123, false) which will finally cleanup the mutex
+            rtwCoexRunDisable();
             rtw_coex_bt_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
+            HAL_Delay_Milliseconds(100);
+            rtwCoexRunEnable();
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
+            rtwCoexRunDisable();
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
-            rtw_coex_run_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
         }
         bte_deinit();
         btStackStarted_ = false;
