@@ -81,6 +81,26 @@ public:
 	static int count;
 };
 
+class DetachingHandler
+{
+	public:
+		DetachingHandler(pin_t p): pin(p) {}
+
+		void handler()
+		{
+			cnt++;
+			detachInterrupt(pin);
+		}
+
+		int count() {
+			return cnt;
+		}
+
+	private:
+		pin_t pin;
+		volatile int cnt = 0;
+};
+
 } // namespace
 
 #if !HAL_PLATFORM_NRF52840 // TODO
@@ -95,7 +115,7 @@ test(INTERRUPTS_02_detached_handler_is_destroyed)
 	attachSystemInterrupt(SysInterrupt_SysTick, TestHandler()); // Override current handler
 	assertEqual(TestHandler::count, 1); // Previous handler has been destroyed
 	detachSystemInterrupt(SysInterrupt_SysTick);
-	assertEqual(TestHandler::count, 0);
+	assertEqual(TestHandler::count, 1); // Detaching does not destroy the handler since this would prevent use in an ISR
 }
 
 test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
@@ -118,6 +138,16 @@ test(INTERRUPTS_03_isisr_willpreempt_servicedirqn)
 #endif // !HAL_PLATFORM_NRF52840
 
 #if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
+void trigger_falling_interrupt(pin_t pin) {
+	auto pinmap = HAL_Pin_Map();
+	static const uint16_t exti_line = pinmap[pin].gpio_pin;
+
+	pinMode(pin, INPUT_PULLDOWN);
+	EXTI_GenerateSWInterrupt(exti_line);
+	pinMode(pin, INPUT_PULLUP);
+}
+
+
 test(INTERRUPTS_04_attachInterruptDirect) {
 	const pin_t pin = D1;
 	const IRQn_Type irqn = EXTI9_5_IRQn;
@@ -132,9 +162,7 @@ test(INTERRUPTS_04_attachInterruptDirect) {
 	}, FALLING);
 
 	// Trigger
-	pinMode(pin, INPUT_PULLDOWN);
-	EXTI_GenerateSWInterrupt(exti_line);
-	pinMode(pin, INPUT_PULLUP);
+	trigger_falling_interrupt(pin);
 
 	// attachInterrupt handler should have been called
 	assertTrue(attachInterruptHandler == true);
@@ -148,9 +176,7 @@ test(INTERRUPTS_04_attachInterruptDirect) {
 	assertTrue(res);
 
 	// Trigger
-	pinMode(pin, INPUT_PULLDOWN);
-	EXTI_GenerateSWInterrupt(exti_line);
-	pinMode(pin, INPUT_PULLUP);
+	trigger_falling_interrupt(pin);
 
 	// Only a direct handler should have been called
 	assertTrue(attachInterruptDirectHandler == true);
@@ -163,9 +189,7 @@ test(INTERRUPTS_04_attachInterruptDirect) {
 	assertTrue(res);
 
 	// Trigger
-	pinMode(pin, INPUT_PULLDOWN);
-	EXTI_GenerateSWInterrupt(exti_line);
-	pinMode(pin, INPUT_PULLUP);
+	trigger_falling_interrupt(pin);
 
 	// attachInterrupt handler should have been called
 	assertTrue(attachInterruptHandler == true);
@@ -181,9 +205,7 @@ test(INTERRUPTS_04_attachInterruptDirect) {
 	assertTrue(res);
 
 	// Trigger
-	pinMode(pin, INPUT_PULLDOWN);
-	EXTI_GenerateSWInterrupt(exti_line);
-	pinMode(pin, INPUT_PULLUP);
+	trigger_falling_interrupt(pin);
 
 	// Only a direct handler should have been called
 	assertTrue(attachInterruptDirectHandler == true);
@@ -196,9 +218,7 @@ test(INTERRUPTS_04_attachInterruptDirect) {
 	assertTrue(res);
 
 	// Trigger
-	pinMode(pin, INPUT_PULLDOWN);
-	EXTI_GenerateSWInterrupt(exti_line);
-	pinMode(pin, INPUT_PULLUP);
+	trigger_falling_interrupt(pin);
 
 	// Not handler should have been called as IRQ should be disabled
 	assertTrue(attachInterruptHandler == false);
@@ -209,6 +229,34 @@ test(INTERRUPTS_04_attachInterruptDirect_1) {
 	const pin_t pin = D1;
 
 	detachInterrupt(pin);
+}
+
+test(INTERRUPTS_04_detachFromISR) {
+	// This test validates that calling detachInterrupt in an ISR is safe when attachInterrupt was called with
+	// an instance and member. This uses the same code path as attachInterrupt with a function pointer,
+	// validating that as well. It also validates that we can replace the handler with a new one.
+
+	const pin_t pin = D1;
+
+	DetachingHandler first_handler(pin);
+	DetachingHandler second_handler(pin);
+
+	pinMode(pin, INPUT_PULLUP);
+	attachInterrupt(pin, &DetachingHandler::handler, &first_handler, FALLING);
+
+	// Trigger
+	trigger_falling_interrupt(pin);
+
+	assertEqual(1, first_handler.count());
+	assertEqual(0, second_handler.count());
+
+	attachInterrupt(pin, &DetachingHandler::handler, &second_handler, FALLING);
+
+	// Trigger
+	trigger_falling_interrupt(pin);
+
+	assertEqual(1, first_handler.count());
+	assertEqual(1, second_handler.count());
 }
 #endif // PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
 
