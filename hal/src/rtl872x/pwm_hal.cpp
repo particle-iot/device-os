@@ -62,10 +62,23 @@ typedef struct rtl_pwm_info_t {
     uint32_t                arr; // 16-bits Auto-Reload register
 } rtl_pwm_info_t;
 
+#define PWM_DEFAULT_RESOLUTION_INITIALIZER() { \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION, \
+    DEFAULT_RESOLUTION \
+    }
+
 rtl_pwm_info_t pwmInfo[RTL_PWM_INSTANCE_NUM] = {
-//   tim,    irqn,       timIdx, resolution,            state,             frequency
-    {TIMM05, TIMER5_IRQ, 5,      {DEFAULT_RESOLUTION},  PWM_STATE_UNKNOWN, DEFAULT_PWM_FREQ, {0}, {0}, 0},
-    {TIM5,   TIMER5_IRQ, 5,      {DEFAULT_RESOLUTION},  PWM_STATE_UNKNOWN, DEFAULT_PWM_FREQ, {0}, {0}, 0}
+//   tim,    irqn,       timIdx, resolution,                        state,             frequency
+    {TIMM05, TIMER5_IRQ, 5,      PWM_DEFAULT_RESOLUTION_INITIALIZER(), PWM_STATE_UNKNOWN, DEFAULT_PWM_FREQ, {0}, {0}, 0},
+    {TIM5,   TIMER5_IRQ, 5,      PWM_DEFAULT_RESOLUTION_INITIALIZER(), PWM_STATE_UNKNOWN, DEFAULT_PWM_FREQ, {0}, {0}, 0}
 };
 
 bool isPwmPin(uint16_t pin) {
