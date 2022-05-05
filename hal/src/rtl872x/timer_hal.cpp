@@ -57,6 +57,7 @@ extern "C" {
 }
 #include "atomic_section.h"
 #include "scope_guard.h"
+#include "module_info.h"
 
 using namespace particle;
 
@@ -80,6 +81,9 @@ inline uint64_t calibrationTickToTimeUs(uint64_t tick) {
     return tick * 1000000 / 32768;
 }
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+#define HAL_TIMER_USE_SYSTIMER_ONLY
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
 
 class RtlTimer {
@@ -99,8 +103,8 @@ public:
         }
 
         overflowCounter_ = 0;
-        mutex_ = 0;
 
+#ifndef HAL_TIMER_USE_SYSTIMER_ONLY
         // Enable timer clock
         RCC_PeriphClockCmd(APBPeriph_GTIMER, APBPeriph_GTIMER_CLOCK, ENABLE);
 
@@ -119,6 +123,7 @@ public:
         initStruct.TIM_ARRProtection = ENABLE;
         RTIM_TimeBaseInit(TIMx[TIMER_INDEX], &initStruct, TIMx_irq[TIMER_INDEX], interruptHandler, (uint32_t)this);
         enableOverflowInterrupt();
+#endif // HAL_TIMER_USE_SYSTIMER_ONLY
         enabled_ = true;
 
         return SYSTEM_ERROR_NONE;
@@ -126,11 +131,13 @@ public:
 
     int deinit() {
         CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+#ifndef HAL_TIMER_USE_SYSTIMER_ONLY
         disableOverflowInterrupt();
         RTIM_Cmd(TIMx[TIMER_INDEX], DISABLE);
         RTIM_DeInit(TIMx[TIMER_INDEX]);
         NVIC_DisableIRQ(TIMER_IRQ[TIMER_INDEX]);
         NVIC_ClearPendingIRQ(TIMER_IRQ[TIMER_INDEX]);
+#endif // HAL_TIMER_USE_SYSTIMER_ONLY
         enabled_ = false;
         return SYSTEM_ERROR_NONE;
     }
@@ -149,15 +156,19 @@ public:
         while (SYSTIMER_TickGet() >= t0) {
             ;
         }
+#ifndef HAL_TIMER_USE_SYSTIMER_ONLY
         RTIM_Cmd(TIMx[TIMER_INDEX], ENABLE);
         RTIM_Cmd(TIMx[TIMER_INDEX], ENABLE);
+#endif // HAL_TIMER_USE_SYSTIMER_ONLY
         HAL_enable_irq(s);
         return SYSTEM_ERROR_NONE;
     }
 
     int stop() {
         CHECK_TRUE(enabled_, SYSTEM_ERROR_INVALID_STATE);
+#ifndef HAL_TIMER_USE_SYSTIMER_ONLY
         RTIM_Cmd(TIMx[TIMER_INDEX], DISABLE);
+#endif // HAL_TIMER_USE_SYSTIMER_ONLY
         return SYSTEM_ERROR_NONE;
     }
 
@@ -170,8 +181,12 @@ public:
     }
 
     uint64_t getTime() {
+#ifndef HAL_TIMER_USE_SYSTIMER_ONLY
         auto state = getOverflowCounterWithTick();
         return usSystemTimeMicrosBase_ + state.overflowCounter * US_PER_OVERFLOW + ticksToTime(state.curTimerTicks);
+#else
+        return sysTimerUs();
+#endif // HAL_TIMER_USE_SYSTIMER_ONLY
     }
 
     void interruptHandlerImpl() {
@@ -204,7 +219,9 @@ private:
 
 
     inline void resetCounter() {
+#ifndef HAL_TIMER_USE_SYSTIMER_ONLY
         RTIM_Reset(TIMx[TIMER_INDEX]);
+#endif // HAL_TIMER_USE_SYSTIMER_ONLY
         // Also reset SYSTIMER
         RTIM_Reset(TIMM00);
     }
@@ -302,7 +319,6 @@ private:
     bool enabled_ = false;
     volatile uint32_t overflowCounter_ = 0;
     volatile int64_t usSystemTimeMicrosBase_ = 0;  ///< Base offset for Particle-specific microsecond counter
-    volatile uint8_t mutex_ = 0;
     volatile uint64_t lastOverflowSysTimer_ = 0;
     volatile uint64_t lastOverflowTimer_ = 0;
 };
