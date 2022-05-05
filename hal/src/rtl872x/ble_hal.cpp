@@ -139,6 +139,15 @@ void rtwCoexRunEnable() {
     os_thread_scheduling(true, nullptr);
 }
 
+void rtwCoexCleanup() {
+    auto p = pcoex[0];
+    if (p && p->mutex) {
+        auto m = p->mutex;
+        p->mutex = nullptr;
+        rtw_mutex_free(m);
+    }
+}
+
 bool isUuidEqual(const hal_ble_uuid_t* uuid1, const hal_ble_uuid_t* uuid2) {
     if (uuid1->type != uuid2->type) {
         return false;
@@ -784,9 +793,6 @@ int BleGap::stop() {
         // Prevent BLE stack from generating coexistence events, otherwise we may leak memory
         gap_register_vendor_cb([](uint8_t cb_type, void *p_cb_data) -> void {
         });
-        // NOTE: there is a race condition when there is an ongoing connection process when performing
-        // a site survey command and handling its coexistence hooks.
-        // Acquire NCP client lock here to block until connection process finishes
         {
             // This call makes rtw_coex_run_enable(123, false) not cleanup the mutex
             // which might be still accessed by other coexistence tasks
@@ -800,6 +806,7 @@ int BleGap::stop() {
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
             rtwCoexRunDisable();
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
+            rtwCoexCleanup();
         }
         bte_deinit();
         btStackStarted_ = false;
