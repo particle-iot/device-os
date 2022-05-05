@@ -30,6 +30,7 @@
 
 #include "interrupts_hal.h"
 #include <functional>
+#include "atomic_section.h"
 
 typedef std::function<void()> wiring_interrupt_handler_t;
 typedef void (*raw_interrupt_handler_t)(void);
@@ -62,36 +63,5 @@ bool detachSystemInterrupt(hal_irq_t irq);
 
 bool attachInterruptDirect(IRQn_Type irq, hal_interrupt_direct_handler_t handler, bool enable = true);
 bool detachInterruptDirect(IRQn_Type irq, bool disable = true);
-
-
-class AtomicSection {
-	int prev;
-public:
-	AtomicSection() {
-		prev = HAL_disable_irq();
-	}
-
-	~AtomicSection() {
-		HAL_enable_irq(prev);
-	}
-};
-
-#define ATOMIC_BLOCK() 	for (bool __todo=true; __todo;) for (AtomicSection __as; __todo; __todo=false)
-
-namespace particle {
-
-// Class implementing a concurrency policy based on critical sections
-class AtomicConcurrency {
-public:
-    int lock() const {
-        return HAL_disable_irq();
-    }
-
-    void unlock(int state) const {
-        HAL_enable_irq(state);
-    }
-};
-
-} // namespace particle
 
 #endif /* SPARK_WIRING_INTERRUPTS_H_ */

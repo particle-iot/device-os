@@ -157,6 +157,7 @@ SECTIONS
 
     .module_info_suffix_align :
     {
+        . = ALIGN(4);
         FILL(0xffff)
         . = DEFINED(platform_module_info_suffix_size) ? ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) - platform_module_info_suffix_size : .;
     } > APP_FLASH
