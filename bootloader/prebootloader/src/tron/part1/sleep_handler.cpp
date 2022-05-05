@@ -100,7 +100,7 @@ private:
         return SYSTEM_ERROR_NONE;
     }
 
-    static uint8_t staticBuffer_[1024];
+    static uint8_t __attribute__((aligned(4))) staticBuffer_[1024];
     static AtomicSimpleStaticPool staticPool_;
     hal_sleep_config_t* shadow_;
 };
