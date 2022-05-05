@@ -24,7 +24,7 @@
 
 namespace {
 
-uint8_t sStaticPool[64 * 1024];
+uint8_t __attribute__((aligned(4))) sStaticPool[64 * 1024];
 AtomicSimpleStaticPool sPool(sStaticPool, sizeof(sStaticPool));
 particle::StaticRecursiveCriticalSectionLock sCsLock;
 thread_func_t sFunc = nullptr;
