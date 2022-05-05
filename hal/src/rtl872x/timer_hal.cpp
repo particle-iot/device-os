@@ -55,7 +55,10 @@ extern "C" {
 #include "rtl8721d.h"
 #include "rtl8721d_delay.h"
 }
-#include "interrupts_hal.h"
+#include "atomic_section.h"
+#include "scope_guard.h"
+
+using namespace particle;
 
 namespace {
 
@@ -76,6 +79,8 @@ constexpr IRQn_Type TIMER_IRQ[] = {
 inline uint64_t calibrationTickToTimeUs(uint64_t tick) {
     return tick * 1000000 / 32768;
 }
+
+
 
 class RtlTimer {
 public:
@@ -165,45 +170,14 @@ public:
     }
 
     uint64_t getTime() {
-        uint32_t offset1 = getOverflowCounter();
-        __DMB();
-
-        uint32_t counterValue = getCounter();
-        __DMB();
-
-        bool uncertain = false;
-        uint32_t offset2 = getOverflowCounter(&uncertain);
-
-        if (offset1 != offset2) {
-            // Overflow occured between the calls
-            counterValue = getCounter();
-        }
-
-        if (uncertain) {
-            int s = HAL_disable_irq();
-            uint64_t curSysTimerUs = sysTimerUs();
-            if (curSysTimerUs < lastOverflowSysTimer_) {
-                // Wraparound
-                curSysTimerUs += 0xffffffff;
-            }
-            uint64_t t = usSystemTimeMicrosBase_ + lastOverflowTimer_ + (curSysTimerUs - lastOverflowSysTimer_);
-            HAL_enable_irq(s);
-            return t;
-        }
-
-        return usSystemTimeMicrosBase_ + offset2 * US_PER_OVERFLOW + ticksToTime(counterValue);
+        auto state = getOverflowCounterWithTick();
+        return usSystemTimeMicrosBase_ + state.overflowCounter * US_PER_OVERFLOW + ticksToTime(state.curTimerTicks);
     }
 
     void interruptHandlerImpl() {
         if (getOverflowPendingEvent()) {
-            // Disable OVERFLOW interrupt to prevent lock-up in interrupt context while mutex is locked from lower priority
-            // context and OVERFLOW event flag is stil up. OVERFLOW interrupt will be re-enabled when mutex is released -
-            // either from this handler, or from lower priority context, that locked the mutex.
-            // Note: RTIM_INTConfig(DISABLE) will clear TIM_IT_Update interrupt status, use disableOverflowInterrupt() instead
-            disableOverflowInterrupt();
-
             // Handle OVERFLOW event by reading current value of overflow counter.
-            (void)getOverflowCounter();
+            (void)getOverflowCounterWithTick();
 
         } else {
             RTIM_INTClear(TIMx[TIMER_INDEX]);
@@ -221,6 +195,14 @@ public:
     }
 
 private:
+
+    struct TimerState {
+        uint32_t overflowCounter;
+        uint32_t curTimerTicks;
+        uint64_t curSysTimerUs;
+    };
+
+
     inline void resetCounter() {
         RTIM_Reset(TIMx[TIMER_INDEX]);
         // Also reset SYSTIMER
@@ -283,88 +265,70 @@ private:
         return (uint64_t)offset * US_PER_OVERFLOW + ticksToTime(counter);
     }
 
-    uint32_t getOverflowCounter(bool* uncertain = nullptr) {
-        uint32_t overflowCounter;
-
-        // Get mutual access for writing to overflowCounter_ variable.
-        if (getMutex()) {
-            bool increasing = false;
-
-            // Check if interrupt was handled already.
-            if (getOverflowPendingEvent()) {
-                int s = HAL_disable_irq();
-                uint64_t curSysTimerUs = sysTimerUs();
-                if (curSysTimerUs < lastOverflowSysTimer_) {
-                    // Wraparound
-                    curSysTimerUs += 0xffffffff;
-                }
-                uint32_t curTimerTicks = getCounter();
-                uint64_t curTimerUs = rtcCounterAndTicksToUs((overflowCounter_ + 2) / 2, curTimerTicks);
-                uint64_t timeElapsedSysTimer = curSysTimerUs - lastOverflowSysTimer_;
-                uint64_t timeElapsedTimer = curTimerUs - lastOverflowTimer_;
-                if (timeElapsedSysTimer > timeElapsedTimer) {
-                    uint32_t diff = timeElapsedSysTimer - timeElapsedTimer;
-                    if (diff > US_PER_OVERFLOW) {
-                        // Adjust overflow counter
-                        overflowCounter_ += (diff / US_PER_OVERFLOW + 1) * 2;
-                    }
-                }
-                overflowCounter_++;
-                lastOverflowSysTimer_ = curSysTimerUs;
-                lastOverflowTimer_ = rtcCounterAndTicksToUs((overflowCounter_ + 1) / 2, curTimerTicks);
-                // Mark that interrupt was handled.
-                clearOverflowPendingEvent();
-                HAL_enable_irq(s);
-
-                increasing = true;
-
-                __DMB();
-
-                // Result should be incremented. overflowCounter_ will be incremented after mutex is released.
-            } else {
-                // Either overflow handling is not needed OR we acquired the mutex just after it was released.
-                // Overflow is handled after mutex is released, but it cannot be assured that overflowCounter_
-                // was incremented for the second time, so we increment the result here.
+    TimerState getOverflowAdjustment() {
+        TimerState state = {};
+        {
+            AtomicSection lk;
+            state.curSysTimerUs = sysTimerUs();
+            if (state.curSysTimerUs < lastOverflowSysTimer_) {
+                // Wraparound
+                state.curSysTimerUs += 0xffffffff;
             }
-
-            overflowCounter = (overflowCounter_ + 1) / 2;
-
-            releaseMutex();
-
-            if (increasing) {
-                // It's virtually impossible that overflow event is pending again before next instruction is performed. It
-                // is an error condition.
-                SPARK_ASSERT(overflowCounter_ & 0x01);
-
-                // Increment the counter for the second time, to allow instructions from other context get correct value of
-                // the counter.
-                overflowCounter_++;
-            }
-        } else {
-            // Failed to acquire mutex.
-            if (getOverflowPendingEvent()) {
-                // Lower priority context is currently incrementing overflowCounter_ variable.
-                // We cannot be certain about the current overflow value, so we'll need to use systimer instead
-                overflowCounter = 0;
-                if (uncertain) {
-                    *uncertain = true;
-                }
-            } else if (overflowCounter_ & 0x01) {
-                overflowCounter = (overflowCounter_ + 2) / 2;
-            } else {
-                // Lower priority context has already incremented overflowCounter_ variable or incrementing is not needed
-                // now.
-                overflowCounter = overflowCounter_ / 2;
+            state.curTimerTicks = getCounter();
+            state.overflowCounter = overflowCounter_ + 1;
+        }
+        uint64_t curTimerUs = rtcCounterAndTicksToUs(state.overflowCounter, state.curTimerTicks);
+        uint64_t timeElapsedSysTimer = state.curSysTimerUs - lastOverflowSysTimer_;
+        uint64_t timeElapsedTimer = curTimerUs - lastOverflowTimer_;
+        if (timeElapsedSysTimer > timeElapsedTimer) {
+            uint32_t diff = timeElapsedSysTimer - timeElapsedTimer;
+            if (diff > US_PER_OVERFLOW) {
+                // Adjust overflow counter
+                state.overflowCounter += (diff / US_PER_OVERFLOW + 1);
             }
         }
+        return state;
+    }
 
-        return overflowCounter;
+    TimerState getOverflowCounterWithTick() {
+        TimerState state = {};
+
+        AtomicSection lk;
+        if (getOverflowPendingEvent()) {
+            state = getOverflowAdjustment();
+            if (getOverflowPendingEvent()) {
+                // Can overwite overflowCounter_ and handle overflow event
+                overflowCounter_ = state.overflowCounter;
+                lastOverflowSysTimer_ = state.curSysTimerUs;
+                lastOverflowTimer_ = rtcCounterAndTicksToUs(overflowCounter_, state.curTimerTicks);
+                // Mark that interrupt was handled.
+                clearOverflowPendingEvent();
+                __DMB();
+                return state;
+            }
+            // Overflow has just been handled between two calls to getOverflowPendingEvent()
+            // Fall through
+        }
+
+        state.curTimerTicks = getCounter();
+        state.overflowCounter = overflowCounter_;
+        auto timerTicksAfter = getCounter();
+        if (timerTicksAfter < state.curTimerTicks || getOverflowPendingEvent()) {
+            // Memory barrier here just in case
+            __DMB();
+            state.curTimerTicks = getCounter();
+            state.overflowCounter++;
+            // Update counter once again as we don't know at what point the overflow event above between two counter reads or
+            // checking for pending event
+        }
+        state.curSysTimerUs = sysTimerUs();
+        return state;
     }
 
 private:
     bool enabled_ = false;
     volatile uint32_t overflowCounter_ = 0;
-    volatile int64_t  usSystemTimeMicrosBase_ = 0;  ///< Base offset for Particle-specific microsecond counter
+    volatile int64_t usSystemTimeMicrosBase_ = 0;  ///< Base offset for Particle-specific microsecond counter
     volatile uint8_t mutex_ = 0;
     volatile uint64_t lastOverflowSysTimer_ = 0;
     volatile uint64_t lastOverflowTimer_ = 0;
