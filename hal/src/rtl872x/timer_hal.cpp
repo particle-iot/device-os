@@ -230,33 +230,6 @@ private:
         NVIC_ClearPendingIRQ(TIMER_IRQ[TIMER_INDEX]);
     }
 
-    inline bool getMutex() {
-        do {
-            volatile uint8_t mutexValue = __LDREXB(&mutex_);
-
-            if (mutexValue) {
-                __CLREX();
-                return false;
-            }
-        } while (__STREXB(1, &mutex_));
-
-        // Disable OVERFLOW interrupt to prevent lock-up in interrupt context while mutex is locked from lower priority
-        // context and OVERFLOW event flag is stil up.
-        disableOverflowInterrupt();
-
-        __DMB();
-
-        return true;
-    }
-
-    inline void releaseMutex() {
-        // Re-enable OVERFLOW interrupt.
-        enableOverflowInterrupt();
-
-        __DMB();
-        mutex_ = 0;
-    }
-
     constexpr uint64_t ticksToTime(uint64_t ticks) {
         return ticks / TIMER_COUNTER_US_THRESHOLD;
     }
