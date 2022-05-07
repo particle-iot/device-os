@@ -23,6 +23,7 @@
 #include "nrf_nvic.h"
 #include "gpio_hal.h"
 #include "system_error.h"
+#include "check.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -110,6 +111,7 @@ static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mod
 }
 
 int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config) {
+    CHECK_TRUE(is_valid_pin(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -176,6 +178,7 @@ int HAL_Interrupts_Detach(uint16_t pin) {
 }
 
 int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
+    CHECK_TRUE(is_valid_pin(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
     Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER

@@ -34,11 +34,6 @@
 using namespace particle;
 #endif
 
-inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
-inline bool is_valid_pin(pin_t pin) {
-    return pin < TOTAL_PINS;
-}
-
 PinMode HAL_Get_Pin_Mode(pin_t pin) {
     return (!is_valid_pin(pin)) ? PIN_MODE_NONE : HAL_Pin_Map()[pin].pin_mode;
 }
