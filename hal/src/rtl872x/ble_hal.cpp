@@ -83,6 +83,7 @@ extern "C" {
 
 #include "mbedtls/ecdh.h"
 #include "mbedtls_util.h"
+#include "spark_wiring_thread.h"
 
 // FIXME
 #undef OFF
@@ -176,6 +177,14 @@ public:
         return instance;
     }
 
+    bool isThreadCurrent() const {
+        if (!thread_) {
+            return false;
+        }
+
+        return os_thread_current(nullptr) == thread_;
+    }
+
 private:
     BleEventDispatcher()
             : thread_(nullptr),
@@ -261,6 +270,15 @@ public:
         return !memcmp(&a, &b, sizeof(a));
     }
 
+    BleGapDevState& copySetParamsFrom(const BleGapDevState& other) {
+        initSet_ = other.initSet_;
+        advSet_ = other.advSet_;
+        advSubSet_ = other.advSubSet_;
+        scanSet_ = other.scanSet_;
+        connSet_ = other.connSet_;
+        return *this;
+    }
+
     bool isNotInitialized() const {
         T_GAP_DEV_STATE state = {};
         return initSet_ && advSet_ && advSubSet_ && scanSet_ && connSet_ && !memcmp(&state, &state_, sizeof(state));
@@ -303,6 +321,8 @@ class BleGap {
 public:
     int start();
     int stop();
+    int init();
+
     bool initialized() const {
         return initialized_;
     }
@@ -357,6 +377,9 @@ public:
         static BleGap instance;
         return instance;
     }
+
+    int onAdvEventCallback(hal_ble_on_adv_evt_cb_t callback, void* context);
+    void cancelAdvEventCallback(hal_ble_on_adv_evt_cb_t callback, void* context);
 
 private:
     BleGap()
@@ -447,6 +470,11 @@ private:
     static T_APP_RESULT gapEventCallback(uint8_t type, void *data);
     static void onAdvTimeoutTimerExpired(os_timer_t timer);
 
+    struct BleAdvEventHandler {
+        hal_ble_on_adv_evt_cb_t callback;
+        void* context;
+    };
+
     bool initialized_;
     bool btStackStarted_;
     volatile RtlGapDevState state_;                 /**< This should be atomically r/w as the struct is <= uint32_t */
@@ -472,6 +500,8 @@ private:
     static constexpr uint16_t BLE_ADV_TIMEOUT_EXT_MS = 50;
     volatile bool isAdvertising_;
     os_semaphore_t stateSemaphore_;
+    Vector<BleAdvEventHandler> advEventHandlers_;
+    Mutex advEventMutex_;
 
     static constexpr system_tick_t BLE_WAIT_STATE_POLL_PERIOD_MS = 10;
     static constexpr system_tick_t BLE_STATE_DEFAULT_TIMEOUT = 5000;
@@ -515,6 +545,10 @@ public:
     ssize_t getValue(hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
     ssize_t notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool ack);
     int removeSubscriber(hal_ble_conn_handle_t connHandle);
+
+    bool registered() const {
+        return serviceRegistered_;
+    }
 
     Vector<BleService>& services() {
         return services_;
@@ -714,11 +748,10 @@ void BleEventDispatcher::bleEventDispatchThread(void *context) {
     os_thread_exit(nullptr);
 }
 
-int BleGap::start() {
+int BleGap::init() {
     if (initialized_) {
         return SYSTEM_ERROR_NONE;
     }
-
     // Access wifiNetworkManager() to make sure that RealtekNcpClient is initialized
     // and WiFi stack has been initialized as well, as there is a dependency on its state
     // for btgap to function correctly.
@@ -729,11 +762,10 @@ int BleGap::start() {
     isAdvertising_ = false;
     connecting_ = false;
     isScanning_ = false;
+    btStackStarted_ = false;
 
-    bool ok = false;
-    initialized_ = true;
     SCOPE_GUARD({
-        if (!ok) {
+        if (!initialized_) {
             stop();
         }
     });
@@ -756,11 +788,8 @@ int BleGap::start() {
     rtwCoexRunDisable();
 
     CHECK_TRUE(bte_init(), SYSTEM_ERROR_INTERNAL);
-    btStackStarted_ = true;
     bt_coex_init();
 
-    // NOTE: we will miss some of the initial events between bte_init() and when we start the event dispatcher
-    CHECK(BleEventDispatcher::getInstance().start());
     CHECK_TRUE(le_gap_init(MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
     uint8_t mtuReq = false;
     CHECK_RTL(le_set_gap_param(GAP_PARAM_SLAVE_INIT_GATT_MTU_REQ, sizeof(mtuReq), &mtuReq));
@@ -770,16 +799,38 @@ int BleGap::start() {
     CHECK(setScanParams(&scanParams_));
     /* register gap message callback */
     le_register_app_cb(gapEventCallback);
+
+    CHECK(BleGatt::getInstance().init());
+
+    initialized_ = true;
+    return SYSTEM_ERROR_NONE;
+
+}
+
+int BleGap::start() {
+    if (btStackStarted_) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    CHECK(init());
+
+    SCOPE_GUARD({
+        if (!btStackStarted_) {
+            stop();
+        }
+    });
+
+    // NOTE: we will miss some of the initial events between bte_init() and when we start the event dispatcher
+    CHECK(BleEventDispatcher::getInstance().start());
     // NOTE: we have to wait for the BLE stack to get initialized otherwise other operations
     // with it may cause race conditions, memory leaks and other problems
     CHECK(waitState(BleGapDevState().init(GAP_INIT_STATE_STACK_READY), BLE_STATE_DEFAULT_TIMEOUT, true /* force poll */));
-    ok = true;
+    btStackStarted_ = true;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleGap::stop() {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    initialized_ = false;
     // NOTE: ignoring errors
     if (btStackStarted_) {
         // NOTE: we have to wait for the BLE stack to get initialized otherwise other operations
@@ -808,10 +859,13 @@ int BleGap::stop() {
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
             rtwCoexCleanup();
         }
-        bte_deinit();
-        btStackStarted_ = false;
     }
+    bte_deinit();
     BleEventDispatcher::getInstance().stop();
+
+    initialized_ = false;
+    btStackStarted_ = false;
+
     if (scanSemaphore_) {
         os_semaphore_destroy(scanSemaphore_);
         scanSemaphore_ = nullptr;
@@ -961,13 +1015,59 @@ ssize_t BleGap::getScanResponseData(uint8_t* buf, size_t len) const {
     return len;
 }
 
-int BleGap::startAdvertising(bool wait) {
-    CHECK(stopAdvertising(wait));
+int BleGap::onAdvEventCallback(hal_ble_on_adv_evt_cb_t callback, void* context) {
+    std::lock_guard<Mutex> lk(advEventMutex_);
+    BleAdvEventHandler handler = {};
+    handler.callback = callback;
+    handler.context = context;
+    CHECK_TRUE(advEventHandlers_.append(handler), SYSTEM_ERROR_NO_MEMORY);
+    return SYSTEM_ERROR_NONE;
+}
 
+void BleGap::cancelAdvEventCallback(hal_ble_on_adv_evt_cb_t callback, void* context) {
+    std::lock_guard<Mutex> lk(advEventMutex_);
+    for (int i = 0; i < advEventHandlers_.size(); i = i) {
+        const auto& handler = advEventHandlers_[i];
+        if (handler.callback == callback && handler.context == context) {
+            advEventHandlers_.removeAt(i);
+            continue;
+        }
+        i++;
+    }
+}
+
+int BleGap::startAdvertising(bool wait) {
+    if (isAdvertising_) {
+        return 0;
+    }
+
+    if (wait) {
+        if (BleEventDispatcher::getInstance().isThreadCurrent()) {
+            // Can't block event processing thread
+            wait = false;
+        }
+    }
+    isAdvertising_ = true;
+    bool ok = false;
+    SCOPE_GUARD({
+        if (!ok) {
+            isAdvertising_ = false;
+        }
+    });
+    if (btStackStarted_ && !BleGatt::getInstance().registered()) {
+        if (!wait) {
+            // Prevent from blocking
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        CHECK(stop());
+        CHECK(init());
+    }
     // The attribute table needs to be registered before BT stack starts.
     // Now we assume that the attribute table is finalized.
     // Register it to BT stack
-    BleGatt::getInstance().registerAttributeTable();
+    CHECK(BleGatt::getInstance().registerAttributeTable());
+
+    CHECK(start());
 
     SCOPE_GUARD ({
         if (!isAdvertising() && os_timer_is_active(advTimeoutTimer_, nullptr)) {
@@ -981,7 +1081,6 @@ int BleGap::startAdvertising(bool wait) {
         }
     }
     CHECK_RTL(le_adv_start());
-    isAdvertising_ = true;
 
     if (wait) {
         LOG_DEBUG(TRACE, "Starting advertising...");
@@ -989,11 +1088,18 @@ int BleGap::startAdvertising(bool wait) {
             LOG_DEBUG(ERROR, "Failed to get notified that advertising has started");
         }
     }
+    ok = true;
     LOG_DEBUG(TRACE, "Advertising started");
     return SYSTEM_ERROR_NONE;
 }
 
 int BleGap::stopAdvertising(bool wait) {
+    if (wait) {
+        if (BleEventDispatcher::getInstance().isThreadCurrent()) {
+            // Can't block event processing thread
+            wait = false;
+        }
+    }
     if (!isAdvertising_) {
         return 0;
     }
@@ -1017,6 +1123,15 @@ void BleGap::onAdvTimeoutTimerExpired(os_timer_t timer) {
     os_timer_get_id(timer, (void**)&gap);
     if (gap->isAdvertising()) {
         gap->stopAdvertising();
+        hal_ble_adv_evt_t advEvent = {};
+        advEvent.type = BLE_EVT_ADV_STOPPED;
+        advEvent.params.reason = BLE_ADV_STOPPED_REASON_TIMEOUT;
+        std::lock_guard<Mutex> lk(gap->advEventMutex_);
+        for (const auto& handler : gap->advEventHandlers_) {
+            if (handler.callback) {
+                handler.callback(&advEvent, handler.context);
+            }
+        }
     }
 }
 
@@ -1050,6 +1165,7 @@ int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
 }
 
 int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
+    CHECK(start());
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
     SCOPE_GUARD ({
         if (isScanning_) {
@@ -1200,13 +1316,13 @@ int BleGap::disconnect() const {
 
 int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePoll) {
     auto current = BleGapDevState(getState());
-    if (forcePoll || current.isNotInitialized()) {
+    if (forcePoll || current.isNotInitialized() || !btStackStarted_) {
         // Poll, as some of the initial events are missing
         RtlGapDevState s;
         auto start = hal_timer_millis(nullptr);
         while (hal_timer_millis(nullptr) - start < timeout) {
             CHECK_RTL(le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state));
-            if (BleGapDevState(s) == state) {
+            if (BleGapDevState(s).copySetParamsFrom(state) == state) {
                 return 0;
             }
             HAL_Delay_Milliseconds(BLE_WAIT_STATE_POLL_PERIOD_MS);
@@ -1215,7 +1331,7 @@ int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePol
         auto end = hal_timer_millis(nullptr) + timeout;
         for (auto now = hal_timer_millis(nullptr); now < end; now = hal_timer_millis(nullptr)) {
             os_semaphore_take(stateSemaphore_, end - now, false);
-            if (BleGapDevState(getState()) == state) {
+            if (BleGapDevState(getState()).copySetParamsFrom(state) == state) {
                 return 0;
             }
         }
@@ -1229,6 +1345,12 @@ void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
                         newState.gap_init_state, newState.gap_adv_state, newState.gap_adv_sub_state, newState.gap_scan_state, newState.gap_conn_state, cause);
     RtlGapDevState nState;
     nState.state = newState;
+    // NOTE: this event is generated before the connection is established
+    if (newState.gap_adv_state != state_.state.gap_adv_state) {
+        if (newState.gap_adv_state == GAP_ADV_STATE_IDLE && newState.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
+            stopAdvertising(false);
+        }
+    }
     state_.raw = nState.raw;
     os_semaphore_give(stateSemaphore_, false);
 }
@@ -1264,6 +1386,7 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 }
             }
             BleGatt::getInstance().removeSubscriber(connHandle);
+            // FIXME: check whether it's enabled?
             startAdvertising(false);
             break;
         }
@@ -1573,9 +1696,20 @@ int BleGatt::addService(uint8_t type, const hal_ble_uuid_t* uuid, hal_ble_attr_h
     attribute.permissions = GATT_PERM_READ;
     CHECK_TRUE(service.attrTable.append(attribute), SYSTEM_ERROR_NO_MEMORY);
 
+    bool adv = BleGap::getInstance().isAdvertising();
+    bool registered = serviceRegistered_;
+    SCOPE_GUARD({
+        if (adv) {
+            BleGap::getInstance().startAdvertising();
+        }
+    });
+    if (registered) {
+        CHECK(BleGap::getInstance().stop());
+        CHECK(BleGap::getInstance().init());
+    }
     CHECK_TRUE(services_.append(service), SYSTEM_ERROR_NO_MEMORY);
     *svcHandle = service.startHandle;
-    return ret= SYSTEM_ERROR_NONE;
+    return ret = SYSTEM_ERROR_NONE;
 }
 
 int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char_handles_t* charHandles) {
@@ -1590,7 +1724,7 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
         charUuid[1] = HI_WORD(charInit->uuid.uuid16);
     }
 
-    BleService* service = nullptr;
+    BleService* targetService = nullptr;
     for (auto& svc : services_) {
         if (svc.startHandle == charInit->service_handle) {
             for (const auto& charact : svc.characteristics) {
@@ -1599,14 +1733,18 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
                     return SYSTEM_ERROR_ALREADY_EXISTS;
                 }
             }
-            service = &svc;
+            targetService = &svc;
             break;
         }
     }
-    if (!service) {
+    if (!targetService) {
         LOG_DEBUG(TRACE, "Service not found.");
         return SYSTEM_ERROR_NOT_FOUND;
     }
+
+    // Copy
+    auto serviceCopy = *targetService;
+    auto service = &serviceCopy;
 
     uint8_t* value = nullptr;
     int ret = SYSTEM_ERROR_INTERNAL;
@@ -1621,31 +1759,31 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
     LOG_DEBUG(TRACE, "Create new characteristic.");
 
     // Characteristic declaration attribute
-    T_ATTRIB_APPL attribute = {};
-    attribute.flags = ATTRIB_FLAG_VALUE_INCL; // type_value -> attribute value
-    attribute.type_value[0] = LO_WORD(BLE_SIG_UUID_CHAR_DECL);
-    attribute.type_value[1] = HI_WORD(BLE_SIG_UUID_CHAR_DECL);
-    attribute.type_value[2] = charInit->properties;
-    attribute.value_len = sizeof(uint8_t);
-    attribute.p_value_context = nullptr;
-    attribute.permissions = GATT_PERM_READ;
-    CHECK_TRUE(service->attrTable.append(attribute), SYSTEM_ERROR_NO_MEMORY);
+    T_ATTRIB_APPL declAttribute = {};
+    declAttribute.flags = ATTRIB_FLAG_VALUE_INCL; // type_value -> declAttribute value
+    declAttribute.type_value[0] = LO_WORD(BLE_SIG_UUID_CHAR_DECL);
+    declAttribute.type_value[1] = HI_WORD(BLE_SIG_UUID_CHAR_DECL);
+    declAttribute.type_value[2] = charInit->properties;
+    declAttribute.value_len = sizeof(uint8_t);
+    declAttribute.p_value_context = nullptr;
+    declAttribute.permissions = GATT_PERM_READ;
+    CHECK_TRUE(service->attrTable.append(declAttribute), SYSTEM_ERROR_NO_MEMORY);
     service->endHandle++;
     charHandles->decl_handle = service->endHandle;
 
     // Characteristic value attribute
-    attribute = {};
-    attribute.flags = ATTRIB_FLAG_VALUE_APPL; // gattReadAttrCallback -> attribute value
+    T_ATTRIB_APPL valueAttribute = {};
+    valueAttribute.flags = ATTRIB_FLAG_VALUE_APPL; // gattReadAttrCallback -> attribute value
     if (charInit->uuid.type == BLE_UUID_TYPE_128BIT) {
-        attribute.flags |= ATTRIB_FLAG_UUID_128BIT;
+        valueAttribute.flags |= ATTRIB_FLAG_UUID_128BIT;
     }
-    memcpy(attribute.type_value, charUuid, BLE_SIG_UUID_128BIT_LEN);
+    memcpy(valueAttribute.type_value, charUuid, BLE_SIG_UUID_128BIT_LEN);
     value = (uint8_t*)malloc(BLE_MAX_ATTR_VALUE_PACKET_SIZE);
     CHECK_TRUE(value, SYSTEM_ERROR_NO_MEMORY);
-    attribute.value_len = 0; // variable length
-    attribute.p_value_context = value; // gattReadAttrCallback will use the content pointed by this pointer to provide value for BT stack.
-    attribute.permissions = GATT_PERM_READ | GATT_PERM_WRITE;
-    CHECK_TRUE(service->attrTable.append(attribute), SYSTEM_ERROR_NO_MEMORY);
+    valueAttribute.value_len = 0; // variable length
+    valueAttribute.p_value_context = value; // gattReadAttrCallback will use the content pointed by this pointer to provide value for BT stack.
+    valueAttribute.permissions = GATT_PERM_READ | GATT_PERM_WRITE;
+    CHECK_TRUE(service->attrTable.append(valueAttribute), SYSTEM_ERROR_NO_MEMORY);
     service->endHandle++;
     charHandles->value_handle = service->endHandle;
     BleCharacteristic characteristic = {};
@@ -1656,20 +1794,20 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
     CHECK_TRUE(service->characteristics.append(characteristic), SYSTEM_ERROR_NO_MEMORY);
 
     // Characteristic CCCD descriptor attribute
+    T_ATTRIB_APPL cccdAttribute = {};
+    CccdConfig config = {};
     if ((charInit->properties & BLE_SIG_CHAR_PROP_NOTIFY) || (charInit->properties & BLE_SIG_CHAR_PROP_INDICATE)) {
-        attribute = {};
-        attribute.flags = ATTRIB_FLAG_VALUE_INCL | ATTRIB_FLAG_CCCD_APPL; // type_value -> attribute value
-        attribute.type_value[0] = LO_WORD(BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC);
-        attribute.type_value[1] = HI_WORD(BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC);
-        attribute.type_value[2] = LO_WORD(BLE_SIG_CCCD_VAL_DISABLED);
-        attribute.type_value[3] = HI_WORD(BLE_SIG_CCCD_VAL_DISABLED);
-        attribute.value_len = sizeof(ble_sig_cccd_value_t);
-        attribute.p_value_context = nullptr;
-        attribute.permissions = GATT_PERM_READ | GATT_PERM_WRITE;
-        CHECK_TRUE(service->attrTable.append(attribute), SYSTEM_ERROR_NO_MEMORY);
+        cccdAttribute.flags = ATTRIB_FLAG_VALUE_INCL | ATTRIB_FLAG_CCCD_APPL; // type_value -> attribute value
+        cccdAttribute.type_value[0] = LO_WORD(BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC);
+        cccdAttribute.type_value[1] = HI_WORD(BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC);
+        cccdAttribute.type_value[2] = LO_WORD(BLE_SIG_CCCD_VAL_DISABLED);
+        cccdAttribute.type_value[3] = HI_WORD(BLE_SIG_CCCD_VAL_DISABLED);
+        cccdAttribute.value_len = sizeof(ble_sig_cccd_value_t);
+        cccdAttribute.p_value_context = nullptr;
+        cccdAttribute.permissions = GATT_PERM_READ | GATT_PERM_WRITE;
+        CHECK_TRUE(service->attrTable.append(cccdAttribute), SYSTEM_ERROR_NO_MEMORY);
         service->endHandle++;
         charHandles->cccd_handle = service->endHandle;
-        CccdConfig config = {};
         config.index = characteristic.index;
         config.subscriber.connHandle = BLE_INVALID_CONN_HANDLE;
         config.subscriber.config = BLE_SIG_CCCD_VAL_DISABLED;
@@ -1680,20 +1818,34 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
     charHandles->sccd_handle = BLE_INVALID_ATTR_HANDLE; // FIXME: not supported for now
     
     // User description descriptor attribute
+    T_ATTRIB_APPL descrAttribute = {};
     if (charInit->description) {
-        attribute = {};
-        attribute.flags = ATTRIB_FLAG_VOID | ATTRIB_FLAG_ASCII_Z; // p_value_context -> attribute value
-        attribute.type_value[0] = LO_WORD(BLE_SIG_UUID_CHAR_USER_DESCRIPTION_DESC);
-        attribute.type_value[1] = HI_WORD(BLE_SIG_UUID_CHAR_USER_DESCRIPTION_DESC);
-        attribute.value_len = std::min((size_t)BLE_MAX_DESC_LEN, strlen(charInit->description));
-        attribute.p_value_context = (void*)charInit->description;
-        attribute.permissions = GATT_PERM_READ;
-        CHECK_TRUE(service->attrTable.append(attribute), SYSTEM_ERROR_NO_MEMORY);
+        descrAttribute.flags = ATTRIB_FLAG_VOID | ATTRIB_FLAG_ASCII_Z; // p_value_context -> attribute value
+        descrAttribute.type_value[0] = LO_WORD(BLE_SIG_UUID_CHAR_USER_DESCRIPTION_DESC);
+        descrAttribute.type_value[1] = HI_WORD(BLE_SIG_UUID_CHAR_USER_DESCRIPTION_DESC);
+        descrAttribute.value_len = std::min((size_t)BLE_MAX_DESC_LEN, strlen(charInit->description));
+        descrAttribute.p_value_context = (void*)charInit->description;
+        descrAttribute.permissions = GATT_PERM_READ;
+        CHECK_TRUE(service->attrTable.append(descrAttribute), SYSTEM_ERROR_NO_MEMORY);
         service->endHandle++;
         charHandles->user_desc_handle = service->endHandle;
     } else {
         charHandles->user_desc_handle = BLE_INVALID_ATTR_HANDLE;
     }
+
+    bool adv = BleGap::getInstance().isAdvertising();
+    bool registered = serviceRegistered_;
+    SCOPE_GUARD({
+        if (adv) {
+            BleGap::getInstance().startAdvertising();
+        }
+    });
+    if (registered) {
+        CHECK(BleGap::getInstance().stop());
+        CHECK(BleGap::getInstance().init());
+    }
+
+    std::swap(*targetService, *service);
 
     return ret = SYSTEM_ERROR_NONE;
 }
@@ -1825,15 +1977,7 @@ int hal_ble_exit_locked_mode(void* reserved) {
 int hal_ble_stack_init(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_init().");
-    CHECK(BleGap::getInstance().start());
-    bool ok = false;
-    SCOPE_GUARD({
-        if (!ok) {
-            hal_ble_stack_deinit(nullptr);
-        }
-    });
-    CHECK(BleGatt::getInstance().init());
-    ok = true;
+    CHECK(BleGap::getInstance().init());
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1853,12 +1997,16 @@ int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved) {
 int hal_ble_set_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_set_callback_on_adv_events().");
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK(BleGap::getInstance().onAdvEventCallback(callback, context));
     return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_cancel_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_cancel_callback_on_adv_events().");
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    BleGap::getInstance().cancelAdvEventCallback(callback, context);
     return SYSTEM_ERROR_NONE;
 }
 
