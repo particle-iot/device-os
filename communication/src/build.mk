@@ -50,7 +50,7 @@ ifeq ($(PLATFORM_ID),8)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
 endif
 
-ifneq (,$(filter $(PLATFORM_ID), 13 23 25 26))
+ifneq (,$(filter $(PLATFORM_ID), 13 15 23 25 26))
 ifneq ($(DEBUG_BUILD),y)
 ifneq ($(HYBRID_BUILD),y)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
