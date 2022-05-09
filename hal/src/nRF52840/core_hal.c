@@ -723,6 +723,10 @@ void application_task_start(void* arg) {
  * Called from startup_stm32f2xx.s at boot, main entry point.
  */
 int main(void) {
+#ifdef DEBUG_BUILD
+    NVIC_SetPriority(DebugMonitor_IRQn, _PRIO_SD_LOW);
+#endif
+
     init_malloc_mutex();
     xTaskCreate( application_task_start, "app_thread", APPLICATION_STACK_SIZE/sizeof( portSTACK_TYPE ), NULL, 2, &app_thread_handle);
 
