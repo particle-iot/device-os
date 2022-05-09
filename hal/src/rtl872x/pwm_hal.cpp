@@ -102,8 +102,8 @@ void calculateArrAndPrescaler(uint32_t frequency, uint32_t* arr, uint8_t* presca
     // Figure out the maximum ARR that meets the frequency requirment
     // The higher ARR, the higher resolution we can set
     *arr = RTL_XTAL_CLOCK_HZ / frequency;
-    if (*arr > (1 << RTL_PWM_TIM_MAX_RESOLUTION)) {
-        *arr = (1 << RTL_PWM_TIM_MAX_RESOLUTION);
+    if (*arr > ((1 << RTL_PWM_TIM_MAX_RESOLUTION) - 1)) {
+        *arr = (1 << RTL_PWM_TIM_MAX_RESOLUTION) - 1;
     }
     float temp = (float)RTL_XTAL_CLOCK_HZ / frequency / *arr;
     *prescaler = (uint8_t)(temp + 0.5);
@@ -195,28 +195,13 @@ int pwmPinDeinit(uint16_t pin) {
 
 // Set the CCRx register (duty cycle) according to the user value and resolution
 void pwmSetCcr(uint8_t instance, uint8_t channel, uint32_t userValue) {
-    uint32_t expectedPeriodCycles = (1 << pwmInfo[instance].resolution[channel]);
+    uint32_t expectedPeriodCycles = (1 << pwmInfo[instance].resolution[channel]) - 1;
     uint32_t timCcr = ((float)userValue / expectedPeriodCycles) * pwmInfo[instance].arr;
-
-    // For example, if resolution is 8-bits and the value is of 255, we should set CCRx to 256
-    // to make sure we're outputing 100% duty cycle.
-    if (userValue >= ((uint32_t)(1 << pwmInfo[instance].resolution[channel]) - 1)) {
-        timCcr = pwmInfo[instance].arr;
-    }
-
-    if (timCcr == (uint32_t)(1 << RTL_PWM_TIM_MAX_RESOLUTION)) {
-        // CCRx is a 16-bits register, round it to 0 to output 100% duty cycle.
-        timCcr = 0;
-        RTIM_CCxPolarityConfig(pwmInfo[instance].tim, TIM_CCPolarity_Low, channel);
-        RTIM_CCRxSet(pwmInfo[instance].tim, timCcr, channel);
-    } else {
-        RTIM_CCxPolarityConfig(pwmInfo[instance].tim, TIM_CCPolarity_High, channel);
-        RTIM_CCRxSet(pwmInfo[instance].tim, timCcr, channel);
-    }
+    RTIM_CCRxSet(pwmInfo[instance].tim, timCcr, channel);
 }
 
 void pwmSetArr(uint8_t instance, uint32_t arr) {
-    RTIM_ChangePeriod(pwmInfo[instance].tim, arr - 1);
+    RTIM_ChangePeriod(pwmInfo[instance].tim, arr - 1); // Minus 1 so that CCRx can be set to aar to output 100% duty cycle.
     pwmInfo[instance].arr = arr;
 
     // Make sure the other enabled channels' duty cycle is consistent
