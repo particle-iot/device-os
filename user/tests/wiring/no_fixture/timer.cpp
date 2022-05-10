@@ -105,6 +105,30 @@ test(TIMER_04_not_started)
 	assertEqual(c.time, 0);
 }
 
+test(TIMER_05_is_active)
+{
+	Timer t(10, [] {}, true);
+	// Serial.println("not started");
+	assertFalse(t.isActive());
+	t.start();
+	// Serial.println("valid");
+	assertTrue(t.isValid());
+	// Serial.println("started");
+	delay(1);
+	assertTrue(t.isActive());
+	delay(20);
+	// Serial.println("20ms later should be stopped");
+	assertFalse(t.isActive());
+	t.start();
+	// Serial.println("re-started");
+	delay(1);
+	assertTrue(t.isActive());
+	t.stop();
+	delay(1);
+	// Serial.println("stopped");
+	assertFalse(t.isActive());
+}
+
 void create_timers_with_delay(unsigned block_for, int& fails)
 {
 	// the exact amount of timers needed is based on the size of the
@@ -138,13 +162,13 @@ int create_timers_with_delay(unsigned block_for)
 }
 
 
-test(TIMER_05_create_with_no_delay_fails_when_timer_service_is_busy)
+test(TIMER_06_create_with_no_delay_fails_when_timer_service_is_busy)
 {
 	int fails = create_timers_with_delay(0);
 	assertMore(fails, 0);
 }
 
-test(TIMER_06_create_with_long_delay_succeeds_when_timer_service_is_not_busy)
+test(TIMER_07_create_with_long_delay_succeeds_when_timer_service_is_not_busy)
 {
 	int fails = create_timers_with_delay(1000);
 	assertEqual(fails, 0);
@@ -154,43 +178,19 @@ test(TIMER_06_create_with_long_delay_succeeds_when_timer_service_is_not_busy)
  * When the timer service is busy, attempts to create a timer with too short a delay
  * will fail.
  */
-test(TIMER_07_can_be_disposed_disposed_when_running)
+test(TIMER_08_can_be_disposed_disposed_when_running)
 {
 	Timer t(1, [] { HAL_Delay_Milliseconds(50); }, true);
 	assertTrue(t.start());
 }
 
-test(TIMER_08_disposed_early)
+test(TIMER_09_disposed_early)
 {
 	Timer t(1, [] { HAL_Delay_Milliseconds(50); }, true);
 	assertTrue(t.start());
 	delay(2);
 	Timer t2(1, timer_callback, true);
 	t2.start(0);
-}
-
-test(TIMER_09_is_active)
-{
-	Timer t(10, [] {}, true);
-	// Serial.println("not started");
-	assertFalse(t.isActive());
-	t.start();
-	// Serial.println("valid");
-	assertTrue(t.isValid());
-	// Serial.println("started");
-	delay(1);
-	assertTrue(t.isActive());
-	delay(20);
-	// Serial.println("20ms later should be stopped");
-	assertFalse(t.isActive());
-	t.start();
-	// Serial.println("re-started");
-	delay(1);
-	assertTrue(t.isActive());
-	t.stop();
-	delay(1);
-	// Serial.println("stopped");
-	assertFalse(t.isActive());
 }
 
 #endif
