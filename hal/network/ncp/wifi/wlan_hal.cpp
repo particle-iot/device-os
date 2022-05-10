@@ -32,6 +32,8 @@
 #include <cstring>
 
 #include "softap_http.h"
+#include "dct.h"
+#include "spark_wiring_string.h"
 
 namespace {
 
@@ -398,4 +400,38 @@ int wlan_get_hostname(char* buf, size_t len, void* reserved) {
 
 int softap_set_application_page_handler(PageProvider* provider, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+static bool isValidCountryCode(const char * country_code) {
+    if(strlen(country_code) != 2){
+        return false;
+    }
+
+    String country_string(country_code);
+
+    if (country_string == "US" || country_string == "CA") {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+int wlan_set_country_code(const char * country_code) {
+    if (isValidCountryCode(country_code)) {
+        return dct_write_app_data(country_code, DCT_COUNTRY_CODE_OFFSET, 2);
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+}
+
+int wlan_get_country_code(char * country_code) {
+    char country_code_dct[DCT_COUNTRY_CODE_SIZE] = {};
+    int r = dct_read_app_data_copy(DCT_COUNTRY_CODE_OFFSET, country_code_dct, 2);
+    if (r < 0 || !isValidCountryCode(country_code_dct)) {
+        // Default to US
+        sprintf(country_code_dct, "US");
+    }
+
+    strcpy(country_code, country_code_dct);
+    return 0;
 }

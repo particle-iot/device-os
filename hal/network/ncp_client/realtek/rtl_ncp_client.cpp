@@ -46,7 +46,30 @@ extern "C" {
 #include "spark_wiring_vector.h"
 #include "rtl_system_error.h"
 
+#undef IFNAMSIZ // AMBD SDK and LWIP both define this symbol...
+#include "wlan_hal.h"
+
 extern "C" void rtw_efuse_boot_write(void);
+
+void wifi_set_country_code(void) {
+    char country_code[4] = {};
+    uint8_t channel_plan;
+    wlan_get_country_code(country_code);
+
+    if(strcmp(country_code, "US") == 0){
+        channel_plan = 0x3F;
+    }
+    else {
+        // Default to US
+        channel_plan = 0x3F;
+    }
+
+    // Channel Plan choices:
+    //   - USA/Canada:  0x3F (2G_03 & 5G_22)
+    //   - EU:          0x26 (2G_01 & 5G_02)
+    // Reference: WS-200923-Willis-Efuse_Channel_Plan_new_define-R54(32562).xlsx
+    SPARK_ASSERT(wifi_change_channel_plan(channel_plan) == RTW_SUCCESS);
+}
 
 namespace particle {
 

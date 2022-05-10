@@ -218,10 +218,3 @@ extern "C" void HAL_Core_System_Reset(void) {
     }
 }
 
-void wifi_set_country_code(void) {
-    // Channel Plan choices:
-    //   - USA/Canada:  0x3F (2G_03 & 5G_22)
-    //   - EU:          0x26 (2G_01 & 5G_02)
-    // Reference: WS-200923-Willis-Efuse_Channel_Plan_new_define-R54(32562).xlsx
-    SPARK_ASSERT(wifi_change_channel_plan(0x3F) == RTW_SUCCESS);
-}
