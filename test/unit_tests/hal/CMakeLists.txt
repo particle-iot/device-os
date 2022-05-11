@@ -19,6 +19,7 @@ target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/hal/inc
   PRIVATE ${DEVICE_OS_DIR}/hal/shared
   PRIVATE ${DEVICE_OS_DIR}/hal/src/nRF52840
+  PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc
   PRIVATE ${DEVICE_OS_DIR}/services/inc
   PRIVATE ${DEVICE_OS_DIR}/third_party/miniz/miniz
 )

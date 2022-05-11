@@ -25,12 +25,6 @@
 
 #include "dynalib.h"
 
-// We are using mbedTLS for all the platforms now
-#ifndef USE_MBEDTLS
-#define USE_MBEDTLS
-#endif
-
-#ifdef USE_MBEDTLS
 #if !defined(DYNALIB_IMPORT)
 #include "mbedtls/aes.h"
 #include "mbedtls/rsa.h"
@@ -39,7 +33,6 @@
 #include "mbedtls/bignum.h"
 #include "mbedtls_util.h"
 #endif
-#endif // USE_MBEDTLS
 
 #ifdef	__cplusplus
 extern "C" {

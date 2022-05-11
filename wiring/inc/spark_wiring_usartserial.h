@@ -102,31 +102,70 @@ inline void __handleSerialEvent(USARTSerial& serial, void (*handler)(void))
         handler();
 }
 
-
 #ifndef SPARK_WIRING_NO_USART_SERIAL
 #define Serial1 __fetch_global_Serial1()
 extern USARTSerial& __fetch_global_Serial1();
 hal_usart_buffer_config_t __attribute__((weak)) acquireSerial1Buffer();
 
 #if Wiring_Serial2
+// instantiate Serial2
+USARTSerial& __fetch_global_Serial2()
+{
+  static USARTSerial serial2(HAL_USART_SERIAL2, acquireSerial2Buffer());
+  return serial2;
+}
+void serialEventRun2()
+{
+    __handleSerialEvent(Serial2, serialEvent2);
+}
 #define Serial2 __fetch_global_Serial2()
 extern USARTSerial& __fetch_global_Serial2();
 hal_usart_buffer_config_t __attribute__((weak)) acquireSerial2Buffer();
 #endif
 
 #if Wiring_Serial3
+// instantiate Serial3
+USARTSerial& __fetch_global_Serial3()
+{
+  static USARTSerial serial3(HAL_USART_SERIAL3, acquireSerial3Buffer());
+  return serial3;
+}
+void serialEventRun3()
+{
+    __handleSerialEvent(Serial3, serialEvent3);
+}
 #define Serial3 __fetch_global_Serial3()
 extern USARTSerial& __fetch_global_Serial3();
 hal_usart_buffer_config_t __attribute__((weak)) acquireSerial3Buffer();
 #endif
 
 #if Wiring_Serial4
+// instantiate Serial4
+USARTSerial& __fetch_global_Serial4()
+{
+  static USARTSerial serial4(HAL_USART_SERIAL4, acquireSerial4Buffer());
+  return serial4;
+}
+void serialEventRun4()
+{
+    __handleSerialEvent(Serial4, serialEvent4);
+}
 #define Serial4 __fetch_global_Serial4()
 extern USARTSerial& __fetch_global_Serial4();
 hal_usart_buffer_config_t __attribute__((weak)) acquireSerial4Buffer();
 #endif
 
 #if Wiring_Serial5
+// instantiate Serial5
+USARTSerial& __fetch_global_Serial5()
+{
+  static USARTSerial serial5(HAL_USART_SERIAL5, acquireSerial5Buffer());
+  return serial5;
+}
+void serialEventRun5()
+{
+    __handleSerialEvent(Serial5, serialEvent5);
+}
 #define Serial5 __fetch_global_Serial5()
 extern USARTSerial& __fetch_global_Serial5();
 hal_usart_buffer_config_t __attribute__((weak)) acquireSerial5Buffer();

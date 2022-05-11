@@ -41,8 +41,6 @@ int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
     return 0;
 }
 
-#if !defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS)
-
 // At least millis should be provided
 static mbedtls_callbacks_t s_callbacks = {};
 
@@ -56,7 +54,6 @@ __attribute__((weak)) mbedtls_callbacks_t* mbedtls_get_callbacks(void* reserved)
 {
     return &s_callbacks;
 }
-#endif // defined(CRYPTO_PART1_SIZE_OPTIMIZATIONS)
 
 #if PLATFORM_ID != PLATFORM_GCC
 unsigned long mbedtls_timing_hardclock()

@@ -33,6 +33,10 @@
 #include "dct.h"
 #include "feature_flags.h"
 
+#if HAL_PLATFORM_LED_THEME
+#include "led_signal.h"
+#endif // HAL_PLATFORM_LED_THEME
+
 void platform_startup();
 
 __attribute__((naked)) static void jump_to_system(uint32_t addr, uint32_t sp) {
@@ -167,6 +171,11 @@ int main(void)
     if (true || (features!=0xFF && (((~(features>>4)&0xF)) != (features & 0xF))) || (features&8)) {     // bit 3 must be reset for this to be enabled
         features = 0xFF;        // ignore - corrupt. Top 4 bits should be the inverse of the bottom 4
     }
+
+#if HAL_PLATFORM_LED_THEME
+    // Load LED theme colors
+    get_led_theme_colors(&FirmwareUpdateColor, &SafeModeColor, &DFUModeColor);
+#endif
 
     //--------------------------------------------------------------------------
 

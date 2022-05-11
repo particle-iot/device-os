@@ -34,9 +34,7 @@
 
 #include "dct.h"
 
-#if HAL_PLATFORM_NRF52840
 #include "ota_flash_hal_impl.h"
-#endif
 
 #if HAL_PLATFORM_NCP
 #include "network/ncp/wifi/ncp.h"

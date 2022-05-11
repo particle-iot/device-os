@@ -1,3 +1,7 @@
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_FREERTOS
+
 #include <cstdlib>
 #include <cstring>
 
@@ -105,3 +109,5 @@ size_t _malloc_usable_size_r(struct _reent* r, void* ptr) {
 
     return xPortGetBlockSize(ptr);
 }
+
+#endif // HAL_PLATFORM_FREERTOS

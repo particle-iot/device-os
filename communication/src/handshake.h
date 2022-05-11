@@ -27,13 +27,8 @@
 
 #include "protocol_selector.h"
 
-#ifdef USE_MBEDTLS
 #include "mbedtls/rsa.h"
 #define rsa_context mbedtls_rsa_context
-#else
-#  include "tropicssl/rsa.h"
-#  include "tropicssl/sha1.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,9 +60,7 @@ void init_rsa_context_with_private_key(rsa_context *rsa,
 
 void extract_public_rsa_key(uint8_t* device_pubkey, const uint8_t* device_privkey);
 
-#ifdef USE_MBEDTLS
 #undef rsa_context
-#endif
 
 #ifdef __cplusplus
 }

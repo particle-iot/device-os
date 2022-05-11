@@ -30,12 +30,8 @@
 
 #if HAL_PLATFORM_CLOUD_TCP
 
-#ifdef USE_MBEDTLS
 #include "mbedtls/rsa.h"
 #include "mbedtls_compat.h"
-#else
-#include "tropicssl/rsa.h"
-#endif // USE_MBEDTLS
 
 using namespace std;
 
@@ -169,7 +165,6 @@ public:
     }
 };
 
-#ifdef USE_MBEDTLS
 // mbedTLS-compatible wrapper for RNG callback exposed via API
 struct RNGCallbackData {
     int32_t (*f_rng)(void*);
@@ -188,7 +183,6 @@ static int rngCallback(void* p, unsigned char* data, size_t size) {
     }
     return 0;
 }
-#endif
 
 /**
  * Returns 0 on success.
@@ -200,14 +194,9 @@ int gen_rsa_key(uint8_t* buffer, size_t max_length, int32_t (*f_rng) (void *), v
 {
     rsa_context rsa;
 
-#ifdef USE_MBEDTLS
     mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V15, 0);
     RNGCallbackData d = { f_rng, p_rng };
     int failure = mbedtls_rsa_gen_key(&rsa, rngCallback, &d, 1024, 65537);
-#else
-    rsa_init(&rsa, RSA_PKCS_V15, RSA_RAW, (int(*)(void*))f_rng, p_rng);
-    int failure = rsa_gen_key(&rsa, 1024, 65537);
-#endif // USE_MBEDTLS
 
     if (!failure)
     {

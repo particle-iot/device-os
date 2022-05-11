@@ -20,6 +20,7 @@ target_compile_definitions( ${target_name}
 target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/hal/inc
   PRIVATE ${DEVICE_OS_DIR}/hal/shared
+  PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc
   PRIVATE ${DEVICE_OS_DIR}/services/inc
   PRIVATE ${DEVICE_OS_DIR}/hal/network/util
   PRIVATE ${THIRD_PARTY_DIR}/hippomocks
