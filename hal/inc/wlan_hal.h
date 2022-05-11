@@ -413,6 +413,9 @@ int wlan_restart(void* reserved);
 int wlan_set_hostname(const char* hostname, void* reserved);
 int wlan_get_hostname(char* buf, size_t buf_size, void* reserved);
 
+int wlan_set_country_code(const char * country_code);
+int wlan_get_country_code(char * country_code);
+
 #ifdef	__cplusplus
 }
 #endif
