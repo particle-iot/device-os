@@ -283,6 +283,17 @@ The macro performing a number of steps:
 
  The macros are defined and described in more detail in `system/inc/system_threading.h`.
 
+### Macros and ISRs
+The ASYNC and SYNC calls cannot be performed inside a HAL ISR. The following checks can be used when working with HAL ISR, for example
+```
+void network_listen(network_handle_t network, uint32_t flags, void* reserved) {
+    if (!HAL_IsISR()) {
+        SYSTEM_THREAD_CONTEXT_ASYNC(network_listen(network, flags, reserved));
+    }
+    // other code
+}
+
+```
 
 ### Cloud functions
 
