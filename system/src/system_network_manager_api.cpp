@@ -365,7 +365,9 @@ int network_listen_sync(network_handle_t network, uint32_t flags, void*) {
 }
 
 void network_listen(network_handle_t network, uint32_t flags, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_ASYNC(network_listen(network, flags, reserved));
+    if (!HAL_IsISR()) {
+        SYSTEM_THREAD_CONTEXT_ASYNC(network_listen(network, flags, reserved));
+    }
     network_listen_sync(network, flags, reserved);
 }
 
