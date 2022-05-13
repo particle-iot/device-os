@@ -131,7 +131,33 @@ test(WIFI_06_restore_connection)
 
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
-test(WIFI_07_scan_returns_zero_result_or_error_when_wifi_is_off)
+#if !HAL_PLATFORM_NCP
+test(WIFI_07_reset_hostname)
+{
+    assertEqual(WiFi.setHostname(NULL), 0);
+}
+
+test(WIFI_08_default_hostname_equals_device_id)
+{
+    String hostname = WiFi.hostname();
+    String devId = System.deviceID();
+    assertEqual(hostname, devId);
+}
+
+test(WIFI_09_custom_hostname_can_be_set)
+{
+    String hostname("testhostname");
+    assertEqual(WiFi.setHostname(hostname), 0);
+    assertEqual(WiFi.hostname(), hostname);
+}
+
+test(WIFI_10_restore_default_hostname)
+{
+    assertEqual(WiFi.setHostname(NULL), 0);
+}
+#endif //!HAL_PLATFORM_NCP
+
+test(WIFI_11_scan_returns_zero_result_or_error_when_wifi_is_off)
 {
     WiFiAccessPoint results[5];
     WiFi.off();
@@ -148,7 +174,7 @@ test(WIFI_07_scan_returns_zero_result_or_error_when_wifi_is_off)
 
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 
-test(WIFI_08_restore_connection)
+test(WIFI_12_restore_connection)
 {
     if (!Particle.connected())
     {
@@ -156,7 +182,7 @@ test(WIFI_08_restore_connection)
     }
 }
 
-test(WIFI_09_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
+test(WIFI_13_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
     Particle.disconnect();
     WiFi.disconnect();
     WiFi.off();
@@ -210,7 +236,5 @@ test(WIFI_09_wifi_class_methods_work_correctly_when_wifi_interface_is_off) {
 }
 
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
-
-
 
 #endif

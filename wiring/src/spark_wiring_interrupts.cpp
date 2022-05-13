@@ -140,15 +140,9 @@ void interrupts(void)
 /*
  * System Interrupts
  */
-bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
+bool attachInterruptDirect(IRQn_Type irq, HAL_Direct_Interrupt_Handler handler, bool enable)
 {
-    HAL_InterruptCallback callback;
-    callback.handler = call_wiring_interrupt_handler;
-    wiring_interrupt_handler_t& h = handler;
-    callback.data = new wiring_interrupt_handler_t(h);
-    HAL_InterruptCallback prev = {};
-    const bool ok = HAL_Set_System_Interrupt_Handler(irq, &callback, &prev, NULL);
-    delete (wiring_interrupt_handler_t*)prev.data;
+    const bool ok = !HAL_Set_Direct_Interrupt_Handler(irq, handler, enable ? HAL_DIRECT_INTERRUPT_FLAG_ENABLE : HAL_DIRECT_INTERRUPT_FLAG_NONE, nullptr);
     return ok;
 }
 
@@ -157,20 +151,6 @@ bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
  * @param irq   The interrupt from which all handlers are removed.
  * @return {@code true} if handlers were removed.
  */
-bool detachSystemInterrupt(hal_irq_t irq)
-{
-    HAL_InterruptCallback prev = {};
-    const bool ok = HAL_Set_System_Interrupt_Handler(irq, NULL, &prev, NULL);
-    delete (wiring_interrupt_handler_t*)prev.data;
-    return ok;
-}
-
-bool attachInterruptDirect(IRQn_Type irq, HAL_Direct_Interrupt_Handler handler, bool enable)
-{
-    const bool ok = !HAL_Set_Direct_Interrupt_Handler(irq, handler, enable ? HAL_DIRECT_INTERRUPT_FLAG_ENABLE : HAL_DIRECT_INTERRUPT_FLAG_NONE, nullptr);
-    return ok;
-}
-
 bool detachInterruptDirect(IRQn_Type irq, bool disable)
 {
     const bool ok = !HAL_Set_Direct_Interrupt_Handler(irq, nullptr,

@@ -50,16 +50,7 @@ void noInterrupts(void);
 
 /*
  * System Interrupts
- */
-bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler);
-
-/**
- * Removes all registered handlers from the given system interrupt.
- * @param irq   The interrupt from which all handlers are removed.
- * @return {@code true} if handlers were removed.
- */
-bool detachSystemInterrupt(hal_irq_t irq);
-
+*/
 bool attachInterruptDirect(IRQn_Type irq, HAL_Direct_Interrupt_Handler handler, bool enable = true);
 bool detachInterruptDirect(IRQn_Type irq, bool disable = true);
 

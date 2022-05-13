@@ -44,6 +44,21 @@ test(SPIX_01_SPI_Begin_Without_Argument)
     assertEqual(info.ss_pin, D7);
 #endif
     SPI.end();
+
+    memset(&info, 0x00, sizeof(hal_spi_info_t));
+
+    SPI.begin(SPI_MODE_SLAVE);
+    querySpiInfo(HAL_SPI_INTERFACE1, &info);
+    assertTrue(info.enabled);
+    assertEqual(info.mode, SPI_MODE_SLAVE);
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+    assertEqual(info.ss_pin, D14);
+#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
+    assertEqual(info.ss_pin, D8);
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    assertEqual(info.ss_pin, D7);
+#endif
+    SPI.end();
 }
 
 test(SPIX_02_SPI_Begin_With_Ss_Pin)

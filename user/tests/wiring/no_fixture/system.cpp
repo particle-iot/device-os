@@ -88,6 +88,56 @@ test(SYSTEM_03_user_backup_ram)
 
 #endif // defined(USER_BACKUP_RAM)
 
+#if 0 // FIXME: Leaving this as reference. Use the relevat platform ID when available
+
+#if defined(BUTTON1_MIRROR_SUPPORTED)
+static int s_button_clicks = 0;
+static void onButtonClick(system_event_t ev, int data) {
+    s_button_clicks = data;
+}
+
+test(SYSTEM_XX_button_mirror)
+{
+    System.buttonMirror(D1, FALLING, false);
+    auto pinmap = HAL_Pin_Map();
+    System.on(button_click, onButtonClick);
+
+    // "Click" setup button 3 times
+    // First click
+    pinMode(D1, INPUT_PULLDOWN);
+    // Just in case manually trigger EXTI interrupt
+    EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
+    delay(300);
+    pinMode(D1, INPUT_PULLUP);
+    delay(100);
+
+    // Second click
+    pinMode(D1, INPUT_PULLDOWN);
+    // Just in case manually trigger EXTI interrupt
+    EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
+    delay(300);
+    pinMode(D1, INPUT_PULLUP);
+    delay(100);
+
+    // Third click
+    pinMode(D1, INPUT_PULLDOWN);
+    // Just in case manually trigger EXTI interrupt
+    EXTI_GenerateSWInterrupt(pinmap[D1].gpio_pin);
+    delay(300);
+    pinMode(D1, INPUT_PULLUP);
+    delay(300);
+
+    assertEqual(s_button_clicks, 3);
+}
+
+test(SYSTEM_XX_button_mirror_disable)
+{
+    System.disableButtonMirror(false);
+}
+#endif // defined(BUTTON1_MIRROR_SUPPORTED)
+
+#endif
+
 void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal_module_t** factory) {
     for (unsigned i = 0; i < info.module_count; i++) {
 
