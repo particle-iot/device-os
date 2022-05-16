@@ -155,3 +155,30 @@ test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
     assertMoreOrEqual(millis()-startTime, 2850);
     assertLessOrEqual(millis()-startTime, 3150);
 }
+
+test(GPIO_08_DigitalReadWorksMixedWithAnalogRead) {
+    pin_t pin = A0;
+
+    pinMode(pin, INPUT_PULLUP);
+    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+
+    // 2 digitalReads
+    PinState digVal = (PinState)digitalRead(pin);
+    assertEqual(digVal, HIGH);
+    digVal = (PinState)digitalRead(pin);
+    assertEqual(digVal, HIGH);
+
+    // 2 analogReads
+    int32_t anlg_val = analogRead(pin);
+    assertMoreOrEqual(anlg_val, 4096/2);
+    anlg_val = analogRead(pin);
+    assertMoreOrEqual(anlg_val, 4096/2);
+
+    // 2 digitalReads
+    digVal = (PinState)digitalRead(pin);
+    assertEqual(digVal, HIGH);
+    digVal = (PinState)digitalRead(pin);
+    assertEqual(digVal, HIGH);
+
+}
+
