@@ -65,9 +65,32 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
     return false;
 }
 
+#ifdef stringify
+#undef stringify
+#endif
+#ifdef __stringify
+#undef __stringify
+#endif
+#define stringify(x) __stringify(x)
+#define __stringify(x) #x
+
+#ifndef UDP_ECHO_SERVER_HOSTNAME
+#define UDP_ECHO_SERVER_HOSTNAME not_defined
+#endif
+
+const char udpEchoServerHostname[] = stringify(UDP_ECHO_SERVER_HOSTNAME);
+
 } // anonymous
 
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
+    // If server not defined, skip test
+    if (!strcmp(udpEchoServerHostname, "not_defined") || !strcmp(udpEchoServerHostname, "")) {
+        Serial.printlnf("Command line option UDP_ECHO_SERVER_HOSTNAME not defined! Usage: UDP_ECHO_SERVER_HOSTNAME=hostname make clean all TEST=...");
+        skip();
+        return;
+    }
+    Serial.printlnf("Using Echo Server: [%s]", udpEchoServerHostname);
+
     // 15 min gives the device time to go through a 10 min timeout & power cycle
     const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
 
@@ -103,15 +126,13 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     const unsigned UDP_ECHO_RETRIES = 5;
     const system_tick_t MINIMUM_TEST_TIME = 60000;
 
-    // FIXME: Hosted by @avtolstoy, should be changed to something else
-    const char UDP_ECHO_SERVER[] = "particle-udp-echo.rltm.org";
     const uint16_t UDP_ECHO_PORT = 40000;
 
     // Resolve UDP echo server hostname to ip address, so that DNS resolutions
     // no longer affect us after this point
     IPAddress udpEchoIp;
     for (auto begin = millis(); millis() - begin < 60000;) {
-        udpEchoIp = Network.resolve(UDP_ECHO_SERVER);
+        udpEchoIp = Network.resolve(udpEchoServerHostname);
         if (udpEchoIp) {
             break;
         }
@@ -143,7 +164,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         const size_t payloadSize = mtu - IPV4_PLUS_UDP_HEADER_LENGTH;
         rand.gen((char*)sendBuffer.get(), payloadSize);
         auto res = udpEchoTest(udp.get(), udpEchoIp, UDP_ECHO_PORT, sendBuffer.get(), payloadSize, UDP_ECHO_RETRIES, UDP_ECHO_REPLY_WAIT_TIME);
-        Serial.printlnf("Test MTU: %lu (%s)", mtu, res ? "OK" : "FAIL");
+        Serial.printlnf("Test MTU: %u (%s)", mtu, res ? "OK" : "FAIL");
         size_t newMtu = bisect(mtu, minMtu, maxMtu, res);
         if (std::abs((int)newMtu - (int)mtu) <= 1 && res) {
             // Converged
@@ -152,7 +173,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         mtu = newMtu;
     }
 
-    Serial.printlnf("Resolved MTU: %lu", mtu);
+    Serial.printlnf("Resolved MTU: %u", mtu);
 
     // The test should be running for at least a minute, just in case
     if (millis() - start < MINIMUM_TEST_TIME) {

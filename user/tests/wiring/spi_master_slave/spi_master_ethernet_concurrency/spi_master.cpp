@@ -119,6 +119,21 @@ static uint8_t SPI_Master_Tx_Buffer[TRANSFER_LENGTH_2];
 static uint8_t SPI_Master_Rx_Buffer[TRANSFER_LENGTH_2];
 static volatile uint8_t DMA_Completed_Flag = 0;
 
+#ifdef stringify
+#undef stringify
+#endif
+#ifdef __stringify
+#undef __stringify
+#endif
+#define stringify(x) __stringify(x)
+#define __stringify(x) #x
+
+#ifndef UDP_ECHO_SERVER_HOSTNAME
+#define UDP_ECHO_SERVER_HOSTNAME not_defined
+#endif
+
+const char udpEchoServerHostname[] = stringify(UDP_ECHO_SERVER_HOSTNAME);
+
 static void SPI_Master_Configure()
 {
     if (!MY_SPI.isEnabled()) {
@@ -258,6 +273,14 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
 }
 
 test(00_SPI_Master_Slave_Master_Start_Ethernet) {
+    // If server not defined, skip test
+    if (!strcmp(udpEchoServerHostname, "not_defined") || !strcmp(udpEchoServerHostname, "")) {
+        Serial.printlnf("Command line option UDP_ECHO_SERVER_HOSTNAME not defined! Usage: UDP_ECHO_SERVER_HOSTNAME=hostname make clean all TEST=...");
+        skip();
+        return;
+    }
+    Serial.printlnf("Using Echo Server: [%s]", udpEchoServerHostname);
+
     Serial.println("This is Master");
     Serial.println("Connecting to echo service over Ethernet");
     Ethernet.on();
@@ -273,14 +296,12 @@ test(00_SPI_Master_Slave_Master_Start_Ethernet) {
 
 
     auto thread = new Thread("ethernet_comms", [](void) -> os_thread_return_t {
-        // FIXME: Hosted by @avtolstoy, should be changed to something else
-        const char udpEchoServer[] = "particle-udp-echo.rltm.org";
         const uint16_t udpEchoPort = 40000;
         const size_t udpPayloadSize = 512;
 
         // Resolve UDP echo server hostname to ip address, so that DNS resolutions
         // no longer affect us after this point
-        const auto udpEchoIp = Network.resolve(udpEchoServer);
+        const auto udpEchoIp = Network.resolve(udpEchoServerHostname);
         if (!udpEchoIp) {
             return;
         }
