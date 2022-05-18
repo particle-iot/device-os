@@ -53,7 +53,7 @@ EOF
 )
 
     fields=""
-    for p in Argon Boron BSoM B5SoM Electron Photon P1 Tracker GCC Newhal; do
+    for p in Argon Boron BSoM B5SoM Tracker GCC Newhal; do
         if echo -e "${failures}" | grep -q "PLATFORM=\"${p,,}\""; then
             msg=":scrum_closed: $p\\n"
         else

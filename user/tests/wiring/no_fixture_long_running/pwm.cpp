@@ -20,13 +20,7 @@ struct PinMapping {
 #define PIN(p) {#p, p}
 
 const PinMapping pwm_pins[] = {
-#if (PLATFORM_ID == PLATFORM_PHOTON) // Photon
-        PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(A4), PIN(A5), PIN(WKP), PIN(RX), PIN(TX)
-#elif (PLATFORM_ID == PLATFORM_P1) // P1
-        PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(A4), PIN(A5), PIN(WKP), PIN(RX), PIN(TX), PIN(P1S0), PIN(P1S1), PIN(P1S6)
-#elif (PLATFORM_ID == PLATFORM_ELECTRON) // Electron
-        PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(A4), PIN(A5), PIN(WKP), PIN(RX), PIN(TX), PIN(B0), PIN(B1), PIN(B2), PIN(B3), PIN(C4), PIN(C5)
-#elif (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
+#if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
         PIN(D4), PIN(D5), PIN(D6), PIN(D7), PIN(A0), PIN(A1), /* PIN(A7), PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 # if (PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM) || !HAL_PLATFORM_POWER_MANAGEMENT
         ,
@@ -59,41 +53,6 @@ template <typename F> void for_all_pwm_pins(F callback)
     // RGB.control(false);
 }
 
-#if (PLATFORM_ID == PLATFORM_P1) // P1
-test(PWM_00_P1S6SetupForP1) {
-    // disable POWERSAVE_CLOCK on P1S6
-    System.disableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
-
-    pinMode(P1S6, OUTPUT);
-    digitalWrite(P1S6, HIGH);
-
-    // https://github.com/particle-iot/device-os/issues/1763
-    // Make sure that WICED wifi stack deactivations/reactivations
-    // keep the 32khz clock setting and the pin is not oscillating.
-    SCOPE_GUARD({
-        WiFi.disconnect();
-        WiFi.off();
-    });
-    WiFi.on();
-    WiFi.connect();
-    waitFor(WiFi.ready, 30000);
-    assertTrue(WiFi.ready());
-
-    // Simple test that its state has not been changed
-    assertEqual(digitalRead(P1S6), (int)HIGH);
-
-    // Otherwise try to calculate pulse width
-    uint32_t avgPulseLow = 0;
-    const int iters = 3;
-    for(int i = 0; i < iters; i++) {
-        avgPulseLow += pulseIn(P1S6, LOW);
-    }
-    avgPulseLow /= iters;
-    // avgPulseLow should not be around 32KHz (31.25us +- 10%)
-    assertEqual(avgPulseLow, 0);
-}
-#endif
-
 test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
     // when
     pinMode(pin, INPUT);//pin set to INPUT mode
@@ -113,7 +72,7 @@ test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
     skip();
 #endif
 #else
-    pin_t pin = D5;  //pin under test, D5 is not a Timer channel
+    #error "Unsupported platform"
 #endif
     // when
     pinMode(pin, OUTPUT);
@@ -756,10 +715,3 @@ test(PWM_12_CompherensiveResolutionFrequency) {
         assertMoreOrEqual(resolution, 15);
     });
 }
-
-#if (PLATFORM_ID == PLATFORM_P1) // P1
-test(PWM_99_P1S6CleanupForP1) {
-    // enable POWERSAVE_CLOCK on P1S6
-    System.enableFeature(FEATURE_WIFI_POWERSAVE_CLOCK);
-}
-#endif

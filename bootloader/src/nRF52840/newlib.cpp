@@ -18,7 +18,7 @@ void __cxa_free_exception(void*) throw() {
 } // extern "C"
 
 /**
- * Shared newlib implementation for stm32 devices. (This is probably suitable for all embedded devices on gcc.)
+ * Shared newlib implementation. (This is probably suitable for all embedded devices on gcc.)
  */
 
 extern "C" {

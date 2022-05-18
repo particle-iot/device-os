@@ -81,7 +81,7 @@ const chunk_index_t MAX_CHUNKS        = 65535;
 const size_t MISSED_CHUNKS_TO_SEND = 20;
 #else
 const size_t MISSED_CHUNKS_TO_SEND = 40;
-#endif
+#endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_ASOM
 
 const size_t MINIMUM_CHUNK_INCREASE = 2u;
 const size_t MAX_EVENT_TTL_SECONDS = 16777215;
@@ -90,15 +90,9 @@ const size_t MAX_FUNCTION_KEY_LENGTH = 64;
 const size_t MAX_VARIABLE_KEY_LENGTH = 64;
 const size_t MAX_EVENT_NAME_LENGTH = 64;
 
-#if HAL_PLATFORM_GEN >= 3
 const size_t MAX_EVENT_DATA_LENGTH = 1024;
 const size_t MAX_FUNCTION_ARG_LENGTH = 1024;
 const size_t MAX_VARIABLE_VALUE_LENGTH = 1024;
-#else
-const size_t MAX_EVENT_DATA_LENGTH = 864;
-const size_t MAX_FUNCTION_ARG_LENGTH = 864;
-const size_t MAX_VARIABLE_VALUE_LENGTH = 864;
-#endif
 
 // Timeout in milliseconds given to receive an acknowledgement for a published event
 const unsigned SEND_EVENT_ACK_TIMEOUT = 20000;

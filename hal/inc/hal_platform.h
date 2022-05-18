@@ -20,13 +20,8 @@
 
 #include "platforms.h"
 
-#if PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL
-/* FIXME: create platform-specific hal_platform_config.h header for each of these platforms */
-#include "hal_platform_compat.h"
-#else
 /* Include platform-specific configuration header */
 #include "hal_platform_config.h"
-#endif /* PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL */
 
 #ifndef PRODUCT_SERIES
 #error "PRODUCT_SERIES is not defined!"
@@ -72,10 +67,6 @@
 #ifndef HAL_PLATFORM_DCT
 #define HAL_PLATFORM_DCT 0
 #endif /* HAL_PLATFORM_DCT */
-
-#ifndef HAL_PLATFORM_DCT_NO_DEPRECATED
-#define HAL_PLATFORM_DCT_NO_DEPRECATED (1)
-#endif /* HAL_PLATFORM_DCT_NO_DEPRECATED */
 
 #ifndef PANIC_BUT_KEEP_CALM
 #define PANIC_BUT_KEEP_CALM 0
@@ -457,5 +448,13 @@
 #ifndef HAL_PLATFORM_CONCURRENT_DUMP_THREADS
 #define HAL_PLATFORM_CONCURRENT_DUMP_THREADS (0)
 #endif // HAL_PLATFORM_CONCURRENT_DUMP_THREADS
+
+#ifndef HAL_PLATFORM_LED_THEME
+#define HAL_PLATFORM_LED_THEME (0)
+#endif // HAL_PLATFORM_LED_THEME
+
+#ifndef HAL_PLATFORM_FREERTOS
+#define HAL_PLATFORM_FREERTOS (1)
+#endif // HAL_PLATFORM_FREERTOS
 
 #endif /* HAL_PLATFORM_H */

@@ -1,1 +1,0 @@
-include ../../shared/stm32f2xx/user_build.mk

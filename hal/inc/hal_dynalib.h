@@ -38,7 +38,7 @@
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 #include "exrtc_hal.h"
-#endif // PLATFORM_ID
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
 #endif
 
@@ -56,13 +56,13 @@
 
 DYNALIB_BEGIN(hal)
 
-#if PLATFORM_ID > 3
+#if PLATFORM_ID > PLATFORM_GCC
 DYNALIB_FN(0, hal, HAL_RNG_Configuration, void(void))
 DYNALIB_FN(1, hal, HAL_RNG_GetRandomNumber, uint32_t(void))
 #define BASE_IDX 2 // Base index for all subsequent functions
 #else
 #define BASE_IDX 0
-#endif
+#endif // PLATFORM_ID > PLATFORM_GCC
 
 DYNALIB_FN(BASE_IDX + 0, hal, HAL_Delay_Milliseconds, void(uint32_t))
 DYNALIB_FN(BASE_IDX + 1, hal, HAL_Delay_Microseconds, void(uint32_t))
@@ -107,7 +107,7 @@ DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits, void(system_tick_t
 #define BASE_IDX2 (BASE_IDX + 29)
 #else
 #define BASE_IDX2 (BASE_IDX + 25)
-#endif
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
 DYNALIB_END(hal)
 

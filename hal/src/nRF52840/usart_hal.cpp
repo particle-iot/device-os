@@ -820,7 +820,7 @@ void hal_usart_begin_config(hal_usart_interface_t serial, uint32_t baud, uint32_
             return;
         }
     }
-#endif
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
     auto usart = getInstance(serial);
     // FIXME: CHECK_XXX that doesn't return anything?

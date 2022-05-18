@@ -21,9 +21,6 @@
  *  This file is part of mbed TLS (https://tls.mbed.org)
  */
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-#include "mbedtls_config_photon.h"
-#else
 
 /*
  * This set of compile-time options may be used to enable
@@ -32,6 +29,8 @@
  */
 #ifndef MBEDTLS_CONFIG_DEFAULT_H
 #define MBEDTLS_CONFIG_DEFAULT_H
+
+#include "platforms.h"
 
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE 1
@@ -2035,10 +2034,9 @@
  * Remove unused functions from oid.c that cause unused strings to get pulled in
  *
  */
-// FIXME: some platforms cannot include platforms.h here
-#if PLATFORM_ID != 3
+#if PLATFORM_ID != PLATFORM_GCC
 #define MBEDTLS_OID_OPTIMIZE_STRINGS
-#endif // PLATFORM_ID != 3
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 /**
  * \def MBEDTLS_PADLOCK_C
@@ -2611,10 +2609,6 @@
 // data that can be fit into a 1024-byte DTLS packet while still having some
 // space left for DTLS and CoAP extensions that we may employ in the future.
 //
-// Electron doesn't support packets larger than 1024 bytes due to the
-// limitations of the AT command interface, and we're using the same limit on
-// Photon for consistency across Gen 2 platforms.
-//
 // Application data: 960 bytes;
 // Nonce and authentication tag: 16 bytes for AEAD_AES_128_CCM_8;
 // DTLS header: 13 bytes;
@@ -2661,12 +2655,6 @@
 #include MBEDTLS_USER_CONFIG_FILE
 #endif
 
-#if !(PLATFORM_ID == 3 && defined(__clang__))
-#include "mbedtls_weaken.h"
-#endif // !(PLATFORM_ID == 3 && defined(__clang__))
-
 #include "mbedtls/check_config.h"
 
 #endif /* MBEDTLS_CONFIG_DEFAULT_H */
-
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8

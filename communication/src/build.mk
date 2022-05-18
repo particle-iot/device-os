@@ -30,7 +30,6 @@ CPPSRC += $(TARGET_SRC_PATH)/coap_channel.cpp
 CPPSRC += $(TARGET_SRC_PATH)/publisher.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol_defs.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol_util.cpp
-CPPSRC += $(TARGET_SRC_PATH)/mbedtls_communication.cpp
 CPPSRC += $(TARGET_SRC_PATH)/communication_diagnostic.cpp
 CPPSRC += $(TARGET_SRC_PATH)/variables.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_defs.cpp
@@ -42,19 +41,10 @@ CPPSRC += $(TARGET_SRC_PATH)/description.cpp
 # ASM source files included in this build.
 ASRC +=
 
-ifeq ($(PLATFORM_ID),6)
-CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
-endif
-
-ifeq ($(PLATFORM_ID),8)
-CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_NONE
-endif
-
+# if PLATFORM_ID matches 13 23 25 or 26, and not DEBUG_BUILD=y, set LOG_LEVEL_ERROR
 ifneq (,$(filter $(PLATFORM_ID), 13 23 25 26))
 ifneq ($(DEBUG_BUILD),y)
-ifneq ($(HYBRID_BUILD),y)
 CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ERROR
-endif
 endif
 endif
 

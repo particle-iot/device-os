@@ -1,9 +1,8 @@
-This is the beginning of the style guide for the Particle Firmware repository.
+This is the beginning of the style guide for the Particle Device OS repository.
 It's presently just an outline, and will be fleshed out over time.
 
 Note that it will be easy to find violations of these guidelines in the existing codebase.
 Over time, these will be rectified as automated checks for style consistency are introduced.
-
 
 ## Formatting
 

@@ -22,41 +22,7 @@
 
 #if PLATFORM_THREADING
 
-#if PLATFORM_ID == 6
-
-// Regression test for the WICED deadlock in sys_sem_new
-// See https://github.com/spark/firmware/pull/984
-test(CONCURRENT_01_semaphore_deadlock)
-{
-    volatile bool run = true;
-
-    // Call malloc in one thread
-    Thread allocatorThread("allocator", [&]
-    {
-        while(run)
-        {
-            void *ptr = malloc(100);
-            free(ptr);
-        }
-    });
-
-    // Create WICED connections in one thread
-    unsigned long start = millis();
-    while(millis() - start < 2000)
-    {
-        WiFi.resolve("www.particle.io");
-        Particle.process();
-    }
-
-    run = false;
-
-    // No assertion needed. If the test finishes there was no deadlock
-    allocatorThread.dispose();
-}
-
-#endif // PLATFORM_ID == 6
-
-test(CONCURRENT_02_crc32_is_thread_safe) {
+test(CONCURRENT_01_crc32_is_thread_safe) {
     const unsigned TEST_DURATION = 1000; // 1 second
     const size_t DATA_SIZE = 1024;
     // Allocate a buffer and fill it with random data

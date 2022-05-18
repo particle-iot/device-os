@@ -7,10 +7,6 @@ include $(COMMON_BUILD)/version.mk
 
 QUOTE='
 
-ifdef TEACUP
-CFLAGS += -DTEACUP
-endif
-
 ifeq ("$(DEBUG_BUILD)","y")
 CFLAGS += -DDEBUG_BUILD
 COMPILE_LTO ?= n
@@ -75,14 +71,6 @@ CONLYFLAGS += -Wno-pointer-sign
 
 LDFLAGS += $(LIBS_EXT)
 LDFLAGS += $(patsubst %,-L%,$(LIB_DIRS))
-
-ifeq ($(PLATFORM_ID),6)
-CFLAGS += -DBOOTLOADER_SDK_3_3_0_PARTICLE -DPARTICLE_DCT_COMPATIBILITY
-endif
-
-ifeq ($(PLATFORM_ID),8)
-CFLAGS += -DBOOTLOADER_SDK_3_3_0_PARTICLE -DPARTICLE_DCT_COMPATIBILITY
-endif
 
 ifneq ($(PLATFORM_ID),3)
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker

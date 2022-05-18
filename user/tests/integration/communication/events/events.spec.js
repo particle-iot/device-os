@@ -1,6 +1,6 @@
 suite('Cloud events');
 
-platform('gen2', 'gen3');
+platform('gen3');
 
 let maxEventDataSize = 0;
 

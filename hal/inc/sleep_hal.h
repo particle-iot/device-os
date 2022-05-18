@@ -101,7 +101,7 @@ typedef enum hal_sleep_lpcomp_trig_t {
 static_assert(sizeof(hal_sleep_mode_t) == 1, "length of hal_sleep_mode_t should be 1-bytes aligned.");
 static_assert(sizeof(hal_wakeup_source_type_t) == 2, "length of hal_wakeup_source_type_t should be 2-bytes aligned.");
 static_assert(sizeof(hal_sleep_flags_t) == 4, "length of hal_sleep_flags_t should be 4");
-#endif
+#endif // PLATFORM_ID > PLATFORM_GCC
 
 /**
  * HAL sleep wakeup source base

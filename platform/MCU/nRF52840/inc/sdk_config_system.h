@@ -135,7 +135,7 @@
 #define APP_USBD_CONFIG_EVENT_QUEUE_ENABLE      0  // handle USB event in interrupt, NOT to call any functions that modifies the USBD
                                                    // library state from the context higher than USB interrupt context.
 
-#define APP_USBD_VID                            USBD_VID_SPARK
+#define APP_USBD_VID                            USBD_VID_PARTICLE
 #define APP_USBD_PID                            USBD_PID_CDC
 #define APP_USBD_DEVICE_CLASS                   0xef
 #define APP_USBD_DEVICE_SUB_CLASS               0x02

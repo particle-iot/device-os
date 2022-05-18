@@ -22,7 +22,7 @@
 #include "debug.h"
 
 // TODO: Move synchronization macros to some header file
-#if PLATFORM_ID != 3
+#if PLATFORM_ID != PLATFORM_GCC
 
 #define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
 #include "spark_wiring_interrupts.h"
@@ -30,7 +30,7 @@
 #define LED_SERVICE_DECLARE_LOCK(name)
 #define LED_SERVICE_WITH_LOCK(name) ATOMIC_BLOCK()
 
-#else // PLATFORM_ID == 3
+#else // PLATFORM_ID == PLATFORM_GCC
 
 #if PLATFORM_THREADING
 
@@ -39,14 +39,14 @@
 #define LED_SERVICE_DECLARE_LOCK(name) mutable RecursiveMutex name
 #define LED_SERVICE_WITH_LOCK(name) WITH_LOCK(name)
 
-#else // PLATFORM_ID == 3 && !PLATFORM_THREADING
+#else // PLATFORM_ID == PLATFORM_GCC && !PLATFORM_THREADING
 
 #define LED_SERVICE_DECLARE_LOCK(name)
 #define LED_SERVICE_WITH_LOCK(name)
 
-#endif
+#endif // PLATFORM_ID == PLATFORM_GCC && !PLATFORM_THREADING
 
-#endif
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 namespace {
 

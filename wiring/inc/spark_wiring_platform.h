@@ -13,58 +13,15 @@
 // components of the platform. (I.e. platform  defines comes from the HAL)
 
 
-#if PLATFORM_ID==1      // unused
+#if PLATFORM_ID == 1      // unused
 #error Unkonwn platform ID
 #endif
 
-#if PLATFORM_ID==PLATFORM_GCC      // gcc
+#if PLATFORM_ID == PLATFORM_GCC      // gcc
 #define Wiring_WiFi 1
 #define Wiring_IPv6 0
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1 // for testing purposes
-#endif
-
-#if PLATFORM_ID==PLATFORM_PHOTON_PRODUCTION      // photon
-#define Wiring_WiFi 1
-#define Wiring_IPv6 0
-#define Wiring_SPI1 1
-#define Wiring_Serial2 1
-#define Wiring_USBSerial1 1
-#define Wiring_Mouse 1
-#define Wiring_Keyboard 1
-#define Wiring_LogConfig 1
-#define Wiring_WpaEnterprise 1
-#endif
-
-#if PLATFORM_ID==PLATFORM_P1      // P1 / bm14
-#define Wiring_WiFi 1
-#define Wiring_IPv6 0
-#define Wiring_SPI1 1
-#define Wiring_Serial2 1
-#define Wiring_USBSerial1 1
-#define Wiring_Mouse 1
-#define Wiring_Keyboard 1
-#define Wiring_LogConfig 1
-#define Wiring_WpaEnterprise 1
-#endif
-
-#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION      // electron
-#define Wiring_Cellular 1
-#define Wiring_Serial2 1
-#define Wiring_Serial3 0 // Used internally by modem
-#define Wiring_Serial4 1
-#define Wiring_Serial5 1
-#define Wiring_SPI1 1
-#define Wiring_SPI2 1
-
-#define Wiring_Wire1 1
-#define Wiring_Wire3 1 /* System PMIC and Fuel Guage I2C3 */
-#define Wiring_USBSerial1 1
-#define Wiring_Mouse 1
-#define Wiring_Keyboard 1
-#define Wiring_LogConfig 1
-
-#define Wiring_SetupButtonUX HAL_PLATFORM_SETUP_BUTTON_UX
 #endif
 
 #if HAL_PLATFORM_NRF52840

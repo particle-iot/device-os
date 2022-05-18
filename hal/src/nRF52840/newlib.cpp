@@ -4,7 +4,7 @@
 #include "delay_hal.h"
 
 /**
- * Shared newlib implementation for stm32 devices. (This is probably suitable for all embedded devices on gcc.)
+ * Shared newlib implementation. (This is probably suitable for all embedded devices on gcc.)
  */
 
 extern "C" {
