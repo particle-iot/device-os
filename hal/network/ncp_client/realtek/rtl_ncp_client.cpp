@@ -265,7 +265,13 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
             CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
 
             LOG(INFO, "Try to connect to ssid: %s", ssid);
-            rtlError = wifi_connect((char*)ssid, wifiSecurityToRtlSecurity(sec), (char*)cred.password(), strlen(ssid), strlen(cred.password()), -1, nullptr);
+            rtlError = wifi_connect((char*)ssid,
+                                    wifiSecurityToRtlSecurity(sec),
+                                    (char*)cred.password(),
+                                    ssid ? strlen(ssid) : 0,
+                                    cred.password() ? strlen(cred.password()) : 0,
+                                    -1,
+                                    nullptr);
             if (rtlError == RTW_SUCCESS) {
                 connectionState(NcpConnectionState::CONNECTED);
                 break;
