@@ -2282,7 +2282,7 @@ int hal_ble_gap_update_connection_params(hal_ble_conn_handle_t conn_handle, cons
 int hal_ble_gap_get_connection_info(hal_ble_conn_handle_t conn_handle, hal_ble_conn_info_t* info, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_connection_info().");
-    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().getConnectionInfo(conn_handle, info);
 }
 
@@ -2431,7 +2431,7 @@ int hal_ble_gatt_server_set_desired_att_mtu(size_t att_mtu, void* reserved) {
 ssize_t hal_ble_gatt_get_att_mtu(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_get_att_mtu().");
-    CHECK_TRUE(s_bleStackInit, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().getAttMtu(conn_handle);
 }
 
