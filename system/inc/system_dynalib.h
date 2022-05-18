@@ -135,6 +135,8 @@ DYNALIB_FN(BASE_IDX2 + 9, system, system_ble_prov_set_company_id, int(uint16_t c
 #define BASE_IDX3 (BASE_IDX2 + 3)
 #endif  // HAL_PLATFORM_BLE
 
+DYNALIB_FN(BASE_IDX3 + 0, system, system_get_update_status, int(void*))
+
 DYNALIB_END(system)
 
 #undef BASE_IDX
