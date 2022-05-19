@@ -25,6 +25,8 @@
 
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 
+const auto MAX_RETRIES_RESOLVE_TESTS = 5;
+
 test(WIFI_00_connect)
 {
     WiFi.on();
@@ -35,19 +37,27 @@ test(WIFI_00_connect)
 
 test(WIFI_01_resolve_3_levels)
 {
-    IPAddress address = WiFi.resolve("pool.ntp.org");
-    assertNotEqual(address, 0);
-
-    // ensure the version field is set
+    IPAddress address = {};
+    for (int i=0; i<MAX_RETRIES_RESOLVE_TESTS && !address.version(); i++) {
+        // Break out of the loop if address.version() is not 0,
+        // as a valid address has a non-zero version() value
+        address = WiFi.resolve("pool.ntp.org");
+    }
     assertNotEqual(address.version(), 0);
-
+    assertNotEqual(address, 0);
     IPAddress compare = IPAddress(address[0], address[1], address[2], address[3]);
     assertTrue(compare==address);
 }
 
 test(WIFI_02_resolve_4_levels)
 {
-    IPAddress address = WiFi.resolve("north-america.pool.ntp.org");
+    IPAddress address = {};
+    for (int i=0; i<MAX_RETRIES_RESOLVE_TESTS && !address.version(); i++) {
+        // Break out of the loop if address.version() is not 0,
+        // as a valid address has a non-zero version() value
+        address = WiFi.resolve("north-america.pool.ntp.org");
+    }
+    assertNotEqual(address.version(), 0);
     assertNotEqual(address, 0);
 }
 
