@@ -605,7 +605,7 @@ private:
 int BleEventDispatcher::start() {
     if (thread_) {
         // Already running
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     bool ok = false;
     SCOPE_GUARD({
@@ -763,10 +763,6 @@ int BleGap::init() {
     CHECK_TRUE(mgr, SYSTEM_ERROR_INTERNAL);
 
     state_.raw = 0;
-    isAdvertising_ = false;
-    connecting_ = false;
-    isScanning_ = false;
-    btStackStarted_ = false;
 
     SCOPE_GUARD({
         if (!initialized_) {
@@ -779,12 +775,8 @@ int BleGap::init() {
     CHECK_TRUE(os_semaphore_create(&scanSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(os_semaphore_create(&stateSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     // FreeRTOS timers are not supposed to be created with 0 timeout, enabling configASSERT will trigger it
-    auto advTimeout = BLE_DEFAULT_ADVERTISING_TIMEOUT * 10;
-    // FreeRTOS timers are not supposed to be created with 0 timeout, enabling configASSERT will trigger it
-    if (advTimeout == 0) {
-        advTimeout = CONCURRENT_WAIT_FOREVER;
-    }
-    CHECK_TRUE(os_timer_create(&advTimeoutTimer_, advTimeout == 0 ? 0xffffffff: advTimeout, onAdvTimeoutTimerExpired, this, true, nullptr) == 0, SYSTEM_ERROR_INTERNAL);
+    // We're just creating the timer with fixed period and we're going to change it anyway before starting advertising.
+    CHECK_TRUE(os_timer_create(&advTimeoutTimer_, 1000, onAdvTimeoutTimerExpired, this, true, nullptr) == 0, SYSTEM_ERROR_INTERNAL);
 
     gap_config_max_le_link_num(MAX_LINK_COUNT);
     gap_config_max_le_paired_device(MAX_LINK_COUNT);
@@ -795,7 +787,7 @@ int BleGap::init() {
     bt_coex_init();
 
     CHECK_TRUE(le_gap_init(MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
-    uint8_t mtuReq = false;
+    uint8_t mtuReq = true;
     CHECK_RTL(le_set_gap_param(GAP_PARAM_SLAVE_INIT_GATT_MTU_REQ, sizeof(mtuReq), &mtuReq));
     CHECK(setAppearance(GAP_GATT_APPEARANCE_UNKNOWN));
     CHECK(setDeviceName(devName_, devNameLen_));
@@ -808,7 +800,6 @@ int BleGap::init() {
 
     initialized_ = true;
     return SYSTEM_ERROR_NONE;
-
 }
 
 int BleGap::start() {
@@ -834,7 +825,6 @@ int BleGap::start() {
 }
 
 int BleGap::stop() {
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     // NOTE: ignoring errors
     if (btStackStarted_) {
         // NOTE: we have to wait for the BLE stack to get initialized otherwise other operations
@@ -845,6 +835,12 @@ int BleGap::stop() {
             // This will also wait for advertisements to stop
             stopAdvertising();
         }
+
+        if (isScanning_) {
+            stopScanning();
+            le_scan_stop(); // Just in case
+        }
+
         // Prevent BLE stack from generating coexistence events, otherwise we may leak memory
         gap_register_vendor_cb([](uint8_t cb_type, void *p_cb_data) -> void {
         });
@@ -884,7 +880,7 @@ int BleGap::stop() {
     }
 
     RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, DISABLE);
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int BleGap::setAppearance(uint16_t appearance) const {
@@ -1042,7 +1038,7 @@ void BleGap::cancelAdvEventCallback(hal_ble_on_adv_evt_cb_t callback, void* cont
 
 int BleGap::startAdvertising(bool wait) {
     if (isAdvertising_) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     if (wait) {
@@ -1105,7 +1101,7 @@ int BleGap::stopAdvertising(bool wait) {
         }
     }
     if (!isAdvertising_) {
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
     isAdvertising_ = false;
     CHECK_RTL(le_adv_stop());
@@ -1339,7 +1335,7 @@ int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePol
         while (hal_timer_millis(nullptr) - start < timeout) {
             CHECK_RTL(le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state));
             if (BleGapDevState(s).copySetParamsFrom(state) == state) {
-                return 0;
+                return SYSTEM_ERROR_NONE;
             }
             HAL_Delay_Milliseconds(BLE_WAIT_STATE_POLL_PERIOD_MS);
         }
@@ -1348,7 +1344,7 @@ int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePol
         for (auto now = hal_timer_millis(nullptr); now < end; now = hal_timer_millis(nullptr)) {
             os_semaphore_take(stateSemaphore_, end - now, false);
             if (BleGapDevState(getState()).copySetParamsFrom(state) == state) {
-                return 0;
+                return SYSTEM_ERROR_NONE;
             }
         }
     }
@@ -2131,7 +2127,7 @@ int hal_ble_gap_set_tx_power(int8_t tx_power, void* reserved) {
 int hal_ble_gap_get_tx_power(int8_t* tx_power, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_tx_power().");
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_gap_set_advertising_parameters(const hal_ble_adv_params_t* adv_params, void* reserved) {
