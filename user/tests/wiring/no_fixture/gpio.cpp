@@ -98,6 +98,7 @@ test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
     //To Do : Add test for remaining pins if required
 }
 
+#if !HAL_PLATFORM_RTL872X
 test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 #if !HAL_PLATFORM_NRF52840
     hal_pin_t pin = D1; // pin under test
@@ -145,6 +146,7 @@ test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
     assertMoreOrEqual(avgPulseLow, 950);
     assertLessOrEqual(avgPulseLow, 1050);
 }
+#endif // !HAL_PLATFORM_RTL872X
 
 test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
     hal_pin_t pin = D1; // pin under test
