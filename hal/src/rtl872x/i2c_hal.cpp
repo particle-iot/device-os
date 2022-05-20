@@ -345,7 +345,7 @@ public:
          * 5: data byte transfer succeeded, busy timeout immediately after
          * 6: timeout waiting for peripheral to clear stop bit*/
         if (i2cInitStruct_.I2CMaster != I2C_MASTER_MODE) {
-            return 7;
+            return HAL_I2C_ERROR_INVALID_STATE;
         }
 
         setAddress(transConfig_.address);
@@ -354,11 +354,11 @@ public:
         for (uint32_t i = 0; i < quantity; i++) {
             if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
                 reset();
-                return 1;
+                return HAL_I2C_ERROR_BUSY_TIMEOUT;
             }
             uint8_t data = 0xFF;
             if (txBuffer_.get(&data) != 1) {
-                return 8;
+                return HAL_I2C_ERROR_DATA_NOT_READY;
             }
             if(i >= quantity - 1) {
                 if (stop) {
@@ -374,15 +374,15 @@ public:
             }
             if (WAIT_TIMED_ROUTINE(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFE) == 0, checkAbrt) < 0) {
                 reset();
-                return 4;
+                return HAL_I2C_ERROR_DATA_TIMEOUT;
             }
             if(checkAbrt()) {
                 LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
                 I2C_ClearAllINT(i2cDev_);
-                return 4;
+                return HAL_I2C_ERROR_DATA_TIMEOUT;
             }
         }
-        return 0;
+        return HAL_I2C_ERROR_NONE;
     }
 
     void flush() {
@@ -402,14 +402,14 @@ public:
         if (mutex_ && !hal_interrupt_is_isr()) {
             return os_mutex_recursive_lock(mutex_);
         }
-        return -1;
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     int unlock() {
         if (mutex_ && !hal_interrupt_is_isr()) {
             return os_mutex_recursive_unlock(mutex_);
         }
-        return -1;
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     static I2cClass* getInstance(hal_i2c_interface_t i2c) {

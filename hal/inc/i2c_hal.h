@@ -74,6 +74,20 @@ typedef enum hal_i2c_state_t {
     HAL_I2C_STATE_SUSPENDED
 } hal_i2c_state_t;
 
+// As per: https://docs.particle.io/reference/device-os/firmware/#endtransmission-
+typedef enum hal_i2c_error_t {
+    HAL_I2C_ERROR_NONE = 0,
+    HAL_I2C_ERROR_BUSY_TIMEOUT = 1,
+    HAL_I2C_ERROR_START_TIMEOUT = 2,
+    HAL_I2C_ERROR_ADDR_TIMEOUT = 3,
+    HAL_I2C_ERROR_DATA_TIMEOUT = 4,
+    HAL_I2C_ERROR_DATA_BUSY_TIMEOUT = 5,
+    HAL_I2C_ERROR_STOP_TIMEOUT = 6,
+    HAL_I2C_ERROR_INVALID_STATE = 7,
+    HAL_I2C_ERROR_DATA_NOT_READY = 8,
+    HAL_I2C_ERROR_NOT_SUPPORTED = 9
+} hal_i2c_error_t;
+
 /* Exported macros -----------------------------------------------------------*/
 #define CLOCK_SPEED_100KHZ         (uint32_t)100000
 #define CLOCK_SPEED_400KHZ         (uint32_t)400000

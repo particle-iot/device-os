@@ -450,7 +450,6 @@ int32_t hal_i2c_request_ex(hal_i2c_interface_t i2c, const hal_i2c_transmission_c
     }
 
     I2cLock lk(i2c);
-    uint32_t ret;
     size_t quantity = 0;
 
     if (!config) {
@@ -465,8 +464,7 @@ int32_t hal_i2c_request_ex(hal_i2c_interface_t i2c, const hal_i2c_transmission_c
     }
 
     i2cMap[i2c].transfer_state = TRANSFER_STATE_BUSY;
-    ret = nrfx_twim_rx(i2cMap[i2c].master, config->address, (uint8_t *)i2cMap[i2c].rx_buf, quantity);
-    if (ret) {
+    if (nrfx_twim_rx(i2cMap[i2c].master, config->address, (uint8_t *)i2cMap[i2c].rx_buf, quantity)) {
         // FIXME: There is a bug in nrfx_twim driver, if we call nrfx_twim_rx repeatedly and quickly,
         // p_cb->busy will be set and never cleared, in this case nrfx_twim_rx always returns busy error
         LOG_DEBUG(TRACE, "BUSY ERROR, restore twi.");
@@ -509,15 +507,13 @@ void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const 
 
 uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
     if (i2c >= HAL_PLATFORM_I2C_NUM) {
-        return 6;
+        return HAL_I2C_ERROR_NOT_SUPPORTED;
     }
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
-        return 7;
+        return HAL_I2C_ERROR_INVALID_STATE;
     }
 
     I2cLock lk(i2c);
-
-    uint32_t ret;
     uint8_t ret_code = 0;
 
     if (i2cMap[i2c].transfer_config.address != 0xff) {
@@ -525,23 +521,21 @@ uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* re
     }
 
     i2cMap[i2c].transfer_state = TRANSFER_STATE_BUSY;
-    ret = nrfx_twim_tx(i2cMap[i2c].master, i2cMap[i2c].address, (uint8_t *)i2cMap[i2c].tx_buf,
-                                    i2cMap[i2c].tx_index_tail, !stop);
-    if (ret) {
+    if (nrfx_twim_tx(i2cMap[i2c].master, i2cMap[i2c].address, (uint8_t *)i2cMap[i2c].tx_buf, i2cMap[i2c].tx_index_tail, !stop)) {
         hal_i2c_reset(i2c, 0, nullptr);
-        ret_code = 1;
+        ret_code = HAL_I2C_ERROR_START_TIMEOUT;
         goto ret;
     }
 
     if (!WAIT_TIMED(i2cMap[i2c].transfer_config.timeout_ms, i2cMap[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
         hal_i2c_reset(i2c, 0, nullptr);
-        ret_code = 2;
+        ret_code = HAL_I2C_ERROR_DATA_TIMEOUT;
         goto ret;
     }
 
     if (i2cMap[i2c].transfer_state != TRANSFER_STATE_IDLE) {
         hal_i2c_reset(i2c, 0, nullptr);
-        ret_code = 3;
+        ret_code = HAL_I2C_ERROR_STOP_TIMEOUT;
         goto ret;
     }
 
