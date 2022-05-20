@@ -83,5 +83,31 @@ USARTSerial& __fetch_global_Serial1()
     return serial1;
 }
 
+#if Wiring_Serial2
+USARTSerial& __fetch_global_Serial2()
+{
+	static USARTSerial serial2(HAL_USART_SERIAL2, acquireSerial2Buffer());
+	return serial2;
+}
+
+void serialEventRun2()
+{
+    __handleSerialEvent(Serial2, serialEvent2);
+}
+#endif
+
+#if Wiring_Serial3
+USARTSerial& __fetch_global_Serial3()
+{
+	static USARTSerial serial3(HAL_USART_SERIAL3, acquireSerial3Buffer());
+	return serial3;
+}
+
+void serialEventRun3()
+{
+    __handleSerialEvent(Serial3, serialEvent3);
+}
+#endif
+
 // optional SerialX is instantiated from libraries/SerialX/SerialX.h
 #endif // SPARK_WIRING_NO_USART_SERIAL
