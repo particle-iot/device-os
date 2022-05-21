@@ -175,7 +175,13 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
-    ncpPowerState(modemPowerState() ? NcpPowerState::ON : NcpPowerState::OFF);
+    if (modemPowerState()) {
+        serial_->on(true);
+        ncpPowerState(NcpPowerState::ON);
+    } else {
+        serial_->on(false);
+        ncpPowerState(NcpPowerState::OFF);
+    }
     return SYSTEM_ERROR_NONE;
 }
 
