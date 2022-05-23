@@ -337,13 +337,6 @@ public:
     }
 
     int endTransmission(uint8_t stop) {
-        /* 0: success
-         * 1: busy timeout upon entering endTransmission()
-         * 2: START bit generation timeout
-         * 3: end of address transmission timeout
-         * 4: data byte transfer timeout
-         * 5: data byte transfer succeeded, busy timeout immediately after
-         * 6: timeout waiting for peripheral to clear stop bit*/
         if (i2cInitStruct_.I2CMaster != I2C_MASTER_MODE) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
@@ -354,7 +347,7 @@ public:
         for (uint32_t i = 0; i < quantity; i++) {
             if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
                 reset();
-                return SYSTEM_ERROR_BUSY;
+                return SYSTEM_ERROR_I2C_FILL_DATA_TIMEOUT;
             }
             uint8_t data = 0xFF;
             if (txBuffer_.get(&data) != 1) {
@@ -374,7 +367,7 @@ public:
             }
             if (WAIT_TIMED_ROUTINE(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFE) == 0, checkAbrt) < 0) {
                 reset();
-                return SYSTEM_ERROR_TIMEOUT;
+                return SYSTEM_ERROR_I2C_TX_DATA_TIMEOUT;
             }
             if(checkAbrt()) {
                 LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
@@ -615,7 +608,7 @@ void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const 
 }
 
 uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
-    return hal_i2c_error_from(hal_i2c_end_transmission_ext(i2c, stop, reserved));
+    return hal_i2c_compat_error_from(hal_i2c_end_transmission_ext(i2c, stop, reserved));
 }
 
 int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {

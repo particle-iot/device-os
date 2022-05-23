@@ -128,19 +128,18 @@ void hal_i2c_set_callback_on_received_deprecated(void (*function)(int));
 void hal_i2c_set_callback_on_requested_deprecated(void (*function)(void));
 
 inline uint8_t __attribute__((always_inline))
-hal_i2c_error_from(int system_error) {
+hal_i2c_compat_error_from(int system_error) {
     // TODO: deprecate it
     // As per: https://docs.particle.io/reference/device-os/firmware/#endtransmission-
     switch (system_error) {
         case SYSTEM_ERROR_NONE: return 0;
-        case SYSTEM_ERROR_BUSY:
-        case SYSTEM_ERROR_TIMEOUT:
-        case SYSTEM_ERROR_INVALID_ARGUMENT:
-        case SYSTEM_ERROR_INVALID_STATE: return 1;
-        case SYSTEM_ERROR_INTERNAL:
-        case SYSTEM_ERROR_NOT_ENOUGH_DATA:
-        case SYSTEM_ERROR_CANCELLED:
-        default: return 4;
+        case SYSTEM_ERROR_I2C_BUS_BUSY: return 1;
+        case SYSTEM_ERROR_I2C_ARBITRATION_FAILED: return 2;
+        case SYSTEM_ERROR_I2C_TX_ADDR_TIMEOUT: return 3;
+        case SYSTEM_ERROR_I2C_FILL_DATA_TIMEOUT: return 4;
+        case SYSTEM_ERROR_I2C_TX_DATA_TIMEOUT: return 5;
+        case SYSTEM_ERROR_I2C_STOP_TIMEOUT: return 6;
+        default: return 7;
     }
 }
 

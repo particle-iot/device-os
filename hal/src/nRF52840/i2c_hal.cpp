@@ -506,7 +506,7 @@ void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const 
 }
 
 uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
-    return hal_i2c_error_from(hal_i2c_end_transmission_ext(i2c, stop, reserved));
+    return hal_i2c_compat_error_from(hal_i2c_end_transmission_ext(i2c, stop, reserved));
 }
 
 int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
@@ -527,13 +527,13 @@ int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* re
     i2cMap[i2c].transfer_state = TRANSFER_STATE_BUSY;
     if (nrfx_twim_tx(i2cMap[i2c].master, i2cMap[i2c].address, (uint8_t *)i2cMap[i2c].tx_buf, i2cMap[i2c].tx_index_tail, !stop)) {
         hal_i2c_reset(i2c, 0, nullptr);
-        ret_code = SYSTEM_ERROR_BUSY;
+        ret_code = SYSTEM_ERROR_I2C_FILL_DATA_TIMEOUT;
         goto ret;
     }
 
     if (!WAIT_TIMED(i2cMap[i2c].transfer_config.timeout_ms, i2cMap[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
         hal_i2c_reset(i2c, 0, nullptr);
-        ret_code = SYSTEM_ERROR_TIMEOUT;
+        ret_code = SYSTEM_ERROR_I2C_TX_DATA_TIMEOUT;
         goto ret;
     }
 
