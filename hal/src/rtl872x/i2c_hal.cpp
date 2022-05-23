@@ -345,7 +345,7 @@ public:
          * 5: data byte transfer succeeded, busy timeout immediately after
          * 6: timeout waiting for peripheral to clear stop bit*/
         if (i2cInitStruct_.I2CMaster != I2C_MASTER_MODE) {
-            return HAL_I2C_ERROR_INVALID_STATE;
+            return SYSTEM_ERROR_INVALID_STATE;
         }
 
         setAddress(transConfig_.address);
@@ -354,11 +354,11 @@ public:
         for (uint32_t i = 0; i < quantity; i++) {
             if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
                 reset();
-                return HAL_I2C_ERROR_BUSY_TIMEOUT;
+                return SYSTEM_ERROR_BUSY;
             }
             uint8_t data = 0xFF;
             if (txBuffer_.get(&data) != 1) {
-                return HAL_I2C_ERROR_DATA_NOT_READY;
+                return SYSTEM_ERROR_NOT_ENOUGH_DATA;
             }
             if(i >= quantity - 1) {
                 if (stop) {
@@ -374,15 +374,15 @@ public:
             }
             if (WAIT_TIMED_ROUTINE(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFE) == 0, checkAbrt) < 0) {
                 reset();
-                return HAL_I2C_ERROR_DATA_TIMEOUT;
+                return SYSTEM_ERROR_TIMEOUT;
             }
             if(checkAbrt()) {
                 LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
                 I2C_ClearAllINT(i2cDev_);
-                return HAL_I2C_ERROR_DATA_TIMEOUT;
+                return SYSTEM_ERROR_CANCELLED;
             }
         }
-        return HAL_I2C_ERROR_NONE;
+        return SYSTEM_ERROR_NONE;
     }
 
     void flush() {
@@ -615,13 +615,16 @@ void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const 
 }
 
 uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
-    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 7);
+    return hal_i2c_error_from(hal_i2c_end_transmission_ext(i2c, stop, reserved));
+}
+
+int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_INVALID_ARGUMENT);
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
-        return 8;
+        return SYSTEM_ERROR_INVALID_STATE;
     }
     I2cLock lk(instance);
-    instance->endTransmission(stop);
-    return 0;
+    return instance->endTransmission(stop);
 }
 
 uint32_t hal_i2c_write(hal_i2c_interface_t i2c, uint8_t data, void* reserved) {

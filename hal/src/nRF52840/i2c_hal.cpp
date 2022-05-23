@@ -506,15 +506,19 @@ void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const 
 }
 
 uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
+    return hal_i2c_error_from(hal_i2c_end_transmission_ext(i2c, stop, reserved));
+}
+
+int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
     if (i2c >= HAL_PLATFORM_I2C_NUM) {
-        return HAL_I2C_ERROR_NOT_SUPPORTED;
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
-        return HAL_I2C_ERROR_INVALID_STATE;
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     I2cLock lk(i2c);
-    uint8_t ret_code = 0;
+    uint8_t ret_code = SYSTEM_ERROR_NONE;
 
     if (i2cMap[i2c].transfer_config.address != 0xff) {
         stop = i2cMap[i2c].transfer_config.flags & HAL_I2C_TRANSMISSION_FLAG_STOP;
@@ -523,19 +527,19 @@ uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* re
     i2cMap[i2c].transfer_state = TRANSFER_STATE_BUSY;
     if (nrfx_twim_tx(i2cMap[i2c].master, i2cMap[i2c].address, (uint8_t *)i2cMap[i2c].tx_buf, i2cMap[i2c].tx_index_tail, !stop)) {
         hal_i2c_reset(i2c, 0, nullptr);
-        ret_code = HAL_I2C_ERROR_START_TIMEOUT;
+        ret_code = SYSTEM_ERROR_BUSY;
         goto ret;
     }
 
     if (!WAIT_TIMED(i2cMap[i2c].transfer_config.timeout_ms, i2cMap[i2c].transfer_state == TRANSFER_STATE_BUSY)) {
         hal_i2c_reset(i2c, 0, nullptr);
-        ret_code = HAL_I2C_ERROR_DATA_TIMEOUT;
+        ret_code = SYSTEM_ERROR_TIMEOUT;
         goto ret;
     }
 
     if (i2cMap[i2c].transfer_state != TRANSFER_STATE_IDLE) {
         hal_i2c_reset(i2c, 0, nullptr);
-        ret_code = HAL_I2C_ERROR_STOP_TIMEOUT;
+        ret_code = SYSTEM_ERROR_INTERNAL;
         goto ret;
     }
 

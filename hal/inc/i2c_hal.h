@@ -24,6 +24,7 @@
 #include "pinmap_hal.h"
 #include "platforms.h"
 #include "system_tick_hal.h"
+#include "system_error.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum hal_i2c_mode_t {
@@ -74,20 +75,6 @@ typedef enum hal_i2c_state_t {
     HAL_I2C_STATE_SUSPENDED
 } hal_i2c_state_t;
 
-// As per: https://docs.particle.io/reference/device-os/firmware/#endtransmission-
-typedef enum hal_i2c_error_t {
-    HAL_I2C_ERROR_NONE = 0,
-    HAL_I2C_ERROR_BUSY_TIMEOUT = 1,
-    HAL_I2C_ERROR_START_TIMEOUT = 2,
-    HAL_I2C_ERROR_ADDR_TIMEOUT = 3,
-    HAL_I2C_ERROR_DATA_TIMEOUT = 4,
-    HAL_I2C_ERROR_DATA_BUSY_TIMEOUT = 5,
-    HAL_I2C_ERROR_STOP_TIMEOUT = 6,
-    HAL_I2C_ERROR_INVALID_STATE = 7,
-    HAL_I2C_ERROR_DATA_NOT_READY = 8,
-    HAL_I2C_ERROR_NOT_SUPPORTED = 9
-} hal_i2c_error_t;
-
 /* Exported macros -----------------------------------------------------------*/
 #define CLOCK_SPEED_100KHZ         (uint32_t)100000
 #define CLOCK_SPEED_400KHZ         (uint32_t)400000
@@ -109,6 +96,7 @@ uint32_t hal_i2c_request(hal_i2c_interface_t i2c, uint8_t address, uint8_t quant
 int32_t hal_i2c_request_ex(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* config, void* reserved);
 void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const hal_i2c_transmission_config_t* config);
 uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved);
+int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* reserved);
 uint32_t hal_i2c_write(hal_i2c_interface_t i2c, uint8_t data, void* reserved);
 int32_t hal_i2c_available(hal_i2c_interface_t i2c, void* reserved);
 int32_t hal_i2c_read(hal_i2c_interface_t i2c, void* reserved);
@@ -139,6 +127,22 @@ bool hal_i2c_is_enabled_deprecated(void);
 void hal_i2c_set_callback_on_received_deprecated(void (*function)(int));
 void hal_i2c_set_callback_on_requested_deprecated(void (*function)(void));
 
+inline uint8_t __attribute__((always_inline))
+hal_i2c_error_from(int system_error) {
+    // TODO: deprecate it
+    // As per: https://docs.particle.io/reference/device-os/firmware/#endtransmission-
+    switch (system_error) {
+        case SYSTEM_ERROR_NONE: return 0;
+        case SYSTEM_ERROR_BUSY:
+        case SYSTEM_ERROR_TIMEOUT:
+        case SYSTEM_ERROR_INVALID_ARGUMENT:
+        case SYSTEM_ERROR_INVALID_STATE: return 1;
+        case SYSTEM_ERROR_INTERNAL:
+        case SYSTEM_ERROR_NOT_ENOUGH_DATA:
+        case SYSTEM_ERROR_CANCELLED:
+        default: return 4;
+    }
+}
 
 #include "i2c_hal_compat.h"
 
