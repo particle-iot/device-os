@@ -303,15 +303,6 @@ void establish_cloud_connection()
             return;
         }
 
-#if PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
-        const CellularNetProvData provider_data = cellular_network_provider_data_get(NULL);
-        protocol::connection_properties_t conn_prop = {};
-        conn_prop.size = sizeof(conn_prop);
-        conn_prop.keepalive_source = protocol::KeepAliveSource::SYSTEM;
-        spark_set_connection_property(protocol::Connection::PING, (provider_data.keepalive * 1000), &conn_prop, nullptr);
-        spark_cloud_udp_port_set(provider_data.port);
-#endif // PLATFORM_ID==PLATFORM_ELECTRON_PRODUCTION
-
         INFO("Cloud: connecting");
         const auto diag = CloudDiagnostics::instance();
         diag->status(CloudDiagnostics::CONNECTING);

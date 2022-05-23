@@ -170,7 +170,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
         }
         SPARK_FLASH_UPDATE = 1; // TODO: Get rid of legacy state variables
         updating_ = true;
-        // Generate a system event
+        // Generate system events
         fileDesc_ = FileTransfer::Descriptor();
         fileDesc_.file_length = fileSize;
         fileDesc_.file_address = HAL_OTA_FlashAddress();
@@ -178,6 +178,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
         fileDesc_.chunk_address = fileDesc_.file_address;
         fileDesc_.store = FileTransfer::Store::FIRMWARE;
         system_notify_event(firmware_update, firmware_update_begin, &fileDesc_);
+        system_notify_event(firmware_update_status, system_get_update_status(nullptr));
     }
     if (partialSize) {
         *partialSize = fileOffset;
@@ -430,6 +431,7 @@ void FirmwareUpdate::endUpdate(bool ok) {
     SPARK_FLASH_UPDATE = 0;
     updating_ = false;
     system_notify_event(firmware_update, ok ? firmware_update_complete : firmware_update_failed, &fileDesc_);
+    system_notify_event(firmware_update_status, system_get_update_status(nullptr));
 }
 
 } // namespace system

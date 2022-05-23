@@ -23,19 +23,12 @@
 #include "system_network.h"
 #include "common.h"
 
-#if HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 #include "ota_flash_hal_impl.h"
-#else
-#include "ota_flash_hal_stm32f2xx.h"
-#endif
 
 #include "delay_hal.h"
 
 #include "protocol_defs.h" // For UpdateFlag enum
 #include "nanopb_misc.h"
-#if HAL_PLATFORM_COMPRESSED_BINARIES
-#include "miniz.h"
-#endif // HAL_PLATFORM_COMPRESSED_BINARIES
 #include "scope_guard.h"
 #include "check.h"
 
@@ -59,11 +52,6 @@ namespace {
 // TODO: Move handling of compressed firmware binaries to the common system code
 struct FirmwareUpdate {
     FileTransfer::Descriptor descr; // File transfer descriptor
-#if HAL_PLATFORM_COMPRESSED_BINARIES
-    std::unique_ptr<tinfl_decompressor> decomp; // Decompressor context
-    std::unique_ptr<char[]> decompBuf; // Intermediate buffer for decompressed data
-    size_t decompBufOffs; // Offset in the buffer for decompressed data
-#endif // HAL_PLATFORM_COMPRESSED_BINARIES
     size_t bytesLeft; // Number of remaining bytes to receive
     size_t bytesWritten; // Number of bytes written to the OTA section
 };
@@ -121,19 +109,6 @@ int startFirmwareUpdateRequest(ctrl_request* req) {
     CHECK_TRUE(update, SYSTEM_ERROR_NO_MEMORY);
     if (pbReq.format == PB(FileFormat_BIN)) {
         update->descr.file_length = pbReq.size;
-#if HAL_PLATFORM_COMPRESSED_BINARIES
-    } else if (pbReq.format == PB(FileFormat_MINIZ)) {
-        update->decomp.reset(new(std::nothrow) tinfl_decompressor);
-        CHECK_TRUE(update->decomp, SYSTEM_ERROR_NO_MEMORY);
-        tinfl_init(update->decomp.get());
-        update->decompBuf.reset(new(std::nothrow) char[TINFL_LZ_DICT_SIZE]);
-        CHECK_TRUE(update->decompBuf, SYSTEM_ERROR_NO_MEMORY);
-        update->decompBufOffs = 0;
-        // FIXME: The size of the decompressed data is unknown at this point, so we're setting
-        // the target file size to the maximum value to make sure the system erases the entire
-        // OTA section
-        update->descr.file_length = module_ota.maximum_size;
-#endif // HAL_PLATFORM_COMPRESSED_BINARIES
     } else {
         LOG(ERROR, "Unknown binary format: %u", (unsigned)pbReq.format);
         return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -203,46 +178,13 @@ int firmwareUpdateDataRequest(ctrl_request* req) {
         return SYSTEM_ERROR_OUT_OF_RANGE;
     }
 
-#if HAL_PLATFORM_COMPRESSED_BINARIES
-    if (g_update->decomp) {
-        size_t srcOffs = 0;
-        for (;;) {
-            size_t srcBytes = pbData.size - srcOffs;
-            size_t destBytes = TINFL_LZ_DICT_SIZE - g_update->decompBufOffs;
-            const auto stat = tinfl_decompress(g_update->decomp.get(), (const mz_uint8*)pbData.data + srcOffs, &srcBytes,
-                    (mz_uint8*)g_update->decompBuf.get(), (mz_uint8*)g_update->decompBuf.get() + g_update->decompBufOffs,
-                    &destBytes, (g_update->bytesLeft > srcBytes) ? TINFL_FLAG_HAS_MORE_INPUT : 0);
-            if (stat < 0) {
-                return SYSTEM_ERROR_BAD_DATA;
-            }
-            srcOffs += srcBytes;
-            g_update->bytesLeft -= srcBytes;
-            if (destBytes > 0) {
-                g_update->descr.chunk_size = destBytes;
-                const int ret = Spark_Save_Firmware_Chunk(g_update->descr,
-                        (const uint8_t*)g_update->decompBuf.get() + g_update->decompBufOffs, nullptr);
-                if (ret != 0) {
-                    return ret;
-                }
-                g_update->decompBufOffs = (g_update->decompBufOffs + destBytes) % TINFL_LZ_DICT_SIZE;
-                g_update->descr.chunk_address += destBytes;
-                g_update->bytesWritten += destBytes;
-            }
-            if (stat != TINFL_STATUS_HAS_MORE_OUTPUT) {
-                break;
-            }
-        }
-    } else
-#endif // HAL_PLATFORM_COMPRESSED_BINARIES
-    {
-        g_update->descr.chunk_size = pbData.size;
-        const int ret = Spark_Save_Firmware_Chunk(g_update->descr, (const uint8_t*)pbData.data, nullptr);
-        if (ret != 0) {
-            return ret;
-        }
-        g_update->descr.chunk_address += pbData.size;
-        g_update->bytesLeft -= pbData.size;
+    g_update->descr.chunk_size = pbData.size;
+    const int ret = Spark_Save_Firmware_Chunk(g_update->descr, (const uint8_t*)pbData.data, nullptr);
+    if (ret != 0) {
+        return ret;
     }
+    g_update->descr.chunk_address += pbData.size;
+    g_update->bytesLeft -= pbData.size;
 
     guard.dismiss();
     return 0;
@@ -269,12 +211,6 @@ int getModuleInfo(ctrl_request* req) {
             if (type == PB(FirmwareModuleType_INVALID_FIRMWARE_MODULE)) {
                 continue;
             }
-#ifdef HYBRID_BUILD
-            // FIXME: Avoid enumerating the system module twice in case of a hybrid build
-            if (type == PB(FirmwareModuleType_MONO_FIRMWARE)) {
-                continue;
-            }
-#endif // HYBRID_BUILD
             PB(GetModuleInfoReply_Module) pbModule = {};
             pbModule.type = type;
             pbModule.index = module.info.module_index;

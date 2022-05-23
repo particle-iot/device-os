@@ -51,7 +51,7 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
     CellularDevice devInfo = {};
     devInfo.size = sizeof(devInfo);
     assertEqual(0, cellular_device_info(&devInfo, nullptr));
-    // Electrons don't take too well to being switched to minimum functionality mode
+    // R410 based devices don't take too well to being switched to minimum functionality mode
     // and perform a reset. Deactivating internal context or disconnecting (COPS=2) seems
     // to work better.
     if (devInfo.dev == DEV_SARA_R410) {

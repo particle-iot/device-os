@@ -1,6 +1,6 @@
 suite('Multiple OTA updates with disabled resets');
 
-platform('gen2', 'gen3');
+platform('gen3');
 systemThread('enabled');
 
 const { HalModuleParser, ModuleInfo, updateModulePrefix, updateModuleSuffix, updateModuleCrc32 } = require('binary-version-reader');

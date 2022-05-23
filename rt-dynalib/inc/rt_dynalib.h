@@ -56,16 +56,10 @@ DYNALIB_FN(13, rt, _free_r, void(struct _reent*, void*))
 DYNALIB_FN(14, rt, _realloc_r, void*(struct _reent*, void*, size_t))
 DYNALIB_FN(15, rt, __errno, int*())
 
-// IMPORTANT: It's impossible to add additional functions to rt dynalib
-// on Gen 2 platforms without breaking inter-module dependencies.
-// RT is currently being imported into system-part1 from system-part2,
-// which is the reverse direction.
-
 #if defined(DYNALIB_EXPORT) || (defined(DYNALIB_IMPORT) && !defined(RT_DYNALIB_NO_DEPENDENCY_BREAKING_IMPORTS))
 DYNALIB_FN(16, rt, __assert_func, void(const char*, int, const char*, const char*))
 DYNALIB_FN(17, rt, newlib_impure_ptr_callback, void(void (*)(struct _reent*, size_t, uint32_t, void*), void*))
-// Electron has some of these exported from a different system part through services2 dynalib
-// Photon/P1 do not have enough space in system-part2
+
 #if HAL_PLATFORM_EXPORT_STDLIB_RT_DYNALIB
 DYNALIB_FN(18, rt, strftime, size_t(char* __restrict, size_t, const char* __restrict, const struct tm* __restrict))
 DYNALIB_FN(19, rt, localtime_r, struct tm*(const time_t* __restrict, struct tm* __restrict))

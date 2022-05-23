@@ -1,9 +1,11 @@
 #!/bin/bash
 #
 # Top-level script for running unit tests.
-# for manual testing run
-# . install_boost.sh
-# ./unit_tests.sh
+#
+# For manual testing from device-os/ run
+# source ci/install_boost.sh
+# source ci/build_boost.sh (once)
+# ci/unit_tests.sh
 
 set -x
 

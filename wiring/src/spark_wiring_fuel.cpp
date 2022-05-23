@@ -86,7 +86,8 @@ boolean FuelGauge::begin()
     return i2c_.isEnabled();
 }
 
-namespace particle { namespace detail {
+namespace particle {
+namespace detail {
     // Converts VCELL_REGISTER reading to Battery Voltage
     float _getVCell(byte MSB, byte LSB) {
         // VCELL = 12-bit value, 1.25mV (1V/800) per bit
@@ -95,17 +96,25 @@ namespace particle { namespace detail {
     }
 
     // Converts SOC_REGISTER reading to state of charge of the cell as a percentage
-    float _getSoC(byte MSB, byte LSB) {
+    float _getSoC(byte MSB, byte LSB, byte soc_bits_precision) {
+        float soc_percent = 0;
+
+        // Maxim ModelGauge doc only mentions 18 and 19 bit
         // MSB is the whole number
         // LSB is the decimal, resolution in units 1/256%
-        float decimal = LSB / 256.0;
-        return MSB + decimal;
+        if (soc_bits_precision == particle::power::SOC_19_BIT_PRECISION) {
+            soc_percent = (((uint32_t)MSB << 8) + LSB) / 512.0f; // per datasheet
+        } else { // default to 18-bit calculation
+            soc_percent = (((uint32_t)MSB << 8) + LSB) / 256.0f; // per datasheet
+        }
+        return soc_percent;
+
     }
-}} // namespace particle detail
+} // namespace detail
+} // namespace particle
 
 // Read and return the cell voltage
 float FuelGauge::getVCell() {
-
     byte MSB = 0;
     byte LSB = 0;
 
@@ -117,14 +126,24 @@ float FuelGauge::getVCell() {
 
 // Read and return the state of charge of the cell
 float FuelGauge::getSoC() {
-
     byte MSB = 0;
     byte LSB = 0;
 
-    if(readRegister(SOC_REGISTER, MSB, LSB) != SYSTEM_ERROR_NONE) {
+    if (readRegister(SOC_REGISTER, MSB, LSB) != SYSTEM_ERROR_NONE) {
         return -1.0f;
     }
-    return particle::detail::_getSoC(MSB, LSB);
+
+    // Load SoC Bit Precision from SystemPowerConfiguration
+    int soc_bits = particle::power::DEFAULT_SOC_18_BIT_PRECISION;
+#if HAL_PLATFORM_POWER_MANAGEMENT
+    hal_power_config config = {};
+    config.size = sizeof(config);
+    if (system_power_management_get_config(&config, nullptr) == SYSTEM_ERROR_NONE) {
+        soc_bits = config.soc_bits;
+    };
+#endif
+
+    return particle::detail::_getSoC(MSB, LSB, soc_bits);
 }
 
 float FuelGauge::getNormalizedSoC() {
@@ -155,6 +174,7 @@ float FuelGauge::getNormalizedSoC() {
 
     return normalized * 100.0f;
 #else
+    // TODO: should normalized SoC use the raw SoC when there is no PMIC ?
     return 0.0f;
 #endif // HAL_PLATFORM_PMIC_BQ24195
 }

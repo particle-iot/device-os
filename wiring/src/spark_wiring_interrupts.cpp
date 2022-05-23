@@ -140,31 +140,6 @@ void interrupts(void)
 /*
  * System Interrupts
  */
-bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler)
-{
-    hal_interrupt_callback_t callback;
-    callback.handler = call_wiring_interrupt_handler;
-    wiring_interrupt_handler_t& h = handler;
-    callback.data = new wiring_interrupt_handler_t(h);
-    hal_interrupt_callback_t prev = {};
-    const bool ok = hal_interrupt_set_system_handler(irq, &callback, &prev, NULL);
-    delete (wiring_interrupt_handler_t*)prev.data;
-    return ok;
-}
-
-/**
- * Removes all registered handlers from the given system interrupt.
- * @param irq   The interrupt from which all handlers are removed.
- * @return {@code true} if handlers were removed.
- */
-bool detachSystemInterrupt(hal_irq_t irq)
-{
-    hal_interrupt_callback_t prev = {};
-    const bool ok = hal_interrupt_set_system_handler(irq, NULL, &prev, NULL);
-    delete (wiring_interrupt_handler_t*)prev.data;
-    return ok;
-}
-
 bool attachInterruptDirect(IRQn_Type irq, hal_interrupt_direct_handler_t handler, bool enable)
 {
     const bool ok = !hal_interrupt_set_direct_handler(irq, handler, enable ? HAL_INTERRUPT_DIRECT_FLAG_ENABLE : HAL_INTERRUPT_DIRECT_FLAG_NONE, nullptr);

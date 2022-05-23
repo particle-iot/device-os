@@ -34,11 +34,7 @@
 
 #include "dct.h"
 
-#if HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 #include "ota_flash_hal_impl.h"
-#else
-#include "ota_flash_hal_stm32f2xx.h"
-#endif
 
 #if HAL_PLATFORM_NCP
 #include "network/ncp/wifi/ncp.h"
@@ -126,9 +122,6 @@ int getNcpFirmwareVersion(ctrl_request* req) {
 
 int getSystemCapabilities(ctrl_request* req) {
     PB(GetSystemCapabilitiesReply) pbRep = {};
-#if HAL_PLATFORM_COMPRESSED_BINARIES
-    pbRep.flags |= PB(SystemCapabilityFlag_COMPRESSED_OTA);
-#endif
     CHECK(encodeReplyMessage(req, PB(GetSystemCapabilitiesReply_fields), &pbRep));
     return 0;
 }
@@ -171,41 +164,25 @@ int getDeviceMode(ctrl_request* req) {
 }
 
 int setDeviceSetupDone(ctrl_request* req) {
-#if HAL_PLATFORM_DCT_SETUP_DONE
+    // This functionality is currently deprecated.
+    // Do not perform any DCT accesses. Instead return an appropriate error code
     PB(SetDeviceSetupDoneRequest) pbReq = {};
     int ret = decodeRequestMessage(req, PB(SetDeviceSetupDoneRequest_fields), &pbReq);
     if (ret != 0) {
         return ret;
     }
-    LOG_DEBUG(TRACE, "%s device setup flag", pbReq.done ? "Setting" : "Clearing");
-    const uint8_t val = pbReq.done ? 0x01 : 0xff;
-    ret = dct_write_app_data(&val, DCT_SETUP_DONE_OFFSET, 1);
-    if (ret != 0) {
-        return ret;
-    }
-    return 0;
-#else
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif // HAL_PLATFORM_DCT_SETUP_DONE
+    return (pbReq.done ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_NOT_SUPPORTED);
 }
 
 int isDeviceSetupDone(ctrl_request* req) {
-#if HAL_PLATFORM_DCT_SETUP_DONE
-    uint8_t val = 0;
-    int ret = dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
-    if (ret != 0) {
-        return ret;
-    }
     PB(IsDeviceSetupDoneReply) pbRep = {};
-    pbRep.done = (val == 0x01) ? true : false;
-    ret = encodeReplyMessage(req, PB(IsDeviceSetupDoneReply_fields), &pbRep);
+    // This functionality is currently deprecated. Hard code setup-done to always return true
+    pbRep.done = true;
+    int ret = encodeReplyMessage(req, PB(IsDeviceSetupDoneReply_fields), &pbRep);
     if (ret != 0) {
         return ret;
     }
     return 0;
-#else
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif // HAL_PLATFORM_DCT_SETUP_DONE
 }
 
 int setStartupMode(ctrl_request* req) {
@@ -259,131 +236,6 @@ int echo(ctrl_request* req) {
     return 0;
 }
 
-#if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
-
-int handleSetSecurityKeyRequest(ctrl_request* req) {
-    particle_ctrl_SetSecurityKeyRequest pbReq = {};
-    DecodedString pbKey(&pbReq.data);
-    int ret = decodeRequestMessage(req, particle_ctrl_SetSecurityKeyRequest_fields, &pbReq);
-    if (ret == 0) {
-        ret = store_security_key_data((security_key_type)pbReq.type, pbKey.data, pbKey.size);
-    }
-    return ret;
-}
-
-int handleGetSecurityKeyRequest(ctrl_request* req) {
-    particle_ctrl_GetSecurityKeyRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_GetSecurityKeyRequest_fields, &pbReq);
-    if (ret == 0) {
-        particle_ctrl_GetSecurityKeyReply pbRep = {};
-        EncodedString pbKey(&pbRep.data);
-        ret = lock_security_key_data((security_key_type)pbReq.type, &pbKey.data, &pbKey.size);
-        if (ret == 0) {
-            ret = encodeReplyMessage(req, particle_ctrl_GetSecurityKeyReply_fields, &pbRep);
-            unlock_security_key_data((security_key_type)pbReq.type);
-        }
-    }
-
-    return ret;
-}
-
-int handleSetServerAddressRequest(ctrl_request* req) {
-    particle_ctrl_SetServerAddressRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_SetServerAddressRequest_fields, &pbReq);
-    if (ret == 0) {
-        ServerAddress addr = {};
-        // Check if the address string contains an IP address
-        // TODO: Move IP address parsing/encoding to separate functions
-        unsigned n1 = 0, n2 = 0, n3 = 0, n4 = 0;
-        if (sscanf(pbReq.address, "%u.%u.%u.%u", &n1, &n2, &n3, &n4) == 4) {
-            addr.addr_type = IP_ADDRESS;
-            addr.ip = ((n1 & 0xff) << 24) | ((n2 & 0xff) << 16) | ((n3 & 0xff) << 8) | (n4 & 0xff);
-        } else {
-            const size_t n = strlen(pbReq.address);
-            if (n < sizeof(ServerAddress::domain)) {
-                addr.addr_type = DOMAIN_NAME;
-                addr.length = n;
-                memcpy(addr.domain, pbReq.address, n);
-            } else {
-                ret = SYSTEM_ERROR_TOO_LARGE;
-            }
-        }
-        if (ret == 0) {
-            addr.port = pbReq.port;
-            ret = store_server_address((server_protocol_type)pbReq.protocol, &addr);
-        }
-    }
-    return ret;
-}
-
-int handleGetServerAddressRequest(ctrl_request* req) {
-    particle_ctrl_GetServerAddressRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_GetServerAddressRequest_fields, &pbReq);
-    if (ret == 0) {
-        ServerAddress addr = {};
-        ret = load_server_address((server_protocol_type)pbReq.protocol, &addr);
-        if (ret == 0) {
-            if (addr.addr_type == IP_ADDRESS) {
-                const unsigned n1 = (addr.ip >> 24) & 0xff,
-                        n2 = (addr.ip >> 16) & 0xff,
-                        n3 = (addr.ip >> 8) & 0xff,
-                        n4 = addr.ip & 0xff;
-                const int n = snprintf(addr.domain, sizeof(addr.domain), "%u.%u.%u.%u", n1, n2, n3, n4);
-                if (n > 0 && (size_t)n < sizeof(addr.domain)) {
-                    addr.length = n;
-                } else {
-                    ret = SYSTEM_ERROR_TOO_LARGE;
-                }
-            }
-            if (ret == 0) {
-                particle_ctrl_GetServerAddressReply pbRep = {};
-                EncodedString pbAddr(&pbRep.address, addr.domain, addr.length);
-                pbRep.port = addr.port;
-                ret = encodeReplyMessage(req, particle_ctrl_GetServerAddressReply_fields, &pbRep);
-            }
-        }
-    }
-    return ret;
-}
-
-int handleSetServerProtocolRequest(ctrl_request* req) {
-    particle_ctrl_SetServerProtocolRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_SetServerProtocolRequest_fields, &pbReq);
-    if (ret == 0) {
-        bool udpEnabled = false;
-        if (pbReq.protocol == particle_ctrl_ServerProtocolType_TCP_PROTOCOL ||
-                (udpEnabled = (pbReq.protocol == particle_ctrl_ServerProtocolType_UDP_PROTOCOL))) {
-            ret = HAL_Feature_Set(FEATURE_CLOUD_UDP, udpEnabled);
-        } else {
-            ret = SYSTEM_ERROR_NOT_SUPPORTED;
-        }
-    }
-    return ret;
-}
-
-int handleGetServerProtocolRequest(ctrl_request* req) {
-    particle_ctrl_GetServerProtocolReply pbRep = {};
-    if (HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
-        pbRep.protocol = particle_ctrl_ServerProtocolType_UDP_PROTOCOL;
-    } else {
-        pbRep.protocol = particle_ctrl_ServerProtocolType_TCP_PROTOCOL;
-    }
-    const int ret = encodeReplyMessage(req, particle_ctrl_GetServerProtocolReply_fields, &pbRep);
-    return ret;
-}
-
-int handleSetSoftapSsidRequest(ctrl_request* req) {
-    particle_ctrl_SetSoftApSsidRequest pbReq = {};
-    int ret = decodeRequestMessage(req, particle_ctrl_SetSoftApSsidRequest_fields, &pbReq);
-    if (ret == 0 && (!HAL_Set_System_Config(SYSTEM_CONFIG_SOFTAP_PREFIX, pbReq.prefix, strlen(pbReq.prefix)) ||
-            !HAL_Set_System_Config(SYSTEM_CONFIG_SOFTAP_SUFFIX, pbReq.suffix, strlen(pbReq.suffix)))) {
-        ret = SYSTEM_ERROR_UNKNOWN;
-    }
-    return ret;
-}
-
-#else // HAL_PLATFORM_NRF52840
-
 // TODO
 int handleSetSecurityKeyRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -412,8 +264,6 @@ int handleGetServerProtocolRequest(ctrl_request*) {
 int handleSetSoftapSsidRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
-
-#endif
 
 } // particle::control::config
 

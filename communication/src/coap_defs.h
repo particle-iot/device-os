@@ -78,8 +78,8 @@ enum class CoapCode {
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapCode)
 
-// RFC 7252, 5.10. Option Definitions
 enum class CoapOption {
+    // RFC 7252, 5.10. Option Definitions
     IF_MATCH = 1,
     URI_HOST = 3,
     ETAG = 4,
@@ -94,7 +94,11 @@ enum class CoapOption {
     LOCATION_QUERY = 20,
     PROXY_URI = 35,
     PROXY_SCHEME = 39,
-    SIZE1 = 60
+    SIZE1 = 60,
+    // RFC 7959, 2.1. The Block2 and Block1 Options; 4. The Size2 and Size1 Options
+    BLOCK2 = 23,
+    BLOCK1 = 27,
+    SIZE2 = 28
 };
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapOption)

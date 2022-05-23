@@ -236,18 +236,19 @@ test(LED_11_MirroringWorks) {
     RGB.control(true);
     RGB.brightness(255);
 
-#if HAL_PLATFORM_GEN == 2
-    const hal_pin_t pins[3] = {A4, A5, A7};
-#elif HAL_PLATFORM_NRF52840
-# if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#if HAL_PLATFORM_NRF52840
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
     const hal_pin_t pins[3] = {A4, A5, A3};
-# else
+#else
     // SoM
     const hal_pin_t pins[3] = {A1, A0, A7};
-# endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#endif // PLATFORM_ID != PLATFORM_ARGON && PLATFORM_ID != PLATFORM_BORON
 #elif HAL_PLATFORM_RTL872X
     const hal_pin_t pins[3] = {A2, A5, S0};
+#else
+#error "Unsupported platform"
 #endif
+
     // Mirror to r=A4, g=A5, b=A7. Non-inverted (common cathode).
     // RGB led mirroring in bootloader is not enabled
     RGB.mirrorTo(pins[0], pins[1], pins[2], false, false);

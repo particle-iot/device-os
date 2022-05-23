@@ -219,23 +219,25 @@ test(02_BleSetDeviceAddressShouldBePublicOrRandomStatic) {
     setAddr.addr_type = BLE_SIG_ADDR_TYPE_RANDOM_STATIC;
     memcpy(setAddr.addr, macAddr, 6);
     ret = ble_gap_set_device_address(&setAddr);
-#if !HAL_PLATFORM_NRF52840
-    assertEqual(ret, 0);
-#else
+#if HAL_PLATFORM_NRF52840
     // nRF52840 must set the random static address to be as the same
     // as the populated random address during IC manufacturing. Otherwise, it will fail.
     // Upon BLE stack being initialized, the device address of type is random static already.
     assertNotEqual(ret, 0);
+#else
+    #error "Unsupported platform"
 #endif
 
     // Get device address
     ret = ble_gap_get_device_address(&getAddr);
     assertEqual(ret, 0);
-#if !HAL_PLATFORM_NRF52840
-    assertEqual(getAddr.addr_type, BLE_SIG_ADDR_TYPE_RANDOM_STATIC);
-#else
+#if HAL_PLATFORM_NRF52840
     assertEqual(getAddr.addr_type, BLE_SIG_ADDR_TYPE_PUBLIC);
+#else
+    #error "Unsupported platform"
 #endif
+
+
 }
 
 test(03_BleSetDeviceNameWithoutNullTerminated) {

@@ -202,6 +202,9 @@ test(spi_lock)
 
 test(spi_hal_backwards_compatibility)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    // These APIs are known deprecated APIs, we don't need to see this warning in tests
     HAL_SPI_Interface spi = HAL_SPI_INTERFACE1;
     SPI_Mode mode = SPI_MODE_MASTER;
     HAL_SPI_TransferStatus status;
@@ -228,4 +231,5 @@ test(spi_hal_backwards_compatibility)
     API_COMPILE(HAL_SPI_Acquire(spi, &config));
     API_COMPILE(HAL_SPI_Release(spi, NULL));
 #endif
+#pragma GCC diagnostic pop
 }

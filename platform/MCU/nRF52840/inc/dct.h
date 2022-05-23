@@ -106,7 +106,7 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t alt_device_private_key[192]; // alternative device private key
     uint8_t alt_server_public_key[192];
     uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
-    uint8_t device_id[12];                               // the STM32 device ID
+    uint8_t device_id[12];                               // the device ID
     uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
     hal_button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
     hal_led_config_t led_mirror[4];          // LED mirroring configuration, to be used by bootloader
@@ -151,49 +151,56 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_THEME_OFFSET (offsetof(application_dct_t, led_theme))
 #define DCT_EAP_CONFIG_OFFSET (offsetof(application_dct_t, eap_config))
 #define DCT_DEVICE_SECRET_OFFSET (offsetof(application_dct_t, device_secret))
-#define DCT_SETUP_DONE_OFFSET (offsetof(application_dct_t, setup_done))
+// #define DCT_SETUP_DONE_OFFSET (offsetof(application_dct_t, setup_done))
 #define DCT_NCP_ID_OFFSET (offsetof(application_dct_t, ncp_id))
 #define DCT_POWER_CONFIG_OFFSET (offsetof(application_dct_t, power_config))
 #define DCT_RADIO_ANTENNA_OFFSET (offsetof(application_dct_t, radio_antenna))
 
-#define DCT_SYSTEM_FLAGS_SIZE  (sizeof(application_dct_t::system_flags))
-#define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::device_private_key))
-#define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::device_public_key))
-#define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::server_public_key))
-#define DCT_IP_CONFIG_SIZE (sizeof(application_dct_t::ip_config))
-#define DCT_OTA_UPDATE_FLAG_SIZE  (sizeof(application_dct_t::ota_update_flag))
-#define DCT_FEATURE_FLAGS_SIZE  (sizeof(application_dct_t::feature_flags))
-#define DCT_COUNTRY_CODE_SIZE  (sizeof(application_dct_t::country_code))
-#define DCT_CLAIM_CODE_SIZE  (sizeof(application_dct_t::claim_code))
-#define DCT_SSID_PREFIX_SIZE  (sizeof(application_dct_t::ssid_prefix))
-#define DCT_DNS_RESOLVE_SIZE  (sizeof(application_dct_t::dns_resolve))
-#define DCT_DEVICE_CODE_SIZE  (sizeof(application_dct_t::device_code))
-#define DCT_DEVICE_CLAIMED_SIZE  (sizeof(application_dct_t::claimed))
-#define DCT_FLASH_MODULES_SIZE  (sizeof(application_dct_t::flash_modules))
-#define DCT_PRODUCT_STORE_SIZE  (sizeof(application_dct_t::product_store))
-#define DCT_ANTENNA_SELECTION_SIZE  (sizeof(application_dct_t::antenna_selection))
-#define DCT_CLOUD_TRANSPORT_SIZE  (sizeof(application_dct_t::cloud_transport))
-#define DCT_ALT_DEVICE_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::alt_device_public_key))
-#define DCT_ALT_DEVICE_PRIVATE_KEY_SIZE  (sizeof(application_dct_t::alt_device_private_key))
-#define DCT_ALT_SERVER_PUBLIC_KEY_SIZE  (sizeof(application_dct_t::alt_server_public_key))
-#define DCT_ALT_SERVER_ADDRESS_SIZE  (sizeof(application_dct_t::alt_server_address))
-#define DCT_DEVICE_ID_SIZE  (sizeof(application_dct_t::device_id))
-#define DCT_RADIO_FLAGS_SIZE  (sizeof(application_dct_t::radio_flags))
-#define DCT_MODE_BUTTON_MIRROR_SIZE (sizeof(application_dct_t::mode_button_mirror))
-#define DCT_LED_MIRROR_SIZE (sizeof(application_dct_t::led_mirror))
-#define DCT_LED_THEME_SIZE (sizeof(application_dct_t::led_theme))
-#define DCT_EAP_CONFIG_SIZE (sizeof(application_dct_t::eap_config))
-#define DCT_DEVICE_SECRET_SIZE (sizeof(application_dct_t::device_secret))
-#define DCT_SETUP_DONE_SIZE (sizeof(application_dct_t::setup_done))
-#define DCT_NCP_ID_SIZE (sizeof(application_dct_t::ncp_id))
-#define DCT_POWER_CONFIG_SIZE (sizeof(application_dct_t::power_config))
-#define DCT_RADIO_ANTENNA_SIZE (sizeof(application_dct_t::radio_antenna))
+#define DCT_SYSTEM_FLAGS_SIZE  (sizeof((application_dct_t*)0)->system_flags)
+#define DCT_DEVICE_PRIVATE_KEY_SIZE  (sizeof((application_dct_t*)0)->device_private_key)
+#define DCT_DEVICE_PUBLIC_KEY_SIZE  (sizeof((application_dct_t*)0)->device_public_key)
+#define DCT_SERVER_PUBLIC_KEY_SIZE  (sizeof((application_dct_t*)0)->server_public_key)
+#define DCT_IP_CONFIG_SIZE (sizeof((application_dct_t*)0)->ip_config)
+#define DCT_OTA_UPDATE_FLAG_SIZE  (sizeof((application_dct_t*)0)->ota_update_flag)
+#define DCT_FEATURE_FLAGS_SIZE  (sizeof((application_dct_t*)0)->feature_flags)
+#define DCT_COUNTRY_CODE_SIZE  (sizeof((application_dct_t*)0)->country_code)
+#define DCT_CLAIM_CODE_SIZE  (sizeof((application_dct_t*)0)->claim_code)
+#define DCT_SSID_PREFIX_SIZE  (sizeof((application_dct_t*)0)->ssid_prefix)
+#define DCT_DNS_RESOLVE_SIZE  (sizeof((application_dct_t*)0)->dns_resolve)
+#define DCT_DEVICE_CODE_SIZE  (sizeof((application_dct_t*)0)->device_code)
+#define DCT_DEVICE_CLAIMED_SIZE  (sizeof((application_dct_t*)0)->claimed)
+#define DCT_FLASH_MODULES_SIZE  (sizeof((application_dct_t*)0)->flash_modules)
+#define DCT_PRODUCT_STORE_SIZE  (sizeof((application_dct_t*)0)->product_store)
+#define DCT_ANTENNA_SELECTION_SIZE  (sizeof((application_dct_t*)0)->antenna_selection)
+#define DCT_CLOUD_TRANSPORT_SIZE  (sizeof((application_dct_t*)0)->cloud_transport)
+#define DCT_ALT_DEVICE_PUBLIC_KEY_SIZE  (sizeof((application_dct_t*)0)->alt_device_public_key)
+#define DCT_ALT_DEVICE_PRIVATE_KEY_SIZE  (sizeof((application_dct_t*)0)->alt_device_private_key)
+#define DCT_ALT_SERVER_PUBLIC_KEY_SIZE  (sizeof((application_dct_t*)0)->alt_server_public_key)
+#define DCT_ALT_SERVER_ADDRESS_SIZE  (sizeof((application_dct_t*)0)->alt_server_address)
+#define DCT_DEVICE_ID_SIZE  (sizeof((application_dct_t*)0)->device_id)
+#define DCT_RADIO_FLAGS_SIZE  (sizeof((application_dct_t*)0)->radio_flags)
+#define DCT_MODE_BUTTON_MIRROR_SIZE (sizeof((application_dct_t*)0)->mode_button_mirror)
+#define DCT_LED_MIRROR_SIZE (sizeof((application_dct_t*)0)->led_mirror)
+#define DCT_LED_THEME_SIZE (sizeof((application_dct_t*)0)->led_theme)
+#define DCT_EAP_CONFIG_SIZE (sizeof((application_dct_t*)0)->eap_config)
+#define DCT_DEVICE_SECRET_SIZE (sizeof((application_dct_t*)0)->device_secret)
+// #define DCT_SETUP_DONE_SIZE (sizeof((application_dct_t*)0)->setup_done)
+#define DCT_NCP_ID_SIZE (sizeof((application_dct_t*)0)->ncp_id)
+#define DCT_POWER_CONFIG_SIZE (sizeof((application_dct_t*)0)->power_config)
+#define DCT_RADIO_ANTENNA_SIZE (sizeof((application_dct_t*)0)->radio_antenna)
 
 #define STATIC_ASSERT_DCT_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( dct_##field, offsetof(application_dct_t, field)==expected)
 #define STATIC_ASSERT_FLAGS_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( dct_sysflag_##field, offsetof(platform_system_flags_t, field)==expected)
 
 #define DCT_OTA_UPDATE_FLAG_SET (0xA5)
 #define DCT_OTA_UPDATE_FLAG_CLEAR (0XFF)
+
+typedef enum platform_dct_deprecated {
+    DCT_SETUP_DONE_OFFSET __attribute__((deprecated("Setup Done flag has been deprecated since Device OS 4.0 and has no effect on device behavior. This will be removed in Device OS 5.x causing build error!")))
+            = (offsetof(application_dct_t, setup_done)),
+    DCT_SETUP_DONE_SIZE __attribute__((deprecated("Setup Done flag has been deprecated since Device OS 4.0 and has no effect on device behavior. This will be removed in Device OS 5.x causing build error!")))
+            = sizeof(((application_dct_t*)0)->setup_done)
+} platform_dct_deprecated;
 
 /**
  * Assert offsets. These ensure that the layout in flash isn't inadvertently changed.

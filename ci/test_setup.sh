@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# provides the script interface for communicating with a core running
-# a test suite
+#
+# provides the script interface for communicating
+# with a device running a test suite
+#
 
 export ci_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
 

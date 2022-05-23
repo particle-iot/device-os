@@ -27,13 +27,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#if !defined(SYSTEM_MINIMAL)
-#if PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-#define HAL_REPLACE_BOOTLOADER
-#endif // PLATFORM_ID == PLATFORM_ELECTRON_PRODUCTION
-#endif // !defined(SYSTEM_MINIMAL)
-
-
 const uint8_t* HAL_Bootloader_Image(uint32_t* size, void* reserved);
 
 #ifdef __cplusplus

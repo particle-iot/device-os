@@ -56,8 +56,7 @@ extern "C" {
 unsigned hal_get_device_id(uint8_t* dest, unsigned destLen);
 
 /**
- * Retrievse the platform ID of this device. This allows libraries above HAL
- * to not be compile-time dependent on the PRODUCT_ID symbol.
+ * Retrievse the platform ID of this device.
  */
 unsigned hal_get_platform_id();
 

@@ -78,6 +78,7 @@ constexpr hal_power_config defaultPowerConfig = {
   .vin_max_current = DEFAULT_INPUT_CURRENT_LIMIT,
   .charge_current = DEFAULT_CHARGE_CURRENT,
   .termination_voltage = DEFAULT_TERMINATION_VOLTAGE,
+  .soc_bits = DEFAULT_SOC_18_BIT_PRECISION,
   .reserved2 = 0,
   .reserved3 = {0}
 };
@@ -968,6 +969,10 @@ int PowerManager::getConfig(hal_power_config* conf) {
 
   if (!isValid(conf->termination_voltage)) {
     conf->termination_voltage = defaultPowerConfig.termination_voltage;
+  }
+
+  if (!isValid(conf->soc_bits)) {
+    conf->soc_bits = defaultPowerConfig.soc_bits;
   }
 
   // IMPORTANT!: check size of destination config structure before writing any mode defaults

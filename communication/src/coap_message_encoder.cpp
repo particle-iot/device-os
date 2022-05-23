@@ -246,6 +246,36 @@ bool CoapMessageEncoder::encodeHeader(size_t tokenSize) {
     return true;
 }
 
+int CoapMessageEncoder::optionSize(unsigned opt, unsigned prevOpt, size_t optSize) {
+    if (opt < prevOpt) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    const unsigned optDelta = opt - prevOpt;
+    if (optDelta > 65535 + 269 || optSize > 65535 + 269) { // RFC 7252, 3.1. Option Format
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    size_t size = optSize + 1;
+    if (optDelta > 12) {
+        size += (optDelta <= 268) ? 1 : 2;
+    }
+    if (optSize > 12) {
+        size += (optSize <= 268) ? 1 : 2;
+    }
+    return size;
+}
+
+int CoapMessageEncoder::uintOptionSize(unsigned opt, unsigned prevOpt, unsigned val) {
+    size_t valSize = 4;
+    if (val == 0) {
+        valSize = 0;
+    } else if (val <= 255) {
+        valSize = 1;
+    } else if (val <= 65535) {
+        valSize = 2;
+    }
+    return optionSize(opt, prevOpt, valSize);
+}
+
 } // namespace protocol
 
 } // namespace particle

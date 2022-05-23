@@ -42,9 +42,6 @@ class ModuleFunction(IntEnum):
     RADIO_STACK = 8
 
 class Platform(IntEnum):
-    PHOTON = 6
-    P1 = 8
-    ELECTRON = 10
     ARGON = 12
     BORON = 13
     ASOM = 22

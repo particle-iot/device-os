@@ -128,10 +128,10 @@ nrf5x_i2c_info_t i2cMap[HAL_PLATFORM_I2C_NUM] = {
    ,{&m_twim1, &m_twis1, twis1Handler, PMIC_SCL, PMIC_SDA}
 #else
    ,{&m_twim1, &m_twis1, twis1Handler, D3, D2}
-#endif
+#endif // PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER
 #if PLATFORM_ID == PLATFORM_TRACKER
    ,{&m_twim0, &m_twis0, twis0Handler, D8, D9}, // Shared with UART TX/RX
-#endif
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 };
 #pragma GCC diagnostic pop
 
@@ -395,7 +395,7 @@ void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address
             return;
         }
     }
-#endif
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
     if (twiUninit(i2c) == SYSTEM_ERROR_NONE) {
         i2cMap[i2c].state = HAL_I2C_STATE_DISABLED;

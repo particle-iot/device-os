@@ -20,8 +20,6 @@
 
 #include "hal_platform.h"
 
-#define USE_MBEDTLS // Use mbedTLS for all platforms
-
 #ifdef __cplusplus
 namespace particle { namespace protocol { class Protocol; }}
 typedef particle::protocol::Protocol ProtocolFacade;

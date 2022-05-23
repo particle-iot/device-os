@@ -245,10 +245,6 @@ test(system_waitfor) {
 test(system_config_set) {
 
     API_COMPILE(System.set(SYSTEM_CONFIG_DEVICE_KEY, NULL, 123));
-#if PLATFORM_ID == PLATFORM_PHOTON_PRODUCTION
-    API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_PREFIX, "hello"));
-    API_COMPILE(System.set(SYSTEM_CONFIG_SOFTAP_SUFFIX, "hello"));
-#endif
 }
 
 /*
@@ -274,6 +270,9 @@ void handler_event_data(system_event_t event, int data)
 
 void handler_event_data_param(system_event_t event, int data, void* param)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+    // These cases are designed to all fall through
     switch (event) {
     case network_status: {
         switch (data) {
@@ -287,6 +286,7 @@ void handler_event_data_param(system_event_t event, int data, void* param)
         case network_status_disconnected:
             break;
         }
+        break;
     }
     case cloud_status: {
         switch (data) {
@@ -296,10 +296,12 @@ void handler_event_data_param(system_event_t event, int data, void* param)
         case cloud_status_disconnecting:
             break;
         }
+        break;
     }
     default:
         break;
     }
+#pragma GCC diagnostic pop
 }
 
 class EventsHandler {
@@ -320,7 +322,7 @@ test(system_events)
                                setup_begin + setup_end + setup_update + network_credentials +
                                network_status + cloud_status + button_status + button_click + button_final_click +
                                reset + reset_pending + firmware_update + firmware_update_pending +
-                               all_events;
+                               firmware_update_status + all_events;
 
     API_COMPILE(System.on(my_events, handler));
     API_COMPILE(System.on(my_events, handler_event));
@@ -344,8 +346,12 @@ test(system_events)
     API_COMPILE(System.on(my_events, [&]() {}));
 
     API_COMPILE(System.off(my_events));
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    // These APIs are known deprecated APIs, we don't need to see this warning in tests
     API_COMPILE(System.off(handler_event_data_param));
     API_COMPILE(System.off(my_events, handler_event_data_param));
+#pragma GCC diagnostic pop
     SystemEventSubscription sub;
     API_COMPILE(sub = System.on(my_events, [&](system_event_t events, int data, void* pointer) {}));
     API_COMPILE(System.off(sub));
@@ -394,11 +400,13 @@ test(system_flags)
     API_COMPILE(System.enabled(SYSTEM_FLAG_MAX));
 }
 
-// todo - use platform feature flags
-#if defined(STM32F2XX)
-    // subtract 4 bytes for signature (3068 bytes)
-    #define USER_BACKUP_RAM ((1024*3)-4)
-#endif // defined(STM32F2XX)
+test(system_update)
+{
+    int r = 0;
+    API_COMPILE(r = System.updateStatus());
+    API_COMPILE(r == UpdateStatus::UNKNOWN || r == UpdateStatus::NOT_AVAILABLE || r == UpdateStatus::PENDING ||
+            r == UpdateStatus::IN_PROGRESS);
+}
 
 #if defined(USER_BACKUP_RAM)
 static retained uint8_t app_backup[USER_BACKUP_RAM];
@@ -445,6 +453,7 @@ test(system_power_management) {
     API_COMPILE(conf.powerSourceMaxCurrent(1234));
     API_COMPILE(conf.batteryChargeVoltage(1234));
     API_COMPILE(conf.batteryChargeCurrent(1234));
+    API_COMPILE(conf.socBitPrecision(19));
     API_COMPILE(conf.feature(SystemPowerFeature::PMIC_DETECTION));
     API_COMPILE(conf.feature(SystemPowerFeature::USE_VIN_SETTINGS_WITH_USB_HOST));
     API_COMPILE(conf.feature(SystemPowerFeature::DISABLE));
@@ -466,5 +475,6 @@ test(system_power_management) {
     API_COMPILE({ auto getSourceV = getConf.powerSourceMinVoltage(); (void)getSourceV; });
     API_COMPILE({ auto getBatteryA = getConf.batteryChargeCurrent(); (void)getBatteryA; });
     API_COMPILE({ auto getBatteryV = getConf.batteryChargeVoltage(); (void)getBatteryV; });
+    API_COMPILE({ auto getSocBitPrecision = getConf.socBitPrecision(); (void)getSocBitPrecision; });
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT

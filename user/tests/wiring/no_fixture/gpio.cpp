@@ -34,19 +34,17 @@
 
 test(GPIO_01_PinModeSetResultsInCorrectMode) {
     PinMode mode[] = {
-            OUTPUT,
-            INPUT,
-            INPUT_PULLUP,
-            INPUT_PULLDOWN,
-            OUTPUT_OPEN_DRAIN,
+        OUTPUT,
+        INPUT,
+        INPUT_PULLUP,
+        INPUT_PULLDOWN,
+        OUTPUT_OPEN_DRAIN,
 #if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
-            AF_OUTPUT_PUSHPULL,
-            AN_INPUT
-#if (PLATFORM_ID == 6)
-            ,
-            AN_OUTPUT
+        // AF_OUTPUT_PUSHPULL,
+        // AN_INPUT,
+        // AN_OUTPUT
+#error "Unsupported platform"
 #endif
-#endif // !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
     };
     int n = sizeof(mode) / sizeof(mode[0]);
     hal_pin_t pin = A0;//pin under test
@@ -99,12 +97,13 @@ test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
 }
 
 test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
-#if !HAL_PLATFORM_NRF52840
-    hal_pin_t pin = D1; // pin under test
-#else
+#if HAL_PLATFORM_NRF52840
     hal_pin_t pin = D4; // pin under test
+#elif HAL_PLATFORM_RTL872X
+    hal_pin_t pin = D1;
+#else
+#error "Unsupported platform"
 #endif
-
     uint32_t avgPulseHigh = 0;
     // when
     SINGLE_THREADED_BLOCK() {
@@ -123,12 +122,13 @@ test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 }
 
 test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
-#if !HAL_PLATFORM_NRF52840
-    hal_pin_t pin = D1; // pin under test
-#else
+#if HAL_PLATFORM_NRF52840
     hal_pin_t pin = D4; // pin under test
+#elif HAL_PLATFORM_RTL872X
+    hal_pin_t pin = D1;
+#else
+#error "Unsupported platform"
 #endif
-
     uint32_t avgPulseLow = 0;
     // when
     SINGLE_THREADED_BLOCK() {
@@ -166,31 +166,27 @@ test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
     assertLessOrEqual(millis()-startTime, 3150);
 }
 
-#if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
-
-test(GPIO_08_AnalogReadWorksMixedWithDigitalRead) {
+test(GPIO_08_DigitalReadWorksMixedWithAnalogRead) {
     hal_pin_t pin = A0;
 
-    // when
     pinMode(pin, INPUT_PULLUP);
-    // then
     assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
+
+    // 2 digitalReads
+    PinState digVal = (PinState)digitalRead(pin);
+    assertEqual(digVal, HIGH);
+    digVal = (PinState)digitalRead(pin);
+    assertEqual(digVal, HIGH);
 
     // 2 analogReads
-    analogRead(pin);
-    assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
-    analogRead(pin);
-    assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
-    // 2 digitalReads
-    digitalRead(pin);
-    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
-    digitalRead(pin);
-    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
-    // 2 analogReads again
-    analogRead(pin);
-    assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
-    analogRead(pin);
-    assertEqual(hal_gpio_get_mode(pin), AN_INPUT);
-}
+    int32_t anlg_val = analogRead(pin);
+    assertMoreOrEqual(anlg_val, 4096/2);
+    anlg_val = analogRead(pin);
+    assertMoreOrEqual(anlg_val, 4096/2);
 
-#endif //  !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
+    // 2 digitalReads
+    digVal = (PinState)digitalRead(pin);
+    assertEqual(digVal, HIGH);
+    digVal = (PinState)digitalRead(pin);
+    assertEqual(digVal, HIGH);
+}

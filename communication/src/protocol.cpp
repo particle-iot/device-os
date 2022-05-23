@@ -79,7 +79,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	message_id_t msg_id = CoAP::message_id(queue);
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
-	if (CoAPType::is_reply(type)) {
+	if (type == CoAPType::ACK || type == CoAPType::RESET) {
 		LOG(TRACE, "Reply recieved: type=%d, code=%d", type, code);
 		// todo - this is a little too simple in the case of an empty ACK for a separate response
 		// the message should then be bound to the token. see CH19037
@@ -88,10 +88,17 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			code = CoAPCode::INTERNAL_SERVER_ERROR;
 		}
 		notify_message_complete(msg_id, code);
-		handle_app_state_reply(msg_id, code);
+		bool handled = false;
+		ProtocolError error = handle_app_state_reply(message, &handled);
+		if (error != ProtocolError::NO_ERROR) {
+			return error;
+		}
+		if (handled) {
+			return ProtocolError::NO_ERROR;
+		}
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
-			const ProtocolError error = firmwareUpdate.responseAck(&message);
+			error = firmwareUpdate.responseAck(&message);
 			if (error != ProtocolError::NO_ERROR) {
 				return error;
 			}
@@ -115,7 +122,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			LOG(WARN, "Invalid DESCRIBE flags: 0x%02x", (unsigned)queue[8]);
 		}
 		LOG(INFO, "Received DESCRIBE request; flags: 0x%02x", (unsigned)descriptor_type);
-		error = send_description_response(token, msg_id, descriptor_type);
+		error = description.receiveRequest(message);
 		break;
 	}
 
@@ -292,7 +299,7 @@ void Protocol::init(const SparkCallbacks &callbacks,
 			descriptor.size);
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-	firmwareUpdate.init(&channel, this->callbacks);
+	SPARK_ASSERT(firmwareUpdate.init(&channel, this->callbacks) == ProtocolError::NO_ERROR);
 #else
 	chunkedTransferCallbacks.init(&this->callbacks);
 	chunkedTransfer.init(&chunkedTransferCallbacks);
@@ -323,7 +330,7 @@ AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 		d.protocolFlags(protocol_flags);
 	}
 	if (stateFlags & AppStateDescriptor::MAX_MESSAGE_SIZE) {
-		d.maxMessageSize(PROTOCOL_BUFFER_SIZE);
+		d.maxMessageSize(get_max_transmit_message_size());
 	}
 	if (stateFlags & AppStateDescriptor::MAX_BINARY_SIZE) {
 		d.maxBinarySize(max_binary_size);
@@ -430,10 +437,9 @@ void Protocol::reset() {
 #endif
 	pinger.reset();
 	timesync_.reset();
+	description.reset();
 	ack_handlers.clear();
 	channel.reset();
-	app_describe_msg_id = INVALID_MESSAGE_HANDLE;
-	system_describe_msg_id = INVALID_MESSAGE_HANDLE;
 	subscription_msg_ids.clear();
 }
 
@@ -548,124 +554,6 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	return error;
 }
 
-void Protocol::build_describe_message(Appender& appender, int desc_flags)
-{
-	// diagnostics must be requested in isolation to be a binary packet
-	if (descriptor.append_metrics && (desc_flags == DESCRIBE_METRICS))
-	{
-		appender.append(char(0));	// null byte means binary data
-		appender.append(char(DESCRIBE_METRICS));	// uint16 describes the type of binary packet
-		appender.append(char(0));	//
-		const int flags = 1;		// binary
-		const int page = 0;
-		descriptor.append_metrics(Appender::callback, &appender, flags, page, nullptr);
-	}
-	else {
-		appender.append("{");
-		bool has_content = false;
-
-		if (desc_flags & DESCRIBE_APPLICATION)
-		{
-			has_content = true;
-			appender.append("\"f\":[");
-
-			int num_keys = descriptor.num_functions();
-			int i;
-			for (i = 0; i < num_keys; ++i)
-			{
-				if (i)
-				{
-					appender.append(',');
-				}
-				appender.append('"');
-
-				const char* key = descriptor.get_function_key(i);
-				size_t function_name_length = strlen(key);
-				if (MAX_FUNCTION_KEY_LENGTH < function_name_length)
-				{
-					function_name_length = MAX_FUNCTION_KEY_LENGTH;
-				}
-				appender.append((const uint8_t*) key, function_name_length);
-				appender.append('"');
-			}
-
-			appender.append("],\"v\":{");
-
-			num_keys = descriptor.num_variables();
-			for (i = 0; i < num_keys; ++i)
-			{
-				if (i)
-				{
-					appender.append(',');
-				}
-				appender.append('"');
-				const char* key = descriptor.get_variable_key(i);
-				size_t variable_name_length = strlen(key);
-				SparkReturnType::Enum t = descriptor.variable_type(key);
-				if (MAX_VARIABLE_KEY_LENGTH < variable_name_length)
-				{
-					variable_name_length = MAX_VARIABLE_KEY_LENGTH;
-				}
-				appender.append((const uint8_t*) key, variable_name_length);
-				appender.append("\":");
-				appender.append('0' + (char) t);
-			}
-			appender.append('}');
-		}
-
-		if (descriptor.append_system_info && (desc_flags & DESCRIBE_SYSTEM))
-		{
-			if (has_content)
-			{
-				appender.append(',');
-			}
-			has_content = true;
-			descriptor.append_system_info(Appender::callback, &appender, nullptr);
-		}
-		appender.append('}');
-	}
-}
-
-ProtocolError Protocol::generate_and_send_description(MessageChannel& channel, Message& message,
-                                                      size_t header_size, int desc_flags)
-{
-    ProtocolError error;
-
-    BufferAppender appender((message.buf() + header_size), (message.capacity() - header_size));
-    build_describe_message(appender, desc_flags);
-
-    if (appender.dataSize() > appender.bufferSize())
-    {
-        LOG(ERROR, "Describe message overflowed by %u bytes", (unsigned)(appender.dataSize() - appender.bufferSize()));
-        // There is no point in continuing to run, the device will be constantly reconnecting
-        // to the cloud. It's better to clearly indicate that the describe message is never going
-        // to go through to the cloud by going into a panic state, otherwise one would have to
-        // sift through logs to find 'Describe message overflowed by %d bytes' message to understand
-        // what's going on.
-        SPARK_ASSERT(false);
-    }
-
-    message.set_length(header_size + appender.dataSize());
-
-    LOG(INFO, "Posting '%s%s%s' describe message", desc_flags & DESCRIBE_SYSTEM ? "S" : "",
-        desc_flags & DESCRIBE_APPLICATION ? "A" : "", desc_flags & DESCRIBE_METRICS ? "M" : "");
-
-    error = channel.send(message);
-    if (error != ProtocolError::NO_ERROR) {
-        LOG(ERROR, "Channel failed to send message; error code: %d", (int)error);
-    } else if (descriptor.app_state_selector_info) {
-        const auto msg_id = message.get_id();
-        if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
-            app_describe_msg_id = msg_id;
-        }
-        if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
-            system_describe_msg_id = msg_id;
-        }
-    }
-
-    return error;
-}
-
 ProtocolError Protocol::post_description(int desc_flags, bool force)
 {
 	if (!force && descriptor.app_state_selector_info) {
@@ -688,35 +576,7 @@ ProtocolError Protocol::post_description(int desc_flags, bool force)
 	if (!desc_flags) {
 		return ProtocolError::NO_ERROR;
 	}
-	Message message;
-	const ProtocolError error = channel.create(message);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
-	}
-	const size_t header_size = Messages::describe_post_header(message.buf(), message.capacity(), 0 /* message_id */, desc_flags);
-	return generate_and_send_description(channel, message, header_size, desc_flags);
-}
-
-ProtocolError Protocol::send_description_response(token_t token, message_id_t msg_id, int desc_flags)
-{
-	// Acknowledge the request
-	Message msg;
-	ProtocolError error = channel.create(msg);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
-	}
-	error = send_empty_ack(msg, msg_id);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
-	}
-	// Send a response
-	error = channel.create(msg);
-	if (error != ProtocolError::NO_ERROR) {
-		return error;
-	}
-	const auto buf = msg.buf();
-	const size_t size = Messages::description_response(buf, 0 /* message_id */, token);
-	return generate_and_send_description(channel, msg, size, desc_flags);
+	return description.sendRequest(desc_flags);
 }
 
 ProtocolError Protocol::send_subscription(const char *event_name, const char *device_id)
@@ -755,11 +615,13 @@ ProtocolError Protocol::send_subscriptions(bool force)
 	return error;
 }
 
-bool Protocol::handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code)
+ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled)
 {
-	if (!descriptor.app_state_selector_info) {
-		return false;
+	if (!descriptor.app_state_selector_info) { // FIXME: I don't think we need this on Gen 2 and newer platforms
+		return ProtocolError::NO_ERROR;
 	}
+	const auto msg_id = CoAP::message_id(msg.buf());
+	const auto code = CoAP::code(msg.buf());
 	// Update application state checksums
 	if (subscription_msg_ids.removeOne(msg_id)) { // Event subscriptions
 		if (!CoAPCode::is_success(code)) {
@@ -773,33 +635,33 @@ bool Protocol::handle_app_state_reply(message_id_t msg_id, CoAPCode::Enum code)
 					SparkAppStateUpdate::PERSIST, crc, nullptr);
 			channel.command(Channel::LOAD_SESSION);
 		}
-		return true;
+		*handled = true;
 	}
-	// A Describe message can carry both the system and application descriptions
-	if (msg_id == app_describe_msg_id || msg_id == system_describe_msg_id) {
-		if (msg_id == app_describe_msg_id) { // Application description
-			app_describe_msg_id = INVALID_MESSAGE_HANDLE;
-			if (CoAPCode::is_success(code)) {
-				LOG(TRACE, "Updating application DESCRIBE checksum");
-				channel.command(Channel::SAVE_SESSION);
-				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
-						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-				channel.command(Channel::LOAD_SESSION);
-			}
+	if (!*handled) {
+		int desc_flags = 0;
+		const ProtocolError err = description.receiveAckOrRst(msg, &desc_flags);
+		if (err != ProtocolError::NO_ERROR) {
+			LOG(ERROR, "Failed to process Describe ACK: %d", (int)err);
 		}
-		if (msg_id == system_describe_msg_id) { // System description
-			system_describe_msg_id = INVALID_MESSAGE_HANDLE;
-			if (CoAPCode::is_success(code)) {
-				LOG(TRACE, "Updating system DESCRIBE checksum");
-				channel.command(Channel::SAVE_SESSION);
-				descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
-						SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
-				channel.command(Channel::LOAD_SESSION);
-			}
+		// Technically, a Describe message can carry both the system and application descriptions
+		if (desc_flags & DescriptionType::DESCRIBE_SYSTEM) {
+			LOG(TRACE, "Updating system DESCRIBE checksum");
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
+					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+			channel.command(Channel::LOAD_SESSION);
+			*handled = true;
 		}
-		return true;
+		if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
+			LOG(TRACE, "Updating application DESCRIBE checksum");
+			channel.command(Channel::SAVE_SESSION);
+			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
+					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
+			channel.command(Channel::LOAD_SESSION);
+			*handled = true;
+		}
 	}
-	return false;
+	return ProtocolError::NO_ERROR;
 }
 
 #if !HAL_PLATFORM_OTA_PROTOCOL_V3
@@ -833,11 +695,23 @@ system_tick_t Protocol::ChunkedTransferCallbacks::millis()
 
 int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserved)
 {
+	// Note: This code is only used for backward compatibility between a newer communication
+	// module that supports blockwise Describe messages and an older system module that relies
+	// on the maximum size defined here to limit the numbers of functions and variables that
+	// can be registered by the application
 	data->maximum_size = 768;  // a conservative guess based on dtls and lightssl encryption overhead and the CoAP data
 	BufferAppender appender(nullptr,  0);	// don't need to store the data, just count the size
-	build_describe_message(appender, data->flags);
+	description.serialize(&appender, data->flags);
 	data->current_size = appender.dataSize();
 	return 0;
+}
+
+size_t Protocol::get_max_transmit_message_size() const
+{
+	if (!max_transmit_message_size) {
+		return PROTOCOL_BUFFER_SIZE;
+	}
+	return max_transmit_message_size;
 }
 
 }}

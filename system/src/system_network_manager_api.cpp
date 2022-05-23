@@ -98,15 +98,6 @@ bool testAndClearListeningModeFlag() {
             system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr); // Clear startup flag
             return true;
         }
-#if HAL_PLATFORM_DCT_SETUP_DONE
-        // Check setup done flag
-        val = 0x01;
-        dct_read_app_data_copy(DCT_SETUP_DONE_OFFSET, &val, 1);
-        if (val == 0x00 || val == 0xff) {
-            LOG(INFO, "setup done not set");
-            return true;
-        }
-#endif // HAL_PLATFORM_DCT_SETUP_DONE
     }
     return false;
 }
@@ -364,23 +355,31 @@ int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
     return SYSTEM_ERROR_NONE;
 }
 
-void network_listen(network_handle_t network, uint32_t flags, void*) {
+int network_listen_sync(network_handle_t network, uint32_t flags, void*) {
     /* May be called from an ISR */
     if (!hal_interrupt_is_isr()) {
-        SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
+        SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT([&]() -> int {
             if (!(flags & NETWORK_LISTEN_EXIT)) {
-                ListeningModeHandler::instance()->enter();
+                return ListeningModeHandler::instance()->enter();
             } else {
-                ListeningModeHandler::instance()->exit();
+                return ListeningModeHandler::instance()->exit();
             }
         }());
     } else {
         if (!(flags & NETWORK_LISTEN_EXIT)) {
-            ListeningModeHandler::instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_ENTER, nullptr);
+            return ListeningModeHandler::instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_ENTER, nullptr);
         } else {
-            ListeningModeHandler::instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_EXIT, nullptr);
+            return ListeningModeHandler::instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_EXIT, nullptr);
         }
     }
+    return SYSTEM_ERROR_NONE;
+}
+
+void network_listen(network_handle_t network, uint32_t flags, void* reserved) {
+    if (!hal_interrupt_is_isr()) {
+        SYSTEM_THREAD_CONTEXT_ASYNC(network_listen(network, flags, reserved));
+    }
+    network_listen_sync(network, flags, reserved);
 }
 
 void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void*) {

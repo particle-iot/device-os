@@ -45,7 +45,7 @@ ProtocolError Variables::handle_request(Message& message, token_t token, message
     if (result != ProtocolError::NO_ERROR) {
         return send_error_ack(message, token, id, CoAPCode::BAD_REQUEST);
     }
-    if (protocol_->getDescriptor().get_variable_async) {
+    if (protocol_->get_descriptor().get_variable_async) {
         result = handle_request(message, token, id, key);
     } else {
         // Use the compatibility callback
@@ -66,13 +66,13 @@ ProtocolError Variables::handle_request(Message& message, token_t token, message
         return result;
     }
     // Get the value asynchronously
-    const auto& descriptor = protocol_->getDescriptor();
+    const auto& descriptor = protocol_->get_descriptor();
     descriptor.get_variable_async(key, get_variable_callback, ctx.release()); // Transfer the ownership over the context object
     return ProtocolError::NO_ERROR;
 }
 
 ProtocolError Variables::handle_request_compat(Message& message, token_t token, message_id_t id, const char* key) {
-    const auto& descriptor = protocol_->getDescriptor();
+    const auto& descriptor = protocol_->get_descriptor();
     const auto value = descriptor.get_variable(key);
     if (!value) {
         return send_error_ack(message, token, id, CoAPCode::NOT_FOUND);
@@ -171,14 +171,14 @@ ProtocolError Variables::encode_response(Message& message, token_t token, const 
 }
 
 size_t Variables::encode_response(uint8_t* buffer, token_t token, const void* value, size_t value_size) {
-    auto& channel = protocol_->getChannel();
+    auto& channel = protocol_->get_channel();
     return Messages::separate_response_with_payload(buffer, 0 /* message_id */, token, CoAPCode::CONTENT,
             (const uint8_t*)value, value_size, channel.is_unreliable());
 }
 
 ProtocolError Variables::send_response(token_t token, const void* value, size_t value_size, SparkReturnType::Enum value_type) {
     Message msg;
-    auto& channel = protocol_->getChannel();
+    auto& channel = protocol_->get_channel();
     ProtocolError result = channel.create(msg);
     if (result != ProtocolError::NO_ERROR) {
         return result;
@@ -192,7 +192,7 @@ ProtocolError Variables::send_response(token_t token, const void* value, size_t 
 
 ProtocolError Variables::send_error_response(token_t token, uint8_t code) {
     Message msg;
-    auto& channel = protocol_->getChannel();
+    auto& channel = protocol_->get_channel();
     ProtocolError result = channel.create(msg);
     if (result != ProtocolError::NO_ERROR) {
         return result;
@@ -201,7 +201,7 @@ ProtocolError Variables::send_error_response(token_t token, uint8_t code) {
 }
 
 ProtocolError Variables::send_error_response(Message& message, token_t token, uint8_t code) {
-    auto& channel = protocol_->getChannel();
+    auto& channel = protocol_->get_channel();
     const size_t size = Messages::separate_response(message.buf(), 0 /* message_id */, token, code, channel.is_unreliable());
     message.set_length(size);
     return channel.send(message);
@@ -212,7 +212,7 @@ ProtocolError Variables::send_empty_ack(Message& message, message_id_t id) {
     const size_t size = Messages::coded_ack(buf, CoAPCode::NONE, 0 /* message_id_msb */, 0 /* message_id_lsb */);
     message.set_length(size);
     message.set_id(id);
-    return protocol_->getChannel().send(message);
+    return protocol_->get_channel().send(message);
 }
 
 ProtocolError Variables::send_error_ack(Message& message, token_t token, message_id_t id, uint8_t code) {
@@ -220,7 +220,7 @@ ProtocolError Variables::send_error_ack(Message& message, token_t token, message
     const size_t size = Messages::coded_ack(buf, token, code, 0 /* message_id_msb */, 0 /* message_id_lsb */);
     message.set_length(size);
     message.set_id(id);
-    return protocol_->getChannel().send(message);
+    return protocol_->get_channel().send(message);
 }
 
 void Variables::get_variable_callback(int result, int type, void* data, size_t size, void* context) {

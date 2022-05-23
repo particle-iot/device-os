@@ -8,8 +8,6 @@ from executing for long periods of time.
 System threading is compile-time optional and is made available in the system firmware depending
 upon the platform and if threading support is available.
 
-System threading is available on the Photon, P1 and Electron starting from firmware release 0.4.6.
-
 
 ## Enabling System Threading on Supported Platforms
 
@@ -122,22 +120,6 @@ above is short-circuited and the method call is executed directly by the applica
 
 RTOS task priorities go from 0 (idle task) to 9 (system monitor).
 Low priority numbers denote low priority tasks.
-
-On the Photon, the thread priorities are:
-
- Priority      |      Thread
-:-------------:|:---------------:
-(highest)<br>9 | Monitor<br>WICED
-8              |
-7              | Network
-6              |
-5              | Worker 2
-4              |
-3              | Worker 1
-2              | Application<br>System<br>Timer
-1              |
-0<br>(lowest)  | Idle
-
 
 ## System Threading Implementation
 
@@ -283,6 +265,17 @@ The macro performing a number of steps:
 
  The macros are defined and described in more detail in `system/inc/system_threading.h`.
 
+### Macros and ISRs
+The ASYNC and SYNC calls cannot be performed inside a HAL ISR. The following checks can be used when working with HAL ISR, for example
+```
+void network_listen(network_handle_t network, uint32_t flags, void* reserved) {
+    if (!HAL_IsISR()) {
+        SYSTEM_THREAD_CONTEXT_ASYNC(network_listen(network, flags, reserved));
+    }
+    // other code
+}
+
+```
 
 ### Cloud functions
 

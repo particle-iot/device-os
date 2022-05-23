@@ -65,10 +65,34 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
     return false;
 }
 
+#ifdef stringify
+#undef stringify
+#endif
+#ifdef __stringify
+#undef __stringify
+#endif
+#define stringify(x) __stringify(x)
+#define __stringify(x) #x
+
+#ifndef UDP_ECHO_SERVER_HOSTNAME
+#define UDP_ECHO_SERVER_HOSTNAME not_defined
+#endif
+
+const char udpEchoServerHostname[] = stringify(UDP_ECHO_SERVER_HOSTNAME);
+
 } // anonymous
 
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
-    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
+    // If server not defined, skip test
+    if (!strcmp(udpEchoServerHostname, "not_defined") || !strcmp(udpEchoServerHostname, "")) {
+        Serial.printlnf("Command line option UDP_ECHO_SERVER_HOSTNAME not defined! Usage: UDP_ECHO_SERVER_HOSTNAME=hostname make clean all TEST=...");
+        skip();
+        return;
+    }
+    Serial.printlnf("Using Echo Server: [%s]", udpEchoServerHostname);
+
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
 
     Network.on();
     Network.connect();
@@ -95,28 +119,20 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     const size_t IPV4_HEADER_LENGTH = 20;
     const size_t UDP_HEADER_LENGTH = 8;
     const size_t IPV4_PLUS_UDP_HEADER_LENGTH = IPV4_HEADER_LENGTH + UDP_HEADER_LENGTH;
-#if PLATFORM_ID != PLATFORM_ELECTRON
     // Start a bit lower than standard 1500
     const size_t MAX_MTU = 1400;
-#else
-    // Socket interface on Electrons is limited by 1024 byte payload maximum
-    // Adjust maximum MTU accordingly and even go a bit lower.
-    const size_t MAX_MTU = MBEDTLS_SSL_MAX_CONTENT_LEN + IPV4_PLUS_UDP_HEADER_LENGTH;
-#endif // PLATFORM_ID != PLATFORM_ELECTRON
     const size_t MIN_MTU = IPV4_PLUS_UDP_HEADER_LENGTH;
     const system_tick_t UDP_ECHO_REPLY_WAIT_TIME = 10000;
     const unsigned UDP_ECHO_RETRIES = 5;
     const system_tick_t MINIMUM_TEST_TIME = 60000;
 
-    // FIXME: Hosted by @avtolstoy, should be changed to something else
-    const char UDP_ECHO_SERVER[] = "particle-udp-echo.rltm.org";
     const uint16_t UDP_ECHO_PORT = 40000;
 
     // Resolve UDP echo server hostname to ip address, so that DNS resolutions
     // no longer affect us after this point
     IPAddress udpEchoIp;
     for (auto begin = millis(); millis() - begin < 60000;) {
-        udpEchoIp = Network.resolve(UDP_ECHO_SERVER);
+        udpEchoIp = Network.resolve(udpEchoServerHostname);
         if (udpEchoIp) {
             break;
         }
@@ -148,7 +164,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         const size_t payloadSize = mtu - IPV4_PLUS_UDP_HEADER_LENGTH;
         rand.gen((char*)sendBuffer.get(), payloadSize);
         auto res = udpEchoTest(udp.get(), udpEchoIp, UDP_ECHO_PORT, sendBuffer.get(), payloadSize, UDP_ECHO_RETRIES, UDP_ECHO_REPLY_WAIT_TIME);
-        Serial.printlnf("Test MTU: %lu (%s)", mtu, res ? "OK" : "FAIL");
+        Serial.printlnf("Test MTU: %u (%s)", mtu, res ? "OK" : "FAIL");
         size_t newMtu = bisect(mtu, minMtu, maxMtu, res);
         if (std::abs((int)newMtu - (int)mtu) <= 1 && res) {
             // Converged
@@ -157,7 +173,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         mtu = newMtu;
     }
 
-    Serial.printlnf("Resolved MTU: %lu", mtu);
+    Serial.printlnf("Resolved MTU: %u", mtu);
 
     // The test should be running for at least a minute, just in case
     if (millis() - start < MINIMUM_TEST_TIME) {
@@ -179,7 +195,8 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR
 
 test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
-    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
     const system_tick_t NCP_FAILURE_TIMEOUT = 15000;
 
     Network.on();
@@ -196,14 +213,8 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 #if HAL_PLATFORM_NCP_AT
         hal_usart_end(HAL_USART_SERIAL2);
         hal_usart_begin_config(HAL_USART_SERIAL2, 57600, SERIAL_8N1, nullptr);
-#elif PLATFORM_ID == PLATFORM_ELECTRON
-        NVIC_DisableIRQ(USART3_IRQn);
 #endif
     }
-
-#if PLATFORM_ID == PLATFORM_ELECTRON
-    assertFalse(Particle.publish("test", "123", WITH_ACK));
-#endif // PLATFORM_ID == PLATFORM_ELECTRON
 
     delay(NCP_FAILURE_TIMEOUT);
 
@@ -230,7 +241,8 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 static bool s_networkStatusChanged = false;
 
 test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
-    const system_tick_t WAIT_TIMEOUT = 10 * 60 * 1000;
+    // 15 min gives the device time to go through a 10 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
 
     SCOPE_GUARD({
         Particle.disconnect();

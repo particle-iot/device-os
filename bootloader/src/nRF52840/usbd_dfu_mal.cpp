@@ -47,8 +47,11 @@ int InternalFlashMal::deInit() {
 
 bool InternalFlashMal::validate(uintptr_t addr, size_t len) {
     uintptr_t end = addr + len;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
     if ((addr >= INTERNAL_FLASH_START_ADD && addr <= INTERNAL_FLASH_END_ADDR) &&
         (end >= INTERNAL_FLASH_START_ADD && end <= INTERNAL_FLASH_END_ADDR))
+#pragma GCC diagnostic pop
     {
         return true;
     }
@@ -127,8 +130,11 @@ int DcdMal::deInit() {
 
 bool DcdMal::validate(uintptr_t addr, size_t len) {
     uintptr_t end = addr + len;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
     if ((addr >= DCD_START_ADD && addr <= DCD_END_ADDR) &&
         (end >= DCD_START_ADD && end <= DCD_END_ADDR))
+#pragma GCC diagnostic pop
     {
         return true;
     }
@@ -192,8 +198,11 @@ bool ExternalFlashMal::validate(uintptr_t addr, size_t len) {
     addr -= offset_;
 
     uintptr_t end = addr + len;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
     if ((addr >= EXTERNAL_FLASH_START_ADD && addr <= EXTERNAL_FLASH_END_ADDR) &&
         (end >= EXTERNAL_FLASH_START_ADD && end <= EXTERNAL_FLASH_END_ADDR))
+#pragma GCC diagnostic pop
     {
         return true;
     }

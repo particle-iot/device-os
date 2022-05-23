@@ -54,23 +54,9 @@
 
 #endif // #if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
 
-#else // Gen 2
-
-#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
-#define MY_SPI SPI
-#define MY_CS A2
-#pragma message "Compiling for SPI, MY_CS set to A2"
-#elif (USE_SPI == 1)
-#define MY_SPI SPI1
-#define MY_CS D5
-#pragma message "Compiling for SPI1, MY_CS set to D5"
-#elif (USE_SPI == 2)
-#define MY_SPI SPI2
-#define MY_CS C0
-#pragma message "Compiling for SPI2, MY_CS set to C0"
 #else
-#error "Not supported for Gen 2"
-#endif // (USE_SPI == 0)
+
+#error "Unsupported platform"
 
 #endif // #if HAL_PLATFORM_NRF52840
 
@@ -96,44 +82,6 @@
 #endif // defined(_SPI) && (USE_CS != 255)
 
 /*
- * Gen 2 Wiring diagrams
- *
- * SPI/SPI                        SPI1/SPI                       SPI2/SPI
- * Master: SPI (USE_SPI=SPI)      Master: SPI1 (USE_SPI=SPI1)    Master: SPI2 (USE_SPI=SPI2)
- * Slave:  SPI (USE_SPI=SPI)      Slave:  SPI  (USE_SPI=SPI)     Slave:  SPI  (USE_SPI=SPI)
- *
- * Master              Slave      Master              Slave      Master              Slave
- * MOSI A5 <---------> A5 MOSI    MOSI D2 <---------> A5 MOSI    MOSI C1 <---------> A5 MOSI
- * MISO A4 <---------> A4 MISO    MISO D3 <---------> A4 MISO    MISO C2 <---------> A4 MISO
- * SCK  A3 <---------> A3 SCK     SCK  D4 <---------> A3 SCK     SCK  C3 <---------> A3 SCK
- * CS   A2 <---------> A2 CS      CS   D5 <---------> A2 CS      CS   C0 <---------> A2 CS
- *
- *********************************************************************************************
- *
- * SPI/SPI1                       SPI1/SPI1                      SPI2/SPI1
- * Master: SPI  (USE_SPI=SPI)     Master: SPI1 (USE_SPI=SPI1)    Master: SPI2 (USE_SPI=SPI2)
- * Slave:  SPI1 (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
- *
- * Master              Slave      Master              Slave      Master              Slave
- * MOSI A5 <---------> D2 MOSI    MOSI D2 <---------> D2 MOSI    MOSI C1 <---------> D2 MOSI
- * MISO A4 <---------> D3 MISO    MISO D3 <---------> D3 MISO    MISO C2 <---------> D3 MISO
- * SCK  A3 <---------> D4 SCK     SCK  D4 <---------> D4 SCK     SCK  C3 <---------> D4 SCK
- * CS   A2 <---------> D5 CS      CS   D5 <---------> D5 CS      CS   C0 <---------> D5 CS
- *
- *********************************************************************************************
- *
- * SPI/SPI2                       SPI1/SPI2                      SPI2/SPI2
- * Master: SPI  (USE_SPI=SPI)     Master: SPI1 (USE_SPI=SPI1)    Master: SPI2 (USE_SPI=SPI2)
- * Slave:  SPI2 (USE_SPI=SPI2     Slave:  SPI2 (USE_SPI=SPI2)    Slave:  SPI2 (USE_SPI=SPI2)
- *
- * Master              Slave      Master              Slave      Master              Slave
- * MOSI A5 <---------> C1 MOSI    MOSI D2 <---------> C1 MOSI    MOSI C1 <---------> C1 MOSI
- * MISO A4 <---------> C2 MISO    MISO D3 <---------> C2 MISO    MISO C2 <---------> C2 MISO
- * SCK  A3 <---------> C3 SCK     SCK  D4 <---------> C3 SCK     SCK  C3 <---------> C3 SCK
- * CS   A2 <---------> C0 CS      CS   D5 <---------> C0 CS      CS   C0 <---------> C0 CS
- *
- *********************************************************************************************
- *
  * Gen 3 SoM Wiring diagrams
  *
  * SPI/SPI1                       SPI1/SPI1
@@ -170,6 +118,21 @@ STARTUP(System.enableFeature(FEATURE_ETHERNET_DETECTION));
 static uint8_t SPI_Master_Tx_Buffer[TRANSFER_LENGTH_2];
 static uint8_t SPI_Master_Rx_Buffer[TRANSFER_LENGTH_2];
 static volatile uint8_t DMA_Completed_Flag = 0;
+
+#ifdef stringify
+#undef stringify
+#endif
+#ifdef __stringify
+#undef __stringify
+#endif
+#define stringify(x) __stringify(x)
+#define __stringify(x) #x
+
+#ifndef UDP_ECHO_SERVER_HOSTNAME
+#define UDP_ECHO_SERVER_HOSTNAME not_defined
+#endif
+
+const char udpEchoServerHostname[] = stringify(UDP_ECHO_SERVER_HOSTNAME);
 
 static void SPI_Master_Configure()
 {
@@ -310,6 +273,14 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
 }
 
 test(00_SPI_Master_Slave_Master_Start_Ethernet) {
+    // If server not defined, skip test
+    if (!strcmp(udpEchoServerHostname, "not_defined") || !strcmp(udpEchoServerHostname, "")) {
+        Serial.printlnf("Command line option UDP_ECHO_SERVER_HOSTNAME not defined! Usage: UDP_ECHO_SERVER_HOSTNAME=hostname make clean all TEST=...");
+        skip();
+        return;
+    }
+    Serial.printlnf("Using Echo Server: [%s]", udpEchoServerHostname);
+
     Serial.println("This is Master");
     Serial.println("Connecting to echo service over Ethernet");
     Ethernet.on();
@@ -325,14 +296,12 @@ test(00_SPI_Master_Slave_Master_Start_Ethernet) {
 
 
     auto thread = new Thread("ethernet_comms", [](void) -> os_thread_return_t {
-        // FIXME: Hosted by @avtolstoy, should be changed to something else
-        const char udpEchoServer[] = "particle-udp-echo.rltm.org";
         const uint16_t udpEchoPort = 40000;
         const size_t udpPayloadSize = 512;
 
         // Resolve UDP echo server hostname to ip address, so that DNS resolutions
         // no longer affect us after this point
-        const auto udpEchoIp = Network.resolve(udpEchoServer);
+        const auto udpEchoIp = Network.resolve(udpEchoServerHostname);
         if (!udpEchoIp) {
             return;
         }

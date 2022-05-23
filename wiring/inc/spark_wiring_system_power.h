@@ -96,6 +96,15 @@ public:
         return (conf_.flags & f.value()) ? true : false;
     }
 
+    SystemPowerConfiguration& socBitPrecision(uint8_t bits) {
+        conf_.soc_bits = bits;
+        return *this;
+    }
+
+    uint8_t socBitPrecision() const {
+        return conf_.soc_bits;
+    }
+
     const hal_power_config* config() const {
         return &conf_;
     }

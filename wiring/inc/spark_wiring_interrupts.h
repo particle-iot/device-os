@@ -28,8 +28,9 @@
 #ifndef __SPARK_WIRING_INTERRUPTS_H
 #define __SPARK_WIRING_INTERRUPTS_H
 
-#include "interrupts_hal.h"
 #include <functional>
+
+#include "interrupts_hal.h"
 #include "atomic_section.h"
 
 typedef std::function<void()> wiring_interrupt_handler_t;
@@ -52,15 +53,6 @@ void noInterrupts(void);
 /*
  * System Interrupts
  */
-bool attachSystemInterrupt(hal_irq_t irq, wiring_interrupt_handler_t handler);
-
-/**
- * Removes all registered handlers from the given system interrupt.
- * @param irq   The interrupt from which all handlers are removed.
- * @return {@code true} if handlers were removed.
- */
-bool detachSystemInterrupt(hal_irq_t irq);
-
 bool attachInterruptDirect(IRQn_Type irq, hal_interrupt_direct_handler_t handler, bool enable = true);
 bool detachInterruptDirect(IRQn_Type irq, bool disable = true);
 

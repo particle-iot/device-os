@@ -27,6 +27,13 @@
 #include "ble_hal.h"
 #endif
 
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
+
 DYNALIB_BEGIN(hal_ble)
 
 DYNALIB_FN(0, hal_ble, hal_ble_lock, int(void*))
@@ -81,7 +88,7 @@ DYNALIB_FN(48, hal_ble, hal_ble_gatt_client_discover_service_by_uuid, int(hal_bl
 DYNALIB_FN(49, hal_ble, hal_ble_gatt_client_discover_characteristics, int(hal_ble_conn_handle_t, const hal_ble_svc_t*, hal_ble_on_disc_char_cb_t, void*, void*))
 DYNALIB_FN(50, hal_ble, hal_ble_gatt_client_discover_characteristics_by_uuid, int(hal_ble_conn_handle_t, const hal_ble_svc_t*, const hal_ble_uuid_t*, hal_ble_on_disc_char_cb_t, void*, void*))
 DYNALIB_FN(51, hal_ble, hal_ble_gatt_client_is_discovering, bool(hal_ble_conn_handle_t, void*))
-DYNALIB_FN(52, hal_ble, hal_ble_gatt_set_att_mtu, int(size_t, void*))
+DYNALIB_FN(52, hal_ble, hal_ble_gatt_server_set_desired_att_mtu, int(size_t, void*))
 DYNALIB_FN(53, hal_ble, hal_ble_gatt_client_configure_cccd_deprecated, int(hal_ble_conn_handle_t, hal_ble_attr_handle_t, ble_sig_cccd_value_t, void*))
 DYNALIB_FN(54, hal_ble, hal_ble_gatt_client_write_with_response, ssize_t(hal_ble_conn_handle_t, hal_ble_attr_handle_t, const uint8_t*, size_t, void*))
 DYNALIB_FN(55, hal_ble, hal_ble_gatt_client_write_without_response, ssize_t(hal_ble_conn_handle_t, hal_ble_attr_handle_t, const uint8_t*, size_t, void*))
@@ -105,6 +112,9 @@ DYNALIB_FN(70, hal_ble, hal_ble_gap_is_pairing, bool(hal_ble_conn_handle_t, void
 DYNALIB_FN(71, hal_ble, hal_ble_gap_is_paired, bool(hal_ble_conn_handle_t, void*))
 DYNALIB_FN(72, hal_ble, hal_ble_gap_set_pairing_auth_data, int(hal_ble_conn_handle_t, const hal_ble_pairing_auth_data_t*, void*))
 DYNALIB_FN(73, hal_ble, hal_ble_gap_get_pairing_config, int(hal_ble_pairing_config_t*, void*))
+
+DYNALIB_FN(74, hal_ble, hal_ble_gatt_get_att_mtu, ssize_t(hal_ble_conn_handle_t, void*))
+DYNALIB_FN(75, hal_ble, hal_ble_gatt_client_att_mtu_exchange, int(hal_ble_conn_handle_t, void*))
 
 DYNALIB_END(hal_ble)
 

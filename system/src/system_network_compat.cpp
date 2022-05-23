@@ -18,7 +18,6 @@
  */
 
 #include "hal_platform.h"
-
 /* FIXME: there should be a define that tells whether there is NetworkManager available
  * or not */
 #if !HAL_PLATFORM_IFAPI
@@ -185,6 +184,11 @@ void network_listen(network_handle_t network, uint32_t flags, void*)
         // Cancel current connection attempt
         nif(network).connect_cancel(true);
     }
+}
+
+int network_listen_sync(network_handle_t network, uint32_t flags, void*) {
+    network_listen(network, flags, nullptr);
+    return 0;
 }
 
 void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void*)

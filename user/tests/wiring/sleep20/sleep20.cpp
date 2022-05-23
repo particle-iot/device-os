@@ -89,7 +89,7 @@ test(02_System_Sleep_Mode_Deep_Without_Wakeup) {
     }
 }
 
-#if HAL_PLATFORM_GEN == 3 && PLATFORM_ID != PLATFORM_P2
+#if PLATFORM_ID != PLATFORM_P2
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
@@ -209,10 +209,10 @@ test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
     }
 }
 #endif // HAL_PLATFORM_EXTERNAL_RTC
-#endif // HAL_PLATFORM_GEN == 3 && PLATFORM_ID != PLATFORM_P2
+#endif // PLATFORM_ID != PLATFORM_P2
 
-#if HAL_PLATFORM_GEN == 2 || PLATFORM_ID == PLATFORM_P2
-test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin) {
+#if PLATFORM_ID == PLATFORM_P2
+test(08_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on WKP pin.");
@@ -235,7 +235,7 @@ test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin)
     }
 }
 
-test(04_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Rtc) {
+test(09_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Rtc) {
     if (phase == 0xbeef0004) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
@@ -258,7 +258,7 @@ test(04_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Rtc) {
     }
 }
 
-test(05_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin) {
+test(10_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin) {
     if (phase == 0xbeef0005) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after you have a rising edge on WKP pin.");
@@ -278,7 +278,7 @@ test(05_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin) {
     }
 }
 
-test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
+test(11_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
     if (phase == 0xbeef0006) {
         Serial.println("    >> Device enters hibernate mode.");
         Serial.println("    >> Please reconnect serial and type 't' after 3 seconds.");
@@ -298,7 +298,7 @@ test(06_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
     }
 }
 
-test(07_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off_Execution_Time) {
+test(12_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off_Execution_Time) {
     constexpr uint32_t SLEEP_DURATION_S = 3;
     if (phase == 0xbeef0007) {
         Serial.printf("    >> Device enters hibernate mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
@@ -319,11 +319,8 @@ test(07_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
         SystemSleepConfiguration config;
         config.mode(SystemSleepMode::HIBERNATE)
               .duration(SLEEP_DURATION_S * 1000);
-#if HAL_PLATFORM_CELLULAR
-        config.network(Cellular, SystemSleepNetworkFlag::INACTIVE_STANDBY);
-#elif HAL_PLATFORM_WIFI && PLATFORM_ID != PLATFORM_P2 // P2 doesn't support using network as wakeup source
-        config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
-#endif
+        // P2 doesn't support using network as wakeup source
+        // config.network(WiFi, SystemSleepNetworkFlag::INACTIVE_STANDBY);
 
         enterTime = Time.now();
         Serial.printlnf("Before: %ld", enterTime);
@@ -336,9 +333,9 @@ test(07_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
         assertLessOrEqual(exitTime - enterTime, SLEEP_DURATION_S + 1);
     }
 }
-#endif // HAL_PLATFORM_GEN == 2 || PLATFORM_ID == PLATFORM_P2
+#endif // PLATFORM_ID == PLATFORM_P2
 
-test(08_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
+test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP);
 #if HAL_PLATFORM_CELLULAR
@@ -351,12 +348,12 @@ test(08_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE);
 }
 
-test(09_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
+test(14_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SleepResult result = System.sleep(nullptr, 0, nullptr, 0, 0);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE);
 }
 
-test(10_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wakeup) {
+test(15_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER);
 #if HAL_PLATFORM_CELLULAR
@@ -369,7 +366,7 @@ test(10_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wake
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE)   ;
 }
 
-test(11_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0) {
+test(16_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after you have a rising edge on D0.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -390,7 +387,7 @@ test(11_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0) {
     assertEqual(result.wakeupPin(), D0);
 }
 
-test(12_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
+test(17_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after 3 seconds.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -411,7 +408,7 @@ test(12_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
 }
 
 #if HAL_PLATFORM_BLE && PLATFORM_ID != PLATFORM_P2
-test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
+test(18_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after device being connected by BLE Central.");
     Serial.println("    >> Press any key now");
     BLE.on();
@@ -435,7 +432,7 @@ test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
 }
 #endif // HAL_PLATFORM_BLE && PLATFORM_ID != PLATFORM_P2
 
-test(14_System_Sleep_Mode_Stop_Wakeup_By_D0) {
+test(19_System_Sleep_Mode_Stop_Wakeup_By_D0) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after you have a rising edge on D0.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -453,7 +450,7 @@ test(14_System_Sleep_Mode_Stop_Wakeup_By_D0) {
     assertEqual(result.pin(), D0);
 }
 
-test(15_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
+test(20_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after 3 seconds");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -470,7 +467,7 @@ test(15_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
     assertEqual((int)result.reason(), (int)WAKEUP_REASON_RTC);
 }
 
-test(16_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0) {
+test(21_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after you have a rising edge on D0.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -491,7 +488,7 @@ test(16_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0
     assertEqual(result.wakeupPin(), D0);
 }
 
-test(17_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rtc) {
+test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rtc) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after 3 seconds.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -514,7 +511,7 @@ test(17_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rt
 #if PLATFORM_ID != PLATFORM_P2
 
 #if HAL_PLATFORM_BLE
-test(18_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ble) {
+test(23_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ble) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after device being connected by BLE Central.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -538,7 +535,7 @@ test(18_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Bl
 }
 #endif // HAL_PLATFORM_BLE
 
-test(19_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Analog_Pin) {
+test(24_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Analog_Pin) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after applying voltage crossing 1500mV on A0.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -557,8 +554,7 @@ test(19_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Analog_Pin) {
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_LPCOMP);
 }
 
-#if HAL_PLATFORM_GEN == 3
-test(20_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Analog_Pin) {
+test(25_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Analog_Pin) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after applying voltage crossing 1500mV on A0.");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -576,9 +572,8 @@ test(20_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_An
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_LPCOMP);
 }
-#endif // HAL_PLATFORM_GEN == 3 
 
-test(21_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart) {
+test(26_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after sending characters over Serial1 @115200bps");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -601,8 +596,7 @@ test(21_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart) {
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
 }
 
-#if HAL_PLATFORM_GEN == 3
-test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Usart) {
+test(27_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Usart) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after sending characters over Serial1 @115200bps");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -624,10 +618,9 @@ test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Us
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
 }
-#endif // HAL_PLATFORM_GEN == 3
 
 #if HAL_PLATFORM_CELLULAR
-test(23_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular) {
+test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after waking up by network data");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -654,8 +647,7 @@ test(23_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular) {
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
 }
 
-#if HAL_PLATFORM_GEN == 3
-test(24_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Cellular) {
+test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Cellular) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after waking up by network data");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -679,11 +671,10 @@ test(24_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ce
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
 }
-#endif // HAL_PLATFORM_GEN == 3
 #endif // HAL_PLATFORM_CELLULAR
 
-#if HAL_PLATFORM_WIFI && HAL_PLATFORM_GEN == 3
-test(25_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_WiFi) {
+#if HAL_PLATFORM_WIFI
+test(30_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_WiFi) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after waking up by network data");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -708,7 +699,7 @@ test(25_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_WiFi) {
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
 }
 
-test(26_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_WiFi) {
+test(31_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_WiFi) {
     Serial.println("    >> Device enters ultra-low power mode. Please reconnect serial after waking up by network data");
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -732,11 +723,11 @@ test(26_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Wi
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
 }
-#endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_GEN == 3
+#endif // HAL_PLATFORM_WIFI
 
 #endif // PLATFORM_ID != PLATFORM_P2
 
-test(27_System_Sleep_With_Configuration_Object_Execution_Time_Prepare) {
+test(32_System_Sleep_With_Configuration_Object_Execution_Time_Prepare) {
     /* This test should only be run with threading disabled */
     if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
         skip();
@@ -751,7 +742,7 @@ test(27_System_Sleep_With_Configuration_Object_Execution_Time_Prepare) {
     });
 }
 
-test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
+test(33_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     constexpr uint32_t SLEEP_DURATION_S = 3;
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -796,7 +787,7 @@ test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
 }
 
-test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execution_Time) {
+test(34_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execution_Time) {
     constexpr uint32_t SLEEP_DURATION_S = 3;
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
@@ -838,7 +829,7 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 }
 
-test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On) {
+test(35_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On) {
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
     while (Serial.available() > 0) {
@@ -887,7 +878,7 @@ test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
     }
 }
 
-test(31_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Off) {
+test(36_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Off) {
     Serial.println("    >> Press any key now");
     while(Serial.available() <= 0);
     while (Serial.available() > 0) {

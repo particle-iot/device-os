@@ -3,8 +3,8 @@
 set -e
 
 if [ ! $PLATFORM ]; then
-  echo 'PLATFORM is not defined, assuming Photon'
-  export PLATFORM=photon
+  echo 'PLATFORM is not defined, assuming Argon'
+  export PLATFORM=argon
 fi
 
 this_dir=$(cd $(dirname "$0") && pwd)

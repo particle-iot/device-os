@@ -57,11 +57,15 @@ static void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice&
 
 using namespace particle::test;
 
+constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 100;
+constexpr uint16_t PEER_DESIRED_ATT_MTU = 123;
+
 test(BLE_000_Central_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(publishBlePeerInfo());
+    assertEqual(BLE.setDesiredAttMtu(LOCAL_DESIRED_ATT_MTU), (int)SYSTEM_ERROR_NONE);
 }
 
 test(BLE_00_Prepare) {
@@ -319,6 +323,7 @@ test(BLE_25_Pairing_Sync) {
 static bool pairingRequested = false;
 static int pairingStatus = -1;
 static bool lesc;
+static size_t effectiveAttMtu = 0;
 
 const BlePairingIoCaps pairingIoCaps[5] = {
     BlePairingIoCaps::NONE,
@@ -356,14 +361,14 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
             } else if (event.type == BlePairingEventType::STATUS_UPDATED) {
                 pairingStatus = event.payload.status.status;
                 lesc = event.payload.status.lesc;
-                Serial.println("status updateed");
+                Serial.println("status updated");
             } else if (event.type == BlePairingEventType::PASSKEY_DISPLAY || event.type == BlePairingEventType::NUMERIC_COMPARISON) {
                 Serial.print("Passkey display: ");
                 for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
                     Serial.printf("%c", event.payload.passkey[i]);
                 }
                 Serial.println("");
-#if !defined(PARTICLE_TEST_RUNNER) && 0
+#if !defined(PARTICLE_TEST_RUNNER)
                 if (event.type == BlePairingEventType::NUMERIC_COMPARISON) {
                     while (Serial.available()) {
                         Serial.read();
@@ -390,7 +395,7 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
                 }
 #endif // PARTICLE_TEST_RUNNER
             } else if (event.type == BlePairingEventType::PASSKEY_INPUT) {
-#if !defined(PARTICLE_TEST_RUNNER) && 0
+#if !defined(PARTICLE_TEST_RUNNER)
                 while (Serial.available()) {
                     Serial.read();
                 }
@@ -482,7 +487,7 @@ test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
         BLE.onPairingEvent([&](const BlePairingEvent& event) {
             if (event.type == BlePairingEventType::STATUS_UPDATED) {
                 pairingStatus = event.payload.status.status;
-                // Serial.println("status updateed");
+                // Serial.println("status updated");
             }
         });
 
@@ -537,6 +542,29 @@ test(BLE_31_Pairing_Receiption_Reject) {
         });
 
         assertTrue(waitFor([]{ return pairingStatus != 0; }, 5000));
+    }
+}
+
+test(BLE_32_Att_Mtu_Exchange) {
+    BLE.onAttMtuExchanged([&](const BlePeerDevice& p, size_t attMtu) {
+        effectiveAttMtu = attMtu;
+    });
+
+    SCOPE_GUARD ({
+        BLE.onAttMtuExchanged(nullptr, nullptr);
+    });
+
+    peer = BLE.connect(peerAddr, false);
+    assertTrue(peer.connected());
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
+
+        assertTrue(waitFor([&]{ return effectiveAttMtu == LOCAL_DESIRED_ATT_MTU; }, 5000));
     }
 }
 

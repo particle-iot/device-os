@@ -45,6 +45,7 @@
 #include "enumclass.h"
 #include "system_control.h"
 #include "scope_guard.h"
+#include "underlying_type.h"
 
 using spark::Vector;
 
@@ -113,6 +114,30 @@ private:
     ctrl_request_type type_;
     SystemControlRequestAclAction action_;
 };
+
+/**
+ * Firmware update status.
+ */
+enum class UpdateStatus: int {
+    /**
+     * The system will check for firmware updates when the device connects to the Cloud.
+     */
+    UNKNOWN = SYSTEM_UPDATE_STATUS_UNKNOWN,
+    /**
+     * No firmware update available.
+     */
+    NOT_AVAILABLE = SYSTEM_UPDATE_STATUS_NOT_AVAILABLE,
+    /**
+     * A firmware update is available.
+     */
+    PENDING = SYSTEM_UPDATE_STATUS_PENDING,
+    /**
+     * A firmware update is in progress.
+     */
+    IN_PROGRESS = SYSTEM_UPDATE_STATUS_IN_PROGRESS
+};
+
+PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(UpdateStatus)
 
 struct SleepResult {
     SleepResult() {}
@@ -598,9 +623,13 @@ public:
     template <typename F, std::enable_if_t<std::is_assignable<SystemOnThreeArgumentFuncPtr*&, F>::value, bool> = true>
     static SystemEventSubscription on(system_event_t events, F&& handler) {
         SystemEventSubscription sub;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress"
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
         if (!handler) {
             return sub;
         }
+#pragma GCC diagnostic pop
         auto callable = static_cast<SystemOnThreeArgumentFuncPtr*>(handler);
         SystemEventContext context = {};
         context.version = SYSTEM_EVENT_CONTEXT_VERSION;
@@ -733,6 +762,16 @@ public:
 
     inline uint8_t updatesForced() {
     	return get_flag(SYSTEM_FLAG_OTA_UPDATE_FORCED) != 0;
+    }
+
+    /**
+     * Get the firmware update status.
+     *
+     * @return A value defined by the `UpdateStatus` enum or a negative result code in case of
+     *         an error.
+     */
+    int updateStatus() {
+        return system_get_update_status(nullptr /* reserved */);
     }
 
     inline void enableReset() {

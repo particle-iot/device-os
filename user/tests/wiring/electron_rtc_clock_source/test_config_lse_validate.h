@@ -1,4 +1,0 @@
-#pragma once
-
-#define TEST_ELECTRON_USE_HSE_LSI (0)
-#define TEST_ELECTRON_VALIDATE_USES_HSE_LSI (1)

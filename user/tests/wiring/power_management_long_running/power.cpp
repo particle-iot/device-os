@@ -146,7 +146,8 @@ test(power_00_setup) {
                                       .powerSourceMaxCurrent(particle::power::DEFAULT_INPUT_CURRENT_LIMIT)
                                       .batteryChargeVoltage(particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT)
                                       .batteryChargeCurrent(particle::power::DEFAULT_CHARGE_CURRENT)
-                                      .batteryChargeVoltage(particle::power::DEFAULT_TERMINATION_VOLTAGE)),
+                                      .batteryChargeVoltage(particle::power::DEFAULT_TERMINATION_VOLTAGE)
+                                      .socBitPrecision(particle::power::DEFAULT_SOC_18_BIT_PRECISION)),
         (int)SYSTEM_ERROR_NONE
     );
     delay(1s);
@@ -160,6 +161,7 @@ test(power_00_setup) {
     assertEqual(cfg.powerSourceMinVoltage(), particle::power::DEFAULT_INPUT_VOLTAGE_LIMIT);
     assertEqual(cfg.batteryChargeCurrent(), particle::power::DEFAULT_CHARGE_CURRENT);
     assertEqual(cfg.batteryChargeVoltage(), particle::power::DEFAULT_TERMINATION_VOLTAGE);
+    assertEqual(cfg.socBitPrecision(), particle::power::DEFAULT_SOC_18_BIT_PRECISION);
 
     while (SERIAL.available() > 0) {
         (void)SERIAL.read();

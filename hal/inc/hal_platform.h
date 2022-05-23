@@ -20,13 +20,8 @@
 
 #include "platforms.h"
 
-#if PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL
-/* FIXME: create platform-specific hal_platform_config.h header for each of these platforms */
-#include "hal_platform_compat.h"
-#else
 /* Include platform-specific configuration header */
 #include "hal_platform_config.h"
-#endif /* PLATFORM_ID <= PLATFORM_ELECTRON_PRODUCTION || PLATFORM_ID == PLATFORM_NEWHAL */
 
 #ifndef PRODUCT_SERIES
 #error "PRODUCT_SERIES is not defined!"
@@ -72,10 +67,6 @@
 #ifndef HAL_PLATFORM_DCT
 #define HAL_PLATFORM_DCT 0
 #endif /* HAL_PLATFORM_DCT */
-
-#ifndef HAL_PLATFORM_DCT_NO_DEPRECATED
-#define HAL_PLATFORM_DCT_NO_DEPRECATED (1)
-#endif /* HAL_PLATFORM_DCT_NO_DEPRECATED */
 
 #ifndef PANIC_BUT_KEEP_CALM
 #define PANIC_BUT_KEEP_CALM 0
@@ -259,21 +250,9 @@
 #define HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL (25000)
 #endif // HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL
 
-#ifndef HAL_PLATFORM_DCT_SETUP_DONE
-#define HAL_PLATFORM_DCT_SETUP_DONE (0)
-#endif // HAL_PLATFORM_DCT_SETUP_DONE
-
 #ifndef HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR
 #define HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR (0)
 #endif // HAL_SOCKET_HAL_COMPAT_NO_SOCKADDR
-
-#ifndef HAL_PLATFORM_COMPRESSED_BINARIES
-#define HAL_PLATFORM_COMPRESSED_BINARIES (0)
-#elif HAL_PLATFORM_COMPRESSED_BINARIES
-// TODO: This feature macro was used to enable rudimentary support for compressed firmware
-// binaries, which is incompatible with OTA updates. We need to remove that code
-#warning "HAL_PLATFORM_COMPRESSED_BINARIES is deprecated"
-#endif // HAL_PLATFORM_COMPRESSED_BINARIES
 
 #ifndef HAL_PLATFORM_COMPRESSED_OTA
 #define HAL_PLATFORM_COMPRESSED_OTA (0)
@@ -509,6 +488,14 @@
 #ifndef HAL_PLATFORM_CONCURRENT_DUMP_THREADS
 #define HAL_PLATFORM_CONCURRENT_DUMP_THREADS (0)
 #endif // HAL_PLATFORM_CONCURRENT_DUMP_THREADS
+
+#ifndef HAL_PLATFORM_LED_THEME
+#define HAL_PLATFORM_LED_THEME (0)
+#endif // HAL_PLATFORM_LED_THEME
+
+#ifndef HAL_PLATFORM_FREERTOS
+#define HAL_PLATFORM_FREERTOS (1)
+#endif // HAL_PLATFORM_FREERTOS
 
 #ifndef HAL_PLATFORM_SYSTEM_POOL_SIZE
 #define HAL_PLATFORM_SYSTEM_POOL_SIZE 512

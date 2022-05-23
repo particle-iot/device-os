@@ -61,10 +61,6 @@ test(api_wiring_interrupt) {
 
     API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING));
 
-#if PLATFORM_ID >= 6 && PLATFORM_ID <= 10
-    API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM1_CC_IRQ, D0_callback));
-#endif // PLATFORM_ID >= 6 && PLATFORM_ID <= 10
-
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING, 14));
     API_COMPILE(attachInterrupt(D0, D0_callback, RISING, 14, 0));
     API_COMPILE(attachInterrupt(D0, &MyClass::handler, &myObj, RISING, 14));
@@ -147,14 +143,6 @@ void TIM3_callback()
 {
 }
 
-#if PLATFORM_ID >= 6 && PLATFORM_ID <= 10
-test(api_wiring_system_interrupt) {
-
-    API_COMPILE(attachSystemInterrupt(SysInterrupt_TIM3_IRQ, TIM3_callback));
-    API_COMPILE(detachSystemInterrupt(SysInterrupt_TIM3_IRQ));
-}
-#endif // PLATFORM_ID >= 6 && PLATFORM_ID <= 10
-
 void externalLEDHandler(uint8_t r, uint8_t g, uint8_t b) {
 }
 
@@ -175,11 +163,7 @@ test(api_rgb) {
     API_COMPILE(flag=RGB.brightness());
     API_COMPILE(RGB.onChange(externalLEDHandler));
     API_COMPILE(RGB.onChange(&ExternalLed::handler, &externalLed));
-#if !HAL_PLATFORM_NRF52840 // (GEN 2)
-    API_COMPILE(RGB.mirrorTo(A4, A5, A7));
-    API_COMPILE(RGB.mirrorTo(A4, A5, A7, false));
-    API_COMPILE(RGB.mirrorTo(A4, A5, A7, true, true));
-#else // HAL_PLATFORM_NRF52840 (GEN 3)
+#if HAL_PLATFORM_NRF52840 // GEN3
 #if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
     API_COMPILE(RGB.mirrorTo(A4, A5, A3));
     API_COMPILE(RGB.mirrorTo(A4, A5, A3, false));
@@ -190,6 +174,8 @@ test(api_rgb) {
     API_COMPILE(RGB.mirrorTo(A1, A0, A7, false));
     API_COMPILE(RGB.mirrorTo(A1, A0, A7, true, true));
 #endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#else
+    #error "Unsupported platform"
 #endif
     API_COMPILE(RGB.mirrorDisable());
     (void)flag; (void)value; // unused

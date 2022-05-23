@@ -17,6 +17,7 @@
 
 
 #include "system_update.h"
+#include "system_cloud_internal.h"
 #include <hippomocks.h>
 #include <iostream>
 #include <string>
@@ -25,6 +26,7 @@
 #include "spark_wiring_json.h"
 #include <limits>
 #include "hex_to_bytes.h"
+#include "util/string_appender.h"
 #include <map>
 
 #define CATCH_CONFIG_MAIN
@@ -316,62 +318,6 @@ TEST_CASE("system_module_info") {
 
     using namespace particle::system;
 
-    SECTION("canonical electron info") {
-        const char describe[] = "{\"p\":10,\"imei\":\"358887095538904\",\"iccid\":\"8934075300000506929\",\"m\":[{\"s\":16384,"
-            "\"l\":\"m\",\"vc\":30,\"vv\":30,\"f\":\"b\",\"n\":\"0\",\"v\":400,\"d\":[]},{\"s\":131072,\"l\":\"m\",\"vc\":30,\"vv\":30,"
-            "\"f\":\"s\",\"n\":\"1\",\"v\":1406,\"d\":[{\"f\":\"s\",\"n\":\"3\",\"v\":1406,\"_\":\"\"}]},{\"s\":131072,\"l\":\"m\",\"vc\":30,"
-            "\"vv\":30,\"f\":\"s\",\"n\":\"2\",\"v\":1406,\"d\":[{\"f\":\"s\",\"n\":\"1\",\"v\":1406,\"_\":\"\"},{\"f\":\"b\",\"n\":\"0\",\"v\":400,"
-            "\"_\":\"\"}]},{\"s\":131072,\"l\":\"m\",\"vc\":30,\"vv\":30,\"f\":\"s\",\"n\":\"3\",\"v\":1406,\"d\":[{\"f\":\"s\",\"n\":\"2\",\"v\":110,"
-            "\"_\":\"\"}]},{\"s\":131072,\"l\":\"m\",\"vc\":30,\"vv\":30,\"u\":\"5E9F1141072ACCA5F1B11B0FF248400CB04D386BE4882E80895027D3E6EFD0C6\","
-            "\"f\":\"u\",\"n\":\"1\",\"v\":6,\"d\":[{\"f\":\"s\",\"n\":\"2\",\"v\":1406,\"_\":\"\"}]}]}";
-        auto parsed = parseSystemInfoJson(describe);
-        CHECK(parsed.platformId == 10);
-        CHECK(parsed.modules.size() == 5);
-        CHECK(parsed.kv.size() == 2);
-        systemInfo.setPlatformId(parsed.platformId);
-        for (const auto& m: parsed.modules) {
-            systemInfo.addModule(m);
-        }
-        for (const auto& kv: parsed.kv) {
-            systemInfo.addKeyValue(kv.first, kv.second);
-        }
-        CHECK(systemInfo.getOnlyPresentModules().size() == parsed.modules.size());
-        CHECK(validateSystemInfoJson(describe, systemInfo));
-
-        CHECK(system_module_info(appender.callback, &appender, nullptr));
-        appender.finish();
-
-        CHECK(validateSystemInfoJson(appender.buffer(), systemInfo));
-    }
-
-    SECTION("canonical photon/p1 info") {
-        const char describe[] = "{\"p\":6,\"m\":[{\"s\":16384,\"l\":\"m\",\"vc\":30,\"vv\":30,\"f\":\"b\",\"n\":\"0\",\"v\":501,\"d\":[]},"
-            "{\"s\":262144,\"l\":\"m\",\"vc\":30,\"vv\":30,\"f\":\"s\",\"n\":\"1\",\"v\":1406,\"d\":[{\"f\":\"s\",\"n\":\"2\",\"v\":207,\"_\":\"\"}]},"
-            "{\"s\":262144,\"l\":\"m\",\"vc\":30,\"vv\":30,\"f\":\"s\",\"n\":\"2\",\"v\":1406,\"d\":[{\"f\":\"s\",\"n\":\"1\",\"v\":1406,\"_\":\"\"},"
-            "{\"f\":\"b\",\"n\":\"0\",\"v\":400,\"_\":\"\"}]},{\"s\":131072,\"l\":\"m\",\"vc\":30,\"vv\":30,"
-            "\"u\":\"D7FED6EB6733552F59E9AA645A84BA367FB25ACD436A33E91859B12BFC320815\",\"f\":\"u\",\"n\":\"1\",\"v\":6,\"d\":[{\"f\":\"s\",\"n\":\"2\",\"v\":1406,\"_\":\"\"}]}"
-            ",{\"s\":131072,\"l\":\"f\",\"vc\":30,\"vv\":30,\"u\":\"1B680C20D3F83421B3F83831538310F086FE0021102010F082FE0021022010F0\",\"f\":\"u\",\"n\":\"1\",\"v\":4,\"d\":"
-            "[{\"f\":\"s\",\"n\":\"2\",\"v\":21,\"_\":\"\"}]}]}";
-        auto parsed = parseSystemInfoJson(describe);
-        CHECK(parsed.platformId == 6);
-        CHECK(parsed.modules.size() == 5);
-        CHECK(parsed.kv.size() == 0);
-        systemInfo.setPlatformId(parsed.platformId);
-        for (const auto& m: parsed.modules) {
-            systemInfo.addModule(m);
-        }
-        for (const auto& kv: parsed.kv) {
-            systemInfo.addKeyValue(kv.first, kv.second);
-        }
-        CHECK(systemInfo.getOnlyPresentModules().size() == parsed.modules.size());
-        CHECK(validateSystemInfoJson(describe, systemInfo));
-
-        CHECK(system_module_info(appender.callback, &appender, nullptr));
-        appender.finish();
-
-        CHECK(validateSystemInfoJson(appender.buffer(), systemInfo));
-    }
-
     SECTION("canonical gen3 cellular device info") {
         const char describe[] = "{\"p\":23,\"imei\":\"354724645624658\",\"iccid\":\"89014103273166754725\",\"cellfw\":\"L0.0.00.00.05.08,A.02.04\","
             "\"m\":[{\"s\":49152,\"l\":\"m\",\"vc\":30,\"vv\":30,\"f\":\"b\",\"n\":\"0\",\"v\":1005,\"d\":[]},{\"s\":671744,\"l\":\"m\",\"vc\":30,\"vv\":30,"
@@ -521,7 +467,7 @@ TEST_CASE("system_module_info") {
         factory.validity_result = MODULE_VALIDATION_END;
         systemInfo.addModule(factory);
         CHECK(systemInfo.getOnlyPresentModules().size() == 2);
-        
+
         CHECK(system_module_info(appender.callback, &appender, nullptr));
         appender.finish();
 
@@ -537,11 +483,51 @@ TEST_CASE("system_module_info") {
         factory.validity_result = 0;
         systemInfo.addModuleThatShouldNotBePresentInJson(factory);
         CHECK(systemInfo.getOnlyPresentModules().size() == 1);
-        
+
         CHECK(system_module_info(appender.callback, &appender, nullptr));
         appender.finish();
 
         CHECK(validateSystemInfoJson(appender.buffer(), systemInfo));
     }
 
+}
+
+TEST_CASE("system_app_info") {
+    MockRepository mocks;
+    test::StringAppender appender;
+
+    SECTION("without functions and variables") {
+        mocks.OnCallFunc(cloudFunctionCount).Do([]() {
+            return 0;
+        });
+        mocks.OnCallFunc(cloudVariableCount).Do([]() {
+            return 0;
+        });
+        CHECK(system_app_info(appender.callback, &appender, nullptr));
+        CHECK(appender.data() == "\"f\":[],\"v\":{}");
+    }
+
+    SECTION("with functions and variables") {
+        mocks.OnCallFunc(cloudFunctionCount).Do([]() {
+            return 1;
+        });
+        mocks.OnCallFunc(getCloudFunctionInfo).Do([](size_t index, const char** name) {
+            switch (index) {
+                case 0: *name = "fn1"; return 0;
+                default: return -1;
+            }
+        });
+        mocks.OnCallFunc(cloudVariableCount).Do([]() {
+            return 2;
+        });
+        mocks.OnCallFunc(getCloudVariableInfo).Do([](size_t index, const char** name, int* type) {
+            switch (index) {
+                case 0: *name = "var1"; *type = 1; return 0;
+                case 1: *name = "var2"; *type = 2; return 0;
+                default: return -1;
+            }
+        });
+        CHECK(system_app_info(appender.callback, &appender, nullptr));
+        CHECK(appender.data() == "\"f\":[\"fn1\"],\"v\":{\"var1\":1,\"var2\":2}");
+    }
 }

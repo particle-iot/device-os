@@ -24,7 +24,6 @@
 #include "task.h"
 #include "interrupts_hal.h"
 
-/* TODO: consolidate with stm32f2x version */
 class StaticRecursiveMutex {
 public:
     StaticRecursiveMutex() {

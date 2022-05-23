@@ -75,7 +75,7 @@ public:
 
 		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, system_version,
 				deets.product_id, deets.product_version, nullptr /* device_id */, 0 /* device_id_len */,
-				PROTOCOL_BUFFER_SIZE, max_binary_size, ota_chunk_size, false /* confirmable */);
+				get_max_transmit_message_size(), max_binary_size, ota_chunk_size, false /* confirmable */);
 		return len;
 	}
 

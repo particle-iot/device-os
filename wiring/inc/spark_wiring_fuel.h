@@ -31,6 +31,7 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring.h"
 #include "spark_wiring_i2c.h"
+#include "system_power.h"
 
 //Default MAX17043 I2C address
 #define MAX17043_ADDRESS  0x36
@@ -44,10 +45,12 @@
 #define COMMAND_REGISTER  0xFE
 
 /* detail functions defined for unit tests */
-namespace particle { namespace detail {
+namespace particle {
+namespace detail {
     float _getVCell(byte MSB, byte LSB);
-    float _getSoC(byte MSB, byte LSB);
-}}
+    float _getSoC(byte MSB, byte LSB, byte soc_bits_precision = particle::power::DEFAULT_SOC_18_BIT_PRECISION);
+} // namespace detail
+} // namespace particle
 
 class FuelGauge {
 public:

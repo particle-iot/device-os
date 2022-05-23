@@ -28,6 +28,10 @@ pip3 --version
 
 pip3 install requests
 
+# FIXME: Bug with the latest jinja2 (https://github.com/gcovr/gcovr/pull/576) so we'll downgrade for now.
+#        Remove once this is fixed in a new release of gcovr (>5.0)
+pip3 install jinja2==3.0.3
+
 # install a specific gcovr version. May not work if that version isn't compatible with the pip3 version
 pip3 install gcovr==5.0
 

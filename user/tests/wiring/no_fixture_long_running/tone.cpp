@@ -27,7 +27,7 @@
 #include "tone_hal.h"
 #include "unit-test/unit-test.h"
 
-#if defined(STM32F2XX) || PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID == PLATFORM_P2
 static const hal_pin_t pin = D1;//pin under test
 #else
 static const hal_pin_t pin = A1;//pin under test
@@ -40,8 +40,10 @@ test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
 # else
     hal_pin_t pin = D0;
 # endif
-#else
+#elif HAL_PLATFORM_RTL872X
     hal_pin_t pin = D5;
+#else
+#error "Unsupported platform"
 #endif
     uint32_t frequency = 500;
     uint32_t duration = 100;

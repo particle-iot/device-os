@@ -1,5 +1,7 @@
 # Module Info
 
+> TODO: Update for Gen3
+
 The `module_info.h` file describes the structure of the block of metadata (module info) that is
 inserted into modules supporting self-describing memory location and CRC checks.
 

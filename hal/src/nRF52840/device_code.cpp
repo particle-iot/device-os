@@ -22,6 +22,7 @@
 #include "str_util.h"
 #include "preprocessor.h"
 #include "debug.h"
+#include "system_error.h"
 
 #include "dct.h"
 
@@ -59,6 +60,8 @@ int get_device_setup_code(char* code, size_t size) {
             // Return a dummy setup code
             codeSize = std::min(sizeof(setupCode), size);
             memset(code, 'X', codeSize);
+            // Overwrite return error as this is a valid case
+            ret = SYSTEM_ERROR_NONE;
         }
     } else {
         codeSize = std::min(sizeof(setupCode), size);

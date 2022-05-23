@@ -42,8 +42,6 @@ test(SPIX_01_SPI_Begin_Without_Argument)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
-    assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
 #else
@@ -69,8 +67,6 @@ test(SPIX_02_SPI_Begin_With_Ss_Pin)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
-    assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
 #else
@@ -123,8 +119,6 @@ test(SPIX_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin,D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
-    assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
 #else
@@ -134,27 +128,19 @@ test(SPIX_03_SPI_Begin_With_Mode)
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
 
-    // HAL_SPI_INTERFACE1 does not support slave mode on Gen3 device
-#if HAL_PLATFORM_STM32F2XX
+    // HAL_SPI_INTERFACE1 does not support slave mode on NRF52840
+#if HAL_PLATFORM_RTL872X
     SPI.begin(SPI_MODE_SLAVE);
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_SLAVE);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin, D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
-    assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
 #else
 #error "Unknown platform!"
 #endif
     SPI.end();
-#endif // HAL_PLATFORM_STM32F2XX
+#endif // HAL_PLATFORM_RTL872X
 }
 
 test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
@@ -174,8 +160,6 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_PHOTON || PLATFORM_ID == PLATFORM_P1 || PLATFORM_ID == PLATFORM_ELECTRON
-    assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
 #else
@@ -211,49 +195,8 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
     SPI.end();
 }
 
-// HAL_SPI_INTERFACE1 does not support slave mode on Gen3 device
-#if HAL_PLATFORM_STM32F2XX
-test(SPIX_05_SPI_Begin_With_Slave_Ss_Pin)
-{
-    // Just in case
-    SPI.end();
-
-    hal_spi_info_t info = {};
-
-    SPI.begin(SPI_MODE_SLAVE, SPI_DEFAULT_SS);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    assertEqual(info.ss_pin, A2);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_SLAVE, D0);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    assertEqual(info.ss_pin, D0);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_SLAVE, PIN_INVALID);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertFalse(info.enabled);
-    SPI.end();
-
-    memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    SPI.begin(SPI_MODE_SLAVE, 123);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertFalse(info.enabled);
-    SPI.end();
-}
-#endif // HAL_PLATFORM_STM32F2XX
-
 #if Wiring_SPI1
-test(SPIX_06_SPI1_Begin_Without_Argument)
+test(SPIX_05_SPI1_Begin_Without_Argument)
 {
     // Just in case
     SPI1.end();
@@ -274,7 +217,7 @@ test(SPIX_06_SPI1_Begin_Without_Argument)
     SPI1.end();
 }
 
-test(SPIX_07_SPI1_Begin_With_Ss_Pin)
+test(SPIX_06_SPI1_Begin_With_Ss_Pin)
 {
     // Just in case
     SPI1.end();
@@ -321,7 +264,7 @@ test(SPIX_07_SPI1_Begin_With_Ss_Pin)
     SPI1.end();
 }
 
-test(SPIX_08_SPI1_Begin_With_Mode)
+test(SPIX_07_SPI1_Begin_With_Mode)
 {
     // Just in case
     SPI1.end();
@@ -352,7 +295,7 @@ test(SPIX_08_SPI1_Begin_With_Mode)
 #endif
 }
 
-test(SPIX_09_SPI1_Begin_With_Master_Ss_Pin)
+test(SPIX_08_SPI1_Begin_With_Master_Ss_Pin)
 {
     // Just in case
     SPI1.end();
@@ -401,7 +344,7 @@ test(SPIX_09_SPI1_Begin_With_Master_Ss_Pin)
 
 // SPI1 can't work as slave on Tron
 #if PLATFORM_ID != PLATFORM_P2
-test(SPIX_10_SPI1_Begin_With_Slave_Ss_Pin)
+test(SPIX_09_SPI1_Begin_With_Slave_Ss_Pin)
 {
     // Just in case
     SPI1.end();
@@ -467,11 +410,9 @@ constexpr unsigned int SPI_DMA_OVERHEAD = 15500;
 constexpr unsigned int SPI_CLOCK_SPEED = 8000000; // 8MHz
 constexpr unsigned int SPI_NODMA_OVERHEAD = 15500; // 15.5us ~= 992 clock cycles @ 64MHz
 constexpr unsigned int SPI_DMA_OVERHEAD = SPI_NODMA_OVERHEAD; // Gen 3 always uses DMA underneath
-#elif HAL_PLATFORM_STM32F2XX
-constexpr unsigned int SPI_CLOCK_SPEED = 7500000; // 7.5MHz
-constexpr unsigned int SPI_NODMA_OVERHEAD = 1600; // 1.6us ~= 190 clock cycles @ 120MHz
-constexpr unsigned int SPI_DMA_OVERHEAD = 11500; // 11.5us ~= 1380 clock cycles @ 120MHz
-#endif // HAL_PLATFORM_RTL872X
+#else
+#error "Unsupported platform"
+#endif // HAL_PLATFORM_NRF52840
 
 #if !HAL_PLATFORM_RTL872X
 using SpixTestLock = SingleThreadedSection;
@@ -482,11 +423,11 @@ using SpixTestLock = SingleThreadedSection;
 struct SpixTestLock {
 
 };
-#endif // !HAL_PLATFORM_RTL872X
+#endif // HAL_PLATFORM_RTL872X
 
 } // anonymous
 
-test(SPIX_11_SPI_Clock_Speed)
+test(SPIX_10_SPI_Clock_Speed)
 {
     SPI.begin();
     SPI.setClockSpeed(SPI_CLOCK_SPEED);
@@ -497,7 +438,7 @@ test(SPIX_11_SPI_Clock_Speed)
     assertEqual(info.clock, SPI_CLOCK_SPEED);
 }
 
-test(SPIX_12_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
+test(SPIX_11_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 1;
@@ -517,7 +458,7 @@ test(SPIX_12_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
+test(SPIX_12_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 1;
@@ -539,7 +480,7 @@ test(SPIX_13_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
+test(SPIX_13_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 2;
@@ -562,7 +503,7 @@ test(SPIX_14_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
+test(SPIX_14_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 1;
@@ -583,7 +524,7 @@ test(SPIX_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
+test(SPIX_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 1;
@@ -606,7 +547,7 @@ test(SPIX_16_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
+test(SPIX_16_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 2;
@@ -629,7 +570,7 @@ test(SPIX_17_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
+test(SPIX_17_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 16;
@@ -652,7 +593,7 @@ test(SPIX_18_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
+test(SPIX_18_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 128;
@@ -675,7 +616,7 @@ test(SPIX_19_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
+test(SPIX_19_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
 {
     SpixTestLock lk;
     constexpr unsigned int transferSize = 1024;
@@ -698,7 +639,7 @@ test(SPIX_20_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
     assertLessOrEqual(transferTime, expectedTime + (expectedTime * SPI_ERROR_MARGIN) / 100);
 }
 
-test(SPIX_21_SPI_Sleep) {
+test(SPIX_20_SPI_Sleep) {
     constexpr unsigned int transferSize = 128;
     SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
@@ -728,7 +669,7 @@ test(SPIX_21_SPI_Sleep) {
     assertEqual(0, memcmp(tempRx, tempRx1, sizeof(tempRx)));
 }
 
-test(SPIX_22_SPI_Transfer_Buffer_In_Flash) {
+test(SPIX_21_SPI_Transfer_Buffer_In_Flash) {
     SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
     assertTrue(SPI.isEnabled());
