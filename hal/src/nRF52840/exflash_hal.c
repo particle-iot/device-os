@@ -20,8 +20,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
-/* nordic_common.h already defines MIN()/MAX() */
-// #include <sys/param.h>
 #include "nrfx_qspi.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
@@ -35,23 +33,75 @@
 #include "gpio_hal.h"
 #include "system_error.h"
 #include "nrf_system_error.h"
+#include "check.h"
+
+#define PRTCL_QSPI_DEFAULT_CINSTR(opc, len) \
+{                                           \
+    .opcode    = (opc),                     \
+    .length    = (len),                     \
+    .io2_level = true,                      \
+    .io3_level = true,                      \
+    .wipwait   = true,                      \
+    .wren      = true                       \
+}
 
 enum qspi_cmds_t {
-    QSPI_STD_CMD_WRSR     = 0x01,
-    QSPI_STD_CMD_WREN     = 0x06,
-    QSPI_STD_CMD_RSTEN    = 0x66,
-    QSPI_STD_CMD_RST      = 0x99,
-    QSPI_MX25_CMD_ENSO    = 0xb1,
-    QSPI_MX25_CMD_EXSO    = 0xc1,
-    QSPI_MX25_CMD_WRSCUR  = 0x2f,
-    QSPI_MX25_CMD_SLEEP   = 0xB9,
-    QSPI_MX25_CMD_READ_ID = 0xAB,
-    QSPI_STD_CMD_PGMERS_SUSPEND = 0xB0
+    QSPI_STD_CMD_WRSR            = 0x01, // Write Status Register
+    QSPI_STD_CMD_WREN            = 0x06, // Write Enable: Sets WEL bit before every write operation
+    QSPI_STD_CMD_RSTEN           = 0x66, // Enable Reset
+    QSPI_STD_CMD_RST             = 0x99, // Reset
+    QSPI_STD_CMD_SLEEP           = 0xB9, // GD25: "Power Down", MX25: "Deep Power Down"
+    QSPI_STD_CMD_READ_ID         = 0x9F, // Read Identification
+
+    QSPI_MX25_CMD_ENSO           = 0xB1, // Enter Secured OTP
+    QSPI_MX25_CMD_EXSO           = 0xC1, // Exit Secured OTP
+    QSPI_MX25_CMD_RDSCUR         = 0x2B, // Read Security Register
+    QSPI_MX25_CMD_WRSCUR         = 0x2F, // Write Security Register (ie lock OTP)
+    QSPI_MX25_CMD_PGMERS_SUSPEND = 0xB0, // Program/Erase Suspend
+
+    QSPI_GD25_CMD_WRSR2          = 0x31, // Write Status Register 2
+    QSPI_GD25_CMD_WRSR3          = 0x11, // Write Status Register 3
+    QSPI_GD25_CMD_SEC_ERASE      = 0x44, // Security Register Erase (ie Erase OTP)
+    QSPI_GD25_CMD_SEC_READ       = 0x48, // Security Register Read
+    QSPI_GD25_CMD_SEC_PROGRAM    = 0x42, // Security Register Program (ie Write OTP)
+    QSPI_GD25_CMD_PGMERS_SUSPEND = 0x75, // Program/Erase Suspend
 };
 
-static const size_t MX25_OTP_SECTOR_SIZE = 4096 / 8; /* 4Kb or 512B */
+enum qspi_type_t {
+    QSPI_TYPE_GD25WQ64EQFG,
+    QSPI_TYPE_MX25L3233F,
+    QSPI_TYPE_MX25R6435FZNIL0,
+    QSPI_TYPE_END
+};
+
+// For any variations between flash parts, set member vars at runtime
+typedef struct  {
+    int type;                      // qspi_type_t to identify what part is present
+    uint8_t write_opcode;          // Which opcode to use for quad write
+    uint8_t pgmers_suspend_opcode; // Which opcode to use when interrupting pending program/erase command
+    uint8_t sck_delay;             // tSHSL, tWHSL, and tSHWL in number of 16 MHz periods (62.5ns)
+    uint32_t otp_size;             // Size of OTP area in bytes
+    int (*init)();                 // Function to call once chip is identified. IE enter QSPI mode
+                                   // TODO: GD25: CLK and CSN pin drive strength? 
+} exflash_driver_parameters_t;
+
+static exflash_driver_parameters_t hal_exflash_driver = {};
 
 static hal_exflash_state_t qspi_state = HAL_EXFLASH_STATE_DISABLED;
+
+static const size_t MX25R6435F_OTP_SECTOR_SIZE = 1024;
+static const size_t MX25L3233F_OTP_SECTOR_SIZE = 512;
+
+static const size_t GD25_SECURITY_REGISTER_COUNT = 3;
+static const size_t GD25_SECURITY_REGISTER_SIZE = 1024;
+static const size_t GD25_OTP_SECTOR_SIZE = GD25_SECURITY_REGISTER_SIZE * GD25_SECURITY_REGISTER_COUNT;
+
+static const uint32_t MX25_MANUFACTURER_ID = 0xC2;
+static const uint32_t MX25R6435F_MEMORY_TYPE = 0x28;
+static const uint32_t MX25L3233F_MEMORY_TYPE = 0x20;
+
+// TODO: Figure this out for GD25 chip
+static const uint32_t GD25_MANUFACTURER_ID = 0xFF; 
 
 // Mitigations for nRF52840 anomaly 215
 // [215] QSPI: Reading QSPI registers after XIP might halt CPU
@@ -155,6 +205,110 @@ static int exit_secure_otp() {
     return exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_EXSO, 1, NULL);
 }
 
+static int exflash_init_MX25R6435FZNIL0() {
+    nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(QSPI_STD_CMD_WRSR, NRF_QSPI_CINSTR_LEN_4B);
+    // Status register, configuration register 1, configuration register 2 values
+    uint8_t config_values[3] = { 0x40, 0x00, 0x02 };
+    return exflash_qspi_cinstr_xfer(&cinstr_cfg, config_values, NULL);
+}
+
+static int exflash_init_MX25L3233F() {
+    nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(QSPI_STD_CMD_WRSR, NRF_QSPI_CINSTR_LEN_2B);
+    uint8_t status_register[1] = { 0x40 };
+    return exflash_qspi_cinstr_xfer(&cinstr_cfg, status_register, NULL);
+}
+
+static int exflash_init_GD25() {
+    nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(QSPI_STD_CMD_WRSR, NRF_QSPI_CINSTR_LEN_2B);
+    uint8_t status_registers[3] = {0x00, 0x02, 0x00};
+
+    CHECK_FALSE(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[0], NULL), SYSTEM_ERROR_FLASH_IO);
+    
+    cinstr_cfg.opcode = QSPI_GD25_CMD_WRSR2;
+    CHECK_FALSE(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[1], NULL), SYSTEM_ERROR_FLASH_IO);
+
+    cinstr_cfg.opcode = QSPI_GD25_CMD_WRSR3;
+    CHECK_FALSE(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[2], NULL), SYSTEM_ERROR_FLASH_IO);
+
+    return 0;
+}
+
+int gd25_secure_register_read(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
+    CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    // TODO: Check if buf is not null
+
+    nrf_qspi_cinstr_conf_t readSecurityRegister = PRTCL_QSPI_DEFAULT_CINSTR(QSPI_GD25_CMD_SEC_READ, NRF_QSPI_CINSTR_LEN_1B);
+
+    // 3 bytes of address data + 1 byte of dummy data
+    uint8_t addrBuf[4] = {}; 
+    uint32_t address = ((security_registers_index + 1) << 12) + security_registers_addr;
+    // TODO: Swap byte order via ntohl / htonl?
+    addrBuf[0] = (uint8_t)((address>>16) & 0xFF);
+    addrBuf[1] = (uint8_t)((address>>8) & 0xFF);
+    addrBuf[2] = (uint8_t)((address>>0) & 0xFF);
+    addrBuf[3] = 0x00;
+
+    // TODO: Should this be called via exflash_qspi_cinstr_xfer() with thread scheduling suspension etc?
+    // TODO: Validate return codes, return result
+    // start long frame transfer with "Read Security Register" opcode
+    nrfx_qspi_lfm_start(&readSecurityRegister);
+    // Send address + dummy bytes, do not finalize long frame transfer
+    nrfx_qspi_lfm_xfer(addrBuf, NULL, sizeof(addrBuf), false);
+    // Read security register data, finalize long frame transfer
+    nrfx_qspi_lfm_xfer(NULL, buf, size, true);
+
+    return 0;
+}
+
+int gd25_secure_register_write(uint8_t security_registers_index, uint32_t security_registers_addr, const void* buf, size_t size) {
+    CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    // TODO: write data across page would fail, e.g. write 4bytes from (0x100 - 2) to (0x100 + 2) 
+    // IE Do we want to support OTP > 1k on GD25 platforms?
+    nrf_qspi_cinstr_conf_t writeSecurityRegister = PRTCL_QSPI_DEFAULT_CINSTR(QSPI_GD25_CMD_SEC_PROGRAM, NRF_QSPI_CINSTR_LEN_1B);
+
+    uint32_t address = 0;
+    uint8_t addrBuf[3] = {};
+    address = ((security_registers_index + 1) << 12) + security_registers_addr;
+    addrBuf[0] = (uint8_t)((address>>16) & 0xFF);
+    addrBuf[1] = (uint8_t)((address>>8) & 0xFF);
+    addrBuf[2] = (uint8_t)((address>>0) & 0xFF);
+
+    nrfx_qspi_lfm_start(&writeSecurityRegister);
+    nrfx_qspi_lfm_xfer(addrBuf, NULL, sizeof(addrBuf), false); // Send address bytes, do not finalize long frame transfer
+    nrfx_qspi_lfm_xfer(buf, NULL, size, true); // Send data to write, finalize long frame transfer
+
+    return 0;
+}
+
+static void exflash_set_driver_parameters(uint32_t flash_type) {
+    switch (flash_type) {
+        case QSPI_TYPE_MX25L3233F: // fall through
+        case QSPI_TYPE_MX25R6435FZNIL0:
+            hal_exflash_driver.type = flash_type;
+            hal_exflash_driver.write_opcode = (nrf_qspi_writeoc_t)NRFX_QSPI_CONFIG_WRITEOC; // 0x38: PP4IO
+            hal_exflash_driver.pgmers_suspend_opcode = QSPI_MX25_CMD_PGMERS_SUSPEND;
+            hal_exflash_driver.sck_delay = (uint8_t)NRFX_QSPI_CONFIG_SCK_DELAY;
+            hal_exflash_driver.otp_size = (flash_type == QSPI_TYPE_MX25R6435FZNIL0) ? MX25R6435F_OTP_SECTOR_SIZE : MX25L3233F_OTP_SECTOR_SIZE;
+            hal_exflash_driver.init = (flash_type == QSPI_TYPE_MX25R6435FZNIL0) ? &exflash_init_MX25R6435FZNIL0 : &exflash_init_MX25L3233F;
+            break;
+        case QSPI_TYPE_GD25WQ64EQFG:
+            hal_exflash_driver.type = QSPI_TYPE_GD25WQ64EQFG;
+            hal_exflash_driver.write_opcode = NRF_QSPI_WRITEOC_PP4O; // 0x32: PP40
+            hal_exflash_driver.pgmers_suspend_opcode = QSPI_GD25_CMD_PGMERS_SUSPEND;
+            hal_exflash_driver.sck_delay = 2;
+            hal_exflash_driver.otp_size = GD25_OTP_SECTOR_SIZE;
+            hal_exflash_driver.init = &exflash_init_GD25;
+            break;
+        case QSPI_TYPE_END: // fall through
+        default:
+            break;
+    }
+}
+
+//__attribute__(( optimize("-O0") ))
 int hal_exflash_init(void) {
     int ret = 0;
 
@@ -165,59 +319,84 @@ int hal_exflash_init(void) {
 
     hal_exflash_lock();
 
-    nrfx_qspi_config_t config = {
-        .xip_offset  = NRFX_QSPI_CONFIG_XIP_OFFSET,
-        .pins = {
-           .sck_pin     = QSPI_FLASH_SCK_PIN,
-           .csn_pin     = QSPI_FLASH_CSN_PIN,
-           .io0_pin     = QSPI_FLASH_IO0_PIN,
-           .io1_pin     = QSPI_FLASH_IO1_PIN,
-           .io2_pin     = QSPI_FLASH_IO2_PIN,
-           .io3_pin     = QSPI_FLASH_IO3_PIN,
-        },
-        .irq_priority   = (uint8_t)QSPI_FLASH_IRQ_PRIORITY,
-        .prot_if = {
-            .readoc     = (nrf_qspi_readoc_t)NRFX_QSPI_CONFIG_READOC,
-            .writeoc    = (nrf_qspi_writeoc_t)NRFX_QSPI_CONFIG_WRITEOC,
-            .addrmode   = (nrf_qspi_addrmode_t)NRFX_QSPI_CONFIG_ADDRMODE,
-            .dpmconfig  = false,
-        },
-        .phy_if = {
-            .sck_freq   = (nrf_qspi_frequency_t)NRFX_QSPI_CONFIG_FREQUENCY,
-            .sck_delay  = (uint8_t)NRFX_QSPI_CONFIG_SCK_DELAY,
-            .spi_mode   = (nrf_qspi_spi_mode_t)NRFX_QSPI_CONFIG_MODE,
-            .dpmen      = false
-        },
-    };
+    bool valid_chip_detected = false;
+    for (uint32_t i = 0; i < QSPI_TYPE_END && !valid_chip_detected; i++) {
+        exflash_set_driver_parameters(i);
 
-    ret = nrfx_qspi_init(&config, NULL, NULL);
-    if (ret) {
-        if (ret == NRFX_ERROR_TIMEOUT) {
-            // Could have timed out because the flash chip might be in an ongoing program/erase operation.
-            // Suspend it.
-            LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op.");
-            ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
-            if (ret) {
-                ret = nrf_system_error(ret);
-                goto hal_exflash_init_done;
+        nrfx_qspi_config_t config = {
+            .xip_offset  = NRFX_QSPI_CONFIG_XIP_OFFSET,
+            .pins = {
+               .sck_pin     = QSPI_FLASH_SCK_PIN,
+               .csn_pin     = QSPI_FLASH_CSN_PIN,
+               .io0_pin     = QSPI_FLASH_IO0_PIN,
+               .io1_pin     = QSPI_FLASH_IO1_PIN,
+               .io2_pin     = QSPI_FLASH_IO2_PIN,
+               .io3_pin     = QSPI_FLASH_IO3_PIN,
+            },
+            .irq_priority   = (uint8_t)QSPI_FLASH_IRQ_PRIORITY,
+            .prot_if = {
+                .readoc     = (nrf_qspi_readoc_t)NRFX_QSPI_CONFIG_READOC,
+                .writeoc    = hal_exflash_driver.write_opcode,
+                .addrmode   = (nrf_qspi_addrmode_t)NRFX_QSPI_CONFIG_ADDRMODE,
+                .dpmconfig  = false,
+            },
+            .phy_if = {
+                .sck_freq   = (nrf_qspi_frequency_t)NRFX_QSPI_CONFIG_FREQUENCY,
+                .sck_delay  = hal_exflash_driver.sck_delay,
+                .spi_mode   = (nrf_qspi_spi_mode_t)NRFX_QSPI_CONFIG_MODE,
+                .dpmen      = false
+            },
+        };
+
+        ret = nrfx_qspi_init(&config, NULL, NULL);
+        if (ret) {
+            if (ret == NRFX_ERROR_TIMEOUT) {
+                // Could have timed out because the flash chip might be in an ongoing program/erase operation.
+                // Suspend it.
+                LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op.");
+                ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
+                if (ret) {
+                    ret = nrf_system_error(ret);
+                    continue;
+                }
             }
         }
-    }
-    LOG_DEBUG(TRACE, "QSPI initialized.");
-    qspi_state = HAL_EXFLASH_STATE_ENABLED;
+        LOG_DEBUG(TRACE, "QSPI initialized.");
+        qspi_state = HAL_EXFLASH_STATE_ENABLED;
 
-    // Wake up external flash from deep power down mode
-    ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_WAKEUP, NULL, NULL, 0);
-    if (ret) {
-        goto hal_exflash_init_done;
+        // Determine chip type / wake up from potential sleep
+        uint8_t chip_id[3] = {};
+        ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, NULL, chip_id, 0);
+
+        if (ret) {
+            continue;
+        }
+        else {
+            LOG_DEBUG(TRACE, "exflash chip id: %02X %02X %02X", chip_id[0], chip_id[1], chip_id[2]);
+        }
+
+        if ((hal_exflash_driver.type == QSPI_TYPE_MX25R6435FZNIL0 || hal_exflash_driver.type == QSPI_TYPE_MX25L3233F) && 
+            chip_id[0] == MX25_MANUFACTURER_ID) {
+            if (chip_id[1] == MX25R6435F_MEMORY_TYPE) {
+                exflash_set_driver_parameters(QSPI_TYPE_MX25R6435FZNIL0);
+            } else if (chip_id[1] == MX25L3233F_MEMORY_TYPE) {
+                exflash_set_driver_parameters(QSPI_TYPE_MX25L3233F);
+            } else {
+                // Unrecognized MXIC part, return error
+                ret = SYSTEM_ERROR_NOT_SUPPORTED;
+                break;
+            }
+            valid_chip_detected = true;
+        } else if ((hal_exflash_driver.type == QSPI_TYPE_GD25WQ64EQFG) && (chip_id[0] == GD25_MANUFACTURER_ID)) {
+            valid_chip_detected = true;
+        }
+
+        if (valid_chip_detected) {
+            // Reset chip, put it into QSPI mode
+            ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0);    
+        }        
     }
 
-    ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0);
-    if (ret) {
-        goto hal_exflash_init_done;
-    }
-
-hal_exflash_init_done:
     hal_exflash_unlock();
     return ret;
 }
@@ -318,7 +497,7 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_
     hal_exflash_lock();
     int err_code = NRF_SUCCESS;
 
-    const size_t block_length = len == QSPI_ERASE_LEN_LEN_4KB ? 4096 : 64 * 1024;
+    const size_t block_length = len == NRF_QSPI_ERASE_LEN_4KB ? 4096 : 64 * 1024;
 
     /* Round down to the nearest block */
     start_addr = ((start_addr / block_length) * block_length);
@@ -343,11 +522,11 @@ erase_common_done:
 }
 
 int hal_exflash_erase_sector(uintptr_t start_addr, size_t num_sectors) {
-    return erase_common(start_addr, num_sectors, QSPI_ERASE_LEN_LEN_4KB);
+    return erase_common(start_addr, num_sectors, NRF_QSPI_ERASE_LEN_4KB);
 }
 
 int hal_exflash_erase_block(uintptr_t start_addr, size_t num_blocks) {
-    return erase_common(start_addr, num_blocks, QSPI_ERASE_LEN_LEN_64KB);
+    return erase_common(start_addr, num_blocks, NRF_QSPI_ERASE_LEN_64KB);
 }
 
 int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data_size) {
@@ -388,64 +567,51 @@ hal_exflash_copy_sector_done:
 }
 
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
-    /* The only special sector we have on MX25L3233F is OTP */
-    if (sp != HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
-        return -1;
-    }
-
-    /* Validate bounds */
-    if (addr + data_size > MX25_OTP_SECTOR_SIZE) {
-        return -2;
-    }
+    CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(addr + data_size <= hal_exflash_driver.otp_size, SYSTEM_ERROR_OUT_OF_RANGE);
+    int ret = 0;
 
     hal_exflash_lock();
 
-    /* Enter Secure OTP mode */
-    int ret = enter_secure_otp();
-    if (ret) {
-        ret = -3;
-        goto hal_exflash_read_special_done;
+    if (hal_exflash_driver.type == QSPI_TYPE_GD25WQ64EQFG) {
+        // TODO: Read beyond the first 1k otp section if/when we need it
+        ret = gd25_secure_register_read(0, addr, data_buf, data_size);
+    } else {
+        ret = enter_secure_otp();
+        if (!ret) {
+            ret = hal_exflash_read(addr, data_buf, data_size);
+        }
+        exit_secure_otp(); 
     }
 
-    ret = hal_exflash_read(addr, data_buf, data_size);
-
-hal_exflash_read_special_done:
-    /* Exit Secure OTP mode */
-    exit_secure_otp();
     hal_exflash_unlock();
     return ret;
 }
 
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
-    /* The only special sector we have on MX25L3233F is OTP */
-    if (sp != HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
-        return -1;
-    }
-
-    /* Validate bounds */
-    if (addr + data_size > MX25_OTP_SECTOR_SIZE) {
-        return -1;
-    }
+    CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(addr + data_size <= hal_exflash_driver.otp_size, SYSTEM_ERROR_OUT_OF_RANGE);
+    int ret = 0;
 
     hal_exflash_lock();
 
-    /* Enter Secure OTP mode */
-    int ret = enter_secure_otp();
-    if (ret) {
-        goto hal_exflash_write_special_done;
+    if (hal_exflash_driver.type == QSPI_TYPE_GD25WQ64EQFG) {
+        ret = gd25_secure_register_write(0, addr, data_buf, data_size);
+    } else {
+        ret = enter_secure_otp();
+        if (!ret) {
+            ret = hal_exflash_write(addr, data_buf, data_size);
+        }
+        exit_secure_otp();
     }
 
-    ret = hal_exflash_write(addr, data_buf, data_size);
-
-hal_exflash_write_special_done:
-    /* Exit Secure OTP mode */
-    exit_secure_otp();
     hal_exflash_unlock();
     return ret;
 }
 
 int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, size_t size) {
     /* We only support OTP sector and since it's One Time Programmable, we can't erase it */
+    // TODO: GD25 *can* support OTP erasing, do we want to implement it? 
     return -1;
 }
 
@@ -464,13 +630,14 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
         };
 
         if (cmd == HAL_EXFLASH_COMMAND_SLEEP) {
-            cinstr_cfg.opcode = QSPI_MX25_CMD_SLEEP;
-        } else if (cmd == HAL_EXFLASH_COMMAND_WAKEUP) {
-            /* Wake up external flash from deep power down modeby sending read id command */
-            cinstr_cfg.opcode = QSPI_MX25_CMD_READ_ID;
+            cinstr_cfg.opcode = QSPI_STD_CMD_SLEEP;
+        } else if (cmd == HAL_EXFLASH_COMMAND_WAKEUP || cmd == HAL_EXFLASH_COMMAND_READID) {
+            /* Wake up external flash from deep power down mode by sending read id command */
+            cinstr_cfg.opcode = QSPI_STD_CMD_READ_ID;
+            cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_4B;
         } else if (cmd == HAL_EXFLASH_COMMAND_SUSPEND_PGMERS) {
             /* suspend an ongoing program or erase operation */
-            cinstr_cfg.opcode = QSPI_STD_CMD_PGMERS_SUSPEND;
+            cinstr_cfg.opcode = hal_exflash_driver.pgmers_suspend_opcode;
         } else if (cmd == HAL_EXFLASH_COMMAND_RESET) {
             cinstr_cfg.opcode = QSPI_STD_CMD_RSTEN;
         } else {
@@ -478,7 +645,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
         }
 
         // Execute the command.
-        ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, NULL);
+        ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, result);
 
         // For the reset procedure, we need to execute the reset command going forward.
         if (!ret && cmd == HAL_EXFLASH_COMMAND_RESET) {
@@ -487,20 +654,11 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             if (ret) {
                 goto exit;
             }
-            //Switch to qpsi mode
-#if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
-            uint8_t temporary[3] = { 0x40, 0x00, 0x02 };
-            cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
-            cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_4B;
-            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
-#elif HAL_PLATFORM_FLASH_MX25L3233F
-            uint8_t temporary[1] = { 0x40 };
-            cinstr_cfg.opcode = QSPI_STD_CMD_WRSR;
-            cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_2B;
-            ret = exflash_qspi_cinstr_xfer(&cinstr_cfg, temporary, NULL);
-#else
-#error "Unsupported platform for external flash"
-#endif
+
+            if (hal_exflash_driver.init) {
+                // TODO: Consolidate init here?
+                ret = hal_exflash_driver.init();
+            }
         }
     } else if (sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
         /* OTP-specific commands */
@@ -511,6 +669,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
              */
             uint8_t v = 0x01;
             ret = exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_WRSCUR, 2, &v);
+            // TODO: Lock OTP for GD25?
         }
     }
 
