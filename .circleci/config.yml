@@ -300,7 +300,7 @@ commands:
       - run:
           name: "Install `prtcl` CLI (ubuntu)"
           command: |
-            printf 'Acquire::http::Timeout "30";\nAcquire::ftp::Timeout "30";\nAcquire::Retries "5";\n' | sudo tee /etc/apt/apt.conf.d/99timeout > /dev/null
+            printf 'Acquire::http::Timeout "60";\nAcquire::ftp::Timeout "60";\nAcquire::Retries "15";\n' | sudo tee /etc/apt/apt.conf.d/99timeout > /dev/null
             sudo apt-get update -q
             sudo apt-get install -qy zlib1g-dev jq
             sudo curl https://prtcl.s3.amazonaws.com/install-apt.sh | sh
@@ -340,7 +340,7 @@ commands:
     steps:
       - run:
           name: "Test Local Compilation Tasks"
-          no_output_timeout: "10m"
+          no_output_timeout: "20m"
           command: scripts/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>"
           environment:
             PRTCL_DISABLE_AUTOUPDATE: "1"
