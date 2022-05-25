@@ -67,7 +67,6 @@ uint8_t ledAdjust(uint8_t value, uint8_t brightness=255) {
 }
 
 test(LED_01_Updated) {
-    constexpr uint8_t error = 1;
     // Force the LED to show a breathing pattern for this test
     LEDStatus status(LED_PATTERN_FADE, LED_PRIORITY_IMPORTANT);
     status.setActive();

@@ -11,13 +11,6 @@ RELEASE_110_MODULE_VERSION ?= 1102
 # Bump by 1 if Tinker has been updated
 USER_PART_MODULE_VERSION ?= 6
 
-RELEASE_064_MODULE_VERSION=110
-
-ifneq (,$(filter $(PLATFORM_ID),10))
-# make system part1 dependent upon 0.6.4 so that the bootloader is not repeatedly upgraded
-SYSTEM_PART3_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_SYSTEM_PART},2,${RELEASE_064_MODULE_VERSION}
-endif
-
 # Skip to next 100 every vx.N.x release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last vx.N.x release.
 # Bump by 1 for every updated bootloader image for a release with the same vx.N.* base.

@@ -153,7 +153,7 @@ if [ $PLATFORM = "all" ]; then
 	release_platform "bsom"
 	release_platform "b5som"
 	release_platform "tracker"
-    release_platform "p2"
+	release_platform "p2"
 else
 	release_platform "$PLATFORM"
 fi

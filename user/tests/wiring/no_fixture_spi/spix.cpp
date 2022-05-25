@@ -207,13 +207,8 @@ test(SPIX_05_SPI1_Begin_Without_Argument)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-
-#if PLATFORM_ID == PLATFORM_P2
+    // D5 is the default SS pin for all platforms
     assertEqual(info.ss_pin, D5);
-#else
-    // D5 is the default SS pin for all platforms except Tron
-    assertEqual(info.ss_pin, D5);
-#endif
     SPI1.end();
 }
 
@@ -228,12 +223,8 @@ test(SPIX_06_SPI1_Begin_With_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_P2
+    // D5 is the default SS pin for all platforms
     assertEqual(info.ss_pin, D5);
-#else
-    // D5 is the default SS pin for all platforms except Tron
-    assertEqual(info.ss_pin, D5);
-#endif
     SPI1.end();
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
@@ -274,12 +265,8 @@ test(SPIX_07_SPI1_Begin_With_Mode)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_P2
+    // D5 is the default SS pin for all platforms
     assertEqual(info.ss_pin, D5);
-#else
-    // D5 is the default SS pin for all platforms except Tron
-    assertEqual(info.ss_pin, D5);
-#endif
     SPI1.end();
 
     // SPI1 can't work as slave on Tron
@@ -289,7 +276,7 @@ test(SPIX_07_SPI1_Begin_With_Mode)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_SLAVE);
-    // D5 is the default SS pin for all platforms except Tron
+    // D5 is the default SS pin for all platforms
     assertEqual(info.ss_pin, D5);
     SPI1.end();
 #endif
@@ -306,12 +293,8 @@ test(SPIX_08_SPI1_Begin_With_Master_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_P2
+    // D5 is the default SS pin for all platforms
     assertEqual(info.ss_pin, D5);
-#else
-    // D5 is the default SS pin for all platforms except Tron
-    assertEqual(info.ss_pin, D5);
-#endif
     SPI1.end();
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));

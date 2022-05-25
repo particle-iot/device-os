@@ -2170,7 +2170,7 @@
 
 ### FEATURES
 
-- [Mesh] `hal_gpio_configure()` implemented allowing to configure the pin and set it to a certain state without a glitch
+- [Mesh] `HAL_Pin_Configure()` implemented allowing to configure the pin and set it to a certain state without a glitch
 
 ## 0.8.0-rc.21
 
@@ -2819,7 +2819,7 @@ with these releases.
 
 ### BUGFIXES
 
-- added hal_interrupt_is_isr() which is used to skip calling the background loop from delay(). fixes [#673](https://github.com/spark/firmware/issue/673)
+- added HAL_IsISR() which is used to skip calling the background loop from delay(). fixes [#673](https://github.com/spark/firmware/issue/673)
 - Fixes an issue of USB Serial erroneously switching to closed state. [#1073](https://github.com/spark/firmware/pull/1073)
 - RTC wakeup time now calculated right before entering SLEEP_MODE_DEEP. Fixes [#1043](https://github.com/spark/firmware/issue/1043)
 - STOP mode should retain user interrupt handler. Fixes [#1029](https://github.com/spark/firmware/issue/1029)
