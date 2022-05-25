@@ -7,7 +7,7 @@
             "compilers": "gcc-arm@10.2.1",
             "tools": "buildtools@1.1.1",
             "scripts": "buildscripts@1.10.0",
-            "debuggers": "openocd@0.11.2-adhoc6ea4372.0"
+            "debuggers": "openocd@0.11.0-particle.4"
         }
     ]
 }
