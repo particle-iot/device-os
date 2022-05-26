@@ -28,6 +28,23 @@
 #include "system_error.h"
 #include "rtl8721d.h"
 
+#if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
+typedef enum {
+    MXIC_FLASH_CMD_ENSO             = 0xB1,
+    MXIC_FLASH_CMD_EXSO             = 0xC1,
+    MXIC_FLASH_CMD_DP               = 0xB9,
+    MXIC_FLASH_CMD_RDID             = 0x9F,
+    MXIC_FLASH_CMD_PGM_ERS_SPD      = 0x75,
+    MXIC_FLASH_CMD_PGM_ERS_RSM      = 0x7A,
+    MXIC_FLASH_CMD_RSTEN            = 0x66,
+    MXIC_FLASH_CMD_RST              = 0x99,
+    MXIC_FLASH_CMD_WREN             = 0x06,
+    MXIC_FLASH_CMD_WRSCUR           = 0x2F
+} mxic_flash_cmd_t;
+#else
+#error "Unsupported external flash"
+#endif
+
 static bool is_block_erased(uintptr_t addr, size_t size);
 
 __attribute__((section(".ram.text"), noinline))
@@ -154,22 +171,87 @@ hal_exflash_copy_sector_done:
     return ret;
 }
 
+__attribute__((section(".ram.text"), noinline))
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    hal_exflash_lock();
+    os_thread_scheduling(false, NULL);
+
+    // FIXME: it cannot guarantee that it has entered the secure mode
+    FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, NULL);
+    FLASH_RxData(0, (uint32_t)addr, data_size, data_buf);
+    FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, NULL);
+
+    os_thread_scheduling(true, NULL);
+    hal_exflash_unlock();
+    return SYSTEM_ERROR_NONE;
 }
 
+__attribute__((section(".ram.text"), noinline))
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    hal_exflash_lock();
+    os_thread_scheduling(false, NULL);
+
+    // FIXME: The result of the instruction is not garanteed.
+    FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, NULL);
+    int ret = hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read);
+    // FIXME: The result of the instruction is not garanteed.
+    FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, NULL);
+
+    os_thread_scheduling(true, NULL);
+    hal_exflash_unlock();
+    return ret;
 }
 
 int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, size_t size) {
+    /* We only support OTP sector and since it's One Time Programmable, we can't erase it */
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_command_t cmd, const uint8_t* data, uint8_t* result, size_t size) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    hal_exflash_lock();
+    os_thread_scheduling(false, NULL);
+
+    uint8_t byte;
+
+    /* General commands */
+    if (sp == HAL_EXFLASH_SPECIAL_SECTOR_NONE) {
+        if (cmd == HAL_EXFLASH_COMMAND_SLEEP) {
+            byte = MXIC_FLASH_CMD_DP;
+        } else if (cmd == HAL_EXFLASH_COMMAND_WAKEUP) {
+            byte = MXIC_FLASH_CMD_RDID;
+        } else if (cmd == HAL_EXFLASH_COMMAND_SUSPEND_PGMERS) {
+            byte = MXIC_FLASH_CMD_PGM_ERS_SPD;
+        } else if (cmd == HAL_EXFLASH_COMMAND_RESET) {
+            byte = MXIC_FLASH_CMD_RSTEN;
+        } else {
+            goto exit;
+        }
+        // FIXME: The result of the instruction is not garanteed.
+        FLASH_TxCmd(byte, 0, NULL);
+        // For the reset procedure, we need to execute the reset command going forward.
+        if (cmd == HAL_EXFLASH_COMMAND_RESET) {
+            byte = MXIC_FLASH_CMD_RST;
+            // FIXME: The result of the instruction is not garanteed.
+            FLASH_TxCmd(byte, 0, NULL);
+        }
+    } else if (sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
+        if (cmd == HAL_EXFLASH_COMMAND_LOCK_ENTIRE_OTP) {
+            byte = MXIC_FLASH_CMD_WREN;
+            // FIXME: The result of the instruction is not garanteed.
+            FLASH_TxCmd(byte, 0, NULL);
+            byte = MXIC_FLASH_CMD_WRSCUR;
+            // FIXME: The result of the instruction is not garanteed.
+            FLASH_TxCmd(byte, 0, NULL);
+        }
+    }
+
+exit:
+    os_thread_scheduling(false, NULL);
+    hal_exflash_unlock();
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_exflash_sleep(bool sleep, void* reserved) {
+    // Note: HAL sleep driver uses SDK API to suspend external flash.
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
