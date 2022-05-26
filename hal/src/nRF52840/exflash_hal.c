@@ -68,15 +68,16 @@ enum qspi_cmds_t {
 };
 
 enum qspi_type_t {
-    QSPI_TYPE_GD25WQ64EQFG,
     QSPI_TYPE_MX25L3233F,
     QSPI_TYPE_MX25R6435FZNIL0,
+    QSPI_TYPE_GD25WQ64EQFG,
     QSPI_TYPE_END
 };
 
 // For any variations between flash parts, set member vars at runtime
 typedef struct  {
     int type;                      // qspi_type_t to identify what part is present
+    bool part_detected;            // Have we positively identified the flash part yet
     uint8_t write_opcode;          // Which opcode to use for quad write
     uint8_t pgmers_suspend_opcode; // Which opcode to use when interrupting pending program/erase command
     uint8_t sck_delay;             // tSHSL, tWHSL, and tSHWL in number of 16 MHz periods (62.5ns)
@@ -236,14 +237,12 @@ static int exflash_init_GD25() {
 int gd25_secure_register_read(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
     CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    // TODO: Check if buf is not null
 
     nrf_qspi_cinstr_conf_t readSecurityRegister = PRTCL_QSPI_DEFAULT_CINSTR(QSPI_GD25_CMD_SEC_READ, NRF_QSPI_CINSTR_LEN_1B);
 
     // 3 bytes of address data + 1 byte of dummy data
     uint8_t addrBuf[4] = {}; 
     uint32_t address = ((security_registers_index + 1) << 12) + security_registers_addr;
-    // TODO: Swap byte order via ntohl / htonl?
     addrBuf[0] = (uint8_t)((address>>16) & 0xFF);
     addrBuf[1] = (uint8_t)((address>>8) & 0xFF);
     addrBuf[2] = (uint8_t)((address>>0) & 0xFF);
@@ -265,8 +264,6 @@ int gd25_secure_register_write(uint8_t security_registers_index, uint32_t securi
     CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    // TODO: write data across page would fail, e.g. write 4bytes from (0x100 - 2) to (0x100 + 2) 
-    // IE Do we want to support OTP > 1k on GD25 platforms?
     nrf_qspi_cinstr_conf_t writeSecurityRegister = PRTCL_QSPI_DEFAULT_CINSTR(QSPI_GD25_CMD_SEC_PROGRAM, NRF_QSPI_CINSTR_LEN_1B);
 
     uint32_t address = 0;
@@ -319,8 +316,7 @@ int hal_exflash_init(void) {
 
     hal_exflash_lock();
 
-    bool valid_chip_detected = false;
-    for (uint32_t i = 0; i < QSPI_TYPE_END && !valid_chip_detected; i++) {
+    for (uint32_t i = 0; i < QSPI_TYPE_END && !hal_exflash_driver.part_detected; i++) {
         exflash_set_driver_parameters(i);
 
         nrfx_qspi_config_t config = {
@@ -386,12 +382,12 @@ int hal_exflash_init(void) {
                 ret = SYSTEM_ERROR_NOT_SUPPORTED;
                 break;
             }
-            valid_chip_detected = true;
+            hal_exflash_driver.part_detected = true;
         } else if ((hal_exflash_driver.type == QSPI_TYPE_GD25WQ64EQFG) && (chip_id[0] == GD25_MANUFACTURER_ID)) {
-            valid_chip_detected = true;
+            hal_exflash_driver.part_detected = true;
         }
 
-        if (valid_chip_detected) {
+        if (hal_exflash_driver.part_detected) {
             // Reset chip, put it into QSPI mode
             ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0);    
         }        
@@ -569,13 +565,35 @@ hal_exflash_copy_sector_done:
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(addr + data_size <= hal_exflash_driver.otp_size, SYSTEM_ERROR_OUT_OF_RANGE);
+    CHECK_TRUE(data_buf != NULL, SYSTEM_ERROR_INVALID_ARGUMENT);
     int ret = 0;
 
     hal_exflash_lock();
 
     if (hal_exflash_driver.type == QSPI_TYPE_GD25WQ64EQFG) {
-        // TODO: Read beyond the first 1k otp section if/when we need it
-        ret = gd25_secure_register_read(0, addr, data_buf, data_size);
+        // Determine which OTP Register to start writing to
+        size_t otp_page = addr / GD25_OTP_SECTOR_SIZE;
+        size_t data_to_read = data_size;
+        size_t data_read = 0;
+        size_t read_amount = 0;
+
+        while (data_to_read && !ret) {
+            // Determine the offset of the current OTP register to start writing at
+            size_t register_offset = (addr + data_read) % GD25_SECURITY_REGISTER_SIZE;
+            read_amount = data_to_read;
+
+            // If the data remaining to read extends into the next register, truncate the read amount to fit into this register
+            if (register_offset + read_amount > GD25_SECURITY_REGISTER_SIZE){
+                read_amount = GD25_SECURITY_REGISTER_SIZE - register_offset;
+            }
+
+            ret = gd25_secure_register_read(otp_page, register_offset, &data_buf[data_read], read_amount);
+
+            // Increment/decrement counter variables, increment to the next OTP register
+            data_to_read -= read_amount;
+            data_read += read_amount;
+            otp_page++;
+        }
     } else {
         ret = enter_secure_otp();
         if (!ret) {
@@ -591,12 +609,35 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(addr + data_size <= hal_exflash_driver.otp_size, SYSTEM_ERROR_OUT_OF_RANGE);
+    CHECK_TRUE(data_buf != NULL, SYSTEM_ERROR_INVALID_ARGUMENT);
     int ret = 0;
 
     hal_exflash_lock();
 
     if (hal_exflash_driver.type == QSPI_TYPE_GD25WQ64EQFG) {
-        ret = gd25_secure_register_write(0, addr, data_buf, data_size);
+        // Determine which OTP Register to start writing to
+        size_t otp_page = addr / GD25_OTP_SECTOR_SIZE;
+        size_t data_to_write = data_size;
+        size_t data_written = 0;
+        size_t write_amount = 0;
+
+        while (data_to_write && !ret) {
+            // Determine the offset of the current OTP register to start writing at
+            size_t register_offset = (addr + data_written) % GD25_SECURITY_REGISTER_SIZE;
+            write_amount = data_to_write;
+
+            // If the data remaining to write extends into the next register, truncate the write amount to fit into this register
+            if (register_offset + write_amount > GD25_SECURITY_REGISTER_SIZE){
+                write_amount = GD25_SECURITY_REGISTER_SIZE - register_offset;
+            }
+
+            ret = gd25_secure_register_write(otp_page, register_offset, &data_buf[data_written], write_amount);
+
+            // Increment/decrement counter variables, increment to the next OTP register
+            data_to_write -= write_amount;
+            data_written += write_amount;
+            otp_page++;
+        }
     } else {
         ret = enter_secure_otp();
         if (!ret) {
@@ -717,4 +758,8 @@ int hal_exflash_sleep(bool sleep, void* reserved) {
     }
     hal_exflash_unlock();
     return SYSTEM_ERROR_NONE;
+}
+
+int hal_exflash_otp_size(void) {
+    return hal_exflash_driver.part_detected ? (int)hal_exflash_driver.otp_size : SYSTEM_ERROR_UNKNOWN;
 }
