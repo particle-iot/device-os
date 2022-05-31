@@ -68,12 +68,6 @@ struct PlatformNCPInfo {
 };
 
 /**
- * Determine the NCP identifier from the module info given.
- * Returns PLATFORM_NCP_UNKNOWN when the module info does not represent an NCP module, or if the NCP type is unknown, or if the main platform does not match this device's platform.
- */
-PlatformNCPIdentifier platform_ncp_identifier(module_info_t* moduleInfo);
-
-/**
  * Determine the primary NCP that is running on this platform.
  */
 PlatformNCPIdentifier platform_primary_ncp_identifier();

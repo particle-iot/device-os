@@ -17,30 +17,6 @@
 
 #include "platform_ncp.h"
 
-PlatformNCPIdentifier platform_ncp_identifier(module_info_t* mi) {
-    PlatformNCPIdentifier ncp = PLATFORM_NCP_UNKNOWN;
-    if (mi->platform_id == PLATFORM_ID) {
-        switch (mi->reserved) {
-        case PLATFORM_NCP_ESP32:
-        case PLATFORM_NCP_SARA_U201:
-        case PLATFORM_NCP_SARA_G350:
-        case PLATFORM_NCP_SARA_R410:
-        case PLATFORM_NCP_SARA_R510:
-        case PLATFORM_NCP_QUECTEL_BG96:
-        case PLATFORM_NCP_QUECTEL_EG91_E:
-        case PLATFORM_NCP_QUECTEL_EG91_NA:
-        case PLATFORM_NCP_QUECTEL_EG91_EX:
-        case PLATFORM_NCP_SARA_U260:
-        case PLATFORM_NCP_SARA_U270:
-        case PLATFORM_NCP_BROADCOM_BCM9WCDUSI09:
-        case PLATFORM_NCP_BROADCOM_BCM9WCDUSI14:
-            ncp = static_cast<PlatformNCPIdentifier>(mi->reserved);
-            break;
-        }
-    }
-    return ncp;
-}
-
 int platform_ncp_count() {
     return HAL_PLATFORM_NCP_COUNT;
 }
