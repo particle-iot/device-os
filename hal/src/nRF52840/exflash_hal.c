@@ -101,8 +101,7 @@ static const uint32_t MX25_MANUFACTURER_ID = 0xC2;
 static const uint32_t MX25R6435F_MEMORY_TYPE = 0x28;
 static const uint32_t MX25L3233F_MEMORY_TYPE = 0x20;
 
-// TODO: Figure this out for GD25 chip
-static const uint32_t GD25_MANUFACTURER_ID = 0xFF; 
+static const uint32_t GD25_MANUFACTURER_ID = 0xC8;
 
 // Mitigations for nRF52840 anomaly 215
 // [215] QSPI: Reading QSPI registers after XIP might halt CPU
