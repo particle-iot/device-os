@@ -38,6 +38,9 @@ extern "C" {
 #define HAL_EXFLASH_OTP_MAGIC_NUMBER_ADDR   0x0
 #define HAL_EXFLASH_OTP_MAGIC_NUMBER        0x9A7D5BC6
 
+extern uintptr_t platform_system_part1_flash_start;
+extern uintptr_t platform_flash_end;
+
 #if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
 typedef enum {
     MXIC_FLASH_CMD_ENSO             = 0xB1,
@@ -197,6 +200,30 @@ static bool isSecureOtpMode(uint32_t normalContent) {
     return false;
 }
 
+// We are safe to run the constructor/destructor, cos they are copied to PSRAM to run.
+class ProhibitXip {
+public:
+    ProhibitXip()
+            : mpuCfg_{},
+              mpuEntry_(0) {
+        mpuEntry_ = mpu_entry_alloc();
+        mpuCfg_.region_base = (uintptr_t)&platform_system_part1_flash_start;
+        mpuCfg_.region_size = (uintptr_t)&platform_flash_end - (uintptr_t)&platform_system_part1_flash_start; // System part1, OTA region, user part and filesystem
+        mpuCfg_.xn = MPU_EXEC_NEVER;
+        mpuCfg_.ap = MPU_PRIV_R;
+        mpuCfg_.sh = MPU_NON_SHAREABLE;
+        mpuCfg_.attr_idx = MPU_MEM_ATTR_IDX_NC;
+        mpu_region_cfg(mpuEntry_, &mpuCfg_);
+    }
+
+    ~ProhibitXip() {
+        mpu_entry_free(mpuEntry_);
+    }
+private:
+    mpu_region_config mpuCfg_;
+    uint32_t mpuEntry_;
+};
+
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     hal_exflash_lock();
@@ -217,8 +244,9 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
     uint32_t normalContent = 0;
     FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
 
-    // The following flash APIs don't rely on interrupts
-    ATOMIC_BLOCK() {
+    {
+        ProhibitXip lk;
+
         FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
         if (isSecureOtpMode(normalContent)) {
             FLASH_RxData(0, (uint32_t)addr, data_size, data_buf);
@@ -255,8 +283,9 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
     uint32_t normalContent = 0;
     FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
 
-    // The following flash APIs don't rely on interrupts
-    ATOMIC_BLOCK() {
+    {
+        ProhibitXip lk;
+
         FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
         if (isSecureOtpMode(normalContent)) {
             ret = hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read);
