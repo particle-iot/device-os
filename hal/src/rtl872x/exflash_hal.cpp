@@ -31,6 +31,8 @@ extern "C" {
 }
 #include "atomic_section.h"
 #include "service_debug.h"
+#include "check.h"
+#include "scope_guard.h"
 
 // TODO: move it to header file
 #define HAL_EXFLASH_OTP_MAGIC_NUMBER_ADDR   0x0
@@ -181,25 +183,33 @@ hal_exflash_copy_sector_done:
 }
 
 __attribute__((section(".ram.text"), noinline))
-static bool isSecureOTPMode(uint32_t normalContent) {
+static bool isSecureOtpMode(uint32_t normalContent) {
     uint32_t temp = 0;
     FLASH_RxData(0, (uint32_t)HAL_EXFLASH_OTP_MAGIC_NUMBER_ADDR, sizeof(temp), (uint8_t*)&temp);
     if (temp == HAL_EXFLASH_OTP_MAGIC_NUMBER) {
         return true;
-    } else {
-        // Read the first word at 0x00000000 and compare it with the word we previously read in normal context.
-        FLASH_RxData(0, (uint32_t)0, sizeof(temp), (uint8_t*)&temp);
-        if (temp != normalContent) {
-            return true;
-        }
+    }
+    // Read the first word at 0x00000000 and compare it with the word we previously read in normal context.
+    FLASH_RxData(0, (uint32_t)0, sizeof(temp), (uint8_t*)&temp);
+    if (temp != normalContent) {
+        return true;
     }
     return false;
 }
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
+    hal_exflash_lock();
     // Prevents other threads from accessing the external flash via XIP
     os_thread_scheduling(false, nullptr);
+
+    SCOPE_GUARD({
+        os_thread_scheduling(true, nullptr);
+        hal_exflash_unlock();
+    });
+
+    CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     int ret = SYSTEM_ERROR_NONE;
 
@@ -210,26 +220,34 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
     // The following flash APIs don't rely on interrupts
     ATOMIC_BLOCK() {
         FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
-        if (isSecureOTPMode(normalContent)) {
+        if (isSecureOtpMode(normalContent)) {
             FLASH_RxData(0, (uint32_t)addr, data_size, data_buf);
         } else {
             ret = SYSTEM_ERROR_INVALID_STATE;
         }
         // Just in case, even if it might have failed to enter the secure OTP mode.
         FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
-        if (isSecureOTPMode(normalContent)) {
+        if (isSecureOtpMode(normalContent)) {
             SPARK_ASSERT(false);
         }
     }
-
-    os_thread_scheduling(true, nullptr);
+    
     return ret;
 }
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
+    hal_exflash_lock();
     // Prevents other threads from accessing the external flash via XIP
     os_thread_scheduling(false, nullptr);
+
+    SCOPE_GUARD({
+        os_thread_scheduling(true, nullptr);
+        hal_exflash_unlock();
+    });
+
+    CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     int ret = SYSTEM_ERROR_NONE;
 
@@ -240,19 +258,18 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
     // The following flash APIs don't rely on interrupts
     ATOMIC_BLOCK() {
         FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
-        if (isSecureOTPMode(normalContent)) {
+        if (isSecureOtpMode(normalContent)) {
             ret = hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read);
         } else {
             ret = SYSTEM_ERROR_INVALID_STATE;
         }
         // Just in case, even if it might have failed to enter the secure OTP mode.
         FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
-        if (isSecureOTPMode(normalContent)) {
+        if (isSecureOtpMode(normalContent)) {
             SPARK_ASSERT(false);
         }
     }
 
-    os_thread_scheduling(true, nullptr);
     return ret;
 }
 
@@ -305,5 +322,5 @@ exit:
 
 int hal_exflash_sleep(bool sleep, void* reserved) {
     // Note: HAL sleep driver uses SDK API to suspend external flash.
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return SYSTEM_ERROR_NONE;
 }
