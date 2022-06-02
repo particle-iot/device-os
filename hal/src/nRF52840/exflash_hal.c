@@ -352,7 +352,7 @@ int hal_exflash_init(void) {
                 ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, NULL, NULL, 0);
                 if (ret) {
                     ret = nrf_system_error(ret);
-                    continue;
+                    break;
                 }
             }
         }
@@ -364,7 +364,8 @@ int hal_exflash_init(void) {
         ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, NULL, chip_id, 0);
 
         if (ret) {
-            continue;
+            ret = nrf_system_error(ret);
+            break;
         }
         else {
             LOG_DEBUG(TRACE, "exflash chip id: %02X %02X %02X", chip_id[0], chip_id[1], chip_id[2]);
@@ -383,13 +384,21 @@ int hal_exflash_init(void) {
             }
             hal_exflash_driver.part_detected = true;
         } else if ((hal_exflash_driver.type == QSPI_TYPE_GD25WQ64EQFG) && (chip_id[0] == GD25_MANUFACTURER_ID)) {
+            exflash_set_driver_parameters(QSPI_TYPE_GD25WQ64EQFG);
             hal_exflash_driver.part_detected = true;
         }
 
         if (hal_exflash_driver.part_detected) {
             // Reset chip, put it into QSPI mode
-            ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0);    
-        }        
+            ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0);
+            if (ret) {
+                ret = nrf_system_error(ret);
+            }
+            break;
+        } else {
+            nrfx_qspi_uninit();
+            continue;
+        }
     }
 
     hal_exflash_unlock();
