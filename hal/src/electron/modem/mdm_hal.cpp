@@ -1118,7 +1118,7 @@ bool MDMParser::init(DevStatus* status)
         // First time setup, or switching between official SIM on wrong profile?
         if (curProf == UBLOX_SARA_UMNOPROF_SW_DEFAULT ||
             (netProv == CELLULAR_NETPROV_TWILIO && curProf != UBLOX_SARA_UMNOPROF_STANDARD_EUROPE) ||
-            (netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT))
+            ((netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT) && (netProv == CELLULAR_NETPROV_KORE_ATT && curProf != UBLOX_SARA_UMNOPROF_ATT_MINUS_B5)))
         {
             bool continueInit = false;
             int newProf = UBLOX_SARA_UMNOPROF_SIM_SELECT;

@@ -118,6 +118,7 @@ typedef enum {
     UBLOX_SARA_UMNOPROF_TELUS            = 21,
     UBLOX_SARA_UMNOPROF_DEUTSCHE_TELEKOM = 31,
     UBLOX_SARA_UMNOPROF_STANDARD_EUROPE  = 100,
+    UBLOX_SARA_UMNOPROF_ATT_MINUS_B5     = 198,
 } UbloxSaraUmnoprof;
 
 typedef enum UbloxSaraUsoer {
