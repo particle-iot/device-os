@@ -251,7 +251,7 @@ int gd25_secure_register_read(uint8_t security_registers_index, uint32_t securit
     // start long frame transfer with "Read Security Register" opcode
     nrfx_err_t ret = nrfx_qspi_lfm_start(&readSecurityRegister);
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
-    nrf_delay_us(1); // FIXME: need a bit delay before transmitting data
+    nrf_delay_us(10); // FIXME: need a bit delay before transmitting data
     // Send address + dummy bytes, do not finalize long frame transfer
     ret = nrfx_qspi_lfm_xfer(addrBuf, NULL, sizeof(addrBuf), false);
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
@@ -277,7 +277,7 @@ int gd25_secure_register_write(uint8_t security_registers_index, uint32_t securi
 
     nrfx_err_t ret = nrfx_qspi_lfm_start(&writeSecurityRegister);
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
-    nrf_delay_us(1); // FIXME: need a bit delay before transmitting data
+    nrf_delay_us(10); // FIXME: need a bit delay before transmitting data
     ret = nrfx_qspi_lfm_xfer(addrBuf, NULL, sizeof(addrBuf), false); // Send address bytes, do not finalize long frame transfer
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
     ret = nrfx_qspi_lfm_xfer(buf, NULL, size, true); // Send data to write, finalize long frame transfer
