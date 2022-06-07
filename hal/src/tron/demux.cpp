@@ -20,6 +20,7 @@
 #if HAL_PLATFORM_DEMUX
 
 #include "check.h"
+#include "gpio_hal.h"
 #include "system_error.h"
 
 using namespace particle;
@@ -38,17 +39,23 @@ int Demux::write(uint8_t pin, uint8_t value) {
     DemuxLock lock();
     CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT && pin != 0, SYSTEM_ERROR_INVALID_ARGUMENT); // Y0 is not available for user's usage.
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    // We can do it in this way for now, since the control pins are continuous.
-    uint32_t currOut = (nrf_gpio_port_out_read(DEMUX_NRF_PORT) >> DEMUX_PINS_SHIFT) & 0x00000007;
+
+    uint32_t currOut = (hal_gpio_read(DEMUX_PIN_C) << 2) | (hal_gpio_read(DEMUX_PIN_B) << 1) | hal_gpio_read(DEMUX_PIN_A);
     if ((currOut == pin && value == 0) || (currOut != pin && value == 1)) {
         return SYSTEM_ERROR_NONE;
     }
     if (value) {
         // Select Y0 by default, so that all other pins output high.
-        nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_2_MASK | DEMUX_PIN_1_MASK | DEMUX_PIN_0_MASK);
+        hal_gpio_write(DEMUX_PIN_C, 0);
+        hal_gpio_write(DEMUX_PIN_B, 0);
+        hal_gpio_write(DEMUX_PIN_A, 0);
+
         setPinValue(0, 0);
     } else {
-        nrf_gpio_port_out_set(DEMUX_NRF_PORT, ((uint32_t)pin) << DEMUX_PINS_SHIFT);
+        hal_gpio_write(DEMUX_PIN_C, pin >> 2);
+        hal_gpio_write(DEMUX_PIN_B, (pin >> 1) & 1);
+        hal_gpio_write(DEMUX_PIN_A, pin & 1);
+
         setPinValue(pin, 0);
     }
     return SYSTEM_ERROR_NONE;
@@ -72,9 +79,14 @@ int Demux::unlock() {
 }
 
 void Demux::init() {
-    nrf_gpio_port_dir_output_set(DEMUX_NRF_PORT, DEMUX_PIN_0_MASK | DEMUX_PIN_1_MASK | DEMUX_PIN_2_MASK);
+    hal_gpio_mode(DEMUX_PIN_A, OUTPUT);
+    hal_gpio_mode(DEMUX_PIN_B, OUTPUT);
+    hal_gpio_mode(DEMUX_PIN_C, OUTPUT);
     // Select Y0 by default.
-    nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_0_MASK | DEMUX_PIN_1_MASK | DEMUX_PIN_2_MASK);
+    hal_gpio_write(DEMUX_PIN_C, 0);
+    hal_gpio_write(DEMUX_PIN_B, 0);
+    hal_gpio_write(DEMUX_PIN_A, 0);
+
     initialized_ = true;
 }
 

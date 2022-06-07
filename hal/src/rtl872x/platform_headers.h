@@ -10,3 +10,4 @@
 #define retained_system __attribute__((section(".retained_system")))
 
 #include "rtl8721d.h"
+#undef DISABLE // unpollute global namespace

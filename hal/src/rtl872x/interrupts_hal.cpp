@@ -28,6 +28,7 @@ extern "C" {
 #include "gpio_hal.h"
 #include "check.h"
 #include "scope_guard.h"
+#include "module_info.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17

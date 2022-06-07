@@ -26,6 +26,17 @@ extern "C" {
 #include "check.h"
 #include "hw_ticks.h"
 #include "timer_hal.h"
+#include "module_info.h"
+
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
+#include "mcp23s17.h"
+#endif
+#if HAL_PLATFORM_DEMUX
+#include "demux.h"
+#endif
+using namespace particle;
+#endif
 
 namespace {
 
@@ -203,12 +214,31 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
     }
 #if HAL_PLATFORM_MCP23S17
     else if (pinInfo->type == HAL_PIN_TYPE_IO_EXPANDER) {
-        // TODO
+        CHECK_TRUE(mode == INPUT || mode == INPUT_PULLUP || mode == OUTPUT, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
+        if (mode != PIN_MODE_NONE) {
+            hal_pin_set_function(pin, PF_DIO);
+        } else {
+            hal_pin_set_function(pin, PF_NONE);
+        }
+
+        // Pre-set the output value if requested to avoid a glitch
+        if (conf->set_value && mode == OUTPUT) {
+            CHECK(Mcp23s17::getInstance().writePinValue(pinInfo->gpio_port, pinInfo->gpio_pin, conf->value));
+        }
+
+        CHECK(Mcp23s17::getInstance().setPinMode(pinInfo->gpio_port, pinInfo->gpio_pin, mode));
+        pinInfo->pin_mode = mode;
     }
 #endif // HAL_PLATFORM_MCP23S17
 #if HAL_PLATFORM_DEMUX
     else if (pinInfo->type == HAL_PIN_TYPE_DEMUX) {
-        // TODO
+        CHECK_TRUE(mode == OUTPUT, SYSTEM_ERROR_INVALID_ARGUMENT);
+        if (conf->set_value) {
+            Demux::getInstance().write(pinInfo->gpio_pin, conf->value);
+        }
+        pinInfo->pin_mode = mode;
     }
 #endif // HAL_PLATFORM_DEMUX
     else {
@@ -267,12 +297,12 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
     }
 #if HAL_PLATFORM_MCP23S17
     else if (pinInfo->type == HAL_PIN_TYPE_IO_EXPANDER) {
-        // TODO
+        Mcp23s17::getInstance().writePinValue(pinInfo->gpio_port, pinInfo->gpio_pin, value);
     }
 #endif
 #if HAL_PLATFORM_DEMUX
     else if (pinInfo->type == HAL_PIN_TYPE_DEMUX) {
-        // TODO
+        Demux::getInstance().write(pinInfo->gpio_pin, value);
     }
 #endif
 #endif
@@ -310,14 +340,20 @@ int32_t hal_gpio_read(hal_pin_t pin) {
     }
 #if HAL_PLATFORM_MCP23S17
     else if (pinInfo->type == HAL_PIN_TYPE_IO_EXPANDER) {
-        // TODO
-        return 0;
+        if ((pinInfo->pin_mode == INPUT) ||
+            (pinInfo->pin_mode == INPUT_PULLUP) ||
+            (pinInfo->pin_mode == OUTPUT)) {
+            uint8_t value = 0x00;
+            Mcp23s17::getInstance().readPinValue(pinInfo->gpio_port, pinInfo->gpio_pin, &value);
+            return value;
+        } else {
+            return 0;
+        }
     }
 #endif
 #if HAL_PLATFORM_DEMUX
     else if (pinInfo->type == HAL_PIN_TYPE_DEMUX) {
-        // TODO
-        return 0
+        return Demux::getInstance().read(pinInfo->gpio_pin);
     }
 #endif
     else {
