@@ -76,14 +76,14 @@ enum qspi_type_t {
 
 // For any variations between flash parts, set member vars at runtime
 typedef struct  {
-    int type;                      // qspi_type_t to identify what part is present
-    bool part_detected;            // Have we positively identified the flash part yet
-    uint8_t write_opcode;          // Which opcode to use for quad write
-    uint8_t pgmers_suspend_opcode; // Which opcode to use when interrupting pending program/erase command
-    uint8_t sck_delay;             // tSHSL, tWHSL, and tSHWL in number of 16 MHz periods (62.5ns)
-    uint32_t otp_size;             // Size of OTP area in bytes
-    int (*init)();                 // Function to call once chip is identified. IE enter QSPI mode
-                                   // TODO: GD25: CLK and CSN pin drive strength? 
+    int type;                        // qspi_type_t to identify what part is present
+    bool part_detected;              // Have we positively identified the flash part yet
+    nrf_qspi_writeoc_t write_opcode; // Which opcode to use for quad write
+    uint8_t pgmers_suspend_opcode;   // Which opcode to use when interrupting pending program/erase command
+    uint8_t sck_delay;               // tSHSL, tWHSL, and tSHWL in number of 16 MHz periods (62.5ns)
+    uint32_t otp_size;               // Size of OTP area in bytes
+    int (*init)();                   // Function to call once chip is identified. IE enter QSPI mode
+                                     // TODO: GD25: CLK and CSN pin drive strength? 
 } exflash_driver_parameters_t;
 
 static exflash_driver_parameters_t hal_exflash_driver = {};
@@ -102,6 +102,23 @@ static const uint32_t MX25R6435F_MEMORY_TYPE = 0x28;
 static const uint32_t MX25L3233F_MEMORY_TYPE = 0x20;
 
 static const uint32_t GD25_MANUFACTURER_ID = 0xC8;
+
+static nrf_qspi_cinstr_len_t getNrfCinstrLength(size_t length) {
+    nrf_qspi_cinstr_len_t cinstrLen = NRF_QSPI_CINSTR_LEN_1B;
+    switch (length) {
+        case 1: cinstrLen = NRF_QSPI_CINSTR_LEN_1B; break;
+        case 2: cinstrLen = NRF_QSPI_CINSTR_LEN_2B; break;
+        case 3: cinstrLen = NRF_QSPI_CINSTR_LEN_3B; break;
+        case 4: cinstrLen = NRF_QSPI_CINSTR_LEN_4B; break;
+        case 5: cinstrLen = NRF_QSPI_CINSTR_LEN_5B; break;
+        case 6: cinstrLen = NRF_QSPI_CINSTR_LEN_6B; break;
+        case 7: cinstrLen = NRF_QSPI_CINSTR_LEN_7B; break;
+        case 8: cinstrLen = NRF_QSPI_CINSTR_LEN_8B; break;
+        case 9: cinstrLen = NRF_QSPI_CINSTR_LEN_9B; break;
+        default: break;
+    }
+    return cinstrLen;
+}
 
 // Mitigations for nRF52840 anomaly 215
 // [215] QSPI: Reading QSPI registers after XIP might halt CPU
@@ -198,11 +215,11 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
 }
 
 static int enter_secure_otp() {
-    return exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_ENSO, 1, NULL);
+    return exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_ENSO, getNrfCinstrLength(1), NULL);
 }
 
 static int exit_secure_otp() {
-    return exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_EXSO, 1, NULL);
+    return exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_EXSO, getNrfCinstrLength(1), NULL);
 }
 
 static int exflash_init_MX25R6435FZNIL0() {
@@ -335,7 +352,6 @@ int hal_exflash_init(void) {
                .io2_pin     = QSPI_FLASH_IO2_PIN,
                .io3_pin     = QSPI_FLASH_IO3_PIN,
             },
-            .irq_priority   = (uint8_t)QSPI_FLASH_IRQ_PRIORITY,
             .prot_if = {
                 .readoc     = (nrf_qspi_readoc_t)NRFX_QSPI_CONFIG_READOC,
                 .writeoc    = hal_exflash_driver.write_opcode,
@@ -343,11 +359,12 @@ int hal_exflash_init(void) {
                 .dpmconfig  = false,
             },
             .phy_if = {
-                .sck_freq   = (nrf_qspi_frequency_t)NRFX_QSPI_CONFIG_FREQUENCY,
                 .sck_delay  = hal_exflash_driver.sck_delay,
+                .dpmen      = false,
                 .spi_mode   = (nrf_qspi_spi_mode_t)NRFX_QSPI_CONFIG_MODE,
-                .dpmen      = false
+                .sck_freq   = (nrf_qspi_frequency_t)NRFX_QSPI_CONFIG_FREQUENCY
             },
+            .irq_priority   = (uint8_t)QSPI_FLASH_IRQ_PRIORITY
         };
 
         ret = nrfx_qspi_init(&config, NULL, NULL);
@@ -542,7 +559,13 @@ int hal_exflash_erase_block(uintptr_t start_addr, size_t num_blocks) {
 
 int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data_size) {
     hal_exflash_lock();
+
     int ret = -1;
+    uint8_t data_buf[FLASH_OPERATION_TEMP_BLOCK_SIZE] __attribute__((aligned(4)));
+    unsigned index = 0;
+    uint16_t copy_len;
+    uint16_t sector_num;
+
     if ((src_addr % sFLASH_PAGESIZE) ||
         (dest_addr % sFLASH_PAGESIZE) ||
         !(IS_WORD_ALIGNED(data_size))) {
@@ -550,16 +573,12 @@ int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data
     }
 
     // erase sectors
-    uint16_t sector_num = CEIL_DIV(data_size, sFLASH_PAGESIZE);
+    sector_num = CEIL_DIV(data_size, sFLASH_PAGESIZE);
     if (hal_exflash_erase_sector(dest_addr, sector_num)) {
         goto hal_exflash_copy_sector_done;
     }
 
     // memory copy
-    uint8_t data_buf[FLASH_OPERATION_TEMP_BLOCK_SIZE] __attribute__((aligned(4)));
-    unsigned index = 0;
-    uint16_t copy_len;
-
     for (index = 0; index < data_size; index += copy_len) {
         copy_len = MIN((data_size - index), sizeof(data_buf));
         if (hal_exflash_read(src_addr + index, data_buf, copy_len)) {
@@ -678,6 +697,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
     /* General commands */
     if (sp == HAL_EXFLASH_SPECIAL_SECTOR_NONE) {
         nrf_qspi_cinstr_conf_t cinstr_cfg = {
+            .opcode    = 0x00,
             .length    = NRF_QSPI_CINSTR_LEN_1B,
             .io2_level = true,
             .io3_level = true,
@@ -724,7 +744,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
              * This will block the whole OTP region.
              */
             uint8_t v = 0x01;
-            ret = exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_WRSCUR, 2, &v);
+            ret = exflash_qspi_cinstr_quick_send(QSPI_MX25_CMD_WRSCUR, getNrfCinstrLength(2), &v);
             // TODO: Lock OTP for GD25?
         }
     }
