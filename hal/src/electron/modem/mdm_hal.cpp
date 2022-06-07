@@ -1132,7 +1132,13 @@ bool MDMParser::init(DevStatus* status)
             }
             // KORE AT&T or 3rd Party SIM
             else {
-                // continue on with init if we are trying to set SIM_SELECT a third time
+                // Hard code ATT for 05.12 firmware versions
+                if (netProv == CELLULAR_NETPROV_KORE_ATT) {
+                    if (strstr(_verExtended, "L0.0.00.00.05.12")) {
+                        newProf = UBLOX_SARA_UMNOPROF_ATT;
+                    }
+                }
+                // continue on with init if we are trying to set SIM_SELECT or hard-coding ATT a third time
                 if (_resetFailureAttempts >= 2) {
                     LOG(WARN, "UMNOPROF=1 did not resolve a built-in profile, please check if UMNOPROF=100 is required!");
                     continueInit = true;
@@ -1149,7 +1155,7 @@ bool MDMParser::init(DevStatus* status)
                     if (RESP_OK != waitFinalResp(nullptr, nullptr, CFUN_TIMEOUT)) {
                         goto failure;
                     }
-                    waitFinalResp(nullptr, nullptr, 1000); // delay and pump URCs a bit to wait for disconnect
+                    waitFinalResp(nullptr, nullptr, 1200); // delay and pump URCs a bit to wait for disconnect
                 }
                 sendFormated("AT+UMNOPROF=%d\r\n", newProf);
                 waitFinalResp(nullptr, nullptr, UMNOPROF_TIMEOUT);
