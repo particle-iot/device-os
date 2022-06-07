@@ -40,21 +40,21 @@ int Demux::write(uint8_t pin, uint8_t value) {
     CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT && pin != 0, SYSTEM_ERROR_INVALID_ARGUMENT); // Y0 is not available for user's usage.
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
 
-    uint32_t currOut = (hal_gpio_read(DEMUX_PIN_C) << 2) | (hal_gpio_read(DEMUX_PIN_B) << 1) | hal_gpio_read(DEMUX_PIN_A);
+    uint32_t currOut = (hal_gpio_read(DEMUX_C) << 2) | (hal_gpio_read(DEMUX_B) << 1) | hal_gpio_read(DEMUX_A);
     if ((currOut == pin && value == 0) || (currOut != pin && value == 1)) {
         return SYSTEM_ERROR_NONE;
     }
     if (value) {
         // Select Y0 by default, so that all other pins output high.
-        hal_gpio_write(DEMUX_PIN_C, 0);
-        hal_gpio_write(DEMUX_PIN_B, 0);
-        hal_gpio_write(DEMUX_PIN_A, 0);
+        hal_gpio_write(DEMUX_C, 0);
+        hal_gpio_write(DEMUX_B, 0);
+        hal_gpio_write(DEMUX_A, 0);
 
         setPinValue(0, 0);
     } else {
-        hal_gpio_write(DEMUX_PIN_C, pin >> 2);
-        hal_gpio_write(DEMUX_PIN_B, (pin >> 1) & 1);
-        hal_gpio_write(DEMUX_PIN_A, pin & 1);
+        hal_gpio_write(DEMUX_C, pin >> 2);
+        hal_gpio_write(DEMUX_B, (pin >> 1) & 1);
+        hal_gpio_write(DEMUX_A, pin & 1);
 
         setPinValue(pin, 0);
     }
@@ -79,13 +79,13 @@ int Demux::unlock() {
 }
 
 void Demux::init() {
-    hal_gpio_mode(DEMUX_PIN_A, OUTPUT);
-    hal_gpio_mode(DEMUX_PIN_B, OUTPUT);
-    hal_gpio_mode(DEMUX_PIN_C, OUTPUT);
+    hal_gpio_mode(DEMUX_A, OUTPUT);
+    hal_gpio_mode(DEMUX_B, OUTPUT);
+    hal_gpio_mode(DEMUX_C, OUTPUT);
     // Select Y0 by default.
-    hal_gpio_write(DEMUX_PIN_C, 0);
-    hal_gpio_write(DEMUX_PIN_B, 0);
-    hal_gpio_write(DEMUX_PIN_A, 0);
+    hal_gpio_write(DEMUX_C, 0);
+    hal_gpio_write(DEMUX_B, 0);
+    hal_gpio_write(DEMUX_A, 0);
 
     initialized_ = true;
 }
