@@ -472,11 +472,7 @@ workflows:
             - particle-ci-private
           matrix:
             parameters:
-<<<<<<< HEAD
               platform: ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "unit-test newhal gcc"]
-=======
-              platform: ["photon", "p1", "electron", "argon", "boron", "esomx", "bsom", "b5som", "tracker", "unit-test newhal gcc"]
->>>>>>> add esomx platform to CI checks
       - combine-binaries:
           requires:
             - build-and-test
