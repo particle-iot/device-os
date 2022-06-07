@@ -96,6 +96,11 @@
 #define SDA                 D0
 #define SCL                 D1
 
+// PMIC
+#define PMIC_SDA            SDA
+#define PMIC_SCL            SCL
+#define PMIC_INT            S6
+
 // UART
 #define TX                  D8
 #define RX                  D9
