@@ -88,8 +88,6 @@ public:
 hal_exflash_state_t qspi_state = HAL_EXFLASH_STATE_DISABLED;
 hal_qspi_flash_type_t flash_type = HAL_QSPI_FLASH_TYPE_UNKNOWN;
 
-} // Anonymous
-
 
 // Mitigations for nRF52840 anomaly 215
 // [215] QSPI: Reading QSPI registers after XIP might halt CPU
@@ -112,13 +110,13 @@ hal_qspi_flash_type_t flash_type = HAL_QSPI_FLASH_TYPE_UNKNOWN;
 // There is a performance penalty because we are disabling RTOS thread scheduling,
 // however because we are only doing this for CINSTR, it should be minimal.
 
-static void exflash_qspi_activate() {
+void exflash_qspi_activate() {
     nrf_qspi_event_clear(NRF_QSPI, NRF_QSPI_EVENT_READY);
     nrf_qspi_task_trigger(NRF_QSPI, NRF_QSPI_TASK_ACTIVATE);
     while (!nrf_qspi_event_check(NRF_QSPI, NRF_QSPI_EVENT_READY));
 }
 
-static int exflash_qspi_wait_completion() {
+int exflash_qspi_wait_completion() {
     nrfx_err_t err = NRFX_ERROR_INTERNAL;
 
     // Certain operations like block erasure, may leave the flash
@@ -150,7 +148,7 @@ static int exflash_qspi_wait_completion() {
     return nrf_system_error(err);
 }
 
-static int exflash_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const* p_config, void const* p_tx_buffer, void* p_rx_buffer) {
+int exflash_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const* p_config, void const* p_tx_buffer, void* p_rx_buffer) {
     // Certain operations like block erasure, may leave the flash
     // in a weird state where we can't talk to it for substantial periods of time
     // (up to ~30ms, seen in practice). According to the datasheet, the erasure for example may take up to 200ms!
@@ -176,16 +174,16 @@ static int exflash_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const* p_config, void
     return nrf_system_error(err);
 }
 
-static int exflash_qspi_cinstr_quick_send(uint8_t opcode, nrf_qspi_cinstr_len_t length, void const* p_tx_buffer) {
+int exflash_qspi_cinstr_quick_send(uint8_t opcode, nrf_qspi_cinstr_len_t length, void const* p_tx_buffer) {
     nrf_qspi_cinstr_conf_t config = NRFX_QSPI_DEFAULT_CINSTR(opcode, length);
     return exflash_qspi_cinstr_xfer(&config, p_tx_buffer, nullptr);
 }
 
-static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
+int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
     return nrf_system_error(nrfx_qspi_write(data, size, addr));
 }
 
-static nrf_qspi_cinstr_len_t get_nrf_cinstr_length(size_t length) {
+nrf_qspi_cinstr_len_t get_nrf_cinstr_length(size_t length) {
     nrf_qspi_cinstr_len_t cinstrLen = NRF_QSPI_CINSTR_LEN_1B;
     switch (length) {
         case 1: cinstrLen = NRF_QSPI_CINSTR_LEN_1B; break;
@@ -202,28 +200,28 @@ static nrf_qspi_cinstr_len_t get_nrf_cinstr_length(size_t length) {
     return cinstrLen;
 }
 
-static int mx25_enter_secure_otp() {
+int mx25_enter_secure_otp() {
     return exflash_qspi_cinstr_quick_send(HAL_QSPI_CMD_MX25_ENSO, get_nrf_cinstr_length(1), nullptr);
 }
 
-static int mx25_exit_secure_otp() {
+int mx25_exit_secure_otp() {
     return exflash_qspi_cinstr_quick_send(HAL_QSPI_CMD_MX25_EXSO, get_nrf_cinstr_length(1), nullptr);
 }
 
-static int mx25r64_switch_to_qspi() {
+int mx25r64_switch_to_qspi() {
     nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_4B);
     // Status register, configuration register 1, configuration register 2 values
     uint8_t config_values[3] = { 0x40, 0x00, 0x02 };
     return exflash_qspi_cinstr_xfer(&cinstr_cfg, config_values, nullptr);
 }
 
-static int mx25l32_switch_to_qspi() {
+int mx25l32_switch_to_qspi() {
     nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_2B);
     uint8_t status_register[1] = { 0x40 };
     return exflash_qspi_cinstr_xfer(&cinstr_cfg, status_register, nullptr);
 }
 
-static int gd25_switch_to_qspi() {
+int gd25_switch_to_qspi() {
     nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_2B);
     uint8_t status_registers[3] = {0x00, 0x02, 0x00};
 
@@ -238,7 +236,7 @@ static int gd25_switch_to_qspi() {
     return 0;
 }
 
-static int gd25_secure_register_read(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
+int gd25_secure_register_read(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
     CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
 
@@ -267,7 +265,7 @@ static int gd25_secure_register_read(uint8_t security_registers_index, uint32_t 
     return 0;
 }
 
-static int gd25_secure_register_write(uint8_t security_registers_index, uint32_t security_registers_addr, const void* buf, size_t size) {
+int gd25_secure_register_write(uint8_t security_registers_index, uint32_t security_registers_addr, const void* buf, size_t size) {
     CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
 
@@ -290,6 +288,33 @@ static int gd25_secure_register_write(uint8_t security_registers_index, uint32_t
 
     return 0;
 }
+
+int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_len_t len) {
+    FlashLock lk;
+
+    int err_code = NRF_SUCCESS;
+
+    const size_t block_length = len == NRF_QSPI_ERASE_LEN_4KB ? 4096 : 64 * 1024;
+
+    /* Round down to the nearest block */
+    start_addr = ((start_addr / block_length) * block_length);
+
+    for (size_t i = 0; i < num_blocks; i++) {
+        err_code = nrfx_qspi_erase(len, start_addr);
+        CHECK_TRUE(err_code == NRFX_SUCCESS, nrf_system_error(err_code));
+
+        exflash_qspi_wait_completion();
+
+        start_addr += block_length;
+    }
+
+    // LOG_DEBUG(TRACE, "Erased %lu %lukB blocks starting from %" PRIxPTR,
+    //           num_blocks, block_length / 1024, start_addr);
+
+    return 0;
+}
+
+} // Anonymous
 
 int hal_exflash_init(void) {
     // PATCH: Initialize CS pin, external memory discharge
@@ -420,31 +445,6 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
 
         memcpy(data_buf, tmpbuf + offset_front, data_size);
     }
-
-    return 0;
-}
-
-static int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_len_t len) {
-    FlashLock lk;
-
-    int err_code = NRF_SUCCESS;
-
-    const size_t block_length = len == NRF_QSPI_ERASE_LEN_4KB ? 4096 : 64 * 1024;
-
-    /* Round down to the nearest block */
-    start_addr = ((start_addr / block_length) * block_length);
-
-    for (size_t i = 0; i < num_blocks; i++) {
-        err_code = nrfx_qspi_erase(len, start_addr);
-        CHECK_TRUE(err_code == NRFX_SUCCESS, nrf_system_error(err_code));
-
-        exflash_qspi_wait_completion();
-
-        start_addr += block_length;
-    }
-
-    // LOG_DEBUG(TRACE, "Erased %lu %lukB blocks starting from %" PRIxPTR,
-    //           num_blocks, block_length / 1024, start_addr);
 
     return 0;
 }
