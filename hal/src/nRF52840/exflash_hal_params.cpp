@@ -54,14 +54,13 @@ constexpr hal_exflash_params_t exflash_params[] = {
 
 } // Anonymous
 
-int hal_exflash_get_params(hal_exflash_type_t type, hal_exflash_params_t* params) {
-    CHECK_TRUE(type != HAL_QSPI_FLASH_TYPE_UNKNOWN, SYSTEM_ERROR_INVALID_ARGUMENT);
+const hal_exflash_params_t* hal_exflash_get_params(hal_qspi_flash_type_t type) {
+    CHECK_TRUE(type != HAL_QSPI_FLASH_TYPE_UNKNOWN, nullptr);
     int index = static_cast<int>(type) - 1;
-    memcpy(params, &exflash_params[index], sizeof(hal_exflash_params_t));
-    return 0;
+    return &exflash_params[index];
 }
 
-hal_exflash_type_t hal_exflash_get_type(const uint8_t* id_buf) {
+hal_qspi_flash_type_t hal_exflash_get_type(const uint8_t* id_buf) {
     if (id_buf[0] == MX25_MANUFACTURER_ID && id_buf[1] == MX25L3233F_MEMORY_TYPE) {
         return HAL_QSPI_FLASH_TYPE_MX25L3233F;
     } else if (id_buf[0] == MX25_MANUFACTURER_ID && id_buf[1] == MX25L3233F_MEMORY_TYPE) {

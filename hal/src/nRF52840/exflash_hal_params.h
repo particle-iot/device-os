@@ -26,12 +26,12 @@
 #define GD25_SECURITY_REGISTER_SIZE     1024
 #define GD25_OTP_SECTOR_SIZE            (GD25_SECURITY_REGISTER_SIZE * GD25_SECURITY_REGISTER_COUNT)
 
-typedef enum hal_exflash_type_t {
+typedef enum hal_qspi_flash_type_t {
     HAL_QSPI_FLASH_TYPE_UNKNOWN,
     HAL_QSPI_FLASH_TYPE_MX25L3233F,
     HAL_QSPI_FLASH_TYPE_MX25R6435F,
     HAL_QSPI_FLASH_TYPE_GD25WQ64E
-} hal_exflash_type_t;
+} hal_qspi_flash_type_t;
 
 typedef enum hal_qspi_flash_cmd_t {
     HAL_QSPI_CMD_STD_WRSR            = 0x01, // Write Status Register
@@ -56,20 +56,20 @@ typedef enum hal_qspi_flash_cmd_t {
 } hal_qspi_flash_cmd_t;
 
 typedef struct  {
-    hal_exflash_type_t  type;            // hal_qspi_flash_type_t to identify what part is present
-    nrf_qspi_writeoc_t  write_opcode;    // Which opcode to use for quad write
-    nrf_qspi_readoc_t   read_opcode;     // Which opcode to use for quad read
-    uint8_t             suspend_opcode;  // Which opcode to use when interrupting pending program/erase command
-    uint8_t             reserved[3];     // Reserved padding
-    uint32_t            otp_size;        // Size of OTP area in bytes
+    hal_qspi_flash_type_t   type;            // hal_qspi_flash_type_t to identify what part is present
+    nrf_qspi_writeoc_t      write_opcode;    // Which opcode to use for quad write
+    nrf_qspi_readoc_t       read_opcode;     // Which opcode to use for quad read
+    uint8_t                 suspend_opcode;  // Which opcode to use when interrupting pending program/erase command
+    uint8_t                 reserved[3];     // Reserved padding
+    uint32_t                otp_size;        // Size of OTP area in bytes
 } hal_exflash_params_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-hal_exflash_type_t hal_exflash_get_type(const uint8_t* id_buf);
-int hal_exflash_get_params(hal_exflash_type_t type, hal_exflash_params_t* params);
+hal_qspi_flash_type_t hal_exflash_get_type(const uint8_t* id_buf);
+const hal_exflash_params_t* hal_exflash_get_params(hal_qspi_flash_type_t type);
 
 #ifdef __cplusplus
 } // extern "C"
