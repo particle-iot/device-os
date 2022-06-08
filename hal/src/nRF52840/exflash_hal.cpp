@@ -313,14 +313,19 @@ int hal_exflash_init(void) {
 
     // Determine chip type / wake up from potential sleep
     uint8_t chip_id[3] = {};
-    CHECK(hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, NULL, chip_id, 0));
+    nrf_qspi_cinstr_conf_t cinstr_cfg = {
+        .opcode    = HAL_QSPI_CMD_STD_READ_ID,
+        .length    = NRF_QSPI_CINSTR_LEN_4B,
+        .io2_level = true,
+        .io3_level = true,
+        .wipwait   = true,
+        .wren      = true
+    };
+    CHECK(exflash_qspi_cinstr_xfer(&cinstr_cfg, NULL, chip_id));
 
     flash_type = hal_exflash_get_type(chip_id);
     hal_exflash_params_t flash_params = {};
     CHECK(hal_exflash_get_params(flash_type, &flash_params));
-
-    // Reset chip, put it into QSPI mode
-    CHECK(hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0));
 
     // Re-initialize QSPI using corresponding flash parameters
     nrfx_qspi_uninit();
@@ -328,6 +333,9 @@ int hal_exflash_init(void) {
     ret = nrfx_qspi_init(&new_config, NULL, NULL);
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
     qspi_state = HAL_EXFLASH_STATE_ENABLED;
+
+    // Reset chip, put it into QSPI mode
+    CHECK(hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, NULL, NULL, 0));
 
     return SYSTEM_ERROR_NONE;
 }
@@ -523,6 +531,7 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     hal_exflash_params_t flash_params = {};
     CHECK(hal_exflash_get_params(flash_type, &flash_params));
+
     CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(addr + data_size <= flash_params.otp_size, SYSTEM_ERROR_OUT_OF_RANGE);
     CHECK_TRUE(data_buf != NULL, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -571,9 +580,6 @@ int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, s
 }
 
 int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_command_t cmd, const uint8_t* data, uint8_t* result, size_t size) {
-    hal_exflash_params_t flash_params = {};
-    CHECK(hal_exflash_get_params(flash_type, &flash_params));
-
     FlashLock lk;
 
     /* General commands */
@@ -586,6 +592,9 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             .wipwait   = true,
             .wren      = true
         };
+
+        hal_exflash_params_t flash_params = {};
+        CHECK(hal_exflash_get_params(flash_type, &flash_params));
 
         switch (cmd) {
             case HAL_EXFLASH_COMMAND_SLEEP:

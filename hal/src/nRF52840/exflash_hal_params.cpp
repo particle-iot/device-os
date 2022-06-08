@@ -31,6 +31,7 @@ constexpr hal_exflash_params_t exflash_params[] = {
         .write_opcode   = NRF_QSPI_WRITEOC_PP4IO,
         .read_opcode    = NRF_QSPI_READOC_READ4IO,
         .suspend_opcode = HAL_QSPI_CMD_MX25_PGMERS_SUSPEND,
+        .reserved       = {},
         .otp_size       = MX25L3233F_OTP_SECTOR_SIZE
     },
     {
@@ -38,6 +39,7 @@ constexpr hal_exflash_params_t exflash_params[] = {
         .write_opcode   = NRF_QSPI_WRITEOC_PP4IO,
         .read_opcode    = NRF_QSPI_READOC_READ4IO,
         .suspend_opcode = HAL_QSPI_CMD_MX25_PGMERS_SUSPEND,
+        .reserved       = {},
         .otp_size       = MX25R6435F_OTP_SECTOR_SIZE
     },
     {
@@ -45,6 +47,7 @@ constexpr hal_exflash_params_t exflash_params[] = {
         .write_opcode   = NRF_QSPI_WRITEOC_PP4O,
         .read_opcode    = NRF_QSPI_READOC_READ4IO,
         .suspend_opcode = HAL_QSPI_CMD_GD25_PGMERS_SUSPEND,
+        .reserved       = {},
         .otp_size       = GD25_OTP_SECTOR_SIZE
     }
 };

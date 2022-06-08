@@ -60,6 +60,7 @@ typedef struct  {
     nrf_qspi_writeoc_t  write_opcode;    // Which opcode to use for quad write
     nrf_qspi_readoc_t   read_opcode;     // Which opcode to use for quad read
     uint8_t             suspend_opcode;  // Which opcode to use when interrupting pending program/erase command
+    uint8_t             reserved[3];     // Reserved padding
     uint32_t            otp_size;        // Size of OTP area in bytes
 } hal_exflash_params_t;
 
