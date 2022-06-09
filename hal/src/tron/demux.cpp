@@ -40,10 +40,13 @@ int Demux::write(uint8_t pin, uint8_t value) {
     CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT && pin != 0, SYSTEM_ERROR_INVALID_ARGUMENT); // Y0 is not available for user's usage.
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
 
+    // Can't trust GPIO reads on S4 and S5 (?)
+    /*
     uint32_t currOut = (hal_gpio_read(DEMUX_C) << 2) | (hal_gpio_read(DEMUX_B) << 1) | hal_gpio_read(DEMUX_A);
     if ((currOut == pin && value == 0) || (currOut != pin && value == 1)) {
         return SYSTEM_ERROR_NONE;
     }
+    */
     if (value) {
         // Select Y0 by default, so that all other pins output high.
         hal_gpio_write(DEMUX_C, 0);
