@@ -63,7 +63,7 @@ const hal_exflash_params_t* hal_exflash_get_params(hal_qspi_flash_type_t type) {
 hal_qspi_flash_type_t hal_exflash_get_type(const uint8_t* id_buf) {
     if (id_buf[0] == MX25_MANUFACTURER_ID && id_buf[1] == MX25L3233F_MEMORY_TYPE) {
         return HAL_QSPI_FLASH_TYPE_MX25L3233F;
-    } else if (id_buf[0] == MX25_MANUFACTURER_ID && id_buf[1] == MX25L3233F_MEMORY_TYPE) {
+    } else if (id_buf[0] == MX25_MANUFACTURER_ID && id_buf[1] == MX25R6435F_MEMORY_TYPE) {
         return HAL_QSPI_FLASH_TYPE_MX25R6435F;
     } else if (id_buf[0] == GD25_MANUFACTURER_ID) {
         return HAL_QSPI_FLASH_TYPE_GD25WQ64E;
