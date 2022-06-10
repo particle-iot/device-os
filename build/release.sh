@@ -8,8 +8,8 @@ function display_help ()
     echo '
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|asom|boron|bsom...
-                  |b5som>...
-                  | --platform-id=<12|13|22|23|25|26>)
+                  |b5som|esomx>...
+                  | --platform-id=<12|13|15|22|23|25|26>)
                   [--debug] [--help] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -218,6 +218,10 @@ elif [ ! -z $PLATFORM ]; then
             PLATFORM_ID="13"
             GEN3=true
             ;;
+        "esomx")
+            PLATFORM_ID="15"
+            GEN3=true
+            ;;
         "asom")
             PLATFORM_ID="22"
             GEN3=true
@@ -247,6 +251,10 @@ else
             ;;
         13)
             PLATFORM="boron"
+            GEN3=true
+            ;;
+        15)
+            PLATFORM="esomx"
             GEN3=true
             ;;
         22)
@@ -305,7 +313,7 @@ rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 #########################
 
 # GEN3
-if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ]; then
+if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ]; then
     # Configure
     if [ $DEBUG = true ]; then
         cd ../main
