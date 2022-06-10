@@ -238,7 +238,7 @@ int gd25_switch_to_qspi() {
 
 int gd25_secure_register_read(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
     CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_addr + size <= GD25_OTP_SECTOR_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     nrf_qspi_cinstr_conf_t readSecurityRegister = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_GD25_SEC_READ, NRF_QSPI_CINSTR_LEN_1B);
 
@@ -250,11 +250,10 @@ int gd25_secure_register_read(uint8_t security_registers_index, uint32_t securit
     addrBuf[2] = (uint8_t)((address>>0) & 0xFF);
     addrBuf[3] = 0x00;
 
-    // TODO: Should this be called via exflash_qspi_cinstr_xfer() with thread scheduling suspension etc?
     // start long frame transfer with "Read Security Register" opcode
     nrfx_err_t ret = nrfx_qspi_lfm_start(&readSecurityRegister);
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
-    nrf_delay_us(10); // FIXME: need a bit delay to switch between normal flash and security register
+    nrf_delay_us(10); // need a bit delay to switch between normal flash and security register
     // Send address + dummy bytes, do not finalize long frame transfer
     ret = nrfx_qspi_lfm_xfer(addrBuf, nullptr, sizeof(addrBuf), false);
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
@@ -267,7 +266,7 @@ int gd25_secure_register_read(uint8_t security_registers_index, uint32_t securit
 
 int gd25_secure_register_write(uint8_t security_registers_index, uint32_t security_registers_addr, const void* buf, size_t size) {
     CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_addr + size <= GD25_OTP_SECTOR_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     nrf_qspi_cinstr_conf_t writeSecurityRegister = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_GD25_SEC_PROGRAM, NRF_QSPI_CINSTR_LEN_1B);
 
@@ -280,7 +279,7 @@ int gd25_secure_register_write(uint8_t security_registers_index, uint32_t securi
 
     nrfx_err_t ret = nrfx_qspi_lfm_start(&writeSecurityRegister);
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
-    nrf_delay_us(10); // FIXME: need a bit delay to switch between normal flash and security register
+    nrf_delay_us(10); // need a bit delay to switch between normal flash and security register
     ret = nrfx_qspi_lfm_xfer(addrBuf, nullptr, sizeof(addrBuf), false); // Send address bytes, do not finalize long frame transfer
     CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
     ret = nrfx_qspi_lfm_xfer(buf, nullptr, size, true); // Send data to write, finalize long frame transfer
@@ -495,14 +494,14 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
     FlashLock lk;
 
     if (flash_type == HAL_QSPI_FLASH_TYPE_GD25WQ64E) {
-        // Determine which OTP Register to start writing to
-        size_t otp_page = addr / GD25_OTP_SECTOR_SIZE;
+        // Determine which OTP Register to start reading from
+        size_t otp_page = addr / GD25_SECURITY_REGISTER_SIZE;
         size_t data_to_read = data_size;
         size_t data_read = 0;
         size_t read_amount = 0;
 
         while (data_to_read && !ret) {
-            // Determine the offset of the current OTP register to start writing at
+            // Determine the offset of the current OTP register to start reading from
             size_t register_offset = (addr + data_read) % GD25_SECURITY_REGISTER_SIZE;
             read_amount = data_to_read;
 
@@ -542,7 +541,7 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
 
     if (flash_type == HAL_QSPI_FLASH_TYPE_GD25WQ64E) {
         // Determine which OTP Register to start writing to
-        size_t otp_page = addr / GD25_OTP_SECTOR_SIZE;
+        size_t otp_page = addr / GD25_SECURITY_REGISTER_SIZE;
         size_t data_to_write = data_size;
         size_t data_written = 0;
         size_t write_amount = 0;
