@@ -53,6 +53,7 @@ typedef enum hal_qspi_flash_cmd_t {
     HAL_QSPI_CMD_GD25_SEC_READ       = 0x48, // Security Register Read
     HAL_QSPI_CMD_GD25_SEC_PROGRAM    = 0x42, // Security Register Program (ie Write OTP)
     HAL_QSPI_CMD_GD25_PGMERS_SUSPEND = 0x75, // Program/Erase Suspend
+    HAL_QSPI_CMD_GD25_WAKE           = 0xAB, // Release from Deep Power-Down and Read Device ID
 } hal_qspi_flash_cmd_t;
 
 typedef struct  {

@@ -338,7 +338,7 @@ int hal_exflash_init(void) {
 
     // Determine chip type / wake up from potential sleep
     uint8_t chip_id[3] = {};
-    nrf_qspi_cinstr_conf_t cinstr_cfg = {
+    nrf_qspi_cinstr_conf_t read_id_command = {
         .opcode    = HAL_QSPI_CMD_STD_READ_ID,
         .length    = NRF_QSPI_CINSTR_LEN_4B,
         .io2_level = true,
@@ -346,7 +346,22 @@ int hal_exflash_init(void) {
         .wipwait   = true,
         .wren      = true
     };
-    CHECK(exflash_qspi_cinstr_xfer(&cinstr_cfg, nullptr, chip_id));
+    
+    // If read chip_id fails, it may be a GD25 that is asleep
+    if(!exflash_qspi_cinstr_xfer(&read_id_command, nullptr, chip_id))
+    {
+        nrf_qspi_cinstr_conf_t wake_command = {
+            .opcode    = HAL_QSPI_CMD_GD25_WAKE,
+            .length    = NRF_QSPI_CINSTR_LEN_1B,
+            .io2_level = true,
+            .io3_level = true,
+            .wipwait   = true,
+            .wren      = true
+        };
+        CHECK(exflash_qspi_cinstr_xfer(&wake_command, nullptr, NULL));
+        // Read ID again
+        exflash_qspi_cinstr_xfer(&read_id_command, nullptr, chip_id);
+    }
 
     flash_type = hal_exflash_get_type(chip_id);
     const hal_exflash_params_t* flash_params = hal_exflash_get_params(flash_type);
