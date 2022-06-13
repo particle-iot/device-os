@@ -56,7 +56,6 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size);
 int hal_exflash_copy_sector(uintptr_t src_addr, size_t dest_addr, size_t data_size);
 int hal_exflash_lock(void);
 int hal_exflash_unlock(void);
-int hal_exflash_otp_size(void);
 
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size);
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size);

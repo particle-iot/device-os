@@ -723,9 +723,3 @@ int hal_exflash_sleep(bool sleep, void* reserved) {
     }
     return SYSTEM_ERROR_NONE;
 }
-
-int hal_exflash_otp_size(void) {
-    const hal_exflash_params_t* flash_params = hal_exflash_get_params(flash_type);
-    CHECK_TRUE(flash_params, SYSTEM_ERROR_NOT_FOUND);
-    return (int)flash_params->otp_size;
-}
