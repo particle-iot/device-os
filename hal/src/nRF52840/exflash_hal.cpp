@@ -35,9 +35,10 @@
 #include "system_error.h"
 #include "nrf_system_error.h"
 #include "check.h"
+#include "check_nrf.h"
 #include "exflash_hal_params.h"
 
-#define PRTCL_QSPI_DEFAULT_CINSTR(opc, len) \
+#define NRF_QSPI_DEFAULT_CINSTR(opc, len)   \
 {                                           \
     .opcode    = (opc),                     \
     .length    = (len),                     \
@@ -47,30 +48,30 @@
     .wren      = true                       \
 }
 
-#define NRF_QSPI_QUICK_CFG(WRITEOC, READOC, FREQUENCY)      \
-{                                                           \
-    .xip_offset  = NRFX_QSPI_CONFIG_XIP_OFFSET,             \
-    .pins = {                                               \
-        .sck_pin     = QSPI_FLASH_SCK_PIN,                  \
-        .csn_pin     = QSPI_FLASH_CSN_PIN,                  \
-        .io0_pin     = QSPI_FLASH_IO0_PIN,                  \
-        .io1_pin     = QSPI_FLASH_IO1_PIN,                  \
-        .io2_pin     = QSPI_FLASH_IO2_PIN,                  \
-        .io3_pin     = QSPI_FLASH_IO3_PIN,                  \
-    },                                                      \
-    .prot_if = {                                            \
-        .readoc     = READOC,                               \
-        .writeoc    = WRITEOC,                              \
-        .addrmode   = NRF_QSPI_ADDRMODE_24BIT,              \
-        .dpmconfig  = false,                                \
-    },                                                      \
-    .phy_if = {                                             \
-        .sck_delay  = 1,  /* 62.5ns */                      \
-        .dpmen      = false,                                \
-        .spi_mode   = NRF_QSPI_MODE_0,                      \
-        .sck_freq   = FREQUENCY                             \
-    },                                                      \
-    .irq_priority   = (uint8_t)QSPI_FLASH_IRQ_PRIORITY      \
+#define NRF_QSPI_QUICK_CFG(cmd_writeoc, cmd_readocc, clock_frequenccy)  \
+{                                                                       \
+    .xip_offset  = NRFX_QSPI_CONFIG_XIP_OFFSET,                         \
+    .pins = {                                                           \
+        .sck_pin     = QSPI_FLASH_SCK_PIN,                              \
+        .csn_pin     = QSPI_FLASH_CSN_PIN,                              \
+        .io0_pin     = QSPI_FLASH_IO0_PIN,                              \
+        .io1_pin     = QSPI_FLASH_IO1_PIN,                              \
+        .io2_pin     = QSPI_FLASH_IO2_PIN,                              \
+        .io3_pin     = QSPI_FLASH_IO3_PIN,                              \
+    },                                                                  \
+    .prot_if = {                                                        \
+        .readoc     = cmd_readocc,                                      \
+        .writeoc    = cmd_writeoc,                                      \
+        .addrmode   = NRF_QSPI_ADDRMODE_24BIT,                          \
+        .dpmconfig  = false,                                            \
+    },                                                                  \
+    .phy_if = {                                                         \
+        .sck_delay  = 1,  /* 62.5ns */                                  \
+        .dpmen      = false,                                            \
+        .spi_mode   = NRF_QSPI_MODE_0,                                  \
+        .sck_freq   = clock_frequenccy                                  \
+    },                                                                  \
+    .irq_priority   = (uint8_t)QSPI_FLASH_IRQ_PRIORITY                  \
 }
 
 namespace {
@@ -183,7 +184,7 @@ int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
     return nrf_system_error(nrfx_qspi_write(data, size, addr));
 }
 
-nrf_qspi_cinstr_len_t get_nrf_cinstr_length(size_t length) {
+constexpr nrf_qspi_cinstr_len_t get_nrf_cinstr_length(size_t length) {
     nrf_qspi_cinstr_len_t cinstrLen = NRF_QSPI_CINSTR_LEN_1B;
     switch (length) {
         case 1: cinstrLen = NRF_QSPI_CINSTR_LEN_1B; break;
@@ -209,38 +210,38 @@ int mx25_exit_secure_otp() {
 }
 
 int mx25r64_switch_to_qspi() {
-    nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_4B);
+    nrf_qspi_cinstr_conf_t cinstr_cfg = NRF_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_4B);
     // Status register, configuration register 1, configuration register 2 values
     uint8_t config_values[3] = { 0x40, 0x00, 0x02 };
     return exflash_qspi_cinstr_xfer(&cinstr_cfg, config_values, nullptr);
 }
 
 int mx25l32_switch_to_qspi() {
-    nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_2B);
+    nrf_qspi_cinstr_conf_t cinstr_cfg = NRF_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_2B);
     uint8_t status_register[1] = { 0x40 };
     return exflash_qspi_cinstr_xfer(&cinstr_cfg, status_register, nullptr);
 }
 
 int gd25_switch_to_qspi() {
-    nrf_qspi_cinstr_conf_t cinstr_cfg = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_2B);
+    nrf_qspi_cinstr_conf_t cinstr_cfg = NRF_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_STD_WRSR, NRF_QSPI_CINSTR_LEN_2B);
     uint8_t status_registers[3] = {0x00, 0x02, 0x00};
 
-    CHECK_FALSE(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[0], nullptr), SYSTEM_ERROR_FLASH_IO);
+    CHECK(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[0], nullptr));
     
     cinstr_cfg.opcode = HAL_QSPI_CMD_GD25_WRSR2;
-    CHECK_FALSE(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[1], nullptr), SYSTEM_ERROR_FLASH_IO);
+    CHECK(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[1], nullptr));
 
     cinstr_cfg.opcode = HAL_QSPI_CMD_GD25_WRSR3;
-    CHECK_FALSE(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[2], nullptr), SYSTEM_ERROR_FLASH_IO);
+    CHECK(exflash_qspi_cinstr_xfer(&cinstr_cfg, &status_registers[2], nullptr));
 
     return 0;
 }
 
 int gd25_secure_register_read(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
-    CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_index < HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_addr + size <= HAL_QSPI_FLASH_OTP_SIZE_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    nrf_qspi_cinstr_conf_t readSecurityRegister = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_GD25_SEC_READ, NRF_QSPI_CINSTR_LEN_1B);
+    nrf_qspi_cinstr_conf_t readSecurityRegister = NRF_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_GD25_SEC_READ, NRF_QSPI_CINSTR_LEN_1B);
 
     // 3 bytes of address data + 1 byte of dummy data
     uint8_t addrBuf[4] = {}; 
@@ -252,23 +253,23 @@ int gd25_secure_register_read(uint8_t security_registers_index, uint32_t securit
 
     // start long frame transfer with "Read Security Register" opcode
     nrfx_err_t ret = nrfx_qspi_lfm_start(&readSecurityRegister);
-    CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     nrf_delay_us(10); // need a bit delay to switch between normal flash and security register
     // Send address + dummy bytes, do not finalize long frame transfer
     ret = nrfx_qspi_lfm_xfer(addrBuf, nullptr, sizeof(addrBuf), false);
-    CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     // Read security register data, finalize long frame transfer
     ret = nrfx_qspi_lfm_xfer(nullptr, buf, size, true);
-    CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
 
     return 0;
 }
 
 int gd25_secure_register_write(uint8_t security_registers_index, uint32_t security_registers_addr, const void* buf, size_t size) {
-    CHECK_TRUE(security_registers_index < GD25_SECURITY_REGISTER_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(security_registers_addr + size <= GD25_SECURITY_REGISTER_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_index < HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_addr + size <= HAL_QSPI_FLASH_OTP_SIZE_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    nrf_qspi_cinstr_conf_t writeSecurityRegister = PRTCL_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_GD25_SEC_PROGRAM, NRF_QSPI_CINSTR_LEN_1B);
+    nrf_qspi_cinstr_conf_t writeSecurityRegister = NRF_QSPI_DEFAULT_CINSTR(HAL_QSPI_CMD_GD25_SEC_PROGRAM, NRF_QSPI_CINSTR_LEN_1B);
 
     uint32_t address = 0;
     uint8_t addrBuf[3] = {};
@@ -278,12 +279,12 @@ int gd25_secure_register_write(uint8_t security_registers_index, uint32_t securi
     addrBuf[2] = (uint8_t)((address>>0) & 0xFF);
 
     nrfx_err_t ret = nrfx_qspi_lfm_start(&writeSecurityRegister);
-    CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     nrf_delay_us(10); // need a bit delay to switch between normal flash and security register
     ret = nrfx_qspi_lfm_xfer(addrBuf, nullptr, sizeof(addrBuf), false); // Send address bytes, do not finalize long frame transfer
-    CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     ret = nrfx_qspi_lfm_xfer(buf, nullptr, size, true); // Send data to write, finalize long frame transfer
-    CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
 
     return 0;
 }
@@ -300,7 +301,7 @@ int erase_common(uintptr_t start_addr, size_t num_blocks, nrf_qspi_erase_len_t l
 
     for (size_t i = 0; i < num_blocks; i++) {
         err_code = nrfx_qspi_erase(len, start_addr);
-        CHECK_TRUE(err_code == NRFX_SUCCESS, nrf_system_error(err_code));
+        CHECK_NRF_RETURN(err_code, nrf_system_error(err_code));
 
         exflash_qspi_wait_completion();
 
@@ -374,7 +375,7 @@ int hal_exflash_init(void) {
     nrfx_qspi_uninit();
     nrfx_qspi_config_t new_config = NRF_QSPI_QUICK_CFG(flash_params->write_opcode, flash_params->read_opcode, NRF_QSPI_FREQ_32MDIV2);
     ret = nrfx_qspi_init(&new_config, nullptr, nullptr);
-    CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+    CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     qspi_state = HAL_EXFLASH_STATE_ENABLED;
 
     // Reset chip, put it into QSPI mode
@@ -423,7 +424,7 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
              * with an adjusted size in multiples of 4.
              */
             ret = nrfx_qspi_read(dst_aligned, size_aligned, src_aligned);
-            CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+            CHECK_NRF_RETURN(ret, nrf_system_error(ret));
 
             /* Move the data if necessary */
             if (dst_aligned != data_buf || src_aligned != addr) {
@@ -456,7 +457,7 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
         const size_t size_aligned = ADDR_ALIGN_WORD_RIGHT((addr + data_size) - src_aligned);
 
         ret = nrfx_qspi_read(tmpbuf, size_aligned, src_aligned);
-        CHECK_TRUE(ret == NRFX_SUCCESS, nrf_system_error(ret));
+        CHECK_NRF_RETURN(ret, nrf_system_error(ret));
 
         const unsigned offset_front = addr - src_aligned;
 
@@ -513,19 +514,19 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
 
     if (flash_type == HAL_QSPI_FLASH_TYPE_GD25WQ64E) {
         // Determine which OTP Register to start reading from
-        size_t otp_page = addr / GD25_OTP_SECTOR_SIZE;
+        size_t otp_page = addr / HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
         size_t data_to_read = data_size;
         size_t data_read = 0;
         size_t read_amount = 0;
 
         while (data_to_read && !ret) {
             // Determine the offset of the current OTP register to start reading from
-            size_t register_offset = (addr + data_read) % GD25_OTP_SECTOR_SIZE;
+            size_t register_offset = (addr + data_read) % HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
             read_amount = data_to_read;
 
             // If the data remaining to read extends into the next register, truncate the read amount to fit into this register
-            if (register_offset + read_amount > GD25_OTP_SECTOR_SIZE){
-                read_amount = GD25_OTP_SECTOR_SIZE - register_offset;
+            if (register_offset + read_amount > HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25){
+                read_amount = HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25 - register_offset;
             }
 
             ret = gd25_secure_register_read(otp_page, register_offset, &data_buf[data_read], read_amount);
@@ -559,19 +560,19 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
 
     if (flash_type == HAL_QSPI_FLASH_TYPE_GD25WQ64E) {
         // Determine which OTP Register to start writing to
-        size_t otp_page = addr / GD25_OTP_SECTOR_SIZE;
+        size_t otp_page = addr / HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
         size_t data_to_write = data_size;
         size_t data_written = 0;
         size_t write_amount = 0;
 
         while (data_to_write && !ret) {
             // Determine the offset of the current OTP register to start writing at
-            size_t register_offset = (addr + data_written) % GD25_OTP_SECTOR_SIZE;
+            size_t register_offset = (addr + data_written) % HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
             write_amount = data_to_write;
 
             // If the data remaining to write extends into the next register, truncate the write amount to fit into this register
-            if (register_offset + write_amount > GD25_OTP_SECTOR_SIZE){
-                write_amount = GD25_OTP_SECTOR_SIZE - register_offset;
+            if (register_offset + write_amount > HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25){
+                write_amount = HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25 - register_offset;
             }
 
             ret = gd25_secure_register_write(otp_page, register_offset, &data_buf[data_written], write_amount);
@@ -677,6 +678,8 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             uint8_t v = 0x01;
             if (flash_type == HAL_QSPI_FLASH_TYPE_MX25L3233F || flash_type == HAL_QSPI_FLASH_TYPE_MX25R6435F) {
                 CHECK(exflash_qspi_cinstr_quick_send(HAL_QSPI_CMD_MX25_WRSCUR, get_nrf_cinstr_length(2), &v));
+            } else {
+                // TODO: other conditions
             }
         }
     }
