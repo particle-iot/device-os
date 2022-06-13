@@ -354,7 +354,7 @@ int hal_exflash_init(void) {
             }
 
             // Temporarily set the flash type to make use of hal_exflash_special_command()
-            flash_type = HAL_QSPI_FLASH_TYPE_MX25R6435F;
+            flash_type = DEFAULT_SPI_FLASH_TYPE;
             hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, nullptr, nullptr, 0);
         }
         return nrf_system_error(ret);
@@ -364,7 +364,7 @@ int hal_exflash_init(void) {
     uint8_t chip_id[3] = {};
 
     // Temporarily set the flash type to make use of hal_exflash_special_command()
-    flash_type = HAL_QSPI_FLASH_TYPE_MX25R6435F;
+    flash_type = DEFAULT_SPI_FLASH_TYPE;
     CHECK(hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, nullptr, chip_id, 0));
 
     flash_type = hal_exflash_get_type(chip_id);
