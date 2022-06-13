@@ -43,6 +43,9 @@ typedef enum hal_qspi_flash_cmd_t {
     HAL_QSPI_CMD_STD_RST             = 0x99, // Reset
     HAL_QSPI_CMD_STD_SLEEP           = 0xB9, // GD25: "Power Down", MX25: "Deep Power Down"
     HAL_QSPI_CMD_STD_READ_ID         = 0x9F, // Read Identification
+    HAL_QSPI_CMD_STD_READ_4IO        = 0xEB, // Quad data line SPI Read
+    HAL_QSPI_CMD_STD_WRITE_PP4O      = 0x32, // Quad data line SPI Write (address bits sent on IO 0)
+    HAL_QSPI_CMD_STD_WRITE_PP4IO     = 0x38, // Quad data line SPI Write (address bits sent on IOs 0-3)
 
     HAL_QSPI_CMD_MX25_ENSO           = 0xB1, // Enter Secured OTP
     HAL_QSPI_CMD_MX25_EXSO           = 0xC1, // Exit Secured OTP
@@ -61,12 +64,14 @@ typedef enum hal_qspi_flash_cmd_t {
 
 typedef struct  {
     hal_qspi_flash_type_t   type;            // hal_qspi_flash_type_t to identify what part is present
-    nrf_qspi_writeoc_t      write_opcode;    // Which opcode to use for quad write
-    nrf_qspi_readoc_t       read_opcode;     // Which opcode to use for quad read
+    hal_qspi_flash_cmd_t    write_opcode;    // Which opcode to use for quad write
+    hal_qspi_flash_cmd_t    read_opcode;     // Which opcode to use for quad read
     uint8_t                 suspend_opcode;  // Which opcode to use when interrupting pending program/erase command
     uint8_t                 reserved[3];     // Reserved padding
     uint32_t                otp_size;        // Size of OTP area in bytes
 } hal_exflash_params_t;
+
+typedef int (*hal_exflash_gd25_security_register_read_write) (uint8_t, uint32_t, void *, size_t);
 
 #ifdef __cplusplus
 extern "C" {

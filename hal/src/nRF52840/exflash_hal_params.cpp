@@ -28,24 +28,24 @@ constexpr uint32_t GD25_MANUFACTURER_ID   = 0xC8;
 constexpr hal_exflash_params_t exflash_params[] = {
     {
         .type           = HAL_QSPI_FLASH_TYPE_MX25L3233F,
-        .write_opcode   = NRF_QSPI_WRITEOC_PP4IO,
-        .read_opcode    = NRF_QSPI_READOC_READ4IO,
+        .write_opcode   = HAL_QSPI_CMD_STD_WRITE_PP4IO,
+        .read_opcode    = HAL_QSPI_CMD_STD_READ_4IO,
         .suspend_opcode = HAL_QSPI_CMD_MX25_PGMERS_SUSPEND,
         .reserved       = {},
         .otp_size       = HAL_QSPI_FLASH_OTP_SECTOR_SIZE_MX25L3233F
     },
     {
         .type           = HAL_QSPI_FLASH_TYPE_MX25R6435F,
-        .write_opcode   = NRF_QSPI_WRITEOC_PP4IO,
-        .read_opcode    = NRF_QSPI_READOC_READ4IO,
+        .write_opcode   = HAL_QSPI_CMD_STD_WRITE_PP4IO,
+        .read_opcode    = HAL_QSPI_CMD_STD_READ_4IO,
         .suspend_opcode = HAL_QSPI_CMD_MX25_PGMERS_SUSPEND,
         .reserved       = {},
         .otp_size       = HAL_QSPI_FLASH_OTP_SECTOR_SIZE_MX25R6435F
     },
     {
         .type           = HAL_QSPI_FLASH_TYPE_GD25WQ64E,
-        .write_opcode   = NRF_QSPI_WRITEOC_PP4O,
-        .read_opcode    = NRF_QSPI_READOC_READ4IO,
+        .write_opcode   = HAL_QSPI_CMD_STD_WRITE_PP4O,
+        .read_opcode    = HAL_QSPI_CMD_STD_READ_4IO,
         .suspend_opcode = HAL_QSPI_CMD_GD25_PGMERS_SUSPEND,
         .reserved       = {},
         .otp_size       = HAL_QSPI_FLASH_OTP_SIZE_GD25
