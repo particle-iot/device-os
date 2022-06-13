@@ -8,6 +8,10 @@ INCLUDE_DIRS += $(TARGET_HAL_PATH)/src/$(PLATFORM_NAME)
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp/wifi
 
 ifneq (,$(findstring platform,$(DEPENDENCIES)))
+INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/cellular
+endif
+
+ifneq (,$(findstring platform,$(DEPENDENCIES)))
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/lwip/esp32
 INCLUDE_DIRS += $(HAL_MODULE_PATH)/network/ncp/wifi
 endif
