@@ -1829,7 +1829,7 @@ int QuectelNcpClient::modemInit() const {
     // Configure VINT as Input for modem power state monitoring
     // NOTE: The BGVINT pin is inverted
     conf.mode = INPUT_PULLUP;
-    CHECK(hal_gpio_configure(BGVINT, &conf, nullptr));
+    CHECK(HAL_Pin_Configure(BGVINT, &conf, nullptr));
 
     if (modemPowerState() == 1) {
         LOG(TRACE, "Startup: Modem is on");
@@ -1842,13 +1842,13 @@ int QuectelNcpClient::modemInit() const {
     conf.set_value = true;
     // NOTE: The BGPWR/BGRST pins are inverted
     conf.value = 0;
-    CHECK(hal_gpio_configure(BGPWR, &conf, nullptr));
-    CHECK(hal_gpio_configure(BGRST, &conf, nullptr));
+    CHECK(HAL_Pin_Configure(BGPWR, &conf, nullptr));
+    CHECK(HAL_Pin_Configure(BGRST, &conf, nullptr));
 
     // DTR=0: normal mode, DTR=1: sleep mode
     // NOTE: The BGDTR pins is inverted
     conf.value = 1; 
-    CHECK(hal_gpio_configure(BGDTR, &conf, nullptr));
+    CHECK(HAL_Pin_Configure(BGDTR, &conf, nullptr));
 
     LOG(TRACE, "Modem low level initialization OK");
 
@@ -2022,9 +2022,9 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
         LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms
         // NOTE: The BGPWR pin is inverted
-        hal_gpio_write(BGPWR, 1);
+        HAL_GPIO_Write(BGPWR, 1);
         HAL_Delay_Milliseconds(650);
-        hal_gpio_write(BGPWR, 0);
+        HAL_GPIO_Write(BGPWR, 0);
 
         // Verify that the module was powered down by checking the status pin (BGVINT)
         // BG96: >=2s
@@ -2040,9 +2040,9 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
 }
 
 bool QuectelNcpClient::modemPowerState() const {
-    // LOG(TRACE, "BGVINT: %d", hal_gpio_read(BGVINT));
+    // LOG(TRACE, "BGVINT: %d", HAL_GPIO_Read(BGVINT));
     // NOTE: The BGVINT pin is inverted
-    return !hal_gpio_read(BGVINT);
+    return !HAL_GPIO_Read(BGVINT);
 }
 
 uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
@@ -2063,9 +2063,9 @@ uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
 }
 
 void QuectelNcpClient::exitDataModeWithDtr() const {
-    hal_gpio_write(BGDTR, 0);
+    HAL_GPIO_Write(BGDTR, 0);
     HAL_Delay_Milliseconds(1);
-    hal_gpio_write(BGDTR, 1);
+    HAL_GPIO_Write(BGDTR, 1);
     HAL_Delay_Milliseconds(1);
 }
 
