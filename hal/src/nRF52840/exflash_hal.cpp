@@ -328,40 +328,43 @@ int hal_exflash_init(void) {
     int ret = nrfx_qspi_init(&default_config, nullptr, nullptr);
     if (ret) {
         if (ret == NRFX_ERROR_TIMEOUT) {
-            // Could have timed out because the flash chip might be in an ongoing program/erase operation.
-            // Suspend it.
-            LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op.");
-            ret = hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, nullptr, nullptr, 0);
+            // Could have timed out because the flash chip might be in an ongoing program/erase operation or Deep Power-Down mode.
+            // Suspend it or wake it up.
+            LOG_DEBUG(TRACE, "QSPI NRFX timeout error. Suspend pgm/ers op or wake it up.");
+
+            hal_qspi_flash_type_t all_flashes[] = {
+                HAL_QSPI_FLASH_TYPE_MX25L3233F,
+                HAL_QSPI_FLASH_TYPE_MX25R6435F,
+                HAL_QSPI_FLASH_TYPE_GD25WQ64E
+            };
+
+            // Try all the supported suspend command
+            for (auto flash: all_flashes) {
+                flash_type = flash;
+                hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, nullptr, nullptr, 0);
+                nrf_delay_us(20); // Need delay to ensure the flash is suspended
+            }
+
+            // Try all the supported wake-up command
+            for (auto flash: all_flashes) {
+                flash_type = flash;
+                hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_WAKEUP, nullptr, nullptr, 0);
+                nrf_delay_us(20); // Need delay to ensure the flash is woken up.
+            }
+
+            // Temporarily set the flash type to make use of hal_exflash_special_command()
+            flash_type = HAL_QSPI_FLASH_TYPE_MX25R6435F;
+            hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_RESET, nullptr, nullptr, 0);
         }
         return nrf_system_error(ret);
     }
 
     // Determine chip type / wake up from potential sleep
     uint8_t chip_id[3] = {};
-    nrf_qspi_cinstr_conf_t read_id_command = {
-        .opcode    = HAL_QSPI_CMD_STD_READ_ID,
-        .length    = NRF_QSPI_CINSTR_LEN_4B,
-        .io2_level = true,
-        .io3_level = true,
-        .wipwait   = true,
-        .wren      = true
-    };
-    
-    // If read chip_id fails, it may be a GD25 that is asleep
-    if(!exflash_qspi_cinstr_xfer(&read_id_command, nullptr, chip_id))
-    {
-        nrf_qspi_cinstr_conf_t wake_command = {
-            .opcode    = HAL_QSPI_CMD_GD25_WAKE,
-            .length    = NRF_QSPI_CINSTR_LEN_1B,
-            .io2_level = true,
-            .io3_level = true,
-            .wipwait   = true,
-            .wren      = true
-        };
-        CHECK(exflash_qspi_cinstr_xfer(&wake_command, nullptr, NULL));
-        // Read ID again
-        exflash_qspi_cinstr_xfer(&read_id_command, nullptr, chip_id);
-    }
+
+    // Temporarily set the flash type to make use of hal_exflash_special_command()
+    flash_type = HAL_QSPI_FLASH_TYPE_MX25R6435F;
+    CHECK(hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, nullptr, chip_id, 0));
 
     flash_type = hal_exflash_get_type(chip_id);
     const hal_exflash_params_t* flash_params = hal_exflash_get_params(flash_type);
@@ -616,8 +619,16 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
                 cinstr_cfg.opcode = HAL_QSPI_CMD_STD_SLEEP;
                 break;
             case HAL_EXFLASH_COMMAND_WAKEUP:
+                if (flash_type == HAL_QSPI_FLASH_TYPE_GD25WQ64E) {
+                    cinstr_cfg.opcode = HAL_QSPI_CMD_GD25_WAKE;
+                    cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_1B;
+                } else {
+                    /* Wake up external flash from deep power down mode by sending read id command */
+                    cinstr_cfg.opcode = HAL_QSPI_CMD_STD_READ_ID;
+                    cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_4B;
+                }
+                break;
             case HAL_EXFLASH_COMMAND_READID:
-                /* Wake up external flash from deep power down mode by sending read id command */
                 cinstr_cfg.opcode = HAL_QSPI_CMD_STD_READ_ID;
                 cinstr_cfg.length = NRF_QSPI_CINSTR_LEN_4B;
                 break;
