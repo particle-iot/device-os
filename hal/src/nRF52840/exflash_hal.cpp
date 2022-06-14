@@ -89,6 +89,11 @@ public:
 hal_exflash_state_t qspi_state = HAL_EXFLASH_STATE_DISABLED;
 hal_qspi_flash_type_t flash_type = HAL_QSPI_FLASH_TYPE_UNKNOWN;
 
+hal_qspi_flash_type_t all_flashes[] = {
+        HAL_QSPI_FLASH_TYPE_MX25L3233F,
+        HAL_QSPI_FLASH_TYPE_MX25R6435F,
+        HAL_QSPI_FLASH_TYPE_GD25WQ64E
+    };
 
 // Mitigations for nRF52840 anomaly 215
 // [215] QSPI: Reading QSPI registers after XIP might halt CPU
@@ -319,11 +324,11 @@ int gd25_security_register_operation(hal_exflash_gd25_security_register_read_wri
     int ret = 0;
 
     while (data_to_process && !ret) {
-        // Determine the offset of the current OTP register to start reading from
+        // Determine the offset of the current OTP register to start reading/writing from
         size_t register_offset = (addr + data_processed) % HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
         data_to_process_this_operation = data_to_process;
 
-        // If the data remaining to read extends into the next register, truncate the read amount to fit into this register
+        // If the data remaining to read/write extends into the next register, truncate the read/write amount to fit into this register
         if (register_offset + data_to_process_this_operation > HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25){
             data_to_process_this_operation = HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25 - register_offset;
         }
@@ -374,12 +379,6 @@ int hal_exflash_init(void) {
 
     FlashLock lk;
 
-    hal_qspi_flash_type_t all_flashes[] = {
-        HAL_QSPI_FLASH_TYPE_MX25L3233F,
-        HAL_QSPI_FLASH_TYPE_MX25R6435F,
-        HAL_QSPI_FLASH_TYPE_GD25WQ64E
-    };
-
     // Use single data line SPI to read ID
     nrfx_qspi_config_t default_config = NRF_QSPI_QUICK_CFG(NRF_QSPI_WRITEOC_PP, NRF_QSPI_READOC_FASTREAD, NRF_QSPI_FREQ_32MDIV2);
     int ret = nrfx_qspi_init(&default_config, nullptr, nullptr);
@@ -392,7 +391,6 @@ int hal_exflash_init(void) {
         for (auto flash: all_flashes) {
             flash_type = flash;
             hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_SUSPEND_PGMERS, nullptr, nullptr, 0);
-            nrf_delay_us(20); // Need delay to ensure the flash is suspended
         }
     }
 
@@ -400,20 +398,23 @@ int hal_exflash_init(void) {
     uint8_t chip_id[3] = {};
 
     // Temporarily set the flash type to make use of hal_exflash_special_command()
-    flash_type = DEFAULT_SPI_FLASH_TYPE;
-    if (!hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, nullptr, chip_id, 0)) {
-        // Try all the supported wake-up command
+    flash_type = HAL_QSPI_DEFAULT_SPI_FLASH_TYPE;
+    hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, nullptr, chip_id, sizeof(chip_id));
+    flash_type = hal_exflash_get_type(chip_id);
+
+    // If the chip is powered down, the READID command still returns a success result, but the chip_id is still NULL. 
+    // If this happens, try to wake up the chip and READID again
+    if (flash_type == HAL_QSPI_FLASH_TYPE_UNKNOWN) {
         for (auto flash: all_flashes) {
             flash_type = flash;
             hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_WAKEUP, nullptr, nullptr, 0);
-            nrf_delay_us(20); // Need delay to ensure the flash is woken up.
         }
-
-        // Read ID must succeed at this point
-        CHECK(hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, nullptr, chip_id, 0));
+        hal_exflash_special_command(HAL_EXFLASH_SPECIAL_SECTOR_NONE, HAL_EXFLASH_COMMAND_READID, nullptr, chip_id, sizeof(chip_id));
     }
 
     flash_type = hal_exflash_get_type(chip_id);
+    // Read ID must succeed at this point
+    CHECK_TRUE(flash_type != HAL_QSPI_FLASH_TYPE_UNKNOWN, SYSTEM_ERROR_NOT_FOUND);
     const hal_exflash_params_t* flash_params = hal_exflash_get_params(flash_type);
 
     // Re-initialize QSPI using corresponding flash parameters
@@ -647,8 +648,17 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
                 return SYSTEM_ERROR_NOT_SUPPORTED;
         }
 
+        // If we are given a buffer for result data, ensure it is large enough, less the 1 byte opcode
+        if (result != nullptr) {
+            CHECK_TRUE(size >= ((size_t)cinstr_cfg.length)-1, SYSTEM_ERROR_INVALID_ARGUMENT);
+        }
+
         // Execute the command.
         CHECK(exflash_qspi_cinstr_xfer(&cinstr_cfg, nullptr, result));
+
+        if (cmd == HAL_EXFLASH_COMMAND_SUSPEND_PGMERS || cmd == HAL_EXFLASH_COMMAND_WAKEUP) {
+            nrf_delay_us(20); // Need delay to ensure the flash is woken up.
+        }
 
         // For the reset procedure, we need to execute the reset command going forward.
         if (cmd == HAL_EXFLASH_COMMAND_RESET) {
@@ -690,7 +700,11 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             };
             case HAL_EXFLASH_COMMAND_GET_OTP_SIZE: {
                 const hal_exflash_params_t* flash_params = hal_exflash_get_params(flash_type);
-                return flash_params->otp_size;
+
+                CHECK_TRUE(result != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
+                CHECK_TRUE(size >= sizeof(flash_params->otp_size), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+                memcpy(result, &flash_params->otp_size, sizeof(flash_params->otp_size));
                 break;
             };
             default:

@@ -21,7 +21,7 @@
 #include "nrfx_qspi.h"
 
 // Default flash type to support at least standard flash commands
-#define DEFAULT_SPI_FLASH_TYPE                      HAL_QSPI_FLASH_TYPE_MX25R6435F
+#define HAL_QSPI_DEFAULT_SPI_FLASH_TYPE                      HAL_QSPI_FLASH_TYPE_MX25R6435F
 
 #define HAL_QSPI_FLASH_OTP_SECTOR_SIZE_MX25R6435F   1024
 #define HAL_QSPI_FLASH_OTP_SECTOR_SIZE_MX25L3233F   512

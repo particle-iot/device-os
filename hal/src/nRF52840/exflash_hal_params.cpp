@@ -56,7 +56,7 @@ constexpr hal_exflash_params_t exflash_params[] = {
 
 const hal_exflash_params_t* hal_exflash_get_params(hal_qspi_flash_type_t type) {
     if (type == HAL_QSPI_FLASH_TYPE_UNKNOWN) {
-        type = DEFAULT_SPI_FLASH_TYPE;
+        type = HAL_QSPI_DEFAULT_SPI_FLASH_TYPE;
     }
     int index = static_cast<int>(type) - 1;
     return &exflash_params[index];
