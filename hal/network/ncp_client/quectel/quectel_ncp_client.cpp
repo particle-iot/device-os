@@ -1841,7 +1841,7 @@ int QuectelNcpClient::modemInit() const {
     conf.mode = OUTPUT;
     conf.set_value = true;
     // NOTE: The BGPWR/BGRST pins are inverted
-    conf.value = 0;
+    conf.value = 1;
     CHECK(HAL_Pin_Configure(BGPWR, &conf, nullptr));
     CHECK(HAL_Pin_Configure(BGRST, &conf, nullptr));
 
@@ -2042,7 +2042,7 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
 bool QuectelNcpClient::modemPowerState() const {
     // LOG(TRACE, "BGVINT: %d", HAL_GPIO_Read(BGVINT));
     // NOTE: The BGVINT pin is inverted
-    return !HAL_GPIO_Read(BGVINT);
+    return HAL_GPIO_Read(BGVINT);
 }
 
 uint32_t QuectelNcpClient::getDefaultSerialConfig() const {

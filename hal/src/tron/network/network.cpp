@@ -183,12 +183,12 @@ int if_init_platform(void*) {
     }
 
     /* wl3 - Realtek NCP Station */
-    wl3 = new RealtekNcpNetif();
+/*    wl3 = new RealtekNcpNetif();
     if (wl3) {
         ((RealtekNcpNetif*)wl3)->setWifiManager(wifiNetworkManager());
         ((RealtekNcpNetif*)wl3)->init();
     }
-
+*/
     /* pp3 - Cellular */
     pp3 = new PppNcpNetif();
     if (pp3) {
