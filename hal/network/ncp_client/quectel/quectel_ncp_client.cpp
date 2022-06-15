@@ -1051,10 +1051,10 @@ int QuectelNcpClient::initReady(ModemState state) {
             CHECK_PARSER_OK(parser_.execCommand("AT+IFC=0,0"));
         } else
 #endif // PLATFORM_ID == PLATFORM_B5SOM
-/*        {
+        {
             CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
             CHECK(waitAtResponse(10000));
-        }*/
+        }
         auto runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
         CHECK(changeBaudRate(runtimeBaudrate));
         // Check that the modem is responsive at the new baudrate
@@ -2046,9 +2046,6 @@ bool QuectelNcpClient::modemPowerState() const {
 }
 
 uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
-
-    return SERIAL_8N1;
-
     uint32_t sconf = SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS;
 
     // Our first board reversed RTS and CTS pin, we gave them the hwVersion 0x00,

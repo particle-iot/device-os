@@ -191,7 +191,15 @@ public:
         }
         PAD_PullCtrl(hal_pin_to_rtl_pin(txPin_), GPIO_PuPd_UP);
         PAD_PullCtrl(hal_pin_to_rtl_pin(rxPin_), GPIO_PuPd_UP);
-
+        // Configure CTS/RTS pins
+        if (ctsPin_ != PIN_INVALID) {
+            Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_UART_RTSCTS);
+            PAD_PullCtrl(hal_pin_to_rtl_pin(ctsPin_), GPIO_PuPd_UP);
+        }
+        if (rtsPin_ != PIN_INVALID) {
+            Pinmux_Config(hal_pin_to_rtl_pin(rtsPin_), PINMUX_FUNCTION_UART_RTSCTS);
+            PAD_PullCtrl(hal_pin_to_rtl_pin(rtsPin_), GPIO_PuPd_UP);
+        }
         UART_InitTypeDef uartInitStruct = {};
         UART_StructInit(&uartInitStruct);
         uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_1BYTES;
