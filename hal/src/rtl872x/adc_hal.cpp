@@ -30,6 +30,8 @@ extern "C" {
 #define APBPeriph_ADC_CLOCK         (SYS_CLK_CTRL1  << 30 | BIT_LSYS_ADC_CKE)
 #define APBPeriph_ADC               (SYS_FUNC_EN1  << 30 | BIT_LSYS_ADC_FEN)
 
+#define DEFAULT_ADC_RESOLUTION_BITS (12)
+
 #define WAIT_TIMED(timeout_ms, what) ({ \
     system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                      \
     bool res = true;                                                            \
@@ -46,7 +48,18 @@ extern "C" {
 
 namespace {
 
+constexpr uint32_t normalChCalOffsetAddr = 0x1D0;
+constexpr uint32_t normalChCalGainDivAddr = 0x1D2;
+
 volatile hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
+
+/*
+ * OFFSET:   10 times of sample data at 0.000v, 10*value(0.000v)
+ * GAIN_DIV: 10 times of value(1.000v)-value(0.000v) or value(2.000v)-value(1.000v) or value(3.000v)-value(2.000v)
+ */
+/* Normal channel*/
+uint16_t adcOffset = 0xFFFF;
+uint16_t adcGainDiv = 0xFFFF;
 
 int adcInit() {
     RCC_PeriphClockCmd(APBPeriph_ADC, APBPeriph_ADC_CLOCK, ENABLE);
@@ -56,6 +69,22 @@ int adcInit() {
     adcInitStruct.ADC_CvlistLen = 0;
     ADC_Init(&adcInitStruct);
     ADC_Cmd(ENABLE);
+
+    uint8_t efuseBuf[2];
+	for (uint8_t index = 0; index < 2; index++) {
+		EFUSE_PMAP_READ8(0, normalChCalOffsetAddr + index, efuseBuf + index, L25EOUTVOLTAGE);
+	}
+    adcOffset = efuseBuf[1] << 8 | efuseBuf[0];
+	for (uint8_t index = 0; index < 2; index++) {
+		EFUSE_PMAP_READ8(0, normalChCalGainDivAddr + index, efuseBuf + index, L25EOUTVOLTAGE);
+	}
+	adcGainDiv = efuseBuf[1] << 8 | efuseBuf[0];
+	if (adcOffset == 0xFFFF) {
+		adcOffset = 0x9B0;
+	}
+	if (adcGainDiv == 0xFFFF) {
+		adcGainDiv = 0x2F12;
+	}
 
     adcState = HAL_ADC_STATE_ENABLED;
     return SYSTEM_ERROR_NONE;
@@ -105,7 +134,20 @@ int32_t hal_adc_read(uint16_t pin) {
     }
     ADC_SWTrigCmd(DISABLE);
 
-    return (ADC_Read() & BIT_MASK_DAT_GLOBAL);
+    uint16_t adcValue = (ADC_Read() & BIT_MASK_DAT_GLOBAL);
+
+    uint32_t mv = 0;
+    if (adcValue < 0xfa) {
+        mv = 0; // Ignore persistent low voltage measurement error
+    } else {
+        mv = ((10 * adcValue - adcOffset) * 1000 / adcGainDiv); // Convert measured ADC value to millivolts
+    }
+    adcValue = (mv / 3300.0) * (1 << DEFAULT_ADC_RESOLUTION_BITS);
+    if (adcValue > 4096) { // The measured voltage might greater than 3300mV
+        adcValue = 4096;
+    }
+
+    return adcValue;
 }
 
 int hal_adc_sleep(bool sleep, void* reserved) {
