@@ -231,6 +231,7 @@ public:
         // Start address of chunk buffer should be 32-byte aligned
         SPARK_ASSERT(((uint32_t)chunkBuffer_.txBuf & 0x1f) == 0);
         SPARK_ASSERT(((uint32_t)chunkBuffer_.rxBuf & 0x1f) == 0);
+        SPARK_ASSERT((CFG_CHUNK_BUF_SIZE) % 32 == 0);
         CHECK_TRUE(validateConfig(rtlSpiIndex_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
 
         if (isEnabled()) {
@@ -485,7 +486,7 @@ public:
         if (chunkBuffer_.rxIndex >= bufferConfig_.rxLength) {
             chunkBuffer_.rxIndex = 0;
 
-            if (config_.spiMode == SPI_MODE_MASTER) {
+            if (config_.spiMode == SPI_MODE_MASTER && bufferConfig_.rxBuf) {
                 // FIXME: For SPI slave, the user callback will be called after CS pin is pulled high.
                 if (callbackConfig_.dmaUserCb) {
                     (*callbackConfig_.dmaUserCb)();
@@ -542,8 +543,10 @@ public:
                 bytesToCopy = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, dmaRxCount + fifoRxCount);
                 if (bufferConfig_.rxBuf) {
                     DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
+                    int primask = HAL_disable_irq();
                     memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, bytesToCopy);
                     DCache_CleanInvalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
+                    HAL_enable_irq(primask);
                 }
                 chunkBuffer_.rxIndex += bytesToCopy;
 
@@ -571,6 +574,7 @@ public:
     }
 
     int transferDma(const uint8_t* txBuf, uint8_t* rxBuf, size_t size, hal_spi_dma_user_callback callback) {
+        CHECK_TRUE((txBuf || rxBuf) && size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
 
         // Wait for last SPI master transfer finished
@@ -666,7 +670,7 @@ public:
 
     bool isDmaBufferConfigured() const {
         // Use at least one buffer for SPI transfer
-        return bufferConfig_.txBuf || bufferConfig_.rxBuf;
+        return (bufferConfig_.txBuf && bufferConfig_.txLength > 0) || (bufferConfig_.rxBuf && bufferConfig_.rxLength > 0);
     }
 
     int registerSelectUserCb(hal_spi_select_user_callback callback) {
@@ -708,8 +712,10 @@ public:
         copyLength = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, (size_t)chunkBuffer_.rxLength);
         if (bufferConfig_.rxBuf) {
             DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
+            int primask = HAL_disable_irq();
             memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, copyLength);
             DCache_CleanInvalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
+            HAL_enable_irq(primask);
         }
         chunkBuffer_.rxIndex += copyLength;
 
