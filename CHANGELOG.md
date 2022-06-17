@@ -1,3 +1,23 @@
+## 4.0.0-alpha.2
+
+> ## :warning: Please note this is in internal release, do not use on production devices!
+
+### FEATURES
+
+- [E404X] Determine flash part at runtime [#2456](https://github.com/particle-iot/device-os/pull/2456)
+- [gen3][quectel] Adds support for BG95-M1, BG95-MF, BG77, and EG91-NAX [#2458](https://github.com/particle-iot/device-os/pull/2458)
+
+### ENHANCEMENTS
+
+- [gen3][esomx] Define E404X platform [#2443](https://github.com/particle-iot/device-os/pull/2443)
+
+### INTERNAL
+
+- [ci] ESOMX board support on HIL / Concourse [#2459](https://github.com/particle-iot/device-os/pull/2459)
+- [workbench] update-device-os-workbench-manifest-json [#2457](https://github.com/particle-iot/device-os/pull/2457)
+- [ci] test-build-system-tune-timeouts [#2455](https://github.com/particle-iot/device-os/pull/2455)
+
+
 ## 4.0.0-alpha.1
 
 > ## :warning: Please note this is in internal release, do not use on production devices!
