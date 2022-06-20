@@ -126,6 +126,10 @@ Km0Km4IpcClass* Km0Km4IpcClass::getInstance(uint8_t channel) {
 }
 
 int Km0Km4IpcClass::init() {
+#if defined (ARM_CPU_CORTEX_M33)
+    SPARK_ASSERT(((uint32_t)&km0Km4IpcMessage_ & 0x0000001F) == 0); // Make sure the buffer is 32-byte aligned
+    SPARK_ASSERT((sizeof(km0Km4IpcMessage_)) % 32 == 0);
+#endif
     return SYSTEM_ERROR_NONE;
 }
 
@@ -148,6 +152,7 @@ int Km0Km4IpcClass::sendRequest(km0_km4_ipc_msg_type_t type, void* data, uint32_
     respCallbackContext_ = context;
 
     expectedRespReqId_ = reqId_;
+    DCache_CleanInvalidate((uint32_t)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_));
     ipc_send_message_alt(channel_, (uint32_t)(&km0Km4IpcMessage_));
 
     int ret = SYSTEM_ERROR_NONE;
@@ -174,6 +179,7 @@ int Km0Km4IpcClass::sendResponse(uint16_t reqId, void* data, uint32_t len) {
     km0Km4IpcMessage_.data_len = len;
     km0Km4IpcMessage_.data_crc32 = Compute_CRC32((const uint8_t*)data, len, nullptr);
     km0Km4IpcMessage_.crc32 = Compute_CRC32((const uint8_t*)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_) - sizeof(km0_km4_ipc_msg_t::crc32), nullptr);
+    DCache_CleanInvalidate((uint32_t)&km0Km4IpcMessage_, sizeof(km0Km4IpcMessage_));
     ipc_send_message_alt(channel_, (uint32_t)(&km0Km4IpcMessage_));
     return SYSTEM_ERROR_NONE;
 }

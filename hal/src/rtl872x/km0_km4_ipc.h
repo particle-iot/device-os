@@ -48,8 +48,11 @@ typedef struct km0_km4_ipc_msg_t {
     void* data;                         // WARNING: The data must not be allocated from stack
     uint32_t data_len;
     uint32_t data_crc32;                // of data payload
+    uint32_t reserved[2];
     uint32_t crc32;                     // of this struct
 } km0_km4_ipc_msg_t;
+
+static_assert(sizeof(km0_km4_ipc_msg_t) % 32 == 0, "sizeof(km0_km4_ipc_msg_t) should be multiple of 32 bytes");
 
 typedef void (*km0_km4_ipc_msg_callback_t)(km0_km4_ipc_msg_t* msg, void* context);
 
@@ -100,7 +103,7 @@ private:
     // WARNING: it is allocated in static RAM and will be used for all IPC message exchanges.
     // We introduce Km0Km4IpcLock and a "blocked" parameter when sending IPC message to prevent this memory
     // from being overwritten before sending the next IPC message.
-    km0_km4_ipc_msg_t km0Km4IpcMessage_;
+    km0_km4_ipc_msg_t __attribute__((aligned(32))) km0Km4IpcMessage_;
     km0_km4_ipc_msg_callback_t respCallback_;
     void* respCallbackContext_;
 };

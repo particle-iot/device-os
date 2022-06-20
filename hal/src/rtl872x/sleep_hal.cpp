@@ -36,6 +36,7 @@
 #include "exrtc_hal.h"
 #endif
 #include "spark_wiring_vector.h"
+#include "service_debug.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -92,9 +93,11 @@ public:
      */
     __attribute__((section(".ram.sleep"), optimize("O0")))
     int enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
+        SPARK_ASSERT(((uint32_t)config_ & 0x0000001F) == 0); // Make sure the buffer is 32-byte aligned
+        SPARK_ASSERT((sizeof(config_)) % 32 == 0);
+
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-        memcpy(&config_, config, sizeof(hal_sleep_config_t));
-        DCache_Clean((uint32_t)&config_, sizeof(hal_sleep_config_t));
+        memcpy(config_, config, std::min(sizeof(hal_sleep_config_t), sizeof(config_)));
 
         bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                            hal_ble_gap_is_connecting(nullptr, nullptr) ||
@@ -162,7 +165,7 @@ public:
             if (wakeEvent & BIT_HP_WEVT_TIMER_STS) {
                 constructWakeupReason((hal_wakeup_source_rtc_t**)wakeupReason, HAL_WAKEUP_SOURCE_TYPE_RTC, nullptr);
             } else if (wakeEvent & BIT_HP_WEVT_GPIO_STS) {
-                const hal_wakeup_source_base_t* source = config_.wakeup_sources;
+                const hal_wakeup_source_base_t* source = ((hal_sleep_config_t*)config_)->wakeup_sources;
                 uint16_t wakeupPin = PIN_INVALID;
                 while (source) {
                     if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
@@ -288,6 +291,7 @@ private:
 
     int notifyKm0AndSleep() {
         ipcResult_ = SYSTEM_ERROR_INTERNAL;
+        DCache_CleanInvalidate((uint32_t)config_, sizeof(config_));
         int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_SLEEP, &config_,
                 sizeof(hal_sleep_config_t), onKm0RespReceived, this);
         if (ret != SYSTEM_ERROR_NONE || ipcResult_ != SYSTEM_ERROR_NONE) {
@@ -341,12 +345,12 @@ private:
             instance->ipcResult_ = SYSTEM_ERROR_BAD_DATA;
         } else {
             DCache_Invalidate((uint32_t)msg->data, sizeof(int));
-            instance->ipcResult_ = *((int*)msg->data);
+            instance->ipcResult_ = ((int32_t*)(msg->data))[0];
         }
     }
 
     volatile int ipcResult_;
-    hal_sleep_config_t config_;
+    uint8_t __attribute__((aligned(32))) config_[2 * 32];
 };
 
 int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) {
