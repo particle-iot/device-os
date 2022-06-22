@@ -68,7 +68,7 @@
         (OTA_UPDATES_DISABLED, "Firmware updates are disabled", -1380), \
         (OTA, "Firmware update error", -1390), \
         (CRYPTO, "Crypto error", -1400), /* -1599 ... -1400: Crypto errors */ \
-        (I2C_BUS_BUSY, "Bus busy", -1600), /* -1699 ... -1600: Crypto errors */ \
+        (I2C_BUS_BUSY, "Bus busy", -1600), /* -1699 ... -1600: I2C errors */ \
         (I2C_ARBITRATION_FAILED, "Arbitration failed", -1601), \
         (I2C_TX_ADDR_TIMEOUT, "Send slave address timeout", -1602), \
         (I2C_FILL_DATA_TIMEOUT, "Fill data timeout", -1603), \
