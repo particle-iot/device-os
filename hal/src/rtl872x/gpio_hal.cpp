@@ -27,21 +27,68 @@ extern "C" {
 #include "hw_ticks.h"
 #include "timer_hal.h"
 
+namespace {
+
+// When setting to GPIO output mode, all of the audio pins and one of the
+// normal pins (PA[27]) do not support GPIO read function (always read as '0'),
+// We'll cache the GPIO state for these pins.
+constexpr int CACHE_PIN_COUNT = 6;
+hal_pin_t cachePins[CACHE_PIN_COUNT] = {D7, S4, S5, S6, BTN, ANTSW};
+uint32_t cachePinState = 0;
+
+void setCachePinState(hal_pin_t pin, uint8_t value) {
+    for (int i = 0; i < CACHE_PIN_COUNT; i++) {
+        if (cachePins[i] == pin) {
+            if (value) {
+                 cachePinState |= 1 << i;
+            } else {
+                cachePinState &= ~(1 << i);
+            }
+            break;
+        }
+    }
+}
+
+uint8_t getCachePinState(hal_pin_t pin) {
+    for (int i = 0; i < CACHE_PIN_COUNT; i++) {
+        if (cachePins[i] == pin) {
+            return (cachePinState & (1 << i)) ? 1 : 0;
+        }
+    }
+    return 0;
+}
+
+void clearCachePinState(hal_pin_t pin) {
+    setCachePinState(pin, false);
+}
+
+bool isCachePin(hal_pin_t pin) {
+    for (int i = 0; i < CACHE_PIN_COUNT; i++) {
+        if (cachePins[i] == pin) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// RTL872XD has two SWD ports. Default is PA27, but PB3 can be configured as alternate SWD as well
+bool isSwdPin(hal_pin_info_t* pinInfo){
+    if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
+        (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
+        return true;
+    }
+    return false;
+}
+
+} // Anonymous
+
+
 void hal_gpio_mode(hal_pin_t pin, PinMode mode) {
     hal_gpio_config_t conf = {};
     conf.size = sizeof(conf);
     conf.version = HAL_GPIO_VERSION;
     conf.mode = mode;
     hal_gpio_configure(pin, &conf, nullptr);
-}
-
-// RTL872XD has two SWD ports. Default is PA27, but PB3 can be configured as alternate SWD as well
-static bool isSwdPin(hal_pin_info_t* pinInfo){
-    if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
-        (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
-        return true;
-    }
-    return false;
 }
 
 int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
@@ -79,7 +126,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
 
         GPIO_InitTypeDef  GPIO_InitStruct = {};
         GPIO_InitStruct.GPIO_Pin = rtlPin;
-        
+
         switch (mode) {
             case OUTPUT:
             case OUTPUT_OPEN_DRAIN: {
@@ -112,7 +159,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
                     //"Pinmux_Swdon"
                     u32 Temp = 0;
                     Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);
-                    Temp |= (BIT_LSYS_SWD_PMUX_EN);    
+                    Temp |= (BIT_LSYS_SWD_PMUX_EN);
                     HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN, Temp);
                 }
                 break;
@@ -130,6 +177,11 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
 
         GPIO_Init(&GPIO_InitStruct);
         pinInfo->pin_mode = mode;
+
+        if (mode == OUTPUT && isCachePin(pin)) {
+            clearCachePinState(pin);
+        }
+
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
 #if HAL_PLATFORM_MCP23S17
@@ -170,6 +222,9 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
             hal_gpio_mode(pin, OUTPUT);
         }
         GPIO_WriteBit(rtlPin, value);
+        if (isCachePin(pin)) {
+            setCachePinState(pin, value);
+        }
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
 #if HAL_PLATFORM_MCP23S17
@@ -188,6 +243,10 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
 int32_t hal_gpio_read(hal_pin_t pin) {
     if (!hal_pin_is_valid(pin)) {
         return 0;
+    }
+
+    if (isCachePin(pin)) {
+        return getCachePinState(pin);
     }
 
     hal_pin_info_t* pinInfo = hal_pin_map() + pin;
