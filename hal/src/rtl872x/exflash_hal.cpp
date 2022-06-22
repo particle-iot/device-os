@@ -130,7 +130,7 @@ int hal_exflash_uninit(void) {
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
-    ExFlashLock lk();
+    ExFlashLock lk;
     CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
     DCache_CleanInvalidate(SPI_FLASH_BASE + addr, data_size);
     return SYSTEM_ERROR_NONE;
@@ -138,7 +138,7 @@ int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size)
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
-    ExFlashLock lk();
+    ExFlashLock lk;
     addr += SPI_FLASH_BASE;
     memcpy(data_buf, (void*)addr, data_size);
     return SYSTEM_ERROR_NONE;
@@ -157,7 +157,7 @@ static bool is_block_erased(uintptr_t addr, size_t size) {
 
 __attribute__((section(".ram.text"), noinline))
 static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
-    ExFlashLock lk();
+    ExFlashLock lk;
 
     const size_t block_length = len == EraseSector ? 4096 : 64 * 1024;
 
@@ -189,7 +189,7 @@ int hal_exflash_erase_block(uintptr_t start_addr, size_t num_blocks) {
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data_size) {
-    ExFlashLock lk();
+    ExFlashLock lk;
 
     unsigned index = 0;
     uint16_t sector_num = CEIL_DIV(data_size, sFLASH_PAGESIZE);
@@ -238,7 +238,7 @@ public:
             : mpuCfg_{},
               mpuEntry_(0) {
         mpuEntry_ = mpu_entry_alloc();
-        SPARK_ASSERT(mpuEntry_ < MPU_MAX_REGION);
+        SPARK_ASSERT(mpuEntry_ >= 0 && mpuEntry_ < MPU_MAX_REGION);
         mpuCfg_.region_base = (uintptr_t)&platform_system_part1_flash_start;
         mpuCfg_.region_size = (uintptr_t)&platform_flash_end - (uintptr_t)&platform_system_part1_flash_start; // System part1, OTA region, user part and filesystem
         mpuCfg_.xn = MPU_EXEC_NEVER;
@@ -324,7 +324,7 @@ int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, s
 }
 
 int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_command_t cmd, const uint8_t* data, uint8_t* result, size_t size) {
-    ExFlashLock lk();
+    ExFlashLock lk;
 
     uint8_t byte;
 
