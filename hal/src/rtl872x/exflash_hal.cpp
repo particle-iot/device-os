@@ -58,6 +58,53 @@ typedef enum {
 #error "Unsupported external flash"
 #endif
 
+// Constructor, destructors and methods are executed from PSRAM.
+class ExFlashLock {
+public:
+    ExFlashLock(bool threading = true)
+            : locked_(false),
+              threading_(threading) {
+        lock();
+    }
+
+    ~ExFlashLock() {
+        if (locked_) {
+            unlock();
+        }
+    }
+
+    ExFlashLock(ExFlashLock&& lock)
+            : locked_(lock.locked_),
+              threading_(lock.threading_) {
+        lock.locked_ = false;
+        lock.threading_ = true;
+    }
+
+    void lock() {
+        hal_exflash_lock();
+        if (!threading_) {
+            // Prevents other threads from accessing the external flash via XIP
+            os_thread_scheduling(false, nullptr);
+        }
+        locked_ = true;
+    }
+
+    void unlock() {
+        if (!threading_) {
+            os_thread_scheduling(true, nullptr);
+        }
+        hal_exflash_unlock();
+        locked_ = false;
+    }
+
+    ExFlashLock(const ExFlashLock&) = delete;
+    ExFlashLock& operator=(const ExFlashLock&) = delete;
+
+private:
+    bool locked_;
+    bool threading_;
+};
+
 static bool is_block_erased(uintptr_t addr, size_t size);
 
 __attribute__((section(".ram.text"), noinline))
@@ -70,35 +117,31 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
         FLASH_TxData12B(addr + b, (uint8_t)rem, (uint8_t*)data + b);
         b += rem;
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_exflash_init(void) {
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_exflash_uninit(void) {
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
-    hal_exflash_lock();
-    int ret = hal_flash_common_write(addr, data_buf, data_size,
-                                     &perform_write, &hal_flash_common_dummy_read);
+    ExFlashLock lk();
+    CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
     DCache_CleanInvalidate(SPI_FLASH_BASE + addr, data_size);
-    hal_exflash_unlock();
-    return ret;
+    return SYSTEM_ERROR_NONE;
 }
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
-    int ret = 0;
+    ExFlashLock lk();
     addr += SPI_FLASH_BASE;
-    hal_exflash_lock();
     memcpy(data_buf, (void*)addr, data_size);
-    hal_exflash_unlock();
-    return ret;
+    return SYSTEM_ERROR_NONE;
 }
 
 __attribute__((section(".ram.text"), noinline))
@@ -114,8 +157,7 @@ static bool is_block_erased(uintptr_t addr, size_t size) {
 
 __attribute__((section(".ram.text"), noinline))
 static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
-    hal_exflash_lock();
-    int err_code = 0;
+    ExFlashLock lk();
 
     const size_t block_length = len == EraseSector ? 4096 : 64 * 1024;
 
@@ -130,10 +172,9 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
 
     // LOG_DEBUG(ERROR, "Erased %lu %lukB blocks starting from %" PRIxPTR,
     //           num_blocks, block_length / 1024, start_addr);
-
     DCache_CleanInvalidate(SPI_FLASH_BASE + start_addr, block_length * num_blocks);
-    hal_exflash_unlock();
-    return err_code;
+
+    return SYSTEM_ERROR_NONE;
 }
 
 __attribute__((section(".ram.text"), noinline))
@@ -148,21 +189,19 @@ int hal_exflash_erase_block(uintptr_t start_addr, size_t num_blocks) {
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data_size) {
-    hal_exflash_lock();
-    int ret = -1;
+    ExFlashLock lk();
+
     unsigned index = 0;
     uint16_t sector_num = CEIL_DIV(data_size, sFLASH_PAGESIZE);
 
     if ((src_addr % sFLASH_PAGESIZE) ||
         (dest_addr % sFLASH_PAGESIZE) ||
         !(IS_WORD_ALIGNED(data_size))) {
-        goto hal_exflash_copy_sector_done;
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     // erase sectors
-    if (hal_exflash_erase_sector(dest_addr, sector_num)) {
-        goto hal_exflash_copy_sector_done;
-    }
+    CHECK(hal_exflash_erase_sector(dest_addr, sector_num));
 
     // memory copy
     uint8_t data_buf[FLASH_OPERATION_TEMP_BLOCK_SIZE] __attribute__((aligned(4)));
@@ -170,19 +209,11 @@ int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data
 
     for (index = 0; index < data_size; index += copy_len) {
         copy_len = MIN((data_size - index), sizeof(data_buf));
-        if (hal_exflash_read(src_addr + index, data_buf, copy_len)) {
-            goto hal_exflash_copy_sector_done;
-        }
-        if (hal_exflash_write(dest_addr + index, data_buf, copy_len)) {
-            goto hal_exflash_copy_sector_done;
-        }
+        CHECK(hal_exflash_read(src_addr + index, data_buf, copy_len));
+        CHECK(hal_exflash_write(dest_addr + index, data_buf, copy_len));
     }
 
-    ret = 0;
-
-hal_exflash_copy_sector_done:
-    hal_exflash_unlock();
-    return ret;
+    return SYSTEM_ERROR_NONE;
 }
 
 __attribute__((section(".ram.text"), noinline))
@@ -207,6 +238,7 @@ public:
             : mpuCfg_{},
               mpuEntry_(0) {
         mpuEntry_ = mpu_entry_alloc();
+        SPARK_ASSERT(mpuEntry_ < MPU_MAX_REGION);
         mpuCfg_.region_base = (uintptr_t)&platform_system_part1_flash_start;
         mpuCfg_.region_size = (uintptr_t)&platform_flash_end - (uintptr_t)&platform_system_part1_flash_start; // System part1, OTA region, user part and filesystem
         mpuCfg_.xn = MPU_EXEC_NEVER;
@@ -226,80 +258,64 @@ private:
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
-    hal_exflash_lock();
-    // Prevents other threads from accessing the external flash via XIP
-    os_thread_scheduling(false, nullptr);
-
-    SCOPE_GUARD({
-        os_thread_scheduling(true, nullptr);
-        hal_exflash_unlock();
-    });
+    ExFlashLock lk(false); // Stop thread scheduler
 
     CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    int ret = SYSTEM_ERROR_NONE;
-
     // Read the first word at 0x00000000
     uint32_t normalContent = 0;
     FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
-
     {
         ProhibitXip lk;
+
+        SCOPE_GUARD({
+            // Just in case, even if it might have failed to enter the secure OTP mode.
+            FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
+            if (isSecureOtpMode(normalContent)) {
+                SPARK_ASSERT(false);
+            }
+        });
 
         FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
         if (isSecureOtpMode(normalContent)) {
             FLASH_RxData(0, (uint32_t)addr, data_size, data_buf);
         } else {
-            ret = SYSTEM_ERROR_INVALID_STATE;
-        }
-        // Just in case, even if it might have failed to enter the secure OTP mode.
-        FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
-        if (isSecureOtpMode(normalContent)) {
-            SPARK_ASSERT(false);
+            return SYSTEM_ERROR_INVALID_STATE;
         }
     }
-    
-    return ret;
+    return SYSTEM_ERROR_NONE;
 }
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
-    hal_exflash_lock();
-    // Prevents other threads from accessing the external flash via XIP
-    os_thread_scheduling(false, nullptr);
-
-    SCOPE_GUARD({
-        os_thread_scheduling(true, nullptr);
-        hal_exflash_unlock();
-    });
+    ExFlashLock lk(false); // Stop thread scheduler
 
     CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    int ret = SYSTEM_ERROR_NONE;
-
     // Read the first word at 0x00000000
     uint32_t normalContent = 0;
     FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
-
     {
         ProhibitXip lk;
 
+        SCOPE_GUARD({
+            // Just in case, even if it might have failed to enter the secure OTP mode.
+            FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
+            if (isSecureOtpMode(normalContent)) {
+                SPARK_ASSERT(false);
+            }
+        });
+
         FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
         if (isSecureOtpMode(normalContent)) {
-            ret = hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read);
+            CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
         } else {
-            ret = SYSTEM_ERROR_INVALID_STATE;
-        }
-        // Just in case, even if it might have failed to enter the secure OTP mode.
-        FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
-        if (isSecureOtpMode(normalContent)) {
-            SPARK_ASSERT(false);
+            return SYSTEM_ERROR_INVALID_STATE;
         }
     }
-
-    return ret;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, size_t size) {
@@ -308,7 +324,7 @@ int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, s
 }
 
 int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_command_t cmd, const uint8_t* data, uint8_t* result, size_t size) {
-    hal_exflash_lock();
+    ExFlashLock lk();
 
     uint8_t byte;
 
@@ -323,7 +339,7 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
         } else if (cmd == HAL_EXFLASH_COMMAND_RESET) {
             byte = MXIC_FLASH_CMD_RSTEN;
         } else {
-            goto exit;
+            return SYSTEM_ERROR_NOT_SUPPORTED;
         }
         // FIXME: The result of the instruction is not garanteed.
         FLASH_TxCmd(byte, 0, nullptr);
@@ -341,11 +357,11 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             byte = MXIC_FLASH_CMD_WRSCUR;
             // FIXME: The result of the instruction is not garanteed.
             FLASH_TxCmd(byte, 0, nullptr);
+        } else {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
         }
     }
 
-exit:
-    hal_exflash_unlock();
     return SYSTEM_ERROR_NONE;
 }
 
