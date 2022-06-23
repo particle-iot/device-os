@@ -220,6 +220,8 @@ int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data
     return SYSTEM_ERROR_NONE;
 }
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
 __attribute__((section(".ram.text"), noinline))
 static bool isSecureOtpMode(uint32_t normalContent) {
     uint32_t temp = 0;
@@ -234,6 +236,8 @@ static bool isSecureOtpMode(uint32_t normalContent) {
     }
     return false;
 }
+
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 // We are safe to run the constructor/destructor, cos they are copied to PSRAM to run.
 class ProhibitXip {
@@ -259,6 +263,8 @@ private:
     mpu_region_config mpuCfg_;
     uint32_t mpuEntry_;
 };
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
@@ -321,6 +327,8 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
     }
     return SYSTEM_ERROR_NONE;
 }
+
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, size_t size) {
     /* We only support OTP sector and since it's One Time Programmable, we can't erase it */
