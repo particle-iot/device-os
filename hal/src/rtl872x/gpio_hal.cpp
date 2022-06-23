@@ -71,6 +71,16 @@ bool isCachePin(hal_pin_t pin) {
     return false;
 }
 
+bool isCachePinSetToOutput(hal_pin_t pin) {
+    hal_pin_info_t* pinInfo = hal_pin_map() + pin;
+    if ((pinInfo->pin_mode == OUTPUT) ||
+        (pinInfo->pin_mode == OUTPUT_OPEN_DRAIN) ||
+        (pinInfo->pin_mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
+        return true;
+    }
+    return false;
+}
+
 // RTL872XD has two SWD ports. Default is PA27, but PB3 can be configured as alternate SWD as well
 bool isSwdPin(hal_pin_info_t* pinInfo){
     if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
@@ -178,7 +188,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         GPIO_Init(&GPIO_InitStruct);
         pinInfo->pin_mode = mode;
 
-        if (mode == OUTPUT && isCachePin(pin)) {
+        if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
             clearCachePinState(pin);
         }
 
@@ -222,7 +232,7 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
             hal_gpio_mode(pin, OUTPUT);
         }
         GPIO_WriteBit(rtlPin, value);
-        if (isCachePin(pin)) {
+        if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
             setCachePinState(pin, value);
         }
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -245,7 +255,7 @@ int32_t hal_gpio_read(hal_pin_t pin) {
         return 0;
     }
 
-    if (isCachePin(pin)) {
+    if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
         return getCachePinState(pin);
     }
 
