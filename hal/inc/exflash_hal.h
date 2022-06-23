@@ -37,7 +37,9 @@ typedef enum hal_exflash_command_t {
     HAL_EXFLASH_COMMAND_SLEEP           = 2,
     HAL_EXFLASH_COMMAND_WAKEUP          = 3,
     HAL_EXFLASH_COMMAND_SUSPEND_PGMERS  = 4,
-    HAL_EXFLASH_COMMAND_RESET           = 5
+    HAL_EXFLASH_COMMAND_RESET           = 5,
+    HAL_EXFLASH_COMMAND_READID          = 6,
+    HAL_EXFLASH_COMMAND_GET_OTP_SIZE    = 7,
 } hal_exflash_command_t;
 
 typedef enum hal_exflash_state_t {

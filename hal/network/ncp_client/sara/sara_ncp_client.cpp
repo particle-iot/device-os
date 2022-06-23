@@ -193,7 +193,13 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     waitReadyRetries_ = 0;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
-    ncpPowerState(modemPowerState() ? NcpPowerState::ON : NcpPowerState::OFF);
+    if (modemPowerState()) {
+        serial_->on(true);
+        ncpPowerState(NcpPowerState::ON);
+    } else {
+        serial_->on(false);
+        ncpPowerState(NcpPowerState::OFF);
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2334,7 +2340,9 @@ int SaraNcpClient::modemInit() const {
     CHECK(HAL_Pin_Configure(UBRST, &conf, nullptr));
 
     // Configure BUFEN as Push-Pull Output and default to 1 (disabled)
+#if PLATFORM_ID != PLATFORM_ESOMX
     CHECK(HAL_Pin_Configure(BUFEN, &conf, nullptr));
+#endif // PLATFORM_ID != PLATFORM_ESOMX
 
     // Configure VINT as Input for modem power state monitoring
     conf.mode = INPUT;
@@ -2605,7 +2613,9 @@ bool SaraNcpClient::modemPowerState() const {
 
 int SaraNcpClient::modemSetUartState(bool state) const {
     LOG(TRACE, "Setting UART voltage translator state %d", state);
+#if PLATFORM_ID != PLATFORM_ESOMX
     HAL_GPIO_Write(BUFEN, state ? 0 : 1);
+#endif // PLATFORM_ID != PLATFORM_ESOMX
     return SYSTEM_ERROR_NONE;
 }
 

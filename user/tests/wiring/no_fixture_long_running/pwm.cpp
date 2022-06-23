@@ -34,6 +34,8 @@ const PinMapping pwm_pins[] = {
         // cause problems if the RGB led is enabled.
         // PWM HAL also is not interrupt safe and RGB pins are modified in SysTick
         PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), /* PIN(D7), */ PIN(D8), PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
+#elif (PLATFORM_ID == PLATFORM_ESOMX)
+        PIN(D0) // TODO: Other PWM pins
 #else
 #error "Unsupported platform"
 #endif

@@ -2,12 +2,12 @@
     "version": "1.0.0",
     "toolchains": [
         {
-            "platforms": [12, 13, 23, 25, 26],
+            "platforms": [12, 13, 15, 23, 25, 26],
             "firmware": "deviceOS@source",
             "compilers": "gcc-arm@10.2.1",
             "tools": "buildtools@1.1.1",
             "scripts": "buildscripts@1.10.0",
-            "debuggers": "openocd@0.11.2-adhoc6ea4372.0"
+            "debuggers": "openocd@0.11.0-particle.4"
         }
     ]
 }

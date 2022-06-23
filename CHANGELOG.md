@@ -1,3 +1,20 @@
+## 4.0.0-alpha.2
+
+> ## :warning: Please note this is in internal release, do not use on production devices!
+
+### FEATURES
+- [esomx] Adds support for new platform esomx [#2443](https://github.com/particle-iot/device-os/pull/2443) [#2459](https://github.com/particle-iot/device-os/pull/2459)
+- [E404X] Determine flash part at runtime [#2456](https://github.com/particle-iot/device-os/pull/2456)
+- [gen3][quectel] Adds support for BG95-M1, BG95-MF, BG77, and EG91-NAX [#2458](https://github.com/particle-iot/device-os/pull/2458)
+
+### BUGFIXES
+- [gen3] hal: fix power leak on Boron [#2452](https://github.com/particle-iot/device-os/pull/2452)
+
+### INTERNAL
+
+- [workbench] update-device-os-workbench-manifest-json [#2457](https://github.com/particle-iot/device-os/pull/2457)
+- [ci] test-build-system-tune-timeouts [#2455](https://github.com/particle-iot/device-os/pull/2455)
+
 ## 4.0.0-alpha.1
 
 > ## :warning: Please note this is in internal release, do not use on production devices!

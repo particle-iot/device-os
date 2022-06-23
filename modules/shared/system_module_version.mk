@@ -1,6 +1,6 @@
 # Skip to next 100 every vx.N.x release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # Bump by 1 for every prerelease or release with the same vx.N.* base.
-COMMON_MODULE_VERSION ?= 4000
+COMMON_MODULE_VERSION ?= 4001
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 
 RELEASE_080_MODULE_VERSION_BASE ?= 300
@@ -14,13 +14,13 @@ USER_PART_MODULE_VERSION ?= 6
 # Skip to next 100 every vx.N.x release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last vx.N.x release.
 # Bump by 1 for every updated bootloader image for a release with the same vx.N.* base.
-BOOTLOADER_VERSION ?= 1100
+BOOTLOADER_VERSION ?= 1101
 
 # The version of the bootloader that the system firmware requires
 # NOTE: this will force the device into safe mode until this dependency is met, which is why
 # this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
 ifeq ($(PLATFORM_GEN),3)
-BOOTLOADER_DEPENDENCY = 1100
+BOOTLOADER_DEPENDENCY = 1101
 else
 # Some sensible default
 BOOTLOADER_DEPENDENCY = 0
