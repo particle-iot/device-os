@@ -54,11 +54,7 @@ SECTIONS
     _strtoull = 0x75d5;
     _strtoll = 0x76d5;
     _strtok = 0x76f5;
-    __strtok_r = 0x7705;
-    _strtok_r = 0x7761;
-    _strtol_r = 0x776d;
     _strtol = 0x7899;
-    _strtoul_r = 0x78a1;
     _strtoul = 0x79d9;
     _strupr = 0x79e1;
     flash_init_para = 0x801f8;

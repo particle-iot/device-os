@@ -244,11 +244,7 @@ SECTIONS {
     _strtoull = 0x10111f3d;
     _strtoll = 0x10111ffd;
     _strtok = 0x1011201d;
-    __strtok_r = 0x10112029;
-    _strtok_r = 0x1011208d;
-    _strtol_r = 0x10112095;
     _strtol = 0x101121b1;
-    _strtoul_r = 0x101121b5;
     _strtoul = 0x101122e9;
     _strupr = 0x101122ed;
     CRYPTO_chacha_20 = 0x10112309;
