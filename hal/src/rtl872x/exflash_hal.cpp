@@ -246,7 +246,7 @@ public:
             : mpuCfg_{},
               mpuEntry_(0) {
         mpuEntry_ = mpu_entry_alloc();
-        SPARK_ASSERT(mpuEntry_ >= 0 && mpuEntry_ < MPU_MAX_REGION);
+        SPARK_ASSERT(mpuEntry_ < MPU_MAX_REGION);
         mpuCfg_.region_base = (uintptr_t)&platform_system_part1_flash_start;
         mpuCfg_.region_size = (uintptr_t)&platform_flash_end - (uintptr_t)&platform_system_part1_flash_start; // System part1, OTA region, user part and filesystem
         mpuCfg_.xn = MPU_EXEC_NEVER;
