@@ -32,18 +32,19 @@ namespace {
 // When setting to GPIO output mode, all of the audio pins and one of the
 // normal pins (PA[27]) do not support GPIO read function (always read as '0'),
 // We'll cache the GPIO state for these pins.
+constexpr uint32_t CACHE_PIN_STATE_UNKNOWN = 0x3;
+constexpr uint32_t CACHE_PIN_STATE_MASK = 0x3;
+constexpr int CACHE_PIN_STATE_BITS = 2;
 constexpr int CACHE_PIN_COUNT = 6;
 hal_pin_t cachePins[CACHE_PIN_COUNT] = {D7, S4, S5, S6, BTN, ANTSW};
+// 2-bit state for each pin: | 00 | 00 | 00 | 00 | 00 | 00 |
 uint32_t cachePinState = 0;
 
 void setCachePinState(hal_pin_t pin, uint8_t value) {
     for (int i = 0; i < CACHE_PIN_COUNT; i++) {
         if (cachePins[i] == pin) {
-            if (value) {
-                 cachePinState |= 1 << i;
-            } else {
-                cachePinState &= ~(1 << i);
-            }
+            cachePinState &= ~(CACHE_PIN_STATE_MASK << (i * CACHE_PIN_STATE_BITS));
+            cachePinState |= value << (i * CACHE_PIN_STATE_BITS);
             break;
         }
     }
@@ -52,10 +53,10 @@ void setCachePinState(hal_pin_t pin, uint8_t value) {
 uint8_t getCachePinState(hal_pin_t pin) {
     for (int i = 0; i < CACHE_PIN_COUNT; i++) {
         if (cachePins[i] == pin) {
-            return (cachePinState & (1 << i)) ? 1 : 0;
+            return (cachePinState >> (i * CACHE_PIN_STATE_BITS)) & CACHE_PIN_STATE_MASK;
         }
     }
-    return 0;
+    return CACHE_PIN_STATE_UNKNOWN;
 }
 
 bool isCachePin(hal_pin_t pin) {
@@ -185,7 +186,11 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         pinInfo->pin_mode = mode;
 
         if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
-            setCachePinState(pin, conf->set_value);
+            if (conf->set_value) {
+                setCachePinState(pin, conf->value);
+            } else {
+                setCachePinState(pin, CACHE_PIN_STATE_UNKNOWN);
+            }
         }
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -252,7 +257,8 @@ int32_t hal_gpio_read(hal_pin_t pin) {
     }
 
     if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
-        return getCachePinState(pin);
+        uint8_t state = getCachePinState(pin);
+        return (state == CACHE_PIN_STATE_UNKNOWN) ? 0 : state;
     }
 
     hal_pin_info_t* pinInfo = hal_pin_map() + pin;
