@@ -82,17 +82,21 @@ public:
 
     void lock() {
         hal_exflash_lock();
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (!threading_) {
             // Prevents other threads from accessing the external flash via XIP
             os_thread_scheduling(false, nullptr);
         }
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
         locked_ = true;
     }
 
     void unlock() {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (!threading_) {
             os_thread_scheduling(true, nullptr);
         }
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
         hal_exflash_unlock();
         locked_ = false;
     }
