@@ -58,10 +58,6 @@ uint8_t getCachePinState(hal_pin_t pin) {
     return 0;
 }
 
-void clearCachePinState(hal_pin_t pin) {
-    setCachePinState(pin, false);
-}
-
 bool isCachePin(hal_pin_t pin) {
     for (int i = 0; i < CACHE_PIN_COUNT; i++) {
         if (cachePins[i] == pin) {
@@ -189,7 +185,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         pinInfo->pin_mode = mode;
 
         if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
-            clearCachePinState(pin);
+            setCachePinState(pin, conf->set_value);
         }
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
