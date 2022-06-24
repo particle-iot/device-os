@@ -43,6 +43,13 @@ typedef struct platform_flash_modules {
     uint8_t reserved[2];
 } platform_flash_modules_t; //1 module instance => 20 bytes
 
+typedef struct platform_flash_modules_aligned {
+    platform_flash_modules_t module;
+    uint8_t reserved[12];
+} platform_flash_modules_aligned;
+
+static_assert(sizeof(platform_flash_modules_aligned) % 32 == 0, "sizeof(platform_flash_modules_aligned) should be multiple of 32 bytes");
+
 
 #ifdef	__cplusplus
 }

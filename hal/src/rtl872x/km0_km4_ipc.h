@@ -21,7 +21,10 @@
 #include <stdint.h>
 #include "module_info.h"
 
-#define KM0_KM4_IPC_MSG_VERSION         1
+#define KM0_KM4_IPC_MSG_VERSION         2
+
+#define KM0_KM4_IPC_MSG_VERSION_1       1
+#define KM0_KM4_IPC_MSG_VERSION_2       KM0_KM4_IPC_MSG_VERSION
 
 // Define more IPC channels if needed
 #define KM0_KM4_IPC_CHANNEL_GENERIC     0
@@ -106,6 +109,7 @@ private:
     km0_km4_ipc_msg_t __attribute__((aligned(32))) km0Km4IpcMessage_;
     km0_km4_ipc_msg_callback_t respCallback_;
     void* respCallbackContext_;
+    uint16_t peerMsgVersion_;
 };
 
 } // namespace::particle

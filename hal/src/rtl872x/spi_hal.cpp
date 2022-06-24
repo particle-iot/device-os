@@ -231,7 +231,6 @@ public:
         // Start address of chunk buffer should be 32-byte aligned
         SPARK_ASSERT(((uint32_t)chunkBuffer_.txBuf & 0x1f) == 0);
         SPARK_ASSERT(((uint32_t)chunkBuffer_.rxBuf & 0x1f) == 0);
-        SPARK_ASSERT((CFG_CHUNK_BUF_SIZE) % 32 == 0);
         CHECK_TRUE(validateConfig(rtlSpiIndex_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
 
         if (isEnabled()) {
