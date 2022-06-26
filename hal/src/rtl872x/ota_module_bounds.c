@@ -34,9 +34,9 @@ const module_bounds_t module_mbr = {
 
 // km0 part1
 const module_bounds_t module_km0_part1 = {
-    .maximum_size = 0x4B000,
+    .maximum_size = 0x4A000,
     .start_address = 0x08014000,
-    .end_address = 0x0805F000,
+    .end_address = 0x0805E000,
     .module_function = MODULE_FUNCTION_BOOTLOADER,
     .module_index = 2,
     .store = MODULE_STORE_MAIN
