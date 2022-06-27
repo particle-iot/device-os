@@ -194,6 +194,13 @@ protected:
 	 */
 	size_t max_transmit_message_size;
 
+#if PLATFORM_ID == PLATFORM_GCC
+	/**
+	 * Platform ID.
+	 */
+	int platform_id;
+#endif
+
 	void set_protocol_flags(uint32_t flags)
 	{
 		protocol_flags = flags;
@@ -332,6 +339,9 @@ public:
 			ota_chunk_size(DEFAULT_OTA_CHUNK_SIZE),
 			system_version(0), // Unknown
 			max_transmit_message_size(0) // Limited by compile-time maximum
+#if PLATFORM_ID == PLATFORM_GCC
+			, platform_id(PLATFORM_ID)
+#endif
 	{
 	}
 
@@ -558,6 +568,13 @@ public:
 			details.product_version = this->product_firmware_version;
 		}
 	}
+
+#if PLATFORM_ID == PLATFORM_GCC
+	void set_platform_id(int id)
+	{
+	    platform_id = id;
+	}
+#endif
 
 	inline bool send_time_request()
 	{

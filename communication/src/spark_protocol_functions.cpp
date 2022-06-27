@@ -282,3 +282,10 @@ int spark_protocol_get_status(ProtocolFacade* protocol, protocol_status* status,
     ASSERT_ON_SYSTEM_THREAD();
     return protocol->get_status(status);
 }
+
+#if PLATFORM_ID == PLATFORM_GCC
+void spark_protocol_set_platform_id(ProtocolFacade* protocol, int id)
+{
+    protocol->set_platform_id(id);
+}
+#endif
