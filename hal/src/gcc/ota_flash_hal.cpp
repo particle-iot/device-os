@@ -7,11 +7,72 @@
 #include "filesystem.h"
 #include "bytes2hexbuf.h"
 
+namespace {
+
+const hal_module_t g_moduleInfo = {
+    .bounds = {
+        .maximum_size = 0x10000000,
+        .start_address = 0,
+        .end_address = 0x10000000,
+        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
+        .module_index = 0,
+        .store = MODULE_STORE_MAIN,
+        .mcu_identifier = 0,
+        .location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
+    },
+    .info = {
+        .module_start_address = (const void*)0,
+        .module_end_address = (const void*)0x00100000,
+        .reserved = 0,
+        .flags = 0,
+        .module_version = MODULE_VERSION,
+        .platform_id = PLATFORM_ID,
+        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
+        .module_index = 0,
+        .dependency = {
+            .module_function = MODULE_FUNCTION_NONE,
+            .module_index = 0,
+            .module_version = 0
+        },
+        .dependency2 = {
+            .module_function = MODULE_FUNCTION_NONE,
+            .module_index = 0,
+            .module_version = 0
+        }
+    },
+    .crc = {
+        .crc32 = 0xaabbccdd
+    },
+    .suffix = {
+        .reserved = 0,
+        .sha = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
+                0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff },
+        .size = 34
+    },
+    .validity_checked = MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_RANGE |
+            MODULE_VALIDATION_PLATFORM,
+    .validity_result = MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_RANGE |
+            MODULE_VALIDATION_PLATFORM,
+    .module_info_offset = 0
+};
+
+} // namespace
+
 int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-    info->platform_id = deviceConfig.platform_id;
-    info->module_count = 0;
-    info->modules = NULL;
+    if (create) {
+        const auto module = new(std::nothrow) hal_module_t;
+        if (!module) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        memcpy(module, &g_moduleInfo, sizeof(hal_module_t));
+        module->info.platform_id = deviceConfig.platform_id;
+        info->modules = module;
+        info->module_count = 1;
+        info->platform_id = deviceConfig.platform_id;
+    } else {
+        delete info->modules;
+    }
     return 0;
 }
 
