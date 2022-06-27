@@ -964,8 +964,10 @@ void Spark_Protocol_Init(void)
     if (!spark_protocol_is_initialized(sp))
     {
 #if PLATFORM_ID == PLATFORM_GCC
-        spark_protocol_set_platform_id(sp, platformIdOverride());
-#endif
+        int platformId = platformIdOverride();
+        spark_protocol_set_platform_id(sp, platformId);
+#endif // PLATFORM_ID == PLATFORM_GCC
+
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
@@ -1103,6 +1105,16 @@ void Spark_Protocol_Init(void)
         spark_protocol_communications_handlers(sp, &handlers);
 
         registerSystemSubscriptions();
+
+#if PLATFORM_ID == PLATFORM_GCC
+        bool isCellular = (platformId == PLATFORM_GCC || platformId == PLATFORM_BORON || platformId == PLATFORM_BSOM ||
+                platformId == PLATFORM_B5SOM || platformId == PLATFORM_TRACKER || platformId == PLATFORM_ESOMX);
+        protocol::connection_properties_t connProp = {};
+        connProp.size = sizeof(connProp);
+        connProp.keepalive_source = protocol::KeepAliveSource::SYSTEM;
+        spark_protocol_set_connection_property(sp, protocol::Connection::PING, isCellular ? HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL :
+                HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL, &connProp, nullptr);
+#endif // PLATFORM_ID == PLATFORM_GCC
     }
 }
 

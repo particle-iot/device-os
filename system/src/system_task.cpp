@@ -106,16 +106,6 @@ void Network_Setup(bool threaded)
 
     //Initialize spark protocol callbacks for all System modes
     Spark_Protocol_Init();
-
-#if PLATFORM_ID == PLATFORM_GCC
-    const int platformId = platformIdOverride();
-#else
-    const int platformId = PLATFORM_ID;
-#endif
-    if (platformId == PLATFORM_BORON || platformId == PLATFORM_BSOM || platformId == PLATFORM_B5SOM ||
-            platformId == PLATFORM_TRACKER || platformId == PLATFORM_ESOMX) {
-        system_cloud_set_inet_family_keepalive(AF_INET, HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL, 0);
-    }
 }
 
 int cfod_count = 0;
