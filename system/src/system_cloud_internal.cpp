@@ -249,6 +249,17 @@ int getCloudFunctionInfo(size_t index, const char** name) {
     return 0;
 }
 
+#if PLATFORM_ID == PLATFORM_GCC
+int platformIdOverride() {
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    SPARK_ASSERT(HAL_System_Info(&info, true /* construct */, nullptr) == 0);
+    const auto platformId = info.platform_id;
+    HAL_System_Info(&info, false, nullptr);
+    return platformId;
+}
+#endif
+
 } // namespace particle
 
 extern uint8_t feature_cloud_udp;
@@ -953,14 +964,8 @@ void Spark_Protocol_Init(void)
     if (!spark_protocol_is_initialized(sp))
     {
 #if PLATFORM_ID == PLATFORM_GCC
-        // The GCC platform allows overriding the platform ID
-        hal_system_info_t systemInfo = {};
-        systemInfo.size = sizeof(systemInfo);
-        SPARK_ASSERT(HAL_System_Info(&systemInfo, true /* construct */, nullptr) == 0);
-        spark_protocol_set_platform_id(sp, systemInfo.platform_id);
-        HAL_System_Info(&systemInfo, false, nullptr);
-#endif // PLATFORM_ID == PLATFORM_GCC
-
+        spark_protocol_set_platform_id(sp, platformIdOverride());
+#endif
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);

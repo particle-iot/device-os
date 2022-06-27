@@ -224,6 +224,10 @@ int getCloudVariableInfo(size_t index, const char** name, int* type = nullptr);
 size_t cloudFunctionCount();
 int getCloudFunctionInfo(size_t index, const char** name);
 
+#if PLATFORM_ID == PLATFORM_GCC
+int platformIdOverride();
+#endif
+
 } // namespace particle
 
 #ifdef __cplusplus
