@@ -9,7 +9,7 @@
 
 int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-    info->platform_id = PLATFORM_ID;
+    info->platform_id = deviceConfig.platform_id;
     info->module_count = 0;
     info->modules = NULL;
     return 0;

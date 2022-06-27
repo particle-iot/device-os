@@ -952,6 +952,15 @@ void Spark_Protocol_Init(void)
 
     if (!spark_protocol_is_initialized(sp))
     {
+#if PLATFORM_ID == PLATFORM_GCC
+        // The GCC platform allows overriding the platform ID
+        hal_system_info_t systemInfo = {};
+        systemInfo.size = sizeof(systemInfo);
+        SPARK_ASSERT(HAL_System_Info(&systemInfo, true /* construct */, nullptr) == 0);
+        spark_protocol_set_platform_id(sp, systemInfo.platform_id);
+        HAL_System_Info(&systemInfo, false, nullptr);
+#endif // PLATFORM_ID == PLATFORM_GCC
+
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
