@@ -353,7 +353,7 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
 #endif
     } else if (flashDeviceID == FLASH_ADDRESS) {
         // Not supported
-        return false;
+        return true;
     }
     return false;
 }
@@ -521,17 +521,80 @@ static void bldUpdateCallback(km0_km4_ipc_msg_t* msg, void* context) {
     }
 }
 
-static bool isAddressChunkInRange(uintptr_t addr, size_t size, uintptr_t addrComp, size_t sizeComp) {
-    size_t addrMax = addr + size;
-    size_t addrCompMax = addrComp + sizeComp;
-    if (addr >= addrComp && addr < addrCompMax) {
+extern uintptr_t platform_user_part_flash_end;
+extern uintptr_t platform_system_part1_flash_start;
+
+typedef struct platform_flash_mal_memory_region {
+    uintptr_t start;
+    uintptr_t end;
+} platform_flash_mal_memory_region;
+
+typedef struct platform_flash_mal_overlap_region {
+    platform_flash_mal_memory_region src;
+    platform_flash_mal_memory_region dst;
+} platform_flash_mal_overlap_region;
+
+static bool isWithinOtaRegion(uintptr_t address, flash_device_t location) {
+    return address >= (uintptr_t)&platform_system_part1_flash_start && address < (uintptr_t)&platform_user_part_flash_end &&
+            location == FLASH_INTERNAL;
+}
+
+static bool isValidUpdateSlot(platform_flash_modules_t* module) {
+    return module->magicNumber == 0xabcd;
+}
+
+static bool isSourceDestinationOverlap(platform_flash_modules_t* module, platform_flash_mal_overlap_region* overlap) {
+    if (!isValidUpdateSlot(module)) {
+        return false;
+    }
+
+    size_t srcAddr = module->sourceAddress;
+    size_t dstAddr = module->destinationAddress;
+    size_t srcAddrEnd = module->sourceAddress + module->length;
+    size_t dstAddrEnd = module->destinationAddress + module->length;
+    dstAddrEnd = (dstAddrEnd + INTERNAL_FLASH_PAGE_SIZE - 1) / INTERNAL_FLASH_PAGE_SIZE * INTERNAL_FLASH_PAGE_SIZE;
+
+    if (!(isWithinOtaRegion(srcAddr, module->sourceDeviceID) && isWithinOtaRegion(dstAddr, module->destinationDeviceID))) {
+        return false;
+    }
+
+#if HAS_COMPRESSED_OTA
+    compressed_module_header comp_header = {};
+    if (module->flags & MODULE_COMPRESSED) {
+        if (!parse_compressed_module_header(module->sourceDeviceID, module->sourceAddress, module->length, &comp_header)) {
+            // This module will not be decompressed anyway
+            return false;
+        }
+        dstAddrEnd = dstAddr + comp_header.original_size;
+    }
+#endif // HAS_COMPRESSED_OTA
+
+    if (overlap) {
+        overlap->src.start = srcAddr;
+        overlap->src.end = srcAddrEnd;
+        overlap->dst.start = dstAddr;
+        overlap->dst.end = dstAddrEnd;
+    }
+
+    if (srcAddr >= dstAddr && srcAddr < dstAddrEnd) {
         return true;
     }
-    if (addrMax > addrComp && addrMax <= addrCompMax) {
+    if (srcAddrEnd > dstAddr && srcAddrEnd <= dstAddrEnd) {
         return true;
     }
     return false;
 }
+
+static size_t countValidUpdateSlots(platform_flash_modules_t* modules, size_t count) {
+    size_t valid = 0;
+    for (platform_flash_modules_t* module = modules; module < modules + count; module++) {
+        if (isValidUpdateSlot(module)) {
+            valid++;
+        }
+    }
+    return valid;
+}
+
 #endif
 
 static int invalidateUpdateSlot(platform_flash_modules_t* module, size_t offset) {
@@ -554,15 +617,9 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
     bool has_bootloader = false;
     size_t offs = module_offs;
 
-    bool invalidateAll = false;
-
     for (size_t i = 0; i < module_count; ++i, offs += sizeof(platform_flash_modules_t)) {
         platform_flash_modules_t* const module = &modules[i];
         if (module->magicNumber == 0xabcd) {
-            if (invalidateAll) {
-                invalidateUpdateSlot(module, offs);
-                continue;
-            }
             bool resetSlot = true;
             if (!has_modules) {
                 has_modules = true;
@@ -574,24 +631,33 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
             if (module->module_function != MODULE_FUNCTION_BOOTLOADER) {
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
                 r = 0;
-                if (module->sourceDeviceID == module->destinationDeviceID
-                        && isAddressChunkInRange(module->sourceAddress, module->length, module->destinationAddress, module->length)) {
-                    // XXX: There is an overlap between the source and destination address
-                    // The OTA section is placed right above the end of system-part1 and if
-                    // the difference between current and the OTAd system-part1/user app binary is
-                    // greater than 4KB, the below FLASH_CopyMemory would first erase first/last sectors inside
-                    // the OTA section and then copy 0xff-filled data into the system-part1/user-application target location
-                    //
-                    // Avoid this by copying first into PSRAM
-                    if (!flash_copy(module->sourceDeviceID, module->sourceAddress, FLASH_ADDRESS, (uintptr_t)otaTemporaryMemoryBuffer, module->length)) {
-                        r = FLASH_ACCESS_RESULT_ERROR;
-                    } else {
-                        module->sourceDeviceID = FLASH_ADDRESS;
-                        module->sourceAddress = (uintptr_t)otaTemporaryMemoryBuffer;
-                        // We have to invalidate the slot immediately
-                        r = invalidateUpdateSlot(module, offs);
-                        // Already invalidated
+                platform_flash_mal_overlap_region overlap = {};
+                if (isSourceDestinationOverlap(module, &overlap)) {
+                    if (countValidUpdateSlots(modules, module_count) > 1) {
+                        // Can't apply for now, wait until the rest of the updates are applied
+                        r = result = FLASH_ACCESS_RESULT_RESET_PENDING;
+                        // Skip the current slot
                         resetSlot = false;
+                    } else {
+                        // Can apply the update, copy first into RAM, invalidate slot, copy back into flash, update slot
+                        // There is a chance that the update process will be interrupted here and we'll lose the update
+                        // request (slot), but this should be ok, as this whole process only applies to system-part1 updates
+                        // and the worst that will happen is that we'll boot back into the old system-part1 (with the rest of
+                        // the modules potentially updated). This is not dangerous and does not go against the dependency direction.
+                        bool ok = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, FLASH_ADDRESS, (uintptr_t)otaTemporaryMemoryBuffer, module->length, 0, 0) == FLASH_ACCESS_RESULT_OK;
+                        ok = ok && (invalidateUpdateSlot(module, offs)) == 0;
+                        ok = ok && FLASH_CopyMemory(FLASH_ADDRESS, (uintptr_t)otaTemporaryMemoryBuffer, module->sourceDeviceID, overlap.dst.end, module->length, 0, 0) == FLASH_ACCESS_RESULT_OK;
+                        // Finally patch the module slot
+                        if (ok) {
+                            module->sourceAddress = overlap.dst.end;
+                            module->magicNumber = 0xabcd;
+                            ok = !dct_write_app_data(module, offs, sizeof(*module));
+                        }
+                        if (!ok) {
+                            r = FLASH_ACCESS_RESULT_ERROR;
+                            // Keep the module update slot if it's still valid
+                            resetSlot = false;
+                        }
                     }
                 }
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
@@ -599,11 +665,6 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                 if (!r) {
                     r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
                             module->destinationAddress, module->length, module->module_function, module->flags);
-                    if (!resetSlot && r != FLASH_ACCESS_RESULT_OK) {
-                        // Invalidate the rest of the slots as we cannot guarantee that the system will correctly
-                        // boot due to dependencies
-                        invalidateAll = true;
-                    }
                 }
                 if (r != FLASH_ACCESS_RESULT_OK && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
                     // Propagate errors, prioritize FLASH_ACCESS_RESULT_RESET_PENDING over errors
