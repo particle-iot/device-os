@@ -160,6 +160,7 @@
 | 1007 | 3210 | 3.2.1-p2.1    |      P2 |
 | 1007 | 3211 | 3.2.1-p2.2    |      P2 |
 | 1008 | 3212 | 3.2.1-p2.3    |      P2 |
+| 1009 | 3213 | 3.2.1-p2.4    |      P2 |
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
 

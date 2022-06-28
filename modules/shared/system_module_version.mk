@@ -1,6 +1,6 @@
 # Skip to next 100 every v0.x.0 release (e.g. 108 for v0.6.2 to 200 for v0.7.0-rc.1)
 # Bump by 1 for every prerelease or release with the same v0.x.* base.
-COMMON_MODULE_VERSION ?= 3212
+COMMON_MODULE_VERSION ?= 3213
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART2_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 SYSTEM_PART3_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
@@ -33,7 +33,7 @@ endif
 # Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
-BOOTLOADER_VERSION ?= 1008
+BOOTLOADER_VERSION ?= 1009
 ifeq ($(PLATFORM_ID),32)
 PREBOOTLOADER_MBR_VERSION ?= 2
 PREBOOTLOADER_PART1_VERSION ?= 2
@@ -45,7 +45,7 @@ endif
 ifeq ($(PLATFORM_GEN),2)
 BOOTLOADER_DEPENDENCY = 1003
 else ifeq ($(PLATFORM_ID),32)
-BOOTLOADER_DEPENDENCY = 1008
+BOOTLOADER_DEPENDENCY = 1009
 else ifeq ($(PLATFORM_GEN),3)
 BOOTLOADER_DEPENDENCY = 1100
 else

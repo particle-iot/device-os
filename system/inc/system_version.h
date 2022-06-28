@@ -194,7 +194,8 @@ extern "C" {
 #define SYSTEM_VERSION_v321P21 SYSTEM_VERSION_BETA(3, 2, 1, 1)
 #define SYSTEM_VERSION_v321P22 SYSTEM_VERSION_BETA(3, 2, 1, 2)
 #define SYSTEM_VERSION_v321P23 SYSTEM_VERSION_BETA(3, 2, 1, 3)
-#define SYSTEM_VERSION SYSTEM_VERSION_v321P23
+#define SYSTEM_VERSION_v321P24 SYSTEM_VERSION_BETA(3, 2, 1, 4)
+#define SYSTEM_VERSION SYSTEM_VERSION_v321P24
 
 /**
  * Previously we would set the least significant byte to 0 for the final release, but to make
@@ -353,6 +354,7 @@ extern "C" {
 #define SYSTEM_VERSION_321P21
 #define SYSTEM_VERSION_321P22
 #define SYSTEM_VERSION_321P23
+#define SYSTEM_VERSION_321P24
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
