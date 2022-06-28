@@ -298,6 +298,13 @@ extern int decrypt_rsa(const uint8_t* ciphertext, const uint8_t* private_key,
 
 void extract_public_rsa_key(uint8_t* device_pubkey, const uint8_t* device_privkey);
 
+#if PLATFORM_ID == PLATFORM_GCC
+/**
+ * Set the platform ID.
+ */
+void spark_protocol_set_platform_id(ProtocolFacade* protocol, int id);
+#endif
+
 /**
  * Retrieves a pointer to a statically allocated instance.
  * @return A statically allocated instance of ProtocolFacade.

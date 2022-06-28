@@ -44,8 +44,13 @@ extern uint8_t feature_cloud_udp;
 extern uint32_t particle_key_errors;
 volatile bool cloud_socket_aborted = false;
 
+#if HAL_PLATFORM_CELLULAR
+static volatile int s_ipv4_cloud_keepalive = HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL;
+static volatile int s_ipv6_cloud_keepalive = HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL;
+#else
 static volatile int s_ipv4_cloud_keepalive = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL;
 static volatile int s_ipv6_cloud_keepalive = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL;
+#endif
 
 using namespace particle::system::cloud;
 
