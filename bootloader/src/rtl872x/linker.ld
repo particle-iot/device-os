@@ -9,10 +9,20 @@ MEMORY
     SRAM       (xrw) : ORIGIN = platform_bootloader_ram_start,        LENGTH = platform_bootloader_ram_size
     SECURE_RAM (xrw) : ORIGIN = platform_secure_ram_start,            LENGTH = platform_secure_ram_size - platform_bootloader_stack_size
     APP_FLASH  (rx)  : ORIGIN = platform_bootloader_flash_start,      LENGTH = platform_bootloader_flash_size
+    PSRAM      (rwx) : ORIGIN = platform_bootloader_psram_start,      LENGTH = platform_bootloader_psram_size
 }
 
 SECTIONS
 {
+    .psram (NOLOAD):
+    {
+        . = ALIGN(4);
+        link_psram_location = .;
+        *(.psram.*)
+        . = ALIGN(4);
+        link_psram_end = .;
+    } > PSRAM AT> PSRAM
+
     /* Module start */
     INCLUDE linker_module_start.ld
 

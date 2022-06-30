@@ -5,7 +5,7 @@ CPPSRC += $(call target_files,$(PREBOOTLOADER_PART1_SRC_PATH)/,*.cpp)
 
 CSRC += $(PREBOOTLOADER_PART1_SRC_PATH)/../shared/crc32_nolookup.c
 CSRC += $(PROJECT_ROOT)/hal/src/rtl872x/flash_hal.c
-CSRC += $(PROJECT_ROOT)/hal/src/rtl872x/exflash_hal.c
+CPPSRC += $(PROJECT_ROOT)/hal/src/rtl872x/exflash_hal.cpp
 CSRC += $(PROJECT_ROOT)/hal/src/rtl872x/hal_irq_flag.c
 
 CPPSRC += $(PROJECT_ROOT)/hal/src/rtl872x/flash_common.cpp

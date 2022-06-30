@@ -31,6 +31,7 @@
 #include "rtl_header.h"
 #include "km0_km4_ipc.h"
 #include "interrupts_hal.h"
+#include "ota_flash_hal.h"
 
 // Decompression of firmware modules is only supported in the bootloader
 #if (HAL_PLATFORM_COMPRESSED_OTA) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
@@ -46,6 +47,16 @@
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 __attribute__((section(".boot.ipc_data"))) platform_flash_modules_t sModule;
 #endif
+
+static int hal_memory_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
+    memcpy(data_buf, (void*)addr, data_size);
+    return 0;
+}
+
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+#define FLASH_MAL_OTA_TEMPORARY_MEMORY_BUFFER (2 * 1024 * 1024)
+static uint8_t otaTemporaryMemoryBuffer[FLASH_MAL_OTA_TEMPORARY_MEMORY_BUFFER] __attribute__((section(".psram")));
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
 /* WARNING: enable_rsip_if_disabled() and disable_rsip_if_enabled() must be used in pair.
  * They can be called recursively.
@@ -96,6 +107,10 @@ static bool flash_read(flash_device_t dev, uintptr_t addr, uint8_t* buf, size_t 
             break;
         }
 #endif // USE_SERIAL_FLASH
+        case FLASH_ADDRESS: {
+            ok = (hal_memory_read(addr, buf, size) == 0);
+            break;
+        }
     }
     return ok;
 }
@@ -113,6 +128,11 @@ static bool flash_write(flash_device_t dev, uintptr_t addr, const uint8_t* buf, 
             break;
         }
 #endif // USE_SERIAL_FLASH
+        case FLASH_ADDRESS: {
+            memcpy((void*)addr, buf, size);
+            ok = true;
+            break;
+        }
     }
     return ok;
 }
@@ -297,6 +317,15 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 #else
         return false;
 #endif
+    } else if (flashDeviceID == FLASH_ADDRESS) {
+        // FIXME:
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+        if (startAddress >= (uintptr_t)otaTemporaryMemoryBuffer && length <= sizeof(otaTemporaryMemoryBuffer)) {
+            return true;
+        }
+#else
+        return false;
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     }
     return false;
 }
@@ -322,6 +351,9 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
 #else
         return false;
 #endif
+    } else if (flashDeviceID == FLASH_ADDRESS) {
+        // Not supported
+        return true;
     }
     return false;
 }
@@ -408,6 +440,10 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 #else
             return false;
 #endif
+        } else if (sourceDeviceID == FLASH_ADDRESS) {
+            if (hal_memory_read(sourceAddress, src_buf, copy_len)) {
+                return false;
+            }
         }
         // Read data from destination memory address
         if (sourceDeviceID == FLASH_INTERNAL) {
@@ -422,6 +458,10 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 #else
             return false;
 #endif
+        } else if (sourceDeviceID == FLASH_ADDRESS) {
+            if (hal_memory_read(destinationAddress, dest_buf, copy_len)) {
+                return false;
+            }
         }
         if (memcmp(src_buf, dest_buf, copy_len)) {
             /* Failed comparison check */
@@ -480,7 +520,87 @@ static void bldUpdateCallback(km0_km4_ipc_msg_t* msg, void* context) {
         ipcResult = *((int*)msg->data);
     }
 }
+
+extern uintptr_t platform_user_part_flash_end;
+extern uintptr_t platform_system_part1_flash_start;
+
+typedef struct platform_flash_mal_memory_region {
+    uintptr_t start;
+    uintptr_t end;
+} platform_flash_mal_memory_region;
+
+typedef struct platform_flash_mal_overlap_region {
+    platform_flash_mal_memory_region src;
+    platform_flash_mal_memory_region dst;
+} platform_flash_mal_overlap_region;
+
+static bool isWithinOtaRegion(uintptr_t address, flash_device_t location) {
+    return address >= (uintptr_t)&platform_system_part1_flash_start && address < (uintptr_t)&platform_user_part_flash_end &&
+            location == FLASH_INTERNAL;
+}
+
+static bool isValidUpdateSlot(platform_flash_modules_t* module) {
+    return module->magicNumber == 0xabcd;
+}
+
+static bool isSourceDestinationOverlap(platform_flash_modules_t* module, platform_flash_mal_overlap_region* overlap) {
+    if (!isValidUpdateSlot(module)) {
+        return false;
+    }
+
+    size_t srcAddr = module->sourceAddress;
+    size_t dstAddr = module->destinationAddress;
+    size_t srcAddrEnd = module->sourceAddress + module->length;
+    size_t dstAddrEnd = module->destinationAddress + module->length;
+    dstAddrEnd = (dstAddrEnd + INTERNAL_FLASH_PAGE_SIZE - 1) / INTERNAL_FLASH_PAGE_SIZE * INTERNAL_FLASH_PAGE_SIZE;
+
+    if (!(isWithinOtaRegion(srcAddr, module->sourceDeviceID) && isWithinOtaRegion(dstAddr, module->destinationDeviceID))) {
+        return false;
+    }
+
+#if HAS_COMPRESSED_OTA
+    compressed_module_header comp_header = {};
+    if (module->flags & MODULE_COMPRESSED) {
+        if (!parse_compressed_module_header(module->sourceDeviceID, module->sourceAddress, module->length, &comp_header)) {
+            // This module will not be decompressed anyway
+            return false;
+        }
+        dstAddrEnd = dstAddr + comp_header.original_size;
+    }
+#endif // HAS_COMPRESSED_OTA
+
+    if (overlap) {
+        overlap->src.start = srcAddr;
+        overlap->src.end = srcAddrEnd;
+        overlap->dst.start = dstAddr;
+        overlap->dst.end = dstAddrEnd;
+    }
+
+    if (srcAddr >= dstAddr && srcAddr < dstAddrEnd) {
+        return true;
+    }
+    if (srcAddrEnd > dstAddr && srcAddrEnd <= dstAddrEnd) {
+        return true;
+    }
+    return false;
+}
+
+static size_t countValidUpdateSlots(platform_flash_modules_t* modules, size_t count) {
+    size_t valid = 0;
+    for (platform_flash_modules_t* module = modules; module < modules + count; module++) {
+        if (isValidUpdateSlot(module)) {
+            valid++;
+        }
+    }
+    return valid;
+}
+
 #endif
+
+static int invalidateUpdateSlot(platform_flash_modules_t* module, size_t offset) {
+    module->magicNumber = 0xffff;
+    return dct_write_app_data(&module->magicNumber, offset + offsetof(platform_flash_modules_t, magicNumber), sizeof(module->magicNumber));
+}
 
 // This function is called in bootloader to perform the memory update process
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
@@ -496,7 +616,8 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
     bool has_modules = false;
     bool has_bootloader = false;
     size_t offs = module_offs;
-    for (size_t i = 0; i < module_count; ++i) {
+
+    for (size_t i = 0; i < module_count; ++i, offs += sizeof(platform_flash_modules_t)) {
         platform_flash_modules_t* const module = &modules[i];
         if (module->magicNumber == 0xabcd) {
             bool resetSlot = true;
@@ -508,9 +629,43 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                 }
             }
             if (module->module_function != MODULE_FUNCTION_BOOTLOADER) {
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+                r = 0;
+                platform_flash_mal_overlap_region overlap = {};
+                if (isSourceDestinationOverlap(module, &overlap)) {
+                    if (countValidUpdateSlots(modules, module_count) > 1) {
+                        // Can't apply for now, wait until the rest of the updates are applied
+                        r = result = FLASH_ACCESS_RESULT_RESET_PENDING;
+                        // Skip the current slot
+                        resetSlot = false;
+                    } else {
+                        // Can apply the update, copy first into RAM, invalidate slot, copy back into flash, update slot
+                        // There is a chance that the update process will be interrupted here and we'll lose the update
+                        // request (slot), but this should be ok, as this whole process only applies to system-part1 updates
+                        // and the worst that will happen is that we'll boot back into the old system-part1 (with the rest of
+                        // the modules potentially updated). This is not dangerous and does not go against the dependency direction.
+                        bool ok = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, FLASH_ADDRESS, (uintptr_t)otaTemporaryMemoryBuffer, module->length, 0, 0) == FLASH_ACCESS_RESULT_OK;
+                        ok = ok && (invalidateUpdateSlot(module, offs)) == 0;
+                        ok = ok && FLASH_CopyMemory(FLASH_ADDRESS, (uintptr_t)otaTemporaryMemoryBuffer, module->sourceDeviceID, overlap.dst.end, module->length, 0, 0) == FLASH_ACCESS_RESULT_OK;
+                        // Finally patch the module slot
+                        if (ok) {
+                            module->sourceAddress = overlap.dst.end;
+                            module->magicNumber = 0xabcd;
+                            ok = !dct_write_app_data(module, offs, sizeof(*module));
+                        }
+                        if (!ok) {
+                            r = FLASH_ACCESS_RESULT_ERROR;
+                            // Keep the module update slot if it's still valid
+                            resetSlot = false;
+                        }
+                    }
+                }
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
                 // Copy memory from source to destination based on flash device ID
-                r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
-                        module->destinationAddress, module->length, module->module_function, module->flags);
+                if (!r) {
+                    r = FLASH_CopyMemory(module->sourceDeviceID, module->sourceAddress, module->destinationDeviceID,
+                            module->destinationAddress, module->length, module->module_function, module->flags);
+                }
                 if (r != FLASH_ACCESS_RESULT_OK && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
                     // Propagate errors, prioritize FLASH_ACCESS_RESULT_RESET_PENDING over errors
                     result = r;
@@ -547,8 +702,7 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
             }
             if (resetSlot) {
                 // Mark the slot as unused
-                module->magicNumber = 0xffff;
-                r = dct_write_app_data(&module->magicNumber, offs + offsetof(platform_flash_modules_t, magicNumber), sizeof(module->magicNumber));
+                r = invalidateUpdateSlot(module, offs);
                 if (r != 0 && result != FLASH_ACCESS_RESULT_RESET_PENDING) {
                     result = FLASH_ACCESS_RESULT_ERROR;
                 }
@@ -557,7 +711,6 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                 break; // other valid module slots will be handled after reset
             }
         }
-        offs += sizeof(platform_flash_modules_t);
     }
     if (has_bootloader) {
         result = FLASH_ACCESS_RESULT_RESET_PENDING;
@@ -601,6 +754,12 @@ int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32
 #else
         return SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
+    } else if (flashDeviceID == FLASH_ADDRESS) {
+        rtl_binary_header* header = (rtl_binary_header*)startAddress;
+        if (header->signature_high == RTL_HEADER_SIGNATURE_HIGH && header->signature_low == RTL_HEADER_SIGNATURE_LOW) {
+            offset = sizeof(rtl_binary_header);
+        }
+        memcpy(infoOut, (void*)(startAddress + offset), sizeof(module_info_t));
     }
     if (infoOffset) {
         *infoOffset = offset;
@@ -623,6 +782,8 @@ int FLASH_ModuleCrcSuffix(module_info_crc_t* crc, module_info_suffix_t* suffix, 
 #else
         returrn SYSTEM_ERROR_NOT_SUPPORTED;
 #endif
+    } else if (flashDeviceID == FLASH_ADDRESS) {
+        read = hal_memory_read;
     }
     int ret = SYSTEM_ERROR_NONE;
     if (read) {
@@ -709,6 +870,12 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
 #else
         return false;
 #endif
+    } else if (flashDeviceID == FLASH_ADDRESS && length > 0) {
+        uint32_t expectedCRC = __REV((*(__IO uint32_t*)(startAddress + length)));
+        uint32_t computedCRC = Compute_CRC32((uint8_t*)startAddress, length, NULL);
+        if (expectedCRC == computedCRC) {
+            return true;
+        }
     }
     return false;
 }
@@ -807,6 +974,8 @@ int FLASH_Begin(flash_device_t flashDeviceID, uint32_t FLASH_Address, uint32_t i
 #ifdef USE_SERIAL_FLASH
         ok = FLASH_EraseMemory(FLASH_SERIAL, FLASH_Address, imageSize);
 #endif
+    } else if (flashDeviceID == FLASH_ADDRESS) {
+        ok = true;
     }
     if (!ok) {
         return FLASH_ACCESS_RESULT_ERROR;
@@ -822,6 +991,8 @@ int FLASH_Update(flash_device_t flashDeviceID, const uint8_t *pBuffer, uint32_t 
 #ifdef USE_SERIAL_FLASH
         ret = hal_exflash_write(address, pBuffer, bufferSize);
 #endif
+    } else if (flashDeviceID == FLASH_ADDRESS) {
+        ret = SYSTEM_ERROR_NOT_SUPPORTED;
     }
     return ret;
 }

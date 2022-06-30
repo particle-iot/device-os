@@ -1,6 +1,6 @@
-# Skip to next 100 every vx.N.x release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
-# Bump by 1 for every prerelease or release with the same vx.N.* base.
-COMMON_MODULE_VERSION ?= 3301
+# Skip to next 100 every v0.x.0 release (e.g. 108 for v0.6.2 to 200 for v0.7.0-rc.1)
+# Bump by 1 for every prerelease or release with the same v0.x.* base.
+COMMON_MODULE_VERSION ?= 3213
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 
 RELEASE_080_MODULE_VERSION_BASE ?= 300
@@ -11,10 +11,11 @@ RELEASE_110_MODULE_VERSION ?= 1102
 # Bump by 1 if Tinker has been updated
 USER_PART_MODULE_VERSION ?= 6
 
-# Skip to next 100 every vx.N.x release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
-# but only if the bootloader has changed since the last vx.N.x release.
-# Bump by 1 for every updated bootloader image for a release with the same vx.N.* base.
-BOOTLOADER_VERSION ?= 1100
+# Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
+# but only if the bootloader has changed since the last v0.x.0 release.
+# Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
+BOOTLOADER_VERSION ?= 1009
+
 ifeq ($(PLATFORM_ID),32)
 PREBOOTLOADER_MBR_VERSION ?= 2
 PREBOOTLOADER_PART1_VERSION ?= 2
@@ -24,7 +25,7 @@ endif
 # NOTE: this will force the device into safe mode until this dependency is met, which is why
 # this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
 ifeq ($(PLATFORM_ID),32)
-BOOTLOADER_DEPENDENCY = 1008
+BOOTLOADER_DEPENDENCY = 1009
 else ifeq ($(PLATFORM_GEN),3)
 BOOTLOADER_DEPENDENCY = 1100
 else

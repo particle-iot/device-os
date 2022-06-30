@@ -160,6 +160,7 @@
 | 1007 | 3210 | 3.2.1-p2.1    |      P2 |
 | 1007 | 3211 | 3.2.1-p2.2    |      P2 |
 | 1008 | 3212 | 3.2.1-p2.3    |      P2 |
+| 1009 | 3213 | 3.2.1-p2.4    |      P2 |
 | 1100 | 3300 | 3.3.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3301 | 3.3.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 

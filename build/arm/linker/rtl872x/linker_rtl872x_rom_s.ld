@@ -51,11 +51,7 @@ SECTIONS {
     _strtoull = 0x10107f25;
     _strtoll = 0x10107fe5;
     _strtok = 0x10108005;
-    __strtok_r = 0x10108011;
-    _strtok_r = 0x10108075;
-    _strtol_r = 0x1010807d;
     _strtol = 0x10108199;
-    _strtoul_r = 0x1010819d;
     _strtoul = 0x101082d1;
     _strupr = 0x101082d5;
     mpu_enable = 0x10102bd5;

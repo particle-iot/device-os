@@ -16,7 +16,7 @@ include $(COMMON_BUILD)/arm-tools.mk
 ifneq (,$(PREBUILD))
 # Should declare enough RAM for inermediate linker script: 128K
 USER_SRAM_LENGTH = 128K
-USER_PSRAM_LENGTH = 1M
+USER_PSRAM_LENGTH = 2M
 USER_FLASH_LENGTH = 2M
 else
 TEXT_SECTION_LEN  = $(shell $(SIZE) --format=berkeley $(INTERMEDIATE_ELF) | $(AWK) 'NR==2 {print $$1}')
