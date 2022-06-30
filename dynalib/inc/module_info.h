@@ -242,21 +242,25 @@ typedef struct module_info_dynamic_location_ext_t {
 // struct created from based + extensions and some default for "importing" and basic
 // parsing.
 typedef struct module_info_suffix_t {
+#if HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
     // NB: NB: NB: add new members here
 #if HAL_PLATFORM_MODULE_DYNAMIC_LOCATION
     module_info_dynamic_location_ext_t ext_dynamic;
 #endif // HAL_PLATFORM_MODULE_DYNAMIC_LOCATION
     // FIXME: Keeping this extension always present for now
     module_info_product_data_ext_t ext_product;
+#endif // HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
     uint16_t reserved;
     uint8_t sha[32];
     uint16_t size;
     // NB: NB: NB: add new members to the start of this module definition, not the end!!
 } __attribute__((packed)) module_info_suffix_t;
 
+#if HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
 #define MODULE_INFO_SUFFIX_NONEXT_DATA_SIZE (36)
 
 static_assert(sizeof(module_info_suffix_t) - offsetof(module_info_suffix_t, ext_product) == MODULE_INFO_SUFFIX_NONEXT_DATA_SIZE + sizeof(module_info_product_data_ext_t), "product info in module suffix has been moved");
+#endif // HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
 
 /**
  * The structure appended to the end of the module.

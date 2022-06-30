@@ -230,10 +230,10 @@ PLATFORM_DYNALIB_MODULES=$(PLATFORM_NAME)
 PLATFORM_PREBOOTLOADER=1
 ifneq ("$(PLATFORM_MCU_CORE)","")
 ARM_CPU=cortex-$(PLATFORM_MCU_CORE)
-STM32_DEVICE=rtl872x_$(PLATFORM_MCU_CORE)
+MCU_DEVICE=rtl872x_$(PLATFORM_MCU_CORE)
 else
 ARM_CPU=cortex-m33
-STM32_DEVICE=rtl872x
+MCU_DEVICE=rtl872x
 endif
 PLATFORM_THREADING=1
 endif
@@ -261,7 +261,7 @@ ifeq ("$(MCU_DEVICE)","nRF52840")
     PLATFORM_DFU ?= 0x30000
 endif
 
-ifeq ("$(STM32_DEVICE)","rtl872x")
+ifeq ("$(MCU_DEVICE)","rtl872x")
 	# FIXME: This is not an STM32 device
     PLATFORM_THREADING=1
 endif
@@ -289,7 +289,7 @@ ifeq ("$(MCU_DEVICE)","nRF52840")
 CFLAGS += -DNRF52840_XXAA
 endif
 
-ifeq ("$(STM32_DEVICE)","rtl872x")
+ifeq ("$(MCU_DEVICE)","rtl872x")
 # FIXME: This is not an STM32 device
 CFLAGS += -DCONFIG_PLATFORM_8721D
 endif
