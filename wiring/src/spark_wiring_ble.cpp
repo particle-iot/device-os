@@ -2723,6 +2723,8 @@ int BleLocalDevice::disconnect() const {
     WiringBleLock lk;
     for (auto& p : impl()->peers()) {
         hal_ble_conn_info_t connInfo = {};
+        connInfo.version = BLE_API_VERSION;
+        connInfo.size = sizeof(hal_ble_conn_info_t);
         if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) != SYSTEM_ERROR_NONE) {
             continue;
         }
@@ -2755,6 +2757,8 @@ BlePeerDevice BleLocalDevice::peerCentral() const {
     WiringBleLock lk;
     for (auto& p : impl()->peers()) {
         hal_ble_conn_info_t connInfo = {};
+        connInfo.version = BLE_API_VERSION;
+        connInfo.size = sizeof(hal_ble_conn_info_t);
         if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) != SYSTEM_ERROR_NONE) {
             continue;
         }
