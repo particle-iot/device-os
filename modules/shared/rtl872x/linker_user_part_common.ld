@@ -20,6 +20,8 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
+    INCLUDE linker_build_id.ld
+
     /* Dynalib table. It has to be 8-bytes aligned, otherwise, the dynalib behave weirdly */
     .dynalib : ALIGN(8)
     {

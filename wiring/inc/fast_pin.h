@@ -28,8 +28,8 @@
 extern "C" {
 #endif
 
-__attribute__((always_inline)) inline const Hal_Pin_Info* fastPinGetPinmap() {
-    static const Hal_Pin_Info* pinMap = HAL_Pin_Map();
+__attribute__((always_inline)) inline const hal_pin_info_t* fastPinGetPinmap() {
+    static const hal_pin_info_t* pinMap = hal_pin_map();
     return pinMap;
 }
 

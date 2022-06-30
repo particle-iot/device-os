@@ -518,7 +518,7 @@ int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* re
     }
 
     I2cLock lk(i2c);
-    uint8_t ret_code = SYSTEM_ERROR_NONE;
+    int ret_code = SYSTEM_ERROR_NONE;
 
     if (i2cMap[i2c].transfer_config.address != 0xff) {
         stop = i2cMap[i2c].transfer_config.flags & HAL_I2C_TRANSMISSION_FLAG_STOP;

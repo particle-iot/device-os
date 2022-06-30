@@ -3,6 +3,7 @@
     {
         link_module_info_static_start = .;
         FILL(0xffff)
+        . = link_module_info_static_start + 2;
         KEEP (*.o(.modinfo.product_id))
         . = link_module_info_static_start + 4;
         FILL(0xffff)

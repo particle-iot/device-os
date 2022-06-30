@@ -25,6 +25,8 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
+    INCLUDE linker_build_id.ld
+
     /* Dynalib table */
     .dynalib :
     {

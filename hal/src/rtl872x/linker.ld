@@ -37,6 +37,8 @@ SECTIONS
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
 
+    INCLUDE linker_build_id.ld
+
     .psram_text :
     {
         link_psram_code_flash_start = LOADADDR( .psram_text ); 

@@ -118,6 +118,8 @@ SECTIONS
         . = ALIGN(4);
     } > SRAM AT> APP_FLASH
 
+    INCLUDE linker_build_id.ld
+
     .ram_copy_end :
     {
         link_rtl_ram_copy_end = .;

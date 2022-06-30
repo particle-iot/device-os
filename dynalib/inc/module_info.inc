@@ -136,7 +136,14 @@ const module_info_t module_info = {
 // These are placed in a non-default (.rodata) section because they come after all the .rodata is included in the linker scripts.
 // Doing it like this is simpler than setting up exclusion rules.
 
+#if !HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
+#define MODULE_INFO_SUFFIX_EXTRA (4)
+#else
+#define MODULE_INFO_SUFFIX_EXTRA (0)
+#endif // !HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
+
 __attribute__((section(".modinfo.module_info_suffix"), used)) const module_info_suffix_t module_info_suffix = {
+#if HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
 #if HAL_PLATFORM_MODULE_DYNAMIC_LOCATION
     {
         .ext = { MODULE_INFO_EXTENSION_DYNAMIC_LOCATION, sizeof(module_info_dynamic_location_ext_t) },
@@ -151,9 +158,10 @@ __attribute__((section(".modinfo.module_info_suffix"), used)) const module_info_
         .id = MODULE_INFO_PRODUCT_ID_DEFAULT,
         .version = MODULE_INFO_PRODUCT_VERSION_DEFAULT
     },
+#endif // HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
     0,
     { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 },
-    (uint16_t)(sizeof(module_info_suffix_t))
+    (uint16_t)(sizeof(module_info_suffix_t)) + MODULE_INFO_SUFFIX_EXTRA
 };
 
 __attribute__((section(".modinfo.module_info_crc"), used)) const module_info_crc_t module_info_crc = {

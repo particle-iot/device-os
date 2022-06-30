@@ -183,7 +183,8 @@ CRC_LEN = 4
 CRC_BLOCK_LEN = 38
 DEFAULT_SHA_256 = 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
 DEFAULT_CRC = 78563412
-MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END = 42
+# This is platform-specific and comes from platform-id.mk
+MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END ?= 0
 
 # OS X + debian systems have shasum, RHEL + windows have sha256sum
 SHASUM_COMMAND_VERSION := $(shell shasum --version 2>/dev/null)
@@ -211,7 +212,7 @@ endif
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
 	[ ! -f $@.product ] || rm $@.product
 	$(VERBOSE)$(OBJCOPY) $< --dump-section '.module_info_product=$@.product' > /dev/null 2>&1
-	$(VERBOSE)if [ -s $@.product ]; then \
+	$(VERBOSE)if [ -s $@.product ] && [ $(MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END) -ne 0 ]; then \
 		$(OBJCOPY) $< --dump-section '.module_info_suffix=$@.suffix' && \
 		$(OBJCOPY) $< --remove-section '.module_info_product' && \
 		dd bs=1 if=$@.product of=$@.suffix seek=$$(($(call filesize,$@.suffix) - $(MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END))) conv=notrunc $(VERBOSE_REDIRECT) && \

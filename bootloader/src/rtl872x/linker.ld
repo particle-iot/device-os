@@ -56,6 +56,8 @@ SECTIONS
         . = ALIGN(4);
     } > APP_FLASH
 
+    INCLUDE linker_build_id.ld
+
     /* Non-zero initialised global and static variables */
     .data :
     {

@@ -40,6 +40,8 @@ SECTIONS
         . = ALIGN(4);
     } > APP_FLASH
 
+    INCLUDE linker_build_id.ld
+
     .ram_text :
     {
         link_ram_copy_flash_start = LOADADDR( .ram_text );

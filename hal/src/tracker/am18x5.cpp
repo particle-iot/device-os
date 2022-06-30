@@ -103,7 +103,7 @@ int Am18x5::begin() {
     hal_gpio_write(RTC_WDI, 1);
 
     hal_gpio_mode(RTC_INT, INPUT_PULLUP);
-    hal_interrupt_extra_configuration_t extra = {0};
+    hal_interrupt_extra_configuration_t extra = {};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
     CHECK(hal_interrupt_attach(RTC_INT, exRtcInterruptHandler, this, FALLING, &extra));
 

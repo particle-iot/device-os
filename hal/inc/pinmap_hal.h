@@ -78,6 +78,14 @@ void hal_pin_set_function(hal_pin_t pin, PinFunction pin_func);
 
 #define hal_pin_is_valid(pin) ((pin) < TOTAL_PINS)
 
+typedef hal_pin_info_t Hal_Pin_Info __attribute__((deprecated("Use hal_pin_info_t instead")));
+
+static inline Hal_Pin_Info* __attribute__((deprecated("Use hal_pin_map() instead"), always_inline))
+Hal_Pin_Map(void) {
+    return hal_pin_map();
+}
+
+
 #ifdef __cplusplus
 }
 #endif

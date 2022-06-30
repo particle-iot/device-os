@@ -67,6 +67,8 @@ SECTIONS
 
     /* C++ exception handlers */
     INCLUDE linker_arm_exception.ld
+
+    INCLUDE linker_build_id.ld
     
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
@@ -143,7 +145,7 @@ ASSERT (
 );
 ASSERT (
     (link_module_info_start < link_module_info_end) &&
-    (link_module_info_suffix_start - link_module_info_static_start == 4 || link_module_info_suffix_start - link_module_info_static_start == 8) &&
+    (link_module_info_suffix_start - link_module_info_static_start == 4 || link_module_info_suffix_start - link_module_info_static_start == 6) &&
     (link_module_info_suffix_start < link_module_info_suffix_end) &&
     (link_module_info_crc_start < link_module_info_crc_end) &&
     (link_module_info_start == platform_user_part_module_info_flash_start) &&
