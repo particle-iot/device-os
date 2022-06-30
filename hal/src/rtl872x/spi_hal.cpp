@@ -443,13 +443,13 @@ public:
         }
 
         chunkBuffer_.txLength = std::min(bufferConfig_.txLength - chunkBuffer_.txIndex, (size_t)CFG_CHUNK_BUF_SIZE);
-        // DCache_Clean((u32) bufferConfig_.txBuf, bufferConfig_.txLength);
+        DCache_CleanInvalidate((u32) bufferConfig_.txBuf, bufferConfig_.txLength);
         if (bufferConfig_.txBuf) {
             memcpy((void*)chunkBuffer_.txBuf, (void*)&bufferConfig_.txBuf[chunkBuffer_.txIndex], chunkBuffer_.txLength);
         } else {
             memset((void*)chunkBuffer_.txBuf, 0xFF, chunkBuffer_.txLength);
         }
-        // DCache_Clean((u32) chunkBuffer_.txBuf, chunkBuffer_.txLength);
+        DCache_CleanInvalidate((u32) chunkBuffer_.txBuf, chunkBuffer_.txLength);
         //LOG_DEBUG(INFO, "start to send new chunk, curr index: %d, length: %d", chunkBuffer_.txIndex, chunkBuffer_.txLength);
         if (((chunkBuffer_.txLength & 0x03)==0) && (((u32)(chunkBuffer_.txBuf) & 0x03)==0)) {
             /*  4-bytes aligned, move 4 bytes each transfer */
@@ -543,7 +543,7 @@ public:
                 if (bufferConfig_.rxBuf) {
                     DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
                     memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, bytesToCopy);
-                    DCache_Invalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
+                    DCache_CleanInvalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
                 }
                 chunkBuffer_.rxIndex += bytesToCopy;
 
@@ -709,7 +709,7 @@ public:
         if (bufferConfig_.rxBuf) {
             DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
             memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, copyLength);
-            DCache_Invalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
+            DCache_CleanInvalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
         }
         chunkBuffer_.rxIndex += copyLength;
 
