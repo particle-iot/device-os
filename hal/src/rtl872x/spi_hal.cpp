@@ -93,12 +93,12 @@ typedef struct {
 } SpiBufferConfig;
 
 typedef struct {
-    __attribute__((aligned(32))) uint8_t    txBuf[CFG_CHUNK_BUF_SIZE];
-    __attribute__((aligned(32))) uint8_t    rxBuf[CFG_CHUNK_BUF_SIZE];
-    size_t                                  txLength;
-    size_t                                  rxLength;
-    size_t                                  txIndex;
-    size_t                                  rxIndex;
+    volatile __attribute__((aligned(32))) uint8_t    txBuf[CFG_CHUNK_BUF_SIZE];
+    volatile __attribute__((aligned(32))) uint8_t    rxBuf[CFG_CHUNK_BUF_SIZE];
+    volatile size_t                                  txLength;
+    volatile size_t                                  rxLength;
+    volatile size_t                                  txIndex;
+    volatile size_t                                  rxIndex;
 } SpiChunkBufferConfig;
 
 typedef struct {
@@ -184,7 +184,7 @@ public:
             hal_pin_t csPin, hal_pin_t clkPin, hal_pin_t mosiPin, hal_pin_t misoPin)
             : spiInterface_(spiInterface),
               rtlSpiIndex_(rtlSpiIndex),
-              spiInputClock_(spiInputClock), 
+              spiInputClock_(spiInputClock),
               prio_(prio),
               csPin_(csPin),
               sclkPin_(clkPin),
@@ -443,13 +443,13 @@ public:
         }
 
         chunkBuffer_.txLength = std::min(bufferConfig_.txLength - chunkBuffer_.txIndex, (size_t)CFG_CHUNK_BUF_SIZE);
-        // DCache_Clean((u32) bufferConfig_.txBuf, bufferConfig_.txLength);
+        DCache_CleanInvalidate((u32) bufferConfig_.txBuf, bufferConfig_.txLength);
         if (bufferConfig_.txBuf) {
-            memcpy(chunkBuffer_.txBuf, (void*)&bufferConfig_.txBuf[chunkBuffer_.txIndex], chunkBuffer_.txLength);
+            memcpy((void*)chunkBuffer_.txBuf, (void*)&bufferConfig_.txBuf[chunkBuffer_.txIndex], chunkBuffer_.txLength);
         } else {
-            memset(chunkBuffer_.txBuf, 0xFF, chunkBuffer_.txLength);
+            memset((void*)chunkBuffer_.txBuf, 0xFF, chunkBuffer_.txLength);
         }
-        // DCache_Clean((u32) chunkBuffer_.txBuf, chunkBuffer_.txLength);
+        DCache_CleanInvalidate((u32) chunkBuffer_.txBuf, chunkBuffer_.txLength);
         //LOG_DEBUG(INFO, "start to send new chunk, curr index: %d, length: %d", chunkBuffer_.txIndex, chunkBuffer_.txLength);
         if (((chunkBuffer_.txLength & 0x03)==0) && (((u32)(chunkBuffer_.txBuf) & 0x03)==0)) {
             /*  4-bytes aligned, move 4 bytes each transfer */
@@ -538,12 +538,12 @@ public:
             size_t fifoRxCount = 0;
             size_t bytesToCopy = 0;
             if (dmaRxCount < chunkBuffer_.rxLength) {
-                fifoRxCount = SSI_ReceiveData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, &chunkBuffer_.rxBuf[dmaRxCount], chunkBuffer_.rxLength - dmaRxCount);
+                fifoRxCount = SSI_ReceiveData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (void*)&chunkBuffer_.rxBuf[dmaRxCount], chunkBuffer_.rxLength - dmaRxCount);
                 bytesToCopy = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, dmaRxCount + fifoRxCount);
                 if (bufferConfig_.rxBuf) {
                     DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
                     memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, bytesToCopy);
-                    DCache_Invalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
+                    DCache_CleanInvalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
                 }
                 chunkBuffer_.rxIndex += bytesToCopy;
 
@@ -692,7 +692,7 @@ public:
         status_.transmitting = false;
 
         chunkBuffer_.txIndex += chunkBuffer_.txLength;
-    
+
         startTransmission();
     }
 
@@ -705,11 +705,11 @@ public:
 
         /// Transfer in progress
         uint32_t copyLength = 0;
-        copyLength = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, chunkBuffer_.rxLength);
+        copyLength = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, (size_t)chunkBuffer_.rxLength);
         if (bufferConfig_.rxBuf) {
             DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
-            memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], chunkBuffer_.rxBuf, copyLength);
-            DCache_Invalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
+            memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, copyLength);
+            DCache_CleanInvalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
         }
         chunkBuffer_.rxIndex += copyLength;
 
