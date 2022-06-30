@@ -67,7 +67,10 @@ public:
 		product_details_t deets;
 		deets.size = sizeof(deets);
 		get_product_details(deets);
-		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, PLATFORM_ID, system_version,
+#if PLATFORM_ID != PLATFORM_GCC
+		int platform_id = PLATFORM_ID;
+#endif
+		size_t len = Messages::hello(message.buf(), 0 /* message_id */, flags, platform_id, system_version,
 				deets.product_id, deets.product_version, device_id, sizeof(device_id), get_max_transmit_message_size(),
 				max_binary_size, ota_chunk_size, true /* confirmable */);
 		return len;

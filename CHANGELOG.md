@@ -1,3 +1,57 @@
+## 4.0.0-alpha.2
+
+> ## :warning: Please note this is in internal release, do not use on production devices!
+
+### FEATURES
+- [esomx] Adds support for new platform esomx [#2443](https://github.com/particle-iot/device-os/pull/2443) [#2459](https://github.com/particle-iot/device-os/pull/2459)
+- [E404X] Determine flash part at runtime [#2456](https://github.com/particle-iot/device-os/pull/2456)
+- [gen3][quectel] Adds support for BG95-M1, BG95-MF, BG77, and EG91-NAX [#2458](https://github.com/particle-iot/device-os/pull/2458)
+
+### BUGFIXES
+- [gen3] hal: fix power leak on Boron [#2452](https://github.com/particle-iot/device-os/pull/2452)
+
+### INTERNAL
+
+- [workbench] update-device-os-workbench-manifest-json [#2457](https://github.com/particle-iot/device-os/pull/2457)
+- [ci] test-build-system-tune-timeouts [#2455](https://github.com/particle-iot/device-os/pull/2455)
+
+## 4.0.0-alpha.1
+
+> ## :warning: Please note this is in internal release, do not use on production devices!
+
+### DEPRECATION
+
+- [deprecation][gen2] supply secure [#2442](https://github.com/particle-iot/device-os/pull/2442)
+- [deprecation] Adds warning to some deprecated API's that will be removed in Device OS 5.x [#2445](https://github.com/particle-iot/device-os/pull/2445)
+- [deprecation] PRODUCT_ID macro [#2446](https://github.com/particle-iot/device-os/pull/2446)
+- [deprecation] remove setup_done flag and add deprecation notice [#2447](https://github.com/particle-iot/device-os/pull/2447)
+
+### FEATURES
+
+- [ota] new API System.updateStatus() [#2344](https://github.com/particle-iot/device-os/pull/2344)
+
+### ENHANCEMENTS
+
+- [gen3] wifi: add dhcp dns info to wifi config [#2440](https://github.com/particle-iot/device-os/pull/2440)
+- [ota] Additional state for firmware update checks [#2344](https://github.com/particle-iot/device-os/pull/2344)
+- Use a custom content type with CID packets when resuming the session [#2441](https://github.com/particle-iot/device-os/pull/2441)
+
+### BUGFIXES
+
+- [gen3] fixes hardfault during low level USB peripheral initialization under an atomic section [#2448](https://github.com/particle-iot/device-os/pull/2448)
+- [gen3] Device unable to enter listening mode with button press [#2451](https://github.com/particle-iot/device-os/pull/2451)
+- Return relevant error from control request to enter listening mode [#2419](https://github.com/particle-iot/device-os/pull/2419)
+
+
+### INTERNAL
+
+- [ci] minor update sc-101315/device-os-manifest [#2449](https://github.com/particle-iot/device-os/pull/2449)
+- [ci] chore/ci-less-frequent-cross-platform-build-checks [#2434](https://github.com/particle-iot/device-os/pull/2434)
+- [docs] Update dependencies for ARM GCC 10.2.1 [#2431](https://github.com/particle-iot/device-os/pull/2431)
+- [gen3] suppress certain reviewed GCC warnings [sc-100940] [#2420](https://github.com/particle-iot/device-os/pull/2420)
+- [ci] feature/sc-100324/ci-build-cross-platform [#2418](https://github.com/particle-iot/device-os/pull/2418)
+- [test] Wi-Fi resolve test improvements [#2454](https://github.com/particle-iot/device-os/pull/2454)
+
 ## 3.3.0
 
 ### FEATURES

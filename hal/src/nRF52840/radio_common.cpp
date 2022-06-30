@@ -74,7 +74,7 @@ int selectExtenalAntenna() {
     hal_gpio_mode(ANTSW1, OUTPUT);
     hal_gpio_write(ANTSW1, 0);
 // SoM platforms have only an external antenna
-#elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
+#elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM && PLATFORM_ID != PLATFORM_ESOMX
 #error "Unsupported platform"
 #endif
     currAntenna = RADIO_ANT_EXTERNAL;
@@ -137,7 +137,7 @@ int disableRadioAntenna() {
     // it will consume high current (~6mA)
     hal_gpio_mode(ANTSW1, INPUT_PULLDOWN);
 // SoM platforms have only an external antenna
-#elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM
+#elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM && PLATFORM_ID != PLATFORM_ESOMX
 #error "Unsupported platform"
 #endif
     return SYSTEM_ERROR_NONE;

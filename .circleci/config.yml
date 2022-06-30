@@ -14,7 +14,7 @@ orbs:
 
 aliases:
   - &tasks ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
-  - &platforms ["argon", "boron", "bsom", "b5som", "tracker"]
+  - &platforms ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2"]
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -300,7 +300,7 @@ commands:
       - run:
           name: "Install `prtcl` CLI (ubuntu)"
           command: |
-            printf 'Acquire::http::Timeout "30";\nAcquire::ftp::Timeout "30";\nAcquire::Retries "5";\n' | sudo tee /etc/apt/apt.conf.d/99timeout > /dev/null
+            printf 'Acquire::http::Timeout "60";\nAcquire::ftp::Timeout "60";\nAcquire::Retries "15";\n' | sudo tee /etc/apt/apt.conf.d/99timeout > /dev/null
             sudo apt-get update -q
             sudo apt-get install -qy zlib1g-dev jq
             sudo curl https://prtcl.s3.amazonaws.com/install-apt.sh | sh
@@ -340,7 +340,7 @@ commands:
     steps:
       - run:
           name: "Test Local Compilation Tasks"
-          no_output_timeout: "10m"
+          no_output_timeout: "20m"
           command: scripts/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>"
           environment:
             PRTCL_DISABLE_AUTOUPDATE: "1"
@@ -472,7 +472,7 @@ workflows:
             - particle-ci-private
           matrix:
             parameters:
-              platform: ["argon", "boron", "bsom", "b5som", "tracker", "p2", "unit-test newhal gcc"]
+              platform: ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "unit-test newhal gcc"]
       - combine-binaries:
           requires:
             - build-and-test

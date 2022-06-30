@@ -175,7 +175,13 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
-    ncpPowerState(modemPowerState() ? NcpPowerState::ON : NcpPowerState::OFF);
+    if (modemPowerState()) {
+        serial_->on(true);
+        ncpPowerState(NcpPowerState::ON);
+    } else {
+        serial_->on(false);
+        ncpPowerState(NcpPowerState::OFF);
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -647,8 +653,10 @@ int QuectelNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
     // fallback to CSD
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    if (isQuecCat1Device()) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    }
 
     switch (cgi->version)
     {
@@ -1013,6 +1021,22 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
     return serial_->setBaudRate(baud);
 }
 
+bool QuectelNcpClient::isQuecCatM1Device() {
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG96 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
+}
+
+bool QuectelNcpClient::isQuecCat1Device() {
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_EG91_E ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX);
+}
+
 int QuectelNcpClient::initReady(ModemState state) {
     // Set modem full functionality
     int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
@@ -1044,7 +1068,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         // int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+        if (isQuecCatM1Device()) {
             // Force eDRX mode to be disabled.
             CHECK_PARSER(parser_.execCommand("AT+CEDRXS=0"));
 
@@ -1053,9 +1077,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         }
 
         // Select (U)SIM card in slot 1, EG91 has two SIM card slots
-        if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || \
-            ncpId() == PLATFORM_NCP_QUECTEL_EG91_NA || \
-            ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+        if (isQuecCat1Device()) {
             CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
         }
 
@@ -1072,7 +1094,7 @@ int QuectelNcpClient::initReady(ModemState state) {
             default:
                 return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,1509,,,,,", portspeed));
+        r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,%u,,,,,", portspeed, QUECTEL_NCP_MAX_MUXER_FRAME_SIZE));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
         // Initialize muxer
@@ -1202,7 +1224,13 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
 
 int QuectelNcpClient::initMuxer() {
     muxer_.setStream(serial_.get());
-    muxer_.setMaxFrameSize(QUECTEL_NCP_MAX_MUXER_FRAME_SIZE);
+    // [TS 27.010] N1 in the AT+CMUX command defines the maximum number of octets that that may be contained in
+    // an information field. It does not include octets added for transparency purposes.
+    // XXX: We are not using any transparency (error-correction) mechanisms, so the maximum frame size should
+    // be limited to N1, however on some modems (e.g. BG95) this is not respected and the modem sends frames a
+    // bit larger than N1. To account for that we are initializing the muxer with a larger internal frame buffer,
+    // but negotiating a smaller maximum frame size (N1) with the modem in AT+CMUX
+    muxer_.setMaxFrameSize(QUECTEL_NCP_MAX_MUXER_FRAME_SIZE + 64);
     muxer_.setKeepAlivePeriod(QUECTEL_NCP_KEEPALIVE_PERIOD);
     muxer_.setKeepAliveMaxMissed(QUECTEL_NCP_KEEPALIVE_MAX_MISSED);
     muxer_.setMaxRetransmissions(gsm0710::proto::DEFAULT_N2);
@@ -1279,11 +1307,13 @@ int QuectelNcpClient::registerNet() {
 
     resetRegistrationState();
 
-    // Register GPRS, LET, NB-IOT network
-    r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    if (isQuecCat1Device()) {
+        // Register GPRS, LET, NB-IOT network
+        r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    }
     r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1318,34 +1348,42 @@ int QuectelNcpClient::registerNet() {
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     }
 
-    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
-        // FIXME: Force Cat M1-only mode, do we need to do it on Quectel NCP?
-        // Set to scan LTE only if not already set, take effect immediately
-        auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
-        int nwScanMode = -1;
-        r = CHECK_PARSER(respNwMode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
-        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-        r = CHECK_PARSER(respNwMode.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-        if (nwScanMode != 3) {
-            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+    if (isQuecCatM1Device()) {
+        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+            // Configure RATs to be searched
+            // Set to scan LTE only if not already set, take effect immediately
+            auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
+            int nwScanMode = -1;
+            r = CHECK_PARSER(respNwMode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
+            CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+            r = CHECK_PARSER(respNwMode.readResult());
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            if (nwScanMode != 3) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+            }
         }
 
-        // Configure Network Category to be Searched under LTE RAT
-        // Set to use LTE Cat M1 if not already set, take effect immediately
-        auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
-        int iotOpMode = -1;
-        r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
-        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-        r = CHECK_PARSER(respOpMode.readResult());
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-        if (iotOpMode != 0) {
-            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
+            // Configure Network Category to be searched
+            // Set to use LTE Cat M1 if not already set, take effect immediately
+            auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
+
+            int iotOpMode = -1;
+            r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
+
+            CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+            r = CHECK_PARSER(respOpMode.readResult());
+            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            if (iotOpMode != 0) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+            }
         }
     }
 
-    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    if (isQuecCat1Device()) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    }
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
     regStartTime_ = millis();
@@ -1658,7 +1696,7 @@ int QuectelNcpClient::interveneRegistration() {
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
 
     // Intervention to speed up registration or recover in case of failure
-    if (ncpId() != PLATFORM_NCP_QUECTEL_BG96) {
+    if (!isQuecCatM1Device()) {
         if (eps_.sticky() && eps_.duration() >= timeout) {
             if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csd_.status() == eps_.status()) {
                 LOG(TRACE, "Sticky not registering state for %lu s, PLMN reselection", eps_.duration() / 1000);
@@ -1752,9 +1790,12 @@ int QuectelNcpClient::processEventsImpl() {
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
     // Check GPRS, LET, NB-IOT network registration status
-    CHECK_PARSER(parser_.execCommand("AT+CEER"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
+        CHECK_PARSER(parser_.execCommand("AT+CEER"));  // Seems to stall the modem on BG95-MF
+        CHECK_PARSER(parser_.execCommand("AT+CMEE?")); // Seems to stall the modem on BG95-MF
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    }
+    //CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     // Check the signal seen by the module while trying to register
     // Do not need to check for an OK, as this is just for debugging purpose
@@ -1837,19 +1878,30 @@ int QuectelNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
-        // Power on, power on pulse >= 100ms
-        // NOTE: The BGPWR pin is inverted
-        hal_gpio_write(BGPWR, 1);
-        HAL_Delay_Milliseconds(200);
-        hal_gpio_write(BGPWR, 0);
+        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 && ncpId() != PLATFORM_NCP_QUECTEL_BG95_MF) {
+            // Power on, power on pulse >= 100ms
+            // NOTE: The BGPWR pin is inverted
+            hal_gpio_write(BGPWR, 1);
+            HAL_Delay_Milliseconds(200);
+            hal_gpio_write(BGPWR, 0);
+        } else {
+            // Power on, power on pulse 500ms - 1000ms
+            // XXX: Keeping it halfway between 500ms and 650ms, to avoid the power OFF timing of >=650ms
+            // NOTE: The BGPWR pin is inverted
+            hal_gpio_write(BGPWR, 1);
+            HAL_Delay_Milliseconds(575);
+            hal_gpio_write(BGPWR, 0);
+        }
 
         // After power on the device, we can't assume the device is ready for operation:
+        // BG95: status pin ready requires >= 2.1s, uart ready requires >= 2.5s
         // BG96: status pin ready requires >= 4.8s, uart ready requires >= 4.9s
         // EG91: status pin ready requires >= 10s, uart ready requires >= 12s
         if (waitModemPowerState(1, 15000)) {
             LOG(TRACE, "Modem powered on");
         } else {
-            LOG(ERROR, "Failed to power on modem");
+            LOG(ERROR, "Failed to power on modem, try hard reset");
+            modemHardReset(false);
         }
     } else {
         LOG(TRACE, "Modem already on");
@@ -1866,13 +1918,23 @@ int QuectelNcpClient::modemPowerOff() {
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
 
         LOG(TRACE, "Powering modem off");
-        // Power off, power off pulse >= 650ms
-        // NOTE: The BGRST pin is inverted
-        hal_gpio_write(BGPWR, 1);
-        HAL_Delay_Milliseconds(650);
-        hal_gpio_write(BGPWR, 0);
+
+        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 && ncpId() != PLATFORM_NCP_QUECTEL_BG95_MF) {
+            // Power off, power off pulse >= 650ms
+            // NOTE: The BGRST pin is inverted
+            hal_gpio_write(BGPWR, 1);
+            HAL_Delay_Milliseconds(650);
+            hal_gpio_write(BGPWR, 0);
+        } else {
+            // Power off, power off pulse >= 650ms
+            // NOTE: The BGRST pin is inverted
+            hal_gpio_write(BGPWR, 1);
+            HAL_Delay_Milliseconds(650);
+            hal_gpio_write(BGPWR, 0);
+        }
 
         // Verify that the module was powered down by checking the status pin (BGVINT)
+        // BG95: >=1.3s
         // BG96: >=2s
         // EG91: >=30s
         if (waitModemPowerState(0, 30000)) {
@@ -1892,7 +1954,7 @@ int QuectelNcpClient::modemPowerOff() {
 int QuectelNcpClient::modemSoftPowerOff() {
     if (modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
-        
+
         LOG(TRACE, "Try powering modem off using AT command");
         if (!ready_) {
             LOG(ERROR, "NCP client is not ready");
@@ -1930,11 +1992,19 @@ int QuectelNcpClient::modemSoftPowerOff() {
 int QuectelNcpClient::modemHardReset(bool powerOff) {
     LOG(TRACE, "Hard resetting the modem");
 
-    // BG96 reset, 150ms <= reset pulse <= 460ms
-    // NOTE: The BGRST pin is inverted
-    hal_gpio_write(BGRST, 1);
-    HAL_Delay_Milliseconds(400);
-    hal_gpio_write(BGRST, 0);
+    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 && ncpId() != PLATFORM_NCP_QUECTEL_BG95_MF) {
+        // BG96 reset, 150ms <= reset pulse <= 460ms
+        // NOTE: The BGRST pin is inverted
+        hal_gpio_write(BGRST, 1);
+        HAL_Delay_Milliseconds(400);
+        hal_gpio_write(BGRST, 0);
+    } else {
+        // BG95 reset, 2s <= reset pulse <= 3.8s
+        // NOTE: The BGRST pin is inverted
+        hal_gpio_write(BGRST, 1);
+        HAL_Delay_Milliseconds(2900);
+        hal_gpio_write(BGRST, 0);
+    }
 
     LOG(TRACE, "Waiting the modem to restart.");
     if (waitModemPowerState(1, 30000)) {

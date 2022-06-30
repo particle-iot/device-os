@@ -47,13 +47,13 @@ MAKE=runmake
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
-PLATFORM=( argon boron asom bsom b5som p2 )
-PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker p2 )
+PLATFORM=( argon boron asom bsom b5som esomx p2 )
+PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker esomx p2 )
 PLATFORM_PREBOOTLOADER=( p2 )
 APP=( "" tinker product_id_and_version)
 TEST=( wiring/api wiring/no_fixture wiring/no_fixture_long_running )
 
-MODULAR_PLATFORM=( argon boron asom bsom b5som tracker p2 )
+MODULAR_PLATFORM=( argon boron asom bsom b5som tracker esomx p2 )
 
 filterPlatform PLATFORM
 filterPlatform MODULAR_PLATFORM
@@ -155,7 +155,7 @@ do
   do
     # Gen 3 overflows with modular DEBUG_BUILD=y, so skip those
     if [[ "$db" = "y" ]]; then
-      if [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]] || [[ "$p" = "b5som" ]] || [[ "$p" = "tracker" ]] || [[ "$p" = "p2" ]]; then
+      if [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]] || [[ "$p" = "b5som" ]] || [[ "$p" = "tracker" ]] || [[ "$p" = "esomx" ]] || [[ "$p" = "p2" ]]; then
         continue
       fi
     fi

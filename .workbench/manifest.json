@@ -2,7 +2,7 @@
     "version": "1.0.0",
     "toolchains": [
         {
-            "platforms": [12, 13, 23, 25, 26, 32],
+            "platforms": [12, 13, 15, 23, 25, 26, 32],
             "firmware": "deviceOS@source",
             "compilers": "gcc-arm@10.2.1",
             "tools": "buildtools@1.1.1",

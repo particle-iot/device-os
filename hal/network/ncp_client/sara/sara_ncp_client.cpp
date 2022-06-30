@@ -193,7 +193,13 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     waitReadyRetries_ = 0;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
-    ncpPowerState(modemPowerState() ? NcpPowerState::ON : NcpPowerState::OFF);
+    if (modemPowerState()) {
+        serial_->on(true);
+        ncpPowerState(NcpPowerState::ON);
+    } else {
+        serial_->on(false);
+        ncpPowerState(NcpPowerState::OFF);
+    }
     return SYSTEM_ERROR_NONE;
 }
 

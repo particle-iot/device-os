@@ -23,6 +23,7 @@
 #include "nrf_nvic.h"
 #include "gpio_hal.h"
 #include "system_error.h"
+#include "check.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17

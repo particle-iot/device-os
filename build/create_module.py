@@ -44,6 +44,7 @@ class ModuleFunction(IntEnum):
 class Platform(IntEnum):
     ARGON = 12
     BORON = 13
+    ESOMX = 15
     ASOM = 22
     BSOM = 23
     B5SOM = 25

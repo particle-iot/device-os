@@ -91,6 +91,7 @@ public:
         device_options.add_options()
             ("verbosity,v", po::value<uint16_t>(&config.log_level)->default_value(0)->notifier(range(0,NO_LOG_LEVEL,"verbosity")), "verbosity (0-70)")
             ("device_id,id", po::value<string>(&config.device_id), "the device ID")
+            ("platform_id", po::value<int>(&config.platform_id)->default_value(PLATFORM_ID), "the platform ID")
             ("device_key,dk", po::value<string>(&config.device_key)->default_value("device_key.der"), "the filename containing the device private key")
             ("server_key,sk", po::value<string>(&config.server_key)->default_value("server_key.der"), "the filename containing the server public key")
             ("state,s", po::value<string>(&config.periph_directory)->default_value("state"), "the directory where device state and peripherals is stored")
@@ -201,5 +202,6 @@ void DeviceConfig::read(Configuration& configuration)
     setLoggerLevel(LoggerOutputLevel(NO_LOG_LEVEL-configuration.log_level));
 
     this->protocol = configuration.protocol;
+    this->platform_id = configuration.platform_id;
 }
 

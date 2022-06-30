@@ -7,7 +7,7 @@ usage: release-tests.sh [--dryrun] [--help]
                         [--filename=<test_parameter_file.json>]
                         --output-directory=<binary_output_directory>
                         --platform=<argon|asom|boron|bsom...
-                        |b5som|tracker|p2>
+                        |b5som|tracker|esomx|p2>
                         --version=<semver_version_string>
 
 Generate the testing binaries belonging to a given platform.
@@ -109,7 +109,7 @@ function valid_platform ()
     # Validate platform (result of expression returned to caller)
     [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || \
             [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "tracker" ] || \
-            [ "$platform" = "p2" ]
+            [ "$platform" = "esomx" ] || [ "$platform" = "p2" ]
 }
 
 # Handle invalid arguments
@@ -137,6 +137,9 @@ case "$PLATFORM" in
         ;;
     "boron")
         PLATFORM_ID="13"
+        ;;
+    "esomx")
+        PLATFORM_ID="15"
         ;;
     "asom")
         PLATFORM_ID="22"

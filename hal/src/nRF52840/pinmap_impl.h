@@ -60,6 +60,12 @@ extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
 
 #include "pinmap_defines.h"
 
+inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
+inline bool is_valid_pin(pin_t pin) {
+    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    return (pin < TOTAL_PINS && PIN_MAP[pin].gpio_port != NRF_PORT_NONE && PIN_MAP[pin].gpio_pin != PIN_INVALID);
+}
+
 #ifdef __cplusplus
 }
 #endif
