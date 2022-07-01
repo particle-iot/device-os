@@ -6,6 +6,8 @@
 #include "fqc_test.h"
 #include "burnin_test.h"
 
+#if HAL_PLATFORM_RTL872X
+
 namespace particle {
 
 using namespace spark;
@@ -456,3 +458,5 @@ bool FqcTest::wifiScanNetworks(JSONValue req) {
 }
 
 }
+#endif // HAL_PLATFORM_RTL872X
+

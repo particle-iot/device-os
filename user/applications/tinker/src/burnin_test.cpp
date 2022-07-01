@@ -15,7 +15,6 @@ extern "C" {
 extern uintptr_t platform_km0_part1_flash_start;
 extern uintptr_t platform_bootloader_module_info_flash_start;
 extern uintptr_t platform_system_part1_flash_start;
-#endif
 
 namespace particle {
 
@@ -403,3 +402,4 @@ bool BurninTest::testCpuLoad() {
 }
 
 }
+#endif // HAL_PLATFORM_RTL872X
