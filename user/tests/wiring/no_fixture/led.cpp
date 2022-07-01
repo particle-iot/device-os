@@ -237,6 +237,8 @@ test(LED_11_MirroringWorks) {
 #if HAL_PLATFORM_NRF52840
 # if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
     const pin_t pins[3] = {A4, A5, A3};
+# elif PLATFORM_ID == PLATFORM_ESOMX
+    const pin_t pins[3] = {B0, B1, B2};
 # else
     // SoM
     const pin_t pins[3] = {A1, A0, A7};

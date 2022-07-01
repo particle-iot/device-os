@@ -91,7 +91,12 @@ test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
 
 test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 #if HAL_PLATFORM_NRF52840
-    pin_t pin = D4; // pin under test
+     // pin under test
+#if PLATFORM_ID == PLATFORM_ESOMX
+    pin_t pin = A3;
+#else 
+    pin_t pin = D4;
+#endif
 #else
     #error "Unsupported platform"
 #endif
@@ -115,7 +120,12 @@ test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 
 test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
 #if HAL_PLATFORM_NRF52840
-    pin_t pin = D4; // pin under test
+     // pin under test
+#if PLATFORM_ID == PLATFORM_ESOMX
+    pin_t pin = A3;
+#else 
+    pin_t pin = D4;
+#endif
 #else
     #error "Unsupported platform"
 #endif
@@ -157,7 +167,11 @@ test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
 }
 
 test(GPIO_08_DigitalReadWorksMixedWithAnalogRead) {
+#if PLATFORM_ID == PLATFORM_ESOMX
+    pin_t pin = A3;
+#else 
     pin_t pin = A0;
+#endif
 
     pinMode(pin, INPUT_PULLUP);
     assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);

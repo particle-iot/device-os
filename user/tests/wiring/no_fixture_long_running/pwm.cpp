@@ -35,7 +35,7 @@ const PinMapping pwm_pins[] = {
         // PWM HAL also is not interrupt safe and RGB pins are modified in SysTick
         PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), /* PIN(D7), */ PIN(D8), PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #elif (PLATFORM_ID == PLATFORM_ESOMX)
-        PIN(D0) // TODO: Other PWM pins
+        PIN(D0), PIN(D1), PIN(D2), PIN(A3), PIN(A4), PIN(A5), PIN(A6), PIN(B0), PIN(B1), PIN(B2), PIN(B3), PIN(C4), PIN(C5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #else
 #error "Unsupported platform"
 #endif
@@ -66,7 +66,9 @@ test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
 
 test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
-#if PLATFORM_ID != PLATFORM_TRACKER
+#if PLATFORM_ID == PLATFORM_ESOMX
+    pin_t pin = A1;  //pin under test, A1 is not a Timer channel
+#elif PLATFORM_ID != PLATFORM_TRACKER
     pin_t pin = D0;  //pin under test, D0 is not a Timer channel
 #else
     // There are no non-PWM pins that we can safely use
