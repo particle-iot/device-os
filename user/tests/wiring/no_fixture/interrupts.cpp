@@ -40,7 +40,7 @@ test(INTERRUPTS_01_isisr_willpreempt_servicedirqn)
 	attachInterruptDirect(SysTick_IRQn, []() {
 		detachInterruptDirect(SysTick_IRQn);
 		assertTrue(hal_interrupt_is_isr());
-		assertEqual((IRQn_Type)hal_interrupt_serviced_irqn(), SysTick_IRQn);
+		assertEqual((int)hal_interrupt_serviced_irqn(), (int)SysTick_IRQn);
 		cont = true;
 	});
 	while (!cont);

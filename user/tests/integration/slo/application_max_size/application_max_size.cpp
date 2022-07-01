@@ -21,7 +21,7 @@
 namespace {
 
 #if HAL_PLATFORM_NRF52840
-constexpr size_t FLASH_FILL_SIZE = 240 * 1024 * 1024; // 240KB
+constexpr size_t FLASH_FILL_SIZE = 240 * 1024; // 240KB
 #elif HAL_PLATFORM_RTL872X
 constexpr size_t FLASH_FILL_SIZE = 1945 * 1024; // 1.9MB
 #else
