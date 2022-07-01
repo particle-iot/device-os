@@ -27,16 +27,18 @@
 #include "tone_hal.h"
 #include "unit-test/unit-test.h"
 
-#if PLATFORM_ID == PLATFORM_P2
-static const hal_pin_t pin = D1;//pin under test
+#if PLATFORM_ID == PLATFORM_ESOMX
+static const pin_t pin = D1;//pin under test
 #else
-static const hal_pin_t pin = A1;//pin under test
+static const pin_t pin = A1;//pin under test
 #endif
 
 test(TONE_01_NoGenerateWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
 # if PLATFORM_ID == PLATFORM_TRACKER
-    hal_pin_t pin = BTN;
+    pin_t pin = BTN;
+# elif PLATFORM_ID == PLATFORM_ESOMX
+    pin_t pin = A0;
 # else
     hal_pin_t pin = D0;
 # endif
