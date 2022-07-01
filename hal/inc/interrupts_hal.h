@@ -204,7 +204,7 @@ static inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
     return false;
 }
 
-#elif PLATFORM_ID == PLATFORM_NEWHAL
+#elif PLATFORM_ID == PLATFORM_NEWHAL || PLATFORM_ID == PLATFORM_GCC
 
 inline bool hal_interrupt_is_isr() {
     return false;
@@ -218,17 +218,11 @@ inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
     return false;
 }
 
-#elif PLATFORM_ID == PLATFORM_GCC || PLATFORM_ID == 20
-
-inline bool hal_interrupt_is_isr() {
-    return false;
-}
-
-inline int32_t hal_interrupt_serviced_irqn() {
+inline uint32_t hal_interrupt_get_basepri() {
     return 0;
 }
 
-inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
+inline bool hal_interrupt_is_irq_masked(int32_t irqn) {
     return false;
 }
 
@@ -237,9 +231,10 @@ inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
 #error "*** MCU architecture not supported by hal_interrupt_is_isr(). ***"
 
 #endif
-#endif // defined(USE_STDPERIPH_DRIVER)
 
 #include "interrupts_hal_compat.h"
+
+#endif // defined(USE_STDPERIPH_DRIVER)
 
 #ifdef __cplusplus
 }
