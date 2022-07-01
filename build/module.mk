@@ -211,7 +211,7 @@ endif
 %.bin : %.elf
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
 	[ ! -f $@.product ] || rm $@.product
-	$(VERBOSE)$(OBJCOPY) $< --dump-section '.module_info_product=$@.product' > /dev/null 2>&1
+	$(VERBOSE)$(OBJCOPY) $< --dump-section '.module_info_product=$@.product' > /dev/null 2>&1 || true
 	$(VERBOSE)if [ -s $@.product ] && [ $(MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END) -ne 0 ]; then \
 		$(OBJCOPY) $< --dump-section '.module_info_suffix=$@.suffix' && \
 		$(OBJCOPY) $< --remove-section '.module_info_product' && \
