@@ -2339,8 +2339,10 @@ int SaraNcpClient::modemInit() const {
     CHECK(hal_gpio_configure(UBPWR, &conf, nullptr));
     CHECK(hal_gpio_configure(UBRST, &conf, nullptr));
 
+#if HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
     // Configure BUFEN as Push-Pull Output and default to 1 (disabled)
     CHECK(hal_gpio_configure(BUFEN, &conf, nullptr));
+#endif // HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
 
     // Configure VINT as Input for modem power state monitoring
     conf.mode = INPUT;
@@ -2609,8 +2611,10 @@ bool SaraNcpClient::modemPowerState() const {
 }
 
 int SaraNcpClient::modemSetUartState(bool state) const {
+#if HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
     LOG(TRACE, "Setting UART voltage translator state %d", state);
     hal_gpio_write(BUFEN, state ? 0 : 1);
+#endif // HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
     return SYSTEM_ERROR_NONE;
 }
 
