@@ -45,6 +45,7 @@
 #include "eeprom_hal.h"
 #include "rtc_hal.h"
 
+using namespace particle;
 using std::cout;
 
 static LoggerOutputLevel log_level = NO_LOG_LEVEL;

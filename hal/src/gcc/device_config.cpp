@@ -19,13 +19,19 @@
 #include "device_config.h"
 #include "core_msg.h"
 #include "filesystem.h"
+#include "ota_flash_hal.h"
+
 #include <cstdlib>
 #include <fstream>
 #include <istream>
 #include <iostream>
 
-#include "boost_program_options_wrap.h"
 #include <boost/format.hpp>
+#include "boost_program_options_wrap.h"
+#include "boost_json.h"
+
+using namespace particle;
+using namespace particle::config;
 
 namespace po = boost::program_options;
 
@@ -91,7 +97,7 @@ public:
             ("platform_id", po::value<int>(&config.platform_id)->default_value(PLATFORM_ID), "the platform ID")
             ("device_key,dk", po::value<std::string>(&config.device_key)->default_value("device_key.der"), "the filename containing the device private key")
             ("server_key,sk", po::value<std::string>(&config.server_key)->default_value("server_key.der"), "the filename containing the server public key")
-            ("module_info", po::value<std::string>(&config.module_info), "the filename containing the device module info")
+            ("describe", po::value<std::string>(&config.describe), "the filename containing the device description")
 			("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_LIGHTSSL), "the cloud communication protocol to use")
 			;
 
@@ -144,7 +150,193 @@ size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen)
     return len;
 }
 
+std::string moduleFunctionToString(module_function_t func) {
+    switch (func) {
+    case MODULE_FUNCTION_NONE:
+        return "n";
+    case MODULE_FUNCTION_RESOURCE:
+        return "r";
+    case MODULE_FUNCTION_BOOTLOADER:
+        return "b";
+    case MODULE_FUNCTION_MONO_FIRMWARE:
+        return "m";
+    case MODULE_FUNCTION_SYSTEM_PART:
+        return "s";
+    case MODULE_FUNCTION_USER_PART:
+        return "u";
+    case MODULE_FUNCTION_NCP_FIRMWARE:
+        return "c";
+    case MODULE_FUNCTION_RADIO_STACK:
+        return "a";
+    default:
+        throw std::runtime_error(boost::str(boost::format("Unknown module function: %d") % func));
+    }
+}
+
+module_function_t moduleFunctionFromString(std::string_view str) {
+    if (str == "n") {
+        return MODULE_FUNCTION_NONE;
+    } else if (str == "r") {
+        return MODULE_FUNCTION_RESOURCE;
+    } else if (str == "b") {
+        return MODULE_FUNCTION_BOOTLOADER;
+    } else if (str == "m") {
+        return MODULE_FUNCTION_MONO_FIRMWARE;
+    } else if (str == "s") {
+        return MODULE_FUNCTION_SYSTEM_PART;
+    } else if (str == "u") {
+        return MODULE_FUNCTION_USER_PART;
+    } else if (str == "c") {
+        return MODULE_FUNCTION_NCP_FIRMWARE;
+    } else if (str == "a") {
+        return MODULE_FUNCTION_RADIO_STACK;
+    } else {
+        throw std::runtime_error(boost::str(boost::format("Unknown module function: \"%s\"") % str));
+    }
+}
+
+std::string moduleStorageToString(module_store_t storage) {
+    switch (storage) {
+    case MODULE_STORE_MAIN:
+        return "m";
+    case MODULE_STORE_BACKUP:
+        return "b";
+    case MODULE_STORE_FACTORY:
+        return "f";
+    case MODULE_STORE_SCRATCHPAD:
+        return "t";
+    default:
+        throw std::runtime_error(boost::str(boost::format("Unknown module storage: %d") % storage));
+    }
+}
+
+module_store_t moduleStorageFromString(std::string_view str) {
+    if (str == "m") {
+        return MODULE_STORE_MAIN;
+    } else if (str == "b") {
+        return MODULE_STORE_BACKUP;
+    } else if (str == "f") {
+        return MODULE_STORE_FACTORY;
+    } else if (str == "t") {
+        return MODULE_STORE_SCRATCHPAD;
+    } else {
+        throw std::runtime_error(boost::str(boost::format("Unknown module storage: \"%s\"") % str));
+    }
+}
+
 } // namespace
+
+std::string Describe::toString() const {
+    if (!isValid()) {
+        throw std::runtime_error("Cannot serialize an invalid object");
+    }
+    boost::json::object jsonDesc;
+    // Platform ID
+    jsonDesc["p"] = platformId_.value();
+    // Modules
+    boost::json::array jsonModules;
+    for (auto& module: modules_) {
+        boost::json::object jsonModule;
+        // Function
+        jsonModule["f"] = moduleFunctionToString(module.function());
+        // Index
+        jsonModule["n"] = std::to_string(module.index());
+        // Version
+        jsonModule["v"] = module.version();
+        // Dependencies
+        boost::json::array jsonDeps;
+        for (auto& dep: module.dependencies()) {
+            boost::json::object jsonDep;
+            jsonDep["f"] = moduleFunctionToString(dep.function());
+            jsonDep["n"] = std::to_string(dep.index());
+            jsonDep["v"] = dep.version();
+            jsonDeps.push_back(jsonDep);
+        }
+        jsonModule["d"] = jsonDeps;
+        // Storage
+        jsonModule["l"] = moduleStorageToString(module.storage());
+        // Maximum size
+        jsonModule["s"] = module.maximumSize();
+        // Validity flags
+        jsonModule["vc"] = module.validityChecked();
+        jsonModule["vv"] = module.validityResult();
+        // Hash
+        jsonModule["u"] = module.hash();
+        jsonModules.push_back(jsonModule);
+    }
+    jsonDesc["m"] = jsonModules;
+    return boost::json::serialize(jsonDesc);
+}
+
+Describe Describe::fromString(std::string_view str) {
+    auto json = boost::json::parse(std::string(str)); // std::string_view is not convertible to boost::json::string_view for some reason
+    auto& jsonDesc = json.as_object();
+    Describe desc;
+    // Platform ID
+    desc.platformId(jsonDesc.at("p").as_int64());
+    auto& jsonModules = jsonDesc.at("m").as_array();
+    // Modules
+    Describe::Modules modules;
+    for (size_t i = 0; i < jsonModules.size(); ++i) {
+        auto& jsonModule = jsonModules.at(i).as_object();
+        ModuleInfo module;
+        // Function
+        auto& jsonFunc = jsonModule.at("f").as_string();
+        module.function(moduleFunctionFromString(jsonFunc));
+        // Index
+        auto& jsonIndexStr = jsonModule.at("n").as_string();
+        module.index(std::stoi(std::string(jsonIndexStr)));
+        // Version
+        module.version(jsonModule.at("v").as_int64());
+        // Dependencies
+        auto& jsonDeps = jsonModule.at("d").as_array();
+        ModuleInfo::Dependencies deps;
+        for (size_t i = 0; i < jsonDeps.size(); ++i) {
+            auto& jsonDep = jsonDeps.at(i).as_object();
+            ModuleDependencyInfo dep;
+            auto& jsonFunc = jsonDep.at("f").as_string();
+            dep.function(moduleFunctionFromString(jsonFunc));
+            auto& jsonIndexStr = jsonDep.at("n").as_string();
+            dep.index(std::stoi(std::string(jsonIndexStr)));
+            module.version(jsonModule.at("v").as_int64());
+            deps.push_back(dep);
+        }
+        // Storage (optional)
+        if (jsonModule.contains("l")) {
+            auto& jsonStorage = jsonModule.at("l").as_string();
+            module.storage(moduleStorageFromString(jsonStorage));
+        } else {
+            module.storage(MODULE_STORE_MAIN);
+        }
+        // Maximum size (optional)
+        if (jsonModule.contains("s")) {
+            module.maximumSize(jsonModule.at("s").as_int64());
+        } else {
+            module.maximumSize(10 * 1024 * 1024);
+        }
+        // Validity flags (optional)
+        if (jsonModule.contains("vc")) {
+            module.validityChecked(jsonModule.at("vc").as_int64());
+        } else {
+            module.validityChecked(MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_RANGE |
+                    MODULE_VALIDATION_PLATFORM);
+        }
+        if (jsonModule.contains("vv")) {
+            module.validityResult(jsonModule.at("vv").as_int64());
+        } else {
+            module.validityResult(module.validityChecked());
+        }
+        // Hash (optional)
+        if (jsonModule.contains("u")) {
+            module.hash(jsonModule.at("u").as_string());
+        } else {
+            module.hash("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        }
+        modules.push_back(module);
+    }
+    desc.modules(modules);
+    return desc;
+}
 
 bool read_device_config(int argc, char* argv[])
 {
@@ -177,6 +369,10 @@ void DeviceConfig::read(Configuration& configuration)
 
     read_file(configuration.device_key.c_str(), device_key, sizeof(device_key));
     read_file(configuration.server_key.c_str(), server_key, sizeof(server_key));
+    if (!configuration.describe.empty()) {
+        auto s = read_file(configuration.describe);
+        describe = Describe::fromString(s);
+    }
 
     setLoggerLevel(LoggerOutputLevel(NO_LOG_LEVEL-configuration.log_level));
 

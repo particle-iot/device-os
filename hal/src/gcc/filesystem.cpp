@@ -1,13 +1,13 @@
-#include <string>
-#include <string.h>
-#include <stddef.h>
 #include <cstdio>
 #include <stdexcept>
+#include <fstream>
+
 #include "service_debug.h"
 #include "filesystem.h"
 
 const char* rootDir = NULL;
 
+using namespace particle;
 using namespace std;
 
 void set_root_dir(const char* dir) {
@@ -29,6 +29,20 @@ bool exists_file(const char* filename)
 	} else {
 		return false;
 	}
+}
+
+std::string read_file(const std::string& filename)
+{
+    std::ifstream in(filename, std::ios::in | std::ios::binary);
+    in.seekg(0, std::ios::end);
+    auto size = in.tellg();
+    if (size == (std::ifstream::pos_type)-1) {
+        throw std::runtime_error("Failed to determine file size");
+    }
+    in.seekg(0);
+    std::string str(size, '\0');
+    in.read(&str[0], size);
+    return str;
 }
 
 void read_file(const char* filename, void* data, size_t length)
