@@ -24,15 +24,6 @@
 #include "filesystem.h"
 #include "spark_protocol_functions.h"
 
-extern const char* DEVICE_ID;
-extern const char* DEVICE_PRIVATE_KEY;
-extern const char* SERVER_PUBLIC_KEY;
-
-
-std::string get_configuration_value(const char* name);
-
-void read_config_file(const char* config_name, void* data, size_t length);
-
 /**
  * Reads the device configuration and returns true if the device should start.
  * @param argc
@@ -50,7 +41,7 @@ struct Configuration
     std::string device_id;
     std::string device_key;
     std::string server_key;
-    std::string periph_directory;
+    std::string module_info;
     uint16_t log_level = 0;
     ProtocolFactory protocol = PROTOCOL_LIGHTSSL;
     int platform_id;
@@ -67,8 +58,6 @@ struct DeviceConfig
     uint8_t server_key[1024];
     ProtocolFactory protocol;
     int platform_id;
-
-    size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen);
 
     void read(Configuration& configuration);
 
