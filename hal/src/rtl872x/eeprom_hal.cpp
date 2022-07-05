@@ -175,7 +175,7 @@ void HAL_EEPROM_Init(void) {
 }
 
 uint8_t HAL_EEPROM_Read(uint32_t index) {
-    uint8_t data;
+    uint8_t data = 0xff;
     HAL_EEPROM_Get(index, &data, 1);
     return data;
 }
