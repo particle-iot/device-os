@@ -116,11 +116,6 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
     // There seems to be an alignment check inside FLASH_TxData256B()
     static __attribute__((aligned(32))) uint8_t aligned_buffer[256];
 
-    // To prevent being interrupted by auto mode reading, the user mode operation
-    // should be protected until it is finished.
-    // For more protections, please refer to AN0400 Ameba-D Application Note Chapter 18 Flash Operation
-    __disable_irq();
-
     // XXX: No way of knowing whether the write operation succeeded or not
     for (size_t b = 0; b < size;) {
         size_t rem = MIN(256, (size - b));
@@ -128,8 +123,6 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
         FLASH_TxData256B(addr + b, rem,  aligned_buffer);
         b += rem;
     }
-
-    __enable_irq();
 
     return SYSTEM_ERROR_NONE;
 }
