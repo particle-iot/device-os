@@ -5,30 +5,16 @@
 #include "service_debug.h"
 #include "filesystem.h"
 
-const char* rootDir = NULL;
-
-using namespace particle;
-using namespace std;
-
-void set_root_dir(const char* dir) {
-    rootDir = dir;
-}
+namespace particle {
 
 bool exists_file(const char* filename)
 {
-    char buf[256];
-    buf[0] = 0;
-    if (rootDir) {
-        strcpy(buf, rootDir);
-        strcat(buf, "/");
+    if (FILE *file = fopen(filename, "r")) {
+        fclose(file);
+        return true;
+    } else {
+        return false;
     }
-    strcat(buf, filename);
-    if (FILE *file = fopen(buf, "r")) {
-		fclose(file);
-		return true;
-	} else {
-		return false;
-	}
 }
 
 std::string read_file(const std::string& filename)
@@ -47,44 +33,31 @@ std::string read_file(const std::string& filename)
 
 void read_file(const char* filename, void* data, size_t length)
 {
-    char buf[256];
-    buf[0] = 0;
-    if (rootDir) {
-        strcpy(buf, rootDir);
-        strcat(buf, "/");
-    }
-    strcat(buf, filename);
-    FILE *f = fopen(buf, "rb");
+    FILE *f = fopen(filename, "rb");
     if (f!=NULL) {
         length = fread(data, 1, length, f);
-        INFO("read file %s length %d", buf, length);
+        INFO("read file %s length %d", filename, length);
         fclose(f);
     }
     else
     {
-        throw invalid_argument(string("unable to read file '") + buf + "'");
+        throw std::invalid_argument(std::string("unable to read file '") + filename + "'");
     }
 }
 
 
 void write_file(const char* filename, const void* data, size_t length)
 {
-    char buf[256];
-    buf[0] = 0;
-    if (rootDir) {
-        strcpy(buf, rootDir);
-        strcat(buf, "/");
-    }
-    strcat(buf, filename);
-    FILE *f = fopen(buf, "wb");
+    FILE *f = fopen(filename, "wb");
     if (f!=NULL) {
         length = fwrite(data, 1, length, f);
-        INFO("written file %s length %d", buf, length);
+        INFO("written file %s length %d", filename, length);
         fclose(f);
     }
     else
     {
-        throw invalid_argument(string("unable to write file '") + buf + "'");
+        throw std::invalid_argument(std::string("unable to write file '") + filename + "'");
     }
 }
 
+} // namespace particle
