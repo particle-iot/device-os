@@ -18,10 +18,14 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include <cctype>
+#if HAL_PLATFORM_RTL872X
+#include "request_handler.h"
+#include "src/burnin_test.h"
+#endif
 
 struct PinMapping {
     const char* name;
-    pin_t pin;
+    hal_pin_t pin;
 };
 
 #define PIN(p) {#p, p}
@@ -48,14 +52,29 @@ const PinMapping g_pinmap[] = {
 #  endif // PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_ASOM
 # endif // PLATFORM_ID == PLATFORM_TRACKER
 
-#else // HAL_PLATFORM_NRF52840
+    // P2
+#elif HAL_PLATFORM_RTL872X
+    PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), PIN(D7), PIN(D8), PIN(D9),
+    PIN(D10), PIN(D11), PIN(D12), PIN(D13), PIN(D14), PIN(D15), PIN(D16), PIN(D17), PIN(D18),
+    PIN(D19), PIN(D20), PIN(D21),
+    PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5),
+    PIN(SS), PIN(SCK), PIN(MISO), PIN(MOSI), PIN(SS1), PIN(SCK1), PIN(MISO1), PIN(MOSI1),
+    PIN(SDA), PIN(SCL),
+    PIN(TX), PIN(RX), PIN(TX1), PIN(RX1), PIN(CTS1), PIN(RTS1),
+    PIN(WKP)
+
+#else // HAL_PLATFORM_RTL872X
 # error Unsupported platform
 #endif
 };
 
 const size_t g_pin_count = sizeof(g_pinmap) / sizeof(*g_pinmap);
 
+#if HAL_PLATFORM_RTL872X
+PRODUCT_VERSION(4);
+#else
 PRODUCT_VERSION(3);
+#endif
 
 /* Function prototypes -------------------------------------------------------*/
 int tinkerDigitalRead(String pin);
@@ -80,9 +99,13 @@ STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 #define PIN_INVALID (0xff)
 #endif // PIN_INVALID
 
+#if HAL_PLATFORM_RTL872X
+SYSTEM_THREAD(ENABLED);
+#endif
+
 SYSTEM_MODE(AUTOMATIC);
 
-pin_t lookupPinByName(const String& name) {
+hal_pin_t lookupPinByName(const String& name) {
     for (unsigned i = 0; i < g_pin_count; i++) {
         const auto& entry = g_pinmap[i];
         if (!strcmp(entry.name, name.c_str())) {
@@ -104,12 +127,20 @@ void setup()
 
     Particle.function("analogread", tinkerAnalogRead);
     Particle.function("analogwrite", tinkerAnalogWrite);
+
+#if HAL_PLATFORM_RTL872X
+    BurninTest::instance()->setup();
+#endif
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
     //This will run in a loop
+
+#if HAL_PLATFORM_RTL872X
+    BurninTest::instance()->loop();
+#endif
 }
 
 /*******************************************************************************
@@ -122,7 +153,7 @@ void loop()
  *******************************************************************************/
 int tinkerDigitalRead(String pinStr)
 {
-    pin_t pin = lookupPinByName(pinStr);
+    hal_pin_t pin = lookupPinByName(pinStr);
     if (pin != PIN_INVALID) {
         pinMode(pin, INPUT_PULLDOWN);
         return digitalRead(pin);
@@ -162,7 +193,7 @@ int tinkerDigitalWrite(String command)
         return -2;
     }
 
-    pin_t pin = lookupPinByName(pinStr);
+    hal_pin_t pin = lookupPinByName(pinStr);
 
     if (pin != PIN_INVALID) {
         pinMode(pin, OUTPUT);
@@ -183,8 +214,8 @@ int tinkerDigitalWrite(String command)
  *******************************************************************************/
 int tinkerAnalogRead(String pinStr)
 {
-    pin_t pin = lookupPinByName(pinStr);
-    if (pin != PIN_INVALID && HAL_Validate_Pin_Function(pin, PF_ADC) == PF_ADC) {
+    hal_pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID && hal_pin_validate_function(pin, PF_ADC) == PF_ADC) {
         return analogRead(pin);
     }
     return -1;
@@ -218,9 +249,9 @@ int tinkerAnalogWrite(String command)
         return -2;
     }
 
-    pin_t pin = lookupPinByName(pinStr);
-    if (pin != PIN_INVALID && (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC ||
-        HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)) {
+    hal_pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID && (hal_pin_validate_function(pin, PF_DAC) == PF_DAC ||
+        hal_pin_validate_function(pin, PF_TIMER) == PF_TIMER)) {
         pinMode(pin, OUTPUT);
         analogWrite(pin, value);
         return 1;
@@ -228,3 +259,10 @@ int tinkerAnalogWrite(String command)
 
     return -1;
 }
+
+#if HAL_PLATFORM_RTL872X
+// Tinker app specific USB requests. For P2 these are FQC commands
+void ctrl_request_custom_handler(ctrl_request* req) {
+    particle::RequestHandler::instance()->process(req);
+}
+#endif

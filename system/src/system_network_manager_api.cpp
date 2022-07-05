@@ -94,6 +94,7 @@ bool testAndClearListeningModeFlag() {
         uint8_t val = 0x00;
         system_get_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, &val, nullptr);
         if (val) {
+            LOG(INFO, "startup flag");
             system_set_flag(SYSTEM_FLAG_STARTUP_LISTEN_MODE, 0, nullptr); // Clear startup flag
             return true;
         }
@@ -129,6 +130,10 @@ const CellularConfig* cellularConfig() {
 } /* anonymous */
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
+    // volatile uint32_t rtlContinue = 1;
+    // while (!rtlContinue) {
+    //     asm volatile ("nop");
+    // }
     NetworkManager::instance()->init();
     // Populate the list
     NetworkManager::instance()->disableInterface();
@@ -150,13 +155,19 @@ const void* network_config(network_handle_t network, uint32_t param, void* reser
 }
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
+    // volatile uint32_t rtlContinue = 0;
+    // while (!rtlContinue) {
+    //     asm volatile ("NOP");
+    // }
     /* TODO: WIFI_CONNECT_SKIP_LISTEN is unhandled */
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([network]() {
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
         s_forcedDisconnect = false;
 
-        if (testAndClearListeningModeFlag() || !NetworkManager::instance()->isConfigured()) {
+        bool val = testAndClearListeningModeFlag();
+        val = val || !NetworkManager::instance()->isConfigured();
+        if (val) {
             /* Enter listening mode */
             network_listen(0, 0, 0);
             return;
@@ -346,7 +357,7 @@ int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
 
 int network_listen_sync(network_handle_t network, uint32_t flags, void*) {
     /* May be called from an ISR */
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT([&]() -> int {
             if (!(flags & NETWORK_LISTEN_EXIT)) {
                 return ListeningModeHandler::instance()->enter();
@@ -365,7 +376,7 @@ int network_listen_sync(network_handle_t network, uint32_t flags, void*) {
 }
 
 void network_listen(network_handle_t network, uint32_t flags, void* reserved) {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         SYSTEM_THREAD_CONTEXT_ASYNC(network_listen(network, flags, reserved));
     }
     network_listen_sync(network, flags, reserved);
@@ -386,7 +397,7 @@ bool network_listening(network_handle_t network, uint32_t, void*) {
 }
 
 int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg) {
-    if (!HAL_IsISR()) {
+    if (!hal_interrupt_is_isr()) {
         return ListeningModeHandler::instance()->command(command, arg);
     }
 

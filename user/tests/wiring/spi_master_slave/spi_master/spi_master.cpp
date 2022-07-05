@@ -18,7 +18,25 @@
 #error Define USE_CS
 #endif // #ifndef USE_CS
 
-#if HAL_PLATFORM_NRF52840
+
+#if (PLATFORM_ID == PLATFORM_P2)
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS SS
+#pragma message "Compiling for SPI, MY_CS set to SS"
+#elif (USE_SPI == 1)
+#define MY_SPI SPI1
+#define MY_CS SS1
+#pragma message "Compiling for SPI1, MY_CS set to SS1"
+#elif (USE_SPI == 2)
+#error "SPI2 not supported for p2"
+#else
+#error "Not supported for P2"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
+#elif HAL_PLATFORM_NRF52840
+
 #if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
@@ -69,7 +87,8 @@
 
 #error "Unsupported platform"
 
-#endif // #if HAL_PLATFORM_NRF52840
+#endif // #if PLATFORM_P2
+
 
 #if defined(_SPI) && (USE_CS != 255)
 #pragma message "Overriding default CS selection"
@@ -121,6 +140,20 @@
  * SCK  D13 <-------> D2 SCK      SCK  D2 <---------> D2 SCK
  *
  *********************************************************************************************
+ *
+ * P2 Wiring diagrams
+ * 
+ * SPI1/SPI1                       SPI/SPI1 (SPI can't be used as slave)
+ * Master: SPI1  (USE_SPI=SPI1)    Master: SPI (USE_SPI=SPI)
+ * Slave:  SPI1  (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
+ * 
+ * Master             Slave       Master              Slave
+ * CS   D5 <-------> D5 CS        CS   S3 <---------> D5 CS
+ * MISO D4 <-------> D3 MISO      MISO S1 <---------> D3 MISO
+ * MOSI D3 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
+ * SCK  D2 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
+ * 
+ *********************************************************************************************
  */
 
 #ifdef MY_SPI
@@ -154,7 +187,9 @@ static void SPI_Master_Configure()
         MY_SPI.begin(MY_CS);
 
         // Clock dummy byte just in case
-        (void)MY_SPI.transfer(0xff);
+        if (PLATFORM_ID != PLATFORM_P2) { // Since SPI is enabled, the dummy byte will generate gabage data in the fifo on P2
+            (void)MY_SPI.transfer(0xff);
+        }
     }
 }
 
@@ -244,6 +279,7 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
         digitalWrite(MY_CS, HIGH);
         delay(SPI_DELAY);
         digitalWrite(MY_CS, LOW);
+        delay(SPI_DELAY);
 
         memcpy(SPI_Master_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
         memcpy(SPI_Master_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
@@ -496,6 +532,7 @@ test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
     digitalWrite(MY_CS, HIGH);
     delay(SPI_DELAY);
     digitalWrite(MY_CS, LOW);
+    delay(SPI_DELAY);
 
     // Gen3: Send a big chunk of const data to verify truncated transfer
     DMA_Completed_Flag = 0;
@@ -509,7 +546,7 @@ test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
     assertEqual(MY_SPI.available(), strlen(txString));
 }
 
-test(25_SPI_Master_Slave_Master_Receiption)
+test(25_SPI_Master_Slave_Master_Reception)
 {
     memset(SPI_Master_Rx_Buffer_Supper, '\0', sizeof(SPI_Master_Rx_Buffer_Supper));
 
@@ -521,6 +558,7 @@ test(25_SPI_Master_Slave_Master_Receiption)
     digitalWrite(MY_CS, HIGH);
     delay(SPI_DELAY);
     digitalWrite(MY_CS, LOW);
+    delay(SPI_DELAY);
 
     DMA_Completed_Flag = 0;
 

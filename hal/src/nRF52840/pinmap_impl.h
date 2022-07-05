@@ -23,17 +23,7 @@ extern "C" {
 
 #include "pinmap_hal.h"
 
-#if HAL_PLATFORM_IO_EXTENSION
-typedef enum Hal_Pin_Type {
-    HAL_PIN_TYPE_UNKNOWN,
-    HAL_PIN_TYPE_MCU,
-    HAL_PIN_TYPE_IO_EXPANDER,
-    HAL_PIN_TYPE_DEMUX,
-    HAL_PIN_TYPE_MAX
-} Hal_Pin_Type;
-#endif
-
-typedef struct Hal_Pin_Info {
+typedef struct hal_pin_info_t {
     uint8_t      gpio_port; // port0: 0; port: 1;
     uint8_t      gpio_pin;  // range: 0~31;
     PinMode      pin_mode;  // GPIO pin mode
@@ -44,13 +34,13 @@ typedef struct Hal_Pin_Info {
     uint8_t      pwm_resolution; // default 8bit, max 15bit
     uint8_t      exti_channel;   // 16 channels
 #if HAL_PLATFORM_IO_EXTENSION
-    Hal_Pin_Type type;
+    hal_pin_type_t type;
 #endif // HAL_PLATFORM_IO_EXTENSION
     uint32_t     user_data;
-} Hal_Pin_Info;
+} hal_pin_info_t;
 
 // For compatibility
-typedef Hal_Pin_Info NRF5x_Pin_Info;
+typedef hal_pin_info_t NRF5x_Pin_Info;
 
 extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
 
@@ -72,7 +62,7 @@ extern const uint8_t NRF_PIN_LOOKUP_TABLE[48];
 
 inline bool is_valid_pin(pin_t pin) __attribute__((always_inline));
 inline bool is_valid_pin(pin_t pin) {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
     return (pin < TOTAL_PINS && PIN_MAP[pin].gpio_port != NRF_PORT_NONE && PIN_MAP[pin].gpio_pin != PIN_INVALID);
 }
 

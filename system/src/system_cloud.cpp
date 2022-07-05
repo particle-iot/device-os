@@ -154,13 +154,13 @@ bool spark_sync_time(void *reserved)
 bool spark_sync_time_pending(void* reserved)
 {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time_pending(reserved));
-    return spark_protocol_time_request_pending(sp, nullptr);
+    return spark_protocol_time_request_pending(system_cloud_protocol_instance(), nullptr);
 }
 
 system_tick_t spark_sync_time_last(time32_t* tm32, time_t* tm)
 {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_sync_time_last(tm32, tm));
-    return spark_protocol_time_last_synced(sp, tm32, tm);
+    return spark_protocol_time_last_synced(system_cloud_protocol_instance(), tm32, tm);
 }
 
 /**
@@ -276,9 +276,9 @@ void spark_process(void)
 
 String spark_deviceID(void)
 {
-    unsigned len = HAL_device_ID(NULL, 0);
+    unsigned len = hal_get_device_id(NULL, 0);
     uint8_t id[len];
-    HAL_device_ID(id, len);
+    hal_get_device_id(id, len);
     return bytes2hex(id, len);
 }
 

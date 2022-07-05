@@ -723,7 +723,6 @@ void NetworkManager::refreshDnsState() {
 bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
     char name[IF_NAMESIZE] = {};
     if_get_name(iface, name);
-
 #if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
     if (!strncmp(name, "wl", 2)) {
         auto wifiMan = wifiNetworkManager();

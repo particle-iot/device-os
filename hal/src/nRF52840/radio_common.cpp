@@ -40,16 +40,16 @@ radio_antenna_type currAntenna = DEFAULT_ANTENNA;
 
 int selectInternalAntenna() {
 #if PLATFORM_ID == PLATFORM_ARGON
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-    HAL_Pin_Mode(ANTSW2, OUTPUT);
-    HAL_GPIO_Write(ANTSW1, 0);
-    HAL_GPIO_Write(ANTSW2, 1);
+    hal_gpio_mode(ANTSW1, OUTPUT);
+    hal_gpio_mode(ANTSW2, OUTPUT);
+    hal_gpio_write(ANTSW1, 0);
+    hal_gpio_write(ANTSW2, 1);
 #elif PLATFORM_ID == PLATFORM_BORON
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-    HAL_GPIO_Write(ANTSW1, 1);
+    hal_gpio_mode(ANTSW1, OUTPUT);
+    hal_gpio_write(ANTSW1, 1);
 #elif PLATFORM_ID == PLATFORM_TRACKER
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-    HAL_GPIO_Write(ANTSW1, 1);
+    hal_gpio_mode(ANTSW1, OUTPUT);
+    hal_gpio_write(ANTSW1, 1);
 #else
 #error "Unsupported platform"
 #endif
@@ -63,16 +63,16 @@ int selectInternalAntenna() {
 
 int selectExtenalAntenna() {
 #if PLATFORM_ID == PLATFORM_ARGON
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-    HAL_Pin_Mode(ANTSW2, OUTPUT);
-    HAL_GPIO_Write(ANTSW1, 1);
-    HAL_GPIO_Write(ANTSW2, 0);
+    hal_gpio_mode(ANTSW1, OUTPUT);
+    hal_gpio_mode(ANTSW2, OUTPUT);
+    hal_gpio_write(ANTSW1, 1);
+    hal_gpio_write(ANTSW2, 0);
 #elif PLATFORM_ID == PLATFORM_BORON
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-    HAL_GPIO_Write(ANTSW1, 0);
+    hal_gpio_mode(ANTSW1, OUTPUT);
+    hal_gpio_write(ANTSW1, 0);
 #elif PLATFORM_ID == PLATFORM_TRACKER
-    HAL_Pin_Mode(ANTSW1, OUTPUT);
-    HAL_GPIO_Write(ANTSW1, 0);
+    hal_gpio_mode(ANTSW1, OUTPUT);
+    hal_gpio_write(ANTSW1, 0);
 // SoM platforms have only an external antenna
 #elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM && PLATFORM_ID != PLATFORM_ESOMX
 #error "Unsupported platform"
@@ -125,17 +125,17 @@ int initRadioAntenna() {
 
 int disableRadioAntenna() {
 #if PLATFORM_ID == PLATFORM_ARGON
-    HAL_Pin_Mode(ANTSW1, PIN_MODE_NONE);
-    HAL_Pin_Mode(ANTSW2, PIN_MODE_NONE);
+    hal_gpio_mode(ANTSW1, PIN_MODE_NONE);
+    hal_gpio_mode(ANTSW2, PIN_MODE_NONE);
 #elif PLATFORM_ID == PLATFORM_BORON
     // There is a logic inverter between the ANTSW1 and the antenna switch.
     // There is a pull-down resistor on ANTSW1, so we can safely configure the ANTSW1 to PIN_MODE_NONE.
-    HAL_Pin_Mode(ANTSW1, PIN_MODE_NONE);
+    hal_gpio_mode(ANTSW1, PIN_MODE_NONE);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     // There is a logic inverter between the ANTSW1 and the antenna switch.
     // There is neither pull-up nor pull-down resistor on ANTSW1, if we set it to float,
     // it will consume high current (~6mA)
-    HAL_Pin_Mode(ANTSW1, INPUT_PULLDOWN);
+    hal_gpio_mode(ANTSW1, INPUT_PULLDOWN);
 // SoM platforms have only an external antenna
 #elif PLATFORM_ID != PLATFORM_ASOM && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_B5SOM && PLATFORM_ID != PLATFORM_ESOMX
 #error "Unsupported platform"

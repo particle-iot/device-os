@@ -29,6 +29,8 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
 
 using namespace particle::test;
 
+// TODO: P2 needs to support BLE central role to perform this test
+
 test(BLE_000_Broacaster_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
@@ -51,8 +53,10 @@ test(BLE_00_Prepare) {
 #endif // PARTICLE_TEST_RUNNER
 }
 
+#if HAL_PLATFORM_NRF52840
 test(BLE_01_Scanner_Blocked_Timeout_Simulate) {
 }
+#endif // HAL_PLATFORM_NRF52840
 
 test(BLE_02_Broadcaster_Prepare) {
     Serial.println("This is BLE broadcaster.");
@@ -137,6 +141,7 @@ test(BLE_12_Scanner_Scan_With_Custom_Data) {
     assertTrue(BLE.advertising());
 }
 
+#if HAL_PLATFORM_NRF52840
 test(BLE_13_Scanner_Scan_On_Coded_Phy) {
     assertTrue(BLE.connected());
     assertTrue(waitFor([&]{ return cmd == CMD_ADV_CODED_PHY; }, 60000));
@@ -165,5 +170,6 @@ test(BLE_14_Scanner_Scan_Extended) {
     assertEqual(ret, 0);
     assertTrue(BLE.advertising());
 }
+#endif // HAL_PLATFORM_NRF52840
 
 #endif // #if Wiring_BLE == 1

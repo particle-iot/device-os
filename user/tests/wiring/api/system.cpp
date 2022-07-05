@@ -50,7 +50,7 @@ test(system_api) {
 
 test(system_sleep)
 {
-    const pin_t pins_array[] = {D0, D1};
+    const hal_pin_t pins_array[] = {D0, D1};
     const InterruptMode mode_array[] = {RISING, FALLING};
 
     // All sleep methods should return System.sleep()
@@ -94,19 +94,19 @@ test(system_sleep)
     // Multi-pin variants
     {
         /*
-         * wakeup pins: std::initializer_list<pin_t>
+         * wakeup pins: std::initializer_list<hal_pin_t>
          * trigger mode: single InterruptMode
          */
         API_COMPILE({ SleepResult r = System.sleep({D0, D1}, RISING); (void)r; });
 
         /*
-         * wakeup pins: std::initializer_list<pin_t>
+         * wakeup pins: std::initializer_list<hal_pin_t>
          * trigger mode: std::initializer_list<InterruptMode>
          */
         API_COMPILE({ SleepResult r = System.sleep({D0, D1}, {RISING, FALLING}); (void)r; });
 
         /*
-         * wakeup pins: pin_t* + size_t
+         * wakeup pins: hal_pin_t* + size_t
          * trigger mode: single InterruptMode
          */
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING); (void)r; });
@@ -119,7 +119,7 @@ test(system_sleep)
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING, SLEEP_NETWORK_STANDBY, 20s); (void)r; });
 
         /*
-         * wakeup pins: pin_t* + size_t
+         * wakeup pins: hal_pin_t* + size_t
          * trigger mode: InterruptMode* + size_t
          */
         API_COMPILE({ SleepResult r = System.sleep(pins_array, sizeof(pins_array)/sizeof(*pins_array), mode_array, sizeof(mode_array)/sizeof(*mode_array)); (void)r; });
@@ -168,8 +168,8 @@ test(system_sleep)
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, RISING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, FALLING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, CHANGE)); (void)r; });
-    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpios(Vector<std::pair<pin_t, InterruptMode>>())); (void)r; });
-    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpios(Vector<pin_t>(), RISING)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpios(Vector<std::pair<hal_pin_t, InterruptMode>>())); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpios(Vector<hal_pin_t>(), RISING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpios(pins_array, sizeof(pins_array)/sizeof(*pins_array), RISING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1000)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().duration(1000ms)); (void)r; });

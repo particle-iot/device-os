@@ -64,11 +64,11 @@ namespace particle {
 namespace {
 
 void espReset() {
-    HAL_GPIO_Write(ESPBOOT, 1);
+    hal_gpio_write(ESPBOOT, 1);
     HAL_Delay_Milliseconds(100);
-    HAL_GPIO_Write(ESPEN, 0);
+    hal_gpio_write(ESPEN, 0);
     HAL_Delay_Milliseconds(100);
-    HAL_GPIO_Write(ESPEN, 1);
+    hal_gpio_write(ESPEN, 1);
     HAL_Delay_Milliseconds(100);
 }
 
@@ -114,13 +114,13 @@ Esp32NcpClient::~Esp32NcpClient() {
 
 int Esp32NcpClient::init(const NcpClientConfig& conf) {
     // Make sure ESP32 is powered down
-    HAL_Pin_Mode(ESPBOOT, OUTPUT);
-    HAL_GPIO_Write(ESPBOOT, 1);
+    hal_gpio_mode(ESPBOOT, OUTPUT);
+    hal_gpio_write(ESPBOOT, 1);
 #if PLATFORM_ID == PLATFORM_ARGON
-    HAL_Pin_Mode(ESPEN, OUTPUT_OPEN_DRAIN);
+    hal_gpio_mode(ESPEN, OUTPUT_OPEN_DRAIN);
 #elif PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_TRACKER
-    HAL_Pin_Mode(ESPEN, OUTPUT);
-#endif // PLATFORM_ID == PLATFORM_ARGON
+    hal_gpio_mode(ESPEN, OUTPUT);
+#endif
     espOff();
 
 #if !HAL_PLATFORM_WIFI_NCP_SDIO
@@ -758,7 +758,7 @@ int Esp32NcpClient::dataChannelFlowControl(bool state) {
 }
 
 int Esp32NcpClient::espOff() {
-    HAL_GPIO_Write(ESPEN, 0);
+    hal_gpio_write(ESPEN, 0);
     serial_->on(false);
     ncpPowerState(NcpPowerState::OFF);
     return 0;

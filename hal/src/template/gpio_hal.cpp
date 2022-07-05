@@ -38,12 +38,12 @@
 
 /* Private function prototypes ----------------------------------------------*/
 
-PinMode HAL_Get_Pin_Mode(pin_t pin)
+PinMode hal_gpio_get_mode(hal_pin_t pin)
 {
     return PIN_MODE_NONE;
 }
 
-PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
+PinFunction hal_pin_validate_function(hal_pin_t pin, PinFunction pinFunction)
 {
     return PF_DIO;
 }
@@ -52,7 +52,7 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction)
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
  * or INPUT_PULLDOWN
  */
-void HAL_Pin_Mode(pin_t pin, PinMode setMode)
+void hal_gpio_mode(hal_pin_t pin, PinMode setMode)
 {
 }
 
@@ -74,19 +74,19 @@ PinMode HAL_GPIO_Recall_Pin_Mode()
 /*
  * @brief Sets a GPIO pin to HIGH or LOW.
  */
-void HAL_GPIO_Write(uint16_t pin, uint8_t value)
+void hal_gpio_write(uint16_t pin, uint8_t value)
 {
 }
 
 /*
  * @brief Reads the value of a GPIO pin. Should return either 1 (HIGH) or 0 (LOW).
  */
-int32_t HAL_GPIO_Read(uint16_t pin)
+int32_t hal_gpio_read(uint16_t pin)
 {
     return 0;
 }
 
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved)
+int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reserved)
 {
     return 0;
 }

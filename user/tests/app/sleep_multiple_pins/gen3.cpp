@@ -19,11 +19,11 @@
 
 #if HAL_PLATFORM_NRF52840
 
-extern const pin_t g_pins[];
+extern const hal_pin_t g_pins[];
 extern const char* g_pin_names[];
 extern const size_t g_pin_count;
 
-const pin_t g_pins[] = {
+const hal_pin_t g_pins[] = {
     SDA,
     SCL,
     D2,

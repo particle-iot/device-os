@@ -32,17 +32,33 @@
 #include "button_hal.h"
 #include "dct.h"
 #include "feature_flags.h"
+#if PLATFORM_ID == PLATFORM_P2
+#include "rtl8721d.h"
+#include "nonsecure.h"
+#endif
 
 #if HAL_PLATFORM_LED_THEME
 #include "led_signal.h"
 #endif // HAL_PLATFORM_LED_THEME
 
+#include "timer_hal.h"
+
+extern void DFU_Check_Reset();
+extern void HAL_DFU_Process();
+
 void platform_startup();
 
+#if PLATFORM_ID == PLATFORM_P2
+static void jump_to_system(uint32_t addr, uint32_t sp) {
+    nonsecure_jump_to_system(addr);
+    (void) sp;
+}
+#else
 __attribute__((naked)) static void jump_to_system(uint32_t addr, uint32_t sp) {
     asm("msr msp, %1\n"
         "bx %0\n" : : "r" (addr), "r" (sp));
 }
+#endif
 
 /* Private typedef -----------------------------------------------------------*/
 typedef  void (*pFunction)(void);
@@ -131,7 +147,7 @@ int main(void)
     //    Configure the MODE button
     //--------------------------------------------------------------------------
     Set_System();
-    BUTTON_Init_Ext();
+    hal_button_init_ext();
 
     // Load led overridden flag before SysTick Timer being initialized
     LedOverridden = feature_is_enabled(FEATURE_FLAG_LED_OVERRIDDEN);
@@ -287,9 +303,9 @@ int main(void)
     }
 
     //--------------------------------------------------------------------------
-    //    Check if BUTTON1 is pressed and determine the status
+    //    Check if HAL_BUTTON1 is pressed and determine the status
     //--------------------------------------------------------------------------
-    if (BUTTON_Is_Pressed(BUTTON1) && (features & BL_BUTTON_FEATURES))
+    if (hal_button_is_pressed(HAL_BUTTON1) && (features & BL_BUTTON_FEATURES))
     {
 #define TIMING_SAFE_MODE 1000
 #define TIMING_DFU_MODE 3000
@@ -301,16 +317,16 @@ int main(void)
 
         TimingBUTTON = TIMING_ALL;
         // uint8_t factory_reset = 0;
-        while (BUTTON_Is_Pressed(BUTTON1) && TimingBUTTON)
+        while (hal_button_is_pressed(HAL_BUTTON1) && TimingBUTTON)
         {
-            if(!RESET_SETTINGS && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESET_MODE)
+            if(!RESET_SETTINGS && hal_button_get_pressed_time(HAL_BUTTON1) > TIMING_RESET_MODE)
             {
                 // if pressed for 10 sec, enter Factory Reset Mode
                 // This tells the WLAN setup to clear the WiFi user profiles on bootup
                 LED_SetRGBColor(RGB_COLOR_WHITE);
                 RESET_SETTINGS = 1;
             }
-            else if(!FACTORY_RESET_MODE && BUTTON_Pressed_Time(BUTTON1) > TIMING_RESTORE_MODE)
+            else if(!FACTORY_RESET_MODE && hal_button_get_pressed_time(HAL_BUTTON1) > TIMING_RESTORE_MODE)
             {
                 if (factory_reset_available) {
                     LED_SetRGBColor(RGB_COLOR_GREEN);
@@ -318,7 +334,7 @@ int main(void)
                     FACTORY_RESET_MODE = 1;
                 }
             }
-            else if(!USB_DFU_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_DFU_MODE)
+            else if(!USB_DFU_MODE && hal_button_get_pressed_time(HAL_BUTTON1) >= TIMING_DFU_MODE)
             {
                 // if pressed for > 3 sec, enter USB DFU Mode
                 if (features&BL_FEATURE_DFU_MODE) {
@@ -326,7 +342,7 @@ int main(void)
                     USB_DFU_MODE = 1;           // stay in DFU mode until the button is released so we have slow-led blinking
                 }
             }
-            else if(!SAFE_MODE && BUTTON_Pressed_Time(BUTTON1) >= TIMING_SAFE_MODE)
+            else if(!SAFE_MODE && hal_button_get_pressed_time(HAL_BUTTON1) >= TIMING_SAFE_MODE)
             {
                 OTA_FLASH_AVAILABLE = 0;
                 REFLASH_FROM_BACKUP = 0;
@@ -379,7 +395,7 @@ int main(void)
             // Restore the Factory Firmware
             // On success the device will reset)
             if (!FACTORY_Flash_Reset()) {
-                if (is_application_valid(ApplicationAddress)) {
+                if (is_application_valid(ApplicationAddress, NULL)) {
                     // we have a valid image to fall back to, so just reset
                     NVIC_SystemReset();
                 }
@@ -416,7 +432,8 @@ int main(void)
 
         // ToDo add CRC check
         // Test if user code is programmed starting from ApplicationAddress
-        if (is_application_valid(ApplicationAddress))
+        uint32_t entry;
+        if (is_application_valid(ApplicationAddress, &entry))
         {
             // Set IWDG Timeout to 5 secs based on platform specific system flags
             IWDG_Reset_Enable(5 * TIMING_IWDG_RELOAD);
@@ -424,11 +441,11 @@ int main(void)
             Reset_System();
 
             // Jump to system firmware
-            uint32_t addr = *(volatile uint32_t*)(ApplicationAddress + 4);
-            uint32_t stack = *(volatile uint32_t*)ApplicationAddress;
+            uint32_t addr = *(volatile uint32_t*)(entry + 4);
+            uint32_t stack = *(volatile uint32_t*)entry;
             jump_to_system(addr, stack);
         }
-#if !HAL_PLATFORM_NRF52840
+#if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
         else
         {
             LED_SetRGBColor(RGB_COLOR_RED);
@@ -455,11 +472,12 @@ int main(void)
     // Main loop
     while (1)
     {
-        //Do nothing
+#if HAL_PLATFORM_BOOTLOADER_USB_PROCESS_IN_MAIN_THREAD
+        HAL_DFU_Process();
+        DFU_Check_Reset();
+#endif // HAL_PLATFORM_BOOTLOADER_USB_PROCESS_IN_MAIN_THREAD
     }
 }
-
-extern void DFU_Check_Reset();
 
 /*******************************************************************************
  * Function Name  : Timing_Decrement
@@ -493,7 +511,9 @@ void Timing_Decrement(void)
         }
     }
 
+#if !HAL_PLATFORM_BOOTLOADER_USB_PROCESS_IN_MAIN_THREAD
     DFU_Check_Reset();
+#endif // !HAL_PLATFORM_BOOTLOADER_USB_PROCESS_IN_MAIN_THREAD
 }
 
 #ifdef USE_FULL_ASSERT

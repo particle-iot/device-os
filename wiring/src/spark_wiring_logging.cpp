@@ -849,7 +849,7 @@ void spark::LogManager::resetSystemCallbacks() {
 
 void spark::LogManager::logMessage(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved) {
 #ifndef LOG_FROM_ISR
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
         return;
     }
 #endif
@@ -869,7 +869,7 @@ void spark::LogManager::logMessage(const char *msg, int level, const char *categ
 
 void spark::LogManager::logWrite(const char *data, size_t size, int level, const char *category, void *reserved) {
 #ifndef LOG_FROM_ISR
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
         return;
     }
 #endif
@@ -889,7 +889,7 @@ void spark::LogManager::logWrite(const char *data, size_t size, int level, const
 
 int spark::LogManager::logEnabled(int level, const char *category, void *reserved) {
 #ifndef LOG_FROM_ISR
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
         return 0;
     }
 #endif

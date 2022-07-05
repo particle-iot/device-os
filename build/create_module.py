@@ -28,7 +28,7 @@ import zlib
 import hashlib
 import json
 import sys
-from functools import reduce
+from functools import reduce, partial
 
 class ModuleFunction(IntEnum):
     NONE = 0
@@ -49,6 +49,7 @@ class Platform(IntEnum):
     BSOM = 23
     B5SOM = 25
     TRACKER = 26
+    P2 = 32
 
 class StructSerializable(struct.Struct):
     def __init__(self, fmt):
@@ -130,6 +131,9 @@ class ModuleFooter(StructSerializable):
 class ModuleFlags(IntFlag):
     NONE = 0x00
     DROP_MODULE_INFO = 0x01
+    #COMPRESSED = 0x02
+    #COMBINED = 0x04
+    ENCRYPTED = 0x08
 
 class ModuleHeader(StructSerializable):
     def __init__(self, start, length, version, platform, function, index=0, flags=None,
@@ -239,6 +243,10 @@ GEN3_RADIO_STACK_FLAGS = ModuleFlags.DROP_MODULE_INFO
 GEN3_RADIO_STACK_DEPENDENCY = ModuleDependency(ModuleFunction.BOOTLOADER, 501)
 GEN3_RADIO_STACK_DEPENDENCY2 = ModuleDependency(ModuleFunction.SYSTEM_PART, 1321, 1)
 
+RTL_PLATFORMS = [Platform.P2]
+RTL_MBR_OFFSET = 0x08000000
+RTL_KM0_PART1_OFFSET = 0x08014000
+
 def main():
     platforms = [x.name.lower() for x in Platform]
     functions = [x.name.lower() for x in ModuleFunction]
@@ -246,7 +254,7 @@ def main():
     parser = argparse.ArgumentParser(description='Convert a raw binary into a Particle module binary')
     parser.add_argument('input', metavar='INPUT', type=argparse.FileType('rb'), help='Input raw bin file')
     parser.add_argument('output', metavar='OUTPUT', type=argparse.FileType('wb'), help='Output Particle module bin file')
-    parser.add_argument('--address', default=0, type=int, help='Start address of the module')
+    parser.add_argument('--address', default=0, type=partial(int, base=0), help='Start address of the module')
     parser.add_argument('--version', default=0, type=int, help='Module version (automatically derived for Gen 3 SoftDevice)')
     parser.add_argument('--platform', required=True, help='Module platform name', choices=platforms)
     parser.add_argument('--function', required=True, help='Module function', choices=functions)
@@ -261,6 +269,7 @@ def main():
     dependencies = [parse_dependency(x) for x in args.dependency]
     platform = Platform[args.platform.upper()]
     function = ModuleFunction[args.function.upper()]
+    index = args.index
     flags = reduce(lambda x, y: x|y, [ModuleFlags[x.upper()] for x in args.flag], ModuleFlags.NONE)
     version = args.version
 
@@ -293,8 +302,17 @@ def main():
         if len(args.flag) == 0:
             flags = GEN3_RADIO_STACK_FLAGS
 
+
+    if platform in RTL_PLATFORMS and function == ModuleFunction.BOOTLOADER:
+        if args.address == RTL_MBR_OFFSET:
+            flags |= ModuleFlags.DROP_MODULE_INFO
+            index = 1
+        if args.address == RTL_KM0_PART1_OFFSET:
+            flags |= ModuleFlags.DROP_MODULE_INFO
+            index = 2
+
     product = (args.product and (function == ModuleFunction.USER_PART))
-    m = Module(bin, args.address, platform, function, version, args.index, flags, dependencies, mcu=args.mcu, product=product)
+    m = Module(bin, args.address, platform, function, version, index, flags, dependencies, mcu=args.mcu, product=product)
     args.output.write(m.dump())
     print(m)
 

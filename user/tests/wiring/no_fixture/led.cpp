@@ -79,7 +79,8 @@ test(LED_01_Updated) {
     RGB.onChange(NULL);
 
     // onChange callback is called every 25ms, so 500ms / 25ms = 20
-    assertMoreOrEqual((end-start), uint32_t(20));
+    assertMoreOrEqual((end-start), uint32_t(20) - 1);
+    assertLessOrEqual((end-start), uint32_t(20) + 1);
 }
 
 
@@ -219,15 +220,15 @@ test(LED_10_ChangeHandlerCalled) {
     RGB.onChange(NULL);
 }
 
-static void assertRgbLedMirrorPinsColor(const pin_t pins[3], uint16_t r, uint16_t g, uint16_t b)
+static void assertRgbLedMirrorPinsColor(const hal_pin_t pins[3], uint16_t r, uint16_t g, uint16_t b)
 {
     // Convert to CCR
-    r = (uint16_t)((((uint32_t)(r)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
-    g = (uint16_t)((((uint32_t)(g)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
-    b = (uint16_t)((((uint32_t)(b)) * 255 * HAL_Led_Rgb_Get_Max_Value(nullptr)) >> 16);
-    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[0])) - (int32_t)(r * ((1UL << hal_pwm_get_resolution(pins[0])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
-    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[1])) - (int32_t)(g * ((1UL << hal_pwm_get_resolution(pins[1])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
-    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[2])) - (int32_t)(b * ((1UL << hal_pwm_get_resolution(pins[2])) - 1) / HAL_Led_Rgb_Get_Max_Value(nullptr))), 1);
+    r = (uint16_t)((((uint32_t)(r)) * 255 * hal_led_get_max_rgb_values(nullptr)) >> 16);
+    g = (uint16_t)((((uint32_t)(g)) * 255 * hal_led_get_max_rgb_values(nullptr)) >> 16);
+    b = (uint16_t)((((uint32_t)(b)) * 255 * hal_led_get_max_rgb_values(nullptr)) >> 16);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[0])) - (int32_t)(r * ((1UL << hal_pwm_get_resolution(pins[0])) - 1) / hal_led_get_max_rgb_values(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[1])) - (int32_t)(g * ((1UL << hal_pwm_get_resolution(pins[1])) - 1) / hal_led_get_max_rgb_values(nullptr))), 1);
+    assertLessOrEqual(std::abs((int32_t)(hal_pwm_get_analog_value_ext(pins[2])) - (int32_t)(b * ((1UL << hal_pwm_get_resolution(pins[2])) - 1) / hal_led_get_max_rgb_values(nullptr))), 1);
 }
 
 test(LED_11_MirroringWorks) {
@@ -235,12 +236,14 @@ test(LED_11_MirroringWorks) {
     RGB.brightness(255);
 
 #if HAL_PLATFORM_NRF52840
-# if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    const pin_t pins[3] = {A4, A5, A3};
-# else
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+    const hal_pin_t pins[3] = {A4, A5, A3};
+#else
     // SoM
-    const pin_t pins[3] = {A1, A0, A7};
-# endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+    const hal_pin_t pins[3] = {A1, A0, A7};
+#endif // PLATFORM_ID != PLATFORM_ARGON && PLATFORM_ID != PLATFORM_BORON
+#elif HAL_PLATFORM_RTL872X
+    const hal_pin_t pins[3] = {A2, A5, S0};
 #else
 #error "Unsupported platform"
 #endif

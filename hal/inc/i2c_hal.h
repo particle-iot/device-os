@@ -24,6 +24,7 @@
 #include "pinmap_hal.h"
 #include "platforms.h"
 #include "system_tick_hal.h"
+#include "system_error.h"
 
 /* Exported types ------------------------------------------------------------*/
 typedef enum hal_i2c_mode_t {
@@ -95,6 +96,7 @@ uint32_t hal_i2c_request(hal_i2c_interface_t i2c, uint8_t address, uint8_t quant
 int32_t hal_i2c_request_ex(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* config, void* reserved);
 void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const hal_i2c_transmission_config_t* config);
 uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved);
+int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* reserved);
 uint32_t hal_i2c_write(hal_i2c_interface_t i2c, uint8_t data, void* reserved);
 int32_t hal_i2c_available(hal_i2c_interface_t i2c, void* reserved);
 int32_t hal_i2c_read(hal_i2c_interface_t i2c, void* reserved);
@@ -125,6 +127,21 @@ bool hal_i2c_is_enabled_deprecated(void);
 void hal_i2c_set_callback_on_received_deprecated(void (*function)(int));
 void hal_i2c_set_callback_on_requested_deprecated(void (*function)(void));
 
+inline uint8_t __attribute__((always_inline))
+hal_i2c_compat_error_from(int system_error) {
+    // TODO: deprecate it
+    // As per: https://docs.particle.io/reference/device-os/firmware/#endtransmission-
+    switch (system_error) {
+        case SYSTEM_ERROR_NONE: return 0;
+        case SYSTEM_ERROR_I2C_BUS_BUSY: return 1;
+        case SYSTEM_ERROR_I2C_ARBITRATION_FAILED: return 2;
+        case SYSTEM_ERROR_I2C_TX_ADDR_TIMEOUT: return 3;
+        case SYSTEM_ERROR_I2C_FILL_DATA_TIMEOUT: return 4;
+        case SYSTEM_ERROR_I2C_TX_DATA_TIMEOUT: return 5;
+        case SYSTEM_ERROR_I2C_STOP_TIMEOUT: return 6;
+        default: return 7;
+    }
+}
 
 #include "i2c_hal_compat.h"
 

@@ -25,7 +25,7 @@ HAL_ADC_Set_Sample_Time(uint8_t sample_time) {
 }
 
 inline int32_t __attribute__((deprecated("Will be removed in 5.x! Use hal_adc_read() instead"), always_inline))
-HAL_ADC_Read(pin_t pin) {
+HAL_ADC_Read(hal_pin_t pin) {
     return hal_adc_read(pin);
 }
 

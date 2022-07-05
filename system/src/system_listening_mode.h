@@ -67,7 +67,6 @@ private:
     std::unique_ptr<SystemSetupConsoleBase> console_;
     system_tick_t timestampStarted_;
     system_tick_t timestampUpdate_;
-
 };
 
 } } /* particle::system */

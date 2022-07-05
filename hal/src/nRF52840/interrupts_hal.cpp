@@ -63,23 +63,23 @@ static void gpiote_interrupt_handler(nrfx_gpiote_pin_t nrf_pin, nrf_gpiote_polar
         return;
     }
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
-    HAL_InterruptHandler user_isr_handle = m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler;
+    hal_interrupt_handler_t user_isr_handle = m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler;
     void *data = m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data;
     if (user_isr_handle) {
         user_isr_handle(data);
     }
 }
 
-void HAL_Interrupts_Init(void) {
+void hal_interrupt_init(void) {
     for (int i = 0; i < EXTI_CHANNEL_NUM; i++) {
         m_exti_channels[i].pin = PIN_INVALID;
     }
     nrfx_gpiote_init();
 }
 
-void HAL_Interrupts_Uninit(void) {
+void hal_interrupt_uninit(void) {
     nrfx_gpiote_uninit();
 }
 
@@ -110,9 +110,8 @@ static nrfx_gpiote_in_config_t get_gpiote_config(uint16_t pin, InterruptMode mod
     return in_config;
 }
 
-int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config) {
-    CHECK_TRUE(is_valid_pin(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* data, InterruptMode mode, hal_interrupt_extra_configuration_t* config) {
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
@@ -173,13 +172,12 @@ int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data
 #endif
 }
 
-int HAL_Interrupts_Detach(uint16_t pin) {
-    return HAL_Interrupts_Detach_Ext(pin, 0, NULL);
+int hal_interrupt_detach(uint16_t pin) {
+    return hal_interrupt_detach_ext(pin, 0, NULL);
 }
 
-int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
-    CHECK_TRUE(is_valid_pin(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
@@ -200,7 +198,7 @@ int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
         m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.handler = NULL;
         m_exti_channels[PIN_MAP[pin].exti_channel].interrupt_callback.data = NULL;
         PIN_MAP[pin].exti_channel = EXTI_CHANNEL_NONE;
-        HAL_Set_Pin_Function(pin, PF_NONE);
+        hal_pin_set_function(pin, PF_NONE);
         return SYSTEM_ERROR_NONE;
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
@@ -215,16 +213,16 @@ int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 #endif
 }
 
-void HAL_Interrupts_Enable_All(void) {
+void hal_interrupt_enable_all(void) {
     sd_nvic_ClearPendingIRQ(GPIOTE_IRQn);
     sd_nvic_EnableIRQ(GPIOTE_IRQn);
 }
 
-void HAL_Interrupts_Disable_All(void) {
+void hal_interrupt_disable_all(void) {
     sd_nvic_DisableIRQ(GPIOTE_IRQn);
 }
 
-void HAL_Interrupts_Suspend(void)
+void hal_interrupt_suspend(void)
 {
     // Save NRF_GPIOTE->CONFIG[], NRF_GPIOTE->INTENSET
     for (unsigned i = 0; i < GPIOTE_CH_NUM; ++i) {
@@ -243,7 +241,7 @@ void HAL_Interrupts_Suspend(void)
     }
 }
 
-void HAL_Interrupts_Restore(void)
+void hal_interrupt_restore(void)
 {
     // Restore pin configuration for all the pins
     for (uint32_t i = 0; i < NUMBER_OF_PINS; i++) {
@@ -261,7 +259,7 @@ void HAL_Interrupts_Restore(void)
     nrf_gpiote_int_enable(s_suspend_data.intenset);
 }
 
-int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved) {
+int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handler_t handler, uint32_t flags, void* reserved) {
     if (irqn < NonMaskableInt_IRQn || irqn > SPIM3_IRQn) {
         return 1;
     }
@@ -269,17 +267,17 @@ int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handle
     int32_t state = HAL_disable_irq();
     volatile uint32_t* isrs = (volatile uint32_t*)&link_ram_interrupt_vectors_location;
 
-    if (handler == NULL && (flags & HAL_DIRECT_INTERRUPT_FLAG_RESTORE)) {
+    if (handler == NULL && (flags & HAL_INTERRUPT_DIRECT_FLAG_RESTORE)) {
         // Restore
         HAL_Core_Restore_Interrupt(irqn);
     } else {
         isrs[IRQN_TO_IDX(irqn)] = (uint32_t)handler;
     }
 
-    if (flags & HAL_DIRECT_INTERRUPT_FLAG_DISABLE) {
+    if (flags & HAL_INTERRUPT_DIRECT_FLAG_DISABLE) {
         // Disable
         sd_nvic_DisableIRQ(irqn);
-    } else if (flags & HAL_DIRECT_INTERRUPT_FLAG_ENABLE) {
+    } else if (flags & HAL_INTERRUPT_DIRECT_FLAG_ENABLE) {
         sd_nvic_EnableIRQ(irqn);
     }
 

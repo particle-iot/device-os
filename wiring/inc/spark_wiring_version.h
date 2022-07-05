@@ -26,7 +26,6 @@
 
 #include "spark_protocol_functions.h"
 
-
 struct __ApplicationProductID {
     __ApplicationProductID(product_id_t id) {
         spark_protocol_set_product_id(spark_protocol_instance(), id);
@@ -82,4 +81,3 @@ The same compiled firmware binary may be used in multiple products that share th
 #endif // PLATFORM_ID != PLATFORM_GCC
 
 #endif	/* SPARK_WIRING_VERSION_H */
-

@@ -12,7 +12,7 @@ STARTUP(startup());
 
 static bool will_process_events()
 {
-    if ((!PLATFORM_THREADING || application_thread_current(nullptr)) && !HAL_IsISR())
+    if ((!PLATFORM_THREADING || application_thread_current(nullptr)) && !hal_interrupt_is_isr())
         return true;
     return false;
 }

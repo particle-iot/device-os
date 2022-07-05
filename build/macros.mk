@@ -50,3 +50,5 @@ add_slash = $(patsubst %, %/,$(call remove_slash,$1))
 target_files_dirs = $(foreach d,$(call remove_slash,$1),$(patsubst $d/%,$(notdir $d)/%,$(call rwildcard,$d/$2,$3)))
 
 check_modular = $(if $(PLATFORM_DYNALIB_MODULES),,$(error "Platform '$(PLATFORM)' does not support dynamic modules"))
+
+get_module_start_address = 0x$(word 1,$(shell $(OBJDUMP) --syms $(TARGET_BASE).elf | grep 'link_module_start'))

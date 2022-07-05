@@ -47,18 +47,20 @@ MAKE=runmake
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
-PLATFORM=( argon boron asom bsom b5som esomx )
-PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker esomx )
+PLATFORM=( argon boron asom bsom b5som esomx p2 )
+PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker esomx p2 )
+PLATFORM_PREBOOTLOADER=( p2 )
 APP=( "" tinker product_id_and_version)
 TEST=( wiring/api wiring/no_fixture wiring/no_fixture_long_running )
 
-MODULAR_PLATFORM=( argon boron asom bsom b5som tracker esomx )
+MODULAR_PLATFORM=( argon boron asom bsom b5som tracker esomx p2 )
 
 filterPlatform PLATFORM
 filterPlatform MODULAR_PLATFORM
 filterPlatform PLATFORM_BOOTLOADER
+filterPlatform PLATFORM_PREBOOTLOADER
 
-echo "running matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER"
+echo "running matrix PLATFORM=$PLATFORM MODULAR_PLATFORM=$MODULAR_PLATFORM PLATFORM_BOOTLOADER=$PLATFORM_BOOTLOADER PLATFORM_PREBOOTLOADER=$PLATFORM_PREBOOTLOADER"
 
 # Build the list of build jobs
 BUILD_JOBS=()
@@ -140,6 +142,12 @@ do
   BUILD_JOBS+=("bootloader ${#BUILD_JOBS[@]} ${cmd}")
 done
 
+for p in "${PLATFORM_PREBOOTLOADER[@]}"
+do
+  cmd="${MAKE} PLATFORM=\"$p\""
+  BUILD_JOBS+=("bootloader/prebootloader ${#BUILD_JOBS[@]} ${cmd}")
+done
+
 # enumerate the matrix, exit 1 if anything fails
 for db in "${DEBUG_BUILD[@]}"
 do
@@ -147,7 +155,7 @@ do
   do
     # Gen 3 overflows with modular DEBUG_BUILD=y, so skip those
     if [[ "$db" = "y" ]]; then
-      if [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]] || [[ "$p" = "b5som" ]] || [[ "$p" = "tracker" ]] || [[ "$p" = "esomx" ]]; then
+      if [[ "$p" = "argon" ]] || [[ "$p" = "boron" ]] || [[ "$p" = "asom" ]] || [[ "$p" = "bsom" ]] || [[ "$p" = "b5som" ]] || [[ "$p" = "tracker" ]] || [[ "$p" = "esomx" ]] || [[ "$p" = "p2" ]]; then
         continue
       fi
     fi

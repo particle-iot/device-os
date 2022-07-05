@@ -23,7 +23,9 @@
 #if HAL_PLATFORM_BLE
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <stddef.h>
+#include <sys/types.h>
 
 #include "ble_hal_defines.h"
 #include "ble_hal_impl.h"
@@ -83,6 +85,7 @@ typedef enum hal_ble_auto_adv_cfg_t {
 } hal_ble_auto_adv_cfg_t;
 
 typedef enum hal_ble_adv_stopped_reason_t {
+    BLE_ADV_STOPPED_REASON_NONE = 0x00,
     BLE_ADV_STOPPED_REASON_TIMEOUT = 0x01,
     BLE_ADV_STOPPED_REASON_LIMIT_REACHED = 0x02
 } hal_ble_adv_stopped_reason_t;

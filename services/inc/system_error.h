@@ -53,7 +53,7 @@
         (COAP, "CoAP error", -1000), /* -1199 ... -1000: CoAP errors */ \
         (COAP_4XX, "CoAP: 4xx", -1100), \
         (COAP_5XX, "CoAP: 5xx", -1132), \
-        (AT_NOT_OK, "AT command failure", -1200), /* -1399 ... -1200: AT command errors */ \
+        (AT_NOT_OK, "AT command failure", -1200), /* -1299 ... -1200: AT command errors */ \
         (AT_RESPONSE_UNEXPECTED, "Failed to parse AT response", -1210), \
         (OTA_MODULE_NOT_FOUND, "Module not found", -1300), /* -1499 ... -1300: OTA update errors */ \
         (OTA_UNSUPPORTED_MODULE, "Unsupported module", -1310), \
@@ -67,7 +67,14 @@
         (OTA_INVALID_FORMAT, "Invalid module format", -1370), \
         (OTA_UPDATES_DISABLED, "Firmware updates are disabled", -1380), \
         (OTA, "Firmware update error", -1390), \
-        (CRYPTO, "Crypto error", -1400) /* -1599 ... -1400: Crypto errors */ \
+        (CRYPTO, "Crypto error", -1400), /* -1599 ... -1400: Crypto errors */ \
+        (I2C_BUS_BUSY, "Bus busy", -1600), /* -1699 ... -1600: I2C errors */ \
+        (I2C_ARBITRATION_FAILED, "Arbitration failed", -1601), \
+        (I2C_TX_ADDR_TIMEOUT, "Send slave address timeout", -1602), \
+        (I2C_FILL_DATA_TIMEOUT, "Fill data timeout", -1603), \
+        (I2C_TX_DATA_TIMEOUT, "Send data timeout", -1604), \
+        (I2C_STOP_TIMEOUT, "Send stop timeout", -1605), \
+        (I2C_ABORT, "I2C transmission abort", -1606)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

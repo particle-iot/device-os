@@ -1,0 +1,713 @@
+/*
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <string.h>
+#include <malloc.h>
+#include "ringbuffer.h"
+#include "i2c_hal.h"
+#include "gpio_hal.h"
+#include "delay_hal.h"
+#include "platforms.h"
+#include "concurrent_hal.h"
+#include "interrupts_hal.h"
+#include "pinmap_impl.h"
+#include "logging.h"
+#include "system_error.h"
+#include "system_tick_hal.h"
+#include "timer_hal.h"
+#include <memory>
+#include "check.h"
+#include "service_debug.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "rtl8721d.h"
+#ifdef __cplusplus
+}
+#endif
+
+#define WAIT_TIMED_ROUTINE(timeout_ms, what, func) ({ \
+    system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                      \
+    int res = 0;                                                                \
+    while ((what)) {                                                            \
+        system_tick_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);           \
+        bool nok = (((timeout_ms * 1000) < dt) && (what));                      \
+        if (nok) {                                                              \
+            res = -1;                                                           \
+            break;                                                              \
+        }                                                                       \
+        if (func()) {                                                           \
+            res = 0;                                                            \
+            break;                                                              \
+        }                                                                       \
+    }                                                                           \
+    res;                                                                        \
+})
+
+#define WAIT_TIMED(timeout_ms, what) ({ \
+    system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                      \
+    bool res = true;                                                            \
+    while ((what)) {                                                            \
+        system_tick_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);           \
+        bool nok = (((timeout_ms * 1000) < dt) && (what));                      \
+        if (nok) {                                                              \
+            res = false;                                                        \
+            break;                                                              \
+        }                                                                       \
+    }                                                                           \
+    res;                                                                        \
+})
+
+class I2cClass {
+public:
+    bool isConfigured() const {
+        return configured_;
+    }
+
+    bool isEnabled() const {
+        return state_ == HAL_I2C_STATE_ENABLED;
+    }
+
+    int init(const hal_i2c_config_t* conf) {
+        os_thread_scheduling(false, nullptr);
+        if (!mutex_) {
+            os_mutex_recursive_create(&mutex_);
+        }
+        lock();
+        os_thread_scheduling(true, nullptr);
+        if (isConfigured()) {
+            CHECK(deInit());
+        }
+        if (isConfigValid(conf)) {
+            rxBuffer_.init((uint8_t*)conf->rx_buffer, conf->rx_buffer_size);
+            txBuffer_.init((uint8_t*)conf->tx_buffer, conf->tx_buffer_size);
+        } else {
+            rxBuffer_.init((uint8_t*)malloc(I2C_BUFFER_LENGTH), I2C_BUFFER_LENGTH);
+            txBuffer_.init((uint8_t*)malloc(I2C_BUFFER_LENGTH), I2C_BUFFER_LENGTH);
+            SPARK_ASSERT(txBuffer_.buffer_ && rxBuffer_.buffer_);
+            heapBuffer_ = true;
+        }
+        I2C_StructInit(&i2cInitStruct_);
+        configured_ = true;
+        unlock();
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int deInit() {
+        if (heapBuffer_) {
+            // The pointers are guaranteed to be non-nullptr when they are inited.
+            free(txBuffer_.buffer_);
+            free(rxBuffer_.buffer_);
+            heapBuffer_ = false;
+        }
+        configured_ = false;
+        state_ = HAL_I2C_STATE_DISABLED;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int begin(hal_i2c_mode_t mode, uint8_t address) {
+        if (isEnabled()) {
+            end();
+        }
+        // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, ENABLE);
+        Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_I2C);
+	    Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_I2C);
+        PAD_PullCtrl(hal_pin_to_rtl_pin(sdaPin_), GPIO_PuPd_UP);               
+	    PAD_PullCtrl(hal_pin_to_rtl_pin(sclPin_), GPIO_PuPd_UP);
+
+        if (mode == I2C_MODE_MASTER) {
+            i2cInitStruct_.I2CMaster  = I2C_MASTER_MODE;
+            i2cInitStruct_.I2CAckAddr = 0; // This is the peer device's slave address in master mode, not needed herein.
+        } else {
+            i2cInitStruct_.I2CMaster  = I2C_SLAVE_MODE;
+            i2cInitStruct_.I2CAckAddr = address; // This is the local device's slave address in slave mode
+        }
+        I2C_Init(i2cDev_, &i2cInitStruct_);
+
+        // Enable restart function
+        i2cDev_->IC_CON |= BIT_CTRL_IC_CON_IC_RESTART_EN;
+        i2cDev_->IC_RX_TL = std::min(rxBuffer_.size(), (size_t)255); // Maximum RX FIFO depth: 255 + 1
+
+	    I2C_Cmd(i2cDev_, ENABLE);
+
+        if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
+            InterruptRegister((IRQ_FUN)i2cSlaveIntHandler, I2C0_IRQ_LP, (uint32_t)this, 7);
+            I2C_INTConfig(i2cDev_, (BIT_IC_INTR_MASK_M_START_DET | BIT_IC_INTR_MASK_M_RX_FULL | BIT_IC_INTR_MASK_M_STOP_DET |
+                                    BIT_IC_INTR_MASK_M_RD_REQ | BIT_IC_INTR_MASK_M_RX_DONE), ENABLE);
+            I2C_ClearAllINT(i2cDev_);
+            InterruptEn(I2C0_IRQ_LP, 7);
+        }
+
+        state_ = HAL_I2C_STATE_ENABLED;
+        HAL_Delay_Milliseconds(10);
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int end() {
+        if (isEnabled()) {
+            if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
+                InterruptDis(I2C0_IRQ_LP);
+	            InterruptUnRegister(I2C0_IRQ_LP);
+                I2C_INTConfig(i2cDev_, (BIT_IC_INTR_MASK_M_START_DET | BIT_IC_INTR_MASK_M_RX_FULL | BIT_IC_INTR_MASK_M_STOP_DET | 
+                                        BIT_IC_INTR_MASK_M_RD_REQ | BIT_IC_INTR_MASK_M_RX_DONE), DISABLE);
+            }
+            I2C_Cmd(i2cDev_, DISABLE);
+            state_ = HAL_I2C_STATE_DISABLED;
+            // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
+            Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_GPIO);
+            Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_GPIO);
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    void reset() {
+        end();
+
+        // Just in case make sure that the pins are correctly configured (they should anyway be at this point)
+        hal_gpio_config_t conf = {};
+        conf.size = sizeof(conf);
+        conf.version = HAL_GPIO_VERSION;
+        conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
+        conf.set_value = true;
+        conf.value = 1;
+        hal_gpio_configure(sdaPin_, &conf, nullptr);
+        conf.value = hal_gpio_read(sclPin_);
+        hal_gpio_configure(sclPin_, &conf, nullptr);
+
+        // Generate up to 9 pulses on SCL to tell slave to release the bus
+        for (int i = 0; i < 9; i++) {
+            hal_gpio_write(sdaPin_, 1);
+            HAL_Delay_Microseconds(50);
+
+            if (hal_gpio_read(sdaPin_) == 0) {
+                hal_gpio_write(sclPin_, 0);
+                HAL_Delay_Microseconds(50);
+                hal_gpio_write(sclPin_, 1);
+                HAL_Delay_Microseconds(50);
+                hal_gpio_write(sclPin_, 0);
+                HAL_Delay_Microseconds(50);
+            } else {
+                break;
+            }
+        }
+
+        // Generate STOP condition: pull SDA low, switch to high
+        hal_gpio_write(sdaPin_, 0);
+        HAL_Delay_Microseconds(50);
+        hal_gpio_write(sclPin_, 1);
+        HAL_Delay_Microseconds(50);
+        hal_gpio_write(sdaPin_, 1);
+        HAL_Delay_Microseconds(50);
+
+        hal_pin_set_function(sdaPin_, PF_I2C);
+        hal_pin_set_function(sclPin_, PF_I2C);
+
+        hal_i2c_mode_t mode = (i2cInitStruct_.I2CMaster  == I2C_MASTER_MODE) ? I2C_MODE_MASTER : I2C_MODE_SLAVE;
+        begin(mode, i2cInitStruct_.I2CAckAddr);
+    }
+
+    int setSpeed(uint32_t speed) {
+        bool enabled = isEnabled();
+        if (enabled) {
+            I2C_Cmd(i2cDev_, DISABLE);
+            state_ = HAL_I2C_STATE_DISABLED;
+        }
+        i2cInitStruct_.I2CSpdMod = ((speed == CLOCK_SPEED_100KHZ) ? I2C_SS_MODE : I2C_FS_MODE);
+        i2cInitStruct_.I2CClk    = ((speed == CLOCK_SPEED_100KHZ) ? 100 : 400);
+        if (enabled) {
+            I2C_Init(i2cDev_, &i2cInitStruct_);
+            I2C_Cmd(i2cDev_, ENABLE);
+            state_ = HAL_I2C_STATE_ENABLED;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int setAddress(uint8_t address) {
+        if (i2cInitStruct_.I2CAckAddr != address) {
+            bool enabled = isEnabled();
+            if (enabled) {
+                I2C_Cmd(i2cDev_, DISABLE);
+                state_ = HAL_I2C_STATE_DISABLED;
+            }
+            i2cInitStruct_.I2CAckAddr = address;
+            if (enabled) {
+                I2C_Init(i2cDev_, &i2cInitStruct_);
+                I2C_Cmd(i2cDev_, ENABLE);
+                state_ = HAL_I2C_STATE_ENABLED;
+            }
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    ssize_t requestFrom(const hal_i2c_transmission_config_t* config) {
+        if (i2cInitStruct_.I2CMaster != I2C_MASTER_MODE) {
+            return 0;
+        }
+        rxBuffer_.reset();
+        uint32_t quantity = std::min((size_t)config->quantity, rxBuffer_.size());
+
+        setAddress(config->address);
+
+        for (uint32_t i = 0; i < quantity; i++) {
+            if(i >= quantity - 1) {
+                if (config->flags & HAL_I2C_TRANSMISSION_FLAG_STOP) {
+                    // Generate stop signal
+                    i2cDev_->IC_DATA_CMD = 0x0003 << 8;
+                } else {
+                    // Generate restart signal
+                    i2cDev_->IC_DATA_CMD = 0x0005 << 8;
+                }
+            } else {
+                i2cDev_->IC_DATA_CMD = 0x0001 << 8;
+            }
+            // Wait for I2C_FLAG_RFNE flag
+            if (WAIT_TIMED_ROUTINE(config->timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_RFNE) == 0, checkAbrt) < 0) {
+                reset();
+                goto ret;
+            }
+            if(checkAbrt()) {
+                LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
+                I2C_ClearAllINT(i2cDev_);
+                goto ret;
+            }
+            rxBuffer_.put((uint8_t)i2cDev_->IC_DATA_CMD);
+        }
+    ret:
+        return rxBuffer_.data();
+    }
+
+    ssize_t available() {
+        return rxBuffer_.data();
+    }
+
+    uint8_t read() {
+        uint8_t data = 0xFF;
+        if (rxBuffer_.get(&data) != 1) {
+            return 0xFF;
+        }
+        return data;
+    }
+
+    uint8_t peek() {
+        uint8_t data = 0xFF;
+        if (rxBuffer_.peek(&data) != 1) {
+            return 0xFF;
+        }
+        return data;
+    }
+
+    void setConfigOrDefault(const hal_i2c_transmission_config_t* config, uint8_t address) {
+        memset(&transConfig_, 0, sizeof(transConfig_));
+        if (config) {
+            memcpy(&transConfig_, config, std::min((size_t)config->size, sizeof(transConfig_)));
+        } else {
+            transConfig_ = {
+                .size = sizeof(hal_i2c_transmission_config_t),
+                .version = 0,
+                .address = address,
+                .reserved = {0},
+                .quantity = 0,
+                .timeout_ms = HAL_I2C_DEFAULT_TIMEOUT_MS,
+                .flags = HAL_I2C_TRANSMISSION_FLAG_STOP
+            };
+        }
+    }
+
+    ssize_t write(uint8_t data) {
+        txBuffer_.put(data);
+        return 1;
+    }
+
+    int endTransmission(uint8_t stop) {
+        if (i2cInitStruct_.I2CMaster != I2C_MASTER_MODE) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+
+        setAddress(transConfig_.address);
+
+        uint32_t quantity = txBuffer_.data();
+        for (uint32_t i = 0; i < quantity; i++) {
+            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
+                reset();
+                return SYSTEM_ERROR_I2C_FILL_DATA_TIMEOUT;
+            }
+            uint8_t data = 0xFF;
+            if (txBuffer_.get(&data) != 1) {
+                return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+            }
+            if(i >= quantity - 1) {
+                if (stop) {
+                    // Generate stop signal
+                    i2cDev_->IC_DATA_CMD = data | (1 << 9);
+                } else {
+                    // Generate restart signal
+                    i2cDev_->IC_DATA_CMD = data | (1 << 10);
+                }
+            } else {
+                // The address will be sent before sending the first data byte
+                i2cDev_->IC_DATA_CMD = data;
+            }
+            if (WAIT_TIMED_ROUTINE(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFE) == 0, checkAbrt) < 0) {
+                reset();
+                return SYSTEM_ERROR_I2C_TX_DATA_TIMEOUT;
+            }
+            if(checkAbrt()) {
+                LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
+                I2C_ClearAllINT(i2cDev_);
+                return SYSTEM_ERROR_CANCELLED;
+            }
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    void flush() {
+        txBuffer_.reset();
+        rxBuffer_.reset();
+    }
+
+    void setOnRequestedCallback(void (*function)(void)) {
+        onRequested_ = function;
+    }
+
+    void setOnReceivedCallback(void (*function)(int)) {
+        onReceived_ = function;
+    }
+
+    int lock() {
+        if (mutex_ && !hal_interrupt_is_isr()) {
+            return os_mutex_recursive_lock(mutex_);
+        }
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    int unlock() {
+        if (mutex_ && !hal_interrupt_is_isr()) {
+            return os_mutex_recursive_unlock(mutex_);
+        }
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    static I2cClass* getInstance(hal_i2c_interface_t i2c) {
+        static I2cClass i2cs[] = {
+            { I2C0_DEV, SDA, SCL }
+        };
+        CHECK_TRUE(i2c < sizeof(i2cs) / sizeof(i2cs[0]), nullptr);
+        return &i2cs[i2c];
+    }
+
+private:
+    I2cClass(I2C_TypeDef* i2cDev, hal_pin_t sda, hal_pin_t scl)
+            : i2cDev_(i2cDev),
+              sdaPin_(sda),
+              sclPin_(scl),
+              configured_(false),
+              heapBuffer_(false),
+              i2cInitStruct_(),
+              onRequested_(nullptr),
+              onReceived_(nullptr),
+              mutex_(nullptr) {
+    }
+    ~I2cClass() = default;
+
+    bool isConfigValid(const hal_i2c_config_t* config) {
+        if ((config == nullptr) || (config->rx_buffer == nullptr || config->rx_buffer_size == 0 ||
+                config->tx_buffer == nullptr || config->tx_buffer_size == 0)) {
+            return false;
+        }
+        return true;
+    }
+
+    bool checkAbrt() {
+        if(I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_TX_ABRT) {
+            return true;
+        }
+        return false;
+    }
+
+    void slaveReadRxFifo() {
+        while (I2C_CheckFlagState(i2cDev_, (BIT_IC_STATUS_RFNE | BIT_IC_STATUS_RFF))) {
+            rxBuffer_.put((uint8_t)I2C_ReceiveData(i2cDev_));
+        }
+        if (onReceived_ && rxBuffer_.data() > 0) {
+            onReceived_(rxBuffer_.data());
+        }
+    }
+
+    static void i2cSlaveIntHandler(void* context) {
+        auto instance = (I2cClass*)context;
+        uint32_t intStatus = I2C_GetINT(instance->i2cDev_);
+
+        if (intStatus & BIT_IC_INTR_STAT_R_START_DET) {
+            I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_START_DET);
+            // Read RX FIFO in case of repeated write
+            instance->slaveReadRxFifo();
+            instance->rxBuffer_.reset();
+            instance->txBuffer_.reset();
+        }
+
+        // Slave receiver
+        if ((intStatus & BIT_IC_INTR_STAT_R_RX_FULL) || (intStatus & BIT_IC_INTR_STAT_R_RX_OVER)) {
+            if (intStatus & BIT_IC_INTR_STAT_R_RX_OVER) {
+                I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RX_OVER);
+            }
+            instance->slaveReadRxFifo();
+        }
+        if (intStatus & BIT_IC_INTR_STAT_R_STOP_DET) {
+            I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_STOP_DET);
+            instance->slaveReadRxFifo();
+        }
+
+        // Slave transmitter
+        if (intStatus & BIT_IC_INTR_STAT_R_RD_REQ) {
+            I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RD_REQ);
+            if (instance->txBuffer_.data() <= 0) {
+                if (instance->onRequested_) {
+                    // User should fill the tx buffer in the callback
+                    instance->onRequested_();
+                }
+            }
+            uint8_t data = 0xFF;
+            if (instance->txBuffer_.get(&data) == 1) {
+                I2C_SlaveSend(instance->i2cDev_, data);
+            } else {
+                I2C_SlaveSend(instance->i2cDev_, 0xFF);
+            }
+        }
+        if (intStatus & BIT_IC_INTR_STAT_R_RX_DONE) {
+            I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RX_DONE);
+            instance->txBuffer_.reset();
+        }
+    }
+
+    I2C_TypeDef* i2cDev_;
+    hal_pin_t sdaPin_;
+    hal_pin_t sclPin_;
+
+    bool configured_;
+    volatile hal_i2c_state_t state_;
+    
+    particle::services::RingBuffer<uint8_t> txBuffer_;
+    particle::services::RingBuffer<uint8_t> rxBuffer_;
+    bool heapBuffer_;
+
+    I2C_InitTypeDef i2cInitStruct_;
+    hal_i2c_transmission_config_t transConfig_;
+
+    void (*onRequested_)(void);
+    void (*onReceived_)(int);
+
+    os_mutex_recursive_t mutex_;
+};
+
+class I2cLock {
+public:
+    I2cLock() = delete;
+
+    I2cLock(I2cClass* i2c)
+            : i2c_(i2c) {
+        i2c_->lock();
+    }
+
+    ~I2cLock() {
+        i2c_->unlock();
+    }
+
+private:
+    I2cClass* i2c_;
+};
+
+
+int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    return instance->init(config);
+}
+
+void hal_i2c_set_speed(hal_i2c_interface_t i2c, uint32_t speed, void* reserved) {
+    auto instance = I2cClass::getInstance(i2c);
+    if (!instance) {
+        return;
+    }
+    I2cLock lk(instance);
+    instance->setSpeed(speed);
+}
+
+void hal_i2c_stretch_clock(hal_i2c_interface_t i2c, bool stretch, void* reserved) {
+    // always enabled
+}
+
+void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address, void* reserved) {
+    auto instance = I2cClass::getInstance(i2c);
+    if (!instance) {
+        return;
+    }
+    I2cLock lk(instance);
+    instance->begin(mode, address);
+}
+
+void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = I2cClass::getInstance(i2c);
+    if (!instance) {
+        return;
+    }
+    I2cLock lk(instance);
+    if (hal_i2c_is_enabled(i2c, nullptr)) {
+        instance->end();
+    }
+}
+
+uint32_t hal_i2c_request(hal_i2c_interface_t i2c, uint8_t address, uint8_t quantity, uint8_t stop, void* reserved) {
+    hal_i2c_transmission_config_t conf = {
+        .size = sizeof(hal_i2c_transmission_config_t),
+        .version = 0,
+        .address = address,
+        .reserved = {0},
+        .quantity = quantity,
+        .timeout_ms = HAL_I2C_DEFAULT_TIMEOUT_MS,
+        .flags = (uint32_t)(stop ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0)
+    };
+    return hal_i2c_request_ex(i2c, &conf, nullptr);
+}
+
+int32_t hal_i2c_request_ex(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* config, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 0);
+    if (!hal_i2c_is_enabled(i2c, nullptr) || !config) {
+        return 0;
+    }
+    I2cLock lk(instance);
+    return instance->requestFrom(config);
+}
+
+void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const hal_i2c_transmission_config_t* config) {
+    auto instance = I2cClass::getInstance(i2c);
+    if (!instance) {
+        return;
+    }
+    I2cLock lk(instance);
+    if (!hal_i2c_is_enabled(i2c, nullptr)) {
+        return;
+    }
+    instance->setConfigOrDefault(config, address);
+}
+
+uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
+    return hal_i2c_compat_error_from(hal_i2c_end_transmission_ext(i2c, stop, reserved));
+}
+
+int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (!hal_i2c_is_enabled(i2c, nullptr)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    I2cLock lk(instance);
+    return instance->endTransmission(stop);
+}
+
+uint32_t hal_i2c_write(hal_i2c_interface_t i2c, uint8_t data, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 0);
+    if (!hal_i2c_is_enabled(i2c, nullptr)) {
+        return 0;
+    }
+    I2cLock lk(instance);
+    return instance->write(data);
+}
+
+int32_t hal_i2c_available(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
+    return instance->available();
+}
+
+int32_t hal_i2c_read(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
+    return instance->read();
+}
+
+int32_t hal_i2c_peek(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
+    return instance->peek();
+}
+
+void hal_i2c_flush(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = I2cClass::getInstance(i2c);
+    if (!instance) {
+        return;
+    }
+    I2cLock lk(instance);
+    instance->flush();
+}
+
+bool hal_i2c_is_enabled(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), false);
+    I2cLock lk(instance);
+    return instance->isEnabled();
+}
+
+void hal_i2c_set_callback_on_received(hal_i2c_interface_t i2c, void (*function)(int),void* reserved) {
+    auto instance = I2cClass::getInstance(i2c);
+    if (!instance) {
+        return;
+    }
+    I2cLock lk(instance);
+    instance->setOnReceivedCallback(function);
+}
+
+void hal_i2c_set_callback_on_requested(hal_i2c_interface_t i2c, void (*function)(void),void* reserved) {
+    auto instance = I2cClass::getInstance(i2c);
+    if (!instance) {
+        return;
+    }
+    I2cLock lk(instance);
+    instance->setOnRequestedCallback(function);
+}
+
+void hal_i2c_enable_dma_mode(hal_i2c_interface_t i2c, bool enable, void* reserved) {
+    // use DMA to send data by default
+}
+
+uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 1);
+    I2cLock lk(instance);
+    instance->reset();
+    return 0;
+}
+
+int32_t hal_i2c_lock(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    return instance->lock();
+}
+
+int32_t hal_i2c_unlock(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    return instance->unlock();
+}
+
+int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
+    // auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    // I2cLock lk(i2c);
+    // if (sleep) {
+        // Suspend I2C
+    // } else {
+        // Restore I2C
+    // }
+    return SYSTEM_ERROR_NONE;
+}

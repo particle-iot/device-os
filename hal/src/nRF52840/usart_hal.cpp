@@ -81,8 +81,8 @@ private:
     NRF_UARTE_Type* uarte_;
 };
 
-inline uint32_t pinToNrf(pin_t pin) {
-    const auto pinMap = HAL_Pin_Map();
+inline uint32_t pinToNrf(hal_pin_t pin) {
+    const auto pinMap = hal_pin_map();
     const auto& entry = pinMap[pin];
     return NRF_GPIO_PIN_MAP(entry.gpio_port, entry.gpio_pin);
 }
@@ -100,7 +100,7 @@ class Usart {
 public:
     Usart(NRF_UARTE_Type* instance, void (*interruptHandler)(void),
             app_irq_priority_t prio, NRF_TIMER_Type* timer,
-            nrf_ppi_channel_t ppi, pin_t tx, pin_t rx, pin_t cts, pin_t rts)
+            nrf_ppi_channel_t ppi, hal_pin_t tx, hal_pin_t rx, hal_pin_t cts, hal_pin_t rts)
             : uarte_(instance),
               interruptHandler_(interruptHandler),
               prio_(prio),
@@ -164,11 +164,11 @@ public:
 
         nrfx_prs_acquire(uarte_, interruptHandler_);
 
-        HAL_GPIO_Write(txPin_, 1);
-        HAL_Pin_Mode(txPin_, OUTPUT);
-        HAL_Pin_Mode(rxPin_, INPUT);
-        HAL_Set_Pin_Function(txPin_, PF_UART);
-        HAL_Set_Pin_Function(rxPin_, PF_UART);
+        hal_gpio_write(txPin_, 1);
+        hal_gpio_mode(txPin_, OUTPUT);
+        hal_gpio_mode(rxPin_, INPUT);
+        hal_pin_set_function(txPin_, PF_UART);
+        hal_pin_set_function(rxPin_, PF_UART);
 
         nrf_uarte_baudrate_set(uarte_, (nrf_uarte_baudrate_t)nrfBaudRate);
         nrf_uarte_configure(uarte_,
@@ -177,14 +177,14 @@ public:
         nrf_uarte_txrx_pins_set(uarte_, pinToNrf(txPin_), pinToNrf(rxPin_));
 
         if (conf.config & SERIAL_FLOW_CONTROL_CTS) {
-            HAL_Pin_Mode(ctsPin_, INPUT);
-            HAL_Set_Pin_Function(ctsPin_, PF_UART);
+            hal_gpio_mode(ctsPin_, INPUT);
+            hal_pin_set_function(ctsPin_, PF_UART);
         }
 
         if (conf.config & SERIAL_FLOW_CONTROL_RTS) {
-            HAL_GPIO_Write(rtsPin_, 1);
-            HAL_Pin_Mode(rtsPin_, OUTPUT);
-            HAL_Set_Pin_Function(rtsPin_, PF_UART);
+            hal_gpio_write(rtsPin_, 1);
+            hal_gpio_mode(rtsPin_, OUTPUT);
+            hal_pin_set_function(rtsPin_, PF_UART);
         }
 
         if (conf.config & SERIAL_FLOW_CONTROL_RTS_CTS) {
@@ -504,22 +504,22 @@ private:
 
         // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
         // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
-        HAL_Pin_Mode(txPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
-        HAL_Pin_Mode(rxPin_, PIN_MODE_NONE);
+        hal_gpio_mode(txPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
+        hal_gpio_mode(rxPin_, PIN_MODE_NONE);
         if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-            HAL_Pin_Mode(rtsPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
+            hal_gpio_mode(rtsPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
         }
         if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
-            HAL_Pin_Mode(ctsPin_, PIN_MODE_NONE);
+            hal_gpio_mode(ctsPin_, PIN_MODE_NONE);
         }
         if (end) {
-            HAL_Set_Pin_Function(txPin_, PF_NONE);
-            HAL_Set_Pin_Function(rxPin_, PF_NONE);
+            hal_pin_set_function(txPin_, PF_NONE);
+            hal_pin_set_function(rxPin_, PF_NONE);
             if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-                HAL_Set_Pin_Function(rtsPin_, PF_NONE);
+                hal_pin_set_function(rtsPin_, PF_NONE);
             }
             if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
-                HAL_Set_Pin_Function(ctsPin_, PF_NONE);
+                hal_pin_set_function(ctsPin_, PF_NONE);
             }
         }
 
@@ -670,12 +670,12 @@ private:
         // 1. Globally
         // 2. Application interrupts through SoftDevice
         // 3. Via BASEPRI
-        if (HAL_IsIrqMasked(nrfx_get_irq_number((void*)uarte_)) || nrf_nvic_state.__cr_flag) {
+        if (hal_interrupt_is_irq_masked(nrfx_get_irq_number((void*)uarte_)) || nrf_nvic_state.__cr_flag) {
             return false;
         }
 
-        if (HAL_IsISR()) {
-            if (!HAL_WillPreempt(nrfx_get_irq_number((void*)uarte_), HAL_ServicedIRQn())) {
+        if (hal_interrupt_is_isr()) {
+            if (!hal_interrupt_will_preempt(nrfx_get_irq_number((void*)uarte_), hal_interrupt_serviced_irqn())) {
                 return false;
             }
         }
@@ -738,10 +738,10 @@ private:
     NRF_TIMER_Type* timer_;
     nrf_ppi_channel_t ppi_;
 
-    pin_t txPin_;
-    pin_t rxPin_;
-    pin_t ctsPin_;
-    pin_t rtsPin_;
+    hal_pin_t txPin_;
+    hal_pin_t rxPin_;
+    hal_pin_t ctsPin_;
+    hal_pin_t rtsPin_;
 
     bool configured_ = false;
     volatile hal_usart_state_t state_ = HAL_USART_STATE_DISABLED;

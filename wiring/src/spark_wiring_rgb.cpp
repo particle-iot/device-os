@@ -85,7 +85,7 @@ void RGBClass::onChange(raw_rgb_change_handler_t* handler)
     onChange(wiring_rgb_change_handler_t(handler));
 }
 
-void RGBClass::mirrorTo(pin_t rpin, pin_t gpin, pin_t bpin, bool invert, bool bootloader)
+void RGBClass::mirrorTo(hal_pin_t rpin, hal_pin_t gpin, hal_pin_t bpin, bool invert, bool bootloader)
 {
     HAL_Core_Led_Mirror_Pin(PARTICLE_LED_RED + LED_MIRROR_OFFSET, rpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);
     HAL_Core_Led_Mirror_Pin(PARTICLE_LED_GREEN + LED_MIRROR_OFFSET, gpin, (uint32_t)invert, (uint8_t)bootloader, nullptr);

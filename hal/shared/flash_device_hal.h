@@ -8,7 +8,8 @@ extern "C" {
 
 typedef enum flash_device_t {
     FLASH_INTERNAL,
-    FLASH_SERIAL
+    FLASH_SERIAL,
+    FLASH_ADDRESS // Address that is directly accessible (e.g. RAM)
 } flash_device_t;
 
 

@@ -53,6 +53,10 @@ ifeq ("$(PLATFORM)","tracker")
 PLATFORM_ID=26
 endif
 
+ifeq ("$(PLATFORM)","p2")
+PLATFORM_ID=32
+endif
+
 ifeq ("$(PLATFORM)","newhal")
 PLATFORM_ID=60000
 endif
@@ -210,6 +214,32 @@ PLATFORM_THREADING=1
 PLATFORM_OPENTHREAD=nrf52840
 endif
 
+ifeq ("$(PLATFORM_ID)","32")
+PLATFORM=p2
+PLATFORM_NAME=tron
+PLATFORM_GEN=3
+PLATFORM_MCU=rtl872x
+PLATFORM_NET=rtl872x
+PLATFORM_WIZNET=W5500
+PRODUCT_DESC=Production Tron
+USBD_VID_PARTICLE=0x2B04
+USBD_PID_DFU=0xD020
+USBD_PID_CDC=0xC020
+DEFAULT_PRODUCT_ID=$(PLATFORM_ID)
+PLATFORM_DYNALIB_MODULES=$(PLATFORM_NAME)
+PLATFORM_PREBOOTLOADER=1
+ifneq ("$(PLATFORM_MCU_CORE)","")
+ARM_CPU=cortex-$(PLATFORM_MCU_CORE)
+MCU_DEVICE=rtl872x_$(PLATFORM_MCU_CORE)
+else
+ARM_CPU=cortex-m33
+MCU_DEVICE=rtl872x
+endif
+PLATFORM_THREADING=1
+MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END=42
+BOOTLOADER_USE_LTO=n
+endif
+
 ifeq ("$(PLATFORM_ID)","60000")
 PLATFORM=newhal
 # needed for conditional compilation of some MCU specific files
@@ -233,6 +263,12 @@ ifeq ("$(MCU_DEVICE)","nRF52840")
     PLATFORM_DFU ?= 0x30000
 endif
 
+ifeq ("$(MCU_DEVICE)","rtl872x")
+	# FIXME: This is not an STM32 device
+    PLATFORM_THREADING=1
+endif
+
+
 
 ifeq ("$(PLATFORM_MCU)","")
 $(error PLATFORM_MCU not defined. Check platform id $(PLATFORM_ID))
@@ -253,6 +289,11 @@ CFLAGS += -D$(MCU_DEVICE)
 
 ifeq ("$(MCU_DEVICE)","nRF52840")
 CFLAGS += -DNRF52840_XXAA
+endif
+
+ifeq ("$(MCU_DEVICE)","rtl872x")
+# FIXME: This is not an STM32 device
+CFLAGS += -DCONFIG_PLATFORM_8721D
 endif
 
 endif

@@ -23,6 +23,9 @@
 #error "Unsupported platform"
 #endif // HAL_PLATFORM_GEN != 3
 
+// FIXME: there should be a way to filter out P2 vs other Gen 3 platforms in spec.js
+#if HAL_PLATFORM_NRF52840
+
 struct padded_module_info {
     uint8_t padding[0x4000];
     module_info_t info;
@@ -67,3 +70,4 @@ test(00_system_describe_does_not_contain_invalid_compat_user_app) {
         assertFalse(!memcmp(&info.modules[i].info, &brokenModule.info, sizeof(module_info_t)));
     }
 }
+#endif // HAL_PLATFORM_NRF52840

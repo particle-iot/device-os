@@ -33,6 +33,7 @@
 #define MODULE_VERIFY_LENGTH                            (1<<3)
 #define MODULE_DROP_MODULE_INFO                         (1<<4)
 #define MODULE_COMPRESSED                               (1<<5)
+#define MODULE_ENCRYPTED                                (1<<6)
 
 #define MODULE_VERIFY_MASK \
             (MODULE_VERIFY_CRC | \

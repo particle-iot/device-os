@@ -26,7 +26,7 @@ void __malloc_unlock(struct _reent *ptr);
 } // extern "C"
 
 static void panic_if_in_isr() {
-    if (HAL_IsISR()) {
+    if (hal_interrupt_is_isr()) {
         PANIC(HeapError, "Heap usage from an ISR");
         while (1);
     }

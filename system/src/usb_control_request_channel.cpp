@@ -511,7 +511,7 @@ bool particle::UsbControlRequestChannel::processVendorRequest(HAL_USB_SetupReque
         case CTRL_REQUEST_DEVICE_ID: {
             // Return the device ID as a hex string
             uint8_t id[16];
-            const unsigned n = HAL_device_ID(id, sizeof(id));
+            const unsigned n = hal_get_device_id(id, sizeof(id));
             if (n > sizeof(id) || req->wLength < n * 2) {
                 return false;
             }

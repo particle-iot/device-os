@@ -102,6 +102,13 @@ exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 none:
 	;
 
+ifeq ("$(PLATFORM)","p2")
+.PHONY: rtl-flash
+rtl_module_start_address = $(subst 0x08,0x00,$(call get_module_start_address))
+rtl-flash:
+	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(call rtl_module_start_address)
+endif
+
 # Program the device using dfu-util. The device should have been placed
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(MAKE_DEPENDENCIES) $(TARGET_BASE).dfu
@@ -117,7 +124,11 @@ else
 endif
 endif
 	@echo Flashing using dfu:
+ifneq ($(PLATFORM_DFU),)
 	$(DFU) -d $(USBD_VID_PARTICLE):$(USBD_PID_DFU) -a 0 -s $(PLATFORM_DFU)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $(lastword $^)
+else
+	$(DFU) -d $(USBD_VID_PARTICLE):$(USBD_PID_DFU) -a 0 -s $(call get_module_start_address)$(if $(PLATFORM_DFU_LEAVE),:leave) -D $(lastword $^)
+endif
 
 # Program the device using the cloud. PARTICLE_DEVICE_ID and PARTICLE_ACCESS_TOKEN must
 # have been defined in the environment before invoking 'make program-cloud'
@@ -171,9 +182,9 @@ size: $(TARGET_BASE).elf
 CRC_LEN = 4
 CRC_BLOCK_LEN = 38
 DEFAULT_SHA_256 = 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
-MOD_INFO_SUFFIX_LEN ?= 2800
-MOD_INFO_SUFFIX = $(DEFAULT_SHA_256)$(MOD_INFO_SUFFIX_LEN)
-CRC_BLOCK_CONTENTS = $(MOD_INFO_SUFFIX)78563412
+DEFAULT_CRC = 78563412
+# This is platform-specific and comes from platform-id.mk
+MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END ?= 0
 
 # OS X + debian systems have shasum, RHEL + windows have sha256sum
 SHASUM_COMMAND_VERSION := $(shell shasum --version 2>/dev/null)
@@ -199,11 +210,19 @@ endif
 # Create a bin file from ELF file
 %.bin : %.elf
 	$(call echo,'Invoking: ARM GNU Create Flash Image')
+	[ ! -f $@.product ] || rm $@.product
+	$(VERBOSE)$(OBJCOPY) $< --dump-section '.module_info_product=$@.product' > /dev/null 2>&1 || true
+	$(VERBOSE)if [ -s $@.product ] && [ $(MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END) -ne 0 ]; then \
+		$(OBJCOPY) $< --dump-section '.module_info_suffix=$@.suffix' && \
+		$(OBJCOPY) $< --remove-section '.module_info_product' && \
+		dd bs=1 if=$@.product of=$@.suffix seek=$$(($(call filesize,$@.suffix) - $(MODULE_SUFFIX_PRODUCT_DATA_OFFSET_FROM_END))) conv=notrunc $(VERBOSE_REDIRECT) && \
+		$(OBJCOPY) $< --update-section '.module_info_suffix=$@.suffix'; \
+	fi
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
 	$(VERBOSE)if [ -s $@.pre_crc ]; then \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) $@.pre_crc > $@.no_crc && \
 	tail -c $(CRC_BLOCK_LEN) $@.pre_crc > $@.crc_block && \
-	test "$(CRC_BLOCK_CONTENTS)" = `xxd -p -c 500 $@.crc_block` && \
+	test "$(DEFAULT_SHA_256)`xxd -s -6 -l 2 -p -c 500 $@.crc_block`$(DEFAULT_CRC)" = `xxd -p -c 500 $@.crc_block` && \
 	$(SHA_256) $@.no_crc | cut -c 1-65 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) conv=notrunc $(VERBOSE_REDIRECT) && \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) $@.pre_crc > $@.no_crc && \
 	 $(CRC) $@.no_crc | cut -c 1-10 | $(XXD) -r -p | dd bs=1 of=$@.pre_crc seek=$$(($(call filesize,$@.pre_crc) - $(CRC_LEN))) conv=notrunc $(VERBOSE_REDIRECT);\

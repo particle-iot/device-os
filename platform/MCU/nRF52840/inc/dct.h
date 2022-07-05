@@ -18,7 +18,7 @@
  */
 #pragma once
 
-#include "hw_config.h"  // for button_config_t
+#include "hw_config.h"  // for hal_button_config_t
 
 #ifdef	__cplusplus
 extern "C" {
@@ -29,7 +29,7 @@ extern "C" {
 #include "platform_flash_modules.h"
 #include "static_assert.h"
 #include "stddef.h"     // for offsetof in C
-#include "rgbled_hal.h" // for led_config_t
+#include "rgbled_hal.h" // for hal_led_config_t
 #include <stdio.h>
 #include "dct_hal.h"
 #include "button_hal.h"
@@ -108,8 +108,8 @@ typedef struct __attribute__((packed)) application_dct {
     uint8_t alt_server_address[DCT_SERVER_ADDRESS_SIZE]; // server address info
     uint8_t device_id[12];                               // the device ID
     uint8_t radio_flags;                 // xxxxxx10 means disable the wifi powersave testmode signal on P1. Any other values in the lower 2 bits means enabled.
-    button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
-    led_config_t led_mirror[4];          // LED mirroring configuration, to be used by bootloader
+    hal_button_config_t mode_button_mirror;  // SETUP/MODE button mirror pin, to be used by bootloader
+    hal_led_config_t led_mirror[4];          // LED mirroring configuration, to be used by bootloader
     uint8_t led_theme[64];               // LED signaling theme
     eap_config_t eap_config;             // WLAN EAP settings
     uint8_t device_secret[15];           // Device secret data (aka "mobile secret")

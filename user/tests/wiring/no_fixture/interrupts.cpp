@@ -39,12 +39,12 @@ test(INTERRUPTS_01_isisr_willpreempt_servicedirqn)
 	static volatile bool cont = false;
 	attachInterruptDirect(SysTick_IRQn, []() {
 		detachInterruptDirect(SysTick_IRQn);
-		assertTrue(HAL_IsISR());
-		assertEqual((IRQn_Type)HAL_ServicedIRQn(), SysTick_IRQn);
+		assertTrue(hal_interrupt_is_isr());
+		assertEqual((int)hal_interrupt_serviced_irqn(), (int)SysTick_IRQn);
 		cont = true;
 	});
 	while (!cont);
-	assertFalse(HAL_WillPreempt(SysTick_IRQn, SysTick_IRQn));
-	assertTrue(HAL_WillPreempt(NonMaskableInt_IRQn, SysTick_IRQn));
-	assertFalse(HAL_WillPreempt(SysTick_IRQn, NonMaskableInt_IRQn));
+	assertFalse(hal_interrupt_will_preempt(SysTick_IRQn, SysTick_IRQn));
+	assertTrue(hal_interrupt_will_preempt(NonMaskableInt_IRQn, SysTick_IRQn));
+	assertFalse(hal_interrupt_will_preempt(SysTick_IRQn, NonMaskableInt_IRQn));
 }

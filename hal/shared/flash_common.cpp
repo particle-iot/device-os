@@ -19,7 +19,7 @@
 #include <cstring>
 #include <algorithm>
 
-int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size) {
+__attribute__((weak)) int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size) {
     /* This function is used for unaligned writes to retrive the data from the flash
      * to keep unaligned unaffected bytes unmodified.
      * Due to how flash memory works, we can simply return 0xff, as the bits in the flash memory
@@ -57,7 +57,7 @@ static int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size
     return 0;
 }
 
-int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size,
+__attribute__((weak)) int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size,
                            hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func)
 {
 

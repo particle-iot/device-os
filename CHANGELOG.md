@@ -116,6 +116,23 @@
 - Makes system_version.h compliant with C; Coalesce FreeRTOS task list internals into single location [#2399](https://github.com/particle-iot/device-os/pull/2399)
 - Improves reliability of a few tests [#2406](https://github.com/particle-iot/device-os/pull/2406)
 
+## 3.2.1-p2.4
+
+### BUGFIXES
+- Fix overlapping OTA/system-part1/user app sections [#385](https://github.com/particle-iot/firmware-private/pull/385)
+- Fix exflash_hal for bootloader usage; remove reentrant libc functions from ROM imports to avoid interference with newlib [#383](https://github.com/particle-iot/firmware-private/pull/383)
+- Connecting to unsecured wifi would cause bus fault [#377](https://github.com/particle-iot/firmware-private/pull/377)
+- [test] minor fix for P2 [#375](https://github.com/particle-iot/firmware-private/pull/375)
+- [rtl872x] hal: i2c thread safe [#361](https://github.com/particle-iot/firmware-private/pull/361)
+
+### ENHANCEMENTS
+- [rtl872x] hal: support accessing the OTP built in the external flash [#379](https://github.com/particle-iot/firmware-private/pull/379)
+- [rtl872x] hal: add ADC calibration. [#380](https://github.com/particle-iot/firmware-private/pull/380)
+- [rtl872x] hal: supports Serial3. [#362](https://github.com/particle-iot/firmware-private/pull/362)
+
+### INTERNAL
+- Add new openocd version [#366](https://github.com/particle-iot/firmware-private/pull/366)
+
 ## 3.2.0
 
 ### BUGFIXES

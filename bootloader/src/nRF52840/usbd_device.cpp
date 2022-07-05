@@ -189,7 +189,7 @@ const uint8_t USBD_MsftStrDesc[] = {
 
 char* device_id_as_string(char* buf) {
   uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
-  unsigned deviceIdLen = HAL_device_ID(deviceId, sizeof(deviceId));
+  unsigned deviceIdLen = hal_get_device_id(deviceId, sizeof(deviceId));
   bytes2hexbuf_lower_case(deviceId, deviceIdLen, buf);
   return buf;
 }

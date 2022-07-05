@@ -1,15 +1,15 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION=${VERSION:="4.0.0-alpha.2"}
+VERSION=${VERSION:="5.0.0-alpha.1"}
 
 function display_help ()
 {
     echo '
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|asom|boron|bsom...
-                  |b5som|esomx>...
-                  | --platform-id=<12|13|15|22|23|25|26>)
+                  |b5som|esomx|p2>...
+                  | --platform-id=<12|13|15|22|23|25|26|32>)
                   [--debug] [--help] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -238,6 +238,10 @@ elif [ ! -z $PLATFORM ]; then
             PLATFORM_ID="26"
             GEN3=true
             ;;
+        "p2")
+            PLATFORM_ID="32"
+            GEN3=true
+            ;;
         *)
             echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
             exit 6
@@ -271,6 +275,10 @@ else
             ;;
         26)
             PLATFORM="tracker"
+            GEN3=true
+            ;;
+        32)
+            PLATFORM="p2"
             GEN3=true
             ;;
         *)
@@ -313,7 +321,7 @@ rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 #########################
 
 # GEN3
-if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ]; then
+if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ] || [ $PLATFORM_ID -eq 32 ]; then
     # Configure
     if [ $DEBUG = true ]; then
         cd ../main
@@ -329,7 +337,7 @@ if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ]
     if [ "$MODULAR" = "n" ]; then
         declare -a apps=("tinker-serial1-debugging" "tinker-serial-debugging")
     else
-        declare -a apps=("tinker")
+        declare -a apps=("tinker" "tinker-fqc")
     fi
 
     for app in ${apps[@]}; do
@@ -381,3 +389,21 @@ eval $MAKE_COMMAND
 
 # Migrate file(s) into output interface
 release_binary "bootloader" "bootloader" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+
+# Prebootloader
+if [ $PLATFORM_ID -eq 32 ]; then
+cd ../bootloader/prebootloader
+
+COMPILE_LTO="n"
+DEBUG_BUILD="n"
+SUFFIX="-m"
+
+MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=$COMPILE_LTO"
+echo $MAKE_COMMAND
+eval $MAKE_COMMAND
+
+# Migrate file(s) into output interface
+release_binary "prebootloader-mbr" "prebootloader-mbr" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+release_binary "prebootloader-part1" "prebootloader-part1" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
+
+fi

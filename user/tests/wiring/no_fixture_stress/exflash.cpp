@@ -19,21 +19,32 @@
 #include "unit-test/unit-test.h"
 #include "scope_guard.h"
 
-#if HAL_PLATFORM_FILESYSTEM && HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_PROHIBIT_XIP
+#if HAL_PLATFORM_FILESYSTEM && (HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X) && !HAL_PLATFORM_PROHIBIT_XIP
 
-test(EXFLASH_00_ConcurrentXipAndQspiUsageStress) {
+void performXipRead() {
+    for (uint32_t* addr = (uint32_t*)EXTERNAL_FLASH_XIP_BASE; !exit && addr < (uint32_t*)(EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_SIZE); addr++) {
+        // We need to be doing something useful here, so that XIP accesses are not optimized out
+        uint32_t result = HAL_Core_Compute_CRC32((const uint8_t*)addr, sizeof(*addr));
+        (void)HAL_Core_Compute_CRC32((const uint8_t*)&result, sizeof(result));
+    }
+}
+
+__attribute__((section(".xip.text"), noinline)) void performXipReadFromXipCode() {
+    for (uint32_t* addr = (uint32_t*)EXTERNAL_FLASH_XIP_BASE; !exit && addr < (uint32_t*)(EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_SIZE); addr++) {
+        // We need to be doing something useful here, so that XIP accesses are not optimized out
+        uint32_t result = HAL_Core_Compute_CRC32((const uint8_t*)addr, sizeof(*addr));
+        (void)HAL_Core_Compute_CRC32((const uint8_t*)&result, sizeof(result));
+    }
+}
+
+test(EXFLASH_00_ConcurrentXipAndWriteErasureUsageStress) {
     std::atomic_bool exit;
     exit = false;
 
     Thread* t = new Thread("test", [](void* param) -> os_thread_return_t {
         std::atomic_bool& exit = *static_cast<std::atomic_bool*>(param);
-        constexpr size_t exflashSize = 4 * 1024 * 1024; // 4MB
         while (!exit) {
-            for (uint32_t* addr = (uint32_t*)EXTERNAL_FLASH_XIP_BASE; !exit && addr < (uint32_t*)(EXTERNAL_FLASH_XIP_BASE + exflashSize); addr++) {
-                // We need to be doing something useful here, so that XIP accesses are not optimized out
-                uint32_t result = HAL_Core_Compute_CRC32((const uint8_t*)addr, sizeof(*addr));
-                (void)HAL_Core_Compute_CRC32((const uint8_t*)&result, sizeof(result));
-            }
+            performXipRead();
         }
     }, (void*)&exit);
     assertTrue(t);
@@ -59,4 +70,37 @@ test(EXFLASH_00_ConcurrentXipAndQspiUsageStress) {
     }
 }
 
-#endif // HAL_PLATFORM_FILESYSTEM && HAL_PLATFORM_NRF52840
+test(EXFLASH_01_ConcurrentXipCodeAndWriteErasureUsageStress) {
+    std::atomic_bool exit;
+    exit = false;
+
+    Thread* t = new Thread("test", [](void* param) -> os_thread_return_t {
+        std::atomic_bool& exit = *static_cast<std::atomic_bool*>(param);
+        while (!exit) {
+            performXipReadFromXipCode();
+        }
+    }, (void*)&exit);
+    assertTrue(t);
+
+    SCOPE_GUARD({
+        exit = true;
+        t->join();
+        delete t;
+    });
+
+    // 30 seconds
+    constexpr system_tick_t duration = 30 * 1000;
+
+    for (system_tick_t now = millis(), begin = now; now < begin + duration; now = millis()) {
+        uint32_t val = rand();
+        uint32_t tmp;
+        EEPROM.get(0, tmp);
+
+        val = val ^ tmp;
+        EEPROM.put(0, val);
+        EEPROM.get(0, tmp);
+        assertEqual(tmp, val);
+    }
+}
+
+#endif // HAL_PLATFORM_FILESYSTEM && (HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X) && !HAL_PLATFORM_PROHIBIT_XIP

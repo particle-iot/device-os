@@ -1077,9 +1077,9 @@ void Spark_Protocol_Init(void)
             particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
         }
 
-        uint8_t id_length = HAL_device_ID(NULL, 0);
+        uint8_t id_length = hal_get_device_id(NULL, 0);
         uint8_t id[id_length];
-        HAL_device_ID(id, id_length);
+        hal_get_device_id(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
         // Enable device-initiated describe messages

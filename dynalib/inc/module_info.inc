@@ -91,6 +91,10 @@ extern "C" {
 
 extern char link_module_start;
 extern char link_module_end;
+#if PLATFORM_ID == 32
+extern uintptr_t link_dynalib_start;
+extern uintptr_t link_dynalib_flash_start;
+#endif
 
 #ifndef MODULE_VERSION
     #error MODULE_VERSION not defined
@@ -103,8 +107,6 @@ extern char link_module_end;
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER || MODULE_FUNCTION == MOD_FUNC_MONO_FIRMWARE
     #if !defined(MODULE_INDEX)
         #define MODULE_INDEX 0
-    #elif MODULE_INDEX != 0
-        #error MODULE_INDEX must be 0 for bootloader and monolithic firmware.
     #endif
 #endif
 
@@ -131,16 +133,35 @@ const module_info_t module_info = {
     { MODULE_DEPENDENCY2 }
 };
 
-/**
- * 4 additional bytes for the product_id and product_version values.
- */
-#define MODULE_INFO_SUFFIX_EXTRA 4
-
 // These are placed in a non-default (.rodata) section because they come after all the .rodata is included in the linker scripts.
 // Doing it like this is simpler than setting up exclusion rules.
 
+#if !HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
+#define MODULE_INFO_SUFFIX_EXTRA (4)
+#else
+#define MODULE_INFO_SUFFIX_EXTRA (0)
+#endif // !HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
+
 __attribute__((section(".modinfo.module_info_suffix"), used)) const module_info_suffix_t module_info_suffix = {
-    0, { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 }, (uint16_t)(sizeof(module_info_suffix_t)+MODULE_INFO_SUFFIX_EXTRA)
+#if HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
+#if HAL_PLATFORM_MODULE_DYNAMIC_LOCATION
+    {
+        .ext = { MODULE_INFO_EXTENSION_DYNAMIC_LOCATION, sizeof(module_info_dynamic_location_ext_t) },
+        .module_start_address = &link_module_start,
+        .dynalib_load_address = &link_dynalib_flash_start,
+        .dynalib_start_address = &link_dynalib_start,
+    },
+#endif // HAL_PLATFORM_MODULE_DYNAMIC_LOCATION
+    // ext_product
+    {
+        .ext = { MODULE_INFO_EXTENSION_PRODUCT_DATA, sizeof(module_info_product_data_ext_t) },
+        .id = MODULE_INFO_PRODUCT_ID_DEFAULT,
+        .version = MODULE_INFO_PRODUCT_VERSION_DEFAULT
+    },
+#endif // HAL_PLATFORM_MODULE_SUFFIX_EXTENSIONS
+    0,
+    { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32 },
+    (uint16_t)(sizeof(module_info_suffix_t)) + MODULE_INFO_SUFFIX_EXTRA
 };
 
 __attribute__((section(".modinfo.module_info_crc"), used)) const module_info_crc_t module_info_crc = {

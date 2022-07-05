@@ -59,7 +59,7 @@ using namespace particle::control::common;
 
 int getDeviceId(ctrl_request* req) {
     uint8_t id[HAL_DEVICE_ID_SIZE] = {};
-    const auto n = HAL_device_ID(id, sizeof(id));
+    const auto n = hal_get_device_id(id, sizeof(id));
     if (n != HAL_DEVICE_ID_SIZE) {
         return SYSTEM_ERROR_UNKNOWN;
     }
@@ -236,8 +236,6 @@ int echo(ctrl_request* req) {
     return 0;
 }
 
-
-#if HAL_PLATFORM_NRF52840
 // TODO
 int handleSetSecurityKeyRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -266,8 +264,6 @@ int handleGetServerProtocolRequest(ctrl_request*) {
 int handleSetSoftapSsidRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
-
-#endif // HAL_PLATFORM_NRF52840
 
 } // particle::control::config
 

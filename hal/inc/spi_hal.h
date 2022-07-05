@@ -88,7 +88,7 @@ typedef struct hal_spi_info_t {
     uint32_t clock;
     uint8_t bit_order;
     uint8_t data_mode;
-    pin_t ss_pin;
+    hal_pin_t ss_pin;
 } hal_spi_info_t;
 
 typedef struct hal_spi_transfer_status_t {
