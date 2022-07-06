@@ -290,38 +290,48 @@ int HAL_FLASH_End(void* reserved)
         auto updatedModule = parseModule(g_updateFile);
         auto desc = deviceConfig.describe.isValid() ? deviceConfig.describe : defaultDescribe();
         auto modules = desc.modules();
-        bool foundModule = false;
-        for (auto& module: modules) {
-            if (module.function() == updatedModule.function && module.index() == updatedModule.index) {
-                // Update module info
-                module.version(updatedModule.version);
-                config::ModuleInfo::Dependencies deps;
-                if (updatedModule.dependency1.function != MODULE_FUNCTION_NONE) {
-                    config::ModuleDependencyInfo dep;
-                    dep.function((module_function_t)updatedModule.dependency1.function);
-                    dep.index(updatedModule.dependency1.index);
-                    dep.version(updatedModule.dependency1.version);
-                    deps.push_back(dep);
-                }
-                if (updatedModule.dependency2.function != MODULE_FUNCTION_NONE) {
-                    config::ModuleDependencyInfo dep;
-                    dep.function((module_function_t)updatedModule.dependency2.function);
-                    dep.index(updatedModule.dependency2.index);
-                    dep.version(updatedModule.dependency2.version);
-                    deps.push_back(dep);
-                }
-                module.dependencies(deps);
-                module.hash(std::string((const char*)updatedModule.hash, sizeof(updatedModule.hash)));
-                desc.modules(modules);
-                deviceConfig.describe = desc;
-                foundModule = true;
+        // Find module
+        config::ModuleInfo* module = nullptr;
+        for (auto& m: modules) {
+            if (m.function() == updatedModule.function && m.index() == updatedModule.index) {
+                module = &m;
                 break;
             }
         }
-        if (foundModule) {
+        if (!module && updatedModule.function == MODULE_FUNCTION_USER_PART) {
+            for (auto& m: modules) {
+                if (m.function() == MODULE_FUNCTION_USER_PART) { // Ignore index
+                    module = &m;
+                    break;
+                }
+            }
+        }
+        if (module) {
+            // Update module info
             LOG(INFO, "Applying module update: function: \"%s\", index: %d, version: %d",
                     system::module_function_string((module_function_t)updatedModule.function), (int)updatedModule.index,
                     (int)updatedModule.version);
+            module->index(updatedModule.index);
+            module->version(updatedModule.version);
+            config::ModuleInfo::Dependencies deps;
+            if (updatedModule.dependency1.function != MODULE_FUNCTION_NONE) {
+                config::ModuleDependencyInfo dep;
+                dep.function((module_function_t)updatedModule.dependency1.function);
+                dep.index(updatedModule.dependency1.index);
+                dep.version(updatedModule.dependency1.version);
+                deps.push_back(dep);
+            }
+            if (updatedModule.dependency2.function != MODULE_FUNCTION_NONE) {
+                config::ModuleDependencyInfo dep;
+                dep.function((module_function_t)updatedModule.dependency2.function);
+                dep.index(updatedModule.dependency2.index);
+                dep.version(updatedModule.dependency2.version);
+                deps.push_back(dep);
+            }
+            module->dependencies(deps);
+            module->hash(std::string((const char*)updatedModule.hash, sizeof(updatedModule.hash)));
+            desc.modules(modules);
+            deviceConfig.describe = desc;
             moduleUpdatePending = true;
         } else {
             LOG(INFO, "Unsupported module: function: \"%s\", index: %d, version: %d",

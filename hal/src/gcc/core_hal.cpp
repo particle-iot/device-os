@@ -248,7 +248,7 @@ void HAL_Core_System_Reset(void)
             argv.push_back(arg.data());
         }
         argv.push_back(nullptr);
-        LOG(INFO, "Resetting device");
+        LOG(INFO, "Resetting device\n\n\n");
         execvp(argv[0], argv.data());
         throw std::runtime_error("Failed to reset device"); // execvp() failed
     } catch (const std::exception& e) {
