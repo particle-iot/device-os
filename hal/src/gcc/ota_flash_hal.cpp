@@ -1,6 +1,12 @@
+#include <filesystem>
+#include <fstream>
+#include <algorithm>
 #include <memory>
+#include <random>
 #include <cstring>
-#include <cstdio>
+
+#include <boost/algorithm/hex.hpp>
+#include <boost/endian/conversion.hpp>
 
 #include "ota_flash_hal.h"
 #include "device_config.h"
@@ -8,20 +14,113 @@
 #include "core_hal.h"
 #include "filesystem.h"
 #include "bytes2hexbuf.h"
+#include "module_info.h"
+#include "../../../system/inc/system_info.h" // FIXME
 
 using namespace particle;
+namespace fs = std::filesystem;
+namespace endian = boost::endian;
+
+bool moduleUpdatePending = false;
 
 namespace {
 
-config::Describe defaultDescribe() {
-    auto desc = config::Describe::fromString("{\"p\": 0,\"m\":[{\"f\":\"m\",\"n\":\"0\",\"v\":0,\"d\":[]}]}");
-    desc.platformId(deviceConfig.platform_id);
-    auto modules = desc.modules();
-    for (auto& module: modules) {
-        module.version(MODULE_VERSION);
+const size_t MODULE_PREFIX_SIZE = 24; // sizeof(module_info_t) on a 32-bit platform
+const size_t MODULE_SUFFIX_SIZE = 36; // sizeof(module_info_suffix_t) on a 32-bit platform
+
+struct ParsedModuleInfo {
+    uint32_t startAddress;
+    uint32_t endAddress;
+    uint16_t version;
+    uint16_t platformId;
+    uint8_t function;
+    uint8_t index;
+    struct {
+        uint8_t function;
+        uint8_t index;
+        uint16_t version;
+    } dependency1;
+    struct {
+        uint8_t function;
+        uint8_t index;
+        uint16_t version;
+    } dependency2;
+    uint8_t hash[32];
+};
+
+ParsedModuleInfo parseModule(const fs::path& file) {
+    std::ifstream in(file, std::ios::binary);
+    if (in.fail()) {
+        throw std::runtime_error("Failed to open file");
     }
-    desc.modules(modules);
-    return desc;
+    in.seekg(0, std::ios::end);
+    if (in.tellg() == (std::ifstream::pos_type)-1) {
+        throw std::runtime_error("Failed to read file");
+    }
+    size_t fileSize = in.tellg();
+    if (fileSize <= MODULE_PREFIX_SIZE + MODULE_SUFFIX_SIZE + 4 /* CRC-32 */) {
+        throw std::runtime_error("Invalid module size");
+    }
+    // Scan the first few KBs of the module binary for something that looks like a valid module header
+    auto prefixSize = std::min<size_t>(16 * 1024, fileSize - MODULE_SUFFIX_SIZE - 4 /* CRC-32 */);
+    std::string prefix(prefixSize, '\0');
+    in.seekg(0);
+    in.read(prefix.data(), prefixSize);
+    if (in.fail()) {
+        throw std::runtime_error("Failed to read file");
+    }
+    ParsedModuleInfo info = {};
+    bool foundHeader = false;
+    size_t offs = 0;
+    while (offs < prefixSize) {
+        // Start address
+        memcpy(&info.startAddress, prefix.data() + offs, sizeof(info.startAddress));
+        info.startAddress = endian::little_to_native(info.startAddress);
+        // End address
+        memcpy(&info.endAddress, prefix.data() + offs + 4, sizeof(info.endAddress));
+        info.endAddress = endian::little_to_native(info.endAddress);
+        // Version
+        memcpy(&info.version, prefix.data() + offs + 10, sizeof(info.version));
+        info.version = endian::little_to_native(info.version);
+        // Platform ID
+        memcpy(&info.platformId, prefix.data() + offs + 12, sizeof(info.platformId));
+        info.platformId = endian::little_to_native(info.platformId);
+        // Function
+        memcpy(&info.function, prefix.data() + offs + 14, sizeof(info.function));
+        // Index
+        memcpy(&info.index, prefix.data() + offs + 15, sizeof(info.index));
+        // Dependency 1
+        memcpy(&info.dependency1.function, prefix.data() + offs + 16, sizeof(info.dependency1.function));
+        memcpy(&info.dependency1.index, prefix.data() + offs + 17, sizeof(info.dependency1.index));
+        memcpy(&info.dependency1.version, prefix.data() + offs + 18, sizeof(info.dependency1.version));
+        info.dependency1.version = endian::little_to_native(info.dependency1.version);
+        // Dependency 2
+        memcpy(&info.dependency2.function, prefix.data() + offs + 20, sizeof(info.dependency2.function));
+        memcpy(&info.dependency2.index, prefix.data() + offs + 21, sizeof(info.dependency2.index));
+        memcpy(&info.dependency2.version, prefix.data() + offs + 22, sizeof(info.dependency2.version));
+        info.dependency2.version = endian::little_to_native(info.dependency2.version);
+        if (info.endAddress <= info.startAddress ||
+                info.endAddress - info.startAddress + 4 /* CRC-32 */ != fileSize ||
+                info.platformId != deviceConfig.platform_id ||
+                !system::is_module_function_valid((module_function_t)info.function) ||
+                (info.dependency1.function != MODULE_FUNCTION_NONE && !system::is_module_function_valid((module_function_t)info.dependency1.function)) ||
+                (info.dependency2.function != MODULE_FUNCTION_NONE && !system::is_module_function_valid((module_function_t)info.dependency2.function)) ||
+                (info.dependency1.function == MODULE_FUNCTION_NONE && (info.dependency1.index != 0 || info.dependency1.version != 0)) ||
+                (info.dependency2.function == MODULE_FUNCTION_NONE && (info.dependency2.index != 0 || info.dependency2.version != 0))) {
+            continue;
+        }
+        foundHeader = true;
+        break;
+    }
+    if (!foundHeader) {
+        throw std::runtime_error("Failed to parse module header");
+    }
+    in.seekg(fileSize - 4 /* CRC-32 */ - 2 /* size */ - sizeof(info.hash));
+    in.read((char*)info.hash, sizeof(info.hash));
+    if (in.fail()) {
+        throw std::runtime_error("Failed to read file");
+    }
+    return info;
 }
 
 module_dependency_t halModuleDependency(const config::ModuleDependencyInfo& info) {
@@ -38,6 +137,30 @@ module_bounds_location_t moduleLocation(const config::ModuleInfo& module) {
     }
     return MODULE_BOUNDS_LOC_INTERNAL_FLASH;
 }
+
+config::Describe defaultDescribe() {
+    auto desc = config::Describe::fromString("{\"p\": 0,\"m\":[{\"f\":\"m\",\"n\":\"0\",\"v\":0,\"d\":[]}]}");
+    desc.platformId(deviceConfig.platform_id);
+    auto modules = desc.modules();
+    for (auto& module: modules) {
+        module.version(MODULE_VERSION);
+    }
+    desc.modules(modules);
+    return desc;
+}
+
+std::string genUpdateFileName() {
+    std::random_device rd;
+    std::uniform_int_distribution<int> dist(0, 255);
+    std::string suff(16, '\0');
+    for (size_t i = 0; i < suff.size(); ++i) {
+        suff[i] = dist(rd);
+    }
+    return "update_" + boost::algorithm::hex(suff) + ".bin";
+}
+
+fs::path g_updateFile;
+std::ofstream g_updateStream;
 
 } // namespace
 
@@ -68,8 +191,8 @@ int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
                 .location = moduleLocation(module)
             },
             .info = {
-                .module_start_address = (const char*)0 + moduleAddr,
-                .module_end_address = (const char*)0 + moduleAddr + module.maximumSize(),
+                .module_start_address = (char*)0 + moduleAddr,
+                .module_end_address = (char*)0 + moduleAddr + module.maximumSize(),
                 .reserved = 0,
                 .flags = 0,
                 .module_version = module.version(),
@@ -105,6 +228,7 @@ int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
         if (module.dependencies().size() >= 2) {
             halModule.info.dependency2 = halModuleDependency(module.dependencies().at(1));
         }
+        memcpy(halModule.suffix.sha, module.hash().data(), std::min(sizeof(halModule.suffix.sha), module.hash().size()));
         moduleAddr += module.maximumSize();
     }
     info->platform_id = deviceConfig.platform_id;
@@ -128,21 +252,41 @@ uint16_t HAL_OTA_ChunkSize()
     return 512;
 }
 
-FILE* output_file;
-
 bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved)
 {
-    output_file = fopen("output.bin", "wb");
-    DEBUG("flash started");
-    return output_file;
+    try {
+        g_updateFile = fs::temp_directory_path().append(genUpdateFileName());
+        g_updateStream.open(g_updateFile, std::ios::binary);
+        if (g_updateStream.fail()) {
+            throw std::runtime_error("Failed to create file");
+        }
+        return true;
+    } catch (const std::exception& e) {
+        LOG(ERROR, "%s", e.what());
+        g_updateStream.close();
+        fs::remove(g_updateFile);
+        return false;
+    }
 }
 
 int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, void* reserved)
 {
-	DEBUG("flash write %d %d", address, length);
-	fseek(output_file, address, SEEK_SET);
-    fwrite(pBuffer, length, 1, output_file);
-    return 0;
+    try {
+        if (!g_updateStream.is_open()) {
+            throw std::runtime_error("File is not open");
+        }
+        g_updateStream.seekp(address);
+        g_updateStream.write((const char*)pBuffer, length);
+        if (g_updateStream.fail()) {
+            throw std::runtime_error("Failed to write to file");
+        }
+        return 0;
+    } catch (const std::exception& e) {
+        LOG(ERROR, "%s", e.what());
+        g_updateStream.close();
+        fs::remove(g_updateFile);
+        return SYSTEM_ERROR_IO;
+    }
 }
 
 int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
@@ -152,9 +296,58 @@ int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flag
 
 int HAL_FLASH_End(void* reserved)
 {
-	 fclose(output_file);
-	 output_file = NULL;
-     return HAL_UPDATE_APPLIED;
+    try {
+        if (!g_updateStream.is_open()) {
+            throw std::runtime_error("File is not open");
+        }
+        g_updateStream.close();
+        auto updatedModule = parseModule(g_updateFile);
+        auto desc = deviceConfig.describe.isValid() ? deviceConfig.describe : defaultDescribe();
+        auto modules = desc.modules();
+        bool foundModule = false;
+        for (auto& module: modules) {
+            if (module.function() == updatedModule.function && module.index() == updatedModule.index) {
+                // Update module info
+                module.version(updatedModule.version);
+                config::ModuleInfo::Dependencies deps;
+                if (updatedModule.dependency1.function != MODULE_FUNCTION_NONE) {
+                    config::ModuleDependencyInfo dep;
+                    dep.function((module_function_t)updatedModule.dependency1.function);
+                    dep.index(updatedModule.dependency1.index);
+                    dep.version(updatedModule.dependency1.version);
+                    deps.push_back(dep);
+                }
+                if (updatedModule.dependency2.function != MODULE_FUNCTION_NONE) {
+                    config::ModuleDependencyInfo dep;
+                    dep.function((module_function_t)updatedModule.dependency2.function);
+                    dep.index(updatedModule.dependency2.index);
+                    dep.version(updatedModule.dependency2.version);
+                    deps.push_back(dep);
+                }
+                module.dependencies(deps);
+                module.hash(std::string((const char*)updatedModule.hash, sizeof(updatedModule.hash)));
+                desc.modules(modules);
+                deviceConfig.describe = desc;
+                foundModule = true;
+                break;
+            }
+        }
+        if (foundModule) {
+            LOG(INFO, "Applying module update: function: %d, index: %d, version: %d", (int)updatedModule.function,
+                    (int)updatedModule.index, (int)updatedModule.version);
+            moduleUpdatePending = true;
+        } else {
+            LOG(INFO, "Unsupported module: function: %d, index: %d, version: %d", (int)updatedModule.function,
+                    (int)updatedModule.index, (int)updatedModule.version);
+        }
+        fs::remove(g_updateFile);
+        return HAL_UPDATE_APPLIED_PENDING_RESTART;
+    } catch (const std::exception& e) {
+        LOG(ERROR, "%s", e.what());
+        g_updateStream.close();
+        fs::remove(g_updateFile);
+        return SYSTEM_ERROR_IO;
+    }
 }
 
 int HAL_FLASH_ApplyPendingUpdate(bool dryRun, void* reserved)

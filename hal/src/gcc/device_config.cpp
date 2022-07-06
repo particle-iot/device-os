@@ -28,6 +28,7 @@
 #include <iostream>
 
 #include <boost/format.hpp>
+#include <boost/algorithm/hex.hpp>
 #include "boost_program_options_wrap.h"
 #include "boost_json.h"
 
@@ -193,7 +194,7 @@ std::string Describe::toString() const {
         jsonModule["vc"] = module.validityChecked();
         jsonModule["vv"] = module.validityResult();
         // Hash
-        jsonModule["u"] = module.hash();
+        jsonModule["u"] = boost::algorithm::hex(module.hash());
         jsonModules.push_back(jsonModule);
     }
     jsonDesc["m"] = jsonModules;
@@ -256,7 +257,7 @@ Describe Describe::fromString(std::string_view str) {
         if (jsonModule.contains("s")) {
             module.maximumSize(jsonModule.at("s").as_int64());
         } else {
-            module.maximumSize(10 * 1024 * 1024);
+            module.maximumSize(HAL_OTA_FlashLength());
         }
         // Validity flags (optional)
         if (jsonModule.contains("vc")) {
@@ -272,9 +273,10 @@ Describe Describe::fromString(std::string_view str) {
         }
         // Hash (optional)
         if (jsonModule.contains("u")) {
-            module.hash(jsonModule.at("u").as_string());
+            auto& jsonHash = jsonModule.at("u").as_string();
+            module.hash(boost::algorithm::unhex(jsonHash));
         } else {
-            module.hash("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+            module.hash(std::string(32, '\0')); // SHA-256
         }
         modules.push_back(module);
     }

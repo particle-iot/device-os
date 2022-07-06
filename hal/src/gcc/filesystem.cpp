@@ -19,11 +19,11 @@ bool exists_file(const char* filename)
 
 std::string read_file(const std::string& filename)
 {
-    std::ifstream in(filename, std::ios::in | std::ios::binary);
+    std::ifstream in(filename, std::ios::binary);
     in.seekg(0, std::ios::end);
     auto size = in.tellg();
     if (size == (std::ifstream::pos_type)-1) {
-        throw std::runtime_error("Failed to determine file size");
+        throw std::runtime_error("Failed to read file");
     }
     in.seekg(0);
     std::string str(size, '\0');

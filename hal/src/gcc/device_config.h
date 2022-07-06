@@ -160,11 +160,13 @@ public:
         return validResult_;
     }
 
+    // Expects a binary string
     ModuleInfo& hash(std::string_view hash) {
         hash_ = hash;
         return *this;
     }
 
+    // Returns a binary string
     const std::string& hash() const {
         return hash_;
     }
