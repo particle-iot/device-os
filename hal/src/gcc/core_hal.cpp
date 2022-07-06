@@ -235,7 +235,7 @@ void HAL_Core_System_Reset(void)
                 if (args[i] == "--describe") {
                     args.erase(args.begin() + i);
                     if (i < args.size()) {
-                        args.erase(args.begin() + i);
+                        args.erase(args.begin() + i); // Remove the next argument
                     }
                     continue;
                 }
@@ -256,7 +256,7 @@ void HAL_Core_System_Reset(void)
         exit(1);
     }
 #else
-    LOG(INFO, "Resetting device");
+    LOG(INFO, "Resetting device (not supported)");
     exit(0);
 #endif
 }

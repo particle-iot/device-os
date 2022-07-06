@@ -25,22 +25,15 @@ bool exists_file(const char* filename)
 
 std::string read_file(const std::string& filename)
 {
-    std::ifstream in(filename, std::ios::binary);
-    if (in.fail()) {
-        throw std::runtime_error("Failed to open file");
-    }
+    std::ifstream in;
+    in.exceptions(std::ios::badbit | std::ios::failbit);
+    in.open(filename, std::ios::binary);
     in.seekg(0, std::ios::end);
-    auto size = in.tellg();
-    if (size == (std::ifstream::pos_type)-1) {
-        throw std::runtime_error("Failed to read file");
-    }
-    std::string str(size, '\0');
+    size_t size = in.tellg();
     in.seekg(0);
-    in.read(&str[0], size);
-    if (in.fail()) {
-        throw std::runtime_error("Failed to read file");
-    }
-    return str;
+    std::string data(size, '\0');
+    in.read(data.data(), size);
+    return data;
 }
 
 void read_file(const char* filename, void* data, size_t length)
@@ -59,14 +52,10 @@ void read_file(const char* filename, void* data, size_t length)
 
 void write_file(const std::string& filename, const std::string& data)
 {
-    std::ofstream out(filename, std::ios::binary | std::ios::trunc);
-    if (out.fail()) {
-        throw std::runtime_error("Failed to create file");
-    }
+    std::ofstream out;
+    out.exceptions(std::ios::badbit | std::ios::failbit);
+    out.open(filename, std::ios::binary | std::ios::trunc);
     out.write(data.data(), data.size());
-    if (out.fail()) {
-        throw std::runtime_error("Failed to write to file");
-    }
 }
 
 void write_file(const char* filename, const void* data, size_t length)
@@ -87,11 +76,11 @@ std::string temp_file_name(const std::string& prefix, const std::string& suffix)
 {
     std::random_device rd;
     std::uniform_int_distribution<int> dist(0, 255);
-    std::string rand(16, '\0');
+    std::string rand(8, '\0');
     for (size_t i = 0; i < rand.size(); ++i) {
         rand[i] = dist(rd);
     }
-    auto path = fs::temp_directory_path().append(prefix + boost::algorithm::hex(rand) + suffix);
+    auto path = fs::temp_directory_path().append(prefix + boost::algorithm::hex_lower(rand) + suffix);
     return path.string();
 }
 

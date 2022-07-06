@@ -9,6 +9,7 @@
 #define	FILESYSTEM_H
 
 #include <string>
+#include <cstddef>
 
 namespace particle {
 

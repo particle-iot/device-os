@@ -34,7 +34,6 @@
 
 using namespace particle;
 using namespace particle::config;
-using namespace particle::system;
 
 namespace po = boost::program_options;
 
@@ -51,15 +50,15 @@ const int P1_PLATFORM_ID = 8;
 
 std::istream& operator>>(std::istream& in, ProtocolFactory& pf)
 {
-	std::string value;
-	in >> value;
-	if (value=="tcp")
-		pf = PROTOCOL_LIGHTSSL;
-	else if (value=="udp")
-		pf = PROTOCOL_DTLS;
-	else
-		throw boost::program_options::invalid_option_value(value);
-	return in;
+    std::string value;
+    in >> value;
+    if (value=="tcp")
+        pf = PROTOCOL_LIGHTSSL;
+    else if (value=="udp")
+        pf = PROTOCOL_DTLS;
+    else
+        throw boost::program_options::invalid_option_value(value);
+    return in;
 }
 
 class ConfigParser
@@ -105,8 +104,8 @@ public:
             ("device_key,dk", po::value<std::string>(&config.device_key)->default_value("device_key.der"), "the filename containing the device private key")
             ("server_key,sk", po::value<std::string>(&config.server_key)->default_value("server_key.der"), "the filename containing the server public key")
             ("describe", po::value<std::string>(&config.describe), "the filename containing the device description")
-			("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_LIGHTSSL), "the cloud communication protocol to use")
-			;
+            ("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_LIGHTSSL), "the cloud communication protocol to use")
+            ;
 
         command_line_options.add(program_options).add(device_options);
 
@@ -171,7 +170,7 @@ std::string Describe::toString() const {
     for (auto& module: modules_) {
         boost::json::object jsonModule;
         // Function
-        jsonModule["f"] = module_function_string(module.function());
+        jsonModule["f"] = system::module_function_string(module.function());
         // Index
         jsonModule["n"] = std::to_string(module.index());
         // Version
@@ -180,42 +179,42 @@ std::string Describe::toString() const {
         boost::json::array jsonDeps;
         for (auto& dep: module.dependencies()) {
             boost::json::object jsonDep;
-            jsonDep["f"] = module_function_string(dep.function());
+            jsonDep["f"] = system::module_function_string(dep.function());
             jsonDep["n"] = std::to_string(dep.index());
             jsonDep["v"] = dep.version();
             jsonDeps.push_back(jsonDep);
         }
         jsonModule["d"] = jsonDeps;
         // Store
-        jsonModule["l"] = module_store_string(module.store());
+        jsonModule["l"] = system::module_store_string(module.store());
         // Maximum size
         jsonModule["s"] = module.maximumSize();
         // Validity flags
         jsonModule["vc"] = module.validityChecked();
         jsonModule["vv"] = module.validityResult();
         // Hash
-        jsonModule["u"] = boost::algorithm::hex(module.hash());
+        jsonModule["u"] = boost::algorithm::hex_lower(module.hash());
         jsonModules.push_back(jsonModule);
     }
     jsonDesc["m"] = jsonModules;
     return boost::json::serialize(jsonDesc);
 }
 
-Describe Describe::fromString(std::string_view str) {
-    auto json = boost::json::parse(std::string(str)); // std::string_view is not convertible to boost::json::string_view for some reason
+Describe Describe::fromString(const std::string& str) {
+    auto json = boost::json::parse(str);
     auto& jsonDesc = json.as_object();
     Describe desc;
     // Platform ID
     desc.platformId(jsonDesc.at("p").as_int64());
-    auto& jsonModules = jsonDesc.at("m").as_array();
     // Modules
+    auto& jsonModules = jsonDesc.at("m").as_array();
     Describe::Modules modules;
     for (size_t i = 0; i < jsonModules.size(); ++i) {
         auto& jsonModule = jsonModules.at(i).as_object();
         ModuleInfo module;
         // Function
         auto& jsonFunc = jsonModule.at("f").as_string();
-        int func = module_function_from_string(jsonFunc.data());
+        int func = system::module_function_from_string(jsonFunc.data());
         if (func < 0) {
             throw std::runtime_error("Unknown module function");
         }
@@ -232,20 +231,21 @@ Describe Describe::fromString(std::string_view str) {
             auto& jsonDep = jsonDeps.at(i).as_object();
             ModuleDependencyInfo dep;
             auto& jsonFunc = jsonDep.at("f").as_string();
-            int func = module_function_from_string(jsonFunc.data());
+            int func = system::module_function_from_string(jsonFunc.data());
             if (func < 0) {
                 throw std::runtime_error("Unknown module function");
             }
             dep.function((module_function_t)func);
             auto& jsonIndexStr = jsonDep.at("n").as_string();
             dep.index(std::stoi(std::string(jsonIndexStr)));
-            module.version(jsonModule.at("v").as_int64());
+            dep.version(jsonDep.at("v").as_int64());
             deps.push_back(dep);
         }
+        module.dependencies(deps);
         // Store (optional)
         if (jsonModule.contains("l")) {
             auto& jsonStore = jsonModule.at("l").as_string();
-            int store = module_store_from_string(jsonStore.data());
+            int store = system::module_store_from_string(jsonStore.data());
             if (store < 0) {
                 throw std::runtime_error("Unknown module store");
             }
@@ -274,7 +274,7 @@ Describe Describe::fromString(std::string_view str) {
         // Hash (optional)
         if (jsonModule.contains("u")) {
             auto& jsonHash = jsonModule.at("u").as_string();
-            module.hash(boost::algorithm::unhex(jsonHash));
+            module.hash(boost::algorithm::unhex(std::string(jsonHash)));
         } else {
             module.hash(std::string(32, '\0')); // SHA-256
         }
@@ -312,7 +312,7 @@ void DeviceConfig::read(Configuration& configuration)
 {
     size_t length = configuration.device_id.length();
     if (length!=24) {
-        throw std::invalid_argument(std::string("expected device ID of length 24, got ") + '\'' + configuration.device_id + '\'');
+        throw std::invalid_argument(std::string("expected device ID of length 24, got ") + '"' + configuration.device_id + '"');
     }
 
     hex2bin(configuration.device_id, device_id, sizeof(device_id));
