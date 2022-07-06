@@ -301,6 +301,10 @@ bool read_device_config(int argc, char* argv[])
     }
 
     deviceConfig.read(parser.config);
+    deviceConfig.argv.clear();
+    for (int i = 0; i < argc; ++i) {
+        deviceConfig.argv.push_back(argv[i]);
+    }
     return true;
 }
 

@@ -2,11 +2,9 @@
 #include <fstream>
 #include <algorithm>
 #include <memory>
-#include <random>
 #include <cstring>
 
-#include <boost/algorithm/hex.hpp>
-#include <boost/endian/conversion.hpp>
+#include <boost/endian.hpp>
 
 #include "ota_flash_hal.h"
 #include "device_config.h"
@@ -18,10 +16,15 @@
 #include "../../../system/inc/system_info.h" // FIXME
 
 using namespace particle;
+
 namespace fs = std::filesystem;
 namespace endian = boost::endian;
 
+namespace particle {
+
 bool moduleUpdatePending = false;
+
+} // namespace particle
 
 namespace {
 
@@ -29,12 +32,9 @@ const size_t MODULE_PREFIX_SIZE = 24; // sizeof(module_info_t) on a 32-bit platf
 const size_t MODULE_SUFFIX_SIZE = 36; // sizeof(module_info_suffix_t) on a 32-bit platform
 
 struct ParsedModuleInfo {
-    uint32_t startAddress;
-    uint32_t endAddress;
-    uint16_t version;
-    uint16_t platformId;
     uint8_t function;
     uint8_t index;
+    uint16_t version;
     struct {
         uint8_t function;
         uint8_t index;
@@ -48,7 +48,7 @@ struct ParsedModuleInfo {
     uint8_t hash[32];
 };
 
-ParsedModuleInfo parseModule(const fs::path& file) {
+ParsedModuleInfo parseModule(const std::string& file) {
     std::ifstream in(file, std::ios::binary);
     if (in.fail()) {
         throw std::runtime_error("Failed to open file");
@@ -74,17 +74,20 @@ ParsedModuleInfo parseModule(const fs::path& file) {
     size_t offs = 0;
     while (offs < prefixSize) {
         // Start address
-        memcpy(&info.startAddress, prefix.data() + offs, sizeof(info.startAddress));
-        info.startAddress = endian::little_to_native(info.startAddress);
+        uint32_t startAddr = 0;
+        memcpy(&startAddr, prefix.data() + offs, sizeof(startAddr));
+        startAddr = endian::little_to_native(startAddr);
         // End address
-        memcpy(&info.endAddress, prefix.data() + offs + 4, sizeof(info.endAddress));
-        info.endAddress = endian::little_to_native(info.endAddress);
+        uint32_t endAddr = 0;
+        memcpy(&endAddr, prefix.data() + offs + 4, sizeof(endAddr));
+        endAddr = endian::little_to_native(endAddr);
         // Version
         memcpy(&info.version, prefix.data() + offs + 10, sizeof(info.version));
         info.version = endian::little_to_native(info.version);
         // Platform ID
-        memcpy(&info.platformId, prefix.data() + offs + 12, sizeof(info.platformId));
-        info.platformId = endian::little_to_native(info.platformId);
+        uint16_t platformId = 0;
+        memcpy(&platformId, prefix.data() + offs + 12, sizeof(platformId));
+        platformId = endian::little_to_native(platformId);
         // Function
         memcpy(&info.function, prefix.data() + offs + 14, sizeof(info.function));
         // Index
@@ -99,9 +102,8 @@ ParsedModuleInfo parseModule(const fs::path& file) {
         memcpy(&info.dependency2.index, prefix.data() + offs + 21, sizeof(info.dependency2.index));
         memcpy(&info.dependency2.version, prefix.data() + offs + 22, sizeof(info.dependency2.version));
         info.dependency2.version = endian::little_to_native(info.dependency2.version);
-        if (info.endAddress <= info.startAddress ||
-                info.endAddress - info.startAddress + 4 /* CRC-32 */ != fileSize ||
-                info.platformId != deviceConfig.platform_id ||
+        if (endAddr <= startAddr || endAddr - startAddr + 4 /* CRC-32 */ != fileSize ||
+                platformId != deviceConfig.platform_id ||
                 !system::is_module_function_valid((module_function_t)info.function) ||
                 (info.dependency1.function != MODULE_FUNCTION_NONE && !system::is_module_function_valid((module_function_t)info.dependency1.function)) ||
                 (info.dependency2.function != MODULE_FUNCTION_NONE && !system::is_module_function_valid((module_function_t)info.dependency2.function)) ||
@@ -149,17 +151,7 @@ config::Describe defaultDescribe() {
     return desc;
 }
 
-std::string genUpdateFileName() {
-    std::random_device rd;
-    std::uniform_int_distribution<int> dist(0, 255);
-    std::string suff(16, '\0');
-    for (size_t i = 0; i < suff.size(); ++i) {
-        suff[i] = dist(rd);
-    }
-    return "update_" + boost::algorithm::hex(suff) + ".bin";
-}
-
-fs::path g_updateFile;
+std::string g_updateFile;
 std::ofstream g_updateStream;
 
 } // namespace
@@ -255,7 +247,7 @@ uint16_t HAL_OTA_ChunkSize()
 bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved)
 {
     try {
-        g_updateFile = fs::temp_directory_path().append(genUpdateFileName());
+        g_updateFile = temp_file_name("update_", ".bin");
         g_updateStream.open(g_updateFile, std::ios::binary);
         if (g_updateStream.fail()) {
             throw std::runtime_error("Failed to create file");

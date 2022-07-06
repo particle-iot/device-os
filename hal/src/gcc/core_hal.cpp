@@ -36,7 +36,6 @@
 #include "device_config.h"
 #include "hal_platform.h"
 #include "interrupts_hal.h"
-#include <boost/crc.hpp>  // for boost::crc_32_type
 #include <sstream>
 #include <iomanip>
 #include "system_error.h"
@@ -45,8 +44,21 @@
 #include "eeprom_hal.h"
 #include "rtc_hal.h"
 
+#include <boost/algorithm/string.hpp>
+#include <boost/crc.hpp> // for boost::crc_32_type
+#include <boost/config.hpp>
+
+#ifndef BOOST_WINDOWS
+#include <unistd.h> // For execvp()
+#endif
+
 using namespace particle;
-using std::cout;
+
+namespace particle {
+
+extern bool moduleUpdatePending; // Defined in ota_flash_hal.cpp
+
+} // namespace particle
 
 static LoggerOutputLevel log_level = NO_LOG_LEVEL;
 
@@ -126,7 +138,7 @@ void core_log(const char* msg, ...)
     va_start(args, msg);
     char buf[2048];
     vsnprintf(buf, 2048, msg, args);
-    cout << buf << std::endl;
+    std::cout << buf << std::endl;
     va_end(args);
 }
 
@@ -207,7 +219,46 @@ void HAL_Core_Mode_Button_Reset(void)
 
 void HAL_Core_System_Reset(void)
 {
+#ifndef BOOST_WINDOWS
+    try {
+        auto args = deviceConfig.argv;
+        if (moduleUpdatePending) {
+            auto descFile = temp_file_name("update_", ".json");
+            write_file(descFile, deviceConfig.describe.toString()); // TODO: Cleanup
+            LOG(INFO, "Saved module info to %s", descFile.data());
+            size_t i = 0;
+            while (i < args.size()) {
+                if (boost::starts_with(args[i], "--describe=")) {
+                    args.erase(args.begin() + i);
+                    continue;
+                }
+                if (args[i] == "--describe") {
+                    args.erase(args.begin() + i);
+                    if (i < args.size()) {
+                        args.erase(args.begin() + i);
+                    }
+                    continue;
+                }
+                ++i;
+            }
+            args.push_back("--describe=" + descFile);
+        }
+        std::vector<char*> argv;
+        for (auto& arg: args) {
+            argv.push_back(arg.data());
+        }
+        argv.push_back(nullptr);
+        LOG(INFO, "Resetting device");
+        execvp(argv[0], argv.data());
+        throw std::runtime_error("Failed to reset device"); // execvp() failed
+    } catch (const std::exception& e) {
+        LOG(ERROR, "%s", e.what());
+        exit(1);
+    }
+#else
+    LOG(INFO, "Resetting device");
     exit(0);
+#endif
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
