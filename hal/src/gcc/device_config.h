@@ -250,6 +250,7 @@ struct Configuration
  */
 struct DeviceConfig
 {
+    std::vector<std::string> argv;
     particle::config::Describe describe;
     uint8_t device_id[12];
     uint8_t device_key[1024];
