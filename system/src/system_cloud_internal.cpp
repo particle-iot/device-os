@@ -1107,8 +1107,7 @@ void Spark_Protocol_Init(void)
         registerSystemSubscriptions();
 
 #if PLATFORM_ID == PLATFORM_GCC
-        bool isCellular = (platformId == PLATFORM_GCC || platformId == PLATFORM_BORON || platformId == PLATFORM_BSOM ||
-                platformId == PLATFORM_B5SOM || platformId == PLATFORM_TRACKER || platformId == PLATFORM_ESOMX);
+        bool isCellular = (udp && platformId != PLATFORM_ARGON);
         protocol::connection_properties_t connProp = {};
         connProp.size = sizeof(connProp);
         connProp.keepalive_source = protocol::KeepAliveSource::SYSTEM;

@@ -136,16 +136,21 @@ const char* eeprom_bin = "eeprom.bin";
 
 extern "C" int main(int argc, char* argv[])
 {
-    log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
-    if (read_device_config(argc, argv)) {
-    		// init the eeprom so that a file of size 0 can be used to trigger the save.
-    		HAL_EEPROM_Init();
-    		if (exists_file(eeprom_bin)) {
-    			GCC_EEPROM_Load(eeprom_bin);
-    		}
-			app_setup_and_loop();
-	}
-    return 0;
+    try {
+        log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
+        if (read_device_config(argc, argv)) {
+                // init the eeprom so that a file of size 0 can be used to trigger the save.
+                HAL_EEPROM_Init();
+                if (exists_file(eeprom_bin)) {
+                    GCC_EEPROM_Load(eeprom_bin);
+                }
+                app_setup_and_loop();
+        }
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
 }
 
 class GCCStartup {

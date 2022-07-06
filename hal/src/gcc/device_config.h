@@ -20,9 +20,10 @@
 
 #include <string>
 #include <stdexcept>
-#include <cstring>
 #include <vector>
 #include <optional>
+#include <cstring>
+#include <cstdint>
 
 #include "filesystem.h"
 #include "spark_protocol_functions.h"
@@ -49,28 +50,28 @@ public:
         return func_;
     }
 
-    ModuleDependencyInfo& index(int index) {
+    ModuleDependencyInfo& index(uint8_t index) {
         index_ = index;
         return *this;
     }
 
-    int index() const {
+    uint8_t index() const {
         return index_;
     }
 
-    ModuleDependencyInfo& version(int version) {
+    ModuleDependencyInfo& version(uint16_t version) {
         version_ = version;
         return *this;
     }
 
-    int version() const {
+    uint16_t version() const {
         return version_;
     }
 
 private:
     module_function_t func_;
-    int index_;
-    int version_;
+    uint8_t index_;
+    uint16_t version_;
 };
 
 class ModuleInfo {
@@ -79,7 +80,7 @@ public:
 
     ModuleInfo() :
             func_(MODULE_FUNCTION_NONE),
-            storage_(MODULE_STORE_MAIN),
+            store_(MODULE_STORE_MAIN),
             maxSize_(0),
             index_(0),
             version_(0),
@@ -96,21 +97,21 @@ public:
         return func_;
     }
 
-    ModuleInfo& index(int index) {
+    ModuleInfo& index(uint8_t index) {
         index_ = index;
         return *this;
     }
 
-    int index() const {
+    uint8_t index() const {
         return index_;
     }
 
-    ModuleInfo& version(int version) {
+    ModuleInfo& version(uint16_t version) {
         version_ = version;
         return *this;
     }
 
-    int version() const {
+    uint16_t version() const {
         return version_;
     }
 
@@ -123,39 +124,39 @@ public:
         return deps_;
     }
 
-    ModuleInfo& storage(module_store_t storage) {
-        storage_ = storage;
+    ModuleInfo& store(module_store_t store) {
+        store_ = store;
         return *this;
     }
 
-    module_store_t storage() const {
-        return storage_;
+    module_store_t store() const {
+        return store_;
     }
 
-    ModuleInfo& maximumSize(size_t size) {
+    ModuleInfo& maximumSize(uint32_t size) {
         maxSize_ = size;
         return *this;
     }
 
-    size_t maximumSize() const {
+    uint32_t maximumSize() const {
         return maxSize_;
     }
 
-    ModuleInfo& validityChecked(int flags) {
+    ModuleInfo& validityChecked(uint16_t flags) {
         validChecked_ = flags;
         return *this;
     }
 
-    int validityChecked() const {
+    uint16_t validityChecked() const {
         return validChecked_;
     }
 
-    ModuleInfo& validityResult(int flags) {
+    ModuleInfo& validityResult(uint16_t flags) {
         validResult_ = flags;
         return *this;
     }
 
-    int validityResult() const {
+    uint16_t validityResult() const {
         return validResult_;
     }
 
@@ -172,12 +173,12 @@ private:
     Dependencies deps_;
     std::string hash_;
     module_function_t func_;
-    module_store_t storage_;
-    size_t maxSize_;
-    int index_;
-    int version_;
-    int validChecked_;
-    int validResult_;
+    module_store_t store_;
+    uint32_t maxSize_;
+    uint8_t index_;
+    uint16_t version_;
+    uint16_t validChecked_;
+    uint16_t validResult_;
 };
 
 class Describe {
@@ -186,12 +187,12 @@ public:
 
     Describe() = default;
 
-    Describe& platformId(int platformId) {
+    Describe& platformId(uint16_t platformId) {
         platformId_ = platformId;
         return *this;
     }
 
-    int platformId() const {
+    uint16_t platformId() const {
         return platformId_.value_or(0);
     }
 
@@ -213,7 +214,7 @@ public:
 
 private:
     Modules modules_;
-    std::optional<int> platformId_;
+    std::optional<uint16_t> platformId_;
 };
 
 } // namespace config
@@ -239,7 +240,7 @@ struct Configuration
     std::string describe;
     uint16_t log_level = 0;
     ProtocolFactory protocol = PROTOCOL_LIGHTSSL;
-    int platform_id;
+    uint16_t platform_id;
 };
 
 /**
@@ -252,7 +253,7 @@ struct DeviceConfig
     uint8_t device_key[1024];
     uint8_t server_key[1024];
     ProtocolFactory protocol;
-    int platform_id;
+    uint16_t platform_id;
 
     void read(Configuration& configuration);
 

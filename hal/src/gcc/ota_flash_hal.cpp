@@ -1,78 +1,115 @@
+#include <memory>
+#include <cstring>
+#include <cstdio>
+
 #include "ota_flash_hal.h"
 #include "device_config.h"
-#include <string.h>
-#include <cstdio>
 #include "service_debug.h"
 #include "core_hal.h"
 #include "filesystem.h"
 #include "bytes2hexbuf.h"
 
+using namespace particle;
+
 namespace {
 
-const hal_module_t g_moduleInfo = {
-    .bounds = {
-        .maximum_size = 0x10000000,
-        .start_address = 0,
-        .end_address = 0x10000000,
-        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
-        .module_index = 0,
-        .store = MODULE_STORE_MAIN,
-        .mcu_identifier = 0,
-        .location = MODULE_BOUNDS_LOC_INTERNAL_FLASH
-    },
-    .info = {
-        .module_start_address = (const void*)0,
-        .module_end_address = (const void*)0x00100000,
-        .reserved = 0,
-        .flags = 0,
-        .module_version = MODULE_VERSION,
-        .platform_id = PLATFORM_ID,
-        .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
-        .module_index = 0,
-        .dependency = {
-            .module_function = MODULE_FUNCTION_NONE,
-            .module_index = 0,
-            .module_version = 0
-        },
-        .dependency2 = {
-            .module_function = MODULE_FUNCTION_NONE,
-            .module_index = 0,
-            .module_version = 0
-        }
-    },
-    .crc = {
-        .crc32 = 0xaabbccdd
-    },
-    .suffix = {
-        .reserved = 0,
-        .sha = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
-                0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff },
-        .size = 36
-    },
-    .validity_checked = MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_RANGE |
-            MODULE_VALIDATION_PLATFORM,
-    .validity_result = MODULE_VALIDATION_INTEGRITY | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_RANGE |
-            MODULE_VALIDATION_PLATFORM,
-    .module_info_offset = 0
-};
+config::Describe defaultDescribe() {
+    auto desc = config::Describe::fromString("{\"p\": 0,\"m\":[{\"f\":\"m\",\"n\":\"0\",\"v\":0,\"d\":[]}]}");
+    desc.platformId(deviceConfig.platform_id);
+    auto modules = desc.modules();
+    for (auto& module: modules) {
+        module.version(MODULE_VERSION);
+    }
+    desc.modules(modules);
+    return desc;
+}
+
+module_dependency_t halModuleDependency(const config::ModuleDependencyInfo& info) {
+    return {
+        .module_function = info.function(),
+        .module_index = info.index(),
+        .module_version = info.version()
+    };
+}
+
+module_bounds_location_t moduleLocation(const config::ModuleInfo& module) {
+    if (module.function() == MODULE_FUNCTION_NCP_FIRMWARE) {
+        return MODULE_BOUNDS_LOC_NCP_FLASH;
+    }
+    return MODULE_BOUNDS_LOC_INTERNAL_FLASH;
+}
 
 } // namespace
 
 int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-    if (create) {
-        const auto module = new(std::nothrow) hal_module_t;
-        if (!module) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        memcpy(module, &g_moduleInfo, sizeof(hal_module_t));
-        module->info.platform_id = deviceConfig.platform_id;
-        info->modules = module;
-        info->module_count = 1;
-        info->platform_id = deviceConfig.platform_id;
-    } else {
-        delete info->modules;
+    if (!create) {
+        delete[] info->modules;
+        return 0;
     }
+    const auto& desc = deviceConfig.describe.isValid() ? deviceConfig.describe : defaultDescribe();
+    std::unique_ptr<hal_module_t[]> halModules(new(std::nothrow) hal_module_t[desc.modules().size()]);
+    if (!halModules) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    uint32_t moduleAddr = 0;
+    for (size_t i = 0; i < desc.modules().size(); ++i) {
+        const auto& module = desc.modules().at(i);
+        auto& halModule = halModules[i];
+        halModule = {
+            .bounds = {
+                .maximum_size = module.maximumSize(),
+                .start_address = moduleAddr,
+                .end_address = moduleAddr + module.maximumSize(),
+                .module_function = module.function(),
+                .module_index = module.index(),
+                .store = module.store(),
+                .mcu_identifier = 0,
+                .location = moduleLocation(module)
+            },
+            .info = {
+                .module_start_address = (const char*)0 + moduleAddr,
+                .module_end_address = (const char*)0 + moduleAddr + module.maximumSize(),
+                .reserved = 0,
+                .flags = 0,
+                .module_version = module.version(),
+                .platform_id = deviceConfig.platform_id,
+                .module_function = module.function(),
+                .module_index = module.index(),
+                .dependency = {
+                    .module_function = MODULE_FUNCTION_NONE,
+                    .module_index = 0,
+                    .module_version = 0
+                },
+                .dependency2 = {
+                    .module_function = MODULE_FUNCTION_NONE,
+                    .module_index = 0,
+                    .module_version = 0
+                }
+            },
+            .crc = {
+                .crc32 = 0
+            },
+            .suffix = {
+                .reserved = 0,
+                .sha = {},
+                .size = 36
+            },
+            .validity_checked = module.validityChecked(),
+            .validity_result = module.validityResult(),
+            .module_info_offset = 0
+        };
+        if (module.dependencies().size() >= 1) {
+            halModule.info.dependency = halModuleDependency(module.dependencies().at(0));
+        }
+        if (module.dependencies().size() >= 2) {
+            halModule.info.dependency2 = halModuleDependency(module.dependencies().at(1));
+        }
+        moduleAddr += module.maximumSize();
+    }
+    info->platform_id = deviceConfig.platform_id;
+    info->module_count = desc.modules().size();
+    info->modules = halModules.release();
     return 0;
 }
 
@@ -83,7 +120,7 @@ uint32_t HAL_OTA_FlashAddress()
 
 uint32_t HAL_OTA_FlashLength()
 {
-    return 1024*100;
+    return 10 * 1024 * 1024;
 }
 
 uint16_t HAL_OTA_ChunkSize()
@@ -110,7 +147,7 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
 
 int HAL_FLASH_OTA_Validate(bool userDepsOptional, module_validation_flags_t flags, void* reserved)
 {
-  return 0;
+    return 0; // FIXME
 }
 
 int HAL_FLASH_End(void* reserved)
