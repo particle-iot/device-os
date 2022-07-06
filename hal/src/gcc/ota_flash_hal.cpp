@@ -49,30 +49,23 @@ struct ParsedModuleInfo {
 };
 
 ParsedModuleInfo parseModule(const std::string& file) {
-    std::ifstream in(file, std::ios::binary);
-    if (in.fail()) {
-        throw std::runtime_error("Failed to open file");
-    }
+    std::ifstream in;
+    in.exceptions(std::ios::badbit | std::ios::failbit);
+    in.open(file, std::ios::binary);
     in.seekg(0, std::ios::end);
-    if (in.tellg() == (std::ifstream::pos_type)-1) {
-        throw std::runtime_error("Failed to read file");
-    }
     size_t fileSize = in.tellg();
     if (fileSize <= MODULE_PREFIX_SIZE + MODULE_SUFFIX_SIZE + 4 /* CRC-32 */) {
         throw std::runtime_error("Invalid module size");
     }
+    in.seekg(0);
     // Scan the first few KBs of the module binary for something that looks like a valid module header
     auto prefixSize = std::min<size_t>(16 * 1024, fileSize - MODULE_SUFFIX_SIZE - 4 /* CRC-32 */);
     std::string prefix(prefixSize, '\0');
-    in.seekg(0);
     in.read(prefix.data(), prefixSize);
-    if (in.fail()) {
-        throw std::runtime_error("Failed to read file");
-    }
     ParsedModuleInfo info = {};
     bool foundHeader = false;
     size_t offs = 0;
-    while (offs < prefixSize) {
+    while (offs + MODULE_PREFIX_SIZE <= prefixSize) {
         // Start address
         uint32_t startAddr = 0;
         memcpy(&startAddr, prefix.data() + offs, sizeof(startAddr));
@@ -109,6 +102,7 @@ ParsedModuleInfo parseModule(const std::string& file) {
                 (info.dependency2.function != MODULE_FUNCTION_NONE && !system::is_module_function_valid((module_function_t)info.dependency2.function)) ||
                 (info.dependency1.function == MODULE_FUNCTION_NONE && (info.dependency1.index != 0 || info.dependency1.version != 0)) ||
                 (info.dependency2.function == MODULE_FUNCTION_NONE && (info.dependency2.index != 0 || info.dependency2.version != 0))) {
+            offs += 4;
             continue;
         }
         foundHeader = true;
@@ -119,9 +113,6 @@ ParsedModuleInfo parseModule(const std::string& file) {
     }
     in.seekg(fileSize - 4 /* CRC-32 */ - 2 /* size */ - sizeof(info.hash));
     in.read((char*)info.hash, sizeof(info.hash));
-    if (in.fail()) {
-        throw std::runtime_error("Failed to read file");
-    }
     return info;
 }
 
@@ -151,8 +142,9 @@ config::Describe defaultDescribe() {
     return desc;
 }
 
-std::string g_updateFile;
 std::ofstream g_updateStream;
+std::string g_updateFile;
+size_t g_updateSize = 0;
 
 } // namespace
 
@@ -208,7 +200,7 @@ int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
             .suffix = {
                 .reserved = 0,
                 .sha = {},
-                .size = 36
+                .size = MODULE_SUFFIX_SIZE
             },
             .validity_checked = module.validityChecked(),
             .validity_result = module.validityResult(),
@@ -248,10 +240,9 @@ bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved)
 {
     try {
         g_updateFile = temp_file_name("update_", ".bin");
-        g_updateStream.open(g_updateFile, std::ios::binary);
-        if (g_updateStream.fail()) {
-            throw std::runtime_error("Failed to create file");
-        }
+        g_updateStream.exceptions(std::ios::badbit | std::ios::failbit);
+        g_updateStream.open(g_updateFile, std::ios::binary | std::ios::trunc);
+        g_updateSize = fileSize;
         return true;
     } catch (const std::exception& e) {
         LOG(ERROR, "%s", e.what());
@@ -267,11 +258,14 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
         if (!g_updateStream.is_open()) {
             throw std::runtime_error("File is not open");
         }
+        if (address > g_updateSize) {
+            throw std::runtime_error("Invalid address");
+        }
+        if (address + length > g_updateSize) {
+            length = g_updateSize - address;
+        }
         g_updateStream.seekp(address);
         g_updateStream.write((const char*)pBuffer, length);
-        if (g_updateStream.fail()) {
-            throw std::runtime_error("Failed to write to file");
-        }
         return 0;
     } catch (const std::exception& e) {
         LOG(ERROR, "%s", e.what());
@@ -325,12 +319,14 @@ int HAL_FLASH_End(void* reserved)
             }
         }
         if (foundModule) {
-            LOG(INFO, "Applying module update: function: %d, index: %d, version: %d", (int)updatedModule.function,
-                    (int)updatedModule.index, (int)updatedModule.version);
+            LOG(INFO, "Applying module update: function: \"%s\", index: %d, version: %d",
+                    system::module_function_string((module_function_t)updatedModule.function), (int)updatedModule.index,
+                    (int)updatedModule.version);
             moduleUpdatePending = true;
         } else {
-            LOG(INFO, "Unsupported module: function: %d, index: %d, version: %d", (int)updatedModule.function,
-                    (int)updatedModule.index, (int)updatedModule.version);
+            LOG(INFO, "Unsupported module: function: \"%s\", index: %d, version: %d",
+                    system::module_function_string((module_function_t)updatedModule.function), (int)updatedModule.index,
+                    (int)updatedModule.version);
         }
         fs::remove(g_updateFile);
         return HAL_UPDATE_APPLIED_PENDING_RESTART;

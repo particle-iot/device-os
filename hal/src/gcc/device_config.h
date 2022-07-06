@@ -161,7 +161,7 @@ public:
     }
 
     // Expects a binary string
-    ModuleInfo& hash(std::string_view hash) {
+    ModuleInfo& hash(const std::string& hash) {
         hash_ = hash;
         return *this;
     }
@@ -212,7 +212,7 @@ public:
     }
 
     std::string toString() const;
-    static Describe fromString(std::string_view str);
+    static Describe fromString(const std::string& str);
 
 private:
     Modules modules_;
