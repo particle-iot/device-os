@@ -39,6 +39,7 @@
 #include <sstream>
 #include <iomanip>
 #include "system_error.h"
+#include "../../../system/inc/system_mode.h" // FIXME
 
 #include "eeprom_file.h"
 #include "eeprom_hal.h"
@@ -151,6 +152,9 @@ extern "C" int main(int argc, char* argv[])
     try {
         log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
         if (read_device_config(argc, argv)) {
+                if (!HAL_Core_Validate_Modules(0 /* flags */, nullptr /* reserved */)) {
+                    set_system_mode(SAFE_MODE);
+                }
                 // init the eeprom so that a file of size 0 can be used to trigger the save.
                 HAL_EEPROM_Init();
                 if (exists_file(eeprom_bin)) {
@@ -208,6 +212,26 @@ void HAL_Core_Config(void)
 {
 }
 
+bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
+{
+    auto& modules = deviceConfig.describe.modules();
+    for (auto& module: modules) {
+        for (auto& dep: module.dependencies()) {
+            bool found = false;
+            for (auto& module: modules) {
+                if (module.function() == dep.function() && module.index() == dep.index() && module.version() >= dep.version()) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 {
     return false;
@@ -223,7 +247,7 @@ void HAL_Core_System_Reset(void)
     try {
         auto args = deviceConfig.argv;
         if (moduleUpdatePending) {
-            auto descFile = temp_file_name("update_", ".json");
+            auto descFile = temp_file_name("device_update_", ".json");
             write_file(descFile, deviceConfig.describe.toString()); // TODO: Cleanup
             LOG(INFO, "Saved module info to %s", descFile.data());
             size_t i = 0;
@@ -248,7 +272,8 @@ void HAL_Core_System_Reset(void)
             argv.push_back(arg.data());
         }
         argv.push_back(nullptr);
-        LOG(INFO, "Resetting device\n\n\n");
+        LOG(INFO, "Resetting device");
+        LOG_PRINT(INFO, "\r\n\r\n\r\n");
         execvp(argv[0], argv.data());
         throw std::runtime_error("Failed to reset device"); // execvp() failed
     } catch (const std::exception& e) {

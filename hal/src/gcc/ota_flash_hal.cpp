@@ -131,17 +131,6 @@ module_bounds_location_t moduleLocation(const config::ModuleInfo& module) {
     return MODULE_BOUNDS_LOC_INTERNAL_FLASH;
 }
 
-config::Describe defaultDescribe() {
-    auto desc = config::Describe::fromString("{\"p\": 0,\"m\":[{\"f\":\"m\",\"n\":\"0\",\"v\":0,\"d\":[]}]}");
-    desc.platformId(deviceConfig.platform_id);
-    auto modules = desc.modules();
-    for (auto& module: modules) {
-        module.version(MODULE_VERSION);
-    }
-    desc.modules(modules);
-    return desc;
-}
-
 std::ofstream g_updateStream;
 std::string g_updateFile;
 size_t g_updateSize = 0;
@@ -154,7 +143,7 @@ int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
         delete[] info->modules;
         return 0;
     }
-    const auto& desc = deviceConfig.describe.isValid() ? deviceConfig.describe : defaultDescribe();
+    const auto& desc = deviceConfig.describe;
     std::unique_ptr<hal_module_t[]> halModules(new(std::nothrow) hal_module_t[desc.modules().size()]);
     if (!halModules) {
         return SYSTEM_ERROR_NO_MEMORY;
@@ -239,13 +228,18 @@ uint16_t HAL_OTA_ChunkSize()
 bool HAL_FLASH_Begin(uint32_t sFLASH_Address, uint32_t fileSize, void* reserved)
 {
     try {
-        g_updateFile = temp_file_name("update_", ".bin");
+        if (g_updateStream.is_open()) {
+            g_updateStream.close();
+            fs::remove(g_updateFile);
+        }
+        g_updateFile = temp_file_name("device_update_", ".bin");
         g_updateStream.exceptions(std::ios::badbit | std::ios::failbit);
         g_updateStream.open(g_updateFile, std::ios::binary | std::ios::trunc);
         g_updateSize = fileSize;
         return true;
     } catch (const std::exception& e) {
         LOG(ERROR, "%s", e.what());
+        g_updateStream.exceptions(std::ios::goodbit);
         g_updateStream.close();
         fs::remove(g_updateFile);
         return false;
@@ -269,6 +263,7 @@ int HAL_FLASH_Update(const uint8_t *pBuffer, uint32_t address, uint32_t length, 
         return 0;
     } catch (const std::exception& e) {
         LOG(ERROR, "%s", e.what());
+        g_updateStream.exceptions(std::ios::goodbit);
         g_updateStream.close();
         fs::remove(g_updateFile);
         return SYSTEM_ERROR_IO;
@@ -288,7 +283,7 @@ int HAL_FLASH_End(void* reserved)
         }
         g_updateStream.close();
         auto updatedModule = parseModule(g_updateFile);
-        auto desc = deviceConfig.describe.isValid() ? deviceConfig.describe : defaultDescribe();
+        auto desc = deviceConfig.describe;
         auto modules = desc.modules();
         // Find module
         config::ModuleInfo* module = nullptr;
@@ -311,6 +306,9 @@ int HAL_FLASH_End(void* reserved)
             LOG(INFO, "Applying module update: function: \"%s\", index: %d, version: %d",
                     system::module_function_string((module_function_t)updatedModule.function), (int)updatedModule.index,
                     (int)updatedModule.version);
+            LOG(INFO, "Module hash:");
+            LOG_DUMP(INFO, updatedModule.hash, sizeof(updatedModule.hash));
+            LOG_PRINT(INFO, "\r\n");
             module->index(updatedModule.index);
             module->version(updatedModule.version);
             config::ModuleInfo::Dependencies deps;
@@ -342,6 +340,7 @@ int HAL_FLASH_End(void* reserved)
         return HAL_UPDATE_APPLIED_PENDING_RESTART;
     } catch (const std::exception& e) {
         LOG(ERROR, "%s", e.what());
+        g_updateStream.exceptions(std::ios::goodbit);
         g_updateStream.close();
         fs::remove(g_updateFile);
         return SYSTEM_ERROR_IO;
