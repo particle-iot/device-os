@@ -60,6 +60,10 @@
 #include "system_version.h"
 #include "firmware_update.h"
 
+#if PLATFORM_ID == PLATFORM_GCC
+#include "device_config.h"
+#endif
+
 #include <stdio.h>
 #include <stdint.h>
 #include <algorithm>
@@ -248,17 +252,6 @@ int getCloudFunctionInfo(size_t index, const char** name) {
     }
     return 0;
 }
-
-#if PLATFORM_ID == PLATFORM_GCC
-int platformIdOverride() {
-    hal_system_info_t info = {};
-    info.size = sizeof(info);
-    SPARK_ASSERT(HAL_System_Info(&info, true /* construct */, nullptr) == 0);
-    const auto platformId = info.platform_id;
-    HAL_System_Info(&info, false, nullptr);
-    return platformId;
-}
-#endif
 
 } // namespace particle
 
@@ -963,20 +956,17 @@ void Spark_Protocol_Init(void)
 
     if (!spark_protocol_is_initialized(sp))
     {
-#if PLATFORM_ID == PLATFORM_GCC
-        int platformId = platformIdOverride();
-        spark_protocol_set_platform_id(sp, platformId);
-#endif // PLATFORM_ID == PLATFORM_GCC
-
+#if PLATFORM_ID != PLATFORM_GCC
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
 
-        particle_key_errors = NO_ERROR;
-
         // User code was run, so persist the current values stored in the comms lib.
         // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
         if (system_mode()!=SAFE_MODE) {
+            // TODO: HAL_SetProductStore() and HAL_GetProductStore() are not implemented on Gen 3
+            // so the product info is not reported to the cloud when the device is in safe mode on
+            // those platforms. We should either remove that API or implement it properly
             HAL_SetProductStore(PRODUCT_STORE_ID, info.product_id);
             HAL_SetProductStore(PRODUCT_STORE_VERSION, info.product_version);
         }
@@ -988,6 +978,14 @@ void Spark_Protocol_Init(void)
             if (info.product_version!=0xFFFF)
                 spark_protocol_set_product_firmware_version(sp, info.product_version);
         }
+#else
+        spark_protocol_set_platform_id(sp, deviceConfig.platform_id);
+        // For now, follow the Gen 3 behavior in safe mode
+        if (system_mode() != SAFE_MODE && deviceConfig.product_version != 0xffff) {
+            spark_protocol_set_product_id(sp, deviceConfig.platform_id);
+            spark_protocol_set_product_firmware_version(sp, deviceConfig.product_version);
+        }
+#endif // PLATFORM_ID == PLATFORM_GCC
 
 #if HAL_PLATFORM_CLOUD_UDP
         const bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
@@ -1107,7 +1105,7 @@ void Spark_Protocol_Init(void)
         registerSystemSubscriptions();
 
 #if PLATFORM_ID == PLATFORM_GCC
-        bool isCellular = (udp && platformId != PLATFORM_ARGON);
+        bool isCellular = (udp && deviceConfig.platform_id != PLATFORM_ARGON);
         protocol::connection_properties_t connProp = {};
         connProp.size = sizeof(connProp);
         connProp.keepalive_source = protocol::KeepAliveSource::SYSTEM;
