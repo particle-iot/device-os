@@ -104,7 +104,7 @@ public:
             ("device_key,dk", po::value<std::string>(&config.device_key)->default_value("device_key.der"), "the filename containing the device private key")
             ("server_key,sk", po::value<std::string>(&config.server_key)->default_value("server_key.der"), "the filename containing the server public key")
             ("describe", po::value<std::string>(&config.describe), "the filename containing the device description")
-            ("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_LIGHTSSL), "the cloud communication protocol to use")
+            ("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_NONE), "the cloud communication protocol to use")
             ;
 
         command_line_options.add(program_options).add(device_options);
@@ -314,19 +314,24 @@ void DeviceConfig::read(Configuration& configuration)
     if (length!=24) {
         throw std::invalid_argument(std::string("expected device ID of length 24, got ") + '"' + configuration.device_id + '"');
     }
-
     hex2bin(configuration.device_id, device_id, sizeof(device_id));
 
     read_file(configuration.device_key.c_str(), device_key, sizeof(device_key));
     read_file(configuration.server_key.c_str(), server_key, sizeof(server_key));
 
-    this->protocol = configuration.protocol;
-    this->platform_id = configuration.platform_id;
-
     if (!configuration.describe.empty()) {
-        auto s = read_file(configuration.describe);
-        this->describe = Describe::fromString(s);
+        auto desc = read_file(configuration.describe);
+        this->describe = Describe::fromString(desc);
         this->platform_id = this->describe.platformId();
+    } else {
+        this->platform_id = configuration.platform_id;
+        auto desc = boost::str(boost::format("{\"p\":%1%,\"m\":[{\"f\":\"b\",\"n\":\"0\",\"v\":%2%,\"d\":[]},{\"f\":\"m\",\"n\":\"0\",\"v\":%3%,\"d\":[{\"f\":\"b\",\"n\":\"0\",\"v\":%2%}]}]}") %
+                this->platform_id % 1000 /* Bootloader version */ % MODULE_VERSION /* System version */);
+        this->describe = Describe::fromString(desc);
+    }
+
+    this->protocol = configuration.protocol;
+    if (this->protocol == PROTOCOL_NONE) {
         if (this->platform_id == PLATFORM_GCC || this->platform_id == PHOTON_PLATFORM_ID || this->platform_id == P1_PLATFORM_ID) {
             this->protocol = PROTOCOL_LIGHTSSL;
         } else {
