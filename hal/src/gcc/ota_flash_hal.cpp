@@ -28,8 +28,11 @@ bool moduleUpdatePending = false;
 
 namespace {
 
-const size_t MODULE_PREFIX_SIZE = 24; // sizeof(module_info_t) on a 32-bit platform
-const size_t MODULE_SUFFIX_SIZE = 36; // sizeof(module_info_suffix_t) on a 32-bit platform
+// sizeof(module_info_t) on a 32-bit platform
+const size_t MODULE_PREFIX_SIZE = 24;
+
+// Size of the fixed part of module suffix data (module_info_suffix_t) not including extensions
+const size_t MODULE_SUFFIX_SIZE = 36;
 
 struct ParsedModuleInfo {
     uint8_t function;
@@ -45,6 +48,7 @@ struct ParsedModuleInfo {
         uint8_t index;
         uint16_t version;
     } dependency2;
+    uint16_t productVersion;
     uint8_t hash[32];
 };
 
@@ -113,6 +117,13 @@ ParsedModuleInfo parseModule(const std::string& file) {
     }
     in.seekg(fileSize - 4 /* CRC-32 */ - 2 /* size */ - sizeof(info.hash));
     in.read((char*)info.hash, sizeof(info.hash));
+    if (info.function == MODULE_FUNCTION_USER_PART) {
+        in.seekg(fileSize - 4 /* CRC-32 */ - 2 /* size */ - sizeof(info.hash) - 2 /* reserved */ - sizeof(info.productVersion));
+        in.read((char*)&info.productVersion, sizeof(info.productVersion));
+        info.productVersion = endian::little_to_native(info.productVersion);
+    } else {
+        info.productVersion = 0xffff;
+    }
     return info;
 }
 
@@ -306,6 +317,9 @@ int HAL_FLASH_End(void* reserved)
             LOG(INFO, "Applying module update: function: \"%s\", index: %d, version: %d",
                     system::module_function_string((module_function_t)updatedModule.function), (int)updatedModule.index,
                     (int)updatedModule.version);
+            if (updatedModule.productVersion != 0xffff) {
+                LOG(INFO, "Product version: %d", (int)updatedModule.productVersion);
+            }
             LOG(INFO, "Module hash:");
             LOG_DUMP(INFO, updatedModule.hash, sizeof(updatedModule.hash));
             LOG_PRINT(INFO, "\r\n");
@@ -330,11 +344,13 @@ int HAL_FLASH_End(void* reserved)
             module->hash(std::string((const char*)updatedModule.hash, sizeof(updatedModule.hash)));
             desc.modules(modules);
             deviceConfig.describe = desc;
+            if (updatedModule.function == MODULE_FUNCTION_USER_PART) {
+                deviceConfig.product_version = updatedModule.productVersion;
+            }
             moduleUpdatePending = true;
         } else {
-            LOG(INFO, "Unsupported module: function: \"%s\", index: %d, version: %d",
-                    system::module_function_string((module_function_t)updatedModule.function), (int)updatedModule.index,
-                    (int)updatedModule.version);
+            LOG(INFO, "Unsupported module: function: \"%s\", index: %d",
+                    system::module_function_string((module_function_t)updatedModule.function), (int)updatedModule.index);
         }
         fs::remove(g_updateFile);
         return HAL_UPDATE_APPLIED_PENDING_RESTART;
