@@ -240,9 +240,10 @@ struct Configuration
     std::string device_key;
     std::string server_key;
     std::string describe;
-    uint16_t log_level = 0;
-    ProtocolFactory protocol = PROTOCOL_LIGHTSSL;
+    uint16_t log_level;
+    ProtocolFactory protocol;
     uint16_t platform_id;
+    uint16_t product_version;
 };
 
 /**
@@ -257,6 +258,7 @@ struct DeviceConfig
     uint8_t server_key[1024];
     ProtocolFactory protocol;
     uint16_t platform_id;
+    uint16_t product_version;
 
     void read(Configuration& configuration);
 
