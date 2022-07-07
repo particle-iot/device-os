@@ -48,6 +48,3 @@
 [submodule "third_party/fakeit/fakeit"]
 	path = third_party/fakeit/fakeit
 	url = https://github.com/particle-iot/Fakeit.git
-[submodule "third_party/ambd_sdk/ambd_sdk"]
-	path = third_party/ambd_sdk/ambd_sdk
-	url = git@github.com:particle-iot/realtek_ambd_sdk.git
