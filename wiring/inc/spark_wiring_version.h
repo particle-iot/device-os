@@ -43,9 +43,9 @@ struct __ApplicationProductVersion {
 #undef PRODUCT_ID
 #endif
 
-#if PLATFORM_ID != PLATFORM_GCC
 #define PRODUCT_ID(x) _Pragma ("GCC error \"The PRODUCT_ID macro must be removed from your firmware source code. \
 The same compiled firmware binary may be used in multiple products that share the same platform and functionality.\"")
+
 /*
  * PRODUCT_ID and PRODUCT_VERSION will be added to the beginning of the suffix by the linker.
  *
@@ -70,6 +70,7 @@ The same compiled firmware binary may be used in multiple products that share th
  * }
  *
  */
+#if PLATFORM_ID != PLATFORM_GCC
 #define PRODUCT_VERSION(x) \
         __ApplicationProductVersion __appProductVersion(x); \
         __attribute__((externally_visible, section(".modinfo.product_version"))) uint16_t __system_product_version = (x); \
@@ -77,8 +78,8 @@ The same compiled firmware binary may be used in multiple products that share th
         __ApplicationProductID __appProductID(PLATFORM_ID); \
         __attribute__((externally_visible, section(".modinfo.product_id"))) uint16_t __system_product_id = (PLATFORM_ID);
 #else
-#define PRODUCT_ID(x)
-#define PRODUCT_VERSION(x)
+#define PRODUCT_VERSION(x) _Pragma ("GCC warning \"The PRODUCT_VERSION macro is ignored on the GCC platform. \
+Use the --product_version argument instead.\"")
 #endif // PLATFORM_ID != PLATFORM_GCC
 
 #endif	/* SPARK_WIRING_VERSION_H */
