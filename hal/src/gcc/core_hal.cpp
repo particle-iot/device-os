@@ -61,12 +61,9 @@ extern bool moduleUpdatePending; // Defined in ota_flash_hal.cpp
 
 } // namespace particle
 
-static LoggerOutputLevel log_level = NO_LOG_LEVEL;
+namespace {
 
-void setLoggerLevel(LoggerOutputLevel level)
-{
-    log_level = level;
-}
+LoggerOutputLevel log_level = NO_LOG_LEVEL;
 
 void log_message_callback(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved)
 {
@@ -131,6 +128,35 @@ void log_write_callback(const char *data, size_t size, int level, const char *ca
 int log_enabled_callback(int level, const char *category, void *reserved)
 {
     return (level >= log_level);
+}
+
+bool removeArg(std::vector<std::string>* args, const std::string& arg) {
+    bool found = false;
+    size_t i = 0;
+    while (i < args->size()) {
+        if (boost::starts_with(args->at(i), "--" + arg + '=')) {
+            args->erase(args->begin() + i);
+            found = true;
+            continue;
+        }
+        if (args->at(i) == "--" + arg) {
+            args->erase(args->begin() + i);
+            if (i < args->size()) {
+                args->erase(args->begin() + i); // Remove the value argument
+            }
+            found = true;
+            continue;
+        }
+        ++i;
+    }
+    return found;
+}
+
+} // namespace
+
+void setLoggerLevel(LoggerOutputLevel level)
+{
+    log_level = level;
 }
 
 void core_log(const char* msg, ...)
@@ -250,22 +276,12 @@ void HAL_Core_System_Reset(void)
             auto descFile = temp_file_name("device_update_", ".json");
             write_file(descFile, deviceConfig.describe.toString()); // TODO: Cleanup
             LOG(INFO, "Saved module info to %s", descFile.data());
-            size_t i = 0;
-            while (i < args.size()) {
-                if (boost::starts_with(args[i], "--describe=")) {
-                    args.erase(args.begin() + i);
-                    continue;
-                }
-                if (args[i] == "--describe") {
-                    args.erase(args.begin() + i);
-                    if (i < args.size()) {
-                        args.erase(args.begin() + i); // Remove the next argument
-                    }
-                    continue;
-                }
-                ++i;
-            }
+            removeArg(&args, "describe");
             args.push_back("--describe=" + descFile);
+            removeArg(&args, "product_version");
+            if (deviceConfig.product_version != 0xffff) {
+                args.push_back("--product_version=" + std::to_string(deviceConfig.product_version));
+            }
         }
         std::vector<char*> argv;
         for (auto& arg: args) {
