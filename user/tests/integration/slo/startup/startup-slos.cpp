@@ -16,6 +16,8 @@ extern "C" int hal_flash_read(uintptr_t addr, uint8_t* buf, size_t size) {
     return SYSTEM_ERROR_NONE;
 }
 
+extern uintptr_t link_module_start;
+
 test(slo_startup_stats) {
     Particle.connect();
     waitFor(Particle.connected, 10 * 60 * 1000);
@@ -26,7 +28,7 @@ test(slo_startup_stats) {
     // get the total in-flash size of the sample application (from which "free flash" is
     // implied)
     size_t app_flash_size =
-        FLASH_ModuleLength(FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION) +
+        FLASH_ModuleLength(FLASH_INTERNAL, (uint32_t)&link_module_start) +
         sizeof(uint32_t);
 
     String stats = String::format("{\"free_mem\": %u, \"app_flash_size\": %u}",

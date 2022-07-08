@@ -3,6 +3,10 @@ BOOTLOADER_MODULE_PATH=.
 PLATFORM_DFU=0x8000000
 BUILD_PATH_EXT = $(BOOTLOADER_BUILD_PATH_EXT)
 
+ifeq ("$(PLATFORM)","p2")
+RTL_BINARY_FLASH_START = 0x4000
+endif
+
 DEPENDENCIES = platform hal services system dynalib
 MAKE_DEPENDENCIES = platform services
 # dependent on HAL headers, but not the library
@@ -10,7 +14,9 @@ LIBS += $(MAKE_DEPENDENCIES)
 LIB_DEPS += $(PLATFORM_LIB_DEP) $(SERVICES_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
-export COMPILE_LTO=y
+BOOTLOADER_USE_LTO?=y
+
+export COMPILE_LTO=BOOTLOADER_USE_LTO
 
 export BOOTLOADER_MODULE=1
 

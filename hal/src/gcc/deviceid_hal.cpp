@@ -39,12 +39,12 @@
 
 using std::string;
 
-unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
+unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
 {
     return deviceConfig.fetchDeviceID(dest, destLen);
 }
 
-unsigned HAL_Platform_ID()
+unsigned hal_get_platform_id()
 {
     return PLATFORM_ID;
 }

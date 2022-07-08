@@ -5,5 +5,6 @@ MAIN_STACK_SIZE = 8192
 ASFLAGS += -D__STACKSIZE__=$(MAIN_STACK_SIZE) -D__STACK_SIZE=$(MAIN_STACK_SIZE)
 
 LDFLAGS += -L$(COMMON_BUILD)/arm/linker/nrf52840
+# __STACKSIZE__ is referenced by build/arm/linker/nrf52840/platform_ram.ld
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=$(MAIN_STACK_SIZE)
 LDFLAGS += -Wl,--defsym,__STACK_SIZE=$(MAIN_STACK_SIZE)

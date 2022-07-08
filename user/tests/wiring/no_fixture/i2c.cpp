@@ -8,7 +8,7 @@
 namespace {
 
 #if HAL_PLATFORM_FUELGAUGE_MAX17043
-std::pair<pin_t, pin_t> i2cToSdaSclPins(hal_i2c_interface_t i2c) {
+std::pair<hal_pin_t, hal_pin_t> i2cToSdaSclPins(hal_i2c_interface_t i2c) {
 #if HAL_PLATFORM_GEN == 3
     switch (i2c) {
         case HAL_I2C_INTERFACE1: {
@@ -34,7 +34,7 @@ std::pair<pin_t, pin_t> i2cToSdaSclPins(hal_i2c_interface_t i2c) {
 
 class SoftWire {
 public:
-    SoftWire(hal_i2c_interface_t i2c, pin_t sda, pin_t scl)
+    SoftWire(hal_i2c_interface_t i2c, hal_pin_t sda, hal_pin_t scl)
             : i2c_(i2c),
               sda_(sda),
               scl_(scl) {
@@ -54,8 +54,8 @@ public:
             .set_value = true,
             .value = 1
         };
-        HAL_Pin_Configure(sda_, &conf, nullptr);
-        HAL_Pin_Configure(scl_, &conf, nullptr);
+        hal_gpio_configure(sda_, &conf, nullptr);
+        hal_gpio_configure(scl_, &conf, nullptr);
     }
 
     int transmit(const uint8_t* data, const WireTransmission& transmission, bool abort = false, size_t abortBitAfterAddress = 0, bool abortAck = false) {
@@ -128,19 +128,19 @@ public:
 private:
     void startCondition() {
         Log.info("start");
-        HAL_GPIO_Write(sda_, 0);
+        hal_gpio_write(sda_, 0);
         HAL_Delay_Microseconds(50);
-        HAL_GPIO_Write(scl_, 0);
+        hal_gpio_write(scl_, 0);
         HAL_Delay_Microseconds(50);
     }
 
     void stopCondition() {
         Log.info("stop");
-        HAL_GPIO_Write(sda_, 0);
+        hal_gpio_write(sda_, 0);
         HAL_Delay_Microseconds(50);
-        HAL_GPIO_Write(scl_, 1);
+        hal_gpio_write(scl_, 1);
         HAL_Delay_Microseconds(50);
-        HAL_GPIO_Write(sda_, 1);
+        hal_gpio_write(sda_, 1);
         HAL_Delay_Microseconds(50);
     }
 
@@ -148,11 +148,11 @@ private:
         Log.info("clock out %d bits (%02x)", bits, data);
         uint8_t res = 0x00;
         for (size_t i = 0; i < bits; i++) {
-            HAL_GPIO_Write(sda_, data & 0x80);
-            res |= HAL_GPIO_Read(sda_) << (8 - i - 1);
-            HAL_GPIO_Write(scl_, 1);
+            hal_gpio_write(sda_, data & 0x80);
+            res |= hal_gpio_read(sda_) << (8 - i - 1);
+            hal_gpio_write(scl_, 1);
             HAL_Delay_Microseconds(50);
-            HAL_GPIO_Write(scl_, 0);
+            hal_gpio_write(scl_, 0);
             HAL_Delay_Microseconds(50);
             data <<= 1;
         }
@@ -163,11 +163,11 @@ private:
         Log.info("clocking in %d bits", bits);
         uint8_t data = 0x00;
         while (bits-- > 0) {
-            HAL_GPIO_Write(sda_, 1);
-            HAL_GPIO_Write(scl_, 1);
+            hal_gpio_write(sda_, 1);
+            hal_gpio_write(scl_, 1);
             HAL_Delay_Microseconds(50);
-            data |= (HAL_GPIO_Read(sda_) & 0x01) << bits;
-            HAL_GPIO_Write(scl_, 0);
+            data |= (hal_gpio_read(sda_) & 0x01) << bits;
+            hal_gpio_write(scl_, 0);
             HAL_Delay_Microseconds(50);
         }
         Log.info("clocked in (%02x)", data);
@@ -175,14 +175,14 @@ private:
     }
 
     int readAck() {
-        HAL_GPIO_Write(sda_, 1);
-        HAL_GPIO_Write(scl_, 1);
+        hal_gpio_write(sda_, 1);
+        hal_gpio_write(scl_, 1);
         HAL_Delay_Microseconds(50);
-        bool ack = !HAL_GPIO_Read(sda_);
-        HAL_GPIO_Write(scl_, 0);
+        bool ack = !hal_gpio_read(sda_);
+        hal_gpio_write(scl_, 0);
         HAL_Delay_Microseconds(50);
         Log.info("read ack %d", ack);
-        HAL_GPIO_Write(sda_, 0);
+        hal_gpio_write(sda_, 0);
         if (!ack) {
             return SYSTEM_ERROR_PROTOCOL;
         }
@@ -191,18 +191,18 @@ private:
 
     int ackOut(bool ack) {
         Log.info("out ack %d", ack);
-        HAL_GPIO_Write(sda_, !ack);
-        HAL_GPIO_Write(scl_, 1);
+        hal_gpio_write(sda_, !ack);
+        hal_gpio_write(scl_, 1);
         HAL_Delay_Microseconds(50);
-        HAL_GPIO_Write(scl_, 0);
+        hal_gpio_write(scl_, 0);
         HAL_Delay_Microseconds(50);
         return 0;
     }
 
 private:
     hal_i2c_interface_t i2c_;
-    pin_t sda_;
-    pin_t scl_;
+    hal_pin_t sda_;
+    hal_pin_t scl_;
 };
 
 }

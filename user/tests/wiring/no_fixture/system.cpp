@@ -88,7 +88,7 @@ test(SYSTEM_03_user_backup_ram)
 
 #endif // defined(USER_BACKUP_RAM)
 
-#if 0 // FIXME: Leaving this as reference. Use the relevat platform ID when available
+#if 0 // FIXME: Leaving this as reference. Use the relevant platform ID when available
 
 #if defined(BUTTON1_MIRROR_SUPPORTED)
 static int s_button_clicks = 0;
@@ -99,7 +99,7 @@ static void onButtonClick(system_event_t ev, int data) {
 test(SYSTEM_XX_button_mirror)
 {
     System.buttonMirror(D1, FALLING, false);
-    auto pinmap = HAL_Pin_Map();
+    auto pinmap = hal_pin_map();
     System.on(button_click, onButtonClick);
 
     // "Click" setup button 3 times
@@ -136,7 +136,7 @@ test(SYSTEM_XX_button_mirror_disable)
 }
 #endif // defined(BUTTON1_MIRROR_SUPPORTED)
 
-#endif
+#endif // 0
 
 void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal_module_t** factory) {
     for (unsigned i = 0; i < info.module_count; i++) {
@@ -152,6 +152,7 @@ void findUserAndFactoryModules(hal_system_info_t& info, hal_module_t** user, hal
     }
 }
 
+#if !HAL_PLATFORM_RTL872X // P2 doesn't have factory module
 test(SYSTEM_04_system_describe_is_not_overflowed_when_factory_module_present)
 {
     hal_system_info_t info = {};
@@ -238,6 +239,9 @@ test(SYSTEM_04_system_describe_is_not_overflowed_when_factory_module_present)
     assertTrue(!memcmp(&factory->suffix, &patchedModuleSuffix, sizeof(patchedModuleSuffix)));
 
     // Connect to the cloud, if there is a system describe overflow, we'll trigger assertion failure here
+    //
+    // XXX: Describe messages can no longer overflow now that we support blockwise transfer but
+    // checking that we can connect successfully is probably still a good enough test :)
     assertTrue(Particle.disconnected);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
@@ -295,10 +299,14 @@ test(SYSTEM_05_system_describe_is_not_overflowed_when_factory_module_present_but
     assertNotEqual(factory->validity_checked, 0);
 
     // Connect to the cloud, if there is a system describe overflow, we'll trigger assertion failure here
+    //
+    // XXX: Describe messages can no longer overflow now that we support blockwise transfer but
+    // checking that we can connect successfully is probably still a good enough test :)
     assertTrue(Particle.disconnected);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
+#endif // !HAL_PLATFORM_RTL872X
 
 namespace {
 int sLastEvent = 0;

@@ -52,7 +52,7 @@ public:
         onChange(std::bind(handler, instance, _1, _2, _3));
     }
 
-    static void mirrorTo(pin_t rpin, pin_t gpin, pin_t bpin, bool invert=false, bool bootloader=false);
+    static void mirrorTo(hal_pin_t rpin, hal_pin_t gpin, hal_pin_t bpin, bool invert=false, bool bootloader=false);
     static void mirrorDisable(bool bootloader=true);
 
 private:

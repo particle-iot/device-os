@@ -34,12 +34,12 @@
 using namespace particle;
 #endif
 
-PinMode HAL_Get_Pin_Mode(pin_t pin) {
-    return (!is_valid_pin(pin)) ? PIN_MODE_NONE : HAL_Pin_Map()[pin].pin_mode;
+PinMode hal_gpio_get_mode(hal_pin_t pin) {
+    return (!is_valid_pin(pin)) ? PIN_MODE_NONE : hal_pin_map()[pin].pin_mode;
 }
 
-PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction) {
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+PinFunction hal_pin_validate_function(hal_pin_t pin, PinFunction pinFunction) {
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     if (!is_valid_pin(pin)) {
         return PF_NONE;
@@ -55,11 +55,11 @@ PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction) {
     return PF_DIO;
 }
 
-int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
+int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
     CHECK_TRUE(is_valid_pin(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(conf, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
     PinMode mode = conf->mode;
 
@@ -70,9 +70,9 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
 
         // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
         if (mode != PIN_MODE_NONE) {
-            HAL_Set_Pin_Function(pin, PF_DIO);
+            hal_pin_set_function(pin, PF_DIO);
         } else {
-            HAL_Set_Pin_Function(pin, PF_NONE);
+            hal_pin_set_function(pin, PF_NONE);
         }
 
         // Pre-set the output value if requested to avoid a glitch
@@ -160,9 +160,9 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
 
         // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
         if (mode != PIN_MODE_NONE) {
-            HAL_Set_Pin_Function(pin, PF_DIO);
+            hal_pin_set_function(pin, PF_DIO);
         } else {
-            HAL_Set_Pin_Function(pin, PF_NONE);
+            hal_pin_set_function(pin, PF_NONE);
         }
 
         // Pre-set the output value if requested to avoid a glitch
@@ -195,7 +195,7 @@ int HAL_Pin_Configure(pin_t pin, const hal_gpio_config_t* conf, void* reserved) 
  * @brief Set the mode of the pin to OUTPUT, INPUT, INPUT_PULLUP,
  * or INPUT_PULLDOWN
  */
-void HAL_Pin_Mode(pin_t pin, PinMode setMode) {
+void hal_gpio_mode(hal_pin_t pin, PinMode setMode) {
     const hal_gpio_config_t c = {
         .size = sizeof(c),
         .version = HAL_GPIO_VERSION,
@@ -204,7 +204,7 @@ void HAL_Pin_Mode(pin_t pin, PinMode setMode) {
         .value = 0,
         .drive_strength = HAL_GPIO_DRIVE_DEFAULT
     };
-    HAL_Pin_Configure(pin, &c, nullptr);
+    hal_gpio_configure(pin, &c, nullptr);
 }
 
 /*
@@ -225,12 +225,12 @@ PinMode HAL_GPIO_Recall_Pin_Mode(uint16_t pin) {
 /*
  * @brief Sets a GPIO pin to HIGH or LOW.
  */
-void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
+void hal_gpio_write(uint16_t pin, uint8_t value) {
     if (!is_valid_pin(pin)) {
         return;
     }
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
@@ -239,7 +239,7 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
 
         // PWM have conflict with GPIO OUTPUT mode on nRF52
         if (PIN_MAP[pin].pin_func == PF_PWM) {
-            HAL_Pin_Mode(pin, OUTPUT);
+            hal_gpio_mode(pin, OUTPUT);
         }
 
         if(value == 0) {
@@ -265,12 +265,12 @@ void HAL_GPIO_Write(uint16_t pin, uint8_t value) {
 /*
  * @brief Reads the value of a GPIO pin. Should return either 1 (HIGH) or 0 (LOW).
  */
-int32_t HAL_GPIO_Read(uint16_t pin) {
+int32_t hal_gpio_read(uint16_t pin) {
     if (!is_valid_pin(pin)) {
         return 0;
     }
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {
@@ -324,14 +324,14 @@ int32_t HAL_GPIO_Read(uint16_t pin) {
 * @returns uint32_t pulse width in microseconds up to 3 seconds,
 *          returns 0 on 3 second timeout error, or invalid pin.
 */
-uint32_t HAL_Pulse_In(pin_t pin, uint16_t value) {
+uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
     #define FAST_READ(pin)  ((reg->IN >> pin) & 1UL)
 
     if (!is_valid_pin(pin)) {
         return 0;
     }
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (PIN_MAP[pin].type == HAL_PIN_TYPE_MCU) {

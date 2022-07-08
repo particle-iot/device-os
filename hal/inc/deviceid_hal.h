@@ -53,12 +53,12 @@ extern "C" {
  * To find out the size of the device ID, call this method with
  * {@code destLen}==0.
  */
-unsigned HAL_device_ID(uint8_t* dest, unsigned destLen);
+unsigned hal_get_device_id(uint8_t* dest, unsigned destLen);
 
 /**
  * Retrievse the platform ID of this device.
  */
-unsigned HAL_Platform_ID();
+unsigned hal_get_platform_id();
 
 /**
  *
@@ -69,7 +69,7 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
  * Save the device ID to persistent storage so it can be retrieved via DCT. This is
  * done automatically by the system on startup.
  */
-void HAL_save_device_id(uint32_t offset);
+void hal_save_device_id(uint32_t offset);
 
 /**
  * Get the device's serial number.
@@ -95,6 +95,8 @@ int hal_get_device_hw_version(uint32_t* revision, void* reserved);
  * Get the device's hardware model number and variant.
  */
 int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved);
+
+#include "deviceid_hal_compat.h"
 
 #ifdef	__cplusplus
 }

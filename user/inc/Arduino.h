@@ -91,18 +91,25 @@ inline void yield() {
 #endif
 
 #ifndef analogInputToDigitalPin
-#define analogInputToDigitalPin(p)  (((p < TOTAL_ANALOG_PINS) && (p >= 0)) ? (p) + FIRST_ANALOG_PIN : -1)
+#if PLATFORM_ID == PLATFORM_P2
+#define analogInputToDigitalPin(p)  ((p) == 3 ? 0 : \
+                                    ((p) == 4 ? 1 : \
+                                    ((p) == 5 ? 14 : \
+                                    ((((p) < TOTAL_ANALOG_PINS) && ((p) >= 0)) ? (p) + FIRST_ANALOG_PIN : -1))))
+#else
+#define analogInputToDigitalPin(p)  ((((p) < TOTAL_ANALOG_PINS) && ((p) >= 0)) ? (p) + FIRST_ANALOG_PIN : -1)
+#endif
 #endif
 
 // XXX
 #if HAL_PLATFORM_NRF52840
 
 # ifndef digitalPinToPort
-# define digitalPinToPort(P)        ( HAL_Pin_Map()[P].gpio_port ? NRF_P1 : NRF_P0 )
+# define digitalPinToPort(P)        ( hal_pin_map()[P].gpio_port ? NRF_P1 : NRF_P0 )
 # endif
 
 # ifndef digitalPinToBitMask
-# define digitalPinToBitMask(P)     ( HAL_Pin_Map()[P].gpio_pin )
+# define digitalPinToBitMask(P)     ( hal_pin_map()[P].gpio_pin )
 # endif
 
 # ifndef portOutputRegister
@@ -118,10 +125,38 @@ inline void yield() {
 # endif
 
 # ifndef digitalPinHasPWM
-# define digitalPinHasPWM(P)        ( HAL_Validate_Pin_Function(P, PF_TIMER) == PF_TIMER )
+# define digitalPinHasPWM(P)        ( hal_pin_validate_function(P, PF_TIMER) == PF_TIMER )
 # endif
 
-#endif // PLATFORM_ID == HAL_PLATFORM_NRF52840
+#elif HAL_PLATFORM_RTL872X
+
+extern GPIO_TypeDef* PORT_AB[2];
+
+# ifndef digitalPinToPort
+# define digitalPinToPort(P)        ( PORT_AB[hal_pin_map()[(P)].gpio_port] ) 
+# endif
+
+# ifndef digitalPinToBitMask
+# define digitalPinToBitMask(P)     ( hal_pin_map()[(P)].gpio_pin )
+# endif
+
+# ifndef portOutputRegister
+# define portOutputRegister(port)   ( &( port->PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ].DR ) ) 
+# endif
+
+# ifndef portInputRegister
+# define portInputRegister(port)    ( &( port->EXT_PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ] ) )
+# endif
+
+# ifndef portModeRegister
+# define portModeRegister(port)     ( &( port->PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ].DDR ) )
+# endif
+
+# ifndef digitalPinHasPWM
+# define digitalPinHasPWM(P)        ( hal_pin_validate_function(P, PF_TIMER) == PF_TIMER )
+# endif
+
+#endif // HAL_PLATFORM_RTL872X
 
 #ifndef _BV
 #define _BV(x)  (((uint32_t)1) << (x))
@@ -152,7 +187,6 @@ typedef volatile uint32_t RwReg;
 // Pins
 
 // LED
-#if HAL_PLATFORM_NRF52840
 # ifndef LED_BUILTIN
 # define LED_BUILTIN D7
 # endif
@@ -160,8 +194,6 @@ typedef volatile uint32_t RwReg;
 # ifndef ATN
 # define ATN SS
 # endif
-
-#endif // HAL_PLATFORM_NRF52840
 
 // C++ only
 #ifdef __cplusplus

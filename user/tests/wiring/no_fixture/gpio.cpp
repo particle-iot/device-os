@@ -26,44 +26,51 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+// FIXME: breaks USB comms as USB interrupts are processed in a thread
+#if HAL_PLATFORM_RTL872X
+#undef SINGLE_THREADED_BLOCK
+#define SINGLE_THREADED_BLOCK()
+#endif // HAL_PLATFORM_RTL872X
+
 test(GPIO_01_PinModeSetResultsInCorrectMode) {
     PinMode mode[] = {
-            OUTPUT,
-            INPUT,
-            INPUT_PULLUP,
-            INPUT_PULLDOWN,
-            OUTPUT_OPEN_DRAIN,
-#if !HAL_PLATFORM_NRF52840
-            // AF_OUTPUT_PUSHPULL,
-            // AN_INPUT
-            #error "Unsupported platform"
-#endif // !HAL_PLATFORM_NRF52840
+        OUTPUT,
+        INPUT,
+        INPUT_PULLUP,
+        INPUT_PULLDOWN,
+        OUTPUT_OPEN_DRAIN,
+#if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
+        // AF_OUTPUT_PUSHPULL,
+        // AN_INPUT,
+        // AN_OUTPUT
+#error "Unsupported platform"
+#endif
     };
     int n = sizeof(mode) / sizeof(mode[0]);
-    pin_t pin = A0;//pin under test
+    hal_pin_t pin = A0;//pin under test
     for(int i=0;i<n;i++)
     {
         // when
         pinMode(pin, mode[i]);
         // then
-        assertEqual(HAL_Get_Pin_Mode(pin), mode[i]);
+        assertEqual(hal_gpio_get_mode(pin), mode[i]);
     }
     //To Do : Add test for remaining pins if required
 }
 
 test(GPIO_02_NoDigitalWriteWhenPinModeIsNotSetToOutput) {
-    pin_t pin = A0;//pin under test
+    hal_pin_t pin = A0;//pin under test
     // when
     // pin set to INPUT_PULLUP mode, to keep pin from floating and test failing
     pinMode(pin, INPUT_PULLUP);
     digitalWrite(pin, LOW);
     // then
-    assertNotEqual((PinState)HAL_GPIO_Read(pin), LOW);
+    assertNotEqual((PinState)hal_gpio_read(pin), LOW);
     //To Do : Add test for remaining pins if required
 }
 
 test(GPIO_03_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = TOTAL_PINS+1;//pin under test (not a valid user pin)
+    hal_pin_t pin = TOTAL_PINS+1;//pin under test (not a valid user pin)
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
@@ -73,7 +80,7 @@ test(GPIO_03_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
 }
 
 test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
-    pin_t pin = A0;//pin under test
+    hal_pin_t pin = A0;//pin under test
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
@@ -89,13 +96,15 @@ test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
     //To Do : Add test for remaining pins if required
 }
 
+#if !HAL_PLATFORM_RTL872X
 test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 #if HAL_PLATFORM_NRF52840
-    pin_t pin = D4; // pin under test
+    hal_pin_t pin = D4; // pin under test
+#elif HAL_PLATFORM_RTL872X
+    hal_pin_t pin = D1;
 #else
-    #error "Unsupported platform"
+#error "Unsupported platform"
 #endif
-
     uint32_t avgPulseHigh = 0;
     // when
     SINGLE_THREADED_BLOCK() {
@@ -115,9 +124,11 @@ test(GPIO_05_pulseIn_Measures1000usHIGHWithin5Percent) {
 
 test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
 #if HAL_PLATFORM_NRF52840
-    pin_t pin = D4; // pin under test
+    hal_pin_t pin = D4; // pin under test
+#elif HAL_PLATFORM_RTL872X
+    hal_pin_t pin = D1;
 #else
-    #error "Unsupported platform"
+#error "Unsupported platform"
 #endif
     uint32_t avgPulseLow = 0;
     // when
@@ -135,9 +146,10 @@ test(GPIO_06_pulseIn_Measures1000usLOWWithin5Percent) {
     assertMoreOrEqual(avgPulseLow, 950);
     assertLessOrEqual(avgPulseLow, 1050);
 }
+#endif // !HAL_PLATFORM_RTL872X
 
 test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
-    pin_t pin = D1; // pin under test
+    hal_pin_t pin = D1; // pin under test
     // when
     pinMode(pin, OUTPUT);
     digitalWrite(pin, HIGH);
@@ -157,10 +169,10 @@ test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
 }
 
 test(GPIO_08_DigitalReadWorksMixedWithAnalogRead) {
-    pin_t pin = A0;
+    hal_pin_t pin = A0;
 
     pinMode(pin, INPUT_PULLUP);
-    assertEqual(HAL_Get_Pin_Mode(pin), INPUT_PULLUP);
+    assertEqual(hal_gpio_get_mode(pin), INPUT_PULLUP);
 
     // 2 digitalReads
     PinState digVal = (PinState)digitalRead(pin);
@@ -179,6 +191,4 @@ test(GPIO_08_DigitalReadWorksMixedWithAnalogRead) {
     assertEqual(digVal, HIGH);
     digVal = (PinState)digitalRead(pin);
     assertEqual(digVal, HIGH);
-
 }
-

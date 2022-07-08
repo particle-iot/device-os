@@ -24,7 +24,7 @@
 #define Wiring_LogConfig 1 // for testing purposes
 #endif
 
-#if HAL_PLATFORM_NRF52840
+#if HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 #define Wiring_SPI1 1
 #define Wiring_LogConfig 1
 //#ifdef DEBUG_BUILD
@@ -63,6 +63,10 @@
 #if HAL_PLATFORM_USART2
 #define Wiring_Serial2 1
 #endif // HAL_PLATFORM_USART2
+
+#if HAL_PLATFORM_USART3
+#define Wiring_Serial3 1
+#endif // HAL_PLATFORM_USART3
 
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0

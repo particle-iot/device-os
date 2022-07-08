@@ -69,11 +69,11 @@ int Mcp23s17::begin() {
     Mcp23s17Lock lock();
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
 
-    HAL_Pin_Mode(IOE_CS, OUTPUT);
-    HAL_GPIO_Write(IOE_CS, 1);
-    HAL_Pin_Mode(IOE_RST, OUTPUT);
-    HAL_GPIO_Write(IOE_RST, 1);
-    HAL_Pin_Mode(IOE_INT, INPUT_PULLUP);
+    hal_gpio_mode(IOE_CS, OUTPUT);
+    hal_gpio_write(IOE_CS, 1);
+    hal_gpio_mode(IOE_RST, OUTPUT);
+    hal_gpio_write(IOE_RST, 1);
+    hal_gpio_mode(IOE_INT, INPUT_PULLUP);
 
     if (!hal_spi_is_enabled(spi_)) {
         hal_spi_init(spi_);
@@ -91,9 +91,9 @@ int Mcp23s17::begin() {
         return SYSTEM_ERROR_INTERNAL;
     }
 
-    HAL_InterruptExtraConfiguration extra = {};
+    hal_interrupt_extra_configuration_t extra = {};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
-    CHECK(HAL_Interrupts_Attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
+    CHECK(hal_interrupt_attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
 
     initialized_ = true;
     CHECK(reset());
@@ -130,9 +130,9 @@ int Mcp23s17::reset(bool verify) {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(IOE_RST != PIN_INVALID, SYSTEM_ERROR_INVALID_ARGUMENT);
     // Assert reset pin
-    HAL_GPIO_Write(IOE_RST, 0);
+    hal_gpio_write(IOE_RST, 0);
     HAL_Delay_Milliseconds(10);
-    HAL_GPIO_Write(IOE_RST, 1);
+    hal_gpio_write(IOE_RST, 1);
     HAL_Delay_Milliseconds(10);
 
     if (verify) {
@@ -388,11 +388,11 @@ void Mcp23s17::resetRegValue() {
 int Mcp23s17::writeRegister(const uint8_t addr, const uint8_t val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     std::lock_guard<SpiConfigurationLock> spiGuarder(spiLock_);
-    HAL_GPIO_Write(IOE_CS, 0);
+    hal_gpio_write(IOE_CS, 0);
     hal_spi_transfer(spi_, MCP23S17_CMD_WRITE);
     hal_spi_transfer(spi_, addr);
     hal_spi_transfer(spi_, val);
-    HAL_GPIO_Write(IOE_CS, 1);
+    hal_gpio_write(IOE_CS, 1);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -400,11 +400,11 @@ int Mcp23s17::readRegister(const uint8_t addr, uint8_t* const val) const {
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     CHECK_TRUE(val != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
     std::lock_guard<SpiConfigurationLock> spiGuarder(spiLock_);
-    HAL_GPIO_Write(IOE_CS, 0);
+    hal_gpio_write(IOE_CS, 0);
     hal_spi_transfer(spi_, MCP23S17_CMD_READ);
     hal_spi_transfer(spi_, addr);
     *val = hal_spi_transfer(spi_, 0xFF);
-    HAL_GPIO_Write(IOE_CS, 1);
+    hal_gpio_write(IOE_CS, 1);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -412,13 +412,13 @@ int Mcp23s17::readContinuousRegisters(const uint8_t start_addr, uint8_t* const v
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
     CHECK_TRUE(val != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
     std::lock_guard<SpiConfigurationLock> spiGuarder(spiLock_);
-    HAL_GPIO_Write(IOE_CS, 0);
+    hal_gpio_write(IOE_CS, 0);
     hal_spi_transfer(spi_, MCP23S17_CMD_READ);
     hal_spi_transfer(spi_, start_addr);
     for (uint8_t i = 0; i < len; i++) {
         val[i] = hal_spi_transfer(spi_, 0xFF);
     }
-    HAL_GPIO_Write(IOE_CS, 1);
+    hal_gpio_write(IOE_CS, 1);
     return SYSTEM_ERROR_NONE;
 }
 

@@ -26,9 +26,20 @@
 extern "C" {
 #endif
 
-typedef struct Hal_Pin_Info Hal_Pin_Info;
+typedef struct hal_pin_info_t hal_pin_info_t;
 
-typedef uint16_t pin_t;
+typedef uint16_t hal_pin_t;
+typedef hal_pin_t pin_t; // __attribute__((deprecated("Use hal_pin_t instead")));
+
+#if HAL_PLATFORM_IO_EXTENSION
+typedef enum hal_pin_type_t {
+    HAL_PIN_TYPE_UNKNOWN,
+    HAL_PIN_TYPE_MCU,
+    HAL_PIN_TYPE_IO_EXPANDER,
+    HAL_PIN_TYPE_DEMUX,
+    HAL_PIN_TYPE_MAX
+} hal_pin_type_t;
+#endif
 
 typedef enum PinMode {
     INPUT = 0,
@@ -41,6 +52,7 @@ typedef enum PinMode {
     AN_OUTPUT = 7,          // Used internally for DAC Output,
     OUTPUT_OPEN_DRAIN = AF_OUTPUT_DRAIN,
     OUTPUT_OPEN_DRAIN_PULLUP = 8,
+    PIN_MODE_SWD = 9,
     PIN_MODE_NONE = 0xFF
 } PinMode;
 
@@ -56,15 +68,23 @@ typedef enum PinFunction {
     PF_I2C
 } PinFunction;
 
-Hal_Pin_Info* HAL_Pin_Map(void);
-PinFunction HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction);
-void HAL_Set_Pin_Function(pin_t pin, PinFunction pin_func);
+hal_pin_info_t* hal_pin_map(void);
+PinFunction hal_pin_validate_function(hal_pin_t pin, PinFunction pinFunction);
+void hal_pin_set_function(hal_pin_t pin, PinFunction pin_func);
 
 #define PIN_INVALID 0xff
 
 #include "pinmap_impl.h"
 
-#define HAL_Pin_Is_Valid(pin) ((pin) < TOTAL_PINS)
+#define hal_pin_is_valid(pin) ((pin) < TOTAL_PINS)
+
+typedef hal_pin_info_t Hal_Pin_Info __attribute__((deprecated("Use hal_pin_info_t instead")));
+
+static inline Hal_Pin_Info* __attribute__((deprecated("Use hal_pin_map() instead"), always_inline))
+Hal_Pin_Map(void) {
+    return hal_pin_map();
+}
+
 
 #ifdef __cplusplus
 }

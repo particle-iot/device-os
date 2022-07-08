@@ -35,7 +35,7 @@ namespace particle { namespace net {
 class WizNetif : public BaseNetif {
 public:
     WizNetif() = delete;
-    WizNetif(hal_spi_interface_t spi, pin_t cs, pin_t reset, pin_t interrupt, const uint8_t mac[6]);
+    WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_pin_t interrupt, const uint8_t mac[6]);
     virtual ~WizNetif();
 
     virtual int powerUp() override;
@@ -80,9 +80,9 @@ private:
 
 private:
     hal_spi_interface_t spi_;
-    pin_t cs_;
-    pin_t reset_;
-    pin_t interrupt_;
+    hal_pin_t cs_;
+    hal_pin_t reset_;
+    hal_pin_t interrupt_;
 
     std::atomic<if_power_state_t> pwrState_;
 

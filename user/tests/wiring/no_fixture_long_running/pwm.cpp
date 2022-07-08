@@ -14,7 +14,7 @@ static const uint32_t minimumFrequency = 100;
 
 struct PinMapping {
     const char* name;
-    pin_t pin;
+    hal_pin_t pin;
 };
 
 #define PIN(p) {#p, p}
@@ -34,6 +34,8 @@ const PinMapping pwm_pins[] = {
         // cause problems if the RGB led is enabled.
         // PWM HAL also is not interrupt safe and RGB pins are modified in SysTick
         PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), /* PIN(D7), */ PIN(D8), PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
+#elif PLATFORM_ID == PLATFORM_P2
+        PIN(D1), PIN(A2), PIN(A5), PIN(S0), PIN(S1) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #elif (PLATFORM_ID == PLATFORM_ESOMX)
         PIN(D0) // TODO: Other PWM pins
 #else
@@ -41,7 +43,7 @@ const PinMapping pwm_pins[] = {
 #endif
 };
 
-static pin_t pin = pwm_pins[0].pin;
+static hal_pin_t pin = pwm_pins[0].pin;
 
 template <typename F> void for_all_pwm_pins(F callback)
 {
@@ -67,14 +69,16 @@ test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
 test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 #if HAL_PLATFORM_NRF52840
 #if PLATFORM_ID != PLATFORM_TRACKER
-    pin_t pin = D0;  //pin under test, D0 is not a Timer channel
+    hal_pin_t pin = D0;  //pin under test, D0 is not a Timer channel
 #else
     // There are no non-PWM pins that we can safely use
-    pin_t pin = PIN_INVALID;
+    hal_pin_t pin = PIN_INVALID;
     skip();
 #endif
+#elif HAL_PLATFORM_RTL872X
+    hal_pin_t pin = D5;  //pin under test, D5 is not a Timer channel
 #else
-    #error "Unsupported platform"
+#error "Unsupported platform"
 #endif
     // when
     pinMode(pin, OUTPUT);
@@ -86,7 +90,7 @@ test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
 }
 
 test(PWM_03_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
-    pin_t pin = TOTAL_PINS; // pin under test (not a valid user pin)
+    hal_pin_t pin = TOTAL_PINS; // pin under test (not a valid user pin)
     // when
     pinMode(pin, OUTPUT); // will simply return
     analogWrite(pin, 100); // will simply return
@@ -96,7 +100,7 @@ test(PWM_03_NoAnalogWriteWhenPinSelectedIsOutOfRange) {
 }
 
 test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -135,7 +139,7 @@ test(PWM_04_AnalogWriteOnPinResultsInCorrectFrequency) {
 }
 
 test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -173,7 +177,7 @@ test(PWM_05_AnalogWriteOnPinResultsInCorrectAnalogValue) {
 }
 
 test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -215,7 +219,7 @@ test(PWM_06_AnalogWriteWithFrequencyOnPinResultsInCorrectFrequency) {
 }
 
 test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -252,8 +256,10 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
     });
 }
 
+// FIXME: P2 doesn't support pulse in for now
+#if PLATFORM_ID != PLATFORM_P2
 test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
 
     // when
@@ -365,7 +371,7 @@ test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
 }
 
 test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -468,7 +474,7 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 }
 
 test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -570,7 +576,7 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 }
 
 test(PWM_11_PwmSleep) {
-    for_all_pwm_pins([](pin_t pin, const char* name) {
+    for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -717,3 +723,4 @@ test(PWM_12_CompherensiveResolutionFrequency) {
         assertMoreOrEqual(resolution, 15);
     });
 }
+#endif // PLATFORM_ID != PLATFORM_P2

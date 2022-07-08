@@ -19,7 +19,7 @@
 
 #if PLATFORM_ID == PLATFORM_BORON
 
-static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
+static hal_pin_info_t s_pin_map[TOTAL_PINS] = {
 /* D0 / SDA      - 00 */ { NRF_PORT_0, 26, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
 /* D1 / SCL      - 01 */ { NRF_PORT_0, 27, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
 /* D2 /          - 02 */ { NRF_PORT_1, 1,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 3,                 0,                8, EXTI_CHANNEL_NONE, 0},
@@ -71,7 +71,7 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
 
 #if PLATFORM_ID == PLATFORM_BSOM
 
-static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
+static hal_pin_info_t s_pin_map[TOTAL_PINS] = {
 /* D0 /          - 00 */ { NRF_PORT_0, 26, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
 /* D1 /          - 01 */ { NRF_PORT_0, 27, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
 /* D2 /          - 02 */ { NRF_PORT_1, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
@@ -188,6 +188,6 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
 
 #endif // PLATFORM_ID == PLATFORM_ESOMX
 
-Hal_Pin_Info* HAL_Pin_Map(void) {
+hal_pin_info_t* hal_pin_map(void) {
     return s_pin_map;
 }

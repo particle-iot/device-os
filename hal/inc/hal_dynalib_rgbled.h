@@ -35,11 +35,11 @@
 
 DYNALIB_BEGIN(hal_rgbled)
 
-DYNALIB_FN(0, hal_rgbled, HAL_Led_Rgb_Set_Values, void(uint16_t, uint16_t, uint16_t, void*))
-DYNALIB_FN(1, hal_rgbled, HAL_Led_Rgb_Get_Values, void(uint16_t*, void*))
-DYNALIB_FN(2, hal_rgbled, HAL_Led_Rgb_Get_Max_Value, uint32_t(void*))
-DYNALIB_FN(3, hal_rgbled, HAL_Led_User_Set, void(uint8_t, void*))
-DYNALIB_FN(4, hal_rgbled, HAL_Led_User_Toggle, void(void*))
+DYNALIB_FN(0, hal_rgbled, hal_led_set_rgb_values, void(uint16_t, uint16_t, uint16_t, void*))
+DYNALIB_FN(1, hal_rgbled, hal_led_get_rgb_values, void(uint16_t*, void*))
+DYNALIB_FN(2, hal_rgbled, hal_led_get_max_rgb_values, uint32_t(void*))
+DYNALIB_FN(3, hal_rgbled, hal_led_set_user, void(uint8_t, void*))
+DYNALIB_FN(4, hal_rgbled, hal_led_toggle_user, void(void*))
 
 DYNALIB_END(hal_rgbled)
 

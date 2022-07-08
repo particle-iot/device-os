@@ -1394,7 +1394,7 @@ int BleObject::Observer::setScanParams(const hal_ble_scan_params_t* params) {
     CHECK_TRUE(params->window <= params->interval, SYSTEM_ERROR_INVALID_ARGUMENT);
     // If timeout is set to 0, it should scan indefinitely
     if (params->timeout != BLE_GAP_SCAN_TIMEOUT_UNLIMITED) {
-        if (os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_PERIOD, HAL_IsISR() ? true : false, params->timeout * 10 + BLE_SCANNING_TIMEOUT_EXT_MS, 0, nullptr)) {
+        if (os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_PERIOD, hal_interrupt_is_isr() ? true : false, params->timeout * 10 + BLE_SCANNING_TIMEOUT_EXT_MS, 0, nullptr)) {
             LOG(ERROR, "Failed to change timer period for guard of scanning timeout.");
             return SYSTEM_ERROR_INTERNAL;
         }
@@ -1440,7 +1440,7 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
     isScanning_ = true;
     // If timeout is set to 0, it should scan indefinitely
     if (bleGapScanParams.timeout != BLE_GAP_SCAN_TIMEOUT_UNLIMITED) {
-        if (os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_START, HAL_IsISR() ? true : false, 0, 0, nullptr)) {
+        if (os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_START, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr)) {
             LOG(ERROR, "Failed to start the timer for guard of scanning timeout.");
             // We don't return here, as scanning may still timeout by Softdevice as expected.
         }
@@ -1457,7 +1457,7 @@ int BleObject::Observer::stopScanning() {
         return SYSTEM_ERROR_NONE;
     }
     if (os_timer_is_active(scanGuardTimer_, nullptr)) {
-        os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_STOP, HAL_IsISR() ? true : false, 0, 0, nullptr);
+        os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
     }
     // Ignore the returned value, as the SoftDevice might be messed up considering the device is not in scanning state,
     // but wee neeed to give the semaphore to unblock the thread that initiated the scanning procedure.
@@ -1910,7 +1910,7 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
         if (os_timer_is_active(connParamsUpdateTimer_, nullptr)) {
             periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
             connParamsUpdateAttempts_ = 0;
-            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, HAL_IsISR() ? true : false, 0, 0, nullptr);
+            os_timer_change(connParamsUpdateTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
         }
     }
     ble_gap_conn_params_t bleGapConnParams = {};
@@ -1940,7 +1940,8 @@ int BleObject::ConnectionsManager::updateConnectionParams(hal_ble_conn_handle_t 
 int BleObject::ConnectionsManager::getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info) {
     const BleConnection* connection = fetchConnection(connHandle);
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    memcpy(info, &connection->info, std::min(connection->info.size, connection->info.size));
+    uint16_t size = std::min(connection->info.size, info->size);
+    memcpy(info, &connection->info, size);
     return SYSTEM_ERROR_NONE;
 }
 

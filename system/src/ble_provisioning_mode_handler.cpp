@@ -20,7 +20,7 @@ LOG_SOURCE_CATEGORY("system.listen.ble")
 
 #include "ble_provisioning_mode_handler.h"
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
 
 #include "system_error.h"
 #include "check.h"
@@ -390,4 +390,4 @@ void BleProvisioningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, 
 
 bool BleProvisioningModeHandler::exited_ = true;
 
-#endif /* HAL_PLATFORM_BLE */
+#endif /* HAL_PLATFORM_BLE_SETUP */

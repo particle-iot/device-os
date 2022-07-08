@@ -146,16 +146,26 @@
 | 1005 | 3003 | 3.0.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1005 | 3004 | 3.0.0-rc.2    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1005 | 3005 | 3.0.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
+| 1005 | 3010 | 3.0.1-p2.1    |      P2 |
+| 1006 | 3011 | 3.0.1-p2.2    |      P2 |
+| 1006 | 3012 | 3.0.1-p2.3    |      P2 |
+| 1006 | 3013 | 3.0.1-p2.4    |      P2 |
+| 1007 | 3014 | 3.0.1-p2.5    |      P2 |
 | 1100 | 3100 | 3.1.0-alpha.1 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3101 | 3.1.0-alpha.2 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3102 | 3.1.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3103 | 3.1.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3200 | 3.2.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3201 | 3.2.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
+| 1007 | 3210 | 3.2.1-p2.1    |      P2 |
+| 1007 | 3211 | 3.2.1-p2.2    |      P2 |
+| 1008 | 3212 | 3.2.1-p2.3    |      P2 |
+| 1009 | 3213 | 3.2.1-p2.4    |      P2 |
 | 1100 | 3300 | 3.3.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3301 | 3.3.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 4000 | 4.0.0-alpha.1 |      Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1101 | 4001 | 4.0.0-alpha.2 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
+| 2000 | 5000 | 5.0.0-alpha.1 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X, P2 | 
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
 

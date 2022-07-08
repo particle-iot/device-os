@@ -267,9 +267,9 @@ int system_multicast_announce_presence(void* reserved)
         return SYSTEM_ERROR_UNKNOWN;
     }
 
-    const auto idLength = HAL_device_ID(NULL, 0);
+    const auto idLength = hal_get_device_id(NULL, 0);
     uint8_t id[idLength] = {};
-    HAL_device_ID(id, idLength);
+    hal_get_device_id(id, idLength);
 
     // FIXME: magic number
     uint8_t announcement[idLength + 7] = {};

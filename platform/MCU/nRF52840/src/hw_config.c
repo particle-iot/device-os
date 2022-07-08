@@ -52,8 +52,8 @@ uint16_t tempFlag;
 
 // TODO: move somewhere else?
 // Defined in softdevice.ld
-extern uintptr_t APP_CODE_BASE;
-#define SOFTDEVICE_MBR_PARAM_ADDR (((uintptr_t)&APP_CODE_BASE) - INTERNAL_FLASH_PAGE_SIZE) // APP_CODE_BASE - 4K (1 page)
+extern uintptr_t platform_softdevice_reserved_flash_end;
+#define SOFTDEVICE_MBR_PARAM_ADDR (((uintptr_t)&platform_softdevice_reserved_flash_end) - INTERNAL_FLASH_PAGE_SIZE) // platform_softdevice_reserved_flash_end - 4K (1 page)
 #define SOFTDEVICE_MBR_PARAM_UNSET (0xffffffff)
 
 static void DWT_Init(void)
@@ -167,10 +167,10 @@ void Set_System(void)
     }
 
     // GPIOTE initialization
-    HAL_Interrupts_Init();
+    hal_interrupt_init();
 
     /* Configure the Button */
-    BUTTON_Init(BUTTON1, BUTTON_MODE_EXTI);
+    hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
 }
 
 void Reset_System(void) {
@@ -178,7 +178,7 @@ void Reset_System(void) {
 
     SysTick_Disable();
 
-    BUTTON_Uninit();
+    hal_button_uninit();
 
     hal_exflash_uninit();
 

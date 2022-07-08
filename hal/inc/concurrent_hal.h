@@ -224,6 +224,7 @@ int os_queue_destroy(os_queue_t queue, void* reserved);
 int os_mutex_create(os_mutex_t* mutex);
 int os_mutex_destroy(os_mutex_t mutex);
 int os_mutex_lock(os_mutex_t mutex);
+int os_mutex_lock_timeout(os_mutex_t mutex, system_tick_t timeout);
 int os_mutex_trylock(os_mutex_t mutex);
 int os_mutex_unlock(os_mutex_t mutex);
 

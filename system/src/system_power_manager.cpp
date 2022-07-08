@@ -374,10 +374,10 @@ void PowerManager::loop(void* arg) {
 
     // IMPORTANT: attach the interrupt handler first
 #if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
-    HAL_Pin_Mode(PMIC_INT, INPUT_PULLUP);
+    hal_gpio_mode(PMIC_INT, INPUT_PULLUP);
     attachInterrupt(PMIC_INT, &PowerManager::isrHandler, FALLING);
 #endif
-    HAL_Pin_Mode(LOW_BAT_UC, INPUT_PULLUP);
+    hal_gpio_mode(LOW_BAT_UC, INPUT_PULLUP);
     attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
     PMIC power(true);
     power.begin();

@@ -2051,7 +2051,7 @@ int BleLocalDevice::setDeviceName(const char* name, size_t len) const {
 }
 
 int BleLocalDevice::setDeviceName(const char* name) const {
-    return setDeviceName(name, strnlen(name, BLE_MAX_DEV_NAME_LEN));
+    return setDeviceName(name, name ? strnlen(name, BLE_MAX_DEV_NAME_LEN) : 0);
 }
 
 int BleLocalDevice::setDeviceName(const String& name) const {
@@ -2723,6 +2723,8 @@ int BleLocalDevice::disconnect() const {
     WiringBleLock lk;
     for (auto& p : impl()->peers()) {
         hal_ble_conn_info_t connInfo = {};
+        connInfo.version = BLE_API_VERSION;
+        connInfo.size = sizeof(hal_ble_conn_info_t);
         if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) != SYSTEM_ERROR_NONE) {
             continue;
         }
@@ -2755,6 +2757,8 @@ BlePeerDevice BleLocalDevice::peerCentral() const {
     WiringBleLock lk;
     for (auto& p : impl()->peers()) {
         hal_ble_conn_info_t connInfo = {};
+        connInfo.version = BLE_API_VERSION;
+        connInfo.size = sizeof(hal_ble_conn_info_t);
         if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) != SYSTEM_ERROR_NONE) {
             continue;
         }

@@ -25,34 +25,34 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "interrupts_hal.h"
-int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config)
+int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* data, InterruptMode mode, hal_interrupt_extra_configuration_t* config)
 {
     return 0;
 }
 
-int HAL_Interrupts_Detach(uint16_t pin)
+int hal_interrupt_detach(uint16_t pin)
 {
     return 0;
 }
 
-int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
+int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 {
     return 0;
 }
 
-void HAL_Interrupts_Enable_All(void)
+void hal_interrupt_enable_all(void)
 {
 }
 
-void HAL_Interrupts_Disable_All(void)
+void hal_interrupt_disable_all(void)
 {
 }
 
-void HAL_Interrupts_Suspend(void)
+void hal_interrupt_suspend(void)
 {
 }
 
-void HAL_Interrupts_Restore(void)
+void hal_interrupt_restore(void)
 {
 }
 
@@ -79,7 +79,7 @@ void HAL_enable_irq(int is)
 {
 }
 
-int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved)
+int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handler_t handler, uint32_t flags, void* reserved)
 {
     return 1;
 }

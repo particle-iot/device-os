@@ -53,7 +53,7 @@ void pinMode(uint16_t pin, PinMode setMode)
     return;
   }
 
-  HAL_Pin_Mode(pin, setMode);
+  hal_gpio_mode(pin, setMode);
 }
 
 /*
@@ -71,7 +71,7 @@ void pinMode(uint16_t pin, PinMode setMode)
  */
 PinMode getPinMode(uint16_t pin)
 {
-  return HAL_Get_Pin_Mode(pin);
+  return hal_gpio_get_mode(pin);
 }
 
 
@@ -79,7 +79,7 @@ PinMode getPinMode(uint16_t pin)
 /*
  * @brief Set the drive strength of the pin for OUTPUT modes
  */
-int pinSetDriveStrength(pin_t pin, DriveStrength drive)
+int pinSetDriveStrength(hal_pin_t pin, DriveStrength drive)
 {
   if (pin >= TOTAL_PINS) {
     return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -104,7 +104,7 @@ int pinSetDriveStrength(pin_t pin, DriveStrength drive)
     .value = 0,
     .drive_strength = particle::to_underlying(drive)
   };
-  return HAL_Pin_Configure(pin, &conf, nullptr);
+  return hal_gpio_configure(pin, &conf, nullptr);
 }
 #endif // HAL_PLATFORM_GEN == 3
 
@@ -152,9 +152,9 @@ inline bool is_input_mode(PinMode mode) {
 /*
  * @brief Sets a GPIO pin to HIGH or LOW.
  */
-void digitalWrite(pin_t pin, uint8_t value)
+void digitalWrite(hal_pin_t pin, uint8_t value)
 {
-    PinMode mode = HAL_Get_Pin_Mode(pin);
+    PinMode mode = hal_gpio_get_mode(pin);
     if (mode==PIN_MODE_NONE || is_input_mode(mode))
         return;
   // Safety check
@@ -162,7 +162,7 @@ void digitalWrite(pin_t pin, uint8_t value)
     return;
   }
 
-  HAL_GPIO_Write(pin, value);
+  hal_gpio_write(pin, value);
 }
 
 inline bool is_af_output_mode(PinMode mode) {
@@ -173,9 +173,9 @@ inline bool is_af_output_mode(PinMode mode) {
 /*
  * @brief Reads the value of a GPIO pin. Should return either 1 (HIGH) or 0 (LOW).
  */
-int32_t digitalRead(pin_t pin)
+int32_t digitalRead(hal_pin_t pin)
 {
-    PinMode mode = HAL_Get_Pin_Mode(pin);
+    PinMode mode = hal_gpio_get_mode(pin);
     if (is_af_output_mode(mode))
         return LOW;
 
@@ -184,7 +184,7 @@ int32_t digitalRead(pin_t pin)
       return LOW;
     }
 
-    return HAL_GPIO_Read(pin);
+    return hal_gpio_read(pin);
 }
 
 /*
@@ -192,8 +192,9 @@ int32_t digitalRead(pin_t pin)
  * Should return a 16-bit value, 0-65536 (0 = LOW, 65536 = HIGH)
  * Note: ADC is 12-bit. Currently it returns 0-4095
  */
-int32_t analogRead(pin_t pin)
+int32_t analogRead(hal_pin_t pin)
 {
+#if PLATFORM_ID != PLATFORM_P2
   // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
 #if defined(FIRST_ANALOG_PIN) && FIRST_ANALOG_PIN > 0
   if(pin < FIRST_ANALOG_PIN)
@@ -201,13 +202,14 @@ int32_t analogRead(pin_t pin)
     pin = pin + FIRST_ANALOG_PIN;
   }
 #endif // defined(FIRST_ANALOG_PIN) && FIRST_ANALOG_PIN > 0
+#endif
 
   // Safety check
   if( !pinAvailable(pin) ) {
     return LOW;
   }
 
-  if(HAL_Validate_Pin_Function(pin, PF_ADC)!=PF_ADC)
+  if(hal_pin_validate_function(pin, PF_ADC)!=PF_ADC)
   {
     return LOW;
   }
@@ -218,7 +220,7 @@ int32_t analogRead(pin_t pin)
 /*
  * @brief Should take an integer 0-255 and create a 500Hz PWM signal with a duty cycle from 0-100%.
  */
-void analogWrite(pin_t pin, uint32_t value)
+void analogWrite(hal_pin_t pin, uint32_t value)
 {
     // Safety check
     if (!pinAvailable(pin))
@@ -226,13 +228,13 @@ void analogWrite(pin_t pin, uint32_t value)
         return;
     }
 
-    if (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC)
+    if (hal_pin_validate_function(pin, PF_DAC) == PF_DAC)
     {
         HAL_DAC_Write(pin, value);
     }
-    else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+    else if (hal_pin_validate_function(pin, PF_TIMER) == PF_TIMER)
     {
-        PinMode mode = HAL_Get_Pin_Mode(pin);
+        PinMode mode = hal_gpio_get_mode(pin);
 
         if (mode != OUTPUT && mode != AF_OUTPUT_PUSHPULL)
         {
@@ -248,7 +250,7 @@ void analogWrite(pin_t pin, uint32_t value)
  * @brief Should take an integer 0-255 and create a PWM signal with a duty cycle from 0-100%
  * and frequency from 1 to 65535 Hz.
  */
-void analogWrite(pin_t pin, uint32_t value, uint32_t pwm_frequency)
+void analogWrite(hal_pin_t pin, uint32_t value, uint32_t pwm_frequency)
 {
     // Safety check
     if (!pinAvailable(pin))
@@ -256,9 +258,9 @@ void analogWrite(pin_t pin, uint32_t value, uint32_t pwm_frequency)
         return;
     }
 
-    if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+    if (hal_pin_validate_function(pin, PF_TIMER) == PF_TIMER)
     {
-        PinMode mode = HAL_Get_Pin_Mode(pin);
+        PinMode mode = hal_gpio_get_mode(pin);
 
         if (mode != OUTPUT && mode != AF_OUTPUT_PUSHPULL)
         {
@@ -269,7 +271,7 @@ void analogWrite(pin_t pin, uint32_t value, uint32_t pwm_frequency)
     }
 }
 
-uint8_t analogWriteResolution(pin_t pin, uint8_t value)
+uint8_t analogWriteResolution(hal_pin_t pin, uint8_t value)
 {
   // Safety check
   if (!pinAvailable(pin))
@@ -277,12 +279,12 @@ uint8_t analogWriteResolution(pin_t pin, uint8_t value)
       return 0;
   }
 
-  if (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC)
+  if (hal_pin_validate_function(pin, PF_DAC) == PF_DAC)
   {
     HAL_DAC_Set_Resolution(pin, value);
     return HAL_DAC_Get_Resolution(pin);
   }
-  else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+  else if (hal_pin_validate_function(pin, PF_TIMER) == PF_TIMER)
   {
     hal_pwm_set_resolution(pin, value);
     return hal_pwm_get_resolution(pin);
@@ -292,7 +294,7 @@ uint8_t analogWriteResolution(pin_t pin, uint8_t value)
   return 0;
 }
 
-uint8_t analogWriteResolution(pin_t pin)
+uint8_t analogWriteResolution(hal_pin_t pin)
 {
   // Safety check
   if (!pinAvailable(pin))
@@ -300,11 +302,11 @@ uint8_t analogWriteResolution(pin_t pin)
       return 0;
   }
 
-  if (HAL_Validate_Pin_Function(pin, PF_DAC) == PF_DAC)
+  if (hal_pin_validate_function(pin, PF_DAC) == PF_DAC)
   {
     return HAL_DAC_Get_Resolution(pin);
   }
-  else if (HAL_Validate_Pin_Function(pin, PF_TIMER) == PF_TIMER)
+  else if (hal_pin_validate_function(pin, PF_TIMER) == PF_TIMER)
   {
     return hal_pwm_get_resolution(pin);
   }
@@ -312,7 +314,7 @@ uint8_t analogWriteResolution(pin_t pin)
   return 0;
 }
 
-uint32_t analogWriteMaxFrequency(pin_t pin)
+uint32_t analogWriteMaxFrequency(hal_pin_t pin)
 {
   // Safety check
   if (!pinAvailable(pin))
@@ -358,13 +360,13 @@ void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val)
  * @returns uint32_t pulse width in microseconds up to 3 seconds,
  *          returns 0 on 3 second timeout error, or invalid pin.
  */
-uint32_t pulseIn(pin_t pin, uint16_t value) {
+uint32_t pulseIn(hal_pin_t pin, uint16_t value) {
 
     // NO SAFETY CHECKS!!! WILD WILD WEST!!!
 
-    return HAL_Pulse_In(pin, value);
+    return hal_gpio_pulse_in(pin, value);
 }
 
-void setDACBufferred(pin_t pin, uint8_t state) {
+void setDACBufferred(hal_pin_t pin, uint8_t state) {
   HAL_DAC_Enable_Buffer(pin, state);
 }

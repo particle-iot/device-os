@@ -18,5 +18,5 @@
 #pragma once
 
 // Dummy definitions
-typedef struct {} button_config_t;
+typedef struct {} hal_button_config_t;
 typedef bool FunctionalState;

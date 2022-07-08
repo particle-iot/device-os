@@ -340,8 +340,8 @@ static void SPI_Test4_Prepare_SPI() {
     pinMode(MISO, AF_OUTPUT_DRAIN);
     pinMode(MOSI, AF_OUTPUT_DRAIN);
 
-    Hal_Pin_Info* PIN_MAP = HAL_Pin_Map();
-    pin_t gpio_pin = PIN_MAP[MISO].gpio_pin;
+    hal_pin_info_t* PIN_MAP = hal_pin_map();
+    hal_pin_t gpio_pin = PIN_MAP[MISO].gpio_pin;
     GPIO_TypeDef *gpio_port = PIN_MAP[MISO].gpio_peripheral;
 
     // Force MISO and MOSI as Open-drain with pull-up

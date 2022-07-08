@@ -25,7 +25,7 @@
 #include "dct.h"
 #include "logging.h"
 
-button_config_t HAL_Buttons[] = {
+hal_button_config_t HAL_Buttons[] = {
     {
         .active         = false,
         .pin            = BUTTON1_PIN,
@@ -75,62 +75,62 @@ static void button_timer_stop(void) {
 }
 
 static void button_timer_event_handler(void) {
-    if (HAL_Buttons[BUTTON1].active && (BUTTON_GetState(BUTTON1) == BUTTON1_PRESSED)) {
-        if (!HAL_Buttons[BUTTON1].debounce_time) {
-            HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+    if (HAL_Buttons[HAL_BUTTON1].active && (hal_button_get_state(HAL_BUTTON1) == BUTTON1_PRESSED)) {
+        if (!HAL_Buttons[HAL_BUTTON1].debounce_time) {
+            HAL_Buttons[HAL_BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-            HAL_Notify_Button_State(BUTTON1, true); 
+            HAL_Notify_Button_State(HAL_BUTTON1, true); 
 #endif
         }
-        HAL_Buttons[BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-    } else if (HAL_Buttons[BUTTON1].active) {
-        HAL_Buttons[BUTTON1].active = false;
-        button_reset(BUTTON1);
+        HAL_Buttons[HAL_BUTTON1].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+    } else if (HAL_Buttons[HAL_BUTTON1].active) {
+        HAL_Buttons[HAL_BUTTON1].active = false;
+        button_reset(HAL_BUTTON1);
     }
 
-    if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active &&
-        BUTTON_GetState(BUTTON1_MIRROR) == (HAL_Buttons[BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) 
+    if ((HAL_Buttons[HAL_BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[HAL_BUTTON1_MIRROR].active &&
+        hal_button_get_state(HAL_BUTTON1_MIRROR) == (HAL_Buttons[HAL_BUTTON1_MIRROR].interrupt_mode == RISING ? 1 : 0)) 
     {
-        if (!HAL_Buttons[BUTTON1_MIRROR].debounce_time) {
-            HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+        if (!HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time) {
+            HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-            HAL_Notify_Button_State(BUTTON1_MIRROR, true);
+            HAL_Notify_Button_State(HAL_BUTTON1_MIRROR, true);
 #endif
         }
-        HAL_Buttons[BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-    } else if ((HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[BUTTON1_MIRROR].active) {
-        HAL_Buttons[BUTTON1_MIRROR].active = false;
-        button_reset(BUTTON1_MIRROR);
+        HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
+    } else if ((HAL_Buttons[HAL_BUTTON1_MIRROR].pin != PIN_INVALID) && HAL_Buttons[HAL_BUTTON1_MIRROR].active) {
+        HAL_Buttons[HAL_BUTTON1_MIRROR].active = false;
+        button_reset(HAL_BUTTON1_MIRROR);
     }
 }
 
 static void button_reset(uint16_t button) {
     HAL_Buttons[button].debounce_time = 0x00;
 
-    if (!HAL_Buttons[BUTTON1].active && !HAL_Buttons[BUTTON1_MIRROR].active) {
+    if (!HAL_Buttons[HAL_BUTTON1].active && !HAL_Buttons[HAL_BUTTON1_MIRROR].active) {
         button_timer_stop();
     }
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    HAL_Notify_Button_State((Button_TypeDef)button, false); 
+    HAL_Notify_Button_State((hal_button_t)button, false); 
 #endif
 
     /* Enable Button Interrupt */
-    BUTTON_EXTI_Config((Button_TypeDef)button, ENABLE);
+    hal_button_exti_config((hal_button_t)button, ENABLE);
 }
 
 static void BUTTON_Interrupt_Handler(void *data) {
-    Button_TypeDef button = (Button_TypeDef)data;
+    hal_button_t button = (hal_button_t)data;
 
     HAL_Buttons[button].debounce_time = 0x00;
     HAL_Buttons[button].active = true;
 
-    BUTTON_EXTI_Config(button, DISABLE);
+    hal_button_exti_config(button, DISABLE);
 
     button_timer_start();
 }
 
-void BUTTON_Timer_Handler(void)
+void hal_button_timer_handler(void)
 {
     if (!systick_button_timer.enable) {
         return;
@@ -145,7 +145,7 @@ void BUTTON_Timer_Handler(void)
     }
 }
 
-void BUTTON_Init(Button_TypeDef button, ButtonMode_TypeDef Button_Mode) {
+void hal_button_init(hal_button_t button, hal_button_mode_t Button_Mode) {
 
     if (!systick_button_timer.enable) {
         // Initialize button timer
@@ -153,35 +153,35 @@ void BUTTON_Init(Button_TypeDef button, ButtonMode_TypeDef Button_Mode) {
     }
 
     // Configure button pin
-    HAL_Pin_Mode(HAL_Buttons[button].pin, HAL_Buttons[button].interrupt_mode == RISING ? INPUT_PULLDOWN : INPUT_PULLUP);
-    if (Button_Mode == BUTTON_MODE_EXTI)  {
+    hal_gpio_mode(HAL_Buttons[button].pin, HAL_Buttons[button].interrupt_mode == RISING ? INPUT_PULLDOWN : INPUT_PULLUP);
+    if (Button_Mode == HAL_BUTTON_MODE_EXTI)  {
         /* Attach GPIOTE Interrupt */
-        BUTTON_EXTI_Config(button, ENABLE);
+        hal_button_exti_config(button, ENABLE);
     }
 
     // Check status when starting up
     if (HAL_Buttons[button].pin != PIN_INVALID && 
-        BUTTON_GetState(button) == (HAL_Buttons[button].interrupt_mode == RISING ? 1 : 0)) 
+        hal_button_get_state(button) == (HAL_Buttons[button].interrupt_mode == RISING ? 1 : 0)) 
     {
         HAL_Buttons[button].active = true;
         button_timer_start();
     }
 }
 
-void BUTTON_EXTI_Config(Button_TypeDef button, FunctionalState NewState) {
-    HAL_InterruptExtraConfiguration config = {0};
+void hal_button_exti_config(hal_button_t button, FunctionalState NewState) {
+    hal_interrupt_extra_configuration_t config = {0};
     config.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
     config.keepHandler = false;
-    config.flags = HAL_DIRECT_INTERRUPT_FLAG_NONE;
+    config.flags = HAL_INTERRUPT_DIRECT_FLAG_NONE;
 
     if (NewState == ENABLE) {
-        HAL_Interrupts_Attach(HAL_Buttons[button].pin, 
+        hal_interrupt_attach(HAL_Buttons[button].pin, 
                               BUTTON_Interrupt_Handler, 
                               (void *)((int)button), 
                               HAL_Buttons[button].interrupt_mode, 
                               &config); 
     } else {
-        HAL_Interrupts_Detach(HAL_Buttons[button].pin);
+        hal_interrupt_detach(HAL_Buttons[button].pin);
     }
 }
 
@@ -189,53 +189,40 @@ void BUTTON_EXTI_Config(Button_TypeDef button, FunctionalState NewState) {
  * @brief  Returns the selected Button non-filtered state.
  * @param  Button: Specifies the Button to be checked.
  *   This parameter can be one of following parameters:
- *     @arg BUTTON1: Button1
+ *     @arg HAL_BUTTON1: Button1
  * @retval Actual Button Pressed state.
  */
-uint8_t BUTTON_GetState(Button_TypeDef Button) {
-    return HAL_GPIO_Read(HAL_Buttons[Button].pin);
+uint8_t hal_button_get_state(hal_button_t Button) {
+    return hal_gpio_read(HAL_Buttons[Button].pin);
 }
 
 /**
  * @brief  Returns the selected Button Debounced Time.
  * @param  Button: Specifies the Button to be checked.
  *   This parameter can be one of following parameters:
- *     @arg BUTTON1: Button1
+ *     @arg HAL_BUTTON1: Button1
  * @retval Button Debounced time in millisec.
  */
-uint16_t BUTTON_GetDebouncedTime(Button_TypeDef Button) {
+uint16_t hal_button_get_debounce_time(hal_button_t Button) {
     return HAL_Buttons[Button].debounce_time;
 }
 
-void BUTTON_ResetDebouncedState(Button_TypeDef Button) {
+void hal_button_reset_debounced_state(hal_button_t Button) {
     HAL_Buttons[Button].debounce_time = 0;
 }
 
-void BUTTON_Check_State(uint16_t button, uint8_t pressed) {
-    if (BUTTON_GetState(button) == pressed) {
-        if (!HAL_Buttons[button].active) {
-            HAL_Buttons[button].active = true;
-        }
-        HAL_Buttons[button].debounce_time += BUTTON_DEBOUNCE_INTERVAL;
-    } else if (HAL_Buttons[button].active) {
-        HAL_Buttons[button].active = false;
-        /* Enable button Interrupt */
-        BUTTON_EXTI_Config(button, ENABLE);
-    }
-}
-
-static void BUTTON_Mirror_Persist(button_config_t* conf) {
-    button_config_t saved_config;
+static void BUTTON_Mirror_Persist(hal_button_config_t* conf) {
+    hal_button_config_t saved_config;
     dct_read_app_data_copy(DCT_MODE_BUTTON_MIRROR_OFFSET, &saved_config, sizeof(saved_config));
 
     if (conf) {
-        if (saved_config.active == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(button_config_t))) {
-            dct_write_app_data((void*)conf, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
+        if (saved_config.active == 0xFF || memcmp((void*)conf, (void*)&saved_config, sizeof(hal_button_config_t))) {
+            dct_write_app_data((void*)conf, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(hal_button_config_t));
         }
     } else {
         if (saved_config.active != 0xFF) {
-            memset((void*)&saved_config, 0xff, sizeof(button_config_t));
-            dct_write_app_data((void*)&saved_config, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(button_config_t));
+            memset((void*)&saved_config, 0xff, sizeof(hal_button_config_t));
+            dct_write_app_data((void*)&saved_config, DCT_MODE_BUTTON_MIRROR_OFFSET, sizeof(hal_button_config_t));
         }
     }
 }
@@ -243,10 +230,10 @@ static void BUTTON_Mirror_Persist(button_config_t* conf) {
 void HAL_Core_Button_Mirror_Pin_Disable(uint8_t bootloader, uint8_t button, void* reserved) {
     (void)button; // unused
     int32_t state = HAL_disable_irq();
-    if (HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) {
-        HAL_Interrupts_Detach_Ext(HAL_Buttons[BUTTON1_MIRROR].pin, 1, NULL);
-        HAL_Buttons[BUTTON1_MIRROR].active = 0;
-        HAL_Buttons[BUTTON1_MIRROR].pin = PIN_INVALID;
+    if (HAL_Buttons[HAL_BUTTON1_MIRROR].pin != PIN_INVALID) {
+        hal_interrupt_detach_ext(HAL_Buttons[HAL_BUTTON1_MIRROR].pin, 1, NULL);
+        HAL_Buttons[HAL_BUTTON1_MIRROR].active = 0;
+        HAL_Buttons[HAL_BUTTON1_MIRROR].pin = PIN_INVALID;
     }
     HAL_enable_irq(state);
 
@@ -265,17 +252,17 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
         return;
     }
 
-    button_config_t conf = {
+    hal_button_config_t conf = {
         .pin = pin,
         .debounce_time = 0,
         .interrupt_mode = mode,
     };
 
-    HAL_Buttons[BUTTON1_MIRROR] = conf;
+    HAL_Buttons[HAL_BUTTON1_MIRROR] = conf;
 
-    BUTTON_Init(BUTTON1_MIRROR, BUTTON_MODE_EXTI);
+    hal_button_init(HAL_BUTTON1_MIRROR, HAL_BUTTON_MODE_EXTI);
 
-    if (pin == HAL_Buttons[BUTTON1].pin) {
+    if (pin == HAL_Buttons[HAL_BUTTON1].pin) {
         BUTTON_Mirror_Persist(NULL);
         return;
     }
@@ -285,7 +272,7 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
         return;
     }
 
-    button_config_t bootloader_conf = {
+    hal_button_config_t bootloader_conf = {
         .active = 0xAA,
         .debounce_time = 0xBBCC,
         .pin = pin,
@@ -295,47 +282,47 @@ void HAL_Core_Button_Mirror_Pin(uint16_t pin, InterruptMode mode, uint8_t bootlo
     BUTTON_Mirror_Persist(&bootloader_conf);
 }
 
-void BUTTON_Init_Ext() {
-    button_config_t button_config = {0};
-    dct_read_app_data_copy(DCT_MODE_BUTTON_MIRROR_OFFSET, &button_config, sizeof(button_config_t));
+void hal_button_init_ext() {
+    hal_button_config_t button_config = {0};
+    dct_read_app_data_copy(DCT_MODE_BUTTON_MIRROR_OFFSET, &button_config, sizeof(hal_button_config_t));
 
     if (button_config.active == 0xAA && button_config.debounce_time == 0xBBCC) {
         //int32_t state = HAL_disable_irq();
-        memcpy((void*)&HAL_Buttons[BUTTON1_MIRROR], (void*)&button_config, sizeof(button_config_t));
-        HAL_Buttons[BUTTON1_MIRROR].active = 0;
-        HAL_Buttons[BUTTON1_MIRROR].debounce_time = 0;
-        BUTTON_Init(BUTTON1_MIRROR, BUTTON_MODE_EXTI);
+        memcpy((void*)&HAL_Buttons[HAL_BUTTON1_MIRROR], (void*)&button_config, sizeof(hal_button_config_t));
+        HAL_Buttons[HAL_BUTTON1_MIRROR].active = 0;
+        HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time = 0;
+        hal_button_init(HAL_BUTTON1_MIRROR, HAL_BUTTON_MODE_EXTI);
         //HAL_enable_irq(state);
     }
 }
 
-void BUTTON_Uninit() {
+void hal_button_uninit() {
     button_timer_uninit();
-    HAL_Interrupts_Uninit();
+    hal_interrupt_uninit();
 }
 
 // Just for compatibility in bootloader
-// Check both BUTTON1 and BUTTON1_MIRROR
-uint8_t BUTTON_Is_Pressed(Button_TypeDef button) {
+// Check both HAL_BUTTON1 and HAL_BUTTON1_MIRROR
+uint8_t hal_button_is_pressed(hal_button_t button) {
     uint8_t pressed = 0;
     pressed = HAL_Buttons[button].active;
 
-    if (button == BUTTON1 && HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) {
-        pressed |= HAL_Buttons[BUTTON1_MIRROR].active;
+    if (button == HAL_BUTTON1 && HAL_Buttons[HAL_BUTTON1_MIRROR].pin != PIN_INVALID) {
+        pressed |= HAL_Buttons[HAL_BUTTON1_MIRROR].active;
     }
 
     return pressed;
 }
 
 // Just for compatibility in bootloader
-// Check both BUTTON1 and BUTTON1_MIRROR
-uint16_t BUTTON_Pressed_Time(Button_TypeDef button) {
+// Check both HAL_BUTTON1 and HAL_BUTTON1_MIRROR
+uint16_t hal_button_get_pressed_time(hal_button_t button) {
     uint16_t pressed = 0;
 
     pressed = HAL_Buttons[button].debounce_time;
-    if (button == BUTTON1 && HAL_Buttons[BUTTON1_MIRROR].pin != PIN_INVALID) {
-        if (HAL_Buttons[BUTTON1_MIRROR].debounce_time > pressed) {
-            pressed = HAL_Buttons[BUTTON1_MIRROR].debounce_time;
+    if (button == HAL_BUTTON1 && HAL_Buttons[HAL_BUTTON1_MIRROR].pin != PIN_INVALID) {
+        if (HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time > pressed) {
+            pressed = HAL_Buttons[HAL_BUTTON1_MIRROR].debounce_time;
         }
     }
 

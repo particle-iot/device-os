@@ -40,7 +40,7 @@ const uintptr_t HW_MODEL_OTP_ADDRESS = 0x00000024;
 
 } // namespace
 
-unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
+unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
 {
     const uint32_t id[3] = { DEVICE_ID_PREFIX, NRF_FICR->DEVICEID[0], NRF_FICR->DEVICEID[1] };
     static_assert(sizeof(id) == HAL_DEVICE_ID_SIZE, "");
@@ -50,7 +50,7 @@ unsigned HAL_device_ID(uint8_t* dest, unsigned destLen)
     return HAL_DEVICE_ID_SIZE;
 }
 
-unsigned HAL_Platform_ID()
+unsigned hal_get_platform_id()
 {
     return PLATFORM_ID;
 }

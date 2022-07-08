@@ -46,16 +46,16 @@ typedef enum InterruptMode {
   FALLING
 } InterruptMode;
 
-typedef void (*HAL_InterruptHandler)(void* data);
+typedef void (*hal_interrupt_handler_t)(void* data);
 
-typedef void (*HAL_Direct_Interrupt_Handler)(void);
+typedef void (*hal_interrupt_direct_handler_t)(void);
 
 typedef enum {
-  HAL_DIRECT_INTERRUPT_FLAG_NONE    = 0x00,
-  HAL_DIRECT_INTERRUPT_FLAG_RESTORE = 0x01,
-  HAL_DIRECT_INTERRUPT_FLAG_DISABLE = 0x02,
-  HAL_DIRECT_INTERRUPT_FLAG_ENABLE  = 0x04
-} HAL_Direct_Interrupt_Flags;
+  HAL_INTERRUPT_DIRECT_FLAG_NONE    = 0x00,
+  HAL_INTERRUPT_DIRECT_FLAG_RESTORE = 0x01,
+  HAL_INTERRUPT_DIRECT_FLAG_DISABLE = 0x02,
+  HAL_INTERRUPT_DIRECT_FLAG_ENABLE  = 0x04
+} hal_interrupt_direct_flags_t;
 
 /* Exported constants --------------------------------------------------------*/
 
@@ -63,16 +63,16 @@ typedef enum {
 
 /* Exported functions --------------------------------------------------------*/
 
-typedef struct HAL_InterruptCallback {
-    HAL_InterruptHandler handler;
+typedef struct hal_interrupt_callback_t {
+    hal_interrupt_handler_t handler;
     void* data;
-} HAL_InterruptCallback;
+} hal_interrupt_callback_t;
 
 #define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1 4
 #define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2 5
 #define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2
 
-typedef struct HAL_InterruptExtraConfiguration {
+typedef struct hal_interrupt_extra_configuration_t {
   uint8_t version;
   uint8_t IRQChannelPreemptionPriority;
   uint8_t IRQChannelSubPriority;
@@ -83,94 +83,158 @@ typedef struct HAL_InterruptExtraConfiguration {
       uint8_t keepHandler  : 1;
     };
   };
-} HAL_InterruptExtraConfiguration;
+} hal_interrupt_extra_configuration_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void HAL_Interrupts_Init(void);
-void HAL_Interrupts_Uninit(void);
-int HAL_Interrupts_Attach(uint16_t pin, HAL_InterruptHandler handler, void* data, InterruptMode mode, HAL_InterruptExtraConfiguration* config);
-int HAL_Interrupts_Detach(uint16_t pin);
-int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved);
-void HAL_Interrupts_Enable_All(void);
-void HAL_Interrupts_Disable_All(void);
+void hal_interrupt_init(void);
+void hal_interrupt_uninit(void);
+int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* data, InterruptMode mode, hal_interrupt_extra_configuration_t* config);
+int hal_interrupt_detach(uint16_t pin);
+int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved);
+void hal_interrupt_enable_all(void);
+void hal_interrupt_disable_all(void);
 
-void HAL_Interrupts_Suspend(void);
-void HAL_Interrupts_Restore(void);
+void hal_interrupt_suspend(void);
+void hal_interrupt_restore(void);
 
-void HAL_Interrupts_Trigger(uint16_t pin, void* reserved);
+void hal_interrupt_trigger(uint16_t pin, void* reserved);
 
 
-uint8_t HAL_Set_System_Interrupt_Handler(hal_irq_t irq, const HAL_InterruptCallback* callback, HAL_InterruptCallback* previous, void* reserved);
-uint8_t HAL_Get_System_Interrupt_Handler(hal_irq_t irq, HAL_InterruptCallback* callback, void* reserved);
-void HAL_System_Interrupt_Trigger(hal_irq_t irq, void* reserved);
+uint8_t hal_interrupt_set_system_handler(hal_irq_t irq, const hal_interrupt_callback_t* callback, hal_interrupt_callback_t* previous, void* reserved);
+uint8_t hal_interrupt_get_system_handler(hal_irq_t irq, hal_interrupt_callback_t* callback, void* reserved);
+void hal_interrupt_trigger_system(hal_irq_t irq, void* reserved);
 
-int HAL_Set_Direct_Interrupt_Handler(IRQn_Type irqn, HAL_Direct_Interrupt_Handler handler, uint32_t flags, void* reserved);
+int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handler_t handler, uint32_t flags, void* reserved);
 
 #ifdef USE_STDPERIPH_DRIVER
-#if defined(STM32F10X_MD) || defined(STM32F10X_HD)
-#include "stm32f10x.h"
-#elif defined(STM32F2XX)
-#include "stm32f2xx.h"
-#endif // defined(STM32F10X_MD) || defined(STM32F10X_HD)
 
-#ifdef nRF52840
-#include <nrf52840.h>
-#endif /* nRF52840 */
+    #if defined(STM32F10X_MD) || defined(STM32F10X_HD)
+        #include "stm32f10x.h"
+    #elif defined(STM32F2XX)
+        #include "stm32f2xx.h"
+    #endif // defined(STM32F10X_MD) || defined(STM32F10X_HD)
+
+    #ifdef nRF52840
+        #include <nrf52840.h>
+    #endif /* nRF52840 */
 
 #if defined(STM32F10X_MD) || defined(STM32F10X_HD) || defined(STM32F2XX) || defined(nRF52840)
-static inline bool HAL_IsISR() 
-{
+
+static inline bool hal_interrupt_is_isr() {
 	return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 }
 
-static inline int32_t HAL_ServicedIRQn()
-{
-  return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) - 16;
+static inline int32_t hal_interrupt_serviced_irqn() {
+    return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) - 16;
 }
 
-static inline uint32_t HAL_GetBasePri()
-{
-  return (__get_BASEPRI() >> (8 - __NVIC_PRIO_BITS));
+static inline uint32_t hal_interrupt_get_basepri() {
+    return (__get_BASEPRI() >> (8 - __NVIC_PRIO_BITS));
 }
 
-static inline bool HAL_IsIrqMasked(int32_t irqn)
-{
-  uint32_t basepri = HAL_GetBasePri();
-  return __get_PRIMASK() || (basepri > 0 && NVIC_GetPriority((IRQn_Type)irqn) >= basepri);
+static inline bool hal_interrupt_is_irq_masked(int32_t irqn) {
+    uint32_t basepri = hal_interrupt_get_basepri();
+    return __get_PRIMASK() || (basepri > 0 && NVIC_GetPriority((IRQn_Type)irqn) >= basepri);
 }
 
-static inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2)
-{
-  if (irqn1 == irqn2)
+static inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
+    if (irqn1 == irqn2) {
+        return false;
+    }
+
+    uint32_t priorityGroup = NVIC_GetPriorityGrouping();
+    uint32_t priority1 = NVIC_GetPriority((IRQn_Type)irqn1);
+    uint32_t priority2 = NVIC_GetPriority((IRQn_Type)irqn2);
+    uint32_t p1, sp1, p2, sp2;
+    NVIC_DecodePriority(priority1, priorityGroup, &p1, &sp1);
+    NVIC_DecodePriority(priority2, priorityGroup, &p2, &sp2);
+    if (p1 < p2) {
+        return true;
+    }
     return false;
-
-  uint32_t priorityGroup = NVIC_GetPriorityGrouping();
-  uint32_t priority1 = NVIC_GetPriority((IRQn_Type)irqn1);
-  uint32_t priority2 = NVIC_GetPriority((IRQn_Type)irqn2);
-  uint32_t p1, sp1, p2, sp2;
-  NVIC_DecodePriority(priority1, priorityGroup, &p1, &sp1);
-  NVIC_DecodePriority(priority2, priorityGroup, &p2, &sp2);
-  if (p1 < p2)
-    return true;
-
-  return false;
 }
-#elif PLATFORM_ID == PLATFORM_NEWHAL
-inline bool HAL_IsISR() { return false; }
-inline int32_t HAL_ServicedIRQn() { return 0; }
-inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
-#elif PLATFORM_ID == PLATFORM_GCC
-inline bool HAL_IsISR() { return false; }
-inline int32_t HAL_ServicedIRQn() { return 0; }
-inline bool HAL_WillPreempt(int32_t irqn1, int32_t irqn2) { return false; }
-#else
-#error "*** MCU architecture not supported by HAL_IsISR(). ***"
-#endif // PLATFORM_ID == PLATFORM_NEWHAL
-#endif // defined(USE_STDPERIPH_DRIVER)
 
+#elif defined(CONFIG_PLATFORM_8721D)
+
+
+static inline bool hal_interrupt_is_isr() {
+    return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
+}
+
+static inline int32_t hal_interrupt_serviced_irqn() {
+    return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) - 16;
+}
+
+static inline uint32_t hal_interrupt_get_basepri() {
+#if defined (ARM_CPU_CORTEX_M33)
+    return (__get_BASEPRI() >> (8 - __NVIC_PRIO_BITS));
+#else
+    return 0;
+#endif
+}
+
+static inline bool hal_interrupt_is_irq_masked(int32_t irqn) {
+    uint32_t basepri = hal_interrupt_get_basepri();
+    return __get_PRIMASK() || (basepri > 0 && NVIC_GetPriority((IRQn_Type)irqn) >= basepri);
+}
+
+static inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
+    if (irqn1 == irqn2) {
+        return false;
+    }
+
+    uint32_t priority1 = NVIC_GetPriority((IRQn_Type)irqn1);
+    uint32_t priority2 = NVIC_GetPriority((IRQn_Type)irqn2);
+#if defined (ARM_CPU_CORTEX_M33)
+    uint32_t priorityGroup = NVIC_GetPriorityGrouping();
+    uint32_t p1, sp1, p2, sp2;
+    NVIC_DecodePriority(priority1, priorityGroup, &p1, &sp1);
+    NVIC_DecodePriority(priority2, priorityGroup, &p2, &sp2);
+    if (p1 < p2) {
+        return true;
+    }
+#else
+    if (priority1 < priority2) {
+        return true;
+    }
+#endif // defined (ARM_CPU_CORTEX_M33)
+    return false;
+}
+
+#elif PLATFORM_ID == PLATFORM_NEWHAL || PLATFORM_ID == PLATFORM_GCC
+
+inline bool hal_interrupt_is_isr() {
+    return false;
+}
+
+inline int32_t hal_interrupt_serviced_irqn() {
+    return 0;
+}
+
+inline bool hal_interrupt_will_preempt(int32_t irqn1, int32_t irqn2) {
+    return false;
+}
+
+inline uint32_t hal_interrupt_get_basepri() {
+    return 0;
+}
+
+inline bool hal_interrupt_is_irq_masked(int32_t irqn) {
+    return false;
+}
+
+#else
+
+#error "*** MCU architecture not supported by hal_interrupt_is_isr(). ***"
+
+#endif
+
+#include "interrupts_hal_compat.h"
+
+#endif // defined(USE_STDPERIPH_DRIVER)
 
 #ifdef __cplusplus
 }

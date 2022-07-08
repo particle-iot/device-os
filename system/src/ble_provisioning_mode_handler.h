@@ -20,7 +20,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_BLE
+#if HAL_PLATFORM_BLE_SETUP
 
 #include <memory>
 #include "ble_hal.h"
@@ -86,6 +86,6 @@ private:
 
 } } /* particle::system */
 
-#endif /* HAL_PLATFORM_BLE */
+#endif /* HAL_PLATFORM_BLE_SETUP */
 
 #endif /* BLE_PROVISIONING_MODE_HANDLER_H */

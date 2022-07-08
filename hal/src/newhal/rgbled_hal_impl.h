@@ -19,6 +19,6 @@
 
 #include <stdint.h>
 
-typedef struct led_config_t {
+typedef struct hal_led_config_t {
     uint8_t version; // Struct version
-} led_config_t;
+} hal_led_config_t;
