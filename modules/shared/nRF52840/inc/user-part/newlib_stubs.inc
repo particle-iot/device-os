@@ -91,6 +91,16 @@ char* strerror(int errnum) {
     return (char*)"";
 }
 
+// There is a bug in newlib in how it manages fake stdin/stdout/stderr
+// and we'll leak memory. Stub it out
+int __wrap_puts(const char* s) {
+    return -1;
+}
+
+int __wrap_printf(const char* fmt, ...) {
+    return -1;
+}
+
 /* Default implementation for call made to pure virtual function. */
 void __cxa_pure_virtual() {
   PANIC(PureVirtualCall,"Call on pure virtual");
