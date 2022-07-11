@@ -168,7 +168,7 @@ int Describe::systemModuleVersion() const {
     }
 
     for (auto& module: modules_) {
-        if (module.function() == MODULE_FUNCTION_SYSTEM_PART) {
+        if (module.function() == MODULE_FUNCTION_SYSTEM_PART || module.function() == MODULE_FUNCTION_MONO_FIRMWARE) {
             if (module.version() < version) {
                 version = module.version();
             }
