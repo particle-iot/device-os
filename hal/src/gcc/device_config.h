@@ -211,6 +211,8 @@ public:
         return platformId_.has_value();
     }
 
+    int systemModuleVersion() const;
+
     std::string toString() const;
     static Describe fromString(const std::string& str);
 

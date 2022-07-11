@@ -1090,8 +1090,13 @@ void Spark_Protocol_Init(void)
         }
 #endif // HAL_PLATFORM_COMPRESSED_OTA
 
+#if PLATFORM_ID != PLATFORM_GCC
         spark_protocol_set_connection_property(sp, protocol::Connection::SYSTEM_MODULE_VERSION, MODULE_VERSION,
                 nullptr, nullptr);
+#else
+        spark_protocol_set_connection_property(sp, protocol::Connection::SYSTEM_MODULE_VERSION, deviceConfig.describe.systemModuleVersion(),
+                nullptr, nullptr);
+#endif // PLATFORM_ID != PLATFORM_GCC
         spark_protocol_set_connection_property(sp, protocol::Connection::MAX_BINARY_SIZE, HAL_OTA_FlashLength(),
                 nullptr, nullptr);
         spark_protocol_set_connection_property(sp, protocol::Connection::OTA_CHUNK_SIZE, HAL_OTA_ChunkSize(),
@@ -1105,7 +1110,7 @@ void Spark_Protocol_Init(void)
         registerSystemSubscriptions();
 
 #if PLATFORM_ID == PLATFORM_GCC
-        bool isCellular = (udp && deviceConfig.platform_id != PLATFORM_GCC && deviceConfig.platform_id != PLATFORM_ARGON);
+        bool isCellular = (udp && deviceConfig.platform_id != PLATFORM_GCC && deviceConfig.platform_id != PLATFORM_ARGON && deviceConfig.platform_id != PLATFORM_P2);
         protocol::connection_properties_t connProp = {};
         connProp.size = sizeof(connProp);
         connProp.keepalive_source = protocol::KeepAliveSource::SYSTEM;

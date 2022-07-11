@@ -160,6 +160,24 @@ size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen)
 
 } // namespace
 
+int Describe::systemModuleVersion() const {
+    int version = MODULE_VERSION;
+
+    if (!isValid()) {
+        return version;
+    }
+
+    for (auto& module: modules_) {
+        if (module.function() == MODULE_FUNCTION_SYSTEM_PART) {
+            if (module.version() < version) {
+                version = module.version();
+            }
+        }
+    }
+
+    return version;
+}
+
 std::string Describe::toString() const {
     if (!isValid()) {
         throw std::runtime_error("Cannot serialize an invalid object");
