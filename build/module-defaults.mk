@@ -55,6 +55,8 @@ endif
 ifneq ($(PLATFORM_ID),3)
 CFLAGS += -Wimplicit-fallthrough=2
 CFLAGS += -Wno-expansion-to-defined -Wno-cast-function-type
+else
+CFLAGS += -Wno-unknown-warning-option
 endif
 CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wno-error=type-limits
