@@ -1,3 +1,25 @@
+## 5.0.0-alpha.1
+
+> ## :warning: Please note this is in internal release, do not use on production devices!
+
+### FEATURES
+- P2 Support [#2466](https://github.com/particle-iot/device-os/pull/2466)
+
+### ENHANCEMENTS
+- Register without waiting for CSD connections [#2404](https://github.com/particle-iot/device-os/pull/2404)
+
+### BUGFIXES
+- [gen3] port newlib stdin/stdout/stderr memory leak workaround [#2467](https://github.com/particle-iot/device-os/pull/2467)
+- [p2] Flash supports page write and other fixes [#2470](https://github.com/particle-iot/device-os/pull/2470)
+
+### INTERNAL
+- Enable OTA updates on the GCC platform [#2464](https://github.com/particle-iot/device-os/pull/2464)
+- Allow overriding the platform ID on the GCC platform [#2462](https://github.com/particle-iot/device-os/pull/2462)
+- [workbench] Update workbench buildscripts to 1.11.0 [#2465](https://github.com/particle-iot/device-os/pull/2465)
+- [tests] Change PWM pins to better match e-series pinout for E SoM X. Fix other tests [#2463](https://github.com/particle-iot/device-os/pull/2463)
+- [tests] Fix broken tone and servo tests for p2 platform, also EEPROM_03 for all. [#2469](https://github.com/particle-iot/device-os/pull/2469)
+- [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
+
 ## 4.0.0-alpha.2
 
 > ## :warning: Please note this is in internal release, do not use on production devices!
