@@ -23,6 +23,8 @@
 #include <string.h>
 #include <string>
 
+using namespace particle;
+
 /*
  * Implements eeprom either as a transient storage,
  * or as a persisted storage, depending upon if the file exists.

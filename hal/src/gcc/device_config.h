@@ -20,18 +20,210 @@
 
 #include <string>
 #include <stdexcept>
+#include <vector>
+#include <optional>
 #include <cstring>
+#include <cstdint>
+
 #include "filesystem.h"
 #include "spark_protocol_functions.h"
+#include "module_info.h"
 
-extern const char* DEVICE_ID;
-extern const char* DEVICE_PRIVATE_KEY;
-extern const char* SERVER_PUBLIC_KEY;
+namespace particle {
 
+namespace config {
 
-std::string get_configuration_value(const char* name);
+class ModuleDependencyInfo {
+public:
+    ModuleDependencyInfo() :
+            func_(MODULE_FUNCTION_NONE),
+            index_(0),
+            version_(0) {
+    }
 
-void read_config_file(const char* config_name, void* data, size_t length);
+    ModuleDependencyInfo& function(module_function_t func) {
+        func_ = func;
+        return *this;
+    }
+
+    module_function_t function() const {
+        return func_;
+    }
+
+    ModuleDependencyInfo& index(uint8_t index) {
+        index_ = index;
+        return *this;
+    }
+
+    uint8_t index() const {
+        return index_;
+    }
+
+    ModuleDependencyInfo& version(uint16_t version) {
+        version_ = version;
+        return *this;
+    }
+
+    uint16_t version() const {
+        return version_;
+    }
+
+private:
+    module_function_t func_;
+    uint8_t index_;
+    uint16_t version_;
+};
+
+class ModuleInfo {
+public:
+    using Dependencies = std::vector<ModuleDependencyInfo>;
+
+    ModuleInfo() :
+            func_(MODULE_FUNCTION_NONE),
+            store_(MODULE_STORE_MAIN),
+            maxSize_(0),
+            index_(0),
+            version_(0),
+            validChecked_(0),
+            validResult_(0) {
+    }
+
+    ModuleInfo& function(module_function_t func) {
+        func_ = func;
+        return *this;
+    }
+
+    module_function_t function() const {
+        return func_;
+    }
+
+    ModuleInfo& index(uint8_t index) {
+        index_ = index;
+        return *this;
+    }
+
+    uint8_t index() const {
+        return index_;
+    }
+
+    ModuleInfo& version(uint16_t version) {
+        version_ = version;
+        return *this;
+    }
+
+    uint16_t version() const {
+        return version_;
+    }
+
+    ModuleInfo& dependencies(const Dependencies& deps) {
+        deps_ = deps;
+        return *this;
+    }
+
+    const Dependencies& dependencies() const {
+        return deps_;
+    }
+
+    ModuleInfo& store(module_store_t store) {
+        store_ = store;
+        return *this;
+    }
+
+    module_store_t store() const {
+        return store_;
+    }
+
+    ModuleInfo& maximumSize(uint32_t size) {
+        maxSize_ = size;
+        return *this;
+    }
+
+    uint32_t maximumSize() const {
+        return maxSize_;
+    }
+
+    ModuleInfo& validityChecked(uint16_t flags) {
+        validChecked_ = flags;
+        return *this;
+    }
+
+    uint16_t validityChecked() const {
+        return validChecked_;
+    }
+
+    ModuleInfo& validityResult(uint16_t flags) {
+        validResult_ = flags;
+        return *this;
+    }
+
+    uint16_t validityResult() const {
+        return validResult_;
+    }
+
+    // Expects a binary string
+    ModuleInfo& hash(const std::string& hash) {
+        hash_ = hash;
+        return *this;
+    }
+
+    // Returns a binary string
+    const std::string& hash() const {
+        return hash_;
+    }
+
+private:
+    Dependencies deps_;
+    std::string hash_;
+    module_function_t func_;
+    module_store_t store_;
+    uint32_t maxSize_;
+    uint8_t index_;
+    uint16_t version_;
+    uint16_t validChecked_;
+    uint16_t validResult_;
+};
+
+class Describe {
+public:
+    using Modules = std::vector<ModuleInfo>;
+
+    Describe() = default;
+
+    Describe& platformId(uint16_t platformId) {
+        platformId_ = platformId;
+        return *this;
+    }
+
+    uint16_t platformId() const {
+        return platformId_.value_or(0);
+    }
+
+    Describe& modules(const Modules& modules) {
+        modules_ = modules;
+        return *this;
+    }
+
+    const Modules& modules() const {
+        return modules_;
+    }
+
+    bool isValid() const {
+        return platformId_.has_value();
+    }
+
+    int systemModuleVersion() const;
+
+    std::string toString() const;
+    static Describe fromString(const std::string& str);
+
+private:
+    Modules modules_;
+    std::optional<uint16_t> platformId_;
+};
+
+} // namespace config
+
+} // namespace particle
 
 /**
  * Reads the device configuration and returns true if the device should start.
@@ -41,7 +233,6 @@ void read_config_file(const char* config_name, void* data, size_t length);
  */
 bool read_device_config(int argc, char* argv[]);
 
-
 /**
  * The external configuration data.
  */
@@ -50,25 +241,26 @@ struct Configuration
     std::string device_id;
     std::string device_key;
     std::string server_key;
-    std::string periph_directory;
-    uint16_t log_level = 0;
-    ProtocolFactory protocol = PROTOCOL_LIGHTSSL;
-    int platform_id;
+    std::string describe;
+    uint16_t log_level;
+    ProtocolFactory protocol;
+    uint16_t platform_id;
+    uint16_t product_version;
 };
-
 
 /**
  * The device configuration in internal form.
  */
 struct DeviceConfig
 {
+    std::vector<std::string> argv;
+    particle::config::Describe describe;
     uint8_t device_id[12];
     uint8_t device_key[1024];
     uint8_t server_key[1024];
     ProtocolFactory protocol;
-    int platform_id;
-
-    size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen);
+    uint16_t platform_id;
+    uint16_t product_version;
 
     void read(Configuration& configuration);
 
@@ -83,7 +275,5 @@ struct DeviceConfig
 
     ProtocolFactory get_protocol() { return protocol; }
 };
-
-
 
 extern DeviceConfig deviceConfig;

@@ -36,23 +36,34 @@
 #include "device_config.h"
 #include "hal_platform.h"
 #include "interrupts_hal.h"
-#include <boost/crc.hpp>  // for boost::crc_32_type
 #include <sstream>
 #include <iomanip>
 #include "system_error.h"
+#include "../../../system/inc/system_mode.h" // FIXME
 
 #include "eeprom_file.h"
 #include "eeprom_hal.h"
 #include "rtc_hal.h"
 
-using std::cout;
+#include <boost/algorithm/string.hpp>
+#include <boost/crc.hpp> // for boost::crc_32_type
+#include <boost/config.hpp>
 
-static LoggerOutputLevel log_level = NO_LOG_LEVEL;
+#ifndef BOOST_WINDOWS
+#include <unistd.h> // For execvp()
+#endif
 
-void setLoggerLevel(LoggerOutputLevel level)
-{
-    log_level = level;
-}
+using namespace particle;
+
+namespace particle {
+
+extern bool moduleUpdatePending; // Defined in ota_flash_hal.cpp
+
+} // namespace particle
+
+namespace {
+
+LoggerOutputLevel log_level = NO_LOG_LEVEL;
 
 void log_message_callback(const char *msg, int level, const char *category, const LogAttributes *attr, void *reserved)
 {
@@ -119,13 +130,42 @@ int log_enabled_callback(int level, const char *category, void *reserved)
     return (level >= log_level);
 }
 
+bool removeArg(std::vector<std::string>* args, const std::string& arg) {
+    bool found = false;
+    size_t i = 0;
+    while (i < args->size()) {
+        if (boost::starts_with(args->at(i), "--" + arg + '=')) {
+            args->erase(args->begin() + i);
+            found = true;
+            continue;
+        }
+        if (args->at(i) == "--" + arg) {
+            args->erase(args->begin() + i);
+            if (i < args->size()) {
+                args->erase(args->begin() + i); // Remove the value argument
+            }
+            found = true;
+            continue;
+        }
+        ++i;
+    }
+    return found;
+}
+
+} // namespace
+
+void setLoggerLevel(LoggerOutputLevel level)
+{
+    log_level = level;
+}
+
 void core_log(const char* msg, ...)
 {
     va_list args;
     va_start(args, msg);
     char buf[2048];
     vsnprintf(buf, 2048, msg, args);
-    cout << buf << std::endl;
+    std::cout << buf << std::endl;
     va_end(args);
 }
 
@@ -135,16 +175,24 @@ const char* eeprom_bin = "eeprom.bin";
 
 extern "C" int main(int argc, char* argv[])
 {
-    log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
-    if (read_device_config(argc, argv)) {
-    		// init the eeprom so that a file of size 0 can be used to trigger the save.
-    		HAL_EEPROM_Init();
-    		if (exists_file(eeprom_bin)) {
-    			GCC_EEPROM_Load(eeprom_bin);
-    		}
-			app_setup_and_loop();
-	}
-    return 0;
+    try {
+        log_set_callbacks(log_message_callback, log_write_callback, log_enabled_callback, nullptr);
+        if (read_device_config(argc, argv)) {
+                if (!HAL_Core_Validate_Modules(0 /* flags */, nullptr /* reserved */)) {
+                    set_system_mode(SAFE_MODE);
+                }
+                // init the eeprom so that a file of size 0 can be used to trigger the save.
+                HAL_EEPROM_Init();
+                if (exists_file(eeprom_bin)) {
+                    GCC_EEPROM_Load(eeprom_bin);
+                }
+                app_setup_and_loop();
+        }
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return 1;
+    }
 }
 
 class GCCStartup {
@@ -190,6 +238,26 @@ void HAL_Core_Config(void)
 {
 }
 
+bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
+{
+    auto& modules = deviceConfig.describe.modules();
+    for (auto& module: modules) {
+        for (auto& dep: module.dependencies()) {
+            bool found = false;
+            for (auto& module: modules) {
+                if (module.function() == dep.function() && module.index() == dep.index() && module.version() >= dep.version()) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool HAL_Core_Mode_Button_Pressed(uint16_t pressedMillisDuration)
 {
     return false;
@@ -201,7 +269,37 @@ void HAL_Core_Mode_Button_Reset(void)
 
 void HAL_Core_System_Reset(void)
 {
+#ifndef BOOST_WINDOWS
+    try {
+        auto args = deviceConfig.argv;
+        if (moduleUpdatePending) {
+            auto descFile = temp_file_name("device_update_", ".json");
+            write_file(descFile, deviceConfig.describe.toString()); // TODO: Cleanup
+            LOG(INFO, "Saved module info to %s", descFile.data());
+            removeArg(&args, "describe");
+            args.push_back("--describe=" + descFile);
+            removeArg(&args, "product_version");
+            if (deviceConfig.product_version != 0xffff) {
+                args.push_back("--product_version=" + std::to_string(deviceConfig.product_version));
+            }
+        }
+        std::vector<char*> argv;
+        for (auto& arg: args) {
+            argv.push_back(arg.data());
+        }
+        argv.push_back(nullptr);
+        LOG(INFO, "Resetting device");
+        LOG_PRINT(INFO, "\r\n\r\n\r\n");
+        execvp(argv[0], argv.data());
+        throw std::runtime_error("Failed to reset device"); // execvp() failed
+    } catch (const std::exception& e) {
+        LOG(ERROR, "%s", e.what());
+        exit(1);
+    }
+#else
+    LOG(INFO, "Resetting device (not supported)");
     exit(0);
+#endif
 }
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved)
