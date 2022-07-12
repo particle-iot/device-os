@@ -86,6 +86,7 @@ int BleProvisioningModeHandler::constructControlRequestAdvData() {
     CHECK_TRUE(tempAdvData.append(BLE_SIG_AD_TYPE_FLAGS), SYSTEM_ERROR_NO_MEMORY);
     CHECK_TRUE(tempAdvData.append(BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE), SYSTEM_ERROR_NO_MEMORY);
 
+    // Advertising data is limited to 31 bytes, which means the true maximum advertising device name length is only 14 bytes (accounting for all of the below data fields)
     char devName[BLE_MAX_DEV_NAME_LEN + 1] = {};
     CHECK(hal_ble_gap_get_device_name(devName, sizeof(devName), nullptr));
 
