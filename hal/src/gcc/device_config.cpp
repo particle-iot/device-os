@@ -161,11 +161,11 @@ size_t hex2bin(const std::string& hex, uint8_t* dest, size_t destLen)
 } // namespace
 
 int Describe::systemModuleVersion() const {
-    int version = MODULE_VERSION;
-
     if (!isValid()) {
-        return version;
+        return MODULE_VERSION;
     }
+
+    auto version = std::numeric_limits<decltype(module_info_t::module_version)>::max();
 
     for (auto& module: modules_) {
         if (module.function() == MODULE_FUNCTION_SYSTEM_PART || module.function() == MODULE_FUNCTION_MONO_FIRMWARE) {
