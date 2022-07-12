@@ -1676,7 +1676,7 @@ void QuectelNcpClient::resetRegistrationState() {
 
 void QuectelNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
+        if (psd_.registered() || eps_.registered()) {
             connectionState(NcpConnectionState::CONNECTED);
         } else if (connState_ == NcpConnectionState::CONNECTED) {
             // FIXME: potentially go back into connecting state only when getting into

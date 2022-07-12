@@ -2171,7 +2171,7 @@ void SaraNcpClient::resetRegistrationState() {
 
 void SaraNcpClient::checkRegistrationState() {
     if (connState_ != NcpConnectionState::DISCONNECTED) {
-        if ((csd_.registered() && psd_.registered()) || eps_.registered()) {
+        if (psd_.registered() || eps_.registered()) {
             if (memoryIssuePresent_ && connState_ != NcpConnectionState::CONNECTED) {
                 registeredTime_ = millis(); // start registered timer for memory issue power off delays
             }
