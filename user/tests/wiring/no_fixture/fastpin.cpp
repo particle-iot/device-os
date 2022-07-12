@@ -20,7 +20,11 @@ test(FASTPIN_01_MaxDuration_PinSet) {
     ATOMIC_BLOCK()  {
         start = System.ticks();
         for (uint32_t i = 0; i < NUM_ITERATIONS; i++) {
+        #if PLATFORM_ID == PLATFORM_ESOMX
+            pinSetFast(D5);
+        #else
             pinSetFast(D7);
+        #endif
             //pinResetFast(D7);
         }
         finish = System.ticks();
@@ -47,7 +51,11 @@ test(FASTPIN_02_MaxDuration_PinReset) {
     ATOMIC_BLOCK()  {
         start = System.ticks();
         for (uint32_t i = 0; i < NUM_ITERATIONS; i++) {
+        #if PLATFORM_ID == PLATFORM_ESOMX
+            pinResetFast(D5);
+        #else
             pinResetFast(D7);
+        #endif
         }
         finish = System.ticks();
     }

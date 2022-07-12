@@ -236,9 +236,11 @@ test(LED_11_MirroringWorks) {
     RGB.brightness(255);
 
 #if HAL_PLATFORM_NRF52840
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    const hal_pin_t pins[3] = {A4, A5, A3};
-#else
+# if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+    const pin_t pins[3] = {A4, A5, A3};
+# elif PLATFORM_ID == PLATFORM_ESOMX
+    const pin_t pins[3] = {A3, A4, A5};
+# else
     // SoM
     const hal_pin_t pins[3] = {A1, A0, A7};
 #endif // PLATFORM_ID != PLATFORM_ARGON && PLATFORM_ID != PLATFORM_BORON
