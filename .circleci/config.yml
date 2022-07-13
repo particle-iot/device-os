@@ -341,7 +341,7 @@ commands:
       - run:
           name: "Test Local Compilation Tasks"
           no_output_timeout: "20m"
-          command: scripts/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>"
+          command: ci/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>"
           environment:
             PRTCL_DISABLE_AUTOUPDATE: "1"
   test-localcompiler-windows:
@@ -354,7 +354,7 @@ commands:
       - run:
           name: "Test Local Compilation Tasks"
           no_output_timeout: "20m"
-          command: pwsh scripts/test-build-tasks.ps1 $home\project "<< parameters.platform >>" "<< parameters.tasks >>"
+          command: pwsh ci/test-build-tasks.ps1 $home\project "<< parameters.platform >>" "<< parameters.tasks >>"
           environment:
             PRTCL_DISABLE_AUTOUPDATE: "1"
   save-platform-to-workspace:
