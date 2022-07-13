@@ -142,17 +142,17 @@
  *********************************************************************************************
  *
  * P2 Wiring diagrams
- * 
+ *
  * SPI1/SPI1                       SPI/SPI1 (SPI can't be used as slave)
  * Master: SPI1  (USE_SPI=SPI1)    Master: SPI (USE_SPI=SPI)
  * Slave:  SPI1  (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
- * 
+ *
  * Master             Slave       Master              Slave
  * CS   D5 <-------> D5 CS        CS   S3 <---------> D5 CS
- * MISO D4 <-------> D3 MISO      MISO S1 <---------> D3 MISO
- * MOSI D3 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
- * SCK  D2 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
- * 
+ * MISO D3 <-------> D3 MISO      MISO S1 <---------> D3 MISO
+ * MOSI D2 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
+ * SCK  D4 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
+ *
  *********************************************************************************************
  */
 
@@ -163,7 +163,7 @@ static uint8_t SPI_Master_Rx_Buffer[TRANSFER_LENGTH_2];
 static uint8_t SPI_Master_Rx_Buffer_Supper[1024];
 static volatile uint8_t DMA_Completed_Flag = 0;
 
-static const char* txString = 
+static const char* txString =
 "urjlU1tW177HwJsR6TylreMKge225qyLaIizW5IhXHkWgTGpH2fZtm2Od20Ne3Q81fxfUl7zoFaF\
 Z6smPzkpTGNSxGg7TCEiE2f19951tKxjFCB4Se86R4CaWW2YZF0mogirgsu2qRMGe4mC9QlJkCgXP\
 bgSVV1mc2xsZcu4bj0pbmPIhxkuyAHe4cVK3gLpWEGTadtAn2k66rOFNBdfPaE0cUY3wwXlVQ9yDl\
@@ -565,7 +565,7 @@ test(25_SPI_Master_Slave_Master_Reception)
     MY_SPI.transfer(nullptr, SPI_Master_Rx_Buffer_Supper, strlen(txString), SPI_DMA_Completed_Callback);
     while(DMA_Completed_Flag == 0);
     digitalWrite(MY_CS, HIGH);
-    
+
     // Serial.printf("Length: %d\r\n", strlen((const char *)SPI_Master_Rx_Buffer_Supper));
     // for (size_t len = 0; len < strlen((const char *)SPI_Master_Rx_Buffer_Supper); len++) {
     //     Serial.printf("%c", SPI_Master_Rx_Buffer_Supper[len]);

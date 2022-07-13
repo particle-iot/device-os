@@ -136,12 +136,13 @@ test(SPIX_03_SPI_Begin_With_Mode)
 
     // HAL_SPI_INTERFACE1 does not support slave mode on NRF52840
 #if HAL_PLATFORM_RTL872X
-    SPI.begin(SPI_MODE_SLAVE);
-    querySpiInfo(HAL_SPI_INTERFACE1, &info);
+    // HAL_SPI_INTERFACE1  does not support slave mode on P2
+    SPI1.begin(SPI_MODE_SLAVE);
+    querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_SLAVE);
 #if PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, S3);
+    assertEqual(info.ss_pin, D5);
 #else
 #error "Unknown platform!"
 #endif
