@@ -127,6 +127,10 @@ SECTIONS
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_location = .;
+
+        /* Coalesces FreeRTOS symbols into a single location for some tooling */
+        INCLUDE linker_freertos_task_symbols.ld
+
         *(.bss*)
         *(COMMON)
         . = ALIGN(4);

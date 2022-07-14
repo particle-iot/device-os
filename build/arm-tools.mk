@@ -95,8 +95,9 @@ CFLAGS += -DARM_CPU_$(shell echo $(ARM_CPU) | tr '-' '_' | tr 'a-z' 'A-Z')
 #
 # -fno-use-cxa-atexit makes sure that destructors for statically created C++ objects are never called,
 # which saves us some flash space.
-CPPFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT -fno-use-cxa-atexit
-CONLYFLAGS += -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT
+LTO_FLAGS = -flto -ffat-lto-objects -DPARTICLE_COMPILE_LTO_FAT
+CPPFLAGS += $(LTO_FLAGS) -fno-use-cxa-atexit
+CONLYFLAGS += $(LTO_FLAGS)
 LDFLAGS += -fno-use-cxa-atexit
 
 ifeq ($(COMPILE_LTO),y)
