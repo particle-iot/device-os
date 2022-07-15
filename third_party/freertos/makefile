@@ -18,3 +18,7 @@ DEPENDENCIES += dynalib services third_party/ambd_sdk
 
 PROJECT_ROOT ?= ../..
 include ../../build/arm-tlm.mk
+
+# Disable LTO for FreeRTOS sources to keep some of the symbols in a single coalescent location
+CONLYFLAGS_ORIGINAL := $(CONLYFLAGS)
+CONLYFLAGS = $(filter-out $(LTO_FLAGS),$(CONLYFLAGS_ORIGINAL))
