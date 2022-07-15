@@ -429,17 +429,22 @@ int softap_set_application_page_handler(PageProvider* provider, void* reserved) 
 }
 
 static bool isValidCountryCode(const char * country_code) {
-    if(strlen(country_code) != 2){
+    const char* country_codes[] =  {
+        "US","EU","JP","CA","MX","GB","AU","KR"
+    };
+    const size_t country_count = sizeof(country_codes)/sizeof(country_codes[0]);
+
+    if (strlen(country_code) != 2) {
         return false;
     }
 
-    String country_string(country_code);
-
-    if (country_string == "US" || country_string == "CA") {
-        return true;
-    } else {
-        return false;
+    size_t i;
+    for ( i = 0; i < country_count; ++i) {
+        if (0 == strcmp(country_codes[i], country_code))  {
+            return true;
+        }
     }
+    return false;
 }
 
 int wlan_set_country_code(const char * country_code) {

@@ -57,10 +57,36 @@ void wifi_set_country_code(void) {
     uint8_t channel_plan;
     rtw_country_code_t country_code_sdk;
 
+    // load the persistent country code setting from DCT
     wlan_get_country_code(country_code);
-    if (strcmp(country_code, "US") == 0) {
+    if ( strcmp(country_code, "US") == 0  || strcmp(country_code, "CA") == 0) {
+        // USA/Canada:  0x3F (2G_03 & 5G_22)
         channel_plan = 0x3F;
         country_code_sdk = RTW_COUNTRY_US;
+    }
+    else if ( strcmp(country_code, "EU") == 0 || strcmp(country_code, "GB") == 0) {
+        //EU: 0x26 (2G_01 & 5G_02)
+        channel_plan = 0x26;
+        country_code_sdk = RTW_COUNTRY_EU;
+    }
+    else if (strcmp(country_code, "JP") == 0) {
+        channel_plan = 0x5F;
+        country_code_sdk = RTW_COUNTRY_JP;
+    }
+    else if (strcmp(country_code, "KR") == 0) {
+        //KCC 2G_02	& 5G_22
+        channel_plan = 0x4B;
+        country_code_sdk = RTW_COUNTRY_KR;
+    }
+    else if (strcmp(country_code, "AU") == 0) {
+        //  ETSI 2G_01 & 5G_03
+        channel_plan = 0x35;
+        country_code_sdk = RTW_COUNTRY_AU;
+    }
+    else if (strcmp(country_code,"MX")== 0) {
+        // MEX 2G_02 & 5G_01
+        channel_plan = 0x4D;
+        country_code_sdk = RTW_COUNTRY_MX;
     }
     // TODO: other country codes + channel plans
     else {
