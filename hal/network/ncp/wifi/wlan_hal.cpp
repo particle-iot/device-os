@@ -428,41 +428,17 @@ int softap_set_application_page_handler(PageProvider* provider, void* reserved) 
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-static bool isValidCountryCode(const char * country_code) {
-    const char* country_codes[] =  {
-        "US","EU","JP","CA","MX","GB","AU","KR"
-    };
-    const size_t country_count = sizeof(country_codes)/sizeof(country_codes[0]);
-
-    if (strlen(country_code) != 2) {
-        return false;
-    }
-
-    size_t i;
-    for ( i = 0; i < country_count; ++i) {
-        if (0 == strcmp(country_codes[i], country_code))  {
-            return true;
-        }
-    }
-    return false;
+int wlan_set_country_code(wlan_country_code_t country_code, void* reserved) {
+    char* cc_ptr = (char*)&country_code;
+    return dct_write_app_data(cc_ptr, DCT_COUNTRY_CODE_OFFSET, 2);
 }
 
-int wlan_set_country_code(const char * country_code) {
-    if (isValidCountryCode(country_code)) {
-        return dct_write_app_data(country_code, DCT_COUNTRY_CODE_OFFSET, 2);
-    } else {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-}
-
-int wlan_get_country_code(char * country_code) {
-    char country_code_dct[DCT_COUNTRY_CODE_SIZE] = {};
-    int r = dct_read_app_data_copy(DCT_COUNTRY_CODE_OFFSET, country_code_dct, 2);
-    if (r < 0 || !isValidCountryCode(country_code_dct)) {
-        // Default to US
-        sprintf(country_code_dct, "US");
+wlan_country_code_t wlan_get_country_code(void* reserved) {
+    uint16_t country_code = wlan_country_code_t::WLAN_CC_UNSET;
+    dct_read_app_data_copy(DCT_COUNTRY_CODE_OFFSET, &country_code, 2);
+    if ((wlan_country_code_t::WLAN_CC_UNSET == country_code) || (wlan_country_code_t::WLAN_CC_MAX == country_code)) {
+        country_code = wlan_country_code_t::WLAN_CC_US;
     }
 
-    strcpy(country_code, country_code_dct);
-    return 0;
+    return (wlan_country_code_t)country_code;
 }

@@ -81,8 +81,8 @@ DYNALIB_FN(29, hal_wlan, wlan_connected_info, int(void*, wlan_connected_info_t*,
 DYNALIB_FN(30, hal_wlan, wlan_get_antenna, WLanSelectAntenna_TypeDef(void*))
 DYNALIB_FN(31, hal_wlan, wlan_get_ipaddress, int(IPConfig*, void*))
 DYNALIB_FN(32, hal_wlan, wlan_get_ipaddress_source, IPAddressSource(void*))
-DYNALIB_FN(33, hal_wlan, wlan_set_country_code, int(const char *))
-DYNALIB_FN(34, hal_wlan, wlan_get_country_code, int(char *))
+DYNALIB_FN(33, hal_wlan, wlan_set_country_code, int(wlan_country_code_t,void*))
+DYNALIB_FN(34, hal_wlan, wlan_get_country_code, wlan_country_code_t(void*))
 DYNALIB_END(hal_wlan)
 
 #endif // HAL_PLATFORM_WIFI
