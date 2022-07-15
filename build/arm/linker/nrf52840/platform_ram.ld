@@ -123,8 +123,8 @@ platform_bootloader_static_ram_end   = platform_bootloader_static_ram_start + pl
 
 
 /* The heap size after linkage should meet the minimum heap requirement. */
-platform_heap_min_size = 32K;
-
+platform_heap_min_size = 48K;
+platform_heap_modular_max_location_end = platform_modular_firmware_stack_start;
 
 /* Basic sanity checks */
 ASSERT (

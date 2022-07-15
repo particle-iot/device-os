@@ -237,6 +237,7 @@ ASSERT (
     "Insufficient room for .data and .bss sections!"
 );
 ASSERT (
+    (link_heap_location_end > link_heap_location) &&
     (link_heap_location_end <= platform_user_part_static_ram_start),
     "Insufficient room for heap!"
 );

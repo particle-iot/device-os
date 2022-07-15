@@ -348,6 +348,11 @@ void HAL_Core_Config(void) {
         if (new_heap_end > malloc_heap_end()) {
             malloc_set_heap_end(new_heap_end);
         }
+    } else {
+        // Expand heap to the maximum size
+        // NOTE: for monolithic builds this should already be at max size
+        extern uintptr_t platform_heap_modular_max_location_end;
+        malloc_set_heap_end((void*)&platform_heap_modular_max_location_end);
     }
 
     // Enable malloc before littlefs initialization.

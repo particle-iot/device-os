@@ -162,7 +162,7 @@ SECTIONS
 
 /* Heap location */
 link_heap_location     = link_bss_end;
-link_heap_location_end = link_heap_location + platform_heap_min_size;
+link_heap_location_end = platform_monolithic_firmware_stack_start;
 
 /* Stack , used by startup*/
 link_stack_size     = platform_monolithic_firmware_stack_size;
@@ -214,6 +214,7 @@ ASSERT (
     "Insufficient room for .data and .bss sections!"
 );
 ASSERT (
+    (link_heap_location_end > link_heap_location) &&
     (link_heap_location_end <= platform_monolithic_firmware_stack_start),
     "Insufficient room for heap!"
 );
