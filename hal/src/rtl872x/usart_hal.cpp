@@ -51,6 +51,10 @@ void dcacheInvalidateAligned(uintptr_t ptr, size_t size) {
     DCache_Invalidate(alignedPtr, alignedSize);
 }
 
+// Do not initiate DMA RX transfers is acquirable space is below this threshold
+// This is the same as on Gen 3 to bring similar behavior
+constexpr size_t RX_THRESHOLD = 4;
+
 } // anonymous
 
 
@@ -636,7 +640,7 @@ private:
             const size_t acquirable = rxBuffer_.acquirable();
             const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
             size_t rxSize = std::max(acquirable, acquirableWrapped);
-            if (rxSize == 0) {
+            if (rxSize < RX_THRESHOLD) {
                 receiving_ = false;
                 return;
             }
