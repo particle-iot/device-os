@@ -8,7 +8,7 @@
 #include "fqc_test.h"
 #include "burnin_test.h"
 extern "C" {
-#include "lib/coremark/core_portme.h"
+#include "core_portme.h"
 }
 
 #if HAL_PLATFORM_RTL872X
