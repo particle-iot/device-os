@@ -50,7 +50,8 @@
 
 #define HAL_PLATFORM_IFAPI (1)
 
-// #define HAL_PLATFORM_ETHERNET (1)
+// Allow detection of ethernet on SPI 
+#define HAL_PLATFORM_ETHERNET (1)
 
 #define HAL_PLATFORM_I2C2 (1)
 
