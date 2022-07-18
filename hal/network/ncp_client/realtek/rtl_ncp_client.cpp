@@ -294,8 +294,7 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     rtlError = wifi_get_channel(&channel_num);
     if (RTW_SUCCESS != rtlError) {
         LOG(WARN, "wifi_get_channel err: %d", rtlError);
-    }
-    else { 
+    } else { 
         // LOG(INFO, " chan %d\t  ", channel_num );
         info->channel(channel_num);
     }
@@ -304,8 +303,7 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     rtlError = wext_get_ssid(WLAN0_NAME, (unsigned char *) ssid_buf);
     if (rtlError < 0) {
         LOG(WARN, "wext_get_ssid err: %d", rtlError);
-    }
-    else {
+    } else {
         // LOG(INFO," ssid: %s", ssid_buf);
         info->ssid(ssid_buf);
     }
@@ -314,8 +312,7 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     rtlError = wifi_get_rssi(&raw_rssi);
     if (rtlError < 0) {
         LOG(WARN, "wifi_get_rssi err: %d", rtlError);
-    }
-    else {
+    } else {
         // LOG(INFO," rssi: %d", raw_rssi);
         info->rssi(raw_rssi);
     }
@@ -324,8 +321,7 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     rtlError = wext_get_bssid(WLAN0_NAME, bssid_mac.data);
     if (rtlError < 0) {
         LOG(WARN, "wext_get_bssid err: %d", rtlError);
-    }
-    else {
+    } else {
         info->bssid(bssid_mac);
         // uint8_t* bssid_buf = bssid_mac.data;
         // LOG(INFO, " bssid: %02x:%02x:%02x:%02x:%02x:%02x ", bssid_buf[0],  bssid_buf[1],  bssid_buf[2],  bssid_buf[3],  bssid_buf[4],  bssid_buf[5] );
