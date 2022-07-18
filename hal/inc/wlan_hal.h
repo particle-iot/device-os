@@ -429,7 +429,7 @@ int wlan_set_hostname(const char* hostname, void* reserved);
 int wlan_get_hostname(char* buf, size_t buf_size, void* reserved);
 
 wlan_country_code_t wlan_get_country_code(void* reserved);
-int wlan_set_country_code(wlan_country_code_t country, void* reserved);
+int wlan_set_country_code(wlan_country_code_t country, const void* reserved);
 
 
 #ifdef	__cplusplus

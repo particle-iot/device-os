@@ -62,11 +62,15 @@ void wifi_set_country_code(void) {
     switch (country_code) {
         default:
         case WLAN_CC_US:
-        case WLAN_CC_CA:
-            // USA/Canada: 2G_03 & 5G_22
+            // FCC 2G_03 & 5G_22
             channel_plan = 0x3F;
             country_code_sdk = RTW_COUNTRY_US;
             break;        
+        case WLAN_CC_CA:
+            // IC 2G_02	& 5G_33
+            channel_plan = 0x2B;
+            country_code_sdk = RTW_COUNTRY_CA;
+            break; 
         case WLAN_CC_MX:
             // MEX 2G_02 & 5G_01
             channel_plan = 0x4D;
@@ -74,17 +78,17 @@ void wifi_set_country_code(void) {
             break;
         case WLAN_CC_EU:
         case WLAN_CC_GB:
-            //ETSI 2G_01 & 5G_02
+            // ETSI 2G_01 & 5G_02
             channel_plan = 0x26;
             country_code_sdk = RTW_COUNTRY_EU;
             break;
         case WLAN_CC_JP:
-            //MKK 2G_02 & 5G_24
+            // MKK 2G_02 & 5G_24
             channel_plan = 0x64;
             country_code_sdk = RTW_COUNTRY_JP;
             break;
         case WLAN_CC_KR:
-            //KCC 2G_02	& 5G_22
+            // KCC 2G_02 & 5G_22
             channel_plan = 0x4B;
             country_code_sdk = RTW_COUNTRY_KR;
             break;

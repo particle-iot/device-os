@@ -428,7 +428,7 @@ int softap_set_application_page_handler(PageProvider* provider, void* reserved) 
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int wlan_set_country_code(wlan_country_code_t country_code, void* reserved) {
+int wlan_set_country_code(wlan_country_code_t country_code, const void* reserved) {
     char cc_buf[2] = { (char)(country_code >> 8),  (char)(country_code & 0xFF) };
     return dct_write_app_data(cc_buf, DCT_COUNTRY_CODE_OFFSET, 2);
 }
