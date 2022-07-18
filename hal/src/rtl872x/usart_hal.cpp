@@ -329,17 +329,21 @@ public:
             size_t toConsume = std::max(dmaAvailableInBuffer, transferredToDmaFromUart) - alreadyCommitted;
             if (commit && toConsume > 0) {
                 if (transferredToDmaFromUart > dmaAvailableInBuffer) {
-                    ATOMIC_BLOCK() {
-                        if ((GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW & BIT_CFGX_LO_FIFO_EMPTY) == 0) {
+                    uintptr_t expectedDstAddr = rxDmaInitStruct_.GDMA_DstAddr + transferredToDmaFromUart;
+                    if ((GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW & BIT_CFGX_LO_FIFO_EMPTY) == 0) {
+                        if (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
                             // Suspending DMA channel forces flushing of data into destination from GDMA FIFO
                             GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW |= BIT_CFGX_LO_CH_SUSP;
                             __DSB();
                             __ISB();
+                            while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
+                                // XXX: spin around, this should be pretty fast
+                            }
                             GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW &= ~(BIT_CFGX_LO_CH_SUSP);
+                            __DSB();
+                            __ISB();
                         }
                     }
-                    __DSB();
-                    __ISB();
                 }
                 rxBuffer_.acquireCommit(toConsume);
                 dcacheInvalidateAligned(rxDmaInitStruct_.GDMA_DstAddr + alreadyCommitted, toConsume);
