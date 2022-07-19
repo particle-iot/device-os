@@ -15,8 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/* Includes ------------------------------------------------------------------*/
-
 #include "hal_platform.h"
 #if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY) 
 #include "application.h"
