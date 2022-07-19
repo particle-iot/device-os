@@ -23,6 +23,4 @@ endif
 ifeq ($(APP),tinker)
 CFLAGS += -DENABLE_FQC_FUNCTIONALITY=1
 CXXFLAGS += -DENABLE_FQC_FUNCTIONALITY=1
-
-MAKE_DEPENDENCIES += third_party/coremark
-endif
+#endif
