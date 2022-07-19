@@ -57,7 +57,9 @@ void wifi_set_country_code(void) {
     rtw_country_code_t country_code_sdk;
 
     // load the persistent country code setting from DCT
-    wlan_country_code_t country_code = wlan_get_country_code(nullptr);
+    int raw_cc = wlan_get_country_code(nullptr);
+    wlan_country_code_t country_code = (raw_cc < 0) ? WLAN_CC_UNSET : (wlan_country_code_t)raw_cc;
+
     //Reference: WS-200923-Willis-Efuse_Channel_Plan_new_define-R54(32562).xlsx
     switch (country_code) {
         default:
