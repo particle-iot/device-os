@@ -51,3 +51,6 @@
 [submodule "third_party/ambd_sdk/ambd_sdk"]
 	path = third_party/ambd_sdk/ambd_sdk
 	url = https://github.com/particle-iot/realtek_ambd_sdk_public.git
+[submodule "third_party/coremark/coremark"]
+	path = third_party/coremark/coremark
+	url = https://github.com/particle-iot/coremark
