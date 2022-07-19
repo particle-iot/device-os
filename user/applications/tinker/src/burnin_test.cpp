@@ -1,3 +1,5 @@
+#include "hal_platform.h"
+#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY) 
 #include "application.h"
 
 #include "spark_wiring_logging.h"
@@ -11,7 +13,6 @@ extern "C" {
 #include "core_portme.h"
 }
 
-#if HAL_PLATFORM_RTL872X
 extern uintptr_t platform_km0_part1_flash_start;
 extern uintptr_t platform_bootloader_module_info_flash_start;
 extern uintptr_t platform_system_part1_flash_start;

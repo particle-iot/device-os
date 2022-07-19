@@ -1,3 +1,5 @@
+#include "hal_platform.h"
+#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
 #include "spark_wiring.h"
 #include "spark_wiring_ble.h"
 #include "spark_wiring_logging.h"
@@ -5,8 +7,6 @@
 
 #include "fqc_test.h"
 #include "burnin_test.h"
-
-#if HAL_PLATFORM_RTL872X
 
 namespace particle {
 
