@@ -18,7 +18,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "application.h"
 #include <cctype>
-#if HAL_PLATFORM_RTL872X && ENABLE_FQC_FUNCTIONALITY
+#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
 #include "request_handler.h"
 #include "src/burnin_test.h"
 #endif
@@ -128,7 +128,7 @@ void setup()
     Particle.function("analogread", tinkerAnalogRead);
     Particle.function("analogwrite", tinkerAnalogWrite);
 
-#if HAL_PLATFORM_RTL872X && ENABLE_FQC_FUNCTIONALITY
+#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
     BurninTest::instance()->setup();
 #endif
 }
@@ -138,7 +138,7 @@ void loop()
 {
     //This will run in a loop
 
-#if HAL_PLATFORM_RTL872X && ENABLE_FQC_FUNCTIONALITY
+#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
     BurninTest::instance()->loop();
 #endif
 }
@@ -260,7 +260,7 @@ int tinkerAnalogWrite(String command)
     return -1;
 }
 
-#if HAL_PLATFORM_RTL872X && ENABLE_FQC_FUNCTIONALITY
+#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
 // Tinker app specific USB requests. For P2 these are FQC commands
 void ctrl_request_custom_handler(ctrl_request* req) {
     particle::RequestHandler::instance()->process(req);
