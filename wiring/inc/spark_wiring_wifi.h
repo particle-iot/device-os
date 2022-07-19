@@ -122,6 +122,27 @@ public:
         return mac;
     }
 
+    /**
+     * Set the system-wide WiFi country code, used for configuring WiFi radio
+     * 
+     * @param country_code 
+     * @return int error code or  NO ERROR
+     */
+    int setCountryCode(wlan_country_code_t country_code)  {
+        return wlan_set_country_code(country_code, nullptr);
+    }
+
+    /**
+     * Get the system-wide WiFi country code
+     * 
+     * @return int Configured wlan_country_code_t (or an error if < 0)
+     */
+    int getCountryCode() {
+        return wlan_get_country_code(nullptr);
+    }
+
+
+
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 
     IPAddress localIP() {
