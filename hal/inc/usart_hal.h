@@ -30,13 +30,14 @@
 #include <stdint.h>
 #include <unistd.h>
 #include "platforms.h"
+#include "hal_platform.h"
 
 /* Includes ------------------------------------------------------------------*/
 // #include "pinmap_hal.h"
 
 /* Exported defines ----------------------------------------------------------*/
 
-#define SERIAL_BUFFER_SIZE      64
+#define SERIAL_BUFFER_SIZE      HAL_PLATFORM_USART_DEFAULT_BUFFER_SIZE
 
 // Pre-defined USART configurations
 #define SERIAL_7E1 (uint32_t)(SERIAL_DATA_BITS_7 | SERIAL_PARITY_EVEN | SERIAL_STOP_BITS_1)

@@ -21,12 +21,15 @@
 #include "pinmap_hal.h"
 #include "gpio_hal.h"
 #include <algorithm>
+#include <memory>
 #include "hal_irq_flag.h"
 #include "delay_hal.h"
 #include "interrupts_hal.h"
 #include "usart_hal_private.h"
 #include "timer_hal.h"
 #include "service_debug.h"
+#include "atomic_section.h"
+#include "flash_common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,6 +38,24 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+namespace {
+
+constexpr uint32_t BIT_CFGX_LO_FIFO_EMPTY = (1 << 9);
+constexpr uint32_t BIT_CFGX_LO_CH_SUSP = (1 << 8);
+
+void dcacheInvalidateAligned(uintptr_t ptr, size_t size) {
+    uintptr_t alignedPtr = ptr & ~(portBYTE_ALIGNMENT_MASK);
+    uintptr_t end = ptr + size;
+    size_t alignedSize = CEIL_DIV(end - alignedPtr, portBYTE_ALIGNMENT) * portBYTE_ALIGNMENT;
+    DCache_Invalidate(alignedPtr, alignedSize);
+}
+
+// Do not initiate DMA RX transfers is acquirable space is below this threshold
+// This is the same as on Gen 3 to bring similar behavior
+constexpr size_t RX_THRESHOLD = 4;
+
+} // anonymous
 
 
 class Usart {
@@ -103,8 +124,30 @@ public:
         CHECK_TRUE(conf.rx_buffer_size, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK_TRUE(conf.tx_buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK_TRUE(conf.tx_buffer_size, SYSTEM_ERROR_INVALID_ARGUMENT);
-        rxBuffer_.init((uint8_t*)conf.rx_buffer, conf.rx_buffer_size);
-        txBuffer_.init((uint8_t*)conf.tx_buffer, conf.tx_buffer_size);
+        // Caching routines require 32-byte aligned buffers
+        // Normally heap allocations (and normally buffers come out of heap)
+        // should be aligned to portBYTE_ALIGNMENT (which is defined to 32 on RTL872x port)
+        // Adjust here if required
+        void* rxBuf = conf.rx_buffer;
+        size_t rxBufSize = conf.rx_buffer_size;
+        void* txBuf = conf.tx_buffer;
+        size_t txBufSize = conf.tx_buffer_size;
+        if (((uintptr_t)rxBuf & portBYTE_ALIGNMENT_MASK) != 0) {
+            rxBuf = std::align(portBYTE_ALIGNMENT, conf.rx_buffer_size, rxBuf, rxBufSize);
+            rxBufSize = (rxBufSize / portBYTE_ALIGNMENT) * portBYTE_ALIGNMENT;
+        }
+        if (((uintptr_t)txBuf & portBYTE_ALIGNMENT_MASK) != 0) {
+            txBuf = std::align(portBYTE_ALIGNMENT, conf.tx_buffer_size, txBuf, txBufSize);
+            txBufSize = (txBufSize / portBYTE_ALIGNMENT) * portBYTE_ALIGNMENT;
+        }
+        CHECK_TRUE(rxBuf, SYSTEM_ERROR_NOT_ENOUGH_DATA);
+        CHECK_TRUE(rxBufSize >= portBYTE_ALIGNMENT, SYSTEM_ERROR_NOT_ENOUGH_DATA);
+        CHECK_TRUE(txBuf, SYSTEM_ERROR_NOT_ENOUGH_DATA);
+        CHECK_TRUE(txBufSize >= portBYTE_ALIGNMENT, SYSTEM_ERROR_NOT_ENOUGH_DATA);
+        rxBuffer_.init((uint8_t*)rxBuf, rxBufSize);
+        txBuffer_.init((uint8_t*)txBuf, txBufSize);
+        DCache_CleanInvalidate((uintptr_t)rxBuf, rxBufSize);
+        DCache_CleanInvalidate((uintptr_t)txBuf, txBufSize);
         configured_ = true;
         return SYSTEM_ERROR_NONE;
     }
@@ -139,6 +182,7 @@ public:
 
         UART_InitTypeDef uartInitStruct = {};
         UART_StructInit(&uartInitStruct);
+        uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_1BYTES;
         UART_Init(uartInstance, &uartInitStruct);
 
         RCC_PeriphClockSource_UART(uartInstance, UART_RX_CLK_XTAL_40M);
@@ -197,7 +241,7 @@ public:
             }
         } else {
             InterruptRegister((IRQ_FUN)uartTxRxIntHandler, uartTable_[index_].IrqNum, (uint32_t)this, 5);
-	        InterruptEn(uartTable_[index_].IrqNum, 5);
+            InterruptEn(uartTable_[index_].IrqNum, 5);
         }
 
         startReceiver();
@@ -214,7 +258,7 @@ public:
             deinitDmaChannels();
         } else {
             InterruptDis(uartTable_[index_].IrqNum);
-	        InterruptUnRegister(uartTable_[index_].IrqNum);
+            InterruptUnRegister(uartTable_[index_].IrqNum);
             UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
             UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
         }
@@ -279,44 +323,64 @@ public:
         return 0;
     }
 
+    size_t dataInFlight(bool commit = false, bool cancel = false) {
+        // Must be called under RX lock!
+        if (receiving_ && !useInterrupt()) {
+            auto uartInstance = uartTable_[index_].UARTx;
+            size_t transferredToDmaFromUart = uartInstance->RX_BYTE_CNT & RUART_RX_READ_BYTE_CNTER;
+            size_t dmaAvailableInBuffer = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) - rxDmaInitStruct_.GDMA_DstAddr;
+            size_t blockSize = rxDmaInitStruct_.GDMA_BlockSize;
+            size_t alreadyCommitted = blockSize - rxBuffer_.acquirePending();
+            ssize_t toConsume = std::max<ssize_t>(dmaAvailableInBuffer, transferredToDmaFromUart) - alreadyCommitted;
+            SPARK_ASSERT(toConsume >= 0);
+            if (commit && toConsume > 0) {
+                if (transferredToDmaFromUart > dmaAvailableInBuffer) {
+                    uintptr_t expectedDstAddr = rxDmaInitStruct_.GDMA_DstAddr + transferredToDmaFromUart;
+                    if ((GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW & BIT_CFGX_LO_FIFO_EMPTY) == 0) {
+                        if (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
+                            // Suspending DMA channel forces flushing of data into destination from GDMA FIFO
+                            GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW |= BIT_CFGX_LO_CH_SUSP;
+                            __DSB();
+                            __ISB();
+                            while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
+                                // XXX: spin around, this should be pretty fast
+                            }
+                            GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW &= ~(BIT_CFGX_LO_CH_SUSP);
+                            __DSB();
+                            __ISB();
+                        }
+                    }
+                }
+                rxBuffer_.acquireCommit(toConsume);
+                if (cancel) {
+                    // Release the rest of the buffer if any
+                    rxBuffer_.acquireCommit(0, rxBuffer_.acquirePending());
+                }
+                dcacheInvalidateAligned(rxDmaInitStruct_.GDMA_DstAddr + alreadyCommitted, toConsume);
+            }
+            return toConsume;
+        }
+        return 0;
+    }
+
     ssize_t data() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        auto uartInstance = uartTable_[index_].UARTx;
         ssize_t len = 0;
-        if (receiving_) {
-            RxLock lk(this);
-            if (!useInterrupt()) {
-                len = rxBuffer_.data();
-                const uint32_t curAddr = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
-                GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
-                const uint32_t receivedDma = curAddr - rxDmaInitStruct_.GDMA_DstAddr;
-                uint32_t inFifo = UART_ReceiveDataTO(uartInstance, (uint8_t*)curAddr, rxDmaInitStruct_.GDMA_BlockSize - receivedDma, 1);
-                uint32_t receivedTotal = receivedDma + inFifo;
-                // Clean Auto Reload Bit
-                GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_DST);
-                // Clear Pending ISR
-                GDMA_ClearINT(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
-                rxBuffer_.acquireCommit(receivedTotal, rxDmaInitStruct_.GDMA_BlockSize - receivedTotal/* cancel */);
-                len += receivedTotal;
-            } else {
-                UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
-                uint8_t temp[MAX_UART_FIFO_SIZE];
-                uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                rxBuffer_.put(temp, inFifo);
-                len = rxBuffer_.data();
-            }
-            receiving_ = false;
-            startReceiver();
-        }
+        RxLock lk(this);
+        len = CHECK(rxBuffer_.data()) + dataInFlight();
         return len;
     }
 
     ssize_t read(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         const ssize_t maxRead = CHECK(data());
-        const size_t readSize = std::min((size_t)maxRead, size);
+        const ssize_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(this);
+        if (readSize > rxBuffer_.data()) {
+            dataInFlight(true /* commit */);
+        }
+        SPARK_ASSERT(rxBuffer_.data() >= readSize);
         ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
         if (!receiving_) {
             startReceiver();
@@ -327,9 +391,13 @@ public:
     ssize_t peek(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         const ssize_t maxRead = CHECK(data());
-        const size_t peekSize = std::min((size_t)maxRead, size);
+        const ssize_t peekSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(this);
+        if (peekSize > rxBuffer_.data()) {
+            dataInFlight(true /* commit */);
+        }
+        SPARK_ASSERT(rxBuffer_.data() >= peekSize);
         return rxBuffer_.peek(buffer, peekSize);
     }
 
@@ -450,8 +518,6 @@ private:
         auto uartInstance = uartTable_[index_].UARTx;
         UART_TXDMAConfig(uartInstance, 8);
         UART_TXDMACmd(uartInstance, ENABLE);
-        UART_RXDMAConfig(uartInstance, 4);
-	    UART_RXDMACmd(uartInstance, ENABLE);
 
         _memset(&txDmaInitStruct_, 0, sizeof(GDMA_InitTypeDef));
         _memset(&rxDmaInitStruct_, 0, sizeof(GDMA_InitTypeDef));
@@ -471,7 +537,7 @@ private:
         txDmaInitStruct_.MaxMuliBlock = 1;
         txDmaInitStruct_.GDMA_DIR = TTFCMemToPeri;
         txDmaInitStruct_.GDMA_DstHandshakeInterface = uartTable_[index_].Tx_HandshakeInterface;
-        txDmaInitStruct_.GDMA_DstAddr = (u32)&uartInstance->RB_THR;
+        txDmaInitStruct_.GDMA_DstAddr = (uint32_t)&uartInstance->RB_THR;
         txDmaInitStruct_.GDMA_Index = 0;
         txDmaInitStruct_.GDMA_ChNum = txChannel;
         txDmaInitStruct_.GDMA_IsrType = (BlockType|TransferType|ErrType);
@@ -482,16 +548,19 @@ private:
 
         rxDmaInitStruct_.MuliBlockCunt = 0;
         rxDmaInitStruct_.MaxMuliBlock = 1;
+        rxDmaInitStruct_.GDMA_DIR = TTFCPeriToMem;
         rxDmaInitStruct_.GDMA_ReloadSrc = 0;
         rxDmaInitStruct_.GDMA_SrcHandshakeInterface = uartTable_[index_].Rx_HandshakeInterface;
-        rxDmaInitStruct_.GDMA_SrcAddr = (u32)&uartInstance->RB_THR;
+        rxDmaInitStruct_.GDMA_SrcAddr = (uint32_t)&uartInstance->RB_THR;
         rxDmaInitStruct_.GDMA_Index = 0;
         rxDmaInitStruct_.GDMA_ChNum = rxChannel;
         rxDmaInitStruct_.GDMA_IsrType = (BlockType|TransferType|ErrType);
-        rxDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
+        rxDmaInitStruct_.GDMA_SrcMsize = MsizeOne;
         rxDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
         rxDmaInitStruct_.GDMA_DstInc = IncType;
         rxDmaInitStruct_.GDMA_SrcInc = NoChange;
+        rxDmaInitStruct_.GDMA_DstMsize = MsizeOne;
+        rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthOneByte;
 
         NVIC_SetPriority(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum), 12);
         NVIC_SetPriority(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum), 12);
@@ -577,7 +646,7 @@ private:
             const size_t acquirable = rxBuffer_.acquirable();
             const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
             size_t rxSize = std::max(acquirable, acquirableWrapped);
-            if (rxSize == 0) {
+            if (rxSize < RX_THRESHOLD) {
                 receiving_ = false;
                 return;
             }
@@ -585,16 +654,21 @@ private:
             // Disable Rx interrupt
             UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
             auto ptr = rxBuffer_.acquire(rxSize);
-            DCache_CleanInvalidate((uint32_t)ptr, rxSize);
+
+            UART_RXDMAConfig(uartInstance, 4);
+            UART_RXDMACmd(uartInstance, ENABLE);
+
             // Configure GDMA as the flow controller
-            rxDmaInitStruct_.GDMA_DIR = TTFCPeriToMem;
-            uartInstance->MISCR &= (~RUART_RXDMA_OWNER);
-            // Move 1 byte each DMA transaction
-            rxDmaInitStruct_.GDMA_DstMsize = MsizeFour;
-            rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthOneByte;
+            uartInstance->MISCR &= ~(RUART_RXDMA_OWNER);
             rxDmaInitStruct_.GDMA_BlockSize = rxSize;
             rxDmaInitStruct_.GDMA_DstAddr = (uint32_t)(ptr);
+            // Disable just in case, some of the settings are not applied if already enabled
+            GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
             GDMA_Init(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, &rxDmaInitStruct_);
+            GDMA_BurstEnable(rxDmaInitStruct_.GDMA_ChNum, DISABLE);
+            // Clear UART RX FIFO read counter
+            uartInstance->RX_BYTE_CNT |= RUART_RX_BYTE_CNTER_CLEAR;
+            SPARK_ASSERT((uartInstance->RX_BYTE_CNT & RUART_RX_READ_BYTE_CNTER) == 0);
             GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, ENABLE);
         } else {
             uint8_t temp[MAX_UART_FIFO_SIZE];
@@ -630,15 +704,15 @@ private:
         if (!uart->receiving_) {
             return 0;
         }
-        uart->receiving_ = false;
         auto rxDmaInitStruct = &uart->rxDmaInitStruct_;
-        DCache_Invalidate((uint32_t)rxDmaInitStruct->GDMA_DstAddr, rxDmaInitStruct->GDMA_BlockSize);
         // Clean Auto Reload Bit
-	    GDMA_ChCleanAutoReload(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum, CLEAN_RELOAD_SRC);
-        // Clear Pending ISR
-	    GDMA_ClearINT(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum);
+        GDMA_ChCleanAutoReload(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum, CLEAN_RELOAD_SRC);
         GDMA_Cmd(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum, DISABLE);
-        uart->rxBuffer_.acquireCommit(rxDmaInitStruct->GDMA_BlockSize);
+        // Clear Pending ISR
+        GDMA_ClearINT(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum);
+        UART_RXDMACmd(uartTable_[uart->index_].UARTx, DISABLE);
+        uart->dataInFlight(true /* commit */, true /* cancel */);
+        uart->receiving_ = false;
         uart->startReceiver();
         return 0;
     }
@@ -675,6 +749,7 @@ private:
         }
     }
 
+
 private:
     hal_pin_t txPin_;
     hal_pin_t rxPin_;
@@ -696,12 +771,11 @@ private:
     bool configured_;
 
     uint8_t index_; // of UART_DEV_TABLE that is defined in rtl8721d_uart.c
-    const UART_DevTable* uartTable_ = UART_DEV_TABLE;
+    static constexpr const UART_DevTable* uartTable_ = UART_DEV_TABLE;
 
     static constexpr size_t MAX_DMA_BLOCK_SIZE = 4096;
     static constexpr size_t MAX_UART_FIFO_SIZE = 16;
 };
-
 
 int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
