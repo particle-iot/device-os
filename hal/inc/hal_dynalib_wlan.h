@@ -40,6 +40,8 @@
 DYNALIB_BEGIN(hal_wlan)
 DYNALIB_FN(0, hal_wlan, wlan_select_antenna, int(WLanSelectAntenna_TypeDef))
 DYNALIB_FN(1, hal_wlan, wlan_scan, int(wlan_scan_result_t, void*))
+DYNALIB_FN(2, hal_wlan, wlan_set_country_code, int(wlan_country_code_t, void*))
+DYNALIB_FN(3, hal_wlan, wlan_get_country_code, int(void*))
 DYNALIB_END(hal_wlan)
 
 #endif // HAL_PLATFORM_WIFI_COMPAT
