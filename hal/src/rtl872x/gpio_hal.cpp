@@ -68,8 +68,9 @@ bool isCachePin(hal_pin_t pin) {
     return false;
 }
 
-bool isVbatMeasPin(hal_pin_t pin) {
-    return(pin == A6) ? true : false;
+bool isGpioPin(hal_pin_t pin) {
+    hal_pin_info_t* pinInfo = hal_pin_map() + pin;
+    return(pinInfo->gpio_port != RTL_PORT_NONE) ? true : false;
 }
 
 bool isCachePinSetToOutput(hal_pin_t pin) {
@@ -104,7 +105,7 @@ void hal_gpio_mode(hal_pin_t pin, PinMode mode) {
 
 int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reserved) {
     CHECK_TRUE(hal_pin_is_valid(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_FALSE(isVbatMeasPin(pin), SYSTEM_ERROR_NOT_SUPPORTED);
+    CHECK_TRUE(isGpioPin(pin), SYSTEM_ERROR_NOT_SUPPORTED);
     CHECK_TRUE(conf, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     hal_pin_info_t* pinInfo = hal_pin_map() + pin;
@@ -223,7 +224,7 @@ PinMode hal_gpio_get_mode(hal_pin_t pin) {
 }
 
 void hal_gpio_write(hal_pin_t pin, uint8_t value) {
-    if (!hal_pin_is_valid(pin) || isVbatMeasPin(pin)) {
+    if (!hal_pin_is_valid(pin) || !isGpioPin(pin)) {
         return;
     }
 
@@ -257,7 +258,7 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
 }
 
 int32_t hal_gpio_read(hal_pin_t pin) {
-    if (!hal_pin_is_valid(pin) || isVbatMeasPin(pin)) {
+    if (!hal_pin_is_valid(pin) || !isGpioPin(pin)) {
         return 0;
     }
 
@@ -309,7 +310,7 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
     const uint64_t THREE_SECONDS_IN_MICROSECONDS = 3000000;
     #define FAST_READ(pin) ((gpiobase->EXT_PORT[0] >> pin) & 1UL)
 
-    if (!hal_pin_is_valid(pin) || isVbatMeasPin(pin)) {
+    if (!hal_pin_is_valid(pin) || !isGpioPin(pin)) {
         return 0;
     }
 
