@@ -20,6 +20,7 @@
 LOG_SOURCE_CATEGORY("ncp.rltk.client");
 
 #include "rtl_ncp_client.h"
+#include "addr_util.h"
 
 #include "gpio_hal.h"
 #include "timer_hal.h"
@@ -286,13 +287,48 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
 }
 
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
-    int raw_rssi = 0;
-    int rtlError = wifi_get_rssi(&raw_rssi);
+    int rtlError = 0;
+    // LOG(INFO, "RNCP getNetworkInfo");
 
-    if (RTW_SUCCESS == rtlError) {
+    int channel_num = 0;
+    rtlError = wifi_get_channel(&channel_num);
+    if (RTW_SUCCESS != rtlError) {
+        LOG(WARN, "wifi_get_channel err: %d", rtlError);
+    } else { 
+        // LOG(INFO, " chan %d\t  ", channel_num );
+        info->channel(channel_num);
+    }
+
+	char ssid_buf[33] = {};//32 octets for SSID, plus null terminator
+    rtlError = wext_get_ssid(WLAN0_NAME, (unsigned char *) ssid_buf);
+    if (rtlError < 0) {
+        LOG(WARN, "wext_get_ssid err: %d", rtlError);
+    } else {
+        // LOG(INFO," ssid: %s", ssid_buf);
+        info->ssid(ssid_buf);
+    }
+    
+    int raw_rssi = 0;
+    rtlError = wifi_get_rssi(&raw_rssi);
+    if (rtlError < 0) {
+        LOG(WARN, "wifi_get_rssi err: %d", rtlError);
+    } else {
+        // LOG(INFO," rssi: %d", raw_rssi);
         info->rssi(raw_rssi);
     }
-    return rtl_error_to_system(rtlError);
+
+    MacAddress bssid_mac = INVALID_ZERO_MAC_ADDRESS;
+    rtlError = wext_get_bssid(WLAN0_NAME, bssid_mac.data);
+    if (rtlError < 0) {
+        LOG(WARN, "wext_get_bssid err: %d", rtlError);
+    } else {
+        info->bssid(bssid_mac);
+        // uint8_t* bssid_buf = bssid_mac.data;
+        // LOG(INFO, " bssid: %02x:%02x:%02x:%02x:%02x:%02x ", bssid_buf[0],  bssid_buf[1],  bssid_buf[2],  bssid_buf[3],  bssid_buf[4],  bssid_buf[5] );
+    }
+
+    //TODO reevaluate whether we should error out on any of the sub-queries
+    return SYSTEM_ERROR_NONE;
 }
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
