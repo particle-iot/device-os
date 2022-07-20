@@ -60,7 +60,7 @@
 #define A3                  D0
 #define A4                  D1
 #define A5                  D14
-#define A6                  27  // VBAT_MEAS, only use it as analog pin
+#define A6                  27  // VBAT_MEAS on Photon2, when used as an analog pin
 
 // RGB and Button
 #define RGBR                22
@@ -101,5 +101,5 @@
 
 #define ANTSW               26
 
-// Charge indicator pin for LightCycle only
+// Read-only charge indicator pin for Photon2 
 #define CHG                 S5
