@@ -48,9 +48,11 @@ MAKE=runmake
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
 PLATFORM=( argon boron asom bsom b5som esomx )
-PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker esomx )
-APP=( "" tinker product_id_and_version)
-TEST=( wiring/api wiring/no_fixture wiring/no_fixture_long_running )
+# All modules are now built by release scripts instead, skip
+# Only building applications and tests here
+# PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker esomx )
+APP=( "" product_id_and_version )
+TEST=( wiring/api )
 
 MODULAR_PLATFORM=( argon boron asom bsom b5som tracker esomx )
 
