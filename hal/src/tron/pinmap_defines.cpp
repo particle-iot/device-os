@@ -45,11 +45,12 @@ static hal_pin_info_t pinmap[TOTAL_PINS] = {
 /* S6            - 21 */ { RTL_PORT_B, 31, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0},
 
 /* System space */
-/* RGBR          - 22 */ { RTL_PORT_A, 30, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,                0},
-/* RGBG          - 23 */ { RTL_PORT_B, 23, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,                0},
-/* RGBB          - 24 */ { RTL_PORT_B, 22, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,                0},
-/* MODE BUTTON   - 25 */ { RTL_PORT_A, 4,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0},
-/* ANTSW         - 26 */ { RTL_PORT_A, 2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0},
+/* RGBR          - 22 */ { RTL_PORT_A,    30, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,                0},
+/* RGBG          - 23 */ { RTL_PORT_B,    23, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,                0},
+/* RGBB          - 24 */ { RTL_PORT_B,    22, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,                0},
+/* MODE BUTTON   - 25 */ { RTL_PORT_A,    4,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0},
+/* ANTSW         - 26 */ { RTL_PORT_A,    2,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0},
+/* VBAT_MEAS/A6  - 27 */ { RTL_PORT_NONE, 0,  PIN_MODE_NONE, PF_NONE, 7,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0},
 };
 
 } // anonymous

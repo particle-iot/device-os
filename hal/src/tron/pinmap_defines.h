@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define TOTAL_PINS          27
+#define TOTAL_PINS          28
 #define TOTAL_ANALOG_PINS   6
 #define FIRST_ANALOG_PIN    11
 
@@ -60,6 +60,7 @@
 #define A3                  D0
 #define A4                  D1
 #define A5                  D14
+#define A6                  27  // VBAT_MEAS, only use it as analog pin
 
 // RGB and Button
 #define RGBR                22
@@ -99,3 +100,6 @@
 #define WKP                 D10
 
 #define ANTSW               26
+
+// Charge indicator pin for LightCycle only
+#define CHG                 S5
