@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # ensure we are in the root
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
@@ -27,11 +28,15 @@ if [ -n "$CI_BUILD_RELEASE" ]; then
     echo "BUILD_PLATFORM=${BUILD_PLATFORM}"
     ./ci/ci_release.sh
     RET=$?
-    if [ -z "$BUILD_PLATFORM" ]; then
-        cd /firmware/build
-        checkFailures
-        exit $?
+    echo "ci/ci_release.sh ret=${RET}"
+    cd /firmware/build
+    checkFailures
+    RET=$?
+    if [ $RET -ne 0 ]; then
+        exit $RET
     fi
+    export BUILD_PLATFORM=$BUILD_PLATFORM_ORIGINAL
 fi
 
+cd $DEVICE_OS_ROOT
 $DEVICE_OS_ROOT/ci/enumerate_build_matrix.sh

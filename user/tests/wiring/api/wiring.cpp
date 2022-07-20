@@ -174,6 +174,10 @@ test(api_rgb) {
     API_COMPILE(RGB.mirrorTo(A1, A0, A7, false));
     API_COMPILE(RGB.mirrorTo(A1, A0, A7, true, true));
 #endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#elif HAL_PLATFORM_RTL872X
+    API_COMPILE(RGB.mirrorTo(A2, A4, A5));
+    API_COMPILE(RGB.mirrorTo(A2, A4, A5, false));
+    API_COMPILE(RGB.mirrorTo(A2, A4, A5, true, true));
 #else
     #error "Unsupported platform"
 #endif

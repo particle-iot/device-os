@@ -39,15 +39,6 @@ namespace po = boost::program_options;
 
 DeviceConfig deviceConfig;
 
-namespace {
-
-const char* CMD_HELP = "help";
-const char* CMD_VERSION = "version";
-
-// These are still supported by the Cloud
-const int PHOTON_PLATFORM_ID = 6;
-const int P1_PLATFORM_ID = 8;
-
 std::istream& operator>>(std::istream& in, ProtocolFactory& pf)
 {
     std::string value;
@@ -60,6 +51,16 @@ std::istream& operator>>(std::istream& in, ProtocolFactory& pf)
         throw boost::program_options::invalid_option_value(value);
     return in;
 }
+
+namespace {
+
+const char* CMD_HELP = "help";
+const char* CMD_VERSION = "version";
+
+// These are still supported by the Cloud
+const int PHOTON_PLATFORM_ID = 6;
+const int P1_PLATFORM_ID = 8;
+
 
 class ConfigParser
 {
