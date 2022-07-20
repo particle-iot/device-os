@@ -30,8 +30,9 @@ if [ -n "$CI_BUILD_RELEASE" ]; then
     if [ -z "$BUILD_PLATFORM" ]; then
         cd /firmware/build
         checkFailures
-        exit $?
+        # exit $?
     fi
+    export BUILD_PLATFORM=$BUILD_PLATFORM_ORIGINAL
 fi
 
 $DEVICE_OS_ROOT/ci/enumerate_build_matrix.sh

@@ -48,10 +48,14 @@ MAKE=runmake
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
 PLATFORM=( argon boron asom bsom b5som esomx p2 )
-PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker esomx p2 )
-PLATFORM_PREBOOTLOADER=( p2 )
-APP=( "" tinker product_id_and_version)
-TEST=( wiring/api wiring/no_fixture wiring/no_fixture_long_running )
+# All modules are now built by reease scripts instead, skip
+# Only building applications and tests here
+# PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker esomx p2 )
+# PLATFORM_PREBOOTLOADER=( p2 )
+PLATFORM_BOOTLOADER=()
+PLATFORM_PREBOOTLOADER=()
+APP=( "" product_id_and_version )
+TEST=( wiring/api )
 
 MODULAR_PLATFORM=( argon boron asom bsom b5som tracker esomx p2 )
 
