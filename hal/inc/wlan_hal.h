@@ -238,7 +238,9 @@ typedef enum wlan_country_code_t {
     WLAN_CC_KR = 0x4B52,
     WLAN_CC_MAX = 0xFFFF
 } wlan_country_code_t;
+#if PLATFORM_ID != PLATFORM_GCC
 static_assert(sizeof(wlan_country_code_t) == 2, "ISO 3166-1 alpha-2 country codes are two ASCII bytes"); 
+#endif //PLATFORM_ID != PLATFORM_GCC
 
 typedef struct {
     unsigned size;           // the size of this structure. allows older clients to work with newer HAL.
