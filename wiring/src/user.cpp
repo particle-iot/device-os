@@ -67,12 +67,6 @@ void serialEvent() __attribute__((weak));
 void serialEvent1() __attribute__((weak));
 void usbSerialEvent1() __attribute__((weak));
 
-#if PLATFORM_ID == PLATFORM_GCC
-// gcc doesn't allow weak functions to not exist, so they must be defined.
-__attribute__((weak)) void serialEvent() {}
-__attribute__((weak)) void serialEvent1() {}
-#endif // PLATFORM_ID == PLATFORM_GCC
-
 #if Wiring_Serial2
 void serialEvent2() __attribute__((weak));
 #endif
@@ -107,19 +101,19 @@ void serialEventRun()
         serialEvent1();
 
 #if Wiring_Serial2
-    if (serialEventRun2) serialEventRun2();
+    if (serialEvent2) serialEventRun2();
 #endif
 
 #if Wiring_Serial3
-    if (serialEventRun3) serialEventRun3();
+    if (serialEvent3) serialEventRun3();
 #endif
 
 #if Wiring_Serial4
-    if (serialEventRun4) serialEventRun4();
+    if (serialEvent4) serialEventRun4();
 #endif
 
 #if Wiring_Serial5
-    if (serialEventRun5) serialEventRun5();
+    if (serialEvent5) serialEventRun5();
 #endif
 
 #if Wiring_USBSerial1
