@@ -1,4 +1,7 @@
 #!/bin/bash
+
+set -x
+
 # ensure we are in the root
 cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 
@@ -27,6 +30,7 @@ if [ -n "$CI_BUILD_RELEASE" ]; then
     echo "BUILD_PLATFORM=${BUILD_PLATFORM}"
     ./ci/ci_release.sh
     RET=$?
+    echo "ci/ci_release.sh ret=${RET}"
     if [ -z "$BUILD_PLATFORM" ]; then
         cd /firmware/build
         checkFailures
