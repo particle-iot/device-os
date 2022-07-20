@@ -111,12 +111,6 @@ int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handle
 
 #ifdef USE_STDPERIPH_DRIVER
 
-    #if defined(STM32F10X_MD) || defined(STM32F10X_HD)
-        #include "stm32f10x.h"
-    #elif defined(STM32F2XX)
-        #include "stm32f2xx.h"
-    #endif // defined(STM32F10X_MD) || defined(STM32F10X_HD)
-
     #ifdef nRF52840
         #include <nrf52840.h>
     #endif /* nRF52840 */
