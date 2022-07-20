@@ -53,26 +53,54 @@ extern "C" {
 extern "C" void rtw_efuse_boot_write(void);
 
 void wifi_set_country_code(void) {
-    char country_code[4] = {};
     uint8_t channel_plan;
     rtw_country_code_t country_code_sdk;
 
-    wlan_get_country_code(country_code);
-    if (strcmp(country_code, "US") == 0) {
-        channel_plan = 0x3F;
-        country_code_sdk = RTW_COUNTRY_US;
-    }
-    // TODO: other country codes + channel plans
-    else {
-        // Default to US
-        channel_plan = 0x3F;
-        country_code_sdk = RTW_COUNTRY_US;
+    // load the persistent country code setting from DCT
+    int raw_cc = wlan_get_country_code(nullptr);
+    wlan_country_code_t country_code = (raw_cc < 0) ? WLAN_CC_UNSET : (wlan_country_code_t)raw_cc;
+
+    //Reference: WS-200923-Willis-Efuse_Channel_Plan_new_define-R54(32562).xlsx
+    switch (country_code) {
+        default:
+        case WLAN_CC_US:
+            // FCC 2G_03 & 5G_22
+            channel_plan = 0x3F;
+            country_code_sdk = RTW_COUNTRY_US;
+            break;        
+        case WLAN_CC_CA:
+            // IC 2G_02	& 5G_33
+            channel_plan = 0x2B;
+            country_code_sdk = RTW_COUNTRY_CA;
+            break; 
+        case WLAN_CC_MX:
+            // MEX 2G_02 & 5G_01
+            channel_plan = 0x4D;
+            country_code_sdk = RTW_COUNTRY_MX;
+            break;
+        case WLAN_CC_EU:
+        case WLAN_CC_GB:
+            // ETSI 2G_01 & 5G_02
+            channel_plan = 0x26;
+            country_code_sdk = RTW_COUNTRY_EU;
+            break;
+        case WLAN_CC_JP:
+            // MKK 2G_02 & 5G_24
+            channel_plan = 0x64;
+            country_code_sdk = RTW_COUNTRY_JP;
+            break;
+        case WLAN_CC_KR:
+            // KCC 2G_02 & 5G_22
+            channel_plan = 0x4B;
+            country_code_sdk = RTW_COUNTRY_KR;
+            break;
+        case WLAN_CC_AU:
+            // ETSI 2G_01 & 5G_03
+            channel_plan = 0x35;
+            country_code_sdk = RTW_COUNTRY_AU;
+            break;
     }
 
-    // Channel Plan choices:
-    //   - USA/Canada:  0x3F (2G_03 & 5G_22)
-    //   - EU:          0x26 (2G_01 & 5G_02)
-    // Reference: WS-200923-Willis-Efuse_Channel_Plan_new_define-R54(32562).xlsx
     SPARK_ASSERT(wifi_set_country(country_code_sdk) == RTW_SUCCESS);
     SPARK_ASSERT(wifi_change_channel_plan(channel_plan) == RTW_SUCCESS);
 }

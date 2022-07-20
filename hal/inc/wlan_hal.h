@@ -224,6 +224,24 @@ typedef enum {
     WLAN_EAP_TYPE_PSK          = 255 /* EXPERIMENTAL - type not yet allocated draft-bersani-eap-psk-09 */
 } WLanEapType;
 
+
+// Country code enum: two ISO 3166-1 alpha-2 ASCII letters encoded as hex
+typedef enum wlan_country_code_t {
+    WLAN_CC_UNSET = 0x0000,
+    WLAN_CC_US = 0x5553,
+    WLAN_CC_EU = 0x4555,
+    WLAN_CC_JP = 0x4A50,
+    WLAN_CC_CA = 0x4341,
+    WLAN_CC_MX = 0x4D58,
+    WLAN_CC_GB = 0x4742,
+    WLAN_CC_AU = 0x4155,
+    WLAN_CC_KR = 0x4B52,
+    WLAN_CC_MAX = 0xFFFF
+} wlan_country_code_t;
+#if PLATFORM_ID != PLATFORM_GCC
+static_assert(sizeof(wlan_country_code_t) == 2, "ISO 3166-1 alpha-2 country codes are two ASCII bytes"); 
+#endif //PLATFORM_ID != PLATFORM_GCC
+
 typedef struct {
     unsigned size;           // the size of this structure. allows older clients to work with newer HAL.
     const char* ssid;
@@ -413,8 +431,9 @@ int wlan_restart(void* reserved);
 int wlan_set_hostname(const char* hostname, void* reserved);
 int wlan_get_hostname(char* buf, size_t buf_size, void* reserved);
 
-int wlan_set_country_code(const char * country_code);
-int wlan_get_country_code(char * country_code);
+int wlan_get_country_code(void* reserved);
+int wlan_set_country_code(wlan_country_code_t country, void* reserved);
+
 
 #ifdef	__cplusplus
 }
