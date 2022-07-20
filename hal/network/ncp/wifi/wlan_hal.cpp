@@ -434,16 +434,10 @@ int wlan_set_country_code(wlan_country_code_t country_code, void* reserved) {
 }
 
 int wlan_get_country_code(void* reserved) {
-     char cc_buf[2] = {};
+    char cc_buf[2] = {};
     wlan_country_code_t country_code = wlan_country_code_t::WLAN_CC_UNSET;
-    int err = dct_read_app_data_copy(DCT_COUNTRY_CODE_OFFSET, &cc_buf, sizeof(cc_buf));
-    if (err == 0) {
-        country_code = (wlan_country_code_t) (cc_buf[0] << 8 | cc_buf[1] );
-    } 
-    else {
-        return err;
-    }
-
+    CHECK(dct_read_app_data_copy(DCT_COUNTRY_CODE_OFFSET, &cc_buf, sizeof(cc_buf)));
+    country_code = (wlan_country_code_t) (cc_buf[0] << 8 | cc_buf[1] );
     if ((wlan_country_code_t::WLAN_CC_UNSET == country_code) || (wlan_country_code_t::WLAN_CC_MAX == country_code)) {
         country_code = wlan_country_code_t::WLAN_CC_US;
     }

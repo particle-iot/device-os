@@ -226,7 +226,7 @@ typedef enum {
 
 
 // Country code enum: two ISO 3166-1 alpha-2 ASCII letters encoded as hex
-typedef enum wlan_country_code_t : uint16_t {
+typedef enum wlan_country_code_t {
     WLAN_CC_UNSET = 0x0000,
     WLAN_CC_US = 0x5553,
     WLAN_CC_EU = 0x4555,
