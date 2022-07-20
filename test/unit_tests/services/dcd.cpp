@@ -75,7 +75,7 @@ SCENARIO("RAMRlashStore provides pointer to data", "[ramflash]")
 
     REQUIRE(data1 != nullptr);
     REQUIRE(data2 != nullptr);
-    REQUIRE(long(data1+100) == long(data2));
+    REQUIRE((uintptr_t)(data1+100) == (uintptr_t)(data2));
 }
 
 SCENARIO("RAMFlashStore is initially random", "[ramflash]")
