@@ -323,7 +323,7 @@ public:
         return 0;
     }
 
-    size_t dataInFlight(bool commit = false, bool cancel = true) {
+    size_t dataInFlight(bool commit = false, bool cancel = false) {
         // Must be called under RX lock!
         if (receiving_ && !useInterrupt()) {
             auto uartInstance = uartTable_[index_].UARTx;
