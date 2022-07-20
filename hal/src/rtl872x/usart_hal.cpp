@@ -182,6 +182,7 @@ public:
 
         UART_InitTypeDef uartInitStruct = {};
         UART_StructInit(&uartInitStruct);
+        uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_1BYTES;
         UART_Init(uartInstance, &uartInitStruct);
 
         RCC_PeriphClockSource_UART(uartInstance, UART_RX_CLK_XTAL_40M);
@@ -240,7 +241,7 @@ public:
             }
         } else {
             InterruptRegister((IRQ_FUN)uartTxRxIntHandler, uartTable_[index_].IrqNum, (uint32_t)this, 5);
-	        InterruptEn(uartTable_[index_].IrqNum, 5);
+            InterruptEn(uartTable_[index_].IrqNum, 5);
         }
 
         startReceiver();
@@ -257,7 +258,7 @@ public:
             deinitDmaChannels();
         } else {
             InterruptDis(uartTable_[index_].IrqNum);
-	        InterruptUnRegister(uartTable_[index_].IrqNum);
+            InterruptUnRegister(uartTable_[index_].IrqNum);
             UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
             UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
         }
@@ -322,7 +323,7 @@ public:
         return 0;
     }
 
-    size_t dataInFlight(bool commit = false) {
+    size_t dataInFlight(bool commit = false, bool cancel = true) {
         // Must be called under RX lock!
         if (receiving_ && !useInterrupt()) {
             auto uartInstance = uartTable_[index_].UARTx;
@@ -330,7 +331,8 @@ public:
             size_t dmaAvailableInBuffer = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) - rxDmaInitStruct_.GDMA_DstAddr;
             size_t blockSize = rxDmaInitStruct_.GDMA_BlockSize;
             size_t alreadyCommitted = blockSize - rxBuffer_.acquirePending();
-            size_t toConsume = std::max(dmaAvailableInBuffer, transferredToDmaFromUart) - alreadyCommitted;
+            ssize_t toConsume = std::max<ssize_t>(dmaAvailableInBuffer, transferredToDmaFromUart) - alreadyCommitted;
+            SPARK_ASSERT(toConsume >= 0);
             if (commit && toConsume > 0) {
                 if (transferredToDmaFromUart > dmaAvailableInBuffer) {
                     uintptr_t expectedDstAddr = rxDmaInitStruct_.GDMA_DstAddr + transferredToDmaFromUart;
@@ -350,6 +352,10 @@ public:
                     }
                 }
                 rxBuffer_.acquireCommit(toConsume);
+                if (cancel) {
+                    // Release the rest of the buffer if any
+                    rxBuffer_.acquireCommit(0, rxBuffer_.acquirePending());
+                }
                 dcacheInvalidateAligned(rxDmaInitStruct_.GDMA_DstAddr + alreadyCommitted, toConsume);
             }
             return toConsume;
@@ -545,7 +551,7 @@ private:
         rxDmaInitStruct_.GDMA_DIR = TTFCPeriToMem;
         rxDmaInitStruct_.GDMA_ReloadSrc = 0;
         rxDmaInitStruct_.GDMA_SrcHandshakeInterface = uartTable_[index_].Rx_HandshakeInterface;
-        rxDmaInitStruct_.GDMA_SrcAddr = (u32)&uartInstance->RB_THR;
+        rxDmaInitStruct_.GDMA_SrcAddr = (uint32_t)&uartInstance->RB_THR;
         rxDmaInitStruct_.GDMA_Index = 0;
         rxDmaInitStruct_.GDMA_ChNum = rxChannel;
         rxDmaInitStruct_.GDMA_IsrType = (BlockType|TransferType|ErrType);
@@ -650,7 +656,7 @@ private:
             auto ptr = rxBuffer_.acquire(rxSize);
 
             UART_RXDMAConfig(uartInstance, 4);
-	        UART_RXDMACmd(uartInstance, ENABLE);
+            UART_RXDMACmd(uartInstance, ENABLE);
 
             // Configure GDMA as the flow controller
             uartInstance->MISCR &= ~(RUART_RXDMA_OWNER);
@@ -700,12 +706,12 @@ private:
         }
         auto rxDmaInitStruct = &uart->rxDmaInitStruct_;
         // Clean Auto Reload Bit
-	    GDMA_ChCleanAutoReload(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum, CLEAN_RELOAD_SRC);
+        GDMA_ChCleanAutoReload(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum, CLEAN_RELOAD_SRC);
         GDMA_Cmd(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum, DISABLE);
         // Clear Pending ISR
-	    GDMA_ClearINT(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum);
+        GDMA_ClearINT(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum);
         UART_RXDMACmd(uartTable_[uart->index_].UARTx, DISABLE);
-        uart->dataInFlight(true /* commit */);
+        uart->dataInFlight(true /* commit */, true /* cancel */);
         uart->receiving_ = false;
         uart->startReceiver();
         return 0;
