@@ -47,4 +47,11 @@ test(INTERRUPTS_01_isisr_willpreempt_servicedirqn)
 	assertFalse(hal_interrupt_will_preempt(SysTick_IRQn, SysTick_IRQn));
 	assertTrue(hal_interrupt_will_preempt(NonMaskableInt_IRQn, SysTick_IRQn));
 	assertFalse(hal_interrupt_will_preempt(SysTick_IRQn, NonMaskableInt_IRQn));
+
+#if HAL_PLATFORM_RTL872X
+	// Using arbitrary interrupt
+	assertTrue(attachInterruptDirect(I2C0_IRQ, []() {return;}));
+	assertFalse(attachInterruptDirect(I2C0_IRQ, []() {return;}));
+	assertTrue(detachInterruptDirect(I2C0_IRQ));
+#endif
 }

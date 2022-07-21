@@ -27,6 +27,7 @@ extern "C" {
 #include "pinmap_impl.h"
 #include "gpio_hal.h"
 #include "check.h"
+#include "scope_guard.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -36,6 +37,7 @@ using namespace particle;
 #endif
 
 extern uintptr_t link_ram_interrupt_vectors_location[];
+static uint32_t hal_interrupts_handler_backup[MAX_VECTOR_TABLE_NUM] = {};
 
 namespace {
 
@@ -258,23 +260,35 @@ int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handle
     }
 
     int32_t state = HAL_disable_irq();
-    volatile uint32_t* isrs = (volatile uint32_t*)&link_ram_interrupt_vectors_location;
+
+    SCOPE_GUARD ({
+        HAL_enable_irq(state);
+    });
 
     if (handler == nullptr && (flags & HAL_INTERRUPT_DIRECT_FLAG_RESTORE)) {
-        // Restore
-        // HAL_Core_Restore_Interrupt(irqn);
+        // Restore old handler only if one was backed up
+        uint32_t old_handler = hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)];
+        if (old_handler) {
+            __NVIC_SetVector(irqn, (uint32_t)old_handler);
+            hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)] = 0;
+        }
     } else {
-        isrs[IRQN_TO_IDX(irqn)] = (uint32_t)handler;
+        // If there is currently a handler backup: Return error
+        CHECK_FALSE(hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)], SYSTEM_ERROR_ALREADY_EXISTS);
+        
+        // If there is a current handler, back it up
+        uint32_t current_handler = __NVIC_GetVector(irqn);
+        if (current_handler) {
+            hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)] = current_handler;    
+        }    
     }
 
     if (flags & HAL_INTERRUPT_DIRECT_FLAG_DISABLE) {
         // Disable
-        // sd_nvic_DisableIRQ(irqn);
+        __NVIC_DisableIRQ(irqn);
     } else if (flags & HAL_INTERRUPT_DIRECT_FLAG_ENABLE) {
-        // sd_nvic_EnableIRQ(irqn);
+        __NVIC_SetVector(irqn, (uint32_t)handler);
     }
-
-    HAL_enable_irq(state);
 
     return 0;
 }
