@@ -1,6 +1,29 @@
+## 5.0.0-alpha.2
+
+> ## :warning: Please note this is an internal release, do not use on production devices!
+
+### FEATURES
+- [p2] Allow setting WiFi country code and channel plan [#2485](https://github.com/particle-iot/device-os/pull/2485) [#2473](https://github.com/particle-iot/device-os/pull/2473)
+
+### ENHANCEMENTS
+- [p2][wifi] Add more complete WiFi network configuration information for P2 [#2474](https://github.com/particle-iot/device-os/pull/2474)
+- [p2][photon2] Add VBAT_MEAS pin and charging indication pin for Photon2 [#2482](https://github.com/particle-iot/device-os/pull/2482)
+- [ethernet][p2] Allow ethernet detection on P2 [#2478](https://github.com/particle-iot/device-os/pull/2478)
+
+### BUGFIXES
+- [p2] usart: flush DMA FIFO data when required [#2477](https://github.com/particle-iot/device-os/pull/2477)
+
+### INTERNAL
+- [p2] deprecate tinker-fqc app [#2479](https://github.com/particle-iot/device-os/pull/2479) [#2480](https://github.com/particle-iot/device-os/pull/2480) [#2481](https://github.com/particle-iot/device-os/pull/2481)
+- Update devtools .bundleignore for P2 SDK files [#2475](https://github.com/particle-iot/device-os/pull/2475)
+- Fix GCC platform on some versions of GCC; Fix wiring/api tests for P2; Fix building of wiring/api tests on CI [#2483](https://github.com/particle-iot/device-os/pull/2483)
+- [p2] Fix DCache alignment [#2476](https://github.com/particle-iot/device-os/pull/2476) 
+- [p2] fixes INTERRUPTS_01_isisr_willpreempt_servicedirqn test [#2486](https://github.com/particle-iot/device-os/pull/2486)
+- Remove redundant toolchain overrides [#2489](https://github.com/particle-iot/device-os/pull/2489)
+
 ## 5.0.0-alpha.1
 
-> ## :warning: Please note this is in internal release, do not use on production devices!
+> ## :warning: Please note this is an internal release, do not use on production devices!
 
 ### FEATURES
 - P2 Support [#2466](https://github.com/particle-iot/device-os/pull/2466)
@@ -22,7 +45,7 @@
 
 ## 4.0.0-alpha.2
 
-> ## :warning: Please note this is in internal release, do not use on production devices!
+> ## :warning: Please note this is an internal release, do not use on production devices!
 
 ### FEATURES
 - [esomx] Adds support for new platform esomx [#2443](https://github.com/particle-iot/device-os/pull/2443) [#2459](https://github.com/particle-iot/device-os/pull/2459)
@@ -39,7 +62,7 @@
 
 ## 4.0.0-alpha.1
 
-> ## :warning: Please note this is in internal release, do not use on production devices!
+> ## :warning: Please note this is an internal release, do not use on production devices!
 
 ### DEPRECATION
 
