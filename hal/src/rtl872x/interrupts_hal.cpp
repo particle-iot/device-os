@@ -258,7 +258,6 @@ int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handle
         return 1;
     }
 
-    int error = 0;
     int32_t state = HAL_disable_irq();
 
     if (handler == nullptr && (flags & HAL_INTERRUPT_DIRECT_FLAG_RESTORE)) {
@@ -271,26 +270,25 @@ int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handle
     } else {
         // If there is currently a handler backup: Return error
         if (hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)]) {
-            error = SYSTEM_ERROR_NOT_SUPPORTED;
-        } else {
-            // If there is a current handler, back it up
-            uint32_t current_handler = __NVIC_GetVector(irqn);
-            if (current_handler) {
-                hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)] = current_handler;    
-            }    
+           HAL_enable_irq(state);
+           return SYSTEM_ERROR_ALREADY_EXISTS;
         }
+        
+        // If there is a current handler, back it up
+        uint32_t current_handler = __NVIC_GetVector(irqn);
+        if (current_handler) {
+            hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)] = current_handler;    
+        }    
     }
 
-    if (!error) {
-        if (flags & HAL_INTERRUPT_DIRECT_FLAG_DISABLE) {
-            // Disable
-            __NVIC_DisableIRQ(irqn);
-        } else if (flags & HAL_INTERRUPT_DIRECT_FLAG_ENABLE) {
-            __NVIC_SetVector(irqn, (uint32_t)handler);
-        }
+    if (flags & HAL_INTERRUPT_DIRECT_FLAG_DISABLE) {
+        // Disable
+        __NVIC_DisableIRQ(irqn);
+    } else if (flags & HAL_INTERRUPT_DIRECT_FLAG_ENABLE) {
+        __NVIC_SetVector(irqn, (uint32_t)handler);
     }
 
     HAL_enable_irq(state);
 
-    return error;
+    return 0;
 }
