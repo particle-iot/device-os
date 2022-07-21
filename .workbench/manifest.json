@@ -9,43 +9,5 @@
             "scripts": "buildscripts@1.11.0",
             "debuggers": "openocd@0.11.0-particle.4"
         }
-    ],
-    "scripts": {
-        "windows": {
-            "x64": [
-                {
-                    "name": "buildscripts",
-                    "version": "1.11.0",
-                    "main": ".",
-                    "url": "https://binaries.particle.io/buildscripts/windows/x64/v1.11.0.tar.gz",
-                    "sha256": "941b864f276f0c45253233b7ad8a65868daae9690abb2258c231858a29312c42"
-                }
-            ],
-            "x86": []
-        },
-        "darwin": {
-            "x64": [
-                {
-                    "name": "buildscripts",
-                    "version": "1.11.0",
-                    "main": ".",
-                    "url": "https://binaries.particle.io/buildscripts/darwin/x64/v1.11.0.tar.gz",
-                    "sha256": "941b864f276f0c45253233b7ad8a65868daae9690abb2258c231858a29312c42"
-                }
-            ],
-            "x86": []
-        },
-        "linux": {
-            "x64": [
-                {
-                    "name": "buildscripts",
-                    "version": "1.11.0",
-                    "main": ".",
-                    "url": "https://binaries.particle.io/buildscripts/linux/x64/v1.11.0.tar.gz",
-                    "sha256": "941b864f276f0c45253233b7ad8a65868daae9690abb2258c231858a29312c42"
-                }
-            ],
-            "x86": []
-        }
-    }
+    ]
 }
