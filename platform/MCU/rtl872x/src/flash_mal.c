@@ -45,7 +45,7 @@
 #define COPY_BLOCK_SIZE 256
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
-__attribute__((section(".boot.ipc_data"))) platform_flash_modules_t sModule;
+__attribute__((section(".boot.ipc_data"), aligned(32))) platform_flash_modules_aligned sModule;
 #endif
 
 static int hal_memory_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
@@ -517,7 +517,7 @@ static void bldUpdateCallback(km0_km4_ipc_msg_t* msg, void* context) {
         ipcResult = SYSTEM_ERROR_BAD_DATA;
     } else {
         DCache_Invalidate((uint32_t)msg->data, sizeof(int));
-        ipcResult = *((int*)msg->data);
+        ipcResult = ((int32_t*)(msg->data))[0];
     }
 }
 
@@ -676,16 +676,16 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                 // Check if the memory copy can be performed.
                 if (verify_module(module->sourceDeviceID, module->sourceAddress, module->length, module->destinationDeviceID,
                         module->destinationAddress, module->length, module->module_function, module->flags)) {
-                    memcpy(&sModule, module, sizeof(platform_flash_modules_t));
-                    if (sModule.flags & MODULE_DROP_MODULE_INFO) {
+                    memcpy(&sModule.module, module, sizeof(platform_flash_modules_t));
+                    if (sModule.module.flags & MODULE_DROP_MODULE_INFO) {
                         // Skip the module info header
-                        if (sModule.length < sizeof(module_info_t)) { // Sanity check
+                        if (sModule.module.length < sizeof(module_info_t)) { // Sanity check
                             result = FLASH_ACCESS_RESULT_BADARG;
                         }
-                        sModule.sourceAddress += sizeof(module_info_t);
-                        sModule.length -= sizeof(module_info_t);
+                        sModule.module.sourceAddress += sizeof(module_info_t);
+                        sModule.module.length -= sizeof(module_info_t);
                     }
-                    int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, &sModule,
+                    int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_BOOTLOADER_UPDATE, &sModule.module,
                                                         sizeof(platform_flash_modules_t), bldUpdateCallback, NULL);
                     if (ret != 0 || ipcResult != 0) {
                         result = FLASH_ACCESS_RESULT_ERROR;

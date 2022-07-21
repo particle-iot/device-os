@@ -461,7 +461,10 @@ public:
                     uart->receiving_ = false;
                     uint8_t temp[MAX_UART_FIFO_SIZE];
                     uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                    uart->rxBuffer_.put(temp, inFifo);
+                    const ssize_t canWrite = uart->rxBuffer_.space();
+                    if (canWrite > 0) {
+                        uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                    }
                     uart->startReceiver();
                 }
                 break;

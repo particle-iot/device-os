@@ -28,7 +28,7 @@
 
 static volatile platform_flash_modules_t* flashModule = NULL;
 static volatile uint16_t bootloaderUpdateReqId = KM0_KM4_IPC_INVALID_REQ_ID;
-static int updateResult = 0;
+static int32_t __attribute__((aligned(32))) updateResult[8];
 
 extern FLASH_InitTypeDef flash_init_para;
 extern CPU_PWR_SEQ HSPWR_OFF_SEQ[];
@@ -86,17 +86,17 @@ void bootloaderUpdateInit(void) {
 
 void bootloaderUpdateProcess(void) {
     // Handle bootloader update
-    updateResult = SYSTEM_ERROR_NONE;
+    updateResult[0] = SYSTEM_ERROR_NONE;
     if (bootloaderUpdateReqId != KM0_KM4_IPC_INVALID_REQ_ID) {
         if (!flashModule) {
-            updateResult = SYSTEM_ERROR_BAD_DATA;
+            updateResult[0] = SYSTEM_ERROR_BAD_DATA;
         } else {
             DCache_Invalidate((uint32_t)flashModule, sizeof(platform_flash_modules_t));
             if (!flash_write_update_info()) {
-                updateResult = SYSTEM_ERROR_INTERNAL;
+                updateResult[0] = SYSTEM_ERROR_INTERNAL;
             }
         }
-        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, bootloaderUpdateReqId, &updateResult, sizeof(updateResult));
+        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, bootloaderUpdateReqId, updateResult, sizeof(updateResult));
         bootloaderUpdateReqId = KM0_KM4_IPC_INVALID_REQ_ID;
         flashModule = NULL;
     }

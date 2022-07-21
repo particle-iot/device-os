@@ -36,6 +36,7 @@
 #include "exrtc_hal.h"
 #endif
 #include "spark_wiring_vector.h"
+#include "service_debug.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -49,6 +50,7 @@ extern "C" {
 #include "backup_ram_hal.h"
 #include "dct.h"
 #include "dct_hal.h"
+#include "align_util.h"
 
 using namespace particle;
 
@@ -93,8 +95,7 @@ public:
     __attribute__((section(".ram.sleep"), optimize("O0")))
     int enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-        memcpy(&config_, config, sizeof(hal_sleep_config_t));
-        DCache_Clean((uint32_t)&config_, sizeof(hal_sleep_config_t));
+        memcpy(&alignedConfig_.config, config, sizeof(hal_sleep_config_t));
 
         bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                            hal_ble_gap_is_connecting(nullptr, nullptr) ||
@@ -162,7 +163,7 @@ public:
             if (wakeEvent & BIT_HP_WEVT_TIMER_STS) {
                 constructWakeupReason((hal_wakeup_source_rtc_t**)wakeupReason, HAL_WAKEUP_SOURCE_TYPE_RTC, nullptr);
             } else if (wakeEvent & BIT_HP_WEVT_GPIO_STS) {
-                const hal_wakeup_source_base_t* source = config_.wakeup_sources;
+                const hal_wakeup_source_base_t* source = alignedConfig_.config.wakeup_sources;
                 uint16_t wakeupPin = PIN_INVALID;
                 while (source) {
                     if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
@@ -208,10 +209,16 @@ public:
 
     static SleepClass* getInstance() {
         static SleepClass sleep;
+        static_assert(is_member_aligned_to<32>(sleep.alignedConfig_), "alignof doesn't match");
         return &sleep;
     }
 
 private:
+    struct AlignedSleepConfig {
+        hal_sleep_config_t config;
+        uint32_t padding[4];
+    };
+
     SleepClass()
             : ipcResult_(SYSTEM_ERROR_INTERNAL) {
     }
@@ -288,7 +295,8 @@ private:
 
     int notifyKm0AndSleep() {
         ipcResult_ = SYSTEM_ERROR_INTERNAL;
-        int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_SLEEP, &config_,
+        DCache_CleanInvalidate((uint32_t)&alignedConfig_.config, sizeof(hal_sleep_config_t));
+        int ret = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_SLEEP, &alignedConfig_.config,
                 sizeof(hal_sleep_config_t), onKm0RespReceived, this);
         if (ret != SYSTEM_ERROR_NONE || ipcResult_ != SYSTEM_ERROR_NONE) {
             return SYSTEM_ERROR_INTERNAL;
@@ -341,12 +349,12 @@ private:
             instance->ipcResult_ = SYSTEM_ERROR_BAD_DATA;
         } else {
             DCache_Invalidate((uint32_t)msg->data, sizeof(int));
-            instance->ipcResult_ = *((int*)msg->data);
+            instance->ipcResult_ = ((int32_t*)(msg->data))[0];
         }
     }
 
     volatile int ipcResult_;
-    hal_sleep_config_t config_;
+    AlignedSleepConfig __attribute__((aligned(32))) alignedConfig_;
 };
 
 int hal_sleep_validate_config(const hal_sleep_config_t* config, void* reserved) {

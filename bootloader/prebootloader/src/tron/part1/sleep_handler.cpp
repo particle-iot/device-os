@@ -110,7 +110,7 @@ AtomicSimpleStaticPool SleepConfigShadow::staticPool_(staticBuffer_, sizeof(stat
 
 volatile hal_sleep_config_t* sleepConfig = nullptr;
 volatile uint16_t sleepReqId = KM0_KM4_IPC_INVALID_REQ_ID;
-int sleepResult = 0;
+int32_t __attribute__((aligned(32))) sleepResult[8]; // 32 bytes for Dcache requirement
 uint32_t sleepDuration = 0;
 uint32_t sleepStart = 0;
 
@@ -265,21 +265,22 @@ void sleepInit(void) {
 
 void sleepProcess(void) {
     // Handle sleep
-    sleepResult = SYSTEM_ERROR_NONE;
+    sleepResult[0] = SYSTEM_ERROR_NONE;
     if (sleepReqId != KM0_KM4_IPC_INVALID_REQ_ID) {
         if (!sleepConfig) {
-            sleepResult = SYSTEM_ERROR_BAD_DATA;
+            sleepResult[0] = SYSTEM_ERROR_BAD_DATA;
         } else {
             DCache_Invalidate((uint32_t)sleepConfig, sizeof(hal_sleep_config_t));
             if (sleepConfigShadow.init((hal_sleep_config_t*)sleepConfig) != SYSTEM_ERROR_NONE) {
-                sleepResult = SYSTEM_ERROR_NO_MEMORY;
+                sleepResult[0] = SYSTEM_ERROR_NO_MEMORY;
             } else {
-                sleepResult = SYSTEM_ERROR_NONE;
+                sleepResult[0] = SYSTEM_ERROR_NONE;
             }
         }
         
-        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sleepReqId, &sleepResult, sizeof(sleepResult));
-        if (sleepResult == SYSTEM_ERROR_NONE) {
+        DCache_CleanInvalidate((uint32_t)sleepResult, sizeof(sleepResult));
+        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sleepReqId, sleepResult, sizeof(sleepResult));
+        if (sleepResult[0] == SYSTEM_ERROR_NONE) {
             /*
              * We're using clock gate on KM4 for stop mode and ultra-low power mode,
              * since the power gate will deinitialize PSRAM and we have to re-initialize
