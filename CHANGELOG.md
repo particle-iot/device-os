@@ -43,6 +43,26 @@
 - [tests] Fix broken tone and servo tests for p2 platform, also EEPROM_03 for all. [#2469](https://github.com/particle-iot/device-os/pull/2469)
 - [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
 
+## 4.0.0-beta.1
+
+> ## :warning: Please note this is an internal release, do not use on production devices!
+
+### BUGFIXES
+- [gen3] port newlib stdin/stdout/stderr memory leak workaround [#2467](https://github.com/particle-iot/device-os/pull/2467)
+- [esomx] map ADC channels to the correct pins [#2495](https://github.com/particle-iot/device-os/pull/2495)
+
+### INTERNAL
+- Allow overriding the platform ID on the GCC platform [#2462](https://github.com/particle-iot/device-os/pull/2462)
+- Enable OTA updates on the GCC platform [#2464](https://github.com/particle-iot/device-os/pull/2464)
+- Fix GCC platform on some versions of GCC; Fix building of wiring/api tests on CI [#2483](https://github.com/particle-iot/device-os/pull/2483)
+- [workbench] Update workbench buildscripts to 1.11.0 [#2465](https://github.com/particle-iot/device-os/pull/2465)
+- [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
+- [workbench] Remove redundant toolchain overrides [#2489](https://github.com/particle-iot/device-os/pull/2489)
+- [wifi] Add stubs to allow setting common country code and channel plan in P2 [#2473](https://github.com/particle-iot/device-os/pull/2473) [#2485](https://github.com/particle-iot/device-os/pull/2485)
+- [tests] Change PWM pins to better match e-series pinout for E SoM X. Fix other tests [#2463](https://github.com/particle-iot/device-os/pull/2463)
+- [tests] Misc changes to tests from 5.x [#2466](https://github.com/particle-iot/device-os/pull/2466)
+- [tests][esomx] disable RGB pwm channel(s) when running pwm tests [#2494](https://github.com/particle-iot/device-os/pull/2494)
+
 ## 4.0.0-alpha.2
 
 > ## :warning: Please note this is an internal release, do not use on production devices!
