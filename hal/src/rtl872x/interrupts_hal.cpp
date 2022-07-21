@@ -27,6 +27,7 @@ extern "C" {
 #include "pinmap_impl.h"
 #include "gpio_hal.h"
 #include "check.h"
+#include "scope_guard.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -260,6 +261,10 @@ int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handle
 
     int32_t state = HAL_disable_irq();
 
+    SCOPE_GUARD ({
+        HAL_enable_irq(state);
+    });
+
     if (handler == nullptr && (flags & HAL_INTERRUPT_DIRECT_FLAG_RESTORE)) {
         // Restore old handler only if one was backed up
         uint32_t old_handler = hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)];
@@ -269,10 +274,7 @@ int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handle
         }
     } else {
         // If there is currently a handler backup: Return error
-        if (hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)]) {
-           HAL_enable_irq(state);
-           return SYSTEM_ERROR_ALREADY_EXISTS;
-        }
+        CHECK_FALSE(hal_interrupts_handler_backup[IRQN_TO_IDX(irqn)], SYSTEM_ERROR_ALREADY_EXISTS);
         
         // If there is a current handler, back it up
         uint32_t current_handler = __NVIC_GetVector(irqn);
@@ -287,8 +289,6 @@ int hal_interrupt_set_direct_handler(IRQn_Type irqn, hal_interrupt_direct_handle
     } else if (flags & HAL_INTERRUPT_DIRECT_FLAG_ENABLE) {
         __NVIC_SetVector(irqn, (uint32_t)handler);
     }
-
-    HAL_enable_irq(state);
 
     return 0;
 }
