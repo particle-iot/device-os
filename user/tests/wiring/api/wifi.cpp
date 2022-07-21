@@ -43,6 +43,14 @@ test(api_wifi_config)
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
+test(api_set_get_country_code)
+{
+    int rc = 0;
+    API_COMPILE(rc=WiFi.setCountryCode(wlan_country_code_t::WLAN_CC_KR));
+    API_COMPILE(rc=WiFi.getCountryCode());
+    (void)rc;
+}
+
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 test(api_wifi_resolve)
 {
