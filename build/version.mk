@@ -1,7 +1,7 @@
-VERSION_STRING = 4.0.0-alpha.2
+VERSION_STRING = 4.0.0-beta.1
 
 # PRODUCT_FIRMWARE_VERSION reported by default
 # FIXME: Unclear if this is used, PRODUCT_FIRMWARE_VERSION defaults to 65535 every release
-VERSION = 4001
+VERSION = 4002
 
 CFLAGS += -DSYSTEM_VERSION_STRING=$(VERSION_STRING)
