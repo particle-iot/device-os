@@ -485,7 +485,7 @@ public:
         if (chunkBuffer_.rxIndex >= bufferConfig_.rxLength) {
             chunkBuffer_.rxIndex = 0;
 
-            if (config_.spiMode == SPI_MODE_MASTER && bufferConfig_.rxBuf) {
+            if (config_.spiMode == SPI_MODE_MASTER) {
                 // FIXME: For SPI slave, the user callback will be called after CS pin is pulled high.
                 if (callbackConfig_.dmaUserCb) {
                     (*callbackConfig_.dmaUserCb)();
@@ -669,7 +669,7 @@ public:
 
     bool isDmaBufferConfigured() const {
         // Use at least one buffer for SPI transfer
-        return (bufferConfig_.txBuf && bufferConfig_.txLength > 0) || (bufferConfig_.rxBuf && bufferConfig_.rxLength > 0);
+        return bufferConfig_.txBuf || bufferConfig_.rxBuf;
     }
 
     int registerSelectUserCb(hal_spi_select_user_callback callback) {
