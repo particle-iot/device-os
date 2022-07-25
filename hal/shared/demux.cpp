@@ -20,7 +20,9 @@
 #if HAL_PLATFORM_DEMUX
 
 #include "check.h"
+#if HAL_PLATFORM_RTL872X
 #include "gpio_hal.h"
+#endif
 #include "system_error.h"
 
 using namespace particle;
@@ -39,26 +41,33 @@ int Demux::write(uint8_t pin, uint8_t value) {
     DemuxLock lock();
     CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT && pin != 0, SYSTEM_ERROR_INVALID_ARGUMENT); // Y0 is not available for user's usage.
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-
-    // Can't trust GPIO reads on S4 and S5 (?)
-    /*
-    uint32_t currOut = (hal_gpio_read(DEMUX_C) << 2) | (hal_gpio_read(DEMUX_B) << 1) | hal_gpio_read(DEMUX_A);
+#if HAL_PLATFORM_NRF52840
+    // We can do it in this way for now, since the control pins are continuous.
+    uint32_t currOut = (nrf_gpio_port_out_read(DEMUX_NRF_PORT) >> DEMUX_PINS_SHIFT) & 0x00000007;
     if ((currOut == pin && value == 0) || (currOut != pin && value == 1)) {
         return SYSTEM_ERROR_NONE;
     }
-    */
+#endif
+
     if (value) {
+#if HAL_PLATFORM_NRF52840
+        // Select Y0 by default, so that all other pins output high.
+        nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_2_MASK | DEMUX_PIN_1_MASK | DEMUX_PIN_0_MASK);
+#elif HAL_PLATFORM_RTL872X
         // Select Y0 by default, so that all other pins output high.
         hal_gpio_write(DEMUX_C, 0);
         hal_gpio_write(DEMUX_B, 0);
         hal_gpio_write(DEMUX_A, 0);
-
+#endif
         setPinValue(0, 0);
     } else {
+#if HAL_PLATFORM_NRF52840
+        nrf_gpio_port_out_set(DEMUX_NRF_PORT, ((uint32_t)pin) << DEMUX_PINS_SHIFT);
+#elif HAL_PLATFORM_RTL872X
         hal_gpio_write(DEMUX_C, pin >> 2);
         hal_gpio_write(DEMUX_B, (pin >> 1) & 1);
         hal_gpio_write(DEMUX_A, pin & 1);
-
+#endif
         setPinValue(pin, 0);
     }
     return SYSTEM_ERROR_NONE;
@@ -82,6 +91,11 @@ int Demux::unlock() {
 }
 
 void Demux::init() {
+#if HAL_PLATFORM_NRF52840
+    nrf_gpio_port_dir_output_set(DEMUX_NRF_PORT, DEMUX_PIN_0_MASK | DEMUX_PIN_1_MASK | DEMUX_PIN_2_MASK);
+    // Select Y0 by default.
+    nrf_gpio_port_out_clear(DEMUX_NRF_PORT, DEMUX_PIN_0_MASK | DEMUX_PIN_1_MASK | DEMUX_PIN_2_MASK);
+#elif HAL_PLATFORM_RTL872X
     hal_gpio_mode(DEMUX_A, OUTPUT);
     hal_gpio_mode(DEMUX_B, OUTPUT);
     hal_gpio_mode(DEMUX_C, OUTPUT);
@@ -89,7 +103,7 @@ void Demux::init() {
     hal_gpio_write(DEMUX_C, 0);
     hal_gpio_write(DEMUX_B, 0);
     hal_gpio_write(DEMUX_A, 0);
-
+#endif
     initialized_ = true;
 }
 
