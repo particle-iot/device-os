@@ -20,6 +20,7 @@
 
 #include "message_channel.h"
 #include "coap.h"
+#include "coap_util.h"
 #include "timer_hal.h"
 #include "stdlib.h"
 #include "service_debug.h"
@@ -31,6 +32,8 @@ namespace particle
 {
 namespace protocol
 {
+
+const auto COAP_LOG_CATEGORY = "comm.coap";
 
 bool is_ack_or_reset(const uint8_t* buf, size_t len);
 
@@ -306,6 +309,10 @@ public:
     		}
     }
 
+	int get_transmit_count() const
+	{
+		return transmit_count;
+	}
 };
 
 inline bool time_has_passed(system_tick_t now, system_tick_t tick)
@@ -328,12 +335,14 @@ inline bool time_has_passed(system_tick_t now, system_tick_t tick)
  */
 class CoAPMessageStore
 {
-	LOG_CATEGORY("comm.coap");
+	LOG_CATEGORY(COAP_LOG_CATEGORY);
 
 	/**
 	 * The head of the list of messages.
 	 */
 	CoAPMessage* head;
+
+	bool debug_enabled;
 
 	/**
 	 * Retrieves the message with the given ID and the previous message.
@@ -369,7 +378,11 @@ class CoAPMessageStore
 
 public:
 
-	CoAPMessageStore() : head(nullptr) {}
+	CoAPMessageStore() :
+			head(nullptr),
+			debug_enabled(false)
+	{
+	}
 
 	~CoAPMessageStore() {
 		clear();
@@ -480,6 +493,10 @@ public:
 		}
 	}
 
+	void enable_debug()
+	{
+		debug_enabled = true;
+	}
 };
 
 
@@ -505,6 +522,7 @@ class CoAPReliableChannel : public T
 	 */
 	CoAPMessageStore client;
 
+	bool debug_enabled;
 
 	ProtocolError base_send(Message& msg)
 	{
@@ -551,7 +569,10 @@ class CoAPReliableChannel : public T
 
 public:
 
-	CoAPReliableChannel(M m=0) : millis(m) {
+	CoAPReliableChannel(M m=0) :
+			millis(m),
+			debug_enabled(false)
+	{
 		delegateChannel.init(this);
 	}
 
@@ -713,6 +734,13 @@ public:
 		}
 		// todo - if msg contains a delivery callback then call that with the outcome of this
 		return error;
+	}
+
+	void enable_debug()
+	{
+		debug_enabled = true;
+		client.enable_debug();
+		server.enable_debug();
 	}
 };
 
