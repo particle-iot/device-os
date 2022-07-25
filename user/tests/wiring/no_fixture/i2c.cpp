@@ -271,7 +271,9 @@ test(I2C_04_Serial1_Cannot_Be_Enabled_While_Wire3_Is_Enabled) {
 
 #endif // PLATFORM_ID == PLATFORM_TRACKER
 
-test(I2C_05_Hal_Sleep_API_Test) {
+#if !HAL_PLATFORM_RTL872X
+
+test(I2C_05_Hal_Sleep_API_Test) {   Hal_Sleep_API_Test
     Wire.lock();
     bool enabled = Wire.isEnabled();
     SCOPE_GUARD({
@@ -374,5 +376,7 @@ test(I2C_07_bus_reset_is_not_destructive) {
         assertEqual(config, MAX17043_DEFAULT_CONFIG);
     }
 }
+
+#endif  // !HAL_PLATFORM_RTL872X
 
 #endif // HAL_PLATFORM_FUELGAUGE_MAX17043

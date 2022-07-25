@@ -238,6 +238,10 @@ elif [ ! -z $PLATFORM ]; then
             PLATFORM_ID="26"
             GEN3=true
             ;;
+        "trackerm")
+            PLATFORM_ID="28"
+            GEN3=true
+            ;;
         "p2")
             PLATFORM_ID="32"
             GEN3=true
@@ -275,6 +279,10 @@ else
             ;;
         26)
             PLATFORM="tracker"
+            GEN3=true
+            ;;
+        28)
+            PLATFORM="trackerm"
             GEN3=true
             ;;
         32)

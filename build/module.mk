@@ -102,12 +102,13 @@ exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 none:
 	;
 
-ifeq ("$(PLATFORM)","p2")
+ifeq ("$(PLATFORM)",$(filter "$(PLATFORM)","p2" "trackerm"))
 .PHONY: rtl-flash
 rtl_module_start_address = $(subst 0x08,0x00,$(call get_module_start_address))
 rtl-flash:
 	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(call rtl_module_start_address)
 endif
+
 
 # Program the device using dfu-util. The device should have been placed
 # in bootloader mode before invoking 'make program-dfu'

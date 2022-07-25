@@ -34,7 +34,7 @@ const PinMapping pwm_pins[] = {
         // cause problems if the RGB led is enabled.
         // PWM HAL also is not interrupt safe and RGB pins are modified in SysTick
         PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), /* PIN(D7), */ PIN(D8), PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
-#elif PLATFORM_ID == PLATFORM_P2
+#elif (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)  // double check. Run tests etc
         PIN(D1), PIN(A2), PIN(A5), PIN(S0), PIN(S1) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #elif (PLATFORM_ID == PLATFORM_ESOMX)
         PIN(D0), PIN(D1), PIN(D2), PIN(A3), PIN(A4), PIN(A5), PIN(A6), PIN(TX), PIN(RX), PIN(B2), PIN(B3), PIN(C4), PIN(C5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
@@ -259,7 +259,7 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
 }
 
 // See wiring/pwm/ for P2 fixture PWM tests
-#if PLATFORM_ID != PLATFORM_P2
+#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
 test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
@@ -725,4 +725,4 @@ test(PWM_12_CompherensiveResolutionFrequency) {
         assertMoreOrEqual(resolution, 15);
     });
 }
-#endif // PLATFORM_ID != PLATFORM_P2
+#endif // (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)

@@ -55,7 +55,7 @@
 
 #define HAL_PLATFORM_I2C2 (1)
 
-#define HAL_PLATFORM_USART2 (1)
+#define HAL_PLATFORM_USART2 (0)
 
 #define HAL_PLATFORM_USART3 (1)
 

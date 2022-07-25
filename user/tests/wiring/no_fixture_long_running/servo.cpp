@@ -28,7 +28,7 @@
 #include "unit-test/unit-test.h"
 
 #if HAL_PLATFORM_GEN == 3
-#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_ESOMX
+#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_ESOMX || PLATFORM_ID == PLATFORM_TRACKERM
 static const hal_pin_t pin = D1, pin2 = D8;
 #else
 static const hal_pin_t pin = A0, pin2 = A1;
@@ -89,7 +89,7 @@ test(SERVO_04_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
 }
 
 // FIXME: P2 doesn't support pulseIn()
-#if PLATFORM_ID != PLATFORM_P2
+#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
 test(SERVO_05_DetachDoesntAffectAnotherServoUsingSameTimer) {
     const int pulseWidth = 2000;
     // Attach 1st servo
@@ -115,4 +115,4 @@ test(SERVO_05_DetachDoesntAffectAnotherServoUsingSameTimer) {
     servo2.detach();
     assertTrue(readPulseWidth > pulseWidth - 50 && readPulseWidth < pulseWidth + 50);
 }
-#endif // PLATFORM_ID != PLATFORM_P2
+#endif // PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM

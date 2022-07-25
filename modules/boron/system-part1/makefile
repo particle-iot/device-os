@@ -9,6 +9,7 @@ DEPENDENCIES = newlib_nano modules/boron/user-part modules/boron/system-part1 dy
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto wiring_globals
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
 MAKE_DEPENDENCIES = newlib_nano $(LIB_DEPENDENCIES)
+
 include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 

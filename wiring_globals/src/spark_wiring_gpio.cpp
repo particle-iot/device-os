@@ -194,7 +194,7 @@ int32_t digitalRead(hal_pin_t pin)
  */
 int32_t analogRead(hal_pin_t pin)
 {
-#if PLATFORM_ID != PLATFORM_P2
+#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
   // Allow people to use 0-7 to define analog pins by checking to see if the values are too low.
 #if defined(FIRST_ANALOG_PIN) && FIRST_ANALOG_PIN > 0
   if(pin < FIRST_ANALOG_PIN)

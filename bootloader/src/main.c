@@ -32,7 +32,7 @@
 #include "button_hal.h"
 #include "dct.h"
 #include "feature_flags.h"
-#if PLATFORM_ID == PLATFORM_P2
+#if (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
 #include "rtl8721d.h"
 #include "nonsecure.h"
 #endif
@@ -48,7 +48,7 @@ extern void HAL_DFU_Process();
 
 void platform_startup();
 
-#if PLATFORM_ID == PLATFORM_P2
+#if (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
 static void jump_to_system(uint32_t addr, uint32_t sp) {
     nonsecure_jump_to_system(addr);
     (void) sp;

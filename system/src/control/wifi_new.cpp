@@ -92,7 +92,7 @@ int joinNewNetwork(ctrl_request* req) {
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     const NcpClientLock lock(ncpClient);
     // FIXME; the security sent from the mobile app is always zero.
-#if PLATFORM_ID == 32
+#if (PLATFORM_ID == 32 || PLATFORM_ID == 28)
     // Scan for networks
     Vector<WifiScanResult> networks;
     CHECK(ncpClient->scan([](WifiScanResult network, void* data) -> int {

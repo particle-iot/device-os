@@ -651,7 +651,7 @@ private:
 
     bool useInterrupt() {
         auto instance = uartTable_[index_].UARTx;
-        if (instance == UART2_DEV || instance == UART3_DEV || instance == UART0_DEV) {
+        if (instance == UART2_DEV || instance == UART3_DEV) {
             return true;
         }
         return false;

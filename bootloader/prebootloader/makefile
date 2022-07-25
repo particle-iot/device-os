@@ -10,6 +10,11 @@ include $(PROJECT_ROOT)/build/macros.mk
 include $(PROJECT_ROOT)/build/module-defaults.mk
 include $(PROJECT_ROOT)/build/arm-tools.mk
 
+# overwrite if PLATFORM_DYNALIB_MODULES is trackerm to use the same prebl as tron
+ifeq ("$(PLATFORM_DYNALIB_MODULES)", "trackerm")
+PLATFORM_DYNALIB_MODULES=tron
+endif
+
 projects = $(sort $(wildcard $(current_dir)/src/$(PLATFORM_DYNALIB_MODULES)/*))
 makefiles = $(foreach module,$(projects),$(and $(strip $(subst $(MODULE_EXCLUDE),,$(notdir $(module)))),$(wildcard $(module)/makefile)))
 

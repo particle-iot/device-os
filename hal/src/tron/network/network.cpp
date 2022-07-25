@@ -23,10 +23,7 @@
 #include "random.h"
 #include "check.h"
 #include <malloc.h>
-#include "network/ncp/cellular/ncp.h"
-#include "pppncpnetif.h"
 #include "network/ncp_client/realtek/rtl_ncp_client.h"
-#include "network/ncp_client/quectel/quectel_ncp_client.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/ncp.h"
 #include "debug.h"
@@ -47,8 +44,6 @@ BaseNetif* en2 = nullptr;
 BaseNetif* wl3 = nullptr;
 /* wl4 - Realtek NCP Access Point */
 BaseNetif* wl4 = nullptr;
-/* pp3 - Cellular */
-BaseNetif* pp3 = nullptr;
 
 class WifiNetworkManagerInit {
 public:
@@ -94,53 +89,10 @@ bool netifCanForwardIpv4(netif* iface) {
     return false;
 }
 
-
-class CellularNetworkManagerInit {
-public:
-    CellularNetworkManagerInit() {
-        const int r = init();
-        SPARK_ASSERT(r == 0);
-    }
-
-    CellularNetworkManager* instance() const {
-        return mgr_.get();
-    }
-
-private:
-    std::unique_ptr<CellularNcpClient> client_;
-    std::unique_ptr<CellularNetworkManager> mgr_;
-
-    int init() {
-        // Get active SIM card
-        SimType sim = SimType::INVALID;
-        CHECK(CellularNetworkManager::getActiveSim(&sim));
-        CellularNcpClientConfig conf;
-        conf.simType(sim);
-        conf.ncpIdentifier(platform_primary_ncp_identifier());
-        conf.eventHandler(PppNcpNetif::ncpEventHandlerCb, pp3);
-        conf.dataHandler(PppNcpNetif::ncpDataHandlerCb, pp3);
-        // Initialize NCP client
-        std::unique_ptr<CellularNcpClient> client;
-        client.reset(new(std::nothrow) QuectelNcpClient);
-        CHECK_TRUE(client, SYSTEM_ERROR_NO_MEMORY);
-        CHECK(client->init(conf));
-        // Initialize network manager
-        mgr_.reset(new(std::nothrow) CellularNetworkManager(client.get()));
-        CHECK_TRUE(mgr_, SYSTEM_ERROR_NO_MEMORY);
-        client_ = std::move(client);
-        return 0;
-    }
-};
-
 } // unnamed
 
 WifiNetworkManager* wifiNetworkManager() {
     static WifiNetworkManagerInit mgr;
-    return mgr.instance();
-}
-
-CellularNetworkManager* cellularNetworkManager() {
-    static CellularNetworkManagerInit mgr;
     return mgr.instance();
 }
 
@@ -183,17 +135,10 @@ int if_init_platform(void*) {
     }
 
     /* wl3 - Realtek NCP Station */
-/*    wl3 = new RealtekNcpNetif();
+    wl3 = new RealtekNcpNetif();
     if (wl3) {
         ((RealtekNcpNetif*)wl3)->setWifiManager(wifiNetworkManager());
         ((RealtekNcpNetif*)wl3)->init();
-    }
-*/
-    /* pp3 - Cellular */
-    pp3 = new PppNcpNetif();
-    if (pp3) {
-        ((PppNcpNetif*)pp3)->setCellularManager(cellularNetworkManager());
-        ((PppNcpNetif*)pp3)->init();
     }
 
     /* TODO: wl4 - ESP32 NCP Access Point */
@@ -215,8 +160,6 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
             return en2->interface();
         } else if (wl3 && netifCanForwardIpv4(wl3->interface())) {
             return wl3->interface();
-        } else if (pp3 && netifCanForwardIpv4(pp3->interface())) {
-            return pp3->interface();
         }
     }
 

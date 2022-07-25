@@ -11,7 +11,10 @@ CSRC += $(PROJECT_ROOT)/hal/src/rtl872x/hal_irq_flag.c
 CPPSRC += $(PROJECT_ROOT)/hal/src/rtl872x/flash_common.cpp
 CPPSRC += $(PROJECT_ROOT)/hal/src/rtl872x/km0_km4_ipc.cpp
 CPPSRC += $(PROJECT_ROOT)/hal/src/rtl872x/pinmap_hal.cpp
-CPPSRC += $(PROJECT_ROOT)/hal/src/tron/pinmap_defines.cpp
+
+ifeq ("$(PLATFORM_NAME)",$(filter "$(PLATFORM_NAME)","p2" "trackerm"))
+CPPSRC += $(PROJECT_ROOT)/hal/src/$(PLATFORM_NAME)/pinmap_defines.cpp
+endif
 
 LDFLAGS += -T$(PREBOOTLOADER_PART1_SRC_PATH)/linker.ld
 LINKER_DEPS += $(PREBOOTLOADER_PART1_SRC_PATH)/linker.ld

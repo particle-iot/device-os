@@ -15,7 +15,7 @@
 #error Define USE_CS
 #endif // #ifndef USE_CS
 
-#if (PLATFORM_ID == PLATFORM_P2)
+#if (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #error "SPI not supported as slave for p2"

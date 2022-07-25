@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include "random.h"
 
-#if PLATFORM_ID == PLATFORM_P2
+#if (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
 #ifdef AMEBAD_TODO
 #define __ARMV8MML_REV                 0x0000U  /*!< ARMV8MML Core Revision                                                    */
 #define __Vendor_SysTickConfig         0        /*!< Set to 1 if different SysTick Config is used                              */
@@ -26,7 +26,7 @@
 #endif
 #include <arm_cmse.h>   /* Use CMSE intrinsics */
 #include "core_armv8mml.h"
-#endif // PLATFORM_ID == PLATFORM_P2
+#endif // PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
 
 namespace {
 

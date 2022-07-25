@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define TOTAL_PINS          29
+#define TOTAL_PINS          28
 #define TOTAL_ANALOG_PINS   6
 #define FIRST_ANALOG_PIN    11
 
@@ -79,27 +79,9 @@
 #define MISO1               D3
 #define MOSI1               D2
 
-// IO Expander
-#define IOE_INT             D10
-#define IOE_RST             28
-#define IOE_CS              A0
-
-#define CS0                 S3
-#define CS1                 S4
-#define CS2                 S5
-
-#define DEMUX_PIN_A         CS0
-#define DEMUX_PIN_B         CS1
-#define DEMUX_PIN_C         CS2
-
 // I2C
 #define SDA                 D0
 #define SCL                 D1
-
-// PMIC
-#define PMIC_SDA            SDA
-#define PMIC_SCL            SCL
-#define PMIC_INT            S6
 
 // UART
 #define TX                  D8

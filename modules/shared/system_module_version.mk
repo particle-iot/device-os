@@ -21,6 +21,11 @@ PREBOOTLOADER_MBR_VERSION ?= 2
 PREBOOTLOADER_PART1_VERSION ?= 3
 endif
 
+ifeq ($(PLATFORM_ID),28)
+PREBOOTLOADER_MBR_VERSION ?= 2
+PREBOOTLOADER_PART1_VERSION ?= 3
+endif
+
 # The version of the bootloader that the system firmware requires
 # NOTE: this will force the device into safe mode until this dependency is met, which is why
 # this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
@@ -33,6 +38,21 @@ else
 BOOTLOADER_DEPENDENCY = 0
 endif
 ifeq ($(PLATFORM_ID),32)
+PREBOOTLOADER_PART1_DEPENDENCY = 3
+endif
+
+# The version of the bootloader that the system firmware requires for 28
+# NOTE: this will force the device into safe mode until this dependency is met, which is why
+# this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
+ifeq ($(PLATFORM_ID),28)
+BOOTLOADER_DEPENDENCY = 2000
+else ifeq ($(PLATFORM_GEN),3)
+BOOTLOADER_DEPENDENCY = 1101
+else
+# Some sensible default
+BOOTLOADER_DEPENDENCY = 0
+endif
+ifeq ($(PLATFORM_ID),28)
 PREBOOTLOADER_PART1_DEPENDENCY = 3
 endif
 
@@ -71,6 +91,11 @@ endif
 endif # ($(PLATFORM_MCU),nRF52840)
 
 ifeq ($(PLATFORM_ID), 32)
+SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
+BOOTLOADER_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},2,${PREBOOTLOADER_PART1_DEPENDENCY}
+endif
+
+ifeq ($(PLATFORM_ID), 28)
 SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
 BOOTLOADER_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},2,${PREBOOTLOADER_PART1_DEPENDENCY}
 endif
