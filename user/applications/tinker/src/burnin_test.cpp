@@ -109,9 +109,6 @@ void BurninTest::setup(bool forceEnable) {
 	}
 
 	RGB.control(true);
-	start_time_millis_ = System.millis();
-	next_blink_millis_ = start_time_millis_ + BLINK_PERIOD_MILLIS;
-	next_status_report_millis_ = start_time_millis_ + BLINK_PERIOD_STATUS_REPORT_MILLIS;
     os_thread_create(&led_thread_, "led", OS_THREAD_PRIORITY_DEFAULT, ledLoop, this, OS_THREAD_STACK_SIZE_DEFAULT);
 }
 
@@ -182,56 +179,40 @@ static int blueBlinksFromRuntime(uint64_t run_time_millis) {
 	}
 }
 
-static void setLed(bool on, bool blue){
-	if(!on){
-		RGB.color(0, 0, 0);
-	}
-	else if(blue) {
-		RGB.color(0, 0, 255);
-	}
-	else {
-		RGB.color(0, 255, 0);
-	}
+static void blinkLed(int blink_time, int red, int green, int blue) {
+	RGB.color(red, green, blue);
+	delay(blink_time / 2);
+	RGB.color(0, 0, 0);
+	delay(blink_time / 2);
 }
 
 // Blink LED / signal uptime / failure state
 void BurninTest::ledLoop(void * arg) {
-    BurninTest* self = static_cast<BurninTest*>(arg);
+	uint32_t total_runtime_millis = 0;
+	int blinks_this_period = 0;
 
     while (true) {
-		static bool led_on = false;
-		
-		static bool blink_blue = false;
-		static int blink_blue_count = 0;
-
-		uint64_t current_millis = System.millis();
-
 		// If failed = solid red
 		if(BurninState == BurninTestState::FAILED) {
 			RGB.color(255, 0, 0);
 		}
 		// If running = blink led
 		else if (BurninState == BurninTestState::IN_PROGRESS) {
-			// Time to blink?
-			if (current_millis > self->next_blink_millis_) {
-				// Time to report status? 
-				if ((current_millis > self->next_status_report_millis_) && (blink_blue_count == 0)) {
-					blink_blue = true;
-					blink_blue_count = blueBlinksFromRuntime(current_millis - self->start_time_millis_);
+
+			blinkLed(BLINK_PERIOD_MILLIS, 0, 255, 0);
+			total_runtime_millis += BLINK_PERIOD_MILLIS;
+			blinks_this_period++;
+
+			int blue_blinks = blueBlinksFromRuntime(total_runtime_millis);
+			Log.trace("total_runtime_millis: %lu blinks_this_period: %d blue_blinks: %d", total_runtime_millis, blinks_this_period, blue_blinks);
+
+			if (blue_blinks + blinks_this_period == BLINK_COUNT_PER_CYCLE) {
+				for (int i = 0; i < blue_blinks; i++) {
+					blinkLed(BLINK_PERIOD_MILLIS, 0, 0, 255);
+					total_runtime_millis += BLINK_PERIOD_MILLIS;
 				}
 
-				setLed(led_on, blink_blue);
-				led_on = !led_on;
-				self->next_blink_millis_ = current_millis + BLINK_PERIOD_MILLIS;
-
-				// Count down blue blinks, stop reporting status when done 
-				if (blink_blue && !led_on) {
-					blink_blue_count -= 1;
-					if (blink_blue_count == 0) {
-						blink_blue = false;
-						self->next_status_report_millis_ = current_millis + BLINK_PERIOD_STATUS_REPORT_MILLIS;
-					}
-				}
+				blinks_this_period = 0;
 			}
 		}
 	}
