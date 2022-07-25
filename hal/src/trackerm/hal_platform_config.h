@@ -44,4 +44,4 @@
 #define HAL_PLATFORM_USB_PRODUCT_STRING "TrackerM DFU Mode"
 #endif // defined(MODULE_FUNCTION) && MODULE_FUNCTION != 2 // MOD_FUNC_BOOTLOADER
 
-#define PRODUCT_SERIES "TrackrM"
+#define PRODUCT_SERIES "TrackerM"

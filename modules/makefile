@@ -20,6 +20,7 @@ include $(PROJECT_ROOT)/build/arm-tools.mk
 $(call check_modular)
 
 projects = $(sort $(wildcard $(current_dir)/$(PLATFORM_DYNALIB_MODULES)/*))
+
 ifneq ("$(findstring system,$(MAKECMDGOALS))","")
 MAKECMDGOALS := $(subst system,,$(MAKECMDGOALS))
 export USER_PART=n

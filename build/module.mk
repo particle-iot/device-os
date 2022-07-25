@@ -109,7 +109,6 @@ rtl-flash:
 	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(call rtl_module_start_address)
 endif
 
-
 # Program the device using dfu-util. The device should have been placed
 # in bootloader mode before invoking 'make program-dfu'
 program-dfu: $(MAKE_DEPENDENCIES) $(TARGET_BASE).dfu
