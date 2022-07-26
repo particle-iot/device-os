@@ -65,7 +65,7 @@ test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup) {
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
     } else if (phase == 0xbeef0002) {
         Serial.println("    >> Device is reset from hibernate mode.");
-        assertEqual(System.resetReason(), (int)RESET_REASON_PIN_RESET);
+        assertTrue(System.resetReason() == RESET_REASON_PIN_RESET || System.resetReason() == RESET_REASON_POWER_DOWN);
     }
 }
 
@@ -85,7 +85,7 @@ test(02_System_Sleep_Mode_Deep_Without_Wakeup) {
         assertEqual(result.error(), SYSTEM_ERROR_NONE);
     } else if (phase == 0xbeef0003) {
         Serial.println("    >> Device is reset from hibernate mode.");
-        assertEqual(System.resetReason(), (int)RESET_REASON_PIN_RESET);
+        assertTrue(System.resetReason() == RESET_REASON_PIN_RESET || System.resetReason() == RESET_REASON_POWER_DOWN);
     }
 }
 
@@ -629,7 +629,8 @@ test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
     Network.on();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
-    Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
+    Serial.println("    >> Connected to the cloud");
+    Serial.printf("    >> Enter stop mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
@@ -673,7 +674,8 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     Network.on();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
-    Serial.println("    >> Connected to the cloud. You'll see the RGB is turned on after waking up.");
+    Serial.println("    >> Connected to the cloud");
+    Serial.printf("    >> Enter stop mode. Please reconnect serial after %ld s\r\n", SLEEP_DURATION_S);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
@@ -693,7 +695,7 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
     if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {
         assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S + 10 );
     } else {
-        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S * 3 / 2 );
+        assertLessOrEqual(exit - sNetworkOffTimestamp, SLEEP_DURATION_S + 2 );
     }
     Serial.printf("Sleep execution time: %ld s\r\n", exit - sNetworkOffTimestamp);
 
@@ -711,6 +713,9 @@ test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
     while (Serial.available() > 0) {
         (void)Serial.read();
     }
+
+    Particle.disconnect();
+    assertTrue(waitFor(Particle.disconnected, CLOUD_CONNECT_TIMEOUT));
 
     for (uint8_t i = 0; i < 2; i++) {
         // Make sure the modem is off first
@@ -733,7 +738,7 @@ test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
         }
 #endif
 
-        Serial.println("    >> Entering sleep...");
+        Serial.println("    >> Entering sleep... Please reconnect serial after 3 seconds");
         SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(3s));
 
         waitUntil(Serial.isConnected);
@@ -779,7 +784,7 @@ test(31_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Of
         }
 #endif
 
-        Serial.println("    >> Entering sleep...");
+        Serial.println("    >> Entering sleep... Please reconnect serial after 3 seconds");
         SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(3s));
 
         waitUntil(Serial.isConnected);

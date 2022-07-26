@@ -79,7 +79,8 @@ test(LED_01_Updated) {
     RGB.onChange(NULL);
 
     // onChange callback is called every 25ms, so 500ms / 25ms = 20
-    assertMoreOrEqual((end-start), uint32_t(20));
+    assertMoreOrEqual((end-start), uint32_t(20) - 1);
+    assertLessOrEqual((end-start), uint32_t(20) + 1);
 }
 
 
