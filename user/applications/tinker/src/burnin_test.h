@@ -33,11 +33,8 @@ private:
 	static void ledLoop(void * arg);
     os_thread_t led_thread_ = nullptr;
 
-	static const uint32_t BLINK_PERIOD_MILLIS = 500;
-	static const uint32_t BLINK_PERIOD_STATUS_REPORT_MILLIS =  (10 * 2 * BLINK_PERIOD_MILLIS);
-	uint64_t start_time_millis_;
-	uint64_t next_blink_millis_;
-	uint64_t next_status_report_millis_;
+	static const uint32_t BLINK_PERIOD_MILLIS = 1000;
+	static const uint32_t BLINK_COUNT_PER_CYCLE = 10;
 
 	typedef bool (BurninTest::*burnin_test_function)();
 	Vector<burnin_test_function> tests_;
