@@ -188,7 +188,7 @@ static void blinkLed(int blink_time, int red, int green, int blue) {
 
 // Blink LED / signal uptime / failure state
 void BurninTest::ledLoop(void * arg) {
-	uint32_t total_runtime_millis = 0;
+	system_tick_t total_runtime_millis = 0;
 	int blinks_this_period = 0;
 
     while (true) {
