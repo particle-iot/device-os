@@ -65,7 +65,7 @@ void logCoapMessage(LogLevel level, const char* category, const char* data, size
         snprintf(code, sizeof(code), "%u.%02u", (unsigned)cls, (unsigned)detail);
         break;
     }
-    char token[16] = {};
+    char token[24] = {};
     if (d.hasToken()) {
         toHex(d.token(), d.tokenSize(), token, sizeof(token));
     }
@@ -73,7 +73,7 @@ void logCoapMessage(LogLevel level, const char* category, const char* data, size
     size_t pos = 0;
     bool hasQuery = false;
     auto it = d.options();
-    while (it.next() && pos < sizeof(uri) - 1) {
+    while (it.next() && pos + 1 < sizeof(uri)) {
         if (it.option() == CoapOption::URI_PATH || it.option() == CoapOption::URI_QUERY) {
             if (it.option() == CoapOption::URI_PATH) {
                 uri[pos++] = '/';
@@ -86,7 +86,8 @@ void logCoapMessage(LogLevel level, const char* category, const char* data, size
             pos += toPrintable(it.data(), it.size(), uri + pos, sizeof(uri) - pos - 1);
         }
     }
-    log_printf(level, category, nullptr /* reserved */, "%s %s %s size=%u token=%s id=%u\r\n", type, code, uri,
+    _LOG_ATTR_INIT(attr);
+    log_message(level, category, &attr, nullptr /* reserved */, "%s %s %s size=%u token=%s id=%u", type, code, uri,
             (unsigned)size, token, (unsigned)d.id());
     if (logPayload && d.hasPayload()) {
         log_printf(level, category, nullptr, "Payload (%u bytes): ", (unsigned)d.payloadSize());

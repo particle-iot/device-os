@@ -52,7 +52,7 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 	if (retransmit)
 	{
 		LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %d of %d", (int)msg->get_id(),
-				(int)msg->get_transmit_count(), (int)CoAPMessage::MAX_RETRANSMIT);
+				(int)msg->get_transmit_count() - 1, (int)CoAPMessage::MAX_RETRANSMIT);
 		send_message(msg, channel);
 	}
 	return retransmit;
@@ -62,7 +62,7 @@ void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 {
 	msg.notify_timeout();
 	if (msg.is_request()) {
-		LOG(TRACE, "CoAP message timeout; ID: %d", (int)msg.get_id());
+		LOG(ERROR, "CoAP message timeout; ID: %d", (int)msg.get_id());
 		g_unacknowledgedMessageCounter++;
 		channel.command(MessageChannel::CLOSE);
 	}
@@ -100,9 +100,8 @@ void CoAPMessageStore::process(system_tick_t time, Channel& channel)
 ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
 {
 	if (!msg.has_id())
-	{
 		return MISSING_MESSAGE_ID;
-	}
+
 	CoAPType::Enum coapType = CoAP::type(msg.buf());
 	if (coapType==CoAPType::CON || coapType==CoAPType::ACK || coapType==CoAPType::RESET)
 	{
@@ -141,6 +140,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 			g_coapRoundTripMSec = time - coap_msg->get_send_time();
 		}
 		if (msgtype==CoAPType::RESET) {
+			LOG(WARN, "Received RST message; discarding session");
 			if (coap_msg) {
 				coap_msg->notify_delivered_nak();
 			}

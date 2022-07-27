@@ -297,16 +297,16 @@ public:
 		transmit_count = MAX_RETRANSMIT+2;	// do not send this message.
 	}
 
-    bool is_request() const
-    {
-    		switch (get_type()) {
-    		case CoAPType::NON:
-    		case CoAPType::CON:
-    			return true;
-    		default:
-    			return false;
-    		}
-    }
+	bool is_request() const
+	{
+			switch (get_type()) {
+			case CoAPType::NON:
+			case CoAPType::CON:
+				return true;
+			default:
+				return false;
+			}
+	}
 
 	int get_transmit_count() const
 	{
@@ -510,6 +510,7 @@ class CoAPReliableChannel : public T
 	 * Stores the confirmable messages sent from the client requiring acknowledgement.
 	 */
 	CoAPMessageStore client;
+
 
 	ProtocolError base_send(Message& msg)
 	{
