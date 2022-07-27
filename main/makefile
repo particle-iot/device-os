@@ -76,7 +76,7 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)$(USER_FLAVOR)
 
 USE_PRINTF_FLOAT ?= y
 
-ifeq ("$(PLATFORM)",$(filter "$(PLATFORM)","p2" "trackerm"))
+ifeq ($(PLATFORM_MCU),rtl872x)
 RTL_BINARY_FLASH_START = 0x60000
 endif
 

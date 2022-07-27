@@ -31,7 +31,7 @@ typedef struct hal_pin_info_t {
     uint8_t             adc_channel;
     uint8_t             pwm_instance;
     uint8_t             pwm_channel;
-#if HAL_PLATFORM_IO_EXTENSION || HAL_PLATFORM_DEMUX
+#if HAL_PLATFORM_IO_EXTENSION
     hal_pin_type_t      type;
 #endif // HAL_PLATFORM_IO_EXTENSION
     uint32_t     user_data;

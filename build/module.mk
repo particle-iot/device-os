@@ -102,7 +102,7 @@ exe: $(TARGET_BASE)$(EXECUTABLE_EXTENSION)
 none:
 	;
 
-ifeq ("$(PLATFORM)",$(filter "$(PLATFORM)","p2" "trackerm"))
+ifeq ($(PLATFORM_MCU),rtl872x)
 .PHONY: rtl-flash
 rtl_module_start_address = $(subst 0x08,0x00,$(call get_module_start_address))
 rtl-flash:

@@ -125,7 +125,7 @@ constexpr T2* dynalib_checked_cast(T2 *p) {
         #define __S(x) #x
         #define __SX(x) __S(x)
 
-        #if (PLATFORM_ID == 32 || PLATFORM_ID == 28)
+        #if HAL_PLATFORM_DYNALIB_DYNAMIC_LOCATION
         #define DYNALIB_FN_IMPORT(index, tablename, name, counter) \
             DYNALIB_STATIC_ASSERT(index == counter, "Index of the dynamically exported function has changed"); \
             const char check_name_##tablename_##name[0]={}; /* this will fail if the name is already defined */ \

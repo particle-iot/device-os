@@ -3,7 +3,7 @@
  * @file    ota_flash_hal.cpp
  * @author  Matthew McGowan, Satish Nair
  * @version V1.0.0
- * @date    25-Sept-2014
+ * @date    27-Jul-2022
  * @brief
  ******************************************************************************
   Copyright (c) 2013-2015 Particle Industries, Inc.  All rights reserved.

@@ -16,12 +16,7 @@ USER_PART_MODULE_VERSION ?= 6
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
 BOOTLOADER_VERSION ?= 2000
 
-ifeq ($(PLATFORM_ID),32)
-PREBOOTLOADER_MBR_VERSION ?= 2
-PREBOOTLOADER_PART1_VERSION ?= 3
-endif
-
-ifeq ($(PLATFORM_ID),28)
+ifeq ($(PLATFORM_MCU),rtl872x)
 PREBOOTLOADER_MBR_VERSION ?= 2
 PREBOOTLOADER_PART1_VERSION ?= 3
 endif
@@ -29,7 +24,7 @@ endif
 # The version of the bootloader that the system firmware requires
 # NOTE: this will force the device into safe mode until this dependency is met, which is why
 # this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
-ifeq ($(PLATFORM_ID),32)
+ifeq ($(PLATFORM_MCU),rtl872x)
 BOOTLOADER_DEPENDENCY = 2000
 else ifeq ($(PLATFORM_GEN),3)
 BOOTLOADER_DEPENDENCY = 1101
@@ -37,22 +32,7 @@ else
 # Some sensible default
 BOOTLOADER_DEPENDENCY = 0
 endif
-ifeq ($(PLATFORM_ID),32)
-PREBOOTLOADER_PART1_DEPENDENCY = 3
-endif
-
-# The version of the bootloader that the system firmware requires for 28
-# NOTE: this will force the device into safe mode until this dependency is met, which is why
-# this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
-ifeq ($(PLATFORM_ID),28)
-BOOTLOADER_DEPENDENCY = 2000
-else ifeq ($(PLATFORM_GEN),3)
-BOOTLOADER_DEPENDENCY = 1101
-else
-# Some sensible default
-BOOTLOADER_DEPENDENCY = 0
-endif
-ifeq ($(PLATFORM_ID),28)
+ifeq ($(PLATFORM_MCU),rtl872x)
 PREBOOTLOADER_PART1_DEPENDENCY = 3
 endif
 
@@ -90,7 +70,7 @@ endif
 endif
 endif # ($(PLATFORM_MCU),nRF52840)
 
-ifeq ($(PLATFORM_ID),$(filter $(PLATFORM_ID),28 32))
+ifeq ($(PLATFORM_MCU),rtl872x)
 SYSTEM_PART1_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},0,${BOOTLOADER_DEPENDENCY}
 BOOTLOADER_MODULE_DEPENDENCY ?= ${MODULE_FUNCTION_BOOTLOADER},2,${PREBOOTLOADER_PART1_DEPENDENCY}
 endif

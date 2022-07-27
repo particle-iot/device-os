@@ -258,8 +258,9 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
     });
 }
 
-// See wiring/pwm/ for P2 fixture PWM tests
-#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+// FIXME: rtl872x-based platforms don't support pulse in
+// See wiring/pwm/ for fixture PWM tests
+#if !HAL_PLATFORM_RTL872X
 test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     for_all_pwm_pins([](hal_pin_t pin, const char* name) {
     out->printlnf("Pin: %s", name);
@@ -725,4 +726,4 @@ test(PWM_12_CompherensiveResolutionFrequency) {
         assertMoreOrEqual(resolution, 15);
     });
 }
-#endif // (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#endif // !HAL_PLATFORM_RTL872X

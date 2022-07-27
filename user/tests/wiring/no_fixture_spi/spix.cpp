@@ -141,7 +141,7 @@ test(SPIX_03_SPI_Begin_With_Mode)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_SLAVE);
-#if (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
+#if HAL_PLATFORM_RTL872X
     assertEqual(info.ss_pin, D5);
 #else
 #error "Unknown platform!"
@@ -279,7 +279,7 @@ test(SPIX_07_SPI1_Begin_With_Mode)
     SPI1.end();
 
     // SPI1 can't work as slave on Tron
-#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#if !HAL_PLATFORM_RTL872X
     memset(&info, 0x00, sizeof(hal_spi_info_t));
     SPI1.begin(SPI_MODE_SLAVE);
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
@@ -335,7 +335,7 @@ test(SPIX_08_SPI1_Begin_With_Master_Ss_Pin)
 }
 
 // SPI1 can't work as slave on Tron
-#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#if !HAL_PLATFORM_RTL872X
 test(SPIX_09_SPI1_Begin_With_Slave_Ss_Pin)
 {
     // Just in case
@@ -374,7 +374,7 @@ test(SPIX_09_SPI1_Begin_With_Slave_Ss_Pin)
     assertFalse(info.enabled);
     SPI1.end();
 }
-#endif // (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#endif // !HAL_PLATFORM_RTL872X
 #endif // Wiring_SPI1
 
 namespace {

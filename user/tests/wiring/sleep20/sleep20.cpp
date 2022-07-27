@@ -89,7 +89,7 @@ test(02_System_Sleep_Mode_Deep_Without_Wakeup) {
     }
 }
 
-#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#if !HAL_PLATFORM_RTL872X
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
@@ -209,9 +209,9 @@ test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
     }
 }
 #endif // HAL_PLATFORM_EXTERNAL_RTC
-#endif // PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM
+#endif // !HAL_PLATFORM_RTL872X
 
-#if (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
+#if HAL_PLATFORM_RTL872X
 test(08_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
@@ -333,7 +333,7 @@ test(12_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
         assertLessOrEqual(exitTime - enterTime, SLEEP_DURATION_S + 1);
     }
 }
-#endif // (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
+#endif // HAL_PLATFORM_RTL872X
 
 test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
@@ -508,7 +508,7 @@ test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rt
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 }
 
-#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#if !HAL_PLATFORM_RTL872X
 
 #if HAL_PLATFORM_BLE
 test(23_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ble) {
@@ -725,7 +725,7 @@ test(31_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Wi
 }
 #endif // HAL_PLATFORM_WIFI
 
-#endif // (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#endif // !HAL_PLATFORM_RTL872X
 
 test(32_System_Sleep_With_Configuration_Object_Execution_Time_Prepare) {
     /* This test should only be run with threading disabled */

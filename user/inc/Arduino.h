@@ -91,7 +91,7 @@ inline void yield() {
 #endif
 
 #ifndef analogInputToDigitalPin
-#if (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
+#if HAL_PLATFORM_RTL872X
 #define analogInputToDigitalPin(p)  ((p) == 3 ? 0 : \
                                     ((p) == 4 ? 1 : \
                                     ((p) == 5 ? 14 : \

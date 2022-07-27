@@ -89,7 +89,7 @@ test(SERVO_04_WritePulseWidthOnPinResultsInCorrectMicroSeconds) {
 }
 
 // FIXME: P2 doesn't support pulseIn()
-#if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#if !HAL_PLATFORM_RTL872X
 test(SERVO_05_DetachDoesntAffectAnotherServoUsingSameTimer) {
     const int pulseWidth = 2000;
     // Attach 1st servo
@@ -115,4 +115,4 @@ test(SERVO_05_DetachDoesntAffectAnotherServoUsingSameTimer) {
     servo2.detach();
     assertTrue(readPulseWidth > pulseWidth - 50 && readPulseWidth < pulseWidth + 50);
 }
-#endif // PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM
+#endif // !HAL_PLATFORM_RTL872X

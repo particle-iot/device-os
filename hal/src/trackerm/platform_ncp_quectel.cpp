@@ -39,7 +39,6 @@ bool isValidNcpId(uint8_t id) {
 }
 
 const auto NCP_IDX_PRIMARY_QUECTEL = 0;
-const auto NCP_IDX_SECONDARY_ESP32 = 1;
 
 } // unnamed
 
@@ -64,9 +63,6 @@ int platform_ncp_get_info(int idx, PlatformNCPInfo* info) {
     if (idx == NCP_IDX_PRIMARY_QUECTEL) {
         info->identifier = platform_primary_ncp_identifier();
         info->updatable = false;
-    } else if (idx == NCP_IDX_SECONDARY_ESP32) {
-        info->identifier = PLATFORM_NCP_ESP32;
-        info->updatable = true;
     }
     return 0;
 }

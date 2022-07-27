@@ -19,7 +19,7 @@
 #endif // #ifndef USE_CS
 
 
-#if (PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM)
+#if HAL_PLATFORM_RTL872X
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
@@ -87,7 +87,7 @@
 
 #error "Unsupported platform"
 
-#endif // #if PLATFORM_P2
+#endif // #if HAL_PLATFORM_RTL872X
 
 
 #if defined(_SPI) && (USE_CS != 255)
