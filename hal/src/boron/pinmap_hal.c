@@ -125,7 +125,7 @@ const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
 
 #if PLATFORM_ID == PLATFORM_ESOMX
 
-// H/W v0.02
+// H/W v0.02 and H/W v0.03
 static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
 /* User space */
 /* D0            - 00 */ { NRF_PORT_1,    1,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 0,                8, EXTI_CHANNEL_NONE, 0},

@@ -45,14 +45,14 @@ static pin_t pin = pwm_pins[0].pin;
 
 template <typename F> void for_all_pwm_pins(F callback)
 {
-    // RGB.control(true);
+    RGB.control(true);
     for (uint8_t i = 0; i<arraySize(pwm_pins); i++)
     {
         callback(pwm_pins[i].pin, pwm_pins[i].name);
         // Make sure to disable PWM pins
         pinMode(pwm_pins[i].pin, INPUT);
     }
-    // RGB.control(false);
+    RGB.control(false);
 }
 
 test(PWM_01_NoAnalogWriteWhenPinModeIsNotSetToOutput) {
