@@ -24,11 +24,11 @@
 
 namespace particle::protocol {
 
-bool logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload) {
+void logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload) {
     CoapMessageDecoder d;
     const int r = d.decode(data, size);
     if (r < 0) {
-        return false;
+        return;
     }
     const char* type = "";
     switch (d.type()) {
@@ -89,11 +89,10 @@ bool logCoapMessage(LogLevel level, const char* category, const char* data, size
     log_printf(level, category, nullptr /* reserved */, "%s %s %s size=%u token=%s id=%u\r\n", type, code, uri,
             (unsigned)size, token, (unsigned)d.id());
     if (logPayload && d.hasPayload()) {
-        log_printf(level, category, nullptr, "Payload: ");
+        log_printf(level, category, nullptr, "Payload (%u bytes): ", (unsigned)d.payloadSize());
         log_dump(level, category, d.payload(), d.payloadSize(), 0 /* flags */, nullptr /* reserved */);
-        log_printf(level, category, nullptr, " (%u bytes)\r\n", (unsigned)d.payloadSize());
+        log_write(level, category, "\r\n", 2 /* size */, nullptr /* reserved */);
     }
-    return true;
 }
 
 } // namespace particle::protocol

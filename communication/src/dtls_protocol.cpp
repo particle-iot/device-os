@@ -58,7 +58,7 @@ void DTLSProtocol::init(const char *id,
 	// this point. It would be better to perform this check with some regularity though, e.g. when
 	// the device starts a new connection with the Cloud
 	if (LOG_ENABLED_C(TRACE, COAP_LOG_CATEGORY)) {
-		channel.enable_debug();
+		channel.set_debug_enabled(true);
 	}
 
 	INFO("channel inited");

@@ -20,7 +20,6 @@
 
 #include "message_channel.h"
 #include "coap.h"
-#include "coap_util.h"
 #include "timer_hal.h"
 #include "stdlib.h"
 #include "service_debug.h"
@@ -342,8 +341,6 @@ class CoAPMessageStore
 	 */
 	CoAPMessage* head;
 
-	bool debug_enabled;
-
 	/**
 	 * Retrieves the message with the given ID and the previous message.
 	 * If no message exists with the given id, nullptr is returned.
@@ -378,11 +375,7 @@ class CoAPMessageStore
 
 public:
 
-	CoAPMessageStore() :
-			head(nullptr),
-			debug_enabled(false)
-	{
-	}
+	CoAPMessageStore() : head(nullptr) {}
 
 	~CoAPMessageStore() {
 		clear();
@@ -493,10 +486,6 @@ public:
 		}
 	}
 
-	void enable_debug()
-	{
-		debug_enabled = true;
-	}
 };
 
 
@@ -521,8 +510,6 @@ class CoAPReliableChannel : public T
 	 * Stores the confirmable messages sent from the client requiring acknowledgement.
 	 */
 	CoAPMessageStore client;
-
-	bool debug_enabled;
 
 	ProtocolError base_send(Message& msg)
 	{
@@ -569,10 +556,7 @@ class CoAPReliableChannel : public T
 
 public:
 
-	CoAPReliableChannel(M m=0) :
-			millis(m),
-			debug_enabled(false)
-	{
+	CoAPReliableChannel(M m=0) : millis(m) {
 		delegateChannel.init(this);
 	}
 
@@ -734,13 +718,6 @@ public:
 		}
 		// todo - if msg contains a delivery callback then call that with the outcome of this
 		return error;
-	}
-
-	void enable_debug()
-	{
-		debug_enabled = true;
-		client.enable_debug();
-		server.enable_debug();
 	}
 };
 

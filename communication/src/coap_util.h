@@ -29,8 +29,7 @@ namespace particle::protocol {
  * @param data Message data.
  * @param size Message size.
  * @param logPayload Whether to log the payload data of the message.
- * @return `true` if the message was parsed and logged successfully, otherwise `false`.
  */
-bool logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload);
+void logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload = false);
 
 } // namespace particle::protocol

@@ -51,11 +51,8 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 	bool retransmit = (msg->prepare_retransmit(now));
 	if (retransmit)
 	{
-		if (debug_enabled)
-		{
-			LOG(TRACE, "Retransmitting CoAP message; attempt %d of %d", msg->get_transmit_count(), (int)CoAPMessage::MAX_RETRANSMIT);
-			logCoapMessage(LOG_LEVEL_TRACE, LOG_THIS_CATEGORY(), (const char*)msg->get_data(), msg->get_data_length(), false /* logPayload */);
-		}
+		LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %d of %d", (int)msg->get_id(),
+				(int)msg->get_transmit_count(), (int)CoAPMessage::MAX_RETRANSMIT);
 		send_message(msg, channel);
 	}
 	return retransmit;
@@ -65,10 +62,7 @@ void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 {
 	msg.notify_timeout();
 	if (msg.is_request()) {
-		if (debug_enabled) {
-			LOG(TRACE, "CoAP message timeout");
-			logCoapMessage(LOG_LEVEL_TRACE, LOG_THIS_CATEGORY(), (const char*)msg.get_data(), msg.get_data_length(), false /* logPayload */);
-		}
+		LOG(TRACE, "CoAP message timeout; ID: %d", (int)msg.get_id());
 		g_unacknowledgedMessageCounter++;
 		channel.command(MessageChannel::CLOSE);
 	}
@@ -109,11 +103,6 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
 	{
 		return MISSING_MESSAGE_ID;
 	}
-	if (debug_enabled)
-	{
-		LOG(TRACE, "Sending CoAP message");
-		logCoapMessage(LOG_LEVEL_TRACE, LOG_THIS_CATEGORY(), (const char*)msg.buf(), msg.length(), false /* logPayload */);
-	}
 	CoAPType::Enum coapType = CoAP::type(msg.buf());
 	if (coapType==CoAPType::CON || coapType==CoAPType::ACK || coapType==CoAPType::RESET)
 	{
@@ -142,10 +131,6 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
  */
 ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_tick_t time)
 {
-	if (debug_enabled) {
-		LOG(TRACE, "Received CoAP message");
-		logCoapMessage(LOG_LEVEL_TRACE, LOG_THIS_CATEGORY(), (const char*)msg.buf(), msg.length(), false /* logPayload */);
-	}
 	CoAPType::Enum msgtype = msg.get_type();
 	msg.decode_id();
 	if (msgtype==CoAPType::ACK || msgtype==CoAPType::RESET)
