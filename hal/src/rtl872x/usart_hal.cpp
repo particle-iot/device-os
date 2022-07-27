@@ -412,6 +412,51 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    EventGroupHandle_t eventGroup() {
+        return evGroup_;
+    }
+
+    int enableEvent(HAL_USART_Pvt_Events event) {
+        if (event & HAL_USART_PVT_EVENT_READABLE) {
+            if (data() <= 0) {
+                rxLock(false);
+            } else {
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
+            }
+        }
+
+        if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+            if (space() <= 0) {
+                txLock(false);
+            } else {
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+            }
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int disableEvent(HAL_USART_Pvt_Events event) {
+        if (event & HAL_USART_PVT_EVENT_READABLE) {
+            rxLock(true);
+            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
+        }
+
+        if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+            txLock(true);
+            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int waitEvent(uint32_t events, system_tick_t timeout) {
+        CHECK(enableEvent((HAL_USART_Pvt_Events)events));
+
+        auto res = xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
+        return res;
+    }
+
     static Usart* getInstance(hal_usart_interface_t serial) {
         static Usart Usarts[] = {
             {2, TX,  RX,  PIN_INVALID, PIN_INVALID}, // LOG UART
@@ -451,6 +496,10 @@ public:
                     uart->transmitting_ = false;
                     uart->txBuffer_.consumeCommit(uart->curTxCount_);
                     uart->startTransmission();
+                    BaseType_t yield = pdFALSE;
+                    if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
+                        portYIELD_FROM_ISR(yield);
+                    }
                 }
                 break;
             }
@@ -464,6 +513,10 @@ public:
                     const ssize_t canWrite = uart->rxBuffer_.space();
                     if (canWrite > 0) {
                         uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                    }
+                    BaseType_t yield = pdFALSE;
+                    if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
+                        portYIELD_FROM_ISR(yield);
                     }
                     uart->startReceiver();
                 }
@@ -488,7 +541,10 @@ private:
               transmitting_(false),
               receiving_(false),
               configured_(false),
-              index_(index) {
+              index_(index),
+              evGroup_(nullptr) {
+        evGroup_ = xEventGroupCreate();
+        SPARK_ASSERT(evGroup_);
         // LOG UART is enabled on boot
         if (index_ == 2) {
             state_ = HAL_USART_STATE_ENABLED;
@@ -697,6 +753,10 @@ private:
             GDMA_Cmd(txDmaInitStruct->GDMA_Index, txDmaInitStruct->GDMA_ChNum, DISABLE);
             uart->txBuffer_.consumeCommit(uart->curTxCount_);
             uart->startTransmission();
+            BaseType_t yield = pdFALSE;
+            if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
+                portYIELD_FROM_ISR(yield);
+            }
         }
         return 0;
     }
@@ -717,6 +777,10 @@ private:
         uart->dataInFlight(true /* commit */, true /* cancel */);
         uart->receiving_ = false;
         uart->startReceiver();
+        BaseType_t yield = pdFALSE;
+        if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
+            portYIELD_FROM_ISR(yield);
+        }
         return 0;
     }
 
@@ -778,6 +842,8 @@ private:
 
     static constexpr size_t MAX_DMA_BLOCK_SIZE = 4096;
     static constexpr size_t MAX_UART_FIFO_SIZE = 16;
+
+    EventGroupHandle_t evGroup_;
 };
 
 int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*) {
@@ -904,19 +970,26 @@ void hal_usart_half_duplex(hal_usart_interface_t serial, bool enable) {
 }
 
 int hal_usart_pvt_get_event_group_handle(hal_usart_interface_t serial, EventGroupHandle_t* handle) {
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    auto grp = usart->eventGroup();
+    CHECK_TRUE(grp, SYSTEM_ERROR_INVALID_STATE);
+    *handle = grp;
     return SYSTEM_ERROR_NONE;
 }
 
 int hal_usart_pvt_enable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
-    return 0;
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->enableEvent(events);
 }
 
 int hal_usart_pvt_disable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
-    return 0;
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->disableEvent(events);
 }
 
 int hal_usart_pvt_wait_event(hal_usart_interface_t serial, uint32_t events, system_tick_t timeout) {
-    return 0;
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->waitEvent(events, timeout);
 }
 
 int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
