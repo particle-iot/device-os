@@ -195,37 +195,35 @@ public:
     void reset() {
         end();
 
+        hal_gpio_mode(sclPin_, INPUT_PULLUP);
         // Just in case make sure that the pins are correctly configured (they should anyway be at this point)
         hal_gpio_config_t conf = {};
         conf.size = sizeof(conf);
         conf.version = HAL_GPIO_VERSION;
         conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
         conf.set_value = true;
-        conf.value = 1;
-        hal_gpio_configure(sdaPin_, &conf, nullptr);
+        conf.value = hal_gpio_read(sclPin_);;
+        hal_gpio_configure(sclPin_, &conf, nullptr);
 
-        // Check the SCL first
-        hal_gpio_mode(sclPin_, INPUT_PULLUP);
-        if (hal_gpio_read(sclPin_) == 0) {
-            // Generate up to 9 pulses on SCL to tell slave to release the bus
-            for (int i = 0; i < 9; i++) {
-                conf.value = 0;
-                hal_gpio_configure(sclPin_, &conf, nullptr);
+        // Generate up to 9 pulses on SCL to tell slave to release the bus
+        for (int i = 0; i < 9; i++) {
+            conf.value = 1;
+            hal_gpio_configure(sdaPin_, &conf, nullptr);
+            hal_gpio_write(sdaPin_, 1);
+            HAL_Delay_Microseconds(50);
 
+            hal_gpio_mode(sdaPin_, INPUT_PULLUP);
+            if (hal_gpio_read(sdaPin_) == 0) {
+                hal_gpio_write(sclPin_, 0);
+                HAL_Delay_Microseconds(50);
                 hal_gpio_write(sclPin_, 1);
                 HAL_Delay_Microseconds(50);
                 hal_gpio_write(sclPin_, 0);
                 HAL_Delay_Microseconds(50);
-
-                hal_gpio_mode(sclPin_, INPUT_PULLUP);
-                if (hal_gpio_read(sclPin_) == 1) {
-                    break;
-                }
+            } else {
+                break;
             }
         }
-
-        conf.value = 1;
-        hal_gpio_configure(sclPin_, &conf, nullptr);
 
         // Generate STOP condition: pull SDA low, switch to high
         hal_gpio_write(sdaPin_, 0);
