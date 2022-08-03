@@ -553,7 +553,7 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
             // If delay duration extends across the micro rollover, 
             // account for micros remaining before rollover as well as micros after rollover
             if (end_micros < start_micros) {
-                delay = (0xFFFFFFFF - start_micros) + end_micros;
+                delay = (std::numeric_limits<system_tick_t>::max() - start_micros) + end_micros;
             }
 
             HAL_Delay_Microseconds(delay);
