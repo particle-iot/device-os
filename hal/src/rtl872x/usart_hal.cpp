@@ -239,10 +239,9 @@ public:
                 end();
                 return SYSTEM_ERROR_INTERNAL;
             }
-        } else {
-            InterruptRegister((IRQ_FUN)uartTxRxIntHandler, uartTable_[index_].IrqNum, (uint32_t)this, 5);
-            InterruptEn(uartTable_[index_].IrqNum, 5);
         }
+        InterruptRegister((IRQ_FUN)uartTxRxIntHandler, uartTable_[index_].IrqNum, (uint32_t)this, 5);
+        InterruptEn(uartTable_[index_].IrqNum, 5);
 
         startReceiver();
 
@@ -416,7 +415,10 @@ public:
     int enableEvent(HAL_USART_Pvt_Events event) {
         if (event & HAL_USART_PVT_EVENT_READABLE) {
             if (data() <= 0) {
-                rxLock(false);
+                RxLock lk(this);
+                auto uartInstance = uartTable_[index_].UARTx;
+                UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), ENABLE);
+                UART_RXDMACmd(uartInstance, DISABLE);
             } else {
                 xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
             }
@@ -435,7 +437,9 @@ public:
 
     int disableEvent(HAL_USART_Pvt_Events event) {
         if (event & HAL_USART_PVT_EVENT_READABLE) {
-            rxLock(true);
+            RxLock lk(this);
+            auto uartInstance = uartTable_[index_].UARTx;
+            uartInstance->MISCR &= ~(RUART_RXDMA_OWNER);
             xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
         }
 
@@ -467,7 +471,6 @@ public:
     static uint32_t uartTxRxIntHandler(void* data) {
         auto uart = (Usart*)data;
         auto uartInstance = uart->uartTable_[uart->index_].UARTx;
-        SPARK_ASSERT(uart->useInterrupt());
         volatile uint8_t regIir = UART_IntStatus(uartInstance);
         if ((regIir & RUART_IIR_INT_PEND) != 0) {
             // No pending IRQ
@@ -504,18 +507,26 @@ public:
             case RUART_TIME_OUT_INDICATION: {
                 UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
                 if (uart->receiving_) {
-                    uart->receiving_ = false;
-                    uint8_t temp[MAX_UART_FIFO_SIZE];
-                    uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                    const ssize_t canWrite = uart->rxBuffer_.space();
-                    if (canWrite > 0) {
-                        uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                    if (uart->useInterrupt()) {
+                        uart->receiving_ = false;
+                        uint8_t temp[MAX_UART_FIFO_SIZE];
+                        uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
+                        const ssize_t canWrite = uart->rxBuffer_.space();
+                        if (canWrite > 0) {
+                            uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                        }
+                        BaseType_t yield = pdFALSE;
+                        if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
+                            portYIELD_FROM_ISR(yield);
+                        }
+                        uart->startReceiver();
+                    } else {
+                        BaseType_t yield = pdFALSE;
+                        if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
+                            portYIELD_FROM_ISR(yield);
+                        }
+                        UART_RXDMACmd(uartInstance, ENABLE);
                     }
-                    BaseType_t yield = pdFALSE;
-                    if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
-                        portYIELD_FROM_ISR(yield);
-                    }
-                    uart->startReceiver();
                 }
                 break;
             }
