@@ -544,16 +544,20 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
             break;
         }
         else if (elapsed_millis >= (ms-1)) {
-            // on the last millisecond, resolve using millis - we don't know how far in that millisecond had come
+            // on the last millisecond, resolve using micros - we don't know how far in that millisecond had come
             // have to be careful with wrap around since start_micros can be greater than end_micros.
 
-            for (;;)
-            {
-                system_tick_t delay = end_micros-HAL_Timer_Get_Micro_Seconds();
-                if (delay>100000)
-                    return;
-                HAL_Delay_Microseconds(min(delay/2, 1u));
+            system_tick_t start_micros = HAL_Timer_Get_Micro_Seconds();
+            system_tick_t delay = end_micros - start_micros;
+
+            // If delay duration extends across the micro rollover, 
+            // account for micros remaining before rollover as well as micros after rollover
+            if (end_micros < start_micros) {
+                delay = (0xFFFFFFFF - start_micros) + end_micros;
             }
+
+            HAL_Delay_Microseconds(delay);
+            return;
         }
         else
         {

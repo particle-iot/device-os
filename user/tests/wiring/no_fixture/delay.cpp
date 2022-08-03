@@ -25,7 +25,7 @@ test(DELAY_01_delay_1ms_is_within_tolerance)
     // These errors are mainly due to processing overhead, which is a greater factor on NRF with a slower clock speed
     const uint32_t delay_us_error = 200; // 20%
 #elif HAL_PLATFORM_RTL872X
-    const uint32_t delay_us_error = 60; // 6%
+    const uint32_t delay_us_error = 120; // 12%
 #else
 #error "Unsupported platform"
 #endif
