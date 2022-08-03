@@ -47,15 +47,8 @@ public:
 
     void init() {
         hal_i2c_end(i2c_, nullptr);
-        hal_gpio_config_t conf = {
-            .size = sizeof(conf),
-            .version = HAL_GPIO_VERSION,
-            .mode = OUTPUT_OPEN_DRAIN_PULLUP,
-            .set_value = true,
-            .value = 1
-        };
-        hal_gpio_configure(sda_, &conf, nullptr);
-        hal_gpio_configure(scl_, &conf, nullptr);
+        pinMode(sda_, OUTPUT_OPEN_DRAIN_PULLUP);
+        pinMode(scl_, OUTPUT_OPEN_DRAIN_PULLUP);
     }
 
     int transmit(const uint8_t* data, const WireTransmission& transmission, bool abort = false, size_t abortBitAfterAddress = 0, bool abortAck = false) {
@@ -126,8 +119,20 @@ public:
     }
 
 private:
+    void pinMode(hal_pin_t pin, PinMode mode, bool val = 1) {
+        hal_gpio_config_t conf = {
+            .size = sizeof(conf),
+            .version = HAL_GPIO_VERSION,
+            .mode = mode,
+            .set_value = true,
+            .value = val
+        };
+        hal_gpio_configure(pin, &conf, nullptr);
+    }
+
     void startCondition() {
         Log.info("start");
+        pinMode(sda_, OUTPUT_OPEN_DRAIN_PULLUP);
         hal_gpio_write(sda_, 0);
         HAL_Delay_Microseconds(50);
         hal_gpio_write(scl_, 0);
@@ -136,6 +141,7 @@ private:
 
     void stopCondition() {
         Log.info("stop");
+        pinMode(sda_, OUTPUT_OPEN_DRAIN_PULLUP);
         hal_gpio_write(sda_, 0);
         HAL_Delay_Microseconds(50);
         hal_gpio_write(scl_, 1);
@@ -148,6 +154,7 @@ private:
         Log.info("clock out %d bits (%02x)", bits, data);
         uint8_t res = 0x00;
         for (size_t i = 0; i < bits; i++) {
+            pinMode(sda_, OUTPUT_OPEN_DRAIN_PULLUP);
             hal_gpio_write(sda_, data & 0x80);
             res |= hal_gpio_read(sda_) << (8 - i - 1);
             hal_gpio_write(scl_, 1);
@@ -162,8 +169,8 @@ private:
     uint8_t clockByteIn(size_t bits = 8) {
         Log.info("clocking in %d bits", bits);
         uint8_t data = 0x00;
+        pinMode(sda_, INPUT_PULLUP);
         while (bits-- > 0) {
-            hal_gpio_write(sda_, 1);
             hal_gpio_write(scl_, 1);
             HAL_Delay_Microseconds(50);
             data |= (hal_gpio_read(sda_) & 0x01) << bits;
@@ -175,13 +182,14 @@ private:
     }
 
     int readAck() {
-        hal_gpio_write(sda_, 1);
+        pinMode(sda_, INPUT_PULLUP);
         hal_gpio_write(scl_, 1);
         HAL_Delay_Microseconds(50);
         bool ack = !hal_gpio_read(sda_);
         hal_gpio_write(scl_, 0);
         HAL_Delay_Microseconds(50);
         Log.info("read ack %d", ack);
+        pinMode(sda_, OUTPUT_OPEN_DRAIN_PULLUP);
         hal_gpio_write(sda_, 0);
         if (!ack) {
             return SYSTEM_ERROR_PROTOCOL;
@@ -191,6 +199,7 @@ private:
 
     int ackOut(bool ack) {
         Log.info("out ack %d", ack);
+        pinMode(sda_, OUTPUT_OPEN_DRAIN_PULLUP);
         hal_gpio_write(sda_, !ack);
         hal_gpio_write(scl_, 1);
         HAL_Delay_Microseconds(50);
@@ -366,8 +375,8 @@ test(I2C_07_bus_reset_is_not_destructive) {
     for (int i = 0; i <= 3 * 9 - 2 /* ignore full write without ack bit and full write with ack bit */; i++) {
         wire.init();
         assertMoreOrEqual(wire.transmit(txBuf, WireTransmission(MAX17043_ADDRESS).quantity(3), true /* abort */, i, true), 0);
-        fuel.begin();
         hal_i2c_reset(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, 0, nullptr);
+        fuel.begin();
         memset(buf, 0xff, sizeof(buf));
         assertEqual(0, fuel.readConfigRegister(buf[0], buf[1]));
         config = buf[0] << 8 | buf[1];

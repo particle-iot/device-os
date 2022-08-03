@@ -174,8 +174,22 @@ public:
             // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
             Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_GPIO);
             Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_GPIO);
+            txBuffer_.reset();
+            rxBuffer_.reset();
         }
         return SYSTEM_ERROR_NONE;
+    }
+
+    int suspend() {
+        CHECK_TRUE(state_ = HAL_I2C_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
+        CHECK(end());
+        state_ = HAL_I2C_STATE_SUSPENDED;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int restore() {
+        CHECK_TRUE(state_ = HAL_I2C_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
+        return begin((i2cInitStruct_.I2CMaster == I2C_MASTER_MODE) ? I2C_MODE_MASTER : I2C_MODE_SLAVE, i2cInitStruct_.I2CAckAddr);
     }
 
     void reset() {
@@ -189,25 +203,29 @@ public:
         conf.set_value = true;
         conf.value = 1;
         hal_gpio_configure(sdaPin_, &conf, nullptr);
-        conf.value = hal_gpio_read(sclPin_);
-        hal_gpio_configure(sclPin_, &conf, nullptr);
 
-        // Generate up to 9 pulses on SCL to tell slave to release the bus
-        for (int i = 0; i < 9; i++) {
-            hal_gpio_write(sdaPin_, 1);
-            HAL_Delay_Microseconds(50);
+        // Check the SCL first
+        hal_gpio_mode(sclPin_, INPUT_PULLUP);
+        if (hal_gpio_read(sclPin_) == 0) {
+            // Generate up to 9 pulses on SCL to tell slave to release the bus
+            for (int i = 0; i < 9; i++) {
+                conf.value = 0;
+                hal_gpio_configure(sclPin_, &conf, nullptr);
 
-            if (hal_gpio_read(sdaPin_) == 0) {
-                hal_gpio_write(sclPin_, 0);
-                HAL_Delay_Microseconds(50);
                 hal_gpio_write(sclPin_, 1);
                 HAL_Delay_Microseconds(50);
                 hal_gpio_write(sclPin_, 0);
                 HAL_Delay_Microseconds(50);
-            } else {
-                break;
+
+                hal_gpio_mode(sclPin_, INPUT_PULLUP);
+                if (hal_gpio_read(sclPin_) == 1) {
+                    break;
+                }
             }
         }
+
+        conf.value = 1;
+        hal_gpio_configure(sclPin_, &conf, nullptr);
 
         // Generate STOP condition: pull SDA low, switch to high
         hal_gpio_write(sdaPin_, 0);
@@ -702,12 +720,12 @@ int32_t hal_i2c_unlock(hal_i2c_interface_t i2c, void* reserved) {
 }
 
 int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
-    // auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-    // I2cLock lk(i2c);
-    // if (sleep) {
-        // Suspend I2C
-    // } else {
-        // Restore I2C
-    // }
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
+    if (sleep) {
+        return instance->suspend();
+    } else {
+        return instance->restore();
+    }
     return SYSTEM_ERROR_NONE;
 }
