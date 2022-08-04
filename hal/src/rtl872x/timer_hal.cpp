@@ -66,7 +66,7 @@ namespace {
 constexpr int TIMER_INDEX = 4;                              // Use TIM4
 constexpr int TIMER_PRESCALAR = 39;                         // Input clock = 40MHz_XTAL / (39 + 1) = 1MHz
 constexpr int TIMER_COUNTER_US_THRESHOLD = 1;               // 1us = 1tick
-constexpr int US_PER_OVERFLOW = 65536;                      // 65536us
+constexpr uint64_t US_PER_OVERFLOW = 65536;                 // 65536us
 constexpr int TIMER_IRQ_PRIORITY = 0;                       // Default priority in the close-source timer driver per FAE
 constexpr IRQn_Type TIMER_IRQ[] = {
     TIMER0_IRQ,
@@ -183,7 +183,7 @@ public:
     uint64_t getTime() {
 #ifndef HAL_TIMER_USE_SYSTIMER_ONLY
         auto state = getOverflowCounterWithTick();
-        return usSystemTimeMicrosBase_ + state.overflowCounter * US_PER_OVERFLOW + ticksToTime(state.curTimerTicks);
+        return usSystemTimeMicrosBase_ + state.overflowCounter * (uint64_t)US_PER_OVERFLOW + ticksToTime(state.curTimerTicks);
 #else
         return sysTimerUs();
 #endif // HAL_TIMER_USE_SYSTIMER_ONLY
