@@ -360,6 +360,22 @@ public:
         setAddress(transConfig_.address);
 
         uint32_t quantity = txBuffer_.data();
+        if (quantity == 0) {
+            // Clear flags
+            uint32_t temp = i2cDev_->IC_CLR_TX_ABRT;
+            (void)temp;
+            if (i2cDev_->IC_TX_ABRT_SOURCE & 0x00000001) {
+                return SYSTEM_ERROR_I2C_ABORT;
+            }
+            // Send the slave address only
+            i2cDev_->IC_DATA_CMD = (transConfig_.address << 1) | (1 << 11);
+            HAL_Delay_Milliseconds(5);
+            if (i2cDev_->IC_TX_ABRT_SOURCE & 0x00000001) {
+                return SYSTEM_ERROR_I2C_ABORT;
+            }
+            return SYSTEM_ERROR_NONE;
+        }
+
         for (uint32_t i = 0; i < quantity; i++) {
             if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
                 reset();
