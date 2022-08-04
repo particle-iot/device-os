@@ -413,6 +413,8 @@ public:
     }
 
     int enableEvent(HAL_USART_Pvt_Events event) {
+        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
+
         auto uartInstance = uartTable_[index_].UARTx;
         if (event & HAL_USART_PVT_EVENT_READABLE) {
             if (data() <= 0) {
@@ -439,13 +441,20 @@ public:
     }
 
     int disableEvent(HAL_USART_Pvt_Events event) {
+        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
+
+        auto uartInstance = uartTable_[index_].UARTx;
         if (event & HAL_USART_PVT_EVENT_READABLE) {
-            rxLock(true);
+            RxLock lk(this);
+            UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+            UART_RXDMACmd(uartInstance, ENABLE);
             xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
         }
 
         if (event & HAL_USART_PVT_EVENT_WRITABLE) {
-            txLock(true);
+            TxLock lk(this);
+            UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+            UART_TXDMACmd(uartInstance, ENABLE);
             xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
         }
 
@@ -453,6 +462,8 @@ public:
     }
 
     int waitEvent(uint32_t events, system_tick_t timeout) {
+        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
+
         CHECK(enableEvent((HAL_USART_Pvt_Events)events));
 
         auto res = xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
@@ -498,10 +509,6 @@ public:
                         uart->transmitting_ = false;
                         uart->txBuffer_.consumeCommit(uart->curTxCount_);
                         uart->startTransmission();
-                        BaseType_t yield = pdFALSE;
-                        if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
-                            portYIELD_FROM_ISR(yield);
-                        }
                     }
                 } else {
                     UART_TXDMACmd(uartInstance, ENABLE);
@@ -523,10 +530,6 @@ public:
                         const ssize_t canWrite = uart->rxBuffer_.space();
                         if (canWrite > 0) {
                             uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
-                        }
-                        BaseType_t yield = pdFALSE;
-                        if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
-                            portYIELD_FROM_ISR(yield);
                         }
                         uart->startReceiver();
                     } else {
@@ -822,10 +825,6 @@ private:
             GDMA_Cmd(txDmaInitStruct->GDMA_Index, txDmaInitStruct->GDMA_ChNum, DISABLE);
             uart->txBuffer_.consumeCommit(uart->curTxCount_);
             uart->startTransmission();
-            BaseType_t yield = pdFALSE;
-            if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
-                portYIELD_FROM_ISR(yield);
-            }
         }
         return 0;
     }
@@ -846,10 +845,6 @@ private:
         uart->dataInFlight(true /* commit */, true /* cancel */);
         uart->receiving_ = false;
         uart->startReceiver();
-        BaseType_t yield = pdFALSE;
-        if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
-            portYIELD_FROM_ISR(yield);
-        }
         return 0;
     }
 
