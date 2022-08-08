@@ -26,7 +26,6 @@ LOG_SOURCE_CATEGORY("system.ota");
 #include "system_led_signal.h"
 
 #include "ota_flash_hal.h"
-#include "timer_hal.h"
 
 #include "scope_guard.h"
 #include "check.h"
@@ -105,6 +104,7 @@ struct TransferState {
 } // namespace detail
 
 FirmwareUpdate::FirmwareUpdate() :
+        lastActiveTime_(0),
         updating_(false),
         ledOverridden_(false) {
 }
@@ -179,6 +179,7 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
         fileDesc_.store = FileTransfer::Store::FIRMWARE;
         system_notify_event(firmware_update, firmware_update_begin, &fileDesc_);
         system_notify_event(firmware_update_status, system_get_update_status(nullptr));
+        lastActiveTime_ = HAL_Timer_Get_Milli_Seconds();
     }
     if (partialSize) {
         *partialSize = fileOffset;
@@ -235,7 +236,6 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     if (!updating_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    TimingFlashUpdateTimeout = 0; // TODO: Get rid of legacy state variables
     const uintptr_t addr = HAL_OTA_FlashAddress() + chunkOffset;
     int r = HAL_FLASH_Update((const uint8_t*)chunkData, addr, chunkSize, nullptr);
     if (r != 0) {
@@ -260,6 +260,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     fileDesc_.chunk_address = fileDesc_.file_address + chunkOffset;
     fileDesc_.chunk_size = chunkSize;
     system_notify_event(firmware_update, firmware_update_progress, &fileDesc_);
+    lastActiveTime_ = HAL_Timer_Get_Milli_Seconds();
     return 0;
 }
 
@@ -267,6 +268,12 @@ void FirmwareUpdate::process() {
     if (!updating_) {
         return;
     }
+#if !HAL_PLATFORM_OTA_PROTOCOL_V3
+    if (HAL_Timer_Get_Milli_Seconds() - lastActiveTime_ >= TIMING_FLASH_UPDATE_TIMEOUT) {
+        // A Gen 2 device resets itself when the update times out
+        HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE_TIMEOUT, 0, nullptr);
+    }
+#endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
 #if HAL_PLATFORM_RESUMABLE_OTA
     if (transferState_) {
         const auto state = transferState_.get();
