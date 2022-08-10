@@ -64,9 +64,9 @@ int Demux::write(uint8_t pin, uint8_t value) {
 #if HAL_PLATFORM_NRF52840
         nrf_gpio_port_out_set(DEMUX_NRF_PORT, ((uint32_t)pin) << DEMUX_PINS_SHIFT);
 #elif HAL_PLATFORM_RTL872X
-        hal_gpio_write(DEMUX_C, pin >> 2);
-        hal_gpio_write(DEMUX_B, (pin >> 1) & 1);
-        hal_gpio_write(DEMUX_A, pin & 1);
+        hal_gpio_write(DEMUX_C, (pin & DEMUX_PIN_2_MASK) ? 1 : 0);
+        hal_gpio_write(DEMUX_B, (pin & DEMUX_PIN_1_MASK) ? 1 : 0);
+        hal_gpio_write(DEMUX_A, (pin & DEMUX_PIN_0_MASK) ? 1 : 0);
 #endif
         setPinValue(pin, 0);
     }

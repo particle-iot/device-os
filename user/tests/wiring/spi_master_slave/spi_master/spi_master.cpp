@@ -187,7 +187,7 @@ static void SPI_Master_Configure()
         MY_SPI.begin(MY_CS);
 
         // Clock dummy byte just in case
-        if (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM) { // Since SPI is enabled, the dummy byte will generate gabage data in the fifo on P2
+        if (!HAL_PLATFORM_RTL872X) { // Since SPI is enabled, the dummy byte will generate gabage data in the fifo on P2
             (void)MY_SPI.transfer(0xff);
         }
     }

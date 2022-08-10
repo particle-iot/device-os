@@ -271,7 +271,6 @@ test(I2C_04_Serial1_Cannot_Be_Enabled_While_Wire3_Is_Enabled) {
 
 #endif // PLATFORM_ID == PLATFORM_TRACKER
 
-
 test(I2C_05_Hal_Sleep_API_Test) {
     Wire.lock();
     bool enabled = Wire.isEnabled();

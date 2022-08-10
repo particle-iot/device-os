@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -43,10 +43,10 @@ namespace {
 
 /* en2 - Ethernet FeatherWing */
 BaseNetif* en2 = nullptr;
-/* wl3 - Realtek NCP Station */
-BaseNetif* wl3 = nullptr;
-/* wl4 - Realtek NCP Access Point */
+/* wl4 - Realtek NCP Station */
 BaseNetif* wl4 = nullptr;
+/* wl5 - Realtek NCP Access Point */
+BaseNetif* wl5 = nullptr;
 /* pp3 - Cellular */
 BaseNetif* pp3 = nullptr;
 
@@ -70,8 +70,8 @@ private:
         std::unique_ptr<WifiNcpClient> ncpClient(new(std::nothrow) RealtekNcpClient);
         CHECK_TRUE(ncpClient, SYSTEM_ERROR_NO_MEMORY);
         auto conf = NcpClientConfig()
-                .eventHandler(RealtekNcpNetif::ncpEventHandlerCb, wl3)
-                .dataHandler(RealtekNcpNetif::ncpDataHandlerCb, wl3);
+                .eventHandler(RealtekNcpNetif::ncpEventHandlerCb, wl4)
+                .dataHandler(RealtekNcpNetif::ncpDataHandlerCb, wl4);
         CHECK(ncpClient->init(std::move(conf)));
         // Initialize network manager
         mgr_.reset(new(std::nothrow) WifiNetworkManager(ncpClient.get()));
@@ -178,13 +178,15 @@ int if_init_platform(void*) {
         reserve_netif_index();
     }
 
-    /* wl3 - Realtek NCP Station */
-/*    wl3 = new RealtekNcpNetif();
-    if (wl3) {
-        ((RealtekNcpNetif*)wl3)->setWifiManager(wifiNetworkManager());
-        ((RealtekNcpNetif*)wl3)->init();
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
+    /* wl4 - Realtek NCP Station */
+    wl4 = new RealtekNcpNetif();
+    if (wl4) {
+        ((RealtekNcpNetif*)wl4)->setWifiManager(wifiNetworkManager());
+        ((RealtekNcpNetif*)wl4)->init();
     }
-*/
+#endif
+
     /* pp3 - Cellular */
     pp3 = new PppNcpNetif();
     if (pp3) {
@@ -192,10 +194,10 @@ int if_init_platform(void*) {
         ((PppNcpNetif*)pp3)->init();
     }
 
-    /* TODO: wl4 - ESP32 NCP Access Point */
-    reserve_netif_index();
-    reserve_netif_index();
-    (void)wl4;
+    reserve_netif_index(); // wl4
+    reserve_netif_index(); // wl5
+    /* TODO: wl5 - Realtek NCP Access Point */
+    (void)wl5;
 
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;
@@ -211,8 +213,10 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
     if (src == nullptr) {
         if (en2 && netifCanForwardIpv4(en2->interface())) {
             return en2->interface();
-        } else if (wl3 && netifCanForwardIpv4(wl3->interface())) {
-            return wl3->interface();
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
+        } else if (wl4 && netifCanForwardIpv4(wl4->interface())) {
+            return wl4->interface();
+#endif
         } else if (pp3 && netifCanForwardIpv4(pp3->interface())) {
             return pp3->interface();
         }
@@ -222,28 +226,30 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
 }
 
 unsigned char* rltk_wlan_get_ip(int idx) {
-    return (uint8_t *) &(wl3->interface()->ip_addr);
+    return (uint8_t *) &(wl4->interface()->ip_addr);
 }
 
 unsigned char* rltk_wlan_get_gw(int idx) {
-    return (uint8_t *) &(wl3->interface()->gw);
+    return (uint8_t *) &(wl4->interface()->gw);
 }
 
 unsigned char* rltk_wlan_get_gwmask(int idx) {
-    return (uint8_t *) &(wl3->interface()->netmask);
+    return (uint8_t *) &(wl4->interface()->netmask);
 }
 
 void rltk_wlan_set_netif_info(int idx_wlan, void* dev, unsigned char* dev_addr) {
     LOG(INFO, "rltk_wlan_set_netif_info: %d, %02x:%02x:%02x:%02x:%02x:%02x", idx_wlan,
         dev_addr[0], dev_addr[1], dev_addr[2], dev_addr[3], dev_addr[4], dev_addr[5]);
-    if (wl3) {
-        memcpy(wl3->interface()->hwaddr, dev_addr, sizeof(wl3->interface()->hwaddr));
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
+    if (wl4) {
+        memcpy(wl4->interface()->hwaddr, dev_addr, sizeof(wl4->interface()->hwaddr));
     }
+#endif
 }
 
 void netif_rx(int idx, unsigned int len) {
     // LOG(INFO, "netif_rx %d %u", idx, len);
-    RealtekNcpNetif::ncpDataHandlerCb(0, nullptr, len, wl3);
+    RealtekNcpNetif::ncpDataHandlerCb(0, nullptr, len, wl4);
 }
 
 int netif_is_valid_IP(int idx, unsigned char *ip_dest) {

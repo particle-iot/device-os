@@ -407,7 +407,7 @@ test(17_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 }
 
-#if HAL_PLATFORM_BLE && (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#if HAL_PLATFORM_BLE && !HAL_PLATFORM_RTL872X
 test(18_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after device being connected by BLE Central.");
     Serial.println("    >> Press any key now");
@@ -430,7 +430,7 @@ test(18_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
 
     BLE.stopAdvertising();
 }
-#endif // HAL_PLATFORM_BLE && (PLATFORM_ID != PLATFORM_P2 && PLATFORM_ID != PLATFORM_TRACKERM)
+#endif // HAL_PLATFORM_BLE && !HAL_PLATFORM_RTL872X
 
 test(19_System_Sleep_Mode_Stop_Wakeup_By_D0) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after you have a rising edge on D0.");

@@ -47,12 +47,8 @@
 
 #define SYSTICK_IRQ_PRIORITY                7      //CORTEX_M33 Systick Interrupt
 
-#if HAL_PLATFORM_RTL872X
-    #define INTERNAL_FLASH_SIZE             (0x800000)
-#else
-    #pragma message "PLATFORM_ID is " PREPSTRING(PLATFORM_ID)
-    #error "Unknown PLATFORM_ID"
-#endif
+// Currently works with platforms P2 and TrackerM
+#define INTERNAL_FLASH_SIZE             (0x800000)
 
 //Push Buttons, use interrupt HAL
 #define BUTTON1_PIN                                 BTN
