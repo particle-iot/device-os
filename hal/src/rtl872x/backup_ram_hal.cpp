@@ -25,6 +25,7 @@
 #include "platform_headers.h"
 #include "dct_hal.h"
 #include "dct.h"
+#include "rtl8721d.h"
 
 // NOTE: we are using a dedicated flash page for this as timings for writing
 // into fs vs raw page are about 10x
