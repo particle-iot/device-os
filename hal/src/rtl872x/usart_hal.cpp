@@ -421,6 +421,9 @@ public:
                 RxLock lk(this);
                 UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), ENABLE);
                 UART_RXDMACmd(uartInstance, DISABLE);
+                if (!receiving_) {
+                    startReceiver();
+                }
             } else {
                 xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
             }
@@ -432,6 +435,9 @@ public:
                 UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
                 // Temporarily disable TX DMA, otherwise, the TX FIFO won't be empty until all data is transferred by DMA.
                 UART_TXDMACmd(uartInstance, DISABLE);
+                if (!transmitting_) {
+                    startTransmission();
+                }
             } else {
                 xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
             }
@@ -581,9 +587,10 @@ private:
         } else {
             InterruptDis(uartTable_[index_].IrqNum);
             InterruptUnRegister(uartTable_[index_].IrqNum);
-            UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
-            UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
         }
+        // In case events group is involved when using DMA mode.
+        UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+        UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
         UART_ClearTxFifo(uartInstance);
         UART_ClearRxFifo(uartInstance);
         UART_DeInit(uartInstance);
