@@ -106,7 +106,11 @@
 #define PARTICLE_LED_RED                            PARTICLE_LED2  // RED Led
 #define PARTICLE_LED_GREEN                          PARTICLE_LED3  // GREEN Led
 #define PARTICLE_LED_BLUE                           PARTICLE_LED4  // BLUE Led
-#define LED_PIN_USER                                D7
+#if PLATFORM_ID == PLATFORM_ESOMX
+    #define LED_PIN_USER                                D5
+#else
+    #define LED_PIN_USER                                D7
+#endif
 #define LED_PIN_RED                                 RGBR
 #define LED_PIN_GREEN                               RGBG
 #define LED_PIN_BLUE                                RGBB
