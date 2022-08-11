@@ -56,6 +56,12 @@ using namespace particle;
 #define WIFI_OUID_SIZE                  3
 #define DEVICE_ID_PREFIX_SIZE           6
 
+// Offsets from base WiFi MAC address for reserved interfaces
+#define WIFI_STA_MAC_DELTA 0
+#define WIFI_AP_MAC_DELTA 1
+#define BLE_MAC_DELTA 2
+#define ETH_MAC_DELTA 3
+
 const uint8_t DEVICE_ID_PREFIX[] = {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21};
 
 int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
@@ -101,6 +107,46 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
 {
     return -1;
 }
+
+int hal_read_base_mac_address(uint8_t* dest, size_t destLen, void* reserved)
+{
+    uint8_t mac_address[WIFI_MAC_SIZE] = {};
+    CHECK_RETURN(readLogicalEfuse(WIFI_MAC_OFFSET, mac_address, sizeof(mac_address)), 0);
+    if (dest && destLen > 0) {
+        memcpy(dest, mac_address, std::min(destLen, sizeof(mac_address)));
+    }
+    return sizeof(mac_address);
+}
+
+int hal_get_ble_mac_address(uint8_t* dest, size_t destLen, void* reserved)
+{   
+    //read 48 bit mac address
+    uint8_t mac_address[WIFI_MAC_SIZE] = {};
+    CHECK_RETURN(hal_read_base_mac_address(mac_address, sizeof(mac_address), nullptr), WIFI_MAC_SIZE);
+    LOG_DEBUG(TRACE, "raw mac_address %02x %02x %02x %02x %02x %02x",
+        mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]);
+
+    uint64_t mac_num = 0;
+    memcpy(&mac_num,mac_address,sizeof(mac_address));
+    LOG_DEBUG(TRACE, "raw mac_num: %08x", mac_num);
+    mac_num += BLE_MAC_DELTA;
+    LOG_DEBUG(TRACE, "mac_num: %08x", mac_num);
+
+    if (dest && destLen > 0) {
+        memcpy((void*)dest, (const void*)&mac_num, std::min(destLen, sizeof(mac_address)));
+    }
+
+    return SYSTEM_ERROR_NONE;
+
+    // uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
+    // hal_get_device_id(deviceId, sizeof(deviceId));
+    // uint8_t* mac = deviceId + HAL_DEVICE_ID_SIZE - 6;
+    // mac[5] += BLE_MAC_OFFSET; // 0 - wifi sta, 1 - wifi ap, 2 - ble, 3 - eth
+    // le_cfg_local_identity_address(mac, GAP_IDENT_ADDR_RAND);
+    // le_set_gap_param(GAP_PARAM_RANDOM_ADDR, 6, mac);
+}
+
+
 
 int hal_get_device_serial_number(char* str, size_t size, void* reserved)
 {

@@ -133,6 +133,8 @@ typedef uint16_t hal_ble_attr_handle_t;
 typedef uint16_t hal_ble_conn_handle_t;
 
 
+int hal_get_ble_mac_address(uint8_t* dest, size_t destLen, void* reserved);
+
 #endif //HAL_PLATFORM_BLE
 
 

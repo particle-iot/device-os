@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_TRACE
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.ble");
 
@@ -32,6 +32,11 @@ extern "C" {
 #endif
 
 extern "C" {
+#include "rtl8721d.h"
+#include "rtl8721d_efuse.h"
+}
+
+extern "C" {
 #include "rtk_coex.h"
 }
 
@@ -43,6 +48,7 @@ extern "C" {
 #include <gap_adv.h>
 #include <gap_scan.h>
 #include <gap_bond_le.h>
+#include <gap_le.h>
 #include <gap_conn_le.h>
 #include <profile_server.h>
 #include <gatt_builtin_services.h>
@@ -162,6 +168,17 @@ bool isUuidEqual(const hal_ble_uuid_t* uuid1, const hal_ble_uuid_t* uuid2) {
 
 bool addressEqual(const hal_ble_addr_t& srcAddr, const hal_ble_addr_t& destAddr) {
     return (srcAddr.addr_type == destAddr.addr_type && !memcmp(srcAddr.addr, destAddr.addr, BLE_SIG_ADDR_LEN));
+}
+
+hal_ble_addr_t chipDefaultAddress() {
+    // TODO or use get device ID
+    hal_ble_addr_t localAddr = {};
+    uint64_t mac_num = 0;
+
+    hal_get_ble_mac_address((uint8_t*)&mac_num, 6, nullptr);
+    localAddr.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
+
+    return localAddr;
 }
 
 } //anonymous namespace
@@ -329,6 +346,8 @@ public:
     int setAppearance(uint16_t appearance) const;
     int setDeviceName(const char* deviceName, size_t len);
     int getDeviceName(char* deviceName, size_t len) const;
+    int setDeviceAddress(const hal_ble_addr_t* address) const;
+    int getDeviceAddress(hal_ble_addr_t* address) const;
 
     int setAdvertisingParameters(const hal_ble_adv_params_t* params);
     int getAdvertisingParameters(hal_ble_adv_params_t* params) const;
@@ -793,6 +812,7 @@ int BleGap::init() {
     CHECK(setDeviceName(devName_, devNameLen_));
     CHECK(setAdvertisingParameters(&advParams_));
     CHECK(setScanParams(&scanParams_));
+
     /* register gap message callback */
     le_register_app_cb(gapEventCallback);
 
@@ -907,6 +927,50 @@ int BleGap::getDeviceName(char* deviceName, size_t len) const {
     uint16_t nameLen = std::min(len - 1, devNameLen_); // Reserve 1 byte for the NULL-terminated character.
     memcpy(deviceName, devName_, nameLen);
     deviceName[nameLen] = '\0';
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::setDeviceAddress(const hal_ble_addr_t* address) const {
+    static hal_ble_addr_t last_set_address = {};
+    // TODO validate that the BLE stack is in the proper state to allow identity address changes
+    // The identity address cannot be changed while advertising, scanning or creating a connection.
+    // CHECK_FALSE(BleObject::getInstance().broadcaster()->advertising(), SYSTEM_ERROR_INVALID_STATE);
+    // CHECK_FALSE(BleObject::getInstance().observer()->scanning(), SYSTEM_ERROR_INVALID_STATE);
+    // CHECK_FALSE(BleObject::getInstance().connMgr()->connecting(address), SYSTEM_ERROR_INVALID_STATE);
+    hal_ble_addr_t newAddr = {};
+    if (address == nullptr) {
+        // default to reserved MAC address for this platform
+        newAddr = chipDefaultAddress();
+    } else {
+        newAddr = *address;
+    }
+    if (newAddr.addr_type != BLE_SIG_ADDR_TYPE_PUBLIC && newAddr.addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (newAddr.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC && (newAddr.addr[5] & 0xC0) != 0xC0) {
+        // For random static address, the two most significant bits of the address shall be equal to 1.
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    
+    le_cfg_local_identity_address(newAddr.addr,
+        (newAddr.addr_type == BLE_SIG_ADDR_TYPE_PUBLIC) ?  GAP_IDENT_ADDR_PUBLIC : GAP_IDENT_ADDR_RAND);
+    last_set_address = newAddr;
+
+    return SYSTEM_ERROR_NONE;
+
+    // ble_gap_addr_t bleGapAddr = toPlatformAddress(newAddr);
+    // int ret = sd_ble_gap_addr_set(&bleGapAddr);
+    // return nrf_system_error(ret);
+}
+
+int BleGap::getDeviceAddress(hal_ble_addr_t* address) const {
+    CHECK_TRUE(address, SYSTEM_ERROR_INVALID_ARGUMENT);
+    //TODO
+
+    // ble_gap_addr_t localAddr;
+    // int ret = sd_ble_gap_addr_get(&localAddr);
+    // CHECK_NRF_RETURN(ret, nrf_system_error(ret));
+    // *address = toHalAddress(localAddr);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2057,13 +2121,15 @@ int hal_ble_set_callback_on_periph_link_events(hal_ble_on_link_evt_cb_t callback
 int hal_ble_gap_set_device_address(const hal_ble_addr_t* address, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_device_address().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().setDeviceAddress(address);
 }
 
 int hal_ble_gap_get_device_address(hal_ble_addr_t* address, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_device_address().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getDeviceAddress(address);
 }
 
 int hal_ble_gap_set_device_name(const char* device_name, size_t len, void* reserved) {
