@@ -1,12 +1,4 @@
-/**
- ******************************************************************************
- * @file    ota_flash_hal.cpp
- * @author  Matthew McGowan, Satish Nair
- * @version V1.0.0
- * @date    27-Jul-2022
- * @brief
- ******************************************************************************
-  *
+/*
  * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -21,7 +13,6 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************
  */
 
 #include <cstring>
