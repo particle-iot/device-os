@@ -131,6 +131,8 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
             Pinmux_Swdoff();
         }
 
+        GPIO_INTConfig(rtlPin, DISABLE);
+
         GPIO_InitTypeDef  GPIO_InitStruct = {};
         GPIO_InitStruct.GPIO_Pin = rtlPin;
         GPIO_InitStruct.GPIO_Mode = GPIO_Mode_INT;
@@ -151,13 +153,14 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
         GPIO_UserRegIrq(rtlPin, (VOID*)gpioIntHandler, (void*)((uint32_t)pin));
 
         GPIO_INTMode(rtlPin, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_ENABLE);
-        GPIO_INTConfig(rtlPin, ENABLE);
 
         interruptsConfig[pin].state = INT_STATE_ENABLED;
         interruptsConfig[pin].callback.handler = handler;
         interruptsConfig[pin].callback.data = data;
         interruptsConfig[pin].mode = mode;
         hal_pin_set_function(pin, PF_DIO);
+
+        GPIO_INTConfig(rtlPin, ENABLE);
 
         return SYSTEM_ERROR_NONE;
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -215,9 +218,7 @@ int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved) 
 
 void hal_interrupt_enable_all(void) {
     // FIXME: this only enables GPIO interrupt, while the API name is ambiguous
-    NVIC_ClearPendingIRQ(GPIOA_IRQ);
     NVIC_EnableIRQ(GPIOA_IRQ);
-    NVIC_ClearPendingIRQ(GPIOB_IRQ);
     NVIC_EnableIRQ(GPIOB_IRQ);
 }
 
