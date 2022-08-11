@@ -171,6 +171,7 @@ int if_init_platform(void*) {
         reserve_netif_index();
     }
 
+    // Order of initialization is important!
     /* pp3 - Cellular */
     pp3 = new PppNcpNetif();
     if (pp3) {
@@ -195,7 +196,6 @@ int if_init_platform(void*) {
 
     return 0;
 }
-
 
 extern "C" {
 

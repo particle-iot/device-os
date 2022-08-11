@@ -30,6 +30,8 @@
 #include "realtek/rtlncpnetif.h"
 #include "lwip_util.h"
 #include "core_hal.h"
+#include "deviceid_hal.h"
+
 
 using namespace particle;
 using namespace particle::net;

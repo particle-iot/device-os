@@ -135,8 +135,8 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
 
 int hal_get_device_hw_version(uint32_t* revision, void* reserved)
 {
-    // HW Data format: | NCP_ID | HW_VERSION | HW Feature Flags |
-    //                 | byte 0 |   byte 1   |    byte 2/3      |
+    // HW Data format: | NCP_ID (LSB) | HW_VERSION | HW Feature Flags |
+    //                 |    byte 0    |   byte 1   |    byte 2/3      |
     uint8_t hw_data[4] = {};
     CHECK(readLogicalEfuse(HARDWARE_DATA_OFFSET, (uint8_t*)hw_data, HARDWARE_DATA_SIZE));
     if (hw_data[1] == 0xFF) {

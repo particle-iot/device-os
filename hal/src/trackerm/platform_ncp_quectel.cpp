@@ -20,10 +20,12 @@
 #include "dct.h"
 #include "check.h"
 #include "system_error.h"
+#include "deviceid_hal.h"
 
 namespace {
 
-const uintptr_t NCP_ID_OTP_ADDRESS = 0x00000020;
+// Undefine hardware version
+const auto HW_VERSION_UNDEFINED = 0xFF;
 
 bool isValidNcpId(uint8_t id) {
     switch (id) {
@@ -47,8 +49,11 @@ PlatformNCPIdentifier platform_primary_ncp_identifier() {
     uint8_t ncpId = 0;
     int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, 1);
     if (r < 0 || !isValidNcpId(ncpId)) {
-        // Check the OTP flash
-        r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, NCP_ID_OTP_ADDRESS, &ncpId, 1);
+        // Check the logical eFuse
+        uint32_t hwVersion = HW_VERSION_UNDEFINED;
+        r = hal_get_device_hw_version(&hwVersion, nullptr);
+        // get the first byte for NCP ID
+        ncpId = (hwVersion & 0xFF);
         if (r < 0 || !isValidNcpId(ncpId)) {
             ncpId = PlatformNCPIdentifier::PLATFORM_NCP_UNKNOWN;
         }
