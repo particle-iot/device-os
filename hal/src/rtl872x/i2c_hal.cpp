@@ -163,6 +163,14 @@ public:
 
     int end() {
         if (isEnabled()) {
+            hal_gpio_config_t conf = {};
+            conf.size = sizeof(conf);
+            conf.version = HAL_GPIO_VERSION;
+            conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
+            conf.set_value = true;
+            conf.value = 1;
+            hal_gpio_configure(sclPin_, &conf, nullptr);
+            hal_gpio_configure(sdaPin_, &conf, nullptr);
             if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
                 InterruptDis(I2C0_IRQ_LP);
 	            InterruptUnRegister(I2C0_IRQ_LP);
@@ -195,24 +203,24 @@ public:
     void reset() {
         end();
 
-        hal_gpio_mode(sclPin_, INPUT_PULLUP);
         // Just in case make sure that the pins are correctly configured (they should anyway be at this point)
         hal_gpio_config_t conf = {};
         conf.size = sizeof(conf);
         conf.version = HAL_GPIO_VERSION;
         conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
         conf.set_value = true;
-        conf.value = hal_gpio_read(sclPin_);;
+        conf.value = 1;
         hal_gpio_configure(sclPin_, &conf, nullptr);
+        hal_gpio_configure(sdaPin_, &conf, nullptr);
+
+        // Check if slave is stretching the SCL
+        if (!WAIT_TIMED(transConfig_.timeout_ms, hal_gpio_read(sclPin_) == 0)) {
+            // We can't proceed because there is probably hardware issue.
+            SPARK_ASSERT(false);
+        }
 
         // Generate up to 9 pulses on SCL to tell slave to release the bus
         for (int i = 0; i < 9; i++) {
-            conf.value = 1;
-            hal_gpio_configure(sdaPin_, &conf, nullptr);
-            hal_gpio_write(sdaPin_, 1);
-            HAL_Delay_Microseconds(50);
-
-            hal_gpio_mode(sdaPin_, INPUT_PULLUP);
             if (hal_gpio_read(sdaPin_) == 0) {
                 hal_gpio_write(sclPin_, 0);
                 HAL_Delay_Microseconds(50);
@@ -363,14 +371,20 @@ public:
         if (quantity == 0) {
             // Clear flags
             uint32_t temp = i2cDev_->IC_CLR_TX_ABRT;
+            temp = i2cDev_->IC_CLR_STOP_DET;
             (void)temp;
-            if (i2cDev_->IC_TX_ABRT_SOURCE & 0x00000001) {
+            if ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK)
+                 || (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_RAW_INTR_STAT_STOP_DET)) {
                 return SYSTEM_ERROR_I2C_ABORT;
             }
             // Send the slave address only
-            i2cDev_->IC_DATA_CMD = (transConfig_.address << 1) | (1 << 11);
-            HAL_Delay_Milliseconds(5);
-            if (i2cDev_->IC_TX_ABRT_SOURCE & 0x00000001) {
+            i2cDev_->IC_DATA_CMD = (transConfig_.address << 1) | BIT_CTRL_IC_DATA_CMD_NULLDATA | BIT_CTRL_IC_DATA_CMD_STOP;
+            // If slave is not detected, the STOP_DET bit won't be set, and the TX_ABRT is set instead.
+            if (!WAIT_TIMED(transConfig_.timeout_ms, ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) == 0)
+                                                  && ((i2cDev_->IC_RAW_INTR_STAT & BIT_IC_RAW_INTR_STAT_STOP_DET) == 0))) {
+                return SYSTEM_ERROR_I2C_TX_ADDR_TIMEOUT;
+            }
+            if (i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) {
                 return SYSTEM_ERROR_I2C_ABORT;
             }
             return SYSTEM_ERROR_NONE;
@@ -388,10 +402,10 @@ public:
             if(i >= quantity - 1) {
                 if (stop) {
                     // Generate stop signal
-                    i2cDev_->IC_DATA_CMD = data | (1 << 9);
+                    i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_STOP;
                 } else {
                     // Generate restart signal
-                    i2cDev_->IC_DATA_CMD = data | (1 << 10);
+                    i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_RESTART;
                 }
             } else {
                 // The address will be sent before sending the first data byte
