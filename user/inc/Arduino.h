@@ -154,7 +154,7 @@ typedef volatile uint32_t RwReg;
 // LED
 #if HAL_PLATFORM_NRF52840
 # ifndef LED_BUILTIN
-# define LED_BUILTIN D7
+# define LED_BUILTIN LED_PIN_USER
 # endif
 
 # ifndef ATN
