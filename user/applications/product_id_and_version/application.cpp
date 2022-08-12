@@ -6,12 +6,12 @@
 PRODUCT_VERSION(3);
 
 void setup() {
-	pinMode(D7, OUTPUT);
+	pinMode(LED_PIN_USER, OUTPUT);
 }
 
 void loop() {
-	digitalWrite(D7, HIGH);
+	digitalWrite(LED_PIN_USER, HIGH);
 	delay(100);
-	digitalWrite(D7, LOW);
+	digitalWrite(LED_PIN_USER, LOW);
 	delay(100);
 }

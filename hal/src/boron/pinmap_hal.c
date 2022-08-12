@@ -131,61 +131,54 @@ static Hal_Pin_Info s_pin_map[TOTAL_PINS] = {
 /* D0            - 00 */ { NRF_PORT_1,    1,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 0,                8, EXTI_CHANNEL_NONE, 0},
 /* D1            - 01 */ { NRF_PORT_1,    2,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 1,                8, EXTI_CHANNEL_NONE, 0},
 /* D2            - 02 */ { NRF_PORT_1,    10,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 1,                 2,                8, EXTI_CHANNEL_NONE, 0},
-/* D3            - 03 */ { NRF_PORT_NONE, PIN_INVALID, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0, EXTI_CHANNEL_NONE, 0},
-/* D4            - 04 */ { NRF_PORT_NONE, PIN_INVALID, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0, EXTI_CHANNEL_NONE, 0},
-/* D5            - 05 */ { NRF_PORT_1,    11,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D6            - 06 */ { NRF_PORT_NONE, PIN_INVALID, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0, EXTI_CHANNEL_NONE, 0},
-/* D7            - 07 */ { NRF_PORT_NONE, PIN_INVALID, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0, EXTI_CHANNEL_NONE, 0},
-/* D8  / TX      - 08 */ { NRF_PORT_0,    6,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 0,                8, EXTI_CHANNEL_NONE, 0},
-/* D9  / RX      - 09 */ { NRF_PORT_0,    8,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 1,                8, EXTI_CHANNEL_NONE, 0},
+/* D5            - 03 */ { NRF_PORT_1,    11,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D8  / TX      - 04 */ { NRF_PORT_0,    6,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 0,                8, EXTI_CHANNEL_NONE, 0},
+/* D9  / RX      - 05 */ { NRF_PORT_0,    8,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 1,                8, EXTI_CHANNEL_NONE, 0},
 
-/* D10 / A0      - 10 */ { NRF_PORT_0,    3,           PIN_MODE_NONE, PF_NONE, 1,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D11 / A1      - 11 */ { NRF_PORT_0,    2,           PIN_MODE_NONE, PF_NONE, 0,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D12 / A2      - 12 */ { NRF_PORT_0,    28,          PIN_MODE_NONE, PF_NONE, 4,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D13 / A3      - 13 */ { NRF_PORT_0,    29,          PIN_MODE_NONE, PF_NONE, 5,                1,                 3,                8, EXTI_CHANNEL_NONE, 0},
-/* D14 / A4      - 14 */ { NRF_PORT_0,    30,          PIN_MODE_NONE, PF_NONE, 6,                3,                 0,                8, EXTI_CHANNEL_NONE, 0},
-/* D15 / A5      - 15 */ { NRF_PORT_0,    31,          PIN_MODE_NONE, PF_NONE, 7,                3,                 1,                8, EXTI_CHANNEL_NONE, 0},
-/* D16 / A6      - 16 */ { NRF_PORT_0,    4,           PIN_MODE_NONE, PF_NONE, 2,                3,                 2,                8, EXTI_CHANNEL_NONE, 0},
-/* D17 / A7      - 17 */ { NRF_PORT_0,    5,           PIN_MODE_NONE, PF_NONE, 3,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-
-/* D18 / B0      - 18 */ { NRF_PORT_0,    10,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D19 / B1      - 19 */ { NRF_PORT_0,    9,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D20 / B2      - 20 */ { NRF_PORT_1,    12,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 2,                8, EXTI_CHANNEL_NONE, 0},
-/* D21 / B3      - 21 */ { NRF_PORT_1,    13,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 3,                8, EXTI_CHANNEL_NONE, 0},
-/* D22 / B4      - 22 */ { NRF_PORT_NONE, PIN_INVALID, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0, EXTI_CHANNEL_NONE, 0},
-/* D23 / B5      - 23 */ { NRF_PORT_NONE, PIN_INVALID, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 0, EXTI_CHANNEL_NONE, 0},
-/* D24 / C0      - 24 */ { NRF_PORT_1,    8,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D25 / C1      - 25 */ { NRF_PORT_1,    9,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D26 / C2      - 26 */ { NRF_PORT_0,    11,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D27 / C3      - 27 */ { NRF_PORT_0,    12,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* D28 / C4      - 28 */ { NRF_PORT_0,    24,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 3,                 3,                8, EXTI_CHANNEL_NONE, 0},
-/* D29 / C5      - 29 */ { NRF_PORT_1,    3,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,                8, EXTI_CHANNEL_NONE, 0},
+/* D10 / A0      - 06 */ { NRF_PORT_0,    3,           PIN_MODE_NONE, PF_NONE, 1,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D11 / A1      - 07 */ { NRF_PORT_0,    2,           PIN_MODE_NONE, PF_NONE, 0,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D12 / A2      - 08 */ { NRF_PORT_0,    28,          PIN_MODE_NONE, PF_NONE, 4,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D13 / A3      - 09 */ { NRF_PORT_0,    29,          PIN_MODE_NONE, PF_NONE, 5,                1,                 3,                8, EXTI_CHANNEL_NONE, 0},
+/* D14 / A4      - 10 */ { NRF_PORT_0,    30,          PIN_MODE_NONE, PF_NONE, 6,                3,                 0,                8, EXTI_CHANNEL_NONE, 0},
+/* D15 / A5      - 11 */ { NRF_PORT_0,    31,          PIN_MODE_NONE, PF_NONE, 7,                3,                 1,                8, EXTI_CHANNEL_NONE, 0},
+/* D16 / A6      - 12 */ { NRF_PORT_0,    4,           PIN_MODE_NONE, PF_NONE, 2,                3,                 2,                8, EXTI_CHANNEL_NONE, 0},
+/* D17 / A7      - 13 */ { NRF_PORT_0,    5,           PIN_MODE_NONE, PF_NONE, 3,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D18 / B0      - 14 */ { NRF_PORT_0,    10,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D19 / B1      - 15 */ { NRF_PORT_0,    9,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D20 / B2      - 16 */ { NRF_PORT_1,    12,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 2,                8, EXTI_CHANNEL_NONE, 0},
+/* D21 / B3      - 17 */ { NRF_PORT_1,    13,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 2,                 3,                8, EXTI_CHANNEL_NONE, 0},
+/* D24 / C0      - 18 */ { NRF_PORT_1,    8,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D25 / C1      - 19 */ { NRF_PORT_1,    9,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D26 / C2      - 20 */ { NRF_PORT_0,    11,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D27 / C3      - 21 */ { NRF_PORT_0,    12,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* D28 / C4      - 22 */ { NRF_PORT_0,    24,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 3,                 3,                8, EXTI_CHANNEL_NONE, 0},
+/* D29 / C5      - 23 */ { NRF_PORT_1,    3,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 3,                8, EXTI_CHANNEL_NONE, 0},
 
 /* System space */
-/* RGBR          - 30 */ { NRF_PORT_0,    26,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 0,                8, EXTI_CHANNEL_NONE, 0},
-/* RGBG          - 31 */ { NRF_PORT_0,    27,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,                8, EXTI_CHANNEL_NONE, 0},
-/* RGBB          - 32 */ { NRF_PORT_0,    7,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,                8, EXTI_CHANNEL_NONE, 0},
-/* MODE BUTTON   - 33 */ { NRF_PORT_0,    25,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* RESET BUTTON  - 34 */ { NRF_PORT_0,    18,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* PMIC_SDA      - 35 */ { NRF_PORT_1,    14,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* PMIC_SCL      - 36 */ { NRF_PORT_1,    15,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* INT_PMIC      - 37 */ { NRF_PORT_1,    4,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* TX1           - 38 */ { NRF_PORT_0,    16,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* RX1           - 39 */ { NRF_PORT_0,    15,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* RTS1          - 40 */ { NRF_PORT_0,    14,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* CTS1          - 41 */ { NRF_PORT_0,    13,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* UBPWR         - 42 */ { NRF_PORT_1,    6,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* UBRST         - 43 */ { NRF_PORT_1,    7,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
-/* UBVINT        - 44 */ { NRF_PORT_1,    5,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* RGBR          - 24 */ { NRF_PORT_0,    26,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 0,                8, EXTI_CHANNEL_NONE, 0},
+/* RGBG          - 25 */ { NRF_PORT_0,    27,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 1,                8, EXTI_CHANNEL_NONE, 0},
+/* RGBB          - 26 */ { NRF_PORT_0,    7,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, 0,                 2,                8, EXTI_CHANNEL_NONE, 0},
+/* MODE BUTTON   - 27 */ { NRF_PORT_0,    25,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* RESET BUTTON  - 28 */ { NRF_PORT_0,    18,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* PMIC_SDA      - 29 */ { NRF_PORT_1,    14,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* PMIC_SCL      - 30 */ { NRF_PORT_1,    15,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* INT_PMIC      - 31 */ { NRF_PORT_1,    4,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* TX1           - 32 */ { NRF_PORT_0,    16,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* RX1           - 33 */ { NRF_PORT_0,    15,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* RTS1          - 34 */ { NRF_PORT_0,    14,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* CTS1          - 35 */ { NRF_PORT_0,    13,          PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* UBPWR         - 36 */ { NRF_PORT_1,    6,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* UBRST         - 37 */ { NRF_PORT_1,    7,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
+/* UBVINT        - 38 */ { NRF_PORT_1,    5,           PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, 8, EXTI_CHANNEL_NONE, 0},
 };
 
 const uint8_t NRF_PIN_LOOKUP_TABLE[48] = {
-    PIN_INVALID, PIN_INVALID, 11,          10,          16,          17,          8,           32,          /* P0.00 ~ P0.07 */
-    9,           19,          18,          26,          27,          41,          40,          39,          /* P0.08 ~ P0.15 */
-    38,          PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, /* P0.16 ~ P0.23 */
-    28,          33,          30,          31,          12,          13,          14,          15,          /* P0.24 ~ P0.31 */
-    PIN_INVALID, 0,           1,           29,          37,          44,          42,          43,          /* P1.00 ~ P1.07 */
-    24,          25,          2,           5,           20,          21,          35,          36,          /* P1.08 ~ P1.15 */
+    PIN_INVALID, PIN_INVALID,  7,           6,          12,          13,           4,          26,          /* P0.00 ~ P0.07 */
+     5,          15,          14,          20,          21,          35,          34,          33,          /* P0.08 ~ P0.15 */
+    32,          PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, PIN_INVALID, /* P0.16 ~ P0.23 */
+    22,          27,          24,          25,           8,           9,          10,          11,          /* P0.24 ~ P0.31 */
+    PIN_INVALID,  0,           1,          23,          31,          38,          36,          37,          /* P1.00 ~ P1.07 */
+    18,          19,           2,           3,          16,          17,          29,          30,          /* P1.08 ~ P1.15 */
 };
 
 #endif // PLATFORM_ID == PLATFORM_ESOMX

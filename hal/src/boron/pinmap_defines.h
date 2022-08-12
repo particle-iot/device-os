@@ -170,7 +170,7 @@
 
 #if PLATFORM_ID == PLATFORM_ESOMX
 
-#define TOTAL_PINS 45
+#define TOTAL_PINS 39
 #define TOTAL_ANALOG_PINS 8
 #define FIRST_ANALOG_PIN A0
 
@@ -178,33 +178,27 @@
 #define D0 0
 #define D1 1
 #define D2 2
-#define D3 3
-#define D4 4
-#define D5 5
-#define D6 6
-#define D7 7
-#define D8 8
-#define D9 9
-#define D10 10
-#define D11 11
-#define D12 12
-#define D13 13
-#define D14 14
-#define D15 15
-#define D16 16
-#define D17 17
-#define D18 18
-#define D19 19
-#define D20 20
-#define D21 21
-#define D22 22
-#define D23 23
-#define D24 24
-#define D25 25
-#define D26 26
-#define D27 27
-#define D28 28
-#define D29 29
+#define D5 3
+#define D8 4
+#define D9 5
+#define D10 6
+#define D11 7
+#define D12 8
+#define D13 9
+#define D14 10
+#define D15 11
+#define D16 12
+#define D17 13
+#define D18 14
+#define D19 15
+#define D20 16
+#define D21 17
+#define D24 18
+#define D25 19
+#define D26 20
+#define D27 21
+#define D28 22
+#define D29 23
 
 // Analog pins
 #define A0 D10
@@ -220,8 +214,6 @@
 #define B1 D19
 #define B2 D20
 #define B3 D21
-#define B4 D22
-#define B5 D23
 
 #define C0 D24
 #define C1 D25
@@ -252,29 +244,29 @@
 #define RTS D11
 
 // MODE Button
-#define BTN 33
+#define BTN 27
 
 // RGB
-#define RGBR 30
-#define RGBG 31
-#define RGBB 32
+#define RGBR 24
+#define RGBG 25
+#define RGBB 26
 
 // WKP
 #define WKP A7
 
 // Cellular Modem
-#define TX1    38
-#define RX1    39
-#define CTS1   41
-#define RTS1   40
-#define UBPWR  42
-#define UBRST  43
-#define UBVINT 44
+#define TX1    32
+#define RX1    33
+#define CTS1   35
+#define RTS1   34
+#define UBPWR  36
+#define UBRST  37
+#define UBVINT 38
 // #define BUFEN 30
 
 // PMIC
-#define PMIC_SDA   35
-#define PMIC_SCL   36
-#define LOW_BAT_UC 37 // Shared with fuel gauge's INT
+#define PMIC_SDA   29
+#define PMIC_SCL   30
+#define LOW_BAT_UC 31 // Shared with fuel gauge's INT
 
 #endif // PLATFORM_ID == PLATFORM_ESOMX
