@@ -85,8 +85,12 @@ inline void pinSetFast(hal_pin_t _pin)
     pinConfigure(pin_info);
 
     GPIO_TypeDef* gpiobase = ((pin_info.gpio_port == RTL_PORT_A) ? GPIOA_BASE : GPIOB_BASE);
-    gpiobase->PORT[0].DDR |= (1 << pin_info.gpio_pin);
-    gpiobase->PORT[0].DR |= (1 << pin_info.gpio_pin);
+    if (pin_info.pin_mode == OUTPUT_OPEN_DRAIN || pin_info.pin_mode == OUTPUT_OPEN_DRAIN_PULLUP) {
+        gpiobase->PORT[0].DDR &= (~(1 << pin_info.gpio_pin));
+    } else {
+        gpiobase->PORT[0].DR |= (1 << pin_info.gpio_pin);
+        gpiobase->PORT[0].DDR |= (1 << pin_info.gpio_pin);
+    }
 }
 
 inline void pinResetFast(hal_pin_t _pin)
@@ -95,8 +99,8 @@ inline void pinResetFast(hal_pin_t _pin)
     pinConfigure(pin_info);
 
     GPIO_TypeDef* gpiobase = ((pin_info.gpio_port == RTL_PORT_A) ? GPIOA_BASE : GPIOB_BASE);
-    gpiobase->PORT[0].DDR |= (1 << pin_info.gpio_pin);
     gpiobase->PORT[0].DR &= (0 << pin_info.gpio_pin);
+    gpiobase->PORT[0].DDR |= (1 << pin_info.gpio_pin);
 }
 
 inline int32_t pinReadFast(hal_pin_t _pin)
