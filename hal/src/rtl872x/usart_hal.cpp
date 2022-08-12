@@ -339,11 +339,6 @@ public:
             size_t blockSize = rxDmaInitStruct_.GDMA_BlockSize;
             size_t alreadyCommitted = blockSize - rxBuffer_.acquirePending();
             size_t transferredToDmaFromUart = uartInstance->RX_BYTE_CNT & RUART_RX_READ_BYTE_CNTER;
-            if (hal_interrupt_is_isr()) {
-                // This method is called from DMA RX ISR
-                // Clear UART RX FIFO read counter ASAP, because UART might be still receiving data 
-                uartInstance->RX_BYTE_CNT |= RUART_RX_BYTE_CNTER_CLEAR;
-            }
             SPARK_ASSERT(transferredToDmaFromUart <= blockSize);
             ssize_t toConsume = std::max<ssize_t>(dmaAvailableInBuffer, transferredToDmaFromUart) - alreadyCommitted;
             SPARK_ASSERT(toConsume >= 0);
@@ -837,6 +832,8 @@ private:
             GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
             GDMA_Init(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, &rxDmaInitStruct_);
             GDMA_BurstEnable(rxDmaInitStruct_.GDMA_ChNum, DISABLE);
+            // Clear UART RX FIFO read counter
+            uartInstance->RX_BYTE_CNT |= RUART_RX_BYTE_CNTER_CLEAR;
             SPARK_ASSERT((uartInstance->RX_BYTE_CNT & RUART_RX_READ_BYTE_CNTER) == 0);
             GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, ENABLE);
         } else {
