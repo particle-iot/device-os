@@ -216,7 +216,6 @@ int HAL_Interrupts_Detach_Ext(uint16_t pin, uint8_t keepHandler, void* reserved)
 }
 
 void HAL_Interrupts_Enable_All(void) {
-    sd_nvic_ClearPendingIRQ(GPIOTE_IRQn);
     sd_nvic_EnableIRQ(GPIOTE_IRQn);
 }
 
