@@ -87,6 +87,64 @@ void gpioIntHandler(void* data) {
     }
 }
 
+// Particle implementation of GPIO_INTMode (without the PAD_PullCtrl() call)
+void GPIO_INTMode_HAL(u32 GPIO_Pin, u32 GPIO_Port, u32 GPIO_ITEnable, u32 GPIO_ITTrigger, u32 GPIO_ITPolarity, u32 GPIO_ITDebounce) {
+    uint32_t pinMask = 1 << (GPIO_Pin & 0x1f);
+    uint32_t portBase = (GPIO_Port == RTL_PORT_A) ? (uint32_t)GPIOA_BASE : (uint32_t)GPIOB_BASE;
+    uint32_t tempReg = 0;
+
+    // Explicitly do NOT set PULL UP/PULL DOWN PADCTL register
+
+    // SET GPIO_INT_BOTHEDGE reg
+    tempReg = HAL_READ32(portBase, 0x68);
+    if (GPIO_ITTrigger == GPIO_INT_Trigger_BOTHEDGE) {
+        HAL_WRITE32(portBase, 0x68, tempReg | pinMask);
+    } else {
+        HAL_WRITE32(portBase, 0x68, tempReg & ~pinMask);
+        // SET GPIO_INTTYPE_LEVEL reg only if not BOTH EDGE
+        tempReg = HAL_READ32(portBase, 0x38);
+        if (GPIO_ITTrigger == GPIO_INT_Trigger_EDGE) {
+            HAL_WRITE32(portBase, 0x38, tempReg | pinMask);
+        } else {
+            HAL_WRITE32(portBase, 0x38, tempReg & ~pinMask);
+        }
+    }
+    // SET GPIO_INT_POLARITY reg
+    tempReg = HAL_READ32(portBase, 0x3c);
+    if (GPIO_ITPolarity == GPIO_INT_POLARITY_ACTIVE_HIGH) {
+        HAL_WRITE32(portBase, 0x3c, tempReg | pinMask);
+    } else {
+        HAL_WRITE32(portBase, 0x3c, tempReg & ~pinMask);
+    }
+    // SET GPIO_DEBOUNCE reg
+    tempReg = HAL_READ32(portBase, 0x48);
+    if (GPIO_ITDebounce == GPIO_INT_DEBOUNCE_ENABLE) {
+        HAL_WRITE32(portBase, 0x48, tempReg | pinMask);
+    } else {
+        HAL_WRITE32(portBase, 0x48, tempReg & ~pinMask);
+    }
+    // SET GPIO_INTEN reg
+    tempReg = HAL_READ32(portBase, 0x30);
+    if (GPIO_ITEnable == ENABLE) {
+        HAL_WRITE32(portBase, 0x30, tempReg | pinMask);
+    } else {
+        HAL_WRITE32(portBase, 0x30, tempReg & ~pinMask);
+    }
+}
+
+// Particle implementation of GPIO_Init (which calls our GPIO_INTMode_HAL to avoid PAD_PullCtrl() call)
+// NOTE: Only for use with GPIO_Mode_INT, do not use for GPIO_Mode_IN/GPIO_Mode_OUT
+// NOTE: hal_pin_is_valid(pin) must be called prior to this!
+void GPIO_Init_HAL(GPIO_InitTypeDef *GPIO_InitStruct, u32 GPIO_Port) {
+    if (GPIO_InitStruct->GPIO_Mode != GPIO_Mode_INT) {
+        return;
+    }
+
+    Pinmux_Config(GPIO_InitStruct->GPIO_Pin, PINMUX_FUNCTION_GPIO); // force GPIO mode
+    GPIO_INTMode_HAL(GPIO_InitStruct->GPIO_Pin, GPIO_Port, 1 /*ENABLE*/, GPIO_InitStruct->GPIO_ITTrigger,
+            GPIO_InitStruct->GPIO_ITPolarity, GPIO_InitStruct->GPIO_ITDebounce);
+}
+
 } // anonymous
 
 void hal_interrupt_init(void) {
@@ -137,7 +195,6 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
         GPIO_InitStruct.GPIO_Pin = rtlPin;
         GPIO_InitStruct.GPIO_Mode = GPIO_Mode_INT;
         parseMode(mode, &GPIO_InitStruct.GPIO_ITTrigger, &GPIO_InitStruct.GPIO_ITPolarity);
-        GPIO_Init(&GPIO_InitStruct);
 
         if (pinInfo->gpio_port == RTL_PORT_A) {
             InterruptRegister(GPIO_INTHandler, GPIOA_IRQ, (u32)GPIOA_BASE, 5);		
@@ -150,9 +207,9 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
 
+        GPIO_Init_HAL(&GPIO_InitStruct, pinInfo->gpio_port);
         GPIO_UserRegIrq(rtlPin, (VOID*)gpioIntHandler, (void*)((uint32_t)pin));
-
-        GPIO_INTMode(rtlPin, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_ENABLE);
+        GPIO_INTMode_HAL(rtlPin, pinInfo->gpio_port, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_ENABLE);
 
         interruptsConfig[pin].state = INT_STATE_ENABLED;
         interruptsConfig[pin].callback.handler = handler;
