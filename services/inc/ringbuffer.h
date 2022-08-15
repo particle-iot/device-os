@@ -310,7 +310,9 @@ inline ssize_t RingBuffer<T>::acquireCommit(size_t size, size_t cancel) {
 
     headPending_ -= (size + cancel);
     head_ = wrap(head_ + size, curSize_);
-    full_ = ((head_ == tail_) && size > 0);
+    if (size > 0) {
+        full_ = (head_ == tail_);
+    }
 
     return (size);
 }

@@ -81,27 +81,39 @@ public:
     class RxLock {
     public:
         RxLock(Usart* instance)
-                : uart_(instance) {
+                : uart_(instance),
+                  locked_(0) {
             uart_->rxLock(true);
+            locked_++;
         }
         ~RxLock() {
-            uart_->rxLock(false);
+            locked_--;
+            if (locked_ == 0) {
+                uart_->rxLock(false);
+            }
         }
     private:
         Usart* uart_;
+        uint32_t locked_;
     };
 
     class TxLock {
     public:
         TxLock(Usart* instance)
-                : uart_(instance) {
+                : uart_(instance),
+                  locked_(0) {
             uart_->txLock(true);
+            locked_++;
         }
         ~TxLock() {
-            uart_->txLock(false);
+            locked_--;
+            if (locked_ == 0) {
+                uart_->txLock(false);
+            }
         }
     private:
         Usart* uart_;
+        uint32_t locked_;
     };
 
     bool isEnabled() const {
@@ -323,27 +335,25 @@ public:
         // Must be called under RX lock!
         if (receiving_ && !useInterrupt()) {
             auto uartInstance = uartTable_[index_].UARTx;
-            size_t transferredToDmaFromUart = uartInstance->RX_BYTE_CNT & RUART_RX_READ_BYTE_CNTER;
             size_t dmaAvailableInBuffer = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) - rxDmaInitStruct_.GDMA_DstAddr;
             size_t blockSize = rxDmaInitStruct_.GDMA_BlockSize;
             size_t alreadyCommitted = blockSize - rxBuffer_.acquirePending();
+            size_t transferredToDmaFromUart = uartInstance->RX_BYTE_CNT & RUART_RX_READ_BYTE_CNTER;
+            SPARK_ASSERT(transferredToDmaFromUart <= blockSize);
             ssize_t toConsume = std::max<ssize_t>(dmaAvailableInBuffer, transferredToDmaFromUart) - alreadyCommitted;
             SPARK_ASSERT(toConsume >= 0);
             if (commit && toConsume > 0) {
-                if (transferredToDmaFromUart > dmaAvailableInBuffer) {
-                    uintptr_t expectedDstAddr = rxDmaInitStruct_.GDMA_DstAddr + transferredToDmaFromUart;
-                    if ((GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW & BIT_CFGX_LO_FIFO_EMPTY) == 0) {
-                        if (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
-                            // Suspending DMA channel forces flushing of data into destination from GDMA FIFO
-                            GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW |= BIT_CFGX_LO_CH_SUSP;
-                            __DSB();
-                            __ISB();
-                            while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
-                                // XXX: spin around, this should be pretty fast
-                            }
-                            GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW &= ~(BIT_CFGX_LO_CH_SUSP);
-                            __DSB();
-                            __ISB();
+                if (hal_interrupt_is_isr()) {
+                    // This method is called from DMA RX ISR
+                    toConsume = transferredToDmaFromUart - alreadyCommitted;
+                    flushDmaRxFiFo(transferredToDmaFromUart);
+                } else {
+                    toConsume = dmaAvailableInBuffer - alreadyCommitted;
+                    // Try not suspending DMA unless necessary
+                    if (toConsume <= 0) {
+                        toConsume = transferredToDmaFromUart - dmaAvailableInBuffer;
+                        if (toConsume > 0) {
+                            flushDmaRxFiFo(transferredToDmaFromUart);
                         }
                     }
                 }
@@ -705,6 +715,24 @@ private:
         return true;
     }
 
+    void flushDmaRxFiFo(size_t len) {
+        uintptr_t expectedDstAddr = rxDmaInitStruct_.GDMA_DstAddr + len;
+        if ((GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW & BIT_CFGX_LO_FIFO_EMPTY) == 0) {
+            if (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
+                // Suspending DMA channel forces flushing of data into destination from GDMA FIFO
+                GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW |= BIT_CFGX_LO_CH_SUSP;
+                __DSB();
+                __ISB();
+                while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
+                    // XXX: spin around, this should be pretty fast
+                }
+                GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW &= ~(BIT_CFGX_LO_CH_SUSP);
+                __DSB();
+                __ISB();
+            }
+        }
+    }
+
     void deinitDmaChannels() {
         auto uartInstance = uartTable_[index_].UARTx;
         GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
@@ -843,13 +871,14 @@ private:
             return 0;
         }
         auto rxDmaInitStruct = &uart->rxDmaInitStruct_;
+        UART_RXDMACmd(uartTable_[uart->index_].UARTx, DISABLE);
+        // Operations to DMA before it is disabled
+        uart->dataInFlight(true /* commit */, true /* cancel */);
         // Clean Auto Reload Bit
         GDMA_ChCleanAutoReload(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum, CLEAN_RELOAD_SRC);
         GDMA_Cmd(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum, DISABLE);
         // Clear Pending ISR
         GDMA_ClearINT(rxDmaInitStruct->GDMA_Index, rxDmaInitStruct->GDMA_ChNum);
-        UART_RXDMACmd(uartTable_[uart->index_].UARTx, DISABLE);
-        uart->dataInFlight(true /* commit */, true /* cancel */);
         uart->receiving_ = false;
         uart->startReceiver();
         return 0;
