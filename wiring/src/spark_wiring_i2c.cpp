@@ -199,9 +199,9 @@ bool TwoWire::isEnabled()
   return hal_i2c_is_enabled(_i2c, NULL);
 }
 
-void TwoWire::reset()
+int TwoWire::reset()
 {
-  hal_i2c_reset(_i2c, 0, NULL);
+  return hal_i2c_reset(_i2c, 0, NULL);
 }
 
 bool TwoWire::lock()

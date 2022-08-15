@@ -163,6 +163,14 @@ public:
 
     int end() {
         if (isEnabled()) {
+            hal_gpio_config_t conf = {};
+            conf.size = sizeof(conf);
+            conf.version = HAL_GPIO_VERSION;
+            conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
+            conf.set_value = true;
+            conf.value = 1;
+            hal_gpio_configure(sclPin_, &conf, nullptr);
+            hal_gpio_configure(sdaPin_, &conf, nullptr);
             if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
                 InterruptDis(I2C0_IRQ_LP);
 	            InterruptUnRegister(I2C0_IRQ_LP);
@@ -174,11 +182,25 @@ public:
             // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
             Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_GPIO);
             Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_GPIO);
+            txBuffer_.reset();
+            rxBuffer_.reset();
         }
         return SYSTEM_ERROR_NONE;
     }
 
-    void reset() {
+    int suspend() {
+        CHECK_TRUE(state_ = HAL_I2C_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
+        CHECK(end());
+        state_ = HAL_I2C_STATE_SUSPENDED;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int restore() {
+        CHECK_TRUE(state_ = HAL_I2C_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
+        return begin((i2cInitStruct_.I2CMaster == I2C_MASTER_MODE) ? I2C_MODE_MASTER : I2C_MODE_SLAVE, i2cInitStruct_.I2CAckAddr);
+    }
+
+    int reset() {
         end();
 
         // Just in case make sure that the pins are correctly configured (they should anyway be at this point)
@@ -188,15 +210,16 @@ public:
         conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
         conf.set_value = true;
         conf.value = 1;
-        hal_gpio_configure(sdaPin_, &conf, nullptr);
-        conf.value = hal_gpio_read(sclPin_);
         hal_gpio_configure(sclPin_, &conf, nullptr);
+        hal_gpio_configure(sdaPin_, &conf, nullptr);
+
+        // Check if slave is stretching the SCL
+        if (!WAIT_TIMED(HAL_I2C_DEFAULT_TIMEOUT_MS, hal_gpio_read(sclPin_) == 0)) {
+            return SYSTEM_ERROR_I2C_BUS_BUSY;
+        }
 
         // Generate up to 9 pulses on SCL to tell slave to release the bus
         for (int i = 0; i < 9; i++) {
-            hal_gpio_write(sdaPin_, 1);
-            HAL_Delay_Microseconds(50);
-
             if (hal_gpio_read(sdaPin_) == 0) {
                 hal_gpio_write(sclPin_, 0);
                 HAL_Delay_Microseconds(50);
@@ -222,6 +245,8 @@ public:
 
         hal_i2c_mode_t mode = (i2cInitStruct_.I2CMaster  == I2C_MASTER_MODE) ? I2C_MODE_MASTER : I2C_MODE_SLAVE;
         begin(mode, i2cInitStruct_.I2CAckAddr);
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INTERNAL);
+        return SYSTEM_ERROR_NONE;
     }
 
     int setSpeed(uint32_t speed) {
@@ -344,6 +369,28 @@ public:
         setAddress(transConfig_.address);
 
         uint32_t quantity = txBuffer_.data();
+        if (quantity == 0) {
+            // Clear flags
+            uint32_t temp = i2cDev_->IC_CLR_TX_ABRT;
+            temp = i2cDev_->IC_CLR_STOP_DET;
+            (void)temp;
+            if ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK)
+                 || (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_RAW_INTR_STAT_STOP_DET)) {
+                return SYSTEM_ERROR_I2C_ABORT;
+            }
+            // Send the slave address only
+            i2cDev_->IC_DATA_CMD = (transConfig_.address << 1) | BIT_CTRL_IC_DATA_CMD_NULLDATA | BIT_CTRL_IC_DATA_CMD_STOP;
+            // If slave is not detected, the STOP_DET bit won't be set, and the TX_ABRT is set instead.
+            if (!WAIT_TIMED(transConfig_.timeout_ms, ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) == 0)
+                                                  && ((i2cDev_->IC_RAW_INTR_STAT & BIT_IC_RAW_INTR_STAT_STOP_DET) == 0))) {
+                return SYSTEM_ERROR_I2C_TX_ADDR_TIMEOUT;
+            }
+            if (i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) {
+                return SYSTEM_ERROR_I2C_ABORT;
+            }
+            return SYSTEM_ERROR_NONE;
+        }
+
         for (uint32_t i = 0; i < quantity; i++) {
             if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
                 reset();
@@ -356,10 +403,10 @@ public:
             if(i >= quantity - 1) {
                 if (stop) {
                     // Generate stop signal
-                    i2cDev_->IC_DATA_CMD = data | (1 << 9);
+                    i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_STOP;
                 } else {
                     // Generate restart signal
-                    i2cDev_->IC_DATA_CMD = data | (1 << 10);
+                    i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_RESTART;
                 }
             } else {
                 // The address will be sent before sending the first data byte
@@ -684,11 +731,10 @@ void hal_i2c_enable_dma_mode(hal_i2c_interface_t i2c, bool enable, void* reserve
     // use DMA to send data by default
 }
 
-uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
-    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 1);
+int hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
     I2cLock lk(instance);
-    instance->reset();
-    return 0;
+    return instance->reset();
 }
 
 int32_t hal_i2c_lock(hal_i2c_interface_t i2c, void* reserved) {
@@ -702,12 +748,12 @@ int32_t hal_i2c_unlock(hal_i2c_interface_t i2c, void* reserved) {
 }
 
 int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
-    // auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-    // I2cLock lk(i2c);
-    // if (sleep) {
-        // Suspend I2C
-    // } else {
-        // Restore I2C
-    // }
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
+    if (sleep) {
+        return instance->suspend();
+    } else {
+        return instance->restore();
+    }
     return SYSTEM_ERROR_NONE;
 }

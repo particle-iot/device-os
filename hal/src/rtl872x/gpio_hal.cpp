@@ -141,18 +141,19 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         GPIO_InitStruct.GPIO_Pin = rtlPin;
 
         switch (mode) {
-            case OUTPUT:
-            case OUTPUT_OPEN_DRAIN: {
+            case OUTPUT: {
                 GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
                 GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
                 break;
             }
-            case INPUT: {
+            case INPUT:
+            case OUTPUT_OPEN_DRAIN: {
                 GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
                 GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
                 break;
             }
-            case INPUT_PULLUP: {
+            case INPUT_PULLUP:
+            case OUTPUT_OPEN_DRAIN_PULLUP: {
                 GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
                 GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
                 break;
@@ -160,11 +161,6 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             case INPUT_PULLDOWN: {
                 GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
                 GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_DOWN;
-                break;
-            }
-            case OUTPUT_OPEN_DRAIN_PULLUP: {
-                GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
-                GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
                 break;
             }
             case PIN_MODE_SWD: {
@@ -186,6 +182,10 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
                 // TODO
                 return -1;
             }
+        }
+
+        if ((mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP) && conf->set_value && conf->value == 0) {
+            GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
         }
 
         GPIO_Init(&GPIO_InitStruct);
@@ -233,12 +233,33 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (pinInfo->type == HAL_PIN_TYPE_MCU) {
 #endif
-        uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
         // TODO: PWM have conflict with GPIO OUTPUT mode on Realtek
         if (pinInfo->pin_func == PF_PWM) {
             hal_gpio_mode(pin, OUTPUT);
         }
-        GPIO_WriteBit(rtlPin, value);
+
+        auto mode = hal_gpio_get_mode(pin);
+        hal_pin_info_t* pin_info = hal_pin_map() + pin;
+        GPIO_TypeDef * gpiobase = ((pin_info->gpio_port == RTL_PORT_A) ? GPIOA_BASE : GPIOB_BASE);
+        // Dirty hack: As per the description of EXT_PORT register in the user manual,
+        // "When Port A is configured as Input, then reading this location reads
+        // the values on the signal. When the data direction of Port A is set as
+        // Output, reading this location reads the data register for Port A."
+        if (value) {
+            if (mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP) {
+                // Output 1, it should read back 1 if idle or 0 if it is pulled down by external signal
+                // Configure it as input meets the requirements.
+                gpiobase->PORT[0].DDR &= (~(1 << pin_info->gpio_pin));
+            } else {
+                gpiobase->PORT[0].DR |= (1 << pin_info->gpio_pin);
+            }
+        } else {
+            // Output 0, it should always read back 0.
+            // Configure it as output, despite of the output mode
+            gpiobase->PORT[0].DR &= ~(1 << pin_info->gpio_pin);
+            gpiobase->PORT[0].DDR |= (1 << pin_info->gpio_pin);
+        }
+
         if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
             setCachePinState(pin, value);
         }
