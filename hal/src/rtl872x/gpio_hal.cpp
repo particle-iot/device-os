@@ -184,6 +184,10 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             }
         }
 
+        if ((mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP) && conf->set_value && conf->value == 0) {
+            GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+        }
+
         GPIO_Init(&GPIO_InitStruct);
         pinInfo->pin_mode = mode;
 
