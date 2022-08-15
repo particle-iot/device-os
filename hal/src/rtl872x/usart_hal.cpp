@@ -239,10 +239,9 @@ public:
                 end();
                 return SYSTEM_ERROR_INTERNAL;
             }
-        } else {
-            InterruptRegister((IRQ_FUN)uartTxRxIntHandler, uartTable_[index_].IrqNum, (uint32_t)this, 5);
-            InterruptEn(uartTable_[index_].IrqNum, 5);
         }
+        InterruptRegister((IRQ_FUN)uartTxRxIntHandler, uartTable_[index_].IrqNum, (uint32_t)this, 5);
+        InterruptEn(uartTable_[index_].IrqNum, 5);
 
         startReceiver();
 
@@ -253,30 +252,7 @@ public:
 
     int end() {
         CHECK_TRUE(state_ != HAL_USART_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE);
-        auto uartInstance = uartTable_[index_].UARTx;
-        if (!useInterrupt()) {
-            deinitDmaChannels();
-        } else {
-            InterruptDis(uartTable_[index_].IrqNum);
-            InterruptUnRegister(uartTable_[index_].IrqNum);
-            UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
-            UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
-        }
-        UART_ClearTxFifo(uartInstance);
-        UART_ClearRxFifo(uartInstance);
-        UART_DeInit(uartInstance);
-        if (uartInstance == UART0_DEV) {
-            RCC_PeriphClockCmd(APBPeriph_UART0, APBPeriph_UART0_CLOCK, DISABLE);
-        }
-        // Do not change the pull ability to not mess up the peer device.
-        Pinmux_Config(hal_pin_to_rtl_pin(txPin_), PINMUX_FUNCTION_GPIO);
-        Pinmux_Config(hal_pin_to_rtl_pin(rxPin_), PINMUX_FUNCTION_GPIO);
-        if (ctsPin_ != PIN_INVALID) {
-            Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_GPIO);
-        }
-        if (rtsPin_ != PIN_INVALID) {
-            Pinmux_Config(hal_pin_to_rtl_pin(rtsPin_), PINMUX_FUNCTION_GPIO);
-        }
+        CHECK(disable());
         config_ = {};
         rxBuffer_.reset();
         txBuffer_.reset();
@@ -285,6 +261,26 @@ public:
         receiving_ = false;
         state_ = HAL_USART_STATE_DISABLED;
         return SYSTEM_ERROR_NONE;
+    }
+
+    int suspend() {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        flush();
+        // Update current available received data
+        dataInFlight(true /* commit */);
+        CHECK(disable(false));
+        transmitting_ = false;
+        receiving_ = 0;
+        rxBuffer_.prune();
+        txBuffer_.reset();
+        curTxCount_ = 0;
+        state_ = HAL_USART_STATE_SUSPENDED;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int restore() {
+        CHECK_TRUE(state_ == HAL_USART_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
+        return begin(config_);
     }
 
     ssize_t space() {
@@ -412,6 +408,74 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    EventGroupHandle_t eventGroup() {
+        return evGroup_;
+    }
+
+    int enableEvent(HAL_USART_Pvt_Events event) {
+        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
+
+        auto uartInstance = uartTable_[index_].UARTx;
+        if (event & HAL_USART_PVT_EVENT_READABLE) {
+            if (data() <= 0) {
+                RxLock lk(this);
+                UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), ENABLE);
+                UART_RXDMACmd(uartInstance, DISABLE);
+                if (!receiving_) {
+                    startReceiver();
+                }
+            } else {
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
+            }
+        }
+
+        if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+            if (space() <= 0) {
+                TxLock lk(this);
+                UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+                // Temporarily disable TX DMA, otherwise, the TX FIFO won't be empty until all data is transferred by DMA.
+                UART_TXDMACmd(uartInstance, DISABLE);
+                if (!transmitting_) {
+                    startTransmission();
+                }
+            } else {
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+            }
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int disableEvent(HAL_USART_Pvt_Events event) {
+        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
+
+        auto uartInstance = uartTable_[index_].UARTx;
+        if (event & HAL_USART_PVT_EVENT_READABLE) {
+            RxLock lk(this);
+            UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+            UART_RXDMACmd(uartInstance, ENABLE);
+            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
+        }
+
+        if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+            TxLock lk(this);
+            UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+            UART_TXDMACmd(uartInstance, ENABLE);
+            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int waitEvent(uint32_t events, system_tick_t timeout) {
+        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
+
+        CHECK(enableEvent((HAL_USART_Pvt_Events)events));
+
+        auto res = xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
+        return res;
+    }
+
     static Usart* getInstance(hal_usart_interface_t serial) {
         static Usart Usarts[] = {
             {2, TX,  RX,  PIN_INVALID, PIN_INVALID}, // LOG UART
@@ -425,7 +489,6 @@ public:
     static uint32_t uartTxRxIntHandler(void* data) {
         auto uart = (Usart*)data;
         auto uartInstance = uart->uartTable_[uart->index_].UARTx;
-        SPARK_ASSERT(uart->useInterrupt());
         volatile uint8_t regIir = UART_IntStatus(uartInstance);
         if ((regIir & RUART_IIR_INT_PEND) != 0) {
             // No pending IRQ
@@ -447,10 +510,18 @@ public:
             }
             case RUART_TX_FIFO_EMPTY: {
                 UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
-                if (uart->transmitting_) {
-                    uart->transmitting_ = false;
-                    uart->txBuffer_.consumeCommit(uart->curTxCount_);
-                    uart->startTransmission();
+                if (uart->useInterrupt()) {
+                    if (uart->transmitting_) {
+                        uart->transmitting_ = false;
+                        uart->txBuffer_.consumeCommit(uart->curTxCount_);
+                        uart->startTransmission();
+                    }
+                } else {
+                    UART_TXDMACmd(uartInstance, ENABLE);
+                    BaseType_t yield = pdFALSE;
+                    if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
+                        portYIELD_FROM_ISR(yield);
+                    }
                 }
                 break;
             }
@@ -458,14 +529,22 @@ public:
             case RUART_TIME_OUT_INDICATION: {
                 UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
                 if (uart->receiving_) {
-                    uart->receiving_ = false;
-                    uint8_t temp[MAX_UART_FIFO_SIZE];
-                    uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                    const ssize_t canWrite = uart->rxBuffer_.space();
-                    if (canWrite > 0) {
-                        uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                    if (uart->useInterrupt()) {
+                        uart->receiving_ = false;
+                        uint8_t temp[MAX_UART_FIFO_SIZE];
+                        uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
+                        const ssize_t canWrite = uart->rxBuffer_.space();
+                        if (canWrite > 0) {
+                            uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                        }
+                        uart->startReceiver();
+                    } else {
+                        BaseType_t yield = pdFALSE;
+                        if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
+                            portYIELD_FROM_ISR(yield);
+                        }
+                        UART_RXDMACmd(uartInstance, ENABLE);
                     }
-                    uart->startReceiver();
                 }
                 break;
             }
@@ -488,13 +567,69 @@ private:
               transmitting_(false),
               receiving_(false),
               configured_(false),
-              index_(index) {
+              index_(index),
+              evGroup_(nullptr) {
+        evGroup_ = xEventGroupCreate();
+        SPARK_ASSERT(evGroup_);
         // LOG UART is enabled on boot
         if (index_ == 2) {
             state_ = HAL_USART_STATE_ENABLED;
         }
     }
     ~Usart() = default;
+
+    int disable(bool end = true) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+
+        auto uartInstance = uartTable_[index_].UARTx;
+        if (!useInterrupt()) {
+            deinitDmaChannels();
+        } else {
+            InterruptDis(uartTable_[index_].IrqNum);
+            InterruptUnRegister(uartTable_[index_].IrqNum);
+        }
+        // In case events group is involved when using DMA mode.
+        UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+        UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+        UART_ClearTxFifo(uartInstance);
+        UART_ClearRxFifo(uartInstance);
+        UART_DeInit(uartInstance);
+        if (uartInstance == UART0_DEV) {
+            RCC_PeriphClockCmd(APBPeriph_UART0, APBPeriph_UART0_CLOCK, DISABLE);
+        }
+        // Do not change the pull ability to not mess up the peer device.
+        Pinmux_Config(hal_pin_to_rtl_pin(txPin_), PINMUX_FUNCTION_GPIO);
+        Pinmux_Config(hal_pin_to_rtl_pin(rxPin_), PINMUX_FUNCTION_GPIO);
+        if (ctsPin_ != PIN_INVALID) {
+            Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_GPIO);
+        }
+        if (rtsPin_ != PIN_INVALID) {
+            Pinmux_Config(hal_pin_to_rtl_pin(rtsPin_), PINMUX_FUNCTION_GPIO);
+        }
+
+        // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
+        // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
+        hal_gpio_mode(txPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
+        hal_gpio_mode(rxPin_, PIN_MODE_NONE);
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            hal_gpio_mode(rtsPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
+        }
+        if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+            hal_gpio_mode(ctsPin_, PIN_MODE_NONE);
+        }
+        if (end) {
+            hal_pin_set_function(txPin_, PF_NONE);
+            hal_pin_set_function(rxPin_, PF_NONE);
+            if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+                hal_pin_set_function(rtsPin_, PF_NONE);
+            }
+            if (config_.config & SERIAL_FLOW_CONTROL_CTS) {
+                hal_pin_set_function(ctsPin_, PF_NONE);
+            }
+        }
+
+        return SYSTEM_ERROR_NONE;
+    }
 
     bool useInterrupt() {
         auto instance = uartTable_[index_].UARTx;
@@ -778,6 +913,8 @@ private:
 
     static constexpr size_t MAX_DMA_BLOCK_SIZE = 4096;
     static constexpr size_t MAX_UART_FIFO_SIZE = 16;
+
+    EventGroupHandle_t evGroup_;
 };
 
 int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*) {
@@ -904,21 +1041,33 @@ void hal_usart_half_duplex(hal_usart_interface_t serial, bool enable) {
 }
 
 int hal_usart_pvt_get_event_group_handle(hal_usart_interface_t serial, EventGroupHandle_t* handle) {
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    auto grp = usart->eventGroup();
+    CHECK_TRUE(grp, SYSTEM_ERROR_INVALID_STATE);
+    *handle = grp;
     return SYSTEM_ERROR_NONE;
 }
 
 int hal_usart_pvt_enable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
-    return 0;
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->enableEvent(events);
 }
 
 int hal_usart_pvt_disable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
-    return 0;
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->disableEvent(events);
 }
 
 int hal_usart_pvt_wait_event(hal_usart_interface_t serial, uint32_t events, system_tick_t timeout) {
-    return 0;
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->waitEvent(events, timeout);
 }
 
 int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
-    return 0;
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    if (sleep) {
+        return usart->suspend();
+    } else {
+        return usart->restore();
+    }
 }
