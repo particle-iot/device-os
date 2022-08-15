@@ -200,7 +200,7 @@ public:
         return begin((i2cInitStruct_.I2CMaster == I2C_MASTER_MODE) ? I2C_MODE_MASTER : I2C_MODE_SLAVE, i2cInitStruct_.I2CAckAddr);
     }
 
-    uint8_t reset() {
+    int reset() {
         end();
 
         // Just in case make sure that the pins are correctly configured (they should anyway be at this point)
@@ -215,7 +215,7 @@ public:
 
         // Check if slave is stretching the SCL
         if (!WAIT_TIMED(HAL_I2C_DEFAULT_TIMEOUT_MS, hal_gpio_read(sclPin_) == 0)) {
-            return 1;
+            return SYSTEM_ERROR_I2C_BUS_BUSY;
         }
 
         // Generate up to 9 pulses on SCL to tell slave to release the bus
@@ -245,7 +245,8 @@ public:
 
         hal_i2c_mode_t mode = (i2cInitStruct_.I2CMaster  == I2C_MASTER_MODE) ? I2C_MODE_MASTER : I2C_MODE_SLAVE;
         begin(mode, i2cInitStruct_.I2CAckAddr);
-        return !isEnabled(); // 0 for success, to be consistent with other Gen3 platforms
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INTERNAL);
+        return SYSTEM_ERROR_NONE;
     }
 
     int setSpeed(uint32_t speed) {
@@ -730,8 +731,8 @@ void hal_i2c_enable_dma_mode(hal_i2c_interface_t i2c, bool enable, void* reserve
     // use DMA to send data by default
 }
 
-uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
-    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 1);
+int hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
     I2cLock lk(instance);
     return instance->reset();
 }

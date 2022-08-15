@@ -134,7 +134,7 @@ void hal_i2c_enable_dma_mode(hal_i2c_interface_t i2c, bool enable,void* reserved
 {
 }
 
-uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1)
+int hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1)
 {
   return SYSTEM_ERROR_NONE;
 }

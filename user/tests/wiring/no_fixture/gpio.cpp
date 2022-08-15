@@ -39,6 +39,7 @@ test(GPIO_01_PinModeSetResultsInCorrectMode) {
         INPUT_PULLUP,
         INPUT_PULLDOWN,
         OUTPUT_OPEN_DRAIN,
+        OUTPUT_OPEN_DRAIN_PULLUP,
 #if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
         // AF_OUTPUT_PUSHPULL,
         // AN_INPUT,
@@ -48,7 +49,7 @@ test(GPIO_01_PinModeSetResultsInCorrectMode) {
     };
     int n = sizeof(mode) / sizeof(mode[0]);
     hal_pin_t pin = A0;//pin under test
-    for(int i=0;i<n;i++)
+    for (int i = 0; i < n; i++)
     {
         // when
         pinMode(pin, mode[i]);
@@ -81,19 +82,26 @@ test(GPIO_03_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
 
 test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
     hal_pin_t pin = A0;//pin under test
-    // when
-    pinMode(pin, OUTPUT);
-    digitalWrite(pin, HIGH);
-    PinState pinState = (PinState)digitalRead(pin);
-    // then
-    assertEqual(pinState, HIGH);
-    delay(100);
-    // when
-    digitalWrite(pin, LOW);
-    pinState = (PinState)digitalRead(pin);
-    // then
-    assertEqual(pinState, LOW);
-    //To Do : Add test for remaining pins if required
+    PinMode mode[] = {
+        OUTPUT,
+        OUTPUT_OPEN_DRAIN_PULLUP,
+    };
+    int n = sizeof(mode) / sizeof(mode[0]);
+    for (int i = 0; i < n; i++) {
+        // when
+        pinMode(pin, mode[i]);
+        digitalWrite(pin, HIGH);
+        PinState pinState = (PinState)digitalRead(pin);
+        // then
+        assertEqual(pinState, HIGH);
+        delay(100);
+        // when
+        digitalWrite(pin, LOW);
+        pinState = (PinState)digitalRead(pin);
+        // then
+        assertEqual(pinState, LOW);
+        //To Do : Add test for remaining pins if required
+    }
 }
 
 #if !HAL_PLATFORM_RTL872X

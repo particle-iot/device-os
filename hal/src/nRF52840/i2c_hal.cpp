@@ -643,14 +643,14 @@ void hal_i2c_enable_dma_mode(hal_i2c_interface_t i2c, bool enable,void* reserved
     // use DMA to send data by default
 }
 
-uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
+int hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
     if (i2c >= HAL_PLATFORM_I2C_NUM) {
-        return 1;
+        return SYSTEM_ERROR_NOT_FOUND;
     }
 
     I2cLock lk(i2c);
     if (!hal_i2c_is_enabled(i2c, nullptr) || (i2cMap[i2c].mode != I2C_MODE_MASTER)) {
-        return 1;
+        return SYSTEM_ERROR_INVALID_STATE;
     }
 
     // Important: we keep GPIO configuration intact
@@ -700,7 +700,8 @@ uint8_t hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved
     hal_pin_set_function(i2cMap[i2c].scl_pin, PF_I2C);
 
     hal_i2c_begin(i2c, i2cMap[i2c].mode, i2cMap[i2c].address, nullptr);
-    return !hal_i2c_is_enabled(i2c, nullptr);
+    CHECK_TRUE(hal_i2c_is_enabled(i2c, nullptr), SYSTEM_ERROR_INTERNAL);
+    return SYSTEM_ERROR_NONE;
 }
 
 int32_t hal_i2c_lock(hal_i2c_interface_t i2c, void* reserved) {
