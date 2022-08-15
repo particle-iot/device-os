@@ -422,13 +422,16 @@ workflows:
             pattern: "^master$"
             value: << pipeline.git.branch >>
         - matches:
-            pattern: "^develop$"
+            pattern: "^develop.*"
             value: << pipeline.git.branch >>
         - matches:
             pattern: "^test/v.*"
             value: << pipeline.git.branch >>
         - matches:
             pattern: "^release/.*"
+            value: << pipeline.git.branch >>
+        - matches:
+            pattern: ".*test-build-system.*"
             value: << pipeline.git.branch >>
     jobs:
       - setup-workspace:
