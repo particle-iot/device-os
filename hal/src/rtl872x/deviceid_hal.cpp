@@ -84,10 +84,16 @@ int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
     return SYSTEM_ERROR_NONE;
 };
 
+// big-endian
+int readBaseMacAddress(uint8_t* dest, size_t destLen) {
+    // The parameters should have been checked
+    CHECK(readLogicalEfuse(WIFI_MAC_OFFSET, dest, destLen));
+    return WIFI_MAC_SIZE;
+}
+
 } // Anonymous
 
-unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
-{
+unsigned hal_get_device_id(uint8_t* dest, unsigned destLen) {
     // Device ID is composed of prefix and MAC address
     uint8_t id[HAL_DEVICE_ID_SIZE] = {};
     memcpy(id, DEVICE_ID_PREFIX, DEVICE_ID_PREFIX_SIZE);
@@ -98,58 +104,30 @@ unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
     return HAL_DEVICE_ID_SIZE;
 }
 
-unsigned hal_get_platform_id()
-{
+unsigned hal_get_platform_id() {
     return PLATFORM_ID;
 }
 
-int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved)
-{
-    return -1;
+int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsigned index, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int hal_read_base_mac_address(uint8_t* dest, size_t destLen, void* reserved)
-{
-    uint8_t mac_address[WIFI_MAC_SIZE] = {};
-    CHECK_RETURN(readLogicalEfuse(WIFI_MAC_OFFSET, mac_address, sizeof(mac_address)), 0);
-    if (dest && destLen > 0) {
-        memcpy(dest, mac_address, std::min(destLen, sizeof(mac_address)));
+int hal_get_ble_mac_address(uint8_t* dest, size_t destLen, void* reserved) {
+    CHECK_TRUE(dest && destLen >= WIFI_MAC_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint8_t mac[WIFI_MAC_SIZE] = {};
+    destLen = WIFI_MAC_SIZE;
+    CHECK(readBaseMacAddress(mac, WIFI_MAC_SIZE));
+    // As per BLE spec, we store BLE data in little-endian
+    for (uint8_t i = 0, j = WIFI_MAC_SIZE - 1; i < WIFI_MAC_SIZE; i++, j--) {
+        dest[i] = mac[j];
     }
-    return sizeof(mac_address);
-}
-
-int hal_get_ble_mac_address(uint8_t* dest, size_t destLen, void* reserved)
-{   
-    //read 48 bit mac address
-    uint8_t mac_address[WIFI_MAC_SIZE] = {};
-    CHECK_RETURN(hal_read_base_mac_address(mac_address, sizeof(mac_address), nullptr), WIFI_MAC_SIZE);
-    LOG_DEBUG(TRACE, "raw mac_address %02x %02x %02x %02x %02x %02x",
-        mac_address[0], mac_address[1], mac_address[2], mac_address[3], mac_address[4], mac_address[5]);
-
-    uint64_t mac_num = 0;
-    memcpy(&mac_num,mac_address,sizeof(mac_address));
-    LOG_DEBUG(TRACE, "raw mac_num: %08x", mac_num);
-    mac_num += BLE_MAC_DELTA;
-    LOG_DEBUG(TRACE, "mac_num: %08x", mac_num);
-
-    if (dest && destLen > 0) {
-        memcpy((void*)dest, (const void*)&mac_num, std::min(destLen, sizeof(mac_address)));
-    }
-
-    return SYSTEM_ERROR_NONE;
-
-    // uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
-    // hal_get_device_id(deviceId, sizeof(deviceId));
-    // uint8_t* mac = deviceId + HAL_DEVICE_ID_SIZE - 6;
-    // mac[5] += BLE_MAC_OFFSET; // 0 - wifi sta, 1 - wifi ap, 2 - ble, 3 - eth
-    // le_cfg_local_identity_address(mac, GAP_IDENT_ADDR_RAND);
-    // le_set_gap_param(GAP_PARAM_RANDOM_ADDR, 6, mac);
+    dest[0] += BLE_MAC_DELTA;
+    return WIFI_MAC_SIZE;
 }
 
 
 
-int hal_get_device_serial_number(char* str, size_t size, void* reserved)
-{
+int hal_get_device_serial_number(char* str, size_t size, void* reserved) {
     char fullSerialNumber[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
 
     // Serial Number (15 chars) is comprised of:
@@ -179,8 +157,7 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved)
     return HAL_DEVICE_SERIAL_NUMBER_SIZE;
 }
 
-int hal_get_device_hw_version(uint32_t* revision, void* reserved)
-{
+int hal_get_device_hw_version(uint32_t* revision, void* reserved) {
     // HW Data format: | NCP_ID (LSB) | HW_VERSION | HW Feature Flags |
     //                 |    byte 0    |   byte 1   |    byte 2/3      |
     uint8_t hw_data[4] = {};
@@ -192,8 +169,7 @@ int hal_get_device_hw_version(uint32_t* revision, void* reserved)
     return SYSTEM_ERROR_NONE;
 }
 
-int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved)
-{
+int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved) {
     // HW Model format: | Model Number LSB | Model Number MSB | Model Variant LSB | Model Variant MSB |
     //                  |      byte 0      |      byte 1      |      byte 2       |      byte 3       |
     uint8_t hw_model[4] = {};
@@ -205,8 +181,7 @@ int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved)
 }
 
 #ifndef HAL_DEVICE_ID_NO_DCT
-int hal_get_device_secret(char* data, size_t size, void* reserved)
-{
+int hal_get_device_secret(char* data, size_t size, void* reserved) {
     // Check if the device secret data is initialized in the DCT
     char secret[HAL_DEVICE_SECRET_SIZE] = {};
     static_assert(sizeof(secret) == DCT_DEVICE_SECRET_SIZE, "");

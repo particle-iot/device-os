@@ -96,6 +96,11 @@ int hal_get_device_hw_version(uint32_t* revision, void* reserved);
  */
 int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved);
 
+/**
+ * Get the device's BLE MAC address.
+ */
+int hal_get_ble_mac_address(uint8_t* dest, size_t destLen, void* reserved);
+
 #include "deviceid_hal_compat.h"
 
 #ifdef	__cplusplus
