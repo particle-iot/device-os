@@ -258,7 +258,7 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
     });
 }
 
-// FIXME: P2 doesn't support pulse in for now
+// See wiring/pwm/ for P2 fixture PWM tests
 #if PLATFORM_ID != PLATFORM_P2
 test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     for_all_pwm_pins([](hal_pin_t pin, const char* name) {

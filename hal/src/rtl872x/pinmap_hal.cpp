@@ -16,6 +16,7 @@
  */
 
 #include "pinmap_hal.h"
+#include "pwm_hal.h"
 
 uint32_t hal_pin_to_rtl_pin(hal_pin_t pin) {
     const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
@@ -45,7 +46,7 @@ void hal_pin_set_function(hal_pin_t pin, PinFunction pin_func) {
     if (pin_func != pinmap[pin].pin_func) {
         switch (pinmap[pin].pin_func) {
             case PF_PWM: {
-                // TODO: reset PWM pin
+                hal_pwm_reset_pin(pin);
                 break;
             }
             case PF_ADC: {
