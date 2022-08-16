@@ -348,23 +348,22 @@ public:
             size_t alreadyCommitted = blockSize - rxBuffer_.acquirePending();
             size_t transferredToDmaFromUart = uartInstance->RX_BYTE_CNT & RUART_RX_READ_BYTE_CNTER;
             SPARK_ASSERT(transferredToDmaFromUart <= blockSize);
-            ssize_t toConsume = std::max<ssize_t>(dmaAvailableInBuffer, transferredToDmaFromUart) - alreadyCommitted;
-            SPARK_ASSERT(toConsume >= 0);
-            if (commit && toConsume > 0) {
-                if (hal_interrupt_is_isr()) {
-                    // This method is called from DMA RX ISR
-                    toConsume = transferredToDmaFromUart - alreadyCommitted;
-                    flushDmaRxFiFo(transferredToDmaFromUart);
-                } else {
-                    toConsume = dmaAvailableInBuffer - alreadyCommitted;
-                    // Try not suspending DMA unless necessary
-                    if (toConsume <= 0) {
-                        toConsume = transferredToDmaFromUart - dmaAvailableInBuffer;
-                        if (toConsume > 0) {
-                            flushDmaRxFiFo(transferredToDmaFromUart);
-                        }
+            ssize_t toConsume = 0;
+            if (hal_interrupt_is_isr()) {
+                // This method is called from DMA RX ISR
+                toConsume = transferredToDmaFromUart - alreadyCommitted;
+                flushDmaRxFiFo(transferredToDmaFromUart);
+            } else {
+                toConsume = dmaAvailableInBuffer - alreadyCommitted;
+                // Try not suspending DMA unless necessary
+                if (toConsume <= 0) {
+                    toConsume = transferredToDmaFromUart - dmaAvailableInBuffer;
+                    if (toConsume > 0 && commit) {
+                        flushDmaRxFiFo(transferredToDmaFromUart);
                     }
                 }
+            }
+            if (commit && toConsume > 0) {
                 rxBuffer_.acquireCommit(toConsume);
                 if (cancel) {
                     // Release the rest of the buffer if any
