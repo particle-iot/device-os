@@ -47,7 +47,7 @@ MAKE=runmake
 # define build matrix dimensions
 # "" means execute execute the $MAKE command without that var specified
 DEBUG_BUILD=( y n )
-PLATFORM=( argon boron asom bsom b5som esomx p2 )
+PLATFORM=( argon boron asom bsom b5som esomx p2 trackerm )
 # All modules are now built by reease scripts instead, skip
 # Only building applications and tests here
 # PLATFORM_BOOTLOADER=( argon boron asom bsom b5som tracker esomx p2 )
@@ -57,7 +57,7 @@ PLATFORM_PREBOOTLOADER=()
 APP=( "" product_id_and_version )
 TEST=( wiring/api )
 
-MODULAR_PLATFORM=( argon boron asom bsom b5som tracker esomx p2 )
+MODULAR_PLATFORM=( argon boron asom bsom b5som tracker esomx p2 trackerm )
 
 filterPlatform PLATFORM
 filterPlatform MODULAR_PLATFORM
