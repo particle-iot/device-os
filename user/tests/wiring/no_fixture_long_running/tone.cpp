@@ -27,7 +27,7 @@
 #include "tone_hal.h"
 #include "unit-test/unit-test.h"
 
-#if PLATFORM_ID == PLATFORM_P2
+#if HAL_PLATFORM_RTL872X
 static const hal_pin_t pin = D1;//pin under test
 #elif PLATFORM_ID == PLATFORM_ESOMX
 static const hal_pin_t pin = A3;//pin under test

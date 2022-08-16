@@ -91,7 +91,7 @@ extern "C" {
 
 extern char link_module_start;
 extern char link_module_end;
-#if PLATFORM_ID == 32
+#if HAL_PLATFORM_RTL872X
 extern uintptr_t link_dynalib_start;
 extern uintptr_t link_dynalib_flash_start;
 #endif

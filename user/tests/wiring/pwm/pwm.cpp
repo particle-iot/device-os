@@ -43,7 +43,7 @@ struct PinMapping {
 #define PIN(p) {#p, p}
 
 const PinMapping pwm_pins[] = {
-#if PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
     PIN(D1), PIN(A2), PIN(A5), PIN(S0), PIN(S1) /* ,PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #else
 #error "Unsupported platform"

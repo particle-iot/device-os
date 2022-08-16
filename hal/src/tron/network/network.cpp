@@ -30,6 +30,8 @@
 #include "realtek/rtlncpnetif.h"
 #include "lwip_util.h"
 #include "core_hal.h"
+#include "deviceid_hal.h"
+
 
 using namespace particle;
 using namespace particle::net;
@@ -105,25 +107,13 @@ int if_init_platform(void*) {
     reserve_netif_index();
 
     /* en2 - Ethernet FeatherWing (optional) */
-    uint8_t mac[6] = {0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
-    {
-        // const uint32_t lsb = __builtin_bswap32(NRF_FICR->DEVICEADDR[0]);
-        // const uint32_t msb = NRF_FICR->DEVICEADDR[1] & 0xffff;
-        // memcpy(mac + 2, &lsb, sizeof(lsb));
-        // mac[0] = msb >> 8;
-        // mac[1] = msb;
-        /* Drop 'multicast' bit */
-        mac[0] &= 0b11111110;
-        /* Set 'locally administered' bit */
-        mac[0] |= 0b10;
-    }
+    uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
+    hal_get_device_id(deviceId, sizeof(deviceId));
+    uint8_t* mac = deviceId + HAL_DEVICE_ID_SIZE - 6;
+    mac[5] += 3;
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_P2
         en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
-#else // A SoM
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, A7, D22, mac);
-#endif
     }
 
     uint8_t dummy;

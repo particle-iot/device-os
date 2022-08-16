@@ -15,7 +15,7 @@
 #error Define USE_CS
 #endif // #ifndef USE_CS
 
-#if (PLATFORM_ID == PLATFORM_P2)
+#if HAL_PLATFORM_RTL872X
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #error "SPI not supported as slave for p2"
@@ -81,7 +81,7 @@
 
 #endif // #if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
 
-#endif // HAL_PLATFORM_NRF52840
+#endif // HAL_PLATFORM_RTL872X
 
 #if defined(_SPI) && (USE_CS != 255)
 #pragma message "Overriding default CS selection"

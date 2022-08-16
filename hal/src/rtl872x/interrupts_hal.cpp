@@ -28,6 +28,7 @@ extern "C" {
 #include "gpio_hal.h"
 #include "check.h"
 #include "scope_guard.h"
+#include "module_info.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -224,8 +225,7 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
     }
 #if HAL_PLATFORM_MCP23S17
     else if (pinInfo->type == HAL_PIN_TYPE_IO_EXPANDER) {
-        // TODO
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+        return Mcp23s17::getInstance().attachPinInterrupt(pinInfo->gpio_port, pinInfo->gpio_pin, mode, static_cast<particle::Mcp23s17InterruptCallback>(handler), data);
     }
 #endif
     else {
@@ -263,8 +263,7 @@ int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved) 
     }
 #if HAL_PLATFORM_MCP23S17
     else if (pinInfo->type == HAL_PIN_TYPE_IO_EXPANDER) {
-        // TODO
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+        return Mcp23s17::getInstance().detachPinInterrupt(pinInfo->gpio_port, pinInfo->gpio_pin);
     } 
 #endif
     else {

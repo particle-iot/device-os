@@ -42,7 +42,7 @@ test(SPIX_01_SPI_Begin_Without_Argument)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_P2
+#elif HAL_PLATFORM_RTL872X
     assertEqual(info.ss_pin, S3);
 #elif PLATFORM_ID == PLATFORM_ESOMX
     assertEqual(info.ss_pin, A2);
@@ -69,7 +69,7 @@ test(SPIX_02_SPI_Begin_With_Ss_Pin)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_P2
+#elif HAL_PLATFORM_RTL872X
     assertEqual(info.ss_pin, S3);
 #elif PLATFORM_ID == PLATFORM_ESOMX
     assertEqual(info.ss_pin, A2);
@@ -123,7 +123,7 @@ test(SPIX_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin,D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_P2
+#elif HAL_PLATFORM_RTL872X
     assertEqual(info.ss_pin, S3);
 #elif PLATFORM_ID == PLATFORM_ESOMX
     assertEqual(info.ss_pin, A2);
@@ -132,22 +132,17 @@ test(SPIX_03_SPI_Begin_With_Mode)
 #endif
     SPI.end();
 
+#if HAL_PLATFORM_RTL872X || HAL_PLATFORM_NRF52840
     memset(&info, 0x00, sizeof(hal_spi_info_t));
-
-    // HAL_SPI_INTERFACE1 does not support slave mode on NRF52840
-#if HAL_PLATFORM_RTL872X
-    // HAL_SPI_INTERFACE1  does not support slave mode on P2
-    SPI1.begin(SPI_MODE_SLAVE);
-    querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-#if PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, D5);
-#else
-#error "Unknown platform!"
-#endif
+    SPI.begin(SPI_MODE_SLAVE);
+    querySpiInfo(HAL_SPI_INTERFACE1, &info);
+    assertFalse(info.enabled);
     SPI.end();
-#endif // HAL_PLATFORM_RTL872X
+
+#else
+    #error "Unsupported platform!"
+#endif // HAL_PLATFORM_RTL872X || HAL_PLATFORM_NRF52840
+
 }
 
 test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
@@ -167,7 +162,7 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_P2
+#elif HAL_PLATFORM_RTL872X
     assertEqual(info.ss_pin, S3);
 #elif PLATFORM_ID == PLATFORM_ESOMX
     assertEqual(info.ss_pin, A2);
@@ -175,6 +170,8 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
 #error "Unknown platform!"
 #endif
     SPI.end();
+
+#if HAL_PLATFORM_RTL872X || HAL_PLATFORM_NRF52840
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
 
@@ -202,6 +199,10 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.mode, SPI_MODE_MASTER);
     assertEqual(info.ss_pin, 123);
     SPI.end();
+#else
+    #error "Unsupported platform!"
+#endif // HAL_PLATFORM_RTL872X || HAL_PLATFORM_NRF52840
+
 }
 
 #if Wiring_SPI1
@@ -278,8 +279,7 @@ test(SPIX_07_SPI1_Begin_With_Mode)
     assertEqual(info.ss_pin, D5);
     SPI1.end();
 
-    // SPI1 can't work as slave on Tron
-#if PLATFORM_ID != PLATFORM_P2
+#if !HAL_PLATFORM_RTL872X
     memset(&info, 0x00, sizeof(hal_spi_info_t));
     SPI1.begin(SPI_MODE_SLAVE);
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
@@ -288,7 +288,7 @@ test(SPIX_07_SPI1_Begin_With_Mode)
     // D5 is the default SS pin for all platforms
     assertEqual(info.ss_pin, D5);
     SPI1.end();
-#endif
+#endif // !HAL_PLATFORM_RTL872X
 }
 
 test(SPIX_08_SPI1_Begin_With_Master_Ss_Pin)
@@ -335,7 +335,7 @@ test(SPIX_08_SPI1_Begin_With_Master_Ss_Pin)
 }
 
 // SPI1 can't work as slave on Tron
-#if PLATFORM_ID != PLATFORM_P2
+#if !HAL_PLATFORM_RTL872X
 test(SPIX_09_SPI1_Begin_With_Slave_Ss_Pin)
 {
     // Just in case
@@ -374,7 +374,7 @@ test(SPIX_09_SPI1_Begin_With_Slave_Ss_Pin)
     assertFalse(info.enabled);
     SPI1.end();
 }
-#endif // PLATFORM_ID != PLATFORM_P2
+#endif // !HAL_PLATFORM_RTL872X
 #endif // Wiring_SPI1
 
 namespace {
@@ -404,7 +404,7 @@ constexpr unsigned int SPI_NODMA_OVERHEAD = 15500; // 15.5us ~= 992 clock cycles
 constexpr unsigned int SPI_DMA_OVERHEAD = SPI_NODMA_OVERHEAD; // Gen 3 always uses DMA underneath
 #else
 #error "Unsupported platform"
-#endif // HAL_PLATFORM_NRF52840
+#endif // HAL_PLATFORM_RTL872X
 
 #if !HAL_PLATFORM_RTL872X
 using SpixTestLock = SingleThreadedSection;

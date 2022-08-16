@@ -91,7 +91,7 @@ inline void yield() {
 #endif
 
 #ifndef analogInputToDigitalPin
-#if PLATFORM_ID == PLATFORM_P2
+#if HAL_PLATFORM_RTL872X
 #define analogInputToDigitalPin(p)  ((p) == 3 ? 0 : \
                                     ((p) == 4 ? 1 : \
                                     ((p) == 5 ? 14 : \
@@ -141,15 +141,15 @@ extern GPIO_TypeDef* PORT_AB[2];
 # endif
 
 # ifndef portOutputRegister
-# define portOutputRegister(port)   ( &( port->PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ].DR ) ) 
+# define portOutputRegister(port)   ( &( port->PORT[0].DR ) )
 # endif
 
 # ifndef portInputRegister
-# define portInputRegister(port)    ( &( port->EXT_PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ] ) )
+# define portInputRegister(port)    ( &( port->EXT_PORT[0] ) )
 # endif
 
 # ifndef portModeRegister
-# define portModeRegister(port)     ( &( port->PORT[ (port == PORT_AB[RTL_PORT_A]) ? RTL_PORT_A : RTL_PORT_B ].DDR ) )
+# define portModeRegister(port)     ( &( port->PORT[0].DDR ) )
 # endif
 
 # ifndef digitalPinHasPWM

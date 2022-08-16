@@ -19,7 +19,7 @@
 #endif // #ifndef USE_CS
 
 
-#if (PLATFORM_ID == PLATFORM_P2)
+#if HAL_PLATFORM_RTL872X
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
@@ -87,7 +87,7 @@
 
 #error "Unsupported platform"
 
-#endif // #if PLATFORM_P2
+#endif // #if HAL_PLATFORM_RTL872X
 
 
 #if defined(_SPI) && (USE_CS != 255)
@@ -187,7 +187,7 @@ static void SPI_Master_Configure()
         MY_SPI.begin(MY_CS);
 
         // Clock dummy byte just in case
-        if (PLATFORM_ID != PLATFORM_P2) { // Since SPI is enabled, the dummy byte will generate gabage data in the fifo on P2
+        if (!HAL_PLATFORM_RTL872X) { // Since SPI is enabled, the dummy byte will generate gabage data in the fifo on P2
             (void)MY_SPI.transfer(0xff);
         }
     }

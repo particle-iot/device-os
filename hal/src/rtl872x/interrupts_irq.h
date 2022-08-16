@@ -25,8 +25,9 @@ extern "C" {
 #include "stdint.h"
 
 #ifdef USE_STDPERIPH_DRIVER
-// FIXME
-typedef int32_t IRQn_Type;
+
+#include "rtl8721d_vector_defines.h"
+
 #if defined (ARM_CPU_CORTEX_M33)
 #ifdef AMEBAD_TODO
 #ifndef __ARMV8MML_REV

@@ -32,6 +32,7 @@
 #define PLATFORM_BSOM                       23
 #define PLATFORM_B5SOM                      25
 #define PLATFORM_TRACKER                    26
+#define PLATFORM_TRACKERM                   28
 #define PLATFORM_P2                         32
 #define PLATFORM_NEWHAL                     60000
 

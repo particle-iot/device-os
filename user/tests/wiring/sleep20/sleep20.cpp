@@ -89,7 +89,7 @@ test(02_System_Sleep_Mode_Deep_Without_Wakeup) {
     }
 }
 
-#if PLATFORM_ID != PLATFORM_P2
+#if !HAL_PLATFORM_RTL872X
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
@@ -209,9 +209,9 @@ test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
     }
 }
 #endif // HAL_PLATFORM_EXTERNAL_RTC
-#endif // PLATFORM_ID != PLATFORM_P2
+#endif // !HAL_PLATFORM_RTL872X
 
-#if PLATFORM_ID == PLATFORM_P2
+#if HAL_PLATFORM_RTL872X
 test(08_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin) {
     if (phase == 0xbeef0003) {
         Serial.println("    >> Device enters hibernate mode.");
@@ -333,7 +333,7 @@ test(12_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
         assertLessOrEqual(exitTime - enterTime, SLEEP_DURATION_S + 1);
     }
 }
-#endif // PLATFORM_ID == PLATFORM_P2
+#endif // HAL_PLATFORM_RTL872X
 
 test(13_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
@@ -407,7 +407,7 @@ test(17_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 }
 
-#if HAL_PLATFORM_BLE && PLATFORM_ID != PLATFORM_P2
+#if HAL_PLATFORM_BLE && !HAL_PLATFORM_RTL872X
 test(18_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after device being connected by BLE Central.");
     Serial.println("    >> Press any key now");
@@ -430,7 +430,7 @@ test(18_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble) {
 
     BLE.stopAdvertising();
 }
-#endif // HAL_PLATFORM_BLE && PLATFORM_ID != PLATFORM_P2
+#endif // HAL_PLATFORM_BLE && !HAL_PLATFORM_RTL872X
 
 test(19_System_Sleep_Mode_Stop_Wakeup_By_D0) {
     Serial.println("    >> Device enters stop mode. Please reconnect serial after you have a rising edge on D0.");
@@ -508,7 +508,7 @@ test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rt
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 }
 
-#if PLATFORM_ID != PLATFORM_P2
+#if !HAL_PLATFORM_RTL872X
 
 #if HAL_PLATFORM_BLE
 test(23_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ble) {
@@ -725,7 +725,7 @@ test(31_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Wi
 }
 #endif // HAL_PLATFORM_WIFI
 
-#endif // PLATFORM_ID != PLATFORM_P2
+#endif // !HAL_PLATFORM_RTL872X
 
 test(32_System_Sleep_With_Configuration_Object_Execution_Time_Prepare) {
     /* This test should only be run with threading disabled */

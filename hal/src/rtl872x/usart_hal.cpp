@@ -191,7 +191,15 @@ public:
         }
         PAD_PullCtrl(hal_pin_to_rtl_pin(txPin_), GPIO_PuPd_UP);
         PAD_PullCtrl(hal_pin_to_rtl_pin(rxPin_), GPIO_PuPd_UP);
-
+        // Configure CTS/RTS pins
+        if (ctsPin_ != PIN_INVALID) {
+            Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_UART_RTSCTS);
+            PAD_PullCtrl(hal_pin_to_rtl_pin(ctsPin_), GPIO_PuPd_UP);
+        }
+        if (rtsPin_ != PIN_INVALID) {
+            Pinmux_Config(hal_pin_to_rtl_pin(rtsPin_), PINMUX_FUNCTION_UART_RTSCTS);
+            PAD_PullCtrl(hal_pin_to_rtl_pin(rtsPin_), GPIO_PuPd_UP);
+        }
         UART_InitTypeDef uartInitStruct = {};
         UART_StructInit(&uartInitStruct);
         uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_1BYTES;
@@ -340,23 +348,22 @@ public:
             size_t alreadyCommitted = blockSize - rxBuffer_.acquirePending();
             size_t transferredToDmaFromUart = uartInstance->RX_BYTE_CNT & RUART_RX_READ_BYTE_CNTER;
             SPARK_ASSERT(transferredToDmaFromUart <= blockSize);
-            ssize_t toConsume = std::max<ssize_t>(dmaAvailableInBuffer, transferredToDmaFromUart) - alreadyCommitted;
-            SPARK_ASSERT(toConsume >= 0);
-            if (commit && toConsume > 0) {
-                if (hal_interrupt_is_isr()) {
-                    // This method is called from DMA RX ISR
-                    toConsume = transferredToDmaFromUart - alreadyCommitted;
-                    flushDmaRxFiFo(transferredToDmaFromUart);
-                } else {
-                    toConsume = dmaAvailableInBuffer - alreadyCommitted;
-                    // Try not suspending DMA unless necessary
-                    if (toConsume <= 0) {
-                        toConsume = transferredToDmaFromUart - dmaAvailableInBuffer;
-                        if (toConsume > 0) {
-                            flushDmaRxFiFo(transferredToDmaFromUart);
-                        }
+            ssize_t toConsume = 0;
+            if (hal_interrupt_is_isr()) {
+                // This method is called from DMA RX ISR
+                toConsume = transferredToDmaFromUart - alreadyCommitted;
+                flushDmaRxFiFo(transferredToDmaFromUart);
+            } else {
+                toConsume = dmaAvailableInBuffer - alreadyCommitted;
+                // Try not suspending DMA unless necessary
+                if (toConsume <= 0) {
+                    toConsume = transferredToDmaFromUart - dmaAvailableInBuffer;
+                    if (toConsume > 0 && commit) {
+                        flushDmaRxFiFo(transferredToDmaFromUart);
                     }
                 }
+            }
+            if (commit && toConsume > 0) {
                 rxBuffer_.acquireCommit(toConsume);
                 if (cancel) {
                     // Release the rest of the buffer if any

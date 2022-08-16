@@ -49,6 +49,7 @@ class Platform(IntEnum):
     BSOM = 23
     B5SOM = 25
     TRACKER = 26
+    TRACKERM = 28
     P2 = 32
 
 class StructSerializable(struct.Struct):
@@ -243,7 +244,7 @@ GEN3_RADIO_STACK_FLAGS = ModuleFlags.DROP_MODULE_INFO
 GEN3_RADIO_STACK_DEPENDENCY = ModuleDependency(ModuleFunction.BOOTLOADER, 501)
 GEN3_RADIO_STACK_DEPENDENCY2 = ModuleDependency(ModuleFunction.SYSTEM_PART, 1321, 1)
 
-RTL_PLATFORMS = [Platform.P2]
+RTL_PLATFORMS = [Platform.P2, Platform.TRACKERM]
 RTL_MBR_OFFSET = 0x08000000
 RTL_KM0_PART1_OFFSET = 0x08014000
 

@@ -80,7 +80,7 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
             }
         }
 #endif
-#if PLATFORM_ID == PLATFORM_P2
+#if HAL_PLATFORM_RTL872X
         // P2 doesn't need to turn off the modem manually
         system_notify_event(network_status, network_status_off);
 #else

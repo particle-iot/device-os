@@ -109,7 +109,7 @@ function valid_platform ()
     # Validate platform (result of expression returned to caller)
     [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || \
             [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "tracker" ] || \
-            [ "$platform" = "esomx" ] || [ "$platform" = "p2" ]
+            [ "$platform" = "esomx" ] || [ "$platform" = "p2" ] || [ "$platform" = "trackerm" ]
 }
 
 # Handle invalid arguments
@@ -152,6 +152,9 @@ case "$PLATFORM" in
         ;;
     "tracker")
         PLATFORM_ID="26"
+        ;;
+    "trackerm")
+        PLATFORM_ID="28"
         ;;
     "p2")
         PLATFORM_ID="32"
