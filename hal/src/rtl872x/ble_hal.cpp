@@ -158,7 +158,7 @@ bool addressEqual(const hal_ble_addr_t& srcAddr, const hal_ble_addr_t& destAddr)
     return (srcAddr.addr_type == destAddr.addr_type && !memcmp(srcAddr.addr, destAddr.addr, BLE_SIG_ADDR_LEN));
 }
 
-hal_ble_addr_t chipDefaultAddress() {
+hal_ble_addr_t chipDefaultPublicAddress() {
     hal_ble_addr_t localAddr = {};
     hal_get_ble_mac_address(localAddr.addr, BLE_SIG_ADDR_LEN, nullptr);
     localAddr.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
@@ -924,23 +924,37 @@ int BleGap::getDeviceName(char* deviceName, size_t len) const {
 }
 
 int BleGap::setDeviceAddress(const hal_ble_addr_t* address) {
-    hal_ble_addr_t newAddr = {};
-    if (address == nullptr) {
-        // default to reserved MAC address for this platform
-        newAddr = chipDefaultAddress();
-    } else {
-        newAddr = *address;
+    CHECK_FALSE(isAdvertising(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(scanning(), SYSTEM_ERROR_INVALID_STATE);
+    // RTL872x doesn't support changing the the public address.
+    // But to be compatible with existing BLE platforms, it should accept nulllptr.
+    if (!address) {
+        addr_ = chipDefaultPublicAddress();
+        return SYSTEM_ERROR_NONE;
     }
-    if (newAddr.addr_type != BLE_SIG_ADDR_TYPE_PUBLIC && newAddr.addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
+    if (address->addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (newAddr.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC && (newAddr.addr[5] & 0xC0) != 0xC0) {
+    if ((address->addr[5] & 0xC0) != 0xC0) {
         // For random static address, the two most significant bits of the address shall be equal to 1.
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    uint8_t addr[BLE_SIG_ADDR_LEN] = {};
+    memcpy(addr, address->addr, BLE_SIG_ADDR_LEN);
+    CHECK_RTL(le_cfg_local_identity_address(addr, GAP_IDENT_ADDR_RAND));
+    CHECK_RTL(le_set_gap_param(GAP_PARAM_RANDOM_ADDR, BLE_SIG_ADDR_LEN, addr));
+    addr_ = *address;
 
-    CHECK_RTL(le_cfg_local_identity_address(newAddr.addr, (newAddr.addr_type == BLE_SIG_ADDR_TYPE_PUBLIC) ?  GAP_IDENT_ADDR_PUBLIC : GAP_IDENT_ADDR_RAND));
-    addr_ = newAddr;
+    uint8_t advLocalAddrType = GAP_LOCAL_ADDR_LE_PUBLIC;
+    if (address->addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
+        advLocalAddrType = GAP_LOCAL_ADDR_LE_RANDOM;
+    }
+    CHECK_RTL(le_adv_set_param(GAP_PARAM_ADV_LOCAL_ADDR_TYPE, sizeof(advLocalAddrType), &advLocalAddrType));
+    uint8_t scanLocalAddrType = GAP_LOCAL_ADDR_LE_PUBLIC;
+    if (address->addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
+        scanLocalAddrType = GAP_LOCAL_ADDR_LE_RANDOM;
+    }
+    CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_LOCAL_ADDR_TYPE, sizeof(uint8_t), &scanLocalAddrType));
 
     return SYSTEM_ERROR_NONE;
 }

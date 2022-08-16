@@ -43,6 +43,7 @@ using namespace particle;
 #define EFUSE_SUCCESS           1
 #define EFUSE_FAILURE           0
 
+#define BLE_MAC_OFFSET          0x190
 #define WIFI_MAC_OFFSET         0x11A
 #define MOBILE_SECRET_OFFSET    0x160
 #define SERIAL_NUMBER_OFFSET    0x16F
@@ -50,6 +51,7 @@ using namespace particle;
 #define HARDWARE_MODEL_OFFSET   0x17B
 
 #define WIFI_MAC_SIZE                   6
+#define BLE_MAC_SIZE                    6
 #define SERIAL_NUMBER_FRONT_PART_SIZE   9
 #define HARDWARE_DATA_SIZE              4
 #define HARDWARE_MODEL_SIZE             4
@@ -84,13 +86,6 @@ int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
     return SYSTEM_ERROR_NONE;
 };
 
-// big-endian
-int readBaseMacAddress(uint8_t* dest, size_t destLen) {
-    // The parameters should have been checked
-    CHECK(readLogicalEfuse(WIFI_MAC_OFFSET, dest, destLen));
-    return WIFI_MAC_SIZE;
-}
-
 } // Anonymous
 
 unsigned hal_get_device_id(uint8_t* dest, unsigned destLen) {
@@ -113,16 +108,15 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
 }
 
 int hal_get_ble_mac_address(uint8_t* dest, size_t destLen, void* reserved) {
-    CHECK_TRUE(dest && destLen >= WIFI_MAC_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    uint8_t mac[WIFI_MAC_SIZE] = {};
-    destLen = WIFI_MAC_SIZE;
-    CHECK(readBaseMacAddress(mac, WIFI_MAC_SIZE));
+    CHECK_TRUE(dest && destLen >= BLE_MAC_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint8_t mac[BLE_MAC_SIZE] = {};
+    destLen = BLE_MAC_SIZE;
+    CHECK(readLogicalEfuse(BLE_MAC_OFFSET, mac, BLE_MAC_SIZE));
     // As per BLE spec, we store BLE data in little-endian
-    for (uint8_t i = 0, j = WIFI_MAC_SIZE - 1; i < WIFI_MAC_SIZE; i++, j--) {
+    for (uint8_t i = 0, j = BLE_MAC_SIZE - 1; i < BLE_MAC_SIZE; i++, j--) {
         dest[i] = mac[j];
     }
-    dest[0] += BLE_MAC_DELTA;
-    return WIFI_MAC_SIZE;
+    return BLE_MAC_SIZE;
 }
 
 
