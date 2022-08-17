@@ -154,8 +154,8 @@ int if_init_platform(void*) {
     reserve_netif_index();
 
     /* en2 - Ethernet FeatherWing (optional) */
-    uint8_t mac[MAC_ADDR_SIZE] = {};
-    CHECK(hal_get_mac_address(HAL_DEVICE_MAC_ETHERNET, mac, MAC_ADDR_SIZE, nullptr));
+    uint8_t mac[HAL_DEVICE_MAC_ADDR_SIZE] = {};
+    CHECK(hal_get_mac_address(HAL_DEVICE_MAC_ETHERNET, mac, HAL_DEVICE_MAC_ADDR_SIZE, nullptr));
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
         en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);

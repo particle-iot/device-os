@@ -17,27 +17,4 @@
 
 #pragma once
 
-#define HAL_DEVICE_MAC_ADDR_SIZE        6
-
-#define HAL_DEVICE_MAC_WIFI_STA         0
-#define HAL_DEVICE_MAC_BLE              1
-#define HAL_DEVICE_MAC_WIFI_AP          2
-#define HAL_DEVICE_MAC_ETHERNET         3
-
-#define isSupportedMacType(type)        ((type) == HAL_DEVICE_MAC_WIFI_STA || \
-                                         (type) == HAL_DEVICE_MAC_BLE || \
-                                         (type) == HAL_DEVICE_MAC_WIFI_AP || \
-                                         (type) == HAL_DEVICE_MAC_ETHERNET)
-
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
-/**
- * Get the device's BLE MAC address.
- */
-int hal_get_mac_address(uint8_t type, uint8_t* dest, size_t destLen, void* reserved);
-
-#ifdef	__cplusplus
-}
-#endif
+// placeholder

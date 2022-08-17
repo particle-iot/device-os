@@ -99,17 +99,17 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
 }
 
 int hal_get_mac_address(uint8_t type, uint8_t* dest, size_t destLen, void* reserved) {
-    CHECK_TRUE(dest && destLen >= MAC_ADDR_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(dest && destLen >= HAL_DEVICE_MAC_ADDR_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(isSupportedMacType(type), SYSTEM_ERROR_INVALID_ARGUMENT);
-    uint8_t mac[MAC_ADDR_SIZE] = {};
+    uint8_t mac[HAL_DEVICE_MAC_ADDR_SIZE] = {};
     if (type == HAL_DEVICE_MAC_BLE) {
-        CHECK(readLogicalEfuse(BLE_MAC_OFFSET, mac, MAC_ADDR_SIZE));
+        CHECK(readLogicalEfuse(BLE_MAC_OFFSET, mac, HAL_DEVICE_MAC_ADDR_SIZE));
     } else {
-        CHECK(readLogicalEfuse(WIFI_MAC_OFFSET, mac, MAC_ADDR_SIZE));
+        CHECK(readLogicalEfuse(WIFI_MAC_OFFSET, mac, HAL_DEVICE_MAC_ADDR_SIZE));
         // Derive the final MAC address
         mac[5] += type;
     }
-    return MAC_ADDR_SIZE;
+    return HAL_DEVICE_MAC_ADDR_SIZE;
 }
 
 int hal_get_device_serial_number(char* str, size_t size, void* reserved) {
@@ -124,7 +124,7 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved) {
     CHECK(readLogicalEfuse(SERIAL_NUMBER_OFFSET, (uint8_t*)fullSerialNumber, SERIAL_NUMBER_FRONT_PART_SIZE));
 
     // generate hex string from non-OUI MAC bytes
-    uint8_t wifiMacRandomBytes[MAC_ADDR_SIZE - WIFI_OUID_SIZE] = {};
+    uint8_t wifiMacRandomBytes[HAL_DEVICE_MAC_ADDR_SIZE - WIFI_OUID_SIZE] = {};
     CHECK(readLogicalEfuse(WIFI_MAC_OFFSET + WIFI_OUID_SIZE, wifiMacRandomBytes, sizeof(wifiMacRandomBytes)));
     bytes2hexbuf(wifiMacRandomBytes, sizeof(wifiMacRandomBytes), &fullSerialNumber[SERIAL_NUMBER_FRONT_PART_SIZE]);
 
