@@ -27,6 +27,7 @@
 
 #ifdef DYNALIB_EXPORT
 #include "nanopb_misc.h"
+#include "devicetree_stubs.h"
 #include <stdint.h>
 #ifdef PB_WITHOUT_64BIT
 #define pb_int64_t int32_t
@@ -88,6 +89,13 @@ DYNALIB_FN(41, services, clear_system_error_message, void())
 DYNALIB_FN(42, services, get_system_error_message, const char*(int))
 DYNALIB_FN(43, services, jsmn_parse, int(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
 DYNALIB_FN(44, services, panic_set_hook, void(const PanicHook, void*))
+DYNALIB_FN(45, services, devicetree_init, int(const void*, uint32_t, void*))
+DYNALIB_FN(46, services, devicetree_overlay_apply, int(const void*, uint32_t, void*))
+DYNALIB_FN(47, services, devicetree_string_dictionary_register, int(const void*, size_t, uint32_t, void*))
+DYNALIB_FN(48, services, devicetree_tree_lock, int(void*))
+DYNALIB_FN(49, services, devicetree_tree_get, int(void*, uint32_t, void*))
+DYNALIB_FN(50, services, devicetree_string_dictionary_lookup, const char*(uint32_t, void*))
+DYNALIB_FN(51, services, devicetree_hash_string, uint32_t(const char*, size_t))
 
 DYNALIB_END(services)
 
