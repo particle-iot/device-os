@@ -98,6 +98,8 @@ int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved);
 
 #include "deviceid_hal_compat.h"
 
+#include "deviceid_hal_impl.h"
+
 #ifdef	__cplusplus
 }
 #endif
