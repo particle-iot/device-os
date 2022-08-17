@@ -1,3 +1,58 @@
+## 5.0.0
+
+### BREAKING CHANGE
+
+- [esomx] Remove undefined pins from esomx pinmap [#2505](https://github.com/particle-iot/device-os/pull/2466)
+
+### FEATURES
+- P2 Support [#2466](https://github.com/particle-iot/device-os/pull/2466)
+- Tracker M Support [#2492](https://github.com/particle-iot/device-os/pull/2492) [#2518](https://github.com/particle-iot/device-os/pull/2518) [#2522](https://github.com/particle-iot/device-os/pull/2522)
+- [p2] Allow setting WiFi country code and channel plan [#2485](https://github.com/particle-iot/device-os/pull/2485) [#2473](https://github.com/particle-iot/device-os/pull/2473)
+- [rtl872x] Implement HAL event group for UART [#2493](https://github.com/particle-iot/device-os/pull/2493)
+- [rtl872x] Implement APIs to set/get BLE address [#2508](https://github.com/particle-iot/device-os/pull/2508)
+
+### ENHANCEMENTS
+- [p2][wifi] Add more complete WiFi network configuration information for P2 [#2474](https://github.com/particle-iot/device-os/pull/2474)
+- [p2][photon2] Add VBAT_MEAS pin and charging indication pin for Photon2 [#2482](https://github.com/particle-iot/device-os/pull/2482)
+- [ethernet][p2] Allow ethernet detection on P2 [#2478](https://github.com/particle-iot/device-os/pull/2478)
+- Register without waiting for CSD connections [#2404](https://github.com/particle-iot/device-os/pull/2404)
+
+### BUGFIXES
+- [p2] usart: flush DMA FIFO data when required [#2477](https://github.com/particle-iot/device-os/pull/2477)
+- [gen3] port newlib stdin/stdout/stderr memory leak workaround [#2467](https://github.com/particle-iot/device-os/pull/2467)
+- [p2] Flash supports page write and other fixes [#2470](https://github.com/particle-iot/device-os/pull/2470)
+- [esomx] map ADC channels to the correct pins [#2495](https://github.com/particle-iot/device-os/pull/2495)
+- [rtl872x] Fix millis() rollover [#2501](https://github.com/particle-iot/device-os/pull/2501)
+- [p2][gen3] fixes for attachInterrupt() / noInterrupts() / interrupts() APIs [#2503](https://github.com/particle-iot/device-os/pull/2503)
+- [rtl872x] hal: fix issue that uart rx dma may hang up. [#2502](https://github.com/particle-iot/device-os/pull/2502)
+- [rtl872x] hal: implement i2c sleep and fix the reset APIs [#2497](https://github.com/particle-iot/device-os/pull/2497)
+- [p2] attachInterrupt() should not configure input pullup/pulldown/nopull [#2507](https://github.com/particle-iot/device-os/pull/2507)
+- [p2] PWM HAL fixes [#2511](https://github.com/particle-iot/device-os/pull/2511)
+- Disable direct logging in listening mode [#2512](https://github.com/particle-iot/device-os/pull/2512)
+- Ensure task yield and system thread pump in system_delay_pump [#2519](https://github.com/particle-iot/device-os/pull/2519) [#2521](https://github.com/particle-iot/device-os/pull/2521)
+
+### INTERNAL
+- [p2] deprecate tinker-fqc app [#2479](https://github.com/particle-iot/device-os/pull/2479) [#2480](https://github.com/particle-iot/device-os/pull/2480) [#2481](https://github.com/particle-iot/device-os/pull/2481)
+- Update devtools .bundleignore for P2 SDK files [#2475](https://github.com/particle-iot/device-os/pull/2475)
+- Fix GCC platform on some versions of GCC; Fix wiring/api tests for P2; Fix building of wiring/api tests on CI [#2483](https://github.com/particle-iot/device-os/pull/2483)
+- [p2] Fix DCache alignment [#2476](https://github.com/particle-iot/device-os/pull/2476)
+- [p2] fixes INTERRUPTS_01_isisr_willpreempt_servicedirqn test [#2486](https://github.com/particle-iot/device-os/pull/2486)
+- Remove redundant toolchain overrides [#2489](https://github.com/particle-iot/device-os/pull/2489)
+- Enable OTA updates on the GCC platform [#2464](https://github.com/particle-iot/device-os/pull/2464)
+- Allow overriding the platform ID on the GCC platform [#2462](https://github.com/particle-iot/device-os/pull/2462)
+- [workbench] Update workbench buildscripts to 1.11.0 [#2465](https://github.com/particle-iot/device-os/pull/2465)
+- [tests] Change PWM pins to better match e-series pinout for E SoM X. Fix other tests [#2463](https://github.com/particle-iot/device-os/pull/2463)
+- [tests] Fix broken tone and servo tests for p2 platform, also EEPROM_03 for all. [#2469](https://github.com/particle-iot/device-os/pull/2469)
+- [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
+- [p2] Simplify burn in LED blink, work around System.millis() reset [#2491](https://github.com/particle-iot/device-os/pull/2491)
+- [tests][esomx] disable RGB pwm channel(s) when running pwm tests [#2494](https://github.com/particle-iot/device-os/pull/2494)
+- [rtl872x] Poll micros instead of rom DelayUs function. Tweak 1ms test [#2499](https://github.com/particle-iot/device-os/pull/2499)
+- [ci] branch pattern changes for test-build-system [#2509](https://github.com/particle-iot/device-os/pull/2509)
+- [p2] PWM fixture tests [#2511](https://github.com/particle-iot/device-os/pull/2511)
+- [test] fixes race condition with wiring/no_fixture TIME_17 [#2513](https://github.com/particle-iot/device-os/pull/2513)
+- [services] device tree stubs [#2515](https://github.com/particle-iot/device-os/pull/2515)
+- [tests] integration: bump binary-version-reader and device-constants dependency for P2-related module manipulation fixes [#2516](https://github.com/particle-iot/device-os/pull/2516)
+
 ## 5.0.0-alpha.2
 
 > ## :warning: Please note this is an internal release, do not use on production devices!
