@@ -160,8 +160,14 @@ bool addressEqual(const hal_ble_addr_t& srcAddr, const hal_ble_addr_t& destAddr)
 
 hal_ble_addr_t chipDefaultPublicAddress() {
     hal_ble_addr_t localAddr = {};
-    hal_get_ble_mac_address(localAddr.addr, BLE_SIG_ADDR_LEN, nullptr);
-    localAddr.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
+    uint8_t mac[BLE_SIG_ADDR_LEN] = {};
+    if (hal_get_mac_address(HAL_DEVICE_MAC_BLE, mac, BLE_SIG_ADDR_LEN, nullptr) == BLE_SIG_ADDR_LEN) {
+        // As per BLE spec, we store BLE data in little-endian
+        for (uint8_t i = 0, j = BLE_SIG_ADDR_LEN - 1; i < BLE_SIG_ADDR_LEN; i++, j--) {
+            localAddr.addr[i] = mac[j];
+        }
+        localAddr.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
+    }
     return localAddr;
 }
 

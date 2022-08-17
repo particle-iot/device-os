@@ -34,7 +34,6 @@ extern "C" {
 #include "rtl8721d_efuse.h"
 }
 
-
 namespace {
 
 using namespace particle;
@@ -50,19 +49,11 @@ using namespace particle;
 #define HARDWARE_DATA_OFFSET    0x178
 #define HARDWARE_MODEL_OFFSET   0x17B
 
-#define WIFI_MAC_SIZE                   6
-#define BLE_MAC_SIZE                    6
 #define SERIAL_NUMBER_FRONT_PART_SIZE   9
 #define HARDWARE_DATA_SIZE              4
 #define HARDWARE_MODEL_SIZE             4
 #define WIFI_OUID_SIZE                  3
 #define DEVICE_ID_PREFIX_SIZE           6
-
-// Offsets from base WiFi MAC address for reserved interfaces
-#define WIFI_STA_MAC_DELTA 0
-#define WIFI_AP_MAC_DELTA 1
-#define BLE_MAC_DELTA 2
-#define ETH_MAC_DELTA 3
 
 const uint8_t DEVICE_ID_PREFIX[] = {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21};
 
@@ -107,19 +98,19 @@ int HAL_Get_Device_Identifier(const char** name, char* buf, size_t buflen, unsig
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
-int hal_get_ble_mac_address(uint8_t* dest, size_t destLen, void* reserved) {
-    CHECK_TRUE(dest && destLen >= BLE_MAC_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
-    uint8_t mac[BLE_MAC_SIZE] = {};
-    destLen = BLE_MAC_SIZE;
-    CHECK(readLogicalEfuse(BLE_MAC_OFFSET, mac, BLE_MAC_SIZE));
-    // As per BLE spec, we store BLE data in little-endian
-    for (uint8_t i = 0, j = BLE_MAC_SIZE - 1; i < BLE_MAC_SIZE; i++, j--) {
-        dest[i] = mac[j];
+int hal_get_mac_address(uint8_t type, uint8_t* dest, size_t destLen, void* reserved) {
+    CHECK_TRUE(dest && destLen >= MAC_ADDR_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(isSupportedMacType(type), SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint8_t mac[MAC_ADDR_SIZE] = {};
+    if (type == HAL_DEVICE_MAC_BLE) {
+        CHECK(readLogicalEfuse(BLE_MAC_OFFSET, mac, MAC_ADDR_SIZE));
+    } else {
+        CHECK(readLogicalEfuse(WIFI_MAC_OFFSET, mac, MAC_ADDR_SIZE));
+        // Derive the final MAC address
+        mac[5] += type;
     }
-    return BLE_MAC_SIZE;
+    return MAC_ADDR_SIZE;
 }
-
-
 
 int hal_get_device_serial_number(char* str, size_t size, void* reserved) {
     char fullSerialNumber[HAL_DEVICE_SERIAL_NUMBER_SIZE] = {};
@@ -133,7 +124,7 @@ int hal_get_device_serial_number(char* str, size_t size, void* reserved) {
     CHECK(readLogicalEfuse(SERIAL_NUMBER_OFFSET, (uint8_t*)fullSerialNumber, SERIAL_NUMBER_FRONT_PART_SIZE));
 
     // generate hex string from non-OUI MAC bytes
-    uint8_t wifiMacRandomBytes[WIFI_MAC_SIZE - WIFI_OUID_SIZE] = {};
+    uint8_t wifiMacRandomBytes[MAC_ADDR_SIZE - WIFI_OUID_SIZE] = {};
     CHECK(readLogicalEfuse(WIFI_MAC_OFFSET + WIFI_OUID_SIZE, wifiMacRandomBytes, sizeof(wifiMacRandomBytes)));
     bytes2hexbuf(wifiMacRandomBytes, sizeof(wifiMacRandomBytes), &fullSerialNumber[SERIAL_NUMBER_FRONT_PART_SIZE]);
 
