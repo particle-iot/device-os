@@ -702,23 +702,12 @@ inline Print* spark::StreamLogHandler::stream() const {
     return stream_;
 }
 
-inline void spark::StreamLogHandler::write(const char *data, size_t size) {
-    stream_->write((const uint8_t*)data, size);
-}
-
 inline void spark::StreamLogHandler::write(const char *str) {
     write(str, strlen(str));
 }
 
 inline void spark::StreamLogHandler::write(char c) {
     write(&c, 1);
-}
-
-inline void spark::StreamLogHandler::printf(const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    stream_->vprintf(false, fmt, args);
-    va_end(args);
 }
 
 // spark::JSONStreamLogHandler
