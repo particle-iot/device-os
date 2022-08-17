@@ -27,6 +27,7 @@
 #include "unit-test/unit-test.h"
 #include "rtc_hal.h"
 #include "simple_ntp_client.h"
+#include "scope_guard.h"
 
 test(TIME_01_NowReturnsCorrectUnixTime) {
     // when
@@ -270,11 +271,12 @@ test(TIME_16_TimeChangedEvent) {
 }
 
 test(TIME_17_RtcAlarmFiresCorrectly) {
-    if (Particle.syncTimePending()) {
-        waitFor(Particle.syncTimeDone, 60000);
-        assertTrue(Particle.syncTimeDone());
-        assertTrue(Time.isValid());
-    }
+    SCOPE_GUARD ({
+            Particle.connect();
+            waitFor(Particle.connected, 60000);
+        });
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 60000);
 
     // Absolute time
     struct timeval now;
@@ -288,7 +290,7 @@ test(TIME_17_RtcAlarmFiresCorrectly) {
     }, (void*)&alarmFired, nullptr);
     assertEqual(r, 0);
     while (!alarmFired && (millis() - ms) <= 6000) {
-        delay(1);
+        HAL_Delay_Milliseconds(10);
     }
     assertLessOrEqual(millis() - ms, 6000);
     hal_rtc_cancel_alarm();
@@ -305,7 +307,7 @@ test(TIME_17_RtcAlarmFiresCorrectly) {
     }, (void*)&alarmFired, nullptr);
     assertEqual(r, 0);
     while (!alarmFired && (millis() - ms) <= 6000) {
-        delay(1);
+        HAL_Delay_Milliseconds(10);
     }
     assertLessOrEqual(millis() - ms, 6000);
     hal_rtc_cancel_alarm();
@@ -313,11 +315,12 @@ test(TIME_17_RtcAlarmFiresCorrectly) {
 }
 
 test(TIME_18_RtcAlarmReturnsAnErrorWhenTimeInThePast) {
-    if (Particle.syncTimePending()) {
-        waitFor(Particle.syncTimeDone, 60000);
-        assertTrue(Particle.syncTimeDone());
-        assertTrue(Time.isValid());
-    }
+    SCOPE_GUARD ({
+            Particle.connect();
+            waitFor(Particle.connected, 60000);
+        });
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 60000);
 
     // Absolute time
     struct timeval now;
