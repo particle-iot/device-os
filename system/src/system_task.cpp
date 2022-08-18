@@ -531,9 +531,10 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
     spark_loop_total_millis += ms;
 
     system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
+    system_tick_t end_micros = HAL_Timer_Get_Micro_Seconds() + (1000*ms);
 
-    // Ensure that RTOS vTaskDelay() is called at least once to avoid task starvation in tight delay(1) loops
-    HAL_Delay_Milliseconds(1);
+    // Ensure that RTOS vTaskDelay(0) is called to force a reschedule to avoid task starvation in tight delay(1) loops
+    HAL_Delay_Milliseconds(0);
 
     while (1)
     {
@@ -544,6 +545,19 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
         if (elapsed_millis > ms)
         {
             break;
+        }
+        else if (elapsed_millis >= (ms-1))
+        {
+            // on the last millisecond, resolve using micros - we don't know how far in that millisecond had come
+            // have to be careful with wrap around since start_micros can be greater than end_micros.
+            for (;;)
+            {
+                system_tick_t delay = end_micros - HAL_Timer_Get_Micro_Seconds();
+                if (delay > 100000) {
+                    return;
+                }
+                HAL_Delay_Microseconds(min(delay/2, 1u));
+            }
         }
         else
         {
@@ -556,7 +570,7 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
         }
         else if ((elapsed_millis >= spark_loop_elapsed_millis) || (spark_loop_total_millis >= SPARK_LOOP_DELAY_MILLIS))
         {
-        		bool threading = system_thread_get_state(nullptr);
+            bool threading = system_thread_get_state(nullptr);
             spark_loop_elapsed_millis = elapsed_millis + SPARK_LOOP_DELAY_MILLIS;
             //spark_loop_total_millis is reset to 0 in Spark_Idle()
             do
@@ -568,8 +582,11 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
         }
     }
 
-    // Always pump the system thread at least once
-    spark_process();
+    if (!force_no_background_loop)
+    {
+        // Always pump the system thread at least once
+        spark_process();
+    }
 }
 
 /**
@@ -583,7 +600,7 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
 
     if ((!PLATFORM_THREADING || APPLICATION_THREAD_CURRENT()) && !hal_interrupt_is_isr())
     {
-    		system_delay_pump(ms, force_no_background_loop);
+        system_delay_pump(ms, force_no_background_loop);
     }
     else
     {
