@@ -475,6 +475,11 @@ int spark::detail::LogFilter::nodeIndex(const Vector<Node> &nodes, const char *n
 
 // spark::StreamLogHandler
 void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
+#if PLATFORM_ID != PLATFORM_GCC && !defined(LOG_IN_LISTENING_MODE)
+    if (stream_ == &Serial && Network.listening()) {
+        return; // Do not mix logging and serial console output
+    }
+#endif
     const char *s = nullptr;
     // Timestamp
     if (attr.has_time) {
@@ -537,7 +542,6 @@ void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const 
 }
 
 void spark::StreamLogHandler::write(const char *data, size_t size) {
-    // TODO: Move this check to a base class (see also JSONStreamLogHandler::logMessage())
 #if PLATFORM_ID != PLATFORM_GCC && !defined(LOG_IN_LISTENING_MODE)
     if (stream_ == &Serial && Network.listening()) {
         return; // Do not mix logging and serial console output
@@ -567,12 +571,11 @@ void spark::StreamLogHandler::printf(const char *fmt, ...) {
 
 // spark::JSONStreamLogHandler
 void spark::JSONStreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
-    // TODO: Move this check to a base class (see also StreamLogHandler::write())
 #if PLATFORM_ID != PLATFORM_GCC && !defined(LOG_IN_LISTENING_MODE)
     if (this->stream() == &Serial && Network.listening()) {
         return; // Do not mix logging and serial console output
     }
-#endif // PLATFORM_ID != PLATFORM_GCC
+#endif
     JSONStreamWriter json(*this->stream());
     json.beginObject();
     // Level
