@@ -556,8 +556,10 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
                 delay = (std::numeric_limits<system_tick_t>::max() - start_micros) + end_micros;
             }
 
-            HAL_Delay_Microseconds(delay);
-            return;
+            for (uint32_t i = 0; i < delay; i++) {
+                HAL_Delay_Microseconds(1);
+            }
+            break;
         }
         else
         {
