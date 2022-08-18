@@ -531,7 +531,9 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
     spark_loop_total_millis += ms;
 
     system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
-    system_tick_t end_micros = HAL_Timer_Get_Micro_Seconds() + (1000*ms);
+
+    // Ensure that RTOS vTaskDelay() is called at least once to avoid task starvation in tight delay(1) loops
+    HAL_Delay_Milliseconds(1);
 
     while (1)
     {
@@ -541,24 +543,6 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
 
         if (elapsed_millis > ms)
         {
-            break;
-        }
-        else if (elapsed_millis >= (ms-1)) {
-            // on the last millisecond, resolve using micros - we don't know how far in that millisecond had come
-            // have to be careful with wrap around since start_micros can be greater than end_micros.
-
-            system_tick_t start_micros = HAL_Timer_Get_Micro_Seconds();
-            system_tick_t delay = end_micros - start_micros;
-
-            // If delay duration extends across the micro rollover, 
-            // account for micros remaining before rollover as well as micros after rollover
-            if (end_micros < start_micros) {
-                delay = (std::numeric_limits<system_tick_t>::max() - start_micros) + end_micros;
-            }
-
-            for (uint32_t i = 0; i < delay; i++) {
-                HAL_Delay_Microseconds(1);
-            }
             break;
         }
         else
@@ -583,6 +567,9 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
             while (!threading && SPARK_FLASH_UPDATE); //loop during OTA update
         }
     }
+
+    // Always pump the system thread at least once
+    spark_process();
 }
 
 /**
