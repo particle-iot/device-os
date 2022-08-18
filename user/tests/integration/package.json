@@ -2,8 +2,8 @@
   "description": "Device OS Integration Tests",
   "private": true,
   "dependencies": {
-    "@particle/device-constants": "^1.3.0",
-    "binary-version-reader": "^1.1.2",
+    "@particle/device-constants": "^2.1.0",
+    "binary-version-reader": "^1.3.0",
     "tempy": "^1.0.1"
   }
 }
