@@ -34,6 +34,9 @@
 // Uncomment to enable logging in interrupt handlers
 // #define LOG_FROM_ISR
 
+// Uncomment to enable logging to the USB serial while in listening mode
+// #define LOG_IN_LISTENING_MODE
+
 #if defined(LOG_FROM_ISR) && PLATFORM_ID != PLATFORM_GCC
 // When compiled with LOG_FROM_ISR defined use ATOMIC_BLOCK
 #define LOG_WITH_LOCK(x) ATOMIC_BLOCK()
@@ -472,12 +475,11 @@ int spark::detail::LogFilter::nodeIndex(const Vector<Node> &nodes, const char *n
 
 // spark::StreamLogHandler
 void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
-    // TODO: Move this check to a base class (see also JSONStreamLogHandler::logMessage())
-#if PLATFORM_ID != PLATFORM_GCC
+#if PLATFORM_ID != PLATFORM_GCC && !defined(LOG_IN_LISTENING_MODE)
     if (stream_ == &Serial && Network.listening()) {
         return; // Do not mix logging and serial console output
     }
-#endif // PLATFORM_ID != PLATFORM_GCC
+#endif
     const char *s = nullptr;
     // Timestamp
     if (attr.has_time) {
@@ -539,14 +541,41 @@ void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const 
     write("\r\n", 2);
 }
 
+void spark::StreamLogHandler::write(const char *data, size_t size) {
+#if PLATFORM_ID != PLATFORM_GCC && !defined(LOG_IN_LISTENING_MODE)
+    if (stream_ == &Serial && Network.listening()) {
+        return; // Do not mix logging and serial console output
+    }
+#endif
+    stream_->write((const uint8_t*)data, size);
+}
+
+void spark::StreamLogHandler::printf(const char *fmt, ...) {
+    char buf[32];
+    va_list args;
+    va_start(args, fmt);
+    int n = vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    if ((size_t)n >= sizeof(buf)) {
+        char buf[n + 1]; // Use a larger buffer
+        va_start(args, fmt);
+        n = vsnprintf(buf, sizeof(buf), fmt, args);
+        va_end(args);
+        if (n > 0) {
+            write(buf, n);
+        }
+    } else if (n > 0) {
+        write(buf, n);
+    }
+}
+
 // spark::JSONStreamLogHandler
 void spark::JSONStreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
-    // TODO: Move this check to a base class (see also StreamLogHandler::logMessage())
-#if PLATFORM_ID != PLATFORM_GCC
+#if PLATFORM_ID != PLATFORM_GCC && !defined(LOG_IN_LISTENING_MODE)
     if (this->stream() == &Serial && Network.listening()) {
         return; // Do not mix logging and serial console output
     }
-#endif // PLATFORM_ID != PLATFORM_GCC
+#endif
     JSONStreamWriter json(*this->stream());
     json.beginObject();
     // Level
