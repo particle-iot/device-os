@@ -531,7 +531,9 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
     spark_loop_total_millis += ms;
 
     system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
-    system_tick_t end_micros = HAL_Timer_Get_Micro_Seconds() + (1000*ms);
+
+    // Ensure that RTOS vTaskDelay() is called at least once to avoid task starvation in tight delay(1) loops
+    HAL_Delay_Milliseconds(1);
 
     while (1)
     {
@@ -542,18 +544,6 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
         if (elapsed_millis > ms)
         {
             break;
-        }
-        else if (elapsed_millis >= (ms-1)) {
-            // on the last millisecond, resolve using millis - we don't know how far in that millisecond had come
-            // have to be careful with wrap around since start_micros can be greater than end_micros.
-
-            for (;;)
-            {
-                system_tick_t delay = end_micros-HAL_Timer_Get_Micro_Seconds();
-                if (delay>100000)
-                    return;
-                HAL_Delay_Microseconds(min(delay/2, 1u));
-            }
         }
         else
         {
@@ -577,6 +567,9 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
             while (!threading && SPARK_FLASH_UPDATE); //loop during OTA update
         }
     }
+
+    // Always pump the system thread at least once
+    spark_process();
 }
 
 /**

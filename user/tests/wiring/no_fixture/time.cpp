@@ -290,7 +290,7 @@ test(TIME_17_RtcAlarmFiresCorrectly) {
     }, (void*)&alarmFired, nullptr);
     assertEqual(r, 0);
     while (!alarmFired && (millis() - ms) <= 6000) {
-        HAL_Delay_Milliseconds(10);
+        delay(1);
     }
     assertLessOrEqual(millis() - ms, 6000);
     hal_rtc_cancel_alarm();
@@ -307,7 +307,7 @@ test(TIME_17_RtcAlarmFiresCorrectly) {
     }, (void*)&alarmFired, nullptr);
     assertEqual(r, 0);
     while (!alarmFired && (millis() - ms) <= 6000) {
-        HAL_Delay_Milliseconds(10);
+        delay(1);
     }
     assertLessOrEqual(millis() - ms, 6000);
     hal_rtc_cancel_alarm();
