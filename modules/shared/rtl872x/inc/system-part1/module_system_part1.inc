@@ -78,9 +78,9 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     DYNALIB_TABLE_NAME(hal_netdb),
     DYNALIB_TABLE_NAME(hal_ifapi),
     DYNALIB_TABLE_NAME(hal_resolvapi)
-#if HAL_PLATFORM_WIFI && HAL_PLATFORM_WIFI_COMPAT
+#if HAL_PLATFORM_WIFI
     , DYNALIB_TABLE_NAME(hal_wlan)
-#endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_WIFI_COMPAT
+#endif // HAL_PLATFORM_WIFI
 #if HAL_PLATFORM_BLE
     , DYNALIB_TABLE_NAME(hal_ble)
 #endif // HAL_PLATFORM_BLE
