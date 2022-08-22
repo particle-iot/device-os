@@ -33,11 +33,11 @@
 #define DEMUX_MAX_PIN_COUNT     8
 #if HAL_PLATFORM_NRF52840
 #define DEMUX_NRF_PORT          (NRF_P1)
-#endif
 #define DEMUX_PIN_0_MASK        0x00000400
 #define DEMUX_PIN_1_MASK        0x00000800
 #define DEMUX_PIN_2_MASK        0x00001000
 #define DEMUX_PINS_SHIFT        (10)
+#endif
 
 
 namespace particle {
