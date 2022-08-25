@@ -26,6 +26,7 @@
 
 #include "deviceid_hal.h"
 #include <stddef.h>
+#include "system_error.h"
 
 unsigned hal_get_device_id(uint8_t* dest, unsigned destLen)
 {
