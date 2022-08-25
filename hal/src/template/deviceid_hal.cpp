@@ -38,3 +38,30 @@ unsigned hal_get_platform_id()
 {
     return PLATFORM_ID;
 }
+
+void hal_save_device_id(uint32_t offset) {
+}
+
+int hal_get_device_serial_number(char* str, size_t size, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_get_device_secret(char* data, size_t size, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_set_device_secret(char* data, size_t size, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_get_device_hw_version(uint32_t* revision, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_get_device_hw_info(hal_device_hw_info* info, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

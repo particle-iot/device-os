@@ -22,6 +22,7 @@
 #ifndef HAL_DEVICE_ID_NO_DCT
 #include "dct.h"
 #endif /* HAL_DEVICE_ID_NO_DCT */
+#include "check.h"
 
 #include "nrf52840.h"
 
@@ -109,6 +110,21 @@ int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved)
     *model = ((uint32_t)hw_model[1] << 8) | (uint32_t)hw_model[0];
     *variant = ((uint32_t)hw_model[3] << 8) | (uint32_t)hw_model[2];
     return SYSTEM_ERROR_NONE;
+}
+
+int hal_get_device_hw_info(hal_device_hw_info* info, void* reserved) {
+    CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
+    // HW Data format: | NCP_ID | HW_VERSION | HW Feature Flags |
+    //                 | byte 0 |   byte 1   |    byte 2/3      |
+    uint8_t hw_data[4] = {};
+    CHECK(hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, HW_DATA_OTP_ADDRESS, hw_data, sizeof(hw_data)));
+    CHECK(hal_get_device_hw_model(&info->model, &info->variant, nullptr));
+    info->revision = hw_data[1];
+    if (info->revision == 0xff) {
+        info->revision = 0xffffffff;
+    }
+    info->features = ((uint32_t)hw_data[3] << 8) | (uint32_t)hw_data[2];
+    return 0;
 }
 
 #ifndef HAL_DEVICE_ID_NO_DCT

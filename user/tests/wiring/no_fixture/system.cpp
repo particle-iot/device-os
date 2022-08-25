@@ -426,3 +426,9 @@ test(SYSTEM_07_system_event_subscription_funcptr_or_non_capturing_lambda) {
     assertFalse(waitFor(checkLastParamCloudConnected, 1000)); // should not fire cloud_status_connected
     assertEqual(sLastParam, (int)cloud_status_disconnected);
 }
+
+test(SYSTEM_08_hardware_info) {
+    auto info = System.hardwareInfo();
+    assertTrue(info.isValid());
+    // Not testing the actual data, as e.g. DVT devices may have some of the data not populated
+}
