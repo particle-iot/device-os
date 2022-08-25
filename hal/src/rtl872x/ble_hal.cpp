@@ -358,6 +358,8 @@ public:
     int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
     int stopScanning();
 
+    int setPpcp(const hal_ble_conn_params_t* ppcp);
+    int getPpcp(hal_ble_conn_params_t* ppcp) const;
     int connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* conn_handle);
     int connectCancel(const hal_ble_addr_t* address);
     ssize_t getAttMtu(hal_ble_conn_handle_t connHandle);
@@ -428,6 +430,7 @@ private:
               context_(nullptr),
               periphEvtCallbacks_{},
               connecting_(false),
+              ppcp_{},
               devNameLen_(0),
               isAdvertising_(false),
               stateSemaphore_(nullptr) {
@@ -448,6 +451,13 @@ private:
         scanParams_.window = BLE_DEFAULT_SCANNING_WINDOW;
         scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
         scanParams_.scan_phys = BLE_PHYS_AUTO;
+
+        ppcp_.version = BLE_API_VERSION;
+        ppcp_.size = sizeof(hal_ble_conn_params_t);
+        ppcp_.min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
+        ppcp_.max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL;
+        ppcp_.slave_latency = BLE_DEFAULT_SLAVE_LATENCY;
+        ppcp_.conn_sup_timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT;
 
         memset(advData_, 0x00, sizeof(advData_));
         memset(scanRespData_, 0x00, sizeof(scanRespData_));
@@ -523,6 +533,7 @@ private:
     Vector<std::pair<hal_ble_on_link_evt_cb_t, void*>> periphEvtCallbacks_;
     Vector<BleConnection> connections_;
     volatile bool connecting_;
+    hal_ble_conn_params_t ppcp_;
     uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
     size_t advDataLen_;                             /**< Current advertising data length. */
     uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
@@ -1399,7 +1410,33 @@ int BleGap::getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_inf
     return SYSTEM_ERROR_NONE;
 }
 
+int BleGap::setPpcp(const hal_ble_conn_params_t* ppcp) {
+    CHECK_TRUE(ppcp, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (ppcp->min_conn_interval != BLE_SIG_CP_MIN_CONN_INTERVAL_NONE) {
+        CHECK_TRUE(ppcp->min_conn_interval >= BLE_SIG_CP_MIN_CONN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->min_conn_interval <= BLE_SIG_CP_MIN_CONN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    }
+    if (ppcp->max_conn_interval != BLE_SIG_CP_MAX_CONN_INTERVAL_NONE) {
+        CHECK_TRUE(ppcp->max_conn_interval >= BLE_SIG_CP_MAX_CONN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->max_conn_interval <= BLE_SIG_CP_MAX_CONN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    }
+    CHECK_TRUE(ppcp->slave_latency < BLE_SIG_CP_SLAVE_LATENCY_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (ppcp->conn_sup_timeout != BLE_SIG_CP_CONN_SUP_TIMEOUT_NONE) {
+        CHECK_TRUE(ppcp->conn_sup_timeout >= BLE_SIG_CP_CONN_SUP_TIMEOUT_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->conn_sup_timeout <= BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    }
+    memcpy(&ppcp_, ppcp, std::min(ppcp_.size, ppcp->size));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::getPpcp(hal_ble_conn_params_t* ppcp) const {
+    CHECK_TRUE(ppcp, SYSTEM_ERROR_INVALID_ARGUMENT);
+    memcpy(ppcp, &ppcp_, std::min(ppcp_.size, ppcp->size));
+    return SYSTEM_ERROR_NONE;
+}
+
 int BleGap::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* conn_handle) {
+    // T_GAP_CAUSE cause = le_connect(uint8_t init_phys, uint8_t *remote_bd, T_GAP_REMOTE_ADDR_TYPE remote_bd_type, T_GAP_LOCAL_ADDR_TYPE local_bd_type, uint16_t scan_timeout);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2257,13 +2294,16 @@ int hal_ble_gap_get_appearance(ble_sig_appearance_t* appearance, void* reserved)
 int hal_ble_gap_set_ppcp(const hal_ble_conn_params_t* ppcp, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_ppcp().");
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().setPpcp(ppcp);
     return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_gap_get_ppcp(hal_ble_conn_params_t* ppcp, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_ppcp().");
-    return SYSTEM_ERROR_NONE;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getPpcp(ppcp);
 }
 
 int hal_ble_gap_add_whitelist(const hal_ble_addr_t* addr_list, size_t len, void* reserved) {
