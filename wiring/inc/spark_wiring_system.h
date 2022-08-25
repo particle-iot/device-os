@@ -46,6 +46,8 @@
 #include "system_control.h"
 #include "scope_guard.h"
 #include "underlying_type.h"
+#include "deviceid_hal.h"
+#include "platform_ncp.h"
 
 using spark::Vector;
 
@@ -351,6 +353,52 @@ public:
 private:
     system_event_t events_;
     void* callable_;
+};
+
+struct SystemHardwareInfo {
+    SystemHardwareInfo();
+    SystemHardwareInfo(const SystemHardwareInfo&) = default;
+    SystemHardwareInfo(SystemHardwareInfo&&) = default;
+    SystemHardwareInfo& operator=(const SystemHardwareInfo&) = default;
+    SystemHardwareInfo& operator=(SystemHardwareInfo&&) = default;
+
+    uint32_t revision() const {
+        return info_.revision;
+    }
+
+    uint32_t model() const {
+        return info_.model;
+    }
+
+    uint32_t variant() const {
+        return info_.variant;
+    }
+
+    uint32_t featureFlags() const {
+        return info_.features;
+    }
+
+    bool isValid() const {
+        return error_ == SYSTEM_ERROR_NONE;
+    }
+
+    spark::Vector<PlatformNCPIdentifier> ncp() const {
+        spark::Vector<PlatformNCPIdentifier> ncps;
+        for (const auto& ncpId: info_.ncp) {
+            if (ncpId != PLATFORM_NCP_UNKNOWN) {
+                ncps.append((PlatformNCPIdentifier)ncpId);
+            }
+        }
+        return ncps;
+    }
+
+    operator bool() const {
+        return isValid();
+    }
+
+private:
+    hal_device_hw_info info_;
+    int error_;
 };
 
 class SystemClass {
@@ -744,6 +792,10 @@ public:
         return info.versionNumber;
     }
 
+    SystemHardwareInfo hardwareInfo() {
+        return SystemHardwareInfo();
+    }
+
     inline void enableUpdates() {
         set_flag(SYSTEM_FLAG_OTA_UPDATE_ENABLED, true);
     }
@@ -1005,6 +1057,25 @@ private:
 };
 
 extern SystemClass System;
+
+inline SystemHardwareInfo::SystemHardwareInfo()
+        : info_{},
+          error_(SYSTEM_ERROR_INVALID_STATE) {
+    memset(&info_, 0xff, sizeof(info_));
+    info_.size = sizeof(info_);
+    info_.version = 0;
+    memset(info_.ncp, 0xff, sizeof(info_.ncp));
+    // FIXME: this workaround should better be part of dynalib interface, but because of dependencies
+    // between hal/system/wiring/etc for now it's easier to deal with it here, and we don't have that many cases
+    // like this one.
+    // NOTE: hal_get_device_hw_info() is not available in 5.x releases <= 5.0.0
+    if (System.versionNumber() >= SYSTEM_VERSION_v500ALPHA1 && System.versionNumber() <= SYSTEM_VERSION_v500) {
+        error_ = SYSTEM_ERROR_NOT_SUPPORTED;
+    } else {
+        error_ = hal_get_device_hw_info(&info_, nullptr);
+    }
+}
+
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
