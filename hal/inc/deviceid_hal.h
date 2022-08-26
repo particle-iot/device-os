@@ -96,6 +96,8 @@ int hal_get_device_hw_version(uint32_t* revision, void* reserved);
  */
 int hal_get_device_hw_model(uint32_t* model, uint32_t* variant, void* reserved);
 
+#define HAL_DEVICE_MAX_NCP_IDENTIFIERS (5)
+
 typedef struct hal_device_hw_info {
     uint16_t size;
     uint16_t version;
@@ -104,6 +106,7 @@ typedef struct hal_device_hw_info {
     uint32_t model;
     uint32_t variant;
     uint32_t features;
+    uint16_t ncp[HAL_DEVICE_MAX_NCP_IDENTIFIERS];
 } hal_device_hw_info;
 
 /**

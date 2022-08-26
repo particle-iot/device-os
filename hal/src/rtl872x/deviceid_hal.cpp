@@ -34,28 +34,15 @@ extern "C" {
 #include "rtl8721d_efuse.h"
 }
 
+#include "platform_ncp.h"
+
 namespace {
 
 using namespace particle;
 
-#define LOGICAL_EFUSE_SIZE      1024
-#define EFUSE_SUCCESS           1
-#define EFUSE_FAILURE           0
-
-#define BLE_MAC_OFFSET          0x190
-#define WIFI_MAC_OFFSET         0x11A
-#define MOBILE_SECRET_OFFSET    0x160
-#define SERIAL_NUMBER_OFFSET    0x16F
-#define HARDWARE_DATA_OFFSET    0x178
-#define HARDWARE_MODEL_OFFSET   0x17B
-
-#define SERIAL_NUMBER_FRONT_PART_SIZE   9
-#define HARDWARE_DATA_SIZE              4
-#define HARDWARE_MODEL_SIZE             4
-#define WIFI_OUID_SIZE                  3
-#define DEVICE_ID_PREFIX_SIZE           6
-
 const uint8_t DEVICE_ID_PREFIX[] = {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21};
+
+} // Anonymous
 
 int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -76,8 +63,6 @@ int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
 
     return SYSTEM_ERROR_NONE;
 };
-
-} // Anonymous
 
 unsigned hal_get_device_id(uint8_t* dest, unsigned destLen) {
     // Device ID is composed of prefix and MAC address
@@ -177,6 +162,13 @@ int hal_get_device_hw_info(hal_device_hw_info* info, void* reserved) {
         info->revision = 0xffffffff;
     }
     info->features = ((uint32_t)hw_data[3] << 8) | (uint32_t)hw_data[2];
+    memset(info->ncp, 0xff, sizeof(info->ncp));
+    for (int i = 0; i < HAL_PLATFORM_NCP_COUNT; i++) {
+        PlatformNCPInfo ncpInfo = {};
+        if (!platform_ncp_get_info(i, &ncpInfo)) {
+            info->ncp[i] = (uint16_t)ncpInfo.identifier;
+        }
+    }
     return 0;
 }
 

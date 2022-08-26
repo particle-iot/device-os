@@ -29,9 +29,28 @@
                                          (type) == HAL_DEVICE_MAC_WIFI_AP || \
                                          (type) == HAL_DEVICE_MAC_ETHERNET)
 
+#define LOGICAL_EFUSE_SIZE      1024
+#define EFUSE_SUCCESS           1
+#define EFUSE_FAILURE           0
+
+#define BLE_MAC_OFFSET          0x190
+#define WIFI_MAC_OFFSET         0x11A
+#define MOBILE_SECRET_OFFSET    0x160
+#define SERIAL_NUMBER_OFFSET    0x16F
+#define HARDWARE_DATA_OFFSET    0x178
+#define HARDWARE_MODEL_OFFSET   0x17B
+
+#define SERIAL_NUMBER_FRONT_PART_SIZE   9
+#define HARDWARE_DATA_SIZE              4
+#define HARDWARE_MODEL_SIZE             4
+#define WIFI_OUID_SIZE                  3
+#define DEVICE_ID_PREFIX_SIZE           6
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
+
+int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size);
 
 /**
  * Get the device's BLE MAC address.

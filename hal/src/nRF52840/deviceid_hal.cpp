@@ -28,6 +28,8 @@
 
 #include <algorithm>
 
+#include "platform_ncp.h"
+
 namespace {
 
 using namespace particle;
@@ -124,6 +126,13 @@ int hal_get_device_hw_info(hal_device_hw_info* info, void* reserved) {
         info->revision = 0xffffffff;
     }
     info->features = ((uint32_t)hw_data[3] << 8) | (uint32_t)hw_data[2];
+    memset(info->ncp, 0xff, sizeof(info->ncp));
+    for (int i = 0; i < HAL_PLATFORM_NCP_COUNT; i++) {
+        PlatformNCPInfo ncpInfo = {};
+        if (!platform_ncp_get_info(i, &ncpInfo)) {
+            info->ncp[i] = (uint16_t)ncpInfo.identifier;
+        }
+    }
     return 0;
 }
 

@@ -49,18 +49,16 @@ const auto NCP_IDX_PRIMARY_QUECTEL = 0;
 PlatformNCPIdentifier platform_primary_ncp_identifier() {
     // Check the DCT
     uint8_t ncpId = 0;
-    int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, 1);
+    int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, sizeof(ncpId));
     if (r < 0 || !isValidNcpId(ncpId)) {
         // Check the OTP flash
-        r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, NCP_ID_OTP_ADDRESS, &ncpId, 1);
+        r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, NCP_ID_OTP_ADDRESS, &ncpId, sizeof(ncpId));
         if (r < 0 || !isValidNcpId(ncpId)) {
             // Check the logical eFuse
-            uint32_t hwVersion = HW_VERSION_UNDEFINED;
-            r = hal_get_device_hw_version(&hwVersion, nullptr);
-            // get the first byte for NCP ID
-            ncpId = (hwVersion & 0xFF);
+            uint8_t ncpId = 0xff;
+            r = readLogicalEfuse(HARDWARE_DATA_OFFSET, &ncpId, sizeof(ncpId));
             if (r < 0 || !isValidNcpId(ncpId)) {
-                ncpId = PlatformNCPIdentifier::PLATFORM_NCP_UNKNOWN;
+                return PlatformNCPIdentifier::PLATFORM_NCP_UNKNOWN;
             }
         }
     }
