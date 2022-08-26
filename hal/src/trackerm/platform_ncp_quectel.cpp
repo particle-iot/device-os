@@ -43,6 +43,7 @@ bool isValidNcpId(uint8_t id) {
 }
 
 const auto NCP_IDX_PRIMARY_QUECTEL = 0;
+const auto NCP_IDX_SECONDARY_RTL872X = 1;
 
 } // unnamed
 
@@ -70,6 +71,9 @@ int platform_ncp_get_info(int idx, PlatformNCPInfo* info) {
     CHECK_TRUE(idx > 0 && idx < platform_ncp_count(), SYSTEM_ERROR_INVALID_ARGUMENT);
     if (idx == NCP_IDX_PRIMARY_QUECTEL) {
         info->identifier = platform_primary_ncp_identifier();
+        info->updatable = false;
+    } else if (idx == NCP_IDX_SECONDARY_RTL872X) {
+        info->identifier = PLATFORM_NCP_REALTEK_RTL872X;
         info->updatable = false;
     }
     return 0;
