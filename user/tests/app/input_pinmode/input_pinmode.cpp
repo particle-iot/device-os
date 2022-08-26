@@ -14,7 +14,7 @@ InterruptMode intType = CHANGE;
 // We will set most pins to INPUT_x modes, but only test the first 7
 // since PM_INT takes up one of the 8, and after that RISING and CHANGE pending interrupt tests will fail.
 //
-#if (PLATFORM_ID == PLATFORM_P2)
+#if (PLATFORM_ID == PLATFORM_P2) || (PLATFORM_ID == PLATFORM_TRACKERM)
     const int PIN_MAX = D6; // TEST: D0 ~ D6 (however all will work on P2)
 #elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
     const int PIN_MAX = D6; // TEST: D0 ~ D6

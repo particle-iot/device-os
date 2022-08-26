@@ -13,8 +13,14 @@ InterruptMode intType = RISING;
 // We will set most pins to INPUT_x modes, but only test the first 7
 // since PM_INT takes up one of the 8, and after that RISING and CHANGE pending interrupt tests will fail.
 //
+
+// Most of the tests start with D0
+const int START_PIN = D0;
 #if (PLATFORM_ID == PLATFORM_P2)
     const int PIN_MAX = S6; // TEST: D0 ~ D6 (however all will work on P2)
+#elif (PLATFORM_ID == PLATFORM_TRACKERM)
+    START_PIN = D8;         // Overwrite start pin for trackerm
+    const int PIN_MAX = D9; // TEST: D8,D9
 #elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
     const int PIN_MAX = A0; // TEST: D0 ~ D6
 #elif (PLATFORM_ID == PLATFORM_B5SOM)
@@ -51,7 +57,7 @@ void gimmeFivePulses() {
 }
 
 void teardownTest() {
-    for (int i = 0; i <= PIN_MAX; i++) {
+    for (int i = START_PIN; i <= PIN_MAX; i++) {
         if (i == PULSE_PIN) continue;
         if (i >= D7) continue;
 #if (PLATFORM_ID == PLATFORM_BSOM)
@@ -65,7 +71,7 @@ void teardownTest() {
 
 void setupTest(InterruptMode type) {
     Log.info("TEST (%s) START", type==RISING?"RISING":type==FALLING?"FALLING":"CHANGE");
-    for (int i = 0; i <= PIN_MAX; i++) {
+    for (int i = START_PIN; i <= PIN_MAX; i++) {
         if (i == PULSE_PIN) continue;
         if (type == RISING) {
             pinMode(i, INPUT_PULLDOWN);
@@ -75,7 +81,7 @@ void setupTest(InterruptMode type) {
             pinMode(i, INPUT_PULLUP); // change
         }
     }
-    for (int i = 0; i <= PIN_MAX; i++) {
+    for (int i = START_PIN; i <= PIN_MAX; i++) {
         if (i == PULSE_PIN) continue;
         if (i >= D7) continue;
 #if (PLATFORM_ID == PLATFORM_BSOM)
