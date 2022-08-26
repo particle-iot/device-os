@@ -68,7 +68,9 @@ typedef enum PlatformNCPIdentifier {
     PLATFORM_NCP_REALTEK_RTL872X = PLATFORM_NCP_IDENTIFIER(PLATFORM_NCP_MANUFACTURER_REALTEK, 1)
 } PlatformNCPIdentifier;
 
+#if PLATFORM_ID != PLATFORM_CC
 static_assert(sizeof(PlatformNCPIdentifier) == sizeof(uint16_t), "sizeof(Platform_NCPIdentifier) has changed");
+#endif
 
 struct PlatformNCPInfo {
     PlatformNCPIdentifier identifier;
