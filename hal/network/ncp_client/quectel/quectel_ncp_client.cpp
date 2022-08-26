@@ -1870,7 +1870,7 @@ int QuectelNcpClient::modemInit() const {
     conf.mode = OUTPUT;
     conf.set_value = true;
     // NOTE: The BGPWR/BGRST pins are inverted
-    conf.value = 0;
+    conf.value = 1;
     CHECK(hal_gpio_configure(BGPWR, &conf, nullptr));
     CHECK(hal_gpio_configure(BGRST, &conf, nullptr));
 
@@ -1910,9 +1910,9 @@ int QuectelNcpClient::modemPowerOn() {
         // EG91, BG96, BG95, BG77: Power on, power on pulse 500ms - 1000ms
         // XXX: Keeping it halfway between 500ms and 650ms, to avoid the power OFF timing of >=650ms
         // NOTE: The BGPWR pin is inverted
-        hal_gpio_write(BGPWR, 1);
-        HAL_Delay_Milliseconds(575);
         hal_gpio_write(BGPWR, 0);
+        HAL_Delay_Milliseconds(575);
+        hal_gpio_write(BGPWR, 1);
 
         // After power on the device, we can't assume the device is ready for operation:
         // BG95/BG77: status pin ready requires >= 2.1s, uart ready requires >= 2.5s
@@ -1949,9 +1949,9 @@ int QuectelNcpClient::modemPowerOff() {
 
         // Power off, power off pulse >= 650ms
         // NOTE: The BGRST pin is inverted
-        hal_gpio_write(BGPWR, 1);
-        HAL_Delay_Milliseconds(650);
         hal_gpio_write(BGPWR, 0);
+        HAL_Delay_Milliseconds(650);
+        hal_gpio_write(BGPWR, 1);
 
         // Verify that the module was powered down by checking the status pin (BGVINT)
         // BG95/BG77: >=1.3s
@@ -2022,15 +2022,15 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
     if (isQuecBG95xDevice() || ncpId() == PLATFORM_NCP_QUECTEL_BG77) {
         // BG95/BG77 reset, 2s <= reset pulse <= 3.8s
         // NOTE: The BGRST pin is inverted
-        hal_gpio_write(BGRST, 1);
-        HAL_Delay_Milliseconds(2900);
         hal_gpio_write(BGRST, 0);
+        HAL_Delay_Milliseconds(2900);
+        hal_gpio_write(BGRST, 1);
     } else {
         // BG96/EG91 reset, 150ms <= reset pulse <= 460ms
         // NOTE: The BGRST pin is inverted
-        hal_gpio_write(BGRST, 1);
-        HAL_Delay_Milliseconds(400);
         hal_gpio_write(BGRST, 0);
+        HAL_Delay_Milliseconds(400);
+        hal_gpio_write(BGRST, 1);
     }
 
     LOG(TRACE, "Waiting the modem to restart.");
@@ -2049,9 +2049,9 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
         LOG(TRACE, "Powering modem off");
         // Power off, power off pulse >= 650ms
         // NOTE: The BGPWR pin is inverted
-        hal_gpio_write(BGPWR, 1);
-        HAL_Delay_Milliseconds(650);
         hal_gpio_write(BGPWR, 0);
+        HAL_Delay_Milliseconds(650);
+        hal_gpio_write(BGPWR, 1);
 
         // Verify that the module was powered down by checking the status pin (BGVINT)
         // BG96: >=2s

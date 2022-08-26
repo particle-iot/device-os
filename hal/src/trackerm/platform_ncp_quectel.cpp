@@ -51,6 +51,7 @@ const auto NCP_IDX_SECONDARY_RTL872X = 1;
 
 PlatformNCPIdentifier platform_primary_ncp_identifier() {
     // Check the DCT
+    return PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG95_M1;
     uint8_t ncpId = 0;
     int r = dct_read_app_data_copy(DCT_NCP_ID_OFFSET, &ncpId, sizeof(ncpId));
     if (r < 0 || !isValidNcpId(ncpId)) {
