@@ -1,6 +1,6 @@
 # Skip to next 100 every vx.N.x release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # Bump by 1 for every prerelease or release with the same vx.N.* base.
-COMMON_MODULE_VERSION ?= 4002
+COMMON_MODULE_VERSION ?= 4003
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 
 RELEASE_080_MODULE_VERSION_BASE ?= 300
