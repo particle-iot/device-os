@@ -226,6 +226,16 @@ test(system_version) {
     API_COMPILE(Serial.println(SYSTEM_VERSION));
 }
 
+test(hardware_info) {
+    SystemHardwareInfo info;
+    API_COMPILE({ info = System.hardwareInfo(); });
+    API_COMPILE(info.isValid());
+    API_COMPILE(info.model());
+    API_COMPILE(info.variant());
+    API_COMPILE(info.revision());
+    API_COMPILE((bool)info);
+}
+
 
 test(system_freememory) {
     uint32_t f;

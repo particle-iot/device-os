@@ -46,6 +46,8 @@
 #include "system_control.h"
 #include "scope_guard.h"
 #include "underlying_type.h"
+#include "deviceid_hal.h"
+#include "platform_ncp.h"
 
 using spark::Vector;
 
@@ -351,6 +353,61 @@ public:
 private:
     system_event_t events_;
     void* callable_;
+};
+
+struct SystemHardwareInfo {
+    SystemHardwareInfo()
+            : info_{},
+              error_(SYSTEM_ERROR_INVALID_STATE) {
+        memset(&info_, 0xff, sizeof(info_));
+        info_.size = sizeof(info_);
+        info_.version = 0;
+        memset(info_.ncp, 0xff, sizeof(info_.ncp));
+        error_ = hal_get_device_hw_info(&info_, nullptr);
+    }
+
+    SystemHardwareInfo(const SystemHardwareInfo&) = default;
+    SystemHardwareInfo(SystemHardwareInfo&&) = default;
+    SystemHardwareInfo& operator=(const SystemHardwareInfo&) = default;
+    SystemHardwareInfo& operator=(SystemHardwareInfo&&) = default;
+
+    uint32_t revision() const {
+        return info_.revision;
+    }
+
+    uint32_t model() const {
+        return info_.model;
+    }
+
+    uint32_t variant() const {
+        return info_.variant;
+    }
+
+    uint32_t featureFlags() const {
+        return info_.features;
+    }
+
+    bool isValid() const {
+        return error_ == SYSTEM_ERROR_NONE;
+    }
+
+    spark::Vector<PlatformNCPIdentifier> ncp() const {
+        spark::Vector<PlatformNCPIdentifier> ncps;
+        for (const auto& ncpId: info_.ncp) {
+            if (ncpId != PLATFORM_NCP_UNKNOWN) {
+                ncps.append((PlatformNCPIdentifier)ncpId);
+            }
+        }
+        return ncps;
+    }
+
+    operator bool() const {
+        return isValid();
+    }
+
+private:
+    hal_device_hw_info info_;
+    int error_;
 };
 
 class SystemClass {
@@ -742,6 +799,10 @@ public:
 
         system_version_info(&info, nullptr);
         return info.versionNumber;
+    }
+
+    SystemHardwareInfo hardwareInfo() {
+        return SystemHardwareInfo();
     }
 
     inline void enableUpdates() {

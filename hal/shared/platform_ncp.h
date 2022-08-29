@@ -21,20 +21,24 @@
 #include "ota_flash_hal.h"
 #include "hal_platform.h"
 
-enum PlatformNCPManufacturer {
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+typedef enum PlatformNCPManufacturer {
     PLATFORM_NCP_MANUFACTURER_UNKNOWN,
     PLATFORM_NCP_MANUFACTURER_ESPRESSIF = 1,
     PLATFORM_NCP_MANUFACTURER_UBLOX = 2,
     PLATFORM_NCP_MANUFACTURER_QUECTEL = 3,
     PLATFORM_NCP_MANUFACTURER_BROADCOM = 4,
     PLATFORM_NCP_MANUFACTURER_REALTEK = 5
-};
+} PlatformNCPManufacturer;
 
 #define PLATFORM_NCP_IDENTIFIER(mf,t) (t|(mf<<5))
 #define PLATFORM_NCP_MANUFACTURER(v) ((v) >> 5)
 
-enum PlatformNCPIdentifier {
-    PLATFORM_NCP_UNKNOWN = -1,
+typedef enum PlatformNCPIdentifier {
+    PLATFORM_NCP_UNKNOWN = 0xffff,
     PLATFORM_NCP_NONE = 0,
 
     // 0x2x
@@ -61,8 +65,12 @@ enum PlatformNCPIdentifier {
     // 0x8x
     PLATFORM_NCP_BROADCOM_BCM9WCDUSI09 = PLATFORM_NCP_IDENTIFIER(PLATFORM_NCP_MANUFACTURER_BROADCOM, 1),
     PLATFORM_NCP_BROADCOM_BCM9WCDUSI14 = PLATFORM_NCP_IDENTIFIER(PLATFORM_NCP_MANUFACTURER_BROADCOM, 2),
-    PLATFORM_NCP_REALTEK_RTL872X = PLATFORM_NCP_IDENTIFIER(PLATFORM_NCP_MANUFACTURER_REALTEK, 1)
-};
+    PLATFORM_NCP_REALTEK_RTL872X = PLATFORM_NCP_IDENTIFIER(PLATFORM_NCP_MANUFACTURER_REALTEK, 0)
+} PlatformNCPIdentifier;
+
+#if PLATFORM_ID != PLATFORM_GCC
+static_assert(sizeof(PlatformNCPIdentifier) == sizeof(uint16_t), "sizeof(Platform_NCPIdentifier) has changed");
+#endif
 
 struct PlatformNCPInfo {
     PlatformNCPIdentifier identifier;
@@ -97,3 +105,6 @@ int platform_ncp_fetch_module_info(hal_module_t* module);
 
 #endif
 
+#ifdef __cplusplus
+}
+#endif // __cplusplus
