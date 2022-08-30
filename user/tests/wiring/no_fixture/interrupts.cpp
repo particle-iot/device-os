@@ -68,6 +68,9 @@ test(INTERRUPTS_02_attachintterupt_does_not_affect_pullup_pulldown_nopull)
 #if PLATFORM_ID == PLATFORM_ESOMX
 	const pin_t START_PIN = D0;
     const pin_t END_PIN = D2;
+#elif PLATFORM_ID == PLATFORM_TRACKERM
+    const pin_t START_PIN = D8;
+    const pin_t END_PIN = D9;
 #else
     // Every other platform has D2 ~ D3 available.
     const pin_t START_PIN = D2;
@@ -80,6 +83,8 @@ test(INTERRUPTS_02_attachintterupt_does_not_affect_pullup_pulldown_nopull)
         });
     for (int i = START_PIN; i <= END_PIN; i++) {
         pinMode(i, INPUT_PULLUP);
+        delay(100);
+        assertTrue(digitalRead(i) == HIGH); // INPUT_PULLUP should be set
     }
     for (int i = START_PIN; i <= END_PIN; i++) {
         attachInterrupt(i, attach_interrupt_handler, RISING); // used to set PULLDOWN before sc-107554
@@ -92,6 +97,8 @@ test(INTERRUPTS_02_attachintterupt_does_not_affect_pullup_pulldown_nopull)
 
     for (int i = START_PIN; i <= END_PIN; i++) {
         pinMode(i, INPUT_PULLDOWN);
+        delay(100);
+        assertTrue(digitalRead(i) == LOW); // INPUT_PULLUP should be set
     }
     for (int i = START_PIN; i <= END_PIN; i++) {
         attachInterrupt(i, attach_interrupt_handler, FALLING); // used to set PULLUP before sc-107554
@@ -100,6 +107,8 @@ test(INTERRUPTS_02_attachintterupt_does_not_affect_pullup_pulldown_nopull)
     }
     for (int i = START_PIN; i <= END_PIN; i++) {
         detachInterrupt(i);
+        delay(100);
+        assertTrue(digitalRead(i) == LOW); // INPUT_PULLDOWN should be set
     }
     for (int i = START_PIN; i <= END_PIN; i++) {
         attachInterrupt(i, attach_interrupt_handler, CHANGE); // used to set PULLUP before sc-107554
