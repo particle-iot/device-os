@@ -139,8 +139,8 @@ private:
 
         int flags = LFS_O_RDWR;
 
-        if (r) {
-            /* Create as well */
+        if (r || info.size == 0) {
+            /* Create as well if doesn't exist or was just created and not written */
             flags |= LFS_O_CREAT;
         }
 
