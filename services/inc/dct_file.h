@@ -67,7 +67,7 @@ public:
         r = lfs_file_write(lfs(), &file_, buffer, size);
         if (r < 0) {
             /* Error */
-            LOG_DEBUG(ERROR, "Failed to write to DCD: %d", r);
+            LOG_DEBUG(ERROR, "Failed to write to DCT: %d", r);
         }
 
         close();
@@ -148,7 +148,7 @@ private:
 
         if (flags & LFS_O_CREAT) {
             LOG_DEBUG(INFO, "Initializing empty DCT");
-            /* Fill with 0xff for compatibility with raw flash DCD */
+            /* Fill with 0xff for compatibility with raw flash DCT */
             uint8_t tmp = 0xff;
             for (unsigned offset = 0; offset < sizeof(application_dct_t);) {
                 r = lfs_file_write(lfs(), &file_, &tmp, sizeof(tmp));

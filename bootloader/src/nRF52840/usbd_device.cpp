@@ -200,7 +200,7 @@ dfu::DfuClassDriver g_dfuInstance(&NrfDevice::instance());
 
 /* FIXME: move somewhere else */
 dfu::mal::InternalFlashMal g_internalFlashMal;
-dfu::mal::DcdMal g_dcdMal;
+dfu::mal::DctMal g_dctMal;
 dfu::mal::ExternalFlashMal g_externalFlashMal;
 
 void HAL_DFU_USB_Init(void) {
@@ -209,7 +209,7 @@ void HAL_DFU_USB_Init(void) {
 
   /* Register DFU MALs */
   g_dfuInstance.registerMal(0, &g_internalFlashMal);
-  g_dfuInstance.registerMal(1, &g_dcdMal);
+  g_dfuInstance.registerMal(1, &g_dctMal);
   g_dfuInstance.registerMal(2, &g_externalFlashMal);
   dev.init();
 }
