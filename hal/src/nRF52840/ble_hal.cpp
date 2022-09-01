@@ -647,7 +647,6 @@ private:
     hal_ble_char_t* findDiscoveredCharacteristic(hal_ble_attr_handle_t attrHandle);
     int addPublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle, hal_ble_on_char_evt_cb_t callback, void* context);
     int removePublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle);
-    int configRemoteCharCCCD(const hal_ble_cccd_config_t* config);
     static void processGattClientEvents(const ble_evt_t* event, void* context);
     static void onAttMtuExchangeTimerExpired(os_timer_t timer);
 
@@ -3149,6 +3148,7 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
 int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service, hal_ble_on_disc_char_cb_t callback, void* context) {
     CHECK_TRUE(BleObject::getInstance().connMgr()->valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
     CHECK_FALSE(isDiscovering_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(service, SYSTEM_ERROR_INVALID_ARGUMENT);
     SCOPE_GUARD ({
         resetDiscoveryState();
     });

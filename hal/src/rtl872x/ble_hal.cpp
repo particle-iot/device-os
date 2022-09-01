@@ -40,6 +40,7 @@ extern "C" {
 #include <gap_le.h>
 #include <gap_conn_le.h>
 #include <profile_server.h>
+#include <profile_client.h>
 #include <gatt_builtin_services.h>
 #include <gap_msg.h>
 #include <simple_ble_service.h>
@@ -607,6 +608,7 @@ public:
     };
 
     int init();
+    int deinit();
     int addService(uint8_t type, const hal_ble_uuid_t* uuid, hal_ble_attr_handle_t* svcHandle);
     int addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char_handles_t* charHandles);
     int registerAttributeTable();
@@ -614,6 +616,13 @@ public:
     ssize_t getValue(hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
     ssize_t notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool ack);
     int removeSubscriber(hal_ble_conn_handle_t connHandle);
+
+    bool discovering(hal_ble_conn_handle_t connHandle) const;
+    int discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context);
+    int discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, hal_ble_on_disc_char_cb_t callback, void* context);
+    int configureRemoteCCCD(const hal_ble_cccd_config_t* config);
+    ssize_t writeAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool response);
+    ssize_t readAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
 
     bool registered() const {
         return serviceRegistered_;
@@ -631,12 +640,47 @@ public:
 private:
     BleGatt()
             : serviceRegistered_(false),
-              callbacks_() {
-        callbacks_.read_attr_cb = gattReadAttrCallback;
-        callbacks_.write_attr_cb = gattWriteAttrCallback;
-        callbacks_.cccd_update_cb = gattCccdUpdatedCallback;
+              isDiscovering_(false),
+              currDiscConnHandle_(BLE_INVALID_CONN_HANDLE),
+              currDiscService_(nullptr),
+              discoverySemaphore_(nullptr),
+              discSvcUuid_(nullptr),
+              discSvcCallback_(nullptr),
+              discSvcContext_(nullptr),
+              discCharCallback_(nullptr),
+              discCharContext_(nullptr),
+              clientId_(CLIENT_PROFILE_GENERAL_ID),
+              clientCallbacks_{},
+              serverCallbacks_(),
+              currReadConnHandle_(BLE_INVALID_CONN_HANDLE),
+              readAttrHandle_(BLE_INVALID_ATTR_HANDLE),
+              readBuf_(nullptr),
+              readLen_(0),
+              readSemaphore_(nullptr),
+              currWriteConnHandle_(BLE_INVALID_CONN_HANDLE),
+              writeAttrHandle_(BLE_INVALID_ATTR_HANDLE),
+              writeSemaphore_(nullptr) {
+        clientCallbacks_.discover_state_cb = onDiscoverStateCallback;
+        clientCallbacks_.discover_result_cb = onDiscoverResultCallback;
+        clientCallbacks_.read_result_cb = onReadResultCallback;
+        clientCallbacks_.write_result_cb = onWriteResultCallback;
+        clientCallbacks_.notify_ind_result_cb = onNotifyIndResultCallback;
+        clientCallbacks_.disconnect_cb = onGattClientDisconnectCallback;
+
+        serverCallbacks_.read_attr_cb = gattReadAttrCallback;
+        serverCallbacks_.write_attr_cb = gattWriteAttrCallback;
+        serverCallbacks_.cccd_update_cb = gattCccdUpdatedCallback;
+
+        resetDiscoveryState();
     }
     ~BleGatt() = default;
+
+    struct Publisher {
+        hal_ble_on_char_evt_cb_t callback;
+        void* context;
+        hal_ble_conn_handle_t connHandle;
+        hal_ble_attr_handle_t valueHandle;
+    };
 
     T_ATTRIB_APPL* findAttribute(hal_ble_attr_handle_t attrHandle) {
         for (auto& svc : services_) {
@@ -654,14 +698,49 @@ private:
         return nullptr;
     }
 
+    void resetDiscoveryState();
+    hal_ble_char_t* findDiscoveredCharacteristic(hal_ble_attr_handle_t attrHandle);
+    int addPublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle, hal_ble_on_char_evt_cb_t callback, void* context);
+    int removePublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle);
+    int removeAllPublishersOfConnection(hal_ble_conn_handle_t connHandle);
+
     static T_APP_RESULT gattServerEventCallback(T_SERVER_ID serviceId, void *pData);
     static T_APP_RESULT gattReadAttrCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, uint16_t offset, uint16_t *length, uint8_t **value);
     static T_APP_RESULT gattWriteAttrCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, T_WRITE_TYPE type, uint16_t length, uint8_t *value, P_FUN_WRITE_IND_POST_PROC *postProc);
     static void gattCccdUpdatedCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, uint16_t bits);
 
+    static void onDiscoverStateCallback(uint8_t connHandle, T_DISCOVERY_STATE discoveryState);
+    static void onDiscoverResultCallback(uint8_t connHandle, T_DISCOVERY_RESULT_TYPE type, T_DISCOVERY_RESULT_DATA data);
+    static void onReadResultCallback(uint8_t connHandle, uint16_t cause, uint16_t handle, uint16_t size, uint8_t *value);
+    static void onWriteResultCallback(uint8_t connHandle, T_GATT_WRITE_TYPE type, uint16_t handle, uint16_t cause, uint8_t credits);
+    static T_APP_RESULT onNotifyIndResultCallback(uint8_t connHandle, bool notify, uint16_t handle, uint16_t size, uint8_t *value);
+    static void onGattClientDisconnectCallback(uint8_t connHandle);
+
     bool serviceRegistered_;
-    T_FUN_GATT_SERVICE_CBS callbacks_;
+    volatile bool isDiscovering_;                                   /**< If there is on-going discovery procedure. */
+    hal_ble_conn_handle_t currDiscConnHandle_;                      /**< Current connection handle under which the service and characteristics to be discovered. */
+    const hal_ble_svc_t* currDiscService_;                                 /**< Used for discovering descriptors */
+    os_semaphore_t discoverySemaphore_;                             /**< Semaphore to wait until the discovery procedure completed. */
+    const hal_ble_uuid_t* discSvcUuid_;                             /**< Used only when discover service by UUID. */
+    hal_ble_on_disc_service_cb_t discSvcCallback_;                  /**< Callback function on services discovered. */
+    void* discSvcContext_;                                          /**< Context of services discovered callback function. */
+    hal_ble_on_disc_char_cb_t discCharCallback_;                    /**< Callback function on characteristics discovered. */
+    void* discCharContext_;                                         /**< Context of characteristics discovered callback function. */
+    Vector<hal_ble_svc_t> discServices_;                            /**< Discover services. */
+    Vector<hal_ble_char_t> discCharacteristics_;                    /**< Discovered characteristics. */
+    T_CLIENT_ID clientId_;
+    T_FUN_CLIENT_CBS clientCallbacks_;
+    T_FUN_GATT_SERVICE_CBS serverCallbacks_;
+    hal_ble_conn_handle_t currReadConnHandle_;
+    hal_ble_attr_handle_t readAttrHandle_;                          /**< Current handle of which attribute to be read. */
+    uint8_t* readBuf_;                                              /**< Current buffer to be filled for the read data. */
+    size_t readLen_;                                                /**< Length of read data. */
+    os_semaphore_t readSemaphore_;                                  /**< Semaphore to wait until the read operation completed. */
+    hal_ble_conn_handle_t currWriteConnHandle_;
+    hal_ble_attr_handle_t writeAttrHandle_;                          /**< Current handle of which attribute to be read. */
+    os_semaphore_t writeSemaphore_;                                 /**< Semaphore to wait until the write operation completed. */
     Vector<BleService> services_;
+    Vector<Publisher> publishers_;
     static constexpr uint8_t MAX_ALLOWED_BLE_SERVICES = 5;
     static constexpr uint16_t CUSTOMER_SERVICE_START_HANDLE = 30;
     static constexpr uint8_t SERVICE_HANDLE_RANGE_RESERVED = 20;
@@ -961,6 +1040,8 @@ int BleGap::stop() {
         os_timer_destroy(advTimeoutTimer_, nullptr);
         advTimeoutTimer_ = nullptr;
     }
+
+    CHECK(BleGatt::getInstance().deinit());
 
     RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, DISABLE);
     return SYSTEM_ERROR_NONE;
@@ -1645,7 +1726,7 @@ int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePol
 }
 
 void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
-    LOG(TRACE, "GAP state updated, init:%d, adv:%d, adv-sub:%d, scan:%d, conn:%d, cause:%d",
+    LOG_DEBUG(TRACE, "GAP state updated, init:%d, adv:%d, adv-sub:%d, scan:%d, conn:%d, cause:%d",
                         newState.gap_init_state, newState.gap_adv_state, newState.gap_adv_sub_state, newState.gap_scan_state, newState.gap_conn_state, cause);
     RtlGapDevState nState;
     nState.state = newState;
@@ -1857,9 +1938,32 @@ T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
 }
 
 int BleGatt::init() {
+    CHECK_TRUE(os_semaphore_create(&discoverySemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(os_semaphore_create(&writeSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(os_semaphore_create(&readSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+
+    client_init(1);
+    CHECK_TRUE(client_register_spec_client_cb(&clientId_, &clientCallbacks_), SYSTEM_ERROR_INTERNAL);
+
     server_init(MAX_ALLOWED_BLE_SERVICES);
     server_register_app_cb(gattServerEventCallback);
     serviceRegistered_ = false;
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::deinit() {
+    if (discoverySemaphore_) {
+        os_semaphore_destroy(discoverySemaphore_);
+        discoverySemaphore_ = nullptr;
+    }
+    if (writeSemaphore_) {
+        os_semaphore_destroy(writeSemaphore_);
+        writeSemaphore_ = nullptr;
+    }
+    if (readSemaphore_) {
+        os_semaphore_destroy(readSemaphore_);
+        readSemaphore_ = nullptr;
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2203,7 +2307,7 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
 int BleGatt::registerAttributeTable() {
     if (!serviceRegistered_) {
         for (auto& svc : services_) {
-            if (!server_add_service_by_start_handle(&svc.id, (uint8_t *)svc.attrTable.data(), svc.attrTable.size() * sizeof(T_ATTRIB_APPL), callbacks_, svc.startHandle)) {
+            if (!server_add_service_by_start_handle(&svc.id, (uint8_t *)svc.attrTable.data(), svc.attrTable.size() * sizeof(T_ATTRIB_APPL), serverCallbacks_, svc.startHandle)) {
                 LOG_DEBUG(TRACE, "Failed to add service.");
                 svc.id = 0xFF;
                 return SYSTEM_ERROR_INTERNAL;
@@ -2294,6 +2398,404 @@ int BleGatt::removeSubscriber(hal_ble_conn_handle_t connHandle) {
         }
     }
     return SYSTEM_ERROR_NONE;
+}
+
+void BleGatt::onDiscoverStateCallback(uint8_t connHandle, T_DISCOVERY_STATE discoveryState) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (!gatt.isDiscovering_ || gatt.currDiscConnHandle_ != connHandle) {
+        return;
+    }
+    switch (discoveryState) {
+        case DISC_STATE_SRV_DONE: {
+            gatt.isDiscovering_ = false;
+            if (gatt.discSvcCallback_) {
+                hal_ble_svc_discovered_evt_t svcDiscEvent = {};
+                svcDiscEvent.conn_handle = gatt.currDiscConnHandle_;
+                svcDiscEvent.count = gatt.discServices_.size();
+                svcDiscEvent.services = gatt.discServices_.data();
+                gatt.discSvcCallback_(&svcDiscEvent, gatt.discSvcContext_);
+            }
+            os_semaphore_give(gatt.discoverySemaphore_, false);
+            break;
+        }
+        case DISC_STATE_CHAR_DONE:
+        case DISC_STATE_CHAR_UUID16_DONE:
+        case DISC_STATE_CHAR_UUID128_DONE: {
+            // Start discovering descriptors
+            if (client_all_char_descriptor_discovery(connHandle, gatt.clientId_, gatt.currDiscService_->start_handle, gatt.currDiscService_->end_handle) != GAP_CAUSE_SUCCESS) {
+                LOG(ERROR, "Imcompleted characteristic discovery procedure!");
+                gatt.isDiscovering_ = false;
+                os_semaphore_give(gatt.discoverySemaphore_, false);
+            }
+            break;
+        }
+        case DISC_STATE_CHAR_DESCRIPTOR_DONE: {
+            // Characteristic discovery procedure completed
+            gatt.isDiscovering_ = false;
+            if (gatt.discCharCallback_) {
+                hal_ble_char_discovered_evt_t charDiscEvent = {};
+                charDiscEvent.conn_handle = gatt.currDiscConnHandle_;
+                charDiscEvent.count = gatt.discCharacteristics_.size();
+                charDiscEvent.characteristics = gatt.discCharacteristics_.data();
+                gatt.discCharCallback_(&charDiscEvent, gatt.discCharContext_);
+            }
+            os_semaphore_give(gatt.discoverySemaphore_, false);
+            break;
+        }
+        case DISC_STATE_FAILED: {
+            if (gatt.isDiscovering_) {
+                gatt.isDiscovering_ = false;
+                os_semaphore_give(gatt.discoverySemaphore_, false);
+            }
+            break;
+        }
+        default: {
+            LOG_DEBUG(TRACE, "Unhandled discover state");
+            break;
+        }
+    }
+}
+
+void BleGatt::onDiscoverResultCallback(uint8_t connHandle, T_DISCOVERY_RESULT_TYPE type, T_DISCOVERY_RESULT_DATA data) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (!gatt.isDiscovering_ || gatt.currDiscConnHandle_ != connHandle) {
+        return;
+    }
+    switch (type) {
+        case DISC_RESULT_ALL_SRV_UUID16:
+        case DISC_RESULT_ALL_SRV_UUID128:
+        case DISC_RESULT_SRV_DATA: {
+            hal_ble_svc_t service = {};
+            service.version = BLE_API_VERSION;
+            service.size = sizeof(hal_ble_svc_t);
+            service.start_handle = data.p_srv_uuid16_disc_data->att_handle; // memory layout is compatible with other type of calback data
+            service.end_handle = data.p_srv_uuid16_disc_data->end_group_handle; // memory layout is compatible with other type of calback data
+            if (type == DISC_RESULT_ALL_SRV_UUID16) {
+                service.uuid.type = BLE_UUID_TYPE_16BIT;
+                service.uuid.uuid16 = data.p_srv_uuid16_disc_data->uuid16;
+            } else if (type == DISC_RESULT_ALL_SRV_UUID128) {
+                service.uuid.type = BLE_UUID_TYPE_128BIT;
+                memcpy(service.uuid.uuid128, data.p_srv_uuid128_disc_data->uuid128, BLE_SIG_UUID_128BIT_LEN);
+            } else {
+                service.uuid = *(gatt.discSvcUuid_);
+            }
+            if (!gatt.discServices_.append(service)) {
+                LOG(ERROR, "Failed to append discovered service.");
+                // Do nothing. We'll give the semaphore in the discover state callback
+            }
+            break;
+        }
+        case DISC_RESULT_CHAR_UUID16:
+        case DISC_RESULT_CHAR_UUID128:
+        case DISC_RESULT_BY_UUID16_CHAR:
+        case DISC_RESULT_BY_UUID128_CHAR: {
+            hal_ble_char_t characteristic = {};
+            characteristic.version = BLE_API_VERSION;
+            characteristic.size = sizeof(hal_ble_char_t);
+            characteristic.charHandles.version = BLE_API_VERSION;
+            characteristic.charHandles.size = sizeof(hal_ble_char_handles_t);
+            characteristic.char_ext_props = data.p_char_uuid16_disc_data->properties & 0x80 ? 0x01 : 0x00; // memory layout is compatible with other type of calback data
+            characteristic.properties = data.p_char_uuid16_disc_data->properties & 0x7F; // memory layout is compatible with other type of calback data
+            characteristic.charHandles.decl_handle = data.p_char_uuid16_disc_data->decl_handle; // memory layout is compatible with other type of calback data
+            characteristic.charHandles.value_handle = data.p_char_uuid16_disc_data->value_handle; // memory layout is compatible with other type of calback data
+            if (type == DISC_RESULT_CHAR_UUID16 || type == DISC_RESULT_BY_UUID16_CHAR) {
+                characteristic.uuid.type = BLE_UUID_TYPE_16BIT;
+                characteristic.uuid.uuid16 = data.p_char_uuid16_disc_data->uuid16;
+            } else {
+                characteristic.uuid.type = BLE_UUID_TYPE_128BIT;
+                memcpy(characteristic.uuid.uuid128, data.p_char_uuid128_disc_data->uuid128, BLE_SIG_UUID_128BIT_LEN);
+            }
+            if (!gatt.discCharacteristics_.append(characteristic)) {
+                LOG(ERROR, "Failed to append discovered characteristic.");
+                // Do nothing. We'll give the semaphore in the discover state callback
+            }
+            break;
+        }
+        case DISC_RESULT_CHAR_DESC_UUID16: {
+            auto descriptor = (T_GATT_CHARACT_DESC_ELEM16*)data.p_char_desc_uuid16_disc_data;
+            hal_ble_char_t* characteristic = gatt.findDiscoveredCharacteristic(descriptor->handle);
+            if (!characteristic) {
+                return;
+            }
+            if (descriptor->uuid16 == BLE_SIG_UUID_CHAR_USER_DESCRIPTION_DESC) {
+                characteristic->charHandles.user_desc_handle = descriptor->handle;
+            } else if (descriptor->uuid16 == BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC) {
+                characteristic->charHandles.cccd_handle = descriptor->handle;
+            } else if (descriptor->uuid16 == BLE_SIG_UUID_SERVER_CHAR_CONFIG_DESC) {
+                characteristic->charHandles.sccd_handle = descriptor->handle;
+            }
+            // Disregard any other descriptors
+            break;
+        }
+        default: {
+            LOG_DEBUG(TRACE, "Unhandled discover result");
+            break;
+        }
+    }
+}
+
+void BleGatt::onReadResultCallback(uint8_t connHandle, uint16_t cause, uint16_t handle, uint16_t size, uint8_t *value) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (gatt.currReadConnHandle_ != connHandle || gatt.readAttrHandle_ != handle) {
+        return;
+    }
+    gatt.readLen_ = std::min(gatt.readLen_, (size_t)size);
+    memcpy(gatt.readBuf_, value, gatt.readLen_);
+    os_semaphore_give(gatt.readSemaphore_, false);
+}
+
+void BleGatt::onWriteResultCallback(uint8_t connHandle, T_GATT_WRITE_TYPE type, uint16_t handle, uint16_t cause, uint8_t credits) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (gatt.currWriteConnHandle_ != connHandle || gatt.writeAttrHandle_ != handle) {
+        return;
+    }
+    os_semaphore_give(gatt.writeSemaphore_, false);
+}
+
+T_APP_RESULT BleGatt::onNotifyIndResultCallback(uint8_t connHandle, bool notify, uint16_t handle, uint16_t size, uint8_t *value) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return APP_RESULT_REJECT;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (!notify) {
+        if (client_attr_ind_confirm(connHandle) != GAP_CAUSE_SUCCESS) {
+            LOG(ERROR, "Failed to confirm indication!");
+        }
+    }
+    hal_ble_char_evt_t charEvent = {};
+    charEvent.conn_handle = connHandle;
+    charEvent.attr_handle = handle;
+    charEvent.type = BLE_EVT_DATA_NOTIFIED;
+    charEvent.params.data_written.offset = 0;
+    charEvent.params.data_written.len = size;
+    charEvent.params.data_written.data = value;
+    for (const auto& publisher : gatt.publishers_) {
+        if (publisher.connHandle == connHandle && publisher.valueHandle == handle) {
+            if (publisher.callback) {
+                publisher.callback(&charEvent, publisher.context);
+            }
+            break;
+        }
+    }
+    return APP_RESULT_SUCCESS;
+}
+
+void BleGatt::onGattClientDisconnectCallback(uint8_t connHandle) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (gatt.isDiscovering_) {
+        os_semaphore_give(gatt.discoverySemaphore_, false);
+    }
+    if (gatt.currWriteConnHandle_ != BLE_INVALID_CONN_HANDLE) {
+        os_semaphore_give(gatt.writeSemaphore_, false);
+    }
+    if (gatt.currReadConnHandle_ != BLE_INVALID_CONN_HANDLE) {
+        os_semaphore_give(gatt.readSemaphore_, false);
+    }
+}
+
+bool BleGatt::discovering(hal_ble_conn_handle_t connHandle) const {
+    // TODO: discovering service and characteristic on multi-links concurrently.
+    return isDiscovering_;
+}
+
+void BleGatt::resetDiscoveryState() {
+    isDiscovering_ = false;
+    currDiscConnHandle_ = BLE_INVALID_CONN_HANDLE;
+    currDiscService_ = nullptr;
+    discSvcUuid_ = nullptr;
+    discServices_.clear();
+    discCharacteristics_.clear();
+}
+
+hal_ble_char_t* BleGatt::findDiscoveredCharacteristic(hal_ble_attr_handle_t attrHandle) {
+    hal_ble_char_t* foundChar = nullptr;
+    hal_ble_attr_handle_t foundCharDeclHandle = BLE_INVALID_ATTR_HANDLE;
+    for (auto& characteristic : discCharacteristics_) {
+        // The attribute handles increase by sequence.
+        if (attrHandle >= characteristic.charHandles.decl_handle) {
+            if (characteristic.charHandles.decl_handle > foundCharDeclHandle) {
+                foundChar = &characteristic;
+                foundCharDeclHandle = characteristic.charHandles.decl_handle;
+            }
+        }
+    }
+    return foundChar;
+}
+
+int BleGatt::discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context) {
+    CHECK_TRUE(BleGap::getInstance().valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_FALSE(isDiscovering_, SYSTEM_ERROR_INVALID_STATE);
+    SCOPE_GUARD ({
+        resetDiscoveryState();
+    });
+    currDiscConnHandle_ = connHandle;
+    discSvcCallback_ = callback;
+    discSvcContext_ = context;
+    if (uuid == nullptr) {
+        CHECK_RTL(client_all_primary_srv_discovery(connHandle, clientId_));
+    } else {
+        discSvcUuid_ = uuid;
+        if (uuid->type == BLE_UUID_TYPE_16BIT) {
+            CHECK_RTL(client_by_uuid_srv_discovery(connHandle, clientId_, uuid->uuid16));
+        } else if (uuid->type == BLE_UUID_TYPE_128BIT) {
+            CHECK_RTL(client_by_uuid128_srv_discovery(connHandle, clientId_, (uint8_t*)uuid->uuid128));
+        } else {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+    }
+    isDiscovering_ = true;
+    if (os_semaphore_take(discoverySemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service,
+        const hal_ble_uuid_t* uuid, hal_ble_on_disc_char_cb_t callback, void* context) {
+    CHECK_TRUE(BleGap::getInstance().valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(service, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_FALSE(isDiscovering_, SYSTEM_ERROR_INVALID_STATE);
+    SCOPE_GUARD ({
+        resetDiscoveryState();
+    });
+    currDiscConnHandle_ = connHandle;
+    discCharCallback_ = callback;
+    discCharContext_ = context;
+    currDiscService_ = service;
+    if (uuid == nullptr) {
+        CHECK_RTL(client_all_char_discovery(connHandle, clientId_, service->start_handle, service->end_handle));
+    } else {
+        if (uuid->type == BLE_UUID_TYPE_16BIT) {
+            CHECK_RTL(client_by_uuid_char_discovery(connHandle, clientId_, service->start_handle, service->end_handle, uuid->uuid16));
+        } else if (uuid->type == BLE_UUID_TYPE_128BIT) {
+            CHECK_RTL(client_by_uuid128_char_discovery(connHandle, clientId_, service->start_handle, service->end_handle, (uint8_t*)uuid->uuid128));
+        } else {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+    }
+    isDiscovering_ = true;
+    if (os_semaphore_take(discoverySemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::addPublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle, hal_ble_on_char_evt_cb_t callback, void* context) {
+    for (auto& publisher : publishers_) {
+        if (publisher.connHandle == connHandle && publisher.valueHandle == valueHandle) {
+            publisher.callback = callback;
+            publisher.context = context;
+            return SYSTEM_ERROR_NONE;
+        }
+    }
+    Publisher pub = {};
+    pub.connHandle = connHandle;
+    pub.valueHandle = valueHandle;
+    pub.callback = callback;
+    pub.context = context;
+    CHECK_TRUE(publishers_.append(pub), SYSTEM_ERROR_NO_MEMORY);
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::removePublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle) {
+    size_t i = 0;
+    for (const auto& publisher : publishers_) {
+        if (publisher.connHandle == connHandle && publisher.valueHandle == valueHandle) {
+            publishers_.removeAt(i);
+            return SYSTEM_ERROR_NONE;
+        }
+        i++;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::removeAllPublishersOfConnection(hal_ble_conn_handle_t connHandle) {
+    for (int i = 0; i < publishers_.size(); i = i) {
+        const auto& publisher = publishers_[i];
+        if (publisher.connHandle == connHandle) {
+            publishers_.removeAt(i);
+            continue;
+        }
+        i++;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::configureRemoteCCCD(const hal_ble_cccd_config_t* config) {
+    CHECK_TRUE(BleGap::getInstance().valid(config->conn_handle), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(config->cccd_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(config->value_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(config->cccd_value <= BLE_SIG_CCCD_VAL_NOTI_IND, SYSTEM_ERROR_NOT_SUPPORTED);
+    uint8_t buf[2] = {0x00, 0x00};
+    buf[0] = config->cccd_value;
+    CHECK(writeAttribute(config->conn_handle, config->cccd_handle, buf, sizeof(buf), true));
+    if (config->cccd_value > BLE_SIG_CCCD_VAL_DISABLED && config->cccd_value <= BLE_SIG_CCCD_VAL_NOTI_IND) {
+        CHECK(addPublisher(config->conn_handle, config->value_handle, config->callback, config->context));
+    } else {
+        CHECK(removePublisher(config->conn_handle, config->value_handle));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+ssize_t BleGatt::writeAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool response) {
+    CHECK_TRUE(buf && len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(BleGap::getInstance().valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    SCOPE_GUARD ({
+        writeAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
+        currWriteConnHandle_ = BLE_INVALID_CONN_HANDLE;
+    });
+    T_GATT_WRITE_TYPE writeType = GATT_WRITE_TYPE_CMD;
+    if (response) {
+        writeType = GATT_WRITE_TYPE_REQ;
+    }
+    writeAttrHandle_ = attrHandle;
+    currWriteConnHandle_ = connHandle;
+    len = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleGap::getInstance().getAttMtu(connHandle)));
+    CHECK_RTL(client_attr_write(connHandle, clientId_, writeType, attrHandle, len, (uint8_t*)buf));
+    if (os_semaphore_take(writeSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return len;
+}
+
+// FIXME: Multi-link read
+ssize_t BleGatt::readAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len) {
+    CHECK_TRUE(buf && len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(BleGap::getInstance().valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    SCOPE_GUARD ({
+        readLen_ = 0;
+        readBuf_ = nullptr;
+        readAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
+        currReadConnHandle_ = BLE_INVALID_CONN_HANDLE;
+    });
+    readAttrHandle_ = attrHandle;
+    currReadConnHandle_ = connHandle;
+    readBuf_ = buf;
+    readLen_ = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleGap::getInstance().getAttMtu(connHandle)));
+    CHECK_RTL(client_attr_read(connHandle, clientId_, attrHandle));
+    if (os_semaphore_take(readSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return readLen_;
 }
 
 
@@ -2419,7 +2921,6 @@ int hal_ble_gap_set_ppcp(const hal_ble_conn_params_t* ppcp, void* reserved) {
     LOG_DEBUG(TRACE, "hal_ble_gap_set_ppcp().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().setPpcp(ppcp);
-    return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_gap_get_ppcp(hal_ble_conn_params_t* ppcp, void* reserved) {
@@ -2717,29 +3218,35 @@ ssize_t hal_ble_gatt_server_get_characteristic_value(hal_ble_attr_handle_t value
 int hal_ble_gatt_client_discover_all_services(hal_ble_conn_handle_t conn_handle, hal_ble_on_disc_service_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_all_services().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().discoverServices(conn_handle, nullptr, callback, context);
 }
 
 int hal_ble_gatt_client_discover_service_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_service_by_uuid().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().discoverServices(conn_handle, uuid, callback, context);
 }
 
 int hal_ble_gatt_client_discover_characteristics(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, hal_ble_on_disc_char_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_characteristics().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().discoverCharacteristics(conn_handle, service, nullptr, callback, context);
 }
 
 int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, hal_ble_on_disc_char_cb_t callback, void* context, void* reserved) {
     BleLock lk;
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_characteristics_by_uuid().");
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().discoverCharacteristics(conn_handle, service, uuid, callback, context);
 }
 
 bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
-    return false;
+    CHECK_TRUE(BleGap::getInstance().initialized(), false);
+    return BleGatt::getInstance().discovering(conn_handle);
 }
 
 int hal_ble_gatt_server_set_desired_att_mtu(size_t att_mtu, void* reserved) {
@@ -2764,25 +3271,29 @@ int hal_ble_gatt_client_att_mtu_exchange(hal_ble_conn_handle_t conn_handle, void
 int hal_ble_gatt_client_configure_cccd(const hal_ble_cccd_config_t* config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_configure_cccd().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().configureRemoteCCCD(config);
 }
 
 ssize_t hal_ble_gatt_client_write_with_response(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_write_with_response().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().writeAttribute(conn_handle, value_handle, buf, len, true);
 }
 
 ssize_t hal_ble_gatt_client_write_without_response(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_write_without_response().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().writeAttribute(conn_handle, value_handle, buf, len, false);
 }
 
 ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t value_handle, uint8_t* buf, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_read().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().readAttribute(conn_handle, value_handle, buf, len);
 }
 
 
