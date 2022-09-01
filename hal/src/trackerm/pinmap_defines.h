@@ -68,7 +68,7 @@
 #define BTN                 25
 
 // SPI, Shared with UART2
-#define SS                  S3
+#define SS                  A2
 #define SCK                 S2
 #define MISO                S1
 #define MOSI                S0
@@ -80,12 +80,12 @@
 
 // IO Expander
 #define IOE_INT             D10
-#define IOE_RST             A0
+#define IOE_RST             43
 #define IOE_CS              45
 
 #define CS0                 S3
-#define CS1                 S4
-#define CS2                 S5
+#define CS1                 S5
+#define CS2                 S6
 
 #define DEMUX_A             CS0
 #define DEMUX_B             CS1
@@ -98,7 +98,7 @@
 // PMIC
 #define PMIC_SDA            SDA
 #define PMIC_SCL            SCL
-#define PMIC_INT            S6
+#define PMIC_INT            S4
 
 // UART
 #define TX                  D8
@@ -118,29 +118,28 @@
 
 #define ANTSW               26
 #define LOW_BAT_UC          27
-#define SENSOR_INT1         28
-#define CAN_STBY            29
-#define CAN_INT             30
-#define PGOOD               31
-#define DCDC_EN             32
-#define GNSS_PWR_EN         33
-#define GNSS_INT            34
-#define GNSS_SAFEBOOT       35
-#define GNSS_RST            36
-#define CAN_RTS1            37
-#define CAN_RTS2            38
-#define CAN_RTS0            39
-#define P2_CELL_DTR         40
-#define CAN_RST             41
-#define CAN_VDD_EN          42
+#define DCDC_EN             28
+#define GNSS_PWR_EN         29
+#define P2_CELL_STATUS      30
+#define GNSS_GEOFENCE       31
+#define GNSS_RST            32
+#define PGOOD               33
+#define P2_CELL_DTR         34
+#define CAN_VDD_EN          35
+#define CAN_STBY            36
+#define CAN_INT             37
+#define P2_CELL_PWR         38
+#define P2_CELL_RST         39
+#define SENSOR_INT1         40
+#define SHT_ALERT           41
+#define IO_2V8_EN           42
 
-#define SENSOR_CS           43
-#define GNSS_CS             44
+#define SENSOR_CS           44
 #define CAN_CS              46
 
 // Cellular
-#define BGRST               A1
-#define BGPWR               A1
-#define BGVINT              A2
+#define BGRST               P2_CELL_PWR
+#define BGPWR               P2_CELL_PWR
+#define BGVINT              P2_CELL_STATUS
 #define BGDTR               P2_CELL_DTR
 
