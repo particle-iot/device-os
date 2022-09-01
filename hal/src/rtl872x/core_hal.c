@@ -225,7 +225,6 @@ void HAL_Core_Init(void) {
 void HAL_Core_Config_systick_configuration(void) {
     // SysTick_Configuration();
     // sd_nvic_EnableIRQ(SysTick_IRQn);
-    // dcd_migrate_data();
 }
 
 /**

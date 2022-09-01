@@ -26,9 +26,9 @@
 #define INTERNAL_FLASH_END_ADDR         0x00100000
 #define INTERNAL_FLASH_IF_STRING        "@Internal Flash   /0x00000000/1*004Ka,47*004Kg,192*004Kg,4*004Kg,4*004Kg,8*004Ka";
 
-#define DCD_START_ADD                   0x00000000
-#define DCD_END_ADDR                    0x00004000
-#define DCD_IF_STRING                   "@DCD Flash   /0x00000000/1*016Ke";
+#define DCT_START_ADD                   0x00000000
+#define DCT_END_ADDR                    0x00004000
+#define DCT_IF_STRING                   "@DCT Flash   /0x00000000/1*016Ke";
 
 #define EXTERNAL_FLASH_START_ADD        0x00000000
 #if PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_ESOMX
@@ -59,10 +59,10 @@ public:
   virtual const char* getString() override;
 };
 
-class DcdMal: public dfu::DfuMal {
+class DctMal: public dfu::DfuMal {
 public:
-  DcdMal();
-  virtual ~DcdMal();
+  DctMal();
+  virtual ~DctMal();
 
   virtual int init() override;
   virtual int deInit() override;

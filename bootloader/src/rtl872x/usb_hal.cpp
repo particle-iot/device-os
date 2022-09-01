@@ -70,7 +70,7 @@ dfu::DfuClassDriver gDfuInstance(&gUsbDevice);
 
 /* FIXME: move somewhere else */
 dfu::mal::InternalFlashMal gInternalFlashMal;
-dfu::mal::DcdMal gDcdMal;
+dfu::mal::DctMal gDctMal;
 
 void HAL_DFU_USB_Init(void) {
   gUsbDevice.setDeviceDescriptor(sDeviceDescriptor, sizeof(sDeviceDescriptor));
@@ -79,7 +79,7 @@ void HAL_DFU_USB_Init(void) {
   gDfuInstance.enable(true);
   /* Register DFU MALs */
   gDfuInstance.registerMal(0, &gInternalFlashMal);
-  gDfuInstance.registerMal(1, &gDcdMal);
+  gDfuInstance.registerMal(1, &gDctMal);
   gUsbDevice.attach();
 }
 

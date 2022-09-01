@@ -113,27 +113,27 @@ const char* InternalFlashMal::getString() {
   return INTERNAL_FLASH_IF_STRING;
 }
 
-DcdMal::DcdMal()
+DctMal::DctMal()
     : dfu::DfuMal() {
 }
 
-DcdMal::~DcdMal() {
+DctMal::~DctMal() {
 }
 
-int DcdMal::init() {
+int DctMal::init() {
     return 0;
 }
 
-int DcdMal::deInit() {
+int DctMal::deInit() {
     return 0;
 }
 
-bool DcdMal::validate(uintptr_t addr, size_t len) {
+bool DctMal::validate(uintptr_t addr, size_t len) {
     uintptr_t end = addr + len;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtype-limits"
-    if ((addr >= DCD_START_ADD && addr <= DCD_END_ADDR) &&
-        (end >= DCD_START_ADD && end <= DCD_END_ADDR))
+    if ((addr >= DCT_START_ADD && addr <= DCT_END_ADDR) &&
+        (end >= DCT_START_ADD && end <= DCT_END_ADDR))
 #pragma GCC diagnostic pop
     {
         return true;
@@ -142,7 +142,7 @@ bool DcdMal::validate(uintptr_t addr, size_t len) {
     return false;
 }
 
-int DcdMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
+int DctMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
     if (!validate(addr, len)) {
         return 1;
     }
@@ -150,7 +150,7 @@ int DcdMal::read(uint8_t* buf, uintptr_t addr, size_t len) {
     return dct_read_app_data_copy(addr, buf, len);
 }
 
-int DcdMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
+int DctMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
     if (!validate(addr, len)) {
         return 1;
     }
@@ -158,17 +158,17 @@ int DcdMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
     return dct_write_app_data( (const void*)buf, addr, len );
 }
 
-int DcdMal::erase(uintptr_t addr, size_t len) {
+int DctMal::erase(uintptr_t addr, size_t len) {
     return 0;
 }
 
-int DcdMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {
+int DctMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cmd) {
     status->bwPollTimeout[0] = status->bwPollTimeout[1] = status->bwPollTimeout[2] = 0;
     return 0;
 }
 
-const char* DcdMal::getString() {
-    return DCD_IF_STRING;
+const char* DctMal::getString() {
+    return DCT_IF_STRING;
 }
 
 ExternalFlashMal::ExternalFlashMal()
