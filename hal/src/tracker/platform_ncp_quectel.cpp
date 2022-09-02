@@ -62,7 +62,7 @@ PlatformNCPIdentifier platform_primary_ncp_identifier() {
 
 int platform_ncp_get_info(int idx, PlatformNCPInfo* info) {
     CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(idx > 0 && idx < platform_ncp_count(), SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(idx >= 0 && idx < platform_ncp_count(), SYSTEM_ERROR_INVALID_ARGUMENT);
     if (idx == NCP_IDX_PRIMARY_QUECTEL) {
         info->identifier = platform_primary_ncp_identifier();
         info->updatable = false;
