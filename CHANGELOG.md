@@ -1,3 +1,16 @@
+## 5.0.1
+
+### FEATURES
+- Added APIs for hardware configuration for reading OTP format [#2526](https://github.com/particle-iot/device-os/pull/2526)
+- [trackerM] Update demux driver and pinmap to support more latest hardware
+
+### BUGFIXES
+- Secures DCT initialization from getting interrupted between creating DCT file and filling it with 0xff to default state [#2530](https://github.com/particle-iot/device-os/pull/2530)
+- [trackerM] Fix hal dynalib tables [#2523](https://github.com/particle-iot/device-os/pull/2523)
+
+### INTERNAL
+- [trackerM] Fix interrupt based tests [#2527](https://github.com/particle-iot/device-os/pull/2527)
+
 ## 5.0.0
 
 ### BREAKING CHANGE
