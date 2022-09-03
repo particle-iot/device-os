@@ -640,6 +640,8 @@ public:
 private:
     BleGatt()
             : serviceRegistered_(false),
+              isNotifying_(false),
+              notifySemaphore_(nullptr),
               isDiscovering_(false),
               currDiscConnHandle_(BLE_INVALID_CONN_HANDLE),
               currDiscService_(nullptr),
@@ -717,9 +719,11 @@ private:
     static void onGattClientDisconnectCallback(uint8_t connHandle);
 
     bool serviceRegistered_;
+    volatile bool isNotifying_;
+    os_semaphore_t notifySemaphore_;                                /**< Semaphore to sync notify/indicate operation. */
     volatile bool isDiscovering_;                                   /**< If there is on-going discovery procedure. */
     hal_ble_conn_handle_t currDiscConnHandle_;                      /**< Current connection handle under which the service and characteristics to be discovered. */
-    const hal_ble_svc_t* currDiscService_;                                 /**< Used for discovering descriptors */
+    const hal_ble_svc_t* currDiscService_;                          /**< Used for discovering descriptors */
     os_semaphore_t discoverySemaphore_;                             /**< Semaphore to wait until the discovery procedure completed. */
     const hal_ble_uuid_t* discSvcUuid_;                             /**< Used only when discover service by UUID. */
     hal_ble_on_disc_service_cb_t discSvcCallback_;                  /**< Callback function on services discovered. */
@@ -1938,6 +1942,7 @@ T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
 }
 
 int BleGatt::init() {
+    CHECK_TRUE(os_semaphore_create(&notifySemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(os_semaphore_create(&discoverySemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(os_semaphore_create(&writeSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(os_semaphore_create(&readSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
@@ -1952,6 +1957,10 @@ int BleGatt::init() {
 }
 
 int BleGatt::deinit() {
+    if (notifySemaphore_) {
+        os_semaphore_destroy(notifySemaphore_);
+        notifySemaphore_ = nullptr;
+    }
     if (discoverySemaphore_) {
         os_semaphore_destroy(discoverySemaphore_);
         discoverySemaphore_ = nullptr;
@@ -1978,6 +1987,11 @@ T_APP_RESULT BleGatt::gattServerEventCallback(T_SERVER_ID serviceId, void *pData
                 break;
             }
             case PROFILE_EVT_SEND_DATA_COMPLETE: {
+                auto& gatt = BleGatt::getInstance();
+                if (!gatt.isNotifying_) {
+                    return result;
+                }
+                gatt.isNotifying_ = false;
                 LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE: conn_id %d, cause: 0x%x, serviceId: %d, index: 0x%x, credits: %d",
                             pParam->event_data.send_data_result.conn_id,
                             pParam->event_data.send_data_result.cause,
@@ -1985,9 +1999,7 @@ T_APP_RESULT BleGatt::gattServerEventCallback(T_SERVER_ID serviceId, void *pData
                             pParam->event_data.send_data_result.attrib_idx,
                             pParam->event_data.send_data_result.credits);
                 if (pParam->event_data.send_data_result.cause == GAP_SUCCESS) {
-                    LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE success");
-                } else {
-                    LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE failed");
+                    os_semaphore_give(gatt.notifySemaphore_, false);
                 }
                 break;
             }
@@ -2382,7 +2394,28 @@ ssize_t BleGatt::notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* bu
                 if (!BleGap::getInstance().valid(config.subscriber.connHandle)) {
                     return 0;
                 }
-                CHECK_TRUE(server_send_data(config.subscriber.connHandle, svc.id, config.index, (uint8_t*)attribute.p_value_context, attribute.value_len, type), SYSTEM_ERROR_INTERNAL);
+                
+                uint32_t timeoutMs = 100;
+                hal_ble_conn_info_t info = {};
+                info.version = BLE_API_VERSION;
+                info.size = sizeof(hal_ble_conn_info_t);
+                int ret = BleGap::getInstance().getConnectionInfo(config.subscriber.connHandle, &info);
+                if (ret == SYSTEM_ERROR_NONE) {
+                    timeoutMs += info.conn_params.max_conn_interval * 1250/*us*/ / 1000;
+                }
+                uint8_t retry = 3;
+                bool success;
+                do {
+                    success = true;
+                    isNotifying_ = true;
+                    CHECK_TRUE(server_send_data(config.subscriber.connHandle, svc.id, config.index, (uint8_t*)attribute.p_value_context, attribute.value_len, type), SYSTEM_ERROR_INTERNAL);
+                    if (os_semaphore_take(notifySemaphore_, timeoutMs, false)) {
+                        success = false;
+                    }
+                } while (--retry > 0 && !success);
+                if (!success) {
+                    return SYSTEM_ERROR_TIMEOUT;
+                }
                 return attribute.value_len;
             }
         }
