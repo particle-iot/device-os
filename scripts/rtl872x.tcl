@@ -372,7 +372,9 @@ proc rtl872x_flash_write_bin_ext {file address auto_erase auto_verify} {
         set startTime [clock milliseconds]
         echo "Verify flash: "
         echo "init crc32 error detecting"
+        poll off
         set crc32 [crc32_binary $file]
+        poll on
         echo "crc32 completed $crc32"
         mww [expr {$pc_msg_data_mem_addr + 0x00}] $CMD_FLASH_VERIFY
         mww [expr {$pc_msg_data_mem_addr + 0x04}] $address
