@@ -188,6 +188,17 @@ hal_ble_addr_t chipDefaultPublicAddress() {
     return localAddr;
 }
 
+T_GAP_IO_CAP toPlatformIoCaps(hal_ble_pairing_io_caps_t index) {
+    constexpr T_GAP_IO_CAP iocaps[] = {
+        GAP_IO_CAP_NO_INPUT_NO_OUTPUT,
+        GAP_IO_CAP_DISPLAY_ONLY,
+        GAP_IO_CAP_DISPLAY_YES_NO,
+        GAP_IO_CAP_KEYBOARD_ONLY,
+        GAP_IO_CAP_KEYBOARD_DISPLAY
+    };
+    return iocaps[index];
+}
+
 } //anonymous namespace
 
 
@@ -405,13 +416,24 @@ public:
         return connecting_;
     }
 
+    int setPairingConfig(const hal_ble_pairing_config_t* config);
+    int getPairingConfig(hal_ble_pairing_config_t* config) const;
+    int setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_pairing_auth_data_t* auth);
+    int startPairing(hal_ble_conn_handle_t connHandle);
+    int rejectPairing(hal_ble_conn_handle_t connHandle);
+    bool isPairing(hal_ble_conn_handle_t connHandle);
+    bool isPaired(hal_ble_conn_handle_t connHandle);
+
     int waitState(BleGapDevState state, system_tick_t timeout = BLE_STATE_DEFAULT_TIMEOUT, bool forcePoll = false);
 
     void handleDevStateChanged(T_GAP_DEV_STATE state, uint16_t cause);
     void handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE newState, uint16_t discCause);
     void handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize);
     void handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_t cause);
-    void handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause);
+    int handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause);
+    int handlePairJustWork(uint8_t connHandle);
+    int handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly = true);
+    int handlePairPasskeyInput(uint8_t connHandle);
 
     int onPeripheralLinkEventCallback(hal_ble_on_link_evt_cb_t cb, void* context) {
         std::pair<hal_ble_on_link_evt_cb_t, void*> callback(cb, context);
@@ -428,9 +450,20 @@ public:
     void cancelAdvEventCallback(hal_ble_on_adv_evt_cb_t callback, void* context);
 
 private:
+    enum BlePairingState {
+        BLE_PAIRING_STATE_NOT_INITIATED,
+        BLE_PAIRING_STATE_INITIATED, // Central role only
+        BLE_PAIRING_STATE_STARTED,
+        BLE_PAIRING_STATE_USER_REQ_REJECT,
+        BLE_PAIRING_STATE_SET_AUTH_DATA,
+        BLE_PAIRING_STATE_REJECTED,
+        BLE_PAIRING_STATE_PAIRED
+    };
+
     struct BleConnection {
         hal_ble_conn_info_t info;
         std::pair<hal_ble_on_link_evt_cb_t, void*> handler; // It is used for central link only.
+        BlePairingState pairState;
     };
 
     BleGap()
@@ -452,6 +485,7 @@ private:
               disconnectingHandle_(BLE_INVALID_CONN_HANDLE),
               connecting_(false),
               ppcp_{},
+              pairingConfig_{},
               devNameLen_(0),
               isAdvertising_(false),
               stateSemaphore_(nullptr) {
@@ -488,6 +522,14 @@ private:
         advData_[advDataLen_++] = 0x02; // Length field of an AD structure, it is the length of the rest AD structure data.
         advData_[advDataLen_++] = BLE_SIG_AD_TYPE_FLAGS; // Type field of an AD structure.
         advData_[advDataLen_++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE; // Payload field of an AD structure.
+
+        pairingConfig_ = {
+            .version = BLE_API_VERSION,
+            .size = sizeof(hal_ble_pairing_config_t),
+            .io_caps = BLE_IO_CAPS_NONE,
+            .algorithm = BLE_PAIRING_ALGORITHM_AUTO,
+            .reserved = {}
+        };
     }
     ~BleGap() = default;
 
@@ -561,6 +603,7 @@ private:
     Vector<BleConnection> connections_;
     volatile bool connecting_;
     hal_ble_conn_params_t ppcp_;
+    hal_ble_pairing_config_t pairingConfig_;
     uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
     size_t advDataLen_;                             /**< Current advertising data length. */
     uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
@@ -796,7 +839,6 @@ void BleEventDispatcher::handleIoMessage(T_IO_MSG message) const {
     switch (message.type) {
         case IO_MSG_TYPE_BT_STATUS: {
             T_LE_GAP_MSG gap_msg;
-            uint8_t conn_id;
             memcpy(&gap_msg, &message.u.param, sizeof(message.u.param));
             switch (message.subtype) {
                 case GAP_MSG_LE_DEV_STATE_CHANGE: {
@@ -831,31 +873,27 @@ void BleEventDispatcher::handleIoMessage(T_IO_MSG message) const {
                 }
                 case GAP_MSG_LE_BOND_JUST_WORK: {
                     LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_JUST_WORK");
-                    conn_id = gap_msg.msg_data.gap_bond_just_work_conf.conn_id;
-                    le_bond_just_work_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+                    const auto& pairJustWork = gap_msg.msg_data.gap_bond_just_work_conf;
+                    BleGap::getInstance().handlePairJustWork(pairJustWork.conn_id);
                     break;
                 }
                 case GAP_MSG_LE_BOND_PASSKEY_DISPLAY: {
-                    uint32_t display_value = 0;
-                    conn_id = gap_msg.msg_data.gap_bond_passkey_display.conn_id;
-                    le_bond_get_display_key(conn_id, &display_value);
-                    LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_PASSKEY_DISPLAY, passkey %d", display_value);
-                    le_bond_passkey_display_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+                    LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_PASSKEY_DISPLAY");
+                    auto& passkeyDisplay = gap_msg.msg_data.gap_bond_passkey_display;
+                    BleGap::getInstance().handlePairPasskeyDisplay(passkeyDisplay.conn_id);
                     break;
                 }
                 case GAP_MSG_LE_BOND_USER_CONFIRMATION: {
-                    uint32_t display_value = 0;
-                    conn_id = gap_msg.msg_data.gap_bond_user_conf.conn_id;
-                    le_bond_get_display_key(conn_id, &display_value);
-                    LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_USER_CONFIRMATION, passkey %d", display_value);
-                    //le_bond_user_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+                    // Numeric comparison
+                    LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_USER_CONFIRMATION");
+                    auto& numericComparison = gap_msg.msg_data.gap_bond_user_conf;
+                    BleGap::getInstance().handlePairPasskeyDisplay(numericComparison.conn_id, false);
                     break;
                 }
                 case GAP_MSG_LE_BOND_PASSKEY_INPUT: {
-                    //uint32_t passkey = 888888;
-                    conn_id = gap_msg.msg_data.gap_bond_passkey_input.conn_id;
-                    LOG_DEBUG(TRACE, "handleIoMessage: GAP_MSG_LE_BOND_PASSKEY_INPUT, conn_id %d", conn_id);
-                    //le_bond_passkey_input_confirm(conn_id, passkey, GAP_CFM_CAUSE_ACCEPT);
+                    LOG_DEBUG(TRACE, "handleIoMessage: GAP_MSG_LE_BOND_PASSKEY_INPUT");
+                    auto& passkeyInput = gap_msg.msg_data.gap_bond_passkey_input;
+                    BleGap::getInstance().handlePairPasskeyInput(passkeyInput.conn_id);
                     break;
                 }
                 default: {
@@ -950,6 +988,22 @@ int BleGap::init() {
     } else {
         CHECK(setDeviceAddress(&addr_));
     }
+
+    uint8_t pairable = GAP_PAIRING_MODE_PAIRABLE;
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_PAIRING_MODE, sizeof(pairable), &pairable));
+    // Bit mask: GAP_AUTHEN_BIT_BONDING_FLAG, GAP_AUTHEN_BIT_MITM_FLAG, GAP_AUTHEN_BIT_SC_FLAG
+    uint16_t authFlags = 0;
+    if (pairingConfig_.algorithm != BLE_PAIRING_ALGORITHM_LEGACY_ONLY) {
+        authFlags = GAP_AUTHEN_BIT_SC_FLAG;
+    }
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_AUTHEN_REQUIREMENTS_FLAGS, sizeof(authFlags), &authFlags));
+    // IO Capabilities
+    uint8_t ioCaps = toPlatformIoCaps(pairingConfig_.io_caps);
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_IO_CAPABILITIES, sizeof(ioCaps), &ioCaps));
+    // Send smp security request automatically when connected
+    uint8_t secReq = false;
+    CHECK_RTL(le_bond_set_param(GAP_PARAM_BOND_SEC_REQ_ENABLE, sizeof(secReq), &secReq));
+    CHECK_RTL(gap_set_pairable_mode());
 
     /* register gap message callback */
     le_register_app_cb(gapEventCallback);
@@ -1703,6 +1757,127 @@ void BleGap::removeConnection(hal_ble_conn_handle_t connHandle) {
     }
 }
 
+int BleGap::setPairingConfig(const hal_ble_pairing_config_t* config) {
+    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    // Bit mask: GAP_AUTHEN_BIT_BONDING_FLAG, GAP_AUTHEN_BIT_MITM_FLAG, GAP_AUTHEN_BIT_SC_FLAG
+    uint16_t authFlags = 0;
+    if (config->algorithm != BLE_PAIRING_ALGORITHM_LEGACY_ONLY) {
+        authFlags = GAP_AUTHEN_BIT_SC_FLAG;
+    }
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_AUTHEN_REQUIREMENTS_FLAGS, sizeof(authFlags), &authFlags));
+    // IO Capabilities
+    uint8_t ioCaps = toPlatformIoCaps(config->io_caps);
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_IO_CAPABILITIES, sizeof(ioCaps), &ioCaps));
+    pairingConfig_ = {};
+    pairingConfig_.size = sizeof(hal_ble_pairing_config_t);
+    memcpy(&pairingConfig_, config, std::min(pairingConfig_.size, config->size));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::getPairingConfig(hal_ble_pairing_config_t* config) const {
+    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    memcpy(config, &pairingConfig_, std::min(pairingConfig_.size, config->size));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_pairing_auth_data_t* auth) {
+    CHECK_TRUE(auth, SYSTEM_ERROR_INVALID_ARGUMENT);
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+    if (auth->type == BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON) {
+        CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_STARTED, SYSTEM_ERROR_INVALID_STATE);
+        connection->pairState = BLE_PAIRING_STATE_SET_AUTH_DATA;
+        if (auth->params.equal) {
+            CHECK_RTL(le_bond_user_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT));
+        } else {
+            CHECK_RTL(le_bond_user_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
+        }
+    }
+    else if (auth->type == BLE_PAIRING_AUTH_DATA_PASSKEY) {
+        CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_STARTED, SYSTEM_ERROR_INVALID_STATE);
+        connection->pairState = BLE_PAIRING_STATE_SET_AUTH_DATA;
+        for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
+            if (!std::isdigit(auth->params.passkey[i])) {
+                LOG(ERROR, "Invalid digits.");
+                CHECK_RTL(le_bond_passkey_input_confirm(connHandle, 0, GAP_CFM_CAUSE_REJECT));
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+        }
+        uint32_t passkey = std::atoi((const char*)auth->params.passkey);
+        CHECK_RTL(le_bond_passkey_input_confirm(connHandle, passkey, GAP_CFM_CAUSE_ACCEPT));
+    }
+    else {
+        LOG(TRACE, "SYSTEM_ERROR_NOT_SUPPORTED");
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::startPairing(hal_ble_conn_handle_t connHandle) {
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_NOT_INITIATED ||
+               connection->pairState == BLE_PAIRING_STATE_REJECTED, SYSTEM_ERROR_INVALID_STATE);
+    auto ret = le_bond_pair(connHandle);
+    if (ret != GAP_CAUSE_SUCCESS) {
+        hal_ble_link_evt_t linkEvent = {};
+        linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
+        linkEvent.conn_handle = connection->info.conn_handle;
+        linkEvent.params.pairing_status.status = rtl_ble_error_to_system(ret);
+        notifyLinkEvent(linkEvent);
+    }
+    connection->pairState = BLE_PAIRING_STATE_INITIATED;
+    return SYSTEM_ERROR_NONE;
+}
+
+/*
+ * User may reject pairing under the following circumstances
+
+ * If just work is used:
+ *   1. calling rejectPairing() on BLE_EVT_PAIRING_REQUEST_RECEIVED received
+ * 
+ * If passkey display is used:
+ *   1. calling rejectPairing() on BLE_EVT_PAIRING_REQUEST_RECEIVED received
+ *   2. calling rejectPairing() on BLE_EVT_PAIRING_PASSKEY_DISPLAY received
+ * 
+ * If numeric comparison is used:
+ *   1. calling rejectPairing() on BLE_EVT_PAIRING_REQUEST_RECEIVED received
+ *   2. calling rejectPairing() on BLE_EVT_PAIRING_NUMERIC_COMPARISON received
+ *   3. choosing "NO" on BLE_EVT_PAIRING_NUMERIC_COMPARISON received
+ *   4. not setting authentication data on BLE_EVT_PAIRING_NUMERIC_COMPARISON received
+ * 
+ * If passkey input is used:
+ *   1. calling rejectPairing() on BLE_EVT_PAIRING_REQUEST_RECEIVED received
+ *   2. calling rejectPairing() on BLE_EVT_PAIRING_PASSKEY_INPUT received
+ *   3. entering wrong passkey on BLE_EVT_PAIRING_PASSKEY_INPUT received
+ *   4. not setting authentication data on BLE_EVT_PAIRING_PASSKEY_INPUT received
+ * 
+ * Other circumstances are considered to continue the pairing process。
+ */
+int BleGap::rejectPairing(hal_ble_conn_handle_t connHandle) {
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+    // Note: If user called rejectPairing() after setPairingAuthData(), it won't take any effect
+    if (connection->pairState == BLE_PAIRING_STATE_INITIATED || connection->pairState == BLE_PAIRING_STATE_STARTED) {
+        connection->pairState = BLE_PAIRING_STATE_USER_REQ_REJECT;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+bool BleGap::isPairing(hal_ble_conn_handle_t connHandle) {
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, false);
+    return connection->pairState == BLE_PAIRING_STATE_INITIATED ||
+           connection->pairState == BLE_PAIRING_STATE_STARTED ||
+           connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA;
+}
+
+bool BleGap::isPaired(hal_ble_conn_handle_t connHandle) {
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, false);
+    return connection->pairState == BLE_PAIRING_STATE_PAIRED;
+}
+
 int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePoll) {
     auto current = BleGapDevState(getState());
     if (forcePoll || current.isNotInitialized() || !btStackStarted_) {
@@ -1818,6 +1993,7 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             connection.info.conn_params = connParams;
             connection.info.address = peerAddr;
             connection.info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
+            connection.pairState = BLE_PAIRING_STATE_NOT_INITIATED;
             int ret = addConnection(std::move(connection));
             if (ret != SYSTEM_ERROR_NONE) {
                 LOG(ERROR, "Add new connection failed. Disconnects from peer.");
@@ -1882,23 +2058,45 @@ void BleGap::handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_
     }
 }
 
-void BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause) {
+int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause) {
     LOG_DEBUG(TRACE, "handleAuthenStateChanged: handle: %d, cause: 0x%x", connHandle, cause);
-    const BleConnection* connection = fetchConnection(connHandle);
-    if (!connection) {
-        return;
-    }
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     switch (state) {
         case GAP_AUTHEN_STATE_STARTED: {
-            LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_STARTED");
+            LOG(TRACE, "GAP_AUTHEN_STATE_STARTED");
+            auto state = connection->pairState;
+            connection->pairState = BLE_PAIRING_STATE_STARTED;
+            // Notify the event only if the other side initiates the pairing procedure
+            if (state == BLE_PAIRING_STATE_NOT_INITIATED || state == BLE_PAIRING_STATE_REJECTED) {
+                hal_ble_link_evt_t linkEvent = {};
+                linkEvent.type = BLE_EVT_PAIRING_REQUEST_RECEIVED;
+                linkEvent.conn_handle = connHandle;
+                // User may call rejectPairing() in the event handler
+                notifyLinkEvent(linkEvent);
+            }
             break;
         }
         case GAP_AUTHEN_STATE_COMPLETE: {
+            hal_ble_link_evt_t linkEvent = {};
+            linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
+            linkEvent.conn_handle = connection->info.conn_handle;
+            linkEvent.params.pairing_status.bonded = 0;
+            linkEvent.params.pairing_status.lesc = 0;
             if (cause == GAP_SUCCESS) {
-                LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair success");
+                LOG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair success");
+                connection->pairState = BLE_PAIRING_STATE_PAIRED;
+                T_GAP_SEC_LEVEL secType = GAP_SEC_LEVEL_NO;
+                int ret = le_bond_get_sec_level(connHandle, &secType);
+                LOG(TRACE, "handle: %d, ret: %d, secType: %04X", connHandle, ret, secType);
+                linkEvent.params.pairing_status.lesc = (secType == GAP_SEC_LEVEL_SC_UNAUTHEN || secType == GAP_SEC_LEVEL_SC_AUTHEN);
+                linkEvent.params.pairing_status.status = SYSTEM_ERROR_NONE;
             } else {
-                LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair failed");
+                LOG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair failed");
+                connection->pairState = BLE_PAIRING_STATE_REJECTED;
+                linkEvent.params.pairing_status.status = SYSTEM_ERROR_INTERNAL;
             }
+            notifyLinkEvent(linkEvent);
             break;
         }
         default: {
@@ -1906,6 +2104,70 @@ void BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_
             break;
         }
     }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::handlePairJustWork(uint8_t connHandle) {
+    BleConnection* connection = fetchConnection(connHandle);
+    if (connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+        CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT));
+    } else {
+        CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly) {
+    BleConnection* connection = fetchConnection(connHandle);
+    if (connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+        uint32_t displayValue = 0;
+        le_bond_get_display_key(connHandle, &displayValue);
+        char passkey[BLE_PAIRING_PASSKEY_LEN + 1];
+        sprintf(passkey, "%06ld", displayValue);
+        hal_ble_link_evt_t linkEvent = {};
+        if (displayOnly) {
+            linkEvent.type = BLE_EVT_PAIRING_PASSKEY_DISPLAY;
+        } else {
+            linkEvent.type = BLE_EVT_PAIRING_NUMERIC_COMPARISON;
+        }
+        linkEvent.conn_handle = connHandle;
+        linkEvent.params.passkey_display.passkey = (const uint8_t*)passkey;
+        // User may call rejectPairing() in the event handler
+        notifyLinkEvent(linkEvent);
+        if (connection->pairState == BLE_PAIRING_STATE_USER_REQ_REJECT) {
+            goto reject;
+        }
+        if (displayOnly) {
+            le_bond_passkey_display_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT);
+        } else if (connection->pairState != BLE_PAIRING_STATE_SET_AUTH_DATA) {
+            // User didn't set authentication data in event callback, reject pairing automatically
+            goto reject;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+reject:
+    if (displayOnly) {
+        CHECK_RTL(le_bond_passkey_display_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
+    } else {
+        CHECK_RTL(le_bond_user_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::handlePairPasskeyInput(uint8_t connHandle) {
+    BleConnection* connection = fetchConnection(connHandle);
+    if (connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+        hal_ble_link_evt_t linkEvent = {};
+        linkEvent.type = BLE_EVT_PAIRING_PASSKEY_INPUT;
+        linkEvent.conn_handle = connHandle;
+        notifyLinkEvent(linkEvent);
+        if (connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA) {
+            return SYSTEM_ERROR_NONE;
+        }
+    }
+    CHECK_RTL(le_bond_passkey_input_confirm(connHandle, 0, GAP_CFM_CAUSE_REJECT));
+    return SYSTEM_ERROR_NONE;
 }
 
 T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
@@ -3149,31 +3411,36 @@ int hal_ble_gap_get_rssi(hal_ble_conn_handle_t conn_handle, void* reserved) {
 int hal_ble_gap_set_pairing_config(const hal_ble_pairing_config_t* config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_config().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().setPairingConfig(config);
 }
 
 int hal_ble_gap_get_pairing_config(hal_ble_pairing_config_t* config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_pairing_config().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getPairingConfig(config);
 }
 
 int hal_ble_gap_start_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_start_pairing().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().startPairing(conn_handle);
 }
 
 int hal_ble_gap_reject_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_reject_pairing().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().rejectPairing(conn_handle);
 }
 
 int hal_ble_gap_set_pairing_auth_data(hal_ble_conn_handle_t conn_handle, const hal_ble_pairing_auth_data_t* auth, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_auth_data().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().setPairingAuthData(conn_handle, auth);
 }
 
 int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved) {
@@ -3185,13 +3452,15 @@ int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle
 bool hal_ble_gap_is_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_is_pairing().");
-    return false;
+    CHECK_TRUE(BleGap::getInstance().initialized(), false);
+    return BleGap::getInstance().isPairing(conn_handle);
 }
 
 bool hal_ble_gap_is_paired(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_is_paired().");
-    return false;
+    CHECK_TRUE(BleGap::getInstance().initialized(), false);
+    return BleGap::getInstance().isPaired(conn_handle);
 }
 
 /**********************************************
