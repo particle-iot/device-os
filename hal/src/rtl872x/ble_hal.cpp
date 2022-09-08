@@ -2008,7 +2008,8 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 evt.params.connected.info = &connection.info;
                 notifyLinkEvent(evt);
             } else {
-                os_semaphore_give(connectSemaphore_, false);
+                // See: handleMtuUpdated()
+                // os_semaphore_give(connectSemaphore_, false);
             }
             break;
         }
@@ -2017,11 +2018,16 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
 }
 
 void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
-    // FIXME: adding log in this function causes BLE deadlock, but not in the wiring callback!!!
-    // LOG_DEBUG(TRACE, "handleMtuUpdated: handle:%d, mtu_size:%d", connHandle, mtuSize);
+    LOG_DEBUG(TRACE, "handleMtuUpdated: handle:%d, mtu_size:%d", connHandle, mtuSize);
     BleConnection* connection = fetchConnection(connHandle);
     if (!connection) {
         return;
+    }
+    // FIXME: when device initiates the connection establishment,
+    // it will perform the ATT MTU exchange automatically on connected. This may result in
+    // service discovery failure when the peer device is of other Gen3 platform.
+    if (connection->info.role == BLE_ROLE_CENTRAL) {
+        os_semaphore_give(connectSemaphore_, false);
     }
     connection->info.att_mtu = mtuSize;
     hal_ble_link_evt_t evt = {};
