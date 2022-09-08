@@ -1807,7 +1807,7 @@ int BleGap::setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_p
         CHECK_RTL(le_bond_passkey_input_confirm(connHandle, passkey, GAP_CFM_CAUSE_ACCEPT));
     }
     else {
-        LOG(TRACE, "SYSTEM_ERROR_NOT_SUPPORTED");
+        LOG(ERROR, "SYSTEM_ERROR_NOT_SUPPORTED");
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     return SYSTEM_ERROR_NONE;
@@ -2070,7 +2070,7 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     switch (state) {
         case GAP_AUTHEN_STATE_STARTED: {
-            LOG(TRACE, "GAP_AUTHEN_STATE_STARTED");
+            LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_STARTED");
             auto state = connection->pairState;
             connection->pairState = BLE_PAIRING_STATE_STARTED;
             // Notify the event only if the other side initiates the pairing procedure
@@ -2090,15 +2090,16 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
             linkEvent.params.pairing_status.bonded = 0;
             linkEvent.params.pairing_status.lesc = 0;
             if (cause == GAP_SUCCESS) {
-                LOG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair success");
+                LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair success");
                 connection->pairState = BLE_PAIRING_STATE_PAIRED;
                 T_GAP_SEC_LEVEL secType = GAP_SEC_LEVEL_NO;
+                // FIXME: This API doesn't work as expected for now
                 int ret = le_bond_get_sec_level(connHandle, &secType);
                 LOG(TRACE, "handle: %d, ret: %d, secType: %04X", connHandle, ret, secType);
                 linkEvent.params.pairing_status.lesc = (secType == GAP_SEC_LEVEL_SC_UNAUTHEN || secType == GAP_SEC_LEVEL_SC_AUTHEN);
                 linkEvent.params.pairing_status.status = SYSTEM_ERROR_NONE;
             } else {
-                LOG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair failed");
+                LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair failed");
                 connection->pairState = BLE_PAIRING_STATE_REJECTED;
                 linkEvent.params.pairing_status.status = SYSTEM_ERROR_INTERNAL;
             }
