@@ -109,6 +109,7 @@ int hal_get_mac_address(uint8_t type, uint8_t* dest, size_t destLen, void* reser
         // Derive the final MAC address
         mac[5] += type;
     }
+    memcpy(dest, mac, HAL_DEVICE_MAC_ADDR_SIZE);
     return HAL_DEVICE_MAC_ADDR_SIZE;
 }
 
