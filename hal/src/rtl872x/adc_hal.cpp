@@ -26,10 +26,11 @@ extern "C" {
 #include "delay_hal.h"
 #include "service_debug.h"
 #include "logging.h"
+#include "system_cache.h"
+#include <algorithm>
 
 #define APBPeriph_ADC_CLOCK         (SYS_CLK_CTRL1  << 30 | BIT_LSYS_ADC_CKE)
 #define APBPeriph_ADC               (SYS_FUNC_EN1  << 30 | BIT_LSYS_ADC_FEN)
-
 #define DEFAULT_ADC_RESOLUTION_BITS (12)
 
 #define WAIT_TIMED(timeout_ms, what) ({ \
@@ -48,57 +49,170 @@ extern "C" {
 
 namespace {
 
-constexpr uint32_t normalChCalOffsetAddr = 0x1D0;
-constexpr uint32_t normalChCalGainDivAddr = 0x1D2;
+using namespace particle::services;
 
-volatile hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
+class Adc {
+public:
+    int init() {
+        RCC_PeriphClockCmd(APBPeriph_ADC, APBPeriph_ADC_CLOCK, ENABLE);
 
-/*
- * OFFSET:   10 times of sample data at 0.000v, 10*value(0.000v)
- * GAIN_DIV: 10 times of value(1.000v)-value(0.000v) or value(2.000v)-value(1.000v) or value(3.000v)-value(2.000v)
- */
-/* Normal channel*/
-uint16_t adcOffset = 0xFFFF;
-uint16_t adcGainDiv = 0xFFFF;
+        ADC_InitTypeDef adcInitStruct = {};
+        ADC_StructInit(&adcInitStruct);
+        adcInitStruct.ADC_CvlistLen = 0;
+        ADC_Init(&adcInitStruct);
+        ADC_Cmd(ENABLE);
 
-int adcInit() {
-    RCC_PeriphClockCmd(APBPeriph_ADC, APBPeriph_ADC_CLOCK, ENABLE);
+        if (getCachedOffset(&adcOffset_) != SYSTEM_ERROR_NONE) {
+            calibration();
+        }
 
-    ADC_InitTypeDef adcInitStruct = {}; 
-    ADC_StructInit(&adcInitStruct);
-    adcInitStruct.ADC_CvlistLen = 0;
-    ADC_Init(&adcInitStruct);
-    ADC_Cmd(ENABLE);
+        // Get ADC GAIN parameter from efuse
+        uint8_t efuseBuf[2] = {};
+        for (uint8_t index = 0; index < 2; index++) {
+            EFUSE_PMAP_READ8(0, adcGainEfuseAddr + index, efuseBuf + index, L25EOUTVOLTAGE);
+        }
+        adcGain_ = efuseBuf[1] << 8 | efuseBuf[0];
+        if (adcGain_ == 0xFFFF) {
+            adcGain_ = 0x2F12;
+        }
 
-    uint8_t efuseBuf[2];
-	for (uint8_t index = 0; index < 2; index++) {
-		EFUSE_PMAP_READ8(0, normalChCalOffsetAddr + index, efuseBuf + index, L25EOUTVOLTAGE);
-	}
-    adcOffset = efuseBuf[1] << 8 | efuseBuf[0];
-	for (uint8_t index = 0; index < 2; index++) {
-		EFUSE_PMAP_READ8(0, normalChCalGainDivAddr + index, efuseBuf + index, L25EOUTVOLTAGE);
-	}
-	adcGainDiv = efuseBuf[1] << 8 | efuseBuf[0];
-	if (adcOffset == 0xFFFF) {
-		adcOffset = 0x9B0;
-	}
-	if (adcGainDiv == 0xFFFF) {
-		adcGainDiv = 0x2F12;
-	}
+        adcState_ = HAL_ADC_STATE_ENABLED;
+        return SYSTEM_ERROR_NONE;
+    }
 
-    adcState = HAL_ADC_STATE_ENABLED;
-    return SYSTEM_ERROR_NONE;
-}
+    int deinit() {
+        ADC_INTClear();
+        ADC_Cmd(DISABLE);
+        RCC_PeriphClockCmd(APBPeriph_ADC, APBPeriph_ADC_CLOCK, DISABLE);
+        adcState_ = HAL_ADC_STATE_DISABLED;
+        return SYSTEM_ERROR_NONE;
+    }
 
-int adcDeinit() {
-    ADC_INTClear();
-    ADC_Cmd(DISABLE);
-    RCC_PeriphClockCmd(APBPeriph_ADC, APBPeriph_ADC_CLOCK, DISABLE);
-    adcState = HAL_ADC_STATE_DISABLED;
-    return SYSTEM_ERROR_NONE;
-}
+    int read(uint16_t pin) {
+        CHECK_TRUE(hal_pin_is_valid(pin), 0);
+        hal_pin_info_t* pinInfo = hal_pin_map() + pin;
+        if (pinInfo->adc_channel == ADC_CHANNEL_NONE) {
+            return 0;
+        }
+        if (pinInfo->pin_func != PF_NONE && pinInfo->pin_func != PF_DIO) {
+            return 0;
+        }
+
+        if (adcState_ != HAL_ADC_STATE_ENABLED) {
+            init();
+        }
+
+        /* Set channel index into channel switch list*/
+        ADC->ADC_CHSW_LIST[0] = pinInfo->adc_channel;
+        ADC_ClearFIFO();
+
+        ADC_SWTrigCmd(ENABLE);
+        if (!WAIT_TIMED(10, ADC_Readable() == 0)) {
+            ADC_SWTrigCmd(DISABLE);
+            return 0;
+        }
+        ADC_SWTrigCmd(DISABLE);
+
+        // (not used anymore) adcOffset - eFuse programmed ADC offset (raw * 10)
+        // adcGain - eFuse programmed ADC transfer function slope ((y1-y0)/(yideal1 - yideal0) * 10000)
+        // adcAtGndValue - raw ADC value acquired from internal channel connected to ground reference, filtered/averaged
+        uint32_t adcValue = (ADC_Read() & BIT_MASK_DAT_GLOBAL);
+        uint32_t adcOffsetClamped = std::min(adcValue, (uint_least32_t)adcOffset_); // Clamps to zero to avoid negative values
+        uint32_t adcValueGainOffsetCorrectedAndZeroCalibrated = ((adcValue - adcOffsetClamped) * adcGain_) / 10000; // 0-4095
+
+        LOG(TRACE, "ch8_gnd: %d, raw_value: %d, calib_value: %d", adcOffset_, adcValue, adcValueGainOffsetCorrectedAndZeroCalibrated);
+
+        return (uint16_t)adcValueGainOffsetCorrectedAndZeroCalibrated;
+    }
+
+    int sleep(bool sleep) {
+        if (sleep) {
+            // Suspend ADC
+            CHECK_TRUE(adcState_ == HAL_ADC_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
+            deinit();
+            adcState_ = HAL_ADC_STATE_SUSPENDED;
+        } else {
+            // Restore ADC
+            CHECK_TRUE(adcState_ == HAL_ADC_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
+            init();
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int calibration() {
+        // Read the analog value of a CH8(Channel 8), CH8 is connected to the internal GND
+        adcOffset_ = getInternalGndValue();
+        return setCachedOffset(adcOffset_);
+    }
+
+private:
+    int getCachedOffset(uint16_t* adcOffset) {
+        uint16_t offset = 0;
+        int ret = SystemCache::instance().get(SystemCacheKey::ADC_CALIBRATION_OFFSET, &offset, sizeof(offset));
+        if (ret != sizeof(offset)) {
+            return SYSTEM_ERROR_NOT_FOUND;
+        }
+
+        // Check the validity of cached OFFSET by comparing it with the efuse OFFSET * ±20%
+        uint8_t efuseBuf[2] = {};
+        for (uint8_t index = 0; index < 2; index++) {
+            EFUSE_PMAP_READ8(0, adcOffsetEfuseAddr + index, efuseBuf + index, L25EOUTVOLTAGE);
+        }
+        uint16_t efuseOffset = (efuseBuf[1] << 8 | efuseBuf[0]) / 10;
+        if (std::abs((int)offset - (int)efuseOffset) > (int)(efuseOffset * 0.2)) {
+            LOG(WARN, "Invalid ADC offset detected, cached %d, efuse: %d", offset, efuseOffset);
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+
+        if (adcOffset) {
+            *adcOffset = offset;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int setCachedOffset(uint16_t adcOffset) {
+        return SystemCache::instance().set(SystemCacheKey::ADC_CALIBRATION_OFFSET, &adcOffset, sizeof(adcOffset));
+    }
+
+    uint16_t getInternalGndValue() {
+        uint32_t gndValue = 0;
+        uint32_t sumGndValue = 0;
+        LOG_PRINTF(TRACE, "raw ch8: ");
+        for (int i = 0; i < 100; i++) {
+            // The internal reference of CH8 and CH9 is GND, choose either of them for self-calibration
+            ADC->ADC_CHSW_LIST[0] = ADC_CH8;
+            ADC_ClearFIFO();
+
+            ADC_SWTrigCmd(ENABLE);
+            if (!WAIT_TIMED(10, ADC_Readable() == 0)) {
+                ADC_SWTrigCmd(DISABLE);
+                return 0;
+            }
+            ADC_SWTrigCmd(DISABLE);
+
+            gndValue = (ADC_Read() & BIT_MASK_DAT_GLOBAL);
+            sumGndValue += gndValue;
+            LOG_PRINTF(TRACE, "%d ", gndValue);
+        }
+        LOG_PRINTF(TRACE, "\r\n");
+
+        LOG_PRINTF(TRACE, "avg ch8: %d\r\n", sumGndValue / 100);
+        return (uint16_t)(sumGndValue / 100);
+    }
+
+private:
+    uint16_t adcOffset_ = 0xFFFF;  // OFFSET: 10 times of sample data at 0.000v, 10*value(0.000v)
+    uint16_t adcGain_ = 0xFFFF;    // GAIN: 10 times of value(1.000v)-value(0.000v) or value(2.000v)-value(1.000v) or value(3.000v)-value(2.000v)
+    volatile hal_adc_state_t adcState_ = HAL_ADC_STATE_DISABLED;
+
+    static constexpr uint32_t adcOffsetEfuseAddr = 0x1D0;
+    static constexpr uint32_t adcGainEfuseAddr = 0x1D2;
+};
+
+Adc adc;
 
 } // anonymous
+
 
 void hal_adc_set_sample_time(uint8_t sample_time) {
     // deprecated
@@ -110,57 +224,13 @@ void hal_adc_set_sample_time(uint8_t sample_time) {
  * Note: ADC is 12-bit. Currently it returns 0-4096
  */
 int32_t hal_adc_read(uint16_t pin) {
-    CHECK_TRUE(hal_pin_is_valid(pin), 0);
-    hal_pin_info_t* pinInfo = hal_pin_map() + pin;
-    if (pinInfo->adc_channel == ADC_CHANNEL_NONE) {
-        return 0;
-    }
-    if (pinInfo->pin_func != PF_NONE && pinInfo->pin_func != PF_DIO) {
-        return 0;
-    }
-
-    if (adcState != HAL_ADC_STATE_ENABLED) {
-        adcInit();
-    }
-
-    /* Set channel index into channel switch list*/
-    ADC->ADC_CHSW_LIST[0] = pinInfo->adc_channel;
-    ADC_ClearFIFO();
-
-    ADC_SWTrigCmd(ENABLE);
-    if (!WAIT_TIMED(10, ADC_Readable() == 0)) {
-        ADC_SWTrigCmd(DISABLE);
-        return 0;
-    }
-    ADC_SWTrigCmd(DISABLE);
-
-    uint16_t adcValue = (ADC_Read() & BIT_MASK_DAT_GLOBAL);
-
-    uint32_t mv = 0;
-    if (adcValue < 0xfa) {
-        mv = 0; // Ignore persistent low voltage measurement error
-    } else {
-        mv = ((10 * adcValue - adcOffset) * 1000 / adcGainDiv); // Convert measured ADC value to millivolts
-    }
-    adcValue = (mv / 3300.0) * (1 << DEFAULT_ADC_RESOLUTION_BITS);
-    if (adcValue > 4096) { // The measured voltage might greater than 3300mV
-        adcValue = 4096;
-    }
-
-    return adcValue;
+    return adc.read(pin);
 }
 
 int hal_adc_sleep(bool sleep, void* reserved) {
-    if (sleep) {
-        // Suspend ADC
-        CHECK_TRUE(adcState == HAL_ADC_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
-        adcDeinit();
-        adcState = HAL_ADC_STATE_SUSPENDED;
-    } else {
-        // Restore ADC
-        CHECK_TRUE(adcState == HAL_ADC_STATE_SUSPENDED, SYSTEM_ERROR_INVALID_STATE);
-        adcInit();
-    }
-    return SYSTEM_ERROR_NONE;
+    return adc.sleep(sleep);
 }
 
+int hal_adc_calibrate(uint32_t reserved, void* reserved1) {
+    return adc.calibration();
+}
