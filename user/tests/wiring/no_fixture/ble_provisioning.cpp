@@ -22,6 +22,11 @@
 
 // Do not enter listening mode based on the flag
 test(LISTENING_00_DISABLE_LISTENING_MODE) {
+    // If Particle.disconnect() is not called here, the Network.listen() calls
+    // could potentially interfere with ncpClient and rendering undefined
+    // behavior for some of the following tests 
+    Particle.disconnect();
+    waitUntil(Particle.disconnected);
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
     Network.listen();
     SCOPE_GUARD({
@@ -59,6 +64,7 @@ test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
     delay(1000); // Time for system thread to enter listening mode
     assertTrue(Network.listening());
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    Particle.process();
     SCOPE_GUARD({
         System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     });
@@ -112,6 +118,7 @@ test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
         assertTrue(Particle.connected());
     });
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    Particle.process();
     delay(1500); // Time for system thread to process the flag
     assertFalse(Network.listening());
     BLE.provisioningMode(true);
