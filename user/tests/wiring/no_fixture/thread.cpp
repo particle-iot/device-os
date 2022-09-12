@@ -262,8 +262,8 @@ test(APPLICATION_WATCHDOG_01_fires_timeout)
 {
 	s_ram_free_before = System.freeMemory();
 	timeout_called = 0;
-	ApplicationWatchdog wd(5, timeout);
-	HAL_Delay_Milliseconds(10);
+	ApplicationWatchdog wd(50, timeout);
+	HAL_Delay_Milliseconds(60);
 
 	assertEqual((int)timeout_called, 1);
 	waitForComplete(wd);

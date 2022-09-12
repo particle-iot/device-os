@@ -3,7 +3,7 @@
 
 #if PLATFORM_THREADING
 
-volatile system_tick_t ApplicationWatchdog::last_checkin;
+volatile system_tick_t ApplicationWatchdog::last_checkin = 0;
 
 os_thread_return_t ApplicationWatchdog::start(void* pointer)
 {
@@ -14,17 +14,22 @@ os_thread_return_t ApplicationWatchdog::start(void* pointer)
 
 void ApplicationWatchdog::loop()
 {
-	bool done = false;
-	system_tick_t now;
-	while (!done) {
-		HAL_Delay_Milliseconds(timeout);
+	auto wakeupTimestamp = last_checkin + timeout;
+	auto now = current_time();
+	if (wakeupTimestamp > now) {
+		HAL_Delay_Milliseconds(wakeupTimestamp - now);
+	}
+
+	while (true) {
 		now = current_time();
-		done = (now-last_checkin)>=timeout;
+		if ((now-last_checkin)>=timeout) {
+			break;
+		}
+		HAL_Delay_Milliseconds(timeout);
 	}
 
 	if (timeout>0 && timeout_fn) {
 		timeout_fn();
-		timeout_fn = std::function<void(void)>();
 	}
 }
 
