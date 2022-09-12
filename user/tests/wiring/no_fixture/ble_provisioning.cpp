@@ -19,14 +19,9 @@
 #include "unit-test/unit-test.h"
 
 #if HAL_PLATFORM_BLE
-
+const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
 // Do not enter listening mode based on the flag
 test(LISTENING_00_DISABLE_LISTENING_MODE) {
-    // If Particle.disconnect() is not called here, the Network.listen() calls
-    // could potentially interfere with ncpClient and rendering undefined
-    // behavior for some of the following tests 
-    Particle.disconnect();
-    waitUntil(Particle.disconnected);
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
     Network.listen();
     SCOPE_GUARD({
@@ -51,6 +46,7 @@ test(LISTENING_01_ENABLE_LISTENING_MODE) {
     Network.listen(false);
     delay(1000); // Time for system thread to exit listening mode
     assertFalse(Network.listening());
+    waitFor(Particle.connected, WAIT_TIMEOUT);  // Wait for Particle connection to come back
 }
 
 // If the flag is enabled while device is in listening mode,
@@ -70,6 +66,7 @@ test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
     });
     delay(1500); // Time for system thread to process the flag
     assertFalse(Network.listening());
+    waitFor(Particle.connected, WAIT_TIMEOUT);  // Wait for Particle connection to come back
 }
 
 test(LISTENING_03_ENABLE_BLE_PROV_MODE_WHEN_FLAG_SET) {
@@ -102,7 +99,6 @@ test(LISTENING_04_ENABLE_BLE_PROV_MODE_WHEN_FLAG_CLEARED) {
 
 test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
     // 15 min gives the device time to go through a 10 min timeout & power cycle
-    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
     SCOPE_GUARD({
         System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     });
