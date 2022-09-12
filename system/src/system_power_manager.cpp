@@ -142,8 +142,8 @@ void PowerManager::init() {
 #if defined(DEBUG_BUILD) || DEBUG_POWER
     4 * 1024);
 #else
-    1024);
-#endif // defined(DEBUIG_BUILD)
+    HAL_PLATFORM_POWER_MANAGEMENT_STACK_SIZE);
+#endif // defined(DEBUG_BUILD)
   SPARK_ASSERT(th != nullptr);
 }
 
