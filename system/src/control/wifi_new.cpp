@@ -190,7 +190,7 @@ int getKnownNetworks(ctrl_request* req) {
     // Encode a reply
     PB(GetKnownNetworksReply) pbRep = {};
     pbRep.networks.arg = &networks;
-    pbRep.networks.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    pbRep.networks.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
         const auto networks = (const Vector<WifiNetworkConfig>*)*arg;
         for (const WifiNetworkConfig& conf: *networks) {
             PB(GetKnownNetworksReply_Network) pbConf = {};
@@ -261,7 +261,7 @@ int scanNetworks(ctrl_request* req) {
     // Encode a reply
     PB(ScanNetworksReply) pbRep = {};
     pbRep.networks.arg = &networks;
-    pbRep.networks.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    pbRep.networks.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
         const auto networks = (const Vector<WifiScanResult>*)*arg;
         for (const WifiScanResult& network: *networks) {
             PB(ScanNetworksReply_Network) pbNetwork = {};

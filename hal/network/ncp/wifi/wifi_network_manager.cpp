@@ -79,7 +79,7 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
     // Parse configuration
     PB(WifiConfig) pbConf = {};
     pbConf.networks.arg = networks;
-    pbConf.networks.funcs.decode = [](pb_istream_t* strm, const pb_field_t* field, void** arg) {
+    pbConf.networks.funcs.decode = [](pb_istream_t* strm, const pb_field_iter_t* field, void** arg) {
         const auto networks = (Vector<WifiNetworkConfig>*)*arg;
         PB(WifiConfig_Network) pbConf = {};
         DecodedCString dSsid(&pbConf.ssid);
@@ -133,7 +133,7 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
     // Serialize configuration
     PB(WifiConfig) pbConf = {};
     pbConf.networks.arg = const_cast<Vector<WifiNetworkConfig>*>(&networks);
-    pbConf.networks.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    pbConf.networks.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
         const auto networks = (const Vector<WifiNetworkConfig>*)*arg;
         for (const WifiNetworkConfig& conf: *networks) {
             PB(WifiConfig_Network) pbConf = {};
