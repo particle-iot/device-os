@@ -27,9 +27,7 @@ PROTOC_INCLUDE_PATH="
 gen_proto() {
   src_proto="$1"
   dest_h=$(basename "$src_proto" .proto).pb.h
-  if [[ $src_proto -nt $DIR/$dest_h ]]; then
-    protoc ${PROTOC_INCLUDE_PATH} --plugin=protoc-gen-nanopb=${PROTOC_NANOPB_PLUGIN} --nanopb_out=${DIR} "$src_proto"
-  fi
+  protoc ${PROTOC_INCLUDE_PATH} --plugin=protoc-gen-nanopb=${PROTOC_NANOPB_PLUGIN} --nanopb_out=${DIR} "$src_proto"
 }
 
 gen_proto "${PROTO_DIR}/extensions.proto"
@@ -44,3 +42,4 @@ gen_proto "${PROTO_DIR}/storage.proto"
 gen_proto "${PROTO_DIR}/mesh.proto"
 gen_proto "${PROTO_DIR}/cloud.proto"
 gen_proto "${PROTO_DIR}/internal.proto"
+gen_proto "${PROTO_DIR}/describe.proto"

@@ -433,7 +433,8 @@ ProtocolError Description::processTimeouts() {
 
 ProtocolError Description::serialize(Appender* appender, int descFlags) {
     const auto& descriptor = proto_->get_descriptor();
-    if (descFlags == DescriptionType::DESCRIBE_METRICS) {
+    switch (descFlags) {
+    case DescriptionType::DESCRIBE_METRICS: {
         if (!descriptor.append_metrics) {
             return ProtocolError::NOT_IMPLEMENTED;
         }
@@ -447,63 +448,60 @@ ProtocolError Description::serialize(Appender* appender, int descFlags) {
         if (!ok) {
             return ProtocolError::UNKNOWN;
         }
-    } else {
-        if (!(descFlags & (DescriptionType::DESCRIBE_APPLICATION | DescriptionType::DESCRIBE_SYSTEM))) {
-            return ProtocolError::INTERNAL;
+        break;
+    }
+    case DescriptionType::DESCRIBE_SYSTEM: {
+        if (!descriptor.append_system_info) {
+            return ProtocolError::NOT_IMPLEMENTED;
         }
-        bool hasContent = false;
+        bool ok = descriptor.append_system_info(Appender::callback, appender, nullptr);
+        if (!ok) {
+            return ProtocolError::UNKNOWN;
+        }
+        break;
+    }
+    case DescriptionType::DESCRIBE_APPLICATION: {
         appender->append("{");
-        if (descFlags & DescriptionType::DESCRIBE_SYSTEM) {
-            if (!descriptor.append_system_info) {
-                return ProtocolError::NOT_IMPLEMENTED;
-            }
-            if (hasContent) {
-                appender->append(',');
-            }
-            const bool ok = descriptor.append_system_info(Appender::callback, appender, nullptr);
+        if (descriptor.append_app_info) {
+            // Use the new callback
+            const bool ok = descriptor.append_app_info(Appender::callback, appender, nullptr /* reserved */);
             if (!ok) {
                 return ProtocolError::UNKNOWN;
             }
-            hasContent = true;
-        }
-        if (descFlags & DescriptionType::DESCRIBE_APPLICATION) {
-            if (descriptor.append_app_info) {
-                // Use the new callback
-                const bool ok = descriptor.append_app_info(Appender::callback, appender, nullptr /* reserved */);
-                if (!ok) {
-                    return ProtocolError::UNKNOWN;
+        } else {
+            // Use the compatibility callbacks
+            // FIXME: This is no longer needed on Gen 2 and higher
+            appender->append("\"f\":[");
+            int n = descriptor.num_functions();
+            for (int i = 0; i < n; ++i) {
+                if (i) {
+                    appender->append(',');
                 }
-            } else {
-                // Use the compatibility callbacks
-                appender->append("\"f\":[");
-                int n = descriptor.num_functions();
-                for (int i = 0; i < n; ++i) {
-                    if (i) {
-                        appender->append(',');
-                    }
-                    const auto key = descriptor.get_function_key(i);
-                    appender->append('"');
-                    appender->append((const uint8_t*)key, std::min(strlen(key), MAX_FUNCTION_KEY_LENGTH));
-                    appender->append('"');
-                }
-                appender->append("],\"v\":{");
-                n = descriptor.num_variables();
-                for (int i = 0; i < n; ++i) {
-                    if (i) {
-                        appender->append(',');
-                    }
-                    const auto key = descriptor.get_variable_key(i);
-                    const auto type = descriptor.variable_type(key);
-                    appender->append('"');
-                    appender->append((const uint8_t*)key, std::min(strlen(key), MAX_VARIABLE_KEY_LENGTH));
-                    appender->append("\":");
-                    appender->append('0' + (char)type);
-                }
-                appender->append('}');
+                const auto key = descriptor.get_function_key(i);
+                appender->append('"');
+                appender->append((const uint8_t*)key, std::min(strlen(key), MAX_FUNCTION_KEY_LENGTH));
+                appender->append('"');
             }
-            hasContent = true;
+            appender->append("],\"v\":{");
+            n = descriptor.num_variables();
+            for (int i = 0; i < n; ++i) {
+                if (i) {
+                    appender->append(',');
+                }
+                const auto key = descriptor.get_variable_key(i);
+                const auto type = descriptor.variable_type(key);
+                appender->append('"');
+                appender->append((const uint8_t*)key, std::min(strlen(key), MAX_VARIABLE_KEY_LENGTH));
+                appender->append("\":");
+                appender->append('0' + (char)type);
+            }
+            appender->append('}');
         }
         appender->append('}');
+        break;
+    }
+    default:
+        return ProtocolError::INTERNAL;
     }
     return ProtocolError::NO_ERROR;
 }
