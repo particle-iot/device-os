@@ -67,6 +67,7 @@ void networkDisconnectImpl(network_handle_t network, network_disconnect_reason r
 
     if (network != NETWORK_INTERFACE_ALL) {
         if_t iface;
+        LOG(TRACE, "tp1");
         if (!if_get_by_index(network, &iface)) {
             NetworkManager::instance()->disableInterface(iface, reason);
             NetworkManager::instance()->syncInterfaceStates();
@@ -160,6 +161,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
     //     asm volatile ("NOP");
     // }
     /* TODO: WIFI_CONNECT_SKIP_LISTEN is unhandled */
+    LOG(TRACE, "In network_connect");
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([network]() {
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
@@ -175,6 +177,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
         if (network != NETWORK_INTERFACE_ALL) {
             if_t iface;
+            LOG(TRACE, "tp13");
             if (!if_get_by_index(network, &iface)) {
                 NetworkManager::instance()->enableInterface(iface);
                 NetworkManager::instance()->syncInterfaceStates();
@@ -211,6 +214,7 @@ bool network_ready(network_handle_t network, uint32_t type, void* reserved) {
         }
     } else {
         if_t iface;
+        LOG(TRACE, "tp12");
         if (!if_get_by_index(network, &iface)) {
             if (NetworkManager::instance()->isInterfaceEnabled(iface)) {
                 auto ip4 = NetworkManager::instance()->getInterfaceIp4State(iface);
@@ -238,6 +242,8 @@ bool network_connecting(network_handle_t network, uint32_t param, void* reserved
         return NetworkManager::instance()->isEstablishingConnections();
     } else {
         if_t iface;
+        LOG(TRACE, "In network_connecting...");
+        LOG(TRACE, "tp11");
         if (!if_get_by_index(network, &iface)) {
             unsigned int flags = 0;
             if (if_get_flags(iface, &flags) < 0) {
@@ -259,6 +265,7 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
         if (network != NETWORK_INTERFACE_ALL) {
             if_t iface;
+            LOG(TRACE, "tp10");
             if (!if_get_by_index(network, &iface)) {
                 NetworkManager::instance()->powerInterface(iface, true);
             }
@@ -275,6 +282,7 @@ bool network_is_on(network_handle_t network, void* reserved) {
         return NetworkManager::instance()->isInterfaceOn(nullptr);
     } else {
         if_t iface;
+        LOG(TRACE, "tp9");
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->isInterfaceOn(iface);
         }
@@ -288,6 +296,7 @@ bool network_is_off(network_handle_t network, void* reserved) {
         return NetworkManager::instance()->isInterfaceOff(nullptr);
     } else {
         if_t iface;
+        LOG(TRACE, "tp8");
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->isInterfaceOff(iface);
         } else {
@@ -304,6 +313,7 @@ bool network_has_credentials(network_handle_t network, uint32_t param, void* res
         return NetworkManager::instance()->isConfigured();
     } else {
         if_t iface;
+        LOG(TRACE, "tp7");
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->isConfigured(iface);
         }
@@ -322,6 +332,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
             // being turned off at the user's request
             network_disconnect(network, NETWORK_DISCONNECT_REASON_NETWORK_OFF, nullptr);
             if_t iface;
+            LOG(TRACE, "tp6");
             if (!if_get_by_index(network, &iface)) {
                 NetworkManager::instance()->powerInterface(iface, false);
             }
@@ -344,6 +355,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
     if (network != NETWORK_INTERFACE_ALL) {
         if_t iface;
+        LOG(TRACE, "tp5");
         if (if_get_by_index(network, &iface) != 0) {
             return SYSTEM_ERROR_NOT_FOUND;
         }
@@ -425,6 +437,7 @@ bool network_clear_credentials(network_handle_t network, uint32_t, NetworkCreden
         return NetworkManager::instance()->clearConfiguration() == 0;
     } else {
         if_t iface;
+        LOG(TRACE, "tp4");
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->clearConfiguration(iface);
         }

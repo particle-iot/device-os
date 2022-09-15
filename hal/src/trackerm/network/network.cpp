@@ -203,9 +203,11 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
             return en2->interface();
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
         } else if (wl4 && netifCanForwardIpv4(wl4->interface())) {
+            LOG(TRACE, "Wifi packet");
             return wl4->interface();
 #endif
         } else if (pp3 && netifCanForwardIpv4(pp3->interface())) {
+            LOG(TRACE, "Cell packet");
             return pp3->interface();
         }
     }

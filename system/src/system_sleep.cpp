@@ -73,6 +73,7 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
     if (!network_is_off(index, nullptr)) {
 #if HAL_PLATFORM_IFAPI
         if_t iface;
+        LOG(TRACE, "tp2");
         if (!if_get_by_index(index, &iface)) {
             if (NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_UP) ||
                     NetworkManager::instance()->isInterfacePowerState(iface, IF_POWER_STATE_POWERING_UP)) {

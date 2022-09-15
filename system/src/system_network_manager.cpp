@@ -173,6 +173,7 @@ bool NetworkManager::isNetworkingEnabled() const {
 }
 
 int NetworkManager::activateConnections() {
+    LOG(TRACE, "In activateConnections");
     if (state_ != State::IFACE_DOWN) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -186,15 +187,18 @@ int NetworkManager::activateConnections() {
     CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
         /* Skip interfaces that don't have configuration */
         if (!haveLowerLayerConfiguration(iface)) {
+            LOG(TRACE, "lower layer config fail");
             return;
         }
 
         // Ignore disabled interfaces
         if (!isInterfaceEnabled(iface)) {
+            LOG(TRACE, "disabled interface");
             return;
         }
 
         if (!(flags & IFF_UP)) {
+            LOG(TRACE, "Setting flags to IFF_UP");
             CHECKV(if_set_flags(iface, IFF_UP));
 
             /* FIXME */
@@ -208,6 +212,7 @@ int NetworkManager::activateConnections() {
 
     if (!waitingFor) {
         /* No interfaces needed to be brought up */
+        LOG(TRACE, "No interface needed to be brought up");
         transition(State::IFACE_UP);
     }
 
@@ -656,6 +661,7 @@ void NetworkManager::refreshIpState() {
 
         {
             if_t iface;
+            LOG(TRACE, "tp3");
             if (!if_get_by_index(addr->ifindex, &iface)) {
                 auto state = getInterfaceRuntimeState(iface);
                 if (state) {
@@ -789,6 +795,7 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
 int NetworkManager::enableInterface(if_t iface) {
     // Special case - enable all
     if (iface == nullptr) {
+        LOG(TRACE, "enable all interfaces coz iface == nullptr");
         populateInterfaceRuntimeState(true);
     } else {
         auto state = getInterfaceRuntimeState(iface);

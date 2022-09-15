@@ -126,6 +126,7 @@ int getInterface(ctrl_request* req) {
     PB(GetInterfaceRequest) pbReq = {};
     CHECK(decodeRequestMessage(req, PB(GetInterfaceRequest_fields), &pbReq));
     if_t iface = nullptr;
+    LOG(TRACE, "tp1");
     CHECK(if_get_by_index(pbReq.index, &iface));
     SPARK_ASSERT(iface);
     PB(GetInterfaceReply) pbRep = {};

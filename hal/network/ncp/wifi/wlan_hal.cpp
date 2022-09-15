@@ -191,6 +191,7 @@ bool wlan_smart_config_finalize() {
 
 int wlan_fetch_ipconfig(WLanConfig* conf) {
     if_t iface = nullptr;
+    LOG(TRACE, "tp15");
     CHECK(if_get_by_index(NETWORK_INTERFACE_WIFI_STA, &iface));
     CHECK_TRUE(iface, SYSTEM_ERROR_INVALID_STATE);
     unsigned flags = 0;

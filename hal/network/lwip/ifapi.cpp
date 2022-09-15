@@ -475,7 +475,7 @@ int if_get_by_index(uint8_t index, if_t* iface) {
     LwipTcpIpCoreLock lk;
 
     netif* netif = netif_get_by_index(index);
-
+    LOG(TRACE, "netif returned: \"%c%c%d\"", netif->name[0], netif->name[1], netif->num);
     if (netif) {
         *iface = netif;
         return 0;
