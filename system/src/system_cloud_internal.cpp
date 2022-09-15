@@ -1115,7 +1115,7 @@ void Spark_Protocol_Init(void)
         descriptor.get_variable_async = getUserVar;
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
-        descriptor.append_system_info = system_module_info;
+        descriptor.append_system_info = system_module_info_pb;
         descriptor.append_app_info = system_app_info;
         descriptor.append_metrics = system_metrics;
         descriptor.call_event_handler = invokeEventHandler;
