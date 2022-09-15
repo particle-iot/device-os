@@ -291,7 +291,7 @@ void cloud_connection_failed()
 
 void establish_cloud_connection()
 {
-    if (network_ready(4, 0, 0) && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
+    if (network_ready(0, 0, 0) && !SPARK_WLAN_SLEEP && !SPARK_CLOUD_SOCKETED)
     {
         LED_SIGNAL_START(CLOUD_CONNECTING, NORMAL);
         if (in_cloud_backoff_period())
