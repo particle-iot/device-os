@@ -197,7 +197,7 @@ int if_init_platform(void*) {
 
 extern "C" {
 
-bool priority_interface = 1; // 0: wifi, 1: cellular
+bool priority_interface = 0; // 0: wifi, 1: cellular
 
 // struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst) {
 //     if (src == nullptr) {
@@ -273,6 +273,12 @@ void netif_rx(int idx, unsigned int len) {
 int netif_is_valid_IP(int idx, unsigned char *ip_dest) {
     // Let LwIP stack handle this
 	return 1;
+}
+
+int if_set_interface_priority(uint8_t prio)
+{
+    priority_interface = prio;
+    return SYSTEM_ERROR_NONE;
 }
 
 }

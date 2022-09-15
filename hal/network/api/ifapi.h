@@ -256,7 +256,7 @@ int if_init_platform(void*);
 int if_get_list(struct if_list** ifs);
 int if_free_list(struct if_list* ifs);
 
-int if_get_name_index(struct if_nameindex** ifs);
+int  if_get_name_index(struct if_nameindex** ifs);
 int if_free_name_index(struct if_nameindex* ifs);
 
 int if_name_to_index(const char* name, uint8_t* index);
@@ -301,6 +301,8 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved);
 void if_notify_event(if_t iface, const struct if_event* evt, void* reserved);
 
 int if_get_power_state(if_t iface, if_power_state_t* state);
+
+int if_set_interface_priority(uint8_t prio);
 
 #ifdef __cplusplus
 }

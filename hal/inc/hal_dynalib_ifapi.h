@@ -65,6 +65,8 @@ DYNALIB_FN(28, hal_ifapi, if_event_handler_add_if, if_event_handler_cookie_t(if_
 DYNALIB_FN(29, hal_ifapi, if_event_handler_self, if_event_handler_cookie_t(if_t, if_event_handler_t, void*))
 DYNALIB_FN(30, hal_ifapi, if_event_handler_del, int(if_event_handler_cookie_t))
 DYNALIB_FN(31, hal_ifapi, if_request, int(if_t, int, void*, size_t, void*))
+DYNALIB_FN(32, hal_ifapi, if_set_interface_priority, int(uint8_t))
+
 
 DYNALIB_END(hal_ifapi)
 

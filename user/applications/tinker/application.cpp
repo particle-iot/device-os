@@ -137,7 +137,8 @@ void setup()
 #if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
     BurninTest::instance()->setup();
 #endif
-
+    waitUntil(Particle.connected);
+    if_set_interface_priority(1);
     Particle.publishVitals(7);
 }
 

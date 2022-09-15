@@ -11,7 +11,8 @@ void network_power_cycle() {
 #if Wiring_WiFi
     WiFi.off();
     WiFi.on();
-#elif Wiring_Cellular
+#endif
+#if Wiring_Cellular
     Cellular.off();
     Cellular.on();
 #endif
