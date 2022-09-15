@@ -90,7 +90,7 @@ int getInterfaceList(ctrl_request* req) {
     });
     PB(GetInterfaceListReply) pbRep = {};
     pbRep.interfaces.arg = ifList;
-    pbRep.interfaces.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    pbRep.interfaces.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
         const auto ifList = (if_list*)*arg;
         for (if_list* i = ifList; i; i = i->next) {
             uint8_t index = 0;
@@ -167,7 +167,7 @@ int getInterface(ctrl_request* req) {
     });
     auto& pbIpv4Config = pbIface.ipv4_config;
     pbIpv4Config.addresses.arg = ifAddrList;
-    pbIpv4Config.addresses.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    pbIpv4Config.addresses.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
         const auto ifAddrList = (if_addrs*)*arg;
         for (if_addrs* i = ifAddrList; i; i = i->next) {
             const auto ifAddr = i->if_addr;
@@ -191,7 +191,7 @@ int getInterface(ctrl_request* req) {
     // IPv6 config
     auto& pbIpv6Config = pbIface.ipv6_config;
     pbIpv6Config.addresses.arg = ifAddrList;
-    pbIpv6Config.addresses.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    pbIpv6Config.addresses.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
         const auto ifAddrList = (if_addrs*)*arg;
         for (if_addrs* i = ifAddrList; i; i = i->next) {
             const auto ifAddr = i->if_addr;

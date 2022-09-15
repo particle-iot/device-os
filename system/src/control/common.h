@@ -35,10 +35,10 @@ namespace particle {
 namespace control {
 namespace common {
 
-int encodeReplyMessage(ctrl_request* req, const pb_field_t* fields, const void* src);
-int decodeRequestMessage(ctrl_request* req, const pb_field_t* fields, void* dst);
-int appendReplySubmessage(ctrl_request* req, size_t offset, const pb_field_t* field,
-        const pb_field_t* fields, const void* src);
+int encodeReplyMessage(ctrl_request* req, const pb_msgdesc_t* desc, const void* src);
+int decodeRequestMessage(ctrl_request* req, const pb_msgdesc_t* desc, void* dst);
+int appendReplySubmessage(ctrl_request* req, size_t offset, const pb_field_iter_t* field,
+        const pb_msgdesc_t* desc, const void* src);
 
 int protoIpFromHal(particle_ctrl_IPAddress* ip, const HAL_IPAddress* sip);
 int halIpFromProto(particle_ctrl_IPAddress* ip, HAL_IPAddress* halip);
@@ -49,7 +49,7 @@ struct ProtoDecodeBytesLengthHelper {
         : ptr_(ptr),
           size_(size) {
         cb->arg = this;
-        cb->funcs.decode = [](pb_istream_t* stream, const pb_field_t* field, void** arg) -> bool {
+        cb->funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* field, void** arg) -> bool {
             auto self = static_cast<ProtoDecodeBytesLengthHelper*>(*arg);
             self->fill(stream->state, stream->bytes_left);
             return pb_read(stream, nullptr, stream->bytes_left);
@@ -74,7 +74,7 @@ struct EncodedString {
             data(data),
             size(size) {
         cb->arg = this;
-        cb->funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+        cb->funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
             const auto str = (const EncodedString*)*arg;
             if (str->data && str->size > 0 && (!pb_encode_tag_for_field(strm, field) ||
                     !pb_encode_string(strm, (const uint8_t*)str->data, str->size))) {
@@ -94,7 +94,7 @@ struct DecodedString {
             data(nullptr),
             size(0) {
         cb->arg = this;
-        cb->funcs.decode = [](pb_istream_t* strm, const pb_field_t* field, void** arg) {
+        cb->funcs.decode = [](pb_istream_t* strm, const pb_field_iter_t* field, void** arg) {
             const size_t n = strm->bytes_left;
             if (n > 0) {
                 const auto str = (DecodedString*)*arg;
@@ -115,7 +115,7 @@ struct DecodedCString {
             data(nullptr),
             size(0) {
         cb->arg = this;
-        cb->funcs.decode = [](pb_istream_t* strm, const pb_field_t* field, void** arg) {
+        cb->funcs.decode = [](pb_istream_t* strm, const pb_field_iter_t* field, void** arg) {
             const size_t n = strm->bytes_left;
             const auto str = (DecodedCString*)*arg;
             str->data = (char*)malloc(n + 1);

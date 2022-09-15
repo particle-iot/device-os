@@ -34,9 +34,10 @@ namespace particle {
 namespace control {
 namespace common {
 
-int appendReplySubmessage(ctrl_request* req, size_t offset, const pb_field_t* field, const pb_field_t* fields, const void* src) {
+int appendReplySubmessage(ctrl_request* req, size_t offset, const pb_field_iter_t* field, const pb_msgdesc_t* desc,
+        const void* src) {
     size_t sz = 0;
-    CHECK_TRUE(pb_get_encoded_size(&sz, fields, src), SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(pb_get_encoded_size(&sz, desc, src), SYSTEM_ERROR_UNKNOWN);
 
     // Check whether the message fits into the current reply buffer
     // Worst case scenario, reserve 16 additional bytes
@@ -62,20 +63,20 @@ int appendReplySubmessage(ctrl_request* req, size_t offset, const pb_field_t* fi
     // Encode tag
     CHECK_TRUE(pb_encode_tag_for_field(stream, field), SYSTEM_ERROR_UNKNOWN);
     // Encode submessage
-    CHECK_TRUE(pb_encode_submessage(stream, fields, src), SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(pb_encode_submessage(stream, desc, src), SYSTEM_ERROR_UNKNOWN);
 
     // Is this safe?
     const size_t written = stream->bytes_written;
     return written;
 }
 
-int encodeReplyMessage(ctrl_request* req, const pb_field_t* fields, const void* src) {
+int encodeReplyMessage(ctrl_request* req, const pb_msgdesc_t* desc, const void* src) {
     pb_ostream_t* stream = nullptr;
     size_t sz = 0;
     int ret = SYSTEM_ERROR_UNKNOWN;
 
     // Calculate size
-    bool res = pb_get_encoded_size(&sz, fields, src);
+    bool res = pb_get_encoded_size(&sz, desc, src);
     if (!res) {
         goto cleanup;
     }
@@ -99,7 +100,7 @@ int encodeReplyMessage(ctrl_request* req, const pb_field_t* fields, const void* 
         goto cleanup;
     }
 
-    res = pb_encode(stream, fields, src);
+    res = pb_encode(stream, desc, src);
     if (res) {
         ret = SYSTEM_ERROR_NONE;
     }
@@ -114,7 +115,7 @@ cleanup:
     return ret;
 }
 
-int decodeRequestMessage(ctrl_request* req, const pb_field_t* fields, void* dst) {
+int decodeRequestMessage(ctrl_request* req, const pb_msgdesc_t* desc, void* dst) {
     pb_istream_t* stream = nullptr;
     int ret = SYSTEM_ERROR_UNKNOWN;
     bool res = false;
@@ -130,7 +131,7 @@ int decodeRequestMessage(ctrl_request* req, const pb_field_t* fields, void* dst)
         goto cleanup;
     }
 
-    res = pb_decode_noinit(stream, fields, dst);
+    res = pb_decode_noinit(stream, desc, dst);
     if (res) {
         ret = SYSTEM_ERROR_NONE;
     } else {
