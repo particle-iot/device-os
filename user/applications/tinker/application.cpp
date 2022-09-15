@@ -137,6 +137,8 @@ void setup()
 #if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
     BurninTest::instance()->setup();
 #endif
+
+    Particle.publishVitals(7);
 }
 
 /* This function loops forever --------------------------------------------*/

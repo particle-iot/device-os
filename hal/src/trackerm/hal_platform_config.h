@@ -4,8 +4,8 @@
 #include "platforms.h"
 
 #define HAL_PLATFORM_NCP (1)
-#define HAL_PLATFORM_NCP_AT (0) // changed
-#define HAL_PLATFORM_CELLULAR (0) 
+#define HAL_PLATFORM_NCP_AT (1) // changed
+#define HAL_PLATFORM_CELLULAR (1)
 #define HAL_PLATFORM_CELLULAR_SERIAL (HAL_USART_SERIAL2)
 #define HAL_PLATFORM_SETUP_BUTTON_UX (1)
 // #define HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX (1)
@@ -14,7 +14,7 @@
 #define HAL_PLATFORM_USART_NUM (3)
 #define HAL_PLATFORM_NCP_COUNT (2)
 #define HAL_PLATFORM_WIFI (1)
-#define HAL_PLATFORM_WIFI_COMPAT (1) // changed
+#define HAL_PLATFORM_WIFI_COMPAT (0) // changed
 // #define HAL_PLATFORM_WIFI_NCP_SDIO (1)
 #define HAL_PLATFORM_WIFI_SCAN_ONLY (0) // changed
 

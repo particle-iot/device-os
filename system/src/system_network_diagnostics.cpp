@@ -61,6 +61,8 @@ namespace
 using namespace particle;
 using namespace spark;
 
+extern "C" bool priority_interface;
+
 class NetworkCache
 {
 public:
@@ -72,14 +74,26 @@ public:
         system_tick_t m = millis();
         if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL)
         {
-#if Wiring_Cellular
-            sig_ = Cellular.RSSI();
-#elif Wiring_WiFi
-            sig_ = WiFi.RSSI();
-#endif
+            if (priority_interface == 0) { // WiFi preferred
+                if (WiFi.ready()) {
+                    sig_wifi_ = WiFi.RSSI();
+                    return &sig_wifi_;
+                } else if (Cellular.ready()) {
+                    sig_cell_ = Cellular.RSSI();
+                    return &sig_cell_;
+                }
+            } else if (priority_interface == 1) { // Cellular preferred
+                if (Cellular.ready()) {
+                    sig_cell_ = Cellular.RSSI();
+                    return &sig_cell_;
+                } else if (WiFi.ready()) {
+                    sig_wifi_ = WiFi.RSSI();
+                    return &sig_wifi_;
+                }
+            }
             ts_ = millis();
         }
-        return &sig_;
+        return nullptr;
 #else
         return nullptr;
 #endif
@@ -107,11 +121,12 @@ public:
 #endif
 
 private:
+#if Wiring_WiFi
+    WiFiSignal sig_wifi_;
+#endif
 #if Wiring_Cellular
-    CellularSignal sig_;
+    CellularSignal sig_cell_;
     CellularGlobalIdentity cgi_ = {};
-#elif Wiring_WiFi
-    WiFiSignal sig_;
 #endif
     system_tick_t ts_ = 0;
 
