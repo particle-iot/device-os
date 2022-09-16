@@ -205,8 +205,7 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
     close();
 
     HAL_IPAddress ipAddr = {};
-    // int r = inet_gethostbyname(hostname, strlen(hostname), &ipAddr, NETWORK_INTERFACE_ALL, nullptr);
-    int r = inet_gethostbyname(hostname, strlen(hostname), &ipAddr, 4, nullptr);
+    int r = inet_gethostbyname(hostname, strlen(hostname), &ipAddr, NETWORK_INTERFACE_ALL, nullptr);
     if (r != 0) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
@@ -221,8 +220,7 @@ int UdpSocket::connect(const char* hostname, uint16_t port) {
     addr_.sa_data[5] = (ipAddr.ipv4) & 0xff;
 
     if (!socket_handle_valid(sock_)) {
-        // sock_ = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NETWORK_INTERFACE_ALL);
-        sock_ = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, 4);
+        sock_ = socket_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP, 0, NETWORK_INTERFACE_ALL);
         if (!socket_handle_valid(sock_)) {
             return SYSTEM_ERROR_INTERNAL;
         }

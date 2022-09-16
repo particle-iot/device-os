@@ -256,7 +256,7 @@ int if_init_platform(void*);
 int if_get_list(struct if_list** ifs);
 int if_free_list(struct if_list* ifs);
 
-int  if_get_name_index(struct if_nameindex** ifs);
+int if_get_name_index(struct if_nameindex** ifs);
 int if_free_name_index(struct if_nameindex* ifs);
 
 int if_name_to_index(const char* name, uint8_t* index);

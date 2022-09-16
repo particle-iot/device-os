@@ -58,7 +58,6 @@ namespace {
 std::atomic_bool s_forcedDisconnect(false);
 
 void networkDisconnectImpl(network_handle_t network, network_disconnect_reason reason) {
-    // network = 4;
     // TODO: Identify the interface which is actually used by the cloud connection
     if (network == NETWORK_INTERFACE_ALL) {
         cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, reason);
@@ -68,7 +67,6 @@ void networkDisconnectImpl(network_handle_t network, network_disconnect_reason r
 
     if (network != NETWORK_INTERFACE_ALL) {
         if_t iface;
-        LOG(TRACE, "tp1");
         if (!if_get_by_index(network, &iface)) {
             NetworkManager::instance()->disableInterface(iface, reason);
             NetworkManager::instance()->syncInterfaceStates();
@@ -142,7 +140,6 @@ void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
 }
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved) {
-    network  = 4;
     switch (network) {
 #if HAL_PLATFORM_WIFI
     case NETWORK_INTERFACE_WIFI_STA:
@@ -158,13 +155,11 @@ const void* network_config(network_handle_t network, uint32_t param, void* reser
 }
 
 void network_connect(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
-    // network = 4;
     // volatile uint32_t rtlContinue = 0;
     // while (!rtlContinue) {
     //     asm volatile ("NOP");
     // }
     /* TODO: WIFI_CONNECT_SKIP_LISTEN is unhandled */
-    LOG(TRACE, "In network_connect");
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([network]() {
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
@@ -180,7 +175,6 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
         if (network != NETWORK_INTERFACE_ALL) {
             if_t iface;
-            LOG(TRACE, "tp13");
             if (!if_get_by_index(network, &iface)) {
                 NetworkManager::instance()->enableInterface(iface);
                 NetworkManager::instance()->syncInterfaceStates();
@@ -201,12 +195,10 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 }
 
 void network_disconnect(network_handle_t network, uint32_t reason, void* reserved) {
-    // network = 4;
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL(networkDisconnectImpl(network, (network_disconnect_reason)reason));
 }
 
 bool network_ready(network_handle_t network, uint32_t type, void* reserved) {
-    // network = 4;
     if (network == NETWORK_INTERFACE_ALL) {
         if ((network_ready_type)type == NETWORK_READY_TYPE_ANY) {
             return NetworkManager::instance()->isConnectivityAvailable();
@@ -219,7 +211,6 @@ bool network_ready(network_handle_t network, uint32_t type, void* reserved) {
         }
     } else {
         if_t iface;
-        // LOG(TRACE, "tp12");
         if (!if_get_by_index(network, &iface)) {
             if (NetworkManager::instance()->isInterfaceEnabled(iface)) {
                 auto ip4 = NetworkManager::instance()->getInterfaceIp4State(iface);
@@ -243,13 +234,10 @@ bool network_ready(network_handle_t network, uint32_t type, void* reserved) {
 }
 
 bool network_connecting(network_handle_t network, uint32_t param, void* reserved) {
-    // network = 4;
     if (network == NETWORK_INTERFACE_ALL) {
         return NetworkManager::instance()->isEstablishingConnections();
     } else {
         if_t iface;
-        LOG(TRACE, "In network_connecting...");
-        LOG(TRACE, "tp11");
         if (!if_get_by_index(network, &iface)) {
             unsigned int flags = 0;
             if (if_get_flags(iface, &flags) < 0) {
@@ -268,11 +256,9 @@ int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t pa
 }
 
 void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
-    // network = 4;
     SYSTEM_THREAD_CONTEXT_ASYNC_CALL([&]() {
         if (network != NETWORK_INTERFACE_ALL) {
             if_t iface;
-            LOG(TRACE, "tp10");
             if (!if_get_by_index(network, &iface)) {
                 NetworkManager::instance()->powerInterface(iface, true);
             }
@@ -285,12 +271,10 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
 }
 
 bool network_is_on(network_handle_t network, void* reserved) {
-    // network = 4;
     if (network == NETWORK_INTERFACE_ALL) {
         return NetworkManager::instance()->isInterfaceOn(nullptr);
     } else {
         if_t iface;
-        LOG(TRACE, "tp9");
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->isInterfaceOn(iface);
         }
@@ -300,12 +284,10 @@ bool network_is_on(network_handle_t network, void* reserved) {
 }
 
 bool network_is_off(network_handle_t network, void* reserved) {
-    // network = 4;
     if (network == NETWORK_INTERFACE_ALL) {
         return NetworkManager::instance()->isInterfaceOff(nullptr);
     } else {
         if_t iface;
-        LOG(TRACE, "tp8");
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->isInterfaceOff(iface);
         } else {
@@ -318,12 +300,10 @@ bool network_is_off(network_handle_t network, void* reserved) {
 }
 
 bool network_has_credentials(network_handle_t network, uint32_t param, void* reserved) {
-    // network = 4;
     if (network == NETWORK_INTERFACE_ALL) {
         return NetworkManager::instance()->isConfigured();
     } else {
         if_t iface;
-        LOG(TRACE, "tp7");
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->isConfigured(iface);
         }
@@ -333,7 +313,6 @@ bool network_has_credentials(network_handle_t network, uint32_t param, void* res
 }
 
 void network_off(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
-    // network = 4;
     /* flags & 1 means also disconnect the cloud
      * (so it doesn't autmatically connect when network resumed)
      */
@@ -343,7 +322,6 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
             // being turned off at the user's request
             network_disconnect(network, NETWORK_DISCONNECT_REASON_NETWORK_OFF, nullptr);
             if_t iface;
-            LOG(TRACE, "tp6");
             if (!if_get_by_index(network, &iface)) {
                 NetworkManager::instance()->powerInterface(iface, false);
             }
@@ -364,10 +342,8 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
 }
 
 int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
-    // network = 4;
     if (network != NETWORK_INTERFACE_ALL) {
         if_t iface;
-        LOG(TRACE, "tp5");
         if (if_get_by_index(network, &iface) != 0) {
             return SYSTEM_ERROR_NOT_FOUND;
         }
@@ -380,7 +356,6 @@ int network_wait_off(network_handle_t network, system_tick_t timeout, void*) {
 }
 
 int network_listen_sync(network_handle_t network, uint32_t flags, void*) {
-    // network = 4;
     /* May be called from an ISR */
     if (!hal_interrupt_is_isr()) {
         SYSTEM_THREAD_CONTEXT_SYNC_CALL_RESULT([&]() -> int {
@@ -401,7 +376,6 @@ int network_listen_sync(network_handle_t network, uint32_t flags, void*) {
 }
 
 void network_listen(network_handle_t network, uint32_t flags, void* reserved) {
-    // network = 4;
     if (!hal_interrupt_is_isr()) {
         SYSTEM_THREAD_CONTEXT_ASYNC(network_listen(network, flags, reserved));
     }
@@ -409,24 +383,20 @@ void network_listen(network_handle_t network, uint32_t flags, void* reserved) {
 }
 
 void network_set_listen_timeout(network_handle_t network, uint16_t timeout, void*) {
-    // network = 4;
     /* TODO */
 }
 
 uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, void*) {
-    // network = 4;
     /* TODO */
     return 0;
 }
 
 bool network_listening(network_handle_t network, uint32_t, void*) {
-    // network = 4;
     /* TODO */
     return ListeningModeHandler::instance()->isActive();
 }
 
 int network_listen_command(network_handle_t network, network_listen_command_t command, void* arg) {
-    // network = 4;
     if (!hal_interrupt_is_isr()) {
         return ListeningModeHandler::instance()->command(command, arg);
     }
@@ -435,7 +405,6 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
 }
 
 int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*) {
-    // network = 4;
     switch (network) {
 #if HAL_PLATFORM_WIFI
     case NETWORK_INTERFACE_WIFI_STA: {
@@ -452,12 +421,10 @@ int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentia
 }
 
 bool network_clear_credentials(network_handle_t network, uint32_t, NetworkCredentials* creds, void*) {
-    // network = 4;
     if (network == NETWORK_INTERFACE_ALL) {
         return NetworkManager::instance()->clearConfiguration() == 0;
     } else {
         if_t iface;
-        LOG(TRACE, "tp4");
         if (!if_get_by_index(network, &iface)) {
             return NetworkManager::instance()->clearConfiguration(iface);
         }
@@ -466,13 +433,11 @@ bool network_clear_credentials(network_handle_t network, uint32_t, NetworkCreden
 }
 
 int network_set_hostname(network_handle_t network, uint32_t flags, const char* hostname, void* reserved) {
-    // network = 4;
     /* TODO */
     return -1;
 }
 
 int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer, size_t buffer_len, void* reserved) {
-    // network = 4;
     /* TODO */
     return -1;
 }

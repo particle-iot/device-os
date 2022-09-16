@@ -8,8 +8,6 @@ HAL_PLATFORM_SRC_PATH = $(HAL_MODULE_PATH)/src/$(PLATFORM_NAME)
 include $(call rwildcard,$(HAL_PLATFORM_SRC_PATH)/,sources.mk)
 
 LOG_MODULE_CATEGORY = hal
-CFLAGS += -Wno-unused-variable
-CFLAGS += -Wno-unused-but-set-parameter
 
 ifneq (,$(filter $(PLATFORM_ID),13 15 23 25 26))
 ifneq ($(DEBUG_BUILD),y)

@@ -142,7 +142,6 @@ int cellular_gprs_detach(void* reserved) {
 
 int cellular_fetch_ipconfig(CellularConfig* conf, void* reserved) {
     if_t iface = nullptr;
-    LOG(TRACE, "tp16");
     CHECK(if_get_by_index(NETWORK_INTERFACE_CELLULAR, &iface));
     CHECK_TRUE(iface, SYSTEM_ERROR_INVALID_STATE);
     unsigned flags = 0;

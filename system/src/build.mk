@@ -5,8 +5,6 @@
 # Note: The name must be unique within this build and should be
 #       based on the root of the project
 TARGET_SRC_PATH = src
-CFLAGS += -Wno-unused-variable
-CFLAGS += -Wno-unused-but-set-parameter
 
 # C source files included in this build.
 CSRC += $(call target_files,src/,*.c)

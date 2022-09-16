@@ -199,24 +199,6 @@ extern "C" {
 
 bool priority_interface = 0; // 0: wifi, 1: cellular
 
-// struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst) {
-//     if (src == nullptr) {
-//         if (en2 && netifCanForwardIpv4(en2->interface())) {
-//             return en2->interface();
-// #if !HAL_PLATFORM_WIFI_SCAN_ONLY
-//         } else if (wl4 && netifCanForwardIpv4(wl4->interface())) {
-//             LOG(TRACE, "Wifi packet");
-//             return wl4->interface();
-// #endif
-//         } else if (pp3 && netifCanForwardIpv4(pp3->interface())) {
-//             LOG(TRACE, "Cell packet");
-//             return pp3->interface();
-//         }
-//     }
-
-//     return nullptr;
-// }
-
 struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst) {
     if (src == nullptr) {
         if (en2 && netifCanForwardIpv4(en2->interface())) {
@@ -224,22 +206,22 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
         } else if (priority_interface == 0 /* wifi */) {
             if (wl4 && netifCanForwardIpv4(wl4->interface())) {
-                LOG(TRACE, "Wifi prioritized and wifi sending packet");
                 return wl4->interface();
             } else if (pp3 && netifCanForwardIpv4(pp3->interface())) {
-                LOG(TRACE, "Wifi prioritized but cell sending packet");
                 return pp3->interface();
             }
-#endif
         } else if (priority_interface == 1 /* cell */) {
             if (pp3 && netifCanForwardIpv4(pp3->interface())) {
-                LOG(TRACE, "Cell prioritized and cell sending packet");
                 return pp3->interface();
             } else if (wl4 && netifCanForwardIpv4(wl4->interface())) {
-                LOG(TRACE, "Cell prioritized but wifi sending packet");
                 return wl4->interface();
             }
         }
+#else
+        } else if (pp3 && netifCanForwardIpv4(pp3->interface())) {
+            return pp3->interface();
+        }
+#endif
     }
 
     return nullptr;
