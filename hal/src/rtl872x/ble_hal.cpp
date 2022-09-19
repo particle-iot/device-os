@@ -473,6 +473,7 @@ private:
               addr_{},
               advParams_{},
               advTimeoutTimer_(nullptr),
+              advScheduled_(false),
               isScanning_(false),
               scanParams_{},
               scanSemaphore_(nullptr),
@@ -589,6 +590,7 @@ private:
     hal_ble_addr_t addr_;
     hal_ble_adv_params_t advParams_;
     os_timer_t advTimeoutTimer_;                    /**< Timer for advertising timeout.  */
+    volatile bool advScheduled_;
     volatile bool isScanning_;                      /**< If it is scanning or not. */
     hal_ble_scan_params_t scanParams_;              /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                  /**< Semaphore to wait until the scan procedure completed. */
@@ -1344,6 +1346,13 @@ int BleGap::startAdvertising(bool wait) {
             return SYSTEM_ERROR_INTERNAL;
         }
     }
+
+    uint8_t advEvtType = toPlatformAdvEvtType(advParams_.type);
+    if (connected(nullptr)) { // If connected as BLE peripheral
+        advEvtType = GAP_ADTYPE_ADV_SCAN_IND;
+    }
+    CHECK_RTL(le_adv_set_param(GAP_PARAM_ADV_EVENT_TYPE, sizeof(advEvtType), &advEvtType));
+
     CHECK_RTL(le_adv_start());
 
     if (wait) {
@@ -1910,9 +1919,12 @@ void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
     RtlGapDevState nState;
     nState.state = newState;
     // NOTE: this event is generated before the connection is established
-    if (newState.gap_adv_state != state_.state.gap_adv_state) {
-        if (newState.gap_adv_state == GAP_ADV_STATE_IDLE && newState.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
+    if (newState.gap_adv_state != state_.state.gap_adv_state && newState.gap_adv_state == GAP_ADV_STATE_IDLE) {
+        if (newState.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
             stopAdvertising(false);
+        } else if (advScheduled_) {
+            advScheduled_ = false;
+            startAdvertising(false);
         }
     }
     state_.raw = nState.raw;
@@ -1962,7 +1974,13 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             BleGatt::getInstance().removeSubscriber(connHandle);
             removeConnection(connHandle);
             // FIXME: check whether it's enabled?
-            startAdvertising(false);
+            if (isAdvertising()) {
+                stopAdvertising(false);
+                // Re-start advertising after the adv-stopped event received
+                advScheduled_ = true;
+            } else {
+                startAdvertising(false);
+            }
             break;
         }
         case GAP_CONN_STATE_CONNECTED: {
