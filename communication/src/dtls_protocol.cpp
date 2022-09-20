@@ -51,18 +51,13 @@ void DTLSProtocol::init(const char *id,
 	if (error)
 	{
 		WARN("error initializing DTLS channel: %d", error);
-		return;
+	}
+	else
+	{
+		INFO("channel inited");
+		Protocol::init(callbacks, descriptor);
 	}
 
-	// Logging is typically set up using global variables so it should be already configured at
-	// this point. It would be better to perform this check with some regularity though, e.g. when
-	// the device initiates a new connection with the Cloud
-	if (LOG_ENABLED_C(TRACE, COAP_LOG_CATEGORY)) {
-		channel.set_debug_enabled(true);
-	}
-
-	INFO("channel inited");
-	Protocol::init(callbacks, descriptor);
 }
 
 

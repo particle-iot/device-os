@@ -32,8 +32,6 @@ namespace particle
 namespace protocol
 {
 
-const auto COAP_LOG_CATEGORY = "comm.coap";
-
 bool is_ack_or_reset(const uint8_t* buf, size_t len);
 
 /**

@@ -178,7 +178,7 @@ private:
 	virtual void reset() override {
 	}
 
-	void set_debug_enabled(bool enabled = true) {
+	void set_debug_enabled(bool enabled = true) override {
 		debug_enabled = enabled;
 	}
 };

@@ -86,6 +86,9 @@ public:
 	virtual void reset() override
 	{
 	}
+
+	void set_debug_enabled(bool enabled) override {
+	}
 };
 
 

@@ -252,11 +252,18 @@ struct MessageChannel : public Channel
 	 * Reset the channel state and free all allocated resources.
 	 */
 	virtual void reset()=0;
+
+	/**
+	 * Enable/disable debugging.
+	 */
+	virtual void set_debug_enabled(bool enabled) = 0;
 };
 
 class AbstractMessageChannel : public MessageChannel
 {
-
+public:
+	void set_debug_enabled(bool enabled) override {
+	}
 };
 
 

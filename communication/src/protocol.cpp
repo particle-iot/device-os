@@ -350,6 +350,9 @@ int Protocol::begin()
 	reset();
 	last_ack_handlers_update = callbacks.millis();
 
+	bool debug_enabled = LOG_ENABLED_C(TRACE, COAP_LOG_CATEGORY);
+	channel.set_debug_enabled(debug_enabled);
+
 	ProtocolError error = channel.establish();
 	const bool session_resumed = (error == SESSION_RESUMED);
 	if (error && !session_resumed) {
