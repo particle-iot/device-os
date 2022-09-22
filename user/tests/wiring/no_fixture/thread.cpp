@@ -289,10 +289,10 @@ test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 		waitForComplete(wd);
 		uint32_t endTime = millis();
 		assertEqual((int)timeout_called, 1);
-		const auto expected = t * 3; // should be t*3
-		const auto margin = expected / 50; // 2%
-		assertMoreOrEqual(endTime - startTime, expected - margin);
-		assertLessOrEqual(endTime - startTime, expected + margin);
+		const auto expectedLow = t * 3; // should be t*3
+		const auto expectedHigh = t * 4;
+		assertMoreOrEqual(endTime - startTime, expectedLow - (expectedLow / 50)); // -2%
+		assertLessOrEqual(endTime - startTime, expectedHigh + (expectedHigh / 50)); // +2%
 		// LOG_DEBUG(INFO, "E %d",endTime-startTime);
 	}
 }
