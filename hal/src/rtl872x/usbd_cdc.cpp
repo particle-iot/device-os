@@ -166,6 +166,7 @@ int CdcClassDriver::setup(SetupRequest* req) {
 int CdcClassDriver::handleInSetupRequest(SetupRequest* req) {
     switch (req->bRequest) {
     case cdc::GET_LINE_CODING: {
+        LOG(INFO, "get line coding");
         return dev_->setupReply(req, (const uint8_t*)&lineCoding_, sizeof(lineCoding_));
     }
     }
@@ -175,6 +176,7 @@ int CdcClassDriver::handleInSetupRequest(SetupRequest* req) {
 int CdcClassDriver::handleOutSetupRequest(SetupRequest* req) {
     switch (req->bRequest) {
     case cdc::SET_LINE_CODING: {
+        LOG(INFO, "set line coding");
         if (req->wLength >= sizeof(lineCoding_)) {
             memcpy(&lineCoding_, cmdBuffer_, sizeof(lineCoding_));
             if (onSetLineCoding_) {

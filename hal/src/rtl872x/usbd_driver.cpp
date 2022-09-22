@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "usbd_driver.h"
 #include "system_error.h"
 #include "service_debug.h"
@@ -99,6 +102,9 @@ int __real_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
     int r = __real_usb_hal_read_packet(ptr, size, unknown);
     bool fixed = false;
+    LOG(INFO, "usb packet len=%u", size);
+    LOG_DUMP(INFO, ptr, size);
+    LOG_PRINTF(INFO, "\r\n");
     if (size == sizeof(sLastUsbSetupRequest)) {
         auto req = static_cast<SetupRequest*>(ptr);
         memcpy(&sLastUsbSetupRequest, req, sizeof(sLastUsbSetupRequest));
@@ -252,6 +258,16 @@ int RtlUsbDriver::transferOut(unsigned ep, uint8_t* ptr, size_t size) {
 
 int RtlUsbDriver::setupReply(SetupRequest* r, const uint8_t* data, size_t size) {
     SPARK_ASSERT(rtlDev_);
+    if (r) {
+        LOG(INFO, "setup reply for bmRequestType=%02x bRequest=%02x wValue=%04x wIndex=%04x wLength=%04x", r->bmRequestType,
+                r->bRequest, r->wValue, r->wIndex, r->wLength);
+    } else {
+        LOG(INFO, "setup reply");
+    }
+    LOG(INFO, "setup reply size=%u");
+    LOG_DUMP(INFO, data, size);
+    LOG_PRINTF(INFO, "\r\n");
+    
     if (data && size) {
         if (r) {
             // We cannot send more than r->wLength, otherwise the host will
@@ -263,8 +279,10 @@ int RtlUsbDriver::setupReply(SetupRequest* r, const uint8_t* data, size_t size) 
             // some common cases of returning not a lot of data generated on stack
             memcpy(tempBuffer_, data, size);
             CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_transmit(rtlDev_, tempBuffer_, size));
+            LOG(INFO, "temp buffer ok");
         } else {
             CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_transmit(rtlDev_, (uint8_t*)data, size));
+            LOG(INFO, "direct buffer ok");
         }
     } else if (data == nullptr && size == 0) {
         // FIXME: doesn't work
@@ -276,8 +294,10 @@ int RtlUsbDriver::setupReply(SetupRequest* r, const uint8_t* data, size_t size) 
 
 int RtlUsbDriver::setupReceive(SetupRequest* r, uint8_t* data, size_t size) {
     SPARK_ASSERT(rtlDev_);
+    LOG(INFO, "setupReceive size=%u", size);
     if (data && size) {
         CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_receive(rtlDev_, data, size));
+        LOG(INFO, "setupReceive ok");
     } else if (data == nullptr && size == 0) {
         // FIXME: doesn't work
         // CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_receive_status(rtlDev_));
@@ -354,6 +374,8 @@ uint8_t RtlUsbDriver::setupCb(usb_dev_t* dev, usb_setup_req_t* req) {
     // No need to fixup for setup requests
     self->halReadPacketFixup(nullptr);
     static_assert(sizeof(SetupRequest) == sizeof(usb_setup_req_t), "SetupRequest and usb_setup_req_t are expected to be of the same size");
+    LOG(INFO, "setup request bmRequestType=%02x bRequest=%02x wValue=%04x wIndex=%04x wLength=%04x", sLastUsbSetupRequest.bmRequestType,
+            sLastUsbSetupRequest.bRequest, sLastUsbSetupRequest.wValue, sLastUsbSetupRequest.wIndex, sLastUsbSetupRequest.wLength);
     CHECK_RTL_USB(self->setupRequest(&sLastUsbSetupRequest));
     if (self->setupError_) {
         self->setupError_ = false;
