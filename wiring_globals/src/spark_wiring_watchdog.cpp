@@ -17,7 +17,7 @@ void ApplicationWatchdog::loop()
 	auto wakeupTimestamp = last_checkin + timeout;
 	auto now = current_time();
 	if (wakeupTimestamp > now) {
-		HAL_Delay_Milliseconds(wakeupTimestamp - now);
+		HAL_Delay_Milliseconds(wakeupTimestamp - now + 1);
 	}
 
 	while (true) {
