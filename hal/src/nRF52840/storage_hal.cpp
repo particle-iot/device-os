@@ -30,6 +30,9 @@ int hal_storage_read(hal_storage_id id, uintptr_t addr, uint8_t* buf, size_t siz
     } else if (id == HAL_STORAGE_ID_EXTERNAL_FLASH) {
         CHECK_TRUE(hal_exflash_read(addr, buf, size) >= 0, SYSTEM_ERROR_FLASH_IO);
         return size;
+    } else if (id == HAL_STORAGE_ID_OTP) {
+        CHECK_TRUE(hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, addr, buf, size) >= 0, SYSTEM_ERROR_FLASH_IO);
+        return size;
     }
 
     return SYSTEM_ERROR_NOT_FOUND;
@@ -41,6 +44,9 @@ int hal_storage_write(hal_storage_id id, uintptr_t addr, const uint8_t* buf, siz
         return size;
     } else if (id == HAL_STORAGE_ID_EXTERNAL_FLASH) {
         CHECK_TRUE(hal_exflash_write(addr, buf, size) >= 0, SYSTEM_ERROR_FLASH_IO);
+        return size;
+    } else if (id == HAL_STORAGE_ID_OTP) {
+        CHECK_TRUE(hal_exflash_write_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, addr, buf, size) >= 0, SYSTEM_ERROR_FLASH_IO);
         return size;
     }
 
