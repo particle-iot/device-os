@@ -37,8 +37,7 @@ BleCharacteristic peerCharWriteWoRsp;
 
 using namespace particle::test;
 
-// TODO: P2 needs to support BLE central role to perform this test
-
+#if HAL_PLATFORM_NRF52840 // RTL872x has Wi-Fi/BLE co-existence issue
 test(BLE_000_Scanner_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
@@ -60,6 +59,7 @@ test(BLE_00_Prepare) {
     assertTrue(waitFor(getBleTestPeer().isValid, 60 * 1000));
 #endif // PARTICLE_TEST_RUNNER
 }
+#endif // HAL_PLATFORM_NRF52840
 
 #if HAL_PLATFORM_NRF52840
 test(BLE_01_Scanner_Blocked_Timeout_Simulate) {

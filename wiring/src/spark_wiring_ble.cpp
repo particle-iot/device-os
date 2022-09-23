@@ -1834,14 +1834,14 @@ int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* pa
     connCfg.conn_params = params;
     connCfg.callback = BleLocalDevice::getInstance().impl()->onBleLinkEvents;
     connCfg.context = BleLocalDevice::getInstance().impl();
-    int ret = hal_ble_gap_connect(&connCfg, &impl()->connHandle(), nullptr);
-    if (ret != SYSTEM_ERROR_NONE) {
-        impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
-        return ret;
-    }
-    bind(addr);
     {
         WiringBleLock lk;
+        int ret = hal_ble_gap_connect(&connCfg, &impl()->connHandle(), nullptr);
+        if (ret != SYSTEM_ERROR_NONE) {
+            impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+            return ret;
+        }
+        bind(addr);
         if (!BleLocalDevice::getInstance().impl()->peers().append(*this)) {
             LOG(ERROR, "Cannot add new peer device.");
             lk.unlock();
