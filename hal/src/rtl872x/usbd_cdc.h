@@ -31,12 +31,14 @@ namespace particle { namespace usbd {
 
 namespace cdc {
 
+#pragma pack(push, 1)
 struct LineCoding {
     uint32_t dwDTERate;
     uint8_t bCharFormat;
     uint8_t bParityType;
     uint8_t bDataBits;
 };
+#pragma pack(pop)
 
 enum Request {
     SET_LINE_CODING = 0x20,
