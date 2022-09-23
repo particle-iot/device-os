@@ -1805,13 +1805,7 @@ bool BleObject::ConnectionsManager::connecting(const hal_ble_addr_t* address) co
 
 bool BleObject::ConnectionsManager::connected(const hal_ble_addr_t* address) {
     if (address == nullptr) {
-        // Check if local device is connected as BLE Peripheral.
-        for (const auto& connection : connections_) {
-            if (connection.info.role == BLE_ROLE_PERIPHERAL) {
-                return true;
-            }
-        }
-        return false;
+        return connections_.size() > 0;
     }
     if (fetchConnection(address)) {
         return true;

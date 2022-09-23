@@ -236,7 +236,7 @@ private:
     void* thread_;
     void* allEvtQueue_;
     void* ioEvtQueue_;
-    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = 2; // Higher value, higher priority
+    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = 3; // Higher than application thread priority, which is 2
     static constexpr uint8_t MAX_NUMBER_OF_GAP_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_IO_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_EVENT_MESSAGE = (MAX_NUMBER_OF_GAP_MESSAGE + MAX_NUMBER_OF_IO_MESSAGE);
@@ -398,13 +398,7 @@ public:
 
     bool connected(const hal_ble_addr_t* address) {
         if (address == nullptr) {
-            // Check if local device is connected as BLE Peripheral.
-            for (const auto& connection : connections_) {
-                if (connection.info.role == BLE_ROLE_PERIPHERAL) {
-                    return true;
-                }
-            }
-            return false;
+            return connections_.size() > 0;
         }
         if (fetchConnection(address)) {
             return true;
@@ -569,6 +563,15 @@ private:
     void removePendingResult(const hal_ble_addr_t& address);
     void clearPendingResult();
 
+    bool connectedAsBlePeripheral() const {
+        for (auto& connection : connections_) {
+            if (connection.info.role == BLE_ROLE_PERIPHERAL) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(const hal_ble_addr_t* address);
     int addConnection(BleConnection&& connection);
@@ -600,6 +603,7 @@ private:
     Vector<std::pair<hal_ble_on_link_evt_cb_t, void*>> periphEvtCallbacks_;
     hal_ble_addr_t connectingAddr_;                 /**< Address of peer the Central is connecting to. */
     os_semaphore_t connectSemaphore_;               /**< Semaphore to wait until connection established. */
+    std::pair<hal_ble_on_link_evt_cb_t, void*> centralLinkCbCache_; // It is used for central link only.
     os_semaphore_t disconnectSemaphore_;            /**< Semaphore to wait until connection disconnected. */
     volatile hal_ble_conn_handle_t disconnectingHandle_;    /**< Handle of connection to be disconnected. */
     Vector<BleConnection> connections_;
@@ -669,6 +673,8 @@ public:
     ssize_t writeAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool response);
     ssize_t readAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
 
+    int setDesiredAttMtu(size_t attMtu);
+
     bool registered() const {
         return serviceRegistered_;
     }
@@ -685,6 +691,7 @@ public:
 private:
     BleGatt()
             : serviceRegistered_(false),
+              attrConfigured_(false),
               isNotifying_(false),
               notifySemaphore_(nullptr),
               isDiscovering_(false),
@@ -706,7 +713,8 @@ private:
               readSemaphore_(nullptr),
               currWriteConnHandle_(BLE_INVALID_CONN_HANDLE),
               writeAttrHandle_(BLE_INVALID_ATTR_HANDLE),
-              writeSemaphore_(nullptr) {
+              writeSemaphore_(nullptr),
+              desiredAttMtu_(BLE_MAX_ATT_MTU_SIZE) {
         clientCallbacks_.discover_state_cb = onDiscoverStateCallback;
         clientCallbacks_.discover_result_cb = onDiscoverResultCallback;
         clientCallbacks_.read_result_cb = onReadResultCallback;
@@ -764,6 +772,7 @@ private:
     static void onGattClientDisconnectCallback(uint8_t connHandle);
 
     bool serviceRegistered_;
+    bool attrConfigured_;
     volatile bool isNotifying_;
     os_semaphore_t notifySemaphore_;                                /**< Semaphore to sync notify/indicate operation. */
     volatile bool isDiscovering_;                                   /**< If there is on-going discovery procedure. */
@@ -788,6 +797,7 @@ private:
     hal_ble_conn_handle_t currWriteConnHandle_;
     hal_ble_attr_handle_t writeAttrHandle_;                          /**< Current handle of which attribute to be read. */
     os_semaphore_t writeSemaphore_;                                 /**< Semaphore to wait until the write operation completed. */
+    size_t desiredAttMtu_;
     Vector<BleService> services_;
     Vector<Publisher> publishers_;
     static constexpr uint8_t MAX_ALLOWED_BLE_SERVICES = 5;
@@ -1005,6 +1015,11 @@ int BleGap::init() {
     // Send smp security request automatically when connected
     uint8_t secReq = false;
     CHECK_RTL(le_bond_set_param(GAP_PARAM_BOND_SEC_REQ_ENABLE, sizeof(secReq), &secReq));
+    uint16_t secReqFlags = authFlags;
+    if (pairingConfig_.io_caps != BLE_IO_CAPS_NONE) {
+        secReqFlags |= GAP_AUTHEN_BIT_MITM_FLAG;
+    }
+    CHECK_RTL(le_bond_set_param(GAP_PARAM_BOND_SEC_REQ_REQUIREMENT, sizeof(secReqFlags), &secReqFlags));
     CHECK_RTL(gap_set_pairable_mode());
 
     /* register gap message callback */
@@ -1137,10 +1152,12 @@ int BleGap::getDeviceName(char* deviceName, size_t len) const {
 int BleGap::setDeviceAddress(const hal_ble_addr_t* address) {
     CHECK_FALSE(isAdvertising(), SYSTEM_ERROR_INVALID_STATE);
     CHECK_FALSE(scanning(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(address && addressEqual(*address, addr_), SYSTEM_ERROR_NONE);
     // RTL872x doesn't support changing the the public address.
     // But to be compatible with existing BLE platforms, it should accept nulllptr.
-    if (!address) {
-        addr_ = chipDefaultPublicAddress();
+    hal_ble_addr_t defaultAddr = chipDefaultPublicAddress();
+    if (!address || addressEqual(*address, defaultAddr)) {
+        addr_ = defaultAddr;
         return SYSTEM_ERROR_NONE;
     }
     if (address->addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
@@ -1320,18 +1337,20 @@ int BleGap::startAdvertising(bool wait) {
             isAdvertising_ = false;
         }
     });
-    if (btStackStarted_ && !BleGatt::getInstance().registered()) {
-        if (!wait) {
-            // Prevent from blocking
-            return SYSTEM_ERROR_INVALID_STATE;
+    if (!BleGatt::getInstance().registered()) {
+        if (btStackStarted_) {
+            if (!wait) {
+                // Prevent from blocking
+                return SYSTEM_ERROR_INVALID_STATE;
+            }
+            CHECK(stop());
+            // The attribute table needs to be registered before BT stack starts.
+            // Now we assume that the attribute table is finalized.
+            // Register it to BT stack
+            CHECK(init());
         }
-        CHECK(stop());
-        CHECK(init());
+        CHECK(BleGatt::getInstance().registerAttributeTable());
     }
-    // The attribute table needs to be registered before BT stack starts.
-    // Now we assume that the attribute table is finalized.
-    // Register it to BT stack
-    CHECK(BleGatt::getInstance().registerAttributeTable());
 
     CHECK(start());
 
@@ -1348,7 +1367,7 @@ int BleGap::startAdvertising(bool wait) {
     }
 
     uint8_t advEvtType = toPlatformAdvEvtType(advParams_.type);
-    if (connected(nullptr)) { // If connected as BLE peripheral
+    if (connectedAsBlePeripheral()) {
         advEvtType = GAP_ADTYPE_ADV_SCAN_IND;
     }
     CHECK_RTL(le_adv_set_param(GAP_PARAM_ADV_EVENT_TYPE, sizeof(advEvtType), &advEvtType));
@@ -1358,11 +1377,11 @@ int BleGap::startAdvertising(bool wait) {
     if (wait) {
         LOG_DEBUG(TRACE, "Starting advertising...");
         if (waitState(BleGapDevState().adv(GAP_ADV_STATE_ADVERTISING))) {
-            LOG_DEBUG(ERROR, "Failed to get notified that advertising has started");
+            LOG(ERROR, "Failed to get notified that advertising has started");
         }
     }
     ok = true;
-    LOG_DEBUG(TRACE, "Advertising started");
+    LOG(TRACE, "Advertising started");
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1376,6 +1395,12 @@ int BleGap::stopAdvertising(bool wait) {
     if (!isAdvertising_) {
         return SYSTEM_ERROR_NONE;
     }
+    // In case of invoking startAdvertising(false) previously
+    if (wait && state_.state.gap_adv_state != GAP_ADV_STATE_ADVERTISING) {
+        if (waitState(BleGapDevState().adv(GAP_ADV_STATE_ADVERTISING), BLE_STATE_DEFAULT_TIMEOUT, true)) {
+            LOG(ERROR, "Failed to get notified that advertising has started");
+        }
+    }
     isAdvertising_ = false;
     CHECK_RTL(le_adv_stop());
     if (os_timer_is_active(advTimeoutTimer_, nullptr)) {
@@ -1384,7 +1409,7 @@ int BleGap::stopAdvertising(bool wait) {
     if (wait) {
         LOG_DEBUG(TRACE, "Stopping advertising...");
         if (waitState(BleGapDevState().adv(GAP_ADV_STATE_IDLE))) {
-            LOG_DEBUG(ERROR, "Failed to get notified that advertising has stopped");
+            LOG(ERROR, "Failed to get notified that advertising has stopped");
         }
     }
     LOG_DEBUG(TRACE, "Advertising stopped");
@@ -1449,7 +1474,9 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                 // otherwise the next scan operation fails with invalid state.
                 auto r = le_scan_stop();
                 if (r == GAP_CAUSE_SUCCESS) {
-                    isScanning_ = false;
+                    if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE))) {
+                        isScanning_ = false;
+                    }
                     break;
                 }
                 HAL_Delay_Milliseconds(10);
@@ -1462,6 +1489,9 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     context_ = context;
     CHECK_RTL(le_scan_start());
     isScanning_ = true;
+    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_START))) {
+        return SYSTEM_ERROR_TIMEOUT;
+    }
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
     os_semaphore_take(scanSemaphore_, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
@@ -1654,17 +1684,17 @@ int BleGap::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* con
     if (addr_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
         connLocalAddrType = GAP_LOCAL_ADDR_LE_RANDOM;
     }
+    centralLinkCbCache_.first = config->callback;
+    centralLinkCbCache_.second = config->context;
     connecting_ = true;
     CHECK_RTL(le_connect(GAP_CONN_PARAM_1M, connectingAddr_.addr, (T_GAP_REMOTE_ADDR_TYPE)connectingAddr_.addr_type,
-        (T_GAP_LOCAL_ADDR_TYPE)connLocalAddrType, scanParams_.timeout));
+        (T_GAP_LOCAL_ADDR_TYPE)connLocalAddrType, BLE_DEFAULT_SCANNING_TIMEOUT));
     if (os_semaphore_take(connectSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
     BleConnection* connection = fetchConnection(&config->address);
     CHECK_TRUE(connection, SYSTEM_ERROR_INTERNAL);
-    connection->handler.first = config->callback;
-    connection->handler.second = config->context;
     *connHandle = connection->info.conn_handle;
     return SYSTEM_ERROR_NONE;
 }
@@ -1768,6 +1798,19 @@ void BleGap::removeConnection(hal_ble_conn_handle_t connHandle) {
 
 int BleGap::setPairingConfig(const hal_ble_pairing_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_FALSE(connected(nullptr), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
+    bool adv = isAdvertising();
+    bool ok = false;
+    SCOPE_GUARD({
+        if (ok && adv) {
+            startAdvertising();
+        }
+    });
+    if (btStackStarted_) {
+        CHECK(stop());
+        CHECK(init());
+    }
     // Bit mask: GAP_AUTHEN_BIT_BONDING_FLAG, GAP_AUTHEN_BIT_MITM_FLAG, GAP_AUTHEN_BIT_SC_FLAG
     uint16_t authFlags = 0;
     if (config->algorithm != BLE_PAIRING_ALGORITHM_LEGACY_ONLY) {
@@ -1777,9 +1820,18 @@ int BleGap::setPairingConfig(const hal_ble_pairing_config_t* config) {
     // IO Capabilities
     uint8_t ioCaps = toPlatformIoCaps(config->io_caps);
     CHECK_RTL(gap_set_param(GAP_PARAM_BOND_IO_CAPABILITIES, sizeof(ioCaps), &ioCaps));
+    uint16_t secReqFlags = authFlags;
+    if (config->io_caps != BLE_IO_CAPS_NONE) {
+        secReqFlags |= GAP_AUTHEN_BIT_MITM_FLAG;
+    }
+    CHECK_RTL(le_bond_set_param(GAP_PARAM_BOND_SEC_REQ_REQUIREMENT, sizeof(secReqFlags), &secReqFlags));
     pairingConfig_ = {};
     pairingConfig_.size = sizeof(hal_ble_pairing_config_t);
     memcpy(&pairingConfig_, config, std::min(pairingConfig_.size, config->size));
+
+    CHECK(start());
+
+    ok = true;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1827,6 +1879,7 @@ int BleGap::startPairing(hal_ble_conn_handle_t connHandle) {
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_NOT_INITIATED ||
                connection->pairState == BLE_PAIRING_STATE_REJECTED, SYSTEM_ERROR_INVALID_STATE);
+    connection->pairState = BLE_PAIRING_STATE_INITIATED;
     auto ret = le_bond_pair(connHandle);
     if (ret != GAP_CAUSE_SUCCESS) {
         hal_ble_link_evt_t linkEvent = {};
@@ -1834,8 +1887,9 @@ int BleGap::startPairing(hal_ble_conn_handle_t connHandle) {
         linkEvent.conn_handle = connection->info.conn_handle;
         linkEvent.params.pairing_status.status = rtl_ble_error_to_system(ret);
         notifyLinkEvent(linkEvent);
+        connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
+        return rtl_ble_error_to_system(ret);
     }
-    connection->pairState = BLE_PAIRING_STATE_INITIATED;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1878,7 +1932,8 @@ bool BleGap::isPairing(hal_ble_conn_handle_t connHandle) {
     CHECK_TRUE(connection, false);
     return connection->pairState == BLE_PAIRING_STATE_INITIATED ||
            connection->pairState == BLE_PAIRING_STATE_STARTED ||
-           connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA;
+           connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA ||
+           connection->pairState == BLE_PAIRING_STATE_USER_REQ_REJECT;
 }
 
 bool BleGap::isPaired(hal_ble_conn_handle_t connHandle) {
@@ -1932,14 +1987,10 @@ void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
 }
 
 void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE newState, uint16_t discCause) {
-    if (newState == GAP_CONN_STATE_CONNECTING) {
-        connecting_ = true;
-    } else {
-        connecting_ = false;
-    }
     switch (newState) {
         case GAP_CONN_STATE_CONNECTING: {
             LOG_DEBUG(TRACE, "Connecting...");
+            connecting_ = true;
             break;
         }
         case GAP_CONN_STATE_DISCONNECTING: {
@@ -1947,21 +1998,29 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             break;
         }
         case GAP_CONN_STATE_DISCONNECTED: {
+            LOG_DEBUG(TRACE, "GAP_CONN_STATE_DISCONNECTED");
             BleConnection* connection = fetchConnection(connHandle);
             if (!connection) {
-                LOG(ERROR, "Connection not found.");
+                LOG(TRACE, "Connection not found.");
+                if (connecting_) {
+                    connecting_ = false;
+                    // Central failed to connect
+                    os_semaphore_give(connectSemaphore_, false);
+                }
                 return;
             }
+            BleConnection stalledConnection = *connection;
+            removeConnection(connHandle);
             if ((discCause != (HCI_ERR | HCI_ERR_REMOTE_USER_TERMINATE)) && (discCause != (HCI_ERR | HCI_ERR_LOCAL_HOST_TERMINATE))) {
-                LOG_DEBUG(ERROR, "handleConnectionStateChanged: connection lost cause 0x%x", discCause);
+                LOG_DEBUG(TRACE, "handleConnectionStateChanged: connection lost cause 0x%x", discCause);
                 hal_ble_addr_t addr = {};
                 if (!addressEqual(connectingAddr_, addr)) {
                     LOG(ERROR, "Central gets disconnected while connecting.....");
                 }
             }
-            LOG_DEBUG(TRACE, "Disconnected, handle:%d, cause:0x%x, re-start ADV", connHandle, discCause);
+            LOG_DEBUG(TRACE, "Disconnected, handle:%d, cause:0x%x", connHandle, discCause);
             // If the disconnection is initiated by application.
-            if (disconnectingHandle_ == connection->info.conn_handle) {
+            if (disconnectingHandle_ == stalledConnection.info.conn_handle) {
                 os_semaphore_give(disconnectSemaphore_, false);
             } else {
                 // Notify the disconnected event.
@@ -1969,21 +2028,33 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 evt.type = BLE_EVT_DISCONNECTED;
                 evt.conn_handle = connHandle;
                 evt.params.disconnected.reason = (uint8_t)discCause;
-                notifyLinkEvent(evt);
+                if (stalledConnection.info.role == BLE_ROLE_CENTRAL) {
+                    if (stalledConnection.handler.first) {
+                        stalledConnection.handler.first(&evt, stalledConnection.handler.second);
+                    }
+                } else {
+                    for (const auto& handler : periphEvtCallbacks_) {
+                        if (handler.first) {
+                            handler.first(&evt, handler.second);
+                        }
+                    }
+                }
             }
             BleGatt::getInstance().removeSubscriber(connHandle);
-            removeConnection(connHandle);
-            // FIXME: check whether it's enabled?
-            if (isAdvertising()) {
-                stopAdvertising(false);
-                // Re-start advertising after the adv-stopped event received
-                advScheduled_ = true;
-            } else {
-                startAdvertising(false);
+            if (stalledConnection.info.role == BLE_ROLE_PERIPHERAL) {
+                // FIXME: check whether it's enabled?
+                if (isAdvertising()) {
+                    stopAdvertising(false);
+                    // Re-start advertising after the adv-stopped event received
+                    advScheduled_ = true;
+                } else {
+                    startAdvertising(false);
+                }
             }
             break;
         }
         case GAP_CONN_STATE_CONNECTED: {
+            LOG_DEBUG(TRACE, "GAP_CONN_STATE_CONNECTED");
             hal_ble_conn_params_t connParams = {};
             connParams.version = BLE_API_VERSION;
             connParams.size = sizeof(hal_ble_conn_params_t);
@@ -2002,6 +2073,7 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             connection.info.size = sizeof(hal_ble_conn_info_t);
             if (addressEqual(connectingAddr_, peerAddr)) {
                 connection.info.role = BLE_ROLE_CENTRAL;
+                connection.handler = centralLinkCbCache_;
                 LOG_DEBUG(TRACE, "Connected as Central");
             } else {
                 connection.info.role = BLE_ROLE_PERIPHERAL;
@@ -2045,6 +2117,7 @@ void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
     // it will perform the ATT MTU exchange automatically on connected. This may result in
     // service discovery failure when the peer device is of other Gen3 platform.
     if (connection->info.role == BLE_ROLE_CENTRAL) {
+        connecting_ = false;
         os_semaphore_give(connectSemaphore_, false);
     }
     connection->info.att_mtu = mtuSize;
@@ -2107,9 +2180,10 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
             linkEvent.conn_handle = connection->info.conn_handle;
             linkEvent.params.pairing_status.bonded = 0;
             linkEvent.params.pairing_status.lesc = 0;
+            BlePairingState state = BLE_PAIRING_STATE_REJECTED;
             if (cause == GAP_SUCCESS) {
                 LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair success");
-                connection->pairState = BLE_PAIRING_STATE_PAIRED;
+                state = BLE_PAIRING_STATE_PAIRED;
                 T_GAP_SEC_LEVEL secType = GAP_SEC_LEVEL_NO;
                 // FIXME: This API doesn't work as expected for now
                 int ret = le_bond_get_sec_level(connHandle, &secType);
@@ -2118,10 +2192,10 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
                 linkEvent.params.pairing_status.status = SYSTEM_ERROR_NONE;
             } else {
                 LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair failed");
-                connection->pairState = BLE_PAIRING_STATE_REJECTED;
                 linkEvent.params.pairing_status.status = SYSTEM_ERROR_INTERNAL;
             }
             notifyLinkEvent(linkEvent);
+            connection->pairState = state;
             break;
         }
         default: {
@@ -2240,6 +2314,9 @@ int BleGatt::init() {
     server_init(MAX_ALLOWED_BLE_SERVICES);
     server_register_app_cb(gattServerEventCallback);
     serviceRegistered_ = false;
+    if (attrConfigured_) {
+        CHECK(BleGatt::getInstance().registerAttributeTable());
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2260,6 +2337,13 @@ int BleGatt::deinit() {
         os_semaphore_destroy(readSemaphore_);
         readSemaphore_ = nullptr;
     }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::setDesiredAttMtu(size_t attMtu) {
+    CHECK_TRUE(attMtu >= BLE_MIN_ATT_MTU_SIZE && attMtu <= BLE_MAX_ATT_MTU_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    desiredAttMtu_ = attMtu;
+    gap_config_max_mtu_size(attMtu);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2604,6 +2688,7 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
 }
 
 int BleGatt::registerAttributeTable() {
+    attrConfigured_ = true;
     if (!serviceRegistered_) {
         for (auto& svc : services_) {
             if (!server_add_service_by_start_handle(&svc.id, (uint8_t *)svc.attrTable.data(), svc.attrTable.size() * sizeof(T_ATTRIB_APPL), serverCallbacks_, svc.startHandle)) {
@@ -3579,7 +3664,7 @@ bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void*
 int hal_ble_gatt_server_set_desired_att_mtu(size_t att_mtu, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_server_set_desired_att_mtu().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return BleGatt::getInstance().setDesiredAttMtu(att_mtu);
 }
 
 ssize_t hal_ble_gatt_get_att_mtu(hal_ble_conn_handle_t conn_handle, void* reserved) {
