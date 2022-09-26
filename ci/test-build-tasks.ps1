@@ -28,7 +28,7 @@ $ErrorActionPreference = "Stop"
 $deviceOSSource = "source:${deviceOSPath}"
 $tinkerPath = "$($deviceOSPath)\user\applications\tinker\"
 $platforms = @()
-$tasks = @()
+$taskPairs = @()
 
 if ($platformList){
 	$platforms = $platformList.split(' ')
@@ -41,9 +41,9 @@ if ($platformList){
 }
 
 if ($taksList){
-	$tasks = $taksList.split(' ')
+	$taskPairs = $taksList.split(' ')
 } else {
-	$tasks = @(
+	$taskPairs = @(
 		'compile:user'
 		'clean:user'
 		'compile:all'
@@ -56,7 +56,7 @@ if ($taksList){
 echo ":::: Using prtcl $(prtcl version)"
 echo ":::: Using Device OS at $($deviceOSPath)"
 echo ":::: Targeting platforms: $($platforms)"
-echo ":::: Running tasks: $($tasks)"
+echo ":::: Running tasks: $($taskPairs)"
 
 # install toolchain and run specified tasks
 run prtcl toolchain:install $deviceOSSource --quiet
@@ -65,8 +65,9 @@ foreach ($platform in $platforms){
 	echo ":::: Testing build tasks for $($platform)"
 	echo ""
 
-	foreach ($task in $tasks){
-		run prtcl $task $deviceOSSource $platform $tinkerPath --quiet
+	foreach ($taskPair in $taskPairs){
+		$subcmd, $task = $taskPair.Split(":");
+		run prtcl project:$subcmd $tinkerPath --toolchain $deviceOSSource --platform $platform --task $task --quiet
 
 		if ($LASTEXITCODE -ne 0){
 			throw "Failure! Exit code is $LASTEXITCODE"
