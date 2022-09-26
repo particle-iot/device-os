@@ -167,6 +167,16 @@ int CdcClassDriver::handleInSetupRequest(SetupRequest* req) {
     switch (req->bRequest) {
     case cdc::GET_LINE_CODING: {
         LOG(INFO, "get line coding");
+        if (req) {
+            LOG(INFO, "bmRequestType=%02x bRequest=%02x wIndex=%04x wValue=%04x wLength=%04x",
+                req->bmRequestType,
+                req->bRequest,
+                req->wIndex,
+                req->wValue,
+                req->wLength);
+        }
+        LOG_DUMP(INFO, &lineCoding_, sizeof(lineCoding_));
+        LOG_PRINTF(INFO, "\r\n");
         return dev_->setupReply(req, (const uint8_t*)&lineCoding_, sizeof(lineCoding_));
     }
     }
@@ -177,6 +187,15 @@ int CdcClassDriver::handleOutSetupRequest(SetupRequest* req) {
     switch (req->bRequest) {
     case cdc::SET_LINE_CODING: {
         LOG(INFO, "set line coding");
+        LOG(INFO, "bmRequestType=%02x bRequest=%02x wIndex=%04x wValue=%04x wLength=%04x",
+            req->bmRequestType,
+            req->bRequest,
+            req->wIndex,
+            req->wValue,
+            req->wLength);
+        LOG(INFO, "wLength (%04x) vs sizeof(LineCoding) (%04x)", req->wLength, sizeof(lineCoding_));
+        LOG_DUMP(INFO, cmdBuffer_, req->wLength);
+        LOG_PRINTF(INFO, "\r\n");
         if (req->wLength >= sizeof(lineCoding_)) {
             memcpy(&lineCoding_, cmdBuffer_, sizeof(lineCoding_));
             if (onSetLineCoding_) {
