@@ -69,17 +69,14 @@ using namespace particle::test;
 constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 123;
 constexpr uint16_t PEER_DESIRED_ATT_MTU = 100;
 
-#if HAL_PLATFORM_NRF52840 // RTL872x has Wi-Fi/BLE co-existence issue
 test(BLE_000_Peripheral_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(publishBlePeerInfo());
 }
-#endif // HAL_PLATFORM_NRF52840
 
 test(BLE_00_Prepare) {
-#if HAL_PLATFORM_NRF52840 // RTL872x has Wi-Fi/BLE co-existence issue
 #ifndef PARTICLE_TEST_RUNNER
     for (int i = 0; i < 60; i++) {
         assertTrue(publishBlePeerInfo());
@@ -92,7 +89,6 @@ test(BLE_00_Prepare) {
 #else
     assertTrue(waitFor(getBleTestPeer().isValid, 60 * 1000));
 #endif // PARTICLE_TEST_RUNNER
-#endif // HAL_PLATFORM_NRF52840
     assertEqual(BLE.setDesiredAttMtu(LOCAL_DESIRED_ATT_MTU), (int)SYSTEM_ERROR_NONE);
 }
 
