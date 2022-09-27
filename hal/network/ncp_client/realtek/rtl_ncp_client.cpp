@@ -99,6 +99,11 @@ void wifi_set_country_code(void) {
             channel_plan = 0x35;
             country_code_sdk = RTW_COUNTRY_AU;
             break;
+        case WLAN_CC_WORLD: {
+            channel_plan = 0x20;
+            country_code_sdk = RTW_COUNTRY_WORLD;
+            break;
+        }
     }
 
     SPARK_ASSERT(wifi_set_country(country_code_sdk) == RTW_SUCCESS);
