@@ -1030,7 +1030,7 @@ int BleGap::init() {
         // Prefer LESC
         authFlags = GAP_AUTHEN_BIT_SC_FLAG;
     } else if (pairingConfig_.algorithm == BLE_PAIRING_ALGORITHM_LESC_ONLY) {
-        authFlags = GAP_AUTHEN_BIT_SC_ONLY_FLAG;
+        authFlags = GAP_AUTHEN_BIT_SC_ONLY_FLAG | GAP_AUTHEN_BIT_SC_FLAG;
     }
     CHECK_RTL(gap_set_param(GAP_PARAM_BOND_AUTHEN_REQUIREMENTS_FLAGS, sizeof(authFlags), &authFlags));
     // IO Capabilities
@@ -1842,7 +1842,7 @@ int BleGap::setPairingConfig(const hal_ble_pairing_config_t* config) {
         // Prefer LESC
         authFlags = GAP_AUTHEN_BIT_SC_FLAG;
     } else if (config->algorithm == BLE_PAIRING_ALGORITHM_LESC_ONLY) {
-        authFlags = GAP_AUTHEN_BIT_SC_ONLY_FLAG;
+        authFlags = GAP_AUTHEN_BIT_SC_ONLY_FLAG | GAP_AUTHEN_BIT_SC_FLAG;
     }
     CHECK_RTL(gap_set_param(GAP_PARAM_BOND_AUTHEN_REQUIREMENTS_FLAGS, sizeof(authFlags), &authFlags));
     // IO Capabilities
