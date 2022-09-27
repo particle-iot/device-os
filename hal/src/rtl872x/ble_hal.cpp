@@ -102,6 +102,27 @@ extern "C" pcoex_reveng* pcoex[4];
 extern "C" Rltk_wlan_t rltk_wlan_info[NET_IF_NUM];
 extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
 extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
+extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
+extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
+
+void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
+    const auto BT_COEX_EVENT_SCAN_MASK = 0xf0;
+    const auto BT_COEX_EVENT_SCAN_START = 0x20;
+    const auto BT_COEX_EVENT_SCAN_STOP = 0x00;
+    // FIXME: This is a hack to prioritize BLE over WiFI while performing a BLE scan
+    // This blocks any wifi comms (both RX and TX paths) while the scan is performing,
+    // but for now this is the best solution we have for the coexistence issue.
+    if (len >= 6) {
+        if ((p[5] & BT_COEX_EVENT_SCAN_MASK) == BT_COEX_EVENT_SCAN_START) {
+            // Scan start
+            rtlk_bt_set_gnt_bt(PTA_BT);
+        } else if ((p[5] & BT_COEX_EVENT_SCAN_MASK) == BT_COEX_EVENT_SCAN_STOP) {
+            rtlk_bt_set_gnt_bt(PTA_AUTO);
+        }
+    }
+	__real_bt_coex_handle_specific_evt(p, len);
+}
+
 
 namespace {
 
@@ -1005,8 +1026,11 @@ int BleGap::init() {
     CHECK_RTL(gap_set_param(GAP_PARAM_BOND_PAIRING_MODE, sizeof(pairable), &pairable));
     // Bit mask: GAP_AUTHEN_BIT_BONDING_FLAG, GAP_AUTHEN_BIT_MITM_FLAG, GAP_AUTHEN_BIT_SC_FLAG
     uint16_t authFlags = 0;
-    if (pairingConfig_.algorithm != BLE_PAIRING_ALGORITHM_LEGACY_ONLY) {
+    if (pairingConfig_.algorithm == BLE_PAIRING_ALGORITHM_AUTO) {
+        // Prefer LESC
         authFlags = GAP_AUTHEN_BIT_SC_FLAG;
+    } else if (pairingConfig_.algorithm == BLE_PAIRING_ALGORITHM_LESC_ONLY) {
+        authFlags = GAP_AUTHEN_BIT_SC_ONLY_FLAG;
     }
     CHECK_RTL(gap_set_param(GAP_PARAM_BOND_AUTHEN_REQUIREMENTS_FLAGS, sizeof(authFlags), &authFlags));
     // IO Capabilities
@@ -1465,6 +1489,7 @@ int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
 int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK(start());
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
+
     SCOPE_GUARD ({
         if (isScanning_) {
             const int LE_SCAN_STOP_RETRIES = 10;
@@ -1813,8 +1838,11 @@ int BleGap::setPairingConfig(const hal_ble_pairing_config_t* config) {
     }
     // Bit mask: GAP_AUTHEN_BIT_BONDING_FLAG, GAP_AUTHEN_BIT_MITM_FLAG, GAP_AUTHEN_BIT_SC_FLAG
     uint16_t authFlags = 0;
-    if (config->algorithm != BLE_PAIRING_ALGORITHM_LEGACY_ONLY) {
+    if (config->algorithm == BLE_PAIRING_ALGORITHM_AUTO) {
+        // Prefer LESC
         authFlags = GAP_AUTHEN_BIT_SC_FLAG;
+    } else if (config->algorithm == BLE_PAIRING_ALGORITHM_LESC_ONLY) {
+        authFlags = GAP_AUTHEN_BIT_SC_ONLY_FLAG;
     }
     CHECK_RTL(gap_set_param(GAP_PARAM_BOND_AUTHEN_REQUIREMENTS_FLAGS, sizeof(authFlags), &authFlags));
     // IO Capabilities

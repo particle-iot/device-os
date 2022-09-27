@@ -61,16 +61,13 @@ constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 100;
 constexpr uint16_t PEER_DESIRED_ATT_MTU = 123;
 
 test(BLE_000_Central_Cloud_Connect) {
-#if HAL_PLATFORM_NRF52840 // RTL872x has Wi-Fi/BLE co-existence issue
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(publishBlePeerInfo());
-#endif // HAL_PLATFORM_NRF52840
     assertEqual(BLE.setDesiredAttMtu(LOCAL_DESIRED_ATT_MTU), (int)SYSTEM_ERROR_NONE);
 }
 
-#if HAL_PLATFORM_NRF52840 // RTL872x has Wi-Fi/BLE co-existence issue
 test(BLE_00_Prepare) {
 #ifndef PARTICLE_TEST_RUNNER
     for (int i = 0; i < 60; i++) {
@@ -85,7 +82,6 @@ test(BLE_00_Prepare) {
     assertTrue(waitFor(getBleTestPeer().isValid, 60 * 1000));
 #endif // PARTICLE_TEST_RUNNER
 }
-#endif // HAL_PLATFORM_NRF52840
 
 test(BLE_01_Advertising_Scan_Connect) {
     peerCharNotify.onDataReceived(onDataReceived, &peerCharNotify);
