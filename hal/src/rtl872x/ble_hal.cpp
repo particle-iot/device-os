@@ -2085,12 +2085,22 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             hal_ble_addr_t peerAddr = {};
             peerAddr.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
             le_get_conn_addr(connHandle, peerAddr.addr, (uint8_t *)&peerAddr.addr_type);
+            auto existingConnection = fetchConnection(connHandle);
+            if (existingConnection) {
+                // Some other event might have already initialized the connection object
+                if (!addressEqual(peerAddr, existingConnection->info.address)) {
+                    LOG(ERROR, "Peer addresses do not match");
+                    disconnect(connHandle);
+                }
+                return;
+            }
             le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &connParams.min_conn_interval, connHandle);
             le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &connParams.max_conn_interval, connHandle);
             le_get_conn_param(GAP_PARAM_CONN_LATENCY, &connParams.slave_latency, connHandle);
             le_get_conn_param(GAP_PARAM_CONN_TIMEOUT, &connParams.conn_sup_timeout, connHandle);
-            LOG_DEBUG(TRACE, "Connected, interval:0x%x, latency:0x%x, timeout:0x%x",
-                            connParams.max_conn_interval, connParams.slave_latency, connParams.conn_sup_timeout);
+            LOG_DEBUG(TRACE, "Connected, interval:0x%x, latency:0x%x, timeout:0x%x peer: %02x:%02x:%02x:%02x:%02x:%02x",
+                            connParams.max_conn_interval, connParams.slave_latency, connParams.conn_sup_timeout,
+                            peerAddr.addr[0], peerAddr.addr[1], peerAddr.addr[2], peerAddr.addr[3], peerAddr.addr[4], peerAddr.addr[5]);
 
             BleConnection connection = {};
             connection.info.version = BLE_API_VERSION;
@@ -2139,6 +2149,12 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
 void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
     LOG_DEBUG(TRACE, "handleMtuUpdated: handle:%d, mtu_size:%d", connHandle, mtuSize);
     BleConnection* connection = fetchConnection(connHandle);
+    if (!connection && connecting_) {
+        // Race condition in the stack
+        LOG_DEBUG(WARN, "handleMtuUpdated force adding connection");
+        handleConnectionStateChanged(connHandle, GAP_CONN_STATE_CONNECTED, 0);
+        connection = fetchConnection(connHandle);
+    }
     if (!connection) {
         return;
     }
@@ -2159,6 +2175,12 @@ void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
 
 void BleGap::handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_t cause) {
     BleConnection* connection = fetchConnection(connHandle);
+    if (!connection && connecting_) {
+        // Race condition in the stack
+        LOG_DEBUG(WARN, "handleConnParamsUpdated force adding connection");
+        handleConnectionStateChanged(connHandle, GAP_CONN_STATE_CONNECTED, 0);
+        connection = fetchConnection(connHandle);
+    }
     if (!connection) {
         return;
     }
@@ -2185,8 +2207,15 @@ void BleGap::handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_
 }
 
 int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause) {
-    LOG_DEBUG(TRACE, "handleAuthenStateChanged: handle: %d, cause: 0x%x", connHandle, cause);
+    LOG_DEBUG(TRACE, "handleAuthenStateChanged: handle: %d, state: 0x%02x cause: 0x%x", state, connHandle, cause);
     BleConnection* connection = fetchConnection(connHandle);
+    LOG_DEBUG(TRACE, "handleAuthenStateChanged connection=%x", connection);
+    if (!connection && connecting_) {
+        // Race condition in the stack
+        LOG_DEBUG(WARN, "handleAuthenStateChanged force adding connection");
+        handleConnectionStateChanged(connHandle, GAP_CONN_STATE_CONNECTED, 0);
+        connection = fetchConnection(connHandle);
+    }
     CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     switch (state) {
         case GAP_AUTHEN_STATE_STARTED: {
@@ -3590,7 +3619,8 @@ int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle
 
 bool hal_ble_gap_is_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_is_pairing().");
+    // Too noisy
+    // LOG_DEBUG(TRACE, "hal_ble_gap_is_pairing().");
     CHECK_TRUE(BleGap::getInstance().initialized(), false);
     return BleGap::getInstance().isPairing(conn_handle);
 }
