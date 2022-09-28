@@ -10,7 +10,7 @@ hasCmd(){
 if [ $# -lt 1 ]; then
 	echo ":::: Error: Missing script arguments!"
 	echo ":::: Fix: \`deviceOSPath\` is required - e.g. \`~/path/to/device-os\`"
-	echo ":::: Usage: <script> <deviceOSPath> [<platform>] [<tasks>]"
+	echo ":::: Usage: <script> <deviceOSPath> [<platform>] [<taskpairs>]"
 	exit 1
 fi
 
@@ -45,9 +45,9 @@ else
 fi
 
 if [ $# -gt 2 ]; then
-	declare -a tasks=($3)
+	declare -a taskpairs=($3)
 else
-	tasks=(
+	taskpairs=(
 		'compile:user'
 		'clean:user'
 		'compile:all'
@@ -60,7 +60,7 @@ fi
 echo ":::: Using prtcl $(prtcl version)"
 echo ":::: Using Device OS at: ${deviceOSPath}"
 echo ":::: Targeting platforms: ${platforms[@]}"
-echo ":::: Running tasks: ${tasks[@]}"
+echo ":::: Running task pairs: ${taskpairs[@]}"
 
 # install toolchain and run specified tasks
 prtcl toolchain:install ${deviceOSSource} --quiet
@@ -69,8 +69,10 @@ for platform in "${platforms[@]}"; do
 	echo ":::: Testing build tasks for ${platform}"
 	echo
 
-	for task in "${tasks[@]}"; do
-		prtcl ${task} ${deviceOSSource} ${platform} ${tinkerPath} --quiet
+	for taskpair in "${taskpairs[@]}"; do
+		subcmd=$(echo $taskpair | cut -d ':' -f1)
+		task=$(echo $taskpair | cut -d ':' -f2)
+		prtcl project:$subcmd ${tinkerPath} --toolchain ${deviceOSSource} --platform ${platform} --task $task --quiet
 	done
 done
 
