@@ -176,6 +176,7 @@ int if_init_platform(void*) {
         ((PppNcpNetif*)pp3)->setCellularManager(cellularNetworkManager());
         ((PppNcpNetif*)pp3)->init();
     }
+    // reserve_netif_index();
 
     /* wl4 - Realtek NCP Station */
     wl4 = new RealtekNcpNetif();

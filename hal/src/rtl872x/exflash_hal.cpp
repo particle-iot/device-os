@@ -115,7 +115,7 @@ __attribute__((section(".ram.text"), noinline))
 static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
     // XXX: No way of knowing whether the write operation succeeded or not
     for (size_t b = 0; b < size;) {
-        size_t rem = MIN(8, (size - b));
+        size_t rem = MIN(4, (size - b));
         // XXX: do not use 12 byte writes, sometimes we get deadlocked
         // TxData256 doesn't seem to work
         FLASH_TxData12B(addr + b, (uint8_t)rem, (uint8_t*)data + b);
