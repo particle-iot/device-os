@@ -1379,7 +1379,8 @@ int BleGap::startAdvertising(bool wait) {
     CHECK(start());
 
     SCOPE_GUARD ({
-        if (!isAdvertising() && os_timer_is_active(advTimeoutTimer_, nullptr)) {
+        // NOTE: this will run first before the other SCOPE_GUARD, make sure to look at 'ok' state as well
+        if ((!isAdvertising() || !ok) && os_timer_is_active(advTimeoutTimer_, nullptr)) {
             os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
         }
     });
