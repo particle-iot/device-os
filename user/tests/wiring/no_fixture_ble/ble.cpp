@@ -20,12 +20,12 @@
 
 #if Wiring_BLE == 1
 
-#if !HAL_PLATFORM_RTL872X // P2 doesn't support setting device address
 test(BLE_01_Set_BLE_Device_Address) {
     int ret;
     BleAddress defaultAddr = BLE.address();
     BleAddress getAddr;
 
+#if !HAL_PLATFORM_RTL872X // P2 doesn't support setting public device address
     // The most two significant bits should be  0b10.
     uint8_t mac[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x9b};
     ret = BLE.setAddress(BleAddress(mac));
@@ -58,6 +58,7 @@ test(BLE_01_Set_BLE_Device_Address) {
     assertEqual(ret, 0);
     getAddr = BLE.address();
     assertTrue(!strcmp(getAddr.toString().c_str(), "9B:40:33:20:11:00"));
+#endif // !HAL_PLATFORM_RTL872X
 
     // The most two significant bits of static address must be 0b11
     ret = BLE.setAddress("9b:44:33:22:11:00", BleAddressType::RANDOM_STATIC);
@@ -74,7 +75,6 @@ test(BLE_01_Set_BLE_Device_Address) {
     getAddr = BLE.address();
     assertTrue(getAddr == defaultAddr);
 }
-#endif // !HAL_PLATFORM_RTL872X
 
 test(BLE_02_Set_BLE_Device_Name) {
     int ret;
