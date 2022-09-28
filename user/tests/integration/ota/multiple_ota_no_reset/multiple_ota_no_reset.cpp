@@ -88,6 +88,7 @@ test(03_fix_ota_binary_and_reset) {
     // easily by flashing application binaries. As a workaround, we're restoring the correct platform
     // ID in the binary that is currently stored in the OTA section so that the bootloader can apply
     // it if there still happens to be a valid module slot in the DCT
+    delay(500);
     const uint16_t id = PLATFORM_ID;
 #if HAL_PLATFORM_RTL872X
     OTA_SECTION_ADDRESS = getOtaAddressRtl();
