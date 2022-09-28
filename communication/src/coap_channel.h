@@ -295,17 +295,21 @@ public:
 		transmit_count = MAX_RETRANSMIT+2;	// do not send this message.
 	}
 
-    bool is_request() const
-    {
-    		switch (get_type()) {
-    		case CoAPType::NON:
-    		case CoAPType::CON:
-    			return true;
-    		default:
-    			return false;
-    		}
-    }
+	bool is_request() const
+	{
+			switch (get_type()) {
+			case CoAPType::NON:
+			case CoAPType::CON:
+				return true;
+			default:
+				return false;
+			}
+	}
 
+	int get_transmit_count() const
+	{
+		return transmit_count;
+	}
 };
 
 inline bool time_has_passed(system_tick_t now, system_tick_t tick)
@@ -328,7 +332,7 @@ inline bool time_has_passed(system_tick_t now, system_tick_t tick)
  */
 class CoAPMessageStore
 {
-	LOG_CATEGORY("comm.coap");
+	LOG_CATEGORY(COAP_LOG_CATEGORY);
 
 	/**
 	 * The head of the list of messages.

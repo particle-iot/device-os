@@ -61,7 +61,6 @@ volatile uint8_t SPARK_CLOUD_HANDSHAKE_PENDING = 0;
 volatile uint8_t SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
 volatile uint8_t SPARK_FLASH_UPDATE;
 volatile uint8_t SPARK_UPDATE_PENDING_EVENT_RECEIVED = 0;
-volatile uint32_t TimingFlashUpdateTimeout;
 
 static_assert(SYSTEM_FLAG_OTA_UPDATE_PENDING==0, "system flag value");
 static_assert(SYSTEM_FLAG_OTA_UPDATE_ENABLED==1, "system flag value");

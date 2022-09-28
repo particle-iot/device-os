@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "timer_hal.h"
 #include "hal_platform.h"
 
 #include "file_transfer.h"
@@ -89,6 +90,7 @@ public:
 
 private:
     FileTransfer::Descriptor fileDesc_; // File descriptor (used for compatibility with legacy system events)
+    system_tick_t lastActiveTime_; // Time when the update state was last updated
     bool updating_; // Whether an update is in progress
     bool ledOverridden_; // FIXME
 

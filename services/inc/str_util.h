@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <cstdint>
 #include <cctype>
@@ -129,6 +131,36 @@ inline size_t toHex(const void* src, size_t srcSize, char* dest, size_t destSize
         dest[n] = '\0';
     }
     return n;
+}
+
+/**
+ * Converts binary data to a printable string. The output is null-terminated unless the size of the
+ * destination buffer is 0.
+ *
+ * @param src Source data.
+ * @param srcSize Size of the source data.
+ * @param dest Destination buffer.
+ * @param destSize Size of the destination buffer.
+ *
+ * @return Number of characters written to the destination buffer not including the trailing `\0`.
+ */
+inline size_t toPrintable(const char* src, size_t srcSize, char* dest, size_t destSize) {
+    size_t pos = 0;
+    char hex[5] = { '\\', 'x' };
+    for (size_t i = 0; i < srcSize && pos + 1 < destSize; ++i) {
+        if (std::isprint((unsigned char)src[i])) {
+            dest[pos++] = src[i];
+        } else {
+            snprintf(hex + 2, sizeof(hex) - 2, "%02x", (unsigned char)src[i]);
+            auto n = std::min(sizeof(hex) - 1, destSize - pos - 1);
+            memcpy(dest + pos, hex, n);
+            pos += n;
+        }
+    }
+    if (pos < destSize) {
+        dest[pos] = '\0';
+    }
+    return pos;
 }
 
 } // particle

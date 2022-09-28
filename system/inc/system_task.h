@@ -53,8 +53,6 @@ inline void SPARK_WLAN_Loop(void) { spark_process(); }
 
 void disconnect_cloud();
 
-extern volatile uint32_t TimingFlashUpdateTimeout;
-
 extern volatile uint8_t SPARK_WLAN_RESET;
 extern volatile uint8_t SPARK_WLAN_SLEEP;
 extern volatile uint8_t SPARK_WLAN_CONNECT_RESTORE;

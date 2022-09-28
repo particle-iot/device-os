@@ -100,8 +100,9 @@ private:
 	 * The next message ID for new messages over this channel.
 	 */
 	message_id_t* coap_state;
-	bool move_session;
 	const uint8_t* device_id;
+	bool move_session;
+	bool debug_enabled;
 
     void init();
     void dispose();
@@ -122,7 +123,21 @@ private:
 	void reset_session();
 
  public:
-	DTLSMessageChannel() : coap_state(nullptr), move_session(false) {}
+	DTLSMessageChannel() :
+			ssl_context(),
+			conf(),
+			clicert(),
+			pkey(),
+			timer(),
+			callbacks(),
+			server_public(nullptr),
+			server_public_len(0),
+			keys_checksum(0),
+			coap_state(nullptr),
+			device_id(nullptr),
+			move_session(false),
+			debug_enabled(false) {
+	}
 
 	ProtocolError init(const uint8_t* core_private, size_t core_private_len,
 		const uint8_t* core_public, size_t core_public_len,
@@ -161,6 +176,10 @@ private:
 	virtual AppStateDescriptor cached_app_state_descriptor() const override;
 
 	virtual void reset() override {
+	}
+
+	void set_debug_enabled(bool enabled = true) override {
+		debug_enabled = enabled;
 	}
 };
 

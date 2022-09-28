@@ -80,7 +80,6 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
 	if (type == CoAPType::ACK || type == CoAPType::RESET) {
-		LOG(TRACE, "Reply recieved: type=%d, code=%d", type, code);
 		// todo - this is a little too simple in the case of an empty ACK for a separate response
 		// the message should then be bound to the token. see CH19037
 		if (type == CoAPType::RESET) { // RST is sent with an empty code. It's like an unspecified error
@@ -213,8 +212,6 @@ ProtocolError Protocol::handle_received_message(Message& message,
 
 void Protocol::notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode) {
 	const auto codeClass = (int)responseCode >> 5;
-	const auto codeDetail = (int)responseCode & 0x1f;
-	LOG(TRACE, "message id %d complete with code %d.%02d", msg_id, codeClass, codeDetail);
 	if (CoAPCode::is_success(responseCode)) {
 		ack_handlers.setResult(msg_id);
 	} else {
@@ -252,6 +249,7 @@ ProtocolError Protocol::handle_key_change(Message& message)
 		uint8_t option_idx = 7 + (buf[0] & 0xF);
 		if (buf[option_idx]==1)
 		{
+			LOG(WARN, "Received a key change message; discarding session");
 			result = channel.command(MessageChannel::DISCARD_SESSION);
 		}
 	}
@@ -351,6 +349,9 @@ int Protocol::begin()
 
 	reset();
 	last_ack_handlers_update = callbacks.millis();
+
+	bool debug_enabled = LOG_ENABLED_C(TRACE, COAP_LOG_CATEGORY);
+	channel.set_debug_enabled(debug_enabled);
 
 	ProtocolError error = channel.establish();
 	const bool session_resumed = (error == SESSION_RESUMED);
@@ -532,7 +533,6 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 		if (message.length())
 		{
 			error = handle_received_message(message, message_type);
-			LOG(TRACE, "rcv'd message type=%d", (int)message_type);
 		}
 		else
 		{

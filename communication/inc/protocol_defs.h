@@ -117,6 +117,7 @@ const size_t MAX_VARIABLE_VALUE_MESSAGE_SIZE = 4 /* Header */ + 1 /* Token */ + 
 #define PROTOCOL_BUFFER_SIZE MBEDTLS_SSL_MAX_CONTENT_LEN
 #endif
 
+const auto COAP_LOG_CATEGORY = "comm.coap";
 
 namespace ChunkReceivedCode {
   enum Enum {

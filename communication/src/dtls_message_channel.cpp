@@ -48,6 +48,8 @@ void mbedtls_ssl_update_out_pointers(mbedtls_ssl_context *ssl, mbedtls_ssl_trans
 #include <stdio.h>
 #include <string.h>
 #include "dtls_session_persist.h"
+#include "coap_channel.h"
+#include "coap_util.h"
 #include "platforms.h"
 
 namespace particle { namespace protocol {
@@ -500,13 +502,10 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	if (ret > 0) {
 		cancel_move_session();
 		sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
-#if defined(DEBUG_BUILD) && 0
-		if (LOG_ENABLED(TRACE)) {
-			LOG(TRACE, "msg len %u", (unsigned)message.length());
-			LOG_DUMP(TRACE, message.buf(), message.length());
-			LOG_PRINT(TRACE, "\r\n");
+		if (debug_enabled) {
+			LOG_C(TRACE, COAP_LOG_CATEGORY, "Received CoAP message");
+			logCoapMessage(LOG_LEVEL_TRACE, COAP_LOG_CATEGORY, (const char*)message.buf(), message.length());
 		}
-#endif
 	}
 	return NO_ERROR;
 }
@@ -537,11 +536,10 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 		return bytes < 0 ? IO_ERROR_GENERIC_SEND : NO_ERROR;
 	}
 
-#if defined(DEBUG_BUILD) && 0
-	LOG(TRACE, "msg len %u", (unsigned)message.length());
-	LOG_DUMP(TRACE, message.buf(), message.length());
-	LOG_PRINT(TRACE, "\r\n");
-#endif
+	if (debug_enabled) {
+		LOG_C(TRACE, COAP_LOG_CATEGORY, "Sending CoAP message");
+		logCoapMessage(LOG_LEVEL_TRACE, COAP_LOG_CATEGORY, (const char*)message.buf(), message.length());
+	}
 
 	int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
 	if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {

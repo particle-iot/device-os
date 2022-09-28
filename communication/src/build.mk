@@ -35,6 +35,7 @@ CPPSRC += $(TARGET_SRC_PATH)/variables.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_defs.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_message_encoder.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_message_decoder.cpp
+CPPSRC += $(TARGET_SRC_PATH)/coap_util.cpp
 CPPSRC += $(TARGET_SRC_PATH)/firmware_update.cpp
 CPPSRC += $(TARGET_SRC_PATH)/description.cpp
 
