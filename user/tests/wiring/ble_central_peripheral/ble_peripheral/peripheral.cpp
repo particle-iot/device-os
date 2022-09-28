@@ -427,13 +427,7 @@ test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
         assertTrue(waitFor([&]{ return pairingRequested; }, 20000));
         assertTrue(BLE.isPairing(peer));
         assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
-#if HAL_PLATFORM_NRF52840
         assertFalse(BLE.isPaired(peer));
-#elif HAL_PLATFORM_RTL872X // RTL872x doesn't support rejecting legacy pairing request
-        assertTrue(BLE.isPaired(peer));
-#else
-        // TODO
-#endif
     }
 }
 

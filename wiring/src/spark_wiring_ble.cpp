@@ -1108,6 +1108,16 @@ public:
         return peers_;
     }
 
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+    BlePeerDevice& connectingPeer() {
+        return connectingPeer_;
+    }
+
+    BlePeerDevice& disconnectingPeer() {
+        return disconnectingPeer_;
+    }
+#endif
+
     void onConnectedCallback(BleOnConnectedCallback callback, void* context) {
         connectedCallback_ = callback ? std::bind(callback, _1, context) : (BleOnConnectedStdFunction)nullptr;
     }
@@ -1160,33 +1170,50 @@ public:
         WiringBleLock lk;
         switch (event->type) {
             case BLE_EVT_CONNECTED: {
-                BlePeerDevice peer;
-                peer.impl()->connHandle() = event->conn_handle;
-                peer.impl()->address() = event->params.connected.info->address;
-                if (!impl->peers_.append(peer)) {
-                    LOG(ERROR, "Failed to append peer Central device.");
-                    // FIXME: It will acquire the BLE HAL lock. If there is a thread currently invoking a
-                    // BLOCKING BLE HAL API, which means that that API has acquired the BLE HAL lock and relying
-                    // on the HAL BLE thread to unblock that API, while acquiring the BLE HAL lock here will prevent
-                    // the HAL BLE thread from dealing with incoming event to unblock that API, dead lock happens.
-                    hal_ble_gap_disconnect(peer.impl()->connHandle(), nullptr);
-                    return;
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+                if (impl->connectingPeer_.impl()->address().isValid()) {
+                    impl->connectingPeer_.impl()->connHandle() = event->conn_handle;
+                    impl->peers_.append(impl->connectingPeer_);
+                    impl->connectingPeer_ = {};
+                } else
+#endif
+                {
+                    BlePeerDevice peer;
+                    peer.impl()->connHandle() = event->conn_handle;
+                    peer.impl()->address() = event->params.connected.info->address;
+                    if (!impl->peers_.append(peer)) {
+                        LOG(TRACE, "Failed to append peer Central device.");
+                        // FIXME: It will acquire the BLE HAL lock. If there is a thread currently invoking a
+                        // BLOCKING BLE HAL API, which means that that API has acquired the BLE HAL lock and relying
+                        // on the HAL BLE thread to unblock that API, while acquiring the BLE HAL lock here will prevent
+                        // the HAL BLE thread from dealing with incoming event to unblock that API, dead lock happens.
+                        hal_ble_gap_disconnect(peer.impl()->connHandle(), nullptr);
+                        return;
+                    }
+                    if (impl->connectedCallback_) {
+                        impl->connectedCallback_(peer);
+                    }
                 }
-                LOG(TRACE, "Connected by Central device.");
-                if (impl->connectedCallback_) {
-                    impl->connectedCallback_(peer);
-                }
+                LOG(TRACE, "Connected");
                 break;
             }
             case BLE_EVT_DISCONNECTED: {
                 BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
                 if (peer) {
-                    peer->impl()->onDisconnected();
-                    if (impl->disconnectedCallback_) {
-                        impl->disconnectedCallback_(*peer);
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+                    if (impl->disconnectingPeer_ == *peer) {
+                        impl->peers_.removeOne(*peer);
+                    } else
+#endif
+                    {
+                        peer->impl()->onDisconnected();
+                        if (impl->disconnectedCallback_) {
+                            impl->disconnectedCallback_(*peer);
+                        }
+                        peer->impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+                        impl->peers_.removeOne(*peer);
                     }
-                    LOG(TRACE, "Disconnected by remote device.");
-                    impl->peers_.removeOne(*peer);
+                    LOG(TRACE, "Disconnected");
                 }
                 break;
             }
@@ -1237,6 +1264,10 @@ private:
     Vector<BleService> services_;
     Vector<BleCharacteristic> characteristics_;
     Vector<BlePeerDevice> peers_;
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+    BlePeerDevice connectingPeer_;
+    BlePeerDevice disconnectingPeer_;
+#endif
     BleOnConnectedStdFunction connectedCallback_;
     BleOnDisconnectedStdFunction disconnectedCallback_;
     BleOnPairingEventStdFunction pairingEventCallback_;
@@ -1834,15 +1865,28 @@ int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* pa
     connCfg.conn_params = params;
     connCfg.callback = BleLocalDevice::getInstance().impl()->onBleLinkEvents;
     connCfg.context = BleLocalDevice::getInstance().impl();
+
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+    SCOPE_GUARD ({
+        BleLocalDevice::getInstance().impl()->connectingPeer() = BlePeerDevice();
+    });
+    bind(addr);
+    BleLocalDevice::getInstance().impl()->connectingPeer() = *this;
+#endif
+
+    int ret = hal_ble_gap_connect(&connCfg, &impl()->connHandle(), nullptr);
+    if (ret != SYSTEM_ERROR_NONE) {
+        impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+        return ret;
+    }
     {
         WiringBleLock lk;
-        int ret = hal_ble_gap_connect(&connCfg, &impl()->connHandle(), nullptr);
-        if (ret != SYSTEM_ERROR_NONE) {
-            impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
-            return ret;
-        }
+#if !HAL_PLATFORM_BLE_ACTIVE_EVENT
         bind(addr);
         if (!BleLocalDevice::getInstance().impl()->peers().append(*this)) {
+#else
+        if (!BleLocalDevice::getInstance().impl()->findPeerDevice(impl()->connHandle())) {
+#endif
             LOG(ERROR, "Cannot add new peer device.");
             lk.unlock();
             hal_ble_gap_disconnect(impl()->connHandle(), nullptr);
@@ -1898,10 +1942,20 @@ int BlePeerDevice::connect(bool automatic) {
 
 int BlePeerDevice::disconnect() const {
     CHECK_TRUE(connected(), SYSTEM_ERROR_INVALID_STATE);
+
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+    SCOPE_GUARD ({
+        BleLocalDevice::getInstance().impl()->disconnectingPeer() = BlePeerDevice();
+    });
+    BleLocalDevice::getInstance().impl()->disconnectingPeer() = *this;
+#endif
+
     CHECK(hal_ble_gap_disconnect(impl()->connHandle(), nullptr));
     {
         WiringBleLock lk;
+#if !HAL_PLATFORM_BLE_ACTIVE_EVENT
         BleLocalDevice::getInstance().impl()->peers().removeOne(*this);
+#endif
         /*
         * Only the connection handle is invalid. The service and characteristics being
         * discovered previously can be re-used next time once connected if needed.
@@ -2730,9 +2784,8 @@ int BleLocalDevice::disconnect() const {
         }
         if (connInfo.role == BLE_ROLE_PERIPHERAL) {
             lk.unlock(); // To allow HAL BLE thread to invoke wiring callback
-            CHECK(hal_ble_gap_disconnect(p.impl()->connHandle(), nullptr));
+            p.disconnect();
             lk.lock();
-            impl()->peers().removeOne(p);
             return SYSTEM_ERROR_NONE;
         }
     }

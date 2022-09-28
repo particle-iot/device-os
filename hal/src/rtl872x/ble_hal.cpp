@@ -2037,8 +2037,6 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 }
                 return;
             }
-            BleConnection stalledConnection = *connection;
-            removeConnection(connHandle);
             if ((discCause != (HCI_ERR | HCI_ERR_REMOTE_USER_TERMINATE)) && (discCause != (HCI_ERR | HCI_ERR_LOCAL_HOST_TERMINATE))) {
                 LOG_DEBUG(TRACE, "handleConnectionStateChanged: connection lost cause 0x%x", discCause);
                 hal_ble_addr_t addr = {};
@@ -2048,28 +2046,25 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             }
             LOG_DEBUG(TRACE, "Disconnected, handle:%d, cause:0x%x", connHandle, discCause);
             // If the disconnection is initiated by application.
-            if (disconnectingHandle_ == stalledConnection.info.conn_handle) {
+            if (disconnectingHandle_ == connection->info.conn_handle) {
                 os_semaphore_give(disconnectSemaphore_, false);
-            } else {
+            }
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+            {
+#else
+            else {
+#endif
                 // Notify the disconnected event.
                 hal_ble_link_evt_t evt = {};
                 evt.type = BLE_EVT_DISCONNECTED;
                 evt.conn_handle = connHandle;
                 evt.params.disconnected.reason = (uint8_t)discCause;
-                if (stalledConnection.info.role == BLE_ROLE_CENTRAL) {
-                    if (stalledConnection.handler.first) {
-                        stalledConnection.handler.first(&evt, stalledConnection.handler.second);
-                    }
-                } else {
-                    for (const auto& handler : periphEvtCallbacks_) {
-                        if (handler.first) {
-                            handler.first(&evt, handler.second);
-                        }
-                    }
-                }
+                notifyLinkEvent(evt);
             }
+            hal_ble_role_t role = connection->info.role;
+            removeConnection(connHandle);
             BleGatt::getInstance().removeSubscriber(connHandle);
-            if (stalledConnection.info.role == BLE_ROLE_PERIPHERAL) {
+            if (role == BLE_ROLE_PERIPHERAL) {
                 // FIXME: check whether it's enabled?
                 if (isAdvertising()) {
                     stopAdvertising(false);
@@ -2119,7 +2114,12 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 return;
             }
 
-            if (connection.info.role == BLE_ROLE_PERIPHERAL) {
+            if (connection.info.role == BLE_ROLE_PERIPHERAL
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+                || (connecting_ && connection.info.role == BLE_ROLE_CENTRAL)) {
+#else
+            ) {
+#endif
                 hal_ble_link_evt_t evt = {};
                 evt.type = BLE_EVT_CONNECTED;
                 evt.conn_handle = connHandle;
