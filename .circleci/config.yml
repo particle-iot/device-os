@@ -353,7 +353,7 @@ commands:
     steps:
       - run:
           name: "Test Local Compilation Tasks"
-          no_output_timeout: "20m"
+          no_output_timeout: "30m"
           command: pwsh ci/test-build-tasks.ps1 $home\project "<< parameters.platform >>" "<< parameters.tasks >>"
           environment:
             PRTCL_DISABLE_AUTOUPDATE: "1"
