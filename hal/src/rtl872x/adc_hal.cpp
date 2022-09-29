@@ -175,12 +175,14 @@ public:
     }
 
     int calibration() {
-        if (adcState_ != HAL_ADC_STATE_ENABLED) {
-            init();
-        }
         // Read the analog value of a CH8(Channel 8), CH8 is connected to the internal GND
         adcCh8Offset_ = getInternalGndValue();
         return setCachedOffset(adcCh8Offset_);
+    }
+
+    static Adc& instance() {
+        static Adc adc;
+        return adc;
     }
 
 private:
@@ -247,6 +249,10 @@ private:
         return 10 * adc - mv * gain / 1000;
     }
 
+    Adc() {
+        init();
+    }
+
 private:
     uint16_t adcOffset_ = 0xFFFF;  // OFFSET: 10 times of sample data at 0.000v, 10*value(0.000v)
     uint16_t adcGain_ = 0xFFFF;    // GAIN: 10 times of value(1.000v)-value(0.000v) or value(2.000v)-value(1.000v) or value(3.000v)-value(2.000v)
@@ -264,8 +270,6 @@ private:
     static constexpr uint32_t DEFAULT_GAIN = 0x2F12;
 };
 
-Adc adc;
-
 } // anonymous
 
 
@@ -279,13 +283,13 @@ void hal_adc_set_sample_time(uint8_t sample_time) {
  * Note: ADC is 12-bit. Currently it returns 0-4096
  */
 int32_t hal_adc_read(uint16_t pin) {
-    return adc.read(pin);
+    return Adc::instance().read(pin);
 }
 
 int hal_adc_sleep(bool sleep, void* reserved) {
-    return adc.sleep(sleep);
+    return Adc::instance().sleep(sleep);
 }
 
 int hal_adc_calibrate(uint32_t reserved, void* reserved1) {
-    return adc.calibration();
+    return Adc::instance().calibration();
 }
