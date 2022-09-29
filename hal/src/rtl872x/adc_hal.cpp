@@ -62,19 +62,26 @@ public:
         ADC_Init(&adcInitStruct);
         ADC_Cmd(ENABLE);
 
-        if (getCachedOffset(&adcOffset_) != SYSTEM_ERROR_NONE) {
-            calibration();
-        }
-
         // Get ADC GAIN parameter from efuse
         uint8_t efuseBuf[2] = {};
         for (uint8_t index = 0; index < 2; index++) {
-            EFUSE_PMAP_READ8(0, adcGainEfuseAddr + index, efuseBuf + index, L25EOUTVOLTAGE);
+            EFUSE_PMAP_READ8(0, EFUSE_ADC_GAIN + index, efuseBuf + index, L25EOUTVOLTAGE);
         }
         adcGain_ = efuseBuf[1] << 8 | efuseBuf[0];
         if (adcGain_ == 0xFFFF) {
-            adcGain_ = 0x2F12;
+            // This should not happen, right?
+            adcGain_ = DEFAULT_GAIN;
         }
+        for (uint8_t index = 0; index < 2; index++) {
+            EFUSE_PMAP_READ8(0, EFUSE_ADC_OFFSET + index, efuseBuf + index, L25EOUTVOLTAGE);
+        }
+        adcOffset_ = (efuseBuf[1] << 8 | efuseBuf[0]);
+
+        if (getCachedOffset(&adcCh8Offset_) != SYSTEM_ERROR_NONE) {
+            calibration();
+        }
+
+        LOG_DEBUG(TRACE, "adcGain=%u adcOffset=%u adcCh8Offset=%u", adcGain_, adcOffset_, adcCh8Offset_);
 
         adcState_ = HAL_ADC_STATE_ENABLED;
         return SYSTEM_ERROR_NONE;
@@ -113,16 +120,44 @@ public:
         }
         ADC_SWTrigCmd(DISABLE);
 
-        // (not used anymore) adcOffset - eFuse programmed ADC offset (raw * 10)
-        // adcGain - eFuse programmed ADC transfer function slope ((y1-y0)/(yideal1 - yideal0) * 10000)
-        // adcAtGndValue - raw ADC value acquired from internal channel connected to ground reference, filtered/averaged
-        uint32_t adcValue = (ADC_Read() & BIT_MASK_DAT_GLOBAL);
-        uint32_t adcOffsetClamped = std::min(adcValue, (uint_least32_t)adcOffset_); // Clamps to zero to avoid negative values
-        uint32_t adcValueGainOffsetCorrectedAndZeroCalibrated = ((adcValue - adcOffsetClamped) * adcGain_) / 10000; // 0-4095
+        uint32_t adcValueRaw = (ADC_Read() & BIT_MASK_DAT_GLOBAL);
+        LOG_DEBUG(TRACE, "raw adc=%u", adcValueRaw);
+        int mv = rawAdcToMv(adcValueRaw, adcOffset_, adcGain_);
+        LOG_DEBUG(TRACE, "efuse corrected mv=%d", mv);
+        // Convert to 0 - 4095
+        uint32_t adcValue = mvToAdcRange(mv);
+        LOG_DEBUG(TRACE, "efuse corrected adc=%u", adcValue);
+        if (adcValue <= mvToAdcRange(NON_LINEAR_SECTION_LOW_MV)) {
+            LOG_DEBUG(TRACE, "<= 800mV");
+            // <= 800mV
+            // Calculate new gain using two points (0mV with CH8 offset, 800mV with efuse offset)
+            uint32_t efuse800Raw = mvToRawAdc(NON_LINEAR_SECTION_LOW_MV, adcOffset_, adcGain_);
+            uint32_t ch8GndRaw = mvToRawAdc(ZERO_MV, adcCh8Offset_ + CH8_ADJUSTMENT, adcGain_);
+            // Calculate new gain based on (0, ch8GndRaw) and (800, efuse800Raw)
+            uint32_t gain = ((efuse800Raw - ch8GndRaw) * 10000) / (NON_LINEAR_SECTION_LOW_MV - ZERO_MV);
+            uint32_t newOffset = adcCh8Offset_ + CH8_ADJUSTMENT;
+            LOG_DEBUG(TRACE, "efuse800Raw=%u ch8GndRaw=%u gain=%u newOffset=%u", efuse800Raw, ch8GndRaw, gain, newOffset);
+            mv = rawAdcToMv(adcValueRaw, newOffset, gain);
+            LOG_DEBUG(TRACE, "mv ch8 corrected = %d", mv);
+            adcValue = mvToAdcRange(mv);
+            LOG_DEBUG(TRACE, "ch8 corrected adc=%u", adcValue);
+        } else if (adcValue >= mvToAdcRange(NON_LINEAR_SECTION_HIGH_MV)) {
+            LOG_DEBUG(TRACE, ">= 2000mV");
+            // >= 2000mV
+            // Calculate new gain using two points (3300mV with CH8 offset, 2000mV with efuse offset)
+            uint32_t efuse2000Raw = mvToRawAdc(NON_LINEAR_SECTION_HIGH_MV, adcOffset_, adcGain_);
+            uint32_t ch8VccRaw = mvToRawAdc(VCC_MV, adcCh8Offset_ + CH8_ADJUSTMENT, adcGain_);
+            // Calculate new gain based on (2000mV, efuse200Raw) and (3300mV, ch8VccRaw)
+            uint32_t gain = ((ch8VccRaw - efuse2000Raw) * 10000) / (VCC_MV - NON_LINEAR_SECTION_HIGH_MV);
+            uint32_t newOffset = offsetFromAdcAndMv(efuse2000Raw, NON_LINEAR_SECTION_HIGH_MV, gain);
+            LOG_DEBUG(TRACE, "efuse2000Raw=%u ch8VccRaw=%u gain=%u newOffset=%u", efuse2000Raw, ch8VccRaw, gain, newOffset);
+            mv = rawAdcToMv(adcValueRaw, newOffset, gain);
+            LOG_DEBUG(TRACE, "mv ch8 corrected = %d", mv);
+            adcValue = mvToAdcRange(mv);
+            LOG_DEBUG(TRACE, "ch8 corrected adc=%u", adcValue);
+        }
 
-        LOG(TRACE, "ch8_gnd: %d, raw_value: %d, calib_value: %d", adcOffset_, adcValue, adcValueGainOffsetCorrectedAndZeroCalibrated);
-
-        return (uint16_t)adcValueGainOffsetCorrectedAndZeroCalibrated;
+        return adcValue;
     }
 
     int sleep(bool sleep) {
@@ -140,27 +175,22 @@ public:
     }
 
     int calibration() {
+        if (adcState_ != HAL_ADC_STATE_ENABLED) {
+            init();
+        }
         // Read the analog value of a CH8(Channel 8), CH8 is connected to the internal GND
-        adcOffset_ = getInternalGndValue();
-        return setCachedOffset(adcOffset_);
+        adcCh8Offset_ = getInternalGndValue();
+        return setCachedOffset(adcCh8Offset_);
     }
 
 private:
     int getCachedOffset(uint16_t* adcOffset) {
         uint16_t offset = 0;
-        int ret = SystemCache::instance().get(SystemCacheKey::ADC_CALIBRATION_OFFSET, &offset, sizeof(offset));
-        if (ret != sizeof(offset)) {
-            return SYSTEM_ERROR_NOT_FOUND;
-        }
+        CHECK(SystemCache::instance().get(SystemCacheKey::ADC_CALIBRATION_OFFSET, &offset, sizeof(offset)));
 
         // Check the validity of cached OFFSET by comparing it with the efuse OFFSET * ±20%
-        uint8_t efuseBuf[2] = {};
-        for (uint8_t index = 0; index < 2; index++) {
-            EFUSE_PMAP_READ8(0, adcOffsetEfuseAddr + index, efuseBuf + index, L25EOUTVOLTAGE);
-        }
-        uint16_t efuseOffset = (efuseBuf[1] << 8 | efuseBuf[0]) / 10;
-        if (std::abs((int)offset - (int)efuseOffset) > (int)(efuseOffset * 0.2)) {
-            LOG(WARN, "Invalid ADC offset detected, cached %d, efuse: %d", offset, efuseOffset);
+        if (std::abs((int)offset - (int)adcOffset_) > (int)(adcOffset_ * 2) / 10) {
+            LOG_DEBUG(WARN, "Invalid ADC offset detected, cached %u, efuse: %u", (unsigned)offset, (unsigned)adcOffset_);
             return SYSTEM_ERROR_BAD_DATA;
         }
 
@@ -171,14 +201,14 @@ private:
     }
 
     int setCachedOffset(uint16_t adcOffset) {
-        return SystemCache::instance().set(SystemCacheKey::ADC_CALIBRATION_OFFSET, &adcOffset, sizeof(adcOffset));
+        int r = SystemCache::instance().set(SystemCacheKey::ADC_CALIBRATION_OFFSET, &adcOffset, sizeof(adcOffset));
+        LOG_DEBUG(INFO, "set cached offset %u, res= %d", adcOffset, r);
+        return r;
     }
 
     uint16_t getInternalGndValue() {
-        uint32_t gndValue = 0;
         uint32_t sumGndValue = 0;
-        LOG_PRINTF(TRACE, "raw ch8: ");
-        for (int i = 0; i < 100; i++) {
+        for (unsigned i = 0; i < CH8_SAMPLE_COUNT; i++) {
             // The internal reference of CH8 and CH9 is GND, choose either of them for self-calibration
             ADC->ADC_CHSW_LIST[0] = ADC_CH8;
             ADC_ClearFIFO();
@@ -190,23 +220,48 @@ private:
             }
             ADC_SWTrigCmd(DISABLE);
 
-            gndValue = (ADC_Read() & BIT_MASK_DAT_GLOBAL);
+            uint32_t gndValue = (ADC_Read() & BIT_MASK_DAT_GLOBAL);
             sumGndValue += gndValue;
-            LOG_PRINTF(TRACE, "%d ", gndValue);
         }
-        LOG_PRINTF(TRACE, "\r\n");
 
-        LOG_PRINTF(TRACE, "avg ch8: %d\r\n", sumGndValue / 100);
-        return (uint16_t)(sumGndValue / 100);
+        sumGndValue /= CH8_SAMPLE_COUNT / 10; // multiplied by 10 same as efuse offset
+
+        LOG_DEBUG(TRACE, "avg ch8: %u", sumGndValue);
+        return sumGndValue;
+    }
+
+    static constexpr uint32_t mvToAdcRange(int mv) {
+        mv = std::max(mv, 0);
+        return std::min<uint32_t>((mv * ((1 << DEFAULT_ADC_RESOLUTION_BITS) - 1)) / 3300, ((1 << DEFAULT_ADC_RESOLUTION_BITS) - 1));
+    }
+
+    static constexpr int rawAdcToMv(uint32_t adc, uint32_t offset, uint32_t gain) {
+        return ((10 * (int)adc - (int)offset) * 1000) / (int)gain;
+    }
+
+    static constexpr uint32_t mvToRawAdc(int mv, uint32_t offset, uint32_t gain) {
+        return ((int)(mv * gain) / 1000 + offset) / 10;
+    }
+
+    static constexpr uint32_t offsetFromAdcAndMv(uint32_t adc, uint32_t mv, uint32_t gain) {
+        return 10 * adc - mv * gain / 1000;
     }
 
 private:
     uint16_t adcOffset_ = 0xFFFF;  // OFFSET: 10 times of sample data at 0.000v, 10*value(0.000v)
     uint16_t adcGain_ = 0xFFFF;    // GAIN: 10 times of value(1.000v)-value(0.000v) or value(2.000v)-value(1.000v) or value(3.000v)-value(2.000v)
+    uint16_t adcCh8Offset_ = 0xFFFF; // CH8 (GND reference) raw ADC value
     volatile hal_adc_state_t adcState_ = HAL_ADC_STATE_DISABLED;
 
-    static constexpr uint32_t adcOffsetEfuseAddr = 0x1D0;
-    static constexpr uint32_t adcGainEfuseAddr = 0x1D2;
+    static constexpr uint32_t EFUSE_ADC_OFFSET = 0x1D0;
+    static constexpr uint32_t EFUSE_ADC_GAIN = 0x1D2;
+    static constexpr int CH8_ADJUSTMENT = 0; // or -50 found empirically works for some devices, for now leaving as 0
+    static constexpr unsigned CH8_SAMPLE_COUNT = 100;
+    static constexpr uint32_t NON_LINEAR_SECTION_LOW_MV = 800;
+    static constexpr uint32_t NON_LINEAR_SECTION_HIGH_MV = 2000;
+    static constexpr uint32_t ZERO_MV = 0;
+    static constexpr uint32_t VCC_MV = 3300;
+    static constexpr uint32_t DEFAULT_GAIN = 0x2F12;
 };
 
 Adc adc;
