@@ -426,10 +426,8 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         }
     });
 
-#if HAL_PLATFORM_RTL872X
-    // RTL872x will restart BT stack to set IO caps, which may fail the connection attempt
+    // Some platforms may have to restart BT stack to set IO caps, which may fail the connection attempt
     delay(1s);
-#endif
 
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
@@ -484,10 +482,8 @@ test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     assertEqual(BLE.setPairingIoCaps(BlePairingIoCaps::NONE), (int)SYSTEM_ERROR_NONE);
     assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::LESC_ONLY), (int)SYSTEM_ERROR_NONE);
 
-#if HAL_PLATFORM_RTL872X
-    // RTL872x will restart BT stack to set IO caps, which may fail the connection attempt
+    // Some platforms may have to restart BT stack to set IO caps, which may fail the connection attempt
     delay(1s);
-#endif
 
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
