@@ -1358,6 +1358,21 @@ int BleGap::startAdvertising(bool wait) {
             wait = false;
         }
     }
+    RtlGapDevState s;
+    CHECK_RTL(le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state));
+    if (s.state.gap_adv_state == GAP_ADV_STATE_STOP) {
+        // Previous stopAdvertising() caused a race condition in the BT stack, try to recover
+        // Ignore error here
+        auto r = le_adv_stop();
+        if (wait) {
+            if (r != GAP_CAUSE_SUCCESS || waitState(BleGapDevState().adv(GAP_ADV_STATE_IDLE))) {
+                LOG(ERROR, "Failed to get notified that advertising has stopped, resetting stack");
+                CHECK(stop());
+                CHECK(init());
+            }
+        }
+    }
+
     isAdvertising_ = true;
     bool ok = false;
     SCOPE_GUARD({
