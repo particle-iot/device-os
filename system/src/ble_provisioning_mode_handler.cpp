@@ -143,6 +143,7 @@ int BleProvisioningModeHandler::cacheUserConfigurations() {
     preAdvParams_.size = sizeof(hal_ble_adv_params_t);
     CHECK(hal_ble_gap_get_advertising_parameters(&preAdvParams_, nullptr));
     CHECK(hal_ble_gap_get_tx_power(&preTxPower_, nullptr));
+    prePpcp_.size = sizeof(hal_ble_conn_params_t);
     CHECK(hal_ble_gap_get_ppcp(&prePpcp_, nullptr));
     CHECK(hal_ble_gap_get_auto_advertise(&preAutoAdv_, nullptr));
 
