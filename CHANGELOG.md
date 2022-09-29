@@ -1,3 +1,28 @@
+## 5.1.0
+
+### FEATURES
+- [rtl8721x][p2] supports BLE GATT client, BLE central role and pairing APIs [#2542](https://github.com/particle-iot/device-os/pull/2542)
+
+### ENHANCEMENTS
+- [rtl872x] Improve ADC accuracy [#2546](https://github.com/particle-iot/device-os/pull/2546)
+- [rtl8721x] update rtl872x.tcl script for latest openocd version [#2525](https://github.com/particle-iot/device-os/pull/2525)
+- [hal] wifi: add generic 'world' country code as not every country code is exposed through API [#2539](https://github.com/particle-iot/device-os/pull/2539)
+- [rtl8721x] Increase power management thread stack size for Tracker M [#2535](https://github.com/particle-iot/device-os/pull/2535)
+- [trackerM]Fix MCP23S17 driver to allow mirrored (shared) interrupts [#2533](https://github.com/particle-iot/device-os/pull/2533)
+
+### BUGFIXES
+- [rtl872x] usb: make sure CDC line coding struct is packed [#2541](https://github.com/particle-iot/device-os/pull/2541)
+- [rtl872x] hal: fix fetching of MAC addresses [#2537](https://github.com/particle-iot/device-os/pull/2537)
+- [tests] Fix listening mode tests on trackerM [#2534](https://github.com/particle-iot/device-os/pull/2534)
+- [wiring] ApplicationWatchdog: fixes potential 2x timeout required to fire [#2536](https://github.com/particle-iot/device-os/pull/2536)
+- [p2][gen3]Fix BLE control request channel sending malformed packets [#2538](https://github.com/particle-iot/device-os/pull/2538)
+- [tests/trackerm] Add workaround for TrackerM ota tests [#2544](https://github.com/particle-iot/device-os/pull/2544)
+
+### INTERNAL
+- Use new `prtcl` compile/clean commands for internal CI builds [#2543](https://github.com/particle-iot/device-os/pull/2543)
+- Improve COAP message logging [#2498](https://github.com/particle-iot/device-os/pull/2498)
+- HAL wiring api calls to access exflash read/write functions for OTP flash page [#2540](https://github.com/particle-iot/device-os/pull/2540)
+
 ## 5.0.1
 
 ### FEATURES
