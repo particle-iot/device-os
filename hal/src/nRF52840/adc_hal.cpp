@@ -140,3 +140,6 @@ int hal_adc_sleep(bool sleep, void* reserved) {
     return SYSTEM_ERROR_NONE;
 }
 
+int hal_adc_calibrate(uint32_t reserved, void* reserved1) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

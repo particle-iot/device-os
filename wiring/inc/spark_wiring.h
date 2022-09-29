@@ -66,6 +66,8 @@ extern "C" {
 void setADCSampleTime(uint8_t ADC_SampleTime);
 int32_t analogRead(uint16_t pin);
 
+int analogCalibrate();
+
 enum class DriveStrength: uint8_t {
     DEFAULT    = HAL_GPIO_DRIVE_DEFAULT,
     HIGH       = HAL_GPIO_DRIVE_HIGH,

@@ -217,6 +217,10 @@ int32_t analogRead(hal_pin_t pin)
   return hal_adc_read(pin);
 }
 
+int analogCalibrate() {
+  return hal_adc_calibrate(0, nullptr);
+}
+
 /*
  * @brief Should take an integer 0-255 and create a 500Hz PWM signal with a duty cycle from 0-100%.
  */
