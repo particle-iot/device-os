@@ -448,14 +448,11 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
         assertTrue(BLE.isPaired(peer));
         assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
-// FIXME: le_bond_get_sec_level() failed to retrieve the security level
-#if !HAL_PLATFORM_RTL872X
         if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
             assertTrue(lesc);
         } else {
             assertFalse(lesc);
         }
-#endif // !HAL_PLATFORM_RTL872X
     }
 }
 

@@ -505,7 +505,8 @@ private:
               pairingConfig_{},
               devNameLen_(0),
               isAdvertising_(false),
-              stateSemaphore_(nullptr) {
+              stateSemaphore_(nullptr),
+              pairingLesc_(false) {
         advParams_.version = BLE_API_VERSION;
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
@@ -641,6 +642,7 @@ private:
     static constexpr uint16_t BLE_ADV_TIMEOUT_EXT_MS = 50;
     volatile bool isAdvertising_;
     os_semaphore_t stateSemaphore_;
+    uint8_t pairingLesc_;
     Vector<BleAdvEventHandler> advEventHandlers_;
     Mutex advEventMutex_;
     RecursiveMutex connectionsMutex_;
@@ -2265,11 +2267,7 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
             if (cause == GAP_SUCCESS) {
                 LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair success");
                 state = BLE_PAIRING_STATE_PAIRED;
-                T_GAP_SEC_LEVEL secType = GAP_SEC_LEVEL_NO;
-                // FIXME: This API doesn't work as expected for now
-                int ret = le_bond_get_sec_level(connHandle, &secType);
-                LOG(TRACE, "handle: %d, ret: %d, secType: %04X", connHandle, ret, secType);
-                linkEvent.params.pairing_status.lesc = (secType == GAP_SEC_LEVEL_SC_UNAUTHEN || secType == GAP_SEC_LEVEL_SC_AUTHEN);
+                linkEvent.params.pairing_status.lesc = pairingLesc_;
                 linkEvent.params.pairing_status.status = SYSTEM_ERROR_NONE;
             } else {
                 LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair failed");
@@ -2290,7 +2288,8 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
 int BleGap::handlePairJustWork(uint8_t connHandle) {
     std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
     BleConnection* connection = fetchConnection(connHandle);
-    if (connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
+    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
         CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT));
     } else {
         CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
@@ -2301,7 +2300,8 @@ int BleGap::handlePairJustWork(uint8_t connHandle) {
 int BleGap::handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly) {
     std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
     BleConnection* connection = fetchConnection(connHandle);
-    if (connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
+    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
         uint32_t displayValue = 0;
         le_bond_get_display_key(connHandle, &displayValue);
         char passkey[BLE_PAIRING_PASSKEY_LEN + 1];
@@ -2340,7 +2340,8 @@ reject:
 int BleGap::handlePairPasskeyInput(uint8_t connHandle) {
     std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
     BleConnection* connection = fetchConnection(connHandle);
-    if (connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
+    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
         hal_ble_link_evt_t linkEvent = {};
         linkEvent.type = BLE_EVT_PAIRING_PASSKEY_INPUT;
         linkEvent.conn_handle = connHandle;
