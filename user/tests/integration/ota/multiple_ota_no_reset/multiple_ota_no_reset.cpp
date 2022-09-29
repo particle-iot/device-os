@@ -84,6 +84,11 @@ test(02_flash_binaries) {
 }
 
 test(03_fix_ota_binary_and_reset) {
+    // FIXME: Add workaround for TrackerM units that fail to communicate with QSPI flash chip
+    // with an active cellular connection
+#if PLATFORM_ID == PLATFORM_TRACKERM
+    delay(500);
+#endif
     // The original issue (https://github.com/particle-iot/device-os/pull/2346) can't be reproduced
     // easily by flashing application binaries. As a workaround, we're restoring the correct platform
     // ID in the binary that is currently stored in the OTA section so that the bootloader can apply
