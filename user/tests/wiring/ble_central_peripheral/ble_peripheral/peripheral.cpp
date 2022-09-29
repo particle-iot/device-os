@@ -380,7 +380,6 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         } else {
             assertFalse(lesc);
         }
-
     }
 }
 

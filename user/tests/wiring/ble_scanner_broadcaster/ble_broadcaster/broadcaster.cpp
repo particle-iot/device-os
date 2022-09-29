@@ -29,8 +29,6 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
 
 using namespace particle::test;
 
-// TODO: P2 needs to support BLE central role to perform this test
-
 test(BLE_000_Broacaster_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();

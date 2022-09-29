@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -40,6 +40,7 @@ extern "C" {
 #include <gap_le.h>
 #include <gap_conn_le.h>
 #include <profile_server.h>
+#include <profile_client.h>
 #include <gatt_builtin_services.h>
 #include <gap_msg.h>
 #include <simple_ble_service.h>
@@ -101,6 +102,27 @@ extern "C" pcoex_reveng* pcoex[4];
 extern "C" Rltk_wlan_t rltk_wlan_info[NET_IF_NUM];
 extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
 extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
+extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
+extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
+
+void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
+    const auto BT_COEX_EVENT_SCAN_MASK = 0xf0;
+    const auto BT_COEX_EVENT_SCAN_START = 0x20;
+    const auto BT_COEX_EVENT_SCAN_STOP = 0x00;
+    // FIXME: This is a hack to prioritize BLE over WiFI while performing a BLE scan
+    // This blocks any wifi comms (both RX and TX paths) while the scan is performing,
+    // but for now this is the best solution we have for the coexistence issue.
+    if (len >= 6) {
+        if ((p[5] & BT_COEX_EVENT_SCAN_MASK) == BT_COEX_EVENT_SCAN_START) {
+            // Scan start
+            rtlk_bt_set_gnt_bt(PTA_BT);
+        } else if ((p[5] & BT_COEX_EVENT_SCAN_MASK) == BT_COEX_EVENT_SCAN_STOP) {
+            rtlk_bt_set_gnt_bt(PTA_AUTO);
+        }
+    }
+	__real_bt_coex_handle_specific_evt(p, len);
+}
+
 
 namespace {
 
@@ -113,6 +135,22 @@ namespace {
             } \
             _ret; \
         })
+
+#define WAIT_TIMED(timeout_ms, what) ({ \
+    system_tick_t _micros = HAL_Timer_Get_Micro_Seconds();                      \
+    bool res = true;                                                            \
+    while ((what)) {                                                            \
+        system_tick_t dt = (HAL_Timer_Get_Micro_Seconds() - _micros);           \
+        bool nok = (((timeout_ms * 1000) < dt) && (what));                      \
+        if (nok) {                                                              \
+            res = false;                                                        \
+            break;                                                              \
+        }                                                                       \
+    }                                                                           \
+    res;                                                                        \
+})
+
+constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 60000;
 
 StaticRecursiveMutex s_bleMutex;
 
@@ -171,6 +209,17 @@ hal_ble_addr_t chipDefaultPublicAddress() {
     return localAddr;
 }
 
+T_GAP_IO_CAP toPlatformIoCaps(hal_ble_pairing_io_caps_t index) {
+    constexpr T_GAP_IO_CAP iocaps[] = {
+        GAP_IO_CAP_NO_INPUT_NO_OUTPUT,
+        GAP_IO_CAP_DISPLAY_ONLY,
+        GAP_IO_CAP_DISPLAY_YES_NO,
+        GAP_IO_CAP_KEYBOARD_ONLY,
+        GAP_IO_CAP_KEYBOARD_DISPLAY
+    };
+    return iocaps[index];
+}
+
 } //anonymous namespace
 
 
@@ -208,7 +257,7 @@ private:
     void* thread_;
     void* allEvtQueue_;
     void* ioEvtQueue_;
-    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = 2; // Higher value, higher priority
+    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = 3; // Higher than application thread priority, which is 2
     static constexpr uint8_t MAX_NUMBER_OF_GAP_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_IO_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_EVENT_MESSAGE = (MAX_NUMBER_OF_GAP_MESSAGE + MAX_NUMBER_OF_IO_MESSAGE);
@@ -357,21 +406,39 @@ public:
     int getScanParams(hal_ble_scan_params_t* params) const;
     int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
     int stopScanning();
+
+    int setPpcp(const hal_ble_conn_params_t* ppcp);
+    int getPpcp(hal_ble_conn_params_t* ppcp) const;
+    int connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* conn_handle);
+    int connectCancel(const hal_ble_addr_t* address);
     ssize_t getAttMtu(hal_ble_conn_handle_t connHandle);
     int getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info);
-    int disconnect() const;
+    int disconnect(hal_ble_conn_handle_t connHandle);
+    int disconnectAll();
+    bool valid(hal_ble_conn_handle_t connHandle);
 
-    bool connected() const {
-        return connInfo_.conn_handle != BLE_INVALID_CONN_HANDLE;
-    }
-
-    uint8_t connectionHandle() const {
-        return connInfo_.conn_handle;
+    bool connected(const hal_ble_addr_t* address) {
+        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+        if (address == nullptr) {
+            return connections_.size() > 0;
+        }
+        if (fetchConnection(address)) {
+            return true;
+        }
+        return false;
     }
 
     bool connecting() const {
         return connecting_;
     }
+
+    int setPairingConfig(const hal_ble_pairing_config_t* config);
+    int getPairingConfig(hal_ble_pairing_config_t* config) const;
+    int setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_pairing_auth_data_t* auth);
+    int startPairing(hal_ble_conn_handle_t connHandle);
+    int rejectPairing(hal_ble_conn_handle_t connHandle);
+    bool isPairing(hal_ble_conn_handle_t connHandle);
+    bool isPaired(hal_ble_conn_handle_t connHandle);
 
     int waitState(BleGapDevState state, system_tick_t timeout = BLE_STATE_DEFAULT_TIMEOUT, bool forcePoll = false);
 
@@ -379,7 +446,10 @@ public:
     void handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE newState, uint16_t discCause);
     void handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize);
     void handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_t cause);
-    void handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause);
+    int handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause);
+    int handlePairJustWork(uint8_t connHandle);
+    int handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly = true);
+    int handlePairPasskeyInput(uint8_t connHandle);
 
     int onPeripheralLinkEventCallback(hal_ble_on_link_evt_cb_t cb, void* context) {
         std::pair<hal_ble_on_link_evt_cb_t, void*> callback(cb, context);
@@ -396,6 +466,22 @@ public:
     void cancelAdvEventCallback(hal_ble_on_adv_evt_cb_t callback, void* context);
 
 private:
+    enum BlePairingState {
+        BLE_PAIRING_STATE_NOT_INITIATED,
+        BLE_PAIRING_STATE_INITIATED, // Central role only
+        BLE_PAIRING_STATE_STARTED,
+        BLE_PAIRING_STATE_USER_REQ_REJECT,
+        BLE_PAIRING_STATE_SET_AUTH_DATA,
+        BLE_PAIRING_STATE_REJECTED,
+        BLE_PAIRING_STATE_PAIRED
+    };
+
+    struct BleConnection {
+        hal_ble_conn_info_t info;
+        std::pair<hal_ble_on_link_evt_cb_t, void*> handler; // It is used for central link only.
+        BlePairingState pairState;
+    };
+
     BleGap()
             : initialized_(false),
               btStackStarted_(false),
@@ -403,17 +489,24 @@ private:
               addr_{},
               advParams_{},
               advTimeoutTimer_(nullptr),
+              advScheduled_(false),
               isScanning_(false),
               scanParams_{},
               scanSemaphore_(nullptr),
               scanResultCallback_(nullptr),
               context_(nullptr),
               periphEvtCallbacks_{},
-              connInfo_{},
+              connectingAddr_{},
+              connectSemaphore_(nullptr),
+              disconnectSemaphore_(nullptr),
+              disconnectingHandle_(BLE_INVALID_CONN_HANDLE),
               connecting_(false),
+              ppcp_{},
+              pairingConfig_{},
               devNameLen_(0),
               isAdvertising_(false),
-              stateSemaphore_(nullptr) {
+              stateSemaphore_(nullptr),
+              pairingLesc_(false) {
         advParams_.version = BLE_API_VERSION;
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
@@ -432,6 +525,13 @@ private:
         scanParams_.timeout = BLE_DEFAULT_SCANNING_TIMEOUT;
         scanParams_.scan_phys = BLE_PHYS_AUTO;
 
+        ppcp_.version = BLE_API_VERSION;
+        ppcp_.size = sizeof(hal_ble_conn_params_t);
+        ppcp_.min_conn_interval = BLE_DEFAULT_MIN_CONN_INTERVAL;
+        ppcp_.max_conn_interval = BLE_DEFAULT_MAX_CONN_INTERVAL;
+        ppcp_.slave_latency = BLE_DEFAULT_SLAVE_LATENCY;
+        ppcp_.conn_sup_timeout = BLE_DEFAULT_CONN_SUP_TIMEOUT;
+
         memset(advData_, 0x00, sizeof(advData_));
         memset(scanRespData_, 0x00, sizeof(scanRespData_));
         advDataLen_ = scanRespDataLen_ = 0;
@@ -441,9 +541,13 @@ private:
         advData_[advDataLen_++] = BLE_SIG_AD_TYPE_FLAGS; // Type field of an AD structure.
         advData_[advDataLen_++] = BLE_SIG_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE; // Payload field of an AD structure.
 
-        connInfo_.conn_params.version = BLE_API_VERSION;
-        connInfo_.conn_params.size = sizeof(hal_ble_conn_params_t);
-        connInfo_.conn_handle = BLE_INVALID_CONN_HANDLE;
+        pairingConfig_ = {
+            .version = BLE_API_VERSION,
+            .size = sizeof(hal_ble_pairing_config_t),
+            .io_caps = BLE_IO_CAPS_NONE,
+            .algorithm = BLE_PAIRING_ALGORITHM_AUTO,
+            .reserved = {}
+        };
     }
     ~BleGap() = default;
 
@@ -482,6 +586,22 @@ private:
     void removePendingResult(const hal_ble_addr_t& address);
     void clearPendingResult();
 
+    bool connectedAsBlePeripheral() const {
+        for (auto& connection : connections_) {
+            if (connection.info.role == BLE_ROLE_PERIPHERAL) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
+    BleConnection* fetchConnection(const hal_ble_addr_t* address);
+    int addConnection(BleConnection&& connection);
+    void removeConnection(hal_ble_conn_handle_t connHandle);
+
+    void notifyLinkEvent(const hal_ble_link_evt_t& event);
+
     static T_APP_RESULT gapEventCallback(uint8_t type, void *data);
     static void onAdvTimeoutTimerExpired(os_timer_t timer);
 
@@ -496,6 +616,7 @@ private:
     hal_ble_addr_t addr_;
     hal_ble_adv_params_t advParams_;
     os_timer_t advTimeoutTimer_;                    /**< Timer for advertising timeout.  */
+    volatile bool advScheduled_;
     volatile bool isScanning_;                      /**< If it is scanning or not. */
     hal_ble_scan_params_t scanParams_;              /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                  /**< Semaphore to wait until the scan procedure completed. */
@@ -503,20 +624,28 @@ private:
     void* context_;                                     /**< Context of the scan result callback function. */
     Vector<hal_ble_scan_result_evt_t> pendingResults_;
     Vector<std::pair<hal_ble_on_link_evt_cb_t, void*>> periphEvtCallbacks_;
-    hal_ble_conn_info_t connInfo_;
+    hal_ble_addr_t connectingAddr_;                 /**< Address of peer the Central is connecting to. */
+    os_semaphore_t connectSemaphore_;               /**< Semaphore to wait until connection established. */
+    std::pair<hal_ble_on_link_evt_cb_t, void*> centralLinkCbCache_; // It is used for central link only.
+    os_semaphore_t disconnectSemaphore_;            /**< Semaphore to wait until connection disconnected. */
+    volatile hal_ble_conn_handle_t disconnectingHandle_;    /**< Handle of connection to be disconnected. */
+    Vector<BleConnection> connections_;
     volatile bool connecting_;
+    hal_ble_conn_params_t ppcp_;
+    hal_ble_pairing_config_t pairingConfig_;
     uint8_t advData_[BLE_MAX_ADV_DATA_LEN];         /**< Current advertising data. */
     size_t advDataLen_;                             /**< Current advertising data length. */
     uint8_t scanRespData_[BLE_MAX_ADV_DATA_LEN];    /**< Current scan response data. */
     size_t scanRespDataLen_;                        /**< Current scan response data length. */
     char devName_[BLE_MAX_DEV_NAME_LEN + 1];        // null-terminated
     size_t devNameLen_;
-    static constexpr uint8_t MAX_LINK_COUNT = 4;
     static constexpr uint16_t BLE_ADV_TIMEOUT_EXT_MS = 50;
     volatile bool isAdvertising_;
     os_semaphore_t stateSemaphore_;
+    uint8_t pairingLesc_;
     Vector<BleAdvEventHandler> advEventHandlers_;
     Mutex advEventMutex_;
+    RecursiveMutex connectionsMutex_;
 
     static constexpr system_tick_t BLE_WAIT_STATE_POLL_PERIOD_MS = 10;
     static constexpr system_tick_t BLE_STATE_DEFAULT_TIMEOUT = 5000;
@@ -553,6 +682,7 @@ public:
     };
 
     int init();
+    int deinit();
     int addService(uint8_t type, const hal_ble_uuid_t* uuid, hal_ble_attr_handle_t* svcHandle);
     int addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char_handles_t* charHandles);
     int registerAttributeTable();
@@ -560,6 +690,15 @@ public:
     ssize_t getValue(hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
     ssize_t notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool ack);
     int removeSubscriber(hal_ble_conn_handle_t connHandle);
+
+    bool discovering(hal_ble_conn_handle_t connHandle) const;
+    int discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context);
+    int discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, hal_ble_on_disc_char_cb_t callback, void* context);
+    int configureRemoteCCCD(const hal_ble_cccd_config_t* config);
+    ssize_t writeAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool response);
+    ssize_t readAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len);
+
+    int setDesiredAttMtu(size_t attMtu);
 
     bool registered() const {
         return serviceRegistered_;
@@ -577,12 +716,51 @@ public:
 private:
     BleGatt()
             : serviceRegistered_(false),
-              callbacks_() {
-        callbacks_.read_attr_cb = gattReadAttrCallback;
-        callbacks_.write_attr_cb = gattWriteAttrCallback;
-        callbacks_.cccd_update_cb = gattCccdUpdatedCallback;
+              attrConfigured_(false),
+              isNotifying_(false),
+              notifySemaphore_(nullptr),
+              isDiscovering_(false),
+              currDiscConnHandle_(BLE_INVALID_CONN_HANDLE),
+              currDiscService_(nullptr),
+              discoverySemaphore_(nullptr),
+              discSvcUuid_(nullptr),
+              discSvcCallback_(nullptr),
+              discSvcContext_(nullptr),
+              discCharCallback_(nullptr),
+              discCharContext_(nullptr),
+              clientId_(CLIENT_PROFILE_GENERAL_ID),
+              clientCallbacks_{},
+              serverCallbacks_(),
+              currReadConnHandle_(BLE_INVALID_CONN_HANDLE),
+              readAttrHandle_(BLE_INVALID_ATTR_HANDLE),
+              readBuf_(nullptr),
+              readLen_(0),
+              readSemaphore_(nullptr),
+              currWriteConnHandle_(BLE_INVALID_CONN_HANDLE),
+              writeAttrHandle_(BLE_INVALID_ATTR_HANDLE),
+              writeSemaphore_(nullptr),
+              desiredAttMtu_(BLE_MAX_ATT_MTU_SIZE) {
+        clientCallbacks_.discover_state_cb = onDiscoverStateCallback;
+        clientCallbacks_.discover_result_cb = onDiscoverResultCallback;
+        clientCallbacks_.read_result_cb = onReadResultCallback;
+        clientCallbacks_.write_result_cb = onWriteResultCallback;
+        clientCallbacks_.notify_ind_result_cb = onNotifyIndResultCallback;
+        clientCallbacks_.disconnect_cb = onGattClientDisconnectCallback;
+
+        serverCallbacks_.read_attr_cb = gattReadAttrCallback;
+        serverCallbacks_.write_attr_cb = gattWriteAttrCallback;
+        serverCallbacks_.cccd_update_cb = gattCccdUpdatedCallback;
+
+        resetDiscoveryState();
     }
     ~BleGatt() = default;
+
+    struct Publisher {
+        hal_ble_on_char_evt_cb_t callback;
+        void* context;
+        hal_ble_conn_handle_t connHandle;
+        hal_ble_attr_handle_t valueHandle;
+    };
 
     T_ATTRIB_APPL* findAttribute(hal_ble_attr_handle_t attrHandle) {
         for (auto& svc : services_) {
@@ -600,14 +778,53 @@ private:
         return nullptr;
     }
 
+    void resetDiscoveryState();
+    hal_ble_char_t* findDiscoveredCharacteristic(hal_ble_attr_handle_t attrHandle);
+    int addPublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle, hal_ble_on_char_evt_cb_t callback, void* context);
+    int removePublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle);
+    int removeAllPublishersOfConnection(hal_ble_conn_handle_t connHandle);
+
     static T_APP_RESULT gattServerEventCallback(T_SERVER_ID serviceId, void *pData);
     static T_APP_RESULT gattReadAttrCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, uint16_t offset, uint16_t *length, uint8_t **value);
     static T_APP_RESULT gattWriteAttrCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, T_WRITE_TYPE type, uint16_t length, uint8_t *value, P_FUN_WRITE_IND_POST_PROC *postProc);
     static void gattCccdUpdatedCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, uint16_t bits);
 
+    static void onDiscoverStateCallback(uint8_t connHandle, T_DISCOVERY_STATE discoveryState);
+    static void onDiscoverResultCallback(uint8_t connHandle, T_DISCOVERY_RESULT_TYPE type, T_DISCOVERY_RESULT_DATA data);
+    static void onReadResultCallback(uint8_t connHandle, uint16_t cause, uint16_t handle, uint16_t size, uint8_t *value);
+    static void onWriteResultCallback(uint8_t connHandle, T_GATT_WRITE_TYPE type, uint16_t handle, uint16_t cause, uint8_t credits);
+    static T_APP_RESULT onNotifyIndResultCallback(uint8_t connHandle, bool notify, uint16_t handle, uint16_t size, uint8_t *value);
+    static void onGattClientDisconnectCallback(uint8_t connHandle);
+
     bool serviceRegistered_;
-    T_FUN_GATT_SERVICE_CBS callbacks_;
+    bool attrConfigured_;
+    volatile bool isNotifying_;
+    os_semaphore_t notifySemaphore_;                                /**< Semaphore to sync notify/indicate operation. */
+    volatile bool isDiscovering_;                                   /**< If there is on-going discovery procedure. */
+    hal_ble_conn_handle_t currDiscConnHandle_;                      /**< Current connection handle under which the service and characteristics to be discovered. */
+    const hal_ble_svc_t* currDiscService_;                          /**< Used for discovering descriptors */
+    os_semaphore_t discoverySemaphore_;                             /**< Semaphore to wait until the discovery procedure completed. */
+    const hal_ble_uuid_t* discSvcUuid_;                             /**< Used only when discover service by UUID. */
+    hal_ble_on_disc_service_cb_t discSvcCallback_;                  /**< Callback function on services discovered. */
+    void* discSvcContext_;                                          /**< Context of services discovered callback function. */
+    hal_ble_on_disc_char_cb_t discCharCallback_;                    /**< Callback function on characteristics discovered. */
+    void* discCharContext_;                                         /**< Context of characteristics discovered callback function. */
+    Vector<hal_ble_svc_t> discServices_;                            /**< Discover services. */
+    Vector<hal_ble_char_t> discCharacteristics_;                    /**< Discovered characteristics. */
+    T_CLIENT_ID clientId_;
+    T_FUN_CLIENT_CBS clientCallbacks_;
+    T_FUN_GATT_SERVICE_CBS serverCallbacks_;
+    hal_ble_conn_handle_t currReadConnHandle_;
+    hal_ble_attr_handle_t readAttrHandle_;                          /**< Current handle of which attribute to be read. */
+    uint8_t* readBuf_;                                              /**< Current buffer to be filled for the read data. */
+    size_t readLen_;                                                /**< Length of read data. */
+    os_semaphore_t readSemaphore_;                                  /**< Semaphore to wait until the read operation completed. */
+    hal_ble_conn_handle_t currWriteConnHandle_;
+    hal_ble_attr_handle_t writeAttrHandle_;                          /**< Current handle of which attribute to be read. */
+    os_semaphore_t writeSemaphore_;                                 /**< Semaphore to wait until the write operation completed. */
+    size_t desiredAttMtu_;
     Vector<BleService> services_;
+    Vector<Publisher> publishers_;
     static constexpr uint8_t MAX_ALLOWED_BLE_SERVICES = 5;
     static constexpr uint16_t CUSTOMER_SERVICE_START_HANDLE = 30;
     static constexpr uint8_t SERVICE_HANDLE_RANGE_RESERVED = 20;
@@ -659,7 +876,6 @@ void BleEventDispatcher::handleIoMessage(T_IO_MSG message) const {
     switch (message.type) {
         case IO_MSG_TYPE_BT_STATUS: {
             T_LE_GAP_MSG gap_msg;
-            uint8_t conn_id;
             memcpy(&gap_msg, &message.u.param, sizeof(message.u.param));
             switch (message.subtype) {
                 case GAP_MSG_LE_DEV_STATE_CHANGE: {
@@ -694,31 +910,27 @@ void BleEventDispatcher::handleIoMessage(T_IO_MSG message) const {
                 }
                 case GAP_MSG_LE_BOND_JUST_WORK: {
                     LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_JUST_WORK");
-                    conn_id = gap_msg.msg_data.gap_bond_just_work_conf.conn_id;
-                    le_bond_just_work_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+                    const auto& pairJustWork = gap_msg.msg_data.gap_bond_just_work_conf;
+                    BleGap::getInstance().handlePairJustWork(pairJustWork.conn_id);
                     break;
                 }
                 case GAP_MSG_LE_BOND_PASSKEY_DISPLAY: {
-                    uint32_t display_value = 0;
-                    conn_id = gap_msg.msg_data.gap_bond_passkey_display.conn_id;
-                    le_bond_get_display_key(conn_id, &display_value);
-                    LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_PASSKEY_DISPLAY, passkey %d", display_value);
-                    le_bond_passkey_display_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+                    LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_PASSKEY_DISPLAY");
+                    auto& passkeyDisplay = gap_msg.msg_data.gap_bond_passkey_display;
+                    BleGap::getInstance().handlePairPasskeyDisplay(passkeyDisplay.conn_id);
                     break;
                 }
                 case GAP_MSG_LE_BOND_USER_CONFIRMATION: {
-                    uint32_t display_value = 0;
-                    conn_id = gap_msg.msg_data.gap_bond_user_conf.conn_id;
-                    le_bond_get_display_key(conn_id, &display_value);
-                    LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_USER_CONFIRMATION, passkey %d", display_value);
-                    //le_bond_user_confirm(conn_id, GAP_CFM_CAUSE_ACCEPT);
+                    // Numeric comparison
+                    LOG_DEBUG(TRACE, "handleIoMessage, GAP_MSG_LE_BOND_USER_CONFIRMATION");
+                    auto& numericComparison = gap_msg.msg_data.gap_bond_user_conf;
+                    BleGap::getInstance().handlePairPasskeyDisplay(numericComparison.conn_id, false);
                     break;
                 }
                 case GAP_MSG_LE_BOND_PASSKEY_INPUT: {
-                    //uint32_t passkey = 888888;
-                    conn_id = gap_msg.msg_data.gap_bond_passkey_input.conn_id;
-                    LOG_DEBUG(TRACE, "handleIoMessage: GAP_MSG_LE_BOND_PASSKEY_INPUT, conn_id %d", conn_id);
-                    //le_bond_passkey_input_confirm(conn_id, passkey, GAP_CFM_CAUSE_ACCEPT);
+                    LOG_DEBUG(TRACE, "handleIoMessage: GAP_MSG_LE_BOND_PASSKEY_INPUT");
+                    auto& passkeyInput = gap_msg.msg_data.gap_bond_passkey_input;
+                    BleGap::getInstance().handlePairPasskeyInput(passkeyInput.conn_id);
                     break;
                 }
                 default: {
@@ -785,19 +997,21 @@ int BleGap::init() {
 
     CHECK_TRUE(os_semaphore_create(&scanSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(os_semaphore_create(&stateSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(os_semaphore_create(&connectSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(os_semaphore_create(&disconnectSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     // FreeRTOS timers are not supposed to be created with 0 timeout, enabling configASSERT will trigger it
     // We're just creating the timer with fixed period and we're going to change it anyway before starting advertising.
     CHECK_TRUE(os_timer_create(&advTimeoutTimer_, 1000, onAdvTimeoutTimerExpired, this, true, nullptr) == 0, SYSTEM_ERROR_INTERNAL);
 
-    gap_config_max_le_link_num(MAX_LINK_COUNT);
-    gap_config_max_le_paired_device(MAX_LINK_COUNT);
+    gap_config_max_le_link_num(BLE_MAX_LINK_COUNT);
+    gap_config_max_le_paired_device(BLE_MAX_LINK_COUNT);
 
     rtwCoexRunDisable();
 
     CHECK_TRUE(bte_init(), SYSTEM_ERROR_INTERNAL);
     bt_coex_init();
 
-    CHECK_TRUE(le_gap_init(MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(le_gap_init(BLE_MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
     uint8_t mtuReq = true;
     CHECK_RTL(le_set_gap_param(GAP_PARAM_SLAVE_INIT_GATT_MTU_REQ, sizeof(mtuReq), &mtuReq));
     CHECK(setAppearance(GAP_GATT_APPEARANCE_UNKNOWN));
@@ -811,6 +1025,30 @@ int BleGap::init() {
     } else {
         CHECK(setDeviceAddress(&addr_));
     }
+
+    uint8_t pairable = GAP_PAIRING_MODE_PAIRABLE;
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_PAIRING_MODE, sizeof(pairable), &pairable));
+    // Bit mask: GAP_AUTHEN_BIT_BONDING_FLAG, GAP_AUTHEN_BIT_MITM_FLAG, GAP_AUTHEN_BIT_SC_FLAG
+    uint16_t authFlags = 0;
+    if (pairingConfig_.algorithm == BLE_PAIRING_ALGORITHM_AUTO) {
+        // Prefer LESC
+        authFlags = GAP_AUTHEN_BIT_SC_FLAG;
+    } else if (pairingConfig_.algorithm == BLE_PAIRING_ALGORITHM_LESC_ONLY) {
+        authFlags = GAP_AUTHEN_BIT_SC_ONLY_FLAG | GAP_AUTHEN_BIT_SC_FLAG;
+    }
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_AUTHEN_REQUIREMENTS_FLAGS, sizeof(authFlags), &authFlags));
+    // IO Capabilities
+    uint8_t ioCaps = toPlatformIoCaps(pairingConfig_.io_caps);
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_IO_CAPABILITIES, sizeof(ioCaps), &ioCaps));
+    // Send smp security request automatically when connected
+    uint8_t secReq = false;
+    CHECK_RTL(le_bond_set_param(GAP_PARAM_BOND_SEC_REQ_ENABLE, sizeof(secReq), &secReq));
+    uint16_t secReqFlags = authFlags;
+    if (pairingConfig_.io_caps != BLE_IO_CAPS_NONE) {
+        secReqFlags |= GAP_AUTHEN_BIT_MITM_FLAG;
+    }
+    CHECK_RTL(le_bond_set_param(GAP_PARAM_BOND_SEC_REQ_REQUIREMENT, sizeof(secReqFlags), &secReqFlags));
+    CHECK_RTL(gap_set_pairable_mode());
 
     /* register gap message callback */
     le_register_app_cb(gapEventCallback);
@@ -849,7 +1087,7 @@ int BleGap::stop() {
         // NOTE: we have to wait for the BLE stack to get initialized otherwise other operations
         // with it may cause race conditions, memory leaks and other problems
         waitState(BleGapDevState().init(GAP_INIT_STATE_STACK_READY), BLE_STATE_DEFAULT_TIMEOUT, true /* force poll */);
-        disconnect();
+        disconnectAll();
         if (isAdvertising_) {
             // This will also wait for advertisements to stop
             stopAdvertising();
@@ -893,10 +1131,20 @@ int BleGap::stop() {
         os_semaphore_destroy(stateSemaphore_);
         stateSemaphore_ = nullptr;
     }
+    if (connectSemaphore_) {
+        os_semaphore_destroy(connectSemaphore_);
+        connectSemaphore_ = nullptr;
+    }
+    if (disconnectSemaphore_) {
+        os_semaphore_destroy(disconnectSemaphore_);
+        disconnectSemaphore_ = nullptr;
+    }
     if (advTimeoutTimer_) {
         os_timer_destroy(advTimeoutTimer_, nullptr);
         advTimeoutTimer_ = nullptr;
     }
+
+    CHECK(BleGatt::getInstance().deinit());
 
     RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, DISABLE);
     return SYSTEM_ERROR_NONE;
@@ -932,10 +1180,12 @@ int BleGap::getDeviceName(char* deviceName, size_t len) const {
 int BleGap::setDeviceAddress(const hal_ble_addr_t* address) {
     CHECK_FALSE(isAdvertising(), SYSTEM_ERROR_INVALID_STATE);
     CHECK_FALSE(scanning(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(address && addressEqual(*address, addr_), SYSTEM_ERROR_NONE);
     // RTL872x doesn't support changing the the public address.
     // But to be compatible with existing BLE platforms, it should accept nulllptr.
-    if (!address) {
-        addr_ = chipDefaultPublicAddress();
+    hal_ble_addr_t defaultAddr = chipDefaultPublicAddress();
+    if (!address || addressEqual(*address, defaultAddr)) {
+        addr_ = defaultAddr;
         return SYSTEM_ERROR_NONE;
     }
     if (address->addr_type != BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
@@ -1108,6 +1358,21 @@ int BleGap::startAdvertising(bool wait) {
             wait = false;
         }
     }
+    RtlGapDevState s;
+    CHECK_RTL(le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state));
+    if (s.state.gap_adv_state == GAP_ADV_STATE_STOP) {
+        // Previous stopAdvertising() caused a race condition in the BT stack, try to recover
+        // Ignore error here
+        auto r = le_adv_stop();
+        if (wait) {
+            if (r != GAP_CAUSE_SUCCESS || waitState(BleGapDevState().adv(GAP_ADV_STATE_IDLE))) {
+                LOG(ERROR, "Failed to get notified that advertising has stopped, resetting stack");
+                CHECK(stop());
+                CHECK(init());
+            }
+        }
+    }
+
     isAdvertising_ = true;
     bool ok = false;
     SCOPE_GUARD({
@@ -1115,23 +1380,26 @@ int BleGap::startAdvertising(bool wait) {
             isAdvertising_ = false;
         }
     });
-    if (btStackStarted_ && !BleGatt::getInstance().registered()) {
-        if (!wait) {
-            // Prevent from blocking
-            return SYSTEM_ERROR_INVALID_STATE;
+    if (!BleGatt::getInstance().registered()) {
+        if (btStackStarted_) {
+            if (!wait) {
+                // Prevent from blocking
+                return SYSTEM_ERROR_INVALID_STATE;
+            }
+            CHECK(stop());
+            // The attribute table needs to be registered before BT stack starts.
+            // Now we assume that the attribute table is finalized.
+            // Register it to BT stack
+            CHECK(init());
         }
-        CHECK(stop());
-        CHECK(init());
+        CHECK(BleGatt::getInstance().registerAttributeTable());
     }
-    // The attribute table needs to be registered before BT stack starts.
-    // Now we assume that the attribute table is finalized.
-    // Register it to BT stack
-    CHECK(BleGatt::getInstance().registerAttributeTable());
 
     CHECK(start());
 
     SCOPE_GUARD ({
-        if (!isAdvertising() && os_timer_is_active(advTimeoutTimer_, nullptr)) {
+        // NOTE: this will run first before the other SCOPE_GUARD, make sure to look at 'ok' state as well
+        if ((!isAdvertising() || !ok) && os_timer_is_active(advTimeoutTimer_, nullptr)) {
             os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
         }
     });
@@ -1141,16 +1409,23 @@ int BleGap::startAdvertising(bool wait) {
             return SYSTEM_ERROR_INTERNAL;
         }
     }
+
+    uint8_t advEvtType = toPlatformAdvEvtType(advParams_.type);
+    if (connectedAsBlePeripheral()) {
+        advEvtType = GAP_ADTYPE_ADV_SCAN_IND;
+    }
+    CHECK_RTL(le_adv_set_param(GAP_PARAM_ADV_EVENT_TYPE, sizeof(advEvtType), &advEvtType));
+
     CHECK_RTL(le_adv_start());
 
     if (wait) {
         LOG_DEBUG(TRACE, "Starting advertising...");
         if (waitState(BleGapDevState().adv(GAP_ADV_STATE_ADVERTISING))) {
-            LOG_DEBUG(ERROR, "Failed to get notified that advertising has started");
+            LOG(ERROR, "Failed to get notified that advertising has started");
         }
     }
     ok = true;
-    LOG_DEBUG(TRACE, "Advertising started");
+    LOG(TRACE, "Advertising started");
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1164,6 +1439,12 @@ int BleGap::stopAdvertising(bool wait) {
     if (!isAdvertising_) {
         return SYSTEM_ERROR_NONE;
     }
+    // In case of invoking startAdvertising(false) previously
+    if (wait && state_.state.gap_adv_state != GAP_ADV_STATE_ADVERTISING) {
+        if (waitState(BleGapDevState().adv(GAP_ADV_STATE_ADVERTISING), BLE_STATE_DEFAULT_TIMEOUT, true)) {
+            LOG(ERROR, "Failed to get notified that advertising has started");
+        }
+    }
     isAdvertising_ = false;
     CHECK_RTL(le_adv_stop());
     if (os_timer_is_active(advTimeoutTimer_, nullptr)) {
@@ -1172,7 +1453,7 @@ int BleGap::stopAdvertising(bool wait) {
     if (wait) {
         LOG_DEBUG(TRACE, "Stopping advertising...");
         if (waitState(BleGapDevState().adv(GAP_ADV_STATE_IDLE))) {
-            LOG_DEBUG(ERROR, "Failed to get notified that advertising has stopped");
+            LOG(ERROR, "Failed to get notified that advertising has stopped");
         }
     }
     LOG_DEBUG(TRACE, "Advertising stopped");
@@ -1228,6 +1509,7 @@ int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
 int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK(start());
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
+
     SCOPE_GUARD ({
         if (isScanning_) {
             const int LE_SCAN_STOP_RETRIES = 10;
@@ -1237,7 +1519,9 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                 // otherwise the next scan operation fails with invalid state.
                 auto r = le_scan_stop();
                 if (r == GAP_CAUSE_SUCCESS) {
-                    isScanning_ = false;
+                    if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE))) {
+                        isScanning_ = false;
+                    }
                     break;
                 }
                 HAL_Delay_Milliseconds(10);
@@ -1250,6 +1534,9 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     context_ = context;
     CHECK_RTL(le_scan_start());
     isScanning_ = true;
+    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_START))) {
+        return SYSTEM_ERROR_TIMEOUT;
+    }
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
     os_semaphore_take(scanSemaphore_, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
@@ -1369,22 +1656,355 @@ void BleGap::clearPendingResult() {
 }
 
 ssize_t BleGap::getAttMtu(hal_ble_conn_handle_t connHandle) {
-    CHECK_TRUE(connHandle == connInfo_.conn_handle, SYSTEM_ERROR_NOT_FOUND);
-    return connInfo_.att_mtu;
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    const auto connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+    return connection->info.att_mtu;
 }
 
 int BleGap::getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info) {
-    CHECK_TRUE(connHandle == connInfo_.conn_handle, SYSTEM_ERROR_NOT_FOUND);
-    uint16_t size = std::min(connInfo_.size, info->size);
-    memcpy(info, &connInfo_, size);
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    const BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+    uint16_t size = std::min(connection->info.size, info->size);
+    memcpy(info, &connection->info, size);
     return SYSTEM_ERROR_NONE;
 }
 
-int BleGap::disconnect() const {
-    if (connInfo_.conn_handle != BLE_INVALID_CONN_HANDLE) {
-        CHECK_RTL(le_disconnect(connInfo_.conn_handle));
+int BleGap::setPpcp(const hal_ble_conn_params_t* ppcp) {
+    CHECK_TRUE(ppcp, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (ppcp->min_conn_interval != BLE_SIG_CP_MIN_CONN_INTERVAL_NONE) {
+        CHECK_TRUE(ppcp->min_conn_interval >= BLE_SIG_CP_MIN_CONN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->min_conn_interval <= BLE_SIG_CP_MIN_CONN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    }
+    if (ppcp->max_conn_interval != BLE_SIG_CP_MAX_CONN_INTERVAL_NONE) {
+        CHECK_TRUE(ppcp->max_conn_interval >= BLE_SIG_CP_MAX_CONN_INTERVAL_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->max_conn_interval <= BLE_SIG_CP_MAX_CONN_INTERVAL_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    }
+    CHECK_TRUE(ppcp->slave_latency < BLE_SIG_CP_SLAVE_LATENCY_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (ppcp->conn_sup_timeout != BLE_SIG_CP_CONN_SUP_TIMEOUT_NONE) {
+        CHECK_TRUE(ppcp->conn_sup_timeout >= BLE_SIG_CP_CONN_SUP_TIMEOUT_MIN, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(ppcp->conn_sup_timeout <= BLE_SIG_CP_CONN_SUP_TIMEOUT_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+    }
+    memcpy(&ppcp_, ppcp, std::min(ppcp_.size, ppcp->size));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::getPpcp(hal_ble_conn_params_t* ppcp) const {
+    CHECK_TRUE(ppcp, SYSTEM_ERROR_INVALID_ARGUMENT);
+    memcpy(ppcp, &ppcp_, std::min(ppcp_.size, ppcp->size));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* connHandle) {
+    CHECK_FALSE(connecting_, SYSTEM_ERROR_INVALID_STATE); // Device is connecting by peer device.
+    CHECK_TRUE(connections_.size() < BLE_MAX_LINK_COUNT, SYSTEM_ERROR_LIMIT_EXCEEDED);
+    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(connHandle, SYSTEM_ERROR_INVALID_ARGUMENT);
+    // Stop scanning first to give the scanning semaphore if possible.
+    CHECK(stopScanning());
+    SCOPE_GUARD ({
+        connectingAddr_ = {};
+        connecting_ = false;
+    });
+    const hal_ble_conn_params_t* connParams = nullptr;
+    if (config->conn_params == nullptr) {
+        connParams = &ppcp_;
+    } else {
+        connParams = config->conn_params;
+    }
+    T_GAP_LE_CONN_REQ_PARAM platformConnParams;
+    platformConnParams.scan_interval = scanParams_.interval;
+    platformConnParams.scan_window = scanParams_.window;
+    platformConnParams.conn_interval_min = connParams->min_conn_interval;
+    platformConnParams.conn_interval_max = connParams->max_conn_interval;
+    platformConnParams.conn_latency = connParams->slave_latency;
+    platformConnParams.supv_tout = connParams->conn_sup_timeout;
+    platformConnParams.ce_len_min = 2 * (platformConnParams.conn_interval_min - 1);
+    platformConnParams.ce_len_max = 2 * (platformConnParams.conn_interval_max - 1);
+    // NOTE: 2M and CODED PHYs are not supported. Refer to where GAP_CONN_PARAM_1M is defined.
+    // TODO: As per the description of the API, it requires an existing connection?
+    CHECK_RTL(le_set_conn_param(GAP_CONN_PARAM_1M, &platformConnParams));
+
+    memcpy(&connectingAddr_, &config->address, sizeof(hal_ble_addr_t));
+    uint8_t connLocalAddrType = GAP_LOCAL_ADDR_LE_PUBLIC;
+    if (addr_.addr_type == BLE_SIG_ADDR_TYPE_RANDOM_STATIC) {
+        connLocalAddrType = GAP_LOCAL_ADDR_LE_RANDOM;
+    }
+    centralLinkCbCache_.first = config->callback;
+    centralLinkCbCache_.second = config->context;
+    connecting_ = true;
+    CHECK_RTL(le_connect(GAP_CONN_PARAM_1M, connectingAddr_.addr, (T_GAP_REMOTE_ADDR_TYPE)connectingAddr_.addr_type,
+        (T_GAP_LOCAL_ADDR_TYPE)connLocalAddrType, BLE_DEFAULT_SCANNING_TIMEOUT));
+    if (os_semaphore_take(connectSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(&config->address);
+    CHECK_TRUE(connection, SYSTEM_ERROR_INTERNAL);
+    *connHandle = connection->info.conn_handle;
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::connectCancel(const hal_ble_addr_t* address) {
+    CHECK_TRUE(connecting_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(address, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(addressEqual(connectingAddr_, *address), SYSTEM_ERROR_INVALID_ARGUMENT);
+    // NOTE: there is no API to cancel on-going connection attempt
+    // We have to wait until it is connected followed by calling the disconnect API
+    if (!WAIT_TIMED(BLE_OPERATION_TIMEOUT_MS, connecting_)) {
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    auto connection = fetchConnection(address);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NONE); // Connection is not established
+    CHECK(disconnect(connection->info.conn_handle));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::disconnect(hal_ble_conn_handle_t connHandle) {
+    {
+        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+        CHECK_TRUE(fetchConnection(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    }
+    SCOPE_GUARD ({
+        disconnectingHandle_ = BLE_INVALID_CONN_HANDLE;
+    });
+    disconnectingHandle_ = connHandle;
+    CHECK_RTL(le_disconnect(connHandle));
+    if (os_semaphore_take(disconnectSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::disconnectAll() {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    for (const auto& connection : connections_) {
+        // TODO: check the return value.
+        disconnect(connection.info.conn_handle);
+        // The corresponding connection in the Vector will be removed on the disconnected event.
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+void BleGap::notifyLinkEvent(const hal_ble_link_evt_t& event) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(event.conn_handle);
+    if (connection) {
+        if (connection->info.role == BLE_ROLE_CENTRAL) {
+            if (connection->handler.first) {
+                connection->handler.first(&event, connection->handler.second);
+            }
+        } else {
+            for (const auto& handler : periphEvtCallbacks_) {
+                if (handler.first) {
+                    handler.first(&event, handler.second);
+                }
+            }
+        }
+    }
+}
+
+bool BleGap::valid(hal_ble_conn_handle_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    const BleConnection* connection = fetchConnection(connHandle);
+    return connection != nullptr;
+}
+
+BleGap::BleConnection* BleGap::fetchConnection(hal_ble_conn_handle_t connHandle) {
+    CHECK_TRUE(connHandle != BLE_INVALID_CONN_HANDLE, nullptr);
+    for (auto& connection : connections_) {
+        if (connection.info.conn_handle == connHandle) {
+            return &connection;
+        }
+    }
+    return nullptr;
+}
+
+BleGap::BleConnection* BleGap::fetchConnection(const hal_ble_addr_t* address) {
+    CHECK_TRUE(address, nullptr);
+    for (auto& connection : connections_) {
+        if (addressEqual(connection.info.address, *address)) {
+            return &connection;
+        }
+    }
+    return nullptr;
+}
+
+int BleGap::addConnection(BleConnection&& connection) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    CHECK_TRUE(fetchConnection(connection.info.conn_handle) == nullptr, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(connections_.append(std::move(connection)), SYSTEM_ERROR_NO_MEMORY);
+    return SYSTEM_ERROR_NONE;
+}
+
+void BleGap::removeConnection(hal_ble_conn_handle_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    size_t i = 0;
+    for (const auto& connection : connections_) {
+        if (connection.info.conn_handle == connHandle) {
+            connections_.removeAt(i);
+            return;
+        }
+        i++;
+    }
+}
+
+int BleGap::setPairingConfig(const hal_ble_pairing_config_t* config) {
+    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_FALSE(connected(nullptr), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
+    bool adv = isAdvertising();
+    bool ok = false;
+    SCOPE_GUARD({
+        if (ok && adv) {
+            startAdvertising();
+        }
+    });
+    if (btStackStarted_) {
+        CHECK(stop());
+        CHECK(init());
+    }
+    // Bit mask: GAP_AUTHEN_BIT_BONDING_FLAG, GAP_AUTHEN_BIT_MITM_FLAG, GAP_AUTHEN_BIT_SC_FLAG
+    uint16_t authFlags = 0;
+    if (config->algorithm == BLE_PAIRING_ALGORITHM_AUTO) {
+        // Prefer LESC
+        authFlags = GAP_AUTHEN_BIT_SC_FLAG;
+    } else if (config->algorithm == BLE_PAIRING_ALGORITHM_LESC_ONLY) {
+        authFlags = GAP_AUTHEN_BIT_SC_ONLY_FLAG | GAP_AUTHEN_BIT_SC_FLAG;
+    }
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_AUTHEN_REQUIREMENTS_FLAGS, sizeof(authFlags), &authFlags));
+    // IO Capabilities
+    uint8_t ioCaps = toPlatformIoCaps(config->io_caps);
+    CHECK_RTL(gap_set_param(GAP_PARAM_BOND_IO_CAPABILITIES, sizeof(ioCaps), &ioCaps));
+    uint16_t secReqFlags = authFlags;
+    if (config->io_caps != BLE_IO_CAPS_NONE) {
+        secReqFlags |= GAP_AUTHEN_BIT_MITM_FLAG;
+    }
+    CHECK_RTL(le_bond_set_param(GAP_PARAM_BOND_SEC_REQ_REQUIREMENT, sizeof(secReqFlags), &secReqFlags));
+    pairingConfig_ = {};
+    pairingConfig_.size = sizeof(hal_ble_pairing_config_t);
+    memcpy(&pairingConfig_, config, std::min(pairingConfig_.size, config->size));
+
+    CHECK(start());
+
+    ok = true;
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::getPairingConfig(hal_ble_pairing_config_t* config) const {
+    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    memcpy(config, &pairingConfig_, std::min(pairingConfig_.size, config->size));
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::setPairingAuthData(hal_ble_conn_handle_t connHandle, const hal_ble_pairing_auth_data_t* auth) {
+    CHECK_TRUE(auth, SYSTEM_ERROR_INVALID_ARGUMENT);
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+    if (auth->type == BLE_PAIRING_AUTH_DATA_NUMERIC_COMPARISON) {
+        CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_STARTED, SYSTEM_ERROR_INVALID_STATE);
+        connection->pairState = BLE_PAIRING_STATE_SET_AUTH_DATA;
+        if (auth->params.equal) {
+            CHECK_RTL(le_bond_user_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT));
+        } else {
+            CHECK_RTL(le_bond_user_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
+        }
+    }
+    else if (auth->type == BLE_PAIRING_AUTH_DATA_PASSKEY) {
+        CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_STARTED, SYSTEM_ERROR_INVALID_STATE);
+        connection->pairState = BLE_PAIRING_STATE_SET_AUTH_DATA;
+        for (uint8_t i = 0; i < BLE_PAIRING_PASSKEY_LEN; i++) {
+            if (!std::isdigit(auth->params.passkey[i])) {
+                LOG(ERROR, "Invalid digits.");
+                CHECK_RTL(le_bond_passkey_input_confirm(connHandle, 0, GAP_CFM_CAUSE_REJECT));
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+        }
+        uint32_t passkey = std::atoi((const char*)auth->params.passkey);
+        CHECK_RTL(le_bond_passkey_input_confirm(connHandle, passkey, GAP_CFM_CAUSE_ACCEPT));
+    }
+    else {
+        LOG(ERROR, "SYSTEM_ERROR_NOT_SUPPORTED");
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::startPairing(hal_ble_conn_handle_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(connection->pairState == BLE_PAIRING_STATE_NOT_INITIATED ||
+               connection->pairState == BLE_PAIRING_STATE_REJECTED, SYSTEM_ERROR_INVALID_STATE);
+    connection->pairState = BLE_PAIRING_STATE_INITIATED;
+    auto ret = le_bond_pair(connHandle);
+    if (ret != GAP_CAUSE_SUCCESS) {
+        hal_ble_link_evt_t linkEvent = {};
+        linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
+        linkEvent.conn_handle = connection->info.conn_handle;
+        linkEvent.params.pairing_status.status = rtl_ble_error_to_system(ret);
+        notifyLinkEvent(linkEvent);
+        connection->pairState = BLE_PAIRING_STATE_NOT_INITIATED;
+        return rtl_ble_error_to_system(ret);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+/*
+ * User may reject pairing under the following circumstances
+
+ * If just work is used:
+ *   1. calling rejectPairing() on BLE_EVT_PAIRING_REQUEST_RECEIVED received
+ * 
+ * If passkey display is used:
+ *   1. calling rejectPairing() on BLE_EVT_PAIRING_REQUEST_RECEIVED received
+ *   2. calling rejectPairing() on BLE_EVT_PAIRING_PASSKEY_DISPLAY received
+ * 
+ * If numeric comparison is used:
+ *   1. calling rejectPairing() on BLE_EVT_PAIRING_REQUEST_RECEIVED received
+ *   2. calling rejectPairing() on BLE_EVT_PAIRING_NUMERIC_COMPARISON received
+ *   3. choosing "NO" on BLE_EVT_PAIRING_NUMERIC_COMPARISON received
+ *   4. not setting authentication data on BLE_EVT_PAIRING_NUMERIC_COMPARISON received
+ * 
+ * If passkey input is used:
+ *   1. calling rejectPairing() on BLE_EVT_PAIRING_REQUEST_RECEIVED received
+ *   2. calling rejectPairing() on BLE_EVT_PAIRING_PASSKEY_INPUT received
+ *   3. entering wrong passkey on BLE_EVT_PAIRING_PASSKEY_INPUT received
+ *   4. not setting authentication data on BLE_EVT_PAIRING_PASSKEY_INPUT received
+ * 
+ * Other circumstances are considered to continue the pairing process。
+ */
+int BleGap::rejectPairing(hal_ble_conn_handle_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
+    // Note: If user called rejectPairing() after setPairingAuthData(), it won't take any effect
+    if (connection->pairState == BLE_PAIRING_STATE_INITIATED || connection->pairState == BLE_PAIRING_STATE_STARTED) {
+        connection->pairState = BLE_PAIRING_STATE_USER_REQ_REJECT;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+bool BleGap::isPairing(hal_ble_conn_handle_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, false);
+    return connection->pairState == BLE_PAIRING_STATE_INITIATED ||
+           connection->pairState == BLE_PAIRING_STATE_STARTED ||
+           connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA ||
+           connection->pairState == BLE_PAIRING_STATE_USER_REQ_REJECT;
+}
+
+bool BleGap::isPaired(hal_ble_conn_handle_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    CHECK_TRUE(connection, false);
+    return connection->pairState == BLE_PAIRING_STATE_PAIRED;
 }
 
 int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePoll) {
@@ -1414,14 +2034,17 @@ int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePol
 }
 
 void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
-    LOG(TRACE, "GAP state updated, init:%d, adv:%d, adv-sub:%d, scan:%d, conn:%d, cause:%d",
+    LOG_DEBUG(TRACE, "GAP state updated, init:%d, adv:%d, adv-sub:%d, scan:%d, conn:%d, cause:%d",
                         newState.gap_init_state, newState.gap_adv_state, newState.gap_adv_sub_state, newState.gap_scan_state, newState.gap_conn_state, cause);
     RtlGapDevState nState;
     nState.state = newState;
     // NOTE: this event is generated before the connection is established
-    if (newState.gap_adv_state != state_.state.gap_adv_state) {
-        if (newState.gap_adv_state == GAP_ADV_STATE_IDLE && newState.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
+    if (newState.gap_adv_state != state_.state.gap_adv_state && newState.gap_adv_state == GAP_ADV_STATE_IDLE) {
+        if (newState.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
             stopAdvertising(false);
+        } else if (advScheduled_) {
+            advScheduled_ = false;
+            startAdvertising(false);
         }
     }
     state_.raw = nState.raw;
@@ -1429,14 +2052,11 @@ void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
 }
 
 void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE newState, uint16_t discCause) {
-    if (newState == GAP_CONN_STATE_CONNECTING) {
-        connecting_ = true;
-    } else {
-        connecting_ = false;
-    }
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
     switch (newState) {
         case GAP_CONN_STATE_CONNECTING: {
             LOG_DEBUG(TRACE, "Connecting...");
+            connecting_ = true;
             break;
         }
         case GAP_CONN_STATE_DISCONNECTING: {
@@ -1444,53 +2064,118 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             break;
         }
         case GAP_CONN_STATE_DISCONNECTED: {
-            connInfo_.conn_handle = BLE_INVALID_CONN_HANDLE;
-            if ((discCause != (HCI_ERR | HCI_ERR_REMOTE_USER_TERMINATE)) && (discCause != (HCI_ERR | HCI_ERR_LOCAL_HOST_TERMINATE))) {
-                // placeholder
+            LOG_DEBUG(TRACE, "GAP_CONN_STATE_DISCONNECTED");
+            BleConnection* connection = fetchConnection(connHandle);
+            if (!connection) {
+                LOG(TRACE, "Connection not found.");
+                if (connecting_) {
+                    connecting_ = false;
+                    // Central failed to connect
+                    os_semaphore_give(connectSemaphore_, false);
+                }
+                return;
             }
-            LOG_DEBUG(TRACE, "[BLE peripheral] Disconnected, handle:%d, cause:0x%x, re-start ADV", connHandle, discCause);
-            for (const auto& callback : periphEvtCallbacks_) {
-                if (callback.first) {
-                    hal_ble_link_evt_t evt = {};
-                    evt.type = BLE_EVT_DISCONNECTED;
-                    evt.conn_handle = connHandle;
-                    evt.params.disconnected.reason = (uint8_t)discCause;
-                    callback.first(&evt, callback.second);
+            if ((discCause != (HCI_ERR | HCI_ERR_REMOTE_USER_TERMINATE)) && (discCause != (HCI_ERR | HCI_ERR_LOCAL_HOST_TERMINATE))) {
+                LOG_DEBUG(TRACE, "handleConnectionStateChanged: connection lost cause 0x%x", discCause);
+                hal_ble_addr_t addr = {};
+                if (!addressEqual(connectingAddr_, addr)) {
+                    LOG(ERROR, "Central gets disconnected while connecting.....");
                 }
             }
+            LOG_DEBUG(TRACE, "Disconnected, handle:%d, cause:0x%x", connHandle, discCause);
+            // If the disconnection is initiated by application.
+            if (disconnectingHandle_ == connection->info.conn_handle) {
+                os_semaphore_give(disconnectSemaphore_, false);
+            }
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+            {
+#else
+            else {
+#endif
+                // Notify the disconnected event.
+                hal_ble_link_evt_t evt = {};
+                evt.type = BLE_EVT_DISCONNECTED;
+                evt.conn_handle = connHandle;
+                evt.params.disconnected.reason = (uint8_t)discCause;
+                notifyLinkEvent(evt);
+            }
+            hal_ble_role_t role = connection->info.role;
+            removeConnection(connHandle);
             BleGatt::getInstance().removeSubscriber(connHandle);
-            // FIXME: check whether it's enabled?
-            startAdvertising(false);
+            if (role == BLE_ROLE_PERIPHERAL) {
+                // FIXME: check whether it's enabled?
+                if (isAdvertising()) {
+                    stopAdvertising(false);
+                    // Re-start advertising after the adv-stopped event received
+                    advScheduled_ = true;
+                } else {
+                    startAdvertising(false);
+                }
+            }
             break;
         }
         case GAP_CONN_STATE_CONNECTED: {
+            LOG_DEBUG(TRACE, "GAP_CONN_STATE_CONNECTED");
             hal_ble_conn_params_t connParams = {};
             connParams.version = BLE_API_VERSION;
             connParams.size = sizeof(hal_ble_conn_params_t);
             hal_ble_addr_t peerAddr = {};
             peerAddr.addr_type = BLE_SIG_ADDR_TYPE_PUBLIC;
             le_get_conn_addr(connHandle, peerAddr.addr, (uint8_t *)&peerAddr.addr_type);
+            auto existingConnection = fetchConnection(connHandle);
+            if (existingConnection) {
+                // Some other event might have already initialized the connection object
+                if (!addressEqual(peerAddr, existingConnection->info.address)) {
+                    LOG(ERROR, "Peer addresses do not match");
+                    disconnect(connHandle);
+                }
+                return;
+            }
             le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &connParams.min_conn_interval, connHandle);
             le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &connParams.max_conn_interval, connHandle);
             le_get_conn_param(GAP_PARAM_CONN_LATENCY, &connParams.slave_latency, connHandle);
             le_get_conn_param(GAP_PARAM_CONN_TIMEOUT, &connParams.conn_sup_timeout, connHandle);
-            LOG_DEBUG(TRACE, "[BLE peripheral] Connected, interval:0x%x, latency:0x%x, timeout:0x%x",
-                            connParams.max_conn_interval, connParams.slave_latency, connParams.conn_sup_timeout);
-            connInfo_.version = BLE_API_VERSION;
-            connInfo_.size = sizeof(hal_ble_conn_info_t);
-            connInfo_.role = BLE_ROLE_PERIPHERAL;
-            connInfo_.conn_handle = connHandle;
-            connInfo_.conn_params = connParams;
-            connInfo_.address = peerAddr;
-            connInfo_.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
-            for (const auto& callback : periphEvtCallbacks_) {
-                if (callback.first) {
-                    hal_ble_link_evt_t evt = {};
-                    evt.type = BLE_EVT_CONNECTED;
-                    evt.conn_handle = connInfo_.conn_handle;
-                    evt.params.connected.info = &connInfo_;
-                    callback.first(&evt, callback.second);
-                }
+            LOG_DEBUG(TRACE, "Connected, interval:0x%x, latency:0x%x, timeout:0x%x peer: %02x:%02x:%02x:%02x:%02x:%02x",
+                            connParams.max_conn_interval, connParams.slave_latency, connParams.conn_sup_timeout,
+                            peerAddr.addr[0], peerAddr.addr[1], peerAddr.addr[2], peerAddr.addr[3], peerAddr.addr[4], peerAddr.addr[5]);
+
+            BleConnection connection = {};
+            connection.info.version = BLE_API_VERSION;
+            connection.info.size = sizeof(hal_ble_conn_info_t);
+            if (addressEqual(connectingAddr_, peerAddr)) {
+                connection.info.role = BLE_ROLE_CENTRAL;
+                connection.handler = centralLinkCbCache_;
+                LOG_DEBUG(TRACE, "Connected as Central");
+            } else {
+                connection.info.role = BLE_ROLE_PERIPHERAL;
+                LOG_DEBUG(TRACE, "Connected as Peripheral");
+            }
+            connection.info.conn_handle = connHandle;
+            connection.info.conn_params = connParams;
+            connection.info.address = peerAddr;
+            connection.info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
+            connection.pairState = BLE_PAIRING_STATE_NOT_INITIATED;
+            int ret = addConnection(std::move(connection));
+            if (ret != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Add new connection failed. Disconnects from peer.");
+                disconnect(connHandle);
+                return;
+            }
+
+            if (connection.info.role == BLE_ROLE_PERIPHERAL
+#if HAL_PLATFORM_BLE_ACTIVE_EVENT
+                || (connecting_ && connection.info.role == BLE_ROLE_CENTRAL)) {
+#else
+            ) {
+#endif
+                hal_ble_link_evt_t evt = {};
+                evt.type = BLE_EVT_CONNECTED;
+                evt.conn_handle = connHandle;
+                evt.params.connected.info = &connection.info;
+                notifyLinkEvent(evt);
+            } else {
+                // See: handleMtuUpdated()
+                // os_semaphore_give(connectSemaphore_, false);
             }
             break;
         }
@@ -1499,35 +2184,53 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
 }
 
 void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
-    // FIXME: adding log in this function causes BLE deadlock, but not in the wiring callback!!!
-    // LOG_DEBUG(TRACE, "handleMtuUpdated: handle:%d, mtu_size:%d", connHandle, mtuSize);
-    if (connHandle != connInfo_.conn_handle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    LOG_DEBUG(TRACE, "handleMtuUpdated: handle:%d, mtu_size:%d", connHandle, mtuSize);
+    BleConnection* connection = fetchConnection(connHandle);
+    if (!connection && connecting_) {
+        // Race condition in the stack
+        LOG_DEBUG(WARN, "handleMtuUpdated force adding connection");
+        handleConnectionStateChanged(connHandle, GAP_CONN_STATE_CONNECTED, 0);
+        connection = fetchConnection(connHandle);
+    }
+    if (!connection) {
         return;
     }
-    connInfo_.att_mtu = mtuSize;
-    for (const auto& callback : periphEvtCallbacks_) {
-        if (callback.first) {
-            hal_ble_link_evt_t evt = {};
-            evt.type = BLE_EVT_ATT_MTU_UPDATED;
-            evt.conn_handle = connHandle;
-            evt.params.att_mtu_updated.att_mtu_size = mtuSize;
-            callback.first(&evt, callback.second);
-        }
+    // FIXME: when device initiates the connection establishment,
+    // it will perform the ATT MTU exchange automatically on connected. This may result in
+    // service discovery failure when the peer device is of other Gen3 platform.
+    if (connection->info.role == BLE_ROLE_CENTRAL) {
+        connecting_ = false;
+        os_semaphore_give(connectSemaphore_, false);
     }
+    connection->info.att_mtu = mtuSize;
+    hal_ble_link_evt_t evt = {};
+    evt.type = BLE_EVT_ATT_MTU_UPDATED;
+    evt.conn_handle = connHandle;
+    evt.params.att_mtu_updated.att_mtu_size = mtuSize;
+    notifyLinkEvent(evt);
 }
 
 void BleGap::handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_t cause) {
-    if (connHandle != connInfo_.conn_handle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    if (!connection && connecting_) {
+        // Race condition in the stack
+        LOG_DEBUG(WARN, "handleConnParamsUpdated force adding connection");
+        handleConnectionStateChanged(connHandle, GAP_CONN_STATE_CONNECTED, 0);
+        connection = fetchConnection(connHandle);
+    }
+    if (!connection) {
         return;
     }
     switch (status) {
         case GAP_CONN_PARAM_UPDATE_STATUS_SUCCESS: {
-            le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &connInfo_.conn_params.min_conn_interval, connHandle);
-            le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &connInfo_.conn_params.max_conn_interval, connHandle);
-            le_get_conn_param(GAP_PARAM_CONN_LATENCY, &connInfo_.conn_params.slave_latency, connHandle);
-            le_get_conn_param(GAP_PARAM_CONN_TIMEOUT, &connInfo_.conn_params.conn_sup_timeout, connHandle);
+            le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &connection->info.conn_params.min_conn_interval, connHandle);
+            le_get_conn_param(GAP_PARAM_CONN_INTERVAL, &connection->info.conn_params.max_conn_interval, connHandle);
+            le_get_conn_param(GAP_PARAM_CONN_LATENCY, &connection->info.conn_params.slave_latency, connHandle);
+            le_get_conn_param(GAP_PARAM_CONN_TIMEOUT, &connection->info.conn_params.conn_sup_timeout, connHandle);
             LOG_DEBUG(TRACE, "handleConnParamsUpdated: update success: interval:0x%x, latency:0x%x, timeout:0x%x",
-                            connInfo_.conn_params.max_conn_interval, connInfo_.conn_params.slave_latency, connInfo_.conn_params.conn_sup_timeout);
+                            connection->info.conn_params.max_conn_interval, connection->info.conn_params.slave_latency, connection->info.conn_params.conn_sup_timeout);
             break;
         }
         case GAP_CONN_PARAM_UPDATE_STATUS_FAIL: {
@@ -1542,22 +2245,51 @@ void BleGap::handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_
     }
 }
 
-void BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause) {
-    LOG_DEBUG(TRACE, "handleAuthenStateChanged: handle: %d, cause: 0x%x", connHandle, cause);
-    if (connHandle != connInfo_.conn_handle) {
-        return;
+int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t cause) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    LOG_DEBUG(TRACE, "handleAuthenStateChanged: handle: %d, state: 0x%02x cause: 0x%x", state, connHandle, cause);
+    BleConnection* connection = fetchConnection(connHandle);
+    LOG_DEBUG(TRACE, "handleAuthenStateChanged connection=%x", connection);
+    if (!connection && connecting_) {
+        // Race condition in the stack
+        LOG_DEBUG(WARN, "handleAuthenStateChanged force adding connection");
+        handleConnectionStateChanged(connHandle, GAP_CONN_STATE_CONNECTED, 0);
+        connection = fetchConnection(connHandle);
     }
+    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
     switch (state) {
         case GAP_AUTHEN_STATE_STARTED: {
             LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_STARTED");
+            auto state = connection->pairState;
+            connection->pairState = BLE_PAIRING_STATE_STARTED;
+            // Notify the event only if the other side initiates the pairing procedure
+            if (state == BLE_PAIRING_STATE_NOT_INITIATED || state == BLE_PAIRING_STATE_REJECTED) {
+                hal_ble_link_evt_t linkEvent = {};
+                linkEvent.type = BLE_EVT_PAIRING_REQUEST_RECEIVED;
+                linkEvent.conn_handle = connHandle;
+                // User may call rejectPairing() in the event handler
+                notifyLinkEvent(linkEvent);
+            }
             break;
         }
         case GAP_AUTHEN_STATE_COMPLETE: {
+            hal_ble_link_evt_t linkEvent = {};
+            linkEvent.type = BLE_EVT_PAIRING_STATUS_UPDATED;
+            linkEvent.conn_handle = connection->info.conn_handle;
+            linkEvent.params.pairing_status.bonded = 0;
+            linkEvent.params.pairing_status.lesc = 0;
+            BlePairingState state = BLE_PAIRING_STATE_REJECTED;
             if (cause == GAP_SUCCESS) {
                 LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair success");
+                state = BLE_PAIRING_STATE_PAIRED;
+                linkEvent.params.pairing_status.lesc = pairingLesc_;
+                linkEvent.params.pairing_status.status = SYSTEM_ERROR_NONE;
             } else {
                 LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_COMPLETE pair failed");
+                linkEvent.params.pairing_status.status = SYSTEM_ERROR_INTERNAL;
             }
+            notifyLinkEvent(linkEvent);
+            connection->pairState = state;
             break;
         }
         default: {
@@ -1565,6 +2297,76 @@ void BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_
             break;
         }
     }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::handlePairJustWork(uint8_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
+    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+        CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT));
+    } else {
+        CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
+    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+        uint32_t displayValue = 0;
+        le_bond_get_display_key(connHandle, &displayValue);
+        char passkey[BLE_PAIRING_PASSKEY_LEN + 1];
+        sprintf(passkey, "%06ld", displayValue);
+        hal_ble_link_evt_t linkEvent = {};
+        if (displayOnly) {
+            linkEvent.type = BLE_EVT_PAIRING_PASSKEY_DISPLAY;
+        } else {
+            linkEvent.type = BLE_EVT_PAIRING_NUMERIC_COMPARISON;
+        }
+        linkEvent.conn_handle = connHandle;
+        linkEvent.params.passkey_display.passkey = (const uint8_t*)passkey;
+        // User may call rejectPairing() in the event handler
+        notifyLinkEvent(linkEvent);
+        if (connection->pairState == BLE_PAIRING_STATE_USER_REQ_REJECT) {
+            goto reject;
+        }
+        if (displayOnly) {
+            le_bond_passkey_display_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT);
+        } else if (connection->pairState != BLE_PAIRING_STATE_SET_AUTH_DATA) {
+            // User didn't set authentication data in event callback, reject pairing automatically
+            goto reject;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+reject:
+    if (displayOnly) {
+        CHECK_RTL(le_bond_passkey_display_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
+    } else {
+        CHECK_RTL(le_bond_user_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::handlePairPasskeyInput(uint8_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    BleConnection* connection = fetchConnection(connHandle);
+    T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
+    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+        hal_ble_link_evt_t linkEvent = {};
+        linkEvent.type = BLE_EVT_PAIRING_PASSKEY_INPUT;
+        linkEvent.conn_handle = connHandle;
+        notifyLinkEvent(linkEvent);
+        if (connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA) {
+            return SYSTEM_ERROR_NONE;
+        }
+    }
+    CHECK_RTL(le_bond_passkey_input_confirm(connHandle, 0, GAP_CFM_CAUSE_REJECT));
+    return SYSTEM_ERROR_NONE;
 }
 
 T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
@@ -1601,9 +2403,47 @@ T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
 }
 
 int BleGatt::init() {
+    CHECK_TRUE(os_semaphore_create(&notifySemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(os_semaphore_create(&discoverySemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(os_semaphore_create(&writeSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(os_semaphore_create(&readSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
+
+    client_init(1);
+    CHECK_TRUE(client_register_spec_client_cb(&clientId_, &clientCallbacks_), SYSTEM_ERROR_INTERNAL);
+
     server_init(MAX_ALLOWED_BLE_SERVICES);
     server_register_app_cb(gattServerEventCallback);
     serviceRegistered_ = false;
+    if (attrConfigured_) {
+        CHECK(BleGatt::getInstance().registerAttributeTable());
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::deinit() {
+    if (notifySemaphore_) {
+        os_semaphore_destroy(notifySemaphore_);
+        notifySemaphore_ = nullptr;
+    }
+    if (discoverySemaphore_) {
+        os_semaphore_destroy(discoverySemaphore_);
+        discoverySemaphore_ = nullptr;
+    }
+    if (writeSemaphore_) {
+        os_semaphore_destroy(writeSemaphore_);
+        writeSemaphore_ = nullptr;
+    }
+    if (readSemaphore_) {
+        os_semaphore_destroy(readSemaphore_);
+        readSemaphore_ = nullptr;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::setDesiredAttMtu(size_t attMtu) {
+    CHECK_TRUE(attMtu >= BLE_MIN_ATT_MTU_SIZE && attMtu <= BLE_MAX_ATT_MTU_SIZE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    desiredAttMtu_ = attMtu;
+    gap_config_max_mtu_size(attMtu);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1618,6 +2458,11 @@ T_APP_RESULT BleGatt::gattServerEventCallback(T_SERVER_ID serviceId, void *pData
                 break;
             }
             case PROFILE_EVT_SEND_DATA_COMPLETE: {
+                auto& gatt = BleGatt::getInstance();
+                if (!gatt.isNotifying_) {
+                    return result;
+                }
+                gatt.isNotifying_ = false;
                 LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE: conn_id %d, cause: 0x%x, serviceId: %d, index: 0x%x, credits: %d",
                             pParam->event_data.send_data_result.conn_id,
                             pParam->event_data.send_data_result.cause,
@@ -1625,9 +2470,7 @@ T_APP_RESULT BleGatt::gattServerEventCallback(T_SERVER_ID serviceId, void *pData
                             pParam->event_data.send_data_result.attrib_idx,
                             pParam->event_data.send_data_result.credits);
                 if (pParam->event_data.send_data_result.cause == GAP_SUCCESS) {
-                    LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE success");
-                } else {
-                    LOG_DEBUG(TRACE, "PROFILE_EVT_SEND_DATA_COMPLETE failed");
+                    os_semaphore_give(gatt.notifySemaphore_, false);
                 }
                 break;
             }
@@ -1640,7 +2483,7 @@ T_APP_RESULT BleGatt::gattServerEventCallback(T_SERVER_ID serviceId, void *pData
 T_APP_RESULT BleGatt::gattReadAttrCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, uint16_t offset, uint16_t* length, uint8_t** value) {
     LOG_DEBUG(TRACE, "gattReadAttrCallback(), handle: %d, serviceId: %d, index: %d, offset: %d", connHandle, serviceId, index, offset);
     T_APP_RESULT cause = APP_RESULT_SUCCESS;
-    if (BleGap::getInstance().connectionHandle() != connHandle) {
+    if (!BleGap::getInstance().valid(connHandle)) {
         return cause;
     }
     *length = 0;
@@ -1657,7 +2500,7 @@ T_APP_RESULT BleGatt::gattReadAttrCallback(uint8_t connHandle, T_SERVER_ID servi
 
 T_APP_RESULT BleGatt::gattWriteAttrCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, T_WRITE_TYPE type, uint16_t length, uint8_t *value, P_FUN_WRITE_IND_POST_PROC *postProc) {
     T_APP_RESULT cause = APP_RESULT_SUCCESS;
-    if (BleGap::getInstance().connectionHandle() != connHandle) {
+    if (!BleGap::getInstance().valid(connHandle)) {
         return cause;
     }
     *postProc = nullptr;
@@ -1706,7 +2549,7 @@ T_APP_RESULT BleGatt::gattWriteAttrCallback(uint8_t connHandle, T_SERVER_ID serv
 
 void BleGatt::gattCccdUpdatedCallback(uint8_t connHandle, T_SERVER_ID serviceId, uint16_t index, uint16_t bits) {
     LOG_DEBUG(TRACE, "gattCccdUpdatedCallback, id:%d, index:%d, cccd:%d", serviceId, index, bits);
-    if (BleGap::getInstance().connectionHandle() != connHandle) {
+    if (!BleGap::getInstance().valid(connHandle)) {
         return;
     }
     // Note: the index passed in is the CCCD attrribute index
@@ -1945,9 +2788,10 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
 }
 
 int BleGatt::registerAttributeTable() {
+    attrConfigured_ = true;
     if (!serviceRegistered_) {
         for (auto& svc : services_) {
-            if (!server_add_service_by_start_handle(&svc.id, (uint8_t *)svc.attrTable.data(), svc.attrTable.size() * sizeof(T_ATTRIB_APPL), callbacks_, svc.startHandle)) {
+            if (!server_add_service_by_start_handle(&svc.id, (uint8_t *)svc.attrTable.data(), svc.attrTable.size() * sizeof(T_ATTRIB_APPL), serverCallbacks_, svc.startHandle)) {
                 LOG_DEBUG(TRACE, "Failed to add service.");
                 svc.id = 0xFF;
                 return SYSTEM_ERROR_INTERNAL;
@@ -2019,8 +2863,30 @@ ssize_t BleGatt::notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* bu
                     return 0;
                 }
                 LOG_DEBUG(TRACE, "notify %x %x %x %u %x", config.subscriber.connHandle, svc.id, config.index, attribute.value_len, type);
-                if (BleGap::getInstance().connectionHandle() == config.subscriber.connHandle) {
+                if (!BleGap::getInstance().valid(config.subscriber.connHandle)) {
+                    return 0;
+                }
+                
+                uint32_t timeoutMs = 100;
+                hal_ble_conn_info_t info = {};
+                info.version = BLE_API_VERSION;
+                info.size = sizeof(hal_ble_conn_info_t);
+                int ret = BleGap::getInstance().getConnectionInfo(config.subscriber.connHandle, &info);
+                if (ret == SYSTEM_ERROR_NONE) {
+                    timeoutMs += info.conn_params.max_conn_interval * 1250/*us*/ / 1000;
+                }
+                uint8_t retry = 3;
+                bool success;
+                do {
+                    success = true;
+                    isNotifying_ = true;
                     CHECK_TRUE(server_send_data(config.subscriber.connHandle, svc.id, config.index, (uint8_t*)attribute.p_value_context, attribute.value_len, type), SYSTEM_ERROR_INTERNAL);
+                    if (os_semaphore_take(notifySemaphore_, timeoutMs, false)) {
+                        success = false;
+                    }
+                } while (--retry > 0 && !success);
+                if (!success) {
+                    return SYSTEM_ERROR_TIMEOUT;
                 }
                 return attribute.value_len;
             }
@@ -2037,6 +2903,404 @@ int BleGatt::removeSubscriber(hal_ble_conn_handle_t connHandle) {
         }
     }
     return SYSTEM_ERROR_NONE;
+}
+
+void BleGatt::onDiscoverStateCallback(uint8_t connHandle, T_DISCOVERY_STATE discoveryState) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (!gatt.isDiscovering_ || gatt.currDiscConnHandle_ != connHandle) {
+        return;
+    }
+    switch (discoveryState) {
+        case DISC_STATE_SRV_DONE: {
+            gatt.isDiscovering_ = false;
+            if (gatt.discSvcCallback_) {
+                hal_ble_svc_discovered_evt_t svcDiscEvent = {};
+                svcDiscEvent.conn_handle = gatt.currDiscConnHandle_;
+                svcDiscEvent.count = gatt.discServices_.size();
+                svcDiscEvent.services = gatt.discServices_.data();
+                gatt.discSvcCallback_(&svcDiscEvent, gatt.discSvcContext_);
+            }
+            os_semaphore_give(gatt.discoverySemaphore_, false);
+            break;
+        }
+        case DISC_STATE_CHAR_DONE:
+        case DISC_STATE_CHAR_UUID16_DONE:
+        case DISC_STATE_CHAR_UUID128_DONE: {
+            // Start discovering descriptors
+            if (client_all_char_descriptor_discovery(connHandle, gatt.clientId_, gatt.currDiscService_->start_handle, gatt.currDiscService_->end_handle) != GAP_CAUSE_SUCCESS) {
+                LOG(ERROR, "Imcompleted characteristic discovery procedure!");
+                gatt.isDiscovering_ = false;
+                os_semaphore_give(gatt.discoverySemaphore_, false);
+            }
+            break;
+        }
+        case DISC_STATE_CHAR_DESCRIPTOR_DONE: {
+            // Characteristic discovery procedure completed
+            gatt.isDiscovering_ = false;
+            if (gatt.discCharCallback_) {
+                hal_ble_char_discovered_evt_t charDiscEvent = {};
+                charDiscEvent.conn_handle = gatt.currDiscConnHandle_;
+                charDiscEvent.count = gatt.discCharacteristics_.size();
+                charDiscEvent.characteristics = gatt.discCharacteristics_.data();
+                gatt.discCharCallback_(&charDiscEvent, gatt.discCharContext_);
+            }
+            os_semaphore_give(gatt.discoverySemaphore_, false);
+            break;
+        }
+        case DISC_STATE_FAILED: {
+            if (gatt.isDiscovering_) {
+                gatt.isDiscovering_ = false;
+                os_semaphore_give(gatt.discoverySemaphore_, false);
+            }
+            break;
+        }
+        default: {
+            LOG_DEBUG(TRACE, "Unhandled discover state");
+            break;
+        }
+    }
+}
+
+void BleGatt::onDiscoverResultCallback(uint8_t connHandle, T_DISCOVERY_RESULT_TYPE type, T_DISCOVERY_RESULT_DATA data) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (!gatt.isDiscovering_ || gatt.currDiscConnHandle_ != connHandle) {
+        return;
+    }
+    switch (type) {
+        case DISC_RESULT_ALL_SRV_UUID16:
+        case DISC_RESULT_ALL_SRV_UUID128:
+        case DISC_RESULT_SRV_DATA: {
+            hal_ble_svc_t service = {};
+            service.version = BLE_API_VERSION;
+            service.size = sizeof(hal_ble_svc_t);
+            service.start_handle = data.p_srv_uuid16_disc_data->att_handle; // memory layout is compatible with other type of calback data
+            service.end_handle = data.p_srv_uuid16_disc_data->end_group_handle; // memory layout is compatible with other type of calback data
+            if (type == DISC_RESULT_ALL_SRV_UUID16) {
+                service.uuid.type = BLE_UUID_TYPE_16BIT;
+                service.uuid.uuid16 = data.p_srv_uuid16_disc_data->uuid16;
+            } else if (type == DISC_RESULT_ALL_SRV_UUID128) {
+                service.uuid.type = BLE_UUID_TYPE_128BIT;
+                memcpy(service.uuid.uuid128, data.p_srv_uuid128_disc_data->uuid128, BLE_SIG_UUID_128BIT_LEN);
+            } else {
+                service.uuid = *(gatt.discSvcUuid_);
+            }
+            if (!gatt.discServices_.append(service)) {
+                LOG(ERROR, "Failed to append discovered service.");
+                // Do nothing. We'll give the semaphore in the discover state callback
+            }
+            break;
+        }
+        case DISC_RESULT_CHAR_UUID16:
+        case DISC_RESULT_CHAR_UUID128:
+        case DISC_RESULT_BY_UUID16_CHAR:
+        case DISC_RESULT_BY_UUID128_CHAR: {
+            hal_ble_char_t characteristic = {};
+            characteristic.version = BLE_API_VERSION;
+            characteristic.size = sizeof(hal_ble_char_t);
+            characteristic.charHandles.version = BLE_API_VERSION;
+            characteristic.charHandles.size = sizeof(hal_ble_char_handles_t);
+            characteristic.char_ext_props = data.p_char_uuid16_disc_data->properties & 0x80 ? 0x01 : 0x00; // memory layout is compatible with other type of calback data
+            characteristic.properties = data.p_char_uuid16_disc_data->properties & 0x7F; // memory layout is compatible with other type of calback data
+            characteristic.charHandles.decl_handle = data.p_char_uuid16_disc_data->decl_handle; // memory layout is compatible with other type of calback data
+            characteristic.charHandles.value_handle = data.p_char_uuid16_disc_data->value_handle; // memory layout is compatible with other type of calback data
+            if (type == DISC_RESULT_CHAR_UUID16 || type == DISC_RESULT_BY_UUID16_CHAR) {
+                characteristic.uuid.type = BLE_UUID_TYPE_16BIT;
+                characteristic.uuid.uuid16 = data.p_char_uuid16_disc_data->uuid16;
+            } else {
+                characteristic.uuid.type = BLE_UUID_TYPE_128BIT;
+                memcpy(characteristic.uuid.uuid128, data.p_char_uuid128_disc_data->uuid128, BLE_SIG_UUID_128BIT_LEN);
+            }
+            if (!gatt.discCharacteristics_.append(characteristic)) {
+                LOG(ERROR, "Failed to append discovered characteristic.");
+                // Do nothing. We'll give the semaphore in the discover state callback
+            }
+            break;
+        }
+        case DISC_RESULT_CHAR_DESC_UUID16: {
+            auto descriptor = (T_GATT_CHARACT_DESC_ELEM16*)data.p_char_desc_uuid16_disc_data;
+            hal_ble_char_t* characteristic = gatt.findDiscoveredCharacteristic(descriptor->handle);
+            if (!characteristic) {
+                return;
+            }
+            if (descriptor->uuid16 == BLE_SIG_UUID_CHAR_USER_DESCRIPTION_DESC) {
+                characteristic->charHandles.user_desc_handle = descriptor->handle;
+            } else if (descriptor->uuid16 == BLE_SIG_UUID_CLIENT_CHAR_CONFIG_DESC) {
+                characteristic->charHandles.cccd_handle = descriptor->handle;
+            } else if (descriptor->uuid16 == BLE_SIG_UUID_SERVER_CHAR_CONFIG_DESC) {
+                characteristic->charHandles.sccd_handle = descriptor->handle;
+            }
+            // Disregard any other descriptors
+            break;
+        }
+        default: {
+            LOG_DEBUG(TRACE, "Unhandled discover result");
+            break;
+        }
+    }
+}
+
+void BleGatt::onReadResultCallback(uint8_t connHandle, uint16_t cause, uint16_t handle, uint16_t size, uint8_t *value) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (gatt.currReadConnHandle_ != connHandle || gatt.readAttrHandle_ != handle) {
+        return;
+    }
+    gatt.readLen_ = std::min(gatt.readLen_, (size_t)size);
+    memcpy(gatt.readBuf_, value, gatt.readLen_);
+    os_semaphore_give(gatt.readSemaphore_, false);
+}
+
+void BleGatt::onWriteResultCallback(uint8_t connHandle, T_GATT_WRITE_TYPE type, uint16_t handle, uint16_t cause, uint8_t credits) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (gatt.currWriteConnHandle_ != connHandle || gatt.writeAttrHandle_ != handle) {
+        return;
+    }
+    os_semaphore_give(gatt.writeSemaphore_, false);
+}
+
+T_APP_RESULT BleGatt::onNotifyIndResultCallback(uint8_t connHandle, bool notify, uint16_t handle, uint16_t size, uint8_t *value) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return APP_RESULT_REJECT;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (!notify) {
+        if (client_attr_ind_confirm(connHandle) != GAP_CAUSE_SUCCESS) {
+            LOG(ERROR, "Failed to confirm indication!");
+        }
+    }
+    hal_ble_char_evt_t charEvent = {};
+    charEvent.conn_handle = connHandle;
+    charEvent.attr_handle = handle;
+    charEvent.type = BLE_EVT_DATA_NOTIFIED;
+    charEvent.params.data_written.offset = 0;
+    charEvent.params.data_written.len = size;
+    charEvent.params.data_written.data = value;
+    for (const auto& publisher : gatt.publishers_) {
+        if (publisher.connHandle == connHandle && publisher.valueHandle == handle) {
+            if (publisher.callback) {
+                publisher.callback(&charEvent, publisher.context);
+            }
+            break;
+        }
+    }
+    return APP_RESULT_SUCCESS;
+}
+
+void BleGatt::onGattClientDisconnectCallback(uint8_t connHandle) {
+    if (!BleGap::getInstance().valid(connHandle)) {
+        return;
+    }
+    auto& gatt = BleGatt::getInstance();
+    if (gatt.isDiscovering_) {
+        os_semaphore_give(gatt.discoverySemaphore_, false);
+    }
+    if (gatt.currWriteConnHandle_ != BLE_INVALID_CONN_HANDLE) {
+        os_semaphore_give(gatt.writeSemaphore_, false);
+    }
+    if (gatt.currReadConnHandle_ != BLE_INVALID_CONN_HANDLE) {
+        os_semaphore_give(gatt.readSemaphore_, false);
+    }
+}
+
+bool BleGatt::discovering(hal_ble_conn_handle_t connHandle) const {
+    // TODO: discovering service and characteristic on multi-links concurrently.
+    return isDiscovering_;
+}
+
+void BleGatt::resetDiscoveryState() {
+    isDiscovering_ = false;
+    currDiscConnHandle_ = BLE_INVALID_CONN_HANDLE;
+    currDiscService_ = nullptr;
+    discSvcUuid_ = nullptr;
+    discServices_.clear();
+    discCharacteristics_.clear();
+}
+
+hal_ble_char_t* BleGatt::findDiscoveredCharacteristic(hal_ble_attr_handle_t attrHandle) {
+    hal_ble_char_t* foundChar = nullptr;
+    hal_ble_attr_handle_t foundCharDeclHandle = BLE_INVALID_ATTR_HANDLE;
+    for (auto& characteristic : discCharacteristics_) {
+        // The attribute handles increase by sequence.
+        if (attrHandle >= characteristic.charHandles.decl_handle) {
+            if (characteristic.charHandles.decl_handle > foundCharDeclHandle) {
+                foundChar = &characteristic;
+                foundCharDeclHandle = characteristic.charHandles.decl_handle;
+            }
+        }
+    }
+    return foundChar;
+}
+
+int BleGatt::discoverServices(hal_ble_conn_handle_t connHandle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context) {
+    CHECK_TRUE(BleGap::getInstance().valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_FALSE(isDiscovering_, SYSTEM_ERROR_INVALID_STATE);
+    SCOPE_GUARD ({
+        resetDiscoveryState();
+    });
+    currDiscConnHandle_ = connHandle;
+    discSvcCallback_ = callback;
+    discSvcContext_ = context;
+    if (uuid == nullptr) {
+        CHECK_RTL(client_all_primary_srv_discovery(connHandle, clientId_));
+    } else {
+        discSvcUuid_ = uuid;
+        if (uuid->type == BLE_UUID_TYPE_16BIT) {
+            CHECK_RTL(client_by_uuid_srv_discovery(connHandle, clientId_, uuid->uuid16));
+        } else if (uuid->type == BLE_UUID_TYPE_128BIT) {
+            CHECK_RTL(client_by_uuid128_srv_discovery(connHandle, clientId_, (uint8_t*)uuid->uuid128));
+        } else {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+    }
+    isDiscovering_ = true;
+    if (os_semaphore_take(discoverySemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::discoverCharacteristics(hal_ble_conn_handle_t connHandle, const hal_ble_svc_t* service,
+        const hal_ble_uuid_t* uuid, hal_ble_on_disc_char_cb_t callback, void* context) {
+    CHECK_TRUE(BleGap::getInstance().valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(service, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_FALSE(isDiscovering_, SYSTEM_ERROR_INVALID_STATE);
+    SCOPE_GUARD ({
+        resetDiscoveryState();
+    });
+    currDiscConnHandle_ = connHandle;
+    discCharCallback_ = callback;
+    discCharContext_ = context;
+    currDiscService_ = service;
+    if (uuid == nullptr) {
+        CHECK_RTL(client_all_char_discovery(connHandle, clientId_, service->start_handle, service->end_handle));
+    } else {
+        if (uuid->type == BLE_UUID_TYPE_16BIT) {
+            CHECK_RTL(client_by_uuid_char_discovery(connHandle, clientId_, service->start_handle, service->end_handle, uuid->uuid16));
+        } else if (uuid->type == BLE_UUID_TYPE_128BIT) {
+            CHECK_RTL(client_by_uuid128_char_discovery(connHandle, clientId_, service->start_handle, service->end_handle, (uint8_t*)uuid->uuid128));
+        } else {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+    }
+    isDiscovering_ = true;
+    if (os_semaphore_take(discoverySemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::addPublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle, hal_ble_on_char_evt_cb_t callback, void* context) {
+    for (auto& publisher : publishers_) {
+        if (publisher.connHandle == connHandle && publisher.valueHandle == valueHandle) {
+            publisher.callback = callback;
+            publisher.context = context;
+            return SYSTEM_ERROR_NONE;
+        }
+    }
+    Publisher pub = {};
+    pub.connHandle = connHandle;
+    pub.valueHandle = valueHandle;
+    pub.callback = callback;
+    pub.context = context;
+    CHECK_TRUE(publishers_.append(pub), SYSTEM_ERROR_NO_MEMORY);
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::removePublisher(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t valueHandle) {
+    size_t i = 0;
+    for (const auto& publisher : publishers_) {
+        if (publisher.connHandle == connHandle && publisher.valueHandle == valueHandle) {
+            publishers_.removeAt(i);
+            return SYSTEM_ERROR_NONE;
+        }
+        i++;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::removeAllPublishersOfConnection(hal_ble_conn_handle_t connHandle) {
+    for (int i = 0; i < publishers_.size(); i = i) {
+        const auto& publisher = publishers_[i];
+        if (publisher.connHandle == connHandle) {
+            publishers_.removeAt(i);
+            continue;
+        }
+        i++;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGatt::configureRemoteCCCD(const hal_ble_cccd_config_t* config) {
+    CHECK_TRUE(BleGap::getInstance().valid(config->conn_handle), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(config->cccd_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(config->value_handle != BLE_INVALID_ATTR_HANDLE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(config->cccd_value <= BLE_SIG_CCCD_VAL_NOTI_IND, SYSTEM_ERROR_NOT_SUPPORTED);
+    uint8_t buf[2] = {0x00, 0x00};
+    buf[0] = config->cccd_value;
+    CHECK(writeAttribute(config->conn_handle, config->cccd_handle, buf, sizeof(buf), true));
+    if (config->cccd_value > BLE_SIG_CCCD_VAL_DISABLED && config->cccd_value <= BLE_SIG_CCCD_VAL_NOTI_IND) {
+        CHECK(addPublisher(config->conn_handle, config->value_handle, config->callback, config->context));
+    } else {
+        CHECK(removePublisher(config->conn_handle, config->value_handle));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+ssize_t BleGatt::writeAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, const uint8_t* buf, size_t len, bool response) {
+    CHECK_TRUE(buf && len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(BleGap::getInstance().valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    SCOPE_GUARD ({
+        writeAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
+        currWriteConnHandle_ = BLE_INVALID_CONN_HANDLE;
+    });
+    T_GATT_WRITE_TYPE writeType = GATT_WRITE_TYPE_CMD;
+    if (response) {
+        writeType = GATT_WRITE_TYPE_REQ;
+    }
+    writeAttrHandle_ = attrHandle;
+    currWriteConnHandle_ = connHandle;
+    len = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleGap::getInstance().getAttMtu(connHandle)));
+    CHECK_RTL(client_attr_write(connHandle, clientId_, writeType, attrHandle, len, (uint8_t*)buf));
+    if (os_semaphore_take(writeSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return len;
+}
+
+// FIXME: Multi-link read
+ssize_t BleGatt::readAttribute(hal_ble_conn_handle_t connHandle, hal_ble_attr_handle_t attrHandle, uint8_t* buf, size_t len) {
+    CHECK_TRUE(buf && len, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(BleGap::getInstance().valid(connHandle), SYSTEM_ERROR_NOT_FOUND);
+    SCOPE_GUARD ({
+        readLen_ = 0;
+        readBuf_ = nullptr;
+        readAttrHandle_ = BLE_INVALID_ATTR_HANDLE;
+        currReadConnHandle_ = BLE_INVALID_CONN_HANDLE;
+    });
+    readAttrHandle_ = attrHandle;
+    currReadConnHandle_ = connHandle;
+    readBuf_ = buf;
+    readLen_ = std::min(len, (size_t)BLE_ATTR_VALUE_PACKET_SIZE(BleGap::getInstance().getAttMtu(connHandle)));
+    CHECK_RTL(client_attr_read(connHandle, clientId_, attrHandle));
+    if (os_semaphore_take(readSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
+        SPARK_ASSERT(false);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return readLen_;
 }
 
 
@@ -2160,13 +3424,15 @@ int hal_ble_gap_get_appearance(ble_sig_appearance_t* appearance, void* reserved)
 int hal_ble_gap_set_ppcp(const hal_ble_conn_params_t* ppcp, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_ppcp().");
-    return SYSTEM_ERROR_NONE;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().setPpcp(ppcp);
 }
 
 int hal_ble_gap_get_ppcp(hal_ble_conn_params_t* ppcp, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_ppcp().");
-    return SYSTEM_ERROR_NONE;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getPpcp(ppcp);
 }
 
 int hal_ble_gap_add_whitelist(const hal_ble_addr_t* addr_list, size_t len, void* reserved) {
@@ -2304,7 +3570,8 @@ int hal_ble_gap_stop_scan(void* reserved) {
 int hal_ble_gap_connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_connect().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().connect(config, conn_handle);
 }
 
 bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address, void* reserved) {
@@ -2315,21 +3582,21 @@ bool hal_ble_gap_is_connecting(const hal_ble_addr_t* address, void* reserved) {
 
 bool hal_ble_gap_is_connected(const hal_ble_addr_t* address, void* reserved) {
     CHECK_TRUE(BleGap::getInstance().initialized(), false);
-    return BleGap::getInstance().connected();
+    return BleGap::getInstance().connected(address);
 }
 
 int hal_ble_gap_connect_cancel(const hal_ble_addr_t* address, void* reserved) {
     LOG_DEBUG(TRACE, "hal_ble_gap_connect_cancel().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     // Do not acquire the lock here, otherwise another thread cannot cancel the connection attempt.
-    return BleGap::getInstance().disconnect();
+    return BleGap::getInstance().connectCancel(address);
 }
 
 int hal_ble_gap_disconnect(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_disconnect().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    return BleGap::getInstance().disconnect();
+    return BleGap::getInstance().disconnect(conn_handle);
 }
 
 int hal_ble_gap_update_connection_params(hal_ble_conn_handle_t conn_handle, const hal_ble_conn_params_t* conn_params, void* reserved) {
@@ -2354,31 +3621,38 @@ int hal_ble_gap_get_rssi(hal_ble_conn_handle_t conn_handle, void* reserved) {
 int hal_ble_gap_set_pairing_config(const hal_ble_pairing_config_t* config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_config().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().setPairingConfig(config);
 }
 
 int hal_ble_gap_get_pairing_config(hal_ble_pairing_config_t* config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_pairing_config().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getPairingConfig(config);
 }
 
 int hal_ble_gap_start_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_start_pairing().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().startPairing(conn_handle);
 }
 
 int hal_ble_gap_reject_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
-    BleLock lk;
+    // NOT acquiring BLE lock here, we can get deadlocked if the event comes before connect() finishes
+    // There is another mutex that works just for connections_ array
     LOG_DEBUG(TRACE, "hal_ble_gap_reject_pairing().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().rejectPairing(conn_handle);
 }
 
 int hal_ble_gap_set_pairing_auth_data(hal_ble_conn_handle_t conn_handle, const hal_ble_pairing_auth_data_t* auth, void* reserved) {
-    BleLock lk;
+    // NOT acquiring BLE lock here, we can get deadlocked if the event comes before connect() finishes
+    // There is another mutex that works just for connections_ array
     LOG_DEBUG(TRACE, "hal_ble_gap_set_pairing_auth_data().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().setPairingAuthData(conn_handle, auth);
 }
 
 int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle, const uint8_t* passkey, void* reserved) {
@@ -2389,14 +3663,17 @@ int hal_ble_gap_set_pairing_passkey_deprecated(hal_ble_conn_handle_t conn_handle
 
 bool hal_ble_gap_is_pairing(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_is_pairing().");
-    return false;
+    // Too noisy
+    // LOG_DEBUG(TRACE, "hal_ble_gap_is_pairing().");
+    CHECK_TRUE(BleGap::getInstance().initialized(), false);
+    return BleGap::getInstance().isPairing(conn_handle);
 }
 
 bool hal_ble_gap_is_paired(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_is_paired().");
-    return false;
+    CHECK_TRUE(BleGap::getInstance().initialized(), false);
+    return BleGap::getInstance().isPaired(conn_handle);
 }
 
 /**********************************************
@@ -2456,35 +3733,41 @@ ssize_t hal_ble_gatt_server_get_characteristic_value(hal_ble_attr_handle_t value
 int hal_ble_gatt_client_discover_all_services(hal_ble_conn_handle_t conn_handle, hal_ble_on_disc_service_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_all_services().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().discoverServices(conn_handle, nullptr, callback, context);
 }
 
 int hal_ble_gatt_client_discover_service_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_uuid_t* uuid, hal_ble_on_disc_service_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_service_by_uuid().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().discoverServices(conn_handle, uuid, callback, context);
 }
 
 int hal_ble_gatt_client_discover_characteristics(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, hal_ble_on_disc_char_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_characteristics().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().discoverCharacteristics(conn_handle, service, nullptr, callback, context);
 }
 
 int hal_ble_gatt_client_discover_characteristics_by_uuid(hal_ble_conn_handle_t conn_handle, const hal_ble_svc_t* service, const hal_ble_uuid_t* uuid, hal_ble_on_disc_char_cb_t callback, void* context, void* reserved) {
     BleLock lk;
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    LOG_DEBUG(TRACE, "hal_ble_gatt_client_discover_characteristics_by_uuid().");
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().discoverCharacteristics(conn_handle, service, uuid, callback, context);
 }
 
 bool hal_ble_gatt_client_is_discovering(hal_ble_conn_handle_t conn_handle, void* reserved) {
     BleLock lk;
-    return false;
+    CHECK_TRUE(BleGap::getInstance().initialized(), false);
+    return BleGatt::getInstance().discovering(conn_handle);
 }
 
 int hal_ble_gatt_server_set_desired_att_mtu(size_t att_mtu, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_server_set_desired_att_mtu().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    return BleGatt::getInstance().setDesiredAttMtu(att_mtu);
 }
 
 ssize_t hal_ble_gatt_get_att_mtu(hal_ble_conn_handle_t conn_handle, void* reserved) {
@@ -2503,25 +3786,29 @@ int hal_ble_gatt_client_att_mtu_exchange(hal_ble_conn_handle_t conn_handle, void
 int hal_ble_gatt_client_configure_cccd(const hal_ble_cccd_config_t* config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_configure_cccd().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().configureRemoteCCCD(config);
 }
 
 ssize_t hal_ble_gatt_client_write_with_response(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_write_with_response().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().writeAttribute(conn_handle, value_handle, buf, len, true);
 }
 
 ssize_t hal_ble_gatt_client_write_without_response(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_write_without_response().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().writeAttribute(conn_handle, value_handle, buf, len, false);
 }
 
 ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t value_handle, uint8_t* buf, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_client_read().");
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGatt::getInstance().readAttribute(conn_handle, value_handle, buf, len);
 }
 
 
