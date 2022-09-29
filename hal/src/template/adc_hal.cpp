@@ -50,3 +50,7 @@ int hal_adc_sleep(bool sleep, void* reserved)
 {
     return 0;
 }
+
+int hal_adc_calibrate(uint32_t reserved, void* reserved1) {
+    return 0;
+}
