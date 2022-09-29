@@ -261,7 +261,7 @@ private:
 
     static constexpr uint32_t EFUSE_ADC_OFFSET = 0x1D0;
     static constexpr uint32_t EFUSE_ADC_GAIN = 0x1D2;
-    static constexpr int CH8_ADJUSTMENT = 0; // or -50 found empirically works for some devices, for now leaving as 0
+    static constexpr int CH8_ADJUSTMENT = -50; // CH8 - GND on a pin difference, found empirically works for most devices
     static constexpr unsigned CH8_SAMPLE_COUNT = 100;
     static constexpr uint32_t NON_LINEAR_SECTION_LOW_MV = 800;
     static constexpr uint32_t NON_LINEAR_SECTION_HIGH_MV = 2000;
