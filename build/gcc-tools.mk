@@ -13,9 +13,9 @@ ifeq ($(DEBUG_BUILD),y)
 endif
 
 # C compiler flags
-CFLAGS +=  -g3 -m64 -O$(GCC_OPTIMIZE) -gdwarf-2
+CFLAGS += -g3 -O$(GCC_OPTIMIZE) -gdwarf-2
 CFLAGS += -Wno-unused-local-typedefs -Wno-pragmas
-ASFLAGS +=  -g3
+ASFLAGS += -g3
 
 
 ifeq ("$(MAKE_OS)", "LINUX")
