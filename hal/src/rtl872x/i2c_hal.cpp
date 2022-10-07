@@ -94,6 +94,15 @@ public:
         lock();
         os_thread_scheduling(true, nullptr);
         if (isConfigured()) {
+            // Configured, but new buffers are invalid
+            if (!isConfigValid(conf)){
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+            // Configured, but new buffers are smaller
+            if (conf->rx_buffer_size < rxBuffer_.size() ||
+               conf->tx_buffer_size < txBuffer_.size()) {    
+               return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+            } 
             CHECK(deInit());
         }
         if (isConfigValid(conf)) {

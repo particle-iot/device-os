@@ -32,6 +32,7 @@
 #include "timer_hal.h"
 #include <memory>
 #include "check.h"
+#include <malloc.h>
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 #include "usart_hal.h"
@@ -110,6 +111,8 @@ typedef struct nrf5x_i2c_info_t {
     size_t                      tx_index_tail;
 
     os_mutex_recursive_t        mutex;
+    bool                        configured;
+    bool                        heapBuffer;
 
     void (*callback_on_request)(void);
     void (*callback_on_receive)(int);
@@ -310,28 +313,46 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     os_thread_scheduling(false, nullptr);
     if (i2cMap[i2c].mutex == nullptr) {
         os_mutex_recursive_create(&i2cMap[i2c].mutex);
-    } else {
-        // Already initialized
-        os_thread_scheduling(true, nullptr);
-        return SYSTEM_ERROR_NONE;
-    }
+    } 
 
     // Capture the mutex and re-enable threading
     I2cLock lk(i2c);
     os_thread_scheduling(true, nullptr);
 
-    // Initialize internal data structure
+    if (i2cMap[i2c].configured) {
+        // Configured, but new buffers are invalid
+        if (!isConfigValid(config)){
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        // Configured, but new buffers are smaller
+        if (config->rx_buffer_size < i2cMap[i2c].rx_buf_size ||
+           config->tx_buffer_size < i2cMap[i2c].tx_buf_size) {    
+           return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+        }
+        // Free current buffers if needed
+        if (i2cMap[i2c].heapBuffer) {
+            free(i2cMap[i2c].rx_buf);
+            free(i2cMap[i2c].tx_buf);    
+        }
+    }
+
     if (isConfigValid(config)) {
         i2cMap[i2c].rx_buf = config->rx_buffer;
         i2cMap[i2c].rx_buf_size = config->rx_buffer_size;
         i2cMap[i2c].tx_buf = config->tx_buffer;
         i2cMap[i2c].tx_buf_size = config->tx_buffer_size;
+        if(config->version >= HAL_I2C_CONFIG_VERSION_2 && config->freeable) {
+            i2cMap[i2c].heapBuffer = true;
+        } else {
+            i2cMap[i2c].heapBuffer = false;
+        }    
     } else {
         // Allocate default buffers
         i2cMap[i2c].rx_buf = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH];
         i2cMap[i2c].rx_buf_size = I2C_BUFFER_LENGTH;
         i2cMap[i2c].tx_buf = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH];
         i2cMap[i2c].tx_buf_size = I2C_BUFFER_LENGTH;
+        i2cMap[i2c].heapBuffer = true;
 
         SPARK_ASSERT(i2cMap[i2c].rx_buf && i2cMap[i2c].tx_buf);
     }
@@ -348,6 +369,7 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     i2cMap[i2c].rx_index_tail = 0;
     i2cMap[i2c].tx_index_head = 0;
     i2cMap[i2c].tx_index_tail = 0;
+    i2cMap[i2c].configured = true;
     memset((void *)i2cMap[i2c].rx_buf, 0, i2cMap[i2c].rx_buf_size);
     memset((void *)i2cMap[i2c].tx_buf, 0, i2cMap[i2c].tx_buf_size);
 
