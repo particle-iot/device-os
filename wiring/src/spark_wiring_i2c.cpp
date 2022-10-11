@@ -33,7 +33,13 @@
 TwoWire::TwoWire(hal_i2c_interface_t i2c, const hal_i2c_config_t& conf)
 {
   _i2c = i2c;
-  hal_i2c_init(_i2c, &conf);
+  int result = hal_i2c_init(_i2c, &conf);
+  if (result == SYSTEM_ERROR_NOT_ENOUGH_DATA && 
+    (conf.version >= HAL_I2C_CONFIG_VERSION_2) &&
+    (conf.flags & HAL_I2C_CONFIG_FLAG_FREEABLE)) {
+    free(conf.rx_buffer);
+    free(conf.tx_buffer);
+  }
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
