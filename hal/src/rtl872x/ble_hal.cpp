@@ -2066,21 +2066,18 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
         case GAP_CONN_STATE_DISCONNECTED: {
             LOG_DEBUG(TRACE, "GAP_CONN_STATE_DISCONNECTED");
             BleConnection* connection = fetchConnection(connHandle);
-            if (!connection) {
-                LOG(TRACE, "Connection not found.");
+            if (!connection || (connection && addressEqual(connectingAddr_, connection->info.address))) {
                 if (connecting_) {
                     connecting_ = false;
                     // Central failed to connect
                     os_semaphore_give(connectSemaphore_, false);
                 }
-                return;
+                if (!connection) {
+                    return;
+                }
             }
             if ((discCause != (HCI_ERR | HCI_ERR_REMOTE_USER_TERMINATE)) && (discCause != (HCI_ERR | HCI_ERR_LOCAL_HOST_TERMINATE))) {
-                LOG_DEBUG(TRACE, "handleConnectionStateChanged: connection lost cause 0x%x", discCause);
-                hal_ble_addr_t addr = {};
-                if (!addressEqual(connectingAddr_, addr)) {
-                    LOG(ERROR, "Central gets disconnected while connecting.....");
-                }
+                LOG(TRACE, "handleConnectionStateChanged: connection lost cause 0x%x", discCause);
             }
             LOG_DEBUG(TRACE, "Disconnected, handle:%d, cause:0x%x", connHandle, discCause);
             // If the disconnection is initiated by application.
