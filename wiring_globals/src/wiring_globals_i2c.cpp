@@ -11,15 +11,16 @@
 
 namespace {
 
-hal_i2c_config_t defaultWireConfig() {
+hal_i2c_config_t defaultWireConfig(hal_i2c_interface_t i2c) {
+	uint32_t i2c_buffer_size = HAL_PLATFORM_I2C_BUFFER_SIZE(i2c);
 	hal_i2c_config_t config = {
 		.size = sizeof(hal_i2c_config_t),
 		.version = HAL_I2C_CONFIG_VERSION_2,
-		.rx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH],
-		.rx_buffer_size = I2C_BUFFER_LENGTH,
-		.tx_buffer = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH],
-		.tx_buffer_size = I2C_BUFFER_LENGTH,
-		.freeable = 1
+		.rx_buffer = new (std::nothrow) uint8_t[i2c_buffer_size],
+		.rx_buffer_size = i2c_buffer_size,
+		.tx_buffer = new (std::nothrow) uint8_t[i2c_buffer_size],
+		.tx_buffer_size = i2c_buffer_size,
+		.flags = HAL_I2C_CONFIG_FLAG_FREEABLE
 	};
 
 	return config;
@@ -29,20 +30,20 @@ hal_i2c_config_t defaultWireConfig() {
 
 hal_i2c_config_t __attribute__((weak)) acquireWireBuffer()
 {
-	return defaultWireConfig();
+	return defaultWireConfig(HAL_I2C_INTERFACE1);
 }
 
 #if Wiring_Wire1
 hal_i2c_config_t __attribute__((weak)) acquireWire1Buffer()
 {
-	return defaultWireConfig();
+	return defaultWireConfig(HAL_I2C_INTERFACE2);
 }
 #endif
 
 #if Wiring_Wire3
 hal_i2c_config_t __attribute__((weak)) acquireWire3Buffer()
 {
-	return defaultWireConfig();
+	return defaultWireConfig(HAL_I2C_INTERFACE3);
 }
 #endif
 

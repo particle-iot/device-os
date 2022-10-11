@@ -112,7 +112,7 @@ typedef struct nrf5x_i2c_info_t {
 
     os_mutex_recursive_t        mutex;
     bool                        configured;
-    bool                        heapBuffer;
+    bool                        heap_buffer;
 
     void (*callback_on_request)(void);
     void (*callback_on_receive)(int);
@@ -325,12 +325,12 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         // Configured, but new buffers are smaller
-        if (config->rx_buffer_size < i2cMap[i2c].rx_buf_size ||
-           config->tx_buffer_size < i2cMap[i2c].tx_buf_size) {    
+        if (config->rx_buffer_size <= i2cMap[i2c].rx_buf_size ||
+           config->tx_buffer_size <= i2cMap[i2c].tx_buf_size) {    
            return SYSTEM_ERROR_NOT_ENOUGH_DATA;
         }
         // Free current buffers if needed
-        if (i2cMap[i2c].heapBuffer) {
+        if (i2cMap[i2c].heap_buffer) {
             free(i2cMap[i2c].rx_buf);
             free(i2cMap[i2c].tx_buf);    
         }
@@ -341,18 +341,15 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
         i2cMap[i2c].rx_buf_size = config->rx_buffer_size;
         i2cMap[i2c].tx_buf = config->tx_buffer;
         i2cMap[i2c].tx_buf_size = config->tx_buffer_size;
-        if(config->version >= HAL_I2C_CONFIG_VERSION_2 && config->freeable) {
-            i2cMap[i2c].heapBuffer = true;
-        } else {
-            i2cMap[i2c].heapBuffer = false;
-        }    
+        i2cMap[i2c].heap_buffer = ((config->version >= HAL_I2C_CONFIG_VERSION_2) && (config->flags & HAL_I2C_CONFIG_FLAG_FREEABLE));
     } else {
+        int buffer_size = HAL_PLATFORM_I2C_BUFFER_SIZE(i2c);
         // Allocate default buffers
-        i2cMap[i2c].rx_buf = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH];
-        i2cMap[i2c].rx_buf_size = I2C_BUFFER_LENGTH;
-        i2cMap[i2c].tx_buf = new (std::nothrow) uint8_t[I2C_BUFFER_LENGTH];
-        i2cMap[i2c].tx_buf_size = I2C_BUFFER_LENGTH;
-        i2cMap[i2c].heapBuffer = true;
+        i2cMap[i2c].rx_buf = new (std::nothrow) uint8_t[buffer_size];
+        i2cMap[i2c].rx_buf_size = buffer_size;
+        i2cMap[i2c].tx_buf = new (std::nothrow) uint8_t[buffer_size];
+        i2cMap[i2c].tx_buf_size = buffer_size;
+        i2cMap[i2c].heap_buffer = true;
 
         SPARK_ASSERT(i2cMap[i2c].rx_buf && i2cMap[i2c].tx_buf);
     }
