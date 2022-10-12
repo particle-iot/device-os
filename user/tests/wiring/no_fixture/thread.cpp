@@ -254,7 +254,7 @@ void timeout()
 void waitForComplete(ApplicationWatchdog& wd)
 {
 	while (!wd.isComplete()) {
-		HAL_Delay_Milliseconds(10);
+		HAL_Delay_Milliseconds(0);
 	}
 }
 
@@ -262,8 +262,8 @@ test(APPLICATION_WATCHDOG_01_fires_timeout)
 {
 	s_ram_free_before = System.freeMemory();
 	timeout_called = 0;
-	ApplicationWatchdog wd(5, timeout);
-	HAL_Delay_Milliseconds(10);
+	ApplicationWatchdog wd(50, timeout);
+	HAL_Delay_Milliseconds(60);
 
 	assertEqual((int)timeout_called, 1);
 	waitForComplete(wd);
@@ -285,17 +285,14 @@ test(APPLICATION_WATCHDOG_02_doesnt_fire_when_app_checks_in)
 			application_checkin();
 			os_thread_yield();
 		}
-		// now force a timeout
-		// Worst case scenario it may take two application watchdog loop iterations
-		HAL_Delay_Milliseconds(t * 2);
 		// LOG_DEBUG(INFO, "TIME: %d, R %d:%s", millis()-startTime, x, timeout_called?"pass":"fail");
-		assertEqual((int)timeout_called, 1);
 		waitForComplete(wd);
 		uint32_t endTime = millis();
-		const auto expected = t * 4; // should be t*4
-		const auto margin = expected / 50; // 2%
-		assertMoreOrEqual(endTime - startTime, expected - margin);
-		assertLessOrEqual(endTime - startTime, expected + margin);
+		assertEqual((int)timeout_called, 1);
+		const auto expectedLow = t * 3; // should be t*3
+		const auto expectedHigh = t * 4;
+		assertMoreOrEqual(endTime - startTime, expectedLow - (expectedLow / 50)); // -2%
+		assertLessOrEqual(endTime - startTime, expectedHigh + (expectedHigh / 50)); // +2%
 		// LOG_DEBUG(INFO, "E %d",endTime-startTime);
 	}
 }
