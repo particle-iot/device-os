@@ -192,7 +192,6 @@
 - Streamline `.bundleignore` between 5.x and 4.x codebases [#2496](https://github.com/particle-iot/device-os/pull/2496)
 - branch pattern changes for `test-build-system` [#2510](https://github.com/particle-iot/device-os/pull/2510)
 - [test] fixes race condition with `wiring/no_fixture` `TIME_17` [#2514](https://github.com/particle-iot/device-os/pull/2514)
->>>>>>> cccaa6ca6 (bump module version to 4.0.0 (4003))
 
 ## 4.0.0-beta.1
 
