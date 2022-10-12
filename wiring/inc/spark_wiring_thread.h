@@ -196,6 +196,10 @@ public:
         return isValid() && os_thread_is_current(d_->handle);
     }
 
+    bool isRunning() const {
+        return isValid() && d_->started && !d_->exited;
+    }
+
     Thread& operator=(Thread&& thread)
     {
         d_ = std::move(thread.d_);

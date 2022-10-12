@@ -35,7 +35,7 @@ class ApplicationWatchdog
 
 	std::function<void(void)> timeout_fn;
 
-	Thread thread;
+	Thread* thread;
 
 	static void start(void* pointer);
 
@@ -46,10 +46,10 @@ public:
 
 	ApplicationWatchdog(unsigned timeout_ms, std::function<void(void)> fn, unsigned stack_size=DEFAULT_STACK_SIZE) :
 		timeout(timeout_ms),
-		timeout_fn(fn),
-		thread("appwdt", start, this, OS_THREAD_PRIORITY_CRITICAL, stack_size)
+		timeout_fn(fn)
 	{
 		checkin();
+		thread = new Thread("appwdt", start, this, OS_THREAD_PRIORITY_CRITICAL, stack_size);
 	}
 	ApplicationWatchdog(std::chrono::milliseconds ms, std::function<void(void)> fn, unsigned stack_size=DEFAULT_STACK_SIZE) : ApplicationWatchdog(ms.count(), fn, stack_size) {}
 
@@ -61,9 +61,17 @@ public:
     }
     ApplicationWatchdog(std::chrono::milliseconds ms, void (*fn)(), unsigned stack_size=DEFAULT_STACK_SIZE) : ApplicationWatchdog(ms.count(), fn, stack_size) {}
 
+	~ApplicationWatchdog() {
+		dispose();
+		if (thread) {
+			// NOTE: this may have to wait up to original timeout for the thread to exit
+			delete thread;
+		}
+	}
+
 	bool isComplete()
 	{
-		return !timeout_fn;
+		return !thread || !thread->isRunning();
 	}
 
 	static inline system_tick_t current_time()
