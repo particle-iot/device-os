@@ -844,6 +844,11 @@ int BleControlRequestChannel::sendReply() {
     NAMED_SCOPE_GUARD(reqGuard, {
         freeRequest(req);
     });
+    if ((!req->repBuf && req->reply_size > 0) || (req->repBuf && req->reply_size > req->repBuf->size - MESSAGE_HEADER_SIZE -
+            REPLY_HEADER_SIZE - MESSAGE_FOOTER_SIZE)) {
+        LOG(ERROR, "Invalid size of reply data; ID: %u", (unsigned)req->id);
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
     // Make sure we have a buffer to serialize the reply
     if (!req->repBuf) {
         CHECK(reallocBuffer(MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + MESSAGE_FOOTER_SIZE, &req->repBuf));
@@ -863,6 +868,8 @@ int BleControlRequestChannel::sendReply() {
     SPARK_ASSERT(aesCcm_);
     CHECK(aesCcm_->encryptReplyData(p, req->reply_size));
 #endif
+    // The reply buffer can be larger than the packet size
+    req->repBuf->size = req->reply_size + MESSAGE_HEADER_SIZE + REPLY_HEADER_SIZE + MESSAGE_FOOTER_SIZE;
     // Enqueue the reply buffer for sending
     outBufs_.pushBack(req->repBuf);
     req->repBuf = nullptr;
