@@ -51,8 +51,6 @@
 // Allow detection of ethernet on SPI 
 #define HAL_PLATFORM_ETHERNET (1)
 
-#define HAL_PLATFORM_I2C2 (1)
-
 #define HAL_PLATFORM_USART3 (1)
 
 #define HAL_PLATFORM_USB_VENDOR_REQUEST (1)

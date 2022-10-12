@@ -27,6 +27,7 @@
 #include "spark_wiring_i2c.h"
 #include "i2c_hal.h"
 #include "spark_wiring_thread.h"
+#include <cstdlib>
 
 // Constructors ////////////////////////////////////////////////////////////////
 
