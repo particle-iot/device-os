@@ -235,6 +235,7 @@ typedef enum wlan_country_code_t {
     WLAN_CC_GB = 0x4742,
     WLAN_CC_AU = 0x4155,
     WLAN_CC_KR = 0x4B52,
+    WLAN_CC_WORLD = 0xFFFE,
     WLAN_CC_MAX = 0xFFFF
 } wlan_country_code_t;
 #if PLATFORM_ID != PLATFORM_GCC
