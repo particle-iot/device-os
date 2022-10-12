@@ -144,7 +144,7 @@ void systemEventHandler(const char* name, const char* data)
         }
     }
     else if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
-        // Restore PSK to DCT/DCD/FLASH
+        // Restore PSK to DCT
         LOG(INFO,"Restoring Public Server Key and Server Address to flash");
 #if HAL_PLATFORM_CLOUD_UDP
         bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);

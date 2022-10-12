@@ -23,7 +23,6 @@ add_executable( ${target_name}
   pool_allocator.cpp
   led_service.cpp
   fixed_queue.cpp
-  dcd.cpp
   eeprom_emulation.cpp
   main.cpp
 )
