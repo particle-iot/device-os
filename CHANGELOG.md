@@ -136,6 +136,63 @@
 - [tests] Fix broken tone and servo tests for p2 platform, also EEPROM_03 for all. [#2469](https://github.com/particle-iot/device-os/pull/2469)
 - [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
 
+## 4.0.0
+
+### DEPRECATION
+
+- [deprecation][gen2] supply secure [#2442](https://github.com/particle-iot/device-os/pull/2442)
+- [deprecation] Adds warning to some deprecated API's that will be removed in Device OS 5.x [#2445](https://github.com/particle-iot/device-os/pull/2445)
+- [deprecation] PRODUCT_ID macro [#2446](https://github.com/particle-iot/device-os/pull/2446)
+- [deprecation] remove setup_done flag and add deprecation notice [#2447](https://github.com/particle-iot/device-os/pull/2447)
+
+### FEATURES
+
+- [ota] new API System.updateStatus() [#2344](https://github.com/particle-iot/device-os/pull/2344)
+- [esomx] Adds support for new platform esomx [#2443](https://github.com/particle-iot/device-os/pull/2443) [#2459](https://github.com/particle-iot/device-os/pull/2459) [#2505](https://github.com/particle-iot/device-os/pull/2505) [#2495](https://github.com/particle-iot/device-os/pull/2495)
+- [gen3] Determine flash part at runtime [#2456](https://github.com/particle-iot/device-os/pull/2456)
+- [gen3][quectel] Adds support for BG95-M1, BG95-MF, BG77, and EG91-NAX [#2458](https://github.com/particle-iot/device-os/pull/2458)
+- `System.hardwareInfo()` API [#2526](https://github.com/particle-iot/device-os/pull/2526) [#2529](https://github.com/particle-iot/device-os/pull/2529)
+
+### ENHANCEMENTS
+
+- [gen3] wifi: add dhcp dns info to wifi config [#2440](https://github.com/particle-iot/device-os/pull/2440)
+- [ota] Additional state for firmware update checks [#2344](https://github.com/particle-iot/device-os/pull/2344)
+- Use a custom content type with CID packets when resuming the session [#2441](https://github.com/particle-iot/device-os/pull/2441)
+
+### BUGFIXES
+
+- [gen3] fixes hardfault during low level USB peripheral initialization under an atomic section [#2448](https://github.com/particle-iot/device-os/pull/2448)
+- [gen3] Device unable to enter listening mode with button press [#2451](https://github.com/particle-iot/device-os/pull/2451)
+- Return relevant error from control request to enter listening mode [#2419](https://github.com/particle-iot/device-os/pull/2419)
+- [gen3] hal: fix power leak on Boron [#2452](https://github.com/particle-iot/device-os/pull/2452)
+- [gen3] port newlib stdin/stdout/stderr memory leak workaround [#2467](https://github.com/particle-iot/device-os/pull/2467)
+- [gen3] fixes `interrupts()` API: should not clear pending interrupts [#2504](https://github.com/particle-iot/device-os/pull/2504)
+- Ensure that RTOS context switch is performed in tight `delay(1)` loops [#2519](https://github.com/particle-iot/device-os/pull/2519) [#2520](https://github.com/particle-iot/device-os/pull/2520) [#2524](https://github.com/particle-iot/device-os/pull/2524)
+
+### INTERNAL
+
+- [ci] minor update sc-101315/device-os-manifest [#2449](https://github.com/particle-iot/device-os/pull/2449)
+- [ci] chore/ci-less-frequent-cross-platform-build-checks [#2434](https://github.com/particle-iot/device-os/pull/2434)
+- [docs] Update dependencies for ARM GCC 10.2.1 [#2431](https://github.com/particle-iot/device-os/pull/2431)
+- [gen3] suppress certain reviewed GCC warnings [sc-100940] [#2420](https://github.com/particle-iot/device-os/pull/2420)
+- [ci] feature/sc-100324/ci-build-cross-platform [#2418](https://github.com/particle-iot/device-os/pull/2418)
+- [test] Wi-Fi resolve test improvements [#2454](https://github.com/particle-iot/device-os/pull/2454)
+- [workbench] update-device-os-workbench-manifest-json [#2457](https://github.com/particle-iot/device-os/pull/2457)
+- [ci] test-build-system-tune-timeouts [#2455](https://github.com/particle-iot/device-os/pull/2455)
+- Allow overriding the platform ID on the GCC platform [#2462](https://github.com/particle-iot/device-os/pull/2462)
+- Enable OTA updates on the GCC platform [#2464](https://github.com/particle-iot/device-os/pull/2464)
+- Fix GCC platform on some versions of GCC; Fix building of wiring/api tests on CI [#2483](https://github.com/particle-iot/device-os/pull/2483)
+- [workbench] Update workbench buildscripts to 1.11.0 [#2465](https://github.com/particle-iot/device-os/pull/2465)
+- [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
+- [workbench] Remove redundant toolchain overrides [#2489](https://github.com/particle-iot/device-os/pull/2489)
+- [wifi] Add stubs to allow setting common country code and channel plan in P2 [#2473](https://github.com/particle-iot/device-os/pull/2473) [#2485](https://github.com/particle-iot/device-os/pull/2485)
+- [tests] Change PWM pins to better match e-series pinout for E SoM X. Fix other tests [#2463](https://github.com/particle-iot/device-os/pull/2463)
+- [tests] Misc changes to tests from 5.x [#2466](https://github.com/particle-iot/device-os/pull/2466)
+- [tests][esomx] disable RGB pwm channel(s) when running pwm tests [#2494](https://github.com/particle-iot/device-os/pull/2494)
+- Streamline `.bundleignore` between 5.x and 4.x codebases [#2496](https://github.com/particle-iot/device-os/pull/2496)
+- branch pattern changes for `test-build-system` [#2510](https://github.com/particle-iot/device-os/pull/2510)
+- [test] fixes race condition with `wiring/no_fixture` `TIME_17` [#2514](https://github.com/particle-iot/device-os/pull/2514)
+
 ## 4.0.0-beta.1
 
 > ## :warning: Please note this is an internal release, do not use on production devices!
