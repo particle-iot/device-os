@@ -147,6 +147,8 @@ private:
     bool isQuecCatM1Device();
     /** Is this a Quectel CAT-1 devices ? */
     bool isQuecCat1Device();
+    /** Is this device part of the Quectel LPWA series? */
+    bool isQuecLPWADevice();
     int modemInit() const;
     bool waitModemPowerState(bool onOff, system_tick_t timeout);
     int modemPowerOn();
