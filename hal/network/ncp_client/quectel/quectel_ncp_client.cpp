@@ -1804,13 +1804,17 @@ int QuectelNcpClient::processEventsImpl() {
     }
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
-    // Check GPRS, LET, NB-IOT network registration status
+    // Check GPRS network registration status
     if (!isQuecLPWADevice()) {
-        CHECK_PARSER(parser_.execCommand("AT+CEER"));  // Seems to stall the modem on BG95-MF
-        CHECK_PARSER(parser_.execCommand("AT+CMEE?")); // Seems to stall the modem on BG95-MF
-        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+        // only BG95-M3 and BG95-M5 have GPRS, neither of which we support currently
+        CHECK_PARSER(parser_.execCommand("AT+CEER"));  // GPRS only
     }
-    //CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    
+    // Check NBIoT or LTE network reg status 
+    CHECK_PARSER(parser_.execCommand("AT+CMEE?")); 
+    CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+
+
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     // Check the signal seen by the module while trying to register
     // Do not need to check for an OK, as this is just for debugging purpose
