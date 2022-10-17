@@ -1,3 +1,17 @@
+## 4.0.1-rc.1
+
+### BUGFIXES
+- [wiring] ApplicationWatchdog: fixes potential 2x timeout required to fire [#2536](https://github.com/particle-iot/device-os/pull/2536)
+- [gen3]Fix BLE control request channel sending malformed packets [#2538](https://github.com/particle-iot/device-os/pull/2538)
+- Fix issue with platform_ncp_get_info(0) for quectel platforms [#2532](https://github.com/particle-iot/device-os/pull/2532/)
+- Secures DCT initialization from getting interrupted between creating DCT file and filling it with 0xff to default state [#2530](https://github.com/particle-iot/device-os/pull/2530)
+
+### INTERNAL
+- Use new `prtcl` compile/clean commands for internal CI builds [#2543](https://github.com/particle-iot/device-os/pull/2543)
+- Increase timeouts for internal CI builds on windows [#2545](https://github.com/particle-iot/device-os/pull/2545)
+- HAL wiring api calls to access exflash read/write functions for OTP flash page [#2540](https://github.com/particle-iot/device-os/pull/2540)
+- [hal] wifi: add generic 'world' country code as not every country code is exposed through API [#2539](https://github.com/particle-iot/device-os/pull/2539)
+
 ## 4.0.0
 
 ### DEPRECATION
