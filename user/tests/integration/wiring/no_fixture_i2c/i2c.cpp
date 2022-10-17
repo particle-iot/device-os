@@ -18,7 +18,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-//SerialLogHandler g_logSerial(LOG_LEVEL_ALL);
+// SerialLogHandler g_logSerial(LOG_LEVEL_ALL);
 
 static const int WIRE_ACQUIRE_BUFFER_SIZE = HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1) + 1;
 static const int WIRE1_ACQUIRE_BUFFER_SIZE = HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE2) + 1;
@@ -90,7 +90,11 @@ test(I2C_01_test_acquire_wire_buffer) {
     // Reinitializing with a NULL config is not allowed
     assertEqual(hal_i2c_init(HAL_I2C_INTERFACE1, nullptr), (int)SYSTEM_ERROR_INVALID_ARGUMENT);
 
+    hal_i2c_end(HAL_I2C_INTERFACE1, nullptr);
+}
+
 #if Wiring_Wire1
+test(I2C_02_test_acquire_wire1_buffer) {
     Wire1.begin();
     hal_i2c_config_t wire1SmallerBuffers = allocateWireConfig(WIRE1_ACQUIRE_BUFFER_SIZE);
     assertEqual(hal_i2c_init(HAL_I2C_INTERFACE2, &wire1SmallerBuffers), (int)SYSTEM_ERROR_NOT_ENOUGH_DATA);
@@ -101,12 +105,13 @@ test(I2C_01_test_acquire_wire_buffer) {
     freeWireBuffers(&wire1LargerBuffers);
 
     assertEqual(hal_i2c_init(HAL_I2C_INTERFACE2, nullptr), (int)SYSTEM_ERROR_INVALID_ARGUMENT);
-#endif
+
+    hal_i2c_end(HAL_I2C_INTERFACE2, nullptr);
 }
+#endif
 
 #if HAL_PLATFORM_EXTERNAL_RTC
-
-test(I2C_02_long_read)
+test(I2C_04_long_read_rtc)
 {
     // Test > 32 byte reads by reading from AM18x5 RTC peripheral
     Wire1.begin();
@@ -132,21 +137,66 @@ test(I2C_02_long_read)
     auto config = WireTransmission(rtcAddress).quantity(readLength).stop(true).halConfig();
     hal_i2c_request_ex(wireInterface, &config, nullptr);
 
-    int32_t size = hal_i2c_available(wireInterface, NULL);
-    assertMore(size, 0);
+    int32_t bytesAvailable = hal_i2c_available(wireInterface, NULL);
+    assertEqual(bytesAvailable, readLength);
 
-    for (int32_t i = 0; i < size; i++) {
+    for (int32_t i = 0; i < bytesAvailable; i++) {
         longReadBuffer[i] = (uint8_t)hal_i2c_read(wireInterface, NULL);
     }
 
-    // Log.info("I2C_02_long_read result %d\n", size);
-    // Log.dump(long_read_buffer, readLength);
+    // Log.info("I2C_04_long_read_rtc result %d\n", bytesAvailable);
+    // Log.dump(long_read_buffer, bytesAvailable);
     // Log.info(" \n");
 
     assertEqual(longReadBuffer[ID0_REGISTER], ID0_REGISTER_VALUE);
     assertEqual(longReadBuffer[ID1_REGISTER], ID1_REGISTER_VALUE);
-
-    assertTrue(true);
 }
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC
+
+#if (HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL == 0) && (HAL_PLATFORM_PMIC_BQ24195)
+
+test(I2C_05_long_read_pmic)
+{
+    // Test > 32 byte reads by reading from BQ24195 PMIC peripheral. 
+    // The device only has 10 registers to read, but should not NAK reads for more data
+#if HAL_PLATFORM_PMIC_BQ24195_I2C == HAL_I2C_INTERFACE1
+    Wire.begin();
+#elif HAL_PLATFORM_PMIC_BQ24195_I2C == HAL_I2C_INTERFACE2
+    Wire1.begin();
+#endif
+
+    // Read full register range
+    const uint8_t REGISTER_RANGE = 64;
+    uint8_t longReadBuffer[REGISTER_RANGE] = {};
+    uint8_t readLength = REGISTER_RANGE; 
+
+    // Check read values against ID register
+    const uint8_t ID_REGISTER = 0x0A;
+    const uint8_t ID_REGISTER_VALUE = 0x23;
+
+    hal_i2c_interface_t wireInterface = HAL_PLATFORM_PMIC_BQ24195_I2C;
+    uint8_t pmicAddress = PMIC_ADDRESS;
+    uint8_t rtcRegister = 0x00;
+
+    hal_i2c_begin_transmission(wireInterface, pmicAddress, NULL);
+    hal_i2c_write(wireInterface, rtcRegister, NULL);
+    hal_i2c_end_transmission(wireInterface, true, NULL);
+    auto config = WireTransmission(pmicAddress).quantity(readLength).stop(true).halConfig();
+    hal_i2c_request_ex(wireInterface, &config, nullptr);
+
+    int32_t bytesAvailable = hal_i2c_available(wireInterface, NULL);
+    assertEqual(bytesAvailable, readLength);
+
+    for (int32_t i = 0; i < bytesAvailable; i++) {
+        longReadBuffer[i] = (uint8_t)hal_i2c_read(wireInterface, NULL);
+    }
+
+    // Log.info("I2C_05_long_read_pmic result %ld\n", bytesAvailable);
+    // Log.dump(longReadBuffer, bytesAvailable);
+    // Log.info(" \n");
+
+    assertEqual(longReadBuffer[ID_REGISTER], ID_REGISTER_VALUE);
+}
+
+#endif // HAL_PLATFORM_PMIC_BQ24195

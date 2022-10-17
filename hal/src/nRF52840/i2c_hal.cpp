@@ -332,7 +332,8 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
         // Free current buffers if needed
         if (i2cMap[i2c].heap_buffer) {
             free(i2cMap[i2c].rx_buf);
-            free(i2cMap[i2c].tx_buf);    
+            free(i2cMap[i2c].tx_buf); 
+            i2cMap[i2c].configured = false;
         }
     }
 
