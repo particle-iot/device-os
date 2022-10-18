@@ -25,7 +25,9 @@
 #include "service_debug.h"
 
 #include "communication_diagnostic.h"
+
 #include <limits>
+#include <utility>
 
 namespace particle
 {
@@ -52,8 +54,10 @@ protected:
 	}
 
 public:
-	CoAPChannel(message_id_t msg_seed=0) : message_id(msg_seed)
-	{
+	template<typename... ArgsT>
+	explicit CoAPChannel(ArgsT&&... args) :
+			T(std::forward<ArgsT>(args)...),
+			message_id(0) {
 	}
 
 	/**
@@ -554,8 +558,10 @@ class CoAPReliableChannel : public T
 	DelegateChannel delegateChannel;
 
 public:
-
-	CoAPReliableChannel(M m=0) : millis(m) {
+	template<typename... ArgsT>
+	explicit CoAPReliableChannel(ArgsT&&... args) :
+			T(std::forward<ArgsT>(args)...),
+			millis(nullptr) {
 		delegateChannel.init(this);
 	}
 
@@ -622,6 +628,11 @@ public:
 		return receive(msg, true);
 	}
 
+	bool has_pending_client_messages() const override
+	{
+		return client.has_messages();
+	}
+
 	/**
 	 * Pulls messages from the message channel
 	 */
@@ -635,10 +646,6 @@ public:
 	bool has_unacknowledged_requests() const
 	{
 		return client.has_messages() || server.has_unacknowledged_requests();
-	}
-
-	bool has_unacknowledged_client_requests() const {
-		return client.has_messages();
 	}
 
 	/**

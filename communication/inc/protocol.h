@@ -624,9 +624,11 @@ public:
 
 	virtual int get_describe_data(spark_protocol_describe_data* data, void* reserved);
 
-	virtual int get_status(protocol_status* status) const = 0;
+	int get_status(protocol_status* status) const;
 
 	void notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode);
+
+	void notify_client_messages_processed();
 
 	/**
 	 * Retrieves the next token.

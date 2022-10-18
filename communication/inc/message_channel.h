@@ -241,6 +241,11 @@ struct MessageChannel : public Channel
 	virtual void notify_client_messages_processed()=0;
 
 	/**
+	 * Returns `true` if there are client messages being processed at the moment, or `false` otherwise.
+	 */
+	virtual bool has_pending_client_messages() const = 0;
+
+	/**
 	 * Get a descriptor of the cached application state.
 	 *
 	 * TODO: This method shouldn't be a member of the message channel class, but in the current design,
@@ -262,7 +267,7 @@ struct MessageChannel : public Channel
 class AbstractMessageChannel : public MessageChannel
 {
 public:
-	void set_debug_enabled(bool enabled) override {
+	void set_debug_enabled(bool /* enabled */) override {
 	}
 };
 

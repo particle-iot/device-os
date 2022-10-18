@@ -55,7 +55,11 @@ public:
 
     // todo - this a duplicate of LightSSLProtocol - factor out
 
-	DTLSProtocol() : Protocol(channel) {}
+	DTLSProtocol() :
+			Protocol(channel),
+			channel(this),
+			device_id() {
+	}
 
 	void init(const char *id,
 	          const SparkKeys &keys,
@@ -119,16 +123,6 @@ public:
 			return ProtocolError::UNKNOWN;
 		}
 	}
-
-	int get_status(protocol_status* status) const override {
-		SPARK_ASSERT(status);
-		status->flags = 0;
-		if (channel.has_unacknowledged_client_requests()) {
-			status->flags |= PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES;
-		}
-		return NO_ERROR;
-	}
-
 
 	/**
 	 * Ensures that all outstanding sent coap messages have been acknowledged.

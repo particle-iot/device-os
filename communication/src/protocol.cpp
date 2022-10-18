@@ -804,6 +804,22 @@ int Protocol::get_describe_data(spark_protocol_describe_data* data, void* reserv
 	return 0;
 }
 
+int Protocol::get_status(protocol_status* status) const {
+	SPARK_ASSERT(status);
+	status->flags = 0;
+	if (channel.has_pending_client_messages() || description.hasPendingClientRequests()) {
+		status->flags |= PROTOCOL_STATUS_HAS_PENDING_CLIENT_MESSAGES;
+	}
+	return ProtocolError::NO_ERROR;
+}
+
+void Protocol::notify_client_messages_processed() {
+	if (callbacks.notify_client_messages_processed && !channel.has_pending_client_messages() &&
+			!description.hasPendingClientRequests()) { // Ensure there's no pending blockwise requests
+		callbacks.notify_client_messages_processed(nullptr /* reserved */);
+	}
+}
+
 size_t Protocol::get_max_transmit_message_size() const
 {
 	if (!max_transmit_message_size) {
