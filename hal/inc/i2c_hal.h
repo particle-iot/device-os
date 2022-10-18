@@ -42,7 +42,8 @@ typedef enum hal_i2c_interface_t {
 /*! I2c Config Structure Version */
 typedef enum hal_i2c_config_version_t {
     HAL_I2C_CONFIG_VERSION_1 = 0,
-    HAL_I2C_CONFIG_VERSION_LATEST = HAL_I2C_CONFIG_VERSION_1,
+    HAL_I2C_CONFIG_VERSION_2 = 1,
+    HAL_I2C_CONFIG_VERSION_LATEST = HAL_I2C_CONFIG_VERSION_2,
 } hal_i2c_config_version_t;
 
 typedef struct hal_i2c_config_t {
@@ -52,7 +53,13 @@ typedef struct hal_i2c_config_t {
     uint32_t rx_buffer_size;
     uint8_t* tx_buffer;
     uint32_t tx_buffer_size;
+    uint32_t flags;
 } hal_i2c_config_t;
+
+typedef enum hal_i2c_config_flag_t {
+    HAL_I2C_CONFIG_FLAG_NONE     = 0x00,
+    HAL_I2C_CONFIG_FLAG_FREEABLE = 0x01
+} hal_i2c_config_flag_t;
 
 typedef enum hal_i2c_transmission_flag_t {
     HAL_I2C_TRANSMISSION_FLAG_NONE = 0x00,
@@ -79,7 +86,7 @@ typedef enum hal_i2c_state_t {
 #define CLOCK_SPEED_100KHZ         (uint32_t)100000
 #define CLOCK_SPEED_400KHZ         (uint32_t)400000
 #define HAL_I2C_DEFAULT_TIMEOUT_MS (100)
-#define I2C_BUFFER_LENGTH          (uint8_t)32
+#define I2C_BUFFER_LENGTH          (uint32_t)HAL_PLATFORM_I2C_BUFFER_SIZE_DEFAULT
 
 /* Exported functions --------------------------------------------------------*/
 #ifdef __cplusplus

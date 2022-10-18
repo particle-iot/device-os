@@ -94,14 +94,25 @@ public:
         lock();
         os_thread_scheduling(true, nullptr);
         if (isConfigured()) {
+            // Configured, but new buffers are invalid
+            if (!isConfigValid(conf)){
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+            // Configured, but new buffers are smaller
+            if (conf->rx_buffer_size <= rxBuffer_.size() ||
+               conf->tx_buffer_size <= txBuffer_.size()) {    
+               return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+            } 
             CHECK(deInit());
         }
         if (isConfigValid(conf)) {
             rxBuffer_.init((uint8_t*)conf->rx_buffer, conf->rx_buffer_size);
             txBuffer_.init((uint8_t*)conf->tx_buffer, conf->tx_buffer_size);
+            heapBuffer_ = ((conf->version >= HAL_I2C_CONFIG_VERSION_2) && (conf->flags & HAL_I2C_CONFIG_FLAG_FREEABLE));
         } else {
-            rxBuffer_.init((uint8_t*)malloc(I2C_BUFFER_LENGTH), I2C_BUFFER_LENGTH);
-            txBuffer_.init((uint8_t*)malloc(I2C_BUFFER_LENGTH), I2C_BUFFER_LENGTH);
+            int buffer_size = HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1);
+            rxBuffer_.init((uint8_t*)malloc(buffer_size), buffer_size);
+            txBuffer_.init((uint8_t*)malloc(buffer_size), buffer_size);
             SPARK_ASSERT(txBuffer_.buffer_ && rxBuffer_.buffer_);
             heapBuffer_ = true;
         }
