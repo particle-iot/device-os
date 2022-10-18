@@ -57,7 +57,11 @@ hal_i2c_config_t acquireWire1Buffer()
 test(I2C_00_hal_init_default_buffer)
 {
     // Initializing the HAL with a null config is allowed and should allocate system defaults
-    assertEqual(hal_i2c_init(HAL_I2C_INTERFACE1, nullptr), (int)SYSTEM_ERROR_NONE);
+    if (!hal_i2c_is_enabled(HAL_I2C_INTERFACE1, nullptr)) {
+        assertEqual(hal_i2c_init(HAL_I2C_INTERFACE1, nullptr), (int)SYSTEM_ERROR_NONE);    
+    } else {
+        assertEqual(hal_i2c_init(HAL_I2C_INTERFACE1, nullptr), (int)SYSTEM_ERROR_INVALID_ARGUMENT);    
+    }
 
 #if (PLATFORM_ID == PLATFORM_TRACKER) || (PLATFORM_ID == PLATFORM_TRACKERM)
     // Tracker platforms should have buffers at least 512 bytes large, allocated by the system on startup
@@ -166,8 +170,11 @@ test(I2C_05_long_read_pmic)
     Wire1.begin();
 #endif
 
-    // Read full register range
-    const uint8_t REGISTER_RANGE = 64;
+    // Turn on PMIC
+    PMIC().begin();
+
+    // Read beyond full register range
+    const uint8_t REGISTER_RANGE = 34;
     uint8_t longReadBuffer[REGISTER_RANGE] = {};
     uint8_t readLength = REGISTER_RANGE; 
 
