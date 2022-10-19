@@ -628,7 +628,7 @@ public:
 
 	void notify_message_complete(message_id_t msg_id, CoAPCode::Enum responseCode);
 
-	void notify_client_messages_processed();
+	virtual void notify_client_messages_processed(); // Declared as virtual for mocking in unit tests
 
 	/**
 	 * Retrieves the next token.

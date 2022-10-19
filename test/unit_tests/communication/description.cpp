@@ -541,4 +541,39 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
     }
+
+    SECTION("notifies the protocol layer when all client requests have been processed") {
+        Mock<Protocol> proto(*d.protocol());
+        When(Method(proto, notify_client_messages_processed)).AlwaysReturn();
+        When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
+            auto s = std::string(PROTOCOL_BUFFER_SIZE, 'a');
+            append(arg, (const uint8_t*)s.data(), s.size());
+            return true;
+        });
+        When(Method(cb, appendAppInfo)).Do([](appender_fn append, void* arg, void* reserved) {
+            auto s = std::string(BLOCK_SIZE, 'b');
+            append(arg, (const uint8_t*)s.data(), s.size());
+            return true;
+        });
+        CHECK(!d.get()->hasPendingClientRequests());
+        // Send a blockwise request to the server
+        d.get()->sendRequest(DescriptionType::DESCRIBE_SYSTEM);
+        CHECK(d.get()->hasPendingClientRequests());
+        // Receive and acknowledge the first block
+        auto m = d.receiveMessage();
+        d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+        // Send another request to the server (a regular one)
+        d.get()->sendRequest(DescriptionType::DESCRIBE_APPLICATION);
+        // Receive the second block of the first request
+        m = d.receiveMessage();
+        CHECK(d.get()->hasPendingClientRequests());
+        Verify(Method(proto, notify_client_messages_processed)).Never();
+        // Acknowledge the second block
+        d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+        CHECK(!d.get()->hasPendingClientRequests());
+        Verify(Method(proto, notify_client_messages_processed)).Once();
+        // Receive and acknowledge the second request
+        m = d.receiveMessage();
+        d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
+    }
 }

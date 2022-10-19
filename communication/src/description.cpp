@@ -392,7 +392,8 @@ ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
             activeReq_.reset();
             if (!reqQueue_.isEmpty()) {
                 CHECK_PROTOCOL(sendNextRequest(reqQueue_.takeFirst()));
-            } else {
+            }
+            if (!activeReq_.has_value() && reqQueue_.isEmpty()) {
                 proto_->notify_client_messages_processed();
             }
             *descFlags = flags;
