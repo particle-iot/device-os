@@ -53,10 +53,33 @@ static int hal_memory_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) 
     return 0;
 }
 
+static int hal_memory_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
+    memcpy((void*)addr, data_buf, data_size);
+    return 0;
+}
+
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 #define FLASH_MAL_OTA_TEMPORARY_MEMORY_BUFFER (2 * 1024 * 1024)
 static uint8_t otaTemporaryMemoryBuffer[FLASH_MAL_OTA_TEMPORARY_MEMORY_BUFFER] __attribute__((section(".psram")));
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+
+bool is_encrypted_region(uint32_t address) {
+    uint8_t userEfuse0 = 0xFF;
+    EFUSE_PMAP_READ8(0, USER_KEY_0_EFUSE_ADDRESS, &userEfuse0, L25EOUTVOLTAGE);
+    bool part1_encryption_enabled = !(userEfuse0 & PART1_ENCRYPTED_BIT);
+
+    if (part1_encryption_enabled) {
+        if (!(address >= KM0_MBR_START_ADDRESS && address < (KM0_MBR_START_ADDRESS + KM0_MBR_IMAGE_SIZE)) /* MBR */
+                && !(address >= KM0_PART1_START_ADDRESS && address < (KM0_PART1_START_ADDRESS + KM0_PART1_IMAGE_SIZE)) /* part1 */) {
+            return false;
+        }
+    } else {
+        if (!(address >= KM0_MBR_START_ADDRESS && address < (KM0_MBR_START_ADDRESS + KM0_MBR_IMAGE_SIZE)) /* MBR */) {
+            return false;
+        }
+    }
+    return true;
+}
 
 /* WARNING: enable_rsip_if_disabled() and disable_rsip_if_enabled() must be used in pair.
  * They can be called recursively.
@@ -69,10 +92,7 @@ bool enable_rsip_if_disabled(uint32_t address, int* is) {
     if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) == 0) {
         return false;
     }
-    if (!(address >= KM0_MBR_START_ADDRESS && address < (KM0_MBR_START_ADDRESS + KM0_MBR_IMAGE_SIZE)) /* MBR */
-            && !(address >= KM0_PART1_START_ADDRESS && address < (KM0_PART1_START_ADDRESS + KM0_PART1_IMAGE_SIZE)) /* part1 */) {
-        return false;
-    }
+
     uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
     if ((km0_system_control & BIT_LSYS_PLFM_FLASH_SCE) != 0) {
         return false;
@@ -129,8 +149,7 @@ static bool flash_write(flash_device_t dev, uintptr_t addr, const uint8_t* buf, 
         }
 #endif // USE_SERIAL_FLASH
         case FLASH_ADDRESS: {
-            memcpy((void*)addr, buf, size);
-            ok = true;
+            ok = (hal_memory_write(addr, buf, size) == 0);
             break;
         }
     }
@@ -307,16 +326,18 @@ static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, s
 #endif // HAS_COMPRESSED_OTA
 
 bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length) {
+#ifndef USE_SERIAL_FLASH
+    if (flashDeviceID == FLASH_SERIAL) {
+        return false;
+    }
+#endif
+
     // FIXME: remove magic numbers
     uint32_t endAddress = startAddress + length - 1;
     if (flashDeviceID == FLASH_INTERNAL) {
-        return (startAddress >= 0x08000000 && endAddress <= 0x08800000);
+        return (startAddress >= 0x08000000 && endAddress < 0x08800000);
     } else if (flashDeviceID == FLASH_SERIAL) {
-#ifdef USE_SERIAL_FLASH
-        return startAddress >= 0x00000000 && endAddress <= EXTERNAL_FLASH_SIZE;
-#else
-        return false;
-#endif
+        return startAddress >= 0x00000000 && endAddress < EXTERNAL_FLASH_SIZE;
     } else if (flashDeviceID == FLASH_ADDRESS) {
         // FIXME:
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
@@ -331,6 +352,12 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 }
 
 bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint32_t length) {
+#ifndef USE_SERIAL_FLASH
+    if (flashDeviceID == FLASH_SERIAL) {
+        return false;
+    }
+#endif
+
     uint32_t numSectors;
     if (FLASH_CheckValidAddressRange(flashDeviceID, startAddress, length) != true) {
         return false;
@@ -342,15 +369,11 @@ bool FLASH_EraseMemory(flash_device_t flashDeviceID, uint32_t startAddress, uint
         }
         return true;
     } else if (flashDeviceID == FLASH_SERIAL) {
-#ifdef USE_SERIAL_FLASH
         numSectors = CEIL_DIV(length, sFLASH_PAGESIZE);
         if (hal_exflash_erase_sector(startAddress, numSectors) != 0) {
             return false;
         }
         return true;
-#else
-        return false;
-#endif
     } else if (flashDeviceID == FLASH_ADDRESS) {
         // Not supported
         return true;
@@ -413,6 +436,12 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
 
 bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                          flash_device_t destinationDeviceID, uint32_t destinationAddress, uint32_t length) {
+#ifndef USE_SERIAL_FLASH
+    if (flashDeviceID == FLASH_SERIAL) {
+        return false;
+    }
+#endif
+
     uint32_t endAddress = sourceAddress + length;
     // check address range
     if (FLASH_CheckValidAddressRange(sourceDeviceID, sourceAddress, length) != true) {
@@ -427,41 +456,11 @@ bool FLASH_CompareMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     /* Program source to destination */
     while (sourceAddress < endAddress) {
         copy_len = (endAddress - sourceAddress) >= COPY_BLOCK_SIZE ? COPY_BLOCK_SIZE : (endAddress - sourceAddress);
-        // Read data from source memory address
-        if (sourceDeviceID == FLASH_INTERNAL) {
-            if (hal_flash_read(sourceAddress, src_buf, copy_len)) {
-                return false;
-            }
-        } else if (sourceDeviceID == FLASH_SERIAL) {
-#ifdef USE_SERIAL_FLASH
-            if (hal_exflash_read(sourceAddress, src_buf, copy_len)) {
-                return false;
-            }
-#else
+        if(!flash_read(sourceDeviceID, sourceAddress, src_buf, copy_len)) {
             return false;
-#endif
-        } else if (sourceDeviceID == FLASH_ADDRESS) {
-            if (hal_memory_read(sourceAddress, src_buf, copy_len)) {
-                return false;
-            }
         }
-        // Read data from destination memory address
-        if (sourceDeviceID == FLASH_INTERNAL) {
-            if (hal_flash_read(destinationAddress, dest_buf, copy_len)) {
-                return false;
-            }
-        } else if (sourceDeviceID == FLASH_SERIAL) {
-#ifdef USE_SERIAL_FLASH
-            if (hal_exflash_read(destinationAddress, dest_buf, copy_len)) {
-                return false;
-            }
-#else
+        if(!flash_read(destinationDeviceID, destinationAddress, dest_buf, copy_len)) {
             return false;
-#endif
-        } else if (sourceDeviceID == FLASH_ADDRESS) {
-            if (hal_memory_read(destinationAddress, dest_buf, copy_len)) {
-                return false;
-            }
         }
         if (memcmp(src_buf, dest_buf, copy_len)) {
             /* Failed comparison check */
@@ -697,7 +696,7 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
                     result = FLASH_ACCESS_RESULT_BADARG;
                 }
 #else
-                result = FLASH_ACCESS_RESULT_BADARG; 
+                result = FLASH_ACCESS_RESULT_BADARG;
 #endif
             }
             if (resetSlot) {
@@ -723,43 +722,23 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
 }
 
 int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset) {
+#ifndef USE_SERIAL_FLASH
+    if (flashDeviceID == FLASH_SERIAL) {
+        return false;
+    }
+#endif
     CHECK_TRUE(infoOut, SYSTEM_ERROR_INVALID_ARGUMENT);
     uint32_t offset = 0;
-    if (flashDeviceID == FLASH_INTERNAL) {
-        int is = 0;
-        bool enableRsip = enable_rsip_if_disabled(startAddress, &is);
-        rtl_binary_header* header = (rtl_binary_header*)startAddress;
-        if (header->signature_high == RTL_HEADER_SIGNATURE_HIGH && header->signature_low == RTL_HEADER_SIGNATURE_LOW) {
-            offset = sizeof(rtl_binary_header);
-        }
-        int ret = hal_flash_read(startAddress + offset, (uint8_t*)infoOut, sizeof(module_info_t));
-        disable_rsip_if_enabled(enableRsip, is);
-        if (ret != SYSTEM_ERROR_NONE) {
-            return ret;
-        }
-    } else if (flashDeviceID == FLASH_SERIAL) {
-#ifdef USE_SERIAL_FLASH
-        rtl_binary_header header = {};
-        int ret = hal_exflash_read(startAddress, (uint8_t*)&header, sizeof(rtl_binary_header));
-        if (ret != SYSTEM_ERROR_NONE) {
-            return ret;
-        }
-        if (header.signature_high == RTL_HEADER_SIGNATURE_HIGH && header.signature_low == RTL_HEADER_SIGNATURE_LOW) {
-            offset = sizeof(rtl_binary_header);
-        }
-        ret = hal_exflash_read(startAddress + offset, (uint8_t*)infoOut, sizeof(module_info_t));
-        if (ret != SYSTEM_ERROR_NONE) {
-            return ret;
-        }
-#else
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-#endif
-    } else if (flashDeviceID == FLASH_ADDRESS) {
-        rtl_binary_header* header = (rtl_binary_header*)startAddress;
-        if (header->signature_high == RTL_HEADER_SIGNATURE_HIGH && header->signature_low == RTL_HEADER_SIGNATURE_LOW) {
-            offset = sizeof(rtl_binary_header);
-        }
-        memcpy(infoOut, (void*)(startAddress + offset), sizeof(module_info_t));
+
+    rtl_binary_header header = {};
+    if (!flash_read(flashDeviceID, startAddress, (uint8_t*)&header, sizeof(rtl_binary_header))) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    if (header.signature_high == RTL_HEADER_SIGNATURE_HIGH && header.signature_low == RTL_HEADER_SIGNATURE_LOW) {
+        offset = sizeof(rtl_binary_header);
+    }
+    if (!flash_read(flashDeviceID, startAddress + offset, (uint8_t*)infoOut, sizeof(module_info_t))) {
+        return SYSTEM_ERROR_INTERNAL;
     }
     if (infoOffset) {
         *infoOffset = offset;
@@ -768,40 +747,24 @@ int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32
 }
 
 int FLASH_ModuleCrcSuffix(module_info_crc_t* crc, module_info_suffix_t* suffix, uint8_t flashDeviceID, uint32_t endAddress) {
-    typedef int (*readFn_t)(uintptr_t addr, uint8_t* data_buf, size_t size);
-    readFn_t read = NULL;
-
-    int is = 0;
-    bool enableRsip = false;
-    if (flashDeviceID == FLASH_INTERNAL) {
-        enableRsip = enable_rsip_if_disabled(endAddress, &is);
-        read = hal_flash_read;
-    } else if (flashDeviceID == FLASH_SERIAL) {
-#ifdef USE_SERIAL_FLASH
-        read = hal_exflash_read;
-#else
-        returrn SYSTEM_ERROR_NOT_SUPPORTED;
+#ifndef USE_SERIAL_FLASH
+    if (flashDeviceID == FLASH_SERIAL) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
 #endif
-    } else if (flashDeviceID == FLASH_ADDRESS) {
-        read = hal_memory_read;
-    }
-    int ret = SYSTEM_ERROR_NONE;
-    if (read) {
-        if (crc) {
-            ret = read(endAddress, (uint8_t*)crc, sizeof(module_info_crc_t));
-            if (ret != SYSTEM_ERROR_NONE) {
-                goto done;
-            }
-        }
-        if (suffix) {
-            // suffix [endAddress] crc32
-            endAddress = endAddress - sizeof(module_info_suffix_t);
-            ret = read(endAddress, (uint8_t*)suffix, sizeof(module_info_suffix_t));
+    if (crc) {
+        if(!flash_read(flashDeviceID, endAddress, (uint8_t*)crc, sizeof(module_info_crc_t))) {
+            return SYSTEM_ERROR_INTERNAL;
         }
     }
-done:
-    disable_rsip_if_enabled(enableRsip, is);
-    return ret;
+    if (suffix) {
+        // suffix [endAddress] crc32
+        endAddress = endAddress - sizeof(module_info_suffix_t);
+        if(!flash_read(flashDeviceID, endAddress, (uint8_t*)suffix, sizeof(module_info_suffix_t))) {
+            return SYSTEM_ERROR_INTERNAL;
+        }
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 uint32_t FLASH_ModuleAddress(uint8_t flashDeviceID, uint32_t startAddress) {
@@ -838,12 +801,28 @@ bool FLASH_isUserModuleInfoValid(uint8_t flashDeviceID, uint32_t startAddress, u
 }
 
 bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t length) {
+#ifndef USE_SERIAL_FLASH
+    if (flashDeviceID == FLASH_SERIAL) {
+        return false;
+    }
+#endif
+
     if (flashDeviceID == FLASH_INTERNAL && length > 0) {
-        int is = 0;
-        bool enableRsip = enable_rsip_if_disabled(startAddress, &is);
-        uint32_t expectedCRC = __REV((*(__IO uint32_t*)(startAddress + length)));
-        uint32_t computedCRC = Compute_CRC32((uint8_t*)startAddress, length, NULL);
-        disable_rsip_if_enabled(enableRsip, is);
+        uint8_t internalFlashData[4];
+        hal_flash_read((startAddress + length), internalFlashData, 4);
+        uint32_t expectedCRC = (uint32_t)(internalFlashData[3] | (internalFlashData[2] << 8) | (internalFlashData[1] << 16) | (internalFlashData[0] << 24));
+        uint32_t endAddress = startAddress + length;
+        uint32_t len = 0;
+        uint32_t computedCRC = 0;
+        do {
+            len = endAddress - startAddress;
+            if (len > sizeof(internalFlashData)) {
+                len = sizeof(internalFlashData);
+            }
+            hal_flash_read(startAddress, internalFlashData, len);
+            computedCRC = Compute_CRC32(internalFlashData, len, &computedCRC);
+            startAddress += len;
+        } while (startAddress < endAddress);
         if (expectedCRC == computedCRC) {
             return true;
         }
