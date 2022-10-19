@@ -21,6 +21,9 @@ fi
 REPOSITORY_URL="https://github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}"
 COMMIT_URL="${REPOSITORY_URL}/commit/${CIRCLE_SHA1}"
 
+# Underscores are treated as italic styling and seems to cause an error
+export CIRCLE_BRANCH="${CIRCLE_BRANCH//_/\\_}"
+
 BASE_BLOCK=$(cat <<EOF
 {
     "type": "section",
