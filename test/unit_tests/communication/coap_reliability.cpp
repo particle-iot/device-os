@@ -1209,7 +1209,7 @@ SCENARIO("notify_client_messages_processed() is invoked when all client messages
 				THEN("the callback is invoked only once")
 				{
 					Verify(Method(channelMock, notify_client_messages_processed)).Once();
-					REQUIRE_FALSE(channel.has_unacknowledged_client_requests());
+					REQUIRE_FALSE(channel.has_pending_client_messages());
 				}
 			}
 
@@ -1229,7 +1229,7 @@ SCENARIO("notify_client_messages_processed() is invoked when all client messages
 				THEN("the callback is not invoked")
 				{
 					Verify(Method(channelMock, notify_client_messages_processed)).Never();
-					REQUIRE(channel.has_unacknowledged_client_requests());
+					REQUIRE(channel.has_pending_client_messages());
 				}
 			}
 
@@ -1247,7 +1247,7 @@ SCENARIO("notify_client_messages_processed() is invoked when all client messages
 				THEN("the callback is invoked only once")
 				{
 					Verify(Method(channelMock, notify_client_messages_processed)).Once();
-					REQUIRE_FALSE(channel.has_unacknowledged_client_requests());
+					REQUIRE_FALSE(channel.has_pending_client_messages());
 				}
 			}
 		}

@@ -560,8 +560,13 @@ class CoAPReliableChannel : public T
 public:
 	template<typename... ArgsT>
 	explicit CoAPReliableChannel(ArgsT&&... args) :
+			CoAPReliableChannel(M(), std::forward<ArgsT>(args)...) {
+	}
+
+	template<typename... ArgsT>
+	explicit CoAPReliableChannel(M m, ArgsT&&... args) :
 			T(std::forward<ArgsT>(args)...),
-			millis(nullptr) {
+			millis(m) {
 		delegateChannel.init(this);
 	}
 

@@ -78,6 +78,11 @@ public:
 		channel->notify_client_messages_processed();
 	}
 
+	virtual bool has_pending_client_messages() const override
+	{
+		return channel->has_pending_client_messages();
+	}
+
 	virtual AppStateDescriptor cached_app_state_descriptor() const override
 	{
 		return AppStateDescriptor();

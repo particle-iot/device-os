@@ -44,7 +44,7 @@ public:
     // Returns true if there's a message received from the device
     bool hasMessages() const;
 
-    // Reimplemented from AbstractMessageChannel
+    // Reimplemented from MessageChannel
     ProtocolError send(Message& msg) override;
     ProtocolError receive(Message& msg) override;
     ProtocolError command(Command cmd, void* arg) override;
@@ -52,6 +52,7 @@ public:
     ProtocolError establish() override;
     ProtocolError notify_established() override;
     void notify_client_messages_processed() override;
+    bool has_pending_client_messages() const override;
     AppStateDescriptor cached_app_state_descriptor() const override;
     void reset() override;
 
@@ -110,6 +111,10 @@ inline ProtocolError CoapMessageChannel::notify_established() {
 }
 
 inline void CoapMessageChannel::notify_client_messages_processed() {
+}
+
+inline bool CoapMessageChannel::has_pending_client_messages() const {
+    return false;
 }
 
 inline AppStateDescriptor CoapMessageChannel::cached_app_state_descriptor() const {
