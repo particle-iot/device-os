@@ -828,7 +828,7 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
 
     if ((flashDeviceID == FLASH_INTERNAL && length > 0) || (flashDeviceID == FLASH_SERIAL && length > 0)) {
         const int dataBufferSize = 256;
-        uint8_t* dataBuffer = malloc(dataBufferSize);
+        uint8_t dataBuffer[dataBufferSize];
         if (dataBuffer == NULL) {
             return false;
         }
@@ -849,7 +849,6 @@ bool FLASH_VerifyCRC32(uint8_t flashDeviceID, uint32_t startAddress, uint32_t le
             startAddress += len;
         } while (startAddress < endAddress);
         disable_rsip_if_enabled(enableRsip, is);
-        free(dataBuffer);
         if (expectedCRC == computedCRC) {
             return true;
         }
