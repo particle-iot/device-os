@@ -146,6 +146,8 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
 }
 
 static void enable_xip(bool enable) {
+    (void)gMpuEntry;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (-1 < gMpuEntry && gMpuEntry < MPU_MAX_REGION) {
         mpu_entry_free(gMpuEntry);
     }
@@ -167,6 +169,7 @@ static void enable_xip(bool enable) {
         mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
     }
     mpu_region_cfg(gMpuEntry, &mpu_cfg);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 }
 
 int hal_exflash_init(void) {
@@ -403,9 +406,11 @@ int hal_exflash_sleep(bool sleep, void* reserved) {
     return SYSTEM_ERROR_NONE;
 }
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 extern "C" int hal_exflash_disable_xip(void) {
     ExFlashLock lk;
     enable_xip(false);
     gXipControl = true;
     return SYSTEM_ERROR_NONE;
 }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
