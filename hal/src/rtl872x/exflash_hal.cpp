@@ -41,7 +41,8 @@ extern "C" {
 extern uintptr_t platform_system_part1_flash_start;
 extern uintptr_t platform_flash_end;
 
-static char gMpuEntry = -1;
+static bool gXipControl = false;
+static signed char gMpuEntry = -1;
 static void enable_xip(bool enable);
 
 #if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
@@ -116,11 +117,15 @@ private:
 class EnableXip {
 public:
     EnableXip() {
-        enable_xip(true);
+        if (gXipControl) {
+            enable_xip(true);
+        }
     }
 
     ~EnableXip() {
-        enable_xip(false);
+        if (gXipControl) {
+            enable_xip(false);
+        }
     }
 };
 
@@ -165,15 +170,10 @@ static void enable_xip(bool enable) {
 }
 
 int hal_exflash_init(void) {
-    enable_xip(false);
     return SYSTEM_ERROR_NONE;
 }
 
 int hal_exflash_uninit(void) {
-    if (-1 < gMpuEntry && gMpuEntry < MPU_MAX_REGION) {
-        mpu_entry_free(gMpuEntry);
-        gMpuEntry = -1;
-    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -181,6 +181,7 @@ __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
     CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
+    DCache_CleanInvalidate(SPI_FLASH_BASE + addr, data_size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -190,6 +191,7 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     EnableXip xiplk;
     addr += SPI_FLASH_BASE;
     memcpy(data_buf, (void*)addr, data_size);
+    DCache_CleanInvalidate((uint32_t)data_buf, data_size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -223,6 +225,8 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
 
     // LOG_DEBUG(ERROR, "Erased %lu %lukB blocks starting from %" PRIxPTR,
     //           num_blocks, block_length / 1024, start_addr);
+
+    DCache_CleanInvalidate(SPI_FLASH_BASE + start_addr, block_length * num_blocks);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -396,5 +400,12 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
 
 int hal_exflash_sleep(bool sleep, void* reserved) {
     // Note: HAL sleep driver uses SDK API to suspend external flash.
+    return SYSTEM_ERROR_NONE;
+}
+
+extern "C" int hal_exflash_disable_xip(void) {
+    ExFlashLock lk;
+    enable_xip(false);
+    gXipControl = true;
     return SYSTEM_ERROR_NONE;
 }

@@ -80,6 +80,8 @@ extern uintptr_t platform_system_backup_ram_start;
 extern uintptr_t link_heap_location, link_heap_location_end;
 extern uintptr_t link_heap_location_alt, link_heap_location_end_alt;
 
+extern int hal_exflash_disable_xip(void);
+
 static malloc_heap_region heap_regions[HEAP_REGIONS] = {
     [HEAP_REGION_PSRAM] = {
         // PSRAM
@@ -138,19 +140,19 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulF
     switch (panicCode) {
         case HardFault: {
             PANIC(panicCode, "HardFault");
-            break; 
+            break;
         }
         case MemManage: {
             PANIC(panicCode, "MemManage");
-            break; 
+            break;
         }
         case BusFault: {
             PANIC(panicCode, "BusFault");
-            break; 
+            break;
         }
         case UsageFault: {
             PANIC(panicCode, "UsageFault");
-            break; 
+            break;
         }
         default: {
             // Shouldn't enter this case
@@ -282,7 +284,7 @@ static void prohibit_xip(void) {
 
     sd_nvic_critical_region_exit(st);
 
-    // Use a DSB followed by an ISB instruction to ensure that the new MPU configuration is used by subsequent instructions. 
+    // Use a DSB followed by an ISB instruction to ensure that the new MPU configuration is used by subsequent instructions.
     __DSB();
     __ISB();
 
@@ -317,7 +319,7 @@ void HAL_Core_Config(void) {
 #if HAL_PLATFORM_PROHIBIT_XIP
     prohibit_xip();
 #endif
-    
+
     Set_System();
 
     hal_timer_init(NULL);
@@ -379,6 +381,10 @@ void HAL_Core_Config(void) {
         }
     }
 #endif
+
+    // Disable XIP after user module pre_init
+    hal_exflash_disable_xip();
+
     malloc_set_heap_regions(heap_regions, HEAP_REGIONS);
 
     // Enable malloc before littlefs initialization.
@@ -701,7 +707,7 @@ void __malloc_unlock(struct _reent *ptr) {
  */
 void application_start() {
     rtos_started = 1;
-    
+
     // one the key is sent to the cloud, this can be removed, since the key is fetched in
     // Spark_Protocol_init(). This is just a temporary measure while the key still needs
     // to be fetched via DFU.
