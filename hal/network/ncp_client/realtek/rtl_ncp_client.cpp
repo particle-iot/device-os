@@ -129,7 +129,9 @@ int rtlSecurityToWifiSecurity(rtw_security_t rtlSec) {
     }
     case RTW_SECURITY_WPA2_AES_PSK:
     case RTW_SECURITY_WPA2_TKIP_PSK:
-    case RTW_SECURITY_WPA2_MIXED_PSK: {
+    case RTW_SECURITY_WPA2_MIXED_PSK:
+    // FIXME:
+    case RTW_SECURITY_WPA2_WPA3_MIXED: {
         return (int)WifiSecurity::WPA2_PSK;
     }
     case RTW_SECURITY_WPA_WPA2_TKIP_PSK:
@@ -320,6 +322,9 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
 }
 
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+
     int rtlError = 0;
     // LOG(INFO, "RNCP getNetworkInfo");
 
