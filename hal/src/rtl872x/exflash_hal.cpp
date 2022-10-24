@@ -203,7 +203,6 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     XipControl xiplk;
     addr += SPI_FLASH_BASE;
     memcpy(data_buf, (void*)addr, data_size);
-    DCache_CleanInvalidate((uint32_t)data_buf, data_size);
     return SYSTEM_ERROR_NONE;
 }
 
