@@ -56,7 +56,8 @@ namespace CoAPMessageType {
     NONE,
     UPDATE_START_V3,
     UPDATE_FINISH_V3,
-    UPDATE_CHUNK_V3
+    UPDATE_CHUNK_V3,
+    SERVER_MOVED
   };
 }
 

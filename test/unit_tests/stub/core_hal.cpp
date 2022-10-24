@@ -16,6 +16,17 @@
  */
 
 #include "core_hal.h"
+#include "core_hal_mock.h"
+
+using namespace particle::test;
 
 void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
+}
+
+bool HAL_Feature_Get(HAL_Feature feature) {
+    auto mock = CoreHalMock::instance();
+    if (mock) {
+        return mock->get().featureGet(feature);
+    }
+    return false;
 }
