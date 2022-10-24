@@ -25,7 +25,7 @@
 
 #include "spark_wiring_diagnostics.h"
 
-#include "cloud.pb.h"
+#include "control/cloud.pb.h"
 
 #define PB(_name) particle_ctrl_cloud_##_name
 #define PB_FIELDS(_name) particle_ctrl_cloud_##_name##_fields

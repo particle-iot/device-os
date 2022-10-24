@@ -29,7 +29,7 @@
 
 #include "check.h"
 
-#include "cellular.pb.h"
+#include "control/cellular.pb.h"
 
 #define PB(_name) particle_ctrl_cellular_##_name
 

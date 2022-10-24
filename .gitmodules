@@ -1,7 +1,3 @@
-[submodule "proto"]
-	path = proto
-	url = https://github.com/particle-iot/firmware-protobuf.git
-	branch = master
 [submodule "third_party/nrf5_sdk/nrf5_sdk"]
 	path = third_party/nrf5_sdk/nrf5_sdk
 	url = https://github.com/particle-iot/nrf5_sdk.git
@@ -54,3 +50,6 @@
 [submodule "third_party/coremark/coremark"]
 	path = third_party/coremark/coremark
 	url = https://github.com/particle-iot/coremark
+[submodule "proto_defs/shared"]
+	path = proto_defs/shared
+	url = git@github.com:particle-iot/device-os-protobuf.git

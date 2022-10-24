@@ -29,7 +29,7 @@
 #include <pb_decode.h>
 #include <stdlib.h>
 
-#include "proto/common.pb.h"
+#include "control/common.pb.h"
 
 namespace particle {
 namespace control {

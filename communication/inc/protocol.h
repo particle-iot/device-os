@@ -307,6 +307,16 @@ protected:
 	void handle_time_response(uint32_t time);
 
 	/**
+	 * Handle a ServerMoved request.
+	 */
+	ProtocolError handle_server_moved_request(Message& msg);
+
+	/**
+	 * Send a response for a ServerMoved request.
+	 */
+	static void send_server_moved_response(int error, void* ctx);
+
+	/**
 	 * Copy an initialize a block of memory from a source to a target, where the source may be smaller than the target.
 	 * This handles the case where the caller was compiled using a smaller version of the struct memory than what is the current.
 	 *

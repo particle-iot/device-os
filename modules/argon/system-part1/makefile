@@ -6,8 +6,8 @@ HAL_LINK :=
 PLATFORM_DFU = 0x30000
 NCP_FIRMWARE_MODULE_VERSION=4
 # MODULE_DEPENDENCY2=7,0,$(NCP_FIRMWARE_MODULE_VERSION)
-DEPENDENCIES = newlib_nano modules/argon/user-part modules/argon/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto
-LIB_DEPENDENCIES = services system wiring communication hal platform crypto
+DEPENDENCIES = newlib_nano modules/argon/user-part modules/argon/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto proto_defs
+LIB_DEPENDENCIES = services system wiring communication hal platform crypto proto_defs
 
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
 MAKE_DEPENDENCIES = newlib_nano $(LIB_DEPENDENCIES)
@@ -15,7 +15,7 @@ include ../modular.mk
 include $(PROJECT_ROOT)/build/platform-id.mk
 
 LIBS += $(LIB_DEPENDENCIES)
-LIB_DEPS += $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP) $(HAL_LIB_DEP) $(SYSTEM_LIB_DEP) $(COMMUNICATION_LIB_DEP) $(WIRING_LIB_DEP) $(CRYPTO_LIB_DEP)
+LIB_DEPS += $(SERVICES_LIB_DEP) $(PLATFORM_LIB_DEP) $(HAL_LIB_DEP) $(SYSTEM_LIB_DEP) $(COMMUNICATION_LIB_DEP) $(WIRING_LIB_DEP) $(CRYPTO_LIB_DEP) $(PROTO_DEFS_LIB_DEP)
 
 DEPENDENCIES += wiring_globals
 LIB_DEPENDENCIES += wiring_globals

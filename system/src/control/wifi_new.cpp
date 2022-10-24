@@ -32,7 +32,7 @@
 
 #include "spark_wiring_vector.h"
 
-#include "wifi_new.pb.h"
+#include "control/wifi_new.pb.h"
 #include "system_event.h"
 #include "delay_hal.h"
 
