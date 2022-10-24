@@ -52,8 +52,9 @@ if [ "${RESULT_STATUS}" == "failed" ]; then
 EOF
 )
 
+    # Do not add new platforms here, there is a limit of 10 currently, see a block below instead
     fields=""
-    for p in Argon Boron BSoM B5SoM Tracker TrackerM ESomX P2 GCC Newhal P2; do
+    for p in Argon Boron BSoM B5SoM Tracker TrackerM ESomX P2 GCC Newhal; do
         if echo -e "${failures}" | grep -q "PLATFORM=\"${p,,}\""; then
             msg=":scrum_closed: $p\\n"
         else
@@ -81,6 +82,37 @@ EOF
 }
 EOF
 )
+
+    fields=""
+    for p in P2; do
+        if echo -e "${failures}" | grep -q "PLATFORM=\"${p,,}\""; then
+            msg=":scrum_closed: $p\\n"
+        else
+            msg=":scrum_finished: $p\\n"
+        fi
+        field=$(cat <<EOF
+{
+    "type": "mrkdwn",
+    "text": "${msg}"
+}
+EOF
+)
+        comma=","
+        if [ "${fields}" == "" ]; then
+            comma=""
+        fi
+        fields="${fields}${comma}${field}"
+    done
+    ADDITIONAL_BLOCKS+=$(cat <<EOF
+,{
+    "type": "section",
+    "fields": [
+        ${fields}
+    ]
+}
+EOF
+)
+
 
     if [ "${CIRCLE_ARTIFACTS_URL}" == "" ]; then
         msg=":scrum_closed: Artifacts"
