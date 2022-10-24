@@ -41,10 +41,6 @@ extern "C" {
 extern uintptr_t platform_system_part1_flash_start;
 extern uintptr_t platform_flash_end;
 
-static bool gXipControl = false;
-static signed char gMpuEntry = -1;
-static void enable_xip(bool enable);
-
 #if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
 typedef enum {
     MXIC_FLASH_CMD_ENSO             = 0xB1,
@@ -114,20 +110,60 @@ private:
 };
 
 // We are safe to run the constructor/destructor, cos they are copied to PSRAM to run.
-class EnableXip {
+class XipControl {
 public:
-    EnableXip() {
-        if (gXipControl) {
-            enable_xip(true);
+    XipControl() {
+        if (controlled_) {
+            enableXip(true);
         }
     }
 
-    ~EnableXip() {
-        if (gXipControl) {
-            enable_xip(false);
+    ~XipControl() {
+        if (controlled_) {
+            enableXip(false);
         }
     }
+
+    static int initXipOff() {
+        enableXip(false);
+        controlled_ = true;
+        return 0;
+    }
+
+private:
+    static void enableXip(bool enable) {
+        (void)mpuEntry_;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        if (-1 < mpuEntry_ && mpuEntry_ < MPU_MAX_REGION) {
+            mpu_entry_free(mpuEntry_);
+        }
+        mpuEntry_ = mpu_entry_alloc();
+        SPARK_ASSERT(-1 < mpuEntry_ && mpuEntry_ < MPU_MAX_REGION);
+
+        mpu_region_config mpu_cfg = {};
+        mpu_cfg.region_base = (uintptr_t)&platform_system_part1_flash_start;
+        mpu_cfg.region_size = (uintptr_t)&platform_flash_end - (uintptr_t)&platform_system_part1_flash_start; // System part1, OTA region, user part and filesystem
+        if (enable) {
+            mpu_cfg.xn = MPU_EXEC_ALLOW;
+            mpu_cfg.ap = MPU_UN_PRIV_RW;
+            mpu_cfg.sh = MPU_NON_SHAREABLE;
+            mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_WB_T_RWA;
+        } else {
+            mpu_cfg.xn = MPU_EXEC_NEVER;
+            mpu_cfg.ap = MPU_PRIV_R;
+            mpu_cfg.sh = MPU_NON_SHAREABLE;
+            mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+        }
+        mpu_region_cfg(mpuEntry_, &mpu_cfg);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+
+private:
+    static bool controlled_;
+    static signed char mpuEntry_;
 };
+bool XipControl::controlled_ = false;
+signed char XipControl::mpuEntry_ = -1;
 
 static bool is_block_erased(uintptr_t addr, size_t size);
 
@@ -143,33 +179,6 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
     }
 
     return SYSTEM_ERROR_NONE;
-}
-
-static void enable_xip(bool enable) {
-    (void)gMpuEntry;
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    if (-1 < gMpuEntry && gMpuEntry < MPU_MAX_REGION) {
-        mpu_entry_free(gMpuEntry);
-    }
-    gMpuEntry = mpu_entry_alloc();
-    SPARK_ASSERT(-1 < gMpuEntry && gMpuEntry < MPU_MAX_REGION);
-
-    mpu_region_config mpu_cfg = {};
-    mpu_cfg.region_base = (uintptr_t)&platform_system_part1_flash_start;
-    mpu_cfg.region_size = (uintptr_t)&platform_flash_end - (uintptr_t)&platform_system_part1_flash_start; // System part1, OTA region, user part and filesystem
-    if (enable) {
-        mpu_cfg.xn = MPU_EXEC_ALLOW;
-        mpu_cfg.ap = MPU_UN_PRIV_RW;
-        mpu_cfg.sh = MPU_NON_SHAREABLE;
-        mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_WB_T_RWA;
-    } else {
-        mpu_cfg.xn = MPU_EXEC_NEVER;
-        mpu_cfg.ap = MPU_PRIV_R;
-        mpu_cfg.sh = MPU_NON_SHAREABLE;
-        mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
-    }
-    mpu_region_cfg(gMpuEntry, &mpu_cfg);
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 }
 
 int hal_exflash_init(void) {
@@ -191,7 +200,7 @@ int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size)
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
-    EnableXip xiplk;
+    XipControl xiplk;
     addr += SPI_FLASH_BASE;
     memcpy(data_buf, (void*)addr, data_size);
     DCache_CleanInvalidate((uint32_t)data_buf, data_size);
@@ -201,7 +210,7 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
 __attribute__((section(".ram.text"), noinline))
 static bool is_block_erased(uintptr_t addr, size_t size) {
     ExFlashLock lk;
-    EnableXip xiplk;
+    XipControl xiplk;
     uint8_t* ptr = (uint8_t*)(SPI_FLASH_BASE + addr);
     for (size_t i = 0; i < size; i++) {
         if (ptr[i] != 0xff) {
@@ -409,8 +418,7 @@ int hal_exflash_sleep(bool sleep, void* reserved) {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 extern "C" int hal_exflash_disable_xip(void) {
     ExFlashLock lk;
-    enable_xip(false);
-    gXipControl = true;
+    XipControl::initXipOff();
     return SYSTEM_ERROR_NONE;
 }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
