@@ -57,6 +57,8 @@ enum ProtocolFactory
 	PROTOCOL_DTLS,
 };
 
+typedef void (*ServerMovedResponseCallback)(int error, void* context);
+
 struct SparkCallbacks
 {
     uint16_t size;
@@ -132,9 +134,18 @@ struct SparkCallbacks
     void (*notify_client_messages_processed)(void* reserved);
 
     // size == 56
+
+    /**
+     * Notify the system that the server wants to permanently move the device to another server.
+     */
+    // TODO: Parse the request in the communication library
+    void (*server_moved)(const char* request, size_t request_size, ServerMovedResponseCallback response_callback,
+            void* context);
+
+    // size == 60
 };
 
-PARTICLE_STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*14));
+PARTICLE_STATIC_ASSERT(SparkCallbacks_size, sizeof(SparkCallbacks)==(sizeof(void*)*15));
 
 /**
  * Application-supplied callbacks. (Deliberately distinct from the system-supplied
