@@ -69,16 +69,12 @@ bool is_encrypted_region(uint32_t address) {
     EFUSE_PMAP_READ8(0, USER_KEY_0_EFUSE_ADDRESS, &userEfuse0, L25EOUTVOLTAGE);
     bool part1_encryption_enabled = !(userEfuse0 & PART1_ENCRYPTED_BIT);
 
-    if (part1_encryption_enabled) {
-        if (!(address >= KM0_MBR_START_ADDRESS && address < (KM0_MBR_START_ADDRESS + KM0_MBR_IMAGE_SIZE)) /* MBR */
-                && !(address >= KM0_PART1_START_ADDRESS && address < (KM0_PART1_START_ADDRESS + KM0_PART1_IMAGE_SIZE)) /* part1 */) {
-            return false;
-        }
-    } else {
-        if (!(address >= KM0_MBR_START_ADDRESS && address < (KM0_MBR_START_ADDRESS + KM0_MBR_IMAGE_SIZE)) /* MBR */) {
-            return false;
-        }
+    if (address >= KM0_MBR_START_ADDRESS && address < (KM0_MBR_START_ADDRESS + KM0_MBR_IMAGE_SIZE) /* MBR */) {
+        return false;
+    } else if (part1_encryption_enabled && (address >= KM0_PART1_START_ADDRESS && address < (KM0_PART1_START_ADDRESS + KM0_PART1_IMAGE_SIZE)) /* part1 */) {
+        return false;
     }
+
     return true;
 }
 
@@ -729,7 +725,7 @@ int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
 int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset) {
 #ifndef USE_SERIAL_FLASH
     if (flashDeviceID == FLASH_SERIAL) {
-        return false;
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 #endif
     CHECK_TRUE(infoOut, SYSTEM_ERROR_INVALID_ARGUMENT);
