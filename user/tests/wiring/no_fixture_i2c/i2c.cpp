@@ -131,9 +131,7 @@ test(I2C_02_test_acquire_wire1_buffer) {
 test(I2C_03_long_read_rtc)
 {
     // Test > 32 byte reads by reading from AM18x5 RTC peripheral
-    Wire1.begin();
-
-    // Read full register range
+    // Read beyond full register range
     const uint8_t REGISTER_RANGE = 64;
     uint8_t longReadBuffer[REGISTER_RANGE] = {};
     uint8_t readLength = REGISTER_RANGE; 
@@ -147,6 +145,8 @@ test(I2C_03_long_read_rtc)
     hal_i2c_interface_t wireInterface = HAL_PLATFORM_EXTERNAL_RTC_I2C;
     uint8_t rtcAddress = HAL_PLATFORM_EXTERNAL_RTC_I2C_ADDR;
     uint8_t rtcRegister = 0x00;
+
+    hal_i2c_begin(wireInterface, I2C_MODE_MASTER, 0x00, NULL);
 
     hal_i2c_lock(wireInterface, nullptr);
     SCOPE_GUARD({
