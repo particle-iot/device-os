@@ -200,7 +200,7 @@ int getModuleInfo(ctrl_request* req) {
     });
     PB(GetModuleInfoReply) pbRep = {};
     pbRep.modules.arg = &info;
-    pbRep.modules.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+    pbRep.modules.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
         const auto info = (const hal_system_info_t*)*arg;
         for (size_t i = 0; i < info->module_count; ++i) {
             const hal_module_t& module = info->modules[i];
@@ -225,7 +225,7 @@ int getModuleInfo(ctrl_request* req) {
             }
             pbModule.validity = valid;
             pbModule.dependencies.arg = const_cast<module_info_t*>(&module.info);
-            pbModule.dependencies.funcs.encode = [](pb_ostream_t* strm, const pb_field_t* field, void* const* arg) {
+            pbModule.dependencies.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
                 const auto info = (const module_info_t*)*arg;
                 for (unsigned i = 0; i < 2; ++i) {
                     const module_dependency_t& dep = (i == 0) ? info->dependency : info->dependency2;
