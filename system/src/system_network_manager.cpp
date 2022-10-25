@@ -725,10 +725,14 @@ bool NetworkManager::haveLowerLayerConfiguration(if_t iface) const {
     if_get_name(iface, name);
 #if HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
     if (!strncmp(name, "wl", 2)) {
+#if HAL_PLATFORM_WIFI_SCAN_ONLY
+        return false;
+#else
         auto wifiMan = wifiNetworkManager();
         return wifiMan->hasNetworkConfig();
+#endif // HAL_PLATFORM_WIFI_SCAN_ONLY
     }
-#endif // HAL_PLATFORM_WIFI
+#endif // HAL_PLATFORM_WIFI && HAL_PLATFORM_NCP
 
     return true;
 }
