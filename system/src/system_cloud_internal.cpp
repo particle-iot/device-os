@@ -724,7 +724,8 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     DecodedString pbPubKey(&pbReq.server_pub_key);
     DecodedString pbSign(&pbReq.sign);
     ok = pb_decode(stream, &particle_cloud_ServerMovedPermanentlyRequest_msg, &pbReq);
-    if (!ok) {
+    if (!ok || pbPubKey.size > EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH ||
+            pbAddr.size > EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH) {
         return;
     }
     pb_istream_free(stream, nullptr);
@@ -732,6 +733,16 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     // Reply to the server
     // TODO: Verify the signature
     respCallback(0, ctx); // No error
+    // Disconnect from the cloud and apply the new address/key
+    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SERVER_MOVED);
+    uint8_t pubKey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
+    memcpy(pubKey, pbPubKey.data, pbPubKey.size);
+    memset(pubKey + pbPubKey.size, 0xff, sizeof(pubKey) - pbPubKey.size);
+    uint8_t addr[EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH];
+    memcpy(addr, pbAddr.data, pbAddr.size);
+    memset(addr + pbAddr.size, 0xff, sizeof(addr) - pbAddr.size);
+    HAL_FLASH_Write_ServerPublicKey(pubKey, true /* udp */);
+    HAL_FLASH_Write_ServerAddress(addr, true /* udp */);
 }
 
 #if HAL_PLATFORM_COMPRESSED_OTA
