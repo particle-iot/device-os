@@ -64,6 +64,10 @@
 #include "device_config.h"
 #endif
 
+#include "control/common.h" // FIXME: Move to another directory
+#include "proto/cloud/cloud.pb.h"
+#include "nanopb_misc.h"
+
 #include <stdio.h>
 #include <stdint.h>
 #include <algorithm>
@@ -71,6 +75,7 @@
 using namespace particle;
 using namespace particle::system;
 using particle::protocol::ProtocolError;
+using particle::control::common::DecodedString;
 
 extern volatile uint8_t SPARK_UPDATE_PENDING_EVENT_RECEIVED;
 
@@ -692,6 +697,43 @@ bool publishSafeModeEventIfNeeded() {
     return true; // ok
 }
 
+void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedResponseCallback respCallback, void* ctx) {
+#if HAL_PLATFORM_CLOUD_UDP
+    bool usingUdp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+#else
+    bool usingUdp = false;
+#endif // HAL_PLATFORM_CLOUD_UDP
+    if (!usingUdp) {
+        respCallback(SYSTEM_ERROR_NOT_SUPPORTED, ctx);
+        return;
+    }
+    // Parse the request
+    auto stream = pb_istream_init(nullptr /* reserved */);
+    if (!stream) {
+        return; // TODO: Add return value to the handler callback
+    }
+    NAMED_SCOPE_GUARD(g, {
+        pb_istream_free(stream, nullptr /* reserved */);
+    });
+    bool ok = pb_istream_from_buffer_ex(stream, (const pb_byte_t*)reqData, reqSize, nullptr /* reserved */);
+    if (!ok) {
+        return;
+    }
+    particle_cloud_ServerMovedPermanentlyRequest pbReq = {};
+    DecodedString pbAddr(&pbReq.server_addr);
+    DecodedString pbPubKey(&pbReq.server_pub_key);
+    DecodedString pbSign(&pbReq.sign);
+    ok = pb_decode(stream, &particle_cloud_ServerMovedPermanentlyRequest_msg, &pbReq);
+    if (!ok) {
+        return;
+    }
+    pb_istream_free(stream, nullptr);
+    g.dismiss();
+    // Reply to the server
+    // TODO: Verify the signature
+    respCallback(0, ctx); // No error
+}
+
 #if HAL_PLATFORM_COMPRESSED_OTA
 // Minimum bootloader version required to support compressed/combined OTA updates
 const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 1000; // 2.0.0
@@ -1027,6 +1069,7 @@ void Spark_Protocol_Init(void)
         callbacks.millis = HAL_Timer_Get_Milli_Seconds;
         callbacks.set_time = system_set_time;
         callbacks.notify_client_messages_processed = clientMessagesProcessed;
+        callbacks.server_moved = handleServerMovedRequest;
 
         SparkDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
