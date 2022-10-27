@@ -70,12 +70,12 @@ bool is_encrypted_region(uint32_t address) {
     bool part1_encryption_enabled = !(userEfuse0 & PART1_ENCRYPTED_BIT);
 
     if (address >= KM0_MBR_START_ADDRESS && address < (KM0_MBR_START_ADDRESS + KM0_MBR_IMAGE_SIZE) /* MBR */) {
-        return false;
+        return true;
     } else if (part1_encryption_enabled && (address >= KM0_PART1_START_ADDRESS && address < (KM0_PART1_START_ADDRESS + KM0_PART1_IMAGE_SIZE)) /* part1 */) {
-        return false;
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 /* WARNING: enable_rsip_if_disabled() and disable_rsip_if_enabled() must be used in pair.
