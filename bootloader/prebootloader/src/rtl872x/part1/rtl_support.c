@@ -18,8 +18,14 @@
 #include "ameba_soc.h"
 #include "rtl_support.h"
 #include "rtl8721d_system.h"
+#include "rtl8721d_bor.h"
+#include "rtl8721d.h"
+#include <stdbool.h>
+
+extern CPU_PWR_SEQ HSPWR_OFF_SEQ[];
 
 uint32_t tickless_debug = 0;
+static volatile bool km4_powered_on = false;
 
 /* The binary data of generated ram_retention.bin should copy into retention_ram_patch_array. 
    Then fill in the patch size at the second dword */
@@ -289,6 +295,14 @@ static uint32_t app_mpu_nocache_init(void) {
 	return 0;
 }
 
+void bodIrqHandler() {
+    // Brown-out - reset
+    if (km4_powered_on) {
+        BOOT_ROM_CM4PON((u32)HSPWR_OFF_SEQ);
+    }
+    NVIC_SystemReset();
+}
+
 // Copy-paste from BOOT_FLASH_Image1()
 void rtlLowLevelInit() {
     /*Get Chip Version*/
@@ -300,6 +314,15 @@ void rtlLowLevelInit() {
         temp |= (SYSCFG_CUT_VERSION_B << BIT_SHIFT_AON_CHIP_VERSION_SW);
     }
     HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1, temp);
+
+    // Use BOD interrupt as tresholds are much higher compared to reset mode
+    BOR_ClearINT();
+    InterruptRegister((IRQ_FUN)bodIrqHandler, BOR2_IRQ_LP, 0, 0);
+    InterruptEn(BOR2_IRQ_LP, 0);
+    BOR_ThresholdSet(BOR_TH_LOW7, BOR_TH_HIGH7);
+    BOR_ModeSet(BOR_INTR, ENABLE);
+    // XXX: Does this work? Enable BOD reset as well
+    BOR_ModeSet(BOR_RESET, ENABLE);
 
     boot_ram_function_enable();
 
@@ -450,6 +473,7 @@ void rtlPowerOnBigCore() {
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
     }
 
+    km4_powered_on = true;
     km4_boot_on();
 }
 
