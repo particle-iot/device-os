@@ -102,7 +102,7 @@ public:
                            hal_ble_gap_is_connected(nullptr, nullptr);
         hal_ble_stack_deinit(nullptr);
         // The delay is essential to make sure the resources are successfully freed.
-        DelayMs(1500);
+        DelayMs(2000);
 
         HAL_USB_Detach();
 
