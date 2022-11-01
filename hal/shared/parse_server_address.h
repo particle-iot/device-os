@@ -20,15 +20,13 @@
 #define	PARSE_SERVER_ADDRESS_H
 
 #include "ota_flash_hal.h"
-
 #include "system_error.h"
 
-#include <stdint.h>
-#include <stddef.h>
+#include <cstdio>
+#include <cstring>
+#include <cstdint>
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+namespace particle {
 
 inline void parseServerAddressData(ServerAddress* server_addr, const uint8_t* buf, int maxLength)
 {
@@ -98,9 +96,27 @@ inline int encodeServerAddressData(const ServerAddress* addr, uint8_t* buf, size
     return 0;
 }
 
-#ifdef	__cplusplus
+inline int parseServerAddressString(ServerAddress* addr, const char* str) {
+    unsigned n1 = 0, n2 = 0, n3 = 0, n4 = 0;
+    if (sscanf(str, "%u.%u.%u.%u", &n1, &n2, &n3, &n4) == 4) {
+        if (n1 > 255 || n2 > 255 || n3 > 255 || n4 > 255) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        addr->addr_type = IP_ADDRESS;
+        addr->ip = (n1 << 24) | (n2 << 16) | (n3 << 8) | n4;
+    } else {
+        size_t len = strlen(str);
+        if (len >= sizeof(ServerAddress::domain)) {
+            return SYSTEM_ERROR_TOO_LARGE;
+        }
+        addr->addr_type = DOMAIN_NAME;
+        addr->length = len;
+        memcpy(addr->domain, str, len);
+    }
+    return 0;
 }
-#endif
+
+} // namespace particle
 
 #endif	/* PARSE_SERVER_ADDRESS_H */
 
