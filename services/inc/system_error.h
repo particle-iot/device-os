@@ -63,7 +63,28 @@
         (OTA_INVALID_PLATFORM, "Invalid module platform", -1360), \
         (OTA_INVALID_FORMAT, "Invalid module format", -1370), \
         (OTA_UPDATES_DISABLED, "Firmware updates are disabled", -1380), \
-        (OTA, "Firmware update error", -1390)
+        (OTA, "Firmware update error", -1390), \
+        (CRYPTO, "Crypto error", -1400), /* -1599 ... -1400: Crypto errors */ \
+        (I2C_BUS_BUSY, "Bus busy", -1600), /* -1699 ... -1600: I2C errors */ \
+        (I2C_ARBITRATION_FAILED, "Arbitration failed", -1601), \
+        (I2C_TX_ADDR_TIMEOUT, "Send slave address timeout", -1602), \
+        (I2C_FILL_DATA_TIMEOUT, "Fill data timeout", -1603), \
+        (I2C_TX_DATA_TIMEOUT, "Send data timeout", -1604), \
+        (I2C_STOP_TIMEOUT, "Send stop timeout", -1605), \
+        (I2C_ABORT, "I2C transmission abort", -1606), \
+        (PPP_PARAM, "Invalid parameter", -1700), /* -1799 ... -1700: PPP errors */ \
+        (PPP_OPEN, "Unable to open PPP session", -1701), \
+        (PPP_DEVICE, "Invalid I/O device for PPP", -1702), \
+        (PPP_ALLOC, "Unable to allocate resources", -1703), \
+        (PPP_USER, "User interrupt", -1704), \
+        (PPP_CONNECT, "Connection lost", -1705), \
+        (PPP_AUTH_FAIL, "Failed authentication challenge", -1706), \
+        (PPP_PROTOCOL, "Failed to meet protocol", -1707), \
+        (PPP_PEER_DEAD, "Connection timeout", -1708), \
+        (PPP_IDLE_TIMEOUT, "Idle timeout", -1709), \
+        (PPP_CONNECT_TIME, "Max connect time reached", -1710), \
+        (PPP_LOOPBACK, "Loopback detected", -1711), \
+        (PPP_NO_CARRIER_IN_NETWORK_PHASE, "Received NO CARRIER in network phase", -1712)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

@@ -1490,6 +1490,20 @@ int SaraNcpClient::initReady(ModemState state) {
     // Enable packet domain error reporting
     CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
 
+    // Disable LWM2M
+    // NOTE: this command hangs in muxed mode for some reason
+    if ((ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510)
+            && state != ModemState::MuxerAtChannel) {
+        auto resp = parser_.sendCommand("AT+ULWM2M?");
+        int lwm2m = -1;
+        r = resp.scanf("+ULWM2M: %d", &lwm2m);
+        CHECK_PARSER(resp.readResult());
+        if (lwm2m == 0) {
+            // Enabled -> disable
+            CHECK_PARSER(parser_.execCommand(("AT+ULWM2M=1")));
+        }
+    }
+
     if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         // Force Cat M1-only mode
         // We may encounter a CME ERROR response with u-blox firmware 05.08,A.02.04 and in that case Cat-M1 mode is
@@ -2069,6 +2083,19 @@ int SaraNcpClient::enterDataMode() {
         ok = true;
     }
     return r;
+}
+
+int SaraNcpClient::dataModeError(int error) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && error == SYSTEM_ERROR_PPP_NO_CARRIER_IN_NETWORK_PHASE) {
+        CHECK_TRUE(connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+        // FIXME: this is a workaround for some R410 firmware versions where the PPP session suddenly dies
+        // in network phase after the first IPCP ConfReq. For some reason CGATT=0/1 helps.
+        const NcpClientLock lock(this);
+        CHECK_PARSER_OK(parser_.execCommand(3 * 60 * 1000, "AT+CGATT=0"));
+        HAL_Delay_Milliseconds(1000);
+        CHECK_PARSER_OK(parser_.execCommand(3 * 60 * 1000, "AT+CGATT=1"));
+    }
+    return 0;
 }
 
 int SaraNcpClient::getMtu() {

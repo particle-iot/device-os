@@ -28,10 +28,6 @@ void lwip_log_message(const char *fmt, ...);
 }
 #endif /* __cplusplus */
 
-#ifdef DEBUG_BUILD
 #define LWIP_PLATFORM_DIAG(x) do { lwip_log_message x; } while(0)
-#else
-#define LWIP_PLATFORM_DIAG(x)
-#endif /* DEBUG_BUILD */
 
 #endif /* HAL_LWIP_LOGGING_H */
