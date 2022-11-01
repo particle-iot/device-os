@@ -54,6 +54,8 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
 
+using namespace particle;
+
 namespace {
 
 const uint16_t BOOTLOADER_MBR_UPDATE_MIN_VERSION = 1001; // 2.0.0-rc.1

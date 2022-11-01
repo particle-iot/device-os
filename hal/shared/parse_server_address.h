@@ -96,6 +96,7 @@ inline int encodeServerAddressData(const ServerAddress* addr, uint8_t* buf, size
     return 0;
 }
 
+// Note: This function doesn't parse the port number
 inline int parseServerAddressString(ServerAddress* addr, const char* str) {
     unsigned n1 = 0, n2 = 0, n3 = 0, n4 = 0;
     if (sscanf(str, "%u.%u.%u.%u", &n1, &n2, &n3, &n4) == 4) {

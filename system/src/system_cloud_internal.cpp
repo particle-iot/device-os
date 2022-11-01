@@ -59,6 +59,7 @@
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 #include "system_version.h"
 #include "firmware_update.h"
+#include "server_key_manager.h"
 
 #if PLATFORM_ID == PLATFORM_GCC
 #include "device_config.h"
@@ -76,6 +77,7 @@ using namespace particle;
 using namespace particle::system;
 using particle::protocol::ProtocolError;
 using particle::control::common::DecodedString;
+using particle::control::common::DecodedCString;
 
 extern volatile uint8_t SPARK_UPDATE_PENDING_EVENT_RECEIVED;
 
@@ -149,30 +151,16 @@ void systemEventHandler(const char* name, const char* data)
         }
     }
     else if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
-        // Restore PSK to DCT
-        LOG(INFO,"Restoring Public Server Key and Server Address to flash");
-#if HAL_PLATFORM_CLOUD_UDP
-        bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-#else
-        bool udp = false;
-#endif
-        unsigned char psk_buf[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];   // 320 (udp) vs 294 (tcp), allocate 320.
-        unsigned char server_addr_buf[EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH];
-        memset(&psk_buf, 0xff, sizeof(psk_buf));
-        memset(&server_addr_buf, 0xff, sizeof(server_addr_buf));
-        if (udp) {
-#if HAL_PLATFORM_CLOUD_UDP
-            memcpy(&psk_buf, backup_udp_public_server_key, backup_udp_public_server_key_size);
-            memcpy(&server_addr_buf, backup_udp_public_server_address, backup_udp_public_server_address_size);
-#endif // HAL_PLATFORM_CLOUD_UDP
-        } else {
-#if HAL_PLATFORM_CLOUD_TCP
-            memcpy(&psk_buf, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
-            memcpy(&server_addr_buf, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
-#endif // HAL_PLATFORM_CLOUD_TCP
+        LOG(WARN, "Restoring factory default server settings");
+        int r = ServerKeyManager::instance()->restoreFactoryDefaults();
+        if (r < 0) {
+            LOG(ERROR, "Error while restoring factory default server settings: %d", r);
+            return;
         }
-        HAL_FLASH_Write_ServerPublicKey(psk_buf, udp);
-        HAL_FLASH_Write_ServerAddress(server_addr_buf, udp);
+        if (r == ServerKeyManager::RESET_NEEDED) {
+            LOG(WARN, "Reset is required to apply new server settings");
+            system_pending_shutdown(RESET_REASON_FACTORY_RESET);
+        }
     }
 }
 
@@ -720,7 +708,7 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
         return;
     }
     particle_cloud_ServerMovedPermanentlyRequest pbReq = {};
-    DecodedString pbAddr(&pbReq.server_addr);
+    DecodedCString pbAddr(&pbReq.server_addr); // Decode to a null-terminated string
     DecodedString pbPubKey(&pbReq.server_pub_key);
     DecodedString pbSign(&pbReq.sign);
     ok = pb_decode(stream, &particle_cloud_ServerMovedPermanentlyRequest_msg, &pbReq);
@@ -731,18 +719,23 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     pb_istream_free(stream, nullptr);
     g.dismiss();
     // Reply to the server
-    // TODO: Verify the signature
     respCallback(0, ctx); // No error
     // Disconnect from the cloud and apply the new address/key
     cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SERVER_MOVED);
-    uint8_t pubKey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
-    memcpy(pubKey, pbPubKey.data, pbPubKey.size);
-    memset(pubKey + pbPubKey.size, 0xff, sizeof(pubKey) - pbPubKey.size);
-    uint8_t addr[EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH];
-    memcpy(addr, pbAddr.data, pbAddr.size);
-    memset(addr + pbAddr.size, 0xff, sizeof(addr) - pbAddr.size);
-    HAL_FLASH_Write_ServerPublicKey(pubKey, true /* udp */);
-    HAL_FLASH_Write_ServerAddress(addr, true /* udp */);
+    ServerKeyManager::ServerMovedRequest req = {};
+    req.address = pbAddr.data;
+    req.port = pbReq.server_port;
+    req.publicKey = (const uint8_t*)pbPubKey.data;
+    req.publicKeySize = pbPubKey.size;
+    req.signature = (const uint8_t*)pbSign.data;
+    req.signatureSize = pbSign.size;
+    int r = ServerKeyManager::instance()->handleServerMovedRequest(req);
+    if (r < 0) {
+        return;
+    }
+    if (r == ServerKeyManager::RESET_NEEDED) {
+        system_pending_shutdown(RESET_REASON_FACTORY_RESET);
+    }
 }
 
 #if HAL_PLATFORM_COMPRESSED_OTA
