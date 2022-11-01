@@ -147,6 +147,7 @@ public:
     virtual int getMtu() = 0;
     virtual int urcs(bool enable) = 0;
     virtual int startNcpFwUpdate(bool update) = 0;
+    virtual int dataModeError(int error) = 0;
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :
