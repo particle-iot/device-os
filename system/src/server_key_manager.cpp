@@ -15,6 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+
 #include <memory>
 
 #include "server_key_manager.h"
@@ -47,6 +49,9 @@ const auto FACTORY_SERVER_ADDRESS = "$id.udp.particle.io";
 const uint16_t FACTORY_SERVER_PORT = 5684;
 
 int setServerPublicKey(const uint8_t* key, size_t size) {
+    LOG(INFO, "Updating server public key:");
+    LOG_DUMP(INFO, key, size);
+    LOG_PRINTF(INFO, " (%u bytes)\r\n", (unsigned)size);
     if (size > DCT_ALT_SERVER_PUBLIC_KEY_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
@@ -62,6 +67,7 @@ int setServerPublicKey(const uint8_t* key, size_t size) {
 }
 
 int setServerAddress(const char* address, uint16_t port) {
+    LOG(INFO, "Updating server address: %s:%u", address, (unsigned)port);
     ServerAddress addr = {};
     CHECK(parseServerAddressString(&addr, address));
     addr.port = port;
@@ -82,13 +88,17 @@ inline bool usingUdp() {
 
 } // namespace
 
-int ServerKeyManager::handleServerMovedRequest(const ServerMovedRequest& req) {
+int ServerKeyManager::validateServerMovedRequestSignature(const ServerMovedRequest& req) {
+    return 0; // TODO
+}
+
+int ServerKeyManager::applyServerMovedRequestSettings(const ServerMovedRequest& req) {
     if (!usingUdp()) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     CHECK(setServerPublicKey(req.publicKey, req.publicKeySize));
     CHECK(setServerAddress(req.address, req.port));
-    return Result::RESET_NEEDED;
+    return 0;
 }
 
 int ServerKeyManager::restoreFactoryDefaults() {
@@ -97,7 +107,7 @@ int ServerKeyManager::restoreFactoryDefaults() {
     }
     CHECK(setServerPublicKey(FACTORY_SERVER_PUBLIC_KEY, sizeof(FACTORY_SERVER_PUBLIC_KEY)));
     CHECK(setServerAddress(FACTORY_SERVER_ADDRESS, FACTORY_SERVER_PORT));
-    return Result::RESET_NEEDED;
+    return 0;
 }
 
 ServerKeyManager* ServerKeyManager::instance() {

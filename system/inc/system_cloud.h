@@ -355,15 +355,6 @@ int spark_get_connection_property(unsigned property, void* data, size_t* size, v
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
 
-extern const unsigned char backup_udp_public_server_key[];
-extern const size_t backup_udp_public_server_key_size;
-
-extern const unsigned char backup_udp_public_server_address[];
-extern const size_t backup_udp_public_server_address_size;
-
-extern const unsigned char backup_tcp_public_server_key[294];
-extern const unsigned char backup_tcp_public_server_address[18];
-
 #define SPARK_BUF_LEN                 600
 
 //#define SPARK_SERVER_IP             "54.235.79.249"

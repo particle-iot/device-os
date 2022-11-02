@@ -141,6 +141,7 @@ int spark_cloud_socket_connect()
     ServerAddress server_addr = {};
     HAL_FLASH_Read_ServerAddress(&server_addr);
 
+#if 0 // FIXME
     // if server address is erased, restore with a backup from system firmware
     if (server_addr.addr_type != IP_ADDRESS && server_addr.addr_type != DOMAIN_NAME) {
         LOG(WARN, "Public Server Address was blank, restoring.");
@@ -156,6 +157,7 @@ int spark_cloud_socket_connect()
         }
         particle_key_errors |= SERVER_ADDRESS_BLANK;
     }
+#endif
     switch (server_addr.addr_type)
     {
         case IP_ADDRESS:

@@ -290,6 +290,7 @@ ProtocolError Protocol::handle_server_moved_request(Message& msg)
 		LOG(ERROR, "Received a malformed ServerMovedPermanentlyRequest");
 		return ProtocolError::NO_ERROR; // Ignore the request
 	}
+	LOG(WARN, "Received a ServerMovedPermanentlyRequest");
 	// Acknowledge the request
 	Message ack;
 	r = channel.response(msg, ack, msg.capacity() - msg.length());

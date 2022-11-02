@@ -23,10 +23,6 @@ namespace particle {
 
 class ServerKeyManager {
 public:
-    enum Result {
-        RESET_NEEDED = 1
-    };
-
     struct ServerMovedRequest {
         const char* address;
         const uint8_t* publicKey;
@@ -36,7 +32,8 @@ public:
         uint16_t port;
     };
 
-    int handleServerMovedRequest(const ServerMovedRequest& req);
+    int validateServerMovedRequestSignature(const ServerMovedRequest& req);
+    int applyServerMovedRequestSettings(const ServerMovedRequest& req);
 
     int restoreFactoryDefaults();
 

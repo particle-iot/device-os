@@ -154,13 +154,10 @@ void systemEventHandler(const char* name, const char* data)
         LOG(WARN, "Restoring factory default server settings");
         int r = ServerKeyManager::instance()->restoreFactoryDefaults();
         if (r < 0) {
-            LOG(ERROR, "Error while restoring factory default server settings: %d", r);
+            LOG(ERROR, "Failed to restore factory default server settings: %d", r);
             return;
         }
-        if (r == ServerKeyManager::RESET_NEEDED) {
-            LOG(WARN, "Reset is required to apply new server settings");
-            system_pending_shutdown(RESET_REASON_FACTORY_RESET);
-        }
+        system_pending_shutdown(RESET_REASON_FACTORY_RESET);
     }
 }
 
@@ -718,10 +715,6 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     }
     pb_istream_free(stream, nullptr);
     g.dismiss();
-    // Reply to the server
-    respCallback(0, ctx); // No error
-    // Disconnect from the cloud and apply the new address/key
-    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SERVER_MOVED);
     ServerKeyManager::ServerMovedRequest req = {};
     req.address = pbAddr.data;
     req.port = pbReq.server_port;
@@ -729,13 +722,20 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     req.publicKeySize = pbPubKey.size;
     req.signature = (const uint8_t*)pbSign.data;
     req.signatureSize = pbSign.size;
-    int r = ServerKeyManager::instance()->handleServerMovedRequest(req);
+    int r = ServerKeyManager::instance()->validateServerMovedRequestSignature(req);
     if (r < 0) {
         return;
     }
-    if (r == ServerKeyManager::RESET_NEEDED) {
-        system_pending_shutdown(RESET_REASON_FACTORY_RESET);
+    // Reply to the server
+    respCallback(0, ctx); // No error
+    // Disconnect from the cloud and apply the new address/key
+    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SERVER_MOVED);
+    clearSessionData();
+    r = ServerKeyManager::instance()->applyServerMovedRequestSettings(req);
+    if (r < 0) {
+        return;
     }
+    system_pending_shutdown(RESET_REASON_FACTORY_RESET);
 }
 
 #if HAL_PLATFORM_COMPRESSED_OTA
@@ -1107,6 +1107,7 @@ void Spark_Protocol_Init(void)
         HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
         HAL_FLASH_Read_ServerPublicKey(pubkey);
 
+#if 0 // FIXME
         // if public server key is erased, restore with a backup from system firmware
         if (pubkey[0] == 0xff) {
             LOG(WARN, "Public Server Key was blank, restoring.");
@@ -1121,7 +1122,7 @@ void Spark_Protocol_Init(void)
             }
             particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
         }
-
+#endif
         uint8_t id_length = hal_get_device_id(NULL, 0);
         uint8_t id[id_length];
         hal_get_device_id(id, id_length);
