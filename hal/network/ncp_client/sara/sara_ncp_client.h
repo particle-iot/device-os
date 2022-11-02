@@ -71,6 +71,7 @@ public:
     virtual int setRegistrationTimeout(unsigned timeout) override;
     virtual int getTxDelayInDataChannel() override;
     virtual int enterDataMode() override;
+    virtual int preStartDataChannel() override;
     virtual int getMtu() override;
     virtual int urcs(bool enable) override;
     virtual int startNcpFwUpdate(bool update) override;

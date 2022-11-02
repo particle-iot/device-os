@@ -130,6 +130,7 @@ public:
     virtual int setRegistrationTimeout(unsigned timeout) = 0;
     virtual int getTxDelayInDataChannel() = 0;
     virtual int enterDataMode() = 0;
+    virtual int preStartDataChannel() = 0;
     virtual int getMtu() = 0;
     virtual int urcs(bool enable) = 0;
     virtual int startNcpFwUpdate(bool update) = 0;

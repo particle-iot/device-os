@@ -48,6 +48,9 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include <lwip/memp.h>
 #include "enumclass.h"
 
+#undef LOG_CHECKED_ERRORS
+#define LOG_CHECKED_ERRORS 1
+
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
@@ -136,7 +139,7 @@ const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 const int UBLOX_NCP_R4_NO_HW_FLOW_CONTROL_MTU = 990;
 
 const int UBLOX_DEFAULT_CID = 1;
-const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
+const char UBLOX_DEFAULT_PDP_TYPE[] = "IPv4v6";
 
 const int IMSI_MAX_RETRY_CNT = 5;
 const int CCID_MAX_RETRY_CNT = 2;
@@ -1476,6 +1479,68 @@ int SaraNcpClient::checkUFotaConf(int* val) {
 
 int SaraNcpClient::initReady(ModemState state) {
     CHECK(waitAtResponse(5000));
+
+    // Disable LWM2M
+    // NOTE: this command hangs in muxed mode for some reason
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && state != ModemState::MuxerAtChannel) {
+        LOG(TRACE, "Dsiabling LWM2M");
+        auto resp = parser_.sendCommand("AT+ULWM2M?");
+        int lwm2m = -1;
+        int r = resp.scanf("+ULWM2M: %d", &lwm2m);
+        (void)r;
+        resp.readResult();
+        if (lwm2m == 0) {
+            // Enabled -> disable
+            CHECK_PARSER(parser_.execCommand(("AT+ULWM2M=1")));
+        }
+    }
+
+    if (state != ModemState::MuxerAtChannel) {
+        // Send AT+CMUX and initialize multiplexer
+        int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,%u,,,,,", UBLOX_NCP_MAX_MUXER_FRAME_SIZE));
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+
+        // Initialize muxer
+        CHECK(initMuxer());
+
+        // Start muxer (blocking call)
+        CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
+    }
+
+    NAMED_SCOPE_GUARD(muxerSg, {
+        muxer_.stop();
+    });
+
+    // Open AT channel and connect it to AT channel stream
+    if (muxer_.openChannel(UBLOX_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get())) {
+        // Failed to open AT channel
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    // Just in case resume AT channel
+    muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL);
+
+    // Reinitialize parser with a muxer-based stream
+    CHECK(initParser(muxerAtStream_.get()));
+
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
+        CHECK(waitAtResponse(10000));
+    } else {
+        CHECK(waitAtResponse(20000, 5000));
+    }
+    ncpState(NcpState::ON);
+    LOG_DEBUG(TRACE, "Muxer AT channel live");
+    // checkRuntimeStateMuxer(460800);
+    // waitReady(false);
+    preStartDataChannel();
+    for (int i=0; i<40;i++) {
+        CHECK_PARSER(parser_.execCommand("AT+CGSN"));
+        HAL_Delay_Milliseconds(500);
+    }
+
+    muxerSg.dismiss();
+
+    CHECK(waitAtResponse(5000));
+
     fwVersion_ = getAppFirmwareVersion();
 #ifdef PPP_ERROR_WORKAROUND
     // Check if AT+CFUN=4
@@ -1562,6 +1627,7 @@ int SaraNcpClient::initReady(ModemState state) {
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
+    (void)r;
 
     // Enable packet domain error reporting
     CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
@@ -1595,7 +1661,7 @@ int SaraNcpClient::initReady(ModemState state) {
         // to wait longer for device to become active (see MDMParser::_atOk)
         CHECK_PARSER_OK(parser_.execCommand("AT+UPSV=0"));
     }
-
+#if 0
     if (state != ModemState::MuxerAtChannel) {
         // Send AT+CMUX and initialize multiplexer
         r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,%u,,,,,", UBLOX_NCP_MAX_MUXER_FRAME_SIZE));
@@ -1630,8 +1696,16 @@ int SaraNcpClient::initReady(ModemState state) {
     }
     ncpState(NcpState::ON);
     LOG_DEBUG(TRACE, "Muxer AT channel live");
+    // checkRuntimeStateMuxer(460800);
+    // waitReady(false);
+    // preStartDataChannel();
+    for (int i=0; i<20;i++) {
+        CHECK_PARSER(parser_.execCommand("AT+CGSN"));
+        HAL_Delay_Milliseconds(500);
+    }
 
     muxerSg.dismiss();
+#endif
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1717,7 +1791,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
             // Restore defaults
             muxer_.setAckTimeout(UBLOX_MUXER_T1);
             muxer_.setControlResponseTimeout(UBLOX_MUXER_T2);
-
+            preStartDataChannel();
             return SYSTEM_ERROR_NONE;
         }
 
@@ -1740,6 +1814,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     parser_.reset();
     if (!waitAtResponse(2000)) {
         state = ModemState::RuntimeBaudrate;
+        preStartDataChannel();
         return SYSTEM_ERROR_NONE;
     }
     LOG(TRACE, "Modem is not responsive @ %u baudrate", runtimeBaudrate);
@@ -1755,6 +1830,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     parser_.reset();
     if (!waitAtResponse(5000)) {
         state = ModemState::DefaultBaudrate;
+        preStartDataChannel();
         return SYSTEM_ERROR_NONE;
     }
     LOG(TRACE, "Modem is not responsive @ %u baudrate", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
@@ -2017,7 +2093,80 @@ void SaraNcpClient::ncpPowerState(NcpPowerState state) {
     }
 }
 
+int SaraNcpClient::preStartDataChannel() {
+    const NcpClientLock lock(this);
+    LOG(TRACE, "TP1");
+    CHECK(muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL));
+    LOG(TRACE, "TP2");
+    muxer_.forceOpenChannel(UBLOX_NCP_PPP_CHANNEL);
+    LOG(TRACE, "TP2-1");
+
+    bool ok = false;
+    SCOPE_GUARD({
+        muxerDataStream_->enabled(false);
+        if (!ok) {
+            LOG(TRACE, "TP3");
+            LOG(ERROR, "Failed to enter data mode");
+            muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, nullptr, nullptr);
+            // Go into an error state
+            disable();
+        }
+    });
+
+    skipAll(muxerDataStream_.get());
+    muxerDataStream_->enabled(true);
+    dataChannelFlowControl(false);
+
+    // There is some kind of a bug in 02.19 R410 modem firmware in where it does not accept
+    // any AT commands over the second muxed channel, unless we send something over channel 1 first.
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        LOG(TRACE, "TP4");
+        CHECK(waitAtResponse(parser_, 5000));
+        LOG(TRACE, "TP5");
+    }
+
+    LOG(TRACE, "TP6");
+    CHECK_TRUE(muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
+    LOG(TRACE, "TP7");
+    // Send data mode break
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
+        const char breakCmd[] = "~+++";
+        muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    } else {
+        LOG(TRACE, "TP8");
+        // SARA R4 does not support ~+++ escape sequence and with +++ and ATH
+        // it doesn't actually interrupt an ongoing PPP session an enters some
+        // kind of a weird state where it interleaves both PPP and command mode.
+        //
+        // What we do here instead is send a PPP LCP Termination Request
+        const char breakCmd[] = "~\xff}#\xc0!}%}\"} }0User requestS3~";
+        muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    }
+    skipAll(muxerDataStream_.get(), 1000);
+
+    // Initialize AT parser
+    auto parserConf = AtParserConfig()
+            .stream(muxerDataStream_.get())
+            .commandTerminator(AtCommandTerminator::CRLF);
+    dataParser_.destroy();
+    LOG(TRACE, "TP9");
+    CHECK(dataParser_.init(std::move(parserConf)));
+    LOG(TRACE, "TP10");
+
+    CHECK(waitAtResponse(dataParser_, 5000));
+    LOG(TRACE, "TP11");
+    ok = true;
+    muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, nullptr, nullptr);
+    return ok;
+    // if (!r) {
+    //     ok = true;
+    // }
+    // return r;
+}
+
+
 int SaraNcpClient::enterDataMode() {
+    LOG(TRACE, "Attemping to enter data mode");
     CHECK_TRUE(connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
     const NcpClientLock lock(this);
     bool ok = false;
@@ -2065,6 +2214,14 @@ int SaraNcpClient::enterDataMode() {
 
     CHECK(waitAtResponse(dataParser_, 5000));
 
+<<<<<<< Updated upstream
+=======
+    // for (int k=0; k<20; k++) {
+    //     CHECK_PARSER(dataParser_.execCommand("AT+CGSN"));
+    //     HAL_Delay_Milliseconds(300);
+    // }
+
+>>>>>>> Stashed changes
     if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         // Ignore response
         // SARA R4 does not support this, see above
@@ -2152,6 +2309,7 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
         }
 
         // Open data channel and resume it just in case
+        LOG(TRACE, "Opening 2nd channel");
         int r = muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL);
         if (r) {
             LOG(ERROR, "Failed to open data channel");
