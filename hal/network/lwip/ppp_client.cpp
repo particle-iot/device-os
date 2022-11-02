@@ -52,6 +52,21 @@ int Client::netifClientDataIdx_ = -1;
 constexpr const char* Client::eventNames_[];
 constexpr const char* Client::stateNames_[];
 
+namespace {
+
+#if !PPP_DEBUG
+const char* pppPhaseToString(uint8_t phase) {
+  const char* phases[] = {
+    "Dead", "Master", "Holdoff", "Initialize", "SerialConn",
+    "Dormant", "Establish", "Authenticate", "Callback", "Network",
+    "Running", "Terminate", "Disconnect", "Unknown"
+  };
+  return phases[std::min<int>(phase, sizeof(phases) / sizeof(phases[0]) - 1)];
+}
+#endif // !PPP_DEBUG
+
+} // anonymous
+
 Client::Client() {
   std::call_once(once_, []() {
     LOCK_TCPIP_CORE();
@@ -222,8 +237,8 @@ int Client::input(const uint8_t* data, size_t size) {
           const char NO_CARRIER[] = "\r\nNO CARRIER\r\n";
           if (pppos && pppos->in_state == PDADDRESS && pcb_->phase == PPP_PHASE_NETWORK && data[0] != PPP_FLAG && size >= sizeof(NO_CARRIER) - 1 && !strncmp((const char*)data, NO_CARRIER, size)) {
             LOG(ERROR, "NO CARRIER in network PPP phase");
-            notifyEvent(EVENT_ERROR, ERROR_NO_CARRIER_IN_NETWORK_PHASE);
             pppapi_close(pcb_, 1);
+            notifyEvent(EVENT_ERROR, ERROR_NO_CARRIER_IN_NETWORK_PHASE);
             break;
           }
         }
@@ -490,7 +505,7 @@ void Client::notifyPhaseCb(ppp_pcb* pcb, uint8_t phase, void* ctx) {
 
 void Client::notifyPhase(uint8_t phase) {
 #if !PPP_DEBUG
-  LOG(TRACE, "PPP phase -> %d", phase);
+  LOG(TRACE, "PPP phase -> %s", pppPhaseToString(phase));
 #endif // !PPP_DEBUG
 }
 

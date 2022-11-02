@@ -99,7 +99,7 @@
 /**
  * PPP_DEBUG: Enable debugging for PPP.
  */
-#define PPP_DEBUG                       LWIP_DBG_ON
+#define PPP_DEBUG                       LWIP_DBG_OFF
 
 /**
  * PPPOS_DEBUG: Enable debugging for PPPoS.
