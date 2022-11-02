@@ -91,16 +91,18 @@ public:
         if (!mutex_) {
             os_mutex_recursive_create(&mutex_);
         }
-        lock();
         os_thread_scheduling(true, nullptr);
+        lock();
         if (isConfigured()) {
             // Configured, but new buffers are invalid
             if (!isConfigValid(conf)){
+                unlock();
                 return SYSTEM_ERROR_INVALID_ARGUMENT;
             }
             // Configured, but new buffers are smaller
             if (conf->rx_buffer_size <= rxBuffer_.size() ||
                conf->tx_buffer_size <= txBuffer_.size()) {    
+               unlock();
                return SYSTEM_ERROR_NOT_ENOUGH_DATA;
             } 
             CHECK(deInit());
