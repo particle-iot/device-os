@@ -1492,8 +1492,7 @@ int SaraNcpClient::initReady(ModemState state) {
 
     // Disable LWM2M
     // NOTE: this command hangs in muxed mode for some reason
-    if ((ncpId() == PLATFORM_NCP_SARA_R410)
-            && state != ModemState::MuxerAtChannel) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && state != ModemState::MuxerAtChannel) {
         auto resp = parser_.sendCommand("AT+ULWM2M?");
         int lwm2m = -1;
         r = resp.scanf("+ULWM2M: %d", &lwm2m);
