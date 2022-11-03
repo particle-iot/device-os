@@ -135,7 +135,7 @@ private:
     int waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period = 1000);
     int selectSimCard(ModemState& state);
     int selectNetworkProf(ModemState& state);
-    int checkSimCard();
+    int checkSimCard(bool* failure = nullptr);
     int configureApn(const CellularNetworkConfig& conf);
     int registerNet();
     int changeBaudRate(unsigned int baud);
@@ -167,6 +167,8 @@ private:
     int waitAtResponseFromPowerOn(ModemState& modemState);
     int disablePsmEdrx();
     int checkSimReadiness(bool checkForRfReset = false);
+    int setModuleFunctionality(CellularFunctionality cfun, bool check = false);
+    int getModuleFunctionality();
 };
 
 inline AtParser* SaraNcpClient::atParser() {
