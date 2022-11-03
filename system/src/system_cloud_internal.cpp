@@ -724,6 +724,7 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     req.signatureSize = pbSign.size;
     int r = ServerKeyManager::instance()->validateServerMovedRequestSignature(req);
     if (r < 0) {
+        LOG(ERROR, "Failed to validate signature of new server settings: %d", r);
         return;
     }
     // Reply to the server
