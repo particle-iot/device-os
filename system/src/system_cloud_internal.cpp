@@ -689,19 +689,23 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     bool usingUdp = false;
 #endif // HAL_PLATFORM_CLOUD_UDP
     if (!usingUdp) {
+        LOG(WARN, "ServerMovedPermanentlyRequest is not supported");
         respCallback(SYSTEM_ERROR_NOT_SUPPORTED, ctx);
         return;
     }
     // Parse the request
+    // TODO: Add a function for parsing a buffer in one call
     auto stream = pb_istream_init(nullptr /* reserved */);
     if (!stream) {
-        return; // TODO: Add return value to the handler callback
+        respCallback(SYSTEM_ERROR_NO_MEMORY, ctx);
+        return;
     }
     NAMED_SCOPE_GUARD(g, {
         pb_istream_free(stream, nullptr /* reserved */);
     });
     bool ok = pb_istream_from_buffer_ex(stream, (const pb_byte_t*)reqData, reqSize, nullptr /* reserved */);
     if (!ok) {
+        respCallback(SYSTEM_ERROR_INTERNAL, ctx);
         return;
     }
     particle_cloud_ServerMovedPermanentlyRequest pbReq = {};
@@ -711,6 +715,8 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     ok = pb_decode(stream, &particle_cloud_ServerMovedPermanentlyRequest_msg, &pbReq);
     if (!ok || pbPubKey.size > EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH ||
             pbAddr.size > EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH) {
+        LOG(ERROR, "Failed to parse ServerMovedPermanentlyRequest");
+        respCallback(SYSTEM_ERROR_BAD_DATA, ctx);
         return;
     }
     pb_istream_free(stream, nullptr);
@@ -724,7 +730,8 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     req.signatureSize = pbSign.size;
     int r = ServerKeyManager::instance()->validateServerMovedRequestSignature(req);
     if (r < 0) {
-        LOG(ERROR, "Failed to validate signature of new server settings: %d", r);
+        LOG(ERROR, "Failed to validate ServerMovedPermanentlyRequest");
+        respCallback(SYSTEM_ERROR_BAD_DATA, ctx);
         return;
     }
     // Reply to the server
@@ -734,7 +741,8 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     clearSessionData();
     r = ServerKeyManager::instance()->applyServerMovedRequestSettings(req);
     if (r < 0) {
-        return;
+        LOG(ERROR, "Failed to apply ServerMovedPermanentlyRequest");
+        // Reset anyway
     }
     system_pending_shutdown(RESET_REASON_FACTORY_RESET);
 }
