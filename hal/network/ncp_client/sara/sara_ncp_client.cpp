@@ -1734,6 +1734,9 @@ int SaraNcpClient::checkSimCard(bool* failure) {
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
         if (!strcmp(code, "READY")) {
             CHECK_PARSER_OK(parser_.execCommand("AT+CCID"));
+            // IFC checks are generally unrelated to the SIM. However, there is a
+            // known issue with u-blox R410 that fails IFC command with `+CME ERROR: SIM failure`
+            CHECK_PARSER_OK(parser_.execCommand("AT+IFC?"));
             return SYSTEM_ERROR_NONE;
         }
         return SYSTEM_ERROR_UNKNOWN;
