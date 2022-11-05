@@ -130,6 +130,7 @@ private:
     int initReady(ModemState state);
     int checkRuntimeState(ModemState& state);
     bool checkRuntimeStateMuxer(unsigned baudrate);
+    int checkUFotaConf(int* val);
     int initMuxer();
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
     int waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period = 1000);

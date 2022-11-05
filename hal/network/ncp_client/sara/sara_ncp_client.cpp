@@ -17,6 +17,8 @@
 
 #define NO_STATIC_ASSERT
 
+#define PPP_ERROR_WORKAROUND
+
 #include "logging.h"
 LOG_SOURCE_CATEGORY("ncp.client");
 
@@ -1462,8 +1464,61 @@ int SaraNcpClient::getAppFirmwareVersion() {
     return ver;
 }
 
+int SaraNcpClient::checkUFotaConf(int* val) {
+    auto resp = parser_.sendCommand("AT+UFOTACONF=2");
+    int r = CHECK_PARSER(resp.scanf("+UFOTACONF: %*d, %d", &val));
+    LOG(TRACE, "Val from UFOTACONF: %d", val);
+    CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    return SYSTEM_ERROR_NONE;
+}
+
 int SaraNcpClient::initReady(ModemState state) {
     CHECK(waitAtResponse(5000));
+    fwVersion_ = getAppFirmwareVersion();
+#ifdef PPP_ERROR_WORKAROUND
+    // Check if AT+CFUN=4
+    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
+    int cfunVal = -1;
+    respCfun.scanf("+CFUN: %d", &cfunVal);
+    CHECK_PARSER_OK(respCfun.readResult());
+    if (cfunVal != 4) {
+        // make it 4
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
+    }
+
+    int uConfValRet = 0;
+    int uConfVal = 0;
+    unsigned attempts = 0;
+    for (attempts = 0; attempts < 40; attempts++) {
+        uConfValRet = checkUFotaConf(&uConfVal);
+        if (!uConfValRet) {
+            LOG(TRACE, "Val from UFOTACONF: %d", uConfVal);
+            break;
+        }
+        HAL_Delay_Milliseconds(1000);
+    }
+
+
+    if (uConfVal == 86400) {
+        HAL_Delay_Milliseconds(95*1000);
+        // make it so
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+UFOTACONF=2,-1"));
+    }
+
+    uConfVal = 0;
+    auto respUFota = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+UFOTACONF=2");
+    respUFota.scanf("+UFOTACONF: %*d, %d", &uConfVal);
+    CHECK_PARSER_OK(respUFota.readResult());
+    if (uConfVal == -1) {
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+ULWM2M=1"));
+        HAL_Delay_Milliseconds(4*1000);
+    }
+
+    CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+#endif
+
     fwVersion_ = getAppFirmwareVersion();
     // L0.0.00.00.05.06,A.02.00 has a memory issue
     memoryIssuePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE) : false;
@@ -2505,6 +2560,10 @@ int SaraNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
+        // Power off in Airplane command command
+#ifdef PPP_ERROR_WORKAROUND
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
+#endif
         int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
         if (r != AtResponse::OK) {
             LOG(ERROR, "AT+CPWROFF command is not responding");
