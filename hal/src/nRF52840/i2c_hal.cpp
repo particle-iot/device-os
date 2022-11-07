@@ -315,9 +315,9 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
         os_mutex_recursive_create(&i2cMap[i2c].mutex);
     } 
 
-    // Capture the mutex and re-enable threading
-    I2cLock lk(i2c);
+    // Re-enable threading and capture the mutex
     os_thread_scheduling(true, nullptr);
+    I2cLock lk(i2c);
 
     if (i2cMap[i2c].configured) {
         // Configured, but new buffers are invalid
