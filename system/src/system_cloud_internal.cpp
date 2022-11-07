@@ -59,7 +59,7 @@
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 #include "system_version.h"
 #include "firmware_update.h"
-#include "server_key_manager.h"
+#include "server_config.h"
 
 #if PLATFORM_ID == PLATFORM_GCC
 #include "device_config.h"
@@ -152,10 +152,10 @@ void systemEventHandler(const char* name, const char* data)
     }
     else if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
         LOG(WARN, "Restoring factory default server settings");
-        int r = ServerKeyManager::instance()->restoreFactoryDefaults();
+        int r = ServerConfig::instance()->restoreDefaultSettings();
         if (r < 0) {
-            LOG(ERROR, "Failed to restore factory default server settings: %d", r);
-            return;
+            LOG(ERROR, "Failed to restore default server settings: %d", r);
+            // Reset anyway
         }
         system_pending_shutdown(RESET_REASON_FACTORY_RESET);
     }
@@ -721,16 +721,16 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     }
     pb_istream_free(stream, nullptr);
     g.dismiss();
-    ServerKeyManager::ServerMovedRequest req = {};
+    ServerConfig::ServerMovedRequest req;
     req.address = pbAddr.data;
     req.port = pbReq.server_port;
     req.publicKey = (const uint8_t*)pbPubKey.data;
     req.publicKeySize = pbPubKey.size;
     req.signature = (const uint8_t*)pbSign.data;
     req.signatureSize = pbSign.size;
-    int r = ServerKeyManager::instance()->validateServerMovedRequestSignature(req);
+    int r = ServerConfig::instance()->validateServerMovedRequest(req);
     if (r < 0) {
-        LOG(ERROR, "Failed to validate ServerMovedPermanentlyRequest");
+        LOG(ERROR, "Failed to validate ServerMoved request: %d", r);
         respCallback(SYSTEM_ERROR_BAD_DATA, ctx);
         return;
     }
@@ -739,9 +739,9 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     // Disconnect from the cloud and apply the new address/key
     cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SERVER_MOVED);
     clearSessionData();
-    r = ServerKeyManager::instance()->applyServerMovedRequestSettings(req);
+    r = ServerConfig::instance()->updateSettings(req);
     if (r < 0) {
-        LOG(ERROR, "Failed to apply ServerMovedPermanentlyRequest");
+        LOG(ERROR, "Failed to update server settings: %d", r);
         // Reset anyway
     }
     system_pending_shutdown(RESET_REASON_FACTORY_RESET);
