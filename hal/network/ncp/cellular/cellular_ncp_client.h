@@ -21,6 +21,7 @@
 #include "cellular_network_manager.h"
 #include "cellular_hal_cellular_global_identity.h"
 #include "timer_hal.h"
+#include "underlying_type.h"
 
 namespace particle {
 
@@ -79,6 +80,19 @@ enum class CellularAccessTechnology {
     LTE_CAT_M1 = 8,
     LTE_NB_IOT = 9
 };
+
+enum class CellularFunctionality {
+    NONE = -1,
+    MINIMUM = 0,
+    FULL = 1,
+    AIRPLANE = 4,
+    FAST_SHUTDOWN = 10,
+    RESET_NO_SIM = 15,
+    RESET_WITH_SIM = 16,
+    MINIMUM_NO_SIM = 19,
+};
+
+PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CellularFunctionality);
 
 enum class CellularStrengthUnits {
     NONE = 0,
