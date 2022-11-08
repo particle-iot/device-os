@@ -1165,7 +1165,13 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
         }
         if (reset) {
-            CHECK(modemSoftReset());
+            if (ncpId() == PLATFORM_NCP_SARA_R410) {
+                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
+            } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
+            }
+            HAL_Delay_Milliseconds(2000);
+
             CHECK(waitAtResponseFromPowerOn(state));
 
             // Checking for SIM readiness ensures that other related commands
@@ -1277,7 +1283,20 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     }
 
     if (reset) {
-        CHECK(modemSoftReset());
+        if (ncpId() == PLATFORM_NCP_SARA_R410) {
+            // R410
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
+            HAL_Delay_Milliseconds(10000);
+        } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+            // R510
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
+            HAL_Delay_Milliseconds(10000);
+        } else {
+            // U201
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
+            HAL_Delay_Milliseconds(1000);
+        }
+
         CHECK(waitAtResponseFromPowerOn(state));
     }
 
@@ -1400,25 +1419,6 @@ int SaraNcpClient::changeBaudRate(unsigned int baud) {
     return serial_->setBaudRate(baud);
 }
 
-int SaraNcpClient::applyPppNetworkPhaseIssueWorkarounds(ModemState& state) {
-    if (ncpId() != PLATFORM_NCP_SARA_R410) {
-        return 0;
-    }
-
-    if (getInitializationState() != SaraNcpInitializationState::FOTA_LWM2M_DISABLED) {
-        // NOTE: AT+ULWM2M hangs in muxed mode, we have to reset here
-        if (state == ModemState::MuxerAtChannel || getModuleFunctionality() != CellularFunctionality::AIRPLANE) {
-            CHECK(modemSoftReset());
-            CHECK(waitAtResponseFromPowerOn(state));
-        }
-        // NOTE: may fail on some modem firmware versions
-        CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+UFOTACONF=2,-1"));
-        CHECK_PARSER(parser_.execCommand("AT+ULWM2M=1"));
-        setInitializationState(SaraNcpInitializationState::FOTA_LWM2M_DISABLED);
-    }
-    return 0;
-}
-
 int SaraNcpClient::getAppFirmwareVersion() {
     // ATI9 (get version and app version)
     // example output
@@ -1447,14 +1447,6 @@ int SaraNcpClient::initReady(ModemState state) {
     // L0.0.00.00.05.06,A.02.00 has a memory issue
     memoryIssuePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_MEMORY_LEAK_ISSUE) : false;
     oldFirmwarePresent_ = (ncpId() == PLATFORM_NCP_SARA_R410) ? (fwVersion_ < UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01) : false;
-
-    if (state != ModemState::MuxerAtChannel) {
-        if (getModuleFunctionality() != CellularFunctionality::AIRPLANE) {
-            CHECK(modemSoftReset());
-            CHECK(waitAtResponseFromPowerOn(state));
-        }
-    }
-
     // Select either internal or external SIM card slot depending on the configuration
     CHECK(selectSimCard(state));
     // Make sure flow control is enabled as well
@@ -1491,14 +1483,25 @@ int SaraNcpClient::initReady(ModemState state) {
         CHECK(selectNetworkProf(state));
     }
 
-    CHECK(applyPppNetworkPhaseIssueWorkarounds(state));
-
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
     int r = CHECK_PARSER(parser_.execCommand("AT+COPS=3,2"));
 
     // Enable packet domain error reporting
     CHECK_PARSER_OK(parser_.execCommand("AT+CGEREP=1,0"));
+
+    // Disable LWM2M
+    // NOTE: this command hangs in muxed mode for some reason
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && state != ModemState::MuxerAtChannel) {
+        auto resp = parser_.sendCommand("AT+ULWM2M?");
+        int lwm2m = -1;
+        r = resp.scanf("+ULWM2M: %d", &lwm2m);
+        resp.readResult();
+        if (lwm2m == 0) {
+            // Enabled -> disable
+            CHECK_PARSER(parser_.execCommand(("AT+ULWM2M=1")));
+        }
+    }
 
     if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
         // Force Cat M1-only mode
@@ -1817,27 +1820,6 @@ int SaraNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool check
     return r;
 }
 
-int SaraNcpClient::getInitializationState() {
-    CHECK_TRUE(ncpId() == PLATFORM_NCP_SARA_R410, SYSTEM_ERROR_NOT_SUPPORTED);
-    auto resp = parser_.sendCommand("AT+CGPIAF?");
-    int bits[4] = {};
-    auto r = resp.scanf("+CGPIAF: %d,%d,%d,%d", &bits[0], &bits[1], &bits[2], &bits[3]);
-    CHECK_PARSER_OK(resp.readResult());
-    CHECK_TRUE(r == sizeof(bits) / sizeof(bits[0]), SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-    int state = bits[0] | (bits[1] << 1) | (bits[2] << 2) | (bits[3] << 3);
-    return state;
-}
-
-int SaraNcpClient::setInitializationState(SaraNcpInitializationState state) {
-    CHECK_TRUE(ncpId() == PLATFORM_NCP_SARA_R410, SYSTEM_ERROR_NOT_SUPPORTED);
-    int bits[4] = {};
-    for (int i = 0; i < (int) (sizeof(bits)/sizeof(bits[0])); i++) {
-        bits[i] = ((int)state >> i) & 0x01;
-    }
-    CHECK_PARSER_OK(parser_.execCommand("AT+CGPIAF=%d,%d,%d,%d", bits[0], bits[1], bits[2], bits[3]));
-    return 0;
-}
-
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // IMPORTANT: Set modem full functionality!
     // Otherwise we won't be able to query ICCID/IMSI
@@ -2108,9 +2090,9 @@ int SaraNcpClient::dataModeError(int error) {
         // FIXME: this is a workaround for some R410 firmware versions where the PPP session suddenly dies
         // in network phase after the first IPCP ConfReq. For some reason CGATT=0/1 helps.
         const NcpClientLock lock(this);
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CGATT=0"));
+        CHECK_PARSER_OK(parser_.execCommand(3 * 60 * 1000, "AT+CGATT=0"));
         HAL_Delay_Milliseconds(1000);
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CGATT=1"));
+        CHECK_PARSER_OK(parser_.execCommand(3 * 60 * 1000, "AT+CGATT=1"));
     }
     return 0;
 }
@@ -2526,33 +2508,6 @@ int SaraNcpClient::modemPowerOff() {
     return SYSTEM_ERROR_NONE;
 }
 
-int SaraNcpClient::modemSoftReset() {
-    bool running = muxer_.isRunning();
-
-    if (ncpId() == PLATFORM_NCP_SARA_R410) {
-        // R410
-        CHECK(setModuleFunctionality(CellularFunctionality::AIRPLANE));
-        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
-        HAL_Delay_Milliseconds(10000);
-    } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
-        // R510
-        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
-        HAL_Delay_Milliseconds(10000);
-    } else {
-        // U201
-        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
-        HAL_Delay_Milliseconds(1000);
-    }
-
-    if (running) {
-        // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
-        serial_->enabled(false);
-        muxer_.stop();
-        serial_->enabled(true);
-    }
-    return 0;
-}
-
 int SaraNcpClient::modemSoftPowerOff() {
     if (firmwareUpdateR510_) {
         CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
@@ -2565,9 +2520,6 @@ int SaraNcpClient::modemSoftPowerOff() {
         if (!ready_) {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
-        }
-        if (ncpId() == PLATFORM_NCP_SARA_R410) {
-            CHECK(setModuleFunctionality(CellularFunctionality::AIRPLANE));
         }
         int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
         if (r != AtResponse::OK) {

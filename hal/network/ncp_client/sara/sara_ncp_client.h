@@ -29,18 +29,10 @@
 #include "static_recursive_mutex.h"
 #include "serial_stream.h"
 #include "cellular_reg_status.h"
-#include "underlying_type.h"
 
 namespace particle {
 
 class SerialStream;
-
-// Has to be outside the class for PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS
-enum class SaraNcpInitializationState {
-    DEFAULT = 0,
-    FOTA_LWM2M_DISABLED = 0b0110 // R410-specific state
-};
-PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(SaraNcpInitializationState);
 
 class SaraNcpClient: public CellularNcpClient {
 public:
@@ -166,7 +158,6 @@ private:
     int modemPowerOn();
     int modemPowerOff();
     int modemSoftPowerOff();
-    int modemSoftReset();
     int modemHardReset(bool powerOff = false);
     int modemEmergencyHardReset();
     bool modemPowerState() const;
@@ -178,9 +169,6 @@ private:
     int checkSimReadiness(bool checkForRfReset = false);
     int setModuleFunctionality(CellularFunctionality cfun, bool check = false);
     int getModuleFunctionality();
-    int getInitializationState();
-    int setInitializationState(SaraNcpInitializationState state);
-    int applyPppNetworkPhaseIssueWorkarounds(ModemState& state);
 };
 
 inline AtParser* SaraNcpClient::atParser() {
