@@ -63,7 +63,8 @@ typedef enum System_Reset_Reason {
     RESET_REASON_SAFE_MODE = 110, ///< Safe mode requested.
     RESET_REASON_DFU_MODE = 120, ///< DFU mode requested.
     RESET_REASON_PANIC = 130, ///< System panic.
-    RESET_REASON_USER = 140 ///< User-requested reset.
+    RESET_REASON_USER = 140, ///< User-requested reset.
+    RESET_REASON_CONFIG_UPDATE = 150 ///< Reset to apply configuration changes.
 } System_Reset_Reason;
 
 /**

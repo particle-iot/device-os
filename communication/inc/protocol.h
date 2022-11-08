@@ -307,12 +307,12 @@ protected:
 	void handle_time_response(uint32_t time);
 
 	/**
-	 * Handle a ServerMovedPermanentlyRequest.
+	 * Handle a ServerMoved request.
 	 */
 	ProtocolError handle_server_moved_request(Message& msg);
 
 	/**
-	 * Send a response for a ServerMovedPermanentlyRequest.
+	 * Send a response for a ServerMoved request.
 	 */
 	static void send_server_moved_response(int error, void* ctx);
 

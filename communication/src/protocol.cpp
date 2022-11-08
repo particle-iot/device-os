@@ -287,10 +287,10 @@ ProtocolError Protocol::handle_server_moved_request(Message& msg)
 	CoapMessageDecoder dec;
 	int r = dec.decode((const char*)msg.buf(), msg.length());
 	if (r < 0 || dec.type() != CoapType::CON || !dec.hasToken()) {
-		LOG(ERROR, "Received a malformed ServerMovedPermanentlyRequest");
+		LOG(ERROR, "Received a malformed ServerMoved request");
 		return ProtocolError::NO_ERROR; // Ignore the request
 	}
-	LOG(WARN, "Received a ServerMovedPermanentlyRequest");
+	LOG(WARN, "Received a ServerMoved request");
 	// Acknowledge the request
 	Message ack;
 	r = channel.response(msg, ack, msg.capacity() - msg.length());
@@ -315,6 +315,7 @@ ProtocolError Protocol::handle_server_moved_request(Message& msg)
 	ack.set_id(dec.id());
 	r = channel.send(ack);
 	if (r != ProtocolError::NO_ERROR) {
+		LOG(ERROR, "Failed to send message: %d", r);
 		return (ProtocolError)r;
 	}
 	// Process the request

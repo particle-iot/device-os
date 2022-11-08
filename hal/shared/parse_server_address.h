@@ -19,7 +19,7 @@
 #ifndef PARSE_SERVER_ADDRESS_H
 #define	PARSE_SERVER_ADDRESS_H
 
-#include "ota_flash_hal.h"
+#include "ota_flash_hal.h" // For ServerAddress
 #include "system_error.h"
 
 #include <cstdio>
@@ -40,7 +40,8 @@ inline void parseServerAddressData(ServerAddress* addr, const uint8_t* buf, size
     }
     switch (buf[0]) {
     case IP_ADDRESS: {
-        if (buf[1] != 4 || size < 6) {
+        size_t addr_len = buf[1];
+        if (addr_len != 4 || size < 6) {
             addr->addr_type = INVALID_INTERNET_ADDRESS;
             return;
         }
@@ -50,7 +51,7 @@ inline void parseServerAddressData(ServerAddress* addr, const uint8_t* buf, size
             return;
         }
         addr->addr_type = IP_ADDRESS;
-        addr->length = 4;
+        addr->length = addr_len;
         addr->ip = ip;
         break;
     }

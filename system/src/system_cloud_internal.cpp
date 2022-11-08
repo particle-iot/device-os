@@ -151,13 +151,13 @@ void systemEventHandler(const char* name, const char* data)
         }
     }
     else if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
-        LOG(WARN, "Restoring factory default server settings");
+        LOG(WARN, "Received key restore event");
         int r = ServerConfig::instance()->restoreDefaultSettings();
         if (r < 0) {
             LOG(ERROR, "Failed to restore default server settings: %d", r);
             // Reset anyway
         }
-        system_pending_shutdown(RESET_REASON_FACTORY_RESET);
+        system_pending_shutdown(RESET_REASON_CONFIG_UPDATE);
     }
 }
 
@@ -683,29 +683,24 @@ bool publishSafeModeEventIfNeeded() {
 }
 
 void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedResponseCallback respCallback, void* ctx) {
-#if HAL_PLATFORM_CLOUD_UDP
-    bool usingUdp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-#else
-    bool usingUdp = false;
-#endif // HAL_PLATFORM_CLOUD_UDP
-    if (!usingUdp) {
-        LOG(WARN, "ServerMovedPermanentlyRequest is not supported");
-        respCallback(SYSTEM_ERROR_NOT_SUPPORTED, ctx);
-        return;
-    }
+    clear_system_error_message();
+    int result = SYSTEM_ERROR_UNKNOWN;
+    NAMED_SCOPE_GUARD(respGuard, {
+        respCallback(result, ctx);
+    });
     // Parse the request
-    // TODO: Add a function for parsing a buffer in one call
+    // TODO: Add a helper function to initialize a buffered stream and decode Protobuf data in one call
     auto stream = pb_istream_init(nullptr /* reserved */);
     if (!stream) {
-        respCallback(SYSTEM_ERROR_NO_MEMORY, ctx);
+        result = SYSTEM_ERROR_NO_MEMORY;
         return;
     }
-    NAMED_SCOPE_GUARD(g, {
+    NAMED_SCOPE_GUARD(streamGuard, {
         pb_istream_free(stream, nullptr /* reserved */);
     });
     bool ok = pb_istream_from_buffer_ex(stream, (const pb_byte_t*)reqData, reqSize, nullptr /* reserved */);
     if (!ok) {
-        respCallback(SYSTEM_ERROR_INTERNAL, ctx);
+        result = SYSTEM_ERROR_INTERNAL;
         return;
     }
     particle_cloud_ServerMovedPermanentlyRequest pbReq = {};
@@ -713,14 +708,14 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     DecodedString pbPubKey(&pbReq.server_pub_key);
     DecodedString pbSign(&pbReq.sign);
     ok = pb_decode(stream, &particle_cloud_ServerMovedPermanentlyRequest_msg, &pbReq);
-    if (!ok || pbPubKey.size > EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH ||
-            pbAddr.size > EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH) {
-        LOG(ERROR, "Failed to parse ServerMovedPermanentlyRequest");
-        respCallback(SYSTEM_ERROR_BAD_DATA, ctx);
+    if (!ok) {
+        SYSTEM_ERROR_MESSAGE("Failed to parse ServerMoved request");
+        result = SYSTEM_ERROR_BAD_DATA;
         return;
     }
     pb_istream_free(stream, nullptr);
-    g.dismiss();
+    streamGuard.dismiss();
+    // Validate the request
     ServerConfig::ServerMovedRequest req;
     req.address = pbAddr.data;
     req.port = pbReq.server_port;
@@ -730,21 +725,24 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     req.signatureSize = pbSign.size;
     int r = ServerConfig::instance()->validateServerMovedRequest(req);
     if (r < 0) {
-        LOG(ERROR, "Failed to validate ServerMoved request: %d", r);
-        respCallback(SYSTEM_ERROR_BAD_DATA, ctx);
+        SYSTEM_ERROR_MESSAGE("Failed to validate ServerMoved request: %d", r);
+        result = r;
         return;
     }
     // Reply to the server
-    respCallback(0, ctx); // No error
-    // Disconnect from the cloud and apply the new address/key
+    respCallback(SYSTEM_ERROR_NONE, ctx);
+    respGuard.dismiss();
+    // Gracefully disconnect from the cloud and clear the session data
+    CloudConnectionSettings::instance()->setPendingDisconnectOptions(CloudDisconnectOptions().graceful(true)
+            .clearSession(true));
     cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SERVER_MOVED);
-    clearSessionData();
+    // Apply the new server settings
     r = ServerConfig::instance()->updateSettings(req);
     if (r < 0) {
         LOG(ERROR, "Failed to update server settings: %d", r);
         // Reset anyway
     }
-    system_pending_shutdown(RESET_REASON_FACTORY_RESET);
+    system_pending_shutdown(RESET_REASON_CONFIG_UPDATE);
 }
 
 #if HAL_PLATFORM_COMPRESSED_OTA
@@ -926,6 +924,8 @@ static const char* resetReasonString(System_Reset_Reason reason)
         return "panic";
     case RESET_REASON_USER:
         return "user";
+    case RESET_REASON_CONFIG_UPDATE:
+        return "config_update";
     default:
         return nullptr;
     }
@@ -1016,10 +1016,10 @@ void Spark_Protocol_Init(void)
         auto servConf = ServerConfig::instance();
         int r = servConf->validateSettings();
         if (r < 0) {
-            LOG(ERROR, "Validation of server settings failed: %d; restoring factory defaults", r);
+            LOG(ERROR, "Server settings are invalid; restoring defaults: %d", r);
             r = servConf->restoreDefaultSettings();
             if (r < 0) {
-                LOG(ERROR, "Failed to restore server settings: %d", r);
+                LOG(ERROR, "Failed to restore default server settings: %d", r);
             }
         }
 

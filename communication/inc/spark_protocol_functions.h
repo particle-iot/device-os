@@ -139,7 +139,7 @@ struct SparkCallbacks
      * Notify the system that the server wants to permanently move the device to another server.
      */
     // TODO: Parse the request in the communication library
-    void (*server_moved)(const char* request, size_t request_size, ServerMovedResponseCallback response_callback,
+    void (*server_moved)(const char* request_data, size_t request_size, ServerMovedResponseCallback response_callback,
             void* context);
 
     // size == 60

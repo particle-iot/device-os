@@ -105,6 +105,12 @@ int updateServerSettings(const char* addr, uint16_t port, const uint8_t* pubKey,
     LOG(TRACE, "Public key (%u bytes):", (unsigned)pubKeySize);
     LOG_DUMP(TRACE, pubKey, pubKeySize);
     LOG_PRINT(TRACE, "\r\n");
+    // Parse and validate the new server address
+    ServerAddress saddr = {};
+    CHECK(parseServerAddressString(&saddr, addr));
+    saddr.port = port;
+    // Erase both the current server key and address so that we don't potentially end up with a
+    // key and address from different servers in the DCT
     size_t maxPubKeySize = udp ? DCT_ALT_SERVER_PUBLIC_KEY_SIZE : DCT_SERVER_PUBLIC_KEY_SIZE;
     if (pubKeySize > maxPubKeySize) {
         return SYSTEM_ERROR_TOO_LARGE;
@@ -115,8 +121,6 @@ int updateServerSettings(const char* addr, uint16_t port, const uint8_t* pubKey,
     if (!buf) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    // First, erase both the current server key and address so that we don't potentially end up
-    // with a key and address from different servers in the DCT
     memset(buf.get(), 0xff, bufSize);
     size_t addrOffs = udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET;
     int r = dct_write_app_data(buf.get(), addrOffs, maxAddrSize);
@@ -128,17 +132,12 @@ int updateServerSettings(const char* addr, uint16_t port, const uint8_t* pubKey,
     if (r != 0) {
         return SYSTEM_ERROR_IO;
     }
-    // Write the new server key
-    memcpy(buf.get(), pubKey, pubKeySize);
-    r = dct_write_app_data(buf.get(), pubKeyOffs, maxPubKeySize);
+    // Write the server key
+    r = dct_write_app_data(pubKey, pubKeyOffs, pubKeySize);
     if (r != 0) {
         return SYSTEM_ERROR_IO;
     }
-    // Serialize and write the new server address
-    ServerAddress saddr = {};
-    CHECK(parseServerAddressString(&saddr, addr));
-    saddr.port = port;
-    memset(buf.get(), 0xff, maxAddrSize);
+    // Serialize and write the server address
     CHECK(encodeServerAddressData(&saddr, buf.get(), maxAddrSize));
     r = dct_write_app_data(buf.get(), addrOffs, maxAddrSize);
     if (r != 0) {
@@ -175,8 +174,11 @@ int validateServerSettings(bool udp) {
     // Determine the actual size of the key
     uint8_t* p = buf.get();
     size_t pubKeySize = 0;
-    CHECK_MBEDTLS(mbedtls_asn1_get_tag(&p, buf.get() + maxPubKeySize, &pubKeySize, MBEDTLS_ASN1_CONSTRUCTED |
-            MBEDTLS_ASN1_SEQUENCE));
+    r = mbedtls_asn1_get_tag(&p, buf.get() + maxPubKeySize, &pubKeySize, MBEDTLS_ASN1_CONSTRUCTED |
+            MBEDTLS_ASN1_SEQUENCE);
+    if (r != 0) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
     pubKeySize += p - buf.get(); // Include size of the tag and length fields
     // Parse the key
     mbedtls_pk_context pk = {};
@@ -184,7 +186,10 @@ int validateServerSettings(bool udp) {
     SCOPE_GUARD({
         mbedtls_pk_free(&pk);
     });
-    CHECK_MBEDTLS(mbedtls_pk_parse_public_key(&pk, buf.get(), pubKeySize));
+    r = mbedtls_pk_parse_public_key(&pk, buf.get(), pubKeySize);
+    if (r != 0) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
     return 0;
 }
 
@@ -242,8 +247,10 @@ int ServerConfig::validateServerMovedRequest(const ServerMovedRequest& req) cons
     char hash[Sha256::HASH_SIZE] = {};
     CHECK(sha.finish(hash));
     // Verify the signature
-    CHECK_MBEDTLS(mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, (const uint8_t*)hash, sizeof(hash), req.signature,
-            req.signatureSize));
+    int r = mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, (const uint8_t*)hash, sizeof(hash), req.signature, req.signatureSize);
+    if (r != 0) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
     return 0;
 }
 

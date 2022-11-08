@@ -60,7 +60,7 @@ public:
      * Update the current server settings.
      *
      * @param conf Server settings.
-     * @return 0 if the settings were applied successfully, otherwise an error code defined by
+     * @return 0 if the settings were updated successfully, otherwise an error code defined by
      *         `system_error_t`.
      */
     int updateSettings(const ServerSettings& conf);
@@ -89,7 +89,7 @@ public:
     int restoreDefaultSettings();
 
     /**
-     * Get the singleton instance of this class.
+     * Get the global instance of this class.
      *
      * @return Instance.
      */
