@@ -249,7 +249,7 @@ extern uint8_t feature_cloud_udp;
 extern volatile bool cloud_socket_aborted;
 
 static volatile uint32_t lastCloudEvent = 0;
-uint32_t particle_key_errors = NO_ERROR;
+static uint32_t particle_key_errors = ParticleKeyErrorFlag::NO_ERROR;
 
 const int CLAIM_CODE_SIZE = 63;
 
@@ -1016,7 +1016,8 @@ void Spark_Protocol_Init(void)
         auto servConf = ServerConfig::instance();
         int r = servConf->validateSettings();
         if (r < 0) {
-            LOG(ERROR, "Server settings are invalid; restoring defaults: %d", r);
+            LOG(ERROR, "Validation of server settings failed: %d; restoring defaults", r);
+            particle_key_errors |= ParticleKeyErrorFlag::SERVER_SETTINGS_CORRUPTED;
             r = servConf->restoreDefaultSettings();
             if (r < 0) {
                 LOG(ERROR, "Failed to restore default server settings: %d", r);
@@ -1112,8 +1113,8 @@ void Spark_Protocol_Init(void)
         // todo - this pushes a lot of data on the stack! refactor to remove heavy stack usage
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
-        memset(&pubkey, 0xff, sizeof(pubkey));
-        memset(&private_key, 0xff, sizeof(private_key));
+        memset(&pubkey, 0, sizeof(pubkey));
+        memset(&private_key, 0, sizeof(private_key));
 
         SparkKeys keys;
         keys.size = sizeof(keys);
@@ -1284,7 +1285,7 @@ int Spark_Handshake(bool presence_announce)
             return err;
         }
     }
-    if (particle_key_errors != NO_ERROR) {
+    if (particle_key_errors != ParticleKeyErrorFlag::NO_ERROR) {
         char buf[sizeof(unsigned long)*8+1];
         ultoa((unsigned long)particle_key_errors, buf, 10);
         LOG(INFO,"Send event spark/device/key/error=%s", buf);

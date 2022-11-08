@@ -775,29 +775,6 @@ bool HAL_IsDeviceClaimed(void* reserved)
     return (claimed)=='1';
 }
 
-void HAL_FLASH_Write_ServerPublicKey(const uint8_t *keyBuffer, bool udp)
-{
-    if (udp) 
-    {
-        dct_write_app_data(keyBuffer, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
-    } else 
-    {
-        dct_write_app_data(keyBuffer, DCT_SERVER_PUBLIC_KEY_OFFSET, EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH);
-    }
-}
-
-void HAL_FLASH_Write_ServerAddress(const uint8_t *buf, bool udp)
-{
-    if (udp) 
-    {
-        dct_write_app_data(buf, DCT_ALT_SERVER_ADDRESS_OFFSET, DCT_ALT_SERVER_ADDRESS_SIZE);
-    } 
-    else 
-    {
-        dct_write_app_data(buf, DCT_SERVER_ADDRESS_OFFSET, DCT_SERVER_ADDRESS_SIZE);
-    }
-}
-
 int HAL_Set_System_Config(hal_system_config_t config_item, const void* data, unsigned data_length)
 {
     unsigned offset = 0;

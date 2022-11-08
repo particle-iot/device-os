@@ -41,7 +41,6 @@ uint16_t cloud_udp_port = PORT_COAPS; // default Particle Cloud UDP port
 
 /* FIXME: */
 extern uint8_t feature_cloud_udp;
-extern uint32_t particle_key_errors;
 volatile bool cloud_socket_aborted = false;
 
 #if HAL_PLATFORM_CELLULAR
@@ -140,7 +139,6 @@ int spark_cloud_socket_connect()
 
     ServerAddress server_addr = {};
     HAL_FLASH_Read_ServerAddress(&server_addr);
-
     switch (server_addr.addr_type)
     {
         case IP_ADDRESS:

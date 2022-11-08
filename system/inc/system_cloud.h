@@ -34,27 +34,30 @@
 
 #define DEFAULT_CLOUD_EVENT_TTL 60
 
+namespace particle {
+
 enum ParticleKeyErrorFlag: uint32_t
 {
-  NO_ERROR                      = 0,
-  PUBLIC_SERVER_KEY_BLANK       = 1,
-  PUBLIC_SERVER_KEY_CORRUPTED   = 2,
-  SERVER_ADDRESS_BLANK          = 4,
-  SERVER_ADDRESS_CORRUPTED      = 8,
-  PUBLIC_DEVICE_KEY_BLANK       = 16,
-  PUBLIC_DEVICE_KEY_CORRUPTED   = 32,
-  PRIVATE_DEVICE_KEY_BLANK      = 64,
-  PRIVATE_DEVICE_KEY_CORRUPTED  = 128
+    NO_ERROR = 0,
+    // PUBLIC_SERVER_KEY_BLANK = 1,
+    PUBLIC_SERVER_KEY_CORRUPTED = 2,
+    // SERVER_ADDRESS_BLANK = 4,
+    SERVER_ADDRESS_CORRUPTED = 8,
+    // PUBLIC_DEVICE_KEY_BLANK = 16,
+    // PUBLIC_DEVICE_KEY_CORRUPTED = 32,
+    // PRIVATE_DEVICE_KEY_BLANK = 64,
+    // PRIVATE_DEVICE_KEY_CORRUPTED = 128
+    SERVER_SETTINGS_CORRUPTED = PUBLIC_SERVER_KEY_CORRUPTED | SERVER_ADDRESS_CORRUPTED
 };
+
+const system_tick_t NOW = static_cast<system_tick_t>(-1);
+
+} // namespace particle
 
 typedef enum
 {
 	CLOUD_VAR_BOOLEAN = 1, CLOUD_VAR_INT = 2, CLOUD_VAR_STRING = 4, CLOUD_VAR_DOUBLE = 9
 } Spark_Data_TypeDef;
-
-namespace particle {
-    static const system_tick_t NOW = static_cast<system_tick_t>(-1);
-}
 
 template<typename T, typename EnableT = void>
 struct CloudVariableType {
