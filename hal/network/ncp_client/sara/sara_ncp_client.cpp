@@ -139,7 +139,7 @@ const system_tick_t UBLOX_NCP_R4_WINDOW_SIZE_MS = 50;
 const int UBLOX_NCP_R4_NO_HW_FLOW_CONTROL_MTU = 990;
 
 const int UBLOX_DEFAULT_CID = 1;
-const char UBLOX_DEFAULT_PDP_TYPE[] = "IPv4v6";
+const char UBLOX_DEFAULT_PDP_TYPE[] = "IP";
 
 const int IMSI_MAX_RETRY_CNT = 5;
 const int CCID_MAX_RETRY_CNT = 2;
@@ -1122,7 +1122,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         // First time setup, or switching between official SIM on wrong profile?
         if (r == 1 && (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT ||
                 (netConf_.netProv() == CellularNetworkProvider::TWILIO && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
-                (ncpId() == PLATFORM_NCP_SARA_R410 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT) ||
+                (ncpId() == PLATFORM_NCP_SARA_R410 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT_198) ||
                 (ncpId() == PLATFORM_NCP_SARA_R510 && netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)) ) {
             int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
             // TWILIO Super SIM
@@ -1469,8 +1469,8 @@ int SaraNcpClient::getAppFirmwareVersion() {
 
 int SaraNcpClient::checkUFotaConf(int* val) {
     auto resp = parser_.sendCommand("AT+UFOTACONF=2");
-    int r = CHECK_PARSER(resp.scanf("+UFOTACONF: %*d, %d", &val));
-    LOG(TRACE, "Val from UFOTACONF: %d", val);
+    int r = CHECK_PARSER(resp.scanf("+UFOTACONF: %*d, %d", val));
+    LOG(TRACE, "Val from UFOTACONF: %d", *val);
     CHECK_TRUE(r >= 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
@@ -1479,69 +1479,68 @@ int SaraNcpClient::checkUFotaConf(int* val) {
 
 int SaraNcpClient::initReady(ModemState state) {
     CHECK(waitAtResponse(5000));
+    // changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_R4);
+
+    // CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+ULWM2M=1"));
+    // HAL_Delay_Milliseconds(5*1000);
 
     // Disable LWM2M
     // NOTE: this command hangs in muxed mode for some reason
-    if (ncpId() == PLATFORM_NCP_SARA_R410 && state != ModemState::MuxerAtChannel) {
-        LOG(TRACE, "Dsiabling LWM2M");
-        auto resp = parser_.sendCommand("AT+ULWM2M?");
-        int lwm2m = -1;
-        int r = resp.scanf("+ULWM2M: %d", &lwm2m);
-        (void)r;
-        resp.readResult();
-        if (lwm2m == 0) {
-            // Enabled -> disable
-            CHECK_PARSER(parser_.execCommand(("AT+ULWM2M=1")));
-        }
-    }
+    // if (ncpId() == PLATFORM_NCP_SARA_R410 && state != ModemState::MuxerAtChannel) {
+    //     LOG(TRACE, "Dsiabling LWM2M");
+    //     auto resp = parser_.sendCommand("AT+ULWM2M?");
+    //     int lwm2m = -1;
+    //     int r = resp.scanf("+ULWM2M: %d", &lwm2m);
+    //     (void)r;
+    //     resp.readResult();
+    //     if (lwm2m == 0) {
+    //         // Enabled -> disable
+    //         CHECK_PARSER(parser_.execCommand(("AT+ULWM2M=1")));
+    //     }
+    // }
 
-    if (state != ModemState::MuxerAtChannel) {
-        // Send AT+CMUX and initialize multiplexer
-        int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,%u,,,,,", UBLOX_NCP_MAX_MUXER_FRAME_SIZE));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    // if (state != ModemState::MuxerAtChannel) {
+    //     // Send AT+CMUX and initialize multiplexer
+    //     int r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,%u,,,,,", UBLOX_NCP_MAX_MUXER_FRAME_SIZE));
+    //     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-        // Initialize muxer
-        CHECK(initMuxer());
+    //     // Initialize muxer
+    //     CHECK(initMuxer());
 
-        // Start muxer (blocking call)
-        CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
-    }
+    //     // Start muxer (blocking call)
+    //     CHECK_TRUE(muxer_.start(true) == 0, SYSTEM_ERROR_UNKNOWN);
+    // }
 
-    NAMED_SCOPE_GUARD(muxerSg, {
-        muxer_.stop();
-    });
+    // NAMED_SCOPE_GUARD(muxerSg, {
+    //     muxer_.stop();
+    // });
 
-    // Open AT channel and connect it to AT channel stream
-    if (muxer_.openChannel(UBLOX_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get())) {
-        // Failed to open AT channel
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-    // Just in case resume AT channel
-    muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL);
+    // // Open AT channel and connect it to AT channel stream
+    // if (muxer_.openChannel(UBLOX_NCP_AT_CHANNEL, muxerAtStream_->channelDataCb, muxerAtStream_.get())) {
+    //     // Failed to open AT channel
+    //     return SYSTEM_ERROR_UNKNOWN;
+    // }
+    // // Just in case resume AT channel
+    // muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL);
 
-    // Reinitialize parser with a muxer-based stream
-    CHECK(initParser(muxerAtStream_.get()));
+    // // Reinitialize parser with a muxer-based stream
+    // CHECK(initParser(muxerAtStream_.get()));
 
-    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
-        CHECK(waitAtResponse(10000));
-    } else {
-        CHECK(waitAtResponse(20000, 5000));
-    }
-    ncpState(NcpState::ON);
-    LOG_DEBUG(TRACE, "Muxer AT channel live");
-    // checkRuntimeStateMuxer(460800);
-    // waitReady(false);
-    preStartDataChannel();
-    for (int i=0; i<40;i++) {
-        CHECK_PARSER(parser_.execCommand("AT+CGSN"));
-        HAL_Delay_Milliseconds(500);
-    }
+    // if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
+    //     CHECK(waitAtResponse(10000));
+    // } else {
+    //     CHECK(waitAtResponse(20000, 5000));
+    // }
+    // ncpState(NcpState::ON);
+    // LOG_DEBUG(TRACE, "Muxer AT channel live");
+    // // checkRuntimeStateMuxer(460800);
+    // // waitReady(false);
+    // preStartDataChannel();
+    // CHECK(waitAtResponse(5000));
 
-    muxerSg.dismiss();
+    // muxerSg.dismiss();
 
-    CHECK(waitAtResponse(5000));
-
-    fwVersion_ = getAppFirmwareVersion();
+    // CHECK(waitAtResponse(5000));
 #ifdef PPP_ERROR_WORKAROUND
     // Check if AT+CFUN=4
     auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
@@ -1552,11 +1551,10 @@ int SaraNcpClient::initReady(ModemState state) {
         // make it 4
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
     }
-
     int uConfValRet = 0;
     int uConfVal = 0;
     unsigned attempts = 0;
-    for (attempts = 0; attempts < 40; attempts++) {
+    for (attempts = 0; attempts < 30; attempts++) {
         uConfValRet = checkUFotaConf(&uConfVal);
         if (!uConfValRet) {
             LOG(TRACE, "Val from UFOTACONF: %d", uConfVal);
@@ -1571,7 +1569,6 @@ int SaraNcpClient::initReady(ModemState state) {
         // make it so
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+UFOTACONF=2,-1"));
     }
-
     uConfVal = 0;
     auto respUFota = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+UFOTACONF=2");
     respUFota.scanf("+UFOTACONF: %*d, %d", &uConfVal);
@@ -1594,6 +1591,20 @@ int SaraNcpClient::initReady(ModemState state) {
     // NOTE: this should work fine on SARA R4 firmware revisions that don't support it as well
     CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
     CHECK(waitAtResponse(10000));
+
+
+    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+TRACE=1,921600"));
+    } else {
+        CHECK_PARSER_OK(parser_.execCommand("AT+ULOG=2"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+ULOG=1"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+ULOG?"));
+        // CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
+        CHECK_PARSER(parser_.execCommand("AT+TRACE=1,460800"));
+        CHECK_PARSER(parser_.execCommand("AT+TRACE=1,921600"));
+        CHECK_PARSER(parser_.execCommand("AT+TRACE=1"));
+        CHECK_PARSER(parser_.execCommand("AT+TRACE=2"));
+    }
 
     if (state != ModemState::MuxerAtChannel) {
         if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
@@ -1661,7 +1672,7 @@ int SaraNcpClient::initReady(ModemState state) {
         // to wait longer for device to become active (see MDMParser::_atOk)
         CHECK_PARSER_OK(parser_.execCommand("AT+UPSV=0"));
     }
-#if 0
+
     if (state != ModemState::MuxerAtChannel) {
         // Send AT+CMUX and initialize multiplexer
         r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,,%u,,,,,", UBLOX_NCP_MAX_MUXER_FRAME_SIZE));
@@ -1696,16 +1707,8 @@ int SaraNcpClient::initReady(ModemState state) {
     }
     ncpState(NcpState::ON);
     LOG_DEBUG(TRACE, "Muxer AT channel live");
-    // checkRuntimeStateMuxer(460800);
-    // waitReady(false);
-    // preStartDataChannel();
-    for (int i=0; i<20;i++) {
-        CHECK_PARSER(parser_.execCommand("AT+CGSN"));
-        HAL_Delay_Milliseconds(500);
-    }
 
     muxerSg.dismiss();
-#endif
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1922,6 +1925,13 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     }
 
     netConf_ = conf;
+    LOG(TRACE, "netConf_.isValid(): %d", netConf_.isValid());
+    LOG(TRACE, "netConf_.hasApn(): %d", netConf_.hasApn());
+    LOG(TRACE, "netConf_.apn(): %s", netConf_.apn());
+    LOG(TRACE, "netConf_.hasUser(): %s", netConf_.hasUser());
+    LOG(TRACE, "netConf_.user(): %s", netConf_.user());
+    LOG(TRACE, "netConf_.hasPassword(): %d", (int)netConf_.hasPassword());
+    LOG(TRACE, "netConf_.password(): %s", netConf_.password());
     if (!netConf_.isValid()) {
         // First look for network settings based on ICCID
         char buf[32] = {};
@@ -1979,6 +1989,8 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
             // Intending on the default 4,0 but leaving as 4 for maximum compatibility
             CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
         }
+        LOG(TRACE, "netConf_.hasApn(): %d", netConf_.hasApn());
+        LOG(TRACE, "netConf_.apn(): %s", netConf_.apn());
         auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
                 UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
                 (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
@@ -2094,6 +2106,7 @@ void SaraNcpClient::ncpPowerState(NcpPowerState state) {
 }
 
 int SaraNcpClient::preStartDataChannel() {
+    return 0;
     const NcpClientLock lock(this);
     LOG(TRACE, "TP1");
     CHECK(muxer_.openChannel(UBLOX_NCP_PPP_CHANNEL));
@@ -2115,7 +2128,6 @@ int SaraNcpClient::preStartDataChannel() {
 
     skipAll(muxerDataStream_.get());
     muxerDataStream_->enabled(true);
-    dataChannelFlowControl(false);
 
     // There is some kind of a bug in 02.19 R410 modem firmware in where it does not accept
     // any AT commands over the second muxed channel, unless we send something over channel 1 first.
@@ -2213,15 +2225,12 @@ int SaraNcpClient::enterDataMode() {
     CHECK(dataParser_.init(std::move(parserConf)));
 
     CHECK(waitAtResponse(dataParser_, 5000));
+    for (unsigned i=0; i<40; i++) {
+        CHECK_PARSER(dataParser_.execCommand(10000, "AT+CGSN"));
+        HAL_Delay_Milliseconds(500);
 
-<<<<<<< Updated upstream
-=======
-    // for (int k=0; k<20; k++) {
-    //     CHECK_PARSER(dataParser_.execCommand("AT+CGSN"));
-    //     HAL_Delay_Milliseconds(300);
-    // }
+    }
 
->>>>>>> Stashed changes
     if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
         // Ignore response
         // SARA R4 does not support this, see above
@@ -2467,6 +2476,7 @@ int SaraNcpClient::interveneRegistration() {
 }
 
 int SaraNcpClient::checkRunningImsi() {
+    return 0;
     // Check current IMSI if registered successfully in which case imsiCheckTime_ will be 0,
     // Else, if not registered, check after CHECK_IMSI_TIMEOUT is expired
     if ((imsiCheckTime_ == 0) || ((connState_ != NcpConnectionState::CONNECTED) &&
@@ -2718,7 +2728,7 @@ int SaraNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
-        // Power off in Airplane command command
+// //         // Power off in Airplane command command
 #ifdef PPP_ERROR_WORKAROUND
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
 #endif

@@ -64,6 +64,7 @@ enum class UbloxSaraUmnoprof {
     TELUS            = 21,
     DEUTSCHE_TELEKOM = 31,
     STANDARD_EUROPE  = 100,
+    ATT_198 = 198,
 };
 
 enum class CellularAccessTechnology {
