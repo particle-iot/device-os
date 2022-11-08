@@ -21,11 +21,12 @@
 #include <cstdint>
 
 #include <mbedtls/pk.h>
+#include <mbedtls/asn1.h>
 
 #include "server_config.h"
 #include "ota_flash_hal.h" // For ServerAddress
+#include "dct_hal.h"
 #include "core_hal.h"
-#include "dct.h"
 #include "parse_server_address.h"
 #include "mbedtls_util.h"
 #include "sha256.h"
@@ -98,7 +99,7 @@ const auto DEFAULT_TCP_SERVER_ADDRESS = "device.tcp.particle.io";
 const uint16_t DEFAULT_UDP_SERVER_PORT = 5684;
 const uint16_t DEFAULT_TCP_SERVER_PORT = 5683;
 
-int writeServerSettings(const char* addr, uint16_t port, const uint8_t* pubKey, size_t pubKeySize, bool udp) {
+int updateServerSettings(const char* addr, uint16_t port, const uint8_t* pubKey, size_t pubKeySize, bool udp) {
     LOG(INFO, "Updating %s server settings", udp ? "UDP" : "TCP");
     LOG(INFO, "Address: \"%s\"; port: %u", addr, (unsigned)port);
     LOG(TRACE, "Public key (%u bytes):", (unsigned)pubKeySize);
@@ -108,8 +109,8 @@ int writeServerSettings(const char* addr, uint16_t port, const uint8_t* pubKey, 
     if (pubKeySize > maxPubKeySize) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    size_t maxEncodedAddrSize = udp ? DCT_ALT_SERVER_ADDRESS_SIZE : DCT_SERVER_ADDRESS_SIZE;
-    size_t bufSize = std::max(maxPubKeySize, maxEncodedAddrSize);
+    size_t maxAddrSize = udp ? DCT_ALT_SERVER_ADDRESS_SIZE : DCT_SERVER_ADDRESS_SIZE;
+    size_t bufSize = std::max(maxPubKeySize, maxAddrSize);
     std::unique_ptr<uint8_t[]> buf(new(std::nothrow) uint8_t[bufSize]);
     if (!buf) {
         return SYSTEM_ERROR_NO_MEMORY;
@@ -118,7 +119,7 @@ int writeServerSettings(const char* addr, uint16_t port, const uint8_t* pubKey, 
     // with a key and address from different servers in the DCT
     memset(buf.get(), 0xff, bufSize);
     size_t addrOffs = udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET;
-    int r = dct_write_app_data(buf.get(), addrOffs, maxEncodedAddrSize);
+    int r = dct_write_app_data(buf.get(), addrOffs, maxAddrSize);
     if (r != 0) {
         return SYSTEM_ERROR_IO;
     }
@@ -133,33 +134,85 @@ int writeServerSettings(const char* addr, uint16_t port, const uint8_t* pubKey, 
     if (r != 0) {
         return SYSTEM_ERROR_IO;
     }
-    // Serialize and write the new server key
+    // Serialize and write the new server address
     ServerAddress saddr = {};
     CHECK(parseServerAddressString(&saddr, addr));
     saddr.port = port;
-    memset(buf.get(), 0xff, maxEncodedAddrSize);
-    CHECK(encodeServerAddressData(&saddr, buf.get(), maxEncodedAddrSize));
-    r = dct_write_app_data(buf.get(), pubKeyOffs, maxEncodedAddrSize);
+    memset(buf.get(), 0xff, maxAddrSize);
+    CHECK(encodeServerAddressData(&saddr, buf.get(), maxAddrSize));
+    r = dct_write_app_data(buf.get(), addrOffs, maxAddrSize);
     if (r != 0) {
         return SYSTEM_ERROR_IO;
     }
     return 0;
 }
 
+int validateServerSettings(bool udp) {
+    size_t maxPubKeySize = udp ? DCT_ALT_SERVER_PUBLIC_KEY_SIZE : DCT_SERVER_PUBLIC_KEY_SIZE;
+    size_t maxAddrSize = udp ? DCT_ALT_SERVER_ADDRESS_SIZE : DCT_SERVER_ADDRESS_SIZE;
+    size_t bufSize = std::max(maxPubKeySize, maxAddrSize);
+    std::unique_ptr<uint8_t[]> buf(new(std::nothrow) uint8_t[bufSize]);
+    if (!buf) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    // Load and validate the server address
+    size_t addrOffs = udp ? DCT_ALT_SERVER_ADDRESS_OFFSET : DCT_SERVER_ADDRESS_OFFSET;
+    int r = dct_read_app_data_copy(addrOffs, buf.get(), maxAddrSize);
+    if (r != 0) {
+        return SYSTEM_ERROR_IO;
+    }
+    ServerAddress addr = {};
+    parseServerAddressData(&addr, buf.get(), maxAddrSize);
+    if (addr.addr_type == INVALID_INTERNET_ADDRESS) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    // Load the server key
+    size_t pubKeyOffs = udp ? DCT_ALT_SERVER_PUBLIC_KEY_OFFSET : DCT_SERVER_PUBLIC_KEY_OFFSET;
+    r = dct_read_app_data_copy(pubKeyOffs, buf.get(), maxPubKeySize);
+    if (r != 0) {
+        return SYSTEM_ERROR_IO;
+    }
+    // Determine the actual size of the key
+    uint8_t* p = buf.get();
+    size_t pubKeySize = 0;
+    CHECK_MBEDTLS(mbedtls_asn1_get_tag(&p, buf.get() + maxPubKeySize, &pubKeySize, MBEDTLS_ASN1_CONSTRUCTED |
+            MBEDTLS_ASN1_SEQUENCE));
+    pubKeySize += p - buf.get(); // Include size of the tag and length fields
+    // Parse the key
+    mbedtls_pk_context pk = {};
+    mbedtls_pk_init(&pk);
+    SCOPE_GUARD({
+        mbedtls_pk_free(&pk);
+    });
+    CHECK_MBEDTLS(mbedtls_pk_parse_public_key(&pk, buf.get(), pubKeySize));
+    return 0;
+}
+
+inline bool udpEnabled() {
+    // XXX: The current gen platforms don't really allow changing the cloud transport protocol,
+    // but let's keep this check in place until the support for TCP is removed from the codebase
+    return HAL_Feature_Get(FEATURE_CLOUD_UDP);
+}
+
 } // namespace
 
 int ServerConfig::updateSettings(const ServerSettings& conf) {
-    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-    CHECK(writeServerSettings(conf.address, conf.port, conf.publicKey, conf.publicKeySize, udp));
+    bool udp = udpEnabled();
+    auto port = conf.port;
+    if (!port) {
+        port = udp ? DEFAULT_UDP_SERVER_PORT : DEFAULT_TCP_SERVER_PORT;
+    }
+    CHECK(updateServerSettings(conf.address, port, conf.publicKey, conf.publicKeySize, udp));
     return 0;
 }
 
 int ServerConfig::validateSettings() const {
-    return 0; // TODO
+    CHECK(validateServerSettings(udpEnabled()));
+    return 0;
 }
 
 int ServerConfig::validateServerMovedRequest(const ServerMovedRequest& req) const {
-    if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+    if (!udpEnabled()) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     // Load the signature key
@@ -180,7 +233,11 @@ int ServerConfig::validateServerMovedRequest(const ServerMovedRequest& req) cons
     u32 = nativeToLittleEndian<uint32_t>(addrLen);
     CHECK(sha.update((const char*)&u32, sizeof(u32)));
     CHECK(sha.update(req.address, addrLen));
-    uint16_t u16 = nativeToLittleEndian<uint16_t>(req.port);
+    auto port = req.port;
+    if (!port) {
+        port = DEFAULT_UDP_SERVER_PORT;
+    }
+    uint16_t u16 = nativeToLittleEndian<uint16_t>(port);
     CHECK(sha.update((const char*)&u16, sizeof(u16)));
     char hash[Sha256::HASH_SIZE] = {};
     CHECK(sha.finish(hash));
@@ -191,12 +248,11 @@ int ServerConfig::validateServerMovedRequest(const ServerMovedRequest& req) cons
 }
 
 int ServerConfig::restoreDefaultSettings() {
-    bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-    if (udp) {
-        CHECK(writeServerSettings(DEFAULT_UDP_SERVER_ADDRESS, DEFAULT_UDP_SERVER_PORT, DEFAULT_UDP_SERVER_PUBLIC_KEY,
+    if (udpEnabled()) {
+        CHECK(updateServerSettings(DEFAULT_UDP_SERVER_ADDRESS, DEFAULT_UDP_SERVER_PORT, DEFAULT_UDP_SERVER_PUBLIC_KEY,
                 sizeof(DEFAULT_UDP_SERVER_PUBLIC_KEY), true /* udp */));
     } else {
-        CHECK(writeServerSettings(DEFAULT_TCP_SERVER_ADDRESS, DEFAULT_TCP_SERVER_PORT, DEFAULT_TCP_SERVER_PUBLIC_KEY,
+        CHECK(updateServerSettings(DEFAULT_TCP_SERVER_ADDRESS, DEFAULT_TCP_SERVER_PORT, DEFAULT_TCP_SERVER_PUBLIC_KEY,
                 sizeof(DEFAULT_TCP_SERVER_PUBLIC_KEY), false));
     }
     return 0;

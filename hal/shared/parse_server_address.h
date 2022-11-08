@@ -56,7 +56,7 @@ inline void parseServerAddressData(ServerAddress* addr, const uint8_t* buf, size
     }
     case DOMAIN_NAME: {
         size_t name_len = buf[1];
-        if (name_len > size - 2 || name_len > sizeof(addr->domain) - 1) { // Reserve 1 byte for '\0'
+        if (name_len + 2 > size || name_len > sizeof(addr->domain) - 1) { // Reserve 1 byte for '\0'
             addr->addr_type = INVALID_INTERNET_ADDRESS;
             return;
         }

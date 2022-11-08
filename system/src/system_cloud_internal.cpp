@@ -1012,6 +1012,17 @@ void Spark_Protocol_Init(void)
     if (!spark_protocol_is_initialized(sp))
     {
 #if PLATFORM_ID != PLATFORM_GCC
+        // Validate the server key and address in the DCT and restore the factory defaults if needed
+        auto servConf = ServerConfig::instance();
+        int r = servConf->validateSettings();
+        if (r < 0) {
+            LOG(ERROR, "Validation of server settings failed: %d; restoring factory defaults", r);
+            r = servConf->restoreDefaultSettings();
+            if (r < 0) {
+                LOG(ERROR, "Failed to restore server settings: %d", r);
+            }
+        }
+
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
@@ -1116,22 +1127,6 @@ void Spark_Protocol_Init(void)
         HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
         HAL_FLASH_Read_ServerPublicKey(pubkey);
 
-#if 0 // FIXME
-        // if public server key is erased, restore with a backup from system firmware
-        if (pubkey[0] == 0xff) {
-            LOG(WARN, "Public Server Key was blank, restoring.");
-            if (udp) {
-#if HAL_PLATFORM_CLOUD_UDP
-                memcpy(&pubkey, backup_udp_public_server_key, backup_udp_public_server_key_size);
-#endif // HAL_PLATFORM_CLOUD_UDP
-            } else {
-#if HAL_PLATFORM_CLOUD_TCP
-                memcpy(&pubkey, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
-#endif // HAL_PLATFORM_CLOUD_TCP
-            }
-            particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
-        }
-#endif
         uint8_t id_length = hal_get_device_id(NULL, 0);
         uint8_t id[id_length];
         hal_get_device_id(id, id_length);
