@@ -1165,13 +1165,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
         }
         if (reset) {
-            if (ncpId() == PLATFORM_NCP_SARA_R410) {
-                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
-            } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
-                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
-            }
-            HAL_Delay_Milliseconds(2000);
-
+            CHECK(modemSoftReset());
             CHECK(waitAtResponseFromPowerOn(state));
 
             // Checking for SIM readiness ensures that other related commands
@@ -1283,20 +1277,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     }
 
     if (reset) {
-        if (ncpId() == PLATFORM_NCP_SARA_R410) {
-            // R410
-            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
-            HAL_Delay_Milliseconds(10000);
-        } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
-            // R510
-            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
-            HAL_Delay_Milliseconds(10000);
-        } else {
-            // U201
-            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
-            HAL_Delay_Milliseconds(1000);
-        }
-
+        CHECK(modemSoftReset());
         CHECK(waitAtResponseFromPowerOn(state));
     }
 
@@ -2077,9 +2058,9 @@ int SaraNcpClient::dataModeError(int error) {
         // FIXME: this is a workaround for some R410 firmware versions where the PPP session suddenly dies
         // in network phase after the first IPCP ConfReq. For some reason CGATT=0/1 helps.
         const NcpClientLock lock(this);
-        CHECK_PARSER_OK(parser_.execCommand(3 * 60 * 1000, "AT+CGATT=0"));
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CGATT=0"));
         HAL_Delay_Milliseconds(1000);
-        CHECK_PARSER_OK(parser_.execCommand(3 * 60 * 1000, "AT+CGATT=1"));
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CGATT=1"));
     }
     return 0;
 }
@@ -2493,6 +2474,23 @@ int SaraNcpClient::modemPowerOff() {
 
     CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
     return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::modemSoftReset() {
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        // R410
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
+        HAL_Delay_Milliseconds(10000);
+    } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        // R510
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
+        HAL_Delay_Milliseconds(10000);
+    } else {
+        // U201
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
+        HAL_Delay_Milliseconds(1000);
+    }
+    return 0;
 }
 
 int SaraNcpClient::modemSoftPowerOff() {

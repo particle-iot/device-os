@@ -157,6 +157,7 @@ private:
     bool waitModemPowerState(bool onOff, system_tick_t timeout);
     int modemPowerOn();
     int modemPowerOff();
+    int modemSoftReset();
     int modemSoftPowerOff();
     int modemHardReset(bool powerOff = false);
     int modemEmergencyHardReset();
