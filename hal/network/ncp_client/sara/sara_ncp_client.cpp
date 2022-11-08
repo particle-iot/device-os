@@ -1539,30 +1539,22 @@ int SaraNcpClient::initReady(ModemState state) {
     CHECK(selectSimCard(state));
     // Make sure flow control is enabled as well
     // NOTE: this should work fine on SARA R4 firmware revisions that don't support it as well
-    CHECK_PARSER(parser_.execCommand("AT+IFC?"));
-    CHECK_PARSER(parser_.execCommand("AT+IFC?"));
-    CHECK_PARSER(parser_.execCommand("AT+IFC?"));
-    CHECK_PARSER(parser_.execCommand("AT+IFC?"));
-    CHECK_PARSER(parser_.execCommand("AT+IFC?"));
-    CHECK_PARSER(parser_.execCommand("AT+IFC?"));
-    CHECK_PARSER(parser_.execCommand("AT+IFC?"));
-    CHECK_PARSER(parser_.execCommand("AT+IFC?"));
     CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
     CHECK(waitAtResponse(10000));
 
 
-    if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
-        CHECK_PARSER_OK(parser_.execCommand("AT+TRACE=1,921600"));
-    } else {
-        CHECK_PARSER_OK(parser_.execCommand("AT+ULOG=2"));
-        CHECK_PARSER_OK(parser_.execCommand("AT+ULOG=1"));
-        CHECK_PARSER_OK(parser_.execCommand("AT+ULOG?"));
-        // CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
-        CHECK_PARSER(parser_.execCommand("AT+TRACE=1,460800"));
-        CHECK_PARSER(parser_.execCommand("AT+TRACE=1,921600"));
-        CHECK_PARSER(parser_.execCommand("AT+TRACE=1"));
-        CHECK_PARSER(parser_.execCommand("AT+TRACE=2"));
-    }
+    // if (conf_.ncpIdentifier() != PLATFORM_NCP_SARA_R410) {
+    //     CHECK_PARSER_OK(parser_.execCommand("AT+TRACE=1,921600"));
+    // } else {
+    //     CHECK_PARSER_OK(parser_.execCommand("AT+ULOG=2"));
+    //     CHECK_PARSER_OK(parser_.execCommand("AT+ULOG=1"));
+    //     CHECK_PARSER_OK(parser_.execCommand("AT+ULOG?"));
+    //     // CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
+    //     CHECK_PARSER(parser_.execCommand("AT+TRACE=1,460800"));
+    //     CHECK_PARSER(parser_.execCommand("AT+TRACE=1,921600"));
+    //     CHECK_PARSER(parser_.execCommand("AT+TRACE=1"));
+    //     CHECK_PARSER(parser_.execCommand("AT+TRACE=2"));
+    // }
 
     if (state != ModemState::MuxerAtChannel) {
         if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
@@ -1838,6 +1830,7 @@ int SaraNcpClient::checkSimCard() {
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     if (!strcmp(code, "READY")) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CCID"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+IFC?"));
         return SYSTEM_ERROR_NONE;
     }
     return SYSTEM_ERROR_UNKNOWN;
