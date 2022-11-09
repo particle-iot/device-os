@@ -193,7 +193,8 @@ extern "C" {
 #define SYSTEM_VERSION_v400BETA1   SYSTEM_VERSION_BETA(4, 0, 0, 1)
 #define SYSTEM_VERSION_v400         SYSTEM_VERSION_DEFAULT(4, 0, 0)
 #define SYSTEM_VERSION_v401RC1        SYSTEM_VERSION_RC(4, 0, 1, 1)
-#define SYSTEM_VERSION SYSTEM_VERSION_v401RC1
+#define SYSTEM_VERSION_v401         SYSTEM_VERSION_DEFAULT(4, 0, 1)
+#define SYSTEM_VERSION SYSTEM_VERSION_v401
 
 // These are required for some of the dynalib checks
 #define SYSTEM_VERSION_v500ALPHA1   SYSTEM_VERSION_ALPHA(5, 0, 0, 1)
@@ -356,6 +357,7 @@ extern "C" {
 #define SYSTEM_VERSION_400BETA1
 #define SYSTEM_VERSION_400
 #define SYSTEM_VERSION_401RC1
+#define SYSTEM_VERSION_401
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
