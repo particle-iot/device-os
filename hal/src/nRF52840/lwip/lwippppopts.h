@@ -176,7 +176,7 @@
 /**
  * CHAP_SUPPORT==1: Support CHAP.
  */
-#define CHAP_SUPPORT                    1
+#define CHAP_SUPPORT                    (PLATFORM_ID != PLATFORM_TRACKER)
 
 /**
  * MSCHAP_SUPPORT==1: Support MSCHAP.
