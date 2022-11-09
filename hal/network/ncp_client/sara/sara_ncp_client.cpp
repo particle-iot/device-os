@@ -1989,10 +1989,10 @@ int SaraNcpClient::enterDataMode() {
 
     // CGATT should be enabled before we dial
     auto respCgatt = parser_.sendCommand("AT+CGATT?");
-    unsigned cgattState = 0;
-    respCgatt.scanf("+CGATT:%u", &cgattState);
+    int cgattState = -1;
+    auto ret = respCgatt.scanf("+CGATT: %d", &cgattState);
     CHECK_PARSER(respCgatt.readResult());
-    if (cgattState == 0) {
+    if (ret == 1 && cgattState == 0) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CGATT=1"));
         // Modem could go through quick dereg/reg with this setting
         HAL_Delay_Milliseconds(1000);
