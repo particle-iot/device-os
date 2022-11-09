@@ -99,11 +99,12 @@
 /**
  * PPP_DEBUG: Enable debugging for PPP.
  */
-#ifdef DEBUG_BUILD
-#define PPP_DEBUG                       LWIP_DBG_ON
-#else
 #define PPP_DEBUG                       LWIP_DBG_OFF
-#endif // DEBUG_BUILD
+
+/**
+ * PPPOS_DEBUG: Enable debugging for PPPoS.
+ */
+#define PPPOS_DEBUG                     LWIP_DBG_OFF
 
 /**
  * PPP_INPROC_IRQ_SAFE==1 call pppos_input() using tcpip_callback().
@@ -117,11 +118,7 @@
  *
  * Mandatory for debugging, it displays exchanged packet content in debug trace.
  */
-#ifndef DEBUG_BUILD
-#define PRINTPKT_SUPPORT                0
-#else
 #define PRINTPKT_SUPPORT                1
-#endif // DEBUG_BUILD
 
 /**
  * PPP_IPV4_SUPPORT==1: Enable PPP IPv4 support
@@ -179,7 +176,7 @@
 /**
  * CHAP_SUPPORT==1: Support CHAP.
  */
-#define CHAP_SUPPORT                    1
+#define CHAP_SUPPORT                    (PLATFORM_ID != PLATFORM_TRACKER)
 
 /**
  * MSCHAP_SUPPORT==1: Support MSCHAP.

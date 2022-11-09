@@ -77,8 +77,8 @@ private:
 
     static void loop(void* arg);
 
-    static void pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, void* ctx);
-    void pppEventHandler(uint64_t ev);
+    static void pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, int data, void* ctx);
+    void pppEventHandler(uint64_t ev, int data);
 
     static void mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx);
 
