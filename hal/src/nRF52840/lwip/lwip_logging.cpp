@@ -61,5 +61,7 @@ void ppp_dbglog(const char *fmt, ...) {
     ppp_vslprintf(tmp, sizeof(tmp) - 1, fmt, args);
     va_end(args);
     tmp[strcspn(tmp, "\r\n")] = 0;
-    LOG(TRACE, "%s", tmp);
+
+    LogAttributes attr = {};
+    log_message(LOG_LEVEL_TRACE, "lwip.ppp", &attr, nullptr /* reserved */, tmp);
 }
