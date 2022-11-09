@@ -1987,6 +1987,17 @@ int SaraNcpClient::enterDataMode() {
         CHECK(waitAtResponse(parser_, 5000));
     }
 
+    // CGATT should be enabled before we dial
+    auto respCgatt = parser_.sendCommand("AT+CGATT?");
+    unsigned cgattState = 0;
+    respCgatt.scanf("+CGATT:%u", &cgattState);
+    CHECK_PARSER(respCgatt.readResult());
+    if (cgattState == 0) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGATT=1"));
+        // Modem could go through quick dereg/reg with this setting
+        HAL_Delay_Milliseconds(1000);
+    }
+
     CHECK_TRUE(muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
     // Send data mode break
     if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
