@@ -143,6 +143,9 @@ const int UUFWINSTALL_COMPLETE = 128;
 const int UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_TIMEOUT = 300000;
 const int UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_PERIOD = 10000;
 
+const unsigned CHECK_SIM_CARD_INTERVAL = 1000;
+const unsigned CHECK_SIM_CARD_ATTEMPTS = 10;
+
 } // anonymous
 
 SaraNcpClient::SaraNcpClient() {
@@ -459,9 +462,7 @@ int SaraNcpClient::disconnect() {
         return SYSTEM_ERROR_NONE;
     }
     CHECK(checkParser());
-    // NOTE: R510 does not like the explicit CFUN=0,0 (x,0 is default, and we are intending on the default 0,0 but leaving as 0 for maximum compatibility)
-    const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
-    (void)r;
+    CHECK_PARSER(setModuleFunctionality(CellularFunctionality::MINIMUM));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
     resetRegistrationState();
@@ -602,22 +603,18 @@ int SaraNcpClient::getIccid(char* buf, size_t size) {
     CHECK(checkParser());
 
     // ICCID command errors if CFUN is 0. Run CFUN=4 before reading ICCID.
-    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
     int cfunVal = -1;
-    auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
-    CHECK_PARSER_OK(respCfun.readResult());
-    if (retCfun == 1 && cfunVal == 0) {
-        // Intending on the default 4,0 but leaving as 4 for maximum compatibility
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
+    cfunVal = getModuleFunctionality();
+    if (cfunVal == CellularFunctionality::MINIMUM) {
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE));
     }
 
     auto res = getIccidImpl(buf, size);
 
     // Modify CFUN back to 0 if it was changed previously,
     // as CFUN:0 is needed to prevent long reg problems on certain SIMs
-    if (cfunVal == 0) {
-        // NOTE: R510 does not like the explicit CFUN=0,0 (x,0 is default, and we are intending on the default 0,0 but leaving as 0 for maximum compatibility)
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
+    if (cfunVal == CellularFunctionality::MINIMUM) {
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM));
     }
 
     return res;
@@ -1150,14 +1147,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
 
             // Disconnect before making changes to the UMNOPROF
-            auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
-            int cfunVal = -1;
-            auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
-            CHECK_PARSER_OK(respCfun.readResult());
-            if (retCfun == 1 && cfunVal != 0) {
-                // NOTE: R510 does not like the explicit CFUN=0,0 (x,0 is default, and we are intending on the default 0,0 but leaving as 0 for maximum compatibility)
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
-            }
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, true /* check */));
             // This is a persistent setting
             parser_.execCommand(1000, "AT+UMNOPROF=%d", newProf);
             // Not checking for error since we will reset either way
@@ -1184,9 +1174,9 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         }
         if (reset) {
             if (ncpId() == PLATFORM_NCP_SARA_R410) {
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
+                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
             } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16"));
+                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
             }
             HAL_Delay_Milliseconds(2000);
 
@@ -1303,18 +1293,15 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     if (reset) {
         if (ncpId() == PLATFORM_NCP_SARA_R410) {
             // R410
-            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=15"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
             HAL_Delay_Milliseconds(10000);
         } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
             // R510
-            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
             HAL_Delay_Milliseconds(10000);
         } else {
             // U201
-            const int r = CHECK_PARSER(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=16,0"));
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
             HAL_Delay_Milliseconds(1000);
         }
 
@@ -1737,18 +1724,36 @@ int SaraNcpClient::startNcpFwUpdate(bool update) {
     return SYSTEM_ERROR_NONE;
 }
 
-int SaraNcpClient::checkSimCard() {
-    auto resp = parser_.sendCommand("AT+CPIN?");
-    char code[33] = {};
-    int r = CHECK_PARSER(resp.scanf("+CPIN: %32[^\n]", code));
-    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-    r = CHECK_PARSER(resp.readResult());
-    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-    if (!strcmp(code, "READY")) {
-        CHECK_PARSER_OK(parser_.execCommand("AT+CCID"));
-        return SYSTEM_ERROR_NONE;
+int SaraNcpClient::checkSimCard(bool* failure) {
+    auto check = [this]() -> int {
+        auto resp = parser_.sendCommand("AT+CPIN?");
+        char code[33] = {};
+        int r = CHECK_PARSER(resp.scanf("+CPIN: %32[^\n]", code));
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+        r = CHECK_PARSER(resp.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+        if (!strcmp(code, "READY")) {
+            CHECK_PARSER_OK(parser_.execCommand("AT+CCID"));
+            // IFC checks are generally unrelated to the SIM. However, there is a
+            // known issue with u-blox R410 that fails IFC and potentially some other
+            // commands with `+CME ERROR: SIM failure`
+            CHECK_PARSER_OK(parser_.execCommand("AT+IFC?"));
+            return SYSTEM_ERROR_NONE;
+        }
+        return SYSTEM_ERROR_UNKNOWN;
+    };
+
+    for (unsigned i = 0; i < CHECK_SIM_CARD_ATTEMPTS; i++) {
+        if (!check()) {
+            // OK
+            return 0;
+        }
+        if (failure) {
+            *failure = true;
+        }
+        HAL_Delay_Milliseconds(CHECK_SIM_CARD_INTERVAL);
     }
-    return SYSTEM_ERROR_UNKNOWN;
+    return SYSTEM_ERROR_INVALID_STATE;
 }
 
 int SaraNcpClient::checkSimReadiness(bool checkForRfReset) {
@@ -1756,39 +1761,64 @@ int SaraNcpClient::checkSimReadiness(bool checkForRfReset) {
     // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-    int simState = 0;
-    unsigned attempts = 0;
-    for (attempts = 0; attempts < 10; attempts++) {
-        simState = checkSimCard();
-        if (!simState) {
-            break;
-        }
-        HAL_Delay_Milliseconds(1000);
-    }
+    bool encounteredFailure = false;
+    int r = checkSimCard(&encounteredFailure);
 
-    if (checkForRfReset && attempts != 0 && ncpId() == PLATFORM_NCP_SARA_R410) {
+    if (checkForRfReset && encounteredFailure && ncpId() == PLATFORM_NCP_SARA_R410) {
         // There was an error initializing the SIM
         // This often leads to inability to talk over the data (PPP) muxed channel
         // for some reason. Attempt to cycle the modem through minimal/full functional state.
         // We only do this for R4-based devices, as U2-based modems seem to fail
         // to change baudrate later on for some reason
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0,0"));
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM));
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL));
     }
 
-    return (simState == 0 ? SYSTEM_ERROR_NONE : simState);
+    return r;
+}
+
+int SaraNcpClient::getModuleFunctionality() {
+    auto resp = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
+    int curVal = -1;
+    auto r = resp.scanf("+CFUN: %d", &curVal);
+    CHECK_PARSER_OK(resp.readResult());
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    return curVal;
+}
+
+int SaraNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool check) {
+    if (check) {
+        if (cfun == CHECK(getModuleFunctionality())) {
+            // Already in required state
+            return 0;
+        }
+    }
+
+    int r = SYSTEM_ERROR_UNKNOWN;
+
+    if (ncpId() == PLATFORM_NCP_SARA_R510 ||
+            (ncpId() == PLATFORM_NCP_SARA_R410 && cfun >= CellularFunctionality::AIRPLANE)) {
+        // NOTE: R510 does not like the explicit CFUN=0,0 (x,0 is default, and we are intending on the default 0,0 but leaving as 0 for maximum compatibility)
+        r = parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=%d", (int)cfun);
+    } else {
+        r = parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=%d,0", (int)cfun);
+    }
+
+    CHECK_PARSER(r);
+
+    if (!r && ncpId() == PLATFORM_NCP_SARA_R410 && (cfun == CellularFunctionality::FULL || cfun == CellularFunctionality::AIRPLANE)) {
+        // When switching to full-functionality mode on R410-based devices check the SIM card readiness
+        // otherwise some other AT commands unrelated to SIM card will fail with CME ERROR e.g. SIM failure
+        CHECK(checkSimCard());
+    }
+    // AtResponse::Result!
+    return r;
 }
 
 int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // IMPORTANT: Set modem full functionality!
     // Otherwise we won't be able to query ICCID/IMSI
-    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
-    int cfunVal = -1;
-    auto rcfun = respCfun.scanf("+CFUN: %d", &cfunVal);
-    CHECK_PARSER_OK(respCfun.readResult());
-    if (rcfun && cfunVal != 1) {
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
-    }
+    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, true /* check */));
 
     netConf_ = conf;
     if (!netConf_.isValid()) {
@@ -1844,10 +1874,7 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
     //         setApn, cgdcontIpVal, cgdcontApnVal, cgdcontFmt, netConf_.hasApn(),
     //         netConf_.apn(), strncmp(cgdcontApnVal, netConf_.hasApn() ? netConf_.apn() : "", sizeof(cgdcontApnVal)) != 0);
     if (setApn) {
-        if (ncpId() == PLATFORM_NCP_SARA_R510) { // CH76421
-            // Intending on the default 4,0 but leaving as 4 for maximum compatibility
-            CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=4"));
-        }
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE));
         auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
                 UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
                 (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
@@ -1868,13 +1895,7 @@ int SaraNcpClient::registerNet() {
     int r = 0;
 
     // Set modem full functionality
-    auto respCfun = parser_.sendCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN?");
-    int cfunVal = -1;
-    auto rCfun = respCfun.scanf("+CFUN: %d", &cfunVal);
-    CHECK_PARSER_OK(respCfun.readResult());
-    if (rCfun && cfunVal != 1) {
-        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
-    }
+    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, true /* check */));
 
     resetRegistrationState();
 
@@ -2211,9 +2232,8 @@ int SaraNcpClient::interveneRegistration() {
                 csd_.reset();
                 psd_.reset();
                 registrationInterventions_++;
-                // NOTE: R510 does not like the explicit CFUN=0,0 (x,0 is default, and we are intending on the default 0,0 but leaving as 0 for maximum compatibility)
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM));
+                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL));
                 return 0;
             }
         }
@@ -2244,9 +2264,8 @@ int SaraNcpClient::interveneRegistration() {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
-                // NOTE: R510 does not like the explicit CFUN=0,0 (x,0 is default, and we are intending on the default 0,0 but leaving as 0 for maximum compatibility)
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0"));
-                CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM));
+                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL));
             }
         }
     }
