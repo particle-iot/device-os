@@ -48,6 +48,8 @@ void lwip_log_message(const char* fmt, ...) {
     va_end(args);
 }
 
+#if defined(PPP_SUPPORT) && PPP_SUPPORT
+
 void ppp_dbglog(const char *fmt, ...) {
     // Only enable PPP negotiation packet logs
     if (strstr(fmt, "%P") == nullptr) {
@@ -65,3 +67,5 @@ void ppp_dbglog(const char *fmt, ...) {
     LogAttributes attr = {};
     log_message(LOG_LEVEL_TRACE, "lwip.ppp", &attr, nullptr /* reserved */, tmp);
 }
+
+#endif // defined(PPP_SUPPORT) && PPP_SUPPORT
