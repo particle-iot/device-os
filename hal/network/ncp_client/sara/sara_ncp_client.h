@@ -124,6 +124,8 @@ private:
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
 
+    bool cgattWorkaroundApplied_ = false;
+
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
     int waitReady(bool powerOn = false);

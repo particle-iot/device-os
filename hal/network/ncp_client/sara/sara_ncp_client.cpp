@@ -2058,9 +2058,11 @@ int SaraNcpClient::dataModeError(int error) {
         // FIXME: this is a workaround for some R410 firmware versions where the PPP session suddenly dies
         // in network phase after the first IPCP ConfReq. For some reason CGATT=0/1 helps.
         const NcpClientLock lock(this);
+        CHECK_FALSE(cgattWorkaroundApplied_, SYSTEM_ERROR_INVALID_STATE);
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CGATT=0"));
         HAL_Delay_Milliseconds(1000);
         CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CGATT=1"));
+        cgattWorkaroundApplied_ = true;
     }
     return 0;
 }
@@ -2083,6 +2085,9 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (connState_ == NcpConnectionState::CONNECTED) {
+        // Reset CGATT workaround flag
+        cgattWorkaroundApplied_ = false;
+
         if (firmwareUpdateR510_) {
             LOG(WARN, "Skipping PPP data connection to download NCP firmware");
             return;
