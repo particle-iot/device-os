@@ -1519,6 +1519,10 @@ int QuectelNcpClient::enterDataMode() {
     return r;
 }
 
+int QuectelNcpClient::dataModeError(int error) {
+    return 0;
+}
+
 int QuectelNcpClient::getMtu() {
     return 0;
 }

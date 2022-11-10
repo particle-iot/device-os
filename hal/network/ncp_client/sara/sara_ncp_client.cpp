@@ -1167,13 +1167,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
         }
         if (reset) {
-            if (ncpId() == PLATFORM_NCP_SARA_R410) {
-                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
-            } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
-                CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
-            }
-            HAL_Delay_Milliseconds(2000);
-
+            CHECK(modemSoftReset());
             CHECK(waitAtResponseFromPowerOn(state));
 
             // Checking for SIM readiness ensures that other related commands
@@ -1285,20 +1279,7 @@ int SaraNcpClient::selectSimCard(ModemState& state) {
     }
 
     if (reset) {
-        if (ncpId() == PLATFORM_NCP_SARA_R410) {
-            // R410
-            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
-            HAL_Delay_Milliseconds(10000);
-        } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
-            // R510
-            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
-            HAL_Delay_Milliseconds(10000);
-        } else {
-            // U201
-            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
-            HAL_Delay_Milliseconds(1000);
-        }
-
+        CHECK(modemSoftReset());
         CHECK(waitAtResponseFromPowerOn(state));
     }
 
@@ -2000,6 +1981,17 @@ int SaraNcpClient::enterDataMode() {
         CHECK(waitAtResponse(parser_, 5000));
     }
 
+    // CGATT should be enabled before we dial
+    auto respCgatt = parser_.sendCommand("AT+CGATT?");
+    int cgattState = -1;
+    auto ret = respCgatt.scanf("+CGATT: %d", &cgattState);
+    CHECK_PARSER(respCgatt.readResult());
+    if (ret == 1 && cgattState == 0) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGATT=1"));
+        // Modem could go through quick dereg/reg with this setting
+        HAL_Delay_Milliseconds(1000);
+    }
+
     CHECK_TRUE(muxer_.setChannelDataHandler(UBLOX_NCP_PPP_CHANNEL, muxerDataStream_->channelDataCb, muxerDataStream_.get()) == 0, SYSTEM_ERROR_INTERNAL);
     // Send data mode break
     if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
@@ -2073,6 +2065,21 @@ int SaraNcpClient::enterDataMode() {
     return r;
 }
 
+int SaraNcpClient::dataModeError(int error) {
+    if (ncpId() == PLATFORM_NCP_SARA_R410 && error == SYSTEM_ERROR_PPP_NO_CARRIER_IN_NETWORK_PHASE) {
+        CHECK_TRUE(connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+        // FIXME: this is a workaround for some R410 firmware versions where the PPP session suddenly dies
+        // in network phase after the first IPCP ConfReq. For some reason CGATT=0/1 helps.
+        const NcpClientLock lock(this);
+        CHECK_FALSE(cgattWorkaroundApplied_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CGATT=0"));
+        HAL_Delay_Milliseconds(1000);
+        CHECK_PARSER_OK(parser_.execCommand(UBLOX_CFUN_TIMEOUT, "AT+CGATT=1"));
+        cgattWorkaroundApplied_ = true;
+    }
+    return 0;
+}
+
 int SaraNcpClient::getMtu() {
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
         return UBLOX_NCP_R4_NO_HW_FLOW_CONTROL_MTU;
@@ -2106,6 +2113,9 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (connState_ == NcpConnectionState::CONNECTED) {
+        // Reset CGATT workaround flag
+        cgattWorkaroundApplied_ = false;
+
         if (firmwareUpdateR510_) {
             LOG(WARN, "Skipping PPP data connection to download NCP firmware");
             return;
@@ -2501,6 +2511,23 @@ int SaraNcpClient::modemPowerOff() {
 
     CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
     return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::modemSoftReset() {
+    if (ncpId() == PLATFORM_NCP_SARA_R410) {
+        // R410
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_NO_SIM));
+        HAL_Delay_Milliseconds(10000);
+    } else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        // R510
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
+        HAL_Delay_Milliseconds(10000);
+    } else {
+        // U201
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::RESET_WITH_SIM));
+        HAL_Delay_Milliseconds(1000);
+    }
+    return 0;
 }
 
 int SaraNcpClient::modemSoftPowerOff() {

@@ -65,6 +65,23 @@ public:
     EVENT_MAX         = 0x09
   };
 
+  enum Error {
+    ERROR_NONE = PPPERR_NONE,
+    ERROR_PARAM = PPPERR_PARAM,
+    ERROR_OPEN = PPPERR_OPEN,
+    ERROR_DEVICE = PPPERR_DEVICE,
+    ERROR_ALLOC = PPPERR_ALLOC,
+    ERROR_USER = PPPERR_USER,
+    ERROR_CONNECT = PPPERR_CONNECT,
+    ERROR_AUTHFAIL = PPPERR_AUTHFAIL,
+    ERROR_PROTOCOL = PPPERR_PROTOCOL,
+    ERROR_PEERDEAD = PPPERR_PEERDEAD,
+    ERROR_IDLETIMEOUT = PPPERR_IDLETIMEOUT,
+    ERROR_CONNECTTIME = PPPERR_CONNECTTIME,
+    ERROR_LOOPBACK = PPPERR_LOOPBACK,
+    ERROR_NO_CARRIER_IN_NETWORK_PHASE = 100
+  };
+
   enum State {
     STATE_NONE         = 0,
     STATE_READY        = 1,
@@ -77,7 +94,7 @@ public:
     STATE_MAX          = 8
   };
 
-  bool notifyEvent(uint64_t ev);
+  bool notifyEvent(uint64_t ev, int data = ERROR_NONE);
   int input(const uint8_t* data, size_t size);
 
   typedef int (*OutputCallback)(const uint8_t* data, size_t size, void* ctx);
@@ -85,7 +102,7 @@ public:
   void setOutputCallback(OutputCallback cb, void* ctx);
   void setEnterDataModeCallback(EnterDataModeCallback, void* ctx);
 
-  typedef void (*NotifyCallback)(Client* c, uint64_t ev, void* ctx);
+  typedef void (*NotifyCallback)(Client* c, uint64_t ev, int data, void* ctx);
 
   void setNotifyCallback(NotifyCallback cb, void* ctx);
 
@@ -142,6 +159,12 @@ private:
   void transition(State newState);
 
 private:
+
+  struct QueueEvent {
+    uint64_t ev;
+    int data;
+  };
+
   netif if_ = {};
   ppp_pcb* pcb_ = nullptr;
 #if PPP_IPCP_OVERRIDE

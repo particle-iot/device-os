@@ -74,6 +74,7 @@ public:
     virtual int getMtu() override;
     virtual int urcs(bool enable) override;
     virtual int startNcpFwUpdate(bool update) override;
+    virtual int dataModeError(int error) override;
 
 private:
     AtParser parser_;
@@ -124,6 +125,8 @@ private:
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
 
+    bool cgattWorkaroundApplied_ = false;
+
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
     int waitReady(bool powerOn = false);
@@ -157,6 +160,7 @@ private:
     bool waitModemPowerState(bool onOff, system_tick_t timeout);
     int modemPowerOn();
     int modemPowerOff();
+    int modemSoftReset();
     int modemSoftPowerOff();
     int modemHardReset(bool powerOff = false);
     int modemEmergencyHardReset();

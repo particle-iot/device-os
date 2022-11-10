@@ -48,6 +48,56 @@ namespace {
 // 5 minutes
 const unsigned PPP_CONNECT_TIMEOUT = 5 * 60 * 1000;
 
+int pppErrorToSystem(int err) {
+    using namespace particle::net::ppp;
+    switch(err) {
+        case Client::ERROR_NONE: {
+            return SYSTEM_ERROR_NONE;
+        }
+        case Client::ERROR_PARAM: {
+            return SYSTEM_ERROR_PPP_PARAM;
+        }
+        case Client::ERROR_OPEN: {
+            return SYSTEM_ERROR_PPP_OPEN;
+        }
+        case Client::ERROR_DEVICE: {
+            return SYSTEM_ERROR_PPP_DEVICE;
+        }
+        case Client::ERROR_ALLOC: {
+            return SYSTEM_ERROR_PPP_ALLOC;
+        }
+        case Client::ERROR_USER: {
+            return SYSTEM_ERROR_PPP_USER;
+        }
+        case Client::ERROR_CONNECT: {
+            return SYSTEM_ERROR_PPP_CONNECT;
+        }
+        case Client::ERROR_AUTHFAIL: {
+            return SYSTEM_ERROR_PPP_AUTH_FAIL;
+        }
+        case Client::ERROR_PROTOCOL: {
+            return SYSTEM_ERROR_PPP_PROTOCOL;
+        }
+        case Client::ERROR_PEERDEAD: {
+            return SYSTEM_ERROR_PPP_PEER_DEAD;
+        }
+        case Client::ERROR_IDLETIMEOUT: {
+            return SYSTEM_ERROR_PPP_IDLE_TIMEOUT;
+        }
+        case Client::ERROR_CONNECTTIME: {
+            return SYSTEM_ERROR_PPP_CONNECT_TIME;
+        }
+        case Client::ERROR_LOOPBACK: {
+            return SYSTEM_ERROR_PPP_LOOPBACK;
+        }
+        case Client::ERROR_NO_CARRIER_IN_NETWORK_PHASE: {
+            return SYSTEM_ERROR_PPP_NO_CARRIER_IN_NETWORK_PHASE;
+        }
+    }
+
+    return SYSTEM_ERROR_UNKNOWN;
+}
+
 } // anonymous
 
 
@@ -311,12 +361,12 @@ void PppNcpNetif::netifEventHandler(netif_nsc_reason_t reason, const netif_ext_c
     /* Nothing to do here */
 }
 
-void PppNcpNetif::pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, void* ctx) {
+void PppNcpNetif::pppEventHandlerCb(particle::net::ppp::Client* c, uint64_t ev, int data, void* ctx) {
     auto self = (PppNcpNetif*)ctx;
-    self->pppEventHandler(ev);
+    self->pppEventHandler(ev, data);
 }
 
-void PppNcpNetif::pppEventHandler(uint64_t ev) {
+void PppNcpNetif::pppEventHandler(uint64_t ev, int data) {
     if (ev == particle::net::ppp::Client::EVENT_UP) {
         unsigned mtu = client_.getIf()->mtu;
         LOG(TRACE, "Negotiated MTU: %u", mtu);
@@ -331,6 +381,9 @@ void PppNcpNetif::pppEventHandler(uint64_t ev) {
         if (connectStart_ == 0) {
             connectStart_ = HAL_Timer_Get_Milli_Seconds();
         }
+    } else if (ev == particle::net::ppp::Client::EVENT_ERROR) {
+        LOG(ERROR, "PPP error event data=%d", data);
+        celMan_->ncpClient()->dataModeError(pppErrorToSystem(data));
     }
 }
 

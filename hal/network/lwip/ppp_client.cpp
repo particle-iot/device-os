@@ -52,6 +52,21 @@ int Client::netifClientDataIdx_ = -1;
 constexpr const char* Client::eventNames_[];
 constexpr const char* Client::stateNames_[];
 
+namespace {
+
+#if !PPP_DEBUG
+const char* pppPhaseToString(uint8_t phase) {
+  const char* phases[] = {
+    "Dead", "Master", "Holdoff", "Initialize", "SerialConn",
+    "Dormant", "Establish", "Authenticate", "Callback", "Network",
+    "Running", "Terminate", "Disconnect", "Unknown"
+  };
+  return phases[std::min<int>(phase, sizeof(phases) / sizeof(phases[0]) - 1)];
+}
+#endif // !PPP_DEBUG
+
+} // anonymous
+
 Client::Client() {
   std::call_once(once_, []() {
     LOCK_TCPIP_CORE();
@@ -109,7 +124,7 @@ void Client::init() {
 
     pppapi_set_notify_phase_callback(pcb_, &Client::notifyPhaseCb);
 
-    os_queue_create(&queue_, sizeof(uint64_t), 5, nullptr);
+    os_queue_create(&queue_, sizeof(QueueEvent), 5, nullptr);
     SPARK_ASSERT(queue_);
 
     os_thread_create(&thread_, "ppp", OS_THREAD_PRIORITY_NETWORK, &Client::loopCb, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH);
@@ -199,11 +214,14 @@ bool Client::configure(void* config) {
   return true;
 }
 
-bool Client::notifyEvent(uint64_t ev) {
+bool Client::notifyEvent(uint64_t ev, int data) {
   if (!running_) {
     return false;
   }
-  return os_queue_put(queue_, &ev, CONCURRENT_WAIT_FOREVER, nullptr) == 0;
+  QueueEvent event = {};
+  event.ev = ev;
+  event.data = data;
+  return os_queue_put(queue_, &event, CONCURRENT_WAIT_FOREVER, nullptr) == 0;
 }
 
 int Client::input(const uint8_t* data, size_t size) {
@@ -213,6 +231,18 @@ int Client::input(const uint8_t* data, size_t size) {
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
         LOG_DEBUG(TRACE, "RX: %lu", size);
+
+        if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
+          auto pppos = (pppos_pcb*)pcb_->link_ctx_cb;
+          const char NO_CARRIER[] = "\r\nNO CARRIER\r\n";
+          if (pppos && pppos->in_state == PDADDRESS && pcb_->phase == PPP_PHASE_NETWORK && data[0] != PPP_FLAG && size >= sizeof(NO_CARRIER) - 1 && !strncmp((const char*)data, NO_CARRIER, size)) {
+            LOG(ERROR, "NO CARRIER in network PPP phase");
+            pppapi_close(pcb_, 1);
+            notifyEvent(EVENT_ERROR, ERROR_NO_CARRIER_IN_NETWORK_PHASE);
+            break;
+          }
+        }
+
 #if !PPP_INPROC_IRQ_SAFE
         err_t err = pppos_input_tcpip(pcb_, (u8_t*)data, size);
 #else
@@ -321,7 +351,7 @@ void Client::loop() {
         }
         err_t err = pppapi_connect(pcb_, 0);
         if (err != ERR_OK) {
-          LOG(TRACE, "PPP error connecting: %x", err);
+          LOG(TRACE, "PPP error connecting: %d", err);
           transition(STATE_CONNECT);
         }
         break;
@@ -361,11 +391,11 @@ void Client::loop() {
       }
     }
 
-    uint64_t ev = 0;
+    QueueEvent ev = {};
     if (os_queue_take(queue_, &ev, qWait, nullptr) == 0) {
-      LOG(TRACE, "PPP thread event %s", eventNames_[ev]);
+      LOG(TRACE, "PPP thread event %s data=%d", eventNames_[ev.ev], ev.data);
       /* Incoming event */
-      switch (ev) {
+      switch (ev.ev) {
         case EVENT_LOWER_UP: {
           if (!lowerState_) {
             lowerState_ = true;
@@ -427,6 +457,16 @@ void Client::loop() {
           }
           break;
         }
+        case EVENT_ERROR: {
+          std::unique_lock<std::mutex> lk(mutex_);
+          auto cb = cb_;
+          auto ctx = cbCtx_;
+          lk.unlock();
+          if (cb) {
+            cb(this, EVENT_ERROR, ev.data, ctx);
+          }
+          break;
+        }
       }
     }
   }
@@ -464,7 +504,9 @@ void Client::notifyPhaseCb(ppp_pcb* pcb, uint8_t phase, void* ctx) {
 }
 
 void Client::notifyPhase(uint8_t phase) {
-  LOG(TRACE, "PPP phase -> %d", phase);
+#if !PPP_DEBUG
+  LOG(TRACE, "PPP phase -> %s", pppPhaseToString(phase));
+#endif // !PPP_DEBUG
 }
 
 void Client::notifyStatusCb(ppp_pcb* pcb, int err, void* ctx) {
@@ -484,6 +526,7 @@ void Client::notifyStatus(int err) {
     }
     default: {
       /* Error connecting */
+      notifyEvent(EVENT_ERROR, err);
       notifyEvent(EVENT_DOWN);
       break;
     }
@@ -518,11 +561,11 @@ void Client::transition(State newState) {
       lk.unlock();
       if (cb) {
         if (state_ == STATE_CONNECTED) {
-          cb(this, EVENT_UP, ctx);
+          cb(this, EVENT_UP, ERROR_NONE, ctx);
         } else if (state_ == STATE_DISCONNECTED) {
-          cb(this, EVENT_DOWN, ctx);
+          cb(this, EVENT_DOWN, ERROR_NONE, ctx);
         } else if (state_ == STATE_CONNECTING) {
-          cb(this, EVENT_CONNECTING, ctx);
+          cb(this, EVENT_CONNECTING, ERROR_NONE, ctx);
         }
       }
     }
