@@ -232,7 +232,7 @@ int Client::input(const uint8_t* data, size_t size) {
       case STATE_CONNECTED: {
         LOG_DEBUG(TRACE, "RX: %lu", size);
 
-        if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
+        if (platform_current_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
           auto pppos = (pppos_pcb*)pcb_->link_ctx_cb;
           const char NO_CARRIER[] = "\r\nNO CARRIER\r\n";
           if (pppos && pppos->in_state == PDADDRESS && pcb_->phase == PPP_PHASE_NETWORK && data[0] != PPP_FLAG && size >= sizeof(NO_CARRIER) - 1 && !strncmp((const char*)data, NO_CARRIER, size)) {
