@@ -1,3 +1,10 @@
+## 3.3.1
+
+### BUGFIXES
+
+- [Boron / B SoM] R410 PPP crash in network phase workaround [#2571](https://github.com/particle-iot/device-os/pull/2571)
+- [Cellular] R410 initialization SIM failure workaround [#2573](https://github.com/particle-iot/device-os/pull/2573)
+
 ## 3.3.0
 
 ### FEATURES
