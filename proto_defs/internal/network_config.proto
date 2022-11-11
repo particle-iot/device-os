@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package particle.firmware;
+
+import "control/wifi_new.proto";
+import "control/cellular.proto";
+
+import "nanopb.proto";
+
+message WifiConfig {
+  message Network {
+    string ssid = 1;
+    bytes bssid = 2 [(nanopb).max_size = 6];
+    ctrl.wifi.Security security = 3;
+    ctrl.wifi.Credentials credentials = 4;
+  }
+
+  repeated Network networks = 1;
+}
+
+message CellularConfig {
+  ctrl.cellular.AccessPoint internal_sim = 1;
+  ctrl.cellular.AccessPoint external_sim = 2;
+  ctrl.cellular.SimType active_sim = 3;
+}

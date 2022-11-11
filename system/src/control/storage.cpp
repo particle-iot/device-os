@@ -34,7 +34,7 @@
 
 #include "platforms.h"
 
-#include "storage.pb.h"
+#include "control/storage.pb.h"
 
 #include <memory>
 
