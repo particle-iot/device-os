@@ -82,8 +82,6 @@ CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 			return CoAPMessageType::UPDATE_FINISH_V3;
 		case 'C':
 			return CoAPMessageType::UPDATE_CHUNK_V3;
-		case 'M':
-			return CoAPMessageType::SERVER_MOVED;
 		default:
 			break;
 		}

@@ -59,15 +59,10 @@
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 #include "system_version.h"
 #include "firmware_update.h"
-#include "server_config.h"
 
 #if PLATFORM_ID == PLATFORM_GCC
 #include "device_config.h"
 #endif
-
-#include "control/common.h" // FIXME: Move to another directory
-#include "cloud/cloud.pb.h"
-#include "nanopb_misc.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -76,8 +71,6 @@
 using namespace particle;
 using namespace particle::system;
 using particle::protocol::ProtocolError;
-using particle::control::common::DecodedString;
-using particle::control::common::DecodedCString;
 
 extern volatile uint8_t SPARK_UPDATE_PENDING_EVENT_RECEIVED;
 
@@ -151,13 +144,30 @@ void systemEventHandler(const char* name, const char* data)
         }
     }
     else if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
-        LOG(WARN, "Received key restore event");
-        int r = ServerConfig::instance()->restoreDefaultSettings();
-        if (r < 0) {
-            LOG(ERROR, "Failed to restore default server settings: %d", r);
-            // Reset anyway
+        // Restore PSK to DCT
+        LOG(INFO,"Restoring Public Server Key and Server Address to flash");
+#if HAL_PLATFORM_CLOUD_UDP
+        bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
+#else
+        bool udp = false;
+#endif
+        unsigned char psk_buf[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];   // 320 (udp) vs 294 (tcp), allocate 320.
+        unsigned char server_addr_buf[EXTERNAL_FLASH_SERVER_ADDRESS_LENGTH];
+        memset(&psk_buf, 0xff, sizeof(psk_buf));
+        memset(&server_addr_buf, 0xff, sizeof(server_addr_buf));
+        if (udp) {
+#if HAL_PLATFORM_CLOUD_UDP
+            memcpy(&psk_buf, backup_udp_public_server_key, backup_udp_public_server_key_size);
+            memcpy(&server_addr_buf, backup_udp_public_server_address, backup_udp_public_server_address_size);
+#endif // HAL_PLATFORM_CLOUD_UDP
+        } else {
+#if HAL_PLATFORM_CLOUD_TCP
+            memcpy(&psk_buf, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
+            memcpy(&server_addr_buf, backup_tcp_public_server_address, sizeof(backup_tcp_public_server_address));
+#endif // HAL_PLATFORM_CLOUD_TCP
         }
-        system_pending_shutdown(RESET_REASON_CONFIG_UPDATE);
+        HAL_FLASH_Write_ServerPublicKey(psk_buf, udp);
+        HAL_FLASH_Write_ServerAddress(server_addr_buf, udp);
     }
 }
 
@@ -249,7 +259,7 @@ extern uint8_t feature_cloud_udp;
 extern volatile bool cloud_socket_aborted;
 
 static volatile uint32_t lastCloudEvent = 0;
-static uint32_t particle_key_errors = ParticleKeyErrorFlag::NO_ERROR;
+uint32_t particle_key_errors = NO_ERROR;
 
 const int CLAIM_CODE_SIZE = 63;
 
@@ -682,69 +692,6 @@ bool publishSafeModeEventIfNeeded() {
     return true; // ok
 }
 
-void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedResponseCallback respCallback, void* ctx) {
-    clear_system_error_message();
-    int result = SYSTEM_ERROR_UNKNOWN;
-    NAMED_SCOPE_GUARD(respGuard, {
-        respCallback(result, ctx);
-    });
-    // Parse the request
-    // TODO: Add a helper function to initialize a buffered stream and decode Protobuf data in one call
-    auto stream = pb_istream_init(nullptr /* reserved */);
-    if (!stream) {
-        result = SYSTEM_ERROR_NO_MEMORY;
-        return;
-    }
-    NAMED_SCOPE_GUARD(streamGuard, {
-        pb_istream_free(stream, nullptr /* reserved */);
-    });
-    bool ok = pb_istream_from_buffer_ex(stream, (const pb_byte_t*)reqData, reqSize, nullptr /* reserved */);
-    if (!ok) {
-        result = SYSTEM_ERROR_INTERNAL;
-        return;
-    }
-    particle_cloud_ServerMovedPermanentlyRequest pbReq = {};
-    DecodedCString pbAddr(&pbReq.server_addr); // Decode to a null-terminated string
-    DecodedString pbPubKey(&pbReq.server_pub_key);
-    DecodedString pbSign(&pbReq.sign);
-    ok = pb_decode(stream, &particle_cloud_ServerMovedPermanentlyRequest_msg, &pbReq);
-    if (!ok) {
-        SYSTEM_ERROR_MESSAGE("Failed to parse ServerMoved request");
-        result = SYSTEM_ERROR_BAD_DATA;
-        return;
-    }
-    pb_istream_free(stream, nullptr);
-    streamGuard.dismiss();
-    // Validate the request
-    ServerConfig::ServerMovedRequest req;
-    req.address = pbAddr.data;
-    req.port = pbReq.server_port;
-    req.publicKey = (const uint8_t*)pbPubKey.data;
-    req.publicKeySize = pbPubKey.size;
-    req.signature = (const uint8_t*)pbSign.data;
-    req.signatureSize = pbSign.size;
-    int r = ServerConfig::instance()->validateServerMovedRequest(req);
-    if (r < 0) {
-        SYSTEM_ERROR_MESSAGE("Failed to validate ServerMoved request: %d", r);
-        result = r;
-        return;
-    }
-    // Reply to the server
-    respCallback(SYSTEM_ERROR_NONE, ctx);
-    respGuard.dismiss();
-    // Gracefully disconnect from the cloud and clear the session data
-    CloudConnectionSettings::instance()->setPendingDisconnectOptions(CloudDisconnectOptions().graceful(true)
-            .clearSession(true));
-    cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_SERVER_MOVED);
-    // Apply the new server settings
-    r = ServerConfig::instance()->updateSettings(req);
-    if (r < 0) {
-        LOG(ERROR, "Failed to update server settings: %d", r);
-        // Reset anyway
-    }
-    system_pending_shutdown(RESET_REASON_CONFIG_UPDATE);
-}
-
 #if HAL_PLATFORM_COMPRESSED_OTA
 // Minimum bootloader version required to support compressed/combined OTA updates
 const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 1000; // 2.0.0
@@ -924,8 +871,6 @@ static const char* resetReasonString(System_Reset_Reason reason)
         return "panic";
     case RESET_REASON_USER:
         return "user";
-    case RESET_REASON_CONFIG_UPDATE:
-        return "config_update";
     default:
         return nullptr;
     }
@@ -1012,18 +957,6 @@ void Spark_Protocol_Init(void)
     if (!spark_protocol_is_initialized(sp))
     {
 #if PLATFORM_ID != PLATFORM_GCC
-        // Validate the server key and address in the DCT and restore the factory defaults if needed
-        auto servConf = ServerConfig::instance();
-        int r = servConf->validateSettings();
-        if (r < 0) {
-            LOG(ERROR, "Validation of server settings failed: %d; restoring defaults", r);
-            particle_key_errors |= ParticleKeyErrorFlag::SERVER_SETTINGS_CORRUPTED;
-            r = servConf->restoreDefaultSettings();
-            if (r < 0) {
-                LOG(ERROR, "Failed to restore default server settings: %d", r);
-            }
-        }
-
         product_details_t info;
         info.size = sizeof(info);
         spark_protocol_get_product_details(sp, &info);
@@ -1094,7 +1027,6 @@ void Spark_Protocol_Init(void)
         callbacks.millis = HAL_Timer_Get_Milli_Seconds;
         callbacks.set_time = system_set_time;
         callbacks.notify_client_messages_processed = clientMessagesProcessed;
-        callbacks.server_moved = handleServerMovedRequest;
 
         SparkDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
@@ -1113,8 +1045,8 @@ void Spark_Protocol_Init(void)
         // todo - this pushes a lot of data on the stack! refactor to remove heavy stack usage
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
-        memset(&pubkey, 0, sizeof(pubkey));
-        memset(&private_key, 0, sizeof(private_key));
+        memset(&pubkey, 0xff, sizeof(pubkey));
+        memset(&private_key, 0xff, sizeof(private_key));
 
         SparkKeys keys;
         keys.size = sizeof(keys);
@@ -1127,6 +1059,21 @@ void Spark_Protocol_Init(void)
         genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
         HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
         HAL_FLASH_Read_ServerPublicKey(pubkey);
+
+        // if public server key is erased, restore with a backup from system firmware
+        if (pubkey[0] == 0xff) {
+            LOG(WARN, "Public Server Key was blank, restoring.");
+            if (udp) {
+#if HAL_PLATFORM_CLOUD_UDP
+                memcpy(&pubkey, backup_udp_public_server_key, backup_udp_public_server_key_size);
+#endif // HAL_PLATFORM_CLOUD_UDP
+            } else {
+#if HAL_PLATFORM_CLOUD_TCP
+                memcpy(&pubkey, backup_tcp_public_server_key, sizeof(backup_tcp_public_server_key));
+#endif // HAL_PLATFORM_CLOUD_TCP
+            }
+            particle_key_errors |= PUBLIC_SERVER_KEY_BLANK;
+        }
 
         uint8_t id_length = hal_get_device_id(NULL, 0);
         uint8_t id[id_length];
@@ -1285,7 +1232,7 @@ int Spark_Handshake(bool presence_announce)
             return err;
         }
     }
-    if (particle_key_errors != ParticleKeyErrorFlag::NO_ERROR) {
+    if (particle_key_errors != NO_ERROR) {
         char buf[sizeof(unsigned long)*8+1];
         ultoa((unsigned long)particle_key_errors, buf, 10);
         LOG(INFO,"Send event spark/device/key/error=%s", buf);
