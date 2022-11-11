@@ -52,4 +52,4 @@
 	url = https://github.com/particle-iot/coremark
 [submodule "proto_defs/shared"]
 	path = proto_defs/shared
-	url = git@github.com:particle-iot/device-os-protobuf.git
+	url = https://github.com/particle-iot/device-os-protobuf.git
