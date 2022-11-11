@@ -136,7 +136,6 @@ typedef struct _particle_ctrl_wifi_JoinNewNetworkRequest {
     pb_callback_t ssid; /* Network SSID */
     particle_ctrl_wifi_JoinNewNetworkRequest_bssid_t bssid; /* Network address */
     particle_ctrl_wifi_Security security; /* Network security */
-    bool has_credentials;
     particle_ctrl_wifi_Credentials credentials; /* Network credentials */
 } particle_ctrl_wifi_JoinNewNetworkRequest;
 
@@ -157,7 +156,7 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define particle_ctrl_wifi_Credentials_init_default {_particle_ctrl_wifi_CredentialsType_MIN, {{NULL}, NULL}}
-#define particle_ctrl_wifi_JoinNewNetworkRequest_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, false, particle_ctrl_wifi_Credentials_init_default}
+#define particle_ctrl_wifi_JoinNewNetworkRequest_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default}
 #define particle_ctrl_wifi_JoinNewNetworkReply_init_default {0}
 #define particle_ctrl_wifi_JoinKnownNetworkRequest_init_default {{{NULL}, NULL}}
 #define particle_ctrl_wifi_JoinKnownNetworkReply_init_default {0}
@@ -174,7 +173,7 @@ extern "C" {
 #define particle_ctrl_wifi_ScanNetworksReply_init_default {{{NULL}, NULL}}
 #define particle_ctrl_wifi_ScanNetworksReply_Network_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, 0, 0}
 #define particle_ctrl_wifi_Credentials_init_zero {_particle_ctrl_wifi_CredentialsType_MIN, {{NULL}, NULL}}
-#define particle_ctrl_wifi_JoinNewNetworkRequest_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, false, particle_ctrl_wifi_Credentials_init_zero}
+#define particle_ctrl_wifi_JoinNewNetworkRequest_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero}
 #define particle_ctrl_wifi_JoinNewNetworkReply_init_zero {0}
 #define particle_ctrl_wifi_JoinKnownNetworkRequest_init_zero {{{NULL}, NULL}}
 #define particle_ctrl_wifi_JoinKnownNetworkReply_init_zero {0}
@@ -226,7 +225,7 @@ X(a, CALLBACK, SINGULAR, STRING,   password,          2)
 X(a, CALLBACK, SINGULAR, STRING,   ssid,              1) \
 X(a, STATIC,   SINGULAR, BYTES,    bssid,             2) \
 X(a, STATIC,   SINGULAR, UENUM,    security,          3) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  credentials,       4)
+X(a, STATIC,   SINGULAR, MESSAGE,  credentials,       4)
 #define particle_ctrl_wifi_JoinNewNetworkRequest_CALLBACK pb_default_field_callback
 #define particle_ctrl_wifi_JoinNewNetworkRequest_DEFAULT NULL
 #define particle_ctrl_wifi_JoinNewNetworkRequest_credentials_MSGTYPE particle_ctrl_wifi_Credentials

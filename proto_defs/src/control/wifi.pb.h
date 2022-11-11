@@ -97,12 +97,10 @@ typedef struct _particle_ctrl_WiFiGetAntennaReply {
 } particle_ctrl_WiFiGetAntennaReply;
 
 typedef struct _particle_ctrl_WiFiGetCredentialsReply { 
-    bool has_list;
     particle_ctrl_WiFiAccessPointList list; 
 } particle_ctrl_WiFiGetCredentialsReply;
 
 typedef struct _particle_ctrl_WiFiScanReply { 
-    bool has_list;
     particle_ctrl_WiFiAccessPointList list; 
 } particle_ctrl_WiFiScanReply;
 
@@ -111,7 +109,6 @@ typedef struct _particle_ctrl_WiFiSetAntennaRequest {
 } particle_ctrl_WiFiSetAntennaRequest;
 
 typedef struct _particle_ctrl_WiFiSetCredentialsRequest { 
-    bool has_ap;
     particle_ctrl_WiFiAccessPoint ap; 
 } particle_ctrl_WiFiSetCredentialsRequest;
 
@@ -144,10 +141,10 @@ extern "C" {
 #define particle_ctrl_WiFiSetAntennaRequest_init_default {_particle_ctrl_WiFiAntenna_MIN}
 #define particle_ctrl_WiFiSetAntennaReply_init_default {0}
 #define particle_ctrl_WiFiScanRequest_init_default {0}
-#define particle_ctrl_WiFiScanReply_init_default {false, particle_ctrl_WiFiAccessPointList_init_default}
+#define particle_ctrl_WiFiScanReply_init_default {particle_ctrl_WiFiAccessPointList_init_default}
 #define particle_ctrl_WiFiGetCredentialsRequest_init_default {0}
-#define particle_ctrl_WiFiGetCredentialsReply_init_default {false, particle_ctrl_WiFiAccessPointList_init_default}
-#define particle_ctrl_WiFiSetCredentialsRequest_init_default {false, particle_ctrl_WiFiAccessPoint_init_default}
+#define particle_ctrl_WiFiGetCredentialsReply_init_default {particle_ctrl_WiFiAccessPointList_init_default}
+#define particle_ctrl_WiFiSetCredentialsRequest_init_default {particle_ctrl_WiFiAccessPoint_init_default}
 #define particle_ctrl_WiFiSetCredentialsReply_init_default {0}
 #define particle_ctrl_WiFiClearCredentialsRequest_init_default {0}
 #define particle_ctrl_WiFiClearCredentialsReply_init_default {0}
@@ -158,10 +155,10 @@ extern "C" {
 #define particle_ctrl_WiFiSetAntennaRequest_init_zero {_particle_ctrl_WiFiAntenna_MIN}
 #define particle_ctrl_WiFiSetAntennaReply_init_zero {0}
 #define particle_ctrl_WiFiScanRequest_init_zero  {0}
-#define particle_ctrl_WiFiScanReply_init_zero    {false, particle_ctrl_WiFiAccessPointList_init_zero}
+#define particle_ctrl_WiFiScanReply_init_zero    {particle_ctrl_WiFiAccessPointList_init_zero}
 #define particle_ctrl_WiFiGetCredentialsRequest_init_zero {0}
-#define particle_ctrl_WiFiGetCredentialsReply_init_zero {false, particle_ctrl_WiFiAccessPointList_init_zero}
-#define particle_ctrl_WiFiSetCredentialsRequest_init_zero {false, particle_ctrl_WiFiAccessPoint_init_zero}
+#define particle_ctrl_WiFiGetCredentialsReply_init_zero {particle_ctrl_WiFiAccessPointList_init_zero}
+#define particle_ctrl_WiFiSetCredentialsRequest_init_zero {particle_ctrl_WiFiAccessPoint_init_zero}
 #define particle_ctrl_WiFiSetCredentialsReply_init_zero {0}
 #define particle_ctrl_WiFiClearCredentialsRequest_init_zero {0}
 #define particle_ctrl_WiFiClearCredentialsReply_init_zero {0}
@@ -217,7 +214,7 @@ X(a, STATIC,   SINGULAR, UENUM,    antenna,           1)
 #define particle_ctrl_WiFiScanRequest_DEFAULT NULL
 
 #define particle_ctrl_WiFiScanReply_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  list,              1)
+X(a, STATIC,   SINGULAR, MESSAGE,  list,              1)
 #define particle_ctrl_WiFiScanReply_CALLBACK NULL
 #define particle_ctrl_WiFiScanReply_DEFAULT NULL
 #define particle_ctrl_WiFiScanReply_list_MSGTYPE particle_ctrl_WiFiAccessPointList
@@ -228,13 +225,13 @@ X(a, STATIC,   OPTIONAL, MESSAGE,  list,              1)
 #define particle_ctrl_WiFiGetCredentialsRequest_DEFAULT NULL
 
 #define particle_ctrl_WiFiGetCredentialsReply_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  list,              1)
+X(a, STATIC,   SINGULAR, MESSAGE,  list,              1)
 #define particle_ctrl_WiFiGetCredentialsReply_CALLBACK NULL
 #define particle_ctrl_WiFiGetCredentialsReply_DEFAULT NULL
 #define particle_ctrl_WiFiGetCredentialsReply_list_MSGTYPE particle_ctrl_WiFiAccessPointList
 
 #define particle_ctrl_WiFiSetCredentialsRequest_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, MESSAGE,  ap,                1)
+X(a, STATIC,   SINGULAR, MESSAGE,  ap,                1)
 #define particle_ctrl_WiFiSetCredentialsRequest_CALLBACK NULL
 #define particle_ctrl_WiFiSetCredentialsRequest_DEFAULT NULL
 #define particle_ctrl_WiFiSetCredentialsRequest_ap_MSGTYPE particle_ctrl_WiFiAccessPoint
