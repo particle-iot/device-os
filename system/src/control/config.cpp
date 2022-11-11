@@ -42,7 +42,7 @@
 #include "network/ncp/wifi/wifi_ncp_client.h"
 #endif
 
-#include "config.pb.h"
+#include "control/config.pb.h"
 
 #include <cstdio>
 

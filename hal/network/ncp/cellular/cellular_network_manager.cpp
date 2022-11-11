@@ -26,8 +26,7 @@
 // FIXME: Move nanopb utilities to a common header file
 #include "../../../../system/src/control/common.h"
 
-// FIXME: Build internal protocol files in a separate directory
-#include "../../../../system/src/control/proto/internal.pb.h"
+#include "network_config.pb.h"
 
 #define PB(_name) particle_firmware_##_name
 #define PB_CELLULAR(_name) particle_ctrl_cellular_##_name

@@ -32,7 +32,7 @@
 #include "check.h"
 #include "debug.h"
 
-#include "network.pb.h"
+#include "control/network.pb.h"
 
 #include <algorithm>
 
