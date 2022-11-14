@@ -66,7 +66,7 @@
 #endif
 
 #include "control/common.h" // FIXME: Move to another directory
-#include "proto/cloud/cloud.pb.h"
+#include "cloud/cloud.pb.h"
 #include "nanopb_misc.h"
 
 #include <stdio.h>
