@@ -135,9 +135,19 @@ int Mcp23s17::reset(bool verify) {
     hal_gpio_write(IOE_RST, 1);
     HAL_Delay_Milliseconds(10);
 
+#if HAL_PLATFORM_MCP23S17_MIRROR_INTERRUPTS || HAL_PLATFORM_MCP23S17_OPEN_DRAIN_INT
+    uint8_t iocon {};
+
 #if HAL_PLATFORM_MCP23S17_MIRROR_INTERRUPTS
-    CHECK(writeRegister(IOCON_ADDR[0], 1u << 6));
+    iocon |= 1u << 6;
 #endif
+#if HAL_PLATFORM_MCP23S17_OPEN_DRAIN_INT
+    iocon |= 1u << 2;
+#endif
+
+    CHECK(writeRegister(IOCON_ADDR[0], iocon));
+#endif
+
     if (verify) {
         uint8_t tmp[22] = {0x00};
         CHECK(readContinuousRegisters(IODIR_ADDR[0], tmp, sizeof(tmp)));
