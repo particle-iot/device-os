@@ -53,6 +53,13 @@ extern uint32_t SystemCoreClock;
 #include "platform_autoconf.h"
 
 
+#define logging_no_cpp
+#include "logging.h"
+ 
+#define traceTASK_PRIORITY_INHERIT( pxTCBOfMutexHolder, uxInheritedPriority ) LOG(INFO, "inherit %s base=%u current=%u -> %u", pxTCBOfMutexHolder->pcTaskName, pxTCBOfMutexHolder->uxBasePriority, pxTCBOfMutexHolder->uxPriority, uxInheritedPriority)
+
+#define traceTASK_PRIORITY_DISINHERIT( pxTCBOfMutexHolder, uxOriginalPriority ) LOG(INFO, "inherit %s base=%u current=%u original=%u", pxTCBOfMutexHolder->pcTaskName, pxTCBOfMutexHolder->uxBasePriority, pxTCBOfMutexHolder->uxPriority, uxOriginalPriority)
+
 
 #define configAPPLICATION_ALLOCATED_HEAP ( 1 )
 #define configDYNAMIC_HEAP_SIZE     ( 1 )

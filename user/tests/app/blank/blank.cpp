@@ -17,6 +17,8 @@
 
 #include "application.h"
 
+Serial1LogHandler dbg(115200, LOG_LEVEL_ALL);
+
 /* executes once at startup */
 void setup() {
 

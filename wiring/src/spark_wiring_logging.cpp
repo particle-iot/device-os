@@ -32,7 +32,7 @@
 #include "spark_wiring_interrupts.h"
 
 // Uncomment to enable logging in interrupt handlers
-// #define LOG_FROM_ISR
+#define LOG_FROM_ISR
 
 // Uncomment to enable logging to the USB serial while in listening mode
 // #define LOG_IN_LISTENING_MODE

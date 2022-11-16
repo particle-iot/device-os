@@ -435,19 +435,18 @@ void CdcClassDriver::txTimerCallback(os_timer_t timer) {
 }
 
 void CdcClassDriver::txTimerExpired() {
-    std::lock_guard<Device> lk(*dev_);
+    std::unique_lock<Device> lk(*dev_);
     if (txState_ && open_) {
         setOpenState(false);
     }
-    dev_->unlock();
+    lk.unlock();
     // FIXME: holding lock depending on the driver implementation may cause a deadlock
     dev_->flushEndpoint(epInData_);
     // Send ZLP (zero length packet)
     dev_->transferIn(epInData_, nullptr, 0);
-    dev_->lock();
+    lk.lock();
     txState_ = false;
     txBuffer_.reset();
-    dev_->unlock();
 }
 #endif // !HAL_PLATFORM_USB_SOF
 

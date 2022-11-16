@@ -254,7 +254,7 @@ extern void HAL_Delay_Microseconds(uint32_t delay);
 #define LOG_MODULE_CATEGORY NULL
 #endif
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(logging_no_cpp)
 
 // Module category
 template<typename T>
