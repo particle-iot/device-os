@@ -128,6 +128,8 @@ static BaseType_t os_thread_dump_helper(TaskStatus_t* const status, void* data)
     info.name = status->pcTaskName;
     info.id = status->xTaskNumber;
     info.stack_high_watermark = status->usStackHighWaterMark;
+    info.priority = status->uxCurrentPriority;
+    info.base_priority = status->uxBasePriority;
 
     void *stack_end = NULL;
     vTaskGetStackInfoParticle(status->xHandle, &info.stack_base, &info.stack_current, &stack_end);

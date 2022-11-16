@@ -148,6 +148,8 @@ typedef struct {
     size_t stack_size;
     void* stack_current; //the current tasks stack pointer 
     size_t stack_high_watermark; //the max amount of free stack memory that the RTOS has recorded
+    uint32_t priority;
+    uint32_t base_priority;
  } os_thread_dump_info_t;
 
 typedef os_result_t (*os_thread_dump_callback_t)(os_thread_dump_info_t*, void *reserved);
