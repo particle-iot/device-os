@@ -133,15 +133,17 @@ template <typename Config> SystemSetupConsole<Config>::~SystemSetupConsole()
 {
 
 }
-
+extern "C" uint32_t DiagPrintf(const char *fmt, ...);
 template<typename Config> void SystemSetupConsole<Config>::loop(void)
 {
     // FIXME: our TRY_LOCK() implementation uses std::unique_lock, which brings
     // a lot of unnecessary checks that cause locales and c++ system_error to be
     // compiled in. Just call try_lock() for now manually.
     // TRY_LOCK(serial)
+    DiagPrintf("serial.try_lock()\r\n");
     if (serial.try_lock())
     {
+        DiagPrintf("serial.try_lock() done\r\n");
         if (serial.available())
         {
             int c = serial.peek();
@@ -152,6 +154,7 @@ template<typename Config> void SystemSetupConsole<Config>::loop(void)
                     if (serial.available())
                     {
                         c = serial.read();
+                        DiagPrintf("handle()\r\n");
                         handle((char)c);
                     }
                 }
@@ -366,11 +369,13 @@ WiFiSetupConsole::WiFiSetupConsole(const WiFiSetupConsoleConfig& config)
 WiFiSetupConsole::~WiFiSetupConsole()
 {
 }
-
+extern uint32_t ConfigDebugClose;
 void WiFiSetupConsole::handle(char c)
 {
     if ('w' == c)
     {
+        // ConfigDebugClose = 0;
+
         memset(ssid, 0, sizeof(ssid));
         memset(password, 0, sizeof(password));
         memset(security_type_string, 0, sizeof(security_type_string));
@@ -386,8 +391,10 @@ void WiFiSetupConsole::handle(char c)
         WLanCredentials creds;
 
         do {
+            DiagPrintf("print SSID\r\n");
         print("SSID: ");
         read_line(ssid, 32);
+        ConfigDebugClose = 1;
         } while (strlen(ssid) == 0);
 
         wlan_scan([](WiFiAccessPoint* ap, void* ptr) {

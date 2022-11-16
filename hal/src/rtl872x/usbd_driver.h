@@ -94,7 +94,7 @@ private:
     usb_dev_t* rtlDev_ = nullptr;
     bool setupError_ = false;
 
-    const uint8_t RTL_USBD_ISR_PRIORITY = 7;
+    const uint8_t RTL_USBD_ISR_PRIORITY = 8;
     __attribute__((aligned(4))) uint8_t tempBuffer_[rtl::TEMP_BUFFER_SIZE];
 
     // TODO: Validate whether these are required to be present at all times

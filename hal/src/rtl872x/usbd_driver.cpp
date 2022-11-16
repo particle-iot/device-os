@@ -450,16 +450,42 @@ void RtlUsbDriver::fixupReceivedData() {
         fixupPtr_ = nullptr;
     }
 }
-
+uint32_t DiagPrintf(const char *fmt, ...);
 bool RtlUsbDriver::lock() {
+    os_thread_t thread = os_thread_current(nullptr);
+    os_thread_dump(thread, [](os_thread_dump_info_t* info, void *reserved) -> os_result_t {
+        DiagPrintf("lk, %s\r\n", info->name);
+        return 0;
+    }, nullptr);
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    mutex_.lock();
+    int ret = mutex_.lock();
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    os_thread_dump(thread, [](os_thread_dump_info_t* info, void *reserved) -> os_result_t {
+        DiagPrintf("lk-done, %s\r\n", info->name);
+        return 0;
+    }, nullptr);
+    if (ret != 0) {
+        LOG(TRACE, "\r\n!!!\r\n");
+        SPARK_ASSERT(false);
+    }
     return true;
 }
 
 void RtlUsbDriver::unlock() {
+    os_thread_t thread = os_thread_current(nullptr);
+    os_thread_dump(thread, [](os_thread_dump_info_t* info, void *reserved) -> os_result_t {
+        DiagPrintf("unlk, %s\r\n", info->name);
+        return 0;
+    }, nullptr);
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    mutex_.unlock();
+    int ret = mutex_.unlock();
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    os_thread_dump(thread, [](os_thread_dump_info_t* info, void *reserved) -> os_result_t {
+        DiagPrintf("unlk-done, %s\r\n", info->name);
+        return 0;
+    }, nullptr);
+    if (ret != 0) {
+        LOG(TRACE, "\r\n???\r\n");
+        SPARK_ASSERT(false);
+    }
 }

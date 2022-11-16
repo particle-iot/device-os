@@ -364,8 +364,8 @@ int os_mutex_recursive_destroy(os_mutex_recursive_t mutex)
 
 int os_mutex_recursive_lock(os_mutex_recursive_t mutex)
 {
-    xSemaphoreTakeRecursive(static_cast<SemaphoreHandle_t>(mutex), portMAX_DELAY);
-    return 0;
+    return xSemaphoreTakeRecursive(static_cast<SemaphoreHandle_t>(mutex), portMAX_DELAY) != pdTRUE;
+    // return 0;
 }
 
 int os_mutex_recursive_trylock(os_mutex_recursive_t mutex)

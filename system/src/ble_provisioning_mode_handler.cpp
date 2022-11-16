@@ -344,6 +344,8 @@ int BleProvisioningModeHandler::exit() {
     // Do not allow other thread to modify the BLE configurations until this function exits.
     BleLock lk;
 
+    hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
+
     SCOPE_GUARD ({
         preAdvData_.clear();
         preSrData_.clear();
@@ -359,7 +361,6 @@ int BleProvisioningModeHandler::exit() {
             LOG(ERROR, "Failed to restore user configuration.");
         }
     }
-    hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
 
     exited_ = true;
     return SYSTEM_ERROR_NONE;
@@ -372,13 +373,14 @@ void BleProvisioningModeHandler::onBleAdvEvents(const hal_ble_adv_evt_t *event, 
     const auto handler = (BleProvisioningModeHandler*)context;
     switch (event->type) {
         case BLE_EVT_ADV_STOPPED: {
-            LOG_DEBUG(TRACE, "BLE_EVT_ADV_STOPPED");
+            LOG(TRACE, "BLE_EVT_ADV_STOPPED");
             if (handler->applyUserAdvData() != SYSTEM_ERROR_NONE) {
                 if (handler->applyControlRequestAdvData() != SYSTEM_ERROR_NONE) {
                     LOG(ERROR, "Failed to apply control request advertising data set.");
                     break;
                 }
             }
+            LOG(TRACE, "re-adv");
             if (hal_ble_gap_start_advertising(nullptr) != SYSTEM_ERROR_NONE) {
                 LOG(ERROR, "Failed to restart BLE advertising.");
             }

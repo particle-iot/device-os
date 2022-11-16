@@ -62,7 +62,7 @@ ListeningModeHandler::~ListeningModeHandler() {
 ListeningModeHandler* ListeningModeHandler::instance() {
     return &g_listenModeHandler;
 }
-
+extern uint32_t ConfigDebugClose;
 int ListeningModeHandler::enter(unsigned int timeout) {
     if (system_mode() != SAFE_MODE && HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
         return SYSTEM_ERROR_NOT_ALLOWED;
@@ -74,6 +74,8 @@ int ListeningModeHandler::enter(unsigned int timeout) {
 
     active_ = true;
     LOG(INFO, "Entering listening mode");
+
+    ConfigDebugClose = 1;
 
     /* Disconnect from cloud and network */
     cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, CLOUD_DISCONNECT_REASON_LISTENING);
@@ -100,6 +102,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
         if (creds) {
             CHECK(network_set_credentials(NETWORK_INTERFACE_WIFI_STA, 0, creds, nullptr));
             // Exit listening mode
+            LOG(TRACE, "NETWORK_LISTEN_COMMAND_EXIT");
             instance()->enqueueCommand(NETWORK_LISTEN_COMMAND_EXIT, nullptr);
         }
         return 0;
