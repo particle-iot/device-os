@@ -639,6 +639,13 @@
 - [Gen 2] Fix D0 alternate-function being unconditionally reset when calling `Serial1.end()` [#2256](https://github.com/particle-iot/device-os/pull/2256)
 - [Gen 3] Fix an issue with `BLE.scan()` deadlocking [#2220](https://github.com/particle-iot/device-os/pull/2220)
 
+## 2.3.1
+
+### BUGFIXES
+
+- [Cellular] R410 initialization SIM failure workaround [#2573](https://github.com/particle-iot/device-os/pull/2573)
+- [Boron / B SoM] R410 PPP crash in network phase workaround [#2571](https://github.com/particle-iot/device-os/pull/2571)
+
 ## 2.3.0
 
 ### FEATURES
