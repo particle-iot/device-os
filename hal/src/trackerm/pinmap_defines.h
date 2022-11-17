@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define TOTAL_PINS          50
+#define TOTAL_PINS          47
 #define TOTAL_ANALOG_PINS   6
 #define FIRST_ANALOG_PIN    11
 
@@ -81,7 +81,7 @@
 // IO Expander
 #define IOE_INT             D10
 #define IOE_RST             43
-#define IOE_CS              44
+#define IOE_CS              45
 
 #define CS0                 S3
 #define CS1                 S5
@@ -120,25 +120,22 @@
 #define LOW_BAT_UC          27
 #define DCDC_EN             28
 #define GNSS_PWR_EN         29
-#define IO_2V8_EN           30
-#define SHT_ALERT           31
+#define P2_CELL_STATUS      30
+#define GNSS_GEOFENCE       31
 #define GNSS_RST            32
 #define PGOOD               33
 #define P2_CELL_DTR         34
-#define IO_EXP_B0           35
-#define IO_EXP_B1           36
-#define IO_EXP_B2           37
-#define IO_EXP_B3           38
+#define CAN_VDD_EN          35
+#define CAN_STBY            36
+#define CAN_INT             37
+#define P2_CELL_PWR         38
 #define P2_CELL_RST         39
-#define P2_CELL_PWR         40
-#define P2_CELL_STATUS      41
-#define GNSS_GEOFENCE       42
+#define SENSOR_INT1         40
+#define SHT_ALERT           41
+#define IO_2V8_EN           42
 
-#define Y3                  45
-#define Y4                  46
-#define Y5                  47
-#define Y6                  48
-#define Y7                  49
+#define SENSOR_CS           44
+#define CAN_CS              46
 
 // Cellular
 #define BGRST               P2_CELL_RST
