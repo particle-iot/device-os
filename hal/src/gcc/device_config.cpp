@@ -218,6 +218,10 @@ std::string Describe::toString() const {
         jsonModules.push_back(jsonModule);
     }
     jsonDesc["m"] = jsonModules;
+    // ICCID
+    if (iccid_.has_value()) {
+        jsonDesc["iccid"] = iccid_.value();
+    }
     return boost::json::serialize(jsonDesc);
 }
 
@@ -302,6 +306,10 @@ Describe Describe::fromString(const std::string& str) {
         modules.push_back(module);
     }
     desc.modules(modules);
+    // ICCID
+    if (jsonDesc.contains("iccid")) {
+        desc.iccid(std::string(jsonDesc.at("iccid").as_string()));
+    }
     return desc;
 }
 

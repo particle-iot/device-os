@@ -207,6 +207,19 @@ public:
         return modules_;
     }
 
+    Describe& iccid(std::string iccid) {
+        iccid_ = std::move(iccid);
+        return *this;
+    }
+
+    std::string_view iccid() const {
+        return iccid_.has_value() ? iccid_.value() : std::string_view();
+    }
+
+    bool has_iccid() const {
+        return iccid_.has_value();
+    }
+
     bool isValid() const {
         return platformId_.has_value();
     }
@@ -218,6 +231,7 @@ public:
 
 private:
     Modules modules_;
+    std::optional<std::string> iccid_;
     std::optional<uint16_t> platformId_;
 };
 

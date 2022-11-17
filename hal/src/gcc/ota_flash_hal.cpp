@@ -499,4 +499,26 @@ extern "C" void random_seed_from_cloud(unsigned int value)
 
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
+    if (create) {
+        size_t count = 0;
+        const auto& desc = deviceConfig.describe;
+        if (desc.has_iccid()) {
+            ++count;
+        }
+        std::unique_ptr<key_value[]> keyValues(new(std::nothrow) key_value[count]);
+        if (keyValues) {
+            memset(keyValues.get(), 0, sizeof(key_value) * count);
+            if (desc.has_iccid()) {
+                keyValues[0].key = "iccid";
+                auto iccid = desc.iccid();
+                memcpy(keyValues[0].value, iccid.data(), std::min(iccid.size(), sizeof(key_value::value) - 1));
+            }
+            info->key_values = keyValues.release();
+            info->key_value_count = count;
+        }
+    } else {
+        std::unique_ptr<key_value[]> keyValues(info->key_values);
+        info->key_values = nullptr;
+        info->key_value_count = 0;
+    }
 }
