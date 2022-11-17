@@ -151,6 +151,7 @@ size_t g_updateSize = 0;
 int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
     if (!create) {
+        HAL_OTA_Add_System_Info(info, false /* create */, nullptr /* reserved */);
         delete[] info->modules;
         return 0;
     }
@@ -218,6 +219,9 @@ int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
     info->platform_id = deviceConfig.platform_id;
     info->module_count = desc.modules().size();
     info->modules = halModules.release();
+    info->key_values = nullptr;
+    info->key_value_count = 0;
+    HAL_OTA_Add_System_Info(info, true /* create */, nullptr /* reserved */);
     return 0;
 }
 
@@ -499,26 +503,25 @@ extern "C" void random_seed_from_cloud(unsigned int value)
 
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-    if (create) {
-        size_t count = 0;
-        const auto& desc = deviceConfig.describe;
-        if (desc.has_iccid()) {
-            ++count;
-        }
-        std::unique_ptr<key_value[]> keyValues(new(std::nothrow) key_value[count]);
-        if (keyValues) {
-            memset(keyValues.get(), 0, sizeof(key_value) * count);
-            if (desc.has_iccid()) {
-                keyValues[0].key = "iccid";
-                auto iccid = desc.iccid();
-                memcpy(keyValues[0].value, iccid.data(), std::min(iccid.size(), sizeof(key_value::value) - 1));
-            }
-            info->key_values = keyValues.release();
-            info->key_value_count = count;
-        }
-    } else {
-        std::unique_ptr<key_value[]> keyValues(info->key_values);
-        info->key_values = nullptr;
-        info->key_value_count = 0;
+    if (!create) {
+        delete[] info->key_values;
+        return;
     }
+    size_t count = 0;
+    const auto& desc = deviceConfig.describe;
+    if (desc.has_iccid()) {
+        ++count;
+    }
+    std::unique_ptr<key_value[]> keyValues(new(std::nothrow) key_value[count]);
+    if (!keyValues) {
+        return;
+    }
+    memset(keyValues.get(), 0, sizeof(key_value) * count);
+    if (desc.has_iccid()) {
+        keyValues[0].key = "iccid";
+        auto iccid = desc.iccid();
+        memcpy(keyValues[0].value, iccid.data(), std::min(iccid.size(), sizeof(key_value::value) - 1));
+    }
+    info->key_value_count = count;
+    info->key_values = keyValues.release();
 }
