@@ -267,6 +267,13 @@
 - [ci] feature/sc-100324/ci-build-cross-platform [#2418](https://github.com/particle-iot/device-os/pull/2418)
 - [test] Wi-Fi resolve test improvements [#2454](https://github.com/particle-iot/device-os/pull/2454)
 
+## 3.3.1
+
+### BUGFIXES
+
+- [Boron / B SoM] R410 PPP crash in network phase workaround [#2571](https://github.com/particle-iot/device-os/pull/2571)
+- [Cellular] R410 initialization SIM failure workaround [#2573](https://github.com/particle-iot/device-os/pull/2573)
+
 ## 3.3.0
 
 ### FEATURES
