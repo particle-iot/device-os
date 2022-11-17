@@ -68,21 +68,9 @@ inline void pinSetFast(hal_pin_t _pin) __attribute__((always_inline));
 inline void pinResetFast(hal_pin_t _pin) __attribute__((always_inline));
 inline int32_t pinReadFast(hal_pin_t _pin) __attribute__((always_inline));
 
-inline void pinConfigure(hal_pin_info_t _pin){
-    int padMuxIndex = (32 * _pin.gpio_port) + _pin.gpio_pin;
-    uint32_t Temp = PINMUX->PADCTR[padMuxIndex];
-
-    Temp &= ~PAD_BIT_MASK_FUNCTION_ID;
-    Temp |= (PINMUX_FUNCTION_GPIO & PAD_BIT_MASK_FUNCTION_ID); 
-    Temp &= ~PAD_BIT_SHUT_DWON;
-     
-    PINMUX->PADCTR[padMuxIndex] = Temp; 
-}
-
 inline void pinSetFast(hal_pin_t _pin)
 {
     hal_pin_info_t pin_info = fastPinGetPinmap()[_pin];
-    pinConfigure(pin_info);
 
     GPIO_TypeDef* gpiobase = ((pin_info.gpio_port == RTL_PORT_A) ? GPIOA_BASE : GPIOB_BASE);
     if (pin_info.pin_mode == OUTPUT_OPEN_DRAIN || pin_info.pin_mode == OUTPUT_OPEN_DRAIN_PULLUP) {
@@ -96,18 +84,16 @@ inline void pinSetFast(hal_pin_t _pin)
 inline void pinResetFast(hal_pin_t _pin)
 {
     hal_pin_info_t pin_info = fastPinGetPinmap()[_pin];
-    pinConfigure(pin_info);
 
     GPIO_TypeDef* gpiobase = ((pin_info.gpio_port == RTL_PORT_A) ? GPIOA_BASE : GPIOB_BASE);
-    gpiobase->PORT[0].DR &= (0 << pin_info.gpio_pin);
+    gpiobase->PORT[0].DR &= ~(1 << pin_info.gpio_pin);
     gpiobase->PORT[0].DDR |= (1 << pin_info.gpio_pin);
 }
 
 inline int32_t pinReadFast(hal_pin_t _pin)
 {
     hal_pin_info_t pin_info = fastPinGetPinmap()[_pin];
-    pinConfigure(pin_info);
-    
+
     GPIO_TypeDef* gpiobase = ((pin_info.gpio_port == RTL_PORT_A) ? GPIOA_BASE : GPIOB_BASE);
     return ((gpiobase->EXT_PORT[0] >> pin_info.gpio_pin) & 1UL);
 }
