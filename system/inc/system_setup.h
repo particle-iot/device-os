@@ -92,6 +92,8 @@ protected:
     virtual void cleanup();
 
 private:
+    void read_line_gracefully(char *dst, int max_len);
+    
     USBSerial serial;
 };
 

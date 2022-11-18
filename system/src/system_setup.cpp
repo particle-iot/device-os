@@ -39,6 +39,9 @@
 #include "system_ymodem.h"
 #include "mbedtls_util.h"
 #include "ota_flash_hal.h"
+#include "system_threading.h"
+
+using namespace particle;
 
 #ifndef SETUP_LISTEN_MAGIC
 #define SETUP_LISTEN_MAGIC 0
@@ -324,9 +327,29 @@ template<typename Config> void SystemSetupConsole<Config>::print(const char *s)
     }
 }
 
+template<typename Config> void SystemSetupConsole<Config>::read_line_gracefully(char *dst, int max_len)
+{
+    int total_len = 0;
+    do {
+        int len = 0;
+        if (serialReadLine(&serial, dst, max_len - total_len, 100, &len)) {
+            break;
+        } else { // timeout
+            total_len += len;
+            dst += len;
+        }
+#if PLATFORM_THREADING
+        SystemISRTaskQueue.process();
+        if (!APPLICATION_THREAD_CURRENT()) {
+            SystemThread.process();
+        }
+#endif
+    } while (1);
+}
+
 template<typename Config> void SystemSetupConsole<Config>::read_line(char *dst, int max_len)
 {
-    serialReadLine(&serial, dst, max_len, 0); //no timeout
+    read_line_gracefully(dst, max_len); //no timeout
     print("\r\n");
     while (0 < serial.available())
         serial.read();
@@ -337,7 +360,7 @@ template<typename Config> void SystemSetupConsole<Config>::read_multiline(char *
     char *ptr = dst;
     int len = max_len;
     while(len > 3) {
-        serialReadLine(&serial, ptr, len, 0); //no timeout
+        read_line_gracefully(ptr, len); //no timeout
         print("\r\n");
         int l = strlen(ptr);
         len -= l;
@@ -386,8 +409,8 @@ void WiFiSetupConsole::handle(char c)
         WLanCredentials creds;
 
         do {
-        print("SSID: ");
-        read_line(ssid, 32);
+            print("SSID: ");
+            read_line(ssid, 32);
         } while (strlen(ssid) == 0);
 
         wlan_scan([](WiFiAccessPoint* ap, void* ptr) {
