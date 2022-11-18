@@ -166,8 +166,8 @@ void PppNcpNetif::loop(void* arg) {
     PppNcpNetif* self = static_cast<PppNcpNetif*>(arg);
     unsigned int timeout = 100;
     while(!self->exit_) {
-        self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
         os_semaphore_take(self->netifSemaphore_, timeout, false);
+        self->celMan_->ncpClient()->enable(); // Make sure the client is enabled
 
         // We shouldn't be enforcing state on boot!
         if (self->lastNetifEvent_ != NetifEvent::None) {
