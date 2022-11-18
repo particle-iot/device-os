@@ -136,6 +136,22 @@
 - [tests] Fix broken tone and servo tests for p2 platform, also EEPROM_03 for all. [#2469](https://github.com/particle-iot/device-os/pull/2469)
 - [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
 
+## 4.0.1
+
+### BUGFIXES
+- [wiring] ApplicationWatchdog: fixes potential 2x timeout required to fire [#2536](https://github.com/particle-iot/device-os/pull/2536)
+- [gen3]Fix BLE control request channel sending malformed packets [#2538](https://github.com/particle-iot/device-os/pull/2538)
+- Fix issue with platform_ncp_get_info(0) for quectel platforms [#2532](https://github.com/particle-iot/device-os/pull/2532/)
+- Secures DCT initialization from getting interrupted between creating DCT file and filling it with 0xff to default state [#2530](https://github.com/particle-iot/device-os/pull/2530)
+- [Boron / B SoM] R410 PPP crash in network phase workaround [#2571](https://github.com/particle-iot/device-os/pull/2571)
+- [Cellular] R410 initialization SIM failure workaround [#2573](https://github.com/particle-iot/device-os/pull/2573)
+
+### INTERNAL
+- Use new `prtcl` compile/clean commands for internal CI builds [#2543](https://github.com/particle-iot/device-os/pull/2543)
+- Increase timeouts for internal CI builds on windows [#2545](https://github.com/particle-iot/device-os/pull/2545)
+- HAL wiring api calls to access exflash read/write functions for OTP flash page [#2540](https://github.com/particle-iot/device-os/pull/2540)
+- [hal] wifi: add generic 'world' country code as not every country code is exposed through API [#2539](https://github.com/particle-iot/device-os/pull/2539)
+
 ## 4.0.0
 
 ### DEPRECATION

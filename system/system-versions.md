@@ -169,6 +169,8 @@
 | 1101 | 4001 | 4.0.0-alpha.2 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 1101 | 4002 | 4.0.0-beta.1  |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 1101 | 4003 | 4.0.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
+| 1101 | 4004 | 4.0.1-rc.1    |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
+| 1101 | 4005 | 4.0.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 2000 | 5000 | 5.0.0-alpha.1 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X, P2 | 
 | 2000 | 5001 | 5.0.0-alpha.2 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X, P2 | 
 | 2000 | 5002 | 5.0.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, P2 |
