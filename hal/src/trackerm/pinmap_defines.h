@@ -141,7 +141,7 @@
 #define Y7                  49
 
 // Cellular
-#define BGRST               P2_CELL_RST
+#define BGRST               P2_CELL_PWR
 #define BGPWR               P2_CELL_PWR
 #define BGVINT              P2_CELL_STATUS
 #define BGDTR               P2_CELL_DTR
