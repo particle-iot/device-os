@@ -42,8 +42,10 @@ test(SPIX_01_SPI_Begin_Without_Argument)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif HAL_PLATFORM_RTL872X
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
+#elif PLATFORM_ID == PLATFORM_TRACKERM
+    assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_ESOMX
     assertEqual(info.ss_pin, A2);
 #else
@@ -69,8 +71,10 @@ test(SPIX_02_SPI_Begin_With_Ss_Pin)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif HAL_PLATFORM_RTL872X
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
+#elif PLATFORM_ID == PLATFORM_TRACKERM
+    assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_ESOMX
     assertEqual(info.ss_pin, A2);
 #else
@@ -123,8 +127,10 @@ test(SPIX_03_SPI_Begin_With_Mode)
     assertEqual(info.ss_pin,D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif HAL_PLATFORM_RTL872X
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
+#elif PLATFORM_ID == PLATFORM_TRACKERM
+    assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_ESOMX
     assertEqual(info.ss_pin, A2);
 #else
@@ -162,8 +168,10 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.ss_pin, D8);
 #elif PLATFORM_ID == PLATFORM_TRACKER
     assertEqual(info.ss_pin, D7);
-#elif HAL_PLATFORM_RTL872X
+#elif PLATFORM_ID == PLATFORM_P2
     assertEqual(info.ss_pin, S3);
+#elif PLATFORM_ID == PLATFORM_TRACKERM
+    assertEqual(info.ss_pin, A2);
 #elif PLATFORM_ID == PLATFORM_ESOMX
     assertEqual(info.ss_pin, A2);
 #else
