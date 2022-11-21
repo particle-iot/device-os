@@ -140,6 +140,7 @@
 | 1006 | 2202 | 2.2.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1006 | 2300 | 2.3.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1006 | 2301 | 2.3.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
+| 1006 | 2302 | 2.3.1         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1005 | 3000 | 3.0.0-alpha.1 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1005 | 3001 | 3.0.0-alpha.2 |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1005 | 3002 | 3.0.0-beta.1  |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
@@ -163,10 +164,13 @@
 | 1009 | 3213 | 3.2.1-p2.4    |      P2 |
 | 1100 | 3300 | 3.3.0-rc.1    |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 3301 | 3.3.0         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
+| 1100 | 3302 | 3.3.1         |      Photon, P1, Electron, Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1100 | 4000 | 4.0.0-alpha.1 |      Argon, Boron, B SoM, B5 SoM, Tracker |
 | 1101 | 4001 | 4.0.0-alpha.2 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 1101 | 4002 | 4.0.0-beta.1  |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 1101 | 4003 | 4.0.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
+| 1101 | 4004 | 4.0.1-rc.1    |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
+| 1101 | 4005 | 4.0.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 2000 | 5000 | 5.0.0-alpha.1 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X, P2 | 
 | 2000 | 5001 | 5.0.0-alpha.2 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X, P2 | 
 | 2000 | 5002 | 5.0.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, P2 |
