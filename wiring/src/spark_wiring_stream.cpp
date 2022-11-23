@@ -279,21 +279,23 @@ String Stream::readStringUntil(char terminator)
   return ret;
 }
 
-bool serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout, int* read_len)
+void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout, void(*idle_cb)(int count))
 {
     char c = 0, i = 0;
     system_tick_t last_millis = millis();
-    *read_len = 0;
+    system_tick_t cb_millis = last_millis;
 
     while (1)
     {
         if((timeout > 0) && ((millis()-last_millis) > timeout))
         {
             //Abort after a specified timeout
-            if (read_len) {
-                *read_len = i;
-            }
-            return false;
+            break;
+        }
+
+        if ((millis()-cb_millis) > 100 && idle_cb) {
+            idle_cb(i);
+            cb_millis = millis();
         }
 
         if (0 < serialObj->available())
@@ -303,10 +305,7 @@ bool serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t tim
             if (i == max_len || c == '\r' || c == '\n')
             {
                 *dst = '\0';
-                if (read_len) {
-                    *read_len = i;
-                }
-                return true;
+                break;
             }
 
             if (c == 8 || c == 127)

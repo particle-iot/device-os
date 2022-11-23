@@ -327,29 +327,16 @@ template<typename Config> void SystemSetupConsole<Config>::print(const char *s)
     }
 }
 
-template<typename Config> void SystemSetupConsole<Config>::read_line_gracefully(char *dst, int max_len)
+template<typename Config> void SystemSetupConsole<Config>::read_line(char *dst, int max_len)
 {
-    int total_len = 0;
-    do {
-        int len = 0;
-        if (serialReadLine(&serial, dst, max_len - total_len, 100, &len)) {
-            break;
-        } else { // timeout
-            total_len += len;
-            dst += len;
-        }
+    serialReadLine(&serial, dst, max_len, 0/*no timeout*/, [](int count) -> void {
 #if PLATFORM_THREADING
         SystemISRTaskQueue.process();
         if (!APPLICATION_THREAD_CURRENT()) {
             SystemThread.process();
         }
 #endif
-    } while (1);
-}
-
-template<typename Config> void SystemSetupConsole<Config>::read_line(char *dst, int max_len)
-{
-    read_line_gracefully(dst, max_len); //no timeout
+    });
     print("\r\n");
     while (0 < serial.available())
         serial.read();
@@ -360,7 +347,14 @@ template<typename Config> void SystemSetupConsole<Config>::read_multiline(char *
     char *ptr = dst;
     int len = max_len;
     while(len > 3) {
-        read_line_gracefully(ptr, len); //no timeout
+        serialReadLine(&serial, ptr, len, 0/*no timeout*/, [](int count) -> void {
+#if PLATFORM_THREADING
+            SystemISRTaskQueue.process();
+            if (!APPLICATION_THREAD_CURRENT()) {
+                SystemThread.process();
+            }
+#endif
+        });
         print("\r\n");
         int l = strlen(ptr);
         len -= l;

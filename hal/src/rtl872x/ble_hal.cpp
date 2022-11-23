@@ -151,10 +151,9 @@ namespace {
 })
 
 constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 60000;
+constexpr system_tick_t BLE_ENQUEUE_TIMEOUT_MS = 5000;
 
 StaticRecursiveMutex s_bleMutex;
-
-bool bleInLockedMode = false;
 
 void rtwCoexRunDisable() {
     os_thread_scheduling(false, nullptr);
@@ -247,7 +246,8 @@ private:
     BleEventDispatcher()
             : thread_(nullptr),
               allEvtQueue_(nullptr),
-              ioEvtQueue_(nullptr) {
+              ioEvtQueue_(nullptr),
+              started_(false) {
     }
     ~BleEventDispatcher() = default;
 
@@ -259,12 +259,12 @@ private:
     void* thread_;
     void* allEvtQueue_;
     void* ioEvtQueue_;
+    bool started_;
     static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = 3; // Higher than application thread priority, which is 2
     static constexpr uint8_t MAX_NUMBER_OF_GAP_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_IO_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_EVENT_MESSAGE = (MAX_NUMBER_OF_GAP_MESSAGE + MAX_NUMBER_OF_IO_MESSAGE);
     static constexpr uint8_t BLE_EVENT_STOP = 0xff;
-    static constexpr system_tick_t BLE_EVENT_SEND_TIMEOUT_MS = 5000;
 };
 
 union RtlGapDevState {
@@ -462,11 +462,19 @@ public:
 
     int enqueue(uint8_t cmd) {
         CHECK_TRUE(cmdQueue_, SYSTEM_ERROR_INVALID_STATE);
-        if (os_queue_put(cmdQueue_, &cmd, 0, nullptr)) {
+        if (os_queue_put(cmdQueue_, &cmd, BLE_ENQUEUE_TIMEOUT_MS, nullptr)) {
             LOG(ERROR, "os_queue_put() failed.");
             SPARK_ASSERT(false);
         }
         return SYSTEM_ERROR_NONE;
+    }
+
+    void lockMode(bool lock) {
+        bleInLockedMode_ = lock;
+    }
+
+    bool lockMode() {
+        return bleInLockedMode_;
     }
 
     static BleGap& getInstance() {
@@ -486,6 +494,13 @@ private:
         BLE_PAIRING_STATE_SET_AUTH_DATA,
         BLE_PAIRING_STATE_REJECTED,
         BLE_PAIRING_STATE_PAIRED
+    };
+
+    enum BleGapCommand {
+        BLE_CMD_EXIT_THREAD,
+        BLE_CMD_STOP_ADV,
+        BLE_CMD_STOP_ADV_NOTIFY,
+        BLE_CMD_START_ADV
     };
 
     struct BleConnection {
@@ -519,7 +534,8 @@ private:
               devNameLen_(0),
               isAdvertising_(false),
               stateSemaphore_(nullptr),
-              pairingLesc_(false) {
+              pairingLesc_(false),
+              bleInLockedMode_(false) {
         advParams_.version = BLE_API_VERSION;
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
@@ -658,6 +674,7 @@ private:
     volatile bool isAdvertising_;
     os_semaphore_t stateSemaphore_;
     uint8_t pairingLesc_;
+    bool bleInLockedMode_;
     Vector<BleAdvEventHandler> advEventHandlers_;
     Mutex advEventMutex_;
     RecursiveMutex connectionsMutex_;
@@ -668,11 +685,6 @@ private:
     static constexpr uint8_t BLE_CMD_THREAD_PRIORITY = 2;
     static constexpr uint16_t BLE_CMD_THREAD_STACK_SIZE = 2048;
     static constexpr uint8_t BLE_CMD_QUEUE_SIZE = 0x20;
-
-    static constexpr uint8_t BLE_CMD_EXIT_THREAD = 0xff;
-    static constexpr uint8_t BLE_CMD_STOP_ADV = 0xfe;
-    static constexpr uint8_t BLE_CMD_STOP_ADV_NOTIFY = 0xfd;
-    static constexpr uint8_t BLE_CMD_START_ADV = 0xfc;
 };
 
 
@@ -855,46 +867,60 @@ private:
 };
 
 int BleEventDispatcher::start() {
-    if (thread_) {
+    if (started_) {
         // Already running
         return SYSTEM_ERROR_NONE;
     }
-    bool ok = false;
     SCOPE_GUARD({
-        if (!ok) {
+        if (!started_) {
             cleanup();
         }
     });
-    CHECK_TRUE(os_msg_queue_create(&ioEvtQueue_, MAX_NUMBER_OF_IO_MESSAGE, sizeof(T_IO_MSG)), SYSTEM_ERROR_INTERNAL);
-    CHECK_TRUE(os_msg_queue_create(&allEvtQueue_, MAX_NUMBER_OF_EVENT_MESSAGE, sizeof(uint8_t)), SYSTEM_ERROR_INTERNAL);
+    if (!ioEvtQueue_) {
+        CHECK_TRUE(os_msg_queue_create(&ioEvtQueue_, MAX_NUMBER_OF_IO_MESSAGE, sizeof(T_IO_MSG)), SYSTEM_ERROR_INTERNAL);
+    }
+    if (!allEvtQueue_) {
+        CHECK_TRUE(os_msg_queue_create(&allEvtQueue_, MAX_NUMBER_OF_EVENT_MESSAGE, sizeof(uint8_t)), SYSTEM_ERROR_INTERNAL);
+    }
     if (!thread_) {
         CHECK_TRUE(os_thread_create(&thread_, "bleEvtThread", BLE_EVENT_THREAD_PRIORITY, bleEventDispatchThread, this, BLE_EVENT_THREAD_STACK_SIZE) == 0, SYSTEM_ERROR_INTERNAL);
     }
     CHECK_TRUE(gap_start_bt_stack(allEvtQueue_, ioEvtQueue_, MAX_NUMBER_OF_GAP_MESSAGE), SYSTEM_ERROR_INTERNAL);
-    ok = true;
+    started_ = true;
     return SYSTEM_ERROR_NONE;
 }
 
 int BleEventDispatcher::stop() {
     gap_start_bt_stack(nullptr, nullptr, 0);
     cleanup();
+    started_ = false;
     return SYSTEM_ERROR_NONE;
 }
 
 void BleEventDispatcher::cleanup() {
     if (thread_ && allEvtQueue_ && !isThreadCurrent()) {
         uint8_t ev = BLE_EVENT_STOP;
-        SPARK_ASSERT(os_msg_send(allEvtQueue_, &ev, BLE_EVENT_SEND_TIMEOUT_MS));
+        SPARK_ASSERT(os_msg_send(allEvtQueue_, &ev, BLE_ENQUEUE_TIMEOUT_MS));
         os_thread_join(thread_);
         thread_ = nullptr;
     }
     if (allEvtQueue_) {
-        os_msg_queue_delete(allEvtQueue_);
-        allEvtQueue_ = nullptr;
+        if (!thread_) {
+            os_msg_queue_delete(allEvtQueue_);
+            allEvtQueue_ = nullptr;
+        } else {
+            uint8_t event;
+            while (os_msg_recv(allEvtQueue_, &event, 0) == true) {}
+        }
     }
     if (ioEvtQueue_) {
-        os_msg_queue_delete(ioEvtQueue_);
-        ioEvtQueue_ = nullptr;
+        if (!thread_) {
+            os_msg_queue_delete(ioEvtQueue_);
+            ioEvtQueue_ = nullptr;
+        } else {
+            T_IO_MSG message;
+            while (os_msg_recv(ioEvtQueue_, &message, 0) == true) {}
+        }
     }
 }
 
@@ -1043,7 +1069,9 @@ int BleGap::init() {
 
     RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, ENABLE);
 
-    CHECK_TRUE(os_msg_queue_create(&cmdQueue_, BLE_CMD_QUEUE_SIZE, sizeof(uint8_t)), SYSTEM_ERROR_INTERNAL);
+    if (!cmdQueue_) {
+        CHECK_TRUE(os_msg_queue_create(&cmdQueue_, BLE_CMD_QUEUE_SIZE, sizeof(uint8_t)), SYSTEM_ERROR_INTERNAL);
+    }
     if (!cmdThread_) {
         CHECK_TRUE(os_thread_create(&cmdThread_, "bleCommandThread", BLE_CMD_THREAD_PRIORITY, bleCommandThread, this, BLE_CMD_THREAD_STACK_SIZE) == 0, SYSTEM_ERROR_INTERNAL);
     }
@@ -1170,6 +1198,7 @@ int BleGap::stop() {
         }
     }
     bte_deinit();
+    // This shoulld be called after BT stack is stopped so that BLE events in queue can be safely cleared.
     BleEventDispatcher::getInstance().stop();
 
     if (cmdThread_ && !os_thread_is_current(cmdThread_)) {
@@ -1179,8 +1208,13 @@ int BleGap::stop() {
         }
     }
     if (cmdQueue_) {
-        os_queue_destroy(cmdQueue_, nullptr);
-        cmdQueue_ = nullptr;
+        if (!cmdThread_) {
+            os_queue_destroy(cmdQueue_, nullptr);
+            cmdQueue_ = nullptr;
+        } else {
+            uint8_t command;
+            while (!os_queue_take(cmdQueue_, &command, 0, nullptr)) {}
+        }
     }
 
     initialized_ = false;
@@ -3389,12 +3423,12 @@ int hal_ble_unlock(void* reserved) {
 }
 
 int hal_ble_enter_locked_mode(void* reserved) {
-    bleInLockedMode = true;
+    BleGap::getInstance().lockMode(true);
     return SYSTEM_ERROR_NONE;
 }
 
 int hal_ble_exit_locked_mode(void* reserved) {
-    bleInLockedMode = false;
+    BleGap::getInstance().lockMode(false);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -3490,7 +3524,7 @@ int hal_ble_gap_set_ppcp(const hal_ble_conn_params_t* ppcp, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_ppcp().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK_FALSE(bleInLockedMode, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().setPpcp(ppcp);
 }
 
@@ -3516,7 +3550,7 @@ int hal_ble_gap_delete_whitelist(void* reserved) {
 int hal_ble_gap_set_tx_power(int8_t tx_power, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_tx_power().");
-    CHECK_FALSE(bleInLockedMode, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode(), SYSTEM_ERROR_INVALID_STATE);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -3530,7 +3564,7 @@ int hal_ble_gap_set_advertising_parameters(const hal_ble_adv_params_t* adv_param
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_advertising_parameters().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK_FALSE(bleInLockedMode, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().setAdvertisingParameters(adv_params);
 }
 
@@ -3545,7 +3579,7 @@ int hal_ble_gap_set_advertising_data(const uint8_t* buf, size_t len, void* reser
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_advertising_data().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK_FALSE(bleInLockedMode, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().setAdvertisingData(buf, len);
 }
 
@@ -3560,7 +3594,7 @@ int hal_ble_gap_set_scan_response_data(const uint8_t* buf, size_t len, void* res
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_scan_response_data().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK_FALSE(bleInLockedMode, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().setScanResponseData(buf, len);
 }
 
@@ -3581,7 +3615,7 @@ int hal_ble_gap_start_advertising(void* reserved) {
 int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_auto_advertise().");
-    CHECK_FALSE(bleInLockedMode, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode(), SYSTEM_ERROR_INVALID_STATE);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -3595,7 +3629,7 @@ int hal_ble_gap_stop_advertising(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_stop_advertising().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK_FALSE(bleInLockedMode, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().stopAdvertising();
 }
 
@@ -3670,7 +3704,7 @@ int hal_ble_gap_disconnect(hal_ble_conn_handle_t conn_handle, void* reserved) {
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     hal_ble_conn_info_t info = {};
     CHECK(BleGap::getInstance().getConnectionInfo(conn_handle, &info));
-    CHECK_FALSE(bleInLockedMode && info.role == BLE_ROLE_PERIPHERAL, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode() && info.role == BLE_ROLE_PERIPHERAL, SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().disconnect(conn_handle);
 }
 
@@ -3679,7 +3713,7 @@ int hal_ble_gap_update_connection_params(hal_ble_conn_handle_t conn_handle, cons
     LOG_DEBUG(TRACE, "hal_ble_gap_update_connection_params().");
     hal_ble_conn_info_t info = {};
     CHECK(BleGap::getInstance().getConnectionInfo(conn_handle, &info));
-    CHECK_FALSE(bleInLockedMode && info.role == BLE_ROLE_PERIPHERAL, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(BleGap::getInstance().lockMode() && info.role == BLE_ROLE_PERIPHERAL, SYSTEM_ERROR_INVALID_STATE);
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
