@@ -193,7 +193,6 @@ __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
     CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
-    DCache_CleanInvalidate(SPI_FLASH_BASE + addr, data_size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -236,8 +235,6 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
 
     // LOG_DEBUG(ERROR, "Erased %lu %lukB blocks starting from %" PRIxPTR,
     //           num_blocks, block_length / 1024, start_addr);
-
-    DCache_CleanInvalidate(SPI_FLASH_BASE + start_addr, block_length * num_blocks);
 
     return SYSTEM_ERROR_NONE;
 }
