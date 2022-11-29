@@ -22,6 +22,11 @@
 #include "check.h"
 #include "deviceid_hal.h"
 
+typedef enum hal_adc_reference_t {
+    HAL_ADC_REFERENCE_EXTERNAL,
+    HAL_ADC_REFERENCE_INTERNAL
+} hal_adc_reference_t;
+
 static volatile hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
 
 static const nrfx_saadc_config_t saadcConfig = {
@@ -108,7 +113,7 @@ int32_t hal_adc_read(uint16_t pin) {
         nrfx_saadc_channel_uninit(PIN_MAP[pin].adc_channel);
         if (adcReference == HAL_ADC_REFERENCE_INTERNAL) {
             // With the internal reference (0.6V) and GAIN1_6, the 12bit ADC range is 0~4095 -> 0V~3.6V, need a conversion
-            adcValue = (int16_t)(adcValue * 3.6 / 3.3);
+            adcValue = (int16_t)(adcValue * 3600 / 3300);
         }
         return (uint16_t) adcValue;
     }

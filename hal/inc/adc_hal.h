@@ -26,11 +26,6 @@ typedef enum hal_adc_state_t {
     HAL_ADC_STATE_SUSPENDED
 } hal_adc_state_t;
 
-typedef enum hal_adc_reference_t {
-    HAL_ADC_REFERENCE_EXTERNAL,
-    HAL_ADC_REFERENCE_INTERNAL
-} hal_adc_reference_t;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
