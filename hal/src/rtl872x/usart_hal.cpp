@@ -310,6 +310,7 @@ public:
     }
 
     ssize_t write(const uint8_t* buffer, size_t size) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         CHECK_TRUE(buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
         const ssize_t canWrite = CHECK(space());
         const size_t writeSize = std::min((size_t)canWrite, size);
@@ -326,15 +327,18 @@ public:
     }
 
     ssize_t flush() {
-        startTransmission();
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         while (true) {
+            while (transmitting_) {
+                HAL_Delay_Milliseconds(5);
+                // FIXME: busy loop
+            }
             {
-                TxLock lk(this);
+                AtomicBlock atomic(this);
                 if (!isEnabled() || txBuffer_.empty()) {
                     break;
                 }
             }
-            CHECK(pollStatus());
         }
         return 0;
     }
@@ -415,6 +419,7 @@ public:
     }
 
     int pollStatus() {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         if (!useInterrupt()) {
             TxLock lk(this);
             uartTxDmaCompleteHandler(this);
@@ -430,6 +435,7 @@ public:
     }
 
     int enableEvent(HAL_USART_Pvt_Events event) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
 
         auto uartInstance = uartTable_[index_].UARTx;
@@ -464,6 +470,7 @@ public:
     }
 
     int disableEvent(HAL_USART_Pvt_Events event) {
+        CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
 
         auto uartInstance = uartTable_[index_].UARTx;
@@ -1057,7 +1064,10 @@ uint32_t hal_usart_write_nine_bits(hal_usart_interface_t serial, uint16_t data) 
 uint32_t hal_usart_write(hal_usart_interface_t serial, uint8_t data) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
     // Blocking!
-    while (usart->space() <= 0) {
+    if (!usart->isEnabled()) {
+        return 0;
+    }
+    while (usart->isEnabled() && usart->space() <= 0) {
         CHECK_RETURN(usart->pollStatus(), 0);
     }
     return CHECK_RETURN(usart->write(&data, sizeof(data)), 0);
