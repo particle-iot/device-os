@@ -695,7 +695,9 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
         {"TDSCDMA", CellularAccessTechnology::UTRAN},
         {"LTE", CellularAccessTechnology::LTE},
         {"CAT-M1", CellularAccessTechnology::LTE_CAT_M1},
-        {"CAT-NB1", CellularAccessTechnology::LTE_NB_IOT}
+        {"eMTC", CellularAccessTechnology::LTE_CAT_M1},
+        {"CAT-NB1", CellularAccessTechnology::LTE_NB_IOT},
+        {"NBIoT", CellularAccessTechnology::LTE_NB_IOT},
     };
 
     int vals[5] = {};

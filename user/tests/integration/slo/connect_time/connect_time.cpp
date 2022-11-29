@@ -55,6 +55,15 @@ inline auto& network() {
 #endif
 }
 
+#if Wiring_Cellular
+bool isQuectelRadio(int radioType) {
+    return (radioType == DEV_QUECTEL_BG96 || radioType == DEV_QUECTEL_EG91_E ||
+            radioType == DEV_QUECTEL_EG91_NA || radioType == DEV_QUECTEL_EG91_EX ||
+            radioType == DEV_QUECTEL_BG95_M1 || radioType == DEV_QUECTEL_EG91_NAX ||
+            radioType == DEV_QUECTEL_BG77 || radioType == DEV_QUECTEL_BG95_MF);
+}
+#endif
+
 const char* ratToString(hal_net_access_tech_t rat) {
     switch (rat) {
     case NET_ACCESS_TECHNOLOGY_WIFI:
@@ -191,7 +200,7 @@ bool testCloudConnectTimeFromColdBoot() {
             Test::out->println("Failed to retreive cellular_device_info!");
             return false;
         }
-        if (devInfo.dev == DEV_QUECTEL_BG96 || devInfo.dev == DEV_QUECTEL_EG91_NA) {
+        if (isQuectelRadio(devInfo.dev)) {
             delay(6000);
         }
         signal = network().RSSI();
