@@ -3,6 +3,10 @@
 #include "unit-test/unit-test.h"
 #include "scope_guard.h"
 
+#if HAL_PLATFORM_FREERTOS
+#include <FreeRTOS.h>
+#endif // HAL_PLATFORM_FREERTOS
+
 namespace {
 
 template <typename T>
@@ -308,5 +312,268 @@ test(APPLICATION_WATCHDOG_03_doesnt_leak_memory)
 	// a good testing value.
 	assertMoreOrEqual(System.freeMemory(), s_ram_free_before - ((APPLICATION_WDT_STACK_SIZE * APPLICATION_WDT_TEST_RUNS)/2));
 }
+
+#if defined(configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE) && configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE
+
+struct ThreadPriority {
+	uint32_t base;
+	uint32_t prio;
+};
+
+ThreadPriority getThreadPriority() {
+	os_thread_dump_info_t info = {};
+
+	os_thread_dump(os_thread_current(nullptr), [](os_thread_dump_info_t* info, void* ptr) -> os_result_t {
+		if (info) {
+			memcpy(ptr, info, sizeof(*info));
+		}
+		return 0;
+	}, &info);
+	ThreadPriority p;
+	p.base = info.base_priority;
+	p.prio = info.priority;
+	return p;
+}
+
+test(CONCURRENT_MUTEX_01_priority_inheritance_two_threads)
+{
+	struct State {
+		State() = default;
+		~State() = default;
+		Mutex mutex1;
+		Mutex mutex2;
+		bool state1 = false;
+		bool state2 = false;
+		volatile int done = 0;
+	};
+
+	State state;
+	const auto startPriority = OS_THREAD_PRIORITY_DEFAULT + 1;
+
+	Thread lowPriorityThread("low", [](void* ptr) -> void {
+		auto state = (State*)ptr;
+		SCOPE_GUARD({
+			++state->done;
+		});
+
+		// Acquire first mutex
+		std::unique_lock<Mutex> mutex1(state->mutex1);
+		// Check that we are at the base priority and nothing has affected us
+		auto prio = getThreadPriority();
+		assertEqual(prio.base, prio.prio);
+
+		// Keep holding the first mutex and acquire the second one
+		std::unique_lock<Mutex> mutex2(state->mutex2);
+		// Somewhere at this point the second thread will try to acquire the second mutex
+		// and because we are holding it and are of lower priority, our priority
+		// should be bumped to that of thread2.
+		delay(1000);
+
+		// Verify that our priority has been bumped to that of thread2
+		prio = getThreadPriority();
+		assertEqual(prio.prio, prio.base + 1);
+
+		// Unlock mutex2, this should allow the second thread to finally
+		// acquire it.
+		mutex2.unlock();
+
+		// After we've released mutex2 and let the second thread to
+		// acquire it, our priority should be dropped to the 'normal' or base priority
+		// Validate that
+		prio = getThreadPriority();
+		assertEqual(prio.prio, prio.base);
+
+		// Everything is good
+
+		state->state1 = true;
+	}, &state, startPriority);
+	Thread highPriorityThread("high", [](void* ptr) -> void {
+		auto state = (State*)ptr;
+		SCOPE_GUARD({
+			++state->done;
+		});
+
+		// Wait a bit for thread1 to acquire both mutexes
+		delay(500);
+
+		// Check that we are at the base priority and nothing has affected us
+		auto prio = getThreadPriority();
+		assertEqual(prio.base, prio.prio);
+
+		// Attempt to acquire the second mutex, at this point the first thread
+		// should be holding it. Because we are at higher priority, the priority
+		// of the first thread should be bumped.
+		std::unique_lock<Mutex> mutex2(state->mutex2);
+
+		// We've finally acquired the mutex and at this point the priority
+		// of the first thread should have dropped back to the base priority
+
+		// Our priority should stay the same throughout all of this (base)
+		prio = getThreadPriority();
+		assertEqual(prio.base, prio.prio);
+
+		// Unlock second mutex
+		mutex2.unlock();
+
+		// Nothing should have changed, we should still be at our own base priority
+		prio = getThreadPriority();
+		assertEqual(prio.base, prio.prio);
+
+		// All done
+		state->state2 = true;
+	}, &state, startPriority + 1);
+
+	for (auto start = millis(); millis() - start <= 2000;) {
+		if (state.done == 2) {
+			break;
+		}
+		delay(100);
+	}
+
+	assertTrue(state.state1);
+	assertTrue(state.state2);
+}
+
+test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
+{
+    struct State {
+        State() = default;
+        ~State() = default;
+        Mutex mutex1;
+        Mutex mutex2;
+        bool state1 = false;
+        bool state2 = false;
+        bool state3 = false;
+        volatile int done = 0;
+    };
+
+    State state;
+    const auto startPriority = OS_THREAD_PRIORITY_DEFAULT + 1;
+
+    Thread lowPriorityThread("low", [](void* ptr) -> void {
+        auto state = (State*)ptr;
+        SCOPE_GUARD({
+            ++state->done;
+        });
+
+        // Acquire first mutex
+        std::unique_lock<Mutex> mutex1(state->mutex1);
+        // Check that we are at the base priority and nothing has affected us
+        auto prio = getThreadPriority();
+        assertEqual(prio.base, prio.prio);
+
+        // Keep holding the first mutex and acquire the second one
+        std::unique_lock<Mutex> mutex2(state->mutex2);
+        // Somewhere at this point the high priority thread will try to acquire the mutex2
+        // and middle priority thread will try to acquire the mutex1, our priority should
+        // be bumped to that of high priority thread.
+        delay(500);
+
+        // Verify that our priority has been bumped to that of high priority thread
+        prio = getThreadPriority();
+        assertEqual(prio.prio, prio.base + 2);
+
+        // Unlock mutex2, this should allow the high priority thread to finally
+        // acquire it, and our priority should be decreased to middle priority
+        mutex2.unlock();
+        delay(500);
+        prio = getThreadPriority();
+        assertEqual(prio.prio, prio.base + 1);
+
+        // Unlock mutex1, this should allow the middle priority thread to finally
+        // acquire it, and our priority should be decreased to low priority
+        mutex1.unlock();
+        delay(500);
+        prio = getThreadPriority();
+        assertEqual(prio.prio, prio.base);
+
+        // Everything is good
+
+        state->state1 = true;
+    }, &state, startPriority);
+    Thread middlePriorityThread("middle", [](void* ptr) -> void {
+        auto state = (State*)ptr;
+        SCOPE_GUARD({
+            ++state->done;
+        });
+
+        // Wait a bit for low priority thread to acquire both mutexes
+        delay(500);
+
+        // Check that we are at the base priority and nothing has affected us
+        auto prio = getThreadPriority();
+        assertEqual(prio.base, prio.prio);
+
+        // Attempt to acquire the mutex1, at this point the low priority thread
+        // should be holding it. Because we are at higher priority, the priority
+        // of the low priority thread should be bumped.
+        std::unique_lock<Mutex> mutex1(state->mutex1);
+
+        // We've finally acquired the mutex and at this point the priority
+        // of the low priority thread should have dropped back to the base priority
+
+        // Our priority should stay the same throughout all of this (base)
+        prio = getThreadPriority();
+        assertEqual(prio.base, prio.prio);
+
+        // Unlock second mutex
+        mutex1.unlock();
+
+        // Nothing should have changed, we should still be at our own base priority
+        prio = getThreadPriority();
+        assertEqual(prio.base, prio.prio);
+
+        // All done
+        state->state2 = true;
+    }, &state, startPriority + 1);
+    Thread highPriorityThread("high", [](void* ptr) -> void {
+        auto state = (State*)ptr;
+        SCOPE_GUARD({
+            ++state->done;
+        });
+
+        // Wait a bit for low priority thread to acquire both mutexes
+        delay(500);
+
+        // Check that we are at the base priority and nothing has affected us
+        auto prio = getThreadPriority();
+        assertEqual(prio.base, prio.prio);
+
+        // Attempt to acquire the second mutex, at this point the low priority thread
+        // should be holding it. Because we are at higher priority, the priority
+        // of the low priority thread should be bumped.
+        std::unique_lock<Mutex> mutex2(state->mutex2);
+
+        // We've finally acquired the mutex and at this point the priority
+        // of the low priority thread should have dropped back to the base priority
+
+        // Our priority should stay the same throughout all of this (base)
+        prio = getThreadPriority();
+        assertEqual(prio.base, prio.prio);
+
+        // Unlock second mutex
+        mutex2.unlock();
+
+        // Nothing should have changed, we should still be at our own base priority
+        prio = getThreadPriority();
+        assertEqual(prio.base, prio.prio);
+
+        // All done
+        state->state3 = true;
+    }, &state, startPriority + 2);
+
+    for (auto start = millis(); millis() - start <= 2000;) {
+        if (state.done == 3) {
+            break;
+        }
+        delay(100);
+    }
+
+    assertTrue(state.state1);
+    assertTrue(state.state2);
+    assertTrue(state.state3);
+}
+
+#endif // defined(configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE) && configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE
 
 #endif

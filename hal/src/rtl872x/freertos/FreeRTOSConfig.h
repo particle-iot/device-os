@@ -108,6 +108,7 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 
 /* Constants that build features in or out. */
 #define configUSE_MUTEXES								1
+#define configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE  1
 #define configUSE_APPLICATION_TASK_TAG					0
 #define configUSE_NEWLIB_REENTRANT						1
 
