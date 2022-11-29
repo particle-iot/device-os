@@ -109,6 +109,62 @@ private:
     bool threading_;
 };
 
+// We are safe to run the constructor/destructor, cos they are copied to PSRAM to run.
+class XipControl {
+public:
+    XipControl() {
+        if (controlled_) {
+            enableXip(true);
+        }
+    }
+
+    ~XipControl() {
+        if (controlled_) {
+            enableXip(false);
+        }
+    }
+
+    static int initXipOff() {
+        enableXip(false);
+        controlled_ = true;
+        return 0;
+    }
+
+private:
+    static void enableXip(bool enable) {
+        (void)mpuEntry_;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        if (-1 < mpuEntry_ && mpuEntry_ < MPU_MAX_REGION) {
+            mpu_entry_free(mpuEntry_);
+        }
+        mpuEntry_ = mpu_entry_alloc();
+        SPARK_ASSERT(-1 < mpuEntry_ && mpuEntry_ < MPU_MAX_REGION);
+
+        mpu_region_config mpu_cfg = {};
+        mpu_cfg.region_base = (uintptr_t)&platform_system_part1_flash_start;
+        mpu_cfg.region_size = (uintptr_t)&platform_flash_end - (uintptr_t)&platform_system_part1_flash_start; // System part1, OTA region, user part and filesystem
+        if (enable) {
+            mpu_cfg.xn = MPU_EXEC_ALLOW;
+            mpu_cfg.ap = MPU_UN_PRIV_RW;
+            mpu_cfg.sh = MPU_NON_SHAREABLE;
+            mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_WB_T_RWA;
+        } else {
+            mpu_cfg.xn = MPU_EXEC_NEVER;
+            mpu_cfg.ap = MPU_PRIV_R;
+            mpu_cfg.sh = MPU_NON_SHAREABLE;
+            mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+        }
+        mpu_region_cfg(mpuEntry_, &mpu_cfg);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+
+private:
+    static bool controlled_;
+    static signed char mpuEntry_;
+};
+bool XipControl::controlled_ = false;
+signed char XipControl::mpuEntry_ = -1;
+
 static bool is_block_erased(uintptr_t addr, size_t size);
 
 __attribute__((section(".ram.text"), noinline))
@@ -137,13 +193,13 @@ __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
     CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
-    DCache_CleanInvalidate(SPI_FLASH_BASE + addr, data_size);
     return SYSTEM_ERROR_NONE;
 }
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
+    XipControl xiplk;
     addr += SPI_FLASH_BASE;
     memcpy(data_buf, (void*)addr, data_size);
     return SYSTEM_ERROR_NONE;
@@ -151,6 +207,8 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
 
 __attribute__((section(".ram.text"), noinline))
 static bool is_block_erased(uintptr_t addr, size_t size) {
+    ExFlashLock lk;
+    XipControl xiplk;
     uint8_t* ptr = (uint8_t*)(SPI_FLASH_BASE + addr);
     for (size_t i = 0; i < size; i++) {
         if (ptr[i] != 0xff) {
@@ -177,7 +235,6 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
 
     // LOG_DEBUG(ERROR, "Erased %lu %lukB blocks starting from %" PRIxPTR,
     //           num_blocks, block_length / 1024, start_addr);
-    DCache_CleanInvalidate(SPI_FLASH_BASE + start_addr, block_length * num_blocks);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -240,31 +297,6 @@ static bool isSecureOtpMode(uint32_t normalContent) {
 
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
-// We are safe to run the constructor/destructor, cos they are copied to PSRAM to run.
-class ProhibitXip {
-public:
-    ProhibitXip()
-            : mpuCfg_{},
-              mpuEntry_(0) {
-        mpuEntry_ = mpu_entry_alloc();
-        SPARK_ASSERT(mpuEntry_ < MPU_MAX_REGION);
-        mpuCfg_.region_base = (uintptr_t)&platform_system_part1_flash_start;
-        mpuCfg_.region_size = (uintptr_t)&platform_flash_end - (uintptr_t)&platform_system_part1_flash_start; // System part1, OTA region, user part and filesystem
-        mpuCfg_.xn = MPU_EXEC_NEVER;
-        mpuCfg_.ap = MPU_PRIV_R;
-        mpuCfg_.sh = MPU_NON_SHAREABLE;
-        mpuCfg_.attr_idx = MPU_MEM_ATTR_IDX_NC;
-        mpu_region_cfg(mpuEntry_, &mpuCfg_);
-    }
-
-    ~ProhibitXip() {
-        mpu_entry_free(mpuEntry_);
-    }
-private:
-    mpu_region_config mpuCfg_;
-    uint32_t mpuEntry_;
-};
-
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 __attribute__((section(".ram.text"), noinline))
@@ -278,8 +310,6 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
     uint32_t normalContent = 0;
     FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
     {
-        ProhibitXip lk;
-
         SCOPE_GUARD({
             // Just in case, even if it might have failed to enter the secure OTP mode.
             FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
@@ -309,8 +339,6 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
     uint32_t normalContent = 0;
     FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
     {
-        ProhibitXip lk;
-
         SCOPE_GUARD({
             // Just in case, even if it might have failed to enter the secure OTP mode.
             FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
@@ -382,3 +410,11 @@ int hal_exflash_sleep(bool sleep, void* reserved) {
     // Note: HAL sleep driver uses SDK API to suspend external flash.
     return SYSTEM_ERROR_NONE;
 }
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+extern "C" int hal_exflash_disable_xip(void) {
+    ExFlashLock lk;
+    XipControl::initXipOff();
+    return SYSTEM_ERROR_NONE;
+}
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER

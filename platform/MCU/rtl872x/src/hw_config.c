@@ -288,9 +288,9 @@ void Set_System(void)
     SystemCoreClockUpdate();
 
     // force SP align to 8 byte not 4 byte (initial SP is 4 byte align)
-    // asm volatile( 
+    // asm volatile(
 	// 	"mov r0, sp\n"
-	// 	"bic r0, r0, #7\n" 
+	// 	"bic r0, r0, #7\n"
 	// 	"mov sp, r0\n"
 	// );
 
@@ -304,6 +304,9 @@ void Set_System(void)
     HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833, temp);
 
     DWT_Init();
+
+    // Enable MPU
+    mpu_init();
 
     /* Configure flash */
     SPARK_ASSERT(!hal_exflash_init());
@@ -339,7 +342,6 @@ void Set_System(void)
     Cache_Enable(0);
 
     // Enable MPU and configure the nocache region
-    mpu_init();
     app_mpu_nocache_init();
 
     // Enable cache
