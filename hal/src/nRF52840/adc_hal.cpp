@@ -20,6 +20,7 @@
 #include "adc_hal.h"
 #include "pinmap_impl.h"
 #include "check.h"
+#include "deviceid_hal.h"
 
 static volatile hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
 
@@ -29,6 +30,9 @@ static const nrfx_saadc_config_t saadcConfig = {
     .interrupt_priority = NRFX_SAADC_CONFIG_IRQ_PRIORITY,
     .low_power_mode     = false
 };
+
+static hal_adc_reference_t adcReference = HAL_ADC_REFERENCE_EXTERNAL;
+static constexpr uint32_t HAL_VERSION_BRN404X_V003 = 0x03;
 
 static void analog_in_event_handler(nrfx_saadc_evt_t const *p_event) {
     (void) p_event;
@@ -82,6 +86,11 @@ int32_t hal_adc_read(uint16_t pin) {
         .pin_n      = NRF_SAADC_INPUT_DISABLED          \
     };
 
+    if (adcReference == HAL_ADC_REFERENCE_INTERNAL) {
+        channelConfig.gain = NRF_SAADC_GAIN1_6;
+        channelConfig.reference = NRF_SAADC_REFERENCE_INTERNAL;
+    }
+
     ret = nrfx_saadc_channel_init(PIN_MAP[pin].adc_channel, &channelConfig);
     if (ret) {
         goto err_ret;
@@ -97,6 +106,10 @@ int32_t hal_adc_read(uint16_t pin) {
         goto err_ret;
     } else {
         nrfx_saadc_channel_uninit(PIN_MAP[pin].adc_channel);
+        if (adcReference == HAL_ADC_REFERENCE_INTERNAL) {
+            // With the internal reference (0.6V) and GAIN1_6, the 12bit ADC range is 0~4095 -> 0V~3.6V, need a conversion
+            adcValue = (int16_t)(adcValue * 3.6 / 3.3);
+        }
         return (uint16_t) adcValue;
     }
 
@@ -112,6 +125,16 @@ void hal_adc_dma_init() {
     adcState = HAL_ADC_STATE_ENABLED;
     uint32_t err_code = nrfx_saadc_init(&saadcConfig, analog_in_event_handler);
     SPARK_ASSERT(err_code == NRF_SUCCESS);
+
+#if PLATFORM_ID == PLATFORM_BORON
+    uint32_t hwVersion = 0xFF;
+    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_BRN404X_V003) {
+        adcReference = HAL_ADC_REFERENCE_INTERNAL;
+    }
+#else
+    (void)adcReference;
+#endif // PLATFORM_ID == PLATFORM_BORON
 }
 
 /*
