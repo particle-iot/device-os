@@ -343,6 +343,8 @@ int BleProvisioningModeHandler::exit() {
     // Do not allow other thread to modify the BLE configurations until this function exits.
     BleLock lk;
 
+    hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
+
     SCOPE_GUARD ({
         preAdvData_.clear();
         preSrData_.clear();
@@ -358,7 +360,6 @@ int BleProvisioningModeHandler::exit() {
             LOG(ERROR, "Failed to restore user configuration.");
         }
     }
-    hal_ble_cancel_callback_on_adv_events(onBleAdvEvents, this, nullptr);
 
     exited_ = true;
     return SYSTEM_ERROR_NONE;

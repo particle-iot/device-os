@@ -87,7 +87,7 @@ int pinSetDriveStrength(pin_t pin, DriveStrength drive);
 void shiftOut(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder, uint8_t val);
 uint8_t shiftIn(uint8_t dataPin, uint8_t clockPin, uint8_t bitOrder);
 
-void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout);
+void serialReadLine(Stream *serialObj, char *dst, int max_len, system_tick_t timeout, void(*idle_cb)(int count) = nullptr);
 
 uint32_t pulseIn(pin_t pin, uint16_t value);
 
