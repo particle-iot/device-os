@@ -1919,11 +1919,10 @@ int QuectelNcpClient::modemPowerOn() {
         // BG96: status pin ready requires >= 4.8s, uart ready requires >= 4.9s
         // EG91: status pin ready requires >= 10s, uart ready requires >= 12s
         // Wait 3 seconds longer than minimum spec
-        int ncp_id = ncpId();
         system_tick_t powerOffWaitMs = 15000; // EG91
-        if (isQuecBG95xDevice() || ncp_id == PLATFORM_NCP_QUECTEL_BG77) {
+        if (isQuecBG95xDevice() || ncpId() == PLATFORM_NCP_QUECTEL_BG77) {
             powerOffWaitMs = 5500; // BG95/BG77
-        } else if (ncp_id == PLATFORM_NCP_QUECTEL_BG96) {
+        } else if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
             powerOffWaitMs = 7900; // BG96
         }
         if (waitModemPowerState(1, powerOffWaitMs)) {
@@ -1959,11 +1958,10 @@ int QuectelNcpClient::modemPowerOff() {
         // BG96: >=2s
         // EG91: >=30s
         // Wait 3 seconds longer than minimum spec
-        int ncp_id = ncpId();
         system_tick_t powerOnWaitMs = 33000; // EG91
-        if (isQuecBG95xDevice() || ncp_id == PLATFORM_NCP_QUECTEL_BG77) {
+        if (isQuecBG95xDevice() || ncpId() == PLATFORM_NCP_QUECTEL_BG77) {
             powerOnWaitMs = 4300; // BG95/BG77
-        } else if (ncp_id == PLATFORM_NCP_QUECTEL_BG96) {
+        } else if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
             powerOnWaitMs = 5000; // BG96
         }
         if (waitModemPowerState(0, powerOnWaitMs)) {
