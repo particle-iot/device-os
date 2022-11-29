@@ -12,9 +12,9 @@ test(FASTPIN_01_MaxDuration_PinSet) {
 #endif // PLATFORM_ID == PLATFORM_ESOMX
 
 #if HAL_PLATFORM_RTL872X
-    const uint32_t MAX_DURATION_PINSET_NS = 3050; // 1% higher than measured (includes for() loop overhead)
+    const uint32_t MAX_DURATION_PINSET_NS = 3020 * 110 / 100; // 10% higher than measured (includes for() loop overhead)
 #else
-    const uint32_t MAX_DURATION_PINSET_NS = 1030; // 1% higher than measured (includes for() loop overhead)
+    const uint32_t MAX_DURATION_PINSET_NS = 1030 * 110 / 100; // 10% higher than measured (includes for() loop overhead)
 #endif // HAL_PLATFORM_RTL872X
 #else
 #error "No gpio fastpin timing benchmark yet measured for this platform"
@@ -38,7 +38,7 @@ test(FASTPIN_01_MaxDuration_PinSet) {
     }
     uint32_t duration = finish - start;
     uint32_t expected = NUM_ITERATIONS * MAX_DURATION_PINSET_NS;
-    // Serial.printlnf("pinSetFast total duration: %lu vs. expected duration: %lu", duration, expected);
+    // Serial.printlnf("pinSetFast total duration: %lu vs. expected max duration: %lu", duration, expected);
     assertNotEqual(duration, 0);
     assertLessOrEqual(duration, expected);
 }
@@ -54,9 +54,9 @@ test(FASTPIN_02_MaxDuration_PinReset) {
 #endif // PLATFORM_ID == PLATFORM_ESOMX
 
 #if HAL_PLATFORM_RTL872X
-    const uint32_t MAX_DURATION_PINRESET_NS = 3000; // 1% higher than measured (includes for() loop overhead)
+    const uint32_t MAX_DURATION_PINRESET_NS = 2970 * 110 / 100; // 10% higher than measured (includes for() loop overhead)
 #else
-    const uint32_t MAX_DURATION_PINRESET_NS = 1030; // 1% higher than measured (includes for() loop overhead)
+    const uint32_t MAX_DURATION_PINRESET_NS = 1030 * 110 / 100; // 10% higher than measured (includes for() loop overhead)
 #endif // HAL_PLATFORM_RTL872X
 #else
 #error "No gpio fastpin timing benchmark yet measured for this platform"
@@ -80,7 +80,7 @@ test(FASTPIN_02_MaxDuration_PinReset) {
     }
     uint32_t duration = finish - start;
     uint32_t expected = NUM_ITERATIONS * MAX_DURATION_PINRESET_NS;
-    // Serial.printlnf("pinResetFast total duration: %lu vs. expected duration: %lu", duration, expected);
+    // Serial.printlnf("pinResetFast total duration: %lu vs. expected max duration: %lu", duration, expected);
     assertNotEqual(duration, 0);
     assertLessOrEqual(duration, expected);
 }
