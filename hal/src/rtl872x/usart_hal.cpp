@@ -391,13 +391,16 @@ public:
     ssize_t read(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         const ssize_t maxRead = CHECK(data());
-        const ssize_t readSize = std::min((size_t)maxRead, size);
+        ssize_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(this);
         if (readSize > rxBuffer_.data()) {
             dataInFlight(true /* commit */);
+            // Adjust read size, as dataInFlight() might have committed a bit less
+            // as not to stop the DMA transfer unnecessarily if there is already
+            // data transferred into the buffer.
+            readSize = std::min<size_t>(CHECK(rxBuffer_.data()), size);
         }
-        SPARK_ASSERT(rxBuffer_.data() >= readSize);
         ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
         if (!receiving_) {
             startReceiver();
@@ -408,13 +411,16 @@ public:
     ssize_t peek(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         const ssize_t maxRead = CHECK(data());
-        const ssize_t peekSize = std::min((size_t)maxRead, size);
+        ssize_t peekSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(this);
         if (peekSize > rxBuffer_.data()) {
             dataInFlight(true /* commit */);
+            // Adjust peek size, as dataInFlight() might have committed a bit less
+            // as not to stop the DMA transfer unnecessarily if there is already
+            // data transferred into the buffer.
+            peekSize = std::min<size_t>(CHECK(rxBuffer_.data()), size);
         }
-        SPARK_ASSERT(rxBuffer_.data() >= peekSize);
         return rxBuffer_.peek(buffer, peekSize);
     }
 
