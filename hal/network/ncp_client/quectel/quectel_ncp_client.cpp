@@ -1026,6 +1026,7 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 bool QuectelNcpClient::isQuecCatM1Device() {
     int ncp_id = ncpId();
     return (ncp_id == PLATFORM_NCP_QUECTEL_BG96 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
@@ -1037,6 +1038,20 @@ bool QuectelNcpClient::isQuecCat1Device() {
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX);
+}
+
+bool QuectelNcpClient::isQuecCatNBxDevice() {
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
+}
+
+bool QuectelNcpClient::isQuecBG95xDevice() {
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF) ;
 }
 
 int QuectelNcpClient::initReady(ModemState state) {
@@ -1352,6 +1367,7 @@ int QuectelNcpClient::registerNet() {
 
     if (isQuecCatM1Device()) {
         if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+            // NOTE: BG96 supports 2G fallback which we disable explicitly so that a 10W power supply is not required
             // Configure RATs to be searched
             // Set to scan LTE only if not already set, take effect immediately
             auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
@@ -1365,9 +1381,9 @@ int QuectelNcpClient::registerNet() {
             }
         }
 
-        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
+        if (isQuecCatNBxDevice()) {
             // Configure Network Category to be searched
-            // Set to use LTE Cat M1 if not already set, take effect immediately
+            // Set to use LTE Cat-M1 ONLY if not already set, take effect immediately
             auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
 
             int iotOpMode = -1;
@@ -1381,12 +1397,12 @@ int QuectelNcpClient::registerNet() {
             }
         }
     }
-
+    // Check GSM, GPRS, and LTE network registration status
+    CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
     if (isQuecCat1Device()) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     }
-    CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
@@ -1795,14 +1811,21 @@ int QuectelNcpClient::processEventsImpl() {
     }
     SCOPE_GUARD({ regCheckTime_ = millis(); });
 
-    // Check GPRS, LET, NB-IOT network registration status
-    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1) {
-        CHECK_PARSER(parser_.execCommand("AT+CEER"));  // Seems to stall the modem on BG95-MF
-        CHECK_PARSER(parser_.execCommand("AT+CMEE?")); // Seems to stall the modem on BG95-MF
-        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    // Log extended errors for modems that support AT+CEER
+    if (isQuecCat1Device()) {
+        CHECK_PARSER(parser_.execCommand("AT+CEER"));
     }
-    //CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+
+    // Log error level (will be factory default)
+    // CHECK_PARSER(parser_.execCommand("AT+CMEE?"));
+
+    // Check GSM, GPRS, and LTE network registration status
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
+    if (isQuecCat1Device()) {
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+    }
+
     // Check the signal seen by the module while trying to register
     // Do not need to check for an OK, as this is just for debugging purpose
     CHECK_PARSER(parser_.execCommand("AT+QCSQ"));
@@ -1853,7 +1876,7 @@ int QuectelNcpClient::modemInit() const {
 
     // DTR=0: normal mode, DTR=1: sleep mode
     // NOTE: The BGDTR pins is inverted
-    conf.value = 1; 
+    conf.value = 1;
     CHECK(hal_gpio_configure(BGDTR, &conf, nullptr));
 
     LOG(TRACE, "Modem low level initialization OK");
@@ -1884,26 +1907,25 @@ int QuectelNcpClient::modemPowerOn() {
     if (!modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_ON);
 
-        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 && ncpId() != PLATFORM_NCP_QUECTEL_BG95_MF) {
-            // Power on, power on pulse >= 100ms
-            // NOTE: The BGPWR pin is inverted
-            hal_gpio_write(BGPWR, 1);
-            HAL_Delay_Milliseconds(200);
-            hal_gpio_write(BGPWR, 0);
-        } else {
-            // Power on, power on pulse 500ms - 1000ms
-            // XXX: Keeping it halfway between 500ms and 650ms, to avoid the power OFF timing of >=650ms
-            // NOTE: The BGPWR pin is inverted
-            hal_gpio_write(BGPWR, 1);
-            HAL_Delay_Milliseconds(575);
-            hal_gpio_write(BGPWR, 0);
-        }
+        // EG91, BG96, BG95, BG77: Power on, power on pulse 500ms - 1000ms
+        // XXX: Keeping it halfway between 500ms and 650ms, to avoid the power OFF timing of >=650ms
+        // NOTE: The BGPWR pin is inverted
+        hal_gpio_write(BGPWR, 1);
+        HAL_Delay_Milliseconds(575);
+        hal_gpio_write(BGPWR, 0);
 
         // After power on the device, we can't assume the device is ready for operation:
-        // BG95: status pin ready requires >= 2.1s, uart ready requires >= 2.5s
+        // BG95/BG77: status pin ready requires >= 2.1s, uart ready requires >= 2.5s
         // BG96: status pin ready requires >= 4.8s, uart ready requires >= 4.9s
         // EG91: status pin ready requires >= 10s, uart ready requires >= 12s
-        if (waitModemPowerState(1, 15000)) {
+        // Wait 3 seconds longer than minimum spec
+        system_tick_t powerOffWaitMs = 15000; // EG91
+        if (isQuecBG95xDevice() || ncpId() == PLATFORM_NCP_QUECTEL_BG77) {
+            powerOffWaitMs = 5500; // BG95/BG77
+        } else if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+            powerOffWaitMs = 7900; // BG96
+        }
+        if (waitModemPowerState(1, powerOffWaitMs)) {
             LOG(TRACE, "Modem powered on");
         } else {
             LOG(ERROR, "Failed to power on modem, try hard reset");
@@ -1925,25 +1947,24 @@ int QuectelNcpClient::modemPowerOff() {
 
         LOG(TRACE, "Powering modem off");
 
-        if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 && ncpId() != PLATFORM_NCP_QUECTEL_BG95_MF) {
-            // Power off, power off pulse >= 650ms
-            // NOTE: The BGRST pin is inverted
-            hal_gpio_write(BGPWR, 1);
-            HAL_Delay_Milliseconds(650);
-            hal_gpio_write(BGPWR, 0);
-        } else {
-            // Power off, power off pulse >= 650ms
-            // NOTE: The BGRST pin is inverted
-            hal_gpio_write(BGPWR, 1);
-            HAL_Delay_Milliseconds(650);
-            hal_gpio_write(BGPWR, 0);
-        }
+        // Power off, power off pulse >= 650ms
+        // NOTE: The BGRST pin is inverted
+        hal_gpio_write(BGPWR, 1);
+        HAL_Delay_Milliseconds(650);
+        hal_gpio_write(BGPWR, 0);
 
         // Verify that the module was powered down by checking the status pin (BGVINT)
-        // BG95: >=1.3s
+        // BG95/BG77: >=1.3s
         // BG96: >=2s
         // EG91: >=30s
-        if (waitModemPowerState(0, 30000)) {
+        // Wait 3 seconds longer than minimum spec
+        system_tick_t powerOnWaitMs = 33000; // EG91
+        if (isQuecBG95xDevice() || ncpId() == PLATFORM_NCP_QUECTEL_BG77) {
+            powerOnWaitMs = 4300; // BG95/BG77
+        } else if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+            powerOnWaitMs = 5000; // BG96
+        }
+        if (waitModemPowerState(0, powerOnWaitMs)) {
             LOG(TRACE, "Modem powered off");
         } else {
             LOG(ERROR, "Failed to power off modem, try hard reset");
@@ -1998,17 +2019,17 @@ int QuectelNcpClient::modemSoftPowerOff() {
 int QuectelNcpClient::modemHardReset(bool powerOff) {
     LOG(TRACE, "Hard resetting the modem");
 
-    if (ncpId() != PLATFORM_NCP_QUECTEL_BG95_M1 && ncpId() != PLATFORM_NCP_QUECTEL_BG95_MF) {
-        // BG96 reset, 150ms <= reset pulse <= 460ms
-        // NOTE: The BGRST pin is inverted
-        hal_gpio_write(BGRST, 1);
-        HAL_Delay_Milliseconds(400);
-        hal_gpio_write(BGRST, 0);
-    } else {
-        // BG95 reset, 2s <= reset pulse <= 3.8s
+    if (isQuecBG95xDevice() || ncpId() == PLATFORM_NCP_QUECTEL_BG77) {
+        // BG95/BG77 reset, 2s <= reset pulse <= 3.8s
         // NOTE: The BGRST pin is inverted
         hal_gpio_write(BGRST, 1);
         HAL_Delay_Milliseconds(2900);
+        hal_gpio_write(BGRST, 0);
+    } else {
+        // BG96/EG91 reset, 150ms <= reset pulse <= 460ms
+        // NOTE: The BGRST pin is inverted
+        hal_gpio_write(BGRST, 1);
+        HAL_Delay_Milliseconds(400);
         hal_gpio_write(BGRST, 0);
     }
 

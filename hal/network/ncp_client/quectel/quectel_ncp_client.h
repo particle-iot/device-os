@@ -143,10 +143,14 @@ private:
     int checkRunningImsi();
     int processEventsImpl();
     int getIccidImpl(char* buf, size_t size);
-    /** Is this a Quectel CAT-M1 device ? */
+    /** Is this a Quectel Cat-M1 device ? */
     bool isQuecCatM1Device();
-    /** Is this a Quectel CAT-1 devices ? */
+    /** Is this a Quectel Cat-1 device ? */
     bool isQuecCat1Device();
+    /** Is this a Quectel Cat-NB1/Cat-NB2 device ? */
+    bool isQuecCatNBxDevice();
+    /** Is this a Quectel BG95* device ? */
+    bool isQuecBG95xDevice();
     int modemInit() const;
     bool waitModemPowerState(bool onOff, system_tick_t timeout);
     int modemPowerOn();
