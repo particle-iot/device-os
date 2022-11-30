@@ -28,8 +28,10 @@
 #include "unit-test/unit-test.h"
 
 #if HAL_PLATFORM_GEN == 3
-#if PLATFORM_ID == PLATFORM_ESOMX || HAL_PLATFORM_RTL872X
+#if PLATFORM_ID == PLATFORM_ESOMX || PLATFORM_ID == PLATFORM_P2
 static const hal_pin_t pin = D1, pin2 = D8;
+#elif PLATFORM_ID == PLATFORM_TRACKERM
+static const hal_pin_t pin = A2, pin2 = D8;
 #else
 static const hal_pin_t pin = A0, pin2 = A1;
 #endif
