@@ -26,7 +26,7 @@ namespace {
 static hal_pin_info_t pinmap[TOTAL_PINS] = {
 /* User space */
 /* D0 / A3       - 00 */ { RTL_PORT_B,      6,  PIN_MODE_NONE, PF_NONE, 2,                PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, HAL_PIN_TYPE_MCU, 0},
-/* D1 / A4       - 01 */ { RTL_PORT_B,      5,  PIN_MODE_NONE, PF_NONE, 1,                1,                 9,                HAL_PIN_TYPE_MCU, 0},
+/* D1 / A4       - 01 */ { RTL_PORT_B,      5,  PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, HAL_PIN_TYPE_MCU, 0},
 /* D2            - 02 */ { RTL_PORT_A,      16, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, HAL_PIN_TYPE_MCU, 0},
 /* D3            - 03 */ { RTL_PORT_A,      17, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, HAL_PIN_TYPE_MCU, 0},
 /* D4            - 04 */ { RTL_PORT_A,      18, PIN_MODE_NONE, PF_NONE, ADC_CHANNEL_NONE, PWM_INSTANCE_NONE, PWM_CHANNEL_NONE, HAL_PIN_TYPE_MCU, 0},
