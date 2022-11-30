@@ -1015,13 +1015,16 @@ void Spark_Protocol_Init(void)
         // Validate the server key and address in the DCT and restore the factory defaults if needed
         auto servConf = ServerConfig::instance();
         int r = servConf->validateSettings();
-        if (r < 0) {
-            LOG(ERROR, "Validation of server settings failed: %d; restoring defaults", r);
+        if (r == SYSTEM_ERROR_INVALID_SERVER_SETTINGS) {
+            LOG(ERROR, "Server settings are invalid, restoring defaults");
             particle_key_errors |= ParticleKeyErrorFlag::SERVER_SETTINGS_CORRUPTED;
             r = servConf->restoreDefaultSettings();
             if (r < 0) {
                 LOG(ERROR, "Failed to restore default server settings: %d", r);
             }
+        } else if (r < 0) {
+            // Something else failed but not the validation itself
+            LOG(ERROR, "Failed to validate server settings: %d", r);
         }
 
         product_details_t info;
