@@ -1116,8 +1116,8 @@ void Spark_Protocol_Init(void)
         // todo - this pushes a lot of data on the stack! refactor to remove heavy stack usage
         unsigned char pubkey[EXTERNAL_FLASH_SERVER_PUBLIC_KEY_LENGTH];
         unsigned char private_key[EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH];
-        memset(&pubkey, 0, sizeof(pubkey));
-        memset(&private_key, 0, sizeof(private_key));
+        memset(&pubkey, 0xff, sizeof(pubkey));
+        memset(&private_key, 0xff, sizeof(private_key));
 
         SparkKeys keys;
         keys.size = sizeof(keys);

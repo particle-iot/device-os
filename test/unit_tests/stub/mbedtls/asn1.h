@@ -13,16 +13,4 @@ int mbedtls_asn1_get_tag(unsigned char** p, const unsigned char* end, size_t* le
 
 #ifdef __cplusplus
 } // extern "C"
-
-namespace particle::test {
-
-class MbedtlsAsn1 {
-public:
-    MbedtlsAsn1();
-    ~MbedtlsAsn1();
-
-};
-
-} // namespace particle::test
-
-#endif // defined(__cplusplus)
+#endif
