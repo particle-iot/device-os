@@ -138,13 +138,13 @@ void hal_adc_dma_init() {
     if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_BRN404X_V003) {
         adcReference = HAL_ADC_REFERENCE_INTERNAL;
     }
-#else
+#endif // PLATFORM_ID == PLATFORM_BORON
+
     hal_device_hw_info hwInfo = {};
     hal_get_device_hw_info(&hwInfo, nullptr);
     if ((hwInfo.features & HW_FEATURE_FLAG_USE_INTERNAL_ADC_REFERENCE_BIT) == 0) {
         adcReference = HAL_ADC_REFERENCE_INTERNAL;
     }
-#endif // PLATFORM_ID == PLATFORM_BORON
 }
 
 /*
