@@ -141,6 +141,7 @@ void hal_adc_dma_init() {
 #endif // PLATFORM_ID == PLATFORM_BORON
 
     hal_device_hw_info hwInfo = {};
+    hwInfo.size = sizeof(hwInfo);
     hal_get_device_hw_info(&hwInfo, nullptr);
     if ((hwInfo.features & HW_FEATURE_FLAG_USE_INTERNAL_ADC_REFERENCE_BIT) == 0) {
         adcReference = HAL_ADC_REFERENCE_INTERNAL;
