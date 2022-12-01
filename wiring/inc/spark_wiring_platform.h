@@ -68,6 +68,10 @@
 #define Wiring_Serial3 1
 #endif // HAL_PLATFORM_USART3
 
+#if HAL_PLATFORM_HW_WATCHDOG
+#define Wiring_Watchdog 1
+#endif // HAL_PLATFORM_HW_WATCHDOG
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif
@@ -157,6 +161,10 @@
 #define Wiring_Mesh 0
 #endif // Wiring_Mesh
 #endif // HAL_PLATFORM_MESH_DEPRECATED
+
+#ifndef Wiring_Watchdog
+#define Wiring_Watchdog 0
+#endif // Wiring_Watchdog
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
 

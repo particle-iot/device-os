@@ -198,6 +198,8 @@ extern "C" void HAL_Core_System_Reset(void) {
     // Disable global interrupt
     __disable_irq();
 
+    BKUP_Write(BKUP_REG1, 0xdeadbeef);
+
     WDG_InitTypeDef WDG_InitStruct = {};
     u32 CountProcess = 0;
     u32 DivFacProcess = 0;

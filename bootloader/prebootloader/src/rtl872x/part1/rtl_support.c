@@ -209,11 +209,7 @@ static uint32_t boot_reason_set(void) {
         tmp_reason |= BIT_BOOT_BOD_RESET_HAPPEN;
     } else {
         tmp_reason &= ~BIT_BOOT_BOD_RESET_HAPPEN;
-    }    
-
-    if ((tmp_reason & BIT_BOOT_KM4SYS_RESET_HAPPEN) && (tmp_reason & BIT_BOOT_KM4WDG_RESET_HAPPEN)) {
-        tmp_reason &= ~BIT_BOOT_KM4WDG_RESET_HAPPEN;
-    }    
+    }     
 
     if (tmp_reason == 0) {
         return 0;
