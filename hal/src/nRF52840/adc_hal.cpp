@@ -38,6 +38,7 @@ static const nrfx_saadc_config_t saadcConfig = {
 
 static hal_adc_reference_t adcReference = HAL_ADC_REFERENCE_EXTERNAL;
 static constexpr uint32_t HAL_VERSION_BRN404X_V003 = 0x03;
+static constexpr uint32_t HW_FEATURE_FLAG_USE_INTERNAL_ADC_REFERENCE_BIT = (1<<15);
 
 static void analog_in_event_handler(nrfx_saadc_evt_t const *p_event) {
     (void) p_event;
@@ -138,7 +139,11 @@ void hal_adc_dma_init() {
         adcReference = HAL_ADC_REFERENCE_INTERNAL;
     }
 #else
-    (void)adcReference;
+    hal_device_hw_info hwInfo = {};
+    hal_get_device_hw_info(&hwInfo, nullptr);
+    if ((hwInfo.features & HW_FEATURE_FLAG_USE_INTERNAL_ADC_REFERENCE_BIT) == 0) {
+        adcReference = HAL_ADC_REFERENCE_INTERNAL;
+    }
 #endif // PLATFORM_ID == PLATFORM_BORON
 }
 
