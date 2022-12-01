@@ -441,6 +441,7 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
         ~State() = default;
         Mutex mutex1;
         Mutex mutex2;
+		volatile int state = 0;
         bool state1 = false;
         bool state2 = false;
         bool state3 = false;
@@ -467,23 +468,32 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
         // Somewhere at this point the high priority thread will try to acquire the mutex2
         // and middle priority thread will try to acquire the mutex1, our priority should
         // be bumped to that of high priority thread.
-        delay(500);
+		state->state = 1;
+        delay(2000);
+
+		// Verify that our priority has been bumped to that of middle priority thread
+        prio = getThreadPriority();
+        assertEqual(prio.prio, prio.base + 1);
+
+		state->state = 2;
+		delay(2000);
 
         // Verify that our priority has been bumped to that of high priority thread
         prio = getThreadPriority();
         assertEqual(prio.prio, prio.base + 2);
+		state->state = 3;
 
         // Unlock mutex2, this should allow the high priority thread to finally
         // acquire it, and our priority should be decreased to middle priority
         mutex2.unlock();
-        delay(500);
+        delay(1000);
         prio = getThreadPriority();
         assertEqual(prio.prio, prio.base + 1);
 
         // Unlock mutex1, this should allow the middle priority thread to finally
         // acquire it, and our priority should be decreased to low priority
         mutex1.unlock();
-        delay(500);
+        delay(1000);
         prio = getThreadPriority();
         assertEqual(prio.prio, prio.base);
 
@@ -497,8 +507,12 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
             ++state->done;
         });
 
-        // Wait a bit for low priority thread to acquire both mutexes
-        delay(500);
+		auto start = millis();
+
+		// Wait a bit for low priority thread to acquire both mutexes
+		while (state->state == 0 && millis() - start <= 5000) {
+			delay(10);
+		}
 
         // Check that we are at the base priority and nothing has affected us
         auto prio = getThreadPriority();
@@ -532,12 +546,21 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
             ++state->done;
         });
 
+		auto start = millis();
+
         // Wait a bit for low priority thread to acquire both mutexes
-        delay(500);
+        while (state->state == 0 && millis() - start <= 5000) {
+			delay(10);
+		}
 
         // Check that we are at the base priority and nothing has affected us
         auto prio = getThreadPriority();
         assertEqual(prio.base, prio.prio);
+
+		// Wait for middle thread to attempt to acquire the mutex
+		while (state->state == 1) {
+			delay(10);
+		}
 
         // Attempt to acquire the second mutex, at this point the low priority thread
         // should be holding it. Because we are at higher priority, the priority
@@ -562,7 +585,7 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
         state->state3 = true;
     }, &state, startPriority + 2);
 
-    for (auto start = millis(); millis() - start <= 2000;) {
+    for (auto start = millis(); millis() - start <= 10000;) {
         if (state.done == 3) {
             break;
         }
