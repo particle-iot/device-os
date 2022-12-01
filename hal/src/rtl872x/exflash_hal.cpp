@@ -58,6 +58,56 @@ typedef enum {
 #error "Unsupported external flash"
 #endif
 
+class RsipIfRequired {
+public:
+    RsipIfRequired(uint32_t address) {
+        if ((HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3) & BIT_SYS_FLASH_ENCRYPT_EN) == 0) {
+            return;
+        }
+
+        uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+        if ((km0_system_control & BIT_LSYS_PLFM_FLASH_SCE) != 0) {
+            return;
+        }
+
+        if (!isEncryptedRegion(address)) {
+            return;
+        }
+
+        interruptState_ = HAL_disable_irq();
+
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control | BIT_LSYS_PLFM_FLASH_SCE));
+        enabled_ = true;
+    }
+
+    ~RsipIfRequired() {
+        if (enabled_) {
+            uint32_t km0_system_control = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL);
+            HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_KM0_CTRL, (km0_system_control & (~BIT_LSYS_PLFM_FLASH_SCE)));
+            HAL_enable_irq(interruptState_);
+        }
+    }
+
+private:
+    bool isEncryptedRegion(uint32_t address) {
+        uint8_t userEfuse0 = 0xFF;
+        EFUSE_PMAP_READ8(0, USER_KEY_0_EFUSE_ADDRESS, &userEfuse0, L25EOUTVOLTAGE);
+        bool part1_encryption_enabled = !(userEfuse0 & PART1_ENCRYPTED_BIT);
+
+        if (address >= KM0_MBR_START_ADDRESS && address < (KM0_MBR_START_ADDRESS + KM0_MBR_IMAGE_SIZE) /* MBR */) {
+            return true;
+        } else if (part1_encryption_enabled && (address >= KM0_PART1_START_ADDRESS && address < (KM0_PART1_START_ADDRESS + KM0_PART1_IMAGE_SIZE)) /* part1 */) {
+            return true;
+        }
+
+        return false;
+    }
+
+    bool enabled_ = false;
+    int interruptState_ = 0;
+};
+
+
 // Constructor, destructors and methods are executed from PSRAM.
 class ExFlashLock {
 public:
@@ -134,11 +184,12 @@ private:
     static void enableXip(bool enable) {
         (void)mpuEntry_;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        if (-1 < mpuEntry_ && mpuEntry_ < MPU_MAX_REGION) {
-            mpu_entry_free(mpuEntry_);
+        if (mpuEntry_ < 0) {
+            // Allocate entry, but just once
+            // This is safe and done under an exflash lock normally
+            mpuEntry_ = mpu_entry_alloc();
         }
-        mpuEntry_ = mpu_entry_alloc();
-        SPARK_ASSERT(-1 < mpuEntry_ && mpuEntry_ < MPU_MAX_REGION);
+        SPARK_ASSERT(mpuEntry_ >= 0);
 
         mpu_region_config mpu_cfg = {};
         mpu_cfg.region_base = (uintptr_t)&platform_system_part1_flash_start;
@@ -201,6 +252,8 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
     XipControl xiplk;
     addr += SPI_FLASH_BASE;
+
+    RsipIfRequired rsip(addr); // FIXME: data_size as well?
     memcpy(data_buf, (void*)addr, data_size);
     return SYSTEM_ERROR_NONE;
 }
