@@ -33,6 +33,7 @@ extern "C" {
 #include "service_debug.h"
 #include "check.h"
 #include "scope_guard.h"
+#include <FreeRTOS.h> // for portBYTE_ALIGNMENT
 
 // TODO: move it to header file
 #define HAL_EXFLASH_OTP_MAGIC_NUMBER_ADDR   0x0
@@ -57,6 +58,13 @@ typedef enum {
 #else
 #error "Unsupported external flash"
 #endif
+
+void dcacheInvalidateAligned(uintptr_t ptr, size_t size) {
+    uintptr_t alignedPtr = ptr & ~(portBYTE_ALIGNMENT_MASK);
+    uintptr_t end = ptr + size;
+    size_t alignedSize = CEIL_DIV(end - alignedPtr, portBYTE_ALIGNMENT) * portBYTE_ALIGNMENT;
+    DCache_Invalidate(alignedPtr, alignedSize);
+}
 
 class RsipIfRequired {
 public:
@@ -244,6 +252,7 @@ __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
     CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
+    dcacheInvalidateAligned(addr + SPI_FLASH_BASE, data_size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -288,6 +297,8 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
 
     // LOG_DEBUG(ERROR, "Erased %lu %lukB blocks starting from %" PRIxPTR,
     //           num_blocks, block_length / 1024, start_addr);
+
+    dcacheInvalidateAligned(SPI_FLASH_BASE + start_addr, block_length * num_blocks);
 
     return SYSTEM_ERROR_NONE;
 }
