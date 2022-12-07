@@ -34,7 +34,6 @@ extern "C" {
 #include "interrupts_hal.h"
 #include "osdep_service.h"
 #include "concurrent_hal.h"
-#include "system_task.h"
 
 extern "C" {
 
@@ -223,14 +222,6 @@ extern "C" void HAL_Core_System_Reset(void) {
 }
 
 extern "C" {
-void _freertos_mfree(uint8_t *pbuf, u32 sz) {
-    if (__get_BASEPRI() != 0) {
-        // Defer freeing of memory to the SystemISRTaskQueue to be processed outside of this critical section
-        SPARK_ASSERT(system_isr_task_queue_free_memory((void*)pbuf) == 0);
-    } else {
-        free(pbuf);
-    }
-}
 
 #if 0 // Enable to get btgap logs
 
