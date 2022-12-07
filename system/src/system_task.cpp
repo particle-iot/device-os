@@ -467,16 +467,16 @@ void manage_ble_prov_mode() {
 #endif
 }
 
-extern "C" void system_isr_task_queue_free_memory(uint8_t *ptrToFree) {
+int system_isr_task_queue_free_memory(void *ptrToFree) {
     struct FreeTask : ISRTaskQueue::Task {
-        uint8_t *arg;
+        void *arg;
     };
 
     auto task = static_cast<FreeTask*>(system_pool_alloc(sizeof(FreeTask), nullptr));
-    if (!task)
-    {
-        return;
+    if (!task) {
+        return SYSTEM_ERROR_NO_MEMORY;
     }
+    
     task->arg = ptrToFree;
     task->func = [](ISRTaskQueue::Task * task) {
        auto freeTask = reinterpret_cast<FreeTask*>(task);
@@ -485,6 +485,7 @@ extern "C" void system_isr_task_queue_free_memory(uint8_t *ptrToFree) {
     };
 
     SystemISRTaskQueue.enqueue(task);
+    return 0;
 }
 
 static void process_isr_task_queue()
