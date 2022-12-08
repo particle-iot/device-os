@@ -15,6 +15,19 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+extern "C" {
+#include "rtl8721d.h"
+}
+#include "system_task.h"
+
+extern "C" void _freertos_mfree(u8 *pbuf, u32 sz) {
+    if (__get_BASEPRI() != 0) {
+        // Defer freeing of memory to the SystemISRTaskQueue to be processed outside of this critical section
+        SPARK_ASSERT(system_isr_task_queue_free_memory((void*)pbuf) == 0);
+    } else {
+        free(pbuf);
+    }
+}
 // namespace osdep {
 
 // u8* malloc(u32 sz) {

@@ -114,6 +114,8 @@ int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler*
 
 typedef int (*system_task_fn)();
 
+int system_isr_task_queue_free_memory(void *ptrToFree);
+
 #ifdef __cplusplus
 }
 #endif
