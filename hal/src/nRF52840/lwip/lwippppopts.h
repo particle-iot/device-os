@@ -99,12 +99,12 @@
 /**
  * PPP_DEBUG: Enable debugging for PPP.
  */
-#define PPP_DEBUG                       LWIP_DBG_OFF
+#define PPP_DEBUG                       LWIP_DBG_ON
 
 /**
  * PPPOS_DEBUG: Enable debugging for PPPoS.
  */
-#define PPPOS_DEBUG                     LWIP_DBG_OFF
+#define PPPOS_DEBUG                     LWIP_DBG_ON
 
 /**
  * PPP_INPROC_IRQ_SAFE==1 call pppos_input() using tcpip_callback().

@@ -1865,7 +1865,7 @@ void sys_unlock_tcpip_core(void);
    ---------------------------------------
 */
 
-#define LWIP_DEBUG                      0
+#define LWIP_DEBUG                      1
 
 /**
  * LWIP_DBG_MIN_LEVEL: After masking, the value of the debug is
@@ -1932,7 +1932,7 @@ extern uint32_t g_lwip_debug_flags;
 /**
  * IP_DEBUG: Enable debugging for IP.
  */
-#define IP_DEBUG                        LWIP_DBG_OFF
+#define IP_DEBUG                        LWIP_DBG_ON
 
 /**
  * IP_REASS_DEBUG: Enable debugging in ip_frag.c for both frag & reass.
@@ -2013,7 +2013,7 @@ extern uint32_t g_lwip_debug_flags;
 /**
  * UDP_DEBUG: Enable debugging in UDP.
  */
-#define UDP_DEBUG                       LWIP_DBG_OFF
+#define UDP_DEBUG                       LWIP_DBG_ON
 
 /**
  * TCPIP_DEBUG: Enable debugging in tcpip.c.
