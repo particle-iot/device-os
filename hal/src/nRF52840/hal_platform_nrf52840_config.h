@@ -107,3 +107,6 @@
 #define HAL_PLATFORM_ERROR_MESSAGES (1)
 
 #define HAL_PLATFORM_PROHIBIT_XIP (1)
+
+// hardware counter for System.ticks() supported
+#define HAL_PLATFORM_SYSTEM_HW_TICKS (1)

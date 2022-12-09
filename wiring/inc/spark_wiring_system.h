@@ -434,7 +434,7 @@ public:
 
     static void enterSafeMode(SystemResetFlags flags = SystemResetFlags());
 
-#if SYSTEM_HW_TICKS
+#if HAL_PLATFORM_SYSTEM_HW_TICKS
     static inline uint32_t ticksPerMicrosecond() {
         return SYSTEM_US_TICKS;
     }
@@ -442,12 +442,20 @@ public:
     static inline uint32_t ticks() {
         return SYSTEM_TICK_COUNTER;
     }
+#else
+    static inline uint32_t ticksPerMicrosecond() {
+        return 1;
+    }
+
+    static inline uint32_t ticks() {
+        return HAL_Timer_Get_Micro_Seconds();
+    }
+#endif // HAL_PLATFORM_SYSTEM_HW_TICKS
 
     static inline void ticksDelay(uint32_t duration) {
         uint32_t start = ticks();
         while ((ticks() - start) < duration) {}
     }
-#endif
 
     static SystemSleepResult sleep(const particle::SystemSleepConfiguration& config);
     static SleepResult sleep(Spark_Sleep_TypeDef sleepMode, long seconds = 0, SleepOptionFlags flag = SLEEP_NETWORK_OFF);

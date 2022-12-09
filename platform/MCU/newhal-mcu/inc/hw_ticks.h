@@ -28,10 +28,10 @@ extern "C" {
  * The number of ticks per microsecond of the system counter.
  * SYSTEM_TICK_COUNTER
  */
-#define SYSTEM_US_TICKS		100     // cycles per microsecond
+#define SYSTEM_US_TICKS         (1)     // cycles per microsecond
 
 /**
- * Should return a value from a system counter.
+ * Should return a value from a system hardware counter if supported.
  */
 #define SYSTEM_TICK_COUNTER     0
 
