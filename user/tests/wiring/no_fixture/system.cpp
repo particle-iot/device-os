@@ -439,3 +439,51 @@ test(SYSTEM_08_hardware_info) {
     }
 #endif // HAL_PLATFORM_NCP
 }
+
+test(SYSTEM_09_system_ticks) {
+    // Serial.printlnf("ticksPerMicrosecond: %lu %lu", System.ticksPerMicrosecond(), System.ticksPerMicrosecond() * 100);
+    const uint32_t NUM_ITERATIONS = 100;
+    const uint32_t DURATION_US = 1000; // 10% higher than measured (includes for() loop overhead)
+    const uint32_t DURATION_TICKS = System.ticksPerMicrosecond() * DURATION_US;
+    const uint32_t MIN_DURATION_TICKS = DURATION_TICKS * 95 / 100; // 5% lower than measured (includes for() loop overhead)
+    const uint32_t MAX_DURATION_TICKS = DURATION_TICKS * 105 / 100; // 5% higher than measured (includes for() loop overhead)
+    uint32_t start;
+    uint32_t finish;
+    ATOMIC_BLOCK()  {
+        start = System.ticks();
+        for (uint32_t i = 0; i < NUM_ITERATIONS; i++) {
+            HAL_Delay_Microseconds(DURATION_US);
+        }
+        finish = System.ticks();
+    }
+    uint32_t ticks = finish - start;
+    uint32_t expected_low = NUM_ITERATIONS * MIN_DURATION_TICKS;
+    uint32_t expected_high = NUM_ITERATIONS * MAX_DURATION_TICKS;
+    // Serial.printlnf("ticks: %lu <= %lu <= %lu", expected_low, ticks, expected_high);
+    assertLessOrEqual(ticks, expected_high);
+    assertMoreOrEqual(ticks, expected_low);
+}
+
+test(SYSTEM_10_system_ticks_delay) {
+    // Serial.printlnf("ticksPerMicrosecond: %lu %lu", System.ticksPerMicrosecond(), System.ticksPerMicrosecond() * 100);
+    const uint32_t NUM_ITERATIONS = 100;
+    const uint32_t DURATION_US = 1000; // 10% higher than measured (includes for() loop overhead)
+    const uint32_t DURATION_TICKS = System.ticksPerMicrosecond() * DURATION_US;
+    const uint32_t MIN_DURATION_US = DURATION_US * 95 / 100; // 5% lower than measured (includes for() loop overhead)
+    const uint32_t MAX_DURATION_US = DURATION_US * 105 / 100; // 5% higher than measured (includes for() loop overhead)
+    uint32_t start;
+    uint32_t finish;
+    ATOMIC_BLOCK()  {
+        start = HAL_Timer_Get_Micro_Seconds();
+        for (uint32_t i = 0; i < NUM_ITERATIONS; i++) {
+            System.ticksDelay(DURATION_TICKS);
+        }
+        finish = HAL_Timer_Get_Micro_Seconds();
+    }
+    uint32_t duration = finish - start;
+    uint32_t expected_low = NUM_ITERATIONS * MIN_DURATION_US;
+    uint32_t expected_high = NUM_ITERATIONS * MAX_DURATION_US;
+    // Serial.printlnf("duration: %lu <= %lu <= %lu", expected_low, duration, expected_high);
+    assertLessOrEqual(duration, expected_high);
+    assertMoreOrEqual(duration, expected_low);
+}
