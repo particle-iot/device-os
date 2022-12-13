@@ -1,3 +1,9 @@
+## 4.0.2
+
+### BUGFIXES
+- [gen3] Use OTP Feature flag to change ADC reference source [#2597](https://github.com/particle-iot/device-os/pull/2597)
+- [boron]Use the internal ADC reference on some Gen 3 platforms [#2588](https://github.com/particle-iot/device-os/pull/2588)
+
 ## 4.0.1
 
 ### BUGFIXES

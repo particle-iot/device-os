@@ -160,6 +160,7 @@
 | 1101 | 4003 | 4.0.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 1101 | 4004 | 4.0.1-rc.1    |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 1101 | 4005 | 4.0.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
+| 1101 | 4006 | 4.0.2         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
