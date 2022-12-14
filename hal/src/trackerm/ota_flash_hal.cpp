@@ -19,8 +19,20 @@
 #include "ota_flash_hal_impl.h"
 #include "platform_ncp.h"
 #include "platform_radio_stack.h"
+#include "cellular_hal.h"
 
 void HAL_OTA_Add_System_Info(hal_system_info_t* info, bool create, void* reserved)
 {
-    add_system_properties(info, create, 0);
+    const int additional = 3;
+    int count = add_system_properties(info, create, additional);
+    if (create) {
+        info->key_value_count = count + additional;
+
+        CellularDevice device = {};
+        device.size = sizeof(device);
+        cellular_device_info(&device, NULL);
+        set_key_value(info->key_values+count, "imei", device.imei);
+        set_key_value(info->key_values+count+1, "iccid", device.iccid);
+        set_key_value(info->key_values+count+2, "cellfw", device.radiofw);
+    }
 }
