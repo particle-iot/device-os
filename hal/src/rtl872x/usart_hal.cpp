@@ -743,8 +743,8 @@ private:
                 GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW |= BIT_CFGX_LO_CH_SUSP;
                 __DSB();
                 __ISB();
-                while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
-                    // XXX: spin around, this should be pretty fast
+                while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr && 
+                      (GDMA_BASE->ChEnReg & (1 << rxDmaInitStruct_.GDMA_ChNum))) {
                 }
                 GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW &= ~(BIT_CFGX_LO_CH_SUSP);
                 __DSB();
