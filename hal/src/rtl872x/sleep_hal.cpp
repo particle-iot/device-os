@@ -88,6 +88,55 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
+    void configGpioWakeupSourceExt(const hal_wakeup_source_base_t* wakeupSources, hal_sleep_mode_t sleepMode) {
+        hal_pin_info_t* halPinMap = hal_pin_map();
+        auto source = wakeupSources;
+        bool config = false;
+        uint8_t gpIntEn[2] = {0, 0};
+        uint8_t intCon[2] = {0, 0};
+        uint8_t defVal[2] = {0, 0};
+
+        while (source) {
+            if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+                auto gpioWakeup = reinterpret_cast<const hal_wakeup_source_gpio_t*>(source);
+                if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+                    config = true;
+                    switch(gpioWakeup->mode) {
+                        case RISING: {
+                            intCon[halPinMap[gpioWakeup->pin].gpio_port] |= (0x01 << halPinMap[gpioWakeup->pin].gpio_pin);
+                            break;
+                        }
+                        case FALLING: {
+                            intCon[halPinMap[gpioWakeup->pin].gpio_port] |= (0x01 << halPinMap[gpioWakeup->pin].gpio_pin);
+                            defVal[halPinMap[gpioWakeup->pin].gpio_port] |= (0x01 << halPinMap[gpioWakeup->pin].gpio_pin);
+                            break;
+                        }
+                        case CHANGE:
+                        default: {
+                            break;
+                        }
+                    }
+                    gpIntEn[halPinMap[gpioWakeup->pin].gpio_port] |= (0x01 << halPinMap[gpioWakeup->pin].gpio_pin);
+                }
+            }
+            source = source->next;
+        }
+
+        if (config) {
+            // TODO: check the returned result
+            Mcp23s17::getInstance().writeRegister(Mcp23s17::INTCON_ADDR[0], intCon[0]);
+            Mcp23s17::getInstance().writeRegister(Mcp23s17::DEFVAL_ADDR[0], defVal[0]);
+            Mcp23s17::getInstance().writeRegister(Mcp23s17::GPINTEN_ADDR[0], gpIntEn[0]);
+            Mcp23s17::getInstance().writeRegister(Mcp23s17::INTCON_ADDR[1], intCon[1]);
+            Mcp23s17::getInstance().writeRegister(Mcp23s17::DEFVAL_ADDR[1], defVal[1]);
+            Mcp23s17::getInstance().writeRegister(Mcp23s17::GPINTEN_ADDR[1], gpIntEn[1]);
+        }
+    }
+#endif // HAL_PLATFORM_MCP23S17
+#endif // HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
     /*
      * We're using clock gate on KM4 for stop mode and ultra-low power mode,
      * since the power gate will deinitialize PSRAM and we have to re-initialize
@@ -120,6 +169,16 @@ public:
             }
         }
 
+        hal_interrupt_suspend();
+
+        /* We neeed to configure the IO expander interrupt before disabling SPI interface. */
+#if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if HAL_PLATFORM_MCP23S17
+        Mcp23s17::getInstance().interruptsSuspend();
+        configGpioWakeupSourceExt(config->wakeup_sources, config->mode);
+#endif
+#endif
+
         // Disable thread scheduling
         os_thread_scheduling(false, nullptr);
         // Disable SysTick
@@ -135,8 +194,6 @@ public:
         __disable_irq();
         __DSB();
         __ISB();
-
-        hal_interrupt_suspend();
 
         // WARNING: any function/data being called/accessed in/after PSRAM being suspended should reside in SRAM
         ICache_Disable();
@@ -169,7 +226,22 @@ public:
                 while (source) {
                     if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
                         const hal_wakeup_source_gpio_t* gpioWakeup = (const hal_wakeup_source_gpio_t*)source;
-                        const hal_pin_info_t* pinInfo = hal_pin_map() + gpioWakeup->pin;
+                        hal_pin_info_t* pinInfo = nullptr;
+                        hal_pin_info_t* halPinMap = hal_pin_map();
+#if HAL_PLATFORM_IO_EXTENSION && HAL_PLATFORM_MCP23S17
+                        if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_MCU)
+#endif
+                        {
+                            pinInfo = halPinMap + gpioWakeup->pin;
+                        }
+#if HAL_PLATFORM_IO_EXTENSION && HAL_PLATFORM_MCP23S17
+                        else if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_IO_EXPANDER) {
+                            pinInfo = halPinMap + IOE_INT;
+                        } else {
+                            source = source->next;
+                            continue;
+                        }
+#endif
                         if ((pinInfo->gpio_port == RTL_PORT_A && (intStatusA & (0x01 << pinInfo->gpio_pin)))
                             || (pinInfo->gpio_port == RTL_PORT_B && (intStatusB & (0x01 << pinInfo->gpio_pin)))) {
                             wakeupPin = gpioWakeup->pin;

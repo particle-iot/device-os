@@ -126,6 +126,11 @@ void onSleepRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
 
 void configureSleepWakeupSource(const hal_sleep_config_t* config) {
     sleepDuration = 0;
+    hal_pin_info_t* halPinMap = hal_pin_map();
+
+#if HAL_PLATFORM_IO_EXTENSION && HAL_PLATFORM_MCP23S17
+    bool ioExpanderIntConfigured = false;
+#endif
     const hal_wakeup_source_base_t* source = config->wakeup_sources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
@@ -137,16 +142,34 @@ void configureSleepWakeupSource(const hal_sleep_config_t* config) {
             sleepStart = SYSTIMER_GetPassTime(0);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             const hal_wakeup_source_gpio_t* gpioWakeup = (const hal_wakeup_source_gpio_t*)source;
-            uint32_t rtlPin = hal_pin_to_rtl_pin(gpioWakeup->pin);
+            uint32_t rtlPin;
+            InterruptMode mode;
+#if HAL_PLATFORM_IO_EXTENSION && HAL_PLATFORM_MCP23S17
+            if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_MCU)
+#endif
+            {
+                rtlPin = hal_pin_to_rtl_pin(gpioWakeup->pin);
+                mode = gpioWakeup->mode;
+            }
+#if HAL_PLATFORM_IO_EXTENSION && HAL_PLATFORM_MCP23S17
+            else if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_IO_EXPANDER && !ioExpanderIntConfigured) {
+                ioExpanderIntConfigured = true;
+                rtlPin = hal_pin_to_rtl_pin(IOE_INT);
+                mode = FALLING;
+            } else {
+                source = source->next;
+                continue;
+            }
+#endif
             GPIO_InitTypeDef  GPIO_InitStruct = {};
             GPIO_InitStruct.GPIO_Pin = rtlPin;
             GPIO_InitStruct.GPIO_Mode = GPIO_Mode_INT;
             GPIO_InitStruct.GPIO_ITTrigger = GPIO_INT_Trigger_EDGE;
-            if (gpioWakeup->mode == RISING) {
-				GPIO_InitStruct.GPIO_ITPolarity = GPIO_INT_POLARITY_ACTIVE_HIGH;
-			} else if (gpioWakeup->mode == FALLING) {
-				GPIO_InitStruct.GPIO_ITPolarity = GPIO_INT_POLARITY_ACTIVE_LOW;
-			} else { // gpioWakeup->mode == CHANGE
+            if (mode == RISING) {
+                GPIO_InitStruct.GPIO_ITPolarity = GPIO_INT_POLARITY_ACTIVE_HIGH;
+            } else if (mode == FALLING) {
+                GPIO_InitStruct.GPIO_ITPolarity = GPIO_INT_POLARITY_ACTIVE_LOW;
+            } else { // mode == CHANGE
                 GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
                 GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
                 GPIO_Init(&GPIO_InitStruct);
