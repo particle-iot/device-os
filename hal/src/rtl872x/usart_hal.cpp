@@ -740,11 +740,16 @@ private:
         if ((GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW & BIT_CFGX_LO_FIFO_EMPTY) == 0) {
             if (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
                 // Suspending DMA channel forces flushing of data into destination from GDMA FIFO
+                // NOTE: The datasheet says that "there is no guarantee that the current transaction will complete", which is why we enter the busy loop below in these cases
                 GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW |= BIT_CFGX_LO_CH_SUSP;
                 __DSB();
                 __ISB();
-                while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr) {
-                    // XXX: spin around, this should be pretty fast
+                while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr && 
+                      (GDMA_BASE->ChEnReg & (1 << rxDmaInitStruct_.GDMA_ChNum))) {
+                    // This loop is intended to delay until the DMA controller transfers the expected number of bytes, based off of the address returned in GDMA_GetDstAddr()
+                    // When a DMA transaction is near the end of a block (within the last 4 bytes), sometimes the address returned does not increment to the expected destination. In some cases it resets completely. 
+                    // To work around this, we poll the ChEnReg bit for the RX DMA channel. The data sheet says it is: "automatically cleared by hardware when the DMA transfer to the destination is complete".
+                    // The assumption is that if we see this bit is cleared, then the transfer is complete, the data we wanted flushed is available, there is no point to waiting any longer and we can return. 
                 }
                 GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW &= ~(BIT_CFGX_LO_CH_SUSP);
                 __DSB();
