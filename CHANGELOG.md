@@ -1,3 +1,50 @@
+## 5.2.0
+
+### FEATURES
+- Initial support for BG95-M6 modem [#2555](https://github.com/particle-iot/device-os/pull/2555)
+
+### ENHANCEMENTS
+- [TrackerM] Collect cellular properties with system info [#2602](https://github.com/particle-iot/device-os/pull/2602)
+- [rtl872x] fixes System.ticks() [#2600](https://github.com/particle-iot/device-os/pull/2600)
+- System setup and BLE threading improvements [#2587](https://github.com/particle-iot/device-os/pull/2587)
+- [rtl872x] [freertos] [experimental] multi-step priority disinheritance [#2581](https://github.com/particle-iot/device-os/pull/2581)
+- [rtl872x] sleep improvements [#2586](https://github.com/particle-iot/device-os/pull/2586)
+- [rtl872x] fixes pinResetFast clearing too many pins and improves speed [#2582](https://github.com/particle-iot/device-os/pull/2582)
+- [rtl872x] prebootloader: enable BOR with lowest available thresholds [#2569](https://github.com/particle-iot/device-os/pull/2569)
+
+### BUGFIXES
+- [rtl872x] Fix USART/DMA deadlock [#2603](https://github.com/particle-iot/device-os/pull/2603)
+- [rtl872x] Free memory from rtl sdk in SystemISRTaskQueue [#2599](https://github.com/particle-iot/device-os/pull/2599)
+- [rtl872x] exflash: revert dcache invalidate calls after writes/erasures [#2598](https://github.com/particle-iot/device-os/pull/2598)
+- [rtl872x] Fixes a deadlock when requiring to enable RSIP [#2596](https://github.com/particle-iot/device-os/pull/2596)
+- [gen3] Use OTP Feature flag to change ADC reference source [#2597](https://github.com/particle-iot/device-os/pull/2597)
+- [rtl872x] hal: remove an assert in read()/peek() and instead adjust read/peek size [#2594](https://github.com/particle-iot/device-os/pull/2594)
+- [boron]Use the internal ADC reference on BRN404X [#2588](https://github.com/particle-iot/device-os/pull/2588)
+- [p2] Fixes the conflict between Flash API and XIP [#2561](https://github.com/particle-iot/device-os/pull/2561)
+- [Quectel] Account for "eMTC" type while obtaining signal values [#2589](https://github.com/particle-iot/device-os/pull/2589)
+- [Boron / B SoM] R410 PPP crash in network phase workaround [#2571](https://github.com/particle-iot/device-os/pull/2571)
+- [Cellular] R410 initialization SIM failure workaround [#2573](https://github.com/particle-iot/device-os/pull/2573)
+- [gen3] [p2] Fix i2c hal deadlock [#2572](https://github.com/particle-iot/device-os/pull/2572)
+- [TrackerM] Prevent connection over wifi when configured in SCAN_ONLY mode [#2567](https://github.com/particle-iot/device-os/pull/2567)
+- [p2] WiFi bugfixes [#2562](https://github.com/particle-iot/device-os/pull/2562)
+- [tracker/trackerm] Fix acquireWireBuffer for platforms where system initializes I2C before user app [2551](https://github.com/particle-iot/device-os/pull/2551)
+- [rtl872x] BLE Central connection failure when peer disconnects [#2552](https://github.com/particle-iot/device-os/pull/2552)
+
+### INTERNAL
+- [test] Use compatible pins for PWM tests on TrackerM [#2592](https://github.com/particle-iot/device-os/pull/2592)
+- [test] bump fastpin max limit to 10% [#2591](https://github.com/particle-iot/device-os/pull/2591)
+- [test] Add thresholds for trackerM for slo tests [#2590](https://github.com/particle-iot/device-os/pull/2590)
+- [test] Modify pins for trackerM spix tests [#2585](https://github.com/particle-iot/device-os/pull/2585)
+- [trackerm] TrackerM EVT v0.0.3 pinmap update [#2580](https://github.com/particle-iot/device-os/pull/2580)
+- Allow setting the ICCID of a virtual device [#2583](https://github.com/particle-iot/device-os/pull/2583)
+- Protobuf defs refactor / fixes submessage encoding after nanopb 0.4.5 upgrade [#2578](https://github.com/particle-iot/device-os/pull/2578)
+- Update nanopb to 0.4.5 [#2563](https://github.com/particle-iot/device-os/pull/2563)
+- Fix no_fixture_i2c for esomx,boron,bsom platforms [#2559](https://github.com/particle-iot/device-os/pull/2559)
+- [CI] fixes [#2564](https://github.com/particle-iot/device-os/pull/2564)
+- Move no_fixture_i2c to correct dir and symlink to integration/wiring [#2558](https://github.com/particle-iot/device-os/pull/2558)
+- [trackerm] TrackerM EVT v0.0.2 pinmap update [#2550](https://github.com/particle-iot/device-os/pull/2550)
+- Increase timeouts for internal CI builds on windows [#2545](https://github.com/particle-iot/device-os/pull/2545)
+
 ## 5.1.0
 
 ### FEATURES
@@ -135,6 +182,12 @@
 - [tests] Change PWM pins to better match e-series pinout for E SoM X. Fix other tests [#2463](https://github.com/particle-iot/device-os/pull/2463)
 - [tests] Fix broken tone and servo tests for p2 platform, also EEPROM_03 for all. [#2469](https://github.com/particle-iot/device-os/pull/2469)
 - [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
+
+## 4.0.2
+
+### BUGFIXES
+- [gen3] Use OTP Feature flag to change ADC reference source [#2597](https://github.com/particle-iot/device-os/pull/2597)
+- [boron]Use the internal ADC reference on some Gen 3 platforms [#2588](https://github.com/particle-iot/device-os/pull/2588)
 
 ## 4.0.1
 
