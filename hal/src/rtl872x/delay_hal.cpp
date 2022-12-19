@@ -37,6 +37,5 @@ void HAL_Delay_Microseconds(uint32_t uSec)
     const system_tick_t start_micros = HAL_Timer_Get_Micro_Seconds();
 
     while (HAL_Timer_Get_Micro_Seconds() - start_micros < uSec) {
-        HAL_Notify_WDT();
     }
 }
