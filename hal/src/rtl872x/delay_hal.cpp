@@ -34,21 +34,9 @@ void HAL_Delay_Milliseconds(uint32_t nTime)
 
 void HAL_Delay_Microseconds(uint32_t uSec)
 {
-    system_tick_t start_micros = HAL_Timer_Get_Micro_Seconds();
-    system_tick_t current_micros = start_micros;
-    system_tick_t end_micros = start_micros + uSec;
+    const system_tick_t start_micros = HAL_Timer_Get_Micro_Seconds();
 
-    // Handle case where micros rolls over
-    if (end_micros < start_micros) {
-        while(1) {
-            current_micros = HAL_Timer_Get_Micro_Seconds();
-            if (current_micros < start_micros) {
-                break;
-            }
-        }
-    }
-
-    while (current_micros < end_micros) {
-        current_micros = HAL_Timer_Get_Micro_Seconds();
+    while (HAL_Timer_Get_Micro_Seconds() - start_micros < uSec) {
+        HAL_Notify_WDT();
     }
 }
