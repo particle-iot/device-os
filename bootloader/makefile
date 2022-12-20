@@ -7,6 +7,8 @@ ifeq ($(PLATFORM_MCU),rtl872x)
 RTL_BINARY_FLASH_START = 0x4000
 endif
 
+SERVICES_NO_NANOPB_LIB := y
+
 DEPENDENCIES = platform hal services system dynalib
 MAKE_DEPENDENCIES = platform services
 # dependent on HAL headers, but not the library
@@ -34,4 +36,3 @@ endif
 
 
 include ../build/arm-tlm.mk
-
