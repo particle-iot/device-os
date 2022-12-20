@@ -126,7 +126,6 @@ void onSleepRequestReceived(km0_km4_ipc_msg_t* msg, void* context) {
 
 void configureSleepWakeupSource(const hal_sleep_config_t* config) {
     sleepDuration = 0;
-    hal_pin_info_t* halPinMap = hal_pin_map();
 
 #if HAL_PLATFORM_IO_EXTENSION && HAL_PLATFORM_MCP23S17
     bool ioExpanderIntConfigured = false;
@@ -145,6 +144,7 @@ void configureSleepWakeupSource(const hal_sleep_config_t* config) {
             uint32_t rtlPin;
             InterruptMode mode;
 #if HAL_PLATFORM_IO_EXTENSION && HAL_PLATFORM_MCP23S17
+            const hal_pin_info_t* halPinMap = hal_pin_map();
             if (halPinMap[gpioWakeup->pin].type == HAL_PIN_TYPE_MCU)
 #endif
             {
