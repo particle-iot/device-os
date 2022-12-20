@@ -306,6 +306,8 @@ void hal_interrupt_restore(void) {
             GPIO_INTMode(rtlPin, ENABLE, trigger, polarity, GPIO_INT_DEBOUNCE_ENABLE);
             GPIO_INTConfig(rtlPin, ENABLE);
             interruptsConfig[i].state = INT_STATE_ENABLED;
+        } else {
+            interruptsConfig[i].state = INT_STATE_DISABLED;
         }
     }
 }
