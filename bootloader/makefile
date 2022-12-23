@@ -3,6 +3,8 @@ BOOTLOADER_MODULE_PATH=.
 PLATFORM_DFU=0x8000000
 BUILD_PATH_EXT = $(BOOTLOADER_BUILD_PATH_EXT)
 
+SERVICES_NO_NANOPB_LIB := y
+
 DEPENDENCIES = platform hal services system dynalib
 MAKE_DEPENDENCIES = platform services
 # dependent on HAL headers, but not the library
@@ -28,4 +30,3 @@ endif
 
 
 include ../build/arm-tlm.mk
-
