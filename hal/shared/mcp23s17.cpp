@@ -93,7 +93,13 @@ int Mcp23s17::begin() {
 
     hal_interrupt_extra_configuration_t extra = {};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
+#if PLATFORM_ID == PLATFORM_TRACKERM
+    extra.appendHandler = true;
+    extra.priority = 0xFF; // Lowest priority
     CHECK(hal_interrupt_attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
+#else
+    CHECK(hal_interrupt_attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
+#endif
 
     initialized_ = true;
     CHECK(reset());

@@ -79,7 +79,7 @@
 #define MOSI1               D2
 
 // IO Expander
-#define IOE_INT             D10
+#define IOE_INT             D10 // Shared with PMIC_INT
 #define IOE_RST             43
 #define IOE_CS              44
 
@@ -98,7 +98,7 @@
 // PMIC
 #define PMIC_SDA            SDA
 #define PMIC_SCL            SCL
-#define PMIC_INT            S4
+#define PMIC_INT            D10 // Shared with IOE_INT
 
 // UART
 #define TX                  D8

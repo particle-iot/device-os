@@ -41,6 +41,9 @@ protected:
 private:
   static void loop(void* arg);
   static void isrHandler();
+#if PLATFORM_ID == PLATFORM_TRACKERM
+  static void isrHandlerEx(void* context);
+#endif
   static void usbStateChangeHandler(HAL_USB_State state, void* context);
   void update();
   void handleCharging(bool batteryDisconnected = false);
