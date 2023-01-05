@@ -263,8 +263,10 @@ int RtlUsbDriver::setupReply(SetupRequest* r, const uint8_t* data, size_t size) 
             // some common cases of returning not a lot of data generated on stack
             memcpy(tempBuffer_, data, size);
             CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_transmit(rtlDev_, tempBuffer_, size));
+            HAL_Delay_Milliseconds(2);
         } else {
             CHECK_RTL_USB_TO_SYSTEM(usbd_ep0_transmit(rtlDev_, (uint8_t*)data, size));
+            HAL_Delay_Milliseconds(2);
         }
     } else if (data == nullptr && size == 0) {
         // FIXME: doesn't work
