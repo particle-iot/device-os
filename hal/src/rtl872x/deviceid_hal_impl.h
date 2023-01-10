@@ -46,6 +46,8 @@
 #define WIFI_OUID_SIZE                  3
 #define DEVICE_ID_PREFIX_SIZE           6
 
+#define MODEL_VARIANT_PHOTON_2 1
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

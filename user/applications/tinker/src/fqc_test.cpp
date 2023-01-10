@@ -258,15 +258,18 @@ bool FqcTest::bleScan(JSONValue req) {
 
 // Skip 6 and 7 since they are SWC+SWD (PB3, PA27)
 // Skip 8 and 9 since they are Uart TX+RX (PA7, PA8)
-// The pin order denotes how they are jumpered together. IE pin 14 (PB4) and pin 21 (PB31) are jumpered together.
+// The pin order denotes how they are jumpered together. IE pin A5 (PB4) and pin S6 (PB31) are jumpered together.
 // The pin order largely reflects which pins are physically next to each other on the P2 jig and can be easily jumpered together. 
-// Two sets of pins are not adjacent and require a hookup wire:
-// - Pin19 (PA0) + Pin10 (PA15 ie WKP/D10)
-// - Pin14 (PB4) + Pin21 (PB31)
-static const Vector<uint16_t> p2_digital_pins = {14, 21, 10, 19, 0, 1, 15, 16, 17, 12, 18, 2, 4, 5, 3, 11, 13, 20 };
+// Two sets of pins on the P2 jig are not adjacent and require a hookup wire:
+// - S4 (PA0) + WKP/D10 (PA15)
+// - A5 (PB4) + S6 (PB31)
+static Vector<uint16_t> p2_gpio_test_pins = { A5, S6, WKP, S4, D0, D1, S0, S1, S2, A1, S3, D2, D4, D5, D3, A0, A2, S5 };
+static Vector<uint16_t> photon2_gpio_test_pins = {A0, A1, A2, A5, S4, S3, S2, S0, S1, D0, D1, D2, D3, D4, D5, D10 };
+
+static Vector<uint16_t> gpio_test_pins;
 
 static bool assertAllPinsLow(uint16_t exceptPinA, uint16_t exceptPinB, uint16_t * errorPin) {
-    for(auto pin : p2_digital_pins) {
+    for(auto pin : gpio_test_pins) {
         if(pin == exceptPinA || pin == exceptPinB){
             continue;
         }
@@ -279,7 +282,7 @@ static bool assertAllPinsLow(uint16_t exceptPinA, uint16_t exceptPinB, uint16_t 
 }
 
 static void configureAllPinsInput(void) {
-    for(auto pin : p2_digital_pins) {
+    for(auto pin : gpio_test_pins) {
         pinMode(pin, INPUT_PULLDOWN);
     }
 }
@@ -330,9 +333,14 @@ bool FqcTest::ioTest(JSONValue req) {
     uint16_t pinA = 0;
     uint16_t pinB = 0;
 
-    for(int i = 0; i < p2_digital_pins.size(); i+=2){
-        pinA = p2_digital_pins[i];
-        pinB = p2_digital_pins[i+1];
+    // Pick which set of pins to use based on hardware variant
+    uint32_t model, variant;
+    hal_get_device_hw_model(&model, &variant, nullptr);
+    gpio_test_pins = variant == MODEL_VARIANT_PHOTON_2 ? photon2_gpio_test_pins : p2_gpio_test_pins;
+
+    for(int i = 0; i < gpio_test_pins.size(); i+=2){
+        pinA = gpio_test_pins[i];
+        pinB = gpio_test_pins[i+1];
 
         configureAllPinsInput();
         pinMode(pinA, OUTPUT);
