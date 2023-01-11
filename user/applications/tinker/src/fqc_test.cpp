@@ -336,7 +336,7 @@ bool FqcTest::ioTest(JSONValue req) {
     // Pick which set of pins to use based on hardware variant
     uint32_t model, variant;
     hal_get_device_hw_model(&model, &variant, nullptr);
-    gpio_test_pins = variant == MODEL_VARIANT_PHOTON_2 ? photon2_gpio_test_pins : p2_gpio_test_pins;
+    gpio_test_pins = variant == PLATFORM_P2_PHOTON_2 ? photon2_gpio_test_pins : p2_gpio_test_pins;
 
     for(int i = 0; i < gpio_test_pins.size(); i+=2){
         pinA = gpio_test_pins[i];
