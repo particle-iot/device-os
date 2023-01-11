@@ -147,8 +147,8 @@ void configureSleepWakeupSource(const hal_sleep_config_t* config) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             const hal_wakeup_source_rtc_t* rtcWakeup = (const hal_wakeup_source_rtc_t*)source;
             sleepDuration += rtcWakeup->ms;
-            // DiagPrintf("\r\n");
-            // DiagPrintf("***Sleep duration: %d***\r\n", sleepDuration);
+            DiagPrintf("\r\n");
+            DiagPrintf("***Sleep duration: %d***\r\n", sleepDuration);
             SOCPS_AONTimerCmd(DISABLE);
             SOCPS_AONTimer(rtcWakeup->ms);
             debug_state.sleepDuration = rtcWakeup->ms;
@@ -367,8 +367,8 @@ void sleepProcess(void) {
                 HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_WAKE_EVENT_STATUS1, wakeReason);
                 SOCPS_AudioLDO(ENABLE);
                 HAL_enable_irq(priMask);
-                // DiagPrintf("\r\n");
-                // DiagPrintf("***KM0 Wake***\r\n");
+                DiagPrintf("\r\n");
+                DiagPrintf("***KM0 Wake***\r\n");
             }
         }
         sleepReqId = KM0_KM4_IPC_INVALID_REQ_ID;

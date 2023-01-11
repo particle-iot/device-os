@@ -55,6 +55,13 @@ extern constructor_ptr_t link_constructors_end;
 #define link_constructors_size ((unsigned long)&link_constructors_end - (unsigned long)&link_constructors_location)
 
 int bootloader_part1_init(void) {
+    ConfigDebugClose = 0;
+
+    // DBG_ERR_MSG_ON(MODULE_MISC);
+    // DBG_WARN_MSG_ON(MODULE_MISC);
+    // DBG_INFO_MSG_ON(MODULE_MISC);
+    // DBG_INFO_MSG_ON(MODULE_KM4);
+
     rtlLowLevelInit();
     rtlPmuInit();
 
