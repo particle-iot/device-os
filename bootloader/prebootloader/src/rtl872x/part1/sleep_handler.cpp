@@ -32,6 +32,18 @@ extern "C" void km4_clock_gate(void);
 extern "C" void km4_clock_on(void);
 extern "C" void SOCPS_SetWakepin(uint32_t PinIdx, uint32_t Polarity);
 
+struct sb_debug {
+    bool trigger_print;
+    bool trigger_wake;
+    uint32_t sleepDuration;
+    uint32_t sleepEnd;
+    uint32_t km4_clock_on;
+    int priMask;
+
+} typedef sb_debug_t;
+
+static volatile sb_debug_t debug_state = {};
+
 namespace {
 
 // Note: We need to backup the sleep configuration on the KM0 side
@@ -135,8 +147,11 @@ void configureSleepWakeupSource(const hal_sleep_config_t* config) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             const hal_wakeup_source_rtc_t* rtcWakeup = (const hal_wakeup_source_rtc_t*)source;
             sleepDuration += rtcWakeup->ms;
+            // DiagPrintf("\r\n");
+            // DiagPrintf("***Sleep duration: %d***\r\n", sleepDuration);
             SOCPS_AONTimerCmd(DISABLE);
             SOCPS_AONTimer(rtcWakeup->ms);
+            debug_state.sleepDuration = rtcWakeup->ms;
             SOCPS_AONTimerCmd(ENABLE);
             sleepStart = SYSTIMER_GetPassTime(0);
         } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
@@ -331,6 +346,7 @@ void sleepProcess(void) {
                 // Figure out the wakeup reason
                 uint32_t wakeReason = 0;
                 uint32_t sleepEnd = SYSTIMER_GetPassTime(0);
+                debug_state.sleepEnd = sleepEnd;
                 if ((sleepDuration > 0) && ((sleepEnd - sleepStart) >= sleepDuration)) {
                     wakeReason |= BIT_HP_WEVT_TIMER_STS;
                 }
@@ -345,13 +361,26 @@ void sleepProcess(void) {
 
                 int priMask = HAL_disable_irq();
                 // Copy and paste from km4_resume()
+                debug_state.priMask = priMask;
+                debug_state.km4_clock_on = km4_status_on();
                 km4_clock_on();
                 HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_WAKE_EVENT_STATUS1, wakeReason);
                 SOCPS_AudioLDO(ENABLE);
                 HAL_enable_irq(priMask);
+                // DiagPrintf("\r\n");
+                // DiagPrintf("***KM0 Wake***\r\n");
             }
         }
         sleepReqId = KM0_KM4_IPC_INVALID_REQ_ID;
         sleepConfig = nullptr;
+    }
+    if (debug_state.trigger_print) {
+        DiagPrintf("KM0 Last sleep %d\n", sleepDuration);
+        debug_state.trigger_print = false;
+    }
+    if (debug_state.trigger_wake) {
+        /* tell KM4 wake */
+        asm volatile ("sev");
+        debug_state.trigger_wake = false;
     }
 }

@@ -137,16 +137,31 @@ void setup()
 #if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
     BurninTest::instance()->setup();
 #endif
+
+    pinMode(S3, OUTPUT);
+    digitalWrite(S3, HIGH);
 }
 
 /* This function loops forever --------------------------------------------*/
 void loop()
 {
-    //This will run in a loop
 
 #if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
     BurninTest::instance()->loop();
 #endif
+
+    system_tick_t sleep_ms = (system_tick_t)random(5000,10000);
+    Log.info("Sleep for ms: %d", sleep_ms);
+    // Turn off GPIO sentinel
+    digitalWrite(S3, LOW);
+
+    SystemSleepConfiguration config;
+    config.mode(SystemSleepMode::ULTRA_LOW_POWER)
+      .gpio(WKP, FALLING)
+      .duration(sleep_ms);
+    SystemSleepResult result = System.sleep(config);
+    Log.info("Sleep result: %d", result.wakeupReason());
+    delay(20s);
 }
 
 /*******************************************************************************
