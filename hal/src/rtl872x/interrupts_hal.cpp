@@ -31,6 +31,7 @@ extern "C" {
 #include "module_info.h"
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#include "atomic_section.h"
 #include "spark_wiring_vector.h"
 using spark::Vector;
 #endif
@@ -62,9 +63,13 @@ public:
             return handler == callback.handler;
         }
 
+        bool operator!=(const InterruptCallback& callback) {
+            return handler != callback.handler;
+        }
+
         hal_interrupt_handler_t handler;
         void* data;
-        uint32_t priority; // The lower the value, the higher the priority
+        uint8_t chainPriority; // The lower the value, the higher the priority
     };
 
     InterruptConfig()
@@ -73,19 +78,23 @@ public:
     }
     ~InterruptConfig() = default;
 
-    int appendHandler(hal_interrupt_handler_t handler, void* data, uint32_t priority) {
-        uint32_t idx = 0;
+    int appendHandler(hal_interrupt_handler_t handler, void* data, uint8_t chainPriority) {
+        size_t idx = 0;
         InterruptCallback cb = {};
         cb.handler = handler;
         cb.data = data;
-        cb.priority = priority;
+        cb.chainPriority = chainPriority;
         for (auto& callback : callbacks_) {
-            if (priority < callback.priority) {
+            if (chainPriority < callback.chainPriority) {
                 break;
             }
             idx++;
         }
-        CHECK_TRUE(callbacks_.insert(idx, cb), SYSTEM_ERROR_NO_MEMORY);
+        auto temp = callbacks_;
+        CHECK_TRUE(temp.insert(idx, cb), SYSTEM_ERROR_NO_MEMORY);
+        ATOMIC_BLOCK() { 
+            spark::swap(temp, callbacks_);
+        }
         return SYSTEM_ERROR_NONE;
     }
 
@@ -94,16 +103,24 @@ public:
     }
 
     int removeHandler(hal_interrupt_handler_t handler) {
-        for (auto& callback : callbacks_) {
+        auto temp = callbacks_;
+        for (auto& callback : temp) {
             if (handler == callback.handler) {
-                callbacks_.removeOne(callback);
+                temp.removeOne(callback);
             }
+        }
+        ATOMIC_BLOCK() { 
+            spark::swap(temp, callbacks_);
         }
         return SYSTEM_ERROR_NONE;
     }
 
     void clearHandlers() {
+        auto temp = callbacks_;
         callbacks_.removeAt(0, callbacks_.size());
+        ATOMIC_BLOCK() { 
+            spark::swap(temp, callbacks_);
+        }
     }
 
     void executeHandlers() const {
@@ -115,11 +132,11 @@ public:
     }
 
 public:
-    interrupt_state_t           state;
-    InterruptMode               mode;
+    interrupt_state_t state;
+    InterruptMode mode;
 
 private:
-    Vector<InterruptCallback>   callbacks_;
+    Vector<InterruptCallback> callbacks_;
 };
 
 InterruptConfig interruptsConfig[TOTAL_PINS];
@@ -301,10 +318,10 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
         GPIO_INTMode_HAL(rtlPin, pinInfo->gpio_port, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_ENABLE);
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        if (!config || (config && !config->appendHandler)) {
+        if (!config || (config && !(config->flags & HAL_INTERRUPT_FLAG_APPEND_HANDLER))) {
             interruptsConfig[pin].clearHandlers();
         }
-        interruptsConfig[pin].appendHandler(handler, data, config->priority);
+        interruptsConfig[pin].appendHandler(handler, data, config->chainPriority);
 #else
         interruptsConfig[pin].callback.handler = handler;
         interruptsConfig[pin].callback.data = data;

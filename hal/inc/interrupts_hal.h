@@ -57,6 +57,10 @@ typedef enum {
   HAL_INTERRUPT_DIRECT_FLAG_ENABLE  = 0x04
 } hal_interrupt_direct_flags_t;
 
+typedef enum hal_interrupt_flags_t {
+    HAL_INTERRUPT_FLAG_APPEND_HANDLER = 0x01,
+} hal_interrupt_flags_t;
+
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
@@ -84,10 +88,9 @@ typedef struct hal_interrupt_extra_configuration_t {
       uint8_t keepHandler  : 1;
     };
   };
-  struct {
-      bool appendHandler;
-      uint8_t priority;
-  };
+#if HAL_PLATFORM_SHARED_INTERRUPT
+  uint8_t chainPriority;
+#endif
 } hal_interrupt_extra_configuration_t;
 
 #ifdef __cplusplus

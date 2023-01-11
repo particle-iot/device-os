@@ -41,7 +41,7 @@ protected:
 private:
   static void loop(void* arg);
   static void isrHandler();
-#if PLATFORM_ID == PLATFORM_TRACKERM
+#if HAL_PLATFORM_SHARED_INTERRUPT
   static void isrHandlerEx(void* context);
 #endif
   static void usbStateChangeHandler(HAL_USB_State state, void* context);

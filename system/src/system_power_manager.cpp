@@ -375,15 +375,15 @@ void PowerManager::loop(void* arg) {
     // IMPORTANT: attach the interrupt handler first
 #if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
     hal_gpio_mode(PMIC_INT, INPUT_PULLUP);
-#if PLATFORM_ID == PLATFORM_TRACKERM
+#if HAL_PLATFORM_SHARED_INTERRUPT
     hal_interrupt_extra_configuration_t extra = {};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
-    extra.appendHandler = true;
-    extra.priority = 0x0; // Highest priority
+    extra.flags = HAL_INTERRUPT_FLAG_APPEND_HANDLER;
+    extra.chainPriority = 0x0; // Highest priority
     hal_interrupt_attach(PMIC_INT, &isrHandlerEx, nullptr, FALLING, &extra);
 #else
     attachInterrupt(PMIC_INT, &PowerManager::isrHandler, FALLING);
-#endif // PLATFORM_ID == PLATFORM_TRACKERM
+#endif // HAL_PLATFORM_SHARED_INTERRUPT
 #endif // HAL_PLATFORM_PMIC_INT_PIN_PRESENT
     hal_gpio_mode(LOW_BAT_UC, INPUT_PULLUP);
     attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
@@ -447,7 +447,7 @@ void PowerManager::isrHandler() {
   self->update();
 }
 
-#if PLATFORM_ID == PLATFORM_TRACKERM
+#if HAL_PLATFORM_SHARED_INTERRUPT
 void PowerManager::isrHandlerEx(void* context) {
     isrHandler();
 }
