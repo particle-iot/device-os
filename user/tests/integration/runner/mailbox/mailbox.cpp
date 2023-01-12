@@ -42,3 +42,20 @@ test(03_mailbox) {
     assertEqual(0, pushMailboxMsg(data2, 10000));
     assertEqual(0, pushMailboxBuffer(data3, sizeof(data3) - 1));
 }
+
+test(04_mailbox_reset_postponed) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    // We've waited up to 10 seconds for test runner to understand that we are going to reset
+    auto t = new Thread("test", [](void* param) -> os_thread_return_t {
+        delay(5000);
+        System.reset();
+    }, nullptr);
+    // This will leak, but that's fine
+    assertTrue(t);
+}
+
+test(05_mailbox) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::DATA).data(data1, sizeof(data1) - 1)));
+    assertEqual(0, pushMailboxMsg(data2, 10000));
+    assertEqual(0, pushMailboxBuffer(data3, sizeof(data3) - 1));
+}
