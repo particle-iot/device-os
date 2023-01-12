@@ -27,6 +27,10 @@
 
 #include "spark_wiring_cloud.h"
 
+#include "spark_wiring_vector.h"
+#include "spark_wiring_thread.h"
+#include "intrusive_queue.h"
+
 #include <memory>
 
 class Test;
@@ -133,6 +137,87 @@ public:
         return *this;
     }
 
+    struct MailboxEntry {
+        enum class Type {
+            NONE = 0,
+            RESET_PENDING = 1,
+            DATA = 2
+        };
+
+        MailboxEntry()
+                : next(nullptr),
+                  type_(Type::NONE),
+                  waitedOn_(false),
+                  completed_(false) {
+        }
+
+        ~MailboxEntry() {
+        }
+
+        MailboxEntry& type(Type t) {
+            type_ = t;
+            return *this;
+        }
+
+        Type type() const {
+            return type_;
+        }
+
+        MailboxEntry& data(const char* data, size_t size) {
+            data_.clear();
+            data_.append(data, size);
+            return *this;
+        }
+
+        spark::Vector<char> data() const {
+            return data_;
+        }
+
+        bool wait(system_tick_t timeout) {
+            waitedOn_ = true;
+            SCOPE_GUARD({
+                waitedOn_ = false;
+            });
+            for (auto start = millis(); millis() - start <= timeout;) {
+                // This processes the application task queue
+                if (completed_) {
+                    return true;
+                }
+                Particle.process();
+                delay(1);
+            }
+            return false;
+        }
+
+        bool waitedOn() const {
+            return waitedOn_;
+        }
+
+        void completed() {
+            completed_ = true;
+        }
+
+        bool isCompleted() const {
+            return completed_;
+        }
+
+        // For IntrusiveQueue
+        MailboxEntry* next;
+
+    private:
+        Type type_;
+        spark::Vector<char> data_;
+        bool waitedOn_;
+        bool completed_;
+    };
+
+    int pushMailbox(MailboxEntry entry, system_tick_t wait = 0);
+    int pushMailboxMsg(const char* data, system_tick_t wait = 0);
+    int pushMailboxBuffer(const char* data, size_t size, system_tick_t wait = 0);
+    MailboxEntry* peekOutboundMailbox();
+    int popOutboundMailbox();
+    void flushMailbox();
+
     static TestRunner* instance();
 
 private:
@@ -141,6 +226,8 @@ private:
 
     std::unique_ptr<LogBufferData> logBuf_;
     std::unique_ptr<CloudLogData> cloudLog_;
+
+    IntrusiveQueue<MailboxEntry> outMailbox_;
 
     Test* firstTest_;
     int state_;
@@ -729,6 +816,17 @@ void loop() {
 }
   */
   static void run();
+
+  using MailboxEntry = ::particle::TestRunner::MailboxEntry;
+  int pushMailbox(MailboxEntry entry, system_tick_t wait = 0) {
+    return ::particle::TestRunner::instance()->pushMailbox(entry, wait);
+  }
+  int pushMailboxMsg(const char* data, system_tick_t wait = 0) {
+    return ::particle::TestRunner::instance()->pushMailboxMsg(data, wait);
+  }
+  int pushMailboxBuffer(const char* data, size_t size, system_tick_t wait = 0) {
+    return ::particle::TestRunner::instance()->pushMailboxBuffer(data, size, wait);
+  }
 
   // Construct a test with a given name and verbosity level
 

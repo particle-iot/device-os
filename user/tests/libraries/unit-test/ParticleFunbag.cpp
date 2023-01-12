@@ -313,6 +313,7 @@ void TestRunner::reset() {
     if (logBuf_) {
         logBuf_->stream.clear();
     }
+    flushMailbox();
     setState(WAITING);
 }
 
@@ -445,6 +446,49 @@ int TestRunner::testCmd(String arg) {
         result = -1;
     }
     return result;
+}
+
+int TestRunner::pushMailbox(MailboxEntry entry, system_tick_t wait) {
+    auto m = new MailboxEntry(std::move(entry));
+    CHECK_TRUE(m, SYSTEM_ERROR_NO_MEMORY);
+    outMailbox_.pushBack(m);
+    if (wait) {
+        SCOPE_GUARD({
+            if (m->isCompleted()) {
+                popOutboundMailbox();
+            }
+        });
+        return m->wait(wait) ? 0 : SYSTEM_ERROR_TIMEOUT;
+    }
+    return 0;
+}
+
+int TestRunner::pushMailboxMsg(const char* data, system_tick_t wait) {
+    return pushMailbox(MailboxEntry().type(MailboxEntry::Type::DATA).data(data, strlen(data)), wait);
+}
+
+int TestRunner::pushMailboxBuffer(const char* data, size_t size, system_tick_t wait) {
+    return pushMailbox(MailboxEntry().type(MailboxEntry::Type::DATA).data(data, size), wait);
+}
+
+void TestRunner::flushMailbox() {
+    MailboxEntry* m = nullptr;
+    while ((m = outMailbox_.popFront())) {
+        delete m;
+    }
+}
+
+TestRunner::MailboxEntry* TestRunner::peekOutboundMailbox() {
+    return outMailbox_.front();
+}
+
+int TestRunner::popOutboundMailbox() {
+    auto m = outMailbox_.popFront();
+    if (m) {
+        delete m;
+        return 0;
+    }
+    return SYSTEM_ERROR_NOT_FOUND;
 }
 
 void TestRunner::updateLEDStatus() {

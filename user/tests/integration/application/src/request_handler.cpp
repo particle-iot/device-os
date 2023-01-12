@@ -171,6 +171,8 @@ int RequestHandler::request(Request* req) {
         return getStatus(req);
     } else if (cmd == "L") { // Get log
         return getLog(req);
+    } else if (cmd == "M") { // Read device->host mailbox
+        return readMailbox(req);
     } else if (cmd == "r") { // Reset
         return reset(req);
     } else if (req->isEmpty()) { // Ping request
@@ -254,6 +256,38 @@ int RequestHandler::getLog(Request* req) {
         const auto runner = TestRunner::instance();
         w.value(runner->logBuffer(), runner->logSize());
     }));
+    return 0;
+}
+
+int RequestHandler::readMailbox(Request* req) {
+    const auto runner = TestRunner::instance();
+    auto m = runner->peekOutboundMailbox();
+    if (!m) {
+        return 0;
+    }
+
+    CHECK(req->reply([&](JSONWriter& w) {
+        w.beginObject();
+        w.name("t").value((int)m->type());
+        const auto data = m->data();
+        if (data.size() > 0) {
+            w.name("d").value(data.data(), data.size());
+        }
+        w.endObject();
+    }));
+    if (m->waitedOn()) {
+        req->done(0, [](int, void* data) -> void {
+            auto m = static_cast<TestRunner::MailboxEntry*>(data);
+            if (m->waitedOn()) {
+                m->completed();
+            } else {
+                const auto runner = TestRunner::instance();
+                runner->popOutboundMailbox();
+            }
+        }, m);
+    } else {
+        CHECK(runner->popOutboundMailbox());
+    }
     return 0;
 }
 

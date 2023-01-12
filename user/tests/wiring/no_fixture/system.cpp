@@ -487,3 +487,8 @@ test(SYSTEM_10_system_ticks_delay) {
     assertLessOrEqual(duration, expected_high);
     assertMoreOrEqual(duration, expected_low);
 }
+
+test(SYSTEM_11_system_reset) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    System.reset();
+}
