@@ -266,7 +266,7 @@ bool FqcTest::bleScan(JSONValue req) {
 static Vector<uint16_t> p2_gpio_test_pins = { A5, S6, WKP, S4, D0, D1, S0, S1, S2, A1, S3, D2, D4, D5, D3, A0, A2, S5 };
 static Vector<uint16_t> photon2_gpio_test_pins = {A0, D10, A1, D7, A2, D6, A5, D5, S4, D4, S3, D3, SCK, D2, MOSI, D1, MISO, D0 };
 
-static Vector<uint16_t> gpio_test_pins;
+static Vector<uint16_t> gpio_test_pins = {};
 
 static bool assertAllPinsLow(uint16_t exceptPinA, uint16_t exceptPinB, uint16_t * errorPin) {
     for(auto pin : gpio_test_pins) {
@@ -336,8 +336,11 @@ bool FqcTest::ioTest(JSONValue req) {
     // Pick which set of pins to use based on hardware variant
     uint32_t model, variant;
     hal_get_device_hw_model(&model, &variant, nullptr);
-    Log.info("Hardware Model: 0x%x Variant: 0x%x", model, variant);
+    Log.info("Hardware Model: %lu Variant: %lu", model, variant);
+
+    #if PLATFORM_ID == PLATFORM_P2
     gpio_test_pins = variant == PLATFORM_P2_PHOTON_2 ? photon2_gpio_test_pins : p2_gpio_test_pins;
+    #endif
 
     for(int i = 0; i < gpio_test_pins.size(); i+=2){
         pinA = gpio_test_pins[i];
