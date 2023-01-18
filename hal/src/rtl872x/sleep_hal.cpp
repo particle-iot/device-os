@@ -209,9 +209,13 @@ public:
         __WFE(); // sleep, waiting for event
         
         // Determine if KM4 is executing here: toggle pin on wake
-        // S3 = PB26
-        GPIOB_BASE->PORT[0].DR |= (1 << 26);
-
+        #if PLATFORM_ID == PLATFORM_TRACKERM
+            // TX = PB2
+            GPIOB_BASE->PORT[0].DR |= (1 << 2);
+        #else
+            // S3 = PB26
+            GPIOB_BASE->PORT[0].DR |= (1 << 26);
+        #endif
 
         // Only if either stop mode or ultra-low power mode is used, we can get here,
         // which means that the PSRAM retention is enabled, we don't need to re-initialized PSRAM

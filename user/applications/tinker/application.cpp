@@ -89,12 +89,18 @@ int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
 #ifdef LOG_SERIAL1
-Serial1LogHandler g_logSerial1(115200, LOG_LEVEL_ALL);
+Serial1LogHandler g_logSerial1(115200, LOG_LEVEL_ALL, { 
+    { "ncp.at", LOG_LEVEL_TRACE }, 
+    { "ncp.client", LOG_LEVEL_TRACE } 
+});
 #endif // LOG_SERIAL1
 
-#ifdef LOG_SERIAL
-SerialLogHandler g_logSerial(LOG_LEVEL_ALL);
-#endif // LOG_SERIAL
+// #ifdef LOG_SERIAL
+SerialLogHandler logHandler(LOG_LEVEL_ALL, {
+    { "ncp.at", LOG_LEVEL_TRACE }, 
+    { "ncp.client", LOG_LEVEL_TRACE } 
+});
+// #endif // LOG_SERIAL
 
 #if defined(HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL) && HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
 // Enable runtime PMIC / FuelGauge detection
@@ -138,8 +144,19 @@ void setup()
     BurninTest::instance()->setup();
 #endif
 
+#if PLATFORM_ID == PLATFORM_TRACKERM
+    // Enable Serial1 UART Voltage translator chip
+    pinMode(A0, OUTPUT);
+    digitalWrite(A0, HIGH);
+    pinMode(A5, OUTPUT);
+    digitalWrite(A5, HIGH);
+
+    pinMode(A1, OUTPUT);
+#else 
     pinMode(S3, OUTPUT);
     digitalWrite(S3, HIGH);
+#endif
+    
 }
 
 /* This function loops forever --------------------------------------------*/
@@ -153,7 +170,12 @@ void loop()
     system_tick_t sleep_ms = (system_tick_t)random(5000,10000);
     Log.info("Sleep for ms: %d", sleep_ms);
     // Turn off GPIO sentinel
-    digitalWrite(S3, LOW);
+    #if PLATFORM_ID == PLATFORM_TRACKERM
+        digitalWrite(A1, LOW);
+    #else
+        digitalWrite(S3, LOW);
+    #endif
+    
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
@@ -161,7 +183,7 @@ void loop()
       .duration(sleep_ms);
     SystemSleepResult result = System.sleep(config);
     Log.info("Sleep result: %d", result.wakeupReason());
-    delay(20s);
+    delay(15s);
 }
 
 /*******************************************************************************
