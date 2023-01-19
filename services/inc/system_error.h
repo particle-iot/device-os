@@ -87,7 +87,8 @@
         (PPP_IDLE_TIMEOUT, "Idle timeout", -1709), \
         (PPP_CONNECT_TIME, "Max connect time reached", -1710), \
         (PPP_LOOPBACK, "Loopback detected", -1711), \
-        (PPP_NO_CARRIER_IN_NETWORK_PHASE, "Received NO CARRIER in network phase", -1712)
+        (PPP_NO_CARRIER_IN_NETWORK_PHASE, "Received NO CARRIER in network phase", -1712), \
+        (INVALID_SERVER_SETTINGS, "Server settings are invalid", -1800) /* -1899 ... -1800: Miscellaneous system errors */
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

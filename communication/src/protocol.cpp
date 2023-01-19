@@ -26,10 +26,13 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 
 #include "mbedtls_config.h"
 #include "protocol_defs.h"
+#include "protocol_util.h"
 #include "protocol.h"
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
+#include "coap_message_decoder.h"
+#include "coap_message_encoder.h"
 
 namespace particle { namespace protocol {
 
@@ -44,6 +47,11 @@ enum HelloFlag {
 	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20,
 	HELLO_FLAG_COMPRESSED_OTA = 0x40,
 	HELLO_FLAG_OTA_PROTOCOL_V3 = 0x80
+};
+
+struct ServerMovedContext {
+	Protocol* proto;
+	token_t token;
 };
 
 } // namespace
@@ -202,6 +210,10 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		error = channel.send(message);
 		break;
 
+	case CoAPMessageType::SERVER_MOVED:
+		return handle_server_moved_request(message);
+		break;
+
 	case CoAPMessageType::ERROR:
 	default:
 		; // drop it on the floor
@@ -269,6 +281,92 @@ void Protocol::handle_time_response(uint32_t time)
 	//last_chunk_millis = 0;
 	// todo - compute connection latency
 	timesync_.handle_time_response(time, callbacks.millis(), callbacks.set_time);
+}
+
+ProtocolError Protocol::handle_server_moved_request(Message& msg)
+{
+	// Parse the request
+	CoapMessageDecoder dec;
+	int r = dec.decode((const char*)msg.buf(), msg.length());
+	if (r < 0 || dec.type() != CoapType::CON || !dec.hasToken()) {
+		LOG(ERROR, "Received a malformed ServerMoved request");
+		return ProtocolError::NO_ERROR; // Ignore the request
+	}
+	LOG(WARN, "Received a ServerMoved request");
+	// Acknowledge the request
+	Message ack;
+	r = channel.response(msg, ack, msg.capacity() - msg.length());
+	if (r != ProtocolError::NO_ERROR) {
+		LOG(ERROR, "Failed to create message: %d", r);
+		return (ProtocolError)r;
+	}
+	CoapMessageEncoder enc((char*)ack.buf(), ack.capacity());
+	enc.type(CoapType::ACK);
+	enc.code(CoapCode::EMPTY);
+	enc.id(0); // Encoded by the message channel
+	r = enc.encode();
+	if (r < 0) {
+		LOG(ERROR, "Failed to encode message: %d", r);
+		return ProtocolError::INTERNAL;
+	}
+	if (r > (int)ack.capacity()) {
+		LOG(ERROR, "Message data is too long");
+		return ProtocolError::INSUFFICIENT_STORAGE;
+	}
+	ack.set_length(r);
+	ack.set_id(dec.id());
+	r = channel.send(ack);
+	if (r != ProtocolError::NO_ERROR) {
+		LOG(ERROR, "Failed to send message: %d", r);
+		return (ProtocolError)r;
+	}
+	// Process the request
+	std::unique_ptr<ServerMovedContext> ctx(new(std::nothrow) ServerMovedContext());
+	if (!ctx) {
+		return ProtocolError::NO_MEMORY;
+	}
+	ctx->proto = this;
+	SPARK_ASSERT(dec.tokenSize() == sizeof(ctx->token)); // Verified in handle_received_message()
+	memcpy(&ctx->token, dec.token(), sizeof(ctx->token));
+	SPARK_ASSERT(callbacks.server_moved);
+	callbacks.server_moved(dec.payload(), dec.payloadSize(), send_server_moved_response, ctx.release()); // Transfer ownership over the context
+	return ProtocolError::NO_ERROR;
+}
+
+void Protocol::send_server_moved_response(int error, void* context) {
+	SPARK_ASSERT(context);
+	std::unique_ptr<ServerMovedContext> ctx(static_cast<ServerMovedContext*>(context));
+	Message msg;
+	int r = ctx->proto->channel.create(msg);
+	if (r != ProtocolError::NO_ERROR) {
+		LOG(ERROR, "Failed to create message: %d", r);
+		return;
+	}
+	CoapMessageEncoder enc((char*)msg.buf(), msg.capacity());
+	enc.type(CoapType::CON);
+	enc.code(coapCodeForSystemError(error));
+	enc.id(0); // Encoded by the message channel
+	enc.token((const char*)&ctx->token, sizeof(ctx->token));
+	if (error < 0) {
+		r = formatDiagnosticPayload(enc.payloadData(), enc.maxPayloadSize(), error);
+		if (r > 0) {
+			enc.payloadSize(r);
+		}
+	}
+	r = enc.encode();
+	if (r < 0) {
+		LOG(ERROR, "Failed to encode message: %d", r);
+		return;
+	}
+	if (r > (int)msg.capacity()) {
+		LOG(ERROR, "Message data is too long");
+		return;
+	}
+	msg.set_length(r);
+	r = ctx->proto->channel.send(msg);
+	if (r != ProtocolError::NO_ERROR) {
+		LOG(ERROR, "Failed to send message: %d", (int)r);
+	}
 }
 
 /**

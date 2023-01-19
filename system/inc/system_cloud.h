@@ -34,27 +34,30 @@
 
 #define DEFAULT_CLOUD_EVENT_TTL 60
 
+namespace particle {
+
 enum ParticleKeyErrorFlag: uint32_t
 {
-  NO_ERROR                      = 0,
-  PUBLIC_SERVER_KEY_BLANK       = 1,
-  PUBLIC_SERVER_KEY_CORRUPTED   = 2,
-  SERVER_ADDRESS_BLANK          = 4,
-  SERVER_ADDRESS_CORRUPTED      = 8,
-  PUBLIC_DEVICE_KEY_BLANK       = 16,
-  PUBLIC_DEVICE_KEY_CORRUPTED   = 32,
-  PRIVATE_DEVICE_KEY_BLANK      = 64,
-  PRIVATE_DEVICE_KEY_CORRUPTED  = 128
+    NO_ERROR = 0,
+    // PUBLIC_SERVER_KEY_BLANK = 1,
+    PUBLIC_SERVER_KEY_CORRUPTED = 2,
+    // SERVER_ADDRESS_BLANK = 4,
+    SERVER_ADDRESS_CORRUPTED = 8,
+    // PUBLIC_DEVICE_KEY_BLANK = 16,
+    // PUBLIC_DEVICE_KEY_CORRUPTED = 32,
+    // PRIVATE_DEVICE_KEY_BLANK = 64,
+    // PRIVATE_DEVICE_KEY_CORRUPTED = 128
+    SERVER_SETTINGS_CORRUPTED = PUBLIC_SERVER_KEY_CORRUPTED | SERVER_ADDRESS_CORRUPTED
 };
+
+const system_tick_t NOW = static_cast<system_tick_t>(-1);
+
+} // namespace particle
 
 typedef enum
 {
 	CLOUD_VAR_BOOLEAN = 1, CLOUD_VAR_INT = 2, CLOUD_VAR_STRING = 4, CLOUD_VAR_DOUBLE = 9
 } Spark_Data_TypeDef;
-
-namespace particle {
-    static const system_tick_t NOW = static_cast<system_tick_t>(-1);
-}
 
 template<typename T, typename EnableT = void>
 struct CloudVariableType {
@@ -354,15 +357,6 @@ int spark_set_connection_property(unsigned property, unsigned value, const void*
 int spark_get_connection_property(unsigned property, void* data, size_t* size, void* reserved);
 
 int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void* reserved);
-
-extern const unsigned char backup_udp_public_server_key[];
-extern const size_t backup_udp_public_server_key_size;
-
-extern const unsigned char backup_udp_public_server_address[];
-extern const size_t backup_udp_public_server_address_size;
-
-extern const unsigned char backup_tcp_public_server_key[294];
-extern const unsigned char backup_tcp_public_server_address[18];
 
 #define SPARK_BUF_LEN                 600
 

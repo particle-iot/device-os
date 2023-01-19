@@ -61,6 +61,7 @@
 #include "spark_wiring_system.h"
 #include "system_power.h"
 #include "spark_wiring_wifi.h"
+#include "server_config.h"
 
 // FIXME
 #include "system_control_internal.h"
@@ -666,8 +667,7 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     CHECK(dct_write_app_data(devPrivKey.get(), DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE));
     CHECK(dct_write_app_data(devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
     // Restore default server key and address
-    CHECK(dct_write_app_data(backup_udp_public_server_key, DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, backup_udp_public_server_key_size));
-    CHECK(dct_write_app_data(backup_udp_public_server_address, DCT_ALT_SERVER_ADDRESS_OFFSET, backup_udp_public_server_address_size));
+    ServerConfig::instance()->restoreDefaultSettings();
 #endif // HAL_PLATFORM_NRF52840
 #endif // !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     return 0;

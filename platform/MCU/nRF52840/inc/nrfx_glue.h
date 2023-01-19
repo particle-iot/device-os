@@ -75,7 +75,7 @@ extern "C" {
  *
  * @param expression  Expression to evaluate.
  */
-#define NRFX_ASSERT(expression)     SPARK_ASSERT(expression)
+#define NRFX_ASSERT(expression)
 
 /**
  * @brief Macro for placing a compile time assertion.
