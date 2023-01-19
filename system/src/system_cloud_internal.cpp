@@ -76,8 +76,11 @@
 using namespace particle;
 using namespace particle::system;
 using particle::protocol::ProtocolError;
+
+#if PLATFORM_ID != PLATFORM_GCC
 using particle::control::common::DecodedString;
 using particle::control::common::DecodedCString;
+#endif
 
 extern volatile uint8_t SPARK_UPDATE_PENDING_EVENT_RECEIVED;
 
@@ -150,6 +153,7 @@ void systemEventHandler(const char* name, const char* data)
             }
         }
     }
+#if PLATFORM_ID != PLATFORM_GCC
     else if (!strncmp(name, KEY_RESTORE_EVENT, strlen(KEY_RESTORE_EVENT))) {
         LOG(WARN, "Received key restore event");
         int r = ServerConfig::instance()->restoreDefaultSettings();
@@ -159,6 +163,7 @@ void systemEventHandler(const char* name, const char* data)
         }
         system_pending_shutdown(RESET_REASON_CONFIG_UPDATE);
     }
+#endif // PLATFORM_ID != PLATFORM_GCC
 }
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
@@ -684,6 +689,7 @@ bool publishSafeModeEventIfNeeded() {
 
 void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedResponseCallback respCallback, void* ctx) {
     clear_system_error_message();
+#if PLATFORM_ID != PLATFORM_GCC
     int result = SYSTEM_ERROR_UNKNOWN;
     NAMED_SCOPE_GUARD(respGuard, {
         respCallback(result, ctx);
@@ -743,6 +749,9 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
         // Reset anyway
     }
     system_pending_shutdown(RESET_REASON_CONFIG_UPDATE);
+#else
+    respCallback(SYSTEM_ERROR_NOT_SUPPORTED, ctx);
+#endif // PLATFORM_ID == PLATFORM_GCC
 }
 
 #if HAL_PLATFORM_COMPRESSED_OTA

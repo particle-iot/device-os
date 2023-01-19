@@ -17,6 +17,10 @@
 
 #undef LOG_COMPILE_TIME_LEVEL
 
+#include "hal_platform.h"
+
+#if PLATFORM_ID != PLATFORM_GCC || defined(UNIT_TEST)
+
 #include <memory>
 #include <cstdint>
 
@@ -271,3 +275,5 @@ ServerConfig* ServerConfig::instance() {
 }
 
 } // namespace particle
+
+#endif // PLATFORM_ID != PLATFORM_GCC || defined(UNIT_TEST)
