@@ -92,3 +92,5 @@ endif
 #	$(TARGET_NRF5_SDK_EXTERNAL_SRC_PATH)/segger_rtt/SEGGER_RTT.c
 #endif
 endif
+
+CFLAGS += -Wno-error=unused-variable
