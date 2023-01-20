@@ -318,7 +318,7 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
         GPIO_INTMode_HAL(rtlPin, pinInfo->gpio_port, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_ENABLE);
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        if (!config || (config && !(config->flags & HAL_INTERRUPT_FLAG_APPEND_HANDLER))) {
+        if (!config || (config && !(config->appendHandler))) {
             interruptsConfig[pin].clearHandlers();
         }
         interruptsConfig[pin].appendHandler(handler, data, config->chainPriority);
