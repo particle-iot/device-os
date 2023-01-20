@@ -648,7 +648,6 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     }
     SYSTEM_FLAG(NVMEM_SPARK_Reset_SysFlag) = 0x0000;
     Save_SystemFlags();
-#if HAL_PLATFORM_NRF52840
     LOG(WARN, "Resetting all settings to factory defaults");
 #if HAL_PLATFORM_WIFI
     // Clear WiFi credentials
@@ -670,7 +669,6 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     CHECK(dct_write_app_data(devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
     // Restore default server key and address
     ServerConfig::instance()->restoreDefaultSettings();
-#endif // HAL_PLATFORM_NRF52840
 #endif // !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     return 0;
 }
