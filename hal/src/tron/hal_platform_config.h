@@ -36,3 +36,6 @@
 #endif // defined(MODULE_FUNCTION) && MODULE_FUNCTION != 2 // MOD_FUNC_BOOTLOADER
 
 #define PRODUCT_SERIES "Pseries"
+
+#define PLATFORM_P2_MODEL_BARE_SOM_DEFAULT (0xffff)
+#define PLATFORM_P2_PHOTON_2               (0x0001)
