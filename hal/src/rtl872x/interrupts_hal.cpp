@@ -283,6 +283,10 @@ void hal_interrupt_uninit(void) {
 // FIXME: attaching interrupt on KM4 side will also enable interrupt on KM0 (since it can wake up KM0 for now)?
 int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* data, InterruptMode mode, hal_interrupt_extra_configuration_t* config) {
     CHECK_TRUE(hal_pin_is_valid(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (config && (config->version < HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_3 && config->appendHandler)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
     hal_pin_info_t* pinInfo = hal_pin_map() + pin;
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
