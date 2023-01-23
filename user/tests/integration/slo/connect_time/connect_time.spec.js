@@ -44,10 +44,8 @@ function percentile(values, p) {
 	return values[i];
 }
 
-// FIXME: this is a hack, there should be a native way to send some data back from the device
 async function fetchLog() {
-	const rep = await device._request({ c: 'L' }); // Get log
-	return rep.data.trim();
+	return device.mailBox;
 }
 
 before(function() {
@@ -55,12 +53,15 @@ before(function() {
 });
 
 // TODO: The test runner doesn't support resetting the device in a loop from within a test
+// FIXME: it does now, the tests need to be fixed
 for (let i = 1; i <= CONNECT_COUNT; ++i) {
 	test(`cloud_connect_time_from_cold_boot_${i.toString().padStart(2, '0')}`, async () => {
 		// dump any failure logs from this test
 		let testLog = await fetchLog();
 		if (testLog.length) {
-			console.log(testLog);
+			for (let msg of testLog) {
+				console.log(msg.d);
+			}
 		}
 		await device.reset(); // Reset the device before running the next test
 	});
@@ -71,7 +72,9 @@ for (let i = 1; i <= CONNECT_COUNT; ++i) {
 		// dump any failure logs from this test
 		let testLog = await fetchLog();
 		if (testLog.length) {
-			console.log(testLog);
+			for (let msg of testLog) {
+				console.log(msg.d);
+			}
 		}
 		await device.reset();
 	});
@@ -79,7 +82,7 @@ for (let i = 1; i <= CONNECT_COUNT; ++i) {
 
 test('publish_and_validate_stats', async function() {
 	let stats = await fetchLog();
-	stats = JSON.parse(stats);
+	stats = JSON.parse(stats[0].d);
 	console.log('stats:');
 	console.dir(stats, { depth: null, colors: true, compact: true, maxArrayLength: 100 });
 	// Cold boot

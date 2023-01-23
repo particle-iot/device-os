@@ -431,3 +431,8 @@ test(SYSTEM_08_hardware_info) {
     }
 #endif // HAL_PLATFORM_NCP
 }
+
+test(SYSTEM_11_system_reset) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    System.reset();
+}
