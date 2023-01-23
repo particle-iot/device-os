@@ -171,13 +171,13 @@ bool testCloudConnectTimeFromColdBoot() {
     network().on(); // Make sure the network interface is turned on, so we can turn it off more easily.
     waitFor(network().isOn, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT));
     if (!network().isOn()) {
-        Test::out->println("Failed to power on the network interface!");
+        TestRunner::instance()->pushMailboxMsg("Failed to power on the network interface!");
         return false;
     }
     network().off(); // Make sure the network interface is turned off
     waitFor(network().isOff, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT)); // Do not exceed max test time
     if (!network().isOff()) {
-        Test::out->println("Failed to power off the network interface!");
+        TestRunner::instance()->pushMailboxMsg("Failed to power off the network interface!");
         return false;
     }
     Particle.disconnect(CloudDisconnectOptions().clearSession(true)); // Clear the session data
@@ -185,7 +185,7 @@ bool testCloudConnectTimeFromColdBoot() {
     network().connect();
     waitFor(network().ready, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT)); // Do not exceed max test time
     if (!network().ready()) {
-        Test::out->println("Failed to connect to cellular!");
+        TestRunner::instance()->pushMailboxMsg("Failed to connect to cellular!");
         return false;
     }
     const auto t2 = millis();
@@ -197,7 +197,7 @@ bool testCloudConnectTimeFromColdBoot() {
         CellularDevice devInfo = {};
         devInfo.size = sizeof(devInfo);
         if (cellular_device_info(&devInfo, nullptr)) {
-            Test::out->println("Failed to retreive cellular_device_info!");
+            TestRunner::instance()->pushMailboxMsg("Failed to retreive cellular_device_info!");
             return false;
         }
         if (isQuectelRadio(devInfo.dev)) {
@@ -210,7 +210,7 @@ bool testCloudConnectTimeFromColdBoot() {
     Particle.connect();
     waitFor(Particle.connected, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT)); // Do not exceed max test time
     if (!Particle.connected()) {
-        Test::out->println("Failed to connect to cloud!");
+        TestRunner::instance()->pushMailboxMsg("Failed to connect to cloud!");
         return false;
     }
     const auto t4 = millis();
@@ -238,14 +238,14 @@ bool testCloudConnectTimeFromWarmBoot() {
     stats.cloudConnectTimeFromWarmBoot[n] = TEST_MAX_TIMEOUT;
 
     if (network().ready()) {
-        Test::out->println("Network connected already!");
+        TestRunner::instance()->pushMailboxMsg("Network connected already!");
         return false;
     }
     const auto t1 = millis();
     network().connect();
     waitFor(network().ready, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT));
     if (!network().ready()) {
-        Test::out->println("Failed to connect to cellular!");
+        TestRunner::instance()->pushMailboxMsg("Failed to connect to cellular!");
         return false;
     }
     const auto t2 = millis();
@@ -255,7 +255,7 @@ bool testCloudConnectTimeFromWarmBoot() {
     Particle.connect();
     waitFor(Particle.connected, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT));
     if (!Particle.connected()) {
-        Test::out->println("Failed to connect to cloud!");
+        TestRunner::instance()->pushMailboxMsg("Failed to connect to cloud!");
         return false;
     }
     const auto t4 = millis();
@@ -350,8 +350,5 @@ test(publish_and_validate_stats) {
     serializeStatsAsJson(buf.get(), n);
     buf[n] = '\0';
     const auto runner = TestRunner::instance();
-    if (runner->logSize() < n) {
-        runner->logSize(n);
-    }
-    out->print(buf.get());
+    assertEqual(0, runner->pushMailboxBuffer(buf.get(), n, 10000));
 }
