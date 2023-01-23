@@ -30,6 +30,12 @@ extern "C" {
 #include "scope_guard.h"
 #include "module_info.h"
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#include "atomic_section.h"
+#include "spark_wiring_vector.h"
+using spark::Vector;
+#endif
+
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
 #include "mcp23s17.h"
@@ -48,11 +54,102 @@ typedef enum interrupt_state_t {
     INT_STATE_SUSPENDED
 } interrupt_state_t;
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+class InterruptConfig {
+public:
+    struct InterruptCallback {
+        bool operator==(const InterruptCallback& callback) {
+            return handler == callback.handler;
+        }
+
+        bool operator!=(const InterruptCallback& callback) {
+            return handler != callback.handler;
+        }
+
+        hal_interrupt_handler_t handler;
+        void* data;
+        uint8_t chainPriority; // The lower the value, the higher the priority
+    };
+
+    InterruptConfig()
+            : state(INT_STATE_DISABLED),
+              callbacks_() {
+    }
+    ~InterruptConfig() = default;
+
+    int appendHandler(hal_interrupt_handler_t handler, void* data, uint8_t chainPriority) {
+        size_t idx = 0;
+        InterruptCallback cb = {};
+        cb.handler = handler;
+        cb.data = data;
+        cb.chainPriority = chainPriority;
+        for (auto& callback : callbacks_) {
+            if (chainPriority < callback.chainPriority) {
+                break;
+            }
+            idx++;
+        }
+        auto temp = callbacks_;
+        CHECK_TRUE(temp.insert(idx, cb), SYSTEM_ERROR_NO_MEMORY);
+        ATOMIC_BLOCK() { 
+            spark::swap(temp, callbacks_);
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    ssize_t handlers() const {
+        return callbacks_.size();
+    }
+
+    int removeHandler(hal_interrupt_handler_t handler) {
+        auto temp = callbacks_;
+        for (auto& callback : temp) {
+            if (handler == callback.handler) {
+                temp.removeOne(callback);
+            }
+        }
+        ATOMIC_BLOCK() { 
+            spark::swap(temp, callbacks_);
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    void clearHandlers() {
+        auto temp = callbacks_;
+        callbacks_.removeAt(0, callbacks_.size());
+        ATOMIC_BLOCK() { 
+            spark::swap(temp, callbacks_);
+        }
+    }
+
+    void executeHandlers() const {
+        for (auto& callback : callbacks_) {
+            if (callback.handler) {
+                callback.handler(callback.data);
+            }
+        }
+    }
+
+public:
+    interrupt_state_t state;
+    InterruptMode mode;
+
+private:
+    Vector<InterruptCallback> callbacks_;
+};
+
+InterruptConfig interruptsConfig[TOTAL_PINS];
+
+#else
+
 struct {
     interrupt_state_t           state;
     hal_interrupt_callback_t    callback;
     InterruptMode               mode;
 } interruptsConfig[TOTAL_PINS];
+
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 int parseMode(InterruptMode mode, uint32_t* trigger, uint32_t* polarity) {
     switch(mode) {
@@ -83,9 +180,13 @@ void gpioIntHandler(void* data) {
     if (!hal_pin_is_valid(pin)) {
         return;
     }
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    interruptsConfig[pin].executeHandlers();
+#else
     if (interruptsConfig[pin].callback.handler) {
         interruptsConfig[pin].callback.handler(interruptsConfig[pin].callback.data);
     }
+#endif
 }
 
 // Particle implementation of GPIO_INTMode (without the PAD_PullCtrl() call)
@@ -152,8 +253,10 @@ void hal_interrupt_init(void) {
     // FIXME: when io expender is used, the TOTAL_PINS includes the pins on the expender
     for (int i = 0; i < TOTAL_PINS; i++) {
         interruptsConfig[i].state = INT_STATE_DISABLED;
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
         interruptsConfig[i].callback.handler = nullptr;
         interruptsConfig[i].callback.data = nullptr;
+#endif
     }
 #if defined (ARM_CORE_CM0)
     // Just in case
@@ -169,8 +272,10 @@ void hal_interrupt_uninit(void) {
             GPIO_INTMode(rtlPin, DISABLE, 0, 0, 0);
             GPIO_INTConfig(rtlPin, DISABLE);
             interruptsConfig[i].state = INT_STATE_DISABLED;
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
             interruptsConfig[i].callback.handler = nullptr;
             interruptsConfig[i].callback.data = nullptr;
+#endif
         }
     }
 }
@@ -178,6 +283,10 @@ void hal_interrupt_uninit(void) {
 // FIXME: attaching interrupt on KM4 side will also enable interrupt on KM0 (since it can wake up KM0 for now)?
 int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* data, InterruptMode mode, hal_interrupt_extra_configuration_t* config) {
     CHECK_TRUE(hal_pin_is_valid(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (config && (config->version < HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_3 && config->appendHandler)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
     hal_pin_info_t* pinInfo = hal_pin_map() + pin;
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -212,9 +321,16 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
         GPIO_UserRegIrq(rtlPin, (VOID*)gpioIntHandler, (void*)((uint32_t)pin));
         GPIO_INTMode_HAL(rtlPin, pinInfo->gpio_port, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_ENABLE);
 
-        interruptsConfig[pin].state = INT_STATE_ENABLED;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        if (!config || (config && !(config->appendHandler))) {
+            interruptsConfig[pin].clearHandlers();
+        }
+        interruptsConfig[pin].appendHandler(handler, data, config->chainPriority);
+#else
         interruptsConfig[pin].callback.handler = handler;
         interruptsConfig[pin].callback.data = data;
+#endif
+        interruptsConfig[pin].state = INT_STATE_ENABLED;
         interruptsConfig[pin].mode = mode;
         hal_pin_set_function(pin, PF_DIO);
 
@@ -238,24 +354,39 @@ int hal_interrupt_detach(uint16_t pin) {
     return hal_interrupt_detach_ext(pin, 0, nullptr);
 }
 
-int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved) {
+int hal_interrupt_detach_ext(uint16_t pin, uint8_t keepHandler, void* reserved/*handler*/) {
     CHECK_TRUE(hal_pin_is_valid(pin), SYSTEM_ERROR_INVALID_ARGUMENT);
     
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     hal_pin_info_t* pinInfo = hal_pin_map() + pin;
     if (pinInfo->type == HAL_PIN_TYPE_MCU) {
 #endif
-        const uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
-        GPIO_INTMode(rtlPin, DISABLE, 0, 0, 0);
-        GPIO_INTConfig(rtlPin, DISABLE);
-        interruptsConfig[pin].state = INT_STATE_DISABLED;
 
-        if (keepHandler) {
-            return SYSTEM_ERROR_NONE;
+        bool disable = true;
+        if (!keepHandler) {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+            auto handler = (hal_interrupt_handler_t)reserved;
+            if (handler) {
+                interruptsConfig[pin].removeHandler(handler);
+            } else {
+                interruptsConfig[pin].clearHandlers();
+            }
+            if (interruptsConfig[pin].handlers() > 0) {
+                disable = false;
+            }
+#else
+            interruptsConfig[pin].callback.handler = nullptr;
+            interruptsConfig[pin].callback.data = nullptr;
+#endif
         }
 
-        interruptsConfig[pin].callback.handler = nullptr;
-        interruptsConfig[pin].callback.data = nullptr;
+        if (disable) {
+            const uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
+            GPIO_INTMode(rtlPin, DISABLE, 0, 0, 0);
+            GPIO_INTConfig(rtlPin, DISABLE);
+            interruptsConfig[pin].state = INT_STATE_DISABLED;
+        }
+
         hal_pin_set_function(pin, PF_NONE);
 
         return SYSTEM_ERROR_NONE;

@@ -70,7 +70,8 @@ typedef struct hal_interrupt_callback_t {
 
 #define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1 4
 #define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2 5
-#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_2
+#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_3 6
+#define HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_3
 
 typedef struct hal_interrupt_extra_configuration_t {
   uint8_t version;
@@ -79,10 +80,14 @@ typedef struct hal_interrupt_extra_configuration_t {
   union {
     uint8_t flags;
     struct {
-      uint8_t keepPriority : 1;
-      uint8_t keepHandler  : 1;
+      uint8_t keepPriority  : 1;
+      uint8_t keepHandler   : 1;
+      uint8_t appendHandler : 1;
     };
   };
+#if HAL_PLATFORM_SHARED_INTERRUPT
+  uint8_t chainPriority;
+#endif
 } hal_interrupt_extra_configuration_t;
 
 #ifdef __cplusplus

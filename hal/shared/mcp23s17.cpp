@@ -93,6 +93,10 @@ int Mcp23s17::begin() {
 
     hal_interrupt_extra_configuration_t extra = {};
     extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
+#if HAL_PLATFORM_SHARED_INTERRUPT
+    extra.appendHandler = 1;
+    extra.chainPriority = 0xFF; // Lowest priority
+#endif
     CHECK(hal_interrupt_attach(IOE_INT, ioExpanderInterruptHandler, this, FALLING, &extra));
 
     initialized_ = true;
