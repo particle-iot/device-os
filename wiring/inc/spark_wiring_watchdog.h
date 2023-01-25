@@ -117,7 +117,7 @@ inline void application_checkin() {  }
 
 namespace particle {
 
-enum class WatchdogCaps : uint32_t {
+enum class WatchdogCap : uint32_t {
     NONE            = HAL_WATCHDOG_CAPS_NONE,
     RESET           = HAL_WATCHDOG_CAPS_RESET,              /** The watchdog can be configured to not hard resetting device on expired. */
     NOTIFY          = HAL_WATCHDOG_CAPS_NOTIFY,             /** The watchdog can generate an interrupt on expired. */
@@ -128,19 +128,20 @@ enum class WatchdogCaps : uint32_t {
     DEBUG_RUNNING   = HAL_WATCHDOG_CAPS_DEBUG_RUNNING,       /** The watchdog will be paused in debug mode. */
     ALL             = HAL_WATCHDOG_CAPS_ALL
 };
-ENABLE_ENUM_CLASS_BITWISE(WatchdogCaps);
+ENABLE_ENUM_CLASS_BITWISE(WatchdogCap);
+
+using WatchdogCaps = EnumFlags<WatchdogCap>;
+
+enum class WatchdogState : uint8_t {
+    DISABLED = HAL_WATCHDOG_STATE_DISABLED,
+    CONFIGURED = HAL_WATCHDOG_STATE_CONFIGURED,
+    STARTED = HAL_WATCHDOG_STATE_STARTED,
+    SUSPENDED = HAL_WATCHDOG_STATE_SUSPENDED,
+    STOPPED = HAL_WATCHDOG_STATE_STOPPED,
+};
 
 using WatchdogOnExpiredStdFunction = std::function<void(void)>;
 typedef void (*WatchdogOnExpiredCallback)(void* context);
-
-class WatchdogInfo : public hal_watchdog_info_t {
-public:
-    WatchdogInfo() {
-        this->size = sizeof(hal_watchdog_info_t);
-        this->version = HAL_WATCHDOG_VERSION;
-    }
-};
-static_assert(std::is_standard_layout<WatchdogInfo>::value);
 
 class WatchdogConfiguration {
 public:
@@ -151,6 +152,10 @@ public:
         config_.enable_caps = HAL_WATCHDOG_CAPS_RESET | HAL_WATCHDOG_CAPS_SLEEP_RUNNING;
     }
 
+    WatchdogConfiguration(hal_watchdog_config_t conf)
+            : config_(conf) {
+    }
+
     ~WatchdogConfiguration() = default;
 
     WatchdogConfiguration& timeout(system_tick_t ms) {
@@ -158,13 +163,21 @@ public:
         return *this;
     }
 
+    system_tick_t timeout() const {
+        return config_.timeout_ms;
+    }
+
     WatchdogConfiguration& timeout(std::chrono::milliseconds ms) {
         return timeout(ms.count());
     }
 
     WatchdogConfiguration& capabilities(WatchdogCaps caps) {
-        config_.enable_caps = to_underlying<WatchdogCaps>(caps);
+        config_.enable_caps = caps.value();
         return *this;
+    }
+
+    WatchdogCaps capabilities() const {
+        return WatchdogCaps::fromUnderlying(config_.enable_caps);
     }
 
     const hal_watchdog_config_t* halConfig() const {
@@ -180,6 +193,49 @@ private:
     hal_watchdog_config_t config_;
 
     static constexpr uint32_t WATCHDOG_DEFAULT_TIMEOUT_MS = 5000;
+};
+
+class WatchdogInfo : public hal_watchdog_info_t {
+public:
+    WatchdogInfo()
+            : info_{} {
+        info_.size = sizeof(hal_watchdog_info_t);
+        info_.version = HAL_WATCHDOG_VERSION;
+    }
+
+    WatchdogInfo(hal_watchdog_info_t info)
+            : info_(info) {
+    }
+
+    WatchdogCaps mandatoryCapabilities() const {
+        return WatchdogCaps::fromUnderlying(info_.mandatory_caps);
+    }
+
+    WatchdogCaps capabilities() const {
+        return WatchdogCaps::fromUnderlying(info_.optional_caps);
+    }
+
+    WatchdogConfiguration configuration() const {
+        return WatchdogConfiguration(info_.config);
+    }
+
+    system_tick_t minTimeout() const {
+        return info_.min_timeout_ms;
+    }
+
+    system_tick_t maxTimeout() const {
+        return info_.max_timeout_ms;
+    }
+
+    WatchdogState state() const {
+        return WatchdogState(info_.state);
+    }
+
+    hal_watchdog_info_t* halInfo() {
+        return &info_;
+    }
+private:
+    hal_watchdog_info_t info_;
 };
 
 /**

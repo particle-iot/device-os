@@ -18,27 +18,27 @@ void onWatchdogExpiredHandlerFunc(void* context) {
 
 test(watchdog_caps) {
     API_COMPILE({
-        EnumFlags<WatchdogCaps> caps = WatchdogCaps::NONE |
-                                       WatchdogCaps::RESET |
-                                       WatchdogCaps::NOTIFY |
-                                       WatchdogCaps::NOTIFY_ONLY |
-                                       WatchdogCaps::RECONFIGURABLE |
-                                       WatchdogCaps::STOPPABLE |
-                                       WatchdogCaps::SLEEP_RUNNING |
-                                       WatchdogCaps::DEBUG_RUNNING |
-                                       WatchdogCaps::ALL;
+        auto caps = WatchdogCap::NONE |
+                                       WatchdogCap::RESET |
+                                       WatchdogCap::NOTIFY |
+                                       WatchdogCap::NOTIFY_ONLY |
+                                       WatchdogCap::RECONFIGURABLE |
+                                       WatchdogCap::STOPPABLE |
+                                       WatchdogCap::SLEEP_RUNNING |
+                                       WatchdogCap::DEBUG_RUNNING |
+                                       WatchdogCap::ALL;
         (void)caps;
     });
 }
 
 test(watchdog_configuration_class) {
-    API_COMPILE(WatchdogConfiguration().timeout(1234).capabilities(WatchdogCaps::RESET));
-    API_COMPILE(WatchdogConfiguration().timeout(10s).capabilities(WatchdogCaps::RESET));
+    API_COMPILE(WatchdogConfiguration().timeout(1234).capabilities(WatchdogCap::RESET));
+    API_COMPILE(WatchdogConfiguration().timeout(10s).capabilities(WatchdogCap::RESET));
 }
 
 test(watchdog_class) {
-    WatchdogConfiguration config = {};
-    WatchdogInfo info = {};
+    WatchdogConfiguration config;
+    WatchdogInfo info;
 
     API_COMPILE({ int ret = Watchdog.init(config); (void)ret; });
     API_COMPILE({ int ret = Watchdog.start(); (void)ret; });
@@ -52,6 +52,15 @@ test(watchdog_class) {
     API_COMPILE({ int ret = Watchdog.onExpired([]() {}); (void)ret; });
     API_COMPILE({ int ret = Watchdog.onExpired(&Handlers::onWatchdogExpired, &watchdogHandler); (void)ret; });
     API_COMPILE({ int ret = Watchdog.onExpired(std::bind(&Handlers::onWatchdogExpired, &watchdogHandler)); (void)ret; });
+
+    API_COMPILE({ auto v = info.mandatoryCapabilities(); });
+    API_COMPILE({ auto v = info.capabilities(); });
+    API_COMPILE({ auto v = info.configuration(); });
+    API_COMPILE({ auto v = info.minTimeout(); });
+    API_COMPILE({ auto v = info.maxTimeout(); });
+    API_COMPILE({ auto v = info.state(); });
+    API_COMPILE({ auto v = config.capabilities(); });
+    API_COMPILE({ auto v = config.timeout(); }); 
 }
 
 #endif
