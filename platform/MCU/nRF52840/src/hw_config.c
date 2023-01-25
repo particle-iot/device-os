@@ -32,6 +32,7 @@
 #include "nrf_sdh_soc.h"
 #endif
 #include "nrf52840.h"
+#include "nrfx_wdt.h"
 
 #include "hw_config.h"
 #include "service_debug.h"
@@ -112,6 +113,16 @@ void Set_System(void)
     {
         /* Waiting */
     }
+
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    if (nrf_wdt_started()) {
+        HAL_Core_Write_Backup_Register(BKP_DR_04, 0xDEADBEEF); // Soft-reset happened.
+        nrf_gpiote_int_disable(GPIOTE_INTENSET_PORT_Msk);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
+        nrf_gpio_cfg_sense_input(QSPI_FLASH_CSN_PIN, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_HIGH);
+        nrf_power_system_off();
+    }
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
     ret = nrf_drv_power_init(NULL);
     SPARK_ASSERT(ret == NRF_SUCCESS || ret == NRF_ERROR_MODULE_ALREADY_INITIALIZED);
@@ -433,6 +444,6 @@ void IWDG_Reset_Enable(uint32_t msTimeout)
         }
 
         // FIXME: DON'T enable watchdog temporarily
-        // HAL_Watchdog_Init(msTimeout);
+        // hal_watchdog_start(msTimeout);
     }
 }

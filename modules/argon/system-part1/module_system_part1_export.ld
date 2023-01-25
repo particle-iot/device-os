@@ -40,3 +40,4 @@ PROVIDE ( dynalib_location_hal_nfc = system_part1_module_table + 100 );
 PROVIDE ( dynalib_location_hal_mesh_deprecated = system_part1_module_table + 104 );
 PROVIDE ( dynalib_location_hal_posix_syscall = system_part1_module_table + 108 );
 PROVIDE ( dynalib_location_hal_storage = system_part1_module_table + 112 );
+PROVIDE ( dynalib_location_hal_watchdog = system_part1_module_table + 116 );

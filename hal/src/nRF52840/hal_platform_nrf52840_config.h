@@ -107,3 +107,9 @@
 #define HAL_PLATFORM_PROHIBIT_XIP (1)
 
 #define HAL_PLATFORM_CONCURRENT_DUMP_THREADS (1)
+
+// hardware counter for System.ticks() supported
+#define HAL_PLATFORM_SYSTEM_HW_TICKS (1)
+
+#define HAL_PLATFORM_HW_WATCHDOG (1)
+#define HAL_PLATFORM_HW_WATCHDOG_COUNT (1)

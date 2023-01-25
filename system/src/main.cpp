@@ -126,7 +126,6 @@ inline void CLR_BUTTON_TIMEOUT() {
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-static volatile uint32_t TimingIWDGReload;
 
 /**
  * KNowing the current listen mode isn't sufficient to determine the correct action (since that may or may not have changed)
@@ -402,21 +401,6 @@ extern "C" void HAL_SysTick_Handler(void)
         network_listen(0, 0, 0);
         HAL_Notify_Button_State(0, true);
     }
-
-#ifdef IWDG_RESET_ENABLE
-    if (TimingIWDGReload >= TIMING_IWDG_RELOAD)
-    {
-        TimingIWDGReload = 0;
-
-        /* Reload WDG counter */
-        HAL_Notify_WDT();
-        DECLARE_SYS_HEALTH(CLEARED_WATCHDOG);
-    }
-    else
-    {
-        TimingIWDGReload++;
-    }
-#endif
 
 #if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK
     BUTTON_Timer_Handler();
