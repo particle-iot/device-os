@@ -25,6 +25,7 @@
 #define	HAL_DYNALIB_CORE_H
 
 #include "dynalib.h"
+#include "hal_platform.h"
 
 #ifdef DYNALIB_EXPORT
 #include "core_hal.h"
@@ -59,8 +60,8 @@ DYNALIB_FN(13, hal_core, hal_get_device_id, unsigned(uint8_t*, unsigned))
 
 DYNALIB_FN(14, hal_core, HAL_Get_Sys_Health, eSystemHealth(void))
 DYNALIB_FN(15, hal_core, HAL_Set_Sys_Health, void(eSystemHealth))
-DYNALIB_FN(16, hal_core, HAL_watchdog_reset_flagged, bool(void))
-DYNALIB_FN(17, hal_core, HAL_Notify_WDT, void(void))
+DYNALIB_FN(16, hal_core, hal_watchdog_reset_flagged_deprecated, bool(void))
+DYNALIB_FN(17, hal_core, hal_watchdog_refresh_deprecated, void(void))
 DYNALIB_FN(18, hal_core, HAL_Bootloader_Get_Flag, uint16_t(BootloaderFlag))
 DYNALIB_FN(19, hal_core, HAL_Bootloader_Lock, void(bool))
 DYNALIB_FN(20, hal_core, HAL_Core_System_Reset_FlagSet, bool(RESET_TypeDef))

@@ -57,6 +57,7 @@
 #include <nrf_pwm.h>
 #include "concurrent_hal.h"
 #include "user_hal.h"
+#include "nrfx_wdt.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -375,6 +376,8 @@ void HAL_Core_Config(void) {
       FLASH_SERIAL, EXTERNAL_FLASH_FAC_ADDRESS,
       FLASH_INTERNAL, USER_FIRMWARE_IMAGE_LOCATION, FIRMWARE_IMAGE_SIZE,
       FACTORY_RESET_MODULE_FUNCTION, MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS); //true to verify the CRC during copy also
+
+      HAL_Core_Write_Backup_Register(BKP_DR_01, 0xFFFF);
 }
 
 void HAL_Core_Setup(void) {
@@ -483,6 +486,14 @@ void HAL_Core_Mode_Button_Reset(uint16_t button)
 }
 
 void HAL_Core_System_Reset(void) {
+    if (nrf_wdt_started()) {
+        // Dirty-hack
+        HAL_Core_Write_Backup_Register(BKP_DR_04, 0xDEADBEEF);
+        nrf_gpiote_int_disable(GPIOTE_INTENSET_PORT_Msk);
+        nrf_gpiote_event_clear(NRF_GPIOTE_EVENTS_PORT);
+        nrf_gpio_cfg_sense_input(QSPI_FLASH_CSN_PIN, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_HIGH);
+        sd_power_system_off();
+    }
     NVIC_SystemReset();
 }
 
@@ -564,6 +575,9 @@ bool HAL_Core_System_Reset_FlagSet(RESET_TypeDef resetType) {
             return reset_reason == NRF_POWER_RESETREAS_RESETPIN_MASK;
         }
         case SOFTWARE_RESET: {
+            if (HAL_Core_Read_Backup_Register(BKP_DR_04) == 0xDEADBEEF) {
+                return true;
+            }
             return reset_reason == NRF_POWER_RESETREAS_SREQ_MASK;
         }
         case WATCHDOG_RESET: {
@@ -625,6 +639,8 @@ static void Init_Last_Reset_Info()
         }
         last_reset_info.data = 0; // Not used
     }
+
+    HAL_Core_Write_Backup_Register(BKP_DR_04, 0);
 
     // Clear Reset info register
     sd_power_reset_reason_clr(0xFFFFFFFF);

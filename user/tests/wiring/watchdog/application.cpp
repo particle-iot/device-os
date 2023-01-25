@@ -1,6 +1,5 @@
 /*
- ******************************************************************************
- *  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,24 +13,20 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************
  */
 
-#include "watchdog_hal.h"
-#include "logging.h"
+#ifndef PARTICLE_TEST_RUNNER
 
-// backward compatibility for nRF52
-bool HAL_watchdog_reset_flagged(void) 
-{
-    return false;
-}
+#include "application.h"
+#include "unit-test/unit-test.h"
 
-void HAL_Notify_WDT()
-{
+SYSTEM_MODE(SEMI_AUTOMATIC);
 
-}
+UNIT_TEST_APP();
 
-void HAL_Watchdog_Init(uint32_t timeout_tick_ms)
-{
+// Enable threading if compiled with "USE_THREADING=y"
+#if PLATFORM_THREADING == 1 && USE_THREADING == 1
+SYSTEM_THREAD(ENABLED);
+#endif
 
-}
+#endif // PARTICLE_TEST_RUNNER

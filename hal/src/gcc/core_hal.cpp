@@ -428,17 +428,6 @@ uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize)
     //return crc32(0, pBuffer, bufferSize);
 }
 
-// todo find a technique that allows accessor functions to be inlined while still keeping
-// hardware independence.
-bool HAL_watchdog_reset_flagged()
-{
-    return false;
-}
-
-void HAL_Notify_WDT()
-{
-}
-
 void HAL_Core_Init(void)
 {
     hal_rtc_init();

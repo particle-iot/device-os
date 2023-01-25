@@ -42,6 +42,7 @@ void HAL_Delay_Microseconds(uint32_t uSec)
 
     while((DWT->CYCCNT - DWT_START) < DWT_TOTAL)
     {
-        HAL_Notify_WDT();
+        // WARNING: We now leave the user application to fully control the watchdog.
+        // hal_watchdog_refresh_deprecated();
     }
 }
