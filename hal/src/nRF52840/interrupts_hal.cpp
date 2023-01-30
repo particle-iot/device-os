@@ -141,7 +141,7 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
                 }
             }
         } else if (err_code == NRFX_ERROR_INVALID_STATE) {
-            if (!config->keepHandler) {
+            if (!config || (config && !(config->keepHandler))) {
                 // This pin is used by GPIOTE, Change interrupt handler if necessary
                 for (int i = 0; i < EXTI_CHANNEL_NUM; i++) {
                     if (m_exti_channels[i].pin == pin) {
