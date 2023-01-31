@@ -463,13 +463,6 @@ static void configRtcWakeupSource(const hal_wakeup_source_base_t* wakeupSources)
             // Reconfigure RTC2 for wake-up
             NVIC_ClearPendingIRQ(RTC2_IRQn);
 
-            nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
-            nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
-            // Make sure that RTC is ticking
-            // See 'TASK and EVENT jitter/delay'
-            // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.nrf52840.ps%2Frtc.html
-            while (!nrf_rtc_event_pending(NRF_RTC2, NRF_RTC_EVENT_TICK));
-
             nrf_rtc_event_disable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
             nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
 
@@ -972,6 +965,17 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     nrf_rtc_task_trigger(NRF_RTC2, NRF_RTC_TASK_START);
     __DSB();
     __ISB();
+
+    // WARNING: This is going to fix the issue that when both .ble() and .duration()
+    // are specified as wakeup sources, device will run into hardfault if the following
+    // check comes after __disable_irq(), such as in configRtcWakeupSource() previously.
+    nrf_rtc_event_enable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
+    // Make sure that RTC is ticking
+    // See 'TASK and EVENT jitter/delay'
+    // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.nrf52840.ps%2Frtc.html
+    while (!nrf_rtc_event_pending(NRF_RTC2, NRF_RTC_EVENT_TICK));
+    nrf_rtc_event_disable(NRF_RTC2, RTC_EVTEN_TICK_Msk);
+    nrf_rtc_event_clear(NRF_RTC2, NRF_RTC_EVENT_TICK);
 
     // Workaround for FPU anomaly
     fpu_sleep_prepare();
