@@ -35,6 +35,8 @@ extern "C" {
 #include "basenetif.h"
 #include "check.h"
 
+#include "wiznet/wiznetif_config.h"
+
 using namespace particle::net;
 
 namespace {
@@ -1153,11 +1155,38 @@ int if_event_handler_del(if_event_handler_cookie_t cookie) {
 int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) {
     LwipTcpIpCoreLock lk;
 
-    if (!netif_validate(iface)) {
+    // XXX: Skipping iface validate/lookup for IF_REQ_DRIVER_SPECIFIC because sometimes we might need to
+    //      remap the pins for an interface that's not available, because it's pin configuration is wrong.
+    if (type != IF_REQ_DRIVER_SPECIFIC && !netif_validate(iface)) {
         return -1;
     }
 
     switch (type) {
+        case IF_REQ_DRIVER_SPECIFIC: {
+            // XXX: This is what we might normally do,
+            // but it wasn't working when the iface in question is not found.
+            // ---
+            // auto dsreq = (if_req_driver_specific*)req;
+            // auto bnetif = getBaseNetif(iface);
+            // CHECK_TRUE(bnetif, -1);
+            // bnetif->request(dsreq, sizeof(dsreq));
+            if (reqsize != sizeof(if_wiznet_pin_remap)) {
+                return -1;
+            }
+
+            if_wiznet_pin_remap* wzpr = (if_wiznet_pin_remap*)req;
+            if (wzpr->base.type == IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP) {
+                // LOG(INFO, "IF_REQUEST cs_pin: %u, reset_pin: %u, int_pin: %u",
+                //         wzpr->cs_pin, wzpr->reset_pin, wzpr->int_pin);
+                WizNetifConfigData wizNetifConfigData;
+                wizNetifConfigData.size = sizeof(WizNetifConfigData);
+                wizNetifConfigData.cs_pin = wzpr->cs_pin;
+                wizNetifConfigData.reset_pin = wzpr->reset_pin;
+                wizNetifConfigData.int_pin = wzpr->int_pin;
+                WizNetifConfig::instance()->setConfigData(&wizNetifConfigData);
+            }
+            break;
+        }
         case IF_REQ_POWER_STATE: {
             if (reqsize != sizeof(if_req_power)) {
                 return -1;
