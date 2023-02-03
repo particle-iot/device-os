@@ -77,7 +77,7 @@ using namespace particle;
 using namespace particle::system;
 using particle::protocol::ProtocolError;
 
-#if PLATFORM_ID != PLATFORM_GCC
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 using particle::control::common::DecodedString;
 using particle::control::common::DecodedCString;
 #endif
@@ -689,7 +689,7 @@ bool publishSafeModeEventIfNeeded() {
 
 void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedResponseCallback respCallback, void* ctx) {
     clear_system_error_message();
-#if PLATFORM_ID != PLATFORM_GCC
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
     int result = SYSTEM_ERROR_UNKNOWN;
     NAMED_SCOPE_GUARD(respGuard, {
         respCallback(result, ctx);
@@ -751,7 +751,7 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
     system_pending_shutdown(RESET_REASON_CONFIG_UPDATE);
 #else
     respCallback(SYSTEM_ERROR_NOT_SUPPORTED, ctx);
-#endif // PLATFORM_ID == PLATFORM_GCC
+#endif // PLATFORM_ID == PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 }
 
 #if HAL_PLATFORM_COMPRESSED_OTA

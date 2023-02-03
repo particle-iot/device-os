@@ -35,7 +35,8 @@ if [ -n "$CI_BUILD_RELEASE" ]; then
     if [ $RET -ne 0 ]; then
         exit $RET
     fi
-    export BUILD_PLATFORM=$BUILD_PLATFORM_ORIGINAL
+    export BUILD_PLATFORM="${BUILD_PLATFORM_ORIGINAL[@]}"
+    echo "BUILD_PLATFORM=$BUILD_PLATFORM"
 fi
 
 cd $DEVICE_OS_ROOT
