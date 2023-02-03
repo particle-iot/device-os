@@ -23,8 +23,6 @@
 #include "hal_platform.h"
 #include "system_tick_hal.h"
 
-#if HAL_PLATFORM_HW_WATCHDOG
-
 #define HAL_WATCHDOG_VERSION    1
 
 typedef void (*hal_watchdog_on_expired_callback_t)(void* context);
@@ -92,8 +90,6 @@ void hal_watchdog_refresh_deprecated(void);
 #ifdef	__cplusplus
 }
 #endif
-
-#endif // HAL_PLATFORM_HW_WATCHDOG
 
 #endif	/* WATCHDOG_HAL_H */
 

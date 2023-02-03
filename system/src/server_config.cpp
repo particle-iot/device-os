@@ -19,7 +19,7 @@
 
 #include "hal_platform.h"
 
-#if PLATFORM_ID != PLATFORM_GCC || defined(UNIT_TEST)
+#if (PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL) || defined(UNIT_TEST)
 
 #include <memory>
 #include <cstdint>
@@ -276,4 +276,4 @@ ServerConfig* ServerConfig::instance() {
 
 } // namespace particle
 
-#endif // PLATFORM_ID != PLATFORM_GCC || defined(UNIT_TEST)
+#endif // (PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL) || defined(UNIT_TEST)

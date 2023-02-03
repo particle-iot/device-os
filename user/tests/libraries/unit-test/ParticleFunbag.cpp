@@ -6,6 +6,8 @@
 #include "flashee-eeprom.h"
 #endif
 
+#include "check.h"
+
 namespace particle {
 
 namespace {
