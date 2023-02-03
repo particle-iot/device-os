@@ -86,6 +86,7 @@ public:
         SPARK_ASSERT(ret == NRF_SUCCESS);
 
         memcpy(&info_.config, config, std::min(info_.config.size, config->size));
+        info_.state = HAL_WATCHDOG_STATE_CONFIGURED;
         initialized_ = true;
         return SYSTEM_ERROR_NONE;
     }
