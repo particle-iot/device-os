@@ -75,6 +75,7 @@ public:
         }
         
         memcpy(&info_.config, config, std::min(info_.config.size, config->size));
+        info_.state = HAL_WATCHDOG_STATE_CONFIGURED;
         initialized_ = true;
         return SYSTEM_ERROR_NONE;
     }
@@ -99,6 +100,7 @@ public:
     int stop() override {
         CHECK_TRUE(started(), SYSTEM_ERROR_NONE);
         WDG_Cmd(DISABLE);
+        info_.state = HAL_WATCHDOG_STATE_STOPPED;
         CHECK_FALSE(started(), SYSTEM_ERROR_INTERNAL);
         return SYSTEM_ERROR_NONE;
     }
