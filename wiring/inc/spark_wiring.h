@@ -74,6 +74,12 @@ enum class DriveStrength: uint8_t {
     STANDARD   = HAL_GPIO_DRIVE_STANDARD
 };
 
+enum class AdcReference {
+    DEFAULT   = HAL_ADC_REFERENCE_DEFAULT,
+    INTERNAL  = HAL_ADC_REFERENCE_INTERNAL,
+    VCC       = HAL_ADC_REFERENCE_VCC
+};
+
 /*
 * GPIO
 */
@@ -103,6 +109,7 @@ uint8_t analogWriteResolution(hal_pin_t pin, uint8_t value);
 uint8_t analogWriteResolution(hal_pin_t pin);
 uint32_t analogWriteMaxFrequency(hal_pin_t pin);
 void setDACBufferred(hal_pin_t pin, uint8_t state);
+int analogSetReference(AdcReference reference);
 
 int map(int value, int fromStart, int fromEnd, int toStart, int toEnd);
 double map(double value, double fromStart, double fromEnd, double toStart, double toEnd);

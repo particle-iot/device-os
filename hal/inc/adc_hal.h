@@ -26,6 +26,12 @@ typedef enum hal_adc_state_t {
     HAL_ADC_STATE_SUSPENDED
 } hal_adc_state_t;
 
+typedef enum hal_adc_reference_t {
+    HAL_ADC_REFERENCE_DEFAULT = 0,
+    HAL_ADC_REFERENCE_INTERNAL = 1,
+    HAL_ADC_REFERENCE_VCC = 2
+} hal_adc_reference_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,7 +41,7 @@ int32_t hal_adc_read(hal_pin_t pin);
 void hal_adc_dma_init();
 int hal_adc_calibrate(uint32_t reserved, void* reserved1);
 int hal_adc_sleep(bool sleep, void* reserved);
-
+int hal_adc_set_reference(uint32_t reference, void* reserved);
 
 #include "adc_hal_compat.h"
 

@@ -293,3 +293,7 @@ int hal_adc_sleep(bool sleep, void* reserved) {
 int hal_adc_calibrate(uint32_t reserved, void* reserved1) {
     return Adc::instance().calibration();
 }
+
+int hal_adc_set_reference(uint32_t reference, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

@@ -22,11 +22,6 @@
 #include "check.h"
 #include "deviceid_hal.h"
 
-typedef enum hal_adc_reference_t {
-    HAL_ADC_REFERENCE_EXTERNAL,
-    HAL_ADC_REFERENCE_INTERNAL
-} hal_adc_reference_t;
-
 static volatile hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
 
 static const nrfx_saadc_config_t saadcConfig = {
@@ -36,7 +31,7 @@ static const nrfx_saadc_config_t saadcConfig = {
     .low_power_mode     = false
 };
 
-static hal_adc_reference_t adcReference = HAL_ADC_REFERENCE_EXTERNAL;
+static hal_adc_reference_t adcReference = HAL_ADC_REFERENCE_VCC;
 static constexpr uint32_t HAL_VERSION_BRN404X_V003 = 0x03;
 static constexpr uint32_t HW_FEATURE_FLAG_USE_INTERNAL_ADC_REFERENCE_BIT = (1<<15);
 
@@ -177,3 +172,20 @@ int hal_adc_sleep(bool sleep, void* reserved) {
 int hal_adc_calibrate(uint32_t reserved, void* reserved1) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
+
+int hal_adc_set_reference(uint32_t reference, void* reserved) {
+    switch (reference) {
+        case HAL_ADC_REFERENCE_DEFAULT:
+        case HAL_ADC_REFERENCE_VCC:
+            adcReference = HAL_ADC_REFERENCE_VCC;
+            break;
+        case HAL_ADC_REFERENCE_INTERNAL:
+            adcReference = HAL_ADC_REFERENCE_INTERNAL;
+            break;
+        default: 
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
