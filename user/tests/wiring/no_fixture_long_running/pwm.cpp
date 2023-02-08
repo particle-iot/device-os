@@ -40,6 +40,8 @@ const PinMapping pwm_pins[] = {
         PIN(A2), PIN(A5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #elif (PLATFORM_ID == PLATFORM_ESOMX)
         PIN(D0), PIN(D1), PIN(D2), PIN(A3), PIN(A4), PIN(A5), PIN(A6), PIN(TX), PIN(RX), PIN(B2), PIN(B3), PIN(C4), PIN(C5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
+#elif (PLATFORM_ID == PLATFORM_MSOM)
+        PIN(D4), PIN(D5), PIN(D6), PIN(D7), PIN(D9), PIN(D10), PIN(A5), PIN(A1), PIN(A0)
 #else
 #error "Unsupported platform"
 #endif
@@ -80,7 +82,11 @@ test(PWM_02_NoAnalogWriteWhenPinSelectedIsNotTimerChannel) {
     skip();
 #endif
 #elif HAL_PLATFORM_RTL872X
+#if PLATFORM_ID == PLATFORM_MSOM
+    hal_pin_t pin = D0;  //pin under test, D0 is not a Timer channel
+#else
     hal_pin_t pin = D5;  //pin under test, D5 is not a Timer channel
+#endif
 #else
 #error "Unsupported platform"
 #endif

@@ -109,6 +109,11 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
 int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries,
         void* reserved);
 
+int inet_gethostbyname_wlan(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, network_interface_t nif, void* reserved);
+
+int inet_ping_wlan(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries, void* reserved);
+
+uint32_t HAL_NET_SetNetWatchDog_wlan(uint32_t);
 
 #ifdef  __cplusplus
 }

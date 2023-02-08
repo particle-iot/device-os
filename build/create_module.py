@@ -51,6 +51,7 @@ class Platform(IntEnum):
     TRACKER = 26
     TRACKERM = 28
     P2 = 32
+    MSOM = 35
 
 class StructSerializable(struct.Struct):
     def __init__(self, fmt):
@@ -244,7 +245,7 @@ GEN3_RADIO_STACK_FLAGS = ModuleFlags.DROP_MODULE_INFO
 GEN3_RADIO_STACK_DEPENDENCY = ModuleDependency(ModuleFunction.BOOTLOADER, 501)
 GEN3_RADIO_STACK_DEPENDENCY2 = ModuleDependency(ModuleFunction.SYSTEM_PART, 1321, 1)
 
-RTL_PLATFORMS = [Platform.P2, Platform.TRACKERM]
+RTL_PLATFORMS = [Platform.P2, Platform.TRACKERM, Platform.MSOM]
 RTL_MBR_OFFSET = 0x08000000
 RTL_KM0_PART1_OFFSET = 0x08014000
 

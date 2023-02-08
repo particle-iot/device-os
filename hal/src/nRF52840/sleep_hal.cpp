@@ -743,7 +743,13 @@ static int validateUsartWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sou
 
 static int validateNetworkWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_network_t* network) {
     if (!(network->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY)) {
-        if (!hal_usart_is_enabled(HAL_USART_SERIAL2)) {
+#if HAL_PLATFORM_CELLULAR
+        if (network->index == NETWORK_INTERFACE_CELLULAR &&
+                !hal_usart_is_enabled(HAL_PLATFORM_CELLULAR_SERIAL)) {
+#elif HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_NCP_SDIO
+        if (network->index == NETWORK_INTERFACE_WIFI_STA &&
+                !hal_usart_is_enabled(HAL_PLATFORM_WIFI_SERIAL)) {
+#endif
             return SYSTEM_ERROR_INVALID_STATE;
         }
         if (mode == HAL_SLEEP_MODE_HIBERNATE) {

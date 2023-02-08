@@ -109,7 +109,8 @@ function valid_platform ()
     # Validate platform (result of expression returned to caller)
     [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || \
             [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "tracker" ] || \
-            [ "$platform" = "esomx" ] || [ "$platform" = "p2" ] || [ "$platform" = "trackerm" ]
+            [ "$platform" = "esomx" ] || [ "$platform" = "p2" ] || [ "$platform" = "trackerm" ] || \
+            [ "$platform" = "msom" ]
 }
 
 # Handle invalid arguments
@@ -158,6 +159,9 @@ case "$PLATFORM" in
         ;;
     "p2")
         PLATFORM_ID="32"
+        ;;
+    "msom")
+        PLATFORM_ID="35"
         ;;
     *)
         echo "ERROR: No rules to release platform: \"$PLATFORM\"!"

@@ -246,6 +246,10 @@ elif [ ! -z $PLATFORM ]; then
             PLATFORM_ID="32"
             GEN3=true
             ;;
+        "msom")
+            PLATFORM_ID="35"
+            GEN3=true
+            ;;
         *)
             echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
             exit 6
@@ -289,6 +293,10 @@ else
             PLATFORM="p2"
             GEN3=true
             ;;
+        35)
+            PLATFORM="msom"
+            GEN3=true
+            ;;
         *)
             echo "ERROR: No rules to release platform id: $PLATFORM_ID!"
             exit 7
@@ -329,7 +337,7 @@ rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 #########################
 
 # GEN3
-if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ] || [ $PLATFORM_ID -eq 28 ] || [ $PLATFORM_ID -eq 32 ]; then
+if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ] || [ $PLATFORM_ID -eq 28 ] || [ $PLATFORM_ID -eq 32 ] || [ $PLATFORM_ID -eq 35 ]; then
     # Configure
     if [ $DEBUG = true ]; then
         cd ../main

@@ -152,7 +152,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
 
 
     // Initialize serial stream
-    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, getDefaultSerialConfig()));
+    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_PLATFORM_CELLULAR_SERIAL, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, getDefaultSerialConfig()));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
 
     // Initialize muxed channel stream
@@ -1026,6 +1026,7 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 bool QuectelNcpClient::isQuecCatM1Device() {
     int ncp_id = ncpId();
     return (ncp_id == PLATFORM_NCP_QUECTEL_BG96 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF ||
@@ -1042,14 +1043,16 @@ bool QuectelNcpClient::isQuecCat1Device() {
 
 bool QuectelNcpClient::isQuecCatNBxDevice() {
     int ncp_id = ncpId();
-    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
 }
 
 bool QuectelNcpClient::isQuecBG95xDevice() {
     int ncp_id = ncpId();
-    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF) ;
 }
@@ -1366,7 +1369,7 @@ int QuectelNcpClient::registerNet() {
     }
 
     if (isQuecCatM1Device()) {
-        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
             // NOTE: BG96 supports 2G fallback which we disable explicitly so that a 10W power supply is not required
             // Configure RATs to be searched
             // Set to scan LTE only if not already set, take effect immediately

@@ -94,7 +94,8 @@ function valid_platform()
     # Validate platform (result of expression returned to caller)
     [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || [ "$platform" = "boron" ] || \
     [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || [ "$platform" = "tracker" ] || \
-    [ "$platform" = "esomx" ] || [ "$platform" = "p2" ] || [ "$platform" = "trackerm" ]
+    [ "$platform" = "esomx" ] || [ "$platform" = "p2" ] || [ "$platform" = "trackerm" ] || \
+    [ "$platform" = "msom" ]
 }
 
 # Identify the absolute directory
