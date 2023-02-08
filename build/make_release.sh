@@ -131,7 +131,7 @@ function valid_platform()
     # Validate platform (result of expression returned to caller)
     [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || \
             [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || \
-            [ "$platform" = "esomx" ] || [ "$platform" = "tracker" ] || [ "$platform" = "p2" ] || [ "$platform" = "trackerm" ]
+            [ "$platform" = "esomx" ] || [ "$platform" = "tracker" ] || [ "$platform" = "p2" ] || [ "$platform" = "trackerm" ] || [ "$platform" = "msom" ]
 }
 
 if !(valid_platform $PLATFORM); then
@@ -156,6 +156,7 @@ if [ $PLATFORM = "all" ]; then
     release_platform "esomx"
     release_platform "p2"
     release_platform "trackerm"
+    release_platform "msom"
 else
 	release_platform "$PLATFORM"
 fi

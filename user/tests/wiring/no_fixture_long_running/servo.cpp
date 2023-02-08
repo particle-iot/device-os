@@ -49,7 +49,11 @@ test(SERVO_01_CannotAttachWhenPinSelectedIsNotTimerChannel) {
     hal_pin_t pin = D0;
 # endif
 #elif HAL_PLATFORM_RTL872X
+#if PLATFORM_ID == PLATFORM_MSOM
+    hal_pin_t pin = D0;
+#else
     hal_pin_t pin = D5;
+#endif
 #else
 #error "Unsupported platform"
 #endif

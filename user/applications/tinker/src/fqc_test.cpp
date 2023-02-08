@@ -263,8 +263,13 @@ bool FqcTest::bleScan(JSONValue req) {
 // Two sets of pins on the P2 jig are not adjacent and require a hookup wire:
 // - S4 (PA0) + WKP/D10 (PA15)
 // - A5 (PB4) + S6 (PB31)
+#if PLATFORM_ID == PLATFORM_P2
 static Vector<uint16_t> p2_gpio_test_pins = { A5, S6, WKP, S4, D0, D1, S0, S1, S2, A1, S3, D2, D4, D5, D3, A0, A2, S5 };
 static Vector<uint16_t> photon2_gpio_test_pins = {A0, D10, A1, A2, A5, D5, S4, D4, S3, D3, SCK, D2, MOSI, SCL, MISO, SDA };
+#else 
+static Vector<uint16_t> p2_gpio_test_pins = { };
+static Vector<uint16_t> photon2_gpio_test_pins = { };
+#endif
 
 static Vector<uint16_t> gpio_test_pins = {};
 

@@ -166,7 +166,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     modemInit();
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
     // Initialize serial stream
-    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2,
+    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_PLATFORM_CELLULAR_SERIAL,
             UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
     // Initialize muxed channel stream

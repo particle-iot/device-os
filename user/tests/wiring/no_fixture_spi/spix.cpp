@@ -18,6 +18,53 @@
 #include "Particle.h"
 #include "unit-test/unit-test.h"
 
+static pin_t expectedSsPin(HAL_SPI_Interface spi) {
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+    return (spi == HAL_SPI_INTERFACE1) ? D14 : D5;
+#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
+    return (spi == HAL_SPI_INTERFACE1) ? D8 : D5;
+#elif PLATFORM_ID == PLATFORM_TRACKER
+    return (spi == HAL_SPI_INTERFACE1) ? D7 : D5;
+#elif PLATFORM_ID == PLATFORM_P2
+    return (spi == HAL_SPI_INTERFACE1) ? S3 : D5;
+#elif PLATFORM_ID == PLATFORM_TRACKERM
+    return (spi == HAL_SPI_INTERFACE1) ? A2 : D5;
+#elif PLATFORM_ID == PLATFORM_ESOMX
+    return (spi == HAL_SPI_INTERFACE1) ? A2 : D5;
+#elif PLATFORM_ID == PLATFORM_MSOM
+    return (spi == HAL_SPI_INTERFACE1) ? D8 : D3;
+#else
+#error "Unknown platform!"
+#endif
+    return PIN_INVALID;
+}
+
+static bool isSlaveModeSupported(HAL_SPI_Interface spi) {
+    // NRF52840 platform
+    //   SPI - only supports master mode
+    //   SPI1 - supports master and slave mode
+    // RTL872X platform
+    //   P2/TRACKERM
+    //      SPI - only supports master mode
+    //      SPI1 - supports master and slave mode
+    //   MSOM
+    //      SPI - supports master and slave mode
+    //      SPI1 - only supports master mode
+#if HAL_PLATFORM_NRF52840
+    return (spi == HAL_SPI_INTERFACE1) ? false : true;
+#elif HAL_PLATFORM_RTL872X
+    #if PLATFORM_ID == PLATFORM_MSOM
+    return (spi == HAL_SPI_INTERFACE1) ? true : false;
+    #elif PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
+    return (spi == HAL_SPI_INTERFACE1) ? false : true;
+    #else
+    #error "Unknown platform!"
+    #endif // PLATFORM_ID == PLATFORM_MSOM
+#else
+#error "Unknown platform!"
+#endif // HAL_PLATFORM_NRF52840
+}
+
 static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
 {
     memset(info, 0, sizeof(hal_spi_info_t));
@@ -36,21 +83,7 @@ test(SPIX_01_SPI_Begin_Without_Argument)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin, D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, S3);
-#elif PLATFORM_ID == PLATFORM_TRACKERM
-    assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_ESOMX
-    assertEqual(info.ss_pin, A2);
-#else
-#error "Unknown platform!"
-#endif
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE1));
     SPI.end();
 }
 
@@ -65,21 +98,7 @@ test(SPIX_02_SPI_Begin_With_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin, D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, S3);
-#elif PLATFORM_ID == PLATFORM_TRACKERM
-    assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_ESOMX
-    assertEqual(info.ss_pin, A2);
-#else
-#error "Unknown platform!"
-#endif
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE1));
     SPI.end();
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
@@ -121,34 +140,14 @@ test(SPIX_03_SPI_Begin_With_Mode)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin,D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, S3);
-#elif PLATFORM_ID == PLATFORM_TRACKERM
-    assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_ESOMX
-    assertEqual(info.ss_pin, A2);
-#else
-#error "Unknown platform!"
-#endif
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE1));
     SPI.end();
 
-#if HAL_PLATFORM_RTL872X || HAL_PLATFORM_NRF52840
     memset(&info, 0x00, sizeof(hal_spi_info_t));
     SPI.begin(SPI_MODE_SLAVE);
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
-    assertFalse(info.enabled);
+    assertTrue(info.enabled == isSlaveModeSupported(HAL_SPI_INTERFACE1));
     SPI.end();
-
-#else
-    #error "Unsupported platform!"
-#endif // HAL_PLATFORM_RTL872X || HAL_PLATFORM_NRF52840
-
 }
 
 test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
@@ -162,24 +161,8 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE1, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
-    assertEqual(info.ss_pin, D14);
-#elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
-    assertEqual(info.ss_pin, D8);
-#elif PLATFORM_ID == PLATFORM_TRACKER
-    assertEqual(info.ss_pin, D7);
-#elif PLATFORM_ID == PLATFORM_P2
-    assertEqual(info.ss_pin, S3);
-#elif PLATFORM_ID == PLATFORM_TRACKERM
-    assertEqual(info.ss_pin, A2);
-#elif PLATFORM_ID == PLATFORM_ESOMX
-    assertEqual(info.ss_pin, A2);
-#else
-#error "Unknown platform!"
-#endif
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE1));
     SPI.end();
-
-#if HAL_PLATFORM_RTL872X || HAL_PLATFORM_NRF52840
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
 
@@ -207,10 +190,6 @@ test(SPIX_04_SPI_Begin_With_Master_Ss_Pin)
     assertEqual(info.mode, SPI_MODE_MASTER);
     assertEqual(info.ss_pin, 123);
     SPI.end();
-#else
-    #error "Unsupported platform!"
-#endif // HAL_PLATFORM_RTL872X || HAL_PLATFORM_NRF52840
-
 }
 
 #if Wiring_SPI1
@@ -225,8 +204,7 @@ test(SPIX_05_SPI1_Begin_Without_Argument)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE2));
     SPI1.end();
 }
 
@@ -241,8 +219,7 @@ test(SPIX_06_SPI1_Begin_With_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE2));
     SPI1.end();
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
@@ -283,20 +260,16 @@ test(SPIX_07_SPI1_Begin_With_Mode)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE2));
     SPI1.end();
 
-#if !HAL_PLATFORM_RTL872X
     memset(&info, 0x00, sizeof(hal_spi_info_t));
     SPI1.begin(SPI_MODE_SLAVE);
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
+    assertTrue(info.enabled == isSlaveModeSupported(HAL_SPI_INTERFACE2));
+    assertEqual(info.mode, isSlaveModeSupported(HAL_SPI_INTERFACE2) ? SPI_MODE_SLAVE : SPI_MODE_MASTER);
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE2));
     SPI1.end();
-#endif // !HAL_PLATFORM_RTL872X
 }
 
 test(SPIX_08_SPI1_Begin_With_Master_Ss_Pin)
@@ -310,8 +283,7 @@ test(SPIX_08_SPI1_Begin_With_Master_Ss_Pin)
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     assertTrue(info.enabled);
     assertEqual(info.mode, SPI_MODE_MASTER);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
+    assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE2));
     SPI1.end();
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
@@ -342,8 +314,6 @@ test(SPIX_08_SPI1_Begin_With_Master_Ss_Pin)
     SPI1.end();
 }
 
-// SPI1 can't work as slave on Tron
-#if !HAL_PLATFORM_RTL872X
 test(SPIX_09_SPI1_Begin_With_Slave_Ss_Pin)
 {
     // Just in case
@@ -353,19 +323,22 @@ test(SPIX_09_SPI1_Begin_With_Slave_Ss_Pin)
 
     SPI1.begin(SPI_MODE_SLAVE, SPI_DEFAULT_SS);
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    // D5 is the default SS pin for all platforms
-    assertEqual(info.ss_pin, D5);
+    assertTrue(info.enabled == isSlaveModeSupported(HAL_SPI_INTERFACE2));
+    assertEqual(info.mode, isSlaveModeSupported(HAL_SPI_INTERFACE2) ? SPI_MODE_SLAVE : SPI_MODE_MASTER);
+    if (isSlaveModeSupported(HAL_SPI_INTERFACE2)) {
+        assertEqual(info.ss_pin, expectedSsPin(HAL_SPI_INTERFACE2));
+    }
     SPI1.end();
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
 
     SPI1.begin(SPI_MODE_SLAVE, D0);
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
-    assertTrue(info.enabled);
-    assertEqual(info.mode, SPI_MODE_SLAVE);
-    assertEqual(info.ss_pin, D0);
+    assertTrue(info.enabled == isSlaveModeSupported(HAL_SPI_INTERFACE2));
+    assertEqual(info.mode, isSlaveModeSupported(HAL_SPI_INTERFACE2) ? SPI_MODE_SLAVE : SPI_MODE_MASTER);
+    if (isSlaveModeSupported(HAL_SPI_INTERFACE2)) {
+        assertEqual(info.ss_pin, D0);
+    }
     SPI1.end();
 
     memset(&info, 0x00, sizeof(hal_spi_info_t));
@@ -382,7 +355,6 @@ test(SPIX_09_SPI1_Begin_With_Slave_Ss_Pin)
     assertFalse(info.enabled);
     SPI1.end();
 }
-#endif // !HAL_PLATFORM_RTL872X
 #endif // Wiring_SPI1
 
 namespace {

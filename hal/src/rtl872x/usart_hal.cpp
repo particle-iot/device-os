@@ -319,7 +319,7 @@ public:
         const ssize_t canWrite = CHECK(space());
         const size_t writeSize = std::min((size_t)canWrite, size);
         CHECK_TRUE(writeSize > 0, SYSTEM_ERROR_NO_MEMORY);
-        
+
         ssize_t r;
         {
             TxLock lk(this);
@@ -512,9 +512,23 @@ public:
 
     static Usart* getInstance(hal_usart_interface_t serial) {
         static Usart Usarts[] = {
-            {2, TX,  RX,  PIN_INVALID, PIN_INVALID}, // LOG UART
-            {0, TX1, RX1, CTS1,        RTS1}, // UART0
-            {3, TX2, RX2, CTS2,        RTS2} // LP_UART
+            // NOTE: NCP should be last so that Serial1, Serial2, etc.. are contiguous.
+#if PLATFORM_ID == PLATFORM_MSOM
+            {3, TX,  RX,  CTS, RTS},                  // LP_UART  (Serial1)
+            {2, TX1, RX1, PIN_INVALID, PIN_INVALID},  // LOG UART (Serial2)
+            {0, TX2, RX2, CTS2, RTS2},                // UART0    (NCP)
+#elif PLATFORM_ID == PLATFORM_TRACKERM
+            {2, TX,  RX,  PIN_INVALID, PIN_INVALID},  // LOG UART (Serial1)
+            {3, TX1, RX1, CTS1, RTS1},                // LP_UART  (Serial2)
+            {0, TX2, RX2, CTS2, RTS2},                // UART0    (NCP)
+#elif PLATFORM_ID == PLATFORM_P2
+            // NOTE: P2 was already released, so existing mapping will stay the same
+            {2, TX,  RX,  PIN_INVALID, PIN_INVALID},  // LOG UART (Serial1)
+            {0, TX1, RX1, CTS1, RTS1},                // UART0    (Serial2)
+            {3, TX2, RX2, CTS2, RTS2},                // LP_UART  (Serial3)
+#else
+# error "Platform unsupported"
+#endif // PLATFORM_ID == PLATFORM_MSOM
         };
         CHECK_TRUE(serial < sizeof(Usarts) / sizeof(Usarts[0]), nullptr);
         return &Usarts[serial];
@@ -748,12 +762,12 @@ private:
                 GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW |= BIT_CFGX_LO_CH_SUSP;
                 __DSB();
                 __ISB();
-                while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr && 
+                while (GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum) < expectedDstAddr &&
                       (GDMA_BASE->ChEnReg & (1 << rxDmaInitStruct_.GDMA_ChNum))) {
                     // This loop is intended to delay until the DMA controller transfers the expected number of bytes, based off of the address returned in GDMA_GetDstAddr()
-                    // When a DMA transaction is near the end of a block (within the last 4 bytes), sometimes the address returned does not increment to the expected destination. In some cases it resets completely. 
+                    // When a DMA transaction is near the end of a block (within the last 4 bytes), sometimes the address returned does not increment to the expected destination. In some cases it resets completely.
                     // To work around this, we poll the ChEnReg bit for the RX DMA channel. The data sheet says it is: "automatically cleared by hardware when the DMA transfer to the destination is complete".
-                    // The assumption is that if we see this bit is cleared, then the transfer is complete, the data we wanted flushed is available, there is no point to waiting any longer and we can return. 
+                    // The assumption is that if we see this bit is cleared, then the transfer is complete, the data we wanted flushed is available, there is no point to waiting any longer and we can return.
                 }
                 GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW &= ~(BIT_CFGX_LO_CH_SUSP);
                 __DSB();
@@ -796,7 +810,7 @@ private:
                 auto ptr = txBuffer_.consume(consumable);
 
                 DCache_CleanInvalidate((uint32_t)ptr, consumable);
-                
+
                 if (((consumable & 0x03) == 0) && (((uint32_t)(ptr) & 0x03) == 0)) {
                     // 4-bytes aligned, move 4 bytes each transfer
                     txDmaInitStruct_.GDMA_SrcMsize   = MsizeOne;

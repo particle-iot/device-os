@@ -23,6 +23,10 @@ const THRESHOLDS = {
         targetAppFlashSize: 21 * 1024, // 21KB
         targetFreeRam: 3 * 1024 * 1024 // 3MB
     },
+    msom: {
+        targetAppFlashSize: 21 * 1024, // 21KB
+        targetFreeRam: 3 * 1024 * 1024 // 3MB
+    },
     // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
     default: {
         targetAppFlashSize: 18105,

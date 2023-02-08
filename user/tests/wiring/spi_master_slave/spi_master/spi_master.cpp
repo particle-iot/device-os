@@ -30,9 +30,9 @@
 #define MY_CS SS1
 #pragma message "Compiling for SPI1, MY_CS set to SS1"
 #elif (USE_SPI == 2)
-#error "SPI2 not supported for p2"
+#error "SPI2 not supported for p2/TrackerM/MSoM"
 #else
-#error "Not supported for P2"
+#error "Not supported for P2/TrackerM/MSoM"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
 
 #elif HAL_PLATFORM_NRF52840
@@ -152,6 +152,20 @@
  * MISO D3 <-------> D3 MISO      MISO S1 <---------> D3 MISO
  * MOSI D2 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
  * SCK  D4 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
+ *
+ *********************************************************************************************
+ *
+ * MSoM Wiring diagrams
+ *
+ * SPI/SPI                        SPI/SPI1 (SPI1 can't be used as slave)
+ * Master: SPI  (USE_SPI=SPI)     Master: SPI1 (USE_SPI=SPI1)
+ * Slave:  SPI  (USE_SPI=SPI)     Slave:  SPI (USE_SPI=SPI)
+ *
+ * Master             Slave       Master              Slave
+ * CS   D8  <-------> D8  CS        CS   D3  <---------> D8  CS
+ * MISO D13 <-------> D13 MISO      MISO D2  <---------> D13 MISO
+ * MOSI D11 <-------> D11 MOSI      MOSI D10 <---------> D11 MOSI
+ * SCK  D12 <-------> D12 SCK       SCK  D9  <---------> D12 SCK
  *
  *********************************************************************************************
  */

@@ -23,6 +23,8 @@
   ******************************************************************************
   */
 
+#include "platforms.h"
+
 //
 // The dynalib macros produce either a a dynamic lib export table (jump table)
 // or a set of import stubs.
@@ -125,7 +127,7 @@ constexpr T2* dynalib_checked_cast(T2 *p) {
         #define __S(x) #x
         #define __SX(x) __S(x)
 
-        #if PLATFORM_ID == 32 || PLATFORM_ID == 28
+        #if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM || PLATFORM_ID == PLATFORM_MSOM
         #define DYNALIB_FN_IMPORT(index, tablename, name, counter) \
             DYNALIB_STATIC_ASSERT(index == counter, "Index of the dynamically exported function has changed"); \
             const char check_name_## tablename ## _ ## name[0]={}; /* this will fail if the name is already defined */ \
