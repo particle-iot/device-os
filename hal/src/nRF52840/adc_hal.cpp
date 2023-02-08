@@ -22,11 +22,6 @@
 #include "check.h"
 #include "deviceid_hal.h"
 
-typedef enum hal_adc_reference_t {
-    HAL_ADC_REFERENCE_EXTERNAL,
-    HAL_ADC_REFERENCE_INTERNAL
-} hal_adc_reference_t;
-
 static volatile hal_adc_state_t adcState = HAL_ADC_STATE_DISABLED;
 
 static const nrfx_saadc_config_t saadcConfig = {
@@ -36,12 +31,33 @@ static const nrfx_saadc_config_t saadcConfig = {
     .low_power_mode     = false
 };
 
-static hal_adc_reference_t adcReference = HAL_ADC_REFERENCE_EXTERNAL;
+static hal_adc_reference_t adcReference = HAL_ADC_REFERENCE_VCC;
 static constexpr uint32_t HAL_VERSION_BRN404X_V003 = 0x03;
 static constexpr uint32_t HW_FEATURE_FLAG_USE_INTERNAL_ADC_REFERENCE_BIT = (1<<15);
 
 static void analog_in_event_handler(nrfx_saadc_evt_t const *p_event) {
     (void) p_event;
+}
+
+static hal_adc_reference_t hal_adc_get_default_reference(void) {
+    hal_adc_reference_t defaultSource = HAL_ADC_REFERENCE_VCC;
+
+#if PLATFORM_ID == PLATFORM_BORON
+    uint32_t hwVersion = 0xFF;
+    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
+    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_BRN404X_V003) {
+        defaultSource = HAL_ADC_REFERENCE_INTERNAL;
+    }
+#endif // PLATFORM_ID == PLATFORM_BORON
+
+    hal_device_hw_info hwInfo = {};
+    hwInfo.size = sizeof(hwInfo);
+    hal_get_device_hw_info(&hwInfo, nullptr);
+    if ((hwInfo.features & HW_FEATURE_FLAG_USE_INTERNAL_ADC_REFERENCE_BIT) == 0) {
+        defaultSource = HAL_ADC_REFERENCE_INTERNAL;
+    }
+
+    return defaultSource;
 }
 
 void hal_adc_set_sample_time(uint8_t sample_time) {
@@ -132,20 +148,7 @@ void hal_adc_dma_init() {
     uint32_t err_code = nrfx_saadc_init(&saadcConfig, analog_in_event_handler);
     SPARK_ASSERT(err_code == NRF_SUCCESS);
 
-#if PLATFORM_ID == PLATFORM_BORON
-    uint32_t hwVersion = 0xFF;
-    auto ret = hal_get_device_hw_version(&hwVersion, nullptr);
-    if (ret == SYSTEM_ERROR_NONE && hwVersion == HAL_VERSION_BRN404X_V003) {
-        adcReference = HAL_ADC_REFERENCE_INTERNAL;
-    }
-#endif // PLATFORM_ID == PLATFORM_BORON
-
-    hal_device_hw_info hwInfo = {};
-    hwInfo.size = sizeof(hwInfo);
-    hal_get_device_hw_info(&hwInfo, nullptr);
-    if ((hwInfo.features & HW_FEATURE_FLAG_USE_INTERNAL_ADC_REFERENCE_BIT) == 0) {
-        adcReference = HAL_ADC_REFERENCE_INTERNAL;
-    }
+    adcReference = hal_adc_get_default_reference();
 }
 
 /*
@@ -174,3 +177,27 @@ int hal_adc_sleep(bool sleep, void* reserved) {
     return SYSTEM_ERROR_NONE;
 }
 
+int hal_adc_calibrate(uint32_t reserved, void* reserved1) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_adc_set_reference(uint32_t reference, void* reserved) {
+
+    switch (reference) {
+        case HAL_ADC_REFERENCE_VCC:
+        case HAL_ADC_REFERENCE_INTERNAL:
+            adcReference = (hal_adc_reference_t)reference;
+            break;    
+        case HAL_ADC_REFERENCE_DEFAULT:
+            adcReference = hal_adc_get_default_reference();
+            break;
+        default: 
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int hal_adc_get_reference(void* reserved) {
+    return (int)adcReference;
+}

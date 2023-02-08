@@ -89,6 +89,9 @@ DYNALIB_FN(36, hal_gpio, HAL_Set_Direct_Interrupt_Handler, int(IRQn_Type irqn, H
 DYNALIB_FN(37, hal_gpio, hal_adc_sleep, int(bool, void*))
 DYNALIB_FN(38, hal_gpio, hal_pwm_sleep, int(bool, void*))
 DYNALIB_FN(39, hal_gpio, HAL_Pin_Configure, int(pin_t, const hal_gpio_config_t*, void*))
+DYNALIB_FN(40, hal_gpio, hal_adc_calibrate, int(uint32_t, void*))
+DYNALIB_FN(41, hal_gpio, hal_adc_set_reference, int(uint32_t, void*))
+DYNALIB_FN(42, hal_gpio, hal_adc_get_reference, int(void*))
 
 DYNALIB_END(hal_gpio)
 

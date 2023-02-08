@@ -368,3 +368,23 @@ uint32_t pulseIn(pin_t pin, uint16_t value) {
 void setDACBufferred(pin_t pin, uint8_t state) {
   HAL_DAC_Enable_Buffer(pin, state);
 }
+
+int analogSetReference(AdcReference reference) {
+  // hal_adc_set_reference() not available in 5.0.0-alpha.1 ~ <5.3.0
+  if (System.versionNumber() >= SYSTEM_VERSION_ALPHA(5,0,0,1) && System.versionNumber() < SYSTEM_VERSION_DEFAULT(5, 3, 0)) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+  } else {
+    return hal_adc_set_reference(particle::to_underlying(reference), nullptr);
+  }
+}
+
+AdcReference analogGetReference(void) {
+  // hal_adc_get_reference() not available in 5.0.0-alpha.1 ~ <5.3.0
+  if (!(System.versionNumber() >= SYSTEM_VERSION_ALPHA(5,0,0,1) && System.versionNumber() < SYSTEM_VERSION_DEFAULT(5, 3, 0))) {
+    int result = hal_adc_get_reference(nullptr);
+    if (result >= SYSTEM_ERROR_NONE) {
+      return static_cast<AdcReference>(result);
+    }
+  }
+  return AdcReference::DEFAULT;
+}
