@@ -38,6 +38,14 @@ test(api_wiring_analogWrite) {
   API_COMPILE(analogWrite(D0, 50, 10000));
 }
 
+test(api_wiring_analogSetReference) {
+  API_COMPILE(analogSetReference(AdcReference::INTERNAL));
+}
+
+test(api_wiring_analogGetReference) {
+  API_COMPILE(analogGetReference());
+}
+
 test(api_wiring_wire_setSpeed)
 {
     API_COMPILE(Wire.setSpeed(CLOCK_SPEED_100KHZ));

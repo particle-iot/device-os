@@ -376,5 +376,13 @@ void setDACBufferred(hal_pin_t pin, uint8_t state) {
 }
 
 int analogSetReference(AdcReference reference) {
-  return hal_adc_set_reference((uint32_t)reference, nullptr);
+  return hal_adc_set_reference(particle::to_underlying(reference), nullptr);
+}
+
+AdcReference analogGetReference(void) {
+  int result = hal_adc_get_reference(nullptr);
+  if (result >= SYSTEM_ERROR_NONE) {
+    return static_cast<AdcReference>(result);
+  } 
+  return AdcReference::DEFAULT;
 }
