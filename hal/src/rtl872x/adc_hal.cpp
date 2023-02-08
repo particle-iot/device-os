@@ -299,5 +299,5 @@ int hal_adc_set_reference(uint32_t reference, void* reserved) {
 }
 
 int hal_adc_get_reference(void* reserved) {
-    return (int)HAL_ADC_REFERENCE_DEFAULT;
+    return (int)HAL_ADC_REFERENCE_INTERNAL;
 }
