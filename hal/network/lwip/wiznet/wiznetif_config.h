@@ -70,7 +70,7 @@ public:
      */
     static WizNetifConfig* instance();
 
-    void init();
+    void init(bool forced = false);
     int setConfigData(const WizNetifConfigData* userConfigData = nullptr);
     int getConfigData(WizNetifConfigData* configData);
     int lock();

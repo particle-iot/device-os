@@ -46,7 +46,11 @@ WizNetifConfig::WizNetifConfig() :
         initialized_(false) {
 }
 
-void WizNetifConfig::init() {
+void WizNetifConfig::init(bool forced) {
+    if (initialized_ && !forced) {
+        return;
+    }
+
     initializeWizNetifConfigData(wizNetifConfigData_);
     recallWizNetifConfigData();
     if (validateWizNetifConfigData(&wizNetifConfigData_) != SYSTEM_ERROR_NONE) {
@@ -117,10 +121,7 @@ int WizNetifConfig::recallWizNetifConfigData() {
 int WizNetifConfig::setConfigData(const WizNetifConfigData* configData) {
     WizNetifConfigLock lk;
 
-    if (!initialized_) {
-        init();
-    }
-
+    init();
     CHECK_TRUE(configData, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(validateWizNetifConfigData(configData) == SYSTEM_ERROR_NONE, SYSTEM_ERROR_INVALID_ARGUMENT);
 
@@ -134,17 +135,12 @@ int WizNetifConfig::setConfigData(const WizNetifConfigData* configData) {
 int WizNetifConfig::getConfigData(WizNetifConfigData* configData) {
     WizNetifConfigLock lk;
 
-    if (!initialized_) {
-        init();
-    }
-
+    init();
     CHECK_TRUE(configData, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(configData->size != 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     recallWizNetifConfigData();
 
-    if (configData->size == 0) {
-        configData->size = sizeof(WizNetifConfigData);
-    }
     memcpy(configData, &wizNetifConfigData_, std::min(configData->size, wizNetifConfigData_.size));
     if (configData->cs_pin == PIN_INVALID) {
         configData->cs_pin = WIZNETIF_CS_PIN_DEFAULT;
