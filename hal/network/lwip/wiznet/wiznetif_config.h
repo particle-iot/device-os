@@ -17,7 +17,13 @@
 
 #pragma once
 
+// STATIC_ASSERT already defined from static_assert.h as PARTICLE_STATIC_ASSERT
+#ifdef STATIC_ASSERT
+#undef STATIC_ASSERT
+#endif
+// app_util.h unconditionally defines STATIC_ASSERT
 #include "static_recursive_mutex.h"
+#include "platforms.h"
 
 #ifdef __cplusplus
 
@@ -25,12 +31,37 @@ namespace particle {
 
 namespace net {
 
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
+#define WIZNETIF_CS_PIN_DEFAULT    (D5)
+#define WIZNETIF_RESET_PIN_DEFAULT (D3)
+#define WIZNETIF_INT_PIN_DEFAULT   (D4)
+#elif PLATFORM_ID == PLATFORM_ESOMX
+#define WIZNETIF_CS_PIN_DEFAULT    (B0)
+#define WIZNETIF_RESET_PIN_DEFAULT (B1)
+#define WIZNETIF_INT_PIN_DEFAULT   (D2)
+#elif PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
+#define WIZNETIF_CS_PIN_DEFAULT    (D8)
+#define WIZNETIF_RESET_PIN_DEFAULT (A7)
+#define WIZNETIF_INT_PIN_DEFAULT   (D22)
+#elif PLATFORM_ID == PLATFORM_TRACKER
+#define WIZNETIF_CS_PIN_DEFAULT    (D2)
+#define WIZNETIF_RESET_PIN_DEFAULT (D6)
+#define WIZNETIF_INT_PIN_DEFAULT   (D7)
+#endif
+
+#define WIZNETIF_CONFIG_DATA_VERSION_V1 (1)
+const uint16_t WIZNETIF_CONFIG_DATA_VERSION = WIZNETIF_CONFIG_DATA_VERSION_V1;
+
 struct __attribute__((packed)) WizNetifConfigData {
     uint16_t size;
+    uint16_t version;
     uint16_t cs_pin;
     uint16_t reset_pin;
     uint16_t int_pin;
 };
+
+// Change to 1 for debugging
+#define WIZNETIF_CONFIG_ENABLE_DEBUG_LOGGING (0)
 
 class WizNetifConfig {
 public:
@@ -54,11 +85,13 @@ protected:
 
     StaticRecursiveMutex mutex_;
 
-    int validateWizNetifConfigData();
+    bool isPinValid(uint16_t pin);
+    int initializeWizNetifConfigData(WizNetifConfigData& data);
+    int validateWizNetifConfigData(const WizNetifConfigData* data);
     int saveWizNetifConfigData();
     int recallWizNetifConfigData();
     // int deleteWizNetifConfigData();
-    // void logWizNetifConfigData(WizNetifConfigData& data);
+    void logWizNetifConfigData(WizNetifConfigData& data);
 };
 
 class WizNetifConfigLock {

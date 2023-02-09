@@ -19,6 +19,7 @@
 LOG_SOURCE_CATEGORY("net.en")
 
 #include "wiznetif.h"
+#include "wiznetif_config.h"
 #include <lwip/opt.h>
 #include <lwip/mem.h>
 #include <lwip/pbuf.h>

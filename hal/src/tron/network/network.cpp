@@ -113,12 +113,10 @@ int if_init_platform(void*) {
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
         WizNetifConfigData wizNetifConfigData;
+        wizNetifConfigData.size = sizeof(WizNetifConfigData);
+        wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
         WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
-        hal_pin_t cs_pin = (wizNetifConfigData.cs_pin == PIN_INVALID) ? D5 : wizNetifConfigData.cs_pin;
-        hal_pin_t reset_pin = (wizNetifConfigData.reset_pin == PIN_INVALID) ? D3 : wizNetifConfigData.reset_pin;
-        hal_pin_t int_pin = (wizNetifConfigData.int_pin == PIN_INVALID) ? D4 : wizNetifConfigData.int_pin;
-        // Default: cs_pin = D5, reset_pin = D3, int_pin = D4
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, cs_pin, reset_pin, int_pin, mac);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac);
     }
 
     uint8_t dummy;

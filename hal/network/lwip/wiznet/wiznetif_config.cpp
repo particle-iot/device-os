@@ -18,16 +18,23 @@
 #include "wiznetif_config.h"
 
 #include "logging.h"
-LOG_SOURCE_CATEGORY("net.en.cfg")
+#define WIZNETIF_CONFIG_LOG_CATEGORY "net.en.cfg"
+LOG_SOURCE_CATEGORY(WIZNETIF_CONFIG_LOG_CATEGORY)
 
 #include "system_error.h"
-
+#include <algorithm>
 #include "check.h"
 #include "delay_hal.h"
 
 #if HAL_PLATFORM_NCP
 #include "system_cache.h"
 #endif // HAL_PLATFORM_NCP
+
+#if WIZNETIF_CONFIG_ENABLE_DEBUG_LOGGING
+#define WZCFG_LOG_DEBUG(_level, _fmt, ...) LOG_C(_level, WIZNETIF_CONFIG_LOG_CATEGORY, _fmt, ##__VA_ARGS__)
+#else
+#define WZCFG_LOG_DEBUG(_level, _fmt, ...)
+#endif // WIZNETIF_CONFIG_ENABLE_DEBUG_LOGGING
 
 namespace particle {
 
@@ -40,52 +47,69 @@ WizNetifConfig::WizNetifConfig() :
 }
 
 void WizNetifConfig::init() {
-    memset(&wizNetifConfigData_, 0, sizeof(wizNetifConfigData_));
+    initializeWizNetifConfigData(wizNetifConfigData_);
     recallWizNetifConfigData();
-    if (validateWizNetifConfigData() != SYSTEM_ERROR_NONE) {
-        recallWizNetifConfigData();
+    if (validateWizNetifConfigData(&wizNetifConfigData_) != SYSTEM_ERROR_NONE) {
+        // XXX: In the future, make version 1 data compatible with version 2
+        // if (configData->version == WIZNETIF_CONFIG_DATA_VERSION_V1) {
+        //     // check size, and initialize / move elements as appropriate
+        // }
+        initializeWizNetifConfigData(wizNetifConfigData_);
+        saveWizNetifConfigData();
     }
     initialized_ = true;
 }
 
-// void WizNetifConfig::logWizNetifConfigData(WizNetifConfigData& configData) {
-//     LOG(INFO, "wizNetifConfigData size:%u cs_pin:%u reset_pin:%u int_pin:%u",
-//             configData.size,
-//             configData.cs_pin,
-//             configData.reset_pin,
-//             configData.int_pin);
-// }
+int WizNetifConfig::initializeWizNetifConfigData(WizNetifConfigData& configData) {
+    memset(&configData, 0, sizeof(wizNetifConfigData_));
+    configData.size = sizeof(WizNetifConfigData);
+    configData.version = WIZNETIF_CONFIG_DATA_VERSION;
+    configData.cs_pin = PIN_INVALID;
+    configData.reset_pin = PIN_INVALID;
+    configData.int_pin = PIN_INVALID;
+
+    return SYSTEM_ERROR_NONE;
+}
+
+void WizNetifConfig::logWizNetifConfigData(WizNetifConfigData& configData) {
+    WZCFG_LOG_DEBUG(INFO, "wizNetifConfigData size:%u ver:%u cs_pin:%u reset_pin:%u int_pin:%u",
+            configData.size,
+            configData.version,
+            configData.cs_pin,
+            configData.reset_pin,
+            configData.int_pin);
+}
 
 int WizNetifConfig::saveWizNetifConfigData() {
     WizNetifConfigData tempData = {};
+    tempData.size = sizeof(WizNetifConfigData);
+    tempData.version = WIZNETIF_CONFIG_DATA_VERSION;
     int result = SystemCache::instance().get(SystemCacheKey::WIZNET_CONFIG_DATA, (uint8_t*)&tempData, sizeof(tempData));
-    if (result != sizeof(tempData) ||
-            /* memcmp(tempData, wizNetifConfigData_, sizeof(tempData) != 0)) { // not reliable */
-            tempData.size != wizNetifConfigData_.size ||
-            tempData.cs_pin != wizNetifConfigData_.cs_pin ||
-            tempData.reset_pin != wizNetifConfigData_.reset_pin ||
-            tempData.int_pin != wizNetifConfigData_.int_pin ) {
-        // LOG(INFO, "Saving cached wizNetifConfigData, size: %d", wizNetifConfigData_.size);
-        // logWizNetifConfigData(wizNetifConfigData_);
+    if (result != std::min(tempData.size, wizNetifConfigData_.size) ||
+            memcmp(&tempData, &wizNetifConfigData_, std::min(tempData.size, wizNetifConfigData_.size)) != 0) {
+        WZCFG_LOG_DEBUG(INFO, "Saving cached wizNetifConfigData, size: %d", wizNetifConfigData_.size);
+        logWizNetifConfigData(wizNetifConfigData_);
         result = SystemCache::instance().set(SystemCacheKey::WIZNET_CONFIG_DATA, (uint8_t*)&wizNetifConfigData_, sizeof(wizNetifConfigData_));
     }
     return (result < 0) ? result : SYSTEM_ERROR_NONE;
 }
 
 int WizNetifConfig::recallWizNetifConfigData() {
-    WizNetifConfigData tempData;
+    WizNetifConfigData tempData = {};
+    tempData.size = sizeof(WizNetifConfigData);
+    tempData.version = WIZNETIF_CONFIG_DATA_VERSION;
     int result = SystemCache::instance().get(SystemCacheKey::WIZNET_CONFIG_DATA, (uint8_t*)&tempData, sizeof(tempData));
-    if (result != sizeof(tempData)) {
+    if (result != std::min(tempData.size, wizNetifConfigData_.size)) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
-    // LOG(INFO, "Recalling cached wizNetifConfigData");
-    // logWizNetifConfigData(tempData);
-    memcpy(&wizNetifConfigData_, &tempData, sizeof(wizNetifConfigData_));
+    WZCFG_LOG_DEBUG(INFO, "Recalling cached wizNetifConfigData, size: %d", result);
+    logWizNetifConfigData(tempData);
+    memcpy(&wizNetifConfigData_, &tempData, sizeof(tempData));
     return SYSTEM_ERROR_NONE;
 }
 
 // int WizNetifConfig::deleteWizNetifConfigData() {
-//     LOG(INFO, "Deleting cached wizNetifConfigData");
+//     WZCFG_LOG_DEBUG(INFO, "Deleting cached wizNetifConfigData");
 //     int result = SystemCache::instance().del(SystemCacheKey::WIZNET_CONFIG_DATA);
 //     return (result < 0) ? result : SYSTEM_ERROR_NONE;
 // }
@@ -95,17 +119,14 @@ int WizNetifConfig::setConfigData(const WizNetifConfigData* configData) {
 
     if (!initialized_) {
         init();
-    } else {
-        validateWizNetifConfigData();
     }
 
-    if (configData) {
-        memcpy(&wizNetifConfigData_, configData, sizeof(WizNetifConfigData));
-        // logWizNetifConfigData(wizNetifConfigData_);
-        saveWizNetifConfigData();
-    } else {
-        return SYSTEM_ERROR_BAD_DATA;
-    }
+    CHECK_TRUE(configData, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(validateWizNetifConfigData(configData) == SYSTEM_ERROR_NONE, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    memcpy(&wizNetifConfigData_, configData, std::min(configData->size, wizNetifConfigData_.size));
+    logWizNetifConfigData(wizNetifConfigData_);
+    saveWizNetifConfigData();
 
     return SYSTEM_ERROR_NONE;
 }
@@ -115,30 +136,52 @@ int WizNetifConfig::getConfigData(WizNetifConfigData* configData) {
 
     if (!initialized_) {
         init();
-    } else {
-        validateWizNetifConfigData();
     }
 
-    if (configData) {
-        recallWizNetifConfigData();
-        memcpy(configData, &wizNetifConfigData_, sizeof(WizNetifConfigData));
-        // logWizNetifConfigData(wizNetifConfigData_);
+    CHECK_TRUE(configData, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    recallWizNetifConfigData();
+
+    if (configData->size == 0) {
+        configData->size = sizeof(WizNetifConfigData);
     }
+    memcpy(configData, &wizNetifConfigData_, std::min(configData->size, wizNetifConfigData_.size));
+    if (configData->cs_pin == PIN_INVALID) {
+        configData->cs_pin = WIZNETIF_CS_PIN_DEFAULT;
+    }
+    if (configData->reset_pin == PIN_INVALID) {
+        configData->reset_pin = WIZNETIF_RESET_PIN_DEFAULT;
+    }
+    if (configData->int_pin == PIN_INVALID) {
+        configData->int_pin = WIZNETIF_INT_PIN_DEFAULT;
+    }
+    logWizNetifConfigData(wizNetifConfigData_);
 
     return SYSTEM_ERROR_NONE;
 }
 
-int WizNetifConfig::validateWizNetifConfigData() {
-    if (wizNetifConfigData_.size != sizeof(WizNetifConfigData)) {
-        memset(&wizNetifConfigData_, 0, sizeof(wizNetifConfigData_));
-        wizNetifConfigData_.size = sizeof(WizNetifConfigData);
-        wizNetifConfigData_.cs_pin = PIN_INVALID;
-        wizNetifConfigData_.reset_pin = PIN_INVALID;
-        wizNetifConfigData_.int_pin = PIN_INVALID;
+bool WizNetifConfig::isPinValid(uint16_t pin) {
+    if (pin >= TOTAL_PINS && pin != PIN_INVALID) {
+        return false;
+    }
 
-        saveWizNetifConfigData();
+    return true;
+}
 
-        // LOG(INFO, "wizNetifConfigData_ initialized");
+int WizNetifConfig::validateWizNetifConfigData(const WizNetifConfigData* configData) {
+    // XXX: If we add a new version in the future this will need to handle that
+    if (configData->size != sizeof(WizNetifConfigData) ||
+            configData->version != WIZNETIF_CONFIG_DATA_VERSION ||
+            !isPinValid(configData->cs_pin) ||
+            !isPinValid(configData->reset_pin) ||
+            !isPinValid(configData->int_pin)) {
+        LOG(ERROR, "configData not valid! size:%u ver:%u cs_pin:%u reset_pin:%u int_pin:%u",
+                configData->size,
+                configData->version,
+                configData->cs_pin,
+                configData->reset_pin,
+                configData->int_pin);
+
         return SYSTEM_ERROR_BAD_DATA;
     }
 
