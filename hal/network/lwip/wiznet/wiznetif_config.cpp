@@ -143,13 +143,13 @@ int WizNetifConfig::getConfigData(WizNetifConfigData* configData) {
 
     memcpy(configData, &wizNetifConfigData_, std::min(configData->size, wizNetifConfigData_.size));
     if (configData->cs_pin == PIN_INVALID) {
-        configData->cs_pin = WIZNETIF_CS_PIN_DEFAULT;
+        configData->cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
     }
     if (configData->reset_pin == PIN_INVALID) {
-        configData->reset_pin = WIZNETIF_RESET_PIN_DEFAULT;
+        configData->reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
     }
     if (configData->int_pin == PIN_INVALID) {
-        configData->int_pin = WIZNETIF_INT_PIN_DEFAULT;
+        configData->int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
     }
     logWizNetifConfigData(wizNetifConfigData_);
 
