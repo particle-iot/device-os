@@ -73,17 +73,19 @@ test(WATCHDOG_02_default_2) {
     checkState(WatchdogState::DISABLED);
 }
 
+#if HAL_PLATFORM_RTL872X || (PLATFORM_ID == PLATFORM_TRACKER)
 test(WATCHDOG_03_stopped_in_hibernate_mode_1) {
     startWatchdog(WatchdogConfiguration().timeout(5s));
     // Notify about a pending reset
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
-    System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE).gpio(WKP, FALLING));
+    System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE).duration(10s));
 }
 
 test(WATCHDOG_03_stopped_in_hibernate_mode_2) {
     assertTrue(System.resetReason() == RESET_REASON_POWER_MANAGEMENT);
     checkState(WatchdogState::DISABLED);
 }
+#endif
 
 test(WATCHDOG_04_continue_running_after_waking_up_from_none_hibernate_mode_1) {
     startWatchdog(WatchdogConfiguration().timeout(5s).capabilities(WatchdogCap::RESET)); // SLEEP_RUNNING is cleared
