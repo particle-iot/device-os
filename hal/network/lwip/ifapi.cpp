@@ -35,6 +35,8 @@ extern "C" {
 #include "basenetif.h"
 #include "check.h"
 
+#include "wiznet/wiznetif_config.h"
+
 using namespace particle::net;
 
 namespace {
@@ -1153,11 +1155,41 @@ int if_event_handler_del(if_event_handler_cookie_t cookie) {
 int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) {
     LwipTcpIpCoreLock lk;
 
-    if (!netif_validate(iface)) {
+    // XXX: Skipping iface validate/lookup for IF_REQ_DRIVER_SPECIFIC because sometimes we might need to
+    //      remap the pins for an interface that's not available, because it's pin configuration is wrong.
+    if (type != IF_REQ_DRIVER_SPECIFIC && !netif_validate(iface)) {
         return -1;
     }
 
     switch (type) {
+        case IF_REQ_DRIVER_SPECIFIC: {
+            // // XXX: This is what we might normally do,
+            // // but it wasn't working when the iface in question is not found. Also tried leaving
+            // // en2 instance around, but had issues with wl* interface being detected instead of en*
+            // // ---
+            // // struct netif* netif = (struct netif*)iface;
+            // // LOG(TRACE, "%c%c", netif->name[0], netif->name[1]);
+            // auto dsreq = (if_req_driver_specific*)req;
+            // auto bnetif = getBaseNetif(iface);
+            // CHECK_TRUE(bnetif, -1);
+            // bnetif->request(dsreq, sizeof(dsreq));
+
+            // Handle IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP specific type
+            if_req_driver_specific* dsreq = (if_req_driver_specific*)req;
+            CHECK_TRUE(dsreq->type == IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP, -1);
+            CHECK_TRUE(reqsize == sizeof(if_wiznet_pin_remap), -1);
+
+            if_wiznet_pin_remap* wzpr = (if_wiznet_pin_remap*)req;
+            WizNetifConfigData wizNetifConfigData;
+            wizNetifConfigData.size = sizeof(WizNetifConfigData);
+            wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
+            wizNetifConfigData.cs_pin = wzpr->cs_pin;
+            wizNetifConfigData.reset_pin = wzpr->reset_pin;
+            wizNetifConfigData.int_pin = wzpr->int_pin;
+            // LOG(INFO, "IF_REQUEST cs_pin:%u reset_pin:%u int_pin:%u",
+            //         wzpr->cs_pin, wzpr->reset_pin, wzpr->int_pin);
+            return WizNetifConfig::instance()->setConfigData(&wizNetifConfigData);
+        }
         case IF_REQ_POWER_STATE: {
             if (reqsize != sizeof(if_req_power)) {
                 return -1;

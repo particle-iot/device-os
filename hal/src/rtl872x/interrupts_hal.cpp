@@ -325,7 +325,11 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
         if (!config || (config && !(config->appendHandler))) {
             interruptsConfig[pin].clearHandlers();
         }
-        interruptsConfig[pin].appendHandler(handler, data, config->chainPriority);
+        if (config) {
+            interruptsConfig[pin].appendHandler(handler, data, config->chainPriority);
+        } else {
+            interruptsConfig[pin].appendHandler(handler, data, 0);
+        }
 #else
         interruptsConfig[pin].callback.handler = handler;
         interruptsConfig[pin].callback.data = data;

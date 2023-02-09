@@ -17,6 +17,7 @@
 
 #include "ifapi.h"
 #include "wiznet/wiznetif.h"
+#include "wiznet/wiznetif_config.h"
 #include <mutex>
 #include <nrf52840.h>
 #include "random.h"
@@ -122,13 +123,11 @@ int if_init_platform(void*) {
     }
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
-#if PLATFORM_ID == PLATFORM_BORON
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
-#elif PLATFORM_ID == PLATFORM_ESOMX
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, B0, B1, D2, mac);        
-#else // B SoM
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, A7, D22, mac);
-#endif // PLATFORM_ID == PLATFORM_BORON
+        WizNetifConfigData wizNetifConfigData;
+        wizNetifConfigData.size = sizeof(WizNetifConfigData);
+        wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
+        WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac);
     }
 
     uint8_t dummy;

@@ -18,6 +18,7 @@
 #define NO_STATIC_ASSERT
 #include "ifapi.h"
 #include "wiznet/wiznetif.h"
+#include "wiznet/wiznetif_config.h"
 #include <mutex>
 #include <memory>
 #include "random.h"
@@ -111,7 +112,11 @@ int if_init_platform(void*) {
     CHECK(hal_get_mac_address(HAL_DEVICE_MAC_ETHERNET, mac, HAL_DEVICE_MAC_ADDR_SIZE, nullptr));
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+        WizNetifConfigData wizNetifConfigData;
+        wizNetifConfigData.size = sizeof(WizNetifConfigData);
+        wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
+        WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac);
     }
 
     uint8_t dummy;

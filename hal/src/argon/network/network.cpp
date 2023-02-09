@@ -18,6 +18,7 @@
 #define NO_STATIC_ASSERT
 #include "ifapi.h"
 #include "wiznet/wiznetif.h"
+#include "wiznet/wiznetif_config.h"
 #include <mutex>
 #include <memory>
 #include <nrf52840.h>
@@ -120,11 +121,11 @@ int if_init_platform(void*) {
     }
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
-#if PLATFORM_ID == PLATFORM_ARGON
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
-#else // A SoM
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, A7, D22, mac);
-#endif // PLATFORM_ID == PLATFORM_ARGON
+        WizNetifConfigData wizNetifConfigData;
+        wizNetifConfigData.size = sizeof(WizNetifConfigData);
+        wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
+        WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac);
     }
 
     uint8_t dummy;
