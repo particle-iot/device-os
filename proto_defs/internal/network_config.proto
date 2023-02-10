@@ -4,6 +4,7 @@ package particle.firmware;
 
 import "control/wifi_new.proto";
 import "control/cellular.proto";
+import "control/network.proto";
 
 import "nanopb.proto";
 
@@ -23,3 +24,8 @@ message CellularConfig {
   ctrl.cellular.AccessPoint external_sim = 2;
   ctrl.cellular.SimType active_sim = 3;
 }
+
+message NetworkConfig {
+  repeated ctrl.Interface config = 1;
+}
+ 

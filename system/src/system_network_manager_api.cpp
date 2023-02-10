@@ -31,6 +31,7 @@
 #include "dct.h"
 
 #include <atomic>
+#include <algorithm>
 
 #if HAL_PLATFORM_WIFI
 #include "wlan_hal.h"
@@ -476,6 +477,58 @@ void manage_smart_config() {
 }
 
 void manage_ip_config() {
+}
+
+int network_set_configuration(network_handle_t network, const network_configuration_t* conf, void* reserved) {
+    if (network == NETWORK_INTERFACE_ALL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if_t iface;
+    if (if_get_by_index(network, &iface)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return NetworkManager::instance()->setConfiguration(iface, particle::NetworkInterfaceConfig(conf));
+}
+
+int network_get_configuration(network_handle_t network, network_configuration_t** conf, size_t* count, const char* profile, size_t profile_len, void* reserved) {
+    if (network == NETWORK_INTERFACE_ALL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    CHECK_TRUE(conf, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(count, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if_t iface;
+    if (if_get_by_index(network, &iface)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    spark::Vector<particle::NetworkInterfaceConfig> confs;
+    CHECK(NetworkManager::instance()->getConfiguration(iface, confs, profile, profile_len));
+    auto total = std::min<int>(*count, confs.size());
+    if (total == 0 && *count == 0) {
+        total = confs.size();
+    }
+    *count = total;
+    if (total > 0) {
+        *conf = (network_configuration_t*)malloc(sizeof(network_configuration_t)*total);
+        CHECK_TRUE(*conf, SYSTEM_ERROR_NO_MEMORY);
+        memset(*conf, 0, sizeof(network_configuration_t)*total);
+        for (int i = 0; i < total; i++) {
+            confs[i].exportAsNetworkConfiguration(&(*conf)[i]);
+        }
+    } else {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    return 0;
+}
+
+int network_free_configuration(network_configuration_t* conf, size_t count, void* reserved) {
+    if (!conf) {
+        return 0;
+    }
+    for (size_t i = 0; i < count; i++) {
+        particle::NetworkInterfaceConfig::deallocNetworkConfiguration(&conf[i]);
+    }
+    free(conf);
+    return 0;
 }
 
 #endif /* HAL_PLATFORM_IFAPI */

@@ -27,6 +27,8 @@
 #include <atomic>
 #include "intrusive_list.h"
 #include "system_defs.h"
+#include "system_network_configuration.h"
+#include "spark_wiring_vector.h"
 
 namespace particle { namespace system {
 
@@ -100,6 +102,11 @@ public:
 
     State getState() const;
 
+    int setConfiguration(if_t iface, const NetworkInterfaceConfig& conf);
+    int getConfiguration(if_t iface, spark::Vector<NetworkInterfaceConfig>& conf, const char* profile = nullptr, size_t profileLen = 0);
+    int getConfiguration(if_t iface, NetworkInterfaceConfig* conf, const char* profile = nullptr, size_t profileLen = 0);
+    int clearStoredConfiguration();
+
 protected:
     NetworkManager();
 
@@ -163,6 +170,14 @@ private:
     void populateInterfaceRuntimeState(bool enabled);
     bool isDisabled(if_t iface);
     void resetInterfaceProtocolState(if_t iface = nullptr);
+
+    struct StoredConfiguration {
+        unsigned idx;
+        NetworkInterfaceConfig conf;
+    };
+
+    int loadStoredConfiguration(spark::Vector<StoredConfiguration>& conf);
+    int saveStoredConfiguration(const spark::Vector<StoredConfiguration>& conf);
 
 private:
     if_event_handler_cookie_t ifEventHandlerCookie_ = {};

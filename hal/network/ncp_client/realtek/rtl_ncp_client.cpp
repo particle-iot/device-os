@@ -100,9 +100,8 @@ void wifi_set_country_code(void) {
             country_code_sdk = RTW_COUNTRY_AU;
             break;
         case WLAN_CC_WORLD: {
-            channel_plan = 0x20;
-            country_code_sdk = RTW_COUNTRY_WORLD;
-            break;
+            // No specific channel plan/country code for both 2.4/5GHz
+            return;
         }
     }
 

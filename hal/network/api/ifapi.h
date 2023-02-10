@@ -179,6 +179,8 @@ struct if_event_state {
 
 struct if_event_link_state {
     uint8_t state;
+    const char* profile;
+    uint32_t profile_len;
 };
 
 struct if_event_power_state {
@@ -317,6 +319,8 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved);
 void if_notify_event(if_t iface, const struct if_event* evt, void* reserved);
 
 int if_get_power_state(if_t iface, if_power_state_t* state);
+
+int if_get_profile(if_t iface, char* profile, size_t length);
 
 #ifdef __cplusplus
 }

@@ -204,7 +204,11 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
             ev.ev_type = IF_EVENT_LINK;
             ev.ev_if_link = &ev_if_link;
             ev.ev_if_link->state = args->link_changed.state;
-            LOG(INFO, "Netif %s link %s", name, ev.ev_if_link->state ? "UP" : "DOWN");
+            char profile[64] = {};
+            int len = if_get_profile((if_t)netif, profile, sizeof(profile) - 1);
+            ev.ev_if_link->profile = len >= 0 ? profile : nullptr;
+            ev.ev_if_link->profile_len = len >= 0 ? len : 0;
+            LOG(INFO, "Netif %s link %s, profile=%s", name, ev.ev_if_link->state ? "UP" : "DOWN", len > 0 ? profile : "NONE");
             notify_all_handlers_event(netif, &ev);
             break;
         }
@@ -1253,4 +1257,19 @@ int if_get_power_state(if_t iface, if_power_state_t* state) {
     auto bnetif = getBaseNetif(iface);
     CHECK_TRUE(bnetif, -1);
     return bnetif->getPowerState(state);
+}
+
+int if_get_profile(if_t iface, char* profile, size_t length) {
+    LwipTcpIpCoreLock lk;
+
+    if (!netif_validate(iface)) {
+        return -1;
+    }
+
+    auto bnetif = getBaseNetif(iface);
+    CHECK_TRUE(bnetif, -1);
+    spark::Vector<char> p;
+    CHECK(bnetif->getCurrentProfile(&p));
+    memcpy(profile, p.data(), std::min<size_t>(p.size(), length));
+    return p.size();
 }

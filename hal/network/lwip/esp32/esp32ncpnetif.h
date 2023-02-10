@@ -48,6 +48,8 @@ public:
     static int ncpDataHandlerCb(int id, const uint8_t* data, size_t size, void* ctx);
     static void ncpEventHandlerCb(const NcpEvent& ev, void* ctx);
 
+    virtual int getCurrentProfile(spark::Vector<char>* profile) const override;
+
 protected:
     virtual void ifEventHandler(const if_event* ev) override;
     virtual void netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) override;

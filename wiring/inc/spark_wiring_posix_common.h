@@ -19,6 +19,7 @@
 #define SPARK_WIRING_POSIX_COMMON_H
 
 #include "spark_wiring_platform.h"
+#include <arpa/inet.h>
 
 namespace spark {
 
@@ -71,6 +72,54 @@ inline void ipAddressPortToSockaddr(const IPAddress& addr, uint16_t port, struct
         inaddr->sin_addr.s_addr = htonl(a.ipv4);
     }
 #endif // HAL_IPv6
+}
+
+inline uint8_t netmaskToPrefixLength(struct sockaddr* saddr) {
+    if (saddr->sa_family == AF_INET) {
+        struct sockaddr_in* inaddr = (struct sockaddr_in*)saddr;
+        uint32_t addr = ntohl(inaddr->sin_addr.s_addr);
+        if (addr == 0) {
+            return 0;
+        }
+        return sizeof(addr) * CHAR_BIT - __builtin_ctz(addr);
+    } else if (saddr->sa_family == AF_INET6) {
+        struct sockaddr_in6* in6addr = (struct sockaddr_in6*)saddr;
+        uint8_t sum = 0;
+        for (size_t i = 0; i < sizeof(in6addr->sin6_addr.s6_addr); i++) {
+            if (in6addr->sin6_addr.s6_addr[i] == 0) {
+                break;
+            }
+            sum += CHAR_BIT - __builtin_ctz(in6addr->sin6_addr.s6_addr[i]);
+        }
+        return sum;
+    }
+
+    return 0;
+}
+
+inline void prefixLengthToNetmask(struct sockaddr* saddr, uint8_t prefixLen) {
+    if (saddr->sa_family == AF_INET) {
+        struct sockaddr_in* inaddr = (struct sockaddr_in*)saddr;
+        uint32_t addr = 0xffffffff;
+        auto shift = (sizeof(addr) * CHAR_BIT - prefixLen);
+        addr >>= shift;
+        addr <<= shift;
+        inaddr->sin_addr.s_addr = htonl(addr);
+    } else if (saddr->sa_family == AF_INET6) {
+        struct sockaddr_in6* in6addr = (struct sockaddr_in6*)saddr;
+        for (size_t i = 0; i < sizeof(in6addr->sin6_addr.s6_addr); i++) {
+            if (prefixLen == 0) {
+                break;
+            } else if (prefixLen >= CHAR_BIT) {
+                prefixLen -= CHAR_BIT;
+                in6addr->sin6_addr.s6_addr[i] = 0xff;
+            } else {
+                in6addr->sin6_addr.s6_addr[i] = 0xff;
+                in6addr->sin6_addr.s6_addr[i] >>= CHAR_BIT - prefixLen;
+                in6addr->sin6_addr.s6_addr[i] <<= CHAR_BIT - prefixLen;
+            }
+        }
+    }
 }
 
 } // detail

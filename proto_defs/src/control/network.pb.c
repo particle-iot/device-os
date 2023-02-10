@@ -6,33 +6,6 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(particle_ctrl_NetworkGetStatusRequest, particle_ctrl_NetworkGetStatusRequest, AUTO)
-
-
-PB_BIND(particle_ctrl_NetworkGetStatusReply, particle_ctrl_NetworkGetStatusReply, AUTO)
-
-
-PB_BIND(particle_ctrl_NetworkGetConfigurationRequest, particle_ctrl_NetworkGetConfigurationRequest, AUTO)
-
-
-PB_BIND(particle_ctrl_NetworkGetConfigurationReply, particle_ctrl_NetworkGetConfigurationReply, AUTO)
-
-
-PB_BIND(particle_ctrl_NetworkSetConfigurationRequest, particle_ctrl_NetworkSetConfigurationRequest, AUTO)
-
-
-PB_BIND(particle_ctrl_NetworkSetConfigurationReply, particle_ctrl_NetworkSetConfigurationReply, AUTO)
-
-
-PB_BIND(particle_ctrl_IPConfiguration, particle_ctrl_IPConfiguration, AUTO)
-
-
-PB_BIND(particle_ctrl_DNSConfiguration, particle_ctrl_DNSConfiguration, AUTO)
-
-
-PB_BIND(particle_ctrl_NetworkConfiguration, particle_ctrl_NetworkConfiguration, AUTO)
-
-
 PB_BIND(particle_ctrl_InterfaceAddress, particle_ctrl_InterfaceAddress, AUTO)
 
 
@@ -59,6 +32,23 @@ PB_BIND(particle_ctrl_GetInterfaceRequest, particle_ctrl_GetInterfaceRequest, AU
 
 PB_BIND(particle_ctrl_GetInterfaceReply, particle_ctrl_GetInterfaceReply, AUTO)
 
+
+PB_BIND(particle_ctrl_GetInterfaceStoredConfigurationRequest, particle_ctrl_GetInterfaceStoredConfigurationRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_GetInterfaceStoredConfigurationReply, particle_ctrl_GetInterfaceStoredConfigurationReply, AUTO)
+
+
+PB_BIND(particle_ctrl_SetInterfaceStoredConfigurationRequest, particle_ctrl_SetInterfaceStoredConfigurationRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_SetInterfaceStoredConfigurationReply, particle_ctrl_SetInterfaceStoredConfigurationReply, AUTO)
+
+
+PB_BIND(particle_ctrl_DeleteInterfaceStoredConfigurationRequest, particle_ctrl_DeleteInterfaceStoredConfigurationRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_DeleteInterfaceStoredConfigurationReply, particle_ctrl_DeleteInterfaceStoredConfigurationReply, AUTO)
 
 
 

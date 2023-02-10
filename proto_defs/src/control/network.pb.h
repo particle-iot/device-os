@@ -6,17 +6,20 @@
 #include <pb.h>
 #include "control/extensions.pb.h"
 #include "control/common.pb.h"
+#include "control/network_old.pb.h"
 
 #if PB_PROTO_HEADER_VERSION != 40
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
 /* Enum definitions */
-typedef enum _particle_ctrl_NetworkState { 
-    particle_ctrl_NetworkState_NETWORK_STATUS_NONE = 0, 
-    particle_ctrl_NetworkState_DOWN = 1, 
-    particle_ctrl_NetworkState_UP = 2 
-} particle_ctrl_NetworkState;
+typedef enum _particle_ctrl_InterfaceConfigurationSource { 
+    particle_ctrl_InterfaceConfigurationSource_NONE = 0, 
+    particle_ctrl_InterfaceConfigurationSource_DHCP = 1, 
+    particle_ctrl_InterfaceConfigurationSource_STATIC = 2, 
+    particle_ctrl_InterfaceConfigurationSource_SLAAC = 3, 
+    particle_ctrl_InterfaceConfigurationSource_DHCPV6 = 4 
+} particle_ctrl_InterfaceConfigurationSource;
 
 /* Direct mapping to if_flags_t */
 typedef enum _particle_ctrl_InterfaceFlag { 
@@ -54,16 +57,10 @@ typedef enum _particle_ctrl_InterfaceType {
     particle_ctrl_InterfaceType_PPP = 16 
 } particle_ctrl_InterfaceType;
 
-typedef enum _particle_ctrl_IPConfiguration_Type { 
-    particle_ctrl_IPConfiguration_Type_NONE = 0, 
-    particle_ctrl_IPConfiguration_Type_DHCP = 1, 
-    particle_ctrl_IPConfiguration_Type_STATIC = 2 
-} particle_ctrl_IPConfiguration_Type;
-
 /* Struct definitions */
-typedef struct _particle_ctrl_DNSConfiguration { 
-    pb_callback_t servers; 
-} particle_ctrl_DNSConfiguration;
+typedef struct _particle_ctrl_DeleteInterfaceStoredConfigurationReply { 
+    char dummy_field;
+} particle_ctrl_DeleteInterfaceStoredConfigurationReply;
 
 typedef struct _particle_ctrl_GetInterfaceListReply { 
     pb_callback_t interfaces; 
@@ -73,26 +70,26 @@ typedef struct _particle_ctrl_GetInterfaceListRequest {
     char dummy_field;
 } particle_ctrl_GetInterfaceListRequest;
 
-typedef struct _particle_ctrl_Ipv6Config { 
-    pb_callback_t addresses; 
-} particle_ctrl_Ipv6Config;
+typedef struct _particle_ctrl_GetInterfaceStoredConfigurationReply { 
+    pb_callback_t config; 
+} particle_ctrl_GetInterfaceStoredConfigurationReply;
 
-typedef struct _particle_ctrl_NetworkSetConfigurationReply { 
+typedef struct _particle_ctrl_SetInterfaceStoredConfigurationReply { 
     char dummy_field;
-} particle_ctrl_NetworkSetConfigurationReply;
+} particle_ctrl_SetInterfaceStoredConfigurationReply;
+
+typedef struct _particle_ctrl_DeleteInterfaceStoredConfigurationRequest { 
+    uint32_t index; 
+    pb_callback_t profile; /* Optional, if unset - remove all entries */
+} particle_ctrl_DeleteInterfaceStoredConfigurationRequest;
 
 typedef struct _particle_ctrl_GetInterfaceRequest { 
     uint32_t index; 
 } particle_ctrl_GetInterfaceRequest;
 
-typedef struct _particle_ctrl_IPConfiguration { 
-    particle_ctrl_IPConfiguration_Type type; 
-    particle_ctrl_IPAddress address; 
-    particle_ctrl_IPAddress netmask; 
-    particle_ctrl_IPAddress gateway; 
-    particle_ctrl_IPAddress dhcp_server; 
-    pb_callback_t hostname; 
-} particle_ctrl_IPConfiguration;
+typedef struct _particle_ctrl_GetInterfaceStoredConfigurationRequest { 
+    uint32_t index; 
+} particle_ctrl_GetInterfaceStoredConfigurationRequest;
 
 typedef struct _particle_ctrl_InterfaceAddress { 
     particle_ctrl_IpAddress address; 
@@ -111,15 +108,17 @@ typedef struct _particle_ctrl_Ipv4Config {
     particle_ctrl_Ipv4Address peer; 
     /* Temporary, will be moved to routing table */
     particle_ctrl_Ipv4Address gateway; 
+    pb_callback_t dns; 
+    particle_ctrl_InterfaceConfigurationSource source; 
 } particle_ctrl_Ipv4Config;
 
-typedef struct _particle_ctrl_NetworkGetConfigurationRequest { 
-    int32_t interface; 
-} particle_ctrl_NetworkGetConfigurationRequest;
-
-typedef struct _particle_ctrl_NetworkGetStatusRequest { 
-    int32_t interface; 
-} particle_ctrl_NetworkGetStatusRequest;
+typedef struct _particle_ctrl_Ipv6Config { 
+    pb_callback_t addresses; 
+    pb_callback_t dns; 
+    particle_ctrl_InterfaceConfigurationSource source; 
+    /* Temporary, will be moved to routing table */
+    particle_ctrl_Ipv6Address gateway; 
+} particle_ctrl_Ipv6Config;
 
 typedef PB_BYTES_ARRAY_T(8) particle_ctrl_Interface_hw_address_t;
 /* Operation state of the interface */
@@ -134,39 +133,22 @@ typedef struct _particle_ctrl_Interface {
     particle_ctrl_Interface_hw_address_t hw_address; 
     uint32_t mtu; 
     uint32_t metric; 
+    pb_callback_t profile; /* Network 'profile' reference (e.g. SSID) */
 } particle_ctrl_Interface;
-
-typedef PB_BYTES_ARRAY_T(6) particle_ctrl_NetworkConfiguration_mac_t;
-typedef struct _particle_ctrl_NetworkConfiguration { 
-    int32_t interface; 
-    particle_ctrl_NetworkState state; 
-    pb_callback_t name; 
-    particle_ctrl_NetworkConfiguration_mac_t mac; 
-    particle_ctrl_IPConfiguration ipconfig; 
-    particle_ctrl_DNSConfiguration dnsconfig; 
-} particle_ctrl_NetworkConfiguration;
 
 typedef struct _particle_ctrl_GetInterfaceReply { 
     particle_ctrl_Interface interface; 
 } particle_ctrl_GetInterfaceReply;
 
-typedef struct _particle_ctrl_NetworkGetConfigurationReply { 
-    particle_ctrl_NetworkConfiguration config; 
-} particle_ctrl_NetworkGetConfigurationReply;
-
-typedef struct _particle_ctrl_NetworkGetStatusReply { 
-    particle_ctrl_NetworkConfiguration config; 
-} particle_ctrl_NetworkGetStatusReply;
-
-typedef struct _particle_ctrl_NetworkSetConfigurationRequest { 
-    particle_ctrl_NetworkConfiguration config; 
-} particle_ctrl_NetworkSetConfigurationRequest;
+typedef struct _particle_ctrl_SetInterfaceStoredConfigurationRequest { 
+    particle_ctrl_Interface config; 
+} particle_ctrl_SetInterfaceStoredConfigurationRequest;
 
 
 /* Helper constants for enums */
-#define _particle_ctrl_NetworkState_MIN particle_ctrl_NetworkState_NETWORK_STATUS_NONE
-#define _particle_ctrl_NetworkState_MAX particle_ctrl_NetworkState_UP
-#define _particle_ctrl_NetworkState_ARRAYSIZE ((particle_ctrl_NetworkState)(particle_ctrl_NetworkState_UP+1))
+#define _particle_ctrl_InterfaceConfigurationSource_MIN particle_ctrl_InterfaceConfigurationSource_NONE
+#define _particle_ctrl_InterfaceConfigurationSource_MAX particle_ctrl_InterfaceConfigurationSource_DHCPV6
+#define _particle_ctrl_InterfaceConfigurationSource_ARRAYSIZE ((particle_ctrl_InterfaceConfigurationSource)(particle_ctrl_InterfaceConfigurationSource_DHCPV6+1))
 
 #define _particle_ctrl_InterfaceFlag_MIN particle_ctrl_InterfaceFlag_IFF_NONE
 #define _particle_ctrl_InterfaceFlag_MAX particle_ctrl_InterfaceFlag_IFF_NOND6
@@ -180,64 +162,50 @@ typedef struct _particle_ctrl_NetworkSetConfigurationRequest {
 #define _particle_ctrl_InterfaceType_MAX particle_ctrl_InterfaceType_PPP
 #define _particle_ctrl_InterfaceType_ARRAYSIZE ((particle_ctrl_InterfaceType)(particle_ctrl_InterfaceType_PPP+1))
 
-#define _particle_ctrl_IPConfiguration_Type_MIN particle_ctrl_IPConfiguration_Type_NONE
-#define _particle_ctrl_IPConfiguration_Type_MAX particle_ctrl_IPConfiguration_Type_STATIC
-#define _particle_ctrl_IPConfiguration_Type_ARRAYSIZE ((particle_ctrl_IPConfiguration_Type)(particle_ctrl_IPConfiguration_Type_STATIC+1))
-
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define particle_ctrl_NetworkGetStatusRequest_init_default {0}
-#define particle_ctrl_NetworkGetStatusReply_init_default {particle_ctrl_NetworkConfiguration_init_default}
-#define particle_ctrl_NetworkGetConfigurationRequest_init_default {0}
-#define particle_ctrl_NetworkGetConfigurationReply_init_default {particle_ctrl_NetworkConfiguration_init_default}
-#define particle_ctrl_NetworkSetConfigurationRequest_init_default {particle_ctrl_NetworkConfiguration_init_default}
-#define particle_ctrl_NetworkSetConfigurationReply_init_default {0}
-#define particle_ctrl_IPConfiguration_init_default {_particle_ctrl_IPConfiguration_Type_MIN, particle_ctrl_IPAddress_init_default, particle_ctrl_IPAddress_init_default, particle_ctrl_IPAddress_init_default, particle_ctrl_IPAddress_init_default, {{NULL}, NULL}}
-#define particle_ctrl_DNSConfiguration_init_default {{{NULL}, NULL}}
-#define particle_ctrl_NetworkConfiguration_init_default {0, _particle_ctrl_NetworkState_MIN, {{NULL}, NULL}, {0, {0}}, particle_ctrl_IPConfiguration_init_default, particle_ctrl_DNSConfiguration_init_default}
 #define particle_ctrl_InterfaceAddress_init_default {particle_ctrl_IpAddress_init_default, 0}
-#define particle_ctrl_Ipv4Config_init_default    {{{NULL}, NULL}, particle_ctrl_Ipv4Address_init_default, particle_ctrl_Ipv4Address_init_default}
-#define particle_ctrl_Ipv6Config_init_default    {{{NULL}, NULL}}
-#define particle_ctrl_Interface_init_default     {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN, 0, 0, particle_ctrl_Ipv4Config_init_default, particle_ctrl_Ipv6Config_init_default, {0, {0}}, 0, 0}
+#define particle_ctrl_Ipv4Config_init_default    {{{NULL}, NULL}, particle_ctrl_Ipv4Address_init_default, particle_ctrl_Ipv4Address_init_default, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN}
+#define particle_ctrl_Ipv6Config_init_default    {{{NULL}, NULL}, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN, particle_ctrl_Ipv6Address_init_default}
+#define particle_ctrl_Interface_init_default     {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN, 0, 0, particle_ctrl_Ipv4Config_init_default, particle_ctrl_Ipv6Config_init_default, {0, {0}}, 0, 0, {{NULL}, NULL}}
 #define particle_ctrl_InterfaceEntry_init_default {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN}
 #define particle_ctrl_GetInterfaceListRequest_init_default {0}
 #define particle_ctrl_GetInterfaceListReply_init_default {{{NULL}, NULL}}
 #define particle_ctrl_GetInterfaceRequest_init_default {0}
 #define particle_ctrl_GetInterfaceReply_init_default {particle_ctrl_Interface_init_default}
-#define particle_ctrl_NetworkGetStatusRequest_init_zero {0}
-#define particle_ctrl_NetworkGetStatusReply_init_zero {particle_ctrl_NetworkConfiguration_init_zero}
-#define particle_ctrl_NetworkGetConfigurationRequest_init_zero {0}
-#define particle_ctrl_NetworkGetConfigurationReply_init_zero {particle_ctrl_NetworkConfiguration_init_zero}
-#define particle_ctrl_NetworkSetConfigurationRequest_init_zero {particle_ctrl_NetworkConfiguration_init_zero}
-#define particle_ctrl_NetworkSetConfigurationReply_init_zero {0}
-#define particle_ctrl_IPConfiguration_init_zero  {_particle_ctrl_IPConfiguration_Type_MIN, particle_ctrl_IPAddress_init_zero, particle_ctrl_IPAddress_init_zero, particle_ctrl_IPAddress_init_zero, particle_ctrl_IPAddress_init_zero, {{NULL}, NULL}}
-#define particle_ctrl_DNSConfiguration_init_zero {{{NULL}, NULL}}
-#define particle_ctrl_NetworkConfiguration_init_zero {0, _particle_ctrl_NetworkState_MIN, {{NULL}, NULL}, {0, {0}}, particle_ctrl_IPConfiguration_init_zero, particle_ctrl_DNSConfiguration_init_zero}
+#define particle_ctrl_GetInterfaceStoredConfigurationRequest_init_default {0}
+#define particle_ctrl_GetInterfaceStoredConfigurationReply_init_default {{{NULL}, NULL}}
+#define particle_ctrl_SetInterfaceStoredConfigurationRequest_init_default {particle_ctrl_Interface_init_default}
+#define particle_ctrl_SetInterfaceStoredConfigurationReply_init_default {0}
+#define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_init_default {0, {{NULL}, NULL}}
+#define particle_ctrl_DeleteInterfaceStoredConfigurationReply_init_default {0}
 #define particle_ctrl_InterfaceAddress_init_zero {particle_ctrl_IpAddress_init_zero, 0}
-#define particle_ctrl_Ipv4Config_init_zero       {{{NULL}, NULL}, particle_ctrl_Ipv4Address_init_zero, particle_ctrl_Ipv4Address_init_zero}
-#define particle_ctrl_Ipv6Config_init_zero       {{{NULL}, NULL}}
-#define particle_ctrl_Interface_init_zero        {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN, 0, 0, particle_ctrl_Ipv4Config_init_zero, particle_ctrl_Ipv6Config_init_zero, {0, {0}}, 0, 0}
+#define particle_ctrl_Ipv4Config_init_zero       {{{NULL}, NULL}, particle_ctrl_Ipv4Address_init_zero, particle_ctrl_Ipv4Address_init_zero, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN}
+#define particle_ctrl_Ipv6Config_init_zero       {{{NULL}, NULL}, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN, particle_ctrl_Ipv6Address_init_zero}
+#define particle_ctrl_Interface_init_zero        {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN, 0, 0, particle_ctrl_Ipv4Config_init_zero, particle_ctrl_Ipv6Config_init_zero, {0, {0}}, 0, 0, {{NULL}, NULL}}
 #define particle_ctrl_InterfaceEntry_init_zero   {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN}
 #define particle_ctrl_GetInterfaceListRequest_init_zero {0}
 #define particle_ctrl_GetInterfaceListReply_init_zero {{{NULL}, NULL}}
 #define particle_ctrl_GetInterfaceRequest_init_zero {0}
 #define particle_ctrl_GetInterfaceReply_init_zero {particle_ctrl_Interface_init_zero}
+#define particle_ctrl_GetInterfaceStoredConfigurationRequest_init_zero {0}
+#define particle_ctrl_GetInterfaceStoredConfigurationReply_init_zero {{{NULL}, NULL}}
+#define particle_ctrl_SetInterfaceStoredConfigurationRequest_init_zero {particle_ctrl_Interface_init_zero}
+#define particle_ctrl_SetInterfaceStoredConfigurationReply_init_zero {0}
+#define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_init_zero {0, {{NULL}, NULL}}
+#define particle_ctrl_DeleteInterfaceStoredConfigurationReply_init_zero {0}
 
 /* Field tags (for use in manual encoding/decoding) */
-#define particle_ctrl_DNSConfiguration_servers_tag 1
 #define particle_ctrl_GetInterfaceListReply_interfaces_tag 1
-#define particle_ctrl_Ipv6Config_addresses_tag   1
+#define particle_ctrl_GetInterfaceStoredConfigurationReply_config_tag 1
+#define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_index_tag 1
+#define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_profile_tag 2
 #define particle_ctrl_GetInterfaceRequest_index_tag 1
-#define particle_ctrl_IPConfiguration_type_tag   1
-#define particle_ctrl_IPConfiguration_address_tag 2
-#define particle_ctrl_IPConfiguration_netmask_tag 3
-#define particle_ctrl_IPConfiguration_gateway_tag 4
-#define particle_ctrl_IPConfiguration_dhcp_server_tag 5
-#define particle_ctrl_IPConfiguration_hostname_tag 6
+#define particle_ctrl_GetInterfaceStoredConfigurationRequest_index_tag 1
 #define particle_ctrl_InterfaceAddress_address_tag 1
 #define particle_ctrl_InterfaceAddress_prefix_length_tag 2
 #define particle_ctrl_InterfaceEntry_index_tag   1
@@ -246,8 +214,12 @@ extern "C" {
 #define particle_ctrl_Ipv4Config_addresses_tag   1
 #define particle_ctrl_Ipv4Config_peer_tag        2
 #define particle_ctrl_Ipv4Config_gateway_tag     3
-#define particle_ctrl_NetworkGetConfigurationRequest_interface_tag 1
-#define particle_ctrl_NetworkGetStatusRequest_interface_tag 1
+#define particle_ctrl_Ipv4Config_dns_tag         4
+#define particle_ctrl_Ipv4Config_source_tag      5
+#define particle_ctrl_Ipv6Config_addresses_tag   1
+#define particle_ctrl_Ipv6Config_dns_tag         2
+#define particle_ctrl_Ipv6Config_source_tag      3
+#define particle_ctrl_Ipv6Config_gateway_tag     4
 #define particle_ctrl_Interface_index_tag        1
 #define particle_ctrl_Interface_name_tag         2
 #define particle_ctrl_Interface_type_tag         3
@@ -258,83 +230,11 @@ extern "C" {
 #define particle_ctrl_Interface_hw_address_tag   8
 #define particle_ctrl_Interface_mtu_tag          9
 #define particle_ctrl_Interface_metric_tag       10
-#define particle_ctrl_NetworkConfiguration_interface_tag 1
-#define particle_ctrl_NetworkConfiguration_state_tag 2
-#define particle_ctrl_NetworkConfiguration_name_tag 3
-#define particle_ctrl_NetworkConfiguration_mac_tag 4
-#define particle_ctrl_NetworkConfiguration_ipconfig_tag 5
-#define particle_ctrl_NetworkConfiguration_dnsconfig_tag 6
+#define particle_ctrl_Interface_profile_tag      11
 #define particle_ctrl_GetInterfaceReply_interface_tag 1
-#define particle_ctrl_NetworkGetConfigurationReply_config_tag 1
-#define particle_ctrl_NetworkGetStatusReply_config_tag 1
-#define particle_ctrl_NetworkSetConfigurationRequest_config_tag 1
+#define particle_ctrl_SetInterfaceStoredConfigurationRequest_config_tag 1
 
 /* Struct field encoding specification for nanopb */
-#define particle_ctrl_NetworkGetStatusRequest_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    interface,         1)
-#define particle_ctrl_NetworkGetStatusRequest_CALLBACK NULL
-#define particle_ctrl_NetworkGetStatusRequest_DEFAULT NULL
-
-#define particle_ctrl_NetworkGetStatusReply_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, MESSAGE,  config,            1)
-#define particle_ctrl_NetworkGetStatusReply_CALLBACK NULL
-#define particle_ctrl_NetworkGetStatusReply_DEFAULT NULL
-#define particle_ctrl_NetworkGetStatusReply_config_MSGTYPE particle_ctrl_NetworkConfiguration
-
-#define particle_ctrl_NetworkGetConfigurationRequest_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    interface,         1)
-#define particle_ctrl_NetworkGetConfigurationRequest_CALLBACK NULL
-#define particle_ctrl_NetworkGetConfigurationRequest_DEFAULT NULL
-
-#define particle_ctrl_NetworkGetConfigurationReply_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, MESSAGE,  config,            1)
-#define particle_ctrl_NetworkGetConfigurationReply_CALLBACK NULL
-#define particle_ctrl_NetworkGetConfigurationReply_DEFAULT NULL
-#define particle_ctrl_NetworkGetConfigurationReply_config_MSGTYPE particle_ctrl_NetworkConfiguration
-
-#define particle_ctrl_NetworkSetConfigurationRequest_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, MESSAGE,  config,            1)
-#define particle_ctrl_NetworkSetConfigurationRequest_CALLBACK NULL
-#define particle_ctrl_NetworkSetConfigurationRequest_DEFAULT NULL
-#define particle_ctrl_NetworkSetConfigurationRequest_config_MSGTYPE particle_ctrl_NetworkConfiguration
-
-#define particle_ctrl_NetworkSetConfigurationReply_FIELDLIST(X, a) \
-
-#define particle_ctrl_NetworkSetConfigurationReply_CALLBACK NULL
-#define particle_ctrl_NetworkSetConfigurationReply_DEFAULT NULL
-
-#define particle_ctrl_IPConfiguration_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, UENUM,    type,              1) \
-X(a, STATIC,   SINGULAR, MESSAGE,  address,           2) \
-X(a, STATIC,   SINGULAR, MESSAGE,  netmask,           3) \
-X(a, STATIC,   SINGULAR, MESSAGE,  gateway,           4) \
-X(a, STATIC,   SINGULAR, MESSAGE,  dhcp_server,       5) \
-X(a, CALLBACK, SINGULAR, STRING,   hostname,          6)
-#define particle_ctrl_IPConfiguration_CALLBACK pb_default_field_callback
-#define particle_ctrl_IPConfiguration_DEFAULT NULL
-#define particle_ctrl_IPConfiguration_address_MSGTYPE particle_ctrl_IPAddress
-#define particle_ctrl_IPConfiguration_netmask_MSGTYPE particle_ctrl_IPAddress
-#define particle_ctrl_IPConfiguration_gateway_MSGTYPE particle_ctrl_IPAddress
-#define particle_ctrl_IPConfiguration_dhcp_server_MSGTYPE particle_ctrl_IPAddress
-
-#define particle_ctrl_DNSConfiguration_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, MESSAGE,  servers,           1)
-#define particle_ctrl_DNSConfiguration_CALLBACK pb_default_field_callback
-#define particle_ctrl_DNSConfiguration_DEFAULT NULL
-#define particle_ctrl_DNSConfiguration_servers_MSGTYPE particle_ctrl_IPAddress
-
-#define particle_ctrl_NetworkConfiguration_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, INT32,    interface,         1) \
-X(a, STATIC,   SINGULAR, UENUM,    state,             2) \
-X(a, CALLBACK, SINGULAR, STRING,   name,              3) \
-X(a, STATIC,   SINGULAR, BYTES,    mac,               4) \
-X(a, STATIC,   SINGULAR, MESSAGE,  ipconfig,          5) \
-X(a, STATIC,   SINGULAR, MESSAGE,  dnsconfig,         6)
-#define particle_ctrl_NetworkConfiguration_CALLBACK pb_default_field_callback
-#define particle_ctrl_NetworkConfiguration_DEFAULT NULL
-#define particle_ctrl_NetworkConfiguration_ipconfig_MSGTYPE particle_ctrl_IPConfiguration
-#define particle_ctrl_NetworkConfiguration_dnsconfig_MSGTYPE particle_ctrl_DNSConfiguration
-
 #define particle_ctrl_InterfaceAddress_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, MESSAGE,  address,           1) \
 X(a, STATIC,   SINGULAR, UINT32,   prefix_length,     2)
@@ -345,18 +245,26 @@ X(a, STATIC,   SINGULAR, UINT32,   prefix_length,     2)
 #define particle_ctrl_Ipv4Config_FIELDLIST(X, a) \
 X(a, CALLBACK, REPEATED, MESSAGE,  addresses,         1) \
 X(a, STATIC,   SINGULAR, MESSAGE,  peer,              2) \
-X(a, STATIC,   SINGULAR, MESSAGE,  gateway,           3)
+X(a, STATIC,   SINGULAR, MESSAGE,  gateway,           3) \
+X(a, CALLBACK, REPEATED, MESSAGE,  dns,               4) \
+X(a, STATIC,   SINGULAR, UENUM,    source,            5)
 #define particle_ctrl_Ipv4Config_CALLBACK pb_default_field_callback
 #define particle_ctrl_Ipv4Config_DEFAULT NULL
 #define particle_ctrl_Ipv4Config_addresses_MSGTYPE particle_ctrl_InterfaceAddress
 #define particle_ctrl_Ipv4Config_peer_MSGTYPE particle_ctrl_Ipv4Address
 #define particle_ctrl_Ipv4Config_gateway_MSGTYPE particle_ctrl_Ipv4Address
+#define particle_ctrl_Ipv4Config_dns_MSGTYPE particle_ctrl_Ipv4Address
 
 #define particle_ctrl_Ipv6Config_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, MESSAGE,  addresses,         1)
+X(a, CALLBACK, REPEATED, MESSAGE,  addresses,         1) \
+X(a, CALLBACK, REPEATED, MESSAGE,  dns,               2) \
+X(a, STATIC,   SINGULAR, UENUM,    source,            3) \
+X(a, STATIC,   SINGULAR, MESSAGE,  gateway,           4)
 #define particle_ctrl_Ipv6Config_CALLBACK pb_default_field_callback
 #define particle_ctrl_Ipv6Config_DEFAULT NULL
 #define particle_ctrl_Ipv6Config_addresses_MSGTYPE particle_ctrl_InterfaceAddress
+#define particle_ctrl_Ipv6Config_dns_MSGTYPE particle_ctrl_Ipv6Address
+#define particle_ctrl_Ipv6Config_gateway_MSGTYPE particle_ctrl_Ipv6Address
 
 #define particle_ctrl_Interface_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UINT32,   index,             1) \
@@ -368,7 +276,8 @@ X(a, STATIC,   SINGULAR, MESSAGE,  ipv4_config,       6) \
 X(a, STATIC,   SINGULAR, MESSAGE,  ipv6_config,       7) \
 X(a, STATIC,   SINGULAR, BYTES,    hw_address,        8) \
 X(a, STATIC,   SINGULAR, UINT32,   mtu,               9) \
-X(a, STATIC,   SINGULAR, UINT32,   metric,           10)
+X(a, STATIC,   SINGULAR, UINT32,   metric,           10) \
+X(a, CALLBACK, SINGULAR, BYTES,    profile,          11)
 #define particle_ctrl_Interface_CALLBACK pb_default_field_callback
 #define particle_ctrl_Interface_DEFAULT NULL
 #define particle_ctrl_Interface_ipv4_config_MSGTYPE particle_ctrl_Ipv4Config
@@ -403,15 +312,39 @@ X(a, STATIC,   SINGULAR, MESSAGE,  interface,         1)
 #define particle_ctrl_GetInterfaceReply_DEFAULT NULL
 #define particle_ctrl_GetInterfaceReply_interface_MSGTYPE particle_ctrl_Interface
 
-extern const pb_msgdesc_t particle_ctrl_NetworkGetStatusRequest_msg;
-extern const pb_msgdesc_t particle_ctrl_NetworkGetStatusReply_msg;
-extern const pb_msgdesc_t particle_ctrl_NetworkGetConfigurationRequest_msg;
-extern const pb_msgdesc_t particle_ctrl_NetworkGetConfigurationReply_msg;
-extern const pb_msgdesc_t particle_ctrl_NetworkSetConfigurationRequest_msg;
-extern const pb_msgdesc_t particle_ctrl_NetworkSetConfigurationReply_msg;
-extern const pb_msgdesc_t particle_ctrl_IPConfiguration_msg;
-extern const pb_msgdesc_t particle_ctrl_DNSConfiguration_msg;
-extern const pb_msgdesc_t particle_ctrl_NetworkConfiguration_msg;
+#define particle_ctrl_GetInterfaceStoredConfigurationRequest_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UINT32,   index,             1)
+#define particle_ctrl_GetInterfaceStoredConfigurationRequest_CALLBACK NULL
+#define particle_ctrl_GetInterfaceStoredConfigurationRequest_DEFAULT NULL
+
+#define particle_ctrl_GetInterfaceStoredConfigurationReply_FIELDLIST(X, a) \
+X(a, CALLBACK, REPEATED, MESSAGE,  config,            1)
+#define particle_ctrl_GetInterfaceStoredConfigurationReply_CALLBACK pb_default_field_callback
+#define particle_ctrl_GetInterfaceStoredConfigurationReply_DEFAULT NULL
+#define particle_ctrl_GetInterfaceStoredConfigurationReply_config_MSGTYPE particle_ctrl_Interface
+
+#define particle_ctrl_SetInterfaceStoredConfigurationRequest_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, MESSAGE,  config,            1)
+#define particle_ctrl_SetInterfaceStoredConfigurationRequest_CALLBACK NULL
+#define particle_ctrl_SetInterfaceStoredConfigurationRequest_DEFAULT NULL
+#define particle_ctrl_SetInterfaceStoredConfigurationRequest_config_MSGTYPE particle_ctrl_Interface
+
+#define particle_ctrl_SetInterfaceStoredConfigurationReply_FIELDLIST(X, a) \
+
+#define particle_ctrl_SetInterfaceStoredConfigurationReply_CALLBACK NULL
+#define particle_ctrl_SetInterfaceStoredConfigurationReply_DEFAULT NULL
+
+#define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UINT32,   index,             1) \
+X(a, CALLBACK, SINGULAR, BYTES,    profile,           2)
+#define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_CALLBACK pb_default_field_callback
+#define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_DEFAULT NULL
+
+#define particle_ctrl_DeleteInterfaceStoredConfigurationReply_FIELDLIST(X, a) \
+
+#define particle_ctrl_DeleteInterfaceStoredConfigurationReply_CALLBACK NULL
+#define particle_ctrl_DeleteInterfaceStoredConfigurationReply_DEFAULT NULL
+
 extern const pb_msgdesc_t particle_ctrl_InterfaceAddress_msg;
 extern const pb_msgdesc_t particle_ctrl_Ipv4Config_msg;
 extern const pb_msgdesc_t particle_ctrl_Ipv6Config_msg;
@@ -421,17 +354,14 @@ extern const pb_msgdesc_t particle_ctrl_GetInterfaceListRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_GetInterfaceListReply_msg;
 extern const pb_msgdesc_t particle_ctrl_GetInterfaceRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_GetInterfaceReply_msg;
+extern const pb_msgdesc_t particle_ctrl_GetInterfaceStoredConfigurationRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_GetInterfaceStoredConfigurationReply_msg;
+extern const pb_msgdesc_t particle_ctrl_SetInterfaceStoredConfigurationRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_SetInterfaceStoredConfigurationReply_msg;
+extern const pb_msgdesc_t particle_ctrl_DeleteInterfaceStoredConfigurationRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_DeleteInterfaceStoredConfigurationReply_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
-#define particle_ctrl_NetworkGetStatusRequest_fields &particle_ctrl_NetworkGetStatusRequest_msg
-#define particle_ctrl_NetworkGetStatusReply_fields &particle_ctrl_NetworkGetStatusReply_msg
-#define particle_ctrl_NetworkGetConfigurationRequest_fields &particle_ctrl_NetworkGetConfigurationRequest_msg
-#define particle_ctrl_NetworkGetConfigurationReply_fields &particle_ctrl_NetworkGetConfigurationReply_msg
-#define particle_ctrl_NetworkSetConfigurationRequest_fields &particle_ctrl_NetworkSetConfigurationRequest_msg
-#define particle_ctrl_NetworkSetConfigurationReply_fields &particle_ctrl_NetworkSetConfigurationReply_msg
-#define particle_ctrl_IPConfiguration_fields &particle_ctrl_IPConfiguration_msg
-#define particle_ctrl_DNSConfiguration_fields &particle_ctrl_DNSConfiguration_msg
-#define particle_ctrl_NetworkConfiguration_fields &particle_ctrl_NetworkConfiguration_msg
 #define particle_ctrl_InterfaceAddress_fields &particle_ctrl_InterfaceAddress_msg
 #define particle_ctrl_Ipv4Config_fields &particle_ctrl_Ipv4Config_msg
 #define particle_ctrl_Ipv6Config_fields &particle_ctrl_Ipv6Config_msg
@@ -441,26 +371,29 @@ extern const pb_msgdesc_t particle_ctrl_GetInterfaceReply_msg;
 #define particle_ctrl_GetInterfaceListReply_fields &particle_ctrl_GetInterfaceListReply_msg
 #define particle_ctrl_GetInterfaceRequest_fields &particle_ctrl_GetInterfaceRequest_msg
 #define particle_ctrl_GetInterfaceReply_fields &particle_ctrl_GetInterfaceReply_msg
+#define particle_ctrl_GetInterfaceStoredConfigurationRequest_fields &particle_ctrl_GetInterfaceStoredConfigurationRequest_msg
+#define particle_ctrl_GetInterfaceStoredConfigurationReply_fields &particle_ctrl_GetInterfaceStoredConfigurationReply_msg
+#define particle_ctrl_SetInterfaceStoredConfigurationRequest_fields &particle_ctrl_SetInterfaceStoredConfigurationRequest_msg
+#define particle_ctrl_SetInterfaceStoredConfigurationReply_fields &particle_ctrl_SetInterfaceStoredConfigurationReply_msg
+#define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_fields &particle_ctrl_DeleteInterfaceStoredConfigurationRequest_msg
+#define particle_ctrl_DeleteInterfaceStoredConfigurationReply_fields &particle_ctrl_DeleteInterfaceStoredConfigurationReply_msg
 
 /* Maximum encoded size of messages (where known) */
-/* particle_ctrl_NetworkGetStatusReply_size depends on runtime parameters */
-/* particle_ctrl_NetworkGetConfigurationReply_size depends on runtime parameters */
-/* particle_ctrl_NetworkSetConfigurationRequest_size depends on runtime parameters */
-/* particle_ctrl_IPConfiguration_size depends on runtime parameters */
-/* particle_ctrl_DNSConfiguration_size depends on runtime parameters */
-/* particle_ctrl_NetworkConfiguration_size depends on runtime parameters */
 /* particle_ctrl_Ipv4Config_size depends on runtime parameters */
 /* particle_ctrl_Ipv6Config_size depends on runtime parameters */
 /* particle_ctrl_Interface_size depends on runtime parameters */
 /* particle_ctrl_InterfaceEntry_size depends on runtime parameters */
 /* particle_ctrl_GetInterfaceListReply_size depends on runtime parameters */
 /* particle_ctrl_GetInterfaceReply_size depends on runtime parameters */
+/* particle_ctrl_GetInterfaceStoredConfigurationReply_size depends on runtime parameters */
+/* particle_ctrl_SetInterfaceStoredConfigurationRequest_size depends on runtime parameters */
+/* particle_ctrl_DeleteInterfaceStoredConfigurationRequest_size depends on runtime parameters */
+#define particle_ctrl_DeleteInterfaceStoredConfigurationReply_size 0
 #define particle_ctrl_GetInterfaceListRequest_size 0
 #define particle_ctrl_GetInterfaceRequest_size   6
+#define particle_ctrl_GetInterfaceStoredConfigurationRequest_size 6
 #define particle_ctrl_InterfaceAddress_size      28
-#define particle_ctrl_NetworkGetConfigurationRequest_size 11
-#define particle_ctrl_NetworkGetStatusRequest_size 11
-#define particle_ctrl_NetworkSetConfigurationReply_size 0
+#define particle_ctrl_SetInterfaceStoredConfigurationReply_size 0
 
 #ifdef __cplusplus
 } /* extern "C" */

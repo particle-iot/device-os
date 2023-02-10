@@ -77,7 +77,7 @@ RealtekNcpNetif::~RealtekNcpNetif() {
 void RealtekNcpNetif::init() {
     registerHandlers();
     SPARK_ASSERT(lwip_memp_event_handler_add(mempEventHandler, MEMP_PBUF_POOL, this) == 0);
-    SPARK_ASSERT(os_thread_create(&thread_, "rltkncp", OS_THREAD_PRIORITY_NETWORK, &RealtekNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
+    SPARK_ASSERT(os_thread_create(&thread_, "rltkncp", OS_THREAD_PRIORITY_NETWORK, &RealtekNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
 }
 
 void RealtekNcpNetif::setWifiManager(particle::WifiNetworkManager* wifiMan) {
@@ -252,6 +252,18 @@ int RealtekNcpNetif::getPowerState(if_power_state_t* state) const {
         *state = IF_POWER_STATE_NONE;
     }
     return SYSTEM_ERROR_NONE;
+}
+
+int RealtekNcpNetif::getCurrentProfile(spark::Vector<char>* profile) const {
+    const auto client = wifiMan_->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    CHECK_TRUE(client->connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+
+    WifiNetworkInfo info;
+    CHECK(client->getNetworkInfo(&info));
+    *profile = spark::Vector<char>(info.ssid(), strlen(info.ssid()));
+    return 0;
 }
 
 int RealtekNcpNetif::getNcpState(unsigned int* state) const {

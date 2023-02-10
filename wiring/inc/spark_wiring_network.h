@@ -27,6 +27,7 @@
 #define __SPARK_WIRING_NETWORK_H
 
 #include "spark_wiring_ipaddress.h"
+#include "system_network.h"
 
 namespace spark {
 
@@ -73,6 +74,10 @@ public:
     explicit NetworkClass(network_interface_t iface)
             : iface_(iface) {
     }
+
+    virtual int setConfig(const particle::NetworkInterfaceConfig& conf);
+    virtual particle::NetworkInterfaceConfig getConfig(String profile = String()) const;
+    virtual spark::Vector<particle::NetworkInterfaceConfig> getConfigList() const;
 
 private:
     network_interface_t iface_;

@@ -44,6 +44,13 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "timer_hal.h"
 #include "delay_hal.h"
 #include "system_network_diagnostics.h"
+#include "file_util.h"
+#include "network_config.pb.h"
+#include "file_util.h"
+#include "filesystem.h"
+#include "control/common.h"
+#include "control/network.h"
+#include <unistd.h>
 
 #define CHECKV(_expr) \
         ({ \
@@ -100,6 +107,8 @@ void forceCloudPingIfConnected() {
     };
     SystemISRTaskQueue.enqueue(task);
 }
+
+const char NETWORK_CONFIG_FILE[] = "/sys/network.dat";
 
 } /* anonymous */
 
@@ -196,9 +205,6 @@ int NetworkManager::activateConnections() {
 
         if (!(flags & IFF_UP)) {
             CHECKV(if_set_flags(iface, IFF_UP));
-
-            /* FIXME */
-            CHECKV(if_set_xflags(iface, IFXF_DHCP));
 
             /* TODO: establish lower layer connection, e.g. 802.11 */
 
@@ -309,6 +315,7 @@ int NetworkManager::clearConfiguration(if_t oIface) {
     for_each_iface([&](if_t iface, unsigned int flags) {
         char name[IF_NAMESIZE] = {};
         if_get_name(iface, name);
+        uint8_t idx = if_get_index(iface, &idx);
 
         if (oIface && iface != oIface) {
             return;
@@ -326,6 +333,17 @@ int NetworkManager::clearConfiguration(if_t oIface) {
             ret = cellular_credentials_clear(nullptr);
         }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+        spark::Vector<StoredConfiguration> sConf;
+        spark::Vector<StoredConfiguration> newConf;
+        if (!loadStoredConfiguration(sConf)) {
+            for (const auto& c: sConf) {
+                if (c.idx == idx) {
+                    continue;
+                }
+                newConf.append(c);
+            }
+        }
+        saveStoredConfiguration(newConf);
     });
 
     if (!ret) {
@@ -518,6 +536,32 @@ void NetworkManager::handleIfState(if_t iface, const struct if_event* ev) {
 void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
     if (ev->ev_if_link->state) {
         /* Interface link state changed to UP */
+        NetworkInterfaceConfig conf;
+        getConfiguration(iface, &conf, ev->ev_if_link->profile, ev->ev_if_link->profile_len);
+        if (conf.source(AF_INET) == NetworkInterfaceConfigSource::DHCP || conf.source(AF_INET) == NetworkInterfaceConfigSource::NONE) {
+            if_set_xflags(iface, IFXF_DHCP);
+        } else if (conf.source(AF_INET) == NetworkInterfaceConfigSource::STATIC && conf.addresses(AF_INET).size() > 0) {
+            // Clear just in case
+            if_clear_xflags(iface, IFXF_DHCP);
+            // Apply static configuration
+            if_addr ifaddr = {};
+            // For now only 1 IPv4 address is supported in LwIP
+            auto addr = conf.addresses(AF_INET)[0];
+            auto a = addr.address();
+            auto netmask = addr.mask();
+            ifaddr.addr = a.toRaw();
+            ifaddr.netmask = netmask.toRaw();
+            ifaddr.prefixlen = addr.prefixLength();
+            SockAddr gw(conf.gateway());
+            ifaddr.gw = gw.toRaw();
+            if_add_addr(iface, &ifaddr);
+            int i = 0;
+            for (const auto& dns: conf.dns(AF_INET)) {
+                SockAddr d(dns);
+                resolv_add_dns_server(d.toRaw(), i++);
+            }
+        }
+        // TODO AF_INET6
         if (state_ == State::IFACE_UP) {
             transition(State::IFACE_LINK_UP);
             refreshIpState();
@@ -525,6 +569,8 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             refreshIpState();
         }
     } else {
+        // Disable by default
+        if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
         /* Interface link state changed to DOWN */
         if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
@@ -831,7 +877,6 @@ int NetworkManager::syncInterfaceStates() {
             if (state) {
                 if (state->enabled && !(flags & IFF_UP)) {
                     CHECKV(if_set_flags(iface, IFF_UP));
-                    CHECKV(if_set_xflags(iface, IFXF_DHCP));
                 } else if (!state->enabled && (flags & IFF_UP)) {
                     CHECKV(if_clear_flags(iface, IFF_UP));
                 }
@@ -1001,6 +1046,201 @@ int NetworkManager::waitInterfaceOff(if_t iface, system_tick_t timeout) const {
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;
+}
+
+int NetworkManager::setConfiguration(if_t iface, const NetworkInterfaceConfig& conf) {
+    uint8_t index = 0;
+    CHECK(if_get_index(iface, &index));
+    spark::Vector<StoredConfiguration> sConf;
+    CHECK(loadStoredConfiguration(sConf));
+
+    bool added = false;
+    for (auto& c: sConf) {
+        if (c.idx != index) {
+            continue;
+        }
+        if (c.conf.profile() == conf.profile()) {
+            // Replace
+            c.conf = conf;
+            added = true;
+            break;
+        }
+    }
+    if (!added) {
+        CHECK_TRUE(sConf.append({index, conf}), SYSTEM_ERROR_NO_MEMORY);
+    }
+    CHECK(saveStoredConfiguration(sConf));
+    return 0;
+}
+
+int NetworkManager::getConfiguration(if_t iface, spark::Vector<NetworkInterfaceConfig>& conf, const char* profile, size_t profileLen) {
+    uint8_t index = 0;
+    CHECK(if_get_index(iface, &index));
+    spark::Vector<StoredConfiguration> sConf;
+    CHECK(loadStoredConfiguration(sConf));
+    for (const auto& c: sConf) {
+        if (c.idx == index) {
+            if (!profile || (c.conf.profile().size() == (int)profileLen && !memcmp(c.conf.profile().data(), profile, profileLen))) {
+                if (!conf.append(c.conf)) {
+                    return SYSTEM_ERROR_NO_MEMORY;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+int NetworkManager::getConfiguration(if_t iface, NetworkInterfaceConfig* conf, const char* profile, size_t profileLen) {
+    spark::Vector<NetworkInterfaceConfig> c;
+    CHECK(getConfiguration(iface, c, profile, profileLen));
+    if (c.size() == 0) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    if (c.size() > 1) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    *conf = c[0];
+    return 0;
+}
+
+int NetworkManager::clearStoredConfiguration() {
+    return unlink(NETWORK_CONFIG_FILE) == 0 ? 0 : SYSTEM_ERROR_INTERNAL;
+}
+
+#define PB(_name) particle_firmware_##_name
+#define PB_CTRL(_name) particle_ctrl_##_name
+
+using namespace particle::control::common;
+using namespace particle::control::network;
+
+int NetworkManager::loadStoredConfiguration(spark::Vector<StoredConfiguration>& conf) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    fs::FsLock lock(fs);
+    CHECK(filesystem_mount(fs));
+    // Open configuration file
+    lfs_file_t file = {};
+    CHECK(openFile(&file, NETWORK_CONFIG_FILE, LFS_O_RDONLY));
+    NAMED_SCOPE_GUARD(fileGuard, {
+        lfs_file_close(&fs->instance, &file);
+    });
+
+    PB(NetworkConfig) pbConf = {};
+    pbConf.config.arg = &conf;
+    pbConf.config.funcs.decode = [](pb_istream_t* strm, const pb_field_iter_t* field, void** arg) {
+        auto conf = (spark::Vector<StoredConfiguration>*)*arg;
+        PB_CTRL(Interface) pbInterface = {};
+        DecodedCString dProfile(&pbInterface.profile);
+        StoredConfiguration storedConf;
+        DecodeInterfaceAddressList dAddresses4(&pbInterface.ipv4_config.addresses);
+        DecodeInterfaceAddressList dAddresses6(&pbInterface.ipv6_config.addresses);
+        DecodeIpv4AddressList dDns4(&pbInterface.ipv4_config.dns);
+        DecodeIpv6AddressList dDns6(&pbInterface.ipv6_config.dns);
+        if (!pb_decode_noinit(strm, PB_CTRL(Interface_fields), &pbInterface)) {
+            return false;
+        }
+        storedConf.conf.profile(dProfile.data, dProfile.size);
+        storedConf.idx = pbInterface.index;
+        for (const auto& a: dAddresses4.addresses) {
+            storedConf.conf.address(a);
+        }
+        for (const auto& a: dAddresses6.addresses) {
+            storedConf.conf.address(a);
+        }
+        for (const auto& a: dDns4.addresses) {
+            storedConf.conf.dns(a);
+        }
+        for (const auto& a: dDns6.addresses) {
+            storedConf.conf.dns(a);
+        }
+        storedConf.conf.source((NetworkInterfaceConfigSource)pbInterface.ipv4_config.source, AF_INET);
+        storedConf.conf.source((NetworkInterfaceConfigSource)pbInterface.ipv6_config.source, AF_INET6);
+        SockAddr gateway4;
+        SockAddr gateway6;
+        if (ip4AddressToSockAddr(&pbInterface.ipv4_config.gateway, gateway4.toRaw())) {
+            return false;
+        }
+        if (ip6AddressToSockAddr(&pbInterface.ipv6_config.gateway, gateway6.toRaw())) {
+            return false;
+        }
+        storedConf.conf.gateway(gateway4);
+        storedConf.conf.gateway(gateway6);
+        return conf->append(storedConf);
+    };
+    CHECK(decodeMessageFromFile(&file, PB(NetworkConfig_fields), &pbConf));
+    return 0;
+}
+
+int NetworkManager::saveStoredConfiguration(const spark::Vector<StoredConfiguration>& conf) {
+    const auto fs = filesystem_get_instance(nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    fs::FsLock lock(fs);
+    CHECK(filesystem_mount(fs));
+    // Open configuration file
+    lfs_file_t file = {};
+    CHECK(openFile(&file, NETWORK_CONFIG_FILE, LFS_O_WRONLY));
+    NAMED_SCOPE_GUARD(fileGuard, {
+        lfs_file_close(&fs->instance, &file);
+    });
+
+    PB(NetworkConfig) pbConf = {};
+    pbConf.config.arg = (void*)&conf;
+    pbConf.config.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
+        const auto conf = (const spark::Vector<StoredConfiguration>*)*arg;
+        for (const auto& c: *conf) {
+            PB_CTRL(Interface) pbInterface = {};
+            auto profile = c.conf.profile();
+            EncodedString eProfile(&pbInterface.profile, profile.data(), profile.size());
+            pbInterface.index = c.idx;
+            pbInterface.ipv4_config.source = (PB_CTRL(InterfaceConfigurationSource))to_underlying(c.conf.source(AF_INET));
+            if (sockAddrToIp4Address(SockAddr(c.conf.gateway(AF_INET)).toRaw(), &pbInterface.ipv4_config.gateway)) {
+                LOG(ERROR, "1");
+                return false;
+            }
+            auto addr4 = c.conf.addresses(AF_INET);
+            spark::Vector<SockAddr> dns4;
+            for (const auto& a: c.conf.dns(AF_INET)) {
+                if (!dns4.append(SockAddr(a))) {
+                    LOG(ERROR, "2");
+                    return false;
+                }
+            }
+            EncodeInterfaceAddressList eAddrs4(&pbInterface.ipv4_config.addresses, addr4);
+            EncodeIp4AddressList eDns4(&pbInterface.ipv4_config.dns, dns4);
+
+            pbInterface.ipv6_config.source = (PB_CTRL(InterfaceConfigurationSource))to_underlying(c.conf.source(AF_INET6));
+            if (sockAddrToIp6Address(SockAddr(c.conf.gateway(AF_INET6)).toRaw(), &pbInterface.ipv6_config.gateway)) {
+                LOG(ERROR, "4");
+                return false;
+            }
+            auto addr6 = c.conf.addresses(AF_INET6);
+            spark::Vector<SockAddr> dns6;
+            for (const auto& a: c.conf.dns(AF_INET6)) {
+                if (!dns6.append(SockAddr(a))) {
+                    LOG(ERROR, "5");
+                    return false;
+                }
+            }
+            EncodeInterfaceAddressList eAddrs6(&pbInterface.ipv6_config.addresses, addr6);
+            EncodeIp6AddressList eDns6(&pbInterface.ipv6_config.dns, dns6);
+            if (sockAddrToIp6Address(SockAddr(c.conf.gateway(AF_INET6)).toRaw(), &pbInterface.ipv6_config.gateway)) {
+                LOG(ERROR, "6");
+                return false;
+            }
+
+            if (!pb_encode_tag_for_field(strm, field)) {
+                LOG(ERROR, "7");
+                return false;
+            }
+            if (!pb_encode_submessage(strm, PB_CTRL(Interface_fields), &pbInterface)) {
+                LOG(ERROR, "8");
+                return false;
+            }
+        }
+        return true;
+    };
+    CHECK(encodeMessageToFile(&file, PB(NetworkConfig_fields), &pbConf));
+    return 0;
 }
 
 }} /* namespace particle::system */

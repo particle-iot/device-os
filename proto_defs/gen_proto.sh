@@ -40,6 +40,7 @@ gen_proto "${SHARED_DIR}/control/wifi.proto"
 gen_proto "${SHARED_DIR}/control/wifi_new.proto"
 gen_proto "${SHARED_DIR}/control/cellular.proto"
 gen_proto "${SHARED_DIR}/control/network.proto"
+gen_proto "${SHARED_DIR}/control/network_old.proto"
 gen_proto "${SHARED_DIR}/control/storage.proto"
 gen_proto "${SHARED_DIR}/control/cloud.proto"
 

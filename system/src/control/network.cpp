@@ -46,24 +46,6 @@ namespace {
 
 using namespace particle::control::common;
 
-int sockaddrToIpAddress(const sockaddr* saddr, PB(IpAddress)* addr) {
-    if (saddr->sa_family == AF_INET) {
-        const auto inaddr = (const sockaddr_in*)saddr;
-        addr->which_address = PB(IpAddress_v4_tag);
-        static_assert(sizeof(addr->address.v4.address) == sizeof(inaddr->sin_addr), "");
-        memcpy(&addr->address.v4.address, &inaddr->sin_addr, sizeof(inaddr->sin_addr));
-        addr->address.v4.address = bigEndianToNative(addr->address.v4.address);
-    } else if (saddr->sa_family == AF_INET6) {
-        const auto inaddr = (const sockaddr_in6*)saddr;
-        addr->which_address = PB(IpAddress_v6_tag);
-        static_assert(sizeof(addr->address.v6.address) == sizeof(inaddr->sin6_addr), "");
-        memcpy(addr->address.v6.address, &inaddr->sin6_addr, sizeof(inaddr->sin6_addr));
-    } else {
-        return SYSTEM_ERROR_UNKNOWN;
-    }
-    return 0;
-}
-
 PB(InterfaceType) ifaceTypeFromName(const char* name) {
     if (startsWith(name, "lo")) {
         return PB(InterfaceType_LOOPBACK);
@@ -214,6 +196,76 @@ int getInterface(ctrl_request* req) {
     };
     // Encode a reply
     CHECK(encodeReplyMessage(req, PB(GetInterfaceReply_fields), &pbRep));
+    return 0;
+}
+
+int ip4AddressToSockAddr(particle_ctrl_Ipv4Address* addr, sockaddr* saddr) {
+    auto inaddr = (sockaddr_in*)saddr;
+    inaddr->sin_len = sizeof(sockaddr_in);
+    inaddr->sin_family = AF_INET;
+    inaddr->sin_addr.s_addr = nativeToBigEndian(addr->address);
+    static_assert(sizeof(addr->address) == sizeof(inaddr->sin_addr), "");
+    return 0;
+}
+
+int ip6AddressToSockAddr(particle_ctrl_Ipv6Address* addr, sockaddr* saddr) {
+    auto inaddr = (sockaddr_in6*)saddr;
+    static_assert(sizeof(addr->address) == sizeof(inaddr->sin6_addr), "");
+    inaddr->sin6_len = sizeof(sockaddr_in6);
+    inaddr->sin6_family = AF_INET6;
+    memcpy(&inaddr->sin6_addr, addr->address, sizeof(inaddr->sin6_addr));
+    return 0;
+}
+
+int ipAddressToSockAddr(particle_ctrl_IpAddress* addr, sockaddr* saddr) {
+    if (addr->which_address == particle_ctrl_IpAddress_v4_tag) {
+        return ip4AddressToSockAddr(&addr->address.v4, saddr);
+    } else if (addr->which_address == particle_ctrl_IpAddress_v6_tag) {
+        return ip6AddressToSockAddr(&addr->address.v6, saddr);
+    } else {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+    return 0;
+}
+
+int sockAddrToIp4Address(const sockaddr* saddr, particle_ctrl_Ipv4Address* addr) {
+    const auto inaddr = (const sockaddr_in*)saddr;
+    if (inaddr->sin_family == AF_UNSPEC) {
+        // Nothing to encode
+        return 0;
+    }
+    if (inaddr->sin_family != AF_INET) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    static_assert(sizeof(addr->address) == sizeof(inaddr->sin_addr), "");
+    addr->address = bigEndianToNative(inaddr->sin_addr.s_addr);
+    return 0;
+}
+
+int sockAddrToIp6Address(const sockaddr* saddr, particle_ctrl_Ipv6Address* addr) {
+    const auto inaddr = (const sockaddr_in6*)saddr;
+    if (inaddr->sin6_family == AF_UNSPEC) {
+        // Nothing to encode
+        return 0;
+    }
+    if (inaddr->sin6_family != AF_INET6) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    static_assert(sizeof(addr->address) == sizeof(inaddr->sin6_addr), "");
+    memcpy(addr->address, &inaddr->sin6_addr, sizeof(inaddr->sin6_addr));
+    return 0;
+}
+
+int sockaddrToIpAddress(const sockaddr* saddr, particle_ctrl_IpAddress* addr) {
+    if (saddr->sa_family == AF_INET) {
+        addr->which_address = particle_ctrl_IpAddress_v4_tag;
+        return sockAddrToIp4Address(saddr, &addr->address.v4);
+    } else if (saddr->sa_family == AF_INET6) {
+        addr->which_address = particle_ctrl_IpAddress_v6_tag;
+        return sockAddrToIp6Address(saddr, &addr->address.v6);
+    } else {
+        return SYSTEM_ERROR_UNKNOWN;
+    }
     return 0;
 }
 

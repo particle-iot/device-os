@@ -17,6 +17,7 @@
 
 #include "basenetif.h"
 #include "lwiplock.h"
+#include "system_error.h"
 
 using namespace particle::net;
 
@@ -44,6 +45,10 @@ void BaseNetif::registerHandlers() {
     netif_set_client_data(interface(), clientDataId_, (void*)this);
     netif_add_ext_callback(&netifEventHandlerCookie_, &BaseNetif::netifEventCb);
     eventHandlerCookie_ = if_event_handler_self(interface(), &BaseNetif::ifEventCb, this);
+}
+
+int BaseNetif::getCurrentProfile(spark::Vector<char>* profile) const {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 if_t BaseNetif::interface() {
