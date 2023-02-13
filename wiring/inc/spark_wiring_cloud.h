@@ -369,9 +369,9 @@ public:
         spark_cloud_flag_connect();
     }
     static void disconnect(const CloudDisconnectOptions& options = CloudDisconnectOptions());
-    static void process(void) {
-    		application_checkin();
-    		spark_process();
+    static bool process(void) {
+            application_checkin();
+            return spark_process();
     }
     static String deviceID(void) { return SystemClass::deviceID(); }
 
