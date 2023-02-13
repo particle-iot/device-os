@@ -75,9 +75,9 @@ public:
             : iface_(iface) {
     }
 
-    virtual int setConfig(const particle::NetworkInterfaceConfig& conf);
-    virtual particle::NetworkInterfaceConfig getConfig(String profile = String()) const;
-    virtual spark::Vector<particle::NetworkInterfaceConfig> getConfigList() const;
+    int setConfig(const particle::NetworkInterfaceConfig& conf);
+    particle::NetworkInterfaceConfig getConfig(String profile = String()) const;
+    spark::Vector<particle::NetworkInterfaceConfig> getConfigList() const;
 
 private:
     network_interface_t iface_;
