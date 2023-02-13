@@ -14,6 +14,9 @@ const auto TCP_RETRY_ATTEMPTS = 10;
 
 test(TCP_01_tcp_client_failed_connect_invalid_ip)
 {
+    Particle.connect();
+    waitFor(Particle.connected,HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+
     TCPClient client;
     assertFalse(client.connect(IPAddress(0,0,0,0), 567));
     assertFalse(client.connected());
@@ -22,6 +25,9 @@ test(TCP_01_tcp_client_failed_connect_invalid_ip)
 
 test(TCP_02_tcp_client_failed_connect_invalid_fqdn)
 {
+    Particle.connect();
+    waitFor(Particle.connected,HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+
     TCPClient client;
     assertFalse(client.connect("does.not.exist", 567));
     assertFalse(client.connected());
@@ -30,6 +36,9 @@ test(TCP_02_tcp_client_failed_connect_invalid_fqdn)
 
 test(TCP_03_tcp_client_success_connect_valid_ip)
 {
+    Particle.connect();
+    waitFor(Particle.connected,HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+
     IPAddress ip;
     for (int i = 0; i < TCP_RETRY_ATTEMPTS; i++) {
         ip = Network.resolve("www.httpbin.org");
@@ -57,6 +66,9 @@ test(TCP_03_tcp_client_success_connect_valid_ip)
 
 test(TCP_04_tcp_client_success_connect_valid_fqdn)
 {
+    Particle.connect();
+    waitFor(Particle.connected,HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+
     TCPClient client;
     int r = 0;
     for (int i = 0; i < TCP_RETRY_ATTEMPTS; i++) {
