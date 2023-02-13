@@ -205,10 +205,7 @@ test(THREAD_07_particle_process_behavior_when_threading_enabled)
     assertEqual((int)test_val_fn1, 0);
     // The increment task that was added to the Application Queue via invoke_async is not guaranteed to be the first and only item in the Application Thread Queue
     // Call process() repeatedly in order to ensure that all potential messages in the queue are consumed, including the increment function
-    bool processed = false;
-    do {
-        processed = Particle.process();
-    } while (processed);
+    while (Particle.process());
 
     assertEqual((int)test_val_fn1, 1);
     // Unblock system thread

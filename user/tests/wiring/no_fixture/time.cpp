@@ -265,7 +265,7 @@ test(TIME_16_TimeChangedEvent) {
     waitFor(Particle.syncTimeDone, 120000);
     // If wiring/no_fixture was built with USE_THREADING=y, we need to process application queue here
     // in order to ensure that event handler has been called by the time we check s_time_changed_reason
-    Particle.process();
+    while (Particle.process());
     assertMore(Particle.timeSyncedLast(), syncedLastMillis);
     assertEqual(s_time_changed_reason, (int)time_changed_sync);
 }
