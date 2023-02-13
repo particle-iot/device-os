@@ -18,6 +18,10 @@
 #ifndef SPARK_WIRING_POSIX_COMMON_H
 #define SPARK_WIRING_POSIX_COMMON_H
 
+#include "hal_platform.h"
+
+#if HAL_USE_SOCKET_HAL_POSIX
+
 #include "spark_wiring_platform.h"
 #include <arpa/inet.h>
 
@@ -125,5 +129,7 @@ inline void prefixLengthToNetmask(struct sockaddr* saddr, uint8_t prefixLen) {
 } // detail
 
 } // common
+
+#endif // HAL_USE_SOCKET_HAL_POSIX
 
 #endif // SPARK_WIRING_POSIX_COMMON_H

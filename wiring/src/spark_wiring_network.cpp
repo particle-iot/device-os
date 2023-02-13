@@ -157,6 +157,7 @@ IPAddress NetworkClass::resolve(const char* name) {
     return addr;
 }
 
+#if HAL_USE_SOCKET_HAL_POSIX
 int NetworkClass::setConfig(const NetworkInterfaceConfig& conf) {
     network_configuration_t c = {};
     c.size = sizeof(c);
@@ -187,5 +188,6 @@ spark::Vector<NetworkInterfaceConfig> NetworkClass::getConfigList() const {
     network_free_configuration(c, count, nullptr);
     return res;
 }
+#endif // HAL_USE_SOCKET_HAL_POSIX
 
 } // spark

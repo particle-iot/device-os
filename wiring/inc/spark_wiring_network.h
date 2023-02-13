@@ -75,9 +75,11 @@ public:
             : iface_(iface) {
     }
 
+#if HAL_USE_SOCKET_HAL_POSIX
     int setConfig(const particle::NetworkInterfaceConfig& conf);
     particle::NetworkInterfaceConfig getConfig(String profile = String()) const;
     spark::Vector<particle::NetworkInterfaceConfig> getConfigList() const;
+#endif // HAL_USE_SOCKET_HAL_POSIX
 
 private:
     network_interface_t iface_;

@@ -17,7 +17,10 @@
 
 #pragma once
 
-#include "ifapi.h"
+#include "hal_platform.h"
+
+#if HAL_USE_SOCKET_HAL_POSIX
+
 #include "spark_wiring_ipaddress.h"
 #include "socket_hal.h" // For AF_XXX
 #include "spark_wiring_vector.h"
@@ -661,3 +664,5 @@ inline void NetworkInterfaceConfig::deallocNetworkProto(network_configuration_pr
 } // particle
 
 #endif // __cplusplus
+
+#endif // HAL_USE_SOCKET_HAL_POSIX

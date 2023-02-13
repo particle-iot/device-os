@@ -34,6 +34,8 @@ int getInterface(ctrl_request* req);
 
 // Helper methods/classes
 
+#if HAL_USE_SOCKET_HAL_POSIX
+
 int ip4AddressToSockAddr(particle_ctrl_Ipv4Address* addr, sockaddr* saddr);
 int ip6AddressToSockAddr(particle_ctrl_Ipv6Address* addr, sockaddr* saddr);
 int ipAddressToSockAddr(particle_ctrl_IpAddress* addr, sockaddr* saddr);
@@ -167,6 +169,8 @@ struct EncodeIp6AddressList {
         };
     }
 };
+
+#endif // HAL_USE_SOCKET_HAL_POSIX
 
 
 } } } /* namespace particle::control::network */
