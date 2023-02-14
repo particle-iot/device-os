@@ -37,7 +37,7 @@ DYNALIB_BEGIN(system_cloud)
 
 DYNALIB_FN(0, system_cloud, spark_variable, bool(const char*, const void*, Spark_Data_TypeDef, spark_variable_t*))
 DYNALIB_FN(1, system_cloud, spark_function, bool(const char*, p_user_function_int_str_t, void*))
-DYNALIB_FN(2, system_cloud, spark_process, void(void))
+DYNALIB_FN(2, system_cloud, spark_process, bool(void))
 DYNALIB_FN(3, system_cloud, spark_cloud_flag_connect, void(void))
 DYNALIB_FN(4, system_cloud, spark_cloud_flag_disconnect, void(void))
 DYNALIB_FN(5, system_cloud, spark_cloud_flag_connected, bool(void))

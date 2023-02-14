@@ -420,9 +420,9 @@ public:
         run();
     }
 
-    void process()
+    bool process()
     {
-        ActiveObjectQueue::process();
+        return ActiveObjectQueue::process();
     }
 };
 
