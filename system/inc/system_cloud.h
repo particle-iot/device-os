@@ -289,7 +289,7 @@ bool spark_sync_time_pending(void* reserved);
 system_tick_t spark_sync_time_last(time32_t* tm32, time_t* tm);
 
 
-void spark_process(void);
+bool spark_process(void);
 bool spark_cloud_flag_connected(void);
 
 /**

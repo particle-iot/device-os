@@ -257,13 +257,13 @@ int spark_cloud_disconnect(const spark_cloud_disconnect_options* options, void* 
     return 0;
 }
 
-void spark_process(void)
+bool spark_process(void)
 {
 	// application thread will pump application messages
 #if PLATFORM_THREADING
     if (APPLICATION_THREAD_CURRENT()) {
         if (system_thread_get_state(NULL)) {
-            ApplicationThread.process();
+            return ApplicationThread.process();
         } else {
             Spark_Idle_Events(true);
         }
@@ -272,6 +272,7 @@ void spark_process(void)
     // run the background processing loop, and specifically also pump cloud events
     Spark_Idle_Events(true);
 #endif // PLATFORM_THREADING
+    return false;
 }
 
 String spark_deviceID(void)

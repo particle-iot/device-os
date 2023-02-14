@@ -69,7 +69,7 @@ test(LISTENING_02_DISABLE_FLAG_WHILE_IN_LISTENING_MODE) {
     });
     assertTrue(waitListening(true));
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
-    Particle.process();
+    while (Particle.process());
     SCOPE_GUARD({
         System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     });
@@ -120,7 +120,7 @@ test(LISTENING_05_ENABLE_BLE_PROV_AFTER_LISTENING_MODE) {
         assertTrue(Particle.connected());
     });
     System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
-    Particle.process();
+    while (Particle.process());
     assertTrue(waitListening(false));
     BLE.provisioningMode(true);
     delay(100);

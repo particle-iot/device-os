@@ -198,13 +198,16 @@ test(THREAD_07_particle_process_behavior_when_threading_enabled)
 	// Particle.process() should not do anything from custom thread, hence particle should be still connected
 	assertTrue(Particle.connected());
 
-	assertEqual((int)test_val_fn1, 0);
-	Particle.process();
-	assertEqual((int)test_val_fn1, 1);
-	// Unblock system thread
-	test_val = 0;
-	HAL_Delay_Milliseconds(5000);
-	assertFalse(Particle.connected());
+    assertEqual((int)test_val_fn1, 0);
+    // The increment task that was added to the Application Queue via invoke_async is not guaranteed to be the first and only item in the Application Thread Queue
+    // Call process() repeatedly in order to ensure that all potential messages in the queue are consumed, including the increment function
+    while (Particle.process());
+
+    assertEqual((int)test_val_fn1, 1);
+    // Unblock system thread
+    test_val = 0;
+    HAL_Delay_Milliseconds(5000);
+    assertFalse(Particle.connected());
 }
 
 test(THREAD_08_newlib_reent_impure_ptr_changes_on_context_switch)
