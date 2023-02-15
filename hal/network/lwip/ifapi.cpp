@@ -643,7 +643,7 @@ int if_get_xflags(if_t iface, unsigned int* xflags) {
     if (dhcp && dhcp->state != DHCP_STATE_OFF) {
         ifxf |= IFXF_DHCP;
     }
-    LOG(INFO, "if_get_xflags dhcp=%x, dhcp->state=%d", dhcp, (int)dhcp->state);
+    LOG(INFO, "if_get_xflags dhcp=%x, dhcp->state=%d", dhcp, dhcp ? (int)dhcp->state : -1);
 #endif /* LWIP_DHCP */
 
 #if LWIP_IPV4 && LWIP_AUTOIP
