@@ -59,11 +59,11 @@ typedef enum {
 #error "Unsupported external flash"
 #endif
 
-void dcacheInvalidateAligned(uintptr_t ptr, size_t size) {
+void dcacheCleanInvalidateAligned(uintptr_t ptr, size_t size) {
     uintptr_t alignedPtr = ptr & ~(portBYTE_ALIGNMENT_MASK);
     uintptr_t end = ptr + size;
     size_t alignedSize = CEIL_DIV(end - alignedPtr, portBYTE_ALIGNMENT) * portBYTE_ALIGNMENT;
-    DCache_Invalidate(alignedPtr, alignedSize);
+    DCache_CleanInvalidate(alignedPtr, alignedSize);
 }
 
 class RsipIfRequired {
@@ -252,7 +252,7 @@ __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
     CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
-    dcacheInvalidateAligned(addr + SPI_FLASH_BASE, data_size);
+    dcacheCleanInvalidateAligned(addr + SPI_FLASH_BASE, data_size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -264,6 +264,7 @@ int hal_exflash_read(uintptr_t addr, uint8_t* data_buf, size_t data_size) {
 
     RsipIfRequired rsip(addr); // FIXME: data_size as well?
     memcpy(data_buf, (void*)addr, data_size);
+    dcacheCleanInvalidateAligned((uintptr_t)data_buf, data_size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -298,7 +299,7 @@ static int erase_common(uintptr_t start_addr, size_t num_blocks, int len) {
     // LOG_DEBUG(ERROR, "Erased %lu %lukB blocks starting from %" PRIxPTR,
     //           num_blocks, block_length / 1024, start_addr);
 
-    dcacheInvalidateAligned(SPI_FLASH_BASE + start_addr, block_length * num_blocks);
+    dcacheCleanInvalidateAligned(SPI_FLASH_BASE + start_addr, block_length * num_blocks);
 
     return SYSTEM_ERROR_NONE;
 }
