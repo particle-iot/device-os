@@ -153,6 +153,9 @@ public:
 
     int family() const;
 
+    bool operator==(const NetworkInterfaceAddress& other) const;
+    bool operator!=(const NetworkInterfaceAddress& other) const;
+
 protected:
     NetworkInterfaceAddress();
 
@@ -481,6 +484,14 @@ inline NetworkInterfaceAddress& NetworkInterfaceAddress::prefixLength(uint8_t pr
 
 inline int NetworkInterfaceAddress::family() const {
     return addr_.family();
+}
+
+inline bool NetworkInterfaceAddress::operator==(const NetworkInterfaceAddress& other) const {
+    return addr_ == other.addr_ && mask_ == other.mask_ && prefixLen_ == other.prefixLen_;
+}
+
+inline bool NetworkInterfaceAddress::operator!=(const NetworkInterfaceAddress& other) const {
+    return !(*this == other);
 }
 
 // NetworkInterfaceConfig
