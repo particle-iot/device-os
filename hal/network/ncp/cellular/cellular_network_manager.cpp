@@ -38,6 +38,7 @@ namespace {
 using namespace control::common;
 
 const auto CONFIG_FILE = "/sys/cellular_config.bin";
+const auto CONFIG_FILE_TMP = "/sys/cellular_config.bin.tmp";
 
 struct CellularConfig {
     CellularNetworkConfig intSimConf;
@@ -113,8 +114,14 @@ int saveConfig(const CellularConfig& conf) {
     // Open configuration file
     lfs_file_t file = {};
     CHECK(openFile(&file, CONFIG_FILE, LFS_O_WRONLY));
+    bool ok = false;
     SCOPE_GUARD({
         lfs_file_close(&fs->instance, &file);
+        if (ok) {
+            lfs_rename(&fs->instance, CONFIG_FILE_TMP, CONFIG_FILE);
+        } else {
+            lfs_remove(&fs->instance, CONFIG_FILE_TMP);
+        }
     });
     int r = lfs_file_truncate(&fs->instance, &file, 0);
     CHECK_TRUE(r == LFS_ERR_OK, SYSTEM_ERROR_FILE);
@@ -163,6 +170,7 @@ int saveConfig(const CellularConfig& conf) {
     pbConf.active_sim = (PB_CELLULAR(SimType))conf.activeSim;
     CHECK(encodeMessageToFile(&file, PB(CellularConfig_fields), &pbConf));
     LOG(TRACE, "Updated file: %s", CONFIG_FILE);
+    ok = true;
     return 0;
 }
 

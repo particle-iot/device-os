@@ -28,6 +28,7 @@
 #include "scope_guard.h"
 #include "check.h"
 #include "enumclass.h"
+#include "inet_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,6 +96,7 @@ public:
     SockAddr();
     SockAddr(IPAddress addr, uint16_t port = 0);
     SockAddr(const sockaddr* addr);
+    SockAddr(const char* addr);
 
     IPAddress address() const;
     SockAddr& address(IPAddress addr);
@@ -111,9 +113,22 @@ public:
 
     bool isAddrAny() const;
 
+    bool operator==(const SockAddr& other) const;
+    bool operator!=(const SockAddr& other) const;
+
+    // Some IPAddress-compatible methods
+    operator bool() const;
+    void clear(int family = AF_UNSPEC);
+    String toString() const;
+
 private:
     sockaddr_storage addr_;
 };
+
+bool operator==(const IPAddress& iaddr, const SockAddr& saddr);
+bool operator!=(const IPAddress& iaddr, const SockAddr& saddr);
+bool operator==(const SockAddr& saddr, const IPAddress& iaddr);
+bool operator!=(const SockAddr& saddr, const IPAddress& iaddr);
 
 class NetworkInterfaceAddress {
 public:
@@ -161,11 +176,10 @@ public:
     spark::Vector<NetworkInterfaceAddress> addresses(int family = AF_UNSPEC) const;
 
     NetworkInterfaceConfig& gateway(SockAddr addr);
-    NetworkInterfaceConfig& gateway(IPAddress addr);
-    IPAddress gateway(int family = AF_INET) const;
+    SockAddr gateway(int family = AF_INET) const;
 
     NetworkInterfaceConfig& dns(SockAddr dns);
-    spark::Vector<IPAddress> dns(int family = AF_UNSPEC) const;
+    spark::Vector<SockAddr> dns(int family = AF_UNSPEC) const;
 
     NetworkInterfaceConfig& profile(String id);
     NetworkInterfaceConfig& profile(const char* profile, size_t len = 0);
@@ -212,6 +226,45 @@ inline SockAddr::SockAddr(const sockaddr* addr)
     memcpy(&addr_, addr, addr->sa_len);
 }
 
+inline SockAddr::SockAddr(const char* addr)
+        : SockAddr() {
+    String host(addr);
+    String port;
+    int portDelim = -1;
+    if (host.indexOf('.') >= 0) {
+        // Probably IPv4
+        portDelim = host.lastIndexOf(':');
+    } else {
+        // Probably IPv6
+        portDelim = host.lastIndexOf('#');
+    }
+    if (portDelim > 0) {
+        port = host.substring(portDelim + 1);
+        host = host.substring(0, portDelim);
+    }
+    if (inet_inet_pton(AF_INET, host.c_str(), &((sockaddr_in*)&addr_)->sin_addr)) {
+        addr_.ss_family = AF_INET;
+        addr_.s2_len = sizeof(sockaddr_in);
+        if (port.length() > 0) {
+            unsigned long p = 0;
+            p = std::strtoul(port.c_str(), nullptr, 10);
+            if (p <= std::numeric_limits<uint16_t>::max()) {
+                ((sockaddr_in*)&addr_)->sin_port = p;
+            }
+        }
+    } else if (inet_inet_pton(AF_INET6, host.c_str(), &((sockaddr_in6*)&addr_)->sin6_addr)) {
+        addr_.ss_family = AF_INET6;
+        addr_.s2_len = sizeof(sockaddr_in6);
+        if (port.length() > 0) {
+            unsigned long p = 0;
+            p = std::strtoul(port.c_str(), nullptr, 10);
+            if (p <= std::numeric_limits<uint16_t>::max()) {
+                ((sockaddr_in6*)&addr_)->sin6_port = p;
+            }
+        }
+    }
+}
+
 inline bool SockAddr::isAddrAny() const {
     if (family() == AF_INET) {
         auto inaddr = (sockaddr_in*)&addr_;
@@ -244,6 +297,9 @@ inline SockAddr& SockAddr::address(IPAddress addr) {
 }
 
 inline SockAddr& SockAddr::address(const sockaddr* addr) {
+    if (!addr) {
+        return *this;
+    }
     memcpy(&addr_, addr, addr->sa_len);
     return *this;
 }
@@ -270,6 +326,75 @@ inline sockaddr* SockAddr::toRaw() const {
 
 inline SockAddr::operator IPAddress() const {
     return address();
+}
+
+inline bool SockAddr::operator==(const SockAddr& other) const {
+    if (family() != other.family()) {
+        return false;
+    }
+
+    if (family() == AF_INET) {
+        auto sin = (sockaddr_in*)toRaw();
+        auto sinOther = (sockaddr_in*)other.toRaw();
+        return ntohl(sin->sin_addr.s_addr) == ntohl(sinOther->sin_addr.s_addr) &&
+                ntohs(sin->sin_port) == ntohs(sinOther->sin_port);
+    } else if (family() == AF_INET6) {
+        auto sin6 = (sockaddr_in6*)toRaw();
+        auto sin6Other = (sockaddr_in6*)other.toRaw();
+        return !memcmp(sin6->sin6_addr.s6_addr, sin6Other->sin6_addr.s6_addr, sizeof(sin6->sin6_addr.s6_addr)) &&
+                ntohs(sin6->sin6_port) == ntohs(sin6Other->sin6_port) &&
+                sin6->sin6_flowinfo == sin6Other->sin6_flowinfo &&
+                sin6->sin6_scope_id == sin6Other->sin6_scope_id;
+    }
+
+    return false;
+}
+
+inline bool SockAddr::operator!=(const SockAddr& other) const {
+    return !(*this == other);
+}
+
+inline SockAddr::operator bool() const {
+    return !isAddrAny();
+}
+
+inline void SockAddr::clear(int family) {
+    memset(&addr_, 0, sizeof(addr_));
+    addr_.ss_family = family;
+}
+
+inline String SockAddr::toString() const {
+    char host[INET6_ADDRSTRLEN + 7] = {};
+    if (family() == AF_INET) {
+        inet_inet_ntop(family(), &((sockaddr_in*)&addr_)->sin_addr, host, sizeof(host));
+        if (port()) {
+            return String(host) + ":" + String(port());
+        }
+        return String(host);
+    } else if (family() == AF_INET6) {
+        inet_inet_ntop(family(), &((sockaddr_in6*)&addr_)->sin6_addr, host, sizeof(host));
+        if (port()) {
+            return String(host) + "#" + String(port());
+        }
+        return String(host);
+    }
+    return String();
+}
+
+inline bool operator==(const IPAddress& iaddr, const SockAddr& saddr) {
+    return SockAddr(iaddr) == saddr;
+}
+
+inline bool operator!=(const IPAddress& iaddr, const SockAddr& saddr) {
+    return !(iaddr == saddr);
+}
+
+inline bool operator==(const SockAddr& saddr, const IPAddress& iaddr) {
+    return iaddr == saddr;
+}
+
+inline bool operator!=(const SockAddr& saddr, const IPAddress& iaddr) {
+    return iaddr != saddr;
 }
 
 // NetworkInterfaceAddress
@@ -465,17 +590,13 @@ inline NetworkInterfaceConfig& NetworkInterfaceConfig::gateway(SockAddr addr) {
     return *this;
 }
 
-inline NetworkInterfaceConfig& NetworkInterfaceConfig::gateway(IPAddress addr) {
-    return gateway(SockAddr(addr));
-}
-
-inline IPAddress NetworkInterfaceConfig::gateway(int family) const {
+inline SockAddr NetworkInterfaceConfig::gateway(int family) const {
     if (family == AF_INET) {
-        return gateway4_.address();
+        return gateway4_;
     } else if (family == AF_INET6) {
-        return gateway6_.address();
+        return gateway6_;
     }
-    return IPAddress();
+    return SockAddr();
 }
 
 inline NetworkInterfaceConfig& NetworkInterfaceConfig::dns(SockAddr addr) {
@@ -487,16 +608,16 @@ inline NetworkInterfaceConfig& NetworkInterfaceConfig::dns(SockAddr addr) {
     return *this;
 }
 
-inline spark::Vector<IPAddress> NetworkInterfaceConfig::dns(int family) const {
-    spark::Vector<IPAddress> res;
+inline spark::Vector<SockAddr> NetworkInterfaceConfig::dns(int family) const {
+    spark::Vector<SockAddr> res;
     if (family == AF_INET || family == AF_UNSPEC) {
         for (const auto& a: dns4_) {
-            res.append(a.address());
+            res.append(a);
         }
     }
     if (family == AF_INET6 || family == AF_UNSPEC) {
         for (const auto& a: dns6_) {
-            res.append(a.address());
+            res.append(a);
         }
     }
     return res;
@@ -523,13 +644,11 @@ inline spark::Vector<char> NetworkInterfaceConfig::profile() const {
 inline bool NetworkInterfaceConfig::isValid() const {
     if (addr4_.size() || dns4_.size() || !gateway4_.isAddrAny()) {
         if (source4_ == NetworkInterfaceConfigSource::NONE) {
-            LOG(ERROR, "!isValid ip4: %d %d %d %d", addr4_.size(), dns4_.size(), gateway4_.family(), (int)source4_);
             return false;
         }
     }
 
     if (addr6_.size() || dns6_.size() || !gateway6_.isAddrAny()) {
-        LOG(ERROR, "!isValid ip6: %d %d %d %d", addr6_.size(), dns6_.size(), gateway6_.family(), (int)source6_);
         if (source6_ == NetworkInterfaceConfigSource::NONE) {
             return false;
         }
@@ -538,7 +657,7 @@ inline bool NetworkInterfaceConfig::isValid() const {
 }
 
 inline int NetworkInterfaceConfig::exportAsProtoConfiguration(const spark::Vector<NetworkInterfaceAddress> addrs, NetworkInterfaceConfigSource source, const SockAddr& gateway, spark::Vector<SockAddr> dns, network_configuration_proto_t** proto) {
-
+    CHECK_TRUE(proto, SYSTEM_ERROR_INVALID_ARGUMENT);
     *proto = new network_configuration_proto_t;
     CHECK_TRUE(*proto, SYSTEM_ERROR_NO_MEMORY);
     memset(*proto, 0, sizeof(network_configuration_proto_t));

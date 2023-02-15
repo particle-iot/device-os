@@ -34,7 +34,7 @@ DYNALIB_BEGIN(hal_resolvapi)
 
 DYNALIB_FN(0, hal_resolvapi, resolv_get_dns_servers, int(struct resolv_dns_servers**))
 DYNALIB_FN(1, hal_resolvapi, resolv_free_dns_servers, int(struct resolv_dns_servers*))
-DYNALIB_FN(2, hal_resolvapi, resolv_add_dns_server, int(const struct sockaddr*, uint8_t))
+DYNALIB_FN(2, hal_resolvapi, resolv_add_dns_server, int(const struct sockaddr*, int))
 DYNALIB_FN(3, hal_resolvapi, resolv_del_dns_server, int(const struct sockaddr*))
 DYNALIB_FN(4, hal_resolvapi, resolv_event_handler_add, resolv_event_handler_cookie_t(resolv_event_handler_t, void*))
 DYNALIB_FN(5, hal_resolvapi, resolv_event_handler_del, int(resolv_event_handler_cookie_t))

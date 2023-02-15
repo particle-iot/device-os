@@ -20,6 +20,8 @@
 #include "ipsockaddr.h"
 #include <lwip/dns.h>
 #include "logging.h"
+#include "ifapi.h"
+#include <algorithm>
 
 using namespace particle::net;
 
@@ -97,10 +99,7 @@ int resolv_free_dns_servers(struct resolv_dns_servers* servers) {
     return 0;
 }
 
-int resolv_add_dns_server(const struct sockaddr* server, uint8_t priority) {
-    /* TODO: priority */
-    (void)priority;
-
+int resolv_add_dns_server(const struct sockaddr* server, int priority) {
     if (!server) {
         return -1;
     }
@@ -110,6 +109,11 @@ int resolv_add_dns_server(const struct sockaddr* server, uint8_t priority) {
     sockaddr_to_ipaddr_port(server, &addr, &dummy);
 
     LwipTcpIpCoreLock lk;
+
+    if (priority >= 0) {
+        dns_setserver(priority, &addr);
+        return 0;
+    }
 
     for (int i = 0; i < DNS_MAX_SERVERS; i++) {
         const ip_addr_t* s = dns_getserver(i);
@@ -144,6 +148,16 @@ int resolv_del_dns_server(const struct sockaddr* server) {
     }
 
     return -1;
+}
+
+int resolv_del_dns_server_priority(int priority) {
+    if (priority < 0) {
+        return -1;
+    }
+
+    LwipTcpIpCoreLock lk;
+    dns_setserver(priority, nullptr);
+    return 0;
 }
 
 resolv_event_handler_cookie_t resolv_event_handler_add(resolv_event_handler_t handler, void* arg) {
@@ -196,4 +210,14 @@ void dns_list_change_callback_handler(u8_t numdns, const ip_addr_t *dnsserver) {
             h->handler(h->arg, nullptr);
         }
     }
+}
+
+int resolv_get_dns_server_priority_for_iface(if_t iface, int priority) {
+    uint8_t index = 0;
+    if (if_get_index(iface, &index)) {
+        return -1;
+    }
+
+    index = index * LWIP_DNS_SERVERS_PER_NETIF + std::min<int>(LWIP_DNS_SERVERS_PER_NETIF, priority);
+    return index;
 }

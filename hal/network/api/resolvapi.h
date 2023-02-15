@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 #include "resolvapi_impl.h"
+#include "ifapi.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,8 +36,11 @@ int resolv_init(void);
 int resolv_get_dns_servers(struct resolv_dns_servers** servers);
 int resolv_free_dns_servers(struct resolv_dns_servers* servers);
 
-int resolv_add_dns_server(const struct sockaddr* server, uint8_t priority);
+int resolv_get_dns_server_priority_for_iface(if_t iface, int priority);
+
+int resolv_add_dns_server(const struct sockaddr* server, int priority);
 int resolv_del_dns_server(const struct sockaddr* server);
+int resolv_del_dns_server_priority(int priority);
 
 typedef void* resolv_event_handler_cookie_t;
 typedef void (*resolv_event_handler_t)(void* arg, const void* ptr);

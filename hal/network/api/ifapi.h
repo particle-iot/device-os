@@ -242,6 +242,11 @@ struct if_req_dhcp_state {
     uint32_t t2_rebind;
 };
 
+typedef struct if_req_dhcp_settings {
+    struct sockaddr_in override_gw;
+    uint8_t ignore_dns;
+} if_req_dhcp_settings;
+
 typedef void (*if_event_handler_t)(void* arg, if_t iface, const struct if_event* ev);
 
 typedef struct if_event_power_state if_req_power;
@@ -251,6 +256,7 @@ typedef enum if_req_t {
     IF_REQ_POWER_STATE = 1,
     IF_REQ_DHCP_STATE  = 2,
     IF_REQ_DRIVER_SPECIFIC = 3,
+    IF_REQ_DHCP_SETTINGS = 4,
 } if_req_t;
 
 typedef struct if_req_driver_specific {

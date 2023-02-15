@@ -161,6 +161,8 @@ private:
     void refreshIpState();
     void refreshDnsState();
 
+    void clearDnsConfiguration(if_t iface);
+
     bool haveLowerLayerConfiguration(if_t iface) const;
 
     static void resolvEventHandlerCb(void* arg, const void* data);

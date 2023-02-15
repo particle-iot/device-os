@@ -109,6 +109,7 @@ void forceCloudPingIfConnected() {
 }
 
 const char NETWORK_CONFIG_FILE[] = "/sys/network.dat";
+const char NETWORK_CONFIG_FILE_TMP[] = "/sys/network.dat.tmp";
 
 } /* anonymous */
 
@@ -522,6 +523,7 @@ void NetworkManager::handleIfState(if_t iface, const struct if_event* ev) {
         }
     } else {
         /* Interface administrative state changed to DOWN */
+        clearDnsConfiguration(iface);
         if (state_ == State::IFACE_REQUEST_DOWN) {
             /* FIXME: LwIP issues netif_set_down callback BEFORE clearing the IFF_UP flag,
              * that's why the count of interfaces with IFF_UP should be 1 here
@@ -538,8 +540,42 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         /* Interface link state changed to UP */
         NetworkInterfaceConfig conf;
         getConfiguration(iface, &conf, ev->ev_if_link->profile, ev->ev_if_link->profile_len);
+
+        // Remove any stale DHCP overrides just in case
         if (conf.source(AF_INET) == NetworkInterfaceConfigSource::DHCP || conf.source(AF_INET) == NetworkInterfaceConfigSource::NONE) {
-            if_set_xflags(iface, IFXF_DHCP);
+            if_req_dhcp_settings dSettings = {};
+            if_request(iface, IF_REQ_DHCP_SETTINGS, &dSettings, sizeof(dSettings), nullptr);
+        }
+
+        if (conf.source(AF_INET) == NetworkInterfaceConfigSource::DHCP) {
+            bool dhcpOverride = false;
+            if_req_dhcp_settings dSettings = {};
+            if (conf.dns(AF_INET).size() > 0) {
+                dSettings.ignore_dns = true;
+                dhcpOverride = true;
+                int i = 0;
+                for (const auto& dns: conf.dns(AF_INET)) {
+                    resolv_add_dns_server(dns.toRaw(), resolv_get_dns_server_priority_for_iface(iface, i++));
+                }
+            }
+            if (conf.gateway(AF_INET).family() == AF_INET) {
+                auto gw = conf.gateway();
+                memcpy(&dSettings.override_gw, gw.toRaw(), sizeof(dSettings.override_gw));
+
+                dhcpOverride = true;
+                if_addr ifaddr = {};
+                SockAddr empty;
+                // if_add_addr will check ifaddr.addr to be AF_INET or AF_INET6, so in order
+                // for that check to pass, make the address actually 0.0.0.0 with AF_INET family here
+                empty.clear(AF_INET);
+                ifaddr.gw = gw.toRaw();
+                ifaddr.netmask = empty.toRaw();
+                ifaddr.addr = empty.toRaw();
+                if_add_addr(iface, &ifaddr);
+            }
+            if (dhcpOverride) {
+                if_request(iface, IF_REQ_DHCP_SETTINGS, &dSettings, sizeof(dSettings), nullptr);
+            }
         } else if (conf.source(AF_INET) == NetworkInterfaceConfigSource::STATIC && conf.addresses(AF_INET).size() > 0) {
             // Clear just in case
             if_clear_xflags(iface, IFXF_DHCP);
@@ -552,15 +588,20 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             ifaddr.addr = a.toRaw();
             ifaddr.netmask = netmask.toRaw();
             ifaddr.prefixlen = addr.prefixLength();
-            SockAddr gw(conf.gateway());
+            auto gw = conf.gateway();
             ifaddr.gw = gw.toRaw();
             if_add_addr(iface, &ifaddr);
             int i = 0;
             for (const auto& dns: conf.dns(AF_INET)) {
                 SockAddr d(dns);
-                resolv_add_dns_server(d.toRaw(), i++);
+                resolv_add_dns_server(d.toRaw(), resolv_get_dns_server_priority_for_iface(iface, i++));
             }
         }
+
+        if (conf.source(AF_INET) == NetworkInterfaceConfigSource::DHCP || conf.source(AF_INET) == NetworkInterfaceConfigSource::NONE) {
+            if_set_xflags(iface, IFXF_DHCP);
+        }
+
         // TODO AF_INET6
         if (state_ == State::IFACE_UP) {
             transition(State::IFACE_LINK_UP);
@@ -572,6 +613,8 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         // Disable by default
         if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
+
+        clearDnsConfiguration(iface);
         /* Interface link state changed to DOWN */
         if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             if (countIfacesWithFlags(IFF_UP | IFF_LOWER_UP) == 0) {
@@ -582,6 +625,12 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         }
     }
     forceCloudPingIfConnected();
+}
+
+void NetworkManager::clearDnsConfiguration(if_t iface) {
+    // FIXME: the number should be queried or have a constant for maximum
+    resolv_del_dns_server_priority(resolv_get_dns_server_priority_for_iface(iface, 0));
+    resolv_del_dns_server_priority(resolv_get_dns_server_priority_for_iface(iface, 1));
 }
 
 void NetworkManager::handleIfAddr(if_t iface, const struct if_event* ev) {
@@ -670,7 +719,7 @@ void NetworkManager::refreshIpState() {
         }
 
         if (a->addr->sa_family == AF_INET) {
-            if (a->prefixlen > 0 && /* FIXME */ a->gw) {
+            if (a->prefixlen > 0 && /* FIXME */ a->gw && !SockAddr(a->gw).isAddrAny()) {
                 ifIp4 = ProtocolState::CONFIGURED;
             }
         } else if (a->addr->sa_family == AF_INET6) {
@@ -1049,6 +1098,8 @@ int NetworkManager::waitInterfaceOff(if_t iface, system_tick_t timeout) const {
 }
 
 int NetworkManager::setConfiguration(if_t iface, const NetworkInterfaceConfig& conf) {
+    CHECK_TRUE(conf.isValid(), SYSTEM_ERROR_BAD_DATA);
+
     uint8_t index = 0;
     CHECK(if_get_index(iface, &index));
     spark::Vector<StoredConfiguration> sConf;
@@ -1157,17 +1208,29 @@ int NetworkManager::loadStoredConfiguration(spark::Vector<StoredConfiguration>& 
         storedConf.conf.source((NetworkInterfaceConfigSource)pbInterface.ipv6_config.source, AF_INET6);
         SockAddr gateway4;
         SockAddr gateway6;
-        if (ip4AddressToSockAddr(&pbInterface.ipv4_config.gateway, gateway4.toRaw())) {
-            return false;
+        if (pbInterface.ipv4_config.has_gateway) {
+            if (ip4AddressToSockAddr(&pbInterface.ipv4_config.gateway, gateway4.toRaw())) {
+                return false;
+            }
         }
-        if (ip6AddressToSockAddr(&pbInterface.ipv6_config.gateway, gateway6.toRaw())) {
-            return false;
+        if (pbInterface.ipv6_config.has_gateway) {
+            if (ip6AddressToSockAddr(&pbInterface.ipv6_config.gateway, gateway6.toRaw())) {
+                return false;
+            }
         }
         storedConf.conf.gateway(gateway4);
         storedConf.conf.gateway(gateway6);
-        return conf->append(storedConf);
+        bool r = conf->append(storedConf);
+        return r;
     };
-    CHECK(decodeMessageFromFile(&file, PB(NetworkConfig_fields), &pbConf));
+    const int r = decodeMessageFromFile(&file, PB(NetworkConfig_fields), &pbConf);
+    if (r < 0) {
+        LOG(ERROR, "Unable to parse network settings");
+        LOG(WARN, "Removing file: %s", NETWORK_CONFIG_FILE);
+        lfs_file_close(&fs->instance, &file);
+        fileGuard.dismiss();
+        lfs_remove(&fs->instance, NETWORK_CONFIG_FILE);
+    }
     return 0;
 }
 
@@ -1178,10 +1241,18 @@ int NetworkManager::saveStoredConfiguration(const spark::Vector<StoredConfigurat
     CHECK(filesystem_mount(fs));
     // Open configuration file
     lfs_file_t file = {};
-    CHECK(openFile(&file, NETWORK_CONFIG_FILE, LFS_O_WRONLY));
-    NAMED_SCOPE_GUARD(fileGuard, {
+    CHECK(openFile(&file, NETWORK_CONFIG_FILE_TMP, LFS_O_WRONLY));
+    bool ok = false;
+    SCOPE_GUARD({
         lfs_file_close(&fs->instance, &file);
+        if (ok) {
+            lfs_rename(&fs->instance, NETWORK_CONFIG_FILE_TMP, NETWORK_CONFIG_FILE);
+        } else {
+            lfs_remove(&fs->instance, NETWORK_CONFIG_FILE_TMP);
+        }
     });
+    int r = lfs_file_truncate(&fs->instance, &file, 0);
+    CHECK_TRUE(r == LFS_ERR_OK, SYSTEM_ERROR_FILE);
 
     PB(NetworkConfig) pbConf = {};
     pbConf.config.arg = (void*)&conf;
@@ -1193,15 +1264,16 @@ int NetworkManager::saveStoredConfiguration(const spark::Vector<StoredConfigurat
             EncodedString eProfile(&pbInterface.profile, profile.data(), profile.size());
             pbInterface.index = c.idx;
             pbInterface.ipv4_config.source = (PB_CTRL(InterfaceConfigurationSource))to_underlying(c.conf.source(AF_INET));
-            if (sockAddrToIp4Address(SockAddr(c.conf.gateway(AF_INET)).toRaw(), &pbInterface.ipv4_config.gateway)) {
-                LOG(ERROR, "1");
-                return false;
+            if (c.conf.gateway(AF_INET).family() == AF_INET) {
+                if (sockAddrToIp4Address(SockAddr(c.conf.gateway(AF_INET)).toRaw(), &pbInterface.ipv4_config.gateway)) {
+                    return false;
+                }
+                pbInterface.ipv4_config.has_gateway = true;
             }
             auto addr4 = c.conf.addresses(AF_INET);
             spark::Vector<SockAddr> dns4;
             for (const auto& a: c.conf.dns(AF_INET)) {
                 if (!dns4.append(SockAddr(a))) {
-                    LOG(ERROR, "2");
                     return false;
                 }
             }
@@ -1209,37 +1281,34 @@ int NetworkManager::saveStoredConfiguration(const spark::Vector<StoredConfigurat
             EncodeIp4AddressList eDns4(&pbInterface.ipv4_config.dns, dns4);
 
             pbInterface.ipv6_config.source = (PB_CTRL(InterfaceConfigurationSource))to_underlying(c.conf.source(AF_INET6));
-            if (sockAddrToIp6Address(SockAddr(c.conf.gateway(AF_INET6)).toRaw(), &pbInterface.ipv6_config.gateway)) {
-                LOG(ERROR, "4");
-                return false;
+            if (c.conf.gateway(AF_INET6).family() == AF_INET6) {
+                if (sockAddrToIp6Address(SockAddr(c.conf.gateway(AF_INET6)).toRaw(), &pbInterface.ipv6_config.gateway)) {
+                    return false;
+                }
+                pbInterface.ipv6_config.has_gateway = true;
             }
             auto addr6 = c.conf.addresses(AF_INET6);
             spark::Vector<SockAddr> dns6;
             for (const auto& a: c.conf.dns(AF_INET6)) {
                 if (!dns6.append(SockAddr(a))) {
-                    LOG(ERROR, "5");
                     return false;
                 }
             }
             EncodeInterfaceAddressList eAddrs6(&pbInterface.ipv6_config.addresses, addr6);
             EncodeIp6AddressList eDns6(&pbInterface.ipv6_config.dns, dns6);
-            if (sockAddrToIp6Address(SockAddr(c.conf.gateway(AF_INET6)).toRaw(), &pbInterface.ipv6_config.gateway)) {
-                LOG(ERROR, "6");
-                return false;
-            }
 
             if (!pb_encode_tag_for_field(strm, field)) {
-                LOG(ERROR, "7");
                 return false;
             }
             if (!pb_encode_submessage(strm, PB_CTRL(Interface_fields), &pbInterface)) {
-                LOG(ERROR, "8");
                 return false;
             }
         }
         return true;
     };
     CHECK(encodeMessageToFile(&file, PB(NetworkConfig_fields), &pbConf));
+    LOG(TRACE, "Updated file: %s", NETWORK_CONFIG_FILE);
+    ok = true;
     return 0;
 }
 

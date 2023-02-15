@@ -100,7 +100,10 @@ void wifi_set_country_code(void) {
             country_code_sdk = RTW_COUNTRY_AU;
             break;
         case WLAN_CC_WORLD: {
-            // No specific channel plan/country code for both 2.4/5GHz
+            // There is no specific channel plan/country code to enable all channels in both 2.4GHz and 5GHz bands
+            // channel_plan = 0x20 (WORLD) and RTW_COUNTRY_WORLD only enable all channels within 2.4GHz band
+            // Not modifying the default channel plan and country_code actually keeps all channels within both bands enabled.
+            // NOTE: This is not a default value, WLAN_CC_WORLD has to be explicitly set by the application.
             return;
         }
     }

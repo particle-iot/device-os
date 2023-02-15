@@ -227,6 +227,7 @@ void Esp32NcpNetif::loop(void* arg) {
 int Esp32NcpNetif::getCurrentProfile(spark::Vector<char>* profile) const {
     const auto client = wifiMan_->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(profile, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     CHECK_TRUE(client->connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
 

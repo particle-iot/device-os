@@ -37,6 +37,7 @@ extern "C" {
 #include <algorithm>
 #include "delay_hal.h"
 #include "platform_ncp.h"
+#include "resolvapi.h"
 
 LOG_SOURCE_CATEGORY("net.ppp.client");
 
@@ -98,8 +99,11 @@ void Client::init() {
     LOCK_TCPIP_CORE();
     ipcp_ = std::make_unique<Ipcp>(pcb_);
     SPARK_ASSERT(ipcp_);
-    // FIXME hardcoded
-    ipcp_->setDnsEntryIndex(2);
+    int dnsIndex = resolv_get_dns_server_priority_for_iface((if_t)&if_, 0);
+    if (dnsIndex < 0) {
+      dnsIndex = 0;
+    }
+    ipcp_->setDnsEntryIndex(resolv_get_dns_server_priority_for_iface((if_t)&if_, 0));
     netif_set_client_data(&if_, netifClientDataIdx_, this);
     UNLOCK_TCPIP_CORE();
 
