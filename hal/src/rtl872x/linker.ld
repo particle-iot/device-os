@@ -142,6 +142,8 @@ SECTIONS
         *(.image2.ram.data*)
         *(.image2.net.ram.data*)
         . = ALIGN(4);
+        *(.boot.ipc_data)
+        *(.ram.sleep*)
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH
@@ -163,6 +165,10 @@ SECTIONS
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_location = .;
+
+        /* Coalesces FreeRTOS symbols into a single location for some tooling */
+        INCLUDE linker_freertos_task_symbols.ld
+        
         *(.bss*)
         *(.image2.ram.bss*)
         *(.image2.net.ram.bss*)
