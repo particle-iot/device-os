@@ -107,6 +107,7 @@ typedef struct _particle_ctrl_Ipv4Config {
     /* On P2P links */
     particle_ctrl_Ipv4Address peer; 
     /* Temporary, will be moved to routing table */
+    bool has_gateway;
     particle_ctrl_Ipv4Address gateway; 
     pb_callback_t dns; 
     particle_ctrl_InterfaceConfigurationSource source; 
@@ -117,6 +118,7 @@ typedef struct _particle_ctrl_Ipv6Config {
     pb_callback_t dns; 
     particle_ctrl_InterfaceConfigurationSource source; 
     /* Temporary, will be moved to routing table */
+    bool has_gateway;
     particle_ctrl_Ipv6Address gateway; 
 } particle_ctrl_Ipv6Config;
 
@@ -169,8 +171,8 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define particle_ctrl_InterfaceAddress_init_default {particle_ctrl_IpAddress_init_default, 0}
-#define particle_ctrl_Ipv4Config_init_default    {{{NULL}, NULL}, particle_ctrl_Ipv4Address_init_default, particle_ctrl_Ipv4Address_init_default, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN}
-#define particle_ctrl_Ipv6Config_init_default    {{{NULL}, NULL}, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN, particle_ctrl_Ipv6Address_init_default}
+#define particle_ctrl_Ipv4Config_init_default    {{{NULL}, NULL}, particle_ctrl_Ipv4Address_init_default, false, particle_ctrl_Ipv4Address_init_default, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN}
+#define particle_ctrl_Ipv6Config_init_default    {{{NULL}, NULL}, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN, false, particle_ctrl_Ipv6Address_init_default}
 #define particle_ctrl_Interface_init_default     {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN, 0, 0, particle_ctrl_Ipv4Config_init_default, particle_ctrl_Ipv6Config_init_default, {0, {0}}, 0, 0, {{NULL}, NULL}}
 #define particle_ctrl_InterfaceEntry_init_default {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN}
 #define particle_ctrl_GetInterfaceListRequest_init_default {0}
@@ -184,8 +186,8 @@ extern "C" {
 #define particle_ctrl_DeleteInterfaceStoredConfigurationRequest_init_default {0, {{NULL}, NULL}}
 #define particle_ctrl_DeleteInterfaceStoredConfigurationReply_init_default {0}
 #define particle_ctrl_InterfaceAddress_init_zero {particle_ctrl_IpAddress_init_zero, 0}
-#define particle_ctrl_Ipv4Config_init_zero       {{{NULL}, NULL}, particle_ctrl_Ipv4Address_init_zero, particle_ctrl_Ipv4Address_init_zero, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN}
-#define particle_ctrl_Ipv6Config_init_zero       {{{NULL}, NULL}, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN, particle_ctrl_Ipv6Address_init_zero}
+#define particle_ctrl_Ipv4Config_init_zero       {{{NULL}, NULL}, particle_ctrl_Ipv4Address_init_zero, false, particle_ctrl_Ipv4Address_init_zero, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN}
+#define particle_ctrl_Ipv6Config_init_zero       {{{NULL}, NULL}, {{NULL}, NULL}, _particle_ctrl_InterfaceConfigurationSource_MIN, false, particle_ctrl_Ipv6Address_init_zero}
 #define particle_ctrl_Interface_init_zero        {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN, 0, 0, particle_ctrl_Ipv4Config_init_zero, particle_ctrl_Ipv6Config_init_zero, {0, {0}}, 0, 0, {{NULL}, NULL}}
 #define particle_ctrl_InterfaceEntry_init_zero   {0, {{NULL}, NULL}, _particle_ctrl_InterfaceType_MIN}
 #define particle_ctrl_GetInterfaceListRequest_init_zero {0}
@@ -245,7 +247,7 @@ X(a, STATIC,   SINGULAR, UINT32,   prefix_length,     2)
 #define particle_ctrl_Ipv4Config_FIELDLIST(X, a) \
 X(a, CALLBACK, REPEATED, MESSAGE,  addresses,         1) \
 X(a, STATIC,   SINGULAR, MESSAGE,  peer,              2) \
-X(a, STATIC,   SINGULAR, MESSAGE,  gateway,           3) \
+X(a, STATIC,   OPTIONAL, MESSAGE,  gateway,           3) \
 X(a, CALLBACK, REPEATED, MESSAGE,  dns,               4) \
 X(a, STATIC,   SINGULAR, UENUM,    source,            5)
 #define particle_ctrl_Ipv4Config_CALLBACK pb_default_field_callback
@@ -259,7 +261,7 @@ X(a, STATIC,   SINGULAR, UENUM,    source,            5)
 X(a, CALLBACK, REPEATED, MESSAGE,  addresses,         1) \
 X(a, CALLBACK, REPEATED, MESSAGE,  dns,               2) \
 X(a, STATIC,   SINGULAR, UENUM,    source,            3) \
-X(a, STATIC,   SINGULAR, MESSAGE,  gateway,           4)
+X(a, STATIC,   OPTIONAL, MESSAGE,  gateway,           4)
 #define particle_ctrl_Ipv6Config_CALLBACK pb_default_field_callback
 #define particle_ctrl_Ipv6Config_DEFAULT NULL
 #define particle_ctrl_Ipv6Config_addresses_MSGTYPE particle_ctrl_InterfaceAddress
