@@ -643,6 +643,7 @@ int if_get_xflags(if_t iface, unsigned int* xflags) {
     if (dhcp && dhcp->state != DHCP_STATE_OFF) {
         ifxf |= IFXF_DHCP;
     }
+    LOG(INFO, "if_get_xflags dhcp=%x, dhcp->state=%d", dhcp, (int)dhcp->state);
 #endif /* LWIP_DHCP */
 
 #if LWIP_IPV4 && LWIP_AUTOIP
@@ -699,6 +700,8 @@ int if_set_xflags(if_t iface, unsigned int xflags) {
 
     const unsigned int changed = xflags ^ curFlags;
 
+    LOG(INFO, "if_set_xflags xflags=%x curFlags=%x changed=%x", xflags, curFlags, changed);
+
     struct netif* netif = (struct netif*)iface;
 
 #if LWIP_IPV6
@@ -710,6 +713,7 @@ int if_set_xflags(if_t iface, unsigned int xflags) {
 
 #if LWIP_DHCP
     if (changed & IFXF_DHCP) {
+        LOG(INFO, "dhcp_start");
         dhcp_start(netif);
     }
 #endif /* LWIP_DHCP */
@@ -749,6 +753,7 @@ int if_clear_xflags(if_t iface, unsigned int xflags) {
 
     /* We only care about the flags which are mentioned in `xflags` */
     const unsigned int changed = curFlags & xflags;
+    LOG(INFO, "if_clear_xflags xflags=%x curFlags=%x changed=%x", xflags, curFlags, changed);
 
     struct netif* netif = (struct netif*)iface;
 
@@ -760,6 +765,7 @@ int if_clear_xflags(if_t iface, unsigned int xflags) {
 
 #if LWIP_DHCP
     if (changed & IFXF_DHCP) {
+        LOG(INFO, "dhcp_release_and_stop");
         dhcp_release_and_stop(netif);
     }
 #endif /* LWIP_DHCP */
@@ -1238,6 +1244,7 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) 
             return 0;
         }
         case IF_REQ_DHCP_SETTINGS: {
+            LOG(INFO, "IF_REQ_DHCP_SETTINGS");
             if (reqsize != sizeof(if_req_dhcp_settings)) {
                 return -1;
             }
@@ -1245,9 +1252,11 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) 
             auto dreq = (if_req_dhcp_settings*)req;
             LwipTcpIpCoreLock lk;
             auto dhcp = netif_dhcp_data(iface);
+            LOG(INFO, "netif_dhcp_data = %x", dhcp);
             if (!dhcp) {
                 // Allocate DHCP struct here in place so that the configuration can be pre-applied
                 dhcp = (struct dhcp*)mem_malloc(sizeof(struct dhcp));
+                LOG(INFO, "struct dhcp alloc = %x", dhcp);
                 if (!dhcp) {
                     return -1;
                 }
@@ -1263,6 +1272,7 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) 
                 dhcp->override_gw = *ip_2_ip4(&gw);
                 dhcp->ignore_gw = true;
             }
+            LOG(INFO, "dhcp->ignore_dns = %d, ignore_gw = %d, override_gw = %x", dhcp->ignore_dns, dhcp->ignore_gw, dhcp->override_gw.addr);
             return 0;
         }
 

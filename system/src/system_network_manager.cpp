@@ -543,14 +543,18 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
 
         // Remove any stale DHCP overrides just in case
         if (conf.source(AF_INET) == NetworkInterfaceConfigSource::DHCP || conf.source(AF_INET) == NetworkInterfaceConfigSource::NONE) {
+            LOG(INFO, "source == DHCP or source == NONE, setting empty DHCP settings");
             if_req_dhcp_settings dSettings = {};
-            if_request(iface, IF_REQ_DHCP_SETTINGS, &dSettings, sizeof(dSettings), nullptr);
+            int r = if_request(iface, IF_REQ_DHCP_SETTINGS, &dSettings, sizeof(dSettings), nullptr);
+            LOG(INFO, "if_reqeust(IF_REQ_DHCP_SETTINGS) = %d", r);
         }
 
         if (conf.source(AF_INET) == NetworkInterfaceConfigSource::DHCP) {
+            LOG(INFO, "source == DHCP");
             bool dhcpOverride = false;
             if_req_dhcp_settings dSettings = {};
             if (conf.dns(AF_INET).size() > 0) {
+                LOG(INFO, "DNS server list override, size = %d", conf.dns(AF_INET).size());
                 dSettings.ignore_dns = true;
                 dhcpOverride = true;
                 int i = 0;
@@ -560,6 +564,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             }
             if (conf.gateway(AF_INET).family() == AF_INET) {
                 auto gw = conf.gateway();
+                LOG(INFO, "gateway == AF_INET, gateway = %s", gw.toString().c_str());
                 memcpy(&dSettings.override_gw, gw.toRaw(), sizeof(dSettings.override_gw));
 
                 dhcpOverride = true;
@@ -571,10 +576,13 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
                 ifaddr.gw = gw.toRaw();
                 ifaddr.netmask = empty.toRaw();
                 ifaddr.addr = empty.toRaw();
-                if_add_addr(iface, &ifaddr);
+                int r = if_add_addr(iface, &ifaddr);
+                LOG(INFO, "if_add_addr = %d", r);
             }
             if (dhcpOverride) {
-                if_request(iface, IF_REQ_DHCP_SETTINGS, &dSettings, sizeof(dSettings), nullptr);
+                LOG(INFO, "dhcpOverride = 1, ignore_dns = %d, override_gw = %s", dSettings.ignore_dns, SockAddr((sockaddr*)&dSettings.override_gw).toString().c_str());
+                int r = if_request(iface, IF_REQ_DHCP_SETTINGS, &dSettings, sizeof(dSettings), nullptr);
+                LOG(INFO, "if_request(IF_REQ_DHCP_SETTINGS) = %d", r);
             }
         } else if (conf.source(AF_INET) == NetworkInterfaceConfigSource::STATIC && conf.addresses(AF_INET).size() > 0) {
             // Clear just in case
@@ -599,6 +607,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         }
 
         if (conf.source(AF_INET) == NetworkInterfaceConfigSource::DHCP || conf.source(AF_INET) == NetworkInterfaceConfigSource::NONE) {
+            LOG(INFO, "if_set_xflags(IFXF_DHCP)");
             if_set_xflags(iface, IFXF_DHCP);
         }
 
@@ -611,6 +620,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         }
     } else {
         // Disable by default
+        LOG(INFO, "if_clear_xflags(IFXF_DHCP)");
         if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
 
