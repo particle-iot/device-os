@@ -97,6 +97,11 @@ bool networkInterfaceConfigMatches(const NetworkInterfaceConfig& lhs, const Netw
     return true;
 }
 
+test(NETWORK_CONFIG_00_prepare) {
+    // Make sure we start with a clean slate
+    unlink("/sys/network.dat");
+}
+
 #if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 test(NETWORK_CONFIG_WIFI_00_prepare) {
@@ -367,6 +372,245 @@ test(NETWORK_CONFIG_ETH_03_prepare) {
     Ethernet.disconnect();
 }
 
+namespace {
+
+bool ethConfigOk = false;
+NetworkIp4Config ethConfig;
+
+}
+
+test(NETWORK_CONFIG_ETH_04_query_expected_settings) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    Ethernet.connect();
+    assertTrue(waitFor(Ethernet.ready, 60000));
+    auto addr = getNetworkAddress(Ethernet);
+    assertFalse(addr.addr.isAddrAny());
+    assertFalse(addr.netmask.isAddrAny());
+    assertFalse(addr.gw.isAddrAny());
+    assertEqual(addr.addr.family(), AF_INET);
+    assertEqual(addr.netmask.family(), AF_INET);
+    assertEqual(addr.gw.family(), AF_INET);
+    assertNotEqual(addr.prefixLength, 0);
+    assertNotEqual(addr.prefixLength, 32);
+
+    auto dns = getDnsServerList();
+    assertNotEqual(dns.size(), 0);
+    addr.dns = dns;
+
+    ethConfigOk = true;
+    ethConfig = addr;
+}
+
+test(NETWORK_CONFIG_ETH_05_disconnect) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    assertTrue(ethConfigOk);
+
+    Ethernet.disconnect();
+}
+
+test(NETWORK_CONFIG_ETH_06_static_config_matching_dhcp) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    assertTrue(ethConfigOk);
+
+    auto conf = NetworkInterfaceConfig()
+            .source(NetworkInterfaceConfigSource::STATIC)
+            .address(ethConfig.addr, ethConfig.netmask)
+            .gateway(ethConfig.gw);
+    // Apply DNS in reverse order
+    for (int i = ethConfig.dns.size() - 1; i >= 0; i--) {
+        conf.dns(ethConfig.dns[i]);
+    }
+    assertEqual(0, Ethernet.setConfig(conf));
+    auto storedConf = Ethernet.getConfig(ethConfig.profile);
+    assertTrue(networkInterfaceConfigMatches(conf, storedConf));
+
+    Ethernet.connect();
+    assertTrue(waitFor(Ethernet.ready, 60000));
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, 60000));
+
+    // FIXME
+    // assertFalse((bool)Ethernet.dhcpServerIP());
+    
+    auto addr = getNetworkAddress(Ethernet);
+    assertFalse(addr.addr.isAddrAny());
+    assertFalse(addr.netmask.isAddrAny());
+    assertFalse(addr.gw.isAddrAny());
+    assertEqual(addr.addr.family(), AF_INET);
+    assertEqual(addr.netmask.family(), AF_INET);
+    assertEqual(addr.gw.family(), AF_INET);
+    assertNotEqual(addr.prefixLength, 0);
+    assertNotEqual(addr.prefixLength, 32);
+
+    auto dns = getDnsServerList();
+    assertNotEqual(dns.size(), 0);
+    addr.dns = dns;
+
+    assertTrue(addr.addr == ethConfig.addr);
+    assertTrue(addr.netmask == ethConfig.netmask);
+    assertTrue(addr.gw == ethConfig.gw);
+    assertTrue(addr.prefixLength == ethConfig.prefixLength);
+    assertEqual(addr.dns.size(), ethConfig.dns.size());
+    for (int i = 0; i < addr.dns.size(); i++) {
+        assertTrue(addr.dns[i] == ethConfig.dns[ethConfig.dns.size() - i - 1]);
+    }
+    assertEqual(addr.profile, ethConfig.profile);
+}
+
+test(NETWORK_CONFIG_ETH_07_disconnect) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    assertTrue(ethConfigOk);
+
+    Particle.disconnect();
+    Ethernet.disconnect();
+}
+
+test(NETWORK_CONFIG_ETH_08_dhcp_with_gw_and_dns_override) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    assertTrue(ethConfigOk);
+
+    auto conf = NetworkInterfaceConfig()
+            .source(NetworkInterfaceConfigSource::DHCP)
+            .dns(SockAddr("8.8.8.8"))
+            .dns(SockAddr("1.1.1.1"))
+            .gateway(SockAddr("1.2.3.4"));
+    assertEqual(0, Ethernet.setConfig(conf));
+    auto storedConf = Ethernet.getConfig(ethConfig.profile);
+    assertTrue(networkInterfaceConfigMatches(conf, storedConf));
+
+    Ethernet.connect();
+    assertTrue(waitFor(Ethernet.ready, 60000));
+
+    // FIXME
+    // assertTrue((bool)Ethernet.dhcpServerIP());
+    
+    auto addr = getNetworkAddress(Ethernet);
+    assertFalse(addr.addr.isAddrAny());
+    assertFalse(addr.netmask.isAddrAny());
+    assertFalse(addr.gw.isAddrAny());
+    assertEqual(addr.addr.family(), AF_INET);
+    assertEqual(addr.netmask.family(), AF_INET);
+    assertEqual(addr.gw.family(), AF_INET);
+    assertNotEqual(addr.prefixLength, 0);
+    assertNotEqual(addr.prefixLength, 32);
+
+    auto dns = getDnsServerList();
+    assertNotEqual(dns.size(), 0);
+    addr.dns = dns;
+
+    assertTrue(addr.netmask == ethConfig.netmask);
+    assertTrue(addr.gw == SockAddr("1.2.3.4"));
+    assertTrue(addr.prefixLength == ethConfig.prefixLength);
+    assertEqual(addr.dns.size(), 2);
+    assertTrue(addr.dns[0] == SockAddr("8.8.8.8"));
+    assertTrue(addr.dns[1] == SockAddr("1.1.1.1"));
+    assertEqual(addr.profile, ethConfig.profile);
+}
+
+test(NETWORK_CONFIG_ETH_08_disconnect) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    assertTrue(ethConfigOk);
+
+    Particle.disconnect();
+    Ethernet.disconnect();
+}
+
+test(NETWORK_CONFIG_ETH_09_dhcp_with_no_gw) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    assertTrue(ethConfigOk);
+
+    auto conf = NetworkInterfaceConfig()
+            .source(NetworkInterfaceConfigSource::DHCP)
+            .dns(SockAddr("8.8.8.8"))
+            .dns(SockAddr("1.1.1.1"))
+            .gateway(SockAddr("0.0.0.0"));
+    assertEqual(0, Ethernet.setConfig(conf));
+    auto storedConf = Ethernet.getConfig(ethConfig.profile);
+    assertTrue(networkInterfaceConfigMatches(conf, storedConf));
+
+    Ethernet.connect();
+    // Ethernet.ready() is not going to become true because gateway is going to be 0.0.0.0
+    assertTrue(waitFor(Ethernet.localIP, 60000));
+    
+    auto addr = getNetworkAddress(Ethernet);
+    assertFalse(addr.addr.isAddrAny());
+    assertFalse(addr.netmask.isAddrAny());
+    assertTrue(addr.gw.isAddrAny());
+    assertEqual(addr.addr.family(), AF_INET);
+    assertEqual(addr.netmask.family(), AF_INET);
+    assertEqual(addr.gw.family(), AF_INET);
+    assertNotEqual(addr.prefixLength, 0);
+    assertNotEqual(addr.prefixLength, 32);
+
+    auto dns = getDnsServerList();
+    assertNotEqual(dns.size(), 0);
+    addr.dns = dns;
+
+    assertTrue(addr.netmask == ethConfig.netmask);
+    assertTrue(addr.gw == SockAddr("0.0.0.0"));
+    assertTrue(addr.prefixLength == ethConfig.prefixLength);
+    assertEqual(addr.dns.size(), 2);
+    assertTrue(addr.dns[0] == SockAddr("8.8.8.8"));
+    assertTrue(addr.dns[1] == SockAddr("1.1.1.1"));
+    assertEqual(addr.profile, ethConfig.profile);
+}
+
+test(NETWORK_CONFIG_ETH_97_restore) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    Particle.disconnect();
+    Ethernet.disconnect();
+
+    auto conf = NetworkInterfaceConfig();
+    assertEqual(0, Ethernet.setConfig(conf));
+    auto storedConf = Ethernet.getConfig(ethConfig.profile);
+    assertTrue(networkInterfaceConfigMatches(conf, storedConf));
+}
+
+test(NETWORK_CONFIG_ETH_98_connect) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    Ethernet.connect();
+    assertTrue(waitFor(Ethernet.ready, 60000));
+    assertTrue((bool)Ethernet.localIP());
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, 60000));
+}
+
 test(NETWORK_CONFIG_ETH_99_disable_feature) {
     System.disableFeature(FEATURE_ETHERNET_DETECTION);
     // Notify about a pending reset
@@ -374,3 +618,8 @@ test(NETWORK_CONFIG_ETH_99_disable_feature) {
     System.reset();
 }
 #endif // HAL_PLATFORM_ETHERNET
+
+test(NETWORK_CONFIG_zz_reset) {
+    // Make sure we clean up configuration entirely
+    unlink("/sys/network.dat");
+}
