@@ -320,10 +320,10 @@ void Set_System(void)
     // GPIOTE initialization
     hal_interrupt_init();
 
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     /* Configure the Button */
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     hw_rtl_init_psram();
 
     // set IDAU, the enabled regions are treated as Non-secure space
