@@ -49,6 +49,7 @@ test(01_Shared_Interrupt_Execute_Handlers_As_Expected) {
 
     hal_gpio_mode(intPin, INPUT_PULLUP);
     hal_interrupt_extra_configuration_t config = {};
+    config.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
     config.appendHandler = 1;
 
     config.chainPriority = 1;

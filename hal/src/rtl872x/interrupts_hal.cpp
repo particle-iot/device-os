@@ -43,6 +43,8 @@ using spark::Vector;
 using namespace particle;
 #endif
 
+#include <algorithm>
+
 extern uintptr_t link_ram_interrupt_vectors_location[];
 static uint32_t hal_interrupts_handler_backup[MAX_VECTOR_TABLE_NUM] = {};
 
@@ -67,9 +69,9 @@ public:
             return handler != callback.handler;
         }
 
-        hal_interrupt_handler_t handler;
-        void* data;
-        uint8_t chainPriority; // The lower the value, the higher the priority
+        hal_interrupt_handler_t handler = nullptr;
+        void* data = nullptr;
+        uint8_t chainPriority = 0; // The lower the value, the higher the priority
     };
 
     InterruptConfig()
@@ -78,48 +80,90 @@ public:
     }
     ~InterruptConfig() = default;
 
+    void sortHandlersByPriority() {
+        // NOTE: has to be called under ATOMIC_BLOCK
+        std::sort(callbacks_.begin(), callbacks_.end(), [](const InterruptCallback& lhs, const InterruptCallback& rhs) {
+            // Ascending order
+            return lhs.chainPriority < rhs.chainPriority;
+        });
+    }
+
     int appendHandler(hal_interrupt_handler_t handler, void* data, uint8_t chainPriority) {
-        size_t idx = 0;
-        InterruptCallback cb = {};
+        CHECK_TRUE(handler, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        InterruptCallback cb;
         cb.handler = handler;
         cb.data = data;
         cb.chainPriority = chainPriority;
-        for (auto& callback : callbacks_) {
-            if (chainPriority < callback.chainPriority) {
+        bool needAppend = true;
+        ATOMIC_BLOCK() {
+            for (auto& callback: callbacks_) {
+                if (!callback.handler) {
+                    callback = cb;
+                    // Used an empty entry
+                    sortHandlersByPriority();
+                    needAppend = false;
+                    break;
+                }
+            }
+        }
+        if (!needAppend) {
+            return 0;
+        }
+
+        // Need to increase the size of the vector, which we cannot do from an ISR context
+        CHECK_FALSE(hal_interrupt_is_isr(), SYSTEM_ERROR_INVALID_STATE);
+        decltype(callbacks_) temp;
+        bool done = false;
+        while (!done) {
+            CHECK_TRUE(temp.reserve(callbacks_.capacity() + 1), SYSTEM_ERROR_NO_MEMORY);
+            ATOMIC_BLOCK() {
+                if (temp.capacity() == (callbacks_.capacity() + 1)) {
+                    // No modifications occured, we can safely copy here
+                    temp.insert(0, callbacks_);
+                    // This will not cause an realloc call, as we've already reserved + 1 size
+                    temp.append(cb);
+                    std::swap(temp, callbacks_);
+                    sortHandlersByPriority();
+                    done = true;
+                }
+            }
+            if (done) {
                 break;
             }
-            idx++;
-        }
-        auto temp = callbacks_;
-        CHECK_TRUE(temp.insert(idx, cb), SYSTEM_ERROR_NO_MEMORY);
-        ATOMIC_BLOCK() { 
-            spark::swap(temp, callbacks_);
         }
         return SYSTEM_ERROR_NONE;
     }
 
     ssize_t handlers() const {
-        return callbacks_.size();
+        size_t count = 0;
+        ATOMIC_BLOCK() { 
+            for (const auto& callback: callbacks_) {
+                if (callback.handler) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     int removeHandler(hal_interrupt_handler_t handler) {
-        auto temp = callbacks_;
-        for (auto& callback : temp) {
-            if (handler == callback.handler) {
-                temp.removeOne(callback);
-            }
-        }
+        CHECK_TRUE(handler, SYSTEM_ERROR_INVALID_ARGUMENT);
         ATOMIC_BLOCK() { 
-            spark::swap(temp, callbacks_);
+            for (auto& callback: callbacks_) {
+                if (callback.handler == handler) {
+                    callback = InterruptCallback();
+                }
+            }
         }
         return SYSTEM_ERROR_NONE;
     }
 
     void clearHandlers() {
-        auto temp = callbacks_;
-        callbacks_.removeAt(0, callbacks_.size());
         ATOMIC_BLOCK() { 
-            spark::swap(temp, callbacks_);
+            for (auto& callback: callbacks_) {
+                callback = InterruptCallback();
+            }
         }
     }
 
@@ -326,9 +370,9 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
             interruptsConfig[pin].clearHandlers();
         }
         if (config) {
-            interruptsConfig[pin].appendHandler(handler, data, config->chainPriority);
+            CHECK(interruptsConfig[pin].appendHandler(handler, data, config->chainPriority));
         } else {
-            interruptsConfig[pin].appendHandler(handler, data, 0);
+            CHECK(interruptsConfig[pin].appendHandler(handler, data, 0));
         }
 #else
         interruptsConfig[pin].callback.handler = handler;
