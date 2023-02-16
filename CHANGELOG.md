@@ -1,3 +1,32 @@
+## 5.3.0
+
+### FEATURES
+- Static IP configuration support [#2621](https://github.com/particle-iot/device-os/pull/2621)
+- Hardware watchdog [#2595](https://github.com/particle-iot/device-os/pull/2595)[#2617](https://github.com/particle-iot/device-os/pull/2617)[#2620](https://github.com/particle-iot/device-os/pull/2620)
+- Ethernet GPIO config [#2616](https://github.com/particle-iot/device-os/pull/2616)
+- [wiring][gen3] Allow gen3 to select internal ADC reference source [#2619](https://github.com/particle-iot/device-os/pull/2619)
+
+### ENHANCEMENTS
+- [rtl872x] Support IO wakeup sources through IO expander.[#2604](https://github.com/particle-iot/device-os/pull/2604)[#2608](https://github.com/particle-iot/device-os/pull/2608)[#2614](https://github.com/particle-iot/device-os/pull/2614)
+
+### BUGFIXES
+- [rtl872x] enable factory reset feature [#2612](https://github.com/particle-iot/device-os/pull/2612)
+- [rtl872x] Dcache fixes for exflash HAL [#2623](https://github.com/particle-iot/device-os/pull/2623)
+- [rtl872x] fix overflow error in HAL_Delay_Microseconds [#2606](https://github.com/particle-iot/device-os/pull/2606)
+- [nRF52] BLE plus RTC sleep causes hardfault [#2615](https://github.com/particle-iot/device-os/pull/2615)
+- [rtl872x] hal: fix heap allocation issue in interrupt hal and postpone the mode button initialization. [#2624](https://github.com/particle-iot/device-os/pull/2624)
+- [rtl872x] bootloader: fix destination address flash page alignment in case of compressed modules [#2628](https://github.com/particle-iot/device-os/pull/2628)
+
+### INTERNAL
+- [photon2] Update FQC test with photon 2 pinout [#2610](https://github.com/particle-iot/device-os/pull/2610)
+- [test] mailbox support and support for resets within tests [#2611](https://github.com/particle-iot/device-os/pull/2611)
+- [bootloader] remove nanopb dependency[#2607](https://github.com/particle-iot/device-os/pull/2607)
+- Server key rotation [#2570](https://github.com/particle-iot/device-os/pull/2570)
+- Fix GCC platform build [#2613](https://github.com/particle-iot/device-os/pull/2613)[#2618](https://github.com/particle-iot/device-os/pull/2618)
+- Ensure thread07 test executes as intended [#2622](https://github.com/particle-iot/device-os/pull/2622) 
+- [rtl872x] Fix watchdog tests; system/application thread stack size increase [#2626](https://github.com/particle-iot/device-os/pull/2626)
+- [test] turn off NCP before testing wiring/watchdog [#2627](https://github.com/particle-iot/device-os/pull/2627)
+
 ## 5.2.0
 
 ### FEATURES
