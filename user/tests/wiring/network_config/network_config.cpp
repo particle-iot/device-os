@@ -351,7 +351,11 @@ test(NETWORK_CONFIG_ETH_01_enable_feature) {
 
 test(NETWORK_CONFIG_ETH_02_check_eth) {
     if (!isEthernetPresent()) {
+#ifndef REQUIRE_ETHERNET
         skip();
+#else
+        assertTrue(isEthernetPresent());
+#endif // REQUIRE_ETHERNET
         return;
     }
 }
