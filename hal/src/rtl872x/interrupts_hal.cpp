@@ -116,7 +116,7 @@ public:
         decltype(callbacks_) temp;
         bool done = false;
         while (!done) {
-            temp.reserve(callbacks_.capacity() + 1);
+            CHECK_TRUE(temp.reserve(callbacks_.capacity() + 1), SYSTEM_ERROR_NO_MEMORY);
             ATOMIC_BLOCK() {
                 if (temp.capacity() == (callbacks_.capacity() + 1)) {
                     // No modifications occured, we can safely copy here
