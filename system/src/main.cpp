@@ -62,6 +62,7 @@
 #include "system_power.h"
 #include "spark_wiring_wifi.h"
 #include "server_config.h"
+#include "system_network_manager.h"
 
 // FIXME
 #include "system_control_internal.h"
@@ -653,6 +654,7 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     CHECK(dct_write_app_data(devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
     // Restore default server key and address
     ServerConfig::instance()->restoreDefaultSettings();
+    particle::system::NetworkManager::instance()->clearStoredConfiguration();
 #endif // !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     return 0;
 }

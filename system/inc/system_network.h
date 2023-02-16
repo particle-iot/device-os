@@ -28,6 +28,7 @@
 #include "wlan_hal.h"
 #include "spark_macros.h"
 #include "system_defs.h"
+#include "system_network_configuration.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -107,6 +108,12 @@ int network_set_hostname(network_handle_t network, uint32_t flags, const char* h
 int network_get_hostname(network_handle_t network, uint32_t flags, char* buffer, size_t buffer_len, void* reserved);
 
 int network_wait_off(network_handle_t network, system_tick_t timeout, void*);
+
+#if HAL_USE_SOCKET_HAL_POSIX
+int network_set_configuration(network_handle_t network, const network_configuration_t* conf, void* reserved);
+int network_get_configuration(network_handle_t network, network_configuration_t** conf, size_t* count, const char* profile, size_t profile_len, void* reserved);
+int network_free_configuration(network_configuration_t* conf, size_t count, void* reserved);
+#endif // HAL_USE_SOCKET_HAL_POSIX
 
 /**
  * Disable automatic listening mode when no credentials are configured.

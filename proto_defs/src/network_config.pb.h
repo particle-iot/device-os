@@ -6,12 +6,17 @@
 #include <pb.h>
 #include "control/wifi_new.pb.h"
 #include "control/cellular.pb.h"
+#include "control/network.pb.h"
 
 #if PB_PROTO_HEADER_VERSION != 40
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
 /* Struct definitions */
+typedef struct _particle_firmware_NetworkConfig { 
+    pb_callback_t config; 
+} particle_firmware_NetworkConfig;
+
 typedef struct _particle_firmware_WifiConfig { 
     pb_callback_t networks; 
 } particle_firmware_WifiConfig;
@@ -39,11 +44,14 @@ extern "C" {
 #define particle_firmware_WifiConfig_init_default {{{NULL}, NULL}}
 #define particle_firmware_WifiConfig_Network_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default}
 #define particle_firmware_CellularConfig_init_default {particle_ctrl_cellular_AccessPoint_init_default, particle_ctrl_cellular_AccessPoint_init_default, _particle_ctrl_cellular_SimType_MIN}
+#define particle_firmware_NetworkConfig_init_default {{{NULL}, NULL}}
 #define particle_firmware_WifiConfig_init_zero   {{{NULL}, NULL}}
 #define particle_firmware_WifiConfig_Network_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero}
 #define particle_firmware_CellularConfig_init_zero {particle_ctrl_cellular_AccessPoint_init_zero, particle_ctrl_cellular_AccessPoint_init_zero, _particle_ctrl_cellular_SimType_MIN}
+#define particle_firmware_NetworkConfig_init_zero {{{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
+#define particle_firmware_NetworkConfig_config_tag 1
 #define particle_firmware_WifiConfig_networks_tag 1
 #define particle_firmware_CellularConfig_internal_sim_tag 1
 #define particle_firmware_CellularConfig_external_sim_tag 2
@@ -78,18 +86,27 @@ X(a, STATIC,   SINGULAR, UENUM,    active_sim,        3)
 #define particle_firmware_CellularConfig_internal_sim_MSGTYPE particle_ctrl_cellular_AccessPoint
 #define particle_firmware_CellularConfig_external_sim_MSGTYPE particle_ctrl_cellular_AccessPoint
 
+#define particle_firmware_NetworkConfig_FIELDLIST(X, a) \
+X(a, CALLBACK, REPEATED, MESSAGE,  config,            1)
+#define particle_firmware_NetworkConfig_CALLBACK pb_default_field_callback
+#define particle_firmware_NetworkConfig_DEFAULT NULL
+#define particle_firmware_NetworkConfig_config_MSGTYPE particle_ctrl_Interface
+
 extern const pb_msgdesc_t particle_firmware_WifiConfig_msg;
 extern const pb_msgdesc_t particle_firmware_WifiConfig_Network_msg;
 extern const pb_msgdesc_t particle_firmware_CellularConfig_msg;
+extern const pb_msgdesc_t particle_firmware_NetworkConfig_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define particle_firmware_WifiConfig_fields &particle_firmware_WifiConfig_msg
 #define particle_firmware_WifiConfig_Network_fields &particle_firmware_WifiConfig_Network_msg
 #define particle_firmware_CellularConfig_fields &particle_firmware_CellularConfig_msg
+#define particle_firmware_NetworkConfig_fields &particle_firmware_NetworkConfig_msg
 
 /* Maximum encoded size of messages (where known) */
 /* particle_firmware_WifiConfig_size depends on runtime parameters */
 /* particle_firmware_WifiConfig_Network_size depends on runtime parameters */
+/* particle_firmware_NetworkConfig_size depends on runtime parameters */
 #if defined(particle_ctrl_cellular_AccessPoint_size) && defined(particle_ctrl_cellular_AccessPoint_size)
 #define particle_firmware_CellularConfig_size    (14 + particle_ctrl_cellular_AccessPoint_size + particle_ctrl_cellular_AccessPoint_size)
 #endif

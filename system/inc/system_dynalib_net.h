@@ -50,6 +50,9 @@ DYNALIB_FN(14, system_net, network_set_hostname, int(network_handle_t, uint32_t,
 DYNALIB_FN(15, system_net, network_get_hostname, int(network_handle_t, uint32_t, char*, size_t, void*))
 DYNALIB_FN(16, system_net, network_is_on, bool(network_handle_t, void*))
 DYNALIB_FN(17, system_net, network_is_off, bool(network_handle_t, void*))
+DYNALIB_FN(18, system_net, network_set_configuration, int(network_handle_t, const network_configuration_t*, void*))
+DYNALIB_FN(19, system_net, network_get_configuration, int(network_handle_t, network_configuration_t**, size_t*, const char*, size_t, void*))
+DYNALIB_FN(20, system_net, network_free_configuration, int(network_configuration_t*, size_t, void*))
 
 DYNALIB_END(system_net)
 

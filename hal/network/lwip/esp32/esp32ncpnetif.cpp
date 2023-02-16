@@ -76,7 +76,7 @@ Esp32NcpNetif::~Esp32NcpNetif() {
 void Esp32NcpNetif::init() {
     registerHandlers();
     SPARK_ASSERT(lwip_memp_event_handler_add(mempEventHandler, MEMP_PBUF_POOL, this) == 0);
-    SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT) == 0);
+    SPARK_ASSERT(os_thread_create(&thread_, "esp32ncp", OS_THREAD_PRIORITY_NETWORK, &Esp32NcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
 }
 
 void Esp32NcpNetif::setWifiManager(particle::WifiNetworkManager* wifiMan) {
@@ -222,6 +222,19 @@ void Esp32NcpNetif::loop(void* arg) {
     self->wifiMan_->ncpClient()->off();
 
     os_thread_exit(nullptr);
+}
+
+int Esp32NcpNetif::getCurrentProfile(spark::Vector<char>* profile) const {
+    const auto client = wifiMan_->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CHECK_TRUE(profile, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    CHECK_TRUE(client->connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+
+    WifiNetworkInfo info;
+    CHECK(client->getNetworkInfo(&info));
+    *profile = spark::Vector<char>(info.ssid(), strlen(info.ssid()));
+    return 0;
 }
 
 int Esp32NcpNetif::up() {

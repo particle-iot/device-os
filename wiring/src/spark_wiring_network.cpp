@@ -24,6 +24,9 @@
 #if HAL_USE_INET_HAL_POSIX
 #include <netdb.h>
 #endif // HAL_USE_INET_HAL_POSIX
+#include "check.h"
+
+using namespace particle;
 
 namespace spark {
 
@@ -153,5 +156,38 @@ IPAddress NetworkClass::resolve(const char* name) {
 #endif // HAL_USE_INET_HAL_POSIX
     return addr;
 }
+
+#if HAL_USE_SOCKET_HAL_POSIX
+int NetworkClass::setConfig(const NetworkInterfaceConfig& conf) {
+    network_configuration_t c = {};
+    c.size = sizeof(c);
+
+    CHECK(conf.exportAsNetworkConfiguration(&c));
+    int r = network_set_configuration((network_interface_t)*this, &c, nullptr);
+    conf.deallocNetworkConfiguration(&c);
+    return r;
+}
+
+NetworkInterfaceConfig NetworkClass::getConfig(String profile) const {
+    network_configuration_t* c = nullptr;
+    size_t count = 1;
+    network_get_configuration((network_interface_t)*this, &c, &count, profile.c_str(), profile.length(), nullptr);
+    NetworkInterfaceConfig conf(c);
+    network_free_configuration(c, count, nullptr);
+    return conf;
+}
+
+spark::Vector<NetworkInterfaceConfig> NetworkClass::getConfigList() const {
+    network_configuration_t* c = nullptr;
+    size_t count = 0;
+    network_get_configuration((network_interface_t)*this, &c, &count, nullptr, 0, nullptr);
+    spark::Vector<NetworkInterfaceConfig> res;
+    for (size_t i = 0; i < count; i++) {
+        res.append(NetworkInterfaceConfig(&c[i]));
+    }
+    network_free_configuration(c, count, nullptr);
+    return res;
+}
+#endif // HAL_USE_SOCKET_HAL_POSIX
 
 } // spark

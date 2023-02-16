@@ -15,4 +15,7 @@ PB_BIND(particle_firmware_WifiConfig_Network, particle_firmware_WifiConfig_Netwo
 PB_BIND(particle_firmware_CellularConfig, particle_firmware_CellularConfig, AUTO)
 
 
+PB_BIND(particle_firmware_NetworkConfig, particle_firmware_NetworkConfig, AUTO)
+
+
 

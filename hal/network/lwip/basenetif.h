@@ -21,6 +21,7 @@
 #include <mutex>
 #include <lwip/netif.h>
 #include "ifapi.h"
+#include "spark_wiring_vector.h"
 
 namespace particle { namespace net {
 
@@ -38,6 +39,8 @@ public:
 
     virtual int getPowerState(if_power_state_t* state) const = 0;
     virtual int getNcpState(unsigned int* state) const = 0;
+
+    virtual int getCurrentProfile(spark::Vector<char>* profile) const;
 
 protected:
     void registerHandlers();

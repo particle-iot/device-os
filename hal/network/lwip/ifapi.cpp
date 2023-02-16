@@ -26,6 +26,7 @@ LOG_SOURCE_CATEGORY("net.ifapi")
 #include <lwip/netif.h>
 #include <lwip/netifapi.h>
 #include <lwip/dhcp.h>
+#include <lwip/prot/dhcp.h>
 extern "C" {
 #include <lwip/dhcp6.h>
 }
@@ -204,7 +205,11 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
             ev.ev_type = IF_EVENT_LINK;
             ev.ev_if_link = &ev_if_link;
             ev.ev_if_link->state = args->link_changed.state;
-            LOG(INFO, "Netif %s link %s", name, ev.ev_if_link->state ? "UP" : "DOWN");
+            char profile[64] = {};
+            int len = if_get_profile((if_t)netif, profile, sizeof(profile) - 1);
+            ev.ev_if_link->profile = len >= 0 ? profile : nullptr;
+            ev.ev_if_link->profile_len = len >= 0 ? len : 0;
+            LOG(INFO, "Netif %s link %s, profile=%s", name, ev.ev_if_link->state ? "UP" : "DOWN", len > 0 ? profile : "NONE");
             notify_all_handlers_event(netif, &ev);
             break;
         }
@@ -627,18 +632,21 @@ int if_get_xflags(if_t iface, unsigned int* xflags) {
 #endif /* LWIP_IPV6 */
 
 #if LWIP_IPV6_DHCP6
+    // FIXME: check DHCP6 state!
     if (netif_dhcp6_data(netif)) {
         ifxf |= IFXF_DHCP6;
     }
 #endif /* LWIP_IPV6_DHCP6 */
 
 #if LWIP_DHCP
-    if (netif_dhcp_data(netif)) {
+    auto dhcp = netif_dhcp_data(netif);
+    if (dhcp && dhcp->state != DHCP_STATE_OFF) {
         ifxf |= IFXF_DHCP;
     }
 #endif /* LWIP_DHCP */
 
 #if LWIP_IPV4 && LWIP_AUTOIP
+    // FIXME: check AUTOIP state!
     if (netif_autoip_data(netif)) {
         ifxf |= IFXF_AUTOIP;
     }
@@ -1229,6 +1237,34 @@ int if_request(if_t iface, int type, void* req, size_t reqsize, void* reserved) 
             }
             return 0;
         }
+        case IF_REQ_DHCP_SETTINGS: {
+            if (reqsize != sizeof(if_req_dhcp_settings)) {
+                return -1;
+            }
+
+            auto dreq = (if_req_dhcp_settings*)req;
+            LwipTcpIpCoreLock lk;
+            auto dhcp = netif_dhcp_data(iface);
+            if (!dhcp) {
+                // Allocate DHCP struct here in place so that the configuration can be pre-applied
+                dhcp = (struct dhcp*)mem_malloc(sizeof(struct dhcp));
+                if (!dhcp) {
+                    return -1;
+                }
+                dhcp_set_struct(iface, dhcp);
+            }
+            dhcp->ignore_dns = dreq->ignore_dns;
+            dhcp->ignore_gw = false;
+            memset(&dhcp->override_gw, 0, sizeof(dhcp->override_gw));
+            if (dreq->override_gw.sin_family == AF_INET) {
+                ip_addr_t gw = {};
+                uint16_t dummy;
+                sockaddr_to_ipaddr_port((sockaddr*)&dreq->override_gw, &gw, &dummy);
+                dhcp->override_gw = *ip_2_ip4(&gw);
+                dhcp->ignore_gw = true;
+            }
+            return 0;
+        }
 
         default: {
             return -1;
@@ -1253,4 +1289,21 @@ int if_get_power_state(if_t iface, if_power_state_t* state) {
     auto bnetif = getBaseNetif(iface);
     CHECK_TRUE(bnetif, -1);
     return bnetif->getPowerState(state);
+}
+
+int if_get_profile(if_t iface, char* profile, size_t length) {
+    LwipTcpIpCoreLock lk;
+
+    if (!netif_validate(iface)) {
+        return -1;
+    }
+
+    auto bnetif = getBaseNetif(iface);
+    CHECK_TRUE(bnetif, -1);
+    spark::Vector<char> p;
+    CHECK(bnetif->getCurrentProfile(&p));
+    if (profile) {
+        memcpy(profile, p.data(), std::min<size_t>(p.size(), length));
+    }
+    return p.size();
 }

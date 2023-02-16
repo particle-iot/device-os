@@ -27,6 +27,7 @@
 #define __SPARK_WIRING_NETWORK_H
 
 #include "spark_wiring_ipaddress.h"
+#include "system_network.h"
 
 namespace spark {
 
@@ -73,6 +74,12 @@ public:
     explicit NetworkClass(network_interface_t iface)
             : iface_(iface) {
     }
+
+#if HAL_USE_SOCKET_HAL_POSIX
+    int setConfig(const particle::NetworkInterfaceConfig& conf);
+    particle::NetworkInterfaceConfig getConfig(String profile = String()) const;
+    spark::Vector<particle::NetworkInterfaceConfig> getConfigList() const;
+#endif // HAL_USE_SOCKET_HAL_POSIX
 
 private:
     network_interface_t iface_;

@@ -600,6 +600,8 @@ void sys_unlock_tcpip_core(void);
  */
 #define LWIP_DHCP_MAX_DNS_SERVERS       2
 
+#define LWIP_DHCP_USE_NETIF_INDEX_FOR_DNS 1
+
 /*
    ------------------------------------
    ---------- AUTOIP options ----------
@@ -681,11 +683,13 @@ void sys_unlock_tcpip_core(void);
 /** DNS maximum host name length supported in the name table. */
 #define DNS_MAX_NAME_LENGTH             128
 
+#define LWIP_DNS_SERVERS_PER_NETIF      2
+
 /** The maximum of DNS servers
  * The first server can be initialized automatically by defining
  * DNS_SERVER_ADDRESS(ipaddr), where 'ipaddr' is an 'ip_addr_t*'
  */
-#define DNS_MAX_SERVERS                 5
+#define DNS_MAX_SERVERS                 (LWIP_DNS_SERVERS_PER_NETIF * 8)
 
 /** DNS maximum number of retries when asking for a name, before "timeout". */
 #define DNS_MAX_RETRIES                 3
