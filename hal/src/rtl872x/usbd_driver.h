@@ -75,7 +75,7 @@ private:
     RtlUsbDriver();
     virtual ~RtlUsbDriver();
 
-    static uint8_t* getDescriptorCb(usb_setup_req_t *req, usbd_speed_type_t speed, uint16_t* len);
+    static uint8_t* getDescriptorCb(usb_setup_req_t *req, usb_speed_type_t speed, uint16_t* len);
     static uint8_t setConfigCb(usb_dev_t* dev, uint8_t config);
     static uint8_t clearConfigCb(usb_dev_t* dev, uint8_t config);
     static uint8_t setupCb(usb_dev_t* dev, usb_setup_req_t* req);
@@ -104,8 +104,7 @@ private:
         .rx_fifo_size = USBD_MAX_RX_FIFO_SIZE,
         .nptx_fifo_size = USBD_MAX_NPTX_FIFO_SIZE,
         .ptx_fifo_size = USBD_MAX_PTX_FIFO_SIZE,
-        .intr_use_ptx_fifo = 1, // ?
-        .speed = USBD_SPEED_FULL,
+        .speed = USB_SPEED_FULL,
         .dma_enable = 0, // ?
         .self_powered = 1,
         .isr_priority = RTL_USBD_ISR_PRIORITY,
@@ -116,6 +115,8 @@ private:
         .set_config = &setConfigCb,
         .clear_config = &clearConfigCb,
         .setup = &setupCb,
+        .get_class_descriptor = nullptr,
+        .clear_feature = nullptr,
         .sof = nullptr, // This is not delivered
         .suspend = &suspendCb,
         .resume = &resumeCb,
