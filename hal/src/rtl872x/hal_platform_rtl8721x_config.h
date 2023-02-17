@@ -134,3 +134,6 @@
 #define HAL_PLATFORM_HW_WATCHDOG (1)
 
 #define HAL_PLATFORM_HW_WATCHDOG_COUNT (1)
+
+// We have plenty of SRAM/PSRAM, this avoids overflows in BLE stack initialization among other things
+#define HAL_PLATFORM_SYSTEM_THREAD_STACK_SIZE (10 * 1024)

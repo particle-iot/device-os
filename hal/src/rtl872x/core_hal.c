@@ -678,7 +678,7 @@ unsigned HAL_Core_System_Clock(HAL_SystemClock clock, void* reserved) {
 
 
 static TaskHandle_t  app_thread_handle;
-#define APPLICATION_STACK_SIZE 6144
+#define APPLICATION_STACK_SIZE (10 * 1024)
 #define MALLOC_LOCK_TIMEOUT_MS (60000) // This is defined in "ticks" and each tick is 1ms
 
 /**

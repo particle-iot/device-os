@@ -189,7 +189,8 @@ public:
             return SYSTEM_ERROR_INTERNAL;
         }
 
-        int priMask = __get_PRIMASK();
+        // NOTE: previously checked primask here, no need as if we are going into sleep
+        // with disabled interrupts we have much bigger problems
         __disable_irq();
         __DSB();
         __ISB();
@@ -279,6 +280,20 @@ public:
         }
 #endif
 
+        __enable_irq();
+        __DSB();
+        __ISB();
+
+        // Clear int status
+        HAL_WRITE32((uint32_t)GPIOA_BASE, 0x4C, 0xFFFF);
+        HAL_WRITE32((uint32_t)GPIOB_BASE, 0x4C, 0xFFFF);
+
+        SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
+        os_thread_scheduling(true, nullptr);
+
+        // NOTE: USB stack, BLE stack, malloc require interrupts and thread scheduling to be enabled.
+        HAL_USB_Attach();
+
         int ret = SYSTEM_ERROR_NONE;
         if (wakeupReason) {
             if (wakeupSourceType == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
@@ -289,21 +304,6 @@ public:
                 ret = SYSTEM_ERROR_INTERNAL;
             }
         }
-
-        HAL_USB_Attach();
-
-        if ((priMask & 1) == 0) {
-            __enable_irq();
-        }
-        __DSB();
-        __ISB();
-
-        // Clear int status
-        HAL_WRITE32((uint32_t)GPIOA_BASE, 0x4C, 0xFFFF);
-        HAL_WRITE32((uint32_t)GPIOB_BASE, 0x4C, 0xFFFF);
-
-        SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;
-        os_thread_scheduling(true, nullptr);
 
         if (hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE) {
             if (advertising) {
