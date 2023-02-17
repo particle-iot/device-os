@@ -18,6 +18,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+
 static void startWatchdog(const WatchdogConfiguration& config) {
     WatchdogInfo info;
     assertEqual(0, Watchdog.init(config));
@@ -53,6 +54,9 @@ test(WATCHDOG_02_default_1) {
     assertEqual(0, Watchdog.init(WatchdogConfiguration().timeout(5s)));
     checkState(WatchdogState::CONFIGURED);
 
+    // Notify about a pending reset
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+
     assertEqual(0, Watchdog.start());
     assertEqual(0, Watchdog.getInfo(info));
     assertEqual(info.configuration().timeout(), 5000);
@@ -63,14 +67,14 @@ test(WATCHDOG_02_default_1) {
     Watchdog.refresh();
     delay(3000);
     Watchdog.refresh();
-
-    // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    delay(10000);
+    // This should not be reachable
+    assertFalse(true);
 }
 
 test(WATCHDOG_02_default_2) {
-    assertTrue(System.resetReason() == RESET_REASON_WATCHDOG);
     checkState(WatchdogState::DISABLED);
+    assertEqual((int)System.resetReason(), (int)RESET_REASON_WATCHDOG);
 }
 
 #if HAL_PLATFORM_RTL872X || (PLATFORM_ID == PLATFORM_TRACKER)
@@ -88,15 +92,23 @@ test(WATCHDOG_03_stopped_in_hibernate_mode_2) {
 #endif
 
 test(WATCHDOG_04_continue_running_after_waking_up_from_none_hibernate_mode_1) {
-    startWatchdog(WatchdogConfiguration().timeout(5s).capabilities(WatchdogCap::RESET)); // SLEEP_RUNNING is cleared
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 1000));
-    System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(7s));
-    checkState(WatchdogState::STARTED);
-    // Notify about a pending reset
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    startWatchdog(WatchdogConfiguration().timeout(5s).capabilities(WatchdogCap::RESET)); // SLEEP_RUNNING is cleared
+    System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(10s));
+    Watchdog.refresh();
 }
 
 test(WATCHDOG_04_continue_running_after_waking_up_from_none_hibernate_mode_2) {
+    checkState(WatchdogState::STARTED);
+    Watchdog.refresh();
+    // Notify about a pending reset
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    delay(10000);
+    // This should be unreachable, we should get a watchdog reset before the delay expires
+    assertFalse(true);
+}
+
+test(WATCHDOG_04_continue_running_after_waking_up_from_none_hibernate_mode_3) {
     assertTrue(System.resetReason() == RESET_REASON_WATCHDOG);
     checkState(WatchdogState::DISABLED);
 }
@@ -130,7 +142,7 @@ static retained uint32_t magick = 0;
 
 test(WATCHDOG_07_notify_1) {
     magick = 0;
-    Watchdog.onExpired([&](){
+    Watchdog.onExpired([](){
         magick = 0xdeadbeef;
     });
     startWatchdog(WatchdogConfiguration().timeout(5s).capabilities(WatchdogCap::NOTIFY));
@@ -151,7 +163,7 @@ system_tick_t now = 0;
 
 test(WATCHDOG_06_interrupt_mode) {
     system_tick_t then = millis();
-    Watchdog.onExpired([&](){
+    Watchdog.onExpired([](){
         now = millis();
     });
     startWatchdog(WatchdogConfiguration().timeout(5s).capabilities(WatchdogCap::NOTIFY_ONLY));
