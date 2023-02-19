@@ -33,6 +33,29 @@ static void checkState(WatchdogState state) {
     assertTrue(info.state() == state);
 }
 
+test(WATCHDOG_00_setup_disconnect_power_off_ncp) {
+    // Ensure NCP is already off for test timing to work properly.
+    // sleep STOP mode can "pause" the WDT countdown, but if the NCP is on
+    // when sleep API's are called, extra time will be need to disconnect
+    // and power off before sleeping.
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 60000);
+    assertTrue(Particle.disconnected());
+#if Wiring_Cellular
+    Cellular.disconnect();
+    waitForNot(Cellular.ready, 60000);
+    Cellular.off();
+    waitFor(Cellular.isOff, 120000);
+    assertTrue(Cellular.isOff());
+#elif Wiring_WiFi
+    WiFi.disconnect();
+    waitForNot(WiFi.ready, 60000);
+    WiFi.off();
+    waitFor(WiFi.isOff, 120000);
+    assertTrue(WiFi.isOff());
+#endif
+}
+
 test(WATCHDOG_01_capabilities) {
     WatchdogInfo info;
     assertEqual(0, Watchdog.getInfo(info));
