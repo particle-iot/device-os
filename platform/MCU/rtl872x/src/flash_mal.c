@@ -501,7 +501,6 @@ static bool isSourceDestinationOverlap(platform_flash_modules_t* module, platfor
     size_t dstAddr = module->destinationAddress;
     size_t srcAddrEnd = module->sourceAddress + module->length;
     size_t dstAddrEnd = module->destinationAddress + module->length;
-    dstAddrEnd = (dstAddrEnd + INTERNAL_FLASH_PAGE_SIZE - 1) / INTERNAL_FLASH_PAGE_SIZE * INTERNAL_FLASH_PAGE_SIZE;
 
     if (!(isWithinOtaRegion(srcAddr, module->sourceDeviceID) && isWithinOtaRegion(dstAddr, module->destinationDeviceID))) {
         return false;
@@ -517,6 +516,9 @@ static bool isSourceDestinationOverlap(platform_flash_modules_t* module, platfor
         dstAddrEnd = dstAddr + comp_header.original_size;
     }
 #endif // HAS_COMPRESSED_OTA
+
+    // Align to flash page size
+    dstAddrEnd = (dstAddrEnd + INTERNAL_FLASH_PAGE_SIZE - 1) / INTERNAL_FLASH_PAGE_SIZE * INTERNAL_FLASH_PAGE_SIZE;
 
     if (overlap) {
         overlap->src.start = srcAddr;
