@@ -1210,7 +1210,8 @@ public:
                         if (impl->disconnectedCallback_) {
                             impl->disconnectedCallback_(*peer);
                         }
-                        peer->impl()->connHandle() = BLE_INVALID_CONN_HANDLE;
+                        // Do not invalidate its connection handle before removing the peer,
+                        // see BlePeerDevice::operator==().
                         impl->peers_.removeOne(*peer);
                     }
                     LOG(TRACE, "Disconnected");
@@ -2401,9 +2402,9 @@ private:
             return;
         }
         if (delegator->resultsPtr_) {
-            delegator->foundCount_++;
-            if (delegator->foundCount_ <= delegator->targetCount_) {
-                delegator->resultsPtr_[delegator->foundCount_ - 1] = result;
+            if (delegator->foundCount_ < delegator->targetCount_) {
+                delegator->resultsPtr_[delegator->foundCount_] = result;
+                delegator->foundCount_++;
                 if (delegator->foundCount_ >= delegator->targetCount_) {
                     LOG_DEBUG(TRACE, "Target number of devices found. Stop scanning...");
                     hal_ble_gap_stop_scan(nullptr);
@@ -2798,7 +2799,9 @@ int BleLocalDevice::disconnect(const BlePeerDevice& peer) const {
 
 int BleLocalDevice::disconnectAll() const {
     WiringBleLock lk;
-    for (auto& p : impl()->peers()) {
+    // DO NOT use auto&, otherwise, any operation using BlePeerDevice::impl() after the peer device
+    // being removed from the peers() vector may not be guaranteed. See BlePeerDevice::disconnect().
+    for (auto p : impl()->peers()) {
         lk.unlock();
         p.disconnect();
         lk.lock();

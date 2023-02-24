@@ -1470,7 +1470,6 @@ int BleGap::startAdvertising(bool wait) {
         }
     }
 
-    isAdvertising_ = true;
     bool ok = false;
     SCOPE_GUARD({
         if (!ok) {
@@ -1491,6 +1490,7 @@ int BleGap::startAdvertising(bool wait) {
         }
         CHECK(BleGatt::getInstance().registerAttributeTable());
     }
+    isAdvertising_ = true; // Set it to true here, because stop() will be called if attribute table is not registered yet.
 
     CHECK(start());
 
@@ -1634,7 +1634,8 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     context_ = context;
     CHECK_RTL(le_scan_start());
     isScanning_ = true;
-    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_START))) {
+    // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
+    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING))) {
         return SYSTEM_ERROR_TIMEOUT;
     }
     // To be consistent with Gen3, the scan proceedure is blocked for now,
@@ -2265,6 +2266,7 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
 #else
             ) {
 #endif
+                connecting_ = false;
                 hal_ble_link_evt_t evt = {};
                 evt.type = BLE_EVT_CONNECTED;
                 evt.conn_handle = connHandle;
