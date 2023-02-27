@@ -2776,7 +2776,7 @@ void BleLocalDevice::onPairingEvent(const BleOnPairingEventStdFunction& callback
 
 int BleLocalDevice::disconnect() const {
     WiringBleLock lk;
-    for (auto& p : impl()->peers()) {
+    for (auto p : impl()->peers()) {
         hal_ble_conn_info_t connInfo = {};
         connInfo.version = BLE_API_VERSION;
         connInfo.size = sizeof(hal_ble_conn_info_t);
@@ -2801,7 +2801,9 @@ int BleLocalDevice::disconnectAll() const {
     WiringBleLock lk;
     // DO NOT use auto&, otherwise, any operation using BlePeerDevice::impl() after the peer device
     // being removed from the peers() vector may not be guaranteed. See BlePeerDevice::disconnect().
-    for (auto p : impl()->peers()) {
+    auto& peers = impl()->peers();
+    while (peers.size() > 0) {
+        auto p = peers[0];
         lk.unlock();
         p.disconnect();
         lk.lock();

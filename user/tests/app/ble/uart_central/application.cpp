@@ -57,7 +57,7 @@ void loop() {
     }
     else {
         delay(3000);
-        size_t count = BLE.scan(results, SCAN_RESULT_COUNT);
+        ssize_t count = BLE.scan(results, SCAN_RESULT_COUNT);
         if (count > 0) {
             for (uint8_t i = 0; i < count; i++) {
                 BleUuid foundServiceUUID;
