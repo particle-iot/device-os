@@ -378,7 +378,7 @@ void PowerManager::loop(void* arg) {
     hal_gpio_mode(PMIC_INT, INPUT_PULLUP);
 #if HAL_PLATFORM_SHARED_INTERRUPT
     hal_interrupt_extra_configuration_t extra = {};
-    extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_3;
+    extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
     extra.appendHandler = 1;
     extra.chainPriority = 0x0; // Highest priority
     hal_interrupt_attach(PMIC_INT, &isrHandlerEx, nullptr, FALLING, &extra);
