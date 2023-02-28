@@ -1181,12 +1181,16 @@ public:
             case BLE_EVT_DISCONNECTED: {
                 BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
                 if (peer) {
-                    peer->impl()->onDisconnected();
-                    if (impl->disconnectedCallback_) {
-                        impl->disconnectedCallback_(*peer);
+                    {
+                        peer->impl()->onDisconnected();
+                        if (impl->disconnectedCallback_) {
+                            impl->disconnectedCallback_(*peer);
+                        }
+                        // Do not invalidate its connection handle before removing the peer,
+                        // see BlePeerDevice::operator==().
+                        impl->peers_.removeOne(*peer);
                     }
-                    LOG(TRACE, "Disconnected by remote device.");
-                    impl->peers_.removeOne(*peer);
+                    LOG(TRACE, "Disconnected");
                 }
                 break;
             }
@@ -2347,9 +2351,9 @@ private:
             return;
         }
         if (delegator->resultsPtr_) {
-            delegator->foundCount_++;
-            if (delegator->foundCount_ <= delegator->targetCount_) {
-                delegator->resultsPtr_[delegator->foundCount_ - 1] = result;
+            if (delegator->foundCount_ < delegator->targetCount_) {
+                delegator->resultsPtr_[delegator->foundCount_] = result;
+                delegator->foundCount_++;
                 if (delegator->foundCount_ >= delegator->targetCount_) {
                     LOG_DEBUG(TRACE, "Target number of devices found. Stop scanning...");
                     hal_ble_gap_stop_scan(nullptr);
@@ -2721,7 +2725,7 @@ void BleLocalDevice::onPairingEvent(const BleOnPairingEventStdFunction& callback
 
 int BleLocalDevice::disconnect() const {
     WiringBleLock lk;
-    for (auto& p : impl()->peers()) {
+    for (auto p : impl()->peers()) {
         hal_ble_conn_info_t connInfo = {};
         if (hal_ble_gap_get_connection_info(p.impl()->connHandle(), &connInfo, nullptr) != SYSTEM_ERROR_NONE) {
             continue;
@@ -2743,7 +2747,11 @@ int BleLocalDevice::disconnect(const BlePeerDevice& peer) const {
 
 int BleLocalDevice::disconnectAll() const {
     WiringBleLock lk;
-    for (auto& p : impl()->peers()) {
+    // DO NOT use auto&, otherwise, any operation using BlePeerDevice::impl() after the peer device
+    // being removed from the peers() vector may not be guaranteed. See BlePeerDevice::disconnect().
+    auto& peers = impl()->peers();
+    while (peers.size() > 0) {
+        auto p = peers[0];
         lk.unlock();
         p.disconnect();
         lk.lock();
