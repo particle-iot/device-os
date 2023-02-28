@@ -138,12 +138,13 @@ PowerManager* PowerManager::instance() {
 
 void PowerManager::init() {
   os_thread_t th = nullptr;
-  os_thread_create(&th, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr,
-#if defined(DEBUG_BUILD) || DEBUG_POWER
-    4 * 1024);
-#else
-    HAL_PLATFORM_POWER_MANAGEMENT_STACK_SIZE);
-#endif // defined(DEBUG_BUILD)
+  size_t stack_size = HAL_PLATFORM_POWER_MANAGEMENT_STACK_SIZE;
+
+  #if defined(DEBUG_BUILD) || DEBUG_POWER
+    stack_size = 4 * 1024;
+  #endif // defined(DEBUG_BUILD)
+
+  os_thread_create(&th, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr, stack_size);
   SPARK_ASSERT(th != nullptr);
 }
 
@@ -377,7 +378,7 @@ void PowerManager::loop(void* arg) {
     hal_gpio_mode(PMIC_INT, INPUT_PULLUP);
 #if HAL_PLATFORM_SHARED_INTERRUPT
     hal_interrupt_extra_configuration_t extra = {};
-    extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION_1;
+    extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
     extra.appendHandler = 1;
     extra.chainPriority = 0x0; // Highest priority
     hal_interrupt_attach(PMIC_INT, &isrHandlerEx, nullptr, FALLING, &extra);
