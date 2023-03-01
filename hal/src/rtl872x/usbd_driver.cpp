@@ -78,8 +78,10 @@ uint8_t endpointTypeToRtl(EndpointType type) {
     return 0;
 }
 
-const size_t RTL_USB_DEV_PCD_OFFSET = 0xd8;
-const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x15c;
+// FIXME: it should be fine to directly use rtlDev_->pcd or &usbd_pcd, but for now keeping things as-is to keep
+// changes to a minimum
+const size_t RTL_USB_DEV_PCD_OFFSET = offsetof(usb_dev_t, pcd);
+const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x180;
 
 } // anonymous
 
