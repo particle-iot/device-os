@@ -423,7 +423,9 @@ void HAL_Core_Setup(void) {
 
     hal_rtc_init();
 
+#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
     hal_backup_ram_init();
+#endif
 
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();

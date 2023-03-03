@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,15 +15,20 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "hal_platform.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
+#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
 
-int hal_backup_ram_init(void);
-int hal_backup_ram_sync(void);
-
-#ifdef __cplusplus
+int hal_backup_ram_init(void) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;;
 }
-#endif // __cplusplus
+
+int hal_backup_ram_sync(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;;
+}
+
+int hal_backup_ram_routine(void) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+#endif

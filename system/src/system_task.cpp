@@ -63,6 +63,8 @@
 #include "system_control_internal.h"
 #endif /* HAL_PLATFORM_BLE_SETUP */
 
+#include "backup_ram_hal.h"
+
 using namespace particle;
 using spark::Network;
 
@@ -524,6 +526,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         if (system_mode() != SAFE_MODE) {
             manage_listening_mode_flag();
         }
+
+#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
+        hal_backup_ram_routine();
+#endif
     }
     else
     {
