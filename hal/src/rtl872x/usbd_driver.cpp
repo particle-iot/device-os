@@ -45,15 +45,15 @@ namespace {
 
 SetupRequest sLastUsbSetupRequest = {};
 
-Speed rtlSpeedToDriver(usbd_speed_type_t speed) {
+Speed rtlSpeedToDriver(usb_speed_type_t speed) {
     switch (speed) {
-    case USBD_SPEED_HIGH: {
+    case USB_SPEED_HIGH: {
         return Speed::HIGH;
     }
-    case USBD_SPEED_LOW: {
+    case USB_SPEED_LOW: {
         return Speed::LOW;
     }
-    case USBD_SPEED_FULL:
+    case USB_SPEED_FULL:
     default: {
         return Speed::FULL;
     }
@@ -78,8 +78,10 @@ uint8_t endpointTypeToRtl(EndpointType type) {
     return 0;
 }
 
-const size_t RTL_USB_DEV_PCD_OFFSET = 0xd8;
-const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x15c;
+// FIXME: it should be fine to directly use rtlDev_->pcd or &usbd_pcd, but for now keeping things as-is to keep
+// changes to a minimum
+const size_t RTL_USB_DEV_PCD_OFFSET = offsetof(usb_dev_t, pcd);
+const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x180;
 
 } // anonymous
 
@@ -310,7 +312,7 @@ unsigned RtlUsbDriver::updateEndpointMask(unsigned mask) const {
     return mask;
 }
 
-uint8_t* RtlUsbDriver::getDescriptorCb(usb_setup_req_t *req, usbd_speed_type_t speed, uint16_t* len) {
+uint8_t* RtlUsbDriver::getDescriptorCb(usb_setup_req_t *req, usb_speed_type_t speed, uint16_t* len) {
     auto self = instance();
     std::lock_guard<RtlUsbDriver> lk(*self);
 

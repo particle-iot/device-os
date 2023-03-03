@@ -30,7 +30,7 @@ particle::StaticRecursiveCriticalSectionLock sCsLock;
 thread_func_t sFunc = nullptr;
 void *sCtx = nullptr;
 
-const size_t RTW_USBD_TASK_MAIN_LOOP_SEMAPHORE_OFFSET = 364;
+const size_t RTW_USBD_TASK_MAIN_LOOP_SEMAPHORE_OFFSET = 400;
 const uint32_t RTW_USBD_TASK_MAIN_LOOP_PERIOD_MS = 1;
 
 class AtomicCountingSemaphore {
