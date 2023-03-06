@@ -54,7 +54,3 @@
 
 #include "hal_dynalib_posix_syscall.h"
 #include "hal_dynalib_storage.h"
-
-#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
-#include "hal_dynalib_backup_ram.h"
-#endif

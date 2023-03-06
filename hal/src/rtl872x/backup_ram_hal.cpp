@@ -15,10 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hal_platform.h"
-
-#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
-
 #include "backup_ram_hal.h"
 #include "flash_hal.h"
 #include "flash_mal.h"
@@ -44,10 +40,12 @@ extern uintptr_t platform_backup_ram_persisted_flash_end;
 extern uintptr_t platform_backup_ram_persisted_flash_size;
 
 namespace {
-    system_tick_t lastSyncTimeMs = 0;
-    constexpr system_tick_t syncIntervalMs = 10000;
 
-    StaticRecursiveMutex backupMutex;
+system_tick_t lastSyncTimeMs = 0;
+constexpr system_tick_t syncIntervalMs = 10000;
+
+StaticRecursiveMutex backupMutex;
+
 }
 
 class BackupRamLock {
@@ -125,5 +123,3 @@ int hal_backup_ram_routine(void) {
     }
     return SYSTEM_ERROR_NONE;
 }
-
-#endif

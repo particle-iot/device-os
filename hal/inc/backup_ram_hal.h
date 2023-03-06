@@ -21,13 +21,9 @@
 extern "C" {
 #endif // __cplusplus
 
-#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
-
 int hal_backup_ram_init(void);
 int hal_backup_ram_sync(void* reserved);
 int hal_backup_ram_routine(void);
-
-#endif
 
 #ifdef __cplusplus
 }

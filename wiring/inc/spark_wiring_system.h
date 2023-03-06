@@ -1028,11 +1028,15 @@ public:
         return ret;
     }
 
+
+    int backupRamSync() {
 #if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
-    int backup() {
         return hal_backup_ram_sync(nullptr);
-    }
+#else
+        return SYSTEM_ERROR_NONE;
 #endif
+    }
+
 
 private:
     SystemSleepResult systemSleepResult_;

@@ -155,12 +155,10 @@ public:
 
         HAL_USB_Detach();
 
-#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
         if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
             /* Backup (sic!) backup RAM into flash */
             hal_backup_ram_sync(nullptr);
         }
-#endif
 
         for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
             if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
