@@ -302,6 +302,10 @@ public:
         rxBuffer_.reset();
         uint32_t quantity = std::min((size_t)config->quantity, rxBuffer_.size());
 
+        // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
+        I2C_Cmd(i2cDev_, DISABLE);
+        I2C_Cmd(i2cDev_, ENABLE);
+
         setAddress(config->address);
 
         for (uint32_t i = 0; i < quantity; i++) {
@@ -378,6 +382,10 @@ public:
         if (i2cInitStruct_.I2CMaster != I2C_MASTER_MODE) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
+
+        // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
+        I2C_Cmd(i2cDev_, DISABLE);
+        I2C_Cmd(i2cDev_, ENABLE);
 
         setAddress(transConfig_.address);
 
