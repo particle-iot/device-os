@@ -87,8 +87,8 @@ int hal_backup_ram_init(void) {
     // NOTE: using SDK API here as last reset info in core_hal is initialized later
     platform_system_flags_t dctFlags = {};
     dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &dctFlags, DCT_SYSTEM_FLAGS_SIZE);
-    if ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) || SYSTEM_FLAG(entered_hibernate) == 1 || dctFlags.entered_hibernate == 1) {
-        SYSTEM_FLAG(entered_hibernate) = 0;
+    if ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) || SYSTEM_FLAG(restore_backup_ram) == 1 || dctFlags.restore_backup_ram == 1) {
+        SYSTEM_FLAG(restore_backup_ram) = 0;
         dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
         // Woke up from deep sleep
         CHECK(hal_flash_read((uintptr_t)&platform_backup_ram_persisted_flash_start, (uint8_t*)&platform_backup_ram_all_start,
@@ -102,9 +102,8 @@ int hal_backup_ram_sync(void* reserved) {
     if (memcmp((void*)&platform_backup_ram_all_start,
             (void*)&platform_backup_ram_persisted_flash_start,
             (uintptr_t)&platform_backup_ram_persisted_flash_size)) {
-        // FIXME: use a more generic flag name, instead of entered_hibernate.
-        if (SYSTEM_FLAG(entered_hibernate) != 1) {
-            SYSTEM_FLAG(entered_hibernate) = 1;
+        if (SYSTEM_FLAG(restore_backup_ram) != 1) {
+            SYSTEM_FLAG(restore_backup_ram) = 1;
             dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
         }
         CHECK(hal_flash_erase_sector((uintptr_t)&platform_backup_ram_persisted_flash_start,
