@@ -48,6 +48,7 @@
 #include "underlying_type.h"
 #include "deviceid_hal.h"
 #include "platform_ncp.h"
+#include "backup_ram_hal.h"
 
 using spark::Vector;
 
@@ -1026,6 +1027,16 @@ public:
         }
         return ret;
     }
+
+
+    int backupRamSync() {
+#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
+        return hal_backup_ram_sync(nullptr);
+#else
+        return SYSTEM_ERROR_NONE;
+#endif
+    }
+
 
 private:
     SystemSleepResult systemSleepResult_;

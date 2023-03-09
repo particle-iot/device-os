@@ -26,6 +26,8 @@
 #include "dct_hal.h"
 #include "dct.h"
 #include "rtl8721d.h"
+#include "timer_hal.h"
+#include "static_recursive_mutex.h"
 
 // NOTE: we are using a dedicated flash page for this as timings for writing
 // into fs vs raw page are about 10x
@@ -37,28 +39,86 @@ extern uintptr_t platform_backup_ram_persisted_flash_start;
 extern uintptr_t platform_backup_ram_persisted_flash_end;
 extern uintptr_t platform_backup_ram_persisted_flash_size;
 
+namespace {
+
+system_tick_t lastSyncTimeMs = 0;
+constexpr system_tick_t syncIntervalMs = 10000;
+
+StaticRecursiveMutex backupMutex;
+
+}
+
+class BackupRamLock {
+public:
+    BackupRamLock(bool threading = true)
+            : locked_(false) {
+        lock();
+    }
+
+    ~BackupRamLock() {
+        if (locked_) {
+            unlock();
+        }
+    }
+
+    BackupRamLock(BackupRamLock&& lock)
+            : locked_(lock.locked_) {
+        lock.locked_ = false;
+    }
+
+    void lock() {
+        backupMutex.lock();
+        locked_ = true;
+    }
+
+    void unlock() {
+        backupMutex.unlock();
+        locked_ = false;
+    }
+
+    BackupRamLock(const BackupRamLock&) = delete;
+    BackupRamLock& operator=(const BackupRamLock&) = delete;
+
+private:
+    bool locked_;
+};
+
 int hal_backup_ram_init(void) {
     // NOTE: using SDK API here as last reset info in core_hal is initialized later
     platform_system_flags_t dctFlags = {};
     dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &dctFlags, DCT_SYSTEM_FLAGS_SIZE);
-    if ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) || SYSTEM_FLAG(entered_hibernate) == 1 || dctFlags.entered_hibernate == 1) {
-        SYSTEM_FLAG(entered_hibernate) = 0;
+    if ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) || SYSTEM_FLAG(restore_backup_ram) == 1 || dctFlags.restore_backup_ram == 1) {
+        SYSTEM_FLAG(restore_backup_ram) = 0;
         dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
         // Woke up from deep sleep
         CHECK(hal_flash_read((uintptr_t)&platform_backup_ram_persisted_flash_start, (uint8_t*)&platform_backup_ram_all_start,
                 (size_t)&platform_backup_ram_persisted_flash_size));
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
 }
 
-int hal_backup_ram_sync(void) {
+int hal_backup_ram_sync(void* reserved) {
+    BackupRamLock lk;
     if (memcmp((void*)&platform_backup_ram_all_start,
             (void*)&platform_backup_ram_persisted_flash_start,
             (uintptr_t)&platform_backup_ram_persisted_flash_size)) {
+        if (SYSTEM_FLAG(restore_backup_ram) != 1) {
+            SYSTEM_FLAG(restore_backup_ram) = 1;
+            dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
+        }
         CHECK(hal_flash_erase_sector((uintptr_t)&platform_backup_ram_persisted_flash_start,
                 CEIL_DIV((uintptr_t)&platform_backup_ram_persisted_flash_size, INTERNAL_FLASH_PAGE_SIZE)));
         CHECK(hal_flash_write((uintptr_t)&platform_backup_ram_persisted_flash_start,
                 (const uint8_t*)&platform_backup_ram_all_start, (uintptr_t)&platform_backup_ram_persisted_flash_size));
     }
-    return 0;
+    return SYSTEM_ERROR_NONE;
+}
+
+int hal_backup_ram_routine(void) {
+    auto now = hal_timer_millis(nullptr);
+    if (now - lastSyncTimeMs >= syncIntervalMs) {
+        lastSyncTimeMs = now;
+        return hal_backup_ram_sync(nullptr);
+    }
+    return SYSTEM_ERROR_NONE;
 }

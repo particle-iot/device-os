@@ -156,10 +156,8 @@ public:
         HAL_USB_Detach();
 
         if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
-            SYSTEM_FLAG(entered_hibernate) = 1;
-            dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
             /* Backup (sic!) backup RAM into flash */
-            hal_backup_ram_sync();
+            hal_backup_ram_sync(nullptr);
         }
 
         for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
