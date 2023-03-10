@@ -303,16 +303,27 @@ public:
         uint32_t quantity = std::min((size_t)config->quantity, rxBuffer_.size());
 
         // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
-        I2C_Cmd(i2cDev_, DISABLE);
-        I2C_Cmd(i2cDev_, ENABLE);
+        if (!restarted()) {
+            I2C_Cmd(i2cDev_, DISABLE);
+            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
+                reset();
+                LOG(TRACE, "SYSTEM_ERROR_I2C_BUS_BUSY");
+                return SYSTEM_ERROR_I2C_BUS_BUSY;
+            }
+            I2C_Cmd(i2cDev_, ENABLE);
+        }
+
+        clearIntStatus();
 
         setAddress(config->address);
 
+        bool waitStop = false;
         for (uint32_t i = 0; i < quantity; i++) {
             if(i >= quantity - 1) {
                 if (config->flags & HAL_I2C_TRANSMISSION_FLAG_STOP) {
                     // Generate stop signal
                     i2cDev_->IC_DATA_CMD = 0x0003 << 8;
+                    waitStop = true;
                 } else {
                     // Generate restart signal
                     i2cDev_->IC_DATA_CMD = 0x0005 << 8;
@@ -323,12 +334,17 @@ public:
             // Wait for I2C_FLAG_RFNE flag
             if (WAIT_TIMED_ROUTINE(config->timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_RFNE) == 0, checkAbrt) < 0) {
                 reset();
+                LOG(TRACE, "Wait BIT_IC_STATUS_RFNE timeout");
                 goto ret;
             }
             if(checkAbrt()) {
                 LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
                 I2C_ClearAllINT(i2cDev_);
                 goto ret;
+            }
+            if (waitStop && !WAIT_TIMED(transConfig_.timeout_ms, !stopDetected())) {
+                reset();
+                return SYSTEM_ERROR_I2C_STOP_TIMEOUT;
             }
             rxBuffer_.put((uint8_t)i2cDev_->IC_DATA_CMD);
         }
@@ -384,8 +400,17 @@ public:
         }
 
         // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
-        I2C_Cmd(i2cDev_, DISABLE);
-        I2C_Cmd(i2cDev_, ENABLE);
+        if (!restarted()) {
+            I2C_Cmd(i2cDev_, DISABLE);
+            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
+                reset();
+                LOG(TRACE, "SYSTEM_ERROR_I2C_BUS_BUSY");
+                return SYSTEM_ERROR_I2C_BUS_BUSY;
+            }
+            I2C_Cmd(i2cDev_, ENABLE);
+        }
+
+        clearIntStatus();
 
         setAddress(transConfig_.address);
 
@@ -412,6 +437,7 @@ public:
             return SYSTEM_ERROR_NONE;
         }
 
+        bool waitStop = false;
         for (uint32_t i = 0; i < quantity; i++) {
             if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
                 reset();
@@ -425,6 +451,7 @@ public:
                 if (stop) {
                     // Generate stop signal
                     i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_STOP;
+                    waitStop = true;
                 } else {
                     // Generate restart signal
                     i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_RESTART;
@@ -442,6 +469,10 @@ public:
                 I2C_ClearAllINT(i2cDev_);
                 return SYSTEM_ERROR_CANCELLED;
             }
+        }
+        if (waitStop && !WAIT_TIMED(transConfig_.timeout_ms, !stopDetected())) {
+            reset();
+            return SYSTEM_ERROR_I2C_STOP_TIMEOUT;
         }
         return SYSTEM_ERROR_NONE;
     }
@@ -494,6 +525,21 @@ private:
               mutex_(nullptr) {
     }
     ~I2cClass() = default;
+
+    bool restarted() {
+        return (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_START_DET) &&
+                !(i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_STOP_DET);
+                (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_ACTIVITY);
+    }
+
+    bool stopDetected() {
+        return (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_STOP_DET) == BIT_IC_INTR_STAT_R_STOP_DET;
+    }
+
+    void clearIntStatus() {
+        uint32_t temp = i2cDev_->IC_CLR_INTR;
+        (void)temp;
+    }
 
     bool isConfigValid(const hal_i2c_config_t* config) {
         if ((config == nullptr) || (config->rx_buffer == nullptr || config->rx_buffer_size == 0 ||
