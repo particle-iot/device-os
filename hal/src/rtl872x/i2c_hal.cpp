@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <malloc.h>
+#include <cstring>
 #include "ringbuffer.h"
 #include "i2c_hal.h"
 #include "gpio_hal.h"
@@ -150,6 +151,13 @@ public:
             i2cInitStruct_.I2CMaster  = I2C_MASTER_MODE;
             i2cInitStruct_.I2CAckAddr = 0; // This is the peer device's slave address in master mode, not needed herein.
         } else {
+            if (hal_interrupt_is_isr()) {
+                return SYSTEM_ERROR_INVALID_STATE;
+            }
+            slaveRxCache_ = std::make_unique<uint8_t[]>(SLAVE_RX_CACHE_DEPTH);
+            if (!slaveRxCache_) {
+                SPARK_ASSERT(false);
+            }
             i2cInitStruct_.I2CMaster  = I2C_SLAVE_MODE;
             i2cInitStruct_.I2CAckAddr = address; // This is the local device's slave address in slave mode
         }
@@ -157,7 +165,7 @@ public:
 
         // Enable restart function
         i2cDev_->IC_CON |= BIT_CTRL_IC_CON_IC_RESTART_EN;
-        i2cDev_->IC_RX_TL = std::min(rxBuffer_.size(), (size_t)255); // Maximum RX FIFO depth: 255 + 1
+        i2cDev_->IC_RX_TL = std::min(rxBuffer_.size(), (size_t)0); // FIFO depth 1
 
 	    I2C_Cmd(i2cDev_, ENABLE);
 
@@ -167,6 +175,11 @@ public:
                                     BIT_IC_INTR_MASK_M_RD_REQ | BIT_IC_INTR_MASK_M_RX_DONE), ENABLE);
             I2C_ClearAllINT(i2cDev_);
             InterruptEn(I2C0_IRQ_LP, 7);
+        }
+
+        if (state_ == HAL_I2C_STATE_DISABLED) {
+            txBuffer_.reset();
+            rxBuffer_.reset();
         }
 
         state_ = HAL_I2C_STATE_ENABLED;
@@ -195,8 +208,6 @@ public:
             // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
             Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_GPIO);
             Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_GPIO);
-            txBuffer_.reset();
-            rxBuffer_.reset();
         }
         return SYSTEM_ERROR_NONE;
     }
@@ -303,7 +314,7 @@ public:
         uint32_t quantity = std::min((size_t)config->quantity, rxBuffer_.size());
 
         // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
-        if (!restarted()) {
+        if (!masterRestarted()) {
             I2C_Cmd(i2cDev_, DISABLE);
             if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
                 reset();
@@ -400,7 +411,7 @@ public:
         }
 
         // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
-        if (!restarted()) {
+        if (!masterRestarted()) {
             I2C_Cmd(i2cDev_, DISABLE);
             if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
                 reset();
@@ -513,20 +524,31 @@ public:
     }
 
 private:
+    enum i2cSlaveStatus {
+        I2C_SLAVE_STOPPED,
+        I2C_SLAVE_STARTED,
+        I2C_SLAVE_RESTARTED,
+        I2C_SLAVE_TX,
+        I2C_SLAVE_RX,
+    };
+
     I2cClass(I2C_TypeDef* i2cDev, hal_pin_t sda, hal_pin_t scl)
             : i2cDev_(i2cDev),
               sdaPin_(sda),
               sclPin_(scl),
               configured_(false),
+              slaveStatus_(I2C_SLAVE_STOPPED),
               heapBuffer_(false),
               i2cInitStruct_(),
               onRequested_(nullptr),
               onReceived_(nullptr),
-              mutex_(nullptr) {
+              mutex_(nullptr),
+              slaveRxCache_(nullptr),
+              slaveRxCacheLen_(0) {
     }
     ~I2cClass() = default;
 
-    bool restarted() {
+    bool masterRestarted() {
         return (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_START_DET) &&
                 !(i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_STOP_DET);
                 (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_ACTIVITY);
@@ -556,58 +578,140 @@ private:
         return false;
     }
 
-    void slaveReadRxFifo() {
-        while (I2C_CheckFlagState(i2cDev_, (BIT_IC_STATUS_RFNE | BIT_IC_STATUS_RFF))) {
-            rxBuffer_.put((uint8_t)I2C_ReceiveData(i2cDev_));
+    bool handleStartStop() {
+        // These bits may be both set in single ISR
+        // start | stop
+        //   0   |   1    : STOPPED
+        //   1   |   0    : RESTARTED
+        //   1   |   1    : STOPPED -> STARTED (most likely happen) or RESTARTED -> STOPPED
+        uint32_t intStatus = I2C_GetINT(i2cDev_);
+        if ((intStatus & BIT_IC_INTR_STAT_R_START_DET) || (intStatus & BIT_IC_INTR_STAT_R_STOP_DET)) {
+            I2C_ClearINT(i2cDev_, BIT_IC_INTR_STAT_R_START_DET);
+            I2C_ClearINT(i2cDev_, BIT_IC_INTR_STAT_R_STOP_DET);
+            if ((intStatus & BIT_IC_INTR_STAT_R_START_DET) && !(intStatus & BIT_IC_INTR_STAT_R_STOP_DET)) {
+                slaveStatus_ = I2C_SLAVE_RESTARTED;
+            } else if (intStatus & BIT_IC_INTR_STAT_R_START_DET) {
+                slaveStatus_ = I2C_SLAVE_STARTED;
+            } else {
+                // FIXME: It might be RESTARTED -> STOPPED
+                slaveStatus_ = I2C_SLAVE_STOPPED;
+            }
+            return true;
         }
-        if (onReceived_ && rxBuffer_.data() > 0) {
+        return false;
+    }
+
+    void slaveRxDone(size_t len, bool reset = false) {
+        rxBuffer_.put(slaveRxCache_.get(), len);
+        if (onReceived_) {
             onReceived_(rxBuffer_.data());
+        }
+        rxBuffer_.reset();
+        if (reset) {
+            memset(slaveRxCache_.get(), 0xFF, SLAVE_RX_CACHE_DEPTH);
+            slaveRxCacheLen_ = 0;
+        } else {
+            slaveRxCacheLen_ = slaveRxCacheLen_ - len;
+            std::memmove(slaveRxCache_.get(), &slaveRxCache_[len], slaveRxCacheLen_);
         }
     }
 
+    // Return:
+    // 1: some of the read data belongs to next session
+    // 0: all of the read data belongs the current session
+    bool slaveRead() {
+        uint16_t reportLen = 0;
+        uint32_t intStatus;
+        while (I2C_CheckFlagState(i2cDev_, (BIT_IC_STATUS_RFNE | BIT_IC_STATUS_RFF))) {
+            slaveRxCache_[slaveRxCacheLen_++] = (uint8_t)I2C_ReceiveData(i2cDev_);
+            intStatus = I2C_GetINT(i2cDev_);
+            if ((intStatus & BIT_IC_INTR_STAT_R_START_DET) || (intStatus & BIT_IC_INTR_STAT_R_STOP_DET)) {
+                reportLen = slaveRxCacheLen_;
+                // We don't clear start/stop INT flag and keep reading data that is already in FIFO.
+            }
+        }
+        if (reportLen > 0) {
+            reportLen = std::min(rxBuffer_.size(), (size_t)slaveRxCacheLen_);
+            slaveRxDone(reportLen);
+            handleStartStop();
+            return true;
+        }
+        return false;
+    }
+
+    void slaveWrite() {
+        if (txBuffer_.data() <= 0) {
+            if (onRequested_) {
+                onRequested_();
+            }
+        }
+        uint8_t data = 0xFF;
+        if (txBuffer_.get(&data) == 1) {
+            I2C_SlaveSend(i2cDev_, data);
+        } else {
+            I2C_SlaveSend(i2cDev_, 0xFF);
+        }
+    }
+
+    // WARNNING: critical timing section.
     static void i2cSlaveIntHandler(void* context) {
         auto instance = (I2cClass*)context;
         uint32_t intStatus = I2C_GetINT(instance->i2cDev_);
 
-        if (intStatus & BIT_IC_INTR_STAT_R_START_DET) {
-            I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_START_DET);
-            // Read RX FIFO in case of repeated write
-            instance->slaveReadRxFifo();
-            instance->rxBuffer_.reset();
-            instance->txBuffer_.reset();
-        }
-
-        // Slave receiver
-        if ((intStatus & BIT_IC_INTR_STAT_R_RX_FULL) || (intStatus & BIT_IC_INTR_STAT_R_RX_OVER)) {
-            if (intStatus & BIT_IC_INTR_STAT_R_RX_OVER) {
-                I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RX_OVER);
+        switch (instance->slaveStatus_) {
+            case I2C_SLAVE_STOPPED: {
+                instance->handleStartStop();
+                break;
             }
-            instance->slaveReadRxFifo();
-        }
-        if (intStatus & BIT_IC_INTR_STAT_R_STOP_DET) {
-            I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_STOP_DET);
-            instance->slaveReadRxFifo();
-        }
-
-        // Slave transmitter
-        if (intStatus & BIT_IC_INTR_STAT_R_RD_REQ) {
-            I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RD_REQ);
-            if (instance->txBuffer_.data() <= 0) {
-                if (instance->onRequested_) {
-                    // User should fill the tx buffer in the callback
-                    instance->onRequested_();
+            case I2C_SLAVE_STARTED:
+            case I2C_SLAVE_RESTARTED: {
+                if ((intStatus & BIT_IC_INTR_STAT_R_RX_FULL)) {
+                    // Slave receiver
+                    if (instance->slaveStatus_ == I2C_SLAVE_STARTED) {
+                        memset(instance->slaveRxCache_.get(), 0xFF, SLAVE_RX_CACHE_DEPTH);
+                        instance->slaveRxCacheLen_ = 0;
+                    }
+                    instance->slaveStatus_ = I2C_SLAVE_RX;
+                    if (instance->slaveRead()) {
+                        break;
+                    }
+                } else if (intStatus & BIT_IC_INTR_STAT_R_RD_REQ) {
+                    // Slave transmitter
+                    I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RD_REQ);
+                    instance->slaveStatus_ = I2C_SLAVE_TX;
+                    instance->slaveWrite();
                 }
+                instance->handleStartStop();
+                break;
             }
-            uint8_t data = 0xFF;
-            if (instance->txBuffer_.get(&data) == 1) {
-                I2C_SlaveSend(instance->i2cDev_, data);
-            } else {
-                I2C_SlaveSend(instance->i2cDev_, 0xFF);
+            case I2C_SLAVE_RX: {
+                if ((intStatus & BIT_IC_INTR_STAT_R_RX_FULL)) {
+                    if (instance->slaveRead()) {
+                        break;
+                    }
+                }
+                if (instance->handleStartStop()) {
+                    if (instance->slaveRxCacheLen_ > 0 && instance->onReceived_) {
+                        instance->slaveRxDone(instance->slaveRxCacheLen_, true); // it will discard the data that cannot be filled
+                    }
+                }
+                break;
             }
-        }
-        if (intStatus & BIT_IC_INTR_STAT_R_RX_DONE) {
-            I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RX_DONE);
-            instance->txBuffer_.reset();
+            case I2C_SLAVE_TX: {
+                if (intStatus & BIT_IC_INTR_STAT_R_RD_REQ) {
+                    I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RD_REQ);
+                    instance->slaveWrite();
+                }
+                if (intStatus & BIT_IC_INTR_STAT_R_RX_DONE) {
+                    I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RX_DONE);
+                    instance->txBuffer_.reset();
+                }
+                if (instance->handleStartStop()) {
+                    instance->txBuffer_.reset();
+                }
+                break;
+            }
+            default: break;
         }
     }
 
@@ -617,6 +721,7 @@ private:
 
     bool configured_;
     volatile hal_i2c_state_t state_;
+    volatile uint8_t slaveStatus_;
     
     particle::services::RingBuffer<uint8_t> txBuffer_;
     particle::services::RingBuffer<uint8_t> rxBuffer_;
@@ -629,6 +734,10 @@ private:
     void (*onReceived_)(int);
 
     os_mutex_recursive_t mutex_;
+
+    std::unique_ptr<uint8_t[]> slaveRxCache_;
+    volatile uint16_t slaveRxCacheLen_;
+    static constexpr uint16_t SLAVE_RX_CACHE_DEPTH = 64;
 };
 
 class I2cLock {
