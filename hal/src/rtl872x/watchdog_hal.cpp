@@ -61,8 +61,8 @@ public:
 
         WDG_InitTypeDef WDG_InitStruct = {};
         uint32_t CountProcess = 0;
-        uint32_t DivFacProcess = 0;
-        WDG_Scalar(config->timeout_ms, &CountProcess, &DivFacProcess);
+        uint32_t DivFacProcess = 1; // Minimum requirement
+        calculateFactors(config->timeout_ms, &CountProcess, &DivFacProcess);
         WDG_InitStruct.CountProcess = CountProcess;
         WDG_InitStruct.DivFacProcess = DivFacProcess;
         WDG_InitStruct.RstAllPERI = 1;
@@ -127,6 +127,32 @@ private:
     }
 
     ~RtlWatchdog() = default;
+
+    void calculateFactors(system_tick_t timeout, uint32_t* count, uint32_t* div) {
+        if (timeout == 0) {
+            *count = 0;
+            *div = 1;
+            return;
+        }
+        uint32_t tempDiv;
+        uint16_t tempCount;
+        bool candidate = false;
+        for (int8_t countId = 11; countId >= 0; countId--) {
+            tempCount = (0x00000001 << (countId + 1)) - 1;
+            tempDiv = ((timeout * 32768ULL) / tempCount / 1000);
+            if (tempDiv <= 1) { // minimum *div is of 1
+                continue;
+            }
+            if (candidate && tempDiv > 65536) {
+                break;
+            }
+            tempDiv = std::min(tempDiv, (uint32_t)65536);
+            *div = tempDiv - 1;
+            *count = countId;
+            candidate = true;
+            // Continue to seek smaller countId
+        }
+    }
 
     static void rtlWatchdogEventHandler(void* context) {
         WDG_IrqClear();
