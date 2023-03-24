@@ -2980,6 +2980,10 @@ ssize_t BleGatt::notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* bu
                 }
                 uint8_t retry = 3;
                 bool success;
+                if (BleEventDispatcher::getInstance().isThreadCurrent()) {
+                    CHECK_TRUE(server_send_data(config.subscriber.connHandle, svc.id, config.index, (uint8_t*)attribute.p_value_context, attribute.value_len, type), SYSTEM_ERROR_INTERNAL);
+                    return attribute.value_len;
+                }
                 do {
                     success = true;
                     isNotifying_ = true;
