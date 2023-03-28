@@ -63,7 +63,7 @@ private:
 class Nrf52Watchdog : public Watchdog {
 public:
     int init(const hal_watchdog_config_t* config) {
-        CHECK_FALSE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_FALSE(started(), SYSTEM_ERROR_INVALID_STATE);
         CHECK_TRUE(config && (config->size > 0), SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK_TRUE(config->timeout_ms >= WATCHDOG_MIN_TIMEOUT, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK_TRUE(config->timeout_ms <= WATCHDOG_MAX_TIMEOUT, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -80,10 +80,17 @@ public:
         } else {
             nrfConfig.behaviour = NRF_WDT_BEHAVIOUR_PAUSE_SLEEP_HALT;
         }
-        nrfx_err_t ret = nrfx_wdt_init(&nrfConfig, nrf52WatchdogEventHandler);
-        SPARK_ASSERT(ret == NRF_SUCCESS);
-        ret = nrfx_wdt_channel_alloc(&channelId_);
-        SPARK_ASSERT(ret == NRF_SUCCESS);
+        if (!initialized_) {
+            nrfx_err_t ret = nrfx_wdt_init(&nrfConfig, nrf52WatchdogEventHandler);
+            SPARK_ASSERT(ret == NRF_SUCCESS);
+            ret = nrfx_wdt_channel_alloc(&channelId_);
+            SPARK_ASSERT(ret == NRF_SUCCESS);
+        } else {
+            nrf_wdt_behaviour_set(nrfConfig.behaviour);
+            uint64_t ticks = (nrfConfig.reload_value * 32768ULL) / 1000;
+            SPARK_ASSERT(ticks <= UINT32_MAX);
+            nrf_wdt_reload_value_set((uint32_t)ticks);
+        }
 
         memcpy(&info_.config, config, std::min(info_.config.size, config->size));
         info_.state = HAL_WATCHDOG_STATE_CONFIGURED;

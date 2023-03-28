@@ -178,6 +178,16 @@ test(WATCHDOG_07_notify_2) {
     assertEqual(magick, 0xdeadbeef);
 }
 
+#include "nrf_wdt.h"
+static void checkError(system_tick_t expectedTo) {
+    uint32_t reg = nrf_wdt_reload_value_get();
+    uint64_t actualTo = (reg * 1000ULL) / 32768;
+    uint32_t delta = (expectedTo > actualTo) ? (expectedTo - actualTo) : (actualTo - expectedTo);
+    // Serial.printlnf("expected: %ld, actual: %lu, delta: %d", expectedTo, (uint32_t)actualTo, delta);
+    assertLessOrEqual(delta, 1);
+    assertMoreOrEqual(delta, 0);
+}
+
 #endif // HAL_PLATFORM_NRF52840
 
 #if HAL_PLATFORM_RTL872X
@@ -218,4 +228,41 @@ test(WATCHDOG_08_reconfigurable) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
 }
 
+static void checkError(system_tick_t expectedTo) {
+    WDG_TypeDef* WDG = ((WDG_TypeDef *)0x40002800);
+    uint32_t reg = WDG->VENDOR;
+    uint8_t countId = (reg >> 25) & 0x0000000F;
+    countId = std::min(countId, (uint8_t)11);
+    uint32_t count = (0x00000001 << (countId + 1)) - 1;
+    uint16_t div = reg & 0x0000FFFF;
+    // Serial.printlnf("id: %d, count: %d, div: %d", countId, count, div);
+    uint64_t actualTo = count * (div + 1) * 1000ULL / 32768;
+    uint32_t delta = (expectedTo > actualTo) ? (expectedTo - actualTo) : (actualTo - expectedTo);
+    // Serial.printlnf("expected: %ld, actual: %lu, delta: %d", expectedTo, (uint32_t)actualTo, delta);
+
+    assertLessOrEqual(delta, 200);
+    assertMoreOrEqual(delta, 0);
+}
+
 #endif // HAL_PLATFORM_RTL872X
+
+test(WATCHDDOG_100_reload_value_is_calculated_correctly) {
+    constexpr system_tick_t TEST_LOOP_CNT = 100;
+
+    WatchdogInfo info;
+    assertEqual(0, Watchdog.getInfo(info));
+
+    for (uint16_t i = 1; i <= TEST_LOOP_CNT; i++) {
+        system_tick_t expectedTo;
+        if (i == 1) {
+            expectedTo = info.minTimeout();
+        } else if (i == TEST_LOOP_CNT) {
+            expectedTo = info.maxTimeout();
+        } else {
+            expectedTo = random(info.minTimeout(), info.maxTimeout());
+        }
+        assertEqual(0, Watchdog.init(WatchdogConfiguration().timeout(expectedTo)));
+
+        checkError(expectedTo);
+    }
+}
