@@ -119,6 +119,7 @@ public:
             SPARK_ASSERT(txBuffer_.buffer_ && rxBuffer_.buffer_);
             heapBuffer_ = true;
         }
+        slaveRxCacheDepth_ = rxBuffer_.size() * 2;
         I2C_StructInit(&i2cInitStruct_);
         configured_ = true;
         unlock();
@@ -152,9 +153,9 @@ public:
             i2cInitStruct_.I2CAckAddr = 0; // This is the peer device's slave address in master mode, not needed herein.
         } else {
             if (hal_interrupt_is_isr()) {
-                return SYSTEM_ERROR_INVALID_STATE;
+                SPARK_ASSERT(false);
             }
-            slaveRxCache_ = std::make_unique<uint8_t[]>(SLAVE_RX_CACHE_DEPTH);
+            slaveRxCache_ = std::make_unique<uint8_t[]>(slaveRxCacheDepth_);
             if (!slaveRxCache_) {
                 SPARK_ASSERT(false);
             }
@@ -314,17 +315,9 @@ public:
         uint32_t quantity = std::min((size_t)config->quantity, rxBuffer_.size());
 
         // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
-        if (!masterRestarted()) {
-            I2C_Cmd(i2cDev_, DISABLE);
-            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
-                reset();
-                LOG(TRACE, "SYSTEM_ERROR_I2C_BUS_BUSY");
-                return SYSTEM_ERROR_I2C_BUS_BUSY;
-            }
-            I2C_Cmd(i2cDev_, ENABLE);
+        if (reEnableIfNeeded() != SYSTEM_ERROR_NONE) {
+            return 0;
         }
-
-        clearIntStatus();
 
         setAddress(config->address);
 
@@ -345,7 +338,7 @@ public:
             // Wait for I2C_FLAG_RFNE flag
             if (WAIT_TIMED_ROUTINE(config->timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_RFNE) == 0, checkAbrt) < 0) {
                 reset();
-                LOG(TRACE, "Wait BIT_IC_STATUS_RFNE timeout");
+                LOG_DEBUG(TRACE, "Wait BIT_IC_STATUS_RFNE timeout");
                 goto ret;
             }
             if(checkAbrt()) {
@@ -411,17 +404,7 @@ public:
         }
 
         // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
-        if (!masterRestarted()) {
-            I2C_Cmd(i2cDev_, DISABLE);
-            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
-                reset();
-                LOG(TRACE, "SYSTEM_ERROR_I2C_BUS_BUSY");
-                return SYSTEM_ERROR_I2C_BUS_BUSY;
-            }
-            I2C_Cmd(i2cDev_, ENABLE);
-        }
-
-        clearIntStatus();
+        CHECK(reEnableIfNeeded());
 
         setAddress(transConfig_.address);
 
@@ -524,7 +507,7 @@ public:
     }
 
 private:
-    enum i2cSlaveStatus {
+    enum I2cSlaveStatus {
         I2C_SLAVE_STOPPED,
         I2C_SLAVE_STARTED,
         I2C_SLAVE_RESTARTED,
@@ -544,7 +527,8 @@ private:
               onReceived_(nullptr),
               mutex_(nullptr),
               slaveRxCache_(nullptr),
-              slaveRxCacheLen_(0) {
+              slaveRxCacheLen_(0),
+              slaveRxCacheDepth_(HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1) * 2) {
     }
     ~I2cClass() = default;
 
@@ -552,6 +536,20 @@ private:
         return (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_START_DET) &&
                 !(i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_STOP_DET);
                 (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_ACTIVITY);
+    }
+
+    int reEnableIfNeeded() {
+        if (!masterRestarted()) {
+            I2C_Cmd(i2cDev_, DISABLE);
+            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
+                reset();
+                LOG_DEBUG(TRACE, "SYSTEM_ERROR_I2C_BUS_BUSY");
+                return SYSTEM_ERROR_I2C_BUS_BUSY;
+            }
+            I2C_Cmd(i2cDev_, ENABLE);
+        }
+        clearIntStatus();
+        return SYSTEM_ERROR_NONE;
     }
 
     bool stopDetected() {
@@ -592,8 +590,8 @@ private:
                 slaveStatus_ = I2C_SLAVE_RESTARTED;
             } else if (intStatus & BIT_IC_INTR_STAT_R_START_DET) {
                 slaveStatus_ = I2C_SLAVE_STARTED;
-            } else {
                 // FIXME: It might be RESTARTED -> STOPPED
+            } else {
                 slaveStatus_ = I2C_SLAVE_STOPPED;
             }
             return true;
@@ -608,7 +606,7 @@ private:
         }
         rxBuffer_.reset();
         if (reset) {
-            memset(slaveRxCache_.get(), 0xFF, SLAVE_RX_CACHE_DEPTH);
+            memset(slaveRxCache_.get(), 0xFF, slaveRxCacheDepth_);
             slaveRxCacheLen_ = 0;
         } else {
             slaveRxCacheLen_ = slaveRxCacheLen_ - len;
@@ -668,7 +666,7 @@ private:
                 if ((intStatus & BIT_IC_INTR_STAT_R_RX_FULL)) {
                     // Slave receiver
                     if (instance->slaveStatus_ == I2C_SLAVE_STARTED) {
-                        memset(instance->slaveRxCache_.get(), 0xFF, SLAVE_RX_CACHE_DEPTH);
+                        memset(instance->slaveRxCache_.get(), 0xFF, instance->slaveRxCacheDepth_);
                         instance->slaveRxCacheLen_ = 0;
                     }
                     instance->slaveStatus_ = I2C_SLAVE_RX;
@@ -737,7 +735,7 @@ private:
 
     std::unique_ptr<uint8_t[]> slaveRxCache_;
     volatile uint16_t slaveRxCacheLen_;
-    static constexpr uint16_t SLAVE_RX_CACHE_DEPTH = 64;
+    uint16_t slaveRxCacheDepth_;
 };
 
 class I2cLock {
