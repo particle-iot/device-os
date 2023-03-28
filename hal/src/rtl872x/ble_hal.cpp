@@ -2984,6 +2984,10 @@ ssize_t BleGatt::notifyValue(hal_ble_attr_handle_t attrHandle, const uint8_t* bu
                     success = true;
                     isNotifying_ = true;
                     CHECK_TRUE(server_send_data(config.subscriber.connHandle, svc.id, config.index, (uint8_t*)attribute.p_value_context, attribute.value_len, type), SYSTEM_ERROR_INTERNAL);
+                    if (BleEventDispatcher::getInstance().isThreadCurrent()) {
+                        isNotifying_ = false;
+                        break;
+                    }
                     if (os_semaphore_take(notifySemaphore_, timeoutMs, false)) {
                         success = false;
                     }
