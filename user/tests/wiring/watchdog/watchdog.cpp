@@ -174,5 +174,35 @@ test(WATCHDOG_07_notify_2) {
     assertEqual(magick, 0xdeadbeef);
 }
 
+#include "nrf_wdt.h"
+static void checkError(system_tick_t expectedTo) {
+    uint32_t reg = nrf_wdt_reload_value_get();
+    uint64_t actualTo = (reg * 1000ULL) / 32768;
+    uint32_t delta = (expectedTo > actualTo) ? (expectedTo - actualTo) : (actualTo - expectedTo);
+    // Serial.printlnf("expected: %ld, actual: %lu, delta: %d", expectedTo, (uint32_t)actualTo, delta);
+    assertLessOrEqual(delta, 1);
+    assertMoreOrEqual(delta, 0);
+}
+
 #endif // HAL_PLATFORM_NRF52840
 
+test(WATCHDDOG_100_reload_value_is_calculated_correctly) {
+    constexpr system_tick_t TEST_LOOP_CNT = 100;
+
+    WatchdogInfo info;
+    assertEqual(0, Watchdog.getInfo(info));
+
+    for (uint16_t i = 1; i <= TEST_LOOP_CNT; i++) {
+        system_tick_t expectedTo;
+        if (i == 1) {
+            expectedTo = info.minTimeout();
+        } else if (i == TEST_LOOP_CNT) {
+            expectedTo = info.maxTimeout();
+        } else {
+            expectedTo = random(info.minTimeout(), info.maxTimeout());
+        }
+        assertEqual(0, Watchdog.init(WatchdogConfiguration().timeout(expectedTo)));
+
+        checkError(expectedTo);
+    }
+}
