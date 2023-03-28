@@ -104,10 +104,9 @@ int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
     if (size == sizeof(sLastUsbSetupRequest)) {
         auto req = static_cast<SetupRequest*>(ptr);
         memcpy(&sLastUsbSetupRequest, req, sizeof(sLastUsbSetupRequest));
-        // FIXME: only handling MSFT WCID request here to avoid any issues
-        if (req->bRequest == 0xee && req->bmRequestType == 0xc1 && req->wIndex == 0x0005) {
+        if (req->bmRequestTypeRecipient == SetupRequest::RECIPIENT_INTERFACE) {
             // Patch recipient to be device instead of interface
-            req->bmRequestType = 0xc0;
+            req->bmRequestTypeType = SetupRequest::TYPE_CLASS;
             fixed = true;
             RtlUsbDriver::instance()->halReadPacketFixup(ptr);
         }
