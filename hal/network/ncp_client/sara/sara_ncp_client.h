@@ -171,6 +171,10 @@ private:
     int waitAtResponseFromPowerOn(ModemState& modemState);
     int disablePsmEdrx();
     int checkSimReadiness(bool checkForRfReset = false);
+    int getOperationModeCached(CellularOperationMode& cemode);
+    int setOperationModeCached(CellularOperationMode cemode);
+    int getOperationMode();
+    int setOperationMode(CellularOperationMode cemode, bool check = false, bool save = false);
     int setModuleFunctionality(CellularFunctionality cfun, bool check = false);
     int getModuleFunctionality();
 };
