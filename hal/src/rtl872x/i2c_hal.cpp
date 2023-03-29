@@ -534,7 +534,7 @@ private:
 
     bool masterRestarted() {
         return (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_START_DET) &&
-                !(i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_STOP_DET);
+                !(i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_STOP_DET) &&
                 (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_ACTIVITY);
     }
 
