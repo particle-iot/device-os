@@ -12,16 +12,17 @@ using particle::SPISettings;
 
 static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
 {
-  memset(info, 0, sizeof(hal_spi_info_t));
-  info->version = HAL_SPI_INFO_VERSION_1;
-  hal_spi_info(spi, info, nullptr);
+    memset(info, 0, sizeof(hal_spi_info_t));
+    info->version = HAL_SPI_INFO_VERSION_1;
+    hal_spi_info(spi, info, nullptr);
 }
 
 static SPISettings spiSettingsFromSpiInfo(hal_spi_info_t* info)
 {
-  if (!info->enabled || info->default_settings)
-    return SPISettings();
-  return SPISettings(info->clock, info->bit_order, info->data_mode);
+    if (!info->enabled || info->default_settings) {
+        return SPISettings();
+    }
+    return SPISettings(info->clock, info->bit_order, info->data_mode);
 }
 
 static bool spiSettingsApplyCheck(SPIClass& spi, const SPISettings& settings, HAL_SPI_Interface interface = HAL_SPI_INTERFACE1)
@@ -66,6 +67,7 @@ test(SPI_00_Allocate_Buffers)
 
 test(SPI_01_computeClockSpeed)
 {
+    // NOTE: These values are arbitrary and only needed to test computeClockDivider()
     assertClockDivider(60*MHZ, 120*MHZ, SPI_CLOCK_DIV2, 30*MHZ);
     assertClockDivider(60*MHZ, 30*MHZ, SPI_CLOCK_DIV2, 30*MHZ);
     assertClockDivider(60*MHZ, 20*MHZ, SPI_CLOCK_DIV4, 15*MHZ);
@@ -250,15 +252,25 @@ test(SPI_07_SPI_Settings_Are_Applied_In_Begin_Transaction)
     assertEqual(current, settings);
     SPI.endTransaction();
 
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3)));
+#if HAL_PLATFORM_NRF52840
+    constexpr unsigned int SPI_CLOCK_SPEED_MAX = 32;
+    constexpr unsigned int SPI_CLOCK_SPEED_MID = 20; // will drop to 16
+#elif HAL_PLATFORM_RTL872X
+    constexpr unsigned int SPI_CLOCK_SPEED_MAX = 25;
+    constexpr unsigned int SPI_CLOCK_SPEED_MID = 15; // will drop to 12.5
+#else
+#error "platform undefined, please add new platform"
+#endif
 
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2)));
-    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3)));
+    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE0)));
+    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE1)));
+    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE2)));
+    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE3)));
+
+    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE0)));
+    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE1)));
+    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE2)));
+    assertTrue(spiSettingsApplyCheck(SPI, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE3)));
 
     assertTrue(spiSettingsApplyCheck(SPI, SPISettings()));
 
@@ -276,26 +288,36 @@ test(SPI_08_SPI1_Settings_Are_Applied_In_Begin_Transaction)
     // Get current SPISettings
     hal_spi_info_t info;
     SPISettings current, settings;
-
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     settings = spiSettingsFromSpiInfo(&info);
 
-    // Configure SPI with default settings
+    // Configure SPI1 with default settings
     SPI1.beginTransaction(SPISettings());
     querySpiInfo(HAL_SPI_INTERFACE2, &info);
     current = spiSettingsFromSpiInfo(&info);
+    settings = SPISettings();
     assertEqual(current, settings);
     SPI1.endTransaction();
 
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
+#if HAL_PLATFORM_NRF52840
+    constexpr unsigned int SPI_CLOCK_SPEED_MAX = 8;
+    constexpr unsigned int SPI_CLOCK_SPEED_MID = 5; // will drop to 4
+#elif HAL_PLATFORM_RTL872X
+    constexpr unsigned int SPI_CLOCK_SPEED_MAX = 50;
+    constexpr unsigned int SPI_CLOCK_SPEED_MID = 30; // will drop to 25
+#else
+#error "platform undefined, please add new platform"
+#endif
 
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
-    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
+
+    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE2));
+    assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE2));
 
     assertTrue(spiSettingsApplyCheck(SPI1, SPISettings(), HAL_SPI_INTERFACE2));
 
@@ -314,26 +336,37 @@ test(SPI_09_SPI2_Settings_Are_Applied_In_Begin_Transaction)
     // Get current SPISettings
     hal_spi_info_t info;
     SPISettings current, settings;
-
     querySpiInfo(HAL_SPI_INTERFACE3, &info);
     settings = spiSettingsFromSpiInfo(&info);
 
-    // Configure SPI with default settings
+    // Configure SPI2 with default settings
     SPI2.beginTransaction(SPISettings());
     querySpiInfo(HAL_SPI_INTERFACE3, &info);
     current = spiSettingsFromSpiInfo(&info);
+    settings = SPISettings();
     assertEqual(current, settings);
     SPI2.endTransaction();
 
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
+#error "remove this error after updating SPI2 settings below"
+#if HAL_PLATFORM_NRF52840
+    constexpr unsigned int SPI_CLOCK_SPEED_MAX = 8;
+    constexpr unsigned int SPI_CLOCK_SPEED_MID = 5; // will drop to 4
+#elif HAL_PLATFORM_RTL872X
+    constexpr unsigned int SPI_CLOCK_SPEED_MAX = 50;
+    constexpr unsigned int SPI_CLOCK_SPEED_MID = 30; // will drop to 25
+#else
+#error "platform undefined, please add new platform"
+#endif
 
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(15*MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(10*MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(15*MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
-    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(10*MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
+
+    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE0), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE1), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(SPI_CLOCK_SPEED_MAX * MHZ, MSBFIRST, SPI_MODE2), HAL_SPI_INTERFACE3));
+    assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(SPI_CLOCK_SPEED_MID * MHZ, LSBFIRST, SPI_MODE3), HAL_SPI_INTERFACE3));
 
     assertTrue(spiSettingsApplyCheck(SPI2, SPISettings(), HAL_SPI_INTERFACE3));
 
