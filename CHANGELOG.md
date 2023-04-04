@@ -1,3 +1,24 @@
+## 5.3.1
+
+### ENHANCEMENTS
+- [rtl872x] Adds Wiring API System.backupRamSync() to manually backup `retained` variables [#2633](https://github.com/particle-iot/device-os/pull/2633)
+
+### BUGFIXES
+- [rtl872x] Fix problems waking from sleep mode [#2647](https://github.com/particle-iot/device-os/pull/2647)
+- Fixes inconsistent BLE state issues [#2629](https://github.com/particle-iot/device-os/pull/2629)
+- [rtl872x] Fixes pmic shared interrupt and usb detection [#2630](https://github.com/particle-iot/device-os/pull/2630)
+- [rtl872x] Fixes D7 configuration when exiting hibernate mode [#2631](https://github.com/particle-iot/device-os/pull/2631)
+- [rtl872x][bootloader] Fixes USB serial port not being connectable on AMD based Windows [#2625](https://github.com/particle-iot/device-os/pull/2625)[#2638](https://github.com/particle-iot/device-os/pull/2638)
+- [rtl872x] Fixes `retained` variables not being saved, now periodically saved every 10s [#2633](https://github.com/particle-iot/device-os/pull/2633)[#2642](https://github.com/particle-iot/device-os/pull/2642)[#2644](https://github.com/particle-iot/device-os/pull/2644)
+- [rtl872x] Fixes assertion failure waiting for connection events from the stack when `BLE.connect()` called [#2636](https://github.com/particle-iot/device-os/pull/2636)
+- [nRF52] Fixes watchdog timer reload value accuracy [#2635](https://github.com/particle-iot/device-os/pull/2635)
+- [rtl872x] hal: Fixes BLE notifying multiple times [#2637](https://github.com/particle-iot/device-os/pull/2637)
+- [r510] Enables PS (packet switched) only mode for R510 modems (Boron/BSoM/ESoMX) [#2639](https://github.com/particle-iot/device-os/pull/2639)[#2645](https://github.com/particle-iot/device-os/pull/2645)
+- [rtl872x] hal: Fixes I2C failing to read/write from/to slave device [#2634](https://github.com/particle-iot/device-os/pull/2634)
+- [p2] fixes SPI speed settings, and improves SPI DMA timing for larger transfers [#2641](https://github.com/particle-iot/device-os/pull/2641)
+- [rtl872x] hal: uart may deadlock on initialization [#2643](https://github.com/particle-iot/device-os/pull/2643)
+- [rtl872x] Dont enable usart RX/TX pullups[#2646](https://github.com/particle-iot/device-os/pull/2646)
+
 ## 5.3.0
 
 ### FEATURES
