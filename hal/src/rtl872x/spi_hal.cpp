@@ -443,7 +443,6 @@ public:
         }
 
         chunkBuffer_.txLength = std::min(bufferConfig_.txLength - chunkBuffer_.txIndex, (size_t)CFG_CHUNK_BUF_SIZE);
-        DCache_CleanInvalidate((u32) bufferConfig_.txBuf, bufferConfig_.txLength);
         if (bufferConfig_.txBuf) {
             memcpy((void*)chunkBuffer_.txBuf, (void*)&bufferConfig_.txBuf[chunkBuffer_.txIndex], chunkBuffer_.txLength);
         } else {
@@ -859,8 +858,8 @@ private:
 
 Spi* getInstance(hal_spi_interface_t spi) {
     static Spi spiMap[] = {
-        {HAL_SPI_INTERFACE1, 1, 100*1000*1000, CFG_SPI_PRIORITY, SS, SCK, MOSI, MISO},
-        {HAL_SPI_INTERFACE2, 0, 50*1000*1000, CFG_SPI_PRIORITY, SS1, SCK1, MOSI1, MISO1}
+        {HAL_SPI_INTERFACE1, 1, 50*1000*1000, CFG_SPI_PRIORITY, SS, SCK, MOSI, MISO},
+        {HAL_SPI_INTERFACE2, 0, 100*1000*1000, CFG_SPI_PRIORITY, SS1, SCK1, MOSI1, MISO1}
     };
 
     CHECK_TRUE(spi < sizeof(spiMap) / sizeof(spiMap[0]), nullptr);
