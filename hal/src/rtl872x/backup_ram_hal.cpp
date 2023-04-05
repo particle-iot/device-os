@@ -28,6 +28,7 @@
 #include "rtl8721d.h"
 #include "timer_hal.h"
 #include "static_recursive_mutex.h"
+#include "scope_guard.h"
 
 // NOTE: we are using a dedicated flash page for this as timings for writing
 // into fs vs raw page are about 10x
@@ -47,6 +48,9 @@ constexpr system_tick_t syncIntervalMs = 10000;
 StaticRecursiveMutex backupMutex;
 
 }
+
+constexpr uint32_t HAL_BACKUP_RAM_VALID_VALUE = 0x4a171bc4;
+retained_system uint32_t g_backupRamValidMarker;
 
 class BackupRamLock {
 public:
@@ -87,7 +91,15 @@ int hal_backup_ram_init(void) {
     // NOTE: using SDK API here as last reset info in core_hal is initialized later
     platform_system_flags_t dctFlags = {};
     dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &dctFlags, DCT_SYSTEM_FLAGS_SIZE);
-    if ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) || SYSTEM_FLAG(restore_backup_ram) == 1 || dctFlags.restore_backup_ram == 1) {
+    // In case of software reset or watchdog reset (software reset also uses watchdog reset),
+    // RAM is preserved and we may end up restoring stale data out of flash instead.
+    // Check g_backupRamValidMarker value which resides in system retained area, if it's valid
+    // our backup RAM is fine as-is and we shouldn't restore anything.
+    SCOPE_GUARD({
+        g_backupRamValidMarker = HAL_BACKUP_RAM_VALID_VALUE;
+    });
+    if ((g_backupRamValidMarker != HAL_BACKUP_RAM_VALID_VALUE) &&
+            ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) || SYSTEM_FLAG(restore_backup_ram) == 1 || dctFlags.restore_backup_ram == 1)) {
         SYSTEM_FLAG(restore_backup_ram) = 0;
         dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
         // Woke up from deep sleep
