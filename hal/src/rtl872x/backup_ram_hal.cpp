@@ -47,6 +47,7 @@ constexpr system_tick_t syncIntervalMs = 10000;
 
 StaticRecursiveMutex backupMutex;
 
+uint8_t backupRamShadow[HAL_PLATFORM_BACKUP_RAM_SIZE] = {};
 }
 
 constexpr uint32_t HAL_BACKUP_RAM_VALID_VALUE = 0x4a171bc4;
@@ -88,6 +89,8 @@ private:
 };
 
 int hal_backup_ram_init(void) {
+    SPARK_ASSERT(sizeof(backupRamShadow) == (size_t)&platform_backup_ram_persisted_flash_size);
+
     // NOTE: using SDK API here as last reset info in core_hal is initialized later
     platform_system_flags_t dctFlags = {};
     dct_read_app_data_copy(DCT_SYSTEM_FLAGS_OFFSET, &dctFlags, DCT_SYSTEM_FLAGS_SIZE);
@@ -111,9 +114,8 @@ int hal_backup_ram_init(void) {
 
 int hal_backup_ram_sync(void* reserved) {
     BackupRamLock lk;
-    if (memcmp((void*)&platform_backup_ram_all_start,
-            (void*)&platform_backup_ram_persisted_flash_start,
-            (uintptr_t)&platform_backup_ram_persisted_flash_size)) {
+    if (memcmp((void*)&platform_backup_ram_all_start, backupRamShadow, sizeof(backupRamShadow))) {
+        memcpy(backupRamShadow, (void*)&platform_backup_ram_all_start, sizeof(backupRamShadow));
         if (SYSTEM_FLAG(restore_backup_ram) != 1) {
             SYSTEM_FLAG(restore_backup_ram) = 1;
             dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
@@ -121,7 +123,7 @@ int hal_backup_ram_sync(void* reserved) {
         CHECK(hal_flash_erase_sector((uintptr_t)&platform_backup_ram_persisted_flash_start,
                 CEIL_DIV((uintptr_t)&platform_backup_ram_persisted_flash_size, INTERNAL_FLASH_PAGE_SIZE)));
         CHECK(hal_flash_write((uintptr_t)&platform_backup_ram_persisted_flash_start,
-                (const uint8_t*)&platform_backup_ram_all_start, (uintptr_t)&platform_backup_ram_persisted_flash_size));
+                backupRamShadow, sizeof(backupRamShadow)));
     }
     return SYSTEM_ERROR_NONE;
 }

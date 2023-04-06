@@ -137,3 +137,5 @@
 
 // We have plenty of SRAM/PSRAM, this avoids overflows in BLE stack initialization among other things
 #define HAL_PLATFORM_SYSTEM_THREAD_STACK_SIZE (10 * 1024)
+
+#define HAL_PLATFORM_BACKUP_RAM_SIZE (4096)
