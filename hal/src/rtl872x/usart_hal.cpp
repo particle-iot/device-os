@@ -69,13 +69,17 @@ public:
     public:
         AtomicBlock(Usart* instance)
                 : uart_(instance) {
+            enabled_ = NVIC_GetEnableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
             NVIC_DisableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
         }
         ~AtomicBlock() {
-            NVIC_EnableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
+            if (enabled_) {
+                NVIC_EnableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
+            }
         }
     private:
         Usart* uart_;
+        bool enabled_;
     };
 
     class RxLock {
