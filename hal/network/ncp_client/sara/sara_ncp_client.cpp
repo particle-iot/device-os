@@ -1097,17 +1097,19 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         CHECK(checkNetConfForImsi());
     }
 
-    // AT+CEMODE? query can take up to 24 seconds to poll without CellularFunctionality::MINIMUM first, and we don't
-    // want to be dropping to CellularFunctionality::MINIMUM every boot / connection.
-    // Check cached value to see if we need to change CEMODE=0 (PS_ONLY).
-    CellularOperationMode cemode = CellularOperationMode::NONE;
-    getOperationModeCached(cemode); // We're not checking the result because it will return SYSTEM_ERROR_NOT_FOUND the first time through
-    if (cemode != CellularOperationMode::PS_ONLY) {
-        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, true /* check */));
-        CHECK_PARSER_OK(setOperationMode(CellularOperationMode::PS_ONLY, true /* check */, true /* save */));
-        CHECK(modemSoftReset()); // reset the SIM
-        CHECK(waitAtResponseFromPowerOn(state));
-        // NOTE: may need to be in minimum functionality for setting umnoprof, let configureApn() set it back to full
+    if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        // AT+CEMODE? query can take up to 24 seconds to poll without CellularFunctionality::MINIMUM first, and we don't
+        // want to be dropping to CellularFunctionality::MINIMUM every boot / connection.
+        // Check cached value to see if we need to change CEMODE=0 (PS_ONLY).
+        CellularOperationMode cemode = CellularOperationMode::NONE;
+        getOperationModeCached(cemode); // We're not checking the result because it will return SYSTEM_ERROR_NOT_FOUND the first time through
+        if (cemode != CellularOperationMode::PS_ONLY) {
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, true /* check */));
+            CHECK_PARSER_OK(setOperationMode(CellularOperationMode::PS_ONLY, true /* check */, true /* save */));
+            CHECK(modemSoftReset()); // reset the SIM
+            CHECK(waitAtResponseFromPowerOn(state));
+            // NOTE: may need to be in minimum functionality for setting umnoprof, let configureApn() set it back to full
+        }
     }
 
     bool reset = false;
