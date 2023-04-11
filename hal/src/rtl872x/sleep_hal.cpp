@@ -55,6 +55,15 @@ extern "C" {
 
 using namespace particle;
 
+extern uintptr_t platform_psram_start;
+extern uintptr_t platform_psram_size;
+
+namespace {
+
+uint32_t psramSleepMarker = 0;
+
+} // anonymous
+
 class SleepClass {
 public:
     int validateSleepConfig(const hal_sleep_config_t* config) {
@@ -141,7 +150,7 @@ public:
      * since the power gate will deinitialize PSRAM and we have to re-initialize
      * and copy code from flash to it. Power gate is used for hibernate mode.
      */
-    __attribute__((section(".ram.sleep"), optimize("O0")))
+    __attribute__((section(".ram.sleep")))
     int enter(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
         memcpy(&alignedConfig_.config, config, sizeof(hal_sleep_config_t));
@@ -151,6 +160,10 @@ public:
                            hal_ble_gap_is_connected(nullptr, nullptr);
         hal_ble_stack_deinit(nullptr);
         // The delay is essential to make sure the resources are successfully freed.
+        // FIXME: Is this still needed? hal_ble_stack_deinit() should wait
+        // for deinitialization to complete?
+        // Leaving as-is for now, but should be reassessed. We are postponing sleep
+        // by 2 seconds all the time.
         HAL_Delay_Milliseconds(2000);
 
         HAL_USB_Detach();
@@ -190,26 +203,42 @@ public:
         // NOTE: previously checked primask here, no need as if we are going into sleep
         // with disabled interrupts we have much bigger problems
         __disable_irq();
-        __DSB();
+
+        auto mode = config->mode;
+
+        psramSleepMarker = HAL_READ32(PSRAM_BASE, 0);
+
+        // Clean == flush
+        SCB_CleanInvalidateDCache_by_Addr((uint32_t*)&platform_psram_start, (int32_t)(&platform_psram_size));
+        // IMPORTANT: DCache and ICache need to be disabled
+        SCB_DisableDCache();
+        SCB_DisableICache();
         __ISB();
+        __DSB();
+
 
         // WARNING: any function/data being called/accessed in/after PSRAM being suspended should reside in SRAM
-        ICache_Disable();
-        if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
+        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
             suspendPsram(false);
         } else {
             suspendPsram(true);
         }
 
-        DelayMs(20);
         __SEV(); // signal event, also signal to KM0
         __WFE(); // clear event, immediately exits
         __WFE(); // sleep, waiting for event
-        
+
         // Only if either stop mode or ultra-low power mode is used, we can get here,
         // which means that the PSRAM retention is enabled, we don't need to re-initialized PSRAM
-        ICache_Enable();
         resumePsram();
+
+        // Re-enable and invalidate caches
+        SCB_EnableICache();
+        SCB_InvalidateICache();
+        SCB_EnableDCache();
+        SCB_InvalidateDCache();
+        __ISB();
+        __DSB();
 
         hal_pin_info_t* halPinMap = hal_pin_map();
         hal_pin_t wakeupPin = PIN_INVALID;
@@ -409,7 +438,7 @@ private:
         return SYSTEM_ERROR_NONE;
     }
 
-    __attribute__((section(".ram.sleep"), optimize("O0")))
+    __attribute__((section(".ram.sleep")))
     void suspendPsram(bool retention) {
         uint32_t temp;
         if (retention) {
@@ -428,21 +457,61 @@ private:
             PSRAM_datawr = ((temp << 8) | (temp << 24)) | (temps | (temps << 16));
             PSRAM_CTRL_CA_Gen(psram_ca, (BIT11 | BIT0), PSRAM_LINEAR_TYPE, PSRAM_REG_SPACE, PSRAM_WRITE_TRANSACTION);
             PSRAM_CTRL_DPin_Reg(psram_ca, &PSRAM_datawr, PSRAM_WRITE_TRANSACTION);
+
+            // Disable memory access from CPU
+            // PSRAM_DEV->CSR |= BIT_PSRAM_MEM_IDLE;
+            // while(!(PSRAM_DEV->CSR & BIT_PSRAM_MEM_IDLE));
+
+            // Wait for half-sleep entry just in case
+            DelayUs(200);
         } else {
             temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_LDO_CTRL1);
             temp &= ~(BIT_LDO_PSRAM_EN);
             HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_LDO_CTRL1, temp);	
         }
+        __ISB();
+        __DSB();
     }
     
-    __attribute__((section(".ram.sleep"), optimize("O0")))
+    __attribute__((section(".ram.sleep")))
     void resumePsram() {
-        /* dummy read to make psram exit half sleep mode */
-        uint32_t temp = HAL_READ32(PSRAM_BASE, 0);
-        (void)temp;
-        /* wait psram exit half sleep mode */
-        DelayUs(100);
-        DCache_Invalidate((uint32_t)PSRAM_BASE, 32);
+        // Disable memory access from CPU
+        PSRAM_DEV->CSR |= BIT_PSRAM_MEM_IDLE;
+        while(!(PSRAM_DEV->CSR & BIT_PSRAM_MEM_IDLE));
+        uint8_t PSRAM_CA[6];
+        // FIXME: No idea how to align addresses properly here to correctly read things out, reading beginning of PSRAM seems to work though
+        PSRAM_CTRL_CA_Gen(PSRAM_CA, 0, PSRAM_LINEAR_TYPE, PSRAM_MEM_SPACE, PSRAM_READ_TRANSACTION);
+        for (int i = 0; i < 10; i++) {
+            uint32_t temp = 0xaabbccdd;
+            PSRAM_DEV->DPDR = 0;
+            PSRAM_DEV->CMD_DPIN_NDGE = (PSRAM_CA[0] | (PSRAM_CA[2] << 8) | (PSRAM_CA[4] << 16));
+            PSRAM_DEV->CMD_DPIN = (PSRAM_CA[1] | (PSRAM_CA[3] << 8) | (PSRAM_CA[5] << 16));
+
+            PSRAM_DEV->CSR &= (~BIT_PSRAM_DPIN_MODE);
+            PSRAM_DEV->CSR |= PSRAM_DPIN_READ_MODE;
+
+            PSRAM_DEV->CCR = BIT_PSRAM_DPIN;
+            // 150us should be enough, but we'll anyway retry a few times just in case
+            for (int j = 0; j < 150; j++) {
+                if (PSRAM_DEV->CCR & BIT_PSRAM_DPIN) {
+                    break;
+                }
+                DelayUs(1);
+            }
+            if (PSRAM_DEV->CCR & BIT_PSRAM_DPIN) {
+                PSRAM_DEV->DPDRI = 0;
+                temp = PSRAM_DEV->DPDR;
+                if (temp == psramSleepMarker) {
+                    break;
+                }
+            } else {
+                PSRAM_DEV->CCR &= ~BIT_PSRAM_DPIN;
+            }
+        }
+
+        // Enable memory access from CPU
+        PSRAM_DEV->CSR &= (~BIT_PSRAM_MEM_IDLE);
+        while(PSRAM_DEV->CSR & BIT_PSRAM_MEM_IDLE);
     }
 
     static void onKm0RespReceived(km0_km4_ipc_msg_t* msg, void* context) {
