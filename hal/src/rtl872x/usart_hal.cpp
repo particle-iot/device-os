@@ -193,8 +193,8 @@ public:
             Pinmux_Config(hal_pin_to_rtl_pin(txPin_), PINMUX_FUNCTION_UART);
             Pinmux_Config(hal_pin_to_rtl_pin(rxPin_), PINMUX_FUNCTION_UART);
         }
-        PAD_PullCtrl(hal_pin_to_rtl_pin(txPin_), GPIO_PuPd_UP);
-        PAD_PullCtrl(hal_pin_to_rtl_pin(rxPin_), GPIO_PuPd_UP);
+        PAD_PullCtrl(hal_pin_to_rtl_pin(txPin_), GPIO_PuPd_NOPULL);
+        PAD_PullCtrl(hal_pin_to_rtl_pin(rxPin_), GPIO_PuPd_NOPULL);
         // Configure CTS/RTS pins
         if (ctsPin_ != PIN_INVALID) {
             Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_UART_RTSCTS);
