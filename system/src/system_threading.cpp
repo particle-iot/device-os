@@ -23,7 +23,9 @@ ActiveObjectThreadQueue SystemThread(ActiveObjectConfiguration(system_thread_idl
 			100, /* take timeout */
 			0x7FFFFFFF, /* put timeout - wait forever */
 			50, /* queue size */
-			HAL_PLATFORM_SYSTEM_THREAD_STACK_SIZE /* stack size */));
+			HAL_PLATFORM_SYSTEM_THREAD_STACK_SIZE /* stack size */,
+            OS_THREAD_PRIORITY_DEFAULT, /* default priority */
+            HAL_PLATFORM_SYSTEM_THREAD_TASK_NAME /* task name */));
 
 os_mutex_recursive_t mutex_usb_serial()
 {

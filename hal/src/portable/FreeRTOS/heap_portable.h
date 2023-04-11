@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include "hal_platform.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +40,8 @@ typedef struct malloc_heap_region {
     void* start;
     void* end;
 } malloc_heap_region;
+
+extern malloc_heap_region malloc_heap_regions[HAL_PLATFORM_HEAP_REGIONS];
 
 void malloc_set_heap_regions(const malloc_heap_region* regions, size_t count);
 

@@ -33,7 +33,7 @@ using namespace particle;
 
 void ActiveObjectBase::start_thread()
 {
-    const auto r = os_thread_create(&_thread, "active_object", configuration.priority, run_active_object, this,
+    const auto r = os_thread_create(&_thread, configuration.task_name, configuration.priority, run_active_object, this,
             configuration.stack_size);
     SPARK_ASSERT(r == 0);
     // prevent the started thread from running until the thread id has been assigned

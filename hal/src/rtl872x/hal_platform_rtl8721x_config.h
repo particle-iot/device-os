@@ -139,3 +139,10 @@
 #define HAL_PLATFORM_SYSTEM_THREAD_STACK_SIZE (10 * 1024)
 
 #define HAL_PLATFORM_BACKUP_RAM_SIZE (4096)
+
+#define HAL_PLATFORM_HEAP_REGIONS (2)
+
+// IMPORTANT: the region addresses should be in increasing order
+// NOTE: These are not default in hal_platform.h
+#define HAL_PLATFORM_HEAP_REGION_SRAM (0)
+#define HAL_PLATFORM_HEAP_REGION_PSRAM (1)

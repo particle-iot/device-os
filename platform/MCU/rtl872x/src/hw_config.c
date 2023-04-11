@@ -60,6 +60,12 @@ static void hw_rtl_init_psram(void)
 
     PSRAM_PHY_REG_Write(REG_PSRAM_CAL_PARA, 0x02030310);
 
+    // Enable CPU access to PSRAM
+    if (PSRAM_DEV->CSR & BIT_PSRAM_MEM_IDLE) {
+        PSRAM_DEV->CSR &= (~BIT_PSRAM_MEM_IDLE);
+        while(PSRAM_DEV->CSR & BIT_PSRAM_MEM_IDLE);
+    }
+
     /*check psram valid*/
     HAL_WRITE32(PSRAM_BASE, 0, 0);
     assert_param(0 == HAL_READ32(PSRAM_BASE, 0));
