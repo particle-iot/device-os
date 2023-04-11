@@ -70,6 +70,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "heap_portable.h"
+#include <stdbool.h>
 
 /* Defining MPU_WRAPPERS_INCLUDED_FROM_API_FILE prevents task.h from redefining
 all the API functions to use the MPU wrappers.  That should only be done when
@@ -337,6 +338,7 @@ void *pvReturn = NULL;
 
 	return pvReturn;
 }
+
 /*-----------------------------------------------------------*/
 
 void vPortFree( void *pv )
@@ -399,6 +401,35 @@ size_t xPortGetMinimumEverFreeHeapSize( void )
 }
 /*-----------------------------------------------------------*/
 
+static bool prvBlockWithinRegion(BlockLink_t* block, const malloc_heap_region* region) {
+	return (void*)block >= region->start && (void*)block < region->end;
+}
+
+static const malloc_heap_region* prvRegionForBlock(BlockLink_t* block) {
+	for (malloc_heap_region* region = malloc_heap_regions; region - malloc_heap_regions < HAL_PLATFORM_HEAP_REGIONS; region++) {
+		if (prvBlockWithinRegion(block, region)) {
+			return region;
+		}
+	}
+	// This should not happen
+	return NULL;
+}
+
+static bool prvCompareToInsertBlocks(BlockLink_t* nextFree, BlockLink_t* toInsert)
+{
+	// Normally this is just (nextFree < toInsert)
+	// In our case the regions are not in the ascending order, so we need to take into account the region
+	const malloc_heap_region* nextFreeRegion = prvRegionForBlock(nextFree);
+	const malloc_heap_region* toInsertRegion = prvRegionForBlock(toInsert);
+	if (nextFreeRegion == toInsertRegion) {
+		return nextFree < toInsert;
+	} else if (nextFreeRegion > toInsertRegion) {
+		return false;
+	}
+	// Continue otherwise
+	return true;
+}
+
 static void prvInsertBlockIntoFreeList( BlockLink_t *pxBlockToInsert )
 {
 BlockLink_t *pxIterator;
@@ -406,7 +437,7 @@ uint8_t *puc;
 
 	/* Iterate through the list until a block is found that has a higher address
 	than the block being inserted. */
-	for( pxIterator = &xStart; pxIterator->pxNextFreeBlock < pxBlockToInsert; pxIterator = pxIterator->pxNextFreeBlock )
+	for( pxIterator = &xStart; prvCompareToInsertBlocks(pxIterator->pxNextFreeBlock, pxBlockToInsert); pxIterator = pxIterator->pxNextFreeBlock )
 	{
 		/* Nothing to do here, just iterate to the right position. */
 	}
@@ -508,7 +539,9 @@ const HeapRegion_t *pxHeapRegion;
 			configASSERT( pxEnd != NULL );
 
 			/* Check blocks are passed in with increasing start addresses. */
-			configASSERT( xAddress > ( size_t ) pxEnd );
+			// Particle: this is no longer a requirement as we'll use region as part of the
+			// insert check
+			// configASSERT( xAddress > ( size_t ) pxEnd );
 		}
 
 		/* Remember the location of the end marker in the previous region, if
