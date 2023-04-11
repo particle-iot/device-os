@@ -27,6 +27,7 @@
 #include <mutex>
 #include <thread>
 #include <future>
+#include <cstring>
 
 #include "channel.h"
 #include "concurrent_hal.h"
@@ -73,15 +74,23 @@ struct ActiveObjectConfiguration
      */
     os_thread_prio_t priority;
 
+    /**
+     * Thread name
+     */
+    char task_name[64];
+    static constexpr const char DEFAULT_TASK_NAME[] = "active_object";
+
 public:
     ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, unsigned put_wait_, uint16_t queue_size_,
-            size_t stack_size_ = OS_THREAD_STACK_SIZE_DEFAULT, os_thread_prio_t priority = OS_THREAD_PRIORITY_DEFAULT) :
+            size_t stack_size_ = OS_THREAD_STACK_SIZE_DEFAULT, os_thread_prio_t priority = OS_THREAD_PRIORITY_DEFAULT,
+            const char* name = nullptr) :
             background_task(task),
             stack_size(stack_size_),
             take_wait(take_wait_),
             put_wait(put_wait_),
             queue_size(queue_size_),
             priority(priority) {
+        strncpy(task_name, name ? name : DEFAULT_TASK_NAME, sizeof(task_name) - 1);
     }
 };
 
