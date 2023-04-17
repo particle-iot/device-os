@@ -438,7 +438,14 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     if (ctx.results.size() == 0) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
-        CHECK(off());
+        hal_ble_lock(nullptr);
+        hal_ble_stack_deinit(nullptr);
+        wifi_off();
+        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, DISABLE);
+        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
+        SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
+        hal_ble_stack_init(nullptr);
+        hal_ble_unlock(nullptr);
     }
     return rtl_error_to_system(rtlError);
 }
