@@ -1171,11 +1171,13 @@ int BleGap::stop() {
         if (isAdvertising_) {
             // This will also wait for advertisements to stop
             stopAdvertising();
+            isAdvertising_ = false;
         }
 
         if (isScanning_) {
             stopScanning();
             le_scan_stop(); // Just in case
+            isScanning_ = false;
         }
 
         // Prevent BLE stack from generating coexistence events, otherwise we may leak memory
@@ -1626,7 +1628,12 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                 }
                 HAL_Delay_Milliseconds(10);
             }
-            SPARK_ASSERT(!isScanning_);
+            if (isScanning_) {
+                stop();
+                init();
+                start();
+            }
+            isScanning_ = false;
             clearPendingResult();
         }
     });
