@@ -56,6 +56,6 @@ int selectRadioAntenna(radio_antenna_type antenna);
  * @param antenna Currently configured Antenna type.
  * @return 0 on success or a negative result code in case of an error.
  */
-int getRadioAntenna(radio_antenna_type * antenna);
+int getRadioAntenna(radio_antenna_type* antenna);
 
 } // particle
