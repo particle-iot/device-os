@@ -289,10 +289,8 @@ void SPARK_WLAN_SmartConfigProcess() {
 void HAL_WLAN_notify_simple_config_done() {
 }
 
-static WLanSelectAntenna_TypeDef current_antenna = ANT_AUTO;
-
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
-    radio_antenna_type new_antenna = RADIO_ANT_UNKNOWN;
+    radio_antenna_type new_antenna;
 
     if (antenna == ANT_AUTO) {
         new_antenna = RADIO_ANT_DEFAULT;
@@ -300,19 +298,26 @@ int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
         new_antenna = RADIO_ANT_INTERNAL;
     } else if (antenna == ANT_EXTERNAL) {
         new_antenna = RADIO_ANT_EXTERNAL;
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;    
     }
 
-    if (new_antenna != RADIO_ANT_UNKNOWN) {
-        CHECK(selectRadioAntenna(new_antenna));
-        current_antenna = antenna;
-        return 0;
-    }
-
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    CHECK(selectRadioAntenna(new_antenna));
+    return 0;
 }
 
 WLanSelectAntenna_TypeDef wlan_get_antenna(void* reserved) {
-    return current_antenna;
+    radio_antenna_type antenna;
+
+    if (getRadioAntenna(&antenna) || antenna == RADIO_ANT_DEFAULT) {
+        return ANT_AUTO;
+    } else if (antenna == RADIO_ANT_INTERNAL) {
+        return ANT_INTERNAL;
+    } else if (antenna == RADIO_ANT_EXTERNAL) {
+        return ANT_EXTERNAL;
+    } else {
+        return ANT_AUTO;
+    }
 }
 
 void wlan_connect_cancel(bool called_from_isr) {

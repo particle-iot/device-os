@@ -122,4 +122,18 @@ int selectRadioAntenna(radio_antenna_type antenna) {
     return SYSTEM_ERROR_NONE;
 }
 
+int getRadioAntenna(radio_antenna_type * antenna) {
+    if (!antenna) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    uint8_t dctAntenna = 0xff;
+    CHECK(dct_read_app_data_copy(DCT_RADIO_ANTENNA_OFFSET, &dctAntenna, sizeof(dctAntenna)));
+    if ((radio_antenna_type)dctAntenna <= RADIO_ANT_EXTERNAL) {
+        *antenna = (radio_antenna_type)dctAntenna;
+        return 0;
+    }
+
+    return SYSTEM_ERROR_INTERNAL;
+}
+
 } // namespace particle
