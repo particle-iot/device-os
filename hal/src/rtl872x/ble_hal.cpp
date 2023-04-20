@@ -1629,9 +1629,12 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                 HAL_Delay_Milliseconds(10);
             }
             if (isScanning_) {
-                stop();
-                init();
-                start();
+                int ret = stop();
+                SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+                ret = init();
+                SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+                ret = start();
+                SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
             }
             isScanning_ = false;
             clearPendingResult();
