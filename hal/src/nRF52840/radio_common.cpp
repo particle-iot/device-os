@@ -110,7 +110,7 @@ int selectAntenna(radio_antenna_type antenna) {
 
 } // namespace
 
-int initRadioAntenna() {
+radio_antenna_type readRadioAntenna(){
     auto antenna = RADIO_ANT_DEFAULT;
     uint8_t dctAntenna = 0xff;
     if (dct_read_app_data_copy(DCT_RADIO_ANTENNA_OFFSET, &dctAntenna, DCT_RADIO_ANTENNA_SIZE) < 0) {
@@ -119,7 +119,11 @@ int initRadioAntenna() {
     } else if (dctAntenna == RADIO_ANT_INTERNAL || dctAntenna == RADIO_ANT_EXTERNAL) {
         antenna = (radio_antenna_type)dctAntenna;
     }
-    CHECK(selectAntenna(antenna));
+    return antenna;
+}
+
+int initRadioAntenna() {
+    CHECK(selectAntenna(readRadioAntenna()));
     return SYSTEM_ERROR_NONE;
 }
 
@@ -159,6 +163,14 @@ int selectRadioAntenna(radio_antenna_type antenna) {
         return SYSTEM_ERROR_UNKNOWN;
     }
     return SYSTEM_ERROR_NONE;
+}
+
+int getRadioAntenna(radio_antenna_type* antenna) {
+    if (!antenna) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    *antenna = readRadioAntenna();
+    return 0;
 }
 
 } // namespace particle

@@ -16,6 +16,7 @@
  */
 
 #include "wlan_hal.h"
+#include "radio_common.h"
 
 #include "network/ncp/wifi/ncp.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
@@ -289,14 +290,34 @@ void HAL_WLAN_notify_simple_config_done() {
 }
 
 int wlan_select_antenna(WLanSelectAntenna_TypeDef antenna) {
-    if (antenna != ANT_AUTO) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+    radio_antenna_type new_antenna;
+
+    if (antenna == ANT_AUTO) {
+        new_antenna = RADIO_ANT_DEFAULT;
+    } else if (antenna == ANT_INTERNAL) {
+        new_antenna = RADIO_ANT_INTERNAL;
+    } else if (antenna == ANT_EXTERNAL) {
+        new_antenna = RADIO_ANT_EXTERNAL;
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;    
     }
+
+    CHECK(selectRadioAntenna(new_antenna));
     return 0;
 }
 
 WLanSelectAntenna_TypeDef wlan_get_antenna(void* reserved) {
-    return ANT_AUTO;
+    radio_antenna_type antenna;
+
+    if (getRadioAntenna(&antenna) || antenna == RADIO_ANT_DEFAULT) {
+        return ANT_AUTO;
+    } else if (antenna == RADIO_ANT_INTERNAL) {
+        return ANT_INTERNAL;
+    } else if (antenna == RADIO_ANT_EXTERNAL) {
+        return ANT_EXTERNAL;
+    } else {
+        return ANT_AUTO;
+    }
 }
 
 void wlan_connect_cancel(bool called_from_isr) {

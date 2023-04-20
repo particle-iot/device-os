@@ -23,5 +23,5 @@
 typedef enum radio_antenna_type {
     RADIO_ANT_DEFAULT = 0, ///< Default antenna (platform-specific).
     RADIO_ANT_INTERNAL = 1, ///< Internal antenna.
-    RADIO_ANT_EXTERNAL = 2 ///< External antenna.
+    RADIO_ANT_EXTERNAL = 2, ///< External antenna.
 } radio_antenna_type;
