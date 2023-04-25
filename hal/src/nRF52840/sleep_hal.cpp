@@ -578,6 +578,8 @@ static uint32_t configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSo
             // nrf_uarte_int_disable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
             // nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXDRDY);
             if (!nrf_uarte_int_enable_check(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK)) {
+                // We're safe to clear the event if application didn't enable the RXDRDY interrupt
+                nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXDRDY);
                 nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
             }
             NVIC_EnableIRQ(UARTE0_UART0_IRQn);
@@ -599,6 +601,8 @@ static bool configNetworkWakeupSource(const hal_wakeup_source_base_t* wakeupSour
                 // nrf_uarte_int_disable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
                 // nrf_uarte_event_clear(NRF_UARTE1, NRF_UARTE_EVENT_RXDRDY);
                 if (!nrf_uarte_int_enable_check(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK)) {
+                    // We're safe to clear the event if application didn't enable the RXDRDY interrupt
+                    nrf_uarte_event_clear(NRF_UARTE1, NRF_UARTE_EVENT_RXDRDY);
                     nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
                 } else {
                     ret = true;
