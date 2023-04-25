@@ -25,6 +25,7 @@ LOG_SOURCE_CATEGORY("ncp.rltk.client");
 #include "gpio_hal.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
+#include "ble_hal.h"
 
 #include "check.h"
 
