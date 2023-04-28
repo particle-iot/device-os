@@ -47,6 +47,7 @@ extern "C" {
 
 #include "spark_wiring_vector.h"
 #include "rtl_system_error.h"
+#include "rtl_sdk_support.h"
 
 #undef IFNAMSIZ // AMBD SDK and LWIP both define this symbol...
 #include "wlan_hal.h"
@@ -443,16 +444,25 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
         bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                            hal_ble_gap_is_connecting(nullptr, nullptr) ||
                            hal_ble_gap_is_connected(nullptr, nullptr);
+
         hal_ble_stack_deinit(nullptr);
+
+        rtwCoexRunDisable(0);
+        HAL_Delay_Milliseconds(100);
+
         wifi_off();
+
         RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, DISABLE);
         RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
+
         SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
+
         if (hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE) {
             if (advertising) {
                 hal_ble_gap_start_advertising(nullptr);
             }
         }
+
         hal_ble_unlock(nullptr);
     }
     return rtl_error_to_system(rtlError);
