@@ -38,8 +38,8 @@ HAL_SPI_Begin(hal_spi_interface_t spi, uint16_t pin) {
 }
 
 inline void __attribute__((deprecated("Will be removed in 5.x! Use hal_spi_begin_ext() instead"), always_inline))
-HAL_SPI_Begin_Ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, void* reserved) {
-    hal_spi_begin_ext(spi, mode, pin, reserved);
+HAL_SPI_Begin_Ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, hal_spi_config_t* spi_config) {
+    hal_spi_begin_ext(spi, mode, pin, spi_config);
 }
 
 inline void __attribute__((deprecated("Will be removed in 5.x! Use hal_spi_end() instead"), always_inline))

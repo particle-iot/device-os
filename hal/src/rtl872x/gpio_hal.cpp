@@ -143,6 +143,8 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             hal_pin_set_function(pin, PF_NONE);
         }
 
+        Pinmux_Config(hal_pin_to_rtl_pin(pin), PINMUX_FUNCTION_GPIO);
+
         // Pre-set the output value if requested to avoid a glitch
         if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
             GPIO_WriteBit(rtlPin, conf->value);

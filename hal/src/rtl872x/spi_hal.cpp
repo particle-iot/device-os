@@ -222,10 +222,10 @@ public:
     }
 
     int begin(const SpiConfig& config) {
-        return begin(csPin_, config);
+        return begin(csPin_, config, nullptr);
     }
 
-    int begin(uint16_t csPin, const SpiConfig& config) {
+    int begin(uint16_t csPin, const SpiConfig& config, hal_spi_config_t* spi_config) {
         AtomicSection lk;
 
         // Start address of chunk buffer should be 32-byte aligned
@@ -274,9 +274,11 @@ public:
             // FIXME: a noise is observed on the MOSI pin, adding a pullup here is not ideal,
             // fix it when we find a better way e.g. improve driving strength
             hal_gpio_mode(mosiPin_, INPUT_PULLUP);
-            Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_SPIM);
+            if (!(spi_config && (spi_config->flags & (uint32_t)HAL_SPI_CONFIG_FLAG_MOSI_ONLY))) {
+                Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_SPIM);
+                Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_SPIM);
+            }
             Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(mosiPin_), PINMUX_FUNCTION_SPIM);
-            Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_SPIM);
 
             hal_gpio_write(csPin_, 1);
             hal_gpio_mode(csPin_, OUTPUT);
@@ -286,9 +288,11 @@ public:
             if (rtlSpiIndex_ == 0) {
                 SSI_SetRole(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, SSI_SLAVE);
             }
-            Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_SPIS);
+            if (!(spi_config && (spi_config->flags & (uint32_t)HAL_SPI_CONFIG_FLAG_MOSI_ONLY))) {
+                Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_SPIS);
+                Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_SPIS);
+            }
             Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(mosiPin_), PINMUX_FUNCTION_SPIS);
-            Pinmux_Config((uint8_t)hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_SPIS);
             hal_gpio_mode(csPin_, INPUT_PULLUP);
             hal_interrupt_attach(csPin_, onSelectedHandler, this, CHANGE, nullptr);
         }
@@ -307,9 +311,11 @@ public:
         }
 
         // Set pin function
-        hal_pin_set_function(sclkPin_, PF_SPI);
+        if (!(spi_config && (spi_config->flags & (uint32_t)HAL_SPI_CONFIG_FLAG_MOSI_ONLY))) {
+            hal_pin_set_function(sclkPin_, PF_SPI);
+            hal_pin_set_function(misoPin_, PF_SPI);
+        }
         hal_pin_set_function(mosiPin_, PF_SPI);
-        hal_pin_set_function(misoPin_, PF_SPI);
 
         // Set clock divider
         if (config_.spiMode == SPI_MODE_MASTER) {
@@ -376,13 +382,16 @@ public:
         GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
         GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
 
-        // Set GPIO and pin function
-        hal_gpio_mode(sclkPin_, INPUT_PULLUP);
+        // Set GPIO, pin function and pinmux
+        hal_gpio_mode(sclkPin_, PIN_MODE_NONE);
         hal_gpio_mode(mosiPin_, PIN_MODE_NONE);
         hal_gpio_mode(misoPin_, PIN_MODE_NONE);
         hal_pin_set_function(sclkPin_, PF_NONE);
         hal_pin_set_function(mosiPin_, PF_NONE);
         hal_pin_set_function(misoPin_, PF_NONE);
+        Pinmux_Config(hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_GPIO);
+        Pinmux_Config(hal_pin_to_rtl_pin(mosiPin_), PINMUX_FUNCTION_GPIO);
+        Pinmux_Config(hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_GPIO);
 
         // Update state
         status_.state = HAL_SPI_STATE_DISABLED;
@@ -882,14 +891,14 @@ void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin) {
     hal_spi_begin_ext(spi, SPI_MODE_MASTER, pin, nullptr);
 }
 
-void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, void* reserved) {
+void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, hal_spi_config_t* spi_config) {
     if (spi >= HAL_PLATFORM_SPI_NUM) {
         return;
     }
     auto spiInstance = getInstance(spi);
     SpiConfig config = spiInstance->config();
     config.spiMode = mode;
-    spiInstance->begin(pin, config);
+    spiInstance->begin(pin, config, spi_config);
 }
 
 void hal_spi_end(hal_spi_interface_t spi) {

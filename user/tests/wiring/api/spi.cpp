@@ -209,11 +209,15 @@ test(spi_hal_backwards_compatibility)
     SPI_Mode mode = SPI_MODE_MASTER;
     HAL_SPI_TransferStatus status;
     HAL_SPI_AcquireConfig config;
+    hal_spi_config_t spi_config = {};
+    spi_config.size = sizeof(spi_config);
+    spi_config.version = HAL_SPI_CONFIG_VERSION_1;
+    spi_config.flags = (uint32_t)HAL_SPI_CONFIG_FLAG_NONE;
 
     // These APIs are exposed to user application.
     API_COMPILE(HAL_SPI_Init(spi));
     API_COMPILE(HAL_SPI_Begin(spi, 0));
-    API_COMPILE(HAL_SPI_Begin_Ext(spi, mode, 0, NULL));
+    API_COMPILE(HAL_SPI_Begin_Ext(spi, mode, 0, &spi_config));
     API_COMPILE(HAL_SPI_End(spi));
     API_COMPILE(HAL_SPI_Set_Bit_Order(spi, 0));
     API_COMPILE(HAL_SPI_Set_Data_Mode(spi, 0));
