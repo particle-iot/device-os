@@ -444,16 +444,16 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
         bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                            hal_ble_gap_is_connecting(nullptr, nullptr) ||
                            hal_ble_gap_is_connected(nullptr, nullptr);
-
         hal_ble_stack_deinit(nullptr);
+        rtwCoexPreventCleanup(0);
 
-        rtwCoexRunDisable(0);
         HAL_Delay_Milliseconds(100);
 
         wifi_off();
 
         RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, DISABLE);
         RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
+        rtwCoexCleanup(0);
 
         SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
 

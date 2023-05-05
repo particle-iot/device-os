@@ -1170,7 +1170,7 @@ int BleGap::stop() {
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
             rtwCoexRunDisable(0);
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
-            rtwCoexCleanup(0);
+            rtwCoexCleanupMutex(0);
         }
     }
     bte_deinit();

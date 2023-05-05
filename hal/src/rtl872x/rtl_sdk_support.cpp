@@ -68,6 +68,15 @@ void rtwCoexRunDisable(int idx) {
     os_thread_scheduling(true, nullptr);
 }
 
+void rtwCoexPreventCleanup(int idx) {
+    os_thread_scheduling(false, nullptr);
+    auto p = pcoex[idx];
+    if (p) {
+        p->state = 0xff00ff00;
+    }
+    os_thread_scheduling(true, nullptr);
+}
+
 void rtwCoexRunEnable(int idx) {
     os_thread_scheduling(false, nullptr);
     auto p = pcoex[idx];
@@ -77,7 +86,7 @@ void rtwCoexRunEnable(int idx) {
     os_thread_scheduling(true, nullptr);
 }
 
-void rtwCoexCleanup(int idx) {
+void rtwCoexCleanupMutex(int idx) {
     int start = idx;
     int end = idx;
     if (idx < 0) {
@@ -90,6 +99,22 @@ void rtwCoexCleanup(int idx) {
             auto m = p->mutex;
             p->mutex = nullptr;
             rtw_mutex_free(m);
+        }
+    }
+}
+
+void rtwCoexCleanup(int idx) {
+    rtwCoexCleanupMutex(idx);
+    int start = idx;
+    int end = idx;
+    if (idx < 0) {
+        start = 0;
+        end = sizeof(pcoex)/sizeof(pcoex[0]) - 1;
+    }
+    for (int i = start; i <= end; i++) {
+        if (pcoex[i]) {
+            free(pcoex[i]);
+            pcoex[i] = nullptr;
         }
     }
 }
