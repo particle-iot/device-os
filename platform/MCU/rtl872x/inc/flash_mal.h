@@ -83,6 +83,8 @@ extern "C" {
 
 #include "flash_access.h"
 
+uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize, uint32_t const *p_crc);
+
 #ifdef __cplusplus
 }
 #endif

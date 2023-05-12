@@ -20,6 +20,7 @@
 #include <limits.h>
 #include "rtl8721d.h"
 #include "km0_km4_ipc.h"
+#include "flash_mal.h"
 
 void HAL_Delay_Microseconds(uint32_t uSec) {
     DelayUs(uSec);
@@ -32,4 +33,9 @@ void HAL_Core_System_Reset_Ex(int reason, uint32_t data, void *reserved) {
 int HAL_Core_Enter_Panic_Mode(void* reserved) {
     __disable_irq();
     return 0;
+}
+
+uint32_t HAL_Core_Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize) {
+    uint32_t crc32 = Compute_CRC32(pBuffer, bufferSize, NULL);
+    return crc32;
 }
