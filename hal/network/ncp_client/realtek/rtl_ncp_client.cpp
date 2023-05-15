@@ -431,6 +431,10 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
         }
         return RTW_SUCCESS;
     }, (void*)&ctx);
+    if (rtlError) {
+        LOG(WARN,"wifi_scan_networks err %d", rtlError);
+        ctx.done = true;
+    }
     while (!ctx.done) {
         HAL_Delay_Milliseconds(100);
     }
