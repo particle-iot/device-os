@@ -114,7 +114,7 @@ void SPIClass::begin(hal_spi_mode_t mode, uint16_t ss_pin)
 {
     if (!lock())
     {
-        hal_spi_begin_ext(_spi, mode, ss_pin, NULL);
+        hal_spi_begin_ext(_spi, mode, ss_pin, nullptr);
         unlock();
     }
 }

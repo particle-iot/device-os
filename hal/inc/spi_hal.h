@@ -72,6 +72,23 @@ typedef hal_spi_dma_user_callback HAL_SPI_DMA_UserCallback;
 extern "C" {
 #endif
 
+typedef enum hal_spi_config_version_t {
+    HAL_SPI_CONFIG_VERSION_1 = 10,
+} hal_spi_config_version_t;
+
+#define HAL_SPI_CONFIG_VERSION HAL_SPI_CONFIG_VERSION_1
+
+typedef enum hal_spi_config_flag_t {
+    HAL_SPI_CONFIG_FLAG_NONE = 0x00,
+    HAL_SPI_CONFIG_FLAG_MOSI_ONLY = 0x01
+} hal_spi_config_flag_t;
+
+typedef struct hal_spi_config_t {
+    uint16_t size;
+    uint16_t version;
+    uint32_t flags;
+} hal_spi_config_t;
+
 typedef enum hal_spi_info_version_t {
     HAL_SPI_INFO_VERSION_1 = 11,
     HAL_SPI_INFO_VERSION_2 = 12
@@ -107,7 +124,7 @@ typedef struct hal_spi_acquire_config_t {
 
 void hal_spi_init(hal_spi_interface_t spi);
 void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin);
-void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, void* reserved);
+void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, const hal_spi_config_t* spi_config);
 void hal_spi_end(hal_spi_interface_t spi);
 void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order);
 void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode);

@@ -34,7 +34,7 @@ void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin)
 {
 }
 
-void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, void* reserved)
+void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, hal_spi_config_t* spi_config)
 {
 }
 
