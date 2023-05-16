@@ -225,7 +225,7 @@ public:
         return begin(csPin_, config, nullptr);
     }
 
-    int begin(uint16_t csPin, const SpiConfig& config, hal_spi_config_t* spi_config) {
+    int begin(uint16_t csPin, const SpiConfig& config, const hal_spi_config_t* spi_config) {
         AtomicSection lk;
 
         // Start address of chunk buffer should be 32-byte aligned
@@ -891,7 +891,7 @@ void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin) {
     hal_spi_begin_ext(spi, SPI_MODE_MASTER, pin, nullptr);
 }
 
-void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, hal_spi_config_t* spi_config) {
+void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, const hal_spi_config_t* spi_config) {
     if (spi >= HAL_PLATFORM_SPI_NUM) {
         return;
     }

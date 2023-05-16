@@ -211,7 +211,7 @@ test(spi_hal_backwards_compatibility)
     HAL_SPI_AcquireConfig config;
     hal_spi_config_t spi_config = {};
     spi_config.size = sizeof(spi_config);
-    spi_config.version = HAL_SPI_CONFIG_VERSION_1;
+    spi_config.version = HAL_SPI_CONFIG_VERSION;
     spi_config.flags = (uint32_t)HAL_SPI_CONFIG_FLAG_NONE;
 
     // These APIs are exposed to user application.

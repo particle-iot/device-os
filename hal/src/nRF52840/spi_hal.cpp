@@ -228,7 +228,7 @@ static inline uint8_t getNrfPinNum(uint8_t pin) {
     return NRF_GPIO_PIN_MAP(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin);
 }
 
-static void spiInit(hal_spi_interface_t spi, hal_spi_mode_t mode, hal_spi_config_t* spi_config) {
+static void spiInit(hal_spi_interface_t spi, hal_spi_mode_t mode, const hal_spi_config_t* spi_config) {
     uint32_t err_code;
 
     if (mode == SPI_MODE_MASTER) {
@@ -379,7 +379,7 @@ void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin) {
     hal_spi_begin_ext(spi, SPI_MODE_MASTER, pin, nullptr);
 }
 
-void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, hal_spi_config_t* spi_config) {
+void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, const hal_spi_config_t* spi_config) {
     if (spi >= HAL_PLATFORM_SPI_NUM) {
         return;
     }

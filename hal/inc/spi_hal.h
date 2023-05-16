@@ -124,7 +124,7 @@ typedef struct hal_spi_acquire_config_t {
 
 void hal_spi_init(hal_spi_interface_t spi);
 void hal_spi_begin(hal_spi_interface_t spi, uint16_t pin);
-void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, hal_spi_config_t* spi_config);
+void hal_spi_begin_ext(hal_spi_interface_t spi, hal_spi_mode_t mode, uint16_t pin, const hal_spi_config_t* spi_config);
 void hal_spi_end(hal_spi_interface_t spi);
 void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order);
 void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode);
