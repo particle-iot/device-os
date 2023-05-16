@@ -25,6 +25,7 @@ LOG_SOURCE_CATEGORY("ncp.rltk.client");
 #include "gpio_hal.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
+#include "ble_hal.h"
 
 #include "check.h"
 
@@ -46,6 +47,7 @@ extern "C" {
 
 #include "spark_wiring_vector.h"
 #include "rtl_system_error.h"
+#include "rtl_sdk_support.h"
 
 #undef IFNAMSIZ // AMBD SDK and LWIP both define this symbol...
 #include "wlan_hal.h"
@@ -429,6 +431,10 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
         }
         return RTW_SUCCESS;
     }, (void*)&ctx);
+    if (rtlError) {
+        LOG(WARN, "wifi_scan_networks err: %d", rtlError);
+        ctx.done = true;
+    }
     while (!ctx.done) {
         HAL_Delay_Milliseconds(100);
     }
@@ -438,7 +444,30 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     if (ctx.results.size() == 0) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
-        CHECK(off());
+        hal_ble_lock(nullptr);
+        bool advertising = hal_ble_gap_is_advertising(nullptr) ||
+                           hal_ble_gap_is_connecting(nullptr, nullptr) ||
+                           hal_ble_gap_is_connected(nullptr, nullptr);
+        hal_ble_stack_deinit(nullptr);
+        rtwCoexPreventCleanup(0);
+
+        HAL_Delay_Milliseconds(100);
+
+        wifi_off();
+
+        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, DISABLE);
+        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
+        rtwCoexCleanup(0);
+
+        SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
+
+        if (hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE) {
+            if (advertising) {
+                hal_ble_gap_start_advertising(nullptr);
+            }
+        }
+
+        hal_ble_unlock(nullptr);
     }
     return rtl_error_to_system(rtlError);
 }

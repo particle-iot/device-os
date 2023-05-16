@@ -48,6 +48,78 @@ int _rtl_sscanf(const char *buf, const char *fmt, ...);
 
 }
 
+struct pcoex_reveng {
+    uint32_t state;
+    uint32_t unknown;
+    _mutex* mutex;
+};
+
+extern "C" pcoex_reveng* pcoex[4];
+
+extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
+extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
+
+void rtwCoexRunDisable(int idx) {
+    os_thread_scheduling(false, nullptr);
+    auto p = pcoex[idx];
+    if (p && (p->state & 0x000000ff) != 0x00) {
+        p->state &= 0xffffff00;
+    }
+    os_thread_scheduling(true, nullptr);
+}
+
+void rtwCoexPreventCleanup(int idx) {
+    os_thread_scheduling(false, nullptr);
+    auto p = pcoex[idx];
+    if (p) {
+        p->state = 0xff00ff00;
+    }
+    os_thread_scheduling(true, nullptr);
+}
+
+void rtwCoexRunEnable(int idx) {
+    os_thread_scheduling(false, nullptr);
+    auto p = pcoex[idx];
+    if (p) {
+        p->state |= 0x01;
+    }
+    os_thread_scheduling(true, nullptr);
+}
+
+void rtwCoexCleanupMutex(int idx) {
+    int start = idx;
+    int end = idx;
+    if (idx < 0) {
+        start = 0;
+        end = sizeof(pcoex)/sizeof(pcoex[0]) - 1;
+    }
+    for (int i = start; i <= end; i++) {
+        auto p = pcoex[i];
+        if (p && p->mutex) {
+            auto m = p->mutex;
+            p->mutex = nullptr;
+            rtw_mutex_free(m);
+        }
+    }
+}
+
+void rtwCoexCleanup(int idx) {
+    rtwCoexCleanupMutex(idx);
+    int start = idx;
+    int end = idx;
+    if (idx < 0) {
+        start = 0;
+        end = sizeof(pcoex)/sizeof(pcoex[0]) - 1;
+    }
+    for (int i = start; i <= end; i++) {
+        if (pcoex[i]) {
+            free(pcoex[i]);
+            pcoex[i] = nullptr;
+        }
+    }
+}
+
+
 extern "C" u32 DiagPrintf(const char *fmt, ...);
 extern "C" int DiagVSprintf(char *buf, const char *fmt, const int *dp);
 extern u32 ConfigDebugBuffer;

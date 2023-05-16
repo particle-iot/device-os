@@ -86,6 +86,7 @@ extern "C" {
 #include "network/ncp/wifi/ncp.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/wifi_ncp_client.h"
+#include "rtl_sdk_support.h"
 
 using spark::Vector;
 using namespace particle;
@@ -154,33 +155,6 @@ constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 60000;
 constexpr system_tick_t BLE_ENQUEUE_TIMEOUT_MS = 5000;
 
 StaticRecursiveMutex s_bleMutex;
-
-void rtwCoexRunDisable() {
-    os_thread_scheduling(false, nullptr);
-    auto p = pcoex[0];
-    if (p && (p->state & 0x000000ff) != 0x00) {
-        p->state &= 0xffffff00;
-    }
-    os_thread_scheduling(true, nullptr);
-}
-
-void rtwCoexRunEnable() {
-    os_thread_scheduling(false, nullptr);
-    auto p = pcoex[0];
-    if (p) {
-        p->state |= 0x01;
-    }
-    os_thread_scheduling(true, nullptr);
-}
-
-void rtwCoexCleanup() {
-    auto p = pcoex[0];
-    if (p && p->mutex) {
-        auto m = p->mutex;
-        p->mutex = nullptr;
-        rtw_mutex_free(m);
-    }
-}
 
 bool isUuidEqual(const hal_ble_uuid_t* uuid1, const hal_ble_uuid_t* uuid2) {
     if (uuid1->type != uuid2->type) {
@@ -1086,7 +1060,7 @@ int BleGap::init() {
     gap_config_max_le_link_num(BLE_MAX_LINK_COUNT);
     gap_config_max_le_paired_device(BLE_MAX_LINK_COUNT);
 
-    rtwCoexRunDisable();
+    rtwCoexRunDisable(0);
 
     CHECK_TRUE(bte_init(), SYSTEM_ERROR_INTERNAL);
     bt_coex_init();
@@ -1189,14 +1163,14 @@ int BleGap::stop() {
             // but still allows rtw_coex_bt_enable to deinitialize BT coexistence.
             // Subsequently we restore the state with rtwCoexRunEnable() and rtw_coex_wifi_enable
             // will call into rtw_coex_run_enable(123, false) which will finally cleanup the mutex
-            rtwCoexRunDisable();
+            rtwCoexRunDisable(0);
             rtw_coex_bt_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
             HAL_Delay_Milliseconds(100);
-            rtwCoexRunEnable();
+            rtwCoexRunEnable(0);
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
-            rtwCoexRunDisable();
+            rtwCoexRunDisable(0);
             rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
-            rtwCoexCleanup();
+            rtwCoexCleanupMutex(0);
         }
     }
     bte_deinit();
