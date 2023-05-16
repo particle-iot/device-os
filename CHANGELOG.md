@@ -1,3 +1,17 @@
+## 5.3.2
+
+### ENHANCEMENTS
+- [rtl872x] SPI and GPIO HAL changes to support Neopixel [#2654](https://github.com/particle-iot/device-os/pull/2654)
+- [rtl872x] Implement WiFi.selectAntenna [#2651](https://github.com/particle-iot/device-os/pull/2651)
+
+### BUGFIXES
+- [nRF52] UART sleep/wakeup [#2652](https://github.com/particle-iot/device-os/pull/2652)
+- [rtl872x] Fix Wifi stack issues [#2649](https://github.com/particle-iot/device-os/pull/2649)
+- [rtl872x] BLE scanning panic [#2650](https://github.com/particle-iot/device-os/pull/2650)
+
+### INTERNAL
+- [rtl872x] Fix burnin GPIO and SPI Flash tests for photon 2 [#2653](https://github.com/particle-iot/device-os/pull/2653)
+
 ## 5.3.1
 
 ### ENHANCEMENTS
