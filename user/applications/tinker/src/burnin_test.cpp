@@ -19,10 +19,15 @@
 #if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY) 
 #include "application.h"
 
+// Needed for hal_storage_read
+#define PARTICLE_USE_UNSTABLE_API 1 
+
 #include "spark_wiring_logging.h"
 #include "spark_wiring_random.h"
 #include "spark_wiring_led.h"
 #include "random.h"
+#include "storage_hal.h"
+#include "softcrc32.h"
 
 #include "fqc_test.h"
 #include "burnin_test.h"
@@ -353,6 +358,9 @@ bool BurninTest::testSram() {
 	return test_passed;
 }
 
+const int SPI_FLASH_BUFFER_SIZE = 4096;
+static uint8_t spi_flash_buffer[SPI_FLASH_BUFFER_SIZE] = {};
+
 bool BurninTest::testSpiFlash(){
 	bool test_passed = true;
 
@@ -364,20 +372,64 @@ bool BurninTest::testSpiFlash(){
 	Vector<uint32_t> module_addresses = {};
 #endif
 
+	int hal_read_result = 0;
+
 	for (auto & address : module_addresses) {
-		module_info_t *module_header = (module_info_t*)(address);
-		uint32_t module_start =  (uint32_t)module_header->module_start_address;
-		uint32_t module_end = (uint32_t)module_header->module_end_address;
+		module_info_t module = {};
+		Log.trace("Module Addr 0x%08lx", address);
+		hal_read_result = hal_storage_read(HAL_STORAGE_ID_INTERNAL_FLASH, address, (uint8_t*)&module, sizeof(module));
+		if (hal_read_result != sizeof(module)) {
+			test_passed = false;
+			break;
+		}
+		
+		uint32_t module_start =  (uint32_t)module.module_start_address;
+		uint32_t module_end = (uint32_t)module.module_end_address;
 		uint32_t module_size = module_end - module_start;
+
 		Log.info("module start: 0x%08lX end: 0x%08lX size: 0x%08lX", module_start, module_end, module_size);
 
-		uint32_t calculated_crc = HAL_Core_Compute_CRC32((uint8_t *)module_header->module_start_address, module_size);
-		uint32_t module_crc = *(uint32_t *)(module_header->module_end_address);
+		uint32_t calculated_crc = 0;
+		uint32_t bytesRemaining = module_size;
+		uint32_t readAddress = module_start;
+		while (bytesRemaining) {
+			memset(spi_flash_buffer, 0x00, sizeof(spi_flash_buffer));
+			// Determine chunk size to read
+			uint32_t chunk_size = bytesRemaining >= SPI_FLASH_BUFFER_SIZE ? SPI_FLASH_BUFFER_SIZE : bytesRemaining;
+			
+			// Read image bytes into buff
+			Log.trace("hal_storage_read addr 0x%08lx size 0x%04lx", readAddress, chunk_size);
+			hal_read_result = hal_storage_read(HAL_STORAGE_ID_INTERNAL_FLASH, readAddress, spi_flash_buffer, chunk_size);
+
+			if (hal_read_result < 0) {
+				test_passed = false;
+				break;
+			}
+
+			// crc buffer
+			calculated_crc = particle::softCrc32(spi_flash_buffer, chunk_size, &calculated_crc);
+
+			readAddress += chunk_size;
+			bytesRemaining -= chunk_size;
+		}
+
+		if (!test_passed) {
+			// If we failed to read module data, dont bother reading the other modules
+			break;
+		}
+
+		uint32_t module_crc;
+		hal_read_result = hal_storage_read(HAL_STORAGE_ID_INTERNAL_FLASH, module_end, (uint8_t *)&module_crc, sizeof(module_crc));
+		if (hal_read_result < 0) {
+			test_passed = false;
+			break;
+		}
+
 		uint8_t * reverse_crc = (uint8_t *)&module_crc;
 		std::reverse(reverse_crc, reverse_crc + 4);
 		Log.info("calculated crc: 0x%08lX module crc: 0x%08lX", calculated_crc, module_crc);
 
-		if(calculated_crc != module_crc) {
+		if (calculated_crc != module_crc) {
 			test_passed = false;
 			// log module that failed
 			String errorMessage = String(module_start, HEX);
@@ -390,6 +442,13 @@ bool BurninTest::testSpiFlash(){
 		}
 	}
 
+	if (!test_passed && hal_read_result < 0) {
+		Log.error("hal_storage_read failed %d", hal_read_result);
+		String errorMessage = String("hal_storage_read failed ");
+		errorMessage += String(hal_read_result);
+		strlcpy(BurninErrorMessage, errorMessage.c_str(), sizeof(BurninErrorMessage));
+	}
+
 	return test_passed;
 }
 
@@ -400,5 +459,5 @@ bool BurninTest::testCpuLoad() {
 	return true;
 }
 
-}
+} // particle
 #endif // HAL_PLATFORM_RTL872X

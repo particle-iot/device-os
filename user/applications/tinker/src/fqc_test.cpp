@@ -264,7 +264,7 @@ bool FqcTest::bleScan(JSONValue req) {
 // - S4 (PA0) + WKP/D10 (PA15)
 // - A5 (PB4) + S6 (PB31)
 static Vector<uint16_t> p2_gpio_test_pins = { A5, S6, WKP, S4, D0, D1, S0, S1, S2, A1, S3, D2, D4, D5, D3, A0, A2, S5 };
-static Vector<uint16_t> photon2_gpio_test_pins = {A0, D10, A1, D7, A2, D6, A5, D5, S4, D4, S3, D3, SCK, D2, MOSI, D1, MISO, D0 };
+static Vector<uint16_t> photon2_gpio_test_pins = {A0, D10, A1, A2, A5, D5, S4, D4, S3, D3, SCK, D2, MOSI, SCL, MISO, SDA };
 
 static Vector<uint16_t> gpio_test_pins = {};
 
@@ -334,9 +334,24 @@ bool FqcTest::ioTest(JSONValue req) {
     uint16_t pinB = 0;
 
     // Pick which set of pins to use based on hardware variant
-    uint32_t model, variant;
-    hal_get_device_hw_model(&model, &variant, nullptr);
-    Log.info("Hardware Model: %lu Variant: %lu", model, variant);
+    uint32_t model, variant, efuseReadAttempts = 0;
+    int result = hal_get_device_hw_model(&model, &variant, nullptr);
+    while (result != SYSTEM_ERROR_NONE && efuseReadAttempts < 5) {
+        Log.warn("Failed to read logical efuse: %d attempt: %lu", result, efuseReadAttempts);
+        result = hal_get_device_hw_model(&model, &variant, nullptr);
+        efuseReadAttempts++;
+    }
+
+    if (result != SYSTEM_ERROR_NONE) {
+        Log.error("Could not read logical efuse");
+        writer.beginObject();
+        writer.name("pass").value(false);
+        writer.name("message").value("could not read logical efuse");
+        writer.endObject();
+        return true;
+    } else {
+        Log.info("Hardware Model: 0x%X Variant: %lu", (unsigned int)model, variant);    
+    }
 
     #if PLATFORM_ID == PLATFORM_P2
     gpio_test_pins = variant == PLATFORM_P2_PHOTON_2 ? photon2_gpio_test_pins : p2_gpio_test_pins;

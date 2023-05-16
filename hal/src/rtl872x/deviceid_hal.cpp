@@ -25,6 +25,7 @@
 #include "dct.h"
 #endif /* HAL_DEVICE_ID_NO_DCT */
 #include "module_info.h"
+#include "core_hal.h"
 
 #include <algorithm>
 #include <memory>
@@ -56,9 +57,20 @@ int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
 
     memset(efuseBuf, 0xff, LOGICAL_EFUSE_SIZE);
 
-    auto ret = EFUSE_LMAP_READ(efuseBuf);
-    CHECK_TRUE(ret == EFUSE_SUCCESS, SYSTEM_ERROR_INTERNAL);
+    bool dataConsistent = false;
+    for (int i = 0; i < 5 && !dataConsistent; i++) {
+        EFUSE_LMAP_READ(efuseBuf);
+        uint32_t crc1 = HAL_Core_Compute_CRC32(efuseBuf, LOGICAL_EFUSE_SIZE);
 
+        EFUSE_LMAP_READ(efuseBuf);
+        uint32_t crc2 = HAL_Core_Compute_CRC32(efuseBuf, LOGICAL_EFUSE_SIZE);
+
+        dataConsistent = (crc1 == crc2);
+    }
+
+    if (!dataConsistent) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
     memcpy(buf, efuseBuf + offset, size);
 
     return SYSTEM_ERROR_NONE;
