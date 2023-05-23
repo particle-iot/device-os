@@ -81,6 +81,14 @@ enum class CellularAccessTechnology {
     LTE_NB_IOT = 9
 };
 
+enum class CellularOperationMode {
+    NONE = -1,
+    PS_ONLY = 0,
+    CS_PS_MODE = 2,
+};
+
+PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CellularOperationMode);
+
 enum class CellularFunctionality {
     NONE = -1,
     MINIMUM = 0,

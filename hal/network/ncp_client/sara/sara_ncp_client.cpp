@@ -46,6 +46,8 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include <lwip/memp.h>
 #include "enumclass.h"
 
+#include "system_cache.h"
+
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
@@ -145,6 +147,9 @@ const int UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_PERIOD = 10000;
 
 const unsigned CHECK_SIM_CARD_INTERVAL = 1000;
 const unsigned CHECK_SIM_CARD_ATTEMPTS = 10;
+
+const uint32_t SYSTEM_CACHE_OPERATION_MODE_VALID = 0x97c10000;
+const uint32_t SYSTEM_CACHE_OPERATION_MODE_MASK = 0x0000ffff;
 
 } // anonymous
 
@@ -1092,6 +1097,21 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         CHECK(checkNetConfForImsi());
     }
 
+    if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        // AT+CEMODE? query can take up to 24 seconds to poll without CellularFunctionality::MINIMUM first, and we don't
+        // want to be dropping to CellularFunctionality::MINIMUM every boot / connection.
+        // Check cached value to see if we need to change CEMODE=0 (PS_ONLY).
+        CellularOperationMode cemode = CellularOperationMode::NONE;
+        getOperationModeCached(cemode); // We're not checking the result because it will return SYSTEM_ERROR_NOT_FOUND the first time through
+        if (cemode != CellularOperationMode::PS_ONLY) {
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, true /* check */));
+            CHECK_PARSER_OK(setOperationMode(CellularOperationMode::PS_ONLY, true /* check */, true /* save */));
+            CHECK(modemSoftReset()); // reset the SIM
+            CHECK(waitAtResponseFromPowerOn(state));
+            // NOTE: may need to be in minimum functionality for setting umnoprof, let configureApn() set it back to full
+        }
+    }
+
     bool reset = false;
     do {
         // Set UMNOPROF and UBANDMASK as appropriate based on SIM
@@ -1444,6 +1464,8 @@ int SaraNcpClient::initReady(ModemState state) {
     CHECK(waitAtResponse(10000));
 
     if (state != ModemState::MuxerAtChannel) {
+        // Cold Boot only, Warm Boot will skip the following block...
+
         if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
             // Change the baudrate to 921600
             CHECK(changeBaudRate(UBLOX_NCP_RUNTIME_SERIAL_BAUDRATE_U2));
@@ -1755,6 +1777,70 @@ int SaraNcpClient::checkSimReadiness(bool checkForRfReset) {
         CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL));
     }
 
+    return r;
+}
+
+int SaraNcpClient::getOperationModeCached(CellularOperationMode& cemode) {
+    uint32_t systemCacheOperationMode = 0;
+    cemode = CellularOperationMode::NONE;
+    int scResult = CHECK(particle::services::SystemCache::instance().get(particle::services::SystemCacheKey::CELLULAR_NCP_OPERATION_MODE, &systemCacheOperationMode, sizeof(systemCacheOperationMode)));
+    // LOG(INFO, "GET CACHED systemCacheOperationMode %8x, res= %d", systemCacheOperationMode, scResult);
+    (void) scResult;
+    if ((systemCacheOperationMode & SYSTEM_CACHE_OPERATION_MODE_VALID) == SYSTEM_CACHE_OPERATION_MODE_VALID) {
+        // previously checked/set before
+        systemCacheOperationMode &= SYSTEM_CACHE_OPERATION_MODE_MASK;
+        if (systemCacheOperationMode == particle::to_underlying(CellularOperationMode::PS_ONLY) ||
+                systemCacheOperationMode == particle::to_underlying(CellularOperationMode::CS_PS_MODE)) {
+            cemode = static_cast<CellularOperationMode>(systemCacheOperationMode);
+            return SYSTEM_ERROR_NONE;
+        }
+    }
+
+    return SYSTEM_ERROR_BAD_DATA;
+}
+
+int SaraNcpClient::setOperationModeCached(CellularOperationMode cemode) {
+    uint32_t systemCacheOperationMode = SYSTEM_CACHE_OPERATION_MODE_VALID | (uint32_t)cemode;
+    int scResult = particle::services::SystemCache::instance().set(particle::services::SystemCacheKey::CELLULAR_NCP_OPERATION_MODE, &systemCacheOperationMode, sizeof(systemCacheOperationMode));
+    // LOG(INFO, "SET CACHED systemCacheOperationMode %8x, res= %d", systemCacheOperationMode, scResult);
+
+    return scResult;
+}
+
+int SaraNcpClient::getOperationMode() {
+    auto respCemode = parser_.sendCommand("AT+CEMODE?");
+    int cemodeVal = -1;
+    auto cemodeValCnt = respCemode.scanf("+CEMODE: %d", &cemodeVal);
+    CHECK_PARSER_OK(respCemode.readResult());
+    CHECK_TRUE(cemodeValCnt == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+    return cemodeVal;
+}
+
+int SaraNcpClient::setOperationMode(CellularOperationMode cemode, bool check, bool save) {
+    if (ncpId() != PLATFORM_NCP_SARA_R510) {
+        return SYSTEM_ERROR_NONE; // only R510 functionality implemented, return without error.
+    }
+
+    if (check) {
+        if (cemode == CHECK(getOperationMode())) {
+            if (save) {
+                setOperationModeCached(cemode);
+            }
+            // Already in required state
+            return SYSTEM_ERROR_NONE;
+        }
+    }
+
+    int r = SYSTEM_ERROR_UNKNOWN;
+
+    r = parser_.execCommand(1000, "AT+CEMODE=%d",(int)cemode);
+
+    CHECK_PARSER_OK(r);
+
+    setOperationModeCached(cemode);
+
+    // AtResponse::Result!
     return r;
 }
 
@@ -2275,6 +2361,7 @@ int SaraNcpClient::interveneRegistration() {
                 eps_.reset();
                 registrationInterventions_++;
                 CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM));
+                CHECK_PARSER_OK(setOperationMode(CellularOperationMode::PS_ONLY, true /* check */));
                 CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL));
             }
         }
