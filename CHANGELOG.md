@@ -1,3 +1,35 @@
+## 4.1.0
+
+### FEATURES
+
+- Hardware watchdog [#2595](https://github.com/particle-iot/device-os/pull/2595) [#2626](https://github.com/particle-iot/device-os/pull/2626)
+- Server key rotation [#2570](https://github.com/particle-iot/device-os/pull/2570)
+
+### BUGFIXES
+
+- Wi-Fi/cellular network manager bugfixes [#2621](https://github.com/particle-iot/device-os/pull/2621)
+- [nRF52] UART sleep/wakeup [#2652](https://github.com/particle-iot/device-os/pull/2652)
+- [nRF52] watchdog timeout is not accurate [#2635](https://github.com/particle-iot/device-os/pull/2635)
+- [nRF52] BLE plus RTC sleep causes hardfault [#2615](https://github.com/particle-iot/device-os/pull/2615)
+- Fix inconsistent BLE state issue [#2629](https://github.com/particle-iot/device-os/pull/2629)
+- [wiring][gen3] Allow gen3 to select internal ADC reference source [#2619](https://github.com/particle-iot/device-os/pull/2619)
+- System setup and BLE threading improvements [#2587](https://github.com/particle-iot/device-os/pull/2587)
+- [quectel] Account for "eMTC" type while obtaining signal values [#2589](https://github.com/particle-iot/device-os/pull/2589)
+- Fix i2c hal deadlock [#2572](https://github.com/particle-iot/device-os/pull/2572)
+- [r510] enable PS (packet switched) Only mode for R510 modems (Boron/BSoM/ESoMX) [#2640](https://github.com/particle-iot/device-os/pull/2640) [See TAN012](https://docs.particle.io/reference/technical-advisory-notices/tan012/)
+
+### INTERNAL
+
+- [test] turn off NCP before testing wiring/watchdog [#2627](https://github.com/particle-iot/device-os/pull/2627)
+- [test] Remove manual wakeup. Hibernate + watchdog on platforms that support it [#2620](https://github.com/particle-iot/device-os/pull/2620)
+- [test] add more watchdog test cases [#2617](https://github.com/particle-iot/device-os/pull/2617)
+- [test] mailbox support and support for resets within tests [#2611](https://github.com/particle-iot/device-os/pull/2611)
+- [test] Move `no_fixture_i2c` to correct dir and symlink to `integration/wiring` [#2558](https://github.com/particle-iot/device-os/pull/2558)
+- [test] Fix listening mode tests [#2534](https://github.com/particle-iot/device-os/pull/2534)
+- [test] Ensure thread07 test executes as intended [#2622](https://github.com/particle-iot/device-os/pull/2622)
+- Protobuf defs refactor / fixes submessage encoding after nanopb 0.4.5 upgrade [#2578](https://github.com/particle-iot/device-os/pull/2578)
+- Update nanopb to 0.4.5 [#2563](https://github.com/particle-iot/device-os/pull/2563)
+
 ## 4.0.2
 
 ### BUGFIXES

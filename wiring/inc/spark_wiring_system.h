@@ -1069,7 +1069,7 @@ inline SystemHardwareInfo::SystemHardwareInfo()
     // between hal/system/wiring/etc for now it's easier to deal with it here, and we don't have that many cases
     // like this one.
     // NOTE: hal_get_device_hw_info() is not available in 5.x releases <= 5.0.0
-    if (System.versionNumber() >= SYSTEM_VERSION_v500ALPHA1 && System.versionNumber() <= SYSTEM_VERSION_v500) {
+    if (System.versionNumber() >= SYSTEM_VERSION_ALPHA(5,0,0,1) && System.versionNumber() <= SYSTEM_VERSION_DEFAULT(5, 0, 0)) {
         error_ = SYSTEM_ERROR_NOT_SUPPORTED;
     } else {
         error_ = hal_get_device_hw_info(&info_, nullptr);

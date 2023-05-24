@@ -195,12 +195,8 @@ extern "C" {
 #define SYSTEM_VERSION_v401RC1        SYSTEM_VERSION_RC(4, 0, 1, 1)
 #define SYSTEM_VERSION_v401         SYSTEM_VERSION_DEFAULT(4, 0, 1)
 #define SYSTEM_VERSION_v402         SYSTEM_VERSION_DEFAULT(4, 0, 2)
-#define SYSTEM_VERSION SYSTEM_VERSION_v402
-
-// These are required for some of the dynalib checks
-#define SYSTEM_VERSION_v500ALPHA1   SYSTEM_VERSION_ALPHA(5, 0, 0, 1)
-#define SYSTEM_VERSION_v500ALPHA2   SYSTEM_VERSION_ALPHA(5, 0, 0, 2)
-#define SYSTEM_VERSION_v500         SYSTEM_VERSION_DEFAULT(5, 0, 0)
+#define SYSTEM_VERSION_v410         SYSTEM_VERSION_DEFAULT(4, 1, 0)
+#define SYSTEM_VERSION SYSTEM_VERSION_v410
 
 /**
  * Previously we would set the least significant byte to 0 for the final release, but to make
@@ -360,6 +356,7 @@ extern "C" {
 #define SYSTEM_VERSION_401RC1
 #define SYSTEM_VERSION_401
 #define SYSTEM_VERSION_402
+#define SYSTEM_VERSION_410
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
