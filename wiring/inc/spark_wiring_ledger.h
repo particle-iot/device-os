@@ -25,27 +25,29 @@ namespace particle {
 
 class LedgerPage;
 class LedgerEntry;
+class LedgerSyncOptions;
+
+/**
+ * Ledger scope.
+ */
+enum class LedgerScope {
+    UNKNOWN, ///< Unknown scope. A sync is required to get the actual scope of the ledger.
+    DEVICE, ///< Device scope.
+    PRODUCT, ///< Product scope.
+    ORG ///< Organization scope.
+};
 
 /**
  * A ledger.
  *
  * Instances of this class cannot be created directly. Use the `Particle::ledger()` method to get
- * an instance of this class for a given ledger scope.
+ * an instance of this class.
  */
 class Ledger {
 public:
     /**
-     * Ledger scopes.
-     */
-    enum class Scope {
-        DEVICE, ///< Device scope.
-        PRODUCT, ///< Product scope.
-        ORG ///< Organization scope.
-    };
-
-    /**
-     * A callback invoked when all the linked pages of the ledger have been synchronized with the
-     * Cloud or an error occured during the synchronization.
+     * A callback invoked when all linked pages of the ledger have been synchronized with the Cloud
+     * or an error occured during the synchronization.
      *
      * @param error Error info.
      * @param userData User data.
@@ -61,27 +63,15 @@ public:
      */
     typedef void (*OnPageSyncCallback)(Error error, const char* pageName, void* userData);
     /**
-     * A callback invoked when a page has changed in the cloud replica of the ledger.
+     * A callback invoked when a page has changed in the Cloud.
      *
-     * The application needs to synchronize the changed page in order for the local replica to be
-     * updated accordingly (see `LedgerPage::sync()` and `Ledger::sync()`).
+     * The application needs to synchronize the changed page in order for the local contents of the
+     * page to be updated accordingly (see `LedgerPage::sync()` and `Ledger::sync()`).
      *
-     * @param error Error info.
      * @param pageName Page name.
      * @param userData User data.
      */
     typedef void (*OnPageChangeCallback)(const char* pageName, void* userData);
-    /**
-     * A callback invoked when a page entry has changed in the cloud replica of the ledger.
-     *
-     * The application needs to synchronize the changed page in order for the local replica to be
-     * updated accordingly (see `LedgerPage::sync()` and `Ledger::sync()`).
-     *
-     * @param error Error info.
-     * @param pageName Page name.
-     * @param userData User data.
-     */
-    typedef void (*OnEntryChangeCallback)(const char* pageName, const char* entryName, void* userData);
     /**
      * A callback invoked when a ledger error occurs.
      *
@@ -94,21 +84,22 @@ public:
      * Get a ledger page.
      *
      * When a page is accessed for the first time, it is _linked_ with its replica in the Cloud.
-     * 
+     *
      * For each linked page, the device will be receiving notifications about changes made to the
-     * page contents in the cloud replica of the ledger (see `OnPageChangeCallback` and
-     * `OnEntryChangeCallback`). Only linked pages are synchronized with the cloud.
+     * page contents in the Cloud (see `OnPageChangeCallback`).
+     *
+     * A page needs to be linked in order for it to be synchronized with the Cloud.
      *
      * The requested page is created if it doesn't exist.
      *
      * @param name Page name.
      * @return Ledger page.
      */
-    LedgerPage getPage(std::string_view name);
+    LedgerPage page(std::string_view name);
     /**
      * Delete a page.
      *
-     * The page is deleted locally and, after synchronization, in the cloud replica of the ledger.
+     * The page is deleted both locally and, after synchronization, in the Cloud.
      *
      * @param name Page name.
      */
@@ -117,8 +108,7 @@ public:
      * Unlink a page.
      *
      * Unlinking a page causes the device to unsubscribe from notifications for that page and delete
-     * its contents locally. The contents of the page in the cloud replica of the ledger is not
-     * affected.
+     * its contents locally. The contents of the page in the Cloud is not affected.
      *
      * @param name Page name.
      */
@@ -145,14 +135,12 @@ public:
     /**
      * Synchronize all linked pages.
      *
-     * This method writes the pending changes to flash and synchronizes them with the Cloud.
-     *
-     * @param updateCloud If `true`, the changes will be synchronized with the Cloud. If `false`, the
-     *        changes will be only written to flash.
+     * This method writes the pending changes to the filesystem and synchronizes the changed pages
+     * with the Cloud.
      *
      * @return 0 on success, otherwise an error code defined by `Error::Code`.
      */
-    int sync(bool updateCloud = true);
+    int sync();
     /**
      * Check if synchronization with the Cloud is in progress.
      *
@@ -160,14 +148,44 @@ public:
      */
     bool isSyncing() const;
     /**
-     * Get the scope of this ledger.
+     * Save all local changes to the filesystem.
+     *
+     * @return 0 on success, otherwise an error code defined by `Error::Code`.
+     */
+    int save();
+    /**
+     * Check if the ledger can be modified locally.
+     *
+     * @return `true` if the ledger can be modified locally, otherwise `false`.
+     */
+    bool isMutable() const;
+    /**
+     * Set the default sync options.
+     *
+     * @param options Sync options.
+     */
+    void setDefaultSyncOptions(const LedgerSyncOptions& options);
+    /**
+     * Get the default sync options.
+     *
+     * @return Sync options.
+     */
+    LedgerSyncOptions defaultSyncOptions() const;
+    /**
+     * Get the ledger name.
+     *
+     * @return Ledger name.
+     */
+    const char* name() const;
+    /**
+     * Get the ledger scope.
      *
      * @return Ledger scope.
      */
-    Scope scope() const;
+    LedgerScope scope() const;
     /**
-     * Set a callback to be invoked when all the linked pages of the ledger have been synchronized
-     * with the Cloud
+     * Set a callback to be invoked when all linked pages of the ledger have been synchronized with
+     * the Cloud
      *
      * @param callback Callback.
      * @param userData User data.
@@ -181,19 +199,12 @@ public:
      */
     void onPageSync(OnPageSyncCallback callback, void* userData = nullptr);
     /**
-     * Set a callback to be invoked when a page has changed in the cloud replica of the ledger.
+     * Set a callback to be invoked when a page has changed in the Cloud.
      *
      * @param callback Callback.
      * @param userData User data.
      */
     void onPageChange(OnPageChangeCallback callback, void* userData = nullptr);
-    /**
-     * Set a callback to be invoked when a page entry has changed in the cloud replica of the ledger.
-     *
-     * @param callback Callback.
-     * @param userData User data.
-     */
-    void onEntryChange(OnEntryChangeCallback callback, void* userData = nullptr);
     /**
      * Set a callback to be invoked when a ledger error occurs.
      *
@@ -220,7 +231,7 @@ public:
      * @param name Entry name.
      * @return Entry object.
      */
-    LedgerEntry get(std::string_view name);
+    LedgerEntry entry(std::string_view name);
     /**
      * Set the value of a page entry.
      *
@@ -228,10 +239,17 @@ public:
      * @param value Entry value
      * @return `true` if the value was set, or `false` on a memory allocation error.
      */
-    bool set(std::string_view name, int value); // Alias for get(name).setValue(value)
+    bool set(std::string_view name, int value); // Alias for entry(name).assign(value)
     bool set(std::string_view name, const char* value);
-    // ... overloads for all supported types ...
+    // TODO: Overloads for all supported types
     bool set(std::string_view name, const JsonDocument& value);
+    /**
+     * Get the value of a page entry.
+     *
+     * @param name Entry name.
+     * @return Entry value.
+     */
+    JsonVariantConst get(std::string_view name) const; // Alias for entry(name).value()
     /**
      * Remove a page entry.
      *
@@ -256,7 +274,7 @@ public:
      */
     Vector<String> entryNames() const;
     /**
-     * Convert the page to a JSON object.
+     * Convert the page contents to a JSON object.
      *
      * @return JSON object.
      */
@@ -264,14 +282,13 @@ public:
     /**
      * Synchronize the page.
      *
-     * This method writes the pending changes to flash and synchronizes them with the Cloud.
+     * This method writes the pending changes to the filesystem and synchronizes the page with the
+     * Cloud.
      *
-     * @param updateCloud If `true`, the changes will be synchronized with the Cloud. If `false`, the
-     *        changes will be only written to flash.
-     *
+     * @param options Sync options.
      * @return 0 on success, otherwise an error code defined by `Error::Code`.
      */
-    int sync(bool updateCloud = true);
+    int sync(const LedgerSyncOptions& options = LedgerSyncOptions());
     /**
      * Check if synchronization with the Cloud is in progress for this page.
      *
@@ -279,19 +296,23 @@ public:
      */
     bool isSyncing() const;
     /**
+     * Save the local changes to the filesystem.
+     *
+     * @return 0 on success, otherwise an error code defined by `Error::Code`.
+     */
+    int save();
+    /**
+     * Check if the page can be modified locally.
+     *
+     * @return `true` if the page can be modified locally, otherwise `false`.
+     */
+    bool isMutable() const;
+    /**
      * Get the page name.
      *
      * @return Page name.
      */
     const char* name() const;
-    /**
-     * Get the ledger containing this page.
-     *
-     * @return Ledger object.
-     */
-    Ledger ledger() const;
-
-    LedgerEntry operator[](std::string_view name); // Alias for get()
 
 private:
     LedgerPage();
@@ -320,27 +341,15 @@ public:
     };
 
     /**
-     * Get the entry name.
-     *
-     * @return Entry name.
-     */
-    const char* name() const;
-    /**
-     * Get the page containing this entry.
-     *
-     * @return Page object.
-     */
-    LedgerPage page() const;
-    /**
      * Set the entry value.
      *
      * @param value Entry value.
      * @return `true` if the value was assigned, or `false` on a memory allocation error.
      */
-    bool setValue(int value);
-    bool setValue(const char* value);
-    // ...
-    bool setValue(const JsonDocument& value);
+    bool assign(int value);
+    bool assign(const char* value);
+    // TODO: Overloads for all supported types
+    bool assign(const JsonDocument& value);
 
     /**
      * Get the entry value.
@@ -359,7 +368,7 @@ public:
     // Convenience methods
     int toInt() const; // Alias for as<int>()
     String toString() const; // Alias for as<String>()
-    // ...
+    // TODO: Overloads for all supported types
     DynamicJsonDocument toJson() const; // Alias for as<DynamicJsonDocument>()
 
     /**
@@ -398,90 +407,206 @@ public:
      */
     bool isEmpty() const;
 
-    // Numeric operations
-
-    /**
-     * Increment the numeric value of the entry.
-     *
-     * If the entry is not numeric, it is set to 1 as if it was 0 prior to the operation.
-     *
-     * @param value Value to add to the current entry value.
-     * @return New entry value.
-     */
-    int increment(int value = 1);
-    /**
-     * Decrement the numeric value of the entry.
-     *
-     * If the entry is not numeric, it is set to -1 as if it was 0 prior to the operation.
-     *
-     * @param value Value to substract from the current entry value.
-     * @return New entry value.
-     */
-    int decrement(int value = 1);
-
     // Array operations
 
-    /**
-     * Prepend a value to the array.
-     *
-     * If the entry is not an array, it is set to an empty array prior to the operation.
-     * 
-     * @param value Value to add to the array.
-     * @return `true` if the value was added, or `false` on a memory allocation error.
-     */
-    bool pushFront(int value);
-    bool pushFront(const char* value);
-    // ...
     /**
      * Append a value to the array.
      *
      * If the entry is not an array, it is set to an empty array prior to the operation.
-     * 
+     *
+     * Note that this operation is not atomic and the resulting value of this entry may be
+     * overwritten during a synchronization as if the entry was assigned a new value rather than
+     * modified in place.
+     *
      * @param value Value to add to the array.
      * @return `true` if the value was added, or `false` on a memory allocation error.
      */
     bool pushBack(int value);
     bool pushBack(const char* value);
-    // ...
+    // TODO: Overloads for all supported types
+    /**
+     * Prepend a value to the array.
+     *
+     * If the entry is not an array, it is set to an empty array prior to the operation.
+     *
+     * Note that this operation is not atomic and the resulting value of this entry may be
+     * overwritten during a synchronization as if the entry was assigned a new value rather than
+     * modified in place.
+     * 
+     * @param value Value to add to the array.
+     * @return `true` if the value was added, or `false` on a memory allocation error.
+     */
+    void pushFront(int value);
+    void pushFront(const char* value);
+    // TODO: Overloads for all supported types
     /**
      * Remove the first element of the array.
      *
      * If the entry is not an array, it is set to an empty array.
+     *
+     * Note that this operation is not atomic and the resulting value of this entry may be
+     * overwritten during a synchronization as if the entry was assigned a new value rather than
+     * modified in place.
      */
-    void popFront();
+    void popBack();
     /**
      * Remove the last element of the array.
      *
      * If the entry is not an array, it is set to an empty array.
+     *
+     * Note that this operation is not atomic and the resulting value of this entry may be
+     * overwritten during a synchronization as if the entry was assigned a new value rather than
+     * modified in place.
      */
-    void popBack();
+    void popFront();
     /**
      * Get the first element of the array.
      *
-     * If the entry is not an array, the returned value is null-initialized (TBD).
+     * @return Value of the first element.
      */
-    JsonVariantConst front() const; // TODO: Use a custom variant class
+    JsonVariantConst front() const;
     /**
      * Get the last element of the array.
      *
-     * If the entry is not an array, the returned value is null-initialized (TBD).
+     * @return Value of the last element.
      */
-    JsonVariantConst back() const;
+    JsonVariantConst last() const;
+    /**
+     * Get the element at the given index of the array.
+     *
+     * @param index Index of the element.
+     * @return Value of the element.
+     */
+    JsonVariantConst at(int index) const;
+
+    // Object operations
+
+    /**
+     * Set a property of the object.
+     *
+     * If the entry is not an object, it is set to an empty object prior to the operation.
+     *
+     * Note that this operation is not atomic and the resulting value of this entry may be
+     * overwritten during a synchronization as if the entry was assigned a new value rather than
+     * modified in place.
+     *
+     * @param name Property name.
+     * @param value Property value.
+     * @return `true` if the property was set, or `false` on a memory allocation error.
+     */
+    bool set(std::string_view name, int value);
+    bool set(std::string_view name, const char* value);
+    // TODO: Overloads for all supported types
+    /**
+     * Get a property of the object.
+     *
+     * @param name Property name.
+     * @return Property value.
+     */
+    JsonVariantCont get(std::string_view name) const;
+    /**
+     * Remove a property of the object.
+     *
+     * Note that this operation is not atomic and the resulting value of this entry may be
+     * overwritten during a synchronization as if the entry was assigned a new value rather than
+     * modified in place.
+     *
+     * @param name Property name.
+     */
+    void remove(std::string_view name);
+    /**
+     * Check if the object has a property with the given name.
+     *
+     * @param name Property name.
+     * @return `true` if the property exists, otherwise `false`.
+     */
+    bool has(std::string_view name) const;
+
+    /**
+     * Get the entry name.
+     *
+     * @return Entry name.
+     */
+    const char* name() const;
+    /**
+     * Check if the entry can be modified locally.
+     *
+     * @return `true` if the entry can be modified locally, otherwise `false`.
+     */
+    bool isMutable() const;
 
     // Conversion operators
 
     operator int() const;
     operator String() const;
-    // ...
+    // TODO: Overloads for all supported types
     operator DynamicJsonDocument() const;
 
     LedgerEntry& operator=(int value);
     LedgerEntry& operator=(const char* value);
-    // ...
+    // TODO: Overloads for all supported types
     LedgerEntry& operator=(const JsonDocument& value);
 
 private:
     LedgerEntry();
+};
+
+/**
+ * Ledger synchronization options.
+ */
+class LedgerSyncOptions {
+public:
+    /**
+     * Construct an options object.
+     */
+    LedgerSyncOptions() :
+            strategy_(Strategy::DEFAULT) {
+    }
+    /**
+     * Indicate whether the local changes should be preferred when synchronizing the page contents.
+     *
+     * @param enabled `true` if local changes should be preferred, otherwise `false`.
+     * @return A reference to this options object.
+     */
+    LedgerSyncOptions& preferLocalChanges(bool enabled) {
+        strategy_ = enabled ? Strategy::PREFER_LOCAL_CHANGES : Strategy::PREFER_REMOTE_CHANGES;
+        return *this;
+    }
+    /**
+     * Check whether the local changes should be preferred when synchronizing the page contents.
+     *
+     * @return `true` if local changes should be preferred, otherwise `false`.
+     */
+    bool preferLocalChanges() const {
+        return strategy_ == Strategy::PREFER_LOCAL_CHANGES;
+    }
+    /**
+     * Indicate whether the remote changes should be preferred when synchronizing the page contents.
+     *
+     * @param enabled `true` if remote changes should be preferred, otherwise `false`.
+     * @return A reference to this options object.
+     */
+    LedgerSyncOptions& preferRemoteChanges(bool enabled) {
+        strategy_ = enabled ? Strategy::PREFER_REMOTE_CHANGES : Strategy::PREFER_LOCAL_CHANGES;
+        return *this;
+    }
+    /**
+     * Check whether the remote changes should be preferred when synchronizing the page contents.
+     *
+     * @return `true` if remote changes should be preferred, otherwise `false`.
+     */
+    bool preferRemoteChanges() const {
+        return strategy_ == Strategy::PREFER_REMOTE_CHANGES;
+    }
+
+private:
+    enum class Strategy {
+        DEFAULT = 0,
+        PREFER_LOCAL_CHANGES = 1,
+        PREFER_REMOTE_CHANGES = 2
+    };
+
+    Strategy strategy_;
 };
 
 } // namespace particle
