@@ -37,6 +37,7 @@
 #define PB_WIFI(_name) particle_ctrl_wifi_##_name
 
 #define CONFIG_FILE "/sys/wifi_config.bin"
+#define CONFIG_FILE_TMP "/sys/wifi_config.bin.tmp"
 
 LOG_SOURCE_CATEGORY("ncp.mgr")
 
@@ -123,9 +124,15 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
     CHECK(filesystem_mount(fs));
     // Open configuration file
     lfs_file_t file = {};
-    CHECK(openFile(&file, CONFIG_FILE, LFS_O_WRONLY));
+    CHECK(openFile(&file, CONFIG_FILE_TMP, LFS_O_WRONLY));
+    bool ok = false;
     SCOPE_GUARD({
         lfs_file_close(&fs->instance, &file);
+        if (ok) {
+            lfs_rename(&fs->instance, CONFIG_FILE_TMP, CONFIG_FILE);
+        } else {
+            lfs_remove(&fs->instance, CONFIG_FILE_TMP);
+        }
     });
     int r = lfs_file_truncate(&fs->instance, &file, 0);
     CHECK_TRUE(r == LFS_ERR_OK, SYSTEM_ERROR_FILE);
@@ -157,6 +164,7 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
     };
     CHECK(encodeMessageToFile(&file, PB(WifiConfig_fields), &pbConf));
     LOG(TRACE, "Updated file: %s", CONFIG_FILE);
+    ok = true;
     return 0;
 }
 
