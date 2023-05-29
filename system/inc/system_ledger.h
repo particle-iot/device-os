@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+
 /**
  * Ledger API version.
  */
@@ -25,8 +28,8 @@
 /**
  * Ledger instance.
  */
-struct ledger_handle;
-typedef struct ledger_handle ledger_handle;
+struct ledger_instance;
+typedef struct ledger_instance ledger_instance;
 
 /**
  * Page instance.
@@ -44,22 +47,30 @@ typedef struct ledger_stream ledger_stream;
  * Callback invoked when a page has been synchronized with the Cloud or an error occured during
  * the synchronization.
  *
- * @param ladger Ledger instance.
+ * @param ledger Ledger instance.
  * @param page_name Page name.
  * @param error 0 if the synchronization succeeded, otherwise an error code defined by the `system_error_t` enum.
- * @param user_data User data provided when the callback was registered.
+ * @param user_arg User argument provided when the callback was registered.
  */
-typedef void (*ledger_page_sync_callback)(ledger_handle* ledger, const char* page_name, int error, void* user_data);
+typedef void (*ledger_page_sync_callback)(ledger_instance* ledger, const char* page_name, int error, void* user_arg);
 
 /**
  * Callback invoked when a page has changed in the Cloud.
  *
- * @param ladger Ledger instance.
+ * @param ledger Ledger instance.
  * @param page_name Page name.
  * @param flags Flags defined by the `ledger_page_change_flag` enum.
- * @param user_data User data provided when the callback was registered.
+ * @param user_arg User argument provided when the callback was registered.
  */
-typedef void (*ledger_page_change_callback)(ledger_handle* ledger, const char* page_name, int flags, void* user_data);
+typedef void (*ledger_page_change_callback)(ledger_instance* ledger, const char* page_name, int flags, void* user_arg);
+
+/**
+ * Callback invoked to destroy the application-specific data associated with a ledger or page instance.
+ *
+ * @param app_data Application data.
+ * @param user_arg User argument provided when the callback was registered.
+ */
+typedef void (*ledger_destroy_app_data_callback)(void* app_data, void* user_arg);
 
 /**
  * Ledger scope.
@@ -75,8 +86,7 @@ typedef enum ledger_scope {
  * Page info flags.
  */
 typedef enum ledger_page_info_flag {
-    LEDGER_PAGE_INFO_FLAG_CHANGED = 0x01, ///< Page has changes that have not yet been synchronized with the Cloud.
-    LEDGER_PAGE_INFO_FLAG_SYNCING = 0x02 ///< Synchronization is in progress for this page.
+    LEDGER_PAGE_INFO_FLAG_SYNCING = 0x01 ///< Synchronization is in progress for this page.
 } ledger_page_info_flag;
 
 /**
@@ -90,7 +100,7 @@ typedef enum ledger_page_change_flag {
  * Synchronization strategy.
  */
 typedef enum ledger_sync_strategy {
-    LEDGER_SYNC_STRATEGY_DEFAULT = 0, ///< Default strategy.
+    LEDGER_SYNC_STRATEGY_DEFAULT = 0, ///< Use the default strategy.
     LEDGER_SYNC_STRATEGY_PREFER_LOCAL_CHANGES = 1, ///< Prefer local changes.
     LEDGER_SYNC_STRATEGY_PREFER_REMOTE_CHANGES = 2 ///< Prefer remote changes.
 } ledger_sync_strategy;
@@ -112,11 +122,32 @@ typedef struct ledger_callbacks {
 } ledger_callbacks;
 
 /**
+ * Synchronization options.
+ */
+typedef struct ledger_sync_options {
+    int strategy; ///< Synchronization strategy as defined by the `ledger_sync_strategy` enum.
+} ledger_sync_options;
+
+/**
  * Ledger info.
  */
 typedef struct ledger_info {
     const char* name; ///< Ledger name.
     int scope; ///< Ledger scope.
+    /**
+     * Names of the linked pages.
+     *
+     * The calling code is responsible for allocating this array as well as for freeing the memory
+     * allocated by the system for each of the array elements.
+     */
+    const char** linked_page_names;
+    /**
+     * Number of the linked pages.
+     *
+     * The system returns at most this number of elements in the `linked_page_names` array and sets
+     * this field to the actual number of linked pages of this ledger.
+     */
+    size_t linked_page_count;
 } ledger_info;
 
 /**
@@ -125,24 +156,16 @@ typedef struct ledger_info {
 typedef struct ledger_page_info {
     const char* name; ///< Page name.
     size_t data_size; ///< Size of the page contents.
-    const char* checksum; ///< Checksum of the page contents.
-    size_t checksum_size; ///< Size of the checksum.
+    uint64_t last_sync_time; ///< Last time the page was synchronized with the Cloud, in milliseconds since the Unix epoch.
     int flags; ///< Flags defined by the `ledger_page_info_flag` enum.
 } ledger_page_info;
-
-/**
- * Synchronization options.
- */
-typedef struct ledger_sync_options {
-    int strategy; ///< Synchronization strategy as defined by the `ledger_sync_strategy` enum.
-} ledger_sync_options;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * Open a ledger.
+ * Get a ledger instance.
  *
  * @param ledger[out] Ledger instance.
  * @param name Ledger name.
@@ -150,15 +173,77 @@ extern "C" {
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_open(ledger_handle** ledger, const char* name, int api_version, void* reserved);
+int ledger_get_instance(ledger_instance** ledger, const char* name, int api_version, void* reserved);
 
 /**
- * Close a ledger.
+ * Increment a ledger's reference count.
  *
  * @param ledger Ledger instance.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void ledger_close(ledger_handle* ledger, void* reserved);
+void ledger_add_ref(ledger_instance* ledger, void* reserved);
+
+/**
+ * Decrement a ledger's reference count.
+ *
+ * The ledger instance is destroyed when its reference count reaches 0.
+ *
+ * @param ledger Ledger instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_release(ledger_instance* ledger, void* reserved);
+
+/**
+ * Lock a ledger instance.
+ *
+ * This function can be called multiple times in the same thread with the same ledger instance.
+ * In order to unlock the instance, `ledger_unlock()` needs to be called a matching number of times.
+ *
+ * @param ledger Ledger instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_lock(ledger_instance* ledger, void* reserved);
+
+/**
+ * Unlock a ledger instance.
+ *
+ * @param ledger Ledger instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_unlock(ledger_instance* ledger, void* reserved);
+
+/**
+ * Set ledger callbacks.
+ *
+ * @param ledger Ledger instance.
+ * @param callbacks Ledger callbacks.
+ * @param user_arg User argument to be passed to the callbacks.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* user_arg, void* reserved);
+
+/**
+ * Attach application-specific data to a ledger instance.
+ *
+ * The ledger instance takes ownership over the application data.
+ *
+ * @param ledger Ledger instance.
+ * @param app_data Application data.
+ * @param destroy Callback to be invoked to destroy the application data.
+ * @param user_arg User argument to be passed to the callback.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_set_app_data(ledger_instance* ledger, void* app_data, ledger_destroy_app_data_callback destroy,
+        void* user_arg, void* reserved);
+
+/**
+ * Get application-specific data associated with a ledger instance.
+ *
+ * @param ledger Ledger instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return Application data.
+ */
+void* ledger_get_app_data(ledger_instance* ledger, void* reserved);
 
 /**
  * Get ledger info.
@@ -168,18 +253,7 @@ void ledger_close(ledger_handle* ledger, void* reserved);
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_get_info(ledger_handle* ledger, ledger_info* info, void* reserved);
-
-/**
- * Set ledger callbacks.
- *
- * @param ledger Ledger instance.
- * @param callbacks Ledger callbacks.
- * @param user_data User data to be passed to the callbacks.
- * @param reserved Reserved argument. Must be set to `NULL`.
- * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
- */
-int ledger_set_callbacks(ledger_handle* ledger, const ledger_callbacks* callbacks, void* user_data, void* reserved);
+int ledger_get_info(ledger_instance* ledger, ledger_info* info, void* reserved);
 
 /**
  * Set default synchronization options.
@@ -189,10 +263,10 @@ int ledger_set_callbacks(ledger_handle* ledger, const ledger_callbacks* callback
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_set_default_sync_options(ledger_handle* ledger, const ledger_sync_options* options, void* reserved);
+int ledger_set_default_sync_options(ledger_instance* ledger, const ledger_sync_options* options, void* reserved);
 
 /**
- * Open a page.
+ * Get a page instance.
  *
  * @param[out] page Page instance.
  * @param ledger Ledger instance.
@@ -200,15 +274,76 @@ int ledger_set_default_sync_options(ledger_handle* ledger, const ledger_sync_opt
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_open_page(ledger_page_handle** page, ledger_handle* ledger, const char* name, void* reserved);
+int ledger_get_page(ledger_page** page, ledger_instance* ledger, const char* name, void* reserved);
 
 /**
- * Close a page.
+ * Increment a page's reference count.
  *
  * @param page Page instance.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void ledger_close_page(ledger_page_handle* page, void* reserved);
+void ledger_add_page_ref(ledger_page* ledger, void* reserved);
+
+/**
+ * Decrement a page's reference count.
+ *
+ * The page instance is destroyed when its reference count reaches 0.
+ *
+ * @param page Page instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_release_page(ledger_page* page, void* reserved);
+
+/**
+ * Lock a page instance.
+ *
+ * This function can be called multiple times in the same thread with the same page instance.
+ * In order to unlock the instance, `page_unlock()` needs to be called a matching number of times.
+ *
+ * @param page Page instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_lock_page(ledger_page* page, void* reserved);
+
+/**
+ * Unlock a page instance.
+ *
+ * @param page Page instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_unlock_page(ledger_page* page, void* reserved);
+
+/**
+ * Get the instance of the ledger containing a given page.
+ *
+ * @param page Page instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return Ledger instance.
+ */
+ledger_instance* ledger_get_page_ledger(ledger_page* page, void* reserved);
+
+/**
+ * Attach application-specific data to a page instance.
+ *
+ * The page instance takes ownership over the application data.
+ *
+ * @param page Page instance.
+ * @param app_data Application data.
+ * @param destroy Callback to be invoked to destroy the application data.
+ * @param user_arg User argument to be passed to the callback.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_set_page_app_data(ledger_page* page, void* app_data, ledger_destroy_app_data_callback destroy,
+        void* user_arg, void* reserved);
+
+/**
+ * Get application-specific data associated with a page instance.
+ *
+ * @param page Page instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return Application data.
+ */
+void* ledger_get_page_app_data(ledger_page* page, void* reserved);
 
 /**
  * Get page info.
@@ -218,7 +353,7 @@ void ledger_close_page(ledger_page_handle* page, void* reserved);
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_get_page_info(ledger_page_handle* page, ledger_page_info* info, void* reserved);
+int ledger_get_page_info(ledger_page* page, ledger_page_info* info, void* reserved);
 
 /**
  * Synchronize a page.
@@ -228,7 +363,7 @@ int ledger_get_page_info(ledger_page_handle* page, ledger_page_info* info, void*
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 if the synchronization started, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_sync_page(ledger_page_handle* page, const ledger_sync_options* options, void* reserved);
+int ledger_sync_page(ledger_page* page, const ledger_sync_options* options, void* reserved);
 
 /**
  * Unlink a page.
@@ -237,7 +372,7 @@ int ledger_sync_page(ledger_page_handle* page, const ledger_sync_options* option
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_unlink_page(ledger_page_handle* page, void* reserved);
+int ledger_unlink_page(ledger_page* page, void* reserved);
 
 /**
  * Remove a page.
@@ -246,7 +381,7 @@ int ledger_unlink_page(ledger_page_handle* page, void* reserved);
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_remove_page(ledger_page_handle* page, void* reserved);
+int ledger_remove_page(ledger_page* page, void* reserved);
 
 /**
  * Open a page for reading or writing.
@@ -257,7 +392,7 @@ int ledger_remove_page(ledger_page_handle* page, void* reserved);
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_open_page_stream(ledger_stream** stream, ledger_page_handle* page, int mode, void* reserved);
+int ledger_open_page(ledger_stream** stream, ledger_page* page, int mode, void* reserved);
 
 /**
  * Close a stream.
