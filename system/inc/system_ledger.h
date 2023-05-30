@@ -68,9 +68,8 @@ typedef void (*ledger_page_change_callback)(ledger_instance* ledger, const char*
  * Callback invoked to destroy the application-specific data associated with a ledger or page instance.
  *
  * @param app_data Application data.
- * @param user_arg User argument provided when the callback was registered.
  */
-typedef void (*ledger_destroy_app_data_callback)(void* app_data, void* user_arg);
+typedef void (*ledger_destroy_app_data_callback)(void* app_data);
 
 /**
  * Ledger scope.
@@ -118,7 +117,9 @@ typedef enum ledger_stream_mode {
  */
 typedef struct ledger_callbacks {
     ledger_page_sync_callback page_sync; ///< Callback invoked when a page has been synchronized with the Cloud.
+    void* page_sync_arg; ///< User argument to be passed to the `page_sync` callback.
     ledger_page_change_callback page_change; ///< Callback invoked when a page has changed in the Cloud.
+    void* page_change_arg; ///< User argument to be passed to the `page_change` callback.
 } ledger_callbacks;
 
 /**
@@ -132,7 +133,7 @@ typedef struct ledger_sync_options {
  * Ledger info.
  */
 typedef struct ledger_info {
-    const char* name; ///< Ledger name.
+    const char* name; ///< Ledger name. If set to `NULL`, this is the device ledger.
     int scope; ///< Ledger scope.
     /**
      * Names of the linked pages.
@@ -168,7 +169,7 @@ extern "C" {
  * Get a ledger instance.
  *
  * @param ledger[out] Ledger instance.
- * @param name Ledger name.
+ * @param name Ledger name. If set to `NULL`, the device ledger is returned.
  * @param api_version API version. Must be set to the value of `LEDGER_API_VERSION`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
@@ -217,10 +218,9 @@ void ledger_unlock(ledger_instance* ledger, void* reserved);
  *
  * @param ledger Ledger instance.
  * @param callbacks Ledger callbacks.
- * @param user_arg User argument to be passed to the callbacks.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* user_arg, void* reserved);
+void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* reserved);
 
 /**
  * Attach application-specific data to a ledger instance.
@@ -230,11 +230,10 @@ void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callb
  * @param ledger Ledger instance.
  * @param app_data Application data.
  * @param destroy Callback to be invoked to destroy the application data.
- * @param user_arg User argument to be passed to the callback.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void ledger_set_app_data(ledger_instance* ledger, void* app_data, ledger_destroy_app_data_callback destroy,
-        void* user_arg, void* reserved);
+        void* reserved);
 
 /**
  * Get application-specific data associated with a ledger instance.
@@ -330,11 +329,10 @@ ledger_instance* ledger_get_page_ledger(ledger_page* page, void* reserved);
  * @param page Page instance.
  * @param app_data Application data.
  * @param destroy Callback to be invoked to destroy the application data.
- * @param user_arg User argument to be passed to the callback.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void ledger_set_page_app_data(ledger_page* page, void* app_data, ledger_destroy_app_data_callback destroy,
-        void* user_arg, void* reserved);
+        void* reserved);
 
 /**
  * Get application-specific data associated with a page instance.

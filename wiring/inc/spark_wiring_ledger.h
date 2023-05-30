@@ -19,6 +19,7 @@
 
 #include <ArduinoJson.hpp>
 
+#include "spark_wiring_vector.h"
 #include "spark_wiring_error.h"
 
 namespace particle {
@@ -521,6 +522,12 @@ public:
      * @return `true` if the property exists, otherwise `false`.
      */
     bool has(std::string_view name) const;
+    /**
+     * Get the list of object properties.
+     *
+     * @return List of object properties.
+     */
+    Vector<String> propertyNames() const;
 
     /**
      * Get the entry name.
