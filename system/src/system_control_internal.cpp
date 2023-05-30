@@ -188,7 +188,11 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         break;
     }
     case CTRL_REQUEST_START_LISTENING: {
-        setResult(req, network_listen_sync(0, 0, 0));
+        int r = network_listen_sync(0, 0, 0);
+        if (r == SYSTEM_ERROR_INVALID_STATE && network_listening(0, 0, nullptr)) {
+            r = SYSTEM_ERROR_NONE;
+        }
+        setResult(req, r);
         break;
     }
     case CTRL_REQUEST_STOP_LISTENING: {
