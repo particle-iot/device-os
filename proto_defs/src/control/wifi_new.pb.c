@@ -9,7 +9,7 @@
 PB_BIND(particle_ctrl_wifi_Credentials, particle_ctrl_wifi_Credentials, AUTO)
 
 
-PB_BIND(particle_ctrl_wifi_JoinNewNetworkRequest, particle_ctrl_wifi_JoinNewNetworkRequest, AUTO)
+PB_BIND(particle_ctrl_wifi_JoinNewNetworkRequest, particle_ctrl_wifi_JoinNewNetworkRequest, 2)
 
 
 PB_BIND(particle_ctrl_wifi_JoinNewNetworkReply, particle_ctrl_wifi_JoinNewNetworkReply, AUTO)

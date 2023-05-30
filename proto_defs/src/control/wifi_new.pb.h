@@ -5,6 +5,7 @@
 #define PB_PARTICLE_CTRL_WIFI_CONTROL_WIFI_NEW_PB_H_INCLUDED
 #include <pb.h>
 #include "control/extensions.pb.h"
+#include "control/network.pb.h"
 
 #if PB_PROTO_HEADER_VERSION != 40
 #error Regenerate this file with the current version of nanopb generator.
@@ -137,6 +138,7 @@ typedef struct _particle_ctrl_wifi_JoinNewNetworkRequest {
     particle_ctrl_wifi_JoinNewNetworkRequest_bssid_t bssid; /* Network address */
     particle_ctrl_wifi_Security security; /* Network security */
     particle_ctrl_wifi_Credentials credentials; /* Network credentials */
+    particle_ctrl_Interface interface_config; /* Network interface configuration (IP, mask, DNS etc) */
 } particle_ctrl_wifi_JoinNewNetworkRequest;
 
 
@@ -156,7 +158,7 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define particle_ctrl_wifi_Credentials_init_default {_particle_ctrl_wifi_CredentialsType_MIN, {{NULL}, NULL}}
-#define particle_ctrl_wifi_JoinNewNetworkRequest_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default}
+#define particle_ctrl_wifi_JoinNewNetworkRequest_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default, particle_ctrl_Interface_init_default}
 #define particle_ctrl_wifi_JoinNewNetworkReply_init_default {0}
 #define particle_ctrl_wifi_JoinKnownNetworkRequest_init_default {{{NULL}, NULL}}
 #define particle_ctrl_wifi_JoinKnownNetworkReply_init_default {0}
@@ -173,7 +175,7 @@ extern "C" {
 #define particle_ctrl_wifi_ScanNetworksReply_init_default {{{NULL}, NULL}}
 #define particle_ctrl_wifi_ScanNetworksReply_Network_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, 0, 0}
 #define particle_ctrl_wifi_Credentials_init_zero {_particle_ctrl_wifi_CredentialsType_MIN, {{NULL}, NULL}}
-#define particle_ctrl_wifi_JoinNewNetworkRequest_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero}
+#define particle_ctrl_wifi_JoinNewNetworkRequest_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero, particle_ctrl_Interface_init_zero}
 #define particle_ctrl_wifi_JoinNewNetworkReply_init_zero {0}
 #define particle_ctrl_wifi_JoinKnownNetworkRequest_init_zero {{{NULL}, NULL}}
 #define particle_ctrl_wifi_JoinKnownNetworkReply_init_zero {0}
@@ -213,6 +215,7 @@ extern "C" {
 #define particle_ctrl_wifi_JoinNewNetworkRequest_bssid_tag 2
 #define particle_ctrl_wifi_JoinNewNetworkRequest_security_tag 3
 #define particle_ctrl_wifi_JoinNewNetworkRequest_credentials_tag 4
+#define particle_ctrl_wifi_JoinNewNetworkRequest_interface_config_tag 5
 
 /* Struct field encoding specification for nanopb */
 #define particle_ctrl_wifi_Credentials_FIELDLIST(X, a) \
@@ -225,10 +228,12 @@ X(a, CALLBACK, SINGULAR, STRING,   password,          2)
 X(a, CALLBACK, SINGULAR, STRING,   ssid,              1) \
 X(a, STATIC,   SINGULAR, BYTES,    bssid,             2) \
 X(a, STATIC,   SINGULAR, UENUM,    security,          3) \
-X(a, STATIC,   SINGULAR, MESSAGE,  credentials,       4)
+X(a, STATIC,   SINGULAR, MESSAGE,  credentials,       4) \
+X(a, STATIC,   SINGULAR, MESSAGE,  interface_config,   5)
 #define particle_ctrl_wifi_JoinNewNetworkRequest_CALLBACK pb_default_field_callback
 #define particle_ctrl_wifi_JoinNewNetworkRequest_DEFAULT NULL
 #define particle_ctrl_wifi_JoinNewNetworkRequest_credentials_MSGTYPE particle_ctrl_wifi_Credentials
+#define particle_ctrl_wifi_JoinNewNetworkRequest_interface_config_MSGTYPE particle_ctrl_Interface
 
 #define particle_ctrl_wifi_JoinNewNetworkReply_FIELDLIST(X, a) \
 

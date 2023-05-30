@@ -179,7 +179,7 @@ typedef struct _particle_ctrl_SystemResetRequest {
 
 typedef struct _particle_ctrl_GetDeviceIdReply { 
     /* Device ID (hex-encoded) */
-    char id[24]; 
+    char id[25]; 
 } particle_ctrl_GetDeviceIdReply;
 
 typedef struct _particle_ctrl_GetDeviceModeReply { 
@@ -208,7 +208,7 @@ typedef struct _particle_ctrl_GetSecurityKeyRequest {
 
 typedef struct _particle_ctrl_GetSerialNumberReply { 
     /* Device serial ID */
-    char serial[16]; 
+    char serial[17]; 
 } particle_ctrl_GetSerialNumberReply;
 
 typedef struct _particle_ctrl_GetServerAddressReply { 
@@ -239,7 +239,7 @@ typedef struct _particle_ctrl_IsDeviceSetupDoneReply {
 } particle_ctrl_IsDeviceSetupDoneReply;
 
 typedef struct _particle_ctrl_SetClaimCodeRequest { 
-    char code[64]; /* Claim code */
+    char code[65]; /* Claim code */
 } particle_ctrl_SetClaimCodeRequest;
 
 /* Set flag for setup being done */
@@ -260,7 +260,7 @@ typedef struct _particle_ctrl_SetSecurityKeyRequest {
 
 typedef struct _particle_ctrl_SetServerAddressRequest { 
     particle_ctrl_ServerProtocolType protocol; /* Protocol type */
-    char address[64]; /* Server address */
+    char address[65]; /* Server address */
     int32_t port; /* Port number */
 } particle_ctrl_SetServerAddressRequest;
 
@@ -270,8 +270,8 @@ typedef struct _particle_ctrl_SetServerProtocolRequest {
 
 /* Set the SoftAP SSID prefix and suffix */
 typedef struct _particle_ctrl_SetSoftApSsidRequest { 
-    char prefix[32]; /* SSID prefix */
-    char suffix[16]; /* SSID sufix */
+    char prefix[33]; /* SSID prefix */
+    char suffix[17]; /* SSID sufix */
 } particle_ctrl_SetSoftApSsidRequest;
 
 /* Set the mode to enter when in safe mode */
@@ -807,7 +807,7 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 /* particle_ctrl_SetSecurityKeyRequest_size depends on runtime parameters */
 /* particle_ctrl_GetSecurityKeyReply_size depends on runtime parameters */
 /* particle_ctrl_GetServerAddressReply_size depends on runtime parameters */
-#define particle_ctrl_GetDeviceIdReply_size      25
+#define particle_ctrl_GetDeviceIdReply_size      26
 #define particle_ctrl_GetDeviceIdRequest_size    0
 #define particle_ctrl_GetDeviceModeReply_size    2
 #define particle_ctrl_GetDeviceModeRequest_size  0
@@ -815,7 +815,7 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 #define particle_ctrl_GetFeatureRequest_size     2
 #define particle_ctrl_GetNcpFirmwareVersionRequest_size 0
 #define particle_ctrl_GetSecurityKeyRequest_size 2
-#define particle_ctrl_GetSerialNumberReply_size  17
+#define particle_ctrl_GetSerialNumberReply_size  18
 #define particle_ctrl_GetSerialNumberRequest_size 0
 #define particle_ctrl_GetServerAddressRequest_size 2
 #define particle_ctrl_GetServerProtocolReply_size 2
@@ -828,18 +828,18 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 #define particle_ctrl_IsDeviceSetupDoneReply_size 2
 #define particle_ctrl_IsDeviceSetupDoneRequest_size 0
 #define particle_ctrl_SetClaimCodeReply_size     0
-#define particle_ctrl_SetClaimCodeRequest_size   65
+#define particle_ctrl_SetClaimCodeRequest_size   66
 #define particle_ctrl_SetDeviceSetupDoneReply_size 0
 #define particle_ctrl_SetDeviceSetupDoneRequest_size 2
 #define particle_ctrl_SetFeatureReply_size       0
 #define particle_ctrl_SetFeatureRequest_size     4
 #define particle_ctrl_SetSecurityKeyReply_size   0
 #define particle_ctrl_SetServerAddressReply_size 0
-#define particle_ctrl_SetServerAddressRequest_size 78
+#define particle_ctrl_SetServerAddressRequest_size 79
 #define particle_ctrl_SetServerProtocolReply_size 0
 #define particle_ctrl_SetServerProtocolRequest_size 2
 #define particle_ctrl_SetSoftApSsidReply_size    0
-#define particle_ctrl_SetSoftApSsidRequest_size  50
+#define particle_ctrl_SetSoftApSsidRequest_size  52
 #define particle_ctrl_SetStartupModeReply_size   0
 #define particle_ctrl_SetStartupModeRequest_size 2
 #define particle_ctrl_StartListeningModeReply_size 0
