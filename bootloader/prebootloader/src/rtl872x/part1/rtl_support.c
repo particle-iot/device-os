@@ -345,6 +345,8 @@ void rtlLowLevelInit() {
         BKUP_Set(BKUP_REG0, BIT_SW_SIM_RSVD);
     }
 
+    BKUP_Write(BKUP_REG7, (uint32_t)&flash_init_para);
+
     // Copy-paste from app_start()
 
     SystemCoreClockUpdate();
