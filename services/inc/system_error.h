@@ -88,7 +88,20 @@
         (PPP_CONNECT_TIME, "Max connect time reached", -1710), \
         (PPP_LOOPBACK, "Loopback detected", -1711), \
         (PPP_NO_CARRIER_IN_NETWORK_PHASE, "Received NO CARRIER in network phase", -1712), \
-        (INVALID_SERVER_SETTINGS, "Server settings are invalid", -1800) /* -1899 ... -1800: Miscellaneous system errors */
+        (INVALID_SERVER_SETTINGS, "Server settings are invalid", -1800), /* -1899 ... -1800: Miscellaneous system errors */ \
+        (FILESYSTEM, "Filesystem error", -1900), /* -1999 ... -1900: Filesystem errors */ \
+        (FILESYSTEM_IO, "Filesystem IO error", -1901), \
+        (FILESYSTEM_CORRUPT, "Filesystem corrupted", -1902), \
+        (FILESYSTEM_NOENT, "No directory entry", -1903), \
+        (FILESYSTEM_EXIST, "Filesystem entry already exists", -1904), \
+        (FILESYSTEM_NOTDIR, "Filesystem entry is not a directory", -1905), \
+        (FILESYSTEM_ISDIR, "Filesystem entry is a directory", -1906), \
+        (FILESYSTEM_NOTEMPTY, "Directory is not empty", -1907), \
+        (FILESYSTEM_BADF, "Bad file number", -1908), \
+        (FILESYSTEM_FBIG, "File too large", -1909), \
+        (FILESYSTEM_INVAL, "Invalid parameter", -1910), \
+        (FILESYSTEM_NOSPC, "No space left in the filesystem", -1911), \
+        (FILESYSTEM_NOMEM, "Memory allocation error", -1912)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

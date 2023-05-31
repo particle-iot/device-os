@@ -63,13 +63,24 @@ int filesystem_dump_info(filesystem_t* fs);
 int filesystem_lock(filesystem_t* fs);
 int filesystem_unlock(filesystem_t* fs);
 
+int filesystem_to_system_error(int error);
+
 #ifdef __cplusplus
 }
+
+#define CHECK_FS(_expr) \
+        ({ \
+            auto r = _expr; \
+            if (r < 0) { \
+                return filesystem_to_system_error(r); \
+            } \
+            r; \
+        })
 
 namespace particle { namespace fs {
 
 struct FsLock {
-    FsLock(filesystem_t* fs)
+    explicit FsLock(filesystem_t* fs = filesystem_get_instance(nullptr))
             : fs_(fs) {
         lock();
     }
@@ -84,6 +95,10 @@ struct FsLock {
 
     void unlock() {
         filesystem_unlock(fs_);
+    }
+
+    lfs_t* instance() const {
+        return &fs_->instance;
     }
 
 private:
