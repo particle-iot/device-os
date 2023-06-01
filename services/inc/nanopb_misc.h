@@ -39,8 +39,8 @@ bool pb_ostream_from_buffer_ex(pb_ostream_t* stream, pb_byte_t *buf, size_t bufs
 bool pb_istream_from_buffer_ex(pb_istream_t* stream, const pb_byte_t *buf, size_t bufsize, void* reserved);
 
 #if HAL_PLATFORM_FILESYSTEM
-bool pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved);
-bool pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, void* reserved);
+int pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved);
+int pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, int size, void* reserved);
 #endif // HAL_PLATFORM_FILESYSTEM
 
 #ifdef SERVICES_NO_NANOPB_LIB

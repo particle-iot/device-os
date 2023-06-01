@@ -17,6 +17,8 @@
 
 #include "nanopb_misc.h"
 
+#include "system_error.h"
+
 #include <stdlib.h>
 
 #if HAL_PLATFORM_FILESYSTEM
@@ -96,39 +98,41 @@ bool pb_istream_from_buffer_ex(pb_istream_t* stream, const pb_byte_t *buf, size_
 
 #if HAL_PLATFORM_FILESYSTEM
 
-bool pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved) {
+int pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved) {
     if (!stream || !file) {
-        return false;
-    }
-    filesystem_t* const fs = filesystem_get_instance(NULL);
-    if (!fs) {
-        return false;
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     memset(stream, 0, sizeof(pb_ostream_t));
     stream->callback = write_file_callback;
     stream->state = file;
     stream->max_size = SIZE_MAX;
-    return true;
+    return 0;
 }
 
-bool pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, void* reserved) {
+int pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, int size, void* reserved) {
     if (!stream || !file) {
-        return false;
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    filesystem_t* const fs = filesystem_get_instance(NULL);
-    if (!fs) {
-        return false;
-    }
-    const lfs_soff_t pos = lfs_file_tell(&fs->instance, file);
-    const lfs_soff_t size = lfs_file_size(&fs->instance, file);
-    if (pos < 0 || size < 0) {
-        return false;
+    if (size < 0) {
+        filesystem_t* fs = filesystem_get_instance(NULL);
+        if (!fs) {
+            return SYSTEM_ERROR_FILESYSTEM;
+        }
+        lfs_soff_t pos = lfs_file_tell(&fs->instance, file);
+        if (pos < 0) {
+            return filesystem_to_system_error(pos);
+        }
+        lfs_soff_t sz = lfs_file_size(&fs->instance, file);
+        if (sz < 0) {
+            return filesystem_to_system_error(sz);
+        }
+        size = sz - pos;
     }
     memset(stream, 0, sizeof(pb_istream_t));
     stream->callback = read_file_callback;
     stream->state = file;
-    stream->bytes_left = size - pos;
-    return true;
+    stream->bytes_left = size;
+    return 0;
 }
 
 #endif // HAL_PLATFORM_FILESYSTEM

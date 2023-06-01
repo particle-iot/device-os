@@ -125,13 +125,13 @@ int dumpFile(const char* path) {
     return 0;
 }
 
-int decodeMessageFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg) {
+int decodeMessageFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg, int size) {
     const auto strm = pb_istream_init(nullptr);
     CHECK_TRUE(strm, SYSTEM_ERROR_NO_MEMORY);
     SCOPE_GUARD({
         pb_istream_free(strm, nullptr);
     });
-    CHECK_TRUE(pb_istream_from_file(strm, file, nullptr), SYSTEM_ERROR_FILE);
+    CHECK(pb_istream_from_file(strm, file, size, nullptr));
     CHECK_TRUE(pb_decode(strm, desc, msg), SYSTEM_ERROR_FILE);
     return 0;
 }
@@ -142,7 +142,7 @@ int encodeMessageToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* 
     SCOPE_GUARD({
         pb_ostream_free(strm, nullptr);
     });
-    CHECK_TRUE(pb_ostream_from_file(strm, file, nullptr), SYSTEM_ERROR_FILE);
+    CHECK(pb_ostream_from_file(strm, file, nullptr));
     CHECK_TRUE(pb_encode(strm, desc, msg), SYSTEM_ERROR_FILE);
     return 0;
 }
