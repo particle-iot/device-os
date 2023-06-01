@@ -46,7 +46,8 @@ typedef enum module_info_flags_t {
                                                 // need to be skipped when copying/writing this module into its target location.
     MODULE_INFO_FLAG_COMPRESSED         = 0x02, // Indicates that the module data is compressed.
     MODULE_INFO_FLAG_COMBINED           = 0x04,  // Indicates that this module is combined with another module.
-    MODULE_INFO_FLAG_ENCRYPTED          = 0x08
+    MODULE_INFO_FLAG_ENCRYPTED          = 0x08,
+    MODULE_INFO_FLAG_PREFIX_EXTENSIONS  = 0x10, // Indicates that this module contains extensions after prefix
 } module_info_flags_t;
 
 /**
@@ -63,6 +64,7 @@ typedef struct module_info_t {
     uint8_t  module_index;              /* distinguish modules of the same type */
     module_dependency_t dependency;
     module_dependency_t dependency2;
+    // Extensions may go here if indicated by MODULE_INFO_FLAG_PREFIX_EXTENSIONS and terminated with MODULE_INFO_EXTENSION_END
 } __attribute__((__packed__)) module_info_t;
 
 #define STATIC_ASSERT_MODULE_INFO_OFFSET(field, expected) PARTICLE_STATIC_ASSERT( module_info_##field, offsetof(module_info_t, field)==expected || sizeof(void*)!=4)
@@ -93,6 +95,7 @@ PARTICLE_STATIC_ASSERT(module_info_size, sizeof(module_info_t) == 24 || sizeof(v
 #define MOD_FUNC_SETTINGS        6
 #define MOD_FUNC_NCP_FIRMWARE    7
 #define MOD_FUNC_RADIO_STACK     8
+#define MOD_FUNC_ASSET           9
 
 typedef enum module_function_t {
     MODULE_FUNCTION_NONE = MOD_FUNC_NONE,
@@ -121,8 +124,11 @@ typedef enum module_function_t {
     /* Radio stack module */
     MODULE_FUNCTION_RADIO_STACK = MOD_FUNC_RADIO_STACK,
 
+    /* Asset */
+    MODULE_FUNCTION_ASSET = MOD_FUNC_ASSET,
+
     /* Maximum supported value */
-    MODULE_FUNCTION_MAX = MODULE_FUNCTION_RADIO_STACK
+    MODULE_FUNCTION_MAX = MODULE_FUNCTION_ASSET
 
 } module_function_t;
 
@@ -206,9 +212,13 @@ typedef struct compressed_module_header {
 } __attribute__((__packed__)) compressed_module_header;
 
 typedef enum module_info_extension_type_t {
-    MODULE_INFO_EXTENSION_END = 0x0000,
+    MODULE_INFO_EXTENSION_END = 0x0000, // May be padded with size reflecting the padding amount
     MODULE_INFO_EXTENSION_PRODUCT_DATA = 0x0001,
     MODULE_INFO_EXTENSION_DYNAMIC_LOCATION = 0x0002,
+    MODULE_INFO_EXTENSION_DEPENDENCY = 0x0003,
+    MODULE_INFO_EXTENSION_HASH = 0x0010,
+    MODULE_INFO_EXTENSION_NAME = 0x0011,
+    MODULE_INFO_EXTENSION_ASSET_DEPENDENCY = 0x0012,
     MODULE_INFO_EXTENSION_INVALID = 0xffff
 } __attribute__((__packed__)) module_info_extension_type_t;
 
@@ -233,9 +243,51 @@ typedef struct module_info_dynamic_location_ext_t {
     const void* dynalib_load_address;
     const void* dynalib_start_address;
 } __attribute__((packed)) module_info_dynamic_location_ext_t;
+
+typedef struct module_info_dependency_ext_t {
+    module_info_extension_t ext;
+    uint8_t module_function;
+    uint8_t module_index;
+    uint16_t module_version;
+    uint32_t target_id; /* Additional module target identifier (e.g. NCP id) */
+} __attribute__((packed)) module_info_dependency_ext_t;
+
+typedef enum module_info_hash_type_t {
+    MODULE_INFO_HASH_TYPE_SHA256 = 0
+} module_info_hash_type_t;
+
+typedef struct module_info_hash_t {
+    uint8_t type; // hash type (0 - SHA256)
+    uint8_t length; // hash length
+    uint8_t hash[32]; // This can be extended/resized later if required, for simplicity fixed size
+} __attribute__((packed)) module_info_hash_t;
+
+typedef struct module_info_hash_ext_t {
+    module_info_extension_t ext;
+    module_info_hash_t hash;
+} __attribute__((packed)) module_info_hash_ext_t;
+
+typedef struct module_info_name_ext_t {
+    module_info_extension_t ext;
+    char name[]; // variable-sized, ext.length should reflect the actual size
+} __attribute__((packed)) module_info_name_ext_t;
+
+typedef struct module_info_asset_dependency_ext_t {
+    module_info_extension_t ext;
+    module_info_hash_t hash;
+    char name[];
+} __attribute__((packed)) module_info_asset_dependency_ext_t;
+
 /*
  * The structure is a suffix to the module, placed before the end symbol
  */
+typedef struct module_info_suffix_base_t {
+    // Extensions are upwards from here
+    uint16_t reserved;
+    uint8_t sha[32];
+    uint16_t size;
+} __attribute__((packed)) module_info_suffix_base_t;
+
 // FIXME: for now this struct needs to be kept the same size between modules
 // otherwise this may cause problems with flash_mal and other subsystems.
 // Going forward we should refactor things and have an "exported" version of the
