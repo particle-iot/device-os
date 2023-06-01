@@ -122,7 +122,7 @@ inline bool Buffer::operator==(const Buffer& other) const {
         return false;
     }
     if (size() > 0 && data() && other.data()) {
-        return memcpy(buffer_.get(), other.buffer_.get(), size());
+        return !memcmp(buffer_.get(), other.buffer_.get(), size());
     }
     return false;
 }
