@@ -237,7 +237,7 @@ String & String::copy(const __FlashStringHelper *pstr, unsigned int length) {
 void String::move(String &rhs)
 {
 	if (buffer) {
-		if (capacity >= rhs.len) {
+		if (capacity >= rhs.len && rhs.buffer) {
 			strcpy(buffer, rhs.buffer);
 			len = rhs.len;
 			rhs.len = 0;
