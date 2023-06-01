@@ -92,6 +92,10 @@ int InputStream::skipAll(size_t size, unsigned timeout) {
     return size;
 }
 
+int InputStream::seek(size_t offset) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
 int OutputStream::writeAll(const char* data, size_t size, unsigned timeout) {
     const auto end = data + size;
     Timer t(timeout);

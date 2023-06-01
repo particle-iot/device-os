@@ -48,7 +48,7 @@ extern "C" {
 int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output output, void* user_data);
 void inflate_destroy(inflate_ctx* ctx);
 
-void inflate_reset(inflate_ctx* ctx);
+int inflate_reset(inflate_ctx* ctx);
 
 int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned flags);
 
