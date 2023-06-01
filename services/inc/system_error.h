@@ -42,6 +42,7 @@
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
         (FILE, "File error", -225), \
+        (FILENAME_TOO_LONG, "Filename too long", -226), \
         (NETWORK, "Network error", -230), \
         (PROTOCOL, "Protocol error", -240), \
         (INTERNAL, "Internal error", -250), \
@@ -101,7 +102,11 @@
         (FILESYSTEM_FBIG, "File too large", -1909), \
         (FILESYSTEM_INVAL, "Invalid parameter", -1910), \
         (FILESYSTEM_NOSPC, "No space left in the filesystem", -1911), \
-        (FILESYSTEM_NOMEM, "Memory allocation error", -1912)
+        (FILESYSTEM_NOMEM, "Memory allocation error", -1912), \
+        (LEDGER, "Ledger error", -2000), /* -2099 ... -2000: Ledger errors */ \
+        (LEDGER_NOT_FOUND, "Ledger not found", -2001), \
+        (LEDGER_INVALID_FORMAT, "Invalid format of ledger data", -2002), \
+        (LEDGER_UNSUPPORTED_FORMAT, "Unsupported format of ledger data", -2003)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

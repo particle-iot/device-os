@@ -42,8 +42,17 @@ public:
 
     void release() {
         if (count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-            delete this;
+            destroy();
         }
+    }
+
+    int refCount() const {
+        return count_.load(std::memory_order_relaxed);
+    }
+
+protected:
+    virtual void destroy() {
+        delete this;
     }
 
 private:
@@ -72,8 +81,8 @@ public:
     }
 
     RefCountPtr(RefCountPtr&& ptr) :
-            p_(ptr.p_) {
-        ptr.p_ = nullptr;
+            RefCountPtr() {
+        swap(*this, ptr);
     }
 
     ~RefCountPtr() {
@@ -100,42 +109,17 @@ public:
         return *p_;
     }
 
+    RefCountPtr& operator=(RefCountPtr ptr) {
+        swap(*this, ptr);
+        return *this;
+    }
+
     explicit operator bool() const {
         return p_;
     }
 
-    RefCountPtr& operator=(const RefCountPtr& ptr) {
-        if (ptr != *this) {
-            if (p_) {
-                p_->release();
-            }
-            p_ = ptr.p_;
-            if (p_) {
-                p_->addRef();
-            }
-        }
-        return *this;
-    }
-
-    RefCountPtr& operator=(RefCountPtr&& ptr) {
-        if (ptr != *this) {
-            if (p_) {
-                p_->release();
-            }
-            p_ = ptr.p_;
-            ptr.p_ = nullptr;
-        }
-        return *this;
-    }
-
     static RefCountPtr<T> wrap(T* ptr) {
         return RefCountPtr(ptr, false /* addRef */);
-    }
-
-    friend void swap(RefCountPtr& ptr1, RefCountPtr& ptr2) {
-        auto p = ptr1.p_;
-        ptr1.p_ = ptr2.p_;
-        ptr2.p_ = p;
     }
 
 private:
@@ -146,6 +130,12 @@ private:
         if (addRef && p_) {
             p_->addRef();
         }
+    }
+
+    friend void swap(RefCountPtr& ptr1, RefCountPtr& ptr2) {
+        auto p = ptr1.p_;
+        ptr1.p_ = ptr2.p_;
+        ptr2.p_ = p;
     }
 };
 

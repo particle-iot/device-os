@@ -5,19 +5,18 @@ package particle.firmware;
 import "common/ledger.proto";
 
 /**
+ * Page info.
+ */
+message LedgerPageInfo {
+  string name = 1; ///< Page name.
+  optional fixed64 updated_at = 2; ///< Last time the page was updated, in milliseconds since the Unix epoch.
+  bool deleted = 3; ///< Whether the page was deleted locally.
+}
+
+/**
  * Ledger info.
  */
 message LedgerInfo {
   optional string name = 1; ///< Ledger name. Not set for a device ledger.
   particle.ledger.LedgerScope scope = 2; ///< Ledger scope.
-}
-
-/**
- * Page data.
- */
-message PageData {
-  string name = 1; ///< Page name.
-  bytes data = 2; ///< MessagePack-encoded page contents.
-  bytes checksum = 3; ///< Page checksum.
-  bool deleted = 4; ///< Whether the page was deleted.
 }

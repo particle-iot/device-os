@@ -26,61 +26,61 @@ using namespace particle;
 using namespace particle::system;
 
 int ledger_get_instance(ledger_instance** ledger, const char* name, int apiVersion, void* reserved) {
-    RefCountPtr<Ledger> lp;
-    CHECK(LedgerManager::instance()->initLedger(name, apiVersion, lp));
-    *ledger = reinterpret_cast<ledger_instance*>(lp.unwrap()); // Transfer ownership to the caller
+    RefCountPtr<Ledger> lr;
+    CHECK(LedgerManager::instance()->initLedger(name, apiVersion, lr));
+    *ledger = reinterpret_cast<ledger_instance*>(lr.unwrap()); // Transfer ownership to the caller
     return 0;
 }
 
 void ledger_add_ref(ledger_instance* ledger, void* reserved) {
-    auto lp = reinterpret_cast<Ledger*>(ledger);
-    lp->addRef();
+    auto lr = reinterpret_cast<Ledger*>(ledger);
+    lr->addRef();
 }
 
 void ledger_release(ledger_instance* ledger, void* reserved) {
     if (ledger) {
-        auto lp = reinterpret_cast<Ledger*>(ledger);
-        lp->release();
+        auto lr = reinterpret_cast<Ledger*>(ledger);
+        lr->release();
     }
 }
 
 void ledger_lock(ledger_instance* ledger, void* reserved) {
-    auto lp = reinterpret_cast<Ledger*>(ledger);
-    lp->lock();
+    auto lr = reinterpret_cast<Ledger*>(ledger);
+    lr->lock();
 }
 
 void ledger_unlock(ledger_instance* ledger, void* reserved) {
-    auto lp = reinterpret_cast<Ledger*>(ledger);
-    lp->unlock();
+    auto lr = reinterpret_cast<Ledger*>(ledger);
+    lr->unlock();
 }
 
 void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* reserved) {
-    auto lp = reinterpret_cast<Ledger*>(ledger);
-    lp->setCallbacks(callbacks->page_sync, callbacks->page_sync_arg, callbacks->page_change, callbacks->page_change_arg);
+    auto lr = reinterpret_cast<Ledger*>(ledger);
+    lr->setCallbacks(callbacks->page_sync, callbacks->page_sync_arg, callbacks->page_change, callbacks->page_change_arg);
 }
 
 void ledger_set_app_data(ledger_instance* ledger, void* appData, ledger_destroy_app_data_callback destroy,
         void* reserved) {
-    auto lp = reinterpret_cast<Ledger*>(ledger);
-    lp->setAppData(appData, destroy);
+    auto lr = reinterpret_cast<Ledger*>(ledger);
+    lr->setAppData(appData, destroy);
 }
 
 void* ledger_get_app_data(ledger_instance* ledger, void* reserved) {
-    auto lp = reinterpret_cast<Ledger*>(ledger);
-    return lp->appData();
+    auto lr = reinterpret_cast<Ledger*>(ledger);
+    return lr->appData();
 }
 
 int ledger_get_info(ledger_instance* ledger, ledger_info* info, void* reserved) {
-    auto lp = reinterpret_cast<Ledger*>(ledger);
-    lp->lock();
+    auto lr = reinterpret_cast<Ledger*>(ledger);
+    lr->lock();
     SCOPE_GUARD({
-        lp->unlock();
+        lr->unlock();
     });
-    info->name = lp->name();
-    info->scope = lp->scope();
+    info->name = lr->name();
+    info->scope = lr->scope();
     if (info->linked_page_names && info->linked_page_count > 0) {
         Vector<CString> names;
-        CHECK(lp->getLinkedPageNames(names));
+        CHECK(lr->getLinkedPageNames(names));
         auto count = std::min<size_t>(names.size(), info->linked_page_count);
         for (size_t i = 0; i < count; ++i) {
             info->linked_page_names[i] = names.at(i).unwrap(); // Transfer ownership to the caller
@@ -143,10 +143,6 @@ int ledger_open_page(ledger_stream** stream, ledger_page* page, int mode, void* 
 }
 
 void ledger_close_stream(ledger_stream* stream, void* reserved) {
-}
-
-int ledger_flush_stream(ledger_stream* stream, void* reserved) {
-    return 0;
 }
 
 int ledger_read(ledger_stream* stream, char* data, size_t size, void* reserved) {

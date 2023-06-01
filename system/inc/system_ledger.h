@@ -401,15 +401,6 @@ int ledger_open_page(ledger_stream** stream, ledger_page* page, int mode, void* 
 void ledger_close_stream(ledger_stream* stream, void* reserved);
 
 /**
- * Flush a stream.
- *
- * @param stream Stream instance.
- * @param reserved Reserved argument. Must be set to `NULL`.
- * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
- */
-int ledger_flush_stream(ledger_stream* stream, void* reserved);
-
-/**
  * Read from a stream.
  *
  * @param stream Stream instance.

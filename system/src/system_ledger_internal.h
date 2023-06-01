@@ -43,12 +43,9 @@ public:
             apiVersion_(0) {
     }
 
-    ~Ledger() {
-        destroy();
-    }
+    ~Ledger();
 
-    int init(const char* name, ledger_scope scope, int apiVersion);
-    void destroy();
+    int init(const char* name, int apiVersion);
 
     int getLinkedPageNames(Vector<CString>& names) const;
 
@@ -56,16 +53,9 @@ public:
             ledger_page_change_callback pageChangeCallback, void* pageChangeArg);
 
     void setAppData(void* data, ledger_destroy_app_data_callback destroy);
+    void* appData() const;
 
-    void* appData() const {
-        std::lock_guard lock(mutex_);
-        return appData_;
-    }
-
-    ledger_scope scope() const {
-        std::lock_guard lock(mutex_);
-        return scope_;
-    }
+    ledger_scope scope() const;
 
     const char* name() const {
         // The name is immutable so no locking is needed
@@ -80,29 +70,41 @@ public:
         mutex_.unlock();
     }
 
+protected:
+    void destroy() override; // RefCount<Ledger>
+
 private:
     Vector<CString> linkedPageNames_; // Names of linked pages
     Vector<LedgerPage*> pages_; // Instantiated pages
     CString name_; // Ledger name
     mutable StaticRecursiveMutex mutex_; // Ledger lock
+
     // Ledger callbacks
     ledger_page_sync_callback pageSyncCallback_;
     void* pageSyncArg_;
     ledger_page_change_callback pageChangeCallback_;
     void* pageChangeArg_;
+
     void* appData_; // Application data
     ledger_destroy_app_data_callback destroyAppData_; // Destructor for the application data
+
     ledger_scope scope_; // Ledger scope
     int apiVersion_; // API version
+
+    int loadLedgerInfo();
 };
 
 class LedgerManager {
 public:
-    int initLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger);
-
-    void disposeLedger(const char* name);
+    LedgerManager() :
+            devLedger_(nullptr),
+            inited_(false) {
+    }
 
     int init();
+
+    int initLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger);
+    void disposeLedger(Ledger* ledger);
 
     static LedgerManager* instance();
 
@@ -110,6 +112,7 @@ private:
     Vector<Ledger*> sharedLedgers_; // Instantiated product and organization ledgers
     Ledger* devLedger_; // Device ledger
     mutable StaticRecursiveMutex mutex_; // Manager lock
+    bool inited_;
 };
 
 } // namespace particle::system
