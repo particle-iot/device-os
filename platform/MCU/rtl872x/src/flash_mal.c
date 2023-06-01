@@ -257,14 +257,48 @@ error:
     return false;
 }
 
+int calculate_prefix_size(flash_device_t source, uint32_t sourceAddress, uint32_t length) {
+    if (length < sizeof(module_info_t)) {
+        return -1;
+    }
+
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(&info, source, sourceAddress, NULL) != SYSTEM_ERROR_NONE) {
+        return -1;
+    }
+
+    size_t prefix_size = sizeof(module_info_t);
+
+
+    if (info.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS) {
+        size_t pos = prefix_size;
+        while (pos < length) {
+            module_info_extension_t ext = {};
+            if (!flash_read(source, sourceAddress + pos, (uint8_t*)&ext, sizeof(ext))) {
+                return -1;
+            }
+            pos += ext.length;
+            if (ext.type == MODULE_INFO_EXTENSION_END) {
+                break;
+            }
+        }
+        prefix_size = pos;
+    }
+    return prefix_size;
+}
+
 static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, size_t size, compressed_module_header* header) {
-    if (size < sizeof(module_info_t) + sizeof(compressed_module_header)) {
+    int prefix_size = calculate_prefix_size(dev, addr, size);
+    if (prefix_size <= 0) {
         return false;
     }
-    if (!flash_read(dev, addr + sizeof(module_info_t), (uint8_t*)header, sizeof(compressed_module_header))) {
+    if (size < prefix_size + sizeof(compressed_module_header)) {
         return false;
     }
-    if (header->size > sizeof(compressed_module_header) && size < sizeof(module_info_t) + header->size) {
+    if (!flash_read(dev, addr + prefix_size, (uint8_t*)header, sizeof(compressed_module_header))) {
+        return false;
+    }
+    if (header->size > sizeof(compressed_module_header) && size < (size_t)prefix_size + header->size) {
         return false;
     }
     if (header->method != 0) { // Raw Deflate
@@ -335,6 +369,10 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
                      flash_device_t destinationDeviceID, uint32_t destinationAddress,
                      uint32_t length, uint8_t module_function, uint8_t flags) {
     size_t dest_size = length;
+    int prefix_size = calculate_prefix_size(sourceDeviceID, sourceAddress, length);
+    if (prefix_size <= 0) {
+        return FLASH_ACCESS_RESULT_ERROR;
+    }
 #if HAS_COMPRESSED_OTA
     compressed_module_header comp_header = { 0 };
     if (flags & MODULE_COMPRESSED) {
@@ -356,20 +394,20 @@ int FLASH_CopyMemory(flash_device_t sourceDeviceID, uint32_t sourceAddress,
     if (flags & MODULE_COMPRESSED) {
 #if HAS_COMPRESSED_OTA
         // Skip the module info and compressed data headers
-        if (length < sizeof(module_info_t) + comp_header.size + 2 /* Prefix size */ + 4 /* CRC-32 */) { // Sanity check
+        if (length < (size_t)prefix_size + comp_header.size + 2 /* Prefix size */ + 4 /* CRC-32 */) { // Sanity check
             return FLASH_ACCESS_RESULT_BADARG;
         }
-        sourceAddress += sizeof(module_info_t) + comp_header.size;
-        length -= sizeof(module_info_t) + comp_header.size + 4;
+        sourceAddress += prefix_size + comp_header.size;
+        length -= prefix_size + comp_header.size + 4;
         // Determine where the compressed data ends
-        uint16_t prefix_size = 0;
-        if (!flash_read(sourceDeviceID, sourceAddress + length - 2, (uint8_t*)&prefix_size, 2)) {
+        uint16_t suffix_size = 0;
+        if (!flash_read(sourceDeviceID, sourceAddress + length - 2, (uint8_t*)&suffix_size, 2)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
-        if (length < prefix_size) {
+        if (length < suffix_size) {
             return FLASH_ACCESS_RESULT_BADARG;
         }
-        length -= prefix_size;
+        length -= suffix_size;
         if (!flash_decompress(sourceDeviceID, sourceAddress, length, destinationDeviceID, destinationAddress, dest_size)) {
             return FLASH_ACCESS_RESULT_ERROR;
         }
