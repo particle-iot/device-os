@@ -37,8 +37,13 @@ extern "C" {
 #define FILESYSTEM_FIRST_BLOCK  (sFLASH_FILESYSTEM_FIRST_PAGE)
 #define FILESYSTEM_LOOKAHEAD    (128)
 
+typedef enum filesystem_instance_t {
+    FILESYSTEM_INSTANCE_DEFAULT = 0,
+    FILESYSTEM_INSTANCE_ASSET_STORAGE = 1
+} filesystem_instance_t;
+
 /* FIXME */
-typedef struct {
+typedef struct filesystem_t {
     uint16_t version;
     uint32_t size;
 
@@ -53,11 +58,14 @@ typedef struct {
     uint8_t lookahead_buffer[FILESYSTEM_LOOKAHEAD / 8] __attribute__((aligned(4)));
     uint8_t file_buffer[FILESYSTEM_PROG_SIZE] __attribute__((aligned(4)));
 #endif /* LFS_NO_MALLOC */
+
+    filesystem_instance_t index;
+    uintptr_t first_block;
 } filesystem_t;
 
 int filesystem_mount(filesystem_t* fs);
 int filesystem_unmount(filesystem_t* fs);
-filesystem_t* filesystem_get_instance(void* reserved);
+filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved);
 int filesystem_dump_info(filesystem_t* fs);
 
 int filesystem_lock(filesystem_t* fs);

@@ -250,7 +250,7 @@ int _open(const char* pathname, int flags, ... /* arg */) {
         errno = EINVAL;
         return -1;
     }
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.create(pathname);
@@ -275,7 +275,7 @@ int _open(const char* pathname, int flags, ... /* arg */) {
 }
 
 int _write(int fd, const void* buf, size_t count) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get(fd);
@@ -288,7 +288,7 @@ int _write(int fd, const void* buf, size_t count) {
 }
 
 int _read(int fd, void* buf, size_t count) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get(fd);
@@ -301,7 +301,7 @@ int _read(int fd, void* buf, size_t count) {
 }
 
 int _fstat(int fd, struct stat* buf) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get(fd);
@@ -314,7 +314,7 @@ int _fstat(int fd, struct stat* buf) {
 }
 
 int _close(int fd) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get(fd);
@@ -409,7 +409,7 @@ int _link(const char* oldpath, const char* newpath) {
 }
 
 int _fsync(int fd) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get(fd);
@@ -424,7 +424,7 @@ int _fsync(int fd) {
 }
 
 off_t _lseek(int fd, off_t offset, int whence) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get(fd);
@@ -437,7 +437,7 @@ off_t _lseek(int fd, off_t offset, int whence) {
 }
 
 int _mkdir(const char* pathname, mode_t mode) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     CHECK_LFS_ERRNO(lfs_mkdir(&lfs->instance, pathname));
@@ -455,7 +455,7 @@ void* _sbrk(intptr_t increment) {
 }
 
 int stat(const char* pathname, struct stat* buf) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     struct lfs_info info = {};
@@ -480,7 +480,7 @@ clock_t _times(struct tms* buf) {
 }
 
 int _unlink(const char* pathname) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     int ret = lfs_remove(&lfs->instance, pathname);
@@ -508,7 +508,7 @@ DIR* _opendir(const char* name) {
         errno = EINVAL;
         return nullptr;
     }
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.create(name, false);
@@ -534,7 +534,7 @@ struct dirent* _readdir(DIR* dirp) {
 }
 
 long _telldir(DIR* pdir) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get((int)pdir, false);
@@ -548,7 +548,7 @@ long _telldir(DIR* pdir) {
 }
 
 void _seekdir(DIR* pdir, long loc) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get((int)pdir, false);
@@ -561,7 +561,7 @@ void _seekdir(DIR* pdir, long loc) {
 }
 
 void _rewinddir(DIR* pdir) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get((int)pdir, false);
@@ -574,7 +574,7 @@ void _rewinddir(DIR* pdir) {
 }
 
 int _readdir_r(DIR* pdir, struct dirent* dentry, struct dirent** out_dirent) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get((int)pdir, false);
@@ -618,7 +618,7 @@ int _readdir_r(DIR* pdir, struct dirent* dentry, struct dirent** out_dirent) {
 }
 
 int _closedir(DIR* dirp) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get((int)dirp, false);
@@ -660,7 +660,7 @@ char* getcwd(char* buf, size_t size) {
 }
 
 int _rename(const char* oldpath, const char* newpath) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     CHECK_LFS_ERRNO(lfs_rename(&lfs->instance, oldpath, newpath));
@@ -668,7 +668,7 @@ int _rename(const char* oldpath, const char* newpath) {
 }
 
 int ftruncate(int fd, off_t length) {
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     auto entry = s_fdMap.get(fd);
@@ -685,7 +685,7 @@ int truncate(const char* path, off_t length) {
         errno = EINVAL;
         return -1;
     }
-    auto lfs = filesystem_get_instance(nullptr);
+    auto lfs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     FsLock lk(lfs);
 
     lfs_file_t f = {};

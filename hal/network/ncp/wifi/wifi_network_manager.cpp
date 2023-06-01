@@ -66,7 +66,7 @@ void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
 // TODO: Implement a couple functions to conveniently save/load a protobuf message to/from a file
 int loadConfig(Vector<WifiNetworkConfig>* networks) {
     // Get filesystem instance
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
@@ -119,7 +119,7 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
 
 int saveConfig(const Vector<WifiNetworkConfig>& networks) {
     // Get filesystem instance
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));

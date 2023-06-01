@@ -76,7 +76,7 @@ void dumpLine(const char* data, size_t size, size_t offs) {
 } // unnamed
 
 int openFile(lfs_file_t* file, const char* path, unsigned flags) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     lfs_info info = {};
     int r = lfs_stat(&fs->instance, path, &info);
@@ -101,7 +101,7 @@ int openFile(lfs_file_t* file, const char* path, unsigned flags) {
 }
 
 int dumpFile(const char* path) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     const fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));

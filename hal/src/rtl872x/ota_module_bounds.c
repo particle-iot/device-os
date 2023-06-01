@@ -48,9 +48,9 @@ const module_bounds_t module_km0_part1 = {
 
 // OTA region, to be updated.
 module_bounds_t module_ota = {
-    .maximum_size = 0x200000, //2M
+    .maximum_size = 0x180000, // 1.5MB
     .start_address = 0x08260000,
-    .end_address = 0x08260000 + 0x200000,
+    .end_address = 0x08260000 + 0x180000,
     .module_function = MODULE_FUNCTION_NONE,
     .module_index = 0,
     .store = MODULE_STORE_SCRATCHPAD
@@ -63,9 +63,9 @@ module_bounds_t module_ota = {
 
 // Modular firmware
 const module_bounds_t module_system_part1 = {
-    .maximum_size = 0x200000, // 2M
+    .maximum_size = 0x180000, // 1.5MB
     .start_address = 0x08060000,
-    .end_address = 0x08260000,
+    .end_address = 0x081E0000,
     .module_function = MODULE_FUNCTION_SYSTEM_PART,
     .module_index = 1,
     .store = MODULE_STORE_MAIN
@@ -77,8 +77,8 @@ const module_bounds_t module_system_part1 = {
 
 // To be updated
 module_bounds_t module_user = {
-    .maximum_size = 0x200000, //2M
-    .start_address = 0x08600000 - 0x200000,
+    .maximum_size = 0x180000, // 1.5MB
+    .start_address = 0x08600000 - 0x180000,
     .end_address = 0x08600000,
     .module_function = MODULE_FUNCTION_USER_PART,
     .module_index = 1,
@@ -102,7 +102,6 @@ const module_bounds_t module_user_mono = {
 #endif
     ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH // XIP
 };
-
 
 #if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
 const module_bounds_t* const module_bounds[] = { &module_bootloader, &module_mbr, &module_km0_part1, &module_system_part1, &module_user

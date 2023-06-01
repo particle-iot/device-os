@@ -58,7 +58,7 @@ TEST_CASE("SimpleFileStorage") {
         SECTION("opens the file only for reading") {
             SimpleFileStorage s("file");
             mocks.ExpectCallFunc(lfs_file_open).Do([](lfs_t* lfs, lfs_file_t* file, const char* path, int flags) {
-                CHECK(lfs == &filesystem_get_instance(nullptr)->instance);
+                CHECK(lfs == &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance);
                 CHECK(strcmp(path, "file") == 0);
                 CHECK((flags & LFS_O_RDONLY));
                 CHECK(!(flags & LFS_O_WRONLY));
@@ -219,7 +219,7 @@ TEST_CASE("SimpleFileStorage") {
         SECTION("calls lfs_file_sync() to write all pending modifications to the file") {
             s.save("abcd", 4);
             mocks.ExpectCallFunc(lfs_file_sync).Do([&fs](lfs_t* lfs, lfs_file_t* file) {
-                CHECK(lfs == &filesystem_get_instance(nullptr)->instance);
+                CHECK(lfs == &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance);
                 CHECK(file->fd == fs.lastFileDesc());
                 return 0;
             });
@@ -239,7 +239,7 @@ TEST_CASE("SimpleFileStorage") {
             fs.autoCheckOpenFiles(false); // This test intercepts calls to lfs_file_close()
             s.save("abcd", 4);
             mocks.ExpectCallFunc(lfs_file_close).Do([&fs](lfs_t* lfs, lfs_file_t* file) {
-                CHECK(lfs == &filesystem_get_instance(nullptr)->instance);
+                CHECK(lfs == &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance);
                 CHECK(file->fd == fs.lastFileDesc());
                 return 0;
             });

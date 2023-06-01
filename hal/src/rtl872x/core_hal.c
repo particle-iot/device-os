@@ -70,6 +70,7 @@ extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
 extern uintptr_t link_user_part_flash_end[];
 extern uintptr_t link_module_info_crc_end[];
+extern uintptr_t link_module_start[];
 extern uintptr_t platform_system_backup_ram_start;
 
 extern uintptr_t link_heap_location, link_heap_location_end;
@@ -339,14 +340,18 @@ void HAL_Core_Config(void) {
         }
     }
 
+    // Previous scheme was:
     // End of current system-part1 aligned to 4KB
-    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
+    // uint32_t system_part_aligned_end = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
+    
+    // With introduction of assets the layout is now [system-part1 up to 1.5MB, asset fs up to 1.125MB, OTA up to 1.5MB, user part up to 1.5MB]
+    module_ota.start_address = (uint32_t)&link_module_start + 0x180000 /* max system-part1 size */ + 0x120000 /* asset fs max size */;
 
     uint32_t ota_end_address = 0;
     if (dyn) {
         ota_end_address = ((uint32_t)dyn->module_start_address) & 0xFFFFF000; // Align to 4KB
-        if (ota_end_address >= module_ota.start_address + 0x200000) {
-            // Should have 2M for the OTA region at the least
+        if (ota_end_address >= module_ota.start_address + 0x180000) {
+            // Should have 1.5M for the OTA region at the least
             module_user.start_address = (uint32_t)dyn->module_start_address;
         } else {
             // Invalid user module

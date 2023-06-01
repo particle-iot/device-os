@@ -82,6 +82,9 @@ extern "C" {
 #define EXTERNAL_FLASH_XIP_BASE         (INTERNAL_FLASH_START)
 #endif
 
+#define EXTERNAL_FLASH_ASSET_STORAGE_FIRST_PAGE ((CORE_FW_ADDRESS - INTERNAL_FLASH_START + 0x180000) / sFLASH_PAGESIZE)
+#define EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT (288) // 1.125MB
+
 #include "flash_access.h"
 
 uint32_t Compute_CRC32(const uint8_t *pBuffer, uint32_t bufferSize, uint32_t const *p_crc);

@@ -23,7 +23,7 @@
 #include "filesystem.h"
 
 static bool write_file_callback(pb_ostream_t* strm, const uint8_t* data, size_t size) {
-    filesystem_t* const fs = filesystem_get_instance(NULL);
+    filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
     if (!fs) {
         return false;
     }
@@ -35,7 +35,7 @@ static bool write_file_callback(pb_ostream_t* strm, const uint8_t* data, size_t 
 }
 
 static bool read_file_callback(pb_istream_t* strm, uint8_t* data, size_t size) {
-    filesystem_t* const fs = filesystem_get_instance(NULL);
+    filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
     if (!fs) {
         return false;
     }
@@ -100,7 +100,7 @@ bool pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved
     if (!stream || !file) {
         return false;
     }
-    filesystem_t* const fs = filesystem_get_instance(NULL);
+    filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
     if (!fs) {
         return false;
     }
@@ -115,7 +115,7 @@ bool pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, void* reserved
     if (!stream || !file) {
         return false;
     }
-    filesystem_t* const fs = filesystem_get_instance(NULL);
+    filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
     if (!fs) {
         return false;
     }
