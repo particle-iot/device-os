@@ -348,8 +348,8 @@ filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserve
 #else
     static int onceFlag = 0;
     if (!onceFlag) ({
-#endif
         onceFlag = 1;
+#endif
         // FIXME: make this cleaner and move to using C++ classes etc
         s_instance.index = FILESYSTEM_INSTANCE_DEFAULT;
         s_asset_storage_instance.index = FILESYSTEM_INSTANCE_ASSET_STORAGE;

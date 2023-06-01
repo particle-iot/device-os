@@ -126,6 +126,36 @@ static bool flash_copy(flash_device_t src_dev, uintptr_t src_addr, flash_device_
     return true;
 }
 
+int calculate_prefix_size(flash_device_t source, uint32_t sourceAddress, uint32_t length) {
+    if (length < sizeof(module_info_t)) {
+        return -1;
+    }
+
+    module_info_t info = {};
+    if (FLASH_ModuleInfo(&info, source, sourceAddress, NULL) != SYSTEM_ERROR_NONE) {
+        return -1;
+    }
+
+    size_t prefix_size = sizeof(module_info_t);
+
+
+    if (info.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS) {
+        size_t pos = prefix_size;
+        while (pos < length) {
+            module_info_extension_t ext = {};
+            if (!flash_read(source, sourceAddress + pos, (uint8_t*)&ext, sizeof(ext))) {
+                return -1;
+            }
+            pos += ext.length;
+            if (ext.type == MODULE_INFO_EXTENSION_END) {
+                break;
+            }
+        }
+        prefix_size = pos;
+    }
+    return prefix_size;
+}
+
 static bool verify_module(flash_device_t src_dev, uintptr_t src_addr, size_t src_size, flash_device_t dest_dev,
         uintptr_t dest_addr, size_t dest_size, uint8_t module_func, uint8_t flags) {
     if (!FLASH_CheckValidAddressRange(src_dev, src_addr, src_size)) {
@@ -255,36 +285,6 @@ done:
 error:
     inflate_destroy(infl);
     return false;
-}
-
-int calculate_prefix_size(flash_device_t source, uint32_t sourceAddress, uint32_t length) {
-    if (length < sizeof(module_info_t)) {
-        return -1;
-    }
-
-    module_info_t info = {};
-    if (FLASH_ModuleInfo(&info, source, sourceAddress, NULL) != SYSTEM_ERROR_NONE) {
-        return -1;
-    }
-
-    size_t prefix_size = sizeof(module_info_t);
-
-
-    if (info.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS) {
-        size_t pos = prefix_size;
-        while (pos < length) {
-            module_info_extension_t ext = {};
-            if (!flash_read(source, sourceAddress + pos, (uint8_t*)&ext, sizeof(ext))) {
-                return -1;
-            }
-            pos += ext.length;
-            if (ext.type == MODULE_INFO_EXTENSION_END) {
-                break;
-            }
-        }
-        prefix_size = pos;
-    }
-    return prefix_size;
 }
 
 static bool parse_compressed_module_header(flash_device_t dev, uintptr_t addr, size_t size, compressed_module_header* header) {

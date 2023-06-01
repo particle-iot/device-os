@@ -710,15 +710,15 @@ void app_setup_and_loop(void)
     if_init();
 #endif /* HAL_PLATFORM_LWIP */
 
-    // NOTE: this calls user app global constructors
-    system_part2_post_init();
-
-    #if HAL_PLATFORM_ASSETS
+#if HAL_PLATFORM_ASSETS
     AssetManager::instance().init();
     if (system_mode() != SAFE_MODE && AssetManager::instance().missingAssets().size() > 0) {
         set_system_mode(SAFE_MODE);
     }
 #endif // HAL_PLATFORM_ASSETS
+
+    // NOTE: this calls user app global constructors
+    system_part2_post_init();
 
     HAL_Core_Init();
     main_thread_current(NULL);
