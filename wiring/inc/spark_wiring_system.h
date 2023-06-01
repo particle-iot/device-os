@@ -49,6 +49,7 @@
 #include "deviceid_hal.h"
 #include "platform_ncp.h"
 #include "backup_ram_hal.h"
+#include "spark_wiring_asset.h"
 
 using spark::Vector;
 
@@ -1037,6 +1038,11 @@ public:
 #endif
     }
 
+#if HAL_PLATFORM_ASSETS
+    static spark::Vector<ApplicationAsset> assetsRequired();
+    static spark::Vector<ApplicationAsset> assetsAvailable();
+    static int assetsHandled(bool state = true);
+#endif // HAL_PLATFORM_ASSETS
 
 private:
     SystemSleepResult systemSleepResult_;

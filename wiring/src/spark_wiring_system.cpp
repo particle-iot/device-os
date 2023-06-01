@@ -8,6 +8,7 @@
 #include "system_task.h"
 #include "system_control.h"
 #include "system_network.h"
+#include "scope_guard.h"
 
 #if Wiring_LogConfig
 extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
@@ -98,6 +99,44 @@ bool SystemClass::enableFeature(LoggingFeature) {
     return true;
 }
 #endif
+
+spark::Vector<ApplicationAsset> SystemClass::assetsRequired() {
+    spark::Vector<ApplicationAsset> assets;
+    asset_manager_info info = {};
+    info.size = sizeof(info);
+    int r = asset_manager_get_info(&info, nullptr);
+    if (r) {
+        return assets;
+    }
+    SCOPE_GUARD({
+        asset_manager_free_info(&info, nullptr);
+    });
+    for (size_t i = 0; i < info.required_count; i++) {
+        assets.append(ApplicationAsset(&info.required[i]));
+    }
+    return assets;
+}
+
+spark::Vector<ApplicationAsset> SystemClass::assetsAvailable() {
+    spark::Vector<ApplicationAsset> assets;
+    asset_manager_info info = {};
+    info.size = sizeof(info);
+    int r = asset_manager_get_info(&info, nullptr);
+    if (r) {
+        return assets;
+    }
+    SCOPE_GUARD({
+        asset_manager_free_info(&info, nullptr);
+    });
+    for (size_t i = 0; i < info.available_count; i++) {
+        assets.append(ApplicationAsset(&info.available[i]));
+    }
+    return assets;
+}
+
+int SystemClass::assetsHandled(bool state) {
+    return asset_manager_set_consumer_state(state ? ASSET_MANAGER_CONSUMER_STATE_HANDLED : ASSET_MANAGER_CONSUMER_STATE_WANT, nullptr);
+}
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {
