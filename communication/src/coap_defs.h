@@ -103,6 +103,18 @@ enum class CoapOption {
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapOption)
 
+enum class CoapContentFormat {
+    // RFC 7252 12.3. CoAP Content-Formats Registry
+    TEXT_PLAIN_CHARSET_UTF8 = 0,
+    APPLICATION_LINK_FORMAT = 40,
+    APPLICATION_XML = 41,
+    APPLICATION_OCTET_STREAM = 42,
+    APPLICATION_EXI = 47,
+    APPLICATION_JSON = 50
+};
+
+PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapContentFormat)
+
 typedef uint16_t CoapMessageId;
 
 unsigned coapCodeClass(unsigned code);

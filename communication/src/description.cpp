@@ -27,6 +27,7 @@
 #include "mbedtls_config.h"
 
 #include <algorithm>
+#include "enumclass.h"
 
 #define CHECK_PROTOCOL(_expr) \
         do { \
@@ -190,15 +191,26 @@ void initDescribeRequest(CoapMessageEncoder* enc, token_t token, int flags) {
     enc->id(0); // Encoded by the message channel
     enc->token((const char*)&token, sizeof(token));
     enc->option(CoapOption::URI_PATH, "d");
+    // NOTE: option order is important (increasing ids)
+    // FIXME: move type inference somewhere else instead of hardcoding here?
+    if (flags & DescriptionType::DESCRIBE_SYSTEM) {
+        unsigned contentFormat = to_underlying(CoapContentFormat::APPLICATION_OCTET_STREAM);
+        enc->option(CoapOption::CONTENT_FORMAT, contentFormat);
+    }
     const char uriQuery = flags;
     enc->option(CoapOption::URI_QUERY, &uriQuery, sizeof(uriQuery));
 }
 
-void initDescribeResponse(CoapMessageEncoder* enc, token_t token) {
+void initDescribeResponse(CoapMessageEncoder* enc, token_t token, int flags) {
     enc->type(CoapType::CON);
     enc->code(CoapCode::CONTENT);
     enc->id(0); // Encoded by the message channel
     enc->token((const char*)&token, sizeof(token));
+    // FIXME:
+    if (flags & DescriptionType::DESCRIBE_SYSTEM) {
+        unsigned contentFormat = to_underlying(CoapContentFormat::APPLICATION_OCTET_STREAM);
+        enc->option(CoapOption::CONTENT_FORMAT, contentFormat);
+    }
 }
 
 } // namespace
@@ -300,7 +312,7 @@ ProtocolError Description::receiveRequest(const Message& msg) {
     CoapMessageEncoder enc((char*)respMsg.buf(), respMsg.capacity());
     size_t payloadSize = 0;
     if (!resp) {
-        initDescribeResponse(&enc, reqToken);
+        initDescribeResponse(&enc, reqToken, flags);
         const size_t msgOffs = enc.payloadData() - (char*)respMsg.buf();
         Vector<char> buf;
         CHECK_PROTOCOL(getDescribeData(flags, &respMsg, msgOffs, &buf, &payloadSize));
@@ -574,7 +586,7 @@ ProtocolError Description::sendNextRequestBlock(Request* req, Message* msg, toke
 
 ProtocolError Description::sendResponseBlock(const Response& resp, Message* msg, token_t token, unsigned blockIndex) {
     CoapMessageEncoder enc((char*)msg->buf(), msg->capacity());
-    initDescribeResponse(&enc, token);
+    initDescribeResponse(&enc, token, resp.flags);
     enc.option(CoapOption::ETAG, resp.etag);
     size_t blockSize = 0;
     CHECK_PROTOCOL(getBlockSize(&blockSize));
