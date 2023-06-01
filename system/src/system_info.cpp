@@ -27,7 +27,11 @@
 #include <climits>
 
 #include "control/common.h"
-#include "describe.pb.h"
+#include "cloud/describe.pb.h"
+
+#if HAL_PLATFORM_ASSETS
+#include "asset_manager.h"
+#endif // HAL_PLATFORM_ASSETS
 
 #define PB(name) particle_cloud_##name
 
@@ -309,6 +313,8 @@ private:
 
 PB(FirmwareModuleType) moduleFunctionToPb(module_function_t func) {
     switch (func) {
+    case MODULE_FUNCTION_RESOURCE:
+        return PB(FirmwareModuleType_RESOURCE_MODULE);
     case MODULE_FUNCTION_BOOTLOADER:
         return PB(FirmwareModuleType_BOOTLOADER_MODULE);
     case MODULE_FUNCTION_MONO_FIRMWARE:
@@ -317,10 +323,14 @@ PB(FirmwareModuleType) moduleFunctionToPb(module_function_t func) {
         return PB(FirmwareModuleType_SYSTEM_PART_MODULE);
     case MODULE_FUNCTION_USER_PART:
         return PB(FirmwareModuleType_USER_PART_MODULE);
+    case MODULE_FUNCTION_SETTINGS:
+        return PB(FirmwareModuleType_SETTINGS_MODULE);
     case MODULE_FUNCTION_NCP_FIRMWARE:
         return PB(FirmwareModuleType_NCP_FIRMWARE_MODULE);
     case MODULE_FUNCTION_RADIO_STACK:
         return PB(FirmwareModuleType_RADIO_STACK_MODULE);
+    case MODULE_FUNCTION_ASSET:
+        return PB(FirmwareModuleType_ASSET_MODULE);
     default:
         return PB(FirmwareModuleType_INVALID_MODULE);
     }
@@ -328,13 +338,35 @@ PB(FirmwareModuleType) moduleFunctionToPb(module_function_t func) {
 
 PB(FirmwareModuleStore) moduleStoreToPb(module_store_t store) {
     switch (store) {
-    case MODULE_STORE_MAIN:
-        return PB(FirmwareModuleStore_MAIN_MODULE_STORE);
     case MODULE_STORE_FACTORY:
         return PB(FirmwareModuleStore_FACTORY_MODULE_STORE);
+    case MODULE_STORE_BACKUP:
+        return PB(FirmwareModuleStore_BACKUP_MODULE_STORE);
+    case MODULE_STORE_SCRATCHPAD:
+        return PB(FirmwareModuleStore_SCRATCHPAD_MODULE_STORE);
+    case MODULE_STORE_MAIN:
     default:
-        return PB(FirmwareModuleStore_INVALID_MODULE_STORE);
+        return PB(FirmwareModuleStore_MAIN_MODULE_STORE);
     }
+}
+
+bool encodeAssetDependencies(pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
+    auto assets = (const spark::Vector<Asset>*)*arg;
+    for (const auto& asset: *assets) {
+        PB(FirmwareModuleAsset) pbModuleAsset = {};
+        EncodedString pbName(&pbModuleAsset.name);
+        EncodedString pbHash(&pbModuleAsset.hash);
+        // TODO: hash type
+        pbName.data = asset.name().c_str();
+        pbName.size = asset.name().length();
+
+        pbHash.data = asset.hash().hash().data();
+        pbHash.size = asset.hash().hash().size();
+        if (!pb_encode_tag_for_field(strm, field) || !pb_encode_submessage(strm, &PB(FirmwareModuleAsset_msg), &pbModuleAsset)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 } // anonymous
@@ -560,12 +592,28 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
                 }
                 return true;
             };
+#if HAL_PLATFORM_ASSETS
+            spark::Vector<Asset> assets;
+            if ((module.info.module_function == MODULE_FUNCTION_USER_PART) && (module.validity_result & MODULE_VALIDATION_INTEGRITY)) {
+                if (!AssetManager::requiredAssetsForModule(&module, assets) && assets.size() > 0) {
+                    pbModule.asset_dependencies.arg = (void*)&assets;
+                    pbModule.asset_dependencies.funcs.encode = encodeAssetDependencies;
+                }
+            }
+#endif // HAL_PLATFORM_ASSETS
             if (!pb_encode_tag_for_field(strm, field) || !pb_encode_submessage(strm, &PB(FirmwareModule_msg), &pbModule)) {
                 return false;
             }
         }
         return true;
     };
+#if HAL_PLATFORM_ASSETS
+    auto availableAssets = AssetManager::instance().availableAssets();
+    if (availableAssets.size() > 0) {
+        pbDesc.assets.arg = (void*)&availableAssets;
+        pbDesc.assets.funcs.encode = encodeAssetDependencies;
+    }
+#endif // HAL_PLATFORM_ASSETS
     PbAppenderStream strm(appender, append_data);
     return pb_encode(&strm, &PB(SystemDescribe_msg), &pbDesc);
 }
