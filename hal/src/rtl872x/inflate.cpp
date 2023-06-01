@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_NONE
+
 #include "hal_platform.h"
 
 #if HAL_PLATFORM_COMPRESSED_OTA
