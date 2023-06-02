@@ -13,14 +13,14 @@
 /* *
  Ledger scope. */
 typedef enum _particle_ledger_LedgerScope { 
-    particle_ledger_LedgerScope_LEDGER_SCOPE_INVALID = 0, /* /< Invalid scope. */
+    particle_ledger_LedgerScope_LEDGER_SCOPE_UNKNOWN = 0, /* /< Unknown scope. */
     particle_ledger_LedgerScope_LEDGER_SCOPE_DEVICE = 1, /* /< Device scope. */
     particle_ledger_LedgerScope_LEDGER_SCOPE_PRODUCT = 2, /* /< Product scope. */
     particle_ledger_LedgerScope_LEDGER_SCOPE_ORG = 3 /* /< Organization scope. */
 } particle_ledger_LedgerScope;
 
 /* Helper constants for enums */
-#define _particle_ledger_LedgerScope_MIN particle_ledger_LedgerScope_LEDGER_SCOPE_INVALID
+#define _particle_ledger_LedgerScope_MIN particle_ledger_LedgerScope_LEDGER_SCOPE_UNKNOWN
 #define _particle_ledger_LedgerScope_MAX particle_ledger_LedgerScope_LEDGER_SCOPE_ORG
 #define _particle_ledger_LedgerScope_ARRAYSIZE ((particle_ledger_LedgerScope)(particle_ledger_LedgerScope_LEDGER_SCOPE_ORG+1))
 

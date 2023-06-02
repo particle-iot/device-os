@@ -19,13 +19,13 @@ typedef struct _particle_firmware_LedgerInfo {
 } particle_firmware_LedgerInfo;
 
 /* *
- Page data. */
-typedef struct _particle_firmware_PageData { 
+ Page info. */
+typedef struct _particle_firmware_LedgerPageInfo { 
     pb_callback_t name; /* /< Page name. */
-    pb_callback_t data; /* /< MessagePack-encoded page contents. */
-    pb_callback_t checksum; /* /< Page checksum. */
-    bool deleted; /* /< Whether the page was deleted. */
-} particle_firmware_PageData;
+    bool has_updated_at;
+    uint64_t updated_at; /* /< Last time the page was updated, in milliseconds since the Unix epoch. */
+    bool deleted; /* /< Whether the page was deleted locally. */
+} particle_firmware_LedgerPageInfo;
 
 
 #ifdef __cplusplus
@@ -33,44 +33,42 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
+#define particle_firmware_LedgerPageInfo_init_default {{{NULL}, NULL}, false, 0, 0}
 #define particle_firmware_LedgerInfo_init_default {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN}
-#define particle_firmware_PageData_init_default  {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
+#define particle_firmware_LedgerPageInfo_init_zero {{{NULL}, NULL}, false, 0, 0}
 #define particle_firmware_LedgerInfo_init_zero   {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN}
-#define particle_firmware_PageData_init_zero     {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_firmware_LedgerInfo_name_tag    1
 #define particle_firmware_LedgerInfo_scope_tag   2
-#define particle_firmware_PageData_name_tag      1
-#define particle_firmware_PageData_data_tag      2
-#define particle_firmware_PageData_checksum_tag  3
-#define particle_firmware_PageData_deleted_tag   4
+#define particle_firmware_LedgerPageInfo_name_tag 1
+#define particle_firmware_LedgerPageInfo_updated_at_tag 2
+#define particle_firmware_LedgerPageInfo_deleted_tag 3
 
 /* Struct field encoding specification for nanopb */
+#define particle_firmware_LedgerPageInfo_FIELDLIST(X, a) \
+X(a, CALLBACK, SINGULAR, STRING,   name,              1) \
+X(a, STATIC,   OPTIONAL, FIXED64,  updated_at,        2) \
+X(a, STATIC,   SINGULAR, BOOL,     deleted,           3)
+#define particle_firmware_LedgerPageInfo_CALLBACK pb_default_field_callback
+#define particle_firmware_LedgerPageInfo_DEFAULT NULL
+
 #define particle_firmware_LedgerInfo_FIELDLIST(X, a) \
 X(a, CALLBACK, OPTIONAL, STRING,   name,              1) \
 X(a, STATIC,   SINGULAR, UENUM,    scope,             2)
 #define particle_firmware_LedgerInfo_CALLBACK pb_default_field_callback
 #define particle_firmware_LedgerInfo_DEFAULT NULL
 
-#define particle_firmware_PageData_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   name,              1) \
-X(a, CALLBACK, SINGULAR, BYTES,    data,              2) \
-X(a, CALLBACK, SINGULAR, BYTES,    checksum,          3) \
-X(a, STATIC,   SINGULAR, BOOL,     deleted,           4)
-#define particle_firmware_PageData_CALLBACK pb_default_field_callback
-#define particle_firmware_PageData_DEFAULT NULL
-
+extern const pb_msgdesc_t particle_firmware_LedgerPageInfo_msg;
 extern const pb_msgdesc_t particle_firmware_LedgerInfo_msg;
-extern const pb_msgdesc_t particle_firmware_PageData_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
+#define particle_firmware_LedgerPageInfo_fields &particle_firmware_LedgerPageInfo_msg
 #define particle_firmware_LedgerInfo_fields &particle_firmware_LedgerInfo_msg
-#define particle_firmware_PageData_fields &particle_firmware_PageData_msg
 
 /* Maximum encoded size of messages (where known) */
+/* particle_firmware_LedgerPageInfo_size depends on runtime parameters */
 /* particle_firmware_LedgerInfo_size depends on runtime parameters */
-/* particle_firmware_PageData_size depends on runtime parameters */
 
 #ifdef __cplusplus
 } /* extern "C" */
