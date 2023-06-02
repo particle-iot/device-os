@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <type_traits>
+#include <utility>
 #include <atomic>
 
 static_assert(std::atomic_int::is_always_lock_free, "std::atomic<int> is not always lock-free");
@@ -42,17 +42,8 @@ public:
 
     void release() {
         if (count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-            destroy();
+            delete this;
         }
-    }
-
-    int refCount() const {
-        return count_.load(std::memory_order_relaxed);
-    }
-
-protected:
-    virtual void destroy() {
-        delete this;
     }
 
 private:
@@ -62,7 +53,7 @@ private:
 /**
  * Smart pointer for reference counted objects.
  */
-template<typename T, typename EnableT = std::enable_if_t<std::is_base_of<RefCount<T>, T>::value>>
+template<typename T>
 class RefCountPtr {
 public:
     RefCountPtr() :
@@ -138,5 +129,10 @@ private:
         ptr2.p_ = p;
     }
 };
+
+template<typename T, typename... ArgsT>
+inline RefCountPtr<T> makeRefCountPtr(ArgsT&&... args) {
+    return RefCountPtr<T>::wrap(new T(std::forward<ArgsT>(args)...));
+}
 
 } // namespace particle

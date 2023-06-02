@@ -28,9 +28,10 @@
 
 namespace particle::system {
 
+class LedgerManager;
 class LedgerPage;
 
-class Ledger: public RefCount<Ledger> {
+class Ledger {
 public:
     Ledger() :
             pageSyncCallback_(nullptr),
@@ -40,7 +41,8 @@ public:
             appData_(nullptr),
             destroyAppData_(nullptr),
             scope_(LEDGER_SCOPE_UNKNOWN),
-            apiVersion_(0) {
+            apiVersion_(0),
+            refCount_(1) {
     }
 
     ~Ledger();
@@ -70,8 +72,9 @@ public:
         mutex_.unlock();
     }
 
-protected:
-    void destroy() override; // RefCount<Ledger>
+    // Methods required by the RefCount concept
+    void addRef();
+    void release();
 
 private:
     Vector<CString> linkedPageNames_; // Names of linked pages
@@ -90,8 +93,11 @@ private:
 
     ledger_scope scope_; // Ledger scope
     int apiVersion_; // API version
+    int refCount_; // Reference count
 
     int loadLedgerInfo();
+
+    friend class LedgerManager; // For accessing refCount_
 };
 
 class LedgerManager {
@@ -103,8 +109,9 @@ public:
 
     int init();
 
-    int initLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger);
-    void disposeLedger(Ledger* ledger);
+    int getLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger);
+    void addLedgerRef(Ledger* ledger);
+    void releaseLedger(Ledger* ledger);
 
     static LedgerManager* instance();
 

@@ -34,6 +34,26 @@
 
 #define DATA_FORMAT_VERSION 1
 
+/*
+    The ledger directory is organized as follows:
+
+    /sys/ledger/
+    |
+    |--- local/ - Device ledger
+    |    |--- ledger.data - Ledger info
+    |    `--- pages/ - Page files
+    |         |--- sensors.data - Contents of the page called "sensors"
+    |         |--- ...
+    |         `--- ...
+    |
+    `--- shared/ - Product and organization ledgers
+         `--- config/ - Files of the ledger called "config"
+              |--- ledger.data - Ledger info
+              `--- pages/ - Page files
+                   |--- server_addr.data - Contents of the page called "server_addr"
+                   |--- ...
+                   `--- ...
+*/
 #define LEDGER_ROOT_DIR "/sys/ledger"
 #define LOCAL_LEDGER_DIR_NAME "local"
 #define SHARED_LEDGER_DIR_NAME "shared"
@@ -55,7 +75,7 @@ namespace {
 
 int formatLedgerPath(char* buf, size_t size, const char* name, const char* fmt, ...) {
     size_t pos = 0;
-    // Format the path to the ledger files
+    // Format the prefix part of the path
     if (name) {
         // Product or organization ledger
         int n = snprintf(buf, size, LEDGER_ROOT_DIR "/" SHARED_LEDGER_DIR_NAME "/%s/", name);
@@ -92,8 +112,8 @@ int copyStringVector(const Vector<CString>& src, Vector<CString>& dest) {
     }
     for (int i = 0; i < src.size(); ++i) {
         CString s = src.at(i);
-        if (!!s != !!src.at(i)) {
-            return SYSTEM_ERROR_NO_MEMORY; // strdup() failed
+        if (!s && src.at(i)) {
+            return SYSTEM_ERROR_NO_MEMORY;
         }
         dest.append(std::move(s));
     }
@@ -160,8 +180,13 @@ ledger_scope Ledger::scope() const {
     return scope_;
 }
 
-void Ledger::destroy() {
-    LedgerManager::instance()->disposeLedger(this);
+void Ledger::addRef() {
+    // The ledger's reference counter is managed by LedgerManager
+    LedgerManager::instance()->addLedgerRef(this);
+}
+
+void Ledger::release() {
+    LedgerManager::instance()->releaseLedger(this);
 }
 
 int Ledger::loadLedgerInfo() {
@@ -209,7 +234,7 @@ int LedgerManager::init() {
     return 0;
 }
 
-int LedgerManager::initLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger) {
+int LedgerManager::getLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger) {
     std::lock_guard lock(mutex_);
     // Check if the requested ledger is already instantiated
     if (name) {
@@ -224,11 +249,15 @@ int LedgerManager::initLedger(const char* name, int apiVersion, RefCountPtr<Ledg
         return 0;
     }
     // Create a new instance
-    RefCountPtr<Ledger> lr(new Ledger());
+    auto lr = makeRefCountPtr<Ledger>();
     if (!lr) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK(lr->init(name, apiVersion));
+    int r = lr->init(name, apiVersion);
+    if (r < 0) {
+        LOG(ERROR, "Failed to initialize ledger: %d", r);
+        return r;
+    }
     if (!name) {
         devLedger_ = lr.get();
     } else if (!sharedLedgers_.append(lr.get())) {
@@ -238,10 +267,19 @@ int LedgerManager::initLedger(const char* name, int apiVersion, RefCountPtr<Ledg
     return 0;
 }
 
-void LedgerManager::disposeLedger(Ledger* ledger) {
-    // FIXME: Use the same mutex to guard the reference counter and the list of instantiated ledgers
+void LedgerManager::addLedgerRef(Ledger* ledger) {
     std::lock_guard lock(mutex_);
-    if (!ledger->refCount() && sharedLedgers_.removeOne(ledger)) {
+    ++ledger->refCount_;
+}
+
+void LedgerManager::releaseLedger(Ledger* ledger) {
+    std::lock_guard lock(mutex_);
+    if (!--ledger->refCount_) {
+        if (devLedger_ == ledger) {
+            devLedger_ = nullptr;
+        } else {
+            sharedLedgers_.removeOne(ledger);
+        }
         delete ledger;
     }
 }
