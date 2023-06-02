@@ -68,13 +68,13 @@ int filesystem_to_system_error(int error);
 #ifdef __cplusplus
 }
 
-#define CHECK_FS(_expr) \
+#define CHECK_FS(expr) \
         ({ \
-            auto r = _expr; \
-            if (r < 0) { \
-                return filesystem_to_system_error(r); \
+            auto _r = expr; \
+            if (_r < 0) { \
+                return filesystem_to_system_error(_r); \
             } \
-            r; \
+            _r; \
         })
 
 namespace particle { namespace fs {

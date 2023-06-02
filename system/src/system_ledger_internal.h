@@ -96,6 +96,7 @@ private:
     int refCount_; // Reference count
 
     int loadLedgerInfo();
+    int saveLedgerInfo();
 
     friend class LedgerManager; // For accessing refCount_
 };
@@ -117,9 +118,10 @@ public:
 
 private:
     Vector<Ledger*> sharedLedgers_; // Instantiated product and organization ledgers
+    Vector<RefCountPtr<Ledger>> subscribedLedgers_; // Ledgers with enabled page subscriptions
     Ledger* devLedger_; // Device ledger
     mutable StaticRecursiveMutex mutex_; // Manager lock
-    bool inited_;
+    bool inited_; // Whether the manager was initialized successfully
 };
 
 } // namespace particle::system

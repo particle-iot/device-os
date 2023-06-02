@@ -22,11 +22,14 @@
 
 #include "system_ledger_internal.h"
 
+#include "control/common.h" // FIXME: Move to another directory
+
 #include "filesystem.h"
 #include "file_util.h"
+#include "endian_util.h"
 #include "scope_guard.h"
-#include "check.h"
 #include "system_error.h"
+#include "check.h"
 
 #include "common/ledger.pb.h" // Common definitions
 #include "cloud/ledger.pb.h" // Cloud protocol definitions
@@ -65,13 +68,60 @@
 #define PB_CLOUD(_name) particle_cloud_##_name
 #define PB_INTERNAL(_name) particle_firmware_##_name
 
+static_assert(LEDGER_SCOPE_UNKNOWN == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_UNKNOWN) &&
+        LEDGER_SCOPE_DEVICE == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_DEVICE) &&
+        LEDGER_SCOPE_PRODUCT == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_PRODUCT) &&
+        LEDGER_SCOPE_ORG == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_ORG));
+
 namespace particle {
 
+using control::common::EncodedString;
+using control::common::DecodedCString;
 using fs::FsLock;
 
 namespace system {
 
 namespace {
+
+// Internal result codes
+enum Result {
+    RESULT_LEDGER_FILE_NOT_FOUND = 1
+};
+
+/*
+    The layout of a ledger data file:
+
+    field     | size      | description
+    -----------------------------------
+    version   | 4         | Format version number (unsigned integer)
+    info_size | 4         | Size of the "info" field (unsigned integer)
+    info      | info_size | Protobuf-encoded ledger info (particle.firmware.LedgerInfo)
+
+    All integer fields are encoded in little-endian byte order.
+*/
+struct LedgerDataHeader {
+    uint32_t version;
+    uint32_t infoSize;
+} __attribute__((packed));
+
+/*
+    The layout of a page data file:
+
+    field     | size      | description
+    -----------------------------------
+    version   | 4         | Format version number (unsigned integer)
+    info_size | 4         | Size of the "info" field (unsigned integer)
+    data_size | 4         | Size of the "data" field (unsigned integer)
+    info      | info_size | Protobuf-encoded page info (particle.firmware.LedgerPageInfo)
+    data      | data_size | MessagePack-encoded page contents
+
+    All integer fields are encoded in little-endian byte order.
+*/
+struct PageDataHeader {
+    uint32_t version;
+    uint32_t infoSize;
+    uint32_t dataSize;
+} __attribute__((packed));
 
 int formatLedgerPath(char* buf, size_t size, const char* name, const char* fmt, ...) {
     size_t pos = 0;
@@ -145,7 +195,15 @@ int Ledger::init(const char* name, int apiVersion) {
         }
     }
     apiVersion_ = apiVersion;
-    CHECK(loadLedgerInfo());
+    int r = CHECK(loadLedgerInfo());
+    if (r == RESULT_LEDGER_FILE_NOT_FOUND) {
+        if (name_) {
+            scope_ = LEDGER_SCOPE_UNKNOWN; // Unknown product or organization ledger
+        } else {
+            scope_ = LEDGER_SCOPE_DEVICE;
+            CHECK(saveLedgerInfo());
+        }
+    }
     return 0;
 }
 
@@ -191,28 +249,80 @@ void Ledger::release() {
 
 int Ledger::loadLedgerInfo() {
     FsLock fs;
-    // Open the file with the ledger data
+    // Open the ledger file
     char path[LFS_NAME_MAX + 1] = {};
     CHECK(formatLedgerPath(path, sizeof(path), name_, LEDGER_DATA_FILE_NAME));
     lfs_file_t file = {};
-    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_RDONLY));
+    int r = lfs_file_open(fs.instance(), &file, path, LFS_O_RDONLY);
+    if (r < 0) {
+        if (r == LFS_ERR_NOENT) {
+            return RESULT_LEDGER_FILE_NOT_FOUND;
+        }
+        CHECK_FS(r); // Return the error
+    }
     SCOPE_GUARD({
         int r = lfs_file_close(fs.instance(), &file);
         if (r < 0) {
             LOG(ERROR, "Error while closing file: %d", r);
         }
     });
-    // Read the version number
-    uint32_t ver = 0;
-    size_t n = CHECK_FS(lfs_file_read(fs.instance(), &file, &ver, sizeof(ver)));
-    if (n != sizeof(ver)) {
+    // Read the header
+    LedgerDataHeader h = {};
+    size_t n = CHECK_FS(lfs_file_read(fs.instance(), &file, &h, sizeof(h)));
+    if (n != sizeof(h)) {
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
-    if (ver != DATA_FORMAT_VERSION) {
+    h.version = littleEndianToNative(h.version);
+    h.infoSize = littleEndianToNative(h.infoSize);
+    if (h.version != DATA_FORMAT_VERSION) {
+        LOG(ERROR, "Unsupported version of ledger data format: %u", (unsigned)h.version);
         return SYSTEM_ERROR_LEDGER_UNSUPPORTED_FORMAT;
     }
+    // Read the ledger info
     PB_INTERNAL(LedgerInfo) pbInfo = {};
-    CHECK(decodeMessageFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
+    DecodedCString pbName(&pbInfo.name);
+    CHECK(decodeMessageFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, h.infoSize));
+    // Validate the name and scope
+    if (name_) {
+        if (strcmp(name_, pbName.data) != 0 || (pbInfo.scope != PB_LEDGER(LedgerScope_LEDGER_SCOPE_PRODUCT) &&
+                pbInfo.scope != PB_LEDGER(LedgerScope_LEDGER_SCOPE_ORG))) {
+            return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+        }
+    } else {
+        if (pbName.size != 0 || pbInfo.scope != PB_LEDGER(LedgerScope_LEDGER_SCOPE_DEVICE)) {
+            return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+        }
+    }
+    scope_ = static_cast<ledger_scope>(pbInfo.scope);
+    return 0;
+}
+
+int Ledger::saveLedgerInfo() {
+    FsLock fs;
+    // Open the ledger file
+    char path[LFS_NAME_MAX + 1] = {};
+    CHECK(formatLedgerPath(path, sizeof(path), name_, LEDGER_DATA_FILE_NAME));
+    lfs_file_t file = {};
+    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_WRONLY));
+    SCOPE_GUARD({
+        int r = lfs_file_close(fs.instance(), &file);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+    // Write the header
+    LedgerDataHeader h = {};
+    h.version = nativeToLittleEndian(DATA_FORMAT_VERSION);
+    CHECK_FS(lfs_file_write(fs.instance(), &file, &h, sizeof(h)));
+    // Write the ledger info
+    PB_INTERNAL(LedgerInfo) pbInfo = {};
+    EncodedString pbName(&pbInfo.name);
+    if (name_) {
+        pbName.data = name_;
+        pbName.size = strlen(name_);
+    }
+    pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(scope_);
+    CHECK(encodeMessageToFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
     return 0;
 }
 
@@ -236,6 +346,12 @@ int LedgerManager::init() {
 
 int LedgerManager::getLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger) {
     std::lock_guard lock(mutex_);
+    if (name && name[0] == '\0') {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (!inited_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     // Check if the requested ledger is already instantiated
     if (name) {
         for (Ledger* lr: sharedLedgers_) {
