@@ -33,48 +33,15 @@ typedef enum _particle_cloud_LedgerResponse_Result {
 } particle_cloud_LedgerResponse_Result;
 
 /* Struct definitions */
-typedef struct _particle_cloud_LedgerRequest_GetPage { 
-    pb_callback_t ledger_name; 
-    pb_callback_t page_name; 
-} particle_cloud_LedgerRequest_GetPage;
-
 /* *
  Ledger response. */
 typedef struct _particle_cloud_LedgerRequest_ListLedgers { 
-    char dummy_field;
+    pb_callback_t scopes; /* /< Result code. */
 } particle_cloud_LedgerRequest_ListLedgers;
 
 typedef struct _particle_cloud_LedgerRequest_NotifyPageChanged { 
     pb_callback_t ledger_pages; 
 } particle_cloud_LedgerRequest_NotifyPageChanged;
-
-typedef struct _particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages { 
-    pb_callback_t ledger_name; 
-    pb_callback_t page_names; 
-} particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages;
-
-typedef struct _particle_cloud_LedgerRequest_Subscribe { 
-    pb_callback_t ledger_pages; 
-} particle_cloud_LedgerRequest_Subscribe;
-
-typedef struct _particle_cloud_LedgerRequest_Subscribe_LedgerPages { 
-    pb_callback_t ledger_name; 
-    pb_callback_t page_names; 
-} particle_cloud_LedgerRequest_Subscribe_LedgerPages;
-
-typedef struct _particle_cloud_LedgerRequest_Unsubscribe { 
-    pb_callback_t ledger_pages; 
-} particle_cloud_LedgerRequest_Unsubscribe;
-
-typedef struct _particle_cloud_LedgerRequest_Unsubscribe_LedgerPages { 
-    pb_callback_t ledger_name; 
-    pb_callback_t page_names; 
-} particle_cloud_LedgerRequest_Unsubscribe_LedgerPages;
-
-typedef struct _particle_cloud_LedgerResponse_GetPage { 
-    pb_callback_t data; 
-    pb_callback_t checksum; 
-} particle_cloud_LedgerResponse_GetPage;
 
 typedef struct _particle_cloud_LedgerResponse_ListLedgers { 
     pb_callback_t ledgers; 
@@ -88,42 +55,70 @@ typedef struct _particle_cloud_LedgerResponse_Subscribe {
     char dummy_field;
 } particle_cloud_LedgerResponse_Subscribe;
 
-typedef struct _particle_cloud_LedgerResponse_SyncPage { 
-    pb_callback_t data; 
-    pb_callback_t checksum; 
-} particle_cloud_LedgerResponse_SyncPage;
-
 typedef struct _particle_cloud_LedgerResponse_Unsubscribe { 
     char dummy_field;
 } particle_cloud_LedgerResponse_Unsubscribe;
 
+typedef struct _particle_cloud_LedgerRequest_GetPage { 
+    pb_callback_t ledger_name; 
+    particle_ledger_LedgerScope scope; 
+    pb_callback_t page_name; 
+} particle_cloud_LedgerRequest_GetPage;
+
+typedef struct _particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages { 
+    pb_callback_t ledger_name; 
+    particle_ledger_LedgerScope scope; 
+    pb_callback_t page_names; 
+} particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages;
+
+typedef struct _particle_cloud_LedgerRequest_Subscribe { 
+    pb_callback_t ledger_pages; 
+    bool resubscribe; 
+} particle_cloud_LedgerRequest_Subscribe;
+
+typedef struct _particle_cloud_LedgerRequest_Subscribe_LedgerPages { 
+    pb_callback_t ledger_name; 
+    particle_ledger_LedgerScope scope; 
+    pb_callback_t page_names; 
+} particle_cloud_LedgerRequest_Subscribe_LedgerPages;
+
 typedef struct _particle_cloud_LedgerRequest_SyncPage { 
     pb_callback_t ledger_name; 
+    particle_ledger_LedgerScope scope; 
     pb_callback_t page_name; 
-    pb_callback_t checksum; 
+    bool has_updated_at;
+    uint64_t updated_at; 
     bool has_strategy;
     particle_cloud_LedgerRequest_SyncPage_Strategy strategy; 
     pb_callback_t data; 
 } particle_cloud_LedgerRequest_SyncPage;
 
-typedef struct _particle_cloud_LedgerResponse { 
-    particle_cloud_LedgerResponse_Result result; 
-    pb_callback_t error_message; 
-    pb_size_t which_response;
-    union {
-        particle_cloud_LedgerResponse_ListLedgers list_ledgers;
-        particle_cloud_LedgerResponse_GetPage get_page;
-        particle_cloud_LedgerResponse_SyncPage sync_page;
-        particle_cloud_LedgerResponse_Subscribe subscribe;
-        particle_cloud_LedgerResponse_Unsubscribe unsubscribe;
-        particle_cloud_LedgerResponse_NotifyPageChanged notify_page_changed;
-    } response; 
-} particle_cloud_LedgerResponse;
+typedef struct _particle_cloud_LedgerRequest_Unsubscribe { 
+    pb_callback_t ledger_pages; 
+    bool unsubscribe_all; 
+} particle_cloud_LedgerRequest_Unsubscribe;
+
+typedef struct _particle_cloud_LedgerRequest_Unsubscribe_LedgerPages { 
+    pb_callback_t ledger_name; 
+    particle_ledger_LedgerScope scope; 
+    pb_callback_t page_names; 
+} particle_cloud_LedgerRequest_Unsubscribe_LedgerPages;
+
+typedef struct _particle_cloud_LedgerResponse_GetPage { 
+    pb_callback_t data; 
+    bool has_updated_at;
+    uint64_t updated_at; 
+} particle_cloud_LedgerResponse_GetPage;
 
 typedef struct _particle_cloud_LedgerResponse_ListLedgers_Ledger { 
     pb_callback_t name; 
     particle_ledger_LedgerScope scope; 
 } particle_cloud_LedgerResponse_ListLedgers_Ledger;
+
+typedef struct _particle_cloud_LedgerResponse_SyncPage { 
+    pb_callback_t data; 
+    uint64_t updated_at; 
+} particle_cloud_LedgerResponse_SyncPage;
 
 /* *
  Ledger request. */
@@ -140,6 +135,20 @@ typedef struct _particle_cloud_LedgerRequest {
         particle_cloud_LedgerRequest_NotifyPageChanged notify_page_changed;
     } request; 
 } particle_cloud_LedgerRequest;
+
+typedef struct _particle_cloud_LedgerResponse { 
+    particle_cloud_LedgerResponse_Result result; 
+    pb_callback_t error_message; 
+    pb_size_t which_response;
+    union {
+        particle_cloud_LedgerResponse_ListLedgers list_ledgers;
+        particle_cloud_LedgerResponse_GetPage get_page;
+        particle_cloud_LedgerResponse_SyncPage sync_page;
+        particle_cloud_LedgerResponse_Subscribe subscribe;
+        particle_cloud_LedgerResponse_Unsubscribe unsubscribe;
+        particle_cloud_LedgerResponse_NotifyPageChanged notify_page_changed;
+    } response; 
+} particle_cloud_LedgerResponse;
 
 
 /* Helper constants for enums */
@@ -162,64 +171,81 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define particle_cloud_LedgerRequest_init_default {false, _particle_cloud_LedgerRequest_Type_MIN, 0, {particle_cloud_LedgerRequest_ListLedgers_init_default}}
-#define particle_cloud_LedgerRequest_ListLedgers_init_default {0}
-#define particle_cloud_LedgerRequest_GetPage_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_SyncPage_init_default {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, false, _particle_cloud_LedgerRequest_SyncPage_Strategy_MIN, {{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_Subscribe_init_default {{{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_Unsubscribe_init_default {{{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_ListLedgers_init_default {{{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_GetPage_init_default {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_SyncPage_init_default {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}, false, 0, false, _particle_cloud_LedgerRequest_SyncPage_Strategy_MIN, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_Subscribe_init_default {{{NULL}, NULL}, 0}
+#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_init_default {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_Unsubscribe_init_default {{{NULL}, NULL}, 0}
+#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_init_default {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}}
 #define particle_cloud_LedgerRequest_NotifyPageChanged_init_default {{{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_init_default {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}}
 #define particle_cloud_LedgerResponse_init_default {_particle_cloud_LedgerResponse_Result_MIN, {{NULL}, NULL}, 0, {particle_cloud_LedgerResponse_ListLedgers_init_default}}
 #define particle_cloud_LedgerResponse_ListLedgers_init_default {{{NULL}, NULL}}
 #define particle_cloud_LedgerResponse_ListLedgers_Ledger_init_default {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN}
-#define particle_cloud_LedgerResponse_GetPage_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
-#define particle_cloud_LedgerResponse_SyncPage_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_LedgerResponse_GetPage_init_default {{{NULL}, NULL}, false, 0}
+#define particle_cloud_LedgerResponse_SyncPage_init_default {{{NULL}, NULL}, 0}
 #define particle_cloud_LedgerResponse_Subscribe_init_default {0}
 #define particle_cloud_LedgerResponse_Unsubscribe_init_default {0}
 #define particle_cloud_LedgerResponse_NotifyPageChanged_init_default {0}
 #define particle_cloud_LedgerRequest_init_zero   {false, _particle_cloud_LedgerRequest_Type_MIN, 0, {particle_cloud_LedgerRequest_ListLedgers_init_zero}}
-#define particle_cloud_LedgerRequest_ListLedgers_init_zero {0}
-#define particle_cloud_LedgerRequest_GetPage_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_SyncPage_init_zero {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, false, _particle_cloud_LedgerRequest_SyncPage_Strategy_MIN, {{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_Subscribe_init_zero {{{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_Unsubscribe_init_zero {{{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_ListLedgers_init_zero {{{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_GetPage_init_zero {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_SyncPage_init_zero {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}, false, 0, false, _particle_cloud_LedgerRequest_SyncPage_Strategy_MIN, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_Subscribe_init_zero {{{NULL}, NULL}, 0}
+#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_init_zero {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_Unsubscribe_init_zero {{{NULL}, NULL}, 0}
+#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_init_zero {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}}
 #define particle_cloud_LedgerRequest_NotifyPageChanged_init_zero {{{NULL}, NULL}}
-#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_init_zero {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN, {{NULL}, NULL}}
 #define particle_cloud_LedgerResponse_init_zero  {_particle_cloud_LedgerResponse_Result_MIN, {{NULL}, NULL}, 0, {particle_cloud_LedgerResponse_ListLedgers_init_zero}}
 #define particle_cloud_LedgerResponse_ListLedgers_init_zero {{{NULL}, NULL}}
 #define particle_cloud_LedgerResponse_ListLedgers_Ledger_init_zero {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN}
-#define particle_cloud_LedgerResponse_GetPage_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
-#define particle_cloud_LedgerResponse_SyncPage_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_LedgerResponse_GetPage_init_zero {{{NULL}, NULL}, false, 0}
+#define particle_cloud_LedgerResponse_SyncPage_init_zero {{{NULL}, NULL}, 0}
 #define particle_cloud_LedgerResponse_Subscribe_init_zero {0}
 #define particle_cloud_LedgerResponse_Unsubscribe_init_zero {0}
 #define particle_cloud_LedgerResponse_NotifyPageChanged_init_zero {0}
 
 /* Field tags (for use in manual encoding/decoding) */
-#define particle_cloud_LedgerRequest_GetPage_ledger_name_tag 1
-#define particle_cloud_LedgerRequest_GetPage_page_name_tag 2
+#define particle_cloud_LedgerRequest_ListLedgers_scopes_tag 1
 #define particle_cloud_LedgerRequest_NotifyPageChanged_ledger_pages_tag 1
-#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_ledger_name_tag 1
-#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_page_names_tag 2
-#define particle_cloud_LedgerRequest_Subscribe_ledger_pages_tag 1
-#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_ledger_name_tag 1
-#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_page_names_tag 2
-#define particle_cloud_LedgerRequest_Unsubscribe_ledger_pages_tag 1
-#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_ledger_name_tag 1
-#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_page_names_tag 2
-#define particle_cloud_LedgerResponse_GetPage_data_tag 1
-#define particle_cloud_LedgerResponse_GetPage_checksum_tag 2
 #define particle_cloud_LedgerResponse_ListLedgers_ledgers_tag 1
-#define particle_cloud_LedgerResponse_SyncPage_data_tag 1
-#define particle_cloud_LedgerResponse_SyncPage_checksum_tag 2
+#define particle_cloud_LedgerRequest_GetPage_ledger_name_tag 1
+#define particle_cloud_LedgerRequest_GetPage_scope_tag 2
+#define particle_cloud_LedgerRequest_GetPage_page_name_tag 3
+#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_ledger_name_tag 1
+#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_scope_tag 2
+#define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_page_names_tag 3
+#define particle_cloud_LedgerRequest_Subscribe_ledger_pages_tag 1
+#define particle_cloud_LedgerRequest_Subscribe_resubscribe_tag 2
+#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_ledger_name_tag 1
+#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_scope_tag 2
+#define particle_cloud_LedgerRequest_Subscribe_LedgerPages_page_names_tag 3
 #define particle_cloud_LedgerRequest_SyncPage_ledger_name_tag 1
-#define particle_cloud_LedgerRequest_SyncPage_page_name_tag 2
-#define particle_cloud_LedgerRequest_SyncPage_checksum_tag 3
-#define particle_cloud_LedgerRequest_SyncPage_strategy_tag 4
-#define particle_cloud_LedgerRequest_SyncPage_data_tag 5
+#define particle_cloud_LedgerRequest_SyncPage_scope_tag 2
+#define particle_cloud_LedgerRequest_SyncPage_page_name_tag 3
+#define particle_cloud_LedgerRequest_SyncPage_updated_at_tag 4
+#define particle_cloud_LedgerRequest_SyncPage_strategy_tag 5
+#define particle_cloud_LedgerRequest_SyncPage_data_tag 6
+#define particle_cloud_LedgerRequest_Unsubscribe_ledger_pages_tag 1
+#define particle_cloud_LedgerRequest_Unsubscribe_unsubscribe_all_tag 2
+#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_ledger_name_tag 1
+#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_scope_tag 2
+#define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_page_names_tag 3
+#define particle_cloud_LedgerResponse_GetPage_data_tag 1
+#define particle_cloud_LedgerResponse_GetPage_updated_at_tag 2
+#define particle_cloud_LedgerResponse_ListLedgers_Ledger_name_tag 1
+#define particle_cloud_LedgerResponse_ListLedgers_Ledger_scope_tag 2
+#define particle_cloud_LedgerResponse_SyncPage_data_tag 1
+#define particle_cloud_LedgerResponse_SyncPage_updated_at_tag 2
+#define particle_cloud_LedgerRequest_type_tag    1
+#define particle_cloud_LedgerRequest_list_ledgers_tag 2
+#define particle_cloud_LedgerRequest_get_page_tag 3
+#define particle_cloud_LedgerRequest_sync_page_tag 4
+#define particle_cloud_LedgerRequest_subscribe_tag 5
+#define particle_cloud_LedgerRequest_unsubscribe_tag 6
+#define particle_cloud_LedgerRequest_notify_page_changed_tag 7
 #define particle_cloud_LedgerResponse_result_tag 1
 #define particle_cloud_LedgerResponse_error_message_tag 2
 #define particle_cloud_LedgerResponse_list_ledgers_tag 3
@@ -228,15 +254,6 @@ extern "C" {
 #define particle_cloud_LedgerResponse_subscribe_tag 6
 #define particle_cloud_LedgerResponse_unsubscribe_tag 7
 #define particle_cloud_LedgerResponse_notify_page_changed_tag 8
-#define particle_cloud_LedgerResponse_ListLedgers_Ledger_name_tag 1
-#define particle_cloud_LedgerResponse_ListLedgers_Ledger_scope_tag 2
-#define particle_cloud_LedgerRequest_type_tag    1
-#define particle_cloud_LedgerRequest_list_ledgers_tag 2
-#define particle_cloud_LedgerRequest_get_page_tag 3
-#define particle_cloud_LedgerRequest_sync_page_tag 4
-#define particle_cloud_LedgerRequest_subscribe_tag 5
-#define particle_cloud_LedgerRequest_unsubscribe_tag 6
-#define particle_cloud_LedgerRequest_notify_page_changed_tag 7
 
 /* Struct field encoding specification for nanopb */
 #define particle_cloud_LedgerRequest_FIELDLIST(X, a) \
@@ -257,46 +274,52 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (request,notify_page_changed,request.notify_p
 #define particle_cloud_LedgerRequest_request_notify_page_changed_MSGTYPE particle_cloud_LedgerRequest_NotifyPageChanged
 
 #define particle_cloud_LedgerRequest_ListLedgers_FIELDLIST(X, a) \
-
-#define particle_cloud_LedgerRequest_ListLedgers_CALLBACK NULL
+X(a, CALLBACK, REPEATED, UENUM,    scopes,            1)
+#define particle_cloud_LedgerRequest_ListLedgers_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerRequest_ListLedgers_DEFAULT NULL
 
 #define particle_cloud_LedgerRequest_GetPage_FIELDLIST(X, a) \
-X(a, CALLBACK, OPTIONAL, STRING,   ledger_name,       1) \
-X(a, CALLBACK, SINGULAR, STRING,   page_name,         2)
+X(a, CALLBACK, SINGULAR, STRING,   ledger_name,       1) \
+X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
+X(a, CALLBACK, SINGULAR, STRING,   page_name,         3)
 #define particle_cloud_LedgerRequest_GetPage_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerRequest_GetPage_DEFAULT NULL
 
 #define particle_cloud_LedgerRequest_SyncPage_FIELDLIST(X, a) \
-X(a, CALLBACK, OPTIONAL, STRING,   ledger_name,       1) \
-X(a, CALLBACK, SINGULAR, STRING,   page_name,         2) \
-X(a, CALLBACK, SINGULAR, BYTES,    checksum,          3) \
-X(a, STATIC,   OPTIONAL, UENUM,    strategy,          4) \
-X(a, CALLBACK, OPTIONAL, BYTES,    data,              5)
+X(a, CALLBACK, SINGULAR, STRING,   ledger_name,       1) \
+X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
+X(a, CALLBACK, SINGULAR, STRING,   page_name,         3) \
+X(a, STATIC,   OPTIONAL, FIXED64,  updated_at,        4) \
+X(a, STATIC,   OPTIONAL, UENUM,    strategy,          5) \
+X(a, CALLBACK, OPTIONAL, BYTES,    data,              6)
 #define particle_cloud_LedgerRequest_SyncPage_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerRequest_SyncPage_DEFAULT NULL
 
 #define particle_cloud_LedgerRequest_Subscribe_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, MESSAGE,  ledger_pages,      1)
+X(a, CALLBACK, REPEATED, MESSAGE,  ledger_pages,      1) \
+X(a, STATIC,   SINGULAR, BOOL,     resubscribe,       2)
 #define particle_cloud_LedgerRequest_Subscribe_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerRequest_Subscribe_DEFAULT NULL
 #define particle_cloud_LedgerRequest_Subscribe_ledger_pages_MSGTYPE particle_cloud_LedgerRequest_Subscribe_LedgerPages
 
 #define particle_cloud_LedgerRequest_Subscribe_LedgerPages_FIELDLIST(X, a) \
-X(a, CALLBACK, OPTIONAL, STRING,   ledger_name,       1) \
-X(a, CALLBACK, REPEATED, STRING,   page_names,        2)
+X(a, CALLBACK, SINGULAR, STRING,   ledger_name,       1) \
+X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
+X(a, CALLBACK, REPEATED, STRING,   page_names,        3)
 #define particle_cloud_LedgerRequest_Subscribe_LedgerPages_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerRequest_Subscribe_LedgerPages_DEFAULT NULL
 
 #define particle_cloud_LedgerRequest_Unsubscribe_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, MESSAGE,  ledger_pages,      1)
+X(a, CALLBACK, REPEATED, MESSAGE,  ledger_pages,      1) \
+X(a, STATIC,   SINGULAR, BOOL,     unsubscribe_all,   2)
 #define particle_cloud_LedgerRequest_Unsubscribe_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerRequest_Unsubscribe_DEFAULT NULL
 #define particle_cloud_LedgerRequest_Unsubscribe_ledger_pages_MSGTYPE particle_cloud_LedgerRequest_Unsubscribe_LedgerPages
 
 #define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_FIELDLIST(X, a) \
-X(a, CALLBACK, OPTIONAL, STRING,   ledger_name,       1) \
-X(a, CALLBACK, REPEATED, STRING,   page_names,        2)
+X(a, CALLBACK, SINGULAR, STRING,   ledger_name,       1) \
+X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
+X(a, CALLBACK, REPEATED, STRING,   page_names,        3)
 #define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerRequest_Unsubscribe_LedgerPages_DEFAULT NULL
 
@@ -307,8 +330,9 @@ X(a, CALLBACK, REPEATED, MESSAGE,  ledger_pages,      1)
 #define particle_cloud_LedgerRequest_NotifyPageChanged_ledger_pages_MSGTYPE particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages
 
 #define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_FIELDLIST(X, a) \
-X(a, CALLBACK, OPTIONAL, STRING,   ledger_name,       1) \
-X(a, CALLBACK, REPEATED, STRING,   page_names,        2)
+X(a, CALLBACK, SINGULAR, STRING,   ledger_name,       1) \
+X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
+X(a, CALLBACK, REPEATED, STRING,   page_names,        3)
 #define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages_DEFAULT NULL
 
@@ -344,13 +368,13 @@ X(a, STATIC,   SINGULAR, UENUM,    scope,             2)
 
 #define particle_cloud_LedgerResponse_GetPage_FIELDLIST(X, a) \
 X(a, CALLBACK, SINGULAR, BYTES,    data,              1) \
-X(a, CALLBACK, SINGULAR, BYTES,    checksum,          2)
+X(a, STATIC,   OPTIONAL, FIXED64,  updated_at,        2)
 #define particle_cloud_LedgerResponse_GetPage_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerResponse_GetPage_DEFAULT NULL
 
 #define particle_cloud_LedgerResponse_SyncPage_FIELDLIST(X, a) \
 X(a, CALLBACK, SINGULAR, BYTES,    data,              1) \
-X(a, CALLBACK, SINGULAR, BYTES,    checksum,          2)
+X(a, STATIC,   SINGULAR, FIXED64,  updated_at,        2)
 #define particle_cloud_LedgerResponse_SyncPage_CALLBACK pb_default_field_callback
 #define particle_cloud_LedgerResponse_SyncPage_DEFAULT NULL
 
@@ -410,6 +434,7 @@ extern const pb_msgdesc_t particle_cloud_LedgerResponse_NotifyPageChanged_msg;
 
 /* Maximum encoded size of messages (where known) */
 /* particle_cloud_LedgerRequest_size depends on runtime parameters */
+/* particle_cloud_LedgerRequest_ListLedgers_size depends on runtime parameters */
 /* particle_cloud_LedgerRequest_GetPage_size depends on runtime parameters */
 /* particle_cloud_LedgerRequest_SyncPage_size depends on runtime parameters */
 /* particle_cloud_LedgerRequest_Subscribe_size depends on runtime parameters */
@@ -423,7 +448,6 @@ extern const pb_msgdesc_t particle_cloud_LedgerResponse_NotifyPageChanged_msg;
 /* particle_cloud_LedgerResponse_ListLedgers_Ledger_size depends on runtime parameters */
 /* particle_cloud_LedgerResponse_GetPage_size depends on runtime parameters */
 /* particle_cloud_LedgerResponse_SyncPage_size depends on runtime parameters */
-#define particle_cloud_LedgerRequest_ListLedgers_size 0
 #define particle_cloud_LedgerResponse_NotifyPageChanged_size 0
 #define particle_cloud_LedgerResponse_Subscribe_size 0
 #define particle_cloud_LedgerResponse_Unsubscribe_size 0
