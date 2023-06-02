@@ -40,14 +40,14 @@ public:
             pageChangeArg_(nullptr),
             appData_(nullptr),
             destroyAppData_(nullptr),
-            scope_(LEDGER_SCOPE_UNKNOWN),
+            scope_(LEDGER_SCOPE_INVALID),
             apiVersion_(0),
             refCount_(1) {
     }
 
     ~Ledger();
 
-    int init(const char* name, int apiVersion);
+    int init(const char* name, ledger_scope scope, int apiVersion);
 
     int getLinkedPageNames(Vector<CString>& names) const;
 
@@ -104,22 +104,20 @@ private:
 class LedgerManager {
 public:
     LedgerManager() :
-            devLedger_(nullptr),
             inited_(false) {
     }
 
     int init();
 
-    int getLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger);
+    int getLedger(const char* name, ledger_scope scope,int apiVersion, RefCountPtr<Ledger>& ledger);
     void addLedgerRef(Ledger* ledger);
     void releaseLedger(Ledger* ledger);
 
     static LedgerManager* instance();
 
 private:
-    Vector<Ledger*> sharedLedgers_; // Instantiated product and organization ledgers
+    Vector<Ledger*> ledgerInstances_; // Instantiated ledgers
     Vector<RefCountPtr<Ledger>> subscribedLedgers_; // Ledgers with enabled page subscriptions
-    Ledger* devLedger_; // Device ledger
     mutable StaticRecursiveMutex mutex_; // Manager lock
     bool inited_; // Whether the manager was initialized successfully
 };

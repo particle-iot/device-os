@@ -28,7 +28,6 @@
 #include "file_util.h"
 #include "endian_util.h"
 #include "scope_guard.h"
-#include "system_error.h"
 #include "check.h"
 
 #include "common/ledger.pb.h" // Common definitions
@@ -42,36 +41,40 @@
 
     /sys/ledger/
     |
-    |--- local/ - Device ledger
-    |    |--- ledger.data - Ledger info
-    |    `--- pages/ - Page files
-    |         |--- sensors.data - Contents of the page called "sensors"
-    |         |--- ...
-    |         `--- ...
+    +--- device/ - Device ledgers
+    |    +--- default/ - Files of the default device ledger
+    |         +--- ledger.data - Ledger info
+    |         +--- pages/ - Page files
+    |              +--- sensors.data - Contents of the page called "sensors"
+    |              +--- ...
     |
-    `--- shared/ - Product and organization ledgers
-         `--- config/ - Files of the ledger called "config"
-              |--- ledger.data - Ledger info
-              `--- pages/ - Page files
-                   |--- server_addr.data - Contents of the page called "server_addr"
-                   |--- ...
-                   `--- ...
+    +--- product/ - Product ledgers
+    |    +--- config/ - Files of the ledger called "config"
+    |    |    +--- ...
+    |    +--- product_info/ - Files of the ledger called "product_info"
+    |    |    +--- ...
+    |    +--- ...
+    |
+    +--- owner/ - Owner ledgers
+         +--- ...
 */
-#define LEDGER_ROOT_DIR "/sys/ledger"
-#define LOCAL_LEDGER_DIR_NAME "local"
-#define SHARED_LEDGER_DIR_NAME "shared"
-#define PAGES_DIR_NAME "pages"
+#define LEDGER_ROOT_DIR "/sys/ledger" // The root "sys" directory is expected to exist
+#define DEVICE_SCOPE_DIR_NAME "device"
+#define PRODUCT_SCOPE_DIR_NAME "product"
+#define OWNER_SCOPE_DIR_NAME "owner"
 #define LEDGER_DATA_FILE_NAME "ledger.data"
+#define PAGES_DIR_NAME "pages"
 #define PAGE_DATA_EXTENSION ".data"
+#define DEFAULT_LEDGER_NAME "default"
 
 #define PB_LEDGER(_name) particle_ledger_##_name
 #define PB_CLOUD(_name) particle_cloud_##_name
 #define PB_INTERNAL(_name) particle_firmware_##_name
 
-static_assert(LEDGER_SCOPE_UNKNOWN == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_UNKNOWN) &&
+static_assert(LEDGER_SCOPE_INVALID == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_INVALID) &&
         LEDGER_SCOPE_DEVICE == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_DEVICE) &&
         LEDGER_SCOPE_PRODUCT == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_PRODUCT) &&
-        LEDGER_SCOPE_ORG == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_ORG));
+        LEDGER_SCOPE_OWNER == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_OWNER));
 
 namespace particle {
 
@@ -123,27 +126,28 @@ struct PageDataHeader {
     uint32_t dataSize;
 } __attribute__((packed));
 
-int formatLedgerPath(char* buf, size_t size, const char* name, const char* fmt, ...) {
-    size_t pos = 0;
+int formatLedgerPath(char* buf, size_t size, const char* ledgerName, ledger_scope scope, const char* fmt = "", ...) {
     // Format the prefix part of the path
-    if (name) {
-        // Product or organization ledger
-        int n = snprintf(buf, size, LEDGER_ROOT_DIR "/" SHARED_LEDGER_DIR_NAME "/%s/", name);
-        if (n < 0) {
-            return SYSTEM_ERROR_INTERNAL;
-        }
-        pos = n;
-    } else {
-        // Device ledger
-        pos = strlcpy(buf, LEDGER_ROOT_DIR "/" LOCAL_LEDGER_DIR_NAME "/", size);
+    const char* scopeName = nullptr;
+    switch (scope) {
+    case LEDGER_SCOPE_DEVICE: scopeName = DEVICE_SCOPE_DIR_NAME; break;
+    case LEDGER_SCOPE_PRODUCT: scopeName = PRODUCT_SCOPE_DIR_NAME; break;
+    case LEDGER_SCOPE_OWNER: scopeName = OWNER_SCOPE_DIR_NAME; break;
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    int n = snprintf(buf, size, "%s/%s/%s/", LEDGER_ROOT_DIR, scopeName, ledgerName);
+    if (n < 0) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    size_t pos = n;
     if (pos >= size) {
         return SYSTEM_ERROR_FILENAME_TOO_LONG;
     }
-    // Format the suffix part of the path
+    // Format the rest of the path
     va_list args;
     va_start(args, fmt);
-    int n = vsnprintf(buf + pos, size - pos, fmt, args);
+    n = vsnprintf(buf + pos, size - pos, fmt, args);
     va_end(args);
     if (n < 0) {
         return SYSTEM_ERROR_INTERNAL;
@@ -187,22 +191,17 @@ Ledger::~Ledger() {
     }
 }
 
-int Ledger::init(const char* name, int apiVersion) {
-    if (name) {
-        name_ = name;
-        if (!name_) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
+int Ledger::init(const char* name, ledger_scope scope, int apiVersion) {
+    name_ = name;
+    if (!name_) {
+        return SYSTEM_ERROR_NO_MEMORY;
     }
+    scope_ = scope;
     apiVersion_ = apiVersion;
     int r = CHECK(loadLedgerInfo());
-    if (r == RESULT_LEDGER_FILE_NOT_FOUND) {
-        if (name_) {
-            scope_ = LEDGER_SCOPE_UNKNOWN; // Unknown product or organization ledger
-        } else {
-            scope_ = LEDGER_SCOPE_DEVICE;
-            CHECK(saveLedgerInfo());
-        }
+    if (r == RESULT_LEDGER_FILE_NOT_FOUND && scope_ == LEDGER_SCOPE_DEVICE) {
+        // Create a directory for the device ledger
+        CHECK(saveLedgerInfo());
     }
     return 0;
 }
@@ -251,14 +250,14 @@ int Ledger::loadLedgerInfo() {
     FsLock fs;
     // Open the ledger file
     char path[LFS_NAME_MAX + 1] = {};
-    CHECK(formatLedgerPath(path, sizeof(path), name_, LEDGER_DATA_FILE_NAME));
+    CHECK(formatLedgerPath(path, sizeof(path), name_, scope_, "%s", LEDGER_DATA_FILE_NAME));
     lfs_file_t file = {};
     int r = lfs_file_open(fs.instance(), &file, path, LFS_O_RDONLY);
     if (r < 0) {
         if (r == LFS_ERR_NOENT) {
             return RESULT_LEDGER_FILE_NOT_FOUND;
         }
-        CHECK_FS(r); // Return the error
+        CHECK_FS(r); // Forward the error
     }
     SCOPE_GUARD({
         int r = lfs_file_close(fs.instance(), &file);
@@ -278,32 +277,34 @@ int Ledger::loadLedgerInfo() {
         LOG(ERROR, "Unsupported version of ledger data format: %u", (unsigned)h.version);
         return SYSTEM_ERROR_LEDGER_UNSUPPORTED_FORMAT;
     }
-    // Read the ledger info
+    // Read and validate the ledger info
     PB_INTERNAL(LedgerInfo) pbInfo = {};
     DecodedCString pbName(&pbInfo.name);
     CHECK(decodeMessageFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, h.infoSize));
-    // Validate the name and scope
-    if (name_) {
-        if (strcmp(name_, pbName.data) != 0 || (pbInfo.scope != PB_LEDGER(LedgerScope_LEDGER_SCOPE_PRODUCT) &&
-                pbInfo.scope != PB_LEDGER(LedgerScope_LEDGER_SCOPE_ORG))) {
-            return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
-        }
-    } else {
-        if (pbName.size != 0 || pbInfo.scope != PB_LEDGER(LedgerScope_LEDGER_SCOPE_DEVICE)) {
-            return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
-        }
+    if (strcmp(name_, pbName.data) != 0) {
+        LOG(ERROR, "Unexpected ledger name");
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
-    scope_ = static_cast<ledger_scope>(pbInfo.scope);
+    if (static_cast<ledger_scope>(pbInfo.scope) != scope_) {
+        LOG(ERROR, "Unexpected ledger scope");
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
     return 0;
 }
 
 int Ledger::saveLedgerInfo() {
     FsLock fs;
-    // Open the ledger file
+    // Ensure the ledger directory exists
     char path[LFS_NAME_MAX + 1] = {};
-    CHECK(formatLedgerPath(path, sizeof(path), name_, LEDGER_DATA_FILE_NAME));
+    CHECK(formatLedgerPath(path, sizeof(path), name_, scope_));
+    int r = lfs_mkdir(fs.instance(), path);
+    if (r < 0 && r != LFS_ERR_EXIST) {
+        CHECK_FS(r); // Forward the error
+    }
+    // Create the ledger file
+    CHECK(formatLedgerPath(path, sizeof(path), name_, scope_, "%s", LEDGER_DATA_FILE_NAME));
     lfs_file_t file = {};
-    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_WRONLY));
+    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_WRONLY | LFS_O_TRUNC));
     SCOPE_GUARD({
         int r = lfs_file_close(fs.instance(), &file);
         if (r < 0) {
@@ -316,11 +317,7 @@ int Ledger::saveLedgerInfo() {
     CHECK_FS(lfs_file_write(fs.instance(), &file, &h, sizeof(h)));
     // Write the ledger info
     PB_INTERNAL(LedgerInfo) pbInfo = {};
-    EncodedString pbName(&pbInfo.name);
-    if (name_) {
-        pbName.data = name_;
-        pbName.size = strlen(name_);
-    }
+    EncodedString pbName(&pbInfo.name, name_, strlen(name_));
     pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(scope_);
     CHECK(encodeMessageToFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
     return 0;
@@ -332,10 +329,10 @@ int LedgerManager::init() {
     lfs_info entry = {};
     int r = lfs_stat(fs.instance(), LEDGER_ROOT_DIR, &entry);
     if (r == LFS_ERR_NOENT) {
-        // /sys should already exist at this point
         CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR));
-        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR "/" LOCAL_LEDGER_DIR_NAME));
-        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR "/" SHARED_LEDGER_DIR_NAME));
+        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR "/" DEVICE_SCOPE_DIR_NAME));
+        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR "/" PRODUCT_SCOPE_DIR_NAME));
+        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR "/" OWNER_SCOPE_DIR_NAME));
     } else if (r < 0 || entry.type != LFS_TYPE_DIR) {
         LOG(ERROR, "%s is not a directory", LEDGER_ROOT_DIR);
         return (r < 0) ? filesystem_to_system_error(r) : SYSTEM_ERROR_INVALID_STATE;
@@ -344,39 +341,43 @@ int LedgerManager::init() {
     return 0;
 }
 
-int LedgerManager::getLedger(const char* name, int apiVersion, RefCountPtr<Ledger>& ledger) {
+int LedgerManager::getLedger(const char* name, ledger_scope scope, int apiVersion, RefCountPtr<Ledger>& ledger) {
     std::lock_guard lock(mutex_);
-    if (name && name[0] == '\0') {
+    if (!name) {
+        name = DEFAULT_LEDGER_NAME;
+    } else {
+        if (!*name) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (scope == LEDGER_SCOPE_DEVICE && strcmp(name, DEFAULT_LEDGER_NAME) != 0) {
+            // As of now, only one device ledger is supported per device
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+    }
+    if (scope == LEDGER_SCOPE_INVALID) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (!inited_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     // Check if the requested ledger is already instantiated
-    if (name) {
-        for (Ledger* lr: sharedLedgers_) {
-            if (strcmp(lr->name(), name) == 0) {
-                ledger = lr;
-                return 0;
-            }
+    for (Ledger* lr: ledgerInstances_) { // TODO: Use binary search
+        if (strcmp(lr->name(), name) == 0) {
+            ledger = lr;
+            return 0;
         }
-    } else if (devLedger_) {
-        ledger = devLedger_;
-        return 0;
     }
     // Create a new instance
     auto lr = makeRefCountPtr<Ledger>();
     if (!lr) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    int r = lr->init(name, apiVersion);
+    int r = lr->init(name, scope, apiVersion);
     if (r < 0) {
         LOG(ERROR, "Failed to initialize ledger: %d", r);
         return r;
     }
-    if (!name) {
-        devLedger_ = lr.get();
-    } else if (!sharedLedgers_.append(lr.get())) {
+    if (!ledgerInstances_.append(lr.get())) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     ledger = std::move(lr);
@@ -391,11 +392,7 @@ void LedgerManager::addLedgerRef(Ledger* ledger) {
 void LedgerManager::releaseLedger(Ledger* ledger) {
     std::lock_guard lock(mutex_);
     if (!--ledger->refCount_) {
-        if (devLedger_ == ledger) {
-            devLedger_ = nullptr;
-        } else {
-            sharedLedgers_.removeOne(ledger);
-        }
+        ledgerInstances_.removeOne(ledger);
         delete ledger;
     }
 }

@@ -75,10 +75,10 @@ typedef void (*ledger_destroy_app_data_callback)(void* app_data);
  * Ledger scope.
  */
 typedef enum ledger_scope {
-    LEDGER_SCOPE_UNKNOWN = 0, ///< Unknown scope.
+    LEDGER_SCOPE_INVALID = 0, ///< Invalid scope.
     LEDGER_SCOPE_DEVICE = 1, ///< Device scope.
     LEDGER_SCOPE_PRODUCT = 2, ///< Product scope.
-    LEDGER_SCOPE_ORG = 3 ///< Organization scope.
+    LEDGER_SCOPE_OWNER = 3 ///< Owner scope.
 } ledger_scope;
 
 /**
@@ -133,8 +133,8 @@ typedef struct ledger_sync_options {
  * Ledger info.
  */
 typedef struct ledger_info {
-    const char* name; ///< Ledger name. If set to `NULL`, this is the device ledger.
-    int scope; ///< Ledger scope.
+    const char* name; ///< Ledger name.
+    int scope; ///< Ledger scope as defined by the `ledger_scope` enum.
     /**
      * Names of the linked pages.
      *
@@ -169,12 +169,13 @@ extern "C" {
  * Get a ledger instance.
  *
  * @param ledger[out] Ledger instance.
- * @param name Ledger name. If set to `NULL`, the device ledger is returned.
+ * @param name Ledger name. If set to `NULL`, the default name for the scope is used.
+ * @param scope Ledger scope as defined by the `ledger_scope` enum.
  * @param api_version API version. Must be set to the value of `LEDGER_API_VERSION`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_get_instance(ledger_instance** ledger, const char* name, int api_version, void* reserved);
+int ledger_get_instance(ledger_instance** ledger, const char* name, int scope, int api_version, void* reserved);
 
 /**
  * Increment a ledger's reference count.
@@ -217,7 +218,7 @@ void ledger_unlock(ledger_instance* ledger, void* reserved);
  * Set ledger callbacks.
  *
  * @param ledger Ledger instance.
- * @param callbacks Ledger callbacks.
+ * @param callbacks Ledger callbacks. If `NULL`, all the currently registered callbacks will be cleared.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* reserved);

@@ -25,7 +25,7 @@
 
 DYNALIB_BEGIN(system_ledger)
 
-DYNALIB_FN(0, system_ledger, ledger_get_instance, int(ledger_instance**, const char*, int, void*))
+DYNALIB_FN(0, system_ledger, ledger_get_instance, int(ledger_instance**, const char*, int, int, void*))
 DYNALIB_FN(1, system_ledger, ledger_add_ref, void(ledger_instance*, void*))
 DYNALIB_FN(2, system_ledger, ledger_release, void(ledger_instance*, void*))
 DYNALIB_FN(3, system_ledger, ledger_lock, void(ledger_instance*, void*))

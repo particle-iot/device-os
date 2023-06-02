@@ -25,9 +25,27 @@
 using namespace particle;
 using namespace particle::system;
 
-int ledger_get_instance(ledger_instance** ledger, const char* name, int apiVersion, void* reserved) {
+namespace {
+
+bool isValidLedgerScope(int scope) {
+    switch (scope) {
+    case LEDGER_SCOPE_DEVICE:
+    case LEDGER_SCOPE_PRODUCT:
+    case LEDGER_SCOPE_OWNER:
+        return true;
+    default:
+        return false;
+    }
+}
+
+} // namespace
+
+int ledger_get_instance(ledger_instance** ledger, const char* name, int scope, int apiVersion, void* reserved) {
+    if (!isValidLedgerScope(scope)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     RefCountPtr<Ledger> lr;
-    CHECK(LedgerManager::instance()->getLedger(name, apiVersion, lr));
+    CHECK(LedgerManager::instance()->getLedger(name, static_cast<ledger_scope>(scope), apiVersion, lr));
     *ledger = reinterpret_cast<ledger_instance*>(lr.unwrap()); // Transfer ownership to the caller
     return 0;
 }
