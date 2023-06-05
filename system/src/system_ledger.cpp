@@ -15,6 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <memory>
+
 #include "system_ledger.h"
 
 #include "system_ledger_internal.h"
@@ -27,8 +29,9 @@ using namespace particle::system;
 
 namespace {
 
-bool isValidLedgerScope(int scope) {
+bool isValidLedgerScopeValue(int scope) {
     switch (scope) {
+    case LEDGER_SCOPE_INVALID:
     case LEDGER_SCOPE_DEVICE:
     case LEDGER_SCOPE_PRODUCT:
     case LEDGER_SCOPE_OWNER:
@@ -41,7 +44,7 @@ bool isValidLedgerScope(int scope) {
 } // namespace
 
 int ledger_get_instance(ledger_instance** ledger, const char* name, int scope, int apiVersion, void* reserved) {
-    if (!isValidLedgerScope(scope)) {
+    if (!isValidLedgerScopeValue(scope)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     RefCountPtr<Ledger> lr;
@@ -74,7 +77,7 @@ void ledger_unlock(ledger_instance* ledger, void* reserved) {
 
 void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* reserved) {
     auto lr = reinterpret_cast<Ledger*>(ledger);
-    lr->setCallbacks(callbacks->page_sync, callbacks->page_sync_arg, callbacks->page_change, callbacks->page_change_arg);
+    lr->setCallbacks(callbacks->page_sync, callbacks->page_change);
 }
 
 void ledger_set_app_data(ledger_instance* ledger, void* appData, ledger_destroy_app_data_callback destroy,
@@ -109,64 +112,93 @@ int ledger_get_info(ledger_instance* ledger, ledger_info* info, void* reserved) 
 }
 
 int ledger_set_default_sync_options(ledger_instance* ledger, const ledger_sync_options* options, void* reserved) {
-    return 0;
+    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
 }
 
 int ledger_get_page(ledger_page** page, ledger_instance* ledger, const char* name, void* reserved) {
+    auto lr = reinterpret_cast<Ledger*>(ledger);
+    RefCountPtr<LedgerPage> p;
+    CHECK(lr->getPage(name, p));
+    *page = reinterpret_cast<ledger_page*>(p.unwrap()); // Transfer ownership to the caller
     return 0;
 }
 
-void ledger_add_page_ref(ledger_page* ledger, void* reserved) {
+void ledger_add_page_ref(ledger_page* page, void* reserved) {
+    auto p = reinterpret_cast<LedgerPage*>(page);
+    p->addRef();
 }
 
 void ledger_release_page(ledger_page* page, void* reserved) {
+    if (page) {
+        auto p = reinterpret_cast<LedgerPage*>(page);
+        p->release();
+    }
 }
 
 void ledger_lock_page(ledger_page* page, void* reserved) {
+    auto p = reinterpret_cast<LedgerPage*>(page);
+    p->lock();
 }
 
 void ledger_unlock_page(ledger_page* page, void* reserved) {
+    auto p = reinterpret_cast<LedgerPage*>(page);
+    p->unlock();
 }
 
 ledger_instance* ledger_get_page_ledger(ledger_page* page, void* reserved) {
-    return nullptr;
+    auto p = reinterpret_cast<LedgerPage*>(page);
+    return reinterpret_cast<ledger_instance*>(p->ledger());
 }
 
 void ledger_set_page_app_data(ledger_page* page, void* app_data, ledger_destroy_app_data_callback destroy,
         void* reserved) {
+    auto p = reinterpret_cast<LedgerPage*>(page);
+    p->setAppData(app_data, destroy);
 }
 
 void* ledger_get_page_app_data(ledger_page* page, void* reserved) {
-    return nullptr;
+    auto p = reinterpret_cast<LedgerPage*>(page);
+    return p->appData();
 }
 
 int ledger_get_page_info(ledger_page* page, ledger_page_info* info, void* reserved) {
-    return 0;
+    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
 }
 
 int ledger_sync_page(ledger_page* page, const ledger_sync_options* options, void* reserved) {
-    return 0;
+    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
 }
 
 int ledger_unlink_page(ledger_page* page, void* reserved) {
-    return 0;
+    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
 }
 
 int ledger_remove_page(ledger_page* page, void* reserved) {
-    return 0;
+    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
 }
 
 int ledger_open_page(ledger_stream** stream, ledger_page* page, int mode, void* reserved) {
+    auto p = reinterpret_cast<LedgerPage*>(page);
+    std::unique_ptr<LedgerStream> s;
+    CHECK(p->openStream(mode, false /* forceMode */, s));
+    *stream = reinterpret_cast<ledger_stream*>(s.release()); // Transfer ownership to the caller
     return 0;
 }
 
-void ledger_close_stream(ledger_stream* stream, void* reserved) {
+int ledger_close_stream(ledger_stream* stream, int flags, void* reserved) {
+    auto s = reinterpret_cast<LedgerStream*>(stream);
+    CHECK(s->close(flags));
+    return 0;
 }
 
 int ledger_read(ledger_stream* stream, char* data, size_t size, void* reserved) {
-    return 0;
+    auto s = reinterpret_cast<LedgerStream*>(stream);
+    size_t n = CHECK(s->read(data, size));
+    return n;
 }
 
 int ledger_write(ledger_stream* stream, const char* data, size_t size, void* reserved) {
-    return 0;
+    auto s = reinterpret_cast<LedgerStream*>(stream);
+    size_t n = CHECK(s->write(data, size));
+    return n;
 }

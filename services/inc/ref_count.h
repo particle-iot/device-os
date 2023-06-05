@@ -36,18 +36,18 @@ public:
 
     virtual ~RefCount() = default;
 
-    void addRef() {
+    void addRef() const {
         count_.fetch_add(1, std::memory_order_relaxed);
     }
 
-    void release() {
+    void release() const {
         if (count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             delete this;
         }
     }
 
 private:
-    std::atomic_int count_;
+    mutable std::atomic_int count_;
 };
 
 /**

@@ -48,7 +48,7 @@ DYNALIB_FN(19, system_ledger, ledger_sync_page, int(ledger_page*, const ledger_s
 DYNALIB_FN(20, system_ledger, ledger_unlink_page, int(ledger_page*, void*))
 DYNALIB_FN(21, system_ledger, ledger_remove_page, int(ledger_page*, void*))
 DYNALIB_FN(22, system_ledger, ledger_open_page, int(ledger_stream**, ledger_page*, int, void*))
-DYNALIB_FN(23, system_ledger, ledger_close_stream, void(ledger_stream*, void*))
+DYNALIB_FN(23, system_ledger, ledger_close_stream, int(ledger_stream*, int, void*))
 DYNALIB_FN(24, system_ledger, ledger_read, int(ledger_stream*, char*, size_t, void*))
 DYNALIB_FN(25, system_ledger, ledger_write, int(ledger_stream*, const char*, size_t, void*))
 

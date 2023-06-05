@@ -50,9 +50,9 @@ typedef struct ledger_stream ledger_stream;
  * @param ledger Ledger instance.
  * @param page_name Page name.
  * @param error 0 if the synchronization succeeded, otherwise an error code defined by the `system_error_t` enum.
- * @param user_arg User argument provided when the callback was registered.
+ * @param app_data Application data of the ledger.
  */
-typedef void (*ledger_page_sync_callback)(ledger_instance* ledger, const char* page_name, int error, void* user_arg);
+typedef void (*ledger_page_sync_callback)(ledger_instance* ledger, const char* page_name, int error, void* app_data);
 
 /**
  * Callback invoked when a page has changed in the Cloud.
@@ -60,12 +60,12 @@ typedef void (*ledger_page_sync_callback)(ledger_instance* ledger, const char* p
  * @param ledger Ledger instance.
  * @param page_name Page name.
  * @param flags Flags defined by the `ledger_page_change_flag` enum.
- * @param user_arg User argument provided when the callback was registered.
+ * @param app_data Application data of the ledger.
  */
-typedef void (*ledger_page_change_callback)(ledger_instance* ledger, const char* page_name, int flags, void* user_arg);
+typedef void (*ledger_page_change_callback)(ledger_instance* ledger, const char* page_name, int flags, void* app_data);
 
 /**
- * Callback invoked to destroy the application-specific data associated with a ledger or page instance.
+ * Callback invoked to destroy the application data associated with a ledger or page instance.
  *
  * @param app_data Application data.
  */
@@ -85,14 +85,14 @@ typedef enum ledger_scope {
  * Page info flags.
  */
 typedef enum ledger_page_info_flag {
-    LEDGER_PAGE_INFO_FLAG_SYNCING = 0x01 ///< Synchronization is in progress for this page.
+    LEDGER_PAGE_INFO_SYNCING = 0x01 ///< Synchronization is in progress for this page.
 } ledger_page_info_flag;
 
 /**
  * Page change flags.
  */
 typedef enum ledger_page_change_flag {
-    LEDGER_PAGE_CHANGE_FLAG_PAGE_REMOVED = 0x01 ///< Page was removed by the remote side.
+    LEDGER_PAGE_CHANGE_REMOVED = 0x01 ///< Page was removed by the remote side.
 } ledger_page_change_flag;
 
 /**
@@ -100,8 +100,8 @@ typedef enum ledger_page_change_flag {
  */
 typedef enum ledger_sync_strategy {
     LEDGER_SYNC_STRATEGY_DEFAULT = 0, ///< Use the default strategy.
-    LEDGER_SYNC_STRATEGY_PREFER_LOCAL_CHANGES = 1, ///< Prefer local changes.
-    LEDGER_SYNC_STRATEGY_PREFER_REMOTE_CHANGES = 2 ///< Prefer remote changes.
+    LEDGER_SYNC_STRATEGY_PREFER_LOCAL = 1, ///< Prefer local changes.
+    LEDGER_SYNC_STRATEGY_PREFER_REMOTE = 2 ///< Prefer remote changes.
 } ledger_sync_strategy;
 
 /**
@@ -113,13 +113,18 @@ typedef enum ledger_stream_mode {
 } ledger_stream_mode;
 
 /**
+ * Stream close flags.
+ */
+typedef enum ledger_stream_close_flag {
+    LEDGER_STREAM_CLOSE_DISCARD = 0x01 ///< Discard any written data.
+} ledger_stream_close_flag;
+
+/**
  * Ledger callbacks.
  */
 typedef struct ledger_callbacks {
     ledger_page_sync_callback page_sync; ///< Callback invoked when a page has been synchronized with the Cloud.
-    void* page_sync_arg; ///< User argument to be passed to the `page_sync` callback.
     ledger_page_change_callback page_change; ///< Callback invoked when a page has changed in the Cloud.
-    void* page_change_arg; ///< User argument to be passed to the `page_change` callback.
 } ledger_callbacks;
 
 /**
@@ -156,8 +161,13 @@ typedef struct ledger_info {
  */
 typedef struct ledger_page_info {
     const char* name; ///< Page name.
+    /**
+     * Last time the page was modified, in milliseconds since the Unix epoch.
+     *
+     * A value of 0 means that the exact time is unknown.
+     */
+    uint64_t last_modified;
     size_t data_size; ///< Size of the page contents.
-    uint64_t last_sync_time; ///< Last time the page was synchronized with the Cloud, in milliseconds since the Unix epoch.
     int flags; ///< Flags defined by the `ledger_page_info_flag` enum.
 } ledger_page_info;
 
@@ -215,10 +225,12 @@ void ledger_lock(ledger_instance* ledger, void* reserved);
 void ledger_unlock(ledger_instance* ledger, void* reserved);
 
 /**
- * Set ledger callbacks.
+ * Set the ledger callbacks.
+ *
+ * The callbacks are invoked in the system thread.
  *
  * @param ledger Ledger instance.
- * @param callbacks Ledger callbacks. If `NULL`, all the currently registered callbacks will be cleared.
+ * @param callbacks Ledger callbacks.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* reserved);
@@ -226,11 +238,11 @@ void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callb
 /**
  * Attach application-specific data to a ledger instance.
  *
- * The ledger instance takes ownership over the application data.
+ * If a destructor callback is provided, the ledger instance will take ownership over the application data.
  *
  * @param ledger Ledger instance.
  * @param app_data Application data.
- * @param destroy Callback to be invoked to destroy the application data.
+ * @param destroy Destructor callback. Can be `NULL`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void ledger_set_app_data(ledger_instance* ledger, void* app_data, ledger_destroy_app_data_callback destroy,
@@ -282,7 +294,7 @@ int ledger_get_page(ledger_page** page, ledger_instance* ledger, const char* nam
  * @param page Page instance.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void ledger_add_page_ref(ledger_page* ledger, void* reserved);
+void ledger_add_page_ref(ledger_page* page, void* reserved);
 
 /**
  * Decrement a page's reference count.
@@ -325,11 +337,11 @@ ledger_instance* ledger_get_page_ledger(ledger_page* page, void* reserved);
 /**
  * Attach application-specific data to a page instance.
  *
- * The page instance takes ownership over the application data.
+ * If a destructor callback is provided, the page instance will take ownership over the application data.
  *
  * @param page Page instance.
  * @param app_data Application data.
- * @param destroy Callback to be invoked to destroy the application data.
+ * @param destroy Destructor callback. Can be `NULL`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void ledger_set_page_app_data(ledger_page* page, void* app_data, ledger_destroy_app_data_callback destroy,
@@ -397,9 +409,10 @@ int ledger_open_page(ledger_stream** stream, ledger_page* page, int mode, void* 
  * Close a stream.
  *
  * @param stream Stream instance.
+ * @param flags Flags defined by the `ledger_stream_close_flag` enum.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void ledger_close_stream(ledger_stream* stream, void* reserved);
+int ledger_close_stream(ledger_stream* stream, int flags, void* reserved);
 
 /**
  * Read from a stream.

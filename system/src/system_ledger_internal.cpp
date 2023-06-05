@@ -15,16 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
+#include <mutex>
 #include <cstdio>
 #include <cstring>
 #include <cstdarg>
 
 #include "system_ledger_internal.h"
 
-#include "control/common.h" // FIXME: Move to another directory
+#include "control/common.h" // FIXME: Move Protobuf utilities to another directory
 
-#include "filesystem.h"
 #include "file_util.h"
 #include "endian_util.h"
 #include "scope_guard.h"
@@ -33,39 +32,6 @@
 #include "common/ledger.pb.h" // Common definitions
 #include "cloud/ledger.pb.h" // Cloud protocol definitions
 #include "ledger.pb.h" // Internal definitions
-
-#define DATA_FORMAT_VERSION 1
-
-/*
-    The ledger directory is organized as follows:
-
-    /sys/ledger/
-    |
-    +--- device/ - Device ledgers
-    |    +--- default/ - Files of the default device ledger
-    |         +--- ledger.data - Ledger info
-    |         +--- pages/ - Page files
-    |              +--- sensors.data - Contents of the page called "sensors"
-    |              +--- ...
-    |
-    +--- product/ - Product ledgers
-    |    +--- config/ - Files of the ledger called "config"
-    |    |    +--- ...
-    |    +--- product_info/ - Files of the ledger called "product_info"
-    |    |    +--- ...
-    |    +--- ...
-    |
-    +--- owner/ - Owner ledgers
-         +--- ...
-*/
-#define LEDGER_ROOT_DIR "/sys/ledger" // The root "sys" directory is expected to exist
-#define DEVICE_SCOPE_DIR_NAME "device"
-#define PRODUCT_SCOPE_DIR_NAME "product"
-#define OWNER_SCOPE_DIR_NAME "owner"
-#define LEDGER_DATA_FILE_NAME "ledger.data"
-#define PAGES_DIR_NAME "pages"
-#define PAGE_DATA_EXTENSION ".data"
-#define DEFAULT_LEDGER_NAME "default"
 
 #define PB_LEDGER(_name) particle_ledger_##_name
 #define PB_CLOUD(_name) particle_cloud_##_name
@@ -86,16 +52,62 @@ namespace system {
 
 namespace {
 
+#define DATA_FORMAT_VERSION 1
+
+/*
+    The ledger directory is organized as follows:
+
+    /sys/ledger/
+    |
+    +--- device/ - Device ledger
+    |    +--- default/ - Files of the default device ledger (reserved name)
+    |         +--- ledger.data - Ledger info
+    |         +--- pages/ - Page files
+    |              +--- sensors.data - Contents of the page called "sensors"
+    |              +--- ...
+    |
+    +--- product/ - Product ledgers
+    |    +--- config/ - Files of the ledger called "config"
+    |    |    +--- ledger.data
+    |    |    +--- pages/
+    |    |         +--- ...
+    |    +--- ...
+    |
+    +--- owner/ - User or organization ledgers
+    |    +--- company_info/ - Files of the ledger called "company_info"
+    |    |    +--- ledger.data
+    |    |    +--- pages/
+    |    |         +--- ...
+    |    +--- ...
+    |
+    +--- temp/ - Temporary files
+         +--- ...
+*/
+const auto LEDGER_ROOT_DIR = "/sys/ledger";
+const auto DEVICE_SCOPE_DIR_NAME = "device";
+const auto PRODUCT_SCOPE_DIR_NAME = "product";
+const auto OWNER_SCOPE_DIR_NAME = "owner";
+const auto TEMP_DIR_NAME = "temp";
+const auto PAGES_DIR_NAME = "pages";
+const auto LEDGER_DATA_FILE_NAME = "ledger.data";
+const auto PAGE_DATA_FILE_EXT = "data";
+const auto DEFAULT_LEDGER_NAME = "default";
+
+const size_t MAX_PATH_LEN = 255;
+
+int g_tempPageFileCount = 0;
+
 // Internal result codes
 enum Result {
-    RESULT_LEDGER_FILE_NOT_FOUND = 1
+    RESULT_LEDGER_FILE_NOT_FOUND = 1,
+    RESULT_PAGE_FILE_NOT_FOUND = 2
 };
 
 /*
     The layout of a ledger data file:
 
-    field     | size      | description
-    -----------------------------------
+    Field     | Size      | Description
+    ----------+-----------+------------
     version   | 4         | Format version number (unsigned integer)
     info_size | 4         | Size of the "info" field (unsigned integer)
     info      | info_size | Protobuf-encoded ledger info (particle.firmware.LedgerInfo)
@@ -110,8 +122,8 @@ struct LedgerDataHeader {
 /*
     The layout of a page data file:
 
-    field     | size      | description
-    -----------------------------------
+    Field     | Size      | Description
+    ----------+-----------+------------
     version   | 4         | Format version number (unsigned integer)
     info_size | 4         | Size of the "info" field (unsigned integer)
     data_size | 4         | Size of the "data" field (unsigned integer)
@@ -159,6 +171,53 @@ int formatLedgerPath(char* buf, size_t size, const char* ledgerName, ledger_scop
     return pos;
 }
 
+int formatTempPath(char* buf, size_t size, const char* fmt = "", ...) {
+    // Format the prefix part of the path
+    int n = snprintf(buf, size, "%s/%s/", LEDGER_ROOT_DIR, TEMP_DIR_NAME);
+    if (n < 0) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    size_t pos = n;
+    if (pos >= size) {
+        return SYSTEM_ERROR_FILENAME_TOO_LONG;
+    }
+    // Format the rest of the path
+    va_list args;
+    va_start(args, fmt);
+    n = vsnprintf(buf + pos, size - pos, fmt, args);
+    va_end(args);
+    if (n < 0) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    pos += n;
+    if (pos >= size) {
+        return SYSTEM_ERROR_FILENAME_TOO_LONG;
+    }
+    return pos;
+}
+
+int getPageFilePath(char* buf, size_t size, const char* pageName, const char* ledgerName, ledger_scope scope) {
+    CHECK(formatLedgerPath(buf, size, ledgerName, scope, "%s/%s.%s", PAGES_DIR_NAME, pageName, PAGE_DATA_FILE_EXT));
+    return 0;
+}
+
+int getTempPageFilePath(char* buf, size_t size) {
+    CHECK(formatTempPath(buf, size, "page_%04d.%s", ++g_tempPageFileCount, PAGE_DATA_FILE_EXT));
+    return 0;
+}
+
+int makeBaseDir(char* pathBuf) {
+    char* p = strrchr(pathBuf, '/');
+    if (p) {
+        *p = '\0';
+    }
+    CHECK(mkdirp(pathBuf));
+    if (p) {
+        *p = '/';
+    }
+    return 0;
+}
+
 int copyStringVector(const Vector<CString>& src, Vector<CString>& dest) {
     dest.clear();
     if (!dest.reserve(src.size())) {
@@ -174,191 +233,24 @@ int copyStringVector(const Vector<CString>& src, Vector<CString>& dest) {
     return 0;
 }
 
-/*
-int compareStrings(const CString& s1, const CString& s2) {
-    if (!s1 || !s2) {
-        return !!s1 - !!s2; // bool is implicitly converted to int in arithmetic operations
-    }
-    return strcmp(s1, s2);
-}
-*/
 } // namespace
 
-Ledger::~Ledger() {
-    // Destroy the application data
-    if (appData_ && destroyAppData_) {
-        destroyAppData_(appData_);
-    }
-}
-
-int Ledger::init(const char* name, ledger_scope scope, int apiVersion) {
-    name_ = name;
-    if (!name_) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    scope_ = scope;
-    apiVersion_ = apiVersion;
-    int r = CHECK(loadLedgerInfo());
-    if (r == RESULT_LEDGER_FILE_NOT_FOUND && scope_ == LEDGER_SCOPE_DEVICE) {
-        // Create a directory for the device ledger
-        CHECK(saveLedgerInfo());
-    }
-    return 0;
-}
-
-int Ledger::getLinkedPageNames(Vector<CString>& names) const {
-    std::lock_guard lock(mutex_);
-    CHECK(copyStringVector(linkedPageNames_, names));
-    return 0;
-}
-
-void Ledger::setCallbacks(ledger_page_sync_callback pageSyncCallback, void* pageSyncArg,
-        ledger_page_change_callback pageChangeCallback, void* pageChangeArg) {
-    std::lock_guard lock(mutex_);
-    pageSyncCallback_ = pageSyncCallback;
-    pageSyncArg_ = pageSyncArg;
-    pageChangeCallback_ = pageChangeCallback;
-    pageChangeArg_ = pageChangeArg;
-}
-
-void Ledger::setAppData(void* data, ledger_destroy_app_data_callback destroy) {
-    std::lock_guard lock(mutex_);
-    appData_ = data;
-    destroyAppData_ = destroy;
-}
-
-void* Ledger::appData() const {
-    std::lock_guard lock(mutex_);
-    return appData_;
-}
-
-ledger_scope Ledger::scope() const {
-    std::lock_guard lock(mutex_);
-    return scope_;
-}
-
-void Ledger::addRef() {
-    // The ledger's reference counter is managed by LedgerManager
-    LedgerManager::instance()->addLedgerRef(this);
-}
-
-void Ledger::release() {
-    LedgerManager::instance()->releaseLedger(this);
-}
-
-int Ledger::loadLedgerInfo() {
-    FsLock fs;
-    // Open the ledger file
-    char path[LFS_NAME_MAX + 1] = {};
-    CHECK(formatLedgerPath(path, sizeof(path), name_, scope_, "%s", LEDGER_DATA_FILE_NAME));
-    lfs_file_t file = {};
-    int r = lfs_file_open(fs.instance(), &file, path, LFS_O_RDONLY);
-    if (r < 0) {
-        if (r == LFS_ERR_NOENT) {
-            return RESULT_LEDGER_FILE_NOT_FOUND;
-        }
-        CHECK_FS(r); // Forward the error
-    }
-    SCOPE_GUARD({
-        int r = lfs_file_close(fs.instance(), &file);
-        if (r < 0) {
-            LOG(ERROR, "Error while closing file: %d", r);
-        }
-    });
-    // Read the header
-    LedgerDataHeader h = {};
-    size_t n = CHECK_FS(lfs_file_read(fs.instance(), &file, &h, sizeof(h)));
-    if (n != sizeof(h)) {
-        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
-    }
-    h.version = littleEndianToNative(h.version);
-    h.infoSize = littleEndianToNative(h.infoSize);
-    if (h.version != DATA_FORMAT_VERSION) {
-        LOG(ERROR, "Unsupported version of ledger data format: %u", (unsigned)h.version);
-        return SYSTEM_ERROR_LEDGER_UNSUPPORTED_FORMAT;
-    }
-    // Read and validate the ledger info
-    PB_INTERNAL(LedgerInfo) pbInfo = {};
-    DecodedCString pbName(&pbInfo.name);
-    CHECK(decodeMessageFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, h.infoSize));
-    if (strcmp(name_, pbName.data) != 0) {
-        LOG(ERROR, "Unexpected ledger name");
-        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
-    }
-    if (static_cast<ledger_scope>(pbInfo.scope) != scope_) {
-        LOG(ERROR, "Unexpected ledger scope");
-        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
-    }
-    return 0;
-}
-
-int Ledger::saveLedgerInfo() {
-    FsLock fs;
-    // Ensure the ledger directory exists
-    char path[LFS_NAME_MAX + 1] = {};
-    CHECK(formatLedgerPath(path, sizeof(path), name_, scope_));
-    int r = lfs_mkdir(fs.instance(), path);
-    if (r < 0 && r != LFS_ERR_EXIST) {
-        CHECK_FS(r); // Forward the error
-    }
-    // Create the ledger file
-    CHECK(formatLedgerPath(path, sizeof(path), name_, scope_, "%s", LEDGER_DATA_FILE_NAME));
-    lfs_file_t file = {};
-    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_WRONLY | LFS_O_TRUNC));
-    SCOPE_GUARD({
-        int r = lfs_file_close(fs.instance(), &file);
-        if (r < 0) {
-            LOG(ERROR, "Error while closing file: %d", r);
-        }
-    });
-    // Write the header
-    LedgerDataHeader h = {};
-    h.version = nativeToLittleEndian(DATA_FORMAT_VERSION);
-    CHECK_FS(lfs_file_write(fs.instance(), &file, &h, sizeof(h)));
-    // Write the ledger info
-    PB_INTERNAL(LedgerInfo) pbInfo = {};
-    EncodedString pbName(&pbInfo.name, name_, strlen(name_));
-    pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(scope_);
-    CHECK(encodeMessageToFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
-    return 0;
-}
-
 int LedgerManager::init() {
-    // Create ledger directories
-    FsLock fs;
-    lfs_info entry = {};
-    int r = lfs_stat(fs.instance(), LEDGER_ROOT_DIR, &entry);
-    if (r == LFS_ERR_NOENT) {
-        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR));
-        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR "/" DEVICE_SCOPE_DIR_NAME));
-        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR "/" PRODUCT_SCOPE_DIR_NAME));
-        CHECK_FS(lfs_mkdir(fs.instance(), LEDGER_ROOT_DIR "/" OWNER_SCOPE_DIR_NAME));
-    } else if (r < 0 || entry.type != LFS_TYPE_DIR) {
-        LOG(ERROR, "%s is not a directory", LEDGER_ROOT_DIR);
-        return (r < 0) ? filesystem_to_system_error(r) : SYSTEM_ERROR_INVALID_STATE;
-    }
+    // Delete temporary files
+    char path[MAX_PATH_LEN + 1] = {};
+    CHECK(formatTempPath(path, sizeof(path)));
+    CHECK(rmrf(path));
     inited_ = true;
     return 0;
 }
 
 int LedgerManager::getLedger(const char* name, ledger_scope scope, int apiVersion, RefCountPtr<Ledger>& ledger) {
     std::lock_guard lock(mutex_);
-    if (!name) {
-        name = DEFAULT_LEDGER_NAME;
-    } else {
-        if (!*name) {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        }
-        if (scope == LEDGER_SCOPE_DEVICE && strcmp(name, DEFAULT_LEDGER_NAME) != 0) {
-            // As of now, only one device ledger is supported per device
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        }
-    }
-    if (scope == LEDGER_SCOPE_INVALID) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
     if (!inited_) {
         return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (!name) {
+        name = DEFAULT_LEDGER_NAME;
     }
     // Check if the requested ledger is already instantiated
     for (Ledger* lr: ledgerInstances_) { // TODO: Use binary search
@@ -391,7 +283,7 @@ void LedgerManager::addLedgerRef(Ledger* ledger) {
 
 void LedgerManager::releaseLedger(Ledger* ledger) {
     std::lock_guard lock(mutex_);
-    if (!--ledger->refCount_) {
+    if (--ledger->refCount_ == 0) {
         ledgerInstances_.removeOne(ledger);
         delete ledger;
     }
@@ -400,6 +292,489 @@ void LedgerManager::releaseLedger(Ledger* ledger) {
 LedgerManager* LedgerManager::instance() {
     static LedgerManager mgr;
     return &mgr;
+}
+
+Ledger::~Ledger() {
+    // Destroy the application data
+    if (appData_ && destroyAppData_) {
+        destroyAppData_(appData_);
+    }
+}
+
+int Ledger::init(const char* name, ledger_scope scope, int apiVersion) {
+    // TODO: Validate the name
+    if (!*name) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (scope == LEDGER_SCOPE_DEVICE && strcmp(name, DEFAULT_LEDGER_NAME) != 0) {
+        // As of now, only one device ledger is supported per device
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (scope == LEDGER_SCOPE_INVALID) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (apiVersion < 1 || apiVersion > LEDGER_API_VERSION) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    name_ = name;
+    if (!name_) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    scope_ = scope;
+    apiVersion_ = apiVersion;
+    int r = CHECK(loadLedgerInfo());
+    if (r == RESULT_LEDGER_FILE_NOT_FOUND && scope_ == LEDGER_SCOPE_DEVICE) {
+        // Initialize the device ledger's directory
+        CHECK(saveLedgerInfo());
+    }
+    return 0;
+}
+
+void Ledger::setCallbacks(ledger_page_sync_callback pageSync, ledger_page_change_callback pageChange) {
+    std::lock_guard lock(*this);
+    pageSyncCallback_ = pageSync;
+    pageChangeCallback_ = pageChange;
+}
+
+void Ledger::setAppData(void* data, ledger_destroy_app_data_callback destroy) {
+    std::lock_guard lock(*this);
+    if (appData_ && destroyAppData_) {
+        destroyAppData_(appData_);
+    }
+    appData_ = data;
+    destroyAppData_ = destroy;
+}
+
+void* Ledger::appData() const {
+    std::lock_guard lock(*this);
+    return appData_;
+}
+
+int Ledger::getPage(const char* name, RefCountPtr<LedgerPage>& page) {
+    std::lock_guard lock(*this);
+    // TODO: Validate the name
+    if (!*name) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    // Check if the requested page is already instantiated
+    for (LedgerPage* p: pageInstances_) { // TODO: Use binary search
+        if (strcmp(p->name(), name) == 0) {
+            page = p;
+            return 0;
+        }
+    }
+    // Create a new instance
+    auto p = makeRefCountPtr<LedgerPage>();
+    if (!p) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    int r = p->init(name, this);
+    if (r < 0) {
+        LOG(ERROR, "Failed to initialize ledger page: %d", r);
+        return r;
+    }
+    if (!pageInstances_.append(p.get())) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    page = std::move(p);
+    return 0;
+}
+
+void Ledger::addPageRef(LedgerPage* page) {
+    std::lock_guard lock(*this);
+    ++page->refCount_;
+}
+
+void Ledger::releasePage(LedgerPage* page) {
+    std::lock_guard lock(*this);
+    if (--page->refCount_ == 0) {
+        pageInstances_.removeOne(page);
+        delete page;
+    }
+}
+
+int Ledger::getLinkedPageNames(Vector<CString>& names) const {
+    std::lock_guard lock(*this);
+    CHECK(copyStringVector(linkedPageNames_, names));
+    return 0;
+}
+
+int Ledger::loadLedgerInfo() {
+    FsLock fs;
+    // Open the ledger file
+    char path[MAX_PATH_LEN + 1] = {};
+    CHECK(formatLedgerPath(path, sizeof(path), name_, scope_, "%s", LEDGER_DATA_FILE_NAME));
+    lfs_file_t file = {};
+    int r = lfs_file_open(fs.instance(), &file, path, LFS_O_RDONLY);
+    if (r < 0) {
+        if (r == LFS_ERR_NOENT) {
+            return RESULT_LEDGER_FILE_NOT_FOUND;
+        }
+        CHECK_FS(r); // Forward the error
+    }
+    SCOPE_GUARD({
+        int r = lfs_file_close(fs.instance(), &file);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+    // Read the header
+    LedgerDataHeader h = {};
+    size_t n = CHECK_FS(lfs_file_read(fs.instance(), &file, &h, sizeof(h)));
+    if (n != sizeof(h)) {
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
+    h.version = littleEndianToNative(h.version);
+    h.infoSize = littleEndianToNative(h.infoSize);
+    if (h.version != DATA_FORMAT_VERSION) {
+        LOG(ERROR, "Unsupported version of ledger data format: %u", (unsigned)h.version);
+        return SYSTEM_ERROR_LEDGER_UNSUPPORTED_FORMAT;
+    }
+    size_t fileSize = CHECK_FS(lfs_file_size(fs.instance(), &file));
+    if (fileSize != sizeof(h) + h.infoSize) {
+        LOG(ERROR, "Unexpected size of ledger data file");
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
+    // Read the ledger info
+    PB_INTERNAL(LedgerInfo) pbInfo = {};
+    DecodedCString pbName(&pbInfo.name);
+    CHECK(decodeMessageFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, h.infoSize));
+    if (strcmp(name_, pbName.data) != 0) {
+        LOG(ERROR, "Unexpected ledger name");
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
+    if (static_cast<ledger_scope>(pbInfo.scope) != scope_) {
+        LOG(ERROR, "Unexpected ledger scope");
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
+    return 0;
+}
+
+int Ledger::saveLedgerInfo() {
+    FsLock fs;
+    // Create the ledger file
+    char path[MAX_PATH_LEN + 1] = {};
+    CHECK(formatLedgerPath(path, sizeof(path), name_, scope_, "%s", LEDGER_DATA_FILE_NAME));
+    CHECK(makeBaseDir(path)); // Ensure the ledger directory exists
+    lfs_file_t file = {};
+    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_WRONLY | LFS_O_TRUNC));
+    SCOPE_GUARD({
+        int r = lfs_file_close(fs.instance(), &file);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+    // Write the ledger info
+    CHECK_FS(lfs_file_seek(fs.instance(), &file, sizeof(LedgerDataHeader), LFS_SEEK_SET));
+    PB_INTERNAL(LedgerInfo) pbInfo = {};
+    EncodedString pbName(&pbInfo.name, name_, strlen(name_));
+    pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(scope_);
+    size_t infoSize = CHECK(encodeMessageToFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
+    // Write the header
+    CHECK_FS(lfs_file_seek(fs.instance(), &file, 0, LFS_SEEK_SET));
+    LedgerDataHeader h = {};
+    h.version = nativeToLittleEndian(DATA_FORMAT_VERSION);
+    h.infoSize = nativeToLittleEndian(infoSize);
+    CHECK_FS(lfs_file_write(fs.instance(), &file, &h, sizeof(h)));
+    return 0;
+}
+
+LedgerPage::~LedgerPage() {
+    // Destroy the application data
+    if (appData_ && destroyAppData_) {
+        destroyAppData_(appData_);
+    }
+}
+
+int LedgerPage::init(const char* name, Ledger* ledger) {
+    name_ = name;
+    if (!name_) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    ledger_ = ledger;
+    CHECK(loadPageInfo());
+    return 0;
+}
+
+void LedgerPage::setAppData(void* data, ledger_destroy_app_data_callback destroy) {
+    std::lock_guard lock(*this);
+    if (appData_ && destroyAppData_) {
+        destroyAppData_(appData_);
+    }
+    appData_ = data;
+    destroyAppData_ = destroy;
+}
+
+void* LedgerPage::appData() const {
+    std::lock_guard lock(*this);
+    return appData_;
+}
+
+int LedgerPage::openStream(int mode, bool forceMode, std::unique_ptr<LedgerStream>& stream) {
+    std::lock_guard lock(*this);
+    char path[MAX_PATH_LEN + 1] = {};
+    if (mode & LEDGER_STREAM_MODE_READ) {
+        if (mode & LEDGER_STREAM_MODE_WRITE) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT; // Opening for both reading and writing is not supported
+        }
+        // The page file doesn't have to exist when opening a page for reading
+        CHECK(getPageFilePath(path, sizeof(path), name_, ledger_->name(), ledger_->scope()));
+        std::unique_ptr<LedgerPageInputStream> s(new(std::nothrow) LedgerPageInputStream());
+        if (!s) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        CHECK(s->init(path, this));
+        stream = std::move(s);
+        ++readerCount_;
+    } else if (mode & LEDGER_STREAM_MODE_WRITE) {
+        if (mode & LEDGER_STREAM_MODE_READ) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (!forceMode && !ledger_->isUserWritable()) {
+            return SYSTEM_ERROR_LEDGER_READ_ONLY;
+        }
+        // TODO: Instead of using an intermediate temporary file, we can update the actual page
+        // file in place and rely on LittleFS' copy-on-write properties to ensure the atomicity
+        // of the update
+        CHECK(getTempPageFilePath(path, sizeof(path)));
+        CHECK(makeBaseDir(path)); // Ensure the temporary directory exists
+        std::unique_ptr<LedgerPageOutputStream> s(new(std::nothrow) LedgerPageOutputStream());
+        if (!s) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        CHECK(s->init(path, this));
+        stream = std::move(s);
+    } else {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return 0;
+}
+
+int LedgerPage::inputStreamClosed(LedgerPageInputStream* stream) {
+    std::lock_guard lock(*this);
+    if (--readerCount_ == 0 && updatedPageFile_) {
+        // Update the page file
+        FsLock fs;
+        CString tempFile(std::move(updatedPageFile_));
+        char destPath[MAX_PATH_LEN + 1] = {};
+        CHECK(getPageFilePath(destPath, sizeof(destPath), name_, ledger_->name(), ledger_->scope()));
+        CHECK(makeBaseDir(destPath)); // Ensure the page directory exists
+        CHECK_FS(lfs_rename(fs.instance(), tempFile, destPath));
+    }
+    return 0;
+}
+
+int LedgerPage::outputStreamClosed(LedgerPageOutputStream* stream, bool discard) {
+    std::lock_guard lock(*this);
+    FsLock fs;
+    if (discard) {
+        // Remove the temporary page file
+        CHECK_FS(lfs_remove(fs.instance(), stream->fileName()));
+    } else if (readerCount_ == 0) {
+        // Update the page file
+        char destPath[MAX_PATH_LEN + 1] = {};
+        CHECK(getPageFilePath(destPath, sizeof(destPath), name_, ledger_->name(), ledger_->scope()));
+        CHECK(makeBaseDir(destPath)); // Ensure the page directory exists
+        CHECK_FS(lfs_rename(fs.instance(), stream->fileName(), destPath));
+    } else {
+        // Remove the old temporary file if it exists and keep the new one around until all the
+        // streams open for reading are closed
+        CString newTempFile = stream->fileName();
+        if (!newTempFile) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        if (updatedPageFile_) {
+            CHECK_FS(lfs_remove(fs.instance(), updatedPageFile_));
+        }
+        updatedPageFile_ = std::move(newTempFile);
+    }
+    return 0;
+}
+
+int LedgerPage::loadPageInfo() {
+    FsLock fs;
+    // Open the page file
+    char path[MAX_PATH_LEN + 1] = {};
+    CHECK(formatLedgerPath(path, sizeof(path), ledger_->name(), ledger_->scope(), "pages/%s.%s", name_, PAGE_DATA_FILE_EXT));
+    lfs_file_t file = {};
+    int r = lfs_file_open(fs.instance(), &file, path, LFS_O_RDONLY);
+    if (r < 0) {
+        if (r == LFS_ERR_NOENT) {
+            return RESULT_PAGE_FILE_NOT_FOUND;
+        }
+        CHECK_FS(r); // Forward the error
+    }
+    SCOPE_GUARD({
+        int r = lfs_file_close(fs.instance(), &file);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+    // Read the header
+    PageDataHeader h = {};
+    size_t n = CHECK_FS(lfs_file_read(fs.instance(), &file, &h, sizeof(h)));
+    if (n != sizeof(h)) {
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
+    h.version = littleEndianToNative(h.version);
+    h.infoSize = littleEndianToNative(h.infoSize);
+    h.dataSize = littleEndianToNative(h.dataSize);
+    if (h.version != DATA_FORMAT_VERSION) {
+        LOG(ERROR, "Unsupported version of ledger data format: %u", (unsigned)h.version);
+        return SYSTEM_ERROR_LEDGER_UNSUPPORTED_FORMAT;
+    }
+    size_t fileSize = CHECK_FS(lfs_file_size(fs.instance(), &file));
+    if (fileSize != sizeof(h) + h.infoSize + h.dataSize) {
+        LOG(ERROR, "Unexpected size of ledger page file");
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
+    // Read the page info
+    PB_INTERNAL(LedgerPageInfo) pbInfo = {};
+    DecodedCString pbName(&pbInfo.name);
+    CHECK(decodeMessageFromFile(&file, &PB_INTERNAL(LedgerPageInfo_msg), &pbInfo, h.infoSize));
+    if (strcmp(name_, pbName.data) != 0) {
+        LOG(ERROR, "Unexpected ledger page name");
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
+    return 0;
+}
+
+LedgerPageInputStream::~LedgerPageInputStream() {
+    int r = close(0);
+    if (r < 0) {
+        LOG(ERROR, "Failed to close ledger stream: %d", r);
+    }
+}
+
+int LedgerPageInputStream::init(const char* pageFile, LedgerPage* page) {
+    page_ = page;
+    // Open the page file
+    FsLock fs;
+    int r = lfs_file_open(fs.instance(), &file_, pageFile, LFS_O_RDONLY);
+    if (r >= 0) {
+        fileOpen_ = true;
+    } else if (r != LFS_ERR_NOENT) {
+        CHECK_FS(r); // Forward the error
+    }
+    NAMED_SCOPE_GUARD(g, {
+        if (fileOpen_) {
+            int r = lfs_file_close(fs.instance(), &file_);
+            if (r < 0) {
+                LOG(ERROR, "Error while closing file: %d", r);
+            }
+        }
+    });
+    if (fileOpen_) {
+        // Skip the header and page info. Both have already been validated at this point
+        PageDataHeader h = {};
+        size_t n = CHECK_FS(lfs_file_read(fs.instance(), &file_, &h, sizeof(h)));
+        if (n != sizeof(h)) {
+            return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+        }
+        h.infoSize = littleEndianToNative(h.infoSize);
+        CHECK_FS(lfs_file_seek(fs.instance(), &file_, h.infoSize, LFS_SEEK_CUR));
+    }
+    g.dismiss();
+    streamOpen_ = true;
+    return 0;
+}
+
+int LedgerPageInputStream::close(int flags) {
+    if (!streamOpen_) {
+        return 0;
+    }
+    if (fileOpen_) {
+        FsLock fs;
+        CHECK_FS(lfs_file_close(fs.instance(), &file_));
+        fileOpen_ = false;
+    }
+    streamOpen_ = false;
+    int r = page_->inputStreamClosed(this);
+    if (r < 0) {
+        LOG(ERROR, "Failed to flush ledger stream: %d", r);
+    }
+    return 0;
+}
+
+int LedgerPageInputStream::read(char* data, size_t size) {
+    if (!streamOpen_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    size_t n = 0;
+    if (fileOpen_) {
+        FsLock fs;
+        n = CHECK_FS(lfs_file_read(fs.instance(), &file_, data, size));
+    }
+    if (n == 0 && size > 0) {
+        return SYSTEM_ERROR_END_OF_STREAM;
+    }
+    return n;
+}
+
+LedgerPageOutputStream::~LedgerPageOutputStream() {
+    int r = close(0);
+    if (r < 0) {
+        LOG(ERROR, "Failed to close ledger stream: %d", r);
+    }
+}
+
+int LedgerPageOutputStream::init(const char* tempPageFile, LedgerPage* page) {
+    fileName_ = tempPageFile;
+    if (!fileName_) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    page_ = page;
+    // Open the temporary page file
+    FsLock fs;
+    CHECK_FS(lfs_file_open(fs.instance(), &file_, fileName_, LFS_O_WRONLY | LFS_O_EXCL));
+    NAMED_SCOPE_GUARD(g, {
+        int r = lfs_file_close(fs.instance(), &file_);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+    // Write the page info
+    CHECK_FS(lfs_file_seek(fs.instance(), &file_, sizeof(PageDataHeader), LFS_SEEK_SET));
+    PB_INTERNAL(LedgerPageInfo) pbInfo = {};
+    EncodedString pbName(&pbInfo.name, page->name(), strlen(page->name()));
+    pageInfoSize_ = CHECK(encodeMessageToFile(&file_, &PB_INTERNAL(LedgerPageInfo_msg), &pbInfo));
+    g.dismiss();
+    open_ = true;
+    return 0;
+}
+
+int LedgerPageOutputStream::close(int flags) {
+    if (!open_) {
+        return 0;
+    }
+    FsLock fs;
+    bool discard = flags & LEDGER_STREAM_CLOSE_DISCARD;
+    if (!discard) {
+        // Write the header
+        size_t fileSize = CHECK_FS(lfs_file_tell(fs.instance(), &file_));
+        CHECK_FS(lfs_file_seek(fs.instance(), &file_, 0, LFS_SEEK_SET));
+        PageDataHeader h = {};
+        h.version = nativeToLittleEndian(DATA_FORMAT_VERSION);
+        h.infoSize = nativeToLittleEndian(pageInfoSize_);
+        h.dataSize = nativeToLittleEndian(fileSize - sizeof(PageDataHeader) - pageInfoSize_);
+        CHECK_FS(lfs_file_write(fs.instance(), &file_, &h, sizeof(h)));
+    }
+    CHECK_FS(lfs_file_close(fs.instance(), &file_));
+    open_ = false;
+    int r = page_->outputStreamClosed(this, discard);
+    if (r < 0) {
+        LOG(ERROR, "Failed to flush ledger stream: %d", r);
+    }
+    return 0;
+}
+
+int LedgerPageOutputStream::write(const char* data, size_t size) {
+    if (!open_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    FsLock fs;
+    size_t n = CHECK_FS(lfs_file_write(fs.instance(), &file_, data, size));
+    return n;
 }
 
 } // namespace system

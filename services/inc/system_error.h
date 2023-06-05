@@ -106,7 +106,8 @@
         (LEDGER, "Ledger error", -2000), /* -2099 ... -2000: Ledger errors */ \
         (LEDGER_NOT_FOUND, "Ledger not found", -2001), \
         (LEDGER_INVALID_FORMAT, "Invalid format of ledger data", -2002), \
-        (LEDGER_UNSUPPORTED_FORMAT, "Unsupported format of ledger data", -2003)
+        (LEDGER_UNSUPPORTED_FORMAT, "Unsupported format of ledger data", -2003), \
+        (LEDGER_READ_ONLY, "Ledger is read only", -2004)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
