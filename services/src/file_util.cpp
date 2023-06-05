@@ -162,7 +162,7 @@ int dumpFile(const char* path) {
     return 0;
 }
 
-int decodeMessageFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg, int size) {
+int decodeProtobufFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg, int size) {
     // TODO: nanopb is no longer exported as a dynalib so there's no need for allocating its objects
     // on the heap
     const auto strm = pb_istream_init(nullptr);
@@ -176,7 +176,7 @@ int decodeMessageFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg,
     return size;
 }
 
-int encodeMessageToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* msg) {
+int encodeProtobufToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* msg) {
     const auto strm = pb_ostream_init(nullptr);
     CHECK_TRUE(strm, SYSTEM_ERROR_NO_MEMORY);
     SCOPE_GUARD({

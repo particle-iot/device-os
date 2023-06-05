@@ -76,7 +76,7 @@ int loadConfig(CellularConfig* conf) {
     DecodedCString dExtApn(&pbConf.external_sim.apn);
     DecodedCString dExtUser(&pbConf.external_sim.user);
     DecodedCString dExtPwd(&pbConf.external_sim.password);
-    const int r = decodeMessageFromFile(&file, PB(CellularConfig_fields), &pbConf);
+    const int r = decodeProtobufFromFile(&file, PB(CellularConfig_fields), &pbConf);
     if (r < 0) {
         LOG(ERROR, "Unable to parse network settings");
         *conf = CellularConfig(); // Using default settings
@@ -168,7 +168,7 @@ int saveConfig(const CellularConfig& conf) {
         }
     }
     pbConf.active_sim = (PB_CELLULAR(SimType))conf.activeSim;
-    CHECK(encodeMessageToFile(&file, PB(CellularConfig_fields), &pbConf));
+    CHECK(encodeProtobufToFile(&file, PB(CellularConfig_fields), &pbConf));
     LOG(TRACE, "Updated file: %s", CONFIG_FILE);
     ok = true;
     return 0;

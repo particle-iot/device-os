@@ -438,7 +438,7 @@ int Ledger::loadLedgerInfo() {
     // Read the ledger info
     PB_INTERNAL(LedgerInfo) pbInfo = {};
     DecodedCString pbName(&pbInfo.name);
-    CHECK(decodeMessageFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, h.infoSize));
+    CHECK(decodeProtobufFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, h.infoSize));
     if (strcmp(name_, pbName.data) != 0) {
         LOG(ERROR, "Unexpected ledger name");
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
@@ -469,7 +469,7 @@ int Ledger::saveLedgerInfo() {
     PB_INTERNAL(LedgerInfo) pbInfo = {};
     EncodedString pbName(&pbInfo.name, name_, strlen(name_));
     pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(scope_);
-    size_t infoSize = CHECK(encodeMessageToFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
+    size_t infoSize = CHECK(encodeProtobufToFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
     // Write the header
     CHECK_FS(lfs_file_seek(fs.instance(), &file, 0, LFS_SEEK_SET));
     LedgerDataHeader h = {};
@@ -631,7 +631,7 @@ int LedgerPage::loadPageInfo() {
     // Read the page info
     PB_INTERNAL(LedgerPageInfo) pbInfo = {};
     DecodedCString pbName(&pbInfo.name);
-    CHECK(decodeMessageFromFile(&file, &PB_INTERNAL(LedgerPageInfo_msg), &pbInfo, h.infoSize));
+    CHECK(decodeProtobufFromFile(&file, &PB_INTERNAL(LedgerPageInfo_msg), &pbInfo, h.infoSize));
     if (strcmp(name_, pbName.data) != 0) {
         LOG(ERROR, "Unexpected ledger page name");
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
@@ -737,7 +737,7 @@ int LedgerPageOutputStream::init(const char* tempPageFile, LedgerPage* page) {
     CHECK_FS(lfs_file_seek(fs.instance(), &file_, sizeof(PageDataHeader), LFS_SEEK_SET));
     PB_INTERNAL(LedgerPageInfo) pbInfo = {};
     EncodedString pbName(&pbInfo.name, page->name(), strlen(page->name()));
-    pageInfoSize_ = CHECK(encodeMessageToFile(&file_, &PB_INTERNAL(LedgerPageInfo_msg), &pbInfo));
+    pageInfoSize_ = CHECK(encodeProtobufToFile(&file_, &PB_INTERNAL(LedgerPageInfo_msg), &pbInfo));
     g.dismiss();
     open_ = true;
     return 0;
