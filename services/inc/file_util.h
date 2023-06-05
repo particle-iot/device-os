@@ -29,4 +29,7 @@ int dumpFile(const char* path);
 int decodeMessageFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg, int size = -1);
 int encodeMessageToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* msg);
 
+int rmrf(const char* path);
+int mkdirp(const char* path);
+
 } // particle

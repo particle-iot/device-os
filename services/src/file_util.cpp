@@ -37,9 +37,13 @@
 
 namespace particle {
 
+using fs::FsLock;
+
 namespace {
 
 const size_t DUMP_BYTES_PER_LINE = 16;
+
+const size_t MAX_PATH_LEN = 255;
 
 void dumpLine(const char* data, size_t size, size_t offs) {
     if (size == 0) {
@@ -71,6 +75,39 @@ void dumpLine(const char* data, size_t size, size_t offs) {
     *d++ = '\r';
     *d++ = '\n';
     LOG_WRITE(TRACE, line, d - line);
+}
+
+// Removes a directory recursively
+int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
+    lfs_dir_t dir = {};
+    CHECK_FS(lfs_dir_open(lfs, &dir, pathBuf));
+    SCOPE_GUARD({
+        int r = lfs_dir_close(lfs, &dir);
+        if (r < 0) {
+            LOG(ERROR, "Failed to close directory handle: %d", r);
+        }
+    });
+    pathBuf[pathLen++] = '/';
+    int r = 0;
+    lfs_info entry = {};
+    while ((r = lfs_dir_read(lfs, &dir, &entry)) == 1) {
+        if (entry.type == LFS_TYPE_DIR && (strcmp(entry.name, ".") == 0 || strcmp(entry.name, "..") == 0)) {
+            continue;
+        }
+        size_t n = strlcpy(pathBuf + pathLen, entry.name, bufSize - pathLen);
+        if (n >= bufSize - pathLen) {
+            return SYSTEM_ERROR_FILENAME_TOO_LONG;
+        }
+        if (entry.type == LFS_TYPE_DIR) {
+            CHECK(removeDir(lfs, pathBuf, bufSize, pathLen + n));
+        } else {
+            CHECK_FS(lfs_remove(lfs, pathBuf));
+        }
+    }
+    CHECK_FS(r);
+    pathBuf[--pathLen] = '\0';
+    CHECK_FS(lfs_remove(lfs, pathBuf));
+    return 0;
 }
 
 } // unnamed
@@ -126,14 +163,17 @@ int dumpFile(const char* path) {
 }
 
 int decodeMessageFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg, int size) {
+    // TODO: nanopb is no longer exported as a dynalib so there's no need for allocating its objects
+    // on the heap
     const auto strm = pb_istream_init(nullptr);
     CHECK_TRUE(strm, SYSTEM_ERROR_NO_MEMORY);
     SCOPE_GUARD({
         pb_istream_free(strm, nullptr);
     });
     CHECK(pb_istream_from_file(strm, file, size, nullptr));
+    size = strm->bytes_left;
     CHECK_TRUE(pb_decode(strm, desc, msg), SYSTEM_ERROR_FILE);
-    return 0;
+    return size;
 }
 
 int encodeMessageToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* msg) {
@@ -144,6 +184,53 @@ int encodeMessageToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* 
     });
     CHECK(pb_ostream_from_file(strm, file, nullptr));
     CHECK_TRUE(pb_encode(strm, desc, msg), SYSTEM_ERROR_FILE);
+    return strm->bytes_written;
+}
+
+int rmrf(const char* path) {
+    FsLock fs;
+    int r = lfs_remove(fs.instance(), path);
+    if (r < 0) {
+        if (r == LFS_ERR_NOTEMPTY) {
+            char pathBuf[MAX_PATH_LEN + 1] = {};
+            size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
+            if (pathLen >= sizeof(pathBuf)) {
+                return SYSTEM_ERROR_FILENAME_TOO_LONG;
+            }
+            CHECK(removeDir(fs.instance(), pathBuf, sizeof(pathBuf), pathLen));
+        } else if (r != LFS_ERR_NOENT) {
+            CHECK_FS(r); // Forward the error
+        }
+    }
+    return 0;
+}
+
+int mkdirp(const char* path) {
+    FsLock fs;
+    char pathBuf[MAX_PATH_LEN + 1] = {};
+    size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
+    if (pathLen >= sizeof(pathBuf)) {
+        return SYSTEM_ERROR_FILENAME_TOO_LONG;
+    }
+    char* pos = pathBuf;
+    if (*pos == '/') {
+        ++pos; // Skip leading '/'
+    }
+    while (*(pos = strchrnul(pos, '/'))) {
+        *pos = '\0';
+        int r = lfs_mkdir(fs.instance(), pathBuf);
+        if (r < 0 && r != LFS_ERR_EXIST) {
+            CHECK_FS(r); // Forward the error
+        }
+        *pos++ = '/';
+    }
+    if (pos > pathBuf && *(pos - 1) != '/') {
+        // Create the last directory
+        int r = lfs_mkdir(fs.instance(), pathBuf);
+        if (r < 0 && r != LFS_ERR_EXIST) {
+            CHECK_FS(r);
+        }
+    }
     return 0;
 }
 
