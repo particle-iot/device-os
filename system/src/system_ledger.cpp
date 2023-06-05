@@ -77,7 +77,7 @@ void ledger_unlock(ledger_instance* ledger, void* reserved) {
 
 void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* reserved) {
     auto lr = reinterpret_cast<Ledger*>(ledger);
-    lr->setCallbacks(callbacks->page_sync, callbacks->page_change);
+    lr->setCallbacks(callbacks->page_sync, callbacks->remote_page_change);
 }
 
 void ledger_set_app_data(ledger_instance* ledger, void* appData, ledger_destroy_app_data_callback destroy,
@@ -150,6 +150,11 @@ ledger_instance* ledger_get_page_ledger(ledger_page* page, void* reserved) {
     return reinterpret_cast<ledger_instance*>(p->ledger());
 }
 
+void ledger_set_page_callbacks(ledger_page* page, const ledger_page_callbacks* callbacks, void* reserved) {
+    auto p = reinterpret_cast<LedgerPage*>(page);
+    p->setLocalChangeCallback(callbacks->local_change);
+}
+
 void ledger_set_page_app_data(ledger_page* page, void* app_data, ledger_destroy_app_data_callback destroy,
         void* reserved) {
     auto p = reinterpret_cast<LedgerPage*>(page);
@@ -180,14 +185,27 @@ int ledger_remove_page(ledger_page* page, void* reserved) {
 int ledger_open_page(ledger_stream** stream, ledger_page* page, int mode, void* reserved) {
     auto p = reinterpret_cast<LedgerPage*>(page);
     std::unique_ptr<LedgerStream> s;
-    CHECK(p->openStream(mode, false /* forceMode */, s));
+    if (mode & LEDGER_STREAM_MODE_READ) {
+        if (mode & LEDGER_STREAM_MODE_WRITE) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT; // Opening for both reading and writing is not supported
+        }
+        CHECK(p->openInputStream(s));
+    } else if (mode & LEDGER_STREAM_MODE_WRITE) {
+        if (mode & LEDGER_STREAM_MODE_READ) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        CHECK(p->openOutputStream(LedgerChangeSource::USER, s));
+    } else {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     *stream = reinterpret_cast<ledger_stream*>(s.release()); // Transfer ownership to the caller
     return 0;
 }
 
 int ledger_close_stream(ledger_stream* stream, int flags, void* reserved) {
     auto s = reinterpret_cast<LedgerStream*>(stream);
-    CHECK(s->close(flags));
+    bool flush = !(flags & LEDGER_STREAM_CLOSE_DISCARD);
+    CHECK(s->close(flush));
     return 0;
 }
 

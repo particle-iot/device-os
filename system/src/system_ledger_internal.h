@@ -37,8 +37,8 @@ class LedgerPageInputStream;
 class LedgerPageOutputStream;
 
 enum class LedgerChangeSource {
-    SYSTEM = 1,
-    APP = 2
+    USER,
+    SYSTEM
 };
 
 class LedgerManager {
@@ -77,7 +77,7 @@ public:
 
     int init(const char* name, ledger_scope scope, int apiVersion);
 
-    void setCallbacks(ledger_page_sync_callback pageSync, ledger_page_change_callback pageChange);
+    void setCallbacks(ledger_page_sync_callback pageSync, ledger_remote_page_change_callback pageChange);
 
     void setAppData(void* data, ledger_destroy_app_data_callback destroy);
     void* appData() const;
@@ -128,7 +128,7 @@ private:
 
     // Ledger callbacks
     ledger_page_sync_callback pageSyncCallback_;
-    ledger_page_change_callback pageChangeCallback_;
+    ledger_remote_page_change_callback pageChangeCallback_;
 
     void* appData_; // Application data
     ledger_destroy_app_data_callback destroyAppData_; // Destructor for the application data
@@ -146,8 +146,10 @@ private:
 class LedgerPage {
 public:
     LedgerPage() :
+            changeCallback_(nullptr),
             appData_(nullptr),
             destroyAppData_(nullptr),
+            changeSrc_(),
             readerCount_(0),
             refCount_(1) {
     }
@@ -156,12 +158,15 @@ public:
 
     int init(const char* name, Ledger* ledger);
 
+    void setLocalChangeCallback(ledger_local_page_change_callback callback);
+
     void setAppData(void* data, ledger_destroy_app_data_callback destroy);
     void* appData() const;
 
-    int openStream(int mode, bool forceMode, std::unique_ptr<LedgerStream>& stream);
+    int openInputStream(std::unique_ptr<LedgerStream>& stream);
+    int openOutputStream(LedgerChangeSource src, std::unique_ptr<LedgerStream>& stream);
     int inputStreamClosed(LedgerPageInputStream* stream); // Called by LedgerPageInputStream
-    int outputStreamClosed(LedgerPageOutputStream* stream, bool discard); // Called by LedgerPageOutputStream
+    int outputStreamClosed(LedgerPageOutputStream* stream, bool flush); // Called by LedgerPageOutputStream
 
     const char* name() const {
         return name_;
@@ -192,15 +197,18 @@ private:
     CString name_; // Page name
     RefCountPtr<Ledger> ledger_; // Parent ledger
     CString updatedPageFile_; // Temporary file with pending changes to the page
+    ledger_local_page_change_callback changeCallback_; // Callback to invoke when the page is changed by the system
 
     void* appData_; // Application data
     ledger_destroy_app_data_callback destroyAppData_; // Destructor for the application data
 
+    LedgerChangeSource changeSrc_; // Who is updating the page
     int readerCount_; // Number of input streams open for this page
     int refCount_; // Reference count
 
     friend class Ledger; // For accessing refCount_
 
+    int updatePageFile(lfs_t* lfs, const char* srcFile, LedgerChangeSource changeSrc);
     int loadPageInfo();
 };
 
@@ -209,7 +217,7 @@ class LedgerStream {
 public:
     virtual ~LedgerStream() = default;
 
-    virtual int close(int flags) = 0;
+    virtual int close(bool flush = true) = 0;
 
     virtual int read(char* data, size_t size) = 0;
     virtual int write(const char* data, size_t size) = 0;
@@ -227,7 +235,7 @@ public:
 
     int init(const char* pageFile, LedgerPage* page);
 
-    int close(int flags) override;
+    int close(bool flush) override;
     int read(char* data, size_t size) override;
 
     int write(const char* data, size_t size) override {
@@ -245,15 +253,16 @@ class LedgerPageOutputStream: public LedgerStream {
 public:
     LedgerPageOutputStream() :
             file_(),
+            changeSrc_(),
             pageInfoSize_(0),
             open_(false) {
     }
 
     ~LedgerPageOutputStream();
 
-    int init(const char* tempPageFile, LedgerPage* page);
+    int init(LedgerChangeSource src, const char* pageFile, LedgerPage* page);
 
-    int close(int flags) override;
+    int close(bool flush) override;
 
     int read(char* data, size_t size) override {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -261,14 +270,19 @@ public:
 
     int write(const char* data, size_t size) override;
 
+    LedgerChangeSource changeSource() const {
+        return changeSrc_;
+    }
+
     const char* fileName() const {
         return fileName_;
     }
 
 private:
-    CString fileName_; // Temporary file name
+    CString fileName_; // Page file name
     RefCountPtr<LedgerPage> page_; // Page being written
     lfs_file_t file_; // File handle
+    LedgerChangeSource changeSrc_; // Change source
     size_t pageInfoSize_; // Size of the page info section of the page file
     bool open_; // Whether the stream is open
 };

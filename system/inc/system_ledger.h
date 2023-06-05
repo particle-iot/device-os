@@ -55,14 +55,23 @@ typedef struct ledger_stream ledger_stream;
 typedef void (*ledger_page_sync_callback)(ledger_instance* ledger, const char* page_name, int error, void* app_data);
 
 /**
- * Callback invoked when a page has changed in the Cloud.
+ * Callback invoked when a notification about page changes is received from the Cloud.
  *
  * @param ledger Ledger instance.
  * @param page_name Page name.
  * @param flags Flags defined by the `ledger_page_change_flag` enum.
  * @param app_data Application data of the ledger.
  */
-typedef void (*ledger_page_change_callback)(ledger_instance* ledger, const char* page_name, int flags, void* app_data);
+typedef void (*ledger_remote_page_change_callback)(ledger_instance* ledger, const char* page_name, int flags, void* app_data);
+
+/**
+ * Callback invoked when a page has been updated locally by the system.
+ *
+ * @param page Page instance.
+ * @param flags Flags defined by the `ledger_page_change_flag` enum.
+ * @param app_data Application data of the page.
+ */
+typedef void (*ledger_local_page_change_callback)(ledger_page* page, int flags, void* app_data);
 
 /**
  * Callback invoked to destroy the application data associated with a ledger or page instance.
@@ -123,9 +132,25 @@ typedef enum ledger_stream_close_flag {
  * Ledger callbacks.
  */
 typedef struct ledger_callbacks {
-    ledger_page_sync_callback page_sync; ///< Callback invoked when a page has been synchronized with the Cloud.
-    ledger_page_change_callback page_change; ///< Callback invoked when a page has changed in the Cloud.
+    /**
+     * Callback invoked when a page has been synchronized with the Cloud.
+     */
+    ledger_page_sync_callback page_sync;
+    /**
+     * Callback invoked when a notification about page changes is received from the Cloud.
+     */
+    ledger_remote_page_change_callback remote_page_change;
 } ledger_callbacks;
+
+/**
+ * Page callbacks.
+ */
+typedef struct ledger_page_callbacks {
+    /**
+     * Callback invoked when a page has been updated locally by the system.
+     */
+    ledger_local_page_change_callback local_change;
+} ledger_page_callbacks;
 
 /**
  * Synchronization options.
@@ -333,6 +358,17 @@ void ledger_unlock_page(ledger_page* page, void* reserved);
  * @return Ledger instance.
  */
 ledger_instance* ledger_get_page_ledger(ledger_page* page, void* reserved);
+
+/**
+ * Set the page callbacks.
+ *
+ * The callbacks are invoked in the system thread.
+ *
+ * @param page Page instance.
+ * @param callbacks Page callbacks.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void ledger_set_page_callbacks(ledger_page* page, const ledger_page_callbacks* callbacks, void* reserved);
 
 /**
  * Attach application-specific data to a page instance.

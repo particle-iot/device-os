@@ -330,7 +330,7 @@ int Ledger::init(const char* name, ledger_scope scope, int apiVersion) {
     return 0;
 }
 
-void Ledger::setCallbacks(ledger_page_sync_callback pageSync, ledger_page_change_callback pageChange) {
+void Ledger::setCallbacks(ledger_page_sync_callback pageSync, ledger_remote_page_change_callback pageChange) {
     std::lock_guard lock(*this);
     pageSyncCallback_ = pageSync;
     pageChangeCallback_ = pageChange;
@@ -496,6 +496,11 @@ int LedgerPage::init(const char* name, Ledger* ledger) {
     return 0;
 }
 
+void LedgerPage::setLocalChangeCallback(ledger_local_page_change_callback callback) {
+    std::lock_guard lock(*this);
+    changeCallback_ = callback;
+}
+
 void LedgerPage::setAppData(void* data, ledger_destroy_app_data_callback destroy) {
     std::lock_guard lock(*this);
     if (appData_ && destroyAppData_) {
@@ -510,43 +515,37 @@ void* LedgerPage::appData() const {
     return appData_;
 }
 
-int LedgerPage::openStream(int mode, bool forceMode, std::unique_ptr<LedgerStream>& stream) {
+int LedgerPage::openInputStream(std::unique_ptr<LedgerStream>& stream) {
     std::lock_guard lock(*this);
+    // The page file doesn't have to exist when opening a page for reading
     char path[MAX_PATH_LEN + 1] = {};
-    if (mode & LEDGER_STREAM_MODE_READ) {
-        if (mode & LEDGER_STREAM_MODE_WRITE) {
-            return SYSTEM_ERROR_INVALID_ARGUMENT; // Opening for both reading and writing is not supported
-        }
-        // The page file doesn't have to exist when opening a page for reading
-        CHECK(getPageFilePath(path, sizeof(path), name_, ledger_->name(), ledger_->scope()));
-        std::unique_ptr<LedgerPageInputStream> s(new(std::nothrow) LedgerPageInputStream());
-        if (!s) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        CHECK(s->init(path, this));
-        stream = std::move(s);
-        ++readerCount_;
-    } else if (mode & LEDGER_STREAM_MODE_WRITE) {
-        if (mode & LEDGER_STREAM_MODE_READ) {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        }
-        if (!forceMode && !ledger_->isUserWritable()) {
-            return SYSTEM_ERROR_LEDGER_READ_ONLY;
-        }
-        // TODO: Instead of using an intermediate temporary file, we can update the actual page
-        // file in place and rely on LittleFS' copy-on-write properties to ensure the atomicity
-        // of the update
-        CHECK(getTempPageFilePath(path, sizeof(path)));
-        CHECK(makeBaseDir(path)); // Ensure the temporary directory exists
-        std::unique_ptr<LedgerPageOutputStream> s(new(std::nothrow) LedgerPageOutputStream());
-        if (!s) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        CHECK(s->init(path, this));
-        stream = std::move(s);
-    } else {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    CHECK(getPageFilePath(path, sizeof(path), name_, ledger_->name(), ledger_->scope()));
+    std::unique_ptr<LedgerPageInputStream> s(new(std::nothrow) LedgerPageInputStream());
+    if (!s) {
+        return SYSTEM_ERROR_NO_MEMORY;
     }
+    CHECK(s->init(path, this));
+    stream = std::move(s);
+    ++readerCount_;
+    return 0;
+}
+
+int LedgerPage::openOutputStream(LedgerChangeSource src, std::unique_ptr<LedgerStream>& stream) {
+    std::lock_guard lock(*this);
+    if (src == LedgerChangeSource::USER && !ledger_->isUserWritable()) {
+        return SYSTEM_ERROR_LEDGER_READ_ONLY;
+    }
+    // TODO: Instead of using an intermediate temporary file, we can update the actual page file
+    // in place and rely on LittleFS' copy-on-write properties to ensure the atomicity of the update
+    char path[MAX_PATH_LEN + 1] = {};
+    CHECK(getTempPageFilePath(path, sizeof(path)));
+    CHECK(makeBaseDir(path)); // Ensure the temporary directory exists
+    std::unique_ptr<LedgerPageOutputStream> s(new(std::nothrow) LedgerPageOutputStream());
+    if (!s) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK(s->init(src, path, this));
+    stream = std::move(s);
     return 0;
 }
 
@@ -554,28 +553,22 @@ int LedgerPage::inputStreamClosed(LedgerPageInputStream* stream) {
     std::lock_guard lock(*this);
     if (--readerCount_ == 0 && updatedPageFile_) {
         // Update the page file
-        FsLock fs;
         CString tempFile(std::move(updatedPageFile_));
-        char destPath[MAX_PATH_LEN + 1] = {};
-        CHECK(getPageFilePath(destPath, sizeof(destPath), name_, ledger_->name(), ledger_->scope()));
-        CHECK(makeBaseDir(destPath)); // Ensure the page directory exists
-        CHECK_FS(lfs_rename(fs.instance(), tempFile, destPath));
+        FsLock fs;
+        CHECK(updatePageFile(fs.instance(), tempFile, changeSrc_));
     }
     return 0;
 }
 
-int LedgerPage::outputStreamClosed(LedgerPageOutputStream* stream, bool discard) {
+int LedgerPage::outputStreamClosed(LedgerPageOutputStream* stream, bool flush) {
     std::lock_guard lock(*this);
     FsLock fs;
-    if (discard) {
+    if (!flush) {
         // Remove the temporary page file
         CHECK_FS(lfs_remove(fs.instance(), stream->fileName()));
     } else if (readerCount_ == 0) {
-        // Update the page file
-        char destPath[MAX_PATH_LEN + 1] = {};
-        CHECK(getPageFilePath(destPath, sizeof(destPath), name_, ledger_->name(), ledger_->scope()));
-        CHECK(makeBaseDir(destPath)); // Ensure the page directory exists
-        CHECK_FS(lfs_rename(fs.instance(), stream->fileName(), destPath));
+        // Update the actual page file
+        CHECK(updatePageFile(fs.instance(), stream->fileName(), stream->changeSource()));
     } else {
         // Remove the old temporary file if it exists and keep the new one around until all the
         // streams open for reading are closed
@@ -587,6 +580,18 @@ int LedgerPage::outputStreamClosed(LedgerPageOutputStream* stream, bool discard)
             CHECK_FS(lfs_remove(fs.instance(), updatedPageFile_));
         }
         updatedPageFile_ = std::move(newTempFile);
+        changeSrc_ = stream->changeSource();
+    }
+    return 0;
+}
+
+int LedgerPage::updatePageFile(lfs_t* lfs, const char* srcFile, LedgerChangeSource changeSrc) {
+    char destPath[MAX_PATH_LEN + 1] = {};
+    CHECK(getPageFilePath(destPath, sizeof(destPath), name_, ledger_->name(), ledger_->scope()));
+    CHECK(makeBaseDir(destPath)); // Ensure the page directory exists
+    CHECK_FS(lfs_rename(lfs, srcFile, destPath));
+    if (changeSrc == LedgerChangeSource::SYSTEM && changeCallback_) {
+        changeCallback_(reinterpret_cast<ledger_page*>(this), 0 /* flags */, appData_);
     }
     return 0;
 }
@@ -679,7 +684,7 @@ int LedgerPageInputStream::init(const char* pageFile, LedgerPage* page) {
     return 0;
 }
 
-int LedgerPageInputStream::close(int flags) {
+int LedgerPageInputStream::close(bool flush) {
     if (!streamOpen_) {
         return 0;
     }
@@ -718,11 +723,12 @@ LedgerPageOutputStream::~LedgerPageOutputStream() {
     }
 }
 
-int LedgerPageOutputStream::init(const char* tempPageFile, LedgerPage* page) {
-    fileName_ = tempPageFile;
+int LedgerPageOutputStream::init(LedgerChangeSource src, const char* pageFile, LedgerPage* page) {
+    fileName_ = pageFile;
     if (!fileName_) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
+    changeSrc_ = src;
     page_ = page;
     // Open the temporary page file
     FsLock fs;
@@ -743,13 +749,12 @@ int LedgerPageOutputStream::init(const char* tempPageFile, LedgerPage* page) {
     return 0;
 }
 
-int LedgerPageOutputStream::close(int flags) {
+int LedgerPageOutputStream::close(bool flush) {
     if (!open_) {
         return 0;
     }
     FsLock fs;
-    bool discard = flags & LEDGER_STREAM_CLOSE_DISCARD;
-    if (!discard) {
+    if (flush) {
         // Write the header
         size_t fileSize = CHECK_FS(lfs_file_tell(fs.instance(), &file_));
         CHECK_FS(lfs_file_seek(fs.instance(), &file_, 0, LFS_SEEK_SET));
@@ -761,7 +766,7 @@ int LedgerPageOutputStream::close(int flags) {
     }
     CHECK_FS(lfs_file_close(fs.instance(), &file_));
     open_ = false;
-    int r = page_->outputStreamClosed(this, discard);
+    int r = page_->outputStreamClosed(this, flush);
     if (r < 0) {
         LOG(ERROR, "Failed to flush ledger stream: %d", r);
     }
