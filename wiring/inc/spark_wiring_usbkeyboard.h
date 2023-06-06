@@ -26,9 +26,9 @@
 #ifndef __SPARK_WIRING_USBKEYBOARD_H
 #define __SPARK_WIRING_USBKEYBOARD_H
 
-#include "usb_config_hal.h"
+#include "spark_wiring_platform.h"
 
-#ifdef SPARK_USB_KEYBOARD
+#if Wiring_Keyboard
 #include "spark_wiring.h"
 #include "spark_wiring_usbkeyboard_scancode.h"
 

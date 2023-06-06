@@ -23,10 +23,10 @@
   ******************************************************************************
  */
 
-#include "usb_hal.h"
-
-#ifdef SPARK_USB_MOUSE
 #include "spark_wiring_usbmouse.h"
+
+#if Wiring_Mouse
+
 #include <cmath>
 
 //

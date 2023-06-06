@@ -16,30 +16,51 @@
  */
 
 #include "usb_hal.h"
+#include "usbd_hid.h"
+#include "usbd_cdc.h"
+
+using namespace particle::usbd;
+
+extern CdcClassDriver& getCdcClassDriver();
 
 void HAL_USB_HID_Init(uint8_t reserved, void* reserved1) {
-    // TODO
+    if (HidClassDriver::instance()->isEnabled()) {
+        return;
+    }
 }
 
 void HAL_USB_HID_Begin(uint8_t reserved, void* reserved1) {
-    // TODO
+    if (!HidClassDriver::instance()->isEnabled()) {
+        HAL_USB_Detach();
+        HidClassDriver::instance()->enable(true);
+        getCdcClassDriver().useDummyIntEp(true);
+        HAL_USB_Init();
+        HAL_USB_Attach();
+    }
 }
 
 void HAL_USB_HID_End(uint8_t reserved) {
-    // TODO
+    if (HidClassDriver::instance()->isEnabled()) {
+        HAL_USB_Detach();
+        HidClassDriver::instance()->enable(false);
+        getCdcClassDriver().useDummyIntEp(false);
+        HAL_USB_Attach();
+    }
 }
 
 uint8_t HAL_USB_HID_Set_State(uint8_t id, uint8_t state, void* reserved) {
-    // TODO
+    if (HidClassDriver::instance()->isEnabled()) {
+        HAL_USB_Detach();
+        HidClassDriver::instance()->setDigitizerState(state);
+        HAL_USB_Attach();
+    }
     return 0;
 }
 
 void HAL_USB_HID_Send_Report(uint8_t reserved, void *pHIDReport, uint16_t reportSize, void* reserved1) {
-    // TODO
+    HidClassDriver::instance()->sendReport((const uint8_t*)pHIDReport, reportSize);
 }
 
-int32_t HAL_USB_HID_Status(uint8_t reserved, void* reserved1)
-{
-    // TODO
-    return 0;
+int32_t HAL_USB_HID_Status(uint8_t reserved, void* reserved1) {
+    return HidClassDriver::instance()->transferStatus();
 }

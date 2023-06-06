@@ -283,6 +283,7 @@ int Device::getDescriptor(DescriptorType type, uint8_t* buf, size_t len, Speed s
         appender.appendUInt8(0x40);
         appender.appendUInt8(0x01);
         appender.appendUInt8(0x00);
+        break;
     }
     }
     return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -315,7 +316,7 @@ int Device::getRawString(const char* data, size_t len, uint8_t* buf, size_t bufl
         return 0;
     }
 
-    if (buflen < (len + 2) * 2) {
+    if (buflen < (len + 2)) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
 
