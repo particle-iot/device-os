@@ -1,0 +1,5 @@
+ARDUINOJSON_MODULE_NAME = arduinojson
+ARDUINOJSON_MODULE_PATH ?= $(PROJECT_ROOT)/third_party/$(ARDUINOJSON_MODULE_NAME)
+
+# This is a header-only library
+INCLUDE_DIRS += $(ARDUINOJSON_MODULE_PATH)/arduinojson/src

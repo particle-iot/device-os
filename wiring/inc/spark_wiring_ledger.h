@@ -17,10 +17,17 @@
 
 #pragma once
 
+#include <memory>
+
 #include <ArduinoJson.hpp>
 
+#include "spark_wiring_string.h"
 #include "spark_wiring_vector.h"
 #include "spark_wiring_error.h"
+
+#include "system_ledger.h"
+
+class CloudClass; // TODO: Move to the `particle` namespace
 
 namespace particle {
 
@@ -28,21 +35,66 @@ class LedgerPage;
 class LedgerEntry;
 class LedgerSyncOptions;
 
+namespace detail {
+
+class LedgerImpl;
+class LedgerPageImpl;
+
+} // namespace detail
+
 /**
  * Ledger scope.
  */
 enum class LedgerScope {
-    UNKNOWN, ///< Unknown scope. A sync is required to get the actual scope of the ledger.
-    DEVICE, ///< Device scope.
-    PRODUCT, ///< Product scope.
-    ORG ///< Organization scope.
+    INVALID = LEDGER_SCOPE_INVALID, ///< Invalid scope.
+    DEVICE = LEDGER_SCOPE_DEVICE, ///< Device scope.
+    PRODUCT = LEDGER_SCOPE_PRODUCT, ///< Product scope.
+    OWNER = LEDGER_SCOPE_OWNER ///< User or organization scope.
+};
+
+/**
+ * Ledger synchronization options.
+ */
+class LedgerSyncOptions {
+public:
+    /**
+     * Construct an options object.
+     */
+    LedgerSyncOptions() :
+            strategy_(LEDGER_SYNC_STRATEGY_DEFAULT) {
+    }
+
+    /**
+     * Indicate whether the local changes should be preferred when synchronizing the page contents.
+     *
+     * @param enabled `true` if local changes should be preferred, otherwise `false`.
+     * @return A reference to this options object.
+     */
+    LedgerSyncOptions& preferLocalChanges(bool enabled) {
+        strategy_ = enabled ? LEDGER_SYNC_STRATEGY_PREFER_LOCAL : LEDGER_SYNC_STRATEGY_PREFER_REMOTE;
+        return *this;
+    }
+
+    /**
+     * Indicate whether the remote changes should be preferred when synchronizing the page contents.
+     *
+     * @param enabled `true` if remote changes should be preferred, otherwise `false`.
+     * @return A reference to this options object.
+     */
+    LedgerSyncOptions& preferRemoteChanges(bool enabled) {
+        strategy_ = enabled ? LEDGER_SYNC_STRATEGY_PREFER_REMOTE : LEDGER_SYNC_STRATEGY_PREFER_LOCAL;
+        return *this;
+    }
+
+private:
+    int strategy_;
+
+    friend class detail::LedgerImpl;
+    friend class detail::LedgerPageImpl;
 };
 
 /**
  * A ledger.
- *
- * Instances of this class cannot be created directly. Use the `Particle::ledger()` method to get
- * an instance of this class.
  */
 class Ledger {
 public:
@@ -54,6 +106,7 @@ public:
      * @param userData User data.
      */
     typedef void (*OnLedgerSyncCallback)(Error error, void* userData);
+
     /**
      * A callback invoked when a page has been synchronized with the Cloud or an error occured
      * during the synchronization.
@@ -63,23 +116,54 @@ public:
      * @param userData User data.
      */
     typedef void (*OnPageSyncCallback)(Error error, const char* pageName, void* userData);
+
     /**
-     * A callback invoked when a page has changed in the Cloud.
+     * A callback invoked when a notification about page changes is received from the Cloud.
      *
      * The application needs to synchronize the changed page in order for the local contents of the
-     * page to be updated accordingly (see `LedgerPage::sync()` and `Ledger::sync()`).
+     * page to be updated accordingly (see `LedgerPage::sync()`).
      *
      * @param pageName Page name.
      * @param userData User data.
      */
     typedef void (*OnPageChangeCallback)(const char* pageName, void* userData);
+
     /**
-     * A callback invoked when a ledger error occurs.
+     * Default constructor.
      *
-     * @param error Error info.
-     * @param userData User data.
+     * Constructs an invalid ledger instance.
      */
-    typedef void (*OnErrorCallback)(Error error, void* userData);
+    Ledger() :
+            Ledger(nullptr) {
+    }
+
+    /**
+     * Copy constructor.
+     *
+     * @param ledger Ledger instance to copy.
+     */
+    Ledger(const Ledger& ledger) :
+            Ledger(ledger.lr_) {
+    }
+
+    /**
+     * Move constructor.
+     *
+     * @param ledger Ledger instance to move from.
+     */
+    Ledger(Ledger&& ledger) :
+            Ledger() {
+        swap(*this, ledger);
+    }
+
+    /**
+     * Destructor.
+     */
+    ~Ledger() {
+        if (lr_) {
+            ledger_release(lr_, nullptr);
+        }
+    }
 
     /**
      * Get a ledger page.
@@ -96,7 +180,8 @@ public:
      * @param name Page name.
      * @return Ledger page.
      */
-    LedgerPage page(std::string_view name);
+    LedgerPage page(const char* name);
+
     /**
      * Delete a page.
      *
@@ -104,7 +189,8 @@ public:
      *
      * @param name Page name.
      */
-    void removePage(std::string_view name);
+    void removePage(const char* name);
+
     /**
      * Unlink a page.
      *
@@ -113,26 +199,30 @@ public:
      *
      * @param name Page name.
      */
-    void unlinkPage(std::string_view name);
+    void unlinkPage(const char* name);
+
     /**
      * Unlink all pages.
      *
      * @see `unlinkPage()`
      */
     void unlinkAllPages();
+
     /**
      * Check if a page is linked.
      *
      * @param name Page name.
      * @return `true` if the page is linked, otherwise `false`.
      */
-    bool isPageLinked(std::string_view name) const;
+    bool isPageLinked(const char* name) const;
+
     /**
      * Get the names of the linked pages.
      *
      * @return Page names.
      */
     Vector<String> linkedPageNames() const;
+
     /**
      * Synchronize all linked pages.
      *
@@ -142,48 +232,65 @@ public:
      * @return 0 on success, otherwise an error code defined by `Error::Code`.
      */
     int sync();
+
     /**
      * Check if synchronization with the Cloud is in progress.
      *
      * @return `true` if synchronization is in progress, otherwise `false`.
      */
     bool isSyncing() const;
+
     /**
      * Save all local changes to the filesystem.
      *
      * @return 0 on success, otherwise an error code defined by `Error::Code`.
      */
     int save();
+
     /**
      * Check if the ledger can be modified locally.
      *
      * @return `true` if the ledger can be modified locally, otherwise `false`.
      */
     bool isMutable() const;
+
     /**
      * Set the default sync options.
      *
      * @param options Sync options.
      */
     void setDefaultSyncOptions(const LedgerSyncOptions& options);
+
     /**
      * Get the default sync options.
      *
      * @return Sync options.
      */
     LedgerSyncOptions defaultSyncOptions() const;
+
     /**
      * Get the ledger name.
      *
      * @return Ledger name.
      */
     const char* name() const;
+
     /**
      * Get the ledger scope.
      *
      * @return Ledger scope.
      */
     LedgerScope scope() const;
+
+    /**
+     * Check if the ledger instance is valid.
+     *
+     * @return `true` if the instance is valid, otherwise `false`.
+     */
+    bool isValid() const {
+        return lr_;
+    }
+
     /**
      * Set a callback to be invoked when all linked pages of the ledger have been synchronized with
      * the Cloud
@@ -192,6 +299,7 @@ public:
      * @param userData User data.
      */
     void onLedgerSync(OnLedgerSyncCallback callback, void* userData = nullptr);
+
     /**
      * Set a callback to be invoked when a page has been synchronized with the Cloud.
      *
@@ -199,6 +307,7 @@ public:
      * @param userData User data.
      */
     void onPageSync(OnPageSyncCallback callback, void* userData = nullptr);
+
     /**
      * Set a callback to be invoked when a page has changed in the Cloud.
      *
@@ -206,17 +315,42 @@ public:
      * @param userData User data.
      */
     void onPageChange(OnPageChangeCallback callback, void* userData = nullptr);
-    /**
-     * Set a callback to be invoked when a ledger error occurs.
-     *
-     * @param callback Callback.
-     * @param userData User data.
-     */
-    void onError(OnErrorCallback callback, void* userData = nullptr);
     // TODO: Add overloads taking a functor object
 
+    /**
+     * Assignment operator.
+     *
+     * @param ledger Ledger instance to assign from.
+     */
+    Ledger& operator=(Ledger ledger) {
+        swap(*this, ledger);
+        return *this;
+    }
+
+    friend void swap(Ledger& ledger1, Ledger& ledger2) {
+        auto lr = ledger1.lr_;
+        ledger1.lr_ = ledger2.lr_;
+        ledger2.lr_ = lr;
+    }
+
 private:
-    Ledger();
+    ledger_instance* lr_;
+
+    explicit Ledger(ledger_instance* ledger) :
+            lr_(ledger) {
+        if (lr_) {
+            ledger_add_ref(lr_, nullptr);
+        }
+    }
+
+    detail::LedgerImpl* impl() const {
+        return static_cast<detail::LedgerImpl*>(ledger_get_app_data(lr_, nullptr));
+    }
+
+    static int getInstance(const char* name, LedgerScope scope, Ledger& ledger); // Called by CloudClass::ledger()
+    static void destroyLedgerAppData(void* appData);
+
+    friend class ::CloudClass;
 };
 
 /**
@@ -225,6 +359,43 @@ private:
 class LedgerPage {
 public:
     /**
+     * Default constructor.
+     *
+     * Constructs an invalid page instance.
+     */
+    LedgerPage() :
+            LedgerPage(nullptr) {
+    }
+
+    /**
+     * Copy constructor.
+     *
+     * @param page Page instance to copy.
+     */
+    LedgerPage(const LedgerPage& page) :
+            LedgerPage(page.p_) {
+    }
+
+    /**
+     * Move constructor.
+     *
+     * @param page Page instance to move from.
+     */
+    LedgerPage(LedgerPage&& page) :
+            LedgerPage() {
+        swap(*this, page);
+    }
+
+    /**
+     * Destructor.
+     */
+    ~LedgerPage() {
+        if (p_) {
+            ledger_release_page(p_, nullptr);
+        }
+    }
+
+    /**
      * Get a page entry.
      *
      * The requested entry is created if it doesn't exist.
@@ -232,7 +403,8 @@ public:
      * @param name Entry name.
      * @return Entry object.
      */
-    LedgerEntry entry(std::string_view name);
+    LedgerEntry entry(const char* name);
+
     /**
      * Set the value of a page entry.
      *
@@ -240,46 +412,53 @@ public:
      * @param value Entry value
      * @return `true` if the value was set, or `false` on a memory allocation error.
      */
-    bool set(std::string_view name, int value); // Alias for entry(name).assign(value)
-    bool set(std::string_view name, const char* value);
+    bool set(const char* name, int value); // Alias for entry(name).assign(value)
+    bool set(const char* name, const char* value);
     // TODO: Overloads for all supported types
-    bool set(std::string_view name, const JsonDocument& value);
+    bool set(const char* name, const ArduinoJson::JsonDocument& value);
+
     /**
      * Get the value of a page entry.
      *
      * @param name Entry name.
      * @return Entry value.
      */
-    JsonVariantConst get(std::string_view name) const; // Alias for entry(name).value()
+    ArduinoJson::JsonVariantConst get(const char* name) const; // Alias for entry(name).value()
+
     /**
      * Remove a page entry.
      *
      * @param name Entry name.
      */
-    void remove(std::string_view name);
+    void remove(const char* name);
+
     /**
      * Delete all entries.
      */
     void clear();
+
     /**
      * Check whether a page entry exists.
      *
      * @param name Entry name.
      * @return `true` if the entry exists, otherwise `false`.
      */
-    bool has(std::string_view name) const;
+    bool has(const char* name) const;
+
     /**
      * Get the names of the page entries.
      *
      * @return Entry names.
      */
     Vector<String> entryNames() const;
+
     /**
      * Convert the page contents to a JSON object.
      *
      * @return JSON object.
      */
-    DynamicJsonDocument toJson() const;
+    ArduinoJson::DynamicJsonDocument toJson() const;
+
     /**
      * Synchronize the page.
      *
@@ -290,24 +469,28 @@ public:
      * @return 0 on success, otherwise an error code defined by `Error::Code`.
      */
     int sync(const LedgerSyncOptions& options = LedgerSyncOptions());
+
     /**
      * Check if synchronization with the Cloud is in progress for this page.
      *
      * @return `true` if synchronization is in progress, otherwise `false`.
      */
     bool isSyncing() const;
+
     /**
      * Save the local changes to the filesystem.
      *
      * @return 0 on success, otherwise an error code defined by `Error::Code`.
      */
     int save();
+
     /**
      * Check if the page can be modified locally.
      *
      * @return `true` if the page can be modified locally, otherwise `false`.
      */
     bool isMutable() const;
+
     /**
      * Get the page name.
      *
@@ -315,18 +498,65 @@ public:
      */
     const char* name() const;
 
+    /**
+     * Get the ledger containing this page.
+     *
+     * @return Ledger instance.
+     */
+    Ledger ledger() const;
+
+    /**
+     * Check if the page instance is valid.
+     *
+     * @return `true` if the instance is valid, otherwise `false`.
+     */
+    bool isValid() const;
+
+    /**
+     * Assignment operator.
+     *
+     * @param page Page instance to assign from.
+     */
+    LedgerPage& operator=(LedgerPage page) {
+        swap(*this, page);
+        return *this;
+    }
+
+    friend void swap(LedgerPage& page1, LedgerPage& page2) {
+        auto p = page1.p_;
+        page1.p_ = page2.p_;
+        page2.p_ = p;
+    }
+
 private:
-    LedgerPage();
+    ledger_page* p_;
+
+    explicit LedgerPage(ledger_page* page) :
+            p_(page) {
+        if (p_) {
+            ledger_add_page_ref(p_, nullptr);
+        }
+    }
+
+    detail::LedgerPageImpl* impl() const {
+        return static_cast<detail::LedgerPageImpl*>(ledger_get_page_app_data(p_, nullptr));
+    }
+
+    friend class Ledger;
 };
 
 /**
  * A ledger entry.
- *
- * Instances of this class cannot be created directly. Use one of the methods of the `LedgerPage`
- * class to get an instance of this class.
  */
 class LedgerEntry {
 public:
+    /**
+     * Default constructor.
+     *
+     * Constructs an invalid entry.
+     */
+    LedgerEntry();
+
     /**
      * Entry value types.
      */
@@ -350,14 +580,15 @@ public:
     bool assign(int value);
     bool assign(const char* value);
     // TODO: Overloads for all supported types
-    bool assign(const JsonDocument& value);
+    bool assign(const ArduinoJson::JsonDocument& value);
 
     /**
      * Get the entry value.
      *
      * @return Entry value.
      */
-    JsonVariantConst value() const; // TODO: Use a custom variant class
+    ArduinoJson::JsonVariantConst value() const; // TODO: Use a custom variant class
+
     /**
      * Convert the entry value to a specific type.
      *
@@ -370,7 +601,7 @@ public:
     int toInt() const; // Alias for as<int>()
     String toString() const; // Alias for as<String>()
     // TODO: Overloads for all supported types
-    DynamicJsonDocument toJson() const; // Alias for as<DynamicJsonDocument>()
+    ArduinoJson::DynamicJsonDocument toJson() const; // Alias for as<DynamicJsonDocument>()
 
     /**
      * Get the entry type.
@@ -400,6 +631,7 @@ public:
      * @return Value length.
      */
     int size() const;
+
     /**
      * Check whether the entry value is empty.
      *
@@ -425,6 +657,7 @@ public:
     bool pushBack(int value);
     bool pushBack(const char* value);
     // TODO: Overloads for all supported types
+
     /**
      * Prepend a value to the array.
      *
@@ -440,6 +673,7 @@ public:
     void pushFront(int value);
     void pushFront(const char* value);
     // TODO: Overloads for all supported types
+
     /**
      * Remove the first element of the array.
      *
@@ -450,6 +684,7 @@ public:
      * modified in place.
      */
     void popBack();
+
     /**
      * Remove the last element of the array.
      *
@@ -460,25 +695,28 @@ public:
      * modified in place.
      */
     void popFront();
+
     /**
      * Get the first element of the array.
      *
      * @return Value of the first element.
      */
-    JsonVariantConst front() const;
+    ArduinoJson::JsonVariantConst front() const;
+
     /**
      * Get the last element of the array.
      *
      * @return Value of the last element.
      */
-    JsonVariantConst last() const;
+    ArduinoJson::JsonVariantConst last() const;
+
     /**
      * Get the element at the given index of the array.
      *
      * @param index Index of the element.
      * @return Value of the element.
      */
-    JsonVariantConst at(int index) const;
+    ArduinoJson::JsonVariantConst at(int index) const;
 
     // Object operations
 
@@ -495,16 +733,18 @@ public:
      * @param value Property value.
      * @return `true` if the property was set, or `false` on a memory allocation error.
      */
-    bool set(std::string_view name, int value);
-    bool set(std::string_view name, const char* value);
+    bool set(const char* name, int value);
+    bool set(const char* name, const char* value);
     // TODO: Overloads for all supported types
+
     /**
      * Get a property of the object.
      *
      * @param name Property name.
      * @return Property value.
      */
-    JsonVariantCont get(std::string_view name) const;
+    ArduinoJson::JsonVariantConst get(const char* name) const;
+
     /**
      * Remove a property of the object.
      *
@@ -514,14 +754,16 @@ public:
      *
      * @param name Property name.
      */
-    void remove(std::string_view name);
+    void remove(const char* name);
+
     /**
      * Check if the object has a property with the given name.
      *
      * @param name Property name.
      * @return `true` if the property exists, otherwise `false`.
      */
-    bool has(std::string_view name) const;
+    bool has(const char* name) const;
+
     /**
      * Get the list of object properties.
      *
@@ -535,6 +777,7 @@ public:
      * @return Entry name.
      */
     const char* name() const;
+
     /**
      * Check if the entry can be modified locally.
      *
@@ -547,73 +790,15 @@ public:
     operator int() const;
     operator String() const;
     // TODO: Overloads for all supported types
-    operator DynamicJsonDocument() const;
+    operator ArduinoJson::DynamicJsonDocument() const;
 
     LedgerEntry& operator=(int value);
     LedgerEntry& operator=(const char* value);
     // TODO: Overloads for all supported types
-    LedgerEntry& operator=(const JsonDocument& value);
+    LedgerEntry& operator=(const ArduinoJson::JsonDocument& value);
 
 private:
-    LedgerEntry();
-};
-
-/**
- * Ledger synchronization options.
- */
-class LedgerSyncOptions {
-public:
-    /**
-     * Construct an options object.
-     */
-    LedgerSyncOptions() :
-            strategy_(Strategy::DEFAULT) {
-    }
-    /**
-     * Indicate whether the local changes should be preferred when synchronizing the page contents.
-     *
-     * @param enabled `true` if local changes should be preferred, otherwise `false`.
-     * @return A reference to this options object.
-     */
-    LedgerSyncOptions& preferLocalChanges(bool enabled) {
-        strategy_ = enabled ? Strategy::PREFER_LOCAL_CHANGES : Strategy::PREFER_REMOTE_CHANGES;
-        return *this;
-    }
-    /**
-     * Check whether the local changes should be preferred when synchronizing the page contents.
-     *
-     * @return `true` if local changes should be preferred, otherwise `false`.
-     */
-    bool preferLocalChanges() const {
-        return strategy_ == Strategy::PREFER_LOCAL_CHANGES;
-    }
-    /**
-     * Indicate whether the remote changes should be preferred when synchronizing the page contents.
-     *
-     * @param enabled `true` if remote changes should be preferred, otherwise `false`.
-     * @return A reference to this options object.
-     */
-    LedgerSyncOptions& preferRemoteChanges(bool enabled) {
-        strategy_ = enabled ? Strategy::PREFER_REMOTE_CHANGES : Strategy::PREFER_LOCAL_CHANGES;
-        return *this;
-    }
-    /**
-     * Check whether the remote changes should be preferred when synchronizing the page contents.
-     *
-     * @return `true` if remote changes should be preferred, otherwise `false`.
-     */
-    bool preferRemoteChanges() const {
-        return strategy_ == Strategy::PREFER_REMOTE_CHANGES;
-    }
-
-private:
-    enum class Strategy {
-        DEFAULT = 0,
-        PREFER_LOCAL_CHANGES = 1,
-        PREFER_REMOTE_CHANGES = 2
-    };
-
-    Strategy strategy_;
+    std::shared_ptr<ArduinoJson::JsonDocument> doc_;
 };
 
 } // namespace particle

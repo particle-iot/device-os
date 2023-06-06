@@ -124,3 +124,13 @@ int CloudClass::maxFunctionArgumentSize() {
     CHECK(spark_get_connection_property(SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE, &size, &n, nullptr /* reserved */));
     return size;
 }
+
+Ledger CloudClass::ledger(const char* name, particle::LedgerScope scope) {
+    Ledger ledger;
+    int r = Ledger::getInstance(name, scope, ledger);
+    if (r < 0) {
+        LOG(ERROR, "Failed to get ledger instance: %d", r);
+        return Ledger();
+    }
+    return ledger;
+}
