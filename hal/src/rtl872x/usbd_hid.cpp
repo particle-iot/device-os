@@ -241,8 +241,6 @@ int HidClassDriver::handleInSetupRequest(SetupRequest* req) {
     case hid::GET_IDLE: {
         return dev_->setupReply(req, (const uint8_t*)&idleState_, sizeof(idleState_));
     }
-    default: {
-    }
     }
     return SYSTEM_ERROR_INVALID_ARGUMENT;
 }
@@ -256,8 +254,6 @@ int HidClassDriver::handleOutSetupRequest(SetupRequest* req) {
     case hid::SET_IDLE: {
         idleState_ = (uint8_t)req->wValue;
         return 0;
-    }
-    default: {
     }
     }
     return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -278,7 +274,7 @@ int HidClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
 }
 
 int HidClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_t len) {
-    return 0;
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 int HidClassDriver::startOfFrame() {
@@ -286,6 +282,7 @@ int HidClassDriver::startOfFrame() {
 }
 
 int HidClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t length, Speed speed, unsigned index) {
+    CHECK_TRUE(buf && length, SYSTEM_ERROR_INVALID_ARGUMENT);
     BufferAppender appender(buf, length);
  
     // No need for interface association descriptor, as only one interface is used
