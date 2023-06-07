@@ -19,7 +19,7 @@
 
 #include <memory>
 
-#include <ArduinoJson.hpp>
+#include <ArduinoJson.hpp> // TODO: Use a custom variant class
 
 #include "spark_wiring_string.h"
 #include "spark_wiring_vector.h"
@@ -27,13 +27,12 @@
 
 #include "system_ledger.h"
 
-class CloudClass; // TODO: Move to the `particle` namespace
+class CloudClass; // TODO: Move to the particle namespace
 
 namespace particle {
 
 class LedgerPage;
 class LedgerEntry;
-class LedgerSyncOptions;
 
 namespace detail {
 
@@ -336,15 +335,19 @@ public:
 private:
     ledger_instance* lr_;
 
-    explicit Ledger(ledger_instance* ledger) :
-            lr_(ledger) {
-        if (lr_) {
+    explicit Ledger(ledger_instance* instance, bool addRef = true) :
+            lr_(instance) {
+        if (addRef && lr_) {
             ledger_add_ref(lr_, nullptr);
         }
     }
 
     detail::LedgerImpl* impl() const {
         return static_cast<detail::LedgerImpl*>(ledger_get_app_data(lr_, nullptr));
+    }
+
+    static Ledger wrap(ledger_instance* instance) {
+        return Ledger(instance, false);
     }
 
     static int getInstance(const char* name, LedgerScope scope, Ledger& ledger); // Called by CloudClass::ledger()
@@ -531,9 +534,9 @@ public:
 private:
     ledger_page* p_;
 
-    explicit LedgerPage(ledger_page* page) :
-            p_(page) {
-        if (p_) {
+    explicit LedgerPage(ledger_page* instance, bool addRef = true) :
+            p_(instance) {
+        if (addRef && p_) {
             ledger_add_page_ref(p_, nullptr);
         }
     }
@@ -542,7 +545,11 @@ private:
         return static_cast<detail::LedgerPageImpl*>(ledger_get_page_app_data(p_, nullptr));
     }
 
-    friend class Ledger;
+    static LedgerPage wrap(ledger_page* instance) {
+        return LedgerPage(instance, false);
+    }
+
+    friend class detail::LedgerImpl;
 };
 
 /**
@@ -587,7 +594,7 @@ public:
      *
      * @return Entry value.
      */
-    ArduinoJson::JsonVariantConst value() const; // TODO: Use a custom variant class
+    ArduinoJson::JsonVariantConst value() const;
 
     /**
      * Convert the entry value to a specific type.
