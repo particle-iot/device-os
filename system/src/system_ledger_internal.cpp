@@ -678,10 +678,26 @@ int LedgerPageInputStream::init(const char* pageFile, LedgerPage* page) {
         }
         h.infoSize = littleEndianToNative(h.infoSize);
         CHECK_FS(lfs_file_seek(fs.instance(), &file_, h.infoSize, LFS_SEEK_CUR));
+        dataOffs_ = CHECK_FS(lfs_file_tell(fs.instance(), &file_));
     }
     g.dismiss();
     streamOpen_ = true;
     return 0;
+}
+
+int LedgerPageInputStream::read(char* data, size_t size) {
+    if (!streamOpen_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    size_t n = 0;
+    if (fileOpen_) {
+        FsLock fs;
+        n = CHECK_FS(lfs_file_read(fs.instance(), &file_, data, size));
+    }
+    if (n == 0 && size > 0) {
+        return SYSTEM_ERROR_END_OF_STREAM;
+    }
+    return n;
 }
 
 int LedgerPageInputStream::close(bool flush) {
@@ -701,19 +717,15 @@ int LedgerPageInputStream::close(bool flush) {
     return 0;
 }
 
-int LedgerPageInputStream::read(char* data, size_t size) {
+int LedgerPageInputStream::rewind() {
     if (!streamOpen_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    size_t n = 0;
     if (fileOpen_) {
         FsLock fs;
-        n = CHECK_FS(lfs_file_read(fs.instance(), &file_, data, size));
+        CHECK_FS(lfs_file_seek(fs.instance(), &file_, dataOffs_, LFS_SEEK_SET));
     }
-    if (n == 0 && size > 0) {
-        return SYSTEM_ERROR_END_OF_STREAM;
-    }
-    return n;
+    return 0;
 }
 
 LedgerPageOutputStream::~LedgerPageOutputStream() {
@@ -744,9 +756,19 @@ int LedgerPageOutputStream::init(LedgerChangeSource src, const char* pageFile, L
     PB_INTERNAL(LedgerPageInfo) pbInfo = {};
     EncodedString pbName(&pbInfo.name, page->name(), strlen(page->name()));
     pageInfoSize_ = CHECK(encodeProtobufToFile(&file_, &PB_INTERNAL(LedgerPageInfo_msg), &pbInfo));
+    dataOffs_ = CHECK_FS(lfs_file_tell(fs.instance(), &file_));
     g.dismiss();
     open_ = true;
     return 0;
+}
+
+int LedgerPageOutputStream::write(const char* data, size_t size) {
+    if (!open_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    FsLock fs;
+    size_t n = CHECK_FS(lfs_file_write(fs.instance(), &file_, data, size));
+    return n;
 }
 
 int LedgerPageOutputStream::close(bool flush) {
@@ -773,13 +795,14 @@ int LedgerPageOutputStream::close(bool flush) {
     return 0;
 }
 
-int LedgerPageOutputStream::write(const char* data, size_t size) {
+int LedgerPageOutputStream::rewind() {
     if (!open_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     FsLock fs;
-    size_t n = CHECK_FS(lfs_file_write(fs.instance(), &file_, data, size));
-    return n;
+    CHECK_FS(lfs_file_seek(fs.instance(), &file_, dataOffs_, LFS_SEEK_SET));
+    CHECK_FS(lfs_file_truncate(fs.instance(), &file_, dataOffs_));
+    return 0;
 }
 
 } // namespace system

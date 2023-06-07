@@ -209,6 +209,12 @@ int ledger_close_stream(ledger_stream* stream, int flags, void* reserved) {
     return 0;
 }
 
+int ledger_rewind_stream(ledger_stream* stream, void* reserved) {
+    auto s = reinterpret_cast<LedgerStream*>(stream);
+    CHECK(s->rewind());
+    return 0;
+}
+
 int ledger_read(ledger_stream* stream, char* data, size_t size, void* reserved) {
     auto s = reinterpret_cast<LedgerStream*>(stream);
     size_t n = CHECK(s->read(data, size));

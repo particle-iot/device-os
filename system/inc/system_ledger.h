@@ -451,6 +451,14 @@ int ledger_open_page(ledger_stream** stream, ledger_page* page, int mode, void* 
 int ledger_close_stream(ledger_stream* stream, int flags, void* reserved);
 
 /**
+ * Restart reading from or writing to a stream.
+ *
+ * @param stream Stream instance.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int ledger_rewind_stream(ledger_stream* stream, void* reserved);
+
+/**
  * Read from a stream.
  *
  * @param stream Stream instance.

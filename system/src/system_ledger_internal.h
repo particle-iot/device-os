@@ -217,16 +217,17 @@ class LedgerStream {
 public:
     virtual ~LedgerStream() = default;
 
-    virtual int close(bool flush = true) = 0;
-
     virtual int read(char* data, size_t size) = 0;
     virtual int write(const char* data, size_t size) = 0;
+    virtual int close(bool flush = true) = 0;
+    virtual int rewind() = 0;
 };
 
 class LedgerPageInputStream: public LedgerStream {
 public:
     LedgerPageInputStream() :
             file_(),
+            dataOffs_(0),
             streamOpen_(false),
             fileOpen_(false) {
     }
@@ -235,16 +236,19 @@ public:
 
     int init(const char* pageFile, LedgerPage* page);
 
-    int close(bool flush) override;
     int read(char* data, size_t size) override;
 
     int write(const char* data, size_t size) override {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    int close(bool flush) override;
+    int rewind() override;
+
 private:
     RefCountPtr<LedgerPage> page_; // Page being read
     lfs_file_t file_; // File handle
+    size_t dataOffs_; // Offset of the page data in the page file
     bool streamOpen_; // Whether the stream is open
     bool fileOpen_; // Whether the page file is open
 };
@@ -255,6 +259,7 @@ public:
             file_(),
             changeSrc_(),
             pageInfoSize_(0),
+            dataOffs_(0),
             open_(false) {
     }
 
@@ -262,13 +267,13 @@ public:
 
     int init(LedgerChangeSource src, const char* pageFile, LedgerPage* page);
 
-    int close(bool flush) override;
-
     int read(char* data, size_t size) override {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
     int write(const char* data, size_t size) override;
+    int close(bool flush) override;
+    int rewind() override;
 
     LedgerChangeSource changeSource() const {
         return changeSrc_;
@@ -284,6 +289,7 @@ private:
     lfs_file_t file_; // File handle
     LedgerChangeSource changeSrc_; // Change source
     size_t pageInfoSize_; // Size of the page info section of the page file
+    size_t dataOffs_; // Offset of the page data in the page file
     bool open_; // Whether the stream is open
 };
 
