@@ -411,6 +411,12 @@ int main(void)
     }
     else if (USB_DFU_MODE == 0)
     {
+#if HAL_PLATFORM_RTL872X
+        if (!is_application_valid(ApplicationAddress, NULL)) {
+            FLASH_AddMfgSystemModuleSlot();
+        }
+#endif
+
 #ifdef FLASH_UPDATE_MODULES
         /*
          * Update Internal/Serial Flash based on application_dct=>flash_modules settings
