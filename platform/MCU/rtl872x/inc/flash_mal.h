@@ -64,6 +64,7 @@ extern "C" {
 #define BOOT_INFO_FLASH_XIP_SIZE        (0x1000)
 #define BACKUP_RAM_FLASH_XIP_START_ADDR ((uint32_t)0x0805E000)
 #define BACKUP_RAM_FLASH_XIP_SIZE       (0x1000)
+#define MFG_COMBINED_FW_START_ADDRESS   ((uint32_t)0x081E0000)
 
 #define KM0_MBR_IMAGE_SIZE              (0x2000)
 #define KM0_PART1_IMAGE_SIZE            (0x4B000)

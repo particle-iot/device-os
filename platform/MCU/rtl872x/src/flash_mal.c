@@ -553,6 +553,27 @@ static int invalidateUpdateSlot(platform_flash_modules_t* module, size_t offset)
     return dct_write_app_data(&module->magicNumber, offset + offsetof(platform_flash_modules_t, magicNumber), sizeof(module->magicNumber));
 }
 
+int FLASH_AddMfgSystemModuleSlot(void) {
+    int ret = SYSTEM_ERROR_INTERNAL;
+    uint32_t systemPartOffset = MFG_COMBINED_FW_START_ADDRESS + FLASH_ModuleLength(FLASH_INTERNAL, MFG_COMBINED_FW_START_ADDRESS) + 4/*CRC32*/;
+    if (systemPartOffset > MFG_COMBINED_FW_START_ADDRESS) {
+        module_info_t info;
+        ret = FLASH_ModuleInfo(&info, FLASH_INTERNAL, systemPartOffset, NULL);
+        if (ret == SYSTEM_ERROR_NONE && info.module_function == MODULE_FUNCTION_SYSTEM_PART && module_info_matches_platform(&info)) {
+            if (!FLASH_VerifyCRC32(FLASH_INTERNAL, systemPartOffset, module_length(&info))) {
+                return SYSTEM_ERROR_BAD_DATA;
+            }
+            uint32_t copyLength = info.module_end_address - info.module_start_address + 4/*CRC32*/;
+            uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
+            if (!FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, systemPartOffset, FLASH_INTERNAL,
+                    (uint32_t)info.module_start_address, copyLength, MOD_FUNC_SYSTEM_PART, slotFlags)) {
+                ret = SYSTEM_ERROR_NO_MEMORY;
+            }
+        }
+    }
+    return ret;
+}
+
 // This function is called in bootloader to perform the memory update process
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating)) {
     // FAC_RESET_SLOT is reserved for factory reset module

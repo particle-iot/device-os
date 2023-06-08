@@ -445,6 +445,11 @@ int main(void)
             uint32_t stack = *(volatile uint32_t*)entry;
             jump_to_system(addr, stack);
         }
+#if HAL_PLATFORM_RTL872X
+        else if (FLASH_AddMfgSystemModuleSlot() == 0) {
+            HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, NULL);
+        }
+#endif
 #if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
         else
         {

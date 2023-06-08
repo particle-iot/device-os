@@ -59,6 +59,7 @@ bool FLASH_AddToNextAvailableModulesSlot(flash_device_t sourceDeviceID, uint32_t
                                          uint32_t length, uint8_t module_function, uint8_t flags);
 
 bool FLASH_IsFactoryResetAvailable(void);
+int FLASH_AddMfgSystemModuleSlot(void);
 int FLASH_UpdateModules(void (*flashModulesCallback)(bool isUpdating));
 
 int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t flashDeviceID, uint32_t startAddress, uint32_t* infoOffset);
