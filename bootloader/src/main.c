@@ -411,12 +411,6 @@ int main(void)
     }
     else if (USB_DFU_MODE == 0)
     {
-#if HAL_PLATFORM_RTL872X
-        if (!is_application_valid(ApplicationAddress, NULL)) {
-            FLASH_AddMfgSystemModuleSlot();
-        }
-#endif
-
 #ifdef FLASH_UPDATE_MODULES
         /*
          * Update Internal/Serial Flash based on application_dct=>flash_modules settings
@@ -451,6 +445,11 @@ int main(void)
             uint32_t stack = *(volatile uint32_t*)entry;
             jump_to_system(addr, stack);
         }
+#if HAL_PLATFORM_RTL872X
+        else if (FLASH_AddMfgSystemModuleSlot() == 0) {
+            HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, NULL);
+        }
+#endif
 #if !HAL_PLATFORM_NRF52840 && !HAL_PLATFORM_RTL872X
         else
         {

@@ -559,7 +559,10 @@ int FLASH_AddMfgSystemModuleSlot(void) {
     if (systemPartOffset > MFG_COMBINED_FW_START_ADDRESS) {
         module_info_t info;
         ret = FLASH_ModuleInfo(&info, FLASH_INTERNAL, systemPartOffset, NULL);
-        if (ret == SYSTEM_ERROR_NONE) {
+        if (ret == SYSTEM_ERROR_NONE && info.module_function == MODULE_FUNCTION_SYSTEM_PART && module_info_matches_platform(&info)) {
+            if (!FLASH_VerifyCRC32(FLASH_INTERNAL, systemPartOffset, module_length(&info))) {
+                return SYSTEM_ERROR_BAD_DATA;
+            }
             uint32_t copyLength = info.module_end_address - info.module_start_address + 4/*CRC32*/;
             uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
             if (!FLASH_AddToNextAvailableModulesSlot(FLASH_INTERNAL, systemPartOffset, FLASH_INTERNAL,
