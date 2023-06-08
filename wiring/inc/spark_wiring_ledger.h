@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <type_traits>
+#include <utility>
 #include <memory>
 
 #include <ArduinoJson.hpp> // TODO: Use a custom variant class
@@ -26,6 +28,8 @@
 #include "spark_wiring_error.h"
 
 #include "system_ledger.h"
+
+#include "c_string.h"
 
 class CloudClass; // TODO: Move to the particle namespace
 
@@ -327,16 +331,15 @@ public:
     }
 
     friend void swap(Ledger& ledger1, Ledger& ledger2) {
-        auto lr = ledger1.lr_;
-        ledger1.lr_ = ledger2.lr_;
-        ledger2.lr_ = lr;
+        using std::swap; // For ADL
+        swap(ledger1.lr_, ledger2.lr_);
     }
 
 private:
     ledger_instance* lr_;
 
-    explicit Ledger(ledger_instance* instance, bool addRef = true) :
-            lr_(instance) {
+    explicit Ledger(ledger_instance* ledger, bool addRef = true) :
+            lr_(ledger) {
         if (addRef && lr_) {
             ledger_add_ref(lr_, nullptr);
         }
@@ -346,8 +349,8 @@ private:
         return static_cast<detail::LedgerImpl*>(ledger_get_app_data(lr_, nullptr));
     }
 
-    static Ledger wrap(ledger_instance* instance) {
-        return Ledger(instance, false);
+    static Ledger wrap(ledger_instance* ledger) {
+        return Ledger(ledger, false);
     }
 
     static int getInstance(const char* name, LedgerScope scope, Ledger& ledger); // Called by CloudClass::ledger()
@@ -406,27 +409,45 @@ public:
      * @param name Entry name.
      * @return Entry object.
      */
-    LedgerEntry entry(const char* name);
+    LedgerEntry entry(const char* name) const;
 
     /**
      * Set the value of a page entry.
+     *
+     * Calling the method is equivalent to the following code:
+     * ```cpp
+     * LedgerPage page = ...;
+     * page.entry(name).setValue(value);
+     * ```
      *
      * @param name Entry name.
      * @param value Entry value
      * @return `true` if the value was set, or `false` on a memory allocation error.
      */
-    bool set(const char* name, int value); // Alias for entry(name).assign(value)
-    bool set(const char* name, const char* value);
-    // TODO: Overloads for all supported types
-    bool set(const char* name, const ArduinoJson::JsonDocument& value);
+    template<typename T>
+    bool set(const char* name, const T& value);
 
     /**
      * Get the value of a page entry.
      *
+     * Calling the method is equivalent to the following code:
+     * ```cpp
+     * LedgerPage page = ...;
+     * auto value = page.entry(name).value();
+     * ```
+     *
      * @param name Entry name.
      * @return Entry value.
      */
-    ArduinoJson::JsonVariantConst get(const char* name) const; // Alias for entry(name).value()
+    ArduinoJson::JsonVariantConst get(const char* name) const;
+
+    /**
+     * Check whether a page entry exists.
+     *
+     * @param name Entry name.
+     * @return `true` if the entry exists, otherwise `false`.
+     */
+    bool has(const char* name) const;
 
     /**
      * Remove a page entry.
@@ -441,26 +462,11 @@ public:
     void clear();
 
     /**
-     * Check whether a page entry exists.
+     * Convert the contents of the page to a JSON document.
      *
-     * @param name Entry name.
-     * @return `true` if the entry exists, otherwise `false`.
+     * @return JSON document.
      */
-    bool has(const char* name) const;
-
-    /**
-     * Get the names of the page entries.
-     *
-     * @return Entry names.
-     */
-    Vector<String> entryNames() const;
-
-    /**
-     * Convert the page contents to a JSON object.
-     *
-     * @return JSON object.
-     */
-    ArduinoJson::DynamicJsonDocument toJson() const;
+    ArduinoJson::DynamicJsonDocument toJsonDocument() const;
 
     /**
      * Synchronize the page.
@@ -471,14 +477,18 @@ public:
      * @param options Sync options.
      * @return 0 on success, otherwise an error code defined by `Error::Code`.
      */
-    int sync(const LedgerSyncOptions& options = LedgerSyncOptions());
+    int sync(const LedgerSyncOptions& options = LedgerSyncOptions()) {
+        return save(); // TODO
+    }
 
     /**
      * Check if synchronization with the Cloud is in progress for this page.
      *
      * @return `true` if synchronization is in progress, otherwise `false`.
      */
-    bool isSyncing() const;
+    bool isSyncing() const {
+        return false; // TODO
+    }
 
     /**
      * Save the local changes to the filesystem.
@@ -492,7 +502,7 @@ public:
      *
      * @return `true` if the page can be modified locally, otherwise `false`.
      */
-    bool isMutable() const;
+    bool isMutable() const; // TODO
 
     /**
      * Get the page name.
@@ -506,14 +516,16 @@ public:
      *
      * @return Ledger instance.
      */
-    Ledger ledger() const;
+    Ledger ledger() const; // TODO
 
     /**
      * Check if the page instance is valid.
      *
      * @return `true` if the instance is valid, otherwise `false`.
      */
-    bool isValid() const;
+    bool isValid() const {
+        return p_;
+    }
 
     /**
      * Assignment operator.
@@ -526,16 +538,15 @@ public:
     }
 
     friend void swap(LedgerPage& page1, LedgerPage& page2) {
-        auto p = page1.p_;
-        page1.p_ = page2.p_;
-        page2.p_ = p;
+        using std::swap; // For ADL
+        swap(page1.p_, page2.p_);
     }
 
 private:
     ledger_page* p_;
 
-    explicit LedgerPage(ledger_page* instance, bool addRef = true) :
-            p_(instance) {
+    explicit LedgerPage(ledger_page* page, bool addRef = true) :
+            p_(page) {
         if (addRef && p_) {
             ledger_add_page_ref(p_, nullptr);
         }
@@ -545,8 +556,8 @@ private:
         return static_cast<detail::LedgerPageImpl*>(ledger_get_page_app_data(p_, nullptr));
     }
 
-    static LedgerPage wrap(ledger_page* instance) {
-        return LedgerPage(instance, false);
+    static LedgerPage wrap(ledger_page* page) {
+        return LedgerPage(page, false);
     }
 
     friend class detail::LedgerImpl;
@@ -562,68 +573,138 @@ public:
      *
      * Constructs an invalid entry.
      */
-    LedgerEntry();
+    LedgerEntry() :
+            p_(nullptr) {
+    }
 
     /**
-     * Entry value types.
+     * Copy constructor.
+     *
+     * @param entry Ledger entry to copy.
      */
-    enum class Type {
-        NULL_, ///< Null entry.
-        BOOL, ///< Boolean entry.
-        // TODO: It would make sense to have separate types for integer and floating point types
-        // even though JSON doesn't have such a separation
-        NUMBER, ///< Numeric entry.
-        STRING, ///< String entry.
-        ARRAY, ///< Array entry.
-        OBJECT ///< Object entry.
-    };
+    LedgerEntry(const LedgerEntry& entry) :
+            doc_(entry.doc_),
+            val_(entry.val_),
+            p_(entry.p_) {
+        if (p_) {
+            ledger_add_page_ref(p_, nullptr);
+        }
+    }
+
+    /**
+     * Move constructor.
+     *
+     * @param entry Ledger entry to copy.
+     */
+    LedgerEntry(LedgerEntry&& entry) :
+            LedgerEntry() {
+        swap(*this, entry);
+    }
+
+    /**
+     * Destructor.
+     */
+    ~LedgerEntry() {
+        if (p_) {
+            ledger_release_page(p_, nullptr);
+        }
+    }
 
     /**
      * Set the entry value.
      *
-     * @param value Entry value.
-     * @return `true` if the value was assigned, or `false` on a memory allocation error.
+     * @param value New value.
+     * @return `true` if the value was set, otherwise `false`.
      */
-    bool assign(int value);
-    bool assign(const char* value);
-    // TODO: Overloads for all supported types
-    bool assign(const ArduinoJson::JsonDocument& value);
+    template<typename T>
+    bool setValue(const T& value) {
+        return update([&](auto& v) {
+            v.set(value);
+        });
+    }
 
     /**
      * Get the entry value.
      *
      * @return Entry value.
      */
-    ArduinoJson::JsonVariantConst value() const;
+    ArduinoJson::JsonVariantConst value() const {
+        return val_;
+    }
 
+    ///@{
+    /**
+     * Check if the entry value is of a specific type.
+     *
+     * @return `true` if the value is of the specified type, otherwise `false`.
+     */
+    bool isNull() const {
+        return !val_.isUnbound() && val_.isNull();
+    }
+
+    bool isBool() const {
+        return val_.is<bool>();
+    }
+
+    bool isInt() const {
+        return val_.is<int>();
+    }
+
+    bool isFloat() const {
+        return val_.is<float>();
+    }
+
+    bool isDouble() const {
+        return val_.is<double>();
+    }
+
+    bool isString() const {
+        return val_.is<ArduinoJson::JsonString>();
+    }
+
+    bool isArray() const {
+        return val_.is<ArduinoJson::JsonArray>();
+    }
+
+    bool isObject() const {
+        return val_.is<ArduinoJson::JsonObject>();
+    }
+    ///@}
+
+    ///@{
     /**
      * Convert the entry value to a specific type.
      *
      * @return Entry value.
      */
-    template<typename T>
-    T as() const;
+    bool toBool() const {
+        return val_.as<bool>();
+    }
 
-    // Convenience methods
-    int toInt() const; // Alias for as<int>()
-    String toString() const; // Alias for as<String>()
-    // TODO: Overloads for all supported types
-    ArduinoJson::DynamicJsonDocument toJson() const; // Alias for as<DynamicJsonDocument>()
+    int toInt() const {
+        return val_.as<int>();
+    }
 
-    /**
-     * Get the entry type.
-     *
-     * @return Entry type.
-     */
-    Type type() const;
+    float toFloat() const {
+        return val_.as<float>();
+    }
 
-    // Convenience methods
-    bool isNull() const;
-    bool isBool() const;
-    bool isNumber() const;
-    bool isString() const;
-    bool isArray() const;
-    bool isObject() const;
+    double toDouble() const {
+        return val_.as<double>();
+    }
+
+    String toString() const {
+        return val_.as<ArduinoJson::JsonString>().c_str();
+    }
+
+    ArduinoJson::JsonArray toArray() const {
+        return val_.as<ArduinoJson::JsonArray>();
+    }
+
+    ArduinoJson::JsonObject toObject() const {
+        return val_.as<ArduinoJson::JsonObject>();
+    }
+    ///@}
 
     /**
      * Get the length of the entry value.
@@ -637,7 +718,12 @@ public:
      *
      * @return Value length.
      */
-    int size() const;
+    int size() const {
+        if (val_.is<ArduinoJson::JsonString>()) {
+            return val_.as<ArduinoJson::JsonString>().size();
+        }
+        return val_.size();
+    }
 
     /**
      * Check whether the entry value is empty.
@@ -645,77 +731,119 @@ public:
      * @return `true` if the value is an empty array, object or string, otherwise `false`.
      * @see `size()`
      */
-    bool isEmpty() const;
+    bool isEmpty() const {
+        return size() == 0;
+    }
 
-    // Array operations
+    /**
+     * Set the entry value to null.
+     */
+    void clear() {
+        update([&](auto& v) {
+            v.clear();
+        });
+    }
+
+    /**
+     * Array operations.
+     *
+     * Note that these operation are not atomic and the resulting value of the entry may be
+     * overwritten during a synchronization as if the entry was assigned a new value rather than
+     * modified in place.
+     */
+    ///@{
 
     /**
      * Append a value to the array.
      *
      * If the entry is not an array, it is set to an empty array prior to the operation.
      *
-     * Note that this operation is not atomic and the resulting value of this entry may be
-     * overwritten during a synchronization as if the entry was assigned a new value rather than
-     * modified in place.
-     *
      * @param value Value to add to the array.
      * @return `true` if the value was added, or `false` on a memory allocation error.
      */
-    bool pushBack(int value);
-    bool pushBack(const char* value);
-    // TODO: Overloads for all supported types
+    template<typename T>
+    bool pushBack(const T& value) {
+        return update([&](auto& v) {
+            if (!v.template is<ArduinoJson::JsonArray>()) {
+                v = ArduinoJson::JsonArray();
+            }
+            v.add(value);
+        });
+    }
 
     /**
      * Prepend a value to the array.
      *
      * If the entry is not an array, it is set to an empty array prior to the operation.
      *
-     * Note that this operation is not atomic and the resulting value of this entry may be
-     * overwritten during a synchronization as if the entry was assigned a new value rather than
-     * modified in place.
-     * 
      * @param value Value to add to the array.
      * @return `true` if the value was added, or `false` on a memory allocation error.
      */
-    void pushFront(int value);
-    void pushFront(const char* value);
-    // TODO: Overloads for all supported types
+    template<typename T>
+    bool pushFront(const T& value); // FIXME: Not supported by ArduinoJson
 
     /**
      * Remove the first element of the array.
      *
      * If the entry is not an array, it is set to an empty array.
-     *
-     * Note that this operation is not atomic and the resulting value of this entry may be
-     * overwritten during a synchronization as if the entry was assigned a new value rather than
-     * modified in place.
      */
-    void popBack();
+    void popBack() {
+        update([&](auto& v) {
+            if (v.template is<ArduinoJson::JsonArray>()) {
+                v.remove(v.size() - 1);
+            } else {
+                v = ArduinoJson::JsonArray();
+            }
+        });
+    }
 
     /**
      * Remove the last element of the array.
      *
      * If the entry is not an array, it is set to an empty array.
-     *
-     * Note that this operation is not atomic and the resulting value of this entry may be
-     * overwritten during a synchronization as if the entry was assigned a new value rather than
-     * modified in place.
      */
-    void popFront();
+    void popFront() {
+        update([&](auto& v) {
+            if (v.template is<ArduinoJson::JsonArray>()) {
+                v.remove(0);
+            } else {
+                v = ArduinoJson::JsonArray();
+            }
+        });
+    }
+
+    /**
+     * Remove the element at a given index from the array.
+     *
+     * If the entry is not an array, it is set to an empty array.
+     */
+    void removeAt(int index) {
+        update([&](auto& v) {
+            if (v.template is<ArduinoJson::JsonArray>()) {
+                v.remove(index);
+            } else {
+                v = ArduinoJson::JsonArray();
+            }
+        });
+    }
 
     /**
      * Get the first element of the array.
      *
      * @return Value of the first element.
      */
-    ArduinoJson::JsonVariantConst front() const;
+    ArduinoJson::JsonVariantConst front() const {
+        return val_[0];
+    }
 
     /**
      * Get the last element of the array.
      *
      * @return Value of the last element.
      */
-    ArduinoJson::JsonVariantConst last() const;
+    ArduinoJson::JsonVariantConst back() const {
+        return val_[val_.size() - 1];
+    }
 
     /**
      * Get the element at the given index of the array.
@@ -723,26 +851,38 @@ public:
      * @param index Index of the element.
      * @return Value of the element.
      */
-    ArduinoJson::JsonVariantConst at(int index) const;
+    ArduinoJson::JsonVariantConst at(int index) const {
+        return val_[index];
+    }
+    ///@}
 
-    // Object operations
+    /**
+     * Object operations.
+     *
+     * Note that these operation are not atomic and the resulting value of the entry may be
+     * overwritten during a synchronization as if the entry was assigned a new value rather than
+     * modified in place.
+     */
+    ///@{
 
     /**
      * Set a property of the object.
      *
      * If the entry is not an object, it is set to an empty object prior to the operation.
      *
-     * Note that this operation is not atomic and the resulting value of this entry may be
-     * overwritten during a synchronization as if the entry was assigned a new value rather than
-     * modified in place.
-     *
      * @param name Property name.
      * @param value Property value.
      * @return `true` if the property was set, or `false` on a memory allocation error.
      */
-    bool set(const char* name, int value);
-    bool set(const char* name, const char* value);
-    // TODO: Overloads for all supported types
+    template<typename T>
+    bool set(const char* name, const T& value) {
+        return update([&](auto& v) {
+            if (!v.template is<ArduinoJson::JsonObject>()) {
+                v = ArduinoJson::JsonObject();
+            }
+            v[name] = value;
+        });
+    }
 
     /**
      * Get a property of the object.
@@ -750,18 +890,26 @@ public:
      * @param name Property name.
      * @return Property value.
      */
-    ArduinoJson::JsonVariantConst get(const char* name) const;
+    ArduinoJson::JsonVariantConst get(const char* name) const {
+        return val_[name];
+    }
 
     /**
      * Remove a property of the object.
      *
-     * Note that this operation is not atomic and the resulting value of this entry may be
-     * overwritten during a synchronization as if the entry was assigned a new value rather than
-     * modified in place.
+     * If the entry is not an object, it is set to an empty object.
      *
      * @param name Property name.
      */
-    void remove(const char* name);
+    void remove(const char* name) {
+        update([&](auto& v) {
+            if (v.template is<ArduinoJson::JsonObject>()) {
+                v.remove(name);
+            } else {
+                v = ArduinoJson::JsonObject();
+            }
+        });
+    }
 
     /**
      * Check if the object has a property with the given name.
@@ -769,43 +917,130 @@ public:
      * @param name Property name.
      * @return `true` if the property exists, otherwise `false`.
      */
-    bool has(const char* name) const;
-
-    /**
-     * Get the list of object properties.
-     *
-     * @return List of object properties.
-     */
-    Vector<String> propertyNames() const;
+    bool has(const char* name) const {
+        return val_.containsKey(name);
+    }
+    ///@}
 
     /**
      * Get the entry name.
      *
      * @return Entry name.
      */
-    const char* name() const;
+    const char* name() const {
+        return name_;
+    }
 
     /**
      * Check if the entry can be modified locally.
      *
      * @return `true` if the entry can be modified locally, otherwise `false`.
      */
-    bool isMutable() const;
+    bool isMutable() const; // TODO
 
-    // Conversion operators
+    /**
+     * Check if the entry is valid.
+     *
+     * @return `true` if the entry is valid, otherwise `false`.
+     */
+    bool isValid() const {
+        return p_;
+    }
 
-    operator int() const;
-    operator String() const;
-    // TODO: Overloads for all supported types
-    operator ArduinoJson::DynamicJsonDocument() const;
+    /**
+     * Conversion operator.
+     */
+    template<typename T>
+    operator T() const {
+        return val_.as<T>();
+    }
 
-    LedgerEntry& operator=(int value);
-    LedgerEntry& operator=(const char* value);
-    // TODO: Overloads for all supported types
-    LedgerEntry& operator=(const ArduinoJson::JsonDocument& value);
+    ///@{
+    /**
+     * Assignment operator.
+     */
+    LedgerEntry& operator=(LedgerEntry entry) {
+        swap(*this, entry);
+        return *this;
+    }
+
+    template<typename T>
+    LedgerEntry& operator=(const T& value) {
+        setValue(value);
+        return *this;
+    }
+
+    LedgerEntry& operator=(const String& value) {
+        setValue(value.c_str());
+        return *this;
+    }
+    ///@}
+
+    friend void swap(LedgerEntry& entry1, LedgerEntry& entry2) {
+        using std::swap; // For ADL
+        swap(entry1.doc_, entry2.doc_);
+        swap(entry1.val_, entry2.val_);
+        swap(entry1.p_, entry2.p_);
+    }
 
 private:
-    std::shared_ptr<ArduinoJson::JsonDocument> doc_;
+    CString name_;
+    // Keep a reference to the original JSON document so that the JsonVariant that refers to the entry
+    // value in that document remains valid if the document is changed elsewhere
+    std::shared_ptr<ArduinoJson::DynamicJsonDocument> doc_;
+    ArduinoJson::JsonVariant val_;
+    ledger_page* p_;
+
+    LedgerEntry(ledger_page* page, CString entryName);
+
+    // TODO: DynamicJsonDocument can't grow dynamically and may update the underlying document partially
+    // if there's no enough space in its internal buffer. Below is a quick workaround for those limitations
+    // so that we can continue experimenting with the API
+    template<typename F>
+    bool update(const F& f) {
+        if (!doc_) {
+            return false;
+        }
+        size_t capacity = doc_->capacity();
+        for (;;) {
+            std::shared_ptr<ArduinoJson::DynamicJsonDocument> d(new(std::nothrow) ArduinoJson::DynamicJsonDocument(capacity));
+            if (!d || d->capacity() == 0) {
+                return false; // Memory allocation error
+            }
+            d->set(*doc_);
+            auto v = (*d)[static_cast<const char*>(name_)]; // Returns a MemberProxy
+            f(v);
+            if (!d->overflowed()) {
+                doc_ = d;
+                val_ = v;
+                updatePage();
+                break;
+            }
+            capacity = capacity * 3 / 2;
+        }
+        return true;
+    }
+
+    void updatePage();
+
+    detail::LedgerPageImpl* pageImpl() const {
+        return static_cast<detail::LedgerPageImpl*>(ledger_get_page_app_data(p_, nullptr));
+    }
+
+    friend class detail::LedgerPageImpl;
 };
+
+template<typename T>
+inline bool LedgerPage::set(const char* name, const T& value) {
+    return entry(name).setValue(name, value);
+}
+
+inline ArduinoJson::JsonVariantConst LedgerPage::get(const char* name) const {
+    return entry(name).value();
+}
+
+inline bool LedgerPage::has(const char* name) const {
+    return entry(name).isValid();
+}
 
 } // namespace particle

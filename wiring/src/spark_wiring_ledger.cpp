@@ -28,7 +28,7 @@ namespace particle {
 
 namespace {
 
-const size_t INITIAL_DOCUMENT_SIZE = 256;
+const size_t INITIAL_JSON_DOCUMENT_SIZE = 256;
 
 // A custom reader for ArduinoJson
 class LedgerStreamReader {
@@ -110,8 +110,8 @@ namespace detail {
 
 class LedgerImpl {
 public:
-    explicit LedgerImpl(ledger_instance* instance) :
-            lr_(instance) {
+    explicit LedgerImpl(ledger_instance* ledger) :
+            lr_(ledger) {
     }
 
     int getPage(const char* name, LedgerPage& page);
@@ -147,6 +147,39 @@ public:
         return 0;
     }
 
+    int getEntry(const char* name, LedgerEntry& entry) {
+        if (!name) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        CString entryName(name);
+        if (!entryName) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        entry = LedgerEntry(p_, std::move(name));
+        return 0;
+    }
+
+    void removeEntry(const char* name) {
+        doc_->remove(name);
+    }
+
+    void clearEntries() {
+        doc_->clear();
+    }
+
+    void setDocument(std::shared_ptr<ArduinoJson::DynamicJsonDocument> doc) {
+        doc_ = std::move(doc);
+    }
+
+    std::shared_ptr<ArduinoJson::DynamicJsonDocument> document() const {
+        return doc_;
+    }
+
+    int save() {
+        CHECK(saveData());
+        return 0;
+    }
+
 private:
     std::shared_ptr<ArduinoJson::DynamicJsonDocument> doc_;
     ledger_page* p_;
@@ -161,7 +194,7 @@ private:
             }
         });
         std::shared_ptr<ArduinoJson::DynamicJsonDocument> doc;
-        size_t docSize = INITIAL_DOCUMENT_SIZE;
+        size_t docSize = INITIAL_JSON_DOCUMENT_SIZE;
         // DynamicJsonDocument can't grow dynamically so the parsing is done in a loop
         for (;;) {
             doc.reset(new(std::nothrow) ArduinoJson::DynamicJsonDocument(docSize));
@@ -215,7 +248,7 @@ int LedgerImpl::getPage(const char* name, LedgerPage& page) {
         NAMED_SCOPE_GUARD(g, {
             ledger_release_page(p, nullptr);
         });
-        std::unique_ptr<detail::LedgerPageImpl> impl(new(std::nothrow) detail::LedgerPageImpl(p));
+        std::unique_ptr<LedgerPageImpl> impl(new(std::nothrow) LedgerPageImpl(p));
         if (!impl) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
@@ -285,6 +318,56 @@ int Ledger::getInstance(const char* name, LedgerScope scope, Ledger& ledger) {
 
 void Ledger::destroyLedgerAppData(void* appData) {
     delete static_cast<detail::LedgerImpl*>(appData);
+}
+
+LedgerEntry LedgerPage::entry(const char* name) const {
+    LedgerEntry entry;
+    int r = 0;
+    if (isValid() && (r = impl()->getEntry(name, entry)) < 0) {
+        LOG(ERROR, "Failed to get page entry: %d", r);
+    }
+    return entry;
+}
+
+void LedgerPage::remove(const char* name) {
+    if (!isValid()) {
+        return;
+    }
+    impl()->removeEntry(name);
+}
+
+void LedgerPage::clear() {
+    if (!isValid()) {
+        return;
+    }
+    impl()->clearEntries();
+}
+
+ArduinoJson::DynamicJsonDocument LedgerPage::toJsonDocument() const {
+    if (!isValid()) {
+        return ArduinoJson::DynamicJsonDocument(0);
+    }
+    return *impl()->document();
+}
+
+int LedgerPage::save() {
+    if (!isValid()) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    CHECK(impl()->save());
+    return 0;
+}
+
+LedgerEntry::LedgerEntry(ledger_page* page, CString entryName) :
+        name_(std::move(entryName)),
+        p_(page) {
+    ledger_add_page_ref(p_, nullptr);
+    doc_ = pageImpl()->document();
+    val_ = (*doc_)[static_cast<const char*>(name_)];
+}
+
+void LedgerEntry::updatePage() {
+    pageImpl()->setDocument(doc_);
 }
 
 } // namespace particle
