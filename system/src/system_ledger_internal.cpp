@@ -457,7 +457,7 @@ int Ledger::saveLedgerInfo() {
     CHECK(formatLedgerPath(path, sizeof(path), name_, scope_, "%s", LEDGER_DATA_FILE_NAME));
     CHECK(makeBaseDir(path)); // Ensure the ledger directory exists
     lfs_file_t file = {};
-    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_WRONLY | LFS_O_TRUNC));
+    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC));
     SCOPE_GUARD({
         int r = lfs_file_close(fs.instance(), &file);
         if (r < 0) {
@@ -744,7 +744,7 @@ int LedgerPageOutputStream::init(LedgerChangeSource src, const char* pageFile, L
     page_ = page;
     // Open the temporary page file
     FsLock fs;
-    CHECK_FS(lfs_file_open(fs.instance(), &file_, fileName_, LFS_O_WRONLY | LFS_O_EXCL));
+    CHECK_FS(lfs_file_open(fs.instance(), &file_, fileName_, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL));
     NAMED_SCOPE_GUARD(g, {
         int r = lfs_file_close(fs.instance(), &file_);
         if (r < 0) {

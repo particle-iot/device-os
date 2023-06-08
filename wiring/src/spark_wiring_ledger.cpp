@@ -111,7 +111,8 @@ public:
     }
 
     size_t write(const uint8_t* data, size_t size) {
-        str_ += String((const char*)data, size); // TODO: Error handling
+        // TODO: Optimize memory allocations, handle errors
+        str_ += String((const char*)data, size);
         return size;
     }
 
@@ -174,7 +175,7 @@ public:
         if (!entryName) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        entry = LedgerEntry(p_, std::move(name));
+        entry = LedgerEntry(p_, std::move(entryName));
         return 0;
     }
 
@@ -230,6 +231,10 @@ private:
             LedgerStreamReader reader(stream);
             auto err = ArduinoJson::deserializeMsgPack(*doc, reader);
             if (err == ArduinoJson::DeserializationError::Ok) {
+                break;
+            }
+            if (err == ArduinoJson::DeserializationError::EmptyInput) {
+                doc->set(ArduinoJson::JsonObject());
                 break;
             }
             if (err != ArduinoJson::DeserializationError::NoMemory) {

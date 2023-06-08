@@ -590,6 +590,7 @@ public:
      * @param entry Ledger entry to copy.
      */
     LedgerEntry(const LedgerEntry& entry) :
+            name_(entry.name_),
             doc_(entry.doc_),
             val_(entry.val_),
             p_(entry.p_) {
@@ -985,6 +986,7 @@ public:
 
     friend void swap(LedgerEntry& entry1, LedgerEntry& entry2) {
         using std::swap; // For ADL
+        swap(entry1.name_, entry2.name_);
         swap(entry1.doc_, entry2.doc_);
         swap(entry1.val_, entry2.val_);
         swap(entry1.p_, entry2.p_);
@@ -1015,7 +1017,7 @@ private:
                 return false; // Memory allocation error
             }
             d->set(*doc_);
-            auto v = (*d)[static_cast<const char*>(name_)]; // Returns a MemberProxy
+            auto v = (*d)[const_cast<char*>(static_cast<const char*>(name_))]; // Returns a MemberProxy
             f(v);
             if (!d->overflowed()) {
                 doc_ = d;
