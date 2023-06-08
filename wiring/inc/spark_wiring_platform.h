@@ -149,11 +149,11 @@
 #endif
 
 #ifndef Wiring_Keyboard
-#define Wiring_Keyboard 0
+#define Wiring_Keyboard (HAL_PLATFORM_USB_HID)
 #endif // Wiring_Keyboard
 
 #ifndef Wiring_Mouse
-#define Wiring_Mouse 0
+#define Wiring_Mouse (HAL_PLATFORM_USB_HID)
 #endif // Wiring_Mouse
 
 #if HAL_PLATFORM_MESH_DEPRECATED

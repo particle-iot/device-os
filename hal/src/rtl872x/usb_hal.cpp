@@ -23,8 +23,14 @@
 #include "usbd_cdc.h"
 #include <mutex>
 #include "usb_settings.h"
+#include "usbd_hid.h"
 
 using namespace particle::usbd;
+
+CdcClassDriver& getCdcClassDriver() {
+    static CdcClassDriver cdc;
+    return cdc;
+}
 
 namespace {
 
@@ -32,11 +38,6 @@ namespace {
 static Device& getUsbDevice() {
     static Device dev;
     return dev;
-}
-
-static CdcClassDriver& getCdcClassDriver() {
-    static CdcClassDriver cdc;
-    return cdc;
 }
 
 #define LOBYTE(x)  ((uint8_t)(x & 0x00FF))
@@ -73,6 +74,7 @@ void HAL_USB_Init(void) {
 
         getUsbDevice().registerClass(ControlInterfaceClassDriver::instance());
         getUsbDevice().registerClass(&getCdcClassDriver());
+        getUsbDevice().registerClass(HidClassDriver::instance());
 
         ControlInterfaceClassDriver::instance()->enable(true);
         // Only enabled if HAL_USB_USART_Init() was called to configure buffers

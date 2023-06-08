@@ -23,10 +23,8 @@
   ******************************************************************************
  */
 
-#include "usb_hal.h"
-
-#ifdef SPARK_USB_KEYBOARD
 #include "spark_wiring_usbkeyboard.h"
+#if Wiring_Keyboard
 
 #define SHIFT_MOD 0x80
 

@@ -34,6 +34,7 @@ using namespace particle::usbd;
 namespace {
 
 const char DEFAULT_NAME[] = HAL_PLATFORM_USB_PRODUCT_STRING " " "USB Serial";
+const uint8_t DUMMY_IN_EP = 0x8a;
 
 } // anonymous
 
@@ -63,7 +64,9 @@ int CdcClassDriver::init(unsigned cfgIdx) {
 
     CHECK(dev_->openEndpoint(epInData_, EndpointType::BULK, cdc::MAX_DATA_PACKET_SIZE));
     CHECK(dev_->openEndpoint(epOutData_, EndpointType::BULK, cdc::MAX_DATA_PACKET_SIZE));
-    CHECK(dev_->openEndpoint(epInInt_, EndpointType::BULK, cdc::MAX_CONTROL_PACKET_SIZE));
+    if (!useDummyIntEp_) {
+        CHECK(dev_->openEndpoint(epInInt_, EndpointType::INTERRUPT, cdc::MAX_CONTROL_PACKET_SIZE));
+    }
 
     startRx();
     return 0;
@@ -303,7 +306,7 @@ int CdcClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t length, Spee
     appender.appendUInt8(interfaceBase_ + 0);   // bMasterInterface: Communication class interface
     appender.appendUInt8(interfaceBase_ + 1);   // bSlaveInterface0: Data Class Interface
 
-    uint8_t epInt = CHECK(getNextAvailableEndpoint(ENDPOINT_IN));
+    uint8_t epInt = !useDummyIntEp_ ? CHECK(getNextAvailableEndpoint(ENDPOINT_IN)) : DUMMY_IN_EP;
 
     // Endpoint Descriptor (Interrupt)
     appender.appendUInt8(0x07);                  // bLength: Endpoint Descriptor size
@@ -562,3 +565,7 @@ int CdcClassDriver::stopTxTimer() {
     return os_timer_change(txTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
 }
 #endif // !HAL_PLATFORM_USB_SOF
+
+void CdcClassDriver::useDummyIntEp(bool state) {
+    useDummyIntEp_ = state;
+}

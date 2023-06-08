@@ -310,6 +310,7 @@ class SerialConnection:
         if port is not None:
             self.s = serial.Serial(port, timeout=0, writeTimeout=0.5)
         self.state = False
+        self.buffer = b''
 
     def start(self):
         if self.s is not None:
@@ -353,11 +354,17 @@ class SerialConnection:
     def handle(self):
         l = b''
         if self.s is not None:
-            l = self.s.readline()
+            l = self.s.read()
         if l == b'':
             return None
+        if l == b'\n':
+            l = self.buffer
+            self.buffer = b''
+        else:
+            self.buffer += l
+            return None
         l = l.strip()
-        print(l.decode('utf-8'))
+        print('line='+l.decode('utf-8'))
         if l == b'Running tests':
             self.state = True
         elif l.startswith(b'Test summary:'):

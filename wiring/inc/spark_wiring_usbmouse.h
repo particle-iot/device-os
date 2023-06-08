@@ -26,9 +26,9 @@
 #ifndef __SPARK_WIRING_USBMOUSE_H
 #define __SPARK_WIRING_USBMOUSE_H
 
-#include "usb_config_hal.h"
+#include "spark_wiring_platform.h"
 
-#ifdef SPARK_USB_MOUSE
+#if Wiring_Mouse
 #include "spark_wiring.h"
 #include <array>
 

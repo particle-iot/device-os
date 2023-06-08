@@ -92,6 +92,8 @@ public:
 
     bool buffersConfigured() const;
 
+    void useDummyIntEp(bool state);
+
 protected:
     void setOpenState(bool state);
 
@@ -139,6 +141,7 @@ private:
 #if !HAL_PLATFORM_USB_SOF
     os_timer_t txTimer_ = nullptr;
 #endif // !HAL_PLATFORM_USB_SOF
+    bool useDummyIntEp_ = false;
 };
 
 } } /* namespace particle::usbd */

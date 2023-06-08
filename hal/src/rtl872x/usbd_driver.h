@@ -79,6 +79,7 @@ private:
     static uint8_t setConfigCb(usb_dev_t* dev, uint8_t config);
     static uint8_t clearConfigCb(usb_dev_t* dev, uint8_t config);
     static uint8_t setupCb(usb_dev_t* dev, usb_setup_req_t* req);
+    static uint8_t getClassDescriptorCb(usb_dev_t* dev, usb_setup_req_t* req);
     static uint8_t sofCb(usb_dev_t* dev);
     static uint8_t suspendCb(usb_dev_t* dev);
     static uint8_t resumeCb(usb_dev_t* dev);
@@ -100,7 +101,7 @@ private:
     // TODO: Validate whether these are required to be present at all times
     // or can be allocated on stack temporarily.
     usbd_config_t usbdCfg_ = {
-        .max_ep_num = USBD_MAX_ENDPOINTS - 1,
+        .max_ep_num = USBD_MAX_ENDPOINTS,
         .rx_fifo_size = USBD_MAX_RX_FIFO_SIZE,
         .nptx_fifo_size = USBD_MAX_NPTX_FIFO_SIZE,
         .ptx_fifo_size = USBD_MAX_PTX_FIFO_SIZE,
@@ -115,7 +116,7 @@ private:
         .set_config = &setConfigCb,
         .clear_config = &clearConfigCb,
         .setup = &setupCb,
-        .get_class_descriptor = nullptr,
+        .get_class_descriptor = &getClassDescriptorCb,
         .clear_feature = nullptr,
         .sof = nullptr, // This is not delivered
         .suspend = &suspendCb,

@@ -195,6 +195,9 @@ int RtlUsbDriver::openEndpoint(unsigned ep, EndpointType type, size_t pakSize) {
 
 int RtlUsbDriver::closeEndpoint(unsigned ep) {
     SPARK_ASSERT(rtlDev_);
+    if ((ep & 0x7f) >= USBD_MAX_ENDPOINTS) {
+        return SYSTEM_ERROR_OUT_OF_RANGE;
+    }
     return CHECK_RTL_USB_TO_SYSTEM(usbd_ep_deinit(rtlDev_, ep));
 }
 
@@ -292,22 +295,13 @@ int RtlUsbDriver::setupError(SetupRequest* r) {
 }
 
 unsigned RtlUsbDriver::getEndpointMask() const {
-    unsigned mask = 0;
-    for (size_t i = 0; i < USBD_MAX_ENDPOINTS; i++) {
-        mask |= (1 << i);
-        mask |= (1 << i) << ENDPOINT_MASK_OUT_BITPOS;
-    }
-    return mask;
+    // EP0-INOUT, EP1-IN, EP2-OUT, EP3-IN, EP4-OUT
+    unsigned maskIn = (1 << (ENDPOINT_MASK_OUT_BITPOS + 0) /* EP1 */) | (1 << (ENDPOINT_MASK_OUT_BITPOS + 2) /* EP 3 */);
+    unsigned maskOut = (1 << 1 /* EP2 */) | (1 << 3 /* EP 4*/);
+    return maskIn | maskOut;
 }
 
 unsigned RtlUsbDriver::updateEndpointMask(unsigned mask) const {
-    for (size_t i = 0; i < USBD_MAX_ENDPOINTS; i++) {
-        if (mask & ((1 << i) | (1 << i) << ENDPOINT_MASK_OUT_BITPOS)) {
-            // It's not possible to use endpoint 0x01 and 0x81, they are one and the same
-            mask |= (1 << i);
-            mask |= (1 << i) << ENDPOINT_MASK_OUT_BITPOS;
-        }
-    }
     return mask;
 }
 
@@ -329,6 +323,10 @@ uint8_t* RtlUsbDriver::getDescriptorCb(usb_setup_req_t *req, usb_speed_type_t sp
     }
     *len = (uint16_t)r;
     return self->tempBuffer_;
+}
+
+uint8_t RtlUsbDriver::getClassDescriptorCb(usb_dev_t* dev, usb_setup_req_t* req) {
+    return setupCb(dev, req);
 }
 
 uint8_t RtlUsbDriver::setConfigCb(usb_dev_t* dev, uint8_t config) {
