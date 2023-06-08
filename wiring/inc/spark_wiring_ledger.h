@@ -469,6 +469,13 @@ public:
     ArduinoJson::DynamicJsonDocument toJsonDocument() const;
 
     /**
+     * Convert the contents of the page to a JSON string.
+     *
+     * @return JSON string.
+     */
+    String toJson() const;
+
+    /**
      * Synchronize the page.
      *
      * This method writes the pending changes to the filesystem and synchronizes the page with the
@@ -1032,7 +1039,7 @@ private:
 
 template<typename T>
 inline bool LedgerPage::set(const char* name, const T& value) {
-    return entry(name).setValue(name, value);
+    return entry(name).setValue(value);
 }
 
 inline ArduinoJson::JsonVariantConst LedgerPage::get(const char* name) const {

@@ -104,6 +104,25 @@ private:
     int error_;
 };
 
+class StringWriter {
+public:
+    explicit StringWriter(String& str) :
+            str_(str) {
+    }
+
+    size_t write(const uint8_t* data, size_t size) {
+        str_ += String((const char*)data, size); // TODO: Error handling
+        return size;
+    }
+
+    size_t write(uint8_t b) {
+        return write(&b, 1);
+    }
+
+private:
+    String& str_;
+};
+
 } // namespace
 
 namespace detail {
@@ -173,6 +192,13 @@ public:
 
     std::shared_ptr<ArduinoJson::DynamicJsonDocument> document() const {
         return doc_;
+    }
+
+    String toJson() const {
+        String s;
+        StringWriter writer(s);
+        ArduinoJson::serializeJson(*doc_, writer);
+        return s;
     }
 
     int save() {
@@ -348,6 +374,13 @@ ArduinoJson::DynamicJsonDocument LedgerPage::toJsonDocument() const {
         return ArduinoJson::DynamicJsonDocument(0);
     }
     return *impl()->document();
+}
+
+String LedgerPage::toJson() const {
+    if (!isValid()) {
+        return String();
+    }
+    return impl()->toJson();
 }
 
 int LedgerPage::save() {
