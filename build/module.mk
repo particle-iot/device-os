@@ -303,7 +303,7 @@ $(BUILD_PATH)/%.o : $(COMMON_BUILD)/arm/%.S
 
 # Other Targets
 clean: clean_deps
-	$(VERBOSE)$(RM) $(ALLOBJ) $(ALLDEPS) $(TARGET)
+	$(VERBOSE)$(foreach cleanfile,$(ALLOBJ) $(ALLDEPS) $(TARGET),$(shell $(RM) $(cleanfile)))
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH)
 	$(call,echo,)
 

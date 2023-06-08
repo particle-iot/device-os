@@ -29,6 +29,8 @@ PSRAM_DATA_SECTION_LEN  = $(shell $(OBJDUMP) -h --section=.data_alt $(INTERMEDIA
 PSRAM_DATA_SECTION_LEN := 0x$(word 3,$(PSRAM_DATA_SECTION_LEN))
 PSRAM_BSS_SECTION_LEN  = $(shell $(OBJDUMP) -h --section=.bss_alt $(INTERMEDIATE_ELF) | grep -E '.bss_alt')
 PSRAM_BSS_SECTION_LEN := 0x$(word 3,$(PSRAM_BSS_SECTION_LEN))
+PSRAM_DYNALIB_SECTION_LEN  = $(shell $(OBJDUMP) -h --section=.dynalib $(INTERMEDIATE_ELF) | grep -E '.dynalib')
+PSRAM_DYNALIB_SECTION_LEN := 0x$(word 3,$(PSRAM_DYNALIB_SECTION_LEN))
 USER_MODULE_END = 0x$(shell $(OBJDUMP) -t $(INTERMEDIATE_ELF) | grep link_module_info_crc_end | $(AWK) '{ print $$1 }')
 USER_MODULE_START = 0x$(shell $(OBJDUMP) -t $(INTERMEDIATE_ELF) | grep link_module_start | $(AWK) '{ print $$1 }')
 USER_MODULE_SUFFIX_START = 0x$(shell $(OBJDUMP) -t $(INTERMEDIATE_ELF) | grep link_module_info_static_start | $(AWK) '{ print $$1 }')
@@ -36,7 +38,7 @@ MODULE_INFO_SUFFIX_LEN := ( $(USER_MODULE_END) - $(USER_MODULE_SUFFIX_START) )
 
 # Note: reserving 16 bytes for alignment just in case
 USER_SRAM_LENGTH = ( $(DATA_SECTION_LEN) + $(BSS_SECTION_LEN) + 16 )
-USER_PSRAM_LENGTH = ( $(PSRAM_TEXT_SECTION_LEN) + $(PSRAM_DATA_SECTION_LEN) + $(PSRAM_BSS_SECTION_LEN) + 16)
+USER_PSRAM_LENGTH = ( $(PSRAM_TEXT_SECTION_LEN) + $(PSRAM_DATA_SECTION_LEN) + $(PSRAM_BSS_SECTION_LEN) + $(PSRAM_DYNALIB_SECTION_LEN) + 16)
 
 USER_FLASH_LENGTH = $(shell let var=($(USER_MODULE_END) - $(USER_MODULE_START) + 16); echo $$var)
 USER_FLASH_LENGTH := $(shell echo $$((($(USER_FLASH_LENGTH) + 4095) / 4096 * 4096)))
