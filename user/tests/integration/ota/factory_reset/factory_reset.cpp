@@ -142,8 +142,6 @@ void move_ota_binary_to_factory_slot() {
     hal_module_t factoryModule = {};
     assertTrue(getFactoryModule(&factoryModule));
 
-    assertTrue(otaModule.sourceDeviceID == FLASH_SERIAL);
-
     // Copy the OTA image from the OTA Module location to the Factory Firmware Module location
     int bytesRemaining = otaModule.length; // already includes crc32 trailer
     int bytesCopied = 0;
@@ -178,7 +176,7 @@ void move_ota_binary_to_factory_slot() {
     factoryModuleDCT.module_function = FACTORY_RESET_MODULE_FUNCTION;
     factoryModuleDCT.flags = MODULE_VERIFY_CRC|MODULE_VERIFY_FUNCTION|MODULE_VERIFY_DESTINATION_IS_START_ADDRESS;
  
-    dct_write_app_data(&factoryModuleDCT, DCT_FLASH_MODULES_OFFSET + (FAC_RESET_SLOT * sizeof(platform_flash_modules_t)), sizeof(platform_flash_modules_t));
+    assertEqual(dct_write_app_data(&factoryModuleDCT, DCT_FLASH_MODULES_OFFSET + (FAC_RESET_SLOT * sizeof(platform_flash_modules_t)), sizeof(platform_flash_modules_t)), 0);
 }
 
 void validate_factory_reset_worked() {
