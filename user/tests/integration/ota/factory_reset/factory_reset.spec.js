@@ -83,7 +83,6 @@ test('03_move_ota_binary_to_factory_slot', async function () {
 
 test('04_device_factory_reset', async function () {
 	// Test Device firmware initiated factory reset
-	// TODO: Expect device to reset
 });
 
 test('05_validate_factory_reset_worked', async function () {
