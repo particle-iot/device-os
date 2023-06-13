@@ -1,3 +1,16 @@
+## 5.4.0
+
+### ENHANCEMENTS
+- [rtl872x] USB HID Mouse/Keyboard support [#2659](https://github.com/particle-iot/device-os/pull/2659)
+
+### BUGFIXES
+- Fix/nanopb string max size [#2657](https://github.com/particle-iot/device-os/pull/2657)
+- Fixes clean target for applications with large number of files + P2 PSRAM size calculation issues [#2661](https://github.com/particle-iot/device-os/pull/2661)
+
+### INTERNAL
+- [rtl872x] Allow KM4 SDK Bootloader images to boot [#2656](https://github.com/particle-iot/device-os/pull/2656)
+- [rtl872x] Combined MFG firmware [#2658](https://github.com/particle-iot/device-os/pull/2658)
+
 ## 5.3.2
 
 ### ENHANCEMENTS
