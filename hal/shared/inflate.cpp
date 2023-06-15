@@ -15,9 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_NONE
-
 #include "hal_platform.h"
 
 #if HAL_PLATFORM_COMPRESSED_OTA
@@ -25,12 +22,14 @@
 #include "inflate_impl.h"
 
 #include "check.h"
+#include <algorithm>
 
 namespace {
 
 #if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 
-const auto INFLATE_BUF_SIZE_USE_FILESYSTEM_CACHE = 4096;
+const auto INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE = FILESYSTEM_BLOCK_SIZE + 128;
+const auto INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE = 1024;
 
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 
@@ -46,19 +45,22 @@ int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output o
         bufSize = (1 << opts->window_bits);
     }
 #if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
-    size_t allocateBufSize = INFLATE_BUF_SIZE_USE_FILESYSTEM_CACHE;
+    size_t allocateBufSize = INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE + INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE;
 #else
     size_t allocateBufSize = bufSize;
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     char* buf = nullptr;
     CHECK(inflate_alloc_ctx(ctx, &buf, allocateBufSize));
-    LOG(INFO, "inflate_create bufSize=%u buf=%x", allocateBufSize, buf);
 #if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     (*ctx)->buf = buf;
 #else
     (*ctx)->buf = nullptr;
-    (*ctx)->cache = buf;
-    (*ctx)->cache_buf_size = allocateBufSize;
+    (*ctx)->write_cache = buf;
+    (*ctx)->read_cache = buf + INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE;
+    (*ctx)->write_cache_size = INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE;
+    (*ctx)->write_cache_block_size = FILESYSTEM_BLOCK_SIZE;
+    (*ctx)->read_cache_size = INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE;
+
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     (*ctx)->buf_size = bufSize;
     (*ctx)->output = output;
@@ -91,7 +93,17 @@ int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned fla
     bool needMore = false;
     for (;;) {
         if (ctx->buf_avail > 0) {
+#if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
             const int n = ctx->output(ctx->buf + ctx->buf_offs, ctx->buf_avail, ctx->user_data);
+#else
+            int n = ctx->decomp.read_buf(nullptr, ctx->buf_offs, ctx->buf_avail, ctx);
+            if (n > 0 && ctx->read_request && ctx->read_request_size > 0) {
+                n = ctx->output(ctx->read_request, ctx->read_request_size, ctx->user_data);
+            } else {
+                // Something went wrong
+                n = SYSTEM_ERROR_INTERNAL;
+            }
+#endif // !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
             if (n < 0) {
                 ctx->result = n;
                 break;
@@ -133,21 +145,16 @@ int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned fla
         }
         size_t srcSize = *size - srcOffs;
         size_t destSize = ctx->buf_size - ctx->buf_offs;
-        LOG(INFO, "decompress srcOffs=%u srcSize=%u destSize=%u buf=%x buf_offs=%u bufnext=%x", srcOffs, srcSize, destSize, (mz_uint8*)ctx->buf, ctx->buf_offs, (mz_uint8*)ctx->buf + ctx->buf_offs);
-        // LOG_DUMP(INFO, (const mz_uint8*)data + srcOffs, srcSize);
-        // LOG_PRINTF(INFO, "\r\n");
         const uint32_t tinflFlags = 
 #if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
                 TINFL_FLAG_OUTPUT_BUFFER_NOT_IN_RAM |
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
                 ((flags & INFLATE_HAS_MORE_INPUT) ? TINFL_FLAG_HAS_MORE_INPUT : 0);
-        
-        LOG(INFO, "flags=%x", tinflFlags);
 
         const auto status = tinfl_decompress(&ctx->decomp, (const mz_uint8*)data + srcOffs, &srcSize,
                 (mz_uint8*)ctx->buf, (mz_uint8*)ctx->buf + ctx->buf_offs, &destSize,
                 tinflFlags);
-        LOG(INFO, "tinfl_decompress result=%d", status);
+
         if (status < 0) {
             ctx->result = SYSTEM_ERROR_BAD_DATA;
             break;

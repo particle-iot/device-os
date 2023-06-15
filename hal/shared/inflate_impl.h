@@ -39,9 +39,16 @@ struct inflate_ctx {
     bool done;
 #ifdef HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     lfs_file_t temp_file;
-    char* cache;
-    size_t cache_buf_size;
-    size_t cache_abs_pos;
+    char* temp_file_name;
+    char* write_cache;
+    char* read_cache;
+    size_t write_cache_size;
+    size_t read_cache_size;
+    size_t write_cache_pos;
+    size_t read_cache_pos;
+    size_t write_cache_block_size;
+    char* read_request;
+    size_t read_request_size;
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 };
 
