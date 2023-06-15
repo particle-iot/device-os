@@ -63,7 +63,7 @@ public:
         return skip(size);
     }
 
-int peek(char* data, size_t size) override {
+    int peek(char* data, size_t size) override {
         // LOG(INFO, "StorageHalInputStream peek %x %u storageId=%d address=%x remainig=%u offset=%u",
         //         data, size, storageId_, address_, remaining_, offset_);
         if (!remaining_) {
@@ -353,7 +353,7 @@ private:
                 LOG(INFO, "Inflator::inflateUntilNextChunk compressedChunk=%u compressedPos=%u", compressedChunk, compressedPos);
                 LOG(INFO, "Inflator::state loop inflateUntilNextChunk availForRead=%d inflatedChunk_=%x inflatedChunkSize_=%u posInChunk_=%u offset_=%u inflatedSize_=%u", availForRead(), inflatedChunk_, inflatedChunkSize_, posInChunk_, offset_, inflatedSize_);
             } while (compressedPos < compressedChunk && r != INFLATE_HAS_MORE_OUTPUT);
-            if (r == INFLATE_HAS_MORE_OUTPUT) {
+            if (r == INFLATE_HAS_MORE_OUTPUT && availForRead() > 0) {
                 break;
             }
         }
