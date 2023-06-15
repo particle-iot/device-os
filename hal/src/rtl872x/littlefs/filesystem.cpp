@@ -293,9 +293,12 @@ int filesystem_mount(filesystem_t* fs) {
         fs->state = true;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (fs->index == FILESYSTEM_INSTANCE_DEFAULT) {
-            // Make sure /usr folder exists
+            // Make sure /usr and /tmp folders exist
             int r = lfs_mkdir(&fs->instance, "/usr");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+            r = lfs_mkdir(&fs->instance, "/tmp");
+            SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+            // FIXME: recursively cleanup /tmp
         }
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     }
