@@ -40,6 +40,7 @@ typedef enum hal_exflash_command_t {
     HAL_EXFLASH_COMMAND_RESET           = 5,
     HAL_EXFLASH_COMMAND_READID          = 6,
     HAL_EXFLASH_COMMAND_GET_OTP_SIZE    = 7,
+    HAL_EXFLASH_COMMAND_GET_SIZE        = 8
 } hal_exflash_command_t;
 
 typedef enum hal_exflash_state_t {
