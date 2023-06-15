@@ -53,22 +53,11 @@ bool ApplicationAsset::isValid() const {
 }
 
 bool ApplicationAsset::isReadable() {
-    if (!isValid()) {
-        return false;
-    }
-    if (size() == 0) {
-        return false;
-    }
-    if (prepareForReading()) {
-        return false;
-    }
-    return true;
+    return !prepareForReading(false /* keepOpen */);
 }
 
 int ApplicationAsset::available() {
-    if (!isReadable()) {
-        return 0;
-    }
+    CHECK(prepareForReading());
     int r = asset_manager_available(data_->stream, nullptr);
     if (r >= 0) {
         return r;
@@ -86,11 +75,19 @@ int ApplicationAsset::read() {
 }
 
 int ApplicationAsset::read(char* buffer, size_t size) {
-    if (!isReadable()) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    CHECK(prepareForReading());
     CHECK_TRUE(buffer && size, SYSTEM_ERROR_INVALID_ARGUMENT);
-    return asset_manager_read(data_->stream, buffer, size, nullptr);
+    size_t pos = 0;
+    // Attempt to fill the whole provided buffer
+    while (size > 0) {
+        int actuallyRead = asset_manager_read(data_->stream, buffer + pos, size, nullptr);
+        if (actuallyRead <= 0) {
+            return pos > 0 ? pos : actuallyRead;
+        }
+        pos += actuallyRead;
+        size -= actuallyRead;
+    }
+    return pos;
 }
 
 int ApplicationAsset::peek() {
@@ -103,17 +100,13 @@ int ApplicationAsset::peek() {
 }
 
 int ApplicationAsset::peek(char* buffer, size_t size) {
-    if (!isReadable()) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    CHECK(prepareForReading());
     CHECK_TRUE(buffer && size, SYSTEM_ERROR_INVALID_ARGUMENT);
     return asset_manager_peek(data_->stream, buffer, size, nullptr);
 }
 
 int ApplicationAsset::skip(size_t size) {
-    if (!isReadable()) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    CHECK(prepareForReading());
     return asset_manager_skip(data_->stream, size, nullptr);
 }
 
@@ -133,13 +126,17 @@ bool ApplicationAsset::operator!=(const ApplicationAsset& other) const {
     return !(*this == other);
 }
 
-int ApplicationAsset::prepareForReading() {
+int ApplicationAsset::prepareForReading(bool keepOpen) {
+    if (!isValid()) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
     if (data_ && data_->stream) {
         return 0;
     }
 
-    if (!isValid()) {
-        return SYSTEM_ERROR_INVALID_STATE;
+    if (size() == 0) {
+        return SYSTEM_ERROR_NOT_ENOUGH_DATA;
     }
 
     asset_manager_stream* stream = nullptr;
@@ -149,7 +146,15 @@ int ApplicationAsset::prepareForReading() {
     a.hash_length = hash_.hash().size();
     a.hash_type = hash_.type();
     CHECK(asset_manager_open(&stream, &a, nullptr));
-    data_ = std::make_shared<Data>(stream);
+    if (keepOpen) {
+        data_ = std::make_shared<Data>(stream);
+    }
+    if (!data_) {
+        asset_manager_close(stream, nullptr);
+    }
+    if (keepOpen && !data_) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
     return 0;
 }
 

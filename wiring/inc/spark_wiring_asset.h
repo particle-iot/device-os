@@ -54,7 +54,7 @@ public:
     bool operator!=(const ApplicationAsset& other) const;
 
 private:
-    int prepareForReading();
+    int prepareForReading(bool keepOpen = true);
 
 private:
     String name_;
@@ -77,5 +77,6 @@ using particle::ApplicationAsset;
 using particle::AssetHash;
 
 void handleAvailableAssets(spark::Vector<ApplicationAsset> assets) __attribute__((weak));
+
 #endif // HAL_PLATFORM_ASSETS
 
