@@ -428,42 +428,12 @@ public:
     static int maxFunctionArgumentSize();
 
     /**
-     * Get the device ledger.
-     *
-     * @return Ledger instance.
-     */
-    static particle::Ledger deviceLedger() {
-        return ledger(nullptr, particle::LedgerScope::DEVICE);
-    }
-
-    /**
-     * Get a product ledger.
-     *
-     * @param name Ledger name.
-     * @return Ledger instance.
-     */
-    static particle::Ledger productLedger(const char* name) {
-        return ledger(name, particle::LedgerScope::PRODUCT);
-    }
-
-    /**
-     * Get a user or organization ledger.
-     *
-     * @param name Ledger name.
-     * @return Ledger instance.
-     */
-    static particle::Ledger ownerLedger(const char* name) {
-        return ledger(name, particle::LedgerScope::OWNER);
-    }
-
-    /**
      * Get a ledger instance.
      *
      * @param name Ledger name.
-     * @param scope Ledger scope.
      * @return Ledger instance.
      */
-    static particle::Ledger ledger(const char* name, particle::LedgerScope scope);
+    static particle::Ledger ledger(const char* name);
 
 private:
 
