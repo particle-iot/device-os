@@ -39,6 +39,7 @@ add_executable( ${target_name}
   json.cpp
   std_functions.cpp
   wlan.cpp
+  map.cpp
 )
 
 # Set defines specific to target
