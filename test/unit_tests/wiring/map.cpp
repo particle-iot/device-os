@@ -13,15 +13,9 @@ template<typename MapT>
 void checkEntries(const MapT& map, const std::vector<typename MapT::Entry>& expectedEntries) {
     auto& entries = map.entries();
     REQUIRE(entries.size() == expectedEntries.size());
-    auto keys = map.keys();
-    REQUIRE(keys.size() == entries.size());
-    auto values = map.values();
-    REQUIRE(values.size() == entries.size());
     for (int i = 0; i < entries.size(); ++i) {
         CHECK(entries[i] == expectedEntries[i]);
-        CHECK(keys[i] == entries[i].first);
-        CHECK(values[i] == entries[i].second);
-        CHECK(map.has(keys[i]));
+        CHECK(map.has(entries[i].first));
     }
     CHECK(map.size() == entries.size());
     CHECK(map.capacity() >= map.size());
@@ -52,18 +46,6 @@ TEST_CASE("Map") {
         CHECK(m.get("b") == 2);
         CHECK(m.get("c") == 3);
         CHECK(m.get("d", 4) == 4);
-    }
-
-    SECTION("take()") {
-        Map<std::string, int> m({ { "a", 1 }, { "b", 2 }, { "c", 3 } });
-        CHECK(m.take("b") == 2);
-        checkEntries(m, { { "a", 1 }, { "c", 3 } });
-        CHECK(m.take("c") == 3);
-        checkEntries(m, { { "a", 1 } });
-        CHECK(m.take("d", 4) == 4);
-        checkEntries(m, { { "a", 1 } });
-        CHECK(m.take("a") == 1);
-        checkEntries(m, {});
     }
 
     SECTION("remove()") {

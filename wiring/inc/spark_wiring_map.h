@@ -34,6 +34,8 @@ public:
     typedef ValueT Value;
     typedef CompareT Compare;
     typedef std::pair<KeyT, ValueT> Entry;
+    typedef typename Vector<Entry>::Iterator Iterator;
+    typedef typename Vector<Entry>::ConstIterator ConstIterator;
 
     Map() = default;
 
@@ -54,90 +56,58 @@ public:
         swap(*this, map);
     }
 
-    bool set(const KeyT& key, ValueT value) {
-        int i = 0;
-        if (!findEntry(key, i)) {
-            return entries_.insert(i, std::make_pair(key, std::move(value)));
+    template<typename T>
+    bool set(const T& key, ValueT value) {
+        auto r = insert(key, std::move(value));
+        if (r.first == entries_.end()) {
+            return false;
         }
-        entries_[i].second = std::move(value);
         return true;
     }
 
     bool set(KeyT&& key, ValueT value) {
-        int i = 0;
-        if (!findEntry(key, i)) {
-            return entries_.insert(i, std::make_pair(std::move(key), std::move(value)));
-        }
-        entries_[i].second = std::move(value);
-        return true;
-    }
-
-    ValueT get(const KeyT& key) const {
-        int i = 0;
-        if (!findEntry(key, i)) {
-            return ValueT();
-        }
-        return entries_.at(i).second;
-    }
-
-    ValueT get(const KeyT& key, const ValueT& defaultValue) const {
-        int i = 0;
-        if (!findEntry(key, i)) {
-            return defaultValue;
-        }
-        return entries_.at(i).second;
-    }
-
-    ValueT take(const KeyT& key) {
-        int i = 0;
-        if (!findEntry(key, i)) {
-            return ValueT();
-        }
-        return entries_.takeAt(i).second;
-    }
-
-    ValueT take(const KeyT& key, const ValueT& defaultValue) {
-        int i = 0;
-        if (!findEntry(key, i)) {
-            return defaultValue;
-        }
-        return entries_.takeAt(i).second;
-    }
-
-    bool remove(const KeyT& key) {
-        int i = 0;
-        if (!findEntry(key, i)) {
+        auto r = insert(std::move(key), std::move(value));
+        if (r.first == entries_.end()) {
             return false;
         }
-        entries_.removeAt(i);
         return true;
     }
 
-    bool has(const KeyT& key) const {
-        int i = 0;
-        return findEntry(key, i);
+    template<typename T>
+    ValueT get(const T& key) const {
+        auto it = find(key);
+        if (it == entries_.end()) {
+            return ValueT();
+        }
+        return it->second;
     }
 
-    Vector<KeyT> keys() const {
-        Vector<KeyT> keys;
-        if (!keys.reserve(entries_.size())) {
-            return Vector<KeyT>();
+    template<typename T>
+    ValueT get(const T& key, const ValueT& defaultValue) const {
+        auto it = find(key);
+        if (it == entries_.end()) {
+            return defaultValue;
         }
-        for (const auto& entry: entries_) {
-            keys.append(entry.first);
-        }
-        return keys;
+        return it->second;
     }
 
-    Vector<ValueT> values() const {
-        Vector<ValueT> values;
-        if (!values.reserve(entries_.size())) {
-            return Vector<ValueT>();
+    template<typename T>
+    bool remove(const T& key) {
+        auto it = find(key);
+        if (it == entries_.end()) {
+            return false;
         }
-        for (const auto& entry: entries_) {
-            values.append(entry.second);
+        entries_.erase(it);
+        return true;
+    }
+
+    template<typename T>
+    bool has(const T& key) const {
+        auto it = find(key);
+        if (it == entries_.end()) {
+            return false;
         }
-        return values;
+        return true;
     }
 
     const Vector<Entry>& entries() const {
@@ -164,16 +134,102 @@ public:
         return entries_.trimToSize();
     }
 
-    ValueT& operator[](const KeyT& key) {
-        int i = 0;
-        if (!findEntry(key, i)) {
-            bool ok = entries_.insert(i, std::make_pair(key, ValueT()));
-            SPARK_ASSERT(ok);
-        }
-        return entries_.at(i).second;
+    void clear() {
+        entries_.clear();
     }
 
-    // TODO: Iterator-based API
+    Iterator begin() {
+        return entries_.begin();
+    }
+
+    ConstIterator begin() const {
+        return entries_.begin();
+    }
+
+    Iterator end() {
+        return entries_.end();
+    }
+
+    ConstIterator end() const {
+        return entries_.end();
+    }
+
+    template<typename T>
+    Iterator find(const T& key) {
+        auto it = lowerBound(key);
+        if (it != entries_.end() && cmp_(key, it->first)) {
+            return entries_.end();
+        }
+        return it;
+    }
+
+    template<typename T>
+    ConstIterator find(const T& key) const {
+        auto it = lowerBound(key);
+        if (it != entries_.end() && cmp_(key, it->first)) {
+            return entries_.end();
+        }
+        return it;
+    }
+
+    template<typename T>
+    std::pair<Iterator, bool> insert(const T& key, ValueT value) {
+        auto it = lowerBound(key);
+        if (it != entries_.end() && !cmp_(key, it->first)) {
+            it->second = std::move(value);
+            return std::make_pair(it, false);
+        }
+        it = entries_.insert(it, std::make_pair<KeyT, ValueT>(key, std::move(value)));
+        if (it == entries_.end()) {
+            return std::make_pair(it, false);
+        }
+        return std::make_pair(it, true);
+    }
+
+    std::pair<Iterator, bool> insert(KeyT&& key, ValueT value) {
+        auto it = lowerBound(key);
+        if (it != entries_.end() && !cmp_(key, it->first)) {
+            it->second = std::move(value);
+            return std::make_pair(it, false);
+        }
+        it = entries_.insert(it, std::make_pair(std::move(key), std::move(value)));
+        if (it == entries_.end()) {
+            return std::make_pair(it, false);
+        }
+        return std::make_pair(it, true);
+    }
+
+    Iterator erase(ConstIterator pos) {
+        return entries_.erase(pos);
+    }
+
+    template<typename T>
+    Iterator lowerBound(const T& key) {
+        return std::lower_bound(entries_.begin(), entries_.end(), key, [this](const Entry& entry, const T& key) {
+            return this->cmp_(entry.first, key);
+        });
+    }
+
+    template<typename T>
+    ConstIterator lowerBound(const T& key) const {
+        return std::lower_bound(entries_.begin(), entries_.end(), key, [this](const Entry& entry, const T& key) {
+            return this->cmp_(entry.first, key);
+        });
+    }
+
+    template<typename T>
+    Iterator upperBound(const T& key) {
+        return std::upper_bound(entries_.begin(), entries_.end(), key, [this](const Entry& entry, const T& key) {
+            return this->cmp_(entry.first, key);
+        });
+    }
+
+    template<typename T>
+    ConstIterator upperBound(const T& key) const {
+        return std::upper_bound(entries_.begin(), entries_.end(), key, [this](const Entry& entry, const T& key) {
+            return this->cmp_(entry.first, key);
+        });
+    }
 
     Map& operator=(Map map) {
         swap(*this, map);
@@ -182,6 +238,25 @@ public:
 
     bool operator==(const Map& map) const {
         return entries_ == map.entries_ && cmp_ == map.cmp_;
+    }
+
+    template<typename T>
+    ValueT& operator[](const T& key) {
+        auto it = lowerBound(key);
+        if (it == entries_.end() || cmp_(key, it->first)) {
+            it = entries_.insert(it, std::make_pair<KeyT, ValueT>(key, ValueT()));
+            SPARK_ASSERT(it != entries_.end());
+        }
+        return it->second;
+    }
+
+    ValueT& operator[](KeyT&& key) {
+        auto it = lowerBound(key);
+        if (it == entries_.end() || cmp_(key, it->first)) {
+            it = entries_.insert(it, std::make_pair(key, ValueT()));
+            SPARK_ASSERT(it != entries_.end());
+        }
+        return it->second;
     }
 
     friend void swap(Map& map1, Map& map2) {
@@ -193,17 +268,6 @@ public:
 private:
     Vector<Entry> entries_;
     CompareT cmp_;
-
-    bool findEntry(const KeyT& key, int& index) const {
-        auto it = std::lower_bound(entries_.begin(), entries_.end(), key, [this](const Entry& entry, const KeyT& key) {
-            return this->cmp_(entry.first, key);
-        });
-        index = std::distance(entries_.begin(), it);
-        if (it != entries_.end() && !cmp_(key, it->first)) {
-            return true; // Found the key
-        }
-        return false;
-    }
 };
 
 } // namespace particle

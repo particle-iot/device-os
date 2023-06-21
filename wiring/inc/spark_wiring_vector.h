@@ -51,6 +51,8 @@ class Vector {
 public:
     typedef T ValueType;
     typedef AllocatorT AllocatorType;
+    typedef T* Iterator;
+    typedef const T* ConstIterator;
 
     Vector();
     explicit Vector(int n);
@@ -114,10 +116,13 @@ public:
     T* data();
     const T* data() const;
 
-    T* begin();
-    const T* begin() const;
-    T* end();
-    const T* end() const;
+    Iterator begin();
+    ConstIterator begin() const;
+    Iterator end();
+    ConstIterator end() const;
+
+    Iterator insert(ConstIterator pos, T value);
+    Iterator erase(ConstIterator pos);
 
     T& operator[](int i);
     const T& operator[](int i) const;
@@ -607,23 +612,39 @@ inline const T* spark::Vector<T, AllocatorT>::data() const {
 }
 
 template<typename T, typename AllocatorT>
-inline T* spark::Vector<T, AllocatorT>::begin() {
+inline typename spark::Vector<T, AllocatorT>::Iterator spark::Vector<T, AllocatorT>::begin() {
     return data_;
 }
 
 template<typename T, typename AllocatorT>
-const T* spark::Vector<T, AllocatorT>::begin() const {
+inline typename spark::Vector<T, AllocatorT>::ConstIterator spark::Vector<T, AllocatorT>::begin() const {
     return data_;
 }
 
 template<typename T, typename AllocatorT>
-T* spark::Vector<T, AllocatorT>::end() {
+inline typename spark::Vector<T, AllocatorT>::Iterator spark::Vector<T, AllocatorT>::end() {
     return data_ + size_;
 }
 
 template<typename T, typename AllocatorT>
-const T* spark::Vector<T, AllocatorT>::end() const {
+inline typename spark::Vector<T, AllocatorT>::ConstIterator spark::Vector<T, AllocatorT>::end() const {
     return data_ + size_;
+}
+
+template<typename T, typename AllocatorT>
+inline typename spark::Vector<T, AllocatorT>::Iterator spark::Vector<T, AllocatorT>::insert(ConstIterator pos, T value) {
+    int i = pos - data_;
+    if (!insert(i, std::move(value))) {
+        return data_ + size_;
+    }
+    return data_ + i;
+}
+
+template<typename T, typename AllocatorT>
+inline typename spark::Vector<T, AllocatorT>::Iterator spark::Vector<T, AllocatorT>::erase(ConstIterator pos) {
+    int i = pos - data_;
+    removeAt(i);
+    return data_ + i;
 }
 
 template<typename T, typename AllocatorT>
