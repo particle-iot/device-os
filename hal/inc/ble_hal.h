@@ -496,6 +496,15 @@ int hal_ble_stack_init(void* reserved);
 int hal_ble_stack_deinit(void* reserved);
 
 /**
+ * Check if BLE stack is initialized.
+ *
+ * @param[in]   reserved    Reserved for future use.
+ *
+ * @returns     true if it is initialized, otherwise, false.
+ */
+bool hal_ble_is_initialized(void* reserved);
+
+/**
  * Select the antenna for BLE radio.
  *
  * @param[in]   antenna The antenna type, either be BLE_ANT_INTERNAL or BLE_ANT_EXTERNAL.

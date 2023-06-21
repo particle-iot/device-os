@@ -22,6 +22,13 @@
 
 typedef void (*rtl_ipc_callback_t)(void *data, uint32_t irq_status, uint32_t channel);
 
+enum RtwRadio {
+    RTW_RADIO_NONE = 0x00,
+    RTW_RADIO_WIFI = 0x01,
+    RTW_RADIO_BLE = 0x02,
+    RTW_RADIO_ALL = 0x03
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,6 +47,10 @@ void rtwCoexPreventCleanup(int idx);
 void rtwCoexRunEnable(int idx);
 void rtwCoexCleanup(int idx);
 void rtwCoexCleanupMutex(int idx);
+
+void rtwRadioReset();
+void rtwRadioAcquire(RtwRadio r);
+void rtwRadioRelease(RtwRadio r);
 
 #ifdef __cplusplus
 }

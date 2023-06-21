@@ -351,6 +351,9 @@ int BleProvisioningModeHandler::exit() {
         preSrData_.clear();
         ctrlReqAdvData_.clear();
         ctrlReqSrData_.clear();
+#if HAL_PLATFORM_RTL872X
+        hal_ble_stack_deinit(nullptr);
+#endif
     });
 
     // Now the BLE configurations are modifiable.

@@ -1027,12 +1027,7 @@ int BleGap::init() {
     if (initialized_) {
         return SYSTEM_ERROR_NONE;
     }
-    // Access wifiNetworkManager() to make sure that RealtekNcpClient is initialized
-    // and WiFi stack has been initialized as well, as there is a dependency on its state
-    // for btgap to function correctly.
-    const auto mgr = wifiNetworkManager();
-    CHECK_TRUE(mgr, SYSTEM_ERROR_INTERNAL);
-
+    rtwRadioAcquire(RTW_RADIO_BLE);
     state_.raw = 0;
 
     SCOPE_GUARD({
@@ -1138,6 +1133,23 @@ int BleGap::start() {
 int BleGap::stop() {
     // NOTE: ignoring errors
     if (btStackStarted_) {
+        // Abort any commands, e.g. the re-adv command after disconnection.
+        if (cmdThread_ && !os_thread_is_current(cmdThread_)) {
+            if (enqueue(BLE_CMD_EXIT_THREAD) == SYSTEM_ERROR_NONE) {
+                os_thread_join(cmdThread_);
+                cmdThread_ = nullptr;
+            }
+        }
+        if (cmdQueue_) {
+            if (!cmdThread_) {
+                os_queue_destroy(cmdQueue_, nullptr);
+                cmdQueue_ = nullptr;
+            } else {
+                uint8_t command;
+                while (!os_queue_take(cmdQueue_, &command, 0, nullptr)) {}
+            }
+        }
+
         // NOTE: we have to wait for the BLE stack to get initialized otherwise other operations
         // with it may cause race conditions, memory leaks and other problems
         waitState(BleGapDevState().init(GAP_INIT_STATE_STACK_READY), BLE_STATE_DEFAULT_TIMEOUT, true /* force poll */);
@@ -1145,13 +1157,11 @@ int BleGap::stop() {
         if (isAdvertising_) {
             // This will also wait for advertisements to stop
             stopAdvertising();
-            isAdvertising_ = false;
         }
 
         if (isScanning_) {
             stopScanning();
             le_scan_stop(); // Just in case
-            isScanning_ = false;
         }
 
         // Prevent BLE stack from generating coexistence events, otherwise we may leak memory
@@ -1177,22 +1187,8 @@ int BleGap::stop() {
     // This shoulld be called after BT stack is stopped so that BLE events in queue can be safely cleared.
     BleEventDispatcher::getInstance().stop();
 
-    if (cmdThread_ && !os_thread_is_current(cmdThread_)) {
-        if (enqueue(BLE_CMD_EXIT_THREAD) == SYSTEM_ERROR_NONE) {
-            os_thread_join(cmdThread_);
-            cmdThread_ = nullptr;
-        }
-    }
-    if (cmdQueue_) {
-        if (!cmdThread_) {
-            os_queue_destroy(cmdQueue_, nullptr);
-            cmdQueue_ = nullptr;
-        } else {
-            uint8_t command;
-            while (!os_queue_take(cmdQueue_, &command, 0, nullptr)) {}
-        }
-    }
-
+    isAdvertising_ = false;
+    isScanning_ = false;
     initialized_ = false;
     btStackStarted_ = false;
 
@@ -1217,9 +1213,10 @@ int BleGap::stop() {
         advTimeoutTimer_ = nullptr;
     }
 
-    CHECK(BleGatt::getInstance().deinit());
+    BleGatt::getInstance().deinit();
 
     RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, DISABLE);
+    rtwRadioRelease(RTW_RADIO_BLE);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1845,8 +1842,11 @@ int BleGap::connectCancel(const hal_ble_addr_t* address) {
     if (!WAIT_TIMED(BLE_OPERATION_TIMEOUT_MS, connecting_)) {
         return SYSTEM_ERROR_TIMEOUT;
     }
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    auto connection = fetchConnection(address);
+    BleConnection* connection = nullptr;
+    {
+        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+        connection = fetchConnection(address);
+    }
     CHECK_TRUE(connection, SYSTEM_ERROR_NONE); // Connection is not established
     CHECK(disconnect(connection->info.conn_handle));
     return SYSTEM_ERROR_NONE;
@@ -1870,11 +1870,18 @@ int BleGap::disconnect(hal_ble_conn_handle_t connHandle) {
 }
 
 int BleGap::disconnectAll() {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    for (const auto& connection : connections_) {
-        // TODO: check the return value.
-        disconnect(connection.info.conn_handle);
-        // The corresponding connection in the Vector will be removed on the disconnected event.
+    while (1) {
+        BleConnection* connection = nullptr;
+        {
+            std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+            if (connections_.size() > 0) {
+                connection = &connections_[0];
+            }
+        }
+        if (!connection) {
+            break;
+        }
+        disconnect(connection->info.conn_handle);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -3439,6 +3446,11 @@ int hal_ble_stack_deinit(void* reserved) {
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     CHECK(BleGap::getInstance().stop());
     return SYSTEM_ERROR_NONE;
+}
+
+bool hal_ble_is_initialized(void* reserved) {
+    BleLock lk;
+    return BleGap::getInstance().initialized();
 }
 
 int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved) {

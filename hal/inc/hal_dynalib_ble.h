@@ -115,6 +115,7 @@ DYNALIB_FN(73, hal_ble, hal_ble_gap_get_pairing_config, int(hal_ble_pairing_conf
 
 DYNALIB_FN(74, hal_ble, hal_ble_gatt_get_att_mtu, ssize_t(hal_ble_conn_handle_t, void*))
 DYNALIB_FN(75, hal_ble, hal_ble_gatt_client_att_mtu_exchange, int(hal_ble_conn_handle_t, void*))
+DYNALIB_FN(76, hal_ble, hal_ble_is_initialized, bool(void*))
 
 DYNALIB_END(hal_ble)
 

@@ -1044,6 +1044,11 @@ int BleControlRequestChannel::initProfile() {
         LOG_DEBUG(TRACE, "BLE profile already initialized");
         return SYSTEM_ERROR_INVALID_STATE;
     }
+#if HAL_PLATFORM_RTL872X
+    SCOPE_GUARD ({
+        hal_ble_stack_deinit(nullptr);
+    });
+#endif
     hal_ble_attr_handle_t serviceHandle;
     hal_ble_char_init_t char_init;
     hal_ble_char_handles_t attrHandles;

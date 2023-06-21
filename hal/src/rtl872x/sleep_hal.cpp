@@ -155,16 +155,19 @@ public:
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
         memcpy(&alignedConfig_.config, config, sizeof(hal_sleep_config_t));
 
+        bool bleInitialized = hal_ble_is_initialized(nullptr);
         bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                            hal_ble_gap_is_connecting(nullptr, nullptr) ||
                            hal_ble_gap_is_connected(nullptr, nullptr);
-        hal_ble_stack_deinit(nullptr);
-        // The delay is essential to make sure the resources are successfully freed.
-        // FIXME: Is this still needed? hal_ble_stack_deinit() should wait
-        // for deinitialization to complete?
-        // Leaving as-is for now, but should be reassessed. We are postponing sleep
-        // by 2 seconds all the time.
-        HAL_Delay_Milliseconds(2000);
+        if (bleInitialized) {
+            hal_ble_stack_deinit(nullptr);
+            // The delay is essential to make sure the resources are successfully freed.
+            // FIXME: Is this still needed? hal_ble_stack_deinit() should wait
+            // for deinitialization to complete?
+            // Leaving as-is for now, but should be reassessed. We are postponing sleep
+            // by 2 seconds all the time.
+            HAL_Delay_Milliseconds(2000);
+        }
 
         HAL_USB_Detach();
 
@@ -332,8 +335,8 @@ public:
             }
         }
 
-        if (hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE) {
-            if (advertising) {
+        if (bleInitialized) {
+            if (hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE && advertising) {
                 hal_ble_gap_start_advertising(nullptr);
             }
         }
