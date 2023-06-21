@@ -28,25 +28,20 @@ SECTIONS
     INCLUDE linker_build_id.ld
 
     /* Dynalib table */
-    .dynalib :
+    .dynalib : ALIGN(8)
     {
-        link_psram_code_flash_start = LOADADDR( .dynalib );
         link_dynalib_flash_start = LOADADDR( .dynalib );
-        . = ALIGN(4);
-        link_psram_code_start = .;
+
         link_dynalib_start = . ;
         KEEP (*(*.system_part1_module))
+        . = ALIGN(4);
         link_dynalib_end = . ;
-
-        /* WARN: the load address must increase as well due to alignement of virtual address,
-         * otherwise, the length of code to be copied to PSRAM is incorrect! */
-        FILL (0xff)
-        . = ALIGN(16);
     } > PSRAM AT> APP_FLASH
 
-    .psram_text :
+    .psram_text : ALIGN(4)
     {
-        . = ALIGN(4);
+        link_psram_code_flash_start = LOADADDR( .psram_text );
+        link_psram_code_start = .;
 
         /* Code */
         *(.flashtext) /* Realtek specific */

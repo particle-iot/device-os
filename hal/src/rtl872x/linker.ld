@@ -242,4 +242,8 @@ link_secure_stack_size     = platform_monolithic_firmware_secure_stack_size;
 link_secure_stack_location = platform_monolithic_firmware_secure_stack_start;
 link_secure_stack_end      = platform_monolithic_firmware_secure_stack_end;
 
+PROVIDE (link_dynalib_flash_start = 0);
+PROVIDE (link_dynalib_start = link_dynalib_flash_start);
+PROVIDE (link_dynalib_end = link_dynalib_start);
+
 INCLUDE linker_rtl872x_rom_ns.ld

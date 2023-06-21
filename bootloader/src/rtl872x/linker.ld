@@ -251,6 +251,10 @@ PROVIDE (link_psram_code_flash_start = 0);
 PROVIDE (link_psram_code_start = link_psram_code_flash_start);
 PROVIDE (link_psram_code_end = link_psram_code_start);
 
+PROVIDE (link_dynalib_flash_start = 0);
+PROVIDE (link_dynalib_start = link_dynalib_flash_start);
+PROVIDE (link_dynalib_end = link_dynalib_start);
+
 /* Heap location */
 link_heap_location     = link_bss_end;
 link_heap_location_end = platform_ram_size - platform_backup_ram_all_size;
