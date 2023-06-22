@@ -23,7 +23,7 @@
 
 #include "spark_wiring_vector.h"
 
-#include "service_debug.h"
+#include "debug.h"
 
 namespace particle {
 
@@ -110,6 +110,28 @@ public:
         return true;
     }
 
+    Vector<KeyT> keys() const {
+        Vector<KeyT> keys;
+        if (!keys.reserve(entries_.size())) {
+            return Vector<KeyT>();
+        }
+        for (auto& entry: entries_) {
+            keys.append(entry.first);
+        }
+        return keys;
+    }
+
+    Vector<KeyT> values() const {
+        Vector<ValueT> values;
+        if (!values.reserve(entries_.size())) {
+            return Vector<ValueT>();
+        }
+        for (auto& entry: entries_) {
+            values.append(entry.second);
+        }
+        return values;
+    }
+
     const Vector<Entry>& entries() const {
         return entries_;
     }
@@ -179,7 +201,7 @@ public:
             it->second = std::move(value);
             return std::make_pair(it, false);
         }
-        it = entries_.insert(it, std::make_pair<KeyT, ValueT>(key, std::move(value)));
+        it = entries_.insert(it, std::make_pair(KeyT(key), std::move(value)));
         if (it == entries_.end()) {
             return std::make_pair(it, false);
         }
@@ -244,7 +266,7 @@ public:
     ValueT& operator[](const T& key) {
         auto it = lowerBound(key);
         if (it == entries_.end() || cmp_(key, it->first)) {
-            it = entries_.insert(it, std::make_pair<KeyT, ValueT>(key, ValueT()));
+            it = entries_.insert(it, std::make_pair(KeyT(key), ValueT()));
             SPARK_ASSERT(it != entries_.end());
         }
         return it->second;

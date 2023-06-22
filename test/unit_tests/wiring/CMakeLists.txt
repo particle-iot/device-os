@@ -40,6 +40,7 @@ add_executable( ${target_name}
   std_functions.cpp
   wlan.cpp
   map.cpp
+  variant.cpp
 )
 
 # Set defines specific to target
