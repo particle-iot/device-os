@@ -52,7 +52,8 @@ public:
 
     Variant() = default;
 
-    Variant(const std::monostate&) {
+    Variant(const std::monostate&) :
+            Variant() {
     }
 
     Variant(bool value) :
@@ -206,6 +207,14 @@ public:
 
     template<typename T>
     T to() const;
+
+    template<typename T>
+    T to(const T& defaultValue) const {
+        if (!isConvertibleTo<T>()) {
+            return defaultValue;
+        }
+        return to<T>();
+    }
 
     template<typename T>
     bool isConvertibleTo() const;
@@ -549,10 +558,6 @@ public:
 template<>
 class IsConvertibleVariantVisitor<bool> {
 public:
-    bool operator()(const std::monostate&) const {
-        return true;
-    }
-
     bool operator()(const String& val) const {
         return val == "true" || val == "false";
     }
@@ -561,7 +566,7 @@ public:
     bool operator()(const SourceT& val) const {
         if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
             return true;
-        } else { // SourceT=VariantArray|VariantMap
+        } else { // SourceT=std::monostate|VariantArray|VariantMap
             return false;
         }
     }
@@ -571,10 +576,6 @@ public:
 template<typename TargetT>
 class IsConvertibleVariantVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<TargetT>>> {
 public:
-    bool operator()(const std::monostate&) const {
-        return true;
-    }
-
     bool operator()(const String& val) const {
         TargetT v = TargetT();
         auto end = val.c_str() + val.length();
@@ -586,7 +587,7 @@ public:
     bool operator()(const SourceT& val) const {
         if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
             return true; // TODO: Check the range of TargetT
-        } else { // SourceT=VariantArray|VariantMap
+        } else { // SourceT=std::monostate|VariantArray|VariantMap
             return false;
         }
     }
