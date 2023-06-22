@@ -259,7 +259,11 @@ public:
     }
 
     bool operator==(const Map& map) const {
-        return entries_ == map.entries_ && cmp_ == map.cmp_;
+        return entries_ == map.entries_;
+    }
+
+    bool operator!=(const Map& map) const {
+        return !operator==(map);
     }
 
     template<typename T>

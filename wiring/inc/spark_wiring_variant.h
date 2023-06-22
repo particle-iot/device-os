@@ -52,6 +52,9 @@ public:
 
     Variant() = default;
 
+    Variant(const std::monostate&) {
+    }
+
     Variant(bool value) :
             v_(value) {
     }
@@ -377,40 +380,12 @@ public:
         return *this;
     }
 
-    // Conversion operators
-    operator bool() const {
-        return to<bool>();
+    bool operator==(const Variant& variant) const {
+        return v_ == variant.v_;
     }
 
-    operator int() const {
-        return to<int>();
-    }
-
-    operator int64_t() const {
-        return to<int64_t>();
-    }
-
-    operator double() const {
-        return to<double>();
-    }
-
-    operator String() const {
-        return to<String>();
-    }
-
-    operator const char*() const {
-        if (!isString()) {
-            return "";
-        }
-        return value<String>().c_str();
-    }
-
-    operator VariantArray() const {
-        return to<VariantArray>();
-    }
-
-    operator VariantMap() const {
-        return to<VariantMap>();
+    bool operator!=(const Variant& variant) const {
+        return !operator==(variant);
     }
 
     friend void swap(Variant& variant1, Variant& variant2) {
@@ -432,6 +407,17 @@ public:
     template<typename SourceT>
     TargetT operator()(const SourceT& val) const {
         return TargetT();
+    }
+};
+
+// TargetT=std::monostate
+template<>
+class ConvertToVariantVisitor<std::monostate> {
+public:
+    // SourceT=std::monostate|bool|int|int64_t|double|String|VariantArray|VariantMap
+    template<typename SourceT>
+    std::monostate operator()(const SourceT& val) const {
+        return std::monostate();
     }
 };
 
@@ -544,10 +530,29 @@ public:
     }
 };
 
+// TargetT=std::monostate
+template<>
+class IsConvertibleVariantVisitor<std::monostate> {
+public:
+    bool operator()(const std::monostate&) const {
+        return true;
+    }
+
+    // SourceT=bool|int|int64_t|double|String|VariantArray|VariantMap
+    template<typename SourceT>
+    bool operator()(const SourceT& val) const {
+        return false;
+    }
+};
+
 // TargetT=bool
 template<>
 class IsConvertibleVariantVisitor<bool> {
 public:
+    bool operator()(const std::monostate&) const {
+        return true;
+    }
+
     bool operator()(const String& val) const {
         return val == "true" || val == "false";
     }
@@ -556,7 +561,7 @@ public:
     bool operator()(const SourceT& val) const {
         if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
             return true;
-        } else { // SourceT=std::monostate|VariantArray|VariantMap
+        } else { // SourceT=VariantArray|VariantMap
             return false;
         }
     }
@@ -566,6 +571,10 @@ public:
 template<typename TargetT>
 class IsConvertibleVariantVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<TargetT>>> {
 public:
+    bool operator()(const std::monostate&) const {
+        return true;
+    }
+
     bool operator()(const String& val) const {
         TargetT v = TargetT();
         auto end = val.c_str() + val.length();
@@ -577,7 +586,7 @@ public:
     bool operator()(const SourceT& val) const {
         if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
             return true; // TODO: Check the range of TargetT
-        } else { // SourceT=std::monostate|VariantArray|VariantMap
+        } else { // SourceT=VariantArray|VariantMap
             return false;
         }
     }
