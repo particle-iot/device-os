@@ -25,18 +25,18 @@ SECTIONS
     /* Dynalib table. It has to be 8-bytes aligned, otherwise, the dynalib behave weirdly */
     .dynalib : ALIGN(8)
     {
-        link_psram_code_flash_start = LOADADDR( .dynalib );
         link_dynalib_flash_start = LOADADDR( .dynalib );
-        
-        link_psram_code_start = .;
+
         link_dynalib_start = .;
         KEEP (*(*.user_part_module))
+        . = ALIGN(4);
         link_dynalib_end = . ;
     } > PSRAM AT> APP_FLASH
 
-    .psram_text :
+    .psram_text : ALIGN(4)
     {
-        . = ALIGN(4);
+        link_psram_code_flash_start = LOADADDR( .psram_text );
+        link_psram_code_start = .;
 
         /* Code */
         *(.flashtext) /* Realtek specific */

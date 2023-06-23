@@ -26,6 +26,11 @@ extern uintptr_t link_psram_code_start;
 extern uintptr_t link_psram_code_end;
 #define link_psram_code_size ((uintptr_t)&link_psram_code_end - (uintptr_t)&link_psram_code_start)
 
+extern uintptr_t link_dynalib_flash_start;
+extern uintptr_t link_dynalib_start;
+extern uintptr_t link_dynalib_end;
+#define link_dynalib_size ((uintptr_t)&link_dynalib_end - (uintptr_t)&link_dynalib_start)
+
 
 /**
  * Array of C++ static constructors.
@@ -49,6 +54,12 @@ __attribute__((section(".xip.text"))) void* module_user_pre_init() {
 
     // Initialize .bss
     _memset(&link_bss_location, 0, link_bss_size );
+
+    // Copy .dynalib
+    if ( (&link_dynalib_start != &link_dynalib_flash_start) && (link_dynalib_size != 0))
+    {
+        _memcpy(&link_dynalib_start, &link_dynalib_flash_start, link_dynalib_size);
+    }
 
     // Copy .psram_text
     if ( (&link_psram_code_start != &link_psram_code_flash_start) && (link_psram_code_size != 0))
