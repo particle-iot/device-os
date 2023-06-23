@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <algorithm>
 #include <charconv>
+#include <limits>
 #include <cstdint>
 
 #include "spark_wiring_string.h"
@@ -43,7 +44,9 @@ public:
         NULL_,
         BOOL,
         INT,
+        UINT,
         INT64,
+        UINT64,
         DOUBLE,
         STRING,
         ARRAY,
@@ -56,65 +59,61 @@ public:
             Variant() {
     }
 
-    Variant(bool value) :
-            v_(value) {
+    Variant(bool val) :
+            v_(val) {
     }
 
-    Variant(int8_t value) :
-            v_(static_cast<int>(value)) {
+    Variant(int val) :
+            v_(val) {
     }
 
-    Variant(uint8_t value) :
-            v_(static_cast<int>(value)) {
+    Variant(unsigned val) :
+            v_(val) {
     }
 
-    Variant(int16_t value) :
-            v_(static_cast<int>(value)) {
+    Variant(long val) :
+            v_(val) {
     }
 
-    Variant(uint16_t value) :
-            v_(static_cast<int>(value)) {
+    Variant(unsigned long val) :
+            v_(val) {
     }
 
-    Variant(int value) :
-            v_(value) {
+    Variant(long long val) :
+            v_(val) {
     }
 
-    Variant(unsigned value) :
-            v_(static_cast<int64_t>(value)) {
+    Variant(unsigned long long val) :
+            v_(val) {
     }
 
-    Variant(int64_t value) :
-            v_(value) {
+    Variant(double val) :
+            v_(val) {
     }
 
-    Variant(double value) :
-            v_(value) {
+    Variant(const char* val) :
+            v_(String(val)) {
     }
 
-    Variant(const char* value) :
-            v_(String(value)) {
+    Variant(String val) :
+            v_(std::move(val)) {
     }
 
-    Variant(String value) :
-            v_(std::move(value)) {
+    Variant(VariantArray val) :
+            v_(std::move(val)) {
     }
 
-    Variant(VariantArray value) :
-            v_(std::move(value)) {
+    Variant(VariantMap val) :
+            v_(std::move(val)) {
     }
 
-    Variant(VariantMap value) :
-            v_(std::move(value)) {
+    Variant(const Variant& var) :
+            v_(var.v_) {
     }
 
-    Variant(const Variant& variant) :
-            v_(variant.v_) {
-    }
-
-    Variant(Variant&& variant) :
+    Variant(Variant&& var) :
             Variant() {
-        swap(*this, variant);
+        swap(*this, var);
     }
 
     Type type() const {
@@ -133,8 +132,16 @@ public:
         return is<int>();
     }
 
+    bool isUInt() const {
+        return is<unsigned>();
+    }
+
     bool isInt64() const {
         return is<int64_t>();
+    }
+
+    bool isUInt64() const {
+        return is<uint64_t>();
     }
 
     bool isDouble() const {
@@ -165,7 +172,9 @@ public:
         if constexpr (std::is_same_v<T, std::monostate> ||
                 std::is_same_v<T, bool> ||
                 std::is_same_v<T, int> ||
+                std::is_same_v<T, unsigned> ||
                 std::is_same_v<T, int64_t> ||
+                std::is_same_v<T, uint64_t> ||
                 std::is_same_v<T, double> ||
                 std::is_same_v<T, String> ||
                 std::is_same_v<T, VariantArray> ||
@@ -185,8 +194,16 @@ public:
         return to<int>();
     }
 
+    unsigned toUInt() const {
+        return to<unsigned>();
+    }
+
     int64_t toInt64() const {
         return to<int64_t>();
+    }
+
+    uint64_t toUInt64() const {
+        return to<uint64_t>();
     }
 
     double toDouble() const {
@@ -228,8 +245,16 @@ public:
         return as<int>();
     }
 
+    unsigned& asUInt() {
+        return as<unsigned>();
+    }
+
     int64_t& asInt64() {
         return as<int64_t>();
+    }
+
+    uint64_t& asUInt64() {
+        return as<uint64_t>();
     }
 
     double& asDouble() {
@@ -267,16 +292,20 @@ public:
     }
 
     // Array operations
-    Variant& append(Variant value) {
-        bool ok = asArray().append(std::move(value));
-        SPARK_ASSERT(ok);
-        return *this;
+    bool append(Variant val) {
+        auto& arr = asArray();
+        if (!ensureCapacity(arr, 1)) {
+            return false;
+        }
+        return arr.append(std::move(val));
     }
 
-    Variant& prepend(Variant value) {
-        bool ok = asArray().prepend(std::move(value));
-        SPARK_ASSERT(ok);
-        return *this;
+    bool prepend(Variant val) {
+        auto& arr = asArray();
+        if (!ensureCapacity(arr, 1)) {
+            return false;
+        }
+        return arr.prepend(std::move(val));
     }
 
     Variant at(int index) const {
@@ -291,16 +320,28 @@ public:
     }
 
     // Map operations
-    Variant& set(const char* key, Variant value) {
-        bool ok = asMap().set(key, std::move(value));
-        SPARK_ASSERT(ok);
-        return *this;
+    bool set(const char* key, Variant val) {
+        auto& map = asMap();
+        if (!ensureCapacity(map, 1)) {
+            return false;
+        }
+        return map.set(key, std::move(val));
     }
 
-    Variant& set(const String& key, Variant value) {
-        bool ok = asMap().set(key, std::move(value));
-        SPARK_ASSERT(ok);
-        return *this;
+    bool set(const String& key, Variant val) {
+        auto& map = asMap();
+        if (!ensureCapacity(map, 1)) {
+            return false;
+        }
+        return map.set(key, std::move(val));
+    }
+
+    bool set(String&& key, Variant val) {
+        auto& map = asMap();
+        if (!ensureCapacity(map, 1)) {
+            return false;
+        }
+        return map.set(std::move(key), std::move(val));
     }
 
     Variant get(const char* key) const {
@@ -329,13 +370,6 @@ public:
             return false;
         }
         return value<VariantMap>().has(key);
-    }
-
-    Vector<String> keys() const {
-        if (!isMap()) {
-            return Vector<String>();
-        }
-        return value<VariantMap>().keys();
     }
 
     int size() const {
@@ -384,28 +418,85 @@ public:
         return asMap().operator[](key);
     }
 
-    Variant& operator=(Variant variant) {
-        swap(*this, variant);
+    Variant& operator=(Variant var) {
+        swap(*this, var);
         return *this;
     }
 
-    bool operator==(const Variant& variant) const {
-        return v_ == variant.v_;
+    bool operator==(const Variant& var) const {
+        return v_ == var.v_;
     }
 
-    bool operator!=(const Variant& variant) const {
-        return !operator==(variant);
+    bool operator!=(const Variant& var) const {
+        return !operator==(var);
     }
 
-    friend void swap(Variant& variant1, Variant& variant2) {
+    bool operator==(const std::monostate&) const {
+        return isNull();
+    }
+
+    bool operator!=(const std::monostate& val) const {
+        return !operator==(val);
+    }
+
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+    bool operator==(const T& val) const {
+        return isConvertibleTo<T>() && to<T>() == val;
+    }
+
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+    bool operator!=(const T& val) const {
+        return !operator==(val);
+    }
+
+    bool operator==(const char* val) const {
+        return isString() && value<String>() == val;
+    }
+
+    bool operator!=(const char* val) const {
+        return !operator==(val);
+    }
+
+    bool operator==(const String& val) const {
+        return isString() && value<String>() == val;
+    }
+
+    bool operator!=(const String& val) const {
+        return !operator==(val);
+    }
+
+    bool operator==(const VariantArray& val) const {
+        return isArray() && value<VariantArray>() == val;
+    }
+
+    bool operator!=(const VariantArray& val) const {
+        return !operator==(val);
+    }
+
+    bool operator==(const VariantMap& val) const {
+        return isMap() && value<VariantMap>() == val;
+    }
+
+    bool operator!=(const VariantMap& val) const {
+        return !operator==(val);
+    }
+
+    friend void swap(Variant& var1, Variant& var2) {
         using std::swap; // For ADL
-        swap(variant1.v_, variant2.v_);
+        swap(var1.v_, var2.v_);
     }
 
 private:
-    using VariantType = std::variant<std::monostate, bool, int, int64_t, double, String, VariantArray, VariantMap>;
+    std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, VariantArray, VariantMap> v_;
 
-    VariantType v_;
+    template<typename ContainerT>
+    static bool ensureCapacity(ContainerT& cont, int count) {
+        int newSize = cont.size() + count;
+        if (cont.capacity() >= newSize) {
+            return true;
+        }
+        return cont.reserve(std::max(cont.capacity() * 3 / 2, newSize));
+    }
 };
 
 namespace detail {
@@ -419,18 +510,15 @@ public:
     }
 };
 
-// TargetT=std::monostate
 template<>
 class ConvertToVariantVisitor<std::monostate> {
 public:
-    // SourceT=std::monostate|bool|int|int64_t|double|String|VariantArray|VariantMap
     template<typename SourceT>
     std::monostate operator()(const SourceT& val) const {
         return std::monostate();
     }
 };
 
-// TargetT=bool
 template<>
 class ConvertToVariantVisitor<bool> {
 public:
@@ -443,15 +531,14 @@ public:
 
     template<typename SourceT>
     bool operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
+        if constexpr (std::is_arithmetic_v<SourceT>) {
             return static_cast<bool>(val);
-        } else { // SourceT=std::monostate|VariantArray|VariantMap
+        } else { // std::monostate, VariantArray, VariantMap
             return false;
         }
     }
 };
 
-// TargetT=int|int64_t|double
 template<typename TargetT>
 class ConvertToVariantVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<TargetT>>> {
 public:
@@ -467,15 +554,14 @@ public:
 
     template<typename SourceT>
     TargetT operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
+        if constexpr (std::is_arithmetic_v<SourceT>) {
             return static_cast<TargetT>(val);
-        } else { // SourceT=std::monostate|VariantArray|VariantMap
+        } else { // std::monostate, VariantArray, VariantMap
             return TargetT();
         }
     }
 };
 
-// TargetT=String
 template<>
 class ConvertToVariantVisitor<String> {
 public:
@@ -489,18 +575,17 @@ public:
 
     template<typename SourceT>
     String operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=int|int64_t|double
-            char buf[32]; // Large enough for all relevant types
+        if constexpr (std::is_arithmetic_v<SourceT>) {
+            char buf[32]; // Should be large enough for all relevant types
             auto r = std::to_chars(buf, buf + sizeof(buf), val);
             SPARK_ASSERT(r.ec == std::errc());
             return String(buf, r.ptr - buf);
-        } else { // SourceT=std::monostate|VariantArray|VariantMap
+        } else { // std::monostate, VariantArray, VariantMap
             return String();
         }
     }
 };
 
-// TargetT=VariantArray
 template<>
 class ConvertToVariantVisitor<VariantArray> {
 public:
@@ -508,14 +593,12 @@ public:
         return val;
     }
 
-    // SourceT=std::monostate|bool|int|int64_t|double|String|VariantMap
     template<typename SourceT>
     VariantArray operator()(const SourceT& val) const {
         return VariantArray();
     }
 };
 
-// TargetT=VariantMap
 template<>
 class ConvertToVariantVisitor<VariantMap> {
 public:
@@ -523,7 +606,6 @@ public:
         return val;
     }
 
-    // SourceT=std::monostate|bool|int|int64_t|double|String|VariantArray
     template<typename SourceT>
     VariantMap operator()(const SourceT& val) const {
         return VariantMap();
@@ -539,7 +621,6 @@ public:
     }
 };
 
-// TargetT=std::monostate
 template<>
 class IsConvertibleVariantVisitor<std::monostate> {
 public:
@@ -547,14 +628,12 @@ public:
         return true;
     }
 
-    // SourceT=bool|int|int64_t|double|String|VariantArray|VariantMap
     template<typename SourceT>
     bool operator()(const SourceT& val) const {
         return false;
     }
 };
 
-// TargetT=bool
 template<>
 class IsConvertibleVariantVisitor<bool> {
 public:
@@ -564,15 +643,14 @@ public:
 
     template<typename SourceT>
     bool operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
+        if constexpr (std::is_arithmetic_v<SourceT>) {
             return true;
-        } else { // SourceT=std::monostate|VariantArray|VariantMap
+        } else { // std::monostate, VariantArray, VariantMap
             return false;
         }
     }
 };
 
-// TargetT=int|int64_t|double
 template<typename TargetT>
 class IsConvertibleVariantVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<TargetT>>> {
 public:
@@ -585,15 +663,14 @@ public:
 
     template<typename SourceT>
     bool operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
+        if constexpr (std::is_arithmetic_v<SourceT>) {
             return true; // TODO: Check the range of TargetT
-        } else { // SourceT=std::monostate|VariantArray|VariantMap
+        } else { // std::monostate, VariantArray, VariantMap
             return false;
         }
     }
 };
 
-// TargetT=String
 template<>
 class IsConvertibleVariantVisitor<String> {
 public:
@@ -603,15 +680,14 @@ public:
 
     template<typename SourceT>
     bool operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) { // SourceT=bool|int|int64_t|double
+        if constexpr (std::is_arithmetic_v<SourceT>) {
             return true;
-        } else { // SourceT=std::monostate|VariantArray|VariantMap
+        } else { // std::monostate, VariantArray, VariantMap
             return false;
         }
     }
 };
 
-// TargetT=VariantArray
 template<>
 class IsConvertibleVariantVisitor<VariantArray> {
 public:
@@ -619,14 +695,12 @@ public:
         return true;
     }
 
-    // SourceT=std::monostate|bool|int|int64_t|double|String|VariantMap
     template<typename SourceT>
     bool operator()(const SourceT& val) const {
         return false;
     }
 };
 
-// TargetT=VariantMap
 template<>
 class IsConvertibleVariantVisitor<VariantMap> {
 public:
@@ -634,7 +708,6 @@ public:
         return true;
     }
 
-    // SourceT=std::monostate|bool|int|int64_t|double|String|VariantArray
     template<typename SourceT>
     bool operator()(const SourceT& val) const {
         return false;
@@ -651,6 +724,56 @@ inline T Variant::to() const {
 template<typename T>
 inline bool Variant::isConvertibleTo() const {
     return std::visit(detail::IsConvertibleVariantVisitor<T>(), v_);
+}
+
+inline bool operator==(const std::monostate& val, const Variant& var) {
+    return var == val;
+}
+
+inline bool operator!=(const std::monostate& val, const Variant& var) {
+    return var != val;
+}
+
+template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+inline bool operator==(const T& val, const Variant& var) {
+    return var == val;
+}
+
+template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+inline bool operator!=(const T& val, const Variant& var) {
+    return var != val;
+}
+
+inline bool operator==(const char* str, const Variant& var) {
+    return var == str;
+}
+
+inline bool operator!=(const char* str, const Variant& var) {
+    return var != str;
+}
+
+inline bool operator==(const String& str, const Variant& var) {
+    return var == str;
+}
+
+inline bool operator!=(const String& str, const Variant& var) {
+    return var != str;
+}
+
+inline bool operator==(const VariantArray& arr, const Variant& var) {
+    return var == arr;
+}
+
+inline bool operator!=(const VariantArray& arr, const Variant& var) {
+    return var != arr;
+}
+
+inline bool operator==(const VariantMap& map, const Variant& var) {
+    return var == map;
+}
+
+inline bool operator!=(const VariantMap& map, const Variant& var) {
+    return var != map;
 }
 
 } // namespace particle
