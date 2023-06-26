@@ -13,8 +13,10 @@ template<typename T>
 void check(const Variant& v, const T& expectedValue = T()) {
     REQUIRE(v.is<T>());
     CHECK(v.value<T>() == expectedValue);
-    CHECK(v.isConvertibleTo<T>());
     CHECK(v.to<T>() == expectedValue);
+    bool ok = false;
+    CHECK(v.to<T>(ok) == expectedValue);
+    CHECK(ok);
     CHECK(v == expectedValue);
     CHECK(expectedValue == v);
     CHECK_FALSE(v != expectedValue);

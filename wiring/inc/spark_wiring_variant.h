@@ -167,22 +167,10 @@ public:
 
     template<typename T>
     bool is() const {
-        // It's not safe to call std::holds_alternative() with a type that is not one of the variant's
-        // alternative types
-        if constexpr (std::is_same_v<T, std::monostate> ||
-                std::is_same_v<T, bool> ||
-                std::is_same_v<T, int> ||
-                std::is_same_v<T, unsigned> ||
-                std::is_same_v<T, int64_t> ||
-                std::is_same_v<T, uint64_t> ||
-                std::is_same_v<T, double> ||
-                std::is_same_v<T, String> ||
-                std::is_same_v<T, VariantArray> ||
-                std::is_same_v<T, VariantMap>) {
-            return std::holds_alternative<T>(v_);
-        } else {
+        if constexpr (!IsSupportedType<T>::value) {
             return false;
         }
+        return std::holds_alternative<T>(v_);
     }
 
     // Conversion methods
@@ -190,7 +178,15 @@ public:
         return to<bool>();
     }
 
+    bool toBool(bool& ok) const {
+        return to<bool>(ok);
+    }
+
     int toInt() const {
+        return to<int>();
+    }
+
+    int toInt(bool& ok) const {
         return to<int>();
     }
 
@@ -198,7 +194,15 @@ public:
         return to<unsigned>();
     }
 
+    unsigned toUInt(bool& ok) const {
+        return to<unsigned>();
+    }
+
     int64_t toInt64() const {
+        return to<int64_t>();
+    }
+
+    int64_t toInt64(bool& ok) const {
         return to<int64_t>();
     }
 
@@ -206,7 +210,15 @@ public:
         return to<uint64_t>();
     }
 
+    uint64_t toUInt64(bool& ok) const {
+        return to<uint64_t>();
+    }
+
     double toDouble() const {
+        return to<double>();
+    }
+
+    double toDouble(bool& ok) const {
         return to<double>();
     }
 
@@ -214,7 +226,15 @@ public:
         return to<String>();
     }
 
+    String toString(bool& ok) const {
+        return to<String>();
+    }
+
     VariantArray toArray() const {
+        return to<VariantArray>();
+    }
+
+    VariantArray toArray(bool& ok) const {
         return to<VariantArray>();
     }
 
@@ -222,19 +242,22 @@ public:
         return to<VariantMap>();
     }
 
-    template<typename T>
-    T to() const;
-
-    template<typename T>
-    T to(const T& defaultValue) const {
-        if (!isConvertibleTo<T>()) {
-            return defaultValue;
-        }
-        return to<T>();
+    VariantMap toMap(bool& ok) const {
+        return to<VariantMap>();
     }
 
     template<typename T>
-    bool isConvertibleTo() const;
+    T to() const {
+        return std::visit(ConvertToVisitor<T>(), v_);
+    }
+
+    template<typename T>
+    T to(bool& ok) const {
+        ConvertToVisitor<T> vis;
+        T val = std::visit(vis, v_);
+        ok = vis.ok;
+        return val;
+    }
 
     // Access to the underlying value
     bool& asBool() {
@@ -275,6 +298,7 @@ public:
 
     template<typename T>
     T& as() {
+        static_assert(IsSupportedType<T>::value, "The type specified is not one of the alternative types of Variant");
         if (!is<T>()) {
             v_ = to<T>();
         }
@@ -283,11 +307,13 @@ public:
 
     template<typename T>
     T& value() {
+        static_assert(IsSupportedType<T>::value, "The type specified is not one of the alternative types of Variant");
         return std::get<T>(v_);
     }
 
     template<typename T>
     const T& value() const {
+        static_assert(IsSupportedType<T>::value, "The type specified is not one of the alternative types of Variant");
         return std::get<T>(v_);
     }
 
@@ -424,60 +450,20 @@ public:
     }
 
     bool operator==(const Variant& var) const {
-        return v_ == var.v_;
+        return std::visit(AreEqualVisitor(), v_, var.v_);
     }
 
     bool operator!=(const Variant& var) const {
         return !operator==(var);
     }
 
-    bool operator==(const std::monostate&) const {
-        return isNull();
-    }
-
-    bool operator!=(const std::monostate& val) const {
-        return !operator==(val);
-    }
-
-    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+    template<typename T>
     bool operator==(const T& val) const {
-        return isConvertibleTo<T>() && to<T>() == val;
+        return std::visit(IsEqualToVisitor(val), v_);
     }
 
-    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+    template<typename T>
     bool operator!=(const T& val) const {
-        return !operator==(val);
-    }
-
-    bool operator==(const char* val) const {
-        return isString() && value<String>() == val;
-    }
-
-    bool operator!=(const char* val) const {
-        return !operator==(val);
-    }
-
-    bool operator==(const String& val) const {
-        return isString() && value<String>() == val;
-    }
-
-    bool operator!=(const String& val) const {
-        return !operator==(val);
-    }
-
-    bool operator==(const VariantArray& val) const {
-        return isArray() && value<VariantArray>() == val;
-    }
-
-    bool operator!=(const VariantArray& val) const {
-        return !operator==(val);
-    }
-
-    bool operator==(const VariantMap& val) const {
-        return isMap() && value<VariantMap>() == val;
-    }
-
-    bool operator!=(const VariantMap& val) const {
         return !operator==(val);
     }
 
@@ -487,7 +473,57 @@ public:
     }
 
 private:
-    std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, VariantArray, VariantMap> v_;
+    typedef std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, VariantArray, VariantMap> VariantType;
+
+    template<typename TargetT, typename EnableT = void>
+    struct ConvertToVisitor {
+        bool ok = false;
+
+        template<typename SourceT>
+        TargetT operator()(const SourceT& val) {
+            return TargetT();
+        }
+    };
+
+    template<typename FirstT>
+    struct IsEqualToVisitor {
+        const FirstT& first;
+
+        IsEqualToVisitor(const FirstT& first) :
+                first(first) {
+        }
+
+        template<typename SecondT>
+        bool operator()(const SecondT& second) const {
+            return areEqual(first, second);
+        }
+    };
+
+    struct AreEqualVisitor {
+        template<typename FirstT, typename SecondT>
+        bool operator()(const FirstT& first, const SecondT& second) const {
+            return areEqual(first, second);
+        }
+    };
+
+    template<typename T>
+    struct IsSupportedType {
+        static constexpr bool value = false;
+    };
+
+    VariantType v_;
+
+    template<typename FirstT, typename SecondT>
+    static bool areEqual(const FirstT& first, const SecondT& second) {
+        if constexpr (std::is_same_v<FirstT, SecondT> ||
+                (std::is_arithmetic_v<FirstT> && std::is_arithmetic_v<SecondT>) ||
+                (std::is_same_v<FirstT, String> && std::is_same_v<SecondT, const char*>) ||
+                (std::is_same_v<FirstT, const char*> && std::is_same_v<SecondT, String>)) {
+            return first == second;
+        } else {
+            return false;
+        }
+    }
 
     template<typename ContainerT>
     static bool ensureCapacity(ContainerT& cont, int count) {
@@ -499,39 +535,42 @@ private:
     }
 };
 
-namespace detail {
-
-template<typename TargetT, typename EnableT = void>
-class ConvertToVariantVisitor {
-public:
-    template<typename SourceT>
-    TargetT operator()(const SourceT& val) const {
-        return TargetT();
-    }
-};
-
 template<>
-class ConvertToVariantVisitor<std::monostate> {
-public:
+struct Variant::ConvertToVisitor<std::monostate> {
+    bool ok = false;
+
+    std::monostate operator()(const std::monostate&) {
+        ok = true;
+        return std::monostate();
+    }
+
     template<typename SourceT>
-    std::monostate operator()(const SourceT& val) const {
+    std::monostate operator()(const SourceT& val) {
         return std::monostate();
     }
 };
 
 template<>
-class ConvertToVariantVisitor<bool> {
+class Variant::ConvertToVisitor<bool> {
 public:
-    bool operator()(const String& val) const {
+    bool ok = false;
+
+    bool operator()(const String& val) {
         if (val == "true") {
+            ok = true;
             return true;
+        }
+        if (val == "false") {
+            ok = true;
+            return false;
         }
         return false;
     }
 
     template<typename SourceT>
-    bool operator()(const SourceT& val) const {
+    bool operator()(const SourceT& val) {
         if constexpr (std::is_arithmetic_v<SourceT>) {
+            ok = true;
             return static_cast<bool>(val);
         } else { // std::monostate, VariantArray, VariantMap
             return false;
@@ -540,21 +579,24 @@ public:
 };
 
 template<typename TargetT>
-class ConvertToVariantVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<TargetT>>> {
-public:
-    TargetT operator()(const String& val) const {
+struct Variant::ConvertToVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<TargetT>>> {
+    bool ok = false;
+
+    TargetT operator()(const String& val) {
         TargetT v = TargetT();
         auto end = val.c_str() + val.length();
         auto r = std::from_chars(val.c_str(), end, v);
         if (r.ec != std::errc() || r.ptr != end) {
             return TargetT();
         }
+        ok = true;
         return v;
     }
 
     template<typename SourceT>
-    TargetT operator()(const SourceT& val) const {
+    TargetT operator()(const SourceT& val) {
         if constexpr (std::is_arithmetic_v<SourceT>) {
+            ok = true;
             return static_cast<TargetT>(val);
         } else { // std::monostate, VariantArray, VariantMap
             return TargetT();
@@ -563,22 +605,26 @@ public:
 };
 
 template<>
-class ConvertToVariantVisitor<String> {
-public:
-    String operator()(bool val) const {
+struct Variant::ConvertToVisitor<String> {
+    bool ok = false;
+
+    String operator()(bool val) {
+        ok = true;
         return val ? "true" : "false";
     }
 
-    String operator()(const String& val) const {
+    String operator()(const String& val) {
+        ok = true;
         return val;
     }
 
     template<typename SourceT>
-    String operator()(const SourceT& val) const {
+    String operator()(const SourceT& val) {
         if constexpr (std::is_arithmetic_v<SourceT>) {
-            char buf[32]; // Should be large enough for all relevant types
+            char buf[32]; // Large enough for all relevant types
             auto r = std::to_chars(buf, buf + sizeof(buf), val);
             SPARK_ASSERT(r.ec == std::errc());
+            ok = true;
             return String(buf, r.ptr - buf);
         } else { // std::monostate, VariantArray, VariantMap
             return String();
@@ -587,22 +633,26 @@ public:
 };
 
 template<>
-class ConvertToVariantVisitor<VariantArray> {
-public:
-    VariantArray operator()(const VariantArray& val) const {
+struct Variant::ConvertToVisitor<VariantArray> {
+    bool ok = false;
+
+    VariantArray operator()(const VariantArray& val) {
+        ok = true;
         return val;
     }
 
     template<typename SourceT>
-    VariantArray operator()(const SourceT& val) const {
+    VariantArray operator()(const SourceT& val) {
         return VariantArray();
     }
 };
 
 template<>
-class ConvertToVariantVisitor<VariantMap> {
-public:
-    VariantMap operator()(const VariantMap& val) const {
+struct Variant::ConvertToVisitor<VariantMap> {
+    bool ok = false;
+
+    VariantMap operator()(const VariantMap& val) {
+        ok = true;
         return val;
     }
 
@@ -612,168 +662,64 @@ public:
     }
 };
 
-template<typename TargetT, typename EnableT = void>
-class IsConvertibleVariantVisitor {
-public:
-    template<typename SourceT>
-    bool operator()(const SourceT& val) const {
-        return false;
-    }
+template<>
+struct Variant::IsSupportedType<std::monostate> {
+    static const bool value = true;
 };
 
 template<>
-class IsConvertibleVariantVisitor<std::monostate> {
-public:
-    bool operator()(const std::monostate&) const {
-        return true;
-    }
-
-    template<typename SourceT>
-    bool operator()(const SourceT& val) const {
-        return false;
-    }
+struct Variant::IsSupportedType<bool> {
+    static const bool value = true;
 };
 
 template<>
-class IsConvertibleVariantVisitor<bool> {
-public:
-    bool operator()(const String& val) const {
-        return val == "true" || val == "false";
-    }
-
-    template<typename SourceT>
-    bool operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) {
-            return true;
-        } else { // std::monostate, VariantArray, VariantMap
-            return false;
-        }
-    }
-};
-
-template<typename TargetT>
-class IsConvertibleVariantVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<TargetT>>> {
-public:
-    bool operator()(const String& val) const {
-        TargetT v = TargetT();
-        auto end = val.c_str() + val.length();
-        auto r = std::from_chars(val.c_str(), end, v);
-        return r.ec == std::errc() && r.ptr == end;
-    }
-
-    template<typename SourceT>
-    bool operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) {
-            return true; // TODO: Check the range of TargetT
-        } else { // std::monostate, VariantArray, VariantMap
-            return false;
-        }
-    }
+struct Variant::IsSupportedType<int> {
+    static const bool value = true;
 };
 
 template<>
-class IsConvertibleVariantVisitor<String> {
-public:
-    bool operator()(const String& val) const {
-        return true;
-    }
-
-    template<typename SourceT>
-    bool operator()(const SourceT& val) const {
-        if constexpr (std::is_arithmetic_v<SourceT>) {
-            return true;
-        } else { // std::monostate, VariantArray, VariantMap
-            return false;
-        }
-    }
+struct Variant::IsSupportedType<unsigned> {
+    static const bool value = true;
 };
 
 template<>
-class IsConvertibleVariantVisitor<VariantArray> {
-public:
-    bool operator()(const VariantArray& val) const {
-        return true;
-    }
-
-    template<typename SourceT>
-    bool operator()(const SourceT& val) const {
-        return false;
-    }
+struct Variant::IsSupportedType<int64_t> {
+    static const bool value = true;
 };
 
 template<>
-class IsConvertibleVariantVisitor<VariantMap> {
-public:
-    bool operator()(const VariantMap& val) const {
-        return true;
-    }
-
-    template<typename SourceT>
-    bool operator()(const SourceT& val) const {
-        return false;
-    }
+struct Variant::IsSupportedType<uint64_t> {
+    static const bool value = true;
 };
 
-} // namespace detail
+template<>
+struct Variant::IsSupportedType<double> {
+    static const bool value = true;
+};
+
+template<>
+struct Variant::IsSupportedType<String> {
+    static const bool value = true;
+};
+
+template<>
+struct Variant::IsSupportedType<VariantArray> {
+    static const bool value = true;
+};
+
+template<>
+struct Variant::IsSupportedType<VariantMap> {
+    static const bool value = true;
+};
 
 template<typename T>
-inline T Variant::to() const {
-    return std::visit(detail::ConvertToVariantVisitor<T>(), v_);
-}
-
-template<typename T>
-inline bool Variant::isConvertibleTo() const {
-    return std::visit(detail::IsConvertibleVariantVisitor<T>(), v_);
-}
-
-inline bool operator==(const std::monostate& val, const Variant& var) {
-    return var == val;
-}
-
-inline bool operator!=(const std::monostate& val, const Variant& var) {
-    return var != val;
-}
-
-template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
 inline bool operator==(const T& val, const Variant& var) {
     return var == val;
 }
 
-template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+template<typename T>
 inline bool operator!=(const T& val, const Variant& var) {
     return var != val;
-}
-
-inline bool operator==(const char* str, const Variant& var) {
-    return var == str;
-}
-
-inline bool operator!=(const char* str, const Variant& var) {
-    return var != str;
-}
-
-inline bool operator==(const String& str, const Variant& var) {
-    return var == str;
-}
-
-inline bool operator!=(const String& str, const Variant& var) {
-    return var != str;
-}
-
-inline bool operator==(const VariantArray& arr, const Variant& var) {
-    return var == arr;
-}
-
-inline bool operator!=(const VariantArray& arr, const Variant& var) {
-    return var != arr;
-}
-
-inline bool operator==(const VariantMap& map, const Variant& var) {
-    return var == map;
-}
-
-inline bool operator!=(const VariantMap& map, const Variant& var) {
-    return var != map;
 }
 
 } // namespace particle
