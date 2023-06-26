@@ -1039,14 +1039,19 @@ int BleControlRequestChannel::cccdChanged(const hal_ble_char_evt_t& event) {
 }
 
 int BleControlRequestChannel::initProfile() {
-    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
+    bool btStackInitialized = hal_ble_is_initialized(nullptr);
+    if (!btStackInitialized) {
+        SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
+    }
     if (initialized_) {
         LOG_DEBUG(TRACE, "BLE profile already initialized");
         return SYSTEM_ERROR_INVALID_STATE;
     }
 #if HAL_PLATFORM_RTL872X
     SCOPE_GUARD ({
-        hal_ble_stack_deinit(nullptr);
+        if (!btStackInitialized) {
+            hal_ble_stack_deinit(nullptr);
+        }
     });
 #endif
     hal_ble_attr_handle_t serviceHandle;

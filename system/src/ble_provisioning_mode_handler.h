@@ -79,6 +79,7 @@ private:
     static bool exited_;
     bool provMode_;
     uint16_t customCompanyId_;
+    bool btStackInitialized_;
 
     Vector<uint8_t> ctrlReqAdvData_;
     Vector<uint8_t> ctrlReqSrData_;
