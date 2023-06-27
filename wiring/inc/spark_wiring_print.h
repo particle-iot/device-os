@@ -36,6 +36,7 @@
 #include "spark_wiring_string.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_fixed_point.h"
+#include "spark_wiring_error.h"
 #include <climits>
 
 const unsigned char DEC = 10;
@@ -123,9 +124,29 @@ class Print
     size_t vprintf(bool newline, const char* format, va_list args) __attribute__ ((format(printf, 3, 0)));
 };
 
+namespace particle {
+
+class OutputStringStream: public Print {
+public:
+    explicit OutputStringStream(String& str) :
+            s_(str) {
+    }
+
+    size_t write(uint8_t b) override {
+        return write(&b, 1);
+    }
+
+    size_t write(const uint8_t* data, size_t size) override;
+
+private:
+    String& s_;
+};
+
+} // namespace particle
+
 template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
     std::is_convertible<T, long long>::value), int>>
-size_t Print::print(T n, int base)
+inline size_t Print::print(T n, int base)
 {
     if (base == 0) {
         return write(n);
@@ -150,4 +171,5 @@ size_t Print::print(T n, int base)
         return printNumber(val, base) + t;
     }
 }
+
 #endif

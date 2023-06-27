@@ -33,6 +33,8 @@
 #include <stdlib.h>
 #include "string_convert.h"
 
+using namespace particle;
+
 //These are very crude implementations - will refine later
 //------------------------------------------------------------------------------------------
 
@@ -180,7 +182,7 @@ String::~String()
 inline void String::init(void)
 {
 	buffer = NULL;
-	capacity = 0;
+	capacity_ = 0;
 	len = 0;
 	flags = 0;
 }
@@ -189,12 +191,12 @@ void String::invalidate(void)
 {
 	if (buffer) free(buffer);
 	buffer = NULL;
-	capacity = len = 0;
+	capacity_ = len = 0;
 }
 
 unsigned char String::reserve(unsigned int size)
 {
-	if (buffer && capacity >= size) return 1;
+	if (buffer && capacity_ >= size) return 1;
 	if (changeBuffer(size)) {
 		if (len == 0) buffer[0] = 0;
 		return 1;
@@ -207,7 +209,7 @@ unsigned char String::changeBuffer(unsigned int maxStrLen)
 	char *newbuffer = (char *)realloc(buffer, maxStrLen + 1);
 	if (newbuffer) {
 		buffer = newbuffer;
-		capacity = maxStrLen;
+		capacity_ = maxStrLen;
 		return 1;
 	}
 	return 0;
@@ -237,7 +239,7 @@ String & String::copy(const __FlashStringHelper *pstr, unsigned int length) {
 void String::move(String &rhs)
 {
 	if (buffer) {
-		if (capacity >= rhs.len && rhs.buffer) {
+		if (capacity_ >= rhs.len && rhs.buffer) {
 			strcpy(buffer, rhs.buffer);
 			len = rhs.len;
 			rhs.len = 0;
@@ -247,10 +249,10 @@ void String::move(String &rhs)
 		}
 	}
 	buffer = rhs.buffer;
-	capacity = rhs.capacity;
+	capacity_ = rhs.capacity_;
 	len = rhs.len;
 	rhs.buffer = NULL;
-	rhs.capacity = 0;
+	rhs.capacity_ = 0;
 	rhs.len = 0;
 }
 #endif
@@ -701,7 +703,7 @@ String& String::replace(const String& find, const String& replace)
 			size += diff;
 		}
 		if (size == len) return *this;;
-		if (size > capacity && !changeBuffer(size)) return *this; // XXX: tell user!
+		if (size > capacity_ && !changeBuffer(size)) return *this; // XXX: tell user!
 		int index = len - 1;
 		while (index >= 0 && (index = lastIndexOf(find, index)) >= 0) {
 			readFrom = buffer + index + find.len;
@@ -781,34 +783,11 @@ float String::toFloat(void) const
 	return 0;
 }
 
-class StringPrintableHelper : public Print
-{
-    String& s;
-
-public:
-
-    StringPrintableHelper(String& s_) : s(s_) {
-        s.reserve(20);
-    }
-
-    virtual size_t write(const uint8_t *buffer, size_t size) override
-    {
-        unsigned len = s.length();
-        s.concat((const char*)buffer, size);
-        return s.length()-len;
-    }
-
-    virtual size_t write(uint8_t c) override
-    {
-        return s.concat((char)c);
-    }
-};
-
 String::String(const Printable& printable)
 {
     init();
-    StringPrintableHelper help(*this);
-    printable.printTo(help);
+    OutputStringStream stream(*this);
+    printable.printTo(stream);
 }
 
 String String::format(const char* fmt, ...)

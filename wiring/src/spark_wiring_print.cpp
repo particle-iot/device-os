@@ -236,3 +236,19 @@ size_t Print::vprintf(bool newline, const char* format, va_list args)
     return n;
 }
 
+namespace particle {
+
+size_t OutputStringStream::write(const uint8_t* data, size_t size) {
+    if (getWriteError()) {
+        return 0;
+    }
+    size_t newSize = s_.length() + size;
+    if (s_.capacity() < newSize && !s_.reserve(std::max(newSize, std::min<size_t>(s_.capacity() * 3 / 2, 10)))) {
+        setWriteError(Error::NO_MEMORY);
+        return 0;
+    }
+    s_.concat((const char*)data, size);
+    return size;
+}
+
+} // namespace particle
