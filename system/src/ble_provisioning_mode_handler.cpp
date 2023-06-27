@@ -47,7 +47,8 @@ BleProvisioningModeHandler::BleProvisioningModeHandler()
           userAdv_(false),
           restoreUserConfig_(false),
           provMode_(false),
-          customCompanyId_(PARTICLE_COMPANY_ID) {
+          customCompanyId_(PARTICLE_COMPANY_ID),
+          btStackInitialized_(false) {
 }
 
 BleProvisioningModeHandler::~BleProvisioningModeHandler() {
@@ -311,7 +312,10 @@ int BleProvisioningModeHandler::enter() {
         }
     });
 
-    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
+    btStackInitialized_ = hal_ble_is_initialized(nullptr);
+    if (!btStackInitialized_) {
+        SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
+    }
 
     // Now the BLE configurations are non-modifiable.
     CHECK(hal_ble_enter_locked_mode(nullptr));
@@ -351,6 +355,11 @@ int BleProvisioningModeHandler::exit() {
         preSrData_.clear();
         ctrlReqAdvData_.clear();
         ctrlReqSrData_.clear();
+#if HAL_PLATFORM_RTL872X
+        if (!btStackInitialized_) {
+            hal_ble_stack_deinit(nullptr);
+        }
+#endif
     });
 
     // Now the BLE configurations are modifiable.

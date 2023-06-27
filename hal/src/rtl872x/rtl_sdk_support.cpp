@@ -34,6 +34,12 @@ extern "C" {
 #include "interrupts_hal.h"
 #include "osdep_service.h"
 #include "concurrent_hal.h"
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#include "delay_hal.h"
+#include "wifi_conf.h"
+#include "ble_hal.h"
+#include "spark_wiring_thread.h"
+#endif
 
 extern "C" {
 
@@ -53,6 +59,13 @@ struct pcoex_reveng {
     uint32_t unknown;
     _mutex* mutex;
 };
+
+namespace {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+uint8_t radioStatus = RTW_RADIO_NONE;
+RecursiveMutex radioMutex;
+#endif
+}
 
 extern "C" pcoex_reveng* pcoex[4];
 
@@ -118,6 +131,65 @@ void rtwCoexCleanup(int idx) {
         }
     }
 }
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+void rtwRadioReset() {
+    std::lock_guard<RecursiveMutex> lk(radioMutex);
+    hal_ble_lock(nullptr);
+    bool bleInitialized = hal_ble_is_initialized(nullptr);
+    bool advertising = hal_ble_gap_is_advertising(nullptr) ||
+                       hal_ble_gap_is_connecting(nullptr, nullptr) ||
+                       hal_ble_gap_is_connected(nullptr, nullptr);
+    if (bleInitialized) {
+        hal_ble_stack_deinit(nullptr);
+    }
+
+    rtwRadioRelease(RTW_RADIO_WIFI);
+    rtwRadioAcquire(RTW_RADIO_WIFI);
+
+    if (bleInitialized) {
+        if (hal_ble_stack_init(nullptr) == 0 && advertising) {
+            hal_ble_gap_start_advertising(nullptr);
+        }
+    }
+    hal_ble_unlock(nullptr);
+}
+
+void rtwRadioAcquire(RtwRadio r) {
+    std::lock_guard<RecursiveMutex> lk(radioMutex);
+    LOG_DEBUG(INFO, "rtwRadioAcquire: %d", r);
+    auto preStatus = radioStatus;
+    radioStatus |= r;
+    if (preStatus != RTW_RADIO_NONE) {
+        LOG(INFO, "WiFi is already on");
+        return;
+    }
+    if (radioStatus != RTW_RADIO_NONE) {
+        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
+        rtwCoexCleanup(0);
+        SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
+        LOG(INFO, "WiFi on");
+    }
+}
+
+void rtwRadioRelease(RtwRadio r) {
+    std::lock_guard<RecursiveMutex> lk(radioMutex);
+    LOG_DEBUG(INFO, "rtwRadioRelease: %d", r);
+    auto preStatus = radioStatus;
+    radioStatus &= ~r;
+    if (preStatus == RTW_RADIO_NONE) {
+        LOG(INFO, "WiFi is already off");
+        return;
+    }
+    if (radioStatus == RTW_RADIO_NONE) {
+        rtwCoexPreventCleanup(0);
+        HAL_Delay_Milliseconds(100);
+        wifi_off();
+        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, DISABLE);
+        LOG(INFO, "WiFi off");
+    }
+}
+#endif
 
 
 extern "C" u32 DiagPrintf(const char *fmt, ...);

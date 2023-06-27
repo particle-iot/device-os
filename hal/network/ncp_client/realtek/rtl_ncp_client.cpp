@@ -202,7 +202,6 @@ int RealtekNcpClient::init(const NcpClientConfig& conf) {
     RCC_PeriphClockCmd(APBPeriph_I2S0, APBPeriph_I2S0_CLOCK, ENABLE);
     RCC_PeriphClockCmd(APBPeriph_SECURITY_ENGINE, APBPeriph_SEC_ENG_CLOCK, ENABLE);
     RCC_PeriphClockCmd(APBPeriph_LXBUS, APBPeriph_LXBUS_CLOCK, ENABLE);
-    SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
     rltkOff();
     return SYSTEM_ERROR_NONE;
 }
@@ -444,30 +443,7 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     if (ctx.results.size() == 0) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
-        hal_ble_lock(nullptr);
-        bool advertising = hal_ble_gap_is_advertising(nullptr) ||
-                           hal_ble_gap_is_connecting(nullptr, nullptr) ||
-                           hal_ble_gap_is_connected(nullptr, nullptr);
-        hal_ble_stack_deinit(nullptr);
-        rtwCoexPreventCleanup(0);
-
-        HAL_Delay_Milliseconds(100);
-
-        wifi_off();
-
-        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, DISABLE);
-        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
-        rtwCoexCleanup(0);
-
-        SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
-
-        if (hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE) {
-            if (advertising) {
-                hal_ble_gap_start_advertising(nullptr);
-            }
-        }
-
-        hal_ble_unlock(nullptr);
+        rtwRadioReset();
     }
     return rtl_error_to_system(rtlError);
 }
@@ -539,6 +515,7 @@ int RealtekNcpClient::rltkOff() {
     LOG(INFO, "rltkOff");
     // This doesn't work
     // wifi_rf_off();
+    rtwRadioRelease(RTW_RADIO_WIFI);
     LOG(INFO, "rltkOff done");
     ncpPowerState(NcpPowerState::OFF);
     return SYSTEM_ERROR_NONE;
@@ -548,6 +525,7 @@ int RealtekNcpClient::rltkOff() {
 int RealtekNcpClient::rltkOn() {
     // This doesn't work
     // wifi_rf_on();
+    rtwRadioAcquire(RTW_RADIO_WIFI);
     ncpPowerState(NcpPowerState::ON);
     return SYSTEM_ERROR_NONE;
 }

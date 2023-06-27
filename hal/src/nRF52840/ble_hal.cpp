@@ -3950,6 +3950,11 @@ int hal_ble_stack_deinit(void* reserved) {
     return SYSTEM_ERROR_NONE;
 }
 
+bool hal_ble_is_initialized(void* reserved) {
+    BleLock lk;
+    return BleObject::getInstance().initialized();
+}
+
 int hal_ble_select_antenna(hal_ble_ant_type_t antenna, void* reserved) {
     return BleObject::getInstance().selectAntenna(antenna);
 }
