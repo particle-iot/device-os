@@ -21,11 +21,9 @@
 #include <type_traits>
 #include <algorithm>
 #include <charconv>
-#include <limits>
 #include <cstdint>
 
 #include "spark_wiring_string.h"
-#include "spark_wiring_stream.h"
 #include "spark_wiring_vector.h"
 #include "spark_wiring_map.h"
 
@@ -70,15 +68,23 @@ public:
     Variant(unsigned val) :
             v_(val) {
     }
-
+#ifdef __LP64__
     Variant(long val) :
-            v_(val) {
+            v_(static_cast<int64_t>(val)) {
     }
 
     Variant(unsigned long val) :
-            v_(val) {
+            v_(static_cast<uint64_t>(val)) {
+    }
+#else
+    Variant(long val) :
+            v_(static_cast<int>(val)) {
     }
 
+    Variant(unsigned long val) :
+            v_(static_cast<unsigned>(val)) {
+    }
+#endif
     Variant(long long val) :
             v_(val) {
     }
@@ -167,9 +173,7 @@ public:
 
     template<typename T>
     bool is() const {
-        if constexpr (!IsSupportedType<T>::value) {
-            return false;
-        }
+        static_assert(IsAlternativeType<T>::value, "The type specified is not one of the alternative types of Variant");
         return std::holds_alternative<T>(v_);
     }
 
@@ -298,7 +302,7 @@ public:
 
     template<typename T>
     T& as() {
-        static_assert(IsSupportedType<T>::value, "The type specified is not one of the alternative types of Variant");
+        static_assert(IsAlternativeType<T>::value, "The type specified is not one of the alternative types of Variant");
         if (!is<T>()) {
             v_ = to<T>();
         }
@@ -307,13 +311,13 @@ public:
 
     template<typename T>
     T& value() {
-        static_assert(IsSupportedType<T>::value, "The type specified is not one of the alternative types of Variant");
+        static_assert(IsAlternativeType<T>::value, "The type specified is not one of the alternative types of Variant");
         return std::get<T>(v_);
     }
 
     template<typename T>
     const T& value() const {
-        static_assert(IsSupportedType<T>::value, "The type specified is not one of the alternative types of Variant");
+        static_assert(IsAlternativeType<T>::value, "The type specified is not one of the alternative types of Variant");
         return std::get<T>(v_);
     }
 
@@ -485,11 +489,12 @@ private:
         }
     };
 
+    // Compares a Variant with a value
     template<typename FirstT>
     struct IsEqualToVisitor {
         const FirstT& first;
 
-        IsEqualToVisitor(const FirstT& first) :
+        explicit IsEqualToVisitor(const FirstT& first) :
                 first(first) {
         }
 
@@ -499,6 +504,7 @@ private:
         }
     };
 
+    // Compares two Variants
     struct AreEqualVisitor {
         template<typename FirstT, typename SecondT>
         bool operator()(const FirstT& first, const SecondT& second) const {
@@ -507,7 +513,7 @@ private:
     };
 
     template<typename T>
-    struct IsSupportedType {
+    struct IsAlternativeType {
         static constexpr bool value = false;
     };
 
@@ -519,7 +525,10 @@ private:
                 (std::is_arithmetic_v<FirstT> && std::is_arithmetic_v<SecondT>) ||
                 (std::is_same_v<FirstT, String> && std::is_same_v<SecondT, const char*>) ||
                 (std::is_same_v<FirstT, const char*> && std::is_same_v<SecondT, String>)) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
             return first == second;
+#pragma GCC diagnostic pop
         } else {
             return false;
         }
@@ -531,9 +540,34 @@ private:
         if (cont.capacity() >= newSize) {
             return true;
         }
-        return cont.reserve(std::max(cont.capacity() * 3 / 2, newSize));
+        return cont.reserve(std::max(newSize, cont.capacity() * 3 / 2));
     }
 };
+
+namespace detail {
+
+// As of GCC 10, std::to_chars and std::from_chars don't support floating point types. Note that the
+// substitution functions below behave differently from the standard ones. They're tailored for the
+// needs of the Variant class and are only defined so that we can quickly drop them when <charconv>
+// API is fully supported by the current version of GCC
+#ifndef __cpp_lib_to_chars
+
+std::to_chars_result to_chars(char* first, char* last, double value);
+std::from_chars_result from_chars(const char* first, const char* last, double& value);
+
+#endif // !defined(__cpp_lib_to_chars)
+
+template<typename T>
+inline std::to_chars_result to_chars(char* first, char* last, T value) {
+    return std::to_chars(first, last, value);
+}
+
+template<typename T>
+inline std::from_chars_result from_chars(const char* first, const char* last, T& value) {
+    return std::from_chars(first, last, value);
+}
+
+} // namespace detail
 
 template<>
 struct Variant::ConvertToVisitor<std::monostate> {
@@ -583,9 +617,9 @@ struct Variant::ConvertToVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<
     bool ok = false;
 
     TargetT operator()(const String& val) {
-        TargetT v = TargetT();
+        TargetT v;
         auto end = val.c_str() + val.length();
-        auto r = std::from_chars(val.c_str(), end, v);
+        auto r = detail::from_chars(val.c_str(), end, v);
         if (r.ec != std::errc() || r.ptr != end) {
             return TargetT();
         }
@@ -622,7 +656,7 @@ struct Variant::ConvertToVisitor<String> {
     String operator()(const SourceT& val) {
         if constexpr (std::is_arithmetic_v<SourceT>) {
             char buf[32]; // Large enough for all relevant types
-            auto r = std::to_chars(buf, buf + sizeof(buf), val);
+            auto r = detail::to_chars(buf, buf + sizeof(buf), val);
             SPARK_ASSERT(r.ec == std::errc());
             ok = true;
             return String(buf, r.ptr - buf);
@@ -663,52 +697,52 @@ struct Variant::ConvertToVisitor<VariantMap> {
 };
 
 template<>
-struct Variant::IsSupportedType<std::monostate> {
+struct Variant::IsAlternativeType<std::monostate> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<bool> {
+struct Variant::IsAlternativeType<bool> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<int> {
+struct Variant::IsAlternativeType<int> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<unsigned> {
+struct Variant::IsAlternativeType<unsigned> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<int64_t> {
+struct Variant::IsAlternativeType<int64_t> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<uint64_t> {
+struct Variant::IsAlternativeType<uint64_t> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<double> {
+struct Variant::IsAlternativeType<double> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<String> {
+struct Variant::IsAlternativeType<String> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<VariantArray> {
+struct Variant::IsAlternativeType<VariantArray> {
     static const bool value = true;
 };
 
 template<>
-struct Variant::IsSupportedType<VariantMap> {
+struct Variant::IsAlternativeType<VariantMap> {
     static const bool value = true;
 };
 
