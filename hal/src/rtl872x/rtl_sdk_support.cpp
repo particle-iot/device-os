@@ -34,10 +34,12 @@ extern "C" {
 #include "interrupts_hal.h"
 #include "osdep_service.h"
 #include "concurrent_hal.h"
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "delay_hal.h"
 #include "wifi_conf.h"
 #include "ble_hal.h"
 #include "spark_wiring_thread.h"
+#endif
 
 extern "C" {
 
@@ -59,10 +61,10 @@ struct pcoex_reveng {
 };
 
 namespace {
-
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 uint8_t radioStatus = RTW_RADIO_NONE;
 RecursiveMutex radioMutex;
-
+#endif
 }
 
 extern "C" pcoex_reveng* pcoex[4];
@@ -130,6 +132,7 @@ void rtwCoexCleanup(int idx) {
     }
 }
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 void rtwRadioReset() {
     std::lock_guard<RecursiveMutex> lk(radioMutex);
     hal_ble_lock(nullptr);
@@ -186,6 +189,7 @@ void rtwRadioRelease(RtwRadio r) {
         LOG(INFO, "WiFi off");
     }
 }
+#endif
 
 
 extern "C" u32 DiagPrintf(const char *fmt, ...);
