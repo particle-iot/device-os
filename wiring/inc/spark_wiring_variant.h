@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <algorithm>
 #include <charconv>
+#include <cstring>
 #include <cstdint>
 
 #include "spark_wiring_string.h"
@@ -29,7 +30,15 @@
 
 #include "debug.h"
 
+namespace spark {
+
+class JSONValue;
+
+} // namespace spark
+
 namespace particle {
+
+using spark::JSONValue;
 
 class Variant;
 
@@ -322,113 +331,26 @@ public:
     }
 
     // Array operations
-    bool append(Variant val) {
-        auto& arr = asArray();
-        if (!ensureCapacity(arr, 1)) {
-            return false;
-        }
-        return arr.append(std::move(val));
-    }
-
-    bool prepend(Variant val) {
-        auto& arr = asArray();
-        if (!ensureCapacity(arr, 1)) {
-            return false;
-        }
-        return arr.prepend(std::move(val));
-    }
-
-    Variant at(int index) const {
-        if (!isArray()) {
-            return Variant();
-        }
-        auto& arr = value<VariantArray>();
-        if (index < 0 || index >= arr.size()) {
-            return Variant();
-        }
-        return arr.at(index);
-    }
+    bool append(Variant val);
+    bool prepend(Variant val);
+    Variant at(int index) const;
 
     // Map operations
-    bool set(const char* key, Variant val) {
-        auto& map = asMap();
-        if (!ensureCapacity(map, 1)) {
-            return false;
-        }
-        return map.set(key, std::move(val));
-    }
+    bool set(const char* key, Variant val);
+    bool set(const String& key, Variant val);
+    bool set(String&& key, Variant val);
+    Variant get(const char* key) const;
+    Variant get(const String& key) const;
+    bool has(const char* key) const;
+    bool has(const String& key) const;
 
-    bool set(const String& key, Variant val) {
-        auto& map = asMap();
-        if (!ensureCapacity(map, 1)) {
-            return false;
-        }
-        return map.set(key, std::move(val));
-    }
+    int size() const;
+    bool isEmpty() const;
 
-    bool set(String&& key, Variant val) {
-        auto& map = asMap();
-        if (!ensureCapacity(map, 1)) {
-            return false;
-        }
-        return map.set(std::move(key), std::move(val));
-    }
+    String toJSON() const;
 
-    Variant get(const char* key) const {
-        if (!isMap()) {
-            return Variant();
-        }
-        return value<VariantMap>().get(key);
-    }
-
-    Variant get(const String& key) const {
-        if (!isMap()) {
-            return Variant();
-        }
-        return value<VariantMap>().get(key);
-    }
-
-    bool has(const char* key) const {
-        if (!isMap()) {
-            return false;
-        }
-        return value<VariantMap>().has(key);
-    }
-
-    bool has(const String& key) const {
-        if (!isMap()) {
-            return false;
-        }
-        return value<VariantMap>().has(key);
-    }
-
-    int size() const {
-        switch (type()) {
-        case Type::STRING:
-            return value<String>().length();
-        case Type::ARRAY:
-            return value<VariantArray>().size();
-        case Type::MAP:
-            return value<VariantMap>().size();
-        default:
-            return 0;
-        }
-    }
-
-    bool isEmpty() const {
-        switch (type()) {
-        case Type::NULL_:
-            return true; // A default-constructed Variant is empty
-        case Type::STRING:
-            return value<String>().length() == 0;
-        case Type::ARRAY:
-            return value<VariantArray>().isEmpty();
-        case Type::MAP:
-            return value<VariantMap>().isEmpty();
-        default:
-            return false;
-        }
-    }
+    static Variant fromJSON(const char* json);
+    static Variant fromJSON(const JSONValue& val);
 
     Variant& operator[](int index) {
         SPARK_ASSERT(isArray());
@@ -446,6 +368,10 @@ public:
 
     Variant& operator[](const String& key) {
         return asMap().operator[](key);
+    }
+
+    Variant& operator[](String&& key) {
+        return asMap().operator[](std::move(key));
     }
 
     Variant& operator=(Variant var) {
@@ -550,15 +476,15 @@ namespace detail {
 // substitution functions below behave differently from the standard ones. They're tailored for the
 // needs of the Variant class and are only defined so that we can quickly drop them when <charconv>
 // API is fully supported by the current version of GCC
-#ifndef __cpp_lib_to_chars
+#if !defined(__cpp_lib_to_chars) || defined(UNIT_TEST)
 
 std::to_chars_result to_chars(char* first, char* last, double value);
 std::from_chars_result from_chars(const char* first, const char* last, double& value);
 
-#endif // !defined(__cpp_lib_to_chars)
+#endif // !defined(__cpp_lib_to_chars) || defined(UNIT_TEST)
 
 template<typename T>
-inline std::to_chars_result to_chars(char* first, char* last, T value) {
+inline std::to_chars_result to_chars(char* first, char* last, const T& value) {
     return std::to_chars(first, last, value);
 }
 

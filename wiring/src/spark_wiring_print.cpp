@@ -28,8 +28,72 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "spark_wiring_print.h"
+#include "spark_wiring_json.h"
+#include "spark_wiring_variant.h"
 #include "spark_wiring_string.h"
-#include "spark_wiring_stream.h"
+#include "spark_wiring_error.h"
+
+using namespace particle;
+
+namespace {
+
+void writeVariant(const Variant& var, JSONStreamWriter& writer) {
+    switch (var.type()) {
+    case Variant::NULL_: {
+        writer.nullValue();
+        break;
+    }
+    case Variant::BOOL: {
+        writer.value(var.value<bool>());
+        break;
+    }
+    case Variant::INT: {
+        writer.value(var.value<int>());
+        break;
+    }
+    case Variant::UINT: {
+        writer.value(var.value<unsigned>());
+        break;
+    }
+    case Variant::INT64: {
+        writer.value(var.value<int64_t>());
+        break;
+    }
+    case Variant::UINT64: {
+        writer.value(var.value<uint64_t>());
+        break;
+    }
+    case Variant::DOUBLE: {
+        writer.value(var.value<double>());
+        break;
+    }
+    case Variant::STRING: {
+        writer.value(var.value<String>());
+        break;
+    }
+    case Variant::ARRAY: {
+        writer.beginArray();
+        for (auto& v: var.value<VariantArray>()) {
+            writeVariant(v, writer);
+        }
+        writer.endArray();
+        break;
+    }
+    case Variant::MAP: {
+        writer.beginObject();
+        for (auto& e: var.value<VariantMap>().entries()) {
+            writer.name(e.first);
+            writeVariant(e.second, writer);
+        }
+        writer.endObject();
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+} // namespace
 
 // Public Methods //////////////////////////////////////////////////////////////
 
@@ -75,6 +139,12 @@ size_t Print::print(double n, int digits)
    return x.printTo(*this);
  }
 
+size_t Print::print(const Variant& var) {
+    JSONStreamWriter writer(*this);
+    writeVariant(var, writer);
+    return writer.bytesWritten();
+}
+
 size_t Print::print(const __FlashStringHelper* str)
 {
   return print(reinterpret_cast<const char*>(str));
@@ -111,6 +181,12 @@ size_t Print::println(double num, int digits)
   size_t n = print(num, digits);
   n += println();
   return n;
+}
+
+size_t Print::println(const Variant& var) {
+    size_t n = print(var);
+    n += println();
+    return n;
 }
 
  size_t Print::println(const Printable& x)

@@ -447,7 +447,7 @@ void testVector() {
             check(a).values(1, 2, 3, 4, 5, 6).capacity(6);
             Vector b;
             it = b.insert(b.begin(), 1); // insert to empty vector
-            CHECK(it == a.begin());
+            CHECK(it == b.begin());
             CHECK(*it == 1);
             check(b).values(1).capacity(1);
         }

@@ -130,35 +130,39 @@ TEST_CASE("Variant") {
             check<int>(v, 123);
         }
         {
-            Variant v((unsigned)123);
+            Variant v(123u);
             check<unsigned>(v, 123);
         }
 #ifdef __LP64__
         {
-            Variant v((long)123);
+            Variant v(123l);
             check<int64_t>(v, 123);
         }
         {
-            Variant v((unsigned long)123);
+            Variant v(123ul);
             check<uint64_t>(v, 123);
         }
 #else
         {
-            Variant v((long)123);
+            Variant v(123l);
             check<int>(v, 123);
         }
         {
-            Variant v((unsigned long)123);
+            Variant v(123ul);
             check<unsigned>(v, 123);
         }
 #endif
         {
-            Variant v((long long)123);
+            Variant v(123ll);
             check<int64_t>(v, 123);
         }
         {
-            Variant v((unsigned long long)123);
+            Variant v(123ull);
             check<uint64_t>(v, 123);
+        }
+        {
+            Variant v(123.0f);
+            check<double>(v, 123.0);
         }
         {
             Variant v(123.0);
@@ -208,26 +212,29 @@ TEST_CASE("Variant") {
         v = 123;
         check<int>(v, 123);
 
-        v = (unsigned)123;
+        v = 123u;
         check<unsigned>(v, 123);
 #ifdef __LP64__
-        v = (long)123;
+        v = 123l;
         check<int64_t>(v, 123);
 
-        v = (unsigned long)123;
+        v = 123ul;
         check<uint64_t>(v, 123);
 #else
-        v = (long)123;
+        v = 123l;
         check<int>(v, 123);
 
-        v = (unsigned long)123;
+        v = 123ul;
         check<unsigned>(v, 123);
 #endif
-        v = (long long)123;
+        v = 123ll;
         check<int64_t>(v, 123);
 
-        v = (unsigned long long)123;
+        v = 123ull;
         check<uint64_t>(v, 123);
+
+        v = 123.0f;
+        check<double>(v, 123.0);
 
         v = 123.0;
         check<double>(v, 123.0);
@@ -245,5 +252,54 @@ TEST_CASE("Variant") {
         VariantMap map({ { "a", 1 }, { "b", 2 }, { "c", 3 } });
         v = map;
         check<VariantMap>(v, map);
+    }
+
+    SECTION("can be converted to JSON") {
+        Variant v;
+        CHECK(v.toJSON() == "null");
+
+        v = true;
+        CHECK(v.toJSON() == "true");
+
+        v = 123;
+        CHECK(v.toJSON() == "123");
+
+        v = 123.5;
+        CHECK(v.toJSON() == "123.5");
+
+        v = "abc";
+        CHECK(v.toJSON() == "\"abc\"");
+
+        v.append(123);
+        v.append("abc");
+        CHECK(v.toJSON() == "[123,\"abc\"]");
+
+        v.set("a", 1);
+        v.set("b", 2);
+        v.set("c", 3);
+        CHECK(v.toJSON() == "{\"a\":1,\"b\":2,\"c\":3}");
+    }
+
+    SECTION("can be converted from JSON") {
+        Variant v = Variant::fromJSON("null");
+        check<std::monostate>(v);
+
+        v = Variant::fromJSON("true");
+        check(v, true);
+
+        v = Variant::fromJSON("123");
+        check(v, 123);
+
+        v = Variant::fromJSON("123.5");
+        check(v, 123.5);
+
+        v = Variant::fromJSON("\"abc\"");
+        check(v, String("abc"));
+
+        v = Variant::fromJSON("[123,\"abc\"]");
+        check(v, VariantArray{ 123, "abc" });
+
+        v = Variant::fromJSON("{\"a\":1,\"b\":2,\"c\":3}");
+        check(v, VariantMap{ { "a", 1 }, { "b", 2 }, { "c", 3 } });
     }
 }
