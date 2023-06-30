@@ -6,9 +6,6 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(particle_firmware_LedgerPageInfo, particle_firmware_LedgerPageInfo, AUTO)
-
-
 PB_BIND(particle_firmware_LedgerInfo, particle_firmware_LedgerInfo, AUTO)
 
 

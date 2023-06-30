@@ -34,6 +34,8 @@ public:
             count_(1) {
     }
 
+    RefCount(const RefCount&) = delete;
+
     virtual ~RefCount() = default;
 
     void addRef() const {
@@ -45,6 +47,8 @@ public:
             delete this;
         }
     }
+
+    RefCount& operator=(const RefCount&) = delete;
 
 private:
     mutable std::atomic_int count_;
@@ -113,6 +117,12 @@ public:
         return RefCountPtr(ptr, false /* addRef */);
     }
 
+    friend void swap(RefCountPtr& ptr1, RefCountPtr& ptr2) {
+        auto p = ptr1.p_;
+        ptr1.p_ = ptr2.p_;
+        ptr2.p_ = p;
+    }
+
 private:
     T* p_;
 
@@ -121,12 +131,6 @@ private:
         if (addRef && p_) {
             p_->addRef();
         }
-    }
-
-    friend void swap(RefCountPtr& ptr1, RefCountPtr& ptr2) {
-        auto p = ptr1.p_;
-        ptr1.p_ = ptr2.p_;
-        ptr2.p_ = p;
     }
 };
 

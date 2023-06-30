@@ -14,18 +14,21 @@
 /* *
  Ledger info. */
 typedef struct _particle_firmware_LedgerInfo { 
-    pb_callback_t name; /* /< Ledger name. Not set for a device ledger. */
+    char name[33]; /* /< Ledger name. */
     particle_ledger_LedgerScope scope; /* /< Ledger scope. */
-} particle_firmware_LedgerInfo;
+    particle_ledger_SyncDirection sync_direction; /* /< Sync direction. */
+    /* *
+ Last time the ledger was updated, in milliseconds since the Unix epoch.
 
-/* *
- Page info. */
-typedef struct _particle_firmware_LedgerPageInfo { 
-    pb_callback_t name; /* /< Page name. */
-    bool has_updated_at;
-    uint64_t updated_at; /* /< Last time the page was updated, in milliseconds since the Unix epoch. */
-    bool deleted; /* /< Whether the page was deleted locally. */
-} particle_firmware_LedgerPageInfo;
+ If 0, the time is unknown. */
+    uint64_t last_updated; 
+    /* *
+ Last time the ledger was synchronized with the Cloud, in milliseconds since the Unix epoch.
+
+ If 0, the ledger has never been synchronized. */
+    uint64_t last_synced; 
+    bool sync_pending; /* /< Whether the ledger has local changes that need to be synchronized. */
+} particle_firmware_LedgerInfo;
 
 
 #ifdef __cplusplus
@@ -33,42 +36,35 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define particle_firmware_LedgerPageInfo_init_default {{{NULL}, NULL}, false, 0, 0}
-#define particle_firmware_LedgerInfo_init_default {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN}
-#define particle_firmware_LedgerPageInfo_init_zero {{{NULL}, NULL}, false, 0, 0}
-#define particle_firmware_LedgerInfo_init_zero   {{{NULL}, NULL}, _particle_ledger_LedgerScope_MIN}
+#define particle_firmware_LedgerInfo_init_default {"", _particle_ledger_LedgerScope_MIN, _particle_ledger_SyncDirection_MIN, 0, 0, 0}
+#define particle_firmware_LedgerInfo_init_zero   {"", _particle_ledger_LedgerScope_MIN, _particle_ledger_SyncDirection_MIN, 0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_firmware_LedgerInfo_name_tag    1
 #define particle_firmware_LedgerInfo_scope_tag   2
-#define particle_firmware_LedgerPageInfo_name_tag 1
-#define particle_firmware_LedgerPageInfo_updated_at_tag 2
-#define particle_firmware_LedgerPageInfo_deleted_tag 3
+#define particle_firmware_LedgerInfo_sync_direction_tag 3
+#define particle_firmware_LedgerInfo_last_updated_tag 4
+#define particle_firmware_LedgerInfo_last_synced_tag 5
+#define particle_firmware_LedgerInfo_sync_pending_tag 6
 
 /* Struct field encoding specification for nanopb */
-#define particle_firmware_LedgerPageInfo_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   name,              1) \
-X(a, STATIC,   OPTIONAL, FIXED64,  updated_at,        2) \
-X(a, STATIC,   SINGULAR, BOOL,     deleted,           3)
-#define particle_firmware_LedgerPageInfo_CALLBACK pb_default_field_callback
-#define particle_firmware_LedgerPageInfo_DEFAULT NULL
-
 #define particle_firmware_LedgerInfo_FIELDLIST(X, a) \
-X(a, CALLBACK, OPTIONAL, STRING,   name,              1) \
-X(a, STATIC,   SINGULAR, UENUM,    scope,             2)
-#define particle_firmware_LedgerInfo_CALLBACK pb_default_field_callback
+X(a, STATIC,   SINGULAR, STRING,   name,              1) \
+X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
+X(a, STATIC,   SINGULAR, UENUM,    sync_direction,    3) \
+X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      4) \
+X(a, STATIC,   SINGULAR, FIXED64,  last_synced,       5) \
+X(a, STATIC,   SINGULAR, BOOL,     sync_pending,      6)
+#define particle_firmware_LedgerInfo_CALLBACK NULL
 #define particle_firmware_LedgerInfo_DEFAULT NULL
 
-extern const pb_msgdesc_t particle_firmware_LedgerPageInfo_msg;
 extern const pb_msgdesc_t particle_firmware_LedgerInfo_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
-#define particle_firmware_LedgerPageInfo_fields &particle_firmware_LedgerPageInfo_msg
 #define particle_firmware_LedgerInfo_fields &particle_firmware_LedgerInfo_msg
 
 /* Maximum encoded size of messages (where known) */
-/* particle_firmware_LedgerPageInfo_size depends on runtime parameters */
-/* particle_firmware_LedgerInfo_size depends on runtime parameters */
+#define particle_firmware_LedgerInfo_size        58
 
 #ifdef __cplusplus
 } /* extern "C" */

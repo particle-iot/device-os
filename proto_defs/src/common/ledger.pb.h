@@ -13,16 +13,28 @@
 /* *
  Ledger scope. */
 typedef enum _particle_ledger_LedgerScope { 
-    particle_ledger_LedgerScope_LEDGER_SCOPE_INVALID = 0, /* /< Invalid scope. */
+    particle_ledger_LedgerScope_LEDGER_SCOPE_UNKNOWN = 0, /* /< Unknown scope. */
     particle_ledger_LedgerScope_LEDGER_SCOPE_DEVICE = 1, /* /< Device scope. */
     particle_ledger_LedgerScope_LEDGER_SCOPE_PRODUCT = 2, /* /< Product scope. */
     particle_ledger_LedgerScope_LEDGER_SCOPE_OWNER = 3 /* /< Owner scope. */
 } particle_ledger_LedgerScope;
 
+/* *
+ Sync direction. */
+typedef enum _particle_ledger_SyncDirection { 
+    particle_ledger_SyncDirection_SYNC_DIRECTION_UNKNOWN = 0, /* /< Unknown direction. */
+    particle_ledger_SyncDirection_SYNC_DIRECTION_DEVICE_TO_CLOUD = 1, /* /< Device to cloud. */
+    particle_ledger_SyncDirection_SYNC_DIRECTION_CLOUD_TO_DEVICE = 2 /* /< Cloud to device. */
+} particle_ledger_SyncDirection;
+
 /* Helper constants for enums */
-#define _particle_ledger_LedgerScope_MIN particle_ledger_LedgerScope_LEDGER_SCOPE_INVALID
+#define _particle_ledger_LedgerScope_MIN particle_ledger_LedgerScope_LEDGER_SCOPE_UNKNOWN
 #define _particle_ledger_LedgerScope_MAX particle_ledger_LedgerScope_LEDGER_SCOPE_OWNER
 #define _particle_ledger_LedgerScope_ARRAYSIZE ((particle_ledger_LedgerScope)(particle_ledger_LedgerScope_LEDGER_SCOPE_OWNER+1))
+
+#define _particle_ledger_SyncDirection_MIN particle_ledger_SyncDirection_SYNC_DIRECTION_UNKNOWN
+#define _particle_ledger_SyncDirection_MAX particle_ledger_SyncDirection_SYNC_DIRECTION_CLOUD_TO_DEVICE
+#define _particle_ledger_SyncDirection_ARRAYSIZE ((particle_ledger_SyncDirection)(particle_ledger_SyncDirection_SYNC_DIRECTION_CLOUD_TO_DEVICE+1))
 
 
 #ifdef __cplusplus

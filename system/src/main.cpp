@@ -37,7 +37,6 @@
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_cloud_internal.h"
-#include "system_ledger_internal.h"
 #include "system_cloud_connection.h"
 #include "system_sleep.h"
 #include "system_threading.h"
@@ -765,11 +764,6 @@ void app_setup_and_loop(void)
         HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
     }
     Network_Setup(threaded);    // todo - why does this come before system thread initialization?
-
-    int r = system::LedgerManager::instance()->init();
-    if (r < 0) {
-        LOG(ERROR, "Failed to initialize ledger manager: %d", r);
-    }
 
 #if PLATFORM_THREADING
     if (threaded)

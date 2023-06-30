@@ -17,13 +17,16 @@
 
 #pragma once
 
+#include <optional>
+#include <utility>
 #include <memory>
+#include <mutex>
 
 #include "system_ledger.h"
 #include "filesystem.h"
 #include "static_recursive_mutex.h"
-#include "ref_count.h"
 #include "c_string.h"
+#include "ref_count.h"
 #include "system_error.h"
 
 #include "spark_wiring_vector.h"
@@ -31,73 +34,95 @@
 namespace particle::system {
 
 class Ledger;
-class LedgerPage;
+class LedgerInfo;
+class LedgerManager;
 class LedgerStream;
-class LedgerPageInputStream;
-class LedgerPageOutputStream;
+class LedgerReader;
+class LedgerWriter;
 
 enum class LedgerChangeSource {
     USER,
     SYSTEM
 };
 
-class LedgerManager {
+// The reference counter of a ledger instance is managed by the LedgerManager. We can't safely use a
+// regular atomic counter, such as RefCount, because the LedgerManager maintains a list of all created
+// ledger instances that needs to be updated when any of the instances is destroyed. Shared pointers
+// would work but those can't be used in dynalib interfaces
+class LedgerBase {
 public:
-    LedgerManager() :
-            inited_(false) {
+    LedgerBase() :
+            refCount_(1) {
     }
 
-    int init();
+    LedgerBase(const LedgerBase&) = delete;
 
-    int getLedger(const char* name, ledger_scope scope,int apiVersion, RefCountPtr<Ledger>& ledger);
-    void addLedgerRef(Ledger* ledger); // Called by Ledger::addRef()
-    void releaseLedger(Ledger* ledger); // Called by Ledger::release()
+    virtual ~LedgerBase() = default;
+
+    void addRef() const;
+    void release() const;
+
+    LedgerBase& operator=(const LedgerBase&) = delete;
+
+private:
+    mutable int refCount_;
+
+    friend class LedgerManager;
+};
+
+class LedgerManager {
+public:
+    LedgerManager() = default;
+
+    LedgerManager(const LedgerBase&) = delete;
+
+    int getLedger(const char* name, RefCountPtr<Ledger>& ledger);
+
+    int removeLedgerData(const char* name);
+    int removeAllData();
+
+    LedgerManager& operator=(const LedgerManager&) = delete;
 
     static LedgerManager* instance();
 
 private:
-    Vector<Ledger*> ledgerInstances_; // Instantiated ledgers
+    Vector<Ledger*> ledgers_; // Instantiated ledgers
     mutable StaticRecursiveMutex mutex_; // Manager lock
-    bool inited_; // Whether the manager was initialized successfully
+
+    std::pair<Vector<Ledger*>::ConstIterator, bool> findLedger(const char* name) const;
+
+    void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase::addRef()
+    void releaseLedger(const LedgerBase* ledger); // Called by LedgerBase::release()
+
+    friend class LedgerBase;
 };
 
-class Ledger {
+class Ledger: public LedgerBase {
 public:
-    Ledger() :
-            pageSyncCallback_(nullptr),
-            pageChangeCallback_(nullptr),
-            appData_(nullptr),
-            destroyAppData_(nullptr),
-            scope_(LEDGER_SCOPE_INVALID),
-            apiVersion_(0),
-            refCount_(1) {
-    }
-
+    Ledger();
     ~Ledger();
 
-    int init(const char* name, ledger_scope scope, int apiVersion);
+    int init(const char* name);
 
-    void setCallbacks(ledger_page_sync_callback pageSync, ledger_remote_page_change_callback pageChange);
+    int beginRead(LedgerReader& reader);
+    int beginWrite(LedgerChangeSource src, LedgerWriter& writer);
 
-    void setAppData(void* data, ledger_destroy_app_data_callback destroy);
-    void* appData() const;
-
-    int getPage(const char* name, RefCountPtr<LedgerPage>& page);
-    void addPageRef(LedgerPage* page); // Called by LedgerPage::addRef()
-    void releasePage(LedgerPage* page); // Called by LedgerPage::release()
-
-    int getLinkedPageNames(Vector<CString>& names) const;
-
-    bool isUserWritable() const {
-        return scope_ == LEDGER_SCOPE_DEVICE;
-    }
-
-    ledger_scope scope() const {
-        return scope_;
-    }
+    LedgerInfo info() const;
 
     const char* name() const {
-        return name_;
+        return name_; // Immutable
+    }
+
+    void setSyncCallback(ledger_sync_callback callback) {
+        std::lock_guard lock(*this);
+        syncCallback_ = callback;
+    }
+
+    void setAppData(void* data, ledger_destroy_app_data_callback destroy);
+
+    void* appData() const {
+        std::lock_guard lock(*this);
+        return appData_;
     }
 
     void lock() const {
@@ -108,111 +133,120 @@ public:
         mutex_.unlock();
     }
 
-    void addRef() {
-        // The ledger's reference counter is managed by the LedgerManager. We can't safely use a
-        // regular atomic counter, such as RefCount, because the LedgerManager maintains a list of
-        // reusable ledger instances which needs to be updated when a ledger is destroyed. Using
-        // shared pointers would solve the problem but those can't be used in dynalib interfaces
-        LedgerManager::instance()->addLedgerRef(this);
-    }
-
-    void release() {
-        LedgerManager::instance()->releaseLedger(this);
-    }
-
 private:
-    Vector<CString> linkedPageNames_; // Names of linked pages
-    Vector<LedgerPage*> pageInstances_; // Instantiated pages
+    int lastSeqNum_; // Counter incremented every time the ledger is opened for writing
+    int stagedSeqNum_; // Sequence number assigned to the most recent staged ledger data
+    int curReaderCount_; // Number of active readers of the current ledger data
+    int stagedReaderCount_; // Number of active readers of the staged ledger data
+    int stagedFileCount_; // Number of staged data files created
+
+    int64_t lastUpdated_; // Last time the ledger was updated
+    int64_t lastSynced_; // Last time the ledger was synchronized
+    bool syncPending_; // Whether the ledger has local changes that have not yet been synchronized
+
+    ledger_sync_callback syncCallback_; // Callback to invoke when the ledger has been synchronized
+    ledger_destroy_app_data_callback destroyAppData_; // Destructor for the application data
+    void* appData_; // Application data
+
     CString name_; // Ledger name
+    ledger_scope scope_; // Ledger scope
+    ledger_sync_direction syncDir_; // Sync direction
+
     mutable StaticRecursiveMutex mutex_; // Ledger lock
 
-    // Ledger callbacks
-    ledger_page_sync_callback pageSyncCallback_;
-    ledger_remote_page_change_callback pageChangeCallback_;
+    int endRead(LedgerReader* reader); // Called by LedgerReader
+    int endWrite(LedgerWriter* writer, const LedgerInfo& info); // Called by LedgerWriter
+    int discardWrite(LedgerWriter* writer); // ditto
 
-    void* appData_; // Application data
-    ledger_destroy_app_data_callback destroyAppData_; // Destructor for the application data
+    int loadLedgerInfo(lfs_t* fs);
+    int writeLedgerInfo(lfs_t* fs, lfs_file_t* file);
+    void updateLedgerInfo(const LedgerInfo& info);
 
-    ledger_scope scope_; // Ledger scope
-    int apiVersion_; // API version
-    int refCount_; // Reference count
+    int initCurrentData(lfs_t* fs);
+    int flushStagedData(lfs_t* fs);
+    int removeTempData(lfs_t* fs);
 
-    int loadLedgerInfo();
-    int saveLedgerInfo();
-
-    friend class LedgerManager; // For accessing refCount_
+    friend class LedgerReader;
+    friend class LedgerWriter;
 };
 
-class LedgerPage {
+class LedgerInfo {
 public:
-    LedgerPage() :
-            changeCallback_(nullptr),
-            appData_(nullptr),
-            destroyAppData_(nullptr),
-            changeSrc_(),
-            readerCount_(0),
-            refCount_(1) {
+    LedgerInfo() = default;
+
+    LedgerInfo& scope(ledger_scope scope) {
+        scope_ = scope;
+        return *this;
     }
 
-    ~LedgerPage();
-
-    int init(const char* name, Ledger* ledger);
-
-    void setLocalChangeCallback(ledger_local_page_change_callback callback);
-
-    void setAppData(void* data, ledger_destroy_app_data_callback destroy);
-    void* appData() const;
-
-    int openInputStream(std::unique_ptr<LedgerStream>& stream);
-    int openOutputStream(LedgerChangeSource src, std::unique_ptr<LedgerStream>& stream);
-    int inputStreamClosed(LedgerPageInputStream* stream); // Called by LedgerPageInputStream
-    int outputStreamClosed(LedgerPageOutputStream* stream, bool flush); // Called by LedgerPageOutputStream
-
-    const char* name() const {
-        return name_;
+    ledger_scope scope() const {
+        return scope_.value_or(LEDGER_SCOPE_UNKNOWN);
     }
 
-    Ledger* ledger() const {
-        return ledger_.get();
+    bool hasScope() const {
+        return scope_.has_value();
     }
 
-    void lock() const {
-        ledger_->lock();
+    LedgerInfo& syncDirection(ledger_sync_direction dir) {
+        syncDir_ = dir;
+        return *this;
     }
 
-    void unlock() const {
-        ledger_->unlock();
+    ledger_sync_direction syncDirection() const {
+        return syncDir_.value_or(LEDGER_SYNC_DIRECTION_UNKNOWN);
     }
 
-    void addRef() {
-        // The page's reference counter is managed by the parent ledger instance
-        ledger_->addPageRef(this);
+    bool hasSyncDirection() const {
+        return syncDir_.has_value();
     }
 
-    void release() {
-        ledger_->releasePage(this);
+    LedgerInfo& lastUpdated(int64_t time) {
+        lastUpdated_ = time;
+        return *this;
+    }
+
+    int64_t lastUpdated() const {
+        return lastUpdated_.value_or(0);
+    }
+
+    bool hasLastUpdated() const {
+        return lastUpdated_.has_value();
+    }
+
+    LedgerInfo& lastSynced(int64_t time) {
+        lastSynced_ = time;
+        return *this;
+    }
+
+    int64_t lastSynced() const {
+        return lastSynced_.value_or(0);
+    }
+
+    bool hasLastSynced() const {
+        return lastSynced_.has_value();
+    }
+
+    LedgerInfo& syncPending(bool pending) {
+        syncPending_ = pending;
+        return *this;
+    }
+
+    bool syncPending() const {
+        return syncPending_.value_or(false);
+    }
+
+    bool hasSyncPending() const {
+        return syncPending_.has_value();
     }
 
 private:
-    CString name_; // Page name
-    RefCountPtr<Ledger> ledger_; // Parent ledger
-    CString updatedPageFile_; // Temporary file with pending changes to the page
-    ledger_local_page_change_callback changeCallback_; // Callback to invoke when the page is changed by the system
-
-    void* appData_; // Application data
-    ledger_destroy_app_data_callback destroyAppData_; // Destructor for the application data
-
-    LedgerChangeSource changeSrc_; // Who is updating the page
-    int readerCount_; // Number of input streams open for this page
-    int refCount_; // Reference count
-
-    friend class Ledger; // For accessing refCount_
-
-    int updatePageFile(lfs_t* lfs, const char* srcFile, LedgerChangeSource changeSrc);
-    int loadPageInfo();
+    std::optional<ledger_scope> scope_;
+    std::optional<ledger_sync_direction> syncDir_;
+    std::optional<int64_t> lastUpdated_;
+    std::optional<int64_t> lastSynced_;
+    std::optional<bool> syncPending_;
 };
 
-// TODO: Use the interface classes from stream.h
 class LedgerStream {
 public:
     virtual ~LedgerStream() = default;
@@ -220,21 +254,28 @@ public:
     virtual int read(char* data, size_t size) = 0;
     virtual int write(const char* data, size_t size) = 0;
     virtual int close(bool flush = true) = 0;
-    virtual int rewind() = 0;
 };
 
-class LedgerPageInputStream: public LedgerStream {
+class LedgerReader: public LedgerStream {
 public:
-    LedgerPageInputStream() :
+    LedgerReader() :
             file_(),
+            dataSize_(0),
             dataOffs_(0),
-            streamOpen_(false),
-            fileOpen_(false) {
+            seqNum_(0),
+            open_(false) {
     }
 
-    ~LedgerPageInputStream();
+    LedgerReader(const LedgerReader&) = delete;
 
-    int init(const char* pageFile, LedgerPage* page);
+    LedgerReader(LedgerReader&& reader) :
+            LedgerReader() {
+        swap(*this, reader);
+    }
+
+    ~LedgerReader() {
+        end();
+    }
 
     int read(char* data, size_t size) override;
 
@@ -243,29 +284,78 @@ public:
     }
 
     int close(bool flush) override;
-    int rewind() override;
+
+    int end();
+
+    bool isOpen() const {
+        return open_;
+    }
+
+    lfs_file_t* file() {
+        return &file_;
+    }
+
+    int seqNumber() const {
+        return seqNum_;
+    }
+
+    LedgerReader& operator=(LedgerReader&& reader) {
+        swap(*this, reader);
+        return *this;
+    }
+
+    LedgerReader& operator=(const LedgerReader&) = default;
+
+    friend void swap(LedgerReader& r1, LedgerReader& r2) {
+        using std::swap; // For ADL
+        swap(r1.ledger_, r2.ledger_);
+        swap(r1.file_, r2.file_);
+        swap(r1.dataSize_, r2.dataSize_);
+        swap(r1.dataOffs_, r2.dataOffs_);
+        swap(r1.seqNum_, r2.seqNum_);
+        swap(r1.open_, r2.open_);
+    }
 
 private:
-    RefCountPtr<LedgerPage> page_; // Page being read
+    RefCountPtr<Ledger> ledger_; // Ledger instance
     lfs_file_t file_; // File handle
-    size_t dataOffs_; // Offset of the page data in the page file
-    bool streamOpen_; // Whether the stream is open
-    bool fileOpen_; // Whether the page file is open
+    size_t dataSize_; // Size of the data section of the ledger file
+    size_t dataOffs_; // Current offset in the data section
+    int seqNum_; // Sequence number assigned to the ledger data being read
+    bool open_; // Whether the reader is open
+
+    LedgerReader(lfs_file_t* file, size_t dataSize, int seqNum, Ledger* ledger) :
+            ledger_(ledger),
+            file_(*file),
+            dataSize_(dataSize),
+            dataOffs_(0),
+            seqNum_(seqNum),
+            open_(true) {
+    }
+
+    friend class Ledger;
 };
 
-class LedgerPageOutputStream: public LedgerStream {
+class LedgerWriter: public LedgerStream {
 public:
-    LedgerPageOutputStream() :
+    LedgerWriter() :
             file_(),
             changeSrc_(),
-            pageInfoSize_(0),
-            dataOffs_(0),
+            dataSize_(0),
+            seqNum_(0),
             open_(false) {
     }
 
-    ~LedgerPageOutputStream();
+    LedgerWriter(const LedgerWriter&) = delete;
 
-    int init(LedgerChangeSource src, const char* pageFile, LedgerPage* page);
+    LedgerWriter(LedgerWriter&& writer) :
+            LedgerWriter() {
+        swap(*this, writer);
+    }
+
+    ~LedgerWriter() {
+        discard();
+    }
 
     int read(char* data, size_t size) override {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -273,24 +363,74 @@ public:
 
     int write(const char* data, size_t size) override;
     int close(bool flush) override;
-    int rewind() override;
+
+    int end(const LedgerInfo& info = LedgerInfo());
+
+    void discard();
+
+    bool isOpen() const {
+        return open_;
+    }
+
+    lfs_file_t* file() {
+        return &file_;
+    }
+
+    size_t dataSize() const {
+        return dataSize_;
+    }
+
+    int seqNumber() const {
+        return seqNum_;
+    }
 
     LedgerChangeSource changeSource() const {
         return changeSrc_;
     }
 
-    const char* fileName() const {
-        return fileName_;
+    LedgerWriter& operator=(LedgerWriter&& writer) {
+        swap(*this, writer);
+        return *this;
+    }
+
+    LedgerWriter& operator=(const LedgerWriter&) = delete;
+
+    friend void swap(LedgerWriter& w1, LedgerWriter& w2) {
+        using std::swap; // For ADL
+        swap(w1.ledger_, w2.ledger_);
+        swap(w1.file_, w2.file_);
+        swap(w1.changeSrc_, w2.changeSrc_);
+        swap(w1.dataSize_, w2.dataSize_);
+        swap(w1.seqNum_, w2.seqNum_);
+        swap(w1.open_, w2.open_);
     }
 
 private:
-    CString fileName_; // Page file name
-    RefCountPtr<LedgerPage> page_; // Page being written
+    RefCountPtr<Ledger> ledger_; // Ledger instance
     lfs_file_t file_; // File handle
-    LedgerChangeSource changeSrc_; // Change source
-    size_t pageInfoSize_; // Size of the page info section of the page file
-    size_t dataOffs_; // Offset of the page data in the page file
-    bool open_; // Whether the stream is open
+    LedgerChangeSource changeSrc_; // Who is writing to the ledger
+    size_t dataSize_; // Size of the written data
+    int seqNum_; // Sequence number assigned to the ledger data being written
+    bool open_; // Whether the writer is open
+
+    LedgerWriter(lfs_file_t* file, LedgerChangeSource src, int seqNum, Ledger* ledger) :
+            ledger_(ledger),
+            file_(*file),
+            changeSrc_(src),
+            dataSize_(0),
+            seqNum_(seqNum),
+            open_(true) {
+    }
+
+    friend class Ledger;
 };
+
+inline void LedgerBase::addRef() const {
+    LedgerManager::instance()->addLedgerRef(this);
+}
+
+inline void LedgerBase::release() const {
+    LedgerManager::instance()->releaseLedger(this);
+}
 
 } // namespace particle::system
