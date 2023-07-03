@@ -7,7 +7,7 @@ ifeq ("","$(SPARK_NO_PLATFORM)")
 DEPENDENCIES += platform
 CFLAGS += -DSPARK_PLATFORM
 endif
-DEPENDENCIES = platform hal services communication wiring dynalib crypto proto_defs third_party/arduinojson
+DEPENDENCIES = platform hal services communication wiring dynalib crypto proto_defs
 TARGET_TYPE = a
 
 MAKE_DEPENDENCIES =
