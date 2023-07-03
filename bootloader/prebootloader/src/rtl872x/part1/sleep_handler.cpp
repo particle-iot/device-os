@@ -249,8 +249,31 @@ void configureDeepSleepWakeupSource(const hal_sleep_config_t* config) {
 
 // Copy and paste from SOCPS_DeepSleep_RAM()
 void enterDeepSleep() {
+#if PLATFORM_ID == PLATFORM_P2
+    // dirty-hack for Photon2 D7: PA27 (SWD-DIO)
+    uint32_t bitMask = 1 << 27;
+    bool inputPulldown = false;
+    if ((GPIOA_BASE->PORT[0].DDR & bitMask) && !(GPIOA_BASE->PORT[0].DR & bitMask)) { // PA27 is output low
+        inputPulldown = true;
+    }
+    if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN) & BIT_LSYS_SWD_PMUX_EN) {
+        // Disable SWD
+        Pinmux_Swdoff();
+        inputPulldown = true;
+    }
+#endif
+
 	/* pin power leakage */
 	pinmap_deepsleep();
+
+#if PLATFORM_ID == PLATFORM_P2
+    if (inputPulldown) {
+        // Configure it as input pulldown
+        GPIOA_BASE->PORT[0].DDR &= (~bitMask);
+        PAD_PullCtrl(27, GPIO_PuPd_DOWN);
+    }
+#endif
+
 	/* clear wake event */
 	SOCPS_ClearWakeEvent();
 	/* Enable low power mode */
@@ -323,10 +346,33 @@ void sleepProcess(void) {
                 SOCPS_SWRLDO_Suspend(ENABLE);
                 SOCPS_SleepInit();
                 configureSleepWakeupSource(config);
+
+#if PLATFORM_ID == PLATFORM_P2
+                bool swdEnabled = false;
+                if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN) & BIT_LSYS_SWD_PMUX_EN) {
+                    // Disable SWD
+                    Pinmux_Swdoff();
+                    uint32_t bitMask = 1 << 27;
+                    // Configure it as input pulldown
+                    GPIOA_BASE->PORT[0].DDR &= (~bitMask);
+                    PAD_PullCtrl(27, GPIO_PuPd_DOWN);
+                    swdEnabled = true;
+                }
+#endif
+
                 SOCPS_SleepCG();
                 SOCPS_SWRLDO_Suspend(DISABLE);
 
                 SOCPS_AONTimerCmd(DISABLE);
+
+#if PLATFORM_ID == PLATFORM_P2
+                if (swdEnabled) {
+                    PAD_PullCtrl(27, GPIO_PuPd_UP);
+                    uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);	
+                    temp |= BIT_LSYS_SWD_PMUX_EN;
+                    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN, temp);
+                }
+#endif
 
                 // Figure out the wakeup reason
                 uint32_t wakeReason = 0;
