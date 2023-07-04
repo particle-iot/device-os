@@ -330,6 +330,7 @@ Ledger::Ledger() :
         stagedFileCount_(0),
         lastUpdated_(0),
         lastSynced_(0),
+        dataSize_(0),
         syncPending_(false),
         syncCallback_(nullptr),
         destroyAppData_(nullptr),
@@ -408,10 +409,10 @@ int Ledger::beginRead(LedgerReader& reader) {
     return 0;
 }
 
-int Ledger::beginWrite(LedgerChangeSource src, LedgerWriter& writer) {
+int Ledger::beginWrite(LedgerWriteSource src, LedgerWriter& writer) {
     std::lock_guard lock(*this);
     // It's allowed to write to a ledger while its sync direction is unknown
-    if (src == LedgerChangeSource::USER && syncDir_ != LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD &&
+    if (src == LedgerWriteSource::USER && syncDir_ != LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD &&
             syncDir_ != LEDGER_SYNC_DIRECTION_UNKNOWN) {
         return SYSTEM_ERROR_LEDGER_READ_ONLY;
     }
@@ -441,6 +442,7 @@ LedgerInfo Ledger::info() const {
     return LedgerInfo()
             .scope(scope_)
             .syncDirection(syncDir_)
+            .dataSize(dataSize_)
             .lastUpdated(lastUpdated_)
             .lastSynced(lastSynced_)
             .syncPending(syncPending_);
@@ -513,25 +515,26 @@ int Ledger::endWrite(LedgerWriter* writer, const LedgerInfo& info) {
         }
     });
     // Update the ledger info
-    auto oldInfo = this->info();
-    updateLedgerInfo(info);
-    if (!info.hasSyncPending() && writer->changeSource() == LedgerChangeSource::USER) {
-        syncPending_ = true;
-    }
+    auto newInfo = this->info().update(info);
+    newInfo.dataSize(writer->dataSize()); // Can't be overridden
     if (!info.hasLastUpdated()) {
-        lastUpdated_ = 0; // Time is unknown
+        int64_t time = 0; // Time is unknown
         if (hal_rtc_time_is_valid(nullptr)) {
             timeval tv = {};
-            if (hal_rtc_get_time(&tv, nullptr) >= 0) {
-                lastUpdated_ = tv.tv_sec * 1000ll + tv.tv_usec / 1000;
+            int r = hal_rtc_get_time(&tv, nullptr);
+            if (r < 0) {
+                LOG(ERROR, "Failed to get current time: %d", r);
+            } else {
+                time = tv.tv_sec * 1000ll + tv.tv_usec / 1000;
             }
         }
+        newInfo.lastUpdated(time);
     }
-    NAMED_SCOPE_GUARD(restoreInfoGuard, {
-        updateLedgerInfo(oldInfo);
-    });
+    if (!info.hasSyncPending() && writer->source() == LedgerWriteSource::USER) {
+        newInfo.syncPending(true);
+    }
     // Write the info section
-    size_t infoSize = CHECK(writeLedgerInfo(fs.instance(), file));
+    size_t infoSize = CHECK(writeLedgerInfo(fs.instance(), file, newInfo));
     // Write the header
     CHECK_FS(lfs_file_seek(fs.instance(), file, 0, LFS_SEEK_SET));
     CHECK(writeDataHeader(fs.instance(), file, writer->dataSize(), infoSize));
@@ -550,7 +553,7 @@ int Ledger::endWrite(LedgerWriter* writer, const LedgerInfo& info) {
         CHECK(getStagedFilePath(destPath, sizeof(destPath), name_, stagedSeqNum_));
     } else {
         // Create a new file in "staged". Note that in this case, "current" can't be replaced with
-        // the new data even if nobody is reading it as otherwise it may get overwritten with
+        // the new data even if nobody is reading it, as otherwise it would get overwritten with
         // outdated data if the device resets before the staged directory is cleaned up
         CHECK(getStagedDirPath(destPath, sizeof(destPath), name_));
         newStagedFile = true;
@@ -561,7 +564,7 @@ int Ledger::endWrite(LedgerWriter* writer, const LedgerInfo& info) {
         stagedSeqNum_ = writer->seqNumber();
         ++stagedFileCount_;
     }
-    restoreInfoGuard.dismiss();
+    updateLedgerInfo(newInfo);
     return 0;
 }
 
@@ -628,17 +631,17 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
     return 0;
 }
 
-int Ledger::writeLedgerInfo(lfs_t* fs, lfs_file_t* file) {
+int Ledger::writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const LedgerInfo& info) {
     PB_INTERNAL(LedgerInfo) pbInfo = {};
     size_t n = strlcpy(pbInfo.name, name_, sizeof(pbInfo.name));
     if (n >= sizeof(pbInfo.name)) {
         return SYSTEM_ERROR_INTERNAL; // The name is longer than specified in ledger.proto
     }
-    pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(scope_);
-    pbInfo.sync_direction = static_cast<PB_LEDGER(SyncDirection)>(syncDir_);
-    pbInfo.last_updated = lastUpdated_;
-    pbInfo.last_synced = lastSynced_;
-    pbInfo.sync_pending = syncPending_;
+    pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(info.scope());
+    pbInfo.sync_direction = static_cast<PB_LEDGER(SyncDirection)>(info.syncDirection());
+    pbInfo.last_updated = info.lastUpdated();
+    pbInfo.last_synced = info.lastSynced();
+    pbInfo.sync_pending = info.syncPending();
     n = CHECK(encodeProtobufToFile(file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
     return n;
 }
@@ -649,6 +652,9 @@ void Ledger::updateLedgerInfo(const LedgerInfo& info) {
     }
     if (info.hasSyncDirection()) {
         syncDir_ = info.syncDirection();
+    }
+    if (info.hasDataSize()) {
+        dataSize_ = info.dataSize();
     }
     if (info.hasLastUpdated()) {
         lastUpdated_ = info.lastUpdated();
@@ -676,7 +682,7 @@ int Ledger::initCurrentData(lfs_t* fs) {
     // Reserve space for the header
     CHECK_FS(lfs_file_seek(fs, &file, sizeof(LedgerDataHeader), LFS_SEEK_SET));
     // Write the info section
-    size_t infoSize = CHECK(writeLedgerInfo(fs, &file));
+    size_t infoSize = CHECK(writeLedgerInfo(fs, &file, info()));
     // Write the header
     CHECK_FS(lfs_file_seek(fs, &file, 0, LFS_SEEK_SET));
     CHECK(writeDataHeader(fs, &file, 0 /* dataSize */, infoSize));
@@ -706,15 +712,15 @@ int Ledger::flushStagedData(lfs_t* fs) {
         }
         char* end = nullptr;
         int seq = strtol(entry.name, &end, 10);
-        if (end != entry.name + strlen(entry.name)) {
+        if (end != entry.name + std::strlen(entry.name)) {
             LOG(WARN, "Found unexpected entry in ledger directory");
             continue;
         }
         if (seq > maxSeq) {
             if (maxSeq > 0) {
                 // Older staged files must be removed before the most recent file is moved to
-                // "current", otherwise "current" may get overwritten with outdated data if the
-                // device resets before the staged directory is cleaned up
+                // "current", otherwise "current" would get overwritten with outdated data if
+                // the device resets before the staged directory is cleaned up
                 CHECK(getStagedFilePath(path, sizeof(path), name_, fileName));
                 CHECK_FS(lfs_remove(fs, path));
             }
@@ -723,6 +729,9 @@ int Ledger::flushStagedData(lfs_t* fs) {
                 return SYSTEM_ERROR_INTERNAL;
             }
             maxSeq = seq;
+        } else {
+            CHECK(getStagedFilePath(path, sizeof(path), name_, entry.name));
+            CHECK_FS(lfs_remove(fs, path));
         }
     }
     CHECK_FS(r);
@@ -760,6 +769,28 @@ int Ledger::removeTempData(lfs_t* fs) {
     }
     CHECK_FS(r);
     return 0;
+}
+
+LedgerInfo& LedgerInfo::update(const LedgerInfo& info) {
+    if (info.hasScope()) {
+        scope_ = info.scope();
+    }
+    if (info.hasSyncDirection()) {
+        syncDir_ = info.syncDirection();
+    }
+    if (info.hasDataSize()) {
+        dataSize_ = info.dataSize();
+    }
+    if (info.hasLastUpdated()) {
+        lastUpdated_ = info.lastUpdated();
+    }
+    if (info.hasLastSynced()) {
+        lastSynced_ = info.lastSynced();
+    }
+    if (info.hasSyncPending()) {
+        syncPending_ = info.syncPending();
+    }
+    return *this;
 }
 
 int LedgerReader::read(char* data, size_t size) {
@@ -800,8 +831,17 @@ int LedgerWriter::write(const char* data, size_t size) {
     if (!open_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    if (src_ == LedgerWriteSource::USER && dataSize_ + size > LEDGER_MAX_DATA_SIZE) {
+        LOG(ERROR, "Ledger data is too long");
+        discard();
+        return SYSTEM_ERROR_LEDGER_TOO_LARGE;
+    }
     FsLock fs;
     size_t n = CHECK_FS(lfs_file_write(fs.instance(), &file_, data, size));
+    if (n != size) {
+        LOG(ERROR, "Unexpected number of bytes written");
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
     dataSize_ += n;
     return n;
 }

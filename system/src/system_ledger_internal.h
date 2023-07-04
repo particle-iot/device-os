@@ -40,7 +40,7 @@ class LedgerStream;
 class LedgerReader;
 class LedgerWriter;
 
-enum class LedgerChangeSource {
+enum class LedgerWriteSource {
     USER,
     SYSTEM
 };
@@ -105,8 +105,9 @@ public:
     int init(const char* name);
 
     int beginRead(LedgerReader& reader);
-    int beginWrite(LedgerChangeSource src, LedgerWriter& writer);
+    int beginWrite(LedgerWriteSource src, LedgerWriter& writer);
 
+    // Returns a LedgerInfo object with all fields set
     LedgerInfo info() const;
 
     const char* name() const {
@@ -142,6 +143,7 @@ private:
 
     int64_t lastUpdated_; // Last time the ledger was updated
     int64_t lastSynced_; // Last time the ledger was synchronized
+    size_t dataSize_; // Size of the ledger data
     bool syncPending_; // Whether the ledger has local changes that have not yet been synchronized
 
     ledger_sync_callback syncCallback_; // Callback to invoke when the ledger has been synchronized
@@ -159,7 +161,7 @@ private:
     int discardWrite(LedgerWriter* writer); // ditto
 
     int loadLedgerInfo(lfs_t* fs);
-    int writeLedgerInfo(lfs_t* fs, lfs_file_t* file);
+    int writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const LedgerInfo& info);
     void updateLedgerInfo(const LedgerInfo& info);
 
     int initCurrentData(lfs_t* fs);
@@ -198,6 +200,19 @@ public:
 
     bool hasSyncDirection() const {
         return syncDir_.has_value();
+    }
+
+    LedgerInfo& dataSize(size_t size) {
+        dataSize_ = size;
+        return *this;
+    }
+
+    size_t dataSize() const {
+        return dataSize_.value_or(0);
+    }
+
+    bool hasDataSize() const {
+        return dataSize_.has_value();
     }
 
     LedgerInfo& lastUpdated(int64_t time) {
@@ -239,11 +254,15 @@ public:
         return syncPending_.has_value();
     }
 
+    LedgerInfo& update(const LedgerInfo& info);
+
 private:
-    std::optional<ledger_scope> scope_;
-    std::optional<ledger_sync_direction> syncDir_;
+    // When adding new fields, make sure to update LedgerInfo::update() and Ledger::updateLedgerInfo()
     std::optional<int64_t> lastUpdated_;
     std::optional<int64_t> lastSynced_;
+    std::optional<size_t> dataSize_;
+    std::optional<ledger_scope> scope_;
+    std::optional<ledger_sync_direction> syncDir_;
     std::optional<bool> syncPending_;
 };
 
@@ -340,7 +359,7 @@ class LedgerWriter: public LedgerStream {
 public:
     LedgerWriter() :
             file_(),
-            changeSrc_(),
+            src_(),
             dataSize_(0),
             seqNum_(0),
             open_(false) {
@@ -384,8 +403,8 @@ public:
         return seqNum_;
     }
 
-    LedgerChangeSource changeSource() const {
-        return changeSrc_;
+    LedgerWriteSource source() const {
+        return src_;
     }
 
     LedgerWriter& operator=(LedgerWriter&& writer) {
@@ -399,7 +418,7 @@ public:
         using std::swap; // For ADL
         swap(w1.ledger_, w2.ledger_);
         swap(w1.file_, w2.file_);
-        swap(w1.changeSrc_, w2.changeSrc_);
+        swap(w1.src_, w2.src_);
         swap(w1.dataSize_, w2.dataSize_);
         swap(w1.seqNum_, w2.seqNum_);
         swap(w1.open_, w2.open_);
@@ -408,15 +427,15 @@ public:
 private:
     RefCountPtr<Ledger> ledger_; // Ledger instance
     lfs_file_t file_; // File handle
-    LedgerChangeSource changeSrc_; // Who is writing to the ledger
+    LedgerWriteSource src_; // Who is writing to the ledger
     size_t dataSize_; // Size of the written data
     int seqNum_; // Sequence number assigned to the ledger data being written
     bool open_; // Whether the writer is open
 
-    LedgerWriter(lfs_file_t* file, LedgerChangeSource src, int seqNum, Ledger* ledger) :
+    LedgerWriter(lfs_file_t* file, LedgerWriteSource src, int seqNum, Ledger* ledger) :
             ledger_(ledger),
             file_(*file),
-            changeSrc_(src),
+            src_(src),
             dataSize_(0),
             seqNum_(seqNum),
             open_(true) {

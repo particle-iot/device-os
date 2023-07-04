@@ -76,10 +76,11 @@ int ledger_get_info(ledger_instance* ledger, ledger_info* info, void* reserved) 
     auto lr = reinterpret_cast<Ledger*>(ledger);
     auto srcInfo = lr->info();
     info->name = lr->name();
-    info->scope = srcInfo.scope();
-    info->sync_direction = srcInfo.syncDirection();
     info->last_updated = srcInfo.lastUpdated();
     info->last_synced = srcInfo.lastSynced();
+    info->data_size = srcInfo.dataSize();
+    info->scope = srcInfo.scope();
+    info->sync_direction = srcInfo.syncDirection();
     info->flags = 0;
     if (srcInfo.syncPending()) {
         info->flags |= LEDGER_INFO_SYNC_PENDING;
@@ -108,7 +109,7 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
         if (!w) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        CHECK(lr->beginWrite(LedgerChangeSource::USER, *w));
+        CHECK(lr->beginWrite(LedgerWriteSource::USER, *w));
         *stream = reinterpret_cast<ledger_stream*>(w.release());
     } else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;

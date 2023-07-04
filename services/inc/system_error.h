@@ -109,8 +109,9 @@
         (LEDGER_UNSUPPORTED_FORMAT, "Unsupported format of ledger data", -2003), \
         (LEDGER_READ_ONLY, "Ledger is read only", -2004), \
         (LEDGER_IN_USE, "Ledger is in use", -2005), \
-        (LEDGER_SERIALIZATION, "Ledger serialization error", -2006), \
-        (LEDGER_DESERIALIZATION, "Ledger deserialization error", -2007)
+        (LEDGER_TOO_LARGE, "Ledger data is too large", -2006), \
+        (LEDGER_SERIALIZATION, "Ledger serialization error", -2007), \
+        (LEDGER_DESERIALIZATION, "Ledger deserialization error", -2008)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

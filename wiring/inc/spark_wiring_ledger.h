@@ -79,7 +79,7 @@ public:
             Ledger(static_cast<ledger_instance*>(nullptr)) {
     }
 
-    // This constructor is used internally
+    // This constructor is for internal use only
     explicit Ledger(ledger_instance* instance) :
             instance_(instance) {
         if (instance_) {
@@ -144,6 +144,13 @@ public:
      * @return Time the ledger was synchronized, or 0 if the ledger has never been synchronized.
      */
     time64_t lastSynced() const;
+
+    /**
+     * Get the size of the ledger data in bytes.
+     *
+     * @return Data size.
+     */
+    size_t dataSize() const;
 
     /**
      * Get the ledger name.

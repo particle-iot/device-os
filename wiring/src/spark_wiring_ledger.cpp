@@ -220,6 +220,14 @@ time64_t Ledger::lastSynced() const {
     return info.last_synced;
 }
 
+size_t Ledger::dataSize() const {
+    ledger_info info = {};
+    if (!isValid() || getLedgerInfo(instance_, info) < 0) {
+        return 0;
+    }
+    return info.data_size;
+}
+
 const char* Ledger::name() const {
     ledger_info info = {};
     if (!isValid() || getLedgerInfo(instance_, info) < 0) {

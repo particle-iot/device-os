@@ -26,6 +26,11 @@
 #define LEDGER_API_VERSION 1
 
 /**
+ * Maximum size of ledger data.
+ */
+#define LEDGER_MAX_DATA_SIZE 16384
+
+/**
  * Ledger instance.
  */
 struct ledger_instance;
@@ -122,8 +127,9 @@ typedef struct ledger_info {
      * If 0, the ledger has never been synchronized.
      */
     int64_t last_synced;
-    int sync_direction; ///< Synchronization direction as defined by the `ledger_sync_direction` enum.
+    size_t data_size; ///< Size of the ledger data.
     int scope; ///< Ledger scope as defined by the `ledger_scope` enum.
+    int sync_direction; ///< Synchronization direction as defined by the `ledger_sync_direction` enum.
     int flags; ///< Flags defined by the `ledger_info_flag` enum.
 } ledger_info;
 
