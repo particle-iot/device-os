@@ -15,11 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <variant>
 #include <memory>
-#include <cstdint>
 
 #include "spark_wiring_ledger.h"
-#include "spark_wiring_logging.h"
+#include "spark_wiring_print.h"
+
+#include "spark_wiring_error.h"
+
+#include "system_task.h"
 
 #include "scope_guard.h"
 #include "check.h"
@@ -28,384 +32,232 @@ namespace particle {
 
 namespace {
 
-const size_t INITIAL_JSON_DOCUMENT_SIZE = 256;
+struct OnSyncCallbackData {
+    Ledger::OnSyncCallback callback;
+    void* arg;
 
-// A custom reader for ArduinoJson
-class LedgerStreamReader {
-public:
-    explicit LedgerStreamReader(ledger_stream* stream) :
-            stream_(stream),
-            error_(0) {
+    OnSyncCallbackData() :
+            callback(nullptr),
+            arg(nullptr) {
     }
 
-    size_t readBytes(char* data, size_t size) {
-        if (error_) {
-            return 0;
+    OnSyncCallbackData(Ledger::OnSyncCallback callback, void* arg) :
+            callback(callback),
+            arg(arg) {
+    }
+
+    explicit operator bool() const {
+        return callback;
+    }
+};
+
+struct LedgerAppData {
+    std::variant<OnSyncCallbackData, Ledger::OnSyncFunction> onSync;
+};
+
+void destroyAppData(void* appData) {
+    delete static_cast<LedgerAppData*>(appData);
+}
+
+// Callback wrapper executed in the application thread
+void syncCallbackApp(void* data) {
+    auto ledger = static_cast<ledger_instance*>(data);
+    ledger_lock(ledger, nullptr);
+    SCOPE_GUARD({
+        ledger_unlock(ledger, nullptr);
+        ledger_release(ledger, nullptr);
+    });
+    auto appData = static_cast<LedgerAppData*>(ledger_get_app_data(ledger, nullptr));
+    if (!appData) {
+        return;
+    }
+    if (std::holds_alternative<OnSyncCallbackData>(appData->onSync)) { // Plain C callback
+        auto& d = std::get<OnSyncCallbackData>(appData->onSync);
+        d.callback(Ledger(ledger), d.arg);
+    } else { // Functor callback
+        auto &f = std::get<Ledger::OnSyncFunction>(appData->onSync);
+        f(Ledger(ledger));
+    }
+}
+
+// Callback wrapper executed in the system thread
+void syncCallbackSystem(ledger_instance* ledger, void* appData) {
+    // Dispatch the callback to the application thread
+    ledger_add_ref(ledger, nullptr);
+    int r = application_thread_invoke(syncCallbackApp, ledger, nullptr);
+    if (r != 0) { // FIXME: application_thread_invoke() doesn't really handle errors as of now
+        ledger_release(ledger, nullptr);
+    }
+}
+
+// TODO: Generalize this code when there are more callbacks
+template<typename CallbackT>
+int setSyncCallback(ledger_instance* ledger, CallbackT&& callback) {
+    ledger_lock(ledger, nullptr);
+    SCOPE_GUARD({
+        ledger_unlock(ledger, nullptr);
+    });
+    std::unique_ptr<LedgerAppData> newAppData;
+    auto appData = static_cast<LedgerAppData*>(ledger_get_app_data(ledger, nullptr));
+    if (!appData) {
+        if (!callback) {
+            return 0; // Nothing to clear
         }
-        int r = ledger_read(stream_, data, size, nullptr);
-        if (r < 0) {
-            if (r != SYSTEM_ERROR_END_OF_STREAM) {
-                LOG(ERROR, "Failed to read from ledger stream: %d", r);
-            }
-            return 0;
+        newAppData.reset(new(std::nothrow) LedgerAppData());
+        if (!newAppData) {
+            return Error::NO_MEMORY;
         }
+        appData = newAppData.get();
+    } else if (!callback) {
+        ledger_set_callbacks(ledger, nullptr, nullptr); // Clear the callback
+        ledger_set_app_data(ledger, nullptr, nullptr, nullptr); // Destroy the app data
+        ledger_release(ledger, nullptr);
+        return 0;
+    }
+    appData->onSync = std::move(callback);
+    if (newAppData) {
+        ledger_set_app_data(ledger, newAppData.release(), destroyAppData, nullptr); // Transfer ownership over the app data
+        ledger_callbacks callbacks = {};
+        callbacks.version = LEDGER_API_VERSION;
+        callbacks.sync = syncCallbackSystem;
+        ledger_set_callbacks(ledger, &callbacks, nullptr);
+        // Keep the ledger instance around until the callback is cleared
+        ledger_add_ref(ledger, nullptr);
+    }
+    return 0;
+}
+
+int getLedgerInfo(ledger_instance* ledger, ledger_info& info) {
+    info.version = LEDGER_API_VERSION;
+    int r = ledger_get_info(ledger, &info, nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_get_info() failed: %d", r);
         return r;
     }
-
-    int read() {
-        uint8_t b = 0;
-        size_t n = readBytes((char*)&b, 1);
-        if (n == 0) {
-            return -1;
-        }
-        return b;
-    }
-
-    int error() const {
-        return error_;
-    }
-
-private:
-    ledger_stream* stream_;
-    int error_;
-};
-
-// A custom writer for ArduinoJson
-class LedgerStreamWriter {
-public:
-    explicit LedgerStreamWriter(ledger_stream* stream) :
-            stream_(stream),
-            error_(0) {
-    }
-
-    size_t write(const uint8_t* data, size_t size) {
-        if (error_) {
-            return 0;
-        }
-        int r = ledger_write(stream_, (const char*)data, size, nullptr);
-        if (r < 0) {
-            LOG(ERROR, "Failed to write to ledger stream: %d", r);
-            error_ = r;
-            return 0;
-        }
-        return r;
-    }
-
-    size_t write(uint8_t b) {
-        return write(&b, 1);
-    }
-
-    int error() const {
-        return error_;
-    }
-
-private:
-    ledger_stream* stream_;
-    int error_;
-};
-
-class StringWriter {
-public:
-    explicit StringWriter(String& str) :
-            str_(str) {
-    }
-
-    size_t write(const uint8_t* data, size_t size) {
-        // TODO: Optimize memory allocations, handle errors
-        str_ += String((const char*)data, size);
-        return size;
-    }
-
-    size_t write(uint8_t b) {
-        return write(&b, 1);
-    }
-
-private:
-    String& str_;
-};
+    return 0;
+}
 
 } // namespace
 
-namespace detail {
-
-class LedgerImpl {
-public:
-    explicit LedgerImpl(ledger_instance* ledger) :
-            lr_(ledger) {
+int Ledger::set(const LedgerData& data, SetMode mode) {
+    if (!isValid()) {
+        return Error::INVALID_STATE;
     }
-
-    int getPage(const char* name, LedgerPage& page);
-
-    int getName(const char*& name) const {
-        ledger_info info = {};
-        CHECK(ledger_get_info(lr_, &info, nullptr));
-        name = info.name;
-        return 0;
+    ledger_stream* stream = nullptr;
+    int r = ledger_open(&stream, instance_, LEDGER_STREAM_MODE_WRITE, nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_open() failed: %d", r);
+        return r;
     }
-
-    int getScope(LedgerScope& scope) const {
-        ledger_info info = {};
-        CHECK(ledger_get_info(lr_, &info, nullptr));
-        scope = static_cast<LedgerScope>(info.scope);
-        return 0;
-    }
-
-private:
-    ledger_instance* lr_;
-
-    static void destroyPageAppData(void* appData);
-};
-
-class LedgerPageImpl {
-public:
-    explicit LedgerPageImpl(ledger_page* page) :
-            p_(page) {
-    }
-
-    int init() {
-        CHECK(loadData());
-        return 0;
-    }
-
-    int getEntry(const char* name, LedgerEntry& entry) {
-        if (!name) {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        }
-        CString entryName(name);
-        if (!entryName) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        entry = LedgerEntry(p_, std::move(entryName));
-        return 0;
-    }
-
-    void removeEntry(const char* name) {
-        doc_->remove(name);
-    }
-
-    void clearEntries() {
-        doc_->clear();
-    }
-
-    void setDocument(std::shared_ptr<ArduinoJson::DynamicJsonDocument> doc) {
-        doc_ = std::move(doc);
-    }
-
-    std::shared_ptr<ArduinoJson::DynamicJsonDocument> document() const {
-        return doc_;
-    }
-
-    String toJson() const {
-        String s;
-        StringWriter writer(s);
-        ArduinoJson::serializeJson(*doc_, writer);
-        return s;
-    }
-
-    int save() {
-        CHECK(saveData());
-        return 0;
-    }
-
-private:
-    std::shared_ptr<ArduinoJson::DynamicJsonDocument> doc_;
-    ledger_page* p_;
-
-    int loadData() {
-        ledger_stream* stream = nullptr;
-        CHECK(ledger_open_page(&stream, p_, LEDGER_STREAM_MODE_READ, nullptr));
-        SCOPE_GUARD({
-            int r = ledger_close_stream(stream, 0 /* flags */, nullptr);
-            if (r < 0) {
-                LOG(ERROR, "Error while closing stream: %d", r);
-            }
-        });
-        std::shared_ptr<ArduinoJson::DynamicJsonDocument> doc;
-        size_t docSize = INITIAL_JSON_DOCUMENT_SIZE;
-        // DynamicJsonDocument can't grow dynamically so the parsing is done in a loop
-        for (;;) {
-            doc.reset(new(std::nothrow) ArduinoJson::DynamicJsonDocument(docSize));
-            if (!doc || !doc->capacity()) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-            LedgerStreamReader reader(stream);
-            auto err = ArduinoJson::deserializeMsgPack(*doc, reader);
-            if (err == ArduinoJson::DeserializationError::Ok) {
-                break;
-            }
-            if (err == ArduinoJson::DeserializationError::EmptyInput) {
-                doc->set(ArduinoJson::JsonObject());
-                break;
-            }
-            if (err != ArduinoJson::DeserializationError::NoMemory) {
-                LOG(ERROR, "Failed to deserialize ledger data: ArduinoJson::DeserializationError(%d)", (int)err.code());
-                return SYSTEM_ERROR_LEDGER_DESERIALIZATION;
-            }
-            docSize = docSize * 3 / 2;
-            CHECK(ledger_rewind_stream(stream, nullptr));
-        }
-        doc_ = doc;
-        return 0;
-    }
-
-    int saveData() {
-        ledger_stream* stream = nullptr;
-        CHECK(ledger_open_page(&stream, p_, LEDGER_STREAM_MODE_WRITE, nullptr));
-        SCOPE_GUARD({
-            int r = ledger_close_stream(stream, 0 /* flags */, nullptr);
-            if (r < 0) {
-                LOG(ERROR, "Error while closing stream: %d", r);
-            }
-        });
-        LedgerStreamWriter writer(stream);
-        ArduinoJson::serializeMsgPack(*doc_, writer);
-        if (writer.error() != 0) {
-            LOG(ERROR, "Failed to serialize ledger data: %d", writer.error());
-            return SYSTEM_ERROR_LEDGER_SERIALIZATION;
-        }
-        return 0;
-    }
-};
-
-int LedgerImpl::getPage(const char* name, LedgerPage& page) {
-    ledger_page* p = nullptr;
-    CHECK(ledger_get_page(&p, lr_, name, nullptr));
-    ledger_lock_page(p, nullptr);
-    SCOPE_GUARD({
-        ledger_unlock_page(p, nullptr);
+    NAMED_SCOPE_GUARD(g, {
+        ledger_close(stream, 0, nullptr);
     });
-    if (!ledger_get_page_app_data(p, nullptr)) {
-        // Attach application data to the system page instance
-        NAMED_SCOPE_GUARD(g, {
-            ledger_release_page(p, nullptr);
-        });
-        std::unique_ptr<LedgerPageImpl> impl(new(std::nothrow) LedgerPageImpl(p));
-        if (!impl) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        CHECK(impl->init());
-        ledger_set_page_app_data(p, impl.release(), destroyPageAppData, nullptr); // Transfer ownership to the system
-        g.dismiss();
+    // TODO: Use a binary format
+    auto json = data.toJSON();
+    r = ledger_write(stream, json.c_str(), json.length(), nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_write() failed: %d", r);
+        return r;
     }
-    page = LedgerPage::wrap(p);
+    g.dismiss();
+    r = ledger_close(stream, 0, nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_close() failed: %d", r);
+        return r;
+    }
     return 0;
 }
 
-void LedgerImpl::destroyPageAppData(void* appData) {
-    delete static_cast<detail::LedgerPageImpl*>(appData);
+LedgerData Ledger::get() const {
+    if (!isValid()) {
+        return LedgerData();
+    }
+    ledger_stream* stream = nullptr;
+    int r = ledger_open(&stream, instance_, LEDGER_STREAM_MODE_READ, nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_open() failed: %d", r);
+        return LedgerData();
+    }
+    NAMED_SCOPE_GUARD(g, {
+        ledger_close(stream, 0, nullptr);
+    });
+    String str;
+    OutputStringStream strStream(str);
+    char buf[128];
+    for (;;) {
+        r = ledger_read(stream, buf, sizeof(buf), nullptr);
+        if (r < 0) {
+            if (r == SYSTEM_ERROR_END_OF_STREAM) {
+                break;
+            }
+            LOG(ERROR, "ledger_read() failed: %d", r);
+            return LedgerData();
+        }
+        strStream.write((uint8_t*)buf, r);
+    }
+    g.dismiss();
+    r = ledger_close(stream, 0, nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_close() failed: %d", r);
+        return LedgerData();
+    }
+    return Variant::fromJSON(str);
 }
 
-} // namespace detail
-
-LedgerPage Ledger::page(const char* name) {
-    LedgerPage page;
-    int r = 0;
-    if (isValid() && (r = impl()->getPage(name, page)) < 0) {
-        LOG(ERROR, "Failed to get ledger page: %d", r);
+time64_t Ledger::lastUpdated() const {
+    ledger_info info = {};
+    if (!isValid() || getLedgerInfo(instance_, info) < 0) {
+        return 0;
     }
-    return page;
+    return info.last_updated;
+}
+
+time64_t Ledger::lastSynced() const {
+    ledger_info info = {};
+    if (!isValid() || getLedgerInfo(instance_, info) < 0) {
+        return 0;
+    }
+    return info.last_synced;
 }
 
 const char* Ledger::name() const {
-    const char* name = "";
-    int r = 0;
-    if (isValid() && (r = impl()->getName(name)) < 0) {
-        LOG(ERROR, "Failed to get ledger info: %d", r);
+    ledger_info info = {};
+    if (!isValid() || getLedgerInfo(instance_, info) < 0) {
+        return "";
     }
-    return name;
+    return info.name;
 }
 
 LedgerScope Ledger::scope() const {
-    LedgerScope scope = LedgerScope::INVALID;
-    int r = 0;
-    if (isValid() && (r = impl()->getScope(scope)) < 0) {
-        LOG(ERROR, "Failed to get ledger info: %d", r);
+    ledger_info info = {};
+    if (!isValid() || getLedgerInfo(instance_, info) < 0) {
+        return LedgerScope::UNKNOWN;
     }
-    return scope;
+    return static_cast<LedgerScope>(info.scope);
 }
 
-int Ledger::getInstance(const char* name, LedgerScope scope, Ledger& ledger) {
-    ledger_instance* lr = nullptr;
-    CHECK(ledger_get_instance(&lr, name, static_cast<ledger_scope>(scope), LEDGER_API_VERSION, nullptr));
-    ledger_lock(lr, nullptr);
-    SCOPE_GUARD({
-        ledger_unlock(lr, nullptr);
-    });
-    if (!ledger_get_app_data(lr, nullptr)) {
-        // Attach application data to the system ledger instance
-        NAMED_SCOPE_GUARD(g, {
-            ledger_release(lr, nullptr);
-        });
-        std::unique_ptr<detail::LedgerImpl> impl(new(std::nothrow) detail::LedgerImpl(lr));
-        if (!impl) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        ledger_set_app_data(lr, impl.release(), destroyLedgerAppData, nullptr); // Transfer ownership to the system
-        g.dismiss();
+bool Ledger::isWritable() const {
+    ledger_info info = {};
+    if (!isValid() || getLedgerInfo(instance_, info) < 0) {
+        return false;
     }
-    ledger = Ledger::wrap(lr);
-    return 0;
+    // It's allowed to write to a ledger while its sync direction is unknown
+    return info.sync_direction == LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD ||
+            info.sync_direction == LEDGER_SYNC_DIRECTION_UNKNOWN;
 }
 
-void Ledger::destroyLedgerAppData(void* appData) {
-    delete static_cast<detail::LedgerImpl*>(appData);
-}
-
-LedgerEntry LedgerPage::entry(const char* name) const {
-    LedgerEntry entry;
-    int r = 0;
-    if (isValid() && (r = impl()->getEntry(name, entry)) < 0) {
-        LOG(ERROR, "Failed to get page entry: %d", r);
-    }
-    return entry;
-}
-
-void LedgerPage::remove(const char* name) {
+int Ledger::onSync(OnSyncCallback callback, void* arg) {
     if (!isValid()) {
-        return;
+        return Error::INVALID_STATE;
     }
-    impl()->removeEntry(name);
+    return setSyncCallback(instance_, OnSyncCallbackData(callback, arg));
 }
 
-void LedgerPage::clear() {
+int Ledger::onSync(OnSyncFunction callback) {
     if (!isValid()) {
-        return;
+        return Error::INVALID_STATE;
     }
-    impl()->clearEntries();
-}
-
-ArduinoJson::DynamicJsonDocument LedgerPage::toJsonDocument() const {
-    if (!isValid()) {
-        return ArduinoJson::DynamicJsonDocument(0);
-    }
-    return *impl()->document();
-}
-
-String LedgerPage::toJson() const {
-    if (!isValid()) {
-        return String();
-    }
-    return impl()->toJson();
-}
-
-int LedgerPage::save() {
-    if (!isValid()) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    CHECK(impl()->save());
-    return 0;
-}
-
-LedgerEntry::LedgerEntry(ledger_page* page, CString entryName) :
-        name_(std::move(entryName)),
-        p_(page) {
-    ledger_add_page_ref(p_, nullptr);
-    doc_ = pageImpl()->document();
-    val_ = (*doc_)[static_cast<const char*>(name_)];
-}
-
-void LedgerEntry::updatePage() {
-    pageImpl()->setDocument(doc_);
+    return setSyncCallback(instance_, std::move(callback));
 }
 
 } // namespace particle

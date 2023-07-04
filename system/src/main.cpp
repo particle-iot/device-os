@@ -26,9 +26,6 @@
   ******************************************************************************
  */
 
-// FIXME: Particle's STATIC_ASSERT macro clashes with the nRF SDK
-#define NO_STATIC_ASSERT
-
 /* Includes ------------------------------------------------------------------*/
 #include "debug.h"
 #include "system_event.h"

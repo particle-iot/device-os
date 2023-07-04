@@ -15,7 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <limits>
 #include <cstdio>
 #include <cstdlib>
 #include <cctype>
@@ -176,6 +175,30 @@ bool Variant::prepend(Variant val) {
     return arr.prepend(std::move(val));
 }
 
+bool Variant::insertAt(int index, Variant val) {
+    auto& arr = asArray();
+    if (!ensureCapacity(arr, 1)) {
+        return false;
+    }
+    if (index < 0) {
+        index = 0;
+    } else if (index > arr.size()) {
+        index = arr.size();
+    }
+    return arr.insert(index, std::move(val));
+}
+
+void Variant::removeAt(int index) {
+    if (!isArray()) {
+        return;
+    }
+    auto& arr = value<VariantArray>();
+    if (index < 0 || index >= arr.size()) {
+        return;
+    }
+    arr.removeAt(index);
+}
+
 Variant Variant::at(int index) const {
     if (!isArray()) {
         return Variant();
@@ -209,6 +232,20 @@ bool Variant::set(String&& key, Variant val) {
         return false;
     }
     return map.set(std::move(key), std::move(val));
+}
+
+bool Variant::remove(const char* key) {
+    if (!isMap()) {
+        return false;
+    }
+    return value<VariantMap>().remove(key);
+}
+
+bool Variant::remove(const String& key) {
+    if (!isMap()) {
+        return false;
+    }
+    return value<VariantMap>().remove(key);
 }
 
 Variant Variant::get(const char* key) const {

@@ -319,7 +319,7 @@ size_t OutputStringStream::write(const uint8_t* data, size_t size) {
         return 0;
     }
     size_t newSize = s_.length() + size;
-    if (s_.capacity() < newSize && !s_.reserve(std::max(newSize, std::min<size_t>(s_.capacity() * 3 / 2, 10)))) {
+    if (s_.capacity() < newSize && !s_.reserve(std::max<size_t>({ newSize, s_.capacity() * 3 / 2, 20 }))) {
         setWriteError(Error::NO_MEMORY);
         return 0;
     }

@@ -183,7 +183,7 @@ void ledger_unlock(ledger_instance* ledger, void* reserved);
  * All callbacks are invoked in the system thread.
  *
  * @param ledger Ledger instance.
- * @param callbacks Ledger callbacks.
+ * @param callbacks Ledger callbacks. Can be set to `NULL` to clear all currently registered callbacks.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* reserved);

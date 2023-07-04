@@ -21,7 +21,6 @@
 #include <type_traits>
 #include <algorithm>
 #include <charconv>
-#include <cstring>
 #include <cstdint>
 
 #include "spark_wiring_string.h"
@@ -333,12 +332,16 @@ public:
     // Array operations
     bool append(Variant val);
     bool prepend(Variant val);
+    bool insertAt(int index, Variant val);
+    void removeAt(int index);
     Variant at(int index) const;
 
     // Map operations
     bool set(const char* key, Variant val);
     bool set(const String& key, Variant val);
     bool set(String&& key, Variant val);
+    bool remove(const char* key);
+    bool remove(const String& key);
     Variant get(const char* key) const;
     Variant get(const String& key) const;
     bool has(const char* key) const;

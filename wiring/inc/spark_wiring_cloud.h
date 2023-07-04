@@ -31,7 +31,6 @@
 #include "system_tick_hal.h"
 #include "spark_protocol_functions.h"
 #include "spark_wiring_system.h"
-#include "spark_wiring_ledger.h"
 #include "spark_wiring_watchdog.h"
 #include "spark_wiring_async.h"
 #include "spark_wiring_flags.h"
@@ -64,6 +63,12 @@ template <typename T>
 struct is_string_literal {
     static constexpr bool value = std::is_array<T>::value && std::is_same<typename std::remove_extent<T>::type, char>::value;
 };
+
+namespace particle {
+
+class Ledger;
+
+} // namespace particle
 
 class CloudDisconnectOptions {
 public:

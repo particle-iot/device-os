@@ -1,5 +1,7 @@
 #include "spark_wiring_cloud.h"
 
+#include "spark_wiring_ledger.h"
+
 #include <functional>
 #include "system_cloud.h"
 #include "check.h"
@@ -125,12 +127,11 @@ int CloudClass::maxFunctionArgumentSize() {
     return size;
 }
 
-Ledger CloudClass::ledger(const char* name, particle::LedgerScope scope) {
-    Ledger ledger;
-    int r = Ledger::getInstance(name, scope, ledger);
+Ledger CloudClass::ledger(const char* name) {
+    ledger_instance* instance = nullptr;
+    int r = ledger_get_instance(&instance, name, nullptr);
     if (r < 0) {
-        LOG(ERROR, "Failed to get ledger instance: %d", r);
-        return Ledger();
+        LOG(ERROR, "ledger_get_instance() failed: %d", r);
     }
-    return ledger;
+    return Ledger(instance);
 }

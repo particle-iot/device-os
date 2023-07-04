@@ -58,7 +58,7 @@ void ledger_unlock(ledger_instance* ledger, void* reserved) {
 
 void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callbacks, void* reserved) {
     auto lr = reinterpret_cast<Ledger*>(ledger);
-    lr->setSyncCallback(callbacks->sync);
+    lr->setSyncCallback(callbacks ? callbacks->sync : nullptr);
 }
 
 void ledger_set_app_data(ledger_instance* ledger, void* appData, ledger_destroy_app_data_callback destroy,

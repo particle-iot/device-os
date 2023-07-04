@@ -110,28 +110,6 @@ public:
         return true;
     }
 
-    Vector<KeyT> keys() const {
-        Vector<KeyT> keys;
-        if (!keys.reserve(entries_.size())) {
-            return Vector<KeyT>();
-        }
-        for (auto& entry: entries_) {
-            keys.append(entry.first);
-        }
-        return keys;
-    }
-
-    Vector<KeyT> values() const {
-        Vector<ValueT> values;
-        if (!values.reserve(entries_.size())) {
-            return Vector<ValueT>();
-        }
-        for (auto& entry: entries_) {
-            values.append(entry.second);
-        }
-        return values;
-    }
-
     const Vector<Entry>& entries() const {
         return entries_;
     }
