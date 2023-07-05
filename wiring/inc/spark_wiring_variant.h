@@ -41,27 +41,49 @@ using spark::JSONValue;
 
 class Variant;
 
+/**
+ * An array of `Variant` values.
+ */
 typedef Vector<Variant> VariantArray;
+
+/**
+ * A map of named `Variant` values.
+ */
 typedef Map<String, Variant> VariantMap;
 
+/**
+ * A class acting as a union for certain common data types.
+ */
 class Variant {
 public:
+    /**
+     * Supported alternative types.
+     */
     enum Type {
-        NULL_,
-        BOOL,
-        INT,
-        UINT,
-        INT64,
-        UINT64,
-        DOUBLE,
-        STRING,
-        ARRAY,
-        MAP
+        NULL_, ///< Null type (`std::monostate`).
+        BOOL, ///< `bool`.
+        INT, ///< `int`.
+        UINT, ///< `unsigned`.
+        INT64, ///< `int64_t`.
+        UINT64, ///< `uint64_t`.
+        DOUBLE, ///< `double`.
+        STRING, ///< `String`.
+        ARRAY, ///< `VariantArray`.
+        MAP ///< `VariantMap`.
     };
 
+    /**
+     * Construct a null variant.
+     */
     Variant() = default;
 
-    Variant(const std::monostate&) :
+    ///@{
+    /**
+     * Construct a variant with a value.
+     *
+     * @param val Value.
+     */
+    Variant(const std::monostate& val) :
             Variant() {
     }
 
@@ -120,20 +142,42 @@ public:
     Variant(VariantMap val) :
             v_(std::move(val)) {
     }
+    ///@}
 
+    /**
+     * Copy constructor.
+     *
+     * @param var Variant to copy.
+     */
     Variant(const Variant& var) :
             v_(var.v_) {
     }
 
+    /**
+     * Move constructor.
+     *
+     * @param var Variant to move from.
+     */
     Variant(Variant&& var) :
             Variant() {
         swap(*this, var);
     }
 
+    /**
+     * Get the type of the stored value.
+     *
+     * @return Value type.
+     */
     Type type() const {
         return static_cast<Type>(v_.index());
     }
 
+    ///@{
+    /**
+     * Check if the stored value is of the specified type.
+     *
+     * @return `true` if the value is of the specified type, otherwise `false`.
+     */
     bool isNull() const {
         return is<std::monostate>();
     }
@@ -178,27 +222,35 @@ public:
     bool isMap() const {
         return is<VariantMap>();
     }
+    ///@}
 
+    /**
+     * Check if the stored value is of the specified type.
+     *
+     * The type `T` must be one of the supported alternative types (see the `Type` enum).
+     *
+     * @tparam T Value type.
+     * @return `true` if the value is of the specified type, otherwise `false`.
+     */
     template<typename T>
     bool is() const {
         static_assert(IsAlternativeType<T>::value, "The type specified is not one of the alternative types of Variant");
         return std::holds_alternative<T>(v_);
     }
 
-    // Conversion methods
+    ///@{
+    /**
+     * Convert the stored value to a value of the specified type.
+     *
+     * See the description of the method `to(bool&)` for details on how the conversion is performed.
+     *
+     * @return Converted value.
+     */
     bool toBool() const {
         return to<bool>();
     }
 
-    bool toBool(bool& ok) const {
-        return to<bool>(ok);
-    }
-
     int toInt() const {
-        return to<int>();
-    }
-
-    int toInt(bool& ok) const {
         return to<int>();
     }
 
@@ -206,15 +258,7 @@ public:
         return to<unsigned>();
     }
 
-    unsigned toUInt(bool& ok) const {
-        return to<unsigned>();
-    }
-
     int64_t toInt64() const {
-        return to<int64_t>();
-    }
-
-    int64_t toInt64(bool& ok) const {
         return to<int64_t>();
     }
 
@@ -222,15 +266,7 @@ public:
         return to<uint64_t>();
     }
 
-    uint64_t toUInt64(bool& ok) const {
-        return to<uint64_t>();
-    }
-
     double toDouble() const {
-        return to<double>();
-    }
-
-    double toDouble(bool& ok) const {
         return to<double>();
     }
 
@@ -238,31 +274,101 @@ public:
         return to<String>();
     }
 
-    String toString(bool& ok) const {
-        return to<String>();
-    }
-
     VariantArray toArray() const {
-        return to<VariantArray>();
-    }
-
-    VariantArray toArray(bool& ok) const {
         return to<VariantArray>();
     }
 
     VariantMap toMap() const {
         return to<VariantMap>();
     }
+    ///@}
+
+    ///@{
+    /**
+     * Convert the stored value to a value of the specified type.
+     *
+     * See the description of the method `to(bool&)` for details on how the conversion is performed.
+     *
+     * @param[out] ok Set to `true` if a conversion is defined for the current and target types,
+     *         or to `false` otherwise.
+     * @return Converted value.
+     */
+    bool toBool(bool& ok) const {
+        return to<bool>(ok);
+    }
+
+    int toInt(bool& ok) const {
+        return to<int>();
+    }
+
+    unsigned toUInt(bool& ok) const {
+        return to<unsigned>();
+    }
+
+    int64_t toInt64(bool& ok) const {
+        return to<int64_t>();
+    }
+
+    uint64_t toUInt64(bool& ok) const {
+        return to<uint64_t>();
+    }
+
+    double toDouble(bool& ok) const {
+        return to<double>();
+    }
+
+    String toString(bool& ok) const {
+        return to<String>();
+    }
+
+    VariantArray toArray(bool& ok) const {
+        return to<VariantArray>();
+    }
 
     VariantMap toMap(bool& ok) const {
         return to<VariantMap>();
     }
+    ///@}
 
+    /**
+     * Convert the stored value to a value of the specified type.
+     *
+     * See the description of the method `to(bool&)` for details on how the conversion is performed.
+     *
+     * @tparam T Target type.
+     * @return Converted value.
+     */
     template<typename T>
     T to() const {
         return std::visit(ConvertToVisitor<T>(), v_);
     }
 
+    /**
+     * Convert the stored value to a value of the specified type.
+     *
+     * The conversion is performed as follows:
+     *
+     * - If the type of the stored value is the same as the target type, a copy of the stored value
+     *   is returned. To avoid copying, one of the methods that return a reference to the stored
+     *   value can be used instead.
+     *
+     * - If the current and target types are numeric (or boolean), the conversion is performed as
+     *   if `static_cast` is used. It is not checked whether the current value is within the range
+     *   of the target type.
+     *
+     * - If one of the types is `String` and the other type is numeric (or boolean), a conversion
+     *   to or from string is performed. When converted to a string, boolean values are represented
+     *   as "true" or "false".
+     *
+     * - For the null, array and map types, only a trivial conversion to the same type is defined.
+     *
+     * - If no conversion is defined for the current and target types, a default-constructed value
+     *   of the target type is returned.
+     *
+     * @param[out] ok Set to `true` if a conversion is defined for the current and target types,
+     *         or to `false` otherwise.
+     * @return Converted value.
+     */
     template<typename T>
     T to(bool& ok) const {
         ConvertToVisitor<T> vis;
@@ -271,7 +377,13 @@ public:
         return val;
     }
 
-    // Access to the underlying value
+    ///@{
+    /**
+     * Convert the stored value to a value of the specified type in place and get a reference to
+     * the stored value.
+     *
+     * @return Reference to the stored value.
+     */
     bool& asBool() {
         return as<bool>();
     }
@@ -307,7 +419,17 @@ public:
     VariantMap& asMap() {
         return as<VariantMap>();
     }
+    ///@}
 
+    /**
+     * Convert the stored value to a value of the specified type in place and get a reference to
+     * the stored value.
+     *
+     * The type `T` must be one of the supported alternative types (see the `Type` enum).
+     *
+     * @tparam T Target type.
+     * @return Reference to the stored value.
+     */
     template<typename T>
     T& as() {
         static_assert(IsAlternativeType<T>::value, "The type specified is not one of the alternative types of Variant");
@@ -317,6 +439,16 @@ public:
         return value<T>();
     }
 
+    ///@{
+    /**
+     * Get a reference to the stored value.
+     *
+     * The type `T` must be one of the supported alternative types (see the `Type` enum). If the
+     * stored value has a different type, the behavior is undefined.
+     *
+     * @tparam T Target type.
+     * @return Reference to the stored value.
+     */
     template<typename T>
     T& value() {
         static_assert(IsAlternativeType<T>::value, "The type specified is not one of the alternative types of Variant");
@@ -328,33 +460,190 @@ public:
         static_assert(IsAlternativeType<T>::value, "The type specified is not one of the alternative types of Variant");
         return std::get<T>(v_);
     }
+    ///@}
 
-    // Array operations
+    /**
+     * Array operations.
+     *
+     * These methods are provided for convenience and behave similarly to the respective methods of
+     * `VariantArray`.
+     */
+    ///@{
+
+    /**
+     * Append an element to the array.
+     *
+     * If the stored value is not an array, it is converted to an array in place prior to the
+     * operation.
+     *
+     * @param val Element value.
+     * @return `true` if the element was added, or `false` on a memory allocation error.
+     */
     bool append(Variant val);
-    bool prepend(Variant val);
-    bool insertAt(int index, Variant val);
-    void removeAt(int index);
-    Variant at(int index) const;
 
-    // Map operations
+    /**
+     * Prepend an element to the array.
+     *
+     * If the stored value is not an array, it is converted to an array in place prior to the
+     * operation.
+     *
+     * @param val Element value.
+     * @return `true` if the element was added, or `false` on a memory allocation error.
+     */
+    bool prepend(Variant val);
+
+    /**
+     * Insert an element into the array.
+     *
+     * If the stored value is not an array, it is converted to an array in place prior to the
+     * operation.
+     *
+     * @param index Index at which to insert the element.
+     * @param val Element value.
+     * @return `true` if the element was added, or `false` on a memory allocation error.
+     */
+    bool insertAt(int index, Variant val);
+
+    /**
+     * Remove an element from the array.
+     *
+     * The method has no effect if the stored value is not an array.
+     *
+     * @param index Element index.
+     */
+    void removeAt(int index);
+
+    /**
+     * Get an element of the array.
+     *
+     * This method is inefficient if the element value has a complex type, such as `String`, as it
+     * returns a copy of the value. Use `operator[](int)` to get a reference to the element value.
+     *
+     * A null variant is returned if the stored value is not an array.
+     *
+     * @param index Element index.
+     * @return Element value.
+     */
+    Variant at(int index) const;
+    ///@}
+
+    /**
+     * Map operations.
+     *
+     * These methods are provided for convenience and behave similarly to the respective methods of
+     * `VariantMap`.
+     */
+    ///@{
+
+    ///@{
+    /**
+     * Add or update an element in the map.
+     *
+     * If the stored value is not a map, it is converted to a map in place prior to the operation.
+     *
+     * @param key Element key.
+     * @param val Element value.
+     * @return `true` if the element was added or updated, or `false` on a memory allocation error.
+     */
     bool set(const char* key, Variant val);
     bool set(const String& key, Variant val);
     bool set(String&& key, Variant val);
+    ///@}
+
+    ///@{
+    /**
+     * Remove an element from the map.
+     *
+     * If the stored value is not a map, the method has no effect and returns `false`.
+     *
+     * @param key Element key.
+     * @return `true` if the element was removed, otherwise `false`.
+     */
     bool remove(const char* key);
     bool remove(const String& key);
+    ///@}
+
+    ///@{
+    /**
+     * Get the value of an element in the map.
+     *
+     * This method is inefficient if the element value has a complex type, such as `String`, as it
+     * returns a copy of the value. Use `operator[](const char*)` to get a reference to the element
+     * value.
+     *
+     * A null variant is returned if the stored value is not a map or if an element with the given
+     * key cannot be found.
+     *
+     * @param key Element key.
+     * @return Element value.
+     */
     Variant get(const char* key) const;
     Variant get(const String& key) const;
+    ///@}
+
+    ///@{
+    /**
+     * Check if the map contains an element with the given key.
+     *
+     * `false` is returned if the stored value is not a map.
+     *
+     * @param key Element key.
+     * @return `true` if an element with the given key is found, otherwise `false`.
+     */
     bool has(const char* key) const;
     bool has(const String& key) const;
+    ///@}
+    ///@}
 
+    /**
+     * Get the size of the stored value.
+     *
+     * Depending on the type of the stored value:
+     *
+     * - If `String`, the length of the string is returned.
+     *
+     * - If `VariantArray` or `VariantMap`, the number of elements stored in the respective
+     *   container is returned.
+     *
+     * - In all other cases 0 is returned.
+     *
+     * @return Size of the stored value.
+     */
     int size() const;
+
+    /**
+     * Check if the stored value is empty.
+     *
+     * Depending on the type of the stored value:
+     *
+     * - If `String`, `true` is returned if the string is empty.
+     *
+     * - If `VariantArray` or `VariantMap`, `true` is returned if the respective container is empty.
+     *
+     * - If the value is null, `true` is returned.
+     *
+     * - In all other cases `false` is returned.
+     *
+     * @return `true` if the stored value is empty, otherwise `false`.
+     */
     bool isEmpty() const;
 
+    /**
+     * Convert the variant to JSON.
+     *
+     * @return JSON document.
+     */
     String toJSON() const;
 
-    static Variant fromJSON(const char* json);
-    static Variant fromJSON(const JSONValue& val);
-
+    ///@{
+    /**
+     * Get a reference to an element in the array.
+     *
+     * @note The device will panic if the stored value is not an array.
+     *
+     * @param index Element index.
+     * @return Reference to the element value.
+     */
     Variant& operator[](int index) {
         SPARK_ASSERT(isArray());
         return value<VariantArray>().at(index);
@@ -364,7 +653,23 @@ public:
         SPARK_ASSERT(isArray());
         return value<VariantArray>().at(index);
     }
+    ///@}
 
+    ///@{
+    /**
+     * Get a reference to the value of an element in the map.
+     *
+     * If the stored value is not a map, it is converted to a map in place prior to the operation.
+     *
+     * If an element with the given key cannot be found, it is created and added to the map.
+     *
+     * @note The device will panic if it fails to allocate memory for the new element. Use `set()`
+     * or the methods provided by `VariantMap` if you need more control over how memory allocation
+     * errors are handled.
+     *
+     * @param key Element key.
+     * @return Reference to the element value.
+     */
     Variant& operator[](const char* key) {
         return asMap().operator[](key);
     }
@@ -376,12 +681,26 @@ public:
     Variant& operator[](String&& key) {
         return asMap().operator[](std::move(key));
     }
+    ///@}
 
+    /**
+     * Assignment operator.
+     *
+     * @param var Variant to assign from.
+     * @return This variant.
+     */
     Variant& operator=(Variant var) {
         swap(*this, var);
         return *this;
     }
 
+    /**
+     * Comparison operators.
+     *
+     * Two variants are considered equal if their stored values are equal. Standard C++ type
+     * promotion rules are used when comparing numeric values.
+     */
+    ///@{
     bool operator==(const Variant& var) const {
         return std::visit(AreEqualVisitor(), v_, var.v_);
     }
@@ -399,6 +718,23 @@ public:
     bool operator!=(const T& val) const {
         return !operator==(val);
     }
+    ///@}
+
+    /**
+     * Parse a variant from JSON.
+     *
+     * @param json JSON document.
+     * @return Variant.
+     */
+    static Variant fromJSON(const char* json);
+
+    /**
+     * Convert a JSON value to a variant.
+     *
+     * @param val JSON value.
+     * @return Variant.
+     */
+    static Variant fromJSON(const JSONValue& val);
 
     friend void swap(Variant& var1, Variant& var2) {
         using std::swap; // For ADL
@@ -450,6 +786,8 @@ private:
 
     template<typename FirstT, typename SecondT>
     static bool areEqual(const FirstT& first, const SecondT& second) {
+        // TODO: This is not ideal as we'd like the compiler to generate an error when a variant
+        // is compared with a value whose type is not comparable with any of the alternative types
         if constexpr (std::is_same_v<FirstT, SecondT> ||
                 (std::is_arithmetic_v<FirstT> && std::is_arithmetic_v<SecondT>) ||
                 (std::is_same_v<FirstT, String> && std::is_same_v<SecondT, const char*>) ||

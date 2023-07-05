@@ -42,7 +42,7 @@
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
         (FILE, "File error", -225), \
-        (FILENAME_TOO_LONG, "Filename too long", -226), \
+        (PATH_TOO_LONG, "Path is too long", -226), \
         (NETWORK, "Network error", -230), \
         (PROTOCOL, "Protocol error", -240), \
         (INTERNAL, "Internal error", -250), \
@@ -110,8 +110,8 @@
         (LEDGER_READ_ONLY, "Ledger is read only", -2004), \
         (LEDGER_IN_USE, "Ledger is in use", -2005), \
         (LEDGER_TOO_LARGE, "Ledger data is too large", -2006), \
-        (LEDGER_SERIALIZATION, "Ledger serialization error", -2007), \
-        (LEDGER_DESERIALIZATION, "Ledger deserialization error", -2008)
+        (LEDGER_ENCODING, "Ledger encoding error", -2007), \
+        (LEDGER_DECODING, "Ledger decoding error", -2008)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

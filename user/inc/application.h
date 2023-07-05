@@ -73,6 +73,7 @@
 #include "spark_wiring_logging.h"
 #include "spark_wiring_json.h"
 #include "spark_wiring_vector.h"
+#include "spark_wiring_map.h"
 #include "spark_wiring_async.h"
 #include "spark_wiring_error.h"
 #include "spark_wiring_led.h"

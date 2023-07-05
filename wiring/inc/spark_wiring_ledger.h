@@ -188,6 +188,8 @@ public:
      * @note Setting a callback will keep an instance of this ledger around until the callback is
      * cleared, even if the original instance is no longer referenced in the application code.
      *
+     * The callback can be cleared by calling `onSync()` with a `nullptr`.
+     *
      * @param callback Callback.
      * @param arg Argument to pass to the callback.
      * @return 0 on success, otherwise an error code defined by `Error::Type`.
@@ -199,6 +201,8 @@ public:
      *
      * @note Setting a callback will keep an instance of this ledger around until the callback is
      * cleared, even if the original instance is no longer referenced in the application code.
+     *
+     * The callback can be cleared by calling `onSync()` with a `nullptr`.
      *
      * @param callback Callback.
      * @return 0 on success, otherwise an error code defined by `Error::Type`.
@@ -267,9 +271,7 @@ public:
     using Entry = VariantMap::Entry;
 
     /**
-     * Default constructor.
-     *
-     * Constructs empty ledger data.
+     * Construct empty ledger data.
      */
     LedgerData() :
             v_(VariantMap()) {
@@ -278,7 +280,7 @@ public:
     /**
      * Construct ledger data from a `Variant`.
      *
-     * If the `Variant` is not a map, the ledger data will be empty.
+     * If the `Variant` is not a map, the constructed ledger data will be empty.
      *
      * @param var `Variant` value.
      */
@@ -298,7 +300,7 @@ public:
      * LedgerData data = { { "key1", "value1" }, { "key2", 2 } };
      * ```
      *
-     * @param entries Entries list.
+     * @param entries Entries.
      */
     LedgerData(std::initializer_list<Entry> entries) :
             v_(VariantMap(entries)) {
@@ -364,10 +366,10 @@ public:
     /**
      * Get the value of an entry.
      *
-     * A null `Variant` is returned if the entry doesn't exist.
+     * This method is inefficient for complex value types, such as `String`, as it returns a copy of
+     * the value. Use `operator[]` to get a reference to the value.
      *
-     * @note This method is inefficient for complex value types, such as `String` or `VariantArray`,
-     * as it returns a copy of the value. Use `operator[]` to get a reference to the value.
+     * A null `Variant` is returned if the entry doesn't exist.
      *
      * @param name Entry name.
      * @return Entry value.
@@ -383,7 +385,7 @@ public:
 
     ///@{
     /**
-     * Check if an entry with a given name exists.
+     * Check if an entry with the given name exists.
      *
      * @param name Entry name.
      * @return `true` if the entry exists, otherwise `false`.
@@ -398,7 +400,7 @@ public:
     ///@}
 
     /**
-     * Get the list of entries.
+     * Get all entries of the ledger data.
      *
      * Example usage:
      * ```
@@ -410,19 +412,19 @@ public:
      * }
      * ```
      *
-     * @return Entries list.
+     * @return Entries.
      */
     const Vector<Entry>& entries() const {
         return variantMap().entries();
     }
 
     /**
-     * Get the number of entries contained in the ledger data.
+     * Get the number of entries stored in the ledger data.
      *
      * @return Number of entries.
      */
     int size() const {
-        return variantMap().size();
+        return v_.size();
     }
 
     /**
@@ -435,7 +437,7 @@ public:
     }
 
     /**
-     * Reserve memory for a specified number of entries.
+     * Reserve memory for the specified number of entries.
      *
      * @return `true` on success, or `false` on a memory allocation error.
      */
@@ -458,13 +460,13 @@ public:
      * @return `true` if the data is empty, otherwise `false`.
      */
     bool isEmpty() const {
-        return variantMap().isEmpty();
+        return v_.isEmpty();
     }
 
     /**
      * Serialize the ledger data as JSON.
      *
-     * @return JSON string.
+     * @return JSON document.
      */
     String toJSON() const {
         return v_.toJSON();
@@ -472,9 +474,9 @@ public:
 
     ///@{
     /**
-     * Get a reference to the underlying `VariantMap`.
+     * Get a reference to the `VariantMap` containing the entries of the ledger data.
      *
-     * @return Reference to `VariantMap`.
+     * @return Reference to the `VariantMap`.
      */
     VariantMap& variantMap() {
         return v_.value<VariantMap>();
@@ -489,7 +491,7 @@ public:
     /**
      * Get a reference to the underlying `Variant`.
      *
-     * @return Reference to `Variant`.
+     * @return Reference to the `Variant`.
      */
     Variant& variant() {
         return v_;
@@ -506,9 +508,9 @@ public:
      *
      * The entry is created if it doesn't exist.
      *
-     * @note The device will panic if it fails to allocate memory for the new entry. Use `set()`,
-     * `get()` or the methods provided by the underlying `VariantMap` if you need more control over
-     * how memory allocation errors are handled.
+     * @note The device will panic if it fails to allocate memory for the new entry. Use `set()`
+     * or the methods provided by `VariantMap` if you need more control over how memory allocation
+     * errors are handled.
      *
      * @param name Entry name.
      * @return Entry value.
@@ -540,9 +542,9 @@ public:
     /**
      * Parse ledger data from JSON.
      *
-     * The ledger data will be empty if the JSON value is not an object.
+     * If the root element of the JSON document is not an object, empty ledger data is returned.
      *
-     * @param json JSON string.
+     * @param json JSON document.
      * @return Ledger data.
      */
     static LedgerData fromJSON(const char* json) {
@@ -550,9 +552,9 @@ public:
     }
 
     /**
-     * Parse ledger data from JSON.
+     * Convert a JSON value to ledger data.
      *
-     * The ledger data will be empty if the JSON value is not an object.
+     * If the JSON value is not an object, empty ledger data is returned.
      *
      * @param Val JSON value.
      * @return Ledger data.

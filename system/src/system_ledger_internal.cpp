@@ -163,7 +163,7 @@ int formatLedgerPath(char* buf, size_t size, const char* ledgerName, const char*
     }
     size_t pos = n;
     if (pos >= size) {
-        return SYSTEM_ERROR_FILENAME_TOO_LONG;
+        return SYSTEM_ERROR_PATH_TOO_LONG;
     }
     if (fmt) {
         // Format the rest of the path
@@ -176,7 +176,7 @@ int formatLedgerPath(char* buf, size_t size, const char* ledgerName, const char*
         }
         pos += n;
         if (pos >= size) {
-            return SYSTEM_ERROR_FILENAME_TOO_LONG;
+            return SYSTEM_ERROR_PATH_TOO_LONG;
         }
     }
     return pos;

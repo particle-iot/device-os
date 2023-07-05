@@ -96,7 +96,7 @@ int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
         }
         size_t n = strlcpy(pathBuf + pathLen, entry.name, bufSize - pathLen);
         if (n >= bufSize - pathLen) {
-            return SYSTEM_ERROR_FILENAME_TOO_LONG;
+            return SYSTEM_ERROR_PATH_TOO_LONG;
         }
         if (entry.type == LFS_TYPE_DIR) {
             CHECK(removeDir(lfs, pathBuf, bufSize, pathLen + n));
@@ -195,7 +195,7 @@ int rmrf(const char* path) {
             char pathBuf[MAX_PATH_LEN + 1] = {};
             size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
             if (pathLen >= sizeof(pathBuf)) {
-                return SYSTEM_ERROR_FILENAME_TOO_LONG;
+                return SYSTEM_ERROR_PATH_TOO_LONG;
             }
             CHECK(removeDir(fs.instance(), pathBuf, sizeof(pathBuf), pathLen));
         } else if (r != LFS_ERR_NOENT) {
@@ -210,7 +210,7 @@ int mkdirp(const char* path) {
     char pathBuf[MAX_PATH_LEN + 1] = {};
     size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
     if (pathLen >= sizeof(pathBuf)) {
-        return SYSTEM_ERROR_FILENAME_TOO_LONG;
+        return SYSTEM_ERROR_PATH_TOO_LONG;
     }
     char* pos = pathBuf;
     if (*pos == '/') {

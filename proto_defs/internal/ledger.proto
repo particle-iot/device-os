@@ -13,13 +13,13 @@ message LedgerInfo {
   particle.ledger.LedgerScope scope = 2; ///< Ledger scope.
   particle.ledger.SyncDirection sync_direction = 3; ///< Sync direction.
   /**
-   * Last time the ledger was updated, in milliseconds since the Unix epoch.
+   * Time the ledger was last updated, in milliseconds since the Unix epoch.
    *
    * If 0, the time is unknown.
    */
   fixed64 last_updated = 4;
   /**
-   * Last time the ledger was synchronized with the Cloud, in milliseconds since the Unix epoch.
+   * Time the ledger was last synchronized with the Cloud, in milliseconds since the Unix epoch.
    *
    * If 0, the ledger has never been synchronized.
    */

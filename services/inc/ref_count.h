@@ -69,10 +69,7 @@ public:
     }
 
     RefCountPtr(const RefCountPtr& ptr) :
-            p_(ptr.p_) {
-        if (p_) {
-            p_->addRef();
-        }
+            RefCountPtr(ptr.p_) {
     }
 
     RefCountPtr(RefCountPtr&& ptr) :
@@ -128,7 +125,7 @@ private:
 
     RefCountPtr(T* p, bool addRef) :
             p_(p) {
-        if (addRef && p_) {
+        if (p_ && addRef) {
             p_->addRef();
         }
     }
