@@ -51,6 +51,18 @@ typedef Vector<Variant> VariantArray;
  */
 typedef Map<String, Variant> VariantMap;
 
+namespace detail {
+
+template<typename T>
+struct IsComparableWithVariant {
+    // TODO: This is not ideal as we'd like Variant to be comparable with any type as long as it's
+    // comparable with one of the Variant's alternative types
+    static constexpr bool value = std::is_same_v<T, std::monostate> || std::is_arithmetic_v<T> || std::is_same_v<T, const char*> ||
+            std::is_same_v<T, String> || std::is_same_v<T, VariantArray> || std::is_same_v<T, VariantMap>;
+};
+
+} // namespace detail
+
 /**
  * A class acting as a union for certain common data types.
  */
@@ -709,12 +721,12 @@ public:
         return !operator==(var);
     }
 
-    template<typename T>
+    template<typename T, typename std::enable_if_t<detail::IsComparableWithVariant<T>::value, int> = 0>
     bool operator==(const T& val) const {
         return std::visit(IsEqualToVisitor(val), v_);
     }
 
-    template<typename T>
+    template<typename T, typename std::enable_if_t<detail::IsComparableWithVariant<T>::value, int> = 0>
     bool operator!=(const T& val) const {
         return !operator==(val);
     }
@@ -786,8 +798,7 @@ private:
 
     template<typename FirstT, typename SecondT>
     static bool areEqual(const FirstT& first, const SecondT& second) {
-        // TODO: This is not ideal as we'd like the compiler to generate an error when a variant
-        // is compared with a value whose type is not comparable with any of the alternative types
+        // TODO: Use std::equality_comparable_with (requires C++20)
         if constexpr (std::is_same_v<FirstT, SecondT> ||
                 (std::is_arithmetic_v<FirstT> && std::is_arithmetic_v<SecondT>) ||
                 (std::is_same_v<FirstT, String> && std::is_same_v<SecondT, const char*>) ||
@@ -1013,12 +1024,12 @@ struct Variant::IsAlternativeType<VariantMap> {
     static const bool value = true;
 };
 
-template<typename T>
+template<typename T, typename std::enable_if_t<detail::IsComparableWithVariant<T>::value, int> = 0>
 inline bool operator==(const T& val, const Variant& var) {
     return var == val;
 }
 
-template<typename T>
+template<typename T, typename std::enable_if_t<detail::IsComparableWithVariant<T>::value, int> = 0>
 inline bool operator!=(const T& val, const Variant& var) {
     return var != val;
 }

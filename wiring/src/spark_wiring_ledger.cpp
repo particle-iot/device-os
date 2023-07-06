@@ -71,7 +71,7 @@ void syncCallbackApp(void* data) {
     if (!appData) {
         return;
     }
-    if (std::holds_alternative<OnSyncCallbackData>(appData->onSync)) { // Plain C callback
+    if (std::holds_alternative<OnSyncCallbackData>(appData->onSync)) { // C callback
         auto& d = std::get<OnSyncCallbackData>(appData->onSync);
         d.callback(Ledger(ledger), d.arg);
     } else { // Functor callback

@@ -540,6 +540,29 @@ public:
     }
 
     /**
+     * Comparison operators.
+     *
+     * Two instances of ledger data are equal if they contain equal sets of entries.
+     */
+    ///@{
+    bool operator==(const LedgerData& data) const {
+        return v_ == data.v_;
+    }
+
+    bool operator!=(const LedgerData& data) const {
+        return v_ != data.v_;
+    }
+
+    bool operator==(const Variant& var) const {
+        return v_ == var;
+    }
+
+    bool operator!=(const Variant& var) const {
+        return v_ != var;
+    }
+    ///@}
+
+    /**
      * Parse ledger data from JSON.
      *
      * If the root element of the JSON document is not an object, empty ledger data is returned.
@@ -571,5 +594,13 @@ public:
 private:
     Variant v_;
 };
+
+inline bool operator==(const Variant& var, const LedgerData& data) {
+    return data == var;
+}
+
+inline bool operator!=(const Variant& var, const LedgerData& data) {
+    return data != var;
+}
 
 } // namespace particle
