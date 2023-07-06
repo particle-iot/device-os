@@ -58,7 +58,7 @@ public:
     /**
      * Entry type.
      */
-    typedef std::pair<KeyT, ValueT> Entry;
+    typedef std::pair<const KeyT, ValueT> Entry;
 
     /**
      * Iterator type.
@@ -78,13 +78,20 @@ public:
     /**
      * Construct a map from an initializer list.
      *
-     * @param entries Entries.
+     * @param entries Entries list.
      */
     Map(std::initializer_list<Entry> entries) :
-            entries_(entries) {
-        std::sort(entries_.begin(), entries_.end(), [this](const Entry& entry1, const Entry& entry2) {
-            return this->cmp_(entry1.first, entry2.first);
-        });
+            Map() {
+        Map<KeyT, ValueT> map;
+        if (!map.reserve(entries.size())) {
+            return;
+        }
+        for (auto& e: entries) {
+            if (!map.set(e.first, e.second)) {
+                return;
+            }
+        }
+        swap(*this, map);
     }
 
     /**
