@@ -33,10 +33,10 @@
 #include <stdint.h> // for uint8_t
 #include "system_tick_hal.h"
 
-#include "spark_wiring_string.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_fixed_point.h"
 #include <climits>
+#include <cstdarg>
 
 const unsigned char DEC = 10;
 const unsigned char HEX = 16;
@@ -66,6 +66,7 @@ class Print
     size_t printNumber(unsigned long, uint8_t);
     size_t printNumber(unsigned long long, uint8_t);
     size_t printFloat(double, uint8_t);
+    size_t printVariant(const particle::Variant& var);
   protected:
     void setWriteError(int err = 1) { write_error = err; }
 
@@ -90,7 +91,13 @@ class Print
     size_t print(T, int = DEC);
     size_t print(float, int = 2);
     size_t print(double, int = 2);
-    size_t print(const particle::Variant& var);
+
+    // Prevent implicit constructors of Variant from affecting overload resolution
+    template<typename T, typename std::enable_if_t<std::is_same_v<T, particle::Variant>, int> = 0>
+    size_t print(const T& var) {
+        return printVariant(var);
+    }
+
     size_t print(const Printable&);
     size_t print(const __FlashStringHelper*);
 
@@ -105,7 +112,14 @@ class Print
     }
     size_t println(float, int = 2);
     size_t println(double, int = 2);
-    size_t println(const particle::Variant& var);
+
+    template<typename T, typename std::enable_if_t<std::is_same_v<T, particle::Variant>, int> = 0>
+    size_t println(const T& var) {
+        size_t n = printVariant(var);
+        n += println();
+        return n;
+    }
+
     size_t println(const Printable&);
     size_t println(void);
     size_t println(const __FlashStringHelper*);

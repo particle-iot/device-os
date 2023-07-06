@@ -139,12 +139,6 @@ size_t Print::print(double n, int digits)
    return x.printTo(*this);
  }
 
-size_t Print::print(const Variant& var) {
-    JSONStreamWriter writer(*this);
-    writeVariant(var, writer);
-    return writer.bytesWritten();
-}
-
 size_t Print::print(const __FlashStringHelper* str)
 {
   return print(reinterpret_cast<const char*>(str));
@@ -181,12 +175,6 @@ size_t Print::println(double num, int digits)
   size_t n = print(num, digits);
   n += println();
   return n;
-}
-
-size_t Print::println(const Variant& var) {
-    size_t n = print(var);
-    n += println();
-    return n;
 }
 
  size_t Print::println(const Printable& x)
@@ -285,6 +273,12 @@ size_t Print::printFloat(double number, uint8_t digits)
   }
 
   return n;
+}
+
+size_t Print::printVariant(const Variant& var) {
+    JSONStreamWriter writer(*this);
+    writeVariant(var, writer);
+    return writer.bytesWritten();
 }
 
 size_t Print::vprintf(bool newline, const char* format, va_list args)
