@@ -111,7 +111,7 @@ int setSyncCallback(ledger_instance* ledger, CallbackT&& callback) {
     } else if (!callback) {
         ledger_set_callbacks(ledger, nullptr, nullptr); // Clear the callback
         ledger_set_app_data(ledger, nullptr, nullptr, nullptr); // Destroy the app data
-        ledger_release(ledger, nullptr);
+        ledger_release(ledger, nullptr); // See below
         return 0;
     }
     appData->onSync = std::move(callback);
@@ -137,14 +137,9 @@ int getLedgerInfo(ledger_instance* ledger, ledger_info& info) {
     return 0;
 }
 
-} // namespace
-
-int Ledger::set(const LedgerData& data, SetMode mode) {
-    if (!isValid()) {
-        return Error::INVALID_STATE;
-    }
+int setLedgerData(ledger_instance* ledger, const LedgerData& data) {
     ledger_stream* stream = nullptr;
-    int r = ledger_open(&stream, instance_, LEDGER_STREAM_MODE_WRITE, nullptr);
+    int r = ledger_open(&stream, ledger, LEDGER_STREAM_MODE_WRITE, nullptr);
     if (r < 0) {
         LOG(ERROR, "ledger_open() failed: %d", r);
         return r;
@@ -168,19 +163,17 @@ int Ledger::set(const LedgerData& data, SetMode mode) {
     return 0;
 }
 
-LedgerData Ledger::get() const {
-    if (!isValid()) {
-        return LedgerData();
-    }
+int getLedgerData(ledger_instance* ledger, LedgerData& data) {
     ledger_stream* stream = nullptr;
-    int r = ledger_open(&stream, instance_, LEDGER_STREAM_MODE_READ, nullptr);
+    int r = ledger_open(&stream, ledger, LEDGER_STREAM_MODE_READ, nullptr);
     if (r < 0) {
         LOG(ERROR, "ledger_open() failed: %d", r);
-        return LedgerData();
+        return r;
     }
     NAMED_SCOPE_GUARD(g, {
         ledger_close(stream, 0, nullptr);
     });
+    // TODO: Use a binary format
     String str;
     OutputStringStream strStream(str);
     char buf[128];
@@ -191,7 +184,7 @@ LedgerData Ledger::get() const {
                 break;
             }
             LOG(ERROR, "ledger_read() failed: %d", r);
-            return LedgerData();
+            return r;
         }
         strStream.write((uint8_t*)buf, r);
     }
@@ -199,9 +192,42 @@ LedgerData Ledger::get() const {
     r = ledger_close(stream, 0, nullptr);
     if (r < 0) {
         LOG(ERROR, "ledger_close() failed: %d", r);
+        return r;
+    }
+    data = Variant::fromJSON(str);
+    return 0;
+}
+
+} // namespace
+
+int Ledger::set(const LedgerData& data, SetMode mode) {
+    if (!isValid()) {
+        return Error::INVALID_STATE;
+    }
+    if (mode == Ledger::REPLACE) {
+        CHECK(setLedgerData(instance_, data));
+    } else {
+        LedgerData d;
+        CHECK(getLedgerData(instance_, d));
+        for (auto& e: data.variantMap()) {
+            if (!d.set(e.first, e.second)) {
+                return Error::NO_MEMORY;
+            }
+        }
+        CHECK(setLedgerData(instance_, d));
+    }
+    return 0;
+}
+
+LedgerData Ledger::get() const {
+    if (!isValid()) {
         return LedgerData();
     }
-    return Variant::fromJSON(str);
+    LedgerData data;
+    if (getLedgerData(instance_, data) < 0) {
+        return LedgerData();
+    }
+    return data;
 }
 
 time64_t Ledger::lastUpdated() const {
