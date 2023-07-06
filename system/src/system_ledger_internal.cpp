@@ -155,6 +155,21 @@ int writeDataHeader(lfs_t* fs, lfs_file_t* file, size_t dataSize, size_t infoSiz
     return n;
 }
 
+int writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const char* ledgerName, const LedgerInfo& info) {
+    PB_INTERNAL(LedgerInfo) pbInfo = {};
+    size_t n = strlcpy(pbInfo.name, ledgerName, sizeof(pbInfo.name));
+    if (n >= sizeof(pbInfo.name)) {
+        return SYSTEM_ERROR_INTERNAL; // The name is longer than specified in ledger.proto
+    }
+    pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(info.scope());
+    pbInfo.sync_direction = static_cast<PB_LEDGER(SyncDirection)>(info.syncDirection());
+    pbInfo.last_updated = info.lastUpdated();
+    pbInfo.last_synced = info.lastSynced();
+    pbInfo.sync_pending = info.syncPending();
+    n = CHECK(encodeProtobufToFile(file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
+    return n;
+}
+
 int formatLedgerPath(char* buf, size_t size, const char* ledgerName, const char* fmt = nullptr, ...) {
     // Format the prefix part of the path
     int n = snprintf(buf, size, "%s/%s/", LEDGER_ROOT_DIR, ledgerName);
@@ -222,8 +237,14 @@ inline int getCurrentFilePath(char* buf, size_t size, const char* ledgerName) {
     return 0;
 }
 
+// Helper functions that transform LittleFS errors to a system error
+inline int removeFile(lfs_t* fs, const char* path) {
+    CHECK_FS(lfs_remove(fs, path));
+    return 0;
+}
+
 inline int closeFile(lfs_t* fs, lfs_file_t* file) {
-    CHECK_FS(lfs_file_close(fs, file)); // Transforms the LittleFS error to system error
+    CHECK_FS(lfs_file_close(fs, file));
     return 0;
 }
 
@@ -376,31 +397,9 @@ int Ledger::init(const char* name) {
     return 0;
 }
 
-int Ledger::beginRead(LedgerReader& reader) {
+int Ledger::initReader(LedgerReader& reader) {
     std::lock_guard lock(*this);
-    char path[MAX_PATH_LEN + 1];
-    if (stagedSeqNum_ > 0) {
-        // The most recent data is staged
-        CHECK(getStagedFilePath(path, sizeof(path), name_, stagedSeqNum_));
-    } else {
-        CHECK(getCurrentFilePath(path, sizeof(path), name_));
-    }
-    // Open the respective file
-    FsLock fs;
-    lfs_file_t file = {};
-    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_RDONLY));
-    NAMED_SCOPE_GUARD(g, {
-        int r = closeFile(fs.instance(), &file);
-        if (r < 0) {
-            LOG(ERROR, "Error while closing file: %d", r);
-        }
-    });
-    // Read the header. The header data has already been validated at this point
-    size_t dataSize = 0;
-    CHECK(readDataHeader(fs.instance(), &file, &dataSize));
-    // Initialize the reader
-    reader = LedgerReader(&file, dataSize, stagedSeqNum_, this);
-    g.dismiss(); // The file handle is now managed by the reader instance
+    CHECK(reader.init(stagedSeqNum_, this));
     if (stagedSeqNum_ > 0) {
         ++stagedReaderCount_;
     } else {
@@ -409,31 +408,14 @@ int Ledger::beginRead(LedgerReader& reader) {
     return 0;
 }
 
-int Ledger::beginWrite(LedgerWriteSource src, LedgerWriter& writer) {
+int Ledger::initWriter(LedgerWriteSource src, LedgerWriter& writer) {
     std::lock_guard lock(*this);
     // It's allowed to write to a ledger while its sync direction is unknown
     if (src == LedgerWriteSource::USER && syncDir_ != LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD &&
             syncDir_ != LEDGER_SYNC_DIRECTION_UNKNOWN) {
         return SYSTEM_ERROR_LEDGER_READ_ONLY;
     }
-    // Create a temporary file
-    char path[MAX_PATH_LEN + 1];
-    int seqNum = ++lastSeqNum_;
-    CHECK(getTempFilePath(path, sizeof(path), name_, seqNum));
-    FsLock fs;
-    lfs_file_t file = {};
-    CHECK_FS(lfs_file_open(fs.instance(), &file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL));
-    NAMED_SCOPE_GUARD(g, {
-        int r = closeFile(fs.instance(), &file);
-        if (r < 0) {
-            LOG(ERROR, "Error while closing file: %d", r);
-        }
-    });
-    // Reserve space for the header
-    CHECK_FS(lfs_file_seek(fs.instance(), &file, sizeof(LedgerDataHeader), LFS_SEEK_SET));
-    // Initialize the writer
-    writer = LedgerWriter(&file, src, seqNum, this);
-    g.dismiss(); // The file handle is now managed by the writer instance
+    CHECK(writer.init(src, ++lastSeqNum_, this));
     return 0;
 }
 
@@ -457,14 +439,9 @@ void Ledger::setAppData(void* data, ledger_destroy_app_data_callback destroy) {
     destroyAppData_ = destroy;
 }
 
-int Ledger::endRead(LedgerReader* reader) {
+int Ledger::readerClosed(bool staged) {
     std::lock_guard lock(*this);
-    FsLock fs;
-    int r = closeFile(fs.instance(), reader->file());
-    if (r < 0) {
-        LOG(ERROR, "Error while closing file: %d", r);
-    }
-    if (reader->seqNumber() > 0) {
+    if (staged) {
         --stagedReaderCount_;
     } else {
         --curReaderCount_;
@@ -476,6 +453,7 @@ int Ledger::endRead(LedgerReader* reader) {
         // however, there will be at most one file with staged data when the last reader is closed
         // as the application API never keeps ledger streams open for long. The only slow reader
         // is the system which streams ledger data to the server
+        FsLock fs;
         if (stagedFileCount_ == 1) {
             // Fast track: there's one file with staged data. Move it to "current"
             char srcPath[MAX_PATH_LEN + 1];
@@ -491,62 +469,19 @@ int Ledger::endRead(LedgerReader* reader) {
         stagedSeqNum_ = 0;
         stagedFileCount_ = 0;
     }
-    return r;
+    return 0;
 }
 
-int Ledger::endWrite(LedgerWriter* writer, const LedgerInfo& info) {
+int Ledger::writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum) {
     std::lock_guard lock(*this);
     FsLock fs;
-    auto file = writer->file();
-    NAMED_SCOPE_GUARD(removeFileGuard, {
-        char path[MAX_PATH_LEN + 1];
-        int r = getTempFilePath(path, sizeof(path), name_, writer->seqNumber());
-        if (r >= 0) {
-            r = rmrf(path);
-        }
-        if (r < 0) {
-            LOG(ERROR, "Failed to remove file: %d", r);
-        }
-    });
-    NAMED_SCOPE_GUARD(closeFileGuard, {
-        int r = closeFile(fs.instance(), file);
-        if (r < 0) {
-            LOG(ERROR, "Error while closing file: %d", r);
-        }
-    });
-    // Update the ledger info
-    auto newInfo = this->info().update(info);
-    newInfo.dataSize(writer->dataSize()); // Can't be overridden
-    if (!info.hasLastUpdated()) {
-        int64_t time = 0; // Time is unknown
-        if (hal_rtc_time_is_valid(nullptr)) {
-            timeval tv = {};
-            int r = hal_rtc_get_time(&tv, nullptr);
-            if (r < 0) {
-                LOG(ERROR, "Failed to get current time: %d", r);
-            } else {
-                time = tv.tv_sec * 1000ll + tv.tv_usec / 1000;
-            }
-        }
-        newInfo.lastUpdated(time);
-    }
-    if (!info.hasSyncPending() && writer->source() == LedgerWriteSource::USER) {
-        newInfo.syncPending(true);
-    }
-    // Write the info section
-    size_t infoSize = CHECK(writeLedgerInfo(fs.instance(), file, newInfo));
-    // Write the header
-    CHECK_FS(lfs_file_seek(fs.instance(), file, 0, LFS_SEEK_SET));
-    CHECK(writeDataHeader(fs.instance(), file, writer->dataSize(), infoSize));
-    closeFileGuard.dismiss();
-    CHECK_FS(lfs_file_close(fs.instance(), file));
-    // Move the file where appropriate
+    // Move the temporary file where appropriate
     bool newStagedFile = false;
     char srcPath[MAX_PATH_LEN + 1];
     char destPath[MAX_PATH_LEN + 1];
-    CHECK(getTempFilePath(srcPath, sizeof(srcPath), name_, writer->seqNumber()));
+    CHECK(getTempFilePath(srcPath, sizeof(srcPath), name_, tempSeqNum));
     if (curReaderCount_ == 0 && stagedReaderCount_ == 0) {
-        // Nobody is reading the ledger data. Move to "current"
+        // Nobody is reading anything. Move to "current"
         CHECK(getCurrentFilePath(destPath, sizeof(destPath), name_));
     } else if (stagedSeqNum_ > 0 && stagedReaderCount_ == 0) {
         // There's staged data and nobody is reading it. Replace it
@@ -559,27 +494,12 @@ int Ledger::endWrite(LedgerWriter* writer, const LedgerInfo& info) {
         newStagedFile = true;
     }
     CHECK_FS(lfs_rename(fs.instance(), srcPath, destPath));
-    removeFileGuard.dismiss();
     if (newStagedFile) {
-        stagedSeqNum_ = writer->seqNumber();
+        stagedSeqNum_ = tempSeqNum;
         ++stagedFileCount_;
     }
-    updateLedgerInfo(newInfo);
+    updateLedgerInfo(info);
     return 0;
-}
-
-int Ledger::discardWrite(LedgerWriter* writer) {
-    std::lock_guard lock(*this);
-    FsLock fs;
-    // Remove the temporary file
-    char path[MAX_PATH_LEN + 1];
-    CHECK(getTempFilePath(path, sizeof(path), name_, writer->seqNumber()));
-    int r = closeFile(fs.instance(), writer->file());
-    if (r < 0) {
-        LOG(ERROR, "Error while closing file: %d", r);
-    }
-    CHECK_FS(lfs_remove(fs.instance(), path));
-    return r;
 }
 
 int Ledger::loadLedgerInfo(lfs_t* fs) {
@@ -631,21 +551,6 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
     return 0;
 }
 
-int Ledger::writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const LedgerInfo& info) {
-    PB_INTERNAL(LedgerInfo) pbInfo = {};
-    size_t n = strlcpy(pbInfo.name, name_, sizeof(pbInfo.name));
-    if (n >= sizeof(pbInfo.name)) {
-        return SYSTEM_ERROR_INTERNAL; // The name is longer than specified in ledger.proto
-    }
-    pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(info.scope());
-    pbInfo.sync_direction = static_cast<PB_LEDGER(SyncDirection)>(info.syncDirection());
-    pbInfo.last_updated = info.lastUpdated();
-    pbInfo.last_synced = info.lastSynced();
-    pbInfo.sync_pending = info.syncPending();
-    n = CHECK(encodeProtobufToFile(file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
-    return n;
-}
-
 void Ledger::updateLedgerInfo(const LedgerInfo& info) {
     if (info.hasScope()) {
         scope_ = info.scope();
@@ -682,7 +587,7 @@ int Ledger::initCurrentData(lfs_t* fs) {
     // Reserve space for the header
     CHECK_FS(lfs_file_seek(fs, &file, sizeof(LedgerDataHeader), LFS_SEEK_SET));
     // Write the info section
-    size_t infoSize = CHECK(writeLedgerInfo(fs, &file, info()));
+    size_t infoSize = CHECK(writeLedgerInfo(fs, &file, name_, info()));
     // Write the header
     CHECK_FS(lfs_file_seek(fs, &file, 0, LFS_SEEK_SET));
     CHECK(writeDataHeader(fs, &file, 0 /* dataSize */, infoSize));
@@ -793,6 +698,32 @@ LedgerInfo& LedgerInfo::update(const LedgerInfo& info) {
     return *this;
 }
 
+int LedgerReader::init(int stagedSeqNum, Ledger* ledger) {
+    char path[MAX_PATH_LEN + 1];
+    if (stagedSeqNum > 0) {
+        // The most recent data is staged
+        CHECK(getStagedFilePath(path, sizeof(path), ledger->name(), stagedSeqNum));
+        staged_ = true;
+    } else {
+        CHECK(getCurrentFilePath(path, sizeof(path), ledger->name()));
+    }
+    // Open the respective file
+    FsLock fs;
+    CHECK_FS(lfs_file_open(fs.instance(), &file_, path, LFS_O_RDONLY));
+    NAMED_SCOPE_GUARD(closeFileGuard, {
+        int r = closeFile(fs.instance(), &file_);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+    // Read the header. The header data has already been validated at this point
+    CHECK(readDataHeader(fs.instance(), &file_, &dataSize_));
+    ledger_ = ledger;
+    open_ = true;
+    closeFileGuard.dismiss();
+    return 0;
+}
+
 int LedgerReader::read(char* data, size_t size) {
     if (!open_) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -810,21 +741,46 @@ int LedgerReader::read(char* data, size_t size) {
     return n;
 }
 
-int LedgerReader::close(bool flush) {
-    CHECK(end());
-    return 0;
-}
-
-int LedgerReader::end() {
+int LedgerReader::close(bool /* discard */) {
     if (!open_) {
         return 0;
     }
-    int r = ledger_->endRead(this);
+    // Consider the reader closed regardless if any of the operations below fails
+    open_ = false;
+    FsLock fs;
+    int result = closeFile(fs.instance(), &file_);
+    if (result < 0) {
+        LOG(ERROR, "Error while closing file: %d", result);
+    }
+    // Let the ledger flush any data
+    int r = ledger_->readerClosed(staged_);
     if (r < 0) {
         LOG(ERROR, "Failed to flush ledger data: %d", r);
+        return r;
     }
-    open_ = false; // Ledger closes the file in any case
-    return r;
+    return result;
+}
+
+int LedgerWriter::init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger) {
+    // Create a temporary file
+    char path[MAX_PATH_LEN + 1];
+    CHECK(getTempFilePath(path, sizeof(path), ledger->name(), tempSeqNum));
+    FsLock fs;
+    CHECK_FS(lfs_file_open(fs.instance(), &file_, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL));
+    NAMED_SCOPE_GUARD(closeFileGuard, {
+        int r = closeFile(fs.instance(), &file_);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+    // Reserve space for the header
+    CHECK_FS(lfs_file_seek(fs.instance(), &file_, sizeof(LedgerDataHeader), LFS_SEEK_SET));
+    ledger_ = ledger;
+    src_ = src;
+    tempSeqNum_ = tempSeqNum;
+    open_ = true;
+    closeFileGuard.dismiss();
+    return 0;
 }
 
 int LedgerWriter::write(const char* data, size_t size) {
@@ -833,7 +789,6 @@ int LedgerWriter::write(const char* data, size_t size) {
     }
     if (src_ == LedgerWriteSource::USER && dataSize_ + size > LEDGER_MAX_DATA_SIZE) {
         LOG(ERROR, "Ledger data is too long");
-        discard();
         return SYSTEM_ERROR_LEDGER_TOO_LARGE;
     }
     FsLock fs;
@@ -846,36 +801,75 @@ int LedgerWriter::write(const char* data, size_t size) {
     return n;
 }
 
-int LedgerWriter::close(bool flush) {
-    if (flush) {
-        CHECK(end());
-    } else {
-        discard();
-    }
-    return 0;
-}
-
-int LedgerWriter::end(const LedgerInfo& info) {
+int LedgerWriter::close(bool discard) {
     if (!open_) {
         return 0;
     }
-    int r = ledger_->endWrite(this, info);
+    // Consider the writer closed regardless if any of the operations below fails
+    open_ = false;
+    FsLock fs;
+    if (discard) {
+        // Remove the temporary file
+        char path[MAX_PATH_LEN + 1];
+        CHECK(getTempFilePath(path, sizeof(path), ledger_->name(), tempSeqNum_));
+        int r = closeFile(fs.instance(), &file_);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+        CHECK_FS(lfs_remove(fs.instance(), path));
+        return r;
+    }
+    NAMED_SCOPE_GUARD(removeFileGuard, {
+        char path[MAX_PATH_LEN + 1];
+        int r = getTempFilePath(path, sizeof(path), ledger_->name(), tempSeqNum_);
+        if (r >= 0) {
+            r = removeFile(fs.instance(), path);
+        }
+        if (r < 0) {
+            LOG(ERROR, "Failed to remove file: %d", r);
+        }
+    });
+    NAMED_SCOPE_GUARD(closeFileGuard, { // Will run before removeFileGuard
+        int r = closeFile(fs.instance(), &file_);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+    // Update the ledger info
+    std::lock_guard lock(*ledger_);
+    auto newInfo = ledger_->info().update(ledgerInfo_);
+    newInfo.dataSize(dataSize_); // Can't be overridden
+    if (!ledgerInfo_.hasLastUpdated()) {
+        int64_t time = 0; // Time is unknown
+        if (hal_rtc_time_is_valid(nullptr)) {
+            timeval tv = {};
+            int r = hal_rtc_get_time(&tv, nullptr);
+            if (r < 0) {
+                LOG(ERROR, "Failed to get current time: %d", r);
+            } else {
+                time = tv.tv_sec * 1000ll + tv.tv_usec / 1000;
+            }
+        }
+        newInfo.lastUpdated(time);
+    }
+    if (!ledgerInfo_.hasSyncPending() && src_ == LedgerWriteSource::USER) {
+        newInfo.syncPending(true);
+    }
+    // Write the info section
+    size_t infoSize = CHECK(writeLedgerInfo(fs.instance(), &file_, ledger_->name(), newInfo));
+    // Write the header
+    CHECK_FS(lfs_file_seek(fs.instance(), &file_, 0, LFS_SEEK_SET));
+    CHECK(writeDataHeader(fs.instance(), &file_, dataSize_, infoSize));
+    closeFileGuard.dismiss();
+    CHECK_FS(lfs_file_close(fs.instance(), &file_));
+    // Let the ledger flush the data
+    int r = ledger_->writerClosed(newInfo, src_, tempSeqNum_);
     if (r < 0) {
         LOG(ERROR, "Failed to flush ledger data: %d", r);
+        return r;
     }
-    open_ = false; // Ledger closes the file in any case
-    return r;
-}
-
-void LedgerWriter::discard() {
-    if (!open_) {
-        return;
-    }
-    int r = ledger_->discardWrite(this);
-    if (r < 0) {
-        LOG(ERROR, "Failed to clean up ledger data: %d", r);
-    }
-    open_ = false;
+    removeFileGuard.dismiss();
+    return 0;
 }
 
 } // namespace system

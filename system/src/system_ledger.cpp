@@ -99,7 +99,7 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
         if (!r) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        CHECK(lr->beginRead(*r));
+        CHECK(lr->initReader(*r));
         *stream = reinterpret_cast<ledger_stream*>(r.release()); // Transfer ownership to the caller
     } else if (mode & LEDGER_STREAM_MODE_WRITE) {
         if (mode & LEDGER_STREAM_MODE_READ) {
@@ -109,7 +109,7 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
         if (!w) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        CHECK(lr->beginWrite(LedgerWriteSource::USER, *w));
+        CHECK(lr->initWriter(LedgerWriteSource::USER, *w));
         *stream = reinterpret_cast<ledger_stream*>(w.release());
     } else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -119,8 +119,7 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
 
 int ledger_close(ledger_stream* stream, int flags, void* reserved) {
     auto s = reinterpret_cast<LedgerStream*>(stream);
-    bool flush = !(flags & LEDGER_STREAM_CLOSE_DISCARD);
-    CHECK(s->close(flush));
+    CHECK(s->close(flags & LEDGER_STREAM_CLOSE_DISCARD));
     return 0;
 }
 

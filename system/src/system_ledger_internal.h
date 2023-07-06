@@ -104,8 +104,8 @@ public:
 
     int init(const char* name);
 
-    int beginRead(LedgerReader& reader);
-    int beginWrite(LedgerWriteSource src, LedgerWriter& writer);
+    int initReader(LedgerReader& reader);
+    int initWriter(LedgerWriteSource src, LedgerWriter& writer);
 
     // Returns a LedgerInfo object with all fields set
     LedgerInfo info() const;
@@ -156,12 +156,10 @@ private:
 
     mutable StaticRecursiveMutex mutex_; // Ledger lock
 
-    int endRead(LedgerReader* reader); // Called by LedgerReader
-    int endWrite(LedgerWriter* writer, const LedgerInfo& info); // Called by LedgerWriter
-    int discardWrite(LedgerWriter* writer); // ditto
+    int readerClosed(bool staged); // Called by LedgerReader
+    int writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum); // Called by LedgerWriter
 
     int loadLedgerInfo(lfs_t* fs);
-    int writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const LedgerInfo& info);
     void updateLedgerInfo(const LedgerInfo& info);
 
     int initCurrentData(lfs_t* fs);
@@ -272,7 +270,7 @@ public:
 
     virtual int read(char* data, size_t size) = 0;
     virtual int write(const char* data, size_t size) = 0;
-    virtual int close(bool flush = true) = 0;
+    virtual int close(bool discard = false) = 0;
 };
 
 class LedgerReader: public LedgerStream {
@@ -281,19 +279,15 @@ public:
             file_(),
             dataSize_(0),
             dataOffs_(0),
-            seqNum_(0),
+            staged_(false),
             open_(false) {
     }
 
+    // Reader instances are not copyable nor movable
     LedgerReader(const LedgerReader&) = delete;
 
-    LedgerReader(LedgerReader&& reader) :
-            LedgerReader() {
-        swap(*this, reader);
-    }
-
     ~LedgerReader() {
-        end();
+        close(true /* discard */);
     }
 
     int read(char* data, size_t size) override;
@@ -302,55 +296,23 @@ public:
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    int close(bool flush) override;
-
-    int end();
+    int close(bool discard = false) override;
 
     bool isOpen() const {
         return open_;
     }
 
-    lfs_file_t* file() {
-        return &file_;
-    }
-
-    int seqNumber() const {
-        return seqNum_;
-    }
-
-    LedgerReader& operator=(LedgerReader&& reader) {
-        swap(*this, reader);
-        return *this;
-    }
-
     LedgerReader& operator=(const LedgerReader&) = default;
-
-    friend void swap(LedgerReader& r1, LedgerReader& r2) {
-        using std::swap; // For ADL
-        swap(r1.ledger_, r2.ledger_);
-        swap(r1.file_, r2.file_);
-        swap(r1.dataSize_, r2.dataSize_);
-        swap(r1.dataOffs_, r2.dataOffs_);
-        swap(r1.seqNum_, r2.seqNum_);
-        swap(r1.open_, r2.open_);
-    }
 
 private:
     RefCountPtr<Ledger> ledger_; // Ledger instance
     lfs_file_t file_; // File handle
     size_t dataSize_; // Size of the data section of the ledger file
     size_t dataOffs_; // Current offset in the data section
-    int seqNum_; // Sequence number assigned to the ledger data being read
+    bool staged_; // Whether the data being read is staged
     bool open_; // Whether the reader is open
 
-    LedgerReader(lfs_file_t* file, size_t dataSize, int seqNum, Ledger* ledger) :
-            ledger_(ledger),
-            file_(*file),
-            dataSize_(dataSize),
-            dataOffs_(0),
-            seqNum_(seqNum),
-            open_(true) {
-    }
+    int init(int stagedSeqNum, Ledger* ledger); // Called by Ledger
 
     friend class Ledger;
 };
@@ -361,19 +323,15 @@ public:
             file_(),
             src_(),
             dataSize_(0),
-            seqNum_(0),
+            tempSeqNum_(0),
             open_(false) {
     }
 
+    // Writer instances are not copyable nor movable
     LedgerWriter(const LedgerWriter&) = delete;
 
-    LedgerWriter(LedgerWriter&& writer) :
-            LedgerWriter() {
-        swap(*this, writer);
-    }
-
     ~LedgerWriter() {
-        discard();
+        close(true /* discard */);
     }
 
     int read(char* data, size_t size) override {
@@ -381,65 +339,32 @@ public:
     }
 
     int write(const char* data, size_t size) override;
-    int close(bool flush) override;
+    int close(bool discard = false) override;
 
-    int end(const LedgerInfo& info = LedgerInfo());
+    LedgerInfo& ledgerInfo() {
+        return ledgerInfo_;
+    }
 
-    void discard();
+    const LedgerInfo& ledgerInfo() const {
+        return ledgerInfo_;
+    }
 
     bool isOpen() const {
         return open_;
     }
 
-    lfs_file_t* file() {
-        return &file_;
-    }
-
-    size_t dataSize() const {
-        return dataSize_;
-    }
-
-    int seqNumber() const {
-        return seqNum_;
-    }
-
-    LedgerWriteSource source() const {
-        return src_;
-    }
-
-    LedgerWriter& operator=(LedgerWriter&& writer) {
-        swap(*this, writer);
-        return *this;
-    }
-
     LedgerWriter& operator=(const LedgerWriter&) = delete;
-
-    friend void swap(LedgerWriter& w1, LedgerWriter& w2) {
-        using std::swap; // For ADL
-        swap(w1.ledger_, w2.ledger_);
-        swap(w1.file_, w2.file_);
-        swap(w1.src_, w2.src_);
-        swap(w1.dataSize_, w2.dataSize_);
-        swap(w1.seqNum_, w2.seqNum_);
-        swap(w1.open_, w2.open_);
-    }
 
 private:
     RefCountPtr<Ledger> ledger_; // Ledger instance
+    LedgerInfo ledgerInfo_; // Ledger info updates
     lfs_file_t file_; // File handle
     LedgerWriteSource src_; // Who is writing to the ledger
-    size_t dataSize_; // Size of the written data
-    int seqNum_; // Sequence number assigned to the ledger data being written
+    size_t dataSize_; // Size of the data written
+    int tempSeqNum_; // Sequence number assigned to the temporary ledger data
     bool open_; // Whether the writer is open
 
-    LedgerWriter(lfs_file_t* file, LedgerWriteSource src, int seqNum, Ledger* ledger) :
-            ledger_(ledger),
-            file_(*file),
-            src_(src),
-            dataSize_(0),
-            seqNum_(seqNum),
-            open_(true) {
-    }
+    int init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger); // Called by Ledger
 
     friend class Ledger;
 };
