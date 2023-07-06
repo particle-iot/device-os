@@ -10,7 +10,7 @@ using namespace particle;
 namespace {
 
 template<typename T>
-void check(const Variant& v, const T& expectedValue = T()) {
+void checkVariant(const Variant& v, const T& expectedValue = T()) {
     REQUIRE(v.is<T>());
     CHECK(v.value<T>() == expectedValue);
     CHECK(v.to<T>() == expectedValue);
@@ -66,8 +66,9 @@ void check(const Variant& v, const T& expectedValue = T()) {
 }
 
 template<typename T>
-void check(Variant& v, const T& expectedValue = T()) {
-    check<T>(static_cast<const Variant&>(v), expectedValue);
+void checkVariant(Variant& v, const T& expectedValue = T()) {
+    // Test const methods
+    checkVariant<T>(static_cast<const Variant&>(v), expectedValue);
     // Test non-const methods
     CHECK(v.as<T>() == expectedValue);
     if constexpr (std::is_same_v<T, bool>) {
@@ -99,92 +100,92 @@ TEST_CASE("Variant") {
     SECTION("can be constructed from a value of one of the supported types") {
         {
             Variant v;
-            check<std::monostate>(v);
+            checkVariant<std::monostate>(v);
         }
         {
             Variant v(std::monostate{});
-            check<std::monostate>(v);
+            checkVariant<std::monostate>(v);
         }
         {
             Variant v(true);
-            check<bool>(v, true);
+            checkVariant<bool>(v, true);
         }
         {
             Variant v((char)123);
-            check<int>(v, 123);
+            checkVariant<int>(v, 123);
         }
         {
             Variant v((unsigned char)123);
-            check<int>(v, 123);
+            checkVariant<int>(v, 123);
         }
         {
             Variant v((short)123);
-            check<int>(v, 123);
+            checkVariant<int>(v, 123);
         }
         {
             Variant v((unsigned short)123);
-            check<int>(v, 123);
+            checkVariant<int>(v, 123);
         }
         {
             Variant v(123);
-            check<int>(v, 123);
+            checkVariant<int>(v, 123);
         }
         {
             Variant v(123u);
-            check<unsigned>(v, 123);
+            checkVariant<unsigned>(v, 123);
         }
 #ifdef __LP64__
         {
             Variant v(123l);
-            check<int64_t>(v, 123);
+            checkVariant<int64_t>(v, 123);
         }
         {
             Variant v(123ul);
-            check<uint64_t>(v, 123);
+            checkVariant<uint64_t>(v, 123);
         }
 #else
         {
             Variant v(123l);
-            check<int>(v, 123);
+            checkVariant<int>(v, 123);
         }
         {
             Variant v(123ul);
-            check<unsigned>(v, 123);
+            checkVariant<unsigned>(v, 123);
         }
 #endif
         {
             Variant v(123ll);
-            check<int64_t>(v, 123);
+            checkVariant<int64_t>(v, 123);
         }
         {
             Variant v(123ull);
-            check<uint64_t>(v, 123);
+            checkVariant<uint64_t>(v, 123);
         }
         {
             Variant v(123.0f);
-            check<double>(v, 123.0);
+            checkVariant<double>(v, 123.0);
         }
         {
             Variant v(123.0);
-            check<double>(v, 123.0);
+            checkVariant<double>(v, 123.0);
         }
         {
             Variant v("abc");
-            check<String>(v, "abc");
+            checkVariant<String>(v, "abc");
         }
         {
             Variant v(String("abc"));
-            check<String>(v, "abc");
+            checkVariant<String>(v, "abc");
         }
         {
             VariantArray arr({ 1, 2, 3 });
             Variant v(arr);
-            check<VariantArray>(v, arr);
+            checkVariant<VariantArray>(v, arr);
         }
         {
             VariantMap map({ { "a", 1 }, { "b", 2 }, { "c", 3 } });
             Variant v(map);
-            check<VariantMap>(v, map);
+            checkVariant<VariantMap>(v, map);
         }
     }
 
@@ -192,66 +193,66 @@ TEST_CASE("Variant") {
         Variant v;
 
         v = std::monostate{};
-        check<std::monostate>(v);
+        checkVariant<std::monostate>(v);
 
         v = true;
-        check<bool>(v, true);
+        checkVariant<bool>(v, true);
 
         v = (char)123;
-        check<int>(v, 123);
+        checkVariant<int>(v, 123);
 
         v = (unsigned char)123;
-        check<int>(v, 123);
+        checkVariant<int>(v, 123);
 
         v = (short)123;
-        check<int>(v, 123);
+        checkVariant<int>(v, 123);
 
         v = (unsigned short)123;
-        check<int>(v, 123);
+        checkVariant<int>(v, 123);
 
         v = 123;
-        check<int>(v, 123);
+        checkVariant<int>(v, 123);
 
         v = 123u;
-        check<unsigned>(v, 123);
+        checkVariant<unsigned>(v, 123);
 #ifdef __LP64__
         v = 123l;
-        check<int64_t>(v, 123);
+        checkVariant<int64_t>(v, 123);
 
         v = 123ul;
-        check<uint64_t>(v, 123);
+        checkVariant<uint64_t>(v, 123);
 #else
         v = 123l;
-        check<int>(v, 123);
+        checkVariant<int>(v, 123);
 
         v = 123ul;
-        check<unsigned>(v, 123);
+        checkVariant<unsigned>(v, 123);
 #endif
         v = 123ll;
-        check<int64_t>(v, 123);
+        checkVariant<int64_t>(v, 123);
 
         v = 123ull;
-        check<uint64_t>(v, 123);
+        checkVariant<uint64_t>(v, 123);
 
         v = 123.0f;
-        check<double>(v, 123.0);
+        checkVariant<double>(v, 123.0);
 
         v = 123.0;
-        check<double>(v, 123.0);
+        checkVariant<double>(v, 123.0);
 
         v = "abc";
-        check<String>(v, "abc");
+        checkVariant<String>(v, "abc");
 
         v = String("abc");
-        check<String>(v, "abc");
+        checkVariant<String>(v, "abc");
 
         VariantArray arr({ 1, 2, 3 });
         v = arr;
-        check<VariantArray>(v, arr);
+        checkVariant<VariantArray>(v, arr);
 
         VariantMap map({ { "a", 1 }, { "b", 2 }, { "c", 3 } });
         v = map;
-        check<VariantMap>(v, map);
+        checkVariant<VariantMap>(v, map);
     }
 
     SECTION("can be converted to JSON") {
@@ -282,24 +283,24 @@ TEST_CASE("Variant") {
 
     SECTION("can be converted from JSON") {
         Variant v = Variant::fromJSON("null");
-        check<std::monostate>(v);
+        checkVariant<std::monostate>(v);
 
         v = Variant::fromJSON("true");
-        check(v, true);
+        checkVariant(v, true);
 
         v = Variant::fromJSON("123");
-        check(v, 123);
+        checkVariant(v, 123);
 
         v = Variant::fromJSON("123.5");
-        check(v, 123.5);
+        checkVariant(v, 123.5);
 
         v = Variant::fromJSON("\"abc\"");
-        check(v, String("abc"));
+        checkVariant(v, String("abc"));
 
         v = Variant::fromJSON("[123,\"abc\"]");
-        check(v, VariantArray{ 123, "abc" });
+        checkVariant(v, VariantArray{ 123, "abc" });
 
         v = Variant::fromJSON("{\"a\":1,\"b\":2,\"c\":3}");
-        check(v, VariantMap{ { "a", 1 }, { "b", 2 }, { "c", 3 } });
+        checkVariant(v, VariantMap{ { "a", 1 }, { "b", 2 }, { "c", 3 } });
     }
 }

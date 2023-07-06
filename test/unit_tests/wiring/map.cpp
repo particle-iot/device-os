@@ -10,7 +10,7 @@ using namespace particle;
 namespace {
 
 template<typename MapT>
-void checkEntries(const MapT& map, const std::vector<typename MapT::Entry>& expectedEntries) {
+void checkMap(const MapT& map, const std::vector<typename MapT::Entry>& expectedEntries) {
     auto& entries = map.entries();
     REQUIRE(entries.size() == expectedEntries.size());
     for (int i = 0; i < entries.size(); ++i) {
@@ -27,17 +27,17 @@ void checkEntries(const MapT& map, const std::vector<typename MapT::Entry>& expe
 TEST_CASE("Map") {
     SECTION("Map()") {
         Map<std::string, int> m;
-        checkEntries(m, {});
+        checkMap(m, {});
     }
 
     SECTION("set()") {
         Map<std::string, int> m;
         m.set("b", 2);
-        checkEntries(m, { { "b", 2 } });
+        checkMap(m, { { "b", 2 } });
         m.set("c", 3);
-        checkEntries(m, { { "b", 2 }, { "c", 3 } });
+        checkMap(m, { { "b", 2 }, { "c", 3 } });
         m.set("a", 1);
-        checkEntries(m, { { "a", 1 }, { "b", 2 }, { "c", 3 } });
+        checkMap(m, { { "a", 1 }, { "b", 2 }, { "c", 3 } });
     }
 
     SECTION("get()") {
@@ -51,23 +51,23 @@ TEST_CASE("Map") {
     SECTION("remove()") {
         Map<std::string, int> m({ { "a", 1 }, { "b", 2 }, { "c", 3 } });
         CHECK(m.remove("b"));
-        checkEntries(m, { { "a", 1 }, { "c", 3 } });
+        checkMap(m, { { "a", 1 }, { "c", 3 } });
         CHECK(m.remove("c"));
-        checkEntries(m, { { "a", 1 } });
+        checkMap(m, { { "a", 1 } });
         CHECK(!m.remove("d"));
-        checkEntries(m, { { "a", 1 } });
+        checkMap(m, { { "a", 1 } });
         CHECK(m.remove("a"));
-        checkEntries(m, {});
+        checkMap(m, {});
     }
 
     SECTION("operator[]") {
         Map<std::string, int> m;
         m["b"] = 2;
-        checkEntries(m, { { "b", 2 } });
+        checkMap(m, { { "b", 2 } });
         m["c"] = 3;
-        checkEntries(m, { { "b", 2 }, { "c", 3 } });
+        checkMap(m, { { "b", 2 }, { "c", 3 } });
         m["a"] = 1;
-        checkEntries(m, { { "a", 1 }, { "b", 2 }, { "c", 3 } });
+        checkMap(m, { { "a", 1 }, { "b", 2 }, { "c", 3 } });
         CHECK(m["a"] == 1);
         CHECK(m["b"] == 2);
         CHECK(m["c"] == 3);
