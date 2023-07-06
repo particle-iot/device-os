@@ -76,13 +76,13 @@ public:
      * Constructs an invalid ledger instance.
      */
     Ledger() :
-            Ledger(static_cast<ledger_instance*>(nullptr)) {
+            Ledger(nullptr) {
     }
 
     // This constructor is for internal use only
-    explicit Ledger(ledger_instance* instance) :
+    explicit Ledger(ledger_instance* instance, bool addRef = true) :
             instance_(instance) {
-        if (instance_) {
+        if (instance_ && addRef) {
             ledger_add_ref(instance_, nullptr);
         }
     }
@@ -245,9 +245,8 @@ public:
     ///@}
 
     friend void swap(Ledger& ledger1, Ledger& ledger2) {
-        auto p = ledger1.instance_;
-        ledger1.instance_ = ledger2.instance_;
-        ledger2.instance_ = p;
+        using std::swap;
+        swap(ledger1.instance_, ledger2.instance_);
     }
 
 private:

@@ -133,5 +133,5 @@ Ledger CloudClass::ledger(const char* name) {
     if (r < 0) {
         LOG(ERROR, "ledger_get_instance() failed: %d", r);
     }
-    return Ledger(instance);
+    return Ledger(instance, false /* addRef */);
 }

@@ -115,9 +115,8 @@ public:
     }
 
     friend void swap(RefCountPtr& ptr1, RefCountPtr& ptr2) {
-        auto p = ptr1.p_;
-        ptr1.p_ = ptr2.p_;
-        ptr2.p_ = p;
+        using std::swap;
+        swap(ptr1.p_, ptr2.p_);
     }
 
 private:

@@ -1,6 +1,36 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+namespace {
+
+struct CountingCallback {
+    static int instanceCount;
+
+    CountingCallback() {
+        ++instanceCount;
+    }
+
+    CountingCallback(const CountingCallback&) {
+        ++instanceCount;
+    }
+
+    ~CountingCallback() {
+        --instanceCount;
+    }
+
+    void operator()(Ledger ledger) {
+    }
+
+    CountingCallback& operator=(const CountingCallback&) {
+        ++instanceCount;
+        return *this;
+    }
+};
+
+int CountingCallback::instanceCount = 0;
+
+} // namespace
+
 test(01_purge_all) {
     // Remove all ledger files
     assertEqual(ledger_purge_all(nullptr), 0);
@@ -35,7 +65,7 @@ test(04_merge) {
     {
         auto ledger = Particle.ledger("test");
         LedgerData d = { { "d", 4 }, { "f", 6 } };
-        assertEqual(ledger.set(d), 0); // Replaces by default
+        assertEqual(ledger.set(d), 0); // Replaces the current data by default
         d = { { "e", 5 } };
         assertEqual(ledger.set(d, Ledger::MERGE), 0);
     }
@@ -49,36 +79,25 @@ test(04_merge) {
 test(05_sync_callback) {
     auto ledger = Particle.ledger("test");
 
-    // Register a C callback
-    Ledger::OnSyncCallback cb = [](Ledger ledger, void* arg) {
-    };
-    ledger.onSync(cb);
-
     // Register a functor callback
-    struct Callback {
-        bool& destroyed;
+    ledger.onSync(CountingCallback());
+    assertEqual(CountingCallback::instanceCount, 1);
 
-        explicit Callback(bool& destroyed) :
-                destroyed(destroyed) {
-        }
+    // Register a C callback
+    Ledger::OnSyncCallback cb = [](Ledger ledger, void* arg) {};
+    ledger.onSync(cb);
+    assertEqual(CountingCallback::instanceCount, 0);
 
-        ~Callback() {
-            destroyed = true;
-        }
-
-        void operator()(Ledger ledger) {
-        }
-    };
-
-    bool functorDestroyed = false;
-    ledger.onSync(Callback(functorDestroyed));
-    assertFalse(functorDestroyed);
+    // Register a functor callback again callback
+    ledger.onSync(CountingCallback());
+    assertEqual(CountingCallback::instanceCount, 1);
 
     // Unregister the callback
     ledger.onSync(nullptr);
-    assertTrue(functorDestroyed);
+    assertEqual(CountingCallback::instanceCount, 0);
 }
 
 test(06_purge) {
+    // Remove the test ledger files
     assertEqual(ledger_purge("test", nullptr), 0);
 }

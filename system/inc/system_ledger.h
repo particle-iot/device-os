@@ -240,6 +240,8 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
 /**
  * Close a stream.
  *
+ * The stream instance is destroyed even if an error occured while closing the stream.
+ *
  * @param stream Stream instance.
  * @param flags Flags defined by the `ledger_stream_close_flag` enum.
  * @param reserved Reserved argument. Must be set to `NULL`.

@@ -295,6 +295,9 @@ int LedgerManager::getLedger(const char* name, RefCountPtr<Ledger>& ledger) {
 }
 
 int LedgerManager::removeLedgerData(const char* name) {
+    if (!*name) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     auto found = findLedger(name);
     if (found.second) {
         return SYSTEM_ERROR_LEDGER_IN_USE;
