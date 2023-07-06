@@ -1,0 +1,5 @@
+ifeq ("${USE_THREADING}","y")
+CFLAGS += -DUSE_THREADING=1
+else
+CFLAGS += -DUSE_THREADING=0
+endif
