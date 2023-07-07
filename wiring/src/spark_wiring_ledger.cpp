@@ -15,6 +15,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "spark_wiring_platform.h"
+
+#if Wiring_Ledger
+
 #include <variant>
 #include <memory>
 
@@ -296,3 +300,5 @@ int Ledger::onSync(OnSyncFunction callback) {
 }
 
 } // namespace particle
+
+#endif // Wiring_Ledger

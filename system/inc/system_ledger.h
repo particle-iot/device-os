@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_LEDGER
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -301,3 +305,5 @@ int ledger_purge_all(void* reserved);
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // HAL_PLATFORM_LEDGER

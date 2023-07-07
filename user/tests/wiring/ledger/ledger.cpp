@@ -1,3 +1,7 @@
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_LEDGER
+
 #include "application.h"
 #include "unit-test/unit-test.h"
 
@@ -184,3 +188,5 @@ test(08_purge) {
     // Remove the test ledger files
     assertEqual(ledger_purge("test", nullptr), 0);
 }
+
+#endif // HAL_PLATFORM_LEDGER

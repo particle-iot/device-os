@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_LEDGER
+
 #include "dynalib.h"
 
 #ifdef DYNALIB_EXPORT
@@ -42,3 +46,5 @@ DYNALIB_FN(13, system_ledger, ledger_purge, int(const char*, void*))
 DYNALIB_FN(14, system_ledger, ledger_purge_all, int(void*))
 
 DYNALIB_END(system_ledger)
+
+#endif // HAL_PLATFORM_LEDGER

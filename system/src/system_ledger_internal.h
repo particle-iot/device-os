@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_LEDGER
+
 #include <optional>
 #include <utility>
 #include <memory>
@@ -385,3 +389,5 @@ inline void LedgerBase::release() const {
 }
 
 } // namespace particle::system
+
+#endif // HAL_PLATFORM_LEDGER

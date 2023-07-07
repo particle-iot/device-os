@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include "spark_wiring_platform.h"
+
+#if Wiring_Ledger
+
 #include <functional>
 #include <initializer_list>
 #include <utility>
@@ -601,3 +605,5 @@ inline bool operator!=(const Variant& var, const LedgerData& data) {
 }
 
 } // namespace particle
+
+#endif // Wiring_Ledger

@@ -34,6 +34,7 @@
 #include "spark_wiring_watchdog.h"
 #include "spark_wiring_async.h"
 #include "spark_wiring_flags.h"
+#include "spark_wiring_platform.h"
 #include "spark_wiring_global.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
@@ -432,6 +433,7 @@ public:
      */
     static int maxFunctionArgumentSize();
 
+#if Wiring_Ledger
     /**
      * Get a ledger instance.
      *
@@ -439,6 +441,7 @@ public:
      * @return Ledger instance.
      */
     static particle::Ledger ledger(const char* name);
+#endif // Wiring_Ledger
 
 private:
 

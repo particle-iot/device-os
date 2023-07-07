@@ -127,6 +127,8 @@ int CloudClass::maxFunctionArgumentSize() {
     return size;
 }
 
+#if Wiring_Ledger
+
 Ledger CloudClass::ledger(const char* name) {
     ledger_instance* instance = nullptr;
     int r = ledger_get_instance(&instance, name, nullptr);
@@ -136,3 +138,5 @@ Ledger CloudClass::ledger(const char* name) {
     }
     return Ledger(instance, false /* addRef */);
 }
+
+#endif // Wiring_Ledger

@@ -49,7 +49,9 @@ DYNALIB_TABLE_EXTERN(hal_cellular);
 DYNALIB_TABLE_EXTERN(hal_watchdog);
 #endif // HAL_PLATFORM_HW_WATCHDOG
 DYNALIB_TABLE_EXTERN(hal_backup_ram);
+#if HAL_PLATFORM_LEDGER
 DYNALIB_TABLE_EXTERN(system_ledger);
+#endif
 
 // strange that this is needed given that the entire block is scoped extern "C"
 // without it, the section name doesn't match *.system_part2_module as expected in the linker script
@@ -82,23 +84,25 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     DYNALIB_TABLE_NAME(hal_inet),
     DYNALIB_TABLE_NAME(hal_netdb),
     DYNALIB_TABLE_NAME(hal_ifapi),
-    DYNALIB_TABLE_NAME(hal_resolvapi),
+    DYNALIB_TABLE_NAME(hal_resolvapi)
 #if HAL_PLATFORM_WIFI
-    DYNALIB_TABLE_NAME(hal_wlan),
+    , DYNALIB_TABLE_NAME(hal_wlan)
 #endif // HAL_PLATFORM_WIFI
 #if HAL_PLATFORM_BLE
-    DYNALIB_TABLE_NAME(hal_ble),
+    , DYNALIB_TABLE_NAME(hal_ble)
 #endif // HAL_PLATFORM_BLE
-    DYNALIB_TABLE_NAME(hal_posix_syscall),
-    DYNALIB_TABLE_NAME(hal_storage),
+    , DYNALIB_TABLE_NAME(hal_posix_syscall)
+    , DYNALIB_TABLE_NAME(hal_storage)
 #if HAL_PLATFORM_CELLULAR
-    DYNALIB_TABLE_NAME(hal_cellular),
+    , DYNALIB_TABLE_NAME(hal_cellular)
 #endif // HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_HW_WATCHDOG
-    DYNALIB_TABLE_NAME(hal_watchdog),
+    , DYNALIB_TABLE_NAME(hal_watchdog)
 #endif // HAL_PLATFORM_HW_WATCHDOG
-    DYNALIB_TABLE_NAME(hal_backup_ram),
-    DYNALIB_TABLE_NAME(system_ledger)
+    , DYNALIB_TABLE_NAME(hal_backup_ram)
+#if HAL_PLATFORM_LEDGER
+    , DYNALIB_TABLE_NAME(system_ledger)
+#endif
 };
 
 #include "system_part1_loader.c"
