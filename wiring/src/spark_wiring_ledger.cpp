@@ -145,7 +145,7 @@ int setLedgerData(ledger_instance* ledger, const LedgerData& data) {
         return r;
     }
     NAMED_SCOPE_GUARD(g, {
-        ledger_close(stream, 0, nullptr);
+        ledger_close(stream, LEDGER_STREAM_CLOSE_DISCARD, nullptr);
     });
     // TODO: Use a binary format
     auto json = data.toJSON();
