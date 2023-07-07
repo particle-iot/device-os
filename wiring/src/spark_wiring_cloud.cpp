@@ -132,6 +132,7 @@ Ledger CloudClass::ledger(const char* name) {
     int r = ledger_get_instance(&instance, name, nullptr);
     if (r < 0) {
         LOG(ERROR, "ledger_get_instance() failed: %d", r);
+        return Ledger();
     }
     return Ledger(instance, false /* addRef */);
 }

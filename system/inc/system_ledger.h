@@ -198,6 +198,8 @@ void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callb
  * Attach application-specific data to a ledger instance.
  *
  * If a destructor callback is provided, it will be invoked when the ledger instance is destroyed.
+ * The calling code is responsible for destroying the old application data if it was already set for
+ * this ledger instance.
  *
  * @param ledger Ledger instance.
  * @param app_data Application data.

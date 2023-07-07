@@ -497,7 +497,7 @@ int Ledger::writerClosed(const LedgerInfo& info, LedgerWriteSource src, int temp
         // Create a new file in "staged". Note that in this case, "current" can't be replaced with
         // the new data even if nobody is reading it, as otherwise it would get overwritten with
         // outdated data if the device resets before the staged directory is cleaned up
-        CHECK(getStagedDirPath(destPath, sizeof(destPath), name_));
+        CHECK(getStagedFilePath(destPath, sizeof(destPath), name_, tempSeqNum));
         newStagedFile = true;
     }
     CHECK_FS(lfs_rename(fs.instance(), srcPath, destPath));

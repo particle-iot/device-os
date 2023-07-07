@@ -110,13 +110,14 @@ int setSyncCallback(ledger_instance* ledger, CallbackT&& callback) {
         appData = newAppData.get();
     } else if (!callback) {
         ledger_set_callbacks(ledger, nullptr, nullptr); // Clear the callback
-        ledger_set_app_data(ledger, nullptr, nullptr, nullptr); // Destroy the app data
+        ledger_set_app_data(ledger, nullptr, nullptr, nullptr); // Clear the app data
+        delete appData; // Destroy the app data
         ledger_release(ledger, nullptr); // See below
         return 0;
     }
     appData->onSync = std::move(callback);
     if (newAppData) {
-        ledger_set_app_data(ledger, newAppData.release(), destroyAppData, nullptr); // Transfer ownership over the app data
+        ledger_set_app_data(ledger, newAppData.release(), destroyAppData, nullptr); // Transfer ownership over the app data to the system
         ledger_callbacks callbacks = {};
         callbacks.version = LEDGER_API_VERSION;
         callbacks.sync = syncCallbackSystem;
