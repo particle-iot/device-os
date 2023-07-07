@@ -458,7 +458,18 @@ TEST_CASE("Writing JSON") {
                 json.value(DBL_MAX);
                 check(data).equals("1.79769e+308"); // Based on DBL_DIG significant digits for '%g' format specifier
             }
-
+            SECTION("NaN") {
+                json.value(NAN);
+                check(data).equals("0");
+            }
+            SECTION("positive infinity") {
+                json.value(INFINITY);
+                check(data).equals("1.79769e+308"); // DBL_MAX formatted with default precision
+            }
+            SECTION("negative infinity") {
+                json.value(-INFINITY);
+                check(data).equals("-1.79769e+308"); // -DBL_MAX formatted with default precision
+            }
 
             // Precision related tests
 
@@ -850,6 +861,8 @@ TEST_CASE("Writing JSON") {
             check(data).equals("{\"a\\tb\\n\":\"a\\tb\\n\"}");
         }
     }
+
+    CHECK(json.bytesWritten() == data.size());
 }
 
 TEST_CASE("JSONValue") {

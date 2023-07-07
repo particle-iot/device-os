@@ -80,12 +80,12 @@ namespace {
     +--- ...
 
     When a ledger is opened for writing, a temporary file for the new ledger data is created in the
-    "temp" directory. When writing is finished, if there are active readers of the current ledger
-    data ("current"), the temporary file is moved to the "staged" directory, otherwise the file is
-    moved to "current" to replace the current ledger data.
+    "temp" directory. When writing is finished, if there are active readers of the ledger data, the
+    temporary file is moved to the "staged" directory, otherwise the file is moved to "current" to
+    replace the current ledger data.
 
-    When a ledger is opened for reading, it is checked whether the actual ledger data is stored in
-    "current" or a file in the "staged" directory. The ledger data is then read from the respective
+    When a ledger is opened for reading, it is checked whether the most recent ledger data is stored
+    in "current" or a file in the "staged" directory. The ledger data is then read from the respective
     file.
 
     The ledger instance tracks the readers of the current and staged data to ensure that the relevant
@@ -132,6 +132,7 @@ int readDataHeader(lfs_t* fs, lfs_file_t* file, size_t* dataSize = nullptr, size
     LedgerDataHeader h = {};
     size_t n = CHECK_FS(lfs_file_read(fs, file, &h, sizeof(h)));
     if (n != sizeof(h)) {
+        LOG(ERROR, "Unexpected end of ledger data file");
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
     if (version) {
@@ -152,6 +153,10 @@ int writeDataHeader(lfs_t* fs, lfs_file_t* file, size_t dataSize, size_t infoSiz
     h.dataSize = nativeToLittleEndian(dataSize);
     h.infoSize = nativeToLittleEndian(infoSize);
     size_t n = CHECK_FS(lfs_file_write(fs, file, &h, sizeof(h)));
+    if (n != sizeof(h)) {
+        LOG(ERROR, "Unexpected number of bytes written");
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
     return n;
 }
 
@@ -360,7 +365,8 @@ Ledger::Ledger() :
         destroyAppData_(nullptr),
         appData_(nullptr),
         scope_(LEDGER_SCOPE_UNKNOWN),
-        syncDir_(LEDGER_SYNC_DIRECTION_UNKNOWN) {
+        syncDir_(LEDGER_SYNC_DIRECTION_UNKNOWN),
+        inited_(false) {
 }
 
 Ledger::~Ledger() {
@@ -397,11 +403,15 @@ int Ledger::init(const char* name) {
             CHECK(loadLedgerInfo(fs.instance()));
         }
     }
+    inited_ = true;
     return 0;
 }
 
 int Ledger::initReader(LedgerReader& reader) {
     std::lock_guard lock(*this);
+    if (!inited_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     CHECK(reader.init(stagedSeqNum_, this));
     if (stagedSeqNum_ > 0) {
         ++stagedReaderCount_;
@@ -413,6 +423,9 @@ int Ledger::initReader(LedgerReader& reader) {
 
 int Ledger::initWriter(LedgerWriteSource src, LedgerWriter& writer) {
     std::lock_guard lock(*this);
+    if (!inited_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     // It's allowed to write to a ledger while its sync direction is unknown
     if (src == LedgerWriteSource::USER && syncDir_ != LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD &&
             syncDir_ != LEDGER_SYNC_DIRECTION_UNKNOWN) {
@@ -433,15 +446,6 @@ LedgerInfo Ledger::info() const {
             .syncPending(syncPending_);
 }
 
-void Ledger::setAppData(void* data, ledger_destroy_app_data_callback destroy) {
-    std::lock_guard lock(*this);
-    if (appData_ && destroyAppData_) {
-        destroyAppData_(appData_);
-    }
-    appData_ = data;
-    destroyAppData_ = destroy;
-}
-
 int Ledger::readerClosed(bool staged) {
     std::lock_guard lock(*this);
     if (staged) {
@@ -451,11 +455,11 @@ int Ledger::readerClosed(bool staged) {
     }
     // Check if there's staged data and if it can be flushed
     if (stagedSeqNum_ > 0 && curReaderCount_ == 0 && stagedReaderCount_ == 0) {
-        // To reduce RAM usage, we don't count how many readers are open for each individual file,
-        // which may result in creation of multiple files with outdated staged data. Typically,
-        // however, there will be at most one file with staged data when the last reader is closed
-        // as the application API never keeps ledger streams open for long. The only slow reader
-        // is the system which streams ledger data to the server
+        // To save on RAM usage, we don't count how many readers are open for each individual file,
+        // which may result in the staged directory containing multiple unused files with outdated
+        // ledger data. Typically, however, when the last reader is closed, there will be at most
+        // one file with staged data as the application never keeps ledger streams open for long.
+        // The only slow reader is the system which streams ledger data to the server
         FsLock fs;
         if (stagedFileCount_ == 1) {
             // Fast track: there's one file with staged data. Move it to "current"
@@ -478,7 +482,7 @@ int Ledger::readerClosed(bool staged) {
 int Ledger::writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum) {
     std::lock_guard lock(*this);
     FsLock fs;
-    // Move the temporary file where appropriate
+    // Move the file where appropriate
     bool newStagedFile = false;
     char srcPath[MAX_PATH_LEN + 1];
     char destPath[MAX_PATH_LEN + 1];
@@ -506,7 +510,7 @@ int Ledger::writerClosed(const LedgerInfo& info, LedgerWriteSource src, int temp
 }
 
 int Ledger::loadLedgerInfo(lfs_t* fs) {
-    // Open the ledger file
+    // Open the file with the current ledger data
     char path[MAX_PATH_LEN + 1];
     CHECK(getCurrentFilePath(path, sizeof(path), name_));
     lfs_file_t file = {};
@@ -541,7 +545,11 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
     CHECK_FS(lfs_file_seek(fs, &file, dataSize, LFS_SEEK_CUR));
     // Read the info section
     PB_INTERNAL(LedgerInfo) pbInfo = {};
-    CHECK(decodeProtobufFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, infoSize));
+    r = decodeProtobufFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, infoSize);
+    if (r < 0) {
+        LOG(ERROR, "Failed to parse ledger info: %d", r);
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
+    }
     if (strcmp(pbInfo.name, name_) != 0) {
         LOG(ERROR, "Unexpected ledger name");
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
@@ -576,7 +584,7 @@ void Ledger::updateLedgerInfo(const LedgerInfo& info) {
 }
 
 int Ledger::initCurrentData(lfs_t* fs) {
-    // Create a ledger file
+    // Create a file for the current ledger data
     char path[MAX_PATH_LEN + 1];
     CHECK(getCurrentFilePath(path, sizeof(path), name_));
     lfs_file_t file = {};
@@ -610,7 +618,7 @@ int Ledger::flushStagedData(lfs_t* fs) {
     });
     // Find the latest staged data
     char fileName[32] = {};
-    int maxSeq = 0;
+    int maxSeqNum = 0;
     lfs_info entry = {};
     int r = 0;
     while ((r = lfs_dir_read(fs, &dir, &entry)) == 1) {
@@ -619,13 +627,13 @@ int Ledger::flushStagedData(lfs_t* fs) {
             continue;
         }
         char* end = nullptr;
-        int seq = strtol(entry.name, &end, 10);
+        int seqNum = strtol(entry.name, &end, 10);
         if (end != entry.name + std::strlen(entry.name)) {
             LOG(WARN, "Found unexpected entry in ledger directory");
             continue;
         }
-        if (seq > maxSeq) {
-            if (maxSeq > 0) {
+        if (seqNum > maxSeqNum) {
+            if (maxSeqNum > 0) {
                 // Older staged files must be removed before the most recent file is moved to
                 // "current", otherwise "current" would get overwritten with outdated data if
                 // the device resets before the staged directory is cleaned up
@@ -636,14 +644,14 @@ int Ledger::flushStagedData(lfs_t* fs) {
             if (n >= sizeof(fileName)) {
                 return SYSTEM_ERROR_INTERNAL;
             }
-            maxSeq = seq;
+            maxSeqNum = seqNum;
         } else {
             CHECK(getStagedFilePath(path, sizeof(path), name_, entry.name));
             CHECK_FS(lfs_remove(fs, path));
         }
     }
     CHECK_FS(r);
-    if (maxSeq > 0) {
+    if (maxSeqNum > 0) {
         // Replace "current" with the found file
         char destPath[MAX_PATH_LEN + 1];
         CHECK(getCurrentFilePath(destPath, sizeof(destPath), name_));
@@ -738,7 +746,8 @@ int LedgerReader::read(char* data, size_t size) {
     FsLock fs;
     size_t n = CHECK_FS(lfs_file_read(fs.instance(), &file_, data, bytesToRead));
     if (n != bytesToRead) {
-        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT; // Unexpected end of file
+        LOG(ERROR, "Unexpected end of ledger data file");
+        return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
     dataOffs_ += n;
     return n;
@@ -779,8 +788,8 @@ int LedgerWriter::init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger) {
     // Reserve space for the header
     CHECK_FS(lfs_file_seek(fs.instance(), &file_, sizeof(LedgerDataHeader), LFS_SEEK_SET));
     ledger_ = ledger;
-    src_ = src;
     tempSeqNum_ = tempSeqNum;
+    src_ = src;
     open_ = true;
     closeFileGuard.dismiss();
     return 0;
@@ -865,7 +874,7 @@ int LedgerWriter::close(bool discard) {
     CHECK(writeDataHeader(fs.instance(), &file_, dataSize_, infoSize));
     closeFileGuard.dismiss();
     CHECK_FS(lfs_file_close(fs.instance(), &file_));
-    // Let the ledger flush the data
+    // Flush the data
     int r = ledger_->writerClosed(newInfo, src_, tempSeqNum_);
     if (r < 0) {
         LOG(ERROR, "Failed to flush ledger data: %d", r);

@@ -116,18 +116,18 @@ typedef struct ledger_info {
     int version; ///< API version. Must be set to `LEDGER_API_VERSION`.
     const char* name; ///< Ledger name.
     /**
-     * Last time the ledger was updated, in milliseconds since the Unix epoch.
+     * Time the ledger was last updated, in milliseconds since the Unix epoch.
      *
      * If 0, the time is unknown.
      */
     int64_t last_updated;
     /**
-     * Last time the ledger was synchronized with the Cloud, in milliseconds since the Unix epoch.
+     * Time the ledger was last synchronized with the Cloud, in milliseconds since the Unix epoch.
      *
      * If 0, the ledger has never been synchronized.
      */
     int64_t last_synced;
-    size_t data_size; ///< Size of the ledger data.
+    size_t data_size; ///< Size of the ledger data in bytes.
     int scope; ///< Ledger scope as defined by the `ledger_scope` enum.
     int sync_direction; ///< Synchronization direction as defined by the `ledger_sync_direction` enum.
     int flags; ///< Flags defined by the `ledger_info_flag` enum.
@@ -168,7 +168,7 @@ void ledger_release(ledger_instance* ledger, void* reserved);
 /**
  * Lock a ledger instance.
  *
- * The lock is recursive.
+ * The instance can be locked recursively by the same thread.
  *
  * @param ledger Ledger instance.
  * @param reserved Reserved argument. Must be set to `NULL`.
@@ -197,7 +197,7 @@ void ledger_set_callbacks(ledger_instance* ledger, const ledger_callbacks* callb
 /**
  * Attach application-specific data to a ledger instance.
  *
- * If a destructor callback is provided, the ledger instance will take ownership over the application data.
+ * If a destructor callback is provided, it will be invoked when the ledger instance is destroyed.
  *
  * @param ledger Ledger instance.
  * @param app_data Application data.
@@ -240,7 +240,7 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
 /**
  * Close a stream.
  *
- * The stream instance is destroyed even if an error occured while closing the stream.
+ * The stream instance is destroyed even if an error occurs while closing the stream.
  *
  * @param stream Stream instance.
  * @param flags Flags defined by the `ledger_stream_close_flag` enum.
@@ -276,7 +276,7 @@ int ledger_write(ledger_stream* stream, const char* data, size_t size, void* res
  *
  * The operation will fail if the ledger with the given name is in use.
  *
- * The data is not guaranteed to be removed in an irrecoverable way.
+ * @note The data is not guaranteed to be removed in an irrecoverable way.
  *
  * @param name Ledger name.
  * @param reserved Reserved argument. Must be set to `NULL`.
@@ -289,7 +289,7 @@ int ledger_purge(const char* name, void* reserved);
  *
  * The operation will fail if any of the existing ledgers is in use.
  *
- * The data is not guaranteed to be removed in an irrecoverable way.
+ * @note The data is not guaranteed to be removed in an irrecoverable way.
  *
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.

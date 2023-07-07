@@ -78,7 +78,7 @@ public:
     /**
      * Construct a map from an initializer list.
      *
-     * @param entries Entries list.
+     * @param entries Entries.
      */
     Map(std::initializer_list<Entry> entries) :
             Map() {
@@ -116,7 +116,7 @@ public:
 
     ///@{
     /**
-     * Add or update the value of an entry.
+     * Add or update an entry.
      *
      * @param key Key.
      * @param val Value.
@@ -242,6 +242,7 @@ public:
     /**
      * Reserve memory for the specified number of entries.
      *
+     * @param count Number of entries.
      * @return `true` on success, or `false` on a memory allocation error.
      */
     bool reserve(int count) {
@@ -334,7 +335,7 @@ public:
 
     ///@{
     /**
-     * Insert or update an entry.
+     * Add or update an entry.
      *
      * On a memory allocation error, an iterator pointing to the entry following the last entry of
      * the map is returned.
@@ -373,7 +374,7 @@ public:
     ///@}
 
     /**
-     * Erase an entry.
+     * Remove an entry.
      *
      * @param pos Iterator pointing to the entry to be removed.
      * @return Iterator pointing to the entry following the removed entry.
@@ -432,7 +433,7 @@ public:
     /**
      * Get a reference to the value of an entry.
      *
-     * The entry is inserted if it doesn't exist.
+     * The entry is created if it doesn't exist.
      *
      * @note The device will panic if it fails to allocate memory for the new entry. Use `set()` or
      * `insert()` if you need more control over how memory allocation errors are handled.
@@ -453,7 +454,7 @@ public:
     ValueT& operator[](KeyT&& key) {
         auto it = lowerBound(key);
         if (it == entries_.end() || cmp_(key, it->first)) {
-            it = entries_.insert(it, std::make_pair(key, ValueT()));
+            it = entries_.insert(it, std::make_pair(std::move(key), ValueT()));
             SPARK_ASSERT(it != entries_.end());
         }
         return it->second;
@@ -482,7 +483,7 @@ public:
     }
 
     bool operator!=(const Map& map) const {
-        return !operator==(map);
+        return entries_ != map.entries_;
     }
     ///@}
 

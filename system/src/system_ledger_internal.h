@@ -72,8 +72,6 @@ private:
 
 class LedgerManager {
 public:
-    LedgerManager() = default;
-
     LedgerManager(const LedgerBase&) = delete;
 
     int getLedger(const char* name, RefCountPtr<Ledger>& ledger);
@@ -89,6 +87,8 @@ private:
     Vector<Ledger*> ledgers_; // Instantiated ledgers
     mutable StaticRecursiveMutex mutex_; // Manager lock
 
+    LedgerManager() = default; // Use LedgerManager::instance()
+
     std::pair<Vector<Ledger*>::ConstIterator, bool> findLedger(const char* name) const;
 
     void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase::addRef()
@@ -101,8 +101,6 @@ class Ledger: public LedgerBase {
 public:
     Ledger();
     ~Ledger();
-
-    int init(const char* name);
 
     int initReader(LedgerReader& reader);
     int initWriter(LedgerWriteSource src, LedgerWriter& writer);
@@ -119,7 +117,11 @@ public:
         syncCallback_ = callback;
     }
 
-    void setAppData(void* data, ledger_destroy_app_data_callback destroy);
+    void setAppData(void* data, ledger_destroy_app_data_callback destroy) {
+        std::lock_guard lock(*this);
+        appData_ = data;
+        destroyAppData_ = destroy;
+    }
 
     void* appData() const {
         std::lock_guard lock(*this);
@@ -154,7 +156,11 @@ private:
     ledger_scope scope_; // Ledger scope
     ledger_sync_direction syncDir_; // Sync direction
 
+    bool inited_; // Whether the ledger is initialized
+
     mutable StaticRecursiveMutex mutex_; // Ledger lock
+
+    int init(const char* name); // Called by LedgerManager
 
     int readerClosed(bool staged); // Called by LedgerReader
     int writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum); // Called by LedgerWriter
@@ -166,6 +172,7 @@ private:
     int flushStagedData(lfs_t* fs);
     int removeTempData(lfs_t* fs);
 
+    friend class LedgerManager;
     friend class LedgerReader;
     friend class LedgerWriter;
 };

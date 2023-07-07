@@ -24,7 +24,6 @@
 #include "spark_wiring_variant.h"
 
 #include "system_ledger.h"
-#include "time_compat.h"
 
 namespace particle {
 
@@ -52,7 +51,7 @@ public:
      */
     enum SetMode {
         REPLACE, ///< Replace the current ledger data.
-        MERGE ///< Set selected entries of the ledger data.
+        MERGE ///< Update some of the entries of the ledger data.
     };
 
     /**
@@ -136,14 +135,14 @@ public:
      *
      * @return Time the ledger was updated, or 0 if the time is unknown.
      */
-    time64_t lastUpdated() const;
+    int64_t lastUpdated() const;
 
     /**
      * Get the time the ledger was last synchronized with the Cloud, in milliseconds since the Unix epoch.
      *
      * @return Time the ledger was synchronized, or 0 if the ledger has never been synchronized.
      */
-    time64_t lastSynced() const;
+    int64_t lastSynced() const;
 
     /**
      * Get the size of the ledger data in bytes.
@@ -256,8 +255,7 @@ private:
 /**
  * Ledger data.
  *
- * The data of a ledger is a set of named values (a map). This class provides a subset of methods
- * of the `Variant` class that are relevant to map operations.
+ * This class provides a subset of methods of the `Variant` class that are relevant to map operations.
  */
 class LedgerData {
 public:
@@ -279,7 +277,7 @@ public:
     /**
      * Construct ledger data from a `Variant`.
      *
-     * If the `Variant` is not a map, the constructed ledger data will be empty.
+     * If the `Variant` is not a map, empty ledger data is constructed.
      *
      * @param var `Variant` value.
      */

@@ -28,38 +28,65 @@ void checkVariant(const Variant& v, const T& expectedValue = T()) {
         CHECK(v.type() == Variant::BOOL);
         CHECK((!v.isNull() && v.isBool() && !v.isInt() && !v.isUInt() && !v.isInt64() && !v.isUInt64() && !v.isDouble() && !v.isNumber() && !v.isString() && !v.isArray() && !v.isMap()));
         CHECK(v.toBool() == expectedValue);
+        bool ok = false;
+        CHECK(v.toBool(ok) == expectedValue);
+        CHECK(ok);
     } else if constexpr (std::is_same_v<T, int>) {
         CHECK(v.type() == Variant::INT);
         CHECK((!v.isNull() && !v.isBool() && v.isInt() && !v.isUInt() && !v.isInt64() && !v.isUInt64() && !v.isDouble() && v.isNumber() && !v.isString() && !v.isArray() && !v.isMap()));
         CHECK(v.toInt() == expectedValue);
+        bool ok = false;
+        CHECK(v.toInt(ok) == expectedValue);
+        CHECK(ok);
     } else if constexpr (std::is_same_v<T, unsigned>) {
         CHECK(v.type() == Variant::UINT);
         CHECK((!v.isNull() && !v.isBool() && !v.isInt() && v.isUInt() && !v.isInt64() && !v.isUInt64() && !v.isDouble() && v.isNumber() && !v.isString() && !v.isArray() && !v.isMap()));
         CHECK(v.toUInt() == expectedValue);
+        bool ok = false;
+        CHECK(v.toUInt(ok) == expectedValue);
+        CHECK(ok);
     } else if constexpr (std::is_same_v<T, int64_t>) {
         CHECK(v.type() == Variant::INT64);
         CHECK((!v.isNull() && !v.isBool() && !v.isInt() && !v.isUInt() && v.isInt64() && !v.isUInt64() && !v.isDouble() && v.isNumber() && !v.isString() && !v.isArray() && !v.isMap()));
         CHECK(v.toInt64() == expectedValue);
+        bool ok = false;
+        CHECK(v.toInt64(ok) == expectedValue);
+        CHECK(ok);
     } else if constexpr (std::is_same_v<T, uint64_t>) {
         CHECK(v.type() == Variant::UINT64);
         CHECK((!v.isNull() && !v.isBool() && !v.isInt() && !v.isUInt() && !v.isInt64() && v.isUInt64() && !v.isDouble() && v.isNumber() && !v.isString() && !v.isArray() && !v.isMap()));
         CHECK(v.toUInt64() == expectedValue);
+        bool ok = false;
+        CHECK(v.toUInt64(ok) == expectedValue);
+        CHECK(ok);
     } else if constexpr (std::is_same_v<T, double>) {
         CHECK(v.type() == Variant::DOUBLE);
         CHECK((!v.isNull() && !v.isBool() && !v.isInt() && !v.isUInt() && !v.isInt64() && !v.isUInt64() && v.isDouble() && v.isNumber() && !v.isString() && !v.isArray() && !v.isMap()));
         CHECK(v.toDouble() == expectedValue);
+        bool ok = false;
+        CHECK(v.toDouble(ok) == expectedValue);
+        CHECK(ok);
     } else if constexpr (std::is_same_v<T, String>) {
         CHECK(v.type() == Variant::STRING);
         CHECK((!v.isNull() && !v.isBool() && !v.isInt() && !v.isUInt() && !v.isInt64() && !v.isUInt64() && !v.isDouble() && !v.isNumber() && v.isString() && !v.isArray() && !v.isMap()));
         CHECK(v.toString() == expectedValue);
+        bool ok = false;
+        CHECK(v.toString(ok) == expectedValue);
+        CHECK(ok);
     } else if constexpr (std::is_same_v<T, VariantArray>) {
         CHECK(v.type() == Variant::ARRAY);
         CHECK((!v.isNull() && !v.isBool() && !v.isInt() && !v.isUInt() && !v.isInt64() && !v.isUInt64() && !v.isDouble() && !v.isNumber() && !v.isString() && v.isArray() && !v.isMap()));
         CHECK(v.toArray() == expectedValue);
+        bool ok = false;
+        CHECK(v.toArray(ok) == expectedValue);
+        CHECK(ok);
     } else if constexpr (std::is_same_v<T, VariantMap>) {
         CHECK(v.type() == Variant::MAP);
         CHECK((!v.isNull() && !v.isBool() && !v.isInt() && !v.isUInt() && !v.isInt64() && !v.isUInt64() && !v.isDouble() && !v.isNumber() && !v.isString() && !v.isArray() && v.isMap()));
         CHECK(v.toMap() == expectedValue);
+        bool ok = false;
+        CHECK(v.toMap(ok) == expectedValue);
+        CHECK(ok);
     } else {
         FAIL("Unexpected type");
     }

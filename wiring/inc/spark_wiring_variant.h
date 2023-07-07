@@ -310,35 +310,35 @@ public:
     }
 
     int toInt(bool& ok) const {
-        return to<int>();
+        return to<int>(ok);
     }
 
     unsigned toUInt(bool& ok) const {
-        return to<unsigned>();
+        return to<unsigned>(ok);
     }
 
     int64_t toInt64(bool& ok) const {
-        return to<int64_t>();
+        return to<int64_t>(ok);
     }
 
     uint64_t toUInt64(bool& ok) const {
-        return to<uint64_t>();
+        return to<uint64_t>(ok);
     }
 
     double toDouble(bool& ok) const {
-        return to<double>();
+        return to<double>(ok);
     }
 
     String toString(bool& ok) const {
-        return to<String>();
+        return to<String>(ok);
     }
 
     VariantArray toArray(bool& ok) const {
-        return to<VariantArray>();
+        return to<VariantArray>(ok);
     }
 
     VariantMap toMap(bool& ok) const {
-        return to<VariantMap>();
+        return to<VariantMap>(ok);
     }
     ///@}
 

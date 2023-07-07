@@ -230,7 +230,7 @@ LedgerData Ledger::get() const {
     return data;
 }
 
-time64_t Ledger::lastUpdated() const {
+int64_t Ledger::lastUpdated() const {
     ledger_info info = {};
     if (!isValid() || getLedgerInfo(instance_, info) < 0) {
         return 0;
@@ -238,7 +238,7 @@ time64_t Ledger::lastUpdated() const {
     return info.last_updated;
 }
 
-time64_t Ledger::lastSynced() const {
+int64_t Ledger::lastSynced() const {
     ledger_info info = {};
     if (!isValid() || getLedgerInfo(instance_, info) < 0) {
         return 0;
