@@ -221,12 +221,4 @@ void module_user_init_hook()
 
     // Register application handler for the control requests
     system_ctrl_set_app_request_handler(ctrl_request_handler, nullptr);
-
-#if HAL_PLATFORM_ASSETS
-    asset_manager_set_notify_hook([](void* context) -> void {
-        if (handleAvailableAssets) {
-            handleAvailableAssets(SystemClass::assetsAvailable());
-        }
-    }, nullptr, nullptr);
-#endif // HAL_PLATFORM_ASSET
 }

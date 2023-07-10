@@ -28,12 +28,13 @@ SYSTEM_THREAD(ENABLED);
 
 PRODUCT_VERSION(2);
 
-// Strong variant of handleAvailableAssets()
 void handleAvailableAssets(spark::Vector<ApplicationAsset> assets) {
     // Called before setup
     hookExecuted = true;
     hookAssets = assets;
 }
+
+STARTUP(System.onAssetsOta(handleAvailableAssets));
 
 void logAssetInfo(ApplicationAsset& asset) {
     LOG(INFO, "Asset name=%s hash=%s size=%u valid=%d readable=%d",

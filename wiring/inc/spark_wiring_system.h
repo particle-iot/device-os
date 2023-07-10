@@ -1042,6 +1042,26 @@ public:
     static spark::Vector<ApplicationAsset> assetsRequired();
     static spark::Vector<ApplicationAsset> assetsAvailable();
     static int assetsHandled(bool state = true);
+
+    static int onAssetsOta(OnAssetsOtaCallback cb, void* context = nullptr);
+    static int onAssetsOta(OnAssetsOtaStdFunc cb);
+
+    template <typename T>
+    static int onAssetsOta(void(T::*callback)(spark::Vector<ApplicationAsset> assets), T* instance) {
+        return onAssetsOta((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : (OnAssetsOtaCallback)nullptr);
+    }
+
+    static int onAssetsOTA(OnAssetsOtaCallback cb, void* context = nullptr) {
+        return onAssetsOta(cb, context);
+    }
+    static int onAssetsOTA(OnAssetsOtaStdFunc cb) {
+        return onAssetsOta(cb);
+    }
+
+    template <typename T>
+    static int onAssetsOTA(void(T::*callback)(spark::Vector<ApplicationAsset> assets), T* instance) {
+        return onAssetsOTA((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : (OnAssetsOtaCallback)nullptr);
+    }
 #endif // HAL_PLATFORM_ASSETS
 
 private:

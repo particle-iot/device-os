@@ -138,6 +138,27 @@ int SystemClass::assetsHandled(bool state) {
     return asset_manager_set_consumer_state(state ? ASSET_MANAGER_CONSUMER_STATE_HANDLED : ASSET_MANAGER_CONSUMER_STATE_WANT, nullptr);
 }
 
+#if HAL_PLATFORM_ASSETS
+int SystemClass::onAssetsOta(OnAssetsOtaCallback cb, void* context) {
+    OnAssetsOtaStdFunc f = [cb, context](spark::Vector<ApplicationAsset> assets) -> void {
+        if (cb) {
+            cb(assets, context);
+        }
+    };
+    return onAssetsOta(f);
+}
+
+int SystemClass::onAssetsOta(OnAssetsOtaStdFunc cb) {
+    onAssetsOtaHookStorage() = cb;
+    asset_manager_set_notify_hook([](void* context) -> void {
+        if (onAssetsOtaHookStorage()) {
+            onAssetsOtaHookStorage()(SystemClass::assetsAvailable());
+        }
+    }, nullptr, nullptr);
+    return 0;
+}
+#endif // HAL_PLATFORM_ASSET
+
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {
         // pin

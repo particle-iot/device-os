@@ -22,6 +22,7 @@
 #include "spark_wiring_stream.h"
 #include <memory>
 #include "spark_wiring_vector.h"
+#include <functional>
 
 namespace particle {
 
@@ -53,6 +54,8 @@ public:
     bool operator==(const ApplicationAsset& other) const;
     bool operator!=(const ApplicationAsset& other) const;
 
+    void reset();
+
 private:
     int prepareForReading(bool keepOpen = true);
 
@@ -60,6 +63,7 @@ private:
     String name_;
     AssetHash hash_;
     size_t size_ = 0;
+    bool eof_ = false;
 
     struct Data {
         Data() = delete;
@@ -76,7 +80,16 @@ private:
 using particle::ApplicationAsset;
 using particle::AssetHash;
 
-void handleAvailableAssets(spark::Vector<ApplicationAsset> assets) __attribute__((weak));
+typedef void (*OnAssetsOtaCallback)(spark::Vector<ApplicationAsset> assets, void* context);
+typedef std::function<void(spark::Vector<ApplicationAsset> assets)> OnAssetsOtaStdFunc;
+
+// FIXME: there is an issue with System construction, so storage for the hook has
+// to be initialized in a singleton-like manner to avoid global constructor initialization
+// order issues.
+inline OnAssetsOtaStdFunc& onAssetsOtaHookStorage() {
+    static OnAssetsOtaStdFunc f;
+    return f;
+}
 
 #endif // HAL_PLATFORM_ASSETS
 

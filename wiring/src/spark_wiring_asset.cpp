@@ -59,6 +59,10 @@ bool ApplicationAsset::isReadable() {
 int ApplicationAsset::available() {
     CHECK(prepareForReading());
     int r = asset_manager_available(data_->stream, nullptr);
+    if (r == SYSTEM_ERROR_END_OF_STREAM) {
+        data_.reset();
+        eof_ = true;
+    }
     if (r >= 0) {
         return r;
     }
@@ -82,6 +86,10 @@ int ApplicationAsset::read(char* buffer, size_t size) {
     while (size > 0) {
         int actuallyRead = asset_manager_read(data_->stream, buffer + pos, size, nullptr);
         if (actuallyRead <= 0) {
+            if (actuallyRead == SYSTEM_ERROR_END_OF_STREAM) {
+                data_.reset();
+                eof_ = true;
+            }
             return pos > 0 ? pos : actuallyRead;
         }
         pos += actuallyRead;
@@ -114,6 +122,11 @@ void ApplicationAsset::flush() {
     return;
 }
 
+void ApplicationAsset::reset() {
+    eof_ = false;
+    data_.reset();
+}
+
 size_t ApplicationAsset::write(uint8_t c) {
     return 0;
 }
@@ -133,6 +146,8 @@ int ApplicationAsset::prepareForReading(bool keepOpen) {
 
     if (data_ && data_->stream) {
         return 0;
+    } else if (eof_) {
+        return SYSTEM_ERROR_END_OF_STREAM;
     }
 
     if (size() == 0) {
