@@ -1,5 +1,6 @@
 #define LOG_CHECKED_ERRORS 1 // Log errors caught by the CHECK() macro
 
+#include <functional>
 #include <algorithm>
 #include <limits>
 #include <cstdio>
@@ -49,7 +50,7 @@ const SerialLogHandler logHandler(LOG_LEVEL_ERROR, {
 char inBuffer[LARGE_DATA_SIZE];
 char outBuffer[LARGE_DATA_SIZE];
 
-int readFromLedger(char* data, size_t size, Stats& stats) {
+int readFromLedger(char* data, size_t size, Stats& stats, std::function<int()> onStreamOpen = nullptr) {
     int r = 0;
     // Get the ledger
     ledger_instance* ledger = nullptr;
@@ -72,6 +73,9 @@ int readFromLedger(char* data, size_t size, Stats& stats) {
             LOG(ERROR, "ledger_close() failed: %d", r);
         }
     });
+    if (onStreamOpen) {
+        CHECK(onStreamOpen());
+    }
     // Read the data
     auto t5 = millis();
     r = ledger_read(stream, data, size, nullptr);
@@ -231,7 +235,7 @@ void printStats(const Stats& min, const Stats& max, const Stats& avg, bool readi
     LOG_PRINT(INFO, "\033[0m");
 }
 
-int testWriteAndRead(size_t size) {
+int testWriteAndRead(size_t size, bool flushOnRead = false) {
     if (size > LARGE_DATA_SIZE) {
         return Error::INTERNAL;
     }
@@ -241,7 +245,13 @@ int testWriteAndRead(size_t size) {
     // Pre-initialize the ledger directory
     ledger_instance* ledger = nullptr;
     CHECK(ledger_get_instance(&ledger, LEDGER_NAME, nullptr));
-    ledger_release(ledger, nullptr);
+    NAMED_SCOPE_GUARD(releaseLedgerGuard, {
+        ledger_release(ledger, nullptr);
+    });
+    if (!flushOnRead) {
+        releaseLedgerGuard.dismiss();
+        ledger_release(ledger, nullptr);
+    }
 
     Stats readMin = { .open = MAX_TICKS, .close = MAX_TICKS, .readOrWrite = MAX_TICKS, .getInstance = MAX_TICKS,
             .release = MAX_TICKS, .openReadOrWriteClose = MAX_TICKS, .total = MAX_TICKS };
@@ -258,13 +268,34 @@ int testWriteAndRead(size_t size) {
     for (int i = 0; i < REPEAT_COUNT; ++i) {
         delay(rand.gen<unsigned>() % 50);
 
+        // Start reading the ledger using a separate stream so that the data written below can't be
+        // flushed immediately
+        ledger_stream* stream = nullptr;
+        NAMED_SCOPE_GUARD(closeStreamGuard, {
+            int r = ledger_close(stream, 0, nullptr); // Can be called with a null stream
+            if (r < 0) {
+                LOG(ERROR, "ledger_close() failed: %d", r);
+            }
+        });
+        if (flushOnRead) {
+            CHECK(ledger_open(&stream, ledger, LEDGER_STREAM_MODE_READ, nullptr));
+        }
+
         // Write data
         rand.gen(outBuffer, size);
         Stats writeStats = {};
         CHECK(writeToLedger(outBuffer, size, writeStats));
+
         // Read the data back
         Stats readStats = {};
-        CHECK(readFromLedger(inBuffer, size, readStats));
+        CHECK(readFromLedger(inBuffer, size, readStats, [&]() {
+            // Close the first stream so that the data can be flushed when reading is finished
+            if (flushOnRead) {
+                closeStreamGuard.dismiss();
+                CHECK(ledger_close(stream, 0, nullptr));
+            }
+            return 0;
+        }));
         if (std::memcmp(inBuffer, outBuffer, size) != 0) {
             LOG(ERROR, "Unexpected ledger data");
             return Error::BAD_DATA;
@@ -277,10 +308,11 @@ int testWriteAndRead(size_t size) {
     averageStats(writeAvg, REPEAT_COUNT);
     averageStats(readAvg, REPEAT_COUNT);
 
-    LOG_PRINTF(INFO, "\r\n\033[4m%d writes of %d bytes\033[0m:\r\n", REPEAT_COUNT, (int)size);
+    auto msg = flushOnRead ? "flushing when reading is finished" : "flushing immediately";
+    LOG_PRINTF(INFO, "\r\n\033[4m%d writes of %d bytes; %s\033[0m:\r\n", REPEAT_COUNT, (int)size, msg);
     printStats(writeMin, writeMax, writeAvg, false);
 
-    LOG_PRINTF(INFO, "\r\n\033[4m%d reads of %d bytes\033[0m:\r\n", REPEAT_COUNT, (int)size);
+    LOG_PRINTF(INFO, "\r\n\033[4m%d reads of %d bytes; %s\033[0m:\r\n", REPEAT_COUNT, (int)size, msg);
     printStats(readMin, readMax, readAvg, true /* reading */);
 
     return 0;
@@ -290,11 +322,17 @@ int runTests() {
     CHECK(ledger_purge_all(nullptr));
 
     const int sizeCount = 3;
-    size_t sizes[sizeCount] = { SMALL_DATA_SIZE, MEDIUM_DATA_SIZE, LARGE_DATA_SIZE };
+    const size_t sizes[sizeCount] = { SMALL_DATA_SIZE, MEDIUM_DATA_SIZE, LARGE_DATA_SIZE };
+
+    const int testCount = sizeCount * 2;
+    int testIndex = 1;
 
     for (int i = 0; i < sizeCount; ++i) {
-        LOG_PRINTF(INFO, "\r\nRunning test %d of %d...\r\n", i + 1, sizeCount);
+        LOG_PRINTF(INFO, "\r\nRunning test %d of %d...\r\n", testIndex++, testCount);
         CHECK(testWriteAndRead(sizes[i]));
+
+        LOG_PRINTF(INFO, "\r\nRunning test %d of %d...\r\n", testIndex++, testCount);
+        CHECK(testWriteAndRead(sizes[i], true /* flushOnRead */));
     }
 
     CHECK(ledger_purge_all(nullptr));
