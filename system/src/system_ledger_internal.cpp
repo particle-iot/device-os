@@ -118,46 +118,46 @@ enum Result {
 
     Field     | Size      | Description
     ----------+-----------+------------
-    version   | 4         | Format version number (unsigned integer)
-    data_size | 4         | Size of the "data" field (unsigned integer)
-    info_size | 4         | Size of the "info" field (unsigned integer)
     data      | data_size | Contents of the ledger in an application-specific format
     info      | info_size | Protobuf-encoded ledger info (particle.firmware.LedgerInfo)
+    data_size | 4         | Size of the "data" field (unsigned integer)
+    info_size | 4         | Size of the "info" field (unsigned integer)
+    version   | 4         | Format version number (unsigned integer)
 
     All integer fields are encoded in little-endian byte order.
 */
-struct LedgerDataHeader {
-    uint32_t version;
+struct LedgerDataFooter {
     uint32_t dataSize;
     uint32_t infoSize;
+    uint32_t version;
 } __attribute__((packed));
 
-int readDataHeader(lfs_t* fs, lfs_file_t* file, size_t* dataSize = nullptr, size_t* infoSize = nullptr, int* version = nullptr) {
-    LedgerDataHeader h = {};
-    size_t n = CHECK_FS(lfs_file_read(fs, file, &h, sizeof(h)));
-    if (n != sizeof(h)) {
+int readFooter(lfs_t* fs, lfs_file_t* file, size_t* dataSize = nullptr, size_t* infoSize = nullptr, int* version = nullptr) {
+    LedgerDataFooter f = {};
+    size_t n = CHECK_FS(lfs_file_read(fs, file, &f, sizeof(f)));
+    if (n != sizeof(f)) {
         LOG(ERROR, "Unexpected end of ledger data file");
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
-    if (version) {
-        *version = littleEndianToNative(h.version);
-    }
     if (dataSize) {
-        *dataSize = littleEndianToNative(h.dataSize);
+        *dataSize = littleEndianToNative(f.dataSize);
     }
     if (infoSize) {
-        *infoSize = littleEndianToNative(h.infoSize);
+        *infoSize = littleEndianToNative(f.infoSize);
+    }
+    if (version) {
+        *version = littleEndianToNative(f.version);
     }
     return n;
 }
 
-int writeDataHeader(lfs_t* fs, lfs_file_t* file, size_t dataSize, size_t infoSize, int version = DATA_FORMAT_VERSION) {
-    LedgerDataHeader h = {};
-    h.version = nativeToLittleEndian(version);
-    h.dataSize = nativeToLittleEndian(dataSize);
-    h.infoSize = nativeToLittleEndian(infoSize);
-    size_t n = CHECK_FS(lfs_file_write(fs, file, &h, sizeof(h)));
-    if (n != sizeof(h)) {
+int writeFooter(lfs_t* fs, lfs_file_t* file, size_t dataSize, size_t infoSize, int version = DATA_FORMAT_VERSION) {
+    LedgerDataFooter f = {};
+    f.dataSize = nativeToLittleEndian(dataSize);
+    f.infoSize = nativeToLittleEndian(infoSize);
+    f.version = nativeToLittleEndian(version);
+    size_t n = CHECK_FS(lfs_file_write(fs, file, &f, sizeof(f)));
+    if (n != sizeof(f)) {
         LOG(ERROR, "Unexpected number of bytes written");
         return SYSTEM_ERROR_FILESYSTEM;
     }
@@ -416,7 +416,7 @@ int Ledger::initReader(LedgerReader& reader) {
     if (!inited_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    CHECK(reader.init(stagedSeqNum_, this));
+    CHECK(reader.init(dataSize_, stagedSeqNum_, this));
     if (stagedSeqNum_ > 0) {
         ++stagedReaderCount_;
     } else {
@@ -531,22 +531,23 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
             LOG(ERROR, "Error while closing file: %d", r);
         }
     });
-    // Read the header
+    // Read the footer
     size_t dataSize = 0;
     size_t infoSize = 0;
     int version = 0;
-    CHECK(readDataHeader(fs, &file, &dataSize, &infoSize, &version));
+    CHECK_FS(lfs_file_seek(fs, &file, -(int)sizeof(LedgerDataFooter), LFS_SEEK_END));
+    CHECK(readFooter(fs, &file, &dataSize, &infoSize, &version));
     if (version != DATA_FORMAT_VERSION) {
         LOG(ERROR, "Unsupported version of ledger data format: %d", version);
         return SYSTEM_ERROR_LEDGER_UNSUPPORTED_FORMAT;
     }
     size_t fileSize = CHECK_FS(lfs_file_size(fs, &file));
-    if (fileSize != sizeof(LedgerDataHeader) + dataSize + infoSize) {
+    if (fileSize != dataSize + infoSize + sizeof(LedgerDataFooter)) {
         LOG(ERROR, "Unexpected size of ledger data file");
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
     // Skip the data section
-    CHECK_FS(lfs_file_seek(fs, &file, dataSize, LFS_SEEK_CUR));
+    CHECK_FS(lfs_file_seek(fs, &file, dataSize, LFS_SEEK_SET));
     // Read the info section
     PB_INTERNAL(LedgerInfo) pbInfo = {};
     r = decodeProtobufFromFile(&file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo, infoSize);
@@ -560,6 +561,7 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
     }
     scope_ = static_cast<ledger_scope>(pbInfo.scope);
     syncDir_ = static_cast<ledger_sync_direction>(pbInfo.sync_direction);
+    dataSize_ = dataSize;
     lastUpdated_ = pbInfo.last_updated;
     lastSynced_ = pbInfo.last_synced;
     syncPending_ = pbInfo.sync_pending;
@@ -599,13 +601,10 @@ int Ledger::initCurrentData(lfs_t* fs) {
             LOG(ERROR, "Error while closing file: %d", r);
         }
     });
-    // Reserve space for the header
-    CHECK_FS(lfs_file_seek(fs, &file, sizeof(LedgerDataHeader), LFS_SEEK_SET));
     // Write the info section
     size_t infoSize = CHECK(writeLedgerInfo(fs, &file, name_, info()));
-    // Write the header
-    CHECK_FS(lfs_file_seek(fs, &file, 0, LFS_SEEK_SET));
-    CHECK(writeDataHeader(fs, &file, 0 /* dataSize */, infoSize));
+    // Write the footer
+    CHECK(writeFooter(fs, &file, 0 /* dataSize */, infoSize));
     return 0;
 }
 
@@ -713,7 +712,7 @@ LedgerInfo& LedgerInfo::update(const LedgerInfo& info) {
     return *this;
 }
 
-int LedgerReader::init(int stagedSeqNum, Ledger* ledger) {
+int LedgerReader::init(size_t dataSize, int stagedSeqNum, Ledger* ledger) {
     char path[MAX_PATH_LEN + 1];
     if (stagedSeqNum > 0) {
         // The most recent data is staged
@@ -725,17 +724,9 @@ int LedgerReader::init(int stagedSeqNum, Ledger* ledger) {
     // Open the respective file
     FsLock fs;
     CHECK_FS(lfs_file_open(fs.instance(), &file_, path, LFS_O_RDONLY));
-    NAMED_SCOPE_GUARD(closeFileGuard, {
-        int r = closeFile(fs.instance(), &file_);
-        if (r < 0) {
-            LOG(ERROR, "Error while closing file: %d", r);
-        }
-    });
-    // Read the header. The header data has already been validated at this point
-    CHECK(readDataHeader(fs.instance(), &file_, &dataSize_));
     ledger_ = ledger;
+    dataSize_ = dataSize;
     open_ = true;
-    closeFileGuard.dismiss();
     return 0;
 }
 
@@ -783,19 +774,10 @@ int LedgerWriter::init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger) {
     CHECK(getTempFilePath(path, sizeof(path), ledger->name(), tempSeqNum));
     FsLock fs;
     CHECK_FS(lfs_file_open(fs.instance(), &file_, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL));
-    NAMED_SCOPE_GUARD(closeFileGuard, {
-        int r = closeFile(fs.instance(), &file_);
-        if (r < 0) {
-            LOG(ERROR, "Error while closing file: %d", r);
-        }
-    });
-    // Reserve space for the header
-    CHECK_FS(lfs_file_seek(fs.instance(), &file_, sizeof(LedgerDataHeader), LFS_SEEK_SET));
     ledger_ = ledger;
     tempSeqNum_ = tempSeqNum;
     src_ = src;
     open_ = true;
-    closeFileGuard.dismiss();
     return 0;
 }
 
@@ -851,7 +833,7 @@ int LedgerWriter::close(bool discard) {
             LOG(ERROR, "Error while closing file: %d", r);
         }
     });
-    // Update the ledger info
+    // Prepare the updated ledger info
     std::lock_guard lock(*ledger_);
     auto newInfo = ledger_->info().update(ledgerInfo_);
     newInfo.dataSize(dataSize_); // Can't be overridden
@@ -873,9 +855,8 @@ int LedgerWriter::close(bool discard) {
     }
     // Write the info section
     size_t infoSize = CHECK(writeLedgerInfo(fs.instance(), &file_, ledger_->name(), newInfo));
-    // Write the header
-    CHECK_FS(lfs_file_seek(fs.instance(), &file_, 0, LFS_SEEK_SET));
-    CHECK(writeDataHeader(fs.instance(), &file_, dataSize_, infoSize));
+    // Write the footer
+    CHECK(writeFooter(fs.instance(), &file_, dataSize_, infoSize));
     closeFileGuard.dismiss();
     CHECK_FS(lfs_file_close(fs.instance(), &file_));
     // Flush the data

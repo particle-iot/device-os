@@ -323,7 +323,7 @@ private:
     bool staged_; // Whether the data being read is staged
     bool open_; // Whether the reader is open
 
-    int init(int stagedSeqNum, Ledger* ledger); // Called by Ledger
+    int init(size_t dataSize, int stagedSeqNum, Ledger* ledger); // Called by Ledger
 
     friend class Ledger;
 };
