@@ -27,7 +27,6 @@
 
 extern "C" {
 #include "rtl8721d.h"
-// #include "rtl8721d_rtc.h"
 }
 
 #if HAL_PLATFORM_EXTERNAL_RTC
@@ -143,11 +142,11 @@ public:
                 /* over one year, update days in RTC_TR */
                 rtcTimeStruct.RTC_Days = time.tm_yday;
                 RTC_SetTime(RTC_Format_BIN, &rtcTimeStruct);
-
-                /* update timeInfo_ */
-                memcpy((void*)&timeInfo_, (void*)&time, sizeof(struct tm));
             }
         }
+
+        /* update timeInfo_ */
+        memcpy((void*)&timeInfo_, (void*)&time, sizeof(struct tm));
         
         /* Convert to timestamp(seconds from 1970.1.1 00:00:00)*/
         tv->tv_sec = mktime(&time);
@@ -221,6 +220,11 @@ public:
         struct timeval tv = {};
         getTime(&tv);
         return tv.tv_sec > UNIX_TIME_20180101000000;
+    }
+
+    bool isTimeInfoValid() {
+        time_t tv_sec = mktime(&timeInfo_);
+        return tv_sec >= UNIX_TIME_20000101000000;
     }
 
     void rtcAlarmHandlerImpl() {
@@ -333,14 +337,23 @@ RealtekRtc rtcInstance;
 } // anonymous
 
 void hal_rtc_init(void) {
-    if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_DSLP_INFO_SW) == false) {
-        rtcInstance.init();
-        struct timeval tv = {
-            .tv_sec = UNIX_TIME_20000101000000,
-            .tv_usec = 0
-        };
-        rtcInstance.setTime(&tv);
+    rtcInstance.init();
+
+    /* Wakes up from the hibernate mode. */
+    if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_DSLP_INFO_SW) == true) {
+#if !HAL_PLATFORM_EXTERNAL_RTC
+        if (rtcInstance.isTimeInfoValid())
+#endif
+        {
+            return;
+        }
     }
+
+    struct timeval tv = {
+        .tv_sec = UNIX_TIME_20000101000000,
+        .tv_usec = 0
+    };
+    rtcInstance.setTime(&tv);
 }
 
 bool hal_rtc_time_is_valid(void* reserved) {

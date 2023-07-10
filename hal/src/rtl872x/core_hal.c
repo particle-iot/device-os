@@ -416,9 +416,10 @@ void HAL_Core_Setup(void) {
     // and global constructors have executed, but interrupt HAL can only be accessed after both of those things happened.
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
 
-    hal_rtc_init();
-
     hal_backup_ram_init();
+
+    // Note: the rtc module has retained data, so hal_backup_ram_init() should be called first.
+    hal_rtc_init();
 
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();
