@@ -81,7 +81,7 @@ void dumpLine(const char* data, size_t size, size_t offs) {
 int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
     lfs_dir_t dir = {};
     CHECK_FS(lfs_dir_open(lfs, &dir, pathBuf));
-    SCOPE_GUARD({
+    NAMED_SCOPE_GUARD(closeDirGuard, {
         int r = lfs_dir_close(lfs, &dir);
         if (r < 0) {
             LOG(ERROR, "Failed to close directory handle: %d", r);
@@ -99,6 +99,8 @@ int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
             return SYSTEM_ERROR_PATH_TOO_LONG;
         }
         if (entry.type == LFS_TYPE_DIR) {
+            // FIXME: This sometimes fails with FILESYSTEM_NOENT in load tests even though we've just
+            // found the directory entry
             CHECK(removeDir(lfs, pathBuf, bufSize, pathLen + n));
         } else {
             CHECK_FS(lfs_remove(lfs, pathBuf));
@@ -106,6 +108,8 @@ int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
     }
     CHECK_FS(r);
     pathBuf[--pathLen] = '\0';
+    closeDirGuard.dismiss();
+    CHECK_FS(lfs_dir_close(lfs, &dir));
     CHECK_FS(lfs_remove(lfs, pathBuf));
     return 0;
 }

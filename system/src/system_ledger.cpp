@@ -122,6 +122,9 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
 }
 
 int ledger_close(ledger_stream* stream, int flags, void* reserved) {
+    if (!stream) {
+        return 0;
+    }
     auto s = reinterpret_cast<LedgerStream*>(stream);
     int r = s->close(flags & LEDGER_STREAM_CLOSE_DISCARD);
     delete s;
