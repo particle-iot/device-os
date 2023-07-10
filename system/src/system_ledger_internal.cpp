@@ -109,8 +109,7 @@ const size_t MAX_PATH_LEN = 127;
 
 // Internal result codes
 enum Result {
-    RESULT_CURRENT_DATA_NOT_FOUND = 1,
-    RESULT_STAGED_DATA_FOUND = 2
+    RESULT_CURRENT_DATA_NOT_FOUND = 1
 };
 
 /*
@@ -247,6 +246,11 @@ inline int getCurrentFilePath(char* buf, size_t size, const char* ledgerName) {
 }
 
 // Helper functions that transform LittleFS errors to a system error
+inline int renameFile(lfs_t* fs, const char* oldPath, const char* newPath) {
+    CHECK_FS(lfs_rename(fs, oldPath, newPath));
+    return 0;
+}
+
 inline int removeFile(lfs_t* fs, const char* path) {
     CHECK_FS(lfs_remove(fs, path));
     return 0;
@@ -402,8 +406,8 @@ int Ledger::init(const char* name) {
         // Clean up and recover staged data
         CHECK(removeTempData(fs.instance()));
         r = CHECK(flushStagedData(fs.instance()));
-        if (r == RESULT_STAGED_DATA_FOUND) {
-            // Reload the ledger info
+        if (r > 0) {
+            // Found staged data. Reload the ledger info
             CHECK(loadLedgerInfo(fs.instance()));
         }
     }
@@ -458,6 +462,7 @@ int Ledger::readerClosed(bool staged) {
         --curReaderCount_;
     }
     // Check if there's staged data and if it can be flushed
+    int result = 0;
     if (stagedSeqNum_ > 0 && curReaderCount_ == 0 && stagedReaderCount_ == 0) {
         // To save on RAM usage, we don't count how many readers are open for each individual file,
         // which may result in the staged directory containing multiple unused files with outdated
@@ -471,16 +476,38 @@ int Ledger::readerClosed(bool staged) {
             char destPath[MAX_PATH_LEN + 1];
             CHECK(getStagedFilePath(srcPath, sizeof(srcPath), name_, stagedSeqNum_));
             CHECK(getCurrentFilePath(destPath, sizeof(destPath), name_));
-            CHECK_FS(lfs_rename(fs.instance(), srcPath, destPath));
+            result = renameFile(fs.instance(), srcPath, destPath);
+            if (result < 0) {
+                // The filesystem is full or broken, or somebody messed up the staged directory
+                LOG(ERROR, "Failed to rename file: %d", result);
+                int r = removeFile(fs.instance(), srcPath);
+                if (r < 0) {
+                    LOG(WARN, "Failed to remove file: %d", r);
+                }
+            }
         } else {
             // The staged directory contains outdated files. Clean those up and move the most recent
             // file to "current"
-            CHECK(flushStagedData(fs.instance()));
+            int r = flushStagedData(fs.instance());
+            if (r < 0) {
+                result = r;
+            } else if (r != stagedSeqNum_) {
+                // The file moved wasn't the most recent one for some reason
+                LOG(ERROR, "Staged ledger data not found");
+                result = SYSTEM_ERROR_LEDGER_INCONSISTENT;
+            }
+        }
+        if (result < 0) {
+            // Try recovering some known consistent state
+            int r = loadLedgerInfo(fs.instance());
+            if (r < 0) {
+                LOG(ERROR, "Failed to recover ledger state");
+            }
         }
         stagedSeqNum_ = 0;
         stagedFileCount_ = 0;
     }
-    return 0;
+    return result;
 }
 
 int Ledger::writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum) {
@@ -555,7 +582,7 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
         LOG(ERROR, "Failed to parse ledger info: %d", r);
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
-    if (strcmp(pbInfo.name, name_) != 0) {
+    if (std::strcmp(pbInfo.name, name_) != 0) {
         LOG(ERROR, "Unexpected ledger name");
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
@@ -626,7 +653,9 @@ int Ledger::flushStagedData(lfs_t* fs) {
     int r = 0;
     while ((r = lfs_dir_read(fs, &dir, &entry)) == 1) {
         if (entry.type != LFS_TYPE_REG) {
-            LOG(WARN, "Found unexpected entry in ledger directory");
+            if (entry.type != LFS_TYPE_DIR || (std::strcmp(entry.name, ".") != 0 && std::strcmp(entry.name, "..") != 0)) {
+                LOG(WARN, "Found unexpected entry in ledger directory");
+            }
             continue;
         }
         char* end = nullptr;
@@ -660,7 +689,7 @@ int Ledger::flushStagedData(lfs_t* fs) {
         CHECK(getCurrentFilePath(destPath, sizeof(destPath), name_));
         CHECK(getStagedFilePath(path, sizeof(path), name_, fileName));
         CHECK_FS(lfs_rename(fs, path, destPath));
-        return RESULT_STAGED_DATA_FOUND;
+        return maxSeqNum;
     }
     return 0;
 }
@@ -680,7 +709,9 @@ int Ledger::removeTempData(lfs_t* fs) {
     int r = 0;
     while ((r = lfs_dir_read(fs, &dir, &entry)) == 1) {
         if (entry.type != LFS_TYPE_REG) {
-            LOG(WARN, "Found unexpected entry in ledger directory");
+            if (entry.type != LFS_TYPE_DIR || (std::strcmp(entry.name, ".") != 0 && std::strcmp(entry.name, "..") != 0)) {
+                LOG(WARN, "Found unexpected entry in ledger directory");
+            }
             continue;
         }
         CHECK(getTempFilePath(path, sizeof(path), name_, entry.name));

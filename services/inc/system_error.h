@@ -110,8 +110,9 @@
         (LEDGER_READ_ONLY, "Ledger is read only", -2004), \
         (LEDGER_IN_USE, "Ledger is in use", -2005), \
         (LEDGER_TOO_LARGE, "Ledger data is too large", -2006), \
-        (LEDGER_ENCODING, "Ledger encoding error", -2007), \
-        (LEDGER_DECODING, "Ledger decoding error", -2008)
+        (LEDGER_INCONSISTENT, "Inconsistent ledger state", -2007), \
+        (LEDGER_ENCODING, "Ledger encoding error", -2008), \
+        (LEDGER_DECODING, "Ledger decoding error", -2009)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \
