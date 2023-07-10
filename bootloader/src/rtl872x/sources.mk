@@ -21,6 +21,7 @@ CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,rtl_
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,timer_hal.cpp)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/littlefs/,*.cpp)
 CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/littlefs/,*.c)
+CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/shared/,filesystem.cpp)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,usbd_device.cpp)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,usbd_driver.cpp)
 

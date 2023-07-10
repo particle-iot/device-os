@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_NONE
+
 #include "hal_platform.h"
 
 #if HAL_PLATFORM_COMPRESSED_OTA
@@ -183,6 +186,7 @@ int inflate_reset_impl(inflate_ctx* ctx) {
 
         if (buf) {
             if (toRead > 0) {
+                LOG(INFO, "read cache miss toRead=%u offset=%x read_cache_pos=%x write_cache_pos=%x", toRead, offset, ctx->read_cache_pos, ctx->write_cache_pos);
                 const fs::FsLock lock(fs);
                 // Read into target buffer
                 if (lfs_file_seek(&fs->instance, f, offset, LFS_SEEK_SET) < 0) {
@@ -191,6 +195,13 @@ int inflate_reset_impl(inflate_ctx* ctx) {
                 if (lfs_file_read(&fs->instance, f, buf, size) < 0) {
                     return 0;
                 }
+                if (lfs_file_seek(&fs->instance, f, offset, LFS_SEEK_SET) < 0) {
+                    return 0;
+                }
+                if (lfs_file_read(&fs->instance, f, ctx->read_cache, ctx->read_cache_size) < 0) {
+                    return 0;
+                }
+                ctx->read_cache_pos = offset;
             } else if (inReadCacheToRead > 0) {
                 memcpy((uint8_t*)buf + (inReadCacheAbsOffset - offset), ctx->read_cache + (inReadCacheAbsOffset - ctx->read_cache_pos), inReadCacheToRead);
             }
@@ -213,6 +224,7 @@ int inflate_reset_impl(inflate_ctx* ctx) {
                 return ctx->read_request_size;
             }
             if (toRead > 0) {
+                LOG(INFO, "read cache miss toRead=%u offset=%x read_cache_pos=%x write_cache_pos=%x", toRead, offset, ctx->read_cache_pos, ctx->write_cache_pos);
                 const fs::FsLock lock(fs);
                 // Fill read cache
                 if (lfs_file_seek(&fs->instance, f, offset, LFS_SEEK_SET) < 0) {
@@ -276,11 +288,16 @@ int inflate_reset_impl(inflate_ctx* ctx) {
         }
         size_t prevBlock = ctx->write_cache_pos;
         if (toWrite > 0) {
+            system_tick_t start = HAL_Timer_Get_Milli_Seconds();
+            SCOPE_GUARD({
+                LOG(INFO, "block change took %ums", HAL_Timer_Get_Milli_Seconds() - start);
+            });
             // Flush the current block
             const fs::FsLock lock(fs);
             // NOTE: triggers a flush!
 
             size_t newBlock = (toWriteAbsOffset / ctx->write_cache_block_size) * ctx->write_cache_block_size;
+            LOG(INFO, "block change old=%x new=%x toWrite=%x", prevBlock, newBlock, toWrite);
             size_t flushSize = ctx->write_cache_block_size;
             if (newBlock != prevBlock + ctx->write_cache_block_size) {
                 flushSize = ctx->write_cache_size;

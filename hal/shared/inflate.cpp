@@ -23,6 +23,7 @@
 
 #include "check.h"
 #include <algorithm>
+#include "core_hal.h"
 
 namespace {
 
@@ -44,22 +45,43 @@ int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output o
         }
         bufSize = (1 << opts->window_bits);
     }
+    char* buf = nullptr;
 #if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+    runtime_info_t info = {};
+    info.size = sizeof(info);
+    HAL_Core_Runtime_Info(&info, nullptr);
+
+    bool useFilesystem = true;
+
     size_t allocateBufSize = INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE + INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE;
+    if (info.freeheap >= bufSize * 2) {
+        if (!inflate_alloc_ctx(ctx, &buf, bufSize)) {
+            useFilesystem = false;
+            allocateBufSize = bufSize;
+        }
+    }
+
+    if (useFilesystem) {
+        CHECK(inflate_alloc_ctx(ctx, &buf, allocateBufSize));
+    }
 #else
     size_t allocateBufSize = bufSize;
-#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
-    char* buf = nullptr;
     CHECK(inflate_alloc_ctx(ctx, &buf, allocateBufSize));
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 #if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     (*ctx)->buf = buf;
 #else
-    (*ctx)->buf = nullptr;
-    (*ctx)->write_cache = buf;
-    (*ctx)->read_cache = buf + INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE;
-    (*ctx)->write_cache_size = INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE;
-    (*ctx)->write_cache_block_size = FILESYSTEM_BLOCK_SIZE;
-    (*ctx)->read_cache_size = INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE;
+    LOG(INFO, "useFilesystem=%d", useFilesystem);
+    if (useFilesystem) {
+        (*ctx)->buf = nullptr;
+        (*ctx)->write_cache = buf;
+        (*ctx)->read_cache = buf + INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE;
+        (*ctx)->write_cache_size = INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE;
+        (*ctx)->write_cache_block_size = FILESYSTEM_BLOCK_SIZE;
+        (*ctx)->read_cache_size = INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE;
+    } else {
+        (*ctx)->buf = buf;
+    }
 
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     (*ctx)->buf_size = bufSize;
@@ -71,7 +93,11 @@ int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output o
 
 void inflate_destroy(inflate_ctx* ctx) {
     if (ctx) {
+#if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
         inflate_free_ctx(ctx, ctx->buf);
+#else
+        inflate_free_ctx(ctx, ctx->buf ? ctx->buf : ctx->write_cache);
+#endif // !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     }
 }
 
@@ -96,12 +122,17 @@ int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned fla
 #if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
             const int n = ctx->output(ctx->buf + ctx->buf_offs, ctx->buf_avail, ctx->user_data);
 #else
-            int n = ctx->decomp.read_buf(nullptr, ctx->buf_offs, ctx->buf_avail, ctx);
-            if (n > 0 && ctx->read_request && ctx->read_request_size > 0) {
-                n = ctx->output(ctx->read_request, ctx->read_request_size, ctx->user_data);
+            int n = 0;
+            if (ctx->buf == nullptr) {
+                n = ctx->decomp.read_buf(nullptr, ctx->buf_offs, ctx->buf_avail, ctx);
+                if (n > 0 && ctx->read_request && ctx->read_request_size > 0) {
+                    n = ctx->output(ctx->read_request, ctx->read_request_size, ctx->user_data);
+                } else {
+                    // Something went wrong
+                    n = SYSTEM_ERROR_INTERNAL;
+                }
             } else {
-                // Something went wrong
-                n = SYSTEM_ERROR_INTERNAL;
+                n = ctx->output(ctx->buf + ctx->buf_offs, ctx->buf_avail, ctx->user_data);
             }
 #endif // !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
             if (n < 0) {
@@ -147,7 +178,7 @@ int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned fla
         size_t destSize = ctx->buf_size - ctx->buf_offs;
         const uint32_t tinflFlags = 
 #if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
-                TINFL_FLAG_OUTPUT_BUFFER_NOT_IN_RAM |
+                (ctx->buf == nullptr ? TINFL_FLAG_OUTPUT_BUFFER_NOT_IN_RAM : 0) |
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
                 ((flags & INFLATE_HAS_MORE_INPUT) ? TINFL_FLAG_HAS_MORE_INPUT : 0);
 

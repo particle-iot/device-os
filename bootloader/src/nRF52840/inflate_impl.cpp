@@ -48,4 +48,8 @@ void inflate_free_ctx(inflate_ctx* ctx, char* buf) {
     g_alloced = false;
 }
 
+int inflate_reset_impl(inflate_ctx* ctx) {
+    return 0;
+}
+
 #endif // HAL_PLATFORM_COMPRESSED_OTA

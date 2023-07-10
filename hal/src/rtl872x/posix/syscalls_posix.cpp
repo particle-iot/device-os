@@ -25,7 +25,7 @@
 // IMPORANT: this is our own implementation header
 #include <sys/dirent.h>
 #include <errno.h>
-#include "littlefs/filesystem.h"
+#include "filesystem.h"
 #include "check.h"
 #include "intrusive_list.h"
 #include "scope_guard.h"
