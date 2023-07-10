@@ -3,8 +3,8 @@ set(target_name hal)
 # Create test executable
 add_executable( ${target_name}
   inflate.cpp
-  ${DEVICE_OS_DIR}/hal/src/nRF52840/inflate.cpp
-  ${DEVICE_OS_DIR}/hal/src/nRF52840/inflate_impl.cpp
+  ${DEVICE_OS_DIR}/hal/shared/inflate.cpp
+  ${DEVICE_OS_DIR}/hal/shared/inflate_impl.cpp
   ${DEVICE_OS_DIR}/third_party/miniz/miniz/miniz_tinfl.c
 )
 

@@ -26,16 +26,18 @@
 #include <cstdio>
 #include <climits>
 
+// FIXME
+#if HAL_PLATFORM_USB_CONTROL_INTERFACE
 #include "control/common.h"
 #include "cloud/describe.pb.h"
+using particle::control::common::EncodedString;
+#endif // HAL_PLATFORM_USB_CONTROL_INTERFACE
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
 #endif // HAL_PLATFORM_ASSETS
 
 #define PB(name) particle_cloud_##name
-
-using particle::control::common::EncodedString;
 
 namespace {
 
@@ -292,6 +294,7 @@ public:
 
 };
 
+#if HAL_PLATFORM_USB_CONTROL_INTERFACE
 class PbAppenderStream: public pb_ostream_t {
 public:
     PbAppenderStream(appender_fn append, void* ctx) :
@@ -349,6 +352,7 @@ PB(FirmwareModuleStore) moduleStoreToPb(module_store_t store) {
         return PB(FirmwareModuleStore_MAIN_MODULE_STORE);
     }
 }
+#endif // HAL_PLATFORM_USB_CONTROL_INTERFACE
 
 #if HAL_PLATFORM_ASSETS
 
@@ -524,6 +528,7 @@ bool system_app_info(appender_fn appender, void* append_data, void* reserved) {
 	return true;
 }
 
+#if HAL_PLATFORM_USB_CONTROL_INTERFACE
 bool system_module_info_pb(appender_fn appender, void* append_data, void* reserved) {
     hal_system_info_t sysInfo = {};
     sysInfo.size = sizeof(sysInfo);
@@ -621,3 +626,5 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
     PbAppenderStream strm(appender, append_data);
     return pb_encode(&strm, &PB(SystemDescribe_msg), &pbDesc);
 }
+
+#endif // HAL_PLATFORM_USB_CONTROL_INTERFACE

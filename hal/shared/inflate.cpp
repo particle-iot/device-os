@@ -23,7 +23,9 @@
 
 #include "check.h"
 #include <algorithm>
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 #include "core_hal.h"
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 
 namespace {
 

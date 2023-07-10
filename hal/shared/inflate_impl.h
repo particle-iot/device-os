@@ -23,7 +23,7 @@
 #include "miniz_tinfl.h"
 #include "hal_platform.h"
 
-#ifdef HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 #include "filesystem.h"
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 
@@ -37,7 +37,7 @@ struct inflate_ctx {
     void* user_data;
     int result;
     bool done;
-#ifdef HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     lfs_file_t temp_file;
     char* temp_file_name;
     char* write_cache;
