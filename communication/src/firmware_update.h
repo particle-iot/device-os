@@ -174,7 +174,7 @@ private:
     int handleChunkRequest(const CoapMessageDecoder& d, CoapMessageEncoder* e, int** respId, bool validateOnly);
 
     static int decodeStartRequest(const CoapMessageDecoder& d, size_t* fileSize, const char** fileHash, size_t* chunkSize,
-            bool* discardData);
+            bool* discardData, int* moduleFunction);
     static int decodeFinishRequest(const CoapMessageDecoder& d, bool* cancelUpdate, bool* discardData);
     static int decodeChunkRequest(const CoapMessageDecoder& d, const char** chunkData, size_t* chunkSize,
             unsigned* chunkIndex);

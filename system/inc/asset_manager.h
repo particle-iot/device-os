@@ -129,6 +129,7 @@ public:
     int setNotifyHook(asset_manager_notify_hook hook, void* context);
     int notifyIfNeeded();
     int setConsumerState(asset_manager_consumer_state state);
+    int prepareForOta(size_t size, unsigned flags, int moduleFunction);
 
 protected:
     AssetManager() = default;

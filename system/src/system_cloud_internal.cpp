@@ -61,6 +61,10 @@
 #include "firmware_update.h"
 #include "server_config.h"
 
+#if HAL_PLATFORM_ASSETS
+#include "asset_manager.h"
+#endif // HAL_PLATFORM_ASSETS
+
 #if PLATFORM_ID == PLATFORM_GCC
 #include "device_config.h"
 #endif
@@ -168,9 +172,13 @@ void systemEventHandler(const char* name, const char* data)
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, unsigned flags) {
-    return FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, partialSize,
-            FirmwareUpdateFlags::fromUnderlying(flags));
+int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, unsigned flags, int moduleFunction) {
+    CHECK(FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, partialSize,
+            FirmwareUpdateFlags::fromUnderlying(flags)));
+#if HAL_PLATFORM_ASSETS
+    CHECK(AssetManager::instance().prepareForOta(fileSize, flags, moduleFunction));
+#endif // HAL_PLATFORM_ASSETS
+    return 0;
 }
 
 int finishFirmwareUpdate(unsigned flags) {

@@ -33,6 +33,8 @@ namespace particle {
 
 namespace {
 
+const size_t FREE_BLOCKS_REQUIRED = 16;
+
 // TODO: move to using streams as well?
 int parseAssetDependencies(spark::Vector<Asset>& assets, hal_storage_id storageId, uintptr_t start, uintptr_t end) {
     for (uintptr_t offset = start; offset < end;) {
@@ -338,6 +340,32 @@ int AssetManager::notifyIfNeeded() {
 
 int AssetManager::setConsumerState(asset_manager_consumer_state state) {
     return services::SystemCache::instance().set(services::SystemCacheKey::ASSET_MANAGER_CONSUMER_STATE, &state, sizeof(state));
+}
+
+int AssetManager::prepareForOta(size_t size, unsigned flags, int moduleFunction) {
+    LOG(INFO, "prepareForOta size=%u flags=%x func=%d", size, flags, moduleFunction);
+    const size_t blockSize = EXTERNAL_FLASH_ASSET_STORAGE_SIZE / EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT;
+    const size_t freeBlocksSize = FREE_BLOCKS_REQUIRED * blockSize;
+    if (moduleFunction == MODULE_FUNCTION_ASSET && size > (EXTERNAL_FLASH_ASSET_STORAGE_SIZE - freeBlocksSize)) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+#if HAL_PLATFORM_ASSETS_OTA_OVERLAP
+    if (size > EXTERNAL_FLASH_OTA_SAFE_LENGTH) {
+        LOG(WARN, "Receiving module of size %u (function = %d) will invalidate asset storage", size, moduleFunction);
+        // We cannot receive an asset that will also cause the asset filesystem to be overwritten
+        if (moduleFunction == MODULE_FUNCTION_ASSET) {
+            return SYSTEM_ERROR_TOO_LARGE;
+        }
+        // Otherwise unmount filesystem
+        const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
+        CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+        fs::FsLock lock(fs);
+        filesystem_unmount(fs);
+        filesystem_invalidate(fs);
+        availableAssets_.clear();
+    }
+#endif // HAL_PLATFORM_ASSETS_OTA_OVERLAP
+    return 0;
 }
 
 // AssetReader

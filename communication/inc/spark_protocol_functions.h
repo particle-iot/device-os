@@ -73,7 +73,7 @@ struct SparkCallbacks
     int (*receive)(unsigned char *buf, uint32_t buflen, void* handle);
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-    int (*start_firmware_update)(size_t file_size, const char* file_hash, size_t* partial_size, unsigned flags);
+    int (*start_firmware_update)(size_t file_size, const char* file_hash, size_t* partial_size, unsigned flags, int module_function);
     int (*finish_firmware_update)(unsigned flags);
     int (*save_firmware_chunk)(const char* chunk_data, size_t chunk_size, size_t chunk_offset, size_t partial_size);
 #else

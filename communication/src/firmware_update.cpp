@@ -56,7 +56,8 @@ enum OtaCoapOption {
     FILE_SHA256 = 2061,
     CHUNK_SIZE = 2065,
     DISCARD_DATA = 2069,
-    CANCEL_UPDATE = 2073
+    CANCEL_UPDATE = 2073,
+    MODULE_FUNCTION_OPT = 2077
 };
 
 inline unsigned trailingOneBits(uint32_t v) {
@@ -289,7 +290,8 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
     size_t fileSize = 0;
     size_t chunkSize = 0;
     bool discardData = false;
-    CHECK(decodeStartRequest(d, &fileSize, &fileHash, &chunkSize, &discardData));
+    int moduleFunction = -1;
+    CHECK(decodeStartRequest(d, &fileSize, &fileHash, &chunkSize, &discardData, &moduleFunction));
     if (validateOnly) {
         return 0;
     }
@@ -321,7 +323,7 @@ int FirmwareUpdate::handleStartRequest(const CoapMessageDecoder& d, CoapMessageE
         flags |= FirmwareUpdateFlag::NON_RESUMABLE;
     }
     const auto t1 = millis();
-    CHECK(callbacks_->start_firmware_update(fileSize_, fileHash, &fileOffset_, flags.value()));
+    CHECK(callbacks_->start_firmware_update(fileSize_, fileHash, &fileOffset_, flags.value(), moduleFunction));
     stats_.processingTime += millis() - t1;
     transferSize_ = fileSize_ - fileOffset_;
     chunkCount_ = (transferSize_ + chunkSize_ - 1) / chunkSize_;
@@ -511,7 +513,7 @@ int FirmwareUpdate::handleChunkRequest(const CoapMessageDecoder& d, CoapMessageE
 }
 
 int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* fileSize, const char** fileHash,
-        size_t* chunkSize, bool* discardData) {
+        size_t* chunkSize, bool* discardData, int* moduleFunction) {
     if (d.type() != CoapType::CON) {
         SYSTEM_ERROR_MESSAGE("Invalid message type");
         return SYSTEM_ERROR_PROTOCOL;
@@ -563,6 +565,12 @@ int FirmwareUpdate::decodeStartRequest(const CoapMessageDecoder& d, size_t* file
             }
             *discardData = true;
             hasDiscardData = true;
+            break;
+        }
+        case OtaCoapOption::MODULE_FUNCTION_OPT: {
+            const int func = it.toUInt();
+            *moduleFunction = func;
+            // No need to validate here, we will do that in `start_firmware_update`
             break;
         }
         default:

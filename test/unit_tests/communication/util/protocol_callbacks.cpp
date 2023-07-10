@@ -43,9 +43,9 @@ int receiveCallback(uint8_t *buf, uint32_t bufSize, void* ctx) {
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-int startFirmwareUpdateCallback(size_t fileSize, const char* fileHash, size_t* fileOffset, unsigned flags) {
+int startFirmwareUpdateCallback(size_t fileSize, const char* fileHash, size_t* fileOffset, unsigned flags, int moduleFunction) {
     if (g_callbacks) {
-        return g_callbacks->startFirmwareUpdate(fileSize, fileHash, fileOffset, flags);
+        return g_callbacks->startFirmwareUpdate(fileSize, fileHash, fileOffset, flags, moduleFunction);
     }
     return -1;
 }

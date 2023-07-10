@@ -350,6 +350,8 @@ PB(FirmwareModuleStore) moduleStoreToPb(module_store_t store) {
     }
 }
 
+#if HAL_PLATFORM_ASSETS
+
 bool encodeAssetDependencies(pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
     auto assets = (const spark::Vector<Asset>*)*arg;
     for (const auto& asset: *assets) {
@@ -368,6 +370,8 @@ bool encodeAssetDependencies(pb_ostream_t* strm, const pb_field_iter_t* field, v
     }
     return true;
 }
+
+#endif // HAL_PLATFORM_ASSETS
 
 } // anonymous
 
