@@ -69,6 +69,7 @@ typedef struct  {
     uint8_t                 suspend_opcode;  // Which opcode to use when interrupting pending program/erase command
     uint8_t                 reserved[3];     // Reserved padding
     uint32_t                otp_size;        // Size of OTP area in bytes
+    uint32_t                size;            // Size of flash in bytes
 } hal_exflash_params_t;
 
 typedef int (*hal_exflash_gd25_security_register_read_write) (uint8_t, uint32_t, void *, size_t);

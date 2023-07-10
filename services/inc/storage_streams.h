@@ -57,14 +57,12 @@ public:
     virtual ~StorageHalInputStream() = default;
 
     int read(char* data, size_t size) override {
-        // LOG(INFO, "StorageHalInputStream read %x %u storageId=%d address=%x remainig=%u offset=%u",
         //         data, size, storageId_, address_, remaining_, offset_);
         CHECK(peek(data, size));
         return skip(size);
     }
 
     int peek(char* data, size_t size) override {
-        // LOG(INFO, "StorageHalInputStream peek %x %u storageId=%d address=%x remainig=%u offset=%u",
         //         data, size, storageId_, address_, remaining_, offset_);
         if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
@@ -75,7 +73,6 @@ public:
     }
 
     int skip(size_t size) override {
-        // LOG(INFO, "StorageHalInputStream skip %u storageId=%d address=%x remainig=%u offset=%u",
         //         size, storageId_, address_, remaining_, offset_);
         if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
@@ -87,7 +84,6 @@ public:
     }
 
     int seek(size_t offset) override {
-        // LOG(INFO, "StorageHalInputStream seek %u storageId=%d address=%x remainig=%u offset=%u",
         //         offset, storageId_, address_, remaining_, offset_);
         CHECK_TRUE(offset <= (offset_ + remaining_), SYSTEM_ERROR_NOT_ENOUGH_DATA);
         if (offset < offset_) {
@@ -140,7 +136,6 @@ public:
         if (isOpen_) {
             isOpen_ = false;
             fs::FsLock lock(fs_);
-            LOG(INFO, "FileInputStream::lfs_file_close");
             lfs_file_close(&fs_->instance, &file_);
         }
     }
@@ -246,43 +241,32 @@ public:
     }
 
     int read(char* data, size_t size) override {
-        LOG(INFO, "Inflator::read %x %u", data, size);
         size = CHECK(peek(data, size));
         return skip(size);
     }
 
     int peek(char* data, size_t size) override {
-        LOG(INFO, "Inflator::peek %x %u", data, size);
         CHECK(waitEvent(InputStream::READABLE, 0));
         size = std::min<size_t>(size, availForRead());
-        LOG(INFO, "Inflator::peek size adj %u", size);
         memcpy(data, inflatedChunk_ + posInChunk_, size);
         return size;
     }
 
     int skip(size_t size) override {
-        LOG(INFO, "Inflator::skip %u", size);
         size = std::min(size, toInflate());
-        LOG(INFO, "Inflator::skip adj %u", size);
         size_t skipped = 0;
         while (size > 0) {
-            LOG(INFO, "Inflator::skip while size=%u > 0", size);
             CHECK(waitEvent(InputStream::READABLE, 0));
             size_t toSkip = std::min<size_t>(size, availForRead());
-            LOG(INFO, "Inflator::skip waitEvent toSkip=%u", toSkip);
-            LOG(INFO, "Inflator::state skip1 availForRead=%d inflatedChunk_=%x inflatedChunkSize_=%u posInChunk_=%u offset_=%u inflatedSize_=%u", availForRead(), inflatedChunk_, inflatedChunkSize_, posInChunk_, offset_, inflatedSize_);
             posInChunk_ += toSkip;
             offset_ += toSkip;
             size -= toSkip;
             skipped += toSkip;
-            LOG(INFO, "Inflator::state skip2 availForRead=%d inflatedChunk_=%x inflatedChunkSize_=%u posInChunk_=%u offset_=%u inflatedSize_=%u", availForRead(), inflatedChunk_, inflatedChunkSize_, posInChunk_, offset_, inflatedSize_);
         }
-        LOG(INFO, "Inflator::skip skipped %u", skipped);
         return skipped;
     }
 
     int seek(size_t offset) override {
-        LOG(INFO, "Inflator::seek %u", offset);
         CHECK_TRUE(offset == 0 || (offset >= offset_ && offset <= inflatedSize_), SYSTEM_ERROR_NOT_ALLOWED);
         if (offset == 0) {
             return rewind();
@@ -306,7 +290,6 @@ public:
             return SYSTEM_ERROR_END_OF_STREAM;
         }
         if (CHECK(availForRead()) == 0) {
-            LOG(INFO, "Inflator::waitEvent need next chunk");
             CHECK(inflateUntilNextChunk());   
         }
         return InputStream::READABLE;
@@ -334,24 +317,16 @@ private:
 
         char tmp[256];
 
-        LOG(INFO, "Inflator::inflateUntilNextChunk");
-        LOG(INFO, "Inflator::state inflateUntilNextChunk availForRead=%d inflatedChunk_=%x inflatedChunkSize_=%u posInChunk_=%u offset_=%u inflatedSize_=%u", availForRead(), inflatedChunk_, inflatedChunkSize_, posInChunk_, offset_, inflatedSize_);
-
         while (CHECK(compressedStream_->waitEvent(InputStream::READABLE)) == InputStream::READABLE) {
             size_t compressedChunk = CHECK(compressedStream_->peek(tmp, sizeof(tmp)));
             size_t compressedPos = 0;
-            LOG(INFO, "Inflator::inflateUntilNextChunk compressedChunk=%u compressedPos=%u", compressedChunk, compressedPos);
             int r = 0;
             do {
                 size_t n = compressedChunk - compressedPos;
-                LOG(INFO, "Inflator::inflate_input %u", n);
                 r = inflate_input(inflate_, tmp + compressedPos, &n, INFLATE_HAS_MORE_INPUT);
                 CHECK(r);
-                LOG(INFO, "Inflator::inflate_input result=%d n=%u", r, n);
                 compressedPos += n;
                 compressedStream_->skip(n);
-                LOG(INFO, "Inflator::inflateUntilNextChunk compressedChunk=%u compressedPos=%u", compressedChunk, compressedPos);
-                LOG(INFO, "Inflator::state loop inflateUntilNextChunk availForRead=%d inflatedChunk_=%x inflatedChunkSize_=%u posInChunk_=%u offset_=%u inflatedSize_=%u", availForRead(), inflatedChunk_, inflatedChunkSize_, posInChunk_, offset_, inflatedSize_);
             } while (compressedPos < compressedChunk && r != INFLATE_HAS_MORE_OUTPUT);
             if (r == INFLATE_HAS_MORE_OUTPUT && availForRead() > 0) {
                 break;
@@ -361,22 +336,16 @@ private:
     }
 
     int inflatedChunk(const char* data, size_t size) {
-        LOG(INFO, "Inflator::inflatedChunk %x %u", data, size);
-        LOG(INFO, "Inflator::state inflatedChunk availForRead=%d inflatedChunk_=%x inflatedChunkSize_=%u posInChunk_=%u offset_=%u inflatedSize_=%u", availForRead(), inflatedChunk_, inflatedChunkSize_, posInChunk_, offset_, inflatedSize_);
         if (availForRead() == 0 && inflatedChunk_ && posInChunk_ > 0 && posInChunk_ == size) {
-            LOG(INFO, "Inflator::inflatedChunk consuming");
             // Acknowledge inflated chunk as consumed
             inflatedChunk_ = nullptr;
             posInChunk_ = 0;
             inflatedChunkSize_ = 0;
-            LOG(INFO, "Inflator::state consumed chunk availForRead=%d inflatedChunk_=%x inflatedChunkSize_=%u posInChunk_=%u offset_=%u inflatedSize_=%u", availForRead(), inflatedChunk_, inflatedChunkSize_, posInChunk_, offset_, inflatedSize_);
             return size;
         }
-        LOG(INFO, "Inflator::inflatedChunk new chunk");
         inflatedChunkSize_ = size;
         inflatedChunk_ = data;
         posInChunk_ = 0;
-        LOG(INFO, "Inflator::state new chunk availForRead=%d inflatedChunk_=%x inflatedChunkSize_=%u posInChunk_=%u offset_=%u inflatedSize_=%u", availForRead(), inflatedChunk_, inflatedChunkSize_, posInChunk_, offset_, inflatedSize_);
         return 0;
     }
 
@@ -441,7 +410,6 @@ public:
 
     int seek(size_t offset) override {
         CHECK(error_);
-        // LOG(INFO, "StorageHalInputStream seek %u storageId=%d address=%x remainig=%u offset=%u",
         //         offset, storageId_, address_, remaining_, offset_);
         CHECK_TRUE(offset <= size_, SYSTEM_ERROR_NOT_ENOUGH_DATA);
         offset_ = CHECK(stream_->seek(baseOffset_ + offset));

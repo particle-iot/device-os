@@ -33,8 +33,6 @@ const module_bounds_t module_ota = {
         ,.location = MODULE_BOUNDS_LOC_EXTERNAL_FLASH
     };
 
-STATIC_ASSERT(Expected_OTA_region_at_end_of_external_flash, (EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH) == EXTERNAL_FLASH_SIZE);
-
 
 // Modular firmware
 const module_bounds_t module_system_part1 = {

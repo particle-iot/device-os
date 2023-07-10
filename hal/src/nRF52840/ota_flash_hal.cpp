@@ -50,6 +50,10 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #include "platform_radio_stack.h"
 #include "check.h"
 
+#if HAL_PLATFORM_ASSETS
+#include "asset_manager.h"
+#endif // HAL_PLATFORM_ASSETS
+
 #define OTA_CHUNK_SIZE                 (512)
 #define BOOTLOADER_RANDOM_BACKOFF_MIN  (200)
 #define BOOTLOADER_RANDOM_BACKOFF_MAX  (1000)
@@ -507,7 +511,8 @@ int validateModules(const hal_module_t* modules, size_t moduleCount) {
             return SYSTEM_ERROR_OTA_INVALID_FORMAT;
         }
         const auto moduleFunc = module_function(info);
-        if (compressed && moduleFunc != MODULE_FUNCTION_USER_PART && moduleFunc != MODULE_FUNCTION_SYSTEM_PART) {
+        if (compressed && moduleFunc != MODULE_FUNCTION_USER_PART && moduleFunc != MODULE_FUNCTION_SYSTEM_PART
+                && moduleFunc != MODULE_FUNCTION_ASSET) {
             SYSTEM_ERROR_MESSAGE("Unsupported compressed module"); // TODO
             return SYSTEM_ERROR_OTA_UNSUPPORTED_MODULE;
         }
@@ -594,6 +599,12 @@ int HAL_FLASH_End(void* reserved)
             break;
         }
 #endif // HAL_PLATFORM_NCP_UPDATABLE
+#if HAL_PLATFORM_ASSETS
+        case MODULE_FUNCTION_ASSET: {
+            result = AssetManager::instance().storeAsset(module);
+            break;
+        }
+#endif // HAL_PLATFORM_ASSETS
         case MODULE_FUNCTION_BOOTLOADER: {
             if (bootloader_get_version() < BOOTLOADER_MBR_UPDATE_MIN_VERSION) {
                 result = flash_bootloader(module, moduleSize);

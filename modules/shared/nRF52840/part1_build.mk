@@ -49,6 +49,11 @@ ASFLAGS += -I$(COMMON_BUILD)/arm/startup
 ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=0
 ASFLAGS += -D__STACKSIZE__=$(MAIN_STACK_SIZE) -D__STACK_SIZE=$(MAIN_STACK_SIZE)
 
+# Tracker
+ifeq ($(PLATFORM_ID),26)
+USE_PRINTF_FLOAT ?= n
+endif
+
 ifneq ("$(HAL_MINIMAL)","y")
 USE_PRINTF_FLOAT ?= y
 endif
