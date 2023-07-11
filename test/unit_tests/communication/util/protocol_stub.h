@@ -41,7 +41,6 @@ public:
     void init(const char* id, const SparkKeys& keys, const SparkCallbacks& cb, const SparkDescriptor& desc) override;
     int command(ProtocolCommands::Enum cmd, uint32_t val, const void* data) override;
     size_t build_hello(Message& msg, uint16_t flags) override;
-    int get_status(protocol_status* status) const override;
 
 private:
     DescriptorCallbacks desc_;
@@ -69,10 +68,6 @@ inline int ProtocolStub::command(ProtocolCommands::Enum cmd, uint32_t val, const
 }
 
 inline size_t ProtocolStub::build_hello(Message& msg, uint16_t flags) {
-    return 0;
-}
-
-inline int ProtocolStub::get_status(protocol_status* status) const {
     return 0;
 }
 

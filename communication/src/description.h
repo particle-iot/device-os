@@ -53,6 +53,8 @@ public:
 
     ProtocolError serialize(Appender* appender, int descFlags);
 
+    bool hasPendingClientRequests() const;
+
     void reset();
 
 private:
@@ -95,6 +97,10 @@ private:
     ProtocolError getBlockSize(size_t* size);
     system_tick_t millis() const;
 };
+
+inline bool Description::hasPendingClientRequests() const {
+    return activeReq_.has_value() || !reqQueue_.isEmpty();
+}
 
 } // namespace protocol
 

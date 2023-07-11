@@ -40,6 +40,8 @@ namespace particle
 namespace protocol
 {
 
+class Protocol;
+
 /**
  * Please centralize this somewhere else!
  */
@@ -79,7 +81,6 @@ public:
 		int (*restore)(void* data, size_t max_length, uint8_t type, void* reserved);
 
 		uint32_t (*calculate_crc)(const uint8_t* data, uint32_t length);
-		void (*notify_client_messages_processed)(void* reserved);
 	};
 
 private:
@@ -92,6 +93,7 @@ private:
 	mbedtls_pk_context pkey;
 	mbedtls_timing_delay_context timer;
 	Callbacks callbacks;
+	Protocol* protocol;
 	uint8_t* server_public;
 	uint16_t server_public_len;
 	uint32_t keys_checksum;
@@ -123,13 +125,14 @@ private:
 	void reset_session();
 
  public:
-	DTLSMessageChannel() :
+	explicit DTLSMessageChannel(Protocol* protocol) :
 			ssl_context(),
 			conf(),
 			clicert(),
 			pkey(),
 			timer(),
 			callbacks(),
+			protocol(protocol),
 			server_public(nullptr),
 			server_public_len(0),
 			keys_checksum(0),
@@ -167,11 +170,7 @@ private:
 
 	virtual ProtocolError command(Command cmd, void* arg=nullptr) override;
 
-	virtual void notify_client_messages_processed() override {
-		if (callbacks.notify_client_messages_processed) {
-			callbacks.notify_client_messages_processed(nullptr);
-		}
-	}
+	virtual void notify_client_messages_processed() override;
 
 	virtual AppStateDescriptor cached_app_state_descriptor() const override;
 

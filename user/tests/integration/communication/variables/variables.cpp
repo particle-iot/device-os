@@ -133,5 +133,5 @@ test(07_register_many_variables) {
     }
     Particle.connect();
     waitUntil(Particle.connected);
-    delay(6000); // Give the system some time to send a blockwise Describe message
+    delay(3000);
 }

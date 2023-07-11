@@ -72,5 +72,5 @@ test(06_register_many_functions) {
     }
     Particle.connect();
     waitUntil(Particle.connected);
-    delay(6000); // Give the system some time to send a blockwise Describe message
+    delay(3000);
 }

@@ -588,6 +588,10 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 	return NO_ERROR;
 }
 
+void DTLSMessageChannel::notify_client_messages_processed() {
+	protocol->notify_client_messages_processed();
+}
+
 AppStateDescriptor DTLSMessageChannel::cached_app_state_descriptor() const
 {
 	return sessionPersist.app_state_descriptor();
