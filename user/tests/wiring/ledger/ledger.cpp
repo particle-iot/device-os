@@ -9,6 +9,8 @@
 
 namespace {
 
+const auto LEDGER_NAME = "test";
+
 struct CountingCallback {
     static int instanceCount;
 
@@ -38,14 +40,13 @@ int CountingCallback::instanceCount = 0;
 } // namespace
 
 test(01_purge_all) {
-    // Remove all ledger files
     assertEqual(ledger_purge_all(nullptr), 0);
 }
 
 test(02_initial_state) {
-    auto ledger = Particle.ledger("test");
+    auto ledger = Particle.ledger(LEDGER_NAME);
     assertTrue(ledger.isValid());
-    assertEqual(std::strcmp(ledger.name(), "test"), 0);
+    assertEqual(std::strcmp(ledger.name(), LEDGER_NAME), 0);
     assertTrue(ledger.scope() == LedgerScope::UNKNOWN);
     assertTrue(ledger.isWritable());
     assertEqual(ledger.lastUpdated(), 0);
@@ -54,38 +55,42 @@ test(02_initial_state) {
 }
 
 test(03_replace_data) {
+    assertEqual(ledger_purge(LEDGER_NAME, nullptr), 0);
     {
-        auto ledger = Particle.ledger("test");
+        auto ledger = Particle.ledger(LEDGER_NAME);
         LedgerData d = { { "a", 1 }, { "b", 2 }, { "c", 3 } };
         assertEqual(ledger.set(d, Ledger::REPLACE), 0);
         assertMore(ledger.dataSize(), 0);
     }
     {
-        auto ledger = Particle.ledger("test");
+        auto ledger = Particle.ledger(LEDGER_NAME);
         auto d = ledger.get();
         assertTrue((d == LedgerData{ { "a", 1 }, { "b", 2 }, { "c", 3 } }));
     }
 }
 
 test(04_merge_data) {
+    assertEqual(ledger_purge(LEDGER_NAME, nullptr), 0);
     {
-        auto ledger = Particle.ledger("test");
+        auto ledger = Particle.ledger(LEDGER_NAME);
         LedgerData d = { { "d", 4 }, { "f", 6 } };
         assertEqual(ledger.set(d), 0); // Replaces the current data by default
         d = { { "e", 5 } };
         assertEqual(ledger.set(d, Ledger::MERGE), 0);
     }
     {
-        auto ledger = Particle.ledger("test");
+        auto ledger = Particle.ledger(LEDGER_NAME);
         auto d = ledger.get();
         assertTrue((d == LedgerData{ { "d", 4 }, { "e", 5 }, { "f", 6 } }));
     }
 }
 
 test(05_concurrent_writing) {
+    assertEqual(ledger_purge(LEDGER_NAME, nullptr), 0);
+
     // Open two ledger streams for writing
     ledger_instance* lr = nullptr;
-    assertEqual(ledger_get_instance(&lr, "test", nullptr), 0);
+    assertEqual(ledger_get_instance(&lr, LEDGER_NAME, nullptr), 0);
     SCOPE_GUARD({
         ledger_release(lr, nullptr);
     });
@@ -109,7 +114,7 @@ test(05_concurrent_writing) {
     // Close the first stream and check that the data can be read back
     g1.dismiss();
     assertEqual(ledger_close(ls1, 0, nullptr), 0);
-    auto ledger = Particle.ledger("test");
+    auto ledger = Particle.ledger(LEDGER_NAME);
     auto d = ledger.get();
     assertTrue((d == LedgerData{ { "a", 1 }, { "b", 2 }, { "c", 3 } }));
 
@@ -121,14 +126,16 @@ test(05_concurrent_writing) {
 }
 
 test(06_concurrent_reading_and_writing) {
+    assertEqual(ledger_purge(LEDGER_NAME, nullptr), 0);
+
     // Set some initial data
-    auto ledger = Particle.ledger("test");
+    auto ledger = Particle.ledger(LEDGER_NAME);
     LedgerData d = { { "a", 1 }, { "b", 2 }, { "c", 3 } };
     assertEqual(ledger.set(d), 0);
 
     // Open the ledger for reading
     ledger_instance* lr = nullptr;
-    assertEqual(ledger_get_instance(&lr, "test", nullptr), 0);
+    assertEqual(ledger_get_instance(&lr, LEDGER_NAME, nullptr), 0);
     SCOPE_GUARD({
         ledger_release(lr, nullptr);
     });
@@ -163,8 +170,53 @@ test(06_concurrent_reading_and_writing) {
     assertTrue((d == LedgerData{ { "d", 4 }, { "e", 5 }, { "f", 6 } }));
 }
 
-test(07_set_sync_callback) {
-    auto ledger = Particle.ledger("test");
+test(07_multiple_staged_data_files) {
+    assertEqual(ledger_purge(LEDGER_NAME, nullptr), 0);
+
+    // Open the ledger for reading
+    ledger_instance* lr = nullptr;
+    assertEqual(ledger_get_instance(&lr, LEDGER_NAME, nullptr), 0);
+    SCOPE_GUARD({
+        ledger_release(lr, nullptr);
+    });
+    ledger_stream* ls = nullptr;
+    assertEqual(ledger_open(&ls, lr, LEDGER_STREAM_MODE_READ, nullptr), 0);
+    NAMED_SCOPE_GUARD(closeStreamGuard, {
+        ledger_close(ls, 0, nullptr);
+    });
+
+    // Write some data to the ledger. This will cause the ledger to create a staged data file as it
+    // can't overwrite the current one
+    Ledger ledger = Particle.ledger(LEDGER_NAME);
+    LedgerData d = { { "a", 1 }, { "b", 2 }, { "c", 3 } };
+    assertEqual(ledger.set(d), 0);
+
+    // Open another ledger stream that would read the staged data. This will cause the ledger to
+    // create a new staged data file rather than overwrite the existing one when Ledger::set() is
+    // called below
+    ledger_stream* ls2 = nullptr;
+    assertEqual(ledger_open(&ls2, lr, LEDGER_STREAM_MODE_READ, nullptr), 0);
+    NAMED_SCOPE_GUARD(closeStreamGuard2, {
+        ledger_close(ls2, 0, nullptr);
+    });
+
+    // Write some new data to the ledger
+    d = { { "d", 4 }, { "e", 5 }, { "f", 6 } };
+    assertEqual(ledger.set(d), 0);
+
+    // Close the streams
+    closeStreamGuard.dismiss();
+    assertEqual(ledger_close(ls, 0, nullptr), 0);
+    closeStreamGuard2.dismiss();
+    assertEqual(ledger_close(ls2, 0, nullptr), 0);
+
+    // Validate the ledger data
+    d = ledger.get();
+    assertTrue((d == LedgerData{ { "d", 4 }, { "e", 5 }, { "f", 6 } }));
+}
+
+test(08_set_sync_callback) {
+    auto ledger = Particle.ledger(LEDGER_NAME);
 
     // Register a functor callback
     ledger.onSync(CountingCallback());
@@ -184,9 +236,9 @@ test(07_set_sync_callback) {
     assertEqual(CountingCallback::instanceCount, 0);
 }
 
-test(08_purge) {
+test(09_purge) {
     // Remove the test ledger files
-    assertEqual(ledger_purge("test", nullptr), 0);
+    assertEqual(ledger_purge(LEDGER_NAME, nullptr), 0);
 }
 
 #endif // HAL_PLATFORM_LEDGER

@@ -659,7 +659,7 @@ int Ledger::flushStagedData(lfs_t* fs) {
             continue;
         }
         char* end = nullptr;
-        int seqNum = strtol(entry.name, &end, 10);
+        int seqNum = std::strtol(entry.name, &end, 10);
         if (end != entry.name + std::strlen(entry.name)) {
             LOG(WARN, "Found unexpected entry in ledger directory");
             continue;

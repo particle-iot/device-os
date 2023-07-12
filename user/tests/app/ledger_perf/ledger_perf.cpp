@@ -50,7 +50,7 @@ const SerialLogHandler logHandler(LOG_LEVEL_ERROR, {
 char inBuffer[LARGE_DATA_SIZE];
 char outBuffer[LARGE_DATA_SIZE];
 
-int readFromLedger(char* data, size_t size, Stats& stats, std::function<int()> onStreamOpen = nullptr) {
+int readFromLedger(char* data, size_t size, Stats& stats, const std::function<int()>& onStreamOpen = nullptr) {
     int r = 0;
     // Get the ledger
     ledger_instance* ledger = nullptr;
@@ -268,8 +268,6 @@ int testWriteAndRead(size_t size, bool flushOnRead = false) {
     for (int i = 0; i < REPEAT_COUNT; ++i) {
         delay(rand.gen<unsigned>() % 50);
 
-        // Start reading the ledger using a separate stream so that the data written below can't be
-        // flushed immediately
         ledger_stream* stream = nullptr;
         NAMED_SCOPE_GUARD(closeStreamGuard, {
             int r = ledger_close(stream, 0, nullptr); // Can be called with a null stream
@@ -278,6 +276,8 @@ int testWriteAndRead(size_t size, bool flushOnRead = false) {
             }
         });
         if (flushOnRead) {
+            // Start reading the ledger using a separate stream so that the data written below can't
+            // be flushed immediately
             CHECK(ledger_open(&stream, ledger, LEDGER_STREAM_MODE_READ, nullptr));
         }
 
