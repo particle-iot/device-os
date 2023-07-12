@@ -63,5 +63,9 @@
 #define HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT   (D7)
 #endif // HAL_PLATFORM_ETHERNET
 
+// Save on flash space by not compiling in message strings for system errors
+#undef HAL_PLATFORM_ERROR_MESSAGES
+#define HAL_PLATFORM_ERROR_MESSAGES 0
+
 // TODO: Enable the Ledger API when we have more flash space available on Tracker
 #define HAL_PLATFORM_LEDGER 0
