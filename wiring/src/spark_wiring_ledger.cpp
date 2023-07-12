@@ -19,7 +19,6 @@
 
 #if Wiring_Ledger
 
-#include <variant>
 #include <memory>
 
 #include "spark_wiring_ledger.h"
@@ -36,27 +35,8 @@ namespace particle {
 
 namespace {
 
-struct OnSyncCallbackData {
-    Ledger::OnSyncCallback callback;
-    void* arg;
-
-    OnSyncCallbackData() :
-            callback(nullptr),
-            arg(nullptr) {
-    }
-
-    OnSyncCallbackData(Ledger::OnSyncCallback callback, void* arg) :
-            callback(callback),
-            arg(arg) {
-    }
-
-    explicit operator bool() const {
-        return callback;
-    }
-};
-
 struct LedgerAppData {
-    std::variant<OnSyncCallbackData, Ledger::OnSyncFunction> onSync;
+    Ledger::OnSyncFunction onSync;
 };
 
 void destroyAppData(void* appData) {
@@ -72,15 +52,8 @@ void syncCallbackApp(void* data) {
         ledger_release(ledger, nullptr);
     });
     auto appData = static_cast<LedgerAppData*>(ledger_get_app_data(ledger, nullptr));
-    if (!appData) {
-        return;
-    }
-    if (std::holds_alternative<OnSyncCallbackData>(appData->onSync)) { // C callback
-        auto& d = std::get<OnSyncCallbackData>(appData->onSync);
-        d.callback(Ledger(ledger), d.arg);
-    } else { // Functor callback
-        auto &f = std::get<Ledger::OnSyncFunction>(appData->onSync);
-        f(Ledger(ledger));
+    if (appData && appData->onSync) {
+        appData->onSync(Ledger(ledger));
     }
 }
 
@@ -95,8 +68,7 @@ void syncCallbackSystem(ledger_instance* ledger, void* appData) {
 }
 
 // TODO: Generalize this code when there are more callbacks
-template<typename CallbackT>
-int setSyncCallback(ledger_instance* ledger, CallbackT&& callback) {
+int setSyncCallback(ledger_instance* ledger, Ledger::OnSyncFunction callback) {
     ledger_lock(ledger, nullptr);
     SCOPE_GUARD({
         ledger_unlock(ledger, nullptr);
@@ -289,7 +261,12 @@ int Ledger::onSync(OnSyncCallback callback, void* arg) {
     if (!isValid()) {
         return Error::INVALID_STATE;
     }
-    return setSyncCallback(instance_, OnSyncCallbackData(callback, arg));
+    if (!callback) {
+        return onSync(Ledger::OnSyncFunction());
+    }
+    return onSync([callback, arg](Ledger ledger) {
+        callback(std::move(ledger), arg);
+    });
 }
 
 int Ledger::onSync(OnSyncFunction callback) {
