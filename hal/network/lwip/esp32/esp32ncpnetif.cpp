@@ -371,6 +371,21 @@ void Esp32NcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
         } else {
             LOG(ERROR, "NCP power state unknown");
         }
+    } else if (ev.type == NcpEvent::NCP_STATE_CHANGED) {
+        const auto& cev = static_cast<const NcpStateChangedEvent&>(ev);
+        if_event evt = {};
+        struct if_event_phy_state ev_if_phy_state = {};
+        evt.ev_len = sizeof(if_event);
+        evt.ev_type = IF_EVENT_PHY_STATE;
+        evt.ev_phy_state = &ev_if_phy_state;
+        if (cev.state == NcpState::ON) {
+            evt.ev_phy_state->state = IF_PHY_STATE_ON;
+        } else if (cev.state == NcpState::OFF) {
+            evt.ev_phy_state->state = IF_PHY_STATE_OFF;
+        } else {
+            evt.ev_phy_state->state = IF_PHY_STATE_UNKNOWN;
+        }
+        if_notify_event(self->interface(), &evt, nullptr);
     }
 }
 
