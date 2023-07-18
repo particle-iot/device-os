@@ -1,3 +1,12 @@
+## 5.4.1
+
+### ENHANCEMENTS
+- [rtl872x] dynamically enable Wi-Fi stack on demand [#2664](https://github.com/particle-iot/device-os/pull/2664)
+
+### BUGFIXES
+- [rtl872x] linker: stop relying on .dynalib + .psram_text being contiguous and properly and similarly aligned within LMA and VMA, just copy them separately [#2665](https://github.com/particle-iot/device-os/pull/2665)
+- [rtl872x] fix BLE race condition [#2664](https://github.com/particle-iot/device-os/pull/2664)
+
 ## 5.4.0
 
 ### ENHANCEMENTS
