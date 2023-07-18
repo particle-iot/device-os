@@ -6,10 +6,18 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
+PB_BIND(particle_cloud_Request, particle_cloud_Request, AUTO)
+
+
+PB_BIND(particle_cloud_Response, particle_cloud_Response, AUTO)
+
+
 PB_BIND(particle_cloud_ServerMovedPermanentlyRequest, particle_cloud_ServerMovedPermanentlyRequest, AUTO)
 
 
 PB_BIND(particle_cloud_ServerMovedPermanentlyResponse, particle_cloud_ServerMovedPermanentlyResponse, AUTO)
+
+
 
 
 

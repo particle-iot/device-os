@@ -35,18 +35,16 @@
 #include "scope_guard.h"
 #include "check.h"
 
-#include "common/ledger.pb.h" // Common definitions
 #include "cloud/ledger.pb.h" // Cloud protocol definitions
 #include "ledger.pb.h" // Internal definitions
 
-#define PB_LEDGER(_name) particle_ledger_##_name
-#define PB_CLOUD(_name) particle_cloud_##_name
+#define PB_LEDGER(_name) particle_cloud_ledger_##_name
 #define PB_INTERNAL(_name) particle_firmware_##_name
 
-static_assert(LEDGER_SCOPE_UNKNOWN == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_UNKNOWN) &&
-        LEDGER_SCOPE_DEVICE == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_DEVICE) &&
-        LEDGER_SCOPE_PRODUCT == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_PRODUCT) &&
-        LEDGER_SCOPE_OWNER == (int)PB_LEDGER(LedgerScope_LEDGER_SCOPE_OWNER));
+static_assert(LEDGER_SCOPE_UNKNOWN == (int)PB_LEDGER(Scope_SCOPE_UNKNOWN) &&
+        LEDGER_SCOPE_DEVICE == (int)PB_LEDGER(Scope_SCOPE_DEVICE) &&
+        LEDGER_SCOPE_PRODUCT == (int)PB_LEDGER(Scope_SCOPE_PRODUCT) &&
+        LEDGER_SCOPE_OWNER == (int)PB_LEDGER(Scope_SCOPE_OWNER));
 
 static_assert(LEDGER_SYNC_DIRECTION_UNKNOWN == (int)PB_LEDGER(SyncDirection_SYNC_DIRECTION_UNKNOWN) &&
         LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD == (int)PB_LEDGER(SyncDirection_SYNC_DIRECTION_DEVICE_TO_CLOUD) &&
@@ -169,7 +167,7 @@ int writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const char* ledgerName, const L
     if (n >= sizeof(pbInfo.name)) {
         return SYSTEM_ERROR_INTERNAL; // The name is longer than specified in ledger.proto
     }
-    pbInfo.scope = static_cast<PB_LEDGER(LedgerScope)>(info.scope());
+    pbInfo.scope = static_cast<PB_LEDGER(Scope)>(info.scope());
     pbInfo.sync_direction = static_cast<PB_LEDGER(SyncDirection)>(info.syncDirection());
     pbInfo.last_updated = info.lastUpdated();
     pbInfo.last_synced = info.lastSynced();

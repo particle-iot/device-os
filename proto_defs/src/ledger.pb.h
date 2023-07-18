@@ -4,7 +4,7 @@
 #ifndef PB_PARTICLE_FIRMWARE_LEDGER_PB_H_INCLUDED
 #define PB_PARTICLE_FIRMWARE_LEDGER_PB_H_INCLUDED
 #include <pb.h>
-#include "common/ledger.pb.h"
+#include "cloud/ledger.pb.h"
 
 #if PB_PROTO_HEADER_VERSION != 40
 #error Regenerate this file with the current version of nanopb generator.
@@ -15,15 +15,15 @@
  Ledger info. */
 typedef struct _particle_firmware_LedgerInfo { 
     char name[33]; /* /< Ledger name. */
-    particle_ledger_LedgerScope scope; /* /< Ledger scope. */
-    particle_ledger_SyncDirection sync_direction; /* /< Sync direction. */
+    particle_cloud_ledger_Scope scope; /* /< Ledger scope. */
+    particle_cloud_ledger_SyncDirection sync_direction; /* /< Sync direction. */
     /* *
- Last time the ledger was updated, in milliseconds since the Unix epoch.
+ Time the ledger was last updated, in milliseconds since the Unix epoch.
 
  If 0, the time is unknown. */
     uint64_t last_updated; 
     /* *
- Last time the ledger was synchronized with the Cloud, in milliseconds since the Unix epoch.
+ Time the ledger was last synchronized with the Cloud, in milliseconds since the Unix epoch.
 
  If 0, the ledger has never been synchronized. */
     uint64_t last_synced; 
@@ -36,8 +36,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define particle_firmware_LedgerInfo_init_default {"", _particle_ledger_LedgerScope_MIN, _particle_ledger_SyncDirection_MIN, 0, 0, 0}
-#define particle_firmware_LedgerInfo_init_zero   {"", _particle_ledger_LedgerScope_MIN, _particle_ledger_SyncDirection_MIN, 0, 0, 0}
+#define particle_firmware_LedgerInfo_init_default {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0, 0, 0}
+#define particle_firmware_LedgerInfo_init_zero   {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_firmware_LedgerInfo_name_tag    1

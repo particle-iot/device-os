@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package particle.firmware;
 
-import "common/ledger.proto";
+import "cloud/ledger.proto";
 import "nanopb.proto";
 
 /**
@@ -10,8 +10,8 @@ import "nanopb.proto";
  */
 message LedgerInfo {
   string name = 1 [(nanopb).max_length = 32]; ///< Ledger name.
-  particle.ledger.LedgerScope scope = 2; ///< Ledger scope.
-  particle.ledger.SyncDirection sync_direction = 3; ///< Sync direction.
+  cloud.ledger.Scope scope = 2; ///< Ledger scope.
+  cloud.ledger.SyncDirection sync_direction = 3; ///< Sync direction.
   /**
    * Time the ledger was last updated, in milliseconds since the Unix epoch.
    *

@@ -6,59 +6,40 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(particle_cloud_LedgerRequest, particle_cloud_LedgerRequest, AUTO)
+PB_BIND(particle_cloud_ledger_GetInfoRequest, particle_cloud_ledger_GetInfoRequest, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_ListLedgers, particle_cloud_LedgerRequest_ListLedgers, AUTO)
+PB_BIND(particle_cloud_ledger_GetInfoResponse, particle_cloud_ledger_GetInfoResponse, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_GetPage, particle_cloud_LedgerRequest_GetPage, AUTO)
+PB_BIND(particle_cloud_ledger_GetInfoResponse_Ledger, particle_cloud_ledger_GetInfoResponse_Ledger, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_SyncPage, particle_cloud_LedgerRequest_SyncPage, AUTO)
+PB_BIND(particle_cloud_ledger_SetDataRequest, particle_cloud_ledger_SetDataRequest, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_Subscribe, particle_cloud_LedgerRequest_Subscribe, AUTO)
+PB_BIND(particle_cloud_ledger_SetDataResponse, particle_cloud_ledger_SetDataResponse, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_Subscribe_LedgerPages, particle_cloud_LedgerRequest_Subscribe_LedgerPages, AUTO)
+PB_BIND(particle_cloud_ledger_GetDataRequest, particle_cloud_ledger_GetDataRequest, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_Unsubscribe, particle_cloud_LedgerRequest_Unsubscribe, AUTO)
+PB_BIND(particle_cloud_ledger_GetDataResponse, particle_cloud_ledger_GetDataResponse, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_Unsubscribe_LedgerPages, particle_cloud_LedgerRequest_Unsubscribe_LedgerPages, AUTO)
+PB_BIND(particle_cloud_ledger_SubscribeRequest, particle_cloud_ledger_SubscribeRequest, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_NotifyPageChanged, particle_cloud_LedgerRequest_NotifyPageChanged, AUTO)
+PB_BIND(particle_cloud_ledger_SubscribeResponse, particle_cloud_ledger_SubscribeResponse, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages, particle_cloud_LedgerRequest_NotifyPageChanged_LedgerPages, AUTO)
+PB_BIND(particle_cloud_ledger_SubscribeResponse_Ledger, particle_cloud_ledger_SubscribeResponse_Ledger, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerResponse, particle_cloud_LedgerResponse, AUTO)
+PB_BIND(particle_cloud_ledger_NotifyUpdateRequest, particle_cloud_ledger_NotifyUpdateRequest, AUTO)
 
 
-PB_BIND(particle_cloud_LedgerResponse_ListLedgers, particle_cloud_LedgerResponse_ListLedgers, AUTO)
-
-
-PB_BIND(particle_cloud_LedgerResponse_ListLedgers_Ledger, particle_cloud_LedgerResponse_ListLedgers_Ledger, AUTO)
-
-
-PB_BIND(particle_cloud_LedgerResponse_GetPage, particle_cloud_LedgerResponse_GetPage, AUTO)
-
-
-PB_BIND(particle_cloud_LedgerResponse_SyncPage, particle_cloud_LedgerResponse_SyncPage, AUTO)
-
-
-PB_BIND(particle_cloud_LedgerResponse_Subscribe, particle_cloud_LedgerResponse_Subscribe, AUTO)
-
-
-PB_BIND(particle_cloud_LedgerResponse_Unsubscribe, particle_cloud_LedgerResponse_Unsubscribe, AUTO)
-
-
-PB_BIND(particle_cloud_LedgerResponse_NotifyPageChanged, particle_cloud_LedgerResponse_NotifyPageChanged, AUTO)
-
+PB_BIND(particle_cloud_ledger_NotifyUpdateResponse, particle_cloud_ledger_NotifyUpdateResponse, AUTO)
 
 
 
