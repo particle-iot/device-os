@@ -424,12 +424,12 @@ void WiFiSetupConsole::handle(char c)
         do
         {
 #if Wiring_WpaEnterprise == 0
-            print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2, 6=WPA3: ");
+            print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
             read_line(security_type_string, 1);
         }
         while ('0' > security_type_string[0] || ('3' < security_type_string[0] && security_type_string[0] != '6' /* WPA3 */));
 #else
-                print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2, 4=WPA Enterprise, 5=WPA2 Enterprise, 6=WPA3: ");
+                print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2, 4=WPA Enterprise, 5=WPA2 Enterprise: ");
                 read_line(security_type_string, 1);
             }
             while ('0' > security_type_string[0] || '6' < security_type_string[0]);
