@@ -42,7 +42,8 @@ enum SecurityType {
     WPA = WLAN_SEC_WPA,
     WPA2 = WLAN_SEC_WPA2,
     WPA_ENTERPRISE = WLAN_SEC_WPA_ENTERPRISE,
-    WPA2_ENTERPRISE = WLAN_SEC_WPA2_ENTERPRISE
+    WPA2_ENTERPRISE = WLAN_SEC_WPA2_ENTERPRISE,
+    WPA3 = WLAN_SEC_WPA3
 };
 
 #define SET_STRING_WITH_LEN_FIELD(field, value, len_field, len_value) \
@@ -140,6 +141,15 @@ public:
 
     virtual WiFiCredentials& setChannel(int ch) {
         creds_.channel = ch;
+        return *this;
+    }
+
+    virtual WiFiCredentials& setHidden(bool hidden = true) {
+        if (hidden) {
+            creds_.flags |= WLAN_SET_CREDENTIALS_FLAGS_HIDDEN;
+        } else {
+            creds_.flags &= ~(WLAN_SET_CREDENTIALS_FLAGS_HIDDEN);
+        }
         return *this;
     }
 

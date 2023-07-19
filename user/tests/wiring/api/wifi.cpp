@@ -114,6 +114,18 @@ test(api_wifi_set_credentials)
     (void)ok; // avoid unused warning
 }
 
+test(api_wifi_set_credentials_obj)
+{
+    WiFiCredentials cred;
+    API_COMPILE(cred.setSsid("ssid)"));
+    API_COMPILE(cred.setPassword("password"));
+    API_COMPILE(cred.setSecurity(WPA3));
+    API_COMPILE(cred.setCipher(WLAN_CIPHER_AES));
+    API_COMPILE(cred.setHidden(true));
+    API_COMPILE(WiFi.setCredentials(cred));
+}
+
+
 test(api_wifi_set_security)
 {
     WiFiCredentials credentials;
