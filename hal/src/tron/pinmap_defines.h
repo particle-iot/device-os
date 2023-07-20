@@ -103,3 +103,7 @@
 
 // Read-only charge indicator pin for Photon2 
 #define CHG                 S5
+
+// Set it to PIN_INVALID if not present
+#define SWD_DAT             D7
+#define SWD_CLK             D6

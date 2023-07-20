@@ -95,9 +95,8 @@ bool isCachePinSetToOutput(hal_pin_t pin) {
 }
 
 // RTL872XD has two SWD ports. Default is PA27, but PB3 can be configured as alternate SWD as well
-bool isSwdPin(hal_pin_info_t* pinInfo){
-    if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
-        (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
+bool isSwdPin(hal_pin_t pin){
+    if (pin == SWD_DAT || pin == SWD_CLK) {
         return true;
     }
     return false;
@@ -132,8 +131,24 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
 
         uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
 
-        if (isSwdPin(pinInfo)) {
+        if (isSwdPin(pin)) {
             Pinmux_Swdoff();
+            // Configure the another SWD pin as input float if it is not configured yet.
+            if (pin == SWD_CLK) {
+                hal_pin_info_t* info = hal_pin_map() + SWD_DAT;
+                if (info->pin_func == PF_NONE) {
+                    Pinmux_Config(hal_pin_to_rtl_pin(SWD_DAT), PINMUX_FUNCTION_GPIO);
+                    GPIOA_BASE->PORT[0].DDR &= (~(1 << 27));
+                    PAD_PullCtrl(hal_pin_to_rtl_pin(SWD_DAT), GPIO_PuPd_NOPULL);
+                }
+            } else {
+                hal_pin_info_t* info = hal_pin_map() + SWD_CLK;
+                if (info->pin_func == PF_NONE) {
+                    Pinmux_Config(hal_pin_to_rtl_pin(SWD_CLK), PINMUX_FUNCTION_GPIO);
+                    GPIOB_BASE->PORT[0].DDR &= (~(1 << 3));
+                    PAD_PullCtrl(hal_pin_to_rtl_pin(SWD_CLK), GPIO_PuPd_NOPULL);
+                }
+            }
         }
 
         // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
@@ -177,7 +192,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
                 break;
             }
             case PIN_MODE_SWD: {
-                if (isSwdPin(pinInfo)) {
+                if (isSwdPin(pin)) {
                     //"Pinmux_Swdon"
                     u32 Temp = 0;
                     Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);
@@ -203,6 +218,15 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
 
         GPIO_Init(&GPIO_InitStruct);
         pinInfo->pin_mode = mode;
+
+        // The GPIO_Init() doesn't seam to set the pull ability when the pin is configured as output
+        if (GPIO_InitStruct.GPIO_Mode == GPIO_Mode_OUT) {
+            if (mode == OUTPUT_OPEN_DRAIN_PULLUP) {
+                PAD_PullCtrl(rtlPin, GPIO_PuPd_UP);
+            } else {
+                PAD_PullCtrl(rtlPin, GPIO_PuPd_NOPULL);
+            }
+        }
 
         if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
             if (conf->set_value) {
@@ -284,12 +308,16 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
                 gpiobase->PORT[0].DDR &= (~(1 << pin_info->gpio_pin));
             } else {
                 gpiobase->PORT[0].DR |= (1 << pin_info->gpio_pin);
+                // Need to set pull-up so that the output state can be kept in hibernate mode (except for the stop/ulp mode).
+                PAD_PullCtrl(hal_pin_to_rtl_pin(pin), GPIO_PuPd_UP);
             }
         } else {
             // Output 0, it should always read back 0.
             // Configure it as output, despite of the output mode
             gpiobase->PORT[0].DR &= ~(1 << pin_info->gpio_pin);
             gpiobase->PORT[0].DDR |= (1 << pin_info->gpio_pin);
+            // Restore the default pull configuration.
+            PAD_PullCtrl(hal_pin_to_rtl_pin(pin), GPIO_PuPd_NOPULL);
         }
 
         if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
