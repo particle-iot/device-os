@@ -47,6 +47,7 @@
 #include "exrtc_hal.h"
 #endif
 #include "spark_wiring_vector.h"
+#include "platform_ncp.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -680,13 +681,29 @@ static bool isWokenUpByLpcomp() {
     return NVIC_GetPendingIRQ(COMP_LPCOMP_IRQn);
 }
 
-static bool isWokenUpByNetwork(const hal_wakeup_source_network_t* networkWakeup) {
+static bool isWokenUpByNetwork(const hal_wakeup_source_network_t* networkWakeup, const uint32_t ncpId) {
 // TODO: More than one network interface are supported on platform.
     if (networkWakeup->flags & HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY) {
         return false;
     }
 #if HAL_PLATFORM_CELLULAR
     if (networkWakeup->index == NETWORK_INTERFACE_CELLULAR && NVIC_GetPendingIRQ(UARTE1_IRQn)) {
+        // XXX: u-blox issue where RXD pin toggles to HI-Z for ~10us about 1ms after CTS goes HIGH
+        //      while modem is in UPSV=1 mode and in a low power state.  We see a low pulse due to
+        //      10k pull-down on RXD. These will occur every 1.28s.  If we wake up via R510 cellular
+        //      network activity, and CTS is HIGH, go back to sleep.
+        // Is CTS pin HIGH? (clear pending interrupt and return false)
+        if (ncpId == PLATFORM_NCP_SARA_R510) {
+            Hal_Pin_Info* halPinMap = HAL_Pin_Map();
+            uint32_t cts1Pin = NRF_GPIO_PIN_MAP(halPinMap[CTS1].gpio_port, halPinMap[CTS1].gpio_pin);
+            uint32_t cts1State = nrf_gpio_pin_read(cts1Pin);
+            if (cts1State) {
+                nrf_uarte_event_clear(NRF_UARTE1, NRF_UARTE_EVENT_RXDRDY);
+                nrf_uarte_int_enable(NRF_UARTE1, NRF_UARTE_INT_RXDRDY_MASK);
+                NVIC_ClearPendingIRQ(UARTE1_IRQn);
+                return false;
+            }
+        }
         return true;
     }
 #endif
@@ -816,6 +833,7 @@ static void fpu_sleep_prepare(void) {
 
 static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
     int ret = SYSTEM_ERROR_NONE;
+    uint32_t ncpId = platform_primary_ncp_identifier(); // save before external flash is put to sleep
 
     // Detach USB
     HAL_USB_Detach();
@@ -1059,7 +1077,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
                 break; // Stop traversing the wakeup sources list.
             } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_NETWORK) {
                 auto networkWakeup = reinterpret_cast<hal_wakeup_source_network_t*>(wakeupSource);
-                if (isWokenUpByNetwork(networkWakeup)) {
+                if (isWokenUpByNetwork(networkWakeup, ncpId)) {
                     wakeupSourceType = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
                     netif = networkWakeup->index;
                     exitSleepMode = true;

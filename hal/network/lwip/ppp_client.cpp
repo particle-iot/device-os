@@ -51,6 +51,10 @@ netif_ext_callback_t Client::netifCb_ = {};
 int Client::netifClientDataIdx_ = -1;
 constexpr const char* Client::eventNames_[];
 constexpr const char* Client::stateNames_[];
+const auto NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_DEFAULT = 5;
+const auto NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_R510 = 240; // 4 minutes (4.25 minutes max)
+const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT = 10;
+const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_R510 = 1;
 
 namespace {
 
@@ -120,6 +124,13 @@ void Client::init() {
       // To repeat, we are slighly going off standard, but this should be an acceptable
       // behavior in this particular case.
       pcb_->settings.fsm_ignore_conf_req_opened = 1;
+    }
+
+    if (state_ == STATE_CONNECTED || state_ == STATE_DISCONNECTED) {
+      // Allows the R510 to drop into low power mode (USPV=1) automatically after ~9s when idle
+      pcb_->settings.lcp_echo_interval = NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_R510;
+      pcb_->settings.lcp_echo_fails = NCP_CLIENT_LCP_ECHO_MAX_FAILS_R510;
+      pcb_->lcp_echos_pending = 0; // reset echo count
     }
 
     pppapi_set_notify_phase_callback(pcb_, &Client::notifyPhaseCb);
@@ -231,6 +242,7 @@ int Client::input(const uint8_t* data, size_t size) {
       case STATE_DISCONNECTING:
       case STATE_CONNECTED: {
         LOG_DEBUG(TRACE, "RX: %lu", size);
+        // LOG_DUMP(TRACE, data, size);
 
         if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
           auto pppos = (pppos_pcb*)pcb_->link_ctx_cb;
@@ -485,6 +497,7 @@ uint32_t Client::outputCb(ppp_pcb* pcb, uint8_t* data, uint32_t len, void* ctx) 
 
 uint32_t Client::output(const uint8_t* data, size_t len) {
   LOG_DEBUG(TRACE, "TX: %lu", len);
+  // LOG_DUMP(TRACE, data, len);
 
   if (oCb_) {
     auto r = oCb_(data, len, oCbCtx_);
@@ -551,6 +564,20 @@ void Client::notifyNetif(netif_nsc_reason_t reason, const netif_ext_callback_arg
 
 void Client::transition(State newState) {
   LOG(TRACE, "State %s -> %s", stateNames_[state_], stateNames_[newState]);
+  if (newState != state_) {
+    if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R510) {
+      if (newState == STATE_CONNECTED || newState == STATE_DISCONNECTED) {
+        // Allows the R510 to drop into low power mode (USPV=1) automatically after ~9s when idle
+        pcb_->settings.lcp_echo_interval = NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_R510;
+        pcb_->settings.lcp_echo_fails = NCP_CLIENT_LCP_ECHO_MAX_FAILS_R510;
+        pcb_->lcp_echos_pending = 0; // reset echo count
+      } else {
+        // Resume default keep alive when not CONNECTED/DISCONNECTED for R510
+        pcb_->settings.lcp_echo_interval = NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_DEFAULT;
+        pcb_->settings.lcp_echo_fails = NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT;
+      }
+    }
+  }
   state_ = newState;
 
   {

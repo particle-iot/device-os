@@ -101,7 +101,9 @@ const auto UBLOX_NCP_R4_APP_FW_VERSION_LATEST_02B_01 = 204;
 const auto UBLOX_NCP_R4_APP_FW_VERSION_0512 = 219;
 
 const auto UBLOX_NCP_MAX_MUXER_FRAME_SIZE = 1509;
-const auto UBLOX_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
+const auto UBLOX_NCP_KEEPALIVE_PERIOD_DEFAULT = 5000; // milliseconds
+const auto UBLOX_NCP_KEEPALIVE_PERIOD_DISABLED = 0; // disables muxer keep alive
+const auto UBLOX_NCP_KEEPALIVE_PERIOD_R510 = UBLOX_NCP_KEEPALIVE_PERIOD_DISABLED;
 const auto UBLOX_NCP_KEEPALIVE_MAX_MISSED = 5;
 
 // FIXME: for now using a very large buffer
@@ -199,6 +201,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     firmwareInstallRespCodeR510_ = -1;
     lastFirmwareInstallRespCodeR510_ = -1;
     waitReadyRetries_ = 0;
+    sleepNoPPPWrite_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     if (modemPowerState()) {
@@ -466,13 +469,21 @@ int SaraNcpClient::disconnect() {
     if (connState_ == NcpConnectionState::DISCONNECTED) {
         return SYSTEM_ERROR_NONE;
     }
+
+    SCOPE_GUARD({
+        resetRegistrationState();
+        connectionState(NcpConnectionState::DISCONNECTED);
+    });
+
+    // If we disconnect due to the AT interface being dead, a forced check
+    // is required because ready_ is true and parserError_ is 0.
+    const int r = parser_.execCommand(1000, "AT");
+    if (r != AtResponse::OK) {
+        parserError_ = r;
+    }
     CHECK(checkParser());
     CHECK_PARSER(setModuleFunctionality(CellularFunctionality::MINIMUM));
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
-    resetRegistrationState();
-
-    connectionState(NcpConnectionState::DISCONNECTED);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -527,7 +538,10 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
         }
     }
 
-    int err = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
+    int err = gsm0710::GSM0710_ERROR_NONE;
+    if (!sleepNoPPPWrite_) {
+        err = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
+    }
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
         // Not an error
         LOG_DEBUG(WARN, "Remote side flow control");
@@ -1484,6 +1498,7 @@ int SaraNcpClient::initReady(ModemState state) {
                 }
             }
         }
+
         // Check that the modem is responsive at the new baudrate
         skipAll(serial_.get(), 1000);
         CHECK(waitAtResponse(10000));
@@ -1523,12 +1538,19 @@ int SaraNcpClient::initReady(ModemState state) {
         // Disable Cat-M1 low power modes
         CHECK(disablePsmEdrx());
 
+        // Allows the R510 to drop into low power mode automatically after ~9s when idle
+        if (ncpId() == PLATFORM_NCP_SARA_R510) {
+            // XXX: R510 UPSV=1 appears to have issues dropping into low power mode unless we ensure to disable and enable on boot
+            CHECK_PARSER_OK(setPowerSavingValue(CellularPowerSavingValue::UPSV_DISABLED, true /* check */));
+            CHECK_PARSER_OK(setPowerSavingValue(CellularPowerSavingValue::UPSV_ENABLED_TIMER));
+        }
+
     } else {
         // Force Power Saving mode to be disabled
         //
         // TODO: if we enable this feature in the future add logic to CHECK_PARSER macro(s)
         // to wait longer for device to become active (see MDMParser::_atOk)
-        CHECK_PARSER_OK(parser_.execCommand("AT+UPSV=0"));
+        CHECK_PARSER_OK(setPowerSavingValue(CellularPowerSavingValue::UPSV_DISABLED, true /* check */));
     }
 
     if (state != ModemState::MuxerAtChannel) {
@@ -1702,7 +1724,11 @@ int SaraNcpClient::initMuxer() {
     // Initialize muxer
     muxer_.setStream(serial_.get());
     muxer_.setMaxFrameSize(UBLOX_NCP_MAX_MUXER_FRAME_SIZE);
-    muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD);
+    if (ncpId() == PLATFORM_NCP_SARA_R510 && connState_ == NcpConnectionState::DISCONNECTED) {
+        muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD_R510);
+    } else {
+        muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD_DEFAULT);
+    }
     muxer_.setKeepAliveMaxMissed(UBLOX_NCP_KEEPALIVE_MAX_MISSED);
     muxer_.setMaxRetransmissions(3);
     muxer_.setAckTimeout(UBLOX_MUXER_T1);
@@ -1780,6 +1806,35 @@ int SaraNcpClient::checkSimReadiness(bool checkForRfReset) {
     return r;
 }
 
+int SaraNcpClient::getPowerSavingValue() {
+    auto respUpsv = parser_.sendCommand("AT+UPSV?");
+    int upsvVal = -1;
+    // +UPSV: 1,2000,1
+    auto upsvValCnt = respUpsv.scanf("+UPSV: %d,%*d,%*d", &upsvVal);
+    CHECK_PARSER_OK(respUpsv.readResult());
+    CHECK_TRUE(upsvValCnt == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+    return upsvVal;
+}
+
+int SaraNcpClient::setPowerSavingValue(CellularPowerSavingValue upsv, bool check) {
+    if (check) {
+        if ((int)upsv == CHECK(getPowerSavingValue())) {
+            // Already in required state
+            return SYSTEM_ERROR_NONE;
+        }
+    }
+
+    int r = SYSTEM_ERROR_UNKNOWN;
+
+    r = parser_.execCommand(1000, "AT+UPSV=%d",(int)upsv);
+
+    CHECK_PARSER_OK(r);
+
+    // AtResponse::Result!
+    return r;
+}
+
 int SaraNcpClient::getOperationModeCached(CellularOperationMode& cemode) {
     uint32_t systemCacheOperationMode = 0;
     cemode = CellularOperationMode::NONE;
@@ -1823,7 +1878,7 @@ int SaraNcpClient::setOperationMode(CellularOperationMode cemode, bool check, bo
     }
 
     if (check) {
-        if (cemode == CHECK(getOperationMode())) {
+        if ((int)cemode == CHECK(getOperationMode())) {
             if (save) {
                 setOperationModeCached(cemode);
             }
@@ -1855,7 +1910,7 @@ int SaraNcpClient::getModuleFunctionality() {
 
 int SaraNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool check) {
     if (check) {
-        if (cfun == CHECK(getModuleFunctionality())) {
+        if ((int)cfun == CHECK(getModuleFunctionality())) {
             // Already in required state
             return 0;
         }
@@ -2073,6 +2128,18 @@ int SaraNcpClient::enterDataMode() {
         CHECK(waitAtResponse(parser_, 5000));
     }
 
+    // If R510 and CONNECTED already, in the case where we are in low power mode and the keepalives
+    // may be diabled/longer, just in case we are trying to resume a broken connection, let's timeout
+    // faster with an AT/OK check prior to the following AT+CGATT? call that takes 90s to timeout.
+    // This will also skip a follow up AT+CPWROFF call because ready_ will be set to false.
+    if (ncpId() == PLATFORM_NCP_SARA_R510 && connState_ == NcpConnectionState::CONNECTED) {
+        const int r = parser_.execCommand(1000, "AT");
+        if (r != AtResponse::OK) {
+            parserError_ = r;
+        }
+        CHECK(checkParser());
+    }
+
     // CGATT should be enabled before we dial
     auto respCgatt = parser_.sendCommand("AT+CGATT?");
     int cgattState = -1;
@@ -2182,14 +2249,32 @@ int SaraNcpClient::getMtu() {
 int SaraNcpClient::urcs(bool enable) {
     const NcpClientLock lock(this);
     if (enable) {
+        sleepNoPPPWrite_ = false;
         CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+        if ((ncpId() != PLATFORM_NCP_SARA_R510) ||
+                ((ncpId() == PLATFORM_NCP_SARA_R510) &&
+                !(connState_ == NcpConnectionState::CONNECTED || connState_ == NcpConnectionState::DISCONNECTED))) {
+            muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD_DEFAULT);
+        }
         if (ncpId() == PLATFORM_NCP_SARA_U201) {
             // Make sure the modem is responsive again. U201 modems do take a while to
             // go back into functioning state
             CHECK(waitAtResponse(5000, gsm0710::proto::DEFAULT_T2));
         }
     } else {
+        sleepNoPPPWrite_ = true;
+
+        // R510 may be in low power mode, wake it up so we can get our muxer data channel suspend
+        // echo, before we get into sleep and potentially prematurely wake by "network activity" (RX data)
+        if (ncpId() == PLATFORM_NCP_SARA_R510) {
+            CHECK(waitAtResponse(5000, 2000));
+        }
         CHECK_TRUE(muxer_.suspendChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+
+        // muxer_.suspendChannel(UBLOX_NCP_AT_CHANNEL) does not block muxer AT channel keepalives. All modems will
+        // require this to be disabled to wake on network activity, and not prematurely wake on the echo of the keepalive.
+        muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD_DISABLED);
+        HAL_Delay_Milliseconds(100); // allow a bit of time for muxer echo response
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -2203,6 +2288,14 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     }
     LOG(TRACE, "NCP connection state changed: %d", (int)state);
     connState_ = state;
+
+    if (ncpId() == PLATFORM_NCP_SARA_R510) {
+        if (connState_ == NcpConnectionState::CONNECTED || connState_ == NcpConnectionState::DISCONNECTED) {
+            muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD_R510);
+        } else {
+            muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD_DEFAULT);
+        }
+    }
 
     if (connState_ == NcpConnectionState::CONNECTED) {
         // Reset CGATT workaround flag
