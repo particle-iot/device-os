@@ -35,6 +35,12 @@
 #include "core_hal.h"
 #include "deviceid_hal.h"
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("network")
+
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 using namespace particle;
 using namespace particle::net;
 
@@ -169,13 +175,15 @@ int if_init_platform(void*) {
         reserve_netif_index();
     }
 
+    // Not initialising the ppp ncp netif effective prevents it from being a usable network interface.
+    // WiFi + Ethernet will be preferred. 
     // Order of initialization is important!
     /* pp3 - Cellular */
     pp3 = new PppNcpNetif();
-    if (pp3) {
-        ((PppNcpNetif*)pp3)->setCellularManager(cellularNetworkManager());
-        ((PppNcpNetif*)pp3)->init();
-    }
+    // if (pp3) {
+    //     ((PppNcpNetif*)pp3)->setCellularManager(cellularNetworkManager());
+    //     ((PppNcpNetif*)pp3)->init();
+    // }
 
     /* wl4 - Realtek NCP Station */
     wl4 = new RealtekNcpNetif();

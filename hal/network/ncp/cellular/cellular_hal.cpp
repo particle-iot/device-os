@@ -189,6 +189,8 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
 
     const NcpClientLock lock(client);
+    const NcpPowerState originalPowerState = client->ncpPowerState();
+
     // Ensure the modem is powered on
     CHECK(client->on());
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
@@ -198,6 +200,10 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     }
     if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
         CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
+    }
+
+    if (originalPowerState == NcpPowerState::OFF) {
+        CHECK(client->off());
     }
     return 0;
 }
