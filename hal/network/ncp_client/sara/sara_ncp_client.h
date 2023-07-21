@@ -121,6 +121,7 @@ private:
     int firmwareInstallRespCodeR510_ = 0;
     int lastFirmwareInstallRespCodeR510_ = 0;
     int waitReadyRetries_ = 0;
+    bool sleepNoPPPWrite_ = false;
 
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
@@ -171,6 +172,8 @@ private:
     int waitAtResponseFromPowerOn(ModemState& modemState);
     int disablePsmEdrx();
     int checkSimReadiness(bool checkForRfReset = false);
+    int getPowerSavingValue();
+    int setPowerSavingValue(CellularPowerSavingValue upsv, bool check = false);
     int getOperationModeCached(CellularOperationMode& cemode);
     int setOperationModeCached(CellularOperationMode cemode);
     int getOperationMode();
