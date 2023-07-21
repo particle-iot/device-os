@@ -280,27 +280,87 @@ bool isLedgerNameValid(const char* name) {
 
 } // namespace
 
+struct LedgerManager::LedgerContext {
+    CString name; // Ledger name
+    Ledger* instance; // Ledger instance. If null, the ledger is not instantiated
+    ledger_sync_direction syncDirection; // Sync direction
+    uint64_t syncTime; // When to sync the ledger
+    uint64_t forcedSyncTime; // When to force-sync the ledger
+    int pendingState; // Pending state flags
+
+    LedgerContext() :
+            instance(nullptr),
+            syncDirection(LEDGER_SYNC_DIRECTION_UNKNOWN),
+            syncTime(0),
+            forcedSyncTime(0),
+            pendingState(0) {
+    }
+};
+
+LedgerManager::LedgerManager() :
+        connHandler_(nullptr),
+        syncTime_(0),
+        forcedSyncTime_(0),
+        curState_(State::NEW),
+        pendingState_(0) {
+}
+
+LedgerManager::~LedgerManager() {
+}
+
+int LedgerManager::init(OutboundConnectionHandler* connHandler) {
+    if (curState_ != State::NEW) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    connHandler_ = connHandler;
+    curState_ = State::OFFLINE;
+    return 0;
+}
+
 int LedgerManager::getLedger(const char* name, RefCountPtr<Ledger>& ledger) {
     std::lock_guard lock(mutex_);
+    if (curState_ == State::NEW) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     // Check if the requested ledger is already instantiated
-    auto found = findLedger(name);
-    if (found.second) {
-        ledger = *found.first;
+    bool found = false;
+    auto it = findLedger(name, found);
+    if (found && (*it)->instance) {
+        ledger = (*it)->instance;
         return 0;
     }
-    // Create a new instance
+    std::unique_ptr<LedgerContext> newCtx;
+    LedgerContext* ctx = it->get();
+    if (!found) {
+        // Allocate a new context object
+        newCtx.reset(new(std::nothrow) LedgerContext());
+        if (!newCtx) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        newCtx->name = name;
+        if (!newCtx->name) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        ctx = newCtx.get();
+    }
+    // Create a ledger instance
     auto lr = makeRefCountPtr<Ledger>();
     if (!lr) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    int r = lr->init(name);
+    int r = lr->init(ctx->name, ctx);
     if (r < 0) {
         LOG(ERROR, "Failed to initialize ledger: %d", r);
         return r;
     }
-    if (!ledgers_.insert(found.first, lr.get())) {
-        return SYSTEM_ERROR_NO_MEMORY;
+    if (!found) {
+        // Store the context object
+        it = ledgers_.insert(it, std::move(newCtx));
+        if (it == ledgers_.end()) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
     }
+    ctx->instance = lr.get();
     ledger = std::move(lr);
     return 0;
 }
@@ -309,9 +369,14 @@ int LedgerManager::removeLedgerData(const char* name) {
     if (!*name) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    auto found = findLedger(name);
-    if (found.second) {
-        return SYSTEM_ERROR_LEDGER_IN_USE;
+    bool found = false;
+    auto it = findLedger(name, found);
+    if (found) {
+        if ((*it)->instance) {
+            return SYSTEM_ERROR_LEDGER_IN_USE;
+        }
+        ledgers_.erase(it);
+        // TODO: Update state
     }
     char path[MAX_PATH_LEN + 1];
     CHECK(getLedgerDirPath(path, sizeof(path), name));
@@ -320,23 +385,51 @@ int LedgerManager::removeLedgerData(const char* name) {
 }
 
 int LedgerManager::removeAllData() {
-    if (!ledgers_.isEmpty()) {
-        return SYSTEM_ERROR_LEDGER_IN_USE;
+    for (auto& ctx: ledgers_) {
+        if (ctx->instance) {
+            return SYSTEM_ERROR_LEDGER_IN_USE;
+        }
     }
+    // TODO: Update state
+    ledgers_.clear();
     CHECK(rmrf(LEDGER_ROOT_DIR));
     return 0;
 }
 
-std::pair<Vector<Ledger*>::ConstIterator, bool> LedgerManager::findLedger(const char* name) const {
-    bool found = false;
-    auto it = std::lower_bound(ledgers_.begin(), ledgers_.end(), name, [&found](Ledger* lr, const char* name) {
-        auto r = std::strcmp(lr->name(), name);
+int LedgerManager::connected() {
+    return 0;
+}
+
+int LedgerManager::disconnected() {
+    return 0;
+}
+
+int LedgerManager::requestSent(int reqId) {
+    return 0;
+}
+
+int LedgerManager::responseSent(int reqId) {
+    return 0;
+}
+
+int LedgerManager::requestReceived(int reqId, const char* data, size_t size, bool hasMore) {
+    return 0;
+}
+
+int LedgerManager::responseReceived(int reqId, const char* data, size_t size, bool hasMore) {
+    return 0;
+}
+
+LedgerManager::LedgerContexts::ConstIterator LedgerManager::findLedger(const char* name, bool& found) const {
+    found = false;
+    auto it = std::lower_bound(ledgers_.begin(), ledgers_.end(), name, [&found](const auto& ctx, const char* name) {
+        auto r = std::strcmp(ctx->name, name);
         if (r == 0) {
             found = true;
         }
         return r < 0;
     });
-    return std::make_pair(it, found);
+    return it;
 }
 
 void LedgerManager::addLedgerRef(const LedgerBase* ledger) {
@@ -347,7 +440,9 @@ void LedgerManager::addLedgerRef(const LedgerBase* ledger) {
 void LedgerManager::releaseLedger(const LedgerBase* ledger) {
     std::lock_guard lock(mutex_);
     if (--ledger->refCount_ == 0) {
-        ledgers_.removeOne(const_cast<Ledger*>(static_cast<const Ledger*>(ledger)));
+        auto lr = static_cast<const Ledger*>(ledger);
+        auto ctx = static_cast<LedgerContext*>(lr->context());
+        ctx->instance = nullptr;
         delete ledger;
     }
 }
@@ -370,6 +465,8 @@ Ledger::Ledger() :
         syncCallback_(nullptr),
         destroyAppData_(nullptr),
         appData_(nullptr),
+        name_(""),
+        ctx_(nullptr),
         scope_(LEDGER_SCOPE_UNKNOWN),
         syncDir_(LEDGER_SYNC_DIRECTION_UNKNOWN),
         inited_(false) {
@@ -381,14 +478,12 @@ Ledger::~Ledger() {
     }
 }
 
-int Ledger::init(const char* name) {
+int Ledger::init(const char* name, void* ctx) {
     if (!isLedgerNameValid(name)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     name_ = name;
-    if (!name_) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
+    ctx_ = ctx;
     FsLock fs;
     int r = CHECK(loadLedgerInfo(fs.instance()));
     if (r == RESULT_CURRENT_DATA_NOT_FOUND) {

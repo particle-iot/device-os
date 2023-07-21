@@ -27,7 +27,10 @@
 #include <mutex>
 
 #include "system_ledger.h"
+
 #include "filesystem.h"
+#include "timer_hal.h"
+
 #include "static_recursive_mutex.h"
 #include "c_string.h"
 #include "ref_count.h"
@@ -74,26 +77,87 @@ private:
     friend class LedgerManager;
 };
 
-class LedgerManager {
+// TODO: Refactor and expose the CoAP API from the comms library and use that directly in the ledger code
+class InboundConnectionHandler {
 public:
-    LedgerManager(const LedgerBase&) = delete;
+    virtual ~InboundConnectionHandler() = default;
+
+    virtual int connected() = 0;
+    virtual int disconnected() = 0;
+    virtual int requestSent(int reqId) = 0;
+    virtual int responseSent(int reqId) = 0;
+    virtual int requestReceived(int reqId, const char* data, size_t size, bool hasMore) = 0;
+    virtual int responseReceived(int reqId, const char* data, size_t size, bool hasMore) = 0;
+};
+
+class OutboundConnectionHandler {
+public:
+    virtual ~OutboundConnectionHandler() = default;
+
+    virtual int sendRequest(int reqId, const char* data, size_t size, bool hasMore) = 0;
+    virtual int sendResponse(int reqId, const char* data, size_t size, bool hasMore) = 0;
+};
+
+class LedgerManager: public InboundConnectionHandler {
+public:
+    LedgerManager(const LedgerManager&) = delete;
+
+    ~LedgerManager();
+
+    int init(OutboundConnectionHandler* connHandler);
 
     int getLedger(const char* name, RefCountPtr<Ledger>& ledger);
 
     int removeLedgerData(const char* name);
     int removeAllData();
 
+    int connected() override;
+    int disconnected() override;
+    int requestSent(int reqId) override;
+    int responseSent(int reqId) override;
+    int requestReceived(int reqId, const char* data, size_t size, bool hasMore) override;
+    int responseReceived(int reqId, const char* data, size_t size, bool hasMore) override;
+
+    int run();
+
     LedgerManager& operator=(const LedgerManager&) = delete;
 
     static LedgerManager* instance();
 
 private:
-    Vector<Ledger*> ledgers_; // Instantiated ledgers
+    enum State {
+        NEW, // Manager is not initialized
+        OFFLINE, // Device is offline
+        IDLE, // Device is online but there's nothing to do
+        GET_INFO, // Getting ledger info
+        SUBSCRIBE, // Subscribing to ledger updates
+        SYNC_TO_CLOUD, // Synchronizing a device-to-cloud ledger
+        SYNC_FROM_CLOUD // Synchronizing a cloud-to-device ledger
+    };
+
+    enum StateFlag {
+        SYNC_TO_CLOUD_PENDING = 0x01, // Some of the device-to-cloud ledgers need to be synchronized
+        SYNC_FROM_CLOUD_PENDING = 0x02, // Some of the cloud-to-device ledgers need to be synchronized
+        GET_INFO_PENDING = 0x04, // Ledger info is missing for some of the ledgers
+        SUBSCRIBE_PENDING = 0x08 // Subscription to ledger updates is pending for some of the ledgers
+    };
+
+    struct LedgerContext;
+    typedef Vector<std::unique_ptr<LedgerContext>> LedgerContexts;
+
+    LedgerContexts ledgers_; // Preallocated context objects for all known ledgers
+    std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
+    OutboundConnectionHandler* connHandler_; // Connection handler
+    uint64_t syncTime_; // Nearest time when a device-to-cloud ledger needs to be synchronized
+    uint64_t forcedSyncTime_; // Nearest time when a device-to-cloud ledger needs to be force-sync'd
+    State curState_; // Current state
+    int pendingState_; // Pending state flags
+
     mutable StaticRecursiveMutex mutex_; // Manager lock
 
-    LedgerManager() = default; // Use LedgerManager::instance()
+    LedgerManager(); // Use LedgerManager::instance()
 
-    std::pair<Vector<Ledger*>::ConstIterator, bool> findLedger(const char* name) const;
+    LedgerContexts::ConstIterator findLedger(const char* name, bool& found) const;
 
     void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase::addRef()
     void releaseLedger(const LedgerBase* ledger); // Called by LedgerBase::release()
@@ -132,6 +196,10 @@ public:
         return appData_;
     }
 
+    void* context() const {
+        return ctx_; // Immutable
+    }
+
     void lock() const {
         mutex_.lock();
     }
@@ -156,7 +224,8 @@ private:
     ledger_destroy_app_data_callback destroyAppData_; // Destructor for the application data
     void* appData_; // Application data
 
-    CString name_; // Ledger name
+    const char* name_; // Ledger name
+    void* ctx_; // Opaque context object
     ledger_scope scope_; // Ledger scope
     ledger_sync_direction syncDir_; // Sync direction
 
@@ -164,7 +233,7 @@ private:
 
     mutable StaticRecursiveMutex mutex_; // Ledger lock
 
-    int init(const char* name); // Called by LedgerManager
+    int init(const char* name, void* ctx); // Called by LedgerManager
 
     int readerClosed(bool staged); // Called by LedgerReader
     int writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum); // Called by LedgerWriter
