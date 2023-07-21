@@ -308,16 +308,12 @@ void hal_gpio_write(hal_pin_t pin, uint8_t value) {
                 gpiobase->PORT[0].DDR &= (~(1 << pin_info->gpio_pin));
             } else {
                 gpiobase->PORT[0].DR |= (1 << pin_info->gpio_pin);
-                // Need to set pull-up so that the output state can be kept in hibernate mode (except for the stop/ulp mode).
-                PAD_PullCtrl(hal_pin_to_rtl_pin(pin), GPIO_PuPd_UP);
             }
         } else {
             // Output 0, it should always read back 0.
             // Configure it as output, despite of the output mode
             gpiobase->PORT[0].DR &= ~(1 << pin_info->gpio_pin);
             gpiobase->PORT[0].DDR |= (1 << pin_info->gpio_pin);
-            // Restore the default pull configuration.
-            PAD_PullCtrl(hal_pin_to_rtl_pin(pin), GPIO_PuPd_NOPULL);
         }
 
         if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
