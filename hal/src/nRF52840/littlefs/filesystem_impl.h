@@ -24,6 +24,7 @@
 #define FILESYSTEM_READ_SIZE    (256)
 
 #define FILESYSTEM_BLOCK_SIZE   (sFLASH_PAGESIZE)
+
 /* XXX: Using half of the external flash for now */
 #define FILESYSTEM_BLOCK_COUNT  (sFLASH_PAGECOUNT / 2)
 #define FILESYSTEM_FIRST_BLOCK  (0)
