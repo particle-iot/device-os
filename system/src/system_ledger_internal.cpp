@@ -283,14 +283,14 @@ bool isLedgerNameValid(const char* name) {
 struct LedgerManager::LedgerContext {
     CString name; // Ledger name
     Ledger* instance; // Ledger instance. If null, the ledger is not instantiated
-    ledger_sync_direction syncDirection; // Sync direction
+    ledger_sync_direction syncDir; // Ledger's sync direction
     uint64_t syncTime; // When to sync the ledger
     uint64_t forcedSyncTime; // When to force-sync the ledger
     int pendingState; // Pending state flags
 
     LedgerContext() :
             instance(nullptr),
-            syncDirection(LEDGER_SYNC_DIRECTION_UNKNOWN),
+            syncDir(LEDGER_SYNC_DIRECTION_UNKNOWN),
             syncTime(0),
             forcedSyncTime(0),
             pendingState(0) {
@@ -299,9 +299,11 @@ struct LedgerManager::LedgerContext {
 
 LedgerManager::LedgerManager() :
         connHandler_(nullptr),
+        curLedger_(nullptr),
         syncTime_(0),
         forcedSyncTime_(0),
-        curState_(State::NEW),
+        lastSyncDir_(LEDGER_SYNC_DIRECTION_UNKNOWN),
+        state_(State::NEW),
         pendingState_(0) {
 }
 
@@ -309,17 +311,65 @@ LedgerManager::~LedgerManager() {
 }
 
 int LedgerManager::init(OutboundConnectionHandler* connHandler) {
-    if (curState_ != State::NEW) {
+    if (state_ != State::NEW) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    // Enumerate local ledgers
+    FsLock fs;
+    lfs_dir_t dir = {};
+    CHECK_FS(lfs_dir_open(fs.instance(), &dir, LEDGER_ROOT_DIR));
+    SCOPE_GUARD({
+        int r = closeDir(fs.instance(), &dir);
+        if (r < 0) {
+            LOG(ERROR, "Failed to close directory handle: %d", r);
+        }
+    });
+    LedgerContexts ledgers;
+    lfs_info entry = {};
+    int r = 0;
+    while ((r = lfs_dir_read(fs.instance(), &dir, &entry)) == 1) {
+        if (entry.type != LFS_TYPE_DIR) {
+            LOG(WARN, "Found unexpected entry in ledger directory");
+            continue;
+        }
+        if (std::strcmp(entry.name, ".") == 0 || std::strcmp(entry.name, "..") == 0) {
+            continue;
+        }
+        Ledger ledger;
+        int r = ledger.init(entry.name, nullptr);
+        if (r < 0) {
+            LOG(ERROR, "Failed to initialize ledger: %d", r);
+            continue;
+        }
+        std::unique_ptr<LedgerContext> ctx(new(std::nothrow) LedgerContext());
+        if (!ctx) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        ctx->name = entry.name;
+        if (!ctx->name) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        auto info = ledger.info();
+        ctx->syncDir = info.syncDirection();
+        if (ctx->syncDir == LEDGER_SYNC_DIRECTION_UNKNOWN) {
+            setPendingState(ctx.get(), StateFlag::GET_INFO_PENDING);
+        } else if (ctx->syncDir == LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD && info.syncPending()) {
+            setPendingState(ctx.get(), StateFlag::SYNC_TO_CLOUD_PENDING);
+        }
+        if (!ledgers.append(std::move(ctx))) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+    }
+    CHECK_FS(r);
+    allLedgers_ = std::move(ledgers);
     connHandler_ = connHandler;
-    curState_ = State::OFFLINE;
+    state_ = State::OFFLINE;
     return 0;
 }
 
 int LedgerManager::getLedger(const char* name, RefCountPtr<Ledger>& ledger) {
     std::lock_guard lock(mutex_);
-    if (curState_ == State::NEW) {
+    if (state_ == State::NEW) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     // Check if the requested ledger is already instantiated
@@ -355,10 +405,12 @@ int LedgerManager::getLedger(const char* name, RefCountPtr<Ledger>& ledger) {
     }
     if (!found) {
         // Store the context object
-        it = ledgers_.insert(it, std::move(newCtx));
-        if (it == ledgers_.end()) {
+        it = allLedgers_.insert(it, std::move(newCtx));
+        if (it == allLedgers_.end()) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
+        // Request the info about the newly created ledger
+        setPendingState(ctx, StateFlag::GET_INFO_PENDING);
     }
     ctx->instance = lr.get();
     ledger = std::move(lr);
@@ -369,14 +421,18 @@ int LedgerManager::removeLedgerData(const char* name) {
     if (!*name) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    std::lock_guard lock(mutex_);
+    if (state_ != State::OFFLINE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     bool found = false;
     auto it = findLedger(name, found);
     if (found) {
         if ((*it)->instance) {
             return SYSTEM_ERROR_LEDGER_IN_USE;
         }
-        ledgers_.erase(it);
-        // TODO: Update state
+        clearPendingState(it->get(), (*it)->pendingState);
+        allLedgers_.erase(it);
     }
     char path[MAX_PATH_LEN + 1];
     CHECK(getLedgerDirPath(path, sizeof(path), name));
@@ -385,44 +441,177 @@ int LedgerManager::removeLedgerData(const char* name) {
 }
 
 int LedgerManager::removeAllData() {
-    for (auto& ctx: ledgers_) {
+    std::lock_guard lock(mutex_);
+    if (state_ != State::OFFLINE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    for (auto& ctx: allLedgers_) {
         if (ctx->instance) {
             return SYSTEM_ERROR_LEDGER_IN_USE;
         }
     }
-    // TODO: Update state
-    ledgers_.clear();
+    allLedgers_.clear();
+    pendingState_ = 0;
     CHECK(rmrf(LEDGER_ROOT_DIR));
     return 0;
 }
 
 int LedgerManager::connected() {
+    std::lock_guard lock(mutex_);
+    if (state_ != State::OFFLINE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    for (auto& ctx: allLedgers_) {
+        // TODO: Cache ledger subscriptions in the session data
+        if (ctx->syncDir == LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE) {
+            setPendingState(ctx.get(), StateFlag::SUBSCRIBE_PENDING);
+        }
+    }
+    state_ = State::IDLE;
     return 0;
 }
 
 int LedgerManager::disconnected() {
+    std::lock_guard lock(mutex_);
+    if (state_ == State::NEW) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (state_ == State::OFFLINE) {
+        return 0;
+    }
+    if (stream_) {
+        int r = stream_->close(true /* discard */);
+        if (r < 0) {
+            LOG(ERROR, "Failed to close ledger stream: %d", r);
+        }
+        stream_.reset();
+    }
+    // It will be checked again whether the cloud-to-device ledgers need to be sync'd when the
+    // device reconnects
+    clearPendingState(StateFlag::SYNC_FROM_CLOUD_PENDING);
+    syncTime_ = 0;
+    forcedSyncTime_ = 0;
+    curLedger_ = nullptr;
+    state_ = State::OFFLINE;
     return 0;
 }
 
 int LedgerManager::requestSent(int reqId) {
-    return 0;
+    std::lock_guard lock(mutex_);
+    return 0; // TODO
 }
 
 int LedgerManager::responseSent(int reqId) {
-    return 0;
+    std::lock_guard lock(mutex_);
+    return 0; // TODO
 }
 
 int LedgerManager::requestReceived(int reqId, const char* data, size_t size, bool hasMore) {
-    return 0;
+    std::lock_guard lock(mutex_);
+    return 0; // TODO
 }
 
 int LedgerManager::responseReceived(int reqId, const char* data, size_t size, bool hasMore) {
-    return 0;
+    std::lock_guard lock(mutex_);
+    return 0; // TODO
+}
+
+void LedgerManager::run() {
+    std::lock_guard lock(mutex_);
+    if (state_ != State::IDLE || !pendingState_) {
+        // Some task is in progress, the manager is in a bad state or there's nothing to do
+        return;
+    }
+    LedgerContext* ctx = nullptr;
+    int r = SYSTEM_ERROR_INVALID_STATE;
+    if (pendingState_ & StateFlag::GET_INFO_PENDING) {
+        // Send a GetInfoRequest
+        ctx = findLedgerWithState(StateFlag::GET_INFO_PENDING);
+        r = sendGetInfoRequest(ctx);
+        state_ = State::GET_INFO;
+    } else if (pendingState_ & StateFlag::SUBSCRIBE_PENDING) {
+        // Send a SubscribeRequest
+        ctx = findLedgerWithState(StateFlag::SUBSCRIBE_PENDING);
+        r = sendSubscribeRequest(ctx);
+        state_ = State::SUBSCRIBE;
+    } else if ((pendingState_ & StateFlag::SYNC_TO_CLOUD_PENDING) || (pendingState_ & StateFlag::SYNC_FROM_CLOUD_PENDING)) {
+        bool syncToCloud = pendingState_ & StateFlag::SYNC_TO_CLOUD_PENDING;
+        if ((pendingState_ & StateFlag::SYNC_FROM_CLOUD_PENDING) && syncToCloud &&
+                lastSyncDir_ == LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD) {
+            // Alternate between device-to-cloud and cloud-to-device ledgers when choosing the next
+            // ledger to sync
+            syncToCloud = false;
+        }
+        if (syncToCloud) {
+            // Send a SetDataRequest
+            ctx = findLedgerWithState(StateFlag::SYNC_TO_CLOUD_PENDING);
+            r = sendSetDataRequest(ctx);
+            lastSyncDir_ = LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD;
+            state_ = State::SYNC_TO_CLOUD;
+        } else {
+            // Send a GetDataRequest
+            ctx = findLedgerWithState(StateFlag::SYNC_FROM_CLOUD_PENDING);
+            r = sendGetDataRequest(ctx);
+            lastSyncDir_ = LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE;
+            state_ = State::SYNC_FROM_CLOUD;
+        }
+    }
+    if (r < 0) {
+        LOG(ERROR, "Failed to send ledger request: %d", r);
+        state_ = State::FAILED;
+        return;
+    }
+    curLedger_ = ctx;
+}
+
+int LedgerManager::sendGetInfoRequest(LedgerContext* ctx) {
+    return 0; // TODO
+}
+
+int LedgerManager::sendSubscribeRequest(LedgerContext* ctx) {
+    return 0; // TODO
+}
+
+int LedgerManager::sendSetDataRequest(LedgerContext* ctx) {
+    return 0; // TODO
+}
+
+int LedgerManager::sendGetDataRequest(LedgerContext* ctx) {
+    return 0; // TODO
+}
+
+void LedgerManager::setPendingState(LedgerContext* ctx, int flags) {
+    ctx->pendingState |= flags;
+    pendingState_ |= flags;
+}
+
+void LedgerManager::clearPendingState(LedgerContext* ctx, int flags) {
+    ctx->pendingState &= ~flags;
+    pendingState_ = 0;
+    for (auto& ctx: allLedgers_) {
+        pendingState_ |= ctx->pendingState;
+    }
+}
+
+void LedgerManager::clearPendingState(int flags) {
+    pendingState_ &= ~flags;
+    for (auto& ctx: allLedgers_) {
+        ctx->pendingState &= ~flags;
+    }
+}
+
+LedgerManager::LedgerContext* LedgerManager::findLedgerWithState(int flags) const {
+    for (auto& ctx: allLedgers_) {
+        if ((ctx->pendingState & flags) == flags) {
+            return ctx.get();
+        }
+    }
+    return nullptr;
 }
 
 LedgerManager::LedgerContexts::ConstIterator LedgerManager::findLedger(const char* name, bool& found) const {
     found = false;
-    auto it = std::lower_bound(ledgers_.begin(), ledgers_.end(), name, [&found](const auto& ctx, const char* name) {
+    auto it = std::lower_bound(allLedgers_.begin(), allLedgers_.end(), name, [&found](const auto& ctx, const char* name) {
         auto r = std::strcmp(ctx->name, name);
         if (r == 0) {
             found = true;

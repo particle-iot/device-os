@@ -280,7 +280,8 @@ int ledger_write(ledger_stream* stream, const char* data, size_t size, void* res
 /**
  * Remove any local data associated with a ledger.
  *
- * The operation will fail if the ledger with the given name is in use.
+ * The device must not be connected to the Cloud. The operation will fail if the ledger with the
+ * given name is in use.
  *
  * @note The data is not guaranteed to be removed in an irrecoverable way.
  *
@@ -293,7 +294,8 @@ int ledger_purge(const char* name, void* reserved);
 /**
  * Remove any local data associated with existing ledgers.
  *
- * The operation will fail if any of the existing ledgers is in use.
+ * The device must not be connected to the Cloud. The operation will fail if any of the existing
+ * ledgers is in use.
  *
  * @note The data is not guaranteed to be removed in an irrecoverable way.
  *

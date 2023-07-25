@@ -77,7 +77,7 @@ private:
     friend class LedgerManager;
 };
 
-// TODO: Refactor and expose the CoAP API from the comms library and use that directly in the ledger code
+// TODO: Refactor and expose the CoAP API from the comms library and use that in the ledger code
 class InboundConnectionHandler {
 public:
     virtual ~InboundConnectionHandler() = default;
@@ -118,7 +118,7 @@ public:
     int requestReceived(int reqId, const char* data, size_t size, bool hasMore) override;
     int responseReceived(int reqId, const char* data, size_t size, bool hasMore) override;
 
-    int run();
+    void run();
 
     LedgerManager& operator=(const LedgerManager&) = delete;
 
@@ -128,11 +128,12 @@ private:
     enum State {
         NEW, // Manager is not initialized
         OFFLINE, // Device is offline
-        IDLE, // Device is online but there's nothing to do
+        IDLE, // Nothing to do
         GET_INFO, // Getting ledger info
         SUBSCRIBE, // Subscribing to ledger updates
         SYNC_TO_CLOUD, // Synchronizing a device-to-cloud ledger
-        SYNC_FROM_CLOUD // Synchronizing a cloud-to-device ledger
+        SYNC_FROM_CLOUD, // Synchronizing a cloud-to-device ledger
+        FAILED // Manager failed
     };
 
     enum StateFlag {
@@ -145,18 +146,30 @@ private:
     struct LedgerContext;
     typedef Vector<std::unique_ptr<LedgerContext>> LedgerContexts;
 
-    LedgerContexts ledgers_; // Preallocated context objects for all known ledgers
+    LedgerContexts allLedgers_; // Preallocated context objects for all known ledgers
     std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
     OutboundConnectionHandler* connHandler_; // Connection handler
+    LedgerContext* curLedger_; // Context of the currently used ledger
     uint64_t syncTime_; // Nearest time when a device-to-cloud ledger needs to be synchronized
     uint64_t forcedSyncTime_; // Nearest time when a device-to-cloud ledger needs to be force-sync'd
-    State curState_; // Current state
+    ledger_sync_direction lastSyncDir_; // Direction in which a ledger was last synchronized
+    State state_; // Current state
     int pendingState_; // Pending state flags
 
     mutable StaticRecursiveMutex mutex_; // Manager lock
 
     LedgerManager(); // Use LedgerManager::instance()
 
+    int sendGetInfoRequest(LedgerContext* ctx);
+    int sendSubscribeRequest(LedgerContext* ctx);
+    int sendSetDataRequest(LedgerContext* ctx);
+    int sendGetDataRequest(LedgerContext* ctx);
+
+    void setPendingState(LedgerContext* ctx, int flags);
+    void clearPendingState(LedgerContext* ctx, int flags);
+    void clearPendingState(int flags);
+
+    LedgerContext* findLedgerWithState(int flags) const;
     LedgerContexts::ConstIterator findLedger(const char* name, bool& found) const;
 
     void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase::addRef()
