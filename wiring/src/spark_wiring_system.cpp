@@ -100,6 +100,8 @@ bool SystemClass::enableFeature(LoggingFeature) {
 }
 #endif
 
+#if HAL_PLATFORM_ASSETS
+
 spark::Vector<ApplicationAsset> SystemClass::assetsRequired() {
     spark::Vector<ApplicationAsset> assets;
     asset_manager_info info = {};
@@ -138,7 +140,6 @@ int SystemClass::assetsHandled(bool state) {
     return asset_manager_set_consumer_state(state ? ASSET_MANAGER_CONSUMER_STATE_HANDLED : ASSET_MANAGER_CONSUMER_STATE_WANT, nullptr);
 }
 
-#if HAL_PLATFORM_ASSETS
 int SystemClass::onAssetsOta(OnAssetsOtaCallback cb, void* context) {
     OnAssetsOtaStdFunc f = [cb, context](spark::Vector<ApplicationAsset> assets) -> void {
         if (cb) {

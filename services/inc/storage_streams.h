@@ -20,14 +20,20 @@
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_NONE
 
+#include "hal_platform.h"
+
 #include "stream.h"
 #include "check.h"
 #include "scope_guard.h"
-#include "filesystem.h"
 #include "storage_hal.h"
+#if HAL_PLATFORM_FILESYSTEM
+#include "filesystem.h"
 #include "lfs.h"
+#endif // HAL_PLATFORM_FILESYSTEM
 #include <memory>
+#if HAL_PLATFORM_COMPRESSED_OTA
 #include "inflate.h"
+#endif // HAL_PLATFORM_COMPRESSED_OTA
 
 namespace particle {
 
@@ -120,6 +126,7 @@ private:
     size_t offset_;
 };
 
+#if HAL_PLATFORM_FILESYSTEM
 class FileInputStream : public InputStream {
 public:
     FileInputStream(const char* filename, filesystem_instance_t instance, size_t offset = 0)
@@ -216,6 +223,9 @@ private:
     bool isOpen_;
 };
 
+#endif // HAL_PLATFORM_FILESYSTEM
+
+#if HAL_PLATFORM_COMPRESSED_OTA
 class InflatorStream: public InputStream {
 public:
     InflatorStream(InputStream* compressedStream, size_t inflatedSize)
@@ -359,6 +369,8 @@ private:
     size_t offset_;
     int error_;
 };
+
+#endif // HAL_PLATFORM_COMPRESSED_OTA
 
 class ProxyInputStream : public InputStream {
 public:

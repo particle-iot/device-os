@@ -18,6 +18,8 @@
 #include "spark_wiring_asset.h"
 #include "check.h"
 
+#if HAL_PLATFORM_ASSETS
+
 using namespace particle;
 
 ApplicationAsset::ApplicationAsset(const asset_manager_asset* asset)
@@ -183,3 +185,5 @@ ApplicationAsset::Data::~Data() {
         stream = nullptr;
     }
 }
+
+#endif // HAL_PLATFORM_ASSETS

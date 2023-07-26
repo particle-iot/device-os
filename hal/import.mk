@@ -6,6 +6,6 @@ HAL_LIB_DIR = $(BUILD_PATH_BASE)/$(HAL_MODULE_NAME)/$(HAL_BUILD_PATH_EXT)
 HAL_LIB_DEP = $(HAL_LIB_DIR)/lib$(HAL_MODULE_NAME).a
 
 include $(call rwildcard,$(HAL_MODULE_PATH)/inc/,include.mk)
-include $(call rwildcard,$(HAL_MODULE_PATH)/shared/,include.mk)
 include $(call rwildcard,$(HAL_MODULE_PATH)/src/$(PLATFORM_NAME)/,include.mk)
+include $(call rwildcard,$(HAL_MODULE_PATH)/shared/,include.mk)
 

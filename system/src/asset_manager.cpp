@@ -15,7 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define LOG_CHECKED_ERRORS (1)
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_ASSETS
 
 #include "asset_manager.h"
 #include "storage_streams.h"
@@ -61,37 +63,30 @@ int parseAssetDependencies(spark::Vector<Asset>& assets, hal_storage_id storageI
 }
 
 int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
-    LOG(INFO, "parseAsset size=%u", size);
     std::unique_ptr<module_info_name_ext_t> nameExt;
     AssetHash hash;
     while (size > 0) {
         module_info_extension_t ext = {};
         CHECK(stream->peek((char*)&ext, sizeof(ext)));
-        LOG(INFO, "ext type=%x size=%x remaining=%u", ext.type, ext.length, size);
         CHECK_TRUE(ext.length <= size, SYSTEM_ERROR_BAD_DATA);
         if (ext.type == MODULE_INFO_EXTENSION_NAME) {
             CHECK_TRUE(ext.length > sizeof(module_info_name_ext_t), SYSTEM_ERROR_BAD_DATA);
             nameExt = std::unique_ptr<module_info_name_ext_t>((module_info_name_ext_t*)calloc(1, ext.length + 1 /* NULL name terminator */));
             CHECK_TRUE(nameExt, SYSTEM_ERROR_NO_MEMORY);
             CHECK(stream->peek((char*)nameExt.get(), ext.length));
-            LOG(INFO, "Found name %s", nameExt->name);
         } else if (ext.type == MODULE_INFO_EXTENSION_HASH) {
             CHECK_TRUE(ext.length >= sizeof(module_info_hash_ext_t), SYSTEM_ERROR_BAD_DATA);
             module_info_hash_ext_t hashExt = {};
             CHECK(stream->peek((char*)&hashExt, sizeof(hashExt)));
             hash = AssetHash((const uint8_t*)hashExt.hash.hash, hashExt.hash.length, (AssetHash::Type)hashExt.hash.type);
-            LOG(INFO, "Found hash %s", hash.toString().c_str());
         } else if (ext.type == MODULE_INFO_EXTENSION_END) {
             break;
         }
         CHECK(stream->skip(ext.length));
         size -= ext.length;
     }
-    LOG(INFO, "parseAssetInfo out of loop nameExt=%x hash.isValid=%d", nameExt.get(), hash.isValid());
     if (nameExt && hash.isValid()) {
-        LOG(INFO, "assignment %s %s", nameExt->name, hash.toString().c_str());
         asset = Asset(nameExt->name, hash);
-        LOG(INFO, "asset=%s %s", asset.name().c_str(), asset.hash().toString().c_str());
         return 0;
     }
     return SYSTEM_ERROR_BAD_DATA;
@@ -163,7 +158,6 @@ int AssetManager::requiredAssetsForModule(const hal_module_t* module, spark::Vec
 
     if (module->info.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS) {
         // There are extensions in the prefix
-        LOG(INFO, "parsing prefix extensions");
         uintptr_t extensionsStart = (uintptr_t)module->info.module_start_address + module->module_info_offset + sizeof(module_info_t);
         CHECK(parseAssetDependencies(assets, storageId, extensionsStart, (uintptr_t)module->info.module_end_address));
     }
@@ -171,9 +165,7 @@ int AssetManager::requiredAssetsForModule(const hal_module_t* module, spark::Vec
     module_info_suffix_base_t suffix = {};
     uintptr_t suffixStart = (uintptr_t)module->info.module_end_address - sizeof(module_info_suffix_base_t);
     CHECK(hal_storage_read(storageId, suffixStart, (uint8_t*)&suffix, sizeof(suffix)));
-    LOG(INFO, "suffix.size=%u", suffix.size);
     if (suffix.size > sizeof(module_info_suffix_base_t) + sizeof(module_info_extension_t) * 2) {
-        LOG(INFO, "parsing suffix extesions");
         // There are some additional extensions in suffix
         uintptr_t extensionsStart = (uintptr_t)module->info.module_end_address - suffix.size;
         CHECK(parseAssetDependencies(assets, storageId, extensionsStart, suffixStart));
@@ -185,9 +177,7 @@ int AssetManager::requiredAssetsForModule(const hal_module_t* module, spark::Vec
 int AssetManager::parseRequiredAssets() {
     hal_user_module_descriptor desc = {};
     // This will perform any validation needed
-    LOG(INFO, "parse required assets");
     CHECK(hal_user_module_get_descriptor(&desc));
-    LOG(INFO, "desc ok");
     spark::Vector<Asset> assets;
 
     hal_module_t mod = {};
@@ -257,14 +247,11 @@ int AssetManager::clearUnusedAssets() {
 int AssetManager::storeAsset(const hal_module_t* module) {
     CHECK_TRUE(module, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    LOG(INFO, "storeAsset");
-
     StorageHalInputStream stream(module->bounds.location, (uintptr_t)module->bounds.start_address + (uintptr_t)module->info.module_start_address,
             (uintptr_t)module->info.module_end_address - (uintptr_t)module->info.module_start_address + 4,
             module->module_info_offset);
     AssetReader reader(&stream);
     reader.validate();
-    LOG(INFO, "storeAsset isValid=%d isCompressed=%d", reader.isValid(), reader.isCompressed());
     CHECK_TRUE(reader.isValid(), SYSTEM_ERROR_BAD_DATA);
 
     auto info = reader.asset();
@@ -272,26 +259,18 @@ int AssetManager::storeAsset(const hal_module_t* module) {
 
     CHECK(clearUnusedAssets());
 
-    LOG(INFO, "clearUnusedAssets ok");
-
     CHECK(stream.seek(0));
     char tmp[256];
-    LOG(INFO, "seek 0 avail=%u", stream.availForRead());
 
     const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
-    LOG(INFO, "fs=%x", fs);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
 
     lfs_file_t file = {};
-    LOG(INFO, "lfs_file_open");
     lfs_remove(&fs->instance, info.name().c_str());
-    int r = lfs_file_open(&fs->instance, &file, info.name().c_str(), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND);
-    LOG(INFO, "r=%d", r);
+    CHECK_TRUE(lfs_file_open(&fs->instance, &file, info.name().c_str(), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND) == 0, SYSTEM_ERROR_FILE);
     SCOPE_GUARD({     
-        LOG(INFO, "lfs_file_close");
         lfs_file_close(&fs->instance, &file);
-        LOG(INFO, "lfs_file_close ok");
     });
 
     while (stream.availForRead() > 0) {
@@ -316,24 +295,15 @@ int AssetManager::setNotifyHook(asset_manager_notify_hook hook, void* context) {
 }
 
 int AssetManager::notifyIfNeeded() {
-    LOG(INFO, "notifyIfneeded %x", hook_);
     if (!hook_) {
         return 0;
     }
-    LOG(INFO, "notify aaa");
     asset_manager_consumer_state state = ASSET_MANAGER_CONSUMER_STATE_NONE;
     auto& cache = services::SystemCache::instance();
-    LOG(INFO, "cache instance ok");
-    int r = cache.get(services::SystemCacheKey::ASSET_MANAGER_CONSUMER_STATE, &state, sizeof(state));
-    LOG(INFO, "notify if needed r=%d", r);
-    LOG(INFO, "notifyIfneeded state=%d", state);
+    CHECK(cache.get(services::SystemCacheKey::ASSET_MANAGER_CONSUMER_STATE, &state, sizeof(state)));
     if (state == ASSET_MANAGER_CONSUMER_STATE_WANT) {
-        LOG(INFO, "notifyIfneeded calling hook");
         hook_(hookContext_);
-        LOG(INFO, "notifyIfneeded calling hook ok");
     }
-
-    LOG(INFO, "notifyIfneeded done");
 
     return 0;
 }
@@ -343,7 +313,6 @@ int AssetManager::setConsumerState(asset_manager_consumer_state state) {
 }
 
 int AssetManager::prepareForOta(size_t size, unsigned flags, int moduleFunction) {
-    LOG(INFO, "prepareForOta size=%u flags=%x func=%d", size, flags, moduleFunction);
     const size_t blockSize = EXTERNAL_FLASH_ASSET_STORAGE_SIZE / EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT;
     const size_t freeBlocksSize = FREE_BLOCKS_REQUIRED * blockSize;
     if (moduleFunction == MODULE_FUNCTION_ASSET && size > (EXTERNAL_FLASH_ASSET_STORAGE_SIZE - freeBlocksSize)) {
@@ -419,16 +388,13 @@ int AssetReader::validate(bool full) {
     module_info_suffix_base_t suffix = {};
     CHECK(stream_->skipAll(stream_->availForRead() - sizeof(uint32_t) - sizeof(module_info_suffix_base_t)));
     CHECK(stream_->read((char*)&suffix, sizeof(suffix)));
-    LOG(INFO, "suffix size=%u", suffix.size);
     // CRC and check integrity
     uint32_t crc = 0;
     CHECK(stream_->read((char*)&crc, sizeof(crc)));
     CHECK(stream_->seek(0));
-    LOG(INFO, "suffix crc=%08x", crc);
     if (full) {
         uint32_t calculatedCrc = 0;
         CHECK(calculateCrc(&calculatedCrc));
-        LOG(INFO, "calculated crc=%08x", calculatedCrc);
         CHECK_TRUE(calculatedCrc == bigEndianToNative(crc), SYSTEM_ERROR_BAD_DATA);
     }
     CHECK(stream_->seek(0));
@@ -437,9 +403,7 @@ int AssetReader::validate(bool full) {
     CHECK_TRUE(suffix.size >= sizeof(module_info_suffix_base_t) + 2 * sizeof(module_info_extension_t), SYSTEM_ERROR_BAD_DATA);
     CHECK(stream_->seek(moduleSize - suffix.size - sizeof(uint32_t)));
     Asset asset;
-    LOG(INFO, "parseAssetInfo");
     CHECK(parseAssetInfo(stream_, suffix.size - sizeof(module_info_suffix_base_t), asset));
-    LOG(INFO, "parseAssetInfo ok");
     valid_ = true;
     compressed_ = compressed;
     if (compressed) {
@@ -511,3 +475,5 @@ InputStream* AssetReader::assetStream() {
 }
 
 } // particle
+
+#endif // HAL_PLATFORM_ASSETS
