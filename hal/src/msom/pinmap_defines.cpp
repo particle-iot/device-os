@@ -19,10 +19,6 @@
 
 namespace {
 
-#define MCP23S17_PORT_A ((uint8_t)0u)
-#define MCP23S17_PORT_B ((uint8_t)1u)
-#define DEMUX_PORT      ((uint8_t)0u)
-
 // NOTE: remember to update following driver once the pinmap is updated
 // 1. gpio_hal.cpp, cachePins[CACHE_PIN_COUNT]
 // 2. sleep_hal.cpp, isWakeUpPin()
