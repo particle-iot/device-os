@@ -56,6 +56,7 @@ set(VERSION_STRING ${CMAKE_MATCH_1})
 target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
   PRIVATE SYSTEM_VERSION_STRING=${VERSION_STRING}
+  PRIVATE HAL_PLATFORM_PROTOBUF=0
 )
 
 # Set compiler flags specific to target

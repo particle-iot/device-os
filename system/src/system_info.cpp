@@ -27,8 +27,10 @@
 #include <climits>
 
 #include "control/common.h"
+#if HAL_PLATFORM_PROTOBUF
 #include "cloud/describe.pb.h"
 using particle::control::common::EncodedString;
+#endif // HAL_PLATFORM_PROTOBUF
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -526,6 +528,7 @@ bool system_app_info(appender_fn appender, void* append_data, void* reserved) {
 	return true;
 }
 
+#if HAL_PLATFORM_PROTOBUF
 bool system_module_info_pb(appender_fn appender, void* append_data, void* reserved) {
     hal_system_info_t sysInfo = {};
     sysInfo.size = sizeof(sysInfo);
@@ -623,4 +626,7 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
     PbAppenderStream strm(appender, append_data);
     return pb_encode(&strm, &PB(SystemDescribe_msg), &pbDesc);
 }
+
+#endif // HAL_PLATFORM_PROTOBUF
+
 

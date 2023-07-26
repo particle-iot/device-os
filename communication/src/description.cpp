@@ -206,11 +206,7 @@ void initDescribeResponse(CoapMessageEncoder* enc, token_t token, int flags) {
     enc->code(CoapCode::CONTENT);
     enc->id(0); // Encoded by the message channel
     enc->token((const char*)&token, sizeof(token));
-    // FIXME:
-    if (flags & DescriptionType::DESCRIBE_SYSTEM) {
-        unsigned contentFormat = to_underlying(CoapContentFormat::APPLICATION_OCTET_STREAM);
-        enc->option(CoapOption::CONTENT_FORMAT, contentFormat);
-    }
+    // NOTE: For DESCRIBE_SYSTEM Content-Type option is encoded in receiveRequest() and sendResponseBlock()
 }
 
 } // namespace
@@ -313,11 +309,25 @@ ProtocolError Description::receiveRequest(const Message& msg) {
     size_t payloadSize = 0;
     if (!resp) {
         initDescribeResponse(&enc, reqToken, flags);
+        // FIXME: This is not ideal and needs to be refactored.
+        // For normal responses we have to pre-encode Content-Format option here.
+        // For blockwise responses this will happen for each block due to the requirement
+        // of increasing order of option identifiers with ETag going before Content-Format.
+        if (flags & DescriptionType::DESCRIBE_SYSTEM) {
+            unsigned contentFormat = to_underlying(CoapContentFormat::APPLICATION_OCTET_STREAM);
+            enc.option(CoapOption::CONTENT_FORMAT, contentFormat);
+        }
         const size_t msgOffs = enc.payloadData() - (char*)respMsg.buf();
         Vector<char> buf;
         CHECK_PROTOCOL(getDescribeData(flags, &respMsg, msgOffs, &buf, &payloadSize));
         if (!buf.isEmpty()) {
             // Prepare a blockwise response
+            if (flags & DescriptionType::DESCRIBE_SYSTEM) {
+                // Re-encode response without Content-Type option
+                respMsg.clear();
+                enc = CoapMessageEncoder((char*)respMsg.buf(), respMsg.capacity());
+                initDescribeResponse(&enc, reqToken, flags);
+            }
             newResp.data = std::move(buf);
             newResp.blockCount = (newResp.data.size() + blockSize - 1) / blockSize;
             newResp.reqCount = 1;
@@ -596,6 +606,10 @@ ProtocolError Description::sendResponseBlock(const Response& resp, Message* msg,
     if (payloadSize > blockSize) {
         payloadSize = blockSize;
         hasMore = true;
+    }
+    if (resp.flags & DescriptionType::DESCRIBE_SYSTEM) {
+        unsigned contentFormat = to_underlying(CoapContentFormat::APPLICATION_OCTET_STREAM);
+        enc.option(CoapOption::CONTENT_FORMAT, contentFormat);
     }
     const auto blockOpt = encodeBlockOption(blockIndex, blockSize, hasMore);
     enc.option(CoapOption::BLOCK2, blockOpt);
