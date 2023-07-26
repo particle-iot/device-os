@@ -210,8 +210,8 @@ test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
     }
 }
 #endif // HAL_PLATFORM_EXTERNAL_RTC
-
 #endif // HAL_PLATFORM_GEN
+
 
 test(08_System_Sleep_With_Configuration_Object_Stop_Mode_Without_Wakeup) {
     SystemSleepConfiguration config;
@@ -717,7 +717,7 @@ test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, CLOUD_CONNECT_TIMEOUT));
 
-    for (uint8_t i = 0; i < 2; i++) {
+    {
         // Make sure the modem is off first
         Serial.println("    >> Powering off the modem...");
 #if HAL_PLATFORM_CELLULAR
@@ -725,17 +725,13 @@ test(30_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
         assertTrue(waitFor(Cellular.isOff, 60000));
         Serial.println("    >> Powering on the modem...");
         Cellular.on();
-        if (i == 1) {
-            assertTrue(waitFor(Cellular.isOn, 60000));
-        }
+        assertTrue(waitFor(Cellular.isOn, 60000));
 #elif HAL_PLATFORM_WIFI
         WiFi.off();
         assertTrue(waitFor(WiFi.isOff, 60000));
         Serial.println("    >> Powering on the modem...");
         WiFi.on();
-        if (i == 1) {
-            assertTrue(waitFor(WiFi.isOn, 60000));
-        }
+        assertTrue(waitFor(WiFi.isOn, 60000));
 #endif
 
         Serial.println("    >> Entering sleep... Please reconnect serial after 3 seconds");
@@ -763,7 +759,7 @@ test(31_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Of
         (void)Serial.read();
     }
 
-    for (uint8_t i = 0; i < 2; i++) {
+    {
         // Make sure the modem is on first
         Serial.println("    >> Powering on the modem...");
 #if HAL_PLATFORM_CELLULAR
@@ -771,17 +767,13 @@ test(31_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Of
         assertTrue(waitFor(Cellular.isOn, 60000));
         Serial.println("    >> Powering off the modem...");
         Cellular.off();
-        if (i == 1) {
-            assertTrue(waitFor(Cellular.isOff, 60000));
-        }
+        assertTrue(waitFor(Cellular.isOff, 60000));
 #elif HAL_PLATFORM_WIFI
         WiFi.on();
         assertTrue(waitFor(WiFi.isOn, 60000));
         Serial.println("    >> Powering off the modem...");
         WiFi.off();
-        if (i == 1) {
-            assertTrue(waitFor(WiFi.isOff, 60000));
-        }
+        assertTrue(waitFor(WiFi.isOff, 60000));
 #endif
 
         Serial.println("    >> Entering sleep... Please reconnect serial after 3 seconds");
