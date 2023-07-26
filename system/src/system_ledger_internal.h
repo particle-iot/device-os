@@ -25,11 +25,11 @@
 #include <utility>
 #include <memory>
 #include <mutex>
+#include <cstdint>
 
 #include "system_ledger.h"
 
 #include "filesystem.h"
-#include "timer_hal.h"
 
 #include "static_recursive_mutex.h"
 #include "c_string.h"
@@ -58,7 +58,8 @@ enum class LedgerWriteSource {
 // would work but those can't be used in dynalib interfaces
 class LedgerBase {
 public:
-    LedgerBase() :
+    explicit LedgerBase(void* ctx = nullptr) :
+            ctx_(ctx),
             refCount_(1) {
     }
 
@@ -71,7 +72,17 @@ public:
 
     LedgerBase& operator=(const LedgerBase&) = delete;
 
+protected:
+    void* context() const { // Called by LedgerManager
+        return ctx_;
+    }
+
+    int& refCount() const { // ditto
+        return refCount_;
+    }
+
 private:
+    void* ctx_;
     mutable int refCount_;
 
     friend class LedgerManager;
@@ -124,35 +135,44 @@ public:
 
     static LedgerManager* instance();
 
+protected:
+    void ledgerUpdated(Ledger* ledger); // Called by Ledger
+
+    void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase
+    void releaseLedger(const LedgerBase* ledger); // ditto
+
 private:
-    enum State {
+    enum class State {
         NEW, // Manager is not initialized
+        FAILED, // Synchronization failed
         OFFLINE, // Device is offline
-        IDLE, // Nothing to do
-        GET_INFO, // Getting ledger info
-        SUBSCRIBE, // Subscribing to ledger updates
+        READY, // Ready to run a task
         SYNC_TO_CLOUD, // Synchronizing a device-to-cloud ledger
         SYNC_FROM_CLOUD, // Synchronizing a cloud-to-device ledger
-        FAILED // Manager failed
+        SUBSCRIBE, // Subscribing to ledger updates
+        GET_INFO // Getting ledger info
     };
 
-    enum StateFlag {
-        SYNC_TO_CLOUD_PENDING = 0x01, // Some of the device-to-cloud ledgers need to be synchronized
-        SYNC_FROM_CLOUD_PENDING = 0x02, // Some of the cloud-to-device ledgers need to be synchronized
-        GET_INFO_PENDING = 0x04, // Ledger info is missing for some of the ledgers
-        SUBSCRIBE_PENDING = 0x08 // Subscription to ledger updates is pending for some of the ledgers
+    enum PendingState {
+        SYNC_TO_CLOUD = 0x01, // Synchronization of a device-to-cloud ledger is pending
+        SYNC_FROM_CLOUD = 0x02, // Synchronization of a cloud-to-device ledger is pending
+        SUBSCRIBE = 0x04, // Subscription to updates is pending
+        GET_INFO = 0x08 // Ledger info is missing
     };
 
     struct LedgerContext;
     typedef Vector<std::unique_ptr<LedgerContext>> LedgerContexts;
 
     LedgerContexts allLedgers_; // Preallocated context objects for all known ledgers
-    std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
     OutboundConnectionHandler* connHandler_; // Connection handler
-    LedgerContext* curLedger_; // Context of the currently used ledger
-    uint64_t syncTime_; // Nearest time when a device-to-cloud ledger needs to be synchronized
-    uint64_t forcedSyncTime_; // Nearest time when a device-to-cloud ledger needs to be force-sync'd
-    ledger_sync_direction lastSyncDir_; // Direction in which a ledger was last synchronized
+
+    std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
+    LedgerContext* curLedger_; // Context of the ledger being synchronized
+
+    uint64_t nextSyncTime_; // Nearest time when a device-to-cloud ledger needs to be synchronized
+    uint64_t nextForcedSyncTime_; // Nearest time when a device-to-cloud ledger needs to be force-sync'd
+    ledger_sync_direction lastSyncDir_; // Direction in which the last ledger was synchronized
+
     State state_; // Current state
     int pendingState_; // Pending state flags
 
@@ -160,27 +180,27 @@ private:
 
     LedgerManager(); // Use LedgerManager::instance()
 
-    int sendGetInfoRequest(LedgerContext* ctx);
-    int sendSubscribeRequest(LedgerContext* ctx);
+    int connectedImpl();
+    int disconnectedImpl();
+    int runImpl();
+
     int sendSetDataRequest(LedgerContext* ctx);
     int sendGetDataRequest(LedgerContext* ctx);
+    int sendSubscribeRequest();
+    int sendGetInfoRequest();
 
-    void setPendingState(LedgerContext* ctx, int flags);
-    void clearPendingState(LedgerContext* ctx, int flags);
-    void clearPendingState(int flags);
+    void setPendingState(LedgerContext* ctx, int state);
+    void clearPendingState(LedgerContext* ctx, int state);
 
-    LedgerContext* findLedgerWithState(int flags) const;
     LedgerContexts::ConstIterator findLedger(const char* name, bool& found) const;
-
-    void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase::addRef()
-    void releaseLedger(const LedgerBase* ledger); // Called by LedgerBase::release()
-
+    
+    friend class Ledger;
     friend class LedgerBase;
 };
 
 class Ledger: public LedgerBase {
 public:
-    Ledger();
+    explicit Ledger(void* ctx = nullptr);
     ~Ledger();
 
     int initReader(LedgerReader& reader);
@@ -209,10 +229,6 @@ public:
         return appData_;
     }
 
-    void* context() const {
-        return ctx_; // Immutable
-    }
-
     void lock() const {
         mutex_.lock();
     }
@@ -220,6 +236,12 @@ public:
     void unlock() const {
         mutex_.unlock();
     }
+
+protected:
+    int init(const char* name); // Called by LedgerManager
+
+    int readerClosed(bool staged); // Called by LedgerReader
+    int writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum); // Called by LedgerWriter
 
 private:
     int lastSeqNum_; // Counter incremented every time the ledger is opened for writing
@@ -238,18 +260,12 @@ private:
     void* appData_; // Application data
 
     const char* name_; // Ledger name
-    void* ctx_; // Opaque context object
     ledger_scope scope_; // Ledger scope
     ledger_sync_direction syncDir_; // Sync direction
 
     bool inited_; // Whether the ledger is initialized
 
     mutable StaticRecursiveMutex mutex_; // Ledger lock
-
-    int init(const char* name, void* ctx); // Called by LedgerManager
-
-    int readerClosed(bool staged); // Called by LedgerReader
-    int writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum); // Called by LedgerWriter
 
     int loadLedgerInfo(lfs_t* fs);
     void updateLedgerInfo(const LedgerInfo& info);
