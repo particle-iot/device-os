@@ -346,7 +346,7 @@ public:
                 I2C_ClearAllINT(i2cDev_);
                 goto ret;
             }
-            if (waitStop && !WAIT_TIMED(transConfig_.timeout_ms, !stopDetected())) {
+            if (waitStop && !WAIT_TIMED(config->timeout_ms, !stopDetected())) {
                 reset();
                 return SYSTEM_ERROR_I2C_STOP_TIMEOUT;
             }
