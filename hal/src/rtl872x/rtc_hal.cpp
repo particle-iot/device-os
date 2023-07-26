@@ -22,11 +22,11 @@
 #include "service_debug.h"
 #include "hal_platform.h"
 #include "check.h"
+#include "platform_headers.h"
 #include <time.h>
 
 extern "C" {
 #include "rtl8721d.h"
-// #include "rtl8721d_rtc.h"
 }
 
 #if HAL_PLATFORM_EXTERNAL_RTC
@@ -80,7 +80,6 @@ public:
 class RealtekRtc {
 public:
     RealtekRtc() :
-            timeInfo_{},
             alarmHandler_(nullptr),
             alarmContext_(nullptr) {
     };
@@ -143,11 +142,11 @@ public:
                 /* over one year, update days in RTC_TR */
                 rtcTimeStruct.RTC_Days = time.tm_yday;
                 RTC_SetTime(RTC_Format_BIN, &rtcTimeStruct);
-
-                /* update timeInfo_ */
-                memcpy((void*)&timeInfo_, (void*)&time, sizeof(struct tm));
             }
         }
+
+        /* update timeInfo_ */
+        memcpy((void*)&timeInfo_, (void*)&time, sizeof(struct tm));
         
         /* Convert to timestamp(seconds from 1970.1.1 00:00:00)*/
         tv->tv_sec = mktime(&time);
@@ -221,6 +220,11 @@ public:
         struct timeval tv = {};
         getTime(&tv);
         return tv.tv_sec > UNIX_TIME_20180101000000;
+    }
+
+    bool isTimeInfoValid() {
+        time_t tv_sec = mktime(&timeInfo_);
+        return tv_sec >= UNIX_TIME_20000101000000;
     }
 
     void rtcAlarmHandlerImpl() {
@@ -317,10 +321,12 @@ public:
     }
 
 private:
-    struct tm timeInfo_;
+    static struct tm timeInfo_;
     hal_rtc_alarm_handler alarmHandler_;
     void* alarmContext_;
 };
+
+retained_system struct tm RealtekRtc::timeInfo_ = {};
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 ExternalRtc rtcInstance;
@@ -332,6 +338,17 @@ RealtekRtc rtcInstance;
 
 void hal_rtc_init(void) {
     rtcInstance.init();
+
+    /* Wakes up from the hibernate mode. */
+    if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_DSLP_INFO_SW) == true) {
+#if !HAL_PLATFORM_EXTERNAL_RTC
+        if (rtcInstance.isTimeInfoValid())
+#endif
+        {
+            return;
+        }
+    }
+
     struct timeval tv = {
         .tv_sec = UNIX_TIME_20000101000000,
         .tv_usec = 0
