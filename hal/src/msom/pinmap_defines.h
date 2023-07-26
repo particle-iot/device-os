@@ -111,3 +111,7 @@
 #define UNUSED_PIN2         45
 
 #define LOW_BAT_UC          A6
+
+// Set it to PIN_INVALID if not present
+#define SWD_DAT             D28
+#define SWD_CLK             D29
