@@ -110,6 +110,9 @@
 #define UNUSED_PIN1         44
 #define UNUSED_PIN2         45
 
+// EVT
+#define LOW_BAT_DEPRECATED  A5
+// DVT
 #define LOW_BAT_UC          A6
 
 // Set it to PIN_INVALID if not present
