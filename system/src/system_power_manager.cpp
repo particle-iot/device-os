@@ -978,7 +978,7 @@ int PowerManager::getConfig(hal_power_config* conf) {
 
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
     if (!err) {
-      if ((flags & HAL_POWER_PMIC_DETECTION)) {
+      if (flags & HAL_POWER_PMIC_DETECTION) {
         conf->flags |= HAL_POWER_PMIC_DETECTION;
       }
     }
