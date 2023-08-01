@@ -977,7 +977,11 @@ int PowerManager::getConfig(hal_power_config* conf) {
     memcpy(conf, &defaultPowerConfig, std::min(destSize, defaultPowerConfig.size));
 
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-    conf->flags |= HAL_POWER_PMIC_DETECTION;
+    if (!err) {
+      if ((flags & HAL_POWER_PMIC_DETECTION)) {
+        conf->flags |= HAL_POWER_PMIC_DETECTION;
+      }
+    }
 #else
     (void)flags;
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
