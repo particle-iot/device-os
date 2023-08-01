@@ -56,8 +56,8 @@ async function generateAsset(maxCompressedSize, name) {
 
 async function generateAssets() {
 	const TOTAL_ASSETS_SIZE = 1 * 1024 * 1024;
-	const TOTAL_ASSETS_MIN = 1;
-	const TOTAL_ASSETS_MAX = 2;
+	const TOTAL_ASSETS_MIN = 2;
+	const TOTAL_ASSETS_MAX = 10;
 	const MAX_ASSET_SIZE = 500 * 1024;
 	const MIN_ASSET_SIZE = 1 * 1024;
 
