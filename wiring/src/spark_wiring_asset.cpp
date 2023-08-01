@@ -59,9 +59,11 @@ bool ApplicationAsset::isReadable() {
 }
 
 int ApplicationAsset::available() {
-    CHECK(prepareForReading());
-    int r = asset_manager_available(data_->stream, nullptr);
-    if (r == SYSTEM_ERROR_END_OF_STREAM) {
+    int r = prepareForReading();
+    if (!r) {
+        r = asset_manager_available(data_->stream, nullptr);
+    }
+    if (r == SYSTEM_ERROR_END_OF_STREAM && !eof_) {
         data_.reset();
         eof_ = true;
     }
