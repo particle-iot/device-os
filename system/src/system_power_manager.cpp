@@ -29,7 +29,7 @@ LOG_SOURCE_CATEGORY("sys.power");
 
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
-#define DEBUG_POWER 1
+#define DEBUG_POWER 0
 
 #if DEBUG_POWER
 #define DBG_PWR(_fmt, ...) \
@@ -977,11 +977,7 @@ int PowerManager::getConfig(hal_power_config* conf) {
     memcpy(conf, &defaultPowerConfig, std::min(destSize, defaultPowerConfig.size));
 
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-    if (!err) {
-      if (!(flags & HAL_POWER_PMIC_DETECTION)) {
-        conf->flags |= HAL_POWER_PMIC_DETECTION;
-      }
-    }
+    conf->flags |= HAL_POWER_PMIC_DETECTION;
 #else
     (void)flags;
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
