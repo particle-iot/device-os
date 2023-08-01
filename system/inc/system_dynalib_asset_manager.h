@@ -35,6 +35,9 @@ DYNALIB_FN(6, system_asset_manager, asset_manager_read, int(asset_manager_stream
 DYNALIB_FN(7, system_asset_manager, asset_manager_peek, int(asset_manager_stream*, char*, size_t, void*))
 DYNALIB_FN(8, system_asset_manager, asset_manager_skip, int(asset_manager_stream*, size_t, void*))
 DYNALIB_FN(9, system_asset_manager, asset_manager_seek, int(asset_manager_stream*, size_t, void*))
-DYNALIB_FN(10, system_asset_manager, asset_manager_close, int(asset_manager_stream*, void* reserved))
+DYNALIB_FN(10, system_asset_manager, asset_manager_close, int(asset_manager_stream*, void*))
+// UNSTABLE
+DYNALIB_FN(11, system_asset_manager, asset_manager_format_storage, int(void*))
+// /UNSTABLE
 
 DYNALIB_END(system_asset_manager)

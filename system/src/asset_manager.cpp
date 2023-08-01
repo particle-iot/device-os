@@ -325,15 +325,21 @@ int AssetManager::prepareForOta(size_t size, unsigned flags, int moduleFunction)
         if (moduleFunction == MODULE_FUNCTION_ASSET) {
             return SYSTEM_ERROR_TOO_LARGE;
         }
-        // Otherwise unmount filesystem
-        const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
-        CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
-        fs::FsLock lock(fs);
-        filesystem_unmount(fs);
-        filesystem_invalidate(fs);
-        availableAssets_.clear();
+        // Otherwise unmount/invalidate filesystem
+        CHECK(formatStorage(false /* remount */));
     }
 #endif // HAL_PLATFORM_ASSETS_OTA_OVERLAP
+    return 0;
+}
+
+int AssetManager::formatStorage(bool remount) {
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
+    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
+    fs::FsLock lock(fs);
+    filesystem_unmount(fs);
+    filesystem_invalidate(fs);
+    availableAssets_.clear();
+    CHECK(filesystem_mount(fs));
     return 0;
 }
 

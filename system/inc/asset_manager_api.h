@@ -274,6 +274,16 @@ int asset_manager_seek(asset_manager_stream* stream, size_t offset, void* reserv
  */
 int asset_manager_close(asset_manager_stream* stream, void* reserved);
 
+#if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+/**
+ * Format asset storage.
+ * 
+ * @param reserved Reserved (NULL)
+ * @return 0 on success or `system_error_t` error code
+ */
+int asset_manager_format_storage(void* reserved);
+#endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus

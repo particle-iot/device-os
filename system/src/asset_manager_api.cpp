@@ -163,3 +163,7 @@ int asset_manager_close(asset_manager_stream* stream, void* reserved) {
     delete reader;
     return 0;
 }
+
+int asset_manager_format_storage(void* reserved) {
+    return AssetManager::instance().formatStorage(true /* remount */);
+}

@@ -131,6 +131,8 @@ public:
     int setConsumerState(asset_manager_consumer_state state);
     int prepareForOta(size_t size, unsigned flags, int moduleFunction);
 
+    int formatStorage(bool remount = false);
+
 protected:
     AssetManager() = default;
 
