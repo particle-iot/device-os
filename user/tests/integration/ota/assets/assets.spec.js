@@ -259,6 +259,8 @@ test('11_assets_available_after_eof_reports_zero', async function() {
 test('12_assets_read_using_filesystem', async function() {
 	const deviceReported = JSON.parse(device.mailBox.shift().d);
 	const local = generatedAssetsToReport();
+	console.dir(deviceReported, { depth: null });
+	console.dir(local, { depth: null });
 	expect(local).to.deep.include(deviceReported.available[0]);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable']).to.deep.equal(local);
 });
