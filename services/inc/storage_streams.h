@@ -63,16 +63,15 @@ public:
     virtual ~StorageHalInputStream() = default;
 
     int read(char* data, size_t size) override {
-        //         data, size, storageId_, address_, remaining_, offset_);
         CHECK(peek(data, size));
         return skip(size);
     }
 
     int peek(char* data, size_t size) override {
-        //         data, size, storageId_, address_, remaining_, offset_);
         if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
+        CHECK_TRUE(data, SYSTEM_ERROR_INVALID_ARGUMENT);
         size = std::min(size, remaining_);
         CHECK(hal_storage_read(storageId_, address_ + offset_, (uint8_t*)data, size));
         return size;
@@ -156,6 +155,7 @@ public:
         if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
+        CHECK_TRUE(data, SYSTEM_ERROR_INVALID_ARGUMENT);
         size = std::min(size, remaining_);
         fs::FsLock lock(fs_);
         CHECK(lfs_file_seek(&fs_->instance, &file_, offset_, LFS_SEEK_SET));
@@ -256,6 +256,7 @@ public:
     }
 
     int peek(char* data, size_t size) override {
+        CHECK_TRUE(data, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK(waitEvent(InputStream::READABLE, 0));
         size = std::min<size_t>(size, availForRead());
         memcpy(data, inflatedChunk_ + posInChunk_, size);
@@ -402,6 +403,7 @@ public:
 
     int peek(char* data, size_t size) override {
         CHECK(error_);
+        CHECK_TRUE(data, SYSTEM_ERROR_INVALID_ARGUMENT);
         if (size_ - offset_ == 0) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }

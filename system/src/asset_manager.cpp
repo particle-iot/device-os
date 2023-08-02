@@ -41,7 +41,10 @@ const size_t FREE_BLOCKS_REQUIRED = 16;
 int parseAssetDependencies(spark::Vector<Asset>& assets, hal_storage_id storageId, uintptr_t start, uintptr_t end) {
     for (uintptr_t offset = start; offset < end;) {
         module_info_extension_t ext = {};
-        hal_storage_read(storageId, offset, (uint8_t*)&ext, sizeof(ext));
+        CHECK(hal_storage_read(storageId, offset, (uint8_t*)&ext, sizeof(ext)));
+        SCOPE_GUARD({
+            offset += ext.length;
+        });
         if (ext.type == MODULE_INFO_EXTENSION_ASSET_DEPENDENCY) {
             auto assetExt = std::unique_ptr<module_info_asset_dependency_ext_t>((module_info_asset_dependency_ext_t*)calloc(1, ext.length + 1 /* NULL name terminator */));
             CHECK_TRUE(assetExt, SYSTEM_ERROR_NO_MEMORY);
@@ -57,7 +60,6 @@ int parseAssetDependencies(spark::Vector<Asset>& assets, hal_storage_id storageI
         } else if (ext.type == MODULE_INFO_EXTENSION_END) {
             break;
         }
-        offset += ext.length;
     }
     return 0;
 }

@@ -112,6 +112,7 @@ int asset_manager_open(asset_manager_stream** stream, const asset_manager_asset*
     CHECK_TRUE(a.isValid(), SYSTEM_ERROR_INVALID_ARGUMENT);
 
     auto reader = std::make_unique<AssetReader>(a.name());
+    CHECK_TRUE(reader, SYSTEM_ERROR_NO_MEMORY);
     CHECK(reader->validate(false));
     CHECK_TRUE(reader->isValid(), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(reader->asset() == a, SYSTEM_ERROR_NOT_FOUND);
