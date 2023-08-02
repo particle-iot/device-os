@@ -2,6 +2,9 @@ suite('Assets OTA')
 
 platform('gen3');
 
+// Some platforms have pretty slow connectivity
+timeout(30 * 60 * 1000);
+
 const { createApplicationAndAssetBundle, unpackApplicationAndAssetBundle, config: binaryVersionReaderConfig, createAssetModule, HalModuleParser, ModuleInfo } = require('binary-version-reader');
 const { randomBytes } = require('crypto');
 const { readFile } = require('fs').promises;
