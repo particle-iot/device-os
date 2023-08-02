@@ -61,7 +61,7 @@
 #define A4                  D15
 #define A5                  D14
 #define A6                  D29
-#define A7                  VBAT_MEAS
+#define A7                  D28
 
 // SPI
 #define SS                  D8
@@ -92,7 +92,7 @@
 #define CTS2                33
 #define RTS2                32
 
-#define WKP                 D27
+#define WKP                 D28
 
 // RGB and Button
 #define RGBR                34
@@ -116,5 +116,5 @@
 #define LOW_BAT_UC          A6
 
 // Set it to PIN_INVALID if not present
-#define SWD_DAT             D28
-#define SWD_CLK             D29
+#define SWD_DAT             D27
+#define SWD_CLK             D14
