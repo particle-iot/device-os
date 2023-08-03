@@ -19,7 +19,6 @@
 
 #include "logging.h"
 #define WIZNETIF_CONFIG_LOG_CATEGORY "net.en.cfg"
-LOG_SOURCE_CATEGORY(WIZNETIF_CONFIG_LOG_CATEGORY)
 
 #include "system_error.h"
 #include <algorithm>
