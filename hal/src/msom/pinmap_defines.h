@@ -106,7 +106,7 @@
 #define BGVINT              40
 #define BGDTR               41
 #define GNSS_ANT_PWR        42
-#define VBAT_MEAS           43
+
 #define UNUSED_PIN1         44
 #define UNUSED_PIN2         45
 
