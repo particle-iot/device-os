@@ -48,7 +48,7 @@ namespace {
 
 #if HAL_PLATFORM_ERROR_MESSAGES
 
-const size_t ERROR_MESSAGE_BUFFER_SIZE = 128;
+const size_t ERROR_MESSAGE_BUFFER_SIZE = 1024;
 
 // TODO: Use thread-local storage
 char g_errorMsg[ERROR_MESSAGE_BUFFER_SIZE] = {};
