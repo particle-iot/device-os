@@ -21,6 +21,7 @@ let assets = [];
 let bundle = null;
 let timestamp = 0;
 const PRODUCT_VERSION = 999;
+let otaPassedOk = true;
 
 async function delayMs(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -191,6 +192,9 @@ function cloudReportedToReport(rep) {
 }
 
 before(async function() {
+	if (!otaPassedOk) {
+		process.exit(-1);
+	}
 	api = this.particle.apiClient.instance;
 	auth = this.particle.apiClient.token;
 	device = this.particle.devices[0];
@@ -232,9 +236,11 @@ test('05_product_ota_start', async function() {
 	expect(dev.body.development).to.be.false;
 	expect(dev.body.desired_firmware_version).to.equal(PRODUCT_VERSION);
 	expect(dev.body.firmware_version).to.not.equal(PRODUCT_VERSION);
+	otaPassedOk = false;
 });
 
 test('06_product_ota_wait', async function() {
+	otaPassedOk = true;
 });
 
 test('07_product_ota_complete', async function() {
