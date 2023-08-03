@@ -7,7 +7,7 @@ timeout(30 * 60 * 1000);
 
 const { createApplicationAndAssetBundle, unpackApplicationAndAssetBundle, config: binaryVersionReaderConfig, createAssetModule, HalModuleParser, ModuleInfo } = require('binary-version-reader');
 const { randomBytes } = require('crypto');
-const { readFile } = require('fs').promises;
+const { readFile, writeFile } = require('fs').promises;
 
 const chaiExclude = require('chai-exclude');
 chai.use(chaiExclude);
@@ -19,6 +19,7 @@ let deviceId = null;
 let product = null;
 let assets = [];
 let bundle = null;
+let timestamp = 0;
 const PRODUCT_VERSION = 999;
 
 async function delayMs(ms) {
@@ -59,18 +60,20 @@ async function generateAsset(maxCompressedSize, name) {
 
 async function generateAssets() {
 	const TOTAL_ASSETS_SIZE = 1 * 1024 * 1024;
-	const TOTAL_ASSETS_MIN = 2;
+	const TOTAL_ASSETS_MIN = 3;
 	const TOTAL_ASSETS_MAX = 10;
 	const MAX_ASSET_SIZE = 500 * 1024;
 	const MIN_ASSET_SIZE = 1 * 1024;
 
 	assets.length = 0;
 
+	timestamp = Date.now();
+
 	const assetsNum = randomInt(TOTAL_ASSETS_MIN, TOTAL_ASSETS_MAX);
 	let totalSize = 0;
 	for (let i = 0; i < assetsNum && totalSize < TOTAL_ASSETS_SIZE; i++) {
 		const size = Math.min(randomInt(MIN_ASSET_SIZE, MAX_ASSET_SIZE), TOTAL_ASSETS_SIZE - totalSize);
-		const name = `asset${i}.bin`;
+		const name = `asset${i}_${timestamp}.bin`;
 		const asset = await generateAsset(size, name);
 		if (!asset) {
 			break;
@@ -81,6 +84,10 @@ async function generateAssets() {
 
 	const application = await readFile(device.testAppBinFile);
 	bundle = await createApplicationAndAssetBundle(application, assets);
+
+	console.log('Generated new set of assets');
+	console.dir([...assets].map((val) => { let v = {...val}; delete v.data; return v; }), { depth: null });
+	await writeFile(`/tmp/ota_assets_${timestamp}_bundle.zip`, bundle);
 }
 
 async function uploadProductFirmware(removeOnly) {
@@ -94,6 +101,7 @@ async function uploadProductFirmware(removeOnly) {
 	if (removeOnly) {
 		return;
 	}
+
 	await api.request({ uri: `/v1/products/${product}/firmware`, method: 'post', auth,
 		form: {
 			version: PRODUCT_VERSION,
@@ -101,7 +109,7 @@ async function uploadProductFirmware(removeOnly) {
 			description: 'Device OS Test Runner (ota/assets) test'
 		},
 		files: {
-			'bundle.zip': bundle
+			[`bundle_${timestamp}.zip`]: bundle
 		}
 	});
 }
@@ -125,6 +133,7 @@ async function waitFlashStatusEvent(ctx, timeout) {
 		}
 		data = await ctx.particle.receiveEvent('spark/flash/status', { timeout: t });
 		ctx.particle.log.verbose('spark/flash/status:', data);
+		console.log('spark/flash/status:', data);
 		if (data.startsWith('success')) {
 			return true;
 		}
@@ -192,7 +201,7 @@ before(async function() {
 });
 
 test('01_ad_hoc_ota_start', async function() {
-	await flash(this, bundle, 'bundle.zip');
+	await flash(this, bundle, `bundle_${timestamp}.zip`);
 });
 
 test('02_ad_hoc_ota_wait', async function() {
