@@ -22,6 +22,7 @@
 #include <mutex>
 #include "flash_mal.h"
 #include "system_error.h"
+#include "file_util.h"
 
 using namespace particle::fs;
 
@@ -297,6 +298,7 @@ int filesystem_mount(filesystem_t* fs) {
             // Make sure /usr and /tmp folders exist
             int r = lfs_mkdir(&fs->instance, "/usr");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+            particle::rmrf("/tmp");
             r = lfs_mkdir(&fs->instance, "/tmp");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
             // FIXME: recursively cleanup /tmp
@@ -400,4 +402,23 @@ int filesystem_dump_info(filesystem_t* fs) {
 #endif /* DEBUG_BUILD */
 
     return 0;
+}
+
+int filesystem_to_system_error(int error) {
+    switch (error) {
+    case LFS_ERR_OK: return SYSTEM_ERROR_NONE;
+    case LFS_ERR_IO: return SYSTEM_ERROR_FILESYSTEM_IO;
+    case LFS_ERR_CORRUPT: return SYSTEM_ERROR_FILESYSTEM_CORRUPT;
+    case LFS_ERR_NOENT: return SYSTEM_ERROR_FILESYSTEM_NOENT;
+    case LFS_ERR_EXIST: return SYSTEM_ERROR_FILESYSTEM_EXIST;
+    case LFS_ERR_NOTDIR: return SYSTEM_ERROR_FILESYSTEM_NOTDIR;
+    case LFS_ERR_ISDIR: return SYSTEM_ERROR_FILESYSTEM_ISDIR;
+    case LFS_ERR_NOTEMPTY: return SYSTEM_ERROR_FILESYSTEM_NOTEMPTY;
+    case LFS_ERR_BADF: return SYSTEM_ERROR_FILESYSTEM_BADF;
+    case LFS_ERR_FBIG: return SYSTEM_ERROR_FILESYSTEM_FBIG;
+    case LFS_ERR_INVAL: return SYSTEM_ERROR_FILESYSTEM_INVAL;
+    case LFS_ERR_NOSPC: return SYSTEM_ERROR_FILESYSTEM_NOSPC;
+    case LFS_ERR_NOMEM: return SYSTEM_ERROR_FILESYSTEM_NOMEM;
+    default: return SYSTEM_ERROR_FILESYSTEM;
+    }
 }
