@@ -283,12 +283,16 @@ test('04_ad_hoc_ota_restore', async function() {
 });
 
 test('05_product_ota_start', async function() {
+	try {
 	// Regenerate
 	await generateAssets();
 	await uploadProductFirmware(false /* removeOnly */);
 
 	await api.updateDevice({ deviceId, auth, development: false, flash: true, product, desiredFirmwareVersion: productVersion });
 	const dev = await api.getDevice({ deviceId, auth });
+	} catch (err) {
+		console.log(err);
+	}
 	expect(dev.body.development).to.be.false;
 	expect(dev.body.desired_firmware_version).to.equal(productVersion);
 	expect(dev.body.firmware_version).to.not.equal(productVersion);
