@@ -20,8 +20,7 @@ let product = null;
 let assets = [];
 let bundle = null;
 let timestamp = 0;
-const PRODUCT_VERSION = 999;
-let otaPassedOk = true;
+let productVersion = 0;
 
 async function delayMs(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
@@ -94,7 +93,7 @@ async function generateAssets() {
 async function uploadProductFirmware(removeOnly) {
 	const fws = await api.listProductFirmware({ product, auth });
 	for (let fw of fws.body) {
-		if (fw.version === 999) {
+		if (fw.version === productVersion) {
 			await api.delete({ uri: `/v1/products/${product}/firmware/${fw.version}`, auth });
 			break;
 		}
@@ -105,8 +104,8 @@ async function uploadProductFirmware(removeOnly) {
 
 	await api.request({ uri: `/v1/products/${product}/firmware`, method: 'post', auth,
 		form: {
-			version: PRODUCT_VERSION,
-			title: `v${PRODUCT_VERSION}_device_os_test`,
+			version: productVersion,
+			title: `v${productVersion}_device_os_test`,
 			description: 'Device OS Test Runner (ota/assets) test'
 		},
 		files: {
@@ -191,15 +190,72 @@ function cloudReportedToReport(rep) {
 	}});
 }
 
-before(async function() {
-	if (!otaPassedOk) {
-		process.exit(-1);
+
+async function generateProductVersion() {
+	if (productVersion) {
+		return productVersion;
 	}
+
+	const dev = await api.getDevice({ deviceId, auth });
+	let version = null;
+	for (let group of dev.body.groups) {
+		if (group.startsWith('ci_prod_ver-')) {
+			version = group.split('-')[1];
+		}
+	}
+
+	if (!version) {
+		version = randomInt(1, 0xfffe);
+	}
+
+	for (;; version = randomInt(1, 0xfffe)) {
+		console.log(`try version ${version}`);
+		let devs = await api.listDevices({ auth, product, groups: [`ci_prod_ver-${version}`] });
+		if (devs.body.devices.length === 1 && devs.body.devices[0].id === deviceId) {
+			break;
+		}
+		if (devs.body.devices.length !== 0) {
+			continue;
+		}
+		try {
+			await api.post({ uri: `/v1/products/${product}/groups`, auth, data: {
+				name: `ci_prod_ver-${version}`,
+				product_id: product
+			}});
+		} catch (err) {
+			console.log(err);
+			if ('already exists' in err.body.error) {
+				continue;
+			}
+			throw err;
+		}
+		devs = await api.listDevices({ auth, product, groups: [`ci_prod_ver-${version}`] });
+		if (devs.body.devices.length !== 0) {
+			continue;
+		}
+		await api.put({ uri: api.deviceUri({ deviceId, product }), auth, data: {
+			groups: [`ci_prod_ver-${version}`]
+		}});
+		devs = await api.listDevices({ auth, product, groups: [`ci_prod_ver-${version}`] });
+		console.log(devs);
+		if (devs.body.devices.length !== 1) {
+			await api.updateDevice({ auth, deviceId, product, groups: [] });
+			continue;
+		}
+		break;
+	}
+	console.log('Product version', version);
+	productVersion = version;
+	return productVersion;
+}
+
+before(async function() {
 	api = this.particle.apiClient.instance;
 	auth = this.particle.apiClient.token;
 	device = this.particle.devices[0];
 	deviceId = device.id;
 	await checkDeviceInProductAndMarkAsDevelopment();
+	await generateProductVersion();
 	await generateAssets();
 	await uploadProductFirmware(true /* removeOnly */);
 });
@@ -231,16 +287,14 @@ test('05_product_ota_start', async function() {
 	await generateAssets();
 	await uploadProductFirmware(false /* removeOnly */);
 
-	await api.updateDevice({ deviceId, auth, development: false, flash: true, product, desiredFirmwareVersion: PRODUCT_VERSION });
+	await api.updateDevice({ deviceId, auth, development: false, flash: true, product, desiredFirmwareVersion: productVersion });
 	const dev = await api.getDevice({ deviceId, auth });
 	expect(dev.body.development).to.be.false;
-	expect(dev.body.desired_firmware_version).to.equal(PRODUCT_VERSION);
-	expect(dev.body.firmware_version).to.not.equal(PRODUCT_VERSION);
-	otaPassedOk = false;
+	expect(dev.body.desired_firmware_version).to.equal(productVersion);
+	expect(dev.body.firmware_version).to.not.equal(productVersion);
 });
 
 test('06_product_ota_wait', async function() {
-	otaPassedOk = true;
 });
 
 test('07_product_ota_complete', async function() {
