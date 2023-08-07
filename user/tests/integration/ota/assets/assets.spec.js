@@ -4,7 +4,6 @@ platform('gen3');
 
 // Some platforms have pretty slow connectivity
 timeout(30 * 60 * 1000);
-systemThread('enabled')
 
 const { createApplicationAndAssetBundle, unpackApplicationAndAssetBundle, config: binaryVersionReaderConfig,
 		createAssetModule, HalModuleParser, ModuleInfo, updateModuleSuffix, updateModuleCrc32, updateModuleSha256 } = require('binary-version-reader');
@@ -122,10 +121,23 @@ async function uploadProductFirmware(removeOnly) {
 	});
 }
 
-async function flash(ctx, data, name, { timeout = 5 * 60 * 1000, mayFail = false } = {}) {
-	await api.flashDevice({ deviceId, files: { [name]: data }, auth });
-	const ok = await waitFlashStatusEvent(ctx, timeout);
-	if (!ok && !mayFail) {
+async function flash(ctx, data, name, { timeout = 5 * 60 * 1000, retry = 5 } = {}) {
+	let ok = false;
+	for (let i = 0; i < retry; i++) {
+		await delayMs(i * 5000);
+		try {
+			await api.flashDevice({ deviceId, files: { [name]: data }, auth });
+			ok = await waitFlashStatusEvent(ctx, timeout);
+			if (ok) {
+				return ok;
+			} else {
+				continue;
+			}
+		} catch (err) {
+			console.log(err.message);
+		}
+	}
+	if (!ok) {
 		throw new Error('Update failed');
 	}
 	return ok;
