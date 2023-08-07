@@ -129,6 +129,7 @@ typedef struct asset_manager_asset {
     uint8_t hash_type;
 
     uint32_t size;
+    uint32_t storage_size;
 } asset_manager_asset_t;
 
 typedef struct asset_manager_info {
@@ -136,6 +137,8 @@ typedef struct asset_manager_info {
     uint16_t version;
 
     void* internal;
+
+    uint16_t asset_size;
 
     asset_manager_asset* required;
     uint16_t required_count;

@@ -1043,24 +1043,24 @@ public:
     static spark::Vector<ApplicationAsset> assetsAvailable();
     static int assetsHandled(bool state = true);
 
-    static int onAssetsOta(OnAssetsOtaCallback cb, void* context = nullptr);
-    static int onAssetsOta(OnAssetsOtaStdFunc cb);
+    static int onAssetOta(OnAssetOtaCallback cb, void* context = nullptr);
+    static int onAssetOta(OnAssetOtaStdFunc cb);
 
     template <typename T>
-    static int onAssetsOta(void(T::*callback)(spark::Vector<ApplicationAsset> assets), T* instance) {
-        return onAssetsOta((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : (OnAssetsOtaCallback)nullptr);
+    static int onAssetOta(void(T::*callback)(spark::Vector<ApplicationAsset> assets), T* instance) {
+        return onAssetOta((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : (OnAssetOtaCallback)nullptr);
     }
 
-    static int onAssetsOTA(OnAssetsOtaCallback cb, void* context = nullptr) {
-        return onAssetsOta(cb, context);
+    static int onAssetOTA(OnAssetOtaCallback cb, void* context = nullptr) {
+        return onAssetOta(cb, context);
     }
-    static int onAssetsOTA(OnAssetsOtaStdFunc cb) {
-        return onAssetsOta(cb);
+    static int onAssetOTA(OnAssetOtaStdFunc cb) {
+        return onAssetOta(cb);
     }
 
     template <typename T>
-    static int onAssetsOTA(void(T::*callback)(spark::Vector<ApplicationAsset> assets), T* instance) {
-        return onAssetsOTA((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : (OnAssetsOtaCallback)nullptr);
+    static int onAssetOTA(void(T::*callback)(spark::Vector<ApplicationAsset> assets), T* instance) {
+        return onAssetOTA((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : (OnAssetOtaCallback)nullptr);
     }
 #endif // HAL_PLATFORM_ASSETS
 

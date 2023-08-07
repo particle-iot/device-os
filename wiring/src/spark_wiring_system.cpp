@@ -114,7 +114,8 @@ spark::Vector<ApplicationAsset> SystemClass::assetsRequired() {
         asset_manager_free_info(&info, nullptr);
     });
     for (size_t i = 0; i < info.required_count; i++) {
-        assets.append(ApplicationAsset(&info.required[i]));
+        asset_manager_asset* a = (asset_manager_asset*)(((uint8_t*)info.required) + info.asset_size * i);
+        assets.append(ApplicationAsset(a));
     }
     return assets;
 }
@@ -131,7 +132,8 @@ spark::Vector<ApplicationAsset> SystemClass::assetsAvailable() {
         asset_manager_free_info(&info, nullptr);
     });
     for (size_t i = 0; i < info.available_count; i++) {
-        assets.append(ApplicationAsset(&info.available[i]));
+        asset_manager_asset* a = (asset_manager_asset*)(((uint8_t*)info.available) + info.asset_size * i);
+        assets.append(ApplicationAsset(a));
     }
     return assets;
 }
@@ -140,20 +142,20 @@ int SystemClass::assetsHandled(bool state) {
     return asset_manager_set_consumer_state(state ? ASSET_MANAGER_CONSUMER_STATE_HANDLED : ASSET_MANAGER_CONSUMER_STATE_WANT, nullptr);
 }
 
-int SystemClass::onAssetsOta(OnAssetsOtaCallback cb, void* context) {
-    OnAssetsOtaStdFunc f = [cb, context](spark::Vector<ApplicationAsset> assets) -> void {
+int SystemClass::onAssetOta(OnAssetOtaCallback cb, void* context) {
+    OnAssetOtaStdFunc f = [cb, context](spark::Vector<ApplicationAsset> assets) -> void {
         if (cb) {
             cb(assets, context);
         }
     };
-    return onAssetsOta(f);
+    return onAssetOta(f);
 }
 
-int SystemClass::onAssetsOta(OnAssetsOtaStdFunc cb) {
-    onAssetsOtaHookStorage() = cb;
+int SystemClass::onAssetOta(OnAssetOtaStdFunc cb) {
+    onAssetOtaHookStorage() = cb;
     asset_manager_set_notify_hook([](void* context) -> void {
-        if (onAssetsOtaHookStorage()) {
-            onAssetsOtaHookStorage()(SystemClass::assetsAvailable());
+        if (onAssetOtaHookStorage()) {
+            onAssetOtaHookStorage()(SystemClass::assetsAvailable());
         }
     }, nullptr, nullptr);
     return 0;

@@ -36,6 +36,7 @@ ApplicationAsset::ApplicationAsset(const asset_manager_asset* asset)
     if (asset->size) {
         size_ = asset->size;
     }
+    storageSize_ = asset->storage_size;
 }
 
 String ApplicationAsset::name() const {
@@ -48,6 +49,10 @@ AssetHash ApplicationAsset::hash() const {
 
 size_t ApplicationAsset::size() const {
     return size_;
+}
+
+size_t ApplicationAsset::storageSize() const {
+    return storageSize_;
 }
 
 bool ApplicationAsset::isValid() const {

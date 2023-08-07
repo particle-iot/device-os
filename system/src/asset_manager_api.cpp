@@ -35,6 +35,7 @@ void assetToApiAsset(const Asset& asset, asset_manager_asset* apiAsset) {
     apiAsset->hash_type = asset.hash().type();
     apiAsset->hash_length = asset.hash().hash().size();
     apiAsset->hash = asset.hash().hash().data();
+    apiAsset->storage_size = asset.storageSize();
 }
 
 Asset assetFromApiAsset(const asset_manager_asset* apiAsset) {
@@ -63,6 +64,7 @@ int asset_manager_get_info(asset_manager_info* info, void* reserved) {
         }
     });
 
+    info->asset_size = sizeof(asset_manager_asset);
     info->required_count = internal->required.size();
     info->available_count = internal->available.size();
 

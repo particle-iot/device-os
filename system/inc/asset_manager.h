@@ -30,11 +30,12 @@ namespace particle {
 class Asset {
 public:
     Asset() = default;
-    Asset(const char* name, const AssetHash& hash, size_t size = 0);
+    Asset(const char* name, const AssetHash& hash, size_t size = 0, size_t storageSize = 0);
 
     const String& name() const;
     const AssetHash& hash() const;
     size_t size() const;
+    size_t storageSize() const;
 
     bool isValid() const;
 
@@ -44,12 +45,14 @@ private:
     String name_;
     AssetHash hash_;
     size_t size_ = 0;
+    size_t storageSize_ = 0;
 };
 
-inline Asset::Asset(const char* name, const AssetHash& hash, size_t size)
+inline Asset::Asset(const char* name, const AssetHash& hash, size_t size, size_t storageSize)
         : name_(name),
           hash_(hash),
-          size_(size) {
+          size_(size),
+          storageSize_(storageSize) {
 }
 
 inline const String& Asset::name() const {
@@ -62,6 +65,10 @@ inline const AssetHash& Asset::hash() const {
 
 inline size_t Asset::size() const {
     return size_;
+}
+
+inline size_t Asset::storageSize() const {
+    return storageSize_;
 }
 
 inline bool Asset::isValid() const {

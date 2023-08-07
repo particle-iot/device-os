@@ -35,6 +35,7 @@ public:
     String name() const;
     AssetHash hash() const;
     size_t size() const;
+    size_t storageSize() const;
 
     bool isValid() const;
     bool isReadable();
@@ -63,6 +64,7 @@ private:
     String name_;
     AssetHash hash_;
     size_t size_ = 0;
+    size_t storageSize_ = 0;
     bool eof_ = false;
 
     struct Data {
@@ -80,14 +82,14 @@ private:
 using particle::ApplicationAsset;
 using particle::AssetHash;
 
-typedef void (*OnAssetsOtaCallback)(spark::Vector<ApplicationAsset> assets, void* context);
-typedef std::function<void(spark::Vector<ApplicationAsset> assets)> OnAssetsOtaStdFunc;
+typedef void (*OnAssetOtaCallback)(spark::Vector<ApplicationAsset> assets, void* context);
+typedef std::function<void(spark::Vector<ApplicationAsset> assets)> OnAssetOtaStdFunc;
 
 // FIXME: there is an issue with System construction, so storage for the hook has
 // to be initialized in a singleton-like manner to avoid global constructor initialization
 // order issues.
-inline OnAssetsOtaStdFunc& onAssetsOtaHookStorage() {
-    static OnAssetsOtaStdFunc f;
+inline OnAssetOtaStdFunc& onAssetOtaHookStorage() {
+    static OnAssetOtaStdFunc f;
     return f;
 }
 

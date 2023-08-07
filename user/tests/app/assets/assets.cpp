@@ -34,7 +34,7 @@ void handleAvailableAssets(spark::Vector<ApplicationAsset> assets) {
     hookAssets = assets;
 }
 
-STARTUP(System.onAssetsOta(handleAvailableAssets));
+STARTUP(System.onAssetOta(handleAvailableAssets));
 
 void logAssetInfo(ApplicationAsset& asset) {
     LOG(INFO, "Asset name=%s hash=%s size=%u valid=%d readable=%d",

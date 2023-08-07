@@ -420,7 +420,7 @@ int AssetReader::validate(bool full) {
     dataSize_ = moduleSize - suffix.size - sizeof(uint32_t) - dataOffset_;
     size_ = moduleSize;
     originalSize_ = compressed ? origSize : (moduleSize - sizeof(module_info_t) - sizeof(uint32_t) - suffix.size);
-    asset_ = Asset(asset.name(), asset.hash(), originalSize_);
+    asset_ = Asset(asset.name(), asset.hash(), originalSize_, moduleSize);
     return 0;
 }
 
