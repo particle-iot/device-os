@@ -159,6 +159,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         }
 
         Pinmux_Config(hal_pin_to_rtl_pin(pin), PINMUX_FUNCTION_GPIO);
+        hal_gpio_configure_drive_strength(pin, HAL_GPIO_DRIVE_DEFAULT);
 
         // Pre-set the output value if requested to avoid a glitch
         if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
@@ -434,7 +435,7 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
     return (hal_timer_micros(nullptr) - pulse_start);
 }
 
-hal_gpio_drive_t hal_gpio_get_drive_strength(hal_pin_t pin) {
+int hal_gpio_get_drive_strength(hal_pin_t pin, hal_gpio_drive_t* drive) {
     uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
 
     /* get PADCTR */
@@ -449,17 +450,16 @@ hal_gpio_drive_t hal_gpio_get_drive_strength(hal_pin_t pin) {
     //   - PAD_DRV_STRENGTH_1: 8mA   (Severe overshoot, not recommended to use it)
     //   - PAD_DRV_STRENGTH_2: 12mA
     //   - PAD_DRV_STRENGTH_3: 16mA  (Severe overshoot, not recommended to use it)
-    hal_gpio_drive_t drive = HAL_GPIO_DRIVE_DEFAULT;
     switch(drvStrength) {
-        case PAD_DRV_STRENGTH_0: drive = HAL_GPIO_DRIVE_STANDARD; break;
-        case PAD_DRV_STRENGTH_2: drive = HAL_GPIO_DRIVE_HIGH; break;
+        case PAD_DRV_STRENGTH_0: *drive = HAL_GPIO_DRIVE_STANDARD; break;
+        case PAD_DRV_STRENGTH_2: *drive = HAL_GPIO_DRIVE_HIGH; break;
         // DVOS won't configure PAD_DRV_STRENGTH_1 and PAD_DRV_STRENGTH_3 due to the
         // severe overshoot, so it is the default setting
         default:
-            drive = HAL_GPIO_DRIVE_DEFAULT; break;
+            *drive = HAL_GPIO_DRIVE_DEFAULT; break;
     }
 
-    return drive;
+    return SYSTEM_ERROR_NONE;
 }
 
 int hal_gpio_configure_drive_strength(hal_pin_t pin, hal_gpio_drive_t drive) {
