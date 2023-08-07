@@ -28,8 +28,6 @@ extern "C" {
 #include "logging.h"
 #include "system_cache.h"
 #include <algorithm>
-#include "gpio_hal.h"
-#include "scope_guard.h"
 
 #define APBPeriph_ADC_CLOCK         (SYS_CLK_CTRL1  << 30 | BIT_LSYS_ADC_CKE)
 #define APBPeriph_ADC               (SYS_FUNC_EN1  << 30 | BIT_LSYS_ADC_FEN)
@@ -106,22 +104,6 @@ public:
         if (pinInfo->pin_func != PF_NONE && pinInfo->pin_func != PF_DIO) {
             return 0;
         }
-
-    #if PLATFORM_ID == PLATFORM_MSOM
-        PinMode originalMode;
-        // On MSoM platform A7 and D28 are electrically connected. 
-        // When reading on A7/VBAT_MEAS/ADC channel 7, ensure D28/PA20 is HighZ
-        if (pin == A7) {
-            originalMode = hal_gpio_get_mode(D28);
-            hal_gpio_mode(D28, PIN_MODE_NONE);
-        };
-
-        SCOPE_GUARD ({
-            if (pin == A7) {
-                hal_gpio_mode(D28, originalMode);
-            }
-        });
-    #endif
 
         if (adcState_ != HAL_ADC_STATE_ENABLED) {
             init();

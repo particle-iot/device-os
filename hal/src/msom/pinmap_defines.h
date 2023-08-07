@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define TOTAL_PINS          46
+#define TOTAL_PINS          45
 #define TOTAL_ANALOG_PINS   7
 #define FIRST_ANALOG_PIN    19
 
@@ -107,8 +107,8 @@
 #define BGDTR               41
 #define GNSS_ANT_PWR        42
 
-#define UNUSED_PIN1         44
-#define UNUSED_PIN2         45
+#define UNUSED_PIN1         43
+#define UNUSED_PIN2         44
 
 // EVT
 #define LOW_BAT_DEPRECATED  A5
