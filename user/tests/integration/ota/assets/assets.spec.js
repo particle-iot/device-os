@@ -190,6 +190,7 @@ function generatedAssetsToReport() {
 	return assets.map((val) => { return {
 		name: val.name,
 		size: val.originalSize,
+		storageSize: val.size,
 		valid: true,
 		readable: true,
 		hash: val.hash,
@@ -202,6 +203,7 @@ function cloudReportedToReport(rep) {
 	return rep.map((val) => { return {
 		name: val.name,
 		size: 0,
+		storageSize: 0,
 		valid: val.status === 'available',
 		readable: val.status === 'available',
 		hash: '',
@@ -292,8 +294,8 @@ test('03_ad_hoc_ota_complete', async function() {
 	const cloudReported = cloudReportedToReport(await waitForAssets(120000));
 	const local = generatedAssetsToReport();
 	expect(deviceReported.available).to.deep.equal(local);
-	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable']).to.deep.equal(local);
-	expect(cloudReported).excludingEvery(['hash', 'crc', 'size']).to.deep.equal(local);
+	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
 });
 
 test('04_ad_hoc_ota_restore', async function() {
@@ -322,8 +324,8 @@ test('07_product_ota_complete', async function() {
 	const cloudReported = cloudReportedToReport(await waitForAssets(120000));
 	const local = generatedAssetsToReport();
 	expect(deviceReported.available).to.deep.equal(local);
-	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable']).to.deep.equal(local);
-	expect(cloudReported).excludingEvery(['hash', 'crc', 'size']).to.deep.equal(local);
+	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
+	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
 });
 
 test('08_product_ota_complete_handled', async function() {
@@ -338,7 +340,7 @@ test('10_assets_read_skip_reset', async function() {
     const deviceReported = JSON.parse(device.mailBox.shift().d);
 	const local = generatedAssetsToReport();
 	expect(deviceReported.available).to.deep.equal(local);
-	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable']).to.deep.equal(local);
+	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
 });
 
 test('11_assets_available_after_eof_reports_zero', async function() {
@@ -351,7 +353,7 @@ test('12_assets_read_using_filesystem', async function() {
 	console.dir(deviceReported, { depth: null });
 	console.dir(local, { depth: null });
 	expect(local).to.deep.include(deviceReported.available[0]);
-	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable']).to.deep.equal(local);
+	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
 });
 
 test('99_product_ota_restore', async function() {

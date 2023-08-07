@@ -89,6 +89,8 @@ void serializeAsset(JSONBufferWriter& w, ReportAsset& asset) {
     w.value(asset.asset.name());
     w.name("size");
     w.value(asset.asset.size());
+    w.name("storageSize");
+    w.value(asset.asset.storageSize());
     w.name("valid");
     w.value(asset.asset.isValid());
     w.name("readable");
@@ -175,7 +177,7 @@ void handleAvailableAssets(spark::Vector<ApplicationAsset> assets) {
 
 } // namespace
 
-STARTUP(System.onAssetsOta(handleAvailableAssets));
+STARTUP(System.onAssetOta(handleAvailableAssets));
 
 test(01_ad_hoc_ota_start) {
     assertEqual(0, System.assetsRequired().size());
