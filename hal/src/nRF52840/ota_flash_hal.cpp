@@ -492,24 +492,15 @@ int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOpti
     return count;
 }
 
-char tmpErrorMessage[1024] = {};
-
 int validateModules(const hal_module_t* modules, size_t moduleCount) {
-    for (size_t i = 0; i < moduleCount; ++i) {
-        const auto module = modules + i;
-        snprintf(tmpErrorMessage, sizeof(tmpErrorMessage) - 1 - strlen(tmpErrorMessage), "mod type:%u index:%u version:%u flags:%02x start:%08x end:%08x plat:%u chked:%02x res:%02x crc:%08x;;;",
-                module->info.module_function, module->info.module_index, module->info.module_version, module->info.flags, (unsigned int)module->info.module_start_address, (unsigned int)module->info.module_end_address,
-                module->info.platform_id, module->validity_checked, module->validity_result, (unsigned int)module->crc.crc32);
-    }
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = modules + i;
         const auto info = &module->info;
         LOG(INFO, "Validating module; type: %u; index: %u; version: %u", (unsigned)module_function(info),
                 (unsigned)module_index(info), (unsigned)module_version(info));
         if (module->validity_result != module->validity_checked) {
-            // SYSTEM_ERROR_MESSAGE("Validation failed; result: 0x%02x; checked: 0x%02x", (unsigned)module->validity_result,
-            //         (unsigned)module->validity_checked);
-            SYSTEM_ERROR_MESSAGE("%s", tmpErrorMessage);
+            SYSTEM_ERROR_MESSAGE("Validation failed; result: 0x%02x; checked: 0x%02x", (unsigned)module->validity_result,
+                    (unsigned)module->validity_checked);
             return validityResultToSystemError(module->validity_result, module->validity_checked);
         }
         const bool dropModuleInfo = (info->flags & MODULE_INFO_FLAG_DROP_MODULE_INFO);
