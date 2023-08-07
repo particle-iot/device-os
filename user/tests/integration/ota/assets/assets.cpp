@@ -4,8 +4,7 @@
 #include "test.h"
 #include "softcrc32.h"
 #include "check.h"
-
-PRODUCT_VERSION(999);
+#include "storage_hal.h"
 
 namespace {
 
@@ -16,6 +15,47 @@ struct ReportAsset {
     uint32_t crc = 0;
     int error = 0;
 };
+
+uint16_t getProductVersion() {
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    const int r = system_info_get_unstable(&info, 0 /* flags */, nullptr /* reserved */);
+    if (r != 0) {
+        return 0xffff;
+    }
+    SCOPE_GUARD({
+        system_info_free_unstable(&info, nullptr /* reserved */);
+    });
+    hal_module_t* module = nullptr;
+    for (size_t i = 0; i < info.module_count; ++i) {
+        auto mod = &info.modules[i];
+        if (mod->info.module_function == MODULE_FUNCTION_USER_PART && mod->bounds.store == MODULE_STORE_MAIN) {
+            if (!module || mod->bounds.module_index > module->bounds.module_index) {
+                module = mod;
+            }
+        }
+    }
+    auto storageId = HAL_STORAGE_ID_INVALID;
+    if (module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
+        storageId = HAL_STORAGE_ID_INTERNAL_FLASH;
+    } else if (module->bounds.location == MODULE_BOUNDS_LOC_EXTERNAL_FLASH) {
+        storageId = HAL_STORAGE_ID_EXTERNAL_FLASH;
+    }
+    if (storageId == HAL_STORAGE_ID_INVALID) {
+        return 0xffff;
+    }
+
+    module_info_product_data_ext_t product = {};
+    uintptr_t productDataStart = (uintptr_t)module->info.module_end_address - sizeof(module_info_suffix_base_t) - sizeof(module_info_product_data_ext_t);
+    if (hal_storage_read(storageId, productDataStart, (uint8_t*)&product, sizeof(product))) {
+        return 0xffff;
+    }
+    return product.version;
+}
+
+// This is a replacement for `PRODUCT_VERSION(xxx)`. We are going to be modifying product extension in JS side of tests
+// so, need to read from the actual suffix/extension.
+STARTUP(spark_protocol_set_product_firmware_version(spark_protocol_instance(), getProductVersion()));
 
 int readAndCalculateAssetCrc(ApplicationAsset& asset, uint32_t* outCrc, bool resetAndSkip) {
     uint32_t crc = 0;

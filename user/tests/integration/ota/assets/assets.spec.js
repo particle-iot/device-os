@@ -4,8 +4,10 @@ platform('gen3');
 
 // Some platforms have pretty slow connectivity
 timeout(30 * 60 * 1000);
+systemThread('enabled')
 
-const { createApplicationAndAssetBundle, unpackApplicationAndAssetBundle, config: binaryVersionReaderConfig, createAssetModule, HalModuleParser, ModuleInfo } = require('binary-version-reader');
+const { createApplicationAndAssetBundle, unpackApplicationAndAssetBundle, config: binaryVersionReaderConfig,
+		createAssetModule, HalModuleParser, ModuleInfo, updateModuleSuffix, updateModuleCrc32, updateModuleSha256 } = require('binary-version-reader');
 const { randomBytes } = require('crypto');
 const { readFile, writeFile } = require('fs').promises;
 
@@ -82,7 +84,13 @@ async function generateAssets() {
 		assets.push(asset);
 	}
 
-	const application = await readFile(device.testAppBinFile);
+	let application = await readFile(device.testAppBinFile);
+	const parsed = await new HalModuleParser().parseBuffer({ fileBuffer: application });
+	parsed.suffixInfo.productVersion = productVersion;
+	parsed.suffixInfo.productId = device.platform.id;
+	updateModuleSuffix(application, parsed.suffixInfo);
+	updateModuleSha256(application);
+	updateModuleCrc32(application);
 	bundle = await createApplicationAndAssetBundle(application, assets);
 
 	console.log('Generated new set of assets');
@@ -93,7 +101,7 @@ async function generateAssets() {
 async function uploadProductFirmware(removeOnly) {
 	const fws = await api.listProductFirmware({ product, auth });
 	for (let fw of fws.body) {
-		if (fw.version === productVersion) {
+		if (Number(fw.version) === Number(productVersion)) {
 			await api.delete({ uri: `/v1/products/${product}/firmware/${fw.version}`, auth });
 			break;
 		}
@@ -245,7 +253,7 @@ async function generateProductVersion() {
 		break;
 	}
 	console.log('Product version', version);
-	productVersion = version;
+	productVersion = Number(version);
 	return productVersion;
 }
 
@@ -283,19 +291,15 @@ test('04_ad_hoc_ota_restore', async function() {
 });
 
 test('05_product_ota_start', async function() {
-	try {
 	// Regenerate
 	await generateAssets();
 	await uploadProductFirmware(false /* removeOnly */);
 
 	await api.updateDevice({ deviceId, auth, development: false, flash: true, product, desiredFirmwareVersion: productVersion });
 	const dev = await api.getDevice({ deviceId, auth });
-	} catch (err) {
-		console.log(err);
-	}
 	expect(dev.body.development).to.be.false;
-	expect(dev.body.desired_firmware_version).to.equal(productVersion);
-	expect(dev.body.firmware_version).to.not.equal(productVersion);
+	expect(Number(dev.body.desired_firmware_version)).to.equal(Number(productVersion));
+	expect(Number(dev.body.firmware_version)).to.not.equal(Number(productVersion));
 });
 
 test('06_product_ota_wait', async function() {
