@@ -388,7 +388,7 @@ void PowerManager::loop(void* arg) {
 #endif // HAL_PLATFORM_PMIC_INT_PIN_PRESENT
     hal_pin_t pmicIntPin = LOW_BAT_UC;
 #if PLATFORM_ID == PLATFORM_MSOM
-    uint32_t revision;
+    uint32_t revision = 0xFFFFFFFF;
     hal_get_device_hw_version(&revision, nullptr);
     if (revision == 1) {
       pmicIntPin = LOW_BAT_DEPRECATED;
@@ -938,7 +938,7 @@ void PowerManager::deinit() {
 
   hal_pin_t pmicIntPin = LOW_BAT_UC;
 #if PLATFORM_ID == PLATFORM_MSOM
-  uint32_t revision;
+  uint32_t revision = 0xFFFFFFFF;
   hal_get_device_hw_version(&revision, nullptr);
   if (revision == 1) {
     pmicIntPin = LOW_BAT_DEPRECATED;
