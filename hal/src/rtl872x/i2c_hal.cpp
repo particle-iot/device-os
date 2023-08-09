@@ -148,8 +148,8 @@ public:
         PAD_PullCtrl(hal_pin_to_rtl_pin(sdaPin_), GPIO_PuPd_UP);
 	    PAD_PullCtrl(hal_pin_to_rtl_pin(sclPin_), GPIO_PuPd_UP);
 
-        hal_gpio_configure_drive_strength(sclPin_, HAL_GPIO_DRIVE_HIGH);
-        hal_gpio_configure_drive_strength(sdaPin_, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(sclPin_, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(sdaPin_, HAL_GPIO_DRIVE_HIGH);
 
         if (mode == I2C_MODE_MASTER) {
             i2cInitStruct_.I2CMaster  = I2C_MASTER_MODE;
@@ -212,8 +212,8 @@ public:
             // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
             Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_GPIO);
             Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_GPIO);
-            hal_gpio_configure_drive_strength(sdaPin_, HAL_GPIO_DRIVE_DEFAULT);
-            hal_gpio_configure_drive_strength(sclPin_, HAL_GPIO_DRIVE_DEFAULT);
+            hal_gpio_set_drive_strength(sdaPin_, HAL_GPIO_DRIVE_DEFAULT);
+            hal_gpio_set_drive_strength(sclPin_, HAL_GPIO_DRIVE_DEFAULT);
         }
         return SYSTEM_ERROR_NONE;
     }

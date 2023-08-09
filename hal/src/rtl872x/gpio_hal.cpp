@@ -159,7 +159,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         }
 
         Pinmux_Config(hal_pin_to_rtl_pin(pin), PINMUX_FUNCTION_GPIO);
-        hal_gpio_configure_drive_strength(pin, HAL_GPIO_DRIVE_DEFAULT);
+        hal_gpio_set_drive_strength(pin, HAL_GPIO_DRIVE_DEFAULT);
 
         // Pre-set the output value if requested to avoid a glitch
         if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
@@ -462,7 +462,7 @@ int hal_gpio_get_drive_strength(hal_pin_t pin, hal_gpio_drive_t* drive) {
     return SYSTEM_ERROR_NONE;
 }
 
-int hal_gpio_configure_drive_strength(hal_pin_t pin, hal_gpio_drive_t drive) {
+int hal_gpio_set_drive_strength(hal_pin_t pin, hal_gpio_drive_t drive) {
     uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
     uint32_t drvStrength = PAD_DRV_STRENGTH_0;
 

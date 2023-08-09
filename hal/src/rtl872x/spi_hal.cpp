@@ -298,9 +298,9 @@ public:
         }
         SSI_Init(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, &SSI_InitStruct);
 
-        hal_gpio_configure_drive_strength(sclkPin_, HAL_GPIO_DRIVE_HIGH);
-        hal_gpio_configure_drive_strength(mosiPin_, HAL_GPIO_DRIVE_HIGH);
-        hal_gpio_configure_drive_strength(misoPin_, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_HIGH);
 
         uint32_t phase = SCPH_TOGGLES_IN_MIDDLE;
         uint32_t polarity = SCPOL_INACTIVE_IS_LOW;
@@ -403,9 +403,9 @@ public:
         Pinmux_Config(hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_GPIO);
         Pinmux_Config(hal_pin_to_rtl_pin(mosiPin_), PINMUX_FUNCTION_GPIO);
         Pinmux_Config(hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_GPIO);
-        hal_gpio_configure_drive_strength(sclkPin_, HAL_GPIO_DRIVE_DEFAULT);
-        hal_gpio_configure_drive_strength(mosiPin_, HAL_GPIO_DRIVE_DEFAULT);
-        hal_gpio_configure_drive_strength(misoPin_, HAL_GPIO_DRIVE_DEFAULT);
+        hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_DEFAULT);
+        hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_DEFAULT);
+        hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_DEFAULT);
 
         // Update state
         status_.state = HAL_SPI_STATE_DISABLED;

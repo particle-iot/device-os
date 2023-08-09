@@ -171,7 +171,7 @@ int pwmPinInit(uint16_t pin) {
         } else {
             Pinmux_Config(rtlPin, PINMUX_FUNCTION_PWM_HS);
         }
-        hal_gpio_configure_drive_strength(pin, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(pin, HAL_GPIO_DRIVE_HIGH);
         hal_pin_set_function(pin, PF_PWM);
     }
     return 0;
@@ -186,7 +186,7 @@ int pwmPinDeinit(uint16_t pin) {
     if (channelState == PWM_STATE_ENABLED) {
         const uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
         Pinmux_Config(rtlPin, PINMUX_FUNCTION_GPIO);
-        hal_gpio_configure_drive_strength(pin, HAL_GPIO_DRIVE_DEFAULT);
+        hal_gpio_set_drive_strength(pin, HAL_GPIO_DRIVE_DEFAULT);
 
         pwmInfo[instance].channels[channel].state = PWM_STATE_DISABLED;
         hal_pin_set_function(pin, PF_NONE);
