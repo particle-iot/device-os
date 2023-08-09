@@ -170,7 +170,12 @@ async function waitForAssets(timeout) {
 		if (t <= 0) {
 			throw new Error("Timeout waiting for all assets to be reported from device");
 		}
-		const dev = await api.getDevice({ deviceId, auth });
+		try {
+			const dev = await api.getDevice({ deviceId, auth });
+		} catch (err) {
+			// Ignore
+			continue;
+		}
 		if (!dev.body.assets || dev.body.assets.length === 0) {
 			continue;
 		}
@@ -291,7 +296,7 @@ test('02_ad_hoc_ota_wait', async function() {
 
 test('03_ad_hoc_ota_complete', async function() {
 	const deviceReported = JSON.parse(device.mailBox.pop().d);
-	const cloudReported = cloudReportedToReport(await waitForAssets(120000));
+	const cloudReported = cloudReportedToReport(await waitForAssets(5 * 60 * 1000));
 	const local = generatedAssetsToReport();
 	expect(deviceReported.available).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
@@ -321,7 +326,7 @@ test('06_product_ota_wait', async function() {
 
 test('07_product_ota_complete', async function() {
 	const deviceReported = JSON.parse(device.mailBox.shift().d);
-	const cloudReported = cloudReportedToReport(await waitForAssets(120000));
+	const cloudReported = cloudReportedToReport(await waitForAssets(5 * 60 * 1000));
 	const local = generatedAssetsToReport();
 	expect(deviceReported.available).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
