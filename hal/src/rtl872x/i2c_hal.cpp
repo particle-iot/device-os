@@ -102,10 +102,10 @@ public:
             }
             // Configured, but new buffers are smaller
             if (conf->rx_buffer_size <= rxBuffer_.size() ||
-               conf->tx_buffer_size <= txBuffer_.size()) {    
+               conf->tx_buffer_size <= txBuffer_.size()) {
                unlock();
                return SYSTEM_ERROR_NOT_ENOUGH_DATA;
-            } 
+            }
             CHECK(deInit());
         }
         if (isConfigValid(conf)) {
@@ -145,8 +145,11 @@ public:
         // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, ENABLE);
         Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_I2C);
 	    Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_I2C);
-        PAD_PullCtrl(hal_pin_to_rtl_pin(sdaPin_), GPIO_PuPd_UP);               
+        PAD_PullCtrl(hal_pin_to_rtl_pin(sdaPin_), GPIO_PuPd_UP);
 	    PAD_PullCtrl(hal_pin_to_rtl_pin(sclPin_), GPIO_PuPd_UP);
+
+        hal_gpio_set_drive_strength(sclPin_, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(sdaPin_, HAL_GPIO_DRIVE_HIGH);
 
         if (mode == I2C_MODE_MASTER) {
             i2cInitStruct_.I2CMaster  = I2C_MASTER_MODE;
@@ -201,7 +204,7 @@ public:
             if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
                 InterruptDis(I2C0_IRQ_LP);
 	            InterruptUnRegister(I2C0_IRQ_LP);
-                I2C_INTConfig(i2cDev_, (BIT_IC_INTR_MASK_M_START_DET | BIT_IC_INTR_MASK_M_RX_FULL | BIT_IC_INTR_MASK_M_STOP_DET | 
+                I2C_INTConfig(i2cDev_, (BIT_IC_INTR_MASK_M_START_DET | BIT_IC_INTR_MASK_M_RX_FULL | BIT_IC_INTR_MASK_M_STOP_DET |
                                         BIT_IC_INTR_MASK_M_RD_REQ | BIT_IC_INTR_MASK_M_RX_DONE), DISABLE);
             }
             I2C_Cmd(i2cDev_, DISABLE);
@@ -209,6 +212,8 @@ public:
             // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
             Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_GPIO);
             Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_GPIO);
+            hal_gpio_set_drive_strength(sdaPin_, HAL_GPIO_DRIVE_DEFAULT);
+            hal_gpio_set_drive_strength(sclPin_, HAL_GPIO_DRIVE_DEFAULT);
         }
         return SYSTEM_ERROR_NONE;
     }
@@ -720,7 +725,7 @@ private:
     bool configured_;
     volatile hal_i2c_state_t state_;
     volatile uint8_t slaveStatus_;
-    
+
     particle::services::RingBuffer<uint8_t> txBuffer_;
     particle::services::RingBuffer<uint8_t> rxBuffer_;
     bool heapBuffer_;

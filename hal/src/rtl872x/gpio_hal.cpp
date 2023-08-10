@@ -110,6 +110,7 @@ void hal_gpio_mode(hal_pin_t pin, PinMode mode) {
     conf.size = sizeof(conf);
     conf.version = HAL_GPIO_VERSION;
     conf.mode = mode;
+    conf.drive_strength = HAL_GPIO_DRIVE_DEFAULT;
     hal_gpio_configure(pin, &conf, nullptr);
 }
 
@@ -159,6 +160,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         }
 
         Pinmux_Config(hal_pin_to_rtl_pin(pin), PINMUX_FUNCTION_GPIO);
+        hal_gpio_set_drive_strength(pin, static_cast<hal_gpio_drive_t>(conf->drive_strength));
 
         // Pre-set the output value if requested to avoid a glitch
         if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
@@ -432,4 +434,65 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
     }
 
     return (hal_timer_micros(nullptr) - pulse_start);
+}
+
+int hal_gpio_get_drive_strength(hal_pin_t pin, hal_gpio_drive_t* drive) {
+    uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
+
+    /* get PADCTR */
+    uint32_t drvStrength = PINMUX->PADCTR[rtlPin];
+
+    /* get Pin_Num drvStrength contrl */
+    drvStrength &= PAD_BIT_MASK_DRIVING_STRENGTH << PAD_BIT_SHIFT_DRIVING_STRENGTH;
+    drvStrength >>= PAD_BIT_SHIFT_DRIVING_STRENGTH;
+
+    // Pad driving strength
+    //   - PAD_DRV_STRENGTH_0: 4mA
+    //   - PAD_DRV_STRENGTH_1: 8mA   (Severe overshoot, not recommended to use it)
+    //   - PAD_DRV_STRENGTH_2: 12mA
+    //   - PAD_DRV_STRENGTH_3: 16mA  (Severe overshoot, not recommended to use it)
+    switch(drvStrength) {
+        case PAD_DRV_STRENGTH_0: *drive = HAL_GPIO_DRIVE_STANDARD; break;
+        case PAD_DRV_STRENGTH_2: *drive = HAL_GPIO_DRIVE_HIGH; break;
+        // DVOS won't configure PAD_DRV_STRENGTH_1 and PAD_DRV_STRENGTH_3 due to the
+        // severe overshoot, so it is the default setting
+        default:
+            *drive = HAL_GPIO_DRIVE_DEFAULT; break;
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int hal_gpio_set_drive_strength(hal_pin_t pin, hal_gpio_drive_t drive) {
+    uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
+    uint32_t drvStrength = PAD_DRV_STRENGTH_0;
+
+    // Pad driving strength
+    //   - PAD_DRV_STRENGTH_0: 4mA
+    //   - PAD_DRV_STRENGTH_1: 8mA   (Severe overshoot, not recommended to use it)
+    //   - PAD_DRV_STRENGTH_2: 12mA
+    //   - PAD_DRV_STRENGTH_3: 16mA  (Severe overshoot, not recommended to use it)
+    switch(drive) {
+        case HAL_GPIO_DRIVE_STANDARD: drvStrength = PAD_DRV_STRENGTH_0; break;
+        case HAL_GPIO_DRIVE_HIGH:     drvStrength = PAD_DRV_STRENGTH_2; break;
+        case HAL_GPIO_DRIVE_DEFAULT:  drvStrength = PAD_DRV_STRENGTH_3; break;
+        default:
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    uint32_t temp = 0;
+
+    /* get PADCTR */
+    temp = PINMUX->PADCTR[rtlPin];
+
+    /* clear Pin_Num drvStrength contrl */
+    temp &= ~(PAD_BIT_MASK_DRIVING_STRENGTH << PAD_BIT_SHIFT_DRIVING_STRENGTH);
+
+    /* set needs drvStrength */
+    temp |= (drvStrength & PAD_BIT_MASK_DRIVING_STRENGTH) << PAD_BIT_SHIFT_DRIVING_STRENGTH;
+
+    /* set PADCTR register */
+    PINMUX->PADCTR[rtlPin] = temp;
+
+    return SYSTEM_ERROR_NONE;
 }
