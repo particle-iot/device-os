@@ -23,6 +23,7 @@
 #include "flash_mal.h"
 #include "system_error.h"
 #include "file_util.h"
+#include "scope_guard.h"
 
 using namespace particle::fs;
 
@@ -66,6 +67,9 @@ namespace {
 int fs_read(const struct lfs_config* c, lfs_block_t block,
             lfs_off_t off, void* buffer, lfs_size_t size)
 {
+    if (!((filesystem_t*)c->context)->state) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     int r = hal_exflash_read((block + ((filesystem_t*)c->context)->first_block) * c->block_size + off, (uint8_t*)buffer, size);
     if (r) {
         LOG_DEBUG(ERROR, "fs_read error %d", r);
@@ -76,6 +80,9 @@ int fs_read(const struct lfs_config* c, lfs_block_t block,
 int fs_prog(const struct lfs_config* c, lfs_block_t block,
             lfs_off_t off, const void* buffer, lfs_size_t size)
 {
+    if (!((filesystem_t*)c->context)->state) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     int r = hal_exflash_write((block + ((filesystem_t*)c->context)->first_block) * c->block_size + off, (const uint8_t*)buffer, size);
     if (r) {
         LOG_DEBUG(ERROR, "fs_prog error %d", r);
@@ -85,6 +92,9 @@ int fs_prog(const struct lfs_config* c, lfs_block_t block,
 
 int fs_erase(const struct lfs_config* c, lfs_block_t block)
 {
+    if (!((filesystem_t*)c->context)->state) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     int r = hal_exflash_erase_sector((block + ((filesystem_t*)c->context)->first_block) * c->block_size, 1);
     if (r) {
         LOG_DEBUG(ERROR, "fs_erase error %d", r);
@@ -251,6 +261,14 @@ int filesystem_mount(filesystem_t* fs) {
         return ret;
     }
 
+    fs->state = true;
+    SCOPE_GUARD({
+        if (ret) {
+            fs->state = false;
+        }
+        SPARK_ASSERT(fs->state);
+    });
+
     ret = lfs_mount(&fs->instance, &fs->config);
     if (!ret) {
         /* IMPORTANT: manually calling deorphan here to validate the filesystem.
@@ -292,7 +310,6 @@ int filesystem_mount(filesystem_t* fs) {
     }
 
     if (!ret) {
-        fs->state = true;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (fs->index == FILESYSTEM_INSTANCE_DEFAULT) {
             // Make sure /usr and /tmp folders exist
@@ -306,8 +323,6 @@ int filesystem_mount(filesystem_t* fs) {
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     }
 
-    SPARK_ASSERT(fs->state);
-
     return ret;
 }
 
@@ -319,6 +334,15 @@ int filesystem_unmount(filesystem_t* fs) {
     if (fs->state) {
         ret = lfs_unmount(&fs->instance);
         fs->state = false;
+        // This should not be required as storage read/write/erase are gated
+        // by fs->state, but just in case invalidate at least files.
+        for (lfs_file_t* f = fs->instance.files; f; f = f->next) {
+            f->pos = LFS_FILE_MAX;
+            f->flags = LFS_F_ERRED;
+            f->size = 0;
+            f->pair[0] = 0;
+            f->pair[1] = 0;
+        }
     }
 
     return ret;
