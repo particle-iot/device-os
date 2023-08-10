@@ -170,8 +170,9 @@ async function waitForAssets(timeout) {
 		if (t <= 0) {
 			throw new Error("Timeout waiting for all assets to be reported from device");
 		}
+		let dev = null;
 		try {
-			const dev = await api.getDevice({ deviceId, auth });
+			dev = await api.getDevice({ deviceId, auth });
 		} catch (err) {
 			// Ignore
 			continue;
