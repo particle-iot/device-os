@@ -304,9 +304,7 @@ test('03_ad_hoc_ota_complete', async function() {
 });
 
 test('04_ad_hoc_ota_restore', async function() {
-	const usbDev = await device.getUsbDevice();
-	device.setWillDetach(true);
-	await usbDev.updateFirmware(await readFile(device.testAppBinFile));
+	await device.flash(device.testAppBinFile);
 });
 
 test('05_product_ota_start', async function() {
@@ -363,9 +361,7 @@ test('12_assets_read_using_filesystem', async function() {
 
 test('99_product_ota_restore', async function() {
 	await checkDeviceInProductAndMarkAsDevelopment();
-	const usbDev = await device.getUsbDevice();
-	device.setWillDetach(true);
-	await usbDev.updateFirmware(await readFile(device.testAppBinFile));
+	await device.flash(device.testAppBinFile);
 });
 
 after(async function() {
