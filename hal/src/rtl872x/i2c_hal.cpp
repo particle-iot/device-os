@@ -210,8 +210,6 @@ public:
             I2C_Cmd(i2cDev_, DISABLE);
             state_ = HAL_I2C_STATE_DISABLED;
             // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
-            Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_GPIO);
-            Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_GPIO);
             hal_gpio_set_drive_strength(sdaPin_, HAL_GPIO_DRIVE_DEFAULT);
             hal_gpio_set_drive_strength(sclPin_, HAL_GPIO_DRIVE_DEFAULT);
         }

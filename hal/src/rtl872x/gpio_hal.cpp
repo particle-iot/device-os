@@ -159,14 +159,6 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             hal_pin_set_function(pin, PF_NONE);
         }
 
-        Pinmux_Config(hal_pin_to_rtl_pin(pin), PINMUX_FUNCTION_GPIO);
-        hal_gpio_set_drive_strength(pin, static_cast<hal_gpio_drive_t>(conf->drive_strength));
-
-        // Pre-set the output value if requested to avoid a glitch
-        if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
-            GPIO_WriteBit(rtlPin, conf->value);
-        }
-
         GPIO_InitTypeDef  GPIO_InitStruct = {};
         GPIO_InitStruct.GPIO_Pin = rtlPin;
 
@@ -218,9 +210,6 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
         }
 
-        GPIO_Init(&GPIO_InitStruct);
-        pinInfo->pin_mode = mode;
-
         // The GPIO_Init() doesn't seam to set the pull ability when the pin is configured as output
         if (GPIO_InitStruct.GPIO_Mode == GPIO_Mode_OUT) {
             if (mode == OUTPUT_OPEN_DRAIN_PULLUP) {
@@ -229,6 +218,17 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
                 PAD_PullCtrl(rtlPin, GPIO_PuPd_NOPULL);
             }
         }
+
+        // Pre-set the output value if requested to avoid a glitch
+        if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
+            GPIO_WriteBit(rtlPin, conf->value);
+        }
+
+        GPIO_Init(&GPIO_InitStruct);
+        pinInfo->pin_mode = mode;
+
+        Pinmux_Config(hal_pin_to_rtl_pin(pin), PINMUX_FUNCTION_GPIO);
+        hal_gpio_set_drive_strength(pin, static_cast<hal_gpio_drive_t>(conf->drive_strength));
 
         if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
             if (conf->set_value) {
