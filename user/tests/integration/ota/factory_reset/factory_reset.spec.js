@@ -1,6 +1,6 @@
 suite('Factory Reset');
 
-platform('gen3');
+platform('argon','boron','bsom','b5som','tracker','esomx');
 systemThread('enabled');
 
 const { HalModuleParser, ModuleInfo, updateModulePrefix, updateModuleSuffix, updateModuleCrc32 } = require('binary-version-reader');
