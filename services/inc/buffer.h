@@ -28,7 +28,7 @@ namespace particle {
 
 class Buffer {
 public:
-    Buffer(size_t size = 0);
+    explicit Buffer(size_t size = 0);
     Buffer(const char* data, size_t size);
     Buffer(const uint8_t* data, size_t size);
     Buffer(const Buffer& other);
@@ -124,7 +124,7 @@ inline bool Buffer::operator==(const Buffer& other) const {
     if (size() > 0 && data() && other.data()) {
         return !memcmp(buffer_.get(), other.buffer_.get(), size());
     }
-    return false;
+    return size() == 0 && other.size() == 0;
 }
 
 inline bool Buffer::operator!=(const Buffer& other) const {

@@ -24,7 +24,7 @@
 
 #include "spark_wiring_string.h"
 #include "buffer.h"
-#include "bytes2hexbuf.h"
+#include "str_util.h"
 
 namespace particle {
 
@@ -100,8 +100,7 @@ inline String AssetHash::toString() const {
     if (hash_.size() > 0) {
         Buffer buf(hash_.size() * 2 + 1);
         if (buf.size()) {
-            memset(buf.data(), 0, buf.size());
-            bytes2hexbuf_lower_case((const uint8_t*)hash_.data(), hash_.size(), buf.data());
+            toHex((const uint8_t*)hash_.data(), hash_.size(), buf.data(), buf.size());
             return String(buf.data());
         }
     }
@@ -183,9 +182,8 @@ int asset_manager_get_info(asset_manager_info* info, void* reserved);
  * 
  * @param info Info structure to be freed after asset_manager_get_info() call
  * @param reserved Reserved (NULL)
- * @return 0 on success or `system_error_t` error code 
  */
-int asset_manager_free_info(asset_manager_info* info, void* reserved);
+void asset_manager_free_info(asset_manager_info* info, void* reserved);
 
 /**
  * Sets the asset consumer (application) state.
@@ -273,9 +271,8 @@ int asset_manager_seek(asset_manager_stream* stream, size_t offset, void* reserv
  * 
  * @param stream Stream object (will be freed)
  * @param reserved Reserved (NULL)
- * @return 0 on success or `system_error_t` error code
  */
-int asset_manager_close(asset_manager_stream* stream, void* reserved);
+void asset_manager_close(asset_manager_stream* stream, void* reserved);
 
 #if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 /**

@@ -27,6 +27,8 @@
 #include "core_hal.h"
 #endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 
+#include "scope_guard.h"
+
 namespace {
 
 #if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
@@ -73,7 +75,6 @@ int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output o
 #if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     (*ctx)->buf = buf;
 #else
-    LOG(INFO, "useFilesystem=%d", useFilesystem);
     if (useFilesystem) {
         (*ctx)->buf = nullptr;
         (*ctx)->write_cache = buf;
@@ -89,7 +90,12 @@ int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output o
     (*ctx)->buf_size = bufSize;
     (*ctx)->output = output;
     (*ctx)->user_data = user_data;
+    NAMED_SCOPE_GUARD(sg, {
+        inflate_destroy(*ctx);
+        *ctx = nullptr;
+    });
     CHECK(inflate_reset(*ctx));
+    sg.dismiss();
     return 0;
 }
 

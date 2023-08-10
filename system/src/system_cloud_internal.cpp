@@ -173,11 +173,11 @@ void systemEventHandler(const char* name, const char* data)
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
 int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, unsigned flags, int moduleFunction) {
-    CHECK(FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, partialSize,
-            FirmwareUpdateFlags::fromUnderlying(flags)));
 #if HAL_PLATFORM_ASSETS
     CHECK(AssetManager::instance().prepareForOta(fileSize, flags, moduleFunction));
 #endif // HAL_PLATFORM_ASSETS
+    CHECK(FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, partialSize,
+            FirmwareUpdateFlags::fromUnderlying(flags)));
     return 0;
 }
 

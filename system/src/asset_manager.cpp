@@ -30,6 +30,7 @@
 #include "endian_util.h"
 #include "scope_guard.h"
 #include "system_cache.h"
+#include "system_defs.h"
 
 namespace particle {
 
@@ -38,7 +39,7 @@ namespace {
 const size_t FREE_BLOCKS_REQUIRED = 16;
 
 // TODO: move to using streams as well?
-int parseAssetDependencies(spark::Vector<Asset>& assets, hal_storage_id storageId, uintptr_t start, uintptr_t end) {
+int parseAssetDependencies(Vector<Asset>& assets, hal_storage_id storageId, uintptr_t start, uintptr_t end) {
     for (uintptr_t offset = start; offset < end;) {
         module_info_extension_t ext = {};
         CHECK(hal_storage_read(storageId, offset, (uint8_t*)&ext, sizeof(ext)));
@@ -46,9 +47,10 @@ int parseAssetDependencies(spark::Vector<Asset>& assets, hal_storage_id storageI
             offset += ext.length;
         });
         if (ext.type == MODULE_INFO_EXTENSION_ASSET_DEPENDENCY) {
-            auto assetExt = std::unique_ptr<module_info_asset_dependency_ext_t>((module_info_asset_dependency_ext_t*)calloc(1, ext.length + 1 /* NULL name terminator */));
+            Buffer assetExtBuf(ext.length + 1 /* NULL name terminator */);
+            auto assetExt = (module_info_asset_dependency_ext_t*)assetExtBuf.data();
             CHECK_TRUE(assetExt, SYSTEM_ERROR_NO_MEMORY);
-            CHECK(hal_storage_read(storageId, offset, (uint8_t*)assetExt.get(), ext.length));
+            CHECK(hal_storage_read(storageId, offset, (uint8_t*)assetExt, ext.length));
             if (assetExt->hash.type != MODULE_INFO_HASH_TYPE_SHA256) {
                 LOG(WARN, "Unsupported hash type %u with length %u", assetExt->hash.type, assetExt->hash.length);
                 continue;
@@ -56,7 +58,7 @@ int parseAssetDependencies(spark::Vector<Asset>& assets, hal_storage_id storageI
             if (assetExt->hash.type != AssetHash::DEFAULT) {
                 LOG(WARN, "Unknown hash type for asset dependency: 0x%x", assetExt->hash.type);
             }
-            assets.append(Asset(assetExt->name, AssetHash(assetExt->hash.hash, assetExt->hash.length)));
+            CHECK_TRUE(assets.append(Asset(assetExt->name, AssetHash(assetExt->hash.hash, assetExt->hash.length))), SYSTEM_ERROR_NO_MEMORY);
         } else if (ext.type == MODULE_INFO_EXTENSION_END) {
             break;
         }
@@ -65,7 +67,7 @@ int parseAssetDependencies(spark::Vector<Asset>& assets, hal_storage_id storageI
 }
 
 int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
-    std::unique_ptr<module_info_name_ext_t> nameExt;
+    Buffer nameExtBuf;
     AssetHash hash;
     while (size > 0) {
         module_info_extension_t ext = {};
@@ -73,9 +75,10 @@ int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
         CHECK_TRUE(ext.length <= size, SYSTEM_ERROR_BAD_DATA);
         if (ext.type == MODULE_INFO_EXTENSION_NAME) {
             CHECK_TRUE(ext.length > sizeof(module_info_name_ext_t), SYSTEM_ERROR_BAD_DATA);
-            nameExt = std::unique_ptr<module_info_name_ext_t>((module_info_name_ext_t*)calloc(1, ext.length + 1 /* NULL name terminator */));
+            nameExtBuf = Buffer(ext.length + 1 /* NULL name terminator */);
+            auto nameExt = (module_info_name_ext_t*)nameExtBuf.data();
             CHECK_TRUE(nameExt, SYSTEM_ERROR_NO_MEMORY);
-            CHECK(stream->peek((char*)nameExt.get(), ext.length));
+            CHECK(stream->peek((char*)nameExt, ext.length));
         } else if (ext.type == MODULE_INFO_EXTENSION_HASH) {
             CHECK_TRUE(ext.length >= sizeof(module_info_hash_ext_t), SYSTEM_ERROR_BAD_DATA);
             module_info_hash_ext_t hashExt = {};
@@ -87,7 +90,8 @@ int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
         CHECK(stream->skip(ext.length));
         size -= ext.length;
     }
-    if (nameExt && hash.isValid()) {
+    if (nameExtBuf.data() && hash.isValid()) {
+        auto nameExt = (module_info_name_ext_t*)nameExtBuf.data();
         asset = Asset(nameExt->name, hash);
         return 0;
     }
@@ -107,25 +111,27 @@ int AssetManager::init() {
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
 
+    // Best effort: reporting what we can
     parseRequiredAssets();
     parseAvailableAssets();
     return 0;
 }
 
-spark::Vector<Asset> AssetManager::requiredAssets() const {
+const Vector<Asset>& AssetManager::requiredAssets() const {
     // No thread safety required here, these do not change during device runtime and a copy is returned
     return requiredAssets_;
 }
 
-spark::Vector<Asset> AssetManager::availableAssets() const {
+const Vector<Asset>& AssetManager::availableAssets() const {
     // No thread safety required here, these do not change during device runtime and a copy is returned
     return availableAssets_;
 }
 
-spark::Vector<Asset> AssetManager::missingAssets() const {
-    spark::Vector<Asset> missing;
+Vector<Asset> AssetManager::missingAssets() const {
+    Vector<Asset> missing;
     for (const auto& asset: requiredAssets()) {
         if (!availableAssets().contains(asset)) {
+            // Best-effort
             missing.append(asset);
         }
     }
@@ -138,17 +144,18 @@ spark::Vector<Asset> AssetManager::missingAssets() const {
     return missing;
 }
 
-spark::Vector<Asset> AssetManager::unusedAssets() const {
-    spark::Vector<Asset> unused;
+Vector<Asset> AssetManager::unusedAssets() const {
+    Vector<Asset> unused;
     for (const auto& asset: availableAssets()) {
         if (!requiredAssets().contains(asset)) {
+            // Best-effort
             unused.append(asset);
         }
     }
     return unused;
 }
 
-int AssetManager::requiredAssetsForModule(const hal_module_t* module, spark::Vector<Asset>& assets) {
+int AssetManager::requiredAssetsForModule(const hal_module_t* module, Vector<Asset>& assets) {
     CHECK_TRUE(module, SYSTEM_ERROR_INVALID_ARGUMENT);
     auto storageId = HAL_STORAGE_ID_INVALID;
     if (module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) {
@@ -180,7 +187,7 @@ int AssetManager::parseRequiredAssets() {
     hal_user_module_descriptor desc = {};
     // This will perform any validation needed
     CHECK(hal_user_module_get_descriptor(&desc));
-    spark::Vector<Asset> assets;
+    Vector<Asset> assets;
 
     hal_module_t mod = {};
     memcpy(&mod.info, &desc.info, sizeof(desc.info));
@@ -200,28 +207,35 @@ int AssetManager::parseAvailableAssets() {
     auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_INVALID_STATE);
 
-    spark::Vector<Asset> assets;
+    Vector<Asset> assets;
 
     const fs::FsLock lock(fs);
 
     lfs_dir_t dir = {};
-    CHECK(lfs_dir_open(&fs->instance, &dir, "/"));
+    CHECK_FS(lfs_dir_open(&fs->instance, &dir, "/"));
     SCOPE_GUARD({
         lfs_dir_close(&fs->instance, &dir);
     });
     lfs_info info = {};
     while (true) {
-        int r = lfs_dir_read(&fs->instance, &dir, &info);
+        int r = CHECK_FS(lfs_dir_read(&fs->instance, &dir, &info));
         if (r != 1) {
             break;
         }
         if (info.type == LFS_TYPE_DIR) {
             continue;
         }
-        AssetReader reader(info.name);
-        reader.validate(false /* full */);
+        AssetReader reader;
+        r = reader.init(info.name);
+        if (r) {
+            LOG(WARN, "Failed to open asset %s", info.name);
+        } else {
+            reader.validate(false /* full */);
+        }
         if (reader.isValid() && reader.size() == info.size) {
-            assets.append(reader.asset());
+            if (!assets.append(reader.asset())) {
+                LOG(WARN, "Failed to add asset %s to the list of available", info.name);
+            }
         } else {
             LOG(WARN, "Invalid asset %s, removing", info.name);
             lfs_remove(&fs->instance, info.name);
@@ -233,15 +247,13 @@ int AssetManager::parseAvailableAssets() {
 }
 
 int AssetManager::clearUnusedAssets() {
-    LOG(INFO, "clearUnusedAssets");
     auto unused = unusedAssets();
-    LOG(INFO, "unused size=%d", unused.size());
     for (const auto& asset: unused) {
         LOG(INFO, "Removing unused asset %s (hash=%s)", asset.name().c_str(), asset.hash().toString().c_str());
         auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
         CHECK_TRUE(fs, SYSTEM_ERROR_INVALID_STATE);
         const fs::FsLock lock(fs);
-        CHECK(lfs_remove(&fs->instance, asset.name().c_str()));
+        CHECK_FS(lfs_remove(&fs->instance, asset.name().c_str()));
     }
     return 0;
 }
@@ -252,8 +264,9 @@ int AssetManager::storeAsset(const hal_module_t* module) {
     StorageHalInputStream stream(module->bounds.location, (uintptr_t)module->bounds.start_address + (uintptr_t)module->info.module_start_address,
             (uintptr_t)module->info.module_end_address - (uintptr_t)module->info.module_start_address + 4,
             module->module_info_offset);
-    AssetReader reader(&stream);
-    reader.validate();
+    AssetReader reader;
+    CHECK(reader.init(&stream));
+    CHECK(reader.validate());
     CHECK_TRUE(reader.isValid(), SYSTEM_ERROR_BAD_DATA);
 
     auto info = reader.asset();
@@ -270,7 +283,7 @@ int AssetManager::storeAsset(const hal_module_t* module) {
 
     lfs_file_t file = {};
     lfs_remove(&fs->instance, info.name().c_str());
-    CHECK_TRUE(lfs_file_open(&fs->instance, &file, info.name().c_str(), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND) == 0, SYSTEM_ERROR_FILE);
+    CHECK_FS(lfs_file_open(&fs->instance, &file, info.name().c_str(), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
     SCOPE_GUARD({     
         lfs_file_close(&fs->instance, &file);
     });
@@ -283,7 +296,7 @@ int AssetManager::storeAsset(const hal_module_t* module) {
         if (read == SYSTEM_ERROR_END_OF_STREAM) {
             break;
         }
-        CHECK(lfs_file_write(&fs->instance, &file, tmp, (size_t)read));
+        CHECK_FS(lfs_file_write(&fs->instance, &file, tmp, (size_t)read));
     }
 
     CHECK(setConsumerState(ASSET_MANAGER_CONSUMER_STATE_WANT));
@@ -315,6 +328,10 @@ int AssetManager::setConsumerState(asset_manager_consumer_state state) {
 }
 
 int AssetManager::prepareForOta(size_t size, unsigned flags, int moduleFunction) {
+    auto fwUpdateFlags = FirmwareUpdateFlags::fromUnderlying(flags);
+    if (fwUpdateFlags & FirmwareUpdateFlag::VALIDATE_ONLY) {
+        return 0;
+    }
     const size_t blockSize = EXTERNAL_FLASH_ASSET_STORAGE_SIZE / EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT;
     const size_t freeBlocksSize = FREE_BLOCKS_REQUIRED * blockSize;
     if (moduleFunction == MODULE_FUNCTION_ASSET && size > (EXTERNAL_FLASH_ASSET_STORAGE_SIZE - freeBlocksSize)) {
@@ -346,8 +363,8 @@ int AssetManager::formatStorage(bool remount) {
 }
 
 // AssetReader
-AssetReader::AssetReader(InputStream* stream)
-        : stream_(stream),
+AssetReader::AssetReader()
+        : stream_(nullptr),
           valid_(false),
           compressed_(false),
           size_(0),
@@ -356,10 +373,18 @@ AssetReader::AssetReader(InputStream* stream)
           dataSize_(0) {
 }
 
-AssetReader::AssetReader(const char* filename)
-        : AssetReader((InputStream*)nullptr) {
-    fileStream_ = std::make_unique<FileInputStream>(filename, FILESYSTEM_INSTANCE_ASSET_STORAGE);
+int AssetReader::init(const char* filename) {
+    auto stream = std::make_unique<FileInputStream>();
+    CHECK_TRUE(stream.get(), SYSTEM_ERROR_NO_MEMORY);
+    CHECK(stream->open(filename, FILESYSTEM_INSTANCE_ASSET_STORAGE));
+    fileStream_ = std::move(stream);
     stream_ = fileStream_.get();
+    return 0;
+}
+
+int AssetReader::init(InputStream* stream) {
+    stream_ = stream;
+    return 0;
 }
 
 int AssetReader::validate(bool full) {
@@ -375,10 +400,8 @@ int AssetReader::validate(bool full) {
     CHECK_TRUE(prefix.module_function == MODULE_FUNCTION_ASSET, SYSTEM_ERROR_BAD_DATA);
     CHECK_TRUE(prefix.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO, SYSTEM_ERROR_BAD_DATA);
     CHECK_FALSE(prefix.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(moduleSize == ((uintptr_t)prefix.module_end_address - (uintptr_t)prefix.module_start_address + sizeof(uint32_t)), SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(moduleSize == ((uintptr_t)prefix.module_end_address - (uintptr_t)prefix.module_start_address + sizeof(uint32_t) /* CRC32 */), SYSTEM_ERROR_BAD_DATA);
     bool compressed = prefix.flags & MODULE_INFO_FLAG_COMPRESSED;
-
-    LOG(INFO, "prefix func=%d flags=%x start=%x end=%x compressed=%d", prefix.module_function, prefix.flags, prefix.module_start_address, prefix.module_end_address, compressed);
 
     // Comperssion header
     compressed_module_header compHeader = {};
@@ -388,7 +411,6 @@ int AssetReader::validate(bool full) {
         CHECK_TRUE(compHeader.size >= sizeof(compHeader), SYSTEM_ERROR_BAD_DATA);
         CHECK_TRUE(compHeader.method == 0, SYSTEM_ERROR_BAD_DATA);
         origSize = compHeader.original_size;
-        LOG(INFO, "compressed origSize=%u method=%u", origSize, compHeader.method);
     }
     // Base suffix
     CHECK(stream_->seek(0));
@@ -458,28 +480,28 @@ size_t AssetReader::originalSize() const {
     return originalSize_;
 }
 
-InputStream* AssetReader::assetStream() {
-    if (!isValid()) {
-        return nullptr;
-    }
+int AssetReader::assetStream(InputStream*& stream) {
+    CHECK_TRUE(isValid(), SYSTEM_ERROR_INVALID_STATE);
 
     if (!proxyStream_) {
         proxyStream_ = std::make_unique<ProxyInputStream>(stream_, dataOffset_, dataSize_);
     }
-    if (!proxyStream_) {
-        return nullptr;
-    }
+    CHECK_TRUE(proxyStream_, SYSTEM_ERROR_NO_MEMORY);
+
     if (!isCompressed()) {
-        return proxyStream_.get();
+        stream = proxyStream_.get();
+        return 0;
     }
 
     if (!decompressorStream_) {
-        decompressorStream_ = std::make_unique<InflatorStream>(proxyStream_.get(), originalSize_);
+        auto stream = std::make_unique<InflatorStream>(proxyStream_.get(), originalSize_);
+        CHECK_TRUE(stream, SYSTEM_ERROR_NO_MEMORY);
+        CHECK(stream->init());
+        decompressorStream_ = std::move(stream);
     }
-    if (!decompressorStream_) {
-        return nullptr;
-    }
-    return decompressorStream_.get();
+
+    stream = decompressorStream_.get();
+    return 0;
 }
 
 } // particle

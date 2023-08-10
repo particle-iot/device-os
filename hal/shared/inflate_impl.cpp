@@ -106,6 +106,10 @@ void inflate_free_ctx(inflate_ctx* ctx, char* buf) {
 
 int inflate_reset_impl(inflate_ctx* ctx) {
 #if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+    if (ctx->buf) {
+        // Not using filesystem
+        return 0;
+    }
     auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     const fs::FsLock lock(fs);
     Random rand;

@@ -25,8 +25,8 @@ using namespace particle;
 namespace {
 
 struct Info {
-    spark::Vector<Asset> required;
-    spark::Vector<Asset> available;
+    Vector<Asset> required;
+    Vector<Asset> available;
 };
 
 void assetToApiAsset(const Asset& asset, asset_manager_asset* apiAsset) {
@@ -57,11 +57,8 @@ int asset_manager_get_info(asset_manager_info* info, void* reserved) {
 
     info->internal = (void*)internal;
 
-    bool ok = false;
-    SCOPE_GUARD({
-        if (!ok) {
-            asset_manager_free_info(info, nullptr);
-        }
+    NAMED_SCOPE_GUARD(sg, {
+        asset_manager_free_info(info, nullptr);
     });
 
     info->asset_size = sizeof(asset_manager_asset);
@@ -85,23 +82,24 @@ int asset_manager_get_info(asset_manager_info* info, void* reserved) {
             assetToApiAsset(internal->available[i], &info->available[i]);
         }
     }
-    ok = true;
+    sg.dismiss();
     return 0;
 }
 
-int asset_manager_free_info(asset_manager_info* info, void* reserved) {
-    CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
+void asset_manager_free_info(asset_manager_info* info, void* reserved) {
+    if (!info) {
+        return;
+    }
     if (info->internal) {
         auto internal = static_cast<Info*>(info->internal);
         delete internal;
     }
     if (info->required) {
-        free(info->required);
+        delete[] info->required;
     }
     if (info->available) {
-        free(info->available);
+        delete[] info->available;
     }
-    return 0;
 }
 
 int asset_manager_set_consumer_state(asset_manager_consumer_state state, void* reserved) {
@@ -113,12 +111,14 @@ int asset_manager_open(asset_manager_stream** stream, const asset_manager_asset*
     auto a = assetFromApiAsset(asset);
     CHECK_TRUE(a.isValid(), SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    auto reader = std::make_unique<AssetReader>(a.name());
+    auto reader = std::make_unique<AssetReader>();
     CHECK_TRUE(reader, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(reader->init(a.name()));
     CHECK(reader->validate(false));
     CHECK_TRUE(reader->isValid(), SYSTEM_ERROR_NOT_FOUND);
     CHECK_TRUE(reader->asset() == a, SYSTEM_ERROR_NOT_FOUND);
-    CHECK_TRUE(reader->assetStream(), SYSTEM_ERROR_NOT_FOUND);
+    InputStream* assetStream;
+    CHECK(reader->assetStream(assetStream));
     *stream = (asset_manager_stream*)reader.get();
     reader.release();
     return 0;
@@ -127,44 +127,50 @@ int asset_manager_open(asset_manager_stream** stream, const asset_manager_asset*
 int asset_manager_available(asset_manager_stream* stream, void* reserved) {
     CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_ARGUMENT);
     auto reader = (AssetReader*)(stream);
-    CHECK_TRUE(reader->assetStream(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK(reader->assetStream()->waitEvent(InputStream::READABLE));
-    return reader->assetStream()->availForRead();
+    InputStream* assetStream;
+    CHECK(reader->assetStream(assetStream));
+    CHECK(assetStream->waitEvent(InputStream::READABLE));
+    return assetStream->availForRead();
 }
 
 int asset_manager_read(asset_manager_stream* stream, char* data, size_t size, void* reserved) {
     CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_ARGUMENT);
     auto reader = (AssetReader*)(stream);
-    CHECK_TRUE(reader->assetStream(), SYSTEM_ERROR_INVALID_STATE);
-    return reader->assetStream()->read(data, size);
+    InputStream* assetStream;
+    CHECK(reader->assetStream(assetStream));
+    return assetStream->read(data, size);
 }
 
 int asset_manager_peek(asset_manager_stream* stream, char* data, size_t size, void* reserved) {
     CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_ARGUMENT);
     auto reader = (AssetReader*)(stream);
-    CHECK_TRUE(reader->assetStream(), SYSTEM_ERROR_INVALID_STATE);
-    return reader->assetStream()->peek(data, size);
+    InputStream* assetStream;
+    CHECK(reader->assetStream(assetStream));
+    return assetStream->peek(data, size);
 }
 
 int asset_manager_skip(asset_manager_stream* stream, size_t size, void* reserved) {
     CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_ARGUMENT);
     auto reader = (AssetReader*)(stream);
-    CHECK_TRUE(reader->assetStream(), SYSTEM_ERROR_INVALID_STATE);
-    return reader->assetStream()->skip(size);
+    InputStream* assetStream;
+    CHECK(reader->assetStream(assetStream));
+    return assetStream->skip(size);
 }
 
 int asset_manager_seek(asset_manager_stream* stream, size_t offset, void* reserved) {
     CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_ARGUMENT);
     auto reader = (AssetReader*)(stream);
-    CHECK_TRUE(reader->assetStream(), SYSTEM_ERROR_INVALID_STATE);
-    return reader->assetStream()->seek(offset);
+    InputStream* assetStream;
+    CHECK(reader->assetStream(assetStream));
+    return assetStream->seek(offset);
 }
 
-int asset_manager_close(asset_manager_stream* stream, void* reserved) {
-    CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_ARGUMENT);
+void asset_manager_close(asset_manager_stream* stream, void* reserved) {
+    if (!stream) {
+        return;
+    }
     auto reader = (AssetReader*)(stream);
     delete reader;
-    return 0;
 }
 
 int asset_manager_format_storage(void* reserved) {

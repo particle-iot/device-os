@@ -17,9 +17,6 @@
 
 #pragma once
 
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_NONE
-
 #include "hal_platform.h"
 
 #include "stream.h"
@@ -128,14 +125,12 @@ private:
 #if HAL_PLATFORM_FILESYSTEM
 class FileInputStream : public InputStream {
 public:
-    FileInputStream(const char* filename, filesystem_instance_t instance, size_t offset = 0)
+    FileInputStream()
             : fs_(nullptr),
               file_{},
               remaining_(0),
-              offset_(offset),
+              offset_(0),
               isOpen_(false) {
-        fs_ = filesystem_get_instance(instance, nullptr);
-        open(filename);
     }
 
     virtual ~FileInputStream() {
@@ -144,6 +139,21 @@ public:
             fs::FsLock lock(fs_);
             lfs_file_close(&fs_->instance, &file_);
         }
+    }
+
+    int open(const char* filename, filesystem_instance_t instance, size_t offset = 0) {
+        offset_ = offset;
+        fs_ = filesystem_get_instance(instance, nullptr);
+        CHECK_TRUE(fs_, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        fs::FsLock lock(fs_);
+        lfs_info info = {};
+        CHECK_FS(lfs_stat(&fs_->instance, filename, &info));
+        CHECK_TRUE(info.type == LFS_TYPE_REG, SYSTEM_ERROR_BAD_DATA);
+        CHECK_FS(lfs_file_open(&fs_->instance, &file_, filename, LFS_O_RDONLY));
+        isOpen_ = true;
+        remaining_ = info.size;
+        return 0;
     }
 
     int read(char* data, size_t size) override {
@@ -158,8 +168,8 @@ public:
         CHECK_TRUE(data, SYSTEM_ERROR_INVALID_ARGUMENT);
         size = std::min(size, remaining_);
         fs::FsLock lock(fs_);
-        CHECK(lfs_file_seek(&fs_->instance, &file_, offset_, LFS_SEEK_SET));
-        size = CHECK(lfs_file_read(&fs_->instance, &file_, data, size));
+        CHECK_FS(lfs_file_seek(&fs_->instance, &file_, offset_, LFS_SEEK_SET));
+        size = CHECK_FS(lfs_file_read(&fs_->instance, &file_, data, size));
         return size;
     }
 
@@ -203,19 +213,6 @@ public:
     }
 
 private:
-    int open(const char* filename) {
-        CHECK_TRUE(fs_, SYSTEM_ERROR_INVALID_STATE);
-        fs::FsLock lock(fs_);
-        lfs_info info = {};
-        CHECK_TRUE(lfs_stat(&fs_->instance, filename, &info) == 0, SYSTEM_ERROR_IO);
-        CHECK_TRUE(info.type == LFS_TYPE_REG, SYSTEM_ERROR_BAD_DATA);
-        CHECK_TRUE(lfs_file_open(&fs_->instance, &file_, filename, LFS_O_RDONLY) == 0, SYSTEM_ERROR_IO);
-        isOpen_ = true;
-        remaining_ = info.size;
-        return 0;
-    }
-
-private:
     filesystem_t* fs_;
     lfs_file_t file_;
     size_t remaining_;
@@ -235,10 +232,12 @@ public:
               inflatedChunk_(nullptr),
               inflatedChunkSize_(0),
               posInChunk_(0),
-              offset_(0),
-              error_(0) {
+              offset_(0) {
+    }
 
-        error_ = inflate_create(&inflate_, nullptr, [](const char* data, size_t size, void* ctx) -> int {
+    int init() {
+        // inflate_ will stay nullptr in case something goes wrong in inflate_create
+        return inflate_create(&inflate_, nullptr, [](const char* data, size_t size, void* ctx) -> int {
             auto self = static_cast<InflatorStream*>(ctx);
             return self->inflatedChunk(data, size);
         }, this);
@@ -312,7 +311,6 @@ private:
     }
 
     int rewind() {
-        CHECK(error_);
         CHECK_TRUE(inflate_ && compressedStream_, SYSTEM_ERROR_INVALID_STATE);
         CHECK(inflate_reset(inflate_));
         CHECK(compressedStream_->seek(0));
@@ -368,7 +366,6 @@ private:
     size_t inflatedChunkSize_;
     size_t posInChunk_;
     size_t offset_;
-    int error_;
 };
 
 #endif // HAL_PLATFORM_COMPRESSED_OTA

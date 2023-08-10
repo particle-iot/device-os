@@ -85,8 +85,10 @@ inline bool Asset::operator!=(const Asset& other) const {
 
 class AssetReader {
 public:
-    AssetReader(InputStream* stream);
-    AssetReader(const char* filename);
+    AssetReader();
+
+    int init(InputStream* stream);
+    int init(const char* filename);
 
     int validate(bool full = true);
 
@@ -97,7 +99,7 @@ public:
     bool isCompressed() const;
     size_t originalSize() const;
 
-    InputStream* assetStream();
+    int assetStream(InputStream*& stream);
 
 private:
     int calculateCrc(uint32_t* crc);
@@ -124,14 +126,14 @@ public:
 
     int init();
 
-    spark::Vector<Asset> requiredAssets() const;
-    spark::Vector<Asset> availableAssets() const;
-    spark::Vector<Asset> missingAssets() const;
-    spark::Vector<Asset> unusedAssets() const;
+    const Vector<Asset>& requiredAssets() const;
+    const Vector<Asset>& availableAssets() const;
+    Vector<Asset> missingAssets() const;
+    Vector<Asset> unusedAssets() const;
 
     int storeAsset(const hal_module_t* module);
 
-    static int requiredAssetsForModule(const hal_module_t* module, spark::Vector<Asset>& assets);
+    static int requiredAssetsForModule(const hal_module_t* module, Vector<Asset>& assets);
 
     int setNotifyHook(asset_manager_notify_hook hook, void* context);
     int notifyIfNeeded();
@@ -149,8 +151,8 @@ private:
     int clearUnusedAssets();
 
 private:
-    spark::Vector<Asset> requiredAssets_;
-    spark::Vector<Asset> availableAssets_;
+    Vector<Asset> requiredAssets_;
+    Vector<Asset> availableAssets_;
     asset_manager_notify_hook hook_ = nullptr;
     void* hookContext_ = nullptr;
 };

@@ -82,7 +82,7 @@ void loop() {
         } else if (c == 'h') {
             LOG(INFO, "Hook executed=%d", hookExecuted);
             if (hookExecuted) {
-                LOG(INFO, "%u ssets captured in hook:", hookAssets.size());
+                LOG(INFO, "%u assets captured in hook:", hookAssets.size());
                 for (auto& asset: hookAssets) {
                     logAssetInfo(asset);
                 }
