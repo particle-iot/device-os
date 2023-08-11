@@ -66,9 +66,9 @@ DYNALIB_FN(15, hal_wlan, wlan_fetch_ipconfig, int(WLanConfig*))
 DYNALIB_FN(16, hal_wlan, wlan_setup, void(void))
 
 #if PLATFORM_ID == PLATFORM_MSOM
-DYNALIB_FN(17, hal_wlan, HAL_NET_SetNetWatchDog_wlan, uint32_t(uint32_t))
-DYNALIB_FN(18, hal_wlan, inet_gethostbyname_wlan, int(const char*, uint16_t, HAL_IPAddress*, network_interface_t, void*))
-DYNALIB_FN(19, hal_wlan, inet_ping_wlan, int(const HAL_IPAddress*, network_interface_t, uint8_t, void*))
+DYNALIB_FN_PLACEHOLDER(17, hal_wlan)
+DYNALIB_FN_PLACEHOLDER(18, hal_wlan)
+DYNALIB_FN_PLACEHOLDER(19, hal_wlan)
 #else
 DYNALIB_FN(17, hal_wlan, HAL_NET_SetNetWatchDog, uint32_t(uint32_t))
 DYNALIB_FN(18, hal_wlan, inet_gethostbyname, int(const char*, uint16_t, HAL_IPAddress*, network_interface_t, void*))

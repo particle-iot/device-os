@@ -34,16 +34,3 @@ uint32_t HAL_NET_SetNetWatchDog(uint32_t) {
 
 void HAL_NET_SetCallbacks(const HAL_NET_Callbacks* callbacks, void* reserved) {
 }
-
-int inet_gethostbyname_wlan(const char* hostname, uint16_t hostnameLen, HAL_IPAddress* out_ip_addr, network_interface_t nif, void* reserved)
-{
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int inet_ping_wlan(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-uint32_t HAL_NET_SetNetWatchDog_wlan(uint32_t) {
-    return 0;
-}
