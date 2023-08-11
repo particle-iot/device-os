@@ -199,6 +199,7 @@ public:
             conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
             conf.set_value = true;
             conf.value = 1;
+            conf.drive_strength = HAL_GPIO_DRIVE_DEFAULT;
             hal_gpio_configure(sclPin_, &conf, nullptr);
             hal_gpio_configure(sdaPin_, &conf, nullptr);
             if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
@@ -210,8 +211,6 @@ public:
             I2C_Cmd(i2cDev_, DISABLE);
             state_ = HAL_I2C_STATE_DISABLED;
             // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
-            hal_gpio_set_drive_strength(sdaPin_, HAL_GPIO_DRIVE_DEFAULT);
-            hal_gpio_set_drive_strength(sclPin_, HAL_GPIO_DRIVE_DEFAULT);
         }
         return SYSTEM_ERROR_NONE;
     }
@@ -238,6 +237,7 @@ public:
         conf.mode = OUTPUT_OPEN_DRAIN_PULLUP;
         conf.set_value = true;
         conf.value = 1;
+        conf.drive_strength = HAL_GPIO_DRIVE_DEFAULT;
         hal_gpio_configure(sclPin_, &conf, nullptr);
         hal_gpio_configure(sdaPin_, &conf, nullptr);
 
