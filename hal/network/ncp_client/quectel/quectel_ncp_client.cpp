@@ -1379,6 +1379,7 @@ int QuectelNcpClient::registerNet() {
             CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
             r = CHECK_PARSER(respNwMode.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        #if PLATFORM_ID == PLATFORM_MSOM
             if (nwScanMode != 0) {
                 CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // AUTO
             }
@@ -1394,6 +1395,11 @@ int QuectelNcpClient::registerNet() {
                     CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",0201,1")); // LTE 02, then GSM 01
                 }
             }
+        #else 
+            if (nwScanMode != 3) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+            }
+        #endif
         }
 
         if (isQuecCatNBxDevice()) {
