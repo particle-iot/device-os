@@ -1327,7 +1327,7 @@ int QuectelNcpClient::registerNet() {
 
     resetRegistrationState();
 
-    if (isQuecCat1Device()) {
+    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
         // Register GPRS, LET, NB-IOT network
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -1379,8 +1379,20 @@ int QuectelNcpClient::registerNet() {
             CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
             r = CHECK_PARSER(respNwMode.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-            if (nwScanMode != 3) {
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
+            if (nwScanMode != 0) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // AUTO
+            }
+
+            if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
+                auto respNwScanSeq = parser_.sendCommand("AT+QCFG=\"nwscanseq\"");
+                int nwScanSeq = -1;
+                r = CHECK_PARSER(respNwScanSeq.scanf("+QCFG: \"nwscanseq\",%d", &nwScanSeq));
+                CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+                r = CHECK_PARSER(respNwScanSeq.readResult());
+                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                if (nwScanSeq != 201) { // i.e. 0201
+                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",0201,1")); // LTE 02, then GSM 01
+                }
             }
         }
 
@@ -1402,7 +1414,7 @@ int QuectelNcpClient::registerNet() {
     }
     // Check GSM, GPRS, and LTE network registration status
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device()) {
+    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     }
@@ -1824,7 +1836,7 @@ int QuectelNcpClient::processEventsImpl() {
 
     // Check GSM, GPRS, and LTE network registration status
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device()) {
+    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     }
