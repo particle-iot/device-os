@@ -66,6 +66,14 @@ typedef int (*coap_request_callback)(coap_message* msg, const char* uri, int met
 typedef int (*coap_response_callback)(coap_message* msg, int code, int req_id, void* arg);
 
 /**
+ * Callback invoked when a block of a request or response message has been sent or received.
+ *
+ * @param msg Request or response message.
+ * @param arg User argument.
+ */
+typedef int (*coap_block_callback)(coap_message* msg, void* arg);
+
+/**
  * Callback invoked when a request or response message is acknowledged.
  *
  * @param req_id ID of the request that started the message exchange for which this acknowledgement
@@ -75,21 +83,13 @@ typedef int (*coap_response_callback)(coap_message* msg, int code, int req_id, v
 typedef int (*coap_ack_callback)(int req_id, void* arg);
 
 /**
- * Callback invoked when a block of a request or response message has been sent or received.
- *
- * @param msg Request or response message.
- * @param arg User argument.
- */
-typedef int (*coap_block_callback)(coap_message* msg, void* arg);
-
-/**
  * Callback invoked when an error occurs while sending a request or response message.
  *
  * @param error Error code as defined by the `system_error_t` enum.
  * @param req_id ID of the request that started the failed message exchange.
  * @param arg User argument.
  */
-typedef int (*coap_error_callback)(int error, int req_id, void* arg);
+typedef void (*coap_error_callback)(int error, int req_id, void* arg);
 
 /**
  * Method code.
@@ -213,8 +213,8 @@ int coap_begin_request(coap_message** msg, const char* uri, int method, void* re
 /**
  * Finish sending a request message.
  *
- * The message instance must not be used again with any of the API functions after calling this
- * function.
+ * If the function call succeeds, the message instance must not be used again with any of the
+ * functions of this API.
  *
  * @param msg Request message.
  * @param resp_cb Callback to invoke when a response for this request is received. Can be `NULL`.
@@ -241,8 +241,8 @@ int coap_begin_response(coap_message** msg, int code, int req_id, void* reserved
 /**
  * Finish sending a response message.
  *
- * The message instance must not be used again with any of the API functions after calling this
- * function.
+ * If the function call succeeds, the message instance must not be used again with any of the
+ * functions of this API.
  *
  * @param msg Response message.
  * @param ack_cb Callback to invoke when the response is acknowledged. Can be `NULL`.
