@@ -407,7 +407,7 @@ eval $MAKE_COMMAND
 release_binary "bootloader" "bootloader" "$SUFFIX" "$DEBUG_BUILD" "$USE_SWD_JTAG"
 
 # Prebootloader
-if [ $PLATFORM_ID -eq 28 ] || [ $PLATFORM_ID -eq 32 ]; then
+if [ $PLATFORM_ID -eq 28 ] || [ $PLATFORM_ID -eq 32 ] || [ $PLATFORM_ID -eq 35 ]; then
 cd ../bootloader/prebootloader
 
 COMPILE_LTO="n"
