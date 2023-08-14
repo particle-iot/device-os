@@ -47,7 +47,7 @@
 
 #define SYSTICK_IRQ_PRIORITY                7      //CORTEX_M33 Systick Interrupt
 
-// Currently works with platforms P2 and TrackerM
+// Currently works with platforms P2, TrackerM and MSoM
 #define INTERNAL_FLASH_SIZE             (0x800000)
 
 //Push Buttons, use interrupt HAL

@@ -18,15 +18,23 @@
 #if HAL_PLATFORM_RTL872X
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
 #error "SPI not supported as slave for p2"
+#endif // PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
+#define MY_SPI SPI
+#define MY_CS SS
+#pragma message "Compiling for SPI, MY_CS set to SS"
 #elif (USE_SPI == 1)
+#if PLATFORM_ID == PLATFORM_MSOM
+#error "SPI1 not supported as slave for MSoM"
+#endif // PLATFORM_ID == PLATFORM_MSOM
 #define MY_SPI SPI1
 #define MY_CS SS1
 #pragma message "Compiling for SPI1, MY_CS set to SS1"
 #elif (USE_SPI == 2)
-#error "SPI2 not supported for p2"
+#error "SPI2 not supported for p2/TrackerM/MSoM"
 #else
-#error "Not supported for P2"
+#error "Not supported for p2/TrackerM/MSoM"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
 
 #elif HAL_PLATFORM_NRF52840
@@ -134,17 +142,31 @@
  *********************************************************************************************
  *
  * P2 Wiring diagrams
- * 
+ *
  * SPI1/SPI1                       SPI/SPI1 (SPI can't be used as slave)
  * Master: SPI1  (USE_SPI=SPI1)    Master: SPI (USE_SPI=SPI)
  * Slave:  SPI1  (USE_SPI=SPI1)    Slave:  SPI1 (USE_SPI=SPI1)
- * 
+ *
  * Master             Slave       Master              Slave
  * CS   D5 <-------> D5 CS        CS   S3 <---------> D5 CS
  * MISO D4 <-------> D3 MISO      MISO S1 <---------> D3 MISO
  * MOSI D3 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
  * SCK  D2 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
- * 
+ *
+ *********************************************************************************************
+ *
+ * MSoM Wiring diagrams
+ *
+ * SPI/SPI                        SPI/SPI1 (SPI1 can't be used as slave)
+ * Master: SPI  (USE_SPI=SPI)     Master: SPI1 (USE_SPI=SPI1)
+ * Slave:  SPI  (USE_SPI=SPI)     Slave:  SPI (USE_SPI=SPI)
+ *
+ * Master             Slave       Master              Slave
+ * CS   D8  <-------> D8  CS        CS   D3  <---------> D8  CS
+ * MISO D13 <-------> D13 MISO      MISO D2  <---------> D13 MISO
+ * MOSI D11 <-------> D11 MOSI      MOSI D10 <---------> D11 MOSI
+ * SCK  D12 <-------> D12 SCK       SCK  D9  <---------> D12 SCK
+ *
  *********************************************************************************************
  */
 
@@ -156,7 +178,7 @@ static uint8_t SPI_Slave_Rx_Buffer_Supper[1024];
 static volatile uint8_t DMA_Completed_Flag = 0;
 static volatile uint8_t SPI_Selected_State = 0;
 
-static const char* txString = 
+static const char* txString =
 "urjlU1tW177HwJsR6TylreMKge225qyLaIizW5IhXHkWgTGpH2fZtm2Od20Ne3Q81fxfUl7zoFaF\
 Z6smPzkpTGNSxGg7TCEiE2f19951tKxjFCB4Se86R4CaWW2YZF0mogirgsu2qRMGe4mC9QlJkCgXP\
 bgSVV1mc2xsZcu4bj0pbmPIhxkuyAHe4cVK3gLpWEGTadtAn2k66rOFNBdfPaE0cUY3wwXlVQ9yDl\

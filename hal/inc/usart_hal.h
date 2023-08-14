@@ -119,11 +119,11 @@ typedef struct hal_usart_ring_buffer_t {
 } hal_usart_ring_buffer_t;
 
 typedef enum hal_usart_interface_t {
-    HAL_USART_SERIAL1 = 0,    //maps to USART_TX_RX
-    HAL_USART_SERIAL2 = 1,
-    HAL_USART_SERIAL3 = 2,
-    HAL_USART_SERIAL4 = 3,
-    HAL_USART_SERIAL5 = 4,
+    HAL_USART_SERIAL1 = 0,    // maps to Serial1
+    HAL_USART_SERIAL2 = 1,    // may map to NCP or Serial2, see HAL_PLATFORM_CELLULAR_SERIAL / HAL_PLATFORM_WIFI_SERIAL
+    HAL_USART_SERIAL3 = 2,    // may map to NCP or Serial3, see HAL_PLATFORM_CELLULAR_SERIAL / HAL_PLATFORM_WIFI_SERIAL
+    HAL_USART_SERIAL4 = 3,    // may map to NCP or Serial4, see HAL_PLATFORM_CELLULAR_SERIAL / HAL_PLATFORM_WIFI_SERIAL
+    HAL_USART_SERIAL5 = 4,    // may map to NCP or Serial5, see HAL_PLATFORM_CELLULAR_SERIAL / HAL_PLATFORM_WIFI_SERIAL
 } hal_usart_interface_t;
 
 typedef enum hal_usart_state_t {

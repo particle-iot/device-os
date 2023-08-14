@@ -40,14 +40,19 @@ using namespace particle;
 
 namespace {
 
-// When setting to GPIO output mode, all of the audio pins and one of the
-// normal pins (PA[27]) do not support GPIO read function (always read as '0'),
+// When setting to GPIO output mode, all of the audio pins (PA[0] ~ PA[6] and PB[28] ~ PB[31])
+// and one of the normal pins (PA[27]) do not support GPIO read function (always read as '0'),
 // We'll cache the GPIO state for these pins.
+#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
+constexpr int CACHE_PIN_COUNT = 6;
+hal_pin_t cachePins[CACHE_PIN_COUNT] = {D7, S4, S5, S6, BTN, ANTSW};
+#elif PLATFORM_ID == PLATFORM_MSOM
+constexpr int CACHE_PIN_COUNT = 10;
+hal_pin_t cachePins[CACHE_PIN_COUNT] = {D20, D21, D26, BGPWR, BGRST, BGDTR, BGVINT, GNSS_ANT_PWR, UNUSED_PIN1, UNUSED_PIN2};
+#endif
 constexpr uint32_t CACHE_PIN_STATE_UNKNOWN = 0x3;
 constexpr uint32_t CACHE_PIN_STATE_MASK = 0x3;
 constexpr int CACHE_PIN_STATE_BITS = 2;
-constexpr int CACHE_PIN_COUNT = 6;
-hal_pin_t cachePins[CACHE_PIN_COUNT] = {D7, S4, S5, S6, BTN, ANTSW};
 // 2-bit state for each pin: | 00 | 00 | 00 | 00 | 00 | 00 |
 uint32_t cachePinState = 0;
 

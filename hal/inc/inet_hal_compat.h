@@ -109,7 +109,6 @@ int inet_gethostbyname(const char* hostname, uint16_t hostnameLen, HAL_IPAddress
 int inet_ping(const HAL_IPAddress* address, network_interface_t nif, uint8_t nTries,
         void* reserved);
 
-
 #ifdef  __cplusplus
 }
 #endif

@@ -766,8 +766,9 @@ const auto UARTE1_INTERRUPT_PRIORITY = (app_irq_priority_t)_PRIO_SD_LOWEST;
 
 Usart* getInstance(hal_usart_interface_t serial) {
     static Usart usartMap[] = {
-        {NRF_UARTE0, uarte0InterruptHandler, UARTE0_INTERRUPT_PRIORITY, NRF_TIMER2, NRF_PPI_CHANNEL4, TX, RX, CTS, RTS},
-        {NRF_UARTE1, uarte1InterruptHandler, UARTE1_INTERRUPT_PRIORITY, NRF_TIMER3, NRF_PPI_CHANNEL5, TX1, RX1, CTS1, RTS1}
+        // NOTE: NCP should be last so that Serial1, Serial2, etc.. are contiguous.
+        {NRF_UARTE0, uarte0InterruptHandler, UARTE0_INTERRUPT_PRIORITY, NRF_TIMER2, NRF_PPI_CHANNEL4, TX, RX, CTS, RTS},    // Serial1
+        {NRF_UARTE1, uarte1InterruptHandler, UARTE1_INTERRUPT_PRIORITY, NRF_TIMER3, NRF_PPI_CHANNEL5, TX1, RX1, CTS1, RTS1} // NCP
     };
 
     CHECK_TRUE(serial < sizeof(usartMap) / sizeof(usartMap[0]), nullptr);
