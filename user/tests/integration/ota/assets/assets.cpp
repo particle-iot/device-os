@@ -156,10 +156,11 @@ int validateAndReportAssets(int limit = 0, bool resetAndSkip = false) {
     }
 
     auto size = serializeAssetReportAsJson(nullptr, 0, reportedAvailable, reportedRequired);
-    auto buf = std::make_unique<char[]>(size + 1);
+    // TODO: some issue in size calculation? Last '}' sometimes does not get filled
+    auto buf = std::make_unique<char[]>(size + 10);
     if (buf) {
-        memset(buf.get(), 0, size + 1);
-        serializeAssetReportAsJson(buf.get(), size, reportedAvailable, reportedRequired);
+        memset(buf.get(), 0, size + 10);
+        serializeAssetReportAsJson(buf.get(), size + 9, reportedAvailable, reportedRequired);
         int r = TestRunner::instance()->pushMailboxMsg(buf.get(), 10000);
         return r;
     }
