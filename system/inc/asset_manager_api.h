@@ -29,34 +29,120 @@
 namespace particle {
 
 // Shared hash class between application and system
+
+/**
+ * Asset hash.
+ * 
+ */
 class AssetHash {
 public:
+    /**
+     * Hash type. SHA256 is the default.
+     * 
+     */
     enum Type {
         INVALID = -1,
         SHA256 = 0,
         DEFAULT = SHA256,
     };
 
+    /**
+     * SHA256 size in bytes.
+     * 
+     */
     static const size_t SHA256_HASH_SIZE = 32;
 
+    /**
+     * Construct a new Asset Hash object (default).
+     * 
+     */
     AssetHash();
+    /**
+     * Construct a new Asset Hash object from buffer `hash` of
+     * length `length`.
+     * 
+     * @param hash Hash.
+     * @param length Hash length.
+     * @param type (optional) Hash type, SHA256 is the default.
+     */
+    ///@{
     AssetHash(const char* hash, size_t length, Type type = Type::DEFAULT);
     AssetHash(const uint8_t* hash, size_t length, Type type = Type::DEFAULT);
+    ///@}
+
+    /**
+     * Construct a new Asset Hash object from `Buffer` object.
+     * 
+     * @param hash Hash.
+     * @param type Hash type.
+     */
     AssetHash(const Buffer& hash, Type type = Type::DEFAULT);
+
+    /**
+     * Copy cosntructor.
+     * 
+     * @param other Asset Hash object to copy from.
+     */
     AssetHash(const AssetHash& other) = default;
+
+    /**
+     * Move constructor.
+     * 
+     * @param other 
+     */
     AssetHash(AssetHash&& other) = default;
 
+    /**
+     * Assignment/move-assignment operators.
+     * 
+     * @param other 
+     * @return AssetHash& 
+     */
+    ///@{
     AssetHash& operator=(const AssetHash& other) = default;
     AssetHash& operator=(AssetHash&& other) = default;
+    ///@}
 
+    /**
+     * Hash type.
+     * 
+     * @return `Type` enum value.
+     */
     Type type() const;
+
+    /**
+     * Get raw hash contents.
+     * 
+     * @return const Buffer& Buffer object reference.
+     */
     const Buffer& hash() const;
+
+    /**
+     * Check if Asset Hash object is valid.
+     * 
+     * @return true 
+     * @return false 
+     */
     bool isValid() const;
 
+    /**
+     * Convert Asset Hash to hexedemical string.
+     * 
+     * @return String Hex-encoded hash.
+     */
     String toString() const;
 
+    /**
+     * Comparison operators. Asset Hashes match if their type, length and values match.
+     * 
+     * @param other Object to compare with.
+     * @return true 
+     * @return false 
+     */
+    ///@{
     bool operator==(const AssetHash& other) const;
     bool operator!=(const AssetHash& other) const;
+    ///@}
 
 private:
     Type type_;

@@ -1039,29 +1039,78 @@ public:
     }
 
 #if HAL_PLATFORM_ASSETS
+    /**
+     * Get list of assets required by currently running application binary.
+     * 
+     * @return spark::Vector<ApplicationAsset> 
+     */
     static spark::Vector<ApplicationAsset> assetsRequired();
+
+    /**
+     * Get list of assets currently available in asset storage.
+     * 
+     * @return spark::Vector<ApplicationAsset> 
+     */
     static spark::Vector<ApplicationAsset> assetsAvailable();
+
+    /**
+     * Mark all currently available assets as 'handled'. Suspends execution of `System.onAssetOta()` callback
+     * until a change in assets happens (e.g. application gets updated and depends on a different set of assets).
+     * 
+     * @param state (optional) `true` to mark assets as handled (default), `false` to mark assets as unhandled
+     * @return int `0` on success, `system_error_t` error code on errors.
+     */
     static int assetsHandled(bool state = true);
 
+    /**
+     * Set a callback to be executed early on boot before `setup()` but after global constructors if current
+     * list of available assets has changed and has not been marked as 'handled' with `System.assetsHandled()`.
+     * 
+     * @param cb Callback.
+     * @param context Callback context.
+     * @return int `0` on success, `system_error_t` error code otherwise.
+     */
     static int onAssetOta(OnAssetOtaCallback cb, void* context = nullptr);
+
+    /**
+     * Set a callback to be executed early on boot before `setup()` but after global constructors if current
+     * list of available assets has changed and has not been marked as 'handled' with `System.assetsHandled()`.
+     * 
+     * @param cb Callback.
+     * @return int `0` on success, `system_error_t` error code otherwise.
+     */
     static int onAssetOta(OnAssetOtaStdFunc cb);
 
+    /**
+     * Set a callback to be executed early on boot before `setup()` but after global constructors if current
+     * list of available assets has changed and has not been marked as 'handled' with `System.assetsHandled()`.
+     * 
+     * @tparam T Class type.
+     * @param callback Class member method as callback.
+     * @param instance Class instance.
+     * @return int `0` on success, `system_error_t` error code otherwise. 
+     */
     template <typename T>
     static int onAssetOta(void(T::*callback)(spark::Vector<ApplicationAsset> assets), T* instance) {
         return onAssetOta((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : (OnAssetOtaCallback)nullptr);
     }
 
+    /**
+     * OTA -> Ota aliases.
+     * 
+     */
+    ///@{
     static int onAssetOTA(OnAssetOtaCallback cb, void* context = nullptr) {
         return onAssetOta(cb, context);
     }
     static int onAssetOTA(OnAssetOtaStdFunc cb) {
         return onAssetOta(cb);
     }
-
     template <typename T>
     static int onAssetOTA(void(T::*callback)(spark::Vector<ApplicationAsset> assets), T* instance) {
         return onAssetOTA((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : (OnAssetOtaCallback)nullptr);
     }
+    ///@}
 #endif // HAL_PLATFORM_ASSETS
 
 private:
