@@ -158,8 +158,8 @@ int validateAndReportAssets(int limit = 0, bool resetAndSkip = false) {
     auto size = serializeAssetReportAsJson(nullptr, 0, reportedAvailable, reportedRequired);
     auto buf = std::make_unique<char[]>(size + 1);
     if (buf) {
-        memset(buf.get(), 0, size);
-        serializeAssetReportAsJson(buf.get(), size + 1, reportedAvailable, reportedRequired);
+        memset(buf.get(), 0, size + 1);
+        serializeAssetReportAsJson(buf.get(), size, reportedAvailable, reportedRequired);
         int r = TestRunner::instance()->pushMailboxMsg(buf.get(), 10000);
         return r;
     }
@@ -229,6 +229,8 @@ test(04_ad_hoc_ota_restore) {
     updateResult = firmware_update_failed;
     Particle.disconnect();
     System.assetsHandled();
+    // Just in case
+    System.enableReset();
 }
 
 test(05_product_ota_start) {
@@ -327,5 +329,6 @@ test(12_assets_read_using_filesystem) {
 }
 
 test(99_product_ota_restore) {
-    
+    // Just in case
+    System.enableReset();
 }
