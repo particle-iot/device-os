@@ -142,6 +142,7 @@ int validateAndReportAssets(int limit = 0, bool resetAndSkip = false) {
         ReportAsset rep;
         rep.asset = asset;
         rep.error = readAndCalculateAssetCrc(rep.asset, &rep.crc, resetAndSkip);
+        rep.asset.reset();
         reportedAvailable.append(rep);
 
         if (limit > 0 && reportedAvailable.size() == limit) {
