@@ -14,6 +14,7 @@ struct ReportAsset {
     ApplicationAsset asset;
     uint32_t crc = 0;
     int error = 0;
+    bool readable = false;
 };
 
 uint16_t getProductVersion() {
@@ -62,6 +63,7 @@ int readAndCalculateAssetCrc(ApplicationAsset& asset, uint32_t* outCrc, bool res
     SCOPE_GUARD({
         asset.reset();
     });
+    asset.reset();
     CHECK_TRUE(asset.isValid() && asset.isReadable(), SYSTEM_ERROR_BAD_DATA);
     char buf[256];
     size_t size = asset.size();
@@ -94,7 +96,7 @@ void serializeAsset(JSONBufferWriter& w, ReportAsset& asset) {
     w.name("valid");
     w.value(asset.asset.isValid());
     w.name("readable");
-    w.value(asset.asset.isReadable());
+    w.value(asset.readable);
     w.name("hash");
     w.value(asset.asset.hash().toString());
     w.name("crc");
@@ -141,6 +143,7 @@ int validateAndReportAssets(int limit = 0, bool resetAndSkip = false) {
 
         ReportAsset rep;
         rep.asset = asset;
+        rep.readable = rep.asset.isReadable();
         rep.error = readAndCalculateAssetCrc(rep.asset, &rep.crc, resetAndSkip);
         rep.asset.reset();
         reportedAvailable.append(rep);
