@@ -14,6 +14,7 @@ message WifiConfig {
     bytes bssid = 2 [(nanopb).max_size = 6];
     ctrl.wifi.Security security = 3;
     ctrl.wifi.Credentials credentials = 4;
+    bool hidden = 5;
   }
 
   repeated Network networks = 1;

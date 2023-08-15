@@ -167,6 +167,12 @@ rtw_security_t wifiSecurityToRtlSecurity(WifiSecurity sec) {
         // FIXME
         return RTW_SECURITY_WPA_WPA2_MIXED_PSK;
     }
+    case WifiSecurity::WPA2_WPA3_PSK: {
+        return RTW_SECURITY_WPA2_WPA3_MIXED;
+    }
+    case WifiSecurity::WPA3_PSK: {
+        return RTW_SECURITY_WPA3_AES_PSK;
+    }
     }
     return RTW_SECURITY_UNKNOWN;
 }
@@ -408,7 +414,8 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
                                             ( record->security == RTW_SECURITY_WPA_WPA2_AES_PSK) ? "WPA/WPA2 AES" :
                                             ( record->security == RTW_SECURITY_WPA_WPA2_MIXED_PSK) ? "WPA/WPA2 Mixed" :
             #ifdef CONFIG_SAE_SUPPORT
-                                            ( record->security == RTW_SECURITY_WPA3_AES_PSK) ? "WP3-SAE AES" :
+                                            ( record->security == RTW_SECURITY_WPA3_AES_PSK) ? "WPA3-SAE AES" :
+                                            ( record->security == RTW_SECURITY_WPA2_WPA3_MIXED) ? "WPA2/WPA3 Mixed" :
             #endif
                                             "Unknown" );
 
