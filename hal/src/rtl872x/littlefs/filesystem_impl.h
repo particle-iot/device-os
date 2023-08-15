@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,30 +17,12 @@
 
 #pragma once
 
-#include "inflate.h"
+#include "platform_config.h"
 
-#include "miniz.h"
-#include "miniz_tinfl.h"
+#define FILESYSTEM_PROG_SIZE    (256)
+#define FILESYSTEM_READ_SIZE    (256)
 
-struct inflate_ctx {
-    tinfl_decompressor decomp;
-    char* buf;
-    size_t buf_size;
-    size_t buf_offs;
-    size_t buf_avail;
-    inflate_output output;
-    void* user_data;
-    int result;
-    bool done;
-};
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-int inflate_alloc_ctx(inflate_ctx** ctx, char** buf, size_t buf_size);
-void inflate_free_ctx(inflate_ctx* ctx, char* buf);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
+#define FILESYSTEM_BLOCK_SIZE   (sFLASH_PAGESIZE)
+#define FILESYSTEM_BLOCK_COUNT  (sFLASH_FILESYSTEM_PAGE_COUNT)
+#define FILESYSTEM_FIRST_BLOCK  (sFLASH_FILESYSTEM_FIRST_PAGE)
+#define FILESYSTEM_LOOKAHEAD    (128)

@@ -644,6 +644,14 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
             case HAL_EXFLASH_COMMAND_RESET:
                 cinstr_cfg.opcode = HAL_QSPI_CMD_STD_RSTEN;
                 break;
+            case HAL_EXFLASH_COMMAND_GET_SIZE: {
+                const hal_exflash_params_t* flash_params = hal_exflash_get_params(flash_type);
+
+                CHECK_TRUE(result != nullptr, SYSTEM_ERROR_INVALID_ARGUMENT);
+                CHECK_TRUE(size >= sizeof(flash_params->size), SYSTEM_ERROR_INVALID_ARGUMENT);
+                memcpy(result, &flash_params->size, sizeof(flash_params->size));
+                return 0;
+            }
             default:
                 return SYSTEM_ERROR_NOT_SUPPORTED;
         }

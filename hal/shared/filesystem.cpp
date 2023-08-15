@@ -20,6 +20,10 @@
 #include "exflash_hal.h"
 #include "rgbled.h"
 #include <mutex>
+#include "flash_mal.h"
+#include "system_error.h"
+#include "file_util.h"
+#include "scope_guard.h"
 
 using namespace particle::fs;
 
@@ -63,7 +67,10 @@ namespace {
 int fs_read(const struct lfs_config* c, lfs_block_t block,
             lfs_off_t off, void* buffer, lfs_size_t size)
 {
-    int r = hal_exflash_read(block * c->block_size + off, (uint8_t*)buffer, size);
+    if (!((filesystem_t*)c->context)->state) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    int r = hal_exflash_read((block + ((filesystem_t*)c->context)->first_block) * c->block_size + off, (uint8_t*)buffer, size);
     if (r) {
         LOG_DEBUG(ERROR, "fs_read error %d", r);
     }
@@ -73,7 +80,10 @@ int fs_read(const struct lfs_config* c, lfs_block_t block,
 int fs_prog(const struct lfs_config* c, lfs_block_t block,
             lfs_off_t off, const void* buffer, lfs_size_t size)
 {
-    int r = hal_exflash_write(block * c->block_size + off, (const uint8_t*)buffer, size);
+    if (!((filesystem_t*)c->context)->state) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    int r = hal_exflash_write((block + ((filesystem_t*)c->context)->first_block) * c->block_size + off, (const uint8_t*)buffer, size);
     if (r) {
         LOG_DEBUG(ERROR, "fs_prog error %d", r);
     }
@@ -82,7 +92,10 @@ int fs_prog(const struct lfs_config* c, lfs_block_t block,
 
 int fs_erase(const struct lfs_config* c, lfs_block_t block)
 {
-    int r = hal_exflash_erase_sector(block * c->block_size, 1);
+    if (!((filesystem_t*)c->context)->state) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    int r = hal_exflash_erase_sector((block + ((filesystem_t*)c->context)->first_block) * c->block_size, 1);
     if (r) {
         LOG_DEBUG(ERROR, "fs_erase error %d", r);
     }
@@ -113,7 +126,7 @@ struct statvfs {
     unsigned long  f_namemax;  /* maximum filename length */
 };
 
-int statvfs(const char* path, struct statvfs* s)
+int statvfs(const char* path, struct statvfs* s, filesystem_t* fs = nullptr)
 {
     (void)path;
 
@@ -121,7 +134,9 @@ int statvfs(const char* path, struct statvfs* s)
         return -1;
     }
 
-    filesystem_t* fs = filesystem_get_instance(nullptr);
+    if (!fs) {
+        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
+    }
     if (!fs) {
         return -1;
     }
@@ -200,7 +215,7 @@ void fs_dump_dir(filesystem_t* fs, char* path, size_t len)
 void fs_dump(filesystem_t* fs)
 {
     struct statvfs svfs;
-    int r = statvfs(nullptr, &svfs);
+    int r = statvfs(nullptr, &svfs, fs);
 
     if (!r) {
         LOG_PRINTF(TRACE, "%-11s %11s %7s %4s %5s %8s %8s %8s  %4s\r\n",
@@ -233,6 +248,7 @@ void fs_dump(filesystem_t* fs)
 #endif /* DEBUG_BUILD */
 
 filesystem_t s_instance = {};
+filesystem_t s_asset_storage_instance = {};
 
 } /* anonymous */
 
@@ -245,24 +261,13 @@ int filesystem_mount(filesystem_t* fs) {
         return ret;
     }
 
-    fs->config.context = fs;
-
-    fs->config.read = &fs_read;
-    fs->config.prog = &fs_prog;
-    fs->config.erase = &fs_erase;
-    fs->config.sync = &fs_sync;
-    fs->config.read_size = FILESYSTEM_READ_SIZE;
-    fs->config.prog_size = FILESYSTEM_PROG_SIZE;
-    fs->config.block_size = FILESYSTEM_BLOCK_SIZE;
-    fs->config.block_count = FILESYSTEM_BLOCK_COUNT;
-    fs->config.lookahead = FILESYSTEM_LOOKAHEAD;
-
-#ifdef LFS_NO_MALLOC
-    fs->config.read_buffer = fs->read_buffer;
-    fs->config.prog_buffer = fs->prog_buffer;
-    fs->config.lookahead_buffer = fs->lookahead_buffer;
-    fs->config.file_buffer = fs->file_buffer;
-#endif /* LFS_NO_MALLOC */
+    fs->state = true;
+    SCOPE_GUARD({
+        if (ret) {
+            fs->state = false;
+        }
+        SPARK_ASSERT(fs->state);
+    });
 
     ret = lfs_mount(&fs->instance, &fs->config);
     if (!ret) {
@@ -305,15 +310,18 @@ int filesystem_mount(filesystem_t* fs) {
     }
 
     if (!ret) {
-        fs->state = true;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        // Make sure /usr folder exists
-        int r = lfs_mkdir(&fs->instance, "/usr");
-        SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+        if (fs->index == FILESYSTEM_INSTANCE_DEFAULT) {
+            // Make sure /usr and /tmp folders exist
+            int r = lfs_mkdir(&fs->instance, "/usr");
+            SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+            particle::rmrf("/tmp");
+            r = lfs_mkdir(&fs->instance, "/tmp");
+            SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+            // FIXME: recursively cleanup /tmp
+        }
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     }
-
-    SPARK_ASSERT(fs->state);
 
     return ret;
 }
@@ -326,15 +334,86 @@ int filesystem_unmount(filesystem_t* fs) {
     if (fs->state) {
         ret = lfs_unmount(&fs->instance);
         fs->state = false;
+        // This should not be required as storage read/write/erase are gated
+        // by fs->state, but just in case invalidate at least files.
+        for (lfs_file_t* f = fs->instance.files; f; f = f->next) {
+            f->pos = LFS_FILE_MAX;
+            f->flags = LFS_F_ERRED;
+            f->size = 0;
+            f->pair[0] = 0;
+            f->pair[1] = 0;
+        }
     }
 
     return ret;
 }
 
-filesystem_t* filesystem_get_instance(void* reserved) {
-    (void)reserved;
+int filesystem_invalidate(filesystem_t* fs) {
+    FsLock lk(fs);
 
-    return &s_instance;
+    if (fs->state) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    // Just in case
+    filesystem_get_instance(fs->index, nullptr);
+
+    // Erase two superblocks
+    return hal_exflash_erase_sector(fs->first_block * fs->config.block_size, 2);
+}
+
+void filesystem_config(filesystem_t* fs) {
+    fs->config.context = fs;
+
+    fs->config.read = &fs_read;
+    fs->config.prog = &fs_prog;
+    fs->config.erase = &fs_erase;
+    fs->config.sync = &fs_sync;
+    fs->config.read_size = FILESYSTEM_READ_SIZE;
+    fs->config.prog_size = FILESYSTEM_PROG_SIZE;
+    fs->config.block_size = FILESYSTEM_BLOCK_SIZE;
+    // Already configured in filesystem_get_instance
+    // fs->config.block_count = 0;
+    fs->config.lookahead = FILESYSTEM_LOOKAHEAD;
+
+#ifdef LFS_NO_MALLOC
+    fs->config.read_buffer = fs->read_buffer;
+    fs->config.prog_buffer = fs->prog_buffer;
+    fs->config.lookahead_buffer = fs->lookahead_buffer;
+    fs->config.file_buffer = fs->file_buffer;
+#endif /* LFS_NO_MALLOC */
+}
+
+filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved) {
+    (void)reserved;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, []() {
+#else
+    static int onceFlag = 0;
+    if (!onceFlag) ({
+        onceFlag = 1;
+#endif
+        // FIXME: make this cleaner and move to using C++ classes etc
+        s_instance.index = FILESYSTEM_INSTANCE_DEFAULT;
+        s_asset_storage_instance.index = FILESYSTEM_INSTANCE_ASSET_STORAGE;
+
+        s_instance.first_block = FILESYSTEM_FIRST_BLOCK;
+        s_instance.config.block_count = FILESYSTEM_BLOCK_COUNT;
+
+        s_asset_storage_instance.first_block = EXTERNAL_FLASH_ASSET_STORAGE_FIRST_PAGE;
+        s_asset_storage_instance.config.block_count = EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT;
+
+        filesystem_config(&s_instance);
+        filesystem_config(&s_asset_storage_instance);
+    });
+
+    if (index == FILESYSTEM_INSTANCE_DEFAULT) {
+        return &s_instance;
+    } else if (index == FILESYSTEM_INSTANCE_ASSET_STORAGE) {
+        return &s_asset_storage_instance;
+    }
+    return nullptr;
 }
 
 int filesystem_dump_info(filesystem_t* fs) {
@@ -347,4 +426,23 @@ int filesystem_dump_info(filesystem_t* fs) {
 #endif /* DEBUG_BUILD */
 
     return 0;
+}
+
+int filesystem_to_system_error(int error) {
+    switch (error) {
+    case LFS_ERR_OK: return SYSTEM_ERROR_NONE;
+    case LFS_ERR_IO: return SYSTEM_ERROR_FILESYSTEM_IO;
+    case LFS_ERR_CORRUPT: return SYSTEM_ERROR_FILESYSTEM_CORRUPT;
+    case LFS_ERR_NOENT: return SYSTEM_ERROR_FILESYSTEM_NOENT;
+    case LFS_ERR_EXIST: return SYSTEM_ERROR_FILESYSTEM_EXIST;
+    case LFS_ERR_NOTDIR: return SYSTEM_ERROR_FILESYSTEM_NOTDIR;
+    case LFS_ERR_ISDIR: return SYSTEM_ERROR_FILESYSTEM_ISDIR;
+    case LFS_ERR_NOTEMPTY: return SYSTEM_ERROR_FILESYSTEM_NOTEMPTY;
+    case LFS_ERR_BADF: return SYSTEM_ERROR_FILESYSTEM_BADF;
+    case LFS_ERR_FBIG: return SYSTEM_ERROR_FILESYSTEM_FBIG;
+    case LFS_ERR_INVAL: return SYSTEM_ERROR_FILESYSTEM_INVAL;
+    case LFS_ERR_NOSPC: return SYSTEM_ERROR_FILESYSTEM_NOSPC;
+    case LFS_ERR_NOMEM: return SYSTEM_ERROR_FILESYSTEM_NOMEM;
+    default: return SYSTEM_ERROR_FILESYSTEM;
+    }
 }

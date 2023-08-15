@@ -223,7 +223,7 @@ void Filesystem::removeEntry(Entry* entry) {
 
 int Filesystem::open(lfs_t* lfs, lfs_file_t* file, const char* path, int flags) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file || !path) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file || !path) {
             throw std::runtime_error("lfs_file_open() has been called with invalid arguments");
         }
         auto e = findEntry(path);
@@ -257,7 +257,7 @@ int Filesystem::open(lfs_t* lfs, lfs_file_t* file, const char* path, int flags) 
 
 int Filesystem::close(lfs_t* lfs, lfs_file_t* file) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file) {
             throw std::runtime_error("lfs_file_close() has been called with invalid arguments");
         }
         const auto it = fdMap_.find(file->fd);
@@ -277,7 +277,7 @@ int Filesystem::close(lfs_t* lfs, lfs_file_t* file) {
 
 lfs_ssize_t Filesystem::read(lfs_t* lfs, lfs_file_t* file, void* buf, lfs_size_t size) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file || (size > 0 && !buf)) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file || (size > 0 && !buf)) {
             throw std::runtime_error("lfs_file_read() has been called with invalid arguments");
         }
         const auto it = fdMap_.find(file->fd);
@@ -306,7 +306,7 @@ lfs_ssize_t Filesystem::read(lfs_t* lfs, lfs_file_t* file, void* buf, lfs_size_t
 
 lfs_ssize_t Filesystem::write(lfs_t* lfs, lfs_file_t* file, const void* buf, lfs_size_t size) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file || (size > 0 && !buf)) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file || (size > 0 && !buf)) {
             throw std::runtime_error("lfs_file_write() has been called with invalid arguments");
         }
         const auto it = fdMap_.find(file->fd);
@@ -334,7 +334,7 @@ lfs_ssize_t Filesystem::write(lfs_t* lfs, lfs_file_t* file, const void* buf, lfs
 
 lfs_soff_t Filesystem::size(lfs_t* lfs, lfs_file_t* file) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file) {
             throw std::runtime_error("lfs_file_size() has been called with invalid arguments");
         }
         const auto it = fdMap_.find(file->fd);
@@ -350,7 +350,7 @@ lfs_soff_t Filesystem::size(lfs_t* lfs, lfs_file_t* file) {
 
 lfs_soff_t Filesystem::seek(lfs_t* lfs, lfs_file_t* file, lfs_soff_t offs, int whence) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file) {
             throw std::runtime_error("lfs_file_seek() has been called with invalid arguments");
         }
         const auto it = fdMap_.find(file->fd);
@@ -384,7 +384,7 @@ lfs_soff_t Filesystem::seek(lfs_t* lfs, lfs_file_t* file, lfs_soff_t offs, int w
 
 lfs_soff_t Filesystem::tell(lfs_t* lfs, lfs_file_t* file) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file) {
             throw std::runtime_error("lfs_file_tell() has been called with invalid arguments");
         }
         const auto it = fdMap_.find(file->fd);
@@ -399,7 +399,7 @@ lfs_soff_t Filesystem::tell(lfs_t* lfs, lfs_file_t* file) {
 
 int Filesystem::truncate(lfs_t* lfs, lfs_file_t* file, lfs_off_t size) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file) {
             throw std::runtime_error("lfs_file_truncate() has been called with invalid arguments");
         }
         const auto it = fdMap_.find(file->fd);
@@ -420,7 +420,7 @@ int Filesystem::truncate(lfs_t* lfs, lfs_file_t* file, lfs_off_t size) {
 
 int Filesystem::sync(lfs_t* lfs, lfs_file_t* file) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !file) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !file) {
             throw std::runtime_error("lfs_file_sync() has been called with invalid arguments");
         }
         const auto it = fdMap_.find(file->fd);
@@ -435,7 +435,7 @@ int Filesystem::sync(lfs_t* lfs, lfs_file_t* file) {
 
 int Filesystem::remove(lfs_t* lfs, const char* path) {
     try {
-        if (!lfs || lfs != &filesystem_get_instance(nullptr)->instance || !path) {
+        if (!lfs || lfs != &filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr)->instance || !path) {
             throw std::runtime_error("lfs_file_remove() has been called with invalid arguments");
         }
         const auto e = findEntry(path);

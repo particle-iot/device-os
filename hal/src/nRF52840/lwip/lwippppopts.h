@@ -118,7 +118,7 @@
  *
  * Mandatory for debugging, it displays exchanged packet content in debug trace.
  */
-#define PRINTPKT_SUPPORT                1
+#define PRINTPKT_SUPPORT                (PLATFORM_ID != PLATFORM_TRACKER)
 
 /**
  * PPP_IPV4_SUPPORT==1: Enable PPP IPv4 support

@@ -17,9 +17,11 @@
 
 #pragma once
 
-#include "system_control.h"
+#include "hal_platform.h"
 
-#if SYSTEM_CONTROL_ENABLED
+#if HAL_PLATFORM_PROTOBUF
+
+#include "system_control.h"
 
 #include "system_error.h"
 #include "inet_hal.h"
@@ -139,4 +141,4 @@ struct DecodedCString {
 
 } } } /* particle::control::common */
 
-#endif /* #if SYSTEM_CONTROL_ENABLED */
+#endif /* #if HAL_PLATFORM_PROTOBUF */

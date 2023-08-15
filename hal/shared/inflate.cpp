@@ -22,6 +22,23 @@
 #include "inflate_impl.h"
 
 #include "check.h"
+#include <algorithm>
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+#include "core_hal.h"
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+
+#include "scope_guard.h"
+
+namespace {
+
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+
+const auto INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE = FILESYSTEM_BLOCK_SIZE + 128;
+const auto INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE = 1024;
+
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+
+} // anonymous
 
 int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output output, void* user_data) {
     CHECK_TRUE(output, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -33,38 +50,107 @@ int inflate_create(inflate_ctx** ctx, const inflate_opts* opts, inflate_output o
         bufSize = (1 << opts->window_bits);
     }
     char* buf = nullptr;
-    CHECK(inflate_alloc_ctx(ctx, &buf, bufSize));
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+    runtime_info_t info = {};
+    info.size = sizeof(info);
+    HAL_Core_Runtime_Info(&info, nullptr);
+
+    bool useFilesystem = true;
+
+    size_t allocateBufSize = INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE + INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE;
+    if (info.freeheap >= bufSize * 2) {
+        if (!inflate_alloc_ctx(ctx, &buf, bufSize)) {
+            useFilesystem = false;
+            allocateBufSize = bufSize;
+        }
+    }
+
+    if (useFilesystem) {
+        CHECK(inflate_alloc_ctx(ctx, &buf, allocateBufSize));
+    }
+#else
+    size_t allocateBufSize = bufSize;
+    CHECK(inflate_alloc_ctx(ctx, &buf, allocateBufSize));
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+#if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     (*ctx)->buf = buf;
+#else
+    if (useFilesystem) {
+        (*ctx)->buf = nullptr;
+        (*ctx)->write_cache = buf;
+        (*ctx)->read_cache = buf + INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE;
+        (*ctx)->write_cache_size = INFLATE_USE_FILESYSTEM_WRITE_CACHE_SIZE;
+        (*ctx)->write_cache_block_size = FILESYSTEM_BLOCK_SIZE;
+        (*ctx)->read_cache_size = INFLATE_USE_FILESYSTEM_READ_CACHE_SIZE;
+    } else {
+        (*ctx)->buf = buf;
+    }
+
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     (*ctx)->buf_size = bufSize;
     (*ctx)->output = output;
     (*ctx)->user_data = user_data;
-    inflate_reset(*ctx);
+    NAMED_SCOPE_GUARD(sg, {
+        inflate_destroy(*ctx);
+        *ctx = nullptr;
+    });
+    CHECK(inflate_reset(*ctx));
+    sg.dismiss();
     return 0;
 }
 
 void inflate_destroy(inflate_ctx* ctx) {
     if (ctx) {
+#if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
         inflate_free_ctx(ctx, ctx->buf);
+#else
+        inflate_free_ctx(ctx, ctx->buf ? ctx->buf : ctx->write_cache);
+#endif // !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     }
 }
 
-void inflate_reset(inflate_ctx* ctx) {
+int inflate_reset(inflate_ctx* ctx) {
     tinfl_init(&ctx->decomp);
+    CHECK(inflate_reset_impl(ctx));
     ctx->buf_offs = 0;
     ctx->buf_avail = 0;
     ctx->result = INFLATE_NEEDS_MORE_INPUT;
     ctx->done = false;
+    return 0;
 }
 
 int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned flags) {
     if (ctx->result <= 0) { // INFLATE_DONE or an error
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+        if (ctx->result == INFLATE_DONE && ctx->buf == nullptr && ctx->buf_avail > 0) {
+            // We still need to call into ctx->decomp.read_buf a few times
+        } else {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+#else
         return SYSTEM_ERROR_INVALID_STATE;
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     }
     size_t srcOffs = 0;
     bool needMore = false;
     for (;;) {
         if (ctx->buf_avail > 0) {
+#if !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
             const int n = ctx->output(ctx->buf + ctx->buf_offs, ctx->buf_avail, ctx->user_data);
+#else
+            int n = 0;
+            if (ctx->buf == nullptr) {
+                n = ctx->decomp.read_buf(nullptr, ctx->buf_offs, ctx->buf_avail, ctx);
+                if (n > 0 && ctx->read_request && ctx->read_request_size > 0) {
+                    n = ctx->output(ctx->read_request, ctx->read_request_size, ctx->user_data);
+                } else {
+                    // Something went wrong
+                    n = SYSTEM_ERROR_INTERNAL;
+                }
+            } else {
+                n = ctx->output(ctx->buf + ctx->buf_offs, ctx->buf_avail, ctx->user_data);
+            }
+#endif // !HAL_PLATFORM_INFLATE_USE_FILESYSTEM
             if (n < 0) {
                 ctx->result = n;
                 break;
@@ -106,9 +192,16 @@ int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned fla
         }
         size_t srcSize = *size - srcOffs;
         size_t destSize = ctx->buf_size - ctx->buf_offs;
+        const uint32_t tinflFlags = 
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+                (ctx->buf == nullptr ? TINFL_FLAG_OUTPUT_BUFFER_NOT_IN_RAM : 0) |
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+                ((flags & INFLATE_HAS_MORE_INPUT) ? TINFL_FLAG_HAS_MORE_INPUT : 0);
+
         const auto status = tinfl_decompress(&ctx->decomp, (const mz_uint8*)data + srcOffs, &srcSize,
                 (mz_uint8*)ctx->buf, (mz_uint8*)ctx->buf + ctx->buf_offs, &destSize,
-                (flags & INFLATE_HAS_MORE_INPUT) ? TINFL_FLAG_HAS_MORE_INPUT : 0);
+                tinflFlags);
+
         if (status < 0) {
             ctx->result = SYSTEM_ERROR_BAD_DATA;
             break;

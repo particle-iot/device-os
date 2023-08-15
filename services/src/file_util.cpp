@@ -37,9 +37,13 @@
 
 namespace particle {
 
+using fs::FsLock;
+
 namespace {
 
 const size_t DUMP_BYTES_PER_LINE = 16;
+
+const size_t MAX_PATH_LEN = 255;
 
 void dumpLine(const char* data, size_t size, size_t offs) {
     if (size == 0) {
@@ -73,10 +77,47 @@ void dumpLine(const char* data, size_t size, size_t offs) {
     LOG_WRITE(TRACE, line, d - line);
 }
 
+// Removes a directory recursively
+int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
+    lfs_dir_t dir = {};
+    CHECK_FS(lfs_dir_open(lfs, &dir, pathBuf));
+    NAMED_SCOPE_GUARD(closeDirGuard, {
+        int r = lfs_dir_close(lfs, &dir);
+        if (r < 0) {
+            LOG(ERROR, "Failed to close directory handle: %d", r);
+        }
+    });
+    pathBuf[pathLen++] = '/';
+    int r = 0;
+    lfs_info entry = {};
+    while ((r = lfs_dir_read(lfs, &dir, &entry)) == 1) {
+        if (entry.type == LFS_TYPE_DIR && (strcmp(entry.name, ".") == 0 || strcmp(entry.name, "..") == 0)) {
+            continue;
+        }
+        size_t n = strlcpy(pathBuf + pathLen, entry.name, bufSize - pathLen);
+        if (n >= bufSize - pathLen) {
+            return SYSTEM_ERROR_PATH_TOO_LONG;
+        }
+        if (entry.type == LFS_TYPE_DIR) {
+            // FIXME: This sometimes fails with FILESYSTEM_NOENT in load tests even though we've just
+            // found the directory entry
+            CHECK(removeDir(lfs, pathBuf, bufSize, pathLen + n));
+        } else {
+            CHECK_FS(lfs_remove(lfs, pathBuf));
+        }
+    }
+    CHECK_FS(r);
+    pathBuf[--pathLen] = '\0';
+    closeDirGuard.dismiss();
+    CHECK_FS(lfs_dir_close(lfs, &dir));
+    CHECK_FS(lfs_remove(lfs, pathBuf));
+    return 0;
+}
+
 } // unnamed
 
 int openFile(lfs_file_t* file, const char* path, unsigned flags) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     lfs_info info = {};
     int r = lfs_stat(&fs->instance, path, &info);
@@ -101,7 +142,7 @@ int openFile(lfs_file_t* file, const char* path, unsigned flags) {
 }
 
 int dumpFile(const char* path) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     const fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
@@ -144,6 +185,53 @@ int encodeMessageToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* 
     });
     CHECK_TRUE(pb_ostream_from_file(strm, file, nullptr), SYSTEM_ERROR_FILE);
     CHECK_TRUE(pb_encode(strm, desc, msg), SYSTEM_ERROR_FILE);
+    return 0;
+}
+
+int rmrf(const char* path) {
+    FsLock fs;
+    int r = lfs_remove(fs.instance(), path);
+    if (r < 0) {
+        if (r == LFS_ERR_NOTEMPTY) {
+            char pathBuf[MAX_PATH_LEN + 1] = {};
+            size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
+            if (pathLen >= sizeof(pathBuf)) {
+                return SYSTEM_ERROR_PATH_TOO_LONG;
+            }
+            CHECK(removeDir(fs.instance(), pathBuf, sizeof(pathBuf), pathLen));
+        } else if (r != LFS_ERR_NOENT) {
+            CHECK_FS(r); // Forward the error
+        }
+    }
+    return 0;
+}
+
+int mkdirp(const char* path) {
+    FsLock fs;
+    char pathBuf[MAX_PATH_LEN + 1] = {};
+    size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
+    if (pathLen >= sizeof(pathBuf)) {
+        return SYSTEM_ERROR_PATH_TOO_LONG;
+    }
+    char* pos = pathBuf;
+    if (*pos == '/') {
+        ++pos; // Skip leading '/'
+    }
+    while (*(pos = strchrnul(pos, '/'))) {
+        *pos = '\0';
+        int r = lfs_mkdir(fs.instance(), pathBuf);
+        if (r < 0 && r != LFS_ERR_EXIST) {
+            CHECK_FS(r); // Forward the error
+        }
+        *pos++ = '/';
+    }
+    if (pos > pathBuf && *(pos - 1) != '/') {
+        // Create the last directory
+        int r = lfs_mkdir(fs.instance(), pathBuf);
+        if (r < 0 && r != LFS_ERR_EXIST) {
+            CHECK_FS(r);
+        }
+    }
     return 0;
 }
 

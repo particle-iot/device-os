@@ -18,11 +18,25 @@
 #include "system_info.h"
 #include "system_cloud_internal.h"
 #include "check.h"
+#include "scope_guard.h"
 #include "bytes2hexbuf.h"
 #include "spark_wiring_json.h"
 #include "spark_wiring_diagnostics.h"
 #include "spark_macros.h"
 #include <cstdio>
+#include <climits>
+
+#include "control/common.h"
+#if HAL_PLATFORM_PROTOBUF
+#include "cloud/describe.pb.h"
+using particle::control::common::EncodedString;
+#endif // HAL_PLATFORM_PROTOBUF
+
+#if HAL_PLATFORM_ASSETS
+#include "asset_manager.h"
+#endif // HAL_PLATFORM_ASSETS
+
+#define PB(name) particle_cloud_##name
 
 namespace {
 
@@ -279,6 +293,90 @@ public:
 
 };
 
+#if HAL_PLATFORM_PROTOBUF
+class PbAppenderStream: public pb_ostream_t {
+public:
+    PbAppenderStream(appender_fn append, void* ctx) :
+            pb_ostream_t(),
+            append_(append),
+            ctx_(ctx) {
+        pb_ostream_t::state = this;
+        pb_ostream_t::max_size = SIZE_MAX;
+        pb_ostream_t::callback = [](pb_ostream_t* strm, const pb_byte_t* buf, size_t size) {
+            auto self = (PbAppenderStream*)strm->state;
+            return self->append_(self->ctx_, buf, size);
+        };
+    }
+
+private:
+    appender_fn append_;
+    void* ctx_;
+};
+
+PB(FirmwareModuleType) moduleFunctionToPb(module_function_t func) {
+    switch (func) {
+    case MODULE_FUNCTION_RESOURCE:
+        return PB(FirmwareModuleType_RESOURCE_MODULE);
+    case MODULE_FUNCTION_BOOTLOADER:
+        return PB(FirmwareModuleType_BOOTLOADER_MODULE);
+    case MODULE_FUNCTION_MONO_FIRMWARE:
+        return PB(FirmwareModuleType_MONO_FIRMWARE_MODULE);
+    case MODULE_FUNCTION_SYSTEM_PART:
+        return PB(FirmwareModuleType_SYSTEM_PART_MODULE);
+    case MODULE_FUNCTION_USER_PART:
+        return PB(FirmwareModuleType_USER_PART_MODULE);
+    case MODULE_FUNCTION_SETTINGS:
+        return PB(FirmwareModuleType_SETTINGS_MODULE);
+    case MODULE_FUNCTION_NCP_FIRMWARE:
+        return PB(FirmwareModuleType_NCP_FIRMWARE_MODULE);
+    case MODULE_FUNCTION_RADIO_STACK:
+        return PB(FirmwareModuleType_RADIO_STACK_MODULE);
+    case MODULE_FUNCTION_ASSET:
+        return PB(FirmwareModuleType_ASSET_MODULE);
+    default:
+        return PB(FirmwareModuleType_INVALID_MODULE);
+    }
+}
+
+PB(FirmwareModuleStore) moduleStoreToPb(module_store_t store) {
+    switch (store) {
+    case MODULE_STORE_FACTORY:
+        return PB(FirmwareModuleStore_FACTORY_MODULE_STORE);
+    case MODULE_STORE_BACKUP:
+        return PB(FirmwareModuleStore_BACKUP_MODULE_STORE);
+    case MODULE_STORE_SCRATCHPAD:
+        return PB(FirmwareModuleStore_SCRATCHPAD_MODULE_STORE);
+    case MODULE_STORE_MAIN:
+    default:
+        return PB(FirmwareModuleStore_MAIN_MODULE_STORE);
+    }
+}
+
+#endif // HAL_PLATFORM_PROTOBUF
+
+#if HAL_PLATFORM_ASSETS
+
+bool encodeAssetDependencies(pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
+    auto assets = (const spark::Vector<Asset>*)*arg;
+    for (const auto& asset: *assets) {
+        PB(FirmwareModuleAsset) pbModuleAsset = {};
+        EncodedString pbName(&pbModuleAsset.name);
+        EncodedString pbHash(&pbModuleAsset.hash);
+        // TODO: hash type
+        pbName.data = asset.name().c_str();
+        pbName.size = asset.name().length();
+
+        pbHash.data = asset.hash().hash().data();
+        pbHash.size = asset.hash().hash().size();
+        if (!pb_encode_tag_for_field(strm, field) || !pb_encode_submessage(strm, &PB(FirmwareModuleAsset_msg), &pbModuleAsset)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+#endif // HAL_PLATFORM_ASSETS
+
 } // anonymous
 
 bool module_info_to_json(AppendJson& json, const hal_module_t* module, uint32_t flags)
@@ -429,3 +527,106 @@ bool system_app_info(appender_fn appender, void* append_data, void* reserved) {
 	json.endObject();
 	return true;
 }
+
+#if HAL_PLATFORM_PROTOBUF
+bool system_module_info_pb(appender_fn appender, void* append_data, void* reserved) {
+    hal_system_info_t sysInfo = {};
+    sysInfo.size = sizeof(sysInfo);
+    sysInfo.flags = HAL_SYSTEM_INFO_FLAGS_CLOUD;
+    int r = system_info_get_unstable(&sysInfo, 0, nullptr);
+    if (r != 0) {
+        return false;
+    }
+    SCOPE_GUARD({
+        system_info_free_unstable(&sysInfo, nullptr);
+    });
+    PB(SystemDescribe) pbDesc = {};
+    // IMEI, ICCID, modem firmware version
+    EncodedString pbImei(&pbDesc.imei);
+    EncodedString pbIccid(&pbDesc.iccid);
+    EncodedString pbModemFwVer(&pbDesc.modem_firmware_version);
+    for (unsigned i = 0; i < sysInfo.key_value_count; ++i) {
+        const auto& keyVal = sysInfo.key_values[i];
+        if (strcmp(keyVal.key, "imei") == 0) {
+            pbImei.data = keyVal.value;
+            pbImei.size = strlen(keyVal.value);
+        } else if (strcmp(keyVal.key, "iccid") == 0) {
+            pbIccid.data = keyVal.value;
+            pbIccid.size = strlen(keyVal.value);
+        } else if (strcmp(keyVal.key, "cellfw") == 0) {
+            pbModemFwVer.data = keyVal.value;
+            pbModemFwVer.size = strlen(keyVal.value);
+        }
+    }
+    // Firmware modules
+    pbDesc.firmware_modules.arg = &sysInfo;
+    pbDesc.firmware_modules.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
+        auto sysInfo = (const hal_system_info_t*)*arg;
+        for (unsigned i = 0; i < sysInfo->module_count; ++i) {
+            const auto& module = sysInfo->modules[i];
+            if (!is_module_function_valid((module_function_t)module.info.module_function)) {
+                continue;
+            }
+            if (module.bounds.store == MODULE_STORE_FACTORY && (module.validity_result & MODULE_VALIDATION_INTEGRITY) == 0) {
+                continue; // See system_info_to_json()
+            }
+            PB(FirmwareModule) pbModule = {};
+            pbModule.type = moduleFunctionToPb((module_function_t)module.info.module_function);
+            pbModule.index = module.info.module_index;
+            pbModule.version = module.info.module_version;
+            pbModule.store = moduleStoreToPb((module_store_t)module.bounds.store);
+            pbModule.max_size = module.bounds.maximum_size;
+            pbModule.checked_flags = module.validity_checked;
+            pbModule.passed_flags = module.validity_result;
+            EncodedString pbHash(&pbModule.hash);
+            if (module.info.module_function == MODULE_FUNCTION_USER_PART) {
+                pbHash.data = (const char*)module.suffix.sha;
+                pbHash.size = sizeof(module.suffix.sha);
+            }
+            pbModule.dependencies.arg = (void*)&module; // arg is a non-const pointer
+            pbModule.dependencies.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
+                auto module = (const hal_module_t*)*arg;
+                for (unsigned i = 0; i < 2; ++i) {
+                    const auto& dep = (i == 0) ? module->info.dependency : module->info.dependency2;
+                    PB(FirmwareModuleDependency) pbDep = {};
+                    if (!is_module_function_valid((module_function_t)dep.module_function)) {
+                        continue;
+                    }
+                    pbDep.type = moduleFunctionToPb((module_function_t)dep.module_function);
+                    pbDep.index = dep.module_index;
+                    pbDep.version = dep.module_version;
+                    if (!pb_encode_tag_for_field(strm, field) || !pb_encode_submessage(strm, &PB(FirmwareModuleDependency_msg), &pbDep)) {
+                        return false;
+                    }
+                }
+                return true;
+            };
+#if HAL_PLATFORM_ASSETS
+            spark::Vector<Asset> assets;
+            if ((module.info.module_function == MODULE_FUNCTION_USER_PART) && (module.validity_result & MODULE_VALIDATION_INTEGRITY)) {
+                if (!AssetManager::requiredAssetsForModule(&module, assets) && assets.size() > 0) {
+                    pbModule.asset_dependencies.arg = (void*)&assets;
+                    pbModule.asset_dependencies.funcs.encode = encodeAssetDependencies;
+                }
+            }
+#endif // HAL_PLATFORM_ASSETS
+            if (!pb_encode_tag_for_field(strm, field) || !pb_encode_submessage(strm, &PB(FirmwareModule_msg), &pbModule)) {
+                return false;
+            }
+        }
+        return true;
+    };
+#if HAL_PLATFORM_ASSETS
+    auto availableAssets = AssetManager::instance().availableAssets();
+    if (availableAssets.size() > 0) {
+        pbDesc.assets.arg = (void*)&availableAssets;
+        pbDesc.assets.funcs.encode = encodeAssetDependencies;
+    }
+#endif // HAL_PLATFORM_ASSETS
+    PbAppenderStream strm(appender, append_data);
+    return pb_encode(&strm, &PB(SystemDescribe_msg), &pbDesc);
+}
+
+#endif // HAL_PLATFORM_PROTOBUF
+
+

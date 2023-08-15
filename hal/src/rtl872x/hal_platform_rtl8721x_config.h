@@ -146,3 +146,5 @@
 // NOTE: These are not default in hal_platform.h
 #define HAL_PLATFORM_HEAP_REGION_SRAM (0)
 #define HAL_PLATFORM_HEAP_REGION_PSRAM (1)
+
+#define HAL_PLATFORM_ASSETS (1)

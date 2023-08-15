@@ -66,6 +66,7 @@ target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/crypto/inc
   PRIVATE ${DEVICE_OS_DIR}/wiring/inc
   PRIVATE ${DEVICE_OS_DIR}/system/inc
+  PRIVATE ${DEVICE_OS_DIR}/dynalib/inc
 )
 
 # Link against dependencies specific to target

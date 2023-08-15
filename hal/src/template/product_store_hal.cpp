@@ -5,7 +5,7 @@
  * Sets the value at a specific product store index.
  * @return The previous value.
  */
-uint16_t HAL_SetProductStore(ProductStoreIndex index, uint16_t value)
+int HAL_SetProductStore(ProductStoreIndex index, uint16_t value)
 {
     return 0xFFFF;
 }
@@ -15,7 +15,7 @@ uint16_t HAL_SetProductStore(ProductStoreIndex index, uint16_t value)
  * @param index
  * @return
  */
-uint16_t HAL_GetProductStore(ProductStoreIndex index)
+int HAL_GetProductStore(ProductStoreIndex index)
 {
     return 0xFFFF;
 }

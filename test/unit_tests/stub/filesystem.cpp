@@ -17,7 +17,7 @@
 
 #include "filesystem.h"
 
-filesystem_t* filesystem_get_instance(void* reserved) {
+filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved) {
     static filesystem_t fs;
     return &fs;
 }

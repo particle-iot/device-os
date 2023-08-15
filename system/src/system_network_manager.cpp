@@ -1165,7 +1165,7 @@ using namespace particle::control::common;
 using namespace particle::control::network;
 
 int NetworkManager::loadStoredConfiguration(spark::Vector<StoredConfiguration>& conf) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
@@ -1235,7 +1235,7 @@ int NetworkManager::loadStoredConfiguration(spark::Vector<StoredConfiguration>& 
 }
 
 int NetworkManager::saveStoredConfiguration(const spark::Vector<StoredConfiguration>& conf) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));

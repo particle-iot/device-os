@@ -21,7 +21,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.common");
 
 #include "common.h"
 
-#if SYSTEM_CONTROL_ENABLED
+#if HAL_PLATFORM_PROTOBUF
 
 #include "nanopb_misc.h"
 #include "spark_wiring_platform.h"
@@ -189,4 +189,4 @@ int halIpFromProto(particle_ctrl_IPAddress* ip, HAL_IPAddress* halip) {
 
 } } } /* namespace particle::control::common */
 
-#endif /* #if SYSTEM_CONTROL_ENABLED */
+#endif /* #if HAL_PLATFORM_PROTOBUF */

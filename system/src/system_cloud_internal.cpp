@@ -61,6 +61,10 @@
 #include "firmware_update.h"
 #include "server_config.h"
 
+#if HAL_PLATFORM_ASSETS
+#include "asset_manager.h"
+#endif // HAL_PLATFORM_ASSETS
+
 #if PLATFORM_ID == PLATFORM_GCC
 #include "device_config.h"
 #endif
@@ -168,9 +172,13 @@ void systemEventHandler(const char* name, const char* data)
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, unsigned flags) {
-    return FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, partialSize,
-            FirmwareUpdateFlags::fromUnderlying(flags));
+int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, unsigned flags, int moduleFunction) {
+#if HAL_PLATFORM_ASSETS
+    CHECK(AssetManager::instance().prepareForOta(fileSize, flags, moduleFunction));
+#endif // HAL_PLATFORM_ASSETS
+    CHECK(FirmwareUpdate::instance()->startUpdate(fileSize, fileHash, partialSize,
+            FirmwareUpdateFlags::fromUnderlying(flags)));
+    return 0;
 }
 
 int finishFirmwareUpdate(unsigned flags) {
@@ -1043,19 +1051,16 @@ void Spark_Protocol_Init(void)
         // User code was run, so persist the current values stored in the comms lib.
         // These will either have been left as default or overridden via PRODUCT_ID/PRODUCT_VERSION macros
         if (system_mode()!=SAFE_MODE) {
-            // TODO: HAL_SetProductStore() and HAL_GetProductStore() are not implemented on Gen 3
-            // so the product info is not reported to the cloud when the device is in safe mode on
-            // those platforms. We should either remove that API or implement it properly
             HAL_SetProductStore(PRODUCT_STORE_ID, info.product_id);
             HAL_SetProductStore(PRODUCT_STORE_VERSION, info.product_version);
         }
-        else {      // user code was not executed, use previously persisted values
-            info.product_id = HAL_GetProductStore(PRODUCT_STORE_ID);
-            info.product_version = HAL_GetProductStore(PRODUCT_STORE_VERSION);
-            if (info.product_id!=0xFFFF)
-                spark_protocol_set_product_id(sp, info.product_id);
-            if (info.product_version!=0xFFFF)
-                spark_protocol_set_product_firmware_version(sp, info.product_version);
+        else {      // user code was not executed, use data from module suffix/extensions
+            auto productId = HAL_GetProductStore(PRODUCT_STORE_ID);
+            auto productVersion = HAL_GetProductStore(PRODUCT_STORE_VERSION);
+            if (productId >= 0 && productId != 0xffff)
+                spark_protocol_set_product_id(sp, productId);
+            if (productVersion >= 0 && productVersion != 0xffff)
+                spark_protocol_set_product_firmware_version(sp, productVersion);
         }
 #else
         spark_protocol_set_platform_id(sp, deviceConfig.platform_id);
@@ -1115,7 +1120,7 @@ void Spark_Protocol_Init(void)
         descriptor.get_variable_async = getUserVar;
         descriptor.was_ota_upgrade_successful = HAL_OTA_Flashed_GetStatus;
         descriptor.ota_upgrade_status_sent = HAL_OTA_Flashed_ResetStatus;
-        descriptor.append_system_info = system_module_info;
+        descriptor.append_system_info = system_module_info_pb;
         descriptor.append_app_info = system_app_info;
         descriptor.append_metrics = system_metrics;
         descriptor.call_event_handler = invokeEventHandler;

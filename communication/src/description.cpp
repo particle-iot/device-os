@@ -27,6 +27,7 @@
 #include "mbedtls_config.h"
 
 #include <algorithm>
+#include "enumclass.h"
 
 #define CHECK_PROTOCOL(_expr) \
         do { \
@@ -190,15 +191,22 @@ void initDescribeRequest(CoapMessageEncoder* enc, token_t token, int flags) {
     enc->id(0); // Encoded by the message channel
     enc->token((const char*)&token, sizeof(token));
     enc->option(CoapOption::URI_PATH, "d");
+    // NOTE: option order is important (increasing ids)
+    // FIXME: move type inference somewhere else instead of hardcoding here?
+    if (flags & DescriptionType::DESCRIBE_SYSTEM) {
+        unsigned contentFormat = to_underlying(CoapContentFormat::APPLICATION_OCTET_STREAM);
+        enc->option(CoapOption::CONTENT_FORMAT, contentFormat);
+    }
     const char uriQuery = flags;
     enc->option(CoapOption::URI_QUERY, &uriQuery, sizeof(uriQuery));
 }
 
-void initDescribeResponse(CoapMessageEncoder* enc, token_t token) {
+void initDescribeResponse(CoapMessageEncoder* enc, token_t token, int flags) {
     enc->type(CoapType::CON);
     enc->code(CoapCode::CONTENT);
     enc->id(0); // Encoded by the message channel
     enc->token((const char*)&token, sizeof(token));
+    // NOTE: For DESCRIBE_SYSTEM Content-Type option is encoded in receiveRequest() and sendResponseBlock()
 }
 
 } // namespace
@@ -300,12 +308,26 @@ ProtocolError Description::receiveRequest(const Message& msg) {
     CoapMessageEncoder enc((char*)respMsg.buf(), respMsg.capacity());
     size_t payloadSize = 0;
     if (!resp) {
-        initDescribeResponse(&enc, reqToken);
+        initDescribeResponse(&enc, reqToken, flags);
+        // FIXME: This is not ideal and needs to be refactored.
+        // For normal responses we have to pre-encode Content-Format option here.
+        // For blockwise responses this will happen for each block due to the requirement
+        // of increasing order of option identifiers with ETag going before Content-Format.
+        if (flags & DescriptionType::DESCRIBE_SYSTEM) {
+            unsigned contentFormat = to_underlying(CoapContentFormat::APPLICATION_OCTET_STREAM);
+            enc.option(CoapOption::CONTENT_FORMAT, contentFormat);
+        }
         const size_t msgOffs = enc.payloadData() - (char*)respMsg.buf();
         Vector<char> buf;
         CHECK_PROTOCOL(getDescribeData(flags, &respMsg, msgOffs, &buf, &payloadSize));
         if (!buf.isEmpty()) {
             // Prepare a blockwise response
+            if (flags & DescriptionType::DESCRIBE_SYSTEM) {
+                // Re-encode response without Content-Type option
+                respMsg.clear();
+                enc = CoapMessageEncoder((char*)respMsg.buf(), respMsg.capacity());
+                initDescribeResponse(&enc, reqToken, flags);
+            }
             newResp.data = std::move(buf);
             newResp.blockCount = (newResp.data.size() + blockSize - 1) / blockSize;
             newResp.reqCount = 1;
@@ -433,7 +455,8 @@ ProtocolError Description::processTimeouts() {
 
 ProtocolError Description::serialize(Appender* appender, int descFlags) {
     const auto& descriptor = proto_->get_descriptor();
-    if (descFlags == DescriptionType::DESCRIBE_METRICS) {
+    switch (descFlags) {
+    case DescriptionType::DESCRIBE_METRICS: {
         if (!descriptor.append_metrics) {
             return ProtocolError::NOT_IMPLEMENTED;
         }
@@ -447,63 +470,60 @@ ProtocolError Description::serialize(Appender* appender, int descFlags) {
         if (!ok) {
             return ProtocolError::UNKNOWN;
         }
-    } else {
-        if (!(descFlags & (DescriptionType::DESCRIBE_APPLICATION | DescriptionType::DESCRIBE_SYSTEM))) {
-            return ProtocolError::INTERNAL;
+        break;
+    }
+    case DescriptionType::DESCRIBE_SYSTEM: {
+        if (!descriptor.append_system_info) {
+            return ProtocolError::NOT_IMPLEMENTED;
         }
-        bool hasContent = false;
+        bool ok = descriptor.append_system_info(Appender::callback, appender, nullptr);
+        if (!ok) {
+            return ProtocolError::UNKNOWN;
+        }
+        break;
+    }
+    case DescriptionType::DESCRIBE_APPLICATION: {
         appender->append("{");
-        if (descFlags & DescriptionType::DESCRIBE_SYSTEM) {
-            if (!descriptor.append_system_info) {
-                return ProtocolError::NOT_IMPLEMENTED;
-            }
-            if (hasContent) {
-                appender->append(',');
-            }
-            const bool ok = descriptor.append_system_info(Appender::callback, appender, nullptr);
+        if (descriptor.append_app_info) {
+            // Use the new callback
+            const bool ok = descriptor.append_app_info(Appender::callback, appender, nullptr /* reserved */);
             if (!ok) {
                 return ProtocolError::UNKNOWN;
             }
-            hasContent = true;
-        }
-        if (descFlags & DescriptionType::DESCRIBE_APPLICATION) {
-            if (descriptor.append_app_info) {
-                // Use the new callback
-                const bool ok = descriptor.append_app_info(Appender::callback, appender, nullptr /* reserved */);
-                if (!ok) {
-                    return ProtocolError::UNKNOWN;
+        } else {
+            // Use the compatibility callbacks
+            // FIXME: This is no longer needed on Gen 2 and higher
+            appender->append("\"f\":[");
+            int n = descriptor.num_functions();
+            for (int i = 0; i < n; ++i) {
+                if (i) {
+                    appender->append(',');
                 }
-            } else {
-                // Use the compatibility callbacks
-                appender->append("\"f\":[");
-                int n = descriptor.num_functions();
-                for (int i = 0; i < n; ++i) {
-                    if (i) {
-                        appender->append(',');
-                    }
-                    const auto key = descriptor.get_function_key(i);
-                    appender->append('"');
-                    appender->append((const uint8_t*)key, std::min(strlen(key), MAX_FUNCTION_KEY_LENGTH));
-                    appender->append('"');
-                }
-                appender->append("],\"v\":{");
-                n = descriptor.num_variables();
-                for (int i = 0; i < n; ++i) {
-                    if (i) {
-                        appender->append(',');
-                    }
-                    const auto key = descriptor.get_variable_key(i);
-                    const auto type = descriptor.variable_type(key);
-                    appender->append('"');
-                    appender->append((const uint8_t*)key, std::min(strlen(key), MAX_VARIABLE_KEY_LENGTH));
-                    appender->append("\":");
-                    appender->append('0' + (char)type);
-                }
-                appender->append('}');
+                const auto key = descriptor.get_function_key(i);
+                appender->append('"');
+                appender->append((const uint8_t*)key, std::min(strlen(key), MAX_FUNCTION_KEY_LENGTH));
+                appender->append('"');
             }
-            hasContent = true;
+            appender->append("],\"v\":{");
+            n = descriptor.num_variables();
+            for (int i = 0; i < n; ++i) {
+                if (i) {
+                    appender->append(',');
+                }
+                const auto key = descriptor.get_variable_key(i);
+                const auto type = descriptor.variable_type(key);
+                appender->append('"');
+                appender->append((const uint8_t*)key, std::min(strlen(key), MAX_VARIABLE_KEY_LENGTH));
+                appender->append("\":");
+                appender->append('0' + (char)type);
+            }
+            appender->append('}');
         }
         appender->append('}');
+        break;
+    }
+    default:
+        return ProtocolError::INTERNAL;
     }
     return ProtocolError::NO_ERROR;
 }
@@ -576,7 +596,7 @@ ProtocolError Description::sendNextRequestBlock(Request* req, Message* msg, toke
 
 ProtocolError Description::sendResponseBlock(const Response& resp, Message* msg, token_t token, unsigned blockIndex) {
     CoapMessageEncoder enc((char*)msg->buf(), msg->capacity());
-    initDescribeResponse(&enc, token);
+    initDescribeResponse(&enc, token, resp.flags);
     enc.option(CoapOption::ETAG, resp.etag);
     size_t blockSize = 0;
     CHECK_PROTOCOL(getBlockSize(&blockSize));
@@ -586,6 +606,10 @@ ProtocolError Description::sendResponseBlock(const Response& resp, Message* msg,
     if (payloadSize > blockSize) {
         payloadSize = blockSize;
         hasMore = true;
+    }
+    if (resp.flags & DescriptionType::DESCRIBE_SYSTEM) {
+        unsigned contentFormat = to_underlying(CoapContentFormat::APPLICATION_OCTET_STREAM);
+        enc.option(CoapOption::CONTENT_FORMAT, contentFormat);
     }
     const auto blockOpt = encodeBlockOption(blockIndex, blockSize, hasMore);
     enc.option(CoapOption::BLOCK2, blockOpt);

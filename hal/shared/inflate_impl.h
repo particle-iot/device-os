@@ -21,6 +21,11 @@
 
 #include "miniz.h"
 #include "miniz_tinfl.h"
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+#include "filesystem.h"
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 
 struct inflate_ctx {
     tinfl_decompressor decomp;
@@ -32,6 +37,19 @@ struct inflate_ctx {
     void* user_data;
     int result;
     bool done;
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+    lfs_file_t temp_file;
+    char* temp_file_name;
+    char* write_cache;
+    char* read_cache;
+    size_t write_cache_size;
+    size_t read_cache_size;
+    size_t write_cache_pos;
+    size_t read_cache_pos;
+    size_t write_cache_block_size;
+    char* read_request;
+    size_t read_request_size;
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
 };
 
 #ifdef __cplusplus
@@ -40,6 +58,7 @@ extern "C" {
 
 int inflate_alloc_ctx(inflate_ctx** ctx, char** buf, size_t buf_size);
 void inflate_free_ctx(inflate_ctx* ctx, char* buf);
+int inflate_reset_impl(inflate_ctx* ctx);
 
 #ifdef __cplusplus
 } // extern "C"

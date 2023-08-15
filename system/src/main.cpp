@@ -67,6 +67,10 @@
 // FIXME
 #include "system_control_internal.h"
 
+#if HAL_PLATFORM_ASSETS
+#include "asset_manager.h"
+#endif // HAL_PLATFORM_ASSETS
+
 #if HAL_PLATFORM_FILESYSTEM
 #include "filesystem.h"
 #endif /* HAL_PLATFORM_FILESYSTEM */
@@ -438,6 +442,16 @@ void applicationSetupDone() {
 
 void app_loop(bool threaded)
 {
+#if HAL_PLATFORM_ASSETS
+    // NOTE: this was using std::call_once originally
+    // but that seems to mess with C++11 singleton initialization
+    // as far as locks go, so using simpler static variable
+    static uint8_t notifyAssetsOnce = 0;
+    if (!notifyAssetsOnce) {
+        AssetManager::instance().notifyIfNeeded();
+        notifyAssetsOnce = 1;
+    }
+#endif // HAL_PLATFORM_ASSETS
     DECLARE_SYS_HEALTH(ENTERED_WLAN_Loop);
     if (!threaded)
         Spark_Idle();
@@ -696,6 +710,14 @@ void app_setup_and_loop(void)
     if_init();
 #endif /* HAL_PLATFORM_LWIP */
 
+#if HAL_PLATFORM_ASSETS
+    AssetManager::instance().init();
+    if (system_mode() != SAFE_MODE && AssetManager::instance().missingAssets().size() > 0) {
+        set_system_mode(SAFE_MODE);
+    }
+#endif // HAL_PLATFORM_ASSETS
+
+    // NOTE: this calls user app global constructors
     system_part2_post_init();
 
     HAL_Core_Init();
@@ -718,7 +740,7 @@ void app_setup_and_loop(void)
     INFO("Device %s started", s.c_str());
 
 #if HAL_PLATFORM_FILESYSTEM
-    filesystem_dump_info(filesystem_get_instance(nullptr));
+    filesystem_dump_info(filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr));
 #endif /* HAL_PLATFORM_FILESYSTEM */
 
     if (LOG_ENABLED(TRACE)) {

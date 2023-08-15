@@ -116,6 +116,9 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
     else {
         module_info_t* info = &target->info;
         CHECK_TRUE(get_module_info(bounds, info, &target->module_info_offset) == SYSTEM_ERROR_NONE, false);
+        if (info->module_function == MODULE_FUNCTION_ASSET) {
+            return true;
+        }
         target->validity_checked = MODULE_VALIDATION_RANGE | MODULE_VALIDATION_DEPENDENCIES | MODULE_VALIDATION_PLATFORM | check_flags;
         target->validity_result = 0;
         const uint8_t* module_end = (const uint8_t*)target->info.module_end_address;
