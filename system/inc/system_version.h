@@ -209,7 +209,8 @@ extern "C" {
 #define SYSTEM_VERSION_v532         SYSTEM_VERSION_DEFAULT(5, 3, 2)
 #define SYSTEM_VERSION_v540         SYSTEM_VERSION_DEFAULT(5, 4, 0)
 #define SYSTEM_VERSION_v541         SYSTEM_VERSION_DEFAULT(5, 4, 1)
-#define SYSTEM_VERSION SYSTEM_VERSION_v541
+#define SYSTEM_VERSION_v550RC1        SYSTEM_VERSION_RC(5, 5, 0, 1)
+#define SYSTEM_VERSION SYSTEM_VERSION_v550RC1
 
 /**
  * Previously we would set the least significant byte to 0 for the final release, but to make
@@ -383,6 +384,7 @@ extern "C" {
 #define SYSTEM_VERSION_532
 #define SYSTEM_VERSION_540
 #define SYSTEM_VERSION_541
+#define SYSTEM_VERSION_550RC1
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
