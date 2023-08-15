@@ -121,7 +121,15 @@ int inflate_reset(inflate_ctx* ctx) {
 
 int inflate_input(inflate_ctx* ctx, const char* data, size_t* size, unsigned flags) {
     if (ctx->result <= 0) { // INFLATE_DONE or an error
+#if HAL_PLATFORM_INFLATE_USE_FILESYSTEM
+        if (ctx->result == INFLATE_DONE && ctx->buf == nullptr && ctx->buf_avail > 0) {
+            // We still need to call into ctx->decomp.read_buf a few times
+        } else {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+#else
         return SYSTEM_ERROR_INVALID_STATE;
+#endif // HAL_PLATFORM_INFLATE_USE_FILESYSTEM
     }
     size_t srcOffs = 0;
     bool needMore = false;

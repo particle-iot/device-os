@@ -190,7 +190,6 @@ int inflate_reset_impl(inflate_ctx* ctx) {
 
         if (buf) {
             if (toRead > 0) {
-                LOG(INFO, "read cache miss toRead=%u offset=%x read_cache_pos=%x write_cache_pos=%x", toRead, offset, ctx->read_cache_pos, ctx->write_cache_pos);
                 const fs::FsLock lock(fs);
                 // Read into target buffer
                 if (lfs_file_seek(&fs->instance, f, offset, LFS_SEEK_SET) < 0) {
@@ -228,7 +227,6 @@ int inflate_reset_impl(inflate_ctx* ctx) {
                 return ctx->read_request_size;
             }
             if (toRead > 0) {
-                LOG(INFO, "read cache miss toRead=%u offset=%x read_cache_pos=%x write_cache_pos=%x", toRead, offset, ctx->read_cache_pos, ctx->write_cache_pos);
                 const fs::FsLock lock(fs);
                 // Fill read cache
                 if (lfs_file_seek(&fs->instance, f, offset, LFS_SEEK_SET) < 0) {
@@ -292,16 +290,11 @@ int inflate_reset_impl(inflate_ctx* ctx) {
         }
         size_t prevBlock = ctx->write_cache_pos;
         if (toWrite > 0) {
-            system_tick_t start = HAL_Timer_Get_Milli_Seconds();
-            SCOPE_GUARD({
-                LOG(INFO, "block change took %ums", HAL_Timer_Get_Milli_Seconds() - start);
-            });
             // Flush the current block
             const fs::FsLock lock(fs);
             // NOTE: triggers a flush!
 
             size_t newBlock = (toWriteAbsOffset / ctx->write_cache_block_size) * ctx->write_cache_block_size;
-            LOG(INFO, "block change old=%x new=%x toWrite=%x", prevBlock, newBlock, toWrite);
             size_t flushSize = ctx->write_cache_block_size;
             if (newBlock != prevBlock + ctx->write_cache_block_size) {
                 flushSize = ctx->write_cache_size;

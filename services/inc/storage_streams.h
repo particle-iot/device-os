@@ -326,8 +326,11 @@ private:
 
         char tmp[256];
 
-        while (CHECK(compressedStream_->waitEvent(InputStream::READABLE)) == InputStream::READABLE) {
-            size_t compressedChunk = CHECK(compressedStream_->peek(tmp, sizeof(tmp)));
+        while (true) {
+            size_t compressedChunk = 0;
+            if (compressedStream_->waitEvent(InputStream::READABLE) == InputStream::READABLE) {
+                compressedChunk = CHECK(compressedStream_->peek(tmp, sizeof(tmp)));
+            }
             size_t compressedPos = 0;
             int r = 0;
             do {
