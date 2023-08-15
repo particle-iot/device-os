@@ -32,6 +32,7 @@
 #include "interrupts_hal.h"
 #include "usart_hal_private.h"
 #include "timer_hal.h"
+#include "scope_guard.h"
 
 #if PLATFORM_ID == PLATFORM_TRACKER
 #include "i2c_hal.h"
@@ -57,10 +58,10 @@ class RxLock {
 public:
     RxLock(NRF_UARTE_Type* uarte)
             : uarte_(uarte) {
-        nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDRX_MASK);
+        nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDRX_MASK | NRF_UARTE_INT_RXSTARTED_MASK);
     }
     ~RxLock() {
-        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK);
+        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK | NRF_UARTE_INT_RXSTARTED_MASK);
     }
 
 private:
@@ -112,7 +113,8 @@ public:
               rtsPin_(rts),
               transmitting_(false),
               receiving_(0),
-              rxConsumed_(0),
+              consumedTimerCount_(0),
+              usingAltRxBuffer_(false),
               evGroup_(nullptr) {
         evGroup_ = xEventGroupCreate();
         SPARK_ASSERT(evGroup_);
@@ -138,6 +140,7 @@ public:
         CHECK_TRUE(conf.tx_buffer_size, SYSTEM_ERROR_INVALID_ARGUMENT);
 
         rxBuffer_.init((uint8_t*)conf.rx_buffer, conf.rx_buffer_size);
+        rxBufferAlt_.init(secondaryRxBuffer_, sizeof(secondaryRxBuffer_));
         txBuffer_.init((uint8_t*)conf.tx_buffer, conf.tx_buffer_size);
 
         configured_ = true;
@@ -213,7 +216,7 @@ public:
 
         disableInterrupts();
 
-        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK | NRF_UARTE_INT_ENDTX_MASK);
+        nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_RXSTARTED_MASK | NRF_UARTE_INT_ENDRX_MASK | NRF_UARTE_INT_ENDTX_MASK);
 
         NRFX_IRQ_PRIORITY_SET(nrfx_get_irq_number((void *)uarte_), prio_);
         NRFX_IRQ_ENABLE(nrfx_get_irq_number((void *)uarte_));
@@ -240,6 +243,7 @@ public:
         receiving_ = 0;
         config_ = {};
         rxBuffer_.reset();
+        rxBufferAlt_.reset();
         txBuffer_.reset();
 
         return SYSTEM_ERROR_NONE;
@@ -274,7 +278,16 @@ public:
     ssize_t data() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         RxLock lk(uarte_);
-        ssize_t d = rxBuffer_.data();
+        particle::services::RingBuffer<uint8_t>* bufferCurrent = nullptr;
+        particle::services::RingBuffer<uint8_t>* bufferPre = nullptr;
+        if (usingAltRxBuffer_) {
+            bufferCurrent = &rxBufferAlt_;
+            bufferPre = &rxBuffer_;
+        } else {
+            bufferCurrent = &rxBuffer_;
+            bufferPre = &rxBufferAlt_;
+        }
+        ssize_t d = bufferPre->data() + bufferCurrent->data();
         if (receiving_) {
             // IMPORTANT: It seems that the timer value (which is a counter for every time UARTE generates RXDRDY event)
             // may potentially get larger than the configured RX DMA transfer:
@@ -284,11 +297,18 @@ public:
             // </quote>
             // We'll be extra careful here and make sure not to consume more than we can, otherwise
             // we may put the ring buffer into an invalid state as there are not safety checks.
-            const ssize_t toConsume = std::min(rxBuffer_.acquirePending(), timerValue() - rxConsumed_);
+            size_t timerCount = timerValue();
+            size_t toConsumeCount;
+            if (timerCount >= consumedTimerCount_) {
+                toConsumeCount = timerCount - consumedTimerCount_;
+            } else {
+                toConsumeCount = 65536 - consumedTimerCount_ + timerCount;
+            }
+            const ssize_t toConsume = std::min(bufferCurrent->acquirePending(), toConsumeCount);
             if (toConsume > 0) {
-                rxBuffer_.acquireCommit(toConsume);
-                rxConsumed_ += toConsume;
+                bufferCurrent->acquireCommit(toConsume);
                 d += toConsume;
+                consumedTimerCount_ = (consumedTimerCount_ + toConsume) % 65536;
             }
         }
         return d;
@@ -306,9 +326,25 @@ public:
         const size_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(uarte_);
-        ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
-        if (!receiving_) {
-            startReceiver();
+        particle::services::RingBuffer<uint8_t>* bufferCurrent = nullptr;
+        particle::services::RingBuffer<uint8_t>* bufferPre = nullptr;
+        if (usingAltRxBuffer_) {
+            bufferCurrent = &rxBufferAlt_;
+            bufferPre = &rxBuffer_;
+        } else {
+            bufferCurrent = &rxBuffer_;
+            bufferPre = &rxBufferAlt_;
+        }
+        ssize_t remainLen = bufferPre->data();
+        SCOPE_GUARD ({
+            if (remainLen == 0 && !(uarte_->SHORTS & NRF_UARTE_SHORT_ENDRX_STARTRX)) {
+                prepareNextRingBuffer();
+                nrf_uarte_shorts_enable(uarte_, NRF_UARTE_SHORT_ENDRX_STARTRX);
+            }
+        });
+        ssize_t r = CHECK(bufferPre->get(buffer, std::min((size_t)remainLen, readSize)));
+        if (r >= 0 && r < (ssize_t)readSize) {
+            r += CHECK(bufferCurrent->get(buffer + r, readSize - r));
         }
         return r;
     }
@@ -398,15 +434,31 @@ public:
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
 
-                nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
-                rxConsumed_ = 0;
-
-                if (rxBuffer_.acquirePending() > 0) {
-                    rxBuffer_.acquireCommit(rxBuffer_.acquirePending());
+                particle::services::RingBuffer<uint8_t>* buffer = nullptr;
+                if (usingAltRxBuffer_) {
+                    buffer = &rxBufferAlt_;
+                } else {
+                    buffer = &rxBuffer_;
                 }
 
-                --receiving_;
-                startReceiver();
+                if (buffer->acquirePending() > 0) {
+                    size_t remain = buffer->acquirePending();
+                    buffer->acquireCommit(remain);
+                    consumedTimerCount_ = (consumedTimerCount_ + remain) % 65536;
+                }
+
+                if (uarte_->SHORTS & NRF_UARTE_SHORT_ENDRX_STARTRX) {
+                    usingAltRxBuffer_ = !usingAltRxBuffer_;
+                }
+            }
+        }
+
+        if (nrf_uarte_int_enable_check(uarte_, NRF_UARTE_INT_RXSTARTED_MASK)) {
+            if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXSTARTED)) {
+                nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXSTARTED);
+                if (prepareNextRingBuffer() <= 0) {
+                    nrf_uarte_shorts_disable(uarte_, NRF_UARTE_SHORT_ENDRX_STARTRX);
+                }
             }
         }
 
@@ -484,13 +536,6 @@ private:
     int disable(bool end = true) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
 
-        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-            if (receiving_) {
-                // Issue the STOPRX task to deactive the RTS
-                nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPRX);
-            }
-        }
-
         disableInterrupts();
         stopTransmission();
         stopReceiver();
@@ -542,21 +587,25 @@ private:
         }
     }
 
-    void startReceiver(bool flush = false) {
-        if (receiving_ >= MAX_SCHEDULED_RECEIVALS) {
-            return;
-        }
-
+    size_t prepareNextRingBuffer(bool flush = false) {
         // Updates current size
-        rxBuffer_.acquireBegin();
-
-        const size_t acquirable = rxBuffer_.acquirable();
-        const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
-        size_t rxSize = std::max(acquirable, acquirableWrapped);
-
-        if (rxSize < RX_THRESHOLD) {
-            return;
+        particle::services::RingBuffer<uint8_t>* buffer = nullptr;
+        if (usingAltRxBuffer_) {
+            buffer = &rxBuffer_;
+        } else {
+            buffer = &rxBufferAlt_;
         }
+
+        // To keep the received data contiguous
+        if (buffer->data()) {
+            return 0;
+        }
+
+        buffer->acquireBegin();
+
+        const size_t acquirable = buffer->acquirable();
+        const size_t acquirableWrapped = buffer->acquirableWrapped();
+        size_t rxSize = std::max(acquirable, acquirableWrapped);
 
         if (RESERVED_RX_SIZE) {
             if (!flush) {
@@ -566,14 +615,14 @@ private:
                         if (rxSize > RESERVED_RX_SIZE) {
                             rxSize -= RESERVED_RX_SIZE;
                         } else {
-                            return;
+                            return 0;
                         }
                     }
                 } else {
                     if (rxSize > RESERVED_RX_SIZE) {
                         rxSize -= RESERVED_RX_SIZE;
                     } else {
-                        return;
+                        return 0;
                     }
                 }
             } else {
@@ -581,26 +630,46 @@ private:
             }
         }
 
-        if (rxSize > 0) {
-            ++receiving_;
-            auto ptr = rxBuffer_.acquire(rxSize);
+        if (rxSize < RX_THRESHOLD) {
+            return 0;
+        }
+
+        auto ptr = buffer->acquire(rxSize);
 #ifdef DEBUG_BUILD
             SPARK_ASSERT(ptr);
 #endif // DEBUG_BUILD
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
-            nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
-            nrf_uarte_rx_buffer_set(uarte_, ptr, rxSize);
-            if (!flush) {
-                nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STARTRX);
-            } else {
-                nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_FLUSHRX);
-            }
+        nrf_uarte_rx_buffer_set(uarte_, ptr, rxSize);
+        return rxSize;
+    }
+
+    void startReceiver(bool flush = false) {
+        if (receiving_ >= MAX_SCHEDULED_RECEIVALS) {
+            return;
+        }
+
+        rxBuffer_.acquireBegin();
+        const size_t acquirable = rxBuffer_.acquirable();
+        const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
+        size_t rxSize = std::max(acquirable, acquirableWrapped);
+        auto ptr = rxBuffer_.acquire(rxSize);
+        nrf_uarte_rx_buffer_set(uarte_, ptr, rxSize);
+
+        ++receiving_;
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXSTARTED);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
+        nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
+        nrf_uarte_shorts_enable(uarte_, NRF_UARTE_SHORT_ENDRX_STARTRX);
+        if (!flush) {
+            nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STARTRX);
+        } else {
+            nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_FLUSHRX);
         }
     }
 
     void stopReceiver() {
         if (receiving_) {
+            nrf_uarte_shorts_disable(uarte_, NRF_UARTE_SHORT_ENDRX_STARTRX);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXTO);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
             nrf_uarte_task_trigger(uarte_, NRF_UARTE_TASK_STOPRX);
@@ -657,7 +726,7 @@ private:
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_SHUTDOWN);
         nrf_ppi_channel_disable(ppi_);
-        rxConsumed_ = 0;
+        consumedTimerCount_ = 0;
     }
 
     size_t timerValue() {
@@ -748,12 +817,16 @@ private:
 
     volatile bool transmitting_;
     volatile uint8_t receiving_;
-    volatile size_t rxConsumed_;
+    volatile size_t consumedTimerCount_;
+    volatile bool usingAltRxBuffer_;
 
     Config config_ = {};
 
+    static constexpr size_t SECONDARY_BUFF_LEN = 64;
+    uint8_t secondaryRxBuffer_[SECONDARY_BUFF_LEN];
     particle::services::RingBuffer<uint8_t> txBuffer_;
     particle::services::RingBuffer<uint8_t> rxBuffer_;
+    particle::services::RingBuffer<uint8_t> rxBufferAlt_;
 
     EventGroupHandle_t evGroup_;
 };
