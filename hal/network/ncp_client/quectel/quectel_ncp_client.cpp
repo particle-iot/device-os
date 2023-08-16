@@ -120,6 +120,16 @@ const auto HW_VERSION_UNDEFINED = 0xFF;
 // V004 - 0x01 (enable hwfc)
 const auto HAL_VERSION_B5SOM_V003 = 0x00;
 
+// Hardware models
+// const auto HAL_HW_MODEL_UNDEFINED = 0xffff;
+// const auto HAL_HW_TRACKER_MODEL_BARE_SOM = 0x0000;
+// const auto HAL_HW_TRACKER_MODEL_EVAL = 0x0001;
+// const auto HAL_HW_MODEL_TRACKER_ONE = 0x0002;
+// const auto HAL_HW_MODEL_MONITOR_ONE = 0x0003;
+// const auto HAL_HW_TRACKER_MODEL_MAX = HAL_HW_MODEL_MONITOR_ONE;
+const auto HAL_HW_MODEL_UNDEFINED = 0xFFFF;
+const auto HAL_HW_MODEL_MONITOR_ONE = 0x03;
+
 const auto ICCID_MAX_LENGTH = 20;
 
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
@@ -1083,6 +1093,56 @@ int QuectelNcpClient::initReady(ModemState state) {
 
         // Select either internal or external SIM card slot depending on the configuration
         CHECK(selectSimCard());
+
+#if PLATFORM_ID == PLATFORM_TRACKER
+        uint32_t hwModel = HAL_HW_MODEL_UNDEFINED;
+        uint32_t hwVariant = 0;
+        int hwModelRet = hal_get_device_hw_model(&hwModel, &hwVariant, nullptr);
+        // LOG(INFO, "hwModelRet: %d, HW Model: %lu", hwModelRet, hwModel);
+        if (hwModelRet == SYSTEM_ERROR_NONE && hwModel == HAL_HW_MODEL_MONITOR_ONE) {
+            // DEFAULT EG91-NA: +QNVFR: 0100E800
+            // DEFAULT BG96   : +QNVRF: 0100E900
+            // DESIRED EG91-EX: +QNVFR: 0100DC00
+            auto qnvfrResp = parser_.sendCommand("AT+QNVFR=\"/nv/item_files/rfnv/00021003\"");
+            char qnvfrVal[65] = {};
+            int qnvfrRet = CHECK_PARSER(qnvfrResp.scanf("+QNVFR: %8[^\n]", qnvfrVal));
+            CHECK_TRUE(qnvfrRet == 1, SYSTEM_ERROR_UNKNOWN);
+            qnvfrRet = CHECK_PARSER(qnvfrResp.readResult());
+            CHECK_TRUE(qnvfrRet == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            if (strcmp(qnvfrVal, "0100DC00") != 0) {
+                // LTE B20: 22dBm (22 * 10 = 220 dec => DC hex)
+                CHECK_PARSER_OK(parser_.execCommand("AT+QNVFW=\"/nv/item_files/rfnv/00021003\",0100DC00"));
+            }
+
+            // DEFAULT EG91-NA: +QNVFR: F401BC0284034C041405DC05A4066C073408FC08C4098C0A540B1C0CB20CB20C
+            // DEFAULT BG96   : +QNVFR: D6019E0266032E04F604BE0586064E071608DE08A6096E0A360BFE0BC60CC60C
+            // DESIRED EG91-EX: +QNVFR: C2018A0252031A04E204AA0572063A070208CA0892095A0A220BEA0C1C0C1C0C
+            qnvfrResp = parser_.sendCommand("AT+QNVFR=\"/nv/item_files/rfnv/00025076\"");
+            memset(qnvfrVal, 0, sizeof(qnvfrVal));
+            qnvfrRet = CHECK_PARSER(qnvfrResp.scanf("+QNVFR: %64[^\n]", qnvfrVal));
+            CHECK_TRUE(qnvfrRet == 1, SYSTEM_ERROR_UNKNOWN);
+            qnvfrRet = CHECK_PARSER(qnvfrResp.readResult());
+            CHECK_TRUE(qnvfrRet == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            if (strcmp(qnvfrVal, "C2018A0252031A04E204AA0572063A070208CA0892095A0A220BEA0C1C0C1C0C") != 0) {
+                // GSM_850: 31dBm
+                CHECK_PARSER_OK(parser_.execCommand("AT+QNVFW=\"/nv/item_files/rfnv/00025076\",C2018A0252031A04E204AA0572063A070208CA0892095A0A220BEA0C1C0C1C0C"));
+            }
+
+            // DEFAULT EG91-NA: +QNVFR: F401BC0284034C041405DC05A4066C073408FC08C4098C0A540B1C0CB20CB20C
+            // DEFAULT BG96   : +QNVFR: D6019E0266032E04F604BE0586064E071608DE08A6096E0A360BFE0BBC0CBC0C
+            // DESIRED EG91-EX: +QNVFR: 0802D0029803100492045A052206EA06B2077A0842090A0AD20A9A0C1C0C1C0C
+            qnvfrResp = parser_.sendCommand("AT+QNVFR=\"/nv/item_files/rfnv/00025077\"");
+            memset(qnvfrVal, 0, sizeof(qnvfrVal));
+            qnvfrRet = CHECK_PARSER(qnvfrResp.scanf("+QNVFR: %64[^\n]", qnvfrVal));
+            CHECK_TRUE(qnvfrRet == 1, SYSTEM_ERROR_UNKNOWN);
+            qnvfrRet = CHECK_PARSER(qnvfrResp.readResult());
+            CHECK_TRUE(qnvfrRet == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            if (strcmp(qnvfrVal, "0802D0029803100492045A052206EA06B2077A0842090A0AD20A9A0C1C0C1C0C") != 0) {
+                // GSM_900: 31dBm
+                CHECK_PARSER_OK(parser_.execCommand("AT+QNVFW=\"/nv/item_files/rfnv/00025077\",0802D0029803100492045A052206EA06B2077A0842090A0AD20A9A0C1C0C1C0C"));
+            }
+        }
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
         // Just in case disconnect
         // int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
