@@ -87,15 +87,24 @@ inline void removeFromList(T* elem, T*& head) {
     }
 }
 
+template<typename T>
+inline void destroyList(T* head) {
+    while (head) {
+        auto next = head->next;
+        delete head;
+        head = next;
+    }
+}
+
 } // namespace
 
-struct CoapMessage {
+struct CoapChannel::CoapMessage {
     enum State {
         NEW, // Message created
         READING, // Reading payload data
         WRITING, // Writing payload data
-        WAITING_ACK, // Waiting an ACK for this message
-        WAITING_RESPONSE // Waiting a response for this request
+        WAITING_ACK, // Waiting for an ACK
+        WAITING_RESPONSE // Waiting for a response
     };
 
     coap_ack_callback ackCallback; // Callback to invoke when the message is acknowledged
@@ -104,13 +113,13 @@ struct CoapMessage {
     CoapMessage* next; // Next message in the list
     char* pos; // Current position in the message buffer
     char* end; // End of the message buffer
-    TokenValue tokenValue; // CoAP token
+    TokenValue tokenValue; // Token value
     size_t tokenSize; // Token size
-    int sessionId; // Session ID
-    int requestId; // ID of the request that started the exchange
+    int sessionId; // Internal session ID
+    int requestId; // Internal ID of the request that started the exchange
     int coapId; // CoAP message ID
     State state; // Message state
-    bool isRequest; // Whether this is a request message
+    bool isRequest; // Whether this is a request or response message
 
     union {
         // Fields specific to a request message
@@ -161,12 +170,27 @@ struct CoapChannel::RequestHandler {
     }
 };
 
+struct CoapChannel::ConnectionHandler {
+    coap_connection_callback callback;
+    void* callbackArg;
+    ConnectionHandler* next;
+    bool openFailed;
+
+    ConnectionHandler(coap_connection_callback callback, void* callbackArg) :
+            callback(callback),
+            callbackArg(callbackArg),
+            next(nullptr),
+            openFailed(false) {
+    }
+};
+
 CoapChannel::CoapChannel() :
+        connHandlers_(nullptr),
         reqHandlers_(nullptr),
         sentReqs_(nullptr),
         recvReqs_(nullptr),
         unackMsgs_(nullptr),
-        proto_(spark_protocol_instance()),
+        protocol_(spark_protocol_instance()),
         lastReqId_(0),
         curReqId_(0),
         sessId_(0),
@@ -174,19 +198,15 @@ CoapChannel::CoapChannel() :
 }
 
 CoapChannel::~CoapChannel() {
-    if (sentReqs_ || recvReqs_ || recvReqs_) {
-        LOG(ERROR, "Destroying channel while a CoAP exchange is in progress");
-    }
-    auto h = reqHandlers_;
-    while (h) {
-        auto next = h->next;
-        delete h;
-        h = next;
+    if (sentReqs_ || recvReqs_ || unackMsgs_) { // recvReqs_ are owned by the user code and will be leaked
+        LOG(WARN, "Destroying channel while a CoAP exchange is in progress");
     }
     close();
+    destroyList(connHandlers_);
+    destroyList(reqHandlers_);
 }
 
-int CoapChannel::beginRequest(const char* uri, coap_method method, CoapMessage*& msg) {
+int CoapChannel::beginRequest(coap_message** msg, const char* uri, coap_method method) {
     if (std::strlen(uri) != 1) {
         return SYSTEM_ERROR_INVALID_ARGUMENT; // TODO: Support longer URIs
     }
@@ -204,38 +224,40 @@ int CoapChannel::beginRequest(const char* uri, coap_method method, CoapMessage*&
     req->method = method;
     req->state = CoapMessage::WRITING;
     req->isRequest = true;
-    msg = req.release();
+    *msg = reinterpret_cast<coap_message*>(req.release());
     return reqId;
 }
 
-int CoapChannel::endRequest(CoapMessage* msg, coap_response_callback respCallback, coap_ack_callback ackCallback,
+int CoapChannel::endRequest(coap_message* msg, coap_response_callback respCallback, coap_ack_callback ackCallback,
         coap_error_callback errorCallback, void* callbackArg) {
-    if (!msg->isRequest) {
+    auto req = reinterpret_cast<CoapMessage*>(msg);
+    if (!req->isRequest) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (msg->state != CoapMessage::WRITING) {
+    if (req->state != CoapMessage::WRITING) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    if (!open_ || msg->sessionId != sessId_) {
+    if (!open_ || req->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
     if (!curReqId_) {
-        CHECK(initProtocolMessage(msg));
-    } else if (curReqId_ != msg->requestId) {
+        CHECK(initProtocolMessage(req));
+    } else if (curReqId_ != req->requestId) {
         // TODO: Support asynchronous writing to multiple message instances
         return SYSTEM_ERROR_INTERNAL;
     }
-    msgBuf_.set_length(msg->end - (char*)msgBuf_.buf());
-    CHECK_PROTOCOL(proto_->get_channel().send(msgBuf_));
-    msg->coapId = msgBuf_.get_id();
-    msg->next = unackMsgs_;
-    unackMsgs_ = msg;
+    msgBuf_.set_length(req->end - (char*)msgBuf_.buf());
+    CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
+    req->coapId = msgBuf_.get_id();
+    req->next = unackMsgs_;
+    unackMsgs_ = req;
+    // Release the message buffer
     msgBuf_.clear();
     curReqId_ = 0;
     return 0;
 }
 
-int CoapChannel::beginResponse(int code, int requestId, CoapMessage*& msg) {
+int CoapChannel::beginResponse(coap_message** msg, int code, int requestId) {
     if (!open_) {
         return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
@@ -258,40 +280,105 @@ int CoapChannel::beginResponse(int code, int requestId, CoapMessage*& msg) {
     resp->tokenSize = req->tokenSize;
     resp->responseCode = code;
     resp->state = CoapMessage::WRITING;
-    msg = resp.release();
+    *msg = reinterpret_cast<coap_message*>(resp.release());
     return 0;
 }
 
-int CoapChannel::endResponse(CoapMessage* msg, coap_ack_callback ackCallback, coap_error_callback errorCallback,
+int CoapChannel::endResponse(coap_message* msg, coap_ack_callback ackCallback, coap_error_callback errorCallback,
         void* callbackArg) {
-    if (msg->isRequest) {
+    auto resp = reinterpret_cast<CoapMessage*>(msg);
+    if (resp->isRequest) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    if (resp->state != CoapMessage::WRITING) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (!open_ || resp->sessionId != sessId_) {
+        return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
+    }
+    if (!curReqId_) {
+        CHECK(initProtocolMessage(resp));
+    } else if (curReqId_ != resp->requestId) {
+        // TODO: Support asynchronous writing to multiple message instances
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    msgBuf_.set_length(resp->end - (char*)msgBuf_.buf());
+    CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
+    resp->coapId = msgBuf_.get_id();
+    resp->next = unackMsgs_;
+    unackMsgs_ = resp;
+    // Release the message buffer
+    msgBuf_.clear();
+    curReqId_ = 0;
+    return 0;
+}
+
+int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& size, coap_block_callback /* blockCallback */,
+        coap_error_callback errorCallback, void* callbackArg) {
+    auto msg = reinterpret_cast<CoapMessage*>(apiMsg);
     if (msg->state != CoapMessage::WRITING) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (!open_ || msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
-    if (!curReqId_) {
-        CHECK(initProtocolMessage(msg));
-    } else if (curReqId_ != msg->requestId) {
-        // TODO: Support asynchronous writing to multiple message instances
-        return SYSTEM_ERROR_INTERNAL;
+    if (size > 0) {
+        if (msg->pos + size > msg->end) {
+            // TODO: Support blockwise transfer
+            return SYSTEM_ERROR_TOO_LARGE;
+        }
+        if (!curReqId_) {
+            CHECK(initProtocolMessage(msg));
+            *msg->pos++ = 0xff; // Payload marker
+            curReqId_ = msg->requestId;
+        } else if (curReqId_ != msg->requestId) {
+            // TODO: Support asynchronous writing to multiple message instances
+            return SYSTEM_ERROR_INTERNAL;
+        }
+        memcpy(msg->pos, data, size);
+        msg->pos += size;
     }
-    msgBuf_.set_length(msg->end - (char*)msgBuf_.buf());
-    CHECK_PROTOCOL(proto_->get_channel().send(msgBuf_));
-    msg->coapId = msgBuf_.get_id();
-    msg->next = unackMsgs_;
-    unackMsgs_ = msg;
-    msgBuf_.clear();
-    curReqId_ = 0;
+    msg->errorCallback = errorCallback;
+    msg->callbackArg = callbackArg;
     return 0;
 }
 
-int CoapChannel::writePayload(CoapMessage* msg, const char* data, size_t& size, coap_block_callback /* blockCallback */,
+int CoapChannel::readPayload(coap_message* apiMsg, char* data, size_t& size, coap_block_callback /* blockCallback */,
         coap_error_callback errorCallback, void* callbackArg) {
-    if (msg->state != CoapMessage::WRITING) {
+    auto msg = reinterpret_cast<CoapMessage*>(apiMsg);
+    if (msg->state != CoapMessage::READING) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (!open_ || msg->sessionId != sessId_) {
+        return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
+    }
+    if (size > 0) {
+        if (msg->pos == msg->end) {
+            // TODO: Support blockwise transfer
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        if (curReqId_ != msg->requestId) {
+            // TODO: Support asynchronous reading from multiple message instances
+            return SYSTEM_ERROR_INTERNAL;
+        }
+        auto n = std::min<size_t>(size, msg->end - msg->pos);
+        memcpy(data, msg->pos, n);
+        msg->pos += n;
+        if (msg->pos == msg->end) {
+            // Release the message buffer
+            msgBuf_.clear();
+            curReqId_ = 0;
+        }
+        size = n;
+    }
+    msg->errorCallback = errorCallback;
+    msg->callbackArg = callbackArg;
+    return 0;
+}
+
+int CoapChannel::peekPayload(coap_message* apiMsg, char* data, size_t size) {
+    auto msg = reinterpret_cast<CoapMessage*>(apiMsg);
+    if (msg->state != CoapMessage::READING) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (!open_ || msg->sessionId != sessId_) {
@@ -299,62 +386,6 @@ int CoapChannel::writePayload(CoapMessage* msg, const char* data, size_t& size, 
     }
     if (size == 0) {
         return 0;
-    }
-    if (msg->pos + size > msg->end) {
-        // TODO: Support blockwise transfer
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
-    if (!curReqId_) {
-        CHECK(initProtocolMessage(msg));
-        *msg->pos++ = 0xff; // Payload marker
-    } else if (curReqId_ != msg->requestId) {
-        // TODO: Support asynchronous writing to multiple message instances
-        return SYSTEM_ERROR_INTERNAL;
-    }
-    memcpy(msg->pos, data, size);
-    msg->pos += size;
-    msg->errorCallback = errorCallback;
-    msg->callbackArg = callbackArg;
-    curReqId_ = msg->requestId;
-    return 0;
-}
-
-int CoapChannel::readPayload(CoapMessage* msg, char* data, size_t& size, coap_block_callback /* blockCallback */,
-        coap_error_callback errorCallback, void* callbackArg) {
-    if (msg->state != CoapMessage::READING) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (!open_ || msg->sessionId != sessId_) {
-        return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
-    }
-    if (msg->pos == msg->end) {
-        // TODO: Support blockwise transfer
-        return SYSTEM_ERROR_END_OF_STREAM;
-    }
-    if (curReqId_ != msg->requestId) {
-        // TODO: Support asynchronous reading from multiple message instances
-        return SYSTEM_ERROR_INTERNAL;
-    }
-    auto n = std::min<size_t>(size, msg->end - msg->pos);
-    memcpy(data, msg->pos, n);
-    msg->pos += n;
-    msg->errorCallback = errorCallback;
-    msg->callbackArg = callbackArg;
-    if (msg->pos == msg->end) {
-        // Release the message buffer
-        msgBuf_.clear();
-        curReqId_ = 0;
-    }
-    size = n;
-    return 0;
-}
-
-int CoapChannel::peekPayload(CoapMessage* msg, char* data, size_t size) {
-    if (msg->state != CoapMessage::READING) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    if (!open_ || msg->sessionId != sessId_) {
-        return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
     if (curReqId_ != msg->requestId) {
         // TODO: Support asynchronous reading from multiple message instances
@@ -368,7 +399,8 @@ int CoapChannel::peekPayload(CoapMessage* msg, char* data, size_t size) {
     return n;
 }
 
-void CoapChannel::destroyMessage(CoapMessage* msg) {
+void CoapChannel::destroyMessage(coap_message* apiMsg) {
+    auto msg = reinterpret_cast<CoapMessage*>(apiMsg);
     switch (msg->state) {
     case CoapMessage::READING: {
         if (msg->isRequest) {
@@ -424,8 +456,7 @@ void CoapChannel::removeRequestHandler(const char* uri, coap_method method) {
         if (h->uri == *uri && h->method == method) {
             if (prev) {
                 prev->next = h->next;
-            }
-            if (reqHandlers_ == h) {
+            } else {
                 reqHandlers_ = h->next;
             }
             delete h;
@@ -435,20 +466,87 @@ void CoapChannel::removeRequestHandler(const char* uri, coap_method method) {
     }
 }
 
+int CoapChannel::addConnectionHandler(coap_connection_callback callback, void* callbackArg) {
+    if (!callback) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    auto h = connHandlers_;
+    for (; h; h = h->next) {
+        if (h->callback == callback) {
+            break;
+        }
+    }
+    if (!h) {
+        std::unique_ptr<ConnectionHandler> h(new(std::nothrow) ConnectionHandler(callback, callbackArg));
+        if (!h) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        h->next = connHandlers_;
+        connHandlers_ = h.release();
+    }
+    return 0;
+}
+
+void CoapChannel::removeConnectionHandler(coap_connection_callback callback) {
+    ConnectionHandler* prev = nullptr;
+    for (auto h = connHandlers_; h; h = h->next) {
+        if (h->callback == callback) {
+            if (prev) {
+                prev->next = h->next;
+            } else {
+                connHandlers_ = h->next;
+            }
+            delete h;
+            break;
+        }
+        prev = h;
+    }
+}
+
+void CoapChannel::open() {
+    if (open_) {
+        return;
+    }
+    // Mark the channel as open before invoking any user callbacks
+    open_ = true;
+    for (auto h = connHandlers_; h; h = h->next) {
+        int r = h->callback(0 /* error */, COAP_CONNECTION_OPEN, h->callbackArg);
+        if (r < 0) {
+            // Handler errors are not propagated to the protocol layer as they're likely to persist
+            // during further connection attempts and would otherwise prevent the device from
+            // connecting to the cloud for an indefinite amount of time
+            LOG(ERROR, "Connection handler failed: %d", r);
+            h->openFailed = true;
+        }
+    }
+}
+
 void CoapChannel::close(int error) {
     if (!open_) {
         return;
     }
     // Mark the channel as closed before invoking any user callbacks
     open_ = false;
-    cancelMessages(sentReqs_, error);
+    cancelMessages(sentReqs_, error, true /* destroy */);
     sentReqs_ = nullptr;
-    cancelMessages(unackMsgs_, error);
+    cancelMessages(unackMsgs_, error, true);
     unackMsgs_ = nullptr;
-    recvReqs_ = nullptr; // These are owned by the user code
+    cancelMessages(recvReqs_, error, false); // These are owned by the user code
+    recvReqs_ = nullptr;
+    // Release the message buffer
     msgBuf_.clear();
     curReqId_ = 0;
+    // Generate a new session ID to invalidate the message instances owned by the user code
     ++sessId_;
+    for (auto h = connHandlers_; h; h = h->next) {
+        if (!h->openFailed) {
+            int r = h->callback(error, COAP_CONNECTION_CLOSED, h->callbackArg);
+            if (r < 0) {
+                LOG(ERROR, "Connection handler failed: %d", r);
+            }
+        }
+        h->openFailed = false; // Clear the failed state
+    }
 }
 
 int CoapChannel::handleCon(const Message& msg) {
@@ -461,10 +559,13 @@ int CoapChannel::handleCon(const Message& msg) {
     if (!d.hasToken() || d.tokenSize() > MAX_TOKEN_SIZE) {
         return 0;
     }
+    int r = 0;
     if (isCoapRequestCode(d.code())) {
-        return handleRequest(d);
+        r = CHECK(handleRequest(d));
+    } else {
+        r = CHECK(handleResponse(d));
     }
-    return handleResponse(d);
+    return r; // 0 or Result::HANDLED
 }
 
 int CoapChannel::handleAck(int coapId) {
@@ -478,8 +579,8 @@ int CoapChannel::handleAck(int coapId) {
         return 0;
     }
     auto reqId = msg->requestId;
-    auto ackCb = msg->ackCallback;
-    auto cbArg = msg->callbackArg;
+    auto callback = msg->ackCallback;
+    auto arg = msg->callbackArg;
     removeFromList(msg, unackMsgs_);
     if (msg->isRequest) {
         msg->state = CoapMessage::WAITING_RESPONSE;
@@ -488,8 +589,8 @@ int CoapChannel::handleAck(int coapId) {
     } else {
         delete msg;
     }
-    if (ackCb) {
-        CHECK(ackCb(reqId, cbArg));
+    if (callback) {
+        CHECK(callback(reqId, arg));
     }
     return Result::HANDLED;
 }
@@ -505,12 +606,12 @@ int CoapChannel::handleRst(int coapId) {
         return 0;
     }
     auto reqId = msg->requestId;
-    auto errCb = msg->errorCallback;
-    auto cbArg = msg->callbackArg;
+    auto callback = msg->errorCallback;
+    auto arg = msg->callbackArg;
     removeFromList(msg, unackMsgs_);
     delete msg;
-    if (errCb) {
-        errCb(SYSTEM_ERROR_COAP_MESSAGE_RESET, reqId, cbArg);
+    if (callback) {
+        callback(SYSTEM_ERROR_COAP_MESSAGE_RESET, reqId, arg);
     }
     return Result::HANDLED;
 }
@@ -521,17 +622,17 @@ CoapChannel* CoapChannel::instance() {
 }
 
 int CoapChannel::handleRequest(CoapMessageDecoder& d) {
-    // Parse the request
+    // Get the request URI
     char uri = '/'; // TODO: Support longer URIs
     bool hasUri = false;
     auto it = d.findOption(CoapOption::URI_PATH);
     while (it) {
         if (it.size() > 1) {
-            return 0;
+            return 0; // URI is too long
         }
         if (it.size() > 0) {
             if (hasUri) {
-                return 0;
+                return 0; // ditto
             }
             uri = *it.data();
             hasUri = true;
@@ -582,6 +683,7 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
             delete recvReqs_;
             recvReqs_ = next;
         }
+        // Release the message buffer
         curReqId_ = 0;
     });
     // Invoke the request handler
@@ -631,40 +733,44 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     resp->coapId = d.id();
     resp->tokenValue = tokenVal;
     resp->tokenSize = tokenSize;
-    req->state = CoapMessage::READING;
-    req->pos = const_cast<char*>(d.payload());
-    req->end = req->pos + d.payloadSize();
+    resp->state = CoapMessage::READING;
+    resp->pos = const_cast<char*>(d.payload());
+    resp->end = resp->pos + d.payloadSize();
     curReqId_ = resp->requestId;
     NAMED_SCOPE_GUARD(g, {
         curReqId_ = 0;
     });
     // Invoke the response handler
-    CHECK(req->responseCallback(reinterpret_cast<coap_message*>(resp.release()), d.code(), resp->requestId, req->callbackArg));
+    if (req->responseCallback) {
+        CHECK(req->responseCallback(reinterpret_cast<coap_message*>(resp.release()), d.code(), resp->requestId, req->callbackArg));
+    }
     g.dismiss();
     return Result::HANDLED;
 }
 
-void CoapChannel::cancelMessages(CoapMessage* msgList, int error) {
+void CoapChannel::cancelMessages(CoapMessage* msgList, int error, bool destroy) {
     auto msg = msgList;
     while (msg) {
         auto next = msg->next;
         if (msg->errorCallback) {
             msg->errorCallback(error, msg->requestId, msg->callbackArg);
         }
-        delete msg;
+        if (destroy) {
+            delete msg;
+        }
         msg = next;
     }
 }
 
 int CoapChannel::initProtocolMessage(CoapMessage* msg) {
-    CHECK_PROTOCOL(proto_->get_channel().create(msgBuf_));
+    CHECK_PROTOCOL(protocol_->get_channel().create(msgBuf_));
     CoapMessageEncoder e((char*)msgBuf_.buf(), msgBuf_.capacity());
     // Encode header and token
     e.type(CoapType::CON);
     e.id(0); // Assigned by the message channel
     if (msg->isRequest) {
         e.code(to_underlying(msg->method));
-        msg->tokenValue = proto_->get_next_token();
+        msg->tokenValue = protocol_->get_next_token();
         msg->tokenSize = sizeof(token_t); // TODO: Support longer tokens
     } else {
         e.code(msg->responseCode);
@@ -693,7 +799,7 @@ int CoapChannel::handleProtocolError(ProtocolError error) {
     LOG(ERROR, "Protocol error: %d", (int)error);
     int err = toSystemError(error);
     close(err);
-    error = proto_->get_channel().command(Channel::CLOSE);
+    error = protocol_->get_channel().command(Channel::CLOSE);
     if (error != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Channel CLOSE command failed: %d", (int)error);
     }
@@ -704,11 +810,21 @@ int CoapChannel::handleProtocolError(ProtocolError error) {
 
 using namespace particle::protocol::experimental;
 
+int coap_add_connection_handler(coap_connection_callback cb, void* arg, void* reserved) {
+    CHECK(CoapChannel::instance()->addConnectionHandler(cb, arg));
+    return 0;
+}
+
+void coap_remove_connection_handler(coap_connection_callback cb, void* reserved) {
+    CoapChannel::instance()->removeConnectionHandler(cb);
+}
+
 int coap_add_request_handler(const char* uri, int method, coap_request_callback cb, void* arg, void* reserved) {
     if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    return CoapChannel::instance()->addRequestHandler(uri, static_cast<coap_method>(method), cb, arg);
+    CHECK(CoapChannel::instance()->addRequestHandler(uri, static_cast<coap_method>(method), cb, arg));
+    return 0;
 }
 
 void coap_remove_request_handler(const char* uri, int method, void* reserved) {
@@ -722,47 +838,46 @@ int coap_begin_request(coap_message** msg, const char* uri, int method, void* re
     if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    CoapMessage* m = nullptr;
-    auto reqId = CHECK(CoapChannel::instance()->beginRequest(uri, static_cast<coap_method>(method), m));
-    *msg = reinterpret_cast<coap_message*>(m);
+    auto reqId = CHECK(CoapChannel::instance()->beginRequest(msg, uri, static_cast<coap_method>(method)));
     return reqId;
 }
 
 int coap_end_request(coap_message* msg, coap_response_callback resp_cb, coap_ack_callback ack_cb,
         coap_error_callback error_cb, void* arg, void* reserved) {
-    auto m = reinterpret_cast<CoapMessage*>(msg);
-    CHECK(CoapChannel::instance()->endRequest(m, resp_cb, ack_cb, error_cb, arg));
+    CHECK(CoapChannel::instance()->endRequest(msg, resp_cb, ack_cb, error_cb, arg));
     return 0;
 }
 
 int coap_begin_response(coap_message** msg, int code, int req_id, void* reserved) {
+    CHECK(CoapChannel::instance()->beginResponse(msg, code, req_id));
     return 0;
 }
 
 int coap_end_response(coap_message* msg, coap_ack_callback ack_cb, coap_error_callback error_cb,
         void* arg, void* reserved) {
+    CHECK(CoapChannel::instance()->endResponse(msg, ack_cb, error_cb, arg));
     return 0;
 }
 
 void coap_destroy_message(coap_message* msg, void* reserved) {
+    CoapChannel::instance()->destroyMessage(msg);
 }
 
 int coap_write_payload(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved) {
-    auto m = reinterpret_cast<CoapMessage*>(msg);
-    CHECK(CoapChannel::instance()->writePayload(m, data, *size, block_cb, error_cb, arg));
-    return 0;
+    int r = CHECK(CoapChannel::instance()->writePayload(msg, data, *size, block_cb, error_cb, arg));
+    return r; // 0 or COAP_RESULT_WAIT_BLOCK
 }
 
 int coap_read_payload(coap_message* msg, char* data, size_t* size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved) {
-    auto m = reinterpret_cast<CoapMessage*>(msg);
-    CHECK(CoapChannel::instance()->readPayload(m, data, *size, block_cb, error_cb, arg));
-    return 0;
+    int r = CHECK(CoapChannel::instance()->readPayload(msg, data, *size, block_cb, error_cb, arg));
+    return r; // 0 or COAP_RESULT_WAIT_BLOCK
 }
 
 int coap_peek_payload(coap_message* msg, char* data, size_t size, void* reserved) {
-    return 0;
+    size_t n = CHECK(CoapChannel::instance()->peekPayload(msg, data, size));
+    return n;
 }
 
 int coap_get_option(coap_option** opt, int num, coap_message* msg, void* reserved) {

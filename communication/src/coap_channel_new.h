@@ -31,8 +31,6 @@ class Protocol;
 
 namespace experimental {
 
-struct CoapMessage;
-
 // This class implements the new experimental protocol API that allows the system to interact with
 // the server at the CoAP level. It's meant to be used through the functions defined in coap_api.h
 class CoapChannel {
@@ -45,31 +43,31 @@ public:
 
     // Methods called by the new CoAP API (coap_api.h)
 
-    int beginRequest(const char* uri, coap_method method, CoapMessage*& msg); // TODO: Return a smart pointer
-    int endRequest(CoapMessage* msg, coap_response_callback respCallback, coap_ack_callback ackCallback,
+    int beginRequest(coap_message** msg, const char* uri, coap_method method);
+    int endRequest(coap_message* msg, coap_response_callback respCallback, coap_ack_callback ackCallback,
             coap_error_callback errorCallback, void* callbackArg);
 
-    int beginResponse(int code, int requestId, CoapMessage*& msg); // TODO: Return a smart pointer
-    int endResponse(CoapMessage* msg, coap_ack_callback ackCallback, coap_error_callback errorCallback,
+    int beginResponse(coap_message** msg, int code, int requestId);
+    int endResponse(coap_message* msg, coap_ack_callback ackCallback, coap_error_callback errorCallback,
             void* callbackArg);
 
-    int writePayload(CoapMessage* msg, const char* data, size_t& size, coap_block_callback blockCallback,
+    int writePayload(coap_message* msg, const char* data, size_t& size, coap_block_callback blockCallback,
             coap_error_callback errorCallback, void* callbackArg);
-    int readPayload(CoapMessage* msg, char* data, size_t& size, coap_block_callback blockCallback,
+    int readPayload(coap_message* msg, char* data, size_t& size, coap_block_callback blockCallback,
             coap_error_callback errorCallback, void* callbackArg);
-    int peekPayload(CoapMessage* msg, char* data, size_t size);
+    int peekPayload(coap_message* msg, char* data, size_t size);
 
-    void destroyMessage(CoapMessage* msg);
+    void destroyMessage(coap_message* msg);
 
     int addRequestHandler(const char* uri, coap_method method, coap_request_callback callback, void* callbackArg);
     void removeRequestHandler(const char* uri, coap_method method);
 
+    int addConnectionHandler(coap_connection_callback callback, void* callbackArg);
+    void removeConnectionHandler(coap_connection_callback callback);
+
     // Methods called by the old protocol implementation
 
-    void open() {
-        open_ = true;
-    }
-
+    void open();
     void close(int error = SYSTEM_ERROR_COAP_CONNECTION_CLOSED);
 
     int handleCon(const Message& msg);
@@ -79,16 +77,19 @@ public:
     static CoapChannel* instance();
 
 private:
+    struct CoapMessage;
     struct RequestHandler;
+    struct ConnectionHandler;
 
     CoapChannel(); // Use instance()
 
-    Message msgBuf_; // Message buffer
+    Message msgBuf_; // Reference to the shared message buffer
+    ConnectionHandler* connHandlers_; // List of connection handlers
     RequestHandler* reqHandlers_; // List of request handlers
     CoapMessage* sentReqs_; // List of sent requests for which a response is expected
     CoapMessage* recvReqs_; // List of received requests for which a response is expected
     CoapMessage* unackMsgs_; // List of messages for which an ACK is expected
-    Protocol* proto_; // Protocol instance
+    Protocol* protocol_; // Protocol instance
     int lastReqId_; // Last used request ID
     int curReqId_; // ID of the request that started the current exchange
     int sessId_; // Counter incremented every time a new session is started
@@ -97,7 +98,7 @@ private:
     int handleRequest(CoapMessageDecoder& d);
     int handleResponse(CoapMessageDecoder& d);
 
-    void cancelMessages(CoapMessage* msgList, int error);
+    void cancelMessages(CoapMessage* msgList, int error, bool destroy);
 
     int initProtocolMessage(CoapMessage* msg);
     int handleProtocolError(ProtocolError error);

@@ -39,6 +39,17 @@ typedef struct coap_message coap_message;
 typedef struct coap_option coap_option;
 
 /**
+ * Callback invoked when the status of the CoAP connection changes.
+ *
+ * @param error 0 if the status changed normally, otherwise an error code defined by the
+ *        `system_error_t` enum.
+ * @param status Current status as defined by the `coap_connection_status` enum.
+ * @param arg User argument.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+typedef int (*coap_connection_callback)(int error, int status, void* arg);
+
+/**
  * Callback invoked when a request message is received.
  *
  * The message instance must be destroyed by calling `coap_destroy_message()` when it's no longer
@@ -49,6 +60,7 @@ typedef struct coap_option coap_option;
  * @param method Method code as defined by the `coap_method` enum.
  * @param req_id Request ID.
  * @param arg User argument.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
 typedef int (*coap_request_callback)(coap_message* msg, const char* uri, int method, int req_id, void* arg);
 
@@ -62,6 +74,7 @@ typedef int (*coap_request_callback)(coap_message* msg, const char* uri, int met
  * @param code Response code as defined by the `coap_response_code` enum.
  * @param req_id ID of the request for which this response is being received.
  * @param arg User argument.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
 typedef int (*coap_response_callback)(coap_message* msg, int code, int req_id, void* arg);
 
@@ -69,16 +82,18 @@ typedef int (*coap_response_callback)(coap_message* msg, int code, int req_id, v
  * Callback invoked when a block of a request or response message has been sent or received.
  *
  * @param msg Request or response message.
+ * @param req_id ID of the request that started the message exchange.
  * @param arg User argument.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-typedef int (*coap_block_callback)(coap_message* msg, void* arg);
+typedef int (*coap_block_callback)(coap_message* msg, int req_id, void* arg);
 
 /**
  * Callback invoked when a request or response message is acknowledged.
  *
- * @param req_id ID of the request that started the message exchange for which this acknowledgement
- *        is received.
+ * @param req_id ID of the request that started the message exchange.
  * @param arg User argument.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
 typedef int (*coap_ack_callback)(int req_id, void* arg);
 
@@ -90,6 +105,14 @@ typedef int (*coap_ack_callback)(int req_id, void* arg);
  * @param arg User argument.
  */
 typedef void (*coap_error_callback)(int error, int req_id, void* arg);
+
+/**
+ * Connection status.
+ */
+typedef enum coap_connection_status {
+    COAP_CONNECTION_CLOSED = 0, ///< Connection is closed.
+    COAP_CONNECTION_OPEN = 1 ///< Connection is open.
+} coap_connection_status;
 
 /**
  * Method code.
@@ -174,6 +197,24 @@ typedef enum coap_result {
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * Register a connection handler.
+ *
+ * @param cb Handler callback.
+ * @param arg User argument to pass to the callback.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int coap_add_connection_handler(coap_connection_callback cb, void* arg, void* reserved);
+
+/**
+ * Unregister a connection handler.
+ *
+ * @param cb Handler callback.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void coap_remove_connection_handler(coap_connection_callback cb, void* reserved);
 
 /**
  * Register a handler for incoming requests.
