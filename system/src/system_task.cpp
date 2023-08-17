@@ -33,6 +33,7 @@
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "firmware_update.h"
+#include "coap_channel_new.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "core_hal.h"
@@ -375,6 +376,7 @@ void handle_cloud_connection(bool force_events)
                     SPARK_CLOUD_CONNECTED = 1;
                     SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
                     cloud_failed_connection_attempts = 0;
+                    protocol::experimental::CoapChannel::instance()->open();
                     CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
                     system_notify_event(cloud_status, cloud_status_connected);
                     if (system_mode() == SAFE_MODE) {
