@@ -246,7 +246,9 @@ err_t WizNetif::initInterface() {
     /* netif_.flags |= NETIF_FLAG_MLD6 */
 
     netif_.output = etharp_output;
+#if LWIP_IPV6
     netif_.output_ip6 = ethip6_output;
+#endif // LWIP_IPV6
     netif_.linkoutput = &WizNetif::linkOutputCb;
 
     uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
