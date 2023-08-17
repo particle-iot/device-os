@@ -54,6 +54,7 @@
         (COAP, "CoAP error", -1000), /* -1199 ... -1000: CoAP errors */ \
         (COAP_CONNECTION_CLOSED, "Connection closed", -1001), \
         (COAP_MESSAGE_RESET, "Received a RST message", -1002), \
+        (COAP_TIMEOUT, "CoAP timeout", -1003), \
         (COAP_4XX, "CoAP: 4xx", -1100), \
         (COAP_5XX, "CoAP: 5xx", -1132), \
         (AT_NOT_OK, "AT command failure", -1200), /* -1299 ... -1200: AT command errors */ \

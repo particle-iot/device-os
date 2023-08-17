@@ -18,8 +18,6 @@
 #include <memory>
 
 #include "message_channel.h"
-#include "protocol_defs.h"
-
 #include "coap_api.h"
 
 #include "system_error.h"
@@ -71,8 +69,8 @@ public:
     void close(int error = SYSTEM_ERROR_COAP_CONNECTION_CLOSED);
 
     int handleCon(const Message& msg);
-    int handleAck(int coapId);
-    int handleRst(int coapId);
+    int handleAck(const Message& msg);
+    int handleRst(const Message& msg);
 
     static CoapChannel* instance();
 
@@ -95,8 +93,10 @@ private:
     int sessId_; // Counter incremented every time a new session is started
     bool open_; // Whether the channel is open
 
-    int handleRequest(CoapMessageDecoder& d);
-    int handleResponse(CoapMessageDecoder& d);
+    int handleRequest(CoapMessageDecoder& d, const Message& msg);
+    int handleResponse(CoapMessageDecoder& d, const Message& msg);
+
+    int sendEmptyAck(int coapId);
 
     void cancelMessages(CoapMessage* msgList, int error, bool destroy);
 

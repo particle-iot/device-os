@@ -31,6 +31,7 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
+#include "coap_channel_new.h"
 #include "coap_message_decoder.h"
 #include "coap_message_encoder.h"
 
@@ -214,8 +215,18 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		break;
 
 	case CoAPMessageType::ERROR:
-	default:
-		; // drop it on the floor
+	default: {
+		int r = 0;
+		if (type == CoAPType::CON) {
+			r = experimental::CoapChannel::instance()->handleCon(message);
+		} else if (type == CoAPType::ACK) {
+			r = experimental::CoapChannel::instance()->handleAck(message);
+		}
+		if (r < 0) {
+			return ProtocolError::COAP_ERROR;
+		}
+		break;
+	}
 	}
 
 	// all's well
@@ -540,6 +551,7 @@ void Protocol::reset() {
 	ack_handlers.clear();
 	channel.reset();
 	subscription_msg_ids.clear();
+	experimental::CoapChannel::instance()->close();
 }
 
 /**
@@ -641,12 +653,12 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	if (error)
 	{
 		// bail if and only if there was an error
+		LOG(ERROR,"Event loop error %d", error);
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		firmwareUpdate.reset();
 #else
 		chunkedTransfer.cancel();
 #endif
-		LOG(ERROR,"Event loop error %d", error);
 		return error;
 	}
 	return error;

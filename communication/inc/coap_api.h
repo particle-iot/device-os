@@ -107,14 +107,6 @@ typedef int (*coap_ack_callback)(int req_id, void* arg);
 typedef void (*coap_error_callback)(int error, int req_id, void* arg);
 
 /**
- * Connection status.
- */
-typedef enum coap_connection_status {
-    COAP_CONNECTION_CLOSED = 0, ///< Connection is closed.
-    COAP_CONNECTION_OPEN = 1 ///< Connection is open.
-} coap_connection_status;
-
-/**
  * Method code.
  */
 typedef enum coap_method {
@@ -188,6 +180,14 @@ typedef enum coap_content_format {
 } coap_content_format;
 
 /**
+ * Connection status.
+ */
+typedef enum coap_connection_status {
+    COAP_CONNECTION_CLOSED = 0, ///< Connection is closed.
+    COAP_CONNECTION_OPEN = 1 ///< Connection is open.
+} coap_connection_status;
+
+/**
  * Result code.
  */
 typedef enum coap_result {
@@ -246,10 +246,12 @@ void coap_remove_request_handler(const char* uri, int method, void* reserved);
  * @param[out] msg Request message.
  * @param uri Request URI.
  * @param method Method code as defined by the `coap_method` enum.
+ * @param timeout Request timeout in milliseconds. If 0, the default timeout is used.
+ * @param flags Reserved argument. Must be set to 0.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return ID of the request on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_begin_request(coap_message** msg, const char* uri, int method, void* reserved);
+int coap_begin_request(coap_message** msg, const char* uri, int method, int timeout, int flags, void* reserved);
 
 /**
  * Finish sending a request message.
@@ -274,10 +276,11 @@ int coap_end_request(coap_message* msg, coap_response_callback resp_cb, coap_ack
  * @param[out] msg Response message.
  * @param code Response code as defined by the `coap_response_code` enum.
  * @param req_id ID of the request for which this response is meant to.
+ * @param flags Reserved argument. Must be set to 0.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_begin_response(coap_message** msg, int code, int req_id, void* reserved);
+int coap_begin_response(coap_message** msg, int code, int req_id, int flags, void* reserved);
 
 /**
  * Finish sending a response message.
