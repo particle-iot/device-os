@@ -240,7 +240,7 @@ public:
 
         state_ = HAL_USART_STATE_DISABLED;
         transmitting_ = false;
-        receiving_ = 0;
+        usingAltRxBuffer_ = false;
         config_ = {};
         rxBuffer_.reset();
         rxBufferAlt_.reset();
@@ -262,8 +262,8 @@ public:
 
         state_ = HAL_USART_STATE_SUSPENDED;
         transmitting_ = false;
-        receiving_ = 0;
         rxBuffer_.prune();
+        rxBufferAlt_.prune();
         txBuffer_.reset();
 
         return SYSTEM_ERROR_NONE;
@@ -278,16 +278,10 @@ public:
     ssize_t data() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         RxLock lk(uarte_);
-        particle::services::RingBuffer<uint8_t>* bufferCurrent = nullptr;
-        particle::services::RingBuffer<uint8_t>* bufferPre = nullptr;
-        if (usingAltRxBuffer_) {
-            bufferCurrent = &rxBufferAlt_;
-            bufferPre = &rxBuffer_;
-        } else {
-            bufferCurrent = &rxBuffer_;
-            bufferPre = &rxBufferAlt_;
-        }
-        ssize_t d = bufferPre->data() + bufferCurrent->data();
+        particle::services::RingBuffer<uint8_t>* currRxBuff = nullptr;
+        particle::services::RingBuffer<uint8_t>* preRxBuff = nullptr;
+        acquireRxBuffer(&currRxBuff, &preRxBuff);
+        ssize_t d = preRxBuff->data() + currRxBuff->data();
         if (receiving_) {
             // IMPORTANT: It seems that the timer value (which is a counter for every time UARTE generates RXDRDY event)
             // may potentially get larger than the configured RX DMA transfer:
@@ -297,16 +291,16 @@ public:
             // </quote>
             // We'll be extra careful here and make sure not to consume more than we can, otherwise
             // we may put the ring buffer into an invalid state as there are not safety checks.
-            size_t timerCount = timerValue();
-            size_t toConsumeCount;
+            uint16_t timerCount = timerValue();
+            uint16_t toConsumeCount;
             if (timerCount >= consumedTimerCount_) {
                 toConsumeCount = timerCount - consumedTimerCount_;
             } else {
                 toConsumeCount = 65536 - consumedTimerCount_ + timerCount;
             }
-            const ssize_t toConsume = std::min(bufferCurrent->acquirePending(), toConsumeCount);
+            const ssize_t toConsume = std::min(currRxBuff->acquirePending(), (size_t)toConsumeCount);
             if (toConsume > 0) {
-                bufferCurrent->acquireCommit(toConsume);
+                currRxBuff->acquireCommit(toConsume);
                 d += toConsume;
                 consumedTimerCount_ = (consumedTimerCount_ + toConsume) % 65536;
             }
@@ -326,25 +320,19 @@ public:
         const size_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(uarte_);
-        particle::services::RingBuffer<uint8_t>* bufferCurrent = nullptr;
-        particle::services::RingBuffer<uint8_t>* bufferPre = nullptr;
-        if (usingAltRxBuffer_) {
-            bufferCurrent = &rxBufferAlt_;
-            bufferPre = &rxBuffer_;
-        } else {
-            bufferCurrent = &rxBuffer_;
-            bufferPre = &rxBufferAlt_;
-        }
-        ssize_t remainLen = bufferPre->data();
+        particle::services::RingBuffer<uint8_t>* currRxBuff = nullptr;
+        particle::services::RingBuffer<uint8_t>* preRxBuff = nullptr;
+        acquireRxBuffer(&currRxBuff, &preRxBuff);
+        ssize_t remainLen = preRxBuff->data();
         SCOPE_GUARD ({
             if (remainLen == 0 && !(uarte_->SHORTS & NRF_UARTE_SHORT_ENDRX_STARTRX)) {
                 prepareNextRingBuffer();
                 nrf_uarte_shorts_enable(uarte_, NRF_UARTE_SHORT_ENDRX_STARTRX);
             }
         });
-        ssize_t r = CHECK(bufferPre->get(buffer, std::min((size_t)remainLen, readSize)));
+        ssize_t r = CHECK(preRxBuff->get(buffer, std::min((size_t)remainLen, readSize)));
         if (r >= 0 && r < (ssize_t)readSize) {
-            r += CHECK(bufferCurrent->get(buffer + r, readSize - r));
+            r += CHECK(currRxBuff->get(buffer + r, readSize - r));
         }
         return r;
     }
@@ -355,7 +343,15 @@ public:
         const size_t peekSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(uarte_);
-        return rxBuffer_.peek(buffer, peekSize);
+        particle::services::RingBuffer<uint8_t>* currRxBuff = nullptr;
+        particle::services::RingBuffer<uint8_t>* preRxBuff = nullptr;
+        acquireRxBuffer(&currRxBuff, &preRxBuff);
+        ssize_t remainLen = preRxBuff->data();
+        if (remainLen) {
+            return preRxBuff->peek(buffer, peekSize);
+        } else {
+            return currRxBuff->peek(buffer, peekSize);
+        }
     }
 
     ssize_t write(const uint8_t* buffer, size_t size) {
@@ -434,16 +430,12 @@ public:
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
 
-                particle::services::RingBuffer<uint8_t>* buffer = nullptr;
-                if (usingAltRxBuffer_) {
-                    buffer = &rxBufferAlt_;
-                } else {
-                    buffer = &rxBuffer_;
-                }
+                particle::services::RingBuffer<uint8_t>* currRxBuff = nullptr;
+                acquireRxBuffer(&currRxBuff, nullptr);
 
-                if (buffer->acquirePending() > 0) {
-                    size_t remain = buffer->acquirePending();
-                    buffer->acquireCommit(remain);
+                if (currRxBuff->acquirePending() > 0) {
+                    size_t remain = currRxBuff->acquirePending();
+                    currRxBuff->acquireCommit(remain);
                     consumedTimerCount_ = (consumedTimerCount_ + remain) % 65536;
                 }
 
@@ -545,8 +537,6 @@ private:
         nrf_uarte_hwfc_pins_disconnect(uarte_);
         nrfx_prs_release(uarte_);
 
-        disableTimer();
-
         // Configuring the input pins' mode to PIN_MODE_NONE will disconnect input buffer to enable power savings
         // Configuring the output pins' mode to INPUT_PULLUP to not polluting the state on other side.
         hal_gpio_mode(txPin_, end ? PIN_MODE_NONE : INPUT_PULLUP);
@@ -587,24 +577,29 @@ private:
         }
     }
 
+    void acquireRxBuffer(particle::services::RingBuffer<uint8_t>** current, particle::services::RingBuffer<uint8_t>** another) {
+        if (current) {
+            *current = usingAltRxBuffer_ ? &rxBufferAlt_ : &rxBuffer_;
+        }
+        if (another) {
+            *another = usingAltRxBuffer_ ? &rxBuffer_ : &rxBufferAlt_;
+        }
+    }
+
     size_t prepareNextRingBuffer(bool flush = false) {
         // Updates current size
-        particle::services::RingBuffer<uint8_t>* buffer = nullptr;
-        if (usingAltRxBuffer_) {
-            buffer = &rxBuffer_;
-        } else {
-            buffer = &rxBufferAlt_;
-        }
+        particle::services::RingBuffer<uint8_t>* nextRxBuff = nullptr;
+        acquireRxBuffer(nullptr, &nextRxBuff);
 
         // To keep the received data contiguous
-        if (buffer->data()) {
+        if (nextRxBuff->data()) {
             return 0;
         }
 
-        buffer->acquireBegin();
+        nextRxBuff->acquireBegin();
 
-        const size_t acquirable = buffer->acquirable();
-        const size_t acquirableWrapped = buffer->acquirableWrapped();
+        const size_t acquirable = nextRxBuff->acquirable();
+        const size_t acquirableWrapped = nextRxBuff->acquirableWrapped();
         size_t rxSize = std::max(acquirable, acquirableWrapped);
 
         if (RESERVED_RX_SIZE) {
@@ -634,7 +629,7 @@ private:
             return 0;
         }
 
-        auto ptr = buffer->acquire(rxSize);
+        auto ptr = nextRxBuff->acquire(rxSize);
 #ifdef DEBUG_BUILD
             SPARK_ASSERT(ptr);
 #endif // DEBUG_BUILD
@@ -647,11 +642,14 @@ private:
             return;
         }
 
-        rxBuffer_.acquireBegin();
-        const size_t acquirable = rxBuffer_.acquirable();
-        const size_t acquirableWrapped = rxBuffer_.acquirableWrapped();
+        particle::services::RingBuffer<uint8_t>* currRxBuff = nullptr;
+        acquireRxBuffer(&currRxBuff, nullptr);
+
+        currRxBuff->acquireBegin();
+        const size_t acquirable = currRxBuff->acquirable();
+        const size_t acquirableWrapped = currRxBuff->acquirableWrapped();
         size_t rxSize = std::max(acquirable, acquirableWrapped);
-        auto ptr = rxBuffer_.acquire(rxSize);
+        auto ptr = currRxBuff->acquire(rxSize);
         nrf_uarte_rx_buffer_set(uarte_, ptr, rxSize);
 
         ++receiving_;
@@ -685,7 +683,10 @@ private:
                     rxto = true;
                 }
             }
+            data(); // Commit last received data
+            receiving_ = 0;
         }
+        disableTimer();
     }
 
     void stopTransmission() {
@@ -729,7 +730,7 @@ private:
         consumedTimerCount_ = 0;
     }
 
-    size_t timerValue() {
+    uint16_t timerValue() {
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CAPTURE0);
         return nrf_timer_cc_read(timer_, NRF_TIMER_CC_CHANNEL0);
     }
@@ -817,7 +818,7 @@ private:
 
     volatile bool transmitting_;
     volatile uint8_t receiving_;
-    volatile size_t consumedTimerCount_;
+    volatile uint16_t consumedTimerCount_;
     volatile bool usingAltRxBuffer_;
 
     Config config_ = {};
