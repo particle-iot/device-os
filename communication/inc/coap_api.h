@@ -25,6 +25,11 @@
  */
 #define COAP_BLOCK_SIZE 1024
 
+/**
+ * Invalid request ID.
+ */
+#define COAP_INVALID_REQUEST_ID 0
+
 #define COAP_CODE(_class, _detail) \
     (((_class & 0x07) << 5) | (_detail & 0x1f))
 
@@ -275,7 +280,7 @@ int coap_end_request(coap_message* msg, coap_response_callback resp_cb, coap_ack
  *
  * @param[out] msg Response message.
  * @param code Response code as defined by the `coap_response_code` enum.
- * @param req_id ID of the request for which this response is meant to.
+ * @param req_id ID of the request which this response is meant for.
  * @param flags Reserved argument. Must be set to 0.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.

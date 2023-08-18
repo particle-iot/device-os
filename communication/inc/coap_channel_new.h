@@ -88,8 +88,8 @@ private:
     CoapMessage* recvReqs_; // List of received requests for which a response is expected
     CoapMessage* unackMsgs_; // List of messages for which an ACK is expected
     Protocol* protocol_; // Protocol instance
-    int lastReqId_; // Last used request ID
-    int curReqId_; // ID of the request that started the current exchange
+    int lastMsgId_; // Last used internal message ID
+    int curMsgId_; // Internal ID of the message stored in the shared buffer
     int sessId_; // Counter incremented every time a new session is started
     bool open_; // Whether the channel is open
 
