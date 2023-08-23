@@ -49,12 +49,14 @@
         (NO_MEMORY, "Memory allocation error", -260), \
         (INVALID_ARGUMENT, "Invalid argument", -270), \
         (BAD_DATA, "Invalid data format", -280), \
+        (ENCODING, "Encoding error", -281), \
         (OUT_OF_RANGE, "Out of range", -290), \
         (DEPRECATED, "Deprecated", -300), \
         (COAP, "CoAP error", -1000), /* -1199 ... -1000: CoAP errors */ \
         (COAP_CONNECTION_CLOSED, "Connection closed", -1001), \
         (COAP_MESSAGE_RESET, "Received a RST message", -1002), \
         (COAP_TIMEOUT, "CoAP timeout", -1003), \
+        (COAP_REQUEST_NOT_FOUND, "Request not found", -1004), \
         (COAP_4XX, "CoAP: 4xx", -1100), \
         (COAP_5XX, "CoAP: 5xx", -1132), \
         (AT_NOT_OK, "AT command failure", -1200), /* -1299 ... -1200: AT command errors */ \
@@ -113,9 +115,10 @@
         (LEDGER_READ_ONLY, "Ledger is read only", -2004), \
         (LEDGER_IN_USE, "Ledger is in use", -2005), \
         (LEDGER_TOO_LARGE, "Ledger data is too large", -2006), \
-        (LEDGER_INCONSISTENT, "Inconsistent ledger state", -2007), \
-        (LEDGER_ENCODING, "Ledger encoding error", -2008), \
-        (LEDGER_DECODING, "Ledger decoding error", -2009)
+        (LEDGER_INCONSISTENT_STATE, "Inconsistent ledger state", -2007), \
+        (LEDGER_ENCODING_FAILED, "Ledger encoding error", -2008), \
+        (LEDGER_DECODING_FAILED, "Ledger decoding error", -2009), \
+        (LEDGER_REQUEST_FAILED, "Ledger request failed", -2010)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

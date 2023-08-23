@@ -257,7 +257,7 @@ int CoapChannel::beginResponse(coap_message** msg, int code, int requestId) {
         }
     }
     if (!req) {
-        return SYSTEM_ERROR_NOT_FOUND;
+        return SYSTEM_ERROR_COAP_REQUEST_NOT_FOUND;
     }
     std::unique_ptr<CoapMessage> resp(new(std::nothrow) CoapMessage());
     if (!resp) {
@@ -352,7 +352,9 @@ int CoapChannel::readPayload(coap_message* apiMsg, char* data, size_t& size, coa
             return SYSTEM_ERROR_INTERNAL;
         }
         auto n = std::min<size_t>(size, msg->end - msg->pos);
-        memcpy(data, msg->pos, n);
+        if (data) {
+            memcpy(data, msg->pos, n);
+        }
         msg->pos += n;
         if (msg->pos == msg->end) {
             // Release the message buffer
@@ -385,7 +387,9 @@ int CoapChannel::peekPayload(coap_message* apiMsg, char* data, size_t size) {
         return SYSTEM_ERROR_END_OF_STREAM;
     }
     auto n = std::min<size_t>(size, msg->end - msg->pos);
-    memcpy(data, msg->pos, n);
+    if (data) {
+        memcpy(data, msg->pos, n);
+    }
     return n;
 }
 

@@ -37,13 +37,11 @@
 /**
  * Ledger instance.
  */
-struct ledger_instance;
 typedef struct ledger_instance ledger_instance;
 
 /**
  * Stream instance.
  */
-struct ledger_stream;
 typedef struct ledger_stream ledger_stream;
 
 /**

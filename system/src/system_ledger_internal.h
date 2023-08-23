@@ -29,6 +29,8 @@
 
 #include "system_ledger.h"
 
+#include "coap_api.h"
+
 #include "filesystem.h"
 
 #include "static_recursive_mutex.h"
@@ -82,52 +84,25 @@ protected:
     }
 
 private:
-    void* ctx_;
-    mutable int refCount_;
+    void* ctx_; // Manager context
+    mutable int refCount_; // Reference count
 
     friend class LedgerManager;
 };
 
-// TODO: Refactor and expose the CoAP API from the comms library and use that in the ledger code
-class InboundConnectionHandler {
-public:
-    virtual ~InboundConnectionHandler() = default;
-
-    virtual int connected() = 0;
-    virtual int disconnected() = 0;
-    virtual int requestSent(int reqId) = 0;
-    virtual int responseSent(int reqId) = 0;
-    virtual int requestReceived(int reqId, const char* data, size_t size, bool hasMore) = 0;
-    virtual int responseReceived(int reqId, const char* data, size_t size, bool hasMore) = 0;
-};
-
-class OutboundConnectionHandler {
-public:
-    virtual ~OutboundConnectionHandler() = default;
-
-    virtual int sendRequest(int reqId, const char* data, size_t size, bool hasMore) = 0;
-    virtual int sendResponse(int reqId, const char* data, size_t size, bool hasMore) = 0;
-};
-
-class LedgerManager: public InboundConnectionHandler {
+// TODO: Move this class to a separate file
+class LedgerManager {
 public:
     LedgerManager(const LedgerManager&) = delete;
 
     ~LedgerManager();
 
-    int init(OutboundConnectionHandler* connHandler);
+    int init();
 
-    int getLedger(const char* name, RefCountPtr<Ledger>& ledger);
+    int getLedger(RefCountPtr<Ledger>& ledger, const char* name, bool create = true);
 
     int removeLedgerData(const char* name);
     int removeAllData();
-
-    int connected() override;
-    int disconnected() override;
-    int requestSent(int reqId) override;
-    int responseSent(int reqId) override;
-    int requestReceived(int reqId, const char* data, size_t size, bool hasMore) override;
-    int responseReceived(int reqId, const char* data, size_t size, bool hasMore) override;
 
     void run();
 
@@ -164,7 +139,6 @@ private:
     typedef Vector<std::unique_ptr<LedgerContext>> LedgerContexts;
 
     LedgerContexts allLedgers_; // Preallocated context objects for all known ledgers
-    OutboundConnectionHandler* connHandler_; // Connection handler
 
     std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
     LedgerContext* curLedger_; // Context of the ledger being synchronized
@@ -175,25 +149,45 @@ private:
 
     State state_; // Current state
     int pendingState_; // Pending state flags
+    int reqId_; // ID of the ongoing CoAP request
 
     mutable StaticRecursiveMutex mutex_; // Manager lock
 
     LedgerManager(); // Use LedgerManager::instance()
 
-    int connectedImpl();
-    int disconnectedImpl();
-    int runImpl();
+    int processTasks();
+
+    int notifyConnected();
+    void notifyDisconnected(int error);
+
+    int receiveRequest(coap_message* msg, int reqId);
+    int receiveNotifyUpdateRequest(coap_message* msg);
+
+    int receiveResponse(coap_message* msg, int code, int reqId);
+    int receiveSetDataResponse(coap_message* msg, int result);
+    int receiveGetDataResponse(coap_message* msg, int result);
+    int receiveSubscribeResponse(coap_message* msg, int result);
+    int receiveGetInfoResponse(coap_message* msg, int result);
 
     int sendSetDataRequest(LedgerContext* ctx);
     int sendGetDataRequest(LedgerContext* ctx);
     int sendSubscribeRequest();
     int sendGetInfoRequest();
 
+    int sendResponse(int result, int reqId);
+
     void setPendingState(LedgerContext* ctx, int state);
     void clearPendingState(LedgerContext* ctx, int state);
+    void clearPendingState(int state);
+    void handleError(int error);
 
     LedgerContexts::ConstIterator findLedger(const char* name, bool& found) const;
-    
+
+    static int connectionCallback(int error, int status, void* arg);
+    static int requestCallback(coap_message* msg, const char* uri, int method, int reqId, void* arg);
+    static int responseCallback(coap_message* msg, int code, int reqId, void* arg);
+    static void requestErrorCallback(int error, int reqId, void* arg);
+
     friend class Ledger;
     friend class LedgerBase;
 };
@@ -206,8 +200,8 @@ public:
     int initReader(LedgerReader& reader);
     int initWriter(LedgerWriteSource src, LedgerWriter& writer);
 
-    // Returns a LedgerInfo object with all fields set
     LedgerInfo info() const;
+    int updateInfo(const LedgerInfo& info);
 
     const char* name() const {
         return name_; // Immutable
@@ -268,7 +262,7 @@ private:
     mutable StaticRecursiveMutex mutex_; // Ledger lock
 
     int loadLedgerInfo(lfs_t* fs);
-    void updateLedgerInfo(const LedgerInfo& info);
+    void setLedgerInfo(const LedgerInfo& info);
 
     int initCurrentData(lfs_t* fs);
     int flushStagedData(lfs_t* fs);

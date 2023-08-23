@@ -33,7 +33,7 @@ using namespace particle::system;
 
 int ledger_get_instance(ledger_instance** ledger, const char* name, void* reserved) {
     RefCountPtr<Ledger> lr;
-    CHECK(LedgerManager::instance()->getLedger(name, lr));
+    CHECK(LedgerManager::instance()->getLedger(lr, name));
     *ledger = reinterpret_cast<ledger_instance*>(lr.unwrap()); // Transfer ownership to the caller
     return 0;
 }

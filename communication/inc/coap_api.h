@@ -31,7 +31,13 @@
 #define COAP_INVALID_REQUEST_ID 0
 
 #define COAP_CODE(_class, _detail) \
-    (((_class & 0x07) << 5) | (_detail & 0x1f))
+        (((_class & 0x07) << 5) | (_detail & 0x1f))
+
+#define COAP_CODE_CLASS(_code) \
+        ((_code >> 5) & 0x07)
+
+#define COAP_CODE_DETAIL(_code) \
+        (_code & 0x1f)
 
 /**
  * Message.
