@@ -81,12 +81,12 @@ typedef struct _particle_cloud_ledger_SubscribeResponse {
  Response for `GetDataRequest`. */
 typedef struct _particle_cloud_ledger_GetDataRequest { 
     /* *
+ Time the ledger was last updated, in milliseconds since the Unix epoch. */
+    char name[33]; /* *
  Contents of the ledger.
 
  If not specified, the device has the most recent version of the ledger data. */
-    char name[33]; 
-    /* *
- Time the ledger was last updated, in milliseconds since the Unix epoch. */
+    /* XXX: Device OS currently requires this field to have the highest field number in the message. */
     bool has_last_updated;
     uint64_t last_updated; 
 } particle_cloud_ledger_GetDataRequest;
@@ -101,8 +101,8 @@ typedef struct _particle_cloud_ledger_GetDataRequest {
 typedef struct _particle_cloud_ledger_GetDataResponse { 
     /* *
  Names of the ledgers to subscribe to. */
-    pb_callback_t data; 
     uint64_t last_updated; 
+    pb_callback_t data; 
 } particle_cloud_ledger_GetDataResponse;
 
 /* *
@@ -111,11 +111,13 @@ typedef struct _particle_cloud_ledger_GetDataResponse {
  This request is sent by the device. */
 typedef struct _particle_cloud_ledger_GetInfoResponse_Ledger { 
     char name[33]; /* /< Ledger name. */
-    particle_cloud_ledger_Scope scope; /* /< Contents of the ledger. */
     /* *
  Time the ledger was last updated, in milliseconds since the Unix epoch.
 
  If 0, the time is unknown. */
+    particle_cloud_ledger_Scope scope; /* *
+ Contents of the ledger. */
+    /* XXX: Device OS currently requires this field to have the highest field number in the message. */
     particle_cloud_ledger_SyncDirection sync_direction; 
     uint64_t last_updated; 
 } particle_cloud_ledger_GetInfoResponse_Ledger;
@@ -129,8 +131,8 @@ typedef struct _particle_cloud_ledger_NotifyUpdateRequest {
  Response for `SetDataRequest`. */
 typedef struct _particle_cloud_ledger_SetDataRequest { 
     char name[33]; 
-    pb_callback_t data; 
     uint64_t last_updated; 
+    pb_callback_t data; 
 } particle_cloud_ledger_SetDataRequest;
 
 /* *
@@ -159,10 +161,10 @@ extern "C" {
 #define particle_cloud_ledger_GetInfoRequest_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_Ledger_init_default {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0}
-#define particle_cloud_ledger_SetDataRequest_init_default {"", {{NULL}, NULL}, 0}
+#define particle_cloud_ledger_SetDataRequest_init_default {"", 0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SetDataResponse_init_default {0}
 #define particle_cloud_ledger_GetDataRequest_init_default {"", false, 0}
-#define particle_cloud_ledger_GetDataResponse_init_default {{{NULL}, NULL}, 0}
+#define particle_cloud_ledger_GetDataResponse_init_default {0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeRequest_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeResponse_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeResponse_Ledger_init_default {"", 0}
@@ -171,10 +173,10 @@ extern "C" {
 #define particle_cloud_ledger_GetInfoRequest_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_Ledger_init_zero {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0}
-#define particle_cloud_ledger_SetDataRequest_init_zero {"", {{NULL}, NULL}, 0}
+#define particle_cloud_ledger_SetDataRequest_init_zero {"", 0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SetDataResponse_init_zero {0}
 #define particle_cloud_ledger_GetDataRequest_init_zero {"", false, 0}
-#define particle_cloud_ledger_GetDataResponse_init_zero {{{NULL}, NULL}, 0}
+#define particle_cloud_ledger_GetDataResponse_init_zero {0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeRequest_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeResponse_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeResponse_Ledger_init_zero {"", 0}
@@ -188,8 +190,8 @@ extern "C" {
 #define particle_cloud_ledger_SubscribeResponse_ledgers_tag 1
 #define particle_cloud_ledger_GetDataRequest_name_tag 1
 #define particle_cloud_ledger_GetDataRequest_last_updated_tag 2
-#define particle_cloud_ledger_GetDataResponse_data_tag 1
-#define particle_cloud_ledger_GetDataResponse_last_updated_tag 2
+#define particle_cloud_ledger_GetDataResponse_last_updated_tag 1
+#define particle_cloud_ledger_GetDataResponse_data_tag 10
 #define particle_cloud_ledger_GetInfoResponse_Ledger_name_tag 1
 #define particle_cloud_ledger_GetInfoResponse_Ledger_scope_tag 2
 #define particle_cloud_ledger_GetInfoResponse_Ledger_sync_direction_tag 3
@@ -197,8 +199,8 @@ extern "C" {
 #define particle_cloud_ledger_NotifyUpdateRequest_name_tag 1
 #define particle_cloud_ledger_NotifyUpdateRequest_last_updated_tag 2
 #define particle_cloud_ledger_SetDataRequest_name_tag 1
-#define particle_cloud_ledger_SetDataRequest_data_tag 2
-#define particle_cloud_ledger_SetDataRequest_last_updated_tag 3
+#define particle_cloud_ledger_SetDataRequest_last_updated_tag 2
+#define particle_cloud_ledger_SetDataRequest_data_tag 10
 #define particle_cloud_ledger_SubscribeResponse_Ledger_name_tag 1
 #define particle_cloud_ledger_SubscribeResponse_Ledger_last_updated_tag 2
 
@@ -224,8 +226,8 @@ X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      4)
 
 #define particle_cloud_ledger_SetDataRequest_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   name,              1) \
-X(a, CALLBACK, SINGULAR, BYTES,    data,              2) \
-X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      3)
+X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      2) \
+X(a, CALLBACK, SINGULAR, BYTES,    data,             10)
 #define particle_cloud_ledger_SetDataRequest_CALLBACK pb_default_field_callback
 #define particle_cloud_ledger_SetDataRequest_DEFAULT NULL
 
@@ -241,8 +243,8 @@ X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      2)
 #define particle_cloud_ledger_GetDataRequest_DEFAULT NULL
 
 #define particle_cloud_ledger_GetDataResponse_FIELDLIST(X, a) \
-X(a, CALLBACK, OPTIONAL, BYTES,    data,              1) \
-X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      2)
+X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      1) \
+X(a, CALLBACK, OPTIONAL, BYTES,    data,             10)
 #define particle_cloud_ledger_GetDataResponse_CALLBACK pb_default_field_callback
 #define particle_cloud_ledger_GetDataResponse_DEFAULT NULL
 
