@@ -1051,6 +1051,8 @@ void NetworkManager::resetInterfaceProtocolState(if_t iface) {
 
 int NetworkManager::powerInterface(if_t iface, bool enable) {
     auto ifState = getInterfaceRuntimeState(iface);
+    uint8_t index;
+    if_get_index(iface, &index);
     if (!ifState) {
         LOG(ERROR, "Interface is not populated");
         return SYSTEM_ERROR_NOT_FOUND;
@@ -1064,7 +1066,7 @@ int NetworkManager::powerInterface(if_t iface, bool enable) {
         if (ifState->pwrState != IF_POWER_STATE_UP && ifState->pwrState != IF_POWER_STATE_POWERING_UP) {
             ifState->pwrState = IF_POWER_STATE_POWERING_UP;
         }
-        LOG(TRACE, "Request to power on the interface");
+        LOG(TRACE, "Request to power on interface %d", index);
     } else {
         req.state = IF_POWER_STATE_DOWN;
         // Update the interface power here to avoid race condition
@@ -1073,7 +1075,7 @@ int NetworkManager::powerInterface(if_t iface, bool enable) {
         if (ifState->pwrState != IF_POWER_STATE_DOWN && ifState->pwrState != IF_POWER_STATE_POWERING_DOWN) {
             ifState->pwrState = IF_POWER_STATE_POWERING_DOWN;
         }
-        LOG(TRACE, "Request to power off the interface");
+        LOG(TRACE, "Request to power off interface %d", index);
     }
     return if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
 }

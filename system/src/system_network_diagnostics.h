@@ -19,6 +19,7 @@
 
 #include "spark_wiring_diagnostics.h"
 #include "system_defs.h"
+#include "spark_wiring_vector.h"
 
 namespace particle {
 
@@ -83,6 +84,38 @@ private:
     AtomicUnsignedIntegerDiagnosticData disconnCount_;
     SimpleUnsignedIntegerDiagnosticData connCount_;
     SimpleIntegerDiagnosticData lastError_;
+};
+
+struct NetIfDiagnostics {
+    network_interface_t interface;
+    uint32_t dnsResolutionAttempts;
+    uint32_t dnsResolutionFailures;
+    uint32_t socketConnAttempts;
+    uint32_t socketConnFailures;
+    uint32_t txBytes;
+    uint32_t rxBytes;
+    uint32_t rxTimeouts;
+    uint32_t avgPacketRoundTripTime;
+};
+
+class NetIfTester {
+public:
+    NetIfTester();
+    ~NetIfTester();
+
+    static NetIfTester* instance();
+    void testInterfaces();
+
+    const Vector<NetIfDiagnostics>* getDiagnostics();
+
+private:
+    int testInterface(NetIfDiagnostics* diagnostics);
+
+    const uint16_t UDP_ECHO_PORT = 40000;
+    const char * UDP_ECHO_SERVER_HOSTNAME = "publish-receiver-udp.particle.io";
+
+    Vector<NetIfDiagnostics> ifDiagnostics_;
+
 };
 
 } // namespace particle

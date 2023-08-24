@@ -15,6 +15,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("system.nd")
+
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "platforms.h"
 
 #include <string.h>
@@ -23,9 +29,11 @@
 #include "check.h"
 #include "spark_wiring_diagnostics.h"
 #include "spark_wiring_fixed_point.h"
+#include "spark_wiring_network.h"
 #include "spark_wiring_platform.h"
 #include "spark_wiring_ticks.h"
 #include "system_network_diagnostics.h"
+#include "spark_wiring_udp.h"
 
 #if Wiring_WiFi
 #include "spark_wiring_wifi.h"
@@ -55,6 +63,87 @@ particle::NetworkDiagnostics* particle::NetworkDiagnostics::instance() {
     return &g_networkDiagnostics;
 }
 
+NetIfTester::NetIfTester() {
+    network_interface_t interfaceList[] = { 
+        NETWORK_INTERFACE_ETHERNET,
+#if HAL_PLATFORM_CELLULAR
+        NETWORK_INTERFACE_CELLULAR,
+#endif
+#if HAL_PLATFORM_WIFI 
+        NETWORK_INTERFACE_WIFI_STA 
+#endif
+    };
+    
+    for (const auto& i: interfaceList) {
+        struct NetIfDiagnostics interfaceDiagnostics = {};
+        interfaceDiagnostics.interface = i;
+        ifDiagnostics_.append(interfaceDiagnostics);
+    }
+}
+
+NetIfTester* NetIfTester::instance() {
+    static NetIfTester* tester = new NetIfTester();
+    return tester;
+}
+
+void NetIfTester::testInterfaces() {
+    // GOAL: To maintain a list of which network interface is "best" at any given time
+    for (auto& i: ifDiagnostics_) {
+        testInterface(&i);
+    }
+}
+
+int NetIfTester::testInterface(NetIfDiagnostics* diagnostics) {     
+    auto network = spark::Network.from(diagnostics->interface);
+    if (!network) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    // TODO: Make this more CoAP like test message
+    uint8_t udpTxBuffer[128] = {'H', 'e', 'l', 'l', 'o', 0};
+    uint8_t udpRxBuffer[128] = {};
+
+    uint8_t beginResult = 0;
+    int sendResult, receiveResult = -1;
+    IPAddress echoServer;
+
+    diagnostics->dnsResolutionAttempts++;
+    echoServer = network.resolve(UDP_ECHO_SERVER_HOSTNAME);
+    if (!echoServer) {
+        diagnostics->dnsResolutionFailures++;
+        LOG(INFO, "IF #%d failed to resolve DNS for %s : %s", diagnostics->interface, UDP_ECHO_SERVER_HOSTNAME, echoServer.toString().c_str());
+        return SYSTEM_ERROR_PROTOCOL;
+    }
+
+    UDP udpInstance = UDP();
+    // TODO: What error conditions are the on UDP socket bind (ie the begin call here)?
+    beginResult = udpInstance.begin(NetIfTester::UDP_ECHO_PORT, diagnostics->interface);
+    
+    LOG(INFO, "Testing IF #%d with %s : %s", diagnostics->interface, UDP_ECHO_SERVER_HOSTNAME, echoServer.toString().c_str());
+
+    // TODO: Error conditions on sock_sendto
+    // TODO: start packet rount trip timer
+    sendResult = udpInstance.sendPacket(udpTxBuffer, strlen((char*)udpTxBuffer), echoServer, UDP_ECHO_PORT);
+    if (sendResult > 0) {
+        diagnostics->txBytes += strlen((char*)udpTxBuffer);
+    }
+
+    receiveResult = udpInstance.receivePacket(udpRxBuffer, strlen((char*)udpTxBuffer), 5000);
+    if (receiveResult > 0) {
+        diagnostics->rxBytes += strlen((char*)udpRxBuffer);
+    }
+
+    LOG(INFO, "UDP begin %d send: %d receive: %d message: %s", beginResult, sendResult, receiveResult, (char*)udpRxBuffer);
+    udpInstance.stop();
+
+    return SYSTEM_ERROR_NONE;
+}
+
+const Vector<NetIfDiagnostics>* NetIfTester::getDiagnostics(){
+    return &ifDiagnostics_;
+}
+
+
 namespace
 {
 
@@ -72,17 +161,24 @@ public:
         system_tick_t m = millis();
         if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL)
         {
-#if Wiring_Cellular
-            sig_ = Cellular.RSSI();
-#elif Wiring_WiFi
-            sig_ = WiFi.RSSI();
-#endif
             ts_ = millis();
-        }
-        return &sig_;
-#else
-        return nullptr;
+#if Wiring_Cellular
+            // TODO: Better concept of which Network class is being used for the cloud connection
+            // And/or include both cellular + wifi signal strength in diagnostics/vitals
+            if (Cellular.ready()) {
+                cellularSig_ = Cellular.RSSI();
+                return &cellularSig_;    
+            }
 #endif
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+            if (WiFi.ready()) {
+                wifiSig_ = WiFi.RSSI();
+                return &wifiSig_;    
+            }
+#endif
+        }
+#endif
+        return nullptr;
     }
 
 #if HAL_PLATFORM_CELLULAR
@@ -108,10 +204,11 @@ public:
 
 private:
 #if Wiring_Cellular
-    CellularSignal sig_;
+    CellularSignal cellularSig_;
     CellularGlobalIdentity cgi_ = {};
-#elif Wiring_WiFi
-    WiFiSignal sig_;
+#endif
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+    WiFiSignal wifiSig_;
 #endif
     system_tick_t ts_ = 0;
 

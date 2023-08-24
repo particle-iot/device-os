@@ -31,6 +31,7 @@
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_network_internal.h"
+#include "system_network_diagnostics.h"
 #include "system_update.h"
 #include "firmware_update.h"
 #include "spark_macros.h"
@@ -793,6 +794,16 @@ void* system_internal(int item, void* reserved)
 #endif
     case 3: {
         return reinterpret_cast<void*>(system_cloud_get_socket_handle());
+    }
+    case 4: {
+        particle::NetIfTester::instance()->testInterfaces();
+        return nullptr;
+    }
+    case 5: {
+        return reinterpret_cast<void*>(&lwip_stats);
+    }
+    case 6: {
+        return (void*)particle::NetIfTester::instance()->getDiagnostics();
     }
     default:
         return nullptr;
