@@ -25,6 +25,8 @@
 
 #include "concurrent_hal.h"
 
+#include "platforms.h"
+
 
 #include "lwip_logging.h"
 
@@ -1633,7 +1635,11 @@ void sys_unlock_tcpip_core(void);
 /**
  * LWIP_IPV6==1: Enable IPv6
  */
+#if PLATFORM_ID != PLATFORM_TRACKER
 #define LWIP_IPV6                       1
+#else
+#define LWIP_IPV6_DEFINES_ONLY          1
+#endif // PLATFORM_ID != PLATFORM_TRACKER
 
 /**
  * IPV6_REASS_MAXAGE: Maximum time (in multiples of IP6_REASS_TMR_INTERVAL - so seconds, normally)
@@ -1647,7 +1653,7 @@ void sys_unlock_tcpip_core(void);
  * e.g. link-local addresses are really treated as link-local. Disable this
  * setting only for single-interface configurations.
  */
-#define LWIP_IPV6_SCOPES                (LWIP_IPV6 && !LWIP_SINGLE_NETIF)
+#define LWIP_IPV6_SCOPES                ((LWIP_IPV6 || LWIP_IPV6_DEFINES_ONLY) && !LWIP_SINGLE_NETIF)
 
 /**
  * LWIP_IPV6_SCOPES_DEBUG==1: Perform run-time checks to verify that addresses

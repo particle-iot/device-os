@@ -111,7 +111,9 @@ err_t RealtekNcpNetif::initInterface() {
     netif_set_hostname(interface(), hostname_.get());
 
     netif_.output = etharp_output;
+#if LWIP_IPV6
     netif_.output_ip6 = ethip6_output;
+#endif // LWIP_IPV6
     netif_.linkoutput = &RealtekNcpNetif::linkOutputCb;
 
     return ERR_OK;

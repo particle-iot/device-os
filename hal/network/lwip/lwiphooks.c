@@ -71,10 +71,3 @@ __attribute__((weak)) struct netif* lwip_hook_ip6_route(const ip6_addr_t* src, c
     return NULL;
 }
 
-// FIXME:
-#if PLATFORM_ID == PLATFORM_TRACKER
-err_t __wrap_ip6_input(struct pbuf *p, struct netif *inp) {
-    pbuf_free(p);
-    return ERR_OK;
-}
-#endif // PLATOFRM_ID == PLATFORM_TRACKER

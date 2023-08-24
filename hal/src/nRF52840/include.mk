@@ -73,8 +73,3 @@ ASFLAGS +=  -Wa,--defsym -Wa,SPARK_INIT_STARTUP=0
 ASFLAGS += -D__STACKSIZE__=$(MAIN_STACK_SIZE) -D__STACK_SIZE=$(MAIN_STACK_SIZE)
 #
 endif
-
-# Tracker
-ifeq ($(PLATFORM_ID),26)
-LDFLAGS += -Wl,--wrap=ip6_input
-endif

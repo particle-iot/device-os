@@ -57,7 +57,7 @@ ifeq ("$(USE_PRINTF_FLOAT)","y")
 LDFLAGS += -u _printf_float
 endif
 
-LDFLAGS += -u uxTopUsedPriority
+LDFLAGS += -u uxTopUsedPriority -Wl,--wrap=InitSwHash512 -Wl,--wrap=ProcessSwHash512 -Wl,--wrap=FinishSwHash512
 
 INCLUDE_DIRS += $(SHARED_MODULAR)/inc/system-part1
 SYSTEM_PART1_MODULE_SRC_PATH = $(SYSTEM_PART1_MODULE_PATH)/src

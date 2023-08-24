@@ -1,5 +1,8 @@
 #pragma once
 
+// Must be before hal_platform_nrf52840_config.h
+#define HAL_PLATFORM_ERROR_MESSAGES (0)
+
 #include "hal_platform_nrf52840_config.h"
 #include "platforms.h"
 
