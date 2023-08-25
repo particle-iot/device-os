@@ -158,7 +158,7 @@ int if_init_platform(void*) {
     CHECK(hal_get_mac_address(HAL_DEVICE_MAC_ETHERNET, mac, HAL_DEVICE_MAC_ADDR_SIZE, nullptr));
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, D5, D3, D4, mac);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, D8, D28, D22, mac);
     }
 
     uint8_t dummy;
