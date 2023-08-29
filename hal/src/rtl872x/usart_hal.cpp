@@ -334,7 +334,6 @@ public:
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         while (true) {
             while (transmitting_) {
-                HAL_Delay_Milliseconds(5);
                 // FIXME: busy loop
             }
             {
