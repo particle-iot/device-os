@@ -97,6 +97,8 @@ struct SessionConnection
      */
     uint32_t server_address_checksum;
 
+    // network_interface_t bound_interface; // Cant easily add interface here due to session persist size contraints. See `Spark_Save()`
+
     int load(const ServerAddress& addr);
     int discard();
     int save(const ServerAddress& addr);

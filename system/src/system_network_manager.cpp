@@ -618,7 +618,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         /* Interface link state changed to DOWN */
         if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             if (countIfacesWithFlags(IFF_UP | IFF_LOWER_UP) == 0) {
-                transition(State::IFACE_UP);
+                transition(State::IFACE_DOWN);
             } else {
                 refreshIpState();
             }
@@ -677,7 +677,7 @@ void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
         state->pwrState = static_cast<if_power_state_t>(ev->ev_power_state->state);
         uint8_t index;
         if_get_index(iface, &index);
-        LOG(TRACE, "Interface %d power state changed: %d", index, state->pwrState.load());
+        LOG(TRACE, "Interface %d power state changed: %s", index, powerStateToName(state->pwrState.load()));
     }
 }
 
@@ -859,6 +859,18 @@ const char* NetworkManager::stateToName(State state) const {
     return stateNames[::particle::to_underlying(state)];
 }
 
+const char* NetworkManager::powerStateToName(if_power_state_t state) const {
+    static const char* const stateNames[] = {
+        "NONE",
+        "DOWN",
+        "UP",
+        "POWERING_DOWN",
+        "POWERING_UP",
+    };
+
+    return stateNames[::particle::to_underlying(state)];
+}
+
 void NetworkManager::populateInterfaceRuntimeState(bool st) {
     for_each_iface([&](if_t iface, unsigned int flags) {
         auto state = getInterfaceRuntimeState(iface);
@@ -879,7 +891,7 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
                 state->pwrState = pwr;
                 uint8_t index;
                 if_get_index(iface, &index);
-                LOG(TRACE, "Interface %d power state: %d", index, state->pwrState.load());
+                LOG(TRACE, "Interface %d power state: %s", index, powerStateToName(state->pwrState.load()));
             }
         }
     });

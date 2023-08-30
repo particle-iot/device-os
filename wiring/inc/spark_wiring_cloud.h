@@ -35,6 +35,7 @@
 #include "spark_wiring_async.h"
 #include "spark_wiring_flags.h"
 #include "spark_wiring_global.h"
+#include "spark_wiring_network.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
 
@@ -365,7 +366,8 @@ public:
 
     static bool connected(void) { return spark_cloud_flag_connected(); }
     static bool disconnected(void) { return !connected(); }
-    static void connect(void) {
+    static void connect(const spark::NetworkClass& network = spark::Network) {
+        spark_set_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, static_cast<network_interface_t>(network), nullptr, nullptr);
         spark_cloud_flag_connect();
     }
     static void disconnect(const CloudDisconnectOptions& options = CloudDisconnectOptions());

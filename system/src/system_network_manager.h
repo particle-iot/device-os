@@ -113,6 +113,7 @@ protected:
 private:
 
     const char* stateToName(State state) const;
+    const char* powerStateToName(if_power_state_t state) const;
 
     enum class DnsState {
         UNCONFIGURED,
