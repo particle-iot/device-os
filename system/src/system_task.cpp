@@ -19,6 +19,9 @@
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
+// STATIC_ASSERT macro clashes with the nRF SDK
+#define NO_STATIC_ASSERT
+
 #include "logging.h"
 
 #include "spark_wiring_platform.h"
@@ -28,6 +31,7 @@
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
 #include "system_cloud_connection.h"
+#include "system_ledger_internal.h"
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_network_internal.h"
@@ -524,6 +528,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_cloud_connection(force_events);
 
         system::FirmwareUpdate::instance()->process();
+
+        system::LedgerManager::instance()->run();
 
         if (system_mode() != SAFE_MODE) {
             manage_listening_mode_flag();

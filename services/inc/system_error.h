@@ -49,7 +49,7 @@
         (NO_MEMORY, "Memory allocation error", -260), \
         (INVALID_ARGUMENT, "Invalid argument", -270), \
         (BAD_DATA, "Invalid data format", -280), \
-        (ENCODING, "Encoding error", -281), \
+        (ENCODING_FAILED, "Encoding error", -281), \
         (OUT_OF_RANGE, "Out of range", -290), \
         (DEPRECATED, "Deprecated", -300), \
         (COAP, "CoAP error", -1000), /* -1199 ... -1000: CoAP errors */ \
@@ -118,7 +118,9 @@
         (LEDGER_INCONSISTENT_STATE, "Inconsistent ledger state", -2007), \
         (LEDGER_ENCODING_FAILED, "Ledger encoding error", -2008), \
         (LEDGER_DECODING_FAILED, "Ledger decoding error", -2009), \
-        (LEDGER_REQUEST_FAILED, "Ledger request failed", -2010)
+        (LEDGER_REQUEST_FAILED, "Ledger request failed", -2010), \
+        (LEDGER_INVALID_RESPONSE, "Invalid response from server", -2011), \
+        (HAL_RTC_INVALID_TIME, "RTC time is invalid", -3000) /* -3099 ... -3000: HAL errors */
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

@@ -143,9 +143,7 @@ private:
     std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
     LedgerContext* curLedger_; // Context of the ledger being synchronized
 
-    uint64_t nextSyncTime_; // Nearest time when a device-to-cloud ledger needs to be synchronized
-    uint64_t nextForcedSyncTime_; // Nearest time when a device-to-cloud ledger needs to be force-sync'd
-    ledger_sync_direction lastSyncDir_; // Direction in which the last ledger was synchronized
+    uint64_t nextSyncTime_; // Nearest time a device-to-cloud ledger may need to be synchronized
 
     State state_; // Current state
     int pendingState_; // Pending state flags
@@ -179,6 +177,8 @@ private:
     void setPendingState(LedgerContext* ctx, int state);
     void clearPendingState(LedgerContext* ctx, int state);
     void clearPendingState(int state);
+    void updateSyncTime(LedgerContext* ctx);
+
     void handleError(int error);
 
     LedgerContexts::ConstIterator findLedger(const char* name, bool& found) const;
@@ -198,7 +198,7 @@ public:
     ~Ledger();
 
     int initReader(LedgerReader& reader);
-    int initWriter(LedgerWriteSource src, LedgerWriter& writer);
+    int initWriter(LedgerWriter& writer, LedgerWriteSource src);
 
     LedgerInfo info() const;
     int updateInfo(const LedgerInfo& info);

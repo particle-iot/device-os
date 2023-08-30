@@ -113,7 +113,7 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
         if (!w) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        CHECK(lr->initWriter(LedgerWriteSource::USER, *w));
+        CHECK(lr->initWriter(*w, LedgerWriteSource::USER));
         *stream = reinterpret_cast<ledger_stream*>(w.release());
     } else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
