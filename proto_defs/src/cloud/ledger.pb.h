@@ -44,9 +44,25 @@ typedef struct _particle_cloud_ledger_GetInfoResponse {
     pb_callback_t ledgers; /* /< Ledger info. */
 } particle_cloud_ledger_GetInfoResponse;
 
+/* *
+ Notify the device that it needs to re-request the info about all ledgers in use.
+
+ This request is sent by the server. */
+typedef struct _particle_cloud_ledger_NotifyUpdateRequest { 
+    pb_callback_t ledgers; 
+} particle_cloud_ledger_NotifyUpdateRequest;
+
 typedef struct _particle_cloud_ledger_NotifyUpdateResponse { 
     char dummy_field;
 } particle_cloud_ledger_NotifyUpdateResponse;
+
+typedef struct _particle_cloud_ledger_ResetInfoRequest { 
+    char dummy_field;
+} particle_cloud_ledger_ResetInfoRequest;
+
+typedef struct _particle_cloud_ledger_ResetInfoResponse { 
+    char dummy_field;
+} particle_cloud_ledger_ResetInfoResponse;
 
 /* *
  Get the contents of a remote cloud-to-device ledger.
@@ -63,11 +79,11 @@ typedef struct _particle_cloud_ledger_SubscribeRequest {
 } particle_cloud_ledger_SubscribeRequest;
 
 /* *
- Notify the device that a cloud-to-device ledger was updated.
+ Notify the device that one or more cloud-to-device ledgers were updated.
 
  This request is sent by the server. */
 typedef struct _particle_cloud_ledger_SubscribeResponse { 
-    pb_callback_t ledgers; /* /< Ledger name. */
+    pb_callback_t ledgers; /* /< Ledger info. */
 } particle_cloud_ledger_SubscribeResponse;
 
 /* *
@@ -116,10 +132,12 @@ typedef struct _particle_cloud_ledger_GetInfoResponse_Ledger {
     uint64_t last_updated; 
 } particle_cloud_ledger_GetInfoResponse_Ledger;
 
-typedef struct _particle_cloud_ledger_NotifyUpdateRequest { 
+/* *
+ Response for `ResetInfoRequest`. */
+typedef struct _particle_cloud_ledger_NotifyUpdateRequest_Ledger { 
     char name[33]; 
     uint64_t last_updated; 
-} particle_cloud_ledger_NotifyUpdateRequest;
+} particle_cloud_ledger_NotifyUpdateRequest_Ledger;
 
 /* *
  Response for `SetDataRequest`. */
@@ -162,8 +180,11 @@ extern "C" {
 #define particle_cloud_ledger_SubscribeRequest_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeResponse_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeResponse_Ledger_init_default {"", 0}
-#define particle_cloud_ledger_NotifyUpdateRequest_init_default {"", 0}
+#define particle_cloud_ledger_NotifyUpdateRequest_init_default {{{NULL}, NULL}}
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_init_default {"", 0}
 #define particle_cloud_ledger_NotifyUpdateResponse_init_default {0}
+#define particle_cloud_ledger_ResetInfoRequest_init_default {0}
+#define particle_cloud_ledger_ResetInfoResponse_init_default {0}
 #define particle_cloud_ledger_GetInfoRequest_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_Ledger_init_zero {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0}
@@ -174,12 +195,16 @@ extern "C" {
 #define particle_cloud_ledger_SubscribeRequest_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeResponse_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeResponse_Ledger_init_zero {"", 0}
-#define particle_cloud_ledger_NotifyUpdateRequest_init_zero {"", 0}
+#define particle_cloud_ledger_NotifyUpdateRequest_init_zero {{{NULL}, NULL}}
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_init_zero {"", 0}
 #define particle_cloud_ledger_NotifyUpdateResponse_init_zero {0}
+#define particle_cloud_ledger_ResetInfoRequest_init_zero {0}
+#define particle_cloud_ledger_ResetInfoResponse_init_zero {0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_cloud_ledger_GetInfoRequest_ledgers_tag 1
 #define particle_cloud_ledger_GetInfoResponse_ledgers_tag 1
+#define particle_cloud_ledger_NotifyUpdateRequest_ledgers_tag 1
 #define particle_cloud_ledger_SubscribeRequest_ledgers_tag 1
 #define particle_cloud_ledger_SubscribeResponse_ledgers_tag 1
 #define particle_cloud_ledger_GetDataRequest_name_tag 1
@@ -190,8 +215,8 @@ extern "C" {
 #define particle_cloud_ledger_GetInfoResponse_Ledger_scope_tag 2
 #define particle_cloud_ledger_GetInfoResponse_Ledger_sync_direction_tag 3
 #define particle_cloud_ledger_GetInfoResponse_Ledger_last_updated_tag 4
-#define particle_cloud_ledger_NotifyUpdateRequest_name_tag 1
-#define particle_cloud_ledger_NotifyUpdateRequest_last_updated_tag 2
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_name_tag 1
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_last_updated_tag 2
 #define particle_cloud_ledger_SetDataRequest_name_tag 1
 #define particle_cloud_ledger_SetDataRequest_last_updated_tag 2
 #define particle_cloud_ledger_SetDataRequest_data_tag 10
@@ -260,15 +285,31 @@ X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      2)
 #define particle_cloud_ledger_SubscribeResponse_Ledger_DEFAULT NULL
 
 #define particle_cloud_ledger_NotifyUpdateRequest_FIELDLIST(X, a) \
+X(a, CALLBACK, REPEATED, MESSAGE,  ledgers,           1)
+#define particle_cloud_ledger_NotifyUpdateRequest_CALLBACK pb_default_field_callback
+#define particle_cloud_ledger_NotifyUpdateRequest_DEFAULT NULL
+#define particle_cloud_ledger_NotifyUpdateRequest_ledgers_MSGTYPE particle_cloud_ledger_NotifyUpdateRequest_Ledger
+
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   name,              1) \
 X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      2)
-#define particle_cloud_ledger_NotifyUpdateRequest_CALLBACK NULL
-#define particle_cloud_ledger_NotifyUpdateRequest_DEFAULT NULL
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_CALLBACK NULL
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_DEFAULT NULL
 
 #define particle_cloud_ledger_NotifyUpdateResponse_FIELDLIST(X, a) \
 
 #define particle_cloud_ledger_NotifyUpdateResponse_CALLBACK NULL
 #define particle_cloud_ledger_NotifyUpdateResponse_DEFAULT NULL
+
+#define particle_cloud_ledger_ResetInfoRequest_FIELDLIST(X, a) \
+
+#define particle_cloud_ledger_ResetInfoRequest_CALLBACK NULL
+#define particle_cloud_ledger_ResetInfoRequest_DEFAULT NULL
+
+#define particle_cloud_ledger_ResetInfoResponse_FIELDLIST(X, a) \
+
+#define particle_cloud_ledger_ResetInfoResponse_CALLBACK NULL
+#define particle_cloud_ledger_ResetInfoResponse_DEFAULT NULL
 
 extern const pb_msgdesc_t particle_cloud_ledger_GetInfoRequest_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_GetInfoResponse_msg;
@@ -281,7 +322,10 @@ extern const pb_msgdesc_t particle_cloud_ledger_SubscribeRequest_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_SubscribeResponse_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_SubscribeResponse_Ledger_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_NotifyUpdateRequest_msg;
+extern const pb_msgdesc_t particle_cloud_ledger_NotifyUpdateRequest_Ledger_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_NotifyUpdateResponse_msg;
+extern const pb_msgdesc_t particle_cloud_ledger_ResetInfoRequest_msg;
+extern const pb_msgdesc_t particle_cloud_ledger_ResetInfoResponse_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define particle_cloud_ledger_GetInfoRequest_fields &particle_cloud_ledger_GetInfoRequest_msg
@@ -295,7 +339,10 @@ extern const pb_msgdesc_t particle_cloud_ledger_NotifyUpdateResponse_msg;
 #define particle_cloud_ledger_SubscribeResponse_fields &particle_cloud_ledger_SubscribeResponse_msg
 #define particle_cloud_ledger_SubscribeResponse_Ledger_fields &particle_cloud_ledger_SubscribeResponse_Ledger_msg
 #define particle_cloud_ledger_NotifyUpdateRequest_fields &particle_cloud_ledger_NotifyUpdateRequest_msg
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_fields &particle_cloud_ledger_NotifyUpdateRequest_Ledger_msg
 #define particle_cloud_ledger_NotifyUpdateResponse_fields &particle_cloud_ledger_NotifyUpdateResponse_msg
+#define particle_cloud_ledger_ResetInfoRequest_fields &particle_cloud_ledger_ResetInfoRequest_msg
+#define particle_cloud_ledger_ResetInfoResponse_fields &particle_cloud_ledger_ResetInfoResponse_msg
 
 /* Maximum encoded size of messages (where known) */
 /* particle_cloud_ledger_GetInfoRequest_size depends on runtime parameters */
@@ -304,10 +351,13 @@ extern const pb_msgdesc_t particle_cloud_ledger_NotifyUpdateResponse_msg;
 /* particle_cloud_ledger_GetDataResponse_size depends on runtime parameters */
 /* particle_cloud_ledger_SubscribeRequest_size depends on runtime parameters */
 /* particle_cloud_ledger_SubscribeResponse_size depends on runtime parameters */
+/* particle_cloud_ledger_NotifyUpdateRequest_size depends on runtime parameters */
 #define particle_cloud_ledger_GetDataRequest_size 43
 #define particle_cloud_ledger_GetInfoResponse_Ledger_size 47
-#define particle_cloud_ledger_NotifyUpdateRequest_size 43
+#define particle_cloud_ledger_NotifyUpdateRequest_Ledger_size 43
 #define particle_cloud_ledger_NotifyUpdateResponse_size 0
+#define particle_cloud_ledger_ResetInfoRequest_size 0
+#define particle_cloud_ledger_ResetInfoResponse_size 0
 #define particle_cloud_ledger_SetDataResponse_size 0
 #define particle_cloud_ledger_SubscribeResponse_Ledger_size 43
 

@@ -667,6 +667,7 @@ void LedgerManager::notifyDisconnected(int error) {
     pendingState_ = 0;
     nextSyncTime_ = 0;
     curLedger_ = nullptr;
+    reqId_ = COAP_INVALID_REQUEST_ID;
     state_ = State::OFFLINE;
 }
 
@@ -695,7 +696,11 @@ int LedgerManager::receiveRequest(coap_message* msg, int reqId) {
     } // else: Request type field is missing so its value is 0
     switch (reqType) {
     case PB_CLOUD(Request_Type_LEDGER_NOTIFY_UPDATE): {
-        CHECK(receiveNotifyUpdateRequest(msg));
+        CHECK(receiveNotifyUpdateRequest(msg, reqId));
+        break;
+    }
+    case PB_CLOUD(Request_Type_LEDGER_RESET_INFO): {
+        CHECK(receiveResetInfoRequest(msg, reqId));
         break;
     }
     default:
@@ -705,29 +710,52 @@ int LedgerManager::receiveRequest(coap_message* msg, int reqId) {
     return 0;
 }
 
-int LedgerManager::receiveNotifyUpdateRequest(coap_message* msg) {
+int LedgerManager::receiveNotifyUpdateRequest(coap_message* msg, int /* reqId */) {
+    LOG(TRACE, "Received update notification");
     pb_istream_t stream = {};
     CHECK(getStreamForSubmessage(msg, &stream, PB_CLOUD(Request_ledger_notify_update_tag)));
     PB_LEDGER(NotifyUpdateRequest) pbReq = {};
+    pbReq.ledgers.arg = this;
+    pbReq.ledgers.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
+        auto self = (LedgerManager*)*arg;
+        PB_LEDGER(NotifyUpdateRequest_Ledger) pbLedger = {};
+        if (!pb_decode(stream, &PB_LEDGER(NotifyUpdateRequest_Ledger_msg), &pbLedger)) {
+            return false;
+        }
+        // Find the updated ledger
+        bool found = false;
+        auto it = self->findLedger(pbLedger.name, found);
+        if (!found) {
+            LOG(WARN, "Received update notification for unknown ledger: %s", pbLedger.name);
+            return true; // Ignore
+        }
+        auto ctx = it->get();
+        if (ctx->syncDir != LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE) {
+            // If the sync direction is unknown at this point, we already know that the ledger info
+            // is inconsistent between the device and server and we've been unable to fix it
+            if (ctx->syncDir != LEDGER_SYNC_DIRECTION_UNKNOWN) {
+                LOG(ERROR, "Received update notification for device-to-cloud ledger: %s", pbLedger.name);
+                self->setPendingState(ctx, PendingState::GET_INFO);
+            }
+            return true;
+        }
+        // Schedule a sync for the updated ledger
+        if (pbLedger.last_updated > ctx->lastUpdated) {
+            LOG(TRACE, "Ledger changed: %s", pbLedger.name);
+            self->setPendingState(ctx, PendingState::SYNC_FROM_CLOUD);
+        }
+        return true;
+    };
     if (!pb_decode(&stream, &PB_LEDGER(NotifyUpdateRequest_msg), &pbReq)) {
         return SYSTEM_ERROR_BAD_DATA;
     }
-    LOG(TRACE, "Received update notification: %s", pbReq.name);
-    // Find the updated ledger
-    bool found = false;
-    auto it = findLedger(pbReq.name, found);
-    if (!found) {
-        LOG(WARN, "Unknown ledger: %s", pbReq.name);
-        return PB_CLOUD(Response_Result_LEDGER_NOT_FOUND);
-    }
-    auto ctx = it->get();
-    if (ctx->syncDir != LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE) {
-        LOG(WARN, "Unexpected update notification: %s", pbReq.name);
-        return PB_CLOUD(Response_Result_INVALID_SYNC_DIRECTION);
-    }
-    // Schedule a sync for the updated ledger
-    if (pbReq.last_updated > ctx->lastUpdated) {
-        setPendingState(ctx, PendingState::SYNC_FROM_CLOUD);
+    return 0;
+}
+
+int LedgerManager::receiveResetInfoRequest(coap_message* msg, int /* reqId */) {
+    LOG(WARN, "Received a reset request, re-requesting ledger info");
+    for (auto& ctx: allLedgers_) {
+        setPendingState(ctx.get(), PendingState::GET_INFO);
     }
     return 0;
 }
@@ -767,37 +795,38 @@ int LedgerManager::receiveResponse(coap_message* msg, int code, int reqId) {
     }
     switch (state_) {
     case State::SYNC_TO_CLOUD: {
-        CHECK(receiveSetDataResponse(msg, result));
+        CHECK(receiveSetDataResponse(msg, result, reqId));
         break;
     }
     case State::SYNC_FROM_CLOUD: {
-        CHECK(receiveGetDataResponse(msg, result));
+        CHECK(receiveGetDataResponse(msg, result, reqId));
         break;
     }
     case State::SUBSCRIBE: {
-        CHECK(receiveSubscribeResponse(msg, result));
+        CHECK(receiveSubscribeResponse(msg, result, reqId));
         break;
     }
     case State::GET_INFO: {
-        CHECK(receiveGetInfoResponse(msg, result));
+        CHECK(receiveGetInfoResponse(msg, result, reqId));
         break;
     }
     default:
         LOG(ERROR, "Unexpected response");
         return SYSTEM_ERROR_INTERNAL;
     }
-    reqId_ = 0;
+    reqId_ = COAP_INVALID_REQUEST_ID;
     state_ = State::READY;
     return 0;
 }
 
-int LedgerManager::receiveSetDataResponse(coap_message* msg, int result) {
+int LedgerManager::receiveSetDataResponse(coap_message* msg, int result, int /* reqId */) {
     assert(state_ == State::SYNC_TO_CLOUD && curLedger_ && curLedger_->syncDir == LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD &&
             curLedger_->taskRunning);
     auto name = (const char*)curLedger_->name;
     if (result != 0) {
         LOG(ERROR, "Failed to sync ledger: %s; result: %d", name, result);
-        if (result != PB_CLOUD(Response_Result_LEDGER_NOT_FOUND) && result != PB_CLOUD(Response_Result_INVALID_SYNC_DIRECTION)) {
+        if (result != PB_CLOUD(Response_Result_LEDGER_NOT_FOUND) &&
+                result != PB_CLOUD(Response_Result_LEDGER_INVALID_SYNC_DIRECTION)) {
             return SYSTEM_ERROR_LEDGER_REQUEST_FAILED;
         }
         // Ledger is no longer accessible, re-request its info
@@ -813,13 +842,14 @@ int LedgerManager::receiveSetDataResponse(coap_message* msg, int result) {
     return 0;
 }
 
-int LedgerManager::receiveGetDataResponse(coap_message* msg, int result) {
+int LedgerManager::receiveGetDataResponse(coap_message* msg, int result, int /* reqId */) {
     assert(state_ == State::SYNC_FROM_CLOUD && curLedger_ && curLedger_->syncDir == LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE &&
             curLedger_->taskRunning && !stream_);
     auto name = (const char*)curLedger_->name;
     if (result != 0) {
         LOG(ERROR, "Failed to sync ledger: %s; result: %d", name, result);
-        if (result != PB_CLOUD(Response_Result_LEDGER_NOT_FOUND) && result != PB_CLOUD(Response_Result_INVALID_SYNC_DIRECTION)) {
+        if (result != PB_CLOUD(Response_Result_LEDGER_NOT_FOUND) &&
+                result != PB_CLOUD(Response_Result_LEDGER_INVALID_SYNC_DIRECTION)) {
             return SYSTEM_ERROR_LEDGER_REQUEST_FAILED;
         }
         // Ledger is no longer accessible, re-request its info
@@ -876,11 +906,12 @@ int LedgerManager::receiveGetDataResponse(coap_message* msg, int result) {
     return 0;
 }
 
-int LedgerManager::receiveSubscribeResponse(coap_message* msg, int result) {
+int LedgerManager::receiveSubscribeResponse(coap_message* msg, int result, int /* reqId */) {
     assert(state_ == State::SUBSCRIBE);
     if (result != 0) {
         LOG(ERROR, "Failed to subscribe to ledger updates; result: %d", result);
-        if (result != PB_CLOUD(Response_Result_LEDGER_NOT_FOUND) && result != PB_CLOUD(Response_Result_INVALID_SYNC_DIRECTION)) {
+        if (result != PB_CLOUD(Response_Result_LEDGER_NOT_FOUND) &&
+                result != PB_CLOUD(Response_Result_LEDGER_INVALID_SYNC_DIRECTION)) {
             return SYSTEM_ERROR_LEDGER_REQUEST_FAILED;
         }
         // Some of the cloud-to-device ledgers are no longer accessible, re-request their info
@@ -939,7 +970,7 @@ int LedgerManager::receiveSubscribeResponse(coap_message* msg, int result) {
     return 0;
 }
 
-int LedgerManager::receiveGetInfoResponse(coap_message* msg, int result) {
+int LedgerManager::receiveGetInfoResponse(coap_message* msg, int result, int /* reqId */) {
     assert(state_ == State::GET_INFO);
     if (result != 0) {
         LOG(ERROR, "Failed to get ledger info; result: %d", result);
@@ -963,7 +994,7 @@ int LedgerManager::receiveGetInfoResponse(coap_message* msg, int result) {
         if (!pb_decode(stream, &PB_LEDGER(GetInfoResponse_Ledger_msg), &pbLedger)) {
             return false;
         }
-        LOG(TRACE, "Name: %s; scope: %d; sync direction: %d", pbLedger.name, (int)pbLedger.scope,
+        LOG(TRACE, "Ledger name: %s; scope: %d; sync direction: %d", pbLedger.name, (int)pbLedger.scope,
                 (int)pbLedger.sync_direction);
         RefCountPtr<Ledger> ledger;
         int r = d->self->getLedger(ledger, pbLedger.name, false /* create */);
@@ -1282,14 +1313,6 @@ void LedgerManager::clearPendingState(LedgerContext* ctx, int state) {
     ctx->pendingState &= ~state;
     pendingState_ = 0;
     for (auto& ctx: allLedgers_) {
-        pendingState_ |= ctx->pendingState;
-    }
-}
-
-void LedgerManager::clearPendingState(int state) {
-    pendingState_ = 0;
-    for (auto& ctx: allLedgers_) {
-        ctx->pendingState &= ~state;
         pendingState_ |= ctx->pendingState;
     }
 }

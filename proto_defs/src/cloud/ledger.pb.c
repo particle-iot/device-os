@@ -39,7 +39,16 @@ PB_BIND(particle_cloud_ledger_SubscribeResponse_Ledger, particle_cloud_ledger_Su
 PB_BIND(particle_cloud_ledger_NotifyUpdateRequest, particle_cloud_ledger_NotifyUpdateRequest, AUTO)
 
 
+PB_BIND(particle_cloud_ledger_NotifyUpdateRequest_Ledger, particle_cloud_ledger_NotifyUpdateRequest_Ledger, AUTO)
+
+
 PB_BIND(particle_cloud_ledger_NotifyUpdateResponse, particle_cloud_ledger_NotifyUpdateResponse, AUTO)
+
+
+PB_BIND(particle_cloud_ledger_ResetInfoRequest, particle_cloud_ledger_ResetInfoRequest, AUTO)
+
+
+PB_BIND(particle_cloud_ledger_ResetInfoResponse, particle_cloud_ledger_ResetInfoResponse, AUTO)
 
 
 

@@ -159,13 +159,14 @@ private:
     void notifyDisconnected(int error);
 
     int receiveRequest(coap_message* msg, int reqId);
-    int receiveNotifyUpdateRequest(coap_message* msg);
+    int receiveNotifyUpdateRequest(coap_message* msg, int reqId);
+    int receiveResetInfoRequest(coap_message* msg, int reqId);
 
     int receiveResponse(coap_message* msg, int code, int reqId);
-    int receiveSetDataResponse(coap_message* msg, int result);
-    int receiveGetDataResponse(coap_message* msg, int result);
-    int receiveSubscribeResponse(coap_message* msg, int result);
-    int receiveGetInfoResponse(coap_message* msg, int result);
+    int receiveSetDataResponse(coap_message* msg, int result, int reqId);
+    int receiveGetDataResponse(coap_message* msg, int result, int reqId);
+    int receiveSubscribeResponse(coap_message* msg, int result, int reqId);
+    int receiveGetInfoResponse(coap_message* msg, int result, int reqId);
 
     int sendSetDataRequest(LedgerContext* ctx);
     int sendGetDataRequest(LedgerContext* ctx);
@@ -176,7 +177,6 @@ private:
 
     void setPendingState(LedgerContext* ctx, int state);
     void clearPendingState(LedgerContext* ctx, int state);
-    void clearPendingState(int state);
     void updateSyncTime(LedgerContext* ctx);
 
     void handleError(int error);
