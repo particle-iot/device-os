@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "logging.h"
 #include <nrf_uarte.h>
 #include <nrf_ppi.h>
@@ -57,11 +60,18 @@ class RxLock {
 public:
     RxLock(NRF_UARTE_Type* uarte)
             : uarte_(uarte) {
+        taskENTER_CRITICAL();
         nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDRX_MASK);
+        __DSB();
+        __ISB();
     }
     ~RxLock() {
         nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK);
+        taskEXIT_CRITICAL();
+        __DSB();
+        __ISB();
     }
+    
 
 private:
     NRF_UARTE_Type* uarte_;
@@ -182,7 +192,7 @@ public:
         }
 
         if (conf.config & SERIAL_FLOW_CONTROL_RTS) {
-            hal_gpio_write(rtsPin_, 1);
+            hal_gpio_write(rtsPin_, 1); 
             hal_gpio_mode(rtsPin_, OUTPUT);
             hal_pin_set_function(rtsPin_, PF_UART);
         }
@@ -284,7 +294,8 @@ public:
             // </quote>
             // We'll be extra careful here and make sure not to consume more than we can, otherwise
             // we may put the ring buffer into an invalid state as there are not safety checks.
-            const ssize_t toConsume = std::min(rxBuffer_.acquirePending(), timerValue() - rxConsumed_);
+            uint16_t timerVal = timerValue() - lastTimerValue_;
+            const size_t toConsume = std::min<size_t>(timerVal - rxConsumed_, rxBuffer_.acquirePending());
             if (toConsume > 0) {
                 rxBuffer_.acquireCommit(toConsume);
                 rxConsumed_ += toConsume;
@@ -398,7 +409,8 @@ public:
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
 
-                nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+                //nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+                lastTimerValue_ += rxConsumed_ + rxBuffer_.acquirePending();
                 rxConsumed_ = 0;
 
                 if (rxBuffer_.acquirePending() > 0) {
@@ -423,6 +435,7 @@ public:
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ERROR)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ERROR);
             uint32_t uartErrorSource = nrf_uarte_errorsrc_get_and_clear(uarte_);
+            lastError_ = uartErrorSource;
             (void)uartErrorSource;
         }
 
@@ -430,6 +443,9 @@ public:
             portYIELD_FROM_ISR(yield);
         }
     }
+
+    volatile uint32_t lastError_ = 0;
+    volatile uint16_t lastTimerValue_ = 0;
 
     EventGroupHandle_t eventGroup() {
         return evGroup_;
@@ -478,6 +494,15 @@ public:
 
         auto res = xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
         return res;
+    }
+
+    int test(void* reserved) {
+        LOG(INFO, "rx buffer size=%d full=%d empty=%d space=%d data=%d acquirable=%d acquirableWrapped=%d acquirePending=%d head=%d tail=%d headPending=%d tailPending=%d", rxBuffer_.size(), rxBuffer_.full(), rxBuffer_.empty(), rxBuffer_.space(), rxBuffer_.data(),
+                rxBuffer_.acquirable(), rxBuffer_.acquirableWrapped(), rxBuffer_.acquirePending(), rxBuffer_.head_, rxBuffer_.tail_, rxBuffer_.headPending_, rxBuffer_.tailPending_);
+        LOG(INFO, "receiving=%d rxconsumed=%u timerValue=%u lastTimerValue=%u lastError=%x", receiving_, rxConsumed_, timerValue(), lastTimerValue_, lastError_);
+        LOG_DUMP(INFO, rxBuffer_.buffer_, rxBuffer_.size_);
+        LOG_PRINTF(INFO, "\r\n");
+        return 0;
     }
 
 private:
@@ -656,11 +681,12 @@ private:
     void disableTimer() {
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_SHUTDOWN);
+        lastTimerValue_ = 0;
         nrf_ppi_channel_disable(ppi_);
         rxConsumed_ = 0;
     }
 
-    size_t timerValue() {
+    uint16_t timerValue() {
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CAPTURE0);
         return nrf_timer_cc_read(timer_, NRF_TIMER_CC_CHANNEL0);
     }
@@ -966,4 +992,9 @@ int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved) {
     } else {
         return usart->restore();
     }
+}
+
+int hal_usart_test(hal_usart_interface_t serial, void* reserved) {
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->test(reserved);
 }

@@ -168,6 +168,8 @@ ssize_t hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t
 ssize_t hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
 
 
+int hal_usart_test(hal_usart_interface_t serial, void* reserved);
+
 #include "usart_hal_compat.h"
 
 #ifdef __cplusplus
