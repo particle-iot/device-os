@@ -75,11 +75,11 @@ public:
     LedgerBase& operator=(const LedgerBase&) = delete;
 
 protected:
-    void* context() const { // Called by LedgerManager
+    void* context() const {
         return ctx_;
     }
 
-    int& refCount() const { // ditto
+    int& refCount() const { // Called by LedgerManager
         return refCount_;
     }
 
@@ -111,7 +111,7 @@ public:
     static LedgerManager* instance();
 
 protected:
-    void ledgerUpdated(Ledger* ledger); // Called by Ledger
+    void ledgerUpdated(void* ctx); // Called by Ledger
 
     void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase
     void releaseLedger(const LedgerBase* ledger); // ditto

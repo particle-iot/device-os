@@ -17,7 +17,7 @@
 
 #include "logging.h"
 
-LOG_SOURCE_CATEGORY("coap")
+LOG_SOURCE_CATEGORY("system.coap")
 
 #include <algorithm>
 #include <memory>
@@ -234,9 +234,13 @@ int CoapChannel::endRequest(coap_message* msg, coap_response_callback respCallba
         // TODO: Support asynchronous writing to multiple message instances
         return SYSTEM_ERROR_INTERNAL;
     }
-    msgBuf_.set_length(req->end - (char*)msgBuf_.buf());
+    msgBuf_.set_length(req->pos - (char*)msgBuf_.buf());
     CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
     req->coapId = msgBuf_.get_id();
+    req->responseCallback = respCallback;
+    req->ackCallback = ackCallback;
+    req->errorCallback = errorCallback;
+    req->callbackArg = callbackArg;
     // TODO: Handle the case when a separate response arrives before an ACK for the request
     req->next = unackMsgs_;
     unackMsgs_ = req;
@@ -292,9 +296,12 @@ int CoapChannel::endResponse(coap_message* msg, coap_ack_callback ackCallback, c
         // TODO: Support asynchronous writing to multiple message instances
         return SYSTEM_ERROR_INTERNAL;
     }
-    msgBuf_.set_length(resp->end - (char*)msgBuf_.buf());
+    msgBuf_.set_length(resp->pos - (char*)msgBuf_.buf());
     CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
     resp->coapId = msgBuf_.get_id();
+    resp->ackCallback = ackCallback;
+    resp->errorCallback = errorCallback;
+    resp->callbackArg = callbackArg;
     resp->next = unackMsgs_;
     unackMsgs_ = resp;
     // Release the message buffer
@@ -313,10 +320,6 @@ int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& si
         return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
     if (size > 0) {
-        if (msg->pos + size > msg->end) {
-            // TODO: Support blockwise transfer
-            return SYSTEM_ERROR_TOO_LARGE;
-        }
         if (!curMsgId_) {
             CHECK(initProtocolMessage(msg));
             *msg->pos++ = 0xff; // Payload marker
@@ -324,6 +327,10 @@ int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& si
         } else if (curMsgId_ != msg->id) {
             // TODO: Support asynchronous writing to multiple message instances
             return SYSTEM_ERROR_INTERNAL;
+        }
+        if (msg->pos + size > msg->end) {
+            // TODO: Support blockwise transfer
+            return SYSTEM_ERROR_TOO_LARGE;
         }
         memcpy(msg->pos, data, size);
         msg->pos += size;

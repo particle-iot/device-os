@@ -41,7 +41,11 @@ typedef struct _particle_cloud_ledger_GetInfoRequest {
 /* *
  Response for `GetInfoRequest`. */
 typedef struct _particle_cloud_ledger_GetInfoResponse { 
-    pb_callback_t ledgers; /* /< Ledger info. */
+    /* *
+ Ledger info.
+
+ A ledger is omitted in the response if it cannot be found or is not accessible by the device. */
+    pb_callback_t ledgers; 
 } particle_cloud_ledger_GetInfoResponse;
 
 /* *
@@ -128,7 +132,6 @@ typedef struct _particle_cloud_ledger_GetInfoResponse_Ledger {
  Contents of the ledger. */
     /* XXX: Device OS currently requires this field to have the highest field number in the message. */
     particle_cloud_ledger_SyncDirection sync_direction; 
-    bool has_last_updated;
     uint64_t last_updated; 
 } particle_cloud_ledger_GetInfoResponse_Ledger;
 
@@ -172,7 +175,7 @@ extern "C" {
 /* Initializer values for message structs */
 #define particle_cloud_ledger_GetInfoRequest_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_init_default {{{NULL}, NULL}}
-#define particle_cloud_ledger_GetInfoResponse_Ledger_init_default {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0}
+#define particle_cloud_ledger_GetInfoResponse_Ledger_init_default {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0}
 #define particle_cloud_ledger_SetDataRequest_init_default {"", 0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SetDataResponse_init_default {0}
 #define particle_cloud_ledger_GetDataRequest_init_default {"", false, 0}
@@ -187,7 +190,7 @@ extern "C" {
 #define particle_cloud_ledger_ResetInfoResponse_init_default {0}
 #define particle_cloud_ledger_GetInfoRequest_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_init_zero {{{NULL}, NULL}}
-#define particle_cloud_ledger_GetInfoResponse_Ledger_init_zero {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0}
+#define particle_cloud_ledger_GetInfoResponse_Ledger_init_zero {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0}
 #define particle_cloud_ledger_SetDataRequest_init_zero {"", 0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SetDataResponse_init_zero {0}
 #define particle_cloud_ledger_GetDataRequest_init_zero {"", false, 0}
@@ -239,7 +242,7 @@ X(a, CALLBACK, REPEATED, MESSAGE,  ledgers,           1)
 X(a, STATIC,   SINGULAR, STRING,   name,              1) \
 X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
 X(a, STATIC,   SINGULAR, UENUM,    sync_direction,    3) \
-X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      4)
+X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      4)
 #define particle_cloud_ledger_GetInfoResponse_Ledger_CALLBACK NULL
 #define particle_cloud_ledger_GetInfoResponse_Ledger_DEFAULT NULL
 
