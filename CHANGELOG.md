@@ -1,3 +1,27 @@
+## 4.2.0
+
+### ENHANCEMENTS
+
+- [Cellular] Enables UPSV=1 low power mode for R510 when idle for >=9.2s [#2674](https://github.com/particle-iot/device-os/pull/2674)
+- [services] add long long support to printf/scanf [#2694](https://github.com/particle-iot/device-os/pull/2694) [#2696](https://github.com/particle-iot/device-os/pull/2696)
+- [wiring] Add 64-bit String conversions [#2693](https://github.com/particle-iot/device-os/pull/2693) [#2657](https://github.com/particle-iot/device-os/pull/2657)
+- [wiring] json: 64-bit support [#2695](https://github.com/particle-iot/device-os/pull/2693) [#2657](https://github.com/particle-iot/device-os/pull/2695)
+
+### BUGFIXES
+
+- Fixes clean target for applications with large number of fils + P2 PSRAM size calculation issues [#2661](https://github.com/particle-iot/device-os/pull/2661)
+- [gen3] hal: fixes the issue that UARTE RX may lose data [#2698](https://github.com/particle-iot/device-os/pull/2698)
+- [quectel] Fixes ncp-client not waiting for modem ready on cold boot [#2700](https://github.com/particle-iot/device-os/pull/2700)
+
+### INTERNAL
+
+- [bootloader] remove nanopb dependency [#2607](https://github.com/particle-iot/device-os/pull/2607)
+- test] resolve sleep20 test failures. [#2669](https://github.com/particle-iot/device-os/pull/2669)
+- [nrf] Add Factory Reset Tests [#2662](https://github.com/particle-iot/device-os/pull/2662)
+- Update the key used for validating the ServerMoved signature [#2688](https://github.com/particle-iot/device-os/pull/2688)
+- [ci] fix macos builds [#2683](https://github.com/particle-iot/device-os/pull/2683)
+
+
 ## 4.1.0
 
 ### FEATURES
