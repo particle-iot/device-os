@@ -783,8 +783,14 @@ int LedgerManager::receiveResponse(coap_message* msg, int code, int reqId) {
     // fields are encoded in order of their field numbers, which is not guaranteed by the Protobuf
     // spec in general
     char buf[32] = {};
-    size_t n = CHECK(coap_peek_payload(msg, buf, sizeof(buf), nullptr));
-    pb_istream_t stream = pb_istream_from_buffer((const pb_byte_t*)buf, n);
+    int r = coap_peek_payload(msg, buf, sizeof(buf), nullptr);
+    if (r < 0) {
+        if (r != SYSTEM_ERROR_END_OF_STREAM) {
+            return r;
+        }
+        r = 0; // Response is empty
+    }
+    pb_istream_t stream = pb_istream_from_buffer((const pb_byte_t*)buf, r);
     int64_t result = 0;
     uint32_t fieldTag = 0;
     auto fieldType = pb_wire_type_t();
@@ -852,7 +858,13 @@ int LedgerManager::receiveSetDataResponse(coap_message* msg, int result, int /* 
     info.lastSynced(t);
     if (!(curLedger_->pendingState & PendingState::SYNC_TO_CLOUD)) {
         info.syncPending(false);
+        curLedger_->syncTime = 0;
+        curLedger_->forcedSyncTime = 0;
         curLedger_->changed = false;
+    } else {
+        auto now = hal_timer_millis(nullptr);
+        curLedger_->syncTime = now + MIN_SYNC_DELAY;
+        curLedger_->forcedSyncTime = now + MAX_SYNC_DELAY;
     }
     RefCountPtr<Ledger> ledger;
     CHECK(getLedger(ledger, curLedger_->name, false /* create */));
@@ -1149,6 +1161,11 @@ int LedgerManager::sendSetDataRequest(LedgerContext* ctx) {
                 return false;
             }
             size -= n;
+        }
+        // Rewind the reader so that this callback can be called again
+        d->error = d->reader->rewind();
+        if (d->error < 0) {
+            return false;
         }
         return true;
     };
@@ -1939,6 +1956,16 @@ int LedgerReader::close(bool /* discard */) {
         return r;
     }
     return result;
+}
+
+int LedgerReader::rewind() {
+    if (!open_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    FsLock fs;
+    CHECK_FS(lfs_file_seek(fs.instance(), &file_, 0, LFS_SEEK_SET));
+    dataOffs_ = 0;
+    return 0;
 }
 
 int LedgerWriter::init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger) {

@@ -401,6 +401,8 @@ public:
 
     int close(bool discard = false) override;
 
+    int rewind();
+
     bool isOpen() const {
         return open_;
     }
