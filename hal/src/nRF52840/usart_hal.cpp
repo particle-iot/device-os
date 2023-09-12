@@ -281,10 +281,13 @@ public:
         return begin(config_);
     }
 
-    ssize_t data() {
+    ssize_t data(size_t* consumable = nullptr) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        RxLock lk(uarte_);
-        ssize_t d = rxBuffer_.data();
+
+        size_t d = CHECK(rxBuffer_.data());
+
+        // At the very least we already have `d` commited bytes in rx buffer
+
         if (receiving_) {
             // IMPORTANT: It seems that the timer value (which is a counter for every time UARTE generates RXDRDY event)
             // may potentially get larger than the configured RX DMA transfer:
@@ -294,12 +297,22 @@ public:
             // </quote>
             // We'll be extra careful here and make sure not to consume more than we can, otherwise
             // we may put the ring buffer into an invalid state as there are not safety checks.
-            uint16_t timerVal = timerValue() - lastTimerValue_;
-            const size_t toConsume = std::min<size_t>(timerVal - rxConsumed_, rxBuffer_.acquirePending());
-            if (toConsume > 0) {
-                rxBuffer_.acquireCommit(toConsume);
-                rxConsumed_ += toConsume;
-                d += toConsume;
+            uint16_t lastTimer = lastTimerValue_;
+            size_t rxConsumed = rxConsumed_;
+            if (rxConsumed == 0) {
+                // Re-read lastTimerValue_ to sync up
+                lastTimer = lastTimerValue_;
+                // Update d, as we might have received ENDRX in-between previous `d` calculation and now
+                d = CHECK(rxBuffer_.data());
+                if (!receiving_) {
+                    return d;
+                }
+            }
+            uint16_t timerVal = timerValue() - lastTimer;
+            const size_t canConsume = std::min<size_t>(timerVal - rxConsumed, rxBuffer_.acquirePending());
+            d += canConsume;
+            if (consumable) {
+                *consumable = canConsume;
             }
         }
         return d;
@@ -313,10 +326,18 @@ public:
 
     ssize_t read(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        const ssize_t maxRead = CHECK(data());
+        size_t consumable = 0;
+        const ssize_t maxRead = CHECK(data(&consumable));
         const size_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(uarte_);
+        if (consumable > 0) {
+            CHECK(data(&consumable));
+            if (consumable > 0) {
+                rxBuffer_.acquireCommit(consumable);
+                rxConsumed_ += consumable;
+            }
+        }
         ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
         if (!receiving_) {
             startReceiver();
@@ -413,9 +434,13 @@ public:
                 lastTimerValue_ += rxConsumed_ + rxBuffer_.acquirePending();
                 rxConsumed_ = 0;
 
+                lastRxAmount_ = nrf_uarte_rx_amount_get(uarte_);
+
                 if (rxBuffer_.acquirePending() > 0) {
                     rxBuffer_.acquireCommit(rxBuffer_.acquirePending());
                 }
+
+                lastHead_ = rxBuffer_.head_;
 
                 --receiving_;
                 startReceiver();
@@ -435,7 +460,9 @@ public:
         if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ERROR)) {
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ERROR);
             uint32_t uartErrorSource = nrf_uarte_errorsrc_get_and_clear(uarte_);
-            lastError_ = uartErrorSource;
+            if (uartErrorSource != 0) {
+                lastError_ = uartErrorSource;
+            }
             (void)uartErrorSource;
         }
 
@@ -446,6 +473,8 @@ public:
 
     volatile uint32_t lastError_ = 0;
     volatile uint16_t lastTimerValue_ = 0;
+    volatile uint32_t lastHead_ = 0;
+    volatile uint32_t lastRxAmount_ = 0;
 
     EventGroupHandle_t eventGroup() {
         return evGroup_;
@@ -499,7 +528,41 @@ public:
     int test(void* reserved) {
         LOG(INFO, "rx buffer size=%d full=%d empty=%d space=%d data=%d acquirable=%d acquirableWrapped=%d acquirePending=%d head=%d tail=%d headPending=%d tailPending=%d", rxBuffer_.size(), rxBuffer_.full(), rxBuffer_.empty(), rxBuffer_.space(), rxBuffer_.data(),
                 rxBuffer_.acquirable(), rxBuffer_.acquirableWrapped(), rxBuffer_.acquirePending(), rxBuffer_.head_, rxBuffer_.tail_, rxBuffer_.headPending_, rxBuffer_.tailPending_);
-        LOG(INFO, "receiving=%d rxconsumed=%u timerValue=%u lastTimerValue=%u lastError=%x", receiving_, rxConsumed_, timerValue(), lastTimerValue_, lastError_);
+        LOG(INFO, "receiving=%d rxconsumed=%u timerValue=%u lastTimerValue=%u lastError=%x lastHead=%u lastRxAmount=%u", receiving_, rxConsumed_, timerValue(), lastTimerValue_, lastError_, lastHead_, lastRxAmount_);
+        LOG(INFO, "rxAmount=%u", nrf_uarte_rx_amount_get(uarte_));
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_CTS)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_CTS");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_NCTS)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_NCTS");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXDRDY)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_RXDRDY");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDRX)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_ENDRX");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXDRDY)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_TXDRDY");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ENDTX)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_ENDTX");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_ERROR)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_ERROR");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXTO)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_RXTO");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_RXSTARTED)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_RXSTARTED");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTARTED)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_TXSTARTED");
+        }
+        if (nrf_uarte_event_check(uarte_, NRF_UARTE_EVENT_TXSTOPPED)) {
+            LOG(INFO, "Event NRF_UARTE_EVENT_TXSTOPPED");
+        }
         LOG_DUMP(INFO, rxBuffer_.buffer_, rxBuffer_.size_);
         LOG_PRINTF(INFO, "\r\n");
         return 0;

@@ -357,11 +357,21 @@ inline size_t RingBuffer<T>::curSpace() const {
 
 template <typename T>
 inline size_t RingBuffer<T>::curData() const {
-    if (head_ >= tail_ && !full_) {
-        return head_ - tail_;
+    // Tail is only modified by the consumer/reader, we don't care about it
+    // head_, curSize_ and full_ are the ones that are modified by producer and would
+    // usually be modified in ISR.
+    size_t head = head_;
+
+    if (head > tail_) {
+        return head - tail_;
+    } else if (head == tail_) {
+        return full_ ? head - tail_ : 0;
     } else {
-        return curSize_ + head_ - tail_;
+        // NOTE: this might not work well without locking for multiple concurrent acquirable regions
+        // For a single region, curSize_ cannot change if head is already behind tail.
+        return curSize_ + head - tail_;
     }
+
 }
 
 template <typename T>

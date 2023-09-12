@@ -8,8 +8,8 @@ SerialLogHandler logHandler(115200, LOG_LEVEL_ALL);
 
 // set to serial port configuration for test
 #define SERIAL (Serial1)
-#define SERIAL_BAUD (115200)
-#define SERIAL_TX_INTERVAL_MS (20)
+#define SERIAL_BAUD (460800)
+#define SERIAL_TX_INTERVAL_MS (10)
 #define SERIAL_RX_TIMEOUT_MS (50)
 
 // comment in/out to test with or without a thread scanning for BLE adverts
@@ -235,7 +235,7 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 SerialLogHandler logHandler(115200, LOG_LEVEL_ALL);
 
 #define SERIAL (Serial1)
-#define SERIAL_BAUD (115200)
+#define SERIAL_BAUD (460800)
 
 const char TX_BUF[] = "12345678";
 
