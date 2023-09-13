@@ -11,7 +11,7 @@ AR = $(GCC_ARM_PATH)$(GCC_PREFIX)gcc-ar
 
 # Newlib has a bug in fake stdin/stdout/stderr implementation and leaks memory
 # Stub printf/fprintf out
-CFLAGS += -fno-builtin-puts -fno-builtin-printf -Wl,--wrap=puts -Wl,--wrap=printf
+CFLAGS += -fno-builtin-puts -fno-builtin-printf -Wl,--wrap=puts -Wl,--wrap=printf -Wl,--wrap=_printf_i -Wl,--wrap=_svfprintf_r
 
 #
 # default flags for targeting ARM Cortex-M3
