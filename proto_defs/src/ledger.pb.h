@@ -27,7 +27,7 @@ typedef struct _particle_firmware_LedgerInfo {
 
  If 0, the ledger has never been synchronized. */
     uint64_t last_synced; 
-    bool sync_pending; /* /< Whether the ledger has local changes that need to be synchronized. */
+    bool sync_pending; /* /< Whether the ledger needs to be synchronized. */
 } particle_firmware_LedgerInfo;
 
 

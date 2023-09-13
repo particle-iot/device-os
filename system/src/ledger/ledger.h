@@ -21,33 +21,31 @@
 
 #if HAL_PLATFORM_LEDGER
 
-#include <optional>
-#include <utility>
-#include <memory>
 #include <mutex>
+#include <optional>
 #include <cstdint>
 
 #include "system_ledger.h"
 
-#include "coap_api.h"
-
 #include "filesystem.h"
-
 #include "static_recursive_mutex.h"
-#include "c_string.h"
 #include "ref_count.h"
 #include "system_error.h"
 
-#include "spark_wiring_vector.h"
-
 namespace particle::system {
 
-class Ledger;
-class LedgerInfo;
+const auto LEDGER_ROOT_DIR = "/usr/ledger";
+
+namespace detail {
+
+class LedgerSyncContext;
+
+} // namespace detail
+
 class LedgerManager;
-class LedgerStream;
 class LedgerReader;
 class LedgerWriter;
+class LedgerInfo;
 
 enum class LedgerWriteSource {
     USER,
@@ -60,8 +58,8 @@ enum class LedgerWriteSource {
 // would work but those can't be used in dynalib interfaces
 class LedgerBase {
 public:
-    explicit LedgerBase(void* ctx = nullptr) :
-            ctx_(ctx),
+    explicit LedgerBase(detail::LedgerSyncContext* ctx = nullptr) :
+            syncCtx_(ctx),
             refCount_(1) {
     }
 
@@ -75,8 +73,8 @@ public:
     LedgerBase& operator=(const LedgerBase&) = delete;
 
 protected:
-    void* context() const {
-        return ctx_;
+    detail::LedgerSyncContext* syncContext() const {
+        return syncCtx_;
     }
 
     int& refCount() const { // Called by LedgerManager
@@ -84,124 +82,21 @@ protected:
     }
 
 private:
-    void* ctx_; // Manager context
+    detail::LedgerSyncContext* syncCtx_; // Sync context
     mutable int refCount_; // Reference count
 
     friend class LedgerManager;
 };
 
-// TODO: Move this class to a separate file
-class LedgerManager {
-public:
-    LedgerManager(const LedgerManager&) = delete;
-
-    ~LedgerManager();
-
-    int init();
-
-    int getLedger(RefCountPtr<Ledger>& ledger, const char* name, bool create = true);
-
-    int removeLedgerData(const char* name);
-    int removeAllData();
-
-    void run();
-
-    LedgerManager& operator=(const LedgerManager&) = delete;
-
-    static LedgerManager* instance();
-
-protected:
-    void ledgerUpdated(void* ctx); // Called by Ledger
-
-    void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase
-    void releaseLedger(const LedgerBase* ledger); // ditto
-
-private:
-    enum class State {
-        NEW, // Manager is not initialized
-        FAILED, // Synchronization failed
-        OFFLINE, // Device is offline
-        READY, // Ready to run a task
-        SYNC_TO_CLOUD, // Synchronizing a device-to-cloud ledger
-        SYNC_FROM_CLOUD, // Synchronizing a cloud-to-device ledger
-        SUBSCRIBE, // Subscribing to ledger updates
-        GET_INFO // Getting ledger info
-    };
-
-    enum PendingState {
-        SYNC_TO_CLOUD = 0x01, // Synchronization of a device-to-cloud ledger is pending
-        SYNC_FROM_CLOUD = 0x02, // Synchronization of a cloud-to-device ledger is pending
-        SUBSCRIBE = 0x04, // Subscription to updates is pending
-        GET_INFO = 0x08 // Ledger info is missing
-    };
-
-    struct LedgerContext;
-    typedef Vector<std::unique_ptr<LedgerContext>> LedgerContexts;
-
-    LedgerContexts allLedgers_; // Preallocated context objects for all known ledgers
-
-    std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
-    LedgerContext* curLedger_; // Context of the ledger being synchronized
-
-    uint64_t nextSyncTime_; // Nearest time a device-to-cloud ledger may need to be synchronized
-
-    State state_; // Current state
-    int pendingState_; // Pending state flags
-    int reqId_; // ID of the ongoing CoAP request
-
-    mutable StaticRecursiveMutex mutex_; // Manager lock
-
-    LedgerManager(); // Use LedgerManager::instance()
-
-    int processTasks();
-
-    int notifyConnected();
-    void notifyDisconnected(int error);
-
-    int receiveRequest(coap_message* msg, int reqId);
-    int receiveNotifyUpdateRequest(coap_message* msg, int reqId);
-    int receiveResetInfoRequest(coap_message* msg, int reqId);
-
-    int receiveResponse(coap_message* msg, int code, int reqId);
-    int receiveSetDataResponse(coap_message* msg, int result, int reqId);
-    int receiveGetDataResponse(coap_message* msg, int result, int reqId);
-    int receiveSubscribeResponse(coap_message* msg, int result, int reqId);
-    int receiveGetInfoResponse(coap_message* msg, int result, int reqId);
-
-    int sendSetDataRequest(LedgerContext* ctx);
-    int sendGetDataRequest(LedgerContext* ctx);
-    int sendSubscribeRequest();
-    int sendGetInfoRequest();
-
-    int sendResponse(int result, int reqId);
-
-    void setPendingState(LedgerContext* ctx, int state);
-    void clearPendingState(LedgerContext* ctx, int state);
-    void updateSyncTime(LedgerContext* ctx);
-
-    void handleError(int error);
-
-    LedgerContexts::ConstIterator findLedger(const char* name, bool& found) const;
-
-    static int connectionCallback(int error, int status, void* arg);
-    static int requestCallback(coap_message* msg, const char* uri, int method, int reqId, void* arg);
-    static int responseCallback(coap_message* msg, int code, int reqId, void* arg);
-    static void requestErrorCallback(int error, int reqId, void* arg);
-
-    friend class Ledger;
-    friend class LedgerBase;
-};
-
 class Ledger: public LedgerBase {
 public:
-    explicit Ledger(void* ctx = nullptr);
+    explicit Ledger(detail::LedgerSyncContext* ctx = nullptr);
     ~Ledger();
 
     int initReader(LedgerReader& reader);
     int initWriter(LedgerWriter& writer, LedgerWriteSource src);
 
     LedgerInfo info() const;
-    int updateInfo(const LedgerInfo& info);
 
     const char* name() const {
         return name_; // Immutable
@@ -233,9 +128,11 @@ public:
 
 protected:
     int init(const char* name); // Called by LedgerManager
+    int updateInfo(const LedgerInfo& info); // ditto
+    void notifySynced(); // ditto
 
-    int readerClosed(bool staged); // Called by LedgerReader
-    int writerClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum); // Called by LedgerWriter
+    int notifyReaderClosed(bool staged); // Called by LedgerReader
+    int notifyWriterClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum); // Called by LedgerWriter
 
 private:
     int lastSeqNum_; // Counter incremented every time the ledger is opened for writing
@@ -286,7 +183,7 @@ public:
         return scope_.value_or(LEDGER_SCOPE_UNKNOWN);
     }
 
-    bool hasScope() const {
+    bool isScopeSet() const {
         return scope_.has_value();
     }
 
@@ -299,7 +196,7 @@ public:
         return syncDir_.value_or(LEDGER_SYNC_DIRECTION_UNKNOWN);
     }
 
-    bool hasSyncDirection() const {
+    bool isSyncDirectionSet() const {
         return syncDir_.has_value();
     }
 
@@ -312,7 +209,7 @@ public:
         return dataSize_.value_or(0);
     }
 
-    bool hasDataSize() const {
+    bool isDataSizeSet() const {
         return dataSize_.has_value();
     }
 
@@ -325,7 +222,7 @@ public:
         return lastUpdated_.value_or(0);
     }
 
-    bool hasLastUpdated() const {
+    bool isLastUpdatedSet() const {
         return lastUpdated_.has_value();
     }
 
@@ -338,7 +235,7 @@ public:
         return lastSynced_.value_or(0);
     }
 
-    bool hasLastSynced() const {
+    bool isLastSyncedSet() const {
         return lastSynced_.has_value();
     }
 
@@ -351,14 +248,14 @@ public:
         return syncPending_.value_or(false);
     }
 
-    bool hasSyncPending() const {
+    bool isSyncPendingSet() const {
         return syncPending_.has_value();
     }
 
     LedgerInfo& update(const LedgerInfo& info);
 
 private:
-    // When adding new fields, make sure to update LedgerInfo::update() and Ledger::updateLedgerInfo()
+    // When adding new fields, make sure to update LedgerInfo::update() and Ledger::setLedgerInfo()
     std::optional<int64_t> lastUpdated_;
     std::optional<int64_t> lastSynced_;
     std::optional<size_t> dataSize_;
@@ -380,7 +277,6 @@ class LedgerReader: public LedgerStream {
 public:
     LedgerReader() :
             file_(),
-            dataSize_(0),
             dataOffs_(0),
             staged_(false),
             open_(false) {
@@ -403,21 +299,26 @@ public:
 
     int rewind();
 
+    const LedgerInfo& info() const {
+        return info_;
+    }
+
     bool isOpen() const {
         return open_;
     }
 
-    LedgerReader& operator=(const LedgerReader&) = default;
+    LedgerReader& operator=(const LedgerReader&) = delete;
+
+protected:
+    int init(LedgerInfo info, int stagedSeqNum, Ledger* ledger); // Called by Ledger
 
 private:
     RefCountPtr<Ledger> ledger_; // Ledger instance
+    LedgerInfo info_; // Ledger info
     lfs_file_t file_; // File handle
-    size_t dataSize_; // Size of the data section of the ledger file
     size_t dataOffs_; // Current offset in the data section
     bool staged_; // Whether the data being read is staged
     bool open_; // Whether the reader is open
-
-    int init(size_t dataSize, int stagedSeqNum, Ledger* ledger); // Called by Ledger
 
     friend class Ledger;
 };
@@ -446,12 +347,8 @@ public:
     int write(const char* data, size_t size) override;
     int close(bool discard = false) override;
 
-    LedgerInfo& ledgerInfo() {
-        return ledgerInfo_;
-    }
-
-    const LedgerInfo& ledgerInfo() const {
-        return ledgerInfo_;
+    void updateInfo(const LedgerInfo& info) {
+        info_.update(info);
     }
 
     bool isOpen() const {
@@ -460,27 +357,20 @@ public:
 
     LedgerWriter& operator=(const LedgerWriter&) = delete;
 
+protected:
+    int init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger); // Called by Ledger
+
 private:
     RefCountPtr<Ledger> ledger_; // Ledger instance
-    LedgerInfo ledgerInfo_; // Ledger info updates
+    LedgerInfo info_; // Ledger info updates
     lfs_file_t file_; // File handle
     LedgerWriteSource src_; // Who is writing to the ledger
     size_t dataSize_; // Size of the data written
     int tempSeqNum_; // Sequence number assigned to the temporary ledger data
     bool open_; // Whether the writer is open
 
-    int init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger); // Called by Ledger
-
     friend class Ledger;
 };
-
-inline void LedgerBase::addRef() const {
-    LedgerManager::instance()->addLedgerRef(this);
-}
-
-inline void LedgerBase::release() const {
-    LedgerManager::instance()->releaseLedger(this);
-}
 
 } // namespace particle::system
 

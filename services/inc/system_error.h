@@ -108,13 +108,13 @@
         (FILESYSTEM_INVAL, "Invalid parameter", -1910), \
         (FILESYSTEM_NOSPC, "No space left in the filesystem", -1911), \
         (FILESYSTEM_NOMEM, "Memory allocation error", -1912), \
-        (LEDGER, "Ledger error", -2000), /* -2099 ... -2000: Ledger errors */ \
-        (LEDGER_NOT_FOUND, "Ledger not found", -2001), \
-        (LEDGER_INVALID_FORMAT, "Invalid format of ledger data", -2002), \
-        (LEDGER_UNSUPPORTED_FORMAT, "Unsupported format of ledger data", -2003), \
-        (LEDGER_READ_ONLY, "Ledger is read only", -2004), \
-        (LEDGER_IN_USE, "Ledger is in use", -2005), \
-        (LEDGER_TOO_LARGE, "Ledger data is too large", -2006), \
+        (LEDGER_NOT_FOUND, "Ledger not found", -2000), /* -2099 ... -2000: Ledger errors */ \
+        (LEDGER_INVALID_FORMAT, "Invalid format of ledger data", -2001), \
+        (LEDGER_UNSUPPORTED_FORMAT, "Unsupported format of ledger data", -2002), \
+        (LEDGER_READ_ONLY, "Ledger is read only", -2003), \
+        (LEDGER_IN_USE, "Ledger is in use", -2004), \
+        (LEDGER_TOO_LARGE, "Ledger data is too large", -2005), \
+        (LEDGER_TOO_MANY, "Too many ledgers", -2006), \
         (LEDGER_INCONSISTENT_STATE, "Inconsistent ledger state", -2007), \
         (LEDGER_ENCODING_FAILED, "Ledger encoding error", -2008), \
         (LEDGER_DECODING_FAILED, "Ledger decoding error", -2009), \

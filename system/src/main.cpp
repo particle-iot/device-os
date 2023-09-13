@@ -39,7 +39,6 @@
 #include "system_network_internal.h"
 #include "system_cloud_internal.h"
 #include "system_cloud_connection.h"
-#include "system_ledger_internal.h"
 #include "system_sleep.h"
 #include "system_threading.h"
 #include "system_user.h"
@@ -68,6 +67,7 @@
 #include "spark_wiring_wifi.h"
 #include "server_config.h"
 #include "system_network_manager.h"
+#include "ledger/ledger_manager.h"
 
 // FIXME
 #include "system_control_internal.h"

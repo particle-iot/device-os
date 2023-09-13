@@ -24,5 +24,5 @@ message LedgerInfo {
    * If 0, the ledger has never been synchronized.
    */
   fixed64 last_synced = 5;
-  bool sync_pending = 6; ///< Whether the ledger has local changes that need to be synchronized.
+  bool sync_pending = 6; ///< Whether the ledger needs to be synchronized.
 }

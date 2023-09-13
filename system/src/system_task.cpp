@@ -24,6 +24,7 @@
 
 #include "logging.h"
 
+#include "ledger/ledger_manager.h"
 #include "spark_wiring_platform.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_usbserial.h"
@@ -31,7 +32,6 @@
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
 #include "system_cloud_connection.h"
-#include "system_ledger_internal.h"
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_network_internal.h"
