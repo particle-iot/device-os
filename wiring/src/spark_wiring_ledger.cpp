@@ -19,7 +19,11 @@
 
 #if Wiring_Ledger
 
+#include <type_traits>
 #include <memory>
+#include <cmath>
+#include <cstdint>
+#include <cassert>
 
 #include "spark_wiring_ledger.h"
 #include "spark_wiring_print.h"
@@ -28,12 +32,146 @@
 
 #include "system_task.h"
 
+#include "endian_util.h"
 #include "scope_guard.h"
 #include "check.h"
 
 namespace particle {
 
 namespace {
+
+int writeUint8(uint8_t val, ledger_stream* stream) {
+    CHECK(ledger_write(stream, (const char*)&val, sizeof(val), nullptr));
+    return 0;
+}
+
+int writeUint16Be(uint16_t val, ledger_stream* stream) {
+    val = nativeToBigEndian(val);
+    CHECK(ledger_write(stream, (const char*)&val, sizeof(val), nullptr));
+    return 0;
+}
+
+int writeUint32Be(uint32_t val, ledger_stream* stream) {
+    val = nativeToBigEndian(val);
+    CHECK(ledger_write(stream, (const char*)&val, sizeof(val), nullptr));
+    return 0;
+}
+
+int writeUint64Be(uint64_t val, ledger_stream* stream) {
+    val = nativeToBigEndian(val);
+    CHECK(ledger_write(stream, (const char*)&val, sizeof(val), nullptr));
+    return 0;
+}
+
+int writeDoubleBe(double val, ledger_stream* stream) {
+    uint64_t v;
+    std::memcpy(&v, &val, 8);
+    v = nativeToBigEndian(v);
+    CHECK(ledger_write(stream, (const char*)&v, sizeof(v), nullptr));
+    return 0;
+}
+
+int writeCborArgument(uint64_t val, int type, ledger_stream* stream) {
+    type <<= 5;
+    if (val <= 0x17) {
+        CHECK(writeUint8(val | type, stream));
+    } else if (val <= 0xff) {
+        CHECK(writeUint8(0x18 | type, stream));
+        CHECK(writeUint8(val, stream));
+    } else if (val <= 0xffff) {
+        CHECK(writeUint8(0x19 | type, stream));
+        CHECK(writeUint16Be(val, stream));
+    } else if (val <= 0xffffffffu) {
+        CHECK(writeUint8(0x1a | type, stream));
+        CHECK(writeUint32Be(val, stream));
+    } else {
+        CHECK(writeUint8(0x1b | type, stream));
+        CHECK(writeUint64Be(val, stream));
+    }
+    return 0;
+}
+
+template<typename T, typename std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
+int writeIntegerAsCbor(T val, ledger_stream* stream) {
+    CHECK(writeCborArgument(val, 0 /* Unsigned integer */, stream));
+    return 0;
+}
+
+template<typename T, typename std::enable_if_t<std::is_signed_v<T>, int> = 0>
+int writeIntegerAsCbor(T val, ledger_stream* stream) {
+    if (val < 0) {
+        val = std::abs(val + 1);
+        CHECK(writeCborArgument(val, 1 /* Negative integer */, stream));
+    } else {
+        CHECK(writeCborArgument(val, 0 /* Unsigned integer */, stream));
+    }
+    return 0;
+}
+
+int writeStringAsCbor(const String& str, ledger_stream* stream) {
+    CHECK(writeCborArgument(str.length(), 3 /* Text string */, stream));
+    CHECK(ledger_write(stream, str.c_str(), str.length(), nullptr));
+    return 0;
+}
+
+int writeVariantAsCbor(const Variant& var, ledger_stream* stream) {
+    switch (var.type()) {
+    case Variant::NULL_: {
+        CHECK(writeUint8(0xf6, stream));
+        break;
+    }
+    case Variant::BOOL: {
+        auto v = var.value<bool>();
+        CHECK(writeUint8(v ? 0xf5 : 0xf4, stream));
+        break;
+    }
+    case Variant::INT: {
+        CHECK(writeIntegerAsCbor(var.value<int>(), stream));
+        break;
+    }
+    case Variant::UINT: {
+        CHECK(writeIntegerAsCbor(var.value<unsigned>(), stream));
+        break;
+    }
+    case Variant::INT64: {
+        CHECK(writeIntegerAsCbor(var.value<int64_t>(), stream));
+        break;
+    }
+    case Variant::UINT64: {
+        CHECK(writeIntegerAsCbor(var.value<uint64_t>(), stream));
+        break;
+    }
+    case Variant::DOUBLE: {
+        CHECK(writeUint8(0xfb, stream));
+        CHECK(writeDoubleBe(var.value<double>(), stream));
+        break;
+    }
+    case Variant::STRING: {
+        CHECK(writeStringAsCbor(var.value<String>(), stream));
+        break;
+    }
+    case Variant::ARRAY: {
+        auto& arr = var.value<VariantArray>();
+        CHECK(writeCborArgument(arr.size(), 4 /* Array */, stream));
+        for (auto& v: arr) {
+            CHECK(writeVariantAsCbor(v, stream));
+        }
+        break;
+    }
+    case Variant::MAP: {
+        auto& entries = var.value<VariantMap>().entries();
+        CHECK(writeCborArgument(entries.size(), 5 /* Map */, stream));
+        for (auto& e: entries) {
+            CHECK(writeStringAsCbor(e.first, stream));
+            CHECK(writeVariantAsCbor(e.second, stream));
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    return 0;
+}
 
 struct LedgerAppData {
     Ledger::OnSyncFunction onSync;
@@ -124,9 +262,7 @@ int setLedgerData(ledger_instance* ledger, const LedgerData& data) {
     NAMED_SCOPE_GUARD(g, {
         ledger_close(stream, LEDGER_STREAM_CLOSE_DISCARD, nullptr);
     });
-    // TODO: Use a binary format
-    auto json = data.toJSON();
-    r = ledger_write(stream, json.c_str(), json.length(), nullptr);
+    r = writeVariantAsCbor(data.variant(), stream);
     if (r < 0) {
         LOG(ERROR, "ledger_write() failed: %d", r);
         return r;
