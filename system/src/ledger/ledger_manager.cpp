@@ -642,15 +642,14 @@ int LedgerManager::receiveSetDataResponse(coap_message* msg, int result, int /* 
     LedgerInfo info;
     auto now = CHECK(getMillisSinceEpoch());
     info.lastSynced(now);
+    curCtx_->syncTime = 0;
+    curCtx_->forcedSyncTime = 0;
     if (!(curCtx_->pendingState & PendingState::SYNC_TO_CLOUD)) {
         info.syncPending(false);
-        curCtx_->syncTime = 0;
-        curCtx_->forcedSyncTime = 0;
         curCtx_->changed = false;
     } else {
-        auto now = hal_timer_millis(nullptr);
-        curCtx_->syncTime = now + MIN_SYNC_DELAY;
-        curCtx_->forcedSyncTime = now + MAX_SYNC_DELAY;
+        // Ledger changed while being synchronized
+        updateSyncTime(curCtx_);
     }
     RefCountPtr<Ledger> ledger;
     CHECK(getLedger(ledger, curCtx_->name));
@@ -1219,6 +1218,9 @@ int LedgerManager::requestCallback(coap_message* msg, const char* uri, int metho
     });
     auto self = static_cast<LedgerManager*>(arg);
     std::lock_guard lock(self->mutex_);
+    if (self->state_ < State::READY) {
+        return 0;
+    }
     clear_system_error_message();
     int result = self->receiveRequest(msg, reqId);
     if (result < 0) {
@@ -1240,6 +1242,9 @@ int LedgerManager::responseCallback(coap_message* msg, int code, int reqId, void
     });
     auto self = static_cast<LedgerManager*>(arg);
     std::lock_guard lock(self->mutex_);
+    if (self->state_ < State::READY) {
+        return 0;
+    }
     int r = self->receiveResponse(msg, code, reqId);
     if (r < 0) {
         LOG(ERROR, "Failed to handle response: %d", r);

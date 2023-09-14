@@ -537,8 +537,8 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
 }
 
 void Ledger::setLedgerInfo(const LedgerInfo& info) {
-    assert(info.hasScope() && info.hasSyncDirection() && info.hasDataSize() && info.hasLastUpdated() &&
-            info.hasLastSynced() && info.hasSyncPending());
+    assert(info.isScopeSet() && info.isSyncDirectionSet() && info.isDataSizeSet() && info.isLastUpdatedSet() &&
+            info.isLastSyncedSet() && info.isSyncPendingSet());
     scope_ = info.scope();
     syncDir_ = info.syncDirection();
     dataSize_ = info.dataSize();
