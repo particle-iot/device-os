@@ -364,8 +364,8 @@ inline size_t RingBuffer<T>::curData() const {
 
     if (head > tail_) {
         return head - tail_;
-    } else if (head == tail_) {
-        return full_ ? head - tail_ : 0;
+    } else if (head == tail_ && !full_) {
+        return 0;
     } else {
         // NOTE: this might not work well without locking for multiple concurrent acquirable regions
         // For a single region, curSize_ cannot change if head is already behind tail.
