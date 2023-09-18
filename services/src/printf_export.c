@@ -122,7 +122,7 @@ typedef short *  short_ptr_t;
 /* ifdef _NO_LONGLONG, make QUADINT equivalent to LONGINT, so
    that %lld behaves the same as %ld, not as %d, as expected if:
    sizeof (long long) = sizeof long > sizeof int.  */
-#define QUADINT		0x200
+#define QUADINT	  0x200
 #define FPT		0x400		/* Floating point number.  */
 /* Define as 0, to make SARG and UARG occupy fewer instructions.  */
 # define CHARINT	0
@@ -326,12 +326,13 @@ int __wrap__svfprintf_r (struct _reent *data,
       flag_chars = "hlL";
       if ((cp = memchr (flag_chars, *fmt, 3)) != NULL)
 	{
-	  prt_data.flags |= (SHORTINT << (cp - flag_chars));
-	  fmt++;
+      fmt++;
       // %llu/%lld/%llx etc support
       if (*fmt == 'l' && *cp == 'l') {
         prt_data.flags |= QUADINT;
         fmt++;
+      } else {
+        prt_data.flags |= (SHORTINT << (cp - flag_chars));
       }
 	}
 
@@ -396,7 +397,7 @@ int __wrap__printf_i (struct _reent *data, struct _prt_data_t *pdata, FILE *fp,
     case 'd':
     case 'i':
       _uquad = SARG (pdata->flags);
-      if ((long) _uquad < 0)
+      if ((quad_t)_uquad < 0)
 	{
 	  _uquad = -_uquad;
 	  pdata->l_buf[0] = '-';
