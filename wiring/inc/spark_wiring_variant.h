@@ -29,6 +29,9 @@
 
 #include "debug.h"
 
+class Stream;
+class Print;
+
 namespace spark {
 
 class JSONValue;
@@ -1033,5 +1036,23 @@ template<typename T, typename std::enable_if_t<detail::IsComparableWithVariant<T
 inline bool operator!=(const T& val, const Variant& var) {
     return var != val;
 }
+
+/**
+ * Serialize a variant to CBOR.
+ *
+ * @param var Variant.
+ * @param stream Output stream.
+ * @return 0 on success, otherwise an error code defined by `Error::Type`.
+ */
+int encodeVariantToCBOR(const Variant& var, Print& stream);
+
+/**
+ * Parse a variant from CBOR.
+ *
+ * @param[out] var Variant.
+ * @param stream Input stream.
+ * @return 0 on success, otherwise an error code defined by `Error::Type`.
+ */
+int decodeVariantFromCBOR(Variant& var, Stream& stream);
 
 } // namespace particle

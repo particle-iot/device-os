@@ -15,24 +15,505 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <limits>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
+#include <cstring>
 #include <cctype>
 #include <cerrno>
 
 #include "spark_wiring_variant.h"
 
 #include "spark_wiring_json.h"
-#include "spark_wiring_print.h"
+#include "spark_wiring_stream.h"
+#include "spark_wiring_error.h"
+
+#include "endian_util.h"
+#include "check.h"
 
 namespace particle {
 
 namespace {
 
-bool variantFromJSON(const JSONValue& val, Variant& var) {
+class DecodingStream {
+public:
+    explicit DecodingStream(Stream& stream) :
+            stream_(stream) {
+    }
+
+    int readUint8(uint8_t& val) {
+        CHECK(read((char*)&val, sizeof(val)));
+        return 0;
+    }
+
+    int readUint16Be(uint16_t& val) {
+        CHECK(read((char*)&val, sizeof(val)));
+        val = bigEndianToNative(val);
+        return 0;
+    }
+
+    int readUint32Be(uint32_t& val) {
+        CHECK(read((char*)&val, sizeof(val)));
+        val = bigEndianToNative(val);
+        return 0;
+    }
+
+    int readUint64Be(uint64_t& val) {
+        CHECK(read((char*)&val, sizeof(val)));
+        val = bigEndianToNative(val);
+        return 0;
+    }
+
+    int read(char* data, size_t size) {
+        size_t n = stream_.readBytes(data, size);
+        if (n != size) {
+            return Error::IO;
+        }
+        return 0;
+    }
+
+private:
+    Stream& stream_;
+};
+
+class EncodingStream {
+public:
+    explicit EncodingStream(Print& stream) :
+            stream_(stream) {
+    }
+
+    int writeUint8(uint8_t val) {
+        CHECK(write((const char*)&val, sizeof(val)));
+        return 0;
+    }
+
+    int writeUint16Be(uint16_t val) {
+        val = nativeToBigEndian(val);
+        CHECK(write((const char*)&val, sizeof(val)));
+        return 0;
+    }
+
+    int writeUint32Be(uint32_t val) {
+        val = nativeToBigEndian(val);
+        CHECK(write((const char*)&val, sizeof(val)));
+        return 0;
+    }
+
+    int writeUint64Be(uint64_t val) {
+        val = nativeToBigEndian(val);
+        CHECK(write((const char*)&val, sizeof(val)));
+        return 0;
+    }
+
+    int writeFloatBe(float val) {
+        uint32_t v;
+        static_assert(sizeof(v) == sizeof(val));
+        std::memcpy(&v, &val, sizeof(val));
+        v = nativeToBigEndian(v);
+        CHECK(write((const char*)&v, sizeof(v)));
+        return 0;
+    }
+
+    int writeDoubleBe(double val) {
+        uint64_t v;
+        static_assert(sizeof(v) == sizeof(val));
+        std::memcpy(&v, &val, sizeof(val));
+        v = nativeToBigEndian(v);
+        CHECK(write((const char*)&v, sizeof(v)));
+        return 0;
+    }
+
+    int write(const char* data, size_t size) {
+        size_t n = stream_.write((const uint8_t*)data, size);
+        if (n != size) {
+            int err = stream_.getWriteError();
+            return (err < 0) ? err : Error::IO;
+        }
+        return 0;
+    }
+
+private:
+    Print& stream_;
+};
+
+struct CborHead {
+    uint64_t arg;
+    int type;
+    int detail;
+};
+
+int readAndAppendToString(DecodingStream& stream, size_t size, String& str) {
+    if (!str.reserve(str.length() + size)) {
+        return Error::NO_MEMORY;
+    }
+    char buf[128];
+    while (size > 0) {
+        size_t n = std::min(size, sizeof(buf));
+        CHECK(stream.read(buf, n));
+        str.concat(buf, n);
+        size -= n;
+    }
+    return 0;
+}
+
+int readCborHead(DecodingStream& stream, CborHead& head) {
+    uint8_t b;
+    CHECK(stream.readUint8(b));
+    head.type = b >> 5;
+    head.detail = b & 0x1f;
+    if (head.detail < 24) {
+        head.arg = head.detail;
+    } else {
+        switch (head.detail) {
+        case 24: { // 1-byte argument
+            uint8_t v;
+            CHECK(stream.readUint8(v));
+            head.arg = v;
+            break;
+        }
+        case 25: { // 2-byte argument
+            uint16_t v;
+            CHECK(stream.readUint16Be(v));
+            head.arg = v;
+            break;
+        }
+        case 26: { // 4-byte argument
+            uint32_t v;
+            CHECK(stream.readUint32Be(v));
+            head.arg = v;
+            break;
+        }
+        case 27: { // 8-byte argument
+            CHECK(stream.readUint64Be(head.arg));
+            break;
+        }
+        case 31: { // Indefinite length indicator or stop code
+            if (head.type == 0 /* Unsigned integer */ || head.type == 1 /* Negative integer */ || head.type == 6 /* Tagged item */) {
+                return Error::BAD_DATA;
+            }
+            head.arg = 0;
+            break;
+        }
+        default: // Reserved
+            return Error::BAD_DATA;
+        }
+    }
+    return 0;
+}
+
+int writeCborHeadWithArgument(EncodingStream& stream, int type, uint64_t arg) {
+    type <<= 5;
+    if (arg < 24) {
+        CHECK(stream.writeUint8(arg | type));
+    } else if (arg <= 0xff) {
+        CHECK(stream.writeUint8(24 /* 1-byte argument */ | type));
+        CHECK(stream.writeUint8(arg));
+    } else if (arg <= 0xffff) {
+        CHECK(stream.writeUint8(25 /* 2-byte argument */ | type));
+        CHECK(stream.writeUint16Be(arg));
+    } else if (arg <= 0xffffffffu) {
+        CHECK(stream.writeUint8(26 /* 4-byte argument */ | type));
+        CHECK(stream.writeUint32Be(arg));
+    } else {
+        CHECK(stream.writeUint8(27 /* 8-byte argument */ | type));
+        CHECK(stream.writeUint64Be(arg));
+    }
+    return 0;
+}
+
+int writeCborUnsignedInteger(EncodingStream& stream, uint64_t val) {
+    CHECK(writeCborHeadWithArgument(stream, 0 /* Unsigned integer */, val));
+    return 0;
+}
+
+int writeCborSignedInteger(EncodingStream& stream, int64_t val) {
+    if (val < 0) {
+        val = -(val + 1);
+        CHECK(writeCborHeadWithArgument(stream, 1 /* Negative integer */, val));
+    } else {
+        CHECK(writeCborHeadWithArgument(stream, 0 /* Unsigned integer */, val));
+    }
+    return 0;
+}
+
+int readCborString(DecodingStream& stream, const CborHead& head, String& str) {
+    String s;
+    if (head.detail == 31 /* Indefinite length */) {
+        for (;;) {
+            CborHead h;
+            CHECK(readCborHead(stream, h));
+            if (h.type == 7 /* Misc. items */ && h.detail == 31 /* Stop code */) {
+                break;
+            }
+            if (h.type != 3 /* Text string */ || h.detail == 31 /* Indefinite length */) { // Chunks of indefinite length are not permitted
+                return Error::BAD_DATA;
+            }
+            if (h.arg > std::numeric_limits<unsigned>::max()) {
+                return Error::BAD_DATA;
+            }
+            CHECK(readAndAppendToString(stream, h.arg, s));
+        }
+    } else {
+        if (head.arg > std::numeric_limits<unsigned>::max()) {
+            return Error::BAD_DATA;
+        }
+        CHECK(readAndAppendToString(stream, head.arg, s));
+    }
+    str = std::move(s);
+    return 0;
+}
+
+int writeCborString(EncodingStream& stream, const String& str) {
+    CHECK(writeCborHeadWithArgument(stream, 3 /* Text string */, str.length()));
+    CHECK(stream.write(str.c_str(), str.length()));
+    return 0;
+}
+
+int encodeVariantToCbor(EncodingStream& stream, const Variant& var) {
+    switch (var.type()) {
+    case Variant::NULL_: {
+        CHECK(stream.writeUint8(0xf6 /* null */)); // See RFC 8949, Appendix B
+        break;
+    }
+    case Variant::BOOL: {
+        auto v = var.value<bool>();
+        CHECK(stream.writeUint8(v ? 0xf5 /* true */ : 0xf4 /* false */));
+        break;
+    }
+    case Variant::INT: {
+        CHECK(writeCborSignedInteger(stream, var.value<int>()));
+        break;
+    }
+    case Variant::UINT: {
+        CHECK(writeCborUnsignedInteger(stream, var.value<unsigned>()));
+        break;
+    }
+    case Variant::INT64: {
+        CHECK(writeCborSignedInteger(stream, var.value<int64_t>()));
+        break;
+    }
+    case Variant::UINT64: {
+        CHECK(writeCborUnsignedInteger(stream, var.value<uint64_t>()));
+        break;
+    }
+    case Variant::DOUBLE: {
+        double d = var.value<double>();
+        float f = d;
+        if (f == d) {
+            // Encoding with a smaller precision than that of float is not supported
+            CHECK(stream.writeUint8(0xfa /* Single-precision */));
+            CHECK(stream.writeFloatBe(f));
+        } else {
+            CHECK(stream.writeUint8(0xfb /* Double-precision */));
+            CHECK(stream.writeDoubleBe(d));
+        }
+        break;
+    }
+    case Variant::STRING: {
+        CHECK(writeCborString(stream, var.value<String>()));
+        break;
+    }
+    case Variant::ARRAY: {
+        auto& arr = var.value<VariantArray>();
+        CHECK(writeCborHeadWithArgument(stream, 4 /* Array */, arr.size()));
+        for (auto& v: arr) {
+            CHECK(encodeVariantToCbor(stream, v));
+        }
+        break;
+    }
+    case Variant::MAP: {
+        auto& entries = var.value<VariantMap>().entries();
+        CHECK(writeCborHeadWithArgument(stream, 5 /* Map */, entries.size()));
+        for (auto& e: entries) {
+            CHECK(writeCborString(stream, e.first));
+            CHECK(encodeVariantToCbor(stream, e.second));
+        }
+        break;
+    }
+    default: // Unreachable
+        return Error::INTERNAL;
+    }
+    return 0;
+}
+
+// Calling code is expected to parse the head of the data item so that we don't need to peek the
+// stream which is not always possible
+int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
+    switch (head.type) {
+    case 0: { // Unsigned integer
+        if (head.arg <= std::numeric_limits<unsigned>::max()) {
+            var = (unsigned)head.arg; // 32-bit
+        } else {
+            var = head.arg; // 64-bit
+        }
+        break;
+    }
+    case 1: { // Negative integer
+        if (head.arg > (uint64_t)std::numeric_limits<int64_t>::max()) {
+            return Error::BAD_DATA;
+        }
+        int64_t v = -(int64_t)head.arg - 1;
+        if (v >= std::numeric_limits<int>::min()) {
+            var = (int)v; // 32-bit
+        } else {
+            var = v; // 64-bit
+        }
+        break;
+    }
+    case 2: { // Byte string
+        return Error::BAD_DATA; // Not supported
+    }
+    case 3: { // Text string
+        String s;
+        CHECK(readCborString(stream, head, s));
+        var = std::move(s);
+        break;
+    }
+    case 4: { // Array
+        VariantArray arr;
+        int len = -1;
+        if (head.detail != 31 /* Indefinite length */) {
+            if (head.arg > (uint64_t)std::numeric_limits<int>::max()) {
+                return Error::BAD_DATA;
+            }
+            len = head.arg;
+            if (!arr.reserve(len)) {
+                return Error::NO_MEMORY;
+            }
+        }
+        for (;;) {
+            if (len >= 0 && arr.size() == len) {
+                break;
+            }
+            CborHead h;
+            CHECK(readCborHead(stream, h));
+            if (h.type == 7 /* Misc. items */ && h.detail == 31 /* Stop code */) {
+                if (len >= 0) {
+                    return Error::BAD_DATA; // Unexpected stop code
+                }
+                break;
+            }
+            Variant v;
+            CHECK(decodeVariantFromCbor(stream, h, v));
+            if (!arr.append(std::move(v))) {
+                return Error::NO_MEMORY;
+            }
+        }
+        var = std::move(arr);
+        break;
+    }
+    case 5: { // Map
+        VariantMap map;
+        int len = -1;
+        if (head.detail != 31 /* Indefinite length */) {
+            if (head.arg > (uint64_t)std::numeric_limits<int>::max()) {
+                return Error::BAD_DATA;
+            }
+            len = head.arg;
+            if (!map.reserve(len)) {
+                return Error::NO_MEMORY;
+            }
+        }
+        for (;;) {
+            if (len >= 0 && map.size() == len) {
+                break;
+            }
+            CborHead h;
+            CHECK(readCborHead(stream, h));
+            if (h.type == 7 /* Misc. items */ && h.detail == 31 /* Stop code */) {
+                if (len >= 0) {
+                    return Error::BAD_DATA; // Unexpected stop code
+                }
+                break;
+            }
+            if (h.type != 3 /* Text string */) {
+                return Error::BAD_DATA; // Non-string keys are not supported
+            }
+            String k;
+            CHECK(readCborString(stream, h, k));
+            Variant v;
+            CHECK(readCborHead(stream, h));
+            CHECK(decodeVariantFromCbor(stream, h, v));
+            if (!map.set(std::move(k), std::move(v))) {
+                return Error::NO_MEMORY;
+            }
+        }
+        var = std::move(map);
+        break;
+    }
+    case 6: { // Tagged item
+        // Skip all tags
+        CborHead h;
+        do {
+            CHECK(readCborHead(stream, h));
+        } while (h.type == 6 /* Tagged item */);
+        CHECK(decodeVariantFromCbor(stream, h, var));
+        break;
+    }
+    case 7: { // Misc. items
+        switch (head.detail) {
+        case 20: { // false
+            var = false;
+            break;
+        }
+        case 21: { // true
+            var = true;
+            break;
+        }
+        case 22: { // null
+            var = Variant();
+            break;
+        }
+        case 25: { // Half-precision
+            // This code is taken from RFC 8949, Appendix D
+            uint16_t half = head.arg;
+            unsigned exp = (half >> 10) & 0x1f;
+            unsigned mant = half & 0x03ff;
+            double val = 0;
+            if (exp == 0) {
+                val = std::ldexp(mant, -24);
+            } else if (exp != 31) {
+                val = std::ldexp(mant + 1024, exp - 25);
+            } else {
+                val = (mant == 0) ? INFINITY : NAN;
+            }
+            if (half & 0x8000) {
+                val = -val;
+            }
+            var = val;
+            break;
+        }
+        case 26: { // Single-precision
+            uint32_t v = head.arg;
+            float val;
+            static_assert(sizeof(val) == sizeof(v));
+            std::memcpy(&val, &v, sizeof(v));
+            var = val;
+            break;
+        }
+        case 27: { // Double-precision
+            double val;
+            static_assert(sizeof(val) == sizeof(head.arg));
+            std::memcpy(&val, &head.arg, sizeof(head.arg));
+            var = val;
+            break;
+        }
+        default:
+            return Error::BAD_DATA; // undefined, reserved, unassigned, or stop code
+        }
+        break;
+    }
+    default: // Unreachable
+        return Error::INTERNAL;
+    }
+    return 0;
+}
+
+int decodeVariantFromJSON(const JSONValue& val, Variant& var) {
     switch (val.type()) {
     case JSONType::JSON_TYPE_INVALID: {
-        return false;
+        return Error::INVALID_ARGUMENT;
     }
     case JSONType::JSON_TYPE_NULL: {
         var = Variant();
@@ -66,7 +547,7 @@ bool variantFromJSON(const JSONValue& val, Variant& var) {
         JSONString jsonStr = val.toString();
         String s(jsonStr);
         if (s.length() != jsonStr.size()) {
-            return false;
+            return Error::NO_MEMORY;
         }
         var = std::move(s);
         break;
@@ -75,13 +556,11 @@ bool variantFromJSON(const JSONValue& val, Variant& var) {
         JSONArrayIterator it(val);
         auto& arr = var.asArray();
         if (!arr.reserve(it.count())) {
-            return false;
+            return Error::NO_MEMORY;
         }
         while (it.next()) {
             Variant v;
-            if (!variantFromJSON(it.value(), v)) {
-                return false;
-            }
+            CHECK(decodeVariantFromJSON(it.value(), v));
             arr.append(std::move(v));
         }
         break;
@@ -90,26 +569,24 @@ bool variantFromJSON(const JSONValue& val, Variant& var) {
         JSONObjectIterator it(val);
         auto& map = var.asMap();
         if (!map.reserve(it.count())) {
-            return false;
+            return Error::NO_MEMORY;
         }
         while (it.next()) {
             JSONString jsonKey = it.name();
             String k(jsonKey);
             if (k.length() != jsonKey.size()) {
-                return false;
+                return Error::NO_MEMORY;
             }
             Variant v;
-            if (!variantFromJSON(it.value(), v)) {
-                return false;
-            }
+            CHECK(decodeVariantFromJSON(it.value(), v));
             map.set(std::move(k), std::move(v));
         }
         break;
     }
-    default:
-        return false;
+    default: // Unreachable
+        return Error::INTERNAL;
     }
-    return true;
+    return 0;
 }
 
 } // namespace
@@ -320,10 +797,25 @@ Variant Variant::fromJSON(const char* json) {
 
 Variant Variant::fromJSON(const JSONValue& val) {
     Variant v;
-    if (!variantFromJSON(val, v)) {
+    int r = decodeVariantFromJSON(val, v);
+    if (r < 0) {
         return Variant();
     }
     return v;
+}
+
+int encodeVariantToCBOR(const Variant& var, Print& stream) {
+    EncodingStream s(stream);
+    CHECK(encodeVariantToCbor(s, var));
+    return 0;
+}
+
+int decodeVariantFromCBOR(Variant& var, Stream& stream) {
+    DecodingStream s(stream);
+    CborHead h;
+    CHECK(readCborHead(s, h));
+    CHECK(decodeVariantFromCbor(s, h, var));
+    return 0;
 }
 
 } // namespace particle
