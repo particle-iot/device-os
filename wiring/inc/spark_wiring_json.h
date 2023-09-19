@@ -56,6 +56,9 @@ public:
 
     bool toBool() const;
     int toInt() const;
+    unsigned toUInt() const;
+    long long toInt64() const;
+    unsigned long long toUInt64() const;
     double toDouble() const;
     JSONString toString() const;
 
@@ -176,7 +179,9 @@ public:
     JSONWriter& value(int val);
     JSONWriter& value(unsigned val);
     JSONWriter& value(long val);
+    JSONWriter& value(long long val);
     JSONWriter& value(unsigned long val);
+    JSONWriter& value(unsigned long long val);
     JSONWriter& value(double val, int precision);
     JSONWriter& value(double val);
     JSONWriter& value(const char *val);

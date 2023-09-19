@@ -54,6 +54,30 @@ public:
         return *this;
     }
 
+    Checker& number64(long long val) {
+        const JSONValue v = value();
+        REQUIRE(v.type() == JSON_TYPE_NUMBER);
+        CHECK(v.isNumber());
+        CHECK(v.toInt64() == val);
+        return *this;
+    }
+
+    Checker& number(unsigned val) {
+        const JSONValue v = value();
+        REQUIRE(v.type() == JSON_TYPE_NUMBER);
+        CHECK(v.isNumber());
+        CHECK(v.toUInt() == val);
+        return *this;
+    }
+
+    Checker& number64(unsigned long long val) {
+        const JSONValue v = value();
+        REQUIRE(v.type() == JSON_TYPE_NUMBER);
+        CHECK(v.isNumber());
+        CHECK(v.toUInt64() == val);
+        return *this;
+    }
+
     Checker& number(double val) {
         const JSONValue v = value();
         REQUIRE(v.type() == JSON_TYPE_NUMBER);
@@ -207,6 +231,29 @@ TEST_CASE("Parsing JSON") {
             check("-12345").number(-12345);
             check("-2147483648").number((int)-2147483648); // INT_MIN
             check("2147483647").number((int)2147483647); // INT_MAX
+        }
+        SECTION("int64") {
+            check("0").number64((long long)0);
+            check("1").number64((long long)1);
+            check("-1").number64((long long)-1);
+            check("12345").number64((long long)12345);
+            check("-12345").number64((long long)-12345);
+            check("4294967295").number64((long long)UINT32_MAX); // UINT32_MAX
+            check("-9223372036854775808").number64((long long)INT64_MIN); // INT64_MIN
+            check("9223372036854775807").number64((long long)INT64_MAX); // INT64_MAX
+        }
+        SECTION("uint") {
+            check("0").number((unsigned)0);
+            check("1").number((unsigned)1);
+            check("12345").number((unsigned)12345);
+            check("4294967295").number((unsigned)UINT32_MAX); // UINT32_MAX
+        }
+        SECTION("uint64") {
+            check("0").number64((unsigned long long)0);
+            check("1").number64((unsigned long long)1);
+            check("12345").number64((unsigned long long)12345);
+            check("4294967295").number64((unsigned long long)UINT32_MAX); // UINT32_MAX
+            check("18446744073709551615").number64((unsigned long long)UINT64_MAX); // UINT64_MAX
         }
         SECTION("float") {
             check("0.0").number(0.0);
@@ -411,6 +458,96 @@ TEST_CASE("Writing JSON") {
             SECTION("2147483647") {
                 json.value((int)2147483647); // INT_MAX
                 check(data).equals("2147483647");
+            }
+        }
+        SECTION("int64") {
+            SECTION("0") {
+                json.value((long long)0);
+                check(data).equals("0");
+            }
+            SECTION("1") {
+                json.value((long long)1);
+                check(data).equals("1");
+            }
+            SECTION("-1") {
+                json.value((long long)-1);
+                check(data).equals("-1");
+            }
+            SECTION("12345") {
+                json.value((long long)12345);
+                check(data).equals("12345");
+            }
+            SECTION("-12345") {
+                json.value((long long)-12345);
+                check(data).equals("-12345");
+            }
+            SECTION("-2147483648") {
+                json.value((long long)-2147483648); // INT_MIN
+                check(data).equals("-2147483648");
+            }
+            SECTION("2147483647") {
+                json.value((long long)2147483647); // INT_MAX
+                check(data).equals("2147483647");
+            }
+            SECTION("-9223372036854775808") {
+                json.value((long long)INT64_MIN); // INT64_MIN
+                check(data).equals("-9223372036854775808");
+            }
+            SECTION("9223372036854775807") {
+                json.value((long long)INT64_MAX); // INT64_MAX
+                check(data).equals("9223372036854775807");
+            }
+        }
+        SECTION("uint") {
+            SECTION("0") {
+                json.value((unsigned)0);
+                check(data).equals("0");
+            }
+            SECTION("1") {
+                json.value((unsigned)1);
+                check(data).equals("1");
+            }
+            SECTION("12345") {
+                json.value((unsigned)12345);
+                check(data).equals("12345");
+            }
+            SECTION("2147483647") {
+                json.value((unsigned)2147483647); // INT_MAX
+                check(data).equals("2147483647");
+            }
+            SECTION("4294967295") {
+                json.value((unsigned)UINT32_MAX); // UINT32_MAX
+                check(data).equals("4294967295");
+            }
+        }
+        SECTION("uint64") {
+            SECTION("0") {
+                json.value((unsigned long long)0);
+                check(data).equals("0");
+            }
+            SECTION("1") {
+                json.value((unsigned long long)1);
+                check(data).equals("1");
+            }
+            SECTION("12345") {
+                json.value((unsigned long long)12345);
+                check(data).equals("12345");
+            }
+            SECTION("2147483647") {
+                json.value((unsigned long long)2147483647); // INT_MAX
+                check(data).equals("2147483647");
+            }
+            SECTION("4294967295") {
+                json.value((unsigned long long)UINT32_MAX); // UINT32_MAX
+                check(data).equals("4294967295");
+            }
+            SECTION("9223372036854775807") {
+                json.value((unsigned long long)INT64_MAX); // INT64_MAX
+                check(data).equals("9223372036854775807");
+            }
+            SECTION("18446744073709551615") {
+                json.value((unsigned long long)UINT64_MAX); // UINT64_MAX
+                check(data).equals("18446744073709551615");
             }
         }
         SECTION("float") {
@@ -864,6 +1001,9 @@ TEST_CASE("JSONValue") {
             check(v).invalid();
             CHECK(v.toBool() == false);
             CHECK(v.toInt() == 0);
+            CHECK(v.toInt64() == 0);
+            CHECK(v.toUInt() == 0);
+            CHECK(v.toUInt64() == 0);
             CHECK(v.toDouble() == 0.0);
             CHECK(v.toString() == "");
         }
@@ -872,6 +1012,9 @@ TEST_CASE("JSONValue") {
             check(v).null();
             CHECK(v.toBool() == false);
             CHECK(v.toInt() == 0);
+            CHECK(v.toInt64() == 0);
+            CHECK(v.toUInt() == 0);
+            CHECK(v.toUInt64() == 0);
             CHECK(v.toDouble() == 0.0);
             CHECK(v.toString() == "");
         }
@@ -880,6 +1023,9 @@ TEST_CASE("JSONValue") {
                 const JSONValue v = parse("true");
                 check(v).boolean(true);
                 CHECK(v.toInt() == 1);
+                CHECK(v.toInt64() == 1);
+                CHECK(v.toUInt() == 1);
+                CHECK(v.toUInt64() == 1);
                 CHECK(v.toDouble() == 1.0);
                 CHECK(v.toString() == "true");
             }
@@ -887,6 +1033,9 @@ TEST_CASE("JSONValue") {
                 const JSONValue v = parse("false");
                 check(v).boolean(false);
                 CHECK(v.toInt() == 0);
+                CHECK(v.toInt64() == 0);
+                CHECK(v.toUInt() == 0);
+                CHECK(v.toUInt64() == 0);
                 CHECK(v.toDouble() == 0.0);
                 CHECK(v.toString() == "false");
             }
@@ -895,14 +1044,20 @@ TEST_CASE("JSONValue") {
             SECTION("int") {
                 SECTION("0") {
                     const JSONValue v = parse("0");
-                    check(v).number(0);
+                    check(v).number((int)0);
+                    check(v).number64((long long)0);
+                    check(v).number((unsigned)0);
+                    check(v).number64((unsigned long long)0);
                     CHECK(v.toBool() == false);
                     CHECK(v.toDouble() == 0.0);
                     CHECK(v.toString() == "0");
                 }
                 SECTION("12345") {
                     const JSONValue v = parse("12345");
-                    check(v).number(12345);
+                    check(v).number((int)12345);
+                    check(v).number64((long long)12345);
+                    check(v).number((unsigned)12345);
+                    check(v).number64((unsigned long long)12345);
                     CHECK(v.toBool() == true);
                     CHECK(v.toDouble() == 12345.0);
                     CHECK(v.toString() == "12345");
