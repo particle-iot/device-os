@@ -30,6 +30,19 @@ TEST_CASE("Can print UINT_MAX in decimal") {
     REQUIRE(String(UINT_MAX, DEC)=="4294967295");
 }
 
+TEST_CASE("Can print INT64_MAX/MIN value in decimal") {
+    // Must make an explicit `long long` cast for x86_64 architectures that
+    // use `long` for 64-bit numbers.
+    REQUIRE(String((long long)INT64_MAX, DEC)=="9223372036854775807");
+    REQUIRE(String((long long)INT64_MIN, DEC)=="-9223372036854775808");
+}
+
+TEST_CASE("Can print UINT64_MAX in decimal") {
+    // Must make an explicit `unsigned long long` cast for x86_64 architectures that
+    // use `unsigned long` for 64-bit numbers.
+    REQUIRE(String((unsigned long long)UINT64_MAX, DEC)=="18446744073709551615");
+}
+
 TEST_CASE("Can print INT_MAX value in binary") {
     REQUIRE(String(INT_MAX, BIN)=="1111111111111111111111111111111");
 }
@@ -40,6 +53,19 @@ TEST_CASE("Can print INT_MIN value in binary") {
 
 TEST_CASE("Can print UINT_MAX in binary") {
     REQUIRE(String(UINT_MAX, BIN)=="11111111111111111111111111111111");
+}
+
+TEST_CASE("Can print INT64_MAX/MIN value in binary") {
+    // Must make an explicit `long long` cast for x86_64 architectures that
+    // use `long` for 64-bit numbers.
+    REQUIRE(String((long long)INT64_MAX, BIN)=="111111111111111111111111111111111111111111111111111111111111111");
+    REQUIRE(String((long long)INT64_MIN, BIN)=="-1000000000000000000000000000000000000000000000000000000000000000");
+}
+
+TEST_CASE("Can print UINT64_MAX in binary") {
+    // Must make an explicit `unsigned long long` cast for x86_64 architectures that
+    // use `unsigned long` for 64-bit numbers.
+    REQUIRE(String((unsigned long long)UINT64_MAX, BIN)=="1111111111111111111111111111111111111111111111111111111111111111");
 }
 
 TEST_CASE("Can convert float to string with default precision of 6") {
@@ -100,4 +126,86 @@ TEST_CASE("Substring with left and right after the end returns until the end of 
 
 TEST_CASE("Substring with flipped left and right returns the correct substring") {
     REQUIRE(String("test123").substring(5, 3)==String("t1"));
+}
+
+TEST_CASE("String operator +=", "[Particle::String]") {
+
+    SECTION("Appending char array") {
+        String str1;
+        str1 += "World!";
+        REQUIRE(str1 == "World!");
+    }
+
+    SECTION("Appending another String object") {
+        String str1("Hello");
+        String str2(", World!");
+        str1 += str2;
+        REQUIRE(str1 == "Hello, World!");
+    }
+
+    SECTION("Appending long long") {
+        String str1("n=");
+        str1 += (long long)9223372036854775807;
+        REQUIRE(str1 == "n=9223372036854775807");
+    }
+
+    SECTION("Appending unsigned long long") {
+        String str1("n=");
+        str1 += (unsigned long long)18446744073709551615ULL;
+        REQUIRE(str1 == "n=18446744073709551615");
+    }
+}
+
+TEST_CASE("String concat", "[ParticleString]") {
+
+    SECTION("Concatenating char array") {
+        String str1("Hello");
+        str1.concat(", World!");
+        REQUIRE(str1 == "Hello, World!");
+    }
+
+    SECTION("Concatenating another String object") {
+        String str1("Hello");
+        String str2(", World!");
+        str1.concat(str2);
+        REQUIRE(str1 == "Hello, World!");
+    }
+
+    // TODO: Use of int type causes problems on x86_64, fine on ARM
+    // SECTION("Concatenating int") {
+    //     String str1("Hello ");
+    //     str1.concat((int)-2147483647);
+    //     REQUIRE(str1 == "Hello -2147483647");
+    // }
+
+    // TODO: Use of unsigned int type causes problems on x86_64, fine on ARM
+    // SECTION("Concatenating unsigned int") {
+    //     String str1("Hello ");
+    //     str1.concat((unsigned int)4294967295);
+    //     REQUIRE(str1 == "Hello 4294967295");
+    // }
+
+    SECTION("Concatenating long") {
+        String str1("Hello ");
+        str1.concat((long)-2147483647L);
+        REQUIRE(str1 == "Hello -2147483647");
+    }
+
+    SECTION("Concatenating unsigned long") {
+        String str1("Hello ");
+        str1.concat((unsigned long)4294967295UL);
+        REQUIRE(str1 == "Hello 4294967295");
+    }
+
+    SECTION("Concatenating long long") {
+        String str1("Hello ");
+        str1.concat((long long)-9223372036854775807);
+        REQUIRE(str1 == "Hello -9223372036854775807");
+    }
+
+    SECTION("Concatenating unsigned long long") {
+        String str1("Hello ");
+        str1.concat((unsigned long long)18446744073709551615ULL);
+        REQUIRE(str1 == "Hello 18446744073709551615");
+    }
 }
