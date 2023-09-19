@@ -189,7 +189,7 @@ int __wrap__svfprintf_r (struct _reent *data,
        va_list ap)
 {
   register char *fmt;	/* Format string.  */
-  register int n, m;	/* Handy integers (short term usage).  */
+  register int n = 0, m;	/* Handy integers (short term usage).  */
   register char *cp;	/* Handy char pointer (short term usage).  */
   const char *flag_chars;
   struct _prt_data_t prt_data;	/* All data for decoding format string.  */

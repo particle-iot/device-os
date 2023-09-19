@@ -5,6 +5,18 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#ifndef FLOATING_POINT
+#define FLOATING_POINT (1)
+#endif // FLOATING_POINT
+
+#ifndef _PRINTF_FLOAT_TYPE
+#define _PRINTF_FLOAT_TYPE double
+#endif // _PRINTF_FLOAT_TYPE
+
+#ifndef MAXEXPLEN
+#define MAXEXPLEN (7)
+#endif // MAXEXPLEN
+
 // Taken from nano-vfprintf_local.h
 
 /* BUF must be big enough for the maximum %#llo (assuming long long is
@@ -52,7 +64,7 @@ _printf_float (struct _reent *data,
            FILE *fp,
            int (*pfunc)(struct _reent *, FILE *,
                 const char *, size_t len),
-           va_list *ap);
+           va_list *ap) __attribute__((weak));
 
 int
 _printf_i (struct _reent *data, struct _prt_data_t *pdata, FILE *fp,

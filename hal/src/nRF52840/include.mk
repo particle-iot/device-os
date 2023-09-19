@@ -61,7 +61,7 @@ LDFLAGS += -Wl,--defsym,__STACK_SIZE=$(MAIN_STACK_SIZE)
 LDFLAGS += -L$(HAL_SRC_INCL_PATH)
 USE_PRINTF_FLOAT ?= n
 ifeq ("$(USE_PRINTF_FLOAT)","y")
-LDFLAGS += -u _printf_float
+LDFLAGS += -u _printf_float -u _scanf_float
 endif
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 LDFLAGS += -u uxTopUsedPriority
