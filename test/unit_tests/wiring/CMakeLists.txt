@@ -9,6 +9,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_async.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_print.cpp
+  ${DEVICE_OS_DIR}/wiring/src/spark_wiring_stream.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_random.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_string.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_wifi.cpp
@@ -23,6 +24,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/string_convert.cpp
   ${TEST_DIR}/util/alloc.cpp
   ${TEST_DIR}/util/buffer.cpp
+  ${TEST_DIR}/util/string.cpp
   ${TEST_DIR}/util/random_old.cpp
   ${TEST_DIR}/stub/system_network.cpp
   ${TEST_DIR}/stub/inet_hal_compat.cpp

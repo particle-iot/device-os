@@ -213,7 +213,7 @@ int getLedgerInfo(ledger_instance* ledger, ledger_info& info) {
 int setLedgerData(ledger_instance* ledger, const LedgerData& data) {
     LedgerStream stream(ledger);
     CHECK(stream.open(LEDGER_STREAM_MODE_WRITE));
-    int r = encodeVariantToCBOR(data.variant(), stream);
+    int r = encodeToCBOR(data.variant(), stream);
     if (r < 0) {
         if (stream.error() < 0) {
             r = stream.error();
@@ -229,7 +229,7 @@ int getLedgerData(ledger_instance* ledger, LedgerData& data) {
     LedgerStream stream(ledger);
     CHECK(stream.open(LEDGER_STREAM_MODE_READ));
     Variant v;
-    int r = decodeVariantFromCBOR(v, stream);
+    int r = decodeFromCBOR(v, stream);
     if (r < 0) {
         if (stream.error() < 0) {
             r = stream.error();

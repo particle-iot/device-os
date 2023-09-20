@@ -1038,21 +1038,21 @@ inline bool operator!=(const T& val, const Variant& var) {
 }
 
 /**
- * Serialize a variant to CBOR.
+ * Encode a variant to CBOR.
  *
  * @param var Variant.
  * @param stream Output stream.
  * @return 0 on success, otherwise an error code defined by `Error::Type`.
  */
-int encodeVariantToCBOR(const Variant& var, Print& stream);
+int encodeToCBOR(const Variant& var, Print& stream);
 
 /**
- * Parse a variant from CBOR.
+ * Decode a variant from CBOR.
  *
  * @param[out] var Variant.
  * @param stream Input stream.
  * @return 0 on success, otherwise an error code defined by `Error::Type`.
  */
-int decodeVariantFromCBOR(Variant& var, Stream& stream);
+int decodeFromCBOR(Variant& var, Stream& stream);
 
 } // namespace particle

@@ -17,6 +17,8 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/firmware_update.cpp
   ${DEVICE_OS_DIR}/communication/src/description.cpp
   ${DEVICE_OS_DIR}/communication/src/protocol_util.cpp
+  ${DEVICE_OS_DIR}/communication/src/protocol_defs.cpp
+  ${DEVICE_OS_DIR}/communication/src/coap_channel_new.cpp
   ${DEVICE_OS_DIR}/services/src/system_error.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_json.cpp

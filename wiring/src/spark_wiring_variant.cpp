@@ -195,7 +195,7 @@ int readCborHead(DecodingStream& stream, CborHead& head) {
             head.arg = 0;
             break;
         }
-        default: // Reserved
+        default: // Reserved (28-30)
             return Error::BAD_DATA;
         }
     }
@@ -250,13 +250,13 @@ int readCborString(DecodingStream& stream, const CborHead& head, String& str) {
                 return Error::BAD_DATA;
             }
             if (h.arg > std::numeric_limits<unsigned>::max()) {
-                return Error::BAD_DATA;
+                return Error::OUT_OF_RANGE;
             }
             CHECK(readAndAppendToString(stream, h.arg, s));
         }
     } else {
         if (head.arg > std::numeric_limits<unsigned>::max()) {
-            return Error::BAD_DATA;
+            return Error::OUT_OF_RANGE;
         }
         CHECK(readAndAppendToString(stream, head.arg, s));
     }
@@ -270,7 +270,7 @@ int writeCborString(EncodingStream& stream, const String& str) {
     return 0;
 }
 
-int encodeVariantToCbor(EncodingStream& stream, const Variant& var) {
+int encodeToCbor(EncodingStream& stream, const Variant& var) {
     switch (var.type()) {
     case Variant::NULL_: {
         CHECK(stream.writeUint8(0xf6 /* null */)); // See RFC 8949, Appendix B
@@ -318,7 +318,7 @@ int encodeVariantToCbor(EncodingStream& stream, const Variant& var) {
         auto& arr = var.value<VariantArray>();
         CHECK(writeCborHeadWithArgument(stream, 4 /* Array */, arr.size()));
         for (auto& v: arr) {
-            CHECK(encodeVariantToCbor(stream, v));
+            CHECK(encodeToCbor(stream, v));
         }
         break;
     }
@@ -327,7 +327,7 @@ int encodeVariantToCbor(EncodingStream& stream, const Variant& var) {
         CHECK(writeCborHeadWithArgument(stream, 5 /* Map */, entries.size()));
         for (auto& e: entries) {
             CHECK(writeCborString(stream, e.first));
-            CHECK(encodeVariantToCbor(stream, e.second));
+            CHECK(encodeToCbor(stream, e.second));
         }
         break;
     }
@@ -337,9 +337,7 @@ int encodeVariantToCbor(EncodingStream& stream, const Variant& var) {
     return 0;
 }
 
-// Calling code is expected to parse the head of the data item so that we don't need to peek the
-// stream which is not always possible
-int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
+int decodeFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
     switch (head.type) {
     case 0: { // Unsigned integer
         if (head.arg <= std::numeric_limits<unsigned>::max()) {
@@ -351,7 +349,7 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
     }
     case 1: { // Negative integer
         if (head.arg > (uint64_t)std::numeric_limits<int64_t>::max()) {
-            return Error::BAD_DATA;
+            return Error::OUT_OF_RANGE;
         }
         int64_t v = -(int64_t)head.arg - 1;
         if (v >= std::numeric_limits<int>::min()) {
@@ -362,7 +360,7 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
         break;
     }
     case 2: { // Byte string
-        return Error::BAD_DATA; // Not supported
+        return Error::NOT_SUPPORTED; // Not supported
     }
     case 3: { // Text string
         String s;
@@ -375,7 +373,7 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
         int len = -1;
         if (head.detail != 31 /* Indefinite length */) {
             if (head.arg > (uint64_t)std::numeric_limits<int>::max()) {
-                return Error::BAD_DATA;
+                return Error::OUT_OF_RANGE;
             }
             len = head.arg;
             if (!arr.reserve(len)) {
@@ -395,7 +393,7 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
                 break;
             }
             Variant v;
-            CHECK(decodeVariantFromCbor(stream, h, v));
+            CHECK(decodeFromCbor(stream, h, v));
             if (!arr.append(std::move(v))) {
                 return Error::NO_MEMORY;
             }
@@ -408,7 +406,7 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
         int len = -1;
         if (head.detail != 31 /* Indefinite length */) {
             if (head.arg > (uint64_t)std::numeric_limits<int>::max()) {
-                return Error::BAD_DATA;
+                return Error::OUT_OF_RANGE;
             }
             len = head.arg;
             if (!map.reserve(len)) {
@@ -428,13 +426,13 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
                 break;
             }
             if (h.type != 3 /* Text string */) {
-                return Error::BAD_DATA; // Non-string keys are not supported
+                return Error::NOT_SUPPORTED; // Non-string keys are not supported
             }
             String k;
             CHECK(readCborString(stream, h, k));
             Variant v;
             CHECK(readCborHead(stream, h));
-            CHECK(decodeVariantFromCbor(stream, h, v));
+            CHECK(decodeFromCbor(stream, h, v));
             if (!map.set(std::move(k), std::move(v))) {
                 return Error::NO_MEMORY;
             }
@@ -448,7 +446,7 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
         do {
             CHECK(readCborHead(stream, h));
         } while (h.type == 6 /* Tagged item */);
-        CHECK(decodeVariantFromCbor(stream, h, var));
+        CHECK(decodeFromCbor(stream, h, var));
         break;
     }
     case 7: { // Misc. items
@@ -466,7 +464,7 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
             break;
         }
         case 25: { // Half-precision
-            // This code is taken from RFC 8949, Appendix D
+            // This code was taken from RFC 8949, Appendix D
             uint16_t half = head.arg;
             unsigned exp = (half >> 10) & 0x1f;
             unsigned mant = half & 0x03ff;
@@ -500,7 +498,11 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
             break;
         }
         default:
-            return Error::BAD_DATA; // undefined, reserved, unassigned, or stop code
+            if ((head.detail >= 28 && head.detail <= 31) || // Reserved (28-30) or unexpected stop code (31)
+                    (head.detail == 24 && head.arg < 32)) { // Invalid simple value
+                return Error::BAD_DATA;
+            }
+            return Error::NOT_SUPPORTED; // Unassigned simple value (0-19, 32-255) or undefined (23)
         }
         break;
     }
@@ -510,7 +512,7 @@ int decodeVariantFromCbor(DecodingStream& stream, const CborHead& head, Variant&
     return 0;
 }
 
-int decodeVariantFromJSON(const JSONValue& val, Variant& var) {
+int decodeFromJson(const JSONValue& val, Variant& var) {
     switch (val.type()) {
     case JSONType::JSON_TYPE_INVALID: {
         return Error::INVALID_ARGUMENT;
@@ -560,7 +562,7 @@ int decodeVariantFromJSON(const JSONValue& val, Variant& var) {
         }
         while (it.next()) {
             Variant v;
-            CHECK(decodeVariantFromJSON(it.value(), v));
+            CHECK(decodeFromJson(it.value(), v));
             arr.append(std::move(v));
         }
         break;
@@ -578,7 +580,7 @@ int decodeVariantFromJSON(const JSONValue& val, Variant& var) {
                 return Error::NO_MEMORY;
             }
             Variant v;
-            CHECK(decodeVariantFromJSON(it.value(), v));
+            CHECK(decodeFromJson(it.value(), v));
             map.set(std::move(k), std::move(v));
         }
         break;
@@ -797,24 +799,24 @@ Variant Variant::fromJSON(const char* json) {
 
 Variant Variant::fromJSON(const JSONValue& val) {
     Variant v;
-    int r = decodeVariantFromJSON(val, v);
+    int r = decodeFromJson(val, v);
     if (r < 0) {
         return Variant();
     }
     return v;
 }
 
-int encodeVariantToCBOR(const Variant& var, Print& stream) {
+int encodeToCBOR(const Variant& var, Print& stream) {
     EncodingStream s(stream);
-    CHECK(encodeVariantToCbor(s, var));
+    CHECK(encodeToCbor(s, var));
     return 0;
 }
 
-int decodeVariantFromCBOR(Variant& var, Stream& stream) {
+int decodeFromCBOR(Variant& var, Stream& stream) {
     DecodingStream s(stream);
     CborHead h;
     CHECK(readCborHead(s, h));
-    CHECK(decodeVariantFromCbor(s, h, var));
+    CHECK(decodeFromCbor(s, h, var));
     return 0;
 }
 

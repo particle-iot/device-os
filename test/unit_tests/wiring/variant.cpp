@@ -1,8 +1,10 @@
 #include <type_traits>
-#include <limits>
+#include <cmath>
 
 #include "spark_wiring_variant.h"
 
+#include "util/stream.h"
+#include "util/string.h"
 #include "util/catch.h"
 
 using namespace particle;
@@ -119,6 +121,19 @@ void checkVariant(Variant& v, const T& expectedValue = T()) {
     } else if constexpr (!std::is_same_v<T, std::monostate>) {
         FAIL("Unexpected type");
     }
+}
+
+std::string toCbor(const Variant& v) {
+    test::Stream s;
+    REQUIRE(encodeToCBOR(v, s) == 0);
+    return s.data();
+}
+
+Variant fromCbor(const std::string& data) {
+    test::Stream s(data);
+    Variant v;
+    REQUIRE(decodeFromCBOR(v, s) == 0);
+    return v;
 }
 
 } // namespace
@@ -329,5 +344,131 @@ TEST_CASE("Variant") {
 
         v = Variant::fromJSON("{\"a\":1,\"b\":2,\"c\":3}");
         checkVariant(v, VariantMap{ { "a", 1 }, { "b", 2 }, { "c", 3 } });
+    }
+
+    SECTION("encodeVariantToCBOR()") {
+        using test::toHex;
+        CHECK(toHex(toCbor(0)) == "00");
+        CHECK(toHex(toCbor(1)) == "01");
+        CHECK(toHex(toCbor(10)) == "0a");
+        CHECK(toHex(toCbor(23)) == "17");
+        CHECK(toHex(toCbor(24)) == "1818");
+        CHECK(toHex(toCbor(25)) == "1819");
+        CHECK(toHex(toCbor(100)) == "1864");
+        CHECK(toHex(toCbor(1000)) == "1903e8");
+        CHECK(toHex(toCbor(1000000)) == "1a000f4240");
+        CHECK(toHex(toCbor(1000000000000ull)) == "1b000000e8d4a51000");
+        CHECK(toHex(toCbor(18446744073709551615ull)) == "1bffffffffffffffff");
+        CHECK(toHex(toCbor(-9223372036854775807ll - 1)) == "3b7fffffffffffffff");
+        CHECK(toHex(toCbor(-1)) == "20");
+        CHECK(toHex(toCbor(-10)) == "29");
+        CHECK(toHex(toCbor(-100)) == "3863");
+        CHECK(toHex(toCbor(-1000)) == "3903e7");
+        CHECK(toHex(toCbor(0.0)) == "fa00000000"); // Encoding half-precision floats is not supported
+        CHECK(toHex(toCbor(-0.0)) == "fa80000000"); // ditto
+        CHECK(toHex(toCbor(1.0)) == "fa3f800000"); // ditto
+        CHECK(toHex(toCbor(1.1)) == "fb3ff199999999999a");
+        CHECK(toHex(toCbor(1.5)) == "fa3fc00000"); // ditto
+        CHECK(toHex(toCbor(100000.0)) == "fa47c35000");
+        CHECK(toHex(toCbor(16777216.0)) == "fa4b800000");
+        CHECK(toHex(toCbor(3.4028234663852886e+38)) == "fa7f7fffff");
+        CHECK(toHex(toCbor(1.0e+300)) == "fb7e37e43c8800759c");
+        CHECK(toHex(toCbor(1.401298464324817e-45)) == "fa00000001");
+        CHECK(toHex(toCbor(1.1754943508222875e-38)) == "fa00800000");
+        CHECK(toHex(toCbor(-4.0)) == "fac0800000"); // ditto
+        CHECK(toHex(toCbor(-4.1)) == "fbc010666666666666");
+        CHECK(toHex(toCbor(INFINITY)) == "fa7f800000"); // ditto
+        CHECK(toHex(toCbor(-INFINITY)) == "faff800000"); // ditto
+        CHECK(toHex(toCbor(NAN)) == "fb7ff8000000000000"); // For simplicity, NaN is encoded as a double
+        CHECK(toHex(toCbor(false)) == "f4");
+        CHECK(toHex(toCbor(true)) == "f5");
+        CHECK(toHex(toCbor(Variant())) == "f6");
+        CHECK(toHex(toCbor("")) == "60");
+        CHECK(toHex(toCbor("a")) == "6161");
+        CHECK(toHex(toCbor("IETF")) == "6449455446");
+        CHECK(toHex(toCbor("\"\\")) == "62225c");
+        CHECK(toHex(toCbor("\u00fc")) == "62c3bc");
+        CHECK(toHex(toCbor("\u6c34")) == "63e6b0b4");
+        CHECK(toHex(toCbor(VariantArray{})) == "80");
+        CHECK(toHex(toCbor(VariantArray{1, 2, 3})) == "83010203");
+        CHECK(toHex(toCbor(VariantArray{1, VariantArray{2, 3}, VariantArray{4, 5}})) == "8301820203820405");
+        CHECK(toHex(toCbor(VariantArray{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25})) == "98190102030405060708090a0b0c0d0e0f101112131415161718181819");
+        CHECK(toHex(toCbor(VariantMap{})) == "a0");
+        CHECK(toHex(toCbor(VariantMap{{"a", 1}, {"b", VariantArray{2, 3}}})) == "a26161016162820203");
+        CHECK(toHex(toCbor(VariantArray{"a", VariantMap{{"b", "c"}}})) == "826161a161626163");
+        CHECK(toHex(toCbor(VariantMap{{"a", "A"}, {"b", "B"}, {"c", "C"}, {"d", "D"}, {"e", "E"}})) == "a56161614161626142616361436164614461656145");
+    }
+
+    SECTION("decodeVariantFromCBOR") {
+        using test::fromHex;
+        CHECK(fromCbor(fromHex("00")) == Variant(0));
+        CHECK(fromCbor(fromHex("01")) == Variant(1));
+        CHECK(fromCbor(fromHex("0a")) == Variant(10));
+        CHECK(fromCbor(fromHex("17")) == Variant(23));
+        CHECK(fromCbor(fromHex("1818")) == Variant(24));
+        CHECK(fromCbor(fromHex("1819")) == Variant(25));
+        CHECK(fromCbor(fromHex("1864")) == Variant(100));
+        CHECK(fromCbor(fromHex("1903e8")) == Variant(1000));
+        CHECK(fromCbor(fromHex("1a000f4240")) == Variant(1000000));
+        CHECK(fromCbor(fromHex("1b000000e8d4a51000")) == Variant(1000000000000ull));
+        CHECK(fromCbor(fromHex("1bffffffffffffffff")) == Variant(18446744073709551615ull));
+        CHECK(fromCbor(fromHex("3b7fffffffffffffff")) == Variant(-9223372036854775807ll - 1));
+        CHECK(fromCbor(fromHex("20")) == Variant(-1));
+        CHECK(fromCbor(fromHex("29")) == Variant(-10));
+        CHECK(fromCbor(fromHex("3863")) == Variant(-100));
+        CHECK(fromCbor(fromHex("3903e7")) == Variant(-1000));
+        CHECK(fromCbor(fromHex("f90000")) == Variant(0.0));
+        CHECK(fromCbor(fromHex("f98000")) == Variant(-0.0));
+        CHECK(fromCbor(fromHex("f93c00")) == Variant(1.0));
+        CHECK(fromCbor(fromHex("fb3ff199999999999a")) == Variant(1.1));
+        CHECK(fromCbor(fromHex("f93e00")) == Variant(1.5));
+        CHECK(fromCbor(fromHex("f97bff")) == Variant(65504.0));
+        CHECK(fromCbor(fromHex("fa47c35000")) == Variant(100000.0));
+        CHECK(fromCbor(fromHex("fa7f7fffff")) == Variant(3.4028234663852886e+38));
+        CHECK(fromCbor(fromHex("fb7e37e43c8800759c")) == Variant(1.0e+300));
+        CHECK(fromCbor(fromHex("f90001")) == Variant(5.960464477539063e-8));
+        CHECK(fromCbor(fromHex("f90400")) == Variant(0.00006103515625));
+        CHECK(fromCbor(fromHex("f9c400")) == Variant(-4.0));
+        CHECK(fromCbor(fromHex("fbc010666666666666")) == Variant(-4.1));
+        CHECK(fromCbor(fromHex("f97c00")) == Variant(INFINITY));
+        CHECK(std::isnan(fromCbor(fromHex("f97e00")).asDouble()));
+        CHECK(fromCbor(fromHex("f9fc00")) == Variant(-INFINITY));
+        CHECK(fromCbor(fromHex("fa7f800000")) == Variant(INFINITY));
+        CHECK(std::isnan(fromCbor(fromHex("fa7fc00000")).asDouble()));
+        CHECK(fromCbor(fromHex("faff800000")) == Variant(-INFINITY));
+        CHECK(fromCbor(fromHex("fb7ff0000000000000")) == Variant(INFINITY));
+        CHECK(std::isnan(fromCbor(fromHex("fb7ff8000000000000")).asDouble()));
+        CHECK(fromCbor(fromHex("fbfff0000000000000")) == Variant(-INFINITY));
+        CHECK(fromCbor(fromHex("f4")) == Variant(false));
+        CHECK(fromCbor(fromHex("f5")) == Variant(true));
+        CHECK(fromCbor(fromHex("f6")) == Variant());
+        CHECK(fromCbor(fromHex("c074323031332d30332d32315432303a30343a30305a")) == Variant("2013-03-21T20:04:00Z"));
+        CHECK(fromCbor(fromHex("c11a514b67b0")) == Variant(1363896240));
+        CHECK(fromCbor(fromHex("c1fb41d452d9ec200000")) == Variant(1363896240.5));
+        CHECK(fromCbor(fromHex("d82076687474703a2f2f7777772e6578616d706c652e636f6d")) == Variant("http://www.example.com"));
+        CHECK(fromCbor(fromHex("60")) == Variant(""));
+        CHECK(fromCbor(fromHex("6161")) == Variant("a"));
+        CHECK(fromCbor(fromHex("6449455446")) == Variant("IETF"));
+        CHECK(fromCbor(fromHex("62225c")) == Variant("\"\\"));
+        CHECK(fromCbor(fromHex("62c3bc")) == Variant("\u00fc"));
+        CHECK(fromCbor(fromHex("63e6b0b4")) == Variant("\u6c34"));
+        CHECK(fromCbor(fromHex("80")) == VariantArray{});
+        CHECK(fromCbor(fromHex("83010203")) == VariantArray{1, 2, 3});
+        CHECK(fromCbor(fromHex("8301820203820405")) == VariantArray{1, VariantArray{2, 3}, VariantArray{4, 5}});
+        CHECK(fromCbor(fromHex("98190102030405060708090a0b0c0d0e0f101112131415161718181819")) == VariantArray{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25});
+        CHECK(fromCbor(fromHex("a0")) == VariantMap{});
+        CHECK(fromCbor(fromHex("a26161016162820203")) == VariantMap{{"a", 1}, {"b", VariantArray{2, 3}}});
+        CHECK(fromCbor(fromHex("826161a161626163")) == VariantArray{"a", VariantMap{{"b", "c"}}});
+        CHECK(fromCbor(fromHex("a56161614161626142616361436164614461656145")) == VariantMap{{"a", "A"}, {"b", "B"}, {"c", "C"}, {"d", "D"}, {"e", "E"}});
+        CHECK(fromCbor(fromHex("7f657374726561646d696e67ff")) == Variant("streaming"));
+        CHECK(fromCbor(fromHex("9fff")) == VariantArray{});
+        CHECK(fromCbor(fromHex("9f018202039f0405ffff")) == VariantArray{1, VariantArray{2, 3}, VariantArray{4, 5}});
+        CHECK(fromCbor(fromHex("9f01820203820405ff")) == VariantArray{1, VariantArray{2, 3}, VariantArray{4, 5}});
+        CHECK(fromCbor(fromHex("83018202039f0405ff")) == VariantArray{1, VariantArray{2, 3}, VariantArray{4, 5}});
+        CHECK(fromCbor(fromHex("83019f0203ff820405")) == VariantArray{1, VariantArray{2, 3}, VariantArray{4, 5}});
+        CHECK(fromCbor(fromHex("9f0102030405060708090a0b0c0d0e0f101112131415161718181819ff")) == VariantArray{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25});
+        CHECK(fromCbor(fromHex("bf61610161629f0203ffff")) == VariantMap{{"a", 1}, {"b", VariantArray{2, 3}}});
+        CHECK(fromCbor(fromHex("826161bf61626163ff")) == VariantArray{"a", VariantMap{{"b", "c"}}});
+        CHECK(fromCbor(fromHex("bf6346756ef563416d7421ff")) == VariantMap{{"Fun", true}, {"Amt", -2}});
     }
 }

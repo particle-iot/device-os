@@ -10,6 +10,12 @@
 #include "logging.h"
 #include "diagnostics.h"
 
+namespace particle::protocol {
+
+class Protocol;
+
+} // namespace particle::protocol
+
 extern "C" uint32_t HAL_RNG_GetRandomNumber()
 {
 	return rand();
@@ -43,4 +49,8 @@ extern "C" void log_write(int level, const char *category, const char *data, siz
 
 extern "C" int diag_register_source(const diag_source* src, void* reserved) {
 	return 0;
+}
+
+extern "C" particle::protocol::Protocol* spark_protocol_instance(void) {
+	return nullptr;
 }
