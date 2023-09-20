@@ -17,6 +17,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include <cmath>
 
 namespace {
 
@@ -89,19 +90,39 @@ test(STRFORMAT_01_PRINTF_SCANF_INT_UINT) {
         {nullptr, 0, nullptr}
     };
 
+    constexpr FormatTest<double> dTest[] = {
+        {"%4.2f", M_PI, "3.14"},
+        {"%+.0e", M_PI, "+3e+00"},
+        {"%E", M_PI, "3.141593E+00"},
+        {"%g", M_PI, "3.14159"},
+        {"%G", M_PI, "3.14159"},
+        {nullptr, 0, nullptr}
+    };
+
     const auto runTest = [&](const auto& test) -> void {
         for (int i = 0; test[i].fmt != nullptr; i++) {
             char tmp[256] = {};
             snprintf(tmp, sizeof(tmp), test[i].fmt, test[i].value);
             decltype(test[i].value) parsed = 0;
-            int scanfRes = sscanf(tmp, test[i].fmt, &parsed);
+            const char* fmt = test[i].fmt;
+            bool fp = false;
+            if (std::is_floating_point<decltype(parsed)>::value) {
+                fmt = "%lf";
+                fp = true;
+            }
+            int scanfRes = sscanf(tmp, fmt, &parsed);
             assertEqual(String(tmp), String(test[i].expected));
             assertEqual(scanfRes, 1);
-            assertTrue(parsed == test[i].value);
-            assertEqual(parsed, test[i].value);
+            if (!fp) {
+                assertEqual(parsed, test[i].value);
+            } else {
+                memset(tmp, 0, sizeof(tmp));
+                snprintf(tmp, sizeof(tmp), test[i].fmt, parsed);
+                assertEqual(String(tmp), String(test[i].expected));
+            }
         }
     };
-    auto tuple = std::make_tuple(u64Test, u32Test, u16Test, i64Test, i32Test, i16Test);
+    auto tuple = std::make_tuple(u64Test, u32Test, u16Test, i64Test, i32Test, i16Test, dTest);
     std::apply([runTest](auto&&... args) {
         ((runTest(args)), ...);
     }, tuple);
