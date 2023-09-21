@@ -57,11 +57,18 @@ class RxLock {
 public:
     RxLock(NRF_UARTE_Type* uarte)
             : uarte_(uarte) {
+        taskENTER_CRITICAL();
         nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDRX_MASK);
+        __DSB();
+        __ISB();
     }
     ~RxLock() {
         nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDRX_MASK);
+        taskEXIT_CRITICAL();
+        __DSB();
+        __ISB();
     }
+    
 
 private:
     NRF_UARTE_Type* uarte_;
@@ -113,6 +120,7 @@ public:
               transmitting_(false),
               receiving_(0),
               rxConsumed_(0),
+              lastTimerValue_(0),
               evGroup_(nullptr) {
         evGroup_ = xEventGroupCreate();
         SPARK_ASSERT(evGroup_);
@@ -271,10 +279,13 @@ public:
         return begin(config_);
     }
 
-    ssize_t data() {
+    ssize_t data(size_t* consumable = nullptr) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        RxLock lk(uarte_);
-        ssize_t d = rxBuffer_.data();
+
+        size_t d = CHECK(rxBuffer_.data());
+
+        // At the very least we already have `d` commited bytes in rx buffer
+
         if (receiving_) {
             // IMPORTANT: It seems that the timer value (which is a counter for every time UARTE generates RXDRDY event)
             // may potentially get larger than the configured RX DMA transfer:
@@ -284,11 +295,22 @@ public:
             // </quote>
             // We'll be extra careful here and make sure not to consume more than we can, otherwise
             // we may put the ring buffer into an invalid state as there are not safety checks.
-            const ssize_t toConsume = std::min(rxBuffer_.acquirePending(), timerValue() - rxConsumed_);
-            if (toConsume > 0) {
-                rxBuffer_.acquireCommit(toConsume);
-                rxConsumed_ += toConsume;
-                d += toConsume;
+            uint16_t lastTimer = lastTimerValue_;
+            uint16_t rxConsumed = rxConsumed_;
+            if (rxConsumed == 0) {
+                // Re-read lastTimerValue_ to sync up
+                lastTimer = lastTimerValue_;
+                // Update d, as we might have received ENDRX in-between previous `d` calculation and now
+                d = CHECK(rxBuffer_.data());
+                if (!receiving_) {
+                    return d;
+                }
+            }
+            uint16_t timerVal = timerValue() - lastTimer; // https://en.cppreference.com/w/c/language/conversion 
+            const size_t canConsume = std::min<uint16_t>(timerVal - rxConsumed, rxBuffer_.acquirePending());
+            d += canConsume;
+            if (consumable) {
+                *consumable = canConsume;
             }
         }
         return d;
@@ -302,10 +324,18 @@ public:
 
     ssize_t read(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        const ssize_t maxRead = CHECK(data());
+        size_t consumable = 0;
+        const ssize_t maxRead = CHECK(data(&consumable));
         const size_t readSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(readSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(uarte_);
+        if (consumable > 0) {
+            CHECK(data(&consumable));
+            if (consumable > 0) {
+                rxBuffer_.acquireCommit(consumable);
+                rxConsumed_ += consumable;
+            }
+        }
         ssize_t r = CHECK(rxBuffer_.get(buffer, readSize));
         if (!receiving_) {
             startReceiver();
@@ -398,7 +428,7 @@ public:
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDRX);
                 nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_RXDRDY);
 
-                nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
+                lastTimerValue_ += (rxConsumed_ + (uint16_t)(rxBuffer_.acquirePending()));
                 rxConsumed_ = 0;
 
                 if (rxBuffer_.acquirePending() > 0) {
@@ -656,11 +686,12 @@ private:
     void disableTimer() {
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CLEAR);
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_SHUTDOWN);
+        lastTimerValue_ = 0;
         nrf_ppi_channel_disable(ppi_);
         rxConsumed_ = 0;
     }
 
-    size_t timerValue() {
+    uint16_t timerValue() {
         nrf_timer_task_trigger(timer_, NRF_TIMER_TASK_CAPTURE0);
         return nrf_timer_cc_read(timer_, NRF_TIMER_CC_CHANNEL0);
     }
@@ -748,7 +779,8 @@ private:
 
     volatile bool transmitting_;
     volatile uint8_t receiving_;
-    volatile size_t rxConsumed_;
+    volatile uint16_t rxConsumed_;
+    volatile uint16_t lastTimerValue_;
 
     Config config_ = {};
 
@@ -760,7 +792,7 @@ private:
 
 constexpr const Usart::BaudrateMap Usart::baudrateMap_[];
 
-const auto UARTE0_INTERRUPT_PRIORITY = APP_IRQ_PRIORITY_LOW;
+const auto UARTE0_INTERRUPT_PRIORITY = (app_irq_priority_t)_PRIO_APP_HIGH; // Equal to configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY
 // TODO: move this to hal_platform_config.h ?
 const auto UARTE1_INTERRUPT_PRIORITY = (app_irq_priority_t)_PRIO_SD_LOWEST;
 
