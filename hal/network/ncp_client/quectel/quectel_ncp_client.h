@@ -128,6 +128,8 @@ private:
     int checkNetConfForImsi();
     int selectSimCard();
     int checkSimCard();
+    int getModuleFunctionality();
+    int setModuleFunctionality(CellularFunctionality cfun, bool check);
     int configureApn(const CellularNetworkConfig& conf);
     int registerNet();
     int changeBaudRate(unsigned int baud);
