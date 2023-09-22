@@ -27,7 +27,6 @@ namespace particle {
 /**
  * Base class for reference counted objects.
  */
-template<typename T>
 class RefCount {
 public:
     RefCount() :
@@ -132,7 +131,7 @@ private:
 
 template<typename T, typename... ArgsT>
 inline RefCountPtr<T> makeRefCountPtr(ArgsT&&... args) {
-    return RefCountPtr<T>::wrap(new T(std::forward<ArgsT>(args)...));
+    return RefCountPtr<T>::wrap(new(std::nothrow) T(std::forward<ArgsT>(args)...));
 }
 
 } // namespace particle

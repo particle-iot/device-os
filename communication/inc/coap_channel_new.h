@@ -19,6 +19,9 @@
 
 #include "message_channel.h"
 #include "coap_api.h"
+#include "coap.h" // For token_t
+
+#include "system_tick_hal.h"
 
 #include "system_error.h"
 
@@ -41,7 +44,7 @@ public:
 
     // Methods called by the new CoAP API (coap_api.h)
 
-    int beginRequest(coap_message** msg, const char* uri, coap_method method);
+    int beginRequest(coap_message** msg, const char* uri, coap_method method, int timeout);
     int endRequest(coap_message* msg, coap_response_callback respCallback, coap_ack_callback ackCallback,
             coap_error_callback errorCallback, void* callbackArg);
 
@@ -72,36 +75,72 @@ public:
     int handleAck(const Message& msg);
     int handleRst(const Message& msg);
 
+    int run();
+
     static CoapChannel* instance();
 
 private:
+    // Channel state
+    enum class State {
+        CLOSED,
+        OPENING,
+        OPEN,
+        CLOSING
+    };
+
+    enum class MessageType {
+        REQUEST, // Regular or blockwise request carrying request data
+        BLOCK_REQUEST, // Blockwise request retrieving a block of response data
+        RESPONSE // Regular or blockwise response
+    };
+
+    enum class MessageState {
+        NEW, // Message created
+        READ, // Reading payload data
+        WRITE, // Writing payload data
+        WAIT_ACK, // Waiting for an ACK
+        WAIT_RESPONSE, // Waiting for a response
+        WAIT_BLOCK, // Waiting for the next message block
+        DONE // Message exchange completed
+    };
+
     struct CoapMessage;
+    struct RequestMessage;
+    struct ResponseMessage;
     struct RequestHandler;
     struct ConnectionHandler;
 
     CoapChannel(); // Use instance()
 
     Message msgBuf_; // Reference to the shared message buffer
-    ConnectionHandler* connHandlers_; // List of connection handlers
-    RequestHandler* reqHandlers_; // List of request handlers
-    CoapMessage* sentReqs_; // List of sent requests for which a response is expected
-    CoapMessage* recvReqs_; // List of received requests for which a response is expected
-    CoapMessage* unackMsgs_; // List of messages for which an ACK is expected
+    ConnectionHandler* connHandlers_; // List of registered connection handlers
+    RequestHandler* reqHandlers_; // List of registered request handlers
+    RequestMessage* sentReqs_; // List of requests awaiting a response from the server
+    RequestMessage* recvReqs_; // List of requests awaiting a response from the device
+    CoapMessage* blockMsgs_; // List of messages for which the next message block is expected to be sent or received
+    CoapMessage* unackMsgs_; // List of messages awaiting an ACK from the server
     Protocol* protocol_; // Protocol instance
+    State state_; // Channel state
     int lastMsgId_; // Last used internal message ID
     int curMsgId_; // Internal ID of the message stored in the shared buffer
-    int sessId_; // Counter incremented every time a new session is started
-    bool open_; // Whether the channel is open
+    int sessId_; // Counter incremented every time a new session starts
+    int pendingCloseError_; // If non-zero, the channel needs to be closed with an error
+    bool openPending_; // If true, the channel needs to be reopened
 
-    int handleRequest(CoapMessageDecoder& d, const Message& msg);
-    int handleResponse(CoapMessageDecoder& d, const Message& msg);
+    int handleRequest(CoapMessageDecoder& d);
+    int handleResponse(CoapMessageDecoder& d);
+
+    int prepareMessage(CoapMessage* msg);
+    int updateMessage(CoapMessage* msg);
+    int sendMessage(CoapMessage* msg);
 
     int sendEmptyAck(int coapId);
 
-    void cancelMessages(CoapMessage* msgList, int error, bool destroy);
+    void releaseMessageBuffer();
 
-    int initProtocolMessage(CoapMessage* msg);
     int handleProtocolError(ProtocolError error);
+
+    system_tick_t millis() const;
 };
 
 } // namespace experimental

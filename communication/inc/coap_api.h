@@ -82,12 +82,12 @@ typedef int (*coap_request_callback)(coap_message* msg, const char* uri, int met
  * needed.
  *
  * @param msg Response message.
- * @param code Response code as defined by the `coap_response_code` enum.
+ * @param status Response code as defined by the `coap_status` enum.
  * @param req_id ID of the request for which this response is being received.
  * @param arg User argument.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-typedef int (*coap_response_callback)(coap_message* msg, int code, int req_id, void* arg);
+typedef int (*coap_response_callback)(coap_message* msg, int status, int req_id, void* arg);
 
 /**
  * Callback invoked when a block of a request or response message has been sent or received.
@@ -130,31 +130,31 @@ typedef enum coap_method {
 /**
  * Response code.
  */
-typedef enum coap_response_code {
+typedef enum coap_status {
     // Success 2.xx
-    COAP_RESPONSE_CREATED = COAP_CODE(2, 1), ///< 2.01 Created.
-    COAP_RESPONSE_DELETED = COAP_CODE(2, 2), ///< 2.02 Deleted.
-    COAP_RESPONSE_VALID = COAP_CODE(2, 3), ///< 2.03 Valid.
-    COAP_RESPONSE_CHANGED = COAP_CODE(2, 4), ///< 2.04 Changed.
-    COAP_RESPONSE_CONTENT = COAP_CODE(2, 5), ///< 2.05 Content.
+    COAP_STATUS_CREATED = COAP_CODE(2, 1), ///< 2.01 Created.
+    COAP_STATUS_DELETED = COAP_CODE(2, 2), ///< 2.02 Deleted.
+    COAP_STATUS_VALID = COAP_CODE(2, 3), ///< 2.03 Valid.
+    COAP_STATUS_CHANGED = COAP_CODE(2, 4), ///< 2.04 Changed.
+    COAP_STATUS_CONTENT = COAP_CODE(2, 5), ///< 2.05 Content.
     // Client Error 4.xx
-    COAP_RESPONSE_BAD_REQUEST = COAP_CODE(4, 0), ///< 4.00 Bad Request.
-    COAP_RESPONSE_UNAUTHORIZED = COAP_CODE(4, 1), ///< 4.01 Unauthorized.
-    COAP_RESPONSE_BAD_OPTION = COAP_CODE(4, 2), ///< 4.02 Bad Option.
-    COAP_RESPONSE_FORBIDDEN = COAP_CODE(4, 3), ///< 4.03 Forbidden.
-    COAP_RESPONSE_NOT_FOUND = COAP_CODE(4, 4), ///< 4.04 Not Found.
-    COAP_RESPONSE_METHOD_NOT_ALLOWED = COAP_CODE(4, 5), ///< 4.05 Method Not Allowed.
-    COAP_RESPONSE_NOT_ACCEPTABLE = COAP_CODE(4, 6), ///< 4.06 Not Acceptable.
-    COAP_RESPONSE_PRECONDITION_FAILED = COAP_CODE(4, 12), ///< 4.12 Precondition Failed.
-    COAP_RESPONSE_REQUEST_ENTITY_TOO_LARGE = COAP_CODE(4, 13), ///< 4.13 Request Entity Too Large.
-    COAP_RESPONSE_UNSUPPORTED_CONTENT_FORMAT = COAP_CODE(4, 15), ///< 4.15 Unsupported Content-Format.
+    COAP_STATUS_BAD_REQUEST = COAP_CODE(4, 0), ///< 4.00 Bad Request.
+    COAP_STATUS_UNAUTHORIZED = COAP_CODE(4, 1), ///< 4.01 Unauthorized.
+    COAP_STATUS_BAD_OPTION = COAP_CODE(4, 2), ///< 4.02 Bad Option.
+    COAP_STATUS_FORBIDDEN = COAP_CODE(4, 3), ///< 4.03 Forbidden.
+    COAP_STATUS_NOT_FOUND = COAP_CODE(4, 4), ///< 4.04 Not Found.
+    COAP_STATUS_METHOD_NOT_ALLOWED = COAP_CODE(4, 5), ///< 4.05 Method Not Allowed.
+    COAP_STATUS_NOT_ACCEPTABLE = COAP_CODE(4, 6), ///< 4.06 Not Acceptable.
+    COAP_STATUS_PRECONDITION_FAILED = COAP_CODE(4, 12), ///< 4.12 Precondition Failed.
+    COAP_STATUS_REQUEST_ENTITY_TOO_LARGE = COAP_CODE(4, 13), ///< 4.13 Request Entity Too Large.
+    COAP_STATUS_UNSUPPORTED_CONTENT_FORMAT = COAP_CODE(4, 15), ///< 4.15 Unsupported Content-Format.
     // Server Error 5.xx
-    COAP_RESPONSE_INTERNAL_SERVER_ERROR = COAP_CODE(5, 0), ///< 5.00 Internal Server Error.
-    COAP_RESPONSE_NOT_IMPLEMENTED = COAP_CODE(5, 1), ///< 5.01 Not Implemented.
-    COAP_RESPONSE_BAD_GATEWAY = COAP_CODE(5, 2), ///< 5.02 Bad Gateway.
-    COAP_RESPONSE_SERVICE_UNAVAILABLE = COAP_CODE(5, 3), ///< 5.03 Service Unavailable.
-    COAP_RESPONSE_GATEWAY_TIMEOUT = COAP_CODE(5, 4), ///< 5.04 Gateway Timeout.
-    COAP_RESPONSE_PROXYING_NOT_SUPPORTED = COAP_CODE(5, 5) ///< 5.05 Proxying Not Supported.
+    COAP_STATUS_INTERNAL_SERVER_ERROR = COAP_CODE(5, 0), ///< 5.00 Internal Server Error.
+    COAP_STATUS_NOT_IMPLEMENTED = COAP_CODE(5, 1), ///< 5.01 Not Implemented.
+    COAP_STATUS_BAD_GATEWAY = COAP_CODE(5, 2), ///< 5.02 Bad Gateway.
+    COAP_STATUS_SERVICE_UNAVAILABLE = COAP_CODE(5, 3), ///< 5.03 Service Unavailable.
+    COAP_STATUS_GATEWAY_TIMEOUT = COAP_CODE(5, 4), ///< 5.04 Gateway Timeout.
+    COAP_STATUS_PROXYING_NOT_SUPPORTED = COAP_CODE(5, 5) ///< 5.05 Proxying Not Supported.
 } coap_status;
 
 /**
@@ -183,12 +183,12 @@ typedef enum coap_option_number {
  *
  * https://www.iana.org/assignments/core-parameters/core-parameters.xhtml#content-formats
  */
-typedef enum coap_content_format {
-    COAP_CONTENT_FORMAT_TEXT_PLAIN = 0, // text/plain; charset=utf-8
-    COAP_CONTENT_FORMAT_OCTET_STREAM = 42, // application/octet-stream
-    COAP_CONTENT_FORMAT_JSON = 50, // application/json
-    COAP_CONTENT_FORMAT_CBOR = 60 // application/cbor
-} coap_content_format;
+typedef enum coap_format {
+    COAP_FORMAT_TEXT_PLAIN = 0, // text/plain; charset=utf-8
+    COAP_FORMAT_OCTET_STREAM = 42, // application/octet-stream
+    COAP_FORMAT_JSON = 50, // application/json
+    COAP_FORMAT_CBOR = 60 // application/cbor
+} coap_format;
 
 /**
  * Connection status.
@@ -235,12 +235,13 @@ void coap_remove_connection_handler(coap_connection_callback cb, void* reserved)
  *
  * @param uri URI prefix.
  * @param method Method code as defined by the `coap_method` enum.
+ * @param flags Reserved argument. Must be set to 0.
  * @param cb Handler callback.
  * @param arg User argument to pass to the callback.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_add_request_handler(const char* uri, int method, coap_request_callback cb, void* arg, void* reserved);
+int coap_add_request_handler(const char* uri, int method, int flags, coap_request_callback cb, void* arg, void* reserved);
 
 /**
  * Unregister a handler for incoming requests.
@@ -285,13 +286,13 @@ int coap_end_request(coap_message* msg, coap_response_callback resp_cb, coap_ack
  * Begin sending a response message.
  *
  * @param[out] msg Response message.
- * @param code Response code as defined by the `coap_response_code` enum.
+ * @param status Response code as defined by the `coap_status` enum.
  * @param req_id ID of the request which this response is meant for.
  * @param flags Reserved argument. Must be set to 0.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_begin_response(coap_message** msg, int code, int req_id, int flags, void* reserved);
+int coap_begin_response(coap_message** msg, int status, int req_id, int flags, void* reserved);
 
 /**
  * Finish sending a response message.

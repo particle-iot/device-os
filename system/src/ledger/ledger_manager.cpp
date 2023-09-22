@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef UNIT_TEST
+#if !defined(DEBUG_BUILD) && !defined(UNIT_TEST)
 #define NDEBUG // TODO: Define NDEBUG in release builds
 #endif
 
@@ -232,11 +232,11 @@ int LedgerManager::init() {
     } else if (r != LFS_ERR_NOENT) {
         CHECK_FS(r); // Forward the error
     }
-    CHECK(coap_add_connection_handler(connectionCallback, this, nullptr));
+    CHECK(coap_add_connection_handler(connectionCallback, this, nullptr /* reserved */));
     NAMED_SCOPE_GUARD(removeConnHandler, {
-        coap_remove_connection_handler(connectionCallback, nullptr);
+        coap_remove_connection_handler(connectionCallback, nullptr /* reserved */);
     });
-    CHECK(coap_add_request_handler(REQUEST_URI, REQUEST_METHOD, requestCallback, this, nullptr));
+    CHECK(coap_add_request_handler(REQUEST_URI, REQUEST_METHOD, 0 /* flags */, requestCallback, this, nullptr /* reserved */));
     removeConnHandler.dismiss();
     contexts_ = std::move(contexts);
     state_ = State::OFFLINE;
@@ -1101,7 +1101,7 @@ int LedgerManager::sendGetInfoRequest() {
 
 int LedgerManager::sendResponse(int result, int reqId) {
     coap_message* msg = nullptr;
-    int code = (result == 0) ? COAP_RESPONSE_CHANGED : COAP_RESPONSE_BAD_REQUEST;
+    int code = (result == 0) ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST;
     CHECK(coap_begin_response(&msg, code, reqId, 0 /* flags */, nullptr /* reserved */));
     NAMED_SCOPE_GUARD(destroyMsgGuard, {
         coap_destroy_message(msg, nullptr);
@@ -1158,6 +1158,7 @@ void LedgerManager::handleError(int error) {
     if (error < 0 && state_ >= State::READY) {
         LOG(ERROR, "Ledger error: %d", error);
         state_ = State::FAILED;
+        // TODO: Try recovering after a delay rather than next time the device connects to the cloud
     }
 }
 

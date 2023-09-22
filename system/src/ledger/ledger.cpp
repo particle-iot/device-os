@@ -15,7 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef UNIT_TEST
+#if !defined(DEBUG_BUILD) && !defined(UNIT_TEST)
 #define NDEBUG // TODO: Define NDEBUG in release builds
 #endif
 
