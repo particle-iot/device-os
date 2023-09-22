@@ -39,8 +39,7 @@ class LedgerStream: public Stream {
 public:
     explicit LedgerStream(ledger_instance* ledger) :
             ledger_(ledger),
-            stream_(nullptr),
-            error_(0) {
+            stream_(nullptr) {
     }
 
     ~LedgerStream() {
@@ -57,14 +56,13 @@ public:
     }
 
     size_t readBytes(char* data, size_t size) override {
-        if (!stream_ || error_ < 0) {
+        if (!stream_ || getWriteError() < 0) {
             return 0;
         }
         int r = ledger_read(stream_, data, size, nullptr);
         if (r < 0) {
             LOG(ERROR, "ledger_read() failed: %d", r);
-            // XXX: There's setWriteError() but no setReadError() in the Stream class
-            error_ = r;
+            setWriteError(r); // TODO: Rename to setError() or add an alias
             return 0;
         }
         return size;
@@ -75,13 +73,13 @@ public:
     }
 
     size_t write(const uint8_t* data, size_t size) override {
-        if (!stream_ || error_ < 0) {
+        if (!stream_ || getWriteError() < 0) {
             return 0;
         }
         int r = ledger_write(stream_, (const char*)data, size, nullptr);
         if (r < 0) {
             LOG(ERROR, "ledger_write() failed: %d", r);
-            error_ = r;
+            setWriteError(r);
             return 0;
         }
         return size;
@@ -116,19 +114,14 @@ public:
         if (r < 0) {
             LOG(ERROR, "ledger_close() failed: %d", r);
         }
+        clearWriteError();
         stream_ = nullptr;
-        error_ = 0;
         return r;
-    }
-
-    int error() const {
-        return error_;
     }
 
 private:
     ledger_instance* ledger_;
     ledger_stream* stream_;
-    int error_;
 };
 
 struct LedgerAppData {
@@ -215,8 +208,9 @@ int setLedgerData(ledger_instance* ledger, const LedgerData& data) {
     CHECK(stream.open(LEDGER_STREAM_MODE_WRITE));
     int r = encodeToCBOR(data.variant(), stream);
     if (r < 0) {
-        if (stream.error() < 0) {
-            r = stream.error();
+        int err = stream.getWriteError();
+        if (err < 0) {
+            r = err;
         }
         LOG(ERROR, "Failed to encode ledger data: %d", r);
         return r;
@@ -231,8 +225,9 @@ int getLedgerData(ledger_instance* ledger, LedgerData& data) {
     Variant v;
     int r = decodeFromCBOR(v, stream);
     if (r < 0) {
-        if (stream.error() < 0) {
-            r = stream.error();
+        int err = stream.getWriteError();
+        if (err < 0) {
+            r = err;
         }
         LOG(ERROR, "Failed to decode ledger data: %d", r);
         return r;

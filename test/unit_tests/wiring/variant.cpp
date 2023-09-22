@@ -379,7 +379,7 @@ TEST_CASE("Variant") {
         CHECK(toHex(toCbor(-4.1)) == "fbc010666666666666");
         CHECK(toHex(toCbor(INFINITY)) == "fa7f800000"); // ditto
         CHECK(toHex(toCbor(-INFINITY)) == "faff800000"); // ditto
-        CHECK(toHex(toCbor(NAN)) == "fb7ff8000000000000"); // For simplicity, NaN is encoded as a double
+        CHECK(toHex(toCbor(NAN)) == "fb7ff8000000000000"); // For simplicity, NaN is always encoded as a double
         CHECK(toHex(toCbor(false)) == "f4");
         CHECK(toHex(toCbor(true)) == "f5");
         CHECK(toHex(toCbor(Variant())) == "f6");
