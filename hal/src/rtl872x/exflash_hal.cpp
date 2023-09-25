@@ -345,20 +345,20 @@ int hal_exflash_copy_sector(uintptr_t src_addr, uintptr_t dest_addr, size_t data
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
-__attribute__((section(".ram.text"), noinline))
-static bool isSecureOtpMode(uint32_t normalContent) {
-    uint32_t temp = 0;
-    FLASH_RxData(0, (uint32_t)HAL_EXFLASH_OTP_MAGIC_NUMBER_ADDR, sizeof(temp), (uint8_t*)&temp);
-    if (temp == HAL_EXFLASH_OTP_MAGIC_NUMBER) {
-        return true;
-    }
-    // Read the first word at 0x00000000 and compare it with the word we previously read in normal context.
-    FLASH_RxData(0, (uint32_t)0, sizeof(temp), (uint8_t*)&temp);
-    if (temp != normalContent) {
-        return true;
-    }
-    return false;
-}
+// __attribute__((section(".ram.text"), noinline))
+// static bool isSecureOtpMode(uint32_t normalContent) {
+//     uint32_t temp = 0;
+//     FLASH_RxData(0, (uint32_t)HAL_EXFLASH_OTP_MAGIC_NUMBER_ADDR, sizeof(temp), (uint8_t*)&temp);
+//     if (temp == HAL_EXFLASH_OTP_MAGIC_NUMBER) {
+//         return true;
+//     }
+//     // Read the first word at 0x00000000 and compare it with the word we previously read in normal context.
+//     FLASH_RxData(0, (uint32_t)0, sizeof(temp), (uint8_t*)&temp);
+//     if (temp != normalContent) {
+//         return true;
+//     }
+//     return false;
+// }
 
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
@@ -366,60 +366,64 @@ static bool isSecureOtpMode(uint32_t normalContent) {
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
-    ExFlashLock lk(false); // Stop thread scheduler
 
-    CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 
-    // Read the first word at 0x00000000
-    uint32_t normalContent = 0;
-    FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
-    {
-        SCOPE_GUARD({
-            // Just in case, even if it might have failed to enter the secure OTP mode.
-            FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
-            if (isSecureOtpMode(normalContent)) {
-                SPARK_ASSERT(false);
-            }
-        });
+    // ExFlashLock lk(false); // Stop thread scheduler
 
-        FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
-        if (isSecureOtpMode(normalContent)) {
-            FLASH_RxData(0, (uint32_t)addr, data_size, data_buf);
-        } else {
-            return SYSTEM_ERROR_INVALID_STATE;
-        }
-    }
-    return SYSTEM_ERROR_NONE;
+    // CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
+    // CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    // // Read the first word at 0x00000000
+    // uint32_t normalContent = 0;
+    // FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
+    // {
+    //     SCOPE_GUARD({
+    //         // Just in case, even if it might have failed to enter the secure OTP mode.
+    //         FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
+    //         if (isSecureOtpMode(normalContent)) {
+    //             SPARK_ASSERT(false);
+    //         }
+    //     });
+
+    //     FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
+    //     if (isSecureOtpMode(normalContent)) {
+    //         FLASH_RxData(0, (uint32_t)addr, data_size, data_buf);
+    //     } else {
+    //         return SYSTEM_ERROR_INVALID_STATE;
+    //     }
+    // }
+    // return SYSTEM_ERROR_NONE;
 }
 
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
-    ExFlashLock lk(false); // Stop thread scheduler
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+    // ExFlashLock lk(false); // Stop thread scheduler
 
-    CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+    // CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
+    // CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    // Read the first word at 0x00000000
-    uint32_t normalContent = 0;
-    FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
-    {
-        SCOPE_GUARD({
-            // Just in case, even if it might have failed to enter the secure OTP mode.
-            FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
-            if (isSecureOtpMode(normalContent)) {
-                SPARK_ASSERT(false);
-            }
-        });
+    // // Read the first word at 0x00000000
+    // uint32_t normalContent = 0;
+    // FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
+    // {
+    //     SCOPE_GUARD({
+    //         // Just in case, even if it might have failed to enter the secure OTP mode.
+    //         FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
+    //         if (isSecureOtpMode(normalContent)) {
+    //             SPARK_ASSERT(false);
+    //         }
+    //     });
 
-        FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
-        if (isSecureOtpMode(normalContent)) {
-            CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
-        } else {
-            return SYSTEM_ERROR_INVALID_STATE;
-        }
-    }
-    return SYSTEM_ERROR_NONE;
+    //     FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
+    //     if (isSecureOtpMode(normalContent)) {
+    //         CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
+    //     } else {
+    //         return SYSTEM_ERROR_INVALID_STATE;
+    //     }
+    // }
+    // return SYSTEM_ERROR_NONE;
 }
 
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
