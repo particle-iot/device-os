@@ -36,6 +36,7 @@ typedef enum {
     PureVirtualCall     = 12,
     StackOverflow       = 13,
     HeapError           = 14,
+    SecureFault         = 15,
 } ePanicCode;
 
 typedef void (*PanicHook)(const ePanicCode code, const void* extraInfo);

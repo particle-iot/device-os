@@ -100,6 +100,10 @@ typedef enum hal_irq_t {
     __Last_irq = 0
 } hal_irq_t;
 
+#ifndef SecureFault_IRQn
+#define SecureFault_IRQn (-9)
+#endif // SecureFault_IRQn
+
 #define IRQN_TO_IDX(irqn) ((int)irqn + 16)
 
 void HAL_Core_Restore_Interrupt(IRQn_Type irqn);
