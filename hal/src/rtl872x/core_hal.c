@@ -59,6 +59,7 @@ void HardFault_Handler( void ) __attribute__(( naked ));
 void MemManage_Handler(void) __attribute__(( naked ));
 void BusFault_Handler(void) __attribute__(( naked ));
 void UsageFault_Handler(void) __attribute__(( naked ));
+void SecureFault_Handler(void) __attribute__(( naked ));
 
 void SysTick_Handler(void);
 void SVC_Handler(void);
@@ -150,6 +151,10 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulF
             PANIC(panicCode, "UsageFault");
             break;
         }
+        case SecureFault: {
+            PANIC(panicCode, "SecureFault");
+            break;
+        }
         default: {
             // Shouldn't enter this case
             PANIC(panicCode, "Unknown");
@@ -197,6 +202,10 @@ void UsageFault_Handler(void) {
     Fault_Handler(UsageFault);
 }
 
+void SecureFault_Handler(void) {
+    Fault_Handler(SecureFault);
+}
+
 void SysTickOverride(void) {
     HAL_SysTick_Handler();
 }
@@ -238,6 +247,7 @@ void HAL_Core_Setup_override_interrupts(void) {
     __NVIC_SetVector(MemoryManagement_IRQn, (u32)(void*)MemManage_Handler);
     __NVIC_SetVector(BusFault_IRQn, (u32)(void*)BusFault_Handler);
     __NVIC_SetVector(UsageFault_IRQn, (u32)(void*)UsageFault_Handler);
+    __NVIC_SetVector(SecureFault_IRQn, (u32)(void*)SecureFault_Handler);
 }
 
 void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {

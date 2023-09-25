@@ -22,6 +22,7 @@
 #include "hw_config.h"
 #include "button_hal.h"
 #include "hal_platform_config.h"
+#include "interrupts_irq.h"
 
 extern void Timing_Decrement(void);
 
@@ -29,6 +30,15 @@ void HardFault_Handler(void) __attribute__(( naked ));
 void MemManage_Handler(void) __attribute__(( naked ));
 void BusFault_Handler(void) __attribute__(( naked ));
 void UsageFault_Handler(void) __attribute__(( naked ));
+void SecureFault_Handler(void) __attribute__(( naked ));
+
+static __attribute__((always_inline)) inline bool is_address_in_rom(uint32_t addr) {
+    // XXX: we don't have ROM linker symbols, should probably add them
+    if (addr >= 0x10100000 && addr < (0x101C8000 + 0x10000)) {
+        return true;
+    }
+    return false;
+}
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress, uint32_t panicCode ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
@@ -81,6 +91,10 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulF
             PANIC(panicCode, "UsageFault");
             break; 
         }
+        case SecureFault: {
+            PANIC(panicCode, "SecureFault");
+            break;
+        }
         default: {
             // Shouldn't enter this case
             PANIC(panicCode, "Unknown");
@@ -93,6 +107,7 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulF
         ;
     }
 }
+
 
 __attribute__(( naked )) void Fault_Handler(uint32_t panic_code) {
     __asm volatile
@@ -126,6 +141,30 @@ void BusFault_Handler(void) {
 void UsageFault_Handler(void) {
     /* Go to infinite loop when Usage Fault exception occurs */
     Fault_Handler(UsageFault);
+}
+
+void SecureFault_Handler_NS(void) {
+    Fault_Handler(SecureFault);
+}
+
+__attribute__((always_inline)) inline
+void jump_to_nonsecure(u32 Addr) {
+    __ASM volatile ("MOV r0, %0\n\t"
+        "BLXNS   r0\n\t" : : "r" (Addr));
+}
+
+__attribute__((used, section(".secure.ram.text")))
+void SecureFault_Handler(void) {
+    volatile uint32_t handler = (uint32_t)&SecureFault_Handler_NS;
+    if (SCB_NS->VTOR) {
+        volatile uint32_t handler_ns = ((uint32_t*)SCB_NS->VTOR)[IRQN_TO_IDX(SecureFault_IRQn)];
+        volatile bool in_rom = is_address_in_rom(handler_ns);
+        if (!in_rom) {
+            handler = handler_ns;
+        }
+    }
+    volatile uint32_t ptr = cmse_nsfptr_create(handler);
+    jump_to_nonsecure(ptr);
 }
 
 void SysTick_Handler(void)

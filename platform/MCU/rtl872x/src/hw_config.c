@@ -37,6 +37,7 @@ extern void HardFault_Handler(void) __attribute__(( naked ));
 extern void MemManage_Handler(void) __attribute__(( naked ));
 extern void BusFault_Handler(void) __attribute__(( naked ));
 extern void UsageFault_Handler(void) __attribute__(( naked ));
+extern void SecureFault_Handler(void) __attribute__(( naked ));
 
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
@@ -285,6 +286,7 @@ void Set_System(void)
     __NVIC_SetVector(MemoryManagement_IRQn, (u32)(void*)MemManage_Handler);
     __NVIC_SetVector(BusFault_IRQn, (u32)(void*)BusFault_Handler);
     __NVIC_SetVector(UsageFault_IRQn, (u32)(void*)UsageFault_Handler);
+    __NVIC_SetVector(SecureFault_IRQn, (u32)(void*)SecureFault_Handler);
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
     // Disable DiagPrintf
