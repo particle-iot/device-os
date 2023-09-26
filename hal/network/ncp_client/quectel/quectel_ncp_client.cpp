@@ -112,6 +112,8 @@ const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
 
+const auto QUECTEL_CFUN_MAX_ATTEMPTS = 10;
+
 // Undefine hardware version
 const auto HW_VERSION_UNDEFINED = 0xFF;
 
@@ -1059,10 +1061,19 @@ bool QuectelNcpClient::isQuecBG95xDevice() {
 
 int QuectelNcpClient::initReady(ModemState state) {
     // Set modem full functionality
-    int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
+    int r = AtResponse::OK;
+    for (int x = 0; x < QUECTEL_CFUN_MAX_ATTEMPTS; x++) {
+        int r = setModuleFunctionality(CellularFunctionality::FULL, true /* check */);
+        if (r == AtResponse::OK) {
+            break;
+        }
+        HAL_Delay_Milliseconds(1000);
+    }
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     if (state != ModemState::MuxerAtChannel) {
+        // Cold Boot only, Warm Boot will skip the following block...
+
         // Enable flow control and change to runtime baudrate
 #if PLATFORM_ID == PLATFORM_B5SOM
         uint32_t hwVersion = HW_VERSION_UNDEFINED;
@@ -1278,6 +1289,33 @@ int QuectelNcpClient::checkSimCard() {
         return SYSTEM_ERROR_NONE;
     }
     return SYSTEM_ERROR_UNKNOWN;
+}
+
+int QuectelNcpClient::getModuleFunctionality() {
+    auto resp = parser_.sendCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN?");
+    int curVal = -1;
+    auto r = resp.scanf("+CFUN: %d", &curVal);
+    CHECK_PARSER_OK(resp.readResult());
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    return curVal;
+}
+
+int QuectelNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool check) {
+    if (check) {
+        if ((int)cfun == CHECK(getModuleFunctionality())) {
+            // Already in required state
+            return 0;
+        }
+    }
+
+    int r = SYSTEM_ERROR_UNKNOWN;
+
+    r = parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=%d,0", (int)cfun);
+
+    CHECK_PARSER(r);
+
+    // AtResponse::Result!
+    return r;
 }
 
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
