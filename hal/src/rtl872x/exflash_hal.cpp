@@ -59,6 +59,12 @@ typedef enum {
 #error "Unsupported external flash"
 #endif
 
+#define HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25        3
+#define HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25         1024
+#define HAL_QSPI_FLASH_OTP_SIZE_GD25                (HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25 * HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25)
+
+typedef int (*hal_exflash_gd25_security_register_read_write)(uint8_t, uint32_t, void*, size_t);
+
 void dcacheCleanInvalidateAligned(uintptr_t ptr, size_t size) {
     uintptr_t alignedPtr = ptr & ~(portBYTE_ALIGNMENT_MASK);
     uintptr_t end = ptr + size;
@@ -364,6 +370,267 @@ static bool isSecureOtpMode(uint32_t normalContent) {
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
+// GD25 flash specific definitions
+
+#define FIFO_SIZE                           64
+
+#define bfoSPI_FLASH_AUTO_LEN_DUM           ((uint32_t)     0)
+#define bfwSPI_FLASH_AUTO_LEN_DUM           ((uint32_t)    16)
+#define bfoSPI_FLASH_SR_TXE                 ((uint32_t)    5)
+#define bfoSPI_FLASH_SR_BUSY                ((uint32_t)    0)
+
+#define DEF_RD_TUNING_DUMMY_CYCLE           0x2
+
+#define DW_BIT_MASK(__bfws) ((uint32_t) ((__bfws) == 32) ?                  \
+    0x0 : (0x1 << (__bfws)))
+
+#define DW_BIT_MASK_WIDTH(__bfws, __bits) ((uint32_t) ((__bfws) == 32) ?    \
+    0xFFFFFFFF : (((1 << (__bits)) - 1) << (__bfws)))
+
+#define DW_BITS_SET_VAL(__datum, __bfws, __val, bit_num)                    \
+    ((__datum) = ((uint32_t) (__datum) &                                    \
+                ~DW_BIT_MASK_WIDTH(__bfws, bit_num)) |                      \
+    ((__val << (__bfws)) & DW_BIT_MASK_WIDTH(__bfws, bit_num)))
+
+#define CMD_ADDR_FORMAT(cmd, addr) (((cmd) & 0x000000ff) |                  \
+                ((addr & 0x000000ff) << 24) |                               \
+                ((addr & 0x0000ff00) << 8) |                                \
+                ((addr & 0x00ff0000) >> 8))
+
+#define DW_BIT_GET_UNSHIFTED(__datum, __bfws)                               \
+    ((uint32_t) ((__datum) & DW_BIT_MASK(__bfws)))
+
+enum spi_flash_byte_num {
+    DATA_BYTE = 0,
+    DATA_HALF = 1,
+    DATA_WORD = 2
+};
+
+__attribute__((section(".ram.text"), noinline))
+static uint32_t spi_flash_getdr(uint32_t dr_num, enum spi_flash_byte_num byte_num) {
+    uint32_t rd_data;
+    if (dr_num > 31) {
+        return 0;
+    } else if (byte_num == DATA_BYTE) {
+        rd_data = SPIC->dr[dr_num].byte & 0x000000ff;
+    } else if (byte_num == DATA_HALF) {
+        rd_data = SPIC->dr[dr_num].half & 0x0000ffff;
+    } else if (byte_num == DATA_WORD) {
+        rd_data = SPIC->dr[dr_num].word;
+    } else {
+        return 0;
+    }
+    return rd_data;
+}
+
+__attribute__((section(".ram.text"), noinline))
+static void gd25_gd25_spi_flash_getdr() {
+    while (1) {
+        if (DW_BIT_GET_UNSHIFTED(SPIC->sr, bfoSPI_FLASH_SR_TXE)) {
+            break;
+        }
+        if ((!DW_BIT_GET_UNSHIFTED(SPIC->sr, bfoSPI_FLASH_SR_BUSY))) {
+            break;
+        }
+    }
+}
+
+__attribute__((section(".ram.text"), noinline))
+static void gd25_enable_cs_read(uint32_t len) {
+    /* set receive data length */
+    if (len <= 0x00010000) {
+        SPIC->ctrlr1 = len;
+    }
+    /* Enable SPI_FLASH */
+    SPIC->ssienr = 1; // What is it for ???
+    gd25_gd25_spi_flash_getdr();
+}
+
+__attribute__((section(".ram.text"), noinline))
+static void gd25_send_command_address(uint8_t cmd, uint32_t addr, uint32_t dum_cycle) {
+    /* Disable SPI_FLASH */
+    SPIC->ssienr = 0;
+    if (dum_cycle != 0) { // spi_flash_set_dummy_cycle(dev, dummy);
+        uint32_t cycle = 0;
+        /* if using fast_read baud_rate */
+        if (((SPIC->ctrlr0) & 0x00100000)) {
+            cycle = (SPIC->fbaudr);
+        } else {
+            cycle = (SPIC->baudr);
+        }
+        cycle = (cycle * dum_cycle * 2) + DEF_RD_TUNING_DUMMY_CYCLE;
+        if (cycle <= 0x10000) {
+            DW_BITS_SET_VAL(SPIC->auto_length, bfoSPI_FLASH_AUTO_LEN_DUM, cycle, bfwSPI_FLASH_AUTO_LEN_DUM);
+        }
+    } else {
+        /* Set tuning dummy cycles */
+        DW_BITS_SET_VAL(SPIC->auto_length, bfoSPI_FLASH_AUTO_LEN_DUM, DEF_RD_TUNING_DUMMY_CYCLE, bfwSPI_FLASH_AUTO_LEN_DUM);
+    }
+
+    /* set ctrlr0: RX mode, data_ch, addr_ch */
+    SPIC->ssienr = 0;
+    SPIC->ctrlr0 = (SPIC->ctrlr0 | 0x0300);
+    SPIC->ctrlr0 = (SPIC->ctrlr0 & 0xfff0ffff);
+
+    /* set flash cmd + addr and write to fifo */
+    SPIC->dr[0].word = CMD_ADDR_FORMAT(cmd, addr);
+}
+
+__attribute__((section(".ram.text"), noinline))
+static void gd25_perform_read_security_registers(uint32_t addr, uint8_t* buf, size_t len) {
+    uint32_t dum_cycle = 8;
+    uint8_t cmd = 0x48;
+
+    uint32_t ctrl0 = SPIC->ctrlr0;
+    uint32_t autoLen = SPIC->auto_length;
+    uint32_t addrLen = SPIC->addr_length;
+    SCOPE_GUARD({
+        SPIC->ctrlr0 = ctrl0;
+        SPIC->auto_length = autoLen;
+        SPIC->addr_length = addrLen;
+    });
+
+    /* setting auto mode CS_H_WR_LEN, address length(3 byte) */
+    SPIC->auto_length = ((SPIC->auto_length & 0xfffcffff) | 0x00030000);
+    SPIC->addr_length = 3;
+
+    gd25_send_command_address(cmd, addr, dum_cycle);
+
+    uint32_t cnt;
+    uint32_t data;
+    if (len <= FIFO_SIZE) {
+        gd25_enable_cs_read(len);
+        cnt = len / 4;
+        for (uint32_t i = 0; i < cnt; i++) {
+            data = spi_flash_getdr(0, DATA_WORD);
+            memcpy(buf, &data, 4);
+            buf += 4;
+        }
+        cnt = len % 4;
+        if (cnt > 0) {
+            data = spi_flash_getdr(0, DATA_WORD);
+            memcpy(buf, &data, cnt);
+            buf += cnt;
+        }
+    } else {
+        gd25_enable_cs_read(FIFO_SIZE);
+        cnt = FIFO_SIZE / 4;
+        for (uint32_t i = 0; i < cnt; i++) {
+            data = spi_flash_getdr(0, DATA_WORD);
+            memcpy(buf, &data, 4);
+            buf += 4;
+        }
+        /* t is transfer data times,
+         * t = (len - first xfer data) / fifo size
+         */
+        uint32_t t = (len - FIFO_SIZE) / FIFO_SIZE;
+        addr = addr + FIFO_SIZE;
+        while (t > 0) {
+            gd25_send_command_address(cmd, addr, dum_cycle);
+            gd25_enable_cs_read(FIFO_SIZE);
+            for (uint32_t i = 0; i < cnt; i++) {
+                data = spi_flash_getdr(0, DATA_WORD);
+                memcpy(buf, &data, 4);
+                buf += 4;
+            }
+            addr = addr + FIFO_SIZE;
+            t--;
+        }
+        uint32_t tmp = len % FIFO_SIZE;
+        if (tmp > 0) {
+            gd25_send_command_address(cmd, addr, dum_cycle);
+            gd25_enable_cs_read(tmp);
+            cnt = tmp / 4;
+            for (uint32_t i = 0; i < cnt; i++) {
+                data = spi_flash_getdr(0, DATA_WORD);
+                memcpy(buf, &data, 4);
+                buf += 4;
+            }
+            cnt = tmp % 4;
+            if (cnt > 0) {
+                data = spi_flash_getdr(0, DATA_WORD);
+                memcpy(buf, &data, cnt);
+                buf += cnt;
+            }
+        }
+    }
+    SPIC->ssienr = 0;
+}
+
+__attribute__((section(".ram.text"), noinline))
+static int gd25_secure_register_read(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
+    CHECK_TRUE(security_registers_index < HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_addr + size <= HAL_QSPI_FLASH_OTP_SIZE_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    uint32_t address = ((security_registers_index + 1) << 12) + security_registers_addr;
+
+    gd25_perform_read_security_registers(address, (uint8_t*)buf, size);
+    dcacheCleanInvalidateAligned((uintptr_t)buf, size);
+
+    return SYSTEM_ERROR_NONE;
+}
+
+__attribute__((section(".ram.text"), noinline))
+static int gd25_secure_register_write(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
+    CHECK_TRUE(security_registers_index < HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(security_registers_addr + size <= HAL_QSPI_FLASH_OTP_SIZE_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    uint32_t address = ((security_registers_index + 1) << 12) + security_registers_addr;
+    uint8_t addrBuf[3] = {};
+    addrBuf[0] = (uint8_t)((address >> 16) & 0xFF);
+    addrBuf[1] = (uint8_t)((address >> 8) & 0xFF);
+    addrBuf[2] = (uint8_t)((address >> 0) & 0xFF);
+
+    // We may need to improve this
+    auto ptr = (uint8_t*)malloc(size + 3);
+    if (!ptr) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    memcpy(ptr, addrBuf, 3);
+    memcpy(ptr + 3, buf, size);
+
+    // Write/Erase enable
+    FLASH_TxCmd(0x06, 0, nullptr);
+    FLASH_WaitBusy(WAIT_WRITE_EN);
+
+    FLASH_TxCmd(0x42, size + 3, ptr);
+    FLASH_WaitBusy(WAIT_WRITE_DONE);
+    
+    // Write/Erase disable
+    FLASH_TxCmd(0x04, 0, nullptr);
+    return SYSTEM_ERROR_NONE;
+}
+
+__attribute__((section(".ram.text"), noinline))
+static int gd25_security_register_operation(hal_exflash_gd25_security_register_read_write operation, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
+    // Determine which OTP Register to start operating from
+    size_t otp_page = addr / HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
+    size_t data_to_process = data_size;
+    size_t data_processed = 0;
+    size_t data_to_process_this_operation = 0;
+    int ret = 0;
+
+    while (data_to_process && !ret) {
+        // Determine the offset of the current OTP register to start reading/writing from
+        size_t register_offset = (addr + data_processed) % HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
+        data_to_process_this_operation = data_to_process;
+
+        // If the data remaining to read/write extends into the next register, truncate the read/write amount to fit into this register
+        if (register_offset + data_to_process_this_operation > HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25){
+            data_to_process_this_operation = HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25 - register_offset;
+        }
+
+        ret = operation(otp_page, register_offset, &data_buf[data_processed], data_to_process_this_operation);
+
+        // Increment/decrement counter variables, increment to the next OTP register
+        data_to_process -= data_to_process_this_operation;
+        data_processed += data_to_process_this_operation;
+        otp_page++;
+    }
+
+    return ret;
+}
+
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk(false); // Stop thread scheduler
@@ -371,24 +638,30 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
     CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    // Read the first word at 0x00000000
-    uint32_t normalContent = 0;
-    FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
-    {
-        SCOPE_GUARD({
-            // Just in case, even if it might have failed to enter the secure OTP mode.
-            FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
-            if (isSecureOtpMode(normalContent)) {
-                SPARK_ASSERT(false);
-            }
-        });
+    if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
+        return gd25_security_register_operation(gd25_secure_register_read, addr, data_buf, data_size);
+    } else if (flash_init_para.FLASH_Id == FLASH_ID_MXIC) {
+        // Read the first word at 0x00000000
+        uint32_t normalContent = 0;
+        FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
+        {
+            SCOPE_GUARD({
+                // Just in case, even if it might have failed to enter the secure OTP mode.
+                FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
+                if (isSecureOtpMode(normalContent)) {
+                    SPARK_ASSERT(false);
+                }
+            });
 
-        FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
-        if (isSecureOtpMode(normalContent)) {
-            FLASH_RxData(0, (uint32_t)addr, data_size, data_buf);
-        } else {
-            return SYSTEM_ERROR_INVALID_STATE;
+            FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
+            if (isSecureOtpMode(normalContent)) {
+                FLASH_RxData(0, (uint32_t)addr, data_size, data_buf);
+            } else {
+                return SYSTEM_ERROR_INVALID_STATE;
+            }
         }
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -400,24 +673,30 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
     CHECK_TRUE(sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    // Read the first word at 0x00000000
-    uint32_t normalContent = 0;
-    FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
-    {
-        SCOPE_GUARD({
-            // Just in case, even if it might have failed to enter the secure OTP mode.
-            FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
-            if (isSecureOtpMode(normalContent)) {
-                SPARK_ASSERT(false);
-            }
-        });
+    if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
+        return gd25_security_register_operation(gd25_secure_register_write, addr, (uint8_t *)data_buf, data_size);
+    } else if (flash_init_para.FLASH_Id == FLASH_ID_MXIC) {
+        // Read the first word at 0x00000000
+        uint32_t normalContent = 0;
+        FLASH_RxData(0, (uint32_t)0, sizeof(normalContent), (uint8_t*)&normalContent);
+        {
+            SCOPE_GUARD({
+                // Just in case, even if it might have failed to enter the secure OTP mode.
+                FLASH_TxCmd(MXIC_FLASH_CMD_EXSO, 0, nullptr);
+                if (isSecureOtpMode(normalContent)) {
+                    SPARK_ASSERT(false);
+                }
+            });
 
-        FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
-        if (isSecureOtpMode(normalContent)) {
-            CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
-        } else {
-            return SYSTEM_ERROR_INVALID_STATE;
+            FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
+            if (isSecureOtpMode(normalContent)) {
+                CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
+            } else {
+                return SYSTEM_ERROR_INVALID_STATE;
+            }
         }
+    } else {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -425,7 +704,31 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, size_t size) {
-    /* We only support OTP sector and since it's One Time Programmable, we can't erase it */
+    if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
+        ExFlashLock lk(false); // Stop thread scheduler
+        // Write/Erase enable
+        FLASH_TxCmd(0x06, 0, nullptr);
+        FLASH_WaitBusy(WAIT_WRITE_EN);
+
+        size_t otpPage = addr / HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
+        if (otpPage > 2) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        uint32_t address = ((otpPage + 1) << 12);
+
+        // Erase security registers
+        uint8_t buf[3] = {};
+        buf[0] = (uint8_t)((address >> 16) & 0xFF);
+        buf[1] = (uint8_t)((address >> 8) & 0xFF);
+        buf[2] = (uint8_t)((address >> 0) & 0xFF);
+        FLASH_TxCmd(0x44, sizeof(buf), buf);
+        FLASH_WaitBusy(WAIT_WRITE_DONE);
+        
+        // Write/Erase disable
+        FLASH_TxCmd(0x04, 0, nullptr);
+    } else {
+        /* We only support OTP sector and since it's One Time Programmable, we can't erase it */
+    }
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
