@@ -1063,7 +1063,7 @@ void sys_unlock_tcpip_core(void);
 #define LWIP_NETIF_STATUS_CALLBACK      1
 
 /**
- * LWIP_NETIF_EXT_STATUS_CALLBACK==1: Support an extended callback function 
+ * LWIP_NETIF_EXT_STATUS_CALLBACK==1: Support an extended callback function
  * for several netif related event that supports multiple subscribers.
  * @see netif_ext_status_callback
  */
@@ -1869,9 +1869,9 @@ void sys_unlock_tcpip_core(void);
    ---------------------------------------
 */
 
-#ifdef DEBUG_BUILD
+//#ifdef DEBUG_BUILD
 #define LWIP_DEBUG                      1
-#endif // DEBUG_BUILD
+//#endif // DEBUG_BUILD
 
 /**
  * LWIP_DBG_MIN_LEVEL: After masking, the value of the debug is
@@ -1938,7 +1938,7 @@ extern uint32_t g_lwip_debug_flags;
 /**
  * IP_DEBUG: Enable debugging for IP.
  */
-#define IP_DEBUG                        LWIP_DBG_OFF
+#define IP_DEBUG                        LWIP_DBG_ON
 
 /**
  * IP_REASS_DEBUG: Enable debugging in ip_frag.c for both frag & reass.
@@ -2019,7 +2019,7 @@ extern uint32_t g_lwip_debug_flags;
 /**
  * UDP_DEBUG: Enable debugging in UDP.
  */
-#define UDP_DEBUG                       LWIP_DBG_OFF
+#define UDP_DEBUG                       LWIP_DBG_ON
 
 /**
  * TCPIP_DEBUG: Enable debugging in tcpip.c.
@@ -2044,7 +2044,7 @@ extern uint32_t g_lwip_debug_flags;
 /**
  * DNS_DEBUG: Enable debugging for DNS.
  */
-#define DNS_DEBUG                       LWIP_DBG_OFF
+#define DNS_DEBUG                       LWIP_DBG_ON
 
 /**
  * IP6_DEBUG: Enable debugging for IPv6.

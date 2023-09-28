@@ -1380,43 +1380,47 @@ int QuectelNcpClient::registerNet() {
             r = CHECK_PARSER(respNwMode.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
         #if PLATFORM_ID == PLATFORM_MSOM
-            if (nwScanMode != 0) {
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // AUTO
+            // if (nwScanMode != 0) {
+            if (nwScanMode != 1) {
+            // if (nwScanMode != 3) {
+                // CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // AUTO
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",1,1")); // GSM ONLY
+                // CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1")); // LTE ONLY
             }
 
-            if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-                auto respNwScanSeq = parser_.sendCommand("AT+QCFG=\"nwscanseq\"");
-                int nwScanSeq = -1;
-                r = CHECK_PARSER(respNwScanSeq.scanf("+QCFG: \"nwscanseq\",%d", &nwScanSeq));
-                CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-                r = CHECK_PARSER(respNwScanSeq.readResult());
-                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-                if (nwScanSeq != 201) { // i.e. 0201
-                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",0201,1")); // LTE 02, then GSM 01
-                }
-            }
-        #else 
+            // if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
+            //     auto respNwScanSeq = parser_.sendCommand("AT+QCFG=\"nwscanseq\"");
+            //     int nwScanSeq = -1;
+            //     r = CHECK_PARSER(respNwScanSeq.scanf("+QCFG: \"nwscanseq\",%d", &nwScanSeq));
+            //     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+            //     r = CHECK_PARSER(respNwScanSeq.readResult());
+            //     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+            //     if (nwScanSeq != 201) { // i.e. 0201
+            //         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",0201,1")); // LTE 02, then GSM 01
+            //     }
+            // }
+        #else
             if (nwScanMode != 3) {
                 CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
             }
         #endif
         }
 
-        if (isQuecCatNBxDevice()) {
-            // Configure Network Category to be searched
-            // Set to use LTE Cat-M1 ONLY if not already set, take effect immediately
-            auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
+        // if (isQuecCatNBxDevice()) {
+        //     // Configure Network Category to be searched
+        //     // Set to use LTE Cat-M1 ONLY if not already set, take effect immediately
+        //     auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
 
-            int iotOpMode = -1;
-            r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
+        //     int iotOpMode = -1;
+        //     r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
 
-            CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-            r = CHECK_PARSER(respOpMode.readResult());
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-            if (iotOpMode != 0) {
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
-            }
-        }
+        //     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        //     r = CHECK_PARSER(respOpMode.readResult());
+        //     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+        //     if (iotOpMode != 0) {
+        //         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+        //     }
+        // }
     }
     // Check GSM, GPRS, and LTE network registration status
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));

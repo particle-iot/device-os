@@ -28,7 +28,7 @@ void lwip_log_message(const char *fmt, ...);
 }
 #endif /* __cplusplus */
 
-#ifdef DEBUG_BUILD
+#if 1
 #define LWIP_PLATFORM_DIAG(x) do { lwip_log_message x; } while(0)
 #else
 #define LWIP_PLATFORM_DIAG(x)

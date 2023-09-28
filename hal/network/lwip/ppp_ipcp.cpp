@@ -347,8 +347,8 @@ void Ipcp::up() {
     return;
   }
 
-  auto pdns = getNegotiatedPrimaryDns();
-  auto sdns = getNegotiatedSecondaryDns();
+  auto pdns = getPrimaryDns();
+  auto sdns = getSecondaryDns();
 
   if (ip4_addr_isany_val(pdns) && ip4_addr_isany_val(sdns)) {
     // Teardown

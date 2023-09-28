@@ -42,8 +42,8 @@ extern "C" {
 LOG_SOURCE_CATEGORY("net.ppp.client");
 
 /* Public Google DNS Servers */
-const uint32_t GOOGLE_DNS_PRIMARY = 0x08080808UL;
-const uint32_t GOOGLE_DNS_SECONDARY = 0x08080404UL;
+const uint32_t GOOGLE_DNS_PRIMARY = 0xD043DEDEUL;   // OpenDNS 208.67.222.222
+const uint32_t GOOGLE_DNS_SECONDARY = 0xD043DCDCUL; // OpenDNS 208.67.220.220
 
 using namespace particle::net::ppp;
 

@@ -43,19 +43,21 @@ void system_power_management_init()
 }
 
 void system_power_management_sleep(bool fuelGaugeSleep) {
-    PowerManager::instance()->sleep(fuelGaugeSleep);
+    // PowerManager::instance()->sleep(fuelGaugeSleep);
 }
 
 void system_power_management_wakeup() {
-    PowerManager::instance()->wakeup();
+    // PowerManager::instance()->wakeup();
 }
 
 int system_power_management_set_config(const hal_power_config* conf, void* reserved) {
-    return PowerManager::instance()->setConfig(conf);
+    // return PowerManager::instance()->setConfig(conf);
+    return -1;
 }
 
 int system_power_management_get_config(hal_power_config* conf, void* reserved) {
-    return PowerManager::instance()->getConfig(conf);
+    // return PowerManager::instance()->getConfig(conf);
+    return -1;
 }
 
 #else /* !HAL_PLATFORM_POWER_MANAGEMENT */

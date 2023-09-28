@@ -137,15 +137,24 @@ PowerManager* PowerManager::instance() {
 }
 
 void PowerManager::init() {
-  os_thread_t th = nullptr;
-  size_t stack_size = HAL_PLATFORM_POWER_MANAGEMENT_STACK_SIZE;
+  PMIC power(true);
+  power.begin();
+  power.disableCharging();
+  power.disableDPDM();
+  power.setInputCurrentLimit(3000);
+  power.setInputVoltageLimit(3880);
+  power.setChargeCurrent(3000);
+  power.setChargeVoltage(5000);
+  power.disableWatchdog();
+  power.resetWatchdog();
+  power.disableCharging();
+  power.disableSafetyTimer();
 
-  #if defined(DEBUG_BUILD) || DEBUG_POWER
-    stack_size = 4 * 1024;
-  #endif // defined(DEBUG_BUILD)
-
-  os_thread_create(&th, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr, stack_size);
-  SPARK_ASSERT(th != nullptr);
+  LOG(INFO, "PMIC config:");
+  LOG(INFO, "Input current limit: %d", power.getInputCurrentLimit());
+  LOG(INFO, "Input voltage limit: %d", power.getInputVoltageLimit());
+  LOG(INFO, "Charging current: %d", power.getChargeCurrentValue());
+  LOG(INFO, "Power source: %d, status: 0x%02x, fault: 0x%02x", power.getSystemStatus()>>6, power.getSystemStatus(), power.getFault());
 }
 
 void PowerManager::update() {
@@ -399,6 +408,8 @@ void PowerManager::loop(void* arg) {
     attachInterrupt(pmicIntPin, &PowerManager::isrHandler, FALLING);
     PMIC power(true);
     power.begin();
+    power.disableCharging();
+    power.setInputCurrentLimit(2000);
     self->initDefault();
     // Clear old fault register state
     power.getFault();
@@ -486,6 +497,8 @@ void PowerManager::initDefault(bool dpdm) {
   power.setChargeCurrent(config_.charge_current);
   power.setTermChargeCurrent(PMIC_NORMAL_TERM_CHARGE_CURRENT);
 
+  LOG(INFO, ">>> power source: %d", power.getSystemStatus()>>6);
+
   // Enable or disable charging
   if (g_batteryState != BATTERY_STATE_UNKNOWN) {
     handleCharging((g_batteryState == BATTERY_STATE_DISCONNECTED) ? true : false);
@@ -537,7 +550,7 @@ void PowerManager::confirmBatteryState(battery_state_t from, battery_state_t to)
   batMonitorTimeStamp_ = millis();
   clearIntermediateBatteryState(STATE_CHARGED | STATE_CHARGING | STATE_NOT_CHARGING);
   battMonitorPeriod_ = BATTERY_STATE_NORMAL_CHECK_PERIOD;
-  
+
   // Charging may be temporarily enabled when battery is disconnected.
   // If we are still in the disconnected state, we need to disable charging again.
   handleCharging((to == BATTERY_STATE_DISCONNECTED) ? true : false);
@@ -678,7 +691,7 @@ void PowerManager::batteryStateTransitioningTo(battery_state_t targetState, bool
       } else {
         possibleChargedFault_ = true;
         chargedFaultCount_ = 0;
-        
+
         DBG_PWR("Set fault recharge threshold: 300mV");
         PMIC power(true);
         power.setRechargeThreshold(PMIC_FAULT_RECHARGE_THRESHOLD); // 300mV

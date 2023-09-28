@@ -19,8 +19,8 @@ INCLUDE_DIRS += $(TARGET_SRC_PATH)
 INCLUDE_DIRS += $(TARGET_SRC_PATH)/control/proto
 
 LOG_MODULE_CATEGORY = system
-ifneq (,$(filter $(PLATFORM_ID),13 15 23 25 26))
-ifneq ($(DEBUG_BUILD),y)
-CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_WARN
-endif
-endif
+# ifneq (,$(filter $(PLATFORM_ID),13 15 23 25 26))
+# ifneq ($(DEBUG_BUILD),y)
+CFLAGS += -DLOG_COMPILE_TIME_LEVEL=LOG_LEVEL_ALL
+# endif
+# endif
