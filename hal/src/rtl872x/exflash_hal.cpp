@@ -42,28 +42,30 @@ extern "C" {
 extern uintptr_t platform_system_part1_flash_start;
 extern uintptr_t platform_flash_end;
 
-#if HAL_PLATFORM_FLASH_MX25R6435FZNIL0
 typedef enum {
+    MXIC_FLASH_CMD_WRSCUR           = 0x2F,
     MXIC_FLASH_CMD_ENSO             = 0xB1,
     MXIC_FLASH_CMD_EXSO             = 0xC1,
-    MXIC_FLASH_CMD_DP               = 0xB9,
-    MXIC_FLASH_CMD_RDID             = 0x9F,
-    MXIC_FLASH_CMD_PGM_ERS_SPD      = 0x75,
-    MXIC_FLASH_CMD_PGM_ERS_RSM      = 0x7A,
-    MXIC_FLASH_CMD_RSTEN            = 0x66,
-    MXIC_FLASH_CMD_RST              = 0x99,
-    MXIC_FLASH_CMD_WREN             = 0x06,
-    MXIC_FLASH_CMD_WRSCUR           = 0x2F
-} mxic_flash_cmd_t;
-#else
-#error "Unsupported external flash"
-#endif
+
+    GD_FLASH_CMD_ERS_SEC            = 0x44,
+    GD_FLASH_CMD_PGM_SEC            = 0x42,
+    GD_FLASH_CMD_RD_SEC             = 0x48,
+
+    GENERIC_FLASH_CMD_RST           = 0x99,
+    GENERIC_FLASH_CMD_RSTEN         = 0x66,
+    GENERIC_FLASH_CMD_PGM_ERS_SPD   = 0x75,
+    GENERIC_FLASH_CMD_PGM_ERS_RSM   = 0x7A,
+    GENERIC_FLASH_CMD_RDID          = 0x9F,
+    GENERIC_FLASH_CMD_DP            = 0xB9,
+    GENERIC_FLASH_CMD_WREN          = 0x06,
+    GENERIC_FLASH_CMD_WRDI          = 0x04,
+} hal_exflash_cmd_t;
 
 #define HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25        3
 #define HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25         1024
 #define HAL_QSPI_FLASH_OTP_SIZE_GD25                (HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25 * HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25)
 
-typedef int (*hal_exflash_gd25_security_register_read_write)(uint8_t, uint32_t, void*, size_t);
+typedef int (*Gd25SecurityRegistersOperation)(uint8_t, uint32_t, uint8_t*, size_t);
 
 void dcacheCleanInvalidateAligned(uintptr_t ptr, size_t size) {
     uintptr_t alignedPtr = ptr & ~(portBYTE_ALIGNMENT_MASK);
@@ -372,85 +374,80 @@ static bool isSecureOtpMode(uint32_t normalContent) {
 
 // GD25 flash specific definitions
 
-#define FIFO_SIZE                           64
+#define RTK_SPIC_FIFO_SIZE                  64
 
-#define bfoSPI_FLASH_AUTO_LEN_DUM           ((uint32_t)     0)
-#define bfwSPI_FLASH_AUTO_LEN_DUM           ((uint32_t)    16)
-#define bfoSPI_FLASH_SR_TXE                 ((uint32_t)    5)
-#define bfoSPI_FLASH_SR_BUSY                ((uint32_t)    0)
+#define RTK_SPIC_BIT_OFFSET_AUTO_LEN_DUM    ((uint32_t)0)
+#define RTK_SPIC_BIT_WIDTH_AUTO_LEN_DUM     ((uint32_t)16)
+#define RTK_SPIC_BIT_OFFSET_SR_TXE          ((uint32_t)5)
+#define RTK_SPIC_BIT_OFFSET_SR_BUSY         ((uint32_t)0)
 
-#define DEF_RD_TUNING_DUMMY_CYCLE           0x2
+#define RTK_SPIC_READ_TUNING_DUMMY_CYCLE    0x2
 
-#define DW_BIT_MASK(__bfws) ((uint32_t) ((__bfws) == 32) ?                  \
-    0x0 : (0x1 << (__bfws)))
+#define RTK_SPIC_BIT_MASK(offset) ((uint32_t)((offset) == 32) ?                     \
+    0x0 : (0x1 << (offset)))
 
-#define DW_BIT_MASK_WIDTH(__bfws, __bits) ((uint32_t) ((__bfws) == 32) ?    \
-    0xFFFFFFFF : (((1 << (__bits)) - 1) << (__bfws)))
+#define RTK_SPIC_BIT_MASK_WIDTH(offset, bit_num) ((uint32_t)((offset) == 32) ?      \
+    0xFFFFFFFF : (((1 << (bit_num)) - 1) << (offset)))
 
-#define DW_BITS_SET_VAL(__datum, __bfws, __val, bit_num)                    \
-    ((__datum) = ((uint32_t) (__datum) &                                    \
-                ~DW_BIT_MASK_WIDTH(__bfws, bit_num)) |                      \
-    ((__val << (__bfws)) & DW_BIT_MASK_WIDTH(__bfws, bit_num)))
+#define RTK_SPIC_BITS_SET_VAL(reg, offset, val, bit_num)                            \
+    ((reg) = ((uint32_t)(reg) & (~RTK_SPIC_BIT_MASK_WIDTH(offset, bit_num))) |      \
+    ((val << (offset)) & RTK_SPIC_BIT_MASK_WIDTH(offset, bit_num)))
 
-#define CMD_ADDR_FORMAT(cmd, addr) (((cmd) & 0x000000ff) |                  \
-                ((addr & 0x000000ff) << 24) |                               \
-                ((addr & 0x0000ff00) << 8) |                                \
-                ((addr & 0x00ff0000) >> 8))
+#define RTK_SPIC_CMD_ADDR_FORMAT(cmd, addr) (((cmd) & 0x000000ff) |                 \
+    ((addr & 0x000000ff) << 24) |                                                   \
+    ((addr & 0x0000ff00) << 8) |                                                    \
+    ((addr & 0x00ff0000) >> 8))
 
-#define DW_BIT_GET_UNSHIFTED(__datum, __bfws)                               \
-    ((uint32_t) ((__datum) & DW_BIT_MASK(__bfws)))
+#define DW_BIT_GET_UNSHIFTED(reg, offset)                                           \
+    ((uint32_t)((reg) & RTK_SPIC_BIT_MASK(offset)))
 
-enum spi_flash_byte_num {
-    DATA_BYTE = 0,
-    DATA_HALF = 1,
-    DATA_WORD = 2
+enum RtkSpicFlashDataWidth {
+    RTK_SPIC_DATA_BYTE = 0,
+    RTK_SPIC_DATA_HALF = 1,
+    RTK_SPIC_DATA_WORD = 2
 };
 
-__attribute__((section(".ram.text"), noinline))
-static uint32_t spi_flash_getdr(uint32_t dr_num, enum spi_flash_byte_num byte_num) {
-    uint32_t rd_data;
-    if (dr_num > 31) {
+static uint32_t rtkSpiFlashGetDataReg(uint32_t index, enum RtkSpicFlashDataWidth byteWidth) {
+    uint32_t data;
+    if (index > 31) {
         return 0;
-    } else if (byte_num == DATA_BYTE) {
-        rd_data = SPIC->dr[dr_num].byte & 0x000000ff;
-    } else if (byte_num == DATA_HALF) {
-        rd_data = SPIC->dr[dr_num].half & 0x0000ffff;
-    } else if (byte_num == DATA_WORD) {
-        rd_data = SPIC->dr[dr_num].word;
+    } else if (byteWidth == RTK_SPIC_DATA_BYTE) {
+        data = SPIC->dr[index].byte & 0x000000ff;
+    } else if (byteWidth == RTK_SPIC_DATA_HALF) {
+        data = SPIC->dr[index].half & 0x0000ffff;
+    } else if (byteWidth == RTK_SPIC_DATA_WORD) {
+        data = SPIC->dr[index].word;
     } else {
         return 0;
     }
-    return rd_data;
+    return data;
 }
 
-__attribute__((section(".ram.text"), noinline))
-static void gd25_gd25_spi_flash_getdr() {
+static void rtkSpiFlashWaitBusy() {
     while (1) {
-        if (DW_BIT_GET_UNSHIFTED(SPIC->sr, bfoSPI_FLASH_SR_TXE)) {
+        if (DW_BIT_GET_UNSHIFTED(SPIC->sr, RTK_SPIC_BIT_OFFSET_SR_TXE)) {
             break;
         }
-        if ((!DW_BIT_GET_UNSHIFTED(SPIC->sr, bfoSPI_FLASH_SR_BUSY))) {
+        if ((!DW_BIT_GET_UNSHIFTED(SPIC->sr, RTK_SPIC_BIT_OFFSET_SR_BUSY))) {
             break;
         }
     }
 }
 
-__attribute__((section(".ram.text"), noinline))
-static void gd25_enable_cs_read(uint32_t len) {
+static void rtkSpiFlashEnableCsRead(uint32_t len) {
     /* set receive data length */
     if (len <= 0x00010000) {
         SPIC->ctrlr1 = len;
     }
     /* Enable SPI_FLASH */
-    SPIC->ssienr = 1; // What is it for ???
-    gd25_gd25_spi_flash_getdr();
+    SPIC->ssienr = 1;
+    rtkSpiFlashWaitBusy();
 }
 
-__attribute__((section(".ram.text"), noinline))
-static void gd25_send_command_address(uint8_t cmd, uint32_t addr, uint32_t dum_cycle) {
+static void rtkSpiFlashSendCmdAddr(uint8_t cmd, uint32_t addr, uint32_t dummyCycle) {
     /* Disable SPI_FLASH */
     SPIC->ssienr = 0;
-    if (dum_cycle != 0) { // spi_flash_set_dummy_cycle(dev, dummy);
+    if (dummyCycle != 0) { // spi_flash_set_dummy_cycle(dev, dummy);
         uint32_t cycle = 0;
         /* if using fast_read baud_rate */
         if (((SPIC->ctrlr0) & 0x00100000)) {
@@ -458,13 +455,13 @@ static void gd25_send_command_address(uint8_t cmd, uint32_t addr, uint32_t dum_c
         } else {
             cycle = (SPIC->baudr);
         }
-        cycle = (cycle * dum_cycle * 2) + DEF_RD_TUNING_DUMMY_CYCLE;
+        cycle = (cycle * dummyCycle * 2) + RTK_SPIC_READ_TUNING_DUMMY_CYCLE;
         if (cycle <= 0x10000) {
-            DW_BITS_SET_VAL(SPIC->auto_length, bfoSPI_FLASH_AUTO_LEN_DUM, cycle, bfwSPI_FLASH_AUTO_LEN_DUM);
+            RTK_SPIC_BITS_SET_VAL(SPIC->auto_length, RTK_SPIC_BIT_OFFSET_AUTO_LEN_DUM, cycle, RTK_SPIC_BIT_WIDTH_AUTO_LEN_DUM);
         }
     } else {
         /* Set tuning dummy cycles */
-        DW_BITS_SET_VAL(SPIC->auto_length, bfoSPI_FLASH_AUTO_LEN_DUM, DEF_RD_TUNING_DUMMY_CYCLE, bfwSPI_FLASH_AUTO_LEN_DUM);
+        RTK_SPIC_BITS_SET_VAL(SPIC->auto_length, RTK_SPIC_BIT_OFFSET_AUTO_LEN_DUM, RTK_SPIC_READ_TUNING_DUMMY_CYCLE, RTK_SPIC_BIT_WIDTH_AUTO_LEN_DUM);
     }
 
     /* set ctrlr0: RX mode, data_ch, addr_ch */
@@ -473,18 +470,22 @@ static void gd25_send_command_address(uint8_t cmd, uint32_t addr, uint32_t dum_c
     SPIC->ctrlr0 = (SPIC->ctrlr0 & 0xfff0ffff);
 
     /* set flash cmd + addr and write to fifo */
-    SPIC->dr[0].word = CMD_ADDR_FORMAT(cmd, addr);
+    SPIC->dr[0].word = RTK_SPIC_CMD_ADDR_FORMAT(cmd, addr);
 }
 
-__attribute__((section(".ram.text"), noinline))
-static void gd25_perform_read_security_registers(uint32_t addr, uint8_t* buf, size_t len) {
-    uint32_t dum_cycle = 8;
-    uint8_t cmd = 0x48;
+static int gd25ReadSecurityRegisters(uint8_t otpPageIdx, uint32_t addr, uint8_t* buf, size_t size) {
+    CHECK_TRUE(otpPageIdx < HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(addr + size <= HAL_QSPI_FLASH_OTP_SIZE_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    uint32_t address = ((otpPageIdx + 1) << 12) + addr;
+    uint32_t dummyCycle = 8;
+    uint8_t cmd = GD_FLASH_CMD_RD_SEC;
 
     uint32_t ctrl0 = SPIC->ctrlr0;
     uint32_t autoLen = SPIC->auto_length;
     uint32_t addrLen = SPIC->addr_length;
     SCOPE_GUARD({
+        SPIC->ssienr = 0;
         SPIC->ctrlr0 = ctrl0;
         SPIC->auto_length = autoLen;
         SPIC->addr_length = addrLen;
@@ -494,88 +495,75 @@ static void gd25_perform_read_security_registers(uint32_t addr, uint8_t* buf, si
     SPIC->auto_length = ((SPIC->auto_length & 0xfffcffff) | 0x00030000);
     SPIC->addr_length = 3;
 
-    gd25_send_command_address(cmd, addr, dum_cycle);
+    rtkSpiFlashSendCmdAddr(cmd, address, dummyCycle);
 
     uint32_t cnt;
     uint32_t data;
-    if (len <= FIFO_SIZE) {
-        gd25_enable_cs_read(len);
-        cnt = len / 4;
+    if (size <= RTK_SPIC_FIFO_SIZE) {
+        rtkSpiFlashEnableCsRead(size);
+        cnt = size / 4;
         for (uint32_t i = 0; i < cnt; i++) {
-            data = spi_flash_getdr(0, DATA_WORD);
+            data = rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_WORD);
             memcpy(buf, &data, 4);
             buf += 4;
         }
-        cnt = len % 4;
+        cnt = size % 4;
         if (cnt > 0) {
-            data = spi_flash_getdr(0, DATA_WORD);
+            data = rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_WORD);
             memcpy(buf, &data, cnt);
             buf += cnt;
         }
     } else {
-        gd25_enable_cs_read(FIFO_SIZE);
-        cnt = FIFO_SIZE / 4;
+        rtkSpiFlashEnableCsRead(RTK_SPIC_FIFO_SIZE);
+        cnt = RTK_SPIC_FIFO_SIZE / 4;
         for (uint32_t i = 0; i < cnt; i++) {
-            data = spi_flash_getdr(0, DATA_WORD);
+            data = rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_WORD);
             memcpy(buf, &data, 4);
             buf += 4;
         }
         /* t is transfer data times,
-         * t = (len - first xfer data) / fifo size
+         * t = (size - first xfer data) / fifo size
          */
-        uint32_t t = (len - FIFO_SIZE) / FIFO_SIZE;
-        addr = addr + FIFO_SIZE;
+        uint32_t t = (size - RTK_SPIC_FIFO_SIZE) / RTK_SPIC_FIFO_SIZE;
+        address = address + RTK_SPIC_FIFO_SIZE;
         while (t > 0) {
-            gd25_send_command_address(cmd, addr, dum_cycle);
-            gd25_enable_cs_read(FIFO_SIZE);
+            rtkSpiFlashSendCmdAddr(cmd, address, dummyCycle);
+            rtkSpiFlashEnableCsRead(RTK_SPIC_FIFO_SIZE);
             for (uint32_t i = 0; i < cnt; i++) {
-                data = spi_flash_getdr(0, DATA_WORD);
+                data = rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_WORD);
                 memcpy(buf, &data, 4);
                 buf += 4;
             }
-            addr = addr + FIFO_SIZE;
+            address = address + RTK_SPIC_FIFO_SIZE;
             t--;
         }
-        uint32_t tmp = len % FIFO_SIZE;
+        uint32_t tmp = size % RTK_SPIC_FIFO_SIZE;
         if (tmp > 0) {
-            gd25_send_command_address(cmd, addr, dum_cycle);
-            gd25_enable_cs_read(tmp);
+            rtkSpiFlashSendCmdAddr(cmd, address, dummyCycle);
+            rtkSpiFlashEnableCsRead(tmp);
             cnt = tmp / 4;
             for (uint32_t i = 0; i < cnt; i++) {
-                data = spi_flash_getdr(0, DATA_WORD);
+                data = rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_WORD);
                 memcpy(buf, &data, 4);
                 buf += 4;
             }
             cnt = tmp % 4;
             if (cnt > 0) {
-                data = spi_flash_getdr(0, DATA_WORD);
+                data = rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_WORD);
                 memcpy(buf, &data, cnt);
                 buf += cnt;
             }
         }
     }
-    SPIC->ssienr = 0;
-}
-
-__attribute__((section(".ram.text"), noinline))
-static int gd25_secure_register_read(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
-    CHECK_TRUE(security_registers_index < HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(security_registers_addr + size <= HAL_QSPI_FLASH_OTP_SIZE_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
-
-    uint32_t address = ((security_registers_index + 1) << 12) + security_registers_addr;
-
-    gd25_perform_read_security_registers(address, (uint8_t*)buf, size);
     dcacheCleanInvalidateAligned((uintptr_t)buf, size);
-
     return SYSTEM_ERROR_NONE;
 }
 
-__attribute__((section(".ram.text"), noinline))
-static int gd25_secure_register_write(uint8_t security_registers_index, uint32_t security_registers_addr, void* buf, size_t size) {
-    CHECK_TRUE(security_registers_index < HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(security_registers_addr + size <= HAL_QSPI_FLASH_OTP_SIZE_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+static int gd25WriteSecurityRegisters(uint8_t otpPageIdx, uint32_t addr, uint8_t* buf, size_t size) {
+    CHECK_TRUE(otpPageIdx < HAL_QSPI_FLASH_OTP_SECTOR_COUNT_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(addr + size <= HAL_QSPI_FLASH_OTP_SIZE_GD25, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    uint32_t address = ((security_registers_index + 1) << 12) + security_registers_addr;
+    uint32_t address = ((otpPageIdx + 1) << 12) + addr;
     uint8_t addrBuf[3] = {};
     addrBuf[0] = (uint8_t)((address >> 16) & 0xFF);
     addrBuf[1] = (uint8_t)((address >> 8) & 0xFF);
@@ -586,48 +574,51 @@ static int gd25_secure_register_write(uint8_t security_registers_index, uint32_t
     if (!ptr) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
+    SCOPE_GUARD({
+        if (ptr) {
+            free(ptr);
+        }
+    });
     memcpy(ptr, addrBuf, 3);
     memcpy(ptr + 3, buf, size);
 
     // Write/Erase enable
-    FLASH_TxCmd(0x06, 0, nullptr);
+    FLASH_TxCmd(GENERIC_FLASH_CMD_WREN, 0, nullptr);
     FLASH_WaitBusy(WAIT_WRITE_EN);
 
-    FLASH_TxCmd(0x42, size + 3, ptr);
+    FLASH_TxCmd(GD_FLASH_CMD_PGM_SEC, size + 3, ptr);
     FLASH_WaitBusy(WAIT_WRITE_DONE);
     
     // Write/Erase disable
-    FLASH_TxCmd(0x04, 0, nullptr);
+    FLASH_TxCmd(GENERIC_FLASH_CMD_WRDI, 0, nullptr);
     return SYSTEM_ERROR_NONE;
 }
 
-__attribute__((section(".ram.text"), noinline))
-static int gd25_security_register_operation(hal_exflash_gd25_security_register_read_write operation, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
+static int gd25PerformSecurityRegistersOperation(Gd25SecurityRegistersOperation operation, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
     // Determine which OTP Register to start operating from
-    size_t otp_page = addr / HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
-    size_t data_to_process = data_size;
-    size_t data_processed = 0;
-    size_t data_to_process_this_operation = 0;
+    size_t otpPageIdx = addr / HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
+    size_t dataToProcessTotal = data_size;
+    size_t dataProcessed = 0;
+    size_t dataToProcess = 0;
     int ret = 0;
 
-    while (data_to_process && !ret) {
+    while (dataToProcessTotal && !ret) {
         // Determine the offset of the current OTP register to start reading/writing from
-        size_t register_offset = (addr + data_processed) % HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
-        data_to_process_this_operation = data_to_process;
+        size_t register_offset = (addr + dataProcessed) % HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
+        dataToProcess = dataToProcessTotal;
 
         // If the data remaining to read/write extends into the next register, truncate the read/write amount to fit into this register
-        if (register_offset + data_to_process_this_operation > HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25){
-            data_to_process_this_operation = HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25 - register_offset;
+        if (register_offset + dataToProcess > HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25){
+            dataToProcess = HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25 - register_offset;
         }
 
-        ret = operation(otp_page, register_offset, &data_buf[data_processed], data_to_process_this_operation);
+        ret = operation(otpPageIdx, register_offset, &data_buf[dataProcessed], dataToProcess);
 
         // Increment/decrement counter variables, increment to the next OTP register
-        data_to_process -= data_to_process_this_operation;
-        data_processed += data_to_process_this_operation;
-        otp_page++;
+        dataToProcessTotal -= dataToProcess;
+        dataProcessed += dataToProcess;
+        otpPageIdx++;
     }
-
     return ret;
 }
 
@@ -639,7 +630,7 @@ int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, ui
     CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
-        return gd25_security_register_operation(gd25_secure_register_read, addr, data_buf, data_size);
+        return gd25PerformSecurityRegistersOperation(gd25ReadSecurityRegisters, addr, data_buf, data_size);
     } else if (flash_init_para.FLASH_Id == FLASH_ID_MXIC) {
         // Read the first word at 0x00000000
         uint32_t normalContent = 0;
@@ -674,7 +665,7 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
     CHECK_TRUE(data_buf && data_size > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
-        return gd25_security_register_operation(gd25_secure_register_write, addr, (uint8_t *)data_buf, data_size);
+        return gd25PerformSecurityRegistersOperation(gd25WriteSecurityRegisters, addr, (uint8_t*)data_buf, data_size);
     } else if (flash_init_para.FLASH_Id == FLASH_ID_MXIC) {
         // Read the first word at 0x00000000
         uint32_t normalContent = 0;
@@ -707,7 +698,7 @@ int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, s
     if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
         ExFlashLock lk(false); // Stop thread scheduler
         // Write/Erase enable
-        FLASH_TxCmd(0x06, 0, nullptr);
+        FLASH_TxCmd(GENERIC_FLASH_CMD_WREN, 0, nullptr);
         FLASH_WaitBusy(WAIT_WRITE_EN);
 
         size_t otpPage = addr / HAL_QSPI_FLASH_OTP_SECTOR_SIZE_GD25;
@@ -721,11 +712,11 @@ int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, s
         buf[0] = (uint8_t)((address >> 16) & 0xFF);
         buf[1] = (uint8_t)((address >> 8) & 0xFF);
         buf[2] = (uint8_t)((address >> 0) & 0xFF);
-        FLASH_TxCmd(0x44, sizeof(buf), buf);
+        FLASH_TxCmd(GD_FLASH_CMD_ERS_SEC, sizeof(buf), buf);
         FLASH_WaitBusy(WAIT_WRITE_DONE);
         
         // Write/Erase disable
-        FLASH_TxCmd(0x04, 0, nullptr);
+        FLASH_TxCmd(GENERIC_FLASH_CMD_WRDI, 0, nullptr);
     } else {
         /* We only support OTP sector and since it's One Time Programmable, we can't erase it */
     }
@@ -740,13 +731,13 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
     /* General commands */
     if (sp == HAL_EXFLASH_SPECIAL_SECTOR_NONE) {
         if (cmd == HAL_EXFLASH_COMMAND_SLEEP) {
-            byte = MXIC_FLASH_CMD_DP;
+            byte = GENERIC_FLASH_CMD_DP;
         } else if (cmd == HAL_EXFLASH_COMMAND_WAKEUP) {
-            byte = MXIC_FLASH_CMD_RDID;
+            byte = GENERIC_FLASH_CMD_RDID;
         } else if (cmd == HAL_EXFLASH_COMMAND_SUSPEND_PGMERS) {
-            byte = MXIC_FLASH_CMD_PGM_ERS_SPD;
+            byte = GENERIC_FLASH_CMD_PGM_ERS_SPD;
         } else if (cmd == HAL_EXFLASH_COMMAND_RESET) {
-            byte = MXIC_FLASH_CMD_RSTEN;
+            byte = GENERIC_FLASH_CMD_RSTEN;
         } else {
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
@@ -754,13 +745,13 @@ int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_com
         FLASH_TxCmd(byte, 0, nullptr);
         // For the reset procedure, we need to execute the reset command going forward.
         if (cmd == HAL_EXFLASH_COMMAND_RESET) {
-            byte = MXIC_FLASH_CMD_RST;
+            byte = GENERIC_FLASH_CMD_RST;
             // FIXME: The result of the instruction is not garanteed.
             FLASH_TxCmd(byte, 0, nullptr);
         }
     } else if (sp == HAL_EXFLASH_SPECIAL_SECTOR_OTP) {
         if (cmd == HAL_EXFLASH_COMMAND_LOCK_ENTIRE_OTP) {
-            byte = MXIC_FLASH_CMD_WREN;
+            byte = GENERIC_FLASH_CMD_WREN;
             // FIXME: The result of the instruction is not garanteed.
             FLASH_TxCmd(byte, 0, nullptr);
             byte = MXIC_FLASH_CMD_WRSCUR;
