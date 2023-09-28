@@ -375,6 +375,7 @@ static bool isSecureOtpMode(uint32_t normalContent) {
 // GD25 flash specific definitions
 
 #define RTK_SPIC_FIFO_SIZE                  64
+#define	RTK_SPIC_FIFO_HALF_SIZE	            (RTK_SPIC_FIFO_SIZE / 2)
 
 #define RTK_SPIC_BIT_OFFSET_AUTO_LEN_DUM    ((uint32_t)0)
 #define RTK_SPIC_BIT_WIDTH_AUTO_LEN_DUM     ((uint32_t)16)
@@ -398,7 +399,7 @@ static bool isSecureOtpMode(uint32_t normalContent) {
     ((addr & 0x0000ff00) << 8) |                                                    \
     ((addr & 0x00ff0000) >> 8))
 
-#define DW_BIT_GET_UNSHIFTED(reg, offset)                                           \
+#define RTK_SPIC_BIT_GET_UNSHIFTED(reg, offset)                                     \
     ((uint32_t)((reg) & RTK_SPIC_BIT_MASK(offset)))
 
 enum RtkSpicFlashDataWidth {
@@ -425,10 +426,10 @@ static uint32_t rtkSpiFlashGetDataReg(uint32_t index, enum RtkSpicFlashDataWidth
 
 static void rtkSpiFlashWaitBusy() {
     while (1) {
-        if (DW_BIT_GET_UNSHIFTED(SPIC->sr, RTK_SPIC_BIT_OFFSET_SR_TXE)) {
+        if (RTK_SPIC_BIT_GET_UNSHIFTED(SPIC->sr, RTK_SPIC_BIT_OFFSET_SR_TXE)) {
             break;
         }
-        if ((!DW_BIT_GET_UNSHIFTED(SPIC->sr, RTK_SPIC_BIT_OFFSET_SR_BUSY))) {
+        if ((!RTK_SPIC_BIT_GET_UNSHIFTED(SPIC->sr, RTK_SPIC_BIT_OFFSET_SR_BUSY))) {
             break;
         }
     }
@@ -499,7 +500,7 @@ static int gd25ReadSecurityRegisters(uint8_t otpPageIdx, uint32_t addr, uint8_t*
 
     uint32_t cnt;
     uint32_t data;
-    if (size <= RTK_SPIC_FIFO_SIZE) {
+    if (size <= RTK_SPIC_FIFO_HALF_SIZE) { // using RTK_SPIC_FIFO_SIZE it won't work if size >32
         rtkSpiFlashEnableCsRead(size);
         cnt = size / 4;
         for (uint32_t i = 0; i < cnt; i++) {
@@ -514,8 +515,8 @@ static int gd25ReadSecurityRegisters(uint8_t otpPageIdx, uint32_t addr, uint8_t*
             buf += cnt;
         }
     } else {
-        rtkSpiFlashEnableCsRead(RTK_SPIC_FIFO_SIZE);
-        cnt = RTK_SPIC_FIFO_SIZE / 4;
+        rtkSpiFlashEnableCsRead(RTK_SPIC_FIFO_HALF_SIZE);
+        cnt = RTK_SPIC_FIFO_HALF_SIZE / 4;
         for (uint32_t i = 0; i < cnt; i++) {
             data = rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_WORD);
             memcpy(buf, &data, 4);
@@ -524,20 +525,20 @@ static int gd25ReadSecurityRegisters(uint8_t otpPageIdx, uint32_t addr, uint8_t*
         /* t is transfer data times,
          * t = (size - first xfer data) / fifo size
          */
-        uint32_t t = (size - RTK_SPIC_FIFO_SIZE) / RTK_SPIC_FIFO_SIZE;
-        address = address + RTK_SPIC_FIFO_SIZE;
+        uint32_t t = (size - RTK_SPIC_FIFO_HALF_SIZE) / RTK_SPIC_FIFO_HALF_SIZE;
+        address = address + RTK_SPIC_FIFO_HALF_SIZE;
         while (t > 0) {
             rtkSpiFlashSendCmdAddr(cmd, address, dummyCycle);
-            rtkSpiFlashEnableCsRead(RTK_SPIC_FIFO_SIZE);
+            rtkSpiFlashEnableCsRead(RTK_SPIC_FIFO_HALF_SIZE);
             for (uint32_t i = 0; i < cnt; i++) {
                 data = rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_WORD);
                 memcpy(buf, &data, 4);
                 buf += 4;
             }
-            address = address + RTK_SPIC_FIFO_SIZE;
+            address = address + RTK_SPIC_FIFO_HALF_SIZE;
             t--;
         }
-        uint32_t tmp = size % RTK_SPIC_FIFO_SIZE;
+        uint32_t tmp = size % RTK_SPIC_FIFO_HALF_SIZE;
         if (tmp > 0) {
             rtkSpiFlashSendCmdAddr(cmd, address, dummyCycle);
             rtkSpiFlashEnableCsRead(tmp);
