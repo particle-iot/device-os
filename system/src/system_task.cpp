@@ -72,6 +72,8 @@ volatile system_tick_t spark_loop_total_millis = 0;
 
 bool APPLICATION_SETUP_DONE = false;
 
+constexpr auto SYSTEM_ISR_TASK_QUEUE_MAX_TASKS_PER_ONE_PROCESS = 20;
+
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 
@@ -492,7 +494,11 @@ int system_isr_task_queue_free_memory(void *ptrToFree) {
 
 static void process_isr_task_queue()
 {
-    SystemISRTaskQueue.process();
+    // Process up to SYSTEM_ISR_TASK_QUEUE_MAX_TASKS_PER_ONE_PROCESS per one invocation
+    // This is simply to to avoid accidentally running into a situation where a processed task generates another task indefinitely
+    for (unsigned i = 0; i < SYSTEM_ISR_TASK_QUEUE_MAX_TASKS_PER_ONE_PROCESS && SystemISRTaskQueue.process(); i++) {
+        ;;
+    }
 }
 
 #if HAL_PLATFORM_SETUP_BUTTON_UX
@@ -587,7 +593,7 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
             HAL_Delay_Milliseconds(1);
         }
 
-        if (SPARK_WLAN_SLEEP || force_no_background_loop)
+        if (force_no_background_loop)
         {
             //Do not yield for Spark_Idle()
         }
