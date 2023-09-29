@@ -492,13 +492,9 @@ int system_isr_task_queue_free_memory(void *ptrToFree) {
     return 0;
 }
 
-static void process_isr_task_queue()
+static bool process_isr_task_queue()
 {
-    // Process up to SYSTEM_ISR_TASK_QUEUE_MAX_TASKS_PER_ONE_PROCESS per one invocation
-    // This is simply to to avoid accidentally running into a situation where a processed task generates another task indefinitely
-    for (unsigned i = 0; i < SYSTEM_ISR_TASK_QUEUE_MAX_TASKS_PER_ONE_PROCESS && SystemISRTaskQueue.process(); i++) {
-        ;;
-    }
+    return SystemISRTaskQueue.process();
 }
 
 #if HAL_PLATFORM_SETUP_BUTTON_UX
@@ -606,6 +602,13 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
             {
                 //Run once if the above condition passes
                 spark_process();
+                // FIXME: this queue ideally needs to be processed much more often than every 1s, but for now mostly keeping to
+                // spark_process() schedule with additionally processing more tasks in ISR task queue specifically
+                if (!threading) {
+                    for (unsigned i = 0; i < SYSTEM_ISR_TASK_QUEUE_MAX_TASKS_PER_ONE_PROCESS && process_isr_task_queue(); i++) {
+                        ;;
+                    }
+                }
             }
             while (!threading && SPARK_FLASH_UPDATE); //loop during OTA update
         }
