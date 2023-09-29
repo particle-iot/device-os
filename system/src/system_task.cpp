@@ -799,12 +799,21 @@ void* system_internal(int item, void* reserved)
         particle::NetIfTester::instance()->testInterfaces();
         return nullptr;
     }
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
     case 5: {
         return reinterpret_cast<void*>(&lwip_stats);
     }
     case 6: {
         return (void*)particle::NetIfTester::instance()->getDiagnostics();
     }
+    case 7: {
+        // log lwip counters
+        LOG(TRACE,"[%s] IP rx %u %u %u %u | UDP rx %u %u %u %u", 
+                (const char *)reserved, lwip_stats.ip.recv, lwip_stats.ip.drop, lwip_stats.ip.err, lwip_stats.ip.proterr,
+                lwip_stats.udp.recv, lwip_stats.udp.drop, lwip_stats.udp.err, lwip_stats.udp.proterr);
+        return nullptr;
+    }
+#endif
     default:
         return nullptr;
     }

@@ -331,7 +331,7 @@ int spark_get_connection_property(unsigned property, void* data, size_t* size, v
         }
         return getConnectionProperty(protocol::Connection::MAX_FUNCTION_ARGUMENT_SIZE, data, size);
     case SPARK_CLOUD_BIND_NETWORK_INTERFACE: {
-        if (*size <= sizeof(network_interface_t)) {
+        if (*size >= sizeof(network_interface_t)) {
             *((network_interface_t*)data) = CloudConnectionSettings::instance()->boundInterface();
             return 0;    
         }

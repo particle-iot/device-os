@@ -41,6 +41,8 @@ namespace {
 
 using namespace particle;
 
+static CellularDevice cachedInfo = {};
+
 const size_t MAX_RESP_SIZE = 1024;
 
 int parseMdmType(const char* buf, size_t size) {
@@ -189,8 +191,12 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
 
     const NcpClientLock lock(client);
-    // Ensure the modem is powered on
-    CHECK(client->on());
+
+    if (client->ncpPowerState() != NcpPowerState::ON) {
+        memcpy(info, &cachedInfo, sizeof(CellularDevice));
+        return 0;
+    }
+
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
     if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
@@ -199,6 +205,8 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
         CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
     }
+
+    memcpy(&cachedInfo, info, sizeof(CellularDevice));
     return 0;
 }
 
