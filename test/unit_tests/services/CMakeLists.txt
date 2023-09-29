@@ -53,6 +53,9 @@ target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc
   PRIVATE ${DEVICE_OS_DIR}/system/inc
   PRIVATE ${DEVICE_OS_DIR}/wiring/inc
+  PRIVATE ${DEVICE_OS_DIR}/hal/
+  PRIVATE ${DEVICE_OS_DIR}/hal/network/ncp/
+  PRIVATE ${DEVICE_OS_DIR}/hal/network/ncp/at_parser/
   PRIVATE ${THIRD_PARTY_DIR}/hippomocks
 )
 

@@ -23,6 +23,7 @@
 #include "ifapi.h"
 
 #include "system_network.h" // FIXME: For network_interface_index
+#include "spark_wiring_vector.h"
 
 #include "str_util.h"
 #include "endian_util.h"
@@ -34,6 +35,8 @@
 #include "at_response.h"
 #include "cellular_enums_hal.h"
 #include "cellular_ncp_dev_mapping.h"
+
+#include "ncp_fw_update.h"
 
 #include <limits>
 
@@ -104,6 +107,37 @@ hal_net_access_tech_t fromCellularAccessTechnology(CellularAccessTechnology rat)
     default:
         return NET_ACCESS_TECHNOLOGY_UNKNOWN;
     }
+}
+
+struct CellularHalUrcHandler {
+    CellularHalUrcHandler(const char* prefix, hal_cellular_urc_callback_t callback, void* context) :
+            prefix(prefix),
+            callback(callback),
+            context(context) {
+    }
+    const char* prefix;
+    hal_cellular_urc_callback_t callback;
+    void* context;
+};
+
+Vector<std::unique_ptr<CellularHalUrcHandler>> sUrcHandlers;
+
+static int commonUrcHandler(AtResponseReader* reader, const char* prefix, void* data) {
+    auto handler = static_cast<CellularHalUrcHandler*>(data);
+
+    const size_t atResponseSize = 64;
+    std::unique_ptr<char[]> atResponse(new(std::nothrow) char[atResponseSize]);
+    CHECK_TRUE(atResponse.get(), SYSTEM_ERROR_NO_MEMORY);
+
+    const auto n = reader->readLine(atResponse.get(), atResponseSize - 1);
+    if (n < 0) {
+        return n;
+    }
+    atResponse[n] = '\0';
+    handler->callback(atResponse.get(), handler->context);
+    atResponse.reset();
+
+    return SYSTEM_ERROR_NONE;
 }
 
 } // unnamed
@@ -506,6 +540,43 @@ int cellular_command(_CALLBACKPTR_MDM cb, void* param, system_tick_t timeout_ms,
     return mdmTypeToResult(mdmType);
 }
 
+int cellular_add_urc_handler(const char* prefix, hal_cellular_urc_callback_t cb, void* context) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    const auto parser = client->atParser();
+
+    const NcpClientLock lock(client);
+
+    auto entry = std::make_unique<CellularHalUrcHandler>(prefix, cb, context);
+    CHECK_TRUE(entry, SYSTEM_ERROR_NO_MEMORY);
+    sUrcHandlers.append(std::move(entry));
+    auto handler = sUrcHandlers.last().get();
+
+    return parser->addUrcHandler(prefix, commonUrcHandler, handler);
+}
+
+int cellular_remove_urc_handler(const char* prefix) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    const auto parser = client->atParser();
+
+    const NcpClientLock lock(client);
+
+    parser->removeUrcHandler(prefix);
+    for (int i = 0; i < sUrcHandlers.size(); ++i) {
+        if (strcmp(sUrcHandlers.at(i).get()->prefix, prefix) == 0) {
+            sUrcHandlers.removeAt(i);
+            break;
+        }
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
 int cellular_data_usage_set(CellularDataHal* data, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
@@ -607,4 +678,29 @@ int cellular_start_ncp_firmware_update(bool update, void* reserved) {
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
     CHECK(client->startNcpFwUpdate(update));
     return SYSTEM_ERROR_NONE;
+}
+
+int cellular_get_ncp_firmware_version(uint32_t* version, void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    CHECK(client->getNcpFirmwareVersion(version));
+    return SYSTEM_ERROR_NONE;
+}
+
+int cellular_update_status(void* reserved) {
+#if HAL_PLATFORM_NCP_FW_UPDATE
+    return services::SaraNcpFwUpdate::instance()->updateStatus();
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif
+}
+
+int cellular_enable_updates(void* reserved) {
+#if HAL_PLATFORM_NCP_FW_UPDATE
+    return services::SaraNcpFwUpdate::instance()->enableUpdates();
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif
 }

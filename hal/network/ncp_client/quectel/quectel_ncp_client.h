@@ -73,8 +73,9 @@ public:
     virtual int enterDataMode() override;
     virtual int getMtu() override;
     virtual int urcs(bool enable) override;
-    virtual int startNcpFwUpdate(bool update) override;
     virtual int dataModeError(int error) override;
+    virtual int startNcpFwUpdate(bool update) override;
+    virtual int getNcpFirmwareVersion(uint32_t* version) override;
 
     auto getMuxer() {
         return &muxer_;

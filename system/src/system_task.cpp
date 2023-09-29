@@ -57,6 +57,7 @@
 #if HAL_PLATFORM_IFAPI
 #include "system_listening_mode.h"
 #endif
+#include "ncp_fw_update.h"
 
 #if HAL_PLATFORM_BLE
 #include "ble_hal.h"
@@ -503,6 +504,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         if (system_mode() != SAFE_MODE) {
             manage_listening_mode_flag();
         }
+
+#if HAL_PLATFORM_NCP_FW_UPDATE
+        services::SaraNcpFwUpdate::instance()->process();
+#endif
     }
     else
     {

@@ -154,4 +154,12 @@ test(api_cellular_registration_timeout_set) {
     API_COMPILE(cellular_registration_timeout_set(60 * 60 * 1000, nullptr)); // 60 minutes
 }
 
+#if HAL_PLATFORM_NCP_FW_UPDATE
+test (api_cellular_update)
+{
+    API_COMPILE(Cellular.enableUpdates()); // Disabled by default
+    API_COMPILE(Cellular.updateStatus());
+}
+#endif // HAL_PLATFORM_NCP_FW_UPDATE
+
 #endif

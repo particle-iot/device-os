@@ -24,7 +24,7 @@ rm -rf .build/*
 mkdir -p .build/
 cd .build/
 cmake $cmake_args ..
-make all test coverage
+make all test coverage CTEST_OUTPUT_ON_FAILURE=TRUE
 
 cmake_unit_tests=$?
 

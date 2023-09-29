@@ -37,6 +37,8 @@ typedef int (*_CALLBACKPTR_MDM)(int type, const char* buf, int len, void* param)
 
 typedef void (*_CELLULAR_SMS_CB_MDM)(void* data, int index);
 
+typedef int (*hal_cellular_urc_callback_t)(const char* data, void* context);
+
 #ifdef __cplusplus
 // Todo - is storing raw string pointers correct here? These will only be valid
 // If they are stored as constants in the application.

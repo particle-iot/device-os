@@ -265,7 +265,32 @@ cellular_result_t cellular_process(void* reserved, void* reserved1);
 /**
  * Start NCP FW Update
  */
-int cellular_start_ncp_firmware_update(bool update = false, void* reserved = NULL);
+int cellular_start_ncp_firmware_update(bool update, void* reserved);
+
+/**
+ * Get NCP firmware version as a uint32_t
+ */
+int cellular_get_ncp_firmware_version(uint32_t* version, void* reserved);
+
+/**
+ * Get modem firmware update status result
+ */
+int cellular_update_status(void* reserved);
+
+/**
+ * Enable modem firmware updates (blocking call, requires a pending update)
+ */
+int cellular_enable_updates(void* reserved);
+
+/**
+ * Add URC handler
+ */
+int cellular_add_urc_handler(const char* prefix, hal_cellular_urc_callback_t cb, void* context);
+
+/**
+ * Remove URC handler
+ */
+int cellular_remove_urc_handler(const char* prefix);
 
 #ifdef __cplusplus
 }

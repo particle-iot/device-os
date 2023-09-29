@@ -71,6 +71,7 @@ add_subdirectory(services)
 add_subdirectory(wiring)
 add_subdirectory(hal)
 add_subdirectory(system)
+add_subdirectory(ncp_fw_update)
 
 # Create `coverage` target in the `make` command
 add_custom_target( coverage

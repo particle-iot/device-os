@@ -17,7 +17,9 @@
 
 #pragma once
 
+#ifndef UNIT_TEST
 #include "tlv_file.h"
+#endif // UNIT_TEST
 
 namespace particle { namespace services {
 
@@ -27,6 +29,7 @@ enum class SystemCacheKey : uint16_t {
     // ADC_CALIBRATION_OFFSET = 0x0002,
     // WIZNET_CONFIG_DATA = 0x0003,
     CELLULAR_NCP_OPERATION_MODE = 0x0004,
+    SARA_NCP_FW_UPDATE_DATA = 0x0005,
 };
 
 class SystemCache {
@@ -47,8 +50,10 @@ public:
 protected:
     SystemCache();
 
+#ifndef UNIT_TEST
 private:
     settings::TlvFile tlv_;
+#endif // UNIT_TEST
 };
 
 } } // particle::service
