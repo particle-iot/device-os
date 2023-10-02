@@ -72,6 +72,8 @@ volatile system_tick_t spark_loop_total_millis = 0;
 
 bool APPLICATION_SETUP_DONE = false;
 
+constexpr auto SYSTEM_ISR_TASK_QUEUE_MAX_TASKS_PER_ONE_PROCESS = 20;
+
 // Auth options are WLAN_SEC_UNSEC, WLAN_SEC_WPA, WLAN_SEC_WEP, and WLAN_SEC_WPA2
 unsigned char _auth = WLAN_SEC_WPA2;
 
@@ -490,9 +492,9 @@ int system_isr_task_queue_free_memory(void *ptrToFree) {
     return 0;
 }
 
-static void process_isr_task_queue()
+static bool process_isr_task_queue()
 {
-    SystemISRTaskQueue.process();
+    return SystemISRTaskQueue.process();
 }
 
 #if HAL_PLATFORM_SETUP_BUTTON_UX
@@ -587,7 +589,7 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
             HAL_Delay_Milliseconds(1);
         }
 
-        if (SPARK_WLAN_SLEEP || force_no_background_loop)
+        if (force_no_background_loop)
         {
             //Do not yield for Spark_Idle()
         }
@@ -600,6 +602,13 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
             {
                 //Run once if the above condition passes
                 spark_process();
+                // FIXME: this queue ideally needs to be processed much more often than every 1s, but for now mostly keeping to
+                // spark_process() schedule with additionally processing more tasks in ISR task queue specifically
+                if (!threading) {
+                    for (unsigned i = 0; i < SYSTEM_ISR_TASK_QUEUE_MAX_TASKS_PER_ONE_PROCESS && process_isr_task_queue(); i++) {
+                        ;;
+                    }
+                }
             }
             while (!threading && SPARK_FLASH_UPDATE); //loop during OTA update
         }
