@@ -32,6 +32,7 @@
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_network_diagnostics.h"
+#include "system_connection_manager.h"
 #include "system_update.h"
 #include "firmware_update.h"
 #include "spark_macros.h"
@@ -796,7 +797,7 @@ void* system_internal(int item, void* reserved)
         return reinterpret_cast<void*>(system_cloud_get_socket_handle());
     }
     case 4: {
-        particle::NetIfTester::instance()->testInterfaces();
+        particle::system::NetIfTester::instance()->testInterfaces();
         return nullptr;
     }
 #if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
@@ -804,7 +805,7 @@ void* system_internal(int item, void* reserved)
         return reinterpret_cast<void*>(&lwip_stats);
     }
     case 6: {
-        return (void*)particle::NetIfTester::instance()->getDiagnostics();
+        return (void*)particle::system::NetIfTester::instance()->getDiagnostics();
     }
     case 7: {
         // log lwip counters

@@ -62,6 +62,8 @@ public:
     virtual void setListenTimeout(uint16_t timeout);
     virtual uint16_t getListenTimeout();
     virtual bool listening();
+    virtual NetworkClass& preferred(bool preferred = true);
+    virtual bool isPreferred();
 
     operator network_interface_t() const {
         return iface_;

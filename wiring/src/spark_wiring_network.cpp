@@ -101,6 +101,15 @@ bool NetworkClass::listening() {
     return network_listening(*this, 0, nullptr);
 }
 
+NetworkClass& NetworkClass::preferred(bool preferred) {
+    network_handle_t network = network_preferred(*this, preferred, nullptr);
+    return Network.from(network);
+}
+
+bool NetworkClass::isPreferred() {
+    return network_is_preferred(*this, nullptr);
+}
+
 IPAddress NetworkClass::resolve(const char* name) {
     IPAddress addr;
 #if HAL_USE_INET_HAL_POSIX

@@ -19,6 +19,7 @@
 
 #if HAL_PLATFORM_IFAPI
 
+#include "system_connection_manager.h"
 #include "system_network.h"
 #include "system_network_internal.h"
 #include "system_update.h"
@@ -404,6 +405,17 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
 
     return ListeningModeHandler::instance()->enqueueCommand(command, arg);
 }
+
+// TODO: Better order/location in file + ifdef guard?
+network_handle_t network_preferred(network_handle_t network, bool preferred, void* reserved) {
+    ConnectionManager::instance()->setPreferredNetwork(network, preferred);
+    return ConnectionManager::instance()->getPreferredNetwork();
+}
+
+bool network_is_preferred(network_handle_t network, void* reserved) {
+    return network == ConnectionManager::instance()->getPreferredNetwork();
+}
+
 
 int network_set_credentials(network_handle_t network, uint32_t, NetworkCredentials* credentials, void*) {
     switch (network) {

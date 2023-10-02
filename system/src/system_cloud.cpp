@@ -40,6 +40,7 @@
 #include "system_threading.h"
 #include "system_update.h"
 #include "system_cloud_internal.h"
+#include "system_connection_manager.h"
 #include "string_convert.h"
 #include "spark_protocol_functions.h"
 #include "events.h"
@@ -333,6 +334,13 @@ int spark_get_connection_property(unsigned property, void* data, size_t* size, v
     case SPARK_CLOUD_BIND_NETWORK_INTERFACE: {
         if (*size >= sizeof(network_interface_t)) {
             *((network_interface_t*)data) = CloudConnectionSettings::instance()->boundInterface();
+            return 0;    
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    case SPARK_CLOUD_GET_NETWORK_INTERFACE: {
+        if (*size >= sizeof(network_interface_t)) {
+            *((network_interface_t*)data) = ConnectionManager::instance()->getCloudConnectionNetwork();
             return 0;    
         }
         return SYSTEM_ERROR_INVALID_ARGUMENT;

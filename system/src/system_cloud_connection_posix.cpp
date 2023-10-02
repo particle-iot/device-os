@@ -23,6 +23,7 @@ LOG_SOURCE_CATEGORY("comm.cloud.posix")
 #if HAL_USE_SOCKET_HAL_POSIX
 #include "system_cloud_connection.h"
 #include "system_cloud_internal.h"
+#include "system_connection_manager.h"
 #include "system_error.h"
 #include "inet_hal.h"
 #include "ifapi.h"
@@ -204,17 +205,15 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
             }
         }
 
-        network_interface_t bound_interface = 0;
-        size_t n = sizeof(bound_interface);
-        auto result = spark_get_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, &bound_interface, &n, nullptr);
-        LOG(TRACE, "cloud socket netif result %u interface: %lu", result, bound_interface);
+        network_interface_t cloudInterface = particle::system::ConnectionManager::instance()->selectCloudConnectionNetwork();
 
-        if (!result && bound_interface != NETWORK_INTERFACE_ALL) {
+        if (cloudInterface != NETWORK_INTERFACE_ALL) {    
             // Bind to specific netif
             struct ifreq ifr = {};
-            if_index_to_name(bound_interface, ifr.ifr_name);
-            LOG(INFO, "Bound socket from internal index %lu to lwip interface %s", bound_interface, ifr.ifr_name);
-            sock_setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
+            if_index_to_name(cloudInterface, ifr.ifr_name);
+
+            auto sockOptRet = sock_setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
+            LOG(TRACE, "Bound socket result %d from internal index %lu to lwip interface %s", sockOptRet, cloudInterface, ifr.ifr_name);
         }
 
         /* FIXME: timeout for TCP */

@@ -377,6 +377,17 @@ public:
     }
     static String deviceID(void) { return SystemClass::deviceID(); }
 
+    spark::NetworkClass& connectionInterface() {
+        network_handle_t network;
+        size_t n = sizeof(network);
+        auto r = spark_get_connection_property(SPARK_CLOUD_GET_NETWORK_INTERFACE, &network, &n, nullptr);
+        if (!r) {
+            return spark::Network.from(network);
+        }
+
+        return spark::Network;
+    };
+
 #if HAL_PLATFORM_CLOUD_UDP
     inline static void keepAlive(unsigned sec)
     {
