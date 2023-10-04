@@ -932,8 +932,8 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     if (!req) {
         int r = 0;
         if (d.type() == CoapType::CON) {
-            // Check the unack'd requests as this response could have arrived before the ACK.
-            // In that case, handleResponse() will be called recursively
+            // Check the unack'd requests as this response could arrive before the ACK. In that case,
+            // handleResponse() will be called recursively
             r = CHECK(handleAck(d));
         }
         return r; // 0 or Result::HANDLED
@@ -946,22 +946,34 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         CHECK(sendAck(d.id()));
     }
     // Check if it's a blockwise response
-    int blockIndex = 0;
+    auto resp = RefCountPtr(req->blockResponse); // blockResponse is a raw pointer. If null, a response object hasn't been created yet
+    const char* etag = nullptr;
+    size_t etagSize = 0;
+    int blockIndex = -1;
     bool hasMore = false;
-    bool hasBlockOpt = false;
-    auto it = d.findOption(CoapOption::BLOCK2);
-    if (it) {
-        int r = decodeBlockOption(it.toUInt(), blockIndex, hasMore);
+    auto it = d.options();
+    while (it.next()) {
+        int r = 0;
+        if (it.option() == CoapOption::BLOCK2) {
+            r = decodeBlockOption(it.toUInt(), blockIndex, hasMore);
+        } else if (it.option() == CoapOption::ETAG) {
+            etag = it.data();
+            etagSize = it.size();
+            if (etagSize > MAX_ETAG_SIZE) {
+                r = SYSTEM_ERROR_COAP;
+            }
+        }
         if (r < 0) {
-            LOG(ERROR, "Failed to decode block option: %d", r);
+            LOG(ERROR, "Failed to decode message options: %d", r);
+            clearMessage(resp);
             return Result::HANDLED;
         }
     }
     if (req->type == MessageType::BLOCK_REQUEST) {
         // Received another block of a blockwise response
-        assert(req->blockIndex.has_value() && req->blockResponse);
-        auto resp = RefCountPtr(req->blockResponse); // blockResponse is a raw pointer
-        if (!hasBlockOpt || blockIndex != req->blockIndex.value()) {
+        assert(req->blockIndex.has_value() && resp);
+        if (blockIndex != req->blockIndex.value() || !etag || etagSize != req->etagSize ||
+                std::memcmp(etag, req->etag, etagSize) != 0) {
             LOG(ERROR, "Received invalid blockwise response");
             if (resp->errorCallback) {
                 resp->errorCallback(SYSTEM_ERROR_COAP, resp->requestId, resp->callbackArg);
@@ -999,7 +1011,8 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
             return Result::HANDLED; // :shrug:
         }
         // Create a message object
-        auto resp = makeRefCountPtr<ResponseMessage>();
+        assert(!resp);
+        resp = makeRefCountPtr<ResponseMessage>();
         if (!resp) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
@@ -1012,8 +1025,10 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         resp->pos = const_cast<char*>(d.payload());
         resp->end = resp->pos + d.payloadSize();
         resp->state = MessageState::READ;
-        if (hasBlockOpt) {
-            if (blockIndex != 0) {
+        if (blockIndex >= 0) {
+            // This CoAP implementation requires the server to use a ETag option with all blockwise
+            // responses. The first block must have an index of 0
+            if (blockIndex != 0 || !etagSize) {
                 LOG(ERROR, "Received invalid blockwise response");
                 if (req->errorCallback) {
                     req->errorCallback(SYSTEM_ERROR_COAP, req->id, req->callbackArg); // Callback passed to coap_end_request()
@@ -1025,6 +1040,8 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
             resp->blockRequest = req;
             req->blockIndex = resp->blockIndex;
             req->hasMore = false;
+            req->etagSize = etagSize;
+            std::memcpy(req->etag, etag, etagSize);
         }
         // Acquire the message buffer
         assert(!curMsgId_);
@@ -1176,7 +1193,7 @@ int CoapChannel::sendAck(int coapId, bool rst) {
 }
 
 void CoapChannel::clearMessage(const RefCountPtr<CoapMessage>& msg) {
-    if (msg->sessionId != sessId_) {
+    if (!msg || msg->sessionId != sessId_) {
         return;
     }
     switch (msg->state) {
