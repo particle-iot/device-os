@@ -60,6 +60,8 @@ public:
 
     void destroyMessage(coap_message* msg);
 
+    void cancelRequest(int requestId);
+
     int addRequestHandler(const char* uri, coap_method method, coap_request_callback callback, void* callbackArg);
     void removeRequestHandler(const char* uri, coap_method method);
 

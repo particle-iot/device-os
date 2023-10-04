@@ -322,6 +322,20 @@ int coap_end_response(coap_message* msg, coap_ack_callback ack_cb, coap_error_ca
 void coap_destroy_message(coap_message* msg, void* reserved);
 
 /**
+ * Cancel an ongoing request.
+ *
+ * Cancelling a request prevents any callbacks associated with the respective message exchange from
+ * being invoked by the API.
+ *
+ * If the caller still owns a message instance associated with the given exchange, it needs to be
+ * destroyed via `coap_destroy_message()`.
+ *
+ * @param req_id ID of the request that started the message exchange.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void coap_cancel_request(int req_id, void* reserved);
+
+/**
  * Write the payload data of a message.
  *
  * If the data can't be sent in one message block, the function will return `COAP_RESULT_WAIT_BLOCK`.

@@ -94,8 +94,7 @@ bool isValidCoapMethod(int method) {
     }
 }
 
-// Objects of T or a class derived from T can be added to the list. The new element must not be in
-// another list. TODO: Use a generic intrusive list container
+// TODO: Use a generic intrusive list container
 template<typename T, typename E, typename = std::enable_if_t<std::is_base_of_v<T, E>>>
 inline void addToList(T*& head, E* elem) {
     assert(!elem->next && !elem->prev); // Debug-only
@@ -107,9 +106,9 @@ inline void addToList(T*& head, E* elem) {
     head = elem;
 }
 
-// The element being removed must be in the list
 template<typename T, typename E, typename = std::enable_if_t<std::is_base_of_v<T, E> || std::is_base_of_v<E, T>>>
 inline void removeFromList(T*& head, E* elem) {
+    assert(elem->next || elem->prev);
     if (elem->prev) {
         assert(head != elem);
         elem->prev->next = elem->next;
@@ -482,7 +481,7 @@ int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& si
             if (!msg->blockIndex.has_value()) {
                 msg->blockIndex = 0;
             }
-            msg->hasMore = true; // bytesToWrite < size
+            msg->hasMore = true;
             CHECK(updateMessage(msg)); // Update or add a block option to the message
             CHECK(sendMessage(msg));
         }
@@ -577,6 +576,29 @@ void CoapChannel::destroyMessage(coap_message* apiMsg) {
     }
     auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg)); // Take ownership
     clearMessage(msg);
+}
+
+void CoapChannel::cancelRequest(int requestId) {
+    if (requestId <= 0) {
+        return;
+    }
+    // Search among the messages for which a user callback may still need to be invoked
+    RefCountPtr<CoapMessage> msg = findRefInList(sentReqs_, [=](auto req) {
+        return req->type != MessageType::BLOCK_REQUEST && req->id == requestId;
+    });
+    if (!msg) {
+        msg = findRefInList(unackMsgs_, [=](auto msg) {
+            return msg->type != MessageType::BLOCK_REQUEST && msg->requestId == requestId;
+        });
+        if (!msg) {
+            msg = findRefInList(blockMsgs_, [=](auto msg) {
+                return msg->type == MessageType::RESPONSE && msg->requestId == requestId;
+            });
+        }
+    }
+    if (msg) {
+        clearMessage(msg);
+    }
 }
 
 int CoapChannel::addRequestHandler(const char* uri, coap_method method, coap_request_callback callback, void* callbackArg) {
@@ -1328,6 +1350,10 @@ int coap_end_response(coap_message* msg, coap_ack_callback ack_cb, coap_error_ca
 
 void coap_destroy_message(coap_message* msg, void* reserved) {
     CoapChannel::instance()->destroyMessage(msg);
+}
+
+void coap_cancel_request(int req_id, void* reserved) {
+    CoapChannel::instance()->cancelRequest(req_id);
 }
 
 int coap_write_payload(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
