@@ -23,7 +23,7 @@
 
 #include "system_tick_hal.h"
 
-#include "system_error.h"
+#include "ref_count.h"
 
 namespace particle::protocol {
 
@@ -123,22 +123,24 @@ private:
     State state_; // Channel state
     int lastMsgId_; // Last used internal message ID
     int curMsgId_; // Internal ID of the message stored in the shared buffer
-    int sessId_; // Counter incremented every time a new session starts
-    int pendingCloseError_; // If non-zero, the channel needs to be closed with an error
+    int sessId_; // Counter incremented every time a new session with the server is started
+    int pendingCloseError_; // If non-zero, the channel needs to be closed
     bool openPending_; // If true, the channel needs to be reopened
 
     int handleRequest(CoapMessageDecoder& d);
     int handleResponse(CoapMessageDecoder& d);
+    int handleAck(CoapMessageDecoder& d);
 
-    int prepareMessage(CoapMessage* msg);
-    int updateMessage(CoapMessage* msg);
-    int sendMessage(CoapMessage* msg);
+    int prepareMessage(const RefCountPtr<CoapMessage>& msg);
+    int updateMessage(const RefCountPtr<CoapMessage>& msg);
+    int sendMessage(RefCountPtr<CoapMessage> msg);
+    void clearMessage(const RefCountPtr<CoapMessage>& msg);
 
-    int sendEmptyAck(int coapId);
-
-    void releaseMessageBuffer();
+    int sendAck(int coapId, bool rst = false);
 
     int handleProtocolError(ProtocolError error);
+
+    void releaseMessageBuffer();
 
     system_tick_t millis() const;
 };

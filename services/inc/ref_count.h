@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <type_traits>
 #include <utility>
 #include <atomic>
 
@@ -105,6 +106,11 @@ public:
         return *this;
     }
 
+    template<typename BaseT, typename = std::enable_if_t<std::is_base_of_v<BaseT, T>>>
+    operator RefCountPtr<BaseT>() const {
+        return RefCountPtr<BaseT>(p_);
+    }
+
     explicit operator bool() const {
         return p_;
     }
@@ -132,6 +138,11 @@ private:
 template<typename T, typename... ArgsT>
 inline RefCountPtr<T> makeRefCountPtr(ArgsT&&... args) {
     return RefCountPtr<T>::wrap(new(std::nothrow) T(std::forward<ArgsT>(args)...));
+}
+
+template<typename TargetT, typename SourceT>
+inline RefCountPtr<TargetT> staticPtrCast(const RefCountPtr<SourceT>& ptr) {
+    return static_cast<TargetT*>(ptr.get());
 }
 
 } // namespace particle
