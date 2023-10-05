@@ -92,12 +92,12 @@ private:
     typedef Vector<std::unique_ptr<LedgerSyncContext>> LedgerSyncContexts;
 
     LedgerSyncContexts contexts_; // Preallocated context objects for all known ledgers
-
     std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
+    std::unique_ptr<char[]> buf_; // Intermediate buffer used for piping ledger data
     LedgerSyncContext* curCtx_; // Context of the ledger being synchronized
-
+    coap_message* msg_; // CoAP request or response that is being sent or received
     uint64_t nextSyncTime_; // Nearest time a device-to-cloud ledger needs to be synchronized
-
+    size_t bytesInBuf_; // Number of bytes stored in the intermediate buffer
     State state_; // Current state
     int pendingState_; // Pending state flags
     int reqId_; // ID of the ongoing CoAP request
@@ -115,16 +115,19 @@ private:
     int receiveNotifyUpdateRequest(coap_message* msg, int reqId);
     int receiveResetInfoRequest(coap_message* msg, int reqId);
 
-    int receiveResponse(coap_message* msg, int code, int reqId);
-    int receiveSetDataResponse(coap_message* msg, int result, int reqId);
-    int receiveGetDataResponse(coap_message* msg, int result, int reqId);
-    int receiveSubscribeResponse(coap_message* msg, int result, int reqId);
-    int receiveGetInfoResponse(coap_message* msg, int result, int reqId);
+    int receiveResponse(coap_message* msg, int status);
+    int receiveSetDataResponse(coap_message* msg, int result);
+    int receiveGetDataResponse(coap_message* msg, int result);
+    int receiveSubscribeResponse(coap_message* msg, int result);
+    int receiveGetInfoResponse(coap_message* msg, int result);
 
     int sendSetDataRequest(LedgerSyncContext* ctx);
     int sendGetDataRequest(LedgerSyncContext* ctx);
     int sendSubscribeRequest();
     int sendGetInfoRequest();
+
+    int sendLedgerData();
+    int receiveLedgerData();
 
     int sendResponse(int result, int reqId);
 
@@ -134,11 +137,14 @@ private:
 
     void handleError(int error);
 
+    void reset();
+
     LedgerSyncContexts::ConstIterator findContext(const char* name, bool& found) const;
 
     static int connectionCallback(int error, int status, void* arg);
     static int requestCallback(coap_message* msg, const char* uri, int method, int reqId, void* arg);
-    static int responseCallback(coap_message* msg, int code, int reqId, void* arg);
+    static int responseCallback(coap_message* msg, int status, int reqId, void* arg);
+    static int messageBlockCallback(coap_message* msg, int reqId, void* arg);
     static void requestErrorCallback(int error, int reqId, void* arg);
 
     friend class Ledger;

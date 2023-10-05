@@ -299,6 +299,10 @@ public:
 
     int rewind();
 
+    RefCountPtr<Ledger> ledger() const {
+        return ledger_;
+    }
+
     const LedgerInfo& info() const {
         return info_;
     }
@@ -349,6 +353,10 @@ public:
 
     void updateInfo(const LedgerInfo& info) {
         info_.update(info);
+    }
+
+    RefCountPtr<Ledger> ledger() const {
+        return ledger_;
     }
 
     bool isOpen() const {
