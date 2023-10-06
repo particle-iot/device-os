@@ -75,6 +75,23 @@ const size_t STREAM_BUFFER_SIZE = 128;
 
 const size_t MAX_PATH_LEN = 127;
 
+int encodeSetDataRequestPrefix(pb_ostream_t* stream, const char* ledgerName, const LedgerInfo& info) {
+    if (!pb_encode_tag(stream, PB_WT_STRING, PB_LEDGER(SetDataRequest_name_tag)) || // name
+            !pb_encode_string(stream, (const pb_byte_t*)ledgerName, std::strlen(ledgerName))) {
+        return SYSTEM_ERROR_ENCODING_FAILED;
+    }
+    auto lastUpdated = info.lastUpdated();
+    if (lastUpdated && (!pb_encode_tag(stream, PB_WT_64BIT, PB_LEDGER(SetDataRequest_last_updated_tag)) || // last_updated
+            !pb_encode_fixed64(stream, &lastUpdated))) {
+        return SYSTEM_ERROR_ENCODING_FAILED;
+    }
+    if (!pb_encode_tag(stream, PB_WT_STRING, PB_LEDGER(SetDataRequest_data_tag)) || // data
+            !pb_encode_varint(stream, info.dataSize())) {
+        return SYSTEM_ERROR_ENCODING_FAILED;
+    }
+    return 0;
+}
+
 int getStreamForSubmessage(coap_message* msg, pb_istream_t* stream, uint32_t fieldTag) {
     pb_istream_t s = {};
     CHECK(pb_istream_from_coap_message(&s, msg, nullptr));
@@ -180,6 +197,8 @@ int LedgerManager::init() {
     if (state_ != State::NEW) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
+    // TODO: Allow seeking in a ledger stream so that an intermediate buffer is not needed when
+    // streaming ledger data to and from the server
     std::unique_ptr<char[]> buf(new char[STREAM_BUFFER_SIZE]);
     if (!buf) {
         return SYSTEM_ERROR_NO_MEMORY;
@@ -579,9 +598,13 @@ int LedgerManager::receiveResponse(coap_message* msg, int status) {
             return SYSTEM_ERROR_BAD_DATA;
         }
     } // else: Result code field is missing so its value is 0
-    if (result == PB_CLOUD(Response_Result_OK) && codeClass != 2) {
-        // CoAP response code indicates an error but the protocol-specific result code is OK
-        return SYSTEM_ERROR_LEDGER_INVALID_RESPONSE;
+    if (codeClass != 2) {
+        if (result == PB_CLOUD(Response_Result_OK)) {
+            // CoAP response code indicates an error but the protocol-specific result code is OK
+            return SYSTEM_ERROR_LEDGER_INVALID_RESPONSE;
+        }
+        // This is not necessarily a critical error
+        LOG(WARN, "Ledger request failed: %d.%02d", (int)codeClass, (int)COAP_CODE_DETAIL(status));
     }
     switch (state_) {
     case State::SYNC_TO_CLOUD: {
@@ -670,8 +693,8 @@ int LedgerManager::receiveGetDataResponse(coap_message* msg, int result) {
     CHECK(getLedger(ledger, name));
     std::unique_ptr<LedgerWriter> writer(new(std::nothrow) LedgerWriter());
     CHECK(ledger->initWriter(*writer, LedgerWriteSource::SYSTEM));
-    // Ledger data may span multiple CoAP messages. Nanopb streams are synchronous so the response has
-    // to be decoded manually
+    // Ledger data may span multiple CoAP messages. Nanopb streams are synchronous so the response
+    // is decoded manually
     pb_istream_t pbStream = {};
     CHECK(getStreamForSubmessage(msg, &pbStream, PB_CLOUD(Response_ledger_get_data_tag)));
     uint64_t lastUpdated = 0;
@@ -702,6 +725,7 @@ int LedgerManager::receiveGetDataResponse(coap_message* msg, int result) {
     writer->updateInfo(LedgerInfo().lastUpdated(lastUpdated));
     stream_.reset(writer.release());
     msg_ = msg;
+    // Read the first chunk of the ledger data
     CHECK(receiveLedgerData());
     return 0;
 }
@@ -906,24 +930,24 @@ int LedgerManager::sendSetDataRequest(LedgerSyncContext* ctx) {
         msg_ = nullptr;
         reqId_ = COAP_INVALID_REQUEST_ID;
     });
-    pb_ostream_t pbStream = {};
+    // Ledger data may not fit in a single CoAP message. Nanopb streams are synchronous so the
+    // request is encoded manually
+    pb_ostream_t pbStream = PB_OSTREAM_SIZING;
+    // Calculate the size of the request's submessage (particle.cloud.ledger.SetDataRequest)
+    CHECK(encodeSetDataRequestPrefix(&pbStream, name, info));
+    size_t submsgSize = pbStream.bytes_written + info.dataSize();
+    // Encode a request message (particle.cloud.Request)
     CHECK(pb_ostream_from_coap_message(&pbStream, msg_, nullptr));
-    // Ledger data may not fit in a single CoAP message. Nanopb streams are synchronous so the request
-    // has to be encoded manually
-    if (!pb_encode_tag(&pbStream, PB_WT_STRING, PB_LEDGER(SetDataRequest_name_tag)) || // name
-            !pb_encode_string(&pbStream, (const pb_byte_t*)name, std::strlen(name))) {
+    if (!pb_encode_tag(&pbStream, PB_WT_VARINT, PB_CLOUD(Request_type_tag)) || // type
+            !pb_encode_varint(&pbStream, PB_CLOUD(Request_Type_LEDGER_SET_DATA))) {
         return SYSTEM_ERROR_ENCODING_FAILED;
     }
-    auto lastUpdated = info.lastUpdated();
-    if (lastUpdated && (!pb_encode_tag(&pbStream, PB_WT_64BIT, PB_LEDGER(SetDataRequest_last_updated_tag)) || // last_updated
-            !pb_encode_fixed64(&pbStream, &lastUpdated))) {
+    if (!pb_encode_tag(&pbStream, PB_WT_STRING, PB_CLOUD(Request_ledger_set_data_tag)) || // ledger_set_data
+            !pb_encode_varint(&pbStream, submsgSize)) {
         return SYSTEM_ERROR_ENCODING_FAILED;
     }
-    if (!pb_encode_tag(&pbStream, PB_WT_STRING, PB_LEDGER(SetDataRequest_data_tag)) || // data
-            !pb_encode_varint(&pbStream, info.dataSize())) {
-        return SYSTEM_ERROR_ENCODING_FAILED;
-    }
-    // Send the first chunk of the ledger data
+    CHECK(encodeSetDataRequestPrefix(&pbStream, name, info));
+    // Encode and send a first chunk of the ledger data
     CHECK(sendLedgerData());
     destroyMsgGuard.dismiss();
     destroyStreamGuard.dismiss();
@@ -1075,6 +1099,7 @@ int LedgerManager::sendLedgerData() {
                 break;
             }
             assert(size == bytesInBuf_);
+            bytesInBuf_ = 0;
         }
         int r = stream_->read(buf_.get(), STREAM_BUFFER_SIZE);
         if (r < 0) {
@@ -1102,9 +1127,10 @@ int LedgerManager::receiveLedgerData() {
     for (;;) {
         if (bytesInBuf_ > 0) {
             CHECK(stream_->write(buf_.get(), bytesInBuf_));
+            bytesInBuf_ = 0;
         }
-        size_t bytesInBuf_ = STREAM_BUFFER_SIZE;
-        int r = coap_read_payload(msg_, buf_.get(), &bytesInBuf_, messageBlockCallback, requestErrorCallback, this, nullptr);
+        size_t size = STREAM_BUFFER_SIZE;
+        int r = coap_read_payload(msg_, buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr);
         if (r < 0) {
             if (r == SYSTEM_ERROR_END_OF_STREAM) {
                 eof = true;
@@ -1112,6 +1138,7 @@ int LedgerManager::receiveLedgerData() {
             }
             return r;
         }
+        bytesInBuf_ = size;
         if (r == COAP_RESULT_WAIT_BLOCK) {
             break;
         }
@@ -1121,7 +1148,6 @@ int LedgerManager::receiveLedgerData() {
         auto writer = static_cast<LedgerWriter*>(stream_.get());
         writer->updateInfo(LedgerInfo().lastSynced(now));
         auto ledger = writer->ledger();
-        ledger->notifySynced(); // TODO: Invoke asynchronously
         CHECK(stream_->close());
         stream_.reset();
         coap_destroy_message(msg_, nullptr);
@@ -1130,6 +1156,7 @@ int LedgerManager::receiveLedgerData() {
         curCtx_->taskRunning = false;
         curCtx_ = nullptr;
         state_ = State::READY;
+        ledger->notifySynced(); // TODO: Invoke asynchronously
     }
     return 0;
 }

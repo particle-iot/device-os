@@ -57,8 +57,6 @@ const size_t MAX_ETAG_SIZE = 8; // RFC 7252, 5.10
 const unsigned BLOCK_SZX = 6; // Value of the SZX field for 1024-byte blocks (RFC 7959, 2.2)
 static_assert(COAP_BLOCK_SIZE == 1024); // When changing the block size, make sure to update BLOCK_SZX accordingly
 
-const unsigned CONTINUE_CODE = COAP_CODE(2, 31); // 2.31 Continue
-
 const unsigned DEFAULT_REQUEST_TIMEOUT = 60000;
 
 static_assert(COAP_INVALID_REQUEST_ID == 0); // Used by value in the code
@@ -323,7 +321,7 @@ CoapChannel::~CoapChannel() {
 }
 
 int CoapChannel::beginRequest(coap_message** msg, const char* uri, coap_method method, int timeout) {
-    if (timeout < 0 || std::strlen(uri)) { // TODO: Support longer URIs
+    if (timeout < 0 || std::strlen(uri) != 1) { // TODO: Support longer URIs
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (state_ != State::OPEN) {
@@ -442,6 +440,8 @@ int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& si
                 // Writing another message block
                 ++msg->blockIndex.value();
                 msg->hasMore = false;
+                assert(msg->type == MessageType::REQUEST);
+                removeRefFromList(blockMsgs_, msg); // FIXME
             }
             CHECK(prepareMessage(msg));
             *msg->pos++ = 0xff; // Payload marker
@@ -892,7 +892,7 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
     }
     if (hasBlockOpt) {
         // TODO: Support cloud-to-device blockwise requests
-        LOG(WARN, "Received unsupported blockwise request");
+        LOG(WARN, "Received blockwise request");
         CHECK(sendAck(d.id(), true /* rst */));
         return Result::HANDLED;
     }
@@ -937,6 +937,7 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
         clearMessage(req);
         return Result::HANDLED;
     }
+    req.unwrap(); // Transfer ownership
     releaseMsgBufGuard.dismiss();
     return Result::HANDLED;
 }
@@ -987,7 +988,12 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         }
         if (r < 0) {
             LOG(ERROR, "Failed to decode message options: %d", r);
-            clearMessage(resp);
+            if (resp) {
+                if (resp->errorCallback) {
+                    resp->errorCallback(SYSTEM_ERROR_COAP, resp->requestId, resp->callbackArg);
+                }
+                clearMessage(resp);
+            }
             return Result::HANDLED;
         }
     }
@@ -1019,69 +1025,93 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
             releaseMessageBuffer();
         });
         // Invoke the block handler
-        assert(resp->blockCallback); // readPayload() wouldn't send a block request if this callback wasn't provided
+        assert(resp->blockCallback);
         int r = resp->blockCallback(reinterpret_cast<coap_message*>(resp.get()), resp->requestId, resp->callbackArg);
         if (r < 0) {
-            LOG(ERROR, "Block handler failed: %d", r);
+            LOG(ERROR, "Message block handler failed: %d", r);
             clearMessage(resp);
             return Result::HANDLED;
         }
         releaseMsgBufGuard.dismiss();
-    } else {
-        // Received a regular response or the first block of a blockwise response
-        if (!req->responseCallback) {
-            return Result::HANDLED; // :shrug:
-        }
-        // Create a message object
-        assert(!resp);
-        resp = makeRefCountPtr<ResponseMessage>();
-        if (!resp) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        resp->id = ++lastMsgId_;
-        resp->requestId = req->id;
-        resp->sessionId = sessId_;
-        resp->coapId = d.id();
-        resp->token = token;
-        resp->status = d.code();
-        resp->pos = const_cast<char*>(d.payload());
-        resp->end = resp->pos + d.payloadSize();
-        resp->state = MessageState::READ;
-        if (blockIndex >= 0) {
-            // This CoAP implementation requires the server to use a ETag option with all blockwise
-            // responses. The first block must have an index of 0
-            if (blockIndex != 0 || !etagSize) {
-                LOG(ERROR, "Received invalid blockwise response");
-                if (req->errorCallback) {
-                    req->errorCallback(SYSTEM_ERROR_COAP, req->id, req->callbackArg); // Callback passed to coap_end_request()
-                }
-                return Result::HANDLED;
-            }
-            resp->blockIndex = blockIndex;
-            resp->hasMore = hasMore;
-            resp->blockRequest = req;
-            req->blockIndex = resp->blockIndex;
-            req->hasMore = false;
-            req->etagSize = etagSize;
-            std::memcpy(req->etag, etag, etagSize);
-        }
-        // Acquire the message buffer
-        assert(!curMsgId_);
-        if (resp->pos < resp->end) {
-            curMsgId_ = resp->id;
-        }
-        NAMED_SCOPE_GUARD(releaseMsgBufGuard, {
-            releaseMessageBuffer();
-        });
-        // Invoke the response handler
-        int r = req->responseCallback(reinterpret_cast<coap_message*>(resp.get()), resp->status, req->id, req->callbackArg);
-        if (r < 0) {
-            LOG(ERROR, "Response handler failed: %d", r);
-            clearMessage(resp);
-            return Result::HANDLED;
-        }
-        releaseMsgBufGuard.dismiss();
+        return Result::HANDLED;
     }
+    if (req->blockIndex.has_value() && req->hasMore.value()) {
+        // Received a response for a non-final block of a blockwise request
+        auto code = d.code();
+        if (code == CoapCode::CONTINUE) {
+            req->state = MessageState::WRITE;
+            addRefToList(blockMsgs_, req);
+            // Invoke the block handler
+            assert(req->blockCallback);
+            int r = req->blockCallback(reinterpret_cast<coap_message*>(req.get()), req->id, req->callbackArg);
+            if (r < 0) {
+                LOG(ERROR, "Message block handler failed: %d", r);
+                clearMessage(req);
+            }
+        } else {
+            LOG(ERROR, "Blockwise transfer failed: %d.%02d", (int)coapCodeClass(code), (int)coapCodeDetail(code));
+            if (req->errorCallback) {
+                req->errorCallback(SYSTEM_ERROR_COAP, req->id, req->callbackArg); // Callback passed to coap_write_payload()
+            }
+            clearMessage(req);
+        }
+        return Result::HANDLED;
+    }
+    // Received a regular response or the first block of a blockwise response
+    if (!req->responseCallback) {
+        return Result::HANDLED; // :shrug:
+    }
+    // Create a message object
+    resp = makeRefCountPtr<ResponseMessage>();
+    if (!resp) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    resp->id = ++lastMsgId_;
+    resp->requestId = req->id;
+    resp->sessionId = sessId_;
+    resp->coapId = d.id();
+    resp->token = token;
+    resp->status = d.code();
+    resp->pos = const_cast<char*>(d.payload());
+    resp->end = resp->pos + d.payloadSize();
+    resp->state = MessageState::READ;
+    if (blockIndex >= 0) {
+        // This CoAP implementation requires the server to use a ETag option with all blockwise
+        // responses. The first block must have an index of 0
+        if (blockIndex != 0 || !etagSize) {
+            LOG(ERROR, "Received invalid blockwise response");
+            if (req->errorCallback) {
+                req->errorCallback(SYSTEM_ERROR_COAP, req->id, req->callbackArg); // Callback passed to coap_end_request()
+            }
+            return Result::HANDLED;
+        }
+        resp->blockIndex = blockIndex;
+        resp->hasMore = hasMore;
+        resp->blockRequest = req;
+        req->type = MessageType::BLOCK_REQUEST;
+        req->blockResponse = resp.get();
+        req->blockIndex = resp->blockIndex;
+        req->hasMore = false;
+        req->etagSize = etagSize;
+        std::memcpy(req->etag, etag, etagSize);
+    }
+    // Acquire the message buffer
+    assert(!curMsgId_);
+    if (resp->pos < resp->end) {
+        curMsgId_ = resp->id;
+    }
+    NAMED_SCOPE_GUARD(releaseMsgBufGuard, {
+        releaseMessageBuffer();
+    });
+    // Invoke the response handler
+    int r = req->responseCallback(reinterpret_cast<coap_message*>(resp.get()), resp->status, req->id, req->callbackArg);
+    if (r < 0) {
+        LOG(ERROR, "Response handler failed: %d", r);
+        clearMessage(resp);
+        return Result::HANDLED;
+    }
+    resp.unwrap(); // Transfer ownership
+    releaseMsgBufGuard.dismiss();
     return Result::HANDLED;
 }
 
@@ -1120,7 +1150,9 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
 int CoapChannel::prepareMessage(const RefCountPtr<CoapMessage>& msg) {
     assert(!curMsgId_);
     CHECK_PROTOCOL(protocol_->get_channel().create(msgBuf_));
-    msg->token = protocol_->get_next_token();
+    if (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST) {
+        msg->token = protocol_->get_next_token();
+    }
     msg->prefixSize = 0;
     msg->pos = (char*)msgBuf_.buf();
     CHECK(updateMessage(msg));

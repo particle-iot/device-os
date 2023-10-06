@@ -58,6 +58,7 @@ enum class CoapCode {
     VALID = coapCode(2, 3),
     CHANGED = coapCode(2, 4),
     CONTENT = coapCode(2, 5),
+    CONTINUE = coapCode(2, 31), // RFC 7959, 2.9. Response Codes
     BAD_REQUEST = coapCode(4, 0),
     UNAUTHORIZED = coapCode(4, 1),
     BAD_OPTION = coapCode(4, 2),
@@ -65,6 +66,7 @@ enum class CoapCode {
     NOT_FOUND = coapCode(4, 4),
     METHOD_NOT_ALLOWED = coapCode(4, 5),
     NOT_ACCEPTABLE = coapCode(4, 6),
+    REQUEST_ENTITY_INCOMPLETE = coapCode(4, 8), // RFC 7959, 2.9. Response Codes
     PRECONDITION_FAILED = coapCode(4, 12),
     REQUEST_ENTITY_TOO_LARGE = coapCode(4, 13),
     UNSUPPORTED_CONTENT_FORMAT = coapCode(4, 15),

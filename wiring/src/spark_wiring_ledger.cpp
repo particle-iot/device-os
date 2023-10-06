@@ -229,6 +229,7 @@ int getLedgerData(ledger_instance* ledger, LedgerData& data) {
         if (err < 0) {
             r = err;
         }
+        // TODO: Don't log an error if the ledger data is empty
         LOG(ERROR, "Failed to decode ledger data: %d", r);
         return r;
     }

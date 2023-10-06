@@ -23,8 +23,9 @@ typedef enum _particle_cloud_Request_Type {
 
 typedef enum _particle_cloud_Response_Result { 
     particle_cloud_Response_Result_OK = 0, 
-    particle_cloud_Response_Result_LEDGER_NOT_FOUND = 1, 
-    particle_cloud_Response_Result_LEDGER_INVALID_SYNC_DIRECTION = 2 
+    particle_cloud_Response_Result_ERROR = 1, 
+    particle_cloud_Response_Result_LEDGER_NOT_FOUND = 2, 
+    particle_cloud_Response_Result_LEDGER_INVALID_SYNC_DIRECTION = 3 
 } particle_cloud_Response_Result;
 
 /* Struct definitions */

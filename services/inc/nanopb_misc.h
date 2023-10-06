@@ -44,7 +44,7 @@ int pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved)
 int pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, int size, void* reserved);
 #endif // HAL_PLATFORM_FILESYSTEM
 
-// These functions only work if the payload data fits in one CoAP message
+// These functions can only be used if the payload data fits in one CoAP message
 int pb_istream_from_coap_message(pb_istream_t* stream, coap_message* msg, void* reserved);
 int pb_ostream_from_coap_message(pb_ostream_t* stream, coap_message* msg, void* reserved);
 

@@ -22,7 +22,9 @@ typedef enum _particle_ctrl_wifi_Security {
     particle_ctrl_wifi_Security_WEP = 1, /* WEP */
     particle_ctrl_wifi_Security_WPA_PSK = 2, /* WPA PSK */
     particle_ctrl_wifi_Security_WPA2_PSK = 3, /* WPA2 PSK */
-    particle_ctrl_wifi_Security_WPA_WPA2_PSK = 4 /* WPA/WPA2 PSK */
+    particle_ctrl_wifi_Security_WPA_WPA2_PSK = 4, /* WPA/WPA2 PSK */
+    particle_ctrl_wifi_Security_WPA3_PSK = 5, /* WPA3 PSK */
+    particle_ctrl_wifi_Security_WPA2_WPA3_PSK = 6 /* WPA2/WPA3 PSK */
 } particle_ctrl_wifi_Security;
 
 /* *
@@ -139,13 +141,14 @@ typedef struct _particle_ctrl_wifi_JoinNewNetworkRequest {
     particle_ctrl_wifi_Security security; /* Network security */
     particle_ctrl_wifi_Credentials credentials; /* Network credentials */
     particle_ctrl_Interface interface_config; /* Network interface configuration (IP, mask, DNS etc) */
+    bool hidden; 
 } particle_ctrl_wifi_JoinNewNetworkRequest;
 
 
 /* Helper constants for enums */
 #define _particle_ctrl_wifi_Security_MIN particle_ctrl_wifi_Security_NO_SECURITY
-#define _particle_ctrl_wifi_Security_MAX particle_ctrl_wifi_Security_WPA_WPA2_PSK
-#define _particle_ctrl_wifi_Security_ARRAYSIZE ((particle_ctrl_wifi_Security)(particle_ctrl_wifi_Security_WPA_WPA2_PSK+1))
+#define _particle_ctrl_wifi_Security_MAX particle_ctrl_wifi_Security_WPA2_WPA3_PSK
+#define _particle_ctrl_wifi_Security_ARRAYSIZE ((particle_ctrl_wifi_Security)(particle_ctrl_wifi_Security_WPA2_WPA3_PSK+1))
 
 #define _particle_ctrl_wifi_CredentialsType_MIN particle_ctrl_wifi_CredentialsType_NO_CREDENTIALS
 #define _particle_ctrl_wifi_CredentialsType_MAX particle_ctrl_wifi_CredentialsType_PASSWORD
@@ -158,7 +161,7 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define particle_ctrl_wifi_Credentials_init_default {_particle_ctrl_wifi_CredentialsType_MIN, {{NULL}, NULL}}
-#define particle_ctrl_wifi_JoinNewNetworkRequest_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default, particle_ctrl_Interface_init_default}
+#define particle_ctrl_wifi_JoinNewNetworkRequest_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default, particle_ctrl_Interface_init_default, 0}
 #define particle_ctrl_wifi_JoinNewNetworkReply_init_default {0}
 #define particle_ctrl_wifi_JoinKnownNetworkRequest_init_default {{{NULL}, NULL}}
 #define particle_ctrl_wifi_JoinKnownNetworkReply_init_default {0}
@@ -175,7 +178,7 @@ extern "C" {
 #define particle_ctrl_wifi_ScanNetworksReply_init_default {{{NULL}, NULL}}
 #define particle_ctrl_wifi_ScanNetworksReply_Network_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, 0, 0}
 #define particle_ctrl_wifi_Credentials_init_zero {_particle_ctrl_wifi_CredentialsType_MIN, {{NULL}, NULL}}
-#define particle_ctrl_wifi_JoinNewNetworkRequest_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero, particle_ctrl_Interface_init_zero}
+#define particle_ctrl_wifi_JoinNewNetworkRequest_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero, particle_ctrl_Interface_init_zero, 0}
 #define particle_ctrl_wifi_JoinNewNetworkReply_init_zero {0}
 #define particle_ctrl_wifi_JoinKnownNetworkRequest_init_zero {{{NULL}, NULL}}
 #define particle_ctrl_wifi_JoinKnownNetworkReply_init_zero {0}
@@ -216,6 +219,7 @@ extern "C" {
 #define particle_ctrl_wifi_JoinNewNetworkRequest_security_tag 3
 #define particle_ctrl_wifi_JoinNewNetworkRequest_credentials_tag 4
 #define particle_ctrl_wifi_JoinNewNetworkRequest_interface_config_tag 5
+#define particle_ctrl_wifi_JoinNewNetworkRequest_hidden_tag 6
 
 /* Struct field encoding specification for nanopb */
 #define particle_ctrl_wifi_Credentials_FIELDLIST(X, a) \
@@ -229,7 +233,8 @@ X(a, CALLBACK, SINGULAR, STRING,   ssid,              1) \
 X(a, STATIC,   SINGULAR, BYTES,    bssid,             2) \
 X(a, STATIC,   SINGULAR, UENUM,    security,          3) \
 X(a, STATIC,   SINGULAR, MESSAGE,  credentials,       4) \
-X(a, STATIC,   SINGULAR, MESSAGE,  interface_config,   5)
+X(a, STATIC,   SINGULAR, MESSAGE,  interface_config,   5) \
+X(a, STATIC,   SINGULAR, BOOL,     hidden,            6)
 #define particle_ctrl_wifi_JoinNewNetworkRequest_CALLBACK pb_default_field_callback
 #define particle_ctrl_wifi_JoinNewNetworkRequest_DEFAULT NULL
 #define particle_ctrl_wifi_JoinNewNetworkRequest_credentials_MSGTYPE particle_ctrl_wifi_Credentials
