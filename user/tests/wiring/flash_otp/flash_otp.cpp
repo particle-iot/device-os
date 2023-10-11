@@ -29,8 +29,7 @@
 const uintptr_t OTP_TEST_ADDRESS = 0x100;
 const uint8_t TEST_BYTE = 0xA5;
 
-// TODO: Writing 10 or more bytes causes fault
-const unsigned LONG_TEST_LENGTH = 12;
+const unsigned LONG_TEST_LENGTH = 65;
 uint8_t LONG_TEST_PATTERN[LONG_TEST_LENGTH] = {};
 
 static uint8_t otpBuffer[1024] = {};
@@ -56,10 +55,10 @@ test(FLASH_OTP_00_SETUP)
         LONG_TEST_PATTERN[i] = i;
     }
 
-    // Ensure first security register is erased for subsequent tests
-    system_internal(5, (void*)(1024 * 0));
-    system_internal(5, (void*)(1024 * 1));
-    system_internal(5, (void*)(1024 * 2));
+    // Ensure all security registers are erased for subsequent tests
+    system_internal(4, (void*)(1024 * 0));
+    system_internal(4, (void*)(1024 * 1));
+    system_internal(4, (void*)(1024 * 2));
 }
 
 test(FLASH_OTP_01_SHORT_WRITE)
