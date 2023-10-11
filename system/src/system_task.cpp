@@ -54,6 +54,7 @@
 #include "system_threading.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_led.h"
+#include "exflash_hal.h"
 #if HAL_PLATFORM_IFAPI
 #include "system_listening_mode.h"
 #endif
@@ -794,6 +795,9 @@ void* system_internal(int item, void* reserved)
     case 3: {
         return reinterpret_cast<void*>(system_cloud_get_socket_handle());
     }
+    case 4: {
+        return (void*)hal_exflash_erase_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, (uintptr_t)reserved, 1024);
+    }    
     default:
         return nullptr;
     }
