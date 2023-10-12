@@ -49,11 +49,12 @@ private:
 
 
 struct NetIfDiagnostics {
-    network_interface_t interface; // TODO: Change to NetworkClass& ? 
+    network_interface_t interface;
     uint32_t dnsResolutionAttempts;
     uint32_t dnsResolutionFailures;
     uint32_t socketConnAttempts;
     uint32_t socketConnFailures;
+    uint32_t packetCount;
     uint32_t txBytes;
     uint32_t rxBytes;
     uint32_t rxTimeouts;
@@ -75,6 +76,10 @@ private:
 
     const uint16_t UDP_ECHO_PORT = 40000;
     const char * UDP_ECHO_SERVER_HOSTNAME = "publish-receiver-udp.particle.io";
+    
+    // TODO: Query at runtime
+    const uint16_t DEVICE_SERVICE_PORT = 5684;
+    const char * DEVICE_SERVICE_HOSTNAME = "a10aced202194944a0429fc.v5.udp-mesh.staging.particle.io";
 
     Vector<NetIfDiagnostics> ifDiagnostics_;
 

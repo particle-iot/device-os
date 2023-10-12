@@ -213,7 +213,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
             if_index_to_name(cloudInterface, ifr.ifr_name);
 
             auto sockOptRet = sock_setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
-            LOG(TRACE, "Bound socket result %d from internal index %lu to lwip interface %s", sockOptRet, cloudInterface, ifr.ifr_name);
+            LOG(TRACE, "%d Bound cloud socket to lwip interface %s", sockOptRet, ifr.ifr_name);
         }
 
         /* FIXME: timeout for TCP */

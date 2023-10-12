@@ -618,7 +618,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         /* Interface link state changed to DOWN */
         if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             if (countIfacesWithFlags(IFF_UP | IFF_LOWER_UP) == 0) {
-                transition(State::IFACE_DOWN);
+                transition(State::IFACE_UP);
             } else {
                 refreshIpState();
             }

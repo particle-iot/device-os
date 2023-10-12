@@ -28,13 +28,11 @@ LOG_SOURCE_CATEGORY("system.cm")
 #include "system_connection_manager.h"
 #include "system_cloud.h"
 #include "spark_wiring_network.h"
-#include "spark_wiring_udp.h"
 #include "spark_wiring_vector.h"
+#include "endian_util.h"
 
 // TODO: not use workarounds
-#include "spark_wiring_ethernet.h"
-#include "spark_wiring_cellular.h"
-#include "spark_wiring_wifi.h"
+#include "spark_wiring_udp.h"
 
 namespace particle { namespace system {
 
@@ -53,9 +51,12 @@ void ConnectionManager::setPreferredNetwork(network_handle_t network, bool prefe
     // auto r = spark_set_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, preferredNetwork, nullptr, nullptr);
     //LOG(INFO, "%d preferredNetwork %lu setPreferredNetwork %lu", r, preferredNetwork, network);
     
-    network_interface_t defaultInterface = NETWORK_INTERFACE_ALL;
-    LOG(INFO, "setPreferredNetwork network: %lu preferredNetwork_: %lu", network, preferredNetwork_);
-    preferredNetwork_ = preferred ? network : defaultInterface;
+    //LOG(INFO, "setPreferredNetwork network: %lu preferredNetwork_: %lu", network, preferredNetwork_);
+    if (preferred) {
+        preferredNetwork_ = network;
+    } else if (network == preferredNetwork_) {
+        preferredNetwork_ = NETWORK_INTERFACE_ALL;
+    }
 }
 
 network_handle_t ConnectionManager::getPreferredNetwork() {
@@ -66,7 +67,7 @@ network_handle_t ConnectionManager::getPreferredNetwork() {
     // LOG(INFO, "%d getPreferredNetwork %lu", r, network);
 	// return network;
 
-    LOG(INFO, "getPreferredNetwork %lu", preferredNetwork_);
+    //LOG(INFO, "getPreferredNetwork %lu", preferredNetwork_);
 	return preferredNetwork_;
 }
 
@@ -77,7 +78,7 @@ network_handle_t ConnectionManager::getCloudConnectionNetwork() {
         socklen_t len = sizeof(socketNetIfIndex);
         sock_handle_t cloudSocket = system_cloud_get_socket_handle();
         int r = sock_getsockopt(cloudSocket, SOL_SOCKET, SO_BINDTODEVICE, &socketNetIfIndex, &len);
-        LOG(INFO, "getCloudConnectionNetwork %d : %lu", r, socketNetIfIndex);
+        LOG(TRACE, "getCloudConnectionNetwork %d : %lu", r, socketNetIfIndex);
     }
 
 	return socketNetIfIndex;
@@ -91,7 +92,7 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     size_t n = sizeof(boundNetwork);
     // TODO: error handling
     auto r = spark_get_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, &boundNetwork, &n, nullptr);
-    //LOG(INFO, "%d selectCloudConnectionNetwork %lu", r, boundNetwork);
+    LOG(TRACE, "%d selectCloudConnectionNetwork %lu", r, boundNetwork);
 
     if (boundNetwork != NETWORK_INTERFACE_ALL) {
         LOG(TRACE, "%d using bound network: %lu", r, boundNetwork);
@@ -106,24 +107,13 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
 
     // 3: If no preferred network, use the 'best' network based on criteria
     // 3.1: Network is ready: ie configured + connected (see ipv4 routable hook)
-    // 3.2: Network has best criteria based on network tester stats
-    // TODO: More correct prioritization than just recreating the eth > wifi > cell order
-    // IE use netif tester
-    if (spark::Ethernet.ready()) {
-        return NETWORK_INTERFACE_ETHERNET;
+    // 3.2: Network has best criteria based on network tester stats (vector should be sorted in "best" order)
+    for (auto& i: *NetIfTester::instance()->getDiagnostics()) {
+        if (spark::Network.from(i.interface).ready()) {
+            LOG(TRACE, "using best tested network: %lu", i.interface);
+            return i.interface;
+        }
     }
-
-#if HAL_PLATFORM_WIFI
-    if (spark::WiFi.ready()) {
-        return NETWORK_INTERFACE_WIFI_STA;
-    }
-#endif
-
-#if HAL_PLATFORM_CELLULAR
-    if (spark::Cellular.ready()) {
-        return NETWORK_INTERFACE_CELLULAR;   
-    }
-#endif
 
     // TODO: Determine a specific interface to bind to, even in the default case.
     // ie: How should we handle selecting a cloud connection when no interfaces are up/ready?
@@ -131,16 +121,14 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     return bestNetwork;
 }
 
-
-
 NetIfTester::NetIfTester() {
     network_interface_t interfaceList[] = { 
         NETWORK_INTERFACE_ETHERNET,
-#if HAL_PLATFORM_CELLULAR
-        NETWORK_INTERFACE_CELLULAR,
-#endif
 #if HAL_PLATFORM_WIFI 
-        NETWORK_INTERFACE_WIFI_STA 
+        NETWORK_INTERFACE_WIFI_STA, 
+#endif
+#if HAL_PLATFORM_CELLULAR
+        NETWORK_INTERFACE_CELLULAR
 #endif
     };
     
@@ -157,53 +145,116 @@ NetIfTester* NetIfTester::instance() {
 }
 
 void NetIfTester::testInterfaces() {
+    LOG(INFO, "Connecting to %s#%d ", DEVICE_SERVICE_HOSTNAME, DEVICE_SERVICE_PORT);
     // GOAL: To maintain a list of which network interface is "best" at any given time
     for (auto& i: ifDiagnostics_) {
         testInterface(&i);
     }
+    // sort list by packet latency
+    std::sort(ifDiagnostics_.begin(), ifDiagnostics_.end(), [](const NetIfDiagnostics& dg1, const NetIfDiagnostics& dg2) {
+        return (dg1.avgPacketRoundTripTime < dg2.avgPacketRoundTripTime); // In ascending order, ie fastest to slowest
+    });
+
+    for (auto& i: ifDiagnostics_) {
+        LOG(TRACE, "If %lu latency %lu", i.interface, i.avgPacketRoundTripTime);
+    }
 }
 
-int NetIfTester::testInterface(NetIfDiagnostics* diagnostics) {     
+    // TODO: Make size dynamic / realistic for typical coap payload lengths
+    const unsigned REACHABILITY_TEST = 252;
+    const unsigned REACHABILITY_PAYLOAD_SIZE = 32;
+
+    typedef struct {
+        uint8_t type;
+        uint8_t version[2];
+        uint16_t epoch;
+        uint8_t sequence_number[6];
+        uint16_t length;
+        uint8_t fragment[REACHABILITY_PAYLOAD_SIZE];
+    } __attribute__((__packed__)) DTLSPlaintext_t;
+
+
+static const char* netifToName(uint8_t interfaceNumber) {
+    switch(interfaceNumber) {
+        case NETWORK_INTERFACE_ETHERNET:
+            return "Ethernet";
+        case NETWORK_INTERFACE_CELLULAR:
+            return "Cellular";
+        case NETWORK_INTERFACE_WIFI_STA:
+            return "WiFi    ";
+        default:
+            return "";
+    }
+}
+
+int NetIfTester::testInterface(NetIfDiagnostics* diagnostics) {
     auto network = spark::Network.from(diagnostics->interface);
     if (!network) {
-        return SYSTEM_ERROR_NONE;
+        return SYSTEM_ERROR_BAD_DATA;
     }
 
-    // TODO: Make this more CoAP like test message
-    uint8_t udpTxBuffer[128] = {'H', 'e', 'l', 'l', 'o', 0};
+    DTLSPlaintext_t reachabilityMessage = {
+        REACHABILITY_TEST, // DTLS Message Type
+        {0xfe, 0xfd},      // DTLS type 1.2
+        0x8005,            // TODO: Differentiate interfaces by epoch field
+        {},                // TODO: Sequence number
+        REACHABILITY_PAYLOAD_SIZE,
+        {}
+    };
+    memset(reachabilityMessage.fragment, 0xFF, sizeof(reachabilityMessage.fragment));
+
+    reachabilityMessage.epoch = nativeToBigEndian(reachabilityMessage.epoch);
+    reachabilityMessage.length = nativeToBigEndian(reachabilityMessage.length);
+
+    uint8_t udpTxBuffer[128] = {};
+    size_t udpTxMessageSize = sizeof(reachabilityMessage);
+    memcpy(udpTxBuffer, &reachabilityMessage, udpTxMessageSize);
+
     uint8_t udpRxBuffer[128] = {};
 
-    uint8_t beginResult = 0;
     int sendResult, receiveResult = -1;
     IPAddress echoServer;
 
     diagnostics->dnsResolutionAttempts++;
-    echoServer = network.resolve(UDP_ECHO_SERVER_HOSTNAME);
+    echoServer = network.resolve(DEVICE_SERVICE_HOSTNAME);
     if (!echoServer) {
+        LOG(WARN, "%s failed to resolve DNS", netifToName(diagnostics->interface));
+        diagnostics->avgPacketRoundTripTime = 0;
         diagnostics->dnsResolutionFailures++;
-        LOG(WARN, "IF #%d failed to resolve DNS for %s : %s", diagnostics->interface, UDP_ECHO_SERVER_HOSTNAME, echoServer.toString().c_str());
-        return SYSTEM_ERROR_PROTOCOL;
+        return SYSTEM_ERROR_NETWORK;
     }
 
+    // TODO: Dont use UDP wiring instance, use sockets directly and use LWIP poll()
     UDP udpInstance = UDP();
-    // TODO: What error conditions are the on UDP socket bind (ie the begin call here)?
-    beginResult = udpInstance.begin(NetIfTester::UDP_ECHO_PORT, diagnostics->interface);
-    
-    LOG(INFO, "Testing IF #%d with %s : %s", diagnostics->interface, UDP_ECHO_SERVER_HOSTNAME, echoServer.toString().c_str());
+    udpInstance.begin(NetIfTester::DEVICE_SERVICE_PORT, diagnostics->interface);
 
     // TODO: Error conditions on sock_sendto
-    // TODO: start packet rount trip timer
-    sendResult = udpInstance.sendPacket(udpTxBuffer, strlen((char*)udpTxBuffer), echoServer, UDP_ECHO_PORT);
+    sendResult = udpInstance.sendPacket(udpTxBuffer, udpTxMessageSize, echoServer, DEVICE_SERVICE_PORT);
+    auto startMillis = HAL_Timer_Get_Milli_Seconds();
     if (sendResult > 0) {
-        diagnostics->txBytes += strlen((char*)udpTxBuffer);
-    }
+        diagnostics->txBytes += udpTxMessageSize;
+    } 
 
-    receiveResult = udpInstance.receivePacket(udpRxBuffer, strlen((char*)udpTxBuffer), 5000);
+    bool timedOut = true;
+    receiveResult = udpInstance.receivePacket(udpRxBuffer, udpTxMessageSize, 5000);
     if (receiveResult > 0) {
-        diagnostics->rxBytes += strlen((char*)udpRxBuffer);
-    }
+        diagnostics->rxBytes += udpTxMessageSize;
+        timedOut = false;
+    } 
 
-    LOG(INFO, "UDP begin %d send: %d receive: %d message: %s", beginResult, sendResult, receiveResult, (char*)udpRxBuffer);
+    // TODO: Better metrics for latency rather than single packet timing
+    // TODO: Validate recevied data, ie sequence number, packet size + contents
+    auto endMillis = HAL_Timer_Get_Milli_Seconds();
+    diagnostics->packetCount++;
+    diagnostics->avgPacketRoundTripTime = endMillis - startMillis;
+
+    LOG(TRACE, "%s bytes tx: %d rx: %d roundtrip time: %d %s", 
+        netifToName(diagnostics->interface), 
+        diagnostics->txBytes,
+        diagnostics->rxBytes,
+        diagnostics->avgPacketRoundTripTime,
+        timedOut ? "timed out" : "");
+
     udpInstance.stop();
 
     return SYSTEM_ERROR_NONE;
