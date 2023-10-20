@@ -55,6 +55,9 @@ BurninTest::BurninTest() {
 		&particle::BurninTest::testSram,
 		&particle::BurninTest::testSpiFlash,
 		&particle::BurninTest::testCpuLoad,
+#if PLATFORM_ID == PLATFORM_MSOM
+		&particle::BurninTest::testCellularModem,
+#endif
 	};
 
 	test_names_ = {
@@ -63,7 +66,10 @@ BurninTest::BurninTest() {
 		"BLE_SCAN", 
 		"SRAM", 
 		"SPI_FLASH", 
-		"CPU_LOAD"
+		"CPU_LOAD",
+#if PLATFORM_ID == PLATFORM_MSOM
+		"CELL_MODEM"
+#endif
 	};
 }
 
@@ -77,7 +83,7 @@ BurninTest* BurninTest::instance() {
 
 void BurninTest::setup(bool forceEnable) {
 	if (!forceEnable) {
-	    hal_pin_t trigger_pin = D7; // PA27 aka SWD
+	    hal_pin_t trigger_pin = SWD_DAT; // PA27 P2: D7 MSOM: D27
 		// Read the trigger pin for a 1khz pulse. If present, enter burnin mode.
 		pinMode(trigger_pin, INPUT);
 	    uint32_t pulse_width_micros = pulseIn(trigger_pin, HIGH);
@@ -93,6 +99,8 @@ void BurninTest::setup(bool forceEnable) {
 	    	return;
 	    }
 	}
+
+	Particle.disconnect();
 
     logger_ = std::make_unique<Serial1LogHandler>(115200, LOG_LEVEL_INFO);
     
@@ -458,6 +466,35 @@ bool BurninTest::testCpuLoad() {
 	coremark_main();
 	return true;
 }
+
+#if PLATFORM_ID == PLATFORM_MSOM
+bool BurninTest::testCellularModem() {
+	Cellular.on();
+	waitFor(Cellular.isOn, 30000);
+
+	if (!Cellular.isOn()) {
+		String failedPowerOn = "Cell modem failed to turn on after 30s";
+		strlcpy(BurninErrorMessage, failedPowerOn.c_str(), sizeof(failedPowerOn));
+		Log.error("%s", failedPowerOn);
+		return false;
+	}
+	
+    CellularDevice device = {};
+    device.size = sizeof(device);
+    if (cellular_device_info(&device, NULL)) {
+		String failedCellularInfo = "Failed to get cellular info";
+		strlcpy(BurninErrorMessage, failedCellularInfo.c_str(), sizeof(failedCellularInfo));
+		Log.error("%s", failedCellularInfo);
+    	return false;
+    }
+    
+    Log.info("Cell modem ICCID: %s IMEI: %s FW: %s", device.iccid, device.imei, device.radiofw);
+
+	Cellular.off();
+	waitFor(Cellular.isOff, 30000);
+	return true;
+}
+#endif
 
 } // particle
 #endif // HAL_PLATFORM_RTL872X

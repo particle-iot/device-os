@@ -49,6 +49,9 @@ private:
 	bool testSram();
 	bool testSpiFlash();
 	bool testCpuLoad();
+#if PLATFORM_ID == PLATFORM_MSOM
+	bool testCellularModem();
+#endif
 };
 
 }
