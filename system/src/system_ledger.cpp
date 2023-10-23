@@ -35,7 +35,7 @@ using namespace particle::system;
 int ledger_get_instance(ledger_instance** ledger, const char* name, void* reserved) {
     RefCountPtr<Ledger> lr;
     CHECK(LedgerManager::instance()->getLedger(lr, name, true /* create */));
-    *ledger = reinterpret_cast<ledger_instance*>(lr.unwrap()); // Transfer ownership to the caller
+    *ledger = reinterpret_cast<ledger_instance*>(lr.unwrap()); // Transfer ownership
     return 0;
 }
 
@@ -105,7 +105,7 @@ int ledger_open(ledger_stream** stream, ledger_instance* ledger, int mode, void*
             return SYSTEM_ERROR_NO_MEMORY;
         }
         CHECK(lr->initReader(*r));
-        *stream = reinterpret_cast<ledger_stream*>(r.release()); // Transfer ownership to the caller
+        *stream = reinterpret_cast<ledger_stream*>(r.release()); // Transfer ownership
     } else if (mode & LEDGER_STREAM_MODE_WRITE) {
         if (mode & LEDGER_STREAM_MODE_READ) {
             return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -142,6 +142,20 @@ int ledger_write(ledger_stream* stream, const char* data, size_t size, void* res
     auto s = reinterpret_cast<LedgerStream*>(stream);
     size_t n = CHECK(s->write(data, size));
     return n;
+}
+
+int ledger_get_names(const char*** names, size_t* count, void* reserved) {
+    Vector<CString> namesVec;
+    CHECK(LedgerManager::instance()->getLedgerNames(namesVec));
+    *names = (const char**)std::malloc(sizeof(char*) * namesVec.size());
+    if (!*names) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    for (int i = 0; i < namesVec.size(); ++i) {
+        (*names)[i] = namesVec[i].unwrap(); // Transfer ownership
+    }
+    *count = namesVec.size();
+    return 0;
 }
 
 int ledger_purge(const char* name, void* reserved) {

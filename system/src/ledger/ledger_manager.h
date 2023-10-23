@@ -26,6 +26,7 @@
 
 #include "coap_api.h"
 
+#include "c_string.h"
 #include "static_recursive_mutex.h"
 #include "ref_count.h"
 
@@ -52,6 +53,8 @@ public:
     int init();
 
     int getLedger(RefCountPtr<Ledger>& ledger, const char* name, bool create = false);
+
+    int getLedgerNames(Vector<CString>& names);
 
     int removeLedgerData(const char* name);
     int removeAllData();

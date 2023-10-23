@@ -42,7 +42,6 @@
 #include "file_util.h"
 #include "time_util.h"
 #include "endian_util.h"
-#include "c_string.h"
 #include "scope_guard.h"
 #include "check.h"
 
@@ -197,8 +196,8 @@ int LedgerManager::init() {
     if (state_ != State::NEW) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    // TODO: Allow seeking in a ledger stream so that an intermediate buffer is not needed when
-    // streaming ledger data to and from the server
+    // TODO: Allow seeking in ledger and CoAP message streams so that an intermediate buffer is not
+    // needed when streaming ledger data to and from the server
     std::unique_ptr<char[]> buf(new char[STREAM_BUFFER_SIZE]);
     if (!buf) {
         return SYSTEM_ERROR_NO_MEMORY;
@@ -328,6 +327,44 @@ int LedgerManager::getLedger(RefCountPtr<Ledger>& ledger, const char* name, bool
     }
     ctx->instance = lr.get();
     ledger = std::move(lr);
+    return 0;
+}
+
+int LedgerManager::getLedgerNames(Vector<CString>& names) {
+    std::lock_guard lock(mutex_);
+    if (state_ == State::NEW) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    FsLock fs;
+    Vector<CString> namesVec;
+    lfs_dir_t dir = {};
+    int r = lfs_dir_open(fs.instance(), &dir, LEDGER_ROOT_DIR);
+    if (r == 0) {
+        SCOPE_GUARD({
+            int r = closeDir(fs.instance(), &dir);
+            if (r < 0) {
+                LOG(ERROR, "Failed to close directory handle: %d", r);
+            }
+        });
+        lfs_info entry = {};
+        while ((r = lfs_dir_read(fs.instance(), &dir, &entry)) == 1) {
+            if (entry.type != LFS_TYPE_DIR) {
+                LOG(WARN, "Found unexpected entry in ledger directory");
+                continue;
+            }
+            if (std::strcmp(entry.name, ".") == 0 || std::strcmp(entry.name, "..") == 0) {
+                continue;
+            }
+            CString name(entry.name);
+            if (!name || !namesVec.append(std::move(name))) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+        }
+        CHECK_FS(r);
+    } else if (r != LFS_ERR_NOENT) {
+        CHECK_FS(r); // Forward the error
+    }
+    names = std::move(namesVec);
     return 0;
 }
 

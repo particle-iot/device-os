@@ -276,6 +276,17 @@ int ledger_read(ledger_stream* stream, char* data, size_t size, void* reserved);
 int ledger_write(ledger_stream* stream, const char* data, size_t size, void* reserved);
 
 /**
+ * Get the names of all local ledgers.
+ *
+ * @param[out] names Array of ledger names. The calling code is responsible for freeing the allocated
+ *        array as well as its individual elements via `free()`.
+ * @param[out] count Number of elements in the array.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int ledger_get_names(const char*** names, size_t* count, void* reserved);
+
+/**
  * Remove any local data associated with a ledger.
  *
  * The device must not be connected to the Cloud. The operation will fail if the ledger with the
