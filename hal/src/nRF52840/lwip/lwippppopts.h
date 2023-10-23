@@ -176,7 +176,7 @@
 /**
  * CHAP_SUPPORT==1: Support CHAP.
  */
-#define CHAP_SUPPORT                    (PLATFORM_ID != PLATFORM_TRACKER)
+#define CHAP_SUPPORT                    0
 
 /**
  * MSCHAP_SUPPORT==1: Support MSCHAP.
@@ -294,7 +294,7 @@
 /**
  * LWIP_USE_EXTERNAL_MBEDTLS: Use external mbed TLS library
  */
-#define LWIP_USE_EXTERNAL_MBEDTLS       0
+#define LWIP_USE_EXTERNAL_MBEDTLS       1
 
 /*
  * PPP Timeouts

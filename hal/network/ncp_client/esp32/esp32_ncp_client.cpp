@@ -296,6 +296,7 @@ int Esp32NcpClient::getFirmwareModuleVersionImpl(uint16_t* ver) {
 }
 
 int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
+#if !HAL_PLATFORM_NCP_UPDATES_DISABLED
     const NcpClientLock lock(this);
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+FWUPD=%u", (unsigned)size);
@@ -351,6 +352,9 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
     off();
     CHECK(on());
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_NCP_UPDATES_DISABLED
 }
 
 void Esp32NcpClient::processEvents() {
