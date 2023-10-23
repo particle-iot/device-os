@@ -60,6 +60,7 @@ size_t Print::print(char c)
   return write(c);
 }
 
+#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
 size_t Print::print(float n, int digits)
 {
   return printFloat((double)n, digits);
@@ -69,6 +70,7 @@ size_t Print::print(double n, int digits)
 {
   return printFloat(n, digits);
 }
+#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
  size_t Print::print(const Printable& x)
  {
@@ -101,6 +103,7 @@ size_t Print::println(char c)
   return n;
 }
 
+#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
 size_t Print::println(float num, int digits)
 {
     return println((double)num, digits);
@@ -112,6 +115,7 @@ size_t Print::println(double num, int digits)
   n += println();
   return n;
 }
+#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
  size_t Print::println(const Printable& x)
  {
@@ -166,6 +170,7 @@ size_t Print::printNumber(unsigned long n, uint8_t base) {
   return write(str);
 }
 
+#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
 size_t Print::printFloat(double number, uint8_t digits)
 {
   size_t n = 0;
@@ -210,6 +215,7 @@ size_t Print::printFloat(double number, uint8_t digits)
 
   return n;
 }
+#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
 size_t Print::vprintf(bool newline, const char* format, va_list args)
 {

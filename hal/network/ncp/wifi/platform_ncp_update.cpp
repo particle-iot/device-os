@@ -124,6 +124,7 @@ int getWifiNcpFirmwareVersion(uint16_t* ncpVersion) {
 } // anonymous
 
 int platform_ncp_update_module(const hal_module_t* module) {
+#if !HAL_PLATFORM_NCP_UPDATES_DISABLED
     const auto ncpClient = particle::wifiNetworkManager()->ncpClient();
     SPARK_ASSERT(ncpClient);
     OtaUpdateSourceStream::ReadStreamFunc readCallback;
@@ -156,6 +157,9 @@ int platform_ncp_update_module(const hal_module_t* module) {
         LOG(INFO, "ESP32 firmware version updated to version %d", version);
     }
     return HAL_UPDATE_APPLIED;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_NCP_UPDATES_DISABLED
 }
 
 int platform_ncp_fetch_module_info(hal_module_t* module) {
