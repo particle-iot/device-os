@@ -626,4 +626,8 @@
 #define HAL_PLATFORM_LEDGER (1)
 #endif // HAL_PLATFORM_LEDGER
 
+#ifndef HAL_PLATFORM_AT_DTM
+#define HAL_PLATFORM_AT_DTM (0)
+#endif // HAL_PLATFORM_AT_DTM
+
 #endif /* HAL_PLATFORM_H */

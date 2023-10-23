@@ -61,7 +61,9 @@ CSRC += \
 CSRC += \
 	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/common/,*.c) \
 	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/nrf_ble_gatt/,*.c) \
-	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/ble_advertising/,*.c)
+	$(call target_files,$(TARGET_NRF5_SDK_BLE_SRC_PATH)/ble_advertising/,*.c) \
+	$(TARGET_NRF5_SDK_BLE_SRC_PATH)/ble_dtm/ble_dtm_hw_nrf52.c \
+	$(TARGET_NRF5_SDK_BLE_SRC_PATH)/ble_dtm/ble_dtm.c \
 
 # NFC
 CSRC += \

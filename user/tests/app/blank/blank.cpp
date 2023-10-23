@@ -16,10 +16,26 @@
  */
 
 #include "application.h"
+#include "at_dtm_hal.h"
+
+SYSTEM_MODE(MANUAL);
+
+SerialLogHandler l(115200, LOG_LEVEL_ALL);
 
 /* executes once at startup */
 void setup() {
+    while (!Serial.isConnected());
+    delay(1s);
+    Log.info("Application started.");
 
+    hal_at_dtm_interface_config_t config = {};
+    config.interface = HAL_AT_DTM_INTERFACE_UART;
+    config.index = HAL_USART_SERIAL1;
+    hal_at_dtm_init(HAL_AT_DTM_TYPE_BLE, &config, nullptr);
+
+    delay(3s);
+    config.params.baudrate = 115200;
+    hal_at_dtm_init(HAL_AT_DTM_TYPE_WIFI, &config, nullptr);
 }
 
 /* executes continuously after setup() runs */

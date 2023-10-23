@@ -77,7 +77,8 @@ INCLUDE_DIRS += \
 INCLUDE_DIRS += \
 	$(TARGET_NRF5_SDK_BLE_PATH)/common \
 	$(TARGET_NRF5_SDK_BLE_PATH)/nrf_ble_gatt \
-	$(TARGET_NRF5_SDK_BLE_PATH)/ble_advertising
+	$(TARGET_NRF5_SDK_BLE_PATH)/ble_advertising \
+	$(TARGET_NRF5_SDK_BLE_PATH)/ble_dtm
 
 # NFC
 INCLUDE_DIRS += \

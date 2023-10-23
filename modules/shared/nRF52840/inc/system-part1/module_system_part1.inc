@@ -62,6 +62,9 @@ DYNALIB_TABLE_EXTERN(system_asset_manager);
 #if HAL_PLATFORM_LEDGER
 DYNALIB_TABLE_EXTERN(system_ledger);
 #endif
+#if HAL_PLATFORM_AT_DTM
+DYNALIB_TABLE_EXTERN(hal_at_dtm);
+#endif
 
 // strange that this is needed given that the entire block is scoped extern "C"
 // without it, the section name doesn't match *.system_part2_module as expected in the linker script
@@ -124,6 +127,9 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     , DYNALIB_TABLE_NAME(system_asset_manager)
 #if HAL_PLATFORM_LEDGER
     , DYNALIB_TABLE_NAME(system_ledger)
+#endif
+#if HAL_PLATFORM_AT_DTM
+    , DYNALIB_TABLE_NAME(hal_at_dtm)
 #endif
 };
 

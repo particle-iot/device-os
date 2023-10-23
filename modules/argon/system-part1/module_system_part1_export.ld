@@ -31,3 +31,4 @@ PROVIDE (link_dynalib_location_hal_storage          = platform_system_part1_dyna
 PROVIDE (link_dynalib_location_hal_watchdog         = platform_system_part1_dynalib_table_flash_start + 116);
 PROVIDE (link_dynalib_location_system_asset_manager = platform_system_part1_dynalib_table_flash_start + 120);
 PROVIDE (link_dynalib_location_system_ledger        = platform_system_part1_dynalib_table_flash_start + 124);
+PROVIDE (link_dynalib_location_hal_at_dtm           = platform_system_part1_dynalib_table_flash_start + 128);
