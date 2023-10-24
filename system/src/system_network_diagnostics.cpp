@@ -26,6 +26,7 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring_ticks.h"
 #include "system_network_diagnostics.h"
+#include "system_connection_manager.h"
 
 #if Wiring_WiFi
 #include "spark_wiring_wifi.h"
@@ -68,27 +69,47 @@ public:
 
     const Signal* getSignal()
     {
-#if Wiring_WiFi || Wiring_Cellular
+        bool refreshCachedValues = false;
         system_tick_t m = millis();
-        if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL)
-        {
+        if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL) {
             ts_ = millis();
-#if Wiring_Cellular
-            // TODO: Better concept of which Network class is being used for the cloud connection
-            // And/or include both cellular + wifi signal strength in diagnostics/vitals
-            if (Cellular.ready()) {
-                cellularSig_ = Cellular.RSSI();
-                return &cellularSig_;    
-            }
-#endif
-#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
-            if (WiFi.ready()) {
-                wifiSig_ = WiFi.RSSI();
-                return &wifiSig_;    
-            }
-#endif
+            refreshCachedValues = true;
         }
-#endif
+
+// TODO: Better differentiator for "ACM"
+#if PLATFORM_ID == PLATFORM_MSOM
+        auto cloudNetwork = Network.from(system::ConnectionManager::instance()->getCloudConnectionNetwork());
+        
+        if (refreshCachedValues) {
+            if (cloudNetwork == Cellular) {
+                cellularSig_ = Cellular.RSSI();
+            } else if (cloudNetwork == WiFi) {
+                wifiSig_ = WiFi.RSSI();
+            }
+        } 
+
+        if (cloudNetwork == Cellular) {
+            return &cellularSig_;
+        } else if (cloudNetwork == WiFi) {
+            return &wifiSig_;
+        }
+#else
+
+#if Wiring_Cellular
+        if (refreshCachedValues) {
+            cellularSig_ = Cellular.RSSI();    
+        }
+        return &cellularSig_;
+#endif //Wiring_Cellular
+
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+        if (refreshCachedValues) {
+            wifiSig_ = WiFi.RSSI();
+        }
+        return &wifiSig_;    
+#endif //Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+
+#endif //PLATFORM_ID == PLATFORM_MSOM
         return nullptr;
     }
 
