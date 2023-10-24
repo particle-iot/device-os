@@ -148,7 +148,7 @@ int ledger_get_names(const char*** names, size_t* count, void* reserved) {
     Vector<CString> namesVec;
     CHECK(LedgerManager::instance()->getLedgerNames(namesVec));
     *names = (const char**)std::malloc(sizeof(char*) * namesVec.size());
-    if (!*names) {
+    if (!*names && namesVec.size() > 0) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     for (int i = 0; i < namesVec.size(); ++i) {

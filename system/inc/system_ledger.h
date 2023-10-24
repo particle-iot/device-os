@@ -35,6 +35,11 @@
 #define LEDGER_MAX_DATA_SIZE 16384
 
 /**
+ * Maximum length of a ledger name.
+ */
+#define LEDGER_MAX_NAME_LENGTH 32
+
+/**
  * Ledger instance.
  */
 typedef struct ledger_instance ledger_instance;

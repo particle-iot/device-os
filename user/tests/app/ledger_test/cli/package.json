@@ -1,0 +1,15 @@
+{
+  "name": "ledger",
+  "description": "Ledger Test Utility",
+  "private": true,
+  "main": "index.js",
+  "bin": {
+    "ledger": "index.js"
+  },
+  "dependencies": {
+    "cbor": "^9.0.1",
+    "lodash": "^4.17.21",
+    "minimist": "^1.2.8",
+    "particle-usb": "^2.4.1"
+  }
+}
