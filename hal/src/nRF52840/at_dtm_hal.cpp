@@ -26,6 +26,11 @@
 #include "service_debug.h"
 #include "system_network.h"
 #include "system_defs.h"
+#include "delay_hal.h"
+#include "ncp_client.h"
+#include "network/ncp_client/quectel/quectel_ncp_client.h"
+#include "network/ncp_client/sara/sara_ncp_client.h"
+#include "network/ncp_client/esp32/esp32_ncp_client.h"
 
 #if HAL_PLATFORM_AT_DTM
 
@@ -52,10 +57,20 @@
 
 namespace {
 
-os_thread_t atDtmThread;
+os_thread_t atDtmThread = nullptr;
+
 hal_usart_interface_t bleDtmUart;
+
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
 hal_usart_interface_t wifiDtmUart;
+#endif
+
+#if HAL_PLATFORM_CELLULAR
+hal_usart_interface_t cellDtmUart;
+#endif
+
 hal_at_dtm_type_t currDtmType = HAL_AT_DTM_TYPE_MAX;
+
 
 uint32_t dtm_cmd_put(uint16_t command) {
     dtm_cmd_t      command_code = (command >> 14) & 0x03;
@@ -123,14 +138,29 @@ void bleDtmLoop() {
     }
 }
 
-void wifiDtmLoop() {
-    if (hal_usart_available(HAL_PLATFORM_WIFI_SERIAL)) {
-        uint8_t c = hal_usart_read(HAL_PLATFORM_WIFI_SERIAL);
-        hal_usart_write(wifiDtmUart, c);
+void wifiCellularDtmLoop(hal_at_dtm_type_t type) {
+    hal_usart_interface_t uartModem = HAL_USART_SERIAL1;
+    hal_usart_interface_t uartUser = HAL_USART_SERIAL1;
+
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
+    if (type == HAL_AT_DTM_TYPE_WIFI) {
+        uartModem = HAL_PLATFORM_WIFI_SERIAL;
+        uartUser = wifiDtmUart;
     }
-    if (hal_usart_available(wifiDtmUart)) {
-        uint8_t c = hal_usart_read(wifiDtmUart);
-        hal_usart_write(HAL_PLATFORM_WIFI_SERIAL, c);
+#endif
+#if HAL_PLATFORM_CELLULAR
+    if (type == HAL_AT_DTM_TYPE_WIFI) {
+        uartModem = HAL_PLATFORM_CELLULAR_SERIAL;
+        uartUser = cellDtmUart;
+    }
+#endif
+    if (hal_usart_available(uartModem)) {
+        uint8_t c = hal_usart_read(uartModem);
+        hal_usart_write(uartUser, c);
+    }
+    if (hal_usart_available(uartUser)) {
+        uint8_t c = hal_usart_read(uartUser);
+        hal_usart_write(uartModem, c);
     }
 }
 
@@ -138,8 +168,8 @@ os_thread_return_t atDtmLoop(void* param) {
     while (true) {
         if (currDtmType == HAL_AT_DTM_TYPE_BLE) {
             bleDtmLoop();
-        } else if (currDtmType == HAL_AT_DTM_TYPE_WIFI) {
-            wifiDtmLoop();
+        } else if (currDtmType == HAL_AT_DTM_TYPE_WIFI || currDtmType == HAL_AT_DTM_TYPE_CELLULAR) {
+            wifiCellularDtmLoop(currDtmType);
         }
     }
     os_thread_exit(atDtmThread);
@@ -150,10 +180,12 @@ os_thread_return_t atDtmLoop(void* param) {
 int hal_at_dtm_init(hal_at_dtm_type_t type, const hal_at_dtm_interface_config_t* config, void* reserved) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    if (os_thread_create(&atDtmThread, "AT DTM Thread", OS_THREAD_PRIORITY_DEFAULT, atDtmLoop, nullptr, 512)) {
-        atDtmThread = nullptr;
-        LOG(ERROR, "os_thread_create() failed");
-        return SYSTEM_ERROR_INTERNAL;
+    if (!atDtmThread) {
+        if (os_thread_create(&atDtmThread, "AT DTM Thread", OS_THREAD_PRIORITY_DEFAULT, atDtmLoop, nullptr, 512)) {
+            atDtmThread = nullptr;
+            LOG(ERROR, "os_thread_create() failed");
+            return SYSTEM_ERROR_INTERNAL;
+        }
     }
 
     switch (type) {
@@ -175,23 +207,58 @@ int hal_at_dtm_init(hal_at_dtm_type_t type, const hal_at_dtm_interface_config_t*
             currDtmType = HAL_AT_DTM_TYPE_BLE;
             break;
         }
+#if HAL_PLATFORM_CELLULAR
         case HAL_AT_DTM_TYPE_CELLULAR: {
+            LOG(TRACE, "hal_at_dtm_init(): HAL_AT_DTM_TYPE_CELLULAR");
+            network_off(NETWORK_INTERFACE_CELLULAR, 0, 0, nullptr);
+            while (!network_is_off(NETWORK_INTERFACE_CELLULAR, nullptr)) {
+                ;
+            }
+
+#if PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_TRACKER
+            particle::QuectelNcpClient client;
+#else
+            particle::SaraNcpClient client;
+#endif
+            particle::CellularNcpClientConfig conf = {};
+            conf.ncpIdentifier(platform_primary_ncp_identifier());
+            client.init(conf);
+            client.on();
+
+//             const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
+//             uint8_t flags = SERIAL_8N1;
+// #if PLATFORM_ID != PLATFORM_B5SOM
+//             flags |= SERIAL_FLOW_CONTROL_RTS_CTS;
+// #endif
+//             hal_usart_begin_config(HAL_PLATFORM_CELLULAR_SERIAL, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, flags, nullptr);
+
+            cellDtmUart = (hal_usart_interface_t)(config->index);
+            currDtmType = HAL_AT_DTM_TYPE_CELLULAR;
             break;
         }
-#if HAL_PLATFORM_WIFI
+#endif // HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
         case HAL_AT_DTM_TYPE_WIFI: {
             LOG(TRACE, "hal_at_dtm_init(): HAL_AT_DTM_TYPE_WIFI");
             network_off(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
             while (!network_is_off(NETWORK_INTERFACE_WIFI_STA, nullptr)) {
                 ;
             }
-            const auto ESP32_NCP_DEFAULT_SERIAL_BAUDRATE = 921600;
-            hal_usart_begin_config(HAL_PLATFORM_WIFI_SERIAL, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS, nullptr);
+
+            LOG(TRACE, "hal_at_dtm_init(): Turn on the modem");
+            particle::Esp32NcpClient client;
+            auto conf = particle::NcpClientConfig();
+            client.init(conf);
+            client.on();
+
+            // const auto ESP32_NCP_DEFAULT_SERIAL_BAUDRATE = 921600;
+            // hal_usart_begin_config(HAL_PLATFORM_WIFI_SERIAL, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS, nullptr);
+
             wifiDtmUart = (hal_usart_interface_t)(config->index);
             currDtmType = HAL_AT_DTM_TYPE_WIFI;
             break;
         }
-#endif
+#endif // HAL_PLATFORM_WIFI
         default: return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 

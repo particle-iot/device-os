@@ -953,11 +953,11 @@ int QuectelNcpClient::waitReady(bool powerOn) {
         parserError_ = 0;
         LOG(TRACE, "NCP ready to accept AT commands");
 
-        auto r = initReady(modemState);
-        if (r != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to perform early initialization");
-            ready_ = false;
-        }
+        // auto r = initReady(modemState);
+        // if (r != SYSTEM_ERROR_NONE) {
+        //     LOG(ERROR, "Failed to perform early initialization");
+        //     ready_ = false;
+        // }
     } else {
         LOG(ERROR, "No response from NCP");
         // Make sure the muxer is stopped

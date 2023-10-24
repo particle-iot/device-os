@@ -546,11 +546,11 @@ int Esp32NcpClient::waitReady() {
         parserError_ = 0;
         LOG(TRACE, "NCP ready to accept AT commands");
 
-        auto r = initReady();
-        if (r != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to perform early initialization");
-            ready_ = false;
-        }
+        // auto r = initReady();
+        // if (r != SYSTEM_ERROR_NONE) {
+        //     LOG(ERROR, "Failed to perform early initialization");
+        //     ready_ = false;
+        // }
     } else {
         LOG(ERROR, "No response from NCP");
     }
