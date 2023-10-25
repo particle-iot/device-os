@@ -52,6 +52,9 @@ static_assert(LEDGER_SYNC_DIRECTION_UNKNOWN == (int)PB_LEDGER(SyncDirection_SYNC
         LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD == (int)PB_LEDGER(SyncDirection_SYNC_DIRECTION_DEVICE_TO_CLOUD) &&
         LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE == (int)PB_LEDGER(SyncDirection_SYNC_DIRECTION_CLOUD_TO_DEVICE));
 
+static_assert(LEDGER_MAX_NAME_LENGTH + 1 == sizeof(PB_INTERNAL(LedgerInfo::name)) &&
+        LEDGER_MAX_NAME_LENGTH + 1 == sizeof(PB_LEDGER(GetInfoResponse_Ledger::name)));
+
 LOG_SOURCE_CATEGORY("system.ledger");
 
 namespace particle {
@@ -103,7 +106,6 @@ const auto CURRENT_DATA_FILE_NAME = "current";
 
 const unsigned DATA_FORMAT_VERSION = 1;
 
-const size_t MAX_LEDGER_NAME_LEN = 32; // Must match the maximum length in ledger.proto
 const size_t MAX_PATH_LEN = 127;
 
 // Internal result codes
@@ -216,7 +218,7 @@ bool isLedgerNameValid(const char* name) {
     size_t len = 0;
     char c = 0;
     while ((c = *name++)) {
-        if (!(++len <= MAX_LEDGER_NAME_LEN && ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-'))) {
+        if (!(++len <= LEDGER_MAX_NAME_LENGTH && ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-'))) {
             return false;
         }
     }

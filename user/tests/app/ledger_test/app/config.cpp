@@ -15,16 +15,16 @@ retained uint32_t g_magic;
 } // namespace
 
 void Config::setRestoreConnectionFlag() {
-    if (!restoreConnection) {
-        restoreConnection = Particle.connected();
-    }
+    wasConnected = Particle.connected();
+    restoreConnection = true;
 }
 
 Config& Config::get() {
     if (g_magic != 0xcf9addedu) {
         g_config = {
-            .autoConnect = false,
+            .autoConnect = true,
             .restoreConnection = false,
+            .wasConnected = false,
             .removeLedger = false,
             .removeAllLedgers = false,
             .debugEnabled = false

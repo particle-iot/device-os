@@ -26,8 +26,6 @@ void onCloudStatus(system_event_t /* event */, int status) {
         break;
     }
     case cloud_status_connected: {
-        auto& conf = Config::get();
-        conf.restoreConnection = false;
         Log.info("Connected");
         break;
     }
@@ -68,9 +66,10 @@ void setup() {
         }
     }
     System.on(cloud_status, onCloudStatus);
-    if (conf.autoConnect || conf.restoreConnection) {
+    if ((!conf.restoreConnection && conf.autoConnect) || (conf.restoreConnection && conf.wasConnected)) {
         Particle.connect();
     }
+    conf.restoreConnection = false;
 }
 
 void loop() {

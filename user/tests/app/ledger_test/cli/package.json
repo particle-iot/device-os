@@ -2,10 +2,8 @@
   "name": "ledger",
   "description": "Ledger Test Utility",
   "private": true,
-  "main": "index.js",
-  "bin": {
-    "ledger": "index.js"
-  },
+  "main": "ledger",
+  "bin": "ledger",
   "dependencies": {
     "cbor": "^9.0.1",
     "lodash": "^4.17.21",

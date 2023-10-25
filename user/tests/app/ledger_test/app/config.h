@@ -7,6 +7,7 @@ namespace particle::test {
 struct Config {
     bool autoConnect;
     bool restoreConnection;
+    bool wasConnected;
     bool removeLedger;
     bool removeAllLedgers;
     bool debugEnabled;

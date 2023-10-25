@@ -12,7 +12,7 @@
         "particle-usb": "^2.4.1"
       },
       "bin": {
-        "ledger": "index.js"
+        "ledger": "ledger"
       }
     },
     "node_modules/@particle/device-constants": {

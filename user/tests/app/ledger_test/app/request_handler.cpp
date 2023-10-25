@@ -2,6 +2,7 @@
 #include <memory>
 
 #include <spark_wiring_cloud.h>
+#include <spark_wiring_network.h>
 #include <spark_wiring_system.h>
 #include <spark_wiring_json.h>
 #include <spark_wiring_logging.h>
@@ -41,40 +42,9 @@ void systemResetCompletionHandler(int result, void* data) {
     System.reset();
 }
 
-void ledgerSyncCallback(ledger_instance* ledger, void* appData) {
-}
-
 void destroyLedgerAppData(void* appData) {
     auto d = static_cast<LedgerAppData*>(appData);
     delete d;
-}
-
-int getLedger(ledger_instance*& ledger, const char* name) {
-    ledger_instance* lr = nullptr;
-    int r = ledger_get_instance(&lr, name, nullptr);
-    if (r < 0) {
-        Log.error("ledger_get_instance() failed: %d", r);
-        return r;
-    }
-    ledger_lock(lr, nullptr);
-    SCOPE_GUARD({
-        ledger_unlock(lr, nullptr);
-    });
-    auto appData = static_cast<LedgerAppData*>(ledger_get_app_data(lr, nullptr));
-    if (!appData) {
-        appData = new(std::nothrow) LedgerAppData();
-        if (!appData) {
-            return Error::NO_MEMORY;
-        }
-        ledger_callbacks callbacks = {};
-        callbacks.version = LEDGER_API_VERSION;
-        callbacks.sync = ledgerSyncCallback;
-        ledger_set_callbacks(lr, &callbacks, nullptr);
-        ledger_set_app_data(lr, appData, destroyLedgerAppData, nullptr);
-        ledger_add_ref(lr, nullptr); // Keep the instance around
-    }
-    ledger = lr;
-    return 0;
 }
 
 int getLedgerInfo(ledger_info& info, ledger_instance* ledger) {
@@ -123,6 +93,44 @@ int writeLedgerStream(ledger_stream* stream, const char* data, size_t size) {
         Log.error("ledger_write() failed: %d", r);
     }
     return r;
+}
+
+void ledgerSyncCallback(ledger_instance* ledger, void* appData) {
+    ledger_info info = {};
+    info.version = LEDGER_API_VERSION;
+    int r = getLedgerInfo(info, ledger);
+    if (r < 0) {
+        return;
+    }
+    Log.info("Ledger synchronized: %s", info.name);
+}
+
+int getLedger(ledger_instance*& ledger, const char* name) {
+    ledger_instance* lr = nullptr;
+    int r = ledger_get_instance(&lr, name, nullptr);
+    if (r < 0) {
+        Log.error("ledger_get_instance() failed: %d", r);
+        return r;
+    }
+    ledger_lock(lr, nullptr);
+    SCOPE_GUARD({
+        ledger_unlock(lr, nullptr);
+    });
+    auto appData = static_cast<LedgerAppData*>(ledger_get_app_data(lr, nullptr));
+    if (!appData) {
+        appData = new(std::nothrow) LedgerAppData();
+        if (!appData) {
+            return Error::NO_MEMORY;
+        }
+        ledger_callbacks callbacks = {};
+        callbacks.version = LEDGER_API_VERSION;
+        callbacks.sync = ledgerSyncCallback;
+        ledger_set_callbacks(lr, &callbacks, nullptr);
+        ledger_set_app_data(lr, appData, destroyLedgerAppData, nullptr);
+        ledger_add_ref(lr, nullptr); // Keep the instance around
+    }
+    ledger = lr;
+    return 0;
 }
 
 } // namespace
@@ -246,7 +254,7 @@ void RequestHandler::handleRequest(ctrl_request* req) {
 }
 
 int RequestHandler::handleRequestImpl(ctrl_request* req) {
-    Log.trace("Received control request");
+    Log.trace("Received request");
     auto size = req->request_size;
     if (!size) {
         return Error::NOT_ENOUGH_DATA;
@@ -328,12 +336,13 @@ int RequestHandler::handleBinaryRequest(BinaryRequest& req) {
 }
 
 int RequestHandler::get(JsonRequest& req) {
+    auto name = req.get("name").toString();
+    Log.info("Getting ledger data: %s", name.data());
     if (ledgerStream_) {
         Log.warn("\"get\" or \"set\" command is already in progress");
         CHECK(closeLedgerStream(ledgerStream_, LEDGER_STREAM_CLOSE_DISCARD));
         ledgerStream_ = nullptr;
     }
-    auto name = req.get("name").toString();
     ledger_instance* ledger = nullptr;
     CHECK(getLedger(ledger, name.data()));
     ledger_lock(ledger, nullptr);
@@ -363,12 +372,13 @@ int RequestHandler::get(JsonRequest& req) {
 }
 
 int RequestHandler::set(JsonRequest& req) {
+    auto name = req.get("name").toString();
+    Log.info("Setting ledger data: %s", name.data());
     if (ledgerStream_) {
         Log.warn("\"get\" or \"set\" command is already in progress");
         CHECK(closeLedgerStream(ledgerStream_, LEDGER_STREAM_CLOSE_DISCARD));
         ledgerStream_ = nullptr;
     }
-    auto name = req.get("name").toString();
     auto size = req.get("size").toInt();
     if (size < 0) {
         Log.error("Invalid size of ledger data");
@@ -392,6 +402,7 @@ int RequestHandler::set(JsonRequest& req) {
 
 int RequestHandler::touch(JsonRequest& req) {
     auto name = req.get("name").toString();
+    Log.info("Getting ledger instance: %s", name.data());
     ledger_instance* ledger = nullptr;
     CHECK(getLedger(ledger, name.data()));
     ledger_release(ledger, nullptr);
@@ -399,6 +410,7 @@ int RequestHandler::touch(JsonRequest& req) {
 }
 
 int RequestHandler::list(JsonRequest& req) {
+    Log.info("Enumerating ledgers");
     const char** names = nullptr;
     size_t count = 0;
     CHECK(getLedgerNames(names, count));
@@ -420,6 +432,7 @@ int RequestHandler::list(JsonRequest& req) {
 
 int RequestHandler::info(JsonRequest& req) {
     auto name = req.get("name").toString();
+    Log.info("Getting ledger info: %s", name.data());
     ledger_instance* ledger = nullptr;
     CHECK(getLedger(ledger, name.data()));
     SCOPE_GUARD({
@@ -441,6 +454,7 @@ int RequestHandler::info(JsonRequest& req) {
 }
 
 int RequestHandler::reset(JsonRequest& req) {
+    Log.info("Resetting device");
     return Result::RESET_PENDING;
 }
 
@@ -455,8 +469,8 @@ int RequestHandler::remove(JsonRequest& req) {
         Log.error("Ledger name is too long");
         return Error::BAD_DATA;
     }
-    conf.setRestoreConnectionFlag();
     conf.removeLedger = true;
+    conf.setRestoreConnectionFlag();
     return Result::RESET_PENDING;
 }
 
@@ -465,8 +479,8 @@ int RequestHandler::clear(JsonRequest& req) {
     if (conf.removeAllLedgers) {
         Log.warn("\"clear\" command is already in progress");
     }
-    conf.setRestoreConnectionFlag();
     conf.removeAllLedgers = true;
+    conf.setRestoreConnectionFlag();
     return Result::RESET_PENDING;
 }
 
@@ -476,7 +490,7 @@ int RequestHandler::connect(JsonRequest& req) {
 }
 
 int RequestHandler::disconnect(JsonRequest& req) {
-    Particle.disconnect();
+    Network.off();
     return 0;
 }
 
@@ -485,7 +499,10 @@ int RequestHandler::autoConnect(JsonRequest& req) {
     auto& conf = Config::get();
     conf.autoConnect = enabled.isValid() ? enabled.toBool() : true;
     if (conf.autoConnect) {
+        Log.info("Enabled auto-connect");
         Particle.connect();
+    } else {
+        Log.info("Disabled auto-connect");
     }
     return 0;
 }
@@ -494,6 +511,11 @@ int RequestHandler::debug(JsonRequest& req) {
     auto enabled = req.get("enabled");
     auto& conf = Config::get();
     conf.debugEnabled = enabled.isValid() ? enabled.toBool() : true;
+    if (conf.debugEnabled) {
+        Log.info("Enabled debug");
+    } else {
+        Log.info("Disabled debug");
+    }
     CHECK(initLogger());
     return 0;
 }

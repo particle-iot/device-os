@@ -1350,7 +1350,7 @@ int LedgerManager::requestCallback(coap_message* msg, const char* uri, int metho
     clear_system_error_message();
     int result = self->receiveRequest(msg, reqId);
     if (result < 0) {
-        LOG(ERROR, "Failed to handle request: %d", result);
+        LOG(ERROR, "Error while handling request: %d", result);
     }
     int r = self->sendResponse(result, reqId);
     if (r < 0 && r != SYSTEM_ERROR_COAP_REQUEST_NOT_FOUND) { // Response might have been sent already
@@ -1377,7 +1377,7 @@ int LedgerManager::responseCallback(coap_message* msg, int status, int reqId, vo
     });
     int r = self->receiveResponse(msg, status);
     if (r < 0) {
-        LOG(ERROR, "Failed to handle response: %d", r);
+        LOG(ERROR, "Error while handling response: %d", r);
         self->handleError(r);
     }
     return 0;
