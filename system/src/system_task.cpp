@@ -797,7 +797,7 @@ void* system_internal(int item, void* reserved)
         return reinterpret_cast<void*>(system_cloud_get_socket_handle());
     }
     case 4: {
-        particle::system::NetIfTester::instance()->testInterfaces();
+        particle::system::ConnectionTester::instance()->testConnections();
         return nullptr;
     }
 #if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
@@ -805,7 +805,7 @@ void* system_internal(int item, void* reserved)
         return reinterpret_cast<void*>(&lwip_stats);
     }
     case 6: {
-        return (void*)particle::system::NetIfTester::instance()->getDiagnostics();
+        return (void*)particle::system::ConnectionTester::instance()->getConnectionMetrics();
     }
     case 7: {
         // log lwip counters

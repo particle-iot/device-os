@@ -53,6 +53,7 @@ sock_handle_t system_cloud_get_socket_handle();
  * and system upgrades.
  */
 void spark_cloud_udp_port_set(uint16_t port);
+uint16_t spark_cloud_udp_port_get();
 int spark_cloud_socket_connect(void);
 int spark_cloud_socket_disconnect(bool graceful=true);
 uint8_t spark_cloud_socket_closed();
@@ -96,8 +97,6 @@ struct SessionConnection
      * to derive the connection address.
      */
     uint32_t server_address_checksum;
-
-    // network_interface_t bound_interface; // Cant easily add interface here due to session persist size contraints. See `Spark_Save()`
 
     int load(const ServerAddress& addr);
     int discard();

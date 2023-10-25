@@ -27,6 +27,27 @@
 
 namespace particle { namespace system {
 
+struct ConnectionMetrics {
+    network_interface_t interface;
+    int socketDescriptor;
+    uint8_t *txBuffer;
+    uint8_t *rxBuffer;
+    int testPacketSize;
+    uint32_t testPacketSequenceNumber;
+    int txPacketCount;
+    int rxPacketCount;
+    int txPacketStartMillis;
+    int totalPacketWaitMillis;
+
+    // uint32_t dnsResolutionAttempts;
+    // uint32_t dnsResolutionFailures;
+    // uint32_t socketConnAttempts;
+    // uint32_t socketConnFailures;
+    uint32_t txBytes;
+    uint32_t rxBytes;
+    uint32_t avgPacketRoundTripTime;
+};
+
 class ConnectionManager {
 public:
     ConnectionManager();
@@ -47,42 +68,30 @@ private:
     network_handle_t preferredNetwork_;
 };
 
-
-struct NetIfDiagnostics {
-    network_interface_t interface;
-    uint32_t dnsResolutionAttempts;
-    uint32_t dnsResolutionFailures;
-    uint32_t socketConnAttempts;
-    uint32_t socketConnFailures;
-    uint32_t packetCount;
-    uint32_t txBytes;
-    uint32_t rxBytes;
-    uint32_t rxTimeouts;
-    uint32_t avgPacketRoundTripTime;
-};
-
-class NetIfTester {
+class ConnectionTester {
 public:
-    NetIfTester();
-    ~NetIfTester();
+    ConnectionTester();
+    ~ConnectionTester();
 
-    static NetIfTester* instance();
-    void testInterfaces();
+    static ConnectionTester* instance();
+    int testConnections();
 
-    const Vector<NetIfDiagnostics>* getDiagnostics();
+    const Vector<ConnectionMetrics>* getConnectionMetrics();
 
 private:
-    int testInterface(NetIfDiagnostics* diagnostics);
+    int allocateTestPacketBuffers(ConnectionMetrics* metrics);
+    int generateTestPacket(ConnectionMetrics* metrics, int packetDataLength);
+    int pollSockets(struct pollfd * pfds, int socketCount, int packetDataLength);
+    int sendTestPacket(ConnectionMetrics* metrics, int length);
+    int receiveTestPacket(ConnectionMetrics* metrics);
+    void cleanupSockets(bool recalculateMetrics = true);
+    ConnectionMetrics* metricsFromSocketDescriptor(int socketDescriptor);
 
-    const uint16_t UDP_ECHO_PORT = 40000;
-    const char * UDP_ECHO_SERVER_HOSTNAME = "publish-receiver-udp.particle.io";
-    
-    // TODO: Query at runtime
-    const uint16_t DEVICE_SERVICE_PORT = 5684;
-    const char * DEVICE_SERVICE_HOSTNAME = "a10aced202194944a0429fc.v5.udp-mesh.staging.particle.io";
+    const uint8_t REACHABILITY_TEST_MSG = 252;
+    const unsigned REACHABILITY_MAX_PAYLOAD_SIZE = 256;
+    const unsigned REACHABILITY_TEST_DURATION_MS = 5000;
 
-    Vector<NetIfDiagnostics> ifDiagnostics_;
-
+    Vector<ConnectionMetrics> metrics_;
 };
 
 } } /* particle::system */
