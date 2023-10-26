@@ -44,6 +44,7 @@ INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/fatfs/r0.10c/include
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/ftl
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/usb/device_new/core
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/usb/common_new
+INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/si
 
 # Hack of the century!
 LIBS_EXT_END += -Wl,--wrap=bt_coex_handle_specific_evt

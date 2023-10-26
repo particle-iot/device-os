@@ -43,6 +43,8 @@
 #include "hal_dynalib_nfc.h"
 #include "hal_dynalib_mesh_deprecated.h"
 #include "hal_dynalib_watchdog.h"
+#include "hal_dynalib_i2s.h"
+#include "hal_dynalib_audio.h"
 
 #ifndef HAL_USB_EXCLUDE
 #include "hal_dynalib_usb.h"

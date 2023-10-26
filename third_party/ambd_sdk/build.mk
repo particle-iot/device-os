@@ -95,6 +95,7 @@ CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/fwlib/usrcfg/rtl8721d_wificfg.c
 CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_conf.c
 CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_ind.c
 CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/api/wifi/wifi_util.c
+CSRC += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/si/rl6548.c
 endif
 
 # INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/api/network/include

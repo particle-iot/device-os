@@ -50,6 +50,8 @@ DYNALIB_TABLE_EXTERN(hal_watchdog);
 #endif // HAL_PLATFORM_HW_WATCHDOG
 DYNALIB_TABLE_EXTERN(hal_backup_ram);
 DYNALIB_TABLE_EXTERN(system_asset_manager);
+DYNALIB_TABLE_EXTERN(hal_audio);
+DYNALIB_TABLE_EXTERN(hal_i2s);
 
 // strange that this is needed given that the entire block is scoped extern "C"
 // without it, the section name doesn't match *.system_part2_module as expected in the linker script
@@ -97,8 +99,10 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
 #if HAL_PLATFORM_HW_WATCHDOG
     , DYNALIB_TABLE_NAME(hal_watchdog)
 #endif // HAL_PLATFORM_HW_WATCHDOG
-    , DYNALIB_TABLE_NAME(hal_backup_ram),
-    DYNALIB_TABLE_NAME(system_asset_manager)
+    , DYNALIB_TABLE_NAME(hal_backup_ram)
+    , DYNALIB_TABLE_NAME(system_asset_manager)
+    , DYNALIB_TABLE_NAME(hal_audio)
+    , DYNALIB_TABLE_NAME(hal_i2s)
 };
 
 #include "system_part1_loader.c"
