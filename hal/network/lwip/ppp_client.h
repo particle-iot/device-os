@@ -108,6 +108,8 @@ public:
 
   void setAuth(const char* user, const char* password);
 
+  void setServer(bool server);
+
   netif* getIf();
 
 private:
@@ -200,6 +202,7 @@ private:
   static std::once_flag once_;
   static netif_ext_callback_t netifCb_;
   static int netifClientDataIdx_;
+  bool server_ = false;
 };
 
 } } } /* namespace particle::net::ppp */

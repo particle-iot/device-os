@@ -708,6 +708,10 @@ void NetworkManager::refreshIpState() {
             continue;
         }
 
+        if (addr->ifflags & IFF_DEBUG) {
+            continue;
+        }
+
         /* Skip non-UP and non-LINK_UP interfaces */
         if ((addr->ifflags & (IFF_UP | IFF_LOWER_UP)) != (IFF_UP | IFF_LOWER_UP)) {
             continue;

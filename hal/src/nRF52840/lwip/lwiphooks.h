@@ -25,7 +25,7 @@ extern "C" {
 /* IPv4 hooks */
 #if LWIP_IPV4
 int lwip_hook_ip4_input(struct pbuf *p, struct netif *inp);
-int lwip_hook_ip4_input_post_validation(struct pbuf* p, struct netif* inp);
+int lwip_hook_ip4_input_post_validation(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp);
 struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst);
 int lwip_hook_ip4_input_pre_upper_layers(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp);
 #endif /* LWIP_IPV4 */
@@ -158,7 +158,7 @@ void lwip_hook_memp_free(memp_t type, unsigned available, unsigned size);
  */
 // #define LWIP_HOOK_IP4_INPUT(pbuf, input_netif) lwip_hook_ip4_input(pbuf, input_netif)
 
-// #define LWIP_HOOK_IP4_INPUT_POST_VALIDATION(pbuf, input_netif) lwip_hook_ip4_input_post_validation(pbuf, input_netif)
+#define LWIP_HOOK_IP4_INPUT_POST_VALIDATION(pbuf, iphdr, input_netif) lwip_hook_ip4_input_post_validation(pbuf, iphdr, input_netif)
 // #define LWIP_HOOK_IP4_INPUT_PRE_UPPER_LAYERS(pbuf, iphdr, input_netif) lwip_hook_ip4_input_pre_upper_layers(pbuf, iphdr, input_netif)
 
 /**

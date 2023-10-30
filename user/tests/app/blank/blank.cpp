@@ -17,9 +17,18 @@
 
 #include "application.h"
 
+SerialLogHandler dbg(LOG_LEVEL_ALL);
+SYSTEM_THREAD(ENABLED);
+SYSTEM_MODE(SEMI_AUTOMATIC);
+
 /* executes once at startup */
 void setup() {
-
+    waitUntil(Serial.isConnected);
+    Log.info("Free mem: %u", System.freeMemory());
+    network_on(NETWORK_INTERFACE_PPP_SERVER, 0, 0, nullptr);
+    network_connect(NETWORK_INTERFACE_PPP_SERVER, 0, 0, nullptr);
+    Particle.connect();
+    //Particle.connect();
 }
 
 /* executes continuously after setup() runs */
