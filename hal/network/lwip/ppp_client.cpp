@@ -45,6 +45,9 @@ LOG_SOURCE_CATEGORY("net.ppp.client");
 const uint32_t GOOGLE_DNS_PRIMARY = 0x08080808UL;
 const uint32_t GOOGLE_DNS_SECONDARY = 0x08080404UL;
 
+const uint32_t DEFAULT_LOCAL_ADDRESS = 0x0ADFDF01UL; // 10.223.223.1
+const uint32_t DEFAULT_PEER_ADDRESS = 0x0ADFDF02UL; // 10.223.223.2
+
 using namespace particle::net::ppp;
 
 std::once_flag Client::once_;
@@ -107,14 +110,16 @@ void Client::init() {
     if (dnsIndex < 0) {
       dnsIndex = 0;
     }
-    ipcp_->setDnsEntryIndex(resolv_get_dns_server_priority_for_iface((if_t)&if_, 0));
+    if (!server_) {
+      ipcp_->setDnsEntryIndex(resolv_get_dns_server_priority_for_iface((if_t)&if_, 0));
+    }
     netif_set_client_data(&if_, netifClientDataIdx_, this);
     UNLOCK_TCPIP_CORE();
 
     // FIXME: do we need this workaround for R510?
     // XXX:
-    if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410 ||
-        platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R510)
+    if (!server_ && (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410 ||
+        platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R510))
         {
       // SARA R4 PPP implementation is broken and often times we receive
       // an empty or non-conflicting Configure-Request in an already opened state
@@ -130,7 +135,7 @@ void Client::init() {
       pcb_->settings.fsm_ignore_conf_req_opened = 1;
     }
 
-    if (state_ == STATE_CONNECTED || state_ == STATE_DISCONNECTED) {
+    if (!server_ && (state_ == STATE_CONNECTED || state_ == STATE_DISCONNECTED)) {
       // Allows the R510 to drop into low power mode (USPV=1) automatically after ~9s when idle
       pcb_->settings.lcp_echo_interval = NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_R510;
       pcb_->settings.lcp_echo_fails = NCP_CLIENT_LCP_ECHO_MAX_FAILS_R510;
@@ -176,15 +181,40 @@ int Client::prepareConnect() {
   ipcp_->init();
   ipcp_->disable();
   ipcp_->enable();
-  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_IP_ADDRESS, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
-  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_PRIMARY_DNS_SERVER, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
-  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_SECONDARY_DNS_SERVER, CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS);
+  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_IP_ADDRESS, !server_ ? CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS : 0);
+  ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_PRIMARY_DNS_SERVER, !server_ ? CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS : 0);
+  if (!server_) {
+    ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_SECONDARY_DNS_SERVER, !server_ ? CONFIGURATION_OPTION_FLAG_ACCEPT_REMOTE_ALWAYS : 0);
+  }
 
-  ip4_addr_t pdns, sdns;
-  ip4_addr_set_u32(&pdns, lwip_htonl(GOOGLE_DNS_PRIMARY));
-  ip4_addr_set_u32(&sdns, lwip_htonl(GOOGLE_DNS_SECONDARY));
-  ipcp_->setPrimaryDns(pdns);
-  ipcp_->setSecondaryDns(sdns);
+  if (!server_) {
+    ip4_addr_t pdns, sdns;
+    ip4_addr_set_u32(&pdns, lwip_htonl(GOOGLE_DNS_PRIMARY));
+    ip4_addr_set_u32(&sdns, lwip_htonl(GOOGLE_DNS_SECONDARY));
+    ipcp_->setPrimaryDns(pdns);
+    ipcp_->setSecondaryDns(sdns);
+  } else {
+    ip4_addr_t local;
+    ip4_addr_t peer;
+    ip4_addr_set_u32(&local, lwip_htonl(DEFAULT_LOCAL_ADDRESS));
+    ip4_addr_set_u32(&peer, lwip_htonl(DEFAULT_PEER_ADDRESS));
+    ipcp_->setPrimaryDns(local);
+    //ipcp_->setSecondaryDns(local);
+    ipcp_->setLocalAddress(local);
+    ipcp_->setPeerAddress(peer);
+  }
+
+#if HAL_PLATFORM_PPP_SERVER
+  LOCK_TCPIP_CORE();
+  if (server_) {
+    ppp_set_silent(pcb_, 1);
+    ppp_set_auth(pcb_, PPPAUTHTYPE_ANY, "particle", "particle");
+    ppp_set_auth_required(pcb_, 0);
+  } else {
+    ppp_set_silent(pcb_, 0);
+  }
+  UNLOCK_TCPIP_CORE();
+#endif
 
 #if PPP_IPV6_SUPPORT
   LOCK_TCPIP_CORE();
@@ -199,6 +229,8 @@ int Client::prepareConnect() {
   lk.unlock();
   if (cb) {
     return cb(ctx);
+  } else if (server_) {
+    return 0;
   }
   return SYSTEM_ERROR_INVALID_STATE;
 }
@@ -248,7 +280,7 @@ int Client::input(const uint8_t* data, size_t size) {
         LOG_DEBUG(TRACE, "RX: %lu", size);
         // LOG_DUMP(TRACE, data, size);
 
-        if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410) {
+        if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410 && !server_) {
           auto pppos = (pppos_pcb*)pcb_->link_ctx_cb;
           const char NO_CARRIER[] = "\r\nNO CARRIER\r\n";
           if (pppos && pppos->in_state == PDADDRESS && pcb_->phase == PPP_PHASE_NETWORK && data[0] != PPP_FLAG && size >= sizeof(NO_CARRIER) - 1 && !strncmp((const char*)data, NO_CARRIER, size)) {
@@ -569,7 +601,7 @@ void Client::notifyNetif(netif_nsc_reason_t reason, const netif_ext_callback_arg
 void Client::transition(State newState) {
   LOG(TRACE, "State %s -> %s", stateNames_[state_], stateNames_[newState]);
   if (newState != state_) {
-    if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R510) {
+    if (!server_ && platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R510) {
       if (newState == STATE_CONNECTED || newState == STATE_DISCONNECTED) {
         // Allows the R510 to drop into low power mode (USPV=1) automatically after ~9s when idle
         pcb_->settings.lcp_echo_interval = NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_R510;
@@ -601,6 +633,11 @@ void Client::transition(State newState) {
       }
     }
   }
+}
+
+void Client::setServer(bool server) {
+  std::lock_guard<std::mutex> lk(mutex_);
+  server_ = server;
 }
 
 #endif // defined(PPP_SUPPORT) && PPP_SUPPORT

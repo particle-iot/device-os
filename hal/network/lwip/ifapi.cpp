@@ -557,6 +557,10 @@ int if_get_flags(if_t iface, unsigned int* flags) {
         *flags |= IFF_POINTTOPOINT;
     }
 
+    if (netif->name[0] == 'p' && netif->name[1] == 's') {
+        *flags |= IFF_POINTTOPOINT | IFF_DEBUG;
+    }
+
     return 0;
 }
 

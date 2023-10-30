@@ -112,7 +112,7 @@ private:
   bool lowerState_ = false;
   bool admState_ = false;
   bool state_ = false;
-  int dnsIndex_ = 0;
+  int dnsIndex_ = -1;
 
   struct IpcpConfiguration {
     ip4_addr_t localAddress;

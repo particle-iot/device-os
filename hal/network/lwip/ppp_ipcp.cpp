@@ -350,10 +350,12 @@ void Ipcp::up() {
   auto pdns = getNegotiatedPrimaryDns();
   auto sdns = getNegotiatedSecondaryDns();
 
-  if (ip4_addr_isany_val(pdns) && ip4_addr_isany_val(sdns)) {
-    // Teardown
-    close("Failed to negotiate DNS servers");
-    return;
+  if (dnsIndex_ >= 0) {
+    if (ip4_addr_isany_val(pdns) && ip4_addr_isany_val(sdns)) {
+      // Teardown
+      close("Failed to negotiate DNS servers");
+      return;
+    }
   }
 
   sifup(pcb_);
@@ -361,16 +363,18 @@ void Ipcp::up() {
   auto mask = getNegotiatedNetmask();
   netif_set_addr(pcb_->netif, &ip, &mask, &peer);
 
-  if (!ip4_addr_isany_val(pdns)) {
-    ip_addr_t tmp;
-    ip_addr_copy_from_ip4(tmp, pdns);
-    dns_setserver(dnsIndex_, &tmp);
-  }
+  if (dnsIndex_ >= 0) {
+    if (!ip4_addr_isany_val(pdns)) {
+      ip_addr_t tmp;
+      ip_addr_copy_from_ip4(tmp, pdns);
+      dns_setserver(dnsIndex_, &tmp);
+    }
 
-  if (!ip4_addr_isany_val(sdns)) {
-    ip_addr_t tmp;
-    ip_addr_copy_from_ip4(tmp, sdns);
-    dns_setserver(dnsIndex_ + 1, &tmp);
+    if (!ip4_addr_isany_val(sdns)) {
+      ip_addr_t tmp;
+      ip_addr_copy_from_ip4(tmp, sdns);
+      dns_setserver(dnsIndex_ + 1, &tmp);
+    }
   }
 
   if (!state_) {

@@ -300,7 +300,7 @@ void sys_unlock_tcpip_core(void);
  * The default number of timeouts is calculated here for all enabled modules.
  * The formula expects settings to be either '0' or '1'.
  */
-#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 2)
+#define MEMP_NUM_SYS_TIMEOUT            (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 4)
 
 /**
  * MEMP_NUM_NETBUF: the number of struct netbufs.
