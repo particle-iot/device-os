@@ -103,7 +103,7 @@ void BurninTest::setup(bool forceEnable) {
 	}
 
 	Particle.disconnect();
-	Cellular.off();
+
 	LogCategoryFilters burninFilters = {
         	{ "ncp.at", LOG_LEVEL_TRACE },
         	{ "app", LOG_LEVEL_INFO }
