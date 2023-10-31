@@ -35,7 +35,9 @@
 
 DYNALIB_BEGIN(hal_at_dtm)
 
-DYNALIB_FN(0, hal_at_dtm, hal_at_dtm_init, int(hal_at_dtm_type_t, const hal_at_dtm_interface_config_t*, void*))
+DYNALIB_FN(0, hal_at_dtm, hal_at_dtm_init, int(hal_at_dtm_type_t, void*))
+DYNALIB_FN(1, hal_at_dtm, hal_at_dtm_start, int(hal_at_dtm_type_t, const hal_at_dtm_interface_config_t*, void*))
+DYNALIB_FN(2, hal_at_dtm, hal_at_dtm_stop, int(hal_at_dtm_type_t, void*))
 
 DYNALIB_END(hal_at_dtm)
 

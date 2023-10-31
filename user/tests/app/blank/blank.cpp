@@ -31,11 +31,13 @@ void setup() {
     hal_at_dtm_interface_config_t config = {};
     config.interface = HAL_AT_DTM_INTERFACE_UART;
     config.index = HAL_USART_SERIAL1;
-    hal_at_dtm_init(HAL_AT_DTM_TYPE_BLE, &config, nullptr);
+    hal_at_dtm_init(HAL_AT_DTM_TYPE_BLE, nullptr);
+    hal_at_dtm_start(HAL_AT_DTM_TYPE_BLE, &config, nullptr);
 
     delay(3s);
     config.params.baudrate = 115200;
-    hal_at_dtm_init(HAL_AT_DTM_TYPE_WIFI, &config, nullptr);
+    hal_at_dtm_init(HAL_AT_DTM_TYPE_WIFI, nullptr);
+    hal_at_dtm_start(HAL_AT_DTM_TYPE_WIFI, &config, nullptr);
 }
 
 /* executes continuously after setup() runs */

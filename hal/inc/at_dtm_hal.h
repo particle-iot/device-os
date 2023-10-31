@@ -44,7 +44,7 @@ typedef struct hal_at_dtm_interface_config_t {
     hal_at_dtm_interface_t interface;
     uint8_t index; // Interface index, e.g. UART 0/1/2/3
     union {
-        uint16_t baudrate; // It's fixed to 19200 for now.
+        uint32_t baudrate; // It's fixed to 19200 for now.
     } params;
 } hal_at_dtm_interface_config_t;
 
@@ -52,7 +52,9 @@ typedef struct hal_at_dtm_interface_config_t {
 extern "C" {
 #endif
 
-int hal_at_dtm_init(hal_at_dtm_type_t type, const hal_at_dtm_interface_config_t* config, void* reserved);
+int hal_at_dtm_init(hal_at_dtm_type_t type, void* reserved);
+int hal_at_dtm_start(hal_at_dtm_type_t type, const hal_at_dtm_interface_config_t* config, void* reserved);
+int hal_at_dtm_stop(hal_at_dtm_type_t type, void* reserved);
 
 #ifdef __cplusplus
 }
