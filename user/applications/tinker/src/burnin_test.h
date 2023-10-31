@@ -51,6 +51,7 @@ private:
 	bool testCpuLoad();
 #if PLATFORM_ID == PLATFORM_MSOM
 	bool testCellularModem();
+	bool testGnss();
 #endif
 };
 

@@ -57,6 +57,7 @@ BurninTest::BurninTest() {
 		&particle::BurninTest::testCpuLoad,
 #if PLATFORM_ID == PLATFORM_MSOM
 		&particle::BurninTest::testCellularModem,
+		&particle::BurninTest::testGnss,
 #endif
 	};
 
@@ -68,7 +69,8 @@ BurninTest::BurninTest() {
 		"SPI_FLASH", 
 		"CPU_LOAD",
 #if PLATFORM_ID == PLATFORM_MSOM
-		"CELL_MODEM"
+		"CELL_MODEM",
+		"GNSS"
 #endif
 	};
 }
@@ -101,8 +103,12 @@ void BurninTest::setup(bool forceEnable) {
 	}
 
 	Particle.disconnect();
-
-    logger_ = std::make_unique<Serial1LogHandler>(115200, LOG_LEVEL_INFO);
+	Cellular.off();
+	LogCategoryFilters burninFilters = {
+        	{ "ncp.at", LOG_LEVEL_TRACE },
+        	{ "app", LOG_LEVEL_INFO }
+	};
+    logger_ = std::make_unique<Serial1LogHandler>(115200, LOG_LEVEL_INFO, burninFilters);
     
 	// Detect if backup SRAM has a failed test in it (IE state is "TEST FAILED")
 	Log.info("BURN IN START: ResetReason: %d State: %d ErrorMessage: %s", System.resetReason(), (int)BurninState, BurninErrorMessage);
@@ -468,23 +474,27 @@ bool BurninTest::testCpuLoad() {
 }
 
 #if PLATFORM_ID == PLATFORM_MSOM
-bool BurninTest::testCellularModem() {
+
+static bool turnModemOn() {
 	Cellular.on();
 	waitFor(Cellular.isOn, 30000);
 
 	if (!Cellular.isOn()) {
-		String failedPowerOn = "Cell modem failed to turn on after 30s";
-		strlcpy(BurninErrorMessage, failedPowerOn.c_str(), sizeof(failedPowerOn));
-		Log.error("%s", failedPowerOn);
+		strcpy(BurninErrorMessage, "Cell modem failed to turn on after 30s");
+		return false;
+	}
+	return true;
+}
+
+bool BurninTest::testCellularModem() {
+	if (!turnModemOn()) {
 		return false;
 	}
 	
     CellularDevice device = {};
     device.size = sizeof(device);
     if (cellular_device_info(&device, NULL)) {
-		String failedCellularInfo = "Failed to get cellular info";
-		strlcpy(BurninErrorMessage, failedCellularInfo.c_str(), sizeof(failedCellularInfo));
-		Log.error("%s", failedCellularInfo);
+		strcpy(BurninErrorMessage, "Failed to get cellular info");
     	return false;
     }
     
@@ -494,6 +504,115 @@ bool BurninTest::testCellularModem() {
 	waitFor(Cellular.isOff, 30000);
 	return true;
 }
+
+static int callbackGPSGGA(int type, const char* buf, int len, bool* gnssLocked) {
+	// EXAMPLE:
+	// $<TalkerID>GGA,<UTC>,<Lat>,<N/S>,<Lon>,<E/W>,<Quality>,<NumSatUsed>,<HDOP>,<Alt>,M,<Sep>,M,<DiffAge>,<DiffStation>*<Checksum><CR><LF>
+	// +QGPSGNMEA: $GPGGA,213918.00,3804.405282,N,12209.922544,W,1,05,3.0,145.9,M,-26.4,M,,*5E
+
+    //Log.info("%s", buf);
+
+	*gnssLocked = false;
+
+	const int MAX_GPGGA_STR_LEN = 256;
+    char gpggaSentence[MAX_GPGGA_STR_LEN] = {};
+    strlcpy(gpggaSentence, buf, MAX_GPGGA_STR_LEN);
+
+    String lattitudeLongitude("LAT/LONG:");
+    int numberSattelites = 0;
+    
+    const char * delimiters = ",";
+    char * token = strtok(gpggaSentence, delimiters);
+    int i = 1;
+    while (token) {
+    	//Log.trace("%d %s", i, token);
+    	token = strtok(NULL, delimiters);
+    	i++;
+
+    	switch (i) {
+	    	case 3: // Lattitude or checksum if no lock and field is empty
+	    		if (strlen(token) > 5) {
+	    			lattitudeLongitude.concat(" ");
+	    			lattitudeLongitude.concat(token);
+	    		}
+	    		break;
+	    	case 4: // N/S
+	    	case 5: // Longitude
+	    	case 6: // E/W
+				lattitudeLongitude.concat(" ");
+    			lattitudeLongitude.concat(token);
+	    		break;
+	    	case 8: // Number satellites
+	    		numberSattelites = (int)String(token).toInt();
+	    		if (numberSattelites > 0) {
+	    			*gnssLocked = true;	
+    			    Log.info("%s Satellites: %d", lattitudeLongitude.c_str(), numberSattelites);
+	    		}
+	    		break;
+	    	default:
+	    		break;
+    	}
+    }
+
+    return 1;
+}
+
+bool BurninTest::testGnss() {
+	// Turn on GNSS + Modem
+    pinMode(GNSS_ANT_PWR, OUTPUT);
+	digitalWrite(GNSS_ANT_PWR, HIGH);
+
+	if (!turnModemOn()) {
+		return false;
+	}
+
+	// Enable GNSS. It can take some time after the modem AT interface comes up for the GNSS engine to start
+	const int RETRIES = 10;
+	int r = 0;
+	for (int i = 0; i < RETRIES && r != RESP_OK; i++) {
+		r = Cellular.command("AT+QGPS=1\r\n");
+		delay(1000);
+	}
+
+	if (r != RESP_OK) {
+		strcpy(BurninErrorMessage, "AT+QGPS=1 failed, GNSS not enabled");
+		return false;
+	}
+
+	// Configure antenna for GNSS priority
+	for (int i = 0; i < RETRIES && r != RESP_OK; i++) {
+		r = Cellular.command("AT+QGPSCFG=\"priority\",0");
+		delay(1000);
+	}
+
+	if (r != RESP_OK) {
+		strcpy(BurninErrorMessage, "AT+QGPSCFG=\"priority\",0 failed, GNSS not prioritized");
+		return false;
+	}
+
+	// Poll NMEA GGA sentence
+	// Parse for satellite lock bit, parse rough lat/long + print it
+	bool gnssLocked = false;
+	const int GNSS_POLL_TIMEOUT_MS = 90000;
+	auto timeout = millis() + GNSS_POLL_TIMEOUT_MS;
+	while (millis() < timeout && !gnssLocked) {
+		Cellular.command(callbackGPSGGA, &gnssLocked, 1000, "AT+QGPSGNMEA=\"GGA\"");
+		Log.info("gnssLocked %d", gnssLocked);
+		delay(1000);
+	}
+
+	// If no lock in X minutes, fail
+	if (!gnssLocked) {
+		strcpy(BurninErrorMessage, "No GNSS lock after 90s");
+	}
+
+	// Turn off Cell modem + GNSS antenna
+	digitalWrite(GNSS_ANT_PWR, LOW);
+	Cellular.off();
+	waitFor(Cellular.isOff, 30000);
+	return gnssLocked;
+}
+
 #endif
 
 } // particle
