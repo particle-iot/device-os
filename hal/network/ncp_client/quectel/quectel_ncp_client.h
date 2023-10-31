@@ -153,6 +153,7 @@ private:
     bool isQuecCatNBxDevice();
     /** Is this a Quectel BG95* device ? */
     bool isQuecBG95xDevice();
+    int getRuntimeBaudrate();
     int modemInit() const;
     bool waitModemPowerState(bool onOff, system_tick_t timeout);
     int modemPowerOn();

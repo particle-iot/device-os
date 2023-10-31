@@ -90,6 +90,7 @@ inline system_tick_t millis() {
 
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1059,6 +1060,16 @@ bool QuectelNcpClient::isQuecBG95xDevice() {
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF) ;
 }
 
+int QuectelNcpClient::getRuntimeBaudrate() {
+    auto runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
+        // Only change for MSoM, and currently MSoM only uses BG95_M5.
+        // Not testing for PLATFORM_ID == PLATFORM_MSOM because another modem type might not support 921600.
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5;
+    }
+    return runtimeBaudrate;
+}
+
 int QuectelNcpClient::initReady(ModemState state) {
     // Set modem full functionality
     int r = AtResponse::OK;
@@ -1086,7 +1097,7 @@ int QuectelNcpClient::initReady(ModemState state) {
             CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
             CHECK(waitAtResponse(10000));
         }
-        auto runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
+        auto runtimeBaudrate = getRuntimeBaudrate();
         CHECK(changeBaudRate(runtimeBaudrate));
         // Check that the modem is responsive at the new baudrate
         skipAll(serial_.get(), 1000);
@@ -1122,9 +1133,11 @@ int QuectelNcpClient::initReady(ModemState state) {
             case 115200: portspeed = 5; break;
             case 230400: portspeed = 6; break;
             case 460800: portspeed = 7; break;
+            case 921600: portspeed = 8; break;
             default:
                 return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
+        // XXX: AT+CMUX=? says portspeed value range is (1-7), but 8 is required for it to work on BG95-M5
         r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,%u,,,,,", portspeed, QUECTEL_NCP_MAX_MUXER_FRAME_SIZE));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1169,7 +1182,8 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     // NOTE: disabling hardware flow control here as BG96-based Trackers are known
     // to latch CTS sometimes on warm boot
     // Sending some data without flow control allows us to get out of that state
-    CHECK(serial_->setConfig(getDefaultSerialConfig() & ~(SERIAL_FLOW_CONTROL_RTS_CTS), QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
+    auto runtimeBaudrate = getRuntimeBaudrate();
+    CHECK(serial_->setConfig(getDefaultSerialConfig() & ~(SERIAL_FLOW_CONTROL_RTS_CTS), runtimeBaudrate));
 
     // Essentially we are generating empty 07.10 frames here
     // This is done so that we can complete an ongoing frame transfer that was aborted e.g.
@@ -1235,7 +1249,7 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
         return SYSTEM_ERROR_NONE;
     }
 
-    LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE);
+    LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", runtimeBaudrate);
 
     // The modem is not responsive at the runtime baudrate, check default
     CHECK(serial_->setBaudRate(QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE));
