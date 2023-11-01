@@ -130,8 +130,13 @@ int CommonConfigurationOptionIpAddress::recvConfigureReq(uint8_t* buf, size_t le
       if (!ip4_addr_isany_val(peer)) {
         statePeer = CONFIGURATION_OPTION_STATE_ACK;
       } else {
-        statePeer = CONFIGURATION_OPTION_STATE_REJ;
-        ip4_addr_set_u32(&peerIdea, *(uint32_t*)(buf + 2));
+        if (flagsLocal & CONFIGURATION_OPTION_FLAG_PROVIDE) {
+          statePeer = CONFIGURATION_OPTION_STATE_NAK;
+          ip4_addr_copy(peer, local);
+        } else {
+          statePeer = CONFIGURATION_OPTION_STATE_REJ;
+          ip4_addr_set_u32(&peerIdea, *(uint32_t*)(buf + 2));
+        }
       }
     } else {
       if (!ip4_addr_isany_val(peer)) {
