@@ -49,6 +49,7 @@
 #include "system_power.h"
 #include "simple_pool_allocator.h"
 #include "system_ble_prov.h"
+#include "system_cache.h"
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
@@ -812,6 +813,18 @@ void* system_internal(int item, void* reserved)
         LOG(TRACE,"[%s] IP rx %u %u %u %u | UDP rx %u %u %u %u", 
                 (const char *)reserved, lwip_stats.ip.recv, lwip_stats.ip.drop, lwip_stats.ip.err, lwip_stats.ip.proterr,
                 lwip_stats.udp.recv, lwip_stats.udp.drop, lwip_stats.udp.err, lwip_stats.udp.proterr);
+        return nullptr;
+    }
+    case 8: {
+        // Get cached cellular ID
+        static uint8_t cacheRead[70] = {};
+        memset(cacheRead, 0x00, sizeof(cacheRead));
+        services::SystemCache::instance().get(services::SystemCacheKey::CELLULAR_DEVICE_INFO, &cacheRead, sizeof(cacheRead));
+        return &cacheRead;
+    }
+    case 9: {
+        // Delete cached cellular ID
+        services::SystemCache::instance().del(services::SystemCacheKey::CELLULAR_DEVICE_INFO);
         return nullptr;
     }
 #endif
