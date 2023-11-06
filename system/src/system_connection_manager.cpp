@@ -50,10 +50,14 @@ static const char* netifToName(uint8_t interfaceNumber) {
     switch(interfaceNumber) {
         case NETWORK_INTERFACE_ETHERNET:
             return "Ethernet";
+#if HAL_PLATFORM_CELLULAR
         case NETWORK_INTERFACE_CELLULAR:
             return "Cellular";
+#endif
+#if HAL_PLATFORM_WIFI
         case NETWORK_INTERFACE_WIFI_STA:
             return "WiFi    ";
+#endif
         default:
             return "";
     }

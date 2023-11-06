@@ -265,7 +265,7 @@ void handle_cfod()
             } else if (r == SYSTEM_ERROR_TIMEOUT) {
                 reason = "timeout";
             }
-            LOG(WARN, "Internet test failed: %s", reason);
+            LOG(WARN, "Internet test failed: %d %s", r, reason);
             Spark_Error_Count = 2;
         } else {
             LOG(WARN, "Internet available, cloud not reachable");

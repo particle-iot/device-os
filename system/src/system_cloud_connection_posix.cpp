@@ -354,8 +354,7 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
 
 int system_internet_test(void* reserved)
 {
-    particle::SimpleNtpClient ntp;
-    return ntp.ntpDate(nullptr);
+    return particle::system::ConnectionTester::instance()->testConnections();
 }
 
 int system_multicast_announce_presence(void* reserved)
