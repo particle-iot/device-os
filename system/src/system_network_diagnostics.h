@@ -22,8 +22,22 @@
 
 namespace particle {
 
+enum {
+  DIAG_TYPE_APP_INT = 1 << 11,
+  DIAG_TYPE_APP_UINT = 2 << 11,
+  DIAG_TYPE_APP_FIXED_S16_16 = 3 << 11,
+};
+
 class NetworkDiagnostics {
 public:
+    // TODO: Use a new enum for defining network interface names? 
+    enum NetworkInterface {
+        UNKNOWN = 0,
+        ETHERNET = 1,
+        CELLULAR = 2,
+        WIFI = 3
+    };
+
     // Note: Use odd numbers to encode transitional states
     enum Status {
         TURNED_OFF = 0,

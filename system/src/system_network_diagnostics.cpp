@@ -67,7 +67,7 @@ class NetworkCache
 public:
     static const system_tick_t NETWORK_INFO_CACHE_INTERVAL = 1000;
 
-    const Signal* getSignal()
+    const Signal* getSignal(bool getPrimarySignal = true)
     {
         bool refreshCachedValues = false;
         system_tick_t m = millis();
@@ -81,17 +81,25 @@ public:
         auto cloudNetwork = Network.from(system::ConnectionManager::instance()->getCloudConnectionNetwork());
         
         if (refreshCachedValues) {
-            if (cloudNetwork == Cellular) {
-                cellularSig_ = Cellular.RSSI();
-            } else if (cloudNetwork == WiFi) {
-                wifiSig_ = WiFi.RSSI();
-            }
+            cellularSig_ = Cellular.RSSI();
+            wifiSig_ = WiFi.RSSI();
         } 
 
+        const Signal* primarySignal = nullptr;
+        const Signal* alternateSignal = nullptr;
+
         if (cloudNetwork == Cellular) {
-            return &cellularSig_;
+            primarySignal = &cellularSig_;
+            alternateSignal = &wifiSig_;
         } else if (cloudNetwork == WiFi) {
-            return &wifiSig_;
+            primarySignal = &wifiSig_;
+            alternateSignal = &cellularSig_;
+        }
+
+        if (getPrimarySignal) {
+            return primarySignal;
+        } else {
+            return alternateSignal;
         }
 #else
 
@@ -294,6 +302,66 @@ public:
     }
 } g_networkAccessTechnologyDiagData;
 
+class CloudConnectionInterfaceDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    CloudConnectionInterfaceDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_CLOUD_CONNECTION_INTERFACE | DIAG_TYPE_APP_INT,
+                                        DIAG_NAME_CLOUD_CONNECTION_INTERFACE)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        auto netIf = NetworkDiagnostics::NetworkInterface::UNKNOWN;
+        switch(system::ConnectionManager::instance()->getCloudConnectionNetwork()) {
+            case NETWORK_INTERFACE_ETHERNET:
+                netIf = NetworkDiagnostics::NetworkInterface::ETHERNET;
+                break;
+#if HAL_PLATFORM_CELLULAR
+            case NETWORK_INTERFACE_CELLULAR:
+                netIf = NetworkDiagnostics::NetworkInterface::CELLULAR;
+                break;
+#endif
+#if HAL_PLATFORM_WIFI
+            case NETWORK_INTERFACE_WIFI_STA:
+                netIf = NetworkDiagnostics::NetworkInterface::WIFI;
+                break;
+#endif
+            default:
+                break;
+        }
+
+        val = static_cast<IntType>(netIf);
+        return SYSTEM_ERROR_NONE;
+    }
+
+} g_cloudConnectionInterfaceDiagData;
+
+
+// TODO: Change to enum based diagnostic data for cloud connection interface
+// class CloudConnectionInterfaceDiagnosticData : public EnumDiagnosticData<NetworkInterface, NoConcurrency>
+// {
+// public:
+//     CloudConnectionInterfaceDiagnosticData()
+//         : EnumDiagnosticData(DIAG_ID_CLOUD_CONNECTION_INTERFACE,
+//                             DIAG_NAME_CLOUD_CONNECTION_INTERFACE,
+//                             NetworkInterface::UNKNOWN)
+//     {
+//     }
+
+//     virtual int get(IntType& val)
+//     {
+//         //auto cloudNetwork = system::ConnectionManager::instance()->getCloudConnectionNetwork();
+
+//         NetworkInterface cloudConnection = NetworkInterface::UNKNOWN;
+
+//         val = static_cast<IntType>(cloudConnection);
+
+//         return SYSTEM_ERROR_NONE;
+//     }
+// } g_cloudConnectionInterfaceDiagData;
+
 #if HAL_PLATFORM_CELLULAR
 class NetworkCellularCellGlobalIdentityMobileCountryCodeDiagnosticData
     : public AbstractIntegerDiagnosticData
@@ -388,6 +456,154 @@ public:
     }
 } g_networkCellularCellGlobalIdentityCellIdDiagnosticData;
 #endif // HAL_PLATFORM_CELLULAR
+
+#if PLATFORM_ID == PLATFORM_MSOM
+
+// TODO: Fix the int types when making this recognized data on the server side
+class AltSignalStrengthDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltSignalStrengthDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH | DIAG_TYPE_APP_UINT,
+                                        DIAG_NAME_ALT_NETWORK_SIGNAL_STRENGTH)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getStrength() < 0)
+        {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to unsigned Q8.8
+        FixedPointUQ<8, 8> str(sig->getStrength());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altSignalStrengthDiagData;
+
+class AltSignalStrengthValueDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltSignalStrengthValueDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH_VALUE | DIAG_TYPE_APP_FIXED_S16_16,
+                                        DIAG_NAME_ALT_NETWORK_SIGNAL_STRENGTH_VALUE)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getStrength() < 0)
+        {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to signed Q16.16
+        FixedPointSQ<16, 16> str(sig->getStrengthValue());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altSignalStrengthValueDiagData;
+
+class AltSignalQualityDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltSignalQualityDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY | DIAG_TYPE_APP_UINT,
+                                        DIAG_NAME_ALT_NETWORK_SIGNAL_QUALITY)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getQuality() < 0)
+        {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to unsigned Q8.8
+        FixedPointUQ<8, 8> str(sig->getQuality());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altSignalQualityDiagData;
+
+class AltSignalQualityValueDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltSignalQualityValueDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY_VALUE | DIAG_TYPE_APP_FIXED_S16_16,
+                                        DIAG_NAME_ALT_NETWORK_SIGNAL_QUALITY_VALUE)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getQuality() < 0)
+        {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to signed Q16.16
+        FixedPointSQ<16, 16> str(sig->getQualityValue());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altSignalQualityValueDiagData;
+
+class AltNetworkAccessTechnologyDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltNetworkAccessTechnologyDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_ACCESS_TECNHOLOGY | DIAG_TYPE_APP_INT,
+                                        DIAG_NAME_ALT_NETWORK_ACCESS_TECNHOLOGY)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        val = static_cast<IntType>(sig->getAccessTechnology());
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altNetworkAccessTechnologyDiagData;
+#endif
+
 } // namespace
 
 #endif // Wiring_Network
