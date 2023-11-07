@@ -1,3 +1,13 @@
+## 5.5.2
+
+- Internal release
+- [rtl872x] correctly handle SecureFault [#2699](https://github.com/particle-iot/device-os/pull/2699)
+- [msom] support 16MB GD flash [#2701](https://github.com/particle-iot/device-os/pull/2701)
+
+## 5.5.1
+
+- Internal release
+
 ## 5.5.0
 
 ### FEATURES
