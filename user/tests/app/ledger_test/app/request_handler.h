@@ -34,7 +34,6 @@ private:
     int info(JsonRequest& req);
     int reset(JsonRequest& req);
     int remove(JsonRequest& req);
-    int clear(JsonRequest& req);
     int connect(JsonRequest& req);
     int disconnect(JsonRequest& req);
     int autoConnect(JsonRequest& req);

@@ -307,8 +307,6 @@ int RequestHandler::handleJsonRequest(JsonRequest& req) {
         return reset(req);
     } else if (cmd == "remove") {
         return remove(req);
-    } else if (cmd == "clear") {
-        return clear(req);
     } else if (cmd == "connect") {
         return connect(req);
     } else if (cmd == "disconnect") {
@@ -460,26 +458,25 @@ int RequestHandler::reset(JsonRequest& req) {
 
 int RequestHandler::remove(JsonRequest& req) {
     auto& conf = Config::get();
-    if (conf.removeLedger) {
+    if (conf.removeLedger || conf.removeAllLedgers) {
         Log.warn("\"remove\" command is already in progress");
     }
-    auto name = req.get("name").toString();
-    size_t n = strlcpy(conf.removeLedgerName, name.data(), sizeof(conf.removeLedgerName));
-    if (n >= sizeof(conf.removeLedgerName)) {
-        Log.error("Ledger name is too long");
-        return Error::BAD_DATA;
+    auto removeAll = req.get("all").toBool();
+    if (removeAll) {
+        conf.removeAllLedgers = true;
+    } else {
+        auto name = req.get("name").toString();
+        if (name.isEmpty()) {
+            Log.error("Ledger name is missing");
+            return Error::BAD_DATA;
+        }
+        size_t n = strlcpy(conf.removeLedgerName, name.data(), sizeof(conf.removeLedgerName));
+        if (n >= sizeof(conf.removeLedgerName)) {
+            Log.error("Ledger name is too long");
+            return Error::BAD_DATA;
+        }
+        conf.removeLedger = true;
     }
-    conf.removeLedger = true;
-    conf.setRestoreConnectionFlag();
-    return Result::RESET_PENDING;
-}
-
-int RequestHandler::clear(JsonRequest& req) {
-    auto& conf = Config::get();
-    if (conf.removeAllLedgers) {
-        Log.warn("\"clear\" command is already in progress");
-    }
-    conf.removeAllLedgers = true;
     conf.setRestoreConnectionFlag();
     return Result::RESET_PENDING;
 }

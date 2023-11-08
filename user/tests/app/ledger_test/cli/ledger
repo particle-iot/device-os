@@ -33,14 +33,12 @@ Commands:
         \`data\` nor \`size\` is provided, the data is read from the standard input.
     touch <name>
         Create a ledger if it doesn't exist.
-    info <name> [--raw]
+    info <name>|--all [--raw]
         Get ledger info.
     list [--raw]
         List the ledgers.
-    remove <name>
+    remove <name>|--all
         Remove a ledger.
-    clear
-        Remove all ledgers.
     connect
         Connect to the Cloud.
     disconnect
@@ -57,9 +55,11 @@ Commands:
 Options:
     --expect[=<data>]
         Exit with an error if the ledger data doesn't match the expected data. \`data\` can be a
-        filename or JSON string. If not provided, the data is read from the standard input.
+        filename or JSON string. If not specified, the data is read from the standard input.
     --size=<size>, -n <size>
         Generate random ledger data of \`size\` bytes.
+    --all
+        Run the command for all ledgers.
     --raw
         Output the raw response data received from the device.`);
 }
@@ -224,22 +224,56 @@ async function touch(args, opts, dev) {
 }
 
 async function info(args, opts, dev) {
-  if (!args.length) {
-    throw new Error('Missing ledger name');
+  function pad(str) {
+    return str.padEnd(20);
   }
-  let resp = await sendJsonRequest(dev, {
-    cmd: 'info',
-    name: args[0]
-  });
-  if (opts.raw) {
-    console.log(JSON.stringify(resp));
+
+  function formatInfo(info) {
+    return `\
+${pad('Scope:')}${scopeName(info.scope)}
+${pad('Sync direction:')}${syncDirectionName(info.sync_direction)}
+${pad('Data size:')}${info.data_size}
+${pad('Last update:')}${info.last_updated ? timestampToString(info.last_updated) : 'N/A'}
+${pad('Last sync:')}${info.last_synced ? timestampToString(info.last_synced) : 'N/A'}`;
+  }
+
+  if (opts.all) {
+    const ledgerNames = await sendJsonRequest(dev, {
+      cmd: 'list'
+    });
+    const infoList = [];
+    for (const name of ledgerNames) {
+      const info = await sendJsonRequest(dev, {
+        cmd: 'info',
+        name
+      });
+      info.name = name;
+      infoList.push(info);
+    }
+    if (opts.raw) {
+      console.log(JSON.stringify(infoList));
+    } else {
+      let out = '';
+      for (const info of infoList) {
+        out += `${pad('Name:')}${info.name}\n`;
+        out += formatInfo(info);
+        out += '\n\n';
+      }
+      console.log(out.trimRight());
+    }
   } else {
-    console.log(`\
-Scope: ${scopeName(resp.scope)}
-Sync direction: ${syncDirectionName(resp.sync_direction)}
-Data size: ${resp.data_size}
-Last update: ${resp.last_updated ? timestampToString(resp.last_updated) : 'N/A'}
-Last sync: ${resp.last_synced ? timestampToString(resp.last_synced) : 'N/A'}`);
+    if (!args.length) {
+      throw new Error('Missing ledger name');
+    }
+    const info = await sendJsonRequest(dev, {
+      cmd: 'info',
+      name: args[0]
+    });
+    if (opts.raw) {
+      console.log(JSON.stringify(info));
+    } else {
+      console.log(formatInfo(info));
+    }
   }
 }
 
@@ -257,19 +291,18 @@ async function list(args, opts, dev) {
 }
 
 async function remove(args, opts, dev) {
-  if (!args.length) {
-    throw new Error('Missing ledger name');
+  const req = {
+    cmd: 'remove'
+  };
+  if (opts.all) {
+    req.all = true;
+  } else {
+    if (!args.length) {
+      throw new Error('Missing ledger name');
+    }
+    req.name = args[0];
   }
-  await sendJsonRequest(dev, {
-    cmd: 'remove',
-    name: args[0]
-  });
-}
-
-async function clear(args, opts, dev) {
-  await sendJsonRequest(dev, {
-    cmd: 'clear',
-  });
+  await sendJsonRequest(dev, req);
 }
 
 async function connect(args, opts, dev) {
@@ -334,7 +367,6 @@ async function runCommand(cmd, args, opts) {
     case 'info': fn = info; break;
     case 'list': fn = list; break;
     case 'remove': fn = remove; break;
-    case 'clear': fn = clear; break;
     case 'connect': fn = connect; break;
     case 'disconnect': fn = disconnect; break;
     case 'auto-connect': fn = autoConnect; break;
@@ -362,7 +394,7 @@ async function run() {
   try {
     const opts = parseArgs(process.argv.slice(2), {
       string: ['_', 'expect'],
-      boolean: ['raw', 'help'],
+      boolean: ['all', 'raw', 'help'],
       number: ['size'],
       alias: {
         'help': 'h',
