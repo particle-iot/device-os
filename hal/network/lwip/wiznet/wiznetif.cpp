@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
+
 #include "logging.h"
 LOG_SOURCE_CATEGORY("net.en")
 
@@ -46,6 +49,8 @@ LOG_SOURCE_CATEGORY("net.en")
 
 #include "platform_config.h"
 #include "spi_lock.h"
+#include "bytes2hexbuf.h"
+#include <chrono>
 
 #ifndef WIZNET_SPI_MODE
 #define WIZNET_SPI_MODE SPI_MODE3
@@ -79,7 +84,29 @@ LOG_SOURCE_CATEGORY("net.en")
     res;                                                                        \
 })
 
+using namespace particle::net;
+
 namespace {
+
+// Copy-paste from w5500.c
+void wiz_recv_data_ext(uint8_t sn, uint8_t *wizdata, uint16_t len, bool increase = true)
+{
+    uint16_t ptr = 0;
+    uint32_t addrsel = 0;
+
+    if(len == 0) return;
+    ptr = getSn_RX_RD(sn);
+    //M20140501 : implict type casting -> explict type casting
+    //addrsel = ((ptr << 8) + (WIZCHIP_RXBUF_BLOCK(sn) << 3);
+    addrsel = ((uint32_t)ptr << 8) + (WIZCHIP_RXBUF_BLOCK(sn) << 3);
+    //
+    WIZCHIP_READ_BUF(addrsel, wizdata, len);
+    ptr += len;
+
+    if (increase) {
+        setSn_RX_RD(sn,ptr);
+    }
+}
 
 const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
     .version = HAL_SPI_INFO_VERSION,
@@ -93,14 +120,42 @@ const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
     .ss_pin = PIN_INVALID
 };
 
-const int WIZNET_DEFAULT_TIMEOUT = 100;
+const int WIZNET_DEFAULT_TIMEOUT = 1000;
 /* FIXME */
 const unsigned int WIZNET_INRECV_NEXT_BACKOFF = 50;
-const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = 0xffffffff;
+const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
+
+void dumpPacket(bool in, pbuf* p) {
+    return;
+    LwipTcpIpCoreLock lk;
+    static char logBuffer[PBUF_POOL_BUFSIZE*2 + 64] = {};
+    using namespace std::chrono;
+    milliseconds ts(HAL_Timer_Get_Milli_Seconds());
+    auto h = duration_cast<hours>(ts);
+    ts -= duration_cast<decltype(ts)>(h);
+    auto m = duration_cast<minutes>(ts);
+    ts -= duration_cast<decltype(ts)>(m);
+    auto s = duration_cast<seconds>(ts);
+    ts -= duration_cast<decltype(ts)>(s);
+
+    int pos = snprintf(logBuffer, sizeof(logBuffer), "%c %u:%02u:%02u.%03u ", in ? '>' : '<', (unsigned)h.count(), (unsigned)m.count(), (unsigned)s.count(), (unsigned)ts.count());
+#if ETH_PAD_SIZE
+    pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */
+#endif
+    for (pbuf* q = p; q != nullptr; q = q->next) {
+        bytes2hexbuf_lower_case((const uint8_t*)q->payload, q->len, logBuffer + pos);
+        pos += q->len * 2;
+    }
+    logBuffer[pos++] = '\r';
+    logBuffer[pos++] = '\n';
+    logBuffer[pos++] = '\0';
+#if ETH_PAD_SIZE
+    pbuf_add_header(p, ETH_PAD_SIZE); /* reclaim the padding word */
+#endif
+    LOG_WRITE(ERROR, logBuffer, pos);
+}
 
 } /* anonymous */
-
-using namespace particle::net;
 
 WizNetif* WizNetif::instance_ = nullptr;
 
@@ -308,7 +363,10 @@ void WizNetif::loop(void* arg) {
             self->output(p);
         }
         if (self->inRecv_) {
-            int r = self->input();
+            int r = 1;
+            if (!p) {
+                r = self->input();
+            }
             if (r) {
                 timeout = WIZNET_INRECV_NEXT_BACKOFF;
             }
@@ -406,8 +464,13 @@ int WizNetif::openRaw() {
     LwipTcpIpCoreLock lk;
 
     closeRaw();
-    /* Set mode to MACRAW, enable MAC filtering */
-    setSn_MR(0, Sn_MR_MACRAW | Sn_MR_MFEN);
+
+    // Use maximum buffer sizes for MACRAW socket 0
+    // This should happen in wizchip_init() but just in case doing it again
+    setSn_RXBUF_SIZE(0, 16);
+    setSn_TXBUF_SIZE(0, 16);
+    /* Set mode to MACRAW, enable MAC filtering and IPv6 packet filtering (not supported right now anyway) */
+    setSn_MR(0, Sn_MR_MACRAW | Sn_MR_MFEN | Sn_MR_MIP6B);
     /* Set interrupt mask to input only */
     setSn_IMR(0, Sn_IR_RECV);
     /* Enable interrupts on socket 0 */
@@ -447,7 +510,6 @@ int WizNetif::closeRaw() {
 }
 
 void WizNetif::pollState() {
-    LwipTcpIpCoreLock lk;
     if (!netif_is_up(interface()) || down_) {
         return;
     }
@@ -459,6 +521,7 @@ void WizNetif::pollState() {
     /* Poll link state and update if necessary */
     auto linkState = wizphy_getphylink() == PHY_LINK_ON;
 
+    LwipTcpIpCoreLock lk;
     if (netif_is_link_up(&netif_) != linkState) {
         if (linkState) {
             LOG(INFO, "Link up");
@@ -486,7 +549,7 @@ int WizNetif::input() {
         uint16_t pktSize = 0;
         {
             uint8_t tmp[2] = {};
-            wiz_recv_data(0, tmp, sizeof(tmp));
+            wiz_recv_data_ext(0, tmp, sizeof(tmp), false /* do not increase rx pointer */);
             setSn_CR(0, Sn_CR_RECV);
             WAIT_TIMED(WIZNET_DEFAULT_TIMEOUT, getSn_CR(0));
             pktSize = (tmp[0] << 8 | tmp[1]) - 2;
@@ -511,6 +574,9 @@ int WizNetif::input() {
             /* drop the padding word */
             pbuf_remove_header(p, ETH_PAD_SIZE);
 #endif /* ETH_PAD_SIZE */
+            wiz_recv_ignore(0, 2); // Skip size
+            setSn_CR(0, Sn_CR_RECV);
+            WAIT_TIMED(WIZNET_DEFAULT_TIMEOUT, getSn_CR(0));
             for (pbuf* q = p; q != nullptr; q = q->next) {
                 wiz_recv_data(0, (uint8_t*)q->payload, q->len);
                 setSn_CR(0, Sn_CR_RECV);
@@ -520,6 +586,8 @@ int WizNetif::input() {
             /* reclaim the padding word */
             pbuf_add_header(p, ETH_PAD_SIZE);
 #endif /* ETH_PAD_SIZE */
+
+            dumpPacket(true, p);
 
             LwipTcpIpCoreLock lk;
             if (netif_.input(p, &netif_) != ERR_OK) {
@@ -531,12 +599,9 @@ int WizNetif::input() {
 #if ETH_PAD_SIZE
             pktSize -= ETH_PAD_SIZE;
 #endif /* ETH_PAD_SIZE */
-            /* Dropping packet */
-            wiz_recv_ignore(0, pktSize);
-            setSn_CR(0, Sn_CR_RECV);
-            WAIT_TIMED(WIZNET_DEFAULT_TIMEOUT, getSn_CR(0));
-
+   
             /* Giving a chance to free up some pbufs */
+            /* NOT dropping packet here, keeping it inside W5500 RAM */
             r = 1;
             break;
         }
@@ -557,11 +622,20 @@ err_t WizNetif::linkOutput(pbuf* p) {
         return ERR_IF;
     }
 
+    // LOG(ERROR, "linkOutput");
+    dumpPacket(false, p);
+
+    pbuf* q = pbuf_clone(PBUF_LINK, PBUF_RAM, p);
+    if (!q) {
+        LOG(ERROR, "no memory to clone pbuf");
+        return ERR_MEM;
+    }
+
     /* Increase reference counter */
-    pbuf_ref(p);
-    if (os_queue_put(queue_, &p, 0, nullptr)) {
-        LOG(ERROR, "Dropping packet %x, not enough space in event queue", p);
-        pbuf_free(p);
+    // pbuf_ref(p);
+    if (os_queue_put(queue_, &q, 0, nullptr)) {
+        LOG(ERROR, "Dropping packet %x, not enough space in event queue", q);
+        pbuf_free(q);
         return ERR_MEM;
     }
     return ERR_OK;
@@ -574,6 +648,9 @@ void WizNetif::output(pbuf* p) {
     if (down_) {
         goto cleanup;
     }
+
+    // LOG(ERROR, "output");
+    dumpPacket(false, p);
 
 #if ETH_PAD_SIZE
     pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */

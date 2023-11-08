@@ -363,7 +363,7 @@ int hal_interrupt_attach(uint16_t pin, hal_interrupt_handler_t handler, void* da
 
         GPIO_Init_HAL(&GPIO_InitStruct, pinInfo->gpio_port);
         GPIO_UserRegIrq(rtlPin, (VOID*)gpioIntHandler, (void*)((uint32_t)pin));
-        GPIO_INTMode_HAL(rtlPin, pinInfo->gpio_port, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_ENABLE);
+        GPIO_INTMode_HAL(rtlPin, pinInfo->gpio_port, ENABLE, GPIO_InitStruct.GPIO_ITTrigger, GPIO_InitStruct.GPIO_ITPolarity, GPIO_INT_DEBOUNCE_DISABLE);
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (!config || (config && !(config->appendHandler))) {
