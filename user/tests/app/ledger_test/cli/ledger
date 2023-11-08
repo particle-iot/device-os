@@ -33,7 +33,7 @@ Commands:
         \`data\` nor \`size\` is provided, the data is read from the standard input.
     touch <name>
         Create a ledger if it doesn't exist.
-    info <name>|--all [--raw]
+    info [<name>] [--raw]
         Get ledger info.
     list [--raw]
         List the ledgers.
@@ -237,7 +237,17 @@ ${pad('Last update:')}${info.last_updated ? timestampToString(info.last_updated)
 ${pad('Last sync:')}${info.last_synced ? timestampToString(info.last_synced) : 'N/A'}`;
   }
 
-  if (opts.all) {
+  if (args.length > 0) {
+    const info = await sendJsonRequest(dev, {
+      cmd: 'info',
+      name: args[0]
+    });
+    if (opts.raw) {
+      console.log(JSON.stringify(info));
+    } else {
+      console.log(formatInfo(info));
+    }
+  } else {
     const ledgerNames = await sendJsonRequest(dev, {
       cmd: 'list'
     });
@@ -260,19 +270,6 @@ ${pad('Last sync:')}${info.last_synced ? timestampToString(info.last_synced) : '
         out += '\n\n';
       }
       console.log(out.trimRight());
-    }
-  } else {
-    if (!args.length) {
-      throw new Error('Missing ledger name');
-    }
-    const info = await sendJsonRequest(dev, {
-      cmd: 'info',
-      name: args[0]
-    });
-    if (opts.raw) {
-      console.log(JSON.stringify(info));
-    } else {
-      console.log(formatInfo(info));
     }
   }
 }

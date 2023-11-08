@@ -928,7 +928,7 @@ int LedgerManager::receiveGetInfoResponse(coap_message* msg, int result) {
             return false;
         }
         LedgerScopeId remoteScopeId = {};
-        if (pbLedger.scope_id.size > sizeof(remoteScopeId.size)) {
+        if (pbLedger.scope_id.size > sizeof(remoteScopeId.data)) {
             d->error = SYSTEM_ERROR_INTERNAL; // This should have been validated by nanopb
             return false;
         }
