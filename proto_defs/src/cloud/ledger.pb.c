@@ -30,6 +30,9 @@ PB_BIND(particle_cloud_ledger_GetDataResponse, particle_cloud_ledger_GetDataResp
 PB_BIND(particle_cloud_ledger_SubscribeRequest, particle_cloud_ledger_SubscribeRequest, AUTO)
 
 
+PB_BIND(particle_cloud_ledger_SubscribeRequest_Ledger, particle_cloud_ledger_SubscribeRequest_Ledger, AUTO)
+
+
 PB_BIND(particle_cloud_ledger_SubscribeResponse, particle_cloud_ledger_SubscribeResponse, AUTO)
 
 

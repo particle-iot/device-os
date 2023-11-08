@@ -11,21 +11,25 @@
 #endif
 
 /* Struct definitions */
+typedef PB_BYTES_ARRAY_T(32) particle_firmware_LedgerInfo_scope_id_t;
 /* *
  Ledger info. */
 typedef struct _particle_firmware_LedgerInfo { 
     char name[33]; /* /< Ledger name. */
-    particle_cloud_ledger_Scope scope; /* /< Ledger scope. */
+    particle_firmware_LedgerInfo_scope_id_t scope_id; /* /< Scope ID. */
+    particle_cloud_ledger_ScopeType scope_type; /* /< Scope type. */
     particle_cloud_ledger_SyncDirection sync_direction; /* /< Sync direction. */
     /* *
  Time the ledger was last updated, in milliseconds since the Unix epoch.
 
- If 0, the time is unknown. */
+ If not set, the time is unknown. */
+    bool has_last_updated;
     uint64_t last_updated; 
     /* *
  Time the ledger was last synchronized with the Cloud, in milliseconds since the Unix epoch.
 
- If 0, the ledger has never been synchronized. */
+ If not set, the ledger has never been synchronized. */
+    bool has_last_synced;
     uint64_t last_synced; 
     bool sync_pending; /* /< Whether the ledger needs to be synchronized. */
 } particle_firmware_LedgerInfo;
@@ -36,25 +40,27 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define particle_firmware_LedgerInfo_init_default {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0, 0, 0}
-#define particle_firmware_LedgerInfo_init_zero   {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0, 0, 0}
+#define particle_firmware_LedgerInfo_init_default {"", {0, {0}}, _particle_cloud_ledger_ScopeType_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0, false, 0, 0}
+#define particle_firmware_LedgerInfo_init_zero   {"", {0, {0}}, _particle_cloud_ledger_ScopeType_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0, false, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_firmware_LedgerInfo_name_tag    1
-#define particle_firmware_LedgerInfo_scope_tag   2
-#define particle_firmware_LedgerInfo_sync_direction_tag 3
-#define particle_firmware_LedgerInfo_last_updated_tag 4
-#define particle_firmware_LedgerInfo_last_synced_tag 5
-#define particle_firmware_LedgerInfo_sync_pending_tag 6
+#define particle_firmware_LedgerInfo_scope_id_tag 2
+#define particle_firmware_LedgerInfo_scope_type_tag 3
+#define particle_firmware_LedgerInfo_sync_direction_tag 4
+#define particle_firmware_LedgerInfo_last_updated_tag 5
+#define particle_firmware_LedgerInfo_last_synced_tag 6
+#define particle_firmware_LedgerInfo_sync_pending_tag 7
 
 /* Struct field encoding specification for nanopb */
 #define particle_firmware_LedgerInfo_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   name,              1) \
-X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
-X(a, STATIC,   SINGULAR, UENUM,    sync_direction,    3) \
-X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      4) \
-X(a, STATIC,   SINGULAR, FIXED64,  last_synced,       5) \
-X(a, STATIC,   SINGULAR, BOOL,     sync_pending,      6)
+X(a, STATIC,   SINGULAR, BYTES,    scope_id,          2) \
+X(a, STATIC,   SINGULAR, UENUM,    scope_type,        3) \
+X(a, STATIC,   SINGULAR, UENUM,    sync_direction,    4) \
+X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      5) \
+X(a, STATIC,   OPTIONAL, FIXED64,  last_synced,       6) \
+X(a, STATIC,   SINGULAR, BOOL,     sync_pending,      7)
 #define particle_firmware_LedgerInfo_CALLBACK NULL
 #define particle_firmware_LedgerInfo_DEFAULT NULL
 
@@ -64,7 +70,7 @@ extern const pb_msgdesc_t particle_firmware_LedgerInfo_msg;
 #define particle_firmware_LedgerInfo_fields &particle_firmware_LedgerInfo_msg
 
 /* Maximum encoded size of messages (where known) */
-#define particle_firmware_LedgerInfo_size        58
+#define particle_firmware_LedgerInfo_size        92
 
 #ifdef __cplusplus
 } /* extern "C" */

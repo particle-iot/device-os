@@ -11,13 +11,13 @@
 
 /* Enum definitions */
 /* *
- Ledger scope. */
-typedef enum _particle_cloud_ledger_Scope { 
-    particle_cloud_ledger_Scope_SCOPE_UNKNOWN = 0, /* /< Unknown scope. */
-    particle_cloud_ledger_Scope_SCOPE_DEVICE = 1, /* /< Device scope. */
-    particle_cloud_ledger_Scope_SCOPE_PRODUCT = 2, /* /< Product scope. */
-    particle_cloud_ledger_Scope_SCOPE_OWNER = 3 /* /< Owner scope. */
-} particle_cloud_ledger_Scope;
+ Scope type. */
+typedef enum _particle_cloud_ledger_ScopeType { 
+    particle_cloud_ledger_ScopeType_SCOPE_TYPE_UNKNOWN = 0, /* /< Unknown scope. */
+    particle_cloud_ledger_ScopeType_SCOPE_TYPE_DEVICE = 1, /* /< Device scope. */
+    particle_cloud_ledger_ScopeType_SCOPE_TYPE_PRODUCT = 2, /* /< Product scope. */
+    particle_cloud_ledger_ScopeType_SCOPE_TYPE_OWNER = 3 /* /< Owner scope. */
+} particle_cloud_ledger_ScopeType;
 
 /* *
  Sync direction. */
@@ -49,9 +49,7 @@ typedef struct _particle_cloud_ledger_GetInfoResponse {
 } particle_cloud_ledger_GetInfoResponse;
 
 /* *
- Notify the device that it needs to re-request the info about all ledgers in use.
-
- This request is sent by the server. */
+ Response for `ResetInfoRequest`. */
 typedef struct _particle_cloud_ledger_NotifyUpdateRequest { 
     pb_callback_t ledgers; 
 } particle_cloud_ledger_NotifyUpdateRequest;
@@ -83,23 +81,25 @@ typedef struct _particle_cloud_ledger_SubscribeRequest {
 } particle_cloud_ledger_SubscribeRequest;
 
 /* *
- Notify the device that one or more cloud-to-device ledgers were updated.
-
- This request is sent by the server. */
+ Response for `NotifyUpdateRequest`. */
 typedef struct _particle_cloud_ledger_SubscribeResponse { 
-    pb_callback_t ledgers; /* /< Ledger info. */
+    pb_callback_t ledgers; 
 } particle_cloud_ledger_SubscribeResponse;
 
+typedef PB_BYTES_ARRAY_T(32) particle_cloud_ledger_GetDataRequest_scope_id_t;
 /* *
  Response for `GetDataRequest`. */
 typedef struct _particle_cloud_ledger_GetDataRequest { 
     /* *
- Time the ledger was last updated, in milliseconds since the Unix epoch. */
+ Time the ledger was last updated, in milliseconds since the Unix epoch.
+
+ If not set, the ledger has not yet been assigned any data. */
     char name[33]; /* *
  Contents of the ledger.
 
- If not specified, the device has the most recent version of the ledger data. */
+ If not set, the device has the most recent version of the ledger data. */
     /* XXX: Device OS currently requires this field to have the highest field number in the message. */
+    particle_cloud_ledger_GetDataRequest_scope_id_t scope_id; 
     bool has_last_updated;
     uint64_t last_updated; 
 } particle_cloud_ledger_GetDataRequest;
@@ -112,56 +112,72 @@ typedef struct _particle_cloud_ledger_GetDataRequest {
 
  This request is sent by the device. */
 typedef struct _particle_cloud_ledger_GetDataResponse { 
-    /* *
- Names of the ledgers to subscribe to. */
-    uint64_t last_updated; 
+    bool has_last_updated;
+    uint64_t last_updated; /* /< Ledgers to subscribe to. */
     pb_callback_t data; 
 } particle_cloud_ledger_GetDataResponse;
 
+typedef PB_BYTES_ARRAY_T(32) particle_cloud_ledger_GetInfoResponse_Ledger_scope_id_t;
 /* *
  Update the contents of a remote device-to-cloud ledger.
 
  This request is sent by the device. */
 typedef struct _particle_cloud_ledger_GetInfoResponse_Ledger { 
     char name[33]; /* /< Ledger name. */
+    particle_cloud_ledger_GetInfoResponse_Ledger_scope_id_t scope_id; /* /< Scope ID. */
     /* *
  Time the ledger was last updated, in milliseconds since the Unix epoch.
 
- If 0, the time is unknown. */
-    particle_cloud_ledger_Scope scope; /* *
+ If not set, the time is unknown. */
+    particle_cloud_ledger_ScopeType scope_type; /* *
  Contents of the ledger. */
     /* XXX: Device OS currently requires this field to have the highest field number in the message. */
     particle_cloud_ledger_SyncDirection sync_direction; 
+    bool has_last_updated;
     uint64_t last_updated; 
 } particle_cloud_ledger_GetInfoResponse_Ledger;
 
-/* *
- Response for `ResetInfoRequest`. */
 typedef struct _particle_cloud_ledger_NotifyUpdateRequest_Ledger { 
     char name[33]; 
     uint64_t last_updated; 
 } particle_cloud_ledger_NotifyUpdateRequest_Ledger;
 
+typedef PB_BYTES_ARRAY_T(32) particle_cloud_ledger_SetDataRequest_scope_id_t;
 /* *
  Response for `SetDataRequest`. */
 typedef struct _particle_cloud_ledger_SetDataRequest { 
     char name[33]; 
+    particle_cloud_ledger_SetDataRequest_scope_id_t scope_id; 
+    bool has_last_updated;
     uint64_t last_updated; 
     pb_callback_t data; 
 } particle_cloud_ledger_SetDataRequest;
 
+typedef PB_BYTES_ARRAY_T(32) particle_cloud_ledger_SubscribeRequest_Ledger_scope_id_t;
 /* *
- Response for `NotifyUpdateRequest`. */
+ Notify the device that one or more cloud-to-device ledgers were updated.
+
+ This request is sent by the server. */
+typedef struct _particle_cloud_ledger_SubscribeRequest_Ledger { 
+    char name[33]; /* /< Ledger info. */
+    particle_cloud_ledger_SubscribeRequest_Ledger_scope_id_t scope_id; 
+} particle_cloud_ledger_SubscribeRequest_Ledger;
+
+/* *
+ Notify the device that it needs to re-request the info about all ledgers in use.
+
+ This request is sent by the server. */
 typedef struct _particle_cloud_ledger_SubscribeResponse_Ledger { 
     char name[33]; 
+    bool has_last_updated;
     uint64_t last_updated; 
 } particle_cloud_ledger_SubscribeResponse_Ledger;
 
 
 /* Helper constants for enums */
-#define _particle_cloud_ledger_Scope_MIN particle_cloud_ledger_Scope_SCOPE_UNKNOWN
-#define _particle_cloud_ledger_Scope_MAX particle_cloud_ledger_Scope_SCOPE_OWNER
-#define _particle_cloud_ledger_Scope_ARRAYSIZE ((particle_cloud_ledger_Scope)(particle_cloud_ledger_Scope_SCOPE_OWNER+1))
+#define _particle_cloud_ledger_ScopeType_MIN particle_cloud_ledger_ScopeType_SCOPE_TYPE_UNKNOWN
+#define _particle_cloud_ledger_ScopeType_MAX particle_cloud_ledger_ScopeType_SCOPE_TYPE_OWNER
+#define _particle_cloud_ledger_ScopeType_ARRAYSIZE ((particle_cloud_ledger_ScopeType)(particle_cloud_ledger_ScopeType_SCOPE_TYPE_OWNER+1))
 
 #define _particle_cloud_ledger_SyncDirection_MIN particle_cloud_ledger_SyncDirection_SYNC_DIRECTION_UNKNOWN
 #define _particle_cloud_ledger_SyncDirection_MAX particle_cloud_ledger_SyncDirection_SYNC_DIRECTION_CLOUD_TO_DEVICE
@@ -175,14 +191,15 @@ extern "C" {
 /* Initializer values for message structs */
 #define particle_cloud_ledger_GetInfoRequest_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_init_default {{{NULL}, NULL}}
-#define particle_cloud_ledger_GetInfoResponse_Ledger_init_default {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0}
-#define particle_cloud_ledger_SetDataRequest_init_default {"", 0, {{NULL}, NULL}}
+#define particle_cloud_ledger_GetInfoResponse_Ledger_init_default {"", {0, {0}}, _particle_cloud_ledger_ScopeType_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0}
+#define particle_cloud_ledger_SetDataRequest_init_default {"", {0, {0}}, false, 0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SetDataResponse_init_default {0}
-#define particle_cloud_ledger_GetDataRequest_init_default {"", false, 0}
-#define particle_cloud_ledger_GetDataResponse_init_default {0, {{NULL}, NULL}}
+#define particle_cloud_ledger_GetDataRequest_init_default {"", {0, {0}}, false, 0}
+#define particle_cloud_ledger_GetDataResponse_init_default {false, 0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeRequest_init_default {{{NULL}, NULL}}
+#define particle_cloud_ledger_SubscribeRequest_Ledger_init_default {"", {0, {0}}}
 #define particle_cloud_ledger_SubscribeResponse_init_default {{{NULL}, NULL}}
-#define particle_cloud_ledger_SubscribeResponse_Ledger_init_default {"", 0}
+#define particle_cloud_ledger_SubscribeResponse_Ledger_init_default {"", false, 0}
 #define particle_cloud_ledger_NotifyUpdateRequest_init_default {{{NULL}, NULL}}
 #define particle_cloud_ledger_NotifyUpdateRequest_Ledger_init_default {"", 0}
 #define particle_cloud_ledger_NotifyUpdateResponse_init_default {0}
@@ -190,14 +207,15 @@ extern "C" {
 #define particle_cloud_ledger_ResetInfoResponse_init_default {0}
 #define particle_cloud_ledger_GetInfoRequest_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_GetInfoResponse_init_zero {{{NULL}, NULL}}
-#define particle_cloud_ledger_GetInfoResponse_Ledger_init_zero {"", _particle_cloud_ledger_Scope_MIN, _particle_cloud_ledger_SyncDirection_MIN, 0}
-#define particle_cloud_ledger_SetDataRequest_init_zero {"", 0, {{NULL}, NULL}}
+#define particle_cloud_ledger_GetInfoResponse_Ledger_init_zero {"", {0, {0}}, _particle_cloud_ledger_ScopeType_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0}
+#define particle_cloud_ledger_SetDataRequest_init_zero {"", {0, {0}}, false, 0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SetDataResponse_init_zero {0}
-#define particle_cloud_ledger_GetDataRequest_init_zero {"", false, 0}
-#define particle_cloud_ledger_GetDataResponse_init_zero {0, {{NULL}, NULL}}
+#define particle_cloud_ledger_GetDataRequest_init_zero {"", {0, {0}}, false, 0}
+#define particle_cloud_ledger_GetDataResponse_init_zero {false, 0, {{NULL}, NULL}}
 #define particle_cloud_ledger_SubscribeRequest_init_zero {{{NULL}, NULL}}
+#define particle_cloud_ledger_SubscribeRequest_Ledger_init_zero {"", {0, {0}}}
 #define particle_cloud_ledger_SubscribeResponse_init_zero {{{NULL}, NULL}}
-#define particle_cloud_ledger_SubscribeResponse_Ledger_init_zero {"", 0}
+#define particle_cloud_ledger_SubscribeResponse_Ledger_init_zero {"", false, 0}
 #define particle_cloud_ledger_NotifyUpdateRequest_init_zero {{{NULL}, NULL}}
 #define particle_cloud_ledger_NotifyUpdateRequest_Ledger_init_zero {"", 0}
 #define particle_cloud_ledger_NotifyUpdateResponse_init_zero {0}
@@ -211,18 +229,23 @@ extern "C" {
 #define particle_cloud_ledger_SubscribeRequest_ledgers_tag 1
 #define particle_cloud_ledger_SubscribeResponse_ledgers_tag 1
 #define particle_cloud_ledger_GetDataRequest_name_tag 1
-#define particle_cloud_ledger_GetDataRequest_last_updated_tag 2
+#define particle_cloud_ledger_GetDataRequest_scope_id_tag 2
+#define particle_cloud_ledger_GetDataRequest_last_updated_tag 3
 #define particle_cloud_ledger_GetDataResponse_last_updated_tag 1
 #define particle_cloud_ledger_GetDataResponse_data_tag 10
 #define particle_cloud_ledger_GetInfoResponse_Ledger_name_tag 1
-#define particle_cloud_ledger_GetInfoResponse_Ledger_scope_tag 2
-#define particle_cloud_ledger_GetInfoResponse_Ledger_sync_direction_tag 3
-#define particle_cloud_ledger_GetInfoResponse_Ledger_last_updated_tag 4
+#define particle_cloud_ledger_GetInfoResponse_Ledger_scope_id_tag 2
+#define particle_cloud_ledger_GetInfoResponse_Ledger_scope_type_tag 3
+#define particle_cloud_ledger_GetInfoResponse_Ledger_sync_direction_tag 4
+#define particle_cloud_ledger_GetInfoResponse_Ledger_last_updated_tag 5
 #define particle_cloud_ledger_NotifyUpdateRequest_Ledger_name_tag 1
 #define particle_cloud_ledger_NotifyUpdateRequest_Ledger_last_updated_tag 2
 #define particle_cloud_ledger_SetDataRequest_name_tag 1
-#define particle_cloud_ledger_SetDataRequest_last_updated_tag 2
+#define particle_cloud_ledger_SetDataRequest_scope_id_tag 2
+#define particle_cloud_ledger_SetDataRequest_last_updated_tag 3
 #define particle_cloud_ledger_SetDataRequest_data_tag 10
+#define particle_cloud_ledger_SubscribeRequest_Ledger_name_tag 1
+#define particle_cloud_ledger_SubscribeRequest_Ledger_scope_id_tag 2
 #define particle_cloud_ledger_SubscribeResponse_Ledger_name_tag 1
 #define particle_cloud_ledger_SubscribeResponse_Ledger_last_updated_tag 2
 
@@ -240,15 +263,17 @@ X(a, CALLBACK, REPEATED, MESSAGE,  ledgers,           1)
 
 #define particle_cloud_ledger_GetInfoResponse_Ledger_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   name,              1) \
-X(a, STATIC,   SINGULAR, UENUM,    scope,             2) \
-X(a, STATIC,   SINGULAR, UENUM,    sync_direction,    3) \
-X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      4)
+X(a, STATIC,   SINGULAR, BYTES,    scope_id,          2) \
+X(a, STATIC,   SINGULAR, UENUM,    scope_type,        3) \
+X(a, STATIC,   SINGULAR, UENUM,    sync_direction,    4) \
+X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      5)
 #define particle_cloud_ledger_GetInfoResponse_Ledger_CALLBACK NULL
 #define particle_cloud_ledger_GetInfoResponse_Ledger_DEFAULT NULL
 
 #define particle_cloud_ledger_SetDataRequest_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   name,              1) \
-X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      2) \
+X(a, STATIC,   SINGULAR, BYTES,    scope_id,          2) \
+X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      3) \
 X(a, CALLBACK, SINGULAR, BYTES,    data,             10)
 #define particle_cloud_ledger_SetDataRequest_CALLBACK pb_default_field_callback
 #define particle_cloud_ledger_SetDataRequest_DEFAULT NULL
@@ -260,20 +285,28 @@ X(a, CALLBACK, SINGULAR, BYTES,    data,             10)
 
 #define particle_cloud_ledger_GetDataRequest_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   name,              1) \
-X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      2)
+X(a, STATIC,   SINGULAR, BYTES,    scope_id,          2) \
+X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      3)
 #define particle_cloud_ledger_GetDataRequest_CALLBACK NULL
 #define particle_cloud_ledger_GetDataRequest_DEFAULT NULL
 
 #define particle_cloud_ledger_GetDataResponse_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      1) \
+X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      1) \
 X(a, CALLBACK, OPTIONAL, BYTES,    data,             10)
 #define particle_cloud_ledger_GetDataResponse_CALLBACK pb_default_field_callback
 #define particle_cloud_ledger_GetDataResponse_DEFAULT NULL
 
 #define particle_cloud_ledger_SubscribeRequest_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, STRING,   ledgers,           1)
+X(a, CALLBACK, REPEATED, MESSAGE,  ledgers,           1)
 #define particle_cloud_ledger_SubscribeRequest_CALLBACK pb_default_field_callback
 #define particle_cloud_ledger_SubscribeRequest_DEFAULT NULL
+#define particle_cloud_ledger_SubscribeRequest_ledgers_MSGTYPE particle_cloud_ledger_SubscribeRequest_Ledger
+
+#define particle_cloud_ledger_SubscribeRequest_Ledger_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, STRING,   name,              1) \
+X(a, STATIC,   SINGULAR, BYTES,    scope_id,          2)
+#define particle_cloud_ledger_SubscribeRequest_Ledger_CALLBACK NULL
+#define particle_cloud_ledger_SubscribeRequest_Ledger_DEFAULT NULL
 
 #define particle_cloud_ledger_SubscribeResponse_FIELDLIST(X, a) \
 X(a, CALLBACK, REPEATED, MESSAGE,  ledgers,           1)
@@ -283,7 +316,7 @@ X(a, CALLBACK, REPEATED, MESSAGE,  ledgers,           1)
 
 #define particle_cloud_ledger_SubscribeResponse_Ledger_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, STRING,   name,              1) \
-X(a, STATIC,   SINGULAR, FIXED64,  last_updated,      2)
+X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      2)
 #define particle_cloud_ledger_SubscribeResponse_Ledger_CALLBACK NULL
 #define particle_cloud_ledger_SubscribeResponse_Ledger_DEFAULT NULL
 
@@ -322,6 +355,7 @@ extern const pb_msgdesc_t particle_cloud_ledger_SetDataResponse_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_GetDataRequest_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_GetDataResponse_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_SubscribeRequest_msg;
+extern const pb_msgdesc_t particle_cloud_ledger_SubscribeRequest_Ledger_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_SubscribeResponse_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_SubscribeResponse_Ledger_msg;
 extern const pb_msgdesc_t particle_cloud_ledger_NotifyUpdateRequest_msg;
@@ -339,6 +373,7 @@ extern const pb_msgdesc_t particle_cloud_ledger_ResetInfoResponse_msg;
 #define particle_cloud_ledger_GetDataRequest_fields &particle_cloud_ledger_GetDataRequest_msg
 #define particle_cloud_ledger_GetDataResponse_fields &particle_cloud_ledger_GetDataResponse_msg
 #define particle_cloud_ledger_SubscribeRequest_fields &particle_cloud_ledger_SubscribeRequest_msg
+#define particle_cloud_ledger_SubscribeRequest_Ledger_fields &particle_cloud_ledger_SubscribeRequest_Ledger_msg
 #define particle_cloud_ledger_SubscribeResponse_fields &particle_cloud_ledger_SubscribeResponse_msg
 #define particle_cloud_ledger_SubscribeResponse_Ledger_fields &particle_cloud_ledger_SubscribeResponse_Ledger_msg
 #define particle_cloud_ledger_NotifyUpdateRequest_fields &particle_cloud_ledger_NotifyUpdateRequest_msg
@@ -355,13 +390,14 @@ extern const pb_msgdesc_t particle_cloud_ledger_ResetInfoResponse_msg;
 /* particle_cloud_ledger_SubscribeRequest_size depends on runtime parameters */
 /* particle_cloud_ledger_SubscribeResponse_size depends on runtime parameters */
 /* particle_cloud_ledger_NotifyUpdateRequest_size depends on runtime parameters */
-#define particle_cloud_ledger_GetDataRequest_size 43
-#define particle_cloud_ledger_GetInfoResponse_Ledger_size 47
+#define particle_cloud_ledger_GetDataRequest_size 77
+#define particle_cloud_ledger_GetInfoResponse_Ledger_size 81
 #define particle_cloud_ledger_NotifyUpdateRequest_Ledger_size 43
 #define particle_cloud_ledger_NotifyUpdateResponse_size 0
 #define particle_cloud_ledger_ResetInfoRequest_size 0
 #define particle_cloud_ledger_ResetInfoResponse_size 0
 #define particle_cloud_ledger_SetDataResponse_size 0
+#define particle_cloud_ledger_SubscribeRequest_Ledger_size 68
 #define particle_cloud_ledger_SubscribeResponse_Ledger_size 43
 
 #ifdef __cplusplus

@@ -25,7 +25,10 @@ typedef enum _particle_cloud_Response_Result {
     particle_cloud_Response_Result_OK = 0, 
     particle_cloud_Response_Result_ERROR = 1, 
     particle_cloud_Response_Result_LEDGER_NOT_FOUND = 2, 
-    particle_cloud_Response_Result_LEDGER_INVALID_SYNC_DIRECTION = 3 
+    particle_cloud_Response_Result_LEDGER_INVALID_SYNC_DIRECTION = 3, 
+    particle_cloud_Response_Result_LEDGER_SCOPE_CHANGED = 4, 
+    particle_cloud_Response_Result_LEDGER_INVALID_DATA = 5, 
+    particle_cloud_Response_Result_LEDGER_TOO_LARGE_DATA = 6 
 } particle_cloud_Response_Result;
 
 /* Struct definitions */
@@ -101,8 +104,8 @@ typedef struct _particle_cloud_ServerMovedPermanentlyRequest {
 #define _particle_cloud_Request_Type_ARRAYSIZE ((particle_cloud_Request_Type)(particle_cloud_Request_Type_LEDGER_RESET_INFO+1))
 
 #define _particle_cloud_Response_Result_MIN particle_cloud_Response_Result_OK
-#define _particle_cloud_Response_Result_MAX particle_cloud_Response_Result_LEDGER_INVALID_SYNC_DIRECTION
-#define _particle_cloud_Response_Result_ARRAYSIZE ((particle_cloud_Response_Result)(particle_cloud_Response_Result_LEDGER_INVALID_SYNC_DIRECTION+1))
+#define _particle_cloud_Response_Result_MAX particle_cloud_Response_Result_LEDGER_TOO_LARGE_DATA
+#define _particle_cloud_Response_Result_ARRAYSIZE ((particle_cloud_Response_Result)(particle_cloud_Response_Result_LEDGER_TOO_LARGE_DATA+1))
 
 
 #ifdef __cplusplus
@@ -205,7 +208,7 @@ extern const pb_msgdesc_t particle_cloud_ServerMovedPermanentlyResponse_msg;
 /* particle_cloud_ServerMovedPermanentlyRequest_size depends on runtime parameters */
 #if defined(particle_cloud_ledger_GetInfoRequest_size) && defined(particle_cloud_ledger_SetDataRequest_size) && defined(particle_cloud_ledger_SubscribeRequest_size) && defined(particle_cloud_ledger_NotifyUpdateRequest_size)
 #define particle_cloud_Request_size              (2 + sizeof(union particle_cloud_Request_data_size_union))
-union particle_cloud_Request_data_size_union {char f2[(6 + particle_cloud_ledger_GetInfoRequest_size)]; char f3[(6 + particle_cloud_ledger_SetDataRequest_size)]; char f5[(6 + particle_cloud_ledger_SubscribeRequest_size)]; char f6[(6 + particle_cloud_ledger_NotifyUpdateRequest_size)]; char f0[45];};
+union particle_cloud_Request_data_size_union {char f2[(6 + particle_cloud_ledger_GetInfoRequest_size)]; char f3[(6 + particle_cloud_ledger_SetDataRequest_size)]; char f5[(6 + particle_cloud_ledger_SubscribeRequest_size)]; char f6[(6 + particle_cloud_ledger_NotifyUpdateRequest_size)]; char f0[79];};
 #endif
 #define particle_cloud_ServerMovedPermanentlyResponse_size 0
 

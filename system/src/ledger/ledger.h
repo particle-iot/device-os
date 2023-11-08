@@ -23,6 +23,7 @@
 
 #include <mutex>
 #include <optional>
+#include <cstring>
 #include <cstdint>
 
 #include "system_ledger.h"
@@ -35,6 +36,8 @@
 namespace particle::system {
 
 const auto LEDGER_ROOT_DIR = "/usr/ledger";
+
+const size_t MAX_LEDGER_SCOPE_ID_SIZE = 32;
 
 namespace detail {
 
@@ -51,6 +54,13 @@ enum class LedgerWriteSource {
     USER,
     SYSTEM
 };
+
+struct LedgerScopeId {
+    char data[MAX_LEDGER_SCOPE_ID_SIZE];
+    size_t size;
+};
+
+const LedgerScopeId EMPTY_LEDGER_SCOPE_ID = {};
 
 // The reference counter of a ledger instance is managed by the LedgerManager. We can't safely use a
 // regular atomic counter, such as RefCount, because the LedgerManager maintains a list of all created
@@ -150,8 +160,9 @@ private:
     ledger_destroy_app_data_callback destroyAppData_; // Destructor for the application data
     void* appData_; // Application data
 
-    const char* name_; // Ledger name
-    ledger_scope scope_; // Ledger scope
+    const char* name_; // Ledger name (allocated by LedgerManager)
+    LedgerScopeId scopeId_; // Scope ID
+    ledger_scope scopeType_; // Scope type
     ledger_sync_direction syncDir_; // Sync direction
 
     bool inited_; // Whether the ledger is initialized
@@ -174,17 +185,33 @@ class LedgerInfo {
 public:
     LedgerInfo() = default;
 
-    LedgerInfo& scope(ledger_scope scope) {
-        scope_ = scope;
+    LedgerInfo& scopeType(ledger_scope type) {
+        scopeType_ = type;
         return *this;
     }
 
-    ledger_scope scope() const {
-        return scope_.value_or(LEDGER_SCOPE_UNKNOWN);
+    ledger_scope scopeType() const {
+        return scopeType_.value_or(LEDGER_SCOPE_UNKNOWN);
     }
 
-    bool isScopeSet() const {
-        return scope_.has_value();
+    bool isScopeTypeSet() const {
+        return scopeType_.has_value();
+    }
+
+    LedgerInfo& scopeId(LedgerScopeId id) {
+        scopeId_ = std::move(id);
+        return *this;
+    }
+
+    const LedgerScopeId& scopeId() const {
+        if (!scopeId_.has_value()) {
+            return EMPTY_LEDGER_SCOPE_ID;
+        }
+        return scopeId_.value();
+    }
+
+    bool isScopeIdSet() const {
+        return scopeId_.has_value();
     }
 
     LedgerInfo& syncDirection(ledger_sync_direction dir) {
@@ -256,10 +283,11 @@ public:
 
 private:
     // When adding new fields, make sure to update LedgerInfo::update() and Ledger::setLedgerInfo()
+    std::optional<LedgerScopeId> scopeId_;
     std::optional<int64_t> lastUpdated_;
     std::optional<int64_t> lastSynced_;
     std::optional<size_t> dataSize_;
-    std::optional<ledger_scope> scope_;
+    std::optional<ledger_scope> scopeType_;
     std::optional<ledger_sync_direction> syncDir_;
     std::optional<bool> syncPending_;
 };
@@ -296,8 +324,6 @@ public:
     }
 
     int close(bool discard = false) override;
-
-    int rewind();
 
     RefCountPtr<Ledger> ledger() const {
         return ledger_;
@@ -379,6 +405,14 @@ private:
 
     friend class Ledger;
 };
+
+inline bool operator==(const LedgerScopeId& id1, const LedgerScopeId& id2) {
+    return id1.size == id2.size && std::memcmp(id1.data, id2.data, id1.size) == 0;
+}
+
+inline bool operator!=(const LedgerScopeId& id1, const LedgerScopeId& id2) {
+    return !(id1 == id2);
+}
 
 } // namespace particle::system
 

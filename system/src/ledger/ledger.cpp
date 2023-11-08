@@ -24,7 +24,6 @@
 #if HAL_PLATFORM_LEDGER
 
 #include <algorithm>
-#include <cstring>
 #include <cassert>
 
 #include "ledger.h"
@@ -43,10 +42,18 @@
 #define PB_LEDGER(_name) particle_cloud_ledger_##_name
 #define PB_INTERNAL(_name) particle_firmware_##_name
 
-static_assert(LEDGER_SCOPE_UNKNOWN == (int)PB_LEDGER(Scope_SCOPE_UNKNOWN) &&
-        LEDGER_SCOPE_DEVICE == (int)PB_LEDGER(Scope_SCOPE_DEVICE) &&
-        LEDGER_SCOPE_PRODUCT == (int)PB_LEDGER(Scope_SCOPE_PRODUCT) &&
-        LEDGER_SCOPE_OWNER == (int)PB_LEDGER(Scope_SCOPE_OWNER));
+LOG_SOURCE_CATEGORY("system.ledger");
+
+namespace particle {
+
+using fs::FsLock;
+
+namespace system {
+
+static_assert(LEDGER_SCOPE_UNKNOWN == (int)PB_LEDGER(ScopeType_SCOPE_TYPE_UNKNOWN) &&
+        LEDGER_SCOPE_DEVICE == (int)PB_LEDGER(ScopeType_SCOPE_TYPE_DEVICE) &&
+        LEDGER_SCOPE_PRODUCT == (int)PB_LEDGER(ScopeType_SCOPE_TYPE_PRODUCT) &&
+        LEDGER_SCOPE_OWNER == (int)PB_LEDGER(ScopeType_SCOPE_TYPE_OWNER));
 
 static_assert(LEDGER_SYNC_DIRECTION_UNKNOWN == (int)PB_LEDGER(SyncDirection_SYNC_DIRECTION_UNKNOWN) &&
         LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD == (int)PB_LEDGER(SyncDirection_SYNC_DIRECTION_DEVICE_TO_CLOUD) &&
@@ -55,13 +62,8 @@ static_assert(LEDGER_SYNC_DIRECTION_UNKNOWN == (int)PB_LEDGER(SyncDirection_SYNC
 static_assert(LEDGER_MAX_NAME_LENGTH + 1 == sizeof(PB_INTERNAL(LedgerInfo::name)) &&
         LEDGER_MAX_NAME_LENGTH + 1 == sizeof(PB_LEDGER(GetInfoResponse_Ledger::name)));
 
-LOG_SOURCE_CATEGORY("system.ledger");
-
-namespace particle {
-
-using fs::FsLock;
-
-namespace system {
+static_assert(MAX_LEDGER_SCOPE_ID_SIZE == sizeof(PB_INTERNAL(LedgerInfo_scope_id_t::bytes)) &&
+        MAX_LEDGER_SCOPE_ID_SIZE == sizeof(PB_LEDGER(GetInfoResponse_Ledger_scope_id_t::bytes)));
 
 namespace {
 
@@ -168,12 +170,22 @@ int writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const char* ledgerName, const L
     PB_INTERNAL(LedgerInfo) pbInfo = {};
     size_t n = strlcpy(pbInfo.name, ledgerName, sizeof(pbInfo.name));
     if (n >= sizeof(pbInfo.name)) {
-        return SYSTEM_ERROR_INTERNAL; // The name is longer than specified in ledger.proto
+        return SYSTEM_ERROR_INTERNAL; // Name is longer than the maximum size specified in ledger.proto
     }
-    pbInfo.scope = static_cast<PB_LEDGER(Scope)>(info.scope());
+    auto& scopeId = info.scopeId();
+    assert(scopeId.size <= sizeof(pbInfo.scope_id.bytes));
+    std::memcpy(pbInfo.scope_id.bytes, scopeId.data, scopeId.size);
+    pbInfo.scope_id.size = scopeId.size;
+    pbInfo.scope_type = static_cast<PB_LEDGER(ScopeType)>(info.scopeType());
     pbInfo.sync_direction = static_cast<PB_LEDGER(SyncDirection)>(info.syncDirection());
-    pbInfo.last_updated = info.lastUpdated();
-    pbInfo.last_synced = info.lastSynced();
+    if (info.lastUpdated()) {
+        pbInfo.last_updated = info.lastUpdated();
+        pbInfo.has_last_updated = true;
+    }
+    if (info.lastSynced()) {
+        pbInfo.last_synced = info.lastSynced();
+        pbInfo.has_last_synced = true;
+    }
     pbInfo.sync_pending = info.syncPending();
     n = CHECK(encodeProtobufToFile(file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
     return n;
@@ -266,7 +278,8 @@ Ledger::Ledger(detail::LedgerSyncContext* ctx) :
         destroyAppData_(nullptr),
         appData_(nullptr),
         name_(""),
-        scope_(LEDGER_SCOPE_UNKNOWN),
+        scopeId_(EMPTY_LEDGER_SCOPE_ID),
+        scopeType_(LEDGER_SCOPE_UNKNOWN),
         syncDir_(LEDGER_SYNC_DIRECTION_UNKNOWN),
         inited_(false) {
 }
@@ -337,7 +350,8 @@ int Ledger::initWriter(LedgerWriter& writer, LedgerWriteSource src) {
 LedgerInfo Ledger::info() const {
     std::lock_guard lock(*this);
     return LedgerInfo()
-            .scope(scope_)
+            .scopeType(scopeType_)
+            .scopeId(scopeId_)
             .syncDirection(syncDir_)
             .dataSize(dataSize_)
             .lastUpdated(lastUpdated_)
@@ -529,19 +543,23 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
         LOG(ERROR, "Unexpected ledger name");
         return SYSTEM_ERROR_LEDGER_INVALID_FORMAT;
     }
-    scope_ = static_cast<ledger_scope>(pbInfo.scope);
+    assert(pbInfo.scope_id.size <= sizeof(scopeId_.data));
+    std::memcpy(scopeId_.data, pbInfo.scope_id.bytes, pbInfo.scope_id.size);
+    scopeId_.size = pbInfo.scope_id.size;
+    scopeType_ = static_cast<ledger_scope>(pbInfo.scope_type);
     syncDir_ = static_cast<ledger_sync_direction>(pbInfo.sync_direction);
     dataSize_ = dataSize;
-    lastUpdated_ = pbInfo.last_updated;
-    lastSynced_ = pbInfo.last_synced;
+    lastUpdated_ = pbInfo.has_last_updated ? pbInfo.last_updated : 0;
+    lastSynced_ = pbInfo.has_last_synced ? pbInfo.last_synced : 0;
     syncPending_ = pbInfo.sync_pending;
     return 0;
 }
 
 void Ledger::setLedgerInfo(const LedgerInfo& info) {
-    assert(info.isScopeSet() && info.isSyncDirectionSet() && info.isDataSizeSet() && info.isLastUpdatedSet() &&
-            info.isLastSyncedSet() && info.isSyncPendingSet());
-    scope_ = info.scope();
+    assert(info.isScopeTypeSet() && info.isScopeIdSet() && info.isSyncDirectionSet() && info.isDataSizeSet() &&
+            info.isLastUpdatedSet() && info.isLastSyncedSet() && info.isSyncPendingSet());
+    scopeType_ = info.scopeType();
+    scopeId_ = info.scopeId();
     syncDir_ = info.syncDirection();
     dataSize_ = info.dataSize();
     lastUpdated_ = info.lastUpdated();
@@ -663,8 +681,11 @@ void LedgerBase::release() const {
 }
 
 LedgerInfo& LedgerInfo::update(const LedgerInfo& info) {
-    if (info.scope_.has_value()) {
-        scope_ = info.scope_.value();
+    if (info.scopeType_.has_value()) {
+        scopeType_ = info.scopeType_.value();
+    }
+    if (info.scopeId_.has_value()) {
+        scopeId_ = info.scopeId_.value();
     }
     if (info.syncDir_.has_value()) {
         syncDir_ = info.syncDir_.value();
@@ -738,16 +759,6 @@ int LedgerReader::close(bool /* discard */) {
         return r;
     }
     return result;
-}
-
-int LedgerReader::rewind() {
-    if (!open_) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    FsLock fs;
-    CHECK_FS(lfs_file_seek(fs.instance(), &file_, 0, LFS_SEEK_SET));
-    dataOffs_ = 0;
-    return 0;
 }
 
 int LedgerWriter::init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger) {

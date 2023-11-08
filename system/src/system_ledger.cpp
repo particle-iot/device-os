@@ -84,7 +84,7 @@ int ledger_get_info(ledger_instance* ledger, ledger_info* info, void* reserved) 
     info->last_updated = srcInfo.lastUpdated();
     info->last_synced = srcInfo.lastSynced();
     info->data_size = srcInfo.dataSize();
-    info->scope = srcInfo.scope();
+    info->scope = srcInfo.scopeType();
     info->sync_direction = srcInfo.syncDirection();
     info->flags = 0;
     if (srcInfo.syncPending()) {

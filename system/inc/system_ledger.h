@@ -30,14 +30,14 @@
 #define LEDGER_API_VERSION 1
 
 /**
- * Maximum size of ledger data.
- */
-#define LEDGER_MAX_DATA_SIZE 16384
-
-/**
  * Maximum length of a ledger name.
  */
 #define LEDGER_MAX_NAME_LENGTH 32
+
+/**
+ * Maximum size of ledger data.
+ */
+#define LEDGER_MAX_DATA_SIZE 16384
 
 /**
  * Ledger instance.
