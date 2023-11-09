@@ -85,13 +85,10 @@ public:
             wifiSig_ = WiFi.RSSI();
         } 
 
-        const Signal* primarySignal = nullptr;
-        const Signal* alternateSignal = nullptr;
+        const Signal* primarySignal = &cellularSig_;
+        const Signal* alternateSignal = &wifiSig_;
 
-        if (cloudNetwork == Cellular) {
-            primarySignal = &cellularSig_;
-            alternateSignal = &wifiSig_;
-        } else if (cloudNetwork == WiFi) {
+        if (cloudNetwork == WiFi) {
             primarySignal = &wifiSig_;
             alternateSignal = &cellularSig_;
         }
