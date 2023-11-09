@@ -86,6 +86,7 @@ private:
     int receiveTestPacket(ConnectionMetrics* metrics);
     void cleanupSockets(bool recalculateMetrics = true);
     ConnectionMetrics* metricsFromSocketDescriptor(int socketDescriptor);
+    bool testPacketsOutstanding();
 
     const uint8_t REACHABILITY_TEST_MSG = 252;
     const unsigned REACHABILITY_MAX_PAYLOAD_SIZE = 256;

@@ -73,11 +73,6 @@ ConnectionManager* ConnectionManager::instance() {
 }
 
 void ConnectionManager::setPreferredNetwork(network_handle_t network, bool preferred) {
-    // network_interface_t defaultInterface = NETWORK_INTERFACE_ALL;
-    // network_interface_t preferredNetwork = preferred ? (network_interface_t)network : defaultInterface;
-    // auto r = spark_set_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, preferredNetwork, nullptr, nullptr);
-    //LOG(INFO, "%d preferredNetwork %lu setPreferredNetwork %lu", r, preferredNetwork, network);
-    
     //LOG(INFO, "setPreferredNetwork network: %lu preferredNetwork_: %lu", network, preferredNetwork_);
     if (preferred) {
         preferredNetwork_ = network;
@@ -87,12 +82,6 @@ void ConnectionManager::setPreferredNetwork(network_handle_t network, bool prefe
 }
 
 network_handle_t ConnectionManager::getPreferredNetwork() {
-    // network_handle_t network;
-    // size_t n = sizeof(network);
-    // auto r = spark_get_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, &network, &n, nullptr);
-    // LOG(INFO, "%d getPreferredNetwork %lu", r, network);
-    // return network;
-
     //LOG(INFO, "getPreferredNetwork %lu", preferredNetwork_);
     return preferredNetwork_;
 }
@@ -206,6 +195,15 @@ ConnectionMetrics* ConnectionTester::metricsFromSocketDescriptor(int socketDescr
     return nullptr;
 };
 
+bool ConnectionTester::testPacketsOutstanding() {
+    for (auto& i : metrics_) {
+        if (i.txPacketCount > i.rxPacketCount) {
+            return true;
+        }
+    }
+    return false;
+};
+
 int ConnectionTester::allocateTestPacketBuffers(ConnectionMetrics* metrics) {
     int maxMessageLength = REACHABILITY_MAX_PAYLOAD_SIZE + sizeof(DTLSPlaintext_t);
     uint8_t* txBuffer = (uint8_t*)malloc(maxMessageLength);
@@ -308,10 +306,10 @@ int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics, int packetD
 };
 
 int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount, int packetDataLength) {
-    int pollCount = sock_poll(pfds, socketCount, 5000);
+    int pollCount = sock_poll(pfds, socketCount, 1000);
 
     if (pollCount <= 0) {
-        LOG(WARN, "Connection test poll timeout/error %d", pollCount);
+        LOG(TRACE, "Connection test poll timeout/error %d", pollCount);
         return 0;
     }
 
@@ -370,7 +368,7 @@ void ConnectionTester::cleanupSockets(bool recalculateMetrics) {
 // General workflow
 // 1) Retrieve the server hostname and port. Resolve the hostname to an addrinfo list (ie IP addresses of server)
 // 2) Create a socket for each network interface to test. Bind this socket to the specific interface. Connect the socket
-// 3) Add these created+connected sockets to a pollfd structure. Allocate buffers for the reachability test messages
+// 3) Add these created+connected sockets to a pollfd structure. Allocate buffers for the reachability test messages.
 // 4) Poll all the sockets. Polling sends a reachability test message and waits for the response. The test continues for the test duration
 // 5) After polling completes, free the allocated buffers, reset diagnostics and calculate updated metrics. 
 int ConnectionTester::testConnections() {
@@ -403,12 +401,24 @@ int ConnectionTester::testConnections() {
         netdb_freeaddrinfo(info);
     });
 
+    int socketCount = 0;
+    struct pollfd* pfds = (pollfd*)malloc(sizeof(pollfd) * metrics_.size());
+    CHECK_TRUE(pfds, SYSTEM_ERROR_NO_MEMORY);
+    SCOPE_GUARD({
+        free(pfds);
+    });
+    
     // Step 2: Create, bind, and connect sockets for each network interface to test
     for (struct addrinfo* a = info; a != nullptr; a = a->ai_next) {
 
         // For each network interface to test, create + open a socket with the retrieved server address
         // If any of the sockets fail to be created + opened with this server address, return an error
         for (auto& connectionMetrics: metrics_) {
+            if (!spark::Network.from(connectionMetrics.interface).ready()) {
+                LOG(TRACE,"%s not ready, skipping test", netifToName(connectionMetrics.interface));
+                continue;
+            }
+
             int s = sock_socket(a->ai_family, a->ai_socktype, a->ai_protocol);
             if (s < 0) {
                 LOG(ERROR, "test socket failed, family=%d, type=%d, protocol=%d, errno=%d", a->ai_family, a->ai_socktype, a->ai_protocol, errno);
@@ -445,38 +455,36 @@ int ConnectionTester::testConnections() {
                 LOG(ERROR, "test socket=%d, failed to connect to %s#%u, errno=%d", s, serverHost, serverPort, errno);
                 return SYSTEM_ERROR_NETWORK;
             }
-            LOG(INFO, "test socket # %d, name %s bound to %s connected to %s#%u", s, ifr.ifr_name, netifToName(connectionMetrics.interface), serverHost, serverPort); 
+            LOG(INFO, "test socket # %d, %s bound to %s connected to %s#%u", s, ifr.ifr_name, netifToName(connectionMetrics.interface), serverHost, serverPort); 
 
-            // s is now valid socket descriptor, use it for POLL
+            // Step 3: Use the socket descriptor for the polling structure, allocate our test buffers
             connectionMetrics.socketDescriptor = s;
+            pfds[socketCount].fd = connectionMetrics.socketDescriptor;
+            pfds[socketCount].events = (POLLIN | POLLOUT);
+            socketCount++;
 
             CHECK(allocateTestPacketBuffers(&connectionMetrics));
         }
     }
     
-    // Step 3: Setup the needed buffers to poll all of the sockets
-    int socketCount = 3; // TODO: Make dynamic based on number of available interfaces
-    struct pollfd pfds[socketCount];
-    
-    for (int i = 0; i < socketCount; i++) {
-        pfds[i].fd = metrics_[i].socketDescriptor;
-        pfds[i].events = (POLLIN | POLLOUT);
-    }
-
     // Step 4: Send/Receive data on the sockets for the duration of the test time
     unsigned packetDataLength = random(1, REACHABILITY_MAX_PAYLOAD_SIZE);
-    auto endTime = millis() + REACHABILITY_TEST_DURATION_MS;
-    while (millis() < endTime) {
+    auto endTime = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
+    while (HAL_Timer_Get_Milli_Seconds() < endTime) {
         CHECK(pollSockets(pfds, socketCount, packetDataLength));
     }
 
-    // Read from sockets to get last packet
+    // Only read from sockets to receive any final outstanding packets
     for (int i = 0; i < socketCount; i++) {
         pfds[i].events = (POLLIN);
     }
-    pollSockets(pfds, socketCount, packetDataLength);
 
-    // STEP 5: Cleanup test metrics, close sockets, calculate updated diagnostics
+    endTime = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
+    while(testPacketsOutstanding() && HAL_Timer_Get_Milli_Seconds() < endTime) {
+        pollSockets(pfds, socketCount, packetDataLength);    
+    }
+
+    // Step 5: Cleanup test metrics, close sockets, calculate updated diagnostics
     testSuccessful = true;
 
     return 0;
