@@ -31,15 +31,15 @@ using namespace spark;
 
 // Helper functions
 namespace {
-	JSONValue getValue(const JSONValue& obj, const char* name) {
-	    JSONObjectIterator it(obj);
-	    while (it.next()) {
-	        if (it.name() == name) {
-	            return it.value();
-	        }
-	    }
-	    return JSONValue();
-	}
+    JSONValue getValue(const JSONValue& obj, const char* name) {
+        JSONObjectIterator it(obj);
+        while (it.next()) {
+            if (it.name() == name) {
+                return it.value();
+            }
+        }
+        return JSONValue();
+    }
 
     JSONValue get(const JSONValue& obj, const char* name) {
         return getValue(obj, name);
@@ -54,7 +54,7 @@ FqcTest::FqcTest() :
         writer((char *)json_response_buffer, sizeof(json_response_buffer)),
         tcpClient(),
         inited_(true) {
-	memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
+    memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
 }
 
 FqcTest::~FqcTest() {
@@ -66,23 +66,23 @@ FqcTest* FqcTest::instance() {
 }
 
 char * FqcTest::reply() {
-	return writer.buffer();    	
+    return writer.buffer();
 }
 
 size_t FqcTest::replySize() {
-	return writer.dataSize();    	
+    return writer.dataSize();
 }
 
 void FqcTest::initWriter(){
-	memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
-	writer = JSONBufferWriter((char *)json_response_buffer, sizeof(json_response_buffer));
+    memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
+    writer = JSONBufferWriter((char *)json_response_buffer, sizeof(json_response_buffer));
 }
 
 bool FqcTest::process(JSONValue test){
-	initWriter();
+    initWriter();
 
     if (has(test, "WRITE_SERIAL1")) {
-		return writeSerial1(test);
+        return writeSerial1(test);
     } else if (has(test, "USE_ANTENNA")) { 
         return useAntenna(test);
     } else if (has(test, "BLE_SCAN")) {
