@@ -15,9 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
-
 #include "logging.h"
 LOG_SOURCE_CATEGORY("net.en")
 
@@ -49,8 +46,6 @@ LOG_SOURCE_CATEGORY("net.en")
 
 #include "platform_config.h"
 #include "spi_lock.h"
-#include "bytes2hexbuf.h"
-#include <chrono>
 
 #ifndef WIZNET_SPI_MODE
 #define WIZNET_SPI_MODE SPI_MODE3
@@ -124,36 +119,6 @@ const int WIZNET_DEFAULT_TIMEOUT = 1000;
 /* FIXME */
 const unsigned int WIZNET_INRECV_NEXT_BACKOFF = 50;
 const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
-
-void dumpPacket(bool in, pbuf* p) {
-    return;
-    LwipTcpIpCoreLock lk;
-    static char logBuffer[PBUF_POOL_BUFSIZE*2 + 64] = {};
-    using namespace std::chrono;
-    milliseconds ts(HAL_Timer_Get_Milli_Seconds());
-    auto h = duration_cast<hours>(ts);
-    ts -= duration_cast<decltype(ts)>(h);
-    auto m = duration_cast<minutes>(ts);
-    ts -= duration_cast<decltype(ts)>(m);
-    auto s = duration_cast<seconds>(ts);
-    ts -= duration_cast<decltype(ts)>(s);
-
-    int pos = snprintf(logBuffer, sizeof(logBuffer), "%c %u:%02u:%02u.%03u ", in ? '>' : '<', (unsigned)h.count(), (unsigned)m.count(), (unsigned)s.count(), (unsigned)ts.count());
-#if ETH_PAD_SIZE
-    pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */
-#endif
-    for (pbuf* q = p; q != nullptr; q = q->next) {
-        bytes2hexbuf_lower_case((const uint8_t*)q->payload, q->len, logBuffer + pos);
-        pos += q->len * 2;
-    }
-    logBuffer[pos++] = '\r';
-    logBuffer[pos++] = '\n';
-    logBuffer[pos++] = '\0';
-#if ETH_PAD_SIZE
-    pbuf_add_header(p, ETH_PAD_SIZE); /* reclaim the padding word */
-#endif
-    LOG_WRITE(ERROR, logBuffer, pos);
-}
 
 } /* anonymous */
 
@@ -587,8 +552,6 @@ int WizNetif::input() {
             pbuf_add_header(p, ETH_PAD_SIZE);
 #endif /* ETH_PAD_SIZE */
 
-            dumpPacket(true, p);
-
             LwipTcpIpCoreLock lk;
             if (netif_.input(p, &netif_) != ERR_OK) {
                 LOG(ERROR, "Error inputing packet");
@@ -622,17 +585,12 @@ err_t WizNetif::linkOutput(pbuf* p) {
         return ERR_IF;
     }
 
-    // LOG(ERROR, "linkOutput");
-    dumpPacket(false, p);
-
     pbuf* q = pbuf_clone(PBUF_LINK, PBUF_RAM, p);
     if (!q) {
         LOG(ERROR, "no memory to clone pbuf");
         return ERR_MEM;
     }
 
-    /* Increase reference counter */
-    // pbuf_ref(p);
     if (os_queue_put(queue_, &q, 0, nullptr)) {
         LOG(ERROR, "Dropping packet %x, not enough space in event queue", q);
         pbuf_free(q);
@@ -648,9 +606,6 @@ void WizNetif::output(pbuf* p) {
     if (down_) {
         goto cleanup;
     }
-
-    // LOG(ERROR, "output");
-    dumpPacket(false, p);
 
 #if ETH_PAD_SIZE
     pbuf_remove_header(p, ETH_PAD_SIZE); /* drop the padding word */
