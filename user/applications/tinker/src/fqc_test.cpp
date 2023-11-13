@@ -31,15 +31,15 @@ using namespace spark;
 
 // Helper functions
 namespace {
-	JSONValue getValue(const JSONValue& obj, const char* name) {
-	    JSONObjectIterator it(obj);
-	    while (it.next()) {
-	        if (it.name() == name) {
-	            return it.value();
-	        }
-	    }
-	    return JSONValue();
-	}
+    JSONValue getValue(const JSONValue& obj, const char* name) {
+        JSONObjectIterator it(obj);
+        while (it.next()) {
+            if (it.name() == name) {
+                return it.value();
+            }
+        }
+        return JSONValue();
+    }
 
     JSONValue get(const JSONValue& obj, const char* name) {
         return getValue(obj, name);
@@ -54,7 +54,7 @@ FqcTest::FqcTest() :
         writer((char *)json_response_buffer, sizeof(json_response_buffer)),
         tcpClient(),
         inited_(true) {
-	memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
+    memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
 }
 
 FqcTest::~FqcTest() {
@@ -66,23 +66,23 @@ FqcTest* FqcTest::instance() {
 }
 
 char * FqcTest::reply() {
-	return writer.buffer();    	
+    return writer.buffer();
 }
 
 size_t FqcTest::replySize() {
-	return writer.dataSize();    	
+    return writer.dataSize();
 }
 
 void FqcTest::initWriter(){
-	memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
-	writer = JSONBufferWriter((char *)json_response_buffer, sizeof(json_response_buffer));
+    memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
+    writer = JSONBufferWriter((char *)json_response_buffer, sizeof(json_response_buffer));
 }
 
 bool FqcTest::process(JSONValue test){
-	initWriter();
+    initWriter();
 
     if (has(test, "WRITE_SERIAL1")) {
-		return writeSerial1(test);
+        return writeSerial1(test);
     } else if (has(test, "USE_ANTENNA")) { 
         return useAntenna(test);
     } else if (has(test, "BLE_SCAN")) {
@@ -266,9 +266,8 @@ bool FqcTest::bleScan(JSONValue req) {
 #if PLATFORM_ID == PLATFORM_P2
 static Vector<uint16_t> p2_gpio_test_pins = { A5, S6, WKP, S4, D0, D1, S0, S1, S2, A1, S3, D2, D4, D5, D3, A0, A2, S5 };
 static Vector<uint16_t> photon2_gpio_test_pins = {A0, D10, A1, A2, A5, D5, S4, D4, S3, D3, SCK, D2, MOSI, SCL, MISO, SDA };
-#else 
-static Vector<uint16_t> p2_gpio_test_pins = { };
-static Vector<uint16_t> photon2_gpio_test_pins = { };
+#elif PLATFORM_ID == PLATFORM_MSOM
+static Vector<uint16_t> msom_gpio_test_pins = { D2, D3, D4, D5, D6, D7, D8, D11, D12, D13, D22, D23, D25, D26, D21, D20, A0, A1, A2, A3, A4, A7 };
 #endif
 
 static Vector<uint16_t> gpio_test_pins = {};
@@ -358,9 +357,11 @@ bool FqcTest::ioTest(JSONValue req) {
         Log.info("Hardware Model: 0x%X Variant: %lu", (unsigned int)model, variant);    
     }
 
-    #if PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID == PLATFORM_P2
     gpio_test_pins = variant == PLATFORM_P2_PHOTON_2 ? photon2_gpio_test_pins : p2_gpio_test_pins;
-    #endif
+#elif PLATFORM_ID == PLATFORM_MSOM
+    gpio_test_pins = msom_gpio_test_pins;
+#endif
 
     for(int i = 0; i < gpio_test_pins.size(); i+=2){
         pinA = gpio_test_pins[i];
