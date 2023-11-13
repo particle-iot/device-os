@@ -100,7 +100,9 @@ enum class CoapOption {
     // RFC 7959, 2.1. The Block2 and Block1 Options; 4. The Size2 and Size1 Options
     BLOCK2 = 23,
     BLOCK1 = 27,
-    SIZE2 = 28
+    SIZE2 = 28,
+    // RFC 9175, 3.2. The Request-Tag Option
+    REQUEST_TAG = 292
 };
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapOption)

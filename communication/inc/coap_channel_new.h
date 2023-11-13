@@ -16,6 +16,7 @@
  */
 
 #include <memory>
+#include <cstdint>
 
 #include "message_channel.h"
 #include "coap_api.h"
@@ -119,10 +120,11 @@ private:
     RequestHandler* reqHandlers_; // List of registered request handlers
     RequestMessage* sentReqs_; // List of requests awaiting a response from the server
     RequestMessage* recvReqs_; // List of requests awaiting a response from the device
-    CoapMessage* blockMsgs_; // List of messages for which the next message block is expected to be sent or received
+    ResponseMessage* blockResps_; // List of responses for which the next message block is expected to be received
     CoapMessage* unackMsgs_; // List of messages awaiting an ACK from the server
     Protocol* protocol_; // Protocol instance
     State state_; // Channel state
+    uint32_t lastReqTag_; // Last used request tag
     int lastMsgId_; // Last used internal message ID
     int curMsgId_; // Internal ID of the message stored in the shared buffer
     int sessId_; // Counter incremented every time a new session with the server is started
