@@ -230,4 +230,11 @@ test(10_validate_factory_reset_worked) {
     validate_factory_reset_worked();
 }
 
+test(11_cleanup_factory_slot) {
+    InvalidateDctModuleSlot(FAC_RESET_SLOT);
+
+    // Erase entire Factory Module
+    assertEqual(hal_storage_erase(HAL_STORAGE_ID_EXTERNAL_FLASH, EXTERNAL_FLASH_FAC_ADDRESS, EXTERNAL_FLASH_FAC_LENGTH), EXTERNAL_FLASH_FAC_LENGTH);
+}
+
 #endif // HAL_PLATFORM_NRF52840
