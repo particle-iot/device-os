@@ -1999,7 +1999,11 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
         CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE));
         auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s%s\"",
                 UBLOX_DEFAULT_CID, UBLOX_DEFAULT_PDP_TYPE,
+#if CHAP_SUPPORT
                 (netConf_.hasUser() && netConf_.hasPassword()) ? "CHAP:" : "",
+#else
+                "",
+#endif // CHAP_SUPPORT
                 netConf_.hasApn() ? netConf_.apn() : "");
         const int r = CHECK_PARSER(resp.readResult());
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);

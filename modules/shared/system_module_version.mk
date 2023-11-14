@@ -67,8 +67,12 @@ endif
 else
 # There is no need to carry SoftDevice dependency on Tracker, since they are manufactured
 # with the latest one. Update NCP firmware instead.
-ESP32_NCP_DEPENDENCY = 7
-SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_NCP_FIRMWARE},0,${ESP32_NCP_DEPENDENCY}
+
+# Since 5.6.0 NCP updates are disabled. Device should be above 3.0.0-alpha.2 (3001)
+# to already have latest ESP32 NCP firmware.
+# ESP32_NCP_DEPENDENCY = 7
+# SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_NCP_FIRMWARE},0,${ESP32_NCP_DEPENDENCY}
+SYSTEM_PART1_MODULE_DEPENDENCY2 ?= ${MODULE_FUNCTION_SYSTEM_PART},1,3001
 endif
 endif
 endif # ($(PLATFORM_MCU),nRF52840)

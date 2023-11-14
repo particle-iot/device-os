@@ -451,14 +451,14 @@ void sys_unlock_tcpip_core(void);
  * this option does not affect outgoing packet sizes, which can be controlled
  * via IP_FRAG.
  */
-#define IP_REASSEMBLY                   1
+#define IP_REASSEMBLY                   (PLATFORM_ID != PLATFORM_TRACKER)
 
 /**
  * IP_FRAG==1: Fragment outgoing IP packets if their size exceeds MTU. Note
  * that this option does not affect incoming packet sizes, which can be
  * controlled via IP_REASSEMBLY.
  */
-#define IP_FRAG                         1
+#define IP_FRAG                         (PLATFORM_ID != PLATFORM_TRACKER)
 
 /**
  * IP_OPTIONS_ALLOWED: Defines the behavior for IP options.
@@ -1635,11 +1635,11 @@ void sys_unlock_tcpip_core(void);
 /**
  * LWIP_IPV6==1: Enable IPv6
  */
-#if PLATFORM_ID != PLATFORM_TRACKER
-#define LWIP_IPV6                       1
-#else
+// #if PLATFORM_ID != PLATFORM_TRACKER
+// #define LWIP_IPV6                       1
+// #else
 #define LWIP_IPV6_DEFINES_ONLY          1
-#endif // PLATFORM_ID != PLATFORM_TRACKER
+// #endif // PLATFORM_ID != PLATFORM_TRACKER
 
 /**
  * IPV6_REASS_MAXAGE: Maximum time (in multiples of IP6_REASS_TMR_INTERVAL - so seconds, normally)
