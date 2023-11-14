@@ -115,7 +115,7 @@ const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
     .ss_pin = PIN_INVALID
 };
 
-const int WIZNET_DEFAULT_TIMEOUT = 1000;
+const int WIZNET_DEFAULT_TIMEOUT = 500;
 /* FIXME */
 const unsigned int WIZNET_INRECV_NEXT_BACKOFF = 50;
 const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
