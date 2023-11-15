@@ -151,9 +151,10 @@ private:
     int stagedReaderCount_; // Number of active readers of the staged ledger data
     int stagedFileCount_; // Number of staged data files created
 
-    int64_t lastUpdated_; // Last time the ledger was updated
-    int64_t lastSynced_; // Last time the ledger was synchronized
+    int64_t lastUpdated_; // Time the ledger was last time updated
+    int64_t lastSynced_; // Time the ledger was last synchronized
     size_t dataSize_; // Size of the ledger data
+    unsigned updateCount_; // Counter incremented every time the ledger is updated
     bool syncPending_; // Whether the ledger has local changes that have not yet been synchronized
 
     ledger_sync_callback syncCallback_; // Callback to invoke when the ledger has been synchronized
@@ -266,6 +267,19 @@ public:
         return lastSynced_.has_value();
     }
 
+    LedgerInfo& updateCount(unsigned count) {
+        updateCount_ = count;
+        return *this;
+    }
+
+    unsigned updateCount() const {
+        return updateCount_.value_or(0);
+    }
+
+    bool isUpdateCountSet() const {
+        return updateCount_.has_value();
+    }
+
     LedgerInfo& syncPending(bool pending) {
         syncPending_ = pending;
         return *this;
@@ -282,11 +296,17 @@ public:
     LedgerInfo& update(const LedgerInfo& info);
 
 private:
-    // When adding new fields, make sure to update LedgerInfo::update() and Ledger::setLedgerInfo()
+    // When adding a new field, make sure to update the following methods and functions:
+    // LedgerInfo::update()
+    // Ledger::info()
+    // Ledger::setLedgerInfo()
+    // Ledger::loadLedgerInfo()
+    // writeLedgerInfo()
     std::optional<LedgerScopeId> scopeId_;
     std::optional<int64_t> lastUpdated_;
     std::optional<int64_t> lastSynced_;
     std::optional<size_t> dataSize_;
+    std::optional<unsigned> updateCount_;
     std::optional<ledger_scope> scopeType_;
     std::optional<ledger_sync_direction> syncDir_;
     std::optional<bool> syncPending_;

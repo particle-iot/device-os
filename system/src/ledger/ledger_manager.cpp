@@ -168,6 +168,7 @@ struct LedgerSyncContext {
         struct { // Fields specific to a device-to-cloud ledger or a ledger with unknown sync direction
             uint64_t syncTime; // When to sync the ledger (ticks)
             uint64_t forcedSyncTime; // When to force-sync the ledger (ticks)
+            unsigned updateCount; // Value of the ledger's update counter when the sync started
         };
         struct { // Fields specific to a cloud-to-device ledger
             uint64_t lastUpdated; // Time the ledger was last updated (Unix time in milliseconds)
@@ -184,7 +185,8 @@ struct LedgerSyncContext {
             syncPending(false),
             taskRunning(false),
             syncTime(0),
-            forcedSyncTime(0) {
+            forcedSyncTime(0),
+            updateCount(0) {
     }
 
     void updateFromLedgerInfo(const LedgerInfo& info) {
@@ -205,6 +207,7 @@ struct LedgerSyncContext {
     void resetDeviceToCloudState() {
         syncTime = 0;
         forcedSyncTime = 0;
+        updateCount = 0;
     }
 
     void resetCloudToDeviceState() {
@@ -715,9 +718,9 @@ int LedgerManager::receiveSetDataResponse(coap_message* msg, int result) {
             curCtx_->taskRunning);
     if (result == 0) {
         LOG(TRACE, "Sent ledger data: %s", curCtx_->name);
-        LedgerInfo info;
+        LedgerInfo newInfo;
         auto now = CHECK(getMillisSinceEpoch());
-        info.lastSynced(now);
+        newInfo.lastSynced(now);
         RefCountPtr<Ledger> ledger;
         CHECK(getLedger(ledger, curCtx_->name));
         // Make sure the ledger can't be changed while we're updating its persistently stored state
@@ -725,16 +728,15 @@ int LedgerManager::receiveSetDataResponse(coap_message* msg, int result) {
         std::unique_lock ledgerLock(*ledger);
         curCtx_->syncTime = 0;
         curCtx_->forcedSyncTime = 0;
-        if (!(curCtx_->pendingState & PendingState::SYNC_TO_CLOUD)) {
-            // TODO: Use a counter that gets incremented every time the ledger is changed to reliably
-            // tell whether the last synchronized state is the most recent state of the ledger
-            info.syncPending(false);
+        if (ledger->info().updateCount() == curCtx_->updateCount) {
+            newInfo.syncPending(false);
             curCtx_->syncPending = false;
         } else {
             // Ledger changed while being synchronized
+            assert(curCtx->pendingState & PendingState::SYNC_TO_CLOUD);
             updateSyncTime(curCtx_);
         }
-        CHECK(ledger->updateInfo(info));
+        CHECK(ledger->updateInfo(newInfo));
         ledgerLock.unlock();
         ledger->notifySynced(); // TODO: Invoke asynchronously
         // TODO: Reorder the ledger entries so that they're synchronized in a round-robin fashion
@@ -1066,6 +1068,7 @@ int LedgerManager::sendSetDataRequest(LedgerSyncContext* ctx) {
     CHECK(sendLedgerData());
     // Clear the pending state
     clearPendingState(ctx, PendingState::SYNC_TO_CLOUD);
+    ctx->updateCount = info.updateCount();
     ctx->taskRunning = true;
     curCtx_ = ctx;
     state_ = State::SYNC_TO_CLOUD;

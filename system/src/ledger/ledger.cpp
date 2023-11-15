@@ -167,6 +167,9 @@ int writeFooter(lfs_t* fs, lfs_file_t* file, size_t dataSize, size_t infoSize, i
 }
 
 int writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const char* ledgerName, const LedgerInfo& info) {
+    // All fields must be set
+    assert(info.isScopeTypeSet() && info.isScopeIdSet() && info.isSyncDirectionSet() && info.isDataSizeSet() &&
+            info.isLastUpdatedSet() && info.isLastSyncedSet() && info.isUpdateCountSet() && info.isSyncPendingSet());
     PB_INTERNAL(LedgerInfo) pbInfo = {};
     size_t n = strlcpy(pbInfo.name, ledgerName, sizeof(pbInfo.name));
     if (n >= sizeof(pbInfo.name)) {
@@ -186,6 +189,7 @@ int writeLedgerInfo(lfs_t* fs, lfs_file_t* file, const char* ledgerName, const L
         pbInfo.last_synced = info.lastSynced();
         pbInfo.has_last_synced = true;
     }
+    pbInfo.update_count = info.updateCount();
     pbInfo.sync_pending = info.syncPending();
     n = CHECK(encodeProtobufToFile(file, &PB_INTERNAL(LedgerInfo_msg), &pbInfo));
     return n;
@@ -273,6 +277,7 @@ Ledger::Ledger(detail::LedgerSyncContext* ctx) :
         lastUpdated_(0),
         lastSynced_(0),
         dataSize_(0),
+        updateCount_(0),
         syncPending_(false),
         syncCallback_(nullptr),
         destroyAppData_(nullptr),
@@ -356,6 +361,7 @@ LedgerInfo Ledger::info() const {
             .dataSize(dataSize_)
             .lastUpdated(lastUpdated_)
             .lastSynced(lastSynced_)
+            .updateCount(updateCount_)
             .syncPending(syncPending_);
 }
 
@@ -551,19 +557,22 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
     dataSize_ = dataSize;
     lastUpdated_ = pbInfo.has_last_updated ? pbInfo.last_updated : 0;
     lastSynced_ = pbInfo.has_last_synced ? pbInfo.last_synced : 0;
+    updateCount_ = pbInfo.update_count;
     syncPending_ = pbInfo.sync_pending;
     return 0;
 }
 
 void Ledger::setLedgerInfo(const LedgerInfo& info) {
+    // All fields must be set
     assert(info.isScopeTypeSet() && info.isScopeIdSet() && info.isSyncDirectionSet() && info.isDataSizeSet() &&
-            info.isLastUpdatedSet() && info.isLastSyncedSet() && info.isSyncPendingSet());
+            info.isLastUpdatedSet() && info.isLastSyncedSet() && info.isUpdateCountSet() && info.isSyncPendingSet());
     scopeType_ = info.scopeType();
     scopeId_ = info.scopeId();
     syncDir_ = info.syncDirection();
     dataSize_ = info.dataSize();
     lastUpdated_ = info.lastUpdated();
     lastSynced_ = info.lastSynced();
+    updateCount_ = info.updateCount();
     syncPending_ = info.syncPending();
 }
 
@@ -699,6 +708,9 @@ LedgerInfo& LedgerInfo::update(const LedgerInfo& info) {
     if (info.lastSynced_.has_value()) {
         lastSynced_ = info.lastSynced_.value();
     }
+    if (info.updateCount_.has_value()) {
+        updateCount_ = info.updateCount_.value();
+    }
     if (info.syncPending_.has_value()) {
         syncPending_ = info.syncPending_.value();
     }
@@ -830,6 +842,7 @@ int LedgerWriter::close(bool discard) {
     std::lock_guard lock(*ledger_);
     auto newInfo = ledger_->info().update(info_);
     newInfo.dataSize(dataSize_); // Can't be overridden
+    newInfo.updateCount(newInfo.updateCount() + 1); // ditto
     if (!info_.isLastUpdatedSet()) {
         int64_t t = getMillisSinceEpoch();
         if (t < 0) {

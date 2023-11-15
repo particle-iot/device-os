@@ -31,6 +31,7 @@ typedef struct _particle_firmware_LedgerInfo {
  If not set, the ledger has never been synchronized. */
     bool has_last_synced;
     uint64_t last_synced; 
+    uint32_t update_count; /* /< Counter incremented every time the ledger is updated. */
     bool sync_pending; /* /< Whether the ledger needs to be synchronized. */
 } particle_firmware_LedgerInfo;
 
@@ -40,8 +41,8 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define particle_firmware_LedgerInfo_init_default {"", {0, {0}}, _particle_cloud_ledger_ScopeType_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0, false, 0, 0}
-#define particle_firmware_LedgerInfo_init_zero   {"", {0, {0}}, _particle_cloud_ledger_ScopeType_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0, false, 0, 0}
+#define particle_firmware_LedgerInfo_init_default {"", {0, {0}}, _particle_cloud_ledger_ScopeType_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0, false, 0, 0, 0}
+#define particle_firmware_LedgerInfo_init_zero   {"", {0, {0}}, _particle_cloud_ledger_ScopeType_MIN, _particle_cloud_ledger_SyncDirection_MIN, false, 0, false, 0, 0, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_firmware_LedgerInfo_name_tag    1
@@ -50,7 +51,8 @@ extern "C" {
 #define particle_firmware_LedgerInfo_sync_direction_tag 4
 #define particle_firmware_LedgerInfo_last_updated_tag 5
 #define particle_firmware_LedgerInfo_last_synced_tag 6
-#define particle_firmware_LedgerInfo_sync_pending_tag 7
+#define particle_firmware_LedgerInfo_update_count_tag 7
+#define particle_firmware_LedgerInfo_sync_pending_tag 8
 
 /* Struct field encoding specification for nanopb */
 #define particle_firmware_LedgerInfo_FIELDLIST(X, a) \
@@ -60,7 +62,8 @@ X(a, STATIC,   SINGULAR, UENUM,    scope_type,        3) \
 X(a, STATIC,   SINGULAR, UENUM,    sync_direction,    4) \
 X(a, STATIC,   OPTIONAL, FIXED64,  last_updated,      5) \
 X(a, STATIC,   OPTIONAL, FIXED64,  last_synced,       6) \
-X(a, STATIC,   SINGULAR, BOOL,     sync_pending,      7)
+X(a, STATIC,   SINGULAR, UINT32,   update_count,      7) \
+X(a, STATIC,   SINGULAR, BOOL,     sync_pending,      8)
 #define particle_firmware_LedgerInfo_CALLBACK NULL
 #define particle_firmware_LedgerInfo_DEFAULT NULL
 
@@ -70,7 +73,7 @@ extern const pb_msgdesc_t particle_firmware_LedgerInfo_msg;
 #define particle_firmware_LedgerInfo_fields &particle_firmware_LedgerInfo_msg
 
 /* Maximum encoded size of messages (where known) */
-#define particle_firmware_LedgerInfo_size        92
+#define particle_firmware_LedgerInfo_size        98
 
 #ifdef __cplusplus
 } /* extern "C" */

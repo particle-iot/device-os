@@ -25,5 +25,6 @@ message LedgerInfo {
    * If not set, the ledger has never been synchronized.
    */
   optional fixed64 last_synced = 6;
-  bool sync_pending = 7; ///< Whether the ledger needs to be synchronized.
+  uint32 update_count = 7; ///< Counter incremented every time the ledger is updated.
+  bool sync_pending = 8; ///< Whether the ledger needs to be synchronized.
 }
