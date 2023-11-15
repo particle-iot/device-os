@@ -188,7 +188,7 @@ struct CoapChannel::CoapMessage: RefCount {
     std::optional<int> blockIndex; // Index of the current message block
     std::optional<bool> hasMore; // Whether more blocks are expected for this message
 
-    char* pos; // Current position in the message buffer
+    char* pos; // Current position in the message buffer. If null, no message data has been written to the buffer yet
     char* end; // End of the message buffer
     size_t prefixSize; // Size of the CoAP framing not including the payload marker
 
@@ -358,11 +358,15 @@ int CoapChannel::endRequest(coap_message* apiMsg, coap_response_callback respCal
     if (req->state != MessageState::WRITE || req->hasMore.value_or(false)) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    if (!curMsgId_) {
+    if (!req->pos) {
+        if (curMsgId_) {
+            // TODO: Support asynchronous writing to multiple message instances
+            LOG(WARN, "CoAP message buffer is already in use");
+            releaseMessageBuffer();
+        }
         CHECK(prepareMessage(req));
     } else if (curMsgId_ != req->id) {
-        // TODO: Support asynchronous writing to multiple message instances
-        LOG(ERROR, "CoAP message buffer is already in use");
+        LOG(ERROR, "CoAP message buffer is no longer available");
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     CHECK(sendMessage(req));
@@ -411,11 +415,15 @@ int CoapChannel::endResponse(coap_message* apiMsg, coap_ack_callback ackCallback
     if (resp->state != MessageState::WRITE) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    if (!curMsgId_) {
+    if (!resp->pos) {
+        if (curMsgId_) {
+            // TODO: Support asynchronous writing to multiple message instances
+            LOG(WARN, "CoAP message buffer is already in use");
+            releaseMessageBuffer();
+        }
         CHECK(prepareMessage(resp));
     } else if (curMsgId_ != resp->id) {
-        // TODO: Support asynchronous writing to multiple message instances
-        LOG(ERROR, "CoAP message buffer is already in use");
+        LOG(ERROR, "CoAP message buffer is no longer available");
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     CHECK(sendMessage(resp));
@@ -437,7 +445,12 @@ int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& si
     }
     bool sendBlock = false;
     if (size > 0) {
-        if (!curMsgId_) {
+        if (!msg->pos) {
+            if (curMsgId_) {
+                // TODO: Support asynchronous writing to multiple message instances
+                LOG(WARN, "CoAP message buffer is already in use");
+                releaseMessageBuffer();
+            }
             if (msg->blockIndex.has_value()) {
                 // Writing another message block
                 assert(msg->type == MessageType::REQUEST);
@@ -447,8 +460,7 @@ int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& si
             CHECK(prepareMessage(msg));
             *msg->pos++ = 0xff; // Payload marker
         } else if (curMsgId_ != msg->id) {
-            // TODO: Support asynchronous writing to multiple message instances
-            LOG(ERROR, "CoAP message buffer is already in use");
+            LOG(ERROR, "CoAP message buffer is no longer available");
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
         auto bytesToWrite = size;
@@ -498,7 +510,7 @@ int CoapChannel::readPayload(coap_message* apiMsg, char* data, size_t& size, coa
         }
         if (curMsgId_ != msg->id) {
             // TODO: Support asynchronous reading from multiple message instances
-            LOG(ERROR, "CoAP message buffer is already in use");
+            LOG(ERROR, "CoAP message buffer is no longer available");
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
         auto bytesToRead = std::min<size_t>(size, msg->end - msg->pos);
@@ -548,7 +560,7 @@ int CoapChannel::peekPayload(coap_message* apiMsg, char* data, size_t size) {
         }
         if (curMsgId_ != msg->id) {
             // TODO: Support asynchronous reading from multiple message instances
-            LOG(ERROR, "CoAP message buffer is already in use");
+            LOG(ERROR, "CoAP message buffer is no longer available");
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
         size = std::min<size_t>(size, msg->end - msg->pos);
@@ -770,7 +782,7 @@ void CoapChannel::close(int error) {
 int CoapChannel::handleCon(const Message& msgBuf) {
     if (curMsgId_) {
         // TODO: Support asynchronous reading/writing to multiple message instances
-        LOG(ERROR, "CoAP message buffer is already in use");
+        LOG(WARN, "CoAP message buffer is already in use");
         // Contents of the buffer have already been overwritten at this point
         releaseMessageBuffer();
     }
@@ -792,7 +804,7 @@ int CoapChannel::handleCon(const Message& msgBuf) {
 int CoapChannel::handleAck(const Message& msgBuf) {
     if (curMsgId_) {
         // TODO: Support asynchronous reading/writing to multiple message instances
-        LOG(ERROR, "CoAP message buffer is already in use");
+        LOG(WARN, "CoAP message buffer is already in use");
         // Contents of the buffer have already been overwritten at this point
         releaseMessageBuffer();
     }
@@ -808,7 +820,7 @@ int CoapChannel::handleAck(const Message& msgBuf) {
 int CoapChannel::handleRst(const Message& msgBuf) {
     if (curMsgId_) {
         // TODO: Support asynchronous reading/writing to multiple message instances
-        LOG(ERROR, "CoAP message buffer is already in use");
+        LOG(WARN, "CoAP message buffer is already in use");
         // Contents of the buffer have already been overwritten at this point
         releaseMessageBuffer();
     }
@@ -1219,6 +1231,7 @@ int CoapChannel::sendMessage(RefCountPtr<CoapMessage> msg) {
     msg->state = MessageState::WAIT_ACK;
     addRefToList(unackMsgs_, std::move(msg));
     releaseMessageBuffer();
+    msg->pos = nullptr;
     return 0;
 }
 
