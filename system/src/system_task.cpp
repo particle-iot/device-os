@@ -31,8 +31,6 @@
 #include "system_mode.h"
 #include "system_network.h"
 #include "system_network_internal.h"
-#include "system_network_diagnostics.h"
-#include "system_connection_manager.h"
 #include "system_update.h"
 #include "firmware_update.h"
 #include "spark_macros.h"
@@ -49,7 +47,12 @@
 #include "system_power.h"
 #include "simple_pool_allocator.h"
 #include "system_ble_prov.h"
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
+// TODO: Delete this when testing is done
+#include "system_network_diagnostics.h"
+#include "system_connection_manager.h"
 #include "system_cache.h"
+#endif
 
 #include "spark_wiring_network.h"
 #include "spark_wiring_constants.h"
@@ -797,11 +800,11 @@ void* system_internal(int item, void* reserved)
     case 3: {
         return reinterpret_cast<void*>(system_cloud_get_socket_handle());
     }
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
     case 4: {
         particle::system::ConnectionTester::instance()->testConnections();
         return nullptr;
     }
-#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
     case 5: {
         return reinterpret_cast<void*>(&lwip_stats);
     }
@@ -827,7 +830,7 @@ void* system_internal(int item, void* reserved)
         services::SystemCache::instance().del(services::SystemCacheKey::CELLULAR_DEVICE_INFO);
         return nullptr;
     }
-#endif
+#endif //#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
     default:
         return nullptr;
     }

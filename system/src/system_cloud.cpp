@@ -339,11 +339,16 @@ int spark_get_connection_property(unsigned property, void* data, size_t* size, v
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     case SPARK_CLOUD_GET_NETWORK_INTERFACE: {
+#if PLATFORM_ID == PLATFORM_MSOM
         if (*size >= sizeof(network_interface_t)) {
             *((network_interface_t*)data) = ConnectionManager::instance()->getCloudConnectionNetwork();
             return 0;    
         }
         return SYSTEM_ERROR_INVALID_ARGUMENT;
+#else
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif
+        
     }
     default:
         return SYSTEM_ERROR_INVALID_ARGUMENT;

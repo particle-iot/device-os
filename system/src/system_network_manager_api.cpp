@@ -406,7 +406,6 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
     return ListeningModeHandler::instance()->enqueueCommand(command, arg);
 }
 
-// TODO: Better order/location in file + ifdef guard?
 network_handle_t network_preferred(network_handle_t network, bool preferred, void* reserved) {
     ConnectionManager::instance()->setPreferredNetwork(network, preferred);
     return ConnectionManager::instance()->getPreferredNetwork();

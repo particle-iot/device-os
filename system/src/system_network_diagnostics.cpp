@@ -299,6 +299,8 @@ public:
     }
 } g_networkAccessTechnologyDiagData;
 
+
+#if PLATFORM_ID == PLATFORM_MSOM
 class CloudConnectionInterfaceDiagnosticData : public AbstractIntegerDiagnosticData
 {
 public:
@@ -334,7 +336,7 @@ public:
     }
 
 } g_cloudConnectionInterfaceDiagData;
-
+#endif
 
 // TODO: Change to enum based diagnostic data for cloud connection interface
 // class CloudConnectionInterfaceDiagnosticData : public EnumDiagnosticData<NetworkInterface, NoConcurrency>
