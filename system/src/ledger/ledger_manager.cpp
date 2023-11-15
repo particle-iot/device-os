@@ -70,6 +70,9 @@ const unsigned MAX_LEDGER_COUNT = 20;
 const unsigned MIN_SYNC_DELAY = 5000;
 const unsigned MAX_SYNC_DELAY = 30000;
 
+const unsigned MIN_RETRY_DELAY = 30000;
+const unsigned MAX_RETRY_DELAY = 5 * 60000;
+
 const auto REQUEST_URI = "L";
 const auto REQUEST_METHOD = COAP_METHOD_POST;
 
@@ -221,10 +224,13 @@ LedgerManager::LedgerManager() :
         curCtx_(nullptr),
         msg_(nullptr),
         nextSyncTime_(0),
+        retryTime_(0),
+        retryDelay_(0),
         bytesInBuf_(0),
         state_(State::NEW),
         pendingState_(0),
-        reqId_(COAP_INVALID_REQUEST_ID) {
+        reqId_(COAP_INVALID_REQUEST_ID),
+        resubscribe_(false) {
 }
 
 LedgerManager::~LedgerManager() {
@@ -235,7 +241,7 @@ LedgerManager::~LedgerManager() {
 }
 
 int LedgerManager::init() {
-    if (state_ != State::NEW || spark_cloud_flag_connected()) { // Must be disconnected from the cloud
+    if (state_ != State::NEW || spark_cloud_flag_connected()) { // Device must not be connected to the cloud
         return SYSTEM_ERROR_INVALID_STATE;
     }
     // TODO: Allow seeking in ledger and CoAP message streams so that an intermediate buffer is not
@@ -452,6 +458,15 @@ int LedgerManager::removeAllData() {
 
 void LedgerManager::run() {
     std::lock_guard lock(mutex_);
+    if (state_ == State::FAILED) {
+        // TODO: Use an RTOS timer
+        auto now = hal_timer_millis(nullptr);
+        if (now >= retryTime_) {
+            LOG(INFO, "Retrying synchronization");
+            startSync();
+        }
+        return;
+    }
     int r = processTasks();
     if (r < 0) {
         LOG(ERROR, "Failed to process ledger task: %d", r);
@@ -469,13 +484,13 @@ int LedgerManager::processTasks() {
         CHECK(sendGetInfoRequest());
         return 0;
     }
-    if (pendingState_ & PendingState::SUBSCRIBE) {
+    if ((pendingState_ & PendingState::SUBSCRIBE) || resubscribe_) {
         LOG(INFO, "Subscribing to ledger updates");
         CHECK(sendSubscribeRequest());
         return 0;
     }
     if (pendingState_ & PendingState::SYNC_TO_CLOUD) {
-        // TODO: Use RTOS timers
+        // TODO: Use an RTOS timer
         auto now = hal_timer_millis(nullptr);
         if (now >= nextSyncTime_) {
             uint64_t t = 0;
@@ -521,29 +536,7 @@ int LedgerManager::notifyConnected() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     LOG(TRACE, "Connected");
-    for (auto& ctx: contexts_) {
-        switch (ctx->syncDir) {
-        case LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD: {
-            if (ctx->syncPending) {
-                setPendingState(ctx.get(), PendingState::SYNC_TO_CLOUD);
-                updateSyncTime(ctx.get());
-            }
-            break;
-        }
-        case LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE: {
-            // TODO: Cache ledger subscriptions in the session data
-            setPendingState(ctx.get(), PendingState::SUBSCRIBE);
-            break;
-        }
-        case LEDGER_SYNC_DIRECTION_UNKNOWN: {
-            setPendingState(ctx.get(), PendingState::GET_INFO);
-            break;
-        }
-        default:
-            break;
-        }
-    }
-    state_ = State::READY;
+    startSync();
     return 0;
 }
 
@@ -552,11 +545,12 @@ void LedgerManager::notifyDisconnected(int /* error */) {
         return;
     }
     if (state_ == State::NEW) {
-        LOG(ERROR, "Unexpected manager state: %d", (int)state_);
+        LOG_DEBUG(ERROR, "Unexpected manager state: %d", (int)state_);
         return;
     }
     LOG(TRACE, "Disconnected");
     reset();
+    retryDelay_ = 0;
     state_ = State::OFFLINE;
 }
 
@@ -877,6 +871,7 @@ int LedgerManager::receiveSubscribeResponse(coap_message* msg, int result) {
             return SYSTEM_ERROR_LEDGER_INVALID_RESPONSE;
         }
     }
+    resubscribe_ = false;
     state_ = State::READY;
     return 0;
 }
@@ -1013,7 +1008,7 @@ int LedgerManager::receiveGetInfoResponse(coap_message* msg, int result) {
                 CHECK(ledger->updateInfo(info));
                 if (ctx->syncDir == LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE) {
                     ctx->resetDeviceToCloudState();
-                    // TODO: Unsubscribe from deleted ledgers
+                    d.resubscribe = true;
                 }
                 ctx->updateFromLedgerInfo(info);
             }
@@ -1022,6 +1017,10 @@ int LedgerManager::receiveGetInfoResponse(coap_message* msg, int result) {
         } else if (d.resubscribe && ctx->syncDir == LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE) {
             setPendingState(ctx.get(), PendingState::SUBSCRIBE);
         }
+    }
+    if (d.resubscribe) {
+        // Make sure to clear the subscriptions on the server if no ledgers left to subscribe to
+        resubscribe_ = true;
     }
     if (d.localInfoIsInvalid) {
         return SYSTEM_ERROR_LEDGER_INCONSISTENT_STATE;
@@ -1353,13 +1352,30 @@ void LedgerManager::updateSyncTime(LedgerSyncContext* ctx) {
     }
 }
 
-void LedgerManager::handleError(int error) {
-    if (error < 0 && state_ >= State::READY) {
-        LOG(ERROR, "Ledger error: %d", error);
-        reset();
-        state_ = State::FAILED;
-        // TODO: Try recovering after a delay rather than next time the device connects to the cloud
+void LedgerManager::startSync() {
+    assert(state_ == State::OFFLINE || state_ == State::FAILED);
+    for (auto& ctx: contexts_) {
+        switch (ctx->syncDir) {
+        case LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD: {
+            if (ctx->syncPending) {
+                setPendingState(ctx.get(), PendingState::SYNC_TO_CLOUD);
+                updateSyncTime(ctx.get());
+            }
+            break;
+        }
+        case LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE: {
+            setPendingState(ctx.get(), PendingState::SUBSCRIBE);
+            break;
+        }
+        case LEDGER_SYNC_DIRECTION_UNKNOWN: {
+            setPendingState(ctx.get(), PendingState::GET_INFO);
+            break;
+        }
+        default:
+            break;
+        }
     }
+    state_ = State::READY;
 }
 
 void LedgerManager::reset() {
@@ -1391,6 +1407,16 @@ void LedgerManager::reset() {
     nextSyncTime_ = 0;
     bytesInBuf_ = 0;
     curCtx_ = nullptr;
+}
+
+void LedgerManager::handleError(int error) {
+    if (error < 0 && state_ >= State::READY) {
+        retryDelay_ = std::clamp(retryDelay_ * 2, MIN_RETRY_DELAY, MAX_RETRY_DELAY);
+        LOG(ERROR, "Synchronization failed: %d; retrying in %us", error, retryDelay_ / 1000);
+        reset();
+        retryTime_ = hal_timer_millis(nullptr) + retryDelay_;
+        state_ = State::FAILED;
+    }
 }
 
 LedgerManager::LedgerSyncContexts::ConstIterator LedgerManager::findContext(const char* name, bool& found) const {

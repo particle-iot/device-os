@@ -851,6 +851,12 @@ int CoapChannel::handleRst(const Message& msgBuf) {
     return Result::HANDLED;
 }
 
+int CoapChannel::run() {
+    // TODO: ACK timeouts are handled by the old protocol implementation. As of now, the server always
+    // replies with piggybacked responses so we don't need to handle separate response timeouts either
+    return 0;
+}
+
 CoapChannel* CoapChannel::instance() {
     static CoapChannel channel;
     return &channel;

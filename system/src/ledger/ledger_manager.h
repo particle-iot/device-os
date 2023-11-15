@@ -76,8 +76,8 @@ protected:
 private:
     enum class State {
         NEW, // Manager is not initialized
-        FAILED, // Synchronization failed
         OFFLINE, // Device is offline
+        FAILED, // Synchronization failed
         READY, // Ready to run a task
         SYNC_TO_CLOUD, // Synchronizing a device-to-cloud ledger
         SYNC_FROM_CLOUD, // Synchronizing a cloud-to-device ledger
@@ -99,11 +99,14 @@ private:
     std::unique_ptr<char[]> buf_; // Intermediate buffer used for piping ledger data
     LedgerSyncContext* curCtx_; // Context of the ledger being synchronized
     coap_message* msg_; // CoAP request or response that is being sent or received
-    uint64_t nextSyncTime_; // Nearest time a device-to-cloud ledger needs to be synchronized
+    uint64_t nextSyncTime_; // Time when the next device-to-cloud ledger needs to be synchronized (ticks)
+    uint64_t retryTime_; // Time when synchronization can be retried (ticks)
+    unsigned retryDelay_; // Delay before retrying synchronization
     size_t bytesInBuf_; // Number of bytes stored in the intermediate buffer
-    State state_; // Current state
-    int pendingState_; // Pending state flags
+    State state_; // Current manager state
+    int pendingState_; // Pending ledger state flags
     int reqId_; // ID of the ongoing CoAP request
+    bool resubscribe_; // Whether the ledger subcriptions need to be updated
 
     mutable StaticRecursiveMutex mutex_; // Manager lock
 
@@ -138,9 +141,10 @@ private:
     void clearPendingState(LedgerSyncContext* ctx, int state);
     void updateSyncTime(LedgerSyncContext* ctx);
 
-    void handleError(int error);
-
+    void startSync();
     void reset();
+
+    void handleError(int error);
 
     LedgerSyncContexts::ConstIterator findContext(const char* name, bool& found) const;
 
