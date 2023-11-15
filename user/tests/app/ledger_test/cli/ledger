@@ -34,11 +34,11 @@ Commands:
     touch <name>
         Create a ledger if it doesn't exist.
     info [<name>] [--raw]
-        Get ledger info.
+        Get ledger info. If \`name\` is not provided, returns the info for all ledgers.
     list [--raw]
         List the ledgers.
     remove <name>|--all
-        Remove a ledger.
+        Remove a specific ledger or all ledgers.
     connect
         Connect to the Cloud.
     disconnect
