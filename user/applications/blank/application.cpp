@@ -1,14 +1,17 @@
 #include "Particle.h"
 
-SYSTEM_MODE(AUTOMATIC);
+SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
 STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 
+retained uint8_t resetRetry = 0;
+#define ETHERNET_RETRY_MAX (10)
+
 #define CMD_SERIAL Serial1
 
-Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, 
+SerialLogHandler logHandler(LOG_LEVEL_ALL,
 {
-    { "app", LOG_LEVEL_ALL }, 
+    { "app", LOG_LEVEL_ALL },
     //{ "sys.power", LOG_LEVEL_TRACE },
     { "comm.protocol", LOG_LEVEL_TRACE },
     { "system", LOG_LEVEL_TRACE },
@@ -27,7 +30,7 @@ Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL,
     { "mux", LOG_LEVEL_ERROR },
     { "net.ppp.ipcp", LOG_LEVEL_ERROR },
     { "comm.cloud.posix", LOG_LEVEL_TRACE },
-}   
+}
 );
 
 // Copied from system_connection_manager.h
@@ -89,17 +92,98 @@ void logNetworkStates() {
 #endif
 
     auto activeNetwork = Particle.connectionInterface();
-    Log.info("Ethernet Ready: %d WiFi ready: %d Cellular ready: %d Cloud conn: %lu", 
-        Ethernet.ready(), 
-        wifiReady, 
+    Log.info("Ethernet Ready: %d WiFi ready: %d Cellular ready: %d Cloud conn: %lu",
+        Ethernet.ready(),
+        wifiReady,
         cellReady,
         static_cast<network_interface_t>(activeNetwork));
 }
 
 void setup() {
-    Serial1.begin(115200);
+    CMD_SERIAL.begin(115200);
+
+    if (System.featureEnabled(FEATURE_DISABLE_LISTENING_MODE)) {
+        Log.info("Make sure Listening Mode is enabled so we can enter WiFi credentials");
+        System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    }
+
+    Log.info("Checking if Ethernet is on...");
+    if (Ethernet.isOn()) {
+        Log.info("Ethernet is on");
+        uint8_t macAddrBuf[8] = {};
+        uint8_t* macAddr = Ethernet.macAddress(macAddrBuf);
+        if (macAddr != nullptr) {
+            Log.info("Ethernet MAC: %02x %02x %02x %02x %02x %02x",
+                    macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
+        }
+        Ethernet.connect();
+        waitFor(Ethernet.ready, 30000);
+        Log.info("Ethernet.ready: %d", Ethernet.ready());
+        resetRetry = 0;
+    } else if (++resetRetry <= ETHERNET_RETRY_MAX) {
+        Log.info("Ethernet is off or not detected, attmpting to remap pins: %d/%d", resetRetry, ETHERNET_RETRY_MAX);
+
+        if (resetRetry == 4) {
+            Log.info("Reset Ethernet chip");
+            pinMode(A7, OUTPUT);
+            digitalWrite(A7, LOW);
+            delay(1000);
+            digitalWrite(A7, HIGH);
+            delay(1000);
+            pinMode(A7, INPUT); // HI-Z
+            delay(1000);
+        }
+
+        if_wiznet_pin_remap remap = {};
+        remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
+
+        remap.cs_pin = PIN_INVALID; // default
+        remap.reset_pin = PIN_INVALID; // default
+        remap.int_pin = PIN_INVALID; // default
+
+        // remap.cs_pin = D8; // MSoM Eval Board
+        // remap.reset_pin = A7;
+        // remap.int_pin = D22;
+
+        // remap.cs_pin = D5; // Feather Wing
+        // remap.reset_pin = D3;
+        // remap.int_pin = D4;
+
+        // remap.cs_pin = D2;
+        // remap.reset_pin = D0;
+        // remap.int_pin = D1;
+
+        // remap.cs_pin = D10;
+        // remap.reset_pin = D6;
+        // remap.int_pin = D7;
+
+        // remap.cs_pin = A0;
+        // remap.reset_pin = A2;
+        // remap.int_pin = A1;
+
+        // remap.cs_pin = 50; // bad pin config
+        // remap.reset_pin = 100;
+        // remap.int_pin = 150;
+
+        auto ret = if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
+        if (ret != SYSTEM_ERROR_NONE) {
+            Log.error("Ethernet GPIO config error: %d", ret);
+        } else {
+            if (System.featureEnabled(FEATURE_ETHERNET_DETECTION)) {
+                Log.info("FEATURE_ETHERNET_DETECTION enabled");
+            } else {
+                Log.info("Enabling Ethernet...");
+                System.enableFeature(FEATURE_ETHERNET_DETECTION);
+            }
+            delay(500);
+            System.reset();
+        }
+    }
+
+    // Do not connect by default so we can try to cold boot and connect with various methods
+    // Particle.connect();
 }
- 
+
 void loop() {
     if (!CMD_SERIAL.available()) {
         return;
@@ -108,6 +192,8 @@ void loop() {
     while (CMD_SERIAL.available()) {
         char c = CMD_SERIAL.read();
         logNetworkStates();
+
+        LOG_PRINTF_C(INFO, "app", "\r\nSerial Command: %c\r\n", c);
 
         if (c == 'p') {
             Log.info("Particle.publishVitals");
@@ -118,16 +204,16 @@ void loop() {
             system_internal(4, nullptr);
         }
         else if(c == '2') {
-            stats_* lwipStats = (stats_*)system_internal(5, nullptr); 
-            Log.info("LWIP link  xmit: %u recv %u drop %u err %u", 
+            stats_* lwipStats = (stats_*)system_internal(5, nullptr);
+            Log.info("LWIP link  xmit: %u recv %u drop %u err %u",
                 lwipStats->link.xmit, lwipStats->link.recv, lwipStats->link.drop, lwipStats->link.err);
-            Log.info("LWIP udp   xmit: %u recv %u drop %u err %u proterr %u", 
+            Log.info("LWIP udp   xmit: %u recv %u drop %u err %u proterr %u",
                 lwipStats->udp.xmit, lwipStats->udp.recv, lwipStats->udp.drop, lwipStats->udp.err, lwipStats->udp.proterr);
 
             // Connection tester metrics
             const Vector<ConnectionMetrics>* ConnectionTesterDiagnostics = (const Vector<ConnectionMetrics>*)(system_internal(6, nullptr));
             for (auto& i: *ConnectionTesterDiagnostics) {
-                Log.info("interface %lu tx bytes %lu rx bytes %lu", 
+                Log.info("interface %lu tx bytes %lu rx bytes %lu",
                     i.interface, i.txBytes, i.rxBytes, i.avgPacketRoundTripTime);
             }
         }
@@ -141,6 +227,13 @@ void loop() {
         else if(c == '4') {
             Particle.disconnect();
             waitUntil(Particle.disconnected);
+
+            // FIXME: Particle.connect(Cellular); should take care of this:
+            // Cellular.on();
+            // waitUntil(Cellular.isOn);
+            // Cellular.connect();
+            // waitUntil(Cellular.ready);
+
             Log.info("Binding to cell interface");
             Particle.connect(Cellular);
         }
@@ -186,7 +279,7 @@ void loop() {
         else if (c == 'c') {
             static bool cellState = true;
             Log.info("Cell state: %d", cellState);
-            
+
             if(cellState){
                 Cellular.on();
                 Cellular.connect();
@@ -230,12 +323,12 @@ void loop() {
             cache = (CellularDeviceCached*)system_internal(8, nullptr);
             printCellularCacheInfo(cache);
 
-        }  
+        }
 #endif // HAL_PLATFORM_CELLULAR
         else if (c == 'g') {
             static bool ethernetConnect = true;
             Log.info("ethernetConnect: %d", ethernetConnect);
-            
+
             if(ethernetConnect){
                 Ethernet.connect();
             } else {
