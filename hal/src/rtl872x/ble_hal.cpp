@@ -497,7 +497,7 @@ private:
     struct BleGapCache {
         bool isAdv;
         bool isScan;
-        bool isconn;
+        bool isConn;
     };
 
     struct BleConnection {
@@ -1163,7 +1163,7 @@ int BleGap::start() {
     LOCAL_DEBUG("wait GAP_INIT_STATE_STACK_READY");
     CHECK(waitState(BleGapDevState().init(GAP_INIT_STATE_STACK_READY), BLE_STATE_DEFAULT_TIMEOUT, true /* force poll */));
     btStackStarted_ = true;
-    if (cache_.isAdv || cache_.isconn) {
+    if (cache_.isAdv || cache_.isConn) {
         LOG(TRACE, "Restore advertising state");
         startAdvertising(); // Despite of the result.
     }
@@ -1180,7 +1180,7 @@ int BleGap::stop(bool restore) {
     if (restore) {
         cache_.isAdv = isAdvertising_;
         cache_.isScan = isScanning_;
-        cache_.isconn = connectedAsBlePeripheral();
+        cache_.isConn = connectedAsBlePeripheral();
     } else {
         cache_ = {};
     }
@@ -1646,7 +1646,7 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
 
     SCOPE_GUARD ({
         if (isScanning_) {
-            const int LE_SCAN_STOP_RETRIES = 1;
+            const int LE_SCAN_STOP_RETRIES = 10;
             for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
                 // This has seen failing a number of times at least
                 // with btgap logging enabled. Retry a few times just in case,
@@ -2216,9 +2216,15 @@ void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
                         newState.gap_init_state, newState.gap_adv_state, newState.gap_adv_sub_state, newState.gap_scan_state, newState.gap_conn_state, cause);
     RtlGapDevState nState;
     nState.state = newState;
+    // In case of race condition in stack
+    RtlGapDevState s;
+    if (le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state) == GAP_CAUSE_SUCCESS && nState.raw != s.raw) {
+        LOCAL_DEBUG("!!!!!!!!! Race condition. Notified: %02X, Get: %02X", nState.raw, s.raw);
+        nState.state = s.state;
+    }
     // NOTE: this event is generated before the connection is established
-    if (newState.gap_adv_state != state_.state.gap_adv_state && newState.gap_adv_state == GAP_ADV_STATE_IDLE) {
-        if (newState.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
+    if (nState.state.gap_adv_state != state_.state.gap_adv_state && nState.state.gap_adv_state == GAP_ADV_STATE_IDLE) {
+        if (nState.state.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
             isAdvertising_ = false; // adv timer has higher priority, just in case that the BLE_CMD_STOP_ADV_NOTIFY
                                     // has been enqueued, followed by nontifying the ADV stopped event. Under
                                     // certain circumstance notifying the ADV stopped event will cause BLE re-adv,
@@ -2229,12 +2235,6 @@ void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
         }
     }
     state_.raw = nState.raw;
-    // In case of race condition in stack
-    RtlGapDevState s;
-    if (le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state) == GAP_CAUSE_SUCCESS && nState.raw != s.raw) {
-        LOCAL_DEBUG("!!!!!!!!! Race condition. Notified: %02X, Get: %02X", nState.raw, s.raw);
-        state_.raw = s.raw;
-    }
     os_semaphore_give(stateSemaphore_, false);
 }
 
