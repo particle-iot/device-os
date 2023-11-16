@@ -49,9 +49,11 @@
 #include "system_ble_prov.h"
 #if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 // TODO: Delete this when testing is done
+#include "ifapi.h"
 #include "system_network_diagnostics.h"
 #include "system_connection_manager.h"
 #include "system_cache.h"
+#include "system_network_manager.h"
 #endif
 
 #include "spark_wiring_network.h"
@@ -828,6 +830,21 @@ void* system_internal(int item, void* reserved)
     case 9: {
         // Delete cached cellular ID
         services::SystemCache::instance().del(services::SystemCacheKey::CELLULAR_DEVICE_INFO);
+        return nullptr;
+    }
+    case 10: {
+        // Log internal network manager interface states
+        int interfaces[3] = { NETWORK_INTERFACE_ETHERNET, NETWORK_INTERFACE_CELLULAR, NETWORK_INTERFACE_WIFI_STA };
+        for (int i = 0; i < 3; i++) {
+            if_t iface;
+            if_get_by_index(interfaces[i], &iface);
+            bool ifEnabled = particle::system::NetworkManager::instance()->isInterfaceEnabled(iface);
+            bool ifConfigured = particle::system::NetworkManager::instance()->isConfigured(iface);
+            bool ifOn = particle::system::NetworkManager::instance()->isInterfaceOn(iface);
+            bool ifPhy = particle::system::NetworkManager::instance()->isInterfacePhyReady(iface);
+            bool ipUp = ((int)particle::system::NetworkManager::instance()->getInterfaceIp4State(iface) == 2);
+            LOG(TRACE, "IF %d enabled %d configured %d power %d phyready %d ipConfigured %d", interfaces[i], ifEnabled, ifConfigured, ifOn, ifPhy, ipUp);
+        }
         return nullptr;
     }
 #endif //#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL

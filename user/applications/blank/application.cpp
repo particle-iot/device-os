@@ -92,11 +92,13 @@ void logNetworkStates() {
 #endif
 
     auto activeNetwork = Particle.connectionInterface();
-    Log.info("Ethernet Ready: %d WiFi ready: %d Cellular ready: %d Cloud conn: %lu",
+    Log.info("Ethernet Ready: %d Cellular ready: %d WiFi ready: %d Cloud conn: %lu",
         Ethernet.ready(),
-        wifiReady,
         cellReady,
+        wifiReady,
         static_cast<network_interface_t>(activeNetwork));
+    // Detailed interface state
+    system_internal(10, nullptr);
 }
 
 void setup() {
