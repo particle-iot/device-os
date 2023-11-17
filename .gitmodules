@@ -53,3 +53,4 @@
 [submodule "proto_defs/shared"]
 	path = proto_defs/shared
 	url = https://github.com/particle-iot/device-os-protobuf.git
+	branch = feature/add-hash-for-modules

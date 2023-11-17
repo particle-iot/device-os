@@ -425,6 +425,7 @@ bool module_info_to_json(AppendJson& json, const hal_module_t* module, uint32_t 
 
 bool system_info_to_json(appender_fn append, void* append_data, hal_system_info_t& system)
 {
+    // System info will not contain assets. For getting assets info, use control request CTRL_REQUEST_GET_MODULE_INFO instead.
     AppendJson json(append, append_data);
     json.name("p").value(system.platform_id);
     for (unsigned i = 0; i < system.key_value_count; i++) {

@@ -78,6 +78,9 @@ PB_BIND(particle_ctrl_GetModuleInfoReply, particle_ctrl_GetModuleInfoReply, AUTO
 PB_BIND(particle_ctrl_GetModuleInfoReply_Dependency, particle_ctrl_GetModuleInfoReply_Dependency, AUTO)
 
 
+PB_BIND(particle_ctrl_GetModuleInfoReply_FirmwareModuleAsset, particle_ctrl_GetModuleInfoReply_FirmwareModuleAsset, AUTO)
+
+
 PB_BIND(particle_ctrl_GetModuleInfoReply_Module, particle_ctrl_GetModuleInfoReply_Module, AUTO)
 
 

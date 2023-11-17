@@ -38,6 +38,10 @@
 
 #include <memory>
 
+#if HAL_PLATFORM_ASSETS
+#include "asset_manager.h"
+#endif // HAL_PLATFORM_ASSETS
+
 #define PB(_name) particle_ctrl_##_name
 
 namespace particle {
@@ -190,6 +194,29 @@ int firmwareUpdateDataRequest(ctrl_request* req) {
     return 0;
 }
 
+#if HAL_PLATFORM_ASSETS
+
+bool encodeAssetDependencies(pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
+    auto assets = (const spark::Vector<Asset>*)*arg;
+    for (const auto& asset: *assets) {
+        PB(GetModuleInfoReply_FirmwareModuleAsset) pbModuleAsset = {};
+        EncodedString pbName(&pbModuleAsset.name);
+        EncodedString pbHash(&pbModuleAsset.hash);
+        // TODO: hash type
+        pbName.data = asset.name().c_str();
+        pbName.size = asset.name().length();
+
+        pbHash.data = asset.hash().hash().data();
+        pbHash.size = asset.hash().hash().size();
+        if (!pb_encode_tag_for_field(strm, field) || !pb_encode_submessage(strm, &PB(GetModuleInfoReply_FirmwareModuleAsset_msg), &pbModuleAsset)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+#endif // HAL_PLATFORM_ASSETS
+
 int getModuleInfo(ctrl_request* req) {
     hal_system_info_t info = {};
     info.size = sizeof(info);
@@ -246,6 +273,15 @@ int getModuleInfo(ctrl_request* req) {
                 }
                 return true;
             };
+#if HAL_PLATFORM_ASSETS
+            spark::Vector<Asset> assets;
+            if ((module.info.module_function == MODULE_FUNCTION_USER_PART) && (module.validity_result & MODULE_VALIDATION_INTEGRITY)) {
+                if (!AssetManager::requiredAssetsForModule(&module, assets) && assets.size() > 0) {
+                    pbModule.asset_dependencies.arg = (void*)&assets;
+                    pbModule.asset_dependencies.funcs.encode = encodeAssetDependencies;
+                }
+            }
+#endif // HAL_PLATFORM_ASSETS            
             if (!pb_encode_tag_for_field(strm, field)) {
                 return false;
             }
@@ -255,6 +291,13 @@ int getModuleInfo(ctrl_request* req) {
         }
         return true;
     };
+#if HAL_PLATFORM_ASSETS
+    auto availableAssets = AssetManager::instance().availableAssets();
+    if (availableAssets.size() > 0) {
+        pbRep.assets.arg = (void*)&availableAssets;
+        pbRep.assets.funcs.encode = encodeAssetDependencies;
+    }
+#endif // HAL_PLATFORM_ASSETS
     CHECK(encodeReplyMessage(req, PB(GetModuleInfoReply_fields), &pbRep));
     return 0;
 }
