@@ -5,6 +5,7 @@
 #define PB_PARTICLE_CTRL_CONTROL_STORAGE_PB_H_INCLUDED
 #include <pb.h>
 #include "control/extensions.pb.h"
+#include "cloud/describe.pb.h"
 
 #if PB_PROTO_HEADER_VERSION != 40
 #error Regenerate this file with the current version of nanopb generator.
@@ -93,7 +94,17 @@ typedef struct _particle_ctrl_FirmwareUpdateDataRequest {
     pb_callback_t data; 
 } particle_ctrl_FirmwareUpdateDataRequest;
 
+typedef struct _particle_ctrl_GetAssetInfoReply { 
+    pb_callback_t available; 
+    pb_callback_t required; 
+} particle_ctrl_GetAssetInfoReply;
+
+typedef struct _particle_ctrl_GetAssetInfoRequest { 
+    char dummy_field;
+} particle_ctrl_GetAssetInfoRequest;
+
 typedef struct _particle_ctrl_GetModuleInfoReply { 
+    pb_callback_t modules_deprecated; 
     pb_callback_t modules; 
 } particle_ctrl_GetModuleInfoReply;
 
@@ -145,13 +156,16 @@ typedef struct _particle_ctrl_GetModuleInfoReply_Module {
     pb_callback_t dependencies; 
 } particle_ctrl_GetModuleInfoReply_Module;
 
+/* *
+ Get asset info. */
 typedef struct _particle_ctrl_GetSectionDataSizeReply { 
     uint32_t size; 
 } particle_ctrl_GetSectionDataSizeReply;
 
 typedef struct _particle_ctrl_GetSectionDataSizeRequest { 
     uint32_t storage; /* Firmware modules */
-    uint32_t section; 
+    /* TODO: move these messages to common place */
+    uint32_t section; /* /< Firmware modules */
 } particle_ctrl_GetSectionDataSizeRequest;
 
 typedef struct _particle_ctrl_ReadSectionDataRequest { 
@@ -239,9 +253,11 @@ extern "C" {
 #define particle_ctrl_GetSectionDataSizeRequest_init_default {0, 0}
 #define particle_ctrl_GetSectionDataSizeReply_init_default {0}
 #define particle_ctrl_GetModuleInfoRequest_init_default {0}
-#define particle_ctrl_GetModuleInfoReply_init_default {{{NULL}, NULL}}
+#define particle_ctrl_GetModuleInfoReply_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
 #define particle_ctrl_GetModuleInfoReply_Dependency_init_default {_particle_ctrl_FirmwareModuleType_MIN, 0, 0}
 #define particle_ctrl_GetModuleInfoReply_Module_init_default {_particle_ctrl_FirmwareModuleType_MIN, 0, 0, 0, 0, {{NULL}, NULL}}
+#define particle_ctrl_GetAssetInfoRequest_init_default {0}
+#define particle_ctrl_GetAssetInfoReply_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
 #define particle_ctrl_StartFirmwareUpdateRequest_init_zero {0, _particle_ctrl_FileFormat_MIN}
 #define particle_ctrl_StartFirmwareUpdateReply_init_zero {0}
 #define particle_ctrl_FinishFirmwareUpdateRequest_init_zero {0}
@@ -264,14 +280,19 @@ extern "C" {
 #define particle_ctrl_GetSectionDataSizeRequest_init_zero {0, 0}
 #define particle_ctrl_GetSectionDataSizeReply_init_zero {0}
 #define particle_ctrl_GetModuleInfoRequest_init_zero {0}
-#define particle_ctrl_GetModuleInfoReply_init_zero {{{NULL}, NULL}}
+#define particle_ctrl_GetModuleInfoReply_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
 #define particle_ctrl_GetModuleInfoReply_Dependency_init_zero {_particle_ctrl_FirmwareModuleType_MIN, 0, 0}
 #define particle_ctrl_GetModuleInfoReply_Module_init_zero {_particle_ctrl_FirmwareModuleType_MIN, 0, 0, 0, 0, {{NULL}, NULL}}
+#define particle_ctrl_GetAssetInfoRequest_init_zero {0}
+#define particle_ctrl_GetAssetInfoReply_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_ctrl_DescribeStorageReply_storage_tag 1
 #define particle_ctrl_FirmwareUpdateDataRequest_data_tag 1
-#define particle_ctrl_GetModuleInfoReply_modules_tag 1
+#define particle_ctrl_GetAssetInfoReply_available_tag 1
+#define particle_ctrl_GetAssetInfoReply_required_tag 2
+#define particle_ctrl_GetModuleInfoReply_modules_deprecated_tag 1
+#define particle_ctrl_GetModuleInfoReply_modules_tag 2
 #define particle_ctrl_ReadSectionDataReply_data_tag 1
 #define particle_ctrl_ClearSectionDataRequest_storage_tag 1
 #define particle_ctrl_ClearSectionDataRequest_section_tag 2
@@ -439,10 +460,12 @@ X(a, STATIC,   SINGULAR, UINT32,   size,              1)
 #define particle_ctrl_GetModuleInfoRequest_DEFAULT NULL
 
 #define particle_ctrl_GetModuleInfoReply_FIELDLIST(X, a) \
-X(a, CALLBACK, REPEATED, MESSAGE,  modules,           1)
+X(a, CALLBACK, REPEATED, MESSAGE,  modules_deprecated,   1) \
+X(a, CALLBACK, REPEATED, MESSAGE,  modules,           2)
 #define particle_ctrl_GetModuleInfoReply_CALLBACK pb_default_field_callback
 #define particle_ctrl_GetModuleInfoReply_DEFAULT NULL
-#define particle_ctrl_GetModuleInfoReply_modules_MSGTYPE particle_ctrl_GetModuleInfoReply_Module
+#define particle_ctrl_GetModuleInfoReply_modules_deprecated_MSGTYPE particle_ctrl_GetModuleInfoReply_Module
+#define particle_ctrl_GetModuleInfoReply_modules_MSGTYPE particle_cloud_FirmwareModule
 
 #define particle_ctrl_GetModuleInfoReply_Dependency_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    type,              1) \
@@ -461,6 +484,19 @@ X(a, CALLBACK, REPEATED, MESSAGE,  dependencies,      6)
 #define particle_ctrl_GetModuleInfoReply_Module_CALLBACK pb_default_field_callback
 #define particle_ctrl_GetModuleInfoReply_Module_DEFAULT NULL
 #define particle_ctrl_GetModuleInfoReply_Module_dependencies_MSGTYPE particle_ctrl_GetModuleInfoReply_Dependency
+
+#define particle_ctrl_GetAssetInfoRequest_FIELDLIST(X, a) \
+
+#define particle_ctrl_GetAssetInfoRequest_CALLBACK NULL
+#define particle_ctrl_GetAssetInfoRequest_DEFAULT NULL
+
+#define particle_ctrl_GetAssetInfoReply_FIELDLIST(X, a) \
+X(a, CALLBACK, REPEATED, MESSAGE,  available,         1) \
+X(a, CALLBACK, REPEATED, MESSAGE,  required,          2)
+#define particle_ctrl_GetAssetInfoReply_CALLBACK pb_default_field_callback
+#define particle_ctrl_GetAssetInfoReply_DEFAULT NULL
+#define particle_ctrl_GetAssetInfoReply_available_MSGTYPE particle_cloud_FirmwareModuleAsset
+#define particle_ctrl_GetAssetInfoReply_required_MSGTYPE particle_cloud_FirmwareModuleAsset
 
 extern const pb_msgdesc_t particle_ctrl_StartFirmwareUpdateRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_StartFirmwareUpdateReply_msg;
@@ -487,6 +523,8 @@ extern const pb_msgdesc_t particle_ctrl_GetModuleInfoRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_GetModuleInfoReply_msg;
 extern const pb_msgdesc_t particle_ctrl_GetModuleInfoReply_Dependency_msg;
 extern const pb_msgdesc_t particle_ctrl_GetModuleInfoReply_Module_msg;
+extern const pb_msgdesc_t particle_ctrl_GetAssetInfoRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_GetAssetInfoReply_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define particle_ctrl_StartFirmwareUpdateRequest_fields &particle_ctrl_StartFirmwareUpdateRequest_msg
@@ -514,6 +552,8 @@ extern const pb_msgdesc_t particle_ctrl_GetModuleInfoReply_Module_msg;
 #define particle_ctrl_GetModuleInfoReply_fields &particle_ctrl_GetModuleInfoReply_msg
 #define particle_ctrl_GetModuleInfoReply_Dependency_fields &particle_ctrl_GetModuleInfoReply_Dependency_msg
 #define particle_ctrl_GetModuleInfoReply_Module_fields &particle_ctrl_GetModuleInfoReply_Module_msg
+#define particle_ctrl_GetAssetInfoRequest_fields &particle_ctrl_GetAssetInfoRequest_msg
+#define particle_ctrl_GetAssetInfoReply_fields &particle_ctrl_GetAssetInfoReply_msg
 
 /* Maximum encoded size of messages (where known) */
 /* particle_ctrl_FirmwareUpdateDataRequest_size depends on runtime parameters */
@@ -523,6 +563,7 @@ extern const pb_msgdesc_t particle_ctrl_GetModuleInfoReply_Module_msg;
 /* particle_ctrl_WriteSectionDataRequest_size depends on runtime parameters */
 /* particle_ctrl_GetModuleInfoReply_size depends on runtime parameters */
 /* particle_ctrl_GetModuleInfoReply_Module_size depends on runtime parameters */
+/* particle_ctrl_GetAssetInfoReply_size depends on runtime parameters */
 #define particle_ctrl_CancelFirmwareUpdateReply_size 0
 #define particle_ctrl_CancelFirmwareUpdateRequest_size 0
 #define particle_ctrl_ClearSectionDataReply_size 0
@@ -533,6 +574,7 @@ extern const pb_msgdesc_t particle_ctrl_GetModuleInfoReply_Module_msg;
 #define particle_ctrl_FinishFirmwareUpdateReply_size 0
 #define particle_ctrl_FinishFirmwareUpdateRequest_size 2
 #define particle_ctrl_FirmwareUpdateDataReply_size 0
+#define particle_ctrl_GetAssetInfoRequest_size   0
 #define particle_ctrl_GetModuleInfoReply_Dependency_size 14
 #define particle_ctrl_GetModuleInfoRequest_size  0
 #define particle_ctrl_GetSectionDataSizeReply_size 6

@@ -155,6 +155,14 @@ public:
     virtual int skip(size_t size);
 
     /**
+     * Seek to absolute position `pos`.
+     *
+     * @param pos Absolute position to seek to.
+     * @return int Resulting absolute position or `system_error_t` error code.
+     */
+    int seek(size_t pos);
+
+    /**
      * No-op, conforming to `Stream` interface.
      * 
      */

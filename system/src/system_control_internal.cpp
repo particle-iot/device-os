@@ -224,6 +224,12 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, control::getModuleInfo(req));
         break;
     }
+#if HAL_PLATFORM_ASSETS
+    case CTRL_REQUEST_GET_ASSET_INFO: {
+        setResult(req, control::getAssetInfo(req));
+        break;
+    }
+#endif // HAL_PLATFORM_ASSETS
     case CTRL_REQUEST_DIAGNOSTIC_INFO: {
         if (req->request_size > 0) {
             // TODO: Querying a part of the diagnostic data is not supported

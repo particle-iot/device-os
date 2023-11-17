@@ -128,6 +128,7 @@ public:
 
     const Vector<Asset>& requiredAssets() const;
     const Vector<Asset>& availableAssets() const;
+    Vector<Asset> availableAndRequiredAssets() const;
     Vector<Asset> missingAssets() const;
     Vector<Asset> unusedAssets() const;
 

@@ -31,12 +31,21 @@
 #include "scope_guard.h"
 #include "system_cache.h"
 #include "system_defs.h"
+#include "ota_module.h"
 
 namespace particle {
 
 namespace {
 
 const size_t FREE_BLOCKS_REQUIRED = 16;
+
+bool boundsMatches(const hal_module_t* module) {
+    auto bounds = find_module_bounds(module->info.module_function, module->info.module_index, module_mcu_target(&module->info));
+    if (!bounds) {
+        return false;
+    }
+    return !memcmp(&bounds, &module->bounds, sizeof(bounds));
+}
 
 // TODO: move to using streams as well?
 int parseAssetDependencies(Vector<Asset>& assets, hal_storage_id storageId, uintptr_t start, uintptr_t end) {
@@ -127,6 +136,16 @@ const Vector<Asset>& AssetManager::availableAssets() const {
     return availableAssets_;
 }
 
+Vector<Asset> AssetManager::availableAndRequiredAssets() const {
+    Vector<Asset> res;
+    for (const auto& asset: availableAssets_) {
+        if (requiredAssets_.contains(asset)) {
+            res.append(asset);
+        }
+    }
+    return res;
+}
+
 Vector<Asset> AssetManager::missingAssets() const {
     Vector<Asset> missing;
     for (const auto& asset: requiredAssets()) {
@@ -168,6 +187,10 @@ int AssetManager::requiredAssetsForModule(const hal_module_t* module, Vector<Ass
     if (module->info.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS) {
         // There are extensions in the prefix
         uintptr_t extensionsStart = (uintptr_t)module->info.module_start_address + module->module_info_offset + sizeof(module_info_t);
+        if (!boundsMatches(module)) {
+            extensionsStart -= (uintptr_t)module->info.module_start_address;
+            extensionsStart += (uintptr_t)module->bounds.start_address;
+        }
         CHECK(parseAssetDependencies(assets, storageId, extensionsStart, (uintptr_t)module->info.module_end_address));
     }
     // Suffix
@@ -177,6 +200,10 @@ int AssetManager::requiredAssetsForModule(const hal_module_t* module, Vector<Ass
     if (suffix.size > sizeof(module_info_suffix_base_t) + sizeof(module_info_extension_t) * 2) {
         // There are some additional extensions in suffix
         uintptr_t extensionsStart = (uintptr_t)module->info.module_end_address - suffix.size;
+        if (!boundsMatches(module)) {
+            extensionsStart -= (uintptr_t)module->info.module_start_address;
+            extensionsStart += (uintptr_t)module->bounds.start_address;
+        }
         CHECK(parseAssetDependencies(assets, storageId, extensionsStart, suffixStart));
     }
 
@@ -230,7 +257,7 @@ int AssetManager::parseAvailableAssets() {
         if (r) {
             LOG(WARN, "Failed to open asset %s", info.name);
         } else {
-            reader.validate(false /* full */);
+            reader.validate();
         }
         if (reader.isValid() && reader.size() == info.size) {
             if (!assets.append(reader.asset())) {
@@ -280,6 +307,11 @@ int AssetManager::storeAsset(const hal_module_t* module) {
     const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
+
+    // Unmount and remount in order to invalidate access to any of the currently opened assets
+    filesystem_unmount(fs);
+    availableAssets_.clear();
+    CHECK(filesystem_mount(fs));
 
     lfs_file_t file = {};
     lfs_remove(&fs->instance, info.name().c_str());
