@@ -247,6 +247,39 @@ public:
     }
     ///@}
 
+    /**
+     * Get the names of the ledgers stored on the device.
+     *
+     * @param[out] names Ledger names.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    static int getNames(Vector<String>& names);
+
+    /**
+     * Remove any data associated with a ledger from the device.
+     *
+     * The device must not be connected to the Cloud. The operation will fail if the ledger with the
+     * given name is in use.
+     *
+     * @note The data is not guaranteed to be removed in an irrecoverable way.
+     *
+     * @param name Ledger name.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    static int remove(const char* name);
+
+    /**
+     * Remove any ledger data from the device.
+     *
+     * The device must not be connected to the Cloud. The operation will fail if any of the ledgers
+     * is in use.
+     *
+     * @note The data is not guaranteed to be removed in an irrecoverable way.
+     *
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    static int removeAll();
+
     friend void swap(Ledger& ledger1, Ledger& ledger2) {
         using std::swap;
         swap(ledger1.instance_, ledger2.instance_);

@@ -1010,7 +1010,8 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         assert(req->blockIndex.has_value() && resp);
         if (blockIndex != req->blockIndex.value() || !etag || etagSize != req->tagSize ||
                 std::memcmp(etag, req->tag, etagSize) != 0) {
-            LOG(ERROR, "Received invalid blockwise response");
+            auto code = d.code();
+            LOG(ERROR, "Blockwise transfer failed: %d.%02d", (int)coapCodeClass(code), (int)coapCodeDetail(code));
             if (resp->errorCallback) {
                 resp->errorCallback(SYSTEM_ERROR_COAP, resp->requestId, resp->callbackArg);
             }

@@ -55,7 +55,7 @@ int getLedgerInfo(ledger_info& info, ledger_instance* ledger) {
     return r;
 }
 
-int getLedgerNames(const char**& names, size_t& count) {
+int getLedgerNames(char**& names, size_t& count) {
     int r = ledger_get_names(&names, &count, nullptr);
     if (r < 0) {
         Log.error("ledger_get_names() failed: %d", r);
@@ -409,12 +409,12 @@ int RequestHandler::touch(JsonRequest& req) {
 
 int RequestHandler::list(JsonRequest& req) {
     Log.info("Enumerating ledgers");
-    const char** names = nullptr;
+    char** names = nullptr;
     size_t count = 0;
     CHECK(getLedgerNames(names, count));
     SCOPE_GUARD({
         for (size_t i = 0; i < count; ++i) {
-            std::free((void*)names[i]); // FIXME: const char* -> char*
+            std::free(names[i]);
         }
         std::free(names);
     });

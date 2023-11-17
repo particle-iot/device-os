@@ -139,4 +139,26 @@ Ledger CloudClass::ledger(const char* name) {
     return Ledger(instance, false /* addRef */);
 }
 
+int CloudClass::useLedgersImpl(const Vector<const char*>& usedNames) {
+    Vector<String> allNames;
+    CHECK(Ledger::getNames(allNames));
+    int result = 0;
+    for (auto& name: allNames) {
+        bool found = false;
+        for (auto usedName: usedNames) {
+            if (name == usedName) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            int r = Ledger::remove(name);
+            if (r < 0 && result >= 0) {
+                result = r;
+            }
+        }
+    }
+    return result;
+}
+
 #endif // Wiring_Ledger

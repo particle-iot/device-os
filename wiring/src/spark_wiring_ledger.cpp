@@ -20,6 +20,7 @@
 #if Wiring_Ledger
 
 #include <memory>
+#include <cstdlib>
 
 #include "spark_wiring_ledger.h"
 
@@ -340,6 +341,52 @@ int Ledger::onSync(OnSyncFunction callback) {
         return Error::INVALID_STATE;
     }
     return setSyncCallback(instance_, std::move(callback));
+}
+
+int Ledger::getNames(Vector<String>& namesVec) {
+    char** names = nullptr;
+    size_t count = 0;
+    int r = ledger_get_names(&names, &count, nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_get_names() failed: %d", r);
+        return r;
+    }
+    SCOPE_GUARD({
+        for (size_t i = 0; i < count; ++i) {
+            std::free(names[i]);
+        }
+        std::free(names);
+    });
+    namesVec.clear();
+    if (!namesVec.reserve(count)) {
+        return Error::NO_MEMORY;
+    }
+    for (size_t i = 0; i < count; ++i) {
+        String name(names[i]);
+        if (!name.length()) {
+            return Error::NO_MEMORY;
+        }
+        namesVec.append(std::move(name));
+    }
+    return 0;
+}
+
+int Ledger::remove(const char* name) {
+    int r = ledger_purge(name, nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_purge() failed: %d", r);
+        return r;
+    }
+    return 0;
+}
+
+int Ledger::removeAll() {
+    int r = ledger_purge_all(nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_purge_all() failed: %d", r);
+        return r;
+    }
+    return 0;
 }
 
 } // namespace particle

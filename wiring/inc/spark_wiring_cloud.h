@@ -35,6 +35,8 @@
 #include "spark_wiring_async.h"
 #include "spark_wiring_flags.h"
 #include "spark_wiring_platform.h"
+#include "spark_wiring_vector.h"
+#include "spark_wiring_error.h"
 #include "spark_wiring_global.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
@@ -434,6 +436,7 @@ public:
     static int maxFunctionArgumentSize();
 
 #if Wiring_Ledger
+
     /**
      * Get a ledger instance.
      *
@@ -441,6 +444,27 @@ public:
      * @return Ledger instance.
      */
     static particle::Ledger ledger(const char* name);
+
+    /**
+     * Remove any ledgers not in the list from the device.
+     *
+     * The device must not be connected to the Cloud. The operation will fail if any of the ledgers
+     * to be removed is in use.
+     *
+     * @note The data is not guaranteed to be removed in an irrecoverable way.
+     *
+     * @param ... Ledger names.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    template<typename... ArgsT>
+    static int useLedgers(ArgsT&&... args) {
+        Vector<const char*> names;
+        if (!names.reserve(sizeof...(ArgsT))) {
+            return particle::Error::NO_MEMORY;
+        }
+        return useLedgersImpl(names, std::forward<ArgsT>(args)...);
+    }
+
 #endif // Wiring_Ledger
 
 private:
@@ -552,6 +576,16 @@ private:
         }
         return ok;
     }
+
+    template<typename... ArgsT>
+    static int useLedgersImpl(Vector<const char*>& names, const char* name, ArgsT&&... args) {
+        if (!names.append(name)) {
+            return particle::Error::NO_MEMORY;
+        }
+        return useLedgersImpl(names, std::forward<ArgsT>(args)...);
+    }
+
+    static int useLedgersImpl(const Vector<const char*>& names);
 };
 
 extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));

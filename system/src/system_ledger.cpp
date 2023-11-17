@@ -144,10 +144,10 @@ int ledger_write(ledger_stream* stream, const char* data, size_t size, void* res
     return n;
 }
 
-int ledger_get_names(const char*** names, size_t* count, void* reserved) {
+int ledger_get_names(char*** names, size_t* count, void* reserved) {
     Vector<CString> namesVec;
     CHECK(LedgerManager::instance()->getLedgerNames(namesVec));
-    *names = (const char**)std::malloc(sizeof(char*) * namesVec.size());
+    *names = (char**)std::malloc(sizeof(char*) * namesVec.size());
     if (!*names && namesVec.size() > 0) {
         return SYSTEM_ERROR_NO_MEMORY;
     }

@@ -44,7 +44,7 @@ DYNALIB_FN(11, system_ledger, ledger_read, int(ledger_stream*, char*, size_t, vo
 DYNALIB_FN(12, system_ledger, ledger_write, int(ledger_stream*, const char*, size_t, void*))
 DYNALIB_FN(13, system_ledger, ledger_purge, int(const char*, void*))
 DYNALIB_FN(14, system_ledger, ledger_purge_all, int(void*))
-DYNALIB_FN(15, system_ledger, ledger_get_names, int(const char***, size_t*, void*))
+DYNALIB_FN(15, system_ledger, ledger_get_names, int(char***, size_t*, void*))
 
 DYNALIB_END(system_ledger)
 

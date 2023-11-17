@@ -289,7 +289,7 @@ int ledger_write(ledger_stream* stream, const char* data, size_t size, void* res
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int ledger_get_names(const char*** names, size_t* count, void* reserved);
+int ledger_get_names(char*** names, size_t* count, void* reserved);
 
 /**
  * Remove any local data associated with a ledger.
