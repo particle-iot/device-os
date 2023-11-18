@@ -151,6 +151,15 @@ namespace {
     res;                                                                        \
 })
 
+#if 0
+#define LOCAL_DEBUG(_fmt, ...) \
+        do { \
+            LOG(TRACE, _fmt "\r\n", ##__VA_ARGS__); \
+        } while (false)
+#else
+#define LOCAL_DEBUG(_fmt, ...)
+#endif
+
 constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 60000;
 constexpr system_tick_t BLE_ENQUEUE_TIMEOUT_MS = 5000;
 
@@ -234,7 +243,7 @@ private:
     void* allEvtQueue_;
     void* ioEvtQueue_;
     bool started_;
-    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = 3; // Higher than application thread priority, which is 2
+    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = OS_THREAD_PRIORITY_NETWORK;
     static constexpr uint8_t MAX_NUMBER_OF_GAP_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_IO_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_EVENT_MESSAGE = (MAX_NUMBER_OF_GAP_MESSAGE + MAX_NUMBER_OF_IO_MESSAGE);
@@ -352,7 +361,7 @@ private:
 class BleGap {
 public:
     int start();
-    int stop();
+    int stop(bool restore = true);
     int init();
 
     bool initialized() const {
@@ -443,6 +452,14 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    bool isQueueAvailable() const {
+        uint8_t command;
+        if (!os_queue_peek(cmdQueue_, &command, 0, nullptr)) {
+            return true;
+        }
+        return false;
+    }
+
     void lockMode(bool lock) {
         bleInLockedMode_ = lock;
     }
@@ -477,6 +494,12 @@ private:
         BLE_CMD_START_ADV
     };
 
+    struct BleGapCache {
+        bool isAdv;
+        bool isScan;
+        bool isConn;
+    };
+
     struct BleConnection {
         hal_ble_conn_info_t info;
         std::pair<hal_ble_on_link_evt_cb_t, void*> handler; // It is used for central link only.
@@ -509,7 +532,8 @@ private:
               isAdvertising_(false),
               stateSemaphore_(nullptr),
               pairingLesc_(false),
-              bleInLockedMode_(false) {
+              bleInLockedMode_(false),
+              cache_{} {
         advParams_.version = BLE_API_VERSION;
         advParams_.size = sizeof(hal_ble_adv_params_t);
         advParams_.interval = BLE_DEFAULT_ADVERTISING_INTERVAL;
@@ -649,14 +673,15 @@ private:
     os_semaphore_t stateSemaphore_;
     uint8_t pairingLesc_;
     bool bleInLockedMode_;
+    BleGapCache cache_;
     Vector<BleAdvEventHandler> advEventHandlers_;
     Mutex advEventMutex_;
     RecursiveMutex connectionsMutex_;
 
     static constexpr system_tick_t BLE_WAIT_STATE_POLL_PERIOD_MS = 10;
-    static constexpr system_tick_t BLE_STATE_DEFAULT_TIMEOUT = 5000;
+    static constexpr system_tick_t BLE_STATE_DEFAULT_TIMEOUT = 1000;
 
-    static constexpr uint8_t BLE_CMD_THREAD_PRIORITY = 2;
+    static constexpr uint8_t BLE_CMD_THREAD_PRIORITY = OS_THREAD_PRIORITY_NETWORK;
     static constexpr uint16_t BLE_CMD_THREAD_STACK_SIZE = 2048;
     static constexpr uint8_t BLE_CMD_QUEUE_SIZE = 0x20;
 };
@@ -1005,19 +1030,28 @@ void BleGap::bleCommandThread(void *context) {
     BleGap* gap = (BleGap*)context;
     while (true) {
         uint8_t command;
-        if (!os_queue_take(gap->cmdQueue_, &command, CONCURRENT_WAIT_FOREVER, nullptr)) {
+        if (!os_queue_peek(gap->cmdQueue_, &command, CONCURRENT_WAIT_FOREVER, nullptr)) {
+            LOCAL_DEBUG("---> Enter ble cmd thread, cmd: %d", command);
             if (command == BLE_CMD_STOP_ADV || command == BLE_CMD_STOP_ADV_NOTIFY) {
                 if (gap->isAdvertising()) {
+                    LOCAL_DEBUG( "stopAdvertising in ble cmd thread");
+                    BleLock lk;
                     gap->stopAdvertising();
+                    LOCAL_DEBUG("notifyAdvStop in ble cmd thread");
                     if (command == BLE_CMD_STOP_ADV_NOTIFY) {
                         gap->notifyAdvStop();
                     }
                 }
             } else if (command == BLE_CMD_START_ADV) {
+                LOCAL_DEBUG("startAdvertising in ble cmd thread");
+                BleLock lk;
                 gap->startAdvertising();
             } else if (command == BLE_CMD_EXIT_THREAD) {
+                LOCAL_DEBUG("Exit ble cmd thread");
                 break;
             }
+            LOCAL_DEBUG("<--- ble cmd %d executed", command);
+            os_queue_take(gap->cmdQueue_, &command, 0, nullptr);
         }
     }
     os_thread_exit(nullptr);
@@ -1117,7 +1151,8 @@ int BleGap::start() {
 
     SCOPE_GUARD({
         if (!btStackStarted_) {
-            stop();
+            // FIXME: if adv/scan/conn is active, we should try to restore the state
+            stop(false);
         }
     });
 
@@ -1125,16 +1160,38 @@ int BleGap::start() {
     CHECK(BleEventDispatcher::getInstance().start());
     // NOTE: we have to wait for the BLE stack to get initialized otherwise other operations
     // with it may cause race conditions, memory leaks and other problems
+    LOCAL_DEBUG("wait GAP_INIT_STATE_STACK_READY");
     CHECK(waitState(BleGapDevState().init(GAP_INIT_STATE_STACK_READY), BLE_STATE_DEFAULT_TIMEOUT, true /* force poll */));
     btStackStarted_ = true;
+    if (cache_.isAdv || cache_.isConn) {
+        LOG(TRACE, "Restore advertising state");
+        startAdvertising(); // Despite of the result.
+    }
+    // FIXME: Scann state cannot be restored, as it is a blocking call for now
+    // if (cache_.isScan) {
+    //     LOG(TRACE, "Restore scanning state");
+    //     startScanning(); // Despite of the result.
+    // }
     return SYSTEM_ERROR_NONE;
 }
 
-int BleGap::stop() {
+int BleGap::stop(bool restore) {
+    LOG(TRACE, "Going to stop the stack...");
+    if (restore) {
+        cache_.isAdv = isAdvertising_;
+        cache_.isScan = isScanning_;
+        cache_.isConn = connectedAsBlePeripheral();
+    } else {
+        cache_ = {};
+    }
     // NOTE: ignoring errors
     if (btStackStarted_) {
         // Abort any commands, e.g. the re-adv command after disconnection.
         if (cmdThread_ && !os_thread_is_current(cmdThread_)) {
+            if (isQueueAvailable()) {
+                LOCAL_DEBUG(" >>>>>>>>>>>> s_bleMutex.unlock() <<<<<<<<<<<<<<");
+                s_bleMutex.unlock();
+            }
             if (enqueue(BLE_CMD_EXIT_THREAD) == SYSTEM_ERROR_NONE) {
                 os_thread_join(cmdThread_);
                 cmdThread_ = nullptr;
@@ -1152,6 +1209,7 @@ int BleGap::stop() {
 
         // NOTE: we have to wait for the BLE stack to get initialized otherwise other operations
         // with it may cause race conditions, memory leaks and other problems
+        LOCAL_DEBUG("wait GAP_INIT_STATE_STACK_READY in stop()");
         waitState(BleGapDevState().init(GAP_INIT_STATE_STACK_READY), BLE_STATE_DEFAULT_TIMEOUT, true /* force poll */);
         disconnectAll();
         if (isAdvertising_) {
@@ -1431,12 +1489,15 @@ int BleGap::startAdvertising(bool wait) {
     RtlGapDevState s;
     CHECK_RTL(le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state));
     if (s.state.gap_adv_state == GAP_ADV_STATE_STOP) {
+        // Verified that if the scan state is GAP_ADV_STATE_STOP, instead of GAP_ADV_STATE_IDLE,
+        // the next scan operation will fail with invalid state.
         // Previous stopAdvertising() caused a race condition in the BT stack, try to recover
         // Ignore error here
         auto r = le_adv_stop();
         if (wait) {
+            LOCAL_DEBUG("wait GAP_ADV_STATE_IDLE");
             if (r != GAP_CAUSE_SUCCESS || waitState(BleGapDevState().adv(GAP_ADV_STATE_IDLE))) {
-                LOG(ERROR, "Failed to get notified that advertising has stopped, resetting stack");
+                LOG(TRACE, "le_adv_stop: %d. Failed to get notified that advertising has stopped, resetting stack", r);
                 CHECK(stop());
                 CHECK(init());
             }
@@ -1463,9 +1524,9 @@ int BleGap::startAdvertising(bool wait) {
         }
         CHECK(BleGatt::getInstance().registerAttributeTable());
     }
-    isAdvertising_ = true; // Set it to true here, because stop() will be called if attribute table is not registered yet.
-
+    
     CHECK(start());
+    isAdvertising_ = true; // Set it to true here, because stop() will be called if attribute table is not registered yet.
 
     SCOPE_GUARD ({
         // NOTE: this will run first before the other SCOPE_GUARD, make sure to look at 'ok' state as well
@@ -1592,6 +1653,7 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                 // otherwise the next scan operation fails with invalid state.
                 auto r = le_scan_stop();
                 if (r == GAP_CAUSE_SUCCESS) {
+                    LOCAL_DEBUG("wait GAP_SCAN_STATE_IDLE");
                     if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE))) {
                         isScanning_ = false;
                     }
@@ -1600,6 +1662,9 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                 HAL_Delay_Milliseconds(10);
             }
             if (isScanning_) {
+                // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
+                // the next scan operation will fail with invalid state.
+                LOG(TRACE, "Failed to stop scanning, resetting stack");
                 int ret = stop();
                 SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
                 ret = init();
@@ -1616,8 +1681,13 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK_RTL(le_scan_start());
     isScanning_ = true;
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
-    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING))) {
-        return SYSTEM_ERROR_TIMEOUT;
+    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_START), 10, true) && waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), 10, true)) {
+        LOCAL_DEBUG("wait GAP_SCAN_STATE_SCANNING");
+        if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING))) {
+            LOG(TRACE, "failed to start scanning.");
+            isScanning_ = false;
+            return SYSTEM_ERROR_TIMEOUT;
+        }
     }
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
@@ -1953,17 +2023,13 @@ int BleGap::setPairingConfig(const hal_ble_pairing_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_FALSE(connected(nullptr), SYSTEM_ERROR_INVALID_STATE);
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
-    bool adv = isAdvertising();
-    bool ok = false;
-    SCOPE_GUARD({
-        if (ok && adv) {
-            startAdvertising();
-        }
-    });
     if (btStackStarted_) {
         CHECK(stop());
         CHECK(init());
     }
+    SCOPE_GUARD({
+        start();
+    });
     // Bit mask: GAP_AUTHEN_BIT_BONDING_FLAG, GAP_AUTHEN_BIT_MITM_FLAG, GAP_AUTHEN_BIT_SC_FLAG
     uint16_t authFlags = 0;
     if (config->algorithm == BLE_PAIRING_ALGORITHM_AUTO) {
@@ -1984,10 +2050,6 @@ int BleGap::setPairingConfig(const hal_ble_pairing_config_t* config) {
     pairingConfig_ = {};
     pairingConfig_.size = sizeof(hal_ble_pairing_config_t);
     memcpy(&pairingConfig_, config, std::min(pairingConfig_.size, config->size));
-
-    CHECK(start());
-
-    ok = true;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2104,22 +2166,42 @@ bool BleGap::isPaired(hal_ble_conn_handle_t connHandle) {
 }
 
 int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePoll) {
+    LOCAL_DEBUG("Enter waitState");
+    bool ret = false;
+    RtlGapDevState s;
+    if (le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state) == GAP_CAUSE_SUCCESS) {
+        LOCAL_DEBUG("waitState(), get: %02X, now: %02X", s.raw, state_.raw);
+        if (!(state_.raw == s.raw)) {
+            state_.raw = s.raw;
+        }
+        if (BleGapDevState(getState()).copySetParamsFrom(state) == state) {
+            ret = true;
+        }
+    }
+    if (ret) {
+        LOCAL_DEBUG("Target state is already set, return.");
+        return SYSTEM_ERROR_NONE;
+    }
+
+    auto now = hal_timer_millis(nullptr);
+    auto end = now + timeout;
     auto current = BleGapDevState(getState());
     if (forcePoll || current.isNotInitialized() || !btStackStarted_) {
+        LOCAL_DEBUG("force poll, t: %d", end - now);
         // Poll, as some of the initial events are missing
         RtlGapDevState s;
-        auto start = hal_timer_millis(nullptr);
-        while (hal_timer_millis(nullptr) - start < timeout) {
+        while (now < end) {
             CHECK_RTL(le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state));
             if (BleGapDevState(s).copySetParamsFrom(state) == state) {
                 return SYSTEM_ERROR_NONE;
             }
             HAL_Delay_Milliseconds(BLE_WAIT_STATE_POLL_PERIOD_MS);
+            now = hal_timer_millis(nullptr);
         }
     } else {
-        auto end = hal_timer_millis(nullptr) + timeout;
-        for (auto now = hal_timer_millis(nullptr); now < end; now = hal_timer_millis(nullptr)) {
+        for (now = now; now < end; now = hal_timer_millis(nullptr)) {
             os_semaphore_take(stateSemaphore_, end - now, false);
+            LOCAL_DEBUG("os_semaphore_take: %d, t: %d", ret, end - now);
             if (BleGapDevState(getState()).copySetParamsFrom(state) == state) {
                 return SYSTEM_ERROR_NONE;
             }
@@ -2134,9 +2216,15 @@ void BleGap::handleDevStateChanged(T_GAP_DEV_STATE newState, uint16_t cause) {
                         newState.gap_init_state, newState.gap_adv_state, newState.gap_adv_sub_state, newState.gap_scan_state, newState.gap_conn_state, cause);
     RtlGapDevState nState;
     nState.state = newState;
+    // In case of race condition in stack
+    RtlGapDevState s;
+    if (le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state) == GAP_CAUSE_SUCCESS && nState.raw != s.raw) {
+        LOCAL_DEBUG("!!!!!!!!! Race condition. Notified: %02X, Get: %02X", nState.raw, s.raw);
+        nState.state = s.state;
+    }
     // NOTE: this event is generated before the connection is established
-    if (newState.gap_adv_state != state_.state.gap_adv_state && newState.gap_adv_state == GAP_ADV_STATE_IDLE) {
-        if (newState.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
+    if (nState.state.gap_adv_state != state_.state.gap_adv_state && nState.state.gap_adv_state == GAP_ADV_STATE_IDLE) {
+        if (nState.state.gap_adv_sub_state == GAP_ADV_TO_IDLE_CAUSE_CONN) {
             isAdvertising_ = false; // adv timer has higher priority, just in case that the BLE_CMD_STOP_ADV_NOTIFY
                                     // has been enqueued, followed by nontifying the ADV stopped event. Under
                                     // certain circumstance notifying the ADV stopped event will cause BLE re-adv,
@@ -2726,17 +2814,10 @@ int BleGatt::addService(uint8_t type, const hal_ble_uuid_t* uuid, hal_ble_attr_h
     }
     attribute.permissions = GATT_PERM_READ;
     CHECK_TRUE(service.attrTable.append(attribute), SYSTEM_ERROR_NO_MEMORY);
-
-    bool adv = BleGap::getInstance().isAdvertising();
-    bool registered = serviceRegistered_;
-    SCOPE_GUARD({
-        if (adv) {
-            BleGap::getInstance().startAdvertising();
-        }
-    });
-    if (registered) {
+    if (serviceRegistered_) {
         CHECK(BleGap::getInstance().stop());
         CHECK(BleGap::getInstance().init());
+        CHECK(BleGap::getInstance().start());
     }
     CHECK_TRUE(services_.append(service), SYSTEM_ERROR_NO_MEMORY);
     *svcHandle = service.startHandle;
@@ -2863,17 +2944,10 @@ int BleGatt::addCharacteristic(const hal_ble_char_init_t* charInit, hal_ble_char
     } else {
         charHandles->user_desc_handle = BLE_INVALID_ATTR_HANDLE;
     }
-
-    bool adv = BleGap::getInstance().isAdvertising();
-    bool registered = serviceRegistered_;
-    SCOPE_GUARD({
-        if (adv) {
-            BleGap::getInstance().startAdvertising();
-        }
-    });
-    if (registered) {
+    if (serviceRegistered_) {
         CHECK(BleGap::getInstance().stop());
         CHECK(BleGap::getInstance().init());
+        CHECK(BleGap::getInstance().start());
     }
 
     std::swap(*targetService, *service);
@@ -3444,7 +3518,7 @@ int hal_ble_stack_deinit(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_deinit().");
     CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK(BleGap::getInstance().stop());
+    CHECK(BleGap::getInstance().stop(false));
     return SYSTEM_ERROR_NONE;
 }
 
