@@ -161,29 +161,24 @@ ConnectionTester* ConnectionTester::instance() {
 }
 
 static int getCloudHostnameAndPort(uint16_t * port, char * hostname, int hostnameLength) {
-    // Use this test server until real echo server is ready
-    strcpy(hostname, "publish-receiver-udp.particle.io");
-    *port = 40000;
+    // TODO: Something better than this? Perhaps in system_cloud_connection?
+    ServerAddress server_addr = {};
+    char tmphost[sizeof(server_addr.domain) + 32] = {};
+    if (hostnameLength < (int)(sizeof(tmphost)+1)) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+
+    HAL_FLASH_Read_ServerAddress(&server_addr);
+    if (server_addr.port == 0 || server_addr.port == 0xFFFF) {
+        server_addr.port = spark_cloud_udp_port_get();
+    }
+
+    system_string_interpolate(server_addr.domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
+    strcpy(hostname, tmphost);
+    *port = server_addr.port;
+
+    //LOG(TRACE, "Cloud hostname#port %s#%d", hostname, *port);
     return 0;
-
-    // TODO: Something better than this?
-    // ServerAddress server_addr = {};
-    // char tmphost[sizeof(server_addr.domain) + 32] = {};
-    // if (hostnameLength < (int)(sizeof(tmphost)+1)) {
-    //     return SYSTEM_ERROR_TOO_LARGE;
-    // }
-
-    // HAL_FLASH_Read_ServerAddress(&server_addr);
-    // if (server_addr.port == 0 || server_addr.port == 0xFFFF) {
-    //     server_addr.port = spark_cloud_udp_port_get();
-    // }
-
-    // system_string_interpolate(server_addr.domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
-    // strcpy(hostname, tmphost);
-    // *port = server_addr.port;
-
-    // //LOG(TRACE, "Cloud hostname#port %s#%d", hostname, *port);
-    // return 0;
 };
 
 ConnectionMetrics* ConnectionTester::metricsFromSocketDescriptor(int socketDescriptor) {
