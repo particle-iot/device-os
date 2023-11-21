@@ -14,10 +14,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
-#include "logging.h"
-LOG_SOURCE_CATEGORY("comm.cloud.posix")
 #include "hal_platform.h"
 
 #if HAL_USE_SOCKET_HAL_POSIX
@@ -314,7 +310,7 @@ int system_cloud_disconnect(int flags)
 int system_cloud_send(const uint8_t* buf, size_t buflen, int flags)
 {
     (void)flags;
-    LOG(TRACE, "TX s_state.socket %d buflen %d", s_state.socket, buflen);
+    LOG_DEBUG(TRACE, "TX s_state.socket %d buflen %d", s_state.socket, buflen);
     int r = sock_send(s_state.socket, buf, buflen, 0);
     if (r < 0) {
         if (errno == ENOMEM) {
@@ -346,7 +342,7 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
     }
 
     if (recvd) {
-        LOG(TRACE, "RX s_state.socket %d buflen %d recvd %d", s_state.socket, buflen, recvd);
+        LOG_DEBUG(TRACE, "RX s_state.socket %d buflen %d recvd %d", s_state.socket, buflen, recvd);
     }
 
     return recvd;

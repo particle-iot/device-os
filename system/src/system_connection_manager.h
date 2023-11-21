@@ -90,7 +90,7 @@ private:
 
     const uint8_t REACHABILITY_TEST_MSG = 252;
     const unsigned REACHABILITY_MAX_PAYLOAD_SIZE = 256;
-    const unsigned REACHABILITY_TEST_DURATION_MS = 5000;
+    const unsigned REACHABILITY_TEST_DURATION_MS = 2500;
 
     Vector<ConnectionMetrics> metrics_;
 };

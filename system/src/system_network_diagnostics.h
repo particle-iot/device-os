@@ -22,6 +22,7 @@
 
 namespace particle {
 
+// FIXME: Remove when alternate signal diagnostics are supported
 enum {
   DIAG_TYPE_APP_INT = 1 << 11,
   DIAG_TYPE_APP_UINT = 2 << 11,
@@ -30,7 +31,7 @@ enum {
 
 class NetworkDiagnostics {
 public:
-    // TODO: Use a new enum for defining network interface names? 
+    // FIXME: Share this enum on device service side?
     enum NetworkInterface {
         UNKNOWN = 0,
         ETHERNET = 1,

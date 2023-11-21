@@ -17,9 +17,6 @@
 #include "logging.h"
 LOG_SOURCE_CATEGORY("system.cm")
 
-#undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
-
 #include "hal_platform.h"
 
 #if HAL_PLATFORM_IFAPI
@@ -104,20 +101,18 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     network_handle_t bestNetwork = NETWORK_INTERFACE_ALL;
 
     // 1: If there is a bound network connection. Do not use anything else, regardless of network state
-    network_handle_t boundNetwork;
+    network_handle_t boundNetwork = NETWORK_INTERFACE_ALL;
     size_t n = sizeof(boundNetwork);
-    // TODO: error handling
-    auto r = spark_get_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, &boundNetwork, &n, nullptr);
-    LOG(TRACE, "%d selectCloudConnectionNetwork %lu", r, boundNetwork);
+    spark_get_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, &boundNetwork, &n, nullptr);
 
     if (boundNetwork != NETWORK_INTERFACE_ALL) {
-        LOG(TRACE, "%d using bound network: %lu", r, boundNetwork);
+        LOG(TRACE, "Using bound network: %lu", boundNetwork);
         return boundNetwork;
     }
 
     // 2: If no bound network, use preferred network
     if (preferredNetwork_ != NETWORK_INTERFACE_ALL && spark::Network.from(preferredNetwork_).ready()) {
-        LOG(TRACE, "using preferred network: %lu", preferredNetwork_);
+        LOG(TRACE, "Using preferred network: %lu", preferredNetwork_);
         return preferredNetwork_;
     }
 
@@ -126,7 +121,7 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     // 3.2: Network has best criteria based on network tester stats (vector should be sorted in "best" order)
     for (auto& i: *ConnectionTester::instance()->getConnectionMetrics()) {
         if (spark::Network.from(i.interface).ready()) {
-            LOG(TRACE, "using best tested network: %lu", i.interface);
+            LOG(TRACE, "Using best tested network: %lu", i.interface);
             return i.interface;
         }
     }
@@ -161,7 +156,6 @@ ConnectionTester* ConnectionTester::instance() {
 }
 
 static int getCloudHostnameAndPort(uint16_t * port, char * hostname, int hostnameLength) {
-    // TODO: Something better than this? Perhaps in system_cloud_connection?
     ServerAddress server_addr = {};
     char tmphost[sizeof(server_addr.domain) + 32] = {};
     if (hostnameLength < (int)(sizeof(tmphost)+1)) {

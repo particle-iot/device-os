@@ -76,8 +76,7 @@ public:
             refreshCachedValues = true;
         }
 
-// TODO: Better differentiator for "ACM"
-#if PLATFORM_ID == PLATFORM_MSOM
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
         auto cloudNetwork = Network.from(system::ConnectionManager::instance()->getCloudConnectionNetwork());
         
         if (refreshCachedValues) {
@@ -105,16 +104,16 @@ public:
             cellularSig_ = Cellular.RSSI();    
         }
         return &cellularSig_;
-#endif //Wiring_Cellular
+#endif // Wiring_Cellular
 
 #if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
         if (refreshCachedValues) {
             wifiSig_ = WiFi.RSSI();
         }
         return &wifiSig_;    
-#endif //Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+#endif // Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
 
-#endif //PLATFORM_ID == PLATFORM_MSOM
+#endif // HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
         return nullptr;
     }
 
@@ -300,7 +299,7 @@ public:
 } g_networkAccessTechnologyDiagData;
 
 
-#if PLATFORM_ID == PLATFORM_MSOM
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
 class CloudConnectionInterfaceDiagnosticData : public AbstractIntegerDiagnosticData
 {
 public:
@@ -336,9 +335,9 @@ public:
     }
 
 } g_cloudConnectionInterfaceDiagData;
-#endif
+#endif // HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
 
-// TODO: Change to enum based diagnostic data for cloud connection interface
+// FIXME: Change to enum based diagnostic data for cloud connection interface
 // class CloudConnectionInterfaceDiagnosticData : public EnumDiagnosticData<NetworkInterface, NoConcurrency>
 // {
 // public:
@@ -456,9 +455,8 @@ public:
 } g_networkCellularCellGlobalIdentityCellIdDiagnosticData;
 #endif // HAL_PLATFORM_CELLULAR
 
-#if PLATFORM_ID == PLATFORM_MSOM
-
-// TODO: Fix the int types when making this recognized data on the server side
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+// FIXME: Fix the int types when making this recognized data on the server side
 class AltSignalStrengthDiagnosticData : public AbstractIntegerDiagnosticData
 {
 public:
@@ -601,7 +599,7 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 } g_altNetworkAccessTechnologyDiagData;
-#endif
+#endif // HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
 
 } // namespace
 

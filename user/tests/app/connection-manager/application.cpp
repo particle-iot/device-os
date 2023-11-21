@@ -1,6 +1,9 @@
 #include "Particle.h"
+#include "scope_guard.h"
+#include "resolvapi.h"
+#include "ifapi.h"
 
-SYSTEM_MODE(SEMI_AUTOMATIC);
+SYSTEM_MODE(AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
 STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 
@@ -9,7 +12,7 @@ retained uint8_t resetRetry = 0;
 
 #define CMD_SERIAL Serial1
 
-SerialLogHandler logHandler(LOG_LEVEL_ALL,
+Serial1LogHandler logHandler(LOG_LEVEL_ALL,
 {
     { "app", LOG_LEVEL_ALL },
     //{ "sys.power", LOG_LEVEL_TRACE },
@@ -118,11 +121,12 @@ void setup() {
             Log.info("Ethernet MAC: %02x %02x %02x %02x %02x %02x",
                     macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
         }
-        Ethernet.connect();
-        waitFor(Ethernet.ready, 30000);
-        Log.info("Ethernet.ready: %d", Ethernet.ready());
+        // Ethernet.connect();
+        // waitFor(Ethernet.ready, 30000);
+        // Log.info("Ethernet.ready: %d", Ethernet.ready());
         resetRetry = 0;
-    } else if (++resetRetry <= ETHERNET_RETRY_MAX) {
+    } 
+    else if (++resetRetry <= ETHERNET_RETRY_MAX) {
         Log.info("Ethernet is off or not detected, attmpting to remap pins: %d/%d", resetRetry, ETHERNET_RETRY_MAX);
 
         if (resetRetry == 4) {
@@ -229,13 +233,6 @@ void loop() {
         else if(c == '4') {
             Particle.disconnect();
             waitUntil(Particle.disconnected);
-
-            // FIXME: Particle.connect(Cellular); should take care of this:
-            // Cellular.on();
-            // waitUntil(Cellular.isOn);
-            // Cellular.connect();
-            // waitUntil(Cellular.ready);
-
             Log.info("Binding to cell interface");
             Particle.connect(Cellular);
         }
@@ -337,6 +334,21 @@ void loop() {
                 Ethernet.disconnect();
             }
             ethernetConnect = !ethernetConnect;
+        }
+        else if (c == 'i') {
+            // Print the known DNS servers
+            resolv_dns_servers* dns = {};
+            resolv_get_dns_servers(&dns);
+            SCOPE_GUARD({
+                resolv_free_dns_servers(dns);
+            });
+            for (auto s = dns; s != nullptr; s = s->next) {
+                // Only IPv4 for now
+                SockAddr a(s->server);
+                if (a.family() == AF_INET) {
+                    Log.info("DNS IP %s", a.toString().c_str());
+                }
+            }
         }
     }
 }

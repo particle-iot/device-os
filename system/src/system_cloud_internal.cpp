@@ -522,13 +522,16 @@ int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 
 int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved)
 {
+#if PLATFORM_ID == PLATFORM_MSOM
     // Force new session handshake for now
     return 0;
-	// size_t length = 0;
-	// int error = HAL_System_Backup_Restore(0, buffer, max_length, &length, nullptr);
-	// if (error)
-	// 	length = 0;
-	// return length;
+#else
+	size_t length = 0;
+	int error = HAL_System_Backup_Restore(0, buffer, max_length, &length, nullptr);
+	if (error)
+		length = 0;
+	return length;
+#endif
 }
 
 void update_persisted_state(std::function<void(SessionPersistOpaque&)> fn)
