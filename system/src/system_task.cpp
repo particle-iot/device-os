@@ -807,19 +807,6 @@ void* system_internal(int item, void* reserved)
         particle::system::ConnectionTester::instance()->testConnections();
         return nullptr;
     }
-    case 5: {
-        return reinterpret_cast<void*>(&lwip_stats);
-    }
-    case 6: {
-        return (void*)particle::system::ConnectionTester::instance()->getConnectionMetrics();
-    }
-    case 7: {
-        // log lwip counters
-        LOG(TRACE,"[%s] IP rx %u %u %u %u | UDP rx %u %u %u %u", 
-                (const char *)reserved, lwip_stats.ip.recv, lwip_stats.ip.drop, lwip_stats.ip.err, lwip_stats.ip.proterr,
-                lwip_stats.udp.recv, lwip_stats.udp.drop, lwip_stats.udp.err, lwip_stats.udp.proterr);
-        return nullptr;
-    }
     case 8: {
         // Get cached cellular ID
         static uint8_t cacheRead[70] = {};

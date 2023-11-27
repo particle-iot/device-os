@@ -31,12 +31,15 @@ enum {
 
 class NetworkDiagnostics {
 public:
-    // FIXME: Share this enum on device service side?
+    // FIXME: Share this enum on device service side
     enum NetworkInterface {
-        UNKNOWN = 0,
-        ETHERNET = 1,
-        CELLULAR = 2,
-        WIFI = 3
+        NETWORK_INTERFACE_ALL = 0, 
+        NETWORK_INTERFACE_LOOPBACK = 1, 
+        // NETWORK_INTERFACE_MESH = 2, // Deprecated 
+        NETWORK_INTERFACE_ETHERNET = 3, 
+        NETWORK_INTERFACE_CELLULAR = 4, 
+        NETWORK_INTERFACE_WIFI_STA = 5, 
+        NETWORK_INTERFACE_WIFI_AP = 6
     };
 
     // Note: Use odd numbers to encode transitional states

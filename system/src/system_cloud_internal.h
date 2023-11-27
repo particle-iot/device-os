@@ -195,7 +195,11 @@ public:
 
     static CloudConnectionSettings* instance();
 
-    network_interface_t &boundInterface() {
+    void setBoundInterface(network_interface_t network) {
+        boundInterface_ = network;
+    }
+
+    network_interface_t getBoundInterface() {
         return boundInterface_;
     }
 

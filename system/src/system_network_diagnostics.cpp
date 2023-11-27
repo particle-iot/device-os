@@ -311,19 +311,19 @@ public:
 
     virtual int get(IntType& val)
     {
-        auto netIf = NetworkDiagnostics::NetworkInterface::UNKNOWN;
+        auto netIf = NetworkDiagnostics::NetworkInterface::NETWORK_INTERFACE_ALL;
         switch(system::ConnectionManager::instance()->getCloudConnectionNetwork()) {
             case NETWORK_INTERFACE_ETHERNET:
-                netIf = NetworkDiagnostics::NetworkInterface::ETHERNET;
+                netIf = NetworkDiagnostics::NetworkInterface::NETWORK_INTERFACE_ETHERNET;
                 break;
 #if HAL_PLATFORM_CELLULAR
             case NETWORK_INTERFACE_CELLULAR:
-                netIf = NetworkDiagnostics::NetworkInterface::CELLULAR;
+                netIf = NetworkDiagnostics::NetworkInterface::NETWORK_INTERFACE_CELLULAR;
                 break;
 #endif
 #if HAL_PLATFORM_WIFI
             case NETWORK_INTERFACE_WIFI_STA:
-                netIf = NetworkDiagnostics::NetworkInterface::WIFI;
+                netIf = NetworkDiagnostics::NetworkInterface::NETWORK_INTERFACE_WIFI_STA;
                 break;
 #endif
             default:

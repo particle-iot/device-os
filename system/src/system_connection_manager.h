@@ -32,17 +32,17 @@ struct ConnectionMetrics {
     int socketDescriptor;
     uint8_t *txBuffer;
     uint8_t *rxBuffer;
-    int testPacketSize;
+    uint32_t testPacketSize;
     uint32_t testPacketSequenceNumber;
-    int txPacketCount;
-    int rxPacketCount;
-    int txPacketStartMillis;
-    int totalPacketWaitMillis;
+    uint32_t txPacketCount;
+    uint32_t rxPacketCount;
+    uint32_t txPacketStartMillis;
+    uint32_t totalPacketWaitMillis;
 
     // uint32_t dnsResolutionAttempts;
     // uint32_t dnsResolutionFailures;
-    // uint32_t socketConnAttempts;
-    // uint32_t socketConnFailures;
+    uint32_t socketConnAttempts;
+    uint32_t socketConnFailures;
     uint32_t txBytes;
     uint32_t rxBytes;
     uint32_t avgPacketRoundTripTime;
@@ -63,7 +63,7 @@ public:
 
     // Provide interface for "best" network interface --> use that for cloud socket
     network_handle_t selectCloudConnectionNetwork();
-    
+
 private:
     network_handle_t preferredNetwork_;
 };
@@ -71,18 +71,17 @@ private:
 class ConnectionTester {
 public:
     ConnectionTester();
-    ~ConnectionTester();
 
     static ConnectionTester* instance();
     int testConnections();
 
-    const Vector<ConnectionMetrics>* getConnectionMetrics();
+    const Vector<ConnectionMetrics> getConnectionMetrics();
 
 private:
     int allocateTestPacketBuffers(ConnectionMetrics* metrics);
-    int generateTestPacket(ConnectionMetrics* metrics, int packetDataLength);
-    int pollSockets(struct pollfd * pfds, int socketCount, int packetDataLength);
-    int sendTestPacket(ConnectionMetrics* metrics, int length);
+    int generateTestPacket(ConnectionMetrics* metrics);
+    int pollSockets(struct pollfd * pfds, int socketCount);
+    int sendTestPacket(ConnectionMetrics* metrics);
     int receiveTestPacket(ConnectionMetrics* metrics);
     void cleanupSockets(bool recalculateMetrics = true);
     ConnectionMetrics* metricsFromSocketDescriptor(int socketDescriptor);

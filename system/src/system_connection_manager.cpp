@@ -32,6 +32,7 @@ LOG_SOURCE_CATEGORY("system.cm")
 #include "endian_util.h"
 #include "netdb_hal.h"
 #include "ifapi.h"
+#include "random.h"
 
 namespace particle { namespace system {
 
@@ -60,8 +61,8 @@ static const char* netifToName(uint8_t interfaceNumber) {
     }
 }
 
-ConnectionManager::ConnectionManager() {
-    preferredNetwork_ = NETWORK_INTERFACE_ALL;
+ConnectionManager::ConnectionManager()
+    : preferredNetwork_(NETWORK_INTERFACE_ALL) {
 }
 
 ConnectionManager* ConnectionManager::instance() {
@@ -70,7 +71,6 @@ ConnectionManager* ConnectionManager::instance() {
 }
 
 void ConnectionManager::setPreferredNetwork(network_handle_t network, bool preferred) {
-    //LOG(INFO, "setPreferredNetwork network: %lu preferredNetwork_: %lu", network, preferredNetwork_);
     if (preferred) {
         preferredNetwork_ = network;
     } else if (network == preferredNetwork_) {
@@ -79,7 +79,6 @@ void ConnectionManager::setPreferredNetwork(network_handle_t network, bool prefe
 }
 
 network_handle_t ConnectionManager::getPreferredNetwork() {
-    //LOG(INFO, "getPreferredNetwork %lu", preferredNetwork_);
     return preferredNetwork_;
 }
 
@@ -89,12 +88,10 @@ network_handle_t ConnectionManager::getCloudConnectionNetwork() {
     if (system_cloud_is_connected(nullptr) == 0) {
         socklen_t len = sizeof(socketNetIfIndex);
         sock_handle_t cloudSocket = system_cloud_get_socket_handle();
-        //int r = 
         sock_getsockopt(cloudSocket, SOL_SOCKET, SO_BINDTODEVICE, &socketNetIfIndex, &len);
-        //LOG(TRACE, "getCloudConnectionNetwork %d : %lu", r, socketNetIfIndex);
     }
 
-	return socketNetIfIndex;
+    return socketNetIfIndex;
 }
 
 network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
@@ -106,22 +103,22 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     spark_get_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, &boundNetwork, &n, nullptr);
 
     if (boundNetwork != NETWORK_INTERFACE_ALL) {
-        LOG(TRACE, "Using bound network: %lu", boundNetwork);
+        LOG_DEBUG(TRACE, "Using bound network: %lu", boundNetwork);
         return boundNetwork;
     }
 
     // 2: If no bound network, use preferred network
-    if (preferredNetwork_ != NETWORK_INTERFACE_ALL && spark::Network.from(preferredNetwork_).ready()) {
-        LOG(TRACE, "Using preferred network: %lu", preferredNetwork_);
+    if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(spark::Network.from(preferredNetwork_), 0, nullptr)) {
+        LOG_DEBUG(TRACE, "Using preferred network: %lu", preferredNetwork_);
         return preferredNetwork_;
     }
 
     // 3: If no preferred network, use the 'best' network based on criteria
     // 3.1: Network is ready: ie configured + connected (see ipv4 routable hook)
     // 3.2: Network has best criteria based on network tester stats (vector should be sorted in "best" order)
-    for (auto& i: *ConnectionTester::instance()->getConnectionMetrics()) {
-        if (spark::Network.from(i.interface).ready()) {
-            LOG(TRACE, "Using best tested network: %lu", i.interface);
+    for (auto& i: ConnectionTester::instance()->getConnectionMetrics()) {
+        if (network_ready(spark::Network.from(i.interface), 0, nullptr)) {
+            LOG_DEBUG(TRACE, "Using best network: %lu", i.interface);
             return i.interface;
         }
     }
@@ -133,8 +130,10 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
 }
 
 ConnectionTester::ConnectionTester() {
-    network_interface_t interfaceList[] = { 
+    const network_interface_t interfaceList[] = { 
+#if HAL_PLATFORM_ETHERNET
         NETWORK_INTERFACE_ETHERNET,
+#endif
 #if HAL_PLATFORM_WIFI 
         NETWORK_INTERFACE_WIFI_STA, 
 #endif
@@ -151,8 +150,8 @@ ConnectionTester::ConnectionTester() {
 }
 
 ConnectionTester* ConnectionTester::instance() {
-    static ConnectionTester* tester = new ConnectionTester();
-    return tester;
+    static ConnectionTester tester;
+    return &tester;
 }
 
 static int getCloudHostnameAndPort(uint16_t * port, char * hostname, int hostnameLength) {
@@ -171,7 +170,7 @@ static int getCloudHostnameAndPort(uint16_t * port, char * hostname, int hostnam
     strcpy(hostname, tmphost);
     *port = server_addr.port;
 
-    //LOG(TRACE, "Cloud hostname#port %s#%d", hostname, *port);
+    LOG_DEBUG(TRACE, "Cloud hostname#port %s#%d", hostname, *port);
     return 0;
 };
 
@@ -214,11 +213,11 @@ int ConnectionTester::allocateTestPacketBuffers(ConnectionMetrics* metrics) {
     return 0;
 };
 
-int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics, int length) {
+int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics) {
     int r = 0;
     // Only send a new packet if we have received the previous one
     if (metrics->txPacketCount == metrics->rxPacketCount) {
-        CHECK(generateTestPacket(metrics, length));
+        CHECK(generateTestPacket(metrics));
 
         int r = sock_send(metrics->socketDescriptor, metrics->txBuffer, metrics->testPacketSize, 0);
         if (r > 0) {
@@ -227,11 +226,11 @@ int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics, int length) {
             metrics->testPacketSequenceNumber++;
             metrics->txBytes += metrics->testPacketSize;
         } else {
-            LOG(ERROR, "test sock_send failed %d errno %d interface %d", r, errno, metrics->interface);
+            LOG(WARN, "Test sock_send failed %d errno %d interface %d", r, errno, metrics->interface);
             return SYSTEM_ERROR_NETWORK;
         }
         
-        LOG(TRACE, "sock %d packet # %d tx > %d", metrics->socketDescriptor, metrics->txPacketCount, r);
+        LOG_DEBUG(TRACE, "Sock %d packet # %d tx > %d", metrics->socketDescriptor, metrics->txPacketCount, r);
     }
     return r;
 };
@@ -239,11 +238,11 @@ int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics, int length) {
 int ConnectionTester::receiveTestPacket(ConnectionMetrics* metrics) {
     int r = sock_recv(metrics->socketDescriptor, metrics->rxBuffer, metrics->testPacketSize, MSG_DONTWAIT);
     if (r > 0) {
-        CHECK_TRUE(r == metrics->testPacketSize, SYSTEM_ERROR_BAD_DATA);
+        CHECK_TRUE((uint32_t)r == metrics->testPacketSize, SYSTEM_ERROR_BAD_DATA);
 
         if (memcmp(metrics->rxBuffer, metrics->txBuffer, r)) {
             // Did not receive the exact same message sent
-            LOG(ERROR, "test socket on interface %d did not receive the same echo data");
+            LOG(WARN, "Test socket on interface %d did not receive the same echo data");
             return SYSTEM_ERROR_BAD_DATA;
         }
 
@@ -251,20 +250,22 @@ int ConnectionTester::receiveTestPacket(ConnectionMetrics* metrics) {
         metrics->rxPacketCount++;
         metrics->rxBytes += metrics->testPacketSize;
     } else {
-        LOG(ERROR, "test sock_recv failed %d errno %d interface %d", r, errno, metrics->interface);
+        LOG(WARN, "Test sock_recv failed %d errno %d interface %d", r, errno, metrics->interface);
         return SYSTEM_ERROR_NETWORK;
     }
     
-    LOG(TRACE, "sock %d packet # %d rx < %d", metrics->socketDescriptor, metrics->rxPacketCount, r);
+    LOG_DEBUG(TRACE, "Sock %d packet # %d rx < %d", metrics->socketDescriptor, metrics->rxPacketCount, r);
     return r;
 };
 
-int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics, int packetDataLength) {
+int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics) {
     auto network = spark::Network.from(metrics->interface);
     if (!network) {
         LOG(ERROR, "No Network associated with interface %d", metrics->interface);
         return SYSTEM_ERROR_BAD_DATA;
     }
+
+    unsigned packetDataLength = random(1, REACHABILITY_MAX_PAYLOAD_SIZE);
 
     DTLSPlaintext_t msg = {
         REACHABILITY_TEST_MSG, // DTLS Message Type
@@ -276,7 +277,6 @@ int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics, int packetD
 
     int headerLength = sizeof(msg);
     int totalMessageLength = packetDataLength + headerLength;
-    //LOG(TRACE, "packetDataLength %u headerLength %d totalMessageLength %d", packetDataLength, headerLength, totalMessageLength);
 
     msg.epoch |= metrics->interface;
     msg.length = packetDataLength;
@@ -286,19 +286,18 @@ int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics, int packetD
     msg.length = nativeToBigEndian(msg.length);
     memcpy(&msg.sequence_number, &sequenceNumber, sizeof(sequenceNumber));
 
-    // TODO: Make data random instead
-    memset(metrics->txBuffer, 0xFF, totalMessageLength);    
+    Random rand;
+    rand.gen((char*)metrics->txBuffer + sizeof(msg), packetDataLength);    
     memcpy(metrics->txBuffer, &msg, headerLength);
     metrics->testPacketSize = totalMessageLength;
-    // LOG_DUMP(TRACE, metrics->txBuffer, totalMessageLength);
     return 0;
 };
 
-int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount, int packetDataLength) {
-    int pollCount = sock_poll(pfds, socketCount, 1000);
+int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
+    int pollCount = sock_poll(pfds, socketCount, 0);
 
-    if (pollCount <= 0) {
-        LOG(TRACE, "Connection test poll timeout/error %d", pollCount);
+    if (pollCount < 0) {
+        LOG(ERROR, "Connection test poll error %d", pollCount);
         return 0;
     }
 
@@ -313,7 +312,7 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount, int pack
             CHECK(receiveTestPacket(connection));
         }
         if (pfds[i].revents & POLLOUT) {
-            CHECK(sendTestPacket(connection, packetDataLength));
+            CHECK(sendTestPacket(connection));
         }
     }
     return 0;
@@ -325,10 +324,12 @@ void ConnectionTester::cleanupSockets(bool recalculateMetrics) {
         if (recalculateMetrics && i.rxPacketCount > 0) {
             i.avgPacketRoundTripTime = (i.totalPacketWaitMillis / i.rxPacketCount);
 
-            LOG(INFO,"%s sent %d packets, got %d packets, avg rtt: %d", 
+            LOG(INFO,"%s: %d/%d packets %d/%d bytes received, avg rtt: %d", 
                 netifToName(i.interface), 
-                i.txPacketCount, 
                 i.rxPacketCount,
+                i.txPacketCount, 
+                i.rxBytes,
+                i.txBytes,
                 i.avgPacketRoundTripTime);
         }
 
@@ -354,7 +355,6 @@ void ConnectionTester::cleanupSockets(bool recalculateMetrics) {
 
 
 // GOAL: To maintain a list of which network interface is "best" at any given time
-// General workflow
 // 1) Retrieve the server hostname and port. Resolve the hostname to an addrinfo list (ie IP addresses of server)
 // 2) Create a socket for each network interface to test. Bind this socket to the specific interface. Connect the socket
 // 3) Add these created+connected sockets to a pollfd structure. Allocate buffers for the reachability test messages.
@@ -391,11 +391,8 @@ int ConnectionTester::testConnections() {
     });
 
     int socketCount = 0;
-    struct pollfd* pfds = (pollfd*)malloc(sizeof(pollfd) * metrics_.size());
+    auto pfds = std::make_unique<pollfd[]>(metrics_.size());;
     CHECK_TRUE(pfds, SYSTEM_ERROR_NO_MEMORY);
-    SCOPE_GUARD({
-        free(pfds);
-    });
     
     // Step 2: Create, bind, and connect sockets for each network interface to test
     for (struct addrinfo* a = info; a != nullptr; a = a->ai_next) {
@@ -403,12 +400,16 @@ int ConnectionTester::testConnections() {
         // For each network interface to test, create + open a socket with the retrieved server address
         // If any of the sockets fail to be created + opened with this server address, return an error
         for (auto& connectionMetrics: metrics_) {
-            if (!spark::Network.from(connectionMetrics.interface).ready()) {
-                LOG(TRACE,"%s not ready, skipping test", netifToName(connectionMetrics.interface));
+            if (!network_ready(spark::Network.from(connectionMetrics.interface),0,nullptr)) {
+                LOG_DEBUG(TRACE,"%s not ready, skipping test", netifToName(connectionMetrics.interface));
                 continue;
             }
 
             int s = sock_socket(a->ai_family, a->ai_socktype, a->ai_protocol);
+            NAMED_SCOPE_GUARD(guard, {
+                sock_close(s);
+            });
+
             if (s < 0) {
                 LOG(ERROR, "test socket failed, family=%d, type=%d, protocol=%d, errno=%d", a->ai_family, a->ai_socktype, a->ai_protocol, errno);
                 return SYSTEM_ERROR_NETWORK;
@@ -428,23 +429,24 @@ int ConnectionTester::testConnections() {
                     break;
                 }
             }
-            //LOG(TRACE, "test socket=%d, connecting to %s#%u", s, serverHost, serverPort);
+            LOG_DEBUG(TRACE, "test socket=%d, connecting to %s#%u", s, serverHost, serverPort);
 
             struct ifreq ifr = {};
             if_index_to_name(connectionMetrics.interface, ifr.ifr_name);
             r = sock_setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
             if (r) {
                 LOG(ERROR, "test socket=%d, failed to sock_setsockopt to IF %s, errno=%d", s, ifr.ifr_name, errno);
-                sock_close(s);
                 return SYSTEM_ERROR_NETWORK;
             }
 
+            connectionMetrics.socketConnAttempts++;
             r = sock_connect(s, a->ai_addr, a->ai_addrlen);
             if (r) {
                 LOG(ERROR, "test socket=%d, failed to connect to %s#%u, errno=%d", s, serverHost, serverPort, errno);
+                connectionMetrics.socketConnFailures++;
                 return SYSTEM_ERROR_NETWORK;
             }
-            LOG(INFO, "test socket # %d, %s bound to %s connected to %s#%u", s, ifr.ifr_name, netifToName(connectionMetrics.interface), serverHost, serverPort); 
+            LOG_DEBUG(INFO, "test socket # %d, %s bound to %s connected to %s#%u", s, ifr.ifr_name, netifToName(connectionMetrics.interface), serverHost, serverPort); 
 
             // Step 3: Use the socket descriptor for the polling structure, allocate our test buffers
             connectionMetrics.socketDescriptor = s;
@@ -452,15 +454,15 @@ int ConnectionTester::testConnections() {
             pfds[socketCount].events = (POLLIN | POLLOUT);
             socketCount++;
 
+            guard.dismiss();
             CHECK(allocateTestPacketBuffers(&connectionMetrics));
         }
     }
     
     // Step 4: Send/Receive data on the sockets for the duration of the test time
-    unsigned packetDataLength = random(1, REACHABILITY_MAX_PAYLOAD_SIZE);
     auto endTime = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
     while (HAL_Timer_Get_Milli_Seconds() < endTime) {
-        CHECK(pollSockets(pfds, socketCount, packetDataLength));
+        CHECK(pollSockets(pfds.get(), socketCount));
     }
 
     // Only read from sockets to receive any final outstanding packets
@@ -470,7 +472,7 @@ int ConnectionTester::testConnections() {
 
     endTime = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
     while(testPacketsOutstanding() && HAL_Timer_Get_Milli_Seconds() < endTime) {
-        pollSockets(pfds, socketCount, packetDataLength);    
+        pollSockets(pfds.get(), socketCount);    
     }
 
     // Step 5: Cleanup test metrics, close sockets, calculate updated diagnostics
@@ -479,8 +481,8 @@ int ConnectionTester::testConnections() {
     return 0;
 }
 
-const Vector<ConnectionMetrics>* ConnectionTester::getConnectionMetrics(){
-    return &metrics_;
+const Vector<ConnectionMetrics> ConnectionTester::getConnectionMetrics(){
+    return metrics_;
 }
 
 }} /* namespace particle::system */

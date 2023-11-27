@@ -209,20 +209,6 @@ void loop() {
             // Run the internal connection test
             system_internal(4, nullptr);
         }
-        else if(c == '2') {
-            stats_* lwipStats = (stats_*)system_internal(5, nullptr);
-            Log.info("LWIP link  xmit: %u recv %u drop %u err %u",
-                lwipStats->link.xmit, lwipStats->link.recv, lwipStats->link.drop, lwipStats->link.err);
-            Log.info("LWIP udp   xmit: %u recv %u drop %u err %u proterr %u",
-                lwipStats->udp.xmit, lwipStats->udp.recv, lwipStats->udp.drop, lwipStats->udp.err, lwipStats->udp.proterr);
-
-            // Connection tester metrics
-            const Vector<ConnectionMetrics>* ConnectionTesterDiagnostics = (const Vector<ConnectionMetrics>*)(system_internal(6, nullptr));
-            for (auto& i: *ConnectionTesterDiagnostics) {
-                Log.info("interface %lu tx bytes %lu rx bytes %lu",
-                    i.interface, i.txBytes, i.rxBytes, i.avgPacketRoundTripTime);
-            }
-        }
         else if(c == '3') {
             Particle.disconnect(CloudDisconnectOptions().clearSession(true));
             waitUntil(Particle.disconnected);

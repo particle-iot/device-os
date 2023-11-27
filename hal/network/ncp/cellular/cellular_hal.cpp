@@ -234,7 +234,7 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     // Update the cached values if they dont match the last queried data. 
     CellularDeviceCached cacheWrite = {};
     cacheWrite.size = sizeof(CellularDeviceCached);
-    cacheWrite.version = CELLULAR_DEVICE_VERSION_V1;
+    cacheWrite.version = CELLULAR_DEVICE_VERSION;
     strlcpy(cacheWrite.iccid, info->iccid, sizeof(cacheWrite.iccid));
     strlcpy(cacheWrite.imei, info->imei, sizeof(cacheWrite.imei));
     cacheWrite.dev = info->dev;
