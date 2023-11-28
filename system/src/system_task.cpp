@@ -804,7 +804,7 @@ void* system_internal(int item, void* reserved)
     }
 #if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
     case 4: {
-        particle::system::ConnectionTester::instance()->testConnections();
+        particle::system::ConnectionManager::instance()->testConnections();
         return nullptr;
     }
     case 8: {

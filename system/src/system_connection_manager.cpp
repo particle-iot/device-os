@@ -33,6 +33,7 @@ LOG_SOURCE_CATEGORY("system.cm")
 #include "netdb_hal.h"
 #include "ifapi.h"
 #include "random.h"
+#include "system_threading.h"
 
 namespace particle { namespace system {
 
@@ -60,6 +61,26 @@ static const char* netifToName(uint8_t interfaceNumber) {
             return "";
     }
 }
+
+static int getCloudHostnameAndPort(uint16_t * port, char * hostname, int hostnameLength) {
+    ServerAddress server_addr = {};
+    char tmphost[sizeof(server_addr.domain) + 32] = {};
+    if (hostnameLength < (int)(sizeof(tmphost)+1)) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+
+    HAL_FLASH_Read_ServerAddress(&server_addr);
+    if (server_addr.port == 0 || server_addr.port == 0xFFFF) {
+        server_addr.port = spark_cloud_udp_port_get();
+    }
+
+    system_string_interpolate(server_addr.domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
+    strcpy(hostname, tmphost);
+    *port = server_addr.port;
+
+    LOG_DEBUG(TRACE, "Cloud hostname#port %s#%d", hostname, *port);
+    return 0;
+};
 
 ConnectionManager::ConnectionManager()
     : preferredNetwork_(NETWORK_INTERFACE_ALL) {
@@ -115,11 +136,11 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
 
     // 3: If no preferred network, use the 'best' network based on criteria
     // 3.1: Network is ready: ie configured + connected (see ipv4 routable hook)
-    // 3.2: Network has best criteria based on network tester stats (vector should be sorted in "best" order)
-    for (auto& i: ConnectionTester::instance()->getConnectionMetrics()) {
-        if (network_ready(spark::Network.from(i.interface), 0, nullptr)) {
-            LOG_DEBUG(TRACE, "Using best network: %lu", i.interface);
-            return i.interface;
+    // 3.2: Network has best criteria based on network tester results
+    for (auto& i: bestNetworks_) {
+        if (network_ready(spark::Network.from(i), 0, nullptr)) {
+            LOG_DEBUG(TRACE, "Using best network: %lu", i);
+            return i;
         }
     }
 
@@ -128,6 +149,20 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     // We should have some historical stats to rely on and then bring that network up? 
     return bestNetwork;
 }
+
+int ConnectionManager::testConnections() {
+    ConnectionTester tester;
+    int r = tester.testConnections();
+    if (r == 0) {
+        auto metrics = tester.getConnectionMetrics();
+        bestNetworks_.clear();
+        for (auto& i: metrics) {
+            bestNetworks_.append(i.interface);
+        }
+    }
+    return r;
+}
+
 
 ConnectionTester::ConnectionTester() {
     const network_interface_t interfaceList[] = { 
@@ -149,29 +184,17 @@ ConnectionTester::ConnectionTester() {
     }
 }
 
-ConnectionTester* ConnectionTester::instance() {
-    static ConnectionTester tester;
-    return &tester;
-}
+ConnectionTester::~ConnectionTester() {
+    for (auto& i: metrics_) {
+        sock_close(i.socketDescriptor);
 
-static int getCloudHostnameAndPort(uint16_t * port, char * hostname, int hostnameLength) {
-    ServerAddress server_addr = {};
-    char tmphost[sizeof(server_addr.domain) + 32] = {};
-    if (hostnameLength < (int)(sizeof(tmphost)+1)) {
-        return SYSTEM_ERROR_TOO_LARGE;
+        if (i.txBuffer) {
+            free(i.txBuffer);
+        }
+        if (i.rxBuffer) {
+            free(i.rxBuffer);
+        }
     }
-
-    HAL_FLASH_Read_ServerAddress(&server_addr);
-    if (server_addr.port == 0 || server_addr.port == 0xFFFF) {
-        server_addr.port = spark_cloud_udp_port_get();
-    }
-
-    system_string_interpolate(server_addr.domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
-    strcpy(hostname, tmphost);
-    *port = server_addr.port;
-
-    LOG_DEBUG(TRACE, "Cloud hostname#port %s#%d", hostname, *port);
-    return 0;
 };
 
 ConnectionMetrics* ConnectionTester::metricsFromSocketDescriptor(int socketDescriptor) {
@@ -215,8 +238,10 @@ int ConnectionTester::allocateTestPacketBuffers(ConnectionMetrics* metrics) {
 
 int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics) {
     int r = 0;
-    // Only send a new packet if we have received the previous one
-    if (metrics->txPacketCount == metrics->rxPacketCount) {
+    // Only send a new packet if we have received the previous one, or we timeout waiting for a response
+    if (metrics->txPacketCount == metrics->rxPacketCount || 
+        (millis() > metrics->txPacketStartMillis + REACHABILITY_TEST_PACKET_TIMEOUT_MS)) {
+
         CHECK(generateTestPacket(metrics));
 
         int r = sock_send(metrics->socketDescriptor, metrics->txBuffer, metrics->testPacketSize, 0);
@@ -238,17 +263,17 @@ int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics) {
 int ConnectionTester::receiveTestPacket(ConnectionMetrics* metrics) {
     int r = sock_recv(metrics->socketDescriptor, metrics->rxBuffer, metrics->testPacketSize, MSG_DONTWAIT);
     if (r > 0) {
+        metrics->totalPacketWaitMillis += (millis() - metrics->txPacketStartMillis);
+        metrics->rxPacketCount++;
+        metrics->rxBytes += metrics->testPacketSize;
+
         CHECK_TRUE((uint32_t)r == metrics->testPacketSize, SYSTEM_ERROR_BAD_DATA);
 
         if (memcmp(metrics->rxBuffer, metrics->txBuffer, r)) {
-            // Did not receive the exact same message sent
             LOG(WARN, "Test socket on interface %d did not receive the same echo data");
             return SYSTEM_ERROR_BAD_DATA;
         }
 
-        metrics->totalPacketWaitMillis += (millis() - metrics->txPacketStartMillis);
-        metrics->rxPacketCount++;
-        metrics->rxBytes += metrics->testPacketSize;
     } else {
         LOG(WARN, "Test sock_recv failed %d errno %d interface %d", r, errno, metrics->interface);
         return SYSTEM_ERROR_NETWORK;
@@ -318,42 +343,6 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
     return 0;
 };
 
-void ConnectionTester::cleanupSockets(bool recalculateMetrics) {
-    for (auto& i: metrics_) {
-
-        if (recalculateMetrics && i.rxPacketCount > 0) {
-            i.avgPacketRoundTripTime = (i.totalPacketWaitMillis / i.rxPacketCount);
-
-            LOG(INFO,"%s: %d/%d packets %d/%d bytes received, avg rtt: %d", 
-                netifToName(i.interface), 
-                i.rxPacketCount,
-                i.txPacketCount, 
-                i.rxBytes,
-                i.txBytes,
-                i.avgPacketRoundTripTime);
-        }
-
-        sock_close(i.socketDescriptor);
-        i.socketDescriptor = -1;
-        i.txPacketCount = 0;
-        i.rxPacketCount = 0;
-        i.totalPacketWaitMillis = 0;
-
-        if (i.txBuffer) {
-            free(i.txBuffer);
-        }
-        if (i.rxBuffer) {
-            free(i.rxBuffer);
-        }
-    }
-
-    // Sort list by packet latency in ascending order, ie fastest to slowest
-    std::sort(metrics_.begin(), metrics_.end(), [](const ConnectionMetrics& dg1, const ConnectionMetrics& dg2) {
-        return (dg1.avgPacketRoundTripTime < dg2.avgPacketRoundTripTime); 
-    });
-};
-
-
 // GOAL: To maintain a list of which network interface is "best" at any given time
 // 1) Retrieve the server hostname and port. Resolve the hostname to an addrinfo list (ie IP addresses of server)
 // 2) Create a socket for each network interface to test. Bind this socket to the specific interface. Connect the socket
@@ -373,7 +362,6 @@ int ConnectionTester::testConnections() {
     uint16_t tmpport = 0;
 
     int r = SYSTEM_ERROR_NETWORK;
-    bool testSuccessful = false;
 
     getCloudHostnameAndPort(&tmpport, tmphost, sizeof(tmphost));
     snprintf(tmpserv, sizeof(tmpserv), "%u", tmpport);
@@ -386,7 +374,6 @@ int ConnectionTester::testConnections() {
     }
 
     SCOPE_GUARD({
-        cleanupSockets(testSuccessful);
         netdb_freeaddrinfo(info);
     });
 
@@ -463,6 +450,7 @@ int ConnectionTester::testConnections() {
     auto endTime = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
     while (HAL_Timer_Get_Milli_Seconds() < endTime) {
         CHECK(pollSockets(pfds.get(), socketCount));
+        SystemISRTaskQueue.process();
     }
 
     // Only read from sockets to receive any final outstanding packets
@@ -472,11 +460,29 @@ int ConnectionTester::testConnections() {
 
     endTime = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
     while(testPacketsOutstanding() && HAL_Timer_Get_Milli_Seconds() < endTime) {
-        pollSockets(pfds.get(), socketCount);    
+        pollSockets(pfds.get(), socketCount);
+        SystemISRTaskQueue.process();
     }
 
-    // Step 5: Cleanup test metrics, close sockets, calculate updated diagnostics
-    testSuccessful = true;
+    // Step 5: calculate updated metrics
+    for (auto& i: metrics_) {
+        if (i.rxPacketCount > 0) {
+            i.avgPacketRoundTripTime = (i.totalPacketWaitMillis / i.rxPacketCount);
+
+            LOG(INFO,"%s: %d/%d packets %d/%d bytes received, avg rtt: %d", 
+                netifToName(i.interface), 
+                i.rxPacketCount,
+                i.txPacketCount, 
+                i.rxBytes,
+                i.txBytes,
+                i.avgPacketRoundTripTime);
+        }
+    }
+
+    // Sort list by packet latency in ascending order, ie fastest to slowest
+    std::sort(metrics_.begin(), metrics_.end(), [](const ConnectionMetrics& dg1, const ConnectionMetrics& dg2) {
+        return (dg1.avgPacketRoundTripTime < dg2.avgPacketRoundTripTime); 
+    });
 
     return 0;
 }

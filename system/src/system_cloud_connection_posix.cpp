@@ -350,7 +350,7 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
 
 int system_internet_test(void* reserved)
 {
-    return particle::system::ConnectionTester::instance()->testConnections();
+    return particle::system::ConnectionManager::instance()->testConnections();
 }
 
 int system_multicast_announce_presence(void* reserved)

@@ -34,6 +34,7 @@ struct ConnectionMetrics {
     uint8_t *rxBuffer;
     uint32_t testPacketSize;
     uint32_t testPacketSequenceNumber;
+    uint32_t testPacketTxMillis;
     uint32_t txPacketCount;
     uint32_t rxPacketCount;
     uint32_t txPacketStartMillis;
@@ -54,25 +55,24 @@ public:
 
     static ConnectionManager* instance();
 
-    // Support Particle.prefered() / Particle.isPrefered() --> Use that network IF as the one for cloud socket binding
     void setPreferredNetwork(network_handle_t network, bool preferred);
     network_handle_t getPreferredNetwork();
 
-    // Support Particle.connectionInterface() --> Get sock opt from cloud socket
     network_handle_t getCloudConnectionNetwork();
-
-    // Provide interface for "best" network interface --> use that for cloud socket
     network_handle_t selectCloudConnectionNetwork();
+
+    int testConnections();
 
 private:
     network_handle_t preferredNetwork_;
+    Vector<network_handle_t> bestNetworks_;
 };
 
 class ConnectionTester {
 public:
     ConnectionTester();
+    ~ConnectionTester();
 
-    static ConnectionTester* instance();
     int testConnections();
 
     const Vector<ConnectionMetrics> getConnectionMetrics();
@@ -83,13 +83,13 @@ private:
     int pollSockets(struct pollfd * pfds, int socketCount);
     int sendTestPacket(ConnectionMetrics* metrics);
     int receiveTestPacket(ConnectionMetrics* metrics);
-    void cleanupSockets(bool recalculateMetrics = true);
     ConnectionMetrics* metricsFromSocketDescriptor(int socketDescriptor);
     bool testPacketsOutstanding();
 
     const uint8_t REACHABILITY_TEST_MSG = 252;
     const unsigned REACHABILITY_MAX_PAYLOAD_SIZE = 256;
     const unsigned REACHABILITY_TEST_DURATION_MS = 2500;
+    const unsigned REACHABILITY_TEST_PACKET_TIMEOUT_MS = 500;
 
     Vector<ConnectionMetrics> metrics_;
 };
