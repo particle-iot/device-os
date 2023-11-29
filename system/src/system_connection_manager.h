@@ -76,6 +76,7 @@ public:
     int testConnections();
 
     const Vector<ConnectionMetrics> getConnectionMetrics();
+    static const Vector<network_interface_t> getSupportedInterfaces();
 
 private:
     int allocateTestPacketBuffers(ConnectionMetrics* metrics);

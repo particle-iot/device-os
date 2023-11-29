@@ -523,7 +523,7 @@ int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved)
 {
 #if PLATFORM_ID == PLATFORM_MSOM
-    // Force new session handshake for now
+    // FIXME: Force new session handshake for now
     return 0;
 #else
 	size_t length = 0;

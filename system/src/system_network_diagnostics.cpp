@@ -300,30 +300,34 @@ public:
 
 
 #if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
-class CloudConnectionInterfaceDiagnosticData : public AbstractIntegerDiagnosticData
+
+class CloudConnectionInterfaceDiagnosticData : public EnumDiagnosticData< NetworkInterface, NoConcurrency>
 {
 public:
     CloudConnectionInterfaceDiagnosticData()
-        : AbstractIntegerDiagnosticData(DIAG_ID_CLOUD_CONNECTION_INTERFACE | DIAG_TYPE_APP_INT,
-                                        DIAG_NAME_CLOUD_CONNECTION_INTERFACE)
+        : EnumDiagnosticData(DIAG_ID_CLOUD_CONNECTION_INTERFACE,
+                            DIAG_NAME_CLOUD_CONNECTION_INTERFACE,
+                            NetworkInterface::ALL)
     {
     }
 
     virtual int get(IntType& val)
     {
-        auto netIf = NetworkDiagnostics::NetworkInterface::NETWORK_INTERFACE_ALL;
+        auto netIf = NetworkInterface::ALL;
         switch(system::ConnectionManager::instance()->getCloudConnectionNetwork()) {
+#if HAL_PLATFORM_ETHERNET
             case NETWORK_INTERFACE_ETHERNET:
-                netIf = NetworkDiagnostics::NetworkInterface::NETWORK_INTERFACE_ETHERNET;
+                netIf = NetworkInterface::ETHERNET;
                 break;
+#endif
 #if HAL_PLATFORM_CELLULAR
             case NETWORK_INTERFACE_CELLULAR:
-                netIf = NetworkDiagnostics::NetworkInterface::NETWORK_INTERFACE_CELLULAR;
+                netIf = NetworkInterface::CELLULAR;
                 break;
 #endif
 #if HAL_PLATFORM_WIFI
             case NETWORK_INTERFACE_WIFI_STA:
-                netIf = NetworkDiagnostics::NetworkInterface::NETWORK_INTERFACE_WIFI_STA;
+                netIf = NetworkInterface::WIFI_STA;
                 break;
 #endif
             default:
@@ -333,32 +337,9 @@ public:
         val = static_cast<IntType>(netIf);
         return SYSTEM_ERROR_NONE;
     }
-
 } g_cloudConnectionInterfaceDiagData;
+
 #endif // HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
-
-// FIXME: Change to enum based diagnostic data for cloud connection interface
-// class CloudConnectionInterfaceDiagnosticData : public EnumDiagnosticData<NetworkInterface, NoConcurrency>
-// {
-// public:
-//     CloudConnectionInterfaceDiagnosticData()
-//         : EnumDiagnosticData(DIAG_ID_CLOUD_CONNECTION_INTERFACE,
-//                             DIAG_NAME_CLOUD_CONNECTION_INTERFACE,
-//                             NetworkInterface::UNKNOWN)
-//     {
-//     }
-
-//     virtual int get(IntType& val)
-//     {
-//         //auto cloudNetwork = system::ConnectionManager::instance()->getCloudConnectionNetwork();
-
-//         NetworkInterface cloudConnection = NetworkInterface::UNKNOWN;
-
-//         val = static_cast<IntType>(cloudConnection);
-
-//         return SYSTEM_ERROR_NONE;
-//     }
-// } g_cloudConnectionInterfaceDiagData;
 
 #if HAL_PLATFORM_CELLULAR
 class NetworkCellularCellGlobalIdentityMobileCountryCodeDiagnosticData
@@ -461,7 +442,7 @@ class AltSignalStrengthDiagnosticData : public AbstractIntegerDiagnosticData
 {
 public:
     AltSignalStrengthDiagnosticData()
-        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH | DIAG_TYPE_APP_UINT,
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH,
                                         DIAG_NAME_ALT_NETWORK_SIGNAL_STRENGTH)
     {
     }
@@ -491,7 +472,7 @@ class AltSignalStrengthValueDiagnosticData : public AbstractIntegerDiagnosticDat
 {
 public:
     AltSignalStrengthValueDiagnosticData()
-        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH_VALUE | DIAG_TYPE_APP_FIXED_S16_16,
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH_VALUE,
                                         DIAG_NAME_ALT_NETWORK_SIGNAL_STRENGTH_VALUE)
     {
     }
@@ -521,7 +502,7 @@ class AltSignalQualityDiagnosticData : public AbstractIntegerDiagnosticData
 {
 public:
     AltSignalQualityDiagnosticData()
-        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY | DIAG_TYPE_APP_UINT,
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY,
                                         DIAG_NAME_ALT_NETWORK_SIGNAL_QUALITY)
     {
     }
@@ -551,7 +532,7 @@ class AltSignalQualityValueDiagnosticData : public AbstractIntegerDiagnosticData
 {
 public:
     AltSignalQualityValueDiagnosticData()
-        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY_VALUE | DIAG_TYPE_APP_FIXED_S16_16,
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY_VALUE,
                                         DIAG_NAME_ALT_NETWORK_SIGNAL_QUALITY_VALUE)
     {
     }
@@ -581,7 +562,7 @@ class AltNetworkAccessTechnologyDiagnosticData : public AbstractIntegerDiagnosti
 {
 public:
     AltNetworkAccessTechnologyDiagnosticData()
-        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_ACCESS_TECNHOLOGY | DIAG_TYPE_APP_INT,
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_ACCESS_TECNHOLOGY,
                                         DIAG_NAME_ALT_NETWORK_ACCESS_TECNHOLOGY)
     {
     }

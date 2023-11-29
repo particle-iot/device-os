@@ -36,28 +36,6 @@ Serial1LogHandler logHandler(LOG_LEVEL_ALL,
 }
 );
 
-// Copied from system_connection_manager.h
-struct ConnectionMetrics {
-    network_interface_t interface;
-    int socketDescriptor;
-    uint8_t *txBuffer;
-    uint8_t *rxBuffer;
-    int testPacketSize;
-    uint32_t testPacketSequenceNumber;
-    int txPacketCount;
-    int rxPacketCount;
-    int txPacketStartMillis;
-    int totalPacketWaitMillis;
-
-    // uint32_t dnsResolutionAttempts;
-    // uint32_t dnsResolutionFailures;
-    // uint32_t socketConnAttempts;
-    // uint32_t socketConnFailures;
-    uint32_t txBytes;
-    uint32_t rxBytes;
-    uint32_t avgPacketRoundTripTime;
-};
-
 // Copied from HAL
 struct __attribute__((packed)) CellularDeviceCached
 {

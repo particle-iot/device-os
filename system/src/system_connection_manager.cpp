@@ -26,6 +26,7 @@ LOG_SOURCE_CATEGORY("system.cm")
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
 #include "system_string_interpolate.h"
+#include "system_network_diagnostics.h"
 #include "spark_wiring_network.h"
 #include "spark_wiring_vector.h"
 #include "spark_wiring_random.h"
@@ -84,6 +85,7 @@ static int getCloudHostnameAndPort(uint16_t * port, char * hostname, int hostnam
 
 ConnectionManager::ConnectionManager()
     : preferredNetwork_(NETWORK_INTERFACE_ALL) {
+    bestNetworks_ = ConnectionTester::getSupportedInterfaces();
 }
 
 ConnectionManager* ConnectionManager::instance() {
@@ -163,21 +165,8 @@ int ConnectionManager::testConnections() {
     return r;
 }
 
-
 ConnectionTester::ConnectionTester() {
-    const network_interface_t interfaceList[] = { 
-#if HAL_PLATFORM_ETHERNET
-        NETWORK_INTERFACE_ETHERNET,
-#endif
-#if HAL_PLATFORM_WIFI 
-        NETWORK_INTERFACE_WIFI_STA, 
-#endif
-#if HAL_PLATFORM_CELLULAR
-        NETWORK_INTERFACE_CELLULAR
-#endif
-    };
-    
-    for (const auto& i: interfaceList) {
+    for (const auto& i: getSupportedInterfaces()) {
         struct ConnectionMetrics interfaceDiagnostics = {};
         interfaceDiagnostics.interface = i;
         metrics_.append(interfaceDiagnostics);
@@ -366,7 +355,7 @@ int ConnectionTester::testConnections() {
     getCloudHostnameAndPort(&tmpport, tmphost, sizeof(tmphost));
     snprintf(tmpserv, sizeof(tmpserv), "%u", tmpport);
     LOG(TRACE, "Resolving %s#%s", tmphost, tmpserv);
-    // TODO: get addrinfo/server IP from DNS lookup using the specific interface? 
+    // FIXME: get addrinfo/server IP from DNS lookup using the specific interfaces DNS server 
     r = netdb_getaddrinfo(tmphost, tmpserv, &hints, &info); 
     if (r) {
         LOG(ERROR, "No addrinfo for %s#%s", tmphost, tmpserv);
@@ -489,6 +478,22 @@ int ConnectionTester::testConnections() {
 
 const Vector<ConnectionMetrics> ConnectionTester::getConnectionMetrics(){
     return metrics_;
+}
+
+const Vector<network_interface_t> ConnectionTester::getSupportedInterfaces() {
+    const Vector<network_interface_t> interfaceList = { 
+#if HAL_PLATFORM_ETHERNET
+    static_cast<network_interface_t>(NetworkInterface::ETHERNET),
+#endif
+#if HAL_PLATFORM_WIFI 
+    static_cast<network_interface_t>(NetworkInterface::WIFI_STA),
+#endif
+#if HAL_PLATFORM_CELLULAR
+    static_cast<network_interface_t>(NetworkInterface::CELLULAR)
+#endif
+    };
+
+    return interfaceList;
 }
 
 }} /* namespace particle::system */

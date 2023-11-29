@@ -22,26 +22,18 @@
 
 namespace particle {
 
-// FIXME: Remove when alternate signal diagnostics are supported
-enum {
-  DIAG_TYPE_APP_INT = 1 << 11,
-  DIAG_TYPE_APP_UINT = 2 << 11,
-  DIAG_TYPE_APP_FIXED_S16_16 = 3 << 11,
+enum class NetworkInterface : int {
+    ALL = 0, 
+    LOOPBACK = 1, 
+    // MESH = 2, // Deprecated 
+    ETHERNET = 3, 
+    CELLULAR = 4, 
+    WIFI_STA = 5, 
+    WIFI_AP = 6
 };
 
 class NetworkDiagnostics {
 public:
-    // FIXME: Share this enum on device service side
-    enum NetworkInterface {
-        NETWORK_INTERFACE_ALL = 0, 
-        NETWORK_INTERFACE_LOOPBACK = 1, 
-        // NETWORK_INTERFACE_MESH = 2, // Deprecated 
-        NETWORK_INTERFACE_ETHERNET = 3, 
-        NETWORK_INTERFACE_CELLULAR = 4, 
-        NETWORK_INTERFACE_WIFI_STA = 5, 
-        NETWORK_INTERFACE_WIFI_AP = 6
-    };
-
     // Note: Use odd numbers to encode transitional states
     enum Status {
         TURNED_OFF = 0,
