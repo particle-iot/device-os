@@ -240,7 +240,7 @@ int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics) {
             metrics->testPacketSequenceNumber++;
             metrics->txBytes += metrics->testPacketSize;
         } else {
-            LOG(WARN, "Test sock_send failed %d errno %d interface %d", r, errno, metrics->interface);
+            LOG_DEBUG(WARN, "Test sock_send failed %d errno %d interface %d", r, errno, metrics->interface);
             return SYSTEM_ERROR_NETWORK;
         }
         
@@ -259,12 +259,12 @@ int ConnectionTester::receiveTestPacket(ConnectionMetrics* metrics) {
         CHECK_TRUE((uint32_t)r == metrics->testPacketSize, SYSTEM_ERROR_BAD_DATA);
 
         if (memcmp(metrics->rxBuffer, metrics->txBuffer, r)) {
-            LOG(WARN, "Test socket on interface %d did not receive the same echo data");
+            LOG(WARN, "Socket %d Interface %d did not receive the same echo data: %d", metrics->socketDescriptor, metrics->interface, r);
             return SYSTEM_ERROR_BAD_DATA;
         }
 
     } else {
-        LOG(WARN, "Test sock_recv failed %d errno %d interface %d", r, errno, metrics->interface);
+        LOG_DEBUG(WARN, "Test sock_recv failed %d errno %d interface %d", r, errno, metrics->interface);
         return SYSTEM_ERROR_NETWORK;
     }
     
@@ -323,10 +323,10 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
         }
 
         if (pfds[i].revents & POLLIN) {
-            CHECK(receiveTestPacket(connection));
+            receiveTestPacket(connection);
         }
         if (pfds[i].revents & POLLOUT) {
-            CHECK(sendTestPacket(connection));
+            sendTestPacket(connection);
         }
     }
     return 0;
