@@ -301,33 +301,33 @@ public:
 
 #if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
 
-class CloudConnectionInterfaceDiagnosticData : public EnumDiagnosticData< NetworkInterface, NoConcurrency>
+class CloudConnectionInterfaceDiagnosticData : public EnumDiagnosticData< NetworkDiagnosticsInterface, NoConcurrency>
 {
 public:
     CloudConnectionInterfaceDiagnosticData()
         : EnumDiagnosticData(DIAG_ID_CLOUD_CONNECTION_INTERFACE,
                             DIAG_NAME_CLOUD_CONNECTION_INTERFACE,
-                            NetworkInterface::ALL)
+                            NetworkDiagnosticsInterface::ALL)
     {
     }
 
     virtual int get(IntType& val)
     {
-        auto netIf = NetworkInterface::ALL;
+        auto netIf = NetworkDiagnosticsInterface::ALL;
         switch(system::ConnectionManager::instance()->getCloudConnectionNetwork()) {
 #if HAL_PLATFORM_ETHERNET
             case NETWORK_INTERFACE_ETHERNET:
-                netIf = NetworkInterface::ETHERNET;
+                netIf = NetworkDiagnosticsInterface::ETHERNET;
                 break;
 #endif
 #if HAL_PLATFORM_CELLULAR
             case NETWORK_INTERFACE_CELLULAR:
-                netIf = NetworkInterface::CELLULAR;
+                netIf = NetworkDiagnosticsInterface::CELLULAR;
                 break;
 #endif
 #if HAL_PLATFORM_WIFI
             case NETWORK_INTERFACE_WIFI_STA:
-                netIf = NetworkInterface::WIFI_STA;
+                netIf = NetworkDiagnosticsInterface::WIFI_STA;
                 break;
 #endif
             default:

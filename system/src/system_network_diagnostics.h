@@ -22,7 +22,7 @@
 
 namespace particle {
 
-enum class NetworkInterface : int {
+enum class NetworkDiagnosticsInterface : int {
     ALL = 0, 
     LOOPBACK = 1, 
     // MESH = 2, // Deprecated 

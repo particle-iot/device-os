@@ -483,13 +483,13 @@ const Vector<ConnectionMetrics> ConnectionTester::getConnectionMetrics(){
 const Vector<network_interface_t> ConnectionTester::getSupportedInterfaces() {
     const Vector<network_interface_t> interfaceList = { 
 #if HAL_PLATFORM_ETHERNET
-    static_cast<network_interface_t>(NetworkInterface::ETHERNET),
+    static_cast<network_interface_t>(NetworkDiagnosticsInterface::ETHERNET),
 #endif
 #if HAL_PLATFORM_WIFI 
-    static_cast<network_interface_t>(NetworkInterface::WIFI_STA),
+    static_cast<network_interface_t>(NetworkDiagnosticsInterface::WIFI_STA),
 #endif
 #if HAL_PLATFORM_CELLULAR
-    static_cast<network_interface_t>(NetworkInterface::CELLULAR)
+    static_cast<network_interface_t>(NetworkDiagnosticsInterface::CELLULAR)
 #endif
     };
 
