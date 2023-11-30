@@ -187,15 +187,22 @@ int AssetManager::requiredAssetsForModule(const hal_module_t* module, Vector<Ass
     if (module->info.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS) {
         // There are extensions in the prefix
         uintptr_t extensionsStart = (uintptr_t)module->info.module_start_address + module->module_info_offset + sizeof(module_info_t);
+        uintptr_t extensionsEnd = (uintptr_t)module->info.module_end_address;
         if (!boundsMatches(module)) {
             extensionsStart -= (uintptr_t)module->info.module_start_address;
             extensionsStart += (uintptr_t)module->bounds.start_address;
+            extensionsEnd -= (uintptr_t)module->info.module_start_address;
+            extensionsEnd += (uintptr_t)module->bounds.start_address;
         }
-        CHECK(parseAssetDependencies(assets, storageId, extensionsStart, (uintptr_t)module->info.module_end_address));
+        CHECK(parseAssetDependencies(assets, storageId, extensionsStart, extensionsEnd));
     }
     // Suffix
     module_info_suffix_base_t suffix = {};
     uintptr_t suffixStart = (uintptr_t)module->info.module_end_address - sizeof(module_info_suffix_base_t);
+    if (!boundsMatches(module)) {
+        suffixStart -= (uintptr_t)module->info.module_start_address;
+        suffixStart += (uintptr_t)module->bounds.start_address;
+    }
     CHECK(hal_storage_read(storageId, suffixStart, (uint8_t*)&suffix, sizeof(suffix)));
     if (suffix.size > sizeof(module_info_suffix_base_t) + sizeof(module_info_extension_t) * 2) {
         // There are some additional extensions in suffix
@@ -203,6 +210,8 @@ int AssetManager::requiredAssetsForModule(const hal_module_t* module, Vector<Ass
         if (!boundsMatches(module)) {
             extensionsStart -= (uintptr_t)module->info.module_start_address;
             extensionsStart += (uintptr_t)module->bounds.start_address;
+            suffixStart -= (uintptr_t)module->info.module_start_address;
+            suffixStart += (uintptr_t)module->bounds.start_address;
         }
         CHECK(parseAssetDependencies(assets, storageId, extensionsStart, suffixStart));
     }

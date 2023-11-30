@@ -113,9 +113,13 @@ EncodeFirmwareModules::EncodeFirmwareModules(pb_callback_t* cb, Flags flags)
             if (!is_module_function_valid((module_function_t)module.info.module_function)) {
                 continue;
             }
-            if (module.bounds.store == MODULE_STORE_FACTORY && (module.validity_result & MODULE_VALIDATION_INTEGRITY) == 0) {
-                continue; // See system_info_to_json()
+            // If sending a describe, skip factory modules entirely just in case
+            if (module.bounds.store == MODULE_STORE_FACTORY && (self->flags_ & Flag::SYSTEM_INFO_CLOUD)) {
+                continue;
             }
+            // if (module.bounds.store == MODULE_STORE_FACTORY && (module.validity_result & MODULE_VALIDATION_INTEGRITY) == 0) {
+            //     continue; // See system_info_to_json()
+            // }
             PB(FirmwareModule) pbModule = {};
             pbModule.type = moduleFunctionToPb((module_function_t)module.info.module_function);
             pbModule.index = module.info.module_index;
