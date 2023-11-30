@@ -1,3 +1,38 @@
+## 5.6.0
+
+### FEATURES
+
+- [msom] ACM basic support [#2689](https://github.com/particle-iot/device-os/pull/2689)
+
+### ENHANCEMENTS
+
+- [wiring] Add 64-bit string conversions [#2693](https://github.com/particle-iot/device-os/pull/2693)
+- [wiring] json: 64-bit support [#2695](https://github.com/particle-iot/device-os/pull/2695)
+- [msom] increase NCP baudrate to 921600, doubling throughput [#2706](https://github.com/particle-iot/device-os/pull/2706)
+- [network] Wiznet Ethernet performance improvements [#2708](https://github.com/particle-iot/device-os/pull/2708)
+
+### BUGFIXES
+
+- [gen3] hal: fixes the issue that UARTE RX may loss data [#2698](https://github.com/particle-iot/device-os/pull/2698)
+- [rtl872x] correctly handle SecureFault [#2699](https://github.com/particle-iot/device-os/pull/2699)
+- Fixes ncp-client not waiting for modem ready on cold boot [#2700](https://github.com/particle-iot/device-os/pull/2700)
+- [system] still pump system loop when SPARK_WLAN_SLEEP=1; Try to drain ISR task queue quicker [#2702](https://github.com/particle-iot/device-os/pull/2702)
+- [rtl872x] Fix unintentional pin changes for Serial1 RTS/CTS [#2703](https://github.com/particle-iot/device-os/pull/2703)
+- [rtl872x] fix multiple BLE issues [#2710](https://github.com/particle-iot/device-os/pull/2710)
+- Asset OTA fixes [#2711](https://github.com/particle-iot/device-os/pull/2711)
+
+
+### INTERNAL
+
+- [services] add long long support to printf/scanf [#2694](https://github.com/particle-iot/device-os/pull/2694)
+- fix printf/scanf for floating point numbers, add tests [#2696](https://github.com/particle-iot/device-os/pull/2696
+- [msom] support 16MB GD flash [#2701](https://github.com/particle-iot/device-os/pull/2701)
+- [msom] Support burnin tests [#2704](https://github.com/particle-iot/device-os/pull/2704)
+- [gen3] reduce flash usage [#2705](https://github.com/particle-iot/device-os/pull/2705)
+- Erase factory reset app after test runner completes [#2709](https://github.com/particle-iot/device-os/pull/2709)
+- Fix dual stack UDP bind behavior with LWIP_IPV6_DEFINES_ONLY [#2712](https://github.com/particle-iot/device-os/pull/2712)
+- Update WB makefile version [#2713](https://github.com/particle-iot/device-os/pull/2713)
+
 ## 5.5.0
 
 ### FEATURES
