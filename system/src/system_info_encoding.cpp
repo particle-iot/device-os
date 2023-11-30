@@ -98,6 +98,8 @@ bool encodeAssetDependencies(pb_ostream_t* strm, const pb_field_iter_t* field, v
 
 } // anonymous
 
+#if HAL_PLATFORM_PROTOBUF
+
 EncodeFirmwareModules::EncodeFirmwareModules(pb_callback_t* cb, Flags flags)
         : sysInfo_{},
           flags_(flags) {
@@ -171,6 +173,8 @@ EncodeFirmwareModules::EncodeFirmwareModules(pb_callback_t* cb, Flags flags)
         return true;
     };
 }
+
+#endif // HAL_PLATFORM_PROTOBUF
 
 #if HAL_PLATFORM_ASSETS
 EncodeFirmwareModules::~EncodeFirmwareModules() {
