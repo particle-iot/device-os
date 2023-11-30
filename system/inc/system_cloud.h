@@ -350,7 +350,9 @@ typedef enum spark_connection_property {
     SPARK_CLOUD_DISCONNECT_OPTIONS = 2, ///< Default disconnection options (set).
     SPARK_CLOUD_MAX_EVENT_DATA_SIZE = 3, ///< Maximum size of event data (get).
     SPARK_CLOUD_MAX_VARIABLE_VALUE_SIZE = 4, ///< Maximum size of a variable value (get).
-    SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE = 5 ///< Maximum size of a function call argument (get).
+    SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE = 5, ///< Maximum size of a function call argument (get).
+    SPARK_CLOUD_BIND_NETWORK_INTERFACE = 6, ///< The cloud connection should only use a specified network interface
+    SPARK_CLOUD_GET_NETWORK_INTERFACE = 7 ///< Which interface is being used for the current cloud connection
 } spark_connection_property;
 
 int spark_set_connection_property(unsigned property, unsigned value, const void* data, void* reserved);

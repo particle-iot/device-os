@@ -4,6 +4,7 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 Serial1LogHandler log1Handler(115200, LOG_LEVEL_ALL);
 
 retained uint8_t resetRetry = 0;
+#define ETHERNET_RETRY_MAX (10)
 
 void setup() {
 #if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
@@ -33,8 +34,19 @@ void setup() {
         waitFor(Ethernet.ready, 30000);
         Log.info("Ethernet.ready: %d", Ethernet.ready());
         resetRetry = 0;
-    } else if (++resetRetry <= 3) {
-        Log.info("Ethernet is off or not detected, attmpting to remap pins: %d/3", resetRetry);
+    } else if (++resetRetry <= ETHERNET_RETRY_MAX) {
+        Log.info("Ethernet is off or not detected, attmpting to remap pins: %d/%d", resetRetry, ETHERNET_RETRY_MAX);
+
+        if (resetRetry == 4) {
+            Log.info("Reset Ethernet chip");
+            pinMode(A7, OUTPUT);
+            digitalWrite(A7, LOW);
+            delay(1000);
+            digitalWrite(A7, HIGH);
+            delay(1000);
+            pinMode(A7, INPUT); // HI-Z
+            delay(1000);
+        }
 
         if_wiznet_pin_remap remap = {};
         remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
@@ -42,6 +54,14 @@ void setup() {
         remap.cs_pin = PIN_INVALID; // default
         remap.reset_pin = PIN_INVALID; // default
         remap.int_pin = PIN_INVALID; // default
+
+        // remap.cs_pin = D8; // MSoM Eval Board
+        // remap.reset_pin = A7;
+        // remap.int_pin = D22;
+
+        // remap.cs_pin = D5; // Feather Wing
+        // remap.reset_pin = D3;
+        // remap.int_pin = D4;
 
         // remap.cs_pin = D5;
         // remap.reset_pin = D3;

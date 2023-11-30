@@ -677,7 +677,7 @@ void NetworkManager::handleIfPowerState(if_t iface, const struct if_event* ev) {
         state->pwrState = static_cast<if_power_state_t>(ev->ev_power_state->state);
         uint8_t index;
         if_get_index(iface, &index);
-        LOG(TRACE, "Interface %d power state changed: %d", index, state->pwrState.load());
+        LOG(TRACE, "Interface %d power state changed: %s", index, powerStateToName(state->pwrState.load()));
     }
 }
 
@@ -859,6 +859,18 @@ const char* NetworkManager::stateToName(State state) const {
     return stateNames[::particle::to_underlying(state)];
 }
 
+const char* NetworkManager::powerStateToName(if_power_state_t state) const {
+    static const char* const stateNames[] = {
+        "NONE",
+        "DOWN",
+        "UP",
+        "POWERING_DOWN",
+        "POWERING_UP",
+    };
+
+    return stateNames[::particle::to_underlying(state)];
+}
+
 void NetworkManager::populateInterfaceRuntimeState(bool st) {
     for_each_iface([&](if_t iface, unsigned int flags) {
         auto state = getInterfaceRuntimeState(iface);
@@ -879,7 +891,7 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
                 state->pwrState = pwr;
                 uint8_t index;
                 if_get_index(iface, &index);
-                LOG(TRACE, "Interface %d power state: %d", index, state->pwrState.load());
+                LOG(TRACE, "Interface %d power state: %s", index, powerStateToName(state->pwrState.load()));
             }
         }
     });
@@ -1051,6 +1063,8 @@ void NetworkManager::resetInterfaceProtocolState(if_t iface) {
 
 int NetworkManager::powerInterface(if_t iface, bool enable) {
     auto ifState = getInterfaceRuntimeState(iface);
+    uint8_t index;
+    if_get_index(iface, &index);
     if (!ifState) {
         LOG(ERROR, "Interface is not populated");
         return SYSTEM_ERROR_NOT_FOUND;
@@ -1064,7 +1078,7 @@ int NetworkManager::powerInterface(if_t iface, bool enable) {
         if (ifState->pwrState != IF_POWER_STATE_UP && ifState->pwrState != IF_POWER_STATE_POWERING_UP) {
             ifState->pwrState = IF_POWER_STATE_POWERING_UP;
         }
-        LOG(TRACE, "Request to power on the interface");
+        LOG(TRACE, "Request to power on interface %d", index);
     } else {
         req.state = IF_POWER_STATE_DOWN;
         // Update the interface power here to avoid race condition
@@ -1073,7 +1087,7 @@ int NetworkManager::powerInterface(if_t iface, bool enable) {
         if (ifState->pwrState != IF_POWER_STATE_DOWN && ifState->pwrState != IF_POWER_STATE_POWERING_DOWN) {
             ifState->pwrState = IF_POWER_STATE_POWERING_DOWN;
         }
-        LOG(TRACE, "Request to power off the interface");
+        LOG(TRACE, "Request to power off interface %d", index);
     }
     return if_request(iface, IF_REQ_POWER_STATE, &req, sizeof(req), nullptr);
 }

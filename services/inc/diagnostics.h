@@ -44,6 +44,11 @@
 #define DIAG_NAME_NETWORK_SIGNAL_QUALITY "net:sigqual"
 #define DIAG_NAME_NETWORK_SIGNAL_QUALITY_VALUE "net:sigqualv"
 #define DIAG_NAME_NETWORK_ACCESS_TECNHOLOGY "net:at"
+#define DIAG_NAME_ALT_NETWORK_SIGNAL_STRENGTH "net:alt:sigstr"
+#define DIAG_NAME_ALT_NETWORK_SIGNAL_STRENGTH_VALUE "net:alt:sigstrv"
+#define DIAG_NAME_ALT_NETWORK_SIGNAL_QUALITY "net:alt:sigqual"
+#define DIAG_NAME_ALT_NETWORK_SIGNAL_QUALITY_VALUE "net:alt:sigqualv"
+#define DIAG_NAME_ALT_NETWORK_ACCESS_TECNHOLOGY "net:alt:at"
 #define DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_COUNTRY_CODE "net:cell:cgi:mcc"
 #define DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_MOBILE_NETWORK_CODE "net:cell:cgi:mnc"
 #define DIAG_NAME_NETWORK_CELLULAR_CELL_GLOBAL_IDENTITY_LOCATION_AREA_CODE "net:cell:cgi:lac"
@@ -53,6 +58,7 @@
 #define DIAG_NAME_CLOUD_DISCONNECTS "cloud:dconn"
 #define DIAG_NAME_CLOUD_CONNECTION_ATTEMPTS "cloud:connatt"
 #define DIAG_NAME_CLOUD_DISCONNECTION_REASON "cloud:dconnrsn"
+#define DIAG_NAME_CLOUD_CONNECTION_INTERFACE "cloud:connif"
 #define DIAG_NAME_CLOUD_RETRANSMITTED_MESSAGES "coap:retransmit"
 #define DIAG_NAME_CLOUD_UNACKNOWLEDGED_MESSAGES "coap:unack"
 #define DIAG_NAME_CLOUD_TRANSMITTED_MESSAGES "coap:transmit"
@@ -100,6 +106,7 @@ typedef enum diag_id {
     DIAG_ID_CLOUD_DISCONNECTS = 14, // cloud:dconn
     DIAG_ID_CLOUD_CONNECTION_ATTEMPTS = 29, // cloud:connatt
     DIAG_ID_CLOUD_DISCONNECTION_REASON = 30, // cloud:dconnrsn
+    DIAG_ID_CLOUD_CONNECTION_INTERFACE = 44, // cloud:connif
     DIAG_ID_CLOUD_RETRANSMITTED_MESSAGES = 21, // coap:retransmit
     DIAG_ID_CLOUD_UNACKNOWLEDGED_MESSAGES = 22, // coap:unack
     DIAG_ID_CLOUD_TRANSMITTED_MESSAGES = 23, // coap:transmit
@@ -107,6 +114,11 @@ typedef enum diag_id {
     DIAG_ID_SYSTEM_TOTAL_RAM = 25, // sys:tram
     DIAG_ID_SYSTEM_USED_RAM = 26, // sys:uram
     DIAG_ID_CLOUD_COAP_ROUND_TRIP = 31, // coap:roundtrip
+    DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH_VALUE = 45, // net:alt:sigstrv
+    DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH = 46, // net:alt:sigstr
+    DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY = 47, // net:alt:sigqual
+    DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY_VALUE = 48, // net:alt:sigqualv
+    DIAG_ID_ALT_NETWORK_ACCESS_TECNHOLOGY = 49, // net:alt:at
     DIAG_ID_USER = 32768 // Base value for application-specific source IDs
 } diag_id;
 
