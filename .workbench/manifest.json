@@ -6,7 +6,7 @@
             "firmware": "deviceOS@source",
             "compilers": "gcc-arm@10.2.1",
             "tools": "buildtools@1.1.1",
-            "scripts": "buildscripts@1.13.0",
+            "scripts": "buildscripts@1.15.0",
             "debuggers": "openocd@0.11.0-particle.4"
         }
     ]
