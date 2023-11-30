@@ -174,12 +174,13 @@ EncodeFirmwareModules::EncodeFirmwareModules(pb_callback_t* cb, Flags flags)
     };
 }
 
-#endif // HAL_PLATFORM_PROTOBUF
-
-#if HAL_PLATFORM_ASSETS
 EncodeFirmwareModules::~EncodeFirmwareModules() {
     system_info_free_unstable(&sysInfo_, nullptr);
 }
+
+#endif // HAL_PLATFORM_PROTOBUF
+
+#if HAL_PLATFORM_ASSETS
 
 EncodeAssets::EncodeAssets(pb_callback_t* cb, const Vector<Asset>& assets)
         : assets_(assets) {
