@@ -81,6 +81,12 @@ PB_BIND(particle_ctrl_GetModuleInfoReply_Dependency, particle_ctrl_GetModuleInfo
 PB_BIND(particle_ctrl_GetModuleInfoReply_Module, particle_ctrl_GetModuleInfoReply_Module, AUTO)
 
 
+PB_BIND(particle_ctrl_GetAssetInfoRequest, particle_ctrl_GetAssetInfoRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_GetAssetInfoReply, particle_ctrl_GetAssetInfoReply, AUTO)
+
+
 
 
 

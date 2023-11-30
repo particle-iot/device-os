@@ -127,6 +127,17 @@ int ApplicationAsset::skip(size_t size) {
     return asset_manager_skip(data_->stream, size, nullptr);
 }
 
+int ApplicationAsset::seek(size_t pos) {
+    CHECK(prepareForReading());
+    int r = asset_manager_seek(data_->stream, pos, nullptr);
+    // Seeking backwards might require rewind and seek
+    if (r < 0) {
+        CHECK(asset_manager_seek(data_->stream, 0, nullptr));
+        r = asset_manager_seek(data_->stream, pos, nullptr);
+    }
+    return r;
+}
+
 void ApplicationAsset::flush() {
     return;
 }

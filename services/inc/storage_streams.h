@@ -162,6 +162,7 @@ public:
     }
 
     int peek(char* data, size_t size) override {
+        size_t originalSize = size;
         if (!remaining_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
@@ -170,6 +171,9 @@ public:
         fs::FsLock lock(fs_);
         CHECK_FS(lfs_file_seek(&fs_->instance, &file_, offset_, LFS_SEEK_SET));
         size = CHECK_FS(lfs_file_read(&fs_->instance, &file_, data, size));
+        if (size == 0 && originalSize > 0) {
+            return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+        }
         return size;
     }
 
@@ -277,11 +281,16 @@ public:
     }
 
     int seek(size_t offset) override {
-        CHECK_TRUE(offset == 0 || (offset >= offset_ && offset <= inflatedSize_), SYSTEM_ERROR_NOT_ALLOWED);
+        CHECK_TRUE(offset == 0 || (offset >= offset_ && offset <= inflatedSize_) || (offset < offset_ && (offset_ - offset) <= posInChunk_), SYSTEM_ERROR_NOT_ALLOWED);
         if (offset == 0) {
             return rewind();
-        } else {
+        } else if (offset >= offset_) {
             return skip(offset - offset_);
+        } else {
+            auto diff = offset_ - offset;
+            offset_ -= diff;
+            posInChunk_ -= diff;
+            return offset_;
         }
     }
 
@@ -339,6 +348,9 @@ private:
                 CHECK(r);
                 compressedPos += n;
                 compressedStream_->skip(n);
+                if (n == 0 && availForRead() <= 0) {
+                    break;
+                }
             } while (compressedPos < compressedChunk && r != INFLATE_HAS_MORE_OUTPUT);
             if (r == INFLATE_HAS_MORE_OUTPUT && availForRead() > 0) {
                 break;
@@ -427,6 +439,7 @@ public:
         //         offset, storageId_, address_, remaining_, offset_);
         CHECK_TRUE(offset <= size_, SYSTEM_ERROR_NOT_ENOUGH_DATA);
         offset_ = CHECK(stream_->seek(baseOffset_ + offset));
+        offset_ -= baseOffset_;
         return offset_;
     }
 

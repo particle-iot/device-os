@@ -45,11 +45,6 @@ typedef enum _particle_cloud_FirmwareModuleValidityFlag {
 } particle_cloud_FirmwareModuleValidityFlag;
 
 /* Struct definitions */
-typedef struct _particle_cloud_FirmwareModuleAsset { 
-    pb_callback_t hash; /* /< SHA-256 hash */
-    pb_callback_t name; /* /< Asset name */
-} particle_cloud_FirmwareModuleAsset;
-
 /* *
  System describe. */
 typedef struct _particle_cloud_SystemDescribe { 
@@ -73,7 +68,15 @@ typedef struct _particle_cloud_FirmwareModule {
     pb_callback_t hash; /* /< SHA-256 hash */
     pb_callback_t dependencies; /* /< Module dependencies */
     pb_callback_t asset_dependencies; /* /< Asset dependencies */
+    uint32_t size; /* /< Actual module size */
 } particle_cloud_FirmwareModule;
+
+typedef struct _particle_cloud_FirmwareModuleAsset { 
+    pb_callback_t hash; /* /< SHA-256 hash */
+    pb_callback_t name; /* /< Asset name */
+    uint32_t size; /* /< Asset size */
+    uint32_t storage_size; /* /< Asset storage size (taking into account compression and metadata) */
+} particle_cloud_FirmwareModuleAsset;
 
 /* *
  Firmware module dependency. */
@@ -104,17 +107,15 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define particle_cloud_FirmwareModuleDependency_init_default {_particle_cloud_FirmwareModuleType_MIN, 0, 0}
-#define particle_cloud_FirmwareModuleAsset_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
-#define particle_cloud_FirmwareModule_init_default {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_FirmwareModuleAsset_init_default {{{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
+#define particle_cloud_FirmwareModule_init_default {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
 #define particle_cloud_SystemDescribe_init_default {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 #define particle_cloud_FirmwareModuleDependency_init_zero {_particle_cloud_FirmwareModuleType_MIN, 0, 0}
-#define particle_cloud_FirmwareModuleAsset_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
-#define particle_cloud_FirmwareModule_init_zero  {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_FirmwareModuleAsset_init_zero {{{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
+#define particle_cloud_FirmwareModule_init_zero  {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
 #define particle_cloud_SystemDescribe_init_zero  {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
-#define particle_cloud_FirmwareModuleAsset_hash_tag 1
-#define particle_cloud_FirmwareModuleAsset_name_tag 2
 #define particle_cloud_SystemDescribe_firmware_modules_tag 1
 #define particle_cloud_SystemDescribe_imei_tag   2
 #define particle_cloud_SystemDescribe_iccid_tag  3
@@ -130,6 +131,11 @@ extern "C" {
 #define particle_cloud_FirmwareModule_hash_tag   8
 #define particle_cloud_FirmwareModule_dependencies_tag 9
 #define particle_cloud_FirmwareModule_asset_dependencies_tag 10
+#define particle_cloud_FirmwareModule_size_tag   11
+#define particle_cloud_FirmwareModuleAsset_hash_tag 1
+#define particle_cloud_FirmwareModuleAsset_name_tag 2
+#define particle_cloud_FirmwareModuleAsset_size_tag 3
+#define particle_cloud_FirmwareModuleAsset_storage_size_tag 4
 #define particle_cloud_FirmwareModuleDependency_type_tag 1
 #define particle_cloud_FirmwareModuleDependency_index_tag 2
 #define particle_cloud_FirmwareModuleDependency_version_tag 3
@@ -144,7 +150,9 @@ X(a, STATIC,   SINGULAR, UINT32,   version,           3)
 
 #define particle_cloud_FirmwareModuleAsset_FIELDLIST(X, a) \
 X(a, CALLBACK, SINGULAR, BYTES,    hash,              1) \
-X(a, CALLBACK, SINGULAR, STRING,   name,              2)
+X(a, CALLBACK, SINGULAR, STRING,   name,              2) \
+X(a, STATIC,   SINGULAR, UINT32,   size,              3) \
+X(a, STATIC,   SINGULAR, UINT32,   storage_size,      4)
 #define particle_cloud_FirmwareModuleAsset_CALLBACK pb_default_field_callback
 #define particle_cloud_FirmwareModuleAsset_DEFAULT NULL
 
@@ -158,7 +166,8 @@ X(a, STATIC,   SINGULAR, FIXED32,  checked_flags,     6) \
 X(a, STATIC,   SINGULAR, FIXED32,  passed_flags,      7) \
 X(a, CALLBACK, OPTIONAL, BYTES,    hash,              8) \
 X(a, CALLBACK, REPEATED, MESSAGE,  dependencies,      9) \
-X(a, CALLBACK, REPEATED, MESSAGE,  asset_dependencies,  10)
+X(a, CALLBACK, REPEATED, MESSAGE,  asset_dependencies,  10) \
+X(a, STATIC,   SINGULAR, UINT32,   size,             11)
 #define particle_cloud_FirmwareModule_CALLBACK pb_default_field_callback
 #define particle_cloud_FirmwareModule_DEFAULT NULL
 #define particle_cloud_FirmwareModule_dependencies_MSGTYPE particle_cloud_FirmwareModuleDependency

@@ -30,6 +30,10 @@ int firmwareUpdateDataRequest(ctrl_request* req);
 
 int getModuleInfo(ctrl_request* req);
 
+#if HAL_PLATFORM_ASSETS
+int getAssetInfo(ctrl_request* req);
+#endif // HAL_PLATFORM_ASSETS
+
 } // namespace particle::control
 
 } // namespace particle

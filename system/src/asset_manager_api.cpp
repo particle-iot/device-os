@@ -53,7 +53,7 @@ int asset_manager_get_info(asset_manager_info* info, void* reserved) {
     auto internal = new Info();
     CHECK_TRUE(internal, SYSTEM_ERROR_NO_MEMORY);
     internal->required = AssetManager::instance().requiredAssets();
-    internal->available = AssetManager::instance().availableAssets();
+    internal->available = AssetManager::instance().availableAndRequiredAssets();
 
     info->internal = (void*)internal;
 

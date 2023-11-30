@@ -37,6 +37,7 @@
 #include "control/storage.pb.h"
 
 #include <memory>
+#include "system_info_encoding.h"
 
 #define PB(_name) particle_ctrl_##_name
 
@@ -78,25 +79,6 @@ void firmwareUpdateCompletionHandler(int result, void* data) {
         LOG(ERROR, "Spark_Finish_Firmware_Update() failed: %d", ret);
     }
     g_update.reset();
-}
-
-PB(FirmwareModuleType) moduleFunctionToPb(module_function_t func) {
-    switch (func) {
-    case MODULE_FUNCTION_BOOTLOADER:
-        return PB(FirmwareModuleType_BOOTLOADER);
-    case MODULE_FUNCTION_MONO_FIRMWARE:
-        return PB(FirmwareModuleType_MONO_FIRMWARE);
-    case MODULE_FUNCTION_SYSTEM_PART:
-        return PB(FirmwareModuleType_SYSTEM_PART);
-    case MODULE_FUNCTION_USER_PART:
-        return PB(FirmwareModuleType_USER_PART);
-    case MODULE_FUNCTION_NCP_FIRMWARE:
-        return PB(FirmwareModuleType_NCP_FIRMWARE);
-    case MODULE_FUNCTION_RADIO_STACK:
-        return PB(FirmwareModuleType_RADIO_STACK);
-    default:
-        return PB(FirmwareModuleType_INVALID_FIRMWARE_MODULE);
-    }
 }
 
 } // namespace
@@ -191,73 +173,23 @@ int firmwareUpdateDataRequest(ctrl_request* req) {
 }
 
 int getModuleInfo(ctrl_request* req) {
-    hal_system_info_t info = {};
-    info.size = sizeof(info);
-    info.flags = HAL_SYSTEM_INFO_FLAGS_CLOUD;
-    HAL_System_Info(&info, true /* construct */, nullptr);
-    SCOPE_GUARD({
-        HAL_System_Info(&info, false, nullptr);
-    });
     PB(GetModuleInfoReply) pbRep = {};
-    pbRep.modules.arg = &info;
-    pbRep.modules.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
-        const auto info = (const hal_system_info_t*)*arg;
-        for (size_t i = 0; i < info->module_count; ++i) {
-            const hal_module_t& module = info->modules[i];
-            if (module.bounds.store != MODULE_STORE_MAIN) {
-                continue;
-            }
-            const auto type = moduleFunctionToPb((module_function_t)module.info.module_function);
-            if (type == PB(FirmwareModuleType_INVALID_FIRMWARE_MODULE)) {
-                continue;
-            }
-            PB(GetModuleInfoReply_Module) pbModule = {};
-            pbModule.type = type;
-            pbModule.index = module.info.module_index;
-            pbModule.version = module.info.module_version;
-            pbModule.size = (uintptr_t)module.info.module_end_address - (uintptr_t)module.info.module_start_address;
-            unsigned valid = 0;
-            if (!(module.validity_result & MODULE_VALIDATION_INTEGRITY)) {
-                valid |= PB(FirmwareModuleValidityFlag_INTEGRITY_CHECK_FAILED);
-            }
-            if (!(module.validity_result & MODULE_VALIDATION_DEPENDENCIES)) {
-                valid |= PB(FirmwareModuleValidityFlag_DEPENDENCY_CHECK_FAILED);
-            }
-            pbModule.validity = valid;
-            pbModule.dependencies.arg = const_cast<module_info_t*>(&module.info);
-            pbModule.dependencies.funcs.encode = [](pb_ostream_t* strm, const pb_field_iter_t* field, void* const* arg) {
-                const auto info = (const module_info_t*)*arg;
-                for (unsigned i = 0; i < 2; ++i) {
-                    const module_dependency_t& dep = (i == 0) ? info->dependency : info->dependency2;
-                    const auto type = moduleFunctionToPb((module_function_t)dep.module_function);
-                    if (type == PB(FirmwareModuleType_INVALID_FIRMWARE_MODULE)) {
-                        continue;
-                    }
-                    PB(GetModuleInfoReply_Dependency) pbDep = {};
-                    pbDep.type = type;
-                    pbDep.index = dep.module_index;
-                    pbDep.version = dep.module_version;
-                    if (!pb_encode_tag_for_field(strm, field)) {
-                        return false;
-                    }
-                    if (!pb_encode_submessage(strm, PB(GetModuleInfoReply_Dependency_fields), &pbDep)) {
-                        return false;
-                    }
-                }
-                return true;
-            };
-            if (!pb_encode_tag_for_field(strm, field)) {
-                return false;
-            }
-            if (!pb_encode_submessage(strm, PB(GetModuleInfoReply_Module_fields), &pbModule)) {
-                return false;
-            }
-        }
-        return true;
-    };
+    using namespace particle::system;
+    EncodeFirmwareModules modules(&pbRep.modules, EncodeFirmwareModules::Flag::FORCE_SHA);
     CHECK(encodeReplyMessage(req, PB(GetModuleInfoReply_fields), &pbRep));
     return 0;
 }
+
+#if HAL_PLATFORM_ASSETS
+int getAssetInfo(ctrl_request* req) {
+    PB(GetAssetInfoReply) pbRep = {};
+    using namespace particle::system;
+    EncodeAssets assetsAvailable(&pbRep.available, AssetManager::instance().availableAssets());
+    EncodeAssets assetsRequired(&pbRep.required, AssetManager::instance().requiredAssets());
+    CHECK(encodeReplyMessage(req, PB(GetAssetInfoReply_fields), &pbRep));
+    return 0;
+}
+#endif // HAL_PLATFORM_ASSETS
 
 } // namespace particle::control
 

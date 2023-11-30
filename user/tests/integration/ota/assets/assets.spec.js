@@ -218,6 +218,45 @@ function cloudReportedToReport(rep) {
 	}});
 }
 
+async function queryDeviceAssets() {
+	const usbDevice = await device.getUsbDevice();
+	const assets = await usbDevice.getAssetInfo();
+	assets.required = assets.required.map((val) => { return {
+		name: val.name,
+		size: 0,
+		storageSize: 0,
+		valid: true,
+		readable: true,
+		hash: val.hash,
+		crc: 0,
+		error: 0
+	}});
+	assets.available = assets.available.map((val) => { return {
+		name: val.name,
+		size: val.size,
+		storageSize: val.storageSize,
+		valid: true,
+		readable: true,
+		hash: val.hash,
+		crc: 0,
+		error: 0
+	}});
+	const modules = await usbDevice.getFirmwareModuleInfo();
+	const app = modules.find((val) => val.type === 'USER_PART' && val.store === 'MAIN' && val.assetDependencies.length > 0);
+	if (app) {
+		assets.requiredApp = app.assetDependencies.map((val) => { return {
+			name: val.name,
+			size: 0,
+			storageSize: 0,
+			valid: true,
+			readable: true,
+			hash: val.hash,
+			crc: 0,
+			error: 0
+		}});
+	}
+	return assets;
+}
 
 async function generateProductVersion() {
 	if (productVersion) {
@@ -299,16 +338,47 @@ test('03_ad_hoc_ota_complete', async function() {
 	const deviceReported = JSON.parse(device.mailBox.pop().d);
 	const cloudReported = cloudReportedToReport(await waitForAssets(5 * 60 * 1000));
 	const local = generatedAssetsToReport();
+	console.log(local);
+	console.log(deviceReported);
 	expect(deviceReported.available).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
+	const queried = await queryDeviceAssets();
+	expect(queried.available).excludingEvery(['crc']).to.deep.equal(local);
+	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 });
 
-test('04_ad_hoc_ota_restore', async function() {
+test('04_ad_hoc_ota_asset_repeat_start', async function() {
+	const asset = assets[0];
+	const module = await createAssetModule(asset.data, asset.name, { compress: true });
+	await flash(this, module, asset.name);
+});
+
+test('05_ad_hoc_ota_asset_repeat_wait', async function() {
+});
+
+test('06_ad_hoc_ota_asset_repeat_complete', async function() {
+	const deviceReported = JSON.parse(device.mailBox.pop().d);
+	const cloudReported = cloudReportedToReport(await waitForAssets(5 * 60 * 1000));
+	const local = generatedAssetsToReport();
+	deviceReported.available.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
+	cloudReported.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
+	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
+	const queried = await queryDeviceAssets();
+	queried.available.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
+	expect(queried.available).excludingEvery(['crc']).to.deep.equal(local);
+	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+});
+
+test('07_ad_hoc_ota_restore', async function() {
 	await device.flash(device.testAppBinFile);
 });
 
-test('05_product_ota_start', async function() {
+test('08_product_ota_start', async function() {
 	// Regenerate
 	await generateAssets();
 	await uploadProductFirmware(false /* removeOnly */);
@@ -320,44 +390,116 @@ test('05_product_ota_start', async function() {
 	expect(Number(dev.body.firmware_version)).to.not.equal(Number(productVersion));
 });
 
-test('06_product_ota_wait', async function() {
+test('09_product_ota_wait', async function() {
 });
 
-test('07_product_ota_complete', async function() {
+test('10_product_ota_complete', async function() {
 	const deviceReported = JSON.parse(device.mailBox.shift().d);
 	const cloudReported = cloudReportedToReport(await waitForAssets(5 * 60 * 1000));
 	const local = generatedAssetsToReport();
 	expect(deviceReported.available).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
 	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
+	const queried = await queryDeviceAssets();
+	expect(queried.available).excludingEvery(['crc']).to.deep.equal(local);
+	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 });
 
-test('08_product_ota_complete_handled', async function() {
+test('11_product_ota_complete_handled', async function() {
 
 });
 
-test('09_assets_handled_hook', async function() {
+test('12_assets_handled_hook', async function() {
 
 });
 
-test('10_assets_read_skip_reset', async function() {
+test('13_assets_read_skip_reset', async function() {
     const deviceReported = JSON.parse(device.mailBox.shift().d);
 	const local = generatedAssetsToReport();
 	expect(deviceReported.available).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
 });
 
-test('11_assets_available_after_eof_reports_zero', async function() {
+test('14_assets_available_after_eof_reports_zero', async function() {
 
 });
 
-test('12_assets_read_using_filesystem', async function() {
+test('15_assets_read_using_filesystem', async function() {
 	const deviceReported = JSON.parse(device.mailBox.shift().d);
 	const local = generatedAssetsToReport();
 	console.dir(deviceReported, { depth: null });
 	console.dir(local, { depth: null });
 	expect(local).to.deep.include(deviceReported.available[0]);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
+});
+
+test('16_assets_add_extra_asset_start', async function() {
+	const name = `assetx_${timestamp}.bin`;
+	const asset = await generateAsset(1024, name);
+	assets.push(asset);
+	const module = await createAssetModule(asset.data, asset.name, { compress: true });
+	await flash(this, module, asset.name);
+});
+
+test('17_assets_add_extra_asset_wait', async function() {
+
+});
+
+test('18_assets_add_extra_asset_complete', async function() {
+	const deviceReported = JSON.parse(device.mailBox.pop().d);
+	const cloudReported = cloudReportedToReport(await waitForAssets(5 * 60 * 1000));
+	const localWithExtra = generatedAssetsToReport();
+	// Remove extra asset
+	const extra = assets.pop();
+	const local = generatedAssetsToReport();
+	assets.push(extra);
+	const queried = await queryDeviceAssets();
+	deviceReported.available.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
+	cloudReported.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
+	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
+	expect(queried.available).excludingEvery(['crc']).to.deep.equal(localWithExtra);
+	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+});
+
+test('19_assets_factory_image_asset_dependencies', async function() {
+	if (!device.platform.tags.includes('nrf52840')) {
+		// FIXME for rtl872x-based platforms
+		return;
+	}
+
+	const usbDevice = await device.getUsbDevice();
+	const modules = await usbDevice.getFirmwareModuleInfo();
+	const app = modules.find((val) => val.type === 'USER_PART' && val.store === 'MAIN');
+	const factory = modules.find((val) => val.type === 'USER_PART' && val.store === 'FACTORY');
+	console.dir(app, { depth: null });
+	console.dir(factory, { depth: null });
+	expect(app).to.not.be.undefined;
+	expect(factory).to.not.be.undefined;
+	expect(app).excluding('store').to.deep.equal(factory);
+});
+
+test('20_assets_factory_remove', async function() {
+
+});
+
+test('21_seek_backwards', async function() {
+	const deviceReported = JSON.parse(device.mailBox.pop().d);
+	const localWithExtra = generatedAssetsToReport();
+	// Remove extra asset
+	const extra = assets.pop();
+	const local = generatedAssetsToReport();
+	assets.push(extra);
+	const queried = await queryDeviceAssets();
+	deviceReported.available.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
+	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(queried.available).excludingEvery(['crc']).to.deep.equal(localWithExtra);
+	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
+	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 });
 
 test('99_product_ota_restore', async function() {
