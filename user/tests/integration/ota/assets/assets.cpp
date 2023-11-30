@@ -90,7 +90,7 @@ int readAndCalculateAssetCrc(ApplicationAsset& asset, uint32_t* outCrc, bool res
         }
         if (seekBackwards && pos >= size / 2) {
             seekBackwards = false;
-            CHECK(asset.skip(size - pos - 1));
+            CHECK(asset.skip(size - 1));
             CHECK(asset.seek(pos - r));
             char buf1[256];
             size_t reread = CHECK(asset.read(buf1, sizeof(buf1)));
