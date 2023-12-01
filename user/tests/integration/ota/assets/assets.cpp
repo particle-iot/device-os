@@ -71,7 +71,7 @@ int readAndCalculateAssetCrc(ApplicationAsset& asset, uint32_t* outCrc, bool res
     size_t size = asset.size();
     size_t pos = 0;
     while (asset.available() > 0) {
-        size_t r = CHECK(asset.read(buf, sizeof(buf)));
+        size_t r = CHECK(asset.read(buf, std::min(sizeof(buf), size / 2)));
         if (seekBackwards && pos == 0) {
             char tmp;
             CHECK(asset.seek(r - 1));
@@ -90,10 +90,10 @@ int readAndCalculateAssetCrc(ApplicationAsset& asset, uint32_t* outCrc, bool res
         }
         if (seekBackwards && pos >= size / 2) {
             seekBackwards = false;
-            CHECK(asset.skip(size - 1));
+            CHECK(asset.seek(size - 1));
             CHECK(asset.seek(pos - r));
             char buf1[256];
-            size_t reread = CHECK(asset.read(buf1, sizeof(buf1)));
+            size_t reread = CHECK(asset.read(buf1, r));
             CHECK_TRUE(!memcmp(buf, buf1, std::min(r, reread)), SYSTEM_ERROR_BAD_DATA);
         }
         if (pos > size) {
