@@ -1,3 +1,7 @@
+## 5.6.99
+
+- Forward OTA update with bootloader bump
+
 ## 5.6.98
 
 - Forward OTA update
