@@ -1,3 +1,7 @@
+## 5.6.98
+
+- Forward OTA update
+
 ## 5.6.0
 
 ### FEATURES
