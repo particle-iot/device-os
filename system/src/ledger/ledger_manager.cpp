@@ -241,7 +241,11 @@ LedgerManager::~LedgerManager() {
 }
 
 int LedgerManager::init() {
-    if (state_ != State::NEW || spark_cloud_flag_connected()) { // Device must not be connected to the cloud
+    if (state_ != State::NEW) {
+        return 0; // Already initialized
+    }
+    // Device must not be connected to the cloud
+    if (spark_cloud_flag_connected()) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     // TODO: Allow seeking in ledger and CoAP message streams so that an intermediate buffer is not

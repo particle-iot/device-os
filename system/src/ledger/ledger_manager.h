@@ -77,7 +77,7 @@ private:
     enum class State {
         NEW, // Manager is not initialized
         OFFLINE, // Device is offline
-        FAILED, // Synchronization failed
+        FAILED, // Synchronization failed (device is online)
         READY, // Ready to run a task
         SYNC_TO_CLOUD, // Synchronizing a device-to-cloud ledger
         SYNC_FROM_CLOUD, // Synchronizing a cloud-to-device ledger
