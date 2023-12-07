@@ -1139,6 +1139,7 @@ int LedgerManager::sendSubscribeRequest() {
                     return false;
                 }
                 std::memcpy(pbLedger.scope_id.bytes, ctx->scopeId.data, ctx->scopeId.size);
+                pbLedger.scope_id.size = ctx->scopeId.size;
                 if (!pb_encode_tag_for_field(stream, field) ||
                         !pb_encode_submessage(stream, &PB_LEDGER(SubscribeRequest_Ledger_msg), &pbLedger)) {
                     return false;

@@ -1236,9 +1236,9 @@ int CoapChannel::sendMessage(RefCountPtr<CoapMessage> msg) {
     CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
     msg->coapId = msgBuf_.get_id();
     msg->state = MessageState::WAIT_ACK;
+    msg->pos = nullptr;
     addRefToList(unackMsgs_, std::move(msg));
     releaseMessageBuffer();
-    msg->pos = nullptr;
     return 0;
 }
 
