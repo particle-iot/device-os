@@ -66,3 +66,6 @@
 #define HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT (D6)
 #define HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT   (D7)
 #endif // HAL_PLATFORM_ETHERNET
+
+// TODO: Enable the Ledger API when we have more flash space available on Tracker
+#define HAL_PLATFORM_LEDGER 0
