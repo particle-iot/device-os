@@ -33,6 +33,8 @@
 #define _CRT_SECURE_NO_DEPRECATE 1
 #endif
 
+#include "platforms.h"
+
 /**
  * \name SECTION: System support
  *
@@ -230,7 +232,9 @@
 #define MBEDTLS_AES_ALT
 #define MBEDTLS_ECP_ALT
 #define MBEDTLS_SHA256_ALT
+#if PLATFORM_ID != PLATFORM_TRACKER
 #define MBEDTLS_SHA1_ALT
+#endif // PLATFORM_ID != PLATFORM_TRACKER)
 
 //#define MBEDTLS_ARC4_ALT
 //#define MBEDTLS_BLOWFISH_ALT
@@ -2234,7 +2238,9 @@
  *
  * Requires: MBEDTLS_BIGNUM_C, MBEDTLS_OID_C
  */
+#if PLATFORM_ID != PLATFORM_TRACKER
 #define MBEDTLS_RSA_C
+#endif // PLATFORM_ID != PLATFORM_TRACKER)
 
 /**
  * \def MBEDTLS_SHA1_C
@@ -2250,7 +2256,9 @@
  *
  * This module is required for SSL/TLS and SHA1-signed certificates.
  */
+#if PLATFORM_ID != PLATFORM_TRACKER
 #define MBEDTLS_SHA1_C
+#endif // PLATFORM_ID != PLATFORM_TRACKER)
 
 /**
  * \def MBEDTLS_SHA256_C

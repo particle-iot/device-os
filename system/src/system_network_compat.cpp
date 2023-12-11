@@ -249,6 +249,14 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
     return 0;
 }
 
+network_handle_t network_preferred(network_handle_t network, bool preferred, void* reserved) {
+    return network;
+}
+
+bool network_is_preferred(network_handle_t network, void* reserved) {
+    return false;
+}
+
 /* FIXME: */
 extern int cfod_count;
 

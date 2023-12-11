@@ -173,6 +173,7 @@
 | 1101 | 4005 | 4.0.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 1101 | 4006 | 4.0.2         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 1200 | 4100 | 4.1.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
+| 1200 | 4200 | 4.2.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |
 | 2000 | 5000 | 5.0.0-alpha.1 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X, P2 |
 | 2000 | 5001 | 5.0.0-alpha.2 |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X, P2 |
 | 2000 | 5002 | 5.0.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, P2 |
@@ -183,6 +184,10 @@
 | 2101 | 5301 | 5.3.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, P2 |
 | 2102 | 5302 | 5.3.2         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, P2 |
 | 2200 | 5400 | 5.4.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, P2 |
+| 2210 | 5410 | 5.4.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, P2 |
+| 2300 | 5500 | 5.5.0-rc.1    |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
+| 2300 | 5501 | 5.5.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
+| 2400 | 5600 | 5.6.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
 

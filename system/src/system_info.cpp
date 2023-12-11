@@ -17,12 +17,27 @@
 
 #include "system_info.h"
 #include "system_cloud_internal.h"
+#include "system_info_encoding.h"
 #include "check.h"
+#include "scope_guard.h"
 #include "bytes2hexbuf.h"
 #include "spark_wiring_json.h"
 #include "spark_wiring_diagnostics.h"
 #include "spark_macros.h"
 #include <cstdio>
+#include <climits>
+
+#include "control/common.h"
+#if HAL_PLATFORM_PROTOBUF
+#include "cloud/describe.pb.h"
+using particle::control::common::EncodedString;
+#endif // HAL_PLATFORM_PROTOBUF
+
+#if HAL_PLATFORM_ASSETS
+#include "asset_manager.h"
+#endif // HAL_PLATFORM_ASSETS
+
+#define PB(name) particle_cloud_##name
 
 namespace {
 
@@ -279,6 +294,28 @@ public:
 
 };
 
+#if HAL_PLATFORM_PROTOBUF
+class PbAppenderStream: public pb_ostream_t {
+public:
+    PbAppenderStream(appender_fn append, void* ctx) :
+            pb_ostream_t(),
+            append_(append),
+            ctx_(ctx) {
+        pb_ostream_t::state = this;
+        pb_ostream_t::max_size = SIZE_MAX;
+        pb_ostream_t::callback = [](pb_ostream_t* strm, const pb_byte_t* buf, size_t size) {
+            auto self = (PbAppenderStream*)strm->state;
+            return self->append_(self->ctx_, buf, size);
+        };
+    }
+
+private:
+    appender_fn append_;
+    void* ctx_;
+};
+
+#endif // HAL_PLATFORM_PROTOBUF
+
 } // anonymous
 
 bool module_info_to_json(AppendJson& json, const hal_module_t* module, uint32_t flags)
@@ -429,3 +466,37 @@ bool system_app_info(appender_fn appender, void* append_data, void* reserved) {
 	json.endObject();
 	return true;
 }
+
+#if HAL_PLATFORM_PROTOBUF
+bool system_module_info_pb(appender_fn appender, void* append_data, void* reserved) {
+    PB(SystemDescribe) pbDesc = {};
+    // Firmware modules
+    EncodeFirmwareModules modules(&pbDesc.firmware_modules, EncodeFirmwareModules::Flag::SYSTEM_INFO_CLOUD);
+
+    // IMEI, ICCID, modem firmware version
+    EncodedString pbImei(&pbDesc.imei);
+    EncodedString pbIccid(&pbDesc.iccid);
+    EncodedString pbModemFwVer(&pbDesc.modem_firmware_version);
+    for (unsigned i = 0; i < modules.sysInfo()->key_value_count; ++i) {
+        const auto& keyVal = modules.sysInfo()->key_values[i];
+        if (strcmp(keyVal.key, "imei") == 0) {
+            pbImei.data = keyVal.value;
+            pbImei.size = strlen(keyVal.value);
+        } else if (strcmp(keyVal.key, "iccid") == 0) {
+            pbIccid.data = keyVal.value;
+            pbIccid.size = strlen(keyVal.value);
+        } else if (strcmp(keyVal.key, "cellfw") == 0) {
+            pbModemFwVer.data = keyVal.value;
+            pbModemFwVer.size = strlen(keyVal.value);
+        }
+    }
+#if HAL_PLATFORM_ASSETS
+    EncodeAssets assets(&pbDesc.assets, AssetManager::instance().availableAssets());
+#endif // HAL_PLATFORM_ASSETS
+    PbAppenderStream strm(appender, append_data);
+    return pb_encode(&strm, &PB(SystemDescribe_msg), &pbDesc);
+}
+
+#endif // HAL_PLATFORM_PROTOBUF
+
+

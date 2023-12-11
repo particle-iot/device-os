@@ -22,6 +22,16 @@
 
 namespace particle {
 
+enum class NetworkDiagnosticsInterface : int {
+    ALL = 0, 
+    LOOPBACK = 1, 
+    // MESH = 2, // Deprecated 
+    ETHERNET = 3, 
+    CELLULAR = 4, 
+    WIFI_STA = 5, 
+    WIFI_AP = 6
+};
+
 class NetworkDiagnostics {
 public:
     // Note: Use odd numbers to encode transitional states

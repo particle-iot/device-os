@@ -41,6 +41,7 @@ public:
     virtual int peek(char* data, size_t size) = 0;
     virtual int skip(size_t size) = 0;
     virtual int availForRead() = 0;
+    virtual int seek(size_t offset);
 
     int readAll(char* data, size_t size, unsigned timeout = 0);
     int skipAll(size_t size, unsigned timeout = 0);

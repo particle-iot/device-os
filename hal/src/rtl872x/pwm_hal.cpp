@@ -24,6 +24,7 @@ extern "C" {
 #endif
 #include <cstring>
 #include "pwm_hal.h"
+#include "gpio_hal.h"
 
 #define RTL_PWM_INSTANCE_NUM        2
 #define KM0_PWM_INSTANCE            0
@@ -170,6 +171,7 @@ int pwmPinInit(uint16_t pin) {
         } else {
             Pinmux_Config(rtlPin, PINMUX_FUNCTION_PWM_HS);
         }
+        hal_gpio_set_drive_strength(pin, HAL_GPIO_DRIVE_HIGH);
         hal_pin_set_function(pin, PF_PWM);
     }
     return 0;
@@ -184,6 +186,7 @@ int pwmPinDeinit(uint16_t pin) {
     if (channelState == PWM_STATE_ENABLED) {
         const uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
         Pinmux_Config(rtlPin, PINMUX_FUNCTION_GPIO);
+        hal_gpio_set_drive_strength(pin, HAL_GPIO_DRIVE_DEFAULT);
 
         pwmInfo[instance].channels[channel].state = PWM_STATE_DISABLED;
         hal_pin_set_function(pin, PF_NONE);
@@ -274,7 +277,7 @@ void hal_pwm_update_duty_cycle_ext(uint16_t pin, uint32_t value) {
     if (!isPwmPin(pin)) {
         return;
     }
-    
+
     const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
     const uint8_t instance = pinInfo->pwm_instance;
     const uint32_t channel = pinInfo->pwm_channel;
@@ -360,7 +363,7 @@ void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution) {
     if (!isPwmPin(pin) || resolution > RTL_PWM_TIM_MAX_RESOLUTION || resolution < RTL_PWM_TIM_MIN_RESOLUTION) {
         return;
     }
-    
+
     const hal_pin_info_t* pinInfo = hal_pin_map() + pin;
     const uint8_t instance = pinInfo->pwm_instance;
     uint8_t channel = pinInfo->pwm_channel;

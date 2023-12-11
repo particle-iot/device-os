@@ -53,6 +53,7 @@ sock_handle_t system_cloud_get_socket_handle();
  * and system upgrades.
  */
 void spark_cloud_udp_port_set(uint16_t port);
+uint16_t spark_cloud_udp_port_get();
 int spark_cloud_socket_connect(void);
 int spark_cloud_socket_disconnect(bool graceful=true);
 uint8_t spark_cloud_socket_closed();

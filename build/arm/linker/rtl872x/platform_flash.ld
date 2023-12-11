@@ -160,7 +160,7 @@ platform_reserved_flash_start = platform_reserved_flash_end - platform_reserved_
 
 
 /* User part */
-platform_user_part_flash_size  = DEFINED(platform_user_part_flash_size) ? platform_user_part_flash_size : 2M;
+platform_user_part_flash_size  = DEFINED(platform_user_part_flash_size) ? platform_user_part_flash_size : 1536K;
 platform_user_part_flash_end   = platform_reserved_flash_start;
 platform_user_part_flash_start = platform_user_part_flash_end - platform_user_part_flash_size;
 
@@ -171,9 +171,9 @@ platform_user_part_module_info_flash_end   = platform_user_part_module_info_flas
 
 
 /* System part 1 */
-platform_system_part1_flash_end   = platform_user_part_flash_start;
+platform_system_part1_flash_size  = 1536K;
 platform_system_part1_flash_start = platform_km0_image_update_end;
-platform_system_part1_flash_size  = platform_system_part1_flash_end - platform_system_part1_flash_start;
+platform_system_part1_flash_end   = platform_system_part1_flash_start + platform_system_part1_flash_size;
 
 /* System part 1 module info */
 platform_system_part1_module_info_flash_size  = platform_module_info_flash_size;

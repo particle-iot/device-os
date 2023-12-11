@@ -146,6 +146,60 @@ int spark::JSONValue::toInt() const {
     }
 }
 
+unsigned spark::JSONValue::toUInt() const {
+    switch (type()) {
+    case JSON_TYPE_BOOL: {
+        const char* const s = d_->json + t_->start;
+        return *s == 't';
+    }
+    case JSON_TYPE_NUMBER:
+    case JSON_TYPE_STRING: {
+        // toInt() may produce incorrect results for floating point numbers, since we want to keep
+        // compile-time dependency on strtod() optional
+        const char* const s = d_->json + t_->start;
+        return strtoul(s, nullptr, 10);
+    }
+    default:
+        return 0;
+    }
+}
+
+long long spark::JSONValue::toInt64() const {
+    switch (type()) {
+    case JSON_TYPE_BOOL: {
+        const char* const s = d_->json + t_->start;
+        return *s == 't';
+    }
+    case JSON_TYPE_NUMBER:
+    case JSON_TYPE_STRING: {
+        // toInt() may produce incorrect results for floating point numbers, since we want to keep
+        // compile-time dependency on strtod() optional
+        const char* const s = d_->json + t_->start;
+        return strtoll(s, nullptr, 10);
+    }
+    default:
+        return 0;
+    }
+}
+
+unsigned long long spark::JSONValue::toUInt64() const {
+    switch (type()) {
+    case JSON_TYPE_BOOL: {
+        const char* const s = d_->json + t_->start;
+        return *s == 't';
+    }
+    case JSON_TYPE_NUMBER:
+    case JSON_TYPE_STRING: {
+        // toInt() may produce incorrect results for floating point numbers, since we want to keep
+        // compile-time dependency on strtod() optional
+        const char* const s = d_->json + t_->start;
+        return strtoull(s, nullptr, 10);
+    }
+    default:
+        return 0;
+    }
+}
+
 double spark::JSONValue::toDouble() const {
     switch (type()) {
     case JSON_TYPE_BOOL: {

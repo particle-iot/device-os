@@ -117,7 +117,7 @@ int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
 } // unnamed
 
 int openFile(lfs_file_t* file, const char* path, unsigned flags) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     lfs_info info = {};
     int r = lfs_stat(&fs->instance, path, &info);
@@ -142,7 +142,7 @@ int openFile(lfs_file_t* file, const char* path, unsigned flags) {
 }
 
 int dumpFile(const char* path) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     const fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
@@ -189,6 +189,53 @@ int encodeProtobufToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void*
     CHECK(pb_ostream_from_file(strm, file, nullptr));
     CHECK_TRUE(pb_encode(strm, desc, msg), SYSTEM_ERROR_FILE);
     return strm->bytes_written;
+}
+
+int rmrf(const char* path) {
+    FsLock fs;
+    int r = lfs_remove(fs.instance(), path);
+    if (r < 0) {
+        if (r == LFS_ERR_NOTEMPTY) {
+            char pathBuf[MAX_PATH_LEN + 1] = {};
+            size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
+            if (pathLen >= sizeof(pathBuf)) {
+                return SYSTEM_ERROR_PATH_TOO_LONG;
+            }
+            CHECK(removeDir(fs.instance(), pathBuf, sizeof(pathBuf), pathLen));
+        } else if (r != LFS_ERR_NOENT) {
+            CHECK_FS(r); // Forward the error
+        }
+    }
+    return 0;
+}
+
+int mkdirp(const char* path) {
+    FsLock fs;
+    char pathBuf[MAX_PATH_LEN + 1] = {};
+    size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
+    if (pathLen >= sizeof(pathBuf)) {
+        return SYSTEM_ERROR_PATH_TOO_LONG;
+    }
+    char* pos = pathBuf;
+    if (*pos == '/') {
+        ++pos; // Skip leading '/'
+    }
+    while (*(pos = strchrnul(pos, '/'))) {
+        *pos = '\0';
+        int r = lfs_mkdir(fs.instance(), pathBuf);
+        if (r < 0 && r != LFS_ERR_EXIST) {
+            CHECK_FS(r); // Forward the error
+        }
+        *pos++ = '/';
+    }
+    if (pos > pathBuf && *(pos - 1) != '/') {
+        // Create the last directory
+        int r = lfs_mkdir(fs.instance(), pathBuf);
+        if (r < 0 && r != LFS_ERR_EXIST) {
+            CHECK_FS(r);
+        }
+    }
+    return 0;
 }
 
 int rmrf(const char* path) {

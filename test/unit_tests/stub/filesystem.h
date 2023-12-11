@@ -74,6 +74,11 @@ typedef struct {
     lfs_t instance;
 } filesystem_t;
 
+typedef enum filesystem_instance_t {
+    FILESYSTEM_INSTANCE_DEFAULT = 0,
+    FILESYSTEM_INSTANCE_ASSET_STORAGE = 1
+} filesystem_instance_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -90,7 +95,7 @@ int lfs_file_sync(lfs_t* lfs, lfs_file_t* file);
 int lfs_remove(lfs_t* lfs, const char* path);
 // TODO: Add stubs for remaining API functions
 
-filesystem_t* filesystem_get_instance(void* reserved);
+filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved);
 int filesystem_lock(filesystem_t* fs);
 int filesystem_unlock(filesystem_t* fs);
 

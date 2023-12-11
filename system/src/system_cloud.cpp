@@ -34,11 +34,13 @@
 #include "spark_wiring_cloud.h"
 #include "system_cloud.h"
 #include "system_cloud_internal.h"
+#include "system_cloud_connection.h"
 #include "system_publish_vitals.h"
 #include "system_task.h"
 #include "system_threading.h"
 #include "system_update.h"
 #include "system_cloud_internal.h"
+#include "system_connection_manager.h"
 #include "string_convert.h"
 #include "spark_protocol_functions.h"
 #include "events.h"
@@ -300,6 +302,11 @@ int spark_set_connection_property(unsigned property, unsigned value, const void*
         const auto r = spark_protocol_set_connection_property(sp, property, value, d, reserved);
         return spark_protocol_to_system_error(r);
     }
+    case SPARK_CLOUD_BIND_NETWORK_INTERFACE: {
+        CloudConnectionSettings::instance()->setBoundInterface((network_interface_t)value);
+        return 0;
+    }
+    
     default:
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -324,6 +331,24 @@ int spark_get_connection_property(unsigned property, void* data, size_t* size, v
             return SYSTEM_ERROR_INVALID_STATE;
         }
         return getConnectionProperty(protocol::Connection::MAX_FUNCTION_ARGUMENT_SIZE, data, size);
+    case SPARK_CLOUD_BIND_NETWORK_INTERFACE: {
+        if (*size >= sizeof(network_interface_t)) {
+            *((network_interface_t*)data) = CloudConnectionSettings::instance()->getBoundInterface();
+            return 0;    
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    case SPARK_CLOUD_GET_NETWORK_INTERFACE: {
+        if (*size >= sizeof(network_interface_t)) {
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+            *((network_interface_t*)data) = ConnectionManager::instance()->getCloudConnectionNetwork();
+#else
+            *((network_interface_t*)data) = NETWORK_INTERFACE_ALL;
+#endif
+            return 0;
+        }
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     default:
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }

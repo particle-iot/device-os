@@ -98,15 +98,21 @@ protected:
     void setOpenState(bool state);
 
     int startRx();
-    int startTx();
+    int startTx(bool holdoff = false);
 
 #if !HAL_PLATFORM_USB_SOF
+    int startTxTimeoutTimer();
+    int stopTxTimeoutTimer();
+
     int startTxTimer();
     int stopTxTimer();
 #endif // !HAL_PLATFORM_USB_SOF
 
 private:
 #if !HAL_PLATFORM_USB_SOF
+    static void txTimeoutTimerCallback(os_timer_t timer);
+    void txTimeoutTimerExpired();
+
     static void txTimerCallback(os_timer_t timer);
     void txTimerExpired();
 #endif // !HAL_PLATFORM_USB_SOF
@@ -139,6 +145,7 @@ private:
     uint8_t altSetting_ = 0;
 
 #if !HAL_PLATFORM_USB_SOF
+    os_timer_t txTimeoutTimer_ = nullptr;
     os_timer_t txTimer_ = nullptr;
 #endif // !HAL_PLATFORM_USB_SOF
     bool useDummyIntEp_ = false;

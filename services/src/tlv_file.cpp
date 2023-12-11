@@ -46,7 +46,7 @@ TlvFile::~TlvFile() {
 }
 
 int TlvFile::init() {
-    auto fs = filesystem_get_instance(nullptr);
+    auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     SPARK_ASSERT(fs);
 
     FsLock lk(fs);

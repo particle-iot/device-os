@@ -62,3 +62,11 @@ uint16_t network_get_listen_timeout(network_handle_t network, uint32_t flags, vo
 int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t param, void* reserved) {
     return 0;
 }
+
+network_handle_t network_preferred(network_handle_t network, bool preferred, void* reserved) {
+    return network;
+}
+
+bool network_is_preferred(network_handle_t network, void* reserved) {
+    return false;
+}

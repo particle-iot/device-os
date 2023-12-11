@@ -71,6 +71,7 @@ struct EventHandlerList {
 EventHandlerList* s_eventHandlerList = nullptr;
 EventHandlerList* s_selfEventHandlerList = nullptr;
 
+#if LWIP_IPV6
 if_ip6_addr_state_t netif_ip6_state_to_if_ip6_addr_state(uint8_t state) {
     switch (state) {
         case IP6_ADDR_TENTATIVE:
@@ -116,6 +117,7 @@ void netif_ip6_address_to_if_addr(struct netif* netif, uint8_t i, struct if_addr
     a->ip6_addr_data->valid_lifetime = netif_ip6_addr_valid_life(netif, i);
     a->ip6_addr_data->preferred_lifetime = netif_ip6_addr_pref_life(netif, i);
 }
+#endif // LWIP_IPV6
 
 unsigned int ip4_netmask_to_prefix_length(const ip4_addr_t* netmask) {
     const unsigned int mask = lwip_ntohl(ip4_addr_get_u32(netmask));
@@ -269,7 +271,7 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
 
             break;
         }
-
+#if LWIP_IPV6
         /* TODO: refactor these */
         case LWIP_NSC_IPV6_SET: {
             LOG(TRACE, "Netif %s ipv6 configuration changed", name);
@@ -319,7 +321,7 @@ void netif_ext_callback_handler(struct netif* netif, netif_nsc_reason_t reason, 
             notify_all_handlers_event(netif, &ev);
             break;
         }
-
+#endif // LWIP_IPV6
         default: {
             return;
         }
@@ -631,7 +633,7 @@ int if_get_xflags(if_t iface, unsigned int* xflags) {
     }
 #endif /* LWIP_IPV6 */
 
-#if LWIP_IPV6_DHCP6
+#if LWIP_IPV6 && LWIP_IPV6_DHCP6
     // FIXME: check DHCP6 state!
     if (netif_dhcp6_data(netif)) {
         ifxf |= IFXF_DHCP6;
@@ -714,7 +716,7 @@ int if_set_xflags(if_t iface, unsigned int xflags) {
     }
 #endif /* LWIP_DHCP */
 
-#if LWIP_IPV6_DHCP6
+#if LWIP_IPV6 && LWIP_IPV6_DHCP6
     if (changed & IFXF_DHCP6) {
         /* FIXME */
         dhcp6_enable_stateless(netif);
@@ -764,7 +766,7 @@ int if_clear_xflags(if_t iface, unsigned int xflags) {
     }
 #endif /* LWIP_DHCP */
 
-#if LWIP_IPV6_DHCP6
+#if LWIP_IPV6 && LWIP_IPV6_DHCP6
     if (changed & IFXF_DHCP6) {
         dhcp6_disable(netif);
     }
@@ -952,6 +954,7 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
         current->if_addr = a;
     }
 
+#if LWIP_IPV6
     for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
         if ((netif_ip6_addr_state(netif, i) != IP6_ADDR_INVALID) &&
              !ip6_addr_isany(netif_ip6_addr(netif, i))) {
@@ -982,6 +985,7 @@ int if_get_addrs(if_t iface, struct if_addrs** addrs) {
             current->if_addr = a;
         }
     }
+#endif // LWIP_IPV6
 
     *addrs = first;
     return 0;
@@ -1028,7 +1032,7 @@ int if_add_addr(if_t iface, const struct if_addr* addr) {
             netif_set_addr(iface, ip_2_ip4(&ip4addr), ip_2_ip4(&netmask), ip_2_ip4(&gw));
             return 0;
         }
-
+#if LWIP_IPV6
         case AF_INET6: {
             LwipTcpIpCoreLock lk;
             ip_addr_t ip6addr = {};
@@ -1038,7 +1042,7 @@ int if_add_addr(if_t iface, const struct if_addr* addr) {
             err_t r = netif_add_ip6_address(iface, ip_2_ip6(&ip6addr), nullptr);
             return r == 0 ? 0 : -1;
         }
-
+#endif // LWIP_IPV6
         default: {
             /* Unsupported address family */
             break;
@@ -1060,7 +1064,7 @@ int if_del_addr(if_t iface, const struct if_addr* addr) {
             netif_set_addr(iface, nullptr, nullptr, nullptr);
             return 0;
         }
-
+#if LWIP_IPV6
         case AF_INET6: {
             LwipTcpIpCoreLock lk;
             ip_addr_t ip6addr = {};
@@ -1077,7 +1081,7 @@ int if_del_addr(if_t iface, const struct if_addr* addr) {
             }
             break;
         }
-
+#endif // LWIP_IPV6
         default: {
             /* Unsupported address family */
             break;

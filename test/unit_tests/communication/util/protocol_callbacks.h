@@ -43,7 +43,7 @@ public:
     virtual int send(const uint8_t* buf, uint32_t bufSize, void* ctx);
     virtual int receive(uint8_t *buf, uint32_t bufSize, void* ctx);
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
-    virtual int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, unsigned flags);
+    virtual int startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, unsigned flags, int moduleFunction);
     virtual int finishFirmwareUpdate(unsigned flags);
     virtual int saveFirmwareChunk(const char* chunkData, size_t chunkSize, size_t chunkOffset, size_t partialSize);
 #else
@@ -88,7 +88,7 @@ inline int ProtocolCallbacks::receive(uint8_t *buf, uint32_t bufSize, void* ctx)
 
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 
-inline int ProtocolCallbacks::startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, unsigned flags) {
+inline int ProtocolCallbacks::startFirmwareUpdate(size_t fileSize, const char* fileHash, size_t* fileOffset, unsigned flags, int moduleFunction) {
     return 0;
 }
 

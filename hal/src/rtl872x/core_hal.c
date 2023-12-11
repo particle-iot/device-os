@@ -59,6 +59,7 @@ void HardFault_Handler( void ) __attribute__(( naked ));
 void MemManage_Handler(void) __attribute__(( naked ));
 void BusFault_Handler(void) __attribute__(( naked ));
 void UsageFault_Handler(void) __attribute__(( naked ));
+void SecureFault_Handler(void) __attribute__(( naked ));
 
 void SysTick_Handler(void);
 void SVC_Handler(void);
@@ -70,6 +71,7 @@ extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
 extern uintptr_t link_user_part_flash_end[];
 extern uintptr_t link_module_info_crc_end[];
+extern uintptr_t link_module_start[];
 extern uintptr_t platform_system_backup_ram_start;
 
 extern uintptr_t link_heap_location, link_heap_location_end;
@@ -149,6 +151,10 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulF
             PANIC(panicCode, "UsageFault");
             break;
         }
+        case SecureFault: {
+            PANIC(panicCode, "SecureFault");
+            break;
+        }
         default: {
             // Shouldn't enter this case
             PANIC(panicCode, "Unknown");
@@ -196,6 +202,10 @@ void UsageFault_Handler(void) {
     Fault_Handler(UsageFault);
 }
 
+void SecureFault_Handler(void) {
+    Fault_Handler(SecureFault);
+}
+
 void SysTickOverride(void) {
     HAL_SysTick_Handler();
 }
@@ -237,6 +247,7 @@ void HAL_Core_Setup_override_interrupts(void) {
     __NVIC_SetVector(MemoryManagement_IRQn, (u32)(void*)MemManage_Handler);
     __NVIC_SetVector(BusFault_IRQn, (u32)(void*)BusFault_Handler);
     __NVIC_SetVector(UsageFault_IRQn, (u32)(void*)UsageFault_Handler);
+    __NVIC_SetVector(SecureFault_IRQn, (u32)(void*)SecureFault_Handler);
 }
 
 void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
@@ -339,14 +350,18 @@ void HAL_Core_Config(void) {
         }
     }
 
+    // Previous scheme was:
     // End of current system-part1 aligned to 4KB
-    module_ota.start_address = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
+    // uint32_t system_part_aligned_end = (((uint32_t)&link_module_info_crc_end) & 0xFFFFF000) + 0x1000; // 4K aligned, erasure
+    
+    // With introduction of assets the layout is now [system-part1 up to 1.5MB, asset fs up to 1.125MB, OTA up to 1.5MB, user part up to 1.5MB]
+    module_ota.start_address = (uint32_t)&link_module_start + 0x180000 /* max system-part1 size */ + 0x120000 /* asset fs max size */;
 
     uint32_t ota_end_address = 0;
     if (dyn) {
         ota_end_address = ((uint32_t)dyn->module_start_address) & 0xFFFFF000; // Align to 4KB
-        if (ota_end_address >= module_ota.start_address + 0x200000) {
-            // Should have 2M for the OTA region at the least
+        if (ota_end_address >= module_ota.start_address + 0x180000) {
+            // Should have 1.5M for the OTA region at the least
             module_user.start_address = (uint32_t)dyn->module_start_address;
         } else {
             // Invalid user module
@@ -416,9 +431,10 @@ void HAL_Core_Setup(void) {
     // and global constructors have executed, but interrupt HAL can only be accessed after both of those things happened.
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
 
-    hal_rtc_init();
-
     hal_backup_ram_init();
+
+    // Note: the rtc module has retained data, so hal_backup_ram_init() should be called first.
+    hal_rtc_init();
 
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();

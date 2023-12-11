@@ -427,12 +427,12 @@ void WiFiSetupConsole::handle(char c)
             print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2: ");
             read_line(security_type_string, 1);
         }
-        while ('0' > security_type_string[0] || '3' < security_type_string[0]);
+        while ('0' > security_type_string[0] || ('3' < security_type_string[0] && security_type_string[0] != '6' /* WPA3 */));
 #else
                 print("Security 0=unsecured, 1=WEP, 2=WPA, 3=WPA2, 4=WPA Enterprise, 5=WPA2 Enterprise: ");
                 read_line(security_type_string, 1);
             }
-            while ('0' > security_type_string[0] || '5' < security_type_string[0]);
+            while ('0' > security_type_string[0] || '6' < security_type_string[0]);
 #endif
             security_ = (WLanSecurityType)(security_type_string[0] - '0');
         }
@@ -464,7 +464,7 @@ void WiFiSetupConsole::handle(char c)
             credentials.setCipher(cipher_);
         }
 
-        if (0 < security_ && security_ <= 3)
+        if ((0 < security_ && security_ <= 3) || security_ == WLAN_SEC_WPA3)
         {
             print("Password: ");
             read_line(password, sizeof(password) - 1);

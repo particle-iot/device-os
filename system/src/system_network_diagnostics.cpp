@@ -26,6 +26,7 @@
 #include "spark_wiring_platform.h"
 #include "spark_wiring_ticks.h"
 #include "system_network_diagnostics.h"
+#include "system_connection_manager.h"
 
 #if Wiring_WiFi
 #include "spark_wiring_wifi.h"
@@ -66,23 +67,54 @@ class NetworkCache
 public:
     static const system_tick_t NETWORK_INFO_CACHE_INTERVAL = 1000;
 
-    const Signal* getSignal()
+    const Signal* getSignal(bool getPrimarySignal = true)
     {
-#if Wiring_WiFi || Wiring_Cellular
+        bool refreshCachedValues = false;
         system_tick_t m = millis();
-        if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL)
-        {
-#if Wiring_Cellular
-            sig_ = Cellular.RSSI();
-#elif Wiring_WiFi
-            sig_ = WiFi.RSSI();
-#endif
+        if (ts_ == 0 || (m - ts_) >= NETWORK_INFO_CACHE_INTERVAL) {
             ts_ = millis();
+            refreshCachedValues = true;
         }
-        return &sig_;
+
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+        auto cloudNetwork = Network.from(system::ConnectionManager::instance()->getCloudConnectionNetwork());
+        
+        if (refreshCachedValues) {
+            cellularSig_ = Cellular.RSSI();
+            wifiSig_ = WiFi.RSSI();
+        } 
+
+        const Signal* primarySignal = &cellularSig_;
+        const Signal* alternateSignal = &wifiSig_;
+
+        if (cloudNetwork == WiFi) {
+            primarySignal = &wifiSig_;
+            alternateSignal = &cellularSig_;
+        }
+
+        if (getPrimarySignal) {
+            return primarySignal;
+        } else {
+            return alternateSignal;
+        }
 #else
+
+#if Wiring_Cellular
+        if (refreshCachedValues) {
+            cellularSig_ = Cellular.RSSI();    
+        }
+        return &cellularSig_;
+#endif // Wiring_Cellular
+
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+        if (refreshCachedValues) {
+            wifiSig_ = WiFi.RSSI();
+        }
+        return &wifiSig_;    
+#endif // Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+
+#endif // HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
         return nullptr;
-#endif
     }
 
 #if HAL_PLATFORM_CELLULAR
@@ -108,10 +140,11 @@ public:
 
 private:
 #if Wiring_Cellular
-    CellularSignal sig_;
+    CellularSignal cellularSig_;
     CellularGlobalIdentity cgi_ = {};
-#elif Wiring_WiFi
-    WiFiSignal sig_;
+#endif
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY
+    WiFiSignal wifiSig_;
 #endif
     system_tick_t ts_ = 0;
 
@@ -265,6 +298,49 @@ public:
     }
 } g_networkAccessTechnologyDiagData;
 
+
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+
+class CloudConnectionInterfaceDiagnosticData : public EnumDiagnosticData< NetworkDiagnosticsInterface, NoConcurrency>
+{
+public:
+    CloudConnectionInterfaceDiagnosticData()
+        : EnumDiagnosticData(DIAG_ID_CLOUD_CONNECTION_INTERFACE,
+                            DIAG_NAME_CLOUD_CONNECTION_INTERFACE,
+                            NetworkDiagnosticsInterface::ALL)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        auto netIf = NetworkDiagnosticsInterface::ALL;
+        switch(system::ConnectionManager::instance()->getCloudConnectionNetwork()) {
+#if HAL_PLATFORM_ETHERNET
+            case NETWORK_INTERFACE_ETHERNET:
+                netIf = NetworkDiagnosticsInterface::ETHERNET;
+                break;
+#endif
+#if HAL_PLATFORM_CELLULAR
+            case NETWORK_INTERFACE_CELLULAR:
+                netIf = NetworkDiagnosticsInterface::CELLULAR;
+                break;
+#endif
+#if HAL_PLATFORM_WIFI
+            case NETWORK_INTERFACE_WIFI_STA:
+                netIf = NetworkDiagnosticsInterface::WIFI_STA;
+                break;
+#endif
+            default:
+                break;
+        }
+
+        val = static_cast<IntType>(netIf);
+        return SYSTEM_ERROR_NONE;
+    }
+} g_cloudConnectionInterfaceDiagData;
+
+#endif // HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+
 #if HAL_PLATFORM_CELLULAR
 class NetworkCellularCellGlobalIdentityMobileCountryCodeDiagnosticData
     : public AbstractIntegerDiagnosticData
@@ -359,6 +435,153 @@ public:
     }
 } g_networkCellularCellGlobalIdentityCellIdDiagnosticData;
 #endif // HAL_PLATFORM_CELLULAR
+
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+// FIXME: Fix the int types when making this recognized data on the server side
+class AltSignalStrengthDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltSignalStrengthDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH,
+                                        DIAG_NAME_ALT_NETWORK_SIGNAL_STRENGTH)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getStrength() < 0)
+        {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to unsigned Q8.8
+        FixedPointUQ<8, 8> str(sig->getStrength());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altSignalStrengthDiagData;
+
+class AltSignalStrengthValueDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltSignalStrengthValueDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_STRENGTH_VALUE,
+                                        DIAG_NAME_ALT_NETWORK_SIGNAL_STRENGTH_VALUE)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getStrength() < 0)
+        {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to signed Q16.16
+        FixedPointSQ<16, 16> str(sig->getStrengthValue());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altSignalStrengthValueDiagData;
+
+class AltSignalQualityDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltSignalQualityDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY,
+                                        DIAG_NAME_ALT_NETWORK_SIGNAL_QUALITY)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getQuality() < 0)
+        {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to unsigned Q8.8
+        FixedPointUQ<8, 8> str(sig->getQuality());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altSignalQualityDiagData;
+
+class AltSignalQualityValueDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltSignalQualityValueDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY_VALUE,
+                                        DIAG_NAME_ALT_NETWORK_SIGNAL_QUALITY_VALUE)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        if (sig->getQuality() < 0)
+        {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+
+        // Convert to signed Q16.16
+        FixedPointSQ<16, 16> str(sig->getQualityValue());
+        val = str;
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altSignalQualityValueDiagData;
+
+class AltNetworkAccessTechnologyDiagnosticData : public AbstractIntegerDiagnosticData
+{
+public:
+    AltNetworkAccessTechnologyDiagnosticData()
+        : AbstractIntegerDiagnosticData(DIAG_ID_ALT_NETWORK_ACCESS_TECNHOLOGY,
+                                        DIAG_NAME_ALT_NETWORK_ACCESS_TECNHOLOGY)
+    {
+    }
+
+    virtual int get(IntType& val)
+    {
+        const Signal* sig = s_networkCache.getSignal(false);
+        if (sig == nullptr)
+        {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        val = static_cast<IntType>(sig->getAccessTechnology());
+
+        return SYSTEM_ERROR_NONE;
+    }
+} g_altNetworkAccessTechnologyDiagData;
+#endif // HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+
 } // namespace
 
 #endif // Wiring_Network

@@ -14,7 +14,7 @@ endif
 
 # C compiler flags
 CFLAGS +=  -g3 -m64 -O$(GCC_OPTIMIZE) -gdwarf-2
-CFLAGS += -Wno-unused-local-typedefs -Wno-pragmas
+CFLAGS += -Wno-unused-local-typedefs -Wno-pragmas -Wno-overloaded-virtual
 ASFLAGS +=  -g3
 
 

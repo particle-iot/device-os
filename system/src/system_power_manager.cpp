@@ -386,8 +386,17 @@ void PowerManager::loop(void* arg) {
     attachInterrupt(PMIC_INT, &PowerManager::isrHandler, FALLING);
 #endif // HAL_PLATFORM_SHARED_INTERRUPT
 #endif // HAL_PLATFORM_PMIC_INT_PIN_PRESENT
-    hal_gpio_mode(LOW_BAT_UC, INPUT_PULLUP);
-    attachInterrupt(LOW_BAT_UC, &PowerManager::isrHandler, FALLING);
+    hal_pin_t pmicIntPin = LOW_BAT_UC;
+#if PLATFORM_ID == PLATFORM_MSOM
+    uint32_t revision = 0xFFFFFFFF;
+    hal_get_device_hw_version(&revision, nullptr);
+    if (revision == 1) {
+      pmicIntPin = LOW_BAT_DEPRECATED;
+    }
+#endif
+
+    hal_gpio_mode(pmicIntPin, INPUT_PULLUP);
+    attachInterrupt(pmicIntPin, &PowerManager::isrHandler, FALLING);
     PMIC power(true);
     power.begin();
     self->initDefault();
@@ -927,7 +936,15 @@ void PowerManager::deinit() {
     }
   }
 
-  detachInterrupt(LOW_BAT_UC);
+  hal_pin_t pmicIntPin = LOW_BAT_UC;
+#if PLATFORM_ID == PLATFORM_MSOM
+  uint32_t revision = 0xFFFFFFFF;
+  hal_get_device_hw_version(&revision, nullptr);
+  if (revision == 1) {
+    pmicIntPin = LOW_BAT_DEPRECATED;
+  }
+#endif
+  detachInterrupt(pmicIntPin);
 
   g_batteryState = BATTERY_STATE_UNKNOWN;
   g_powerSource = POWER_SOURCE_UNKNOWN;

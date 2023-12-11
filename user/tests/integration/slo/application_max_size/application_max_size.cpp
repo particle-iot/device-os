@@ -23,7 +23,7 @@ namespace {
 #if HAL_PLATFORM_NRF52840
 constexpr size_t FLASH_FILL_SIZE = 239 * 1024; // 239KB
 #elif HAL_PLATFORM_RTL872X
-constexpr size_t FLASH_FILL_SIZE = 1945 * 1024; // 1.9MB
+constexpr size_t FLASH_FILL_SIZE = 1445 * 1024; // ~1.5MB
 #else
 #error "Unsupported platform"
 #endif

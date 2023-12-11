@@ -33,14 +33,14 @@ typedef enum ProductStoreIndex
  * Sets the value at a specific product store index.
  * @return The previous value.
  */
-uint16_t HAL_SetProductStore(ProductStoreIndex index, uint16_t value);
+int HAL_SetProductStore(ProductStoreIndex index, uint16_t value);
 
 /**
  * Fetches the value at a given index in the product store.
  * @param index
  * @return
  */
-uint16_t HAL_GetProductStore(ProductStoreIndex index);
+int HAL_GetProductStore(ProductStoreIndex index);
 
 #ifdef	__cplusplus
 }

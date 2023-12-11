@@ -14,7 +14,7 @@ orbs:
 
 aliases:
   - &tasks ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
-  - &platforms ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "trackerm"]
+  - &platforms ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "trackerm", "msom"]
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -104,7 +104,7 @@ jobs:
           platform: << parameters.platform >>
   build-for-darwin:
     macos:
-      xcode: "13.2.1"
+      xcode: "14.2"
     parameters:
       tasks:
         type: string
@@ -475,7 +475,7 @@ workflows:
             - particle-ci-private
           matrix:
             parameters:
-              platform: ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "trackerm", "unit-test newhal gcc"]
+              platform: ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "trackerm", "msom", "unit-test newhal gcc"]
       - combine-binaries:
           requires:
             - build-and-test

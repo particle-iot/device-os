@@ -100,19 +100,19 @@
 #define PMIC_SCL            SCL
 #define PMIC_INT            D10 // Shared with IOE_INT
 
-// UART
+// UART (Serial1)
 #define TX                  D8
 #define RX                  D9
-// Shared with SPI1
-#define TX1                 D4
-#define RX1                 D5
-#define CTS1                D3
-#define RTS1                D2
-// Shared with SPI
-#define TX2                 S0
-#define RX2                 S1
-#define CTS2                D10
-#define RTS2                S2
+// UART (Serial2) Shared with SPI
+#define TX1                 S0
+#define RX1                 S1
+#define CTS1                D10
+#define RTS1                S2
+// UART (NCP) Shared with SPI1
+#define TX2                 D4
+#define RX2                 D5
+#define CTS2                D3
+#define RTS2                D2
 
 #define WKP                 D10
 
@@ -145,4 +145,8 @@
 #define BGPWR               P2_CELL_PWR
 #define BGVINT              P2_CELL_STATUS
 #define BGDTR               P2_CELL_DTR
+
+// Set it to PIN_INVALID if not present
+#define SWD_DAT             D7
+#define SWD_CLK             D6
 

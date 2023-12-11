@@ -316,9 +316,11 @@ void rtlLowLevelInit() {
     InterruptRegister((IRQ_FUN)bodIrqHandler, BOR2_IRQ_LP, 0, 0);
     InterruptEn(BOR2_IRQ_LP, 0);
     BOR_ThresholdSet(BOR_TH_LOW7, BOR_TH_HIGH7);
-    BOR_ModeSet(BOR_INTR, ENABLE);
-    // XXX: Does this work? Enable BOD reset as well
-    BOR_ModeSet(BOR_RESET, ENABLE);
+    // BOR_ModeSet(BOR_INTR, ENABLE);
+    // // XXX: Does this work? Enable BOD reset as well
+    // BOR_ModeSet(BOR_RESET, ENABLE);
+    BOR_ModeSet(BOR_INTR, DISABLE);
+    BOR_ModeSet(BOR_RESET, DISABLE);
 
     boot_ram_function_enable();
 

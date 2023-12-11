@@ -54,7 +54,7 @@ USE_PRINTF_FLOAT ?= y
 endif
 
 ifeq ("$(USE_PRINTF_FLOAT)","y")
-LDFLAGS += -u _printf_float
+LDFLAGS += -u _printf_float -u _scanf_float
 endif
 
 LDFLAGS += -u uxTopUsedPriority

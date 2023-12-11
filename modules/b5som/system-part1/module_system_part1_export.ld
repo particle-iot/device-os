@@ -29,4 +29,5 @@ PROVIDE (link_dynalib_location_hal_mesh_deprecated  = platform_system_part1_dyna
 PROVIDE (link_dynalib_location_hal_posix_syscall    = platform_system_part1_dynalib_table_flash_start + 108);
 PROVIDE (link_dynalib_location_hal_storage          = platform_system_part1_dynalib_table_flash_start + 112);
 PROVIDE (link_dynalib_location_hal_watchdog         = platform_system_part1_dynalib_table_flash_start + 116);
-PROVIDE (link_dynalib_location_system_ledger        = platform_system_part1_dynalib_table_flash_start + 120);
+PROVIDE (link_dynalib_location_system_asset_manager = platform_system_part1_dynalib_table_flash_start + 120);
+PROVIDE (link_dynalib_location_system_ledger        = platform_system_part1_dynalib_table_flash_start + 124);

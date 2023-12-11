@@ -104,7 +104,9 @@ int initRadioAntenna() {
 }
 
 int disableRadioAntenna() {
+#if PLATFORM_ID != PLATFORM_MSOM
     hal_gpio_mode(ANTSW, PIN_MODE_NONE);
+#endif // PLATFORM_ID != PLATFORM_MSOM
     return SYSTEM_ERROR_NONE;
 }
 

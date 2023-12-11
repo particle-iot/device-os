@@ -128,6 +128,8 @@ private:
     int checkNetConfForImsi();
     int selectSimCard();
     int checkSimCard();
+    int getModuleFunctionality();
+    int setModuleFunctionality(CellularFunctionality cfun, bool check);
     int configureApn(const CellularNetworkConfig& conf);
     int registerNet();
     int changeBaudRate(unsigned int baud);
@@ -151,6 +153,7 @@ private:
     bool isQuecCatNBxDevice();
     /** Is this a Quectel BG95* device ? */
     bool isQuecBG95xDevice();
+    int getRuntimeBaudrate();
     int modemInit() const;
     bool waitModemPowerState(bool onOff, system_tick_t timeout);
     int modemPowerOn();

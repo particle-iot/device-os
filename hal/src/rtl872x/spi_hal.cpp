@@ -233,6 +233,22 @@ public:
         SPARK_ASSERT(((uint32_t)chunkBuffer_.rxBuf & 0x1f) == 0);
         CHECK_TRUE(validateConfig(rtlSpiIndex_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
 
+        // Convert default pin to exact pin
+        if (csPin == SPI_DEFAULT_SS) {
+            if (spiInterface_ == HAL_SPI_INTERFACE1) {
+                csPin = SS;
+            } else if (spiInterface_ == HAL_SPI_INTERFACE2) {
+                csPin = SS1;
+            } else {
+                csPin = PIN_INVALID;
+            }
+        }
+        // SPI slave mode doesn't allow invalid cs pin
+        if ((config.spiMode == SPI_MODE_SLAVE) && !hal_pin_is_valid(csPin)) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        csPin_ = csPin;
+
         if (isEnabled()) {
             CHECK(end());
         }
@@ -241,17 +257,6 @@ public:
         CHECK(initDmaChannels());
 
         // Save config
-        if (csPin == SPI_DEFAULT_SS) {
-            if (spiInterface_ == HAL_SPI_INTERFACE1) {
-                csPin_ = SS;
-            } else if (spiInterface_ == HAL_SPI_INTERFACE2) {
-                csPin_ = SS1;
-            } else {
-                csPin_ = PIN_INVALID;
-            }
-        } else {
-            csPin_ = csPin;
-        }
         memcpy(&config_, &config, sizeof(SpiConfig));
 
         SSI_InitTypeDef SSI_InitStruct;
@@ -298,6 +303,10 @@ public:
         }
         SSI_Init(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, &SSI_InitStruct);
 
+        hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_HIGH);
+        hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_HIGH);
+
         uint32_t phase = SCPH_TOGGLES_IN_MIDDLE;
         uint32_t polarity = SCPOL_INACTIVE_IS_LOW;
         spiModeToPolAndPha(config_.dataMode, &polarity, &phase);
@@ -322,6 +331,13 @@ public:
             u32 rtlClockDivider = 256;
             clockDivToRtlClockDiv(config_.clockDiv, &rtlClockDivider);
             SSI_SetBaudDiv(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, rtlClockDivider);
+
+            // Set sample delay for SPI0@50MHz
+            if (rtlClockDivider == 2 && SPI_DEV_TABLE[rtlSpiIndex_].SPIx == SPI0_DEV) {
+                SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x1);
+            } else {
+                SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x0);
+            }
         }
 
         // Set bit order
@@ -392,6 +408,9 @@ public:
         Pinmux_Config(hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_GPIO);
         Pinmux_Config(hal_pin_to_rtl_pin(mosiPin_), PINMUX_FUNCTION_GPIO);
         Pinmux_Config(hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_GPIO);
+        hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_DEFAULT);
+        hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_DEFAULT);
+        hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_DEFAULT);
 
         // Update state
         status_.state = HAL_SPI_STATE_DISABLED;
@@ -867,8 +886,13 @@ private:
 
 Spi* getInstance(hal_spi_interface_t spi) {
     static Spi spiMap[] = {
+#if PLATFORM_ID == PLATFORM_MSOM
+        {HAL_SPI_INTERFACE1, 0, 100*1000*1000, CFG_SPI_PRIORITY, SS, SCK, MOSI, MISO},
+        {HAL_SPI_INTERFACE2, 1, 50*1000*1000, CFG_SPI_PRIORITY, SS1, SCK1, MOSI1, MISO1}
+#else
         {HAL_SPI_INTERFACE1, 1, 50*1000*1000, CFG_SPI_PRIORITY, SS, SCK, MOSI, MISO},
         {HAL_SPI_INTERFACE2, 0, 100*1000*1000, CFG_SPI_PRIORITY, SS1, SCK1, MOSI1, MISO1}
+#endif // PLATFORM_ID == PLATFORM_MSOM
     };
 
     CHECK_TRUE(spi < sizeof(spiMap) / sizeof(spiMap[0]), nullptr);

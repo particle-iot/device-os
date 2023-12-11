@@ -32,7 +32,10 @@
 #include "spark_wiring_logging.h"
 #include "rng_hal.h"
 #include "newlib_impure.h"
-
+#if HAL_PLATFORM_ASSETS
+#include "spark_wiring_asset.h"
+#include "spark_wiring_system.h"
+#endif // HAL_PLATFORM_ASSETS
 
 /**
  * Declare the following function bodies as weak. They will only be used if no

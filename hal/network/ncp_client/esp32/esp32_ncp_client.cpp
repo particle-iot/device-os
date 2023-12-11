@@ -125,7 +125,7 @@ int Esp32NcpClient::init(const NcpClientConfig& conf) {
 
 #if !HAL_PLATFORM_WIFI_NCP_SDIO
     // Initialize serial stream
-    std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_USART_SERIAL2, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE,
+    std::unique_ptr<SerialStream> serial(new(std::nothrow) SerialStream(HAL_PLATFORM_WIFI_SERIAL, ESP32_NCP_DEFAULT_SERIAL_BAUDRATE,
             SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS));
 #else
     std::unique_ptr<Esp32SdioStream> serial(new(std::nothrow) Esp32SdioStream(HAL_SPI_INTERFACE2, ESP32_NCP_DEFAULT_SDIO_SPEED, WIFI_CS, WIFI_INT));
@@ -296,6 +296,7 @@ int Esp32NcpClient::getFirmwareModuleVersionImpl(uint16_t* ver) {
 }
 
 int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
+#if !HAL_PLATFORM_NCP_UPDATES_DISABLED
     const NcpClientLock lock(this);
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+FWUPD=%u", (unsigned)size);
@@ -351,6 +352,9 @@ int Esp32NcpClient::updateFirmware(InputStream* file, size_t size) {
     off();
     CHECK(on());
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_NCP_UPDATES_DISABLED
 }
 
 void Esp32NcpClient::processEvents() {

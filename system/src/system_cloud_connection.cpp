@@ -62,6 +62,11 @@ void spark_cloud_udp_port_set(uint16_t port)
     cloud_udp_port = port;
 }
 
+uint16_t spark_cloud_udp_port_get()
+{
+    return cloud_udp_port;
+}
+
 #if HAL_PLATFORM_CLOUD_UDP
 
 namespace {

@@ -14,14 +14,15 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-
 #include "hal_platform.h"
 
 #if HAL_USE_SOCKET_HAL_POSIX
 #include "system_cloud_connection.h"
 #include "system_cloud_internal.h"
+#include "system_connection_manager.h"
 #include "system_error.h"
 #include "inet_hal.h"
+#include "ifapi.h"
 #include "netdb_hal.h"
 #include "system_string_interpolate.h"
 #include "spark_wiring_ticks.h"
@@ -200,6 +201,17 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
             }
         }
 
+        network_interface_t cloudInterface = particle::system::ConnectionManager::instance()->selectCloudConnectionNetwork();
+
+        if (cloudInterface != NETWORK_INTERFACE_ALL) {    
+            // Bind to specific netif
+            struct ifreq ifr = {};
+            if_index_to_name(cloudInterface, ifr.ifr_name);
+
+            auto sockOptRet = sock_setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
+            LOG(TRACE, "%d Bound cloud socket to lwip interface %s", sockOptRet, ifr.ifr_name);
+        }
+
         /* FIXME: timeout for TCP */
         /* NOTE: we do this for UDP sockets as well in order to automagically filter
          * on source address and port */
@@ -298,6 +310,7 @@ int system_cloud_disconnect(int flags)
 int system_cloud_send(const uint8_t* buf, size_t buflen, int flags)
 {
     (void)flags;
+    LOG_DEBUG(TRACE, "TX s_state.socket %d buflen %d", s_state.socket, buflen);
     int r = sock_send(s_state.socket, buf, buflen, 0);
     if (r < 0) {
         if (errno == ENOMEM) {
@@ -328,13 +341,16 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
         }
     }
 
+    if (recvd) {
+        LOG_DEBUG(TRACE, "RX s_state.socket %d buflen %d recvd %d", s_state.socket, buflen, recvd);
+    }
+
     return recvd;
 }
 
 int system_internet_test(void* reserved)
 {
-    particle::SimpleNtpClient ntp;
-    return ntp.ntpDate(nullptr);
+    return particle::system::ConnectionManager::instance()->testConnections();
 }
 
 int system_multicast_announce_presence(void* reserved)

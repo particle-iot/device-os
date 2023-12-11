@@ -1,5 +1,8 @@
 #pragma once
 
+// Must be before hal_platform_nrf52840_config.h
+#define HAL_PLATFORM_ERROR_MESSAGES (0)
+
 #include "hal_platform_nrf52840_config.h"
 #include "platforms.h"
 
@@ -13,6 +16,7 @@
 #define HAL_PLATFORM_I2C_BUFFER_SIZE(x) (x == HAL_I2C_INTERFACE2 ? 512 : HAL_PLATFORM_I2C_BUFFER_SIZE_DEFAULT)
 #define HAL_PLATFORM_USART_NUM (2)
 #define HAL_PLATFORM_NCP_UPDATABLE (1)
+#define HAL_PLATFORM_NCP_UPDATES_DISABLED (1)
 #define HAL_PLATFORM_ESP32_NCP (1)
 
 #define HAL_PLATFORM_PMIC_BQ24195 (1)

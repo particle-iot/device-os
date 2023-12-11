@@ -40,14 +40,19 @@ using namespace particle;
 
 namespace {
 
-// When setting to GPIO output mode, all of the audio pins and one of the
-// normal pins (PA[27]) do not support GPIO read function (always read as '0'),
+// When setting to GPIO output mode, all of the audio pins (PA[0] ~ PA[6] and PB[28] ~ PB[31])
+// and one of the normal pins (PA[27]) do not support GPIO read function (always read as '0'),
 // We'll cache the GPIO state for these pins.
+#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
+constexpr int CACHE_PIN_COUNT = 6;
+hal_pin_t cachePins[CACHE_PIN_COUNT] = {D7, S4, S5, S6, BTN, ANTSW};
+#elif PLATFORM_ID == PLATFORM_MSOM
+constexpr int CACHE_PIN_COUNT = 10;
+hal_pin_t cachePins[CACHE_PIN_COUNT] = {D20, D21, D26, BGPWR, BGRST, BGDTR, BGVINT, GNSS_ANT_PWR, UNUSED_PIN1, UNUSED_PIN2};
+#endif
 constexpr uint32_t CACHE_PIN_STATE_UNKNOWN = 0x3;
 constexpr uint32_t CACHE_PIN_STATE_MASK = 0x3;
 constexpr int CACHE_PIN_STATE_BITS = 2;
-constexpr int CACHE_PIN_COUNT = 6;
-hal_pin_t cachePins[CACHE_PIN_COUNT] = {D7, S4, S5, S6, BTN, ANTSW};
 // 2-bit state for each pin: | 00 | 00 | 00 | 00 | 00 | 00 |
 uint32_t cachePinState = 0;
 
@@ -95,9 +100,8 @@ bool isCachePinSetToOutput(hal_pin_t pin) {
 }
 
 // RTL872XD has two SWD ports. Default is PA27, but PB3 can be configured as alternate SWD as well
-bool isSwdPin(hal_pin_info_t* pinInfo){
-    if ((pinInfo->gpio_port == RTL_PORT_A && pinInfo->gpio_pin == 27) ||
-        (pinInfo->gpio_port == RTL_PORT_B && pinInfo->gpio_pin == 3)) {
+bool isSwdPin(hal_pin_t pin){
+    if (pin == SWD_DAT || pin == SWD_CLK) {
         return true;
     }
     return false;
@@ -111,6 +115,7 @@ void hal_gpio_mode(hal_pin_t pin, PinMode mode) {
     conf.size = sizeof(conf);
     conf.version = HAL_GPIO_VERSION;
     conf.mode = mode;
+    conf.drive_strength = HAL_GPIO_DRIVE_DEFAULT;
     hal_gpio_configure(pin, &conf, nullptr);
 }
 
@@ -132,8 +137,24 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
 
         uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
 
-        if (isSwdPin(pinInfo)) {
+        if (isSwdPin(pin)) {
             Pinmux_Swdoff();
+            // Configure the another SWD pin as input float if it is not configured yet.
+            if (pin == SWD_CLK) {
+                hal_pin_info_t* info = hal_pin_map() + SWD_DAT;
+                if (info->pin_func == PF_NONE) {
+                    Pinmux_Config(hal_pin_to_rtl_pin(SWD_DAT), PINMUX_FUNCTION_GPIO);
+                    GPIOA_BASE->PORT[0].DDR &= (~(1 << 27));
+                    PAD_PullCtrl(hal_pin_to_rtl_pin(SWD_DAT), GPIO_PuPd_NOPULL);
+                }
+            } else {
+                hal_pin_info_t* info = hal_pin_map() + SWD_CLK;
+                if (info->pin_func == PF_NONE) {
+                    Pinmux_Config(hal_pin_to_rtl_pin(SWD_CLK), PINMUX_FUNCTION_GPIO);
+                    GPIOB_BASE->PORT[0].DDR &= (~(1 << 3));
+                    PAD_PullCtrl(hal_pin_to_rtl_pin(SWD_CLK), GPIO_PuPd_NOPULL);
+                }
+            }
         }
 
         // Set pin function may reset nordic gpio configuration, should be called before the re-configuration
@@ -141,13 +162,6 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             hal_pin_set_function(pin, PF_DIO);
         } else {
             hal_pin_set_function(pin, PF_NONE);
-        }
-
-        Pinmux_Config(hal_pin_to_rtl_pin(pin), PINMUX_FUNCTION_GPIO);
-
-        // Pre-set the output value if requested to avoid a glitch
-        if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
-            GPIO_WriteBit(rtlPin, conf->value);
         }
 
         GPIO_InitTypeDef  GPIO_InitStruct = {};
@@ -177,7 +191,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
                 break;
             }
             case PIN_MODE_SWD: {
-                if (isSwdPin(pinInfo)) {
+                if (isSwdPin(pin)) {
                     //"Pinmux_Swdon"
                     u32 Temp = 0;
                     Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);
@@ -201,8 +215,25 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
         }
 
+        // The GPIO_Init() doesn't seam to set the pull ability when the pin is configured as output
+        if (GPIO_InitStruct.GPIO_Mode == GPIO_Mode_OUT) {
+            if (mode == OUTPUT_OPEN_DRAIN_PULLUP) {
+                PAD_PullCtrl(rtlPin, GPIO_PuPd_UP);
+            } else {
+                PAD_PullCtrl(rtlPin, GPIO_PuPd_NOPULL);
+            }
+        }
+
+        // Pre-set the output value if requested to avoid a glitch
+        if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
+            GPIO_WriteBit(rtlPin, conf->value);
+        }
+
         GPIO_Init(&GPIO_InitStruct);
         pinInfo->pin_mode = mode;
+
+        Pinmux_Config(hal_pin_to_rtl_pin(pin), PINMUX_FUNCTION_GPIO);
+        hal_gpio_set_drive_strength(pin, static_cast<hal_gpio_drive_t>(conf->drive_strength));
 
         if (isCachePin(pin) && isCachePinSetToOutput(pin)) {
             if (conf->set_value) {
@@ -408,4 +439,65 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value) {
     }
 
     return (hal_timer_micros(nullptr) - pulse_start);
+}
+
+int hal_gpio_get_drive_strength(hal_pin_t pin, hal_gpio_drive_t* drive) {
+    uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
+
+    /* get PADCTR */
+    uint32_t drvStrength = PINMUX->PADCTR[rtlPin];
+
+    /* get Pin_Num drvStrength contrl */
+    drvStrength &= PAD_BIT_MASK_DRIVING_STRENGTH << PAD_BIT_SHIFT_DRIVING_STRENGTH;
+    drvStrength >>= PAD_BIT_SHIFT_DRIVING_STRENGTH;
+
+    // Pad driving strength
+    //   - PAD_DRV_STRENGTH_0: 4mA
+    //   - PAD_DRV_STRENGTH_1: 8mA   (Severe overshoot, not recommended to use it)
+    //   - PAD_DRV_STRENGTH_2: 12mA
+    //   - PAD_DRV_STRENGTH_3: 16mA  (Severe overshoot, not recommended to use it)
+    switch(drvStrength) {
+        case PAD_DRV_STRENGTH_0: *drive = HAL_GPIO_DRIVE_STANDARD; break;
+        case PAD_DRV_STRENGTH_2: *drive = HAL_GPIO_DRIVE_HIGH; break;
+        // DVOS won't configure PAD_DRV_STRENGTH_1 and PAD_DRV_STRENGTH_3 due to the
+        // severe overshoot, so it is the default setting
+        default:
+            *drive = HAL_GPIO_DRIVE_DEFAULT; break;
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int hal_gpio_set_drive_strength(hal_pin_t pin, hal_gpio_drive_t drive) {
+    uint32_t rtlPin = hal_pin_to_rtl_pin(pin);
+    uint32_t drvStrength = PAD_DRV_STRENGTH_0;
+
+    // Pad driving strength
+    //   - PAD_DRV_STRENGTH_0: 4mA
+    //   - PAD_DRV_STRENGTH_1: 8mA   (Severe overshoot, not recommended to use it)
+    //   - PAD_DRV_STRENGTH_2: 12mA
+    //   - PAD_DRV_STRENGTH_3: 16mA  (Severe overshoot, not recommended to use it)
+    switch(drive) {
+        case HAL_GPIO_DRIVE_STANDARD: drvStrength = PAD_DRV_STRENGTH_0; break;
+        case HAL_GPIO_DRIVE_HIGH:     drvStrength = PAD_DRV_STRENGTH_2; break;
+        case HAL_GPIO_DRIVE_DEFAULT:  drvStrength = PAD_DRV_STRENGTH_3; break;
+        default:
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    uint32_t temp = 0;
+
+    /* get PADCTR */
+    temp = PINMUX->PADCTR[rtlPin];
+
+    /* clear Pin_Num drvStrength contrl */
+    temp &= ~(PAD_BIT_MASK_DRIVING_STRENGTH << PAD_BIT_SHIFT_DRIVING_STRENGTH);
+
+    /* set needs drvStrength */
+    temp |= (drvStrength & PAD_BIT_MASK_DRIVING_STRENGTH) << PAD_BIT_SHIFT_DRIVING_STRENGTH;
+
+    /* set PADCTR register */
+    PINMUX->PADCTR[rtlPin] = temp;
+
+    return SYSTEM_ERROR_NONE;
 }

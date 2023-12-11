@@ -40,7 +40,9 @@ enum class WifiSecurity {
     WEP = 1,
     WPA_PSK = 2,
     WPA2_PSK = 3,
-    WPA_WPA2_PSK = 4
+    WPA_WPA2_PSK = 4,
+    WPA3_PSK = 5,
+    WPA2_WPA3_PSK = 6
 };
 
 class WifiCredentials {
@@ -70,6 +72,9 @@ public:
     WifiNetworkConfig& ssid(const char* ssid);
     const char* ssid() const;
 
+    WifiNetworkConfig& hidden(bool hidden);
+    bool hidden() const;
+
     WifiNetworkConfig& bssid(const MacAddress& bssid);
     const MacAddress& bssid() const;
 
@@ -84,6 +89,7 @@ private:
     MacAddress bssid_;
     WifiCredentials cred_;
     WifiSecurity sec_;
+    bool hidden_;
 };
 
 class WifiNetworkInfo {
@@ -185,7 +191,8 @@ inline WifiCredentials::Type WifiCredentials::type() const {
 
 inline WifiNetworkConfig::WifiNetworkConfig() :
         bssid_(INVALID_MAC_ADDRESS),
-        sec_(WifiSecurity::NONE) {
+        sec_(WifiSecurity::NONE),
+        hidden_(false) {
 }
 
 inline WifiNetworkConfig& WifiNetworkConfig::ssid(const char* ssid) {
@@ -195,6 +202,16 @@ inline WifiNetworkConfig& WifiNetworkConfig::ssid(const char* ssid) {
 
 inline const char* WifiNetworkConfig::ssid() const {
     return ssid_;
+}
+
+
+inline WifiNetworkConfig& WifiNetworkConfig::hidden(bool state) {
+    hidden_ = state;
+    return *this;
+}
+
+inline bool WifiNetworkConfig::hidden() const {
+    return hidden_;
 }
 
 inline WifiNetworkConfig& WifiNetworkConfig::bssid(const MacAddress& bssid) {

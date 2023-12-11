@@ -81,6 +81,14 @@ enum class CellularAccessTechnology {
     LTE_NB_IOT = 9
 };
 
+enum class CellularPowerSavingValue {
+    NONE = -1,
+    UPSV_DISABLED = 0,
+    UPSV_ENABLED_TIMER = 1,
+    UPSV_ENABLED_RTS = 2,
+    UPSV_ENABLED_DTR = 3,
+};
+
 enum class CellularOperationMode {
     NONE = -1,
     PS_ONLY = 0,

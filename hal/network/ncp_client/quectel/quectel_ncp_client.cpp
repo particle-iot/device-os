@@ -90,6 +90,7 @@ inline system_tick_t millis() {
 
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -111,6 +112,8 @@ const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 
 const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
+
+const auto QUECTEL_CFUN_MAX_ATTEMPTS = 10;
 
 // Undefine hardware version
 const auto HW_VERSION_UNDEFINED = 0xFF;
@@ -152,7 +155,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
 
 
     // Initialize serial stream
-    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_USART_SERIAL2, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, getDefaultSerialConfig()));
+    std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_PLATFORM_CELLULAR_SERIAL, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, getDefaultSerialConfig()));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
 
     // Initialize muxed channel stream
@@ -1026,6 +1029,7 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 bool QuectelNcpClient::isQuecCatM1Device() {
     int ncp_id = ncpId();
     return (ncp_id == PLATFORM_NCP_QUECTEL_BG96 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF ||
@@ -1042,24 +1046,45 @@ bool QuectelNcpClient::isQuecCat1Device() {
 
 bool QuectelNcpClient::isQuecCatNBxDevice() {
     int ncp_id = ncpId();
-    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
 }
 
 bool QuectelNcpClient::isQuecBG95xDevice() {
     int ncp_id = ncpId();
-    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF) ;
 }
 
+int QuectelNcpClient::getRuntimeBaudrate() {
+    auto runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
+        // Only change for MSoM, and currently MSoM only uses BG95_M5.
+        // Not testing for PLATFORM_ID == PLATFORM_MSOM because another modem type might not support 921600.
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5;
+    }
+    return runtimeBaudrate;
+}
+
 int QuectelNcpClient::initReady(ModemState state) {
     // Set modem full functionality
-    int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
+    int r = AtResponse::OK;
+    for (int x = 0; x < QUECTEL_CFUN_MAX_ATTEMPTS; x++) {
+        int r = setModuleFunctionality(CellularFunctionality::FULL, true /* check */);
+        if (r == AtResponse::OK) {
+            break;
+        }
+        HAL_Delay_Milliseconds(1000);
+    }
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
     if (state != ModemState::MuxerAtChannel) {
+        // Cold Boot only, Warm Boot will skip the following block...
+
         // Enable flow control and change to runtime baudrate
 #if PLATFORM_ID == PLATFORM_B5SOM
         uint32_t hwVersion = HW_VERSION_UNDEFINED;
@@ -1072,7 +1097,7 @@ int QuectelNcpClient::initReady(ModemState state) {
             CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
             CHECK(waitAtResponse(10000));
         }
-        auto runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE;
+        auto runtimeBaudrate = getRuntimeBaudrate();
         CHECK(changeBaudRate(runtimeBaudrate));
         // Check that the modem is responsive at the new baudrate
         skipAll(serial_.get(), 1000);
@@ -1108,9 +1133,11 @@ int QuectelNcpClient::initReady(ModemState state) {
             case 115200: portspeed = 5; break;
             case 230400: portspeed = 6; break;
             case 460800: portspeed = 7; break;
+            case 921600: portspeed = 8; break;
             default:
                 return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
+        // XXX: AT+CMUX=? says portspeed value range is (1-7), but 8 is required for it to work on BG95-M5
         r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,%u,,,,,", portspeed, QUECTEL_NCP_MAX_MUXER_FRAME_SIZE));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1155,7 +1182,8 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
     // NOTE: disabling hardware flow control here as BG96-based Trackers are known
     // to latch CTS sometimes on warm boot
     // Sending some data without flow control allows us to get out of that state
-    CHECK(serial_->setConfig(getDefaultSerialConfig() & ~(SERIAL_FLOW_CONTROL_RTS_CTS), QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE));
+    auto runtimeBaudrate = getRuntimeBaudrate();
+    CHECK(serial_->setConfig(getDefaultSerialConfig() & ~(SERIAL_FLOW_CONTROL_RTS_CTS), runtimeBaudrate));
 
     // Essentially we are generating empty 07.10 frames here
     // This is done so that we can complete an ongoing frame transfer that was aborted e.g.
@@ -1221,7 +1249,7 @@ int QuectelNcpClient::checkRuntimeState(ModemState& state) {
         return SYSTEM_ERROR_NONE;
     }
 
-    LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE);
+    LOG_DEBUG(TRACE, "Modem is not responsive @ %u baudrate", runtimeBaudrate);
 
     // The modem is not responsive at the runtime baudrate, check default
     CHECK(serial_->setBaudRate(QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE));
@@ -1277,6 +1305,33 @@ int QuectelNcpClient::checkSimCard() {
     return SYSTEM_ERROR_UNKNOWN;
 }
 
+int QuectelNcpClient::getModuleFunctionality() {
+    auto resp = parser_.sendCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN?");
+    int curVal = -1;
+    auto r = resp.scanf("+CFUN: %d", &curVal);
+    CHECK_PARSER_OK(resp.readResult());
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    return curVal;
+}
+
+int QuectelNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool check) {
+    if (check) {
+        if ((int)cfun == CHECK(getModuleFunctionality())) {
+            // Already in required state
+            return 0;
+        }
+    }
+
+    int r = SYSTEM_ERROR_UNKNOWN;
+
+    r = parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=%d,0", (int)cfun);
+
+    CHECK_PARSER(r);
+
+    // AtResponse::Result!
+    return r;
+}
+
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // IMPORTANT: Set modem full functionality!
     // Otherwise we won't be able to query ICCID/IMSI
@@ -1324,7 +1379,7 @@ int QuectelNcpClient::registerNet() {
 
     resetRegistrationState();
 
-    if (isQuecCat1Device()) {
+    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
         // Register GPRS, LET, NB-IOT network
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -1366,7 +1421,7 @@ int QuectelNcpClient::registerNet() {
     }
 
     if (isQuecCatM1Device()) {
-        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
+        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
             // NOTE: BG96 supports 2G fallback which we disable explicitly so that a 10W power supply is not required
             // Configure RATs to be searched
             // Set to scan LTE only if not already set, take effect immediately
@@ -1376,9 +1431,27 @@ int QuectelNcpClient::registerNet() {
             CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
             r = CHECK_PARSER(respNwMode.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        #if PLATFORM_ID == PLATFORM_MSOM
+            if (nwScanMode != 0) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // AUTO
+            }
+
+            if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
+                auto respNwScanSeq = parser_.sendCommand("AT+QCFG=\"nwscanseq\"");
+                int nwScanSeq = -1;
+                r = CHECK_PARSER(respNwScanSeq.scanf("+QCFG: \"nwscanseq\",%d", &nwScanSeq));
+                CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+                r = CHECK_PARSER(respNwScanSeq.readResult());
+                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+                if (nwScanSeq != 201) { // i.e. 0201
+                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",0201,1")); // LTE 02, then GSM 01
+                }
+            }
+        #else 
             if (nwScanMode != 3) {
                 CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
             }
+        #endif
         }
 
         if (isQuecCatNBxDevice()) {
@@ -1399,7 +1472,7 @@ int QuectelNcpClient::registerNet() {
     }
     // Check GSM, GPRS, and LTE network registration status
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device()) {
+    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     }
@@ -1821,7 +1894,7 @@ int QuectelNcpClient::processEventsImpl() {
 
     // Check GSM, GPRS, and LTE network registration status
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device()) {
+    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
     }

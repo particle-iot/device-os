@@ -49,6 +49,7 @@ DYNALIB_TABLE_EXTERN(hal_cellular);
 DYNALIB_TABLE_EXTERN(hal_watchdog);
 #endif // HAL_PLATFORM_HW_WATCHDOG
 DYNALIB_TABLE_EXTERN(hal_backup_ram);
+DYNALIB_TABLE_EXTERN(system_asset_manager);
 #if HAL_PLATFORM_LEDGER
 DYNALIB_TABLE_EXTERN(system_ledger);
 #endif
@@ -100,6 +101,7 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
     , DYNALIB_TABLE_NAME(hal_watchdog)
 #endif // HAL_PLATFORM_HW_WATCHDOG
     , DYNALIB_TABLE_NAME(hal_backup_ram)
+    , DYNALIB_TABLE_NAME(system_asset_manager)
 #if HAL_PLATFORM_LEDGER
     , DYNALIB_TABLE_NAME(system_ledger)
 #endif

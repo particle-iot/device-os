@@ -66,7 +66,7 @@ void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
 // TODO: Implement a couple functions to conveniently save/load a protobuf message to/from a file
 int loadConfig(Vector<WifiNetworkConfig>* networks) {
     // Get filesystem instance
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
@@ -98,7 +98,8 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
             .ssid(dSsid.data)
             .bssid(bssid)
             .security((WifiSecurity)pbConf.security)
-            .credentials(std::move(cred));
+            .credentials(std::move(cred))
+            .hidden(pbConf.hidden);
         if (!networks->append(std::move(conf))) {
             return false;
         }
@@ -118,7 +119,7 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
 
 int saveConfig(const Vector<WifiNetworkConfig>& networks) {
     // Get filesystem instance
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
@@ -153,6 +154,7 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
                 ePwd.data = s;
                 ePwd.size = strlen(s);
             }
+            pbConf.hidden = conf.hidden();
             if (!pb_encode_tag_for_field(strm, field)) {
                 return false;
             }
@@ -234,7 +236,7 @@ int WifiNetworkManager::connect(const char* ssid) {
                 index = 0;
                 for (; index < networks.size(); ++index) {
                     network = &networks.at(index);
-                    if (strcmp(network->ssid(), ap.ssid()) == 0) {
+                    if (strcmp(network->ssid(), ap.ssid()) == 0 && !network->hidden()) {
                         break;
                     }
                 }
@@ -256,7 +258,21 @@ int WifiNetworkManager::connect(const char* ssid) {
             }
         }
         if (!connected) {
-            return SYSTEM_ERROR_NOT_FOUND;
+            // Attempt to connect to hidden SSIDs
+            index = 0;
+            for (; index < networks.size(); ++index) {
+                network = &networks.at(index);
+                if (network->hidden()) {
+                    r = client_->connect(network->ssid(), network->bssid(), network->security(), network->credentials());
+                    if (r == 0) {
+                        connected = true;
+                        break;
+                    }
+                }
+            }
+            if (!connected) {
+                return SYSTEM_ERROR_NOT_FOUND;
+            }
         }
     } else if (network->bssid() == INVALID_MAC_ADDRESS) {
         // Update BSSID

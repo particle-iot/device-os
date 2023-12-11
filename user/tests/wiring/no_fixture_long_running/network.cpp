@@ -195,8 +195,8 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR
 
 test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
-    // 15 min gives the device time to go through a 10 min timeout & power cycle
-    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
+    // 20 min gives the device time to go through a 10-15 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 20 * 60 * 1000;
     const system_tick_t NCP_FAILURE_TIMEOUT = 15000;
 
     Network.on();
@@ -207,13 +207,18 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 
     // Simulate NCP failure by reconfiguring the NCP serial port with a baudrate
     // setting different from expected.
-    // FIXME: when a new platform is added not using HAL_USART_SERIAL2 or not using
+    // FIXME: when a new platform is added not using HAL_PLATFORM_CELLULAR_SERIAL or not using
     // UART for talking to NCP.
     SINGLE_THREADED_BLOCK() {
 #if HAL_PLATFORM_NCP_AT
-        hal_usart_end(HAL_USART_SERIAL2);
-        hal_usart_begin_config(HAL_USART_SERIAL2, 57600, SERIAL_8N1, nullptr);
-#endif
+#if HAL_PLATFORM_CELLULAR
+        hal_usart_end(HAL_PLATFORM_CELLULAR_SERIAL);
+        hal_usart_begin_config(HAL_PLATFORM_CELLULAR_SERIAL, 57600, SERIAL_8N1, nullptr);
+#else
+        hal_usart_end(HAL_PLATFORM_WIFI_SERIAL);
+        hal_usart_begin_config(HAL_PLATFORM_WIFI_SERIAL, 57600, SERIAL_8N1, nullptr);
+#endif // HAL_PLATFORM_CELLULAR
+#endif // HAL_PLATFORM_NCP_AT
     }
 
     delay(NCP_FAILURE_TIMEOUT);
@@ -241,8 +246,8 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 static bool s_networkStatusChanged = false;
 
 test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
-    // 15 min gives the device time to go through a 10 min timeout & power cycle
-    const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
+    // 20 min gives the device time to go through a 10-15 min timeout & power cycle
+    const system_tick_t WAIT_TIMEOUT = 20 * 60 * 1000;
 
     SCOPE_GUARD({
         Particle.disconnect();
@@ -264,8 +269,13 @@ test(NETWORK_03_network_connection_recovers_after_ncp_uart_sleep) {
     });
 
     SINGLE_THREADED_BLOCK() {
-        assertEqual(0, hal_usart_sleep(HAL_USART_SERIAL2, true, nullptr));
-        assertEqual(0, hal_usart_sleep(HAL_USART_SERIAL2, false, nullptr));
+#if HAL_PLATFORM_CELLULAR
+        assertEqual(0, hal_usart_sleep(HAL_PLATFORM_CELLULAR_SERIAL, true, nullptr));
+        assertEqual(0, hal_usart_sleep(HAL_PLATFORM_CELLULAR_SERIAL, false, nullptr));
+#else
+        assertEqual(0, hal_usart_sleep(HAL_PLATFORM_WIFI_SERIAL, true, nullptr));
+        assertEqual(0, hal_usart_sleep(HAL_PLATFORM_WIFI_SERIAL, false, nullptr));
+#endif // HAL_PLATFORM_CELLULAR
     }
 
     delay(1000);

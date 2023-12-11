@@ -28,7 +28,7 @@
 #include "filesystem.h"
 
 static bool write_file_callback(pb_ostream_t* strm, const uint8_t* data, size_t size) {
-    filesystem_t* const fs = filesystem_get_instance(NULL);
+    filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
     if (!fs) {
         return false;
     }
@@ -40,7 +40,7 @@ static bool write_file_callback(pb_ostream_t* strm, const uint8_t* data, size_t 
 }
 
 static bool read_file_callback(pb_istream_t* strm, uint8_t* data, size_t size) {
-    filesystem_t* const fs = filesystem_get_instance(NULL);
+    filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
     if (!fs) {
         return false;
     }
@@ -125,6 +125,10 @@ int pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved)
     if (!stream || !file) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
     memset(stream, 0, sizeof(pb_ostream_t));
     stream->callback = write_file_callback;
     stream->state = file;
@@ -137,7 +141,7 @@ int pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, int size, void*
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (size < 0) {
-        filesystem_t* fs = filesystem_get_instance(NULL);
+        filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
         if (!fs) {
             return SYSTEM_ERROR_FILESYSTEM;
         }

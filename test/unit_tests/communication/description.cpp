@@ -206,7 +206,7 @@ TEST_CASE("Description") {
 
     SECTION("can send a regular Describe request") {
         When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(BLOCK_SIZE, 'a');
+            auto s = "{" + std::string(BLOCK_SIZE, 'a') + "}";
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -219,6 +219,8 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
         CHECK((!m.hasOption(CoapOption::BLOCK1) && !m.hasOption(CoapOption::BLOCK2)));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == "{" + std::string(BLOCK_SIZE, 'a') + "}");
         // Acknowledge the request
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
@@ -227,7 +229,7 @@ TEST_CASE("Description") {
 
     SECTION("can send a blockwise Describe request") {
         When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(PROTOCOL_BUFFER_SIZE, 'a');
+            auto s = "{" + std::string(PROTOCOL_BUFFER_SIZE, 'a') + "}";
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -240,6 +242,8 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
         CHECK(m.option(CoapOption::BLOCK1).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         // The next block request must not be sent until the last sent request is acknowledged
         CHECK(!d.hasMessages());
@@ -253,6 +257,8 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
         CHECK(m.option(CoapOption::BLOCK1).toUInt() == BlockOption().index(1).more(false));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         // Acknowledge the request
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
@@ -261,7 +267,7 @@ TEST_CASE("Description") {
 
     SECTION("can send a regular Describe response") {
         When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(BLOCK_SIZE, 'a');
+            auto s = "{" + std::string(BLOCK_SIZE, 'a') + "}";
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -278,6 +284,8 @@ TEST_CASE("Description") {
         CHECK(m.code() == CoapCode::CONTENT);
         CHECK(m.token() == d.lastMessageToken());
         CHECK((!m.hasOption(CoapOption::BLOCK1) && !m.hasOption(CoapOption::BLOCK2)));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == "{" + std::string(BLOCK_SIZE, 'a') + "}");
         // Acknowledge the response
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
@@ -286,7 +294,7 @@ TEST_CASE("Description") {
 
     SECTION("can send a blockwise Describe response") {
         When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(PROTOCOL_BUFFER_SIZE, 'a');
+            auto s = "{" + std::string(PROTOCOL_BUFFER_SIZE, 'a') + "}";
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -304,6 +312,8 @@ TEST_CASE("Description") {
         CHECK(m.token() == d.lastMessageToken());
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         // Acknowledge the response
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
@@ -324,6 +334,8 @@ TEST_CASE("Description") {
         CHECK(m.token() == d.lastMessageToken());
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(false));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         // Acknowledge the response
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
@@ -332,7 +344,7 @@ TEST_CASE("Description") {
 
     SECTION("queues further Describe requests when a blockwise request is in progress") {
         When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(PROTOCOL_BUFFER_SIZE, 'a');
+            auto s = "{" + std::string(PROTOCOL_BUFFER_SIZE, 'a') + "}";
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -350,6 +362,8 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
         CHECK(m.option(CoapOption::BLOCK1).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         // Send another request to the server (a regular one)
         d.get()->sendRequest(DescriptionType::DESCRIBE_APPLICATION);
@@ -365,6 +379,8 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_SYSTEM);
         CHECK(m.option(CoapOption::BLOCK1).toUInt() == BlockOption().index(1).more(false));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         // No new messages must be sent until the second block is acknowledged
         CHECK(!d.hasMessages());
@@ -378,6 +394,7 @@ TEST_CASE("Description") {
         CHECK(m.option(CoapOption::URI_PATH).toString() == "d");
         CHECK(m.option(CoapOption::URI_QUERY).toUInt() == DescriptionType::DESCRIBE_APPLICATION);
         CHECK((!m.hasOption(CoapOption::BLOCK1) && !m.hasOption(CoapOption::BLOCK2)));
+        CHECK(!m.hasOption(CoapOption::CONTENT_FORMAT));
         CHECK(m.payload() == "{" + std::string(BLOCK_SIZE, 'b') + "}");
         // Acknowledge the second request
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
@@ -386,7 +403,7 @@ TEST_CASE("Description") {
 
     SECTION("can send multiple blockwise responses concurrently") {
         When(Method(cb, appendSystemInfo)).Do([](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(PROTOCOL_BUFFER_SIZE, 'a');
+            auto s = "{" + std::string(PROTOCOL_BUFFER_SIZE, 'a') + "}";
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -409,6 +426,8 @@ TEST_CASE("Description") {
         CHECK(m.token() == token1);
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         id1 = m.id();
         // Receive the ACK and response for the second request
@@ -422,6 +441,8 @@ TEST_CASE("Description") {
         CHECK(m.token() == token2);
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1)); // ETag is the same as in the other response
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == "{" + std::string(BLOCK_SIZE - 1, 'a'));
         id2 = m.id();
         // Acknowledge both the responses
@@ -448,6 +469,8 @@ TEST_CASE("Description") {
         CHECK(m.token() == token1);
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(false));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         id1 = m.id();
         // Receive the ACK and response for the second request
@@ -461,6 +484,8 @@ TEST_CASE("Description") {
         CHECK(m.token() == token2);
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1)); // ETag is the same as in the other response
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(false));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         CHECK(m.payload() == std::string(PROTOCOL_BUFFER_SIZE - BLOCK_SIZE + 1, 'a') + '}');
         id2 = m.id();
         // Acknowledge both the responses
@@ -474,7 +499,7 @@ TEST_CASE("Description") {
 
     SECTION("uses a different ETag with each Describe response") {
         When(Method(cb, appendSystemInfo)).AlwaysDo([&](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(PROTOCOL_BUFFER_SIZE, 'a');
+            auto s = "{" + std::string(PROTOCOL_BUFFER_SIZE, 'a') + "}";
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -484,6 +509,8 @@ TEST_CASE("Description") {
         auto m = d.receiveMessage();
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         // Request the second block
         d.sendRequest(DescriptionType::DESCRIBE_SYSTEM, BlockOption().index(1));
@@ -491,6 +518,8 @@ TEST_CASE("Description") {
         m = d.receiveMessage();
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(false));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         // Request the first block (append_system_info() will be called again)
         d.sendRequest(DescriptionType::DESCRIBE_SYSTEM);
@@ -498,6 +527,8 @@ TEST_CASE("Description") {
         m = d.receiveMessage();
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x02", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         // Request the second block
         d.sendRequest(DescriptionType::DESCRIBE_SYSTEM, BlockOption().index(1));
@@ -505,6 +536,8 @@ TEST_CASE("Description") {
         m = d.receiveMessage();
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x02", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(false));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         // append_system_info() should have been called twice
         Verify(Method(cb, appendSystemInfo)).Twice();
@@ -513,7 +546,7 @@ TEST_CASE("Description") {
     SECTION("invalidates cached Describe data after a timeout") {
         const auto payloadSize = BLOCK_SIZE * 4 - 100;
         When(Method(cb, appendSystemInfo)).AlwaysDo([=](appender_fn append, void* arg, void* reserved) {
-            auto s = std::string(payloadSize, 'a');
+            auto s = "{" + std::string(payloadSize, 'a') + "}";
             append(arg, (const uint8_t*)s.data(), s.size());
             return true;
         });
@@ -523,6 +556,8 @@ TEST_CASE("Description") {
         auto m = d.receiveMessage();
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         // Request the second block after a delay
         d.tick(COAP_BLOCKWISE_RESPONSE_TIMEOUT - 1);
@@ -531,6 +566,8 @@ TEST_CASE("Description") {
         m = d.receiveMessage();
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x01", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(1).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
         // Cause a response timeout and request the first block again
         d.tick(COAP_BLOCKWISE_RESPONSE_TIMEOUT);
@@ -539,6 +576,8 @@ TEST_CASE("Description") {
         m = d.receiveMessage();
         CHECK(m.option(CoapOption::ETAG).toString() == std::string("\x02", 1));
         CHECK(m.option(CoapOption::BLOCK2).toUInt() == BlockOption().index(0).more(true));
+        CHECK(m.hasOption(CoapOption::CONTENT_FORMAT));
+        CHECK(m.option(CoapOption::CONTENT_FORMAT).toUInt() == (unsigned)(CoapContentFormat::APPLICATION_OCTET_STREAM));
         d.sendMessage(CoapMessage().type(CoapType::ACK).code(CoapCode::EMPTY).id(m.id()));
     }
 }

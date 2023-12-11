@@ -86,6 +86,7 @@ int joinNewNetwork(ctrl_request* req) {
     MacAddress bssid = INVALID_MAC_ADDRESS;
     bssidFromPb(&bssid, pbReq.bssid);
     conf.bssid(bssid);
+    conf.hidden(pbReq.hidden);
     const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     const auto ncpClient = wifiMgr->ncpClient();

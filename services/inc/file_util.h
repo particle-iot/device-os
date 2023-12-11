@@ -32,4 +32,7 @@ int encodeProtobufToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void*
 int rmrf(const char* path);
 int mkdirp(const char* path);
 
+int rmrf(const char* path);
+int mkdirp(const char* path);
+
 } // particle

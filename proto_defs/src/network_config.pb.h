@@ -33,6 +33,7 @@ typedef struct _particle_firmware_WifiConfig_Network {
     particle_firmware_WifiConfig_Network_bssid_t bssid; 
     particle_ctrl_wifi_Security security; 
     particle_ctrl_wifi_Credentials credentials; 
+    bool hidden; 
 } particle_firmware_WifiConfig_Network;
 
 
@@ -42,11 +43,11 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define particle_firmware_WifiConfig_init_default {{{NULL}, NULL}}
-#define particle_firmware_WifiConfig_Network_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default}
+#define particle_firmware_WifiConfig_Network_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default, 0}
 #define particle_firmware_CellularConfig_init_default {particle_ctrl_cellular_AccessPoint_init_default, particle_ctrl_cellular_AccessPoint_init_default, _particle_ctrl_cellular_SimType_MIN}
 #define particle_firmware_NetworkConfig_init_default {{{NULL}, NULL}}
 #define particle_firmware_WifiConfig_init_zero   {{{NULL}, NULL}}
-#define particle_firmware_WifiConfig_Network_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero}
+#define particle_firmware_WifiConfig_Network_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero, 0}
 #define particle_firmware_CellularConfig_init_zero {particle_ctrl_cellular_AccessPoint_init_zero, particle_ctrl_cellular_AccessPoint_init_zero, _particle_ctrl_cellular_SimType_MIN}
 #define particle_firmware_NetworkConfig_init_zero {{{NULL}, NULL}}
 
@@ -60,6 +61,7 @@ extern "C" {
 #define particle_firmware_WifiConfig_Network_bssid_tag 2
 #define particle_firmware_WifiConfig_Network_security_tag 3
 #define particle_firmware_WifiConfig_Network_credentials_tag 4
+#define particle_firmware_WifiConfig_Network_hidden_tag 5
 
 /* Struct field encoding specification for nanopb */
 #define particle_firmware_WifiConfig_FIELDLIST(X, a) \
@@ -72,7 +74,8 @@ X(a, CALLBACK, REPEATED, MESSAGE,  networks,          1)
 X(a, CALLBACK, SINGULAR, STRING,   ssid,              1) \
 X(a, STATIC,   SINGULAR, BYTES,    bssid,             2) \
 X(a, STATIC,   SINGULAR, UENUM,    security,          3) \
-X(a, STATIC,   SINGULAR, MESSAGE,  credentials,       4)
+X(a, STATIC,   SINGULAR, MESSAGE,  credentials,       4) \
+X(a, STATIC,   SINGULAR, BOOL,     hidden,            5)
 #define particle_firmware_WifiConfig_Network_CALLBACK pb_default_field_callback
 #define particle_firmware_WifiConfig_Network_DEFAULT NULL
 #define particle_firmware_WifiConfig_Network_credentials_MSGTYPE particle_ctrl_wifi_Credentials

@@ -54,10 +54,13 @@ USE_PRINTF_FLOAT ?= y
 endif
 
 ifeq ("$(USE_PRINTF_FLOAT)","y")
-LDFLAGS += -u _printf_float
+LDFLAGS += -u _printf_float -u _scanf_float
 endif
 
-LDFLAGS += -u uxTopUsedPriority
+LDFLAGS += -u uxTopUsedPriority -Wl,--wrap=InitSwHash512 -Wl,--wrap=ProcessSwHash512 -Wl,--wrap=FinishSwHash512
+
+# Disable float support in wiring Print
+GLOBAL_DEFINES += PARTICLE_WIRING_PRINT_NO_FLOAT
 
 INCLUDE_DIRS += $(SHARED_MODULAR)/inc/system-part1
 SYSTEM_PART1_MODULE_SRC_PATH = $(SYSTEM_PART1_MODULE_PATH)/src

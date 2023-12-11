@@ -47,6 +47,7 @@ bool isSupportedSecurityType(WLanSecurityType type) {
     case WLanSecurityType::WLAN_SEC_WEP:
     case WLanSecurityType::WLAN_SEC_WPA:
     case WLanSecurityType::WLAN_SEC_WPA2:
+    case WLanSecurityType::WLAN_SEC_WPA3:
         return true;
     default:
         return false;
@@ -63,6 +64,8 @@ WifiSecurity toWifiSecurity(WLanSecurityType type) {
         return WifiSecurity::WPA_PSK;
     case WLanSecurityType::WLAN_SEC_WPA2:
         return WifiSecurity::WPA2_PSK;
+    case WLanSecurityType::WLAN_SEC_WPA3:
+        return WifiSecurity::WPA3_PSK;
     default:
         return WifiSecurity::NONE;
     }
@@ -79,6 +82,9 @@ WLanSecurityType fromWifiSecurity(WifiSecurity sec) {
     case WifiSecurity::WPA2_PSK:
     case WifiSecurity::WPA_WPA2_PSK:
         return WLanSecurityType::WLAN_SEC_WPA2;
+    case WifiSecurity::WPA3_PSK:
+    case WifiSecurity::WPA2_WPA3_PSK:
+        return WLanSecurityType::WLAN_SEC_WPA3;
     default:
         return WLanSecurityType::WLAN_SEC_UNSEC;
     }
@@ -169,6 +175,9 @@ int wlan_set_credentials(WLanCredentials* halCred) {
     const auto ssid = CString::wrap(strndup(halCred->ssid, halCred->ssid_len));
     WifiNetworkConfig conf;
     conf.ssid(ssid);
+    if (halCred->flags & WLAN_SET_CREDENTIALS_FLAGS_HIDDEN) {
+        conf.hidden(true);
+    }
     conf.security(toWifiSecurity(halCred->security));
     conf.credentials(std::move(cred));
     const auto mgr = wifiNetworkManager();
@@ -370,8 +379,9 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie) {
         // FIXME: As the ESP32 doesn't return the cipher type of an AP, we manually set it here.
         if (ap.security == WLAN_SEC_WPA || ap.security == WLAN_SEC_WPA2) {
             ap.cipher = WLAN_CIPHER_AES_TKIP;
-        }
-        else {
+        } else if (ap.security == WLAN_SEC_WPA3) {
+            ap.cipher = WLAN_CIPHER_AES;
+        } else {
             ap.cipher = WLAN_CIPHER_NOT_SET;
         }
         ap.channel = result.channel();
@@ -414,8 +424,9 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
         // FIXME: As the ESP32 doesn't return the cipher type of an AP, we manually set it here.
         if (ap.security == WLAN_SEC_WPA || ap.security == WLAN_SEC_WPA2) {
             ap.cipher = WLAN_CIPHER_AES_TKIP;
-        }
-        else {
+        } else if (ap.security == WLAN_SEC_WPA3) {
+            ap.cipher = WLAN_CIPHER_AES;
+        } else {
             ap.cipher = WLAN_CIPHER_NOT_SET;
         }
         const auto d = (Data*)data;

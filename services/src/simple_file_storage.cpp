@@ -32,7 +32,7 @@ SimpleFileStorage::SimpleFileStorage(const char* fileName) :
 }
 
 int SimpleFileStorage::load(void* data, size_t size) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     if (!fs) {
         return SYSTEM_ERROR_FILE;
     }
@@ -70,7 +70,7 @@ int SimpleFileStorage::load(void* data, size_t size) {
 }
 
 int SimpleFileStorage::save(const void* data, size_t size) {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     if (!fs) {
         return SYSTEM_ERROR_FILE;
     }
@@ -120,7 +120,7 @@ int SimpleFileStorage::save(const void* data, size_t size) {
 }
 
 int SimpleFileStorage::sync() {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     if (!fs) {
         return SYSTEM_ERROR_FILE;
     }
@@ -137,7 +137,7 @@ int SimpleFileStorage::sync() {
 }
 
 void SimpleFileStorage::close() {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     if (!fs) {
         return;
     }
@@ -146,7 +146,7 @@ void SimpleFileStorage::close() {
 }
 
 void SimpleFileStorage::clear() {
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     if (!fs) {
         return;
     }

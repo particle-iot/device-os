@@ -142,7 +142,8 @@ public:
     CloudConnectionSettings() :
             defaultDisconnectTimeout_(DEFAULT_DISCONNECT_TIMEOUT),
             defaultDisconnectGracefully_(DEFAULT_DISCONNECT_GRACEFULLY),
-            defaultDisconnectClearSession_(DEFAULT_DISCONNECT_CLEAR_SESSION) {
+            defaultDisconnectClearSession_(DEFAULT_DISCONNECT_CLEAR_SESSION),
+            boundInterface_(NETWORK_INTERFACE_ALL) {
     }
 
     void setDefaultDisconnectOptions(const CloudDisconnectOptions& options) {
@@ -194,6 +195,14 @@ public:
 
     static CloudConnectionSettings* instance();
 
+    void setBoundInterface(network_interface_t network) {
+        boundInterface_ = network;
+    }
+
+    network_interface_t getBoundInterface() {
+        return boundInterface_;
+    }
+
 private:
     SimpleAtomicFlagMutex mutex_;
     // Default disconnection options can only be set in the context of the system thread.
@@ -203,6 +212,7 @@ private:
     bool defaultDisconnectClearSession_;
     // Pending disconnection options are set atomically and guarded by a spinlock
     CloudDisconnectOptions pendingDisconnectOptions_;
+    network_interface_t boundInterface_;
 };
 
 // Use this function instead of Particle.publish() in the system code

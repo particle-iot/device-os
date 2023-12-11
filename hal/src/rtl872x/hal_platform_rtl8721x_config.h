@@ -51,7 +51,7 @@
 // Allow detection of ethernet on SPI 
 #define HAL_PLATFORM_ETHERNET (1)
 
-#define HAL_PLATFORM_USART3 (1)
+#define HAL_PLATFORM_USART2 (1)
 
 #define HAL_PLATFORM_USB_VENDOR_REQUEST (1)
 
@@ -146,3 +146,5 @@
 // NOTE: These are not default in hal_platform.h
 #define HAL_PLATFORM_HEAP_REGION_SRAM (0)
 #define HAL_PLATFORM_HEAP_REGION_PSRAM (1)
+
+#define HAL_PLATFORM_ASSETS (1)

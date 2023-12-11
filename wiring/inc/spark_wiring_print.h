@@ -65,8 +65,11 @@ class Print
 
     size_t printNumber(unsigned long, uint8_t);
     size_t printNumber(unsigned long long, uint8_t);
+#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
     size_t printFloat(double, uint8_t);
+#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
     size_t printVariant(const particle::Variant& var);
+
   protected:
     void setWriteError(int err = 1) { write_error = err; }
 
@@ -89,8 +92,10 @@ class Print
     template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
         std::is_convertible<T, long long>::value), int> = 0>
     size_t print(T, int = DEC);
+#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
     size_t print(float, int = 2);
     size_t print(double, int = 2);
+#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
     // Prevent implicit constructors of Variant from affecting overload resolution
     template<typename T, typename std::enable_if_t<std::is_same_v<T, particle::Variant>, int> = 0>
@@ -110,9 +115,11 @@ class Print
         n += println();
         return n;
     }
+#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
     size_t println(float, int = 2);
     size_t println(double, int = 2);
-
+#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
+    
     template<typename T, typename std::enable_if_t<std::is_same_v<T, particle::Variant>, int> = 0>
     size_t println(const T& var) {
         size_t n = printVariant(var);

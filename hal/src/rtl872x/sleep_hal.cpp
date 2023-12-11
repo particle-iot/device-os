@@ -44,6 +44,8 @@
 #endif
 #endif
 extern "C" {
+#define REALTEK_AMBD_SDK
+#include "rtl8721d_pinmux_defines.h"
 #include "rtl8721d.h"
 }
 #include "km0_km4_ipc.h"
@@ -361,6 +363,17 @@ private:
     }
     ~SleepClass() = default;
 
+    bool isAonPin(hal_pin_t pin) {
+        uint16_t rtlPin = hal_pin_to_rtl_pin(pin);
+        // PA_21 is also a wakeup source, but it's excluded below since it's
+        // only available on MSoM TX2 which is an internal pin for NCP.
+        if ((rtlPin >= _PA_12 && rtlPin <= _PA_20) ||
+             rtlPin == _PA_25 || rtlPin == _PA_26) {
+            return true;
+        }
+        return false;
+    }
+
     int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
         switch(gpio->mode) {
             case RISING:
@@ -375,7 +388,7 @@ private:
         if (gpio->pin >= TOTAL_PINS) {
             return SYSTEM_ERROR_LIMIT_EXCEEDED;
         }
-        if (mode == HAL_SLEEP_MODE_HIBERNATE && gpio->pin != WKP) {
+        if (mode == HAL_SLEEP_MODE_HIBERNATE && !isAonPin(gpio->pin)) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         return SYSTEM_ERROR_NONE;
@@ -470,12 +483,12 @@ private:
         } else {
             temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_AON_LDO_CTRL1);
             temp &= ~(BIT_LDO_PSRAM_EN);
-            HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_LDO_CTRL1, temp);	
+            HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_LDO_CTRL1, temp);
         }
         __ISB();
         __DSB();
     }
-    
+
     __attribute__((section(".ram.sleep")))
     void resumePsram() {
         // Disable memory access from CPU

@@ -52,7 +52,8 @@ public:
             .version = HAL_GPIO_VERSION,
             .mode = OUTPUT_OPEN_DRAIN_PULLUP,
             .set_value = true,
-            .value = 1
+            .value = 1,
+            .drive_strength = HAL_GPIO_DRIVE_DEFAULT
         };
         hal_gpio_configure(sda_, &conf, nullptr);
         hal_gpio_configure(scl_, &conf, nullptr);

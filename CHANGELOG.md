@@ -1,3 +1,116 @@
+## 5.6.0
+
+### FEATURES
+
+- [msom] ACM basic support [#2689](https://github.com/particle-iot/device-os/pull/2689)
+
+### ENHANCEMENTS
+
+- [wiring] Add 64-bit string conversions [#2693](https://github.com/particle-iot/device-os/pull/2693)
+- [wiring] json: 64-bit support [#2695](https://github.com/particle-iot/device-os/pull/2695)
+- [msom] increase NCP baudrate to 921600, doubling throughput [#2706](https://github.com/particle-iot/device-os/pull/2706)
+- [network] Wiznet Ethernet performance improvements [#2708](https://github.com/particle-iot/device-os/pull/2708)
+
+### BUGFIXES
+
+- [gen3] hal: fixes the issue that UARTE RX may loss data [#2698](https://github.com/particle-iot/device-os/pull/2698)
+- [rtl872x] correctly handle SecureFault [#2699](https://github.com/particle-iot/device-os/pull/2699)
+- Fixes ncp-client not waiting for modem ready on cold boot [#2700](https://github.com/particle-iot/device-os/pull/2700)
+- [system] still pump system loop when SPARK_WLAN_SLEEP=1; Try to drain ISR task queue quicker [#2702](https://github.com/particle-iot/device-os/pull/2702)
+- [rtl872x] Fix unintentional pin changes for Serial1 RTS/CTS [#2703](https://github.com/particle-iot/device-os/pull/2703)
+- [rtl872x] fix multiple BLE issues [#2710](https://github.com/particle-iot/device-os/pull/2710)
+- Asset OTA fixes [#2711](https://github.com/particle-iot/device-os/pull/2711)
+
+
+### INTERNAL
+
+- [services] add long long support to printf/scanf [#2694](https://github.com/particle-iot/device-os/pull/2694)
+- fix printf/scanf for floating point numbers, add tests [#2696](https://github.com/particle-iot/device-os/pull/2696
+- [msom] support 16MB GD flash [#2701](https://github.com/particle-iot/device-os/pull/2701)
+- [msom] Support burnin tests [#2704](https://github.com/particle-iot/device-os/pull/2704)
+- [gen3] reduce flash usage [#2705](https://github.com/particle-iot/device-os/pull/2705)
+- Erase factory reset app after test runner completes [#2709](https://github.com/particle-iot/device-os/pull/2709)
+- Fix dual stack UDP bind behavior with LWIP_IPV6_DEFINES_ONLY [#2712](https://github.com/particle-iot/device-os/pull/2712)
+- Update WB makefile version [#2713](https://github.com/particle-iot/device-os/pull/2713)
+
+## 5.5.0
+
+### FEATURES
+
+- Asset OTA [#2668](https://github.com/particle-iot/device-os/pull/2668)
+- [M SoM] Platform support [#2681](https://github.com/particle-iot/device-os/pull/2681)
+- [rtl872x] Experimental WPA3 support [#2673](https://github.com/particle-iot/device-os/pull/2673)
+- [WiFi] Hidden SSID support [#2673](https://github.com/particle-iot/device-os/pull/2673)
+- [rtl872x] GPIO drive strength configuration support [#2680](https://github.com/particle-iot/device-os/pull/2680)
+
+### ENHANCEMENTS
+
+- [WiFi] WiFI interface power state notifications [#2669](https://github.com/particle-iot/device-os/pull/2669)
+- [rtl872x] Improve `SPI1` (P2 / Tracker M) and `SPI` (M SoM) behavior at 50MHz by changing RXD sample delay [#2677](https://github.com/particle-iot/device-os/pull/2677)
+- [rtl872x] Improve USB Serial TX performance [#2672](https://github.com/particle-iot/device-os/pull/2672)
+- [Cellular] Enables UPSV=1 low power mode for R510 when idle for >=9.2s [#2674](https://github.com/particle-iot/device-os/pull/2674)
+- [rtl872x] Fix logic level overshoot on SPI, I2C, PWM pins [#2680](https://github.com/particle-iot/device-os/pull/2680)
+- [rtl872x] Revert the QSPI flash speed to 80MHz [#2684](https://github.com/particle-iot/device-os/pull/2684)
+- Update the key used for validating the ServerMoved signature [#2688](https://github.com/particle-iot/device-os/pull/2688)
+- [rtl872x] remove the delay in UART flush() [#2686](https://github.com/particle-iot/device-os/pull/2686)
+
+### BUGFIXES
+
+- [rtl872x] Fix incorrect I2C read timeout [#2671](https://github.com/particle-iot/device-os/pull/2671)
+- [rtl872x] Do not initialize RTC after waking up from HIBERNATE sleep [#2667](https://github.com/particle-iot/device-os/pull/2667)
+- [rtl872x] Disable pull resistors when pin is configure as `OUTPUT` [#2666](https://github.com/particle-iot/device-os/pull/2666)
+- [rtl872x] Disable SWDIO/SWDCLK pins when going into sleep [#2666](https://github.com/particle-iot/device-os/pull/2666)
+- [rtl872x] Disable brown-out detector [#2679](https://github.com/particle-iot/device-os/pull/2679)
+- [rtl872x] Avoid glitch on I2C pins when reconfiguring I2C peripheral [#2682](https://github.com/particle-iot/device-os/pull/2682)
+- [msom] Fix ethernet cs, reset, interrupt GPIO pins for M2 eval [#2690](https://github.com/particle-iot/device-os/pull/2690)
+
+### INTERNAL
+
+- [WiFi] Resolve `wiring/sleep20` test failures [#2669](https://github.com/particle-iot/device-os/pull/2669)
+- [nrf52840] Add factory reset test (`ota/factory_reset`) [#2662](https://github.com/particle-iot/device-os/pull/2662)
+
+## 5.5.0-rc.1
+
+### FEATURES
+
+- Asset OTA [#2668](https://github.com/particle-iot/device-os/pull/2668)
+- [M SoM] Platform support [#2681](https://github.com/particle-iot/device-os/pull/2681)
+- [rtl872x] Experimental WPA3 support [#2673](https://github.com/particle-iot/device-os/pull/2673)
+- [WiFi] Hidden SSID support [#2673](https://github.com/particle-iot/device-os/pull/2673)
+- [rtl872x] GPIO drive strength configuration support [#2680](https://github.com/particle-iot/device-os/pull/2680)
+
+### ENHANCEMENTS
+
+- [WiFi] WiFI interface power state notifications [#2669](https://github.com/particle-iot/device-os/pull/2669)
+- [rtl872x] Improve `SPI1` (P2 / Tracker M) and `SPI` (M SoM) behavior at 50MHz by changing RXD sample delay [#2677](https://github.com/particle-iot/device-os/pull/2677)
+- [rtl872x] Improve USB Serial TX performance [#2672](https://github.com/particle-iot/device-os/pull/2672)
+- [Cellular] Enables UPSV=1 low power mode for R510 when idle for >=9.2s [#2674](https://github.com/particle-iot/device-os/pull/2674)
+- [rtl872x] Fix logic level overshoot on SPI, I2C, PWM pins [#2680](https://github.com/particle-iot/device-os/pull/2680)
+- [rtl872x] Revert the QSPI flash speed to 80MHz [#2684](https://github.com/particle-iot/device-os/pull/2684)
+
+### BUGFIXES
+
+- [rtl872x] Fix incorrect I2C read timeout [#2671](https://github.com/particle-iot/device-os/pull/2671)
+- [rtl872x] Do not initialize RTC after waking up from HIBERNATE sleep [#2667](https://github.com/particle-iot/device-os/pull/2667)
+- [rtl872x] Disable pull resistors when pin is configure as `OUTPUT` [#2666](https://github.com/particle-iot/device-os/pull/2666)
+- [rtl872x] Disable SWDIO/SWDCLK pins when going into sleep [#2666](https://github.com/particle-iot/device-os/pull/2666)
+- [rtl872x] Disable brown-out detector [#2679](https://github.com/particle-iot/device-os/pull/2679)
+- [rtl872x] Avoid glitch on I2C pins when reconfiguring I2C peripheral [#2682](https://github.com/particle-iot/device-os/pull/2682)
+
+### INTERNAL
+
+- [WiFi] Resolve `wiring/sleep20` test failures [#2669](https://github.com/particle-iot/device-os/pull/2669)
+- [nrf52840] Add factory reset test (`ota/factory_reset`) [#2662](https://github.com/particle-iot/device-os/pull/2662)
+
+## 5.4.1
+
+### ENHANCEMENTS
+- [rtl872x] dynamically enable Wi-Fi stack on demand [#2664](https://github.com/particle-iot/device-os/pull/2664)
+
+### BUGFIXES
+- [rtl872x] linker: stop relying on .dynalib + .psram_text being contiguous and properly and similarly aligned within LMA and VMA, just copy them separately [#2665](https://github.com/particle-iot/device-os/pull/2665)
+- [rtl872x] fix BLE race condition [#2664](https://github.com/particle-iot/device-os/pull/2664)
+
 ## 5.4.0
 
 ### ENHANCEMENTS
@@ -259,6 +372,29 @@
 - [tests] Change PWM pins to better match e-series pinout for E SoM X. Fix other tests [#2463](https://github.com/particle-iot/device-os/pull/2463)
 - [tests] Fix broken tone and servo tests for p2 platform, also EEPROM_03 for all. [#2469](https://github.com/particle-iot/device-os/pull/2469)
 - [workbench] Stop ignoring device os scripts directory [#2471](https://github.com/particle-iot/device-os/pull/2471)
+
+## 4.2.0
+
+### ENHANCEMENTS
+
+- [Cellular] Enables UPSV=1 low power mode for R510 when idle for >=9.2s [#2674](https://github.com/particle-iot/device-os/pull/2674)
+- [services] add long long support to printf/scanf [#2694](https://github.com/particle-iot/device-os/pull/2694) [#2696](https://github.com/particle-iot/device-os/pull/2696)
+- [wiring] Add 64-bit String conversions [#2693](https://github.com/particle-iot/device-os/pull/2693) [#2657](https://github.com/particle-iot/device-os/pull/2657)
+- [wiring] json: 64-bit support [#2695](https://github.com/particle-iot/device-os/pull/2693) [#2657](https://github.com/particle-iot/device-os/pull/2695)
+
+### BUGFIXES
+
+- Fixes clean target for applications with large number of fils + P2 PSRAM size calculation issues [#2661](https://github.com/particle-iot/device-os/pull/2661)
+- [gen3] hal: fixes the issue that UARTE RX may lose data [#2698](https://github.com/particle-iot/device-os/pull/2698)
+- [quectel] Fixes ncp-client not waiting for modem ready on cold boot [#2700](https://github.com/particle-iot/device-os/pull/2700)
+
+### INTERNAL
+
+- [bootloader] remove nanopb dependency [#2607](https://github.com/particle-iot/device-os/pull/2607)
+- test] resolve sleep20 test failures. [#2669](https://github.com/particle-iot/device-os/pull/2669)
+- [nrf] Add Factory Reset Tests [#2662](https://github.com/particle-iot/device-os/pull/2662)
+- Update the key used for validating the ServerMoved signature [#2688](https://github.com/particle-iot/device-os/pull/2688)
+- [ci] fix macos builds [#2683](https://github.com/particle-iot/device-os/pull/2683)
 
 ## 4.1.0
 

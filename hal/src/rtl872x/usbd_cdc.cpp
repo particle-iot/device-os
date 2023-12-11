@@ -41,7 +41,9 @@ const uint8_t DUMMY_IN_EP = 0x8a;
 CdcClassDriver::CdcClassDriver()
         : ClassDriver() {
 #if !HAL_PLATFORM_USB_SOF
-    os_timer_create(&txTimer_, HAL_PLATFORM_USB_CDC_TX_FAIL_TIMEOUT_MS, txTimerCallback, this, true /* oneshot */, nullptr);
+    os_timer_create(&txTimeoutTimer_, HAL_PLATFORM_USB_CDC_TX_FAIL_TIMEOUT_MS, txTimeoutTimerCallback, this, true /* oneshot */, nullptr);
+    SPARK_ASSERT(txTimeoutTimer_);
+    os_timer_create(&txTimer_, HAL_PLATFORM_USB_CDC_TX_PERIOD_MS, txTimerCallback, this, true /* oneshot */, nullptr);
     SPARK_ASSERT(txTimer_);
 #endif // !HAL_PLATFORM_USB_SOF
 }
@@ -49,6 +51,10 @@ CdcClassDriver::CdcClassDriver()
 CdcClassDriver::~CdcClassDriver() {
     setName(nullptr);
 #if !HAL_PLATFORM_USB_SOF
+    if (txTimeoutTimer_) {
+        os_timer_destroy(txTimeoutTimer_, nullptr);
+        txTimeoutTimer_ = nullptr;
+    }
     if (txTimer_) {
         os_timer_destroy(txTimer_, nullptr);
         txTimer_ = nullptr;
@@ -79,6 +85,7 @@ int CdcClassDriver::deinit(unsigned cfgIdx) {
         }
     }
 #if !HAL_PLATFORM_USB_SOF
+    stopTxTimeoutTimer();
     stopTxTimer();
 #endif // !HAL_PLATFORM_USB_SOF
 
@@ -106,7 +113,7 @@ void CdcClassDriver::setOpenState(bool state) {
     if (state != open_) {
         if (state) {
 #if !HAL_PLATFORM_USB_SOF
-            stopTxTimer();
+            stopTxTimeoutTimer();
 #endif // !HAL_PLATFORM_USB_SOF
             txState_ = false;
             txBuffer_.reset();
@@ -216,7 +223,7 @@ int CdcClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
     }
 
 #if !HAL_PLATFORM_USB_SOF
-    stopTxTimer();
+    stopTxTimeoutTimer();
 #endif // !HAL_PLATFORM_USB_SOF
 
     if (txBuffer_.consumePending() != len) {
@@ -401,7 +408,7 @@ int CdcClassDriver::startRx() {
     return dev_->transferOut(epOutData_, ptr, rxSize);
 }
 
-int CdcClassDriver::startTx() {
+int CdcClassDriver::startTx(bool holdoff) {
     if (txState_) {
         return 0;
     }
@@ -415,29 +422,34 @@ int CdcClassDriver::startTx() {
         return 0;
     }
 
+    if (holdoff) {
+        stopTxTimer();
+        return startTxTimer();
+    }
+
     txState_ = true;
     consumable = std::min(consumable, cdc::MAX_DATA_PACKET_SIZE);
     auto buf = txBuffer_.consume(consumable);
     dev_->transferIn(epInData_, buf, consumable);
 
 #if !HAL_PLATFORM_USB_SOF
-    stopTxTimer();
-    startTxTimer();
+    stopTxTimeoutTimer();
+    startTxTimeoutTimer();
 #endif // !HAL_PLATFORM_USB_SOF
     return 0;
 }
 
 #if !HAL_PLATFORM_USB_SOF
-void CdcClassDriver::txTimerCallback(os_timer_t timer) {
+void CdcClassDriver::txTimeoutTimerCallback(os_timer_t timer) {
     void* timerId = nullptr;
     os_timer_get_id(timer, &timerId);
     if (timerId) {
         auto self = static_cast<CdcClassDriver*>(timerId);
-        self->txTimerExpired();
+        self->txTimeoutTimerExpired();
     }
 }
 
-void CdcClassDriver::txTimerExpired() {
+void CdcClassDriver::txTimeoutTimerExpired() {
     std::lock_guard<Device> lk(*dev_);
     if (txState_ && open_) {
         setOpenState(false);
@@ -451,6 +463,20 @@ void CdcClassDriver::txTimerExpired() {
     txState_ = false;
     txBuffer_.reset();
     dev_->unlock();
+}
+
+void CdcClassDriver::txTimerCallback(os_timer_t timer) {
+    void* timerId = nullptr;
+    os_timer_get_id(timer, &timerId);
+    if (timerId) {
+        auto self = static_cast<CdcClassDriver*>(timerId);
+        self->txTimerExpired();
+    }
+}
+
+void CdcClassDriver::txTimerExpired() {
+    std::lock_guard<Device> lk(*dev_);
+    startTx();
 }
 #endif // !HAL_PLATFORM_USB_SOF
 
@@ -531,8 +557,7 @@ int CdcClassDriver::write(const uint8_t* buf, size_t len) {
     {
         std::lock_guard<Device> lk(*dev_);
         CHECK(txBuffer_.put(buf, writeSize));
-        // FIXME: call from usbd task thread instead?
-        startTx();
+        startTx(true /* holdoff */);
     }
     return writeSize;
 }
@@ -557,8 +582,16 @@ bool CdcClassDriver::buffersConfigured() const {
 }
 
 #if !HAL_PLATFORM_USB_SOF
+int CdcClassDriver::startTxTimeoutTimer() {
+    return os_timer_change(txTimeoutTimer_, OS_TIMER_CHANGE_START, false, HAL_PLATFORM_USB_CDC_TX_FAIL_TIMEOUT_MS, 0, nullptr);
+}
+
+int CdcClassDriver::stopTxTimeoutTimer() {
+    return os_timer_change(txTimeoutTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
+}
+
 int CdcClassDriver::startTxTimer() {
-    return os_timer_change(txTimer_, OS_TIMER_CHANGE_START, false, HAL_PLATFORM_USB_CDC_TX_FAIL_TIMEOUT_MS, 0, nullptr);
+    return os_timer_change(txTimer_, OS_TIMER_CHANGE_START, false, HAL_PLATFORM_USB_CDC_TX_PERIOD_MS, 0, nullptr);
 }
 
 int CdcClassDriver::stopTxTimer() {

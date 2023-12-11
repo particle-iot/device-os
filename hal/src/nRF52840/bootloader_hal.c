@@ -18,7 +18,7 @@
 
 #ifndef HAL_BOOTLOADER_EXCLUDE
 
-#include "hal_platform_nrf52840_config.h"
+#include "hal_platform_config.h"
 #include "bootloader_hal.h"
 
 #define CAT2(a,b) a##b

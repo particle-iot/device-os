@@ -118,7 +118,7 @@
  *
  * Mandatory for debugging, it displays exchanged packet content in debug trace.
  */
-#define PRINTPKT_SUPPORT                1
+#define PRINTPKT_SUPPORT                (PLATFORM_ID != PLATFORM_TRACKER)
 
 /**
  * PPP_IPV4_SUPPORT==1: Enable PPP IPv4 support
@@ -176,7 +176,7 @@
 /**
  * CHAP_SUPPORT==1: Support CHAP.
  */
-#define CHAP_SUPPORT                    (PLATFORM_ID != PLATFORM_TRACKER)
+#define CHAP_SUPPORT                    0
 
 /**
  * MSCHAP_SUPPORT==1: Support MSCHAP.
@@ -294,7 +294,7 @@
 /**
  * LWIP_USE_EXTERNAL_MBEDTLS: Use external mbed TLS library
  */
-#define LWIP_USE_EXTERNAL_MBEDTLS       0
+#define LWIP_USE_EXTERNAL_MBEDTLS       1
 
 /*
  * PPP Timeouts

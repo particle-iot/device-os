@@ -28,6 +28,8 @@
 #include <random>
 #include <regex>
 
+#include "module_info.h"
+
 namespace {
 
 using namespace particle;
@@ -44,7 +46,8 @@ enum OtaCoapOption {
     FILE_SHA256 = 2061,
     CHUNK_SIZE = 2065,
     DISCARD_DATA = 2069,
-    CANCEL_UPDATE = 2073
+    CANCEL_UPDATE = 2073,
+    MODULE_FUNCTION_OPT = 2077
 };
 
 class FirmwareUpdateWrapper: public FirmwareUpdate {
@@ -60,7 +63,7 @@ public:
     }
 
     // Sends an UpdateStart message to the device
-    int sendStart(size_t fileSize, const std::string& fileHash, size_t chunkSize, bool discardData) {
+    int sendStart(size_t fileSize, const std::string& fileHash, size_t chunkSize, bool discardData, int moduleFunction = MODULE_FUNCTION_NONE) {
         CoapMessage m;
         m.type(CoapType::CON);
         m.code(CoapCode::POST);
@@ -72,6 +75,9 @@ public:
         m.option(OtaCoapOption::CHUNK_SIZE, chunkSize);
         if (discardData) {
             m.emptyOption(OtaCoapOption::DISCARD_DATA);
+        }
+        if (moduleFunction != MODULE_FUNCTION_NONE) {
+            m.option(OtaCoapOption::MODULE_FUNCTION_OPT, moduleFunction);
         }
         return sendMessage(std::move(m));
     }
@@ -249,31 +255,32 @@ TEST_CASE("FirmwareUpdate") {
         auto cb = w.callbacksMock();
         Spy(Method(cb, startFirmwareUpdate));
         SECTION("non-resumable update") {
-            w.sendStart(1000 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */);
+            w.sendStart(1000 /* fileSize */, std::string() /* fileHash */, 512 /* chunkSize */, false /* discardData */, MODULE_FUNCTION_BOOTLOADER);
             Verify(Method(cb, startFirmwareUpdate).Matching([=](size_t fileSize, const char* fileHash,
-                    size_t* partialSize, unsigned flags) {
+                    size_t* partialSize, unsigned flags, int moduleFunction) {
                 return fileSize == 1000 && fileHash == nullptr && partialSize != nullptr &&
-                        FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::NON_RESUMABLE;
+                        FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::NON_RESUMABLE && moduleFunction == MODULE_FUNCTION_BOOTLOADER;
             })).Once();
             CHECK(w.isRunning());
         }
         SECTION("resumable update") {
             auto h = genString(Sha256::HASH_SIZE);
-            w.sendStart(1000 /* fileSize */, h /* fileHash */, 512 /* chunkSize */, false /* discardData */);
+            w.sendStart(1000 /* fileSize */, h /* fileHash */, 512 /* chunkSize */, false /* discardData */, MODULE_FUNCTION_BOOTLOADER);
             Verify(Method(cb, startFirmwareUpdate).Matching([=](size_t fileSize, const char* fileHash,
-                    size_t* partialSize, unsigned flags) {
+                    size_t* partialSize, unsigned flags, int moduleFunction) {
                 return fileSize == 1000 && std::string(fileHash, Sha256::HASH_SIZE) == h && partialSize != nullptr &&
-                        flags == 0;
+                        flags == 0 && moduleFunction == MODULE_FUNCTION_BOOTLOADER;
             })).Once();
             CHECK(w.isRunning());
         }
         SECTION("discarding previously received data") {
             auto h = genString(Sha256::HASH_SIZE);
-            w.sendStart(1000 /* fileSize */, h /* fileHash */, 512 /* chunkSize */, true /* discardData */);
+            w.sendStart(1000 /* fileSize */, h /* fileHash */, 512 /* chunkSize */, true /* discardData */, MODULE_FUNCTION_BOOTLOADER);
             Verify(Method(cb, startFirmwareUpdate).Matching([=](size_t fileSize, const char* fileHash,
-                    size_t* partialSize, unsigned flags) {
+                    size_t* partialSize, unsigned flags, int moduleFunction) {
                 return fileSize == 1000 && std::string(fileHash, Sha256::HASH_SIZE) == h && partialSize != nullptr &&
-                        FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::DISCARD_DATA;
+                        FirmwareUpdateFlags::fromUnderlying(flags) == FirmwareUpdateFlag::DISCARD_DATA &&
+                        moduleFunction == MODULE_FUNCTION_BOOTLOADER;
             })).Once();
             CHECK(w.isRunning());
         }
@@ -298,7 +305,7 @@ TEST_CASE("FirmwareUpdate") {
         SECTION("resumable update") {
             auto cb = w.callbacksMock();
             When(Method(cb, startFirmwareUpdate)).Do([](size_t fileSize, const char* fileHash, size_t* partialSize,
-                    unsigned flags) {
+                    unsigned flags, int moduleFunction) {
                 *partialSize = 200;
                 return 0;
             });
@@ -315,7 +322,7 @@ TEST_CASE("FirmwareUpdate") {
         SECTION("error white starting the update") {
             auto cb = w.callbacksMock();
             When(Method(cb, startFirmwareUpdate)).Do([](size_t fileSize, const char* fileHash, size_t* partialSize,
-                    unsigned flags) {
+                    unsigned flags, int moduleFunction) {
                 SYSTEM_ERROR_MESSAGE("YOU SHALL NOT PASS!");
                 return SYSTEM_ERROR_NOT_ALLOWED;
             });

@@ -110,6 +110,8 @@ typedef enum {
 bool append_system_version_info(particle::Appender* appender);
 
 bool system_module_info(appender_fn appender, void* append_data, void* reserved);
+bool system_module_info_pb(appender_fn appender, void* append_data, void* reserved);
+
 bool system_app_info(appender_fn appender, void* append_data, void* reserved);
 
 #if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)

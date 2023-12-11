@@ -18,6 +18,7 @@
 #include <lwip/ip4.h>
 #include <lwip/ip6.h>
 #include "lwiphooks.h"
+#include "platforms.h"
 
 /* IPv4 hooks */
 __attribute__((weak)) int lwip_hook_ip4_input(struct pbuf *p, struct netif *inp) {
@@ -69,3 +70,4 @@ __attribute__((weak)) int lwip_hook_ip6_forward_post_routing(struct pbuf* p, str
 __attribute__((weak)) struct netif* lwip_hook_ip6_route(const ip6_addr_t* src, const ip6_addr_t* dst) {
     return NULL;
 }
+

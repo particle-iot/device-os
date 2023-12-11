@@ -52,7 +52,7 @@ struct CellularConfig {
 
 int loadConfig(CellularConfig* conf) {
     // Get filesystem instance
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));
@@ -107,7 +107,7 @@ int loadConfig(CellularConfig* conf) {
 
 int saveConfig(const CellularConfig& conf) {
     // Get filesystem instance
-    const auto fs = filesystem_get_instance(nullptr);
+    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
     CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
     fs::FsLock lock(fs);
     CHECK(filesystem_mount(fs));

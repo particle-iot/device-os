@@ -122,7 +122,7 @@ private:
     }
 
     void init() {
-        fs_ = filesystem_get_instance(nullptr);
+        fs_ = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
         SPARK_ASSERT(fs_);
 
         FsLock lk(fs_);

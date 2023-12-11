@@ -23,6 +23,7 @@
 #include "ifapi.h"
 
 #include "system_network.h" // FIXME: For network_interface_index
+#include "system_cache.h"
 
 #include "str_util.h"
 #include "endian_util.h"
@@ -37,9 +38,23 @@
 
 #include <limits>
 
+#define CELLULAR_DEVICE_VERSION_V1 (1)
+const uint16_t CELLULAR_DEVICE_VERSION = CELLULAR_DEVICE_VERSION_V1;
+
+struct __attribute__((packed)) CellularDeviceCached
+{
+    uint16_t size;
+    uint16_t version;
+    char iccid[21];
+    char imei[16];
+    int dev;
+    char radiofw[25];
+};
+
 namespace {
 
 using namespace particle;
+using namespace services;
 
 const size_t MAX_RESP_SIZE = 1024;
 
@@ -188,9 +203,25 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     const auto client = mgr->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
 
+    CellularDeviceCached cacheRead = {};
+    int r = SystemCache::instance().get(SystemCacheKey::CELLULAR_DEVICE_INFO, (uint8_t*)&cacheRead, sizeof(cacheRead));
+
     const NcpClientLock lock(client);
-    // Ensure the modem is powered on
-    CHECK(client->on());
+
+    // If modem is off, return the cached values if present
+    if (client->ncpPowerState() != NcpPowerState::ON) {
+        if (r != sizeof(CellularDeviceCached) || cacheRead.version != CELLULAR_DEVICE_VERSION) {
+            SystemCache::instance().del(SystemCacheKey::CELLULAR_DEVICE_INFO);
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+
+        strlcpy(info->iccid, cacheRead.iccid, sizeof(info->iccid));
+        strlcpy(info->imei, cacheRead.imei, sizeof(info->imei));
+        info->dev = cacheRead.dev;
+        strlcpy(info->radiofw, cacheRead.radiofw, sizeof(info->radiofw));
+        return 0;
+    }
+
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
     if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
@@ -199,6 +230,20 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
         CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
     }
+
+    // Update the cached values if they dont match the last queried data. 
+    CellularDeviceCached cacheWrite = {};
+    cacheWrite.size = sizeof(CellularDeviceCached);
+    cacheWrite.version = CELLULAR_DEVICE_VERSION;
+    strlcpy(cacheWrite.iccid, info->iccid, sizeof(cacheWrite.iccid));
+    strlcpy(cacheWrite.imei, info->imei, sizeof(cacheWrite.imei));
+    cacheWrite.dev = info->dev;
+    strlcpy(cacheWrite.radiofw, info->radiofw, sizeof(cacheWrite.radiofw));
+
+    if (memcmp(&cacheRead, &cacheWrite, sizeof(CellularDeviceCached))) {
+        SystemCache::instance().set(SystemCacheKey::CELLULAR_DEVICE_INFO, (uint8_t*)&cacheWrite, sizeof(cacheWrite));    
+    }
+    
     return 0;
 }
 
