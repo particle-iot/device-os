@@ -531,9 +531,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
         system::FirmwareUpdate::instance()->process();
 
-        system::LedgerManager::instance()->run();
-
         if (system_mode() != SAFE_MODE) {
+#if HAL_PLATFORM_LEDGER
+            system::LedgerManager::instance()->run();
+#endif
             manage_listening_mode_flag();
         }
 

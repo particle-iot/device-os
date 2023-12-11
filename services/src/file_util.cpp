@@ -238,53 +238,6 @@ int mkdirp(const char* path) {
     return 0;
 }
 
-int rmrf(const char* path) {
-    FsLock fs;
-    int r = lfs_remove(fs.instance(), path);
-    if (r < 0) {
-        if (r == LFS_ERR_NOTEMPTY) {
-            char pathBuf[MAX_PATH_LEN + 1] = {};
-            size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
-            if (pathLen >= sizeof(pathBuf)) {
-                return SYSTEM_ERROR_PATH_TOO_LONG;
-            }
-            CHECK(removeDir(fs.instance(), pathBuf, sizeof(pathBuf), pathLen));
-        } else if (r != LFS_ERR_NOENT) {
-            CHECK_FS(r); // Forward the error
-        }
-    }
-    return 0;
-}
-
-int mkdirp(const char* path) {
-    FsLock fs;
-    char pathBuf[MAX_PATH_LEN + 1] = {};
-    size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
-    if (pathLen >= sizeof(pathBuf)) {
-        return SYSTEM_ERROR_PATH_TOO_LONG;
-    }
-    char* pos = pathBuf;
-    if (*pos == '/') {
-        ++pos; // Skip leading '/'
-    }
-    while (*(pos = strchrnul(pos, '/'))) {
-        *pos = '\0';
-        int r = lfs_mkdir(fs.instance(), pathBuf);
-        if (r < 0 && r != LFS_ERR_EXIST) {
-            CHECK_FS(r); // Forward the error
-        }
-        *pos++ = '/';
-    }
-    if (pos > pathBuf && *(pos - 1) != '/') {
-        // Create the last directory
-        int r = lfs_mkdir(fs.instance(), pathBuf);
-        if (r < 0 && r != LFS_ERR_EXIST) {
-            CHECK_FS(r);
-        }
-    }
-    return 0;
-}
-
 } // particle
 
 #endif // HAL_PLATFORM_FILESYSTEM

@@ -365,7 +365,7 @@ unsigned char String::concat(const char *cstr, unsigned int length)
     if (!reserve(newlen)) {
         return 0;
     }
-    std::memcpy(buffer + len, cstr, length);
+    memcpy(buffer + len, cstr, length);
     buffer[newlen] = 0;
     len = newlen;
     return 1;

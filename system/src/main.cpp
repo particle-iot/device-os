@@ -789,12 +789,14 @@ void app_setup_and_loop(void)
     }
     Network_Setup(threaded);    // todo - why does this come before system thread initialization?
 
+#if HAL_PLATFORM_LEDGER
     if (system_mode() != SAFE_MODE) {
         int r = system::LedgerManager::instance()->init();
         if (r < 0) {
             LOG(ERROR, "Failed to initialize ledger manager: %d", r);
         }
     }
+#endif // HAL_PLATFORM_LEDGER
 
 #if PLATFORM_THREADING
     if (threaded)

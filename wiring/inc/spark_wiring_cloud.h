@@ -449,7 +449,6 @@ public:
     static int maxFunctionArgumentSize();
 
 #if Wiring_Ledger
-
     /**
      * Get a ledger instance.
      *
@@ -461,8 +460,8 @@ public:
     /**
      * Remove any ledgers not in the list from the device.
      *
-     * The device must not be connected to the Cloud. The operation will fail if any of the ledgers
-     * to be removed is in use.
+     * The device must not be connected to the Cloud. The operation will fail if any of the affected
+     * ledgers is in use.
      *
      * @note The data is not guaranteed to be removed in an irrecoverable way.
      *
@@ -477,7 +476,6 @@ public:
         }
         return useLedgersImpl(names, std::forward<ArgsT>(args)...);
     }
-
 #endif // Wiring_Ledger
 
 private:
@@ -590,6 +588,7 @@ private:
         return ok;
     }
 
+#if Wiring_Ledger
     template<typename... ArgsT>
     static int useLedgersImpl(Vector<const char*>& names, const char* name, ArgsT&&... args) {
         if (!names.append(name)) {
@@ -599,6 +598,7 @@ private:
     }
 
     static int useLedgersImpl(const Vector<const char*>& names);
+#endif // Wiring_Ledger
 };
 
 extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));

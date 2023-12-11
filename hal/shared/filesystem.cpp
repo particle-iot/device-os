@@ -19,7 +19,6 @@
 #include "platform_config.h"
 #include "exflash_hal.h"
 #include "rgbled.h"
-#include "system_error.h"
 #include <mutex>
 #include "flash_mal.h"
 #include "system_error.h"
