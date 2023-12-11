@@ -302,7 +302,12 @@ int LedgerManager::init() {
             if (ctx->syncDir == LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE) {
                 ctx->lastUpdated = info.lastUpdated();
             }
-            if (!contexts.append(std::move(ctx))) {
+            // Context objects are sorted by ledger name
+            bool found = false;
+            auto it = findContext(contexts, ctx->name, found);
+            assert(!found);
+            it = contexts.insert(it, std::move(ctx));
+            if (it == contexts_.end()) {
                 return SYSTEM_ERROR_NO_MEMORY;
             }
         }
@@ -1424,9 +1429,9 @@ void LedgerManager::handleError(int error) {
     }
 }
 
-LedgerManager::LedgerSyncContexts::ConstIterator LedgerManager::findContext(const char* name, bool& found) const {
+LedgerManager::LedgerSyncContexts::ConstIterator LedgerManager::findContext(const LedgerSyncContexts& contexts, const char* name, bool& found) {
     found = false;
-    auto it = std::lower_bound(contexts_.begin(), contexts_.end(), name, [&found](const auto& ctx, const char* name) {
+    auto it = std::lower_bound(contexts.begin(), contexts.end(), name, [&found](const auto& ctx, const char* name) {
         auto r = std::strcmp(ctx->name, name);
         if (r == 0) {
             found = true;

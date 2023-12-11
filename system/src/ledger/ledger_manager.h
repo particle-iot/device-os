@@ -146,7 +146,11 @@ private:
 
     void handleError(int error);
 
-    LedgerSyncContexts::ConstIterator findContext(const char* name, bool& found) const;
+    LedgerSyncContexts::ConstIterator findContext(const char* name, bool& found) const {
+        return findContext(contexts_, name, found);
+    }
+
+    static LedgerSyncContexts::ConstIterator findContext(const LedgerSyncContexts& contexts, const char* name, bool& found);
 
     static int connectionCallback(int error, int status, void* arg);
     static int requestCallback(coap_message* msg, const char* uri, int method, int reqId, void* arg);
