@@ -441,8 +441,8 @@ int RequestHandler::info(JsonRequest& req) {
     CHECK(getLedgerInfo(info, ledger));
     CHECK(req.response([&](auto& w) {
         w.beginObject();
-        w.name("last_updated").value(0); // FIXME
-        w.name("last_synced").value(0); // FIXME
+        w.name("last_updated").value(info.last_updated);
+        w.name("last_synced").value(info.last_synced);
         w.name("data_size").value(info.data_size);
         w.name("scope").value(info.scope);
         w.name("sync_direction").value(info.sync_direction);
