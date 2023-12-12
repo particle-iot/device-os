@@ -40,7 +40,9 @@ class LedgerStream: public Stream {
 public:
     explicit LedgerStream(ledger_instance* ledger) :
             ledger_(ledger),
-            stream_(nullptr) {
+            stream_(nullptr),
+            bytesRead_(0),
+            bytesWritten_(0) {
     }
 
     ~LedgerStream() {
@@ -57,16 +59,17 @@ public:
     }
 
     size_t readBytes(char* data, size_t size) override {
-        if (!stream_ || getWriteError() < 0) {
+        if (!stream_ || error() < 0) {
             return 0;
         }
         int r = ledger_read(stream_, data, size, nullptr);
         if (r < 0) {
             LOG(ERROR, "ledger_read() failed: %d", r);
-            setWriteError(r); // TODO: Rename to setError() or add an alias
+            setError(r);
             return 0;
         }
-        return size;
+        bytesRead_ += r;
+        return r;
     }
 
     size_t write(uint8_t b) override {
@@ -74,16 +77,17 @@ public:
     }
 
     size_t write(const uint8_t* data, size_t size) override {
-        if (!stream_ || getWriteError() < 0) {
+        if (!stream_ || error() < 0) {
             return 0;
         }
         int r = ledger_write(stream_, (const char*)data, size, nullptr);
         if (r < 0) {
             LOG(ERROR, "ledger_write() failed: %d", r);
-            setWriteError(r);
+            setError(r);
             return 0;
         }
-        return size;
+        bytesWritten_ += r;
+        return r;
     }
 
     int available() override {
@@ -117,12 +121,32 @@ public:
         }
         clearWriteError();
         stream_ = nullptr;
+        bytesRead_ = 0;
+        bytesWritten_ = 0;
         return r;
+    }
+
+    size_t bytesRead() const {
+        return bytesRead_;
+    }
+
+    size_t bytesWritten() const {
+        return bytesWritten_;
+    }
+
+    int error() const {
+        return getWriteError(); // TODO: Rename to error() or add an alias
     }
 
 private:
     ledger_instance* ledger_;
     ledger_stream* stream_;
+    size_t bytesRead_;
+    size_t bytesWritten_;
+
+    void setError(int error) {
+        setWriteError(error); // TODO: Rename to setError() or add an alias
+    }
 };
 
 struct LedgerAppData {
@@ -209,7 +233,7 @@ int setLedgerData(ledger_instance* ledger, const LedgerData& data) {
     CHECK(stream.open(LEDGER_STREAM_MODE_WRITE));
     int r = encodeToCBOR(data.variant(), stream);
     if (r < 0) {
-        int err = stream.getWriteError();
+        int err = stream.error();
         if (err < 0) {
             r = err;
         }
@@ -226,11 +250,15 @@ int getLedgerData(ledger_instance* ledger, LedgerData& data) {
     Variant v;
     int r = decodeFromCBOR(v, stream);
     if (r < 0) {
-        int err = stream.getWriteError();
+        int err = stream.error();
         if (err < 0) {
             r = err;
         }
-        // TODO: Don't log an error if the ledger data is empty
+        if (r == Error::END_OF_STREAM && !stream.bytesRead()) {
+            // Treat empty data as an empty map
+            data = LedgerData();
+            return 0;
+        }
         LOG(ERROR, "Failed to decode ledger data: %d", r);
         return r;
     }

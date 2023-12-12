@@ -77,7 +77,7 @@ class Print
     Print() : write_error(0) {}
     virtual ~Print() {}
 
-    int getWriteError() { return write_error; }
+    int getWriteError() const { return write_error; }
     void clearWriteError() { setWriteError(0); }
 
     virtual size_t write(uint8_t) = 0;
