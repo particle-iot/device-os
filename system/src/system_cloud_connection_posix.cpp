@@ -254,7 +254,11 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
         }
 
         unsigned int keepalive = 0;
-        system_cloud_get_inet_family_keepalive(a->ai_family, &keepalive, cloudInterface);
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+        keepalive = (cloudInterface == NETWORK_INTERFACE_CELLULAR ? HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL : HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL);
+#else
+        system_cloud_get_inet_family_keepalive(a->ai_family, &keepalive);
+#endif
         system_cloud_set_inet_family_keepalive(a->ai_family, keepalive, 1);
 
 #if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY

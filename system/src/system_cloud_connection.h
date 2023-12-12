@@ -24,7 +24,6 @@
 #include "ota_flash_hal.h"
 #include "socket_hal.h"
 #include <type_traits>
-#include "system_network.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +41,7 @@ int system_cloud_is_connected(void* reserved);
 int system_internet_test(void* reserved);
 int system_multicast_announce_presence(void* reserved);
 int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags);
-int system_cloud_get_inet_family_keepalive(int af, unsigned int* value, network_handle_t network);
+int system_cloud_get_inet_family_keepalive(int af, unsigned int* value);
 sock_handle_t system_cloud_get_socket_handle();
 
 #ifdef __cplusplus
