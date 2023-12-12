@@ -101,8 +101,8 @@ bool NetworkClass::listening() {
     return network_listening(*this, 0, nullptr);
 }
 
-NetworkClass& NetworkClass::preferred(bool preferred) {
-    network_handle_t network = network_preferred(*this, preferred, nullptr);
+NetworkClass& NetworkClass::prefer(bool prefer) {
+    network_handle_t network = network_prefer(*this, prefer, nullptr);
     return Network.from(network);
 }
 

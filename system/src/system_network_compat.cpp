@@ -249,7 +249,7 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
     return 0;
 }
 
-network_handle_t network_preferred(network_handle_t network, bool preferred, void* reserved) {
+network_handle_t network_prefer(network_handle_t network, bool prefer, void* reserved) {
     return network;
 }
 

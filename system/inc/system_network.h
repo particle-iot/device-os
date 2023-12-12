@@ -63,7 +63,7 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param1, void
 bool network_is_on(network_handle_t network, void* reserved);
 bool network_is_off(network_handle_t network, void* reserved);
 int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t param1, void* reserved);
-network_handle_t network_preferred(network_handle_t network, bool preferred, void* reserved);
+network_handle_t network_prefer(network_handle_t network, bool prefer, void* reserved);
 bool network_is_preferred(network_handle_t network, void* reserved); 
 
 #define NETWORK_LISTEN_EXIT (1<<0)
