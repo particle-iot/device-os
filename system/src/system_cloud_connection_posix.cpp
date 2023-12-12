@@ -254,7 +254,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
         }
 
         unsigned int keepalive = 0;
-        system_cloud_get_inet_family_keepalive(a->ai_family, &keepalive);
+        system_cloud_get_inet_family_keepalive(a->ai_family, &keepalive, cloudInterface);
         system_cloud_set_inet_family_keepalive(a->ai_family, keepalive, 1);
 
 #if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY

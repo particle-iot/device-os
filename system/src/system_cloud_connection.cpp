@@ -334,11 +334,14 @@ int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags
     return 0;
 }
 
-int system_cloud_get_inet_family_keepalive(int af, unsigned int* value) {
+int system_cloud_get_inet_family_keepalive(int af, unsigned int* value, network_handle_t network) {
     if (!value) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
+#if HAL_PLATFORM_AUTOMATIC_CONNECTION_MANAGEMENT
+    *value = (network == NETWORK_INTERFACE_CELLULAR ? HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL : HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL);
+#else
     switch (af) {
         case AF_INET: {
             *value = s_ipv4_cloud_keepalive;
@@ -352,6 +355,6 @@ int system_cloud_get_inet_family_keepalive(int af, unsigned int* value) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
     }
-
+#endif
     return 0;
 }
