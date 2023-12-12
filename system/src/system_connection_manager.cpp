@@ -95,9 +95,13 @@ ConnectionManager* ConnectionManager::instance() {
 
 void ConnectionManager::setPreferredNetwork(network_handle_t network, bool preferred) {
     if (preferred) {
-        preferredNetwork_ = network;
-    } else if (network == preferredNetwork_) {
-        preferredNetwork_ = NETWORK_INTERFACE_ALL;
+        if (network != NETWORK_INTERFACE_ALL) {
+            preferredNetwork_ = network;    
+        }
+    } else {
+        if (network == preferredNetwork_ || network == NETWORK_INTERFACE_ALL) {
+            preferredNetwork_ = NETWORK_INTERFACE_ALL;
+        }
     }
 }
 
