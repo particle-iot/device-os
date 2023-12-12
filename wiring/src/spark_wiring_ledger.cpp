@@ -153,8 +153,26 @@ struct LedgerAppData {
     Ledger::OnSyncFunction onSync;
 };
 
-void destroyAppData(void* appData) {
+void destroyLedgerAppData(void* appData) {
     delete static_cast<LedgerAppData*>(appData);
+}
+
+LedgerAppData* getLedgerAppData(ledger_instance* ledger) {
+    auto appData = static_cast<LedgerAppData*>(ledger_get_app_data(ledger, nullptr));
+    if (!appData) {
+        ledger_lock(ledger, nullptr);
+        SCOPE_GUARD({
+            ledger_unlock(ledger, nullptr);
+        });
+        appData = static_cast<LedgerAppData*>(ledger_get_app_data(ledger, nullptr));
+        if (!appData) {
+            appData = new(std::nothrow) LedgerAppData();
+            if (appData) {
+                ledger_set_app_data(ledger, appData, destroyLedgerAppData, nullptr);
+            }
+        }
+    }
+    return appData;
 }
 
 // Callback wrapper executed in the application thread
@@ -165,7 +183,7 @@ void syncCallbackApp(void* data) {
         ledger_unlock(ledger, nullptr);
         ledger_release(ledger, nullptr);
     });
-    auto appData = static_cast<LedgerAppData*>(ledger_get_app_data(ledger, nullptr));
+    auto appData = getLedgerAppData(ledger);
     if (appData && appData->onSync) {
         appData->onSync(Ledger(ledger));
     }
@@ -181,39 +199,30 @@ void syncCallbackSystem(ledger_instance* ledger, void* appData) {
     }
 }
 
-// TODO: Generalize this code when there are more callbacks
+// TODO: Generalize this code when there are more callbacks supported
 int setSyncCallback(ledger_instance* ledger, Ledger::OnSyncFunction callback) {
     ledger_lock(ledger, nullptr);
     SCOPE_GUARD({
         ledger_unlock(ledger, nullptr);
     });
-    std::unique_ptr<LedgerAppData> newAppData;
-    auto appData = static_cast<LedgerAppData*>(ledger_get_app_data(ledger, nullptr));
+    auto appData = getLedgerAppData(ledger);
     if (!appData) {
-        if (!callback) {
-            return 0; // Nothing to clear
-        }
-        newAppData.reset(new(std::nothrow) LedgerAppData());
-        if (!newAppData) {
-            return Error::NO_MEMORY;
-        }
-        appData = newAppData.get();
-    } else if (!callback) {
-        ledger_set_callbacks(ledger, nullptr, nullptr); // Clear the callback
-        ledger_set_app_data(ledger, nullptr, nullptr, nullptr); // Clear the app data
-        delete appData; // Destroy the app data
-        ledger_release(ledger, nullptr); // See below
-        return 0;
+        return Error::NO_MEMORY;
     }
+    bool hadCallback = !!appData->onSync;
     appData->onSync = std::move(callback);
-    if (newAppData) {
-        ledger_set_app_data(ledger, newAppData.release(), destroyAppData, nullptr); // Transfer ownership over the app data to the system
-        ledger_callbacks callbacks = {};
-        callbacks.version = LEDGER_API_VERSION;
-        callbacks.sync = syncCallbackSystem;
-        ledger_set_callbacks(ledger, &callbacks, nullptr);
-        // Keep the ledger instance around until the callback is cleared
-        ledger_add_ref(ledger, nullptr);
+    if (appData->onSync) {
+        if (!hadCallback) {
+            ledger_callbacks callbacks = {};
+            callbacks.version = LEDGER_API_VERSION;
+            callbacks.sync = syncCallbackSystem;
+            ledger_set_callbacks(ledger, &callbacks, nullptr);
+            // Keep the ledger instance around until the callback is cleared
+            ledger_add_ref(ledger, nullptr);
+        }
+    } else if (hadCallback) {
+        ledger_set_callbacks(ledger, nullptr, nullptr); // Clear the callback
+        ledger_release(ledger, nullptr);
     }
     return 0;
 }
