@@ -107,20 +107,6 @@ extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 
 void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
-    const auto BT_COEX_EVENT_SCAN_MASK = 0xf0;
-    const auto BT_COEX_EVENT_SCAN_START = 0x20;
-    const auto BT_COEX_EVENT_SCAN_STOP = 0x00;
-    // FIXME: This is a hack to prioritize BLE over WiFI while performing a BLE scan
-    // This blocks any wifi comms (both RX and TX paths) while the scan is performing,
-    // but for now this is the best solution we have for the coexistence issue.
-    if (len >= 6) {
-        if ((p[5] & BT_COEX_EVENT_SCAN_MASK) == BT_COEX_EVENT_SCAN_START) {
-            // Scan start
-            rtlk_bt_set_gnt_bt(PTA_BT);
-        } else if ((p[5] & BT_COEX_EVENT_SCAN_MASK) == BT_COEX_EVENT_SCAN_STOP) {
-            rtlk_bt_set_gnt_bt(PTA_AUTO);
-        }
-    }
 	__real_bt_coex_handle_specific_evt(p, len);
 }
 
@@ -1625,7 +1611,7 @@ int BleGap::setScanParams(const hal_ble_scan_params_t* params) {
     memcpy(&scanParams_, params, std::min(scanParams_.size, params->size));
     scanParams_.size = sizeof(hal_ble_scan_params_t);
     scanParams_.version = BLE_API_VERSION;
-    uint8_t filterDuplicate = GAP_SCAN_FILTER_DUPLICATE_ENABLE;
+    uint8_t filterDuplicate = GAP_SCAN_FILTER_DUPLICATE_DISABLE;
     CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_MODE, sizeof(uint8_t), &scanParams_.active));
     CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_INTERVAL, sizeof(uint16_t), &scanParams_.interval));
     CHECK_RTL(le_scan_set_param(GAP_PARAM_SCAN_WINDOW, sizeof(uint16_t), &scanParams_.window));
@@ -1681,7 +1667,7 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK_RTL(le_scan_start());
     isScanning_ = true;
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
-    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_START), 10, true) && waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), 10, true)) {
+    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), 10, true)) {
         LOCAL_DEBUG("wait GAP_SCAN_STATE_SCANNING");
         if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING))) {
             LOG(TRACE, "failed to start scanning.");
