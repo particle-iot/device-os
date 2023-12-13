@@ -716,7 +716,8 @@ public:
             : minRssi_(BLE_RSSI_INVALID),
               maxRssi_(BLE_RSSI_INVALID),
               customData_(nullptr),
-              customDataLen_(0) {
+              customDataLen_(0),
+              allowDuplicates_(false) {
     }
     ~BleScanFilter() = default;
 
@@ -813,6 +814,15 @@ public:
         return *this;
     }
 
+    BleScanFilter& allowDuplicates(bool allow) {
+        allowDuplicates_ = allow;
+        return *this;
+    }
+
+    bool allowDuplicates() const {
+        return allowDuplicates_;
+    }
+
 private:
     Vector<String> deviceNames_;
     Vector<BleUuid> serviceUuids_;
@@ -822,6 +832,7 @@ private:
     int8_t maxRssi_;
     const uint8_t* customData_;
     size_t customDataLen_;
+    bool allowDuplicates_;
 };
 
 

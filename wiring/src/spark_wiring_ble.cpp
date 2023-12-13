@@ -2378,6 +2378,14 @@ private:
      */
     static void onScanResultCallback(const hal_ble_scan_result_evt_t* event, void* context) {
         BleScanDelegator* delegator = static_cast<BleScanDelegator*>(context);
+
+        if (!delegator->filter_.allowDuplicates()) {
+            if (delegator->isCachedDevice(event->peer_addr)) {
+                return;
+            }
+            delegator->cachedDevices_.append(event->peer_addr);
+        }
+
         BleScanResult result = {};
         result.address(event->peer_addr).rssi(event->rssi)
               .scanResponse(event->sr_data, event->sr_data_len)
@@ -2554,6 +2562,15 @@ private:
         return true;
     }
 
+    bool isCachedDevice(const BleAddress& address) const {
+        for (const auto& addr : cachedDevices_) {
+            if (address == addr) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     Vector<BleScanResult> resultsVector_;
     BleScanResult* resultsPtr_;
     size_t targetCount_;
@@ -2561,6 +2578,7 @@ private:
     std::function<void(const BleScanResult*)> scanResultCallback_;
     BleOnScanResultStdFunction scanResultCallbackRef_;
     BleScanFilter filter_;
+    Vector<BleAddress> cachedDevices_;
 };
 
 int BleLocalDevice::setScanTimeout(uint16_t timeout) const {
