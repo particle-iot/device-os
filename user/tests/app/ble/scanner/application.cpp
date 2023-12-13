@@ -17,7 +17,7 @@
 
 #include "Particle.h"
 
-#define SCAN_RESULT_COUNT       30
+#define SCAN_RESULT_COUNT       100
 #define BLE_ADV_DATA_MAX        31
 
 SYSTEM_MODE(MANUAL);
@@ -31,13 +31,23 @@ void setup() {
 
 }
 
+bool flag = false;
+
 void loop() {
-    int count = BLE.scan(results, SCAN_RESULT_COUNT);
+    int count;
+    flag = !flag;
+    if (flag) {
+        Log.info(">>>> start scanning, filter duplicates");
+        count = BLE.scan(results, SCAN_RESULT_COUNT);
+    } else {
+        Log.info(">>>> start scanning, allow duplicates");
+        count = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), results, SCAN_RESULT_COUNT);
+    }
 
     if (count > 0) {
         Log.info("%d devices are found:", count);
         for (int i = 0; i < count; i++) {
-            Log.info(" -------- MAC: %s | RSSI: %dBm --------", results[i].address().toString().c_str(), results[i].rssi());
+            Log.info(" -------- MAC: %s | RSSI: %d dBm --------", results[i].address().toString().c_str(), results[i].rssi());
 
             String name = results[i].advertisingData().deviceName();
             if (name.length() > 0) {

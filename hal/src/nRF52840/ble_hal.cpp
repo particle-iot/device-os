@@ -374,9 +374,6 @@ public:
     int processAdvReportEventFromThread(const ble_evt_t* event);
 
 private:
-    bool isCachedDevice(const hal_ble_addr_t& address) const;
-    int addCachedDevice(const hal_ble_addr_t& address);
-    void clearCachedDevice();
     hal_ble_scan_result_evt_t* getPendingResult(const hal_ble_addr_t& address);
     int addPendingResult(const hal_ble_scan_result_evt_t& resultEvt);
     void removePendingResult(const hal_ble_addr_t& address);
@@ -396,7 +393,6 @@ private:
     hal_ble_on_scan_result_cb_t scanResultCallback_;        /**< Callback function on scan result. */
     void* context_;                                         /**< Context of the scan result callback function. */
     os_timer_t scanGuardTimer_;                             /**< Timer to guard the scanning procedure is terminated successfully.  */
-    Vector<hal_ble_addr_t> cachedDevices_;
     Vector<hal_ble_scan_result_evt_t> pendingResults_;
 };
 
@@ -1424,7 +1420,6 @@ void BleObject::Observer::onScanGuardTimerExpired(os_timer_t timer) {
 int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
     SCOPE_GUARD ({
-        clearCachedDevice();
         clearPendingResult();
     });
     ble_gap_scan_params_t bleGapScanParams = toPlatformScanParams();
@@ -1491,24 +1486,6 @@ ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
     }   
     params.filter_policy = scanParams_.filter_policy;
     return params;
-}
-
-bool BleObject::Observer::isCachedDevice(const hal_ble_addr_t& address) const {
-    for (const auto& addr : cachedDevices_) {
-        if (addressEqual(addr, address)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-int BleObject::Observer::addCachedDevice(const hal_ble_addr_t& address) {
-    CHECK_TRUE(cachedDevices_.append(address), SYSTEM_ERROR_NO_MEMORY);
-    return SYSTEM_ERROR_NONE;
-}
-
-void BleObject::Observer::clearCachedDevice() {
-    cachedDevices_.clear();
 }
 
 hal_ble_scan_result_evt_t* BleObject::Observer::getPendingResult(const hal_ble_addr_t& address) {
@@ -1590,17 +1567,11 @@ int BleObject::Observer::processAdvReportEventFromThread(const ble_evt_t* event)
     }
     const ble_gap_evt_adv_report_t& advReport = event->evt.gap_evt.params.adv_report;
     hal_ble_addr_t newAddr = toHalAddress(advReport.peer_addr);
-    if (isCachedDevice(newAddr)) {
-        // This has been checked in the ISR. Check it here just for sure.
-        // Free the allocated RAM for the advertising data.
-        goto free;
-    }
     if ((!scanParams_.active || !advReport.type.scannable) && !advReport.type.scan_response) {
         // No scan response data is expected.
         hal_ble_scan_result_evt_t result = {};
         constructObserverEvent(result, advReport);
         notifyScanResultEvent(result);
-        addCachedDevice(newAddr);
         goto continue_scanning;
     }
     if (!advReport.type.scan_response) {
@@ -1620,7 +1591,6 @@ int BleObject::Observer::processAdvReportEventFromThread(const ble_evt_t* event)
         }
         constructObserverEvent(*result, advReport);
         notifyScanResultEvent(*result);
-        addCachedDevice(newAddr);
         removePendingResult(newAddr);
     }
     goto continue_scanning;
@@ -1644,10 +1614,6 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
             }
             const ble_gap_evt_adv_report_t& report = event->evt.gap_evt.params.adv_report;
             hal_ble_addr_t newAddr = toHalAddress(report.peer_addr);
-            if (observer->isCachedDevice(newAddr)) {
-                observer->continueScanning();
-                break;
-            }
             if (observer->scanParams_.active && report.type.scannable && !report.type.scan_response) {
                 // Advertising data packet, scan response data is expected.
                 if (observer->getPendingResult(newAddr) != nullptr) {
