@@ -43,6 +43,7 @@ class LedgerSyncContext;
 
 class Ledger;
 class LedgerBase;
+class LedgerWriter;
 class LedgerStream;
 
 class LedgerManager {
@@ -69,7 +70,7 @@ public:
 protected:
     using LedgerSyncContext = detail::LedgerSyncContext;
 
-    void notifyLedgerChanged(LedgerSyncContext* ctx); // Called by Ledger
+    void notifyLedgerChanged(LedgerSyncContext* ctx); // Called by LedgerWriter
 
     void addLedgerRef(const LedgerBase* ledger); // Called by LedgerBase
     void releaseLedger(const LedgerBase* ledger); // ditto
@@ -159,7 +160,7 @@ private:
     static int messageBlockCallback(coap_message* msg, int reqId, void* arg);
     static void requestErrorCallback(int error, int reqId, void* arg);
 
-    friend class Ledger;
+    friend class LedgerWriter;
     friend class LedgerBase;
 };
 

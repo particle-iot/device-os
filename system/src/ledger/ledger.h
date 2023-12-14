@@ -83,7 +83,7 @@ public:
     LedgerBase& operator=(const LedgerBase&) = delete;
 
 protected:
-    detail::LedgerSyncContext* syncContext() const {
+    detail::LedgerSyncContext* syncContext() const { // Called by LedgerManager and LedgerWriter
         return syncCtx_;
     }
 
@@ -96,6 +96,7 @@ private:
     mutable int refCount_; // Reference count
 
     friend class LedgerManager;
+    friend class LedgerWriter;
 };
 
 class Ledger: public LedgerBase {
@@ -142,7 +143,7 @@ protected:
     void notifySynced(); // ditto
 
     int notifyReaderClosed(bool staged); // Called by LedgerReader
-    int notifyWriterClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum); // Called by LedgerWriter
+    int notifyWriterClosed(const LedgerInfo& info, int tempSeqNum); // Called by LedgerWriter
 
 private:
     int lastSeqNum_; // Counter incremented every time the ledger is opened for writing

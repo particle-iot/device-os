@@ -178,9 +178,7 @@ LedgerAppData* getLedgerAppData(ledger_instance* ledger) {
 // Callback wrapper executed in the application thread
 void syncCallbackApp(void* data) {
     auto ledger = static_cast<ledger_instance*>(data);
-    ledger_lock(ledger, nullptr);
     SCOPE_GUARD({
-        ledger_unlock(ledger, nullptr);
         ledger_release(ledger, nullptr);
     });
     auto appData = getLedgerAppData(ledger);

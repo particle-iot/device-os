@@ -466,7 +466,7 @@ int Ledger::notifyReaderClosed(bool staged) {
     return result;
 }
 
-int Ledger::notifyWriterClosed(const LedgerInfo& info, LedgerWriteSource src, int tempSeqNum) {
+int Ledger::notifyWriterClosed(const LedgerInfo& info, int tempSeqNum) {
     std::unique_lock lock(*this);
     FsLock fs;
     // Move the file where appropriate
@@ -493,13 +493,6 @@ int Ledger::notifyWriterClosed(const LedgerInfo& info, LedgerWriteSource src, in
         ++stagedFileCount_;
     }
     setLedgerInfo(this->info().update(info));
-    if (src == LedgerWriteSource::USER) {
-        // Unlock the ledger before calling into the manager to avoid a deadlock
-        fs.unlock();
-        lock.unlock();
-        LedgerManager::instance()->notifyLedgerChanged(syncContext());
-        fs.lock(); // FIXME: FsLock doesn't know when it's unlocked
-    }
     return 0;
 }
 
@@ -839,7 +832,7 @@ int LedgerWriter::close(bool discard) {
         }
     });
     // Prepare the updated ledger info
-    std::lock_guard lock(*ledger_);
+    std::unique_lock lock(*ledger_);
     auto newInfo = ledger_->info().update(info_);
     newInfo.dataSize(dataSize_); // Can't be overridden
     newInfo.updateCount(newInfo.updateCount() + 1); // ditto
@@ -853,7 +846,7 @@ int LedgerWriter::close(bool discard) {
         }
         newInfo.lastUpdated(t);
     }
-    if (!info_.isSyncPendingSet() && src_ == LedgerWriteSource::USER) {
+    if (src_ == LedgerWriteSource::USER && !info_.isSyncPendingSet()) {
         newInfo.syncPending(true);
     }
     // Write the info section
@@ -862,13 +855,21 @@ int LedgerWriter::close(bool discard) {
     CHECK(writeFooter(fs.instance(), &file_, dataSize_, infoSize));
     closeFileGuard.dismiss();
     CHECK_FS(lfs_file_close(fs.instance(), &file_));
-    // Flush the data
-    int r = ledger_->notifyWriterClosed(newInfo, src_, tempSeqNum_);
+    // Flush the data. Keep the ledger instance locked so that the ledger state is updated atomically.
+    // TODO: Finalize writing to the temporary ledger file in Ledger rather than in LedgerWriter
+    int r = ledger_->notifyWriterClosed(newInfo, tempSeqNum_);
     if (r < 0) {
         LOG(ERROR, "Failed to flush ledger data: %d", r);
         return r;
     }
     removeFileGuard.dismiss();
+    if (src_ == LedgerWriteSource::USER) {
+        // Avoid holding any locks when calling into the manager
+        lock.unlock();
+        fs.unlock();
+        LedgerManager::instance()->notifyLedgerChanged(ledger_->syncContext());
+        fs.lock(); // FIXME: FsLock doesn't know when it's unlocked
+    }
     return 0;
 }
 
