@@ -406,8 +406,8 @@ int network_listen_command(network_handle_t network, network_listen_command_t co
     return ListeningModeHandler::instance()->enqueueCommand(command, arg);
 }
 
-network_handle_t network_preferred(network_handle_t network, bool preferred, void* reserved) {
-    ConnectionManager::instance()->setPreferredNetwork(network, preferred);
+network_handle_t network_prefer(network_handle_t network, bool prefer, void* reserved) {
+    ConnectionManager::instance()->setPreferredNetwork(network, prefer);
     return ConnectionManager::instance()->getPreferredNetwork();
 }
 

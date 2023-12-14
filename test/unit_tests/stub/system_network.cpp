@@ -63,7 +63,7 @@ int network_connect_cancel(network_handle_t network, uint32_t flags, uint32_t pa
     return 0;
 }
 
-network_handle_t network_preferred(network_handle_t network, bool preferred, void* reserved) {
+network_handle_t network_prefer(network_handle_t network, bool prefer, void* reserved) {
     return network;
 }
 

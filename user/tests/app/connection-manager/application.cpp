@@ -187,6 +187,36 @@ void loop() {
             // Run the internal connection test
             system_internal(4, nullptr);
         }
+        else if(c == '2') {
+            // Prefer wifi
+            WiFi.prefer();
+            // Confirm that we prefer wifi 
+            if (Network.prefer() == WiFi) {
+                Log.info("Wifi is preferred");
+            }
+            // No longer prefer wifi, revert to default
+            WiFi.prefer(false);
+            if (Network.prefer() == Network) {
+                Log.info("Default is preferred");
+            }
+
+            // Prefer cellular
+            Cellular.prefer();
+            // Confirm cellular is preferred 
+            if (Network.prefer() == Cellular) {
+                Log.info("Cellular is preferred");
+            }
+            // Confirm calling Network does not change preference
+            Network.prefer();
+            if (Network.prefer() == Cellular) {
+                Log.info("Cellular is still preferred");
+            }
+            // Clear any set network preference
+            Network.prefer(false);
+            if (Network.prefer() == Network) {
+                Log.info("Default is preferred");
+            }
+        }
         else if(c == '3') {
             Particle.disconnect(CloudDisconnectOptions().clearSession(true));
             waitUntil(Particle.disconnected);
