@@ -222,7 +222,6 @@ struct LedgerSyncContext {
 
 LedgerManager::LedgerManager() :
         curCtx_(nullptr),
-        msg_(nullptr),
         nextSyncTime_(0),
         retryTime_(0),
         retryDelay_(0),
@@ -563,14 +562,14 @@ void LedgerManager::notifyDisconnected(int /* error */) {
     state_ = State::OFFLINE;
 }
 
-int LedgerManager::receiveRequest(coap_message* msg, int reqId) {
+int LedgerManager::receiveRequest(CoapMessagePtr msg, int reqId) {
     if (state_ < State::READY) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     // Get the request type. XXX: It's assumed that the message fields are encoded in order of their
     // field numbers, which is not guaranteed by the Protobuf spec in general
     char buf[32] = {};
-    size_t n = CHECK(coap_peek_payload(msg, buf, sizeof(buf), nullptr));
+    size_t n = CHECK(coap_peek_payload(msg.get(), buf, sizeof(buf), nullptr));
     pb_istream_t stream = pb_istream_from_buffer((const pb_byte_t*)buf, n);
     uint32_t reqType = 0;
     uint32_t fieldTag = 0;
@@ -588,11 +587,11 @@ int LedgerManager::receiveRequest(coap_message* msg, int reqId) {
     } // else: Request type field is missing so its value is 0
     switch (reqType) {
     case PB_CLOUD(Request_Type_LEDGER_NOTIFY_UPDATE): {
-        CHECK(receiveNotifyUpdateRequest(msg, reqId));
+        CHECK(receiveNotifyUpdateRequest(std::move(msg), reqId));
         break;
     }
     case PB_CLOUD(Request_Type_LEDGER_RESET_INFO): {
-        CHECK(receiveResetInfoRequest(msg, reqId));
+        CHECK(receiveResetInfoRequest(std::move(msg), reqId));
         break;
     }
     default:
@@ -602,10 +601,10 @@ int LedgerManager::receiveRequest(coap_message* msg, int reqId) {
     return 0;
 }
 
-int LedgerManager::receiveNotifyUpdateRequest(coap_message* msg, int /* reqId */) {
+int LedgerManager::receiveNotifyUpdateRequest(CoapMessagePtr msg, int /* reqId */) {
     LOG(TRACE, "Received update notification");
     pb_istream_t stream = {};
-    CHECK(getStreamForSubmessage(msg, &stream, PB_CLOUD(Request_ledger_notify_update_tag)));
+    CHECK(getStreamForSubmessage(msg.get(), &stream, PB_CLOUD(Request_ledger_notify_update_tag)));
     PB_LEDGER(NotifyUpdateRequest) pbReq = {};
     pbReq.ledgers.arg = this;
     pbReq.ledgers.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
@@ -644,7 +643,7 @@ int LedgerManager::receiveNotifyUpdateRequest(coap_message* msg, int /* reqId */
     return 0;
 }
 
-int LedgerManager::receiveResetInfoRequest(coap_message* msg, int /* reqId */) {
+int LedgerManager::receiveResetInfoRequest(CoapMessagePtr /* msg */, int /* reqId */) {
     LOG(WARN, "Received a reset request, re-requesting ledger info");
     for (auto& ctx: contexts_) {
         setPendingState(ctx.get(), PendingState::GET_INFO);
@@ -652,7 +651,7 @@ int LedgerManager::receiveResetInfoRequest(coap_message* msg, int /* reqId */) {
     return 0;
 }
 
-int LedgerManager::receiveResponse(coap_message* msg, int status) {
+int LedgerManager::receiveResponse(CoapMessagePtr msg, int status) {
     assert(state_ > State::READY);
     auto codeClass = COAP_CODE_CLASS(status);
     if (codeClass != 2 && codeClass != 4) { // Success 2.xx or Client Error 4.xx
@@ -662,7 +661,7 @@ int LedgerManager::receiveResponse(coap_message* msg, int status) {
     // Get the protocol-specific result code. XXX: It's assumed that the message fields are encoded
     // in order of their field numbers, which is not guaranteed by the Protobuf spec in general
     char buf[32] = {};
-    int r = coap_peek_payload(msg, buf, sizeof(buf), nullptr);
+    int r = coap_peek_payload(msg.get(), buf, sizeof(buf), nullptr);
     if (r < 0) {
         if (r != SYSTEM_ERROR_END_OF_STREAM) {
             return r;
@@ -694,19 +693,19 @@ int LedgerManager::receiveResponse(coap_message* msg, int status) {
     }
     switch (state_) {
     case State::SYNC_TO_CLOUD: {
-        CHECK(receiveSetDataResponse(msg, result));
+        CHECK(receiveSetDataResponse(std::move(msg), result));
         break;
     }
     case State::SYNC_FROM_CLOUD: {
-        CHECK(receiveGetDataResponse(msg, result));
+        CHECK(receiveGetDataResponse(std::move(msg), result));
         break;
     }
     case State::SUBSCRIBE: {
-        CHECK(receiveSubscribeResponse(msg, result));
+        CHECK(receiveSubscribeResponse(std::move(msg), result));
         break;
     }
     case State::GET_INFO: {
-        CHECK(receiveGetInfoResponse(msg, result));
+        CHECK(receiveGetInfoResponse(std::move(msg), result));
         break;
     }
     default:
@@ -716,7 +715,7 @@ int LedgerManager::receiveResponse(coap_message* msg, int status) {
     return 0;
 }
 
-int LedgerManager::receiveSetDataResponse(coap_message* msg, int result) {
+int LedgerManager::receiveSetDataResponse(CoapMessagePtr /* msg */, int result) {
     assert(state_ == State::SYNC_TO_CLOUD && curCtx_ && curCtx_->syncDir == LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD &&
             curCtx_->taskRunning);
     if (result == 0) {
@@ -736,7 +735,7 @@ int LedgerManager::receiveSetDataResponse(coap_message* msg, int result) {
             curCtx_->syncPending = false;
         } else {
             // Ledger changed while being synchronized
-            assert(curCtx->pendingState & PendingState::SYNC_TO_CLOUD);
+            assert(curCtx_->pendingState & PendingState::SYNC_TO_CLOUD);
             updateSyncTime(curCtx_);
         }
         CHECK(ledger->updateInfo(newInfo));
@@ -758,7 +757,7 @@ int LedgerManager::receiveSetDataResponse(coap_message* msg, int result) {
     return 0;
 }
 
-int LedgerManager::receiveGetDataResponse(coap_message* msg, int result) {
+int LedgerManager::receiveGetDataResponse(CoapMessagePtr msg, int result) {
     assert(state_ == State::SYNC_FROM_CLOUD && curCtx_ && curCtx_->syncDir == LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE &&
             curCtx_->taskRunning && !stream_ && !msg_);
     if (result != 0) {
@@ -783,7 +782,7 @@ int LedgerManager::receiveGetDataResponse(coap_message* msg, int result) {
     // Ledger data may span multiple CoAP messages. Nanopb streams are synchronous so the response
     // is decoded manually
     pb_istream_t pbStream = {};
-    CHECK(getStreamForSubmessage(msg, &pbStream, PB_CLOUD(Response_ledger_get_data_tag)));
+    CHECK(getStreamForSubmessage(msg.get(), &pbStream, PB_CLOUD(Response_ledger_get_data_tag)));
     uint64_t lastUpdated = 0;
     for (;;) {
         uint32_t fieldTag = 0;
@@ -811,13 +810,13 @@ int LedgerManager::receiveGetDataResponse(coap_message* msg, int result) {
     }
     writer->updateInfo(LedgerInfo().lastUpdated(lastUpdated));
     stream_.reset(writer.release());
-    msg_ = msg;
+    msg_ = std::move(msg);
     // Read the first chunk of the ledger data
     CHECK(receiveLedgerData());
     return 0;
 }
 
-int LedgerManager::receiveSubscribeResponse(coap_message* msg, int result) {
+int LedgerManager::receiveSubscribeResponse(CoapMessagePtr msg, int result) {
     assert(state_ == State::SUBSCRIBE);
     if (result != 0) {
         LOG(ERROR, "Failed to subscribe to ledger updates; result: %d", result);
@@ -870,7 +869,7 @@ int LedgerManager::receiveSubscribeResponse(coap_message* msg, int result) {
         return true;
     };
     pb_istream_t stream = {};
-    CHECK(getStreamForSubmessage(msg, &stream, PB_CLOUD(Response_ledger_subscribe_tag)));
+    CHECK(getStreamForSubmessage(msg.get(), &stream, PB_CLOUD(Response_ledger_subscribe_tag)));
     if (!pb_decode(&stream, &PB_LEDGER(SubscribeResponse_msg), &pbResp)) {
         return (d.error < 0) ? d.error : SYSTEM_ERROR_BAD_DATA;
     }
@@ -885,7 +884,7 @@ int LedgerManager::receiveSubscribeResponse(coap_message* msg, int result) {
     return 0;
 }
 
-int LedgerManager::receiveGetInfoResponse(coap_message* msg, int result) {
+int LedgerManager::receiveGetInfoResponse(CoapMessagePtr msg, int result) {
     assert(state_ == State::GET_INFO);
     if (result != 0) {
         LOG(ERROR, "Failed to get ledger info; result: %d", result);
@@ -1000,7 +999,7 @@ int LedgerManager::receiveGetInfoResponse(coap_message* msg, int result) {
         return true;
     };
     pb_istream_t stream = {};
-    CHECK(getStreamForSubmessage(msg, &stream, PB_CLOUD(Response_ledger_get_info_tag)));
+    CHECK(getStreamForSubmessage(msg.get(), &stream, PB_CLOUD(Response_ledger_get_info_tag)));
     if (!pb_decode(&stream, &PB_LEDGER(GetInfoResponse_msg), &pbResp)) {
         return (d.error < 0) ? d.error : SYSTEM_ERROR_BAD_DATA;
     }
@@ -1048,17 +1047,15 @@ int LedgerManager::sendSetDataRequest(LedgerSyncContext* ctx) {
     CHECK(ledger->initReader(*reader));
     auto info = reader->info();
     // Create a request message
-    coap_message* msg = nullptr;
-    int reqId = CHECK(coap_begin_request(&msg, REQUEST_URI, REQUEST_METHOD, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
-    NAMED_SCOPE_GUARD(destroyMsgGuard, {
-        coap_destroy_message(msg, nullptr);
-    });
+    coap_message* apiMsg = nullptr;
+    int reqId = CHECK(coap_begin_request(&apiMsg, REQUEST_URI, REQUEST_METHOD, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
+    CoapMessagePtr msg(apiMsg);
     // Calculate the size of the request's submessage (particle.cloud.ledger.SetDataRequest)
     pb_ostream_t pbStream = PB_OSTREAM_SIZING;
     CHECK(encodeSetDataRequestPrefix(&pbStream, ctx->name, info));
     size_t submsgSize = pbStream.bytes_written + info.dataSize();
     // Encode the outer request message (particle.cloud.Request)
-    CHECK(pb_ostream_from_coap_message(&pbStream, msg, nullptr));
+    CHECK(pb_ostream_from_coap_message(&pbStream, msg.get(), nullptr));
     if (!pb_encode_tag(&pbStream, PB_WT_VARINT, PB_CLOUD(Request_type_tag)) || // type
             !pb_encode_varint(&pbStream, PB_CLOUD(Request_Type_LEDGER_SET_DATA))) {
         return SYSTEM_ERROR_ENCODING_FAILED;
@@ -1071,8 +1068,7 @@ int LedgerManager::sendSetDataRequest(LedgerSyncContext* ctx) {
     // Encode and send the first chunk of the ledger data
     stream_.reset(reader.release());
     reqId_ = reqId;
-    msg_ = msg;
-    destroyMsgGuard.dismiss();
+    msg_ = std::move(msg);
     CHECK(sendLedgerData());
     // Clear the pending state
     clearPendingState(ctx, PendingState::SYNC_TO_CLOUD);
@@ -1100,18 +1096,15 @@ int LedgerManager::sendGetDataRequest(LedgerSyncContext* ctx) {
     std::memcpy(pbReq.data.ledger_get_data.scope_id.bytes, ctx->scopeId.data, ctx->scopeId.size);
     pbReq.data.ledger_get_data.scope_id.size = ctx->scopeId.size;
     // Send the request
-    coap_message* msg = nullptr;
-    int reqId = CHECK(coap_begin_request(&msg, REQUEST_URI, REQUEST_METHOD, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
-    NAMED_SCOPE_GUARD(destroyMsgGuard, {
-        coap_destroy_message(msg, nullptr);
-    });
+    coap_message* apiMsg = nullptr;
+    int reqId = CHECK(coap_begin_request(&apiMsg, REQUEST_URI, REQUEST_METHOD, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
+    CoapMessagePtr msg(apiMsg);
     pb_ostream_t stream = {};
-    CHECK(pb_ostream_from_coap_message(&stream, msg, nullptr));
+    CHECK(pb_ostream_from_coap_message(&stream, msg.get(), nullptr));
     if (!pb_encode(&stream, &PB_CLOUD(Request_msg), &pbReq)) {
         return SYSTEM_ERROR_ENCODING_FAILED;
     }
-    CHECK(coap_end_request(msg, responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
-    destroyMsgGuard.dismiss();
+    CHECK(coap_end_request(msg.release(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
     // Clear the pending state
     clearPendingState(ctx, PendingState::SYNC_FROM_CLOUD);
     ctx->taskRunning = true;
@@ -1153,18 +1146,15 @@ int LedgerManager::sendSubscribeRequest() {
         }
         return true;
     };
-    coap_message* msg = nullptr;
-    int reqId = CHECK(coap_begin_request(&msg, REQUEST_URI, REQUEST_METHOD, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
-    NAMED_SCOPE_GUARD(destroyMsgGuard, {
-        coap_destroy_message(msg, nullptr);
-    });
+    coap_message* apiMsg = nullptr;
+    int reqId = CHECK(coap_begin_request(&apiMsg, REQUEST_URI, REQUEST_METHOD, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
+    CoapMessagePtr msg(apiMsg);
     pb_ostream_t stream = {};
-    CHECK(pb_ostream_from_coap_message(&stream, msg, nullptr));
+    CHECK(pb_ostream_from_coap_message(&stream, msg.get(), nullptr));
     if (!pb_encode(&stream, &PB_CLOUD(Request_msg), &pbReq)) {
         return (d.error < 0) ? d.error : SYSTEM_ERROR_ENCODING_FAILED;
     }
-    CHECK(coap_end_request(msg, responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
-    destroyMsgGuard.dismiss();
+    CHECK(coap_end_request(msg.release(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
     // Clear the pending state
     pendingState_ = 0;
     for (auto& ctx: contexts_) {
@@ -1211,18 +1201,15 @@ int LedgerManager::sendGetInfoRequest() {
         }
         return true;
     };
-    coap_message* msg = nullptr;
-    int reqId = CHECK(coap_begin_request(&msg, REQUEST_URI, REQUEST_METHOD, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
-    NAMED_SCOPE_GUARD(destroyMsgGuard, {
-        coap_destroy_message(msg, nullptr);
-    });
+    coap_message* apiMsg = nullptr;
+    int reqId = CHECK(coap_begin_request(&apiMsg, REQUEST_URI, REQUEST_METHOD, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
+    CoapMessagePtr msg(apiMsg);
     pb_ostream_t stream = {};
-    CHECK(pb_ostream_from_coap_message(&stream, msg, nullptr));
+    CHECK(pb_ostream_from_coap_message(&stream, msg.get(), nullptr));
     if (!pb_encode(&stream, &PB_CLOUD(Request_msg), &pbReq)) {
         return (d.error < 0) ? d.error : SYSTEM_ERROR_ENCODING_FAILED;
     }
-    CHECK(coap_end_request(msg, responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
-    destroyMsgGuard.dismiss();
+    CHECK(coap_end_request(msg.release(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
     // Clear the pending state
     pendingState_ = 0;
     for (auto& ctx: contexts_) {
@@ -1244,7 +1231,7 @@ int LedgerManager::sendLedgerData() {
     for (;;) {
         if (bytesInBuf_ > 0) {
             size_t size = bytesInBuf_;
-            int r = CHECK(coap_write_payload(msg_, buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr));
+            int r = CHECK(coap_write_payload(msg_.get(), buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr));
             if (r == COAP_RESULT_WAIT_BLOCK) {
                 assert(size < bytesInBuf_);
                 bytesInBuf_ -= size;
@@ -1269,8 +1256,7 @@ int LedgerManager::sendLedgerData() {
     if (eof) {
         CHECK(stream_->close());
         stream_.reset();
-        CHECK(coap_end_request(msg_, responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
-        msg_ = nullptr;
+        CHECK(coap_end_request(msg_.release(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
     }
     return 0;
 }
@@ -1284,7 +1270,7 @@ int LedgerManager::receiveLedgerData() {
             bytesInBuf_ = 0;
         }
         size_t size = STREAM_BUFFER_SIZE;
-        int r = coap_read_payload(msg_, buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr);
+        int r = coap_read_payload(msg_.get(), buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr);
         if (r < 0) {
             if (r == SYSTEM_ERROR_END_OF_STREAM) {
                 eof = true;
@@ -1308,8 +1294,7 @@ int LedgerManager::receiveLedgerData() {
         auto ledger = writer->ledger();
         CHECK(stream_->close());
         stream_.reset();
-        coap_destroy_message(msg_, nullptr);
-        msg_ = nullptr;
+        msg_.reset();
         reqId_ = COAP_INVALID_REQUEST_ID;
         curCtx_->taskRunning = false;
         curCtx_ = nullptr;
@@ -1320,12 +1305,10 @@ int LedgerManager::receiveLedgerData() {
 }
 
 int LedgerManager::sendResponse(int result, int reqId) {
-    coap_message* msg = nullptr;
     int code = (result == 0) ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST;
-    CHECK(coap_begin_response(&msg, code, reqId, 0 /* flags */, nullptr /* reserved */));
-    NAMED_SCOPE_GUARD(destroyMsgGuard, {
-        coap_destroy_message(msg, nullptr);
-    });
+    coap_message* apiMsg = nullptr;
+    CHECK(coap_begin_response(&apiMsg, code, reqId, 0 /* flags */, nullptr /* reserved */));
+    CoapMessagePtr msg(apiMsg);
     PB_CLOUD(Response) pbResp = {};
     pbResp.result = result;
     EncodedString pbMsg(&pbResp.message);
@@ -1333,8 +1316,7 @@ int LedgerManager::sendResponse(int result, int reqId) {
         pbMsg.data = get_system_error_message(result);
         pbMsg.size = std::strlen(pbMsg.data);
     }
-    CHECK(coap_end_response(msg, nullptr /* ack_cb */, requestErrorCallback, nullptr /* arg */, nullptr /* reserved */));
-    destroyMsgGuard.dismiss();
+    CHECK(coap_end_response(msg.release(), nullptr /* ack_cb */, requestErrorCallback, nullptr /* arg */, nullptr /* reserved */));
     return 0;
 }
 
@@ -1389,14 +1371,11 @@ void LedgerManager::startSync() {
 }
 
 void LedgerManager::reset() {
-    if (msg_) {
-        coap_destroy_message(msg_, nullptr);
-        msg_ = nullptr;
-    }
     if (reqId_ != COAP_INVALID_REQUEST_ID) {
         coap_cancel_request(reqId_, nullptr);
         reqId_ = COAP_INVALID_REQUEST_ID;
     }
+    msg_.reset();
     if (stream_) {
         int r = stream_->close(true /* discard */);
         if (r < 0) {
@@ -1491,13 +1470,10 @@ int LedgerManager::connectionCallback(int error, int status, void* arg) {
 }
 
 int LedgerManager::requestCallback(coap_message* msg, const char* uri, int method, int reqId, void* arg) {
-    SCOPE_GUARD({
-        coap_destroy_message(msg, nullptr);
-    });
     auto self = static_cast<LedgerManager*>(arg);
     std::lock_guard lock(self->mutex_);
     clear_system_error_message();
-    int result = self->receiveRequest(msg, reqId);
+    int result = self->receiveRequest(CoapMessagePtr(msg), reqId);
     if (result < 0) {
         LOG(ERROR, "Error while handling request: %d", result);
     }
@@ -1517,14 +1493,7 @@ int LedgerManager::requestCallback(coap_message* msg, const char* uri, int metho
 int LedgerManager::responseCallback(coap_message* msg, int status, int reqId, void* arg) {
     auto self = static_cast<LedgerManager*>(arg);
     std::lock_guard lock(self->mutex_);
-    assert(!self->msg_ && self->reqId_ == reqId);
-    SCOPE_GUARD({
-        if (!self->msg_) {
-            coap_destroy_message(msg, nullptr);
-            self->reqId_ = COAP_INVALID_REQUEST_ID;
-        } // else: Receiving a blockwise response
-    });
-    int r = self->receiveResponse(msg, status);
+    int r = self->receiveResponse(CoapMessagePtr(msg), status);
     if (r < 0) {
         LOG(ERROR, "Error while handling response: %d", r);
         self->handleError(r);
@@ -1535,7 +1504,7 @@ int LedgerManager::responseCallback(coap_message* msg, int status, int reqId, vo
 int LedgerManager::messageBlockCallback(coap_message* msg, int reqId, void* arg) {
     auto self = static_cast<LedgerManager*>(arg);
     std::lock_guard lock(self->mutex_);
-    assert(self->msg_ == msg && self->reqId_ == reqId);
+    assert(self->msg_.get() == msg && self->reqId_ == reqId);
     int r = 0;
     if (self->state_ == State::SYNC_TO_CLOUD) {
         r = self->sendLedgerData();

@@ -15,15 +15,16 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cstdint>
+
 #include "debug_util.h"
+
+#include "system_error.h"
+#include "logging.h"
 
 #if HAL_PLATFORM_NRF52840
 
-#include <cstdint>
-
 #include <nrf52840.h>
-
-#include "logging.h"
 
 int set_watchpoint(const void* addr, size_t size, int type) {
     size_t numComp = (DWT->CTRL >> 28) & 0x0f;

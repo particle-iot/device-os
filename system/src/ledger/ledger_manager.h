@@ -25,6 +25,7 @@
 #include <cstdint>
 
 #include "coap_api.h"
+#include "coap_util.h"
 
 #include "c_string.h"
 #include "static_recursive_mutex.h"
@@ -98,7 +99,7 @@ private:
     std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
     std::unique_ptr<char[]> buf_; // Intermediate buffer used for piping ledger data
     LedgerSyncContext* curCtx_; // Context of the ledger being synchronized
-    coap_message* msg_; // CoAP request or response that is being sent or received
+    CoapMessagePtr msg_; // CoAP request or response that is being sent or received
     uint64_t nextSyncTime_; // Time when the next device-to-cloud ledger needs to be synchronized (ticks)
     uint64_t retryTime_; // Time when synchronization can be retried (ticks)
     unsigned retryDelay_; // Delay before retrying synchronization
@@ -117,15 +118,15 @@ private:
     int notifyConnected();
     void notifyDisconnected(int error);
 
-    int receiveRequest(coap_message* msg, int reqId);
-    int receiveNotifyUpdateRequest(coap_message* msg, int reqId);
-    int receiveResetInfoRequest(coap_message* msg, int reqId);
+    int receiveRequest(CoapMessagePtr msg, int reqId);
+    int receiveNotifyUpdateRequest(CoapMessagePtr msg, int reqId);
+    int receiveResetInfoRequest(CoapMessagePtr msg, int reqId);
 
-    int receiveResponse(coap_message* msg, int status);
-    int receiveSetDataResponse(coap_message* msg, int result);
-    int receiveGetDataResponse(coap_message* msg, int result);
-    int receiveSubscribeResponse(coap_message* msg, int result);
-    int receiveGetInfoResponse(coap_message* msg, int result);
+    int receiveResponse(CoapMessagePtr msg, int status);
+    int receiveSetDataResponse(CoapMessagePtr msg, int result);
+    int receiveGetDataResponse(CoapMessagePtr msg, int result);
+    int receiveSubscribeResponse(CoapMessagePtr msg, int result);
+    int receiveGetInfoResponse(CoapMessagePtr msg, int result);
 
     int sendSetDataRequest(LedgerSyncContext* ctx);
     int sendGetDataRequest(LedgerSyncContext* ctx);
