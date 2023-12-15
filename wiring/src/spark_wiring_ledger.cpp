@@ -64,7 +64,10 @@ public:
         }
         int r = ledger_read(stream_, data, size, nullptr);
         if (r < 0) {
-            LOG(ERROR, "ledger_read() failed: %d", r);
+            // Suppress the error message if the ledger data is empty
+            if (r != Error::END_OF_STREAM || bytesRead_ > 0) {
+                LOG(ERROR, "ledger_read() failed: %d", r);
+            }
             setError(r);
             return 0;
         }
@@ -240,6 +243,7 @@ int setLedgerData(ledger_instance* ledger, const LedgerData& data) {
     CHECK(stream.open(LEDGER_STREAM_MODE_WRITE));
     int r = encodeToCBOR(data.variant(), stream);
     if (r < 0) {
+        // encodeToCBOR() can't forward stream errors
         int err = stream.error();
         if (err < 0) {
             r = err;
@@ -257,6 +261,7 @@ int getLedgerData(ledger_instance* ledger, LedgerData& data) {
     Variant v;
     int r = decodeFromCBOR(v, stream);
     if (r < 0) {
+        // decodeFromCBOR() can't forward stream errors
         int err = stream.error();
         if (err < 0) {
             r = err;
