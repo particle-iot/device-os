@@ -240,6 +240,7 @@ LedgerManager::~LedgerManager() {
 }
 
 int LedgerManager::init() {
+    std::lock_guard lock(mutex_);
     if (state_ != State::NEW) {
         return 0; // Already initialized
     }
@@ -1529,6 +1530,17 @@ void LedgerManager::requestErrorCallback(int error, int /* reqId */, void* arg) 
 
 LedgerManager* LedgerManager::instance() {
     static LedgerManager mgr;
+    // XXX: Lazy initialization is used so that ledger instances can be requested in the global
+    // scope by the application. It's dangerous because the application's global constructors are
+    // called before the system is fully initialized but seems to work in this case
+    static volatile bool initCalled = false;
+    if (!initCalled) {
+        int r = mgr.init();
+        initCalled = true;
+        if (r < 0) {
+            LOG(ERROR, "Failed to initialize ledger manager: %d", r);
+        }
+    }
     return &mgr;
 }
 

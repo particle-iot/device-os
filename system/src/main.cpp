@@ -791,10 +791,8 @@ void app_setup_and_loop(void)
 
 #if HAL_PLATFORM_LEDGER
     if (system_mode() != SAFE_MODE) {
-        int r = system::LedgerManager::instance()->init();
-        if (r < 0) {
-            LOG(ERROR, "Failed to initialize ledger manager: %d", r);
-        }
+        // Make sure the ledger manager is initialized
+        system::LedgerManager::instance();
     }
 #endif // HAL_PLATFORM_LEDGER
 

@@ -52,8 +52,6 @@ public:
 
     ~LedgerManager();
 
-    int init();
-
     int getLedger(RefCountPtr<Ledger>& ledger, const char* name, bool create = false);
 
     int getLedgerNames(Vector<CString>& names);
@@ -113,6 +111,8 @@ private:
     mutable StaticRecursiveMutex mutex_; // Manager lock
 
     LedgerManager(); // Use LedgerManager::instance()
+
+    int init();
 
     int processTasks();
 
