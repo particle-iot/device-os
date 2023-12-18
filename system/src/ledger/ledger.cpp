@@ -325,11 +325,15 @@ int Ledger::init(const char* name) {
 }
 
 int Ledger::initReader(LedgerReader& reader) {
+    // Reference counter of this ledger instance is managed by the LedgerManager so if it needs
+    // to be incremented it's important to do so before acquiring a lock on the ledger instance
+    // to avoid a deadlock
+    RefCountPtr<Ledger> ledgerPtr(this);
     std::lock_guard lock(*this);
     if (!inited_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    CHECK(reader.init(info(), stagedSeqNum_, this));
+    CHECK(reader.init(info(), stagedSeqNum_, std::move(ledgerPtr)));
     if (stagedSeqNum_ > 0) {
         ++stagedReaderCount_;
     } else {
@@ -339,6 +343,7 @@ int Ledger::initReader(LedgerReader& reader) {
 }
 
 int Ledger::initWriter(LedgerWriter& writer, LedgerWriteSource src) {
+    RefCountPtr<Ledger> ledgerPtr(this); // See initReader()
     std::lock_guard lock(*this);
     if (!inited_) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -348,7 +353,7 @@ int Ledger::initWriter(LedgerWriter& writer, LedgerWriteSource src) {
             syncDir_ != LEDGER_SYNC_DIRECTION_UNKNOWN) {
         return SYSTEM_ERROR_LEDGER_READ_ONLY;
     }
-    CHECK(writer.init(src, ++lastSeqNum_, this));
+    CHECK(writer.init(src, ++lastSeqNum_, std::move(ledgerPtr)));
     return 0;
 }
 
@@ -710,7 +715,7 @@ LedgerInfo& LedgerInfo::update(const LedgerInfo& info) {
     return *this;
 }
 
-int LedgerReader::init(LedgerInfo info, int stagedSeqNum, Ledger* ledger) {
+int LedgerReader::init(LedgerInfo info, int stagedSeqNum, RefCountPtr<Ledger> ledger) {
     char path[MAX_PATH_LEN + 1];
     if (stagedSeqNum > 0) {
         // The most recent data is staged
@@ -722,7 +727,7 @@ int LedgerReader::init(LedgerInfo info, int stagedSeqNum, Ledger* ledger) {
     // Open the respective file
     FsLock fs;
     CHECK_FS(lfs_file_open(fs.instance(), &file_, path, LFS_O_RDONLY));
-    ledger_ = ledger;
+    ledger_ = std::move(ledger);
     info_ = std::move(info);
     open_ = true;
     return 0;
@@ -757,8 +762,11 @@ int LedgerReader::close(bool /* discard */) {
     if (result < 0) {
         LOG(ERROR, "Error while closing file: %d", result);
     }
-    // Let the ledger flush any data
+    // Let the ledger flush any data. Avoid holding a lock on the filesystem while trying to acquire
+    // a lock on the ledger instance
+    fs.unlock();
     int r = ledger_->notifyReaderClosed(staged_);
+    fs.lock();
     if (r < 0) {
         LOG(ERROR, "Failed to flush ledger data: %d", r);
         return r;
@@ -766,13 +774,13 @@ int LedgerReader::close(bool /* discard */) {
     return result;
 }
 
-int LedgerWriter::init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger) {
+int LedgerWriter::init(LedgerWriteSource src, int tempSeqNum, RefCountPtr<Ledger> ledger) {
     // Create a temporary file
     char path[MAX_PATH_LEN + 1];
     CHECK(getTempFilePath(path, sizeof(path), ledger->name(), tempSeqNum));
     FsLock fs;
     CHECK_FS(lfs_file_open(fs.instance(), &file_, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL));
-    ledger_ = ledger;
+    ledger_ = std::move(ledger);
     tempSeqNum_ = tempSeqNum;
     src_ = src;
     open_ = true;
@@ -803,6 +811,7 @@ int LedgerWriter::close(bool discard) {
     }
     // Consider the writer closed regardless if any of the operations below fails
     open_ = false;
+    std::unique_lock lock(*ledger_);
     FsLock fs;
     if (discard) {
         // Remove the temporary file
@@ -832,7 +841,6 @@ int LedgerWriter::close(bool discard) {
         }
     });
     // Prepare the updated ledger info
-    std::unique_lock lock(*ledger_);
     auto newInfo = ledger_->info().update(info_);
     newInfo.dataSize(dataSize_); // Can't be overridden
     newInfo.updateCount(newInfo.updateCount() + 1); // ditto
@@ -865,8 +873,8 @@ int LedgerWriter::close(bool discard) {
     removeFileGuard.dismiss();
     if (src_ == LedgerWriteSource::USER) {
         // Avoid holding any locks when calling into the manager
-        lock.unlock();
         fs.unlock();
+        lock.unlock();
         LedgerManager::instance()->notifyLedgerChanged(ledger_->syncContext());
         fs.lock(); // FIXME: FsLock doesn't know when it's unlocked
     }

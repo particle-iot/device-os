@@ -1292,7 +1292,7 @@ int LedgerManager::receiveLedgerData() {
         info.lastSynced(now);
         info.syncPending(false);
         writer->updateInfo(info);
-        auto ledger = writer->ledger();
+        RefCountPtr<Ledger> ledger(writer->ledger());
         CHECK(stream_->close());
         stream_.reset();
         msg_.reset();

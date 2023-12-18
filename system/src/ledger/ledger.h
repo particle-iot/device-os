@@ -346,8 +346,8 @@ public:
 
     int close(bool discard = false) override;
 
-    RefCountPtr<Ledger> ledger() const {
-        return ledger_;
+    Ledger* ledger() const {
+        return ledger_.get();
     }
 
     const LedgerInfo& info() const {
@@ -361,7 +361,7 @@ public:
     LedgerReader& operator=(const LedgerReader&) = delete;
 
 protected:
-    int init(LedgerInfo info, int stagedSeqNum, Ledger* ledger); // Called by Ledger
+    int init(LedgerInfo info, int stagedSeqNum, RefCountPtr<Ledger> ledger); // Called by Ledger
 
 private:
     RefCountPtr<Ledger> ledger_; // Ledger instance
@@ -402,8 +402,8 @@ public:
         info_.update(info);
     }
 
-    RefCountPtr<Ledger> ledger() const {
-        return ledger_;
+    Ledger* ledger() const {
+        return ledger_.get();
     }
 
     bool isOpen() const {
@@ -413,7 +413,7 @@ public:
     LedgerWriter& operator=(const LedgerWriter&) = delete;
 
 protected:
-    int init(LedgerWriteSource src, int tempSeqNum, Ledger* ledger); // Called by Ledger
+    int init(LedgerWriteSource src, int tempSeqNum, RefCountPtr<Ledger> ledger); // Called by Ledger
 
 private:
     RefCountPtr<Ledger> ledger_; // Ledger instance
