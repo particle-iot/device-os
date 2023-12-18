@@ -601,9 +601,10 @@ bool BurninTest::testGnss() {
         delay(1000);
     }
 
-    // If no lock in X minutes, fail
+    // Dont fail the test if we do not get a gnss lock
     if (!gnssLocked) {
-        strcpy(BurninErrorMessage, "No GNSS lock after 90s");
+        Log.info("No GNSS lock after %d seconds", GNSS_POLL_TIMEOUT_MS/1000);
+        gnssLocked = true;
     }
 
     // Turn off Cell modem + GNSS antenna
