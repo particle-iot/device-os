@@ -563,7 +563,7 @@ void LedgerManager::notifyDisconnected(int /* error */) {
     state_ = State::OFFLINE;
 }
 
-int LedgerManager::receiveRequest(CoapMessagePtr msg, int reqId) {
+int LedgerManager::receiveRequest(CoapMessagePtr& msg, int reqId) {
     if (state_ < State::READY) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
@@ -588,11 +588,11 @@ int LedgerManager::receiveRequest(CoapMessagePtr msg, int reqId) {
     } // else: Request type field is missing so its value is 0
     switch (reqType) {
     case PB_CLOUD(Request_Type_LEDGER_NOTIFY_UPDATE): {
-        CHECK(receiveNotifyUpdateRequest(std::move(msg), reqId));
+        CHECK(receiveNotifyUpdateRequest(msg, reqId));
         break;
     }
     case PB_CLOUD(Request_Type_LEDGER_RESET_INFO): {
-        CHECK(receiveResetInfoRequest(std::move(msg), reqId));
+        CHECK(receiveResetInfoRequest(msg, reqId));
         break;
     }
     default:
@@ -602,7 +602,7 @@ int LedgerManager::receiveRequest(CoapMessagePtr msg, int reqId) {
     return 0;
 }
 
-int LedgerManager::receiveNotifyUpdateRequest(CoapMessagePtr msg, int /* reqId */) {
+int LedgerManager::receiveNotifyUpdateRequest(CoapMessagePtr& msg, int /* reqId */) {
     LOG(TRACE, "Received update notification");
     pb_istream_t stream = {};
     CHECK(getStreamForSubmessage(msg.get(), &stream, PB_CLOUD(Request_ledger_notify_update_tag)));
@@ -644,7 +644,7 @@ int LedgerManager::receiveNotifyUpdateRequest(CoapMessagePtr msg, int /* reqId *
     return 0;
 }
 
-int LedgerManager::receiveResetInfoRequest(CoapMessagePtr /* msg */, int /* reqId */) {
+int LedgerManager::receiveResetInfoRequest(CoapMessagePtr& /* msg */, int /* reqId */) {
     LOG(WARN, "Received a reset request, re-requesting ledger info");
     for (auto& ctx: contexts_) {
         setPendingState(ctx.get(), PendingState::GET_INFO);
@@ -652,7 +652,7 @@ int LedgerManager::receiveResetInfoRequest(CoapMessagePtr /* msg */, int /* reqI
     return 0;
 }
 
-int LedgerManager::receiveResponse(CoapMessagePtr msg, int status) {
+int LedgerManager::receiveResponse(CoapMessagePtr& msg, int status) {
     assert(state_ > State::READY);
     auto codeClass = COAP_CODE_CLASS(status);
     if (codeClass != 2 && codeClass != 4) { // Success 2.xx or Client Error 4.xx
@@ -694,19 +694,19 @@ int LedgerManager::receiveResponse(CoapMessagePtr msg, int status) {
     }
     switch (state_) {
     case State::SYNC_TO_CLOUD: {
-        CHECK(receiveSetDataResponse(std::move(msg), result));
+        CHECK(receiveSetDataResponse(msg, result));
         break;
     }
     case State::SYNC_FROM_CLOUD: {
-        CHECK(receiveGetDataResponse(std::move(msg), result));
+        CHECK(receiveGetDataResponse(msg, result));
         break;
     }
     case State::SUBSCRIBE: {
-        CHECK(receiveSubscribeResponse(std::move(msg), result));
+        CHECK(receiveSubscribeResponse(msg, result));
         break;
     }
     case State::GET_INFO: {
-        CHECK(receiveGetInfoResponse(std::move(msg), result));
+        CHECK(receiveGetInfoResponse(msg, result));
         break;
     }
     default:
@@ -716,7 +716,7 @@ int LedgerManager::receiveResponse(CoapMessagePtr msg, int status) {
     return 0;
 }
 
-int LedgerManager::receiveSetDataResponse(CoapMessagePtr /* msg */, int result) {
+int LedgerManager::receiveSetDataResponse(CoapMessagePtr& /* msg */, int result) {
     assert(state_ == State::SYNC_TO_CLOUD && curCtx_ && curCtx_->syncDir == LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD &&
             curCtx_->taskRunning);
     if (result == 0) {
@@ -758,7 +758,7 @@ int LedgerManager::receiveSetDataResponse(CoapMessagePtr /* msg */, int result) 
     return 0;
 }
 
-int LedgerManager::receiveGetDataResponse(CoapMessagePtr msg, int result) {
+int LedgerManager::receiveGetDataResponse(CoapMessagePtr& msg, int result) {
     assert(state_ == State::SYNC_FROM_CLOUD && curCtx_ && curCtx_->syncDir == LEDGER_SYNC_DIRECTION_CLOUD_TO_DEVICE &&
             curCtx_->taskRunning && !stream_ && !msg_);
     if (result != 0) {
@@ -817,7 +817,7 @@ int LedgerManager::receiveGetDataResponse(CoapMessagePtr msg, int result) {
     return 0;
 }
 
-int LedgerManager::receiveSubscribeResponse(CoapMessagePtr msg, int result) {
+int LedgerManager::receiveSubscribeResponse(CoapMessagePtr& msg, int result) {
     assert(state_ == State::SUBSCRIBE);
     if (result != 0) {
         LOG(ERROR, "Failed to subscribe to ledger updates; result: %d", result);
@@ -885,7 +885,7 @@ int LedgerManager::receiveSubscribeResponse(CoapMessagePtr msg, int result) {
     return 0;
 }
 
-int LedgerManager::receiveGetInfoResponse(CoapMessagePtr msg, int result) {
+int LedgerManager::receiveGetInfoResponse(CoapMessagePtr& msg, int result) {
     assert(state_ == State::GET_INFO);
     if (result != 0) {
         LOG(ERROR, "Failed to get ledger info; result: %d", result);
@@ -1470,11 +1470,12 @@ int LedgerManager::connectionCallback(int error, int status, void* arg) {
     return 0;
 }
 
-int LedgerManager::requestCallback(coap_message* msg, const char* uri, int method, int reqId, void* arg) {
+int LedgerManager::requestCallback(coap_message* apiMsg, const char* uri, int method, int reqId, void* arg) {
     auto self = static_cast<LedgerManager*>(arg);
     std::lock_guard lock(self->mutex_);
     clear_system_error_message();
-    int result = self->receiveRequest(CoapMessagePtr(msg), reqId);
+    CoapMessagePtr msg(apiMsg);
+    int result = self->receiveRequest(msg, reqId);
     if (result < 0) {
         LOG(ERROR, "Error while handling request: %d", result);
     }
@@ -1491,10 +1492,11 @@ int LedgerManager::requestCallback(coap_message* msg, const char* uri, int metho
     return 0;
 }
 
-int LedgerManager::responseCallback(coap_message* msg, int status, int reqId, void* arg) {
+int LedgerManager::responseCallback(coap_message* apiMsg, int status, int reqId, void* arg) {
     auto self = static_cast<LedgerManager*>(arg);
     std::lock_guard lock(self->mutex_);
-    int r = self->receiveResponse(CoapMessagePtr(msg), status);
+    CoapMessagePtr msg(apiMsg);
+    int r = self->receiveResponse(msg, status);
     if (r < 0) {
         LOG(ERROR, "Error while handling response: %d", r);
         self->handleError(r);

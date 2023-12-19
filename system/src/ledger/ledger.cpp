@@ -811,6 +811,8 @@ int LedgerWriter::close(bool discard) {
     }
     // Consider the writer closed regardless if any of the operations below fails
     open_ = false;
+    // Lock the ledger instance first then the filesystem, otherwise a deadlock is possible if the
+    // LedgerManager has locked the ledger instance already but is waiting on the filesystem lock
     std::unique_lock lock(*ledger_);
     FsLock fs;
     if (discard) {
@@ -863,8 +865,9 @@ int LedgerWriter::close(bool discard) {
     CHECK(writeFooter(fs.instance(), &file_, dataSize_, infoSize));
     closeFileGuard.dismiss();
     CHECK_FS(lfs_file_close(fs.instance(), &file_));
-    // Flush the data. Keep the ledger instance locked so that the ledger state is updated atomically.
-    // TODO: Finalize writing to the temporary ledger file in Ledger rather than in LedgerWriter
+    // Flush the data. Keep the ledger instance locked so that the ledger state is updated atomically
+    // in the filesystem and RAM. TODO: Finalize writing to the temporary ledger file in Ledger rather
+    // than in LedgerWriter
     int r = ledger_->notifyWriterClosed(newInfo, tempSeqNum_);
     if (r < 0) {
         LOG(ERROR, "Failed to flush ledger data: %d", r);

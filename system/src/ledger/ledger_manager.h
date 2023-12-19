@@ -119,15 +119,15 @@ private:
     int notifyConnected();
     void notifyDisconnected(int error);
 
-    int receiveRequest(CoapMessagePtr msg, int reqId);
-    int receiveNotifyUpdateRequest(CoapMessagePtr msg, int reqId);
-    int receiveResetInfoRequest(CoapMessagePtr msg, int reqId);
+    int receiveRequest(CoapMessagePtr& msg, int reqId);
+    int receiveNotifyUpdateRequest(CoapMessagePtr& msg, int reqId);
+    int receiveResetInfoRequest(CoapMessagePtr& msg, int reqId);
 
-    int receiveResponse(CoapMessagePtr msg, int status);
-    int receiveSetDataResponse(CoapMessagePtr msg, int result);
-    int receiveGetDataResponse(CoapMessagePtr msg, int result);
-    int receiveSubscribeResponse(CoapMessagePtr msg, int result);
-    int receiveGetInfoResponse(CoapMessagePtr msg, int result);
+    int receiveResponse(CoapMessagePtr& msg, int status);
+    int receiveSetDataResponse(CoapMessagePtr& msg, int result);
+    int receiveGetDataResponse(CoapMessagePtr& msg, int result);
+    int receiveSubscribeResponse(CoapMessagePtr& msg, int result);
+    int receiveGetInfoResponse(CoapMessagePtr& msg, int result);
 
     int sendSetDataRequest(LedgerSyncContext* ctx);
     int sendGetDataRequest(LedgerSyncContext* ctx);
