@@ -2,6 +2,8 @@
 
 #if HAL_PLATFORM_LEDGER
 
+#include <cstring>
+
 #include "application.h"
 #include "unit-test/unit-test.h"
 
@@ -39,8 +41,8 @@ int CountingCallback::instanceCount = 0;
 
 } // namespace
 
-test(01_purge_all) {
-    assertEqual(ledger_purge_all(nullptr), 0);
+test(01_remove_all) {
+    assertEqual(Ledger::removeAll(), 0);
 }
 
 test(02_initial_state) {
@@ -106,10 +108,10 @@ test(05_concurrent_writing) {
     });
 
     // Write some data to both streams
-    String s = "{\"a\":1,\"b\":2,\"c\":3}";
-    assertEqual(ledger_write(ls1, s.c_str(), s.length(), nullptr), s.length());
-    s = "{\"d\":4,\"e\":5,\"f\":6}";
-    assertEqual(ledger_write(ls2, s.c_str(), s.length(), nullptr), s.length());
+    char cbor1[] = { 0xa3, 0x61, 0x61, 0x01, 0x61, 0x62, 0x02, 0x61, 0x63, 0x03 }; // {"a":1,"b":2,"c":3}
+    assertEqual(ledger_write(ls1, cbor1, sizeof(cbor1), nullptr), sizeof(cbor1));
+    char cbor2[] = { 0xa3, 0x61, 0x64, 0x04, 0x61, 0x65, 0x05, 0x61, 0x66, 0x06 }; // {"d":4,"e":5,"f":6}
+    assertEqual(ledger_write(ls2, cbor2, sizeof(cbor2), nullptr), sizeof(cbor2));
 
     // Close the first stream and check that the data can be read back
     g1.dismiss();
@@ -150,20 +152,13 @@ test(06_concurrent_reading_and_writing) {
     assertEqual(ledger.set(d), 0);
 
     // Proceed to read the data
-    String s;
-    OutputStringStream ss(s);
-    char buf[128];
-    for (;;) {
-        int r = ledger_read(ls, buf, sizeof(buf), nullptr);
-        if (r == SYSTEM_ERROR_END_OF_STREAM) {
-            break;
-        }
-        assertMore(r, 0);
-        ss.write((uint8_t*)buf, r);
-    }
+    char expectedCbor[] = { 0xa3, 0x61, 0x61, 0x01, 0x61, 0x62, 0x02, 0x61, 0x63, 0x03 }; // {"a":1,"b":2,"c":3}
+    char cbor[128];
+    int n = ledger_read(ls, cbor, sizeof(cbor), nullptr);
 
     // The reader opened before the modification should see the original data
-    assertTrue(s == "{\"a\":1,\"b\":2,\"c\":3}");
+    assertEqual(n, (int)sizeof(expectedCbor));
+    assertEqual(std::memcmp(cbor, expectedCbor, sizeof(expectedCbor)), 0);
 
     // The reader opened after the modification should see the actual data
     d = ledger.get();
@@ -236,9 +231,9 @@ test(08_set_sync_callback) {
     assertEqual(CountingCallback::instanceCount, 0);
 }
 
-test(09_purge) {
+test(09_remove) {
     // Remove the test ledger files
-    assertEqual(ledger_purge(LEDGER_NAME, nullptr), 0);
+    assertEqual(Ledger::remove(LEDGER_NAME), 0);
 }
 
 #endif // HAL_PLATFORM_LEDGER
