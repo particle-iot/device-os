@@ -1,13 +1,11 @@
-#include "hal_platform.h"
-
-#if HAL_PLATFORM_LEDGER
-
 #include <cstring>
 
 #include "application.h"
 #include "unit-test/unit-test.h"
 
 #include "scope_guard.h"
+
+#if Wiring_Ledger
 
 namespace {
 
@@ -236,4 +234,4 @@ test(09_remove) {
     assertEqual(Ledger::remove(LEDGER_NAME), 0);
 }
 
-#endif // HAL_PLATFORM_LEDGER
+#endif // Wiring_Ledger
