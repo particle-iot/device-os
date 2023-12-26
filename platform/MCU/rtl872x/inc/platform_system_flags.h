@@ -36,6 +36,8 @@ typedef struct __attribute__((packed)) platform_system_flags {
     uint8_t FeaturesEnabled_SysFlag;        // default is 0xFF all features enabled. If any bits are cleared in the bottom 4-bits, then the upper 4 bits should be the logical inverse of these.
                                             // This is to prevent against corrupted data causing the bootloader to be unavailable.
     uint32_t RCC_CSR_SysFlag;
+    // bit 0: 1: restore backup ram from flash
+    // bit 1: 1: session data in flash is stale
     uint16_t restore_backup_ram;
     uint16_t reserved[3];
 } platform_system_flags_t;

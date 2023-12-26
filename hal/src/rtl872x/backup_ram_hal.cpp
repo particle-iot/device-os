@@ -29,6 +29,7 @@
 #include "timer_hal.h"
 #include "static_recursive_mutex.h"
 #include "scope_guard.h"
+#include "dtls_session_persist.h"
 
 // NOTE: we are using a dedicated flash page for this as timings for writing
 // into fs vs raw page are about 10x
@@ -39,6 +40,8 @@ extern uintptr_t platform_backup_ram_all_end;
 extern uintptr_t platform_backup_ram_persisted_flash_start;
 extern uintptr_t platform_backup_ram_persisted_flash_end;
 extern uintptr_t platform_backup_ram_persisted_flash_size;
+
+extern SessionPersistDataOpaque session;
 
 namespace {
 
@@ -102,12 +105,32 @@ int hal_backup_ram_init(void) {
         g_backupRamValidMarker = HAL_BACKUP_RAM_VALID_VALUE;
     });
     if ((g_backupRamValidMarker != HAL_BACKUP_RAM_VALID_VALUE) &&
-            ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) || SYSTEM_FLAG(restore_backup_ram) == 1 || dctFlags.restore_backup_ram == 1)) {
-        SYSTEM_FLAG(restore_backup_ram) = 0;
+            ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) ||
+             (SYSTEM_FLAG(restore_backup_ram) & SYSTEM_FLAG_RESTOR_BACKUP_RAM_MASK) ||
+             (dctFlags.restore_backup_ram & SYSTEM_FLAG_RESTOR_BACKUP_RAM_MASK))) {
+        SYSTEM_FLAG(restore_backup_ram) &= ~SYSTEM_FLAG_RESTOR_BACKUP_RAM_MASK;
         dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
         // Woke up from deep sleep
         CHECK(hal_flash_read((uintptr_t)&platform_backup_ram_persisted_flash_start, (uint8_t*)&platform_backup_ram_all_start,
                 (size_t)&platform_backup_ram_persisted_flash_size));
+
+        if ((BOOT_Reason() & BIT_BOOT_DSLP_RESET_HAPPEN) && !(SYSTEM_FLAG(restore_backup_ram) & SYSTEM_FLAG_SESSION_DATA_STALE_MASK)) {
+            // The session info restored out of flash is valid
+            // Invalidate the session info in flash, cos it's probably stale from now on
+            auto s = new SessionPersistDataOpaque();
+            if (s) {
+                std::swap(*s, session);
+                memset(&session, 0, sizeof(session));
+                hal_backup_ram_sync(nullptr);
+                std::swap(*s, session);
+                delete s;
+            }
+        } else {
+            // Other cases:
+            // 1. Pin reset / PoR / BoR
+            // 2. Waking up from hibernate mode, but the session info is stale
+            memset(&session, 0, sizeof(session));
+        }
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -116,14 +139,17 @@ int hal_backup_ram_sync(void* reserved) {
     BackupRamLock lk;
     if (memcmp((void*)&platform_backup_ram_all_start, backupRamShadow, sizeof(backupRamShadow))) {
         memcpy(backupRamShadow, (void*)&platform_backup_ram_all_start, sizeof(backupRamShadow));
-        if (SYSTEM_FLAG(restore_backup_ram) != 1) {
-            SYSTEM_FLAG(restore_backup_ram) = 1;
+        if (!(SYSTEM_FLAG(restore_backup_ram) & SYSTEM_FLAG_RESTOR_BACKUP_RAM_MASK)) {
+            SYSTEM_FLAG(restore_backup_ram) |= SYSTEM_FLAG_RESTOR_BACKUP_RAM_MASK;
             dct_write_app_data(&system_flags, DCT_SYSTEM_FLAGS_OFFSET, DCT_SYSTEM_FLAGS_SIZE);
         }
         CHECK(hal_flash_erase_sector((uintptr_t)&platform_backup_ram_persisted_flash_start,
                 CEIL_DIV((uintptr_t)&platform_backup_ram_persisted_flash_size, INTERNAL_FLASH_PAGE_SIZE)));
         CHECK(hal_flash_write((uintptr_t)&platform_backup_ram_persisted_flash_start,
                 backupRamShadow, sizeof(backupRamShadow)));
+
+        // We don't care about this bit in DCT
+        SYSTEM_FLAG(restore_backup_ram) &= ~SYSTEM_FLAG_SESSION_DATA_STALE_MASK;
     }
     return SYSTEM_ERROR_NONE;
 }
