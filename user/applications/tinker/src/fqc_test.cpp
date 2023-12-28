@@ -51,10 +51,11 @@ namespace {
 }
 
 FqcTest::FqcTest() :
-        writer((char *)json_response_buffer, sizeof(json_response_buffer)),
-        tcpClient(),
-        inited_(true) { // TODO: Other member vars
-    memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
+        writer_((char *)json_response_buffer_, sizeof(json_response_buffer_)),
+        tcpClient_(),
+        inited_(true),
+        gnssEnableSearch_(false) {
+    memset(json_response_buffer_, 0x00, sizeof(json_response_buffer_));
 }
 
 FqcTest::~FqcTest() {
@@ -66,16 +67,16 @@ FqcTest* FqcTest::instance() {
 }
 
 char * FqcTest::reply() {
-    return writer.buffer();
+    return writer_.buffer();
 }
 
 size_t FqcTest::replySize() {
-    return writer.dataSize();
+    return writer_.dataSize();
 }
 
 void FqcTest::initWriter(){
-    memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
-    writer = JSONBufferWriter((char *)json_response_buffer, sizeof(json_response_buffer));
+    memset(json_response_buffer_, 0x00, sizeof(json_response_buffer_));
+    writer_ = JSONBufferWriter((char *)json_response_buffer_, sizeof(json_response_buffer_));
 }
 
 bool FqcTest::process(JSONValue test){
@@ -104,22 +105,22 @@ bool FqcTest::process(JSONValue test){
 }
 
 bool FqcTest::passResponse(bool success, String message, int errorCode) {
-    writer.beginObject();
-    writer.name("pass").value(success);
+    writer_.beginObject();
+    writer_.name("pass").value(success);
     if (message.length()) {
-        writer.name("message").value(message);
+        writer_.name("message").value(message);
     }
     if (errorCode) {
-        writer.name("errorCode").value(errorCode);
+        writer_.name("errorCode").value(errorCode);
     }
-    writer.endObject();
+    writer_.endObject();
     return true;
 }
 
 bool FqcTest::tcpErrorResponse(int tcpError) {
-    writer.beginObject();
-    writer.name("pass").value(false);
-    writer.name("errorCode").value(tcpError);
+    writer_.beginObject();
+    writer_.name("pass").value(false);
+    writer_.name("errorCode").value(tcpError);
     String errorMessage;
     if(tcpError == SYSTEM_ERROR_NETWORK){
         errorMessage = "Wifi not ready";
@@ -137,8 +138,8 @@ bool FqcTest::tcpErrorResponse(int tcpError) {
         errorMessage = "Netcat command parameters malformed";
     }
 
-    writer.name("message").value(errorMessage);
-    writer.endObject();
+    writer_.name("message").value(errorMessage);
+    writer_.endObject();
     return true;
 }
 
@@ -157,8 +158,8 @@ void FqcTest::parseIpAndPort(JSONValue parameters) {
     }
 
     // Store FQC station port/ip
-    this->tcpPort = port;
-    memcpy(this->tcpServer, server, sizeof(server));
+    this->tcpPort_ = port;
+    memcpy(this->tcpServer_, server, sizeof(server));
 }
 
 int FqcTest::sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_data_buffer_length, int response_poll_ms) {
@@ -169,9 +170,9 @@ int FqcTest::sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_
         return SYSTEM_ERROR_NETWORK;
     }
     
-    if (!tcpClient.connected()) {
-        if (tcpClient.connect(this->tcpServer, this->tcpPort)) {
-            Log.info("TCP client connected to %s", tcpClient.remoteIP().toString().c_str());
+    if (!tcpClient_.connected()) {
+        if (tcpClient_.connect(this->tcpServer_, this->tcpPort_)) {
+            Log.info("TCP client connected to %s", tcpClient_.remoteIP().toString().c_str());
         }
         else {
             Log.error("TCP client connection failed");
@@ -179,18 +180,18 @@ int FqcTest::sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_
         }
     }
 
-    if (tcpClient.connected()) {
+    if (tcpClient_.connected()) {
         Log.info("Sending message: %s len %d", tx_data, strlen(tx_data));
-        tcpClient.write((uint8_t *)tx_data, strlen(tx_data));
+        tcpClient_.write((uint8_t *)tx_data, strlen(tx_data));
 
         // Poll for response
         int delay_period_ms = 500;
-        for(int i = 0; i < (response_poll_ms / delay_period_ms) && !tcpClient.available(); i++){
+        for(int i = 0; i < (response_poll_ms / delay_period_ms) && !tcpClient_.available(); i++){
             delay(delay_period_ms);
         }
         
-        while(tcpClient.available() && (bytesRead < rx_data_buffer_length)) {
-           rx_data_buffer[bytesRead++] = tcpClient.read();
+        while(tcpClient_.available() && (bytesRead < rx_data_buffer_length)) {
+           rx_data_buffer[bytesRead++] = tcpClient_.read();
         }
 
         if(bytesRead) {
@@ -203,7 +204,7 @@ int FqcTest::sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_
             return SYSTEM_ERROR_TIMEOUT;
         }
 
-        tcpClient.stop();
+        tcpClient_.stop();
     }
 
     return bytesRead;
@@ -356,10 +357,10 @@ bool FqcTest::ioTest(JSONValue req) {
 
     if (result != SYSTEM_ERROR_NONE) {
         Log.error("Could not read logical efuse");
-        writer.beginObject();
-        writer.name("pass").value(false);
-        writer.name("message").value("could not read logical efuse");
-        writer.endObject();
+        writer_.beginObject();
+        writer_.name("pass").value(false);
+        writer_.name("message").value("could not read logical efuse");
+        writer_.endObject();
         return true;
     } else {
         Log.info("Hardware Model: 0x%X Variant: %lu", (unsigned int)model, variant);    
@@ -410,13 +411,13 @@ bool FqcTest::ioTest(JSONValue req) {
         passResponse(true);
     }
     else {
-        writer.beginObject();
-        writer.name("pass").value(false);
-        writer.name("pinA").value(pinNumberToPinName(pinA));
-        writer.name("pinB").value(pinNumberToPinName(pinB));
-        writer.name("errorPin").value(pinNumberToPinName(errorPin));
-        writer.name("message").value(failedTest);
-        writer.endObject();
+        writer_.beginObject();
+        writer_.name("pass").value(false);
+        writer_.name("pinA").value(pinNumberToPinName(pinA));
+        writer_.name("pinB").value(pinNumberToPinName(pinB));
+        writer_.name("errorPin").value(pinNumberToPinName(errorPin));
+        writer_.name("message").value(failedTest);
+        writer_.endObject();
     }
 
     return true;
@@ -494,24 +495,24 @@ bool FqcTest::wifiScanNetworks(JSONValue req) {
     }
 
     // Serialize to JSON and return this list over USB, like the regular WIFI scan does
-    writer.beginObject();
-    writer.name("pass").value(true);
-    writer.name("networks").beginArray();
+    writer_.beginObject();
+    writer_.name("pass").value(true);
+    writer_.name("networks").beginArray();
     for(WiFiAccessPoint& network: networks){
-        writer.beginObject();
-        writer.name("ssid").value(String(network.ssid, network.ssidLength));
+        writer_.beginObject();
+        writer_.name("ssid").value(String(network.ssid, network.ssidLength));
 
         char bssidStr[32] = {};
         sprintf(bssidStr, "%02X:%02X:%02X:%02X:%02X:%02X", network.bssid[0], network.bssid[1], network.bssid[2], network.bssid[3], network.bssid[4], network.bssid[5]);
-        writer.name("bssid").value(String(bssidStr));
+        writer_.name("bssid").value(String(bssidStr));
 
-        writer.name("security").value((int)network.security);
-        writer.name("channel").value(network.channel);
-        writer.name("rssi").value(network.rssi);
-        writer.endObject();
+        writer_.name("security").value((int)network.security);
+        writer_.name("channel").value(network.channel);
+        writer_.name("rssi").value(network.rssi);
+        writer_.endObject();
     }
-    writer.endArray();
-    writer.endObject();
+    writer_.endArray();
+    writer_.endObject();
     return true;
 }
 
@@ -594,6 +595,7 @@ void FqcTest::gnssLoop(void* arg) {
             auto timeout = millis() + self->gnssPollTimeoutMs_;
 
             if (isBG95) {
+                Cellular.command("AT+QGPS=1");
                 Cellular.command("AT+QGPSCFG=\"priority\",0");
             }
             

@@ -24,21 +24,20 @@ public:
     uint32_t gnssSatelliteCount_ = 0;
 
 private:
+    static const uint32_t GNSS_POLL_TIMEOUT_DEFAULT_MS = 30000;
+
     void initWriter();
 
-    uint8_t tcpServer[4];
-    int tcpPort;
-    JSONBufferWriter writer; 
-    char json_response_buffer[2048];
-    TCPClient tcpClient;
+    uint8_t tcpServer_[4];
+    int tcpPort_;
+    JSONBufferWriter writer_; 
+    char json_response_buffer_[2048];
+    TCPClient tcpClient_;
     bool inited_;
 
     Thread* gnssThread_;
-    static const uint32_t GNSS_POLL_TIMEOUT_DEFAULT_MS = 30000;
     uint32_t gnssPollTimeoutMs_;
     std::atomic_bool gnssEnableSearch_;
-
-    // TODO: Vector for each type of sattelite?
     
     bool passResponse(bool success, String message = String(), int errorCode = 0);
     bool tcpErrorResponse(int tcpError);
