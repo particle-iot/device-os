@@ -557,7 +557,18 @@ static int callbackGPSGGA(int type, const char* buf, int len, bool* gnssLocked) 
     return 1;
 }
 
-bool BurninTest::testGnss() {
+static int callbackQGPS(int type, const char* buf, int len, bool* cmdSuccess) {
+    //Log.trace("%d : %s", strlen(buf), buf);
+
+    // If string is `OK` or `+CME ERROR: 504` (ie GNSS already started) then GPS engine is enabled
+    if (!strcmp(buf, "\r\n+CME ERROR: 504\r\n") || !strcmp(buf, "\r\nOK\r\n")) {
+        *cmdSuccess = true;
+    }
+    return 0;
+}
+
+
+bool BurninTest::initGnss() {
     // Turn on GNSS + Modem
     pinMode(GNSS_ANT_PWR, OUTPUT);
     digitalWrite(GNSS_ANT_PWR, HIGH);
@@ -568,25 +579,40 @@ bool BurninTest::testGnss() {
 
     // Enable GNSS. It can take some time after the modem AT interface comes up for the GNSS engine to start
     const int RETRIES = 10;
-    int r = 0;
-    for (int i = 0; i < RETRIES && r != RESP_OK; i++) {
-        r = Cellular.command("AT+QGPS=1\r\n");
+    
+    bool success = false; 
+    for (int i = 0; i < RETRIES && !success; i++) {
+        Cellular.command(callbackQGPS, &success, 5000, "AT+QGPS=1");
         delay(1000);
     }
 
-    if (r != RESP_OK) {
-        strcpy(BurninErrorMessage, "AT+QGPS=1 failed, GNSS not enabled");
+    if (!success) {
+        Log.error("AT+QGPS=1 failed, GNSS not enabled");
         return false;
     }
 
-    // Configure antenna for GNSS priority
-    for (int i = 0; i < RETRIES && r != RESP_OK; i++) {
-        r = Cellular.command("AT+QGPSCFG=\"priority\",0");
-        delay(1000);
+    hal_device_hw_info deviceInfo = {};
+    hal_get_device_hw_info(&deviceInfo, nullptr);
+    if (deviceInfo.ncp[0] == PLATFORM_NCP_QUECTEL_BG95_M5) {
+        int r = 0;
+        // Configure antenna for GNSS priority
+        for (int i = 0; i < RETRIES && r != RESP_OK; i++) {
+            r = Cellular.command("AT+QGPSCFG=\"priority\",0");
+            delay(1000);
+        }
+
+        if (r != RESP_OK) {
+            Log.error("AT+QGPSCFG=\"priority\",0 failed, GNSS not prioritized");
+            return false;
+        }
     }
 
-    if (r != RESP_OK) {
-        strcpy(BurninErrorMessage, "AT+QGPSCFG=\"priority\",0 failed, GNSS not prioritized");
+    return true;
+}
+
+bool BurninTest::testGnss() {
+    if (!initGnss()) {
+        strcpy(BurninErrorMessage, "Failed to initialize GNSS");
         return false;
     }
 
