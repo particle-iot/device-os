@@ -565,10 +565,10 @@ static int callbackGPSGSV(int type, const char* buf, int len, FqcTest* self) {
         switch (i) {
             case 5: // TotalNumSat 
             {   
-                int numberSattelites = atoi(token);
-                //Log.info("numberSattelites %d", numberSattelites);
-                if (numberSattelites > 0) {
-                    self->gnssSatelliteCount_ = numberSattelites;    
+                int numberSatellites = atoi(token);
+                //Log.info("numberSatellites %d", numberSatellites);
+                if (numberSatellites > 0) {
+                    self->gnssSatelliteCount_ = numberSatellites;    
                 }
                 break;
             }

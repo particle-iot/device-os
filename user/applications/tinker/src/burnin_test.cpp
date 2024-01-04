@@ -519,7 +519,7 @@ static int callbackGPSGGA(int type, const char* buf, int len, bool* gnssLocked) 
     strlcpy(gpggaSentence, buf, MAX_GPGGA_STR_LEN);
 
     String lattitudeLongitude("LAT/LONG:");
-    int numberSattelites = 0;
+    int numberSatellites = 0;
     
     const char * delimiters = ",";
     char * token = strtok(gpggaSentence, delimiters);
@@ -543,10 +543,10 @@ static int callbackGPSGGA(int type, const char* buf, int len, bool* gnssLocked) 
                 lattitudeLongitude.concat(token);
                 break;
             case 8: // Number satellites
-                numberSattelites = (int)String(token).toInt();
-                if (numberSattelites > 0) {
+                numberSatellites = (int)String(token).toInt();
+                if (numberSatellites > 0) {
                     *gnssLocked = true;    
-                    Log.info("%s Satellites: %d", lattitudeLongitude.c_str(), numberSattelites);
+                    Log.info("%s Satellites: %d", lattitudeLongitude.c_str(), numberSatellites);
                 }
                 break;
             default:
