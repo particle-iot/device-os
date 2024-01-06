@@ -22,6 +22,7 @@ public:
     size_t replySize();
 
     uint32_t gnssSatelliteCount_ = 0;
+    String gnssGpsvStrings_;
 
 private:
     static const uint32_t GNSS_POLL_TIMEOUT_DEFAULT_MS = 30000;
