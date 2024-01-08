@@ -55,7 +55,7 @@ FqcTest::FqcTest() :
         tcpClient_(),
         inited_(true),
         gnssEnableSearch_(false) {
-    gnssGpsvStrings_ = String();
+    gnssNmeaOutput_ = String();
     memset(json_response_buffer_, 0x00, sizeof(json_response_buffer_));
 }
 
@@ -519,31 +519,12 @@ bool FqcTest::wifiScanNetworks(JSONValue req) {
 
 #if PLATFORM_ID == PLATFORM_MSOM
 static int callbackGPSGSV(int type, const char* buf, int len, FqcTest* self) {
-    // EXAMPLE:
-    // $<TalkerID>GSV,<TotalNumSen>,<SenNum>,<TotalNumSat>
-    //  {,<SatID>,<SatElev>,<SatAz>,<SatCN0>},
-    // <SignalID>*<Checksum><CR><LF>
-
-    // Single sat:
-    // > AT+QGPSGNMEA="GSV"
-    // < +QGPSGNMEA: $GPGSV,1,1,01,30,,,32,1*67
-    // < OK
-    
-    // Multiples:
-    // > AT+QGPSGNMEA="GSV"
-    // < +QGPSGNMEA: $GPGSV,3,1,11,30,46,293,32,04,23,134,00,05,11,319,00,07,68,346,00,1*6B
-    // < +QGPSGNMEA: $GPGSV,3,2,11,08,37,096,00,09,61,141,00,14,33,221,00,16,01,042,00,1*68
-    // < +QGPSGNMEA: $GPGSV,3,3,11,20,23,285,00,22,13,218,00,27,21,053,00,1*51
-    // < +QGPSGNMEA: $GLGSV,3,1,09,78,59,010,00,86,,,00,77,08,046,00,80,01,239,00,1*44
-    // < +QGPSGNMEA: $GLGSV,3,2,09,79,48,263,00,69,44,322,00,88,02,103,00,87,08,055,00,1*7E
-    // < +QGPSGNMEA: $GLGSV,3,3,09,67,24,162,00,1*43
+    // > AT+QGPSGNMEA="GGA"
+    // < +QGPSGNMEA: $GPGGA,233906.00,3804.385678,N,12209.936243,W,1,05,1.4,149.0,M,-25.0,M,,*5C
     // < OK
 
-    // GL = Glonass
-    // GP = GPS
-    // PQ = BeiDou
-    // GA = Galileo
-    
+    // $<TalkerID>GGA,<UTC>,<Lat>,<N/S>,<Lon>,<E/W>,<Quality>,<NumSatUsed>,<HDOP>,<Alt>,M,<Sep>,M,<DiffAge>,<DiffStation>*<Checksum><CR><LF>
+
     //Log.trace("%d : %s", strlen(buf), buf);
 
     // If this is the trailing OK response, exit from the parser
@@ -552,13 +533,13 @@ static int callbackGPSGSV(int type, const char* buf, int len, FqcTest* self) {
     }
 
     // Store the raw NMEA string
-    self->gnssGpsvStrings_.concat(buf);
+    self->gnssNmeaOutput_.concat(buf);
     
-    int numberSatellites = 0;
-    int ret = sscanf(buf,"\r\n+QGPSGNMEA: $%*5c,%*d,%*d,%d,", &numberSatellites);
-    Log.trace("ret = %d, numberSatellites: %d", ret, numberSatellites);
-    if (numberSatellites > 0) {
-        self->gnssSatelliteCount_ = numberSatellites;
+    int fixQuality = 0;
+    int ret = sscanf(buf,"\r\n+QGPSGNMEA: $%*5c,%*d.%*d,%*d.%*d,%*c,%*d.%*d,%*c,%d,", &fixQuality);
+    Log.trace("ret = %d, fixQuality: %d", ret, fixQuality);
+    if (fixQuality > 0) {
+        self->gnssFixQuality_ = fixQuality;
     }
 
     // Ask for more GSV lines from the AT parser
@@ -572,28 +553,25 @@ void FqcTest::gnssLoop(void* arg) {
     hal_get_device_hw_info(&deviceInfo, nullptr);
     bool isBG95 = deviceInfo.ncp[0] == PLATFORM_NCP_QUECTEL_BG95_M5;
     const uint32_t POLL_MS = 1000;
-    const uint32_t EXTRA_POLL_MS = 3000;
 
     while(true)
     {
         if(self->gnssEnableSearch_) {
-            auto timeout = millis() + self->gnssPollTimeoutMs_;
-            bool extendSearch = true;
+            auto startMillis = millis();
+            auto timeout = startMillis + self->gnssPollTimeoutMs_;
 
             if (isBG95) {
                 Cellular.command("AT+QGPS=1");
                 Cellular.command("AT+QGPSCFG=\"priority\",0");
             }
             
-            while (millis() < timeout) {
-                self->gnssGpsvStrings_ = String();
-                Cellular.command(callbackGPSGSV, self, 1000, "AT+QGPSGNMEA=\"GSV\"");
+            while (millis() < timeout && !self->gnssFixQuality_ ) {
+                self->gnssNmeaOutput_ = String();
+                Cellular.command(callbackGPSGSV, self, 1000, "AT+QGPSGNMEA=\"GGA\"");
                 delay(POLL_MS);
 
-                // Run a bit longer after finding a satellite to see if we detect more
-                if (self->gnssSatelliteCount_ && extendSearch) {
-                    timeout = millis() + EXTRA_POLL_MS;
-                    extendSearch = false;
+                if (self->gnssFixQuality_) {
+                    self->gnssTimeToFix_ = millis() - startMillis;
                 }
             }
             self->gnssEnableSearch_ = false;
@@ -623,7 +601,7 @@ bool FqcTest::gnssTest(JSONValue req) {
 
         if (command == String("start")) {
             if (!gnssThread_) {
-                gnssSatelliteCount_ = 0;
+                gnssFixQuality_ = 0;
                 gnssEnableSearch_ = true;
 
                 BurninTest::instance()->initGnss();
@@ -636,13 +614,13 @@ bool FqcTest::gnssTest(JSONValue req) {
                 Log.warn(warning);
                 passResponse(false, warning);
             } else {
-                gnssSatelliteCount_ = 0;
+                gnssFixQuality_ = 0;
                 gnssEnableSearch_ = true;
                 passResponse(true);
             }
         } else if (command == String("status")) {
 
-            Log.info("gnssSatelliteCount_ %lu", gnssSatelliteCount_);
+            Log.info("gnssFixQuality_ %lu", gnssFixQuality_);
             
             if (!gnssThread_) {
                 Log.warn("Test not started");
@@ -651,12 +629,12 @@ bool FqcTest::gnssTest(JSONValue req) {
             else if (gnssEnableSearch_) {
                 Log.info("Pending");
                 passResponse(false, "Test in progress", SYSTEM_ERROR_BUSY);
-            } else if(gnssSatelliteCount_ == 0) {
+            } else if(gnssFixQuality_ == 0) {
                 Log.info("Timed out");
-                passResponse(false, "No satellite signal detected before timeout", SYSTEM_ERROR_TIMEOUT);
+                passResponse(false, "No fix detected before timeout", SYSTEM_ERROR_TIMEOUT);
             } else {
-                Log.info("Success");
-                passResponse(true, gnssGpsvStrings_);
+                Log.info("Success, time to fix: %lu", gnssTimeToFix_);
+                passResponse(true, gnssNmeaOutput_);
             }
         } else {
             passResponse(false, String("Unrecognized Command: ") + command);

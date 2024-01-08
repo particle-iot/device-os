@@ -21,8 +21,8 @@ public:
     char * reply();
     size_t replySize();
 
-    uint32_t gnssSatelliteCount_ = 0;
-    String gnssGpsvStrings_;
+    uint32_t gnssFixQuality_ = 0;
+    String gnssNmeaOutput_;
 
 private:
     static const uint32_t GNSS_POLL_TIMEOUT_DEFAULT_MS = 30000;
@@ -39,6 +39,7 @@ private:
     Thread* gnssThread_;
     uint32_t gnssPollTimeoutMs_;
     std::atomic_bool gnssEnableSearch_;
+    uint32_t gnssTimeToFix_;
     
     bool passResponse(bool success, String message = String(), int errorCode = 0);
     bool tcpErrorResponse(int tcpError);
