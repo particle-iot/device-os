@@ -2,13 +2,11 @@ suite('Ledger')
 
 platform('gen3');
 
-systemThread('enabled'); // FIXME
-
 const Particle = require('particle-api-js');
 
 const DEVICE_TO_CLOUD_LEDGER = 'test-device-to-cloud';
 const CLOUD_TO_DEVICE_LEDGER = 'test-cloud-to-device';
-let ORG_ID = 'particle';
+const ORG_ID = 'particle'; // Leave this constant undefined to use the sandbox account
 
 let api;
 let auth;
@@ -37,7 +35,7 @@ test('02_sync_device_to_cloud', async function() {
 });
 
 test('03_update_cloud_to_device', async function() {
-  await api.setLedgerInstance({ ledgerName: CLOUD_TO_DEVICE_LEDGER, data: { d: 4, e: 5, f: 6 }, scopeValue: deviceId, org: ORG_ID, auth });
+  await api.setLedgerInstance({ ledgerName: CLOUD_TO_DEVICE_LEDGER, instance: { data: { d: 4, e: 5, f: 6 } }, scopeValue: deviceId, org: ORG_ID, auth });
 });
 
 test('04_validate_cloud_to_device_sync', async function() {
