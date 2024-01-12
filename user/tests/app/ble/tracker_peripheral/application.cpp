@@ -221,14 +221,18 @@ void loop() {
             encodedBuff[len++] = (uint8_t) ((longtitude & 0x00FF0000) >> 16);
             encodedBuff[len++] = (uint8_t) ((longtitude & 0xFF000000) >> 24);
             // UTC time field
+            calendar.tm_year += 1900;
             encodedBuff[len++] = (uint8_t) ((calendar.tm_year & 0x00FF) >> 0);
             encodedBuff[len++] = (uint8_t) ((calendar.tm_year & 0xFF00) >> 8);
 
+            calendar.tm_mon += 1;
             encodedBuff[len++] = calendar.tm_mon;
             encodedBuff[len++] = calendar.tm_mday;
             encodedBuff[len++] = calendar.tm_hour;
             encodedBuff[len++] = calendar.tm_min;
             encodedBuff[len++] = calendar.tm_sec;
+
+            Log.info("%d-%d-%d %d:%d:%d", calendar.tm_year, calendar.tm_mon, calendar.tm_mday, calendar.tm_hour, calendar.tm_min, calendar.tm_sec);
 
             locAndSpeedChar.setValue(encodedBuff, len);
         }
