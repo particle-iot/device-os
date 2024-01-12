@@ -98,6 +98,9 @@ void ActiveObjectBase::run_active_object(void* data)
 
 void ISRTaskQueue::enqueue(Task* task) {
     ATOMIC_BLOCK() {
+        if (task->next || task->prev || lastTask_ == task) {
+            return; // Task object is already in the queue
+        }
         // Add task object to the queue
         if (lastTask_) {
             lastTask_->next = task;
@@ -105,12 +108,32 @@ void ISRTaskQueue::enqueue(Task* task) {
             firstTask_ = task;
         }
         task->next = nullptr;
+        task->prev = lastTask_;
         lastTask_ = task;
     }
 // FIXME: some other feature flag?
 #if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
     SystemThread.notify();
 #endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+}
+
+void ISRTaskQueue::remove(Task* task) {
+    ATOMIC_BLOCK() {
+        auto next = task->next;
+        auto prev = task->prev;
+        if (next) {
+            next->prev = prev;
+            task->next = nullptr;
+        } else if (lastTask_ == task) {
+            lastTask_ = prev;
+        }
+        if (prev) {
+            prev->next = next;
+            task->prev = nullptr;
+        } else if (firstTask_ == task) {
+            firstTask_ = next;
+        }
+    }
 }
 
 bool ISRTaskQueue::process() {
@@ -122,7 +145,10 @@ bool ISRTaskQueue::process() {
         // Take task object from the queue
         task = firstTask_;
         firstTask_ = task->next;
-        if (!firstTask_) {
+        if (firstTask_) {
+            firstTask_->prev = nullptr;
+            task->next = nullptr;
+        } else {
             lastTask_ = nullptr;
         }
     }
