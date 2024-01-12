@@ -14,6 +14,7 @@ public:
 
     void setup(bool forceEnable = false);
     void loop();
+    bool initGnss();
 
     enum class BurninTestState : uint32_t {
         NONE,
