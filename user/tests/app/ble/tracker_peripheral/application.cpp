@@ -85,6 +85,8 @@ void onLnCtrlPointReceived(const uint8_t* data, size_t len, const BlePeerDevice&
 void setup() {
     LOG(TRACE, "Application started.");
 
+    BLE.selectAntenna(BleAntennaType::INTERNAL);
+
     BLE.addCharacteristic(mfgNameStrChar);
     BLE.addCharacteristic(modelNumStrChar);
     BLE.addCharacteristic(serialNumStrChar);
