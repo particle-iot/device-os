@@ -26,14 +26,14 @@ namespace particle::system {
 /**
  * A one-shot timer executed in the system thread.
  */
-class OneShotTimer: private ISRTaskQueue::Task {
+class SystemTimer: private ISRTaskQueue::Task {
 public:
     typedef void (*Callback)(void* arg);
 
     /**
-     * Construct a timer instance.
+     * Construct a timer.
      */
-    OneShotTimer() :
+    SystemTimer() :
             Task(),
             timer_(),
             callback_(nullptr),
@@ -41,14 +41,14 @@ public:
     }
 
     /**
-     * Destruct the timer instance.
-     *
-     * Stops the timer.
+     * Destruct the timer.
      */
-    ~OneShotTimer();
+    ~SystemTimer();
 
     /**
      * Start the timer.
+     *
+     * This method can only be called in the system thread.
      *
      * @param timeout Timeout in milliseconds.
      * @param callback Callback to invoke.
@@ -58,6 +58,8 @@ public:
 
     /**
      * Stop the timer.
+     *
+     * This method can only be called in the system thread.
      */
     void stop();
 

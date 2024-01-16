@@ -233,6 +233,7 @@ LedgerManager::LedgerManager() :
 }
 
 LedgerManager::~LedgerManager() {
+    reset();
     if (state_ != State::NEW) {
         coap_remove_request_handler(REQUEST_URI, REQUEST_METHOD, nullptr);
         coap_remove_connection_handler(connectionCallback, nullptr);
@@ -465,25 +466,17 @@ int LedgerManager::removeAllData() {
     return 0;
 }
 
-void LedgerManager::run() {
-    std::lock_guard lock(mutex_);
+int LedgerManager::run() {
+    auto now = hal_timer_millis(nullptr);
     if (state_ == State::FAILED) {
-        // TODO: Use an RTOS timer
-        auto now = hal_timer_millis(nullptr);
         if (now >= retryTime_) {
             LOG(INFO, "Retrying synchronization");
             startSync();
+        } else {
+            runNext(retryTime_ - now);
         }
-        return;
+        return 0;
     }
-    int r = processTasks();
-    if (r < 0) {
-        LOG(ERROR, "Failed to process ledger task: %d", r);
-        handleError(r);
-    }
-}
-
-int LedgerManager::processTasks() {
     if (state_ != State::READY || !pendingState_) {
         // Some task is in progress, the manager is in a bad state, or there's nothing to do
         return 0;
@@ -498,9 +491,8 @@ int LedgerManager::processTasks() {
         CHECK(sendSubscribeRequest());
         return 0;
     }
+    unsigned syncDelay = 0;
     if (pendingState_ & PendingState::SYNC_TO_CLOUD) {
-        // TODO: Use an RTOS timer
-        auto now = hal_timer_millis(nullptr);
         if (now >= nextSyncTime_) {
             uint64_t t = 0;
             LedgerSyncContext* ctx = nullptr;
@@ -516,12 +508,13 @@ int LedgerManager::processTasks() {
                 }
             }
             if (ctx) {
-                LOG(TRACE, "Synchronizing ledger: %s", ctx->name);
+                LOG(TRACE, "Synchronizing device-to-cloud ledger: %s", ctx->name);
                 CHECK(sendSetDataRequest(ctx));
                 return 0;
             }
             nextSyncTime_ = t;
         }
+        syncDelay = nextSyncTime_ - now;
     }
     if (pendingState_ & PendingState::SYNC_FROM_CLOUD) {
         LedgerSyncContext* ctx = nullptr;
@@ -532,10 +525,13 @@ int LedgerManager::processTasks() {
             }
         }
         if (ctx) {
-            LOG(TRACE, "Synchronizing ledger: %s", ctx->name);
+            LOG(TRACE, "Synchronizing cloud-to-device ledger: %s", ctx->name);
             CHECK(sendGetDataRequest(ctx));
             return 0;
         }
+    }
+    if (syncDelay > 0) {
+        runNext(syncDelay);
     }
     return 0;
 }
@@ -1340,7 +1336,7 @@ void LedgerManager::updateSyncTime(LedgerSyncContext* ctx) {
         ctx->forcedSyncTime = now + MAX_SYNC_DELAY;
     }
     ctx->syncTime = std::min(now + MIN_SYNC_DELAY, ctx->forcedSyncTime);
-    if (!nextSyncTime_) {
+    if (!nextSyncTime_ || ctx->syncTime < nextSyncTime_) {
         nextSyncTime_ = ctx->syncTime;
     }
 }
@@ -1372,6 +1368,7 @@ void LedgerManager::startSync() {
 }
 
 void LedgerManager::reset() {
+    timer_.stop();
     if (reqId_ != COAP_INVALID_REQUEST_ID) {
         coap_cancel_request(reqId_, nullptr);
         reqId_ = COAP_INVALID_REQUEST_ID;
@@ -1397,10 +1394,12 @@ void LedgerManager::reset() {
     nextSyncTime_ = 0;
     bytesInBuf_ = 0;
     curCtx_ = nullptr;
+    // retryDelay_ is reset when disconnecting from the cloud
 }
 
 void LedgerManager::handleError(int error) {
-    if (error < 0 && state_ >= State::READY) {
+    assert(error < 0);
+    if (state_ >= State::READY) {
         retryDelay_ = std::clamp(retryDelay_ * 2, MIN_RETRY_DELAY, MAX_RETRY_DELAY);
         LOG(ERROR, "Synchronization failed: %d; retrying in %us", error, retryDelay_ / 1000);
         reset();
@@ -1429,6 +1428,7 @@ void LedgerManager::notifyLedgerChanged(LedgerSyncContext* ctx) {
         if (ctx->syncDir != LEDGER_SYNC_DIRECTION_UNKNOWN && state_ >= State::READY) {
             setPendingState(ctx, PendingState::SYNC_TO_CLOUD);
             updateSyncTime(ctx);
+            runNext();
         }
     }
 }
@@ -1467,6 +1467,9 @@ int LedgerManager::connectionCallback(int error, int status, void* arg) {
         LOG(ERROR, "Failed to handle connection status change: %d", error);
         self->handleError(r);
     }
+    // Make sure to run any asynchronous tasks that might be pending whenever the manager is
+    // notified about some event
+    self->runNext();
     return 0;
 }
 
@@ -1489,6 +1492,7 @@ int LedgerManager::requestCallback(coap_message* apiMsg, const char* uri, int me
     if (result < 0) {
         self->handleError(result);
     }
+    self->runNext();
     return 0;
 }
 
@@ -1501,6 +1505,7 @@ int LedgerManager::responseCallback(coap_message* apiMsg, int status, int reqId,
         LOG(ERROR, "Error while handling response: %d", r);
         self->handleError(r);
     }
+    self->runNext();
     return 0;
 }
 
@@ -1520,7 +1525,8 @@ int LedgerManager::messageBlockCallback(coap_message* msg, int reqId, void* arg)
     if (r < 0) {
         self->handleError(r);
     }
-    return r;
+    self->runNext();
+    return 0;
 }
 
 void LedgerManager::requestErrorCallback(int error, int /* reqId */, void* arg) {
@@ -1528,6 +1534,17 @@ void LedgerManager::requestErrorCallback(int error, int /* reqId */, void* arg) 
     std::lock_guard lock(self->mutex_);
     LOG(ERROR, "Request failed: %d", error);
     self->handleError(error);
+    self->runNext();
+}
+
+void LedgerManager::timerCallback(void* arg) {
+    auto self = static_cast<LedgerManager*>(arg);
+    std::lock_guard lock(self->mutex_);
+    int r = self->run();
+    if (r < 0) {
+        LOG(ERROR, "Failed to process ledger task: %d", r);
+        self->handleError(r);
+    }
 }
 
 LedgerManager* LedgerManager::instance() {

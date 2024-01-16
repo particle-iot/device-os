@@ -24,6 +24,8 @@
 #include <memory>
 #include <cstdint>
 
+#include "util/system_timer.h"
+
 #include "coap_api.h"
 #include "coap_util.h"
 
@@ -58,8 +60,6 @@ public:
 
     int removeLedgerData(const char* name);
     int removeAllData();
-
-    void run();
 
     LedgerManager& operator=(const LedgerManager&) = delete;
 
@@ -97,8 +97,9 @@ private:
     LedgerSyncContexts contexts_; // Preallocated context objects for all known ledgers
     std::unique_ptr<LedgerStream> stream_; // Input or output stream open for the ledger being synchronized
     std::unique_ptr<char[]> buf_; // Intermediate buffer used for piping ledger data
-    LedgerSyncContext* curCtx_; // Context of the ledger being synchronized
+    SystemTimer timer_; // Timer used for running asynchronous tasks
     CoapMessagePtr msg_; // CoAP request or response that is being sent or received
+    LedgerSyncContext* curCtx_; // Context of the ledger being synchronized
     uint64_t nextSyncTime_; // Time when the next device-to-cloud ledger needs to be synchronized (ticks)
     uint64_t retryTime_; // Time when synchronization can be retried (ticks)
     unsigned retryDelay_; // Delay before retrying synchronization
@@ -114,7 +115,7 @@ private:
 
     int init();
 
-    int processTasks();
+    int run();
 
     int notifyConnected();
     void notifyDisconnected(int error);
@@ -148,6 +149,10 @@ private:
 
     void handleError(int error);
 
+    void runNext(unsigned delay = 0) {
+        timer_.start(delay, timerCallback, this);
+    }
+
     LedgerSyncContexts::ConstIterator findContext(const char* name, bool& found) const {
         return findContext(contexts_, name, found);
     }
@@ -159,6 +164,7 @@ private:
     static int responseCallback(coap_message* msg, int status, int reqId, void* arg);
     static int messageBlockCallback(coap_message* msg, int reqId, void* arg);
     static void requestErrorCallback(int error, int reqId, void* arg);
+    static void timerCallback(void* arg);
 
     friend class LedgerWriter;
     friend class LedgerBase;

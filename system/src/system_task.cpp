@@ -19,12 +19,8 @@
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
-// STATIC_ASSERT macro clashes with the nRF SDK
-#define NO_STATIC_ASSERT
-
 #include "logging.h"
 
-#include "ledger/ledger_manager.h"
 #include "spark_wiring_platform.h"
 #include "spark_wiring_system.h"
 #include "spark_wiring_usbserial.h"
@@ -532,9 +528,6 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         system::FirmwareUpdate::instance()->process();
 
         if (system_mode() != SAFE_MODE) {
-#if HAL_PLATFORM_LEDGER
-            system::LedgerManager::instance()->run();
-#endif
             manage_listening_mode_flag();
         }
 

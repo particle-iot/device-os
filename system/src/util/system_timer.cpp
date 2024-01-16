@@ -21,21 +21,26 @@
 
 #include <cassert>
 
-#include "one_shot_timer.h"
+#include "system_timer.h"
 
-#include "logging.h"
 #include "system_error.h"
+#include "logging.h"
+#include "debug.h"
 
 namespace particle::system {
 
-OneShotTimer::~OneShotTimer() {
+SystemTimer::~SystemTimer() {
     stop();
     if (timer_) {
         os_timer_destroy(timer_, nullptr);
     }
 }
 
-int OneShotTimer::start(unsigned timeout, Callback callback, void* arg) {
+int SystemTimer::start(unsigned timeout, Callback callback, void* arg) {
+    ASSERT_ON_SYSTEM_OR_MAIN_THREAD(); // XXX: We may want to relax this going forward
+    if (!callback) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     stop();
     callback_ = callback;
     arg_ = arg;
@@ -63,7 +68,8 @@ int OneShotTimer::start(unsigned timeout, Callback callback, void* arg) {
     return 0;
 }
 
-void OneShotTimer::stop() {
+void SystemTimer::stop() {
+    ASSERT_ON_SYSTEM_OR_MAIN_THREAD();
     if (timer_) {
         int r = os_timer_change(timer_, OS_TIMER_CHANGE_STOP, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
         if (r != 0) {
@@ -73,20 +79,20 @@ void OneShotTimer::stop() {
     SystemISRTaskQueue.remove(this);
 }
 
-void OneShotTimer::taskCallback(ISRTaskQueue::Task* task) {
-    auto self = static_cast<OneShotTimer*>(task);
+void SystemTimer::taskCallback(ISRTaskQueue::Task* task) {
+    auto self = static_cast<SystemTimer*>(task);
     assert(self && self->callback_);
     self->callback_(self->arg_);
 }
 
-void OneShotTimer::timerCallback(os_timer_t timer) {
+void SystemTimer::timerCallback(os_timer_t timer) {
     void* id = nullptr;
     int r = os_timer_get_id(timer, &id);
     if (r != 0) {
         LOG_DEBUG(ERROR, "Failed to get timer ID"); // Should not happen
         return;
     }
-    auto self = static_cast<OneShotTimer*>(id);
+    auto self = static_cast<SystemTimer*>(id);
     assert(self);
     SystemISRTaskQueue.enqueue(self);
 }
