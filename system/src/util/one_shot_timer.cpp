@@ -36,36 +36,39 @@ OneShotTimer::~OneShotTimer() {
 }
 
 int OneShotTimer::start(unsigned timeout, Callback callback, void* arg) {
-    assert(callback);
     stop();
-    if (!timer_) {
-        int r = os_timer_create(&timer_, timeout, timerCallback, this /* timer_id */, true /* one_shot */, nullptr /* reserved */);
-        if (r != 0) {
-            return SYSTEM_ERROR_NO_MEMORY;
+    callback_ = callback;
+    arg_ = arg;
+    // Period of an RTOS timer must be greater than 0
+    if (timeout > 0) {
+        if (!timer_) {
+            int r = os_timer_create(&timer_, timeout, timerCallback, this /* timer_id */, true /* one_shot */, nullptr /* reserved */);
+            if (r != 0) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+        } else {
+            int r = os_timer_change(timer_, OS_TIMER_CHANGE_PERIOD, false /* fromISR */, timeout, 0xffffffffu /* block */, nullptr /* reserved */);
+            if (r != 0) {
+                return SYSTEM_ERROR_INTERNAL; // Should not happen
+            }
         }
-    } else {
-        int r = os_timer_change(timer_, OS_TIMER_CHANGE_PERIOD, false /* fromISR */, timeout, 0xffffffffu /* block */, nullptr /* reserved */);
+        int r = os_timer_change(timer_, OS_TIMER_CHANGE_START, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
         if (r != 0) {
             return SYSTEM_ERROR_INTERNAL; // Should not happen
         }
-    }
-    callback_ = callback;
-    arg_ = arg;
-    int r = os_timer_change(timer_, OS_TIMER_CHANGE_START, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
-    if (r != 0) {
-        return SYSTEM_ERROR_INTERNAL; // Should not happen
+    } else {
+        // Schedule a call in the system thread
+        SystemISRTaskQueue.enqueue(this);
     }
     return 0;
 }
 
 void OneShotTimer::stop() {
-    if (!timer_) {
-        return;
-    }
-    int r = os_timer_change(timer_, OS_TIMER_CHANGE_STOP, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
-    if (r != 0) {
-        LOG_DEBUG(ERROR, "Failed to stop timer"); // Should not happen
-        return;
+    if (timer_) {
+        int r = os_timer_change(timer_, OS_TIMER_CHANGE_STOP, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
+        if (r != 0) {
+            LOG_DEBUG(ERROR, "Failed to stop timer"); // Should not happen
+        }
     }
     SystemISRTaskQueue.remove(this);
 }
@@ -85,7 +88,6 @@ void OneShotTimer::timerCallback(os_timer_t timer) {
     }
     auto self = static_cast<OneShotTimer*>(id);
     assert(self);
-    // Schedule a call in the system thread
     SystemISRTaskQueue.enqueue(self);
 }
 
