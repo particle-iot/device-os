@@ -43,6 +43,11 @@ typedef enum network_configuration_source_t {
     NETWORK_CONFIGURATION_SOURCE_DHCPV6 = 4
 } network_configuration_source_t;
 
+enum class NetworkInterfacePriority {
+    DEFAULT = 0,
+    MAX = 999 // TODO: pick numeric max
+};
+
 typedef struct sockaddr_list {
     struct sockaddr* addr;
     struct sockaddr* netmask;
@@ -75,6 +80,8 @@ typedef struct network_configuration_t {
     uint16_t profile_len;
 
     char* hostname; // reserved/unused for now
+    // TODO: Add `priority`
+    // TODO: Add `enabled`
 } network_configuration_t;
 
 #ifdef __cplusplus
@@ -190,6 +197,13 @@ public:
 
     bool isValid() const;
 
+    NetworkInterfaceConfig& enable(bool enable = true);
+    bool enabled() const;
+    NetworkInterfaceConfig& disable(bool disable = true);
+    bool disabled() const;
+    unsigned priority() const;
+    NetworkInterfaceConfig& priority(unsigned metric);
+
     int exportAsNetworkConfiguration(network_configuration_t* conf) const;
     static void deallocNetworkConfiguration(network_configuration_t* conf);
 
@@ -208,6 +222,8 @@ private:
     spark::Vector<SockAddr> dns4_;
     spark::Vector<SockAddr> dns6_;
     spark::Vector<char> profile_;
+    bool enabled_;
+    unsigned priority_;
 };
 
 // SockAddr
@@ -497,7 +513,9 @@ inline bool NetworkInterfaceAddress::operator!=(const NetworkInterfaceAddress& o
 // NetworkInterfaceConfig
 inline NetworkInterfaceConfig::NetworkInterfaceConfig()
         : source4_(NetworkInterfaceConfigSource::NONE),
-          source6_(NetworkInterfaceConfigSource::NONE) {
+          source6_(NetworkInterfaceConfigSource::NONE),
+          enabled_(true),
+          priority_((unsigned)NetworkInterfacePriority::DEFAULT) {
 }
 
 inline NetworkInterfaceConfig::NetworkInterfaceConfig(const network_configuration_t* conf)
@@ -542,6 +560,8 @@ inline NetworkInterfaceConfig::NetworkInterfaceConfig(const network_configuratio
             }
         }
     }
+
+    // TODO: Use added fields from `network_configuration_t` to set priority / enabled
 }
 
 inline NetworkInterfaceConfig& NetworkInterfaceConfig::source(NetworkInterfaceConfigSource source, int family) {
@@ -667,6 +687,33 @@ inline bool NetworkInterfaceConfig::isValid() const {
     return true;
 }
 
+inline bool NetworkInterfaceConfig::enabled() const {
+    return enabled_;
+}
+
+inline NetworkInterfaceConfig& NetworkInterfaceConfig::enable(bool enable) {
+    enabled_ = enable;
+    return *this;
+}
+
+inline bool NetworkInterfaceConfig::disabled() const {
+    return !enabled_;
+}
+
+inline NetworkInterfaceConfig& NetworkInterfaceConfig::disable(bool disable) {
+    enabled_ = !disable;
+    return *this;
+}
+
+inline NetworkInterfaceConfig& NetworkInterfaceConfig::priority(unsigned metric) {
+    priority_ = metric;
+    return *this;
+}
+
+inline unsigned NetworkInterfaceConfig::priority() const {
+    return priority_;
+}
+
 inline int NetworkInterfaceConfig::exportAsProtoConfiguration(const spark::Vector<NetworkInterfaceAddress> addrs, NetworkInterfaceConfigSource source, const SockAddr& gateway, spark::Vector<SockAddr> dns, network_configuration_proto_t** proto) {
     CHECK_TRUE(proto, SYSTEM_ERROR_INVALID_ARGUMENT);
     *proto = new network_configuration_proto_t;
@@ -736,6 +783,7 @@ inline int NetworkInterfaceConfig::exportAsNetworkConfiguration(network_configur
 
     CHECK(exportAsProtoConfiguration(addr4_, source4_, gateway4_, dns4_, &conf->ip4));
     CHECK(exportAsProtoConfiguration(addr6_, source6_, gateway6_, dns6_, &conf->ip6));
+    // TODO: export priority + enable to `network_configuration_t` struct
 
     sg.dismiss();
     return 0;

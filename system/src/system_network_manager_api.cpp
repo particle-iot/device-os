@@ -182,7 +182,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
                 NetworkManager::instance()->syncInterfaceStates();
             }
         } else {
-            // Mainly to populate the list
+            // Mainly to populate the interface(s) runtime state list
             NetworkManager::instance()->enableInterface();
         }
 

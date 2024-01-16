@@ -40,6 +40,7 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "check.h"
 #include "system_cloud.h"
 #include "system_threading.h"
+#include "system_mode.h"
 #include "system_event.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
@@ -316,7 +317,8 @@ int NetworkManager::clearConfiguration(if_t oIface) {
     for_each_iface([&](if_t iface, unsigned int flags) {
         char name[IF_NAMESIZE] = {};
         if_get_name(iface, name);
-        uint8_t idx = if_get_index(iface, &idx);
+        uint8_t idx = 0;
+        if_get_index(iface, &idx);
 
         if (oIface && iface != oIface) {
             return;
@@ -874,6 +876,23 @@ const char* NetworkManager::powerStateToName(if_power_state_t state) const {
 void NetworkManager::populateInterfaceRuntimeState(bool st) {
     for_each_iface([&](if_t iface, unsigned int flags) {
         auto state = getInterfaceRuntimeState(iface);
+
+        bool administrativelyDisabled = false;
+        if (system_mode() != SAFE_MODE) {
+            spark::Vector<particle::NetworkInterfaceConfig> confs;
+            getConfiguration(iface, confs);
+
+            // Is there a use case for multiple configurations for a single interface? Is it even possible to store multiple for a given IF? Yes with different profile names? 
+            for (auto &conf : confs) { 
+                if (conf.disabled()) {
+                    administrativelyDisabled = true;
+                    uint8_t index;
+                    if_get_index(iface, &index);
+                    LOG(WARN, "Interface %d disabled by configuration", index);
+                }
+            }
+        }
+
         if (!state) {
             state = new (std::nothrow) InterfaceRuntimeState;
             if (state) {
@@ -882,7 +901,8 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
             }
         }
         if (state) {
-            state->enabled = st;
+            state->enabled = administrativelyDisabled ? false : st;
+            
             if_power_state_t pwr = IF_POWER_STATE_NONE;
             if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
                 return;
@@ -1234,6 +1254,13 @@ int NetworkManager::loadStoredConfiguration(spark::Vector<StoredConfiguration>& 
         }
         storedConf.conf.gateway(gateway4);
         storedConf.conf.gateway(gateway6);
+
+        // Use static IP as fake indication for `disabled`
+        bool testDisable = ((NetworkInterfaceConfigSource)pbInterface.ipv4_config.source == NetworkInterfaceConfigSource::STATIC);
+        storedConf.conf.enable(!testDisable);
+
+        storedConf.conf.priority(pbInterface.metric);
+
         bool r = conf->append(storedConf);
         return r;
     };
@@ -1277,6 +1304,10 @@ int NetworkManager::saveStoredConfiguration(const spark::Vector<StoredConfigurat
             auto profile = c.conf.profile();
             EncodedString eProfile(&pbInterface.profile, profile.data(), profile.size());
             pbInterface.index = c.idx;
+            
+            // pbInterface.enabled = c.conf.enabled(); // TODO: Store "enabled" somewhere in a pbuf structure
+            pbInterface.metric = c.conf.priority(); // TODO: Dont re-use metric field 
+
             pbInterface.ipv4_config.source = (PB_CTRL(InterfaceConfigurationSource))to_underlying(c.conf.source(AF_INET));
             if (c.conf.gateway(AF_INET).family() == AF_INET) {
                 if (sockAddrToIp4Address(SockAddr(c.conf.gateway(AF_INET)).toRaw(), &pbInterface.ipv4_config.gateway)) {

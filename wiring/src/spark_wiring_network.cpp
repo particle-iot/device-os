@@ -85,6 +85,18 @@ bool NetworkClass::isOff() {
     return network_is_off(*this, nullptr);
 }
 
+void NetworkClass::enable() {
+    on();
+    connect(); // TODO: block/synchronize between on/connect? 
+    // TODO: get config / set config with enabled = true
+}
+
+void NetworkClass::disable() {
+    disconnect();
+    off();
+    // TODO: get config / set config with enabled = false
+}
+
 void NetworkClass::listen(bool begin) {
     network_listen(*this, begin ? 0 : 1, nullptr);
 }

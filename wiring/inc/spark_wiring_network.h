@@ -64,6 +64,9 @@ public:
     virtual bool listening();
     virtual NetworkClass& prefer(bool prefer = true);
     virtual bool isPreferred();
+    virtual void enable();
+    virtual void disable();
+    //virtual uint32_t priority();
 
     operator network_interface_t() const {
         return iface_;
