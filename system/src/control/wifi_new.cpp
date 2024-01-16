@@ -92,21 +92,26 @@ int joinNewNetwork(ctrl_request* req) {
     const auto ncpClient = wifiMgr->ncpClient();
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     const NcpClientLock lock(ncpClient);
-    // FIXME; the security sent from the mobile app is always zero.
 #if HAL_PLATFORM_RTL872X
-    // Scan for networks
-    Vector<WifiScanResult> networks;
-    CHECK(ncpClient->scan([](WifiScanResult network, void* data) -> int {
-        const auto networks = (Vector<WifiScanResult>*)data;
-        CHECK_TRUE(networks->append(std::move(network)), SYSTEM_ERROR_NO_MEMORY);
-        return 0;
-    }, &networks));
-    // FIXME: if none of the scanned neetworks matches, the secury is of the default value.
-    for (auto network : networks) {
-        if (!strcmp(dSsid.data, network.ssid())) {
-            conf.security((WifiSecurity)network.security());
-            break;
-        }
+    if (!conf.hidden()) {
+        // Scan for networks to detect the network security type
+        Vector<WifiScanResult> networks;
+        CHECK(ncpClient->scan([](WifiScanResult network, void* data) -> int {
+            const auto networks = (Vector<WifiScanResult>*)data;
+            CHECK_TRUE(networks->append(std::move(network)), SYSTEM_ERROR_NO_MEMORY);
+            return 0;
+        }, &networks));
+        for (auto network : networks) {
+            if (!strcmp(dSsid.data, network.ssid())) {
+                conf.security((WifiSecurity)network.security());
+                break;
+            }
+        }    
+    } 
+
+    // If the network is hidden, or the scan does not find it, use the security provided in the control request
+    if (conf.hidden() || conf.security() == WifiSecurity::NONE) {
+        conf.security((WifiSecurity)pbReq.security);    
     }
 #else
     conf.security((WifiSecurity)pbReq.security);
