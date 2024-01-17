@@ -169,9 +169,11 @@ struct LedgerSyncContext {
     bool taskRunning; // Whether an asynchronous task is running for this ledger
     union {
         struct { // Fields specific to a device-to-cloud ledger or a ledger with unknown sync direction
-            uint64_t syncTime; // When to sync the ledger (ticks)
-            uint64_t forcedSyncTime; // When to force-sync the ledger (ticks)
+            uint64_t syncTime; // Time the ledger needs to be synchronized (ticks)
+            uint64_t forcedSyncTime; // Time the ledger needs to be force-sync'd (ticks)
+            uint64_t updateTime; // Time the ledger was last updated (ticks)
             unsigned updateCount; // Value of the ledger's update counter when the sync started
+            bool throttled; // Whether synchronization of this ledger is being throttled
         };
         struct { // Fields specific to a cloud-to-device ledger
             uint64_t lastUpdated; // Time the ledger was last updated (Unix time in milliseconds)
@@ -189,7 +191,9 @@ struct LedgerSyncContext {
             taskRunning(false),
             syncTime(0),
             forcedSyncTime(0),
-            updateCount(0) {
+            updateTime(0),
+            updateCount(0),
+            throttled(false) {
     }
 
     void updateFromLedgerInfo(const LedgerInfo& info) {
@@ -210,7 +214,9 @@ struct LedgerSyncContext {
     void resetDeviceToCloudState() {
         syncTime = 0;
         forcedSyncTime = 0;
+        updateTime = 0;
         updateCount = 0;
+        throttled = false;
     }
 
     void resetCloudToDeviceState() {
@@ -491,7 +497,7 @@ int LedgerManager::run() {
         CHECK(sendSubscribeRequest());
         return 0;
     }
-    unsigned syncDelay = 0;
+    unsigned nextSyncDelay = 0;
     if (pendingState_ & PendingState::SYNC_TO_CLOUD) {
         if (now >= nextSyncTime_) {
             uint64_t t = 0;
@@ -508,13 +514,14 @@ int LedgerManager::run() {
                 }
             }
             if (ctx) {
-                LOG(TRACE, "Synchronizing device-to-cloud ledger: %s", ctx->name);
+                LOG(TRACE, "Synchronizing ledger: %s", ctx->name);
                 CHECK(sendSetDataRequest(ctx));
                 return 0;
             }
+            // Timestamp in nextSyncTime_ was outdated
             nextSyncTime_ = t;
         }
-        syncDelay = nextSyncTime_ - now;
+        nextSyncDelay = nextSyncTime_ - now;
     }
     if (pendingState_ & PendingState::SYNC_FROM_CLOUD) {
         LedgerSyncContext* ctx = nullptr;
@@ -525,13 +532,13 @@ int LedgerManager::run() {
             }
         }
         if (ctx) {
-            LOG(TRACE, "Synchronizing cloud-to-device ledger: %s", ctx->name);
+            LOG(TRACE, "Synchronizing ledger: %s", ctx->name);
             CHECK(sendGetDataRequest(ctx));
             return 0;
         }
     }
-    if (syncDelay > 0) {
-        runNext(syncDelay);
+    if (nextSyncDelay > 0) {
+        runNext(nextSyncDelay);
     }
     return 0;
 }
@@ -733,6 +740,8 @@ int LedgerManager::receiveSetDataResponse(CoapMessagePtr& /* msg */, int result)
         } else {
             // Ledger changed while being synchronized
             assert(curCtx_->pendingState & PendingState::SYNC_TO_CLOUD);
+            auto now = hal_timer_millis(nullptr);
+            curCtx_->throttled = now - curCtx_->updateTime < MIN_SYNC_DELAY;
             updateSyncTime(curCtx_);
         }
         CHECK(ledger->updateInfo(newInfo));
@@ -1332,10 +1341,15 @@ void LedgerManager::clearPendingState(LedgerSyncContext* ctx, int state) {
 
 void LedgerManager::updateSyncTime(LedgerSyncContext* ctx) {
     auto now = hal_timer_millis(nullptr);
-    if (!ctx->forcedSyncTime) {
-        ctx->forcedSyncTime = now + MAX_SYNC_DELAY;
+    ctx->updateTime = now;
+    if (ctx->throttled) {
+        if (!ctx->forcedSyncTime) {
+            ctx->forcedSyncTime = now + MAX_SYNC_DELAY;
+        }
+        ctx->syncTime = std::min(now + MIN_SYNC_DELAY, ctx->forcedSyncTime);
+    } else if (!ctx->syncTime) {
+        ctx->syncTime = now;
     }
-    ctx->syncTime = std::min(now + MIN_SYNC_DELAY, ctx->forcedSyncTime);
     if (!nextSyncTime_ || ctx->syncTime < nextSyncTime_) {
         nextSyncTime_ = ctx->syncTime;
     }
