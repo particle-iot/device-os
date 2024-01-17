@@ -286,12 +286,12 @@ cellular_result_t cellular_global_identity(CellularGlobalIdentity* cgi, void* re
     const auto client = mgr->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
 
-    // Load cached data into result struct
+    // Load data into result struct
     CHECK(client->getCellularGlobalIdentity(cgi));
 
     // Validate cache
     CHECK_TRUE(0 != cgi->mobile_country_code, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(0 != cgi->mobile_network_code, SYSTEM_ERROR_BAD_DATA);
+    // MNC may be 00 or 000. In case of incorrect parsing getCellularGlobalIdentity() should have failed anyway
     CHECK_TRUE(0xFFFF != cgi->location_area_code, SYSTEM_ERROR_BAD_DATA);
     CHECK_TRUE(0xFFFFFFFF != cgi->cell_id, SYSTEM_ERROR_BAD_DATA);
 
