@@ -1456,7 +1456,7 @@ int BleObject::Observer::stopScanning() {
     // Ignore the returned value, as the SoftDevice might be messed up considering the device is not in scanning state,
     // but wee neeed to give the semaphore to unblock the thread that initiated the scanning procedure.
     if (sd_ble_gap_scan_stop() != NRF_SUCCESS) {
-        LOG(ERROR, "Device is not in scanning state.");
+        // LOG(ERROR, "Device is not in scanning state.");
     }
     bool give = false;
     ATOMIC_BLOCK() {
@@ -2243,7 +2243,7 @@ void BleObject::ConnectionsManager::onConnParamsUpdateTimerExpired(os_timer_t ti
         connMgr->periphConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
         connMgr->connParamsUpdateAttempts_ = 0;
         sd_ble_gap_disconnect(connMgr->periphConnParamUpdateHandle_, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
-        LOG_DEBUG(TRACE, "Disconnecting. Update BLE connection parameters failed.");
+        // LOG_DEBUG(TRACE, "Disconnecting. Update BLE connection parameters failed.");
         return;
     }
     connMgr->connParamsUpdateAttempts_++;
@@ -3303,10 +3303,10 @@ int BleObject::GattClient::exchangeAttMtu(hal_ble_conn_handle_t connHandle) {
         attMtuExchangeConnHandle_ = BLE_INVALID_CONN_HANDLE;
         os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
     }
-    LOG_DEBUG(TRACE, "Request to change ATT_MTU from %d to %d for connection: %d", curAttMtu, desiredAttMtu, connHandle);
+    // LOG_DEBUG(TRACE, "Request to change ATT_MTU from %d to %d for connection: %d", curAttMtu, desiredAttMtu, connHandle);
     int ret = sd_ble_gattc_exchange_mtu_request(connHandle, desiredAttMtu);
     if (ret != NRF_SUCCESS) {
-        LOG(ERROR, "sd_ble_gattc_exchange_mtu_request() failed: %d.", ret);
+        // LOG(ERROR, "sd_ble_gattc_exchange_mtu_request() failed: %d.", ret);
         return nrf_system_error(ret);
     }
     return SYSTEM_ERROR_NONE;
@@ -3318,10 +3318,10 @@ void BleObject::GattClient::onAttMtuExchangeTimerExpired(os_timer_t timer) {
     if (gattc->exchangeAttMtu(gattc->attMtuExchangeConnHandle_) == SYSTEM_ERROR_BUSY) {
         gattc->attMtuExchangeRetries_--;
         if (gattc->attMtuExchangeRetries_ > 0) {
-            LOG_DEBUG(TRACE, "Retry to perform ATT MTU exchange procedure.");
+            // LOG_DEBUG(TRACE, "Retry to perform ATT MTU exchange procedure.");
             os_timer_change(gattc->attMtuExchangeTimer_, OS_TIMER_CHANGE_START, false, 0, 0, nullptr);
         } else {
-            LOG(ERROR, "Automatically perform ATT MTU exchange procedure failed.");
+            // LOG(ERROR, "Automatically perform ATT MTU exchange procedure failed.");
         }
     }
 }
