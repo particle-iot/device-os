@@ -112,7 +112,7 @@ const size_t MAX_PATH_LEN = 127;
 
 // Internal result codes
 enum Result {
-    RESULT_CURRENT_DATA_NOT_FOUND = 1
+    CURRENT_DATA_NOT_FOUND = 1
 };
 
 /*
@@ -302,7 +302,7 @@ int Ledger::init(const char* name) {
     name_ = name;
     FsLock fs;
     int r = CHECK(loadLedgerInfo(fs.instance()));
-    if (r == RESULT_CURRENT_DATA_NOT_FOUND) {
+    if (r == Result::CURRENT_DATA_NOT_FOUND) {
         // Initialize the ledger directory
         char path[MAX_PATH_LEN + 1];
         CHECK(getTempDirPath(path, sizeof(path), name_));
@@ -509,7 +509,7 @@ int Ledger::loadLedgerInfo(lfs_t* fs) {
     int r = lfs_file_open(fs, &file, path, LFS_O_RDONLY);
     if (r < 0) {
         if (r == LFS_ERR_NOENT) {
-            return RESULT_CURRENT_DATA_NOT_FOUND;
+            return Result::CURRENT_DATA_NOT_FOUND;
         }
         CHECK_FS(r); // Forward the error
     }

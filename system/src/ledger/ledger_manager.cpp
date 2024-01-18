@@ -169,11 +169,10 @@ struct LedgerSyncContext {
     bool taskRunning; // Whether an asynchronous task is running for this ledger
     union {
         struct { // Fields specific to a device-to-cloud ledger or a ledger with unknown sync direction
-            uint64_t syncTime; // Time the ledger needs to be synchronized (ticks)
-            uint64_t forcedSyncTime; // Time the ledger needs to be force-sync'd (ticks)
+            uint64_t syncTime; // Time when the ledger should be synchronized (ticks)
+            uint64_t forcedSyncTime; // The latest time when the ledger should be synchronized (ticks)
             uint64_t updateTime; // Time the ledger was last updated (ticks)
             unsigned updateCount; // Value of the ledger's update counter when the sync started
-            bool throttled; // Whether synchronization of this ledger is being throttled
         };
         struct { // Fields specific to a cloud-to-device ledger
             uint64_t lastUpdated; // Time the ledger was last updated (Unix time in milliseconds)
@@ -192,8 +191,7 @@ struct LedgerSyncContext {
             syncTime(0),
             forcedSyncTime(0),
             updateTime(0),
-            updateCount(0),
-            throttled(false) {
+            updateCount(0) {
     }
 
     void updateFromLedgerInfo(const LedgerInfo& info) {
@@ -216,7 +214,6 @@ struct LedgerSyncContext {
         forcedSyncTime = 0;
         updateTime = 0;
         updateCount = 0;
-        throttled = false;
     }
 
     void resetCloudToDeviceState() {
@@ -227,6 +224,7 @@ struct LedgerSyncContext {
 } // namespace detail
 
 LedgerManager::LedgerManager() :
+        timer_(timerCallback, this),
         curCtx_(nullptr),
         nextSyncTime_(0),
         retryTime_(0),
@@ -387,6 +385,7 @@ int LedgerManager::getLedger(RefCountPtr<Ledger>& ledger, const char* name, bool
         if (state_ >= State::READY) {
             // Request the info about the newly created ledger
             setPendingState(ctx, PendingState::GET_INFO);
+            runNext();
         }
     }
     ctx->instance = lr.get();
@@ -478,24 +477,24 @@ int LedgerManager::run() {
         if (now >= retryTime_) {
             LOG(INFO, "Retrying synchronization");
             startSync();
-        } else {
-            runNext(retryTime_ - now);
+            return 1; // Have a task to run
         }
+        runNext(retryTime_ - now);
         return 0;
     }
-    if (state_ != State::READY || !pendingState_) {
-        // Some task is in progress, the manager is in a bad state, or there's nothing to do
+    if (state_ != State::READY || (!pendingState_ && !resubscribe_)) {
+        // Some task is in progress, the manager is not in an appropriate state, or there's nothing to do
         return 0;
     }
     if (pendingState_ & PendingState::GET_INFO) {
         LOG(INFO, "Requesting ledger info");
         CHECK(sendGetInfoRequest());
-        return 0;
+        return 1;
     }
     if ((pendingState_ & PendingState::SUBSCRIBE) || resubscribe_) {
         LOG(INFO, "Subscribing to ledger updates");
         CHECK(sendSubscribeRequest());
-        return 0;
+        return 1;
     }
     unsigned nextSyncDelay = 0;
     if (pendingState_ & PendingState::SYNC_TO_CLOUD) {
@@ -516,7 +515,7 @@ int LedgerManager::run() {
             if (ctx) {
                 LOG(TRACE, "Synchronizing ledger: %s", ctx->name);
                 CHECK(sendSetDataRequest(ctx));
-                return 0;
+                return 1;
             }
             // Timestamp in nextSyncTime_ was outdated
             nextSyncTime_ = t;
@@ -534,7 +533,7 @@ int LedgerManager::run() {
         if (ctx) {
             LOG(TRACE, "Synchronizing ledger: %s", ctx->name);
             CHECK(sendGetDataRequest(ctx));
-            return 0;
+            return 1;
         }
     }
     if (nextSyncDelay > 0) {
@@ -740,8 +739,6 @@ int LedgerManager::receiveSetDataResponse(CoapMessagePtr& /* msg */, int result)
         } else {
             // Ledger changed while being synchronized
             assert(curCtx_->pendingState & PendingState::SYNC_TO_CLOUD);
-            auto now = hal_timer_millis(nullptr);
-            curCtx_->throttled = now - curCtx_->updateTime < MIN_SYNC_DELAY;
             updateSyncTime(curCtx_);
         }
         CHECK(ledger->updateInfo(newInfo));
@@ -1033,7 +1030,8 @@ int LedgerManager::receiveGetInfoResponse(CoapMessagePtr& msg, int result) {
         }
     }
     if (d.resubscribe) {
-        // Make sure to clear the subscriptions on the server if no ledgers left to subscribe to
+        // Make sure to clear the subscriptions on the server if no ledgers left to subscribe to.
+        // TODO: Reuse pendingState_ for storing a state not associated with a particular sync context
         resubscribe_ = true;
     }
     if (d.localInfoIsInvalid) {
@@ -1339,16 +1337,22 @@ void LedgerManager::clearPendingState(LedgerSyncContext* ctx, int state) {
     }
 }
 
-void LedgerManager::updateSyncTime(LedgerSyncContext* ctx) {
+void LedgerManager::updateSyncTime(LedgerSyncContext* ctx, bool changed) {
+    // TODO: Revisit the throttling algorithm
     auto now = hal_timer_millis(nullptr);
-    ctx->updateTime = now;
-    if (ctx->throttled) {
+    bool throttle = ctx->updateTime && now - ctx->updateTime < MIN_SYNC_DELAY;
+    if (changed) {
+        ctx->updateTime = now;
+    }
+    if (throttle) {
         if (!ctx->forcedSyncTime) {
             ctx->forcedSyncTime = now + MAX_SYNC_DELAY;
         }
         ctx->syncTime = std::min(now + MIN_SYNC_DELAY, ctx->forcedSyncTime);
-    } else if (!ctx->syncTime) {
+    } else {
+        // Synchronize the first update in series right away
         ctx->syncTime = now;
+        ctx->forcedSyncTime = now;
     }
     if (!nextSyncTime_ || ctx->syncTime < nextSyncTime_) {
         nextSyncTime_ = ctx->syncTime;
@@ -1411,6 +1415,13 @@ void LedgerManager::reset() {
     // retryDelay_ is reset when disconnecting from the cloud
 }
 
+void LedgerManager::runNext(unsigned delay) {
+    int r = timer_.start(delay);
+    if (r < 0) {
+        LOG(ERROR, "Failed to start timer: %d", r);
+    }
+}
+
 void LedgerManager::handleError(int error) {
     assert(error < 0);
     if (state_ >= State::READY) {
@@ -1441,7 +1452,7 @@ void LedgerManager::notifyLedgerChanged(LedgerSyncContext* ctx) {
         ctx->syncPending = true;
         if (ctx->syncDir != LEDGER_SYNC_DIRECTION_UNKNOWN && state_ >= State::READY) {
             setPendingState(ctx, PendingState::SYNC_TO_CLOUD);
-            updateSyncTime(ctx);
+            updateSyncTime(ctx, true /* changed */);
             runNext();
         }
     }
@@ -1558,6 +1569,10 @@ void LedgerManager::timerCallback(void* arg) {
     if (r < 0) {
         LOG(ERROR, "Failed to process ledger task: %d", r);
         self->handleError(r);
+    }
+    if (r != 0) {
+        // Keep running until there's nothing to do
+        self->runNext();
     }
 }
 

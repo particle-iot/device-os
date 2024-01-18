@@ -142,16 +142,14 @@ private:
 
     void setPendingState(LedgerSyncContext* ctx, int state);
     void clearPendingState(LedgerSyncContext* ctx, int state);
-    void updateSyncTime(LedgerSyncContext* ctx);
+    void updateSyncTime(LedgerSyncContext* ctx, bool changed = false);
 
     void startSync();
     void reset();
 
-    void handleError(int error);
+    void runNext(unsigned delay = 0);
 
-    void runNext(unsigned delay = 0) {
-        timer_.start(delay, timerCallback, this);
-    }
+    void handleError(int error);
 
     LedgerSyncContexts::ConstIterator findContext(const char* name, bool& found) const {
         return findContext(contexts_, name, found);

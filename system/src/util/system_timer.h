@@ -32,12 +32,15 @@ public:
 
     /**
      * Construct a timer.
+     *
+     * @param callback Callback to invoke when the timer expires.
+     * @param arg Argument to pass to the callback.
      */
-    SystemTimer() :
-            Task(),
+    explicit SystemTimer(Callback callback, void* arg = nullptr) :
+            Task(taskCallback),
             timer_(),
-            callback_(nullptr),
-            arg_(nullptr) {
+            callback_(callback),
+            arg_(arg) {
     }
 
     /**
@@ -48,18 +51,13 @@ public:
     /**
      * Start the timer.
      *
-     * This method can only be called in the system thread.
-     *
      * @param timeout Timeout in milliseconds.
-     * @param callback Callback to invoke.
-     * @param arg Argument to pass to the callback.
+     * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
      */
-    int start(unsigned timeout, Callback callback, void* arg = nullptr);
+    int start(unsigned timeout);
 
     /**
      * Stop the timer.
-     *
-     * This method can only be called in the system thread.
      */
     void stop();
 

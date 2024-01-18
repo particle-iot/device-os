@@ -36,14 +36,8 @@ SystemTimer::~SystemTimer() {
     }
 }
 
-int SystemTimer::start(unsigned timeout, Callback callback, void* arg) {
-    ASSERT_ON_SYSTEM_OR_MAIN_THREAD(); // XXX: We may want to relax this going forward
-    if (!callback) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
+int SystemTimer::start(unsigned timeout) {
     stop();
-    callback_ = callback;
-    arg_ = arg;
     // Period of an RTOS timer must be greater than 0
     if (timeout > 0) {
         if (!timer_) {
@@ -69,7 +63,6 @@ int SystemTimer::start(unsigned timeout, Callback callback, void* arg) {
 }
 
 void SystemTimer::stop() {
-    ASSERT_ON_SYSTEM_OR_MAIN_THREAD();
     if (timer_) {
         int r = os_timer_change(timer_, OS_TIMER_CHANGE_STOP, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
         if (r != 0) {
