@@ -609,8 +609,12 @@ int QuectelNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
         cgi_.cgi_flags &= ~CGI_FLAG_TWO_DIGIT_MNC;
     }
 
-    // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
+    // NOTE: MCC cannot be zero, MNC may be 00 or even 000
+    // We should not need to check whether str -> int coversion works
+    // as scanf() above along with the return value check guarantees that we've
+    // scanned the correct MCC MNC combo returned from +COPS.
     cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
+    CHECK_TRUE(cgi_.mobile_country_code != 0, SYSTEM_ERROR_BAD_DATA);
     cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
 
     switch (static_cast<CellularAccessTechnology>(act)) {
