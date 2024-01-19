@@ -520,9 +520,9 @@ int WizNetif::input() {
             pktSize = (tmp[0] << 8 | tmp[1]) - 2;
         }
 
-        // LOG_DEBUG(TRACE, "Received packet, %d bytes", pktSize);
-
-        if (pktSize >= 1514) {
+        if (pktSize >= 1522 /* IEEE 802.3ac max size */) {
+            // Attempt to recover
+            wiz_recv_ignore(0, pktSize + 2);
             closeRaw();
             openRaw();
             return r;
@@ -615,7 +615,14 @@ void WizNetif::output(pbuf* p) {
 
     if (p->tot_len > txAvailable || txAvailable == 0xffff) {
         /* Drop packet */
-        LOG(ERROR, "Dropping packet, not enough space in TX buffer");
+        LOG(ERROR, "Dropping packet, not enough space in TX buffer %u", txAvailable);
+        // FIXME: this should normally not happen, attempt to recover
+        setSn_TX_WR(0, 0);
+        setSn_CR(0, Sn_CR_SEND);
+        if (getSn_TX_FSR(0) < p->tot_len) {
+            down();
+            up();
+        }
         goto cleanup;
     }
 

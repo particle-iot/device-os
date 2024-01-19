@@ -29,6 +29,7 @@
 
 #include <memory>
 #include <cstdlib>
+#include <limits>
 
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
@@ -695,8 +696,13 @@ int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved) {
 int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* reserved) {
     CHECK_TRUE(clock > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
+    // For clock rates which are not fractions of base clock use next power of 2 divisor
+    // to be under the requested clock rate
+    uint32_t div = SPI_SYSTEM_CLOCK / clock;
+    div = div == 1 ? 1 : 1 << (std::numeric_limits<uint32_t>::digits - __builtin_clz(div - 1));
+
     // Integer division results in clean values
-    switch (SPI_SYSTEM_CLOCK / clock) {
+    switch (div) {
     case 2:
         return SPI_CLOCK_DIV2;
     case 4:
