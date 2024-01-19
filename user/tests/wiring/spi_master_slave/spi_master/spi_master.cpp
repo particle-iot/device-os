@@ -201,9 +201,7 @@ static void SPI_Master_Configure()
         MY_SPI.begin(MY_CS);
 
         // Clock dummy byte just in case
-        if (!HAL_PLATFORM_RTL872X) { // Since SPI is enabled, the dummy byte will generate gabage data in the fifo on P2
-            (void)MY_SPI.transfer(0xff);
-        }
+        (void)MY_SPI.transfer(0xff);
     }
 }
 
@@ -245,6 +243,12 @@ bool SPI_Master_Slave_Change_Mode(uint8_t mode, uint8_t bitOrder, std::function<
     memset(SPI_Master_Rx_Buffer, 0, sizeof(SPI_Master_Rx_Buffer));
 
     // Select
+    // Workaround for some platforms requiring the CS to be high when configuring
+    // the DMA buffers
+    digitalWrite(MY_CS, LOW);
+    delay(SPI_DELAY);
+    digitalWrite(MY_CS, HIGH);
+    delay(SPI_DELAY);
     digitalWrite(MY_CS, LOW);
     delay(SPI_DELAY);
 
@@ -258,6 +262,7 @@ bool SPI_Master_Slave_Change_Mode(uint8_t mode, uint8_t bitOrder, std::function<
     digitalWrite(MY_CS, HIGH);
     delay(SPI_DELAY * 10);
 
+    Serial.println((const char*)SPI_Master_Rx_Buffer);
     bool ret = (strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
 
     // Apply new settings here
@@ -300,8 +305,8 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
 
         transferFunc(SPI_Master_Tx_Buffer, SPI_Master_Rx_Buffer, TRANSFER_LENGTH_1);
         digitalWrite(MY_CS, HIGH);
-        // Serial.print("< ");
-        // Serial.println((const char *)SPI_Master_Rx_Buffer);
+        Serial.print("< ");
+        Serial.println((const char *)SPI_Master_Rx_Buffer);
         assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
 
         delay(SPI_DELAY);
@@ -318,8 +323,8 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
         // Deselect
         digitalWrite(MY_CS, HIGH);
         delay(SPI_DELAY);
-        // Serial.print("< ");
-        // Serial.println((const char *)SPI_Master_Rx_Buffer);
+        Serial.print("< ");
+        Serial.println((const char *)SPI_Master_Rx_Buffer);
         assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength) == 0);
 
         requestedLength--;
@@ -350,6 +355,13 @@ test(02_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_Default
 {
     using namespace std::placeholders;
     auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    SPI_Master_Slave_Master_Test_Routine(transferFunc);
+}
+
+test(022_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_Default_MODE3_MSB)
+{
+    Serial.println("This is Master");
+    auto transferFunc = SPI_Master_Transfer_No_DMA;
     SPI_Master_Slave_Master_Test_Routine(transferFunc);
 }
 
@@ -580,7 +592,7 @@ test(25_SPI_Master_Slave_Master_Reception)
     while(DMA_Completed_Flag == 0);
     digitalWrite(MY_CS, HIGH);
 
-    // Serial.printf("Length: %d\r\n", strlen((const char *)SPI_Master_Rx_Buffer_Supper));
+    Serial.printf("Length: %d\r\n", strlen((const char *)SPI_Master_Rx_Buffer_Supper));
     // for (size_t len = 0; len < strlen((const char *)SPI_Master_Rx_Buffer_Supper); len++) {
     //     Serial.printf("%c", SPI_Master_Rx_Buffer_Supper[len]);
     // }

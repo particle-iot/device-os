@@ -682,12 +682,6 @@ public:
         return config_;
     }
 
-    int setConfig(SpiConfig& config) {
-        CHECK_TRUE(validateConfig(rtlSpiIndex_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
-        memcpy(&config_, &config, sizeof(SpiConfig));
-        return SYSTEM_ERROR_NONE;
-    }
-
     SpiStatus status() const {
         return status_;
     }
@@ -1003,9 +997,8 @@ void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order) {
     auto spiInstance = getInstance(spi);
     auto config = spiInstance->config();
     config.bitOrder = order;
-    spiInstance->setConfig(config);
     if (spiInstance->isEnabled()) {
-        spiInstance->begin(config);
+        spiInstance->setSettings(config);
     }
 }
 
@@ -1016,9 +1009,8 @@ void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode) {
     auto spiInstance = getInstance(spi);
     auto config = spiInstance->config();
     config.dataMode = mode;
-    spiInstance->setConfig(config);
     if (spiInstance->isEnabled()) {
-        spiInstance->begin(config);
+        spiInstance->setSettings(config);
     }
 }
 
@@ -1029,9 +1021,8 @@ void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate) {
     auto spiInstance = getInstance(spi);
     auto config = spiInstance->config();
     config.clockDiv = rate;
-    spiInstance->setConfig(config);
     if (spiInstance->isEnabled()) {
-        spiInstance->begin(config);
+        spiInstance->setSettings(config);
     }
 }
 
