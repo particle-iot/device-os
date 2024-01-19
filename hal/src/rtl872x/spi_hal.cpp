@@ -504,7 +504,7 @@ public:
 
         size_t blockSize = transferConfig_.blockSize;
         size_t blockCount = transferConfig_.blockCount;
-        bool multiBlock = transferConfig_.blockCount > 0;
+        bool multiBlock = transferConfig_.blockCount > 1;
         if (status_.transferredLength > 0) {
             blockSize = transferConfig_.remainder;
             blockCount = 0;
@@ -636,6 +636,12 @@ public:
         
         if (txBuf) {
             DCache_CleanInvalidate((u32)txBuf, size);
+        }
+        if (rxBuf) {
+            // This is required to make sure that software writes into rx buffer
+            // are finalized, otherwise after DMA completes Invalidate may result
+            // in garbage data in rxBuf.
+            DCache_CleanInvalidate((u32)rxBuf, size);
         }
 
         return startDma();
