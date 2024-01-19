@@ -24,6 +24,8 @@
 #include "delay_hal.h"
 #include "check.h"
 #include "service_debug.h"
+#include <mutex>
+#include "flash_common.h"
 extern "C" {
 #include "rtl8721d.h"
 extern void SSI_SetDataSwap(SPI_TypeDef *spi_dev, u32 SwapStatus, u32 newState);
@@ -33,6 +35,8 @@ extern void SSI_SetDataSwap(SPI_TypeDef *spi_dev, u32 SwapStatus, u32 newState);
 
 #include <memory>
 #include <cstdlib>
+#include <limits>
+#include "timer_hal.h"
 
 #define DEFAULT_SPI_MODE        SPI_MODE_MASTER
 #define DEFAULT_DATA_MODE       SPI_MODE3
@@ -41,27 +45,13 @@ extern void SSI_SetDataSwap(SPI_TypeDef *spi_dev, u32 SwapStatus, u32 newState);
 #define DEFAULT_SPI_CLOCKDIV    SPI_CLOCK_DIV256
 
 #define CFG_SPI_PRIORITY        6
-#define CFG_GDMA_TX_PRIORITY    4
-#define CFG_GDMA_RX_PRIORITY    3
+#define CFG_GDMA_TX_PRIORITY    3
+#define CFG_GDMA_RX_PRIORITY    4
 #define CFG_CHUNK_BUF_SIZE      32
 
 static_assert((CFG_CHUNK_BUF_SIZE&0x1f) == 0, "Chunk size should be multiple of 32-byte");
 
 namespace {
-
-// Copied from spark_wiring_interrupts.h
-// Ideally this should be moved into services. HAL shouldn't depend on wiring
-class AtomicSection {
-    int prev_;
-public:
-    AtomicSection() {
-        prev_ = HAL_disable_irq();
-    }
-
-    ~AtomicSection() {
-        HAL_enable_irq(prev_);
-    }
-};
 
 class Spi;
 Spi* getInstance(hal_spi_interface_t spi);
@@ -71,35 +61,30 @@ typedef struct {
     uint8_t         dataMode;
     uint8_t         bitOrder;
     uint32_t        clockDiv;
+    uint32_t        flags;
     void reset() {
         spiMode  = DEFAULT_SPI_MODE;
         dataMode = DEFAULT_DATA_MODE;
         bitOrder = DEFAULT_BIT_ORDER;
         clockDiv = DEFAULT_SPI_CLOCKDIV;
+        flags = 0;
     }
 } SpiConfig;
 
 typedef struct {
-    volatile const uint8_t*     txBuf;
-    volatile uint8_t*           rxBuf;
-    size_t                      txLength;
-    size_t                      rxLength;
+    const uint8_t* txBuf;
+    uint8_t* rxBuf;
+    size_t blockSize;
+    size_t blockCount;
+    size_t remainder;
     void reset() {
         txBuf  = nullptr;
         rxBuf  = nullptr;
-        txLength = 0;
-        rxLength = 0;
+        blockSize = 0;
+        blockCount = 0;
+        remainder = 0;
     }
-} SpiBufferConfig;
-
-typedef struct {
-    volatile __attribute__((aligned(32))) uint8_t    txBuf[CFG_CHUNK_BUF_SIZE];
-    volatile __attribute__((aligned(32))) uint8_t    rxBuf[CFG_CHUNK_BUF_SIZE];
-    volatile size_t                                  txLength;
-    volatile size_t                                  rxLength;
-    volatile size_t                                  txIndex;
-    volatile size_t                                  rxIndex;
-} SpiChunkBufferConfig;
+} SpiTransferConfig;
 
 typedef struct {
     hal_spi_dma_user_callback       dmaUserCb;
@@ -191,7 +176,7 @@ public:
               mosiPin_(mosiPin),
               misoPin_(misoPin),
               config_{},
-              bufferConfig_{},
+              transferConfig_{},
               callbackConfig_{},
               ssPinState_{},
               rxDmaInitStruct_{},
@@ -202,16 +187,19 @@ public:
     }
 
     int init() {
-        AtomicSection lk;
-
-        if (isEnabled()) {
-            CHECK(end());
-        }
+        os_thread_scheduling(false, nullptr);
         if (mutex_ == nullptr) {
             os_mutex_recursive_create(&mutex_);
         }
+        os_thread_scheduling(true, nullptr);
+
+        std::lock_guard<Spi> lk(*this);
+        if (isEnabled()) {
+            CHECK(end());
+        }
+
         config_.reset();
-        bufferConfig_.reset();
+        transferConfig_.reset();
         return SYSTEM_ERROR_NONE;
     }
 
@@ -221,16 +209,61 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    int setSettings(const SpiConfig& config, const hal_spi_config_t* spiConfig = nullptr, bool force = false) {
+        CHECK_TRUE(validateConfig(rtlSpiIndex_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
+        // Save config
+        memcpy(&config_, &config, sizeof(SpiConfig));
+        if (spiConfig && spiConfig->flags) {
+            config_.flags = spiConfig->flags;
+        }
+
+        uint32_t phase = SCPH_TOGGLES_IN_MIDDLE;
+        uint32_t polarity = SCPOL_INACTIVE_IS_LOW;
+        spiModeToPolAndPha(config_.dataMode, &polarity, &phase);
+        uint32_t bakPol = SPI_DEV_TABLE[rtlSpiIndex_].SPIx->CTRLR0 & BIT_CTRLR0_SCPH;
+        SSI_SetSclkPhase(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, phase);
+        SSI_SetSclkPolarity(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, polarity);
+        SSI_SetDataFrameSize(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DEFAULT_DATA_BITS);
+        if (force || (bakPol != (SPI_DEV_TABLE[rtlSpiIndex_].SPIx->CTRLR0 & BIT_CTRLR0_SCPH))) {
+            // PAD_PullCtrl is another slow call, avoid if settings still match
+            if (polarity == SCPOL_INACTIVE_IS_LOW) {
+                PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_DOWN);
+            } else {
+                PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_UP);
+            }
+        }
+
+        // Set clock divider
+        if (config_.spiMode == SPI_MODE_MASTER) {
+            u32 rtlClockDivider = 256;
+            clockDivToRtlClockDiv(config_.clockDiv, &rtlClockDivider);
+            SSI_SetBaudDiv(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, rtlClockDivider);
+
+            // Set sample delay for SPI0@50MHz
+            if (rtlClockDivider == 2 && SPI_DEV_TABLE[rtlSpiIndex_].SPIx == SPI0_DEV) {
+                SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x1);
+            } else {
+                SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x0);
+            }
+        }
+
+        // Set bit order
+        if (config_.bitOrder == MSBFIRST) {
+            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, DISABLE);
+            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, DISABLE);
+        } else {
+            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, ENABLE);
+            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, ENABLE);
+        }
+
+        return 0;
+    }
+
     int begin(const SpiConfig& config) {
         return begin(csPin_, config, nullptr);
     }
 
     int begin(uint16_t csPin, const SpiConfig& config, const hal_spi_config_t* spi_config) {
-        AtomicSection lk;
-
-        // Start address of chunk buffer should be 32-byte aligned
-        SPARK_ASSERT(((uint32_t)chunkBuffer_.txBuf & 0x1f) == 0);
-        SPARK_ASSERT(((uint32_t)chunkBuffer_.rxBuf & 0x1f) == 0);
         CHECK_TRUE(validateConfig(rtlSpiIndex_, config), SYSTEM_ERROR_INVALID_ARGUMENT);
 
         // Convert default pin to exact pin
@@ -247,17 +280,26 @@ public:
         if ((config.spiMode == SPI_MODE_SLAVE) && !hal_pin_is_valid(csPin)) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        csPin_ = csPin;
 
         if (isEnabled()) {
+            if (config_.spiMode == config.spiMode && config_.flags == (spi_config ? spi_config->flags : 0)
+                    && csPin == csPin_) {
+                // There is no need to reconfigure gpio, which is a pretty slow operation if settings match
+                return setSettings(config);
+            }
             CHECK(end());
         }
 
-        // Allocate dam channels
+        csPin_ = csPin;
+
+        // Allocate dma channels
         CHECK(initDmaChannels());
 
         // Save config
         memcpy(&config_, &config, sizeof(SpiConfig));
+        if (spi_config && spi_config->flags) {
+            config_.flags = spi_config->flags;
+        }
 
         SSI_InitTypeDef SSI_InitStruct;
         SSI_StructInit(&SSI_InitStruct);
@@ -307,17 +349,7 @@ public:
         hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_HIGH);
         hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_HIGH);
 
-        uint32_t phase = SCPH_TOGGLES_IN_MIDDLE;
-        uint32_t polarity = SCPOL_INACTIVE_IS_LOW;
-        spiModeToPolAndPha(config_.dataMode, &polarity, &phase);
-        SSI_SetSclkPhase(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, phase);
-        SSI_SetSclkPolarity(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, polarity);
-        SSI_SetDataFrameSize(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DEFAULT_DATA_BITS);
-        if (polarity == SCPOL_INACTIVE_IS_LOW) {
-            PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_DOWN);
-        } else {
-            PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_UP);
-        }
+        setSettings(config, spi_config, true /* force */);
 
         // Set pin function
         if (!(spi_config && (spi_config->flags & (uint32_t)HAL_SPI_CONFIG_FLAG_MOSI_ONLY))) {
@@ -326,32 +358,9 @@ public:
         }
         hal_pin_set_function(mosiPin_, PF_SPI);
 
-        // Set clock divider
-        if (config_.spiMode == SPI_MODE_MASTER) {
-            u32 rtlClockDivider = 256;
-            clockDivToRtlClockDiv(config_.clockDiv, &rtlClockDivider);
-            SSI_SetBaudDiv(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, rtlClockDivider);
-
-            // Set sample delay for SPI0@50MHz
-            if (rtlClockDivider == 2 && SPI_DEV_TABLE[rtlSpiIndex_].SPIx == SPI0_DEV) {
-                SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x1);
-            } else {
-                SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x0);
-            }
-        }
-
-        // Set bit order
-        if (config_.bitOrder == MSBFIRST) {
-            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, DISABLE);
-            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, DISABLE);
-        } else {
-            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, ENABLE);
-            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, ENABLE);
-        }
-
-        // Enable SPI DMA
-        SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_TDMAE);
-        SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_RDMAE);
+        // DMA is not enabled immediately
+        // SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_TDMAE);
+        // SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_RDMAE);
 
         // We don't use SPI interrupt
         SSI_INTConfig(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (BIT_IMR_RXFIM | BIT_IMR_RXOIM | BIT_IMR_RXUIM), DISABLE);
@@ -360,27 +369,23 @@ public:
         NVIC_ClearPendingIRQ(SPI_DEV_TABLE[rtlSpiIndex_].IrqNum);
         InterruptDis(SPI_DEV_TABLE[rtlSpiIndex_].IrqNum);
 
-        // Clear dma interrupt
+        // Clear dma interrupt just in case
         GDMA_ClearINT(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
         GDMA_ClearINT(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
 
         // Update state
         status_.state = HAL_SPI_STATE_ENABLED;
 
-        //LOG_DEBUG(INFO, "SPI begin! mode: %d, order: %s",config_.dataMode, config_.bitOrder ? "MSB" : "LSB");
-
         return SYSTEM_ERROR_NONE;
     }
 
-    int end() {
+    int end(bool ignoreGpio = false) {
         CHECK_TRUE(status_.state == HAL_SPI_STATE_ENABLED, SYSTEM_ERROR_INVALID_STATE);
 
         // Wait for last SPI transfer finished
         while (isBusy()) {
             ;
         }
-
-        AtomicSection lk;
 
         /* Set SSI DMA Disable */
         SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_RDMAE);
@@ -392,25 +397,29 @@ public:
         /* Clear Pending ISR */
         GDMA_ClearINT(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
         GDMA_ClearINT(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
-        GDMA_ChnlFree(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
-        GDMA_ChnlFree(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
+        if (!ignoreGpio) {
+            GDMA_ChnlFree(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
+            GDMA_ChnlFree(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
+        }
 
         GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
         GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
 
         // Set GPIO, pin function and pinmux
-        hal_gpio_mode(sclkPin_, PIN_MODE_NONE);
-        hal_gpio_mode(mosiPin_, PIN_MODE_NONE);
-        hal_gpio_mode(misoPin_, PIN_MODE_NONE);
-        hal_pin_set_function(sclkPin_, PF_NONE);
-        hal_pin_set_function(mosiPin_, PF_NONE);
-        hal_pin_set_function(misoPin_, PF_NONE);
-        Pinmux_Config(hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_GPIO);
-        Pinmux_Config(hal_pin_to_rtl_pin(mosiPin_), PINMUX_FUNCTION_GPIO);
-        Pinmux_Config(hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_GPIO);
-        hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_DEFAULT);
-        hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_DEFAULT);
-        hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_DEFAULT);
+        if (!ignoreGpio) {
+            hal_gpio_mode(sclkPin_, PIN_MODE_NONE);
+            hal_gpio_mode(mosiPin_, PIN_MODE_NONE);
+            hal_gpio_mode(misoPin_, PIN_MODE_NONE);
+            hal_pin_set_function(sclkPin_, PF_NONE);
+            hal_pin_set_function(mosiPin_, PF_NONE);
+            hal_pin_set_function(misoPin_, PF_NONE);
+            Pinmux_Config(hal_pin_to_rtl_pin(sclkPin_), PINMUX_FUNCTION_GPIO);
+            Pinmux_Config(hal_pin_to_rtl_pin(mosiPin_), PINMUX_FUNCTION_GPIO);
+            Pinmux_Config(hal_pin_to_rtl_pin(misoPin_), PINMUX_FUNCTION_GPIO);
+            hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_DEFAULT);
+            hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_DEFAULT);
+            hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_DEFAULT);
+        }
 
         // Update state
         status_.state = HAL_SPI_STATE_DISABLED;
@@ -458,145 +467,128 @@ public:
         return (uint8_t)SSI_ReadData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
     }
 
-    void startTransmission() {
-        AtomicSection lk;
-
-        if (status_.transmitting) {
-            return;
+    static size_t findDmaBlockSize(size_t length) {
+        if (length <= 0xfff) {
+            return length;
         }
 
-        if (chunkBuffer_.txIndex >= bufferConfig_.txLength) {
-            chunkBuffer_.txIndex = 0;
-            return;
+        // Divides evenly
+        for (size_t i = 2; i < 0xfff && i <= length / 2; i++) {
+            if (length % i != 0) {
+                continue;
+            }
+            size_t block = length / i;
+            // Arbitrary
+            if (block <= 32) {
+                break;
+            }
+            if (block <= 0xfff) {
+                return block;
+            }
+        }
+        // With remainder
+        for (size_t i = 2; i < 0xfff && i <= length / 2; i++) {
+            size_t block = length / i;
+            if (block <= 0xfff) {
+                return block;
+            }
+        }
+        return 0;
+    }
+
+    int startDma() {
+        // Dummy
+        static volatile uint32_t dummy __attribute__((aligned(4))) = 0xffffffff;
+        uint8_t* txBuf = transferConfig_.txBuf ? (uint8_t*)transferConfig_.txBuf + status_.transferredLength : (uint8_t*)&dummy;
+        uint8_t* rxBuf = transferConfig_.rxBuf;
+
+        size_t blockSize = transferConfig_.blockSize;
+        size_t blockCount = transferConfig_.blockCount;
+        bool multiBlock = transferConfig_.blockCount > 0;
+        if (status_.transferredLength > 0) {
+            blockSize = transferConfig_.remainder;
+            blockCount = 0;
+            multiBlock = false;
+            if (rxBuf) {
+                rxBuf += status_.transferredLength;
+            }
         }
 
-        chunkBuffer_.txLength = std::min(bufferConfig_.txLength - chunkBuffer_.txIndex, (size_t)CFG_CHUNK_BUF_SIZE);
-        if (bufferConfig_.txBuf) {
-            memcpy((void*)chunkBuffer_.txBuf, (void*)&bufferConfig_.txBuf[chunkBuffer_.txIndex], chunkBuffer_.txLength);
-        } else {
-            memset((void*)chunkBuffer_.txBuf, 0xFF, chunkBuffer_.txLength);
-        }
-        DCache_CleanInvalidate((u32) chunkBuffer_.txBuf, chunkBuffer_.txLength);
-        //LOG_DEBUG(INFO, "start to send new chunk, curr index: %d, length: %d", chunkBuffer_.txIndex, chunkBuffer_.txLength);
-        if (((chunkBuffer_.txLength & 0x03)==0) && (((u32)(chunkBuffer_.txBuf) & 0x03)==0)) {
+        if (((blockSize & 0x03) == 0) && (((uintptr_t)txBuf & 0x03) == 0) && blockSize >= 4) {
             /*  4-bytes aligned, move 4 bytes each transfer */
-            txDmaInitStruct_.GDMA_SrcMsize   = MsizeOne;
+            txDmaInitStruct_.GDMA_SrcMsize = MsizeOne;
             txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthFourBytes;
-            txDmaInitStruct_.GDMA_BlockSize = chunkBuffer_.txLength >> 2;
+            txDmaInitStruct_.GDMA_BlockSize = blockSize >> 2;
         } else {
-            txDmaInitStruct_.GDMA_SrcMsize   = MsizeFour;
+            txDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
             txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
-            txDmaInitStruct_.GDMA_BlockSize = chunkBuffer_.txLength;
+            txDmaInitStruct_.GDMA_BlockSize = blockSize;
         }
+        txDmaInitStruct_.GDMA_ReloadDst = 1;
+        txDmaInitStruct_.GDMA_ReloadSrc = 0;
         txDmaInitStruct_.GDMA_DstMsize  = MsizeFour;
-        txDmaInitStruct_.GDMA_DstDataWidth =  TrWidthOneByte;
-        assert_param(txDmaInitStruct_.GDMA_BlockSize <= 4096);
-        txDmaInitStruct_.GDMA_SrcAddr = (u32)chunkBuffer_.txBuf;
+        txDmaInitStruct_.GDMA_DstDataWidth = TrWidthOneByte;
+        txDmaInitStruct_.GDMA_SrcAddr = (u32)txBuf;
+        txDmaInitStruct_.GDMA_SrcInc = IncType;
+        if (multiBlock) {
+            txDmaInitStruct_.MaxMuliBlock = blockCount;
+        } else {
+            txDmaInitStruct_.MaxMuliBlock = 0;
+        }
+        txDmaInitStruct_.MuliBlockCunt = 0;
+        if (!transferConfig_.txBuf) {
+            txDmaInitStruct_.GDMA_ReloadSrc = 1;
+            txDmaInitStruct_.GDMA_SrcAddr = (u32)&dummy;
+            txDmaInitStruct_.GDMA_SrcInc = NoChange;
+        }
+
+        if (rxBuf) {
+            if (((blockSize & 0x03) == 0) && (((uintptr_t)rxBuf & 0x03) == 0) && blockSize >= 4) {
+                /*  4-bytes aligned, move 4 bytes each transfer */
+                rxDmaInitStruct_.GDMA_DstMsize = MsizeOne;
+                rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthFourBytes;
+            } else {
+                rxDmaInitStruct_.GDMA_DstMsize = MsizeFour;
+                rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthOneByte;
+            }
+            rxDmaInitStruct_.GDMA_BlockSize = blockSize;
+            rxDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
+            rxDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
+            rxDmaInitStruct_.GDMA_DstAddr = (u32)rxBuf;
+            rxDmaInitStruct_.GDMA_ReloadDst = 0;
+            rxDmaInitStruct_.GDMA_ReloadSrc = 1;
+            if (multiBlock) {
+                rxDmaInitStruct_.MaxMuliBlock = blockCount;
+            } else {
+                rxDmaInitStruct_.MaxMuliBlock = 0;
+            }
+            rxDmaInitStruct_.MuliBlockCunt = 0;
+            if (rxDmaInitStruct_.GDMA_DstMsize != txDmaInitStruct_.GDMA_SrcMsize) {
+                // Match transfer size settings
+                txDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
+                txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
+                txDmaInitStruct_.GDMA_BlockSize = blockSize;
+                rxDmaInitStruct_.GDMA_DstMsize = MsizeFour;
+                rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthOneByte;
+                rxDmaInitStruct_.GDMA_BlockSize = blockSize;
+            }
+        }
+
+        /*  Enable GDMA for RX */
+        if (rxBuf) {
+            GDMA_Init(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, &rxDmaInitStruct_);
+            GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, ENABLE);
+            status_.receiving = true;
+            SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_RDMAE);
+        }
 
         /*  Enable GDMA for TX */
         GDMA_Init(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, &txDmaInitStruct_);
         GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, ENABLE);
         status_.transmitting = true;
-    }
+        SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE, BIT_SHIFT_DMACR_TDMAE);
 
-    void startReceiver() {
-        AtomicSection lk;
-
-        if (status_.receiving) {
-            return;
-        }
-
-        // Update transferred data length
-        status_.transferredLength = chunkBuffer_.rxIndex;
-
-        if (chunkBuffer_.rxIndex >= bufferConfig_.rxLength) {
-            chunkBuffer_.rxIndex = 0;
-
-            if (config_.spiMode == SPI_MODE_MASTER) {
-                // FIXME: For SPI slave, the user callback will be called after CS pin is pulled high.
-                if (callbackConfig_.dmaUserCb) {
-                    (*callbackConfig_.dmaUserCb)();
-                }
-                status_.userDmaCbHandled = true;
-            }
-            return;
-        }
-
-        if (config_.spiMode == SPI_MODE_MASTER) {
-            chunkBuffer_.rxLength = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, (size_t)CFG_CHUNK_BUF_SIZE);
-        } else {
-            // FIXME: For SPI slave, the dma buffer cannot be less than 4 bytes, otherwise spi slave receives nothing
-            //        when the master sends less than 4bytes data.
-            //        If the user uses Non-four-byte alignment buffer, the user callback will be called after CS pin is pulled high.
-            chunkBuffer_.rxLength = CFG_CHUNK_BUF_SIZE;
-        }
-
-        //  8~4 bits mode
-        rxDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
-        rxDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
-        rxDmaInitStruct_.GDMA_BlockSize = chunkBuffer_.rxLength;
-        if (((chunkBuffer_.rxLength & 0x03)==0) && (((u32)(chunkBuffer_.rxBuf) & 0x03)==0)) {
-            /*  4-bytes aligned, move 4 bytes each transfer */
-            rxDmaInitStruct_.GDMA_DstMsize = MsizeOne;
-            rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthFourBytes;
-        } else {
-            rxDmaInitStruct_.GDMA_DstMsize = MsizeFour;
-            rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthOneByte;
-        }
-        assert_param(rxDmaInitStruct_.GDMA_BlockSize <= 4096);
-        rxDmaInitStruct_.GDMA_DstAddr = (u32)chunkBuffer_.rxBuf;
-
-        /*  Enable GDMA for RX */
-        GDMA_Init(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, &rxDmaInitStruct_);
-        GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, ENABLE);
-        status_.receiving = true;
-    }
-
-    int stopTransfer() {
-        AtomicSection lk;
-
-        if (!status_.transmitting && !status_.receiving) {
-            return SYSTEM_ERROR_INVALID_STATE;
-        }
-
-        if (status_.receiving) {
-            uint32_t dmaStopAddress = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
-            size_t dmaRxCount = dmaStopAddress ? (dmaStopAddress - (uint32_t)chunkBuffer_.rxBuf) : 0;
-            size_t fifoRxCount = 0;
-            size_t bytesToCopy = 0;
-            if (dmaRxCount < chunkBuffer_.rxLength) {
-                fifoRxCount = SSI_ReceiveData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, (void*)&chunkBuffer_.rxBuf[dmaRxCount], chunkBuffer_.rxLength - dmaRxCount);
-                bytesToCopy = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, dmaRxCount + fifoRxCount);
-                if (bufferConfig_.rxBuf) {
-                    DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
-                    int primask = HAL_disable_irq();
-                    memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, bytesToCopy);
-                    DCache_CleanInvalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
-                    HAL_enable_irq(primask);
-                }
-                chunkBuffer_.rxIndex += bytesToCopy;
-
-            } else {
-                LOG_DEBUG(ERROR, "dmaStopAddress is not reliable.");
-            }
-
-            status_.transferredLength = chunkBuffer_.rxIndex;
-        }
-
-        // TX data has been moved to DMA peripheral, force to clean it
-        GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
-        GDMA_ClearINT(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
-        GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
-        status_.transmitting = false;
-        chunkBuffer_.txIndex = 0;
-
-        GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
-        GDMA_ClearINT(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
-        GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
-        status_.receiving = false;
-        chunkBuffer_.rxIndex = 0;
-
-        return SYSTEM_ERROR_NONE;
+        return 0;
     }
 
     int transferDma(const uint8_t* txBuf, uint8_t* rxBuf, size_t size, hal_spi_dma_user_callback callback) {
@@ -608,34 +600,48 @@ public:
             ;
         }
 
-        AtomicSection lk;
-
         // Reset SPI in case the data in the buffer is not read completely in the last transfer
         transferDmaCancel();
-        SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE);
-        SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE);
 
-        bufferConfig_.rxBuf = rxBuf;
-        bufferConfig_.rxLength = size;
-        bufferConfig_.txBuf = txBuf;
-        bufferConfig_.txLength = size;
+        transferConfig_.reset();
+
+        // Hardware DMA peripheral limit of 4095
+        size_t blockSize = findDmaBlockSize(size);
+        if (blockSize == 0) {
+            return SYSTEM_ERROR_OUT_OF_RANGE;
+        }
+        size_t blockCount = size / blockSize;
+        if (blockCount > 0xfff) {
+            return SYSTEM_ERROR_TOO_LARGE;
+        }
+        size_t remainder = size - (blockCount * blockSize);
+
+        if (remainder != 0 && config_.spiMode == SPI_MODE_SLAVE) {
+            // XXX: for SPI slave mode only allowing transfers up to 4095 or sizes
+            // which are divisible by some common block size e.g. 10000 which can be done
+            // as (4 x 2500)
+            // We could probably use block chaining, but it's not well documented
+            return SYSTEM_ERROR_OUT_OF_RANGE;
+        }
+
+        transferConfig_.rxBuf = rxBuf;
+        transferConfig_.txBuf = txBuf;
+        transferConfig_.blockSize = blockSize;
+        transferConfig_.blockCount = blockCount;
+        transferConfig_.remainder = remainder;
 
         callbackConfig_.dmaUserCb = callback;
         status_.configuredTransferLength = size;
         status_.transferredLength = 0;
+        
+        if (txBuf) {
+            DCache_CleanInvalidate((u32)txBuf, size);
+        }
 
-        chunkBuffer_.txIndex = 0;
-        chunkBuffer_.rxIndex = 0;
-
-        startTransmission();
-        startReceiver();
-
-        return SYSTEM_ERROR_NONE;
+        return startDma();
     }
 
     int transferDmaCancel() {
-        AtomicSection lk;
-
         /* Clear Pending ISR */
         GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
         GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
@@ -648,16 +654,22 @@ public:
         status_.receiving = false;
         callbackConfig_.dmaUserCb = nullptr;
 
-        // Flush fifo
-        u32 rxFifoLevel;
-        while (SSI_Readable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx)) {
-            rxFifoLevel = SSI_GetRxCount(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
-            for (u32 i = 0; i < rxFifoLevel; i++) {
-                SSI_ReadData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
-            }
-        }
+        flushRxFifo();
 
         return SYSTEM_ERROR_NONE;
+    }
+
+    void flushRxFifo() {
+        // Flush fifo
+        while (SSI_Readable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx)) {
+            u32 rxFifoLevel = SSI_GetRxCount(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
+            for (u32 i = 0; i < rxFifoLevel; i++) {
+                uint8_t c = SSI_ReadData(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
+                if (config_.spiMode == SPI_MODE_SLAVE && transferConfig_.rxBuf && status_.transferredLength < status_.configuredTransferLength) {
+                    transferConfig_.rxBuf[status_.transferredLength++] = c;
+                }
+            }
+        }
     }
 
     SpiConfig config() const {
@@ -696,7 +708,7 @@ public:
 
     bool isDmaBufferConfigured() const {
         // Use at least one buffer for SPI transfer
-        return bufferConfig_.txBuf || bufferConfig_.rxBuf;
+        return transferConfig_.txBuf || transferConfig_.rxBuf;
     }
 
     int registerSelectUserCb(hal_spi_select_user_callback callback) {
@@ -713,39 +725,87 @@ public:
         }
     }
 
-    void dmaTxHandlerImpl() {
+    void dmaTxHandlerImpl(bool forceStop = false) {
+        bool doneWithBlocks = forceStop;
+        txDmaInitStruct_.MuliBlockCunt++;
+
+        // IMPORTANT: needs to be caught here before any of the GDMA calls are done
+        uint32_t p = GDMA_GetSrcAddr(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
+
+        if (!txDmaInitStruct_.MaxMuliBlock || txDmaInitStruct_.MuliBlockCunt == txDmaInitStruct_.MaxMuliBlock) {
+            GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
+            GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
+            doneWithBlocks = true;
+        } else if (txDmaInitStruct_.MaxMuliBlock && txDmaInitStruct_.MuliBlockCunt == txDmaInitStruct_.MaxMuliBlock - 1) {
+            GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
+        }
+
         // Clear Pending ISR, free TX DMA resource
-        GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
-        GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
         uint32_t isrTypeMap = GDMA_ClearINT(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
         (void)isrTypeMap;
-        status_.transmitting = false;
+        if (doneWithBlocks) {
+            SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_TDMAE);
+            status_.transmitting = false;
+        }
 
-        chunkBuffer_.txIndex += chunkBuffer_.txLength;
-
-        startTransmission();
+        if (doneWithBlocks && !transferConfig_.rxBuf) {
+            if (transferConfig_.txBuf) {
+                status_.transferredLength += p - txDmaInitStruct_.GDMA_SrcAddr;
+            } else {
+                // Dummy 0xff transfer
+                status_.transferredLength = status_.configuredTransferLength;
+            }
+            if (status_.transferredLength < status_.configuredTransferLength && transferConfig_.remainder) {
+                startDma();
+                return;
+            }
+            flushRxFifo();
+            if (callbackConfig_.dmaUserCb) {
+                (*callbackConfig_.dmaUserCb)();
+            }
+            status_.userDmaCbHandled = true;
+        }
     }
 
-    void dmaRxHandlerImpl() {
+    void dmaRxHandlerImpl(bool forceStop = false) {
         // Clear Pending ISR, free RX DMA resource
-        GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
-        GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
-        GDMA_ClearINT(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
-        status_.receiving = false;
+        rxDmaInitStruct_.MuliBlockCunt++;
 
-        /// Transfer in progress
-        uint32_t copyLength = 0;
-        copyLength = std::min(bufferConfig_.rxLength - chunkBuffer_.rxIndex, (size_t)chunkBuffer_.rxLength);
-        if (bufferConfig_.rxBuf) {
-            DCache_Invalidate((u32) chunkBuffer_.rxBuf, chunkBuffer_.rxLength);
-            int primask = HAL_disable_irq();
-            memcpy((void*)&bufferConfig_.rxBuf[chunkBuffer_.rxIndex], (void*)chunkBuffer_.rxBuf, copyLength);
-            DCache_CleanInvalidate((u32) bufferConfig_.rxBuf, bufferConfig_.rxLength);
-            HAL_enable_irq(primask);
+        bool doneWithBlocks = forceStop;
+
+        // IMPORTANT: needs to be caught here before any of the GDMA calls are done
+        uint32_t p = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
+
+        if (!rxDmaInitStruct_.MaxMuliBlock || rxDmaInitStruct_.MuliBlockCunt == rxDmaInitStruct_.MaxMuliBlock) {
+            GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
+            GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
+            doneWithBlocks = true;
+        } else if (rxDmaInitStruct_.MaxMuliBlock && rxDmaInitStruct_.MuliBlockCunt == rxDmaInitStruct_.MaxMuliBlock - 1) {
+            GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
         }
-        chunkBuffer_.rxIndex += copyLength;
 
-        startReceiver();
+        uint32_t isrTypeMap = GDMA_ClearINT(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
+        (void)isrTypeMap;
+
+        if (doneWithBlocks) {
+            SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_RDMAE);
+            status_.receiving = false;
+        }
+
+        if (doneWithBlocks) {
+            status_.transferredLength += p - rxDmaInitStruct_.GDMA_DstAddr;
+            if (status_.transferredLength < status_.configuredTransferLength && transferConfig_.remainder) {
+                startDma();
+                return;
+            }
+            flushRxFifo();
+            DCache_Invalidate((u32)transferConfig_.rxBuf, status_.configuredTransferLength);
+            
+            if (callbackConfig_.dmaUserCb) {
+                (*callbackConfig_.dmaUserCb)();
+            }
+            status_.userDmaCbHandled = true;
+        }
     }
 
     void onSelectedHandlerImpl() {
@@ -757,19 +817,18 @@ public:
         if (isDmaBufferConfigured()) {
             if (status_.csPinSelected) {
                 status_.userDmaCbHandled = false;
-                SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE);
-
-                // Releaod DMA buffer
-                startTransmission();
-                startReceiver();
+                if (!isBusy()) {
+                    status_.transferredLength = 0;
+                    startDma();
+                }
             } else {
-                stopTransfer();
-                SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE);
-                if (status_.userDmaCbHandled == false) {
-                    // SPI master sends the data that is less than the buffer size in the SPI slave
-                    if (callbackConfig_.dmaUserCb) {
-                        (*callbackConfig_.dmaUserCb)();
-                    }
+                GDMA_INTConfig(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, 0x1f, DISABLE);
+                GDMA_INTConfig(txDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, 0x1f, DISABLE);
+                if (status_.transmitting) {
+                    dmaTxHandlerImpl(true);
+                }
+                if (status_.receiving) {
+                    dmaRxHandlerImpl(true);
                 }
             }
         }
@@ -826,6 +885,7 @@ private:
 
         _memset(&txDmaInitStruct_, 0, sizeof(GDMA_InitTypeDef));
         txDmaInitStruct_.GDMA_DIR = TTFCMemToPeri;
+        //rxDmaInitStruct_.GDMA_ReloadDst = 1;
         txDmaInitStruct_.GDMA_DstHandshakeInterface = SPI_DEV_TABLE[rtlSpiIndex_].Tx_HandshakeInterface;
         txDmaInitStruct_.GDMA_DstAddr = (u32)&SPI_DEV_TABLE[rtlSpiIndex_].SPIx->DR;
         txDmaInitStruct_.GDMA_Index = 0;
@@ -859,7 +919,7 @@ private:
         return SYSTEM_ERROR_NONE;
     }
 
-private:
+public:
     hal_spi_interface_t     spiInterface_;
     int                     rtlSpiIndex_;
     uint32_t                spiInputClock_;
@@ -870,7 +930,7 @@ private:
     hal_pin_t               misoPin_;
 
     SpiConfig               config_;
-    SpiBufferConfig         bufferConfig_;
+    SpiTransferConfig       transferConfig_;
     SpiCallbackConfig       callbackConfig_;
 
     volatile uint8_t        ssPinState_;
@@ -879,9 +939,6 @@ private:
     GDMA_InitTypeDef        txDmaInitStruct_;
     os_mutex_recursive_t    mutex_;
     SpiStatus               status_;
-
-    SpiChunkBufferConfig    chunkBuffer_;
-
 };
 
 Spi* getInstance(hal_spi_interface_t spi) {
@@ -1007,6 +1064,7 @@ void hal_spi_info(hal_spi_interface_t spi, hal_spi_info_t* info, void* reserved)
     if (info->version >= HAL_SPI_INFO_VERSION_1) {
         int32_t state = HAL_disable_irq();
         if (spiInstance->isEnabled()) {
+            //info->clock = info->system_clock / SPI_DEV_TABLE[spiInstance->rtlSpiIndex_].SPIx->BAUDR;
             switch (config.clockDiv) {
                 case SPI_CLOCK_DIV2:   info->clock = info->system_clock / 2;   break;
                 case SPI_CLOCK_DIV4:   info->clock = info->system_clock / 4;   break;
@@ -1092,7 +1150,9 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
 
     auto spiInstance = CHECK_TRUE_RETURN(getInstance(spi), SYSTEM_ERROR_NOT_FOUND);
     if (spiInstance->isEnabled()) {
-        spiInstance->begin(config);
+        // FIXME: performing end()/begin() is pretty slow due to GPIO ROM calls
+        // Instead opt to change just the settings
+        spiInstance->setSettings(config);
     }
     return 0;
 }
@@ -1127,8 +1187,12 @@ int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* res
     // "clock" should be less or equal to half of the SPI input clock.
     CHECK_TRUE(clock <= spiInputClock, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    // Integer division results in clean values
-    switch (spiInputClock / clock) {
+    // For clock rates which are not fractions of base clock use next power of 2 divisor
+    // to be under the requested clock rate
+    uint32_t div = spiInputClock / clock;
+    div = div == 1 ? 1 : 1 << (std::numeric_limits<uint32_t>::digits - __builtin_clz(div - 1));
+
+    switch (div) {
     case 2:
         return SPI_CLOCK_DIV2;
     case 4:

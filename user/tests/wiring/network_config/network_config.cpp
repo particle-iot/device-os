@@ -20,6 +20,7 @@
 #include "scope_guard.h"
 #include "resolvapi.h"
 #include "ifapi.h"
+#include "icmp_echo.h"
 
 struct NetworkIp4Config {
     SockAddr addr;
@@ -587,7 +588,7 @@ test(NETWORK_CONFIG_ETH_09_dhcp_with_no_gw) {
     assertEqual(addr.profile, ethConfig.profile);
 }
 
-test(NETWORK_CONFIG_ETH_97_restore) {
+test(NETWORK_CONFIG_ETH_96_restore) {
     if (!isEthernetPresent()) {
         skip();
         return;
@@ -602,7 +603,7 @@ test(NETWORK_CONFIG_ETH_97_restore) {
     assertTrue(networkInterfaceConfigMatches(conf, storedConf));
 }
 
-test(NETWORK_CONFIG_ETH_98_connect) {
+test(NETWORK_CONFIG_ETH_97_connect) {
     if (!isEthernetPresent()) {
         skip();
         return;
@@ -613,6 +614,30 @@ test(NETWORK_CONFIG_ETH_98_connect) {
     assertTrue((bool)Ethernet.localIP());
     Particle.connect();
     assertTrue(waitFor(Particle.connected, 60000));
+}
+
+test(NETWORK_CONFIG_ETH_98_ping_gw_latency) {
+    // Tests for poor SPI/Wiznet network driver performance
+    // ICMP echo to the gateway should normally be 2ms roundtrip
+    // If performance is affected this will be over 10ms
+    assertTrue(Ethernet.ready());
+    assertTrue((bool)Ethernet.localIP());
+    assertTrue((bool)Ethernet.gatewayIP());
+
+    system_tick_t latency = 0;
+    size_t goodCount = 0;
+    for (int i = 0; i < 10; i++) {
+        auto t0 = millis();
+        int r = services::ping(Ethernet.gatewayIP().toString().c_str(), 1, 1000, Ethernet, AF_INET);
+        auto t1 = millis();
+        if (r == 1) {
+            latency += t1 - t0;
+            goodCount++;
+        }
+    }
+    latency /= goodCount;
+    assertMoreOrEqual(goodCount, 1);
+    assertLessOrEqual(latency, 10);
 }
 
 test(NETWORK_CONFIG_ETH_99_disable_feature) {
