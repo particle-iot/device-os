@@ -56,6 +56,7 @@
 #include "rgbled.h"
 #include "led_service.h"
 #include "diagnostics.h"
+#include "file_util.h"
 #include "check.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
@@ -68,6 +69,7 @@
 #include "server_config.h"
 #include "system_network_manager.h"
 #include "ledger/ledger_manager.h"
+#include "ledger/ledger.h"
 
 // FIXME
 #include "system_control_internal.h"
@@ -673,7 +675,14 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     CHECK(dct_write_app_data(devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
     // Restore default server key and address
     ServerConfig::instance()->restoreDefaultSettings();
-    particle::system::NetworkManager::instance()->clearStoredConfiguration();
+    system::NetworkManager::instance()->clearStoredConfiguration();
+#if HAL_PLATFORM_LEDGER
+    // Can't use LedgerManager::removeAllData() because the manager is not initialized yet
+    CHECK(rmrf(system::LEDGER_ROOT_DIR));
+#endif // HAL_PLATFORM_LEDGER
+    // XXX: Application global constructors run before this function so an additional system reset
+    // is performed to prevent any inconsistencies that might be caused by the configuration cleanup
+    HAL_Core_System_Reset_Ex(RESET_REASON_CONFIG_UPDATE, 0 /* data */, nullptr /* reserved */);
 #endif // !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     return 0;
 }
