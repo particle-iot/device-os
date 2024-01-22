@@ -95,7 +95,11 @@ private:
     usb_dev_t* rtlDev_ = nullptr;
     bool setupError_ = false;
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     const uint8_t RTL_USBD_ISR_PRIORITY = OS_THREAD_PRIORITY_NETWORK - 1;
+#else
+    const uint8_t RTL_USBD_ISR_PRIORITY = 7; // Does not matter, no RTOS
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     __attribute__((aligned(4))) uint8_t tempBuffer_[rtl::TEMP_BUFFER_SIZE];
 
     // TODO: Validate whether these are required to be present at all times

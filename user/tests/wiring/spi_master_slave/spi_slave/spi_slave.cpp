@@ -229,6 +229,14 @@ static void SPI_Init(uint8_t mode, uint8_t bitOrder) {
     MY_SPI.setDataMode(mode);
 
     MY_SPI.begin(SPI_MODE_SLAVE, MY_CS);
+
+    // FIXME: some platforms reset settings after begin(),
+    // we need to streamline the behavior.
+#if HAL_PLATFORM_RTL872X
+    MY_SPI.onSelect(SPI_On_Select);
+    MY_SPI.setBitOrder(bitOrder);
+    MY_SPI.setDataMode(mode);
+#endif
 }
 
 test(00_SPI_Master_Slave_Slave_Transfer)
@@ -248,7 +256,7 @@ test(00_SPI_Master_Slave_Slave_Transfer)
         int ret = hal_spi_sleep(MY_SPI.interface(), false, nullptr);
         // assertEqual(ret, (int)SYSTEM_ERROR_NONE); // Device may be awake
         memset(SPI_Slave_Tx_Buffer, 0, sizeof(SPI_Slave_Tx_Buffer));
-        memset(SPI_Slave_Rx_Buffer, 0, sizeof(SPI_Slave_Rx_Buffer));
+        memset(SPI_Slave_Rx_Buffer, 0xaa, sizeof(SPI_Slave_Rx_Buffer));
 
         /* Preload SLAVE_TEST_MESSAGE_1 reply */
         memcpy(SPI_Slave_Tx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1));
@@ -260,11 +268,21 @@ test(00_SPI_Master_Slave_Slave_Transfer)
 
         /* Receive up to TRANSFER_LENGTH_2 bytes */
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, TRANSFER_LENGTH_2, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
+
+        if (MY_SPI.available() != TRANSFER_LENGTH_1 || strncmp((const char *)SPI_Slave_Rx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE))) {
+            Serial.printlnf("Received invalid request");
+            for (int i = 0; i < 32; i++) {
+                Serial.printf("%02x", SPI_Slave_Rx_Buffer[i]);
+            }
+            Serial.println();
+        }
+
+        Serial.printlnf("< (%u) ", MY_SPI.available());
+        Serial.println((const char *)SPI_Slave_Rx_Buffer);
+
         /* Check how many bytes we have received */
         assertEqual(MY_SPI.available(), TRANSFER_LENGTH_1);
 
-        // Serial.print("< ");
-        // Serial.println((const char *)SPI_Slave_Rx_Buffer);
         assertTrue(strncmp((const char *)SPI_Slave_Rx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE)) == 0);
 
         requestedLength = *((uint32_t *)(SPI_Slave_Rx_Buffer + sizeof(MASTER_TEST_MESSAGE)));
@@ -296,8 +314,8 @@ test(00_SPI_Master_Slave_Slave_Transfer)
 
         memcpy(SPI_Slave_Tx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength);
         SPI_Slave_Tx_Buffer[requestedLength] = '\0';
-        // Serial.print("> ");
-        // Serial.println((const char *)SPI_Slave_Tx_Buffer);
+        Serial.print("> ");
+        Serial.println((const char *)SPI_Slave_Tx_Buffer);
 
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, requestedLength, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
         /* Check that we have transferred requestedLength bytes as requested */
@@ -325,12 +343,13 @@ test(01_SPI_Master_Slave_Slave_Receiption)
 
     memset(SPI_Slave_Rx_Buffer_Supper, 0, sizeof(SPI_Slave_Rx_Buffer_Supper));
 
-    SPI_Transfer_DMA(nullptr, SPI_Slave_Rx_Buffer_Supper, sizeof(SPI_Slave_Rx_Buffer_Supper), NULL);
+    SPI_Transfer_DMA(nullptr, SPI_Slave_Rx_Buffer_Supper, sizeof(SPI_Slave_Rx_Buffer_Supper), &SPI_DMA_Completed_Callback);
+
+    Serial.print("< ");
+    Serial.println((const char *)SPI_Slave_Rx_Buffer_Supper);
     /* Check how many bytes we have received */
     assertEqual(MY_SPI.available(), strlen(txString));
 
-    // Serial.print("< ");
-    // Serial.println((const char *)SPI_Slave_Rx_Buffer_Supper);
     assertTrue(strncmp((const char *)SPI_Slave_Rx_Buffer_Supper, txString, strlen(txString)) == 0);
 }
 
