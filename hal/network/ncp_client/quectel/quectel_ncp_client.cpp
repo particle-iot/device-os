@@ -91,6 +91,7 @@ inline system_tick_t millis() {
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1070,6 +1071,8 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         // Only change for MSoM, and currently MSoM only uses BG95_M5.
         // Not testing for PLATFORM_ID == PLATFORM_MSOM because another modem type might not support 921600.
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5;
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX) {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX;
     }
     return runtimeBaudrate;
 }
