@@ -53,4 +53,5 @@ check_modular = $(if $(PLATFORM_DYNALIB_MODULES),,$(error "Platform '$(PLATFORM)
 
 get_module_start_address = 0x$(word 1,$(shell $(OBJDUMP) --syms $(TARGET_BASE).elf | grep 'link_module_start'))
 
-get_section_size_with_alignment = $(shell echo $$(($(shell $(OBJDUMP) -h --section=$1 $2 | grep -E '$1' | awk '{ print "0x"$$3" + "$$7" -1"}'))))
+# FIXME: Cygwin gawk is weird, current awk script seems to work, adding -1 within it breaks everything for some reason
+get_section_size_with_alignment = $(shell echo $$(($(shell $(OBJDUMP) -h --section=$1 $2 | grep -E '$1' | $(AWK) '{ print "0x"$$3" + "$$7}') - 1)))

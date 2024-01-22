@@ -11,6 +11,7 @@ endif
 COMMA := ,
 
 COMMON_BUILD=../../../build
+include $(COMMON_BUILD)/common-tools.mk
 include $(COMMON_BUILD)/arm-tools.mk
 include $(COMMON_BUILD)/macros.mk
 
