@@ -617,6 +617,11 @@ test(NETWORK_CONFIG_ETH_97_connect) {
 }
 
 test(NETWORK_CONFIG_ETH_98_ping_gw_latency) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
     // Tests for poor SPI/Wiznet network driver performance
     // ICMP echo to the gateway should normally be 2ms roundtrip
     // If performance is affected this will be over 10ms
