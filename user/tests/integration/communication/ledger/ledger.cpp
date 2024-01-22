@@ -20,6 +20,8 @@ const Serial1LogHandler logHandler(115200, LOG_LEVEL_WARN, {
 
 #endif // defined(DEBUG_BUILD)
 
+bool g_ledgerSynced = false;
+
 } // namespace
 
 test(01_init_ledgers) {
@@ -48,18 +50,35 @@ test(01_init_ledgers) {
 }
 
 test(02_sync_device_to_cloud) {
+    g_ledgerSynced = false;
     auto ledger = Particle.ledger(DEVICE_TO_CLOUD_LEDGER);
+    ledger.onSync([](Ledger /* ledger */) {
+        g_ledgerSynced = true;
+    });
     LedgerData d = { { "a", 1 }, { "b", 2 }, { "c", 3 } };
     ledger.set(d);
+    waitFor([]() {
+        return g_ledgerSynced;
+    }, 10000);
+    ledger.onSync(nullptr);
+    assertTrue(g_ledgerSynced);
 }
 
 test(03_update_cloud_to_device) {
+    g_ledgerSynced = false;
+    auto ledger = Particle.ledger(CLOUD_TO_DEVICE_LEDGER);
+    ledger.onSync([](Ledger /* ledger */) {
+        g_ledgerSynced = true;
+    });
 }
 
 test(04_validate_cloud_to_device_sync) {
-    // Let the system sync the ledger
-    delay(8000);
+    waitFor([]() {
+        return g_ledgerSynced;
+    }, 10000);
     auto ledger = Particle.ledger(CLOUD_TO_DEVICE_LEDGER);
+    ledger.onSync(nullptr);
+    assertTrue(g_ledgerSynced);
     auto d = ledger.get();
     assertTrue((d == LedgerData{ { "d", 4 }, { "e", 5 }, { "f", 6 } }));
 }

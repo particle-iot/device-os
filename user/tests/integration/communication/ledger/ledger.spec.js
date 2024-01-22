@@ -25,11 +25,11 @@ before(function() {
 });
 
 test('01_init_ledgers', async function() {
+  // See ledger.cpp
 });
 
 test('02_sync_device_to_cloud', async function() {
-  // Let the device sync the ledger
-  await delay(8000);
+  await delay(1000);
   const { body: { instance } } = await api.getLedgerInstance({ ledgerName: DEVICE_TO_CLOUD_LEDGER, scopeValue: deviceId, org: ORG_ID, auth });
   expect(instance.data).to.deep.equal({ a: 1, b: 2, c: 3 });
 });
@@ -39,4 +39,5 @@ test('03_update_cloud_to_device', async function() {
 });
 
 test('04_validate_cloud_to_device_sync', async function() {
+  // See ledger.cpp
 });
