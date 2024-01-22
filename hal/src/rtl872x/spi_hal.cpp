@@ -543,16 +543,24 @@ public:
         }
 
         if (rxBuf) {
-            if (((blockSize & 0x03) == 0) && (((uintptr_t)rxBuf & 0x03) == 0) && blockSize >= 4) {
+            if (((blockSize & 0x03) == 0) && (((uintptr_t)rxBuf & 0x03) == 0) && blockSize >= 4 && config_.spiMode == SPI_MODE_MASTER) {
                 /*  4-bytes aligned, move 4 bytes each transfer */
                 rxDmaInitStruct_.GDMA_DstMsize = MsizeOne;
                 rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthFourBytes;
             } else {
-                rxDmaInitStruct_.GDMA_DstMsize = MsizeFour;
+                if (config_.spiMode == SPI_MODE_MASTER) {
+                    rxDmaInitStruct_.GDMA_DstMsize = MsizeFour;
+                } else {
+                    rxDmaInitStruct_.GDMA_DstMsize = MsizeOne;
+                }
                 rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthOneByte;
             }
             rxDmaInitStruct_.GDMA_BlockSize = blockSize;
-            rxDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
+            if (config_.spiMode == SPI_MODE_MASTER) {
+                rxDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
+            } else {
+                rxDmaInitStruct_.GDMA_SrcMsize = MsizeOne;
+            }
             rxDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
             rxDmaInitStruct_.GDMA_DstAddr = (u32)rxBuf;
             rxDmaInitStruct_.GDMA_ReloadDst = 0;
@@ -565,10 +573,10 @@ public:
             rxDmaInitStruct_.MuliBlockCunt = 0;
             if (rxDmaInitStruct_.GDMA_DstMsize != txDmaInitStruct_.GDMA_SrcMsize) {
                 // Match transfer size settings
-                txDmaInitStruct_.GDMA_SrcMsize = MsizeFour;
+                txDmaInitStruct_.GDMA_SrcMsize = config_.spiMode == SPI_MODE_MASTER ? MsizeFour : MsizeOne;
                 txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
                 txDmaInitStruct_.GDMA_BlockSize = blockSize;
-                rxDmaInitStruct_.GDMA_DstMsize = MsizeFour;
+                rxDmaInitStruct_.GDMA_DstMsize = config_.spiMode == SPI_MODE_MASTER ? MsizeFour : MsizeOne;
                 rxDmaInitStruct_.GDMA_DstDataWidth = TrWidthOneByte;
                 rxDmaInitStruct_.GDMA_BlockSize = blockSize;
             }
@@ -647,7 +655,7 @@ public:
         return startDma();
     }
 
-    int transferDmaCancel() {
+    int transferDmaCancel(bool flushTx = false) {
         /* Clear Pending ISR */
         GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
         GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
@@ -661,6 +669,11 @@ public:
         callbackConfig_.dmaUserCb = nullptr;
 
         flushRxFifo();
+
+        if (config_.spiMode == SPI_MODE_SLAVE || flushTx) {
+            SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE);
+            SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, ENABLE);
+        }
 
         return SYSTEM_ERROR_NONE;
     }
@@ -767,11 +780,37 @@ public:
         }
     }
 
+    void flushDmaRxFiFo() {
+        constexpr uint32_t BIT_CFGX_LO_FIFO_EMPTY = (1 << 9);
+        constexpr uint32_t BIT_CFGX_LO_CH_SUSP = (1 << 8);
+
+        if ((GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW & BIT_CFGX_LO_FIFO_EMPTY) == 0) {
+            // Suspending DMA channel forces flushing of data into destination from GDMA FIFO
+            // NOTE: The datasheet says that "there is no guarantee that the current transaction will complete", which is why we enter the busy loop below in these cases
+            GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW |= BIT_CFGX_LO_CH_SUSP;
+            __DSB();
+            __ISB();
+            // while ((GDMA_BASE->ChEnReg & (1 << rxDmaInitStruct_.GDMA_ChNum))) {
+            //     // This loop is intended to delay until the DMA controller transfers the expected number of bytes, based off of the address returned in GDMA_GetDstAddr()
+            //     // When a DMA transaction is near the end of a block (within the last 4 bytes), sometimes the address returned does not increment to the expected destination. In some cases it resets completely.
+            //     // To work around this, we poll the ChEnReg bit for the RX DMA channel. The data sheet says it is: "automatically cleared by hardware when the DMA transfer to the destination is complete".
+            //     // The assumption is that if we see this bit is cleared, then the transfer is complete, the data we wanted flushed is available, there is no point to waiting any longer and we can return.
+            // }
+            GDMA_BASE->CH[rxDmaInitStruct_.GDMA_ChNum].CFG_LOW &= ~(BIT_CFGX_LO_CH_SUSP);
+            __DSB();
+            __ISB();
+        }
+    }
+
     void dmaRxHandlerImpl(bool forceStop = false) {
         // Clear Pending ISR, free RX DMA resource
         rxDmaInitStruct_.MuliBlockCunt++;
 
         bool doneWithBlocks = forceStop;
+
+        if (forceStop) {
+            flushDmaRxFiFo();
+        }
 
         // IMPORTANT: needs to be caught here before any of the GDMA calls are done
         uint32_t p = GDMA_GetDstAddr(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
@@ -830,6 +869,7 @@ public:
                 if (status_.receiving) {
                     dmaRxHandlerImpl(true);
                 }
+                transferDmaCancel(true);
             }
         }
     }
@@ -1112,7 +1152,7 @@ void hal_spi_transfer_dma_cancel(hal_spi_interface_t spi) {
         return;
     }
     auto spiInstance = getInstance(spi);
-    spiInstance->transferDmaCancel();
+    spiInstance->transferDmaCancel(/* flushTx */ true);
 }
 
 int32_t hal_spi_transfer_dma_status(hal_spi_interface_t spi, hal_spi_transfer_status_t* st) {
