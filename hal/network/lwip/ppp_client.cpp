@@ -302,6 +302,26 @@ int Client::input(const uint8_t* data, size_t size) {
 
         pppos_input(pcb_, (u8_t*)data, size);
 
+        if (server_) {
+          // LOG(INFO, "input %u", size);
+          auto pppos = (pppos_pcb*)pcb_->link_ctx_cb;
+          if (pppos->in_head != nullptr) {
+            const size_t header = 19;
+            if (pppos->in_state == PDDATA && pppos->in_head->len >= header) {
+              const size_t len = pppos->in_head->len - header;
+              const char breakAndAt[] = "+++AT";
+              const char breakAndAtDial[] = "+++ATD";
+              if (len >= strlen(breakAndAtDial) && !strncmp(((const char*)pppos->in_head->payload) + header, breakAndAtDial, strlen(breakAndAtDial))) {
+                const char okResponse[] = "\r\nCONNECT\r\n";
+                output((const uint8_t*)okResponse, strlen(okResponse));
+              } else if (len >= strlen(breakAndAt) && !strncmp(((const char*)pppos->in_head->payload) + header, breakAndAt, strlen(breakAndAt))) {
+                const char okResponse[] = "\r\nOK\r\n";
+                output((const uint8_t*)okResponse, strlen(okResponse));
+              }
+            }
+          }
+        }
+
 #ifdef DEBUG_BUILD
         auto linkDropAfter = lwip_stats.link.drop;
         if (linkDropAfter > linkDropBefore) {
