@@ -399,6 +399,44 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
             // 4 minutes
             LOG_DEBUG(INFO, "TCP RST or FIN received, timeout in 4 minutes");
             session->setLifetime(4 * 60 * 1000);
+        } else if ((TCPH_FLAGS(tcphdr) & (TCP_SYN | TCP_ACK | TCP_RST)) == (TCP_SYN) || (TCPH_FLAGS(tcphdr) & (TCP_SYN | TCP_ACK | TCP_RST)) == (TCP_SYN | TCP_RST)) {
+            size_t hdrlen_bytes = TCPH_HDRLEN_BYTES(tcphdr);
+            size_t optlen = (u16_t)(hdrlen_bytes - TCP_HLEN);
+            char opts[20] = {};
+            pbuf_copy_partial(q, opts, optlen, TCP_HLEN);
+            for (char* o = opts; o - opts < (int)optlen;) {
+                bool ex = false;
+                switch (*o) {
+                    case 0: {
+                        ex = true;
+                        break;
+                    }
+                    case 1: {
+                        o++;
+                        continue;
+                    }
+                    case 2: {
+                        // TCP MSS
+                        auto outif = ip4_route_src(ip_2_ip4(&srcAddr.address()), ip_2_ip4(&dstAddr.address()));
+                        if (outif) {
+                            uint16_t newMss = lwip_htons(outif->mtu - 40);
+                            uint16_t oldMss = lwip_ntohs(*(uint16_t*)(o + 2));
+                            *(uint16_t*)(o + 2) = newMss;
+                            LOG(ERROR, "Adjusted MSS from %u to %u", (unsigned)oldMss, outif->mtu - 40);
+                        }
+                        o += 4;
+                        break;
+                    }
+                    default: {
+                        size_t len = o[1];
+                        o += len;
+                        break;
+                    }
+                }
+                if (ex) {
+                    break;
+                }
+            }
         }
     }
     ip_hdr* ip4hdr = (ip_hdr*)ipheader;
