@@ -56,7 +56,6 @@
 #include "rgbled.h"
 #include "led_service.h"
 #include "diagnostics.h"
-#include "file_util.h"
 #include "check.h"
 #include "spark_wiring_interrupts.h"
 #include "spark_wiring_cellular.h"
