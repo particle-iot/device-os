@@ -192,6 +192,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             }
             case PIN_MODE_SWD: {
                 if (isSwdPin(pin)) {
+                    // TODO: Dont re-enable SWD in the pinmux if we are in protected mode
                     //"Pinmux_Swdon"
                     u32 Temp = 0;
                     Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);

@@ -345,6 +345,21 @@ void Set_System(void)
             break;
         }
     }
+
+    uint32_t syscfg3 = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3);
+
+    // Check if either bit it set
+    if (syscfg3 & (BIT_SYS_SWD_GP_SEL | (1<<28))) { //BIT_SDIO_PMUX_FEN
+        // Disable swd pinmux
+        Pinmux_Swdoff();
+
+        // Convert pins SDIO -> GPIO and Alternate swd -> default SWD pins for runtime
+        syscfg3 &= ~(BIT_SYS_SWD_GP_SEL | 1<<28);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3, syscfg3);
+    }
+
+    // TODO: Disable pull up on D5 / PB19
+
 #else
     // Disable cache
     Cache_Enable(0);

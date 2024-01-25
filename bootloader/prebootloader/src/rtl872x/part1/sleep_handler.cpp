@@ -251,7 +251,7 @@ void configureDeepSleepWakeupSource(const hal_sleep_config_t* config) {
 void enterDeepSleep() {
     // There is a user LED connected on D7, which is PA27 (SWD-DAT). There is an internal
     // pull-up resister on this I/O, which will turn on the user LED when enter the hibernate mode.
-#if PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_MSOM
     if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN) & BIT_LSYS_SWD_PMUX_EN) {
         // Disable SWD
         Pinmux_Swdoff();
@@ -337,7 +337,7 @@ void sleepProcess(void) {
                 SOCPS_SleepInit();
                 configureSleepWakeupSource(config);
 
-#if PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_MSOM
                 // There is a user LED connected on D7, which is PA27 (SWD-DAT). There is an internal
                 // pull-up resister on this I/O, which will turn on the user LED when enter the stop/ulp mode.
                 bool swdEnabled = false;
@@ -356,7 +356,7 @@ void sleepProcess(void) {
 
                 SOCPS_AONTimerCmd(DISABLE);
 
-#if PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_MSOM
                 if (swdEnabled) {
                     PAD_PullCtrl(27, GPIO_PuPd_UP);
                     uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);	
