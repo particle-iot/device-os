@@ -19,12 +19,19 @@
 #include <cstring>
 #include "hal_irq_flag.h"
 #include <algorithm>
+#include "security_mode.h"
 
 using namespace particle::usbd;
 using namespace particle::usbd::dfu;
 
 constexpr const uint8_t DfuClassDriver::msftExtCompatIdOsDescr_[];
 constexpr const uint8_t DfuClassDriver::msftExtPropOsDescr_[];
+
+namespace {
+
+const char PROTECTED_MODE_ERROR[] = "Device is in protected mode";
+
+}
 
 DfuClassDriver::DfuClassDriver(Device* dev)
     : ClassDriver(dev) {
@@ -218,6 +225,11 @@ int DfuClassDriver::handleDfuUpload(SetupRequest* req) {
          * - wTransferSize: length of the data buffer sent by the host
          * - wBlockNumber: value of the wValue parameter
          */
+        if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+          setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+          dev_->setupReply(req, transferBuf_, 0);
+          break;
+        }
         uintptr_t addr = ((req_.wValue - 2) * USBD_DFU_TRANSFER_SIZE) + address_;
         auto ret = currentMal()->read(transferBuf_, addr, req_.wLength);
         if (ret != detail::OK) {
@@ -252,6 +264,9 @@ int DfuClassDriver::handleDfuGetStatus(SetupRequest* req) {
          * a pending erase request
          */
         setState(detail::dfuDNBUSY);
+        if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+          setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+        }
         /* Ask MAL to update bwPollTimeout depending on the current DfuSe command */
         currentMal()->getStatus(&status_, dfuseCmd_);
       } else {
@@ -360,17 +375,26 @@ int DfuClassDriver::handleDfuAbort(SetupRequest* req) {
 void DfuClassDriver::setState(detail::DfuDeviceState st) {
   state_ = st;
   status_.bState = state_;
+  if (state_ != detail::dfuERROR) {
+    status_.iString = 0;
+  }
 }
 
 void DfuClassDriver::setStatus(detail::DfuDeviceStatus st) {
   status_.bStatus = st;
 }
 
-void DfuClassDriver::setError(detail::DfuDeviceStatus st, bool stall) {
+void DfuClassDriver::setError(detail::DfuDeviceStatus st, bool stall, const char* description) {
   setStatus(st);
   setState(detail::dfuERROR);
   if (stall) {
     dev_->setupError(nullptr);
+  }
+  if (description) {
+    status_.iString = stringBase_ + HAL_PLATFORM_USB_DFU_INTERFACES;
+    strlcpy(errorString_, description, sizeof(errorString_));
+  } else {
+    status_.iString = 0;
   }
 }
 
@@ -429,6 +453,10 @@ int DfuClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
           }
           case detail::DFUSE_COMMAND_ERASE: {
             if (req_.wLength == sizeof(uint32_t) + 1) {
+              if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+                setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+                break;
+              }
               uintptr_t addr = *((uint32_t*)(transferBuf_ + 1));
               auto ret = currentMal()->erase(addr, 0);
               if (ret != detail::OK) {
@@ -462,6 +490,10 @@ int DfuClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
          * - wTransferSize: length of the data buffer sent by the host
          * - wBlockNumber: value of the wValue parameter
          */
+        if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+          setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+          break;
+        }
         uintptr_t addr = ((req_.wValue - 2) * USBD_DFU_TRANSFER_SIZE) + address_;
         auto ret = currentMal()->write(transferBuf_, addr, req_.wLength);
         if (ret != detail::OK) {
@@ -509,6 +541,9 @@ int DfuClassDriver::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t
     return -1;
   }
   const unsigned idx = id - stringBase_;
+  if (id == status_.iString && status_.iString && state_ == dfu::detail::DfuDeviceState::dfuERROR && strlen(errorString_) ) {
+    return dev_->getUnicodeString(errorString_, strlen(errorString_), buf, length);
+  }
   if (idx > HAL_PLATFORM_USB_DFU_INTERFACES) {
     return -1;
   }
@@ -528,7 +563,7 @@ int DfuClassDriver::getNumInterfaces() const {
 }
 
 int DfuClassDriver::getNumStrings() const {
-  return HAL_PLATFORM_USB_DFU_INTERFACES;
+  return HAL_PLATFORM_USB_DFU_INTERFACES + 1 /* error string */;
 }
 
 unsigned DfuClassDriver::getEndpointMask() const {

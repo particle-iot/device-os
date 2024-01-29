@@ -27,20 +27,6 @@
 #ifndef __LIB_YMODEM_H
 #define __LIB_YMODEM_H
 
-#include "system_ymodem.h"
-#include "system_update.h"
-
-class Ymodem
-{
-public:
-    Ymodem();
-};
-
-Ymodem::Ymodem()
-{
-    set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
-}
-
-Ymodem ymodem;
+#error "YModem/Serial flashing is deprecated"
 
 #endif  /* __LIB_YMODEM_H */

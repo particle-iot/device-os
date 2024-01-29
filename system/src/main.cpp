@@ -709,6 +709,20 @@ RunTimeInfoDiagnosticData g_usedRamDiagData(DIAG_ID_SYSTEM_USED_RAM, DIAG_NAME_S
     }
 );
 
+class ProtectedStateDiagnosticData: public AbstractUnsignedIntegerDiagnosticData {
+public:
+    ProtectedStateDiagnosticData() :
+            AbstractUnsignedIntegerDiagnosticData(DIAG_ID_SYSTEM_PROTECTED_STATE, DIAG_NAME_SYSTEM_PROTECTED_STATE) {
+    }
+
+    virtual int get(IntType& val) override {
+        val = security_mode_get(nullptr);
+        return 0; // OK
+    }
+};
+
+ProtectedStateDiagnosticData g_ProtectedState;
+
 } // namespace
 
 /*******************************************************************************
@@ -783,7 +797,7 @@ void app_setup_and_loop(void)
     HAL_USB_Init();
 #endif
 
-#if defined (START_DFU_FLASHER_SERIAL_SPEED) || defined (START_YMODEM_FLASHER_SERIAL_SPEED)
+#if defined (START_DFU_FLASHER_SERIAL_SPEED)
     USB_USART_LineCoding_BitRate_Handler(system_lineCodingBitRateHandler);
 #endif
 

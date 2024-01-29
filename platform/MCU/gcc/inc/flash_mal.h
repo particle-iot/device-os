@@ -27,3 +27,8 @@
 #define EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT (sFLASH_ASSET_STORAGE_PAGE_COUNT)
 
 #endif // defined(USE_SERIAL_FLASH)
+
+inline int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t device, uint32_t address, uint32_t* offset) {
+    return -1;
+}
+

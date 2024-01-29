@@ -25,7 +25,6 @@
 #include "system_update.h"
 #include "system_cloud_internal.h"
 #include "system_network.h"
-#include "system_ymodem.h"
 #include "system_task.h"
 #include "firmware_update.h"
 #include "module_info.h"
@@ -48,11 +47,6 @@ using namespace particle::system;
 #ifdef START_DFU_FLASHER_SERIAL_SPEED
 static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
 #endif
-#ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-static uint32_t start_ymodem_flasher_serial_speed = START_YMODEM_FLASHER_SERIAL_SPEED;
-#endif
-
-ymodem_serial_flash_update_handler Ymodem_Serial_Flash_Update_Handler = NULL;
 
 // TODO: Use a single state variable instead of SPARK_CLOUD_XXX flags
 volatile uint8_t SPARK_CLOUD_SOCKETED;
@@ -193,9 +187,8 @@ int system_get_flag(system_flag_t flag, uint8_t* value, void*)
 }
 
 
-void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler)
+void set_ymodem_serial_flash_update_handler_deprecated(void*)
 {
-    Ymodem_Serial_Flash_Update_Handler = handler;
 }
 
 void set_start_dfu_flasher_serial_speed(uint32_t speed)
@@ -205,41 +198,14 @@ void set_start_dfu_flasher_serial_speed(uint32_t speed)
 #endif
 }
 
-void set_start_ymodem_flasher_serial_speed(uint32_t speed)
+bool system_firmwareUpdate_deprecated(Stream* stream, void* reserved)
 {
-#ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-    start_ymodem_flasher_serial_speed = speed;
-#endif
+    return false;
 }
 
-bool system_firmwareUpdate(Stream* stream, void* reserved)
+bool system_fileTransfer_deprecated(system_file_transfer_t* tx, void* reserved)
 {
-    set_ymodem_serial_flash_update_handler(Ymodem_Serial_Flash_Update);
-    system_file_transfer_t tx;
-    tx.descriptor.store = FileTransfer::Store::FIRMWARE;
-    tx.stream = stream;
-    return system_fileTransfer(&tx);
-}
-
-bool system_fileTransfer(system_file_transfer_t* tx, void* reserved)
-{
-    bool status = false;
-    Stream* serialObj = tx->stream;
-
-    if (Ymodem_Serial_Flash_Update_Handler)
-    {
-        status = Ymodem_Serial_Flash_Update_Handler(serialObj, tx->descriptor, NULL);
-        if (status)
-        {
-            serialObj->println("Restarting system to apply firmware update...");
-        }
-    }
-    else
-    {
-        serialObj->println("Firmware update using this terminal is not supported!");
-        serialObj->println("Add #include \"Ymodem/Ymodem.h\" to your sketch and try again.");
-    }
-    return status;
+    return false;
 }
 
 void system_lineCodingBitRateHandler(uint32_t bitrate)
@@ -253,12 +219,6 @@ void system_lineCodingBitRateHandler(uint32_t bitrate)
         network_connect_cancel(0, 1, 0, 0);
         //Reset device and briefly enter DFU bootloader mode
         System.dfu(false);
-    }
-#endif
-#ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-    if (!network_listening(0, 0, NULL) && bitrate == start_ymodem_flasher_serial_speed)
-    {
-        network_listen(0, 0, 0);
     }
 #endif
 }
@@ -413,4 +373,19 @@ int system_get_update_status(void* reserved) {
         return SYSTEM_UPDATE_STATUS_PENDING;
     }
     return SYSTEM_UPDATE_STATUS_NOT_AVAILABLE;
+}
+
+int Spark_Prepare_For_Firmware_Update_protected(FileTransfer::Descriptor& file, uint32_t flags, void* reserved) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return Spark_Prepare_For_Firmware_Update(file, flags, reserved);
+}
+
+int Spark_Finish_Firmware_Update_protected(FileTransfer::Descriptor& file, uint32_t flags, void* reserved) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return Spark_Finish_Firmware_Update(file, flags, reserved);
+}
+
+int Spark_Save_Firmware_Chunk_protected(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return Spark_Save_Firmware_Chunk(file, chunk, reserved);
 }

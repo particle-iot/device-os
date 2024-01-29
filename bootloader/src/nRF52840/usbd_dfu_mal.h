@@ -24,19 +24,23 @@
 
 #define INTERNAL_FLASH_START_ADD        0x00000000
 #define INTERNAL_FLASH_END_ADDR         0x00100000
-#define INTERNAL_FLASH_IF_STRING        "@Internal Flash   /0x00000000/1*004Ka,47*004Kg,192*004Kg,4*004Kg,4*004Kg,8*004Ka";
+#define INTERNAL_FLASH_IF_STRING        "@Internal Flash   /0x00000000/1*004Ka,47*004Kg,192*004Kg,4*004Kg,4*004Kg,8*004Ka"
+#define INTERNAL_FLASH_IF_STRING_PROT   "@Internal Flash   /0x00000000/1*004Kb,47*004Kb,192*004Kb,4*004Kb,4*004Kb,8*004Kb"
 
 #define DCT_START_ADD                   0x00000000
 #define DCT_END_ADDR                    0x00004000
-#define DCT_IF_STRING                   "@DCT Flash   /0x00000000/1*016Ke";
+#define DCT_IF_STRING                   "@DCT Flash   /0x00000000/1*016Ke"
+#define DCT_IF_STRING_PROT              "@DCT Flash   /0x00000000/1*016Kb"
 
 #define EXTERNAL_FLASH_START_ADD        0x00000000
 #if PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_ESOMX
 #define EXTERNAL_FLASH_END_ADDR         0x00800000
-#define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x80000000/2048*004Kg";
+#define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x80000000/2048*004Kg"
+#define EXTERNAL_FLASH_IF_STRING_PROT   "@External Flash   /0x80000000/2048*004Kb"
 #else
 #define EXTERNAL_FLASH_END_ADDR         0x00400000
-#define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x80000000/1024*004Kg";
+#define EXTERNAL_FLASH_IF_STRING        "@External Flash   /0x80000000/1024*004Kg"
+#define EXTERNAL_FLASH_IF_STRING_PROT   "@External Flash   /0x80000000/1024*004Kb"
 #endif
 
 

@@ -36,7 +36,6 @@
 #include "system_task.h"
 #include "spark_wiring_thread.h"
 #include "spark_wiring_wifi_credentials.h"
-#include "system_ymodem.h"
 #include "mbedtls_util.h"
 #include "ota_flash_hal.h"
 #include "system_threading.h"
@@ -178,11 +177,6 @@ void SystemSetupConsole<Config>::exit()
 template <typename Config>
 bool SystemSetupConsole<Config>::handle_peek(char c)
 {
-    if (YModem::SOH == c || YModem::STX == c)
-    {
-        system_firmwareUpdate(&serial);
-        return true;
-    }
     return false;
 }
 
@@ -263,8 +257,10 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     }
     else if ('f' == c)
     {
-        serial.println("Waiting for the binary file to be sent ... (press 'a' to abort)");
-        system_firmwareUpdate(&serial);
+        const char YMODEM_CA = 0x18;
+        serial.write(YMODEM_CA);
+        serial.write(YMODEM_CA);
+        serial.println("Serial/YModem flashing is no longer supported");
     }
     else if ('x' == c)
     {

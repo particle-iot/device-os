@@ -42,6 +42,7 @@
 #endif // HAL_PLATFORM_LED_THEME
 
 #include "timer_hal.h"
+#include "bootloader.h"
 
 extern void DFU_Check_Reset();
 extern void HAL_DFU_Process();

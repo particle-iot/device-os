@@ -32,8 +32,8 @@
 
 DYNALIB_BEGIN(hal_storage)
 
-DYNALIB_FN(0, hal_storage, hal_storage_read, int(hal_storage_id, uintptr_t, uint8_t*, size_t))
-DYNALIB_FN(1, hal_storage, hal_storage_write, int(hal_storage_id, uintptr_t, const uint8_t*, size_t))
-DYNALIB_FN(2, hal_storage, hal_storage_erase, int(hal_storage_id, uintptr_t, size_t))
+DYNALIB_FN_WRAP(0, hal_storage, hal_storage_read, protected, int(hal_storage_id, uintptr_t, uint8_t*, size_t))
+DYNALIB_FN_WRAP(1, hal_storage, hal_storage_write, protected, int(hal_storage_id, uintptr_t, const uint8_t*, size_t))
+DYNALIB_FN_WRAP(2, hal_storage, hal_storage_erase, protected, int(hal_storage_id, uintptr_t, size_t))
 
 DYNALIB_END(hal_storage)

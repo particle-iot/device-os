@@ -774,6 +774,13 @@ int hal_exflash_erase_special(hal_exflash_special_sector_t sp, uintptr_t addr, s
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
+#else
+
+// FIXME
+int hal_exflash_read_special(hal_exflash_special_sector_t sp, uintptr_t addr, uint8_t* data_buf, size_t data_size) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 int hal_exflash_special_command(hal_exflash_special_sector_t sp, hal_exflash_command_t cmd, const uint8_t* data, uint8_t* result, size_t size) {

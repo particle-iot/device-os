@@ -20,6 +20,7 @@
 #include "flash_hal.h"
 #include "dct.h"
 #include "flash_mal.h"
+#include "security_mode.h"
 
 using namespace particle::usbd::dfu::mal;
 
@@ -94,7 +95,7 @@ int InternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::Dfuse
 }
 
 const char* InternalFlashMal::getString() {
-  return INTERNAL_FLASH_IF_STRING;
+  return security_mode_get(nullptr) != MODULE_INFO_SECURITY_MODE_PROTECTED ? INTERNAL_FLASH_IF_STRING : INTERNAL_FLASH_IF_STRING_PROT;
 }
 
 DctMal::DctMal()
@@ -149,5 +150,5 @@ int DctMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cm
 }
 
 const char* DctMal::getString() {
-    return DCT_IF_STRING;
+    return security_mode_get(nullptr) != MODULE_INFO_SECURITY_MODE_PROTECTED ? DCT_IF_STRING : DCT_IF_STRING_PROT;
 }

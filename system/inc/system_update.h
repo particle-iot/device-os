@@ -7,6 +7,7 @@
 #include "appender.h"
 #include "system_defs.h"
 #include "system_info.h"
+#include "security_mode.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,18 +16,16 @@ extern "C" {
 typedef class Stream Stream;
 #include <stdint.h>
 
-typedef bool (*ymodem_serial_flash_update_handler)(Stream *serialObj, FileTransfer::Descriptor& file, void*);
-void set_ymodem_serial_flash_update_handler(ymodem_serial_flash_update_handler handler);
-
 void set_start_dfu_flasher_serial_speed(uint32_t speed);
-void set_start_ymodem_flasher_serial_speed(uint32_t speed);
 
 /**
  * Updates firmware via ymodem from a given stream.
  * @param stream
  * @return true on successful update.
  */
-bool system_firmwareUpdate(Stream* stream, void* reserved=NULL);
+bool system_firmwareUpdate_deprecated(Stream* stream, void* reserved=NULL);
+
+void set_ymodem_serial_flash_update_handler_deprecated(void*);
 
 
 struct system_file_transfer_t {
@@ -45,7 +44,7 @@ struct system_file_transfer_t {
 
 PARTICLE_STATIC_ASSERT(system_file_transfer_size, sizeof(system_file_transfer_t)==sizeof(FileTransfer::Descriptor)+8 || sizeof(void*)!=4);
 
-bool system_fileTransfer(system_file_transfer_t* transfer, void* reserved=NULL);
+bool system_fileTransfer_deprecated(system_file_transfer_t* transfer, void* reserved=NULL);
 
 void system_lineCodingBitRateHandler(uint32_t bitrate);
 
@@ -56,7 +55,7 @@ void system_lineCodingBitRateHandler(uint32_t bitrate);
  * @param reserved NULL
  * @return 0 on success.
  */
-int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
+SECURITY_MODE_PROTECTED_FN(int, Spark_Prepare_For_Firmware_Update, (FileTransfer::Descriptor& file, uint32_t flags, void* reserved));
 
 /**
  *
@@ -65,7 +64,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
  * @param reserved NULL
  * @return 0 on success.
  */
-int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags, void* reserved);
+SECURITY_MODE_PROTECTED_FN(int, Spark_Finish_Firmware_Update, (FileTransfer::Descriptor& file, uint32_t flags, void* reserved));
 
 /**
  * Provides a chunk of the file data.
@@ -74,7 +73,7 @@ int Spark_Finish_Firmware_Update(FileTransfer::Descriptor& file, uint32_t flags,
  * @param reserved
  * @return
  */
-int Spark_Save_Firmware_Chunk(FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved);
+SECURITY_MODE_PROTECTED_FN(int, Spark_Save_Firmware_Chunk, (FileTransfer::Descriptor& file, const uint8_t* chunk, void* reserved));
 
 typedef enum
 {
