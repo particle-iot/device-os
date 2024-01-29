@@ -126,6 +126,12 @@ PB_BIND(particle_ctrl_SetStartupModeRequest, particle_ctrl_SetStartupModeRequest
 PB_BIND(particle_ctrl_SetStartupModeReply, particle_ctrl_SetStartupModeReply, AUTO)
 
 
+PB_BIND(particle_ctrl_GetProtectedStateRequest, particle_ctrl_GetProtectedStateRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_GetProtectedStateReply, particle_ctrl_GetProtectedStateReply, AUTO)
+
+
 PB_BIND(particle_ctrl_SystemResetRequest, particle_ctrl_SystemResetRequest, AUTO)
 
 

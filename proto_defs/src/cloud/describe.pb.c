@@ -6,6 +6,9 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
+PB_BIND(particle_cloud_FirmwareModuleSecurity, particle_cloud_FirmwareModuleSecurity, AUTO)
+
+
 PB_BIND(particle_cloud_FirmwareModuleDependency, particle_cloud_FirmwareModuleDependency, AUTO)
 
 
@@ -16,6 +19,7 @@ PB_BIND(particle_cloud_FirmwareModule, particle_cloud_FirmwareModule, AUTO)
 
 
 PB_BIND(particle_cloud_SystemDescribe, particle_cloud_SystemDescribe, AUTO)
+
 
 
 
