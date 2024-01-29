@@ -118,10 +118,13 @@ int getIccid(ctrl_request* req) {
     CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
     const NcpClientLock lock(ncpClient);
     CHECK(ncpClient->on());
-    char buf[32] = {};
-    CHECK(ncpClient->getIccid(buf, sizeof(buf)));
+    char bufIccid[32] = {};
+    CHECK(ncpClient->getIccid(bufIccid, sizeof(bufIccid)));
+    char bufImei[32] = {};
+    CHECK(ncpClient->getImei(bufImei, sizeof(bufImei)));
     PB(GetIccidReply) pbRep = {};
-    EncodedString eIccid(&pbRep.iccid, buf, strlen(buf));
+    EncodedString eIccid(&pbRep.iccid, bufIccid, strlen(bufIccid));
+    EncodedString eImei(&pbRep.imei, bufImei, strlen(bufImei));
     CHECK(encodeReplyMessage(req, PB(GetIccidReply_fields), &pbRep));
     return 0;
 }
