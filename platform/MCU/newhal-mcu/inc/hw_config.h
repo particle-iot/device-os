@@ -12,8 +12,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-inline const module_info_t* FLASH_ModuleInfo(flash_device_t device, uint32_t address, uint32_t* offset) {
-    return NULL;
+inline int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t device, uint32_t address, uint32_t* offset) {
+    return -1;
 }
 
 inline void Set_System() {}

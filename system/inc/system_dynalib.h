@@ -46,9 +46,9 @@ DYNALIB_BEGIN(system)
 DYNALIB_FN(0, system, system_mode, System_Mode_TypeDef(void))
 DYNALIB_FN(1, system, set_system_mode, void(System_Mode_TypeDef))
 
-DYNALIB_FN(2, system, set_ymodem_serial_flash_update_handler, void(ymodem_serial_flash_update_handler))
-DYNALIB_FN(3, system, system_firmwareUpdate, bool(Stream*, void*))
-DYNALIB_FN(4, system, system_fileTransfer, bool(system_file_transfer_t*, void*))
+DYNALIB_FN(2, system, set_ymodem_serial_flash_update_handler_deprecated, void(void*))
+DYNALIB_FN(3, system, system_firmwareUpdate_deprecated, bool(Stream*, void*))
+DYNALIB_FN(4, system, system_fileTransfer_deprecated, bool(system_file_transfer_t*, void*))
 
 DYNALIB_FN(5, system, system_delay_ms, void(unsigned long, bool))
 DYNALIB_FN(6, system, system_sleep, int(Spark_Sleep_TypeDef, long, uint32_t, void*))
@@ -61,9 +61,9 @@ DYNALIB_FN(12, system, system_version_info, int(SystemVersionInfo*, void*))
 DYNALIB_FN(13, system, system_internal, void*(int item, void*))
 DYNALIB_FN(14, system, system_set_flag, int(system_flag_t, uint8_t, void*))
 DYNALIB_FN(15, system, system_get_flag, int(system_flag_t, uint8_t*, void*))
-DYNALIB_FN(16, system, Spark_Prepare_For_Firmware_Update, int(FileTransfer::Descriptor&, uint32_t, void*))
-DYNALIB_FN(17, system, Spark_Save_Firmware_Chunk, int(FileTransfer::Descriptor&, const uint8_t*, void*))
-DYNALIB_FN(18, system, Spark_Finish_Firmware_Update, int(FileTransfer::Descriptor&, uint32_t, void*))
+DYNALIB_FN_WRAP(16, system, Spark_Prepare_For_Firmware_Update, protected, int(FileTransfer::Descriptor&, uint32_t, void*))
+DYNALIB_FN_WRAP(17, system, Spark_Save_Firmware_Chunk, protected, int(FileTransfer::Descriptor&, const uint8_t*, void*))
+DYNALIB_FN_WRAP(18, system, Spark_Finish_Firmware_Update, protected, int(FileTransfer::Descriptor&, uint32_t, void*))
 
 DYNALIB_FN(19, system, application_thread_current, uint8_t(void*))
 DYNALIB_FN(20, system, system_thread_current, uint8_t(void*))
@@ -120,7 +120,7 @@ DYNALIB_FN(BASE_IDX1 + 2, system, system_power_management_get_config, int(hal_po
 
 DYNALIB_FN(BASE_IDX2 + 0, system, system_info_get_unstable, int(hal_system_info_t* info, uint32_t flags, void* reserved))
 DYNALIB_FN(BASE_IDX2 + 1, system, system_info_free_unstable, int(hal_system_info_t* info, void* reserved))
-DYNALIB_FN(BASE_IDX2 + 2, system, system_ctrl_set_request_filter, int(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved))
+DYNALIB_FN_WRAP(BASE_IDX2 + 2, system, system_ctrl_set_request_filter, protected, int(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved))
 
 #if HAL_PLATFORM_BLE
 DYNALIB_FN(BASE_IDX2 + 3, system, system_ble_prov_mode, int(bool enabled, void* reserved))

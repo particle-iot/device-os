@@ -22,6 +22,7 @@
 #include "timer_hal.h"
 #include "service_debug.h"
 #include "static_assert.h"
+#include "security_mode.h"
 
 #define STATIC_ASSERT_FIELD_SIZE(struct, field, size) \
         STATIC_ASSERT(field_size_changed_##struct##_##field, sizeof(struct::field) == size);
@@ -72,6 +73,9 @@ volatile log_enabled_callback_type log_enabled_callback = 0;
 
 void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_type log_write,
         log_enabled_callback_type log_enabled, void *reserved) {
+    if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        return;
+    }
     log_msg_callback = log_msg;
     log_write_callback = log_write;
     log_enabled_callback = log_enabled;

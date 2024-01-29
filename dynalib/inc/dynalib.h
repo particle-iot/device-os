@@ -110,6 +110,9 @@ constexpr T2* dynalib_checked_cast(T2 *p) {
     #define DYNALIB_FN(index, tablename, name, type) \
         DYNALIB_FN_EXPORT(index, tablename, name, type)
 
+    #define DYNALIB_FN_WRAP(index, tablename, name, wrap, type) \
+        DYNALIB_FN_EXPORT(index, tablename, name ## _ ## wrap, type)
+
     #define DYNALIB_FN_PLACEHOLDER(index, tablename) \
         0,
 
@@ -172,6 +175,9 @@ constexpr T2* dynalib_checked_cast(T2 *p) {
         #endif
 
         #define DYNALIB_FN(index, tablename, name, type) \
+            DYNALIB_FN_IMPORT(index, tablename, name, __COUNTER__)
+
+        #define DYNALIB_FN_WRAP(index, tablename, name, wrap, type) \
             DYNALIB_FN_IMPORT(index, tablename, name, __COUNTER__)
 
         #define DYNALIB_FN_PLACEHOLDER(index, tablename) \

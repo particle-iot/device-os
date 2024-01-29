@@ -47,6 +47,8 @@
 #include "core_hal.h"
 #include "service_debug.h"
 #include "usb_hal.h"
+#include "security_mode.h"
+#include "bootloader.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -155,10 +157,6 @@ void Set_System(void)
             NRF_POWER_RAMPOWER_S3RETENTION_MASK |
             NRF_POWER_RAMPOWER_S4RETENTION_MASK);
 
-    DWT_Init();
-
-    configure_uicr();
-
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     // FIXME: Have to initialize USB before softdevice enabled,
     // otherwise USB module won't recevie power event
@@ -168,6 +166,12 @@ void Set_System(void)
     /* Configure internal flash and external flash */
     SPARK_ASSERT(!hal_flash_init());
     SPARK_ASSERT(!hal_exflash_init());
+
+    bootloader_init_security_mode(NULL);
+
+    configure_uicr();
+
+    DWT_Init();
 
     /* Configure the LEDs and set the default states */
     int LEDx;

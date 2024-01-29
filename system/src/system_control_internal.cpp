@@ -28,6 +28,7 @@
 #include "debug.h"
 #include "delay_hal.h"
 #include "hal_platform.h"
+#include "security_mode.h"
 
 #include "control/network.h"
 #include "control/wifi_new.h"
@@ -85,7 +86,9 @@ SystemControl::SystemControl() :
 #if HAL_PLATFORM_BLE_SETUP
         bleChannel_(this),
 #endif
-        appReqHandler_(nullptr) {
+        appReqHandler_(nullptr),
+        filters_(nullptr),
+        defaultFilterAction_(SYSTEM_CTRL_ACL_ACCEPT) {
 }
 
 int SystemControl::init() {
@@ -111,7 +114,12 @@ void SystemControl::run() {
 #endif
 }
 
-void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* channel */) {
+void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* channel) {
+    auto secModeCheck = security_mode_check_request(channel == &bleChannel_ ? SECURITY_MODE_TRANSPORT_BLE : SECURITY_MODE_TRANSPORT_USB, req->type);
+    if (secModeCheck) {
+        setResult(req, secModeCheck);
+        return;
+    }
 
     // Filter requests based on the setControlRequestFilter system API
     system_ctrl_filter* filter = getFiltersList();
@@ -214,6 +222,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
     }
     case CTRL_REQUEST_SET_STARTUP_MODE: {
         setResult(req, control::config::setStartupMode(req));
+        break;
+    }
+    case CTRL_REQUEST_GET_PROTECTED_STATE: {
+        setResult(req, control::config::getProtectedState(req));
         break;
     }
     case CTRL_REQUEST_ECHO: {
@@ -431,6 +443,11 @@ int system_ctrl_set_request_filter(system_ctrl_acl default_action, system_ctrl_f
     particle::system::SystemControl::instance()->setFiltersList(filters);
 
     return 0;
+}
+
+int system_ctrl_set_request_filter_protected(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return system_ctrl_set_request_filter(default_action, filters, reserved);
 }
 
 #else // !SYSTEM_CONTROL_ENABLED

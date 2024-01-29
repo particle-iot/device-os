@@ -29,6 +29,7 @@
 
 #include "control/common.h"
 #if HAL_PLATFORM_PROTOBUF
+#include "security_mode.h"
 #include "cloud/describe.pb.h"
 using particle::control::common::EncodedString;
 #endif // HAL_PLATFORM_PROTOBUF
@@ -472,6 +473,8 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
     PB(SystemDescribe) pbDesc = {};
     // Firmware modules
     EncodeFirmwareModules modules(&pbDesc.firmware_modules, EncodeFirmwareModules::Flag::SYSTEM_INFO_CLOUD);
+
+    pbDesc.protected_state = (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED);
 
     // IMEI, ICCID, modem firmware version
     EncodedString pbImei(&pbDesc.imei);

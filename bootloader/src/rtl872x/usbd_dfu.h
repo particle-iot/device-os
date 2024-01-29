@@ -21,6 +21,7 @@
 #include "usbd_device.h"
 #include "usbd_wcid.h"
 #include "hal_platform.h"
+#include <climits>
 
 #ifndef USBD_DFU_TRANSFER_SIZE
 #define USBD_DFU_TRANSFER_SIZE (4096)
@@ -227,7 +228,7 @@ private:
   void reset();
   void setState(detail::DfuDeviceState st);
   void setStatus(detail::DfuDeviceStatus st);
-  void setError(detail::DfuDeviceStatus st, bool stall = true);
+  void setError(detail::DfuDeviceStatus st, bool stall = true, const char* description = nullptr);
   DfuMal* currentMal();
 
 private:
@@ -295,6 +296,7 @@ private:
 #endif
     USBD_DFU_FUNCTIONAL_DESCRIPTOR()
   };
+  char errorString_[UCHAR_MAX] = {};
 };
 
 } } } /* namespace particle::usbd::dfu */

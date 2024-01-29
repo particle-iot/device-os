@@ -26,6 +26,8 @@
 #include "exflash_hal.h"
 #include "km0_km4_ipc.h"
 #include "core_hal.h"
+#include "bootloader.h"
+#include "security_mode.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
@@ -311,13 +313,15 @@ void Set_System(void)
     temp |= BIT_RFAFE_IND_VIO1833;
     HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_RFAFE_IND_VIO1833, temp);
 
-    DWT_Init();
-
     // Enable MPU
     mpu_init();
 
     /* Configure flash */
     SPARK_ASSERT(!hal_exflash_init());
+
+    bootloader_init_security_mode(NULL);
+
+    DWT_Init();
 
     /* Configure the LEDs and set the default states */
     for (int LEDx = 1; LEDx < LEDn; ++LEDx) {

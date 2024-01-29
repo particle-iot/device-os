@@ -114,17 +114,6 @@ void Network_Setup(bool threaded)
 
 int cfod_count = 0;
 
-/**
- * Use usb serial ymodem flasher to update firmware.
- */
-void manage_serial_flasher()
-{
-    if(SPARK_FLASH_UPDATE == 3) // FIXME: This state variable is no longer set to 3 anywhere in the code
-    {
-        system_firmwareUpdate(&Serial);
-    }
-}
-
 namespace {
 
 // LED status for cloud errors indication
@@ -513,7 +502,6 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 #if HAL_PLATFORM_SETUP_BUTTON_UX
         system_handle_button_clicks(false /* isIsr */);
 #endif
-        manage_serial_flasher();
 
         manage_network_connection();
 

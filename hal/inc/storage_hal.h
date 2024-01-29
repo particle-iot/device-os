@@ -20,10 +20,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
 typedef enum hal_storage_id {
     HAL_STORAGE_ID_INVALID = 0,
     HAL_STORAGE_ID_INTERNAL_FLASH = 1,
@@ -32,10 +28,16 @@ typedef enum hal_storage_id {
     HAL_STORAGE_ID_MAX = 0x7fffffff
 } hal_storage_id;
 
+#include "security_mode.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
-int hal_storage_read(hal_storage_id id, uintptr_t addr, uint8_t* buf, size_t size);
-int hal_storage_write(hal_storage_id id, uintptr_t addr, const uint8_t* buf, size_t size);
-int hal_storage_erase(hal_storage_id id, uintptr_t addr, size_t size);
+SECURITY_MODE_PROTECTED_FN(int, hal_storage_read, (hal_storage_id id, uintptr_t addr, uint8_t* buf, size_t size));
+SECURITY_MODE_PROTECTED_FN(int, hal_storage_write, (hal_storage_id id, uintptr_t addr, const uint8_t* buf, size_t size));
+SECURITY_MODE_PROTECTED_FN(int, hal_storage_erase, (hal_storage_id id, uintptr_t addr, size_t size));
 #endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 
 #ifdef __cplusplus

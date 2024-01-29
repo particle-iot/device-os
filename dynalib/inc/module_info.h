@@ -219,6 +219,7 @@ typedef enum module_info_extension_type_t {
     MODULE_INFO_EXTENSION_HASH = 0x0010,
     MODULE_INFO_EXTENSION_NAME = 0x0011,
     MODULE_INFO_EXTENSION_ASSET_DEPENDENCY = 0x0012,
+    MODULE_INFO_EXTENSION_SECURITY_MODE = 0x0013,
     MODULE_INFO_EXTENSION_INVALID = 0xffff
 } __attribute__((__packed__)) module_info_extension_type_t;
 
@@ -277,6 +278,22 @@ typedef struct module_info_asset_dependency_ext_t {
     module_info_hash_t hash;
     char name[];
 } __attribute__((packed)) module_info_asset_dependency_ext_t;
+
+typedef enum module_info_security_mode {
+    MODULE_INFO_SECURITY_MODE_NONE = 0,
+    MODULE_INFO_SECURITY_MODE_PROTECTED = 1,
+    MODULE_INFO_SECURITY_MODE_MAX = 0xff
+} module_info_security_mode;
+#if PLATFORM_ID > PLATFORM_GCC
+static_assert(sizeof(module_info_security_mode) == sizeof(uint8_t), "sizeof(module_info_security_mode) does not match");
+#endif // PLATFORM_ID > PLATFORM_GCC
+
+typedef struct module_info_security_mode_ext_t {
+    module_info_extension_t ext;
+    module_info_security_mode security_mode;
+    uint8_t certificate[]; // variable-sized, ext.length should reflect the actual size
+                           // DER-encoded minimal X509 certificate
+} __attribute__((packed)) module_info_security_mode_ext_t;
 
 /*
  * The structure is a suffix to the module, placed before the end symbol
