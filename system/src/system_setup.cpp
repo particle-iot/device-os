@@ -258,6 +258,10 @@ template<typename Config> void SystemSetupConsole<Config>::handle(char c)
     else if ('f' == c)
     {
         const char YMODEM_CA = 0x18;
+        serial.println("Waiting for the binary file to be sent ... (press 'a' to abort)");
+        HAL_Delay_Milliseconds(100);
+        serial.write(YMODEM_CA);
+        serial.write(YMODEM_CA);
         serial.write(YMODEM_CA);
         serial.write(YMODEM_CA);
         serial.println("Serial/YModem flashing is no longer supported");
