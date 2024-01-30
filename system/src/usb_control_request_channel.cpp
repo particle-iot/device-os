@@ -32,6 +32,7 @@
 #include "test_malloc.h"
 #include "bytes2hexbuf.h"
 #include "debug.h"
+#include "security_mode.h"
 
 // FIXME: we should not be polluting our code with such generic macro names
 #undef RESET
@@ -180,6 +181,9 @@ void cancelNetworkConnection(bool preventFromReconnecting) {
 
 // Note: This function is called from an ISR
 void cancelNetworkConnectionIfNeeded(uint16_t type) {
+    if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        return;
+    }
     switch (type) {
     case CTRL_REQUEST_RESET:
     case CTRL_REQUEST_FACTORY_RESET:
