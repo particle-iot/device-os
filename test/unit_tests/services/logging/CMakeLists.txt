@@ -36,6 +36,7 @@ target_include_directories( ${target_name}
   PRIVATE ${TEST_DIR}
   PRIVATE ${TEST_DIR}/stub
   PRIVATE ${DEVICE_OS_DIR}/services/inc
+  PRIVATE ${DEVICE_OS_DIR}/dynalib/inc
   PRIVATE ${DEVICE_OS_DIR}/wiring/inc
   PRIVATE ${DEVICE_OS_DIR}/system/inc
   PRIVATE ${DEVICE_OS_DIR}/communication/inc

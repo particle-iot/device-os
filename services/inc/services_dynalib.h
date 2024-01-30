@@ -97,8 +97,7 @@ DYNALIB_FN(48, services, devicetree_tree_lock, int(void*))
 DYNALIB_FN(49, services, devicetree_tree_get, int(void*, uint32_t, void*))
 DYNALIB_FN(50, services, devicetree_string_dictionary_lookup, const char*(uint32_t, void*))
 DYNALIB_FN(51, services, devicetree_hash_string, uint32_t(const char*, size_t))
-DYNALIB_FN(52, services, security_mode_set, int(module_info_security_mode, void*))
-DYNALIB_FN(53, services, security_mode_get, int(void*))
+DYNALIB_FN(52, services, security_mode_get, int(void*))
 
 DYNALIB_END(services)
 
