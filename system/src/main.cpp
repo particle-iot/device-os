@@ -709,10 +709,10 @@ RunTimeInfoDiagnosticData g_usedRamDiagData(DIAG_ID_SYSTEM_USED_RAM, DIAG_NAME_S
     }
 );
 
-class ProtectedStateDiagnosticData: public AbstractUnsignedIntegerDiagnosticData {
+class ProtectedStateDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
     ProtectedStateDiagnosticData() :
-            AbstractUnsignedIntegerDiagnosticData(DIAG_ID_SYSTEM_PROTECTED_STATE, DIAG_NAME_SYSTEM_PROTECTED_STATE) {
+            AbstractIntegerDiagnosticData(DIAG_ID_SYSTEM_PROTECTED_STATE, DIAG_NAME_SYSTEM_PROTECTED_STATE) {
     }
 
     virtual int get(IntType& val) override {
