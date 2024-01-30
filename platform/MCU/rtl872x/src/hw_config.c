@@ -29,7 +29,6 @@
 #include "bootloader.h"
 #include "security_mode.h"
 #include "efuse.h"
-#include "check.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
@@ -121,7 +120,9 @@ static int efuse_configure() {
     const uint8_t SWD_DEFAULT_GPIO = 0x01;
     if (security_mode_get(NULL) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
         uint8_t val = 0xff;
-        CHECK(efuse_read_logical(SWD_DEFAULT_GPIO_EFUSE, &val, sizeof(val)));
+        if (efuse_read_logical(SWD_DEFAULT_GPIO_EFUSE, &val, sizeof(val))) {
+            return SYSTEM_ERROR_FLASH_IO;
+        }
         if (!(val & SWD_DEFAULT_GPIO)) {
             val |= SWD_DEFAULT_GPIO;
             efuse_write_logical(SWD_DEFAULT_GPIO_EFUSE, &val, sizeof(val));
@@ -131,6 +132,7 @@ static int efuse_configure() {
         }
     }
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    return 0;
 }
 
 static void DWT_Init(void)

@@ -27,6 +27,7 @@ CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,usbd
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,bootloader.cpp)
 CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,storage_hal.cpp)
 CSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,ota_module_bounds.c)
+CPPSRC += $(call target_files,$(BOOTLOADER_MODULE_PATH)/../hal/src/rtl872x/,efuse.cpp)
 
 LDFLAGS += -T$(BOOTLOADER_SRC_PATH)/linker.ld
 LINKER_DEPS += $(BOOTLOADER_SRC_PATH)/linker.ld
