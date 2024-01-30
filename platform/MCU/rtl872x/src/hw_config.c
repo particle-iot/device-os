@@ -114,20 +114,35 @@ void peripheralsClockEnable(void) {
 
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
+const uint32_t BIT_SDIO_PMUX_FEN = (1 << 28);
+
 static int efuse_configure() {
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     const uint32_t SWD_DEFAULT_GPIO_EFUSE = 0x0e;
     const uint8_t SWD_DEFAULT_GPIO = 0x01;
+#if PLATFORM_ID == PLATFORM_MSOM
+    const uint8_t SDIO_PAD_EN_EFUSE = (1 << 4);
+#endif // PLATFORM_ID == PLATFORM_MSOM
     if (security_mode_get(NULL) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
-        uint8_t val = 0xff;
-        if (efuse_read_logical(SWD_DEFAULT_GPIO_EFUSE, &val, sizeof(val))) {
+#if PLATFORM_ID == PLATFORM_MSOM
+        uint8_t val[2] = {0xff, 0xff};
+#else
+        uint8_t val[1] = {0xff};
+#endif // PLATFORM_ID == PLATFORM_MSOM
+        if (efuse_read_logical(SWD_DEFAULT_GPIO_EFUSE, val, sizeof(val))) {
             return SYSTEM_ERROR_FLASH_IO;
         }
-        if (!(val & SWD_DEFAULT_GPIO)) {
-            val |= SWD_DEFAULT_GPIO;
-            efuse_write_logical(SWD_DEFAULT_GPIO_EFUSE, &val, sizeof(val));
+        if (!(val[0] & SWD_DEFAULT_GPIO)) {
+            val[0] |= SWD_DEFAULT_GPIO;
+#if PLATFORM_ID == PLATFORM_MSOM
+            val[1] |= SDIO_PAD_EN_EFUSE;
+#endif // PLATFORM_ID == PLATFORM_MSOM
+            efuse_write_logical(SWD_DEFAULT_GPIO_EFUSE, val, sizeof(val));
             uint32_t syscfg3 = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3);
             syscfg3 |= BIT_SYS_SWD_GP_SEL;
+#if PLATFORM_ID == PLATFORM_MSOM
+            syscfg3 |= BIT_SDIO_PMUX_FEN;
+#endif // PLATFORM_ID == PLATFORM_MSOM
             HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3, syscfg3);
         }
     }
@@ -138,10 +153,23 @@ static int efuse_configure() {
 static void DWT_Init(void)
 {
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    if (security_mode_get(NULL) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        uint32_t pmux = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);
+        pmux &= ~(BIT_LSYS_SWD_PMUX_EN);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN, pmux);
+    }
     uint32_t syscfg3 = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3);
     if ((syscfg3 & BIT_SYS_SWD_GP_SEL) && security_mode_get(NULL) != MODULE_INFO_SECURITY_MODE_PROTECTED) {
         syscfg3 &= ~(BIT_SYS_SWD_GP_SEL);
+#if PLATFORM_ID == PLATFORM_MSOM
+        syscfg3 &= ~(BIT_SDIO_PMUX_FEN);
+#endif // PLATFORM_ID == PLATFORM_MSOM
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3, syscfg3);
+    }
+    if (security_mode_get(NULL) != MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        uint32_t pmux = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);
+        pmux |= BIT_LSYS_SWD_PMUX_EN;
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN, pmux);
     }
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     // DBGMCU->CR |= DBGMCU_CR_SETTINGS;
