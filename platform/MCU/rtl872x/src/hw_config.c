@@ -159,7 +159,7 @@ static void DWT_Init(void)
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN, pmux);
     }
     uint32_t syscfg3 = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3);
-    if ((syscfg3 & BIT_SYS_SWD_GP_SEL) && security_mode_get(NULL) != MODULE_INFO_SECURITY_MODE_PROTECTED) {
+    if (syscfg3 & BIT_SYS_SWD_GP_SEL) {
         syscfg3 &= ~(BIT_SYS_SWD_GP_SEL);
 #if PLATFORM_ID == PLATFORM_MSOM
         syscfg3 &= ~(BIT_SDIO_PMUX_FEN);
