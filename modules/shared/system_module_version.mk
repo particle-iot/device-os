@@ -1,6 +1,6 @@
 # Skip to next 100 every v0.x.0 release (e.g. 108 for v0.6.2 to 200 for v0.7.0-rc.1)
 # Bump by 1 for every prerelease or release with the same v0.x.* base.
-COMMON_MODULE_VERSION ?= 5700
+COMMON_MODULE_VERSION ?= 6000
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 
 RELEASE_080_MODULE_VERSION_BASE ?= 300
@@ -14,11 +14,11 @@ USER_PART_MODULE_VERSION ?= 6
 # Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
-BOOTLOADER_VERSION ?= 2500
+BOOTLOADER_VERSION ?= 3000
 
 ifeq ($(PLATFORM_MCU),rtl872x)
 PREBOOTLOADER_MBR_VERSION ?= 2
-PREBOOTLOADER_PART1_VERSION ?= 7
+PREBOOTLOADER_PART1_VERSION ?= 8
 endif
 
 # The version of the bootloader that the system firmware requires
@@ -26,9 +26,9 @@ endif
 # this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
 ifeq ($(PLATFORM_GEN),3)
 ifeq ($(PLATFORM_MCU),rtl872x)
-BOOTLOADER_DEPENDENCY = 2400
+BOOTLOADER_DEPENDENCY = 3000
 else # ifeq ($(PLATFORM_MCU),rtl872x)
-BOOTLOADER_DEPENDENCY = 2300
+BOOTLOADER_DEPENDENCY = 3000
 endif # ifeq ($(PLATFORM_GEN),3)
 else
 # Some sensible default
@@ -36,7 +36,7 @@ BOOTLOADER_DEPENDENCY = 0
 endif
 
 ifeq ($(PLATFORM_MCU),rtl872x)
-PREBOOTLOADER_PART1_DEPENDENCY = 7
+PREBOOTLOADER_PART1_DEPENDENCY = 8
 endif
 
 ifeq ($(PLATFORM_GEN),3)
