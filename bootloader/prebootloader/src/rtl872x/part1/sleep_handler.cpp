@@ -337,7 +337,7 @@ void sleepProcess(void) {
                 SOCPS_SleepInit();
                 configureSleepWakeupSource(config);
 
-#if PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID != PLATFORM_TRACKERM
                 // There is a user LED connected on D7, which is PA27 (SWD-DAT). There is an internal
                 // pull-up resister on this I/O, which will turn on the user LED when enter the stop/ulp mode.
                 bool swdEnabled = false;
@@ -356,7 +356,7 @@ void sleepProcess(void) {
 
                 SOCPS_AONTimerCmd(DISABLE);
 
-#if PLATFORM_ID == PLATFORM_P2
+#if PLATFORM_ID != PLATFORM_TRACKERM
                 if (swdEnabled) {
                     PAD_PullCtrl(27, GPIO_PuPd_UP);
                     uint32_t temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);	

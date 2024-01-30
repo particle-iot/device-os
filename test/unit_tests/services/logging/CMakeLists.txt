@@ -14,6 +14,7 @@ add_executable( ${target_name}
   ${TEST_DIR}/util/random_old.cpp
   ${TEST_DIR}/util/string.cpp
   ${TEST_DIR}/stub/system_control.cpp
+  ${TEST_DIR}/stub/security_mode.cpp
   logging.cpp
   main.cpp
 )
@@ -36,6 +37,7 @@ target_include_directories( ${target_name}
   PRIVATE ${TEST_DIR}
   PRIVATE ${TEST_DIR}/stub
   PRIVATE ${DEVICE_OS_DIR}/services/inc
+  PRIVATE ${DEVICE_OS_DIR}/dynalib/inc
   PRIVATE ${DEVICE_OS_DIR}/wiring/inc
   PRIVATE ${DEVICE_OS_DIR}/system/inc
   PRIVATE ${DEVICE_OS_DIR}/communication/inc

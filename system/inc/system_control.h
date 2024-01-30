@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "security_mode.h"
 
 #ifndef SYSTEM_CONTROL_ENABLED
 #if defined(USB_VENDOR_REQUEST_ENABLE) || HAL_PLATFORM_BLE_SETUP
@@ -59,6 +60,7 @@ typedef enum ctrl_request_type {
     CTRL_REQUEST_SET_DEVICE_SETUP_DONE = 73,
     CTRL_REQUEST_IS_DEVICE_SETUP_DONE = 74,
     CTRL_REQUEST_SET_STARTUP_MODE = 75,
+    CTRL_REQUEST_GET_PROTECTED_STATE = 76,
     CTRL_REQUEST_LOG_CONFIG = 80,
     CTRL_REQUEST_GET_MODULE_INFO = 90,
     CTRL_REQUEST_GET_ASSET_INFO = 91,
@@ -177,7 +179,7 @@ void system_ctrl_free_request_data(ctrl_request* req, void* reserved);
 void system_ctrl_set_result(ctrl_request* req, int result, ctrl_completion_handler_fn handler, void* data, void* reserved);
 
 // The control requests are either filtered out or allowed based on the settings of the system_ctrl_filter members
-int system_ctrl_set_request_filter(system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved);
+SECURITY_MODE_PROTECTED_FN(int, system_ctrl_set_request_filter, (system_ctrl_acl default_action, system_ctrl_filter* filters, void* reserved));
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 

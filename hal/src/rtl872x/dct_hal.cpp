@@ -61,3 +61,13 @@ int dct_clear() {
     dct_unlock(0);
     return (ok ? 0 : SYSTEM_ERROR_UNKNOWN);
 }
+
+int dct_read_app_data_copy_protected(uint32_t offset, void* ptr, size_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return dct_read_app_data_copy(offset, ptr, size);
+}
+
+int dct_write_app_data_protected(const void* data, uint32_t offset, uint32_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return dct_write_app_data(data, offset, size);
+}

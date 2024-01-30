@@ -45,6 +45,7 @@ gen_proto "${SHARED_DIR}/control/storage.proto"
 gen_proto "${SHARED_DIR}/control/cloud.proto"
 
 # Cloud protocol
+gen_proto "${SHARED_DIR}/cloud/ledger.proto"
 gen_proto "${SHARED_DIR}/cloud/cloud.proto"
 gen_proto "${SHARED_DIR}/cloud/describe.proto"
 

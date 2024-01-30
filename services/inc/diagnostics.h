@@ -66,6 +66,7 @@
 #define DIAG_NAME_CLOUD_RATE_LIMITED_EVENTS "pub:limit"
 #define DIAG_NAME_SYSTEM_TOTAL_RAM "sys:tram"
 #define DIAG_NAME_SYSTEM_USED_RAM "sys:uram"
+#define DIAG_NAME_SYSTEM_PROTECTED_STATE "sys:protected"
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,6 +83,7 @@ typedef enum diag_id {
     DIAG_ID_SYSTEM_UPTIME = 6, // sys:uptime
     DIAG_ID_SYSTEM_BATTERY_STATE = 7, // batt:state
     DIAG_ID_SYSTEM_POWER_SOURCE = 24, // pwr::src
+    DIAG_ID_SYSTEM_PROTECTED_STATE = 60, // sys::protected
     DIAG_ID_NETWORK_CONNECTION_STATUS = 8, // net:stat
     DIAG_ID_NETWORK_CONNECTION_ERROR_CODE = 9, // net:err
     DIAG_ID_NETWORK_DISCONNECTS = 12, // net:dconn

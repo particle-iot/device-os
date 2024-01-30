@@ -66,3 +66,16 @@ int hal_storage_erase(hal_storage_id id, uintptr_t addr, size_t size) {
 
     return SYSTEM_ERROR_NOT_FOUND;
 }
+
+int hal_storage_read_protected(hal_storage_id id, uintptr_t addr, uint8_t* buf, size_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return hal_storage_read(id, addr, buf, size);
+}
+int hal_storage_write_protected(hal_storage_id id, uintptr_t addr, const uint8_t* buf, size_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return hal_storage_write(id, addr, buf, size);
+}
+int hal_storage_erase_protected(hal_storage_id id, uintptr_t addr, size_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return hal_storage_erase(id, addr, size);
+}

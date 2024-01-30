@@ -136,23 +136,6 @@ program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(PARTICLE_DEVICE_ID):
 	$(CURL) -X PUT -F file=@$(lastword $^) -F file_type=binary $(CLOUD_FLASH_URL)
 
-program-serial: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
-ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-# Program the device using serial ymodem flasher.
-# Install 'sz' tool using: 'brew install lrzsz' on MAC OS X
-# PARTICLE_SERIAL_DEV should be set something like /dev/tty.usbxxxx and exported
-ifeq ("$(wildcard $(PARTICLE_SERIAL_DEV))","")
-	@echo Serial device PARTICLE_SERIAL_DEV : $(PARTICLE_SERIAL_DEV) not available
-else
-	@echo Entering serial programmer mode:
-	$(SERIAL_SWITCHER) $(START_YMODEM_FLASHER_SERIAL_SPEED) $(PARTICLE_SERIAL_DEV)
-	sleep 1
-	@echo Flashing using serial ymodem protocol:
-# Got some issue currently in getting 'sz' working
-	sz -b -v --ymodem $(lastword $^) > $(PARTICLE_SERIAL_DEV) < $(PARTICLE_SERIAL_DEV)
-endif
-endif
-
 # Display size
 size: $(TARGET_BASE).elf
 	$(call,echo,'Invoking: ARM GNU Print Size')

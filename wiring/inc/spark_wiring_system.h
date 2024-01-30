@@ -50,6 +50,7 @@
 #include "platform_ncp.h"
 #include "backup_ram_hal.h"
 #include "spark_wiring_asset.h"
+#include "security_mode.h"
 
 using spark::Vector;
 
@@ -423,8 +424,9 @@ public:
         return system_mode();
     }
 
+    __attribute__((deprecated("Serial/YModem flashing is not longer supported")))
     static bool firmwareUpdate(Stream *serialObj) {
-        return system_firmwareUpdate(serialObj);
+        return system_firmwareUpdate_deprecated(serialObj);
     }
 
     static void factoryReset(SystemResetFlags flags = SystemResetFlags());
@@ -1112,6 +1114,10 @@ public:
     }
     ///@}
 #endif // HAL_PLATFORM_ASSETS
+
+    static bool protectedDevice() {
+        return security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
+    }
 
 private:
     SystemSleepResult systemSleepResult_;

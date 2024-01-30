@@ -24,11 +24,13 @@
 // FIXME: these should be coming from platform config
 #define INTERNAL_FLASH_START_ADD        0x08000000
 #define INTERNAL_FLASH_END_ADDR         0x08800000
-#define INTERNAL_FLASH_IF_STRING        "@Internal Flash   /0x08000000/2048*004Kg";
+#define INTERNAL_FLASH_IF_STRING        "@Internal Flash   /0x08000000/2048*004Kg"
+#define INTERNAL_FLASH_IF_STRING_PROT   "@Internal Flash   /0x08000000/2048*004Kb"
 
 #define DCT_START_ADD                   0x00000000
 #define DCT_END_ADDR                    0x00004000
-#define DCT_IF_STRING                   "@DCT Flash   /0x00000000/1*016Ke";
+#define DCT_IF_STRING                   "@DCT Flash   /0x00000000/1*016Ke"
+#define DCT_IF_STRING_PROT              "@DCT Flash   /0x00000000/1*016Kb"
 
 namespace particle { namespace usbd { namespace dfu { namespace mal {
 

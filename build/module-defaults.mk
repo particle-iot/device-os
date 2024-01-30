@@ -1,7 +1,5 @@
-# Uncomment the following to enable serial bitrate specific dfu/ymodem flasher in code
+# Uncomment the following to enable serial bitrate specific dfu flasher in code
 START_DFU_FLASHER_SERIAL_SPEED=14400
-# Uncommenting this increase the size of the firmware image because of ymodem addition
-START_YMODEM_FLASHER_SERIAL_SPEED=28800
 
 include $(COMMON_BUILD)/version.mk
 
@@ -68,9 +66,6 @@ CFLAGS += -Wundef
 
 ifdef START_DFU_FLASHER_SERIAL_SPEED
 CFLAGS += -DSTART_DFU_FLASHER_SERIAL_SPEED=$(START_DFU_FLASHER_SERIAL_SPEED)
-endif
-ifdef START_YMODEM_FLASHER_SERIAL_SPEED
-CFLAGS += -DSTART_YMODEM_FLASHER_SERIAL_SPEED=$(START_YMODEM_FLASHER_SERIAL_SPEED)
 endif
 
 CONLYFLAGS += -Wno-pointer-sign

@@ -1,6 +1,5 @@
 /*
- ******************************************************************************
- *  Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -14,28 +13,34 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
- ******************************************************************************
  */
-#pragma once
 
-#include <stdint.h>
-#include <stddef.h>
+#ifndef BOOTLOADER_H
+#define	BOOTLOADER_H
 
-#include "dct.h"
-
-#include "security_mode.h"
+#include "module_info.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-SECURITY_MODE_PROTECTED_FN(int, dct_read_app_data_copy, (uint32_t offset, void* ptr, size_t size));
-SECURITY_MODE_PROTECTED_FN(int, dct_write_app_data,(const void* data, uint32_t offset, uint32_t size));
-int dct_lock(int write);
-int dct_unlock(int write);
+#include <stdint.h>
 
-int dct_clear();
+bool bootloader_requires_update(const uint8_t* bootloader_image, uint32_t length);
+bool bootloader_update_if_needed();
+
+int bootloader_update(const void* bootloader_image, unsigned length);
+
+// TODO: We already have Bootloader_Get_Version() in the platform code, but that function
+// works via the system flags, which is less reliable than reading the version number directly.
+// Make sure we have only one function to retrieve the bootloader version going forward.
+uint16_t bootloader_get_version(void);
+
+int bootloader_init_security_mode(void* reserved);
 
 #ifdef __cplusplus
-} // extern "C"
+}
 #endif
+
+#endif	/* BOOTLOADER_H */
+

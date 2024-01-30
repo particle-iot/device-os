@@ -28,6 +28,7 @@
 #ifdef DYNALIB_EXPORT
 #include "nanopb_misc.h"
 #include "devicetree_stubs.h"
+#include "security_mode.h"
 #include <stdint.h>
 #ifdef PB_WITHOUT_64BIT
 #define pb_int64_t int32_t
@@ -96,6 +97,7 @@ DYNALIB_FN(48, services, devicetree_tree_lock, int(void*))
 DYNALIB_FN(49, services, devicetree_tree_get, int(void*, uint32_t, void*))
 DYNALIB_FN(50, services, devicetree_string_dictionary_lookup, const char*(uint32_t, void*))
 DYNALIB_FN(51, services, devicetree_hash_string, uint32_t(const char*, size_t))
+DYNALIB_FN(52, services, security_mode_get, int(void*))
 
 DYNALIB_END(services)
 

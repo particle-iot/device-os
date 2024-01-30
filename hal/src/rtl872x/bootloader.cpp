@@ -8,6 +8,7 @@
 #include "check.h"
 #include "stream.h"
 #include <memory>
+#include "security_mode.h"
 
 #define BOOTLOADER_ADDR (module_bootloader.start_address)
 
@@ -86,4 +87,17 @@ uint16_t bootloader_get_version(void)
     // FIXME: Module info is stored in the secure region, we can't access it in the non-secure region
     // hard code to unblock porting work for now
     return 1001;
+}
+
+int bootloader_init_security_mode(void* reserved) {
+    CHECK_TRUE(FLASH_VerifyCRC32(FLASH_INTERNAL, BOOTLOADER_ADDR, FLASH_ModuleLength(FLASH_INTERNAL, BOOTLOADER_ADDR)), SYSTEM_ERROR_BAD_DATA);
+    module_info_security_mode_ext_t ext = {};
+    ext.ext.length = sizeof(ext);
+    CHECK(security_mode_find_extension(HAL_STORAGE_ID_INTERNAL_FLASH, BOOTLOADER_ADDR, &ext));
+
+    if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        security_mode_set(ext.security_mode, nullptr);
+    }
+
+    return 0;
 }

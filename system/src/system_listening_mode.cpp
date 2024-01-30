@@ -36,6 +36,7 @@ LOG_SOURCE_CATEGORY("system.listen")
 #include "scope_guard.h"
 #include "core_hal.h"
 #include "system_mode.h"
+#include "security_mode.h"
 
 using particle::LEDStatus;
 
@@ -83,6 +84,11 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     system_notify_event(setup_begin, 0);
     timestampStarted_ = timestampUpdate_ = HAL_Timer_Get_Milli_Seconds();
 
+    // BLE and Serial console disabled
+    if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        return 0;
+    }
+
 #if HAL_PLATFORM_BLE
     BleProvisioningModeHandler::instance()->enter();
 #endif /* HAL_PLATFORM_BLE */
@@ -124,6 +130,11 @@ int ListeningModeHandler::exit() {
     active_ = false;
 
     system_notify_event(setup_end, HAL_Timer_Get_Milli_Seconds() - timestampStarted_);
+
+    if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        // No actions in protected mode
+        return 0;
+    }
 
 #if HAL_PLATFORM_BLE
     BleProvisioningModeHandler::instance()->exit();

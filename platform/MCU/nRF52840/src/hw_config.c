@@ -47,6 +47,8 @@
 #include "core_hal.h"
 #include "service_debug.h"
 #include "usb_hal.h"
+#include "security_mode.h"
+#include "bootloader.h"
 
 uint8_t USE_SYSTEM_FLAGS;
 uint16_t tempFlag;
@@ -57,8 +59,22 @@ extern uintptr_t platform_softdevice_reserved_flash_end;
 #define SOFTDEVICE_MBR_PARAM_ADDR (((uintptr_t)&platform_softdevice_reserved_flash_end) - INTERNAL_FLASH_PAGE_SIZE) // platform_softdevice_reserved_flash_end - 4K (1 page)
 #define SOFTDEVICE_MBR_PARAM_UNSET (0xffffffff)
 
+const uint32_t NRF_UICR_APPROTECT_HW_DISABLED = 0x5a;
+const uint32_t NRF_UICR_APPROTECT_DISABLED = 0xff;
+
 static void DWT_Init(void)
 {
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    if ((NRF_UICR->APPROTECT & UICR_APPROTECT_PALL_Msk) == NRF_UICR_APPROTECT_HW_DISABLED) {
+        if (security_mode_get(NULL) != MODULE_INFO_SECURITY_MODE_PROTECTED) {
+            // APPROTECT is enabled, but the device is not in protected mode
+            // Software re-enable SWD/JTAG
+            // NOTE: this only works for nRF52840 build code Fx0 (revision 3)
+            // For prior revision of nRF52840 the only way to disable APPROTECT is ERASEALL
+            NRF_APPROTECT->DISABLE = NRF_UICR_APPROTECT_HW_DISABLED;
+        }
+    }
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     // DBGMCU->CR |= DBGMCU_CR_SETTINGS;
     // DBGMCU->APB1FZ |= DBGMCU_APB1FZ_SETTINGS;
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -73,6 +89,7 @@ static void power_failure_handler(void) {
 
 static void configure_uicr() {
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    bool modified = false;
     if (NRF_UICR->NRFFW[1] == SOFTDEVICE_MBR_PARAM_UNSET) {
         NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
         while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {
@@ -86,6 +103,26 @@ static void configure_uicr() {
         while (NRF_NVMC->READY == NVMC_READY_READY_Busy){
             ;
         }
+        modified = true;
+    }
+
+    if (security_mode_get(NULL) == MODULE_INFO_SECURITY_MODE_PROTECTED && (NRF_UICR->APPROTECT & UICR_APPROTECT_PALL_Msk) == NRF_UICR_APPROTECT_DISABLED) {
+        NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {
+            ;
+        }
+        NRF_UICR->APPROTECT = NRF_UICR_APPROTECT_HW_DISABLED;
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {
+            ;
+        }
+        NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Ren << NVMC_CONFIG_WEN_Pos);
+        while (NRF_NVMC->READY == NVMC_READY_READY_Busy){
+            ;
+        }
+        modified = true;
+    }
+
+    if (modified) {
         NVIC_SystemReset();
     }
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
@@ -155,10 +192,6 @@ void Set_System(void)
             NRF_POWER_RAMPOWER_S3RETENTION_MASK |
             NRF_POWER_RAMPOWER_S4RETENTION_MASK);
 
-    DWT_Init();
-
-    configure_uicr();
-
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     // FIXME: Have to initialize USB before softdevice enabled,
     // otherwise USB module won't recevie power event
@@ -168,6 +201,12 @@ void Set_System(void)
     /* Configure internal flash and external flash */
     SPARK_ASSERT(!hal_flash_init());
     SPARK_ASSERT(!hal_exflash_init());
+
+    bootloader_init_security_mode(NULL);
+
+    configure_uicr();
+
+    DWT_Init();
 
     /* Configure the LEDs and set the default states */
     int LEDx;

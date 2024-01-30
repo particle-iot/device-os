@@ -27,6 +27,7 @@ extern "C" {
 #include "hw_ticks.h"
 #include "timer_hal.h"
 #include "module_info.h"
+#include "security_mode.h"
 
 #if HAL_PLATFORM_IO_EXTENSION && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #if HAL_PLATFORM_MCP23S17
@@ -191,7 +192,7 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
                 break;
             }
             case PIN_MODE_SWD: {
-                if (isSwdPin(pin)) {
+                if (isSwdPin(pin) && security_mode_get(NULL) != MODULE_INFO_SECURITY_MODE_PROTECTED) {
                     //"Pinmux_Swdon"
                     u32 Temp = 0;
                     Temp = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN);

@@ -199,6 +199,13 @@ int setStartupMode(ctrl_request* req) {
     return 0;
 }
 
+int getProtectedState(ctrl_request* req) {
+    PB(GetProtectedStateReply) pbRep = {};
+    pbRep.state = security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
+    CHECK(encodeReplyMessage(req, PB(GetProtectedStateReply_fields), &pbRep));
+    return 0;
+}
+
 int setFeature(ctrl_request* req) {
     PB(SetFeatureRequest) pbReq = {};
     CHECK(decodeRequestMessage(req, PB(SetFeatureRequest_fields), &pbReq));

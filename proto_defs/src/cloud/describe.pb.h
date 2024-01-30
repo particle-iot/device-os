@@ -44,7 +44,34 @@ typedef enum _particle_cloud_FirmwareModuleValidityFlag {
     particle_cloud_FirmwareModuleValidityFlag_MODULE_PLATFORM_VALID_FLAG = 16 /* /< Module platform */
 } particle_cloud_FirmwareModuleValidityFlag;
 
+/* *
+ Firmware module security */
+typedef enum _particle_cloud_FirmwareModuleSecurityMode { 
+    particle_cloud_FirmwareModuleSecurityMode_NONE = 0, 
+    particle_cloud_FirmwareModuleSecurityMode_PROTECTED = 1 
+} particle_cloud_FirmwareModuleSecurityMode;
+
 /* Struct definitions */
+typedef struct _particle_cloud_FirmwareModuleAsset { 
+    pb_callback_t hash; /* /< SHA-256 hash */
+    pb_callback_t name; /* /< Asset name */
+    uint32_t size; /* /< Asset size */
+    uint32_t storage_size; /* /< Asset storage size (taking into account compression and metadata) */
+} particle_cloud_FirmwareModuleAsset;
+
+/* *
+ Firmware module dependency. */
+typedef struct _particle_cloud_FirmwareModuleDependency { 
+    particle_cloud_FirmwareModuleType type; /* /< Module type */
+    uint32_t index; /* /< Module index */
+    uint32_t version; /* /< Module version */
+} particle_cloud_FirmwareModuleDependency;
+
+typedef struct _particle_cloud_FirmwareModuleSecurity { 
+    particle_cloud_FirmwareModuleSecurityMode mode; /* /< Security mode */
+    pb_callback_t certificate_fingerprint; /* /< Certificate fingerprint (SHA-256) */
+} particle_cloud_FirmwareModuleSecurity;
+
 /* *
  System describe. */
 typedef struct _particle_cloud_SystemDescribe { 
@@ -53,6 +80,7 @@ typedef struct _particle_cloud_SystemDescribe {
     pb_callback_t iccid; /* /< ICCID (cellular platforms only) */
     pb_callback_t modem_firmware_version; /* /< Modem firmware version (cellular platforms only) */
     pb_callback_t assets; /* /< List of valid assets currently present in device storage */
+    bool protected_state; /* /< Protected state */
 } particle_cloud_SystemDescribe;
 
 /* *
@@ -69,22 +97,8 @@ typedef struct _particle_cloud_FirmwareModule {
     pb_callback_t dependencies; /* /< Module dependencies */
     pb_callback_t asset_dependencies; /* /< Asset dependencies */
     uint32_t size; /* /< Actual module size */
+    particle_cloud_FirmwareModuleSecurity security; /* /< Security mode */
 } particle_cloud_FirmwareModule;
-
-typedef struct _particle_cloud_FirmwareModuleAsset { 
-    pb_callback_t hash; /* /< SHA-256 hash */
-    pb_callback_t name; /* /< Asset name */
-    uint32_t size; /* /< Asset size */
-    uint32_t storage_size; /* /< Asset storage size (taking into account compression and metadata) */
-} particle_cloud_FirmwareModuleAsset;
-
-/* *
- Firmware module dependency. */
-typedef struct _particle_cloud_FirmwareModuleDependency { 
-    particle_cloud_FirmwareModuleType type; /* /< Module type */
-    uint32_t index; /* /< Module index */
-    uint32_t version; /* /< Module version */
-} particle_cloud_FirmwareModuleDependency;
 
 
 /* Helper constants for enums */
@@ -100,27 +114,43 @@ typedef struct _particle_cloud_FirmwareModuleDependency {
 #define _particle_cloud_FirmwareModuleValidityFlag_MAX particle_cloud_FirmwareModuleValidityFlag_MODULE_PLATFORM_VALID_FLAG
 #define _particle_cloud_FirmwareModuleValidityFlag_ARRAYSIZE ((particle_cloud_FirmwareModuleValidityFlag)(particle_cloud_FirmwareModuleValidityFlag_MODULE_PLATFORM_VALID_FLAG+1))
 
+#define _particle_cloud_FirmwareModuleSecurityMode_MIN particle_cloud_FirmwareModuleSecurityMode_NONE
+#define _particle_cloud_FirmwareModuleSecurityMode_MAX particle_cloud_FirmwareModuleSecurityMode_PROTECTED
+#define _particle_cloud_FirmwareModuleSecurityMode_ARRAYSIZE ((particle_cloud_FirmwareModuleSecurityMode)(particle_cloud_FirmwareModuleSecurityMode_PROTECTED+1))
+
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Initializer values for message structs */
+#define particle_cloud_FirmwareModuleSecurity_init_default {_particle_cloud_FirmwareModuleSecurityMode_MIN, {{NULL}, NULL}}
 #define particle_cloud_FirmwareModuleDependency_init_default {_particle_cloud_FirmwareModuleType_MIN, 0, 0}
 #define particle_cloud_FirmwareModuleAsset_init_default {{{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
-#define particle_cloud_FirmwareModule_init_default {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
-#define particle_cloud_SystemDescribe_init_default {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_FirmwareModule_init_default {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, particle_cloud_FirmwareModuleSecurity_init_default}
+#define particle_cloud_SystemDescribe_init_default {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
+#define particle_cloud_FirmwareModuleSecurity_init_zero {_particle_cloud_FirmwareModuleSecurityMode_MIN, {{NULL}, NULL}}
 #define particle_cloud_FirmwareModuleDependency_init_zero {_particle_cloud_FirmwareModuleType_MIN, 0, 0}
 #define particle_cloud_FirmwareModuleAsset_init_zero {{{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
-#define particle_cloud_FirmwareModule_init_zero  {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
-#define particle_cloud_SystemDescribe_init_zero  {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_cloud_FirmwareModule_init_zero  {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, particle_cloud_FirmwareModuleSecurity_init_zero}
+#define particle_cloud_SystemDescribe_init_zero  {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
 
 /* Field tags (for use in manual encoding/decoding) */
+#define particle_cloud_FirmwareModuleAsset_hash_tag 1
+#define particle_cloud_FirmwareModuleAsset_name_tag 2
+#define particle_cloud_FirmwareModuleAsset_size_tag 3
+#define particle_cloud_FirmwareModuleAsset_storage_size_tag 4
+#define particle_cloud_FirmwareModuleDependency_type_tag 1
+#define particle_cloud_FirmwareModuleDependency_index_tag 2
+#define particle_cloud_FirmwareModuleDependency_version_tag 3
+#define particle_cloud_FirmwareModuleSecurity_mode_tag 1
+#define particle_cloud_FirmwareModuleSecurity_certificate_fingerprint_tag 2
 #define particle_cloud_SystemDescribe_firmware_modules_tag 1
 #define particle_cloud_SystemDescribe_imei_tag   2
 #define particle_cloud_SystemDescribe_iccid_tag  3
 #define particle_cloud_SystemDescribe_modem_firmware_version_tag 4
 #define particle_cloud_SystemDescribe_assets_tag 5
+#define particle_cloud_SystemDescribe_protected_state_tag 6
 #define particle_cloud_FirmwareModule_type_tag   1
 #define particle_cloud_FirmwareModule_index_tag  2
 #define particle_cloud_FirmwareModule_version_tag 3
@@ -132,15 +162,15 @@ extern "C" {
 #define particle_cloud_FirmwareModule_dependencies_tag 9
 #define particle_cloud_FirmwareModule_asset_dependencies_tag 10
 #define particle_cloud_FirmwareModule_size_tag   11
-#define particle_cloud_FirmwareModuleAsset_hash_tag 1
-#define particle_cloud_FirmwareModuleAsset_name_tag 2
-#define particle_cloud_FirmwareModuleAsset_size_tag 3
-#define particle_cloud_FirmwareModuleAsset_storage_size_tag 4
-#define particle_cloud_FirmwareModuleDependency_type_tag 1
-#define particle_cloud_FirmwareModuleDependency_index_tag 2
-#define particle_cloud_FirmwareModuleDependency_version_tag 3
+#define particle_cloud_FirmwareModule_security_tag 12
 
 /* Struct field encoding specification for nanopb */
+#define particle_cloud_FirmwareModuleSecurity_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, UENUM,    mode,              1) \
+X(a, CALLBACK, SINGULAR, BYTES,    certificate_fingerprint,   2)
+#define particle_cloud_FirmwareModuleSecurity_CALLBACK pb_default_field_callback
+#define particle_cloud_FirmwareModuleSecurity_DEFAULT NULL
+
 #define particle_cloud_FirmwareModuleDependency_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    type,              1) \
 X(a, STATIC,   SINGULAR, UINT32,   index,             2) \
@@ -167,35 +197,41 @@ X(a, STATIC,   SINGULAR, FIXED32,  passed_flags,      7) \
 X(a, CALLBACK, OPTIONAL, BYTES,    hash,              8) \
 X(a, CALLBACK, REPEATED, MESSAGE,  dependencies,      9) \
 X(a, CALLBACK, REPEATED, MESSAGE,  asset_dependencies,  10) \
-X(a, STATIC,   SINGULAR, UINT32,   size,             11)
+X(a, STATIC,   SINGULAR, UINT32,   size,             11) \
+X(a, STATIC,   SINGULAR, MESSAGE,  security,         12)
 #define particle_cloud_FirmwareModule_CALLBACK pb_default_field_callback
 #define particle_cloud_FirmwareModule_DEFAULT NULL
 #define particle_cloud_FirmwareModule_dependencies_MSGTYPE particle_cloud_FirmwareModuleDependency
 #define particle_cloud_FirmwareModule_asset_dependencies_MSGTYPE particle_cloud_FirmwareModuleAsset
+#define particle_cloud_FirmwareModule_security_MSGTYPE particle_cloud_FirmwareModuleSecurity
 
 #define particle_cloud_SystemDescribe_FIELDLIST(X, a) \
 X(a, CALLBACK, REPEATED, MESSAGE,  firmware_modules,   1) \
 X(a, CALLBACK, OPTIONAL, STRING,   imei,              2) \
 X(a, CALLBACK, OPTIONAL, STRING,   iccid,             3) \
 X(a, CALLBACK, OPTIONAL, STRING,   modem_firmware_version,   4) \
-X(a, CALLBACK, REPEATED, MESSAGE,  assets,            5)
+X(a, CALLBACK, REPEATED, MESSAGE,  assets,            5) \
+X(a, STATIC,   SINGULAR, BOOL,     protected_state,   6)
 #define particle_cloud_SystemDescribe_CALLBACK pb_default_field_callback
 #define particle_cloud_SystemDescribe_DEFAULT NULL
 #define particle_cloud_SystemDescribe_firmware_modules_MSGTYPE particle_cloud_FirmwareModule
 #define particle_cloud_SystemDescribe_assets_MSGTYPE particle_cloud_FirmwareModuleAsset
 
+extern const pb_msgdesc_t particle_cloud_FirmwareModuleSecurity_msg;
 extern const pb_msgdesc_t particle_cloud_FirmwareModuleDependency_msg;
 extern const pb_msgdesc_t particle_cloud_FirmwareModuleAsset_msg;
 extern const pb_msgdesc_t particle_cloud_FirmwareModule_msg;
 extern const pb_msgdesc_t particle_cloud_SystemDescribe_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
+#define particle_cloud_FirmwareModuleSecurity_fields &particle_cloud_FirmwareModuleSecurity_msg
 #define particle_cloud_FirmwareModuleDependency_fields &particle_cloud_FirmwareModuleDependency_msg
 #define particle_cloud_FirmwareModuleAsset_fields &particle_cloud_FirmwareModuleAsset_msg
 #define particle_cloud_FirmwareModule_fields &particle_cloud_FirmwareModule_msg
 #define particle_cloud_SystemDescribe_fields &particle_cloud_SystemDescribe_msg
 
 /* Maximum encoded size of messages (where known) */
+/* particle_cloud_FirmwareModuleSecurity_size depends on runtime parameters */
 /* particle_cloud_FirmwareModuleAsset_size depends on runtime parameters */
 /* particle_cloud_FirmwareModule_size depends on runtime parameters */
 /* particle_cloud_SystemDescribe_size depends on runtime parameters */

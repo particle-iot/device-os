@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,6 +17,20 @@
 
 #pragma once
 
-inline int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t device, uint32_t address, uint32_t* offset) {
-    return -1;
+#include <stdint.h>
+#include <unistd.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+#define EFUSE_LOGICAL_SIZE      1024
+#define EFUSE_SUCCESS           1
+#define EFUSE_FAILURE           0
+
+int efuse_read_logical(uint32_t offset, uint8_t* buf, size_t size);
+int efuse_write_logical(uint32_t offset, const uint8_t* buf, size_t size);
+
+#ifdef __cplusplus
 }
+#endif // __cplusplus

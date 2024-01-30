@@ -110,7 +110,7 @@ int InternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::Dfuse
 }
 
 const char* InternalFlashMal::getString() {
-  return INTERNAL_FLASH_IF_STRING;
+  return security_mode_get(nullptr) != MODULE_INFO_SECURITY_MODE_PROTECTED ? INTERNAL_FLASH_IF_STRING : INTERNAL_FLASH_IF_STRING_PROT;
 }
 
 DctMal::DctMal()
@@ -168,7 +168,7 @@ int DctMal::getStatus(detail::DfuGetStatus* status, dfu::detail::DfuseCommand cm
 }
 
 const char* DctMal::getString() {
-    return DCT_IF_STRING;
+    return security_mode_get(nullptr) != MODULE_INFO_SECURITY_MODE_PROTECTED ? DCT_IF_STRING : DCT_IF_STRING_PROT;
 }
 
 ExternalFlashMal::ExternalFlashMal()
@@ -241,5 +241,5 @@ int ExternalFlashMal::getStatus(detail::DfuGetStatus* status, dfu::detail::Dfuse
 }
 
 const char* ExternalFlashMal::getString() {
-    return EXTERNAL_FLASH_IF_STRING;
+    return security_mode_get(nullptr) != MODULE_INFO_SECURITY_MODE_PROTECTED ? EXTERNAL_FLASH_IF_STRING : EXTERNAL_FLASH_IF_STRING_PROT;
 }
