@@ -34,6 +34,7 @@ add_executable( ${target_name}
   ${TEST_DIR}/stub/system_cloud.cpp
   ${TEST_DIR}/stub/system_network.cpp
   ${TEST_DIR}/stub/dct_hal.cpp
+  ${TEST_DIR}/stub/security_mode.cpp
   ${TEST_DIR}/util/random.cpp
   ${TEST_DIR}/util/alloc.cpp
   ${TEST_DIR}/util/buffer.cpp
