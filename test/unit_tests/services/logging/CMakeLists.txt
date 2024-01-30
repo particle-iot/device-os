@@ -14,6 +14,7 @@ add_executable( ${target_name}
   ${TEST_DIR}/util/random_old.cpp
   ${TEST_DIR}/util/string.cpp
   ${TEST_DIR}/stub/system_control.cpp
+  ${TEST_DIR}/stub/security_mode.cpp
   logging.cpp
   main.cpp
 )
