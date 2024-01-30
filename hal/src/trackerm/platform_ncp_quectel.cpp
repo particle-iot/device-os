@@ -21,6 +21,7 @@
 #include "check.h"
 #include "system_error.h"
 #include "deviceid_hal.h"
+#include "efuse.h"
 
 namespace {
 
@@ -59,7 +60,7 @@ PlatformNCPIdentifier platform_primary_ncp_identifier() {
         if (r < 0 || !isValidNcpId(ncpId)) {
             // Check the logical eFuse
             uint8_t ncpId = 0xff;
-            r = readLogicalEfuse(HARDWARE_DATA_OFFSET, &ncpId, sizeof(ncpId));
+            r = efuse_read_logical(HARDWARE_DATA_OFFSET, &ncpId, sizeof(ncpId));
             if (r < 0 || !isValidNcpId(ncpId)) {
                 return PlatformNCPIdentifier::PLATFORM_NCP_UNKNOWN;
             }

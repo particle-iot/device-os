@@ -28,6 +28,8 @@
 #include "core_hal.h"
 #include "bootloader.h"
 #include "security_mode.h"
+#include "efuse.h"
+#include "check.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
@@ -113,8 +115,33 @@ void peripheralsClockEnable(void) {
 
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 
+static int efuse_configure() {
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    const uint32_t SWD_DEFAULT_GPIO_EFUSE = 0x0e;
+    const uint8_t SWD_DEFAULT_GPIO = 0x01;
+    if (security_mode_get(NULL) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        uint8_t val = 0xff;
+        CHECK(efuse_read_logical(SWD_DEFAULT_GPIO_EFUSE, &val, sizeof(val)));
+        if (!(val & SWD_DEFAULT_GPIO)) {
+            val |= SWD_DEFAULT_GPIO;
+            efuse_write_logical(SWD_DEFAULT_GPIO_EFUSE, &val, sizeof(val));
+            uint32_t syscfg3 = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3);
+            syscfg3 |= BIT_SYS_SWD_GP_SEL;
+            HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3, syscfg3);
+        }
+    }
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+}
+
 static void DWT_Init(void)
 {
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    uint32_t syscfg3 = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3);
+    if ((syscfg3 & BIT_SYS_SWD_GP_SEL) && security_mode_get(NULL) != MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        syscfg3 &= ~(BIT_SYS_SWD_GP_SEL);
+        HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_SYS_EFUSE_SYSCFG3, syscfg3);
+    }
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     // DBGMCU->CR |= DBGMCU_CR_SETTINGS;
     // DBGMCU->APB1FZ |= DBGMCU_APB1FZ_SETTINGS;
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -321,6 +348,7 @@ void Set_System(void)
 
     bootloader_init_security_mode(NULL);
 
+    efuse_configure();
     DWT_Init();
 
     /* Configure the LEDs and set the default states */
