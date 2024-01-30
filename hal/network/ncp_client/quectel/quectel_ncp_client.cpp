@@ -44,6 +44,7 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include <algorithm>
 #include <limits>
 #include <lwip/memp.h>
+#include "rtc_hal.h"
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -99,9 +100,11 @@ const auto QUECTEL_NCP_KEEPALIVE_MAX_MISSED = 5;
 // FIXME: for now using a very large buffer
 const auto QUECTEL_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 const auto QUECTEL_NCP_PPP_CHANNEL_RX_BUFFER_SIZE = 256;
+const auto QUECTEL_NCP_GNSS_CHANNEL_RX_BUFFER_SIZE = 256;
 
 const auto QUECTEL_NCP_AT_CHANNEL = 1;
 const auto QUECTEL_NCP_PPP_CHANNEL = 2;
+const auto QUECTEL_NCP_GNSS_CHANNEL = 3;
 
 const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 
@@ -166,9 +169,13 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     decltype(muxerDataStream_) muxDataStrm(new(std::nothrow) decltype(muxerDataStream_)::element_type(&muxer_, QUECTEL_NCP_PPP_CHANNEL));
     CHECK_TRUE(muxDataStrm, SYSTEM_ERROR_NO_MEMORY);
     CHECK(muxDataStrm->init(QUECTEL_NCP_PPP_CHANNEL_RX_BUFFER_SIZE));
+    decltype(muxerGnssStream_) muxGnssStrm(new(std::nothrow) decltype(muxerGnssStream_)::element_type(&muxer_, QUECTEL_NCP_GNSS_CHANNEL));
+    CHECK_TRUE(muxGnssStrm, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(muxGnssStrm->init(QUECTEL_NCP_GNSS_CHANNEL_RX_BUFFER_SIZE));
     serial_ = std::move(serial);
     muxerAtStream_ = std::move(muxStrm);
     muxerDataStream_ = std::move(muxDataStrm);
+    muxerGnssStream_ = std::move(muxGnssStrm);
     ncpState_ = NcpState::OFF;
     prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
@@ -176,6 +183,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     regCheckTime_ = 0;
     parserError_ = 0;
     ready_ = false;
+    gnssReady_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     if (modemPowerState()) {
@@ -188,6 +196,238 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     return SYSTEM_ERROR_NONE;
 }
 
+#include "xtra3grcej.h"
+
+int QuectelNcpClient::gnssConfig(const GnssNcpClientConfig& conf) {
+    const NcpClientLock lock(this);
+
+    LOG(TRACE, "Initializing GNSS");
+    if (muxer_.isRunning()) {
+        LOG(TRACE, "Muxer is running");
+    } else {
+        LOG(TRACE, "Turning on the modem");
+        CHECK(on());
+    }
+
+    LOG(TRACE, "Opening GNSS channel");
+    int r = muxer_.openChannel(QUECTEL_NCP_GNSS_CHANNEL, muxerGnssStream_->channelDataCb, muxerGnssStream_.get());
+    if (r) {
+        LOG(ERROR, "Failed to open GNSS channel");
+        ready_ = false;
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    LOG(TRACE, "Configure GNSS AT parser");
+    auto parserConf = AtParserConfig().stream(muxerGnssStream_.get()).commandTerminator(AtCommandTerminator::CRLF);
+    gnssParser_.destroy();
+    CHECK(gnssParser_.init(std::move(parserConf)));
+
+    skipAll(muxerGnssStream_.get());
+    muxerGnssStream_->enabled(true);
+
+    CHECK_PARSER_OK(gnssParser_.execCommand(1000, "AT"));
+
+    // Turn off the GNSS, otherwise, we may get "+CME ERROR:504" when configuring nmeasrc.
+    gnssParser_.execCommand("AT+QGPSEND");
+
+    // GPS is always on.
+    // EG91: 1:Enable the support of GLONASS, Galileo and Beidou constellations.
+    // BG95: 1:Enable the support of GLONASS constellation.
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"gnssconfig\",1"));
+
+    // Close NMEA sentences output
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"outport\",\"none\""));
+
+    // Enable acquisition of NMEA sentences via AT+QGPSGNMEA
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"nmeasrc\",1"));
+
+    // Configure NMEA sentences output type
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"gpsnmeatype\",8")); // GSA
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"glonassnmeatype\",2")); // GSA
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"galileonmeatype\",1")); // GSV
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"beidounmeatype\",1")); // GSA
+
+    if (conf.isGpsOneXtraEnabled()) {
+        // Enable gpsOneXtra assistance function
+        injectGpsOneXtraTimeAndData(xtra2, 58715);
+    } else {
+        // Disable gpsOneXtra assistance function
+        CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSXTRA=0"));
+    }
+
+    // Remove the following test routine from this function
+
+    // Turn on GNSS
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPS=1"));
+
+    // Obtain positioning information
+    uint32_t start = hal_timer_millis(nullptr);
+    auto resp = gnssParser_.sendCommand("AT+QGPSLOC=2");
+    while (resp.readResult() != AtResponse::OK) {
+        resp = gnssParser_.sendCommand("AT+QGPSLOC=2");
+        HAL_Delay_Milliseconds(500);
+    }
+    uint32_t end = hal_timer_millis(nullptr);
+    LOG(TRACE, "TTFF: %ldms", end - start);
+
+    GnssPositioningInfo info = {};
+    acquirePositioningInfo(&info);
+
+    gnssReady_ = true;
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::gnssOn() {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(ready_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPS=1"));
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::gnssOff() {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(ready_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSEND"));
+    muxerGnssStream_->enabled(false);
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::acquirePositioningInfo(GnssPositioningInfo* info) {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(ready_, SYSTEM_ERROR_INVALID_STATE);
+
+    info->locked = false;
+
+    auto resp = gnssParser_.sendCommand("AT+QGPSLOC=2");
+    
+    int r = resp.scanf("+QGPSLOC: %02d%02d%02d.%*03d,%lf,%lf,%f,%f,%d,%f,%f,%f,%02d%02d%02d,%d",
+                        &info->utcTime.tm_hour, &info->utcTime.tm_min, &info->utcTime.tm_sec,
+                        &info->latitude, &info->longitude, &info->accuracy, &info->altitude,
+                        &info->posMode, &info->cog, &info->speedKmph, &info->speedKnots,
+                        &info->utcTime.tm_mday, &info->utcTime.tm_mon, &info->utcTime.tm_year,
+                        &info->satsInView);
+    CHECK_TRUE(r == 15, SYSTEM_ERROR_BAD_DATA);
+    if (resp.readResult() != AtResponse::OK) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    LOG(TRACE, "Pos time: %02d/%02d/%02d %02d:%02d:%02d", info->utcTime.tm_year, info->utcTime.tm_mon, info->utcTime.tm_mday,
+        info->utcTime.tm_hour, info->utcTime.tm_min, info->utcTime.tm_sec);
+    LOG(TRACE, "Pos: %.5lf%c, %.5lf%c, %.1f", info->latitude, (info->latitude < 0) ? 'S' : 'N',
+        info->longitude, (info->longitude < 0) ? 'W' : 'E',
+        info->altitude);
+    LOG(TRACE, "%d sats in view", info->satsInView);
+
+    info->locked = true;
+
+    return SYSTEM_ERROR_NONE;
+}
+
+#if HAL_PLATFORM_GPS_ONE_XTRA
+bool QuectelNcpClient::isGpsOneXtraEnabled() {
+    const NcpClientLock lock(this);
+    CHECK_TRUE_RETURN(ready_, false);
+    auto resp = gnssParser_.sendCommand("AT+QGPSXTRA?");
+    int enabled;
+    int r = resp.scanf("+QGPSXTRA: %d", &enabled);
+    CHECK_TRUE_RETURN(r == 1, false);
+    if (resp.readResult() != AtResponse::OK) {
+        return false;
+    }
+    return (enabled == 1);
+}
+
+bool QuectelNcpClient::isGpsOneXtraDataValid() {
+    const NcpClientLock lock(this);
+    CHECK_TRUE_RETURN(ready_, false); 
+    auto resp = gnssParser_.sendCommand("AT+QGPSXTRADATA?");
+    int validMinutes;
+    int r = resp.scanf("+QGPSXTRADATA: %d, \"%*19[^\"]\"", &validMinutes);
+    CHECK_TRUE_RETURN(r == 1, false);
+    if (resp.readResult() != AtResponse::OK) {
+        return false;
+    }
+    return (validMinutes != 0);
+}
+
+int QuectelNcpClient::injectGpsOneXtraTimeAndData(const uint8_t* buf, size_t len) {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(ready_, SYSTEM_ERROR_INVALID_STATE); 
+    LOG(TRACE, "Injecting gpsOneXtra data");
+
+    struct timeval tv = {};
+    struct tm calendar;
+    CHECK(hal_rtc_get_time(&tv, nullptr));
+    gmtime_r(&tv.tv_sec, &calendar);
+    calendar.tm_year += 1900;
+    calendar.tm_mon += 1;
+    char timeStr[32] = {};
+    sprintf(timeStr, "%02d/%02d/%02d,%02d:%02d:%02d", calendar.tm_year % 100, calendar.tm_mon, calendar.tm_mday, calendar.tm_hour, calendar.tm_min, calendar.tm_sec);
+
+    // Set UTC
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+        CHECK_PARSER_OK(gnssParser_.execCommand("AT+CCLK=\"%s\"+32", timeStr));
+    }
+
+    // Delete the file if it is already existed. Ignore the error in case the file is not existed.
+    gnssParser_.execCommand("AT+QFDEL=\"xtra2.bin\"");
+
+    // Upload xtra file to module's UFS. Reference: Quectel_LTE_Standard_FILE_Application_Note_V1.1.pdf
+    // After the command is executed, the COM port enters data mode automatically
+    auto resp = gnssParser_.sendCommand("AT+QFUPL=\"xtra2.bin\",%d,5,1", len);
+    const char connectResponse[] = "CONNECT";
+    char temp[64] = {};
+    CHECK(resp.readLine(temp, sizeof(temp)));
+    if (strncmp(temp, connectResponse, sizeof(connectResponse) - 1)) {
+        LOG(TRACE, "Failed to enter data mode");
+        return SYSTEM_ERROR_UNKNOWN;
+    }
+
+    LOG(TRACE, "Start uploading gpsOneXtra file");
+    skipAll(muxerGnssStream_.get());
+    for (size_t i = 0; i < len; i = i) {
+        size_t available = muxerGnssStream_->availForWrite();
+        size_t toWrite = std::min(available, len - i);
+        toWrite = std::min(toWrite, (size_t)1024);
+        muxerGnssStream_->write((const char*)&buf[i], toWrite);
+        i += toWrite;
+        if (i < len) {
+            while (!muxerGnssStream_->availForRead()) { // TODO: timeout
+                HAL_Delay_Milliseconds(1);
+            }
+            char resp;
+            muxerGnssStream_->read(&resp, 1);
+            if (resp != 'A') {
+                // FIXME: it may fail on BG95
+                LOG(TRACE, "Failed to upload gpsOneXtra file");
+                waitAtResponse(gnssParser_, 10000);
+                return SYSTEM_ERROR_INTERNAL;
+            }
+        }
+    }
+    skipAll(muxerGnssStream_.get());
+    gnssParser_.reset();
+    CHECK(waitAtResponse(gnssParser_, 5000));
+    LOG(TRACE, "Successfully uploaded gpsOneXtra file");
+
+    // Enable gpsOneXtra assistance function
+    // FIXME: This doesn't seams to take effect on BG95
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSXTRA=1"));
+
+    // Inject gpsOneXtra time. Ignore the error in case the time is currently valid.
+    sprintf(timeStr, "%d/%02d/%02d,%02d:%02d:%02d", calendar.tm_year, calendar.tm_mon, calendar.tm_mday, calendar.tm_hour, calendar.tm_min, calendar.tm_sec);
+    gnssParser_.execCommand("AT+QGPSXTRATIME=0,\"%s\",1,1,3500", timeStr);
+
+    // Inject gpsOneXtra data
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSXTRADATA=\"UFS:xtra2.bin\""));
+
+    gnssParser_.execCommand("AT+QFDEL=\"xtra2.bin\"");
+
+    return SYSTEM_ERROR_NONE;
+}
+#endif // HAL_PLATFORM_GPS_ONE_XTRA
+
 void QuectelNcpClient::destroy() {
     if (ncpState_ != NcpState::OFF) {
         ncpState_ = NcpState::OFF;
@@ -195,10 +435,13 @@ void QuectelNcpClient::destroy() {
     }
     parser_.destroy();
     muxerAtStream_.reset();
+    muxerDataStream_.reset();
+    muxerGnssStream_.reset();
     serial_.reset();
 }
 
 int QuectelNcpClient::initParser(Stream* stream) {
+    LOG(TRACE, "Initializing AT parser");
     // Initialize AT parser
     auto parserConf = AtParserConfig().stream(stream).commandTerminator(AtCommandTerminator::CRLF);
     parser_.destroy();
@@ -414,6 +657,7 @@ void QuectelNcpClient::disable() {
     serial_->enabled(false);
     muxerAtStream_->enabled(false);
     muxerDataStream_->enabled(false);
+    muxerGnssStream_->enabled(false);
 }
 
 NcpState QuectelNcpClient::ncpState() {
@@ -1955,6 +2199,10 @@ int QuectelNcpClient::modemInit() const {
     // NOTE: The BGDTR pins is inverted
     conf.value = 1;
     CHECK(hal_gpio_configure(BGDTR, &conf, nullptr));
+
+#if PLATFORM_ID == PLATFORM_MSOM
+    CHECK(hal_gpio_configure(GNSS_ANT_PWR, &conf, nullptr));
+#endif
 
     LOG(TRACE, "Modem low level initialization OK");
 
