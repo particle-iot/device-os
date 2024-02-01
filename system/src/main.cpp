@@ -91,6 +91,12 @@
 #include "network/ncp/cellular/ncp.h"
 #endif
 
+// TEMP DEBUG
+// ENABLE SERIAL1 LOGGING, EVEN IN SAFE MODE
+#include "debug_output_handler.h"
+spark::Serial1LogHandler g_logHandlerSerial1(115200, LOG_LEVEL_ALL);
+// TEMP DEBUG
+
 #if HAL_PLATFORM_RADIO_STACK
 #include "radio_common.h"
 #endif
