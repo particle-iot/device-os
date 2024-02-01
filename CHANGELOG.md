@@ -1,3 +1,9 @@
+## 6.0.0
+
+### FEATURES
+
+- Protected mode [#2734](https://github.com/particle-iot/device-os/pull/2734)
+
 ## 5.7.0
 
 ### FEATURES
