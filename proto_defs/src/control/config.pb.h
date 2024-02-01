@@ -63,6 +63,10 @@ typedef struct _particle_ctrl_GetNcpFirmwareVersionRequest {
     char dummy_field;
 } particle_ctrl_GetNcpFirmwareVersionRequest;
 
+typedef struct _particle_ctrl_GetProtectedStateRequest { 
+    char dummy_field;
+} particle_ctrl_GetProtectedStateRequest;
+
 typedef struct _particle_ctrl_GetSecurityKeyReply { 
     pb_callback_t data; /* Key data in DER format */
 } particle_ctrl_GetSecurityKeyReply;
@@ -201,6 +205,10 @@ typedef struct _particle_ctrl_GetNcpFirmwareVersionReply {
     /* NCP module version */
     uint32_t module_version; 
 } particle_ctrl_GetNcpFirmwareVersionReply;
+
+typedef struct _particle_ctrl_GetProtectedStateReply { 
+    bool state; 
+} particle_ctrl_GetProtectedStateReply;
 
 typedef struct _particle_ctrl_GetSecurityKeyRequest { 
     particle_ctrl_SecurityKeyType type; /* Key type */
@@ -347,6 +355,8 @@ extern "C" {
 #define particle_ctrl_IsDeviceSetupDoneReply_init_default {0}
 #define particle_ctrl_SetStartupModeRequest_init_default {_particle_ctrl_DeviceMode_MIN}
 #define particle_ctrl_SetStartupModeReply_init_default {0}
+#define particle_ctrl_GetProtectedStateRequest_init_default {0}
+#define particle_ctrl_GetProtectedStateReply_init_default {0}
 #define particle_ctrl_SystemResetRequest_init_default {0}
 #define particle_ctrl_SystemResetReply_init_default {0}
 #define particle_ctrl_SetFeatureRequest_init_default {_particle_ctrl_Feature_MIN, 0}
@@ -397,6 +407,8 @@ extern "C" {
 #define particle_ctrl_IsDeviceSetupDoneReply_init_zero {0}
 #define particle_ctrl_SetStartupModeRequest_init_zero {_particle_ctrl_DeviceMode_MIN}
 #define particle_ctrl_SetStartupModeReply_init_zero {0}
+#define particle_ctrl_GetProtectedStateRequest_init_zero {0}
+#define particle_ctrl_GetProtectedStateReply_init_zero {0}
 #define particle_ctrl_SystemResetRequest_init_zero {0}
 #define particle_ctrl_SystemResetReply_init_zero {0}
 #define particle_ctrl_SetFeatureRequest_init_zero {_particle_ctrl_Feature_MIN, 0}
@@ -417,6 +429,7 @@ extern "C" {
 #define particle_ctrl_GetFeatureRequest_feature_tag 1
 #define particle_ctrl_GetNcpFirmwareVersionReply_version_tag 1
 #define particle_ctrl_GetNcpFirmwareVersionReply_module_version_tag 2
+#define particle_ctrl_GetProtectedStateReply_state_tag 1
 #define particle_ctrl_GetSecurityKeyRequest_type_tag 1
 #define particle_ctrl_GetSerialNumberReply_serial_tag 1
 #define particle_ctrl_GetServerAddressReply_address_tag 1
@@ -647,6 +660,16 @@ X(a, STATIC,   SINGULAR, UENUM,    mode,              1)
 #define particle_ctrl_SetStartupModeReply_CALLBACK NULL
 #define particle_ctrl_SetStartupModeReply_DEFAULT NULL
 
+#define particle_ctrl_GetProtectedStateRequest_FIELDLIST(X, a) \
+
+#define particle_ctrl_GetProtectedStateRequest_CALLBACK NULL
+#define particle_ctrl_GetProtectedStateRequest_DEFAULT NULL
+
+#define particle_ctrl_GetProtectedStateReply_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, BOOL,     state,             1)
+#define particle_ctrl_GetProtectedStateReply_CALLBACK NULL
+#define particle_ctrl_GetProtectedStateReply_DEFAULT NULL
+
 #define particle_ctrl_SystemResetRequest_FIELDLIST(X, a) \
 
 #define particle_ctrl_SystemResetRequest_CALLBACK NULL
@@ -738,6 +761,8 @@ extern const pb_msgdesc_t particle_ctrl_IsDeviceSetupDoneRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_IsDeviceSetupDoneReply_msg;
 extern const pb_msgdesc_t particle_ctrl_SetStartupModeRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_SetStartupModeReply_msg;
+extern const pb_msgdesc_t particle_ctrl_GetProtectedStateRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_GetProtectedStateReply_msg;
 extern const pb_msgdesc_t particle_ctrl_SystemResetRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_SystemResetReply_msg;
 extern const pb_msgdesc_t particle_ctrl_SetFeatureRequest_msg;
@@ -790,6 +815,8 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 #define particle_ctrl_IsDeviceSetupDoneReply_fields &particle_ctrl_IsDeviceSetupDoneReply_msg
 #define particle_ctrl_SetStartupModeRequest_fields &particle_ctrl_SetStartupModeRequest_msg
 #define particle_ctrl_SetStartupModeReply_fields &particle_ctrl_SetStartupModeReply_msg
+#define particle_ctrl_GetProtectedStateRequest_fields &particle_ctrl_GetProtectedStateRequest_msg
+#define particle_ctrl_GetProtectedStateReply_fields &particle_ctrl_GetProtectedStateReply_msg
 #define particle_ctrl_SystemResetRequest_fields &particle_ctrl_SystemResetRequest_msg
 #define particle_ctrl_SystemResetReply_fields &particle_ctrl_SystemResetReply_msg
 #define particle_ctrl_SetFeatureRequest_fields &particle_ctrl_SetFeatureRequest_msg
@@ -814,6 +841,8 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 #define particle_ctrl_GetFeatureReply_size       2
 #define particle_ctrl_GetFeatureRequest_size     2
 #define particle_ctrl_GetNcpFirmwareVersionRequest_size 0
+#define particle_ctrl_GetProtectedStateReply_size 2
+#define particle_ctrl_GetProtectedStateRequest_size 0
 #define particle_ctrl_GetSecurityKeyRequest_size 2
 #define particle_ctrl_GetSerialNumberReply_size  18
 #define particle_ctrl_GetSerialNumberRequest_size 0
