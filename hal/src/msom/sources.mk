@@ -23,5 +23,8 @@ CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/lwip/realtek/,*.cpp)
 CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/ncp_client/realtek/,*.c)
 CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/ncp_client/realtek/,*.cpp)
 
+CSRC += $(call here_files,$(HAL_MODULE_PATH)/network/ncp/gnss/,*.c)
+CPPSRC += $(call here_files,$(HAL_MODULE_PATH)/network/ncp/gnss/,*.cpp)
+
 include $(HAL_PLATFORM_SRC_PATH)/../rtl872x/sources.mk
 

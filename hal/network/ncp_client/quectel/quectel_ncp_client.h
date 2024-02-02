@@ -20,6 +20,7 @@
 #include <cstdlib>
 
 #include "network/ncp/cellular/cellular_ncp_client.h"
+#include "network/ncp/gnss/gnss_ncp_client.h"
 #include "platform_ncp.h"
 
 #include "at_parser.h"
@@ -34,7 +35,7 @@ namespace particle {
 
 class SerialStream;
 
-class QuectelNcpClient: public CellularNcpClient {
+class QuectelNcpClient: public CellularNcpClient, public GnssNcpClient {
 public:
     QuectelNcpClient();
     ~QuectelNcpClient();
@@ -76,6 +77,17 @@ public:
     virtual int startNcpFwUpdate(bool update) override;
     virtual int dataModeError(int error) override;
 
+    // Reimplemented from GnssNcpClient
+    int gnssConfig(const GnssNcpClientConfig& conf) override;
+    int gnssOn() override;
+    int gnssOff() override;
+    int acquirePositioningInfo(GnssPositioningInfo* info) override;
+#if HAL_PLATFORM_GPS_ONE_XTRA
+    int injectGpsOneXtraTimeAndData(const uint8_t* buf, size_t size) override;
+    bool isGpsOneXtraEnabled() override;
+    bool isGpsOneXtraDataValid() override;
+#endif
+
     auto getMuxer() {
         return &muxer_;
     }
@@ -83,6 +95,7 @@ public:
 private:
     AtParser parser_;
     AtParser dataParser_;
+    AtParser gnssParser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
     CellularNcpClientConfig conf_;
@@ -92,9 +105,11 @@ private:
     volatile NcpPowerState pwrState_ = NcpPowerState::UNKNOWN;
     int parserError_ = 0;
     bool ready_ = false;
+    bool gnssReady_ = false;
     gsm0710::Muxer<EventGroupBasedStream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerDataStream_;
+    std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerGnssStream_;
     CellularNetworkConfig netConf_;
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;

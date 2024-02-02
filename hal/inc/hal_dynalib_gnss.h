@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,26 +15,24 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "application.h"
+#pragma once
+
+#include "hal_platform.h"
+#include "dynalib.h"
+
+#ifdef DYNALIB_EXPORT
 #include "gnss_hal.h"
-#include "rtc_hal.h"
+#endif
 
-SYSTEM_MODE(MANUAL);
+// WARNING
+// The order of functions must not be changed or older applications will break
+// when used with newer system firmware.
+// Function signatures shouldn't be changed other than changing pointer types.
+// New HAL functions must be added to the end of this list.
+// GNINRAW
 
-Serial1LogHandler l(115200, LOG_LEVEL_ALL);
+DYNALIB_BEGIN(hal_gnss)
 
-/* executes once at startup */
-void setup() {
-    Log.info("Application started");
+DYNALIB_FN(0, hal_gnss, hal_gnss_init, int(void*))
 
-    Cellular.on();
-    waitUntil(Cellular.isOn);
-    // waitUntil(Particle.connected);
-
-    hal_gnss_init(nullptr);
-}
-
-/* executes continuously after setup() runs */
-void loop() {
-
-}
+DYNALIB_END(hal_gnss)

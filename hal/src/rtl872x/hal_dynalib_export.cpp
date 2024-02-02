@@ -56,3 +56,4 @@
 #include "hal_dynalib_storage.h"
 
 #include "hal_dynalib_backup_ram.h"
+#include "hal_dynalib_gnss.h"
