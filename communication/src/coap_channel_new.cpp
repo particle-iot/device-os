@@ -134,23 +134,30 @@ inline T* findInList(T* head, const F& fn) {
     return nullptr;
 }
 
+// Invokes a function object for each element in the list. It's not safe to use this function if the
+// function object may delete multiple elements of the list and not just the element for which it
+// was called
 template<typename T, typename F>
 inline void forEachInList(T* head, const F& fn) {
     while (head) {
-        auto next = head->next; // In case the callback deletes the element
+        // Store the pointer to the next element in case the callback deletes the current element
+        auto next = head->next;
         fn(head);
         head = static_cast<T*>(next);
     }
 }
 
+// Adds a reference-counted object to a list and increments the reference counter
 template<typename T, typename E>
 inline void addRefToList(T*& head, RefCountPtr<E> elem) {
     addToList(head, elem.unwrap());
 }
 
+// Removes a reference counted object from the list and decrements the reference counter
 template<typename T, typename E>
 inline void removeRefFromList(T*& head, const RefCountPtr<E>& elem) {
     removeFromList(head, elem.get());
+    // Release the unmanaged reference to the object
     elem->release();
 }
 
@@ -162,6 +169,7 @@ inline RefCountPtr<T> findRefInList(T* head, const F& fn) {
 template<typename T, typename F>
 inline void forEachRefInList(T* head, const F& fn) {
     while (head) {
+        // Prevent the object from being deleted by the callback
         RefCountPtr<T> elem(head);
         fn(elem.get());
         head = static_cast<T*>(elem->next);
@@ -341,7 +349,8 @@ int CoapChannel::beginRequest(coap_message** msg, const char* uri, coap_method m
     req->method = method;
     req->timeout = (timeout > 0) ? timeout : DEFAULT_REQUEST_TIMEOUT;
     req->state = MessageState::WRITE;
-    *msg = reinterpret_cast<coap_message*>(req.unwrap()); // Transfer ownership
+    // Transfer ownership over the message to the calling code
+    *msg = reinterpret_cast<coap_message*>(req.unwrap());
     return msgId;
 }
 
@@ -374,7 +383,9 @@ int CoapChannel::endRequest(coap_message* apiMsg, coap_response_callback respCal
     req->ackCallback = ackCallback;
     req->errorCallback = errorCallback;
     req->callbackArg = callbackArg;
-    req->release(); // Take ownership
+    // Take ownership over the message by releasing the reference to the message that was previously
+    // managed by the calling code
+    req->release();
     return 0;
 }
 
@@ -398,7 +409,8 @@ int CoapChannel::beginResponse(coap_message** msg, int status, int requestId) {
     resp->token = req->token;
     resp->status = status;
     resp->state = MessageState::WRITE;
-    *msg = reinterpret_cast<coap_message*>(resp.unwrap()); // Transfer ownership
+    // Transfer ownership over the message to the calling code
+    *msg = reinterpret_cast<coap_message*>(resp.unwrap());
     return 0;
 }
 
@@ -430,7 +442,9 @@ int CoapChannel::endResponse(coap_message* apiMsg, coap_ack_callback ackCallback
     resp->ackCallback = ackCallback;
     resp->errorCallback = errorCallback;
     resp->callbackArg = callbackArg;
-    resp->release(); // Take ownership
+    // Take ownership over the message by releasing the reference to the message that was previously
+    // managed by the calling code
+    resp->release();
     return 0;
 }
 
@@ -731,6 +745,7 @@ void CoapChannel::close(int error) {
             req->errorCallback(error, req->id, req->callbackArg); // Callback passed to coap_write_payload() or coap_end_request()
         }
         req->state = MessageState::DONE;
+        // Release the unmanaged reference to the message
         req->release();
     });
     sentReqs_ = nullptr;
@@ -945,7 +960,8 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
         clearMessage(req);
         return Result::HANDLED;
     }
-    req.unwrap(); // Transfer ownership
+    // Transfer ownership over the message to called code
+    req.unwrap();
     releaseMsgBufGuard.dismiss();
     return Result::HANDLED;
 }
@@ -1118,7 +1134,8 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         clearMessage(resp);
         return Result::HANDLED;
     }
-    resp.unwrap(); // Transfer ownership
+    // Transfer ownership over the message to called code
+    resp.unwrap();
     releaseMsgBufGuard.dismiss();
     return Result::HANDLED;
 }

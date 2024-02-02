@@ -757,8 +757,6 @@ public:
     }
 
 private:
-    typedef std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, VariantArray, VariantMap> VariantType;
-
     template<typename TargetT, typename EnableT = void>
     struct ConvertToVisitor {
         bool ok = false;
@@ -796,6 +794,8 @@ private:
     struct IsAlternativeType {
         static constexpr bool value = false;
     };
+
+    typedef std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, VariantArray, VariantMap> VariantType;
 
     VariantType v_;
 

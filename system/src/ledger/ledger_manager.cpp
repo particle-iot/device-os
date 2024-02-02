@@ -312,7 +312,7 @@ int LedgerManager::init() {
             auto it = findContext(contexts, ctx->name, found);
             assert(!found);
             it = contexts.insert(it, std::move(ctx));
-            if (it == contexts_.end()) {
+            if (it == contexts.end()) {
                 return SYSTEM_ERROR_NO_MEMORY;
             }
         }
@@ -1108,7 +1108,8 @@ int LedgerManager::sendGetDataRequest(LedgerSyncContext* ctx) {
     if (!pb_encode(&stream, &PB_CLOUD(Request_msg), &pbReq)) {
         return SYSTEM_ERROR_ENCODING_FAILED;
     }
-    CHECK(coap_end_request(msg.release(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
+    CHECK(coap_end_request(msg.get(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
+    msg.release();
     // Clear the pending state
     clearPendingState(ctx, PendingState::SYNC_FROM_CLOUD);
     ctx->taskRunning = true;
@@ -1158,7 +1159,8 @@ int LedgerManager::sendSubscribeRequest() {
     if (!pb_encode(&stream, &PB_CLOUD(Request_msg), &pbReq)) {
         return (d.error < 0) ? d.error : SYSTEM_ERROR_ENCODING_FAILED;
     }
-    CHECK(coap_end_request(msg.release(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
+    CHECK(coap_end_request(msg.get(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
+    msg.release();
     // Clear the pending state
     pendingState_ = 0;
     for (auto& ctx: contexts_) {
@@ -1213,7 +1215,8 @@ int LedgerManager::sendGetInfoRequest() {
     if (!pb_encode(&stream, &PB_CLOUD(Request_msg), &pbReq)) {
         return (d.error < 0) ? d.error : SYSTEM_ERROR_ENCODING_FAILED;
     }
-    CHECK(coap_end_request(msg.release(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
+    CHECK(coap_end_request(msg.get(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
+    msg.release();
     // Clear the pending state
     pendingState_ = 0;
     for (auto& ctx: contexts_) {
@@ -1260,7 +1263,8 @@ int LedgerManager::sendLedgerData() {
     if (eof) {
         CHECK(stream_->close());
         stream_.reset();
-        CHECK(coap_end_request(msg_.release(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
+        CHECK(coap_end_request(msg_.get(), responseCallback, nullptr /* ack_cb */, requestErrorCallback, this, nullptr));
+        msg_.release();
     }
     return 0;
 }
@@ -1320,7 +1324,8 @@ int LedgerManager::sendResponse(int result, int reqId) {
         pbMsg.data = get_system_error_message(result);
         pbMsg.size = std::strlen(pbMsg.data);
     }
-    CHECK(coap_end_response(msg.release(), nullptr /* ack_cb */, requestErrorCallback, nullptr /* arg */, nullptr /* reserved */));
+    CHECK(coap_end_response(msg.get(), nullptr /* ack_cb */, requestErrorCallback, nullptr /* arg */, nullptr /* reserved */));
+    msg.release();
     return 0;
 }
 
