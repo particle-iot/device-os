@@ -137,11 +137,14 @@ void ISRTaskQueue::remove(Task* task) {
 }
 
 bool ISRTaskQueue::process() {
-    Task* task = nullptr;
     if (!firstTask_) {
         return false;
     }
+    Task* task = nullptr;
     ATOMIC_BLOCK() {
+        if (!firstTask_) {
+            return false;
+        }
         // Take task object from the queue
         task = firstTask_;
         firstTask_ = task->next;

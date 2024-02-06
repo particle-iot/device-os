@@ -40,6 +40,7 @@
 namespace {
 
 using namespace particle;
+using namespace particle::system;
 
 // Minimum length of the data stage for high-speed USB devices
 const size_t MIN_WLENGTH = 64;
@@ -298,7 +299,7 @@ bool particle::UsbControlRequestChannel::processInitRequest(HAL_USB_SetupRequest
         return ServiceReply().status(ServiceReply::BUSY).encode(halReq); // Too many active requests
     }
     // Allocate a request object from the pool
-    const auto req = (Request*)system_pool_alloc(sizeof(Request), nullptr);
+    const auto req = systemPoolNew<Request>();
     if (!req) {
         return ServiceReply().status(ServiceReply::NO_MEMORY).encode(halReq); // Memory allocation error
     }
@@ -572,7 +573,7 @@ void particle::UsbControlRequestChannel::finishActiveRequest(Request* req) {
             req->request_data = nullptr;
         }
         if (!req->request_data && !req->reply_data && !req->handler) {
-            system_pool_free(req, nullptr);
+            systemPoolDelete(req);
         } else {
             // Free the request data asynchronously
             req->task.func = finishRequest;
@@ -591,7 +592,7 @@ void particle::UsbControlRequestChannel::finishRequest(Request* req) {
     if (req->handler) {
         req->handler(req->result, req->handlerData);
     }
-    system_pool_free(req, nullptr);
+    systemPoolDelete(req);
 }
 
 // Note: This method is called from an ISR
@@ -619,7 +620,7 @@ void particle::UsbControlRequestChannel::allocRequestData(ISRTaskQueue::Task* is
     }
     if (req) { // Request has been cancelled
         t_free(req->request_data);
-        system_pool_free(req, nullptr);
+        systemPoolDelete(req);
     }
 }
 

@@ -67,6 +67,7 @@
 #include "backup_ram_hal.h"
 
 using namespace particle;
+using namespace particle::system;
 using spark::Network;
 
 volatile system_tick_t spark_loop_total_millis = 0;
@@ -478,7 +479,7 @@ int system_isr_task_queue_free_memory(void *ptrToFree) {
         void *arg;
     };
 
-    auto task = static_cast<FreeTask*>(system_pool_alloc(sizeof(FreeTask), nullptr));
+    auto task = systemPoolNew<FreeTask>();
     if (!task) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
@@ -487,7 +488,7 @@ int system_isr_task_queue_free_memory(void *ptrToFree) {
     task->func = [](ISRTaskQueue::Task * task) {
        auto freeTask = reinterpret_cast<FreeTask*>(task);
        free(freeTask->arg);
-       system_pool_free(task, nullptr);
+       systemPoolDelete(freeTask);
     };
 
     SystemISRTaskQueue.enqueue(task);

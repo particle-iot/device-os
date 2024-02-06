@@ -172,7 +172,7 @@ int ListeningModeHandler::command(network_listen_command_t com, void* arg) {
 }
 
 int ListeningModeHandler::enqueueCommand(network_listen_command_t com, void* arg) {
-    auto task = static_cast<Task*>(system_pool_alloc(sizeof(Task), nullptr));
+    auto task = systemPoolNew<Task>();
     if (!task) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
@@ -198,7 +198,7 @@ void ListeningModeHandler::executeEnqueuedCommand(Task* task) {
     auto com = task->command;
     auto arg = task->arg;
 
-    system_pool_free(task, nullptr);
+    systemPoolDelete(task);
 
     instance()->command(com, arg);
 }
