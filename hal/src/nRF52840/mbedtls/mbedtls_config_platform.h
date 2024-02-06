@@ -1416,6 +1416,16 @@
 #define MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT
 
 /**
+ * \def MBEDTLS_SSL_DISABLE_PARSE_CERTIFICATE
+ *
+ * When using MBEDTLS_SSL_RAW_PUBLIC_KEY_SUPPORT, disable
+ * support for parsing X509 certificates entirely.
+ */
+#if PLATFORM_ID == PLATFORM_TRACKER
+#define MBEDTLS_SSL_DISABLE_PARSE_CERTIFICATE
+#endif // PLATFORM_ID == PLATFORM_TRACKER
+
+/**
  * \def MBEDTLS_ZLIB_SUPPORT
  *
  * If set, the SSL/TLS module uses ZLIB to support compression and

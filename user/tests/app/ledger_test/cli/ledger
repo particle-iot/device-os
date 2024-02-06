@@ -1,0 +1,424 @@
+#!/usr/bin/env node
+const { randomObject, timestampToString } = require('./util');
+const { deviceOsErrorCodeToString } = require('./errors');
+const { name: PACKAGE_NAME, description: PACKAGE_DESC } = require('./package.json');
+
+const { getDevices } = require('particle-usb');
+const cbor = require('cbor');
+const parseArgs = require('minimist');
+const _ = require('lodash');
+
+const fs = require('fs');
+
+const WRITE_BLOCK_SIZE = 1024;
+const REQUEST_TYPE = 10; // ctrl_request_type::CTRL_REQUEST_APP_CUSTOM
+
+const BinaryRequestType = {
+  READ: 1,
+  WRITE: 2
+};
+
+function printUsage() {
+  console.log(`\
+${PACKAGE_DESC}
+
+Usage:
+    ${PACKAGE_NAME} <command> [arguments...]
+
+Commands:
+    get <name> [--expect[=<data>]]
+        Get ledger data.
+    set <name> [<data>|--size=<size>]
+        Set ledger data. \`data\` can be a filename or string containing a JSON document. If neither
+        \`data\` nor \`size\` is provided, the data is read from the standard input.
+    touch <name>
+        Create a ledger if it doesn't exist.
+    info [<name>] [--raw]
+        Get ledger info. If \`name\` is not provided, returns the info for all ledgers.
+    list [--raw]
+        List the ledgers.
+    remove <name>|--all
+        Remove a specific ledger or all ledgers.
+    connect
+        Connect to the Cloud.
+    disconnect
+        Disconnect from the Cloud.
+    auto-connect [1|0]
+        Enable/disable automatic connection to the Cloud.
+    debug [1|0]
+        Enable/disable debug logging.
+    reset
+        Reset the device.
+    gen <size>
+        Generate and print random ledger data of \`size\` bytes.
+
+Options:
+    --expect[=<data>]
+        Exit with an error if the ledger data doesn't match the expected data. \`data\` can be a
+        filename or JSON string. If not specified, the data is read from the standard input.
+    --size=<size>, -n <size>
+        Generate random ledger data of \`size\` bytes.
+    --all
+        Run the command for all ledgers.
+    --raw
+        Output the raw response data received from the device.`);
+}
+
+function scopeName(scope) {
+  switch (scope) {
+    case 0: return 'Unknown';
+    case 1: return 'Device';
+    case 2: return 'Product';
+    case 3: return 'Owner';
+    default: return `Unknown (${scope})`;
+  }
+}
+
+function syncDirectionName(dir) {
+  switch (dir) {
+    case 0: return 'Unknown';
+    case 1: return 'Device-to-cloud';
+    case 2: return 'Cloud-to-device';
+    default: return `Unknown (${dir})`;
+  }
+}
+
+function readJsonObject(arg) {
+  let data;
+  try {
+    if (!arg) {
+      data = fs.readFileSync(0, 'utf8');
+    } else if (arg.trimStart().startsWith('{')) {
+      data = arg;
+    } else {
+      data = fs.readFileSync(arg, 'utf8');
+    }
+  } catch (err) {
+    throw new Error('Failed to load JSON', { cause: err });
+  }
+  try {
+    data = JSON.parse(data);
+  } catch (err) {
+    throw new Error('Failed to parse JSON', { cause: err });
+  }
+  if (!_.isPlainObject(data)) {
+    throw new Error('JSON is not an object');
+  }
+  return data;
+}
+
+async function openDevice() {
+  const devs = await getDevices();
+  if (!devs.length) {
+    throw new Error('No devices found');
+  }
+  if (devs.length !== 1) {
+    throw new Error('Multiple devices found');
+  }
+  const dev = devs[0];
+  await dev.open();
+  return dev;
+}
+
+async function sendRequest(dev, data) {
+  let resp;
+  try {
+    resp = await dev.sendControlRequest(REQUEST_TYPE, data);
+  } catch (err) {
+    throw new Error('Failed to send control request', { cause: err });
+  }
+  if (resp.result < 0) {
+    const msg = deviceOsErrorCodeToString(resp.result);
+    throw new Error(msg);
+  }
+  return resp.data || null;
+}
+
+async function sendJsonRequest(dev, data) {
+  data = Buffer.from(JSON.stringify(data));
+  let resp = await sendRequest(dev, data);
+  if (resp) {
+    resp = JSON.parse(resp.toString());
+  }
+  return resp;
+}
+
+async function sendBinaryRequest(dev, type, data) {
+  let buf = Buffer.alloc(4);
+  buf.writeUInt32BE(type, 0);
+  if (data) {
+    buf = Buffer.concat([buf, data]);
+  }
+  return await sendRequest(dev, buf);
+}
+
+async function get(args, opts, dev) {
+  if (!args.length) {
+    throw new Error('Missing ledger name');
+  }
+  let resp = await sendJsonRequest(dev, {
+    cmd: 'get',
+    name: args[0]
+  });
+  const size = resp.size;
+  let data = Buffer.alloc(0);
+  while (data.length < size) {
+    resp = await sendBinaryRequest(dev, BinaryRequestType.READ);
+    data = Buffer.concat([data, resp]);
+  }
+  if (data.length) {
+    try {
+      data = await cbor.decodeFirst(data);
+    } catch (err) {
+      throw new Error('Failed to parse CBOR', { cause: err });
+    }
+  } else {
+    data = {};
+  }
+  if (opts.expect !== undefined) {
+    const expected = readJsonObject(opts.expect);
+    if (!_.isEqual(data, expected)) {
+      throw new Error('Ledger data doesn\'t match the expected data');
+    }
+    console.error('Ledger data matches the expected data');
+  } else {
+    console.log(JSON.stringify(data));
+  }
+}
+
+async function set(args, opts, dev) {
+  if (!args.length) {
+    throw new Error('Missing ledger name');
+  }
+  let obj;
+  if (opts.size !== undefined) {
+    obj = await randomObject(opts.size);
+  } else {
+    obj = readJsonObject(args[1]);
+  }
+  const data = await cbor.encodeAsync(obj);
+  await sendJsonRequest(dev, {
+    cmd: 'set',
+    name: args[0],
+    size: data.length
+  });
+  let offs = 0;
+  while (offs < data.length) {
+    const n = Math.min(data.length - offs, WRITE_BLOCK_SIZE);
+    await sendBinaryRequest(dev, BinaryRequestType.WRITE, data.slice(offs, offs + n));
+    offs += n;
+  }
+  if (opts.size !== undefined) {
+    console.log(JSON.stringify(obj));
+  }
+}
+
+async function touch(args, opts, dev) {
+  if (!args.length) {
+    throw new Error('Missing ledger name');
+  }
+  await sendJsonRequest(dev, {
+    cmd: 'touch',
+    name: args[0]
+  });
+}
+
+async function info(args, opts, dev) {
+  function pad(str) {
+    return str.padEnd(20);
+  }
+
+  function formatInfo(info) {
+    return `\
+${pad('Scope:')}${scopeName(info.scope)}
+${pad('Sync direction:')}${syncDirectionName(info.sync_direction)}
+${pad('Data size:')}${info.data_size}
+${pad('Last update:')}${info.last_updated ? timestampToString(info.last_updated) : 'N/A'}
+${pad('Last sync:')}${info.last_synced ? timestampToString(info.last_synced) : 'N/A'}`;
+  }
+
+  if (args.length > 0) {
+    const info = await sendJsonRequest(dev, {
+      cmd: 'info',
+      name: args[0]
+    });
+    if (opts.raw) {
+      console.log(JSON.stringify(info));
+    } else {
+      console.log(formatInfo(info));
+    }
+  } else {
+    const ledgerNames = await sendJsonRequest(dev, {
+      cmd: 'list'
+    });
+    const infoList = [];
+    for (const name of ledgerNames) {
+      const info = await sendJsonRequest(dev, {
+        cmd: 'info',
+        name
+      });
+      info.name = name;
+      infoList.push(info);
+    }
+    if (opts.raw) {
+      console.log(JSON.stringify(infoList));
+    } else {
+      let out = '';
+      for (const info of infoList) {
+        out += `${pad('Name:')}${info.name}\n`;
+        out += formatInfo(info);
+        out += '\n\n';
+      }
+      console.log(out.trimRight());
+    }
+  }
+}
+
+async function list(args, opts, dev) {
+  const resp = await sendJsonRequest(dev, {
+    cmd: 'list'
+  });
+  if (opts.raw) {
+    console.log(JSON.stringify(resp));
+  } else {
+    for (const name of resp) {
+      console.log(name);
+    }
+  }
+}
+
+async function remove(args, opts, dev) {
+  const req = {
+    cmd: 'remove'
+  };
+  if (opts.all) {
+    req.all = true;
+  } else {
+    if (!args.length) {
+      throw new Error('Missing ledger name');
+    }
+    req.name = args[0];
+  }
+  await sendJsonRequest(dev, req);
+}
+
+async function connect(args, opts, dev) {
+  await sendJsonRequest(dev, {
+    cmd: 'connect'
+  });
+}
+
+async function disconnect(args, opts, dev) {
+  await sendJsonRequest(dev, {
+    cmd: 'disconnect'
+  });
+}
+
+async function autoConnect(args, opts, dev) {
+  let enabled = true;
+  if (args.length) {
+    enabled = !!Number.parseInt(args[0]);
+  }
+  await sendJsonRequest(dev, {
+    cmd: 'auto_connect',
+    enabled
+  });
+}
+
+async function debug(args, opts, dev) {
+  let enabled = true;
+  if (args.length) {
+    enabled = !!Number.parseInt(args[0]);
+  }
+  await sendJsonRequest(dev, {
+    cmd: 'debug',
+    enabled
+  });
+}
+
+async function reset(args, opts, dev) {
+  await sendJsonRequest(dev, {
+    cmd: 'reset'
+  });
+}
+
+async function gen(args, opts) {
+  if (!args.length) {
+    throw new Error('Missing data size');
+  }
+  const size = Number.parseInt(args[0]);
+  if (Number.isNaN(size)) {
+    throw new Error('Invalid data size');
+  }
+  const obj = await randomObject(size);
+  console.log(JSON.stringify(obj));
+}
+
+async function runCommand(cmd, args, opts) {
+  let fn;
+  let needDev = true;
+  switch (cmd) {
+    case 'get': fn = get; break;
+    case 'set': fn = set; break;
+    case 'touch': fn = touch; break;
+    case 'info': fn = info; break;
+    case 'list': fn = list; break;
+    case 'remove': fn = remove; break;
+    case 'connect': fn = connect; break;
+    case 'disconnect': fn = disconnect; break;
+    case 'auto-connect': fn = autoConnect; break;
+    case 'debug': fn = debug; break;
+    case 'reset': fn = reset; break;
+    case 'gen': fn = gen; needDev = false; break;
+    default:
+      throw new Error(`Unknown command: ${cmd}`)
+  }
+  let dev;
+  if (needDev) {
+    dev = await openDevice();
+  }
+  try {
+    await fn(args, opts, dev);
+  } finally {
+    if (dev) {
+      await dev.close();
+    }
+  }
+}
+
+async function run() {
+  let ok = true;
+  try {
+    const opts = parseArgs(process.argv.slice(2), {
+      string: ['_', 'expect'],
+      boolean: ['all', 'raw', 'help'],
+      number: ['size'],
+      alias: {
+        'help': 'h',
+        'size': 'n'
+      },
+      unknown: arg => {
+        if (arg.startsWith('-')) {
+          throw new RangeError(`Unknown argument: ${arg}`);
+        }
+      }
+    });
+    if (opts.help) {
+      printUsage();
+    } else {
+      const args = opts._;
+      delete opts._;
+      if (!args.length) {
+        throw new Error('Missing command name');
+      }
+      const cmd = args.shift();
+      await runCommand(cmd, args, opts);
+    }
+  } catch (err) {
+    console.error(err);
+    ok = false;
+  }
+  process.exit(ok ? 0 : 1);
+}
+
+run();

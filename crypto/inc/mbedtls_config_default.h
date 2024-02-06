@@ -32,6 +32,9 @@
 
 #include "platforms.h"
 
+// For size_t
+#include <stddef.h>
+
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_DEPRECATE)
 #define _CRT_SECURE_NO_DEPRECATE 1
 #endif

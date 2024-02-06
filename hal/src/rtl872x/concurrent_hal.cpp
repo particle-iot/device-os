@@ -434,6 +434,7 @@ int os_semaphore_give(os_semaphore_t semaphore, bool reserved)
  */
 int os_timer_create(os_timer_t* timer, unsigned period, void (*callback)(os_timer_t timer), void* const timer_id, bool one_shot, void* reserved)
 {
+    // TODO: Return an error if the period is 0 (see https://www.freertos.org/FreeRTOS-timers-xTimerCreate.html)
     *timer = xTimerCreate((_CREATE_NAME_TYPE*)"", period, !one_shot, timer_id, reinterpret_cast<TimerCallbackFunction_t>(callback));
     return *timer==NULL;
 }

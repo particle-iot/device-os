@@ -118,7 +118,7 @@ public:
     }
 
     void lock() {
-        filesystem_unlock(fs_);
+        filesystem_lock(fs_);
     }
 
     void unlock() {

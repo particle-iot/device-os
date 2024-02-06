@@ -94,6 +94,10 @@ public:
     unsigned char reserve(unsigned int size);
     inline unsigned int length(void) const {return len;}
 
+    unsigned int capacity() const {
+        return capacity_;
+    }
+
     // creates a copy of the assigned value.  if the value is null or
     // invalid, or if the memory allocation fails, the string will be
     // marked as invalid ("if (s)" will be false).
@@ -105,7 +109,7 @@ public:
     String & operator = (StringSumHelper &&rval);
     #endif
 
-        operator const char*() const { return c_str(); }
+    operator const char*() const { return c_str(); }
 
     // concatenate (works w/ built-in types)
 
@@ -114,6 +118,7 @@ public:
     // concatenation is considered unsucessful.
     unsigned char concat(const String &str);
     unsigned char concat(const char *cstr);
+    unsigned char concat(const char *cstr, unsigned int length);
     unsigned char concat(const __FlashStringHelper * str);
     unsigned char concat(char c);
     unsigned char concat(unsigned char c);
@@ -211,14 +216,13 @@ public:
 
 protected:
     char *buffer;           // the actual char array
-    unsigned int capacity;  // the array length minus one (for the '\0')
+    unsigned int capacity_;  // the array length minus one (for the '\0')
     unsigned int len;       // the String length (not counting the '\0')
     unsigned char flags;    // unused, for future features
 protected:
     void init(void);
     void invalidate(void);
     unsigned char changeBuffer(unsigned int maxStrLen);
-    unsigned char concat(const char *cstr, unsigned int length);
 
     // copy and move
     String & copy(const char *cstr, unsigned int length);
@@ -227,9 +231,6 @@ protected:
     #ifdef __GXX_EXPERIMENTAL_CXX0X__
     void move(String &rhs);
     #endif
-
-        friend class StringPrintableHelper;
-
 };
 
 class StringSumHelper : public String

@@ -27,6 +27,10 @@
  */
 
 /* Includes ------------------------------------------------------------------*/
+
+// STATIC_ASSERT macro clashes with the nRF SDK
+#define NO_STATIC_ASSERT
+
 #include "debug.h"
 #include "system_event.h"
 #include "system_mode.h"
@@ -63,6 +67,8 @@
 #include "spark_wiring_wifi.h"
 #include "server_config.h"
 #include "system_network_manager.h"
+#include "ledger/ledger_manager.h"
+#include "ledger/ledger.h"
 
 // FIXME
 #include "system_control_internal.h"
@@ -668,7 +674,17 @@ int resetSettingsToFactoryDefaultsIfNeeded() {
     CHECK(dct_write_app_data(devPubKey.get(), DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, DCT_ALT_DEVICE_PUBLIC_KEY_SIZE));
     // Restore default server key and address
     ServerConfig::instance()->restoreDefaultSettings();
-    particle::system::NetworkManager::instance()->clearStoredConfiguration();
+    system::NetworkManager::instance()->clearStoredConfiguration();
+    // TODO: Discuss if we'd want to clear ledger data on a factory reset
+#if 0
+#if HAL_PLATFORM_LEDGER
+    // Can't use LedgerManager::removeAllData() because the manager is not initialized yet
+    CHECK(rmrf(system::LEDGER_ROOT_DIR));
+#endif // HAL_PLATFORM_LEDGER
+    // XXX: Application global constructors run before this function so an additional system reset
+    // is performed to prevent any inconsistencies that might be caused by the configuration cleanup
+    HAL_Core_System_Reset_Ex(RESET_REASON_CONFIG_UPDATE, 0 /* data */, nullptr /* reserved */);
+#endif // 0
 #endif // !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     return 0;
 }
@@ -783,6 +799,13 @@ void app_setup_and_loop(void)
         HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, nullptr);
     }
     Network_Setup(threaded);    // todo - why does this come before system thread initialization?
+
+#if HAL_PLATFORM_LEDGER
+    if (system_mode() != SAFE_MODE) {
+        // Make sure the ledger manager is initialized
+        system::LedgerManager::instance();
+    }
+#endif // HAL_PLATFORM_LEDGER
 
 #if PLATFORM_THREADING
     if (threaded)

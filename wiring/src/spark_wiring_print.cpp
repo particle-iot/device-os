@@ -28,8 +28,72 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "spark_wiring_print.h"
+#include "spark_wiring_json.h"
+#include "spark_wiring_variant.h"
 #include "spark_wiring_string.h"
-#include "spark_wiring_stream.h"
+#include "spark_wiring_error.h"
+
+using namespace particle;
+
+namespace {
+
+void writeVariant(const Variant& var, JSONStreamWriter& writer) {
+    switch (var.type()) {
+    case Variant::NULL_: {
+        writer.nullValue();
+        break;
+    }
+    case Variant::BOOL: {
+        writer.value(var.value<bool>());
+        break;
+    }
+    case Variant::INT: {
+        writer.value(var.value<int>());
+        break;
+    }
+    case Variant::UINT: {
+        writer.value(var.value<unsigned>());
+        break;
+    }
+    case Variant::INT64: {
+        writer.value(var.value<int64_t>());
+        break;
+    }
+    case Variant::UINT64: {
+        writer.value(var.value<uint64_t>());
+        break;
+    }
+    case Variant::DOUBLE: {
+        writer.value(var.value<double>());
+        break;
+    }
+    case Variant::STRING: {
+        writer.value(var.value<String>());
+        break;
+    }
+    case Variant::ARRAY: {
+        writer.beginArray();
+        for (auto& v: var.value<VariantArray>()) {
+            writeVariant(v, writer);
+        }
+        writer.endArray();
+        break;
+    }
+    case Variant::MAP: {
+        writer.beginObject();
+        for (auto& e: var.value<VariantMap>().entries()) {
+            writer.name(e.first);
+            writeVariant(e.second, writer);
+        }
+        writer.endObject();
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+} // namespace
 
 // Public Methods //////////////////////////////////////////////////////////////
 
@@ -217,6 +281,12 @@ size_t Print::printFloat(double number, uint8_t digits)
 }
 #endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
+size_t Print::printVariant(const Variant& var) {
+    JSONStreamWriter writer(*this);
+    writeVariant(var, writer);
+    return writer.bytesWritten();
+}
+
 size_t Print::vprintf(bool newline, const char* format, va_list args)
 {
     const int bufsize = 20;
@@ -242,3 +312,19 @@ size_t Print::vprintf(bool newline, const char* format, va_list args)
     return n;
 }
 
+namespace particle {
+
+size_t OutputStringStream::write(const uint8_t* data, size_t size) {
+    if (getWriteError()) {
+        return 0;
+    }
+    size_t newSize = s_.length() + size;
+    if (s_.capacity() < newSize && !s_.reserve(std::max<size_t>({ newSize, s_.capacity() * 3 / 2, 20 }))) {
+        setWriteError(Error::NO_MEMORY);
+        return 0;
+    }
+    s_.concat((const char*)data, size);
+    return size;
+}
+
+} // namespace particle

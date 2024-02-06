@@ -33,6 +33,7 @@
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "firmware_update.h"
+#include "coap_channel_new.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "core_hal.h"
@@ -66,6 +67,7 @@
 #include "backup_ram_hal.h"
 
 using namespace particle;
+using namespace particle::system;
 using spark::Network;
 
 volatile system_tick_t spark_loop_total_millis = 0;
@@ -377,6 +379,7 @@ void handle_cloud_connection(bool force_events)
                     SPARK_CLOUD_CONNECTED = 1;
                     SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
                     cloud_failed_connection_attempts = 0;
+                    protocol::experimental::CoapChannel::instance()->open();
                     CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
                     system_notify_event(cloud_status, cloud_status_connected);
                     if (system_mode() == SAFE_MODE) {
@@ -476,7 +479,7 @@ int system_isr_task_queue_free_memory(void *ptrToFree) {
         void *arg;
     };
 
-    auto task = static_cast<FreeTask*>(system_pool_alloc(sizeof(FreeTask), nullptr));
+    auto task = systemPoolNew<FreeTask>();
     if (!task) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
@@ -485,7 +488,7 @@ int system_isr_task_queue_free_memory(void *ptrToFree) {
     task->func = [](ISRTaskQueue::Task * task) {
        auto freeTask = reinterpret_cast<FreeTask*>(task);
        free(freeTask->arg);
-       system_pool_free(task, nullptr);
+       systemPoolDelete(freeTask);
     };
 
     SystemISRTaskQueue.enqueue(task);

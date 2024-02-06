@@ -105,7 +105,7 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
         }
         return true;
     };
-    const int r = decodeMessageFromFile(&file, PB(WifiConfig_fields), &pbConf);
+    const int r = decodeProtobufFromFile(&file, PB(WifiConfig_fields), &pbConf);
     if (r < 0) {
         LOG(ERROR, "Unable to parse network settings");
         networks->clear();
@@ -164,7 +164,7 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
         }
         return true;
     };
-    CHECK(encodeMessageToFile(&file, PB(WifiConfig_fields), &pbConf));
+    CHECK(encodeProtobufToFile(&file, PB(WifiConfig_fields), &pbConf));
     LOG(TRACE, "Updated file: %s", CONFIG_FILE);
     ok = true;
     return 0;

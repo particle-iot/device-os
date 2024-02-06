@@ -431,6 +431,26 @@ void testVector() {
                 check(a).values(1, 2, 3).capacity(3);
             }
         }
+        SECTION("insert(ConstIterator pos, T value)") {
+            Vector a({ 2, 4, 5 });
+            auto it = a.insert(a.begin(), 1); // insert at the beginning
+            CHECK(it == a.begin());
+            CHECK(*it == 1);
+            check(a).values(1, 2, 4, 5).capacity(4);
+            it = a.insert(a.end(), 6); // insert at the end
+            CHECK(it == a.end() - 1);
+            CHECK(*it == 6);
+            check(a).values(1, 2, 4, 5, 6).capacity(5);
+            it = a.insert(a.begin() + 2, 3); // insert in the middle
+            CHECK(it == a.begin() + 2);
+            CHECK(*it == 3);
+            check(a).values(1, 2, 3, 4, 5, 6).capacity(6);
+            Vector b;
+            it = b.insert(b.begin(), 1); // insert to empty vector
+            CHECK(it == b.begin());
+            CHECK(*it == 1);
+            check(b).values(1).capacity(1);
+        }
     }
 
     SECTION("removeAt(int i, int n)") {
@@ -496,6 +516,19 @@ void testVector() {
         REQUIRE(a.removeAll(2) == 2);
         check(a).size(0).capacity(5);
         REQUIRE(a.removeAll(1) == 0); // remove from empty array
+    }
+
+    SECTION("erase(ConstIterator)") {
+        Vector a({ 1, 2, 3, 4, 5 });
+        auto it = a.erase(a.begin()); // erase the first element
+        CHECK(it == a.begin());
+        check(a).values(2, 3, 4, 5).capacity(5);
+        it = a.erase(a.end() - 1); // erase the last element
+        CHECK(it == a.end());
+        check(a).values(2, 3, 4).capacity(5);
+        it = a.erase(a.begin() + 1); // erase an element in the middle
+        CHECK(it == a.end() - 1);
+        check(a).values(2, 4).capacity(5);
     }
 
     SECTION("takeFirst()") {

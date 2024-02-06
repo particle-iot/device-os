@@ -33,10 +33,10 @@
 #include <stdint.h> // for uint8_t
 #include "system_tick_hal.h"
 
-#include "spark_wiring_string.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_fixed_point.h"
 #include <climits>
+#include <cstdarg>
 
 const unsigned char DEC = 10;
 const unsigned char HEX = 16;
@@ -45,6 +45,12 @@ const unsigned char BIN = 2;
 
 class String;
 class __FlashStringHelper;
+
+namespace particle {
+
+class Variant;
+
+} // namespace particle
 
 class Print
 {
@@ -62,6 +68,8 @@ class Print
 #ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
     size_t printFloat(double, uint8_t);
 #endif // PARTICLE_WIRING_PRINT_NO_FLOAT
+    size_t printVariant(const particle::Variant& var);
+
   protected:
     void setWriteError(int err = 1) { write_error = err; }
 
@@ -69,7 +77,7 @@ class Print
     Print() : write_error(0) {}
     virtual ~Print() {}
 
-    int getWriteError() { return write_error; }
+    int getWriteError() const { return write_error; }
     void clearWriteError() { setWriteError(0); }
 
     virtual size_t write(uint8_t) = 0;
@@ -89,6 +97,12 @@ class Print
     size_t print(double, int = 2);
 #endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
+    // Prevent implicit constructors of Variant from affecting overload resolution
+    template<typename T, typename std::enable_if_t<std::is_same_v<T, particle::Variant>, int> = 0>
+    size_t print(const T& var) {
+        return printVariant(var);
+    }
+
     size_t print(const Printable&);
     size_t print(const __FlashStringHelper*);
 
@@ -105,6 +119,14 @@ class Print
     size_t println(float, int = 2);
     size_t println(double, int = 2);
 #endif // PARTICLE_WIRING_PRINT_NO_FLOAT
+    
+    template<typename T, typename std::enable_if_t<std::is_same_v<T, particle::Variant>, int> = 0>
+    size_t println(const T& var) {
+        size_t n = printVariant(var);
+        n += println();
+        return n;
+    }
+
     size_t println(const Printable&);
     size_t println(void);
     size_t println(const __FlashStringHelper*);
@@ -130,9 +152,29 @@ class Print
     size_t vprintf(bool newline, const char* format, va_list args) __attribute__ ((format(printf, 3, 0)));
 };
 
+namespace particle {
+
+class OutputStringStream: public Print {
+public:
+    explicit OutputStringStream(String& str) :
+            s_(str) {
+    }
+
+    size_t write(uint8_t b) override {
+        return write(&b, 1);
+    }
+
+    size_t write(const uint8_t* data, size_t size) override;
+
+private:
+    String& s_;
+};
+
+} // namespace particle
+
 template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
     std::is_convertible<T, long long>::value), int>>
-size_t Print::print(T n, int base)
+inline size_t Print::print(T n, int base)
 {
     if (base == 0) {
         return write(n);
@@ -157,4 +199,5 @@ size_t Print::print(T n, int base)
         return printNumber(val, base) + t;
     }
 }
+
 #endif

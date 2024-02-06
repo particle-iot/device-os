@@ -499,13 +499,19 @@ public:
     struct Task {
         TaskFunc func;
         Task* next; // Next element in the queue
+        Task* prev; // Previous element in the queue
 
         explicit Task(TaskFunc func = nullptr) :
                 func(func),
-                next(nullptr) {
+                next(nullptr),
+                prev(nullptr) {
         }
 
         virtual ~Task() = default;
+
+        // Task objects are not copyable nor movable
+        Task(const Task&) = delete;
+        Task& operator=(const Task&) = delete;
     };
 
     ISRTaskQueue() :
@@ -513,7 +519,25 @@ public:
             lastTask_(nullptr) {
     }
 
+    /**
+     * Add a task object to the queue.
+     *
+     * Calling this method is a no-op if the task object is already in the queue.
+     */
     void enqueue(Task* task);
+
+    /**
+     * Remove a task object from the queue.
+     *
+     * Calling this method is a no-op if the task object is not in the queue.
+     */
+    void remove(Task* task);
+
+    /**
+     * Process the next task in the queue.
+     *
+     * @return `true` if the task was processed, or `false` if the queue was empty.
+     */
     bool process();
 
 private:

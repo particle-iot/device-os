@@ -30,6 +30,7 @@
 namespace {
 
 using namespace particle;
+using namespace particle::system;
 
 struct SystemEventSubscription {
 
@@ -115,7 +116,7 @@ class SystemEventTask : public ISRTaskQueue::Task {
      */
     void notify() {
         system_notify_event_async(event_, data_, pointer_, fn_, fndata_);
-        system_pool_free(this, nullptr);
+        systemPoolDelete(this);
     }
 
 public:
@@ -197,9 +198,8 @@ void system_notify_event(system_event_t event, uint32_t data, void* pointer, voi
     if (flags & NOTIFY_SYNCHRONOUSLY) {
         system_notify_event_impl(event, data, pointer, fn, fndata);
     } else if (hal_interrupt_is_isr()) {
-        void* space = (system_pool_alloc(sizeof(SystemEventTask), nullptr));
-        if (space) {
-            auto task = new (space) SystemEventTask(event, data, pointer, fn, fndata);
+        auto task = systemPoolNew<SystemEventTask>(event, data, pointer, fn, fndata);
+        if (task) {
             SystemISRTaskQueue.enqueue(task);
         };
     } else {

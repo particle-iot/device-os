@@ -1,17 +1,5 @@
 #!/bin/bash
 
-# Note for macOS users:
-#
-# 1. The following dependencies are required to build the protocol files using the nanopb plugin:
-#
-# brew install protobuf python
-# pip2 install protobuf
-#
-# 2. Make sure your system Python can find Python modules installed via Homebrew:
-#
-# mkdir -p ~/Library/Python/2.7/lib/python/site-packages
-# echo 'import site; site.addsitedir("/usr/local/lib/python2.7/site-packages")' >> ~/Library/Python/2.7/lib/python/site-packages/homebrew.pth
-
 set -e
 
 DEVICE_OS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,7 +20,14 @@ gen_proto() {
          --nanopb_out="${DEST_DIR}" "$1"
 }
 
-# Control requests
+# Create a virtual environment
+python3 -m venv "$PROTO_DEFS_DIR/.venv"
+source "$PROTO_DEFS_DIR/.venv/bin/activate"
+
+# Install dependencies
+pip3 install protobuf
+
+# Compile control request definitions
 gen_proto "${SHARED_DIR}/control/extensions.proto"
 gen_proto "${SHARED_DIR}/control/common.proto"
 gen_proto "${SHARED_DIR}/control/config.proto"
@@ -44,10 +39,11 @@ gen_proto "${SHARED_DIR}/control/network_old.proto"
 gen_proto "${SHARED_DIR}/control/storage.proto"
 gen_proto "${SHARED_DIR}/control/cloud.proto"
 
-# Cloud protocol
+# Compile cloud protocol definitions
 gen_proto "${SHARED_DIR}/cloud/cloud.proto"
 gen_proto "${SHARED_DIR}/cloud/describe.proto"
 gen_proto "${SHARED_DIR}/cloud/ledger.proto"
 
-# Internal definitions
+# Compile internal definitions
 gen_proto "${INTERNAL_DIR}/network_config.proto"
+gen_proto "${INTERNAL_DIR}/ledger.proto"

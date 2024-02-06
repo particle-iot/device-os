@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package particle.firmware;
+
+import "cloud/ledger.proto";
+import "nanopb.proto";
+
+/**
+ * Ledger info.
+ */
+message LedgerInfo {
+  string name = 1 [(nanopb).max_length = 32]; ///< Ledger name.
+  bytes scope_id = 2 [(nanopb).max_size = 32]; ///< Scope ID.
+  cloud.ledger.ScopeType scope_type = 3; ///< Scope type.
+  cloud.ledger.SyncDirection sync_direction = 4; ///< Sync direction.
+  /**
+   * Time the ledger was last updated, in milliseconds since the Unix epoch.
+   *
+   * If not set, the time is unknown.
+   */
+  optional fixed64 last_updated = 5;
+  /**
+   * Time the ledger was last synchronized with the Cloud, in milliseconds since the Unix epoch.
+   *
+   * If not set, the ledger has never been synchronized.
+   */
+  optional fixed64 last_synced = 6;
+  uint32 update_count = 7; ///< Counter incremented every time the ledger is updated.
+  bool sync_pending = 8; ///< Whether the ledger needs to be synchronized.
+}

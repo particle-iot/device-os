@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,19 +17,16 @@
 
 #pragma once
 
-#include "logging.h"
+#include "hal_platform.h"
 
-namespace particle::protocol {
+#if HAL_PLATFORM_LEDGER
 
-/**
- * Log the contents of a CoAP message.
- *
- * @param level Logging level.
- * @param category Logging category.
- * @param data Message data.
- * @param size Message size.
- * @param logPayload Whether to log the payload data of the message.
- */
-void logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload = false);
+#include <cstddef>
 
-} // namespace particle::protocol
+namespace particle::system {
+
+int formatLedgerPath(char* buf, size_t size, const char* ledgerName, const char* fmt = nullptr, ...);
+
+} // namespace particle::system
+
+#endif // HAL_PLATFORM_LEDGER

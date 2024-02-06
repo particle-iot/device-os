@@ -81,7 +81,7 @@ int filesystem_to_system_error(int error);
 namespace particle { namespace fs {
 
 struct FsLock {
-    FsLock(filesystem_t* fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr))
+    explicit FsLock(filesystem_t* fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr))
             : fs_(fs) {
         lock();
     }
