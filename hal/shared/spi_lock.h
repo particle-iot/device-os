@@ -99,6 +99,7 @@ private:
             return true;
         }
 
+        // FIXME: clock may not equal if base clock is not divisible by the desired clock
         if (lh.mode == rh.mode &&
                 lh.default_settings == rh.default_settings &&
                 lh.clock == rh.clock &&

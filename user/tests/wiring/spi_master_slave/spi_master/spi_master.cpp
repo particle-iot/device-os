@@ -201,9 +201,7 @@ static void SPI_Master_Configure()
         MY_SPI.begin(MY_CS);
 
         // Clock dummy byte just in case
-        if (!HAL_PLATFORM_RTL872X) { // Since SPI is enabled, the dummy byte will generate gabage data in the fifo on P2
-            (void)MY_SPI.transfer(0xff);
-        }
+        (void)MY_SPI.transfer(0xff);
     }
 }
 
@@ -245,6 +243,12 @@ bool SPI_Master_Slave_Change_Mode(uint8_t mode, uint8_t bitOrder, std::function<
     memset(SPI_Master_Rx_Buffer, 0, sizeof(SPI_Master_Rx_Buffer));
 
     // Select
+    // Workaround for some platforms requiring the CS to be high when configuring
+    // the DMA buffers
+    digitalWrite(MY_CS, LOW);
+    delay(SPI_DELAY);
+    digitalWrite(MY_CS, HIGH);
+    delay(SPI_DELAY);
     digitalWrite(MY_CS, LOW);
     delay(SPI_DELAY);
 
@@ -256,7 +260,7 @@ bool SPI_Master_Slave_Change_Mode(uint8_t mode, uint8_t bitOrder, std::function<
     transferFunc(SPI_Master_Tx_Buffer, SPI_Master_Rx_Buffer, TRANSFER_LENGTH_1);
 
     digitalWrite(MY_CS, HIGH);
-    delay(SPI_DELAY * 10);
+    delay(SPI_DELAY * 50);
 
     bool ret = (strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
 
@@ -291,7 +295,7 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
         digitalWrite(MY_CS, LOW);
         delay(SPI_DELAY);
         digitalWrite(MY_CS, HIGH);
-        delay(SPI_DELAY);
+        delay(10 * SPI_DELAY);
         digitalWrite(MY_CS, LOW);
         delay(SPI_DELAY);
 
@@ -300,11 +304,11 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
 
         transferFunc(SPI_Master_Tx_Buffer, SPI_Master_Rx_Buffer, TRANSFER_LENGTH_1);
         digitalWrite(MY_CS, HIGH);
-        // Serial.print("< ");
-        // Serial.println((const char *)SPI_Master_Rx_Buffer);
+        delay(50 * SPI_DELAY);
+        Serial.print("< ");
+        Serial.println((const char *)SPI_Master_Rx_Buffer);
         assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
 
-        delay(SPI_DELAY);
         if (requestedLength == 0)
             break;
 
@@ -313,13 +317,13 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
 
         // Received a good first reply from Slave
         // Now read out requestedLength bytes
-        memset(SPI_Master_Rx_Buffer, 0, sizeof(SPI_Master_Rx_Buffer));
+        memset(SPI_Master_Rx_Buffer, 0xaa, sizeof(SPI_Master_Rx_Buffer));
         transferFunc(NULL, SPI_Master_Rx_Buffer, requestedLength);
         // Deselect
         digitalWrite(MY_CS, HIGH);
-        delay(SPI_DELAY);
-        // Serial.print("< ");
-        // Serial.println((const char *)SPI_Master_Rx_Buffer);
+        delay(50 * SPI_DELAY);
+        Serial.print("< ");
+        Serial.println((const char *)SPI_Master_Rx_Buffer);
         assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength) == 0);
 
         requestedLength--;

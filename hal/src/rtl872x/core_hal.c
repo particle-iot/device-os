@@ -942,6 +942,7 @@ retained_system SessionPersistDataOpaque session;
 
 int HAL_System_Backup_Save(size_t offset, const void* buffer, size_t length, void* reserved)
 {
+    SYSTEM_FLAG(restore_backup_ram) |= SYSTEM_FLAG_SESSION_DATA_STALE_MASK;
     if (offset==0 && length==sizeof(SessionPersistDataOpaque))
     {
         memcpy(&session, buffer, length);

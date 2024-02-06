@@ -424,8 +424,8 @@ test(SPIX_11_SPI_Transfer_1_Bytes_Per_Transmission_No_Locking)
     constexpr unsigned int transferSize = 1;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     system_tick_t start = SYSTEM_TICK_COUNTER;
     for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
     {
@@ -444,8 +444,8 @@ test(SPIX_12_SPI_Transfer_1_Bytes_Per_Transmission_Locking)
     constexpr unsigned int transferSize = 1;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.beginTransaction();
     system_tick_t start = SYSTEM_TICK_COUNTER;
     for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
@@ -466,8 +466,8 @@ test(SPIX_13_SPI_Transfer_2_Bytes_Per_Transmission_Locking)
     constexpr unsigned int transferSize = 2;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_NODMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.beginTransaction();
     system_tick_t start = SYSTEM_TICK_COUNTER;
     for(unsigned int i = 0; i < SPI_ITERATIONS; i+=2)
@@ -489,8 +489,8 @@ test(SPIX_14_SPI_Transfer_1_Bytes_Per_DMA_Transmission_No_Locking)
     constexpr unsigned int transferSize = 1;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     uint8_t temp = 0x55;
     system_tick_t start = SYSTEM_TICK_COUNTER;
     for(unsigned int i = 0; i < SPI_ITERATIONS; i++)
@@ -510,8 +510,8 @@ test(SPIX_15_SPI_Transfer_1_Bytes_Per_DMA_Transmission_Locking)
     constexpr unsigned int transferSize = 1;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.beginTransaction();
     uint8_t temp = 0x55;
     system_tick_t start = SYSTEM_TICK_COUNTER;
@@ -533,8 +533,8 @@ test(SPIX_16_SPI_Transfer_2_Bytes_Per_DMA_Transmission_Locking)
     constexpr unsigned int transferSize = 2;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.beginTransaction();
     uint8_t temp[transferSize] = {};
     system_tick_t start = SYSTEM_TICK_COUNTER;
@@ -556,8 +556,8 @@ test(SPIX_17_SPI_Transfer_16_Bytes_Per_DMA_Transmission_Locking)
     constexpr unsigned int transferSize = 16;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.beginTransaction();
     uint8_t temp[transferSize] = {};
     system_tick_t start = SYSTEM_TICK_COUNTER;
@@ -579,8 +579,8 @@ test(SPIX_18_SPI_Transfer_128_Bytes_Per_DMA_Transmission_Locking)
     constexpr unsigned int transferSize = 128;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.beginTransaction();
     uint8_t temp[transferSize] = {};
     system_tick_t start = SYSTEM_TICK_COUNTER;
@@ -602,8 +602,8 @@ test(SPIX_19_SPI_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
     constexpr unsigned int transferSize = 1024;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI_DMA_LARGE_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.beginTransaction();
     uint8_t temp[transferSize] = {};
     system_tick_t start = SYSTEM_TICK_COUNTER;
@@ -626,8 +626,8 @@ test(SPIX_20_SPI1_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
     constexpr unsigned int transferSize = 1024;
     constexpr auto expectedTime = calculateExpectedTime<SPI_CLOCK_SPEED, transferSize, SPI1_DMA_LARGE_OVERHEAD, SPI_ITERATIONS>();
 
-    SPI1.setClockSpeed(SPI_CLOCK_SPEED);
     SPI1.begin();
+    SPI1.setClockSpeed(SPI_CLOCK_SPEED);
     SPI1.beginTransaction();
     uint8_t temp[transferSize] = {};
     system_tick_t start = SYSTEM_TICK_COUNTER;
@@ -646,8 +646,8 @@ test(SPIX_20_SPI1_Transfer_1024_Bytes_Per_DMA_Transmission_Locking)
 
 test(SPIX_21_SPI_Sleep) {
     constexpr unsigned int transferSize = 128;
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     assertTrue(SPI.isEnabled());
     SPI.beginTransaction();
     uint8_t temp[transferSize] = {};
@@ -675,8 +675,8 @@ test(SPIX_21_SPI_Sleep) {
 }
 
 test(SPIX_22_SPI_Transfer_Buffer_In_Flash) {
-    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     SPI.begin();
+    SPI.setClockSpeed(SPI_CLOCK_SPEED);
     assertTrue(SPI.isEnabled());
 
     SPI.beginTransaction();

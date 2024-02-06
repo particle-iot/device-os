@@ -26,6 +26,8 @@ extern "C" {
 extern uint8_t USE_SYSTEM_FLAGS;
 extern uint16_t tempFlag;
 
+#define SYSTEM_FLAG_RESTOR_BACKUP_RAM_MASK 0x0001
+#define SYSTEM_FLAG_SESSION_DATA_STALE_MASK 0x0002
 
 #define SYSTEM_FLAG(x) (system_flags.x)
 void Load_SystemFlags(void);

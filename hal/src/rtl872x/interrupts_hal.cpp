@@ -482,7 +482,7 @@ void hal_interrupt_restore(void) {
         if (interruptsConfig[i].state == INT_STATE_SUSPENDED) {
             uint32_t trigger = 0, polarity = 0;
             parseMode(interruptsConfig[i].mode, &trigger, &polarity);
-            GPIO_INTMode(rtlPin, ENABLE, trigger, polarity, GPIO_INT_DEBOUNCE_ENABLE);
+            GPIO_INTMode(rtlPin, ENABLE, trigger, polarity, GPIO_INT_DEBOUNCE_DISABLE);
             GPIO_INTConfig(rtlPin, ENABLE);
             interruptsConfig[i].state = INT_STATE_ENABLED;
         } else {

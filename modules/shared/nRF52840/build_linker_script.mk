@@ -4,19 +4,18 @@ WRITE_FILE_APPEND = $(shell echo "$(2)" >> $(1))
 COMMA := ,
 
 COMMON_BUILD=../../../build
+include $(COMMON_BUILD)/common-tools.mk
 include $(COMMON_BUILD)/arm-tools.mk
+include $(COMMON_BUILD)/macros.mk
 
 ifneq (,$(PREBUILD))
 # Should declare enough RAM for inermediate linker script: 89K
 USER_SRAM_LENGTH = 89K
 else
-DATA_SECTION_LEN  = $(shell $(OBJDUMP) -h --section=.data $(INTERMEDIATE_ELF) | grep -E '^\s*[0-9]+\s+\.data\s+')
-DATA_SECTION_LEN := 0x$(word 3,$(DATA_SECTION_LEN))
-BSS_SECTION_LEN   = $(shell $(OBJDUMP) -h --section=.bss $(INTERMEDIATE_ELF) | grep -E '^\s*[0-9]+\s+\.bss\s+')
-BSS_SECTION_LEN  := 0x$(word 3,$(BSS_SECTION_LEN))
+DATA_SECTION_LEN  = $(call get_section_size_with_alignment,.data,$(INTERMEDIATE_ELF))
+BSS_SECTION_LEN   = $(call get_section_size_with_alignment,.bss,$(INTERMEDIATE_ELF))
 
-# Note: reserving 16 bytes for alignment just in case
-USER_SRAM_LENGTH = ( $(DATA_SECTION_LEN) + $(BSS_SECTION_LEN) + 16 )
+USER_SRAM_LENGTH = ( $(DATA_SECTION_LEN) + $(BSS_SECTION_LEN) )
 
 all: $(INTERMEDIATE_ELF)
 endif

@@ -48,7 +48,7 @@
 #endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
 
 // For OpenOCD FreeRTOS support
-extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES;
+extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES - 1;
 
 // use the newer name
 typedef xTaskHandle TaskHandle_t;

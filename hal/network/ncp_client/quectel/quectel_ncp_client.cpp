@@ -91,6 +91,7 @@ inline system_tick_t millis() {
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -609,8 +610,12 @@ int QuectelNcpClient::queryAndParseAtCops(CellularSignalQuality* qual) {
         cgi_.cgi_flags &= ~CGI_FLAG_TWO_DIGIT_MNC;
     }
 
-    // `atoi` returns zero on error, which is an invalid `mcc` and `mnc`
+    // NOTE: MCC cannot be zero, MNC may be 00 or even 000
+    // We should not need to check whether str -> int coversion works
+    // as scanf() above along with the return value check guarantees that we've
+    // scanned the correct MCC MNC combo returned from +COPS.
     cgi_.mobile_country_code = static_cast<uint16_t>(::atoi(mobileCountryCode));
+    CHECK_TRUE(cgi_.mobile_country_code != 0, SYSTEM_ERROR_BAD_DATA);
     cgi_.mobile_network_code = static_cast<uint16_t>(::atoi(mobileNetworkCode));
 
     switch (static_cast<CellularAccessTechnology>(act)) {
@@ -1066,6 +1071,8 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         // Only change for MSoM, and currently MSoM only uses BG95_M5.
         // Not testing for PLATFORM_ID == PLATFORM_MSOM because another modem type might not support 921600.
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5;
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX) {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX;
     }
     return runtimeBaudrate;
 }
@@ -1443,8 +1450,8 @@ int QuectelNcpClient::registerNet() {
                 CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
                 r = CHECK_PARSER(respNwScanSeq.readResult());
                 CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-                if (nwScanSeq != 201) { // i.e. 0201
-                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",0201,1")); // LTE 02, then GSM 01
+                if (nwScanSeq != 20103) { // i.e. 020103
+                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",020103,1")); // LTE 02, then GSM 01, then NBIOT 03
                 }
             }
         #else 
@@ -1456,7 +1463,7 @@ int QuectelNcpClient::registerNet() {
 
         if (isQuecCatNBxDevice()) {
             // Configure Network Category to be searched
-            // Set to use LTE Cat-M1 ONLY if not already set, take effect immediately
+            // Set to use LTE Cat-M1 ONLY (exclude NBIOT) if not already set, take effect immediately
             auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
 
             int iotOpMode = -1;

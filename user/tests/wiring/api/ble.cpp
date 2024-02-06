@@ -594,6 +594,9 @@ test(ble_scan_filter) {
 
     API_COMPILE({ uint8_t buf[1]; BleScanFilter f = filter.customData(buf, 0); (void)f; });
     API_COMPILE({ size_t len; const uint8_t* buf = filter.customData(&len); (void)len; (void)buf; });
+
+    API_COMPILE({ BleScanFilter f = filter.allowDuplicates(true); (void)f; });
+    API_COMPILE({ bool ret = filter.allowDuplicates(); (void)ret; });
 }
 
 test(ble_peer_device) {

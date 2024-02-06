@@ -51,10 +51,12 @@ namespace {
 }
 
 FqcTest::FqcTest() :
-        writer((char *)json_response_buffer, sizeof(json_response_buffer)),
-        tcpClient(),
-        inited_(true) {
-    memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
+        writer_((char *)json_response_buffer_, sizeof(json_response_buffer_)),
+        tcpClient_(),
+        inited_(true),
+        gnssEnableSearch_(false) {
+    gnssNmeaOutput_ = String();
+    memset(json_response_buffer_, 0x00, sizeof(json_response_buffer_));
 }
 
 FqcTest::~FqcTest() {
@@ -66,16 +68,16 @@ FqcTest* FqcTest::instance() {
 }
 
 char * FqcTest::reply() {
-    return writer.buffer();
+    return writer_.buffer();
 }
 
 size_t FqcTest::replySize() {
-    return writer.dataSize();
+    return writer_.dataSize();
 }
 
 void FqcTest::initWriter(){
-    memset(json_response_buffer, 0x00, sizeof(json_response_buffer));
-    writer = JSONBufferWriter((char *)json_response_buffer, sizeof(json_response_buffer));
+    memset(json_response_buffer_, 0x00, sizeof(json_response_buffer_));
+    writer_ = JSONBufferWriter((char *)json_response_buffer_, sizeof(json_response_buffer_));
 }
 
 bool FqcTest::process(JSONValue test){
@@ -93,6 +95,8 @@ bool FqcTest::process(JSONValue test){
         return wifiNetcat(test);
     } else if (has(test, "WIFI_SCAN_NETWORKS")) { 
         return wifiScanNetworks(test);
+    } else if (has(test, "GNSS_TEST")) { 
+        return gnssTest(test);
     } else if (has(test, "BURNIN_TEST")) { 
         BurninTest::instance()->setup(true);
         return true;
@@ -101,17 +105,23 @@ bool FqcTest::process(JSONValue test){
     return false;
 }
 
-bool FqcTest::passResponse(bool success) {
-    writer.beginObject();
-    writer.name("pass").value(success);
-    writer.endObject();
+bool FqcTest::passResponse(bool success, String message, int errorCode) {
+    writer_.beginObject();
+    writer_.name("pass").value(success);
+    if (message.length()) {
+        writer_.name("message").value(message);
+    }
+    if (errorCode) {
+        writer_.name("errorCode").value(errorCode);
+    }
+    writer_.endObject();
     return true;
 }
 
 bool FqcTest::tcpErrorResponse(int tcpError) {
-    writer.beginObject();
-    writer.name("pass").value(false);
-    writer.name("errorCode").value(tcpError);
+    writer_.beginObject();
+    writer_.name("pass").value(false);
+    writer_.name("errorCode").value(tcpError);
     String errorMessage;
     if(tcpError == SYSTEM_ERROR_NETWORK){
         errorMessage = "Wifi not ready";
@@ -129,8 +139,8 @@ bool FqcTest::tcpErrorResponse(int tcpError) {
         errorMessage = "Netcat command parameters malformed";
     }
 
-    writer.name("message").value(errorMessage);
-    writer.endObject();
+    writer_.name("message").value(errorMessage);
+    writer_.endObject();
     return true;
 }
 
@@ -149,8 +159,8 @@ void FqcTest::parseIpAndPort(JSONValue parameters) {
     }
 
     // Store FQC station port/ip
-    this->tcpPort = port;
-    memcpy(this->tcpServer, server, sizeof(server));
+    this->tcpPort_ = port;
+    memcpy(this->tcpServer_, server, sizeof(server));
 }
 
 int FqcTest::sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_data_buffer_length, int response_poll_ms) {
@@ -161,9 +171,9 @@ int FqcTest::sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_
         return SYSTEM_ERROR_NETWORK;
     }
     
-    if (!tcpClient.connected()) {
-        if (tcpClient.connect(this->tcpServer, this->tcpPort)) {
-            Log.info("TCP client connected to %s", tcpClient.remoteIP().toString().c_str());
+    if (!tcpClient_.connected()) {
+        if (tcpClient_.connect(this->tcpServer_, this->tcpPort_)) {
+            Log.info("TCP client connected to %s", tcpClient_.remoteIP().toString().c_str());
         }
         else {
             Log.error("TCP client connection failed");
@@ -171,18 +181,18 @@ int FqcTest::sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_
         }
     }
 
-    if (tcpClient.connected()) {
+    if (tcpClient_.connected()) {
         Log.info("Sending message: %s len %d", tx_data, strlen(tx_data));
-        tcpClient.write((uint8_t *)tx_data, strlen(tx_data));
+        tcpClient_.write((uint8_t *)tx_data, strlen(tx_data));
 
         // Poll for response
         int delay_period_ms = 500;
-        for(int i = 0; i < (response_poll_ms / delay_period_ms) && !tcpClient.available(); i++){
+        for(int i = 0; i < (response_poll_ms / delay_period_ms) && !tcpClient_.available(); i++){
             delay(delay_period_ms);
         }
         
-        while(tcpClient.available() && (bytesRead < rx_data_buffer_length)) {
-           rx_data_buffer[bytesRead++] = tcpClient.read();
+        while(tcpClient_.available() && (bytesRead < rx_data_buffer_length)) {
+           rx_data_buffer[bytesRead++] = tcpClient_.read();
         }
 
         if(bytesRead) {
@@ -195,7 +205,7 @@ int FqcTest::sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_
             return SYSTEM_ERROR_TIMEOUT;
         }
 
-        tcpClient.stop();
+        tcpClient_.stop();
     }
 
     return bytesRead;
@@ -348,10 +358,10 @@ bool FqcTest::ioTest(JSONValue req) {
 
     if (result != SYSTEM_ERROR_NONE) {
         Log.error("Could not read logical efuse");
-        writer.beginObject();
-        writer.name("pass").value(false);
-        writer.name("message").value("could not read logical efuse");
-        writer.endObject();
+        writer_.beginObject();
+        writer_.name("pass").value(false);
+        writer_.name("message").value("could not read logical efuse");
+        writer_.endObject();
         return true;
     } else {
         Log.info("Hardware Model: 0x%X Variant: %lu", (unsigned int)model, variant);    
@@ -402,13 +412,13 @@ bool FqcTest::ioTest(JSONValue req) {
         passResponse(true);
     }
     else {
-        writer.beginObject();
-        writer.name("pass").value(false);
-        writer.name("pinA").value(pinNumberToPinName(pinA));
-        writer.name("pinB").value(pinNumberToPinName(pinB));
-        writer.name("errorPin").value(pinNumberToPinName(errorPin));
-        writer.name("message").value(failedTest);
-        writer.endObject();
+        writer_.beginObject();
+        writer_.name("pass").value(false);
+        writer_.name("pinA").value(pinNumberToPinName(pinA));
+        writer_.name("pinB").value(pinNumberToPinName(pinB));
+        writer_.name("errorPin").value(pinNumberToPinName(errorPin));
+        writer_.name("message").value(failedTest);
+        writer_.endObject();
     }
 
     return true;
@@ -486,26 +496,158 @@ bool FqcTest::wifiScanNetworks(JSONValue req) {
     }
 
     // Serialize to JSON and return this list over USB, like the regular WIFI scan does
-    writer.beginObject();
-    writer.name("pass").value(true);
-    writer.name("networks").beginArray();
+    writer_.beginObject();
+    writer_.name("pass").value(true);
+    writer_.name("networks").beginArray();
     for(WiFiAccessPoint& network: networks){
-        writer.beginObject();
-        writer.name("ssid").value(String(network.ssid, network.ssidLength));
+        writer_.beginObject();
+        writer_.name("ssid").value(String(network.ssid, network.ssidLength));
 
         char bssidStr[32] = {};
         sprintf(bssidStr, "%02X:%02X:%02X:%02X:%02X:%02X", network.bssid[0], network.bssid[1], network.bssid[2], network.bssid[3], network.bssid[4], network.bssid[5]);
-        writer.name("bssid").value(String(bssidStr));
+        writer_.name("bssid").value(String(bssidStr));
 
-        writer.name("security").value((int)network.security);
-        writer.name("channel").value(network.channel);
-        writer.name("rssi").value(network.rssi);
-        writer.endObject();
+        writer_.name("security").value((int)network.security);
+        writer_.name("channel").value(network.channel);
+        writer_.name("rssi").value(network.rssi);
+        writer_.endObject();
     }
-    writer.endArray();
-    writer.endObject();
+    writer_.endArray();
+    writer_.endObject();
     return true;
 }
+
+#if PLATFORM_ID == PLATFORM_MSOM
+static int callbackGPSGSV(int type, const char* buf, int len, FqcTest* self) {
+    // > AT+QGPSGNMEA="GGA"
+    // < +QGPSGNMEA: $GPGGA,233906.00,3804.385678,N,12209.936243,W,1,05,1.4,149.0,M,-25.0,M,,*5C
+    // < OK
+
+    // $<TalkerID>GGA,<UTC>,<Lat>,<N/S>,<Lon>,<E/W>,<Quality>,<NumSatUsed>,<HDOP>,<Alt>,M,<Sep>,M,<DiffAge>,<DiffStation>*<Checksum><CR><LF>
+
+    //Log.trace("%d : %s", strlen(buf), buf);
+
+    // If this is the trailing OK response, exit from the parser
+    if (String(buf) == String("\r\nOK\r\n")) {
+        return 0;
+    }
+
+    // Store the raw NMEA string
+    self->gnssNmeaOutput_.concat(buf);
+    
+    int fixQuality = 0;
+    int ret = sscanf(buf,"\r\n+QGPSGNMEA: $%*5c,%*d.%*d,%*d.%*d,%*c,%*d.%*d,%*c,%d,", &fixQuality);
+    Log.trace("ret = %d, fixQuality: %d", ret, fixQuality);
+    if (fixQuality > 0) {
+        self->gnssFixQuality_ = fixQuality;
+    }
+
+    // Ask for more GSV lines from the AT parser
+    return WAIT;
+}
+
+void FqcTest::gnssLoop(void* arg) {
+    FqcTest* self = static_cast<FqcTest*>(arg);
+
+    hal_device_hw_info deviceInfo = {};
+    hal_get_device_hw_info(&deviceInfo, nullptr);
+    bool isBG95 = deviceInfo.ncp[0] == PLATFORM_NCP_QUECTEL_BG95_M5;
+    const uint32_t POLL_MS = 1000;
+
+    while(true)
+    {
+        if(self->gnssEnableSearch_) {
+            auto startMillis = millis();
+            auto timeout = startMillis + self->gnssPollTimeoutMs_;
+
+            if (isBG95) {
+                Cellular.command("AT+QGPS=1");
+                Cellular.command("AT+QGPSCFG=\"priority\",0");
+            }
+            
+            while (millis() < timeout && !self->gnssFixQuality_ ) {
+                self->gnssNmeaOutput_ = String();
+                Cellular.command(callbackGPSGSV, self, 1000, "AT+QGPSGNMEA=\"GGA\"");
+                delay(POLL_MS);
+
+                if (self->gnssFixQuality_) {
+                    self->gnssTimeToFix_ = millis() - startMillis;
+                }
+            }
+            self->gnssEnableSearch_ = false;
+
+            if (isBG95) {
+                Cellular.command("AT+QGPSCFG=\"priority\",1");
+            }
+        }
+        delay(POLL_MS);
+    }
+}
+
+bool FqcTest::gnssTest(JSONValue req) {
+
+   auto parameters = get(req, "GNSS_TEST");
+
+    if (parameters.isValid()) {
+        auto command = String(getValue(parameters, "command").toString());
+        auto timeout = getValue(parameters, "timeout").toInt();
+
+        if (command != nullptr) {
+            Log.info("GNSS test command: %s", command.c_str());    
+        }
+
+        gnssPollTimeoutMs_ = timeout ? timeout * 1000 : GNSS_POLL_TIMEOUT_DEFAULT_MS;
+        Log.info("GNSS test timeout: %lu", gnssPollTimeoutMs_);
+
+        if (command == String("start")) {
+            if (!gnssThread_) {
+                gnssFixQuality_ = 0;
+                gnssEnableSearch_ = true;
+
+                BurninTest::instance()->initGnss();
+                gnssThread_ = new Thread("gnss-test", gnssLoop, this, OS_THREAD_PRIORITY_DEFAULT);
+                SPARK_ASSERT(gnssThread_);
+
+                passResponse(true);
+            } else if(gnssEnableSearch_) {
+                auto warning = "Already searching for signal";
+                Log.warn(warning);
+                passResponse(false, warning);
+            } else {
+                gnssFixQuality_ = 0;
+                gnssEnableSearch_ = true;
+                passResponse(true);
+            }
+        } else if (command == String("status")) {
+
+            Log.info("gnssFixQuality_ %lu", gnssFixQuality_);
+            
+            if (!gnssThread_) {
+                Log.warn("Test not started");
+                passResponse(false, "Test not started");
+            }
+            else if (gnssEnableSearch_) {
+                Log.info("Pending");
+                passResponse(false, "Test in progress", SYSTEM_ERROR_BUSY);
+            } else if(gnssFixQuality_ == 0) {
+                Log.info("Timed out");
+                passResponse(false, "No fix detected before timeout", SYSTEM_ERROR_TIMEOUT);
+            } else {
+                Log.info("Success, time to fix: %lu", gnssTimeToFix_);
+                passResponse(true, gnssNmeaOutput_);
+            }
+        } else {
+            passResponse(false, String("Unrecognized Command: ") + command);
+        }
+    }
+
+    return true;
+}
+#else
+bool FqcTest::gnssTest(JSONValue req) {
+         return passResponse(false, "Platform does not support gnss test");
+}
+#endif // PLATFORM_ID == PLATFORM_MSOM
 
 }
 #endif // HAL_PLATFORM_RTL872X

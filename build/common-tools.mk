@@ -23,6 +23,13 @@ CRC = crc32
 XXD = xxd
 SERIAL_SWITCHER = $(COMMON_BUILD)/serial_switcher.py
 
+GAWK_VERSION := $(shell gawk --version 2>/dev/null)
+ifdef GAWK_VERSION
+AWK = gawk
+else
+AWK = awk
+endif
+
 crc32_path := $(shell which $(CRC))
 ifeq ("$(crc32_path)", "")
     $(error "$(CRC) tool is not found")

@@ -28,3 +28,9 @@ test(MISC_01_map) {
     assertEqual(map(5.0, 0.0, 10.0, 0.0, 15.0), 7.5);
     assertEqual(map(5.5, 10.0, 10.0, 10.0, 10.0), 5.5); // Shouldn't cause division by zero
 }
+
+test(MISC_02_alignment) {
+    // This should just build correctly
+    static __attribute__((used, aligned(256))) uint8_t test[63] = {};
+    assertEqual((int)test[0], 0);
+}

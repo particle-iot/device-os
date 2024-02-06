@@ -32,6 +32,7 @@ typedef struct _particle_ctrl_cellular_GetActiveSimRequest {
 
 typedef struct _particle_ctrl_cellular_GetIccidReply { 
     pb_callback_t iccid; /* SIM ICCID */
+    pb_callback_t imei; /* RADIO IMEI */
 } particle_ctrl_cellular_GetIccidReply;
 
 /* *
@@ -108,7 +109,7 @@ extern "C" {
 #define particle_ctrl_cellular_GetActiveSimRequest_init_default {0}
 #define particle_ctrl_cellular_GetActiveSimReply_init_default {_particle_ctrl_cellular_SimType_MIN}
 #define particle_ctrl_cellular_GetIccidRequest_init_default {0}
-#define particle_ctrl_cellular_GetIccidReply_init_default {{{NULL}, NULL}}
+#define particle_ctrl_cellular_GetIccidReply_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
 #define particle_ctrl_cellular_AccessPoint_init_zero {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
 #define particle_ctrl_cellular_SetAccessPointRequest_init_zero {_particle_ctrl_cellular_SimType_MIN, particle_ctrl_cellular_AccessPoint_init_zero}
 #define particle_ctrl_cellular_SetAccessPointReply_init_zero {0}
@@ -119,10 +120,11 @@ extern "C" {
 #define particle_ctrl_cellular_GetActiveSimRequest_init_zero {0}
 #define particle_ctrl_cellular_GetActiveSimReply_init_zero {_particle_ctrl_cellular_SimType_MIN}
 #define particle_ctrl_cellular_GetIccidRequest_init_zero {0}
-#define particle_ctrl_cellular_GetIccidReply_init_zero {{{NULL}, NULL}}
+#define particle_ctrl_cellular_GetIccidReply_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_ctrl_cellular_GetIccidReply_iccid_tag 1
+#define particle_ctrl_cellular_GetIccidReply_imei_tag 2
 #define particle_ctrl_cellular_AccessPoint_apn_tag 1
 #define particle_ctrl_cellular_AccessPoint_user_tag 2
 #define particle_ctrl_cellular_AccessPoint_password_tag 3
@@ -192,7 +194,8 @@ X(a, STATIC,   SINGULAR, UENUM,    sim_type,          1)
 #define particle_ctrl_cellular_GetIccidRequest_DEFAULT NULL
 
 #define particle_ctrl_cellular_GetIccidReply_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING,   iccid,             1)
+X(a, CALLBACK, SINGULAR, STRING,   iccid,             1) \
+X(a, CALLBACK, SINGULAR, STRING,   imei,              2)
 #define particle_ctrl_cellular_GetIccidReply_CALLBACK pb_default_field_callback
 #define particle_ctrl_cellular_GetIccidReply_DEFAULT NULL
 

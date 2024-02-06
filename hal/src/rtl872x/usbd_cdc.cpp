@@ -422,7 +422,7 @@ int CdcClassDriver::startTx(bool holdoff) {
         return 0;
     }
 
-    if (holdoff) {
+    if (holdoff && consumable < cdc::MAX_DATA_PACKET_SIZE) {
         stopTxTimer();
         return startTxTimer();
     }

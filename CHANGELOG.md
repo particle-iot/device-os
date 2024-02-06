@@ -1,3 +1,41 @@
+## 6.0.0
+
+### FEATURES
+
+- Protected mode [#2734](https://github.com/particle-iot/device-os/pull/2734)
+
+## 5.7.0
+
+### FEATURES
+
+- Allow duplicates in BLE scan results if requested with `BLE.scanWithFilter(BleScanFilter().allowDuplicates(true))` [#2718](https://github.com/particle-iot/device-os/pull/2718)
+
+### ENHANCEMENTS
+
+- [P2 / M SoM] BLE: Dynamically adjust radio prioritization when both BLE and WiFi are active improving BLE scanning performance [#2714](https://github.com/particle-iot/device-os/pull/2714)
+- ACM `preferred()`/`prefer()` API clean up [#2717](https://github.com/particle-iot/device-os/pull/2717)
+- [M SoM] Adjust cloud keep-alive based on network connection [#2716](https://github.com/particle-iot/device-os/pull/2716)
+- [M SoM] Enable session resumption [#2722](https://github.com/particle-iot/device-os/pull/2722)
+- [P2 / M SoM] SPI performance improvements [#2728](https://github.com/particle-iot/device-os/pull/2728) [#2731](https://github.com/particle-iot/device-os/pull/2731)
+- [P2 / M SoM] Ethernet performance improvements [#2728](https://github.com/particle-iot/device-os/pull/2728) [#2731](https://github.com/particle-iot/device-os/pull/2731)
+
+### BUGFIXES
+
+- [P2 / M SoM] BLE scan results should be filtered for duplicates by default [#2718](https://github.com/particle-iot/device-os/pull/2718)
+- Fix OpenOCD FreeRTOS thread list access (`uxTopUsedPriority`) [#2723](https://github.com/particle-iot/device-os/pull/2723)
+- [Gen 3] BLE: Fix stack overflow in BLE timer callback [#2725](https://github.com/particle-iot/device-os/pull/2725)
+- [Cellular] Fixes parsing of MCC/MNC with 00 or 000 MNC [#2726](https://github.com/particle-iot/device-os/pull/2726)
+- [P2 / M SoM] Use security type from `JoinNewNetwork` request to connect to hidden networks [#2724](https://github.com/particle-iot/device-os/pull/2724)
+- [build] include alignment into section size calculations [#2719](https://github.com/particle-iot/device-os/pull/2719)
+- [P2 / M SoM] SPI slave mode bugfixes [#2728](https://github.com/particle-iot/device-os/pull/2728) [#2731](https://github.com/particle-iot/device-os/pull/2731)
+- [P2 / M SoM] USB TX hold-off mechanism should account for maximum transmit size [#2729](https://github.com/particle-iot/device-os/pull/2729)
+- [P2 / M SoM] USB ISR worker thread priority below network threads priorities [#2729](https://github.com/particle-iot/device-os/pull/2729)
+
+### INTERNAL
+
+- [M SoM] Make GNSS burn in test optional [#2720](https://github.com/particle-iot/device-os/pull/2720)
+- [M SoM] Support for GNSS FQC test [#2721](https://github.com/particle-iot/device-os/pull/2721)
+
 ## 5.6.0
 
 ### FEATURES

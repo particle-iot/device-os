@@ -21,18 +21,30 @@ public:
     char * reply();
     size_t replySize();
 
+    uint32_t gnssFixQuality_ = 0;
+    String gnssNmeaOutput_;
+
 private:
+    static const uint32_t GNSS_POLL_TIMEOUT_DEFAULT_MS = 30000;
+
     void initWriter();
 
-    uint8_t tcpServer[4];
-    int tcpPort;
-    JSONBufferWriter writer; 
-    char json_response_buffer[2048];
-    TCPClient tcpClient;
+    uint8_t tcpServer_[4];
+    int tcpPort_;
+    JSONBufferWriter writer_; 
+    char json_response_buffer_[2048];
+    TCPClient tcpClient_;
     bool inited_;
+
+    Thread* gnssThread_;
+    uint32_t gnssPollTimeoutMs_;
+    std::atomic_bool gnssEnableSearch_;
+    uint32_t gnssTimeToFix_;
     
-    bool passResponse(bool success);
+    bool passResponse(bool success, String message = String(), int errorCode = 0);
     bool tcpErrorResponse(int tcpError);
+
+    static void gnssLoop(void* arg);
 
     void parseIpAndPort(JSONValue parameters);
     int sendTCPMessage(const char * tx_data, char * rx_data_buffer, int rx_data_buffer_length, int response_poll_ms = 5000);
@@ -43,6 +55,7 @@ private:
     bool ioTest(JSONValue req);
     bool wifiNetcat(JSONValue req);
     bool wifiScanNetworks(JSONValue req);
+    bool gnssTest(JSONValue req);
 };
 
 } // namespace particle
