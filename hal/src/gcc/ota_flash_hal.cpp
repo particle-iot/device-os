@@ -10,7 +10,7 @@
 #include "device_config.h"
 #include "service_debug.h"
 #include "core_hal.h"
-#include "filesystem.h"
+#include "filesystem_util.h"
 #include "bytes2hexbuf.h"
 #include "module_info.h"
 #include "../../../system/inc/system_info.h" // FIXME

@@ -18,7 +18,7 @@
 
 #include "device_config.h"
 #include "core_msg.h"
-#include "filesystem.h"
+#include "filesystem_util.h"
 #include "ota_flash_hal.h"
 #include "../../../system/inc/system_info.h" // FIXME
 

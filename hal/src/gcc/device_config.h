@@ -25,7 +25,6 @@
 #include <cstring>
 #include <cstdint>
 
-#include "filesystem.h"
 #include "spark_protocol_functions.h"
 #include "module_info.h"
 
