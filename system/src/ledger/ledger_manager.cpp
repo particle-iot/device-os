@@ -43,6 +43,7 @@
 #include "file_util.h"
 #include "time_util.h"
 #include "endian_util.h"
+#include "str_compat.h"
 #include "scope_guard.h"
 #include "check.h"
 
