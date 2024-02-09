@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,3 +16,13 @@
  */
 
 #pragma once
+
+#include "platform_config.h"
+
+#define FILESYSTEM_PROG_SIZE    (256)
+#define FILESYSTEM_READ_SIZE    (256)
+
+#define FILESYSTEM_BLOCK_SIZE   (sFLASH_PAGESIZE)
+#define FILESYSTEM_BLOCK_COUNT  (sFLASH_FILESYSTEM_PAGE_COUNT)
+#define FILESYSTEM_FIRST_BLOCK  (sFLASH_FILESYSTEM_FIRST_PAGE)
+#define FILESYSTEM_LOOKAHEAD    (128)

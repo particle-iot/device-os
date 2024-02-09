@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,13 +15,28 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __PLATFORM_CONFIG_H
-#define __PLATFORM_CONFIG_H
+#pragma once
 
-// Need to define some LED constants that are normally provided by platform_config.h,
-// used by sparking_wiring_rgb.cpp
-#define PARTICLE_LED_RED             PARTICLE_LED2
-#define PARTICLE_LED_GREEN           PARTICLE_LED3
-#define PARTICLE_LED_BLUE            PARTICLE_LED4
+#include <mutex>
+#include <chrono>
 
-#endif /* __PLATFORM_CONFIG_H */
+class StaticRecursiveMutex {
+public:
+    StaticRecursiveMutex() = default;
+
+    bool lock(unsigned timeout = 0) {
+        if (timeout > 0) {
+            return mutex_.try_lock_for(std::chrono::milliseconds(timeout));
+        }
+        mutex_.lock();
+        return true;
+    }
+
+    bool unlock() {
+        mutex_.unlock();
+        return true;
+    }
+
+private:
+    std::recursive_timed_mutex mutex_;
+};

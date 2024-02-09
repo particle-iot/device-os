@@ -22,12 +22,12 @@
 
 #include "filesystem_impl.h"
 
+#include <lfs_util.h>
+#include <lfs.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
-
-#include <lfs_util.h>
-#include <lfs.h>
 
 typedef enum filesystem_instance_t {
     FILESYSTEM_INSTANCE_DEFAULT = 0,
@@ -67,7 +67,7 @@ int filesystem_unlock(filesystem_t* fs);
 int filesystem_to_system_error(int error);
 
 #ifdef __cplusplus
-}
+} // extern "C"
 
 #define CHECK_FS(expr) \
         ({ \
