@@ -108,6 +108,7 @@ public:
             ("product_version", po::value<uint16_t>(&config.product_version)->default_value(0xffff), "the product version")
             ("describe", po::value<std::string>(&config.describe), "the filename containing the device description")
             ("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_NONE), "the cloud communication protocol to use")
+            ("flash_file", po::value<std::string>(&config.ext_flash_file), "the filename to use to store the contents of the external flash")
             ;
 
         command_line_options.add(program_options).add(device_options);
@@ -368,6 +369,8 @@ void DeviceConfig::read(Configuration& config)
             this->protocol = PROTOCOL_DTLS;
         }
     }
+
+    this->ext_flash_file = config.ext_flash_file;
 
     setLoggerLevel((LoggerOutputLevel)(NO_LOG_LEVEL - config.log_level));
 }
