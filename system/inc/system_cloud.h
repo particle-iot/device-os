@@ -126,7 +126,8 @@ const CloudVariableTypeDouble DOUBLE;
  */
 enum CloudDisconnectFlag {
     CLOUD_DISCONNECT_GRACEFULLY = 0x01, ///< Disconnect gracefully.
-    CLOUD_DISCONNECT_DONT_CLOSE = 0x02 ///< Do not close the socket.
+    CLOUD_DISCONNECT_DONT_CLOSE = 0x02, ///< Do not close the socket.
+    CLOUD_DISCONNECT_RECONNECT_IMMEDIATELY = 0x03 ///< Close the socket, but leave the cloud connect flag set
 };
 
 /**
@@ -313,7 +314,8 @@ bool spark_cloud_flag_auto_connect(void);
 typedef enum spark_cloud_disconnect_option_flag {
     SPARK_CLOUD_DISCONNECT_OPTION_GRACEFUL = 0x01, ///< The `graceful` option is set.
     SPARK_CLOUD_DISCONNECT_OPTION_TIMEOUT = 0x02, ///< The `timeout` option is set.
-    SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION = 0x04 ///< The `clear_session` option is set.
+    SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION = 0x04, ///< The `clear_session` option is set.
+    SPARK_CLOUD_DISCONNECT_OPTION_RECONNECT_IMMEDIATELY = 0x08 ///< The `reconnect_immediately` option is set.
 } spark_cloud_disconnect_option_flag;
 
 /**
@@ -325,6 +327,7 @@ typedef struct spark_cloud_disconnect_options {
     uint8_t graceful; ///< Enables graceful disconnection if set to a non-zero value.
     uint32_t timeout; ///< Maximum time in milliseconds to wait for message acknowledgements.
     uint8_t clear_session; ///< Clears the session after disconnecting if set to a non-zero value.
+    uint8_t reconnect_immediately;
 } spark_cloud_disconnect_options;
 
 /**

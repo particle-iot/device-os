@@ -51,6 +51,8 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "control/common.h"
 #include "control/network.h"
 #include <unistd.h>
+#include "system_connection_manager.h"
+#include "spark_wiring_cloud.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -613,6 +615,16 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         // Disable by default
         if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
+
+        // If this is the current cloud connection, disconnect the cloud, but reconnect immediately on any other available interface
+        uint8_t index = 0;
+        if_get_index(iface, &index);
+
+        if (ConnectionManager::instance()->getCloudConnectionNetwork() == index) {
+            LOG(WARN, "Cloud connection interface %d link state down, disconnecting", index);
+            auto options = CloudDisconnectOptions().reconnect(true).toSystemOptions();
+            spark_cloud_disconnect(&options, nullptr);
+        }
 
         clearDnsConfiguration(iface);
         /* Interface link state changed to DOWN */

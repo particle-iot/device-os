@@ -138,11 +138,13 @@ public:
     static const bool DEFAULT_DISCONNECT_GRACEFULLY = false;
     static const unsigned DEFAULT_DISCONNECT_TIMEOUT = 30000;
     static const bool DEFAULT_DISCONNECT_CLEAR_SESSION = false;
+    static const bool DEFAULT_RECONNECT = false;
 
     CloudConnectionSettings() :
             defaultDisconnectTimeout_(DEFAULT_DISCONNECT_TIMEOUT),
             defaultDisconnectGracefully_(DEFAULT_DISCONNECT_GRACEFULLY),
             defaultDisconnectClearSession_(DEFAULT_DISCONNECT_CLEAR_SESSION),
+            defaultDisconnectReconnect_(DEFAULT_RECONNECT),
             boundInterface_(NETWORK_INTERFACE_ALL) {
     }
 
@@ -155,6 +157,9 @@ public:
         }
         if (options.isClearSessionSet()) {
             defaultDisconnectClearSession_ = options.clearSession();
+        }
+        if (options.isReconnectSet()) {
+            defaultDisconnectReconnect_ = options.reconnect();
         }
     }
 
@@ -190,6 +195,11 @@ public:
         } else {
             result.clearSession(defaultDisconnectClearSession_);
         }
+        if (pending.isReconnectSet()) {
+            result.reconnect(pending.reconnect());
+        } else {
+            result.reconnect(defaultDisconnectReconnect_);
+        }
         return result;
     }
 
@@ -212,6 +222,7 @@ private:
     bool defaultDisconnectClearSession_;
     // Pending disconnection options are set atomically and guarded by a spinlock
     CloudDisconnectOptions pendingDisconnectOptions_;
+    bool defaultDisconnectReconnect_;
     network_interface_t boundInterface_;
 };
 
