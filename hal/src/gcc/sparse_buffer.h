@@ -51,7 +51,7 @@ public:
         }
         erase(offs, data.size());
         auto it = seg_.insert({ offs, std::string(data) }).first;
-        // Check if the new segment can be merged with the adjacent segments
+        // Check if the new segment has adjacent segments it can be merged with
         if (it != seg_.begin()) {
             auto prev = std::prev(it);
             if (prev->first + prev->second.size() == it->first) {

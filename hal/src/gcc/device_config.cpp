@@ -372,7 +372,9 @@ void DeviceConfig::read(Configuration& config)
         }
     }
 
-    this->flash_file = fs::absolute(config.flash_file);
+    if (!config.flash_file.empty()) {
+        this->flash_file = fs::absolute(config.flash_file);
+    }
 
     setLoggerLevel((LoggerOutputLevel)(NO_LOG_LEVEL - config.log_level));
 }

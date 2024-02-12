@@ -24,13 +24,13 @@
 
 #include "device_config.h"
 #include "sparse_buffer.h"
-#include "filesystem_util.h"
 
 #include "exflash_hal.h"
 #include "flash_mal.h"
 
-#include "logging.h"
+#include "endian_util.h"
 #include "system_error.h"
+#include "logging.h"
 
 using namespace particle;
 
@@ -112,7 +112,8 @@ private:
             if (fs::exists(persistFile_)) {
                 loadBuffer(buf_, persistFile_);
             }
-            tempFile_ = temp_file_name("flash_", ".bin");
+            fs::path p(persistFile_);
+            tempFile_ = p.parent_path().append('~' + p.filename().string());
         }
     }
 
@@ -127,15 +128,14 @@ private:
         std::ifstream f;
         f.exceptions(std::ios::badbit | std::ios::failbit);
         f.open(file, std::ios::binary);
-        size_t maxOffs = 0;
-        while (!f.eof()) {
-            size_t offs = readVarint(f) + maxOffs;
-            size_t size = readVarint(f);
+        size_t segCount = readUint32(f);
+        for (size_t i = 0; i < segCount; ++i) {
+            size_t offs = readUint32(f);
+            size_t size = readUint32(f);
             std::string s;
             s.resize(size);
             f.read(s.data(), size);
             buf.write(offs, s);
-            maxOffs = offs + size;
         }
     }
 
@@ -143,43 +143,25 @@ private:
         std::ofstream f;
         f.exceptions(std::ios::badbit | std::ios::failbit);
         f.open(file, std::ios::binary | std::ios::trunc);
-        size_t maxOffs = 0;
         auto& seg = buf.segments();
+        writeUint32(f, seg.size());
         for (auto it = seg.begin(); it != seg.end(); ++it) {
-            writeVarint(f, it->first - maxOffs); // Use delta encoding
-            writeVarint(f, it->second.size());
+            writeUint32(f, it->first);
+            writeUint32(f, it->second.size());
             f.write(it->second.data(), it->second.size());
-            maxOffs = it->first + it->second.size();
         }
         f.close();
     }
 
-    static uint32_t readVarint(std::ifstream& f) {
-        char buf[maxUnsignedVarintSize<uint32_t>()];
-        size_t n = 0;
-        uint8_t b = 0;
-        do {
-            f.read((char*)&b, 1);
-            if (n >= sizeof(buf)) {
-                throw std::runtime_error("Decoding error");
-            }
-            buf[n++] = b;
-        } while (b & 0x80);
+    static uint32_t readUint32(std::ifstream& f) {
         uint32_t v = 0;
-        int r = decodeUnsignedVarint(buf, n, &v);
-        if (r != (int)n) {
-            throw std::runtime_error("Decoding error");
-        }
-        return v;
+        f.read((char*)&v, sizeof(v));
+        return littleEndianToNative(v);
     }
 
-    static void writeVarint(std::ofstream& f, uint32_t val) {
-        char buf[maxUnsignedVarintSize<uint32_t>()];
-        int r = encodeUnsignedVarint(buf, sizeof(buf), val);
-        if (r <= 0 || r > (int)sizeof(buf)) {
-            throw std::runtime_error("Encoding error");
-        }
-        f.write(buf, r);
+    static void writeUint32(std::ofstream& f, uint32_t val) {
+        val = nativeToLittleEndian(val);
+        f.write((const char*)&val, sizeof(val));
     }
 };
 
