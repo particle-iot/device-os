@@ -102,6 +102,15 @@ typedef WLanCredentials NetworkCredentials;
  * @return 0 on success.
  */
 int network_set_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
+/**
+ *
+ * @param network   The network to configure the credentials.
+ * @param flags     Flags. set to 0.
+ * @param creds     The credentials to set. Set to NULL.
+ * @param reserved  For future expansion. Set to NULL.
+ * @return true     Successfully cleared the given network credentials
+ * @return false    Failed to clear the given network credentials
+ */
 bool network_clear_credentials(network_handle_t network, uint32_t flags, NetworkCredentials* creds, void* reserved);
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved);

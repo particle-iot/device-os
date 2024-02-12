@@ -438,7 +438,7 @@ bool network_clear_credentials(network_handle_t network, uint32_t, NetworkCreden
     } else {
         if_t iface;
         if (!if_get_by_index(network, &iface)) {
-            return NetworkManager::instance()->clearConfiguration(iface);
+            return NetworkManager::instance()->clearConfiguration(iface) == 0;
         }
     }
     return false;
