@@ -23,6 +23,7 @@
 
 #include "nanopb_misc.h"
 #include "bytes2hexbuf.h"
+#include "str_compat.h"
 #include "scope_guard.h"
 #include "check.h"
 

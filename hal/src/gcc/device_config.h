@@ -255,7 +255,7 @@ struct Configuration
     std::string device_key;
     std::string server_key;
     std::string describe;
-    std::string ext_flash_file;
+    std::string flash_file;
     uint16_t log_level;
     ProtocolFactory protocol;
     uint16_t platform_id;
@@ -269,7 +269,7 @@ struct DeviceConfig
 {
     std::vector<std::string> argv;
     particle::config::Describe describe;
-    std::string ext_flash_file;
+    std::string flash_file;
     uint8_t device_id[12];
     uint8_t device_key[1024];
     uint8_t server_key[1024];
