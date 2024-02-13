@@ -33,7 +33,6 @@ get_filename_component(CURRENT_TEST_DIRECTORY_FULL "${CMAKE_CURRENT_SOURCE_DIR}"
 # Set defines specific to target
 target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
-  PRIVATE HAL_PLATFORM_FILESYSTEM=1
   PRIVATE FIXTURES_DIRECTORY="${CURRENT_TEST_DIRECTORY_FULL}/fixtures"
 )
 
@@ -51,6 +50,7 @@ target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/dynalib/inc
   PRIVATE ${DEVICE_OS_DIR}/hal/shared
   PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc
+  PRIVATE ${DEVICE_OS_DIR}/platform/MCU/gcc/inc
   PRIVATE ${DEVICE_OS_DIR}/system/inc
   PRIVATE ${DEVICE_OS_DIR}/wiring/inc
   PRIVATE ${THIRD_PARTY_DIR}/hippomocks
