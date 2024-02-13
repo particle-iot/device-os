@@ -40,10 +40,7 @@ namespace {
 
 class ExternalFlash {
 public:
-    void read(uintptr_t addr, uint8_t* data, size_t size) {
-        if (!size) {
-            return;
-        }
+    void read(uintptr_t addr, uint8_t* data, size_t size) const {
         if (addr + size > EXTERNAL_FLASH_SIZE) {
             throw std::runtime_error("Invalid address");
         }
@@ -53,9 +50,6 @@ public:
     }
 
     void write(uintptr_t addr, const uint8_t* data, size_t size) {
-        if (!size) {
-            return;
-        }
         if (addr + size > EXTERNAL_FLASH_SIZE) {
             throw std::runtime_error("Invalid address");
         }
@@ -68,11 +62,11 @@ public:
         }
         // Write the changes
         buf_.write(addr, s);
-        saveBuffer();
+        bufferChanged();
     }
 
     void erase(uintptr_t addr, size_t blockCount, size_t blockSize) {
-        if (!blockCount || !blockSize) {
+        if (!blockSize) {
             return;
         }
         addr = addr / blockSize * blockSize;
@@ -82,7 +76,7 @@ public:
         }
         std::lock_guard lock(mutex_);
         buf_.erase(addr, size);
-        saveBuffer();
+        bufferChanged();
     }
 
     void lock() {
@@ -117,7 +111,7 @@ private:
         }
     }
 
-    void saveBuffer() {
+    void bufferChanged() {
         if (!persistFile_.empty()) {
             saveBuffer(buf_, tempFile_);
             fs::rename(tempFile_, persistFile_);
