@@ -15,12 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
-#include <functional>
 #include <chrono>
 #include <thread>
 #include <mutex>
-#include <memory>
 #include <cassert>
 
 #include <boost/asio.hpp>
@@ -32,8 +29,6 @@
 
 namespace {
 
-class Timer;
-
 class IoService {
 public:
     void stop() {
@@ -43,14 +38,13 @@ public:
         }
     }
 
+    boost::asio::io_context& context() {
+        return ctx_;
+    }
+
     static IoService* instance() {
         static IoService s;
         return &s;
-    }
-
-protected:
-    boost::asio::io_context& context() {
-        return ctx_;
     }
 
 private:
@@ -66,8 +60,6 @@ private:
     ~IoService() {
         stop();
     }
-
-    friend class Timer;
 };
 
 class Timer {
@@ -76,7 +68,9 @@ public:
 
     Timer(unsigned period, Callback callback, bool oneShot = true, void* id = nullptr) :
             d_(std::make_shared<Data>(this, period, callback, oneShot, id)) {
-        if (!callback) {
+        // Requirement for the period to be greater than 0 mimics the behavior of FreeRTOS' xTimerCreate():
+        // https://www.freertos.org/FreeRTOS-timers-xTimerCreate.html
+        if (!period || !callback) {
             throw std::runtime_error("Invalid argument");
         }
     }
@@ -89,22 +83,26 @@ public:
 
     void start() {
         std::lock_guard lock(d_->mutex);
-        reset();
+        cancel();
         startTimer(d_);
         d_->started = true;
     }
 
     void stop() {
         std::lock_guard lock(d_->mutex);
-        reset();
+        cancel();
     }
 
     void setPeriod(unsigned period) {
-        std::lock_guard lock(d_->mutex);
-        reset();
-        d_->period = period;
-        // This mimics the behavior of FreeRTOS' xTimerChangePeriod():
+        // Requirement for the period to be greater than 0 mimics the behavior of FreeRTOS' xTimerChangePeriod():
         // https://www.freertos.org/FreeRTOS-timers-xTimerChangePeriod.html
+        if (!period) {
+            throw std::runtime_error("Invalid argument");
+        }
+        std::lock_guard lock(d_->mutex);
+        cancel();
+        d_->period = period;
+        // xTimerChangePeriod() also starts the timer
         startTimer(d_);
     }
 
@@ -151,7 +149,7 @@ private:
 
     std::shared_ptr<Data> d_;
 
-    void reset() {
+    void cancel() {
         d_->timer.cancel();
         d_->started = false;
         // "Invalidate" any references to the timer's internal state
@@ -207,7 +205,7 @@ int os_timer_change(os_timer_t timer, os_timer_change_t change, bool /* fromISR 
         auto t = static_cast<Timer*>(timer);
         assert(t);
         switch (change) {
-        // xTimerStart() and xTimerReset() seem to behave exactly the same:
+        // xTimerStart() and xTimerReset() seem to behave exactly the same :thinking_face:
         // https://www.freertos.org/FreeRTOS-timers-xTimerStart.html
         // https://www.freertos.org/FreeRTOS-timers-xTimerReset.html
         case OS_TIMER_CHANGE_START:

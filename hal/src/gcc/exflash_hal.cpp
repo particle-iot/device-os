@@ -58,7 +58,7 @@ public:
         std::string s = buf_.read(addr, size);
         uint8_t* d = (uint8_t*)s.data();
         for (size_t i = 0; i < size; ++i) {
-            d[i] &= data[i]; // Mimic the flash memory behavior
+            d[i] &= data[i]; // Pretend this is flash memory
         }
         // Write the changes
         buf_.write(addr, s);

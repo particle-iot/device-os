@@ -25,7 +25,7 @@
  */
 
 #include "spark_wiring_stream.h"
-#include "spark_wiring.h"
+#include "spark_wiring.h"       // for millis())
 #include <cctype>
 
 #define PARSE_TIMEOUT 1000  // default number of milli-seconds to wait

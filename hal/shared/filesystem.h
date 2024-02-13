@@ -98,6 +98,7 @@ struct FsLock {
         filesystem_unlock(fs_);
     }
 
+    // TODO: Rename this method to avoid confusion with filesystem_get_instance()
     lfs_t* instance() const {
         return &fs_->instance;
     }
