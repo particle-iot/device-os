@@ -538,6 +538,11 @@ void NetworkManager::handleIfState(if_t iface, const struct if_event* ev) {
 }
 
 void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
+    uint8_t netIfIndex = 0;
+    if_get_index(iface, &netIfIndex);
+    bool disconnectCloud = false;
+    auto options = CloudDisconnectOptions().reconnect(true);
+
     if (ev->ev_if_link->state) {
         /* Interface link state changed to UP */
         NetworkInterfaceConfig conf;
@@ -611,19 +616,23 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         } else if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             refreshIpState();
         }
+
+        // If the preferred network becomes available, close the cloud connection to force migration to this network
+        if (ConnectionManager::instance()->getPreferredNetwork() == netIfIndex) {
+            LOG(INFO, "Preferred network %u available, moving cloud connection", netIfIndex);
+            options.graceful(true);
+            disconnectCloud = true;
+        }
+
     } else {
         // Disable by default
         if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
 
         // If this is the current cloud connection, disconnect the cloud, but reconnect immediately on any other available interface
-        uint8_t index = 0;
-        if_get_index(iface, &index);
-
-        if (ConnectionManager::instance()->getCloudConnectionNetwork() == index) {
-            LOG(WARN, "Cloud connection interface %d link state down, disconnecting", index);
-            auto options = CloudDisconnectOptions().reconnect(true).toSystemOptions();
-            spark_cloud_disconnect(&options, nullptr);
+        if (ConnectionManager::instance()->getCloudConnectionNetwork() == netIfIndex) {
+            LOG(WARN, "Cloud connection interface %d link state down, disconnecting", netIfIndex);
+            disconnectCloud = true;
         }
 
         clearDnsConfiguration(iface);
@@ -636,6 +645,12 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             }
         }
     }
+
+    if (disconnectCloud) {
+        auto systemOptions = options.toSystemOptions();
+        spark_cloud_disconnect(&systemOptions, nullptr);
+    }
+
     forceCloudPingIfConnected();
 }
 
