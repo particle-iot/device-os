@@ -96,7 +96,13 @@ ConnectionManager* ConnectionManager::instance() {
 void ConnectionManager::setPreferredNetwork(network_handle_t network, bool preferred) {
     if (preferred) {
         if (network != NETWORK_INTERFACE_ALL) {
-            preferredNetwork_ = network;    
+            preferredNetwork_ = network;
+
+            // If preferred network is set, and it is up, move cloud connection to it immediately
+            if (network_ready(spark::Network.from(preferredNetwork_), 0, nullptr)) {
+                auto options = CloudDisconnectOptions().graceful(true).reconnect(true).toSystemOptions();
+                spark_cloud_disconnect(&options, nullptr);
+            }
         }
     } else {
         if (network == preferredNetwork_ || network == NETWORK_INTERFACE_ALL) {
