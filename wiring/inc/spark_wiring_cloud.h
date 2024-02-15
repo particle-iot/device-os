@@ -380,8 +380,7 @@ public:
 
     static bool connected(void) { return spark_cloud_flag_connected(); }
     static bool disconnected(void) { return !connected(); }
-    static void connect(const spark::NetworkClass& network = spark::Network) {
-        spark_set_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, static_cast<network_interface_t>(network), nullptr, nullptr);
+    static void connect(void) {
         spark_cloud_flag_connect();
     }
     static void disconnect(const CloudDisconnectOptions& options = CloudDisconnectOptions());
