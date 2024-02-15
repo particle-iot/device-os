@@ -212,7 +212,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
             if (sockOptRet) {
                 LOG(WARN, "Failed to bind cloud socket to interface %u error: %d", cloudInterface, sockOptRet);
             } else {
-                LOG(INFO, "Bound cloud socket to lwip interface %s", ifr.ifr_name);
+                LOG(INFO, "Bound cloud socket to lwip interface %u name \"%s\" ", cloudInterface, ifr.ifr_name);
             }
         }
 

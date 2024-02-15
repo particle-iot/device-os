@@ -646,7 +646,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         }
     }
 
-    if (disconnectCloud) {
+    if (spark_cloud_flag_connected() && disconnectCloud) {
         auto systemOptions = options.toSystemOptions();
         spark_cloud_disconnect(&systemOptions, nullptr);
     }
