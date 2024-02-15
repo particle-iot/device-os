@@ -98,8 +98,8 @@ void ConnectionManager::setPreferredNetwork(network_handle_t network, bool prefe
         if (network != NETWORK_INTERFACE_ALL) {
             preferredNetwork_ = network;
 
-            // If preferred network is set, and it is up, move cloud connection to it immediately
-            if (network_ready(spark::Network.from(preferredNetwork_), 0, nullptr)) {
+            // If cloud is already connected, and a preferred network is set, and it is up, move cloud connection to it immediately
+            if (spark_cloud_flag_connected() && network_ready(spark::Network.from(preferredNetwork_), 0, nullptr)) {
                 auto options = CloudDisconnectOptions().graceful(true).reconnect(true).toSystemOptions();
                 spark_cloud_disconnect(&options, nullptr);
             }
@@ -242,7 +242,7 @@ int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics) {
     if (metrics->txPacketCount == metrics->rxPacketCount || 
         (millis() > metrics->txPacketStartMillis + REACHABILITY_TEST_PACKET_TIMEOUT_MS)) {
 
-        CHECK(generateTestPacket(metrics));
+        generateTestPacket(metrics);
 
         int r = sock_send(metrics->socketDescriptor, metrics->txBuffer, metrics->testPacketSize, 0);
         if (r > 0) {
@@ -284,12 +284,6 @@ int ConnectionTester::receiveTestPacket(ConnectionMetrics* metrics) {
 };
 
 int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics) {
-    auto network = spark::Network.from(metrics->interface);
-    if (!network) {
-        LOG(ERROR, "No Network associated with interface %d", metrics->interface);
-        return SYSTEM_ERROR_BAD_DATA;
-    }
-
     unsigned packetDataLength = random(1, REACHABILITY_MAX_PAYLOAD_SIZE);
 
     DTLSPlaintext_t msg = {
@@ -337,7 +331,7 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
             receiveTestPacket(connection);
         }
         if (pfds[i].revents & POLLOUT) {
-            sendTestPacket(connection);
+            CHECK(sendTestPacket(connection));
         }
     }
     return 0;
@@ -386,7 +380,12 @@ int ConnectionTester::testConnections() {
         // For each network interface to test, create + open a socket with the retrieved server address
         // If any of the sockets fail to be created + opened with this server address, return an error
         for (auto& connectionMetrics: metrics_) {
-            if (!network_ready(spark::Network.from(connectionMetrics.interface),0,nullptr)) {
+            auto network = spark::Network.from(connectionMetrics.interface);
+            if (network == spark::Network) {
+                LOG(ERROR, "No Network associated with interface %d", connectionMetrics.interface);
+                continue;
+            }
+            if (!network_ready(network, 0, nullptr)) {
                 LOG_DEBUG(TRACE,"%s not ready, skipping test", netifToName(connectionMetrics.interface));
                 continue;
             }
