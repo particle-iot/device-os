@@ -10,9 +10,9 @@ STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 retained uint8_t resetRetry = 0;
 #define ETHERNET_RETRY_MAX (10)
 
-#define CMD_SERIAL Serial1
+#define CMD_SERIAL Serial
 
-Serial1LogHandler logHandler(LOG_LEVEL_ALL,
+SerialLogHandler logHandler(LOG_LEVEL_ALL,
 {
     { "app", LOG_LEVEL_ALL },
     //{ "sys.power", LOG_LEVEL_TRACE },
@@ -47,6 +47,7 @@ struct __attribute__((packed)) CellularDeviceCached
     char radiofw[25];
 };
 
+#if HAL_PLATFORM_CELLULAR
 static void printCellularInfo() {
     CellularDevice device = {};
     device.size = sizeof(device);
@@ -58,8 +59,8 @@ static void printCellularInfo() {
 
 static void printCellularCacheInfo(CellularDeviceCached * cache) {
     Log.info("Cached ICCID %s IMEI %s dev %d FW %s", cache->iccid, cache->imei, cache->dev, cache->radiofw);
-
 };
+#endif
 
 WiFiAccessPoint ap[5];
 
@@ -218,34 +219,17 @@ void loop() {
             }
         }
         else if(c == '3') {
-            Particle.disconnect(CloudDisconnectOptions().clearSession(true));
-            waitUntil(Particle.disconnected);
-            Ethernet.connect();
-            Log.info("Binding to ethernet interface");
-            Particle.connect(Ethernet);
-        }
-        else if(c == '4') {
-            Particle.disconnect();
-            waitUntil(Particle.disconnected);
-            Log.info("Binding to cell interface");
-            Particle.connect(Cellular);
-        }
-        else if(c == '5') {
-            Particle.disconnect(CloudDisconnectOptions().clearSession(true));
-            waitUntil(Particle.disconnected);
-            Log.info("Binding to wifi interface");
-            Particle.connect(WiFi);
+            Log.info("Prefer Ethernet");
+            Ethernet.prefer();
         }
         else if(c == '6') {
-            Particle.disconnect();
-            waitUntil(Particle.disconnected);
-            Log.info("connecting with default interface priority");
-            Particle.connect();
+            Log.info("Prefer None");
+            Network.prefer();
         }
 #if HAL_PLATFORM_WIFI
-        else if (c == 'a') {
-            bool result = WiFi.clearCredentials();
-            Log.info("Clear wifi creds result %d", result);
+        else if(c == '5') {
+            Log.info("Prefer WiFi");
+            WiFi.prefer();
         }
         else if (c == 'w') {
             static bool wifiState = true;
@@ -258,6 +242,10 @@ void loop() {
             }
             wifiState = !wifiState;
         }
+       else if (c == 'a') {
+            bool result = WiFi.clearCredentials();
+            Log.info("Clear wifi creds result %d", result);
+        }
         else if (c == 'l') {
             int found = WiFi.getCredentials(ap, 5);
             Log.info("Found %d wifi creds", found);
@@ -269,6 +257,10 @@ void loop() {
         }
 #endif
 #if HAL_PLATFORM_CELLULAR
+        else if(c == '4') {
+            Log.info("Prefer Cellular");
+            Cellular.prefer();
+        }
         else if (c == 'c') {
             static bool cellState = true;
             Log.info("Cell state: %d", cellState);

@@ -130,16 +130,6 @@ network_handle_t ConnectionManager::getCloudConnectionNetwork() {
 network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     network_handle_t bestNetwork = NETWORK_INTERFACE_ALL;
 
-    // 1: If there is a bound network connection. Do not use anything else, regardless of network state
-    network_handle_t boundNetwork = NETWORK_INTERFACE_ALL;
-    size_t n = sizeof(boundNetwork);
-    spark_get_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, &boundNetwork, &n, nullptr);
-
-    if (boundNetwork != NETWORK_INTERFACE_ALL) {
-        LOG_DEBUG(TRACE, "Using bound network: %lu", boundNetwork);
-        return boundNetwork;
-    }
-
     // 2: If no bound network, use preferred network
     if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(spark::Network.from(preferredNetwork_), 0, nullptr)) {
         LOG_DEBUG(TRACE, "Using preferred network: %lu", preferredNetwork_);
