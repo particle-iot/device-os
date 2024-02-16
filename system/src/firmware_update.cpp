@@ -259,7 +259,7 @@ int FirmwareUpdate::saveChunk(const char* chunkData, size_t chunkSize, size_t ch
     // Generate a system event
     fileDesc_.chunk_address = fileDesc_.file_address + chunkOffset;
     fileDesc_.chunk_size = chunkSize;
-    system_notify_event(firmware_update, firmware_update_progress, &fileDesc_);
+    system_notify_event(firmware_update, firmware_update_progress, &fileDesc_, nullptr /* fn */, nullptr /* fndata */, NOTIFY_IF_POSSIBLE);
     lastActiveTime_ = HAL_Timer_Get_Milli_Seconds();
     return 0;
 }

@@ -86,6 +86,13 @@ os_mutex_recursive_t mutex_usb_serial();
         return; \
     }
 
+#define _THREAD_CONTEXT_TRY_ASYNC(thread, fn) \
+    if (thread.isStarted() && !thread.isCurrentThread()) { \
+        auto lambda = [=]() { (fn); }; \
+        thread.invoke_async(particle::FFL(lambda), true /* dontBlock */); \
+        return; \
+    }
+
 // execute synchronously on the system thread. Since the parameter lifetime is
 // assumed to be bound by the caller, the parameters don't need marshalling
 // fn: the function call to perform. This is textually substitued into a lambda, with the

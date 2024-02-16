@@ -87,9 +87,13 @@ void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer
     }
 }
 
-void system_notify_event_async(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
+void system_notify_event_async(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata, bool dontBlock = false) {
     // run event notifications on the application thread
-    APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_async(event, data, pointer, fn, fndata));
+    if (dontBlock) {
+        APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_async(event, data, pointer, fn, fndata));
+    } else {
+        _THREAD_CONTEXT_TRY_ASYNC(particle::ApplicationThread, system_notify_event_async(event, data, pointer, fn, fndata)); // FIXME
+    }
 #if PLATFORM_THREADING
     std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
 #endif // PLATFORM_THREADING
@@ -203,7 +207,7 @@ void system_notify_event(system_event_t event, uint32_t data, void* pointer, voi
             SystemISRTaskQueue.enqueue(task);
         };
     } else {
-        system_notify_event_async(event, data, pointer, fn, fndata);
+        system_notify_event_async(event, data, pointer, fn, fndata, flags & NOTIFY_IF_POSSIBLE);
     }
 }
 

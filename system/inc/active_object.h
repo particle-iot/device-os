@@ -283,7 +283,7 @@ protected:
 
     // todo - concurrent queue should be a strategy so it's pluggable without requiring inheritance
     virtual bool take(Item& item)=0;
-    virtual bool put(Item& item)=0;
+    virtual bool put(Item& item, bool dontBlock = false)=0;
 
     /**
      * Static thread entrypoint to run this active object loop.
@@ -315,13 +315,13 @@ public:
         return started;
     }
 
-    template<typename R> void invoke_async(const std::function<R(void)>& work)
+    template<typename R> void invoke_async(const std::function<R(void)>& work, bool dontBlock = false)
     {
         auto task = new AsyncTask<R>(work);
         if (task)
         {
 			Item message = task;
-			if (!put(message))
+			if (!put(message, dontBlock))
 				delete task;
         }
 	}
@@ -354,9 +354,9 @@ protected:
         return !os_queue_take(queue, &result, configuration.take_wait, nullptr);
     }
 
-    virtual bool put(Item& item)
+    virtual bool put(Item& item, bool dontBlock)
     {
-        return !os_queue_put(queue, &item, configuration.put_wait, nullptr);
+        return !os_queue_put(queue, &item, dontBlock ? 0 : configuration.put_wait, nullptr);
     }
 
     void createQueue()
@@ -422,9 +422,9 @@ public:
         return r;
     }
 
-    virtual bool put(Item& item) override
+    virtual bool put(Item& item, bool dontBlock) override
     {
-        bool r = ActiveObjectQueue::put(item);
+        bool r = ActiveObjectQueue::put(item, dontBlock);
         if (r && _thread != OS_THREAD_INVALID_HANDLE) {
             os_thread_notify(_thread, nullptr);
         }

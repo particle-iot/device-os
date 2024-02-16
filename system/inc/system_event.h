@@ -113,7 +113,8 @@ enum SystemEventsParam {
  * Flags altering the behavior of the `system_notify_event()` function.
  */
 enum SystemNotifyEventFlag {
-    NOTIFY_SYNCHRONOUSLY = 0x01
+    NOTIFY_SYNCHRONOUSLY = 0x01,
+    NOTIFY_IF_POSSIBLE = 0x02
 };
 
 #define SYSTEM_EVENT_CONTEXT_VERSION        (2)
