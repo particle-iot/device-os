@@ -29,7 +29,6 @@
 #include <future>
 #include <cstring>
 
-#include "channel.h"
 #include "concurrent_hal.h"
 #include "hal_platform.h"
 
@@ -340,41 +339,6 @@ public:
 			}
         }
         return promise;
-    }
-
-};
-
-
-template <size_t queue_size=50>
-class ActiveObjectChannel : public ActiveObjectBase
-{
-    cpp::channel<Item, queue_size> _channel;
-
-protected:
-
-    virtual bool take(Item& item) override
-    {
-        return cpp::select().recv_only(_channel, item).try_once();
-    }
-
-    virtual bool put(const Item& item) override
-    {
-        _channel.send(item);
-        return true;
-    }
-
-
-public:
-
-    ActiveObjectChannel(ActiveObjectConfiguration& config) : ActiveObjectBase(config) {}
-
-    /**
-     * Start the asynchronous processing for this active object.
-     */
-    void start()
-    {
-        _channel = cpp::channel<Item*, queue_size>();
-        start_thread();
     }
 
 };
