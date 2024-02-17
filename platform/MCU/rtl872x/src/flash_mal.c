@@ -609,6 +609,7 @@ int FLASH_AddMfgSystemModuleSlot(void) {
             }
         } else {
             ret = SYSTEM_ERROR_BAD_DATA;
+        }
     }
     return ret;
 }
