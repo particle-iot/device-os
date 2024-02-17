@@ -607,7 +607,8 @@ int FLASH_AddMfgSystemModuleSlot(void) {
                     (uint32_t)info.module_start_address, copyLength, MOD_FUNC_SYSTEM_PART, slotFlags)) {
                 ret = SYSTEM_ERROR_NO_MEMORY;
             }
-        }
+        } else {
+            ret = SYSTEM_ERROR_BAD_DATA;
     }
     return ret;
 }
