@@ -18,10 +18,11 @@
 
 #include "device_config.h"
 #include "core_msg.h"
-#include "filesystem.h"
+#include "filesystem_util.h"
 #include "ota_flash_hal.h"
 #include "../../../system/inc/system_info.h" // FIXME
 
+#include <filesystem>
 #include <cstdlib>
 #include <fstream>
 #include <istream>
@@ -36,6 +37,7 @@ using namespace particle;
 using namespace particle::config;
 
 namespace po = boost::program_options;
+namespace fs = std::filesystem;
 
 DeviceConfig deviceConfig;
 
@@ -108,6 +110,7 @@ public:
             ("product_version", po::value<uint16_t>(&config.product_version)->default_value(0xffff), "the product version")
             ("describe", po::value<std::string>(&config.describe), "the filename containing the device description")
             ("protocol,p", po::value<ProtocolFactory>(&config.protocol)->default_value(PROTOCOL_NONE), "the cloud communication protocol to use")
+            ("flash_file", po::value<std::string>(&config.flash_file), "the filename to use to store the contents of the external flash")
             ;
 
         command_line_options.add(program_options).add(device_options);
@@ -367,6 +370,10 @@ void DeviceConfig::read(Configuration& config)
         } else {
             this->protocol = PROTOCOL_DTLS;
         }
+    }
+
+    if (!config.flash_file.empty()) {
+        this->flash_file = fs::absolute(config.flash_file);
     }
 
     setLoggerLevel((LoggerOutputLevel)(NO_LOG_LEVEL - config.log_level));

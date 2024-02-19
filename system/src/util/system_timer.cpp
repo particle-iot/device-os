@@ -45,15 +45,16 @@ int SystemTimer::start(unsigned timeout) {
             if (r != 0) {
                 return SYSTEM_ERROR_NO_MEMORY;
             }
+            r = os_timer_change(timer_, OS_TIMER_CHANGE_START, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
+            if (r != 0) {
+                return SYSTEM_ERROR_INTERNAL; // Should not happen
+            }
         } else {
+            // Changing the period also starts the timer
             int r = os_timer_change(timer_, OS_TIMER_CHANGE_PERIOD, false /* fromISR */, timeout, 0xffffffffu /* block */, nullptr /* reserved */);
             if (r != 0) {
                 return SYSTEM_ERROR_INTERNAL; // Should not happen
             }
-        }
-        int r = os_timer_change(timer_, OS_TIMER_CHANGE_START, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
-        if (r != 0) {
-            return SYSTEM_ERROR_INTERNAL; // Should not happen
         }
     } else {
         // Schedule a call in the system thread

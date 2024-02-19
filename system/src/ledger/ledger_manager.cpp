@@ -43,6 +43,7 @@
 #include "file_util.h"
 #include "time_util.h"
 #include "endian_util.h"
+#include "str_compat.h"
 #include "scope_guard.h"
 #include "check.h"
 
@@ -259,9 +260,12 @@ int LedgerManager::init() {
     if (!buf) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
+    auto fsInstance = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr);
+    assert(fsInstance);
+    FsLock fs(fsInstance);
+    CHECK(filesystem_mount(fsInstance));
     // Enumerate local ledgers
     LedgerSyncContexts contexts;
-    FsLock fs;
     lfs_dir_t dir = {};
     int r = lfs_dir_open(fs.instance(), &dir, LEDGER_ROOT_DIR);
     if (r == 0) {
@@ -1586,14 +1590,13 @@ LedgerManager* LedgerManager::instance() {
     // XXX: Lazy initialization is used so that ledger instances can be requested in the global
     // scope by the application. It's dangerous because the application's global constructors are
     // called before the system is fully initialized but seems to work in this case
-    static volatile bool initCalled = false;
-    if (!initCalled) {
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, []() {
         int r = mgr.init();
-        initCalled = true;
         if (r < 0) {
             LOG(ERROR, "Failed to initialize ledger manager: %d", r);
         }
-    }
+    });
     return &mgr;
 }
 

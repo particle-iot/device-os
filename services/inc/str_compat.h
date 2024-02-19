@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,13 +17,20 @@
 
 #pragma once
 
-#include "platform_config.h"
+#include <string.h>
 
-#ifdef USE_SERIAL_FLASH
+#include "hal_platform.h"
 
-#define EXTERNAL_FLASH_SIZE (sFLASH_PAGESIZE * sFLASH_PAGECOUNT)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define EXTERNAL_FLASH_ASSET_STORAGE_FIRST_PAGE (sFLASH_ASSET_STORAGE_FIRST_PAGE)
-#define EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT (sFLASH_ASSET_STORAGE_PAGE_COUNT)
+#if PLATFORM_ID == PLATFORM_GCC && defined(__GLIBC__)
 
-#endif // defined(USE_SERIAL_FLASH)
+size_t strlcpy(char* dest, const char* src, size_t size);
+
+#endif // PLATFORM_ID == PLATFORM_GCC && defined(__GLIBC__)
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

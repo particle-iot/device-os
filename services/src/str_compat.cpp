@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,15 +15,19 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "str_compat.h"
 
-#include "platform_config.h"
+#if PLATFORM_ID == PLATFORM_GCC && defined(__GLIBC__)
 
-#ifdef USE_SERIAL_FLASH
+size_t strlcpy(char* dest, const char* src, size_t size) {
+    auto srcLen = strlen(src);
+    if (srcLen + 1 <= size) {
+        memcpy(dest, src, srcLen + 1);
+    } else if (size > 0) {
+        memcpy(dest, src, size - 1);
+        dest[size - 1] = '\0';
+    }
+    return srcLen;
+}
 
-#define EXTERNAL_FLASH_SIZE (sFLASH_PAGESIZE * sFLASH_PAGECOUNT)
-
-#define EXTERNAL_FLASH_ASSET_STORAGE_FIRST_PAGE (sFLASH_ASSET_STORAGE_FIRST_PAGE)
-#define EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT (sFLASH_ASSET_STORAGE_PAGE_COUNT)
-
-#endif // defined(USE_SERIAL_FLASH)
+#endif // PLATFORM_ID == PLATFORM_GCC && defined(__GLIBC__)

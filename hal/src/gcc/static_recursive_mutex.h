@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,3 +16,27 @@
  */
 
 #pragma once
+
+#include <mutex>
+#include <chrono>
+
+class StaticRecursiveMutex {
+public:
+    StaticRecursiveMutex() = default;
+
+    bool lock(unsigned timeout = 0) {
+        if (timeout > 0) {
+            return mutex_.try_lock_for(std::chrono::milliseconds(timeout));
+        }
+        mutex_.lock();
+        return true;
+    }
+
+    bool unlock() {
+        mutex_.unlock();
+        return true;
+    }
+
+private:
+    std::recursive_timed_mutex mutex_;
+};

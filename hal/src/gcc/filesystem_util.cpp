@@ -7,7 +7,7 @@
 #include <boost/algorithm/hex.hpp>
 
 #include "service_debug.h"
-#include "filesystem.h"
+#include "filesystem_util.h"
 
 namespace fs = std::filesystem;
 

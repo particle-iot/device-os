@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,11 +19,10 @@
 
 #include "platform_config.h"
 
-#ifdef USE_SERIAL_FLASH
+#define FILESYSTEM_PROG_SIZE    (256)
+#define FILESYSTEM_READ_SIZE    (256)
 
-#define EXTERNAL_FLASH_SIZE (sFLASH_PAGESIZE * sFLASH_PAGECOUNT)
-
-#define EXTERNAL_FLASH_ASSET_STORAGE_FIRST_PAGE (sFLASH_ASSET_STORAGE_FIRST_PAGE)
-#define EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT (sFLASH_ASSET_STORAGE_PAGE_COUNT)
-
-#endif // defined(USE_SERIAL_FLASH)
+#define FILESYSTEM_BLOCK_SIZE   (sFLASH_PAGESIZE)
+#define FILESYSTEM_BLOCK_COUNT  (sFLASH_FILESYSTEM_PAGE_COUNT)
+#define FILESYSTEM_FIRST_BLOCK  (sFLASH_FILESYSTEM_FIRST_PAGE)
+#define FILESYSTEM_LOOKAHEAD    (128)

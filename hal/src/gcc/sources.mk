@@ -36,6 +36,7 @@ CSRC += $(call target_files,$(overridedir)/,*.c)
 CPPSRC += $(call target_files,$(overridedir)/,*.cpp)
 
 CPPSRC += $(call target_files,$(HAL_MODULE_PATH)/network/util/,*.cpp)
+CPPSRC += $(HAL_MODULE_PATH)/shared/filesystem.cpp
 
 # ASM source files included in this build.
 ASRC +=
