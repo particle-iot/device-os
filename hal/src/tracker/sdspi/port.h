@@ -49,7 +49,7 @@ typedef int32_t esp_err_t;
 #define ESP_ERR_TIMEOUT         0x107
 #define ESP_ERR_INVALID_RESPONSE    0x108
 
-#define at_debugLevel 2
+#define at_debugLevel (-1)
 
 #define ESP_AT_LOGE(x, ...) {if(at_debugLevel >= 0 && (x)) {LOG(ERROR, __VA_ARGS__);}}
 #define ESP_AT_LOGW(x, ...) {if(at_debugLevel >= 1 && (x)) {LOG(WARN, __VA_ARGS__);}}
