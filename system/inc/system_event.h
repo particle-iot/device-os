@@ -113,8 +113,8 @@ enum SystemEventsParam {
  * Flags altering the behavior of the `system_notify_event()` function.
  */
 enum SystemNotifyEventFlag {
-    NOTIFY_SYNCHRONOUSLY = 0x01,
-    NOTIFY_IF_POSSIBLE = 0x02
+    NOTIFY_SYNCHRONOUSLY = 0x01, ///< Invoke the event handlers directly in the calling thread.
+    NOTIFY_DONT_BLOCK = 0x02 ///< Ignore the event if the event queue of the application thread is full.
 };
 
 #define SYSTEM_EVENT_CONTEXT_VERSION        (2)

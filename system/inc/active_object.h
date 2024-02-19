@@ -315,16 +315,19 @@ public:
         return started;
     }
 
-    template<typename R> void invoke_async(const std::function<R(void)>& work, bool dontBlock = false)
+    template<typename R> bool invoke_async(const std::function<R(void)>& work, bool dontBlock = false)
     {
         auto task = new AsyncTask<R>(work);
-        if (task)
-        {
-			Item message = task;
-			if (!put(message, dontBlock))
-				delete task;
+        if (!task) {
+            return false;
         }
-	}
+        Item message = task;
+        if (!put(message, dontBlock)) {
+            delete task;
+            return false;
+        }
+        return true;
+    }
 
     template<typename R> SystemPromise<R>* invoke_future(const std::function<R(void)>& work)
     {

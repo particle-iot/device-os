@@ -31,6 +31,8 @@
 // STATIC_ASSERT macro clashes with the nRF SDK
 #define NO_STATIC_ASSERT
 
+#include <cmath>
+
 #include "debug.h"
 #include "system_event.h"
 #include "system_mode.h"
