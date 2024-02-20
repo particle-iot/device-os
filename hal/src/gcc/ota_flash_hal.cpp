@@ -173,7 +173,8 @@ int HAL_System_Info(hal_system_info_t* info, bool create, void* reserved)
                 .module_index = module.index(),
                 .store = module.store(),
                 .mcu_identifier = 0,
-                .location = moduleLocation(module)
+                .location = moduleLocation(module),
+                .flags = 0
             },
             .info = {
                 .module_start_address = (char*)0 + moduleAddr,
