@@ -44,6 +44,8 @@ extern "C" int __gthread_once (__gthread_once_t* once, void (*func) (void))
     auto callable = std::__once_functor;
     auto lock = std::__get_once_functor_lock_ptr();
     if (lock) {
+        // For consistency
+        std::__set_once_functor_lock_ptr(0);
         // This won't be relocked in <mutex> std::call_once implementation
         lock->unlock();
     }
