@@ -14,8 +14,14 @@
 #include <atomic>
 
 typedef int __gthread_key_t;
-typedef std::atomic_flag __gthread_once_t;
 
+typedef enum __gthread_once_state_t {
+    GTHREAD_ONCE_STATE_NOT_INITIALIZED = 0,
+    GTHREAD_ONCE_STATE_RUNNING = 1,
+    GTHREAD_ONCE_STATE_INITIALIZED = 2
+} __gthread_once_state_t;
+
+typedef std::atomic<__gthread_once_state_t> __gthread_once_t;
 
 #define _GLIBCXX_UNUSED __attribute__((unused))
 
@@ -25,14 +31,7 @@ __gthread_active_p (void)
     return 0;
 }
 
-static inline int
-__gthread_once (__gthread_once_t* once, void (*func) (void))
-{
-    if (once->test_and_set(std::memory_order_relaxed) == false) {
-        func();
-    }
-    return 0;
-}
+extern "C" int __gthread_once (__gthread_once_t* once, void (*func) (void));
 
 static inline int _GLIBCXX_UNUSED
 __gthread_key_create (__gthread_key_t *__key _GLIBCXX_UNUSED, void (*__func) (void *) _GLIBCXX_UNUSED)
@@ -106,7 +105,7 @@ __gthread_recursive_mutex_destroy (__gthread_recursive_mutex_t *__mutex)
     return os_mutex_recursive_destroy(*__mutex);
 }
 
-#define __GTHREAD_ONCE_INIT ATOMIC_FLAG_INIT
+#define __GTHREAD_ONCE_INIT ATOMIC_VAR_INIT(GTHREAD_ONCE_STATE_NOT_INITIALIZED)
 #define __GTHREAD_MUTEX_INIT_FUNCTION(mx)  os_mutex_create(mx)
 #define __GTHREAD_RECURSIVE_MUTEX_INIT_FUNCTION(mx) os_mutex_recursive_create(mx)
 
