@@ -19,7 +19,6 @@
 
 #include "time.h"
 #include "ncp_client.h"
-#include "wifi_network_manager.h"
 #include "hal_platform.h"
 
 #if HAL_PLATFORM_GNSS
