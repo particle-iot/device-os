@@ -20,6 +20,8 @@
 #include "hal_platform.h"
 #include "dynalib.h"
 
+#if HAL_PLATFORM_GNSS
+
 #ifdef DYNALIB_EXPORT
 #include "gnss_hal.h"
 #endif
@@ -34,5 +36,8 @@
 DYNALIB_BEGIN(hal_gnss)
 
 DYNALIB_FN(0, hal_gnss, hal_gnss_init, int(void*))
+DYNALIB_FN(1, hal_gnss, hal_gnss_pos, int(void*))
 
 DYNALIB_END(hal_gnss)
+
+#endif // HAL_PLATFORM_GNSS

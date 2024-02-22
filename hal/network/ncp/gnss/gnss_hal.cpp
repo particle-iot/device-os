@@ -21,6 +21,8 @@
 #include "logging.h"
 #include "gnss_hal.h"
 
+#if HAL_PLATFORM_GNSS
+
 #include "network/ncp/cellular/cellular_network_manager.h"
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #include "network/ncp/cellular/ncp.h"
@@ -38,6 +40,21 @@ int hal_gnss_init(void* reserved) {
     GnssNcpClientConfig config = {};
     config.enableGpsOneXtra(true);
     client->gnssConfig(config);
+    client->gnssOn();
+    client->acquireNmeaSentences(GNSS_NMEA_TYPE_GNS, nullptr, 0);
 
     return 0;
 }
+
+int hal_gnss_pos(void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = reinterpret_cast<QuectelNcpClient*>(mgr->ncpClient());
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    GnssPositioningInfo info = {};
+    client->acquirePositioningInfo(&info);
+    return 0;
+}
+
+#endif // HAL_PLATFORM_GNSS

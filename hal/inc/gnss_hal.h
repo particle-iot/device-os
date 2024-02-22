@@ -18,11 +18,18 @@
 #ifndef GNSS_HAL_H
 #define GNSS_HAL_H
 
+#include "hal_platform.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#if HAL_PLATFORM_GNSS
+
 int hal_gnss_init(void* reserved);
+int hal_gnss_pos(void* reserved);
+
+#endif // HAL_PLATFORM_GNSS
 
 #ifdef __cplusplus
 }

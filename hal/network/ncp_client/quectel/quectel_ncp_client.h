@@ -35,7 +35,11 @@ namespace particle {
 
 class SerialStream;
 
-class QuectelNcpClient: public CellularNcpClient, public GnssNcpClient {
+class QuectelNcpClient: public CellularNcpClient
+#if HAL_PLATFORM_GNSS
+                      , public GnssNcpClient
+#endif
+{
 public:
     QuectelNcpClient();
     ~QuectelNcpClient();
@@ -77,16 +81,21 @@ public:
     virtual int startNcpFwUpdate(bool update) override;
     virtual int dataModeError(int error) override;
 
+#if HAL_PLATFORM_GNSS
     // Reimplemented from GnssNcpClient
     int gnssConfig(const GnssNcpClientConfig& conf) override;
     int gnssOn() override;
     int gnssOff() override;
     int acquirePositioningInfo(GnssPositioningInfo* info) override;
+    int acquireNmeaSentences(GnssNmeaType type, char* buf, size_t len) override;
+    uint32_t getTtff() override;
+    GnssState gnssState() override;
 #if HAL_PLATFORM_GPS_ONE_XTRA
     int injectGpsOneXtraTimeAndData(const uint8_t* buf, size_t size) override;
     bool isGpsOneXtraEnabled() override;
     bool isGpsOneXtraDataValid() override;
 #endif
+#endif // HAL_PLATFORM_GNSS
 
     auto getMuxer() {
         return &muxer_;
@@ -95,7 +104,6 @@ public:
 private:
     AtParser parser_;
     AtParser dataParser_;
-    AtParser gnssParser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
     CellularNcpClientConfig conf_;
@@ -105,11 +113,9 @@ private:
     volatile NcpPowerState pwrState_ = NcpPowerState::UNKNOWN;
     int parserError_ = 0;
     bool ready_ = false;
-    bool gnssReady_ = false;
     gsm0710::Muxer<EventGroupBasedStream, StaticRecursiveMutex> muxer_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerAtStream_;
     std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerDataStream_;
-    std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerGnssStream_;
     CellularNetworkConfig netConf_;
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
@@ -131,6 +137,18 @@ private:
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
     bool checkImsi_ = false;
+
+#if HAL_PLATFORM_GNSS
+    AtParser gnssParser_;
+    std::unique_ptr<particle::MuxerChannelStream<decltype(muxer_)> > muxerGnssStream_;
+    volatile GnssState gnssState_ = GNSS_STATE_DISABLED;
+    volatile GnssState preGnssState_ = GNSS_STATE_DISABLED;
+    GnssNcpClientConfig gnssConf_;
+    os_thread_t gnssTtffThread_ = nullptr; 
+    volatile uint32_t gnssTtffMs_ = 0xFFFFFFFF;
+
+    static void calculateTtffThread(void *context);
+#endif // HAL_PLATFORM_GNSS
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);

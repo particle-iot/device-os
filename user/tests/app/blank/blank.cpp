@@ -19,9 +19,18 @@
 #include "gnss_hal.h"
 #include "rtc_hal.h"
 
-SYSTEM_MODE(MANUAL);
+SYSTEM_MODE(SEMI_AUTOMATIC);
 
 Serial1LogHandler l(115200, LOG_LEVEL_ALL);
+
+uint32_t counter = 0;
+
+void gnssThread() {
+    while (true) {
+        hal_gnss_pos(nullptr);
+        delay(500);
+    }
+}
 
 /* executes once at startup */
 void setup() {
@@ -29,12 +38,36 @@ void setup() {
 
     Cellular.on();
     waitUntil(Cellular.isOn);
-    // waitUntil(Particle.connected);
+
+    // Cellular.command(1000, "AT+QGPSCFG=\"priority\",1,0\r\n");
+    // delay(3s);
+    // Cellular.command(1000, "AT+QGPSCFG=\"priority\"\r\n");
+    // delay(3s);
 
     hal_gnss_init(nullptr);
+
+    Cellular.off();
+    delay(10s);
+
+    Cellular.on();
+    waitUntil(Cellular.isOn);
+
+    delay(10s);
+
+    Particle.connect();
+    waitUntil(Particle.connected);
+
+    static Thread *thread = new Thread("gnss", gnssThread, OS_THREAD_PRIORITY_DEFAULT);
 }
 
 /* executes continuously after setup() runs */
 void loop() {
-
+    if (Particle.connected()) {
+        counter++;
+        char temp[32];
+        sprintf(temp, "%ld", counter);
+        Particle.publish("GH-GNSS", temp);
+        Log.info("counter: %ld", counter);
+        delay(1000);
+    }
 }

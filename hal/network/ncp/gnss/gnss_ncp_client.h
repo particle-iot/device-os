@@ -20,8 +20,29 @@
 #include "time.h"
 #include "ncp_client.h"
 #include "wifi_network_manager.h"
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_GNSS
 
 namespace particle {
+
+enum GnssState {
+    GNSS_STATE_DISABLED = 0,
+    GNSS_STATE_INIT = 1,
+    GNSS_STATE_ON = 2,
+    GNSS_STATE_OFF = 3,
+    GNSS_STATE_MAX = 4
+};
+
+enum GnssNmeaType {
+    GNSS_NMEA_TYPE_GGA = 0,
+    GNSS_NMEA_TYPE_RMC = 1,
+    GNSS_NMEA_TYPE_GSV = 2,
+    GNSS_NMEA_TYPE_GSA = 3,
+    GNSS_NMEA_TYPE_VTG = 4,
+    GNSS_NMEA_TYPE_GNS = 5,
+    GNSS_NMEA_TYPE_MAX = 6
+};
 
 struct GnssPositioningInfo {
     uint16_t version;
@@ -64,6 +85,9 @@ public:
     virtual int gnssOn() = 0;
     virtual int gnssOff() = 0;
     virtual int acquirePositioningInfo(GnssPositioningInfo* info) = 0;
+    virtual int acquireNmeaSentences(GnssNmeaType type, char* buf, size_t len) = 0;
+    virtual uint32_t getTtff() = 0;
+    virtual GnssState gnssState() = 0;
 
 #if HAL_PLATFORM_GPS_ONE_XTRA
     virtual int injectGpsOneXtraTimeAndData(const uint8_t* buf, size_t size) = 0;
@@ -73,3 +97,5 @@ public:
 };
 
 } // particle
+
+#endif // HAL_PLATFORM_GNSS

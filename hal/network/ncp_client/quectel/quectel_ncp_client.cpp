@@ -156,7 +156,6 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     modemInit();
     conf_ = static_cast<const CellularNcpClientConfig&>(conf);
 
-
     // Initialize serial stream
     std::unique_ptr<SerialStream> serial(new (std::nothrow) SerialStream(HAL_PLATFORM_CELLULAR_SERIAL, QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE, getDefaultSerialConfig()));
     CHECK_TRUE(serial, SYSTEM_ERROR_NO_MEMORY);
@@ -169,13 +168,9 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     decltype(muxerDataStream_) muxDataStrm(new(std::nothrow) decltype(muxerDataStream_)::element_type(&muxer_, QUECTEL_NCP_PPP_CHANNEL));
     CHECK_TRUE(muxDataStrm, SYSTEM_ERROR_NO_MEMORY);
     CHECK(muxDataStrm->init(QUECTEL_NCP_PPP_CHANNEL_RX_BUFFER_SIZE));
-    decltype(muxerGnssStream_) muxGnssStrm(new(std::nothrow) decltype(muxerGnssStream_)::element_type(&muxer_, QUECTEL_NCP_GNSS_CHANNEL));
-    CHECK_TRUE(muxGnssStrm, SYSTEM_ERROR_NO_MEMORY);
-    CHECK(muxGnssStrm->init(QUECTEL_NCP_GNSS_CHANNEL_RX_BUFFER_SIZE));
     serial_ = std::move(serial);
     muxerAtStream_ = std::move(muxStrm);
     muxerDataStream_ = std::move(muxDataStrm);
-    muxerGnssStream_ = std::move(muxGnssStrm);
     ncpState_ = NcpState::OFF;
     prevNcpState_ = NcpState::OFF;
     connState_ = NcpConnectionState::DISCONNECTED;
@@ -183,8 +178,18 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     regCheckTime_ = 0;
     parserError_ = 0;
     ready_ = false;
-    gnssReady_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
+
+#if HAL_PLATFORM_GNSS
+    decltype(muxerGnssStream_) muxGnssStrm(new(std::nothrow) decltype(muxerGnssStream_)::element_type(&muxer_, QUECTEL_NCP_GNSS_CHANNEL));
+    CHECK_TRUE(muxGnssStrm, SYSTEM_ERROR_NO_MEMORY);
+    CHECK(muxGnssStrm->init(QUECTEL_NCP_GNSS_CHANNEL_RX_BUFFER_SIZE));
+    muxerGnssStream_ = std::move(muxGnssStrm);
+    gnssState_ = GNSS_STATE_DISABLED;
+    preGnssState_ = GNSS_STATE_DISABLED;
+    gnssTtffThread_ = nullptr;
+#endif // HAL_PLATFORM_GNSS
+
     resetRegistrationState();
     if (modemPowerState()) {
         serial_->on(true);
@@ -196,12 +201,21 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     return SYSTEM_ERROR_NONE;
 }
 
+#if HAL_PLATFORM_GNSS
 #include "xtra3grcej.h"
 
 int QuectelNcpClient::gnssConfig(const GnssNcpClientConfig& conf) {
     const NcpClientLock lock(this);
+    CHECK_TRUE(gnssState_ == GNSS_STATE_DISABLED, SYSTEM_ERROR_NONE);
 
-    LOG(TRACE, "Initializing GNSS");
+    SCOPE_GUARD({
+        if (gnssState_ == GNSS_STATE_DISABLED) {
+            LOG(TRACE, "Failed to configure GNSS!");
+        }
+    });
+
+    gnssConf_ = conf;
+
     if (muxer_.isRunning()) {
         LOG(TRACE, "Muxer is running");
     } else {
@@ -209,7 +223,6 @@ int QuectelNcpClient::gnssConfig(const GnssNcpClientConfig& conf) {
         CHECK(on());
     }
 
-    LOG(TRACE, "Opening GNSS channel");
     int r = muxer_.openChannel(QUECTEL_NCP_GNSS_CHANNEL, muxerGnssStream_->channelDataCb, muxerGnssStream_.get());
     if (r) {
         LOG(ERROR, "Failed to open GNSS channel");
@@ -217,7 +230,6 @@ int QuectelNcpClient::gnssConfig(const GnssNcpClientConfig& conf) {
         return SYSTEM_ERROR_UNKNOWN;
     }
 
-    LOG(TRACE, "Configure GNSS AT parser");
     auto parserConf = AtParserConfig().stream(muxerGnssStream_.get()).commandTerminator(AtCommandTerminator::CRLF);
     gnssParser_.destroy();
     CHECK(gnssParser_.init(std::move(parserConf)));
@@ -225,7 +237,7 @@ int QuectelNcpClient::gnssConfig(const GnssNcpClientConfig& conf) {
     skipAll(muxerGnssStream_.get());
     muxerGnssStream_->enabled(true);
 
-    CHECK_PARSER_OK(gnssParser_.execCommand(1000, "AT"));
+    CHECK(waitAtResponse(gnssParser_, 1000));
 
     // Turn off the GNSS, otherwise, we may get "+CME ERROR:504" when configuring nmeasrc.
     gnssParser_.execCommand("AT+QGPSEND");
@@ -242,10 +254,17 @@ int QuectelNcpClient::gnssConfig(const GnssNcpClientConfig& conf) {
     CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"nmeasrc\",1"));
 
     // Configure NMEA sentences output type
-    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"gpsnmeatype\",8")); // GSA
-    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"glonassnmeatype\",2")); // GSA
-    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"galileonmeatype\",1")); // GSV
-    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"beidounmeatype\",1")); // GSA
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"gpsnmeatype\",31")); // GGA + RMC + GSV + GSA + VTG
+    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"beidounmeatype\",3")); // GSA + GSV
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+        CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"glonassnmeatype\",7")); // GSA + GSV + GNS
+        CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"galileonmeatype\",1")); // It only supports GSV
+    } else {
+        CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"glonassnmeatype\",3")); // GSA + GSV
+        CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSCFG=\"galileonmeatype\",3")); // GSA + GSV
+    }
+
+    gnssState_ = GNSS_STATE_INIT;
 
     if (conf.isGpsOneXtraEnabled()) {
         // Enable gpsOneXtra assistance function
@@ -255,48 +274,66 @@ int QuectelNcpClient::gnssConfig(const GnssNcpClientConfig& conf) {
         CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSXTRA=0"));
     }
 
-    // Remove the following test routine from this function
-
-    // Turn on GNSS
-    CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPS=1"));
-
-    // Obtain positioning information
-    uint32_t start = hal_timer_millis(nullptr);
-    auto resp = gnssParser_.sendCommand("AT+QGPSLOC=2");
-    while (resp.readResult() != AtResponse::OK) {
-        resp = gnssParser_.sendCommand("AT+QGPSLOC=2");
-        HAL_Delay_Milliseconds(500);
-    }
-    uint32_t end = hal_timer_millis(nullptr);
-    LOG(TRACE, "TTFF: %ldms", end - start);
-
-    GnssPositioningInfo info = {};
-    acquirePositioningInfo(&info);
-
-    gnssReady_ = true;
-
     return SYSTEM_ERROR_NONE;
+}
+
+void QuectelNcpClient::calculateTtffThread(void *context) {
+    QuectelNcpClient* client = (QuectelNcpClient*)context;
+    uint32_t start = hal_timer_millis(nullptr);
+    client->gnssTtffMs_ = 0xFFFFFFFF;
+    while (client->gnssTtffMs_ == 0xFFFFFFFF) {
+        {
+            const NcpClientLock lock(client);
+            if (client->gnssState_ != GNSS_STATE_ON) {
+                break;
+            }
+            auto resp = client->gnssParser_.sendCommand("AT+QGPSLOC=2");
+            if (resp.readResult() == AtResponse::OK) {
+                client->gnssTtffMs_ = hal_timer_millis(nullptr) - start;
+                break;
+            }
+        }
+        HAL_Delay_Milliseconds(1000);
+    }
+    LOG(TRACE, "Exiting TTFF thread");
+    client->gnssTtffThread_ = nullptr;
+    os_thread_exit(nullptr);
 }
 
 int QuectelNcpClient::gnssOn() {
     const NcpClientLock lock(this);
-    CHECK_TRUE(ready_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(gnssState_ != GNSS_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(gnssState_ != GNSS_STATE_ON, SYSTEM_ERROR_NONE);
     CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPS=1"));
+    gnssState_ = GNSS_STATE_ON;
+    if (!gnssTtffThread_) {
+        LOG(TRACE, "Starting TTFF thread");
+        CHECK_TRUE(os_thread_create(&gnssTtffThread_, "ttffThread", OS_THREAD_PRIORITY_NETWORK, calculateTtffThread, this, 2048) == 0, SYSTEM_ERROR_INTERNAL);
+    }
     return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::gnssOff() {
     const NcpClientLock lock(this);
-    CHECK_TRUE(ready_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(gnssState_ != GNSS_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE);
     CHECK_PARSER_OK(gnssParser_.execCommand("AT+QGPSEND"));
     muxerGnssStream_->enabled(false);
+    gnssState_ = GNSS_STATE_OFF;
     return SYSTEM_ERROR_NONE;
+}
+
+uint32_t QuectelNcpClient::getTtff() {
+    return gnssTtffMs_;
+}
+
+GnssState QuectelNcpClient::gnssState() {
+    return gnssState_;
 }
 
 int QuectelNcpClient::acquirePositioningInfo(GnssPositioningInfo* info) {
     const NcpClientLock lock(this);
     CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(ready_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(gnssState_ != GNSS_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE);
 
     info->locked = false;
 
@@ -324,10 +361,28 @@ int QuectelNcpClient::acquirePositioningInfo(GnssPositioningInfo* info) {
     return SYSTEM_ERROR_NONE;
 }
 
+int QuectelNcpClient::acquireNmeaSentences(GnssNmeaType type, char* buf, size_t len) {
+    const NcpClientLock lock(this);
+    CHECK_TRUE(gnssState_ != GNSS_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(type < GNSS_NMEA_TYPE_MAX, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    if (type == GNSS_NMEA_TYPE_GNS && ncpId() != PLATFORM_NCP_QUECTEL_EG91_EX) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    const char* nmeaType[GNSS_NMEA_TYPE_MAX] = {
+        "GGA", "RMC", "GSV", "GSA", "VTG", "GNS"
+    };
+    auto resp = gnssParser_.sendCommand(5000, "AT+QGPSGNMEA=\"%s\"", nmeaType[type]);
+    const size_t n = CHECK_PARSER(resp.readLine(buf, len));
+    CHECK_PARSER_OK(resp.readResult());
+    return n;
+}
+
 #if HAL_PLATFORM_GPS_ONE_XTRA
 bool QuectelNcpClient::isGpsOneXtraEnabled() {
     const NcpClientLock lock(this);
-    CHECK_TRUE_RETURN(ready_, false);
+    CHECK_TRUE_RETURN(gnssState_ != GNSS_STATE_DISABLED, false);
     auto resp = gnssParser_.sendCommand("AT+QGPSXTRA?");
     int enabled;
     int r = resp.scanf("+QGPSXTRA: %d", &enabled);
@@ -340,7 +395,7 @@ bool QuectelNcpClient::isGpsOneXtraEnabled() {
 
 bool QuectelNcpClient::isGpsOneXtraDataValid() {
     const NcpClientLock lock(this);
-    CHECK_TRUE_RETURN(ready_, false); 
+    CHECK_TRUE_RETURN(gnssState_ != GNSS_STATE_DISABLED, false); 
     auto resp = gnssParser_.sendCommand("AT+QGPSXTRADATA?");
     int validMinutes;
     int r = resp.scanf("+QGPSXTRADATA: %d, \"%*19[^\"]\"", &validMinutes);
@@ -353,7 +408,7 @@ bool QuectelNcpClient::isGpsOneXtraDataValid() {
 
 int QuectelNcpClient::injectGpsOneXtraTimeAndData(const uint8_t* buf, size_t len) {
     const NcpClientLock lock(this);
-    CHECK_TRUE(ready_, SYSTEM_ERROR_INVALID_STATE); 
+    CHECK_TRUE(gnssState_ != GNSS_STATE_DISABLED, SYSTEM_ERROR_INVALID_STATE); 
     LOG(TRACE, "Injecting gpsOneXtra data");
 
     struct timeval tv = {};
@@ -427,6 +482,7 @@ int QuectelNcpClient::injectGpsOneXtraTimeAndData(const uint8_t* buf, size_t len
     return SYSTEM_ERROR_NONE;
 }
 #endif // HAL_PLATFORM_GPS_ONE_XTRA
+#endif // HAL_PLATFORM_GNSS
 
 void QuectelNcpClient::destroy() {
     if (ncpState_ != NcpState::OFF) {
@@ -436,7 +492,9 @@ void QuectelNcpClient::destroy() {
     parser_.destroy();
     muxerAtStream_.reset();
     muxerDataStream_.reset();
+#if HAL_PLATFORM_GNSS
     muxerGnssStream_.reset();
+#endif // HAL_PLATFORM_GNSS
     serial_.reset();
 }
 
@@ -597,6 +655,19 @@ int QuectelNcpClient::on() {
         return r;
     }
     CHECK(waitReady(r == SYSTEM_ERROR_NONE /* powerOn */));
+
+#if HAL_PLATFORM_GNSS
+    if (preGnssState_ != GNSS_STATE_DISABLED) {
+        if (gnssConfig(gnssConf_) != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to configure GNSS");
+        }
+        if (preGnssState_ == GNSS_STATE_ON) {
+            if (gnssOn() != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to turn on GNSS");
+            }
+        }
+    }
+#endif // HAL_PLATFORM_GNSS
     return SYSTEM_ERROR_NONE;
 }
 
@@ -628,6 +699,13 @@ int QuectelNcpClient::off() {
     LOG(TRACE, "Deinit modem serial.");
     serial_->on(false);
 
+#if HAL_PLATFORM_GNSS
+    if (gnssState_ != GNSS_STATE_DISABLED) {
+        preGnssState_ = gnssState_;
+        gnssState_ = GNSS_STATE_DISABLED;
+    }
+#endif // HAL_PLATFORM_GNSS
+    
     ready_ = false;
     ncpState(NcpState::OFF);
     return SYSTEM_ERROR_NONE;
@@ -657,7 +735,9 @@ void QuectelNcpClient::disable() {
     serial_->enabled(false);
     muxerAtStream_->enabled(false);
     muxerDataStream_->enabled(false);
+#if HAL_PLATFORM_GNSS
     muxerGnssStream_->enabled(false);
+#endif // HAL_PLATFORM_GNSS
 }
 
 NcpState QuectelNcpClient::ncpState() {
