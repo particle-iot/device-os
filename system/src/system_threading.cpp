@@ -121,7 +121,7 @@ namespace std {
         return __once;
     }
 
-    inline std::unique_lock<std::mutex>*& __get_once_functor_lock_ptr()
+    std::unique_lock<std::mutex>*& __get_once_functor_lock_ptr()
     {
       static std::unique_lock<std::mutex>* __once_functor_lock_ptr = 0;
       return __once_functor_lock_ptr;
