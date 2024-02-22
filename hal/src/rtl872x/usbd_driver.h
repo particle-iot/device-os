@@ -71,6 +71,8 @@ public:
 
     void halReadPacketFixup(void* ptr);
 
+    static void loop(void* ctx);
+
 private:
     RtlUsbDriver();
     virtual ~RtlUsbDriver();
@@ -134,9 +136,11 @@ private:
     void* fixupPtr_ = nullptr;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     RecursiveMutex mutex_;
+    os_thread_t thread_ = nullptr;
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
     volatile bool initialized_ = false;
+    DeviceState status_ = DeviceState::NONE;
 };
 
 } // namespace usbd

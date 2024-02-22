@@ -19,6 +19,8 @@
 #include "system_error.h"
 #include "service_debug.h"
 #include <mutex>
+#include "scope_guard.h"
+#include "timer_hal.h"
 
 using namespace particle::usbd;
 
@@ -138,6 +140,14 @@ int RtlUsbDriver::attach() {
     initialized_ = true;
     // NOTE: these calls may fail
     auto r = usbd_init(&usbdCfg_);
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    SCOPE_GUARD({
+        if (!thread_) {
+            os_thread_create(&thread_, "usbd_watch", RTL_USBD_ISR_PRIORITY, &RtlUsbDriver::loop, this, OS_THREAD_STACK_SIZE_DEFAULT);
+            SPARK_ASSERT(thread_);
+        }
+    });
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (r) {
         // LOG(ERROR, "usbd_init failed: %d", r);
         initialized_ = false;
@@ -154,6 +164,53 @@ int RtlUsbDriver::detach() {
     usbd_deinit();
     initialized_ = false;
     return 0;
+}
+
+void RtlUsbDriver::loop(void* ctx) {
+    auto self = static_cast<RtlUsbDriver*>(ctx);
+    constexpr auto period = 1000;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    bool error = false;
+#else
+    static bool error = false;
+    static system_tick_t last = HAL_Timer_Get_Milli_Seconds();
+#endif
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    while (true) {
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        if (!self->initialized_ && !error) {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+            continue;
+#else
+            return;
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        }
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        HAL_Delay_Milliseconds(period);
+#else
+    if (HAL_Timer_Get_Milli_Seconds() - last >= period) {
+        last = HAL_Timer_Get_Milli_Seconds();
+    } else {
+        return;
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        auto newStatus = self->getState();
+        if (newStatus != self->status_) {
+            self->status_ = newStatus;
+            if (self->status_ == DeviceState::DETACHED) {
+                self->detach();
+                self->attach();
+                if (!self->initialized_) {
+                    error = true;
+                } else {
+                    error = false;
+                }
+            }
+        }
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 }
 
 int RtlUsbDriver::suspend() {
