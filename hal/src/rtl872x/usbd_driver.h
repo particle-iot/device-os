@@ -109,7 +109,7 @@ private:
         .rx_fifo_size = USBD_MAX_RX_FIFO_SIZE,
         .nptx_fifo_size = USBD_MAX_NPTX_FIFO_SIZE,
         .ptx_fifo_size = USBD_MAX_PTX_FIFO_SIZE,
-        .speed = USB_SPEED_HIGH,
+        .speed = USB_SPEED_HIGH_IN_FULL,
         .dma_enable = 0, // ?
         .self_powered = 1,
         .isr_priority = RTL_USBD_ISR_PRIORITY,
