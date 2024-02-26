@@ -29,7 +29,6 @@
 #include <future>
 #include <cstring>
 
-#include "channel.h"
 #include "concurrent_hal.h"
 #include "hal_platform.h"
 
@@ -284,7 +283,7 @@ protected:
 
     // todo - concurrent queue should be a strategy so it's pluggable without requiring inheritance
     virtual bool take(Item& item)=0;
-    virtual bool put(Item& item)=0;
+    virtual bool put(Item& item, bool dontBlock = false)=0;
 
     /**
      * Static thread entrypoint to run this active object loop.
@@ -316,16 +315,19 @@ public:
         return started;
     }
 
-    template<typename R> void invoke_async(const std::function<R(void)>& work)
+    template<typename R> bool invoke_async(const std::function<R(void)>& work, bool dontBlock = false)
     {
         auto task = new AsyncTask<R>(work);
-        if (task)
-        {
-			Item message = task;
-			if (!put(message))
-				delete task;
+        if (!task) {
+            return false;
         }
-	}
+        Item message = task;
+        if (!put(message, dontBlock)) {
+            delete task;
+            return false;
+        }
+        return true;
+    }
 
     template<typename R> SystemPromise<R>* invoke_future(const std::function<R(void)>& work)
     {
@@ -344,41 +346,6 @@ public:
 
 };
 
-
-template <size_t queue_size=50>
-class ActiveObjectChannel : public ActiveObjectBase
-{
-    cpp::channel<Item, queue_size> _channel;
-
-protected:
-
-    virtual bool take(Item& item) override
-    {
-        return cpp::select().recv_only(_channel, item).try_once();
-    }
-
-    virtual bool put(const Item& item) override
-    {
-        _channel.send(item);
-        return true;
-    }
-
-
-public:
-
-    ActiveObjectChannel(ActiveObjectConfiguration& config) : ActiveObjectBase(config) {}
-
-    /**
-     * Start the asynchronous processing for this active object.
-     */
-    void start()
-    {
-        _channel = cpp::channel<Item*, queue_size>();
-        start_thread();
-    }
-
-};
-
 class ActiveObjectQueue : public ActiveObjectBase
 {
 protected:
@@ -390,9 +357,9 @@ protected:
         return !os_queue_take(queue, &result, configuration.take_wait, nullptr);
     }
 
-    virtual bool put(Item& item)
+    virtual bool put(Item& item, bool dontBlock)
     {
-        return !os_queue_put(queue, &item, configuration.put_wait, nullptr);
+        return !os_queue_put(queue, &item, dontBlock ? 0 : configuration.put_wait, nullptr);
     }
 
     void createQueue()
@@ -458,9 +425,9 @@ public:
         return r;
     }
 
-    virtual bool put(Item& item) override
+    virtual bool put(Item& item, bool dontBlock) override
     {
-        bool r = ActiveObjectQueue::put(item);
+        bool r = ActiveObjectQueue::put(item, dontBlock);
         if (r && _thread != OS_THREAD_INVALID_HANDLE) {
             os_thread_notify(_thread, nullptr);
         }

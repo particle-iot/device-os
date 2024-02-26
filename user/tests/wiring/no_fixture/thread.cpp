@@ -248,6 +248,24 @@ test(THREAD_08_newlib_reent_impure_ptr_changes_on_context_switch)
     assertEqual((uintptr_t)testImpure, (uintptr_t)_impure_ptr);
 }
 
+test(THREAD_09_dont_block_event_queue_option)
+{
+    if (system_thread_get_state(nullptr) != spark::feature::ENABLED) {
+        skip();
+        return;
+    }
+    ActiveObjectBase* app = (ActiveObjectBase*)system_internal(0, nullptr); // Returns application thread instance
+    test_val_fn1 = 0;
+    std::function<void(void)> fn = increment;
+    for (int i = 0; i < 20; ++i) {
+        assertTrue(app->invoke_async(fn, true /* dontBlock */));
+    }
+    assertFalse(app->invoke_async(fn, true));
+    while (Particle.process()) {
+    }
+    assertEqual((int)test_val_fn1, 20);
+}
+
 // todo - test for SingleThreadedSection
 
 
