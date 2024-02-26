@@ -68,6 +68,9 @@ class Print
     size_t printNumber(unsigned long long, uint8_t);
 
 #ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
+
+    static constexpr auto FLOAT_DEFAULT_FRACTIONAL_DIGITS = 2;
+
     size_t printFloat(double number, uint8_t digits) {
         size_t n = 0;
 
@@ -146,11 +149,11 @@ class Print
     size_t print(T, int = DEC);
 
 #ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
-    size_t print(float n, int digits) {
+    size_t print(float n, int digits = FLOAT_DEFAULT_FRACTIONAL_DIGITS) {
         return printFloat((double)n, digits);
     }
 
-    size_t print(double n, int digits) {
+    size_t print(double n, int digits = FLOAT_DEFAULT_FRACTIONAL_DIGITS) {
         return printFloat(n, digits);
     }
 #endif // PARTICLE_WIRING_PRINT_NO_FLOAT
@@ -175,11 +178,11 @@ class Print
     }
 
 #ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
-    size_t println(float num, int digits) {
+    size_t println(float num, int digits = FLOAT_DEFAULT_FRACTIONAL_DIGITS) {
         return println((double)num, digits);
     }
 
-    size_t println(double num, int digits) {
+    size_t println(double num, int digits = FLOAT_DEFAULT_FRACTIONAL_DIGITS) {
         size_t n = print(num, digits);
         n += println();
         return n;
