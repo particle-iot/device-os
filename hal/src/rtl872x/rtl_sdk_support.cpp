@@ -367,6 +367,53 @@ extern "C" void HAL_Core_System_Reset(void) {
     }
 }
 
+struct cmd_unknown {
+    void* unk1;
+    uint32_t unk2;
+    void* unk3;
+};
+
+struct scan_req {
+    int mode;
+    uint32_t unk;
+};
+
+extern "C" int __copy_rtw_enqueue_cmd(void* p1, void* p2);
+
+extern "C" int rtw_enqueue_cmd(void* p1, void* p2) {
+    if (p2) {
+        cmd_unknown* cmd = (cmd_unknown*)p2;
+        if ((cmd->unk2 & 0xffff) == 0x12 && cmd->unk3) {
+            // Scan request
+            scan_req* req = (scan_req*)cmd->unk3;
+            req->mode = 0;
+            // (void)req;
+        }
+    }
+    return __copy_rtw_enqueue_cmd(p1, p2);
+}
+
+extern "C" void __copy_rtw_enter_critical(_lock* p1, _irqL* p2) {
+    rtw_enter_critical(p1, p2);
+}
+
+extern "C" void __copy_rtw_exit_critical(_lock* p1, _irqL* p2) {
+    rtw_exit_critical(p1, p2);
+}
+
+extern "C" void __copy_rtw_mfree(uint8_t* pbuf, uint32_t size) {
+    return rtw_mfree(pbuf, size);
+}
+
+extern "C" void rtw_if_wifi_wakeup_task(void* p);
+extern "C" void __copy_rtw_if_wifi_wakeup_task(void* p) {
+    rtw_if_wifi_wakeup_task(p);
+}
+
+extern "C" void __copy_rtw_list_insert_tail(_list* p1, _list* p2) {
+    return rtw_list_insert_tail(p1, p2);
+}
+
 extern "C" {
 
 #if 0 // Enable to get btgap logs
