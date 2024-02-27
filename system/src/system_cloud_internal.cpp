@@ -1223,7 +1223,10 @@ int Spark_Handshake(bool presence_announce)
     cloud_socket_aborted = false; // Clear cancellation flag for socket operations
     LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
     bool session_resumed = false;
+    // TODO: Perform the DTLS handshake and receive a response for the Hello message asynchronously
+    SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS = 1;
     int err = spark_protocol_handshake(sp);
+    SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS = 0;
 
 #if HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
     // XXX: Adding a delay only for platforms Boron and BSoM, because older cell versions of

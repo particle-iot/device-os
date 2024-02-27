@@ -63,6 +63,7 @@ extern volatile uint8_t SPARK_WLAN_CONNECT_RESTORE;
 extern volatile uint8_t SPARK_WLAN_STARTED;
 extern volatile uint8_t SPARK_CLOUD_SOCKETED;
 extern volatile uint8_t SPARK_CLOUD_CONNECTED;
+extern volatile uint8_t SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS;
 extern volatile uint8_t SPARK_CLOUD_HANDSHAKE_PENDING;
 extern volatile uint8_t SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE;
 extern volatile uint8_t SPARK_FLASH_UPDATE;

@@ -253,8 +253,7 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
     }
 
     int r = system_cloud_recv(buf, buflen, 0);
-    if (r == 0 && SPARK_CLOUD_SOCKETED && !SPARK_CLOUD_CONNECTED) {
-        // Process system events while the handshake is in progress
+    if (r == 0 && SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS) {
         SystemISRTaskQueue.process();
     }
     return r;
