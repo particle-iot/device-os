@@ -18,6 +18,7 @@
 #include "system_cloud_connection.h"
 #include "system_cloud_internal.h"
 #include "system_cloud.h"
+#include "system_threading.h"
 #include "core_hal.h"
 #include "service_debug.h"
 #include "system_task.h"
@@ -51,6 +52,7 @@ static volatile int s_ipv4_cloud_keepalive = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIV
 static volatile int s_ipv6_cloud_keepalive = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL;
 #endif
 
+using namespace particle;
 using namespace particle::system::cloud;
 
 #if HAL_PLATFORM_CLOUD_UDP
@@ -250,7 +252,12 @@ int Spark_Receive_UDP(unsigned char *buf, uint32_t buflen, void* reserved)
         return -1;
     }
 
-    return system_cloud_recv(buf, buflen, 0);
+    int r = system_cloud_recv(buf, buflen, 0);
+    if (r == 0 && SPARK_CLOUD_SOCKETED && !SPARK_CLOUD_CONNECTED) {
+        // Process system events while the handshake is in progress
+        SystemISRTaskQueue.process();
+    }
+    return r;
 }
 
 #endif /* HAL_PLATFORM_CLOUD_UDP */
