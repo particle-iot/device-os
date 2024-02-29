@@ -154,7 +154,7 @@ public:
     int connect(const char* ssid);
     int connect();
 
-    static int setNetworkConfig(WifiNetworkConfig conf);
+    static int setNetworkConfig(WifiNetworkConfig conf, bool validate = false);
     static int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
     static int getNetworkConfig(GetNetworkConfigCallback callback, void* data);
     static void removeNetworkConfig(const char* ssid);

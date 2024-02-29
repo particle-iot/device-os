@@ -182,71 +182,7 @@ int wlan_set_credentials(WLanCredentials* halCred) {
     conf.credentials(std::move(cred));
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
-    if (!(halCred->flags & WLAN_SET_CREDENTIALS_FLAGS_VALIDATE)) {
-        CHECK(mgr->setNetworkConfig(std::move(conf)));
-        return  0;
-    }
-    // Note: It's maily a copy of joinNewNetwork() in wifi_new.cpp
-    const auto ncpClient = mgr->ncpClient();
-    CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
-    const NcpClientLock lock(ncpClient);
-    NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
-    bool networkOn = network_is_on(NETWORK_INTERFACE_WIFI_STA, nullptr);
-    bool needToConnect = network_connecting(NETWORK_INTERFACE_WIFI_STA, 0, nullptr) ||
-            network_ready(NETWORK_INTERFACE_WIFI_STA, NETWORK_READY_TYPE_ANY, nullptr);
-    WifiNetworkConfig oldConf;
-    const bool hasOldConf = (mgr->getNetworkConfig(ssid, &oldConf) == 0);
-    CHECK(mgr->setNetworkConfig(conf));
-    NAMED_SCOPE_GUARD (oldConfGuard, {
-        if (hasOldConf) {
-            mgr->setNetworkConfig(oldConf); // Restore previous configuration
-        } else {
-            mgr->removeNetworkConfig(ssid);
-        }
-    });
-    if_t iface = nullptr;
-    CHECK(if_get_by_index(NETWORK_INTERFACE_WIFI_STA, &iface));
-    CHECK_TRUE(iface, SYSTEM_ERROR_INVALID_STATE);
-    // Connect to the network
-    CHECK(ncpClient->on());
-    // To unblock
-    ncpClient->disable();
-    CHECK(ncpClient->enable());
-    // These two are in sync now
-    ncpClient->disconnect(); // ignore the error
-    network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
-    // FIXME: We are wiating for ncpNetif to potentially fully disconnect
-    // FIXME: synchronize NCP client / NcpNetif and system network manager state
-    CHECK(ncpClient->enable());
-    CHECK(ncpClient->on());
-    network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
-    SCOPE_GUARD ({
-        if (!needToConnect) {
-            ncpClient->disconnect();
-            network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
-            // network_disconnect() will disable the NCP client
-            ncpClient->enable();
-            if (!networkOn) {
-                network_off(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
-                if_req_power pwr = {};
-                pwr.state = IF_POWER_STATE_DOWN;
-                if_request(iface, IF_REQ_POWER_STATE, &pwr, sizeof(pwr), nullptr);
-                if (ncpPwrState != NcpPowerState::ON && ncpPwrState != NcpPowerState::TRANSIENT_ON) {
-                    ncpClient->off();
-                }
-            } 
-#if HAL_PLATFORM_NRF52840
-            else {
-                // The above enable() puts the NCP client into disabled and powered off state
-                // The following enable() will actually enable the NCP client and put it to OFF state
-                ncpClient->enable();
-                ncpClient->on();
-            }
-#endif
-        }
-    });
-    CHECK(mgr->connect(ssid));
-    oldConfGuard.dismiss();
+    CHECK(mgr->setNetworkConfig(std::move(conf), halCred->flags & WLAN_SET_CREDENTIALS_FLAGS_VALIDATE));
     return 0;
 }
 
