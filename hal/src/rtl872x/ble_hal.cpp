@@ -1629,8 +1629,10 @@ int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
 int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK(start());
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
+    bool resetStack = false;
 
     SCOPE_GUARD ({
+        clearPendingResult();
         if (isScanning_) {
             const int LE_SCAN_STOP_RETRIES = 10;
             for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
@@ -1651,16 +1653,18 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                 // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
                 // the next scan operation will fail with invalid state.
                 LOG(TRACE, "Failed to stop scanning, resetting stack");
-                int ret = stop();
-                SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
-                ret = init();
-                SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
-                ret = start();
-                SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+                resetStack = true;
             }
-            isScanning_ = false;
-            clearPendingResult();
         }
+        if (resetStack) {
+            int ret = stop();
+            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+            ret = init();
+            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+            ret = start();
+            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+        }
+        isScanning_ = false;
     });
     scanResultCallback_ = callback;
     context_ = context;
@@ -1671,7 +1675,9 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
         LOCAL_DEBUG("wait GAP_SCAN_STATE_SCANNING");
         if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING))) {
             LOG(TRACE, "failed to start scanning.");
+            // The stack state is messed up, we need to reset the stack.
             isScanning_ = false;
+            resetStack = true;
             return SYSTEM_ERROR_TIMEOUT;
         }
     }
