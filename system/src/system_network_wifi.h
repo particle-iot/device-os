@@ -200,6 +200,8 @@ public:
 
     bool clear_credentials() override
     {
+        system_notify_event(network_credentials, network_credentials_cleared);
+
         return wlan_clear_credentials() == 0;
     }
 
