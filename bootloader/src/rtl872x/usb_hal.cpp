@@ -104,4 +104,5 @@ void DFU_Check_Reset(void) {
     gUsbDevice.detach();
     Finish_Update();
   }
+  RtlUsbDriver::instance()->loop(RtlUsbDriver::instance());
 }
