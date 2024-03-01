@@ -153,6 +153,15 @@ public:
         return *this;
     }
 
+    virtual WiFiCredentials& setValidate(bool validate = true) {
+        if (validate) {
+            creds_.flags |= WLAN_SET_CREDENTIALS_FLAGS_VALIDATE;
+        } else {
+            creds_.flags &= ~(WLAN_SET_CREDENTIALS_FLAGS_VALIDATE);
+        }
+        return *this;
+    }
+
     operator WLanCredentials() {
         return getHalCredentials();
     }
