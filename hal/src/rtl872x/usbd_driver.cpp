@@ -21,6 +21,7 @@
 #include <mutex>
 #include "scope_guard.h"
 #include "timer_hal.h"
+#include "rtl8721d_usb.h"
 
 using namespace particle::usbd;
 
@@ -92,7 +93,32 @@ uint8_t usbd_pcd_ep_set_stall(void* pcd, uint8_t ep);
 uint8_t usbd_pcd_ep_clear_stall(void* pcd, uint8_t ep);
 uint8_t usbd_pcd_ep_flush(void* pcd, uint8_t ep);
 uint8_t usb_hal_flush_tx_fifo(uint32_t num);
+uint8_t usb_hal_flush_rx_fifo();
 uint8_t usb_hal_write_packet(uint8_t *src, uint8_t ep_ch_num, uint16_t len);
+void usb_hal_disable_global_interrupt(void);
+void usbd_pcd_set_address(void* pcd, uint8_t addr);
+void usbd_pcd_stop(void* pcd);
+void usbd_pcd_start(void* pcd);
+
+u32 __real_usb_hal_read_interrupts(void);
+void __real_usb_hal_clear_interrupts(u32 interrupt);
+
+u32 __wrap_usb_hal_read_interrupts(void) {
+    uint32_t val =  __real_usb_hal_read_interrupts();
+    if (val & USB_OTG_GINTSTS_EPMIS) {
+        // XXX: The USB stack does not correctly handle this interrupt
+        // and we get into an endless loop of being unable to re-enumerate
+        // Looks like RX/TX FIFOs are not correctly re-initialized on bus reset
+        // or when we perform flushEndpoint()
+        usb_hal_disable_global_interrupt();
+        RtlUsbDriver::instance()->reset();
+    }
+    return val;
+}
+
+void __wrap_usb_hal_clear_interrupts(u32 interrupt) {
+    __real_usb_hal_clear_interrupts(interrupt);
+}
 
 // FIXME: This is a nasty workaround for the SDK USB driver
 // where it fails to deliver vendor requests with recipient=interface
@@ -101,6 +127,7 @@ int usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 int __real_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 
 int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
+    std::lock_guard<RtlUsbDriver> lk(*RtlUsbDriver::instance());
     int r = __real_usb_hal_read_packet(ptr, size, unknown);
     bool fixed = false;
     if (size == sizeof(sLastUsbSetupRequest)) {
@@ -149,7 +176,6 @@ int RtlUsbDriver::attach() {
     });
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (r) {
-        // LOG(ERROR, "usbd_init failed: %d", r);
         initialized_ = false;
         CHECK_RTL_USB_TO_SYSTEM(r);
     } else {
@@ -160,10 +186,16 @@ int RtlUsbDriver::attach() {
 }
 
 int RtlUsbDriver::detach() {
+    usb_hal_disable_global_interrupt();
+    std::lock_guard<RtlUsbDriver> lk(*this);
     usbd_unregister_class();
     usbd_deinit();
     initialized_ = false;
     return 0;
+}
+
+void RtlUsbDriver::reset() {
+    needsReset_ = true;
 }
 
 void RtlUsbDriver::loop(void* ctx) {
@@ -195,17 +227,20 @@ void RtlUsbDriver::loop(void* ctx) {
         return;
     }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        auto newStatus = self->getState();
-        if (newStatus != self->status_) {
-            self->status_ = newStatus;
-            if (self->status_ == DeviceState::DETACHED) {
+        if (self->needsReset_ || error) {
+            {
+                std::lock_guard<RtlUsbDriver> lk(*self);
                 self->detach();
+            }
+            self->needsReset_ = false;
+            {
+                std::lock_guard<RtlUsbDriver> lk(*self);
                 self->attach();
-                if (!self->initialized_) {
-                    error = true;
-                } else {
-                    error = false;
-                }
+            }
+            if (!self->initialized_) {
+                error = true;
+            } else {
+                error = false;
             }
         }
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -260,12 +295,16 @@ int RtlUsbDriver::closeEndpoint(unsigned ep) {
 
 int RtlUsbDriver::flushEndpoint(unsigned ep) {
     SPARK_ASSERT(rtlDev_);
+    auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
     void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
     usb_spinlock_t* lock = *((usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET));
-    // FIXME: magic number, for some reason usbd_pcd_ep_flush does not work correctly
-    const uint32_t USBD_FLUSH_ENDPOINT_WEIRD_MAGIC_NUMBER = 0x400;
     usb_os_spinlock(lock);
-    auto r = usb_hal_flush_tx_fifo(USBD_FLUSH_ENDPOINT_WEIRD_MAGIC_NUMBER);
+    auto r = usb_hal_flush_tx_fifo(ep & 0x7f);
+    // FIXME: USB stack may get into a weird state with EP0 endpoint.
+    // Additionally flushing RX fifo seems to resolve the issue.
+    usb_hal_flush_tx_fifo(0x00);
+    usb_hal_flush_rx_fifo();
     usb_os_spinunlock(lock);
     return CHECK_RTL_USB_TO_SYSTEM(r);
 }
@@ -294,12 +333,14 @@ int RtlUsbDriver::setEndpointStatus(unsigned ep, EndpointStatus status) {
 
 int RtlUsbDriver::transferIn(unsigned ep, const uint8_t* ptr, size_t size) {
     SPARK_ASSERT(rtlDev_);
+    auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
     if (ptr == nullptr && size == 0) {
         // FIXME
         void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
         usb_spinlock_t* lock = *((usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET));
         usb_os_spinlock(lock);
-        auto r = usb_hal_write_packet(nullptr, ep | SetupRequest::DIRECTION_DEVICE_TO_HOST, 0);
+        auto r = usb_hal_write_packet(nullptr, ep & 0x7f, 0);
         usb_os_spinunlock(lock);
         return CHECK_RTL_USB_TO_SYSTEM(r);
     }
@@ -308,6 +349,8 @@ int RtlUsbDriver::transferIn(unsigned ep, const uint8_t* ptr, size_t size) {
 
 int RtlUsbDriver::transferOut(unsigned ep, uint8_t* ptr, size_t size) {
     SPARK_ASSERT(rtlDev_);
+    auto self = instance();
+    std::lock_guard<RtlUsbDriver> lk(*self);
     return CHECK_RTL_USB_TO_SYSTEM(usbd_ep_receive(rtlDev_, ep & ~(SetupRequest::DIRECTION_DEVICE_TO_HOST), ptr, size));
 }
 
@@ -388,16 +431,16 @@ uint8_t RtlUsbDriver::getClassDescriptorCb(usb_dev_t* dev, usb_setup_req_t* req)
 
 uint8_t RtlUsbDriver::setConfigCb(usb_dev_t* dev, uint8_t config) {
     auto self = instance();
-    std::lock_guard<RtlUsbDriver> lk(*self);
 
+    std::lock_guard<RtlUsbDriver> lk(*self);
     self->setDevReference(dev);
     return CHECK_RTL_USB(self->setConfig(config));
 }
 
 uint8_t RtlUsbDriver::clearConfigCb(usb_dev_t* dev, uint8_t config) {
     auto self = instance();
-    std::lock_guard<RtlUsbDriver> lk(*self);
 
+    std::lock_guard<RtlUsbDriver> lk(*self);
     self->setDevReference(dev);
     return CHECK_RTL_USB(self->clearConfig(config));
 }

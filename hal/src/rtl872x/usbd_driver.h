@@ -73,6 +73,8 @@ public:
 
     static void loop(void* ctx);
 
+    void reset();
+
 private:
     RtlUsbDriver();
     virtual ~RtlUsbDriver();
@@ -140,7 +142,7 @@ private:
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
     volatile bool initialized_ = false;
-    DeviceState status_ = DeviceState::NONE;
+    volatile bool needsReset_ = false;
 };
 
 } // namespace usbd
