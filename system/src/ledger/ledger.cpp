@@ -23,6 +23,9 @@
 
 #if HAL_PLATFORM_LEDGER
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("system.ledger");
+
 #include <algorithm>
 #include <cstring>
 #include <cassert>
@@ -43,8 +46,6 @@
 
 #define PB_LEDGER(_name) particle_cloud_ledger_##_name
 #define PB_INTERNAL(_name) particle_firmware_##_name
-
-LOG_SOURCE_CATEGORY("system.ledger");
 
 namespace particle {
 
