@@ -711,8 +711,13 @@ public:
         return status_.state == HAL_SPI_STATE_ENABLED;
     }
 
+    // FIXME: The TX DMA exception is notified just when the source data
+    // is transferred to the SPI FIFO, not when the data is actually clocked out.
+    // Whereas the RX DMA exception is notified when the data is actually clocked in and out.
+    // When the RX buffer is not supplied, we may lose some TX data due to the false SPI completion.
+    // Hence, we add the SSI_Busy() check here.
     bool isBusy() const {
-        return status_.transmitting || status_.receiving;
+        return status_.transmitting || status_.receiving || SSI_Busy(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
     }
 
     bool isSuspended() const {
