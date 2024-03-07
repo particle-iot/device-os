@@ -68,6 +68,7 @@ constexpr int TIMER_PRESCALAR = 39;                         // Input clock = 40M
 constexpr int TIMER_COUNTER_US_THRESHOLD = 1;               // 1us = 1tick
 constexpr uint64_t US_PER_OVERFLOW = 65536;                 // 65536us
 constexpr int TIMER_IRQ_PRIORITY = 0;                       // Default priority in the close-source timer driver per FAE
+constexpr uint64_t SYS_TIMER_US_PER_OVERFLOW = 134217727968; // (0xffffffff * TIMER_TICK_US_X4) / 4
 constexpr IRQn_Type TIMER_IRQ[] = {
     TIMER0_IRQ,
     TIMER1_IRQ,
@@ -76,10 +77,6 @@ constexpr IRQn_Type TIMER_IRQ[] = {
     TIMER4_IRQ,
     TIMER5_IRQ
 };
-
-inline uint64_t calibrationTickToTimeUs(uint64_t tick) {
-    return tick * 1000000 / 32768;
-}
 
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 #define HAL_TIMER_USE_SYSTIMER_ONLY
@@ -257,18 +254,20 @@ private:
 
     TimerState getOverflowAdjustment() {
         TimerState state = {};
+        uint64_t timeElapsedSysTimer = 0;
         {
             AtomicSection lk;
             state.curSysTimerUs = sysTimerUs();
             if (state.curSysTimerUs < lastOverflowSysTimer_) {
                 // Wraparound
-                state.curSysTimerUs += 0xffffffff;
+                timeElapsedSysTimer = state.curSysTimerUs + SYS_TIMER_US_PER_OVERFLOW - lastOverflowSysTimer_;
+            } else {
+                timeElapsedSysTimer = state.curSysTimerUs - lastOverflowSysTimer_;
             }
             state.curTimerTicks = getCounter();
             state.overflowCounter = overflowCounter_ + 1;
         }
         uint64_t curTimerUs = rtcCounterAndTicksToUs(state.overflowCounter, state.curTimerTicks);
-        uint64_t timeElapsedSysTimer = state.curSysTimerUs - lastOverflowSysTimer_;
         uint64_t timeElapsedTimer = curTimerUs - lastOverflowTimer_;
         if (timeElapsedSysTimer > timeElapsedTimer) {
             uint32_t diff = timeElapsedSysTimer - timeElapsedTimer;
