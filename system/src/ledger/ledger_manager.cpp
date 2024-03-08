@@ -23,6 +23,9 @@
 
 #if HAL_PLATFORM_LEDGER
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("system.ledger");
+
 #include <algorithm>
 #include <mutex>
 #include <cstring>
@@ -54,8 +57,6 @@
 #define PB_LEDGER(_name) particle_cloud_ledger_##_name
 
 static_assert(PB_CLOUD(Response_Result_OK) == 0); // Used by value in the code
-
-LOG_SOURCE_CATEGORY("system.ledger");
 
 namespace particle {
 

@@ -227,7 +227,11 @@ int AssetManager::parseRequiredAssets() {
 
     hal_module_t mod = {};
     memcpy(&mod.info, &desc.info, sizeof(desc.info));
+#if defined(MODULAR_FIRMWARE)
     mod.bounds = module_user;
+#else
+    mod.bounds = module_user_mono;
+#endif
 
     CHECK(requiredAssetsForModule(&mod, assets));
 
