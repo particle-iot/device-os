@@ -385,15 +385,15 @@ public:
         while (!network_is_off(NETWORK_INTERFACE_CELLULAR, nullptr)) {
             ;
         }
-#if PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_TRACKER
+#if PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_TRACKER
         auto client = new particle::QuectelNcpClient();
 #else
-        auto client = particle::SaraNcpClient();
+        auto client = new particle::SaraNcpClient();
 #endif
         particle::CellularNcpClientConfig conf = {};
         conf.ncpIdentifier(platform_primary_ncp_identifier());
-        client.init(conf);
-        client.on();
+        client->init(conf);
+        client->on();
         initialized_ = true;
         return SYSTEM_ERROR_NONE;
     }
