@@ -1661,7 +1661,8 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                 // otherwise the next scan operation fails with invalid state.
                 auto r = WRAP_BLE_EVT_LOCK(le_scan_stop());
                 if (r == GAP_CAUSE_SUCCESS) {
-                    if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE))) {
+                    // IMPORTANT: have to poll here, for some reason we may not get notified
+                    if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
                         isScanning_ = false;
                     }
                     break;
@@ -1694,7 +1695,8 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     CHECK_RTL(WRAP_BLE_EVT_LOCK(le_scan_start()));
     isScanning_ = true;
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
-    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING))) {
+    // IMPORTANT: have to poll here, for some reason we may not get notified
+    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
         LOG(ERROR, "Failed to start scanning.");
         // The stack state is messed up, we need to reset the stack.
         isScanning_ = false;
