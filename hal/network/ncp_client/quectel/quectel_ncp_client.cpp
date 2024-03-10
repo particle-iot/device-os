@@ -1708,9 +1708,17 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
         int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL);
         if (r) {
             LOG(ERROR, "Failed to open data channel");
-            ready_ = false;
-            state = connState_ = NcpConnectionState::DISCONNECTED;
-            return;
+            bool forcedOpen = false;
+            if (!muxer_.forceOpenChannel(QUECTEL_NCP_PPP_CHANNEL)) {
+                if (!muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL)) {
+                    forcedOpen = true;
+                }
+            }
+            if (!forcedOpen) {
+                ready_ = false;
+                state = connState_ = NcpConnectionState::DISCONNECTED;
+                return;
+            }
         }
     }
 
