@@ -105,6 +105,7 @@ extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
 extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
 extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
+extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
 
 void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
 	__real_bt_coex_handle_specific_evt(p, len);
@@ -1135,8 +1136,6 @@ int BleGap::init() {
     return SYSTEM_ERROR_NONE;
 }
 
-extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
-
 int BleGap::start() {
     if (btStackStarted_) {
         return SYSTEM_ERROR_NONE;
@@ -1167,6 +1166,9 @@ int BleGap::start() {
     // > - Let WIFI > BT in wifi slot, BT > WIFI in bt slot when ble scan + wifi connected
     // But that doesn't work. 0b111 (setting two other options as enabled) seems to make things work correctly.
     rltk_coex_set_wlan_slot_preempting(0b111);
+    // Leaving as default for now (unknown). This controls the prioritization
+    // between WiFi and BLE timeslots in percentage e.g. 50 is 50% for WiFi, 10 is 10% for WiFi etc
+    // rltk_coex_set_wifi_slot(50);
 
     if (cache_.isAdv || cache_.isConn) {
         LOG(TRACE, "Restore advertising state");

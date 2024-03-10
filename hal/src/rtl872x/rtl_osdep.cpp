@@ -43,8 +43,6 @@ extern "C" int _freertos_create_task(struct task_struct *ptask, const char *name
         priority += OS_THREAD_PRIORITY_NETWORK;
     }
 
-    LOG(INFO, "AAAAAA thread %s is_wifi=%d priority=%u %x %x", name, rtw_if_wifi_thread((char*)name), priority, func, thctx);
-
     // Copy-paste from freertos_service.c
     thread_func_t task_func = NULL;
 	void *task_ctx = NULL;
