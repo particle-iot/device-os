@@ -310,8 +310,6 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
             const NcpClientLock lock(this);
             CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
 
-            rtlk_bt_set_gnt_bt(PTA_AUTO);
-
             LOG(INFO, "Try to connect to ssid: %s", ssid);
             rtlError = wifi_connect((char*)ssid,
                                     wifiSecurityToRtlSecurity(sec),
@@ -384,8 +382,6 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     const NcpClientLock lock(this);
 
-    rtlk_bt_set_gnt_bt(PTA_AUTO);
-
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     struct Context {
         WifiScanCallback callback = nullptr;
@@ -447,20 +443,22 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
         LOG(WARN, "wifi_scan_networks err: %d", rtlError);
         ctx.done = true;
     }
-    while (!ctx.done) {
+    for (auto start = HAL_Timer_Get_Milli_Seconds(); !ctx.done && HAL_Timer_Get_Milli_Seconds() - start <= SCAN_LONGEST_WAIT_TIME;) {
         HAL_Delay_Milliseconds(100);
+    }
+    if (!ctx.done) {
+        LOG(ERROR, "Did not receive final scan completed indication, aborting");
+        ctx.done = true;
+        rtlError = RTW_TIMEOUT;
     }
     for (int i = 0; i < ctx.results.size(); i++) {
         callback(ctx.results[i], data);
     }
-    if (rtlError && ctx.results.size() == 0) {
+    if ((rtlError && ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
         rtwRadioReset();
-    }
-
-    if (connectionState() == NcpConnectionState::DISCONNECTED) {
-        rtlk_bt_set_gnt_bt(PTA_BT);
+        return rtl_error_to_system(rtlError);
     }
 
     return rtl_error_to_system(rtlError);
@@ -526,9 +524,6 @@ void RealtekNcpClient::connectionState(NcpConnectionState state) {
         event.type = NcpEvent::CONNECTION_STATE_CHANGED;
         event.state = connState_;
         handler(event, conf_.eventHandlerData());
-    }
-    if (state == NcpConnectionState::DISCONNECTED) {
-        rtlk_bt_set_gnt_bt(PTA_BT);
     }
 }
 

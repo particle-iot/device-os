@@ -74,6 +74,7 @@
 #define CONFIG_LWIP_LAYER	0
 #define CONFIG_INIT_NET		0 //init lwip layer when start up
 #define CONFIG_WIFI_IND_USE_THREAD	0	// wifi indicate worker thread
+#define SCAN_USE_SEMAPHORE (0)
 
 //on/off relative commands in log service
 #define CONFIG_SSL_CLIENT	0

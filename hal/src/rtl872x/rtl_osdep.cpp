@@ -19,6 +19,8 @@ extern "C" {
 #include "rtl8721d.h"
 }
 #include "system_task.h"
+#include <osdep_service.h>
+#include "concurrent_hal.h"
 
 extern "C" void _freertos_mfree(u8 *pbuf, u32 sz) {
     if (__get_BASEPRI() != 0) {
@@ -28,6 +30,47 @@ extern "C" void _freertos_mfree(u8 *pbuf, u32 sz) {
         free(pbuf);
     }
 }
+
+extern "C" int rtw_if_wifi_thread(char *name);
+
+extern "C" int _freertos_create_task(struct task_struct *ptask, const char *name,
+	    u32  stack_size, u32 priority, thread_func_t func, void *thctx) {
+
+    if (rtw_if_wifi_thread((char*)name) == 0 || !strcmp(name, "rtw_coex_mailbox_thread")) {
+        // Fixup priorities
+        const unsigned base_priority = 5;
+        priority -= base_priority;
+        priority += OS_THREAD_PRIORITY_NETWORK;
+    }
+
+    LOG(INFO, "AAAAAA thread %s is_wifi=%d priority=%u %x %x", name, rtw_if_wifi_thread((char*)name), priority, func, thctx);
+
+    // Copy-paste from freertos_service.c
+    thread_func_t task_func = NULL;
+	void *task_ctx = NULL;
+	int ret = 0;
+
+	ptask->task_name = name;
+
+	if(func){
+		task_func = func;
+		task_ctx = thctx;
+	}
+
+    // FIXME: move over to os_thread_create?
+    // For now calling directly into FreeRTOS same as original
+
+    ret = xTaskCreate(
+            task_func,
+            (const char *)name,
+            stack_size,
+            task_ctx,
+            priority,
+            (TaskHandle_t*)&ptask->task);
+
+	return ret;
+}
+
 // namespace osdep {
 
 // u8* malloc(u32 sz) {
