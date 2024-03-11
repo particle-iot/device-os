@@ -361,13 +361,14 @@ int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, uint8_t flags) 
 
         NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
         bool networkOn = network_is_on(NETWORK_INTERFACE_WIFI_STA, nullptr);
-        bool needToConnect = (flags & WiFiSetConfigFlags::KEEP_CONNECTED) ? true : (network_connecting(NETWORK_INTERFACE_WIFI_STA, 0, nullptr) || network_ready(NETWORK_INTERFACE_WIFI_STA, NETWORK_READY_TYPE_ANY, nullptr));
+        bool needToConnect = network_connecting(NETWORK_INTERFACE_WIFI_STA, 0, nullptr) || network_ready(NETWORK_INTERFACE_WIFI_STA, NETWORK_READY_TYPE_ANY, nullptr);
         if_t iface = nullptr;
         CHECK(if_get_by_index(NETWORK_INTERFACE_WIFI_STA, &iface));
         CHECK_TRUE(iface, SYSTEM_ERROR_INVALID_STATE);
 
+        bool pass = false;
         SCOPE_GUARD ({
-            if (!needToConnect) {
+            if (!needToConnect && !((flags & WiFiSetConfigFlags::KEEP_CONNECTED) && pass)) {
                 ncpClient->disconnect();
                 network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
                 // network_disconnect() will disable the NCP client
@@ -408,6 +409,7 @@ int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, uint8_t flags) 
         // If there is no credentials stored, network_connect() won't activate the connection
         if_set_flags(iface, IFF_UP);
         CHECK(mgr->connect(conf));
+        pass = true;
         // Fall through to save the network credentials
     }
 
