@@ -117,8 +117,9 @@ int joinNewNetwork(ctrl_request* req) {
     conf.security((WifiSecurity)pbReq.security);
 #endif
     conf.credentials(std::move(cred));
+    uint8_t flags = WiFiSetConfigFlags::VALIDATE | WiFiSetConfigFlags::KEEP_CONNECTED;
     // Set new configuration
-    CHECK(wifiMgr->setNetworkConfig(conf, true));
+    CHECK(wifiMgr->setNetworkConfig(conf, flags));
     // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
     system_notify_event(network_credentials, network_credentials_added);
     return 0;

@@ -45,6 +45,12 @@ enum class WifiSecurity {
     WPA2_WPA3_PSK = 6
 };
 
+enum WiFiSetConfigFlags {
+    NONE = 0x00,
+    VALIDATE = 0x01,
+    KEEP_CONNECTED = 0x02
+};
+
 class WifiCredentials {
 public:
     enum Type {
@@ -151,10 +157,22 @@ public:
     explicit WifiNetworkManager(WifiNcpClient* client);
     ~WifiNetworkManager();
 
+    /*
+     * It will connect to the network with given configuration.
+     * It will NOT store the credentials if the network is not stored previously.
+     */
+    int connect(WifiNetworkConfig conf);
+    /*
+     * It will connect to the network with given SSID if its credentials is stored.
+     * If nullptr is provided, it will connect to any network that is available and has credentials stored.
+     */
     int connect(const char* ssid);
+    /*
+     * It will connect to any network that is available and has credentials stored.
+     */
     int connect();
 
-    static int setNetworkConfig(WifiNetworkConfig conf, bool validate = false);
+    static int setNetworkConfig(WifiNetworkConfig conf, uint8_t flags = WiFiSetConfigFlags::NONE);
     static int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
     static int getNetworkConfig(GetNetworkConfigCallback callback, void* data);
     static void removeNetworkConfig(const char* ssid);
@@ -333,10 +351,6 @@ inline WifiScanResult& WifiScanResult::rssi(int rssi) {
 
 inline int WifiScanResult::rssi() const {
     return rssi_;
-}
-
-inline int WifiNetworkManager::connect() {
-    return connect(nullptr);
 }
 
 inline WifiNcpClient* WifiNetworkManager::ncpClient() const {
