@@ -105,13 +105,22 @@ extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
 extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
 extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
+extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
 
 void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
 	__real_bt_coex_handle_specific_evt(p, len);
 }
 
-
 namespace {
+
+// FIXME: should probably move under some class here
+StaticRecursiveMutex sBleEventMutex;
+
+#define WRAP_BLE_EVT_LOCK(_expr) \
+        ({ \
+            std::lock_guard<StaticRecursiveMutex> _lk(sBleEventMutex); \
+            _expr; \
+        })
 
 #define CHECK_RTL(_expr) \
         ({ \
@@ -229,7 +238,7 @@ private:
     void* allEvtQueue_;
     void* ioEvtQueue_;
     bool started_;
-    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = OS_THREAD_PRIORITY_NETWORK;
+    static constexpr uint8_t BLE_EVENT_THREAD_PRIORITY = OS_THREAD_PRIORITY_NETWORK - 1; // IMPORTANT: below network for coexistence to work!
     static constexpr uint8_t MAX_NUMBER_OF_GAP_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_IO_MESSAGE = 0x20;
     static constexpr uint8_t MAX_NUMBER_OF_EVENT_MESSAGE = (MAX_NUMBER_OF_GAP_MESSAGE + MAX_NUMBER_OF_IO_MESSAGE);
@@ -665,9 +674,11 @@ private:
     RecursiveMutex connectionsMutex_;
 
     static constexpr system_tick_t BLE_WAIT_STATE_POLL_PERIOD_MS = 10;
-    static constexpr system_tick_t BLE_STATE_DEFAULT_TIMEOUT = 1000;
+    // IMPORTANT: large enough, some of the state changes are dependent
+    // on callback execution etc.
+    static constexpr system_tick_t BLE_STATE_DEFAULT_TIMEOUT = 10000;
 
-    static constexpr uint8_t BLE_CMD_THREAD_PRIORITY = OS_THREAD_PRIORITY_NETWORK;
+    static constexpr uint8_t BLE_CMD_THREAD_PRIORITY = OS_THREAD_PRIORITY_NETWORK - 1; // IMPORTANT: below network for coexistence to work!
     static constexpr uint16_t BLE_CMD_THREAD_STACK_SIZE = 2048;
     static constexpr uint8_t BLE_CMD_QUEUE_SIZE = 0x20;
 };
@@ -876,7 +887,6 @@ int BleEventDispatcher::start() {
 }
 
 int BleEventDispatcher::stop() {
-    gap_start_bt_stack(nullptr, nullptr, 0);
     cleanup();
     started_ = false;
     return SYSTEM_ERROR_NONE;
@@ -994,6 +1004,7 @@ void BleEventDispatcher::bleEventDispatchThread(void *context) {
     while (true) {
         uint8_t event;
         if (os_msg_recv(dispatcher->allEvtQueue_, &event, 0xFFFFFFFF) == true) {
+            std::lock_guard<StaticRecursiveMutex> lk(sBleEventMutex);
             if (event == EVENT_IO_TO_APP) {
                 T_IO_MSG message;
                 if (os_msg_recv(dispatcher->ioEvtQueue_, &message, 0) == true) {
@@ -1075,10 +1086,7 @@ int BleGap::init() {
     gap_config_max_le_link_num(BLE_MAX_LINK_COUNT);
     gap_config_max_le_paired_device(BLE_MAX_LINK_COUNT);
 
-    rtwCoexRunDisable(0);
-
     CHECK_TRUE(bte_init(), SYSTEM_ERROR_INTERNAL);
-    bt_coex_init();
 
     CHECK_TRUE(le_gap_init(BLE_MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
     uint8_t mtuReq = true;
@@ -1142,6 +1150,8 @@ int BleGap::start() {
         }
     });
 
+    bt_coex_init();
+
     // NOTE: we will miss some of the initial events between bte_init() and when we start the event dispatcher
     CHECK(BleEventDispatcher::getInstance().start());
     // NOTE: we have to wait for the BLE stack to get initialized otherwise other operations
@@ -1149,6 +1159,17 @@ int BleGap::start() {
     LOCAL_DEBUG("wait GAP_INIT_STATE_STACK_READY");
     CHECK(waitState(BleGapDevState().init(GAP_INIT_STATE_STACK_READY), BLE_STATE_DEFAULT_TIMEOUT, true /* force poll */));
     btStackStarted_ = true;
+    wifi_btcoex_set_bt_on();
+
+    rltk_coex_set_wlan_lps_coex(1);
+    // XXX: Supposedly 0x04 should be enough here:
+    // > - Let WIFI > BT in wifi slot, BT > WIFI in bt slot when ble scan + wifi connected
+    // But that doesn't work. 0b111 (setting two other options as enabled) seems to make things work correctly.
+    rltk_coex_set_wlan_slot_preempting(0b111);
+    // Leaving as default for now (unknown). This controls the prioritization
+    // between WiFi and BLE timeslots in percentage e.g. 50 is 50% for WiFi, 10 is 10% for WiFi etc
+    // rltk_coex_set_wifi_slot(50);
+
     if (cache_.isAdv || cache_.isConn) {
         LOG(TRACE, "Restore advertising state");
         startAdvertising(); // Despite of the result.
@@ -1205,7 +1226,7 @@ int BleGap::stop(bool restore) {
 
         if (isScanning_) {
             stopScanning();
-            le_scan_stop(); // Just in case
+            WRAP_BLE_EVT_LOCK(le_scan_stop()); // Just in case
         }
 
         // Prevent BLE stack from generating coexistence events, otherwise we may leak memory
@@ -1533,7 +1554,7 @@ int BleGap::startAdvertising(bool wait) {
     }
     CHECK_RTL(le_adv_set_param(GAP_PARAM_ADV_EVENT_TYPE, sizeof(advEvtType), &advEvtType));
 
-    CHECK_RTL(le_adv_start());
+    CHECK_RTL(WRAP_BLE_EVT_LOCK(le_adv_start()));
 
     if (wait) {
         LOG_DEBUG(TRACE, "Starting advertising...");
@@ -1564,7 +1585,7 @@ int BleGap::stopAdvertising(bool wait) {
     //     }
     // }
     isAdvertising_ = false;
-    CHECK_RTL(le_adv_stop());
+    CHECK_RTL(WRAP_BLE_EVT_LOCK(le_adv_stop()));
     if (os_timer_is_active(advTimeoutTimer_, nullptr)) {
         os_timer_change(advTimeoutTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
     }
@@ -1632,22 +1653,21 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     bool resetStack = false;
 
     SCOPE_GUARD ({
-        clearPendingResult();
         if (isScanning_) {
-            const int LE_SCAN_STOP_RETRIES = 10;
+            const int LE_SCAN_STOP_RETRIES = 2;
             for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
                 // This has seen failing a number of times at least
                 // with btgap logging enabled. Retry a few times just in case,
                 // otherwise the next scan operation fails with invalid state.
-                auto r = le_scan_stop();
+                auto r = WRAP_BLE_EVT_LOCK(le_scan_stop());
                 if (r == GAP_CAUSE_SUCCESS) {
-                    LOCAL_DEBUG("wait GAP_SCAN_STATE_IDLE");
-                    if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE))) {
+                    // IMPORTANT: have to poll here, for some reason we may not get notified
+                    if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
                         isScanning_ = false;
                     }
                     break;
                 }
-                HAL_Delay_Milliseconds(10);
+                HAL_Delay_Milliseconds(100);
             }
             if (isScanning_) {
                 // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
@@ -1659,27 +1679,29 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
         if (resetStack) {
             int ret = stop();
             SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+            clearPendingResult();
             ret = init();
             SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
             ret = start();
             SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+        } else {
+            clearPendingResult();
         }
         isScanning_ = false;
     });
     scanResultCallback_ = callback;
     context_ = context;
-    CHECK_RTL(le_scan_start());
+
+    CHECK_RTL(WRAP_BLE_EVT_LOCK(le_scan_start()));
     isScanning_ = true;
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
-    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), 10, true)) {
-        LOCAL_DEBUG("wait GAP_SCAN_STATE_SCANNING");
-        if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING))) {
-            LOG(TRACE, "failed to start scanning.");
-            // The stack state is messed up, we need to reset the stack.
-            isScanning_ = false;
-            resetStack = true;
-            return SYSTEM_ERROR_TIMEOUT;
-        }
+    // IMPORTANT: have to poll here, for some reason we may not get notified
+    if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
+        LOG(ERROR, "Failed to start scanning.");
+        // The stack state is messed up, we need to reset the stack.
+        isScanning_ = false;
+        resetStack = true;
+        return SYSTEM_ERROR_TIMEOUT;
     }
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
@@ -1882,8 +1904,8 @@ int BleGap::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* con
     centralLinkCbCache_.first = config->callback;
     centralLinkCbCache_.second = config->context;
     connecting_ = true;
-    CHECK_RTL(le_connect(GAP_CONN_PARAM_1M, connectingAddr_.addr, (T_GAP_REMOTE_ADDR_TYPE)connectingAddr_.addr_type,
-        (T_GAP_LOCAL_ADDR_TYPE)connLocalAddrType, BLE_DEFAULT_SCANNING_TIMEOUT));
+    CHECK_RTL(WRAP_BLE_EVT_LOCK(le_connect(GAP_CONN_PARAM_1M, connectingAddr_.addr, (T_GAP_REMOTE_ADDR_TYPE)connectingAddr_.addr_type,
+        (T_GAP_LOCAL_ADDR_TYPE)connLocalAddrType, BLE_DEFAULT_SCANNING_TIMEOUT)));
     if (os_semaphore_take(connectSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
@@ -2179,7 +2201,6 @@ int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePol
     auto end = now + timeout;
     auto current = BleGapDevState(getState());
     if (forcePoll || current.isNotInitialized() || !btStackStarted_) {
-        LOCAL_DEBUG("force poll, t: %d", end - now);
         // Poll, as some of the initial events are missing
         RtlGapDevState s;
         while (now < end) {
@@ -2199,7 +2220,6 @@ int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePol
             }
         }
     }
-    LOG(ERROR, "Timeout waiting state");
     return SYSTEM_ERROR_TIMEOUT;
 }
 
@@ -2564,7 +2584,6 @@ T_APP_RESULT BleGap::gapEventCallback(uint8_t type, void *data) {
             break;
         }
         case GAP_MSG_LE_SCAN_INFO: {
-            LOG_DEBUG(TRACE, "gapEventCallback, GAP_MSG_LE_SCAN_INFO");
             BleGap::getInstance().notifyScanResult(((T_LE_CB_DATA *)data)->p_le_scan_info);
             break;
         }

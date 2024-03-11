@@ -143,6 +143,7 @@ private:
 
     volatile bool initialized_ = false;
     volatile bool needsReset_ = false;
+    volatile int config_ = 0;
 };
 
 } // namespace usbd

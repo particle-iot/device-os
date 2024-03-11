@@ -105,12 +105,10 @@ void __real_usb_hal_clear_interrupts(u32 interrupt);
 
 u32 __wrap_usb_hal_read_interrupts(void) {
     uint32_t val =  __real_usb_hal_read_interrupts();
-    if (val & USB_OTG_GINTSTS_EPMIS) {
-        // XXX: The USB stack does not correctly handle this interrupt
-        // and we get into an endless loop of being unable to re-enumerate
-        // Looks like RX/TX FIFOs are not correctly re-initialized on bus reset
+    if (val & USB_OTG_GINTSTS_ENUMDNE) {
+        // XXX: Looks like RX/TX FIFOs are not correctly re-initialized on bus reset
         // or when we perform flushEndpoint()
-        usb_hal_disable_global_interrupt();
+        // Reset the stack manually
         RtlUsbDriver::instance()->reset();
     }
     return val;
@@ -195,7 +193,11 @@ int RtlUsbDriver::detach() {
 }
 
 void RtlUsbDriver::reset() {
-    needsReset_ = true;
+    if (config_ != 0) {
+        config_ = 0;
+        usb_hal_disable_global_interrupt();
+        needsReset_ = true;
+    }
 }
 
 void RtlUsbDriver::loop(void* ctx) {
@@ -434,6 +436,7 @@ uint8_t RtlUsbDriver::setConfigCb(usb_dev_t* dev, uint8_t config) {
 
     std::lock_guard<RtlUsbDriver> lk(*self);
     self->setDevReference(dev);
+    self->config_ = (int)config;
     return CHECK_RTL_USB(self->setConfig(config));
 }
 

@@ -36,6 +36,9 @@ extern "C" {
 }
 
 #include "platform_ncp.h"
+extern "C" {
+#include "device_lock.h"
+}
 
 namespace {
 
@@ -59,10 +62,17 @@ int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
 
     bool dataConsistent = false;
     for (int i = 0; i < 5 && !dataConsistent; i++) {
+        // There are places in ambd_sdk where efuses might be read as well (e.g. BLE stack)
+        // This is not a thread safe operation, so now those places are guarded with a lock in the SDK
+        // Use the same lock here as well.
+        device_mutex_lock(RT_DEV_LOCK_EFUSE);
         EFUSE_LMAP_READ(efuseBuf);
+        device_mutex_unlock(RT_DEV_LOCK_EFUSE);
         uint32_t crc1 = HAL_Core_Compute_CRC32(efuseBuf, LOGICAL_EFUSE_SIZE);
 
+        device_mutex_lock(RT_DEV_LOCK_EFUSE);
         EFUSE_LMAP_READ(efuseBuf);
+        device_mutex_unlock(RT_DEV_LOCK_EFUSE);
         uint32_t crc2 = HAL_Core_Compute_CRC32(efuseBuf, LOGICAL_EFUSE_SIZE);
 
         dataConsistent = (crc1 == crc2);

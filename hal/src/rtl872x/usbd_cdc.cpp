@@ -86,7 +86,7 @@ int CdcClassDriver::deinit(unsigned cfgIdx) {
     }
 #if !HAL_PLATFORM_USB_SOF
     stopTxTimeoutTimer();
-    stopTxTimer();
+    //stopTxTimer();
 #endif // !HAL_PLATFORM_USB_SOF
 
     dev_->closeEndpoint(epInData_);
@@ -422,10 +422,10 @@ int CdcClassDriver::startTx(bool holdoff) {
         return 0;
     }
 
-    if (holdoff && consumable < cdc::MAX_DATA_PACKET_SIZE) {
-        stopTxTimer();
-        return startTxTimer();
-    }
+    // if (holdoff && consumable < cdc::MAX_DATA_PACKET_SIZE) {
+    //     stopTxTimer();
+    //     return startTxTimer();
+    // }
 
     txState_ = true;
     consumable = std::min(consumable, cdc::MAX_DATA_PACKET_SIZE);
@@ -454,15 +454,13 @@ void CdcClassDriver::txTimeoutTimerExpired() {
     if (txState_ && open_) {
         setOpenState(false);
     }
-    dev_->unlock();
     // FIXME: holding lock depending on the driver implementation may cause a deadlock
     dev_->flushEndpoint(epInData_);
     // Send ZLP (zero length packet)
-    dev_->transferIn(epInData_, nullptr, 0);
-    dev_->lock();
+    // XXX: Sending ZLP does not work
+    // dev_->transferIn(epInData_, nullptr, 0);
     txState_ = false;
     txBuffer_.reset();
-    dev_->unlock();
 }
 
 void CdcClassDriver::txTimerCallback(os_timer_t timer) {
@@ -526,7 +524,13 @@ int CdcClassDriver::available() {
 int CdcClassDriver::availableForWrite() {
     CHECK_TRUE(isConfigured(), SYSTEM_ERROR_INVALID_STATE);
     std::lock_guard<Device> lk(*dev_);
-    return txBuffer_.space();
+    auto space = txBuffer_.space();
+    if (space == 0) {
+        // This should not normally happen, but may happen in case
+        // of logging from timer thread, which is supported.
+        startTx(false /* holdoff */);
+    }
+    return space;
 }
 
 int CdcClassDriver::read(uint8_t* buf, size_t len) {
