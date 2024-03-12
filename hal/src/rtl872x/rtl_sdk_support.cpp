@@ -40,6 +40,7 @@ extern "C" {
 #include "ble_hal.h"
 #include "spark_wiring_thread.h"
 #endif
+#include "freertos/wrapper.h"
 
 extern "C" {
 
@@ -71,6 +72,8 @@ extern "C" pcoex_reveng* pcoex[4];
 
 extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
 extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
+
+extern "C" Rltk_wlan_t rltk_wlan_info[NET_IF_NUM];
 
 void rtwCoexRunDisable(int idx) {
     os_thread_scheduling(false, nullptr);
@@ -133,6 +136,24 @@ void rtwCoexCleanup(int idx) {
 }
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+void rtwCoexStop() {
+    std::lock_guard<RecursiveMutex> lk(radioMutex);
+    // This call makes rtw_coex_run_enable(123, false) not cleanup the mutex
+    // which might be still accessed by other coexistence tasks
+    // but still allows rtw_coex_bt_enable to deinitialize BT coexistence.
+    // Subsequently we restore the state with rtwCoexRunEnable() and rtw_coex_wifi_enable
+    // will call into rtw_coex_run_enable(123, false) which will finally cleanup the mutex
+    rtwCoexRunDisable(0);
+    rtw_coex_bt_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
+    HAL_Delay_Milliseconds(100);
+    rtwCoexRunEnable(0);
+    rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
+    rtwCoexRunDisable(0);
+    rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
+    rtwCoexCleanupMutex(0);
+}
+
 void rtwRadioReset() {
     std::lock_guard<RecursiveMutex> lk(radioMutex);
     hal_ble_lock(nullptr);
