@@ -36,6 +36,7 @@
 #include "network/ncp/wifi/ncp.h"
 #include "ifapi.h"
 #include "system_network.h"
+#include "system_threading.h"
 
 #define PB(_name) particle_firmware_##_name
 #define PB_WIFI(_name) particle_ctrl_wifi_##_name
@@ -348,6 +349,8 @@ int WifiNetworkManager::connect(const char* ssid) {
 }
 
 int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, uint8_t flags) {
+    SYSTEM_THREAD_CONTEXT_SYNC(setNetworkConfig(conf, flags));
+
     CHECK_TRUE(conf.ssid(), SYSTEM_ERROR_INVALID_ARGUMENT);
     Vector<WifiNetworkConfig> networks;
     CHECK(loadConfig(&networks));
