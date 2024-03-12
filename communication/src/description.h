@@ -48,7 +48,7 @@ public:
 
     ProtocolError sendRequest(int descFlags);
     ProtocolError receiveRequest(const Message& msg);
-    ProtocolError receiveAckOrRst(const Message& msg, int* descFlags);
+    ProtocolError receiveAckOrRst(const Message& msg, int* descFlags, bool* handled);
     ProtocolError processTimeouts();
 
     ProtocolError serialize(Appender* appender, int descFlags);
