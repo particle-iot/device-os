@@ -173,6 +173,7 @@ ConnectionTester::ConnectionTester() {
     for (const auto& i: getSupportedInterfaces()) {
         struct ConnectionMetrics interfaceDiagnostics = {};
         interfaceDiagnostics.interface = i;
+        interfaceDiagnostics.socketDescriptor = -1; // 0 is a valid socket fd number
         metrics_.append(interfaceDiagnostics);
     }
 }
@@ -192,7 +193,7 @@ ConnectionTester::~ConnectionTester() {
 
 ConnectionMetrics* ConnectionTester::metricsFromSocketDescriptor(int socketDescriptor) {
     for (auto& i : metrics_) {
-        if (i.socketDescriptor == socketDescriptor) {
+        if (i.socketDescriptor == socketDescriptor && i.txBuffer && i.rxBuffer /* sanity check */) {
             return &i;
         }
     }
@@ -376,7 +377,6 @@ int ConnectionTester::testConnections() {
     
     // Step 2: Create, bind, and connect sockets for each network interface to test
     for (struct addrinfo* a = info; a != nullptr; a = a->ai_next) {
-
         // For each network interface to test, create + open a socket with the retrieved server address
         // If any of the sockets fail to be created + opened with this server address, return an error
         for (auto& connectionMetrics: metrics_) {

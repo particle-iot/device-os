@@ -51,6 +51,7 @@ void rtwCoexCleanupMutex(int idx);
 void rtwRadioReset();
 void rtwRadioAcquire(RtwRadio r);
 void rtwRadioRelease(RtwRadio r);
+void rtwCoexStop();
 
 #ifdef __cplusplus
 }
