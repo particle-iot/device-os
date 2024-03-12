@@ -73,7 +73,9 @@ extern "C" pcoex_reveng* pcoex[4];
 extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
 extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 extern "C" Rltk_wlan_t rltk_wlan_info[NET_IF_NUM];
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 void rtwCoexRunDisable(int idx) {
     os_thread_scheduling(false, nullptr);
