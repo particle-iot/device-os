@@ -132,7 +132,8 @@ public:
             }
             case CoAPMessageType::EMPTY_ACK: {
                 descAckFlags_ = 0;
-                r = desc_.receiveAckOrRst(m, &descAckFlags_);
+                bool handled = false;
+                r = desc_.receiveAckOrRst(m, &descAckFlags_, &handled);
                 break;
             }
             default:
