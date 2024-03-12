@@ -72,7 +72,6 @@ extern "C" {
 #include "scope_guard.h"
 #include "rtl_system_error.h"
 #include "radio_common.h"
-#include "freertos/wrapper.h"
 
 #include "timer_hal.h"
 
@@ -92,17 +91,6 @@ using spark::Vector;
 using namespace particle;
 using namespace particle::ble;
 
-struct pcoex_reveng {
-    uint32_t state;
-    uint32_t unknown;
-    _mutex* mutex;
-};
-
-extern "C" pcoex_reveng* pcoex[4];
-
-extern "C" Rltk_wlan_t rltk_wlan_info[NET_IF_NUM];
-extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
-extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
 extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
@@ -1233,19 +1221,7 @@ int BleGap::stop(bool restore) {
         gap_register_vendor_cb([](uint8_t cb_type, void *p_cb_data) -> void {
         });
         {
-            // This call makes rtw_coex_run_enable(123, false) not cleanup the mutex
-            // which might be still accessed by other coexistence tasks
-            // but still allows rtw_coex_bt_enable to deinitialize BT coexistence.
-            // Subsequently we restore the state with rtwCoexRunEnable() and rtw_coex_wifi_enable
-            // will call into rtw_coex_run_enable(123, false) which will finally cleanup the mutex
-            rtwCoexRunDisable(0);
-            rtw_coex_bt_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
-            HAL_Delay_Milliseconds(100);
-            rtwCoexRunEnable(0);
-            rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 0);
-            rtwCoexRunDisable(0);
-            rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
-            rtwCoexCleanupMutex(0);
+            rtwCoexStop();
         }
     }
     bte_deinit();
@@ -1500,7 +1476,7 @@ int BleGap::startAdvertising(bool wait) {
         // the next scan operation will fail with invalid state.
         // Previous stopAdvertising() caused a race condition in the BT stack, try to recover
         // Ignore error here
-        auto r = le_adv_stop();
+        auto r = WRAP_BLE_EVT_LOCK(le_adv_stop());
         if (wait) {
             LOCAL_DEBUG("wait GAP_ADV_STATE_IDLE");
             if (r != GAP_CAUSE_SUCCESS || waitState(BleGapDevState().adv(GAP_ADV_STATE_IDLE))) {
@@ -1654,7 +1630,7 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
 
     SCOPE_GUARD ({
         if (isScanning_) {
-            const int LE_SCAN_STOP_RETRIES = 2;
+            const int LE_SCAN_STOP_RETRIES = 1;
             for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
                 // This has seen failing a number of times at least
                 // with btgap logging enabled. Retry a few times just in case,
@@ -1667,12 +1643,14 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
                     }
                     break;
                 }
-                HAL_Delay_Milliseconds(100);
+                HAL_Delay_Milliseconds(10);
             }
             if (isScanning_) {
                 // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
                 // the next scan operation will fail with invalid state.
-                LOG(TRACE, "Failed to stop scanning, resetting stack");
+                RtlGapDevState s;
+                le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state);
+                LOG(TRACE, "Failed to stop scanning, resetting stack, scan state=%d", s.state.gap_scan_state);
                 resetStack = true;
             }
         }
@@ -1697,7 +1675,9 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
     // IMPORTANT: have to poll here, for some reason we may not get notified
     if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
-        LOG(ERROR, "Failed to start scanning.");
+        RtlGapDevState s;
+        le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state);
+        LOG(TRACE, "Failed to start scanning scan state=%d", s.state.gap_scan_state);
         // The stack state is messed up, we need to reset the stack.
         isScanning_ = false;
         resetStack = true;
@@ -1945,7 +1925,7 @@ int BleGap::disconnect(hal_ble_conn_handle_t connHandle) {
         disconnectingHandle_ = BLE_INVALID_CONN_HANDLE;
     });
     disconnectingHandle_ = connHandle;
-    CHECK_RTL(le_disconnect(connHandle));
+    CHECK_RTL(WRAP_BLE_EVT_LOCK(le_disconnect(connHandle)));
     if (os_semaphore_take(disconnectSemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
