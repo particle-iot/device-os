@@ -149,11 +149,17 @@ public:
         void* txBuf = conf.tx_buffer;
         size_t txBufSize = conf.tx_buffer_size;
         if (((uintptr_t)rxBuf & portBYTE_ALIGNMENT_MASK) != 0) {
-            rxBuf = std::align(portBYTE_ALIGNMENT, conf.rx_buffer_size, rxBuf, rxBufSize);
+            if (conf.rx_buffer_size < portBYTE_ALIGNMENT) {
+                return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+            }
+            rxBuf = std::align(portBYTE_ALIGNMENT, conf.rx_buffer_size - portBYTE_ALIGNMENT, rxBuf, rxBufSize);
             rxBufSize = (rxBufSize / portBYTE_ALIGNMENT) * portBYTE_ALIGNMENT;
         }
         if (((uintptr_t)txBuf & portBYTE_ALIGNMENT_MASK) != 0) {
-            txBuf = std::align(portBYTE_ALIGNMENT, conf.tx_buffer_size, txBuf, txBufSize);
+            if (conf.tx_buffer_size < portBYTE_ALIGNMENT) {
+                return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+            }
+            txBuf = std::align(portBYTE_ALIGNMENT, conf.tx_buffer_size - portBYTE_ALIGNMENT, txBuf, txBufSize);
             txBufSize = (txBufSize / portBYTE_ALIGNMENT) * portBYTE_ALIGNMENT;
         }
         CHECK_TRUE(rxBuf, SYSTEM_ERROR_NOT_ENOUGH_DATA);
