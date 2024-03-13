@@ -182,9 +182,10 @@ int wlan_set_credentials(WLanCredentials* halCred) {
     conf.credentials(std::move(cred));
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
-    uint8_t flags = 0;
+    WifiNetworkConfigFlags flags = WifiNetworkConfigFlag::NONE;
     if (halCred->flags & WLAN_SET_CREDENTIALS_FLAGS_VALIDATE) {
-        flags |= WiFiSetConfigFlags::VALIDATE;
+        flags |= WifiNetworkConfigFlag::VALIDATE;
+        flags |= WifiNetworkConfigFlag::TURN_ON;
     }
     CHECK(mgr->setNetworkConfig(std::move(conf), flags));
     return 0;
