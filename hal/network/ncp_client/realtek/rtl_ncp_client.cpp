@@ -235,11 +235,6 @@ int RealtekNcpClient::on() {
     CHECK(rltkOff());
     CHECK(rltkOn());
     ncpState(NcpState::ON);
-    wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int buf_len, int flags, void* userdata) -> void {
-        LOG(INFO, "disconnected");
-        RealtekNcpClient* client = (RealtekNcpClient*)userdata;
-        client->connectionState(NcpConnectionState::DISCONNECTED);
-    }, (void*)this);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -309,6 +304,12 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
         {
             const NcpClientLock lock(this);
             CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
+
+            wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int buf_len, int flags, void* userdata) -> void {
+                LOG(INFO, "disconnected");
+                RealtekNcpClient* client = (RealtekNcpClient*)userdata;
+                client->connectionState(NcpConnectionState::DISCONNECTED);
+            }, (void*)this);
 
             LOG(INFO, "Try to connect to ssid: %s", ssid);
             rtlError = wifi_connect((char*)ssid,
@@ -454,7 +455,7 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     for (int i = 0; i < ctx.results.size(); i++) {
         callback(ctx.results[i], data);
     }
-    if ((rtlError && ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
+    if (ctx.results.size() == 0 || rtlError == RTW_TIMEOUT) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
         rtwRadioReset();

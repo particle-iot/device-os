@@ -287,7 +287,9 @@ int RealtekNcpNetif::upImpl() {
     // Ensure that we are disconnected
     downImpl();
     r = wifiMan_->connect();
-    if (r) {
+    // FIXME: with just cleared configuration and no 'NetifEvent::Down' issued from SystemNetworkManager
+    // we are still attempting to connect. For now simply suppress the log.
+    if (r && wifiMan_->hasNetworkConfig()) {
         LOG(TRACE, "Failed to connect to WiFi: %d", r);
     }
     return r;
