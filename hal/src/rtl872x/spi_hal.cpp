@@ -717,7 +717,7 @@ public:
     // When the RX buffer is not supplied, we may lose some TX data due to the false SPI completion.
     // Hence, we add the SSI_Busy() check here.
     bool isBusy() const {
-        return status_.transmitting || status_.receiving || SSI_Busy(SPI_DEV_TABLE[rtlSpiIndex_].SPIx);
+        return status_.transmitting || status_.receiving || ((config_.spiMode == SPI_MODE_MASTER) && SSI_Busy(SPI_DEV_TABLE[rtlSpiIndex_].SPIx));
     }
 
     bool isSuspended() const {
