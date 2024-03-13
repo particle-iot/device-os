@@ -48,9 +48,9 @@ SCENARIO("determining message type from a CoAP GET message")
 	WHEN("a message is an unknown GET request")
 	{
 		uint8_t buf[] = { 1, 1, 0, 0, 0, 0x91, '!'};
-		THEN("then message is recognized as a ERROR")
+		THEN("then message is recognized as an UNKNOWN")
 		{
-			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::ERROR);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::UNKNOWN);
 		}
 	}
 }
@@ -124,9 +124,9 @@ SCENARIO("determining message type from a CoAP POST message")
 	WHEN("a message is an unknown POST request")
 	{
 		uint8_t buf[] = { 1, 1, 0, 0, 0, 0x91, '!'};
-		THEN("then message is recognized as a ERROR")
+		THEN("then message is recognized as an UNKNOWN")
 		{
-			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::ERROR);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::UNKNOWN);
 		}
 	}
 }
@@ -174,9 +174,9 @@ SCENARIO("determining message type from a CoAP PUT message")
 	WHEN("a message is an unknown PUT request")
 	{
 		uint8_t buf[] = { 1, 3, 0, 0, 0, 0x91, '!'};
-		THEN("then message is recognized as a ERROR")
+		THEN("then message is recognized as an UNKNOWN")
 		{
-			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::ERROR);
+			REQUIRE(Messages::decodeType(buf, sizeof(buf))==CoAPMessageType::UNKNOWN);
 		}
 	}
 }

@@ -137,7 +137,8 @@ public:
                 break;
             }
             case CoAPMessageType::EMPTY_ACK: {
-                r = responseAck(&m);
+                bool handled = false;
+                r = responseAck(&m, &handled);
                 break;
             }
             default:

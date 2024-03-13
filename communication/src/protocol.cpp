@@ -106,9 +106,12 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
-			error = firmwareUpdate.responseAck(&message);
+			error = firmwareUpdate.responseAck(&message, &handled);
 			if (error != ProtocolError::NO_ERROR) {
 				return error;
+			}
+			if (handled) {
+				return ProtocolError::NO_ERROR;
 			}
 		}
 #endif
@@ -214,8 +217,9 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return handle_server_moved_request(message);
 		break;
 
-	case CoAPMessageType::ERROR:
-	default: {
+	case CoAPMessageType::UNKNOWN:
+	case CoAPMessageType::EMPTY_ACK: {
+		// Forward the message to the new CoAP implementation
 		int r = 0;
 		if (type == CoAPType::CON) {
 			r = experimental::CoapChannel::instance()->handleCon(message);
@@ -227,6 +231,10 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 		break;
 	}
+
+	case CoAPMessageType::ERROR:
+	default:
+		break; // Ignore the message
 	}
 
 	// all's well
@@ -749,7 +757,7 @@ ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled
 	}
 	if (!*handled) {
 		int desc_flags = 0;
-		const ProtocolError err = description.receiveAckOrRst(msg, &desc_flags);
+		const ProtocolError err = description.receiveAckOrRst(msg, &desc_flags, handled);
 		if (err != ProtocolError::NO_ERROR) {
 			LOG(ERROR, "Failed to process Describe ACK: %d", (int)err);
 		}
@@ -760,7 +768,6 @@ ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
 					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
 			channel.command(Channel::LOAD_SESSION);
-			*handled = true;
 		}
 		if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
 			LOG(TRACE, "Updating application DESCRIBE checksum");
@@ -768,7 +775,6 @@ ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
 					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
 			channel.command(Channel::LOAD_SESSION);
-			*handled = true;
 		}
 	}
 	return ProtocolError::NO_ERROR;

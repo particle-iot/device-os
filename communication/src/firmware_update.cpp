@@ -80,7 +80,8 @@ void FirmwareUpdate::destroy() {
     reset();
 }
 
-ProtocolError FirmwareUpdate::responseAck(Message* msg) {
+ProtocolError FirmwareUpdate::responseAck(Message* msg, bool* handled) {
+    *handled = false;
     if (!updating_) {
         return ProtocolError::INVALID_STATE;
     }
@@ -98,6 +99,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
         return ProtocolError::INTERNAL;
     }
     if (d.id() == finishRespId_) {
+        *handled = true;
         finishRespId_ = -1;
         stats_.updateFinishTime = millis();
         LOG(INFO, "Update time: %u", (unsigned)(stats_.updateFinishTime - stats_.updateStartTime));
@@ -122,6 +124,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg) {
             updating_ = false;
         }
     } else if (d.id() == errorRespId_) {
+        *handled = true;
         LOG(ERROR, "Firmware update failed");
         cancelUpdate();
         return ProtocolError::OTA_UPDATE_ERROR;

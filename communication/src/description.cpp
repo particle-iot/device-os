@@ -381,7 +381,8 @@ ProtocolError Description::receiveRequest(const Message& msg) {
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
+ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags, bool* handled) {
+    *handled = false;
     if (!activeReq_.has_value() && acks_.isEmpty()) {
         return ProtocolError::NO_ERROR;
     }
@@ -398,6 +399,7 @@ ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
     }
     const auto ackId = dec.id();
     if (activeReq_.has_value() && activeReq_->msgId == ackId) {
+        *handled = true;
         if (isRst) {
             activeReq_.reset();
             return ProtocolError::MESSAGE_RESET;
@@ -420,6 +422,7 @@ ProtocolError Description::receiveAckOrRst(const Message& msg, int* descFlags) {
     } else {
         for (int i = 0; i < acks_.size(); ++i) {
             if (acks_[i].msgId == ackId) {
+                *handled = true;
                 // Received an ACK for a regular request, regular response or the last block of a
                 // blockwise response
                 const auto flags = acks_[i].flags;
