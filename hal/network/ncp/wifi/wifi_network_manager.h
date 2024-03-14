@@ -21,6 +21,7 @@
 #include "c_string.h"
 
 #include <cstdint>
+#include "enumflags.h"
 
 namespace particle {
 
@@ -44,6 +45,16 @@ enum class WifiSecurity {
     WPA3_PSK = 5,
     WPA2_WPA3_PSK = 6
 };
+
+enum class WifiNetworkConfigFlag {
+    NONE = 0x00,
+    VALIDATE = 0x01,
+    TURN_ON = 0x02
+};
+
+typedef EnumFlags<WifiNetworkConfigFlag> WifiNetworkConfigFlags;
+
+ENABLE_ENUM_CLASS_BITWISE(WifiNetworkConfigFlag);
 
 class WifiCredentials {
 public:
@@ -152,9 +163,10 @@ public:
     ~WifiNetworkManager();
 
     int connect(const char* ssid);
+    int connect(WifiNetworkConfig conf);
     int connect();
 
-    static int setNetworkConfig(WifiNetworkConfig conf, bool validate = false);
+    int setNetworkConfig(WifiNetworkConfig conf, WifiNetworkConfigFlags flags = WifiNetworkConfigFlag::NONE);
     static int getNetworkConfig(const char* ssid, WifiNetworkConfig* conf);
     static int getNetworkConfig(GetNetworkConfigCallback callback, void* data);
     static void removeNetworkConfig(const char* ssid);

@@ -73,6 +73,7 @@ private:
     volatile NcpState prevNcpState_;
     volatile NcpConnectionState connState_;
     volatile NcpPowerState pwrState_;
+    volatile bool needsReset_ = false;
 
     void ncpState(NcpState state);
     void ncpPowerState(NcpPowerState state);

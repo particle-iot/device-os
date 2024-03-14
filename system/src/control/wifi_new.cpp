@@ -117,10 +117,33 @@ int joinNewNetwork(ctrl_request* req) {
     conf.security((WifiSecurity)pbReq.security);
 #endif
     conf.credentials(std::move(cred));
+    // Connect to the network
+    CHECK(ncpClient->on());
+    // FIXME: synchronize NCP client / NcpNetif and system network manager state
+    bool needToConnect = network_connecting(NETWORK_INTERFACE_WIFI_STA, 0, nullptr) ||
+            network_ready(NETWORK_INTERFACE_WIFI_STA, NETWORK_READY_TYPE_ANY, nullptr);
+    // To unblock
+    ncpClient->disable();
+    CHECK(ncpClient->enable());
+    // These two are in sync now
+    ncpClient->disconnect(); // ignore the error
+    network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
+    // FIXME: We are wiating for ncpNetif to potentially fully disconnect
+    // FIXME: synchronize NCP client / NcpNetif and system network manager state
+    CHECK(ncpClient->enable());
+    CHECK(ncpClient->on());
+    network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
+    NAMED_SCOPE_GUARD(networkDisconnectGuard, {
+        // FIXME: synchronize NCP client / NcpNetif and system network manager state
+        if (!needToConnect) {
+            network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
+        }
+    });
     // Set new configuration
-    CHECK(wifiMgr->setNetworkConfig(conf, true));
+    CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::VALIDATE));
     // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
     system_notify_event(network_credentials, network_credentials_added);
+    networkDisconnectGuard.dismiss();
     return 0;
 }
 

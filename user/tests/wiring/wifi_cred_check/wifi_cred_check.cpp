@@ -25,7 +25,7 @@ test(Test_00_Init) {
     credentials.setValidate(true);
 }
 
-test(Test_01_WiFi_Credentials_Check_When_WiFi_Is_Off) {
+test(Test_01_WiFi_Credentials_Check_And_WiFi_State_Consistency) {
     for (uint8_t test = 0; test < WiFiState::MAX; test++) {
         Serial.printlnf(" > Set WiFi state to %s", (test ? (test == 1 ? "ON" : "CONNECTED") : "OFF"));
         switch (test) {

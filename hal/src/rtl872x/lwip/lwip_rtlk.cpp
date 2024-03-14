@@ -18,44 +18,44 @@ extern void restore_flags(void);
 }
 
 unsigned char is_promisc_enabled(void) {
-    LOG(INFO, "is_promisc_enabled");
+    // LOG(INFO, "is_promisc_enabled");
     return 0;
 }
 
 int promisc_set(rtw_rcr_level_t enabled, void (*callback)(unsigned char*, unsigned int, void*), unsigned char len_used) {
-    LOG(INFO, "promisc_set TODO");
+    // LOG(INFO, "promisc_set TODO");
     return -1;
 }
 
 void promisc_deinit(void *padapter) {
-    LOG(INFO, "promisc_deinit TODO");
+    // LOG(INFO, "promisc_deinit TODO");
 }
 
 int promisc_recv_func(void *padapter, void *rframe) {
-    LOG(INFO, "promisc_recv_func TODO");
+    // LOG(INFO, "promisc_recv_func TODO");
     return 0;
 }
 
 void eap_autoreconnect_hdl(uint8_t method_id) {
-    LOG(INFO, "eap_autoreconnect_hdl");
+    // LOG(INFO, "eap_autoreconnect_hdl");
 }
 
 int get_eap_phase(void) {
-    LOG(INFO, "get_eap_phase");
+    // LOG(INFO, "get_eap_phase");
     return 0;
 }
 
 int get_eap_method(void) {
-    LOG(INFO, "get_eap_method");
+    // LOG(INFO, "get_eap_method");
     return 0;
 }
 
 void netif_post_sleep_processing(void) {
-    LOG(INFO, "netif_post_sleep_processing TODO");
+    // LOG(INFO, "netif_post_sleep_processing TODO");
 }
 
 void netif_pre_sleep_processing(void) {
-    LOG(INFO, "netif_pre_sleep_processing TODO");
+    // LOG(INFO, "netif_pre_sleep_processing TODO");
 }
 
 int netif_get_idx(struct netif* pnetif) {

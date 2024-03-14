@@ -33,10 +33,6 @@
 
 #include "network_config.pb.h"
 
-#include "network/ncp/wifi/ncp.h"
-#include "ifapi.h"
-#include "system_network.h"
-
 #define PB(_name) particle_firmware_##_name
 #define PB_WIFI(_name) particle_ctrl_wifi_##_name
 
@@ -198,6 +194,10 @@ WifiNetworkManager::WifiNetworkManager(WifiNcpClient* client) :
 WifiNetworkManager::~WifiNetworkManager() {
 }
 
+int WifiNetworkManager::connect(WifiNetworkConfig conf) {
+    return client_->connect(conf.ssid(), conf.bssid(), conf.security(), conf.credentials());
+}
+
 int WifiNetworkManager::connect(const char* ssid) {
     // Get known networks
     Vector<WifiNetworkConfig> networks;
@@ -220,7 +220,7 @@ int WifiNetworkManager::connect(const char* ssid) {
     // Perform a network scan on ESP32 devices because ESP32 doesn't support 802.11v/k/r
     int r = SYSTEM_ERROR_INTERNAL;
     if (client_->ncpId() != PlatformNCPIdentifier::PLATFORM_NCP_ESP32) {
-        r = client_->connect(network->ssid(), network->bssid(), network->security(), network->credentials());
+        r = connect(*network);
     }
     if (r < 0) {
         // Perform network scan
@@ -250,7 +250,7 @@ int WifiNetworkManager::connect(const char* ssid) {
             } else if (strcmp(ssid, ap.ssid()) != 0) {
                 continue;
             }
-            r = client_->connect(network->ssid(), ap.bssid(), network->security(), network->credentials());
+            r = connect(*network);
             if (r == 0) {
                 if (network->bssid() != ap.bssid()) {
                     // Update BSSID
@@ -267,7 +267,7 @@ int WifiNetworkManager::connect(const char* ssid) {
             for (; index < networks.size(); ++index) {
                 network = &networks.at(index);
                 if (network->hidden()) {
-                    r = client_->connect(network->ssid(), network->bssid(), network->security(), network->credentials());
+                    r = connect(*network);
                     if (r == 0) {
                         connected = true;
                         break;
@@ -299,11 +299,43 @@ int WifiNetworkManager::connect(const char* ssid) {
     return 0;
 }
 
-int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, bool validate) {
+int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, WifiNetworkConfigFlags flags) {
     CHECK_TRUE(conf.ssid(), SYSTEM_ERROR_INVALID_ARGUMENT);
+    NcpClientLock lock(client_);
+    if (flags & WifiNetworkConfigFlag::VALIDATE) {
+        if (conf.credentials().type() == WifiCredentials::Type::PASSWORD && conf.security() == WifiSecurity::NONE) {
+            Vector<WifiScanResult> networks;
+            CHECK(client_->scan([](WifiScanResult network, void* data) -> int {
+                const auto networks = (Vector<WifiScanResult>*)data;
+                CHECK_TRUE(networks->append(std::move(network)), SYSTEM_ERROR_NO_MEMORY);
+                return 0;
+            }, &networks));
+            for (auto network : networks) {
+                if (!strcmp(conf.ssid(), network.ssid())) {
+                    conf.security((WifiSecurity)network.security());
+                    break;
+                }
+            }
+        }
+        client_->disconnect();
+        bool state = true;
+        if (flags & WifiNetworkConfigFlag::TURN_ON) {
+            state = client_->ncpPowerState() == NcpPowerState::ON;
+            CHECK(client_->on());
+            client_->disable();
+            CHECK(client_->enable());
+            CHECK(client_->on());
+        }
+        SCOPE_GUARD({
+            if (!state) {
+                client_->off();
+            }
+        });
+        CHECK(connect(conf));
+    } else {
+        lock.unlock();
+    }
     Vector<WifiNetworkConfig> networks;
-    WifiNetworkConfig oldConfig = {};
-    bool restoreOldConfig = false;
     CHECK(loadConfig(&networks));
     int index = networkIndexForSsid(conf.ssid(), networks);
     if (index < 0) {
@@ -312,77 +344,9 @@ int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, bool validate) 
             CHECK_TRUE(networks.resize(networks.size() + 1), SYSTEM_ERROR_NO_MEMORY);
         }
         index = networks.size() - 1;
-    } else if (validate) {
-        // Has old config
-        oldConfig = networks[index];
     }
     networks[index] = std::move(conf);
     CHECK(saveConfig(networks));
-    if (validate) {
-        restoreOldConfig = true;
-        const auto mgr = wifiNetworkManager();
-        CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
-        auto ncpClient = mgr->ncpClient();
-        CHECK_TRUE(ncpClient, SYSTEM_ERROR_UNKNOWN);
-        const NcpClientLock lock(ncpClient);
-
-        NcpPowerState ncpPwrState = ncpClient->ncpPowerState();
-        bool networkOn = network_is_on(NETWORK_INTERFACE_WIFI_STA, nullptr);
-        bool needToConnect = network_connecting(NETWORK_INTERFACE_WIFI_STA, 0, nullptr) || network_ready(NETWORK_INTERFACE_WIFI_STA, NETWORK_READY_TYPE_ANY, nullptr);
-        if_t iface = nullptr;
-        CHECK(if_get_by_index(NETWORK_INTERFACE_WIFI_STA, &iface));
-        CHECK_TRUE(iface, SYSTEM_ERROR_INVALID_STATE);
-
-        SCOPE_GUARD ({
-            if (!needToConnect) {
-                ncpClient->disconnect();
-                network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
-                // network_disconnect() will disable the NCP client
-                ncpClient->enable();
-                if (!networkOn) {
-                    network_off(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
-                    if_req_power pwr = {};
-                    pwr.state = IF_POWER_STATE_DOWN;
-                    if_request(iface, IF_REQ_POWER_STATE, &pwr, sizeof(pwr), nullptr);
-                    if (ncpPwrState != NcpPowerState::ON && ncpPwrState != NcpPowerState::TRANSIENT_ON) {
-                        ncpClient->off();
-                    }
-                } 
-#if HAL_PLATFORM_NRF52840
-                else {
-                    // The above enable() puts the NCP client into disabled and powered off state
-                    // The following enable() will actually enable the NCP client and put it to OFF state
-                    ncpClient->enable();
-                    ncpClient->on();
-                }
-#endif
-            }
-            if (restoreOldConfig) {
-                if (oldConfig.ssid() == nullptr) {
-                    networks.removeAt(index);
-                } else {
-                    networks[index] = oldConfig;
-                }
-                saveConfig(networks);
-            }
-        });
-
-        // Connect to the network
-        CHECK(ncpClient->on());
-        // To unblock
-        ncpClient->disable();
-        CHECK(ncpClient->enable());
-        // These two are in sync now
-        ncpClient->disconnect(); // ignore the error
-        network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
-        // FIXME: We are wiating for ncpNetif to potentially fully disconnect
-        // FIXME: synchronize NCP client / NcpNetif and system network manager state
-        CHECK(ncpClient->enable());
-        CHECK(ncpClient->on());
-        network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
-        CHECK(mgr->connect(conf.ssid()));
-        restoreOldConfig = false;
-    }
     return 0;
 }
 

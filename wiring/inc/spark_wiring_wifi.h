@@ -243,16 +243,16 @@ public:
         return (network_set_credentials(*this, 0, &creds, NULL) == 0);
     }
 
-    void setCredentials(const char* ssid, WiFiCredentials credentials) {
+    bool setCredentials(const char* ssid, WiFiCredentials credentials) {
         WLanCredentials creds = credentials.getHalCredentials();
         creds.ssid = ssid;
         creds.ssid_len = ssid ? strlen(ssid) : 0;
-        network_set_credentials(*this, 0, &creds, NULL);
+        return network_set_credentials(*this, 0, &creds, NULL) == 0;
     }
 
-    void setCredentials(WiFiCredentials credentials) {
+    bool setCredentials(WiFiCredentials credentials) {
         WLanCredentials creds = credentials.getHalCredentials();
-        network_set_credentials(*this, 0, &creds, NULL);
+        return network_set_credentials(*this, 0, &creds, NULL) == 0;
     }
 
     bool hasCredentials(void) {
