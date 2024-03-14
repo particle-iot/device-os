@@ -86,6 +86,8 @@ uint8_t endpointTypeToRtl(EndpointType type) {
 const size_t RTL_USB_DEV_PCD_OFFSET = offsetof(usb_dev_t, pcd);
 const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x180;
 
+const unsigned int RTL_USB_RESET_COUNT_THRESHOLD = 100;
+
 } // anonymous
 
 extern "C" {
@@ -189,6 +191,7 @@ int RtlUsbDriver::detach() {
     usbd_unregister_class();
     usbd_deinit();
     initialized_ = false;
+    resetCount_ = 0;
     return 0;
 }
 
@@ -197,6 +200,13 @@ void RtlUsbDriver::reset() {
         config_ = 0;
         usb_hal_disable_global_interrupt();
         needsReset_ = true;
+        resetCount_ = 0;
+    } else {
+        if (resetCount_++ >= RTL_USB_RESET_COUNT_THRESHOLD) {
+            usb_hal_disable_global_interrupt();
+            needsReset_ = true;
+            resetCount_ = 0;
+        }
     }
 }
 
@@ -437,6 +447,7 @@ uint8_t RtlUsbDriver::setConfigCb(usb_dev_t* dev, uint8_t config) {
     std::lock_guard<RtlUsbDriver> lk(*self);
     self->setDevReference(dev);
     self->config_ = (int)config;
+    self->resetCount_ = 0;
     return CHECK_RTL_USB(self->setConfig(config));
 }
 
