@@ -81,7 +81,7 @@
 #endif // PLATFORM_ID != PLATFORM_BORON
 
 #if PLATFORM_ID == PLATFORM_ESOMX
-#define PRODUCT_SERIES "Eseries"
+#define PRODUCT_SERIES "E-SoMX"
 #else
 #define PRODUCT_SERIES "boron"
 #endif

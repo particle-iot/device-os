@@ -82,7 +82,7 @@
  *
  * List of product names defined the same way like in @ref APP_USBD_STRINGS_MANUFACTURER
  */
-#define APP_USBD_STRINGS_PRODUCT    APP_USBD_STRING_DESC("B5 SOM CDC Mode")
+#define APP_USBD_STRINGS_PRODUCT    APP_USBD_STRING_DESC("B5-SoM CDC Mode")
 
 /**
  * @brief Define whether @ref APP_USBD_STRINGS_PRODUCT is created by @ref APP_USBD_STRING_DESC
@@ -124,8 +124,8 @@
  * - @c ...     : List of string descriptors for each defined language.
  */
 #define APP_USBD_STRINGS_USER \
-    X(APP_USER_1, , APP_USBD_STRING_DESC("B5SOM Serial")) \
-    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("B5SOM Control Interface")) \
+    X(APP_USER_1, , APP_USBD_STRING_DESC("B5-SoM Serial")) \
+    X(USBD_CONTROL_STRING_IDX, , APP_USBD_STRING_DESC("B5-SoM Control Interface")) \
     X(USBD_WCID_STRING_IDX, = 0xee, APP_USBD_STRING_DESC("MSFT100\xee"))
 
 /** @} */
