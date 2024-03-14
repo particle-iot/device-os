@@ -157,8 +157,9 @@ void rtwCoexStop() {
 }
 
 void rtwRadioReset() {
-    std::lock_guard<RecursiveMutex> lk(radioMutex);
+    // XXX: the order of the locks has to be BLE -> radioMutex
     hal_ble_lock(nullptr);
+    std::unique_lock<RecursiveMutex> lk(radioMutex);
     bool bleInitialized = hal_ble_is_initialized(nullptr);
     bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                        hal_ble_gap_is_connecting(nullptr, nullptr) ||
@@ -175,6 +176,7 @@ void rtwRadioReset() {
             hal_ble_gap_start_advertising(nullptr);
         }
     }
+    lk.unlock();
     hal_ble_unlock(nullptr);
 }
 

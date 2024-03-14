@@ -299,6 +299,7 @@ NcpConnectionState RealtekNcpClient::connectionState() {
 }
 
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
+    CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     int rtlError = RTW_ERROR;
     for (int i = 0; i < 2; i++) {
         {
@@ -333,8 +334,8 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
 }
 
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
-    const NcpClientLock lock(this);
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    const NcpClientLock lock(this);
 
     int rtlError = 0;
     // LOG(INFO, "RNCP getNetworkInfo");
@@ -381,9 +382,10 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
 }
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
-    const NcpClientLock lock(this);
-
+    CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
+
+    const NcpClientLock lock(this);
     struct Context {
         WifiScanCallback callback = nullptr;
         void* data = nullptr;
@@ -455,17 +457,19 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     for (int i = 0; i < ctx.results.size(); i++) {
         callback(ctx.results[i], data);
     }
-    if (ctx.results.size() == 0 || rtlError == RTW_TIMEOUT) {
+
+    // XXX:
+    if ((rtlError /* keeping this for now */ && ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
-        rtwRadioReset();
-        return rtl_error_to_system(rtlError);
+        needsReset_ = true;
     }
 
     return rtl_error_to_system(rtlError);
 }
 
 int RealtekNcpClient::getMacAddress(MacAddress* addr) {
+    const NcpClientLock lock(this);
     char mac[6*2 + 5 + 1] = {};
     wifi_get_mac_address(mac);
     CHECK_TRUE(macAddressFromString(addr, mac), SYSTEM_ERROR_UNKNOWN);
@@ -565,8 +569,14 @@ int RealtekNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size)
 int RealtekNcpClient::dataChannelFlowControl(bool state) {
     return SYSTEM_ERROR_NONE;
 }
+
 void RealtekNcpClient::processEvents() {
+    if (needsReset_) {
+        rtwRadioReset();
+        needsReset_ = false;
+    }
 }
+
 int RealtekNcpClient::checkParser() {
     return SYSTEM_ERROR_NONE;
 }
