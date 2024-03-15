@@ -46,6 +46,11 @@ typedef enum network_ready_type {
 typedef network_interface_t    network_handle_t;
 const network_interface_t NIF_DEFAULT = 0;
 
+typedef enum network_connect_flag {
+    NETWORK_CONNECT_FLAG_NONE = 0,
+    NETWORK_CONNECT_FLAG_FORCE = 1
+} network_connect_flag;
+
 /**
  * This is a bridge from the wiring layer to the system layer.
  * @return

@@ -162,7 +162,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
     //     asm volatile ("NOP");
     // }
     /* TODO: WIFI_CONNECT_SKIP_LISTEN is unhandled */
-    SYSTEM_THREAD_CONTEXT_ASYNC_CALL([network]() {
+    SYSTEM_THREAD_CONTEXT_ASYNC_CALL(([network, flags]() {
         SPARK_WLAN_STARTED = 1;
         SPARK_WLAN_SLEEP = 0;
         s_forcedDisconnect = false;
@@ -179,7 +179,11 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
                 NetworkManager::instance()->enableInterface(iface);
-                NetworkManager::instance()->syncInterfaceStates();
+                if (flags & NETWORK_CONNECT_FLAG_FORCE) {
+                    NetworkManager::instance()->syncInterfaceStates(iface);
+                } else {
+                    NetworkManager::instance()->syncInterfaceStates();
+                }
             }
         } else {
             // Mainly to populate the list
@@ -193,7 +197,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
         if (NetworkManager::instance()->isConfigured()) {
             NetworkManager::instance()->activateConnections();
         }
-    }());
+    }()));
 }
 
 void network_disconnect(network_handle_t network, uint32_t reason, void* reserved) {
