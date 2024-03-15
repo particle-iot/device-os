@@ -132,7 +132,7 @@ int joinNewNetwork(ctrl_request* req) {
     // FIXME: synchronize NCP client / NcpNetif and system network manager state
     CHECK(ncpClient->enable());
     CHECK(ncpClient->on());
-    network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
+    network_connect(NETWORK_INTERFACE_WIFI_STA, NETWORK_CONNECT_FLAG_FORCE, 0, nullptr);
     NAMED_SCOPE_GUARD(networkDisconnectGuard, {
         // FIXME: synchronize NCP client / NcpNetif and system network manager state
         if (!needToConnect) {

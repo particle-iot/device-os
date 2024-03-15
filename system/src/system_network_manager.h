@@ -76,7 +76,7 @@ public:
     int disableInterface(if_t iface = nullptr, network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_UNKNOWN);
     bool isInterfaceEnabled(if_t iface) const;
     int countEnabledInterfaces();
-    int syncInterfaceStates();
+    int syncInterfaceStates(if_t forceIface = nullptr);
 
     int powerInterface(if_t iface = nullptr, bool enable = true);
 

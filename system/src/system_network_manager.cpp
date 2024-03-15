@@ -927,10 +927,10 @@ int NetworkManager::disableInterface(if_t iface, network_disconnect_reason reaso
     return 0;
 }
 
-int NetworkManager::syncInterfaceStates() {
+int NetworkManager::syncInterfaceStates(if_t forceIface) {
     if (isEstablishingConnections() || isConnectivityAvailable()) {
         CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
-            if (!haveLowerLayerConfiguration(iface)) {
+            if (!haveLowerLayerConfiguration(iface) && (forceIface != iface)) {
                 return;
             }
 
