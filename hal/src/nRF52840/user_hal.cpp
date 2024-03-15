@@ -21,8 +21,6 @@
 #include "ota_module.h"
 #include "flash_mal.h"
 
-#if defined(MODULAR_FIRMWARE)
-
 namespace {
 
 const uint8_t USER_PART_COMPAT_INDEX = 1;
@@ -66,10 +64,7 @@ void module_user_loop_compat();
 void module_user_setup_compat();
 } // extern "C"
 
-#endif // defined(MODULAR_FIRMWARE)
-
 int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
-#if defined(MODULAR_FIRMWARE)
     module_info_t info = {};
     // Check compat 128KB user application first as it takes precedence
     if (validUserModuleInfoAtIndex(MODULE_FUNCTION_USER_PART, USER_PART_COMPAT_INDEX, &info)) {
@@ -94,7 +89,6 @@ int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
         desc->loop = &module_user_loop;
         desc->setup = &module_user_setup;
     }
-#endif
     return 0;
 }
 
