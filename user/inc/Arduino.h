@@ -18,6 +18,15 @@
 
 #include <math.h>
 
+#ifdef __cplusplus
+// In order to support compiling with Clang, explicitly include cmath here since the Clang version
+// of the math.h header included above does not include cmath. This is a no-op compiling with GCC
+// since the GCC version of math.h includes cmath. We still include math.h under C++ for backwards
+// compatibility with user code that might assume certain math functions in the global namespace from
+// math.h.
+#include <cmath>
+#endif
+
 // #ifndef isnan
 // #error isnan is not defined please ensure this header is included before any STL headers
 // #endif
@@ -308,4 +317,3 @@ typedef USARTSerial HardwareSerial;
 
 
 #endif	/* ARDUINO_H */
-
