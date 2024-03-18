@@ -51,6 +51,8 @@ LOG_SOURCE_CATEGORY("system.nm")
 #include "control/common.h"
 #include "control/network.h"
 #include <unistd.h>
+#include "system_connection_manager.h"
+#include "spark_wiring_cloud.h"
 
 #define CHECKV(_expr) \
         ({ \
@@ -536,6 +538,11 @@ void NetworkManager::handleIfState(if_t iface, const struct if_event* ev) {
 }
 
 void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
+    uint8_t netIfIndex = 0;
+    if_get_index(iface, &netIfIndex);
+    bool disconnectCloud = false;
+    auto options = CloudDisconnectOptions().reconnect(true);
+
     if (ev->ev_if_link->state) {
         /* Interface link state changed to UP */
         NetworkInterfaceConfig conf;
@@ -609,10 +616,24 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         } else if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             refreshIpState();
         }
+
+        // If the preferred network becomes available, close the cloud connection to force migration to this network
+        if (ConnectionManager::instance()->getPreferredNetwork() == netIfIndex) {
+            LOG(INFO, "Preferred network %u available, moving cloud connection", netIfIndex);
+            options.graceful(true);
+            disconnectCloud = true;
+        }
+
     } else {
         // Disable by default
         if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
+
+        // If this is the current cloud connection, disconnect the cloud, but reconnect immediately on any other available interface
+        if (ConnectionManager::instance()->getCloudConnectionNetwork() == netIfIndex) {
+            LOG(WARN, "Cloud connection interface %d link state down, disconnecting", netIfIndex);
+            disconnectCloud = true;
+        }
 
         clearDnsConfiguration(iface);
         /* Interface link state changed to DOWN */
@@ -624,6 +645,12 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             }
         }
     }
+
+    if (spark_cloud_flag_connected() && disconnectCloud) {
+        auto systemOptions = options.toSystemOptions();
+        spark_cloud_disconnect(&systemOptions, nullptr);
+    }
+
     forceCloudPingIfConnected();
 }
 

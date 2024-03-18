@@ -91,6 +91,10 @@ public:
     bool clearSession() const;
     bool isClearSessionSet() const;
 
+    CloudDisconnectOptions& reconnect(bool enabled);
+    bool reconnect() const;
+    bool isReconnectSet() const;
+
     spark_cloud_disconnect_options toSystemOptions() const;
     static CloudDisconnectOptions fromSystemOptions(const spark_cloud_disconnect_options* options);
 
@@ -99,8 +103,9 @@ private:
     system_tick_t timeout_;
     bool graceful_;
     bool clearSession_;
+    bool reconnect_;
 
-    CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful, bool clearSession);
+    CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful, bool clearSession, bool reconnect = false);
 };
 
 class CloudClass {
@@ -375,8 +380,7 @@ public:
 
     static bool connected(void) { return spark_cloud_flag_connected(); }
     static bool disconnected(void) { return !connected(); }
-    static void connect(const spark::NetworkClass& network = spark::Network) {
-        spark_set_connection_property(SPARK_CLOUD_BIND_NETWORK_INTERFACE, static_cast<network_interface_t>(network), nullptr, nullptr);
+    static void connect(void) {
         spark_cloud_flag_connect();
     }
     static void disconnect(const CloudDisconnectOptions& options = CloudDisconnectOptions());
@@ -605,15 +609,16 @@ extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));
 extern CloudClass Particle;
 
 inline CloudDisconnectOptions::CloudDisconnectOptions() :
-        CloudDisconnectOptions(0, 0, false, false) {
+        CloudDisconnectOptions(0, 0, false, false, false) {
 }
 
 inline CloudDisconnectOptions::CloudDisconnectOptions(unsigned flags, system_tick_t timeout, bool graceful,
-        bool clearSession) :
+        bool clearSession, bool reconnect) :
         flags_(flags),
         timeout_(timeout),
         graceful_(graceful),
-        clearSession_(clearSession) {
+        clearSession_(clearSession),
+        reconnect_(reconnect) {
 }
 
 inline CloudDisconnectOptions& CloudDisconnectOptions::graceful(bool enabled) {
@@ -660,6 +665,20 @@ inline bool CloudDisconnectOptions::clearSession() const {
 
 inline bool CloudDisconnectOptions::isClearSessionSet() const {
     return (flags_ & SPARK_CLOUD_DISCONNECT_OPTION_CLEAR_SESSION);
+}
+
+inline CloudDisconnectOptions& CloudDisconnectOptions::reconnect(bool enabled) {
+    reconnect_ = enabled;
+    flags_ |= SPARK_CLOUD_DISCONNECT_OPTION_RECONNECT_IMMEDIATELY;
+    return *this;
+}
+
+inline bool CloudDisconnectOptions::reconnect() const {
+    return reconnect_;
+}
+
+inline bool CloudDisconnectOptions::isReconnectSet() const {
+    return (flags_ & SPARK_CLOUD_DISCONNECT_OPTION_RECONNECT_IMMEDIATELY);
 }
 
 inline particle::Future<bool> CloudClass::publish(const char* name) {
