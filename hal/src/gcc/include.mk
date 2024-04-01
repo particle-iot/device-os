@@ -24,6 +24,8 @@ LIBS += boost_system
 endif
 LIBS += boost_program_options boost_random boost_thread boost_json
 
+LDFLAGS += -Wl,--start-group /usr/lib64/libcrypto.so.3 -Wl,--end-group -lssl
+
 LIB_DIRS += $(BOOST_ROOT)/stage/lib
 
 # gcc HAL is different for test driver and test subject
