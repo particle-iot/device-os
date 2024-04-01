@@ -53,3 +53,6 @@
 [submodule "proto_defs/shared"]
 	path = proto_defs/shared
 	url = https://github.com/particle-iot/device-os-protobuf.git
+[submodule "third_party/mqtt_cpp"]
+	path = third_party/mqtt_cpp
+	url = https://github.com/redboltz/mqtt_cpp.git
