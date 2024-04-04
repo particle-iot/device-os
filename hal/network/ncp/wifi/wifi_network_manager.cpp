@@ -230,7 +230,7 @@ int WifiNetworkManager::connect(const char* ssid) {
             auto scanResults = (Vector<WifiScanResult>*)data;
             CHECK_TRUE(scanResults->append(std::move(result)), SYSTEM_ERROR_NO_MEMORY);
             return 0;
-        }, &scanResults));
+        }, &scanResults, /* forConnect*/ true));
         // Sort discovered networks by RSSI
         sortByRssi(&scanResults);
         // Try to connect to any known network among the discovered ones
@@ -309,7 +309,7 @@ int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, WifiNetworkConf
                 const auto networks = (Vector<WifiScanResult>*)data;
                 CHECK_TRUE(networks->append(std::move(network)), SYSTEM_ERROR_NO_MEMORY);
                 return 0;
-            }, &networks));
+            }, &networks, /* forConnect*/ true));
             for (auto network : networks) {
                 if (!strcmp(conf.ssid(), network.ssid())) {
                     conf.security((WifiSecurity)network.security());
