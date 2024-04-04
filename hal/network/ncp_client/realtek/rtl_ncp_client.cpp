@@ -381,7 +381,7 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     return SYSTEM_ERROR_NONE;
 }
 
-int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
+int RealtekNcpClient::scan(WifiScanCallback callback, void* data, bool forConnect) {
     CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
 
@@ -459,7 +459,7 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
     }
 
     // XXX:
-    if ((rtlError /* keeping this for now */ && ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
+    if ((forConnect && ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
         needsReset_ = true;
