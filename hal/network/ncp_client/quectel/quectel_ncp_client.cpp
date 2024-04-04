@@ -661,7 +661,7 @@ int QuectelNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
     // fallback to CSD
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device()) {
+    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     }
