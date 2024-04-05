@@ -1439,8 +1439,12 @@ int QuectelNcpClient::registerNet() {
             r = CHECK_PARSER(respNwMode.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
         #if PLATFORM_ID == PLATFORM_MSOM
-            if (nwScanMode != 0) {
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // AUTO
+            // M404/BG95M5 should be LTEM only, ie scan mode 3
+            // M524/EG91EX should be AUTO (both LTEM and 2G), ie scan mode 0
+            int desiredNwScanMode = (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) ? 3 : 0;
+
+            if (nwScanMode != desiredNwScanMode) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",%d,1", desiredNwScanMode));
             }
 
             if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
