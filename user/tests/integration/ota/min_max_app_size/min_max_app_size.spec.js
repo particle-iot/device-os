@@ -242,3 +242,46 @@ test('19_check_original_application', async function() {
 	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
 	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
 });
+
+test('20_ota_max_busy_application_start', async function () {
+	expect(maxAppSize).to.not.equal(0);
+	await generateMaxApp();
+	expect(maxAppData.length).to.equal(maxAppSize);
+	const appFile = await tempy.write(maxAppData, { name: 'max_app.bin' });
+	await flash(this, appFile);
+});
+
+test('21_ota_max_busy_application_wait', async function () {
+});
+
+test('22_check_max_application', async function() {
+	const usbDevice = await device.getUsbDevice();
+	const modules = await usbDevice.getFirmwareModuleInfo();
+	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
+	expect(app).to.not.be.undefined;
+	const parser = new HalModuleParser();
+	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: maxAppData });
+	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
+	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
+	expect(app.size).to.equal(app.maxSize);
+});
+
+test('23_ota_original_application_start', async function () {
+	const appFile = await tempy.write(origAppData, { name: 'orig_app.bin' });
+	await flash(this, appFile);
+});
+
+test('24_ota_original_application_wait', async function () {
+});
+
+test('25_check_original_application', async function() {
+	const usbDevice = await device.getUsbDevice();
+	const modules = await usbDevice.getFirmwareModuleInfo();
+	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
+	expect(app).to.not.be.undefined;
+	const parser = new HalModuleParser();
+	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: origAppData });
+	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
+	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
+	expect(app.size).to.not.equal(app.maxSize);
+});
