@@ -106,16 +106,45 @@ before(async function() {
 	origAppData = await readFile(device.testAppBinFile);
 });
 
-test('01_check_current_application', async function () {
+async function getDeviceUserFirmwareModuleInfo() {
 	const usbDevice = await device.getUsbDevice();
 	const modules = await usbDevice.getFirmwareModuleInfo();
 	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
+	return app;
+}
+
+async function checkCurrentApplication() {
+	const app = await getDeviceUserFirmwareModuleInfo();
 	expect(app).to.not.be.undefined;
 	maxAppSize = app.maxSize;
 	const parser = new HalModuleParser();
 	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: origAppData });
 	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
 	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
+}
+
+async function checkMaxApplication() {
+	const app = await getDeviceUserFirmwareModuleInfo();
+	expect(app).to.not.be.undefined;
+	const parser = new HalModuleParser();
+	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: maxAppData });
+	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
+	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
+	expect(app.size).to.equal(app.maxSize);
+};
+
+async function checkOriginalApplication() {
+	const app = await getDeviceUserFirmwareModuleInfo();
+	expect(app).to.not.be.undefined;
+	const parser = new HalModuleParser();
+	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: origAppData });
+	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
+	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
+	expect(app.size).to.not.equal(app.maxSize);
+}
+
+test('01_check_current_application', async function () {
+	await checkCurrentApplication();
 });
 
 test('02_ota_max_application_start', async function () {
@@ -130,15 +159,7 @@ test('03_ota_max_application_wait', async function () {
 });
 
 test('04_check_max_application', async function() {
-	const usbDevice = await device.getUsbDevice();
-	const modules = await usbDevice.getFirmwareModuleInfo();
-	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
-	expect(app).to.not.be.undefined;
-	const parser = new HalModuleParser();
-	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: maxAppData });
-	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
-	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
-	expect(app.size).to.equal(app.maxSize);
+	await checkMaxApplication();
 });
 
 test('05_ota_original_application_start', async function () {
@@ -150,100 +171,10 @@ test('06_ota_original_application_wait', async function () {
 });
 
 test('07_check_original_application', async function() {
-	const usbDevice = await device.getUsbDevice();
-	const modules = await usbDevice.getFirmwareModuleInfo();
-	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
-	expect(app).to.not.be.undefined;
-	const parser = new HalModuleParser();
-	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: origAppData });
-	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
-	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
-	expect(app.size).to.not.equal(app.maxSize);
+	await checkOriginalApplication();
 });
 
-test('08_usb_flash_max_application_start', async function () {
-	expect(maxAppSize).to.not.equal(0);
-	expect(maxAppData.length).to.equal(maxAppSize);
-	const usbDevice = await device.getUsbDevice();
-	await usbDevice.updateFirmware(maxAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
-});
-
-test('09_usb_flash_max_application_wait', async function () {
-});
-
-test('10_check_max_application', async function() {
-	const usbDevice = await device.getUsbDevice();
-	const modules = await usbDevice.getFirmwareModuleInfo();
-	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
-	expect(app).to.not.be.undefined;
-	const parser = new HalModuleParser();
-	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: maxAppData });
-	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
-	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
-	expect(app.size).to.equal(app.maxSize);
-});
-
-test('11_usb_flash_original_application_start', async function () {
-	const usbDevice = await device.getUsbDevice();
-	await usbDevice.updateFirmware(origAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
-});
-
-test('12_usb_flash_original_application_wait', async function () {
-});
-
-test('13_check_original_application', async function() {
-	const usbDevice = await device.getUsbDevice();
-	const modules = await usbDevice.getFirmwareModuleInfo();
-	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
-	expect(app).to.not.be.undefined;
-	const parser = new HalModuleParser();
-	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: origAppData });
-	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
-	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
-});
-
-test('14_usb_flash_max_application_compressed_start', async function () {
-	expect(maxAppSize).to.not.equal(0);
-	expect(maxAppData.length).to.equal(maxAppSize);
-	const usbDevice = await device.getUsbDevice();
-	await usbDevice.updateFirmware(await compressModule(maxAppData), { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
-});
-
-test('15_usb_flash_max_application_compressed_wait', async function () {
-});
-
-test('16_check_max_application', async function() {
-	const usbDevice = await device.getUsbDevice();
-	const modules = await usbDevice.getFirmwareModuleInfo();
-	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
-	expect(app).to.not.be.undefined;
-	const parser = new HalModuleParser();
-	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: maxAppData });
-	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
-	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
-	expect(app.size).to.equal(app.maxSize);
-});
-
-test('17_usb_flash_original_application_compressed_start', async function () {
-	const usbDevice = await device.getUsbDevice();
-	await usbDevice.updateFirmware(await compressModule(origAppData), { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
-});
-
-test('18_usb_flash_original_application_compressed_wait', async function () {
-});
-
-test('19_check_original_application', async function() {
-	const usbDevice = await device.getUsbDevice();
-	const modules = await usbDevice.getFirmwareModuleInfo();
-	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
-	expect(app).to.not.be.undefined;
-	const parser = new HalModuleParser();
-	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: origAppData });
-	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
-	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
-});
-
-test('20_ota_max_busy_application_start', async function () {
+test('08_ota_max_application_compressed_start', async function () {
 	expect(maxAppSize).to.not.equal(0);
 	await generateMaxApp();
 	expect(maxAppData.length).to.equal(maxAppSize);
@@ -251,37 +182,126 @@ test('20_ota_max_busy_application_start', async function () {
 	await flash(this, appFile);
 });
 
-test('21_ota_max_busy_application_wait', async function () {
+test('09_ota_max_application_compressed_wait', async function () {
 });
 
-test('22_check_max_application', async function() {
-	const usbDevice = await device.getUsbDevice();
-	const modules = await usbDevice.getFirmwareModuleInfo();
-	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
-	expect(app).to.not.be.undefined;
-	const parser = new HalModuleParser();
-	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: maxAppData });
-	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
-	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
-	expect(app.size).to.equal(app.maxSize);
+test('10_check_max_application', async function() {
+	await checkMaxApplication();
 });
 
-test('23_ota_original_application_start', async function () {
+test('11_ota_original_application_compressed_start', async function () {
 	const appFile = await tempy.write(origAppData, { name: 'orig_app.bin' });
 	await flash(this, appFile);
 });
 
-test('24_ota_original_application_wait', async function () {
+test('12_ota_original_application_compressed_wait', async function () {
+});
+
+test('13_check_original_application', async function() {
+	await checkOriginalApplication();
+});
+
+test('14_usb_flash_max_application_start', async function () {
+	expect(maxAppSize).to.not.equal(0);
+	expect(maxAppData.length).to.equal(maxAppSize);
+	const usbDevice = await device.getUsbDevice();
+	await usbDevice.updateFirmware(maxAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
+});
+
+test('15_usb_flash_max_application_wait', async function () {
+});
+
+test('16_check_max_application', async function() {
+	await checkMaxApplication();
+});
+
+test('17_usb_flash_original_application_start', async function () {
+	const usbDevice = await device.getUsbDevice();
+	await usbDevice.updateFirmware(origAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
+});
+
+test('18_usb_flash_original_application_wait', async function () {
+});
+
+test('19_check_original_application', async function() {
+	await checkOriginalApplication();
+});
+
+test('20_usb_flash_max_application_compressed_start', async function () {
+	expect(maxAppSize).to.not.equal(0);
+	expect(maxAppData.length).to.equal(maxAppSize);
+	const usbDevice = await device.getUsbDevice();
+	await usbDevice.updateFirmware(await compressModule(maxAppData), { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
+});
+
+test('21_usb_flash_max_application_compressed_wait', async function () {
+});
+
+test('22_check_max_application', async function() {
+	await checkMaxApplication();
+});
+
+test('23_usb_flash_original_application_compressed_start', async function () {
+	const usbDevice = await device.getUsbDevice();
+	await usbDevice.updateFirmware(await compressModule(origAppData), { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
+});
+
+test('24_usb_flash_original_application_compressed_wait', async function () {
 });
 
 test('25_check_original_application', async function() {
+	await checkOriginalApplication();
+});
+
+test('26_ota_max_application_busy_start', async function () {
+	expect(maxAppSize).to.not.equal(0);
+	await generateMaxApp();
+	expect(maxAppData.length).to.equal(maxAppSize);
+	const appFile = await tempy.write(maxAppData, { name: 'max_app.bin' });
+	await flash(this, appFile);
+});
+
+test('27_ota_max_application_busy_wait', async function () {
+});
+
+test('28_check_max_application', async function() {
+	await checkMaxApplication();
+});
+
+test('29_ota_original_application_busy_start', async function () {
+	const appFile = await tempy.write(origAppData, { name: 'orig_app.bin' });
+	await flash(this, appFile);
+});
+
+test('30_ota_original_application_busy_wait', async function () {
+});
+
+test('31_check_original_application', async function() {
+	await checkOriginalApplication();
+});
+
+test('32_usb_flash_max_application_busy_start', async function () {
+	expect(maxAppSize).to.not.equal(0);
+	expect(maxAppData.length).to.equal(maxAppSize);
 	const usbDevice = await device.getUsbDevice();
-	const modules = await usbDevice.getFirmwareModuleInfo();
-	const app = modules.find((v) => v.type === 'USER_PART' && v.store === 'MAIN');
-	expect(app).to.not.be.undefined;
-	const parser = new HalModuleParser();
-	const { prefixInfo, suffixInfo } = await parser.parseBuffer({ fileBuffer: origAppData });
-	expect(suffixInfo.fwUniqueId).to.equal(app.hash);
-	expect(parseInt(prefixInfo.moduleEndAddy, 16) - parseInt(prefixInfo.moduleStartAddy, 16) + 4 /* CRC32 */).to.equal(app.size);
-	expect(app.size).to.not.equal(app.maxSize);
+	await usbDevice.updateFirmware(maxAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
+});
+
+test('33_usb_flash_max_application_busy_wait', async function () {
+});
+
+test('34_check_max_application', async function() {
+	await checkMaxApplication();
+});
+
+test('35_usb_flash_original_application_busy_start', async function () {
+	const usbDevice = await device.getUsbDevice();
+	await usbDevice.updateFirmware(origAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
+});
+
+test('36_usb_flash_original_application_busy_wait', async function () {
+});
+
+test('37_check_original_application', async function() {
+	await checkOriginalApplication();
 });
