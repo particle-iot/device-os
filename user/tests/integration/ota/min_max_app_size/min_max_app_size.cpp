@@ -10,6 +10,7 @@ namespace {
 
 volatile int updateResult = firmware_update_failed;
 bool busyMode = false;
+Vector<WiFiAccessPoint> apList;
 
 void prepareOta(bool connect = true, bool compressedOta = true) {
     System.disableReset();
@@ -24,7 +25,7 @@ void prepareOta(bool connect = true, bool compressedOta = true) {
             auto chunksRx = bytesRx / progress->chunk_size;
             auto totalChunks = progress->chunk_count(progress->chunk_size);
 
-            Log.info("bytesRx/total %u/%u chunks Rx/total %u/%u",
+            Log.info("bytes Rx/total %lu/%lu chunks Rx/total %lu/%u",
                 bytesRx,
                 progress->file_length,
                 chunksRx,
@@ -68,6 +69,9 @@ void waitOta() {
 
 void highPriorityFunc() {
     while (1) {
+        // Busy loop up to 5ms
+        HAL_Delay_Microseconds(random(5) * 1000);
+        // Force frequent reschedule
         delay(1);
     }
 }
@@ -76,16 +80,17 @@ void bleScanResultCallBack(const BleScanResult *result, void *context) {
     Log.info("BLE adv: %s", result->address().toString().c_str());
 }
 
+void wifiScanResultCallBack(WiFiAccessPoint* wap, void* context) {
+  if (apList.size() < 20)
+    apList.append(*wap);
+}
+
 void lowPriorityFunc() {
+    unsigned int wifiSeconds = 0;
+    const int WIFI_SCAN_INTERVAL_SECONDS = 10;
+
     while (1) {
 #if HAL_PLATFORM_BLE
-        static bool bleOn = false;
-
-        if (!bleOn) {
-            BLE.on();
-            bleOn = true;
-        }
-
         BleScanParams params = {};
         params.version = BLE_API_VERSION;
         params.size = sizeof(BleScanParams);
@@ -98,12 +103,36 @@ void lowPriorityFunc() {
         BLE.scan(bleScanResultCallBack, nullptr);
 #endif
 
-        // TODO: Wifi scanning?
+#if HAL_PLATFORM_WIFI
+        if(System.uptime() >= wifiSeconds) {
+            wifiSeconds = System.uptime() + WIFI_SCAN_INTERVAL_SECONDS;
+            apList.clear();
+
+            auto wifiResult = WiFi.scan(wifiScanResultCallBack, nullptr);
+            for (auto ap: apList) {
+                String bssid = String::format("%02X:%02X:%02X:%02X:%02X:%02X",
+                    ap.bssid[0], ap.bssid[1], ap.bssid[2], ap.bssid[3], ap.bssid[4], ap.bssid[5]);
+                Log.info("SSID=%s, BSSID=%s, CHAN=%u, SIGNAL=%d",
+                                ap.ssid, bssid.c_str(), (unsigned int)ap.channel, ap.rssi);
+            }
+            if (apList.size() == 0) {
+                Log.info("WiFi scan failed: %d", wifiResult);
+            }
+        }
+#endif
         delay(500);
     }
 }
 
 void enableBusyMode() {
+#if HAL_PLATFORM_BLE
+    BLE.on();
+#endif
+
+#if HAL_PLATFORM_WIFI
+    WiFi.on();
+#endif
+
     busyMode = true;
     new Thread("high_prio", highPriorityFunc, OS_THREAD_PRIORITY_CRITICAL);
     new Thread("low_prio", lowPriorityFunc, OS_THREAD_PRIORITY_DEFAULT);
@@ -141,7 +170,6 @@ test(03_ota_max_application_wait) {
 }
 
 test(04_check_max_application) {
-
 }
 
 test(05_ota_original_application_start) {
@@ -164,7 +192,6 @@ test(09_ota_max_application_compressed_wait) {
 }
 
 test(10_check_max_application) {
-
 }
 
 test(11_ota_original_application_compressed_start) {
@@ -187,7 +214,6 @@ test(15_usb_flash_max_application_wait) {
 }
 
 test(16_check_max_application) {
-
 }
 
 test(17_usb_flash_original_application_start) {
@@ -233,7 +259,6 @@ test(27_ota_max_application_busy_wait) {
 }
 
 test(28_check_max_application) {
-
 }
 
 test(29_ota_original_application_busy_start) {
@@ -246,7 +271,6 @@ test(30_ota_original_application_busy_wait) {
 }
 
 test(31_check_original_application) {
-
 }
 
 test(32_usb_flash_max_application_busy_start) {
@@ -259,7 +283,6 @@ test(33_usb_flash_max_application_busy_wait) {
 }
 
 test(34_check_max_application) {
-
 }
 
 test(35_usb_flash_original_application_busy_start) {
@@ -272,5 +295,4 @@ test(36_usb_flash_original_application_busy_wait) {
 }
 
 test(37_check_original_application) {
-
 }
