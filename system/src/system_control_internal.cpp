@@ -357,6 +357,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* /* 
         setResult(req, ctrl::wifi::scanNetworks(req));
         break;
     }
+    case CTRL_REQUEST_WIFI_SET_NETWORK_CREDENTIALS: {
+        setResult(req, ctrl::wifi::setNetworkCredentials(req));
+        break;
+    }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_WIFI
 #if HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
     case CTRL_REQUEST_CELLULAR_SET_ACCESS_POINT: {
