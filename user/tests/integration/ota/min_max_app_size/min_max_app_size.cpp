@@ -85,24 +85,11 @@ void wifiScanResultCallBack(WiFiAccessPoint* wap, void* context) {
     apList.append(*wap);
 }
 
-void lowPriorityFunc() {
+void wifiScanThread() {
     unsigned int wifiSeconds = 0;
     const int WIFI_SCAN_INTERVAL_SECONDS = 10;
 
     while (1) {
-#if HAL_PLATFORM_BLE
-        BleScanParams params = {};
-        params.version = BLE_API_VERSION;
-        params.size = sizeof(BleScanParams);
-        params.timeout = 50; // *10ms = 500ms overall duration
-        params.interval = 800; // *0.625ms = 500ms
-        params.window = 800; // *0.625 = 500s
-        params.active = false;
-        
-        BLE.setScanParameters(params);
-        BLE.scan(bleScanResultCallBack, nullptr);
-#endif
-
 #if HAL_PLATFORM_WIFI
         if(System.uptime() >= wifiSeconds) {
             wifiSeconds = System.uptime() + WIFI_SCAN_INTERVAL_SECONDS;
@@ -120,6 +107,25 @@ void lowPriorityFunc() {
             }
         }
 #endif
+        delay(100);
+    }
+}
+
+void bleScanThread() {
+    while (1) {
+#if HAL_PLATFORM_BLE
+        BleScanParams params = {};
+        params.version = BLE_API_VERSION;
+        params.size = sizeof(BleScanParams);
+        params.timeout = 50; // *10ms = 500ms overall duration
+        params.interval = 800; // *0.625ms = 500ms
+        params.window = 800; // *0.625 = 500s
+        params.active = false;
+        
+        BLE.setScanParameters(params);
+        BLE.scan(bleScanResultCallBack, nullptr);
+
+#endif
         delay(500);
     }
 }
@@ -135,7 +141,8 @@ void enableBusyMode() {
 
     busyMode = true;
     new Thread("high_prio", highPriorityFunc, OS_THREAD_PRIORITY_CRITICAL);
-    new Thread("low_prio", lowPriorityFunc, OS_THREAD_PRIORITY_DEFAULT);
+    new Thread("wifi_scan", wifiScanThread, OS_THREAD_PRIORITY_DEFAULT);
+    new Thread("ble_scan", bleScanThread, OS_THREAD_PRIORITY_DEFAULT);
 }
 
 } // anonymous
