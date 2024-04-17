@@ -445,7 +445,6 @@ public:
 
     uint8_t transfer(uint8_t data) {
         CHECK_TRUE(isEnabled(), 0);
-        CHECK_TRUE(isBusy() == false, 0);
         CHECK_TRUE(config_.spiMode == SPI_MODE_MASTER, 0);
 
         // Wait for last SPI transfer finished
