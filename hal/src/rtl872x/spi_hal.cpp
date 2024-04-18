@@ -193,6 +193,13 @@ public:
         }
         os_thread_scheduling(true, nullptr);
 
+        // Enable SPI Clock
+        if (rtlSpiIndex_ == 0) {
+            RCC_PeriphClockCmd(APBPeriph_SPI0, APBPeriph_SPI0_CLOCK, ENABLE);
+        } else {
+            RCC_PeriphClockCmd(APBPeriph_SPI1, APBPeriph_SPI1_CLOCK, ENABLE);
+        }
+
         std::lock_guard<Spi> lk(*this);
         if (isEnabled()) {
             CHECK(end());
@@ -216,29 +223,56 @@ public:
         if (spiConfig && spiConfig->flags) {
             config_.flags = spiConfig->flags;
         }
+        // Set data mode
+        setDataMode(config_.dataMode, force);
+        // Set clock divider
+        setClockDivider(config_.clockDiv);
+        // Set bit order
+        setBitOrder(config_.bitOrder);
+        return SYSTEM_ERROR_NONE;
+    }
 
-        uint32_t phase = SCPH_TOGGLES_IN_MIDDLE;
-        uint32_t polarity = SCPOL_INACTIVE_IS_LOW;
-        spiModeToPolAndPha(config_.dataMode, &polarity, &phase);
-        uint32_t bakPol = SPI_DEV_TABLE[rtlSpiIndex_].SPIx->CTRLR0 & BIT_CTRLR0_SCPH;
-        SSI_SetSclkPhase(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, phase);
-        SSI_SetSclkPolarity(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, polarity);
-        SSI_SetDataFrameSize(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DEFAULT_DATA_BITS);
-        if (force || (bakPol != (SPI_DEV_TABLE[rtlSpiIndex_].SPIx->CTRLR0 & BIT_CTRLR0_SCPH))) {
-            // PAD_PullCtrl is another slow call, avoid if settings still match
-            if (polarity == SCPOL_INACTIVE_IS_LOW) {
-                PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_DOWN);
+    int setBitOrder(uint8_t bitOrder) {
+        config_.bitOrder = bitOrder;
+        if (SPI_DEV_TABLE[rtlSpiIndex_].SPIx->SSIENR & BIT_SSIENR_SSI_EN) {
+            if (config_.bitOrder == MSBFIRST) {
+                SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, DISABLE);
+                SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, DISABLE);
             } else {
-                PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_UP);
+                SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, ENABLE);
+                SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, ENABLE);
             }
         }
+        return SYSTEM_ERROR_NONE;
+    }
 
-        // Set clock divider
-        if (config_.spiMode == SPI_MODE_MASTER) {
+    int setDataMode(uint8_t dataMode, bool force = false) {
+        config_.dataMode = dataMode;
+        if (SPI_DEV_TABLE[rtlSpiIndex_].SPIx->SSIENR & BIT_SSIENR_SSI_EN) {
+            uint32_t phase = SCPH_TOGGLES_IN_MIDDLE;
+            uint32_t polarity = SCPOL_INACTIVE_IS_LOW;
+            spiModeToPolAndPha(config_.dataMode, &polarity, &phase);
+            uint32_t bakPol = SPI_DEV_TABLE[rtlSpiIndex_].SPIx->CTRLR0 & BIT_CTRLR0_SCPH;
+            SSI_SetSclkPhase(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, phase);
+            SSI_SetSclkPolarity(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, polarity);
+            if (force || (bakPol != (SPI_DEV_TABLE[rtlSpiIndex_].SPIx->CTRLR0 & BIT_CTRLR0_SCPH))) {
+                // PAD_PullCtrl is another slow call, avoid if settings still match
+                if (polarity == SCPOL_INACTIVE_IS_LOW) {
+                    PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_DOWN);
+                } else {
+                    PAD_PullCtrl((uint8_t)hal_pin_to_rtl_pin(sclkPin_), GPIO_PuPd_UP);
+                }
+            }
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int setClockDivider(uint32_t clockDiv) {
+        config_.clockDiv = clockDiv;
+        if (SPI_DEV_TABLE[rtlSpiIndex_].SPIx->SSIENR & BIT_SSIENR_SSI_EN) {
             u32 rtlClockDivider = 256;
             clockDivToRtlClockDiv(config_.clockDiv, &rtlClockDivider);
             SSI_SetBaudDiv(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, rtlClockDivider);
-
             // Set sample delay for SPI0@50MHz
             if (rtlClockDivider == 2 && SPI_DEV_TABLE[rtlSpiIndex_].SPIx == SPI0_DEV) {
                 SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x1);
@@ -246,17 +280,7 @@ public:
                 SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x0);
             }
         }
-
-        // Set bit order
-        if (config_.bitOrder == MSBFIRST) {
-            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, DISABLE);
-            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, DISABLE);
-        } else {
-            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_TXBITSWP, ENABLE);
-            SSI_SetDataSwap(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, BIT_CTRLR0_RXBITSWP, ENABLE);
-        }
-
-        return 0;
+        return SYSTEM_ERROR_NONE;
     }
 
     int begin(const SpiConfig& config) {
@@ -269,7 +293,7 @@ public:
         // Convert default pin to exact pin
         if (csPin == SPI_DEFAULT_SS) {
             if (spiInterface_ == HAL_SPI_INTERFACE1) {
-                csPin = SS;
+                csPin = SS; 
             } else if (spiInterface_ == HAL_SPI_INTERFACE2) {
                 csPin = SS1;
             } else {
@@ -303,13 +327,6 @@ public:
 
         SSI_InitTypeDef SSI_InitStruct;
         SSI_StructInit(&SSI_InitStruct);
-
-        // Enable SPI Clock
-        if (rtlSpiIndex_ == 0) {
-            RCC_PeriphClockCmd(APBPeriph_SPI0, APBPeriph_SPI0_CLOCK, ENABLE);
-        } else {
-            RCC_PeriphClockCmd(APBPeriph_SPI1, APBPeriph_SPI1_CLOCK, ENABLE);
-        }
 
         // Configure GPIO and Role
         if (config_.spiMode == SPI_MODE_MASTER) {
@@ -349,7 +366,12 @@ public:
         hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_HIGH);
         hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_HIGH);
 
-        setSettings(config, spi_config, true /* force */);
+        // Set data mode
+        setDataMode(config_.dataMode, true /* force */);
+        // Set clock divider
+        setClockDivider(config_.clockDiv);
+        // Set bit order
+        setBitOrder(config_.bitOrder);
 
         // Set pin function
         if (!(spi_config && (spi_config->flags & (uint32_t)HAL_SPI_CONFIG_FLAG_MOSI_ONLY))) {
@@ -1038,36 +1060,21 @@ void hal_spi_set_bit_order(hal_spi_interface_t spi, uint8_t order) {
     if (spi >= HAL_PLATFORM_SPI_NUM) {
         return;
     }
-    auto spiInstance = getInstance(spi);
-    auto config = spiInstance->config();
-    config.bitOrder = order;
-    if (spiInstance->isEnabled()) {
-        spiInstance->setSettings(config);
-    }
+    getInstance(spi)->setBitOrder(order);
 }
 
 void hal_spi_set_data_mode(hal_spi_interface_t spi, uint8_t mode) {
     if (spi >= HAL_PLATFORM_SPI_NUM) {
         return;
     }
-    auto spiInstance = getInstance(spi);
-    auto config = spiInstance->config();
-    config.dataMode = mode;
-    if (spiInstance->isEnabled()) {
-        spiInstance->setSettings(config);
-    }
+    getInstance(spi)->setDataMode(mode);
 }
 
 void hal_spi_set_clock_divider(hal_spi_interface_t spi, uint8_t rate) {
     if (spi >= HAL_PLATFORM_SPI_NUM) {
         return;
     }
-    auto spiInstance = getInstance(spi);
-    auto config = spiInstance->config();
-    config.clockDiv = rate;
-    if (spiInstance->isEnabled()) {
-        spiInstance->setSettings(config);
-    }
+    getInstance(spi)->setClockDivider(rate);
 }
 
 uint16_t hal_spi_transfer(hal_spi_interface_t spi, uint16_t data) {
@@ -1190,11 +1197,9 @@ int32_t hal_spi_set_settings(hal_spi_interface_t spi, uint8_t set_default, uint8
     }
 
     auto spiInstance = CHECK_TRUE_RETURN(getInstance(spi), SYSTEM_ERROR_NOT_FOUND);
-    if (spiInstance->isEnabled()) {
-        // FIXME: performing end()/begin() is pretty slow due to GPIO ROM calls
-        // Instead opt to change just the settings
-        spiInstance->setSettings(config);
-    }
+    // FIXME: performing end()/begin() is pretty slow due to GPIO ROM calls
+    // Instead opt to change just the settings
+    spiInstance->setSettings(config);
     return 0;
 }
 
