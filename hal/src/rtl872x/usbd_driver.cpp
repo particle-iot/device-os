@@ -127,7 +127,6 @@ int usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 int __real_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 
 int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
-    std::lock_guard<RtlUsbDriver> lk(*RtlUsbDriver::instance());
     int r = __real_usb_hal_read_packet(ptr, size, unknown);
     bool fixed = false;
     if (size == sizeof(sLastUsbSetupRequest)) {
