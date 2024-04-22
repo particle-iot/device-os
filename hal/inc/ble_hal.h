@@ -1153,6 +1153,15 @@ ssize_t hal_ble_gatt_client_write_without_response(hal_ble_conn_handle_t conn_ha
  */
 ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr_handle_t attr_handle, uint8_t* buf, size_t len, void* reserved);
 
+/**
+ * Internal use.
+ * 
+ * @param data 
+ * @param size 
+ * @param reserved 
+ * @return int 
+ */
+int hal_ble_internal(int type, void* data, size_t size, void* reserved);
 
 #define HAL_PLATFORM_BLE_BETA_COMPAT 1
 
