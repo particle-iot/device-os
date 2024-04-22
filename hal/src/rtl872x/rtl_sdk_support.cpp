@@ -69,12 +69,13 @@ namespace {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 uint8_t radioStatus = RTW_RADIO_NONE;
 RecursiveMutex radioMutex;
-#endif
+
 volatile bool s_wifiConnectionState = false;
 volatile bool s_tdmaSkip = false;
 
 uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf0ffffff};
 uint8_t s_tdmaTable[5] = {0x51, 0x45, 0x03, 0x10, 0x50};
+#endif
 }
 
 extern "C" pcoex_reveng* pcoex[4];
