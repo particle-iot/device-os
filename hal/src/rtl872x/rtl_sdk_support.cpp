@@ -75,6 +75,7 @@ volatile bool s_tdmaSkip = false;
 
 uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf0ffffff};
 uint8_t s_tdmaTable[5] = {0x51, 0x45, 0x03, 0x10, 0x50};
+void* s_coex_struct = nullptr;
 #endif
 }
 
@@ -215,6 +216,9 @@ extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint
 #ifdef RTL_DEBUG_COEX
     LOG(INFO, "tdma set %02x %02x %02x %02x %02x", b1, b2, b3, b4, b5);
 #endif // RTL_DEBUG_COEX
+    if (!s_coex_struct) {
+        s_coex_struct = coex;
+    }
 }
 
 void rtwCoexSetWifiConnectedState(bool state) {
@@ -259,15 +263,20 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
 #ifdef RTL_DEBUG_COEX
     LOG(INFO, "coex table %08x %08x %08x (before %08x %08x %08x) ", v0, v1, v2, t1, t2, t3);
 #endif // RTL_DEBUG_COEX
+    if (!s_coex_struct) {
+        s_coex_struct = coex;
+    }
 }
 
 int rtwCoexSet(uint32_t coex[3], uint8_t tdma[5], bool apply) {
     memcpy(s_coexTable, coex, sizeof(s_coexTable));
     memcpy(s_tdmaTable, tdma, sizeof(s_tdmaTable));
-    constexpr size_t COEX_OFFSET = 2664;
+    //constexpr size_t COEX_OFFSET = 2664;
     if (apply) {
-        rtl8721d_set_coex_table(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), coex[0], coex[1], coex[2]);
-        rtl8721d_set_pstdma_cmd(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), tdma[0], tdma[1], tdma[2], tdma[3], tdma[4]);
+        // rtl8721d_set_coex_table(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), coex[0], coex[1], coex[2]);
+        // rtl8721d_set_pstdma_cmd(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), tdma[0], tdma[1], tdma[2], tdma[3], tdma[4]);
+        rtl8721d_set_coex_table(s_coex_struct, coex[0], coex[1], coex[2]);
+        rtl8721d_set_pstdma_cmd(s_coex_struct, tdma[0], tdma[1], tdma[2], tdma[3], tdma[4]);
     }
     return 0;
 }
