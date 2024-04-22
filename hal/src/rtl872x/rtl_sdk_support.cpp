@@ -73,8 +73,8 @@ RecursiveMutex radioMutex;
 volatile bool s_wifiConnectionState = false;
 volatile bool s_tdmaSkip = false;
 
-uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf0ffffff};
-uint8_t s_tdmaTable[5] = {0x51, 0x45, 0x03, 0x10, 0x50};
+uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5555, 0xf0ffffff};
+uint8_t s_tdmaTable[5] = {0x61, 0x10, 0x03, 0x11, 0x10};
 void* s_coex_struct = nullptr;
 #endif
 }
