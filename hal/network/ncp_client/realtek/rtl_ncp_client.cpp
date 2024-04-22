@@ -22,6 +22,8 @@ LOG_SOURCE_CATEGORY("ncp.rltk.client");
 #include "rtl_ncp_client.h"
 #include "addr_util.h"
 
+#include "scope_guard.h"
+
 #include "gpio_hal.h"
 #include "timer_hal.h"
 #include "delay_hal.h"
@@ -306,10 +308,14 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
             const NcpClientLock lock(this);
             CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
 
+            connectionState(NcpConnectionState::CONNECTING);
+
             wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int buf_len, int flags, void* userdata) -> void {
-                LOG(INFO, "disconnected");
                 RealtekNcpClient* client = (RealtekNcpClient*)userdata;
-                client->connectionState(NcpConnectionState::DISCONNECTED);
+                if (client->connectionState() == NcpConnectionState::CONNECTED) {
+                    LOG(TRACE, "Disconnected");
+                    client->connectionState(NcpConnectionState::DISCONNECTED);
+                }
             }, (void*)this);
 
             LOG(INFO, "Try to connect to ssid: %s", ssid);
@@ -322,14 +328,16 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
                                     nullptr);
             if (rtlError == RTW_SUCCESS) {
                 connectionState(NcpConnectionState::CONNECTED);
-                break;
+                return rtl_error_to_system(rtlError);
             } else if (rtlError != RTW_ERROR) {
                 break;
+            } else {
+                connectionState(NcpConnectionState::DISCONNECTED);
             }
         }
         HAL_Delay_Milliseconds(500);
     }
-
+    connectionState(NcpConnectionState::DISCONNECTED);
     return rtl_error_to_system(rtlError);
 }
 
@@ -380,6 +388,8 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     //TODO reevaluate whether we should error out on any of the sub-queries
     return SYSTEM_ERROR_NONE;
 }
+
+extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data, bool forConnect) {
     CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
@@ -521,6 +531,25 @@ void RealtekNcpClient::connectionState(NcpConnectionState state) {
     }
     if (connState_ == state) {
         return;
+    }
+    if (state == NcpConnectionState::CONNECTED) {
+        hal_ble_lock(nullptr);
+        rtwCoexSetWifiConnectedState(true);
+
+        wifi_set_power_mode(0, 0);
+        wifi_disable_powersave();
+        rltk_coex_set_wlan_slot_preempting(0b111);
+        rltk_coex_set_wifi_slot(50);
+
+        hal_ble_unlock(nullptr);
+    } else if (state == NcpConnectionState::DISCONNECTED) {
+        hal_ble_lock(nullptr);
+        rtwCoexSetWifiConnectedState(false);
+        wifi_set_power_mode(0, 0);
+        wifi_disable_powersave();
+        rltk_coex_set_wlan_slot_preempting(0b000);
+        rltk_coex_set_wifi_slot(50);
+        hal_ble_unlock(nullptr);
     }
     LOG(TRACE, "NCP connection state changed: %d", (int)state);
     connState_ = state;

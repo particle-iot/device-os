@@ -18,6 +18,9 @@
 #define REALTEK_WIFI_LOG_ENABLE 0
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_INFO
 
+// Uncomment to enable coex/tdma debug
+// #define RTL_DEBUG_COEX
+
 #include <cstdio>
 #include <cstdarg>
 #include <cstdint>
@@ -41,6 +44,7 @@ extern "C" {
 #include "spark_wiring_thread.h"
 #endif
 #include "freertos/wrapper.h"
+#include "bt_intf.h"
 
 extern "C" {
 
@@ -66,6 +70,11 @@ namespace {
 uint8_t radioStatus = RTW_RADIO_NONE;
 RecursiveMutex radioMutex;
 #endif
+volatile bool s_wifiConnectionState = false;
+volatile bool s_tdmaSkip = false;
+
+uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf0ffffff};
+uint8_t s_tdmaTable[5] = {0x51, 0x45, 0x03, 0x10, 0x50};
 }
 
 extern "C" pcoex_reveng* pcoex[4];
@@ -180,6 +189,101 @@ void rtwRadioReset() {
     hal_ble_unlock(nullptr);
 }
 
+extern "C" void __copy_rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5);
+extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5) {
+    // Skip setting TDMA parameters in some cases as to keep current settings and not reset the internal state
+    // even if the values (old/new) are matching.
+    if (s_tdmaSkip) {
+#ifdef RTL_DEBUG_COEX
+        LOG(INFO, "tdma skip");
+#endif // RTL_DEBUG_COEX
+        s_tdmaSkip = false;
+        return;
+    }
+    if (b1 != 0x00) {
+        // Force our own
+        b1 = s_tdmaTable[0];
+        b2 = s_tdmaTable[1];
+        b3 = s_tdmaTable[2];
+        b4 = s_tdmaTable[3];
+        b5 = s_tdmaTable[4];
+    }
+    // Pass through to actual implementation
+    __copy_rtl8721d_set_pstdma_cmd(coex, b1, b2, b3, b4, b5);
+
+#ifdef RTL_DEBUG_COEX
+    LOG(INFO, "tdma set %02x %02x %02x %02x %02x", b1, b2, b3, b4, b5);
+#endif // RTL_DEBUG_COEX
+}
+
+void rtwCoexSetWifiConnectedState(bool state) {
+    s_wifiConnectionState = state;
+}
+
+bool rtwCoexWifiConnectedState() {
+    return s_wifiConnectionState;
+}
+
+extern "C" void __copy_rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2);
+extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2) {
+    if (v0 == 0x5a5a5a5a && v1 == 0x5a5a5a5a && v2 == 0xf3ffffff && rtwCoexWifiConnectedState()) {
+#ifdef RTL_DEBUG_COEX
+        LOG(INFO, "Disallow bt high > wifi > bt low mode when WiFi is in connected state");
+#endif // RTL_DEBUG_COEX
+        s_tdmaSkip = true;
+        return;
+    }
+
+    // WiFi connected and BLE scan state
+    // BT > WiFi in BT slot; WLAN high-Priority > BT high-Priority > WLAN low-Priority> BT low-Priority in WiFi slot
+    // with TDMA working (default 0xf3ffffff break table does not work correctly)
+    if (v0 == 0x55555555 && (v1 == 0x5a5a5a5a || v1 == 0xaaaa5a5a || v1 == 0xaaaaaaaa)) {
+        v0 = s_coexTable[0];
+        v1 = s_coexTable[1];
+        v2 = s_coexTable[2];
+    }
+
+#ifdef RTL_DEBUG_COEX
+    constexpr auto REG_BT_COEX_TABLE1 = 0x06c0;
+    constexpr auto REG_BT_COEX_TABLE2 = 0x06c4;
+    constexpr auto REG_BT_COEX_TABLE3 = 0x06c8;
+    uint32_t t1 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE1);
+    uint32_t t2 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE2);
+    uint32_t t3 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE3);
+#endif // RTL_DEBUG_COEX
+
+    // Pass through to actual implementation
+    __copy_rtl8721d_set_coex_table(coex, v0, v1, v2);
+
+#ifdef RTL_DEBUG_COEX
+    LOG(INFO, "coex table %08x %08x %08x (before %08x %08x %08x) ", v0, v1, v2, t1, t2, t3);
+#endif // RTL_DEBUG_COEX
+}
+
+int rtwCoexSet(uint32_t coex[3], uint8_t tdma[5], bool apply) {
+    memcpy(s_coexTable, coex, sizeof(s_coexTable));
+    memcpy(s_tdmaTable, tdma, sizeof(s_tdmaTable));
+    constexpr size_t COEX_OFFSET = 2664;
+    if (apply) {
+        rtl8721d_set_coex_table(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), coex[0], coex[1], coex[2]);
+        rtl8721d_set_pstdma_cmd(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), tdma[0], tdma[1], tdma[2], tdma[3], tdma[4]);
+    }
+    return 0;
+}
+
+extern "C" void rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer);
+extern "C" void __copy_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer) {
+    // Pass through to actual implementation
+    rtw_hal_fill_h2c_cmd(coex, element_id, cmd_len, cmdbuffer);
+}
+
+extern "C" void rtw_write32(void* p, uint32_t offset, uint32_t val);
+extern "C" void __copy_rtw_write32(void* p, uint32_t offset, uint32_t val) {
+    // Pass through to actual implementation
+    return rtw_write32(p, offset, val);
+}
+
+extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
 void rtwRadioAcquire(RtwRadio r) {
     std::lock_guard<RecursiveMutex> lk(radioMutex);
     LOG_DEBUG(INFO, "rtwRadioAcquire: %d", r);
@@ -194,6 +298,10 @@ void rtwRadioAcquire(RtwRadio r) {
         rtwCoexCleanup(0);
         SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
         LOG(INFO, "WiFi on");
+        wifi_set_power_mode(0, 0);
+        wifi_disable_powersave();
+        rltk_coex_set_wlan_slot_preempting(0b000);
+        rltk_coex_set_wifi_slot(50);
     }
 }
 
@@ -327,6 +435,7 @@ extern "C" int mbedtls_platform_set_calloc_free(void*(*)(size_t, size_t), void (
 void ipc_table_init() {
     // stub
 }
+
 
 void ipc_send_message(uint8_t channel, uint32_t message) {
     // stub

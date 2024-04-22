@@ -15,7 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_TRACE
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.ble");
 
@@ -95,7 +94,41 @@ extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
 
+namespace {
+
+volatile bool s_bleScanReported = false;
+
+} // anonymous
+
 void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
+    const auto BT_COEX_EVENT_SCAN_MASK = 0xf0;
+    const auto BT_COEX_EVENT_SCAN_START = 0x20;
+    const auto BT_COEX_EVENT_SCAN_STOP = 0x00;
+    // FIXME: BLE/WiFi coexistence mechanism by default is somewhat broken.
+    // Suppress scan start/stop events in some cases to make it work a bit saner
+    if (len >= 6) {
+        if ((p[5] & BT_COEX_EVENT_SCAN_MASK) == BT_COEX_EVENT_SCAN_START) {
+            // Scan start
+            if (!rtwCoexWifiConnectedState() || (rtwCoexWifiConnectedState() && s_bleScanReported)) {
+                // Suppress
+                return;
+            } else {
+                s_bleScanReported = true;
+            }
+        } else if ((p[5] & BT_COEX_EVENT_SCAN_MASK) == BT_COEX_EVENT_SCAN_STOP) {
+            // Scan stop
+            if (!rtwCoexWifiConnectedState() && !s_bleScanReported) {
+                // Suppress
+                return;
+            } else if (rtwCoexWifiConnectedState() && s_bleScanReported) {
+                // Suppress
+                return;
+            }
+            if (s_bleScanReported) {
+                s_bleScanReported = false;
+            }
+        }
+    }
 	__real_bt_coex_handle_specific_evt(p, len);
 }
 
@@ -1124,6 +1157,7 @@ int BleGap::init() {
     return SYSTEM_ERROR_NONE;
 }
 
+extern "C" u8 rltk_wlan_btcoex_lps_enabled(void);
 int BleGap::start() {
     if (btStackStarted_) {
         return SYSTEM_ERROR_NONE;
@@ -1148,15 +1182,6 @@ int BleGap::start() {
     CHECK(waitState(BleGapDevState().init(GAP_INIT_STATE_STACK_READY), BLE_STATE_DEFAULT_TIMEOUT, true /* force poll */));
     btStackStarted_ = true;
     wifi_btcoex_set_bt_on();
-
-    rltk_coex_set_wlan_lps_coex(1);
-    // XXX: Supposedly 0x04 should be enough here:
-    // > - Let WIFI > BT in wifi slot, BT > WIFI in bt slot when ble scan + wifi connected
-    // But that doesn't work. 0b111 (setting two other options as enabled) seems to make things work correctly.
-    rltk_coex_set_wlan_slot_preempting(0b111);
-    // Leaving as default for now (unknown). This controls the prioritization
-    // between WiFi and BLE timeslots in percentage e.g. 50 is 50% for WiFi, 10 is 10% for WiFi etc
-    // rltk_coex_set_wifi_slot(50);
 
     if (cache_.isAdv || cache_.isConn) {
         LOG(TRACE, "Restore advertising state");
@@ -3994,6 +4019,23 @@ ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr
     return BleGatt::getInstance().readAttribute(conn_handle, value_handle, buf, len);
 }
 
+int hal_ble_internal(int type, void* data, size_t size, void* reserved) {
+    switch (type) {
+        case 1000: {
+            struct hal_ble_internal_coex {
+                uint32_t coex[3];
+                uint8_t tdma[5];
+                uint8_t apply;
+            } __attribute__((packed));
+            auto p = (hal_ble_internal_coex*)data;
+            // FIXME: unaligned with packed
+            uint32_t coex[] = { p->coex[0], p->coex[1], p->coex[2] };
+            uint8_t tdma[] = { p->tdma[0], p->tdma[1], p->tdma[2], p->tdma[3], p->tdma[4] };
+            return rtwCoexSet(coex, tdma, p->apply);
+        }
+    }
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
 
 #if HAL_PLATFORM_BLE_BETA_COMPAT
 
