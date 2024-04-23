@@ -4,6 +4,23 @@
 
 - Protected mode [#2734](https://github.com/particle-iot/device-os/pull/2734)
 
+## 5.8.1
+
+### FEATURES
+
+- [Gen 4] [rtl872x] [BREAKING CHANGE] Backup RAM is no longer automatically written to flash periodically. Backup RAM will be saved when entering sleep. If users are going to reset, `hal_backup_ram_sync()` should be called first [#2766](https://github.com/particle-iot/device-os/pull/2766)
+
+
+### BUGFIXES
+
+- [Gen 4] [rtl872x] Reinitialize internal wifi stack if scan or connect fails [#2766](https://github.com/particle-iot/device-os/pull/2766) [#2760](https://github.com/particle-iot/device-os/pull/2760/)
+- [Gen 4] [rtl872x] Resolve deadlock with USB serial monitoring on boot in some cases[#2765](https://github.com/particle-iot/device-os/pull/2765)
+
+### INTERNAL
+- [Gen 4] [rtl872x] Prevent M404/BG95M5 modems from connecting on 2G networks for the time being[#2761](https://github.com/particle-iot/device-os/pull/2761)
+- [Gen 4] [rtl872x] Query 2G registration status for M404/BG95M5 modems when querying CGMI [#2761](https://github.com/particle-iot/device-os/pull/2761)
+
+
 ## 5.8.0
 
 ### FEATURES
