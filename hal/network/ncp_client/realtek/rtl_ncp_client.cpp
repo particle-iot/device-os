@@ -459,7 +459,7 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data, bool forConnec
     }
 
     // XXX:
-    if ((forConnect && ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
+    if ((/* ignoring for now: forConnect && */ ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
         needsReset_ = true;
