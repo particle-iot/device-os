@@ -70,6 +70,7 @@ struct is_string_literal {
 
 namespace particle {
 
+class Event;
 class Ledger;
 
 } // namespace particle
@@ -266,6 +267,11 @@ public:
     particle::Future<bool> publish(const char* name);
     particle::Future<bool> publish(const char* name, const char* data);
     particle::Future<bool> publish(const char* name, const char* data, int ttl);
+
+    Event publish(const char* name, const Variant& data);
+    Event publish(const char* name, const uint8_t* data, size_t size);
+
+    Event beginEvent(const char* name);
 
     /**
      * @brief Publish vitals information

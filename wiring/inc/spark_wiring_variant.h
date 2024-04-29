@@ -83,6 +83,7 @@ public:
         UINT64, ///< `uint64_t`.
         DOUBLE, ///< `double`.
         STRING, ///< `String`.
+        BUFFER, ///< `Buffer`.
         ARRAY, ///< `VariantArray`.
         MAP ///< `VariantMap`.
     };
