@@ -86,6 +86,13 @@ os_mutex_recursive_t mutex_usb_serial();
         return; \
     }
 
+#define _THREAD_CONTEXT_ASYNC_TRY(thread, fn) \
+    if (thread.isStarted() && !thread.isCurrentThread()) { \
+        auto lambda = [=]() { (fn); }; \
+        thread.invoke_async(particle::FFL(lambda), true /* dontBlock */); \
+        return; \
+    }
+
 // execute synchronously on the system thread. Since the parameter lifetime is
 // assumed to be bound by the caller, the parameters don't need marshalling
 // fn: the function call to perform. This is textually substitued into a lambda, with the
@@ -105,6 +112,7 @@ os_mutex_recursive_t mutex_usb_serial();
 #else // !PLATFORM_THREADING
 
 #define _THREAD_CONTEXT_ASYNC(thread, fn)
+#define _THREAD_CONTEXT_ASYNC_TRY(thread, fn)
 #define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result)
 #define SYSTEM_THREAD_CONTEXT_SYNC(fn)
 
@@ -116,6 +124,7 @@ os_mutex_recursive_t mutex_usb_serial();
 #define SYSTEM_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(particle::SystemThread, fn)
 #define SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(particle::SystemThread, fn, result)
 #define APPLICATION_THREAD_CONTEXT_ASYNC(fn) _THREAD_CONTEXT_ASYNC(particle::ApplicationThread, fn)
+#define APPLICATION_THREAD_CONTEXT_ASYNC_TRY(fn) _THREAD_CONTEXT_ASYNC_TRY(particle::ApplicationThread, fn)
 #define APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(fn, result) _THREAD_CONTEXT_ASYNC_RESULT(particle::ApplicationThread, fn, result)
 
 // Perform an asynchronous function call if not on the system thread,

@@ -33,10 +33,11 @@
 #include <stdint.h> // for uint8_t
 #include "system_tick_hal.h"
 
-#include "spark_wiring_string.h"
 #include "spark_wiring_printable.h"
 #include "spark_wiring_fixed_point.h"
+#include <cmath>
 #include <climits>
+#include <cstdarg>
 
 const unsigned char DEC = 10;
 const unsigned char HEX = 16;
@@ -45,6 +46,12 @@ const unsigned char BIN = 2;
 
 class String;
 class __FlashStringHelper;
+
+namespace particle {
+
+class Variant;
+
+} // namespace particle
 
 class Print
 {
@@ -59,9 +66,65 @@ class Print
 
     size_t printNumber(unsigned long, uint8_t);
     size_t printNumber(unsigned long long, uint8_t);
+
 #ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
-    size_t printFloat(double, uint8_t);
+
+    static constexpr auto FLOAT_DEFAULT_FRACTIONAL_DIGITS = 2;
+
+    size_t printFloat(double number, uint8_t digits) {
+        size_t n = 0;
+
+        if (std::isnan(number)) {
+            return print("nan");
+        }
+        if (std::isinf(number)) {
+            return print("inf");
+        }
+        if (number > 4294967040.0) {
+            return print ("ovf"); // constant determined empirically
+        }
+        if (number <-4294967040.0) {
+            return print ("ovf"); // constant determined empirically
+        }
+
+        // Handle negative numbers
+        if (number < 0.0) {
+            n += print('-');
+            number = -number;
+        }
+
+        // Round correctly so that print(1.999, 2) prints as "2.00"
+        double rounding = 0.5;
+        for (uint8_t i = 0; i < digits; ++i) {
+            rounding /= 10.0;
+        }
+
+        number += rounding;
+
+        // Extract the integer part of the number and print it
+        unsigned long int_part = (unsigned long)number;
+        double remainder = number - (double)int_part;
+        n += print(int_part);
+
+        // Print the decimal point, but only if there are digits beyond
+        if (digits > 0) {
+            n += print(".");
+        }
+
+        // Extract digits from the remainder one at a time
+        while (digits-- > 0) {
+            remainder *= 10.0;
+            int toPrint = int(remainder);
+            n += print(toPrint);
+            remainder -= toPrint;
+        }
+
+        return n;
+    }
 #endif // PARTICLE_WIRING_PRINT_NO_FLOAT
+
+    size_t printVariant(const particle::Variant& var);
+
   protected:
     void setWriteError(int err = 1) { write_error = err; }
 
@@ -69,7 +132,7 @@ class Print
     Print() : write_error(0) {}
     virtual ~Print() {}
 
-    int getWriteError() { return write_error; }
+    int getWriteError() const { return write_error; }
     void clearWriteError() { setWriteError(0); }
 
     virtual size_t write(uint8_t) = 0;
@@ -84,10 +147,22 @@ class Print
     template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
         std::is_convertible<T, long long>::value), int> = 0>
     size_t print(T, int = DEC);
+
 #ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
-    size_t print(float, int = 2);
-    size_t print(double, int = 2);
+    size_t print(float n, int digits = FLOAT_DEFAULT_FRACTIONAL_DIGITS) {
+        return printFloat((double)n, digits);
+    }
+
+    size_t print(double n, int digits = FLOAT_DEFAULT_FRACTIONAL_DIGITS) {
+        return printFloat(n, digits);
+    }
 #endif // PARTICLE_WIRING_PRINT_NO_FLOAT
+
+    // Prevent implicit constructors of Variant from affecting overload resolution
+    template<typename T, typename std::enable_if_t<std::is_same_v<T, particle::Variant>, int> = 0>
+    size_t print(const T& var) {
+        return printVariant(var);
+    }
 
     size_t print(const Printable&);
     size_t print(const __FlashStringHelper*);
@@ -101,10 +176,26 @@ class Print
         n += println();
         return n;
     }
+
 #ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
-    size_t println(float, int = 2);
-    size_t println(double, int = 2);
+    size_t println(float num, int digits = FLOAT_DEFAULT_FRACTIONAL_DIGITS) {
+        return println((double)num, digits);
+    }
+
+    size_t println(double num, int digits = FLOAT_DEFAULT_FRACTIONAL_DIGITS) {
+        size_t n = print(num, digits);
+        n += println();
+        return n;
+    }
 #endif // PARTICLE_WIRING_PRINT_NO_FLOAT
+    
+    template<typename T, typename std::enable_if_t<std::is_same_v<T, particle::Variant>, int> = 0>
+    size_t println(const T& var) {
+        size_t n = printVariant(var);
+        n += println();
+        return n;
+    }
+
     size_t println(const Printable&);
     size_t println(void);
     size_t println(const __FlashStringHelper*);
@@ -130,9 +221,29 @@ class Print
     size_t vprintf(bool newline, const char* format, va_list args) __attribute__ ((format(printf, 3, 0)));
 };
 
+namespace particle {
+
+class OutputStringStream: public Print {
+public:
+    explicit OutputStringStream(String& str) :
+            s_(str) {
+    }
+
+    size_t write(uint8_t b) override {
+        return write(&b, 1);
+    }
+
+    size_t write(const uint8_t* data, size_t size) override;
+
+private:
+    String& s_;
+};
+
+} // namespace particle
+
 template <typename T, std::enable_if_t<!std::is_base_of<Printable, T>::value && (std::is_integral<T>::value || std::is_convertible<T, unsigned long long>::value ||
     std::is_convertible<T, long long>::value), int>>
-size_t Print::print(T n, int base)
+inline size_t Print::print(T n, int base)
 {
     if (base == 0) {
         return write(n);
@@ -157,4 +268,5 @@ size_t Print::print(T n, int base)
         return printNumber(val, base) + t;
     }
 }
+
 #endif

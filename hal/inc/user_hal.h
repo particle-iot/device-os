@@ -27,10 +27,12 @@ extern "C" {
 
 typedef struct hal_user_module_descriptor {
     module_info_t info;
+#if defined(MODULAR_FIRMWARE)
     void* (*pre_init)(void);
     void (*init)(void);
     void (*loop)(void);
     void (*setup)(void);
+#endif
 } hal_user_module_descriptor;
 
 int hal_user_module_get_descriptor(hal_user_module_descriptor* desc);

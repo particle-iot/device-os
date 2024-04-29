@@ -117,18 +117,6 @@ int joinNewNetwork(ctrl_request* req) {
     conf.security((WifiSecurity)pbReq.security);
 #endif
     conf.credentials(std::move(cred));
-    // Get current configuration
-    WifiNetworkConfig oldConf;
-    const bool hasOldConf = (wifiMgr->getNetworkConfig(dSsid.data, &oldConf) == 0);
-    // Set new configuration
-    CHECK(wifiMgr->setNetworkConfig(conf));
-    NAMED_SCOPE_GUARD(oldConfGuard, {
-        if (hasOldConf) {
-            wifiMgr->setNetworkConfig(oldConf); // Restore previous configuration
-        } else {
-            wifiMgr->removeNetworkConfig(conf.ssid());
-        }
-    });
     // Connect to the network
     CHECK(ncpClient->on());
     // FIXME: synchronize NCP client / NcpNetif and system network manager state
@@ -144,17 +132,17 @@ int joinNewNetwork(ctrl_request* req) {
     // FIXME: synchronize NCP client / NcpNetif and system network manager state
     CHECK(ncpClient->enable());
     CHECK(ncpClient->on());
-    network_connect(NETWORK_INTERFACE_WIFI_STA, 0, 0, nullptr);
+    network_connect(NETWORK_INTERFACE_WIFI_STA, NETWORK_CONNECT_FLAG_FORCE, 0, nullptr);
     NAMED_SCOPE_GUARD(networkDisconnectGuard, {
         // FIXME: synchronize NCP client / NcpNetif and system network manager state
         if (!needToConnect) {
             network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
         }
     });
-    CHECK(wifiMgr->connect(dSsid.data));
+    // Set new configuration
+    CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::VALIDATE));
     // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
     system_notify_event(network_credentials, network_credentials_added);
-    oldConfGuard.dismiss();
     networkDisconnectGuard.dismiss();
     return 0;
 }

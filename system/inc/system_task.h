@@ -32,8 +32,12 @@
 #include "wlan_hal.h"
 
 #ifdef __cplusplus
+
+#include <utility>
+
 extern "C" {
-#endif
+
+#endif // defined(__cplusplus)
 
 uint32_t HAL_NET_SetNetWatchDog(uint32_t timeOutInuS);
 void Network_Setup(bool threaded);
@@ -59,6 +63,7 @@ extern volatile uint8_t SPARK_WLAN_CONNECT_RESTORE;
 extern volatile uint8_t SPARK_WLAN_STARTED;
 extern volatile uint8_t SPARK_CLOUD_SOCKETED;
 extern volatile uint8_t SPARK_CLOUD_CONNECTED;
+extern volatile uint8_t SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS;
 extern volatile uint8_t SPARK_CLOUD_HANDSHAKE_PENDING;
 extern volatile uint8_t SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE;
 extern volatile uint8_t SPARK_FLASH_UPDATE;
@@ -117,7 +122,51 @@ typedef int (*system_task_fn)();
 int system_isr_task_queue_free_memory(void *ptrToFree);
 
 #ifdef __cplusplus
+
+} // extern "C"
+
+namespace particle::system {
+
+/**
+ * Allocate an object in the system pool.
+ *
+ * This function can be called from an ISR.
+ *
+ * @tparam T Object type.
+ * @param ... Arguments to pass to the constructor of `T`.
+ * @return Pointer to the object.
+ *
+ * @see `systemPoolDelete`
+ */
+template<typename T, typename... ArgsT>
+inline T* systemPoolNew(ArgsT&&... args) {
+    auto p = static_cast<T*>(system_pool_alloc(sizeof(T), nullptr /* reserved */));
+    if (p) {
+        new(p) T(std::forward<ArgsT>(args)...);
+    }
+    return p;
 }
-#endif
+
+/**
+ * Destroy an object allocated in the system pool.
+ *
+ * This function can be called from an ISR.
+ *
+ * @tparam T Object type.
+ * @param p Pointer to the object.
+ *
+ * @see `systemPoolNew`
+ */
+template<typename T>
+inline void systemPoolDelete(T* p) {
+    if (p) {
+        p->~T();
+        system_pool_free(p, nullptr /* reserved */);
+    }
+}
+
+} // namespace particle::system
+
+#endif // defined(__cplusplus)
 
 #endif  /*__SPARK_WLAN_H*/

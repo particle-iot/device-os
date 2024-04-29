@@ -28,8 +28,72 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "spark_wiring_print.h"
+#include "spark_wiring_json.h"
+#include "spark_wiring_variant.h"
 #include "spark_wiring_string.h"
-#include "spark_wiring_stream.h"
+#include "spark_wiring_error.h"
+
+using namespace particle;
+
+namespace {
+
+void writeVariant(const Variant& var, JSONStreamWriter& writer) {
+    switch (var.type()) {
+    case Variant::NULL_: {
+        writer.nullValue();
+        break;
+    }
+    case Variant::BOOL: {
+        writer.value(var.value<bool>());
+        break;
+    }
+    case Variant::INT: {
+        writer.value(var.value<int>());
+        break;
+    }
+    case Variant::UINT: {
+        writer.value(var.value<unsigned>());
+        break;
+    }
+    case Variant::INT64: {
+        writer.value(var.value<int64_t>());
+        break;
+    }
+    case Variant::UINT64: {
+        writer.value(var.value<uint64_t>());
+        break;
+    }
+    case Variant::DOUBLE: {
+        writer.value(var.value<double>());
+        break;
+    }
+    case Variant::STRING: {
+        writer.value(var.value<String>());
+        break;
+    }
+    case Variant::ARRAY: {
+        writer.beginArray();
+        for (auto& v: var.value<VariantArray>()) {
+            writeVariant(v, writer);
+        }
+        writer.endArray();
+        break;
+    }
+    case Variant::MAP: {
+        writer.beginObject();
+        for (auto& e: var.value<VariantMap>().entries()) {
+            writer.name(e.first);
+            writeVariant(e.second, writer);
+        }
+        writer.endObject();
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+} // namespace
 
 // Public Methods //////////////////////////////////////////////////////////////
 
@@ -59,18 +123,6 @@ size_t Print::print(char c)
 {
   return write(c);
 }
-
-#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
-size_t Print::print(float n, int digits)
-{
-  return printFloat((double)n, digits);
-}
-
-size_t Print::print(double n, int digits)
-{
-  return printFloat(n, digits);
-}
-#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
  size_t Print::print(const Printable& x)
  {
@@ -102,20 +154,6 @@ size_t Print::println(char c)
   n += println();
   return n;
 }
-
-#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
-size_t Print::println(float num, int digits)
-{
-    return println((double)num, digits);
-}
-
-size_t Print::println(double num, int digits)
-{
-  size_t n = print(num, digits);
-  n += println();
-  return n;
-}
-#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
  size_t Print::println(const Printable& x)
  {
@@ -170,52 +208,11 @@ size_t Print::printNumber(unsigned long n, uint8_t base) {
   return write(str);
 }
 
-#ifndef PARTICLE_WIRING_PRINT_NO_FLOAT
-size_t Print::printFloat(double number, uint8_t digits)
-{
-  size_t n = 0;
-
-  if (isnan(number)) return print("nan");
-  if (isinf(number)) return print("inf");
-  if (number > 4294967040.0) return print ("ovf");  // constant determined empirically
-  if (number <-4294967040.0) return print ("ovf");  // constant determined empirically
-
-  // Handle negative numbers
-  if (number < 0.0)
-  {
-     n += print('-');
-     number = -number;
-  }
-
-  // Round correctly so that print(1.999, 2) prints as "2.00"
-  double rounding = 0.5;
-  for (uint8_t i=0; i<digits; ++i)
-    rounding /= 10.0;
-
-  number += rounding;
-
-  // Extract the integer part of the number and print it
-  unsigned long int_part = (unsigned long)number;
-  double remainder = number - (double)int_part;
-  n += print(int_part);
-
-  // Print the decimal point, but only if there are digits beyond
-  if (digits > 0) {
-    n += print(".");
-  }
-
-  // Extract digits from the remainder one at a time
-  while (digits-- > 0)
-  {
-    remainder *= 10.0;
-    int toPrint = int(remainder);
-    n += print(toPrint);
-    remainder -= toPrint;
-  }
-
-  return n;
+size_t Print::printVariant(const Variant& var) {
+    JSONStreamWriter writer(*this);
+    writeVariant(var, writer);
+    return writer.bytesWritten();
 }
-#endif // PARTICLE_WIRING_PRINT_NO_FLOAT
 
 size_t Print::vprintf(bool newline, const char* format, va_list args)
 {
@@ -242,3 +239,19 @@ size_t Print::vprintf(bool newline, const char* format, va_list args)
     return n;
 }
 
+namespace particle {
+
+size_t OutputStringStream::write(const uint8_t* data, size_t size) {
+    if (getWriteError()) {
+        return 0;
+    }
+    size_t newSize = s_.length() + size;
+    if (s_.capacity() < newSize && !s_.reserve(std::max<size_t>({ newSize, s_.capacity() * 3 / 2, 20 }))) {
+        setWriteError(Error::NO_MEMORY);
+        return 0;
+    }
+    s_.concat((const char*)data, size);
+    return size;
+}
+
+} // namespace particle

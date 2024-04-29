@@ -45,7 +45,7 @@ extern SessionPersistDataOpaque session;
 
 namespace {
 
-system_tick_t lastSyncTimeMs = 0;
+//system_tick_t lastSyncTimeMs = 0;
 constexpr system_tick_t syncIntervalMs = 10000;
 
 StaticRecursiveMutex backupMutex;
@@ -155,10 +155,12 @@ int hal_backup_ram_sync(void* reserved) {
 }
 
 int hal_backup_ram_routine(void) {
-    auto now = hal_timer_millis(nullptr);
-    if (now - lastSyncTimeMs >= syncIntervalMs) {
-        lastSyncTimeMs = now;
-        return hal_backup_ram_sync(nullptr);
-    }
+    // Only explicit System.backupRamSync() or entry into hibernate trigger sync into flash
+
+    // auto now = hal_timer_millis(nullptr);
+    // if (now - lastSyncTimeMs >= syncIntervalMs) {
+    //     lastSyncTimeMs = now;
+    //     return hal_backup_ram_sync(nullptr);
+    // }
     return SYSTEM_ERROR_NONE;
 }

@@ -31,6 +31,7 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
+#include "coap_channel_new.h"
 #include "coap_message_decoder.h"
 #include "coap_message_encoder.h"
 
@@ -105,9 +106,12 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		}
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
-			error = firmwareUpdate.responseAck(&message);
+			error = firmwareUpdate.responseAck(&message, &handled);
 			if (error != ProtocolError::NO_ERROR) {
 				return error;
+			}
+			if (handled) {
+				return ProtocolError::NO_ERROR;
 			}
 		}
 #endif
@@ -213,9 +217,24 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return handle_server_moved_request(message);
 		break;
 
+	case CoAPMessageType::UNKNOWN:
+	case CoAPMessageType::EMPTY_ACK: {
+		// Forward the message to the new CoAP implementation
+		int r = 0;
+		if (type == CoAPType::CON) {
+			r = experimental::CoapChannel::instance()->handleCon(message);
+		} else if (type == CoAPType::ACK) {
+			r = experimental::CoapChannel::instance()->handleAck(message);
+		}
+		if (r < 0) {
+			return ProtocolError::COAP_ERROR;
+		}
+		break;
+	}
+
 	case CoAPMessageType::ERROR:
 	default:
-		; // drop it on the floor
+		break; // Ignore the message
 	}
 
 	// all's well
@@ -540,6 +559,7 @@ void Protocol::reset() {
 	ack_handlers.clear();
 	channel.reset();
 	subscription_msg_ids.clear();
+	experimental::CoapChannel::instance()->close();
 }
 
 /**
@@ -641,12 +661,12 @@ ProtocolError Protocol::event_loop(CoAPMessageType::Enum& message_type)
 	if (error)
 	{
 		// bail if and only if there was an error
+		LOG(ERROR,"Event loop error %d", error);
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		firmwareUpdate.reset();
 #else
 		chunkedTransfer.cancel();
 #endif
-		LOG(ERROR,"Event loop error %d", error);
 		return error;
 	}
 	return error;
@@ -737,7 +757,7 @@ ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled
 	}
 	if (!*handled) {
 		int desc_flags = 0;
-		const ProtocolError err = description.receiveAckOrRst(msg, &desc_flags);
+		const ProtocolError err = description.receiveAckOrRst(msg, &desc_flags, handled);
 		if (err != ProtocolError::NO_ERROR) {
 			LOG(ERROR, "Failed to process Describe ACK: %d", (int)err);
 		}
@@ -748,7 +768,6 @@ ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_SYSTEM,
 					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
 			channel.command(Channel::LOAD_SESSION);
-			*handled = true;
 		}
 		if (desc_flags & DescriptionType::DESCRIBE_APPLICATION) {
 			LOG(TRACE, "Updating application DESCRIBE checksum");
@@ -756,7 +775,6 @@ ProtocolError Protocol::handle_app_state_reply(const Message& msg, bool* handled
 			descriptor.app_state_selector_info(SparkAppStateSelector::DESCRIBE_APP,
 					SparkAppStateUpdate::COMPUTE_AND_PERSIST, 0, nullptr);
 			channel.command(Channel::LOAD_SESSION);
-			*handled = true;
 		}
 	}
 	return ProtocolError::NO_ERROR;

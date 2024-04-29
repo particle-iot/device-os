@@ -71,6 +71,10 @@ public:
 
     void halReadPacketFixup(void* ptr);
 
+    static void loop(void* ctx);
+
+    void reset();
+
 private:
     RtlUsbDriver();
     virtual ~RtlUsbDriver();
@@ -109,7 +113,7 @@ private:
         .rx_fifo_size = USBD_MAX_RX_FIFO_SIZE,
         .nptx_fifo_size = USBD_MAX_NPTX_FIFO_SIZE,
         .ptx_fifo_size = USBD_MAX_PTX_FIFO_SIZE,
-        .speed = USB_SPEED_HIGH,
+        .speed = USB_SPEED_HIGH_IN_FULL,
         .dma_enable = 0, // ?
         .self_powered = 1,
         .isr_priority = RTL_USBD_ISR_PRIORITY,
@@ -134,9 +138,13 @@ private:
     void* fixupPtr_ = nullptr;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     RecursiveMutex mutex_;
+    os_thread_t thread_ = nullptr;
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
     volatile bool initialized_ = false;
+    volatile bool needsReset_ = false;
+    volatile int config_ = 0;
+    volatile unsigned int resetCount_ = 0;
 };
 
 } // namespace usbd

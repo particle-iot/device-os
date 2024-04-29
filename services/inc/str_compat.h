@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,3 +16,21 @@
  */
 
 #pragma once
+
+#include <string.h>
+
+#include "hal_platform.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if PLATFORM_ID == PLATFORM_GCC && defined(__GLIBC__)
+
+size_t strlcpy(char* dest, const char* src, size_t size);
+
+#endif // PLATFORM_ID == PLATFORM_GCC && defined(__GLIBC__)
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

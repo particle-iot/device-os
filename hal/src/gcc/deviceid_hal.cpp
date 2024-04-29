@@ -26,7 +26,7 @@
 
 #include "deviceid_hal.h"
 #include "device_config.h"
-#include "filesystem.h"
+#include "filesystem_util.h"
 
 #include <stddef.h>
 #include <algorithm>

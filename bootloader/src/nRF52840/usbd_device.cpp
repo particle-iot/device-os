@@ -142,13 +142,13 @@ private:
 #elif PLATFORM_ID == PLATFORM_BORON
 # define USBD_PRODUCT_NAME              "Boron"
 #elif PLATFORM_ID == PLATFORM_ESOMX
-# define USBD_PRODUCT_NAME              "E SoM X"
+# define USBD_PRODUCT_NAME              "E-SoM-X"
 #elif PLATFORM_ID == PLATFORM_ASOM
-# define USBD_PRODUCT_NAME              "A SoM"
+# define USBD_PRODUCT_NAME              "A-SoM"
 #elif PLATFORM_ID == PLATFORM_BSOM
-# define USBD_PRODUCT_NAME              "B SoM"
+# define USBD_PRODUCT_NAME              "B-SoM"
 #elif PLATFORM_ID == PLATFORM_B5SOM
-# define USBD_PRODUCT_NAME              "B5 SoM"
+# define USBD_PRODUCT_NAME              "B5-SoM"
 #elif PLATFORM_ID == PLATFORM_TRACKER
 # define USBD_PRODUCT_NAME              "Tracker"
 #endif

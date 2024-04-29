@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,9 +15,17 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <bits/gthr.h>
-#include <mutex>
+#pragma once
 
-extern "C" void __once_proxy(void) {
-  std::__once_functor();
-}
+class StaticRecursiveMutex {
+public:
+    StaticRecursiveMutex() = default;
+
+    bool lock(unsigned timeout = 0) {
+        return true;
+    }
+
+    bool unlock() {
+        return true;
+    }
+};

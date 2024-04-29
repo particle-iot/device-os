@@ -17,6 +17,17 @@
 
 #pragma once
 
+#include "platform_config.h"
+
+#ifdef USE_SERIAL_FLASH
+
+#define EXTERNAL_FLASH_SIZE (sFLASH_PAGESIZE * sFLASH_PAGECOUNT)
+
+#define EXTERNAL_FLASH_ASSET_STORAGE_FIRST_PAGE (sFLASH_ASSET_STORAGE_FIRST_PAGE)
+#define EXTERNAL_FLASH_ASSET_STORAGE_PAGE_COUNT (sFLASH_ASSET_STORAGE_PAGE_COUNT)
+
+#endif // defined(USE_SERIAL_FLASH)
+
 inline int FLASH_ModuleInfo(module_info_t* const infoOut, uint8_t device, uint32_t address, uint32_t* offset) {
     return -1;
 }

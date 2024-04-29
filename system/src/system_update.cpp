@@ -51,6 +51,7 @@ static uint32_t start_dfu_flasher_serial_speed = START_DFU_FLASHER_SERIAL_SPEED;
 // TODO: Use a single state variable instead of SPARK_CLOUD_XXX flags
 volatile uint8_t SPARK_CLOUD_SOCKETED;
 volatile uint8_t SPARK_CLOUD_CONNECTED;
+volatile uint8_t SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS = 0;
 volatile uint8_t SPARK_CLOUD_HANDSHAKE_PENDING = 0;
 volatile uint8_t SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
 volatile uint8_t SPARK_FLASH_UPDATE;

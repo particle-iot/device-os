@@ -442,7 +442,7 @@ int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     return 0;
 }
 
-int Esp32NcpClient::scan(WifiScanCallback callback, void* data) {
+int Esp32NcpClient::scan(WifiScanCallback callback, void* data, bool forConnect) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
     auto resp = parser_.sendCommand("AT+CWLAP");

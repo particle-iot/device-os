@@ -105,7 +105,7 @@ int loadConfig(Vector<WifiNetworkConfig>* networks) {
         }
         return true;
     };
-    const int r = decodeMessageFromFile(&file, PB(WifiConfig_fields), &pbConf);
+    const int r = decodeProtobufFromFile(&file, PB(WifiConfig_fields), &pbConf);
     if (r < 0) {
         LOG(ERROR, "Unable to parse network settings");
         networks->clear();
@@ -164,7 +164,7 @@ int saveConfig(const Vector<WifiNetworkConfig>& networks) {
         }
         return true;
     };
-    CHECK(encodeMessageToFile(&file, PB(WifiConfig_fields), &pbConf));
+    CHECK(encodeProtobufToFile(&file, PB(WifiConfig_fields), &pbConf));
     LOG(TRACE, "Updated file: %s", CONFIG_FILE);
     ok = true;
     return 0;
@@ -194,6 +194,10 @@ WifiNetworkManager::WifiNetworkManager(WifiNcpClient* client) :
 WifiNetworkManager::~WifiNetworkManager() {
 }
 
+int WifiNetworkManager::connect(WifiNetworkConfig conf) {
+    return client_->connect(conf.ssid(), conf.bssid(), conf.security(), conf.credentials());
+}
+
 int WifiNetworkManager::connect(const char* ssid) {
     // Get known networks
     Vector<WifiNetworkConfig> networks;
@@ -216,7 +220,7 @@ int WifiNetworkManager::connect(const char* ssid) {
     // Perform a network scan on ESP32 devices because ESP32 doesn't support 802.11v/k/r
     int r = SYSTEM_ERROR_INTERNAL;
     if (client_->ncpId() != PlatformNCPIdentifier::PLATFORM_NCP_ESP32) {
-        r = client_->connect(network->ssid(), network->bssid(), network->security(), network->credentials());
+        r = connect(*network);
     }
     if (r < 0) {
         // Perform network scan
@@ -226,7 +230,7 @@ int WifiNetworkManager::connect(const char* ssid) {
             auto scanResults = (Vector<WifiScanResult>*)data;
             CHECK_TRUE(scanResults->append(std::move(result)), SYSTEM_ERROR_NO_MEMORY);
             return 0;
-        }, &scanResults));
+        }, &scanResults, /* forConnect*/ true));
         // Sort discovered networks by RSSI
         sortByRssi(&scanResults);
         // Try to connect to any known network among the discovered ones
@@ -246,7 +250,7 @@ int WifiNetworkManager::connect(const char* ssid) {
             } else if (strcmp(ssid, ap.ssid()) != 0) {
                 continue;
             }
-            r = client_->connect(network->ssid(), ap.bssid(), network->security(), network->credentials());
+            r = connect(*network);
             if (r == 0) {
                 if (network->bssid() != ap.bssid()) {
                     // Update BSSID
@@ -263,7 +267,7 @@ int WifiNetworkManager::connect(const char* ssid) {
             for (; index < networks.size(); ++index) {
                 network = &networks.at(index);
                 if (network->hidden()) {
-                    r = client_->connect(network->ssid(), network->bssid(), network->security(), network->credentials());
+                    r = connect(*network);
                     if (r == 0) {
                         connected = true;
                         break;
@@ -295,8 +299,42 @@ int WifiNetworkManager::connect(const char* ssid) {
     return 0;
 }
 
-int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf) {
+int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, WifiNetworkConfigFlags flags) {
     CHECK_TRUE(conf.ssid(), SYSTEM_ERROR_INVALID_ARGUMENT);
+    NcpClientLock lock(client_);
+    if (flags & WifiNetworkConfigFlag::VALIDATE) {
+        if (conf.credentials().type() == WifiCredentials::Type::PASSWORD && conf.security() == WifiSecurity::NONE) {
+            Vector<WifiScanResult> networks;
+            CHECK(client_->scan([](WifiScanResult network, void* data) -> int {
+                const auto networks = (Vector<WifiScanResult>*)data;
+                CHECK_TRUE(networks->append(std::move(network)), SYSTEM_ERROR_NO_MEMORY);
+                return 0;
+            }, &networks, /* forConnect*/ true));
+            for (auto network : networks) {
+                if (!strcmp(conf.ssid(), network.ssid())) {
+                    conf.security((WifiSecurity)network.security());
+                    break;
+                }
+            }
+        }
+        client_->disconnect();
+        bool state = true;
+        if (flags & WifiNetworkConfigFlag::TURN_ON) {
+            state = client_->ncpPowerState() == NcpPowerState::ON;
+            CHECK(client_->on());
+            client_->disable();
+            CHECK(client_->enable());
+            CHECK(client_->on());
+        }
+        SCOPE_GUARD({
+            if (!state) {
+                client_->off();
+            }
+        });
+        CHECK(connect(conf));
+    } else {
+        lock.unlock();
+    }
     Vector<WifiNetworkConfig> networks;
     CHECK(loadConfig(&networks));
     int index = networkIndexForSsid(conf.ssid(), networks);

@@ -95,7 +95,11 @@ bool fetch_module(hal_module_t* target, const module_bounds_t* bounds, bool user
     const uint8_t* module_end = (const uint8_t*)target->info.module_end_address;
     // find the location of where the module should be flashed to based on its module co-ordinates (function/index/mcu)
     const module_bounds_t* expected_bounds = find_module_bounds(module_function(info), module_index(info), module_mcu_target(info));
-    if (!expected_bounds || !in_range(uint32_t(module_end), expected_bounds->start_address, expected_bounds->end_address)) {
+    if (!expected_bounds) {
+        return false;
+    }
+    if (!in_range(uint32_t(module_end), !(expected_bounds->flags & MODULE_BOUNDS_FLAG_FIXED_END_ADDRESS)
+            ? expected_bounds->start_address : expected_bounds->end_address - expected_bounds->maximum_size, expected_bounds->end_address)) {
         return false;
     }
     target->validity_result |= MODULE_VALIDATION_RANGE;

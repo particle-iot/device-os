@@ -27,3 +27,4 @@
 #include "system_dynalib_net.h"
 #include "system_dynalib_cloud.h"
 #include "system_dynalib_asset_manager.h"
+#include "system_dynalib_ledger.h"

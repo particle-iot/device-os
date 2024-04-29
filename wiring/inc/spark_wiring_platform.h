@@ -72,6 +72,10 @@
 #define Wiring_Watchdog 1
 #endif // HAL_PLATFORM_HW_WATCHDOG
 
+#if HAL_PLATFORM_LEDGER
+#define Wiring_Ledger 1
+#endif
+
 #ifndef Wiring_SPI1
 #define Wiring_SPI1 0
 #endif
@@ -165,6 +169,10 @@
 #ifndef Wiring_Watchdog
 #define Wiring_Watchdog 0
 #endif // Wiring_Watchdog
+
+#ifndef Wiring_Ledger
+#define Wiring_Ledger 0
+#endif
 
 #endif	/* SPARK_WIRING_PLATFORM_H */
 

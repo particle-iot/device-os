@@ -31,6 +31,9 @@
 #include <memory>
 
 #include "platform_ncp.h"
+extern "C" {
+#include "device_lock.h"
+}
 #include "efuse.h"
 
 namespace {
@@ -40,6 +43,52 @@ using namespace particle;
 const uint8_t DEVICE_ID_PREFIX[] = {0x0a, 0x10, 0xac, 0xed, 0x20, 0x21};
 
 } // Anonymous
+
+int readLogicalEfuse(uint32_t offset, uint8_t* buf, size_t size) {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    std::unique_ptr<uint8_t[]> efuseData(new uint8_t[LOGICAL_EFUSE_SIZE]);
+    CHECK_TRUE(efuseData, SYSTEM_ERROR_NO_MEMORY);
+    uint8_t* efuseBuf = efuseData.get();
+#else
+    // No heap in bootloader
+    static uint8_t efuseBuf[LOGICAL_EFUSE_SIZE];
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+    memset(efuseBuf, 0xff, LOGICAL_EFUSE_SIZE);
+
+    bool dataConsistent = false;
+    for (int i = 0; i < 5 && !dataConsistent; i++) {
+        // There are places in ambd_sdk where efuses might be read as well (e.g. BLE stack)
+        // This is not a thread safe operation, so now those places are guarded with a lock in the SDK
+        // Use the same lock here as well.
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        device_mutex_lock(RT_DEV_LOCK_EFUSE);
+#endif
+        EFUSE_LMAP_READ(efuseBuf);
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        device_mutex_unlock(RT_DEV_LOCK_EFUSE);
+#endif
+        uint32_t crc1 = HAL_Core_Compute_CRC32(efuseBuf, LOGICAL_EFUSE_SIZE);
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        device_mutex_lock(RT_DEV_LOCK_EFUSE);
+#endif
+        EFUSE_LMAP_READ(efuseBuf);
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        device_mutex_unlock(RT_DEV_LOCK_EFUSE);
+#endif
+        uint32_t crc2 = HAL_Core_Compute_CRC32(efuseBuf, LOGICAL_EFUSE_SIZE);
+
+        dataConsistent = (crc1 == crc2);
+    }
+
+    if (!dataConsistent) {
+        return SYSTEM_ERROR_INTERNAL;
+    }
+    memcpy(buf, efuseBuf + offset, size);
+
+    return SYSTEM_ERROR_NONE;
+}
 
 unsigned hal_get_device_id(uint8_t* dest, unsigned destLen) {
     // Device ID is composed of prefix and MAC address

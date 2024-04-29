@@ -25,8 +25,8 @@ namespace {
 
 const uint8_t USER_PART_CURRENT_INDEX = 1;
 
-bool validUserModuleInfoAtIndex(uint8_t index, module_info_t* info) {
-    const auto bounds = find_module_bounds(MODULE_FUNCTION_USER_PART, index, HAL_PLATFORM_MCU_DEFAULT);
+bool validUserModuleInfoAtIndex(uint8_t function, uint8_t index, module_info_t* info) {
+    const auto bounds = find_module_bounds(function, index, HAL_PLATFORM_MCU_DEFAULT);
     if (!bounds) {
         return false;
     }
@@ -52,6 +52,8 @@ bool validUserModuleInfoAtIndex(uint8_t index, module_info_t* info) {
 
 } // anonymous
 
+#if defined(MODULAR_FIRMWARE)
+
 extern "C" {
 void* module_user_pre_init();
 void module_user_init();
@@ -62,7 +64,7 @@ void module_user_setup();
 int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
     module_info_t info = {};
 
-    if (!validUserModuleInfoAtIndex(USER_PART_CURRENT_INDEX, &info)) {
+    if (!validUserModuleInfoAtIndex(MODULE_FUNCTION_USER_PART, USER_PART_CURRENT_INDEX, &info)) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
 
@@ -76,3 +78,18 @@ int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
 
     return 0;
 }
+
+#else
+
+int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
+    module_info_t info = {};
+    if (!validUserModuleInfoAtIndex(MODULE_FUNCTION_MONO_FIRMWARE, 0, &info)) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    if (desc) {
+        desc->info = info;
+    }
+    return 0;
+}
+
+#endif // defined(MODULAR_FIRMWARE)

@@ -1,5 +1,7 @@
 #include "spark_wiring_cloud.h"
 
+#include "spark_wiring_ledger.h"
+
 #include <functional>
 #include "system_cloud.h"
 #include "check.h"
@@ -124,3 +126,39 @@ int CloudClass::maxFunctionArgumentSize() {
     CHECK(spark_get_connection_property(SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE, &size, &n, nullptr /* reserved */));
     return size;
 }
+
+#if Wiring_Ledger
+
+Ledger CloudClass::ledger(const char* name) {
+    ledger_instance* instance = nullptr;
+    int r = ledger_get_instance(&instance, name, nullptr);
+    if (r < 0) {
+        LOG(ERROR, "ledger_get_instance() failed: %d", r);
+        return Ledger();
+    }
+    return Ledger(instance, false /* addRef */);
+}
+
+int CloudClass::useLedgersImpl(const Vector<const char*>& usedNames) {
+    Vector<String> allNames;
+    CHECK(Ledger::getNames(allNames));
+    int result = 0;
+    for (auto& name: allNames) {
+        bool found = false;
+        for (auto usedName: usedNames) {
+            if (name == usedName) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            int r = Ledger::remove(name);
+            if (r < 0 && result >= 0) {
+                result = r;
+            }
+        }
+    }
+    return result;
+}
+
+#endif // Wiring_Ledger

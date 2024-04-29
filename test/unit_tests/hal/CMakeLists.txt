@@ -3,6 +3,7 @@ set(target_name hal)
 # Create test executable
 add_executable( ${target_name}
   inflate.cpp
+  sparse_buffer.cpp
   ${DEVICE_OS_DIR}/hal/shared/inflate.cpp
   ${DEVICE_OS_DIR}/hal/shared/inflate_impl.cpp
   ${DEVICE_OS_DIR}/third_party/miniz/miniz/miniz_tinfl.c
@@ -16,6 +17,7 @@ target_compile_definitions( ${target_name}
 
 # Set include path specific to target
 target_include_directories( ${target_name}
+  PRIVATE ${TEST_DIR}
   PRIVATE ${DEVICE_OS_DIR}/hal/inc
   PRIVATE ${DEVICE_OS_DIR}/hal/shared
   PRIVATE ${DEVICE_OS_DIR}/hal/src/nRF52840

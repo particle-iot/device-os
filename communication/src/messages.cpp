@@ -120,7 +120,7 @@ CoAPMessageType::Enum Messages::decodeType(const uint8_t* buf, size_t length)
 	default:
 		break;
 	}
-	return CoAPMessageType::ERROR;
+	return CoAPMessageType::UNKNOWN;
 }
 
 size_t Messages::hello(uint8_t* buf, message_id_t message_id, uint16_t flags, uint16_t platform_id, uint16_t system_version,

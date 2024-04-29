@@ -66,3 +66,5 @@
 #endif
 
 #define HAL_PLATFORM_FREERTOS (0)
+
+#define HAL_PLATFORM_LEDGER (0)

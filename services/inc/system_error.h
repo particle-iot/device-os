@@ -49,9 +49,15 @@
         (NO_MEMORY, "Memory allocation error", -260), \
         (INVALID_ARGUMENT, "Invalid argument", -270), \
         (BAD_DATA, "Invalid data format", -280), \
+        (ENCODING_FAILED, "Encoding error", -281), \
         (OUT_OF_RANGE, "Out of range", -290), \
         (DEPRECATED, "Deprecated", -300), \
         (COAP, "CoAP error", -1000), /* -1199 ... -1000: CoAP errors */ \
+        (COAP_CONNECTION_CLOSED, "Connection closed", -1001), \
+        (COAP_MESSAGE_RESET, "Received a RST message", -1002), \
+        (COAP_TIMEOUT, "CoAP timeout", -1003), \
+        (COAP_REQUEST_NOT_FOUND, "Request not found", -1004), \
+        (COAP_REQUEST_CANCELLED, "Request was cancelled", -1005), \
         (COAP_4XX, "CoAP: 4xx", -1100), \
         (COAP_5XX, "CoAP: 5xx", -1132), \
         (AT_NOT_OK, "AT command failure", -1200), /* -1299 ... -1200: AT command errors */ \
@@ -103,7 +109,20 @@
         (FILESYSTEM_FBIG, "File too large", -1909), \
         (FILESYSTEM_INVAL, "Invalid parameter", -1910), \
         (FILESYSTEM_NOSPC, "No space left in the filesystem", -1911), \
-        (FILESYSTEM_NOMEM, "Memory allocation error", -1912)
+        (FILESYSTEM_NOMEM, "Memory allocation error", -1912), \
+        (LEDGER_NOT_FOUND, "Ledger not found", -2000), /* -2099 ... -2000: Ledger errors */ \
+        (LEDGER_INVALID_FORMAT, "Invalid format of ledger data", -2001), \
+        (LEDGER_UNSUPPORTED_FORMAT, "Unsupported format of ledger data", -2002), \
+        (LEDGER_READ_ONLY, "Ledger is read only", -2003), \
+        (LEDGER_IN_USE, "Ledger is in use", -2004), \
+        (LEDGER_TOO_LARGE, "Ledger data is too large", -2005), \
+        (LEDGER_TOO_MANY, "Too many ledgers", -2006), \
+        (LEDGER_INCONSISTENT_STATE, "Inconsistent ledger state", -2007), \
+        (LEDGER_ENCODING_FAILED, "Ledger encoding error", -2008), \
+        (LEDGER_DECODING_FAILED, "Ledger decoding error", -2009), \
+        (LEDGER_REQUEST_FAILED, "Ledger request failed", -2010), \
+        (LEDGER_INVALID_RESPONSE, "Invalid response from server", -2011), \
+        (HAL_RTC_INVALID_TIME, "RTC time is invalid", -3000) /* -3099 ... -3000: HAL errors */
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

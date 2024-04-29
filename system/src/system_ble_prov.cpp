@@ -70,7 +70,6 @@ int system_ble_prov_mode(bool enabled, void* reserved) {
 }
 
 bool system_ble_prov_get_status(void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(system_ble_prov_get_status(reserved));
     return BleProvisioningModeHandler::instance()->getProvModeStatus();
 }
 

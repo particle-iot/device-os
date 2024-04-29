@@ -52,7 +52,7 @@ public:
     // Reimplemented from WifiNcpClient
     int connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) override;
     int getNetworkInfo(WifiNetworkInfo* info) override;
-    int scan(WifiScanCallback callback, void* data) override;
+    int scan(WifiScanCallback callback, void* data, bool forConnect) override;
     int getMacAddress(MacAddress* addr) override;
 
     virtual int getFirmwareVersionString(char* buf, size_t size) override;
@@ -73,6 +73,7 @@ private:
     volatile NcpState prevNcpState_;
     volatile NcpConnectionState connState_;
     volatile NcpPowerState pwrState_;
+    volatile bool needsReset_ = false;
 
     void ncpState(NcpState state);
     void ncpPowerState(NcpPowerState state);

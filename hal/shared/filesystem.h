@@ -22,12 +22,12 @@
 
 #include "filesystem_impl.h"
 
+#include <lfs_util.h>
+#include <lfs.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
-
-#include <lfs_util.h>
-#include <lfs.h>
 
 typedef enum filesystem_instance_t {
     FILESYSTEM_INSTANCE_DEFAULT = 0,
@@ -67,7 +67,7 @@ int filesystem_unlock(filesystem_t* fs);
 int filesystem_to_system_error(int error);
 
 #ifdef __cplusplus
-}
+} // extern "C"
 
 #define CHECK_FS(expr) \
         ({ \
@@ -81,7 +81,7 @@ int filesystem_to_system_error(int error);
 namespace particle { namespace fs {
 
 struct FsLock {
-    FsLock(filesystem_t* fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr))
+    explicit FsLock(filesystem_t* fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr))
             : fs_(fs) {
         lock();
     }
@@ -98,6 +98,7 @@ struct FsLock {
         filesystem_unlock(fs_);
     }
 
+    // TODO: Rename this method to avoid confusion with filesystem_get_instance()
     lfs_t* instance() const {
         return &fs_->instance;
     }

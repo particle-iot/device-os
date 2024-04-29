@@ -44,6 +44,11 @@ typedef enum {
     MODULE_BOUNDS_LOC_NCP_FLASH = 2,
 } module_bounds_location_t;
 
+typedef enum module_bounds_flag_t {
+    MODULE_BOUNDS_FLAG_NONE = 0,
+    MODULE_BOUNDS_FLAG_FIXED_END_ADDRESS = 1
+} module_bounds_flag_t;
+
 typedef struct {
     // This struct is now used in dynalib, take caution when modifying these fields
     uint32_t maximum_size;      // the maximum allowable size for the entire module image
@@ -54,6 +59,7 @@ typedef struct {
     module_store_t store;
     uint8_t mcu_identifier;		// which MCU is targeted by this module. 0 means main/primary MCU. HAL_PLATFORM_MCU_ANY
     module_bounds_location_t location;
+    uint32_t flags;             // module_bounds_flat_t
 } module_bounds_t;
 
 typedef enum {

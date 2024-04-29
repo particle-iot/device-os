@@ -134,7 +134,7 @@ public:
     ProtocolError startRequest(Message* msg);
     ProtocolError finishRequest(Message* msg);
     ProtocolError chunkRequest(Message* msg);
-    ProtocolError responseAck(Message* msg);
+    ProtocolError responseAck(Message* msg, bool* handled);
     ProtocolError process();
 
     const FirmwareUpdateStats& stats() const;

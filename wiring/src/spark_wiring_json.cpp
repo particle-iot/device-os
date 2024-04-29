@@ -18,11 +18,13 @@
 #include "spark_wiring_json.h"
 
 #include <algorithm>
+#include <limits>
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
 #include <cctype>
+#include <cmath>
 
 namespace {
 
@@ -61,6 +63,16 @@ bool hexToInt(const char *s, size_t size, uint32_t *val) {
     }
     *val = v;
     return true;
+}
+
+double toFinite(double val) {
+    if (std::isnan(val)) {
+        return 0;
+    }
+    if (std::isinf(val)) {
+        return (val < 0) ? std::numeric_limits<double>::lowest() : std::numeric_limits<double>::max();
+    }
+    return val;
 }
 
 } // namespace
@@ -547,14 +559,14 @@ spark::JSONWriter& spark::JSONWriter::value(unsigned long long val) {
 
 spark::JSONWriter& spark::JSONWriter::value(double val, int precision) {
     writeSeparator();
-    printf("%.*lf", precision, val);
+    printf("%.*lf", precision, toFinite(val)); // NaN and infinite values are not permitted by the spec
     state_ = NEXT;
     return *this;
 }
 
 spark::JSONWriter& spark::JSONWriter::value(double val) {
     writeSeparator();
-    printf("%g", val);
+    printf("%g", toFinite(val));
     state_ = NEXT;
     return *this;
 }

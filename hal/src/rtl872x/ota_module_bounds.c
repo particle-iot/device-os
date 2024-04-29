@@ -86,7 +86,8 @@ module_bounds_t module_user = {
 #if HAL_PLATFORM_NCP
     ,.mcu_identifier = HAL_PLATFORM_MCU_DEFAULT
 #endif
-    ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH // XIP
+    ,.location = MODULE_BOUNDS_LOC_INTERNAL_FLASH, // XIP
+    .flags = MODULE_BOUNDS_FLAG_FIXED_END_ADDRESS
 };
 
 // Monolithic firmware

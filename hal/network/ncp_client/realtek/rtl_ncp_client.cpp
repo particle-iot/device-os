@@ -235,11 +235,6 @@ int RealtekNcpClient::on() {
     CHECK(rltkOff());
     CHECK(rltkOn());
     ncpState(NcpState::ON);
-    wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int buf_len, int flags, void* userdata) -> void {
-        LOG(INFO, "disconnected");
-        RealtekNcpClient* client = (RealtekNcpClient*)userdata;
-        client->connectionState(NcpConnectionState::DISCONNECTED);
-    }, (void*)this);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -304,13 +299,18 @@ NcpConnectionState RealtekNcpClient::connectionState() {
 }
 
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
+    CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     int rtlError = RTW_ERROR;
     for (int i = 0; i < 2; i++) {
         {
             const NcpClientLock lock(this);
             CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
 
-            rtlk_bt_set_gnt_bt(PTA_AUTO);
+            wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int buf_len, int flags, void* userdata) -> void {
+                LOG(INFO, "disconnected");
+                RealtekNcpClient* client = (RealtekNcpClient*)userdata;
+                client->connectionState(NcpConnectionState::DISCONNECTED);
+            }, (void*)this);
 
             LOG(INFO, "Try to connect to ssid: %s", ssid);
             rtlError = wifi_connect((char*)ssid,
@@ -334,8 +334,8 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
 }
 
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
-    const NcpClientLock lock(this);
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
+    const NcpClientLock lock(this);
 
     int rtlError = 0;
     // LOG(INFO, "RNCP getNetworkInfo");
@@ -381,12 +381,11 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     return SYSTEM_ERROR_NONE;
 }
 
-int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
-    const NcpClientLock lock(this);
-
-    rtlk_bt_set_gnt_bt(PTA_AUTO);
-
+int RealtekNcpClient::scan(WifiScanCallback callback, void* data, bool forConnect) {
+    CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
+
+    const NcpClientLock lock(this);
     struct Context {
         WifiScanCallback callback = nullptr;
         void* data = nullptr;
@@ -447,26 +446,30 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data) {
         LOG(WARN, "wifi_scan_networks err: %d", rtlError);
         ctx.done = true;
     }
-    while (!ctx.done) {
+    for (auto start = HAL_Timer_Get_Milli_Seconds(); !ctx.done && HAL_Timer_Get_Milli_Seconds() - start <= SCAN_LONGEST_WAIT_TIME;) {
         HAL_Delay_Milliseconds(100);
+    }
+    if (!ctx.done) {
+        LOG(ERROR, "Did not receive final scan completed indication, aborting");
+        ctx.done = true;
+        rtlError = RTW_TIMEOUT;
     }
     for (int i = 0; i < ctx.results.size(); i++) {
         callback(ctx.results[i], data);
     }
-    if (rtlError && ctx.results.size() == 0) {
+
+    // XXX:
+    if ((/* ignoring for now: forConnect && */ ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
         // Workaround for a weird state we might enter where the wifi driver
         // is not returning any results
-        rtwRadioReset();
-    }
-
-    if (connectionState() == NcpConnectionState::DISCONNECTED) {
-        rtlk_bt_set_gnt_bt(PTA_BT);
+        needsReset_ = true;
     }
 
     return rtl_error_to_system(rtlError);
 }
 
 int RealtekNcpClient::getMacAddress(MacAddress* addr) {
+    const NcpClientLock lock(this);
     char mac[6*2 + 5 + 1] = {};
     wifi_get_mac_address(mac);
     CHECK_TRUE(macAddressFromString(addr, mac), SYSTEM_ERROR_UNKNOWN);
@@ -527,9 +530,6 @@ void RealtekNcpClient::connectionState(NcpConnectionState state) {
         event.state = connState_;
         handler(event, conf_.eventHandlerData());
     }
-    if (state == NcpConnectionState::DISCONNECTED) {
-        rtlk_bt_set_gnt_bt(PTA_BT);
-    }
 }
 
 int RealtekNcpClient::rltkOff() {
@@ -569,8 +569,14 @@ int RealtekNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size)
 int RealtekNcpClient::dataChannelFlowControl(bool state) {
     return SYSTEM_ERROR_NONE;
 }
+
 void RealtekNcpClient::processEvents() {
+    if (needsReset_) {
+        rtwRadioReset();
+        needsReset_ = false;
+    }
 }
+
 int RealtekNcpClient::checkParser() {
     return SYSTEM_ERROR_NONE;
 }

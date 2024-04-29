@@ -17,19 +17,23 @@
  ******************************************************************************
  */
 
+#define NO_STATIC_ASSERT
+
 #include "system_event.h"
 #include "system_threading.h"
 #include "interrupts_hal.h"
 #include "system_task.h"
+#include "static_recursive_mutex.h"
+#include "scope_guard.h"
 #include <stdint.h>
 #include "spark_wiring_vector.h"
 #include "spark_wiring_interrupts.h"
-#include "spark_wiring_thread.h"
 #include <algorithm>
 
 namespace {
 
 using namespace particle;
+using namespace particle::system;
 
 struct SystemEventSubscription {
 
@@ -74,10 +78,20 @@ struct SystemEventSubscription {
 // for now a simple implementation
 spark::Vector<SystemEventSubscription> subscriptions;
 #if PLATFORM_THREADING
-RecursiveMutex sSubscriptionsMutex;
+StaticRecursiveMutex sSubscriptionsMutex;
 #endif // PLATFORM_THREADING
 
-void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
+void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata, bool isIsr) {
+#if PLATFORM_THREADING
+    if (!isIsr) {
+        sSubscriptionsMutex.lock();
+    }
+    SCOPE_GUARD({
+        if (!isIsr) {
+            sSubscriptionsMutex.unlock();
+        }
+    });
+#endif // PLATFORM_THREADING
     for (SystemEventSubscription& subscription : subscriptions) {
         subscription.notify(event, data, pointer);
     }
@@ -86,13 +100,14 @@ void system_notify_event_impl(system_event_t event, uint32_t data, void* pointer
     }
 }
 
-void system_notify_event_async(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata) {
+void system_notify_event_async(system_event_t event, uint32_t data, void* pointer, void (*fn)(void* data), void* fndata, bool dontBlock = false) {
     // run event notifications on the application thread
-    APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_async(event, data, pointer, fn, fndata));
-#if PLATFORM_THREADING
-    std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
-#endif // PLATFORM_THREADING
-    system_notify_event_impl(event, data, pointer, fn, fndata);
+    if (dontBlock) {
+        APPLICATION_THREAD_CONTEXT_ASYNC_TRY(system_notify_event_async(event, data, pointer, fn, fndata, dontBlock));
+    } else {
+        APPLICATION_THREAD_CONTEXT_ASYNC(system_notify_event_async(event, data, pointer, fn, fndata, dontBlock));
+    }
+    system_notify_event_impl(event, data, pointer, fn, fndata, false /* isIsr */);
 }
 
 class SystemEventTask : public ISRTaskQueue::Task {
@@ -115,7 +130,7 @@ class SystemEventTask : public ISRTaskQueue::Task {
      */
     void notify() {
         system_notify_event_async(event_, data_, pointer_, fn_, fndata_);
-        system_pool_free(this, nullptr);
+        systemPoolDelete(this);
     }
 
 public:
@@ -144,7 +159,7 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
     // Modification of subscriptions normally happens from thread context, so for events generated outside ISR
     // context, only mutex acquisition is sufficient to keep things thread safe (see system_notify_event_async())
 #if PLATFORM_THREADING
-    std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
+    std::lock_guard lk(sSubscriptionsMutex);
 #endif // PLATFORM_THREADING
     int r = 0;
     ATOMIC_BLOCK() {
@@ -163,7 +178,7 @@ void system_unsubscribe_event(system_event_t events, system_event_handler_t* han
     // Modification of subscriptions normally happens from thread context, so for events generated outside ISR
     // context, only mutex acquisition is sufficient to keep things thread safe (see system_notify_event_async())
 #if PLATFORM_THREADING
-    std::lock_guard<RecursiveMutex> lk(sSubscriptionsMutex);
+    std::lock_guard lk(sSubscriptionsMutex);
 #endif // PLATFORM_THREADING
     ATOMIC_BLOCK() {
         auto it = std::remove_if(subscriptions.begin(), subscriptions.end(), [events, handler, context](const SystemEventSubscription& sub) {
@@ -194,16 +209,16 @@ void system_notify_event(system_event_t event, uint32_t data, void* pointer, voi
         unsigned flags) {
     // TODO: Add an API that would allow user applications to control which event handlers can be
     // executed synchronously, possibly in the context of an ISR
+    bool isIsr = hal_interrupt_is_isr();
     if (flags & NOTIFY_SYNCHRONOUSLY) {
-        system_notify_event_impl(event, data, pointer, fn, fndata);
-    } else if (hal_interrupt_is_isr()) {
-        void* space = (system_pool_alloc(sizeof(SystemEventTask), nullptr));
-        if (space) {
-            auto task = new (space) SystemEventTask(event, data, pointer, fn, fndata);
+        system_notify_event_impl(event, data, pointer, fn, fndata, isIsr);
+    } else if (isIsr) {
+        auto task = systemPoolNew<SystemEventTask>(event, data, pointer, fn, fndata);
+        if (task) {
             SystemISRTaskQueue.enqueue(task);
-        };
+        }
     } else {
-        system_notify_event_async(event, data, pointer, fn, fndata);
+        system_notify_event_async(event, data, pointer, fn, fndata, flags & NOTIFY_DONT_BLOCK);
     }
 }
 

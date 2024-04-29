@@ -9,6 +9,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_async.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_print.cpp
+  ${DEVICE_OS_DIR}/wiring/src/spark_wiring_stream.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_random.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_string.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_wifi.cpp
@@ -17,11 +18,13 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_fuel.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_i2c.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_ipaddress.cpp
+  ${DEVICE_OS_DIR}/wiring/src/spark_wiring_variant.cpp
   ${DEVICE_OS_DIR}/wiring_globals/src/wiring_globals_i2c.cpp
   ${DEVICE_OS_DIR}/hal/src/template/i2c_hal.cpp
   ${DEVICE_OS_DIR}/wiring/src/string_convert.cpp
   ${TEST_DIR}/util/alloc.cpp
   ${TEST_DIR}/util/buffer.cpp
+  ${TEST_DIR}/util/string.cpp
   ${TEST_DIR}/util/random_old.cpp
   ${TEST_DIR}/stub/system_network.cpp
   ${TEST_DIR}/stub/inet_hal_compat.cpp
@@ -39,6 +42,8 @@ add_executable( ${target_name}
   json.cpp
   std_functions.cpp
   wlan.cpp
+  map.cpp
+  variant.cpp
 )
 
 # Set defines specific to target
@@ -60,6 +65,7 @@ target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/hal/inc/
   PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc/
   PRIVATE ${DEVICE_OS_DIR}/hal/shared/
+  PRIVATE ${DEVICE_OS_DIR}/platform/MCU/gcc/inc
   PRIVATE ${DEVICE_OS_DIR}/dynalib/inc/
   PRIVATE ${DEVICE_OS_DIR}/services/inc/
   PRIVATE ${DEVICE_OS_DIR}/system/inc/

@@ -31,7 +31,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <iostream>
-#include "filesystem.h"
+#include "filesystem_util.h"
 #include "service_debug.h"
 #include "device_config.h"
 #include "hal_platform.h"

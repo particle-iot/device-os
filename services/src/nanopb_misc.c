@@ -17,7 +17,12 @@
 
 #include "nanopb_misc.h"
 
+// FIXME: We should perhaps introduce a separate module for utilities like this
+#include "../../communication/inc/coap_api.h"
+#include "system_error.h"
+
 #include <stdlib.h>
+#include <limits.h>
 
 #if HAL_PLATFORM_FILESYSTEM
 #include "filesystem.h"
@@ -47,6 +52,26 @@ static bool read_file_callback(pb_istream_t* strm, uint8_t* data, size_t size) {
 }
 
 #endif // HAL_PLATFORM_FILESYSTEM
+
+static bool read_coap_message_callback(pb_istream_t* strm, uint8_t* data, size_t size) {
+    size_t n = size;
+    int r = coap_read_payload((coap_message*)strm->state, data, &n, NULL /* block_cb */, NULL /* error_cb */,
+            NULL /* arg */, NULL /* reserved */);
+    if (r != 0 || n != size) { // COAP_RESULT_WAIT_BLOCK is treated as an error
+        return false;
+    }
+    return true;
+}
+
+static bool write_coap_message_callback(pb_ostream_t* strm, const uint8_t* data, size_t size) {
+    size_t n = size;
+    int r = coap_write_payload((coap_message*)strm->state, data, &n, NULL /* block_cb */, NULL /* error_cb */,
+            NULL /* arg */, NULL /* reserved */);
+    if (r != 0 || n != size) { // COAP_RESULT_WAIT_BLOCK is treated as an error
+        return false;
+    }
+    return true;
+}
 
 pb_ostream_t* pb_ostream_init(void* reserved) {
     return (pb_ostream_t*)calloc(sizeof(pb_ostream_t), 1);
@@ -96,39 +121,65 @@ bool pb_istream_from_buffer_ex(pb_istream_t* stream, const pb_byte_t *buf, size_
 
 #if HAL_PLATFORM_FILESYSTEM
 
-bool pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved) {
+int pb_ostream_from_file(pb_ostream_t* stream, lfs_file_t* file, void* reserved) {
     if (!stream || !file) {
-        return false;
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
     if (!fs) {
-        return false;
+        return SYSTEM_ERROR_FILESYSTEM;
     }
     memset(stream, 0, sizeof(pb_ostream_t));
     stream->callback = write_file_callback;
     stream->state = file;
     stream->max_size = SIZE_MAX;
-    return true;
+    return 0;
 }
 
-bool pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, void* reserved) {
+int pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, int size, void* reserved) {
     if (!stream || !file) {
-        return false;
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
-    if (!fs) {
-        return false;
-    }
-    const lfs_soff_t pos = lfs_file_tell(&fs->instance, file);
-    const lfs_soff_t size = lfs_file_size(&fs->instance, file);
-    if (pos < 0 || size < 0) {
-        return false;
+    if (size < 0) {
+        filesystem_t* const fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, NULL);
+        if (!fs) {
+            return SYSTEM_ERROR_FILESYSTEM;
+        }
+        lfs_soff_t pos = lfs_file_tell(&fs->instance, file);
+        if (pos < 0) {
+            return filesystem_to_system_error(pos);
+        }
+        lfs_soff_t sz = lfs_file_size(&fs->instance, file);
+        if (sz < 0) {
+            return filesystem_to_system_error(sz);
+        }
+        size = sz - pos;
     }
     memset(stream, 0, sizeof(pb_istream_t));
     stream->callback = read_file_callback;
     stream->state = file;
-    stream->bytes_left = size - pos;
-    return true;
+    stream->bytes_left = size;
+    return 0;
 }
 
 #endif // HAL_PLATFORM_FILESYSTEM
+
+int pb_istream_from_coap_message(pb_istream_t* stream, coap_message* msg, void* reserved) {
+    int size = coap_peek_payload(msg, NULL /* data */, SIZE_MAX, NULL /* reserved */);
+    if (size < 0) {
+        return size;
+    }
+    memset(stream, 0, sizeof(*stream));
+    stream->callback = read_coap_message_callback;
+    stream->state = msg;
+    stream->bytes_left = size;
+    return 0;
+}
+
+int pb_ostream_from_coap_message(pb_ostream_t* stream, coap_message* msg, void* reserved) {
+    memset(stream, 0, sizeof(*stream));
+    stream->callback = write_coap_message_callback;
+    stream->state = msg;
+    stream->max_size = COAP_BLOCK_SIZE;
+    return 0;
+}

@@ -73,6 +73,8 @@ system_error_t toSystemError(ProtocolError error) {
         return SYSTEM_ERROR_OTA;
     case IO_ERROR_REMOTE_END_CLOSED:
         return SYSTEM_ERROR_END_OF_STREAM;
+    case COAP_ERROR:
+        return SYSTEM_ERROR_COAP;
     default:
         return SYSTEM_ERROR_PROTOCOL; // Generic protocol error
     }

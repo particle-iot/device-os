@@ -20,9 +20,11 @@
 #undef LOG_COMPILE_TIME_LEVEL
 
 #include "coap_channel.h"
+#include "coap_channel_new.h"
 #include "service_debug.h"
 #include "messages.h"
 #include "communication_diagnostic.h"
+#include "system_error.h"
 
 namespace particle { namespace protocol {
 
@@ -64,6 +66,9 @@ void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 	if (msg.is_request()) {
 		LOG(ERROR, "CoAP message timeout; ID: %d", (int)msg.get_id());
 		g_unacknowledgedMessageCounter++;
+		// XXX: This will cancel _all_ messages with a timeout error, not just the timed out one.
+		// That's not ideal but should be okay while we're transitioning to the new CoAP API
+		experimental::CoapChannel::instance()->close(SYSTEM_ERROR_COAP_TIMEOUT);
 		channel.command(MessageChannel::CLOSE);
 	}
 }
@@ -141,6 +146,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 		}
 		if (msgtype==CoAPType::RESET) {
 			LOG(WARN, "Received RST message; discarding session");
+			experimental::CoapChannel::instance()->handleRst(msg);
 			if (coap_msg) {
 				coap_msg->notify_delivered_nak();
 			}

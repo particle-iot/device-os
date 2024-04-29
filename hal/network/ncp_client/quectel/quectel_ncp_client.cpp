@@ -661,7 +661,7 @@ int QuectelNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
     // fallback to CSD
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device()) {
+    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     }
@@ -1439,8 +1439,12 @@ int QuectelNcpClient::registerNet() {
             r = CHECK_PARSER(respNwMode.readResult());
             CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
         #if PLATFORM_ID == PLATFORM_MSOM
-            if (nwScanMode != 0) {
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // AUTO
+            // M404/BG95M5 should be LTEM only, ie scan mode 3
+            // M524/EG91EX should be AUTO (both LTEM and 2G), ie scan mode 0
+            int desiredNwScanMode = (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) ? 3 : 0;
+
+            if (nwScanMode != desiredNwScanMode) {
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",%d,1", desiredNwScanMode));
             }
 
             if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
@@ -1450,8 +1454,8 @@ int QuectelNcpClient::registerNet() {
                 CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
                 r = CHECK_PARSER(respNwScanSeq.readResult());
                 CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-                if (nwScanSeq != 201) { // i.e. 0201
-                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",0201,1")); // LTE 02, then GSM 01
+                if (nwScanSeq != 20103) { // i.e. 020103
+                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",020103,1")); // LTE 02, then GSM 01, then NBIOT 03
                 }
             }
         #else 
@@ -1463,7 +1467,7 @@ int QuectelNcpClient::registerNet() {
 
         if (isQuecCatNBxDevice()) {
             // Configure Network Category to be searched
-            // Set to use LTE Cat-M1 ONLY if not already set, take effect immediately
+            // Set to use LTE Cat-M1 ONLY (exclude NBIOT) if not already set, take effect immediately
             auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
 
             int iotOpMode = -1;
@@ -1708,9 +1712,17 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
         int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL);
         if (r) {
             LOG(ERROR, "Failed to open data channel");
-            ready_ = false;
-            state = connState_ = NcpConnectionState::DISCONNECTED;
-            return;
+            bool forcedOpen = false;
+            if (!muxer_.forceOpenChannel(QUECTEL_NCP_PPP_CHANNEL)) {
+                if (!muxer_.resumeChannel(QUECTEL_NCP_PPP_CHANNEL)) {
+                    forcedOpen = true;
+                }
+            }
+            if (!forcedOpen) {
+                ready_ = false;
+                state = connState_ = NcpConnectionState::DISCONNECTED;
+                return;
+            }
         }
     }
 

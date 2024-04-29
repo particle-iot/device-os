@@ -927,10 +927,10 @@ int NetworkManager::disableInterface(if_t iface, network_disconnect_reason reaso
     return 0;
 }
 
-int NetworkManager::syncInterfaceStates() {
+int NetworkManager::syncInterfaceStates(if_t forceIface) {
     if (isEstablishingConnections() || isConnectivityAvailable()) {
         CHECK(for_each_iface([&](if_t iface, unsigned int flags) {
-            if (!haveLowerLayerConfiguration(iface)) {
+            if (!haveLowerLayerConfiguration(iface) && (forceIface != iface)) {
                 return;
             }
 
@@ -1237,7 +1237,7 @@ int NetworkManager::loadStoredConfiguration(spark::Vector<StoredConfiguration>& 
         bool r = conf->append(storedConf);
         return r;
     };
-    const int r = decodeMessageFromFile(&file, PB(NetworkConfig_fields), &pbConf);
+    const int r = decodeProtobufFromFile(&file, PB(NetworkConfig_fields), &pbConf);
     if (r < 0) {
         LOG(ERROR, "Unable to parse network settings");
         LOG(WARN, "Removing file: %s", NETWORK_CONFIG_FILE);
@@ -1320,7 +1320,7 @@ int NetworkManager::saveStoredConfiguration(const spark::Vector<StoredConfigurat
         }
         return true;
     };
-    CHECK(encodeMessageToFile(&file, PB(NetworkConfig_fields), &pbConf));
+    CHECK(encodeProtobufToFile(&file, PB(NetworkConfig_fields), &pbConf));
     LOG(TRACE, "Updated file: %s", NETWORK_CONFIG_FILE);
     ok = true;
     return 0;
