@@ -846,10 +846,10 @@ public:
                 }
             }
 
-            flushRxFifo();
             if (transferConfig_.rxBuf) {
                 DCache_Invalidate((u32)transferConfig_.rxBuf, status_.configuredTransferLength);
             }
+            flushRxFifo();
 
             if (doneWithTransfer) {
                 // At least some of the data is transferred. Mark this transfer as completed.
@@ -862,8 +862,13 @@ public:
 
     void onSelectedHandlerImpl() {
         status_.csPinSelected = !hal_gpio_read(csPin_);
-        if (callbackConfig_.selectUserCb) {
+        if (callbackConfig_.selectUserCb && status_.csPinSelected) {
             (*callbackConfig_.selectUserCb)(status_.csPinSelected);
+            // XXX: This is required to fixed the issue that the unaligned part of the
+            // RX buffer is overwritten with stale data
+            if (transferConfig_.rxBuf) {
+                DCache_Invalidate((u32)transferConfig_.rxBuf, status_.configuredTransferLength);
+            }
         }
 
         if (isDmaBufferConfigured()) {
@@ -889,6 +894,14 @@ public:
                 // SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_TDMAE);
                 // GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
             }
+        }
+        // When the RX buffer is not 32-bytes aligned and part of it is within the same 32-bytes block
+        // as certain volatile variables (e.g. volatile flag to be used in user callback), we should make
+        // sure the RX buffer is invalidated before those variables are modified (potentially a DCache
+        // clean operation is performed), otherwise the unaligned part of the RX buffer may be written
+        // with stale data when updating the volatile variables.
+        if (callbackConfig_.selectUserCb && !status_.csPinSelected) {
+            (*callbackConfig_.selectUserCb)(status_.csPinSelected);
         }
     }
 
