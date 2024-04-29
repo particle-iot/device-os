@@ -44,6 +44,8 @@ public:
     Event();
     ~Event();
 
+    const char* name() const;
+
     Event& contentType(ContentType type);
     ContentType contentType() const;
 
@@ -51,19 +53,22 @@ public:
     uint64_t timestamp() const;
 
     Direction direction() const;
-    bool isMutable() const;
+    bool isWritable() const;
 
     Event& onSent(OnSent callback);
 
-    int end(bool cancel = false);
+    int end();
+    int cancel();
     int rewind();
 
     bool ok() const;
     int error() const;
 
     // Convenience overloads for CBORReader methods
-    Variant value();
-    Variant key();
+    Variant nextValue();
+    Variant nextKey();
+    Variant::Type nextType();
+    bool hasNext();
 
     // Convenience overloads for CBORWriter methods
     Event& value(const Variant& val);

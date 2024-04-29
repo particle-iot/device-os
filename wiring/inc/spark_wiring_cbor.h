@@ -27,20 +27,16 @@ class CBORReader {
 public:
     explicit CBORReader(Stream& stream);
 
+    int readType(Variant::Type& type);
     int readValue(Variant& val);
     int skipValue();
-
-    int readKey(Variant& val);
-    int skipKey();
-
-    int readType(Variant::Type& type);
 
     int enterArray();
     int leaveArray();
 
     int enterMap();
     int leaveMap();
-    
+
     int count() const;
 
     bool hasMore();
