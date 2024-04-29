@@ -1,3 +1,44 @@
+## 6.1.0
+
+### FEATURES
+
+- Ledger [#2715](https://github.com/particle-iot/device-os/pull/2715) [#2756](https://github.com/particle-iot/device-os/pull/2756)
+- [WiFi] `WiFi.setCredentials()` with credentials validation [#2746](https://github.com/particle-iot/device-os/pull/2746) [#2754](https://github.com/particle-iot/device-os/pull/2754) [#2758](https://github.com/particle-iot/device-os/pull/2758)
+- [Gen 4] [rtl872x] [BREAKING CHANGE] Backup RAM is no longer automatically written to flash periodically. Backup RAM will be saved when entering sleep. If users are going to reset, `hal_backup_ram_sync()` should be called first [#2766](https://github.com/particle-iot/device-os/pull/2766)
+
+### ENHANCEMENTS
+
+- [Cellular] Improve BG95 connection speed by only setting `nwscanseq` if needed [#2735](https://github.com/particle-iot/device-os/pull/2735)
+- Include IMEI in `CTRL_REQUEST_CELLULAR_GET_ICCID` control request  [#2730](https://github.com/particle-iot/device-os/pull/2730)
+- Process system tasks while cloud handshake is in progress [#2745](https://github.com/particle-iot/device-os/pull/2745)
+
+### BUGFIXES
+
+- [wiring] Fix incorrect `int` to `bool` conversion in `WiFi.clearCredentials()` [#2736](https://github.com/particle-iot/device-os/pull/2736)
+- [Gen 4] [rtl872x] Fix boot loop if system-part module info is corrupted [#2739](https://github.com/particle-iot/device-os/pull/2739)
+- [Gen 4] [rtl872x] Fix OTA bounds check, add `ota/min_max_app_size` test [#2742](https://github.com/particle-iot/device-os/pull/2742)
+- Fix `std::call_once` re-entrancy problem [#2743](https://github.com/particle-iot/device-os/pull/2743)
+- Prevent OTA progress events from blocking system thread [#2741](https://github.com/particle-iot/device-os/pull/2741)
+- [Gen 4] [rtl872x] Fix WiFi/BLE coexistence and WiFi/BLE stability issues [#2747](https://github.com/particle-iot/device-os/pull/2747) [#2752](https://github.com/particle-iot/device-os/pull/2752) [#2755](https://github.com/particle-iot/device-os/pull/2755) [#2754](https://github.com/particle-iot/device-os/pull/2754)
+- [Gen 4] [rtl872x] Fix USB re-enumeration issues [#2744](https://github.com/particle-iot/device-os/pull/2744) [#2752](https://github.com/particle-iot/device-os/pull/2752) [#2754](https://github.com/particle-iot/device-os/pull/2754)
+- [Gen 4] [rtl872x] Fix incorrect timing of SPI TX-only transaction completion notification [#2749](https://github.com/particle-iot/device-os/pull/2749) [#2757](https://github.com/particle-iot/device-os/pull/2757)
+- [Gen 4] [rtl872x] Fix an issue with `micros()` and `millis()` occasionally jumping forward after ~37 hours [#2750](https://github.com/particle-iot/device-os/pull/2750)
+- [Cellular] [Quectel] Try to force open PPP channel, helps with warm boot PPP session resume in some cases [#2752](https://github.com/particle-iot/device-os/pull/2752)
+- [system] Fix sockfd matching in ACM connectivity manager causing a panic [#2755](https://github.com/particle-iot/device-os/pull/2755)
+- [Gen 4] [rtl872x] Fix UART initialization issue with non-32-byte-aligned buffers [#2757](https://github.com/particle-iot/device-os/pull/2757)
+- [Gen 4] [rtl872x] Reinitialize internal wifi stack if scan or connect fails [#2766](https://github.com/particle-iot/device-os/pull/2766) [#2760](https://github.com/particle-iot/device-os/pull/2760/)
+- [Gen 4] [rtl872x] Resolve deadlock with USB serial monitoring on boot in some cases[#2765](https://github.com/particle-iot/device-os/pull/2765)
+
+### INTERNAL
+
+- [Tracker] Disable ESP32 SDIO debug logs [#2740](https://github.com/particle-iot/device-os/pull/2740)
+- [GCC] Enable Ledger and filesystem APIs on GCC platform [#2737](https://github.com/particle-iot/device-os/pull/2737)
+- Fix monolithic build errors [#2751](https://github.com/particle-iot/device-os/pull/2751)
+- [Gen 4] [rtl872x] Upgrade `ambd_sdk` WiFi and BLE subsystems to `6.2_patch_integrated_231211_25b3bc38` [#2752](https://github.com/particle-iot/device-os/pull/2752)
+- Update USB/BLE platform names to use hyphenated notation [#2753](https://github.com/particle-iot/device-os/pull/2753)
+- [Gen 4] [rtl872x] Prevent M404/BG95M5 modems from connecting on 2G networks for the time being[#2761](https://github.com/particle-iot/device-os/pull/2761)
+- [Gen 4] [rtl872x] Query 2G registration status for M404/BG95M5 modems when querying CGMI [#2761](https://github.com/particle-iot/device-os/pull/2761)
+
 ## 6.0.0
 
 ### FEATURES
