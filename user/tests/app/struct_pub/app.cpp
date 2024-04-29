@@ -10,7 +10,26 @@ void onEventSentCallback(int error, Event event) {
     Log.info("Sent event: %s", event.name());
 }
 
-void publishUsingVariant() {
+void publishingBufferWithBinaryData() {
+    uint8_t buf[100] = {};
+    // ...
+
+    Event event = Particle.publish("my_event", buf, sizeof(buf));
+    event.onSent(onEventSentCallback);
+}
+
+void publishingBinaryDataUsingStream() {
+    uint8_t buf[100] = {};
+    // ...
+
+    Event event = Particle.beginPublish("my_event");
+    event.write(buf, sizeof(buf));
+    event.write(buf, sizeof(buf));
+    event.onSent(onEventSentCallback);
+    event.end();
+}
+
+void publishCborUsingVariant() {
     Variant v;
     v["key_1"] = 123;
     v["key_2"].append("nested_value_1");
@@ -20,7 +39,7 @@ void publishUsingVariant() {
     event.onSent(onEventSentCallback);
 }
 
-void publishUsingStream() {
+void publishCborUsingStream() {
     int result = Particle.beginEvent("my_event") // beginEvent() returns an Event instance
             .beginMap()
                 .key("key_1").value(123)
