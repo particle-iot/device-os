@@ -33,6 +33,7 @@
 #include "platform_ncp.h"
 extern "C" {
 #include "device_lock.h"
+#include "rtl8721d.h"
 #include "rtl8721d_efuse.h"
 }
 #include "efuse.h"
