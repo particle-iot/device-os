@@ -64,6 +64,7 @@ enum class UbloxSaraUmnoprof {
     VODAFONE         = 19,
     TELUS            = 21,
     DEUTSCHE_TELEKOM = 31,
+    STANDARD_GLOBAL  = 90,
     STANDARD_EUROPE  = 100,
 };
 
