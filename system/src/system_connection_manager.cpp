@@ -373,7 +373,7 @@ int ConnectionTester::testConnections() {
             auto network = spark::Network.from(connectionMetrics.interface);
             if (network == spark::Network) {
                 LOG(ERROR, "No Network associated with interface %d", connectionMetrics.interface);
-                continue;
+                return SYSTEM_ERROR_NETWORK;
             }
             if (!network_ready(network, 0, nullptr)) {
                 LOG_DEBUG(TRACE,"%s not ready, skipping test", netifToName(connectionMetrics.interface));
