@@ -10,6 +10,8 @@ void onEventSentCallback(int error, Event event) {
     Log.info("Sent event: %s", event.name());
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////
+
 void publishingBufferWithBinaryData() {
     uint8_t buf[100] = {};
     // ...
@@ -22,9 +24,10 @@ void publishingBinaryDataUsingStream() {
     uint8_t buf[100] = {};
     // ...
 
-    Event event = Particle.beginPublish("my_event");
-    event.write(buf, sizeof(buf));
-    event.write(buf, sizeof(buf));
+    Event event = Particle.beginEvent("my_event");
+    for (int i = 0; i < 20; ++i) {
+        event.write(buf, sizeof(buf));
+    }
     event.onSent(onEventSentCallback);
     event.end();
 }
@@ -40,7 +43,7 @@ void publishCborUsingVariant() {
 }
 
 void publishCborUsingStream() {
-    int result = Particle.beginEvent("my_event") // beginEvent() returns an Event instance
+    int result = Particle.beginEvent("my_event")
             .beginMap()
                 .key("key_1").value(123)
                 .key("key_2").beginArray()

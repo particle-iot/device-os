@@ -269,9 +269,9 @@ public:
     particle::Future<bool> publish(const char* name, const char* data, int ttl);
 
     Event publish(const char* name, const Variant& data);
-    Event publish(const char* name, const uint8_t* data, size_t size);
+    Event publish(const char* name, const uint8_t* data, size_t size, Event::ContentType type = Event::BINARY);
 
-    Event beginEvent(const char* name);
+    Event beginEvent(const char* name, Event::ContentType type = Event::AUTO);
 
     /**
      * @brief Publish vitals information
