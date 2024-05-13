@@ -114,10 +114,14 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg, bool* handled) {
         LOG(INFO, "Duplicate chunks: %u", stats_.duplicateChunks);
         LOG(INFO, "Out-of-order chunks: %u", stats_.outOfOrderChunks);
         LOG(INFO, "Applying firmware update");
-        r = callbacks_->finish_firmware_update(0);
+        FirmwareUpdateFlags flags;
+        if (discardData_) {
+            flags |= FirmwareUpdateFlag::DISCARD_DATA;
+        }
+        r = callbacks_->finish_firmware_update(flags.value());
         if (r < 0) {
             LOG(ERROR, "Failed to apply firmware update: %d", r);
-            cancelUpdate();
+            cancelUpdate(true /* discardData */);
             return ProtocolError::OTA_UPDATE_ERROR;
         } else {
             // finish_firmware_update() doesn't normally return on success, but it does so in unit tests
@@ -126,7 +130,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg, bool* handled) {
     } else if (d.id() == errorRespId_) {
         *handled = true;
         LOG(ERROR, "Firmware update failed");
-        cancelUpdate();
+        cancelUpdate(discardData_);
         return ProtocolError::OTA_UPDATE_ERROR;
     }
     return ProtocolError::NO_ERROR;
@@ -361,11 +365,10 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
     FirmwareUpdateFlags flags;
     if (discardData) {
         LOG(INFO, "Discard data: %u", (unsigned)discardData);
-        flags |= FirmwareUpdateFlag::DISCARD_DATA;
     }
     if (cancelUpdate) {
         LOG(INFO, "Cancel update: %u", (unsigned)cancelUpdate);
-        LOG(INFO, "Cancelling firmware update");
+        LOG(WARN, "Cancelling firmware update");
         flags |= FirmwareUpdateFlag::CANCEL;
     } else {
         if (fileOffset_ != fileSize_) {
@@ -374,9 +377,19 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
         }
         LOG(INFO, "Validating firmware update");
         flags |= FirmwareUpdateFlag::VALIDATE_ONLY;
+        // The DISCARD_DATA flag has no effect if it's combined with VALIDATE_ONLY so it will be set
+        // later, when a response for the UpdateFinish request is received
+        discardData_ = discardData;
     }
     const auto t1 = millis();
-    CHECK(callbacks_->finish_firmware_update(flags.value()));
+    int r = callbacks_->finish_firmware_update(flags.value());
+    if (r < 0) {
+        if (!cancelUpdate) {
+            // Make sure the data is going to be discarded if the validation has failed
+            discardData_ = true;
+        }
+        return r;
+    }
     stats_.processingTime += millis() - t1;
     e->type(d.type());
     e->code(CoapCode::CHANGED);
@@ -737,9 +750,13 @@ int FirmwareUpdate::sendEmptyAck(Message* msg, CoapType type, CoapMessageId id) 
     return 0;
 }
 
-void FirmwareUpdate::cancelUpdate() {
+void FirmwareUpdate::cancelUpdate(bool discardData) {
     if (updating_) {
-        const int r = callbacks_->finish_firmware_update((unsigned)FirmwareUpdateFlag::CANCEL);
+        FirmwareUpdateFlags flags = FirmwareUpdateFlag::CANCEL;
+        if (discardData) {
+            flags |= FirmwareUpdateFlag::DISCARD_DATA;
+        }
+        const int r = callbacks_->finish_firmware_update(flags.value());
         if (r < 0) {
             LOG(ERROR, "Failed to cancel the update: %d", r);
         }
@@ -765,6 +782,8 @@ void FirmwareUpdate::reset() {
     finishRespId_ = -1;
     errorRespId_ = -1;
     hasGaps_ = false;
+    discardData_ = false;
+    // updating_ is cleared separately
 }
 
 } // namespace protocol

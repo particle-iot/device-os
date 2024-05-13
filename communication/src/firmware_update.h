@@ -165,6 +165,7 @@ private:
     int finishRespId_; // Message ID of the UpdateFinish response
     int errorRespId_; // Message ID of the last confirmable error response sent to the server
     bool hasGaps_; // Whether the sequence of received chunks has gaps
+    bool discardData_; // Whether to discard the resumable state after the update
     bool updating_; // Whether an update is in progress
 
     ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);
@@ -184,7 +185,7 @@ private:
     int sendErrorResponse(Message* msg, int error, CoapType type, int id, const char* token, size_t tokenSize);
     int sendEmptyAck(Message* msg, CoapType type, CoapMessageId id);
 
-    void cancelUpdate();
+    void cancelUpdate(bool discardData = false);
 
     system_tick_t millis() const;
 };
