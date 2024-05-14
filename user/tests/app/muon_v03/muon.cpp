@@ -202,7 +202,22 @@ void uartRouteLora(bool isLora) {
         Mcp23s17::getInstance().setPinMode(loraBusSelPin.first, loraBusSelPin.second, OUTPUT);
         configured = true;
     }
+    // When the bus select pin is HIGH, the switch between Lora's I2C and MCU's I2C is on, otherwise off.
     Mcp23s17::getInstance().writePinValue(loraBusSelPin.first, loraBusSelPin.second, isLora ? LOW : HIGH);
+}
+
+void auxPowerControl(bool enable) {
+    static bool configured = false;
+    constexpr uint8_t AUX_PWR_EN_PIN = D23;
+    if (!configured) {
+        pinMode(AUX_PWR_EN_PIN, OUTPUT);
+        configured = true;
+    }
+    if (enable) {
+        digitalWrite(AUX_PWR_EN_PIN, HIGH);
+    } else {
+        digitalWrite(AUX_PWR_EN_PIN, LOW);
+    }
 }
 
 void testStusb4500() {
@@ -298,6 +313,7 @@ void testExternalRtc() {
     Log.info("[testExternalRtc] Part Number: 0x%04x, expected: 0x%04x", val, PART_NUMBER);
 }
 
+bool temperatureDetected = false;
 void testTemperatureSensor() {
     constexpr uint8_t TMP112A_ADDR = 0x48;
     constexpr uint8_t CONFIG_REG = 0x01;
@@ -319,11 +335,24 @@ void testTemperatureSensor() {
     val |= Wire.read();
     Log.info("[testTemperatureSensor] Config: 0x%04x, expected: 0x%04x", val, DEFAULT_CONFIG);
     if (val == DEFAULT_CONFIG) {
+        temperatureDetected = true;
+    }
+}
+
+void loopReadTemperature() {
+    if (!temperatureDetected) {
+        return;
+    }
+    constexpr uint8_t TMP112A_ADDR = 0x48;
+    constexpr uint8_t TEMP_REG = 0x00;
+    static system_tick_t startTime = 0;
+    if (millis() - startTime > 3000) {
+        startTime = millis();
         Wire.beginTransmission(TMP112A_ADDR);
         Wire.write(TEMP_REG);
         Wire.endTransmission(false);
         Wire.requestFrom(TMP112A_ADDR, 2);
-        val = Wire.read() << 8;
+        uint16_t val = Wire.read() << 8;
         val |= Wire.read();
         val >>= 4;
         bool neg = false;
@@ -332,7 +361,7 @@ void testTemperatureSensor() {
             neg = true;
         }
         float temp = val * 0.0625;
-        Log.info("[testTemperatureSensor] Temperature: (0x%04x) %c%.1f", val, (neg ? '-' : '+'), temp);
+        Log.info("Temperature: (0x%04x) %c%.1f", val, (neg ? '-' : '+'), temp);
     }
 }
 
@@ -350,9 +379,12 @@ void setup() {
     testExternalRtc();
     testTemperatureSensor();
 
+    auxPowerControl(true);
+
     System.on(button_click, onButtonClick);
 }
 
 void loop() {
-    loopStusb4500();
+    // loopStusb4500();
+    loopReadTemperature();
 }
