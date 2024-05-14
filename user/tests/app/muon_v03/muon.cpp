@@ -1,10 +1,199 @@
 #include "application.h"
 #include "mcp23s17.h"
+#include "SparkFun_STUSB4500.h"
 
 SYSTEM_MODE(MANUAL);
 
 Serial1LogHandler l1(115200, LOG_LEVEL_ALL);
 SerialLogHandler l2(115200, LOG_LEVEL_ALL);
+
+STUSB4500 usb;
+
+volatile bool buttonClicked = false;
+void onButtonClick(system_event_t ev, int button_data) {
+    buttonClicked = true;
+}
+
+void writeParameters() {
+    delay(100);
+
+    /* Set Number of Power Data Objects (PDO) 1-3 */
+    usb.setPdoNumber(3);
+
+    /* PDO1
+    - Voltage fixed at 5V
+    - Current value for PDO1 0-5A, if 0 used, FLEX_I value is used
+    - Under Voltage Lock Out (setUnderVoltageLimit) fixed at 3.3V
+    - Over Voltage Lock Out (setUpperVoltageLimit) 5-20%
+    */
+    usb.setCurrent(1, 3); // 5V3A
+    usb.setUpperVoltageLimit(1, 20);
+
+    /* PDO2
+    - Voltage 5-20V
+    - Current value for PDO2 0-5A, if 0 used, FLEX_I value is used
+    - Under Voltage Lock Out (setUnderVoltageLimit) 5-20%
+    - Over Voltage Lock Out (setUpperVoltageLimit) 5-20%
+    */
+    usb.setVoltage(2, 9.0);
+    usb.setCurrent(2, 1.5); // 9V1.5A
+    usb.setLowerVoltageLimit(2, 20);
+    usb.setUpperVoltageLimit(2, 20);
+
+    /* PDO3
+    - Voltage 5-20V
+    - Current value for PDO3 0-5A, if 0 used, FLEX_I value is used
+    - Under Voltage Lock Out (setUnderVoltageLimit) 5-20%
+    - Over Voltage Lock Out (setUpperVoltageLimit) 5-20%
+    */
+    usb.setVoltage(3, 12.0);
+    usb.setCurrent(3, 1); // 12V1A
+    usb.setLowerVoltageLimit(3, 20);
+    usb.setUpperVoltageLimit(3, 20);
+
+    /* Flexible current value common to all PDOs */
+    //  usb.setFlexCurrent(1.0);
+
+    /* Unconstrained Power bit setting in capabilities message sent by the sink */
+    //  usb.setExternalPower(false);
+
+    /* USB 2.0 or 3.x data communication capability by sink system */
+    usb.setUsbCommCapable(false);
+
+    /* Selects POWER_OK pins configuration
+        0 - Configuration 1
+        1 - No applicable
+        2 - Configuration 2 (default)
+        3 - Configuration 3
+    */
+    //  usb.setConfigOkGpio(2);
+
+    /* Selects GPIO pin configuration
+        0 - SW_CTRL_GPIO
+        1 - ERROR_RECOVERY
+        2 - DEBUG
+        3 - SINK_POWER
+    */
+     usb.setGpioCtrl(3);
+
+    /* Selects VBUS_EN_SNK pin configuration */
+     usb.setPowerAbove5vOnly(false);
+
+    /* In case of match, selects which operating current from the sink or the
+        source is to be requested in the RDO message */
+    //  usb.setReqSrcCurrent(false);
+
+    /* Write the new settings to the NVM */
+    usb.write();
+}
+
+void readParamters() {
+    delay(100);
+
+    /* Read the NVM settings to verify the new settings are correct */
+    usb.read();
+
+    Log.info("New Parameters:\n");
+
+    /* Read the Power Data Objects (PDO) highest priority */
+    Log.info("PDO Number: %d", usb.getPdoNumber());
+
+    /* Read settings for PDO1 */
+    Log.info("");
+    Log.info("Voltage1 (V): %.2f", usb.getVoltage(1));
+    Log.info("Current1 (A): %.2f", usb.getCurrent(1));
+    Log.info("Lower Voltage Tolerance1 (%%): %.2f", usb.getLowerVoltageLimit(1));
+    Log.info("Upper Voltage Tolerance1 (%%): %.2f", usb.getUpperVoltageLimit(1));
+    Log.info("");
+
+    /* Read settings for PDO2 */
+    Log.info("Voltage2 (V): %.2f", usb.getVoltage(2));
+    Log.info("Current2 (A): %.2f", usb.getCurrent(2));
+    Log.info("Lower Voltage Tolerance2 (%%): %.2f", usb.getLowerVoltageLimit(2));
+    Log.info("Upper Voltage Tolerance2 (%%): %.2f", usb.getUpperVoltageLimit(2));
+    Log.info("");
+
+    /* Read settings for PDO3 */
+    Log.info("Voltage3 (V): %.2f", usb.getVoltage(3));
+    Log.info("Current3 (A): %.2f", usb.getCurrent(3));
+    Log.info("Lower Voltage Tolerance3 (%%): %.2f", usb.getLowerVoltageLimit(3));
+    Log.info("Upper Voltage Tolerance3 (%%): %.2f", usb.getUpperVoltageLimit(3));
+    Log.info("");
+
+    /* Read the flex current value */
+    Log.info("Flex Current: %.2f", usb.getFlexCurrent());
+
+    /* Read the External Power capable bit */
+    Log.info("External Power: %d", usb.getExternalPower());
+
+    /* Read the USB Communication capable bit */
+    Log.info("USB Communication Capable: %d", usb.getUsbCommCapable());
+
+    /* Read the POWER_OK pins configuration */
+    Log.info("Configuration OK GPIO: %d", usb.getConfigOkGpio());
+
+    /* Read the GPIO pin configuration */
+    Log.info("GPIO Control: %d", usb.getGpioCtrl());
+
+    /* Read the bit that enables VBUS_EN_SNK pin only when power is greater than 5V */
+    Log.info("Enable Power Only Above 5V: %d", usb.getPowerAbove5vOnly());
+
+    /* Read bit that controls if the Source or Sink device's
+        operating current is used in the RDO message */
+    Log.info("Request Source Current: %d", usb.getReqSrcCurrent());
+}
+
+void readStatus() {
+    Log.info("");
+    Log.info("");
+
+    uint8_t buffer[32] = {};
+    usb.I2C_Read_USB_PD(REG_DEVICE_ID, buffer, 1);
+    Log.info("Device ID: 0x%02X", buffer[0]);
+    Log.info("");
+
+    // Read PORT_STATUS_1 Register
+    memset(buffer, 0, sizeof(buffer));
+    usb.I2C_Read_USB_PD(REG_PORT_STATUS, buffer, 1);
+    Log.info("Port Status: 0x%02X", buffer[0]);
+    Log.info("ATTACHED_DEVICE: %d", (buffer[0] >> 5) & 0x07);
+    Log.info("POWER_MODE: %d", (buffer[0] >> 3) & 0x01);
+    Log.info("DATA_MODE: %d", (buffer[0] >> 2) & 0x01);
+    Log.info("ATTACH: %d", (buffer[0] >> 0) & 0x01);
+    Log.info("");
+
+    // Read CC_STATUS Register
+    memset(buffer, 0, sizeof(buffer));
+    usb.I2C_Read_USB_PD(CC_STATUS, buffer, 1);
+    Log.info("CC Status: 0x%02X", buffer[0]);
+    Log.info("LOOKING_4_CONNECTION: %d", (buffer[0] >> 5) & 0x01);
+    Log.info("CONNECT_RESULT: %d", (buffer[0] >> 4) & 0x01);
+    Log.info("CC2_STATE: %d", (buffer[0] >> 2) & 0x03);
+    Log.info("CC1_STATE: %d", (buffer[0] >> 0) & 0x03);
+    Log.info("");
+
+    // Read RDO
+    memset(buffer, 0, sizeof(buffer));
+    usb.I2C_Read_USB_PD(DPM_REQ_RDO, buffer, 4);
+    uint32_t ActiveRDO = (buffer[3] << 24) | (buffer[2] << 16) | (buffer[1] << 8) | buffer[0];
+    Log.info("ActiveRDO: 0x%08x", ActiveRDO);
+    uint8_t objectPosition = (ActiveRDO >> 28) & 0x07;
+    uint8_t giveBackFlag = (ActiveRDO >> 27) & 0x01;
+    uint8_t capabilityMismatch = (ActiveRDO >> 26) & 0x01;
+    uint8_t usbCommunicationsCapable = (ActiveRDO >> 25) & 0x01;
+    uint8_t noUSBSuspend = (ActiveRDO >> 24) & 0x01;
+    uint8_t unchunkedSupported = (ActiveRDO >> 23) & 0x01;
+    uint8_t operatingX = (ActiveRDO >> 10) & 0x03FF;
+    uint8_t maxMinOperatingCurrent = ActiveRDO & 0x03FF;
+    Log.info(" - objectPosition: 0x%02x", objectPosition);
+    Log.info(" - giveBackFlag: 0x%02x", giveBackFlag);
+    Log.info(" - capabilityMismatch: 0x%02x", capabilityMismatch);
+    Log.info(" - usbCommunicationsCapable: 0x%02x", usbCommunicationsCapable);
+    Log.info(" - noUSBSuspend: 0x%02x", noUSBSuspend);
+    Log.info(" - unchunkedSupported: 0x%02x", unchunkedSupported);
+    Log.info(" - operatingX: %d", operatingX);
+    Log.info(" - maxMinOperatingCurrent: %d", maxMinOperatingCurrent);
+}
 
 void uartRouteLora(bool isLora) {
     static bool configured = false;
@@ -44,6 +233,28 @@ void testStusb4500() {
     }
     uint8_t val = Wire.read();
     Log.info("[testStusb4500] Device_ID: 0x%02x, expected: 0x%02x", val, DEVICE_ID);
+
+    if (!usb.begin()) {
+        Log.info("Cannot connect to STUSB4500.");
+        Log.info("Is the board connected? Is the device ID correct?");
+        while (1) {
+            ;
+        }
+    }
+}
+
+void loopStusb4500() {
+    static auto startTime = millis();
+    if (buttonClicked) {
+        buttonClicked = false;
+        writeParameters();
+        readParamters();
+    }
+    if (millis() - startTime > 3000) {
+        startTime = millis();
+        readStatus();
+        // usb.printRDO();
+    }
 }
 
 void testFuelGauge() {
@@ -138,8 +349,10 @@ void setup() {
     testStusb4500();
     testExternalRtc();
     testTemperatureSensor();
+
+    System.on(button_click, onButtonClick);
 }
 
 void loop() {
-
+    loopStusb4500();
 }
