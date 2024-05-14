@@ -121,7 +121,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg, bool* handled) {
         r = callbacks_->finish_firmware_update(flags.value());
         if (r < 0) {
             LOG(ERROR, "Failed to apply firmware update: %d", r);
-            cancelUpdate(true /* discardData */);
+            cancelUpdate();
             return ProtocolError::OTA_UPDATE_ERROR;
         } else {
             // finish_firmware_update() doesn't normally return on success, but it does so in unit tests
@@ -130,7 +130,7 @@ ProtocolError FirmwareUpdate::responseAck(Message* msg, bool* handled) {
     } else if (d.id() == errorRespId_) {
         *handled = true;
         LOG(ERROR, "Firmware update failed");
-        cancelUpdate(discardData_);
+        cancelUpdate();
         return ProtocolError::OTA_UPDATE_ERROR;
     }
     return ProtocolError::NO_ERROR;
@@ -370,6 +370,9 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
         LOG(INFO, "Cancel update: %u", (unsigned)cancelUpdate);
         LOG(WARN, "Cancelling firmware update");
         flags |= FirmwareUpdateFlag::CANCEL;
+        if (discardData) {
+            flags |= FirmwareUpdateFlag::DISCARD_DATA;
+        }
     } else {
         if (fileOffset_ != fileSize_) {
             SYSTEM_ERROR_MESSAGE("Incomplete file transfer");
@@ -377,15 +380,15 @@ int FirmwareUpdate::handleFinishRequest(const CoapMessageDecoder& d, CoapMessage
         }
         LOG(INFO, "Validating firmware update");
         flags |= FirmwareUpdateFlag::VALIDATE_ONLY;
-        // The DISCARD_DATA flag has no effect if it's combined with VALIDATE_ONLY so it will be set
-        // later, when a response for the UpdateFinish request is received
+        // The DISCARD_DATA flag has no effect when combined with VALIDATE_ONLY. The flag will be
+        // set later, when a response for the UpdateFinish request is received
         discardData_ = discardData;
     }
     const auto t1 = millis();
     int r = callbacks_->finish_firmware_update(flags.value());
     if (r < 0) {
         if (!cancelUpdate) {
-            // Make sure the data is going to be discarded if the validation has failed
+            // Make sure the module data is going to be discarded
             discardData_ = true;
         }
         return r;
@@ -750,10 +753,10 @@ int FirmwareUpdate::sendEmptyAck(Message* msg, CoapType type, CoapMessageId id) 
     return 0;
 }
 
-void FirmwareUpdate::cancelUpdate(bool discardData) {
+void FirmwareUpdate::cancelUpdate() {
     if (updating_) {
         FirmwareUpdateFlags flags = FirmwareUpdateFlag::CANCEL;
-        if (discardData) {
+        if (discardData_) {
             flags |= FirmwareUpdateFlag::DISCARD_DATA;
         }
         const int r = callbacks_->finish_firmware_update(flags.value());
