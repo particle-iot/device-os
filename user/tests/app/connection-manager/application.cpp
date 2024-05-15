@@ -36,6 +36,7 @@ SerialLogHandler logHandler(LOG_LEVEL_ALL,
 }
 );
 
+#if HAL_PLATFORM_CELLULAR
 // Copied from HAL
 struct __attribute__((packed)) CellularDeviceCached
 {
@@ -47,7 +48,6 @@ struct __attribute__((packed)) CellularDeviceCached
     char radiofw[25];
 };
 
-#if HAL_PLATFORM_CELLULAR
 static void printCellularInfo() {
     CellularDevice device = {};
     device.size = sizeof(device);
@@ -91,6 +91,13 @@ void setup() {
         System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     }
 
+    if (System.featureEnabled(FEATURE_ETHERNET_DETECTION)) {
+        Log.info("FEATURE_ETHERNET_DETECTION enabled");
+    } else {
+        Log.info("Enabling Ethernet...");
+        System.enableFeature(FEATURE_ETHERNET_DETECTION);
+    }
+
     Log.info("Checking if Ethernet is on...");
     if (Ethernet.isOn()) {
         Log.info("Ethernet is on");
@@ -108,6 +115,7 @@ void setup() {
     else if (++resetRetry <= ETHERNET_RETRY_MAX) {
         Log.info("Ethernet is off or not detected, attmpting to remap pins: %d/%d", resetRetry, ETHERNET_RETRY_MAX);
 
+#if PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_MSOM
         if (resetRetry == 4) {
             Log.info("Reset Ethernet chip");
             pinMode(A7, OUTPUT);
@@ -118,6 +126,7 @@ void setup() {
             pinMode(A7, INPUT); // HI-Z
             delay(1000);
         }
+#endif
 
         if_wiznet_pin_remap remap = {};
         remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
@@ -189,6 +198,7 @@ void loop() {
             system_internal(4, nullptr);
         }
         else if(c == '2') {
+#if HAL_PLATFORM_WIFI
             // Prefer wifi
             WiFi.prefer();
             // Confirm that we prefer wifi 
@@ -200,7 +210,8 @@ void loop() {
             if (Network.prefer() == Network) {
                 Log.info("Default is preferred");
             }
-
+#endif
+#if HAL_PLATFORM_CELLULAR
             // Prefer cellular
             Cellular.prefer();
             // Confirm cellular is preferred 
@@ -212,6 +223,7 @@ void loop() {
             if (Network.prefer() == Cellular) {
                 Log.info("Cellular is still preferred");
             }
+#endif
             // Clear any set network preference
             Network.prefer(false);
             if (Network.prefer() == Network) {
@@ -222,7 +234,7 @@ void loop() {
             Log.info("Prefer Ethernet");
             Ethernet.prefer();
         }
-        else if(c == '6') {
+        else if(c == '4') {
             Log.info("Prefer None");
             Network.prefer();
         }
@@ -257,7 +269,7 @@ void loop() {
         }
 #endif
 #if HAL_PLATFORM_CELLULAR
-        else if(c == '4') {
+        else if(c == '6') {
             Log.info("Prefer Cellular");
             Cellular.prefer();
         }
@@ -314,7 +326,7 @@ void loop() {
             static bool ethernetConnect = true;
             Log.info("ethernetConnect: %d", ethernetConnect);
 
-            if(ethernetConnect){
+            if (ethernetConnect) {
                 Ethernet.connect();
             } else {
                 Ethernet.disconnect();

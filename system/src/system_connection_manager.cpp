@@ -130,15 +130,14 @@ network_handle_t ConnectionManager::getCloudConnectionNetwork() {
 network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     network_handle_t bestNetwork = NETWORK_INTERFACE_ALL;
 
-    // 2: If no bound network, use preferred network
     if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(spark::Network.from(preferredNetwork_), 0, nullptr)) {
         LOG_DEBUG(TRACE, "Using preferred network: %lu", preferredNetwork_);
         return preferredNetwork_;
     }
 
-    // 3: If no preferred network, use the 'best' network based on criteria
-    // 3.1: Network is ready: ie configured + connected (see ipv4 routable hook)
-    // 3.2: Network has best criteria based on network tester results
+    // If no preferred network, use the 'best' network based on criteria
+    // Network is ready: ie configured + connected (see ipv4 routable hook)
+    // Network has best criteria based on network tester results
     for (auto& i: bestNetworks_) {
         if (network_ready(spark::Network.from(i), 0, nullptr)) {
             LOG_DEBUG(TRACE, "Using best network: %lu", i);
