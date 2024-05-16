@@ -90,6 +90,12 @@ uint16_t bootloader_get_version(void)
 }
 
 int bootloader_init_security_mode(void* reserved) {
+    // Skip setting the security mode if device protection is temporarily disabled
+    uint32_t disabled = HAL_Core_Read_Backup_Register(BKP_DR_08);
+    if (disabled) {
+        return 0;
+    }
+
     CHECK_TRUE(FLASH_VerifyCRC32(FLASH_INTERNAL, BOOTLOADER_ADDR, FLASH_ModuleLength(FLASH_INTERNAL, BOOTLOADER_ADDR)), SYSTEM_ERROR_BAD_DATA);
     module_info_security_mode_ext_t ext = {};
     ext.ext.length = sizeof(ext);
