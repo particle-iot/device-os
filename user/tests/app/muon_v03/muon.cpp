@@ -9,9 +9,74 @@ SerialLogHandler l2(115200, LOG_LEVEL_ALL);
 
 STUSB4500 usb;
 
+#define CMD_AT              0x01
+#define CMD_AT_RSP_LEN      0x02
+#define CMD_AT_RSP_DATA     0x03
+
 volatile bool buttonClicked = false;
 void onButtonClick(system_event_t ev, int button_data) {
     buttonClicked = true;
+}
+
+void sendAtComand(const char *command) {
+    Wire.beginTransmission(0x61);
+    Wire.write(CMD_AT);
+    Wire.write(command);
+    Wire.write('\r');
+    Wire.endTransmission();
+}
+
+void receiveAtResponse() {
+    // uint16_t length = 4;
+
+    /// Get the length of the response
+    Wire.beginTransmission(0x61);
+    Wire.write(CMD_AT_RSP_LEN);
+    Wire.endTransmission(false); // TODO: false: no stop
+    Wire.requestFrom(0x61, 2);
+    if (Wire.available() <= 0) {
+        Log.info("No data available");
+        return;
+    }
+    uint16_t length = Wire.read();
+
+    delay(10);
+
+    /// Get the AT response
+    Wire.beginTransmission(0x61);
+    Wire.write(CMD_AT_RSP_DATA);
+    Wire.endTransmission(false); // TODO: false: no stop
+
+    static uint8_t buf[512];
+    static int buf_index = 0;
+    memset(buf, 0, sizeof(buf));
+    buf_index = 0;
+
+    // for loop to get all the data, each time 32 bytes at max
+    for (uint16_t i = 0; i < length; i += 32) {
+        uint16_t len = length - i;
+        if (len > 32) {
+            len = 32;
+        }
+        Wire.requestFrom(0x61, len);
+        while (Wire.available() > 0) {
+            buf[buf_index++] = Wire.read();
+        }
+    }
+
+    // dump buf
+    // Log.printf("\r\nRx Length: %d\r\n", length);
+    // Log.printf("Rx Data, size: %d\r\n", buf_index);
+    // for (int i = 0; i < buf_index; i++) {
+    //     Log.printf("0x%02X ", buf[i]);
+    // }
+    // Log.printf("\r\n");
+    for (int i = 0; i < buf_index; i++) {
+        Log.printf("%c", buf[i]);
+    }
+    Log.printf("\r\n");
+
+    Serial.write(buf, buf_index);
 }
 
 void writeParameters() {
@@ -365,6 +430,27 @@ void loopReadTemperature() {
     }
 }
 
+void testLora() {
+    static bool configured = false;
+    std::pair<uint8_t, uint8_t> loraRstPin = {MCP23S17_PORT_B, 2};
+    std::pair<uint8_t, uint8_t> loraBootPin = {MCP23S17_PORT_B, 0};
+    if (!configured) {
+        Mcp23s17::getInstance().setPinMode(loraBootPin.first, loraBootPin.second, OUTPUT);
+        Mcp23s17::getInstance().writePinValue(loraBootPin.first, loraBootPin.second, LOW);
+        Mcp23s17::getInstance().setPinMode(loraRstPin.first, loraRstPin.second, OUTPUT);
+        Mcp23s17::getInstance().writePinValue(loraRstPin.first, loraRstPin.second, HIGH); // reset
+        delay(100);
+        Mcp23s17::getInstance().writePinValue(loraRstPin.first, loraRstPin.second, LOW); // Not reset
+        delay(500);
+        configured = true;
+    }
+
+    Log.info("[testLora] AT+QVER=?");
+    sendAtComand("AT+QVER=?");
+    delay(1000); // TODO: In debug mode, KG200Z is very slow due to printing the verbosed log
+    receiveAtResponse();
+}
+
 void setup() {
     Log.info("<< Test program for Muon v0.3 >>\r\n");
 
@@ -380,6 +466,7 @@ void setup() {
     testTemperatureSensor();
 
     auxPowerControl(true);
+    testLora();
 
     System.on(button_click, onButtonClick);
 }
