@@ -1,3 +1,8 @@
+// Flash the Lora firmware through SWD with Daplink:
+// openocd -f interface/cmsis-dap.cfg -c "transport select swd" -f target/stm32wlx.cfg  -c init -c "reset halt; wait_halt; flash write_image erase KG200Z_AT.bin 0x08000000" -c reset -c shutdown
+// Flash the Lora firmware through SWD with Jlink:
+// openocd -f interface/jlink.cfg -c "transport select swd" -f target/stm32wlx.cfg  -c init -c "reset halt; wait_halt; flash write_image erase KG200Z_AT.bin 0x08000000" -c reset -c shutdown
+
 #include "application.h"
 #include "mcp23s17.h"
 #include "SparkFun_STUSB4500.h"
