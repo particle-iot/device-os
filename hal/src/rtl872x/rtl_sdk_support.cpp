@@ -19,7 +19,7 @@
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_INFO
 
 // Uncomment to enable coex/tdma debug
-// #define RTL_DEBUG_COEX
+//#define RTL_DEBUG_COEX
 
 #include <cstdio>
 #include <cstdarg>
@@ -150,6 +150,8 @@ void rtwCoexCleanup(int idx) {
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
+extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
+
 void rtwCoexStop() {
     std::lock_guard<RecursiveMutex> lk(radioMutex);
     // This call makes rtw_coex_run_enable(123, false) not cleanup the mutex
@@ -191,6 +193,8 @@ void rtwRadioReset() {
     hal_ble_unlock(nullptr);
 }
 
+extern "C" u8 rltk_wlan_btcoex_lps_enabled(void);
+
 extern "C" void __copy_rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5);
 extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5) {
     // Skip setting TDMA parameters in some cases as to keep current settings and not reset the internal state
@@ -214,7 +218,7 @@ extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint
     __copy_rtl8721d_set_pstdma_cmd(coex, b1, b2, b3, b4, b5);
 
 #ifdef RTL_DEBUG_COEX
-    LOG(INFO, "tdma set %02x %02x %02x %02x %02x", b1, b2, b3, b4, b5);
+    LOG(INFO, "tdma set %02x %02x %02x %02x %02x lps=%d", b1, b2, b3, b4, b5, rltk_wlan_btcoex_lps_enabled());
 #endif // RTL_DEBUG_COEX
     if (!s_coex_struct) {
         s_coex_struct = coex;
@@ -229,14 +233,34 @@ bool rtwCoexWifiConnectedState() {
     return s_wifiConnectionState;
 }
 
-extern "C" void __copy_rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2);
-extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2) {
+enum coex_wl_priority_mask {
+	COEX_WLPRI_RX_RSP	= 2,
+	COEX_WLPRI_TX_RSP	= 3,
+	COEX_WLPRI_TX_BEACON	= 4,
+	COEX_WLPRI_TX_OFDM	= 11,
+	COEX_WLPRI_TX_CCK	= 12,
+	COEX_WLPRI_TX_BEACONQ	= 27,
+	COEX_WLPRI_RX_CCK	= 28,
+	COEX_WLPRI_RX_OFDM	= 29,
+	COEX_WLPRI_MAX
+};
+
+extern "C" void rtw_write32(void* p, uint32_t offset, uint32_t val);
+
+extern "C" void __copy_rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3);
+extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) {
     if (v0 == 0x5a5a5a5a && v1 == 0x5a5a5a5a && v2 == 0xf3ffffff && rtwCoexWifiConnectedState()) {
 #ifdef RTL_DEBUG_COEX
         LOG(INFO, "Disallow bt high > wifi > bt low mode when WiFi is in connected state");
 #endif // RTL_DEBUG_COEX
         s_tdmaSkip = true;
         return;
+    }
+
+    if (v0 == 0x5a5a5a5a && v1 == 0x5a5a5a5a) {
+        rtlk_bt_set_gnt_bt(PTA_WIFI);
+        // Connecting state
+        //v3 = COEX_WLPRI_TX_RSP | COEX_WLPRI_TX_BEACON | COEX_WLPRI_TX_BEACONQ;
     }
 
     // WiFi connected and BLE scan state
@@ -246,22 +270,33 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
         v0 = s_coexTable[0];
         v1 = s_coexTable[1];
         v2 = s_coexTable[2];
+    } else {
+        //v3 = COEX_WLPRI_TX_RSP | COEX_WLPRI_TX_BEACON | COEX_WLPRI_TX_BEACONQ;
     }
+    // v3 = 0xffffffff;
 
-#ifdef RTL_DEBUG_COEX
+// #ifdef RTL_DEBUG_COEX
     constexpr auto REG_BT_COEX_TABLE1 = 0x06c0;
     constexpr auto REG_BT_COEX_TABLE2 = 0x06c4;
     constexpr auto REG_BT_COEX_TABLE3 = 0x06c8;
+    constexpr auto REG_BT_COEX_TABLE4 = 0x06cc;
     uint32_t t1 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE1);
     uint32_t t2 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE2);
     uint32_t t3 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE3);
-#endif // RTL_DEBUG_COEX
+    uint32_t t4 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE4);
+// #endif // RTL_DEBUG_COEX
+
+    if (t1 == 0x5a5a5a5a && t2 == 0x5a5a5a5a && v0 != t1 && v1 != t2) {
+        rtlk_bt_set_gnt_bt(PTA_AUTO);
+    }
+    (void)t3;
+    (void)t4;
 
     // Pass through to actual implementation
-    __copy_rtl8721d_set_coex_table(coex, v0, v1, v2);
+    __copy_rtl8721d_set_coex_table(coex, v0, v1, v2, v3);
 
 #ifdef RTL_DEBUG_COEX
-    LOG(INFO, "coex table %08x %08x %08x (before %08x %08x %08x) ", v0, v1, v2, t1, t2, t3);
+    LOG(INFO, "coex table %08x %08x %08x (? %08x ?) (before %08x %08x %08x %08x) lps=%d", v0, v1, v2, v3, t1, t2, t3, t4, rltk_wlan_btcoex_lps_enabled());
 #endif // RTL_DEBUG_COEX
     if (!s_coex_struct) {
         s_coex_struct = coex;
@@ -275,7 +310,7 @@ int rtwCoexSet(uint32_t coex[3], uint8_t tdma[5], bool apply) {
     if (apply) {
         // rtl8721d_set_coex_table(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), coex[0], coex[1], coex[2]);
         // rtl8721d_set_pstdma_cmd(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), tdma[0], tdma[1], tdma[2], tdma[3], tdma[4]);
-        rtl8721d_set_coex_table(s_coex_struct, coex[0], coex[1], coex[2]);
+        rtl8721d_set_coex_table(s_coex_struct, coex[0], coex[1], coex[2], 0);
         rtl8721d_set_pstdma_cmd(s_coex_struct, tdma[0], tdma[1], tdma[2], tdma[3], tdma[4]);
     }
     return 0;
@@ -283,17 +318,56 @@ int rtwCoexSet(uint32_t coex[3], uint8_t tdma[5], bool apply) {
 
 extern "C" void rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer);
 extern "C" void __copy_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer) {
+    // LOG(INFO, "h2c cmd element=%02x cmd_len=%u", element_id, cmd_len);
+    // LOG_DUMP(INFO, cmdbuffer, cmd_len);
+    // LOG_PRINTF(INFO, "\r\n");
     // Pass through to actual implementation
     rtw_hal_fill_h2c_cmd(coex, element_id, cmd_len, cmdbuffer);
 }
 
-extern "C" void rtw_write32(void* p, uint32_t offset, uint32_t val);
+extern "C" void __real_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer);
+extern "C" void __wrap_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer) {
+#ifdef RTL_DEBUG_COEX
+    LOG(INFO, "h2c cmd element=%02x cmd_len=%u return=%08x", element_id, cmd_len, __builtin_extract_return_addr (__builtin_return_address (0)));
+    LOG_DUMP(INFO, cmdbuffer, cmd_len);
+    LOG_PRINTF(INFO, "\r\n");
+#endif // RTL_DEBUG_COEX
+    // Pass through to actual implementation
+    __real_rtw_hal_fill_h2c_cmd(coex, element_id, cmd_len, cmdbuffer);
+}
+
+extern "C" void __real_rtw_write32(void* p, uint32_t offset, uint32_t val);
+extern "C" void __wrap_rtw_write32(void* p, uint32_t offset, uint32_t val) {
+// #ifdef RTL_DEBUG_COEX
+//     LOG(INFO, "write %08x (%08x + %08x)=%08x", (uint32_t)p + offset, p, offset, val);
+// #endif // RTL_DEBUG_COEX
+    __real_rtw_write32(p, offset, val);
+}
+
+extern "C" void __real_rtw_write16(void* p, uint32_t offset, uint32_t val);
+extern "C" void __wrap_rtw_write16(void* p, uint32_t offset, uint32_t val) {
+// #ifdef RTL_DEBUG_COEX
+//     LOG(INFO, "write %08x (%08x + %08x)=%04x", (uint32_t)p + offset, p, offset, val);
+// #endif // RTL_DEBUG_COEX
+    __real_rtw_write16(p, offset, val);
+}
+
+extern "C" void __real_rtw_write8(void* p, uint32_t offset, uint32_t val);
+extern "C" void __wrap_rtw_write8(void* p, uint32_t offset, uint32_t val) {
+// #ifdef RTL_DEBUG_COEX
+//     LOG(INFO, "write %08x (%08x + %08x)=%02x", (uint32_t)p + offset, p, offset, val);
+// #endif // RTL_DEBUG_COEX
+    __real_rtw_write8(p, offset, val);
+}
+
 extern "C" void __copy_rtw_write32(void* p, uint32_t offset, uint32_t val) {
     // Pass through to actual implementation
+#ifdef RTL_DEBUG_COEX
+    LOG(INFO, "write %08x (%08x + %08x)=%08x", (uint32_t)p + offset, p, offset, val);
+#endif // RTL_DEBUG_COEX
     return rtw_write32(p, offset, val);
 }
 
-extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
 void rtwRadioAcquire(RtwRadio r) {
     std::lock_guard<RecursiveMutex> lk(radioMutex);
     LOG_DEBUG(INFO, "rtwRadioAcquire: %d", r);
@@ -307,11 +381,18 @@ void rtwRadioAcquire(RtwRadio r) {
         RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
         rtwCoexCleanup(0);
         SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
+        
+        wifi_off();
+        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, DISABLE);
+        RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
+        rtwCoexCleanup(0);
+        SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
+
         LOG(INFO, "WiFi on");
         wifi_set_power_mode(0, 0);
         wifi_disable_powersave();
-        rltk_coex_set_wlan_slot_preempting(0b000);
-        rltk_coex_set_wifi_slot(50);
+        rltk_coex_set_wlan_slot_preempting(0b111);
+        rltk_coex_set_wifi_slot(94);
     }
 }
 

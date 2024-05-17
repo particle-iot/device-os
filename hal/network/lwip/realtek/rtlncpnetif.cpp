@@ -418,7 +418,7 @@ int RealtekNcpNetif::downImpl() {
 
 err_t RealtekNcpNetif::linkOutput(pbuf* p) {
     if (!(netif_is_up(interface()) && netif_is_link_up(interface()))) {
-        LOG(ERROR, "linkOutput up=%d link_up=%d", netif_is_up(interface()), netif_is_link_up(interface()));
+        // LOG(ERROR, "linkOutput up=%d link_up=%d", netif_is_up(interface()), netif_is_link_up(interface()));
         return ERR_IF;
     }
 

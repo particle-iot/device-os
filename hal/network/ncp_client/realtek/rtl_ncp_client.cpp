@@ -536,12 +536,14 @@ void RealtekNcpClient::connectionState(NcpConnectionState state) {
     }
     if (state == NcpConnectionState::CONNECTED) {
         hal_ble_lock(nullptr);
+
         rtwCoexSetWifiConnectedState(true);
 
         wifi_set_power_mode(0, 0);
         wifi_disable_powersave();
+
         rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(50);
+        rltk_coex_set_wifi_slot(94);
 
         hal_ble_unlock(nullptr);
     } else if (state == NcpConnectionState::DISCONNECTED) {
@@ -549,8 +551,10 @@ void RealtekNcpClient::connectionState(NcpConnectionState state) {
         rtwCoexSetWifiConnectedState(false);
         wifi_set_power_mode(0, 0);
         wifi_disable_powersave();
-        rltk_coex_set_wlan_slot_preempting(0b000);
-        rltk_coex_set_wifi_slot(50);
+
+        rltk_coex_set_wlan_slot_preempting(0b111);
+        rltk_coex_set_wifi_slot(94);
+
         hal_ble_unlock(nullptr);
     }
     LOG(TRACE, "NCP connection state changed: %d", (int)state);

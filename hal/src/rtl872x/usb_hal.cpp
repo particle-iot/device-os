@@ -202,7 +202,7 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     // Just in case for now
-    if ((__get_PRIMASK() & 1)) {
+    if ((__get_PRIMASK() & 1) || (__get_BASEPRI() != 0)) {
         return -1;
     }
     int32_t available = -1;

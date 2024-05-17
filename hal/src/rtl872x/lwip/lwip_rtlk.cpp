@@ -118,7 +118,13 @@ int rltk_wlan_send(int idx, struct eth_drv_sg *sg_list, int sg_len, int total_le
     // LOG(TRACE, "%s is called idx=%d", __FUNCTION__, idx);
 
     save_and_cli();
-    rltk_wlan_tx_inc(idx);
+    if (rltk_wlan_check_isup(idx)) {
+        rltk_wlan_tx_inc(idx);
+    } else {
+        restore_flags();
+        LOG(ERROR, "netif is DOWN");
+        return -1;
+    }
     restore_flags();
 
     // WIFI_MONITOR_TIMER_START(wifi_time_test.wlan_send_time1);
