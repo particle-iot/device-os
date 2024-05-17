@@ -40,7 +40,8 @@ extern "C" int _freertos_create_task(struct task_struct *ptask, const char *name
         // Fixup priorities
         const unsigned base_priority = 5;
         priority -= base_priority;
-        priority += OS_THREAD_PRIORITY_NETWORK;
+        priority += OS_THREAD_PRIORITY_NETWORK_HIGH;
+        LOG(INFO, "thread=%s prio=%d", name, priority);
     }
 
     if (!strcmp(name, "rtw_coex_mailbox_thread")) {
@@ -48,6 +49,8 @@ extern "C" int _freertos_create_task(struct task_struct *ptask, const char *name
         stack_size *= 2;
         // IMPORTANT: works better at this priority
         priority = OS_THREAD_PRIORITY_CRITICAL - 1;
+    } else {
+        stack_size *= 2;
     }
 
     // Copy-paste from freertos_service.c
