@@ -418,7 +418,7 @@ public:
     int setScanParams(const hal_ble_scan_params_t* params);
     int getScanParams(hal_ble_scan_params_t* params) const;
     int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
-    int stopScanning();
+    int stopScanning(bool resetStack = false);
 
     int setPpcp(const hal_ble_conn_params_t* ppcp);
     int getPpcp(hal_ble_conn_params_t* ppcp) const;
@@ -1660,48 +1660,14 @@ int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
 }
 
 int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
+    BleLock lk;
+
     CHECK(start());
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
     bool resetStack = false;
 
-    SCOPE_GUARD ({
-        if (isScanning_) {
-            const int LE_SCAN_STOP_RETRIES = 1;
-            for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
-                // This has seen failing a number of times at least
-                // with btgap logging enabled. Retry a few times just in case,
-                // otherwise the next scan operation fails with invalid state.
-                auto r = WRAP_BLE_EVT_LOCK(le_scan_stop());
-                if (r == GAP_CAUSE_SUCCESS) {
-                    // IMPORTANT: have to poll here, for some reason we may not get notified
-                    if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
-                        isScanning_ = false;
-                    }
-                    break;
-                }
-                HAL_Delay_Milliseconds(10);
-            }
-            if (isScanning_) {
-                // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
-                // the next scan operation will fail with invalid state.
-                RtlGapDevState s;
-                le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state);
-                LOG(TRACE, "Failed to stop scanning, resetting stack, scan state=%d", s.state.gap_scan_state);
-                resetStack = true;
-            }
-        }
-        if (resetStack) {
-            int ret = stop();
-            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
-            clearPendingResult();
-            ret = init();
-            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
-            ret = start();
-            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
-        } else {
-            clearPendingResult();
-        }
-        isScanning_ = false;
+    NAMED_SCOPE_GUARD(sg, {
+        stopScanning(resetStack);
     });
     scanResultCallback_ = callback;
     context_ = context;
@@ -1721,15 +1687,60 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     }
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
+    if (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) {
+        lk.unlock();
+    }
     os_semaphore_take(scanSemaphore_, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
     return SYSTEM_ERROR_NONE;
 }
 
-int BleGap::stopScanning() {
+int BleGap::stopScanning(bool resetStack) {
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
+
+    BleLock lk;
+
+    const int LE_SCAN_STOP_RETRIES = 1;
+    for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
+        // This has seen failing a number of times at least
+        // with btgap logging enabled. Retry a few times just in case,
+        // otherwise the next scan operation fails with invalid state.
+        auto r = WRAP_BLE_EVT_LOCK(le_scan_stop());
+        if (r == GAP_CAUSE_SUCCESS) {
+            // IMPORTANT: have to poll here, for some reason we may not get notified
+            if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
+                isScanning_ = false;
+            }
+            break;
+        }
+        HAL_Delay_Milliseconds(10);
+    }
+
+    if (isScanning_) {
+        // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
+        // the next scan operation will fail with invalid state.
+        RtlGapDevState s;
+        le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state);
+        LOG(TRACE, "Failed to stop scanning, resetting stack, scan state=%d", s.state.gap_scan_state);
+        resetStack = true;
+    }
+
+    if (resetStack) {
+        int ret = stop();
+        SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+        clearPendingResult();
+        ret = init();
+        SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+        ret = start();
+        SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+    } else {
+        clearPendingResult();
+    }
+
     os_semaphore_give(scanSemaphore_, false);
+    // Just in case
+    os_semaphore_take(scanSemaphore_, 0, false);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -3761,9 +3772,11 @@ int hal_ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* re
 }
 
 int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, void* reserved) {
-    BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_start_scan().");
-    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    {
+        BleLock lk;
+        LOG_DEBUG(TRACE, "hal_ble_gap_start_scan().");
+        CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    }
     return BleGap::getInstance().startScanning(callback, context);
 }
 
