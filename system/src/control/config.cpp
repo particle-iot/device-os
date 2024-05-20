@@ -26,15 +26,17 @@
 
 #include "deviceid_hal.h"
 #include "core_hal.h"
+#include "ota_flash_hal_impl.h"
 #include "hal_platform.h"
 #include "platforms.h"
-
-#include "bytes2hexbuf.h"
-#include "check.h"
-
 #include "dct.h"
 
-#include "ota_flash_hal_impl.h"
+#include "eckeygen.h"
+#include "sha256.h"
+#include "random.h"
+#include "bytes2hexbuf.h"
+#include "endian_util.h"
+#include "check.h"
 
 #if HAL_PLATFORM_NCP
 #include "network/ncp/wifi/ncp.h"
@@ -44,7 +46,10 @@
 
 #include "control/config.pb.h"
 
+#include <memory>
 #include <cstdio>
+
+#include <mbedtls/pk.h>
 
 #define PB(_name) particle_ctrl_##_name
 #define PB_FIELDS(_name) particle_ctrl_##_name##_fields
@@ -55,7 +60,202 @@ namespace control {
 
 namespace config {
 
+namespace {
+
 using namespace particle::control::common;
+
+struct ProtectedStateChangeContext {
+    char clientNonce[32];
+};
+
+std::unique_ptr<ProtectedStateChangeContext> g_protectedStateChangeCtx;
+bool g_protectedStateChangePending = false;
+
+inline void setProtectedStateOverride() {
+    HAL_Core_Write_Backup_Register(BKP_DR_08, 1); // Disable protection
+}
+
+inline void clearProtectedStateOverride() {
+    HAL_Core_Write_Backup_Register(BKP_DR_08, 0); // Use normal protection settings
+}
+
+inline bool protectedStateOverride() {
+    return HAL_Core_Read_Backup_Register(BKP_DR_08);
+}
+
+// Completion handler for system_ctrl_set_result()
+void systemResetCompletionHandler(int result, void* data) {
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, 0 /* flags */, nullptr /* reserved */);
+}
+
+int getDevicePrivateKey(mbedtls_pk_context& pk) {
+    std::unique_ptr<uint8_t[]> keyData(new(std::nothrow) uint8_t[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
+    int r = dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, keyData.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
+    if (r != 0) {
+        return SYSTEM_ERROR_IO;
+    }
+    size_t keyLen = determine_der_length(keyData.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
+    if (!keyLen) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    CHECK_MBEDTLS(mbedtls_pk_parse_key(&pk, keyData.get(), keyLen, nullptr /* pwd */, 0 /* pwdlen */));
+    if (!mbedtls_pk_can_do(&pk, MBEDTLS_PK_ECDSA)) { // Sanity check
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    return 0;
+}
+
+int getServerPublicKey(mbedtls_pk_context& pk) {
+    std::unique_ptr<uint8_t[]> keyData(new(std::nothrow) uint8_t[DCT_ALT_SERVER_PUBLIC_KEY_SIZE]);
+    int r = dct_read_app_data_copy(DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, keyData.get(), DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
+    if (r != 0) {
+        return SYSTEM_ERROR_IO;
+    }
+    size_t keyLen = determine_der_length(keyData.get(), DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
+    if (!keyLen) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    CHECK_MBEDTLS(mbedtls_pk_parse_public_key(&pk, keyData.get(), keyLen));
+    return 0;
+}
+
+int updateSha256Delimited(Sha256& sha, const char* data, size_t size) {
+    uint32_t n = nativeToLittleEndian(size);
+    CHECK(sha.update((const char*)&n, sizeof(n)));
+    CHECK(sha.update(data, size));
+    return 0;
+}
+
+int setProtectedStateImpl(ctrl_request* req) {
+    // TODO: Remove this check once the support for TCP is fully removed
+    if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
+        return SYSTEM_ERROR_PROTOCOL;
+    }
+    if (g_protectedStateChangePending) {
+        return SYSTEM_ERROR_BUSY;
+    }
+
+    PB(SetProtectedStateRequest) pbReq = {};
+    DecodedString pbServSig(&pbReq.server_signature);
+    CHECK(decodeRequestMessage(req, &PB(SetProtectedStateRequest_msg), &pbReq));
+
+    PB(SetProtectedStateReply) pbRep = {};
+    bool changePending = false;
+
+    switch (pbReq.action) {
+    case PB(SetProtectedStateRequest_Action_RESET): {
+        if (protectedStateOverride()) {
+            clearProtectedStateOverride();
+            changePending = true;
+        }
+        g_protectedStateChangeCtx.reset();
+        break;
+    }
+    case PB(SetProtectedStateRequest_Action_DISABLE_REQUEST): {
+        g_protectedStateChangeCtx.reset();
+        if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_NONE) {
+            return 0; // Not protected
+        }
+        std::unique_ptr<ProtectedStateChangeContext> ctx(new(std::nothrow) ProtectedStateChangeContext());
+        if (!ctx) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+
+        // Get the device ID and private key
+        uint8_t devId[HAL_DEVICE_ID_SIZE] = {}; // Binary-encoded
+        const auto n = hal_get_device_id(devId, sizeof(devId));
+        if (n != HAL_DEVICE_ID_SIZE) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        mbedtls_pk_context pk = {};
+        mbedtls_pk_init(&pk);
+        SCOPE_GUARD({
+            mbedtls_pk_free(&pk);
+        });
+        CHECK(getDevicePrivateKey(pk));
+
+        // Generate a client nonce and signature
+        Random::genSecure(ctx->clientNonce, sizeof(ctx->clientNonce));
+        Sha256 sha;
+        CHECK(sha.init());
+        CHECK(sha.start());
+        CHECK(sha.update("client", 6));
+        CHECK(sha.update((const char*)devId, HAL_DEVICE_ID_SIZE));
+        updateSha256Delimited(sha, ctx->clientNonce, sizeof(ctx->clientNonce));
+        char hash[Sha256::HASH_SIZE] = {};
+        CHECK(sha.finish(hash));
+
+        uint8_t sig[MBEDTLS_ECDSA_MAX_LEN] = {};
+        size_t sigLen = 0;
+        CHECK_MBEDTLS(mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA256, (const uint8_t*)hash, sizeof(hash), sig, &sigLen,
+                mbedtls_default_rng, nullptr /* p_rng */));
+
+        // Encode a reply
+        EncodedString pbSig(&pbRep.client_signature, (const char*)sig, sigLen);
+        static_assert(sizeof(ctx->clientNonce) <= sizeof(pbRep.client_nonce.bytes));
+        std::memcpy(pbRep.client_nonce.bytes, ctx->clientNonce, sizeof(ctx->clientNonce));
+        pbRep.client_nonce.size = sizeof(ctx->clientNonce);
+        pbRep.has_client_nonce = true;
+        CHECK(encodeReplyMessage(req, &PB(SetProtectedStateReply_msg), &pbRep));
+
+        g_protectedStateChangeCtx = std::move(ctx);
+        break;
+    }
+    case PB(SetProtectedStateRequest_Action_DISABLE_CONFIRM): {
+        if (!pbReq.has_server_nonce || !pbReq.server_nonce.size) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (!g_protectedStateChangeCtx) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+
+        // Get the device ID and server public key
+        uint8_t devId[HAL_DEVICE_ID_SIZE] = {};
+        const auto n = hal_get_device_id(devId, sizeof(devId));
+        if (n != HAL_DEVICE_ID_SIZE) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        mbedtls_pk_context pk = {};
+        mbedtls_pk_init(&pk);
+        SCOPE_GUARD({
+            mbedtls_pk_free(&pk);
+        });
+        CHECK(getServerPublicKey(pk));
+
+        // Validate the server signature
+        Sha256 sha;
+        CHECK(sha.init());
+        CHECK(sha.start());
+        CHECK(sha.update("server", 6));
+        CHECK(sha.update((const char*)devId, HAL_DEVICE_ID_SIZE));
+        updateSha256Delimited(sha, g_protectedStateChangeCtx->clientNonce, sizeof(g_protectedStateChangeCtx->clientNonce));
+        updateSha256Delimited(sha, (const char*)pbReq.server_nonce.bytes, pbReq.server_nonce.size);
+        char hash[Sha256::HASH_SIZE] = {};
+        CHECK(sha.finish(hash));
+
+        int r = mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, (const uint8_t*)hash, sizeof(hash), (const uint8_t*)pbServSig.data,
+                pbServSig.size);
+        if (r != 0) {
+            return SYSTEM_ERROR_NOT_ALLOWED;
+        }
+
+        g_protectedStateChangeCtx.reset();
+        setProtectedStateOverride();
+        changePending = true;
+        break;
+    }
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    g_protectedStateChangePending = changePending;
+    auto compHandler = changePending ? systemResetCompletionHandler : nullptr;
+    system_ctrl_set_result(req, 0 /* result */, compHandler, nullptr /* data */, nullptr /* reserved */);
+
+    return 0;
+}
+
+} // namespace
 
 int getDeviceId(ctrl_request* req) {
     uint8_t id[HAL_DEVICE_ID_SIZE] = {};
@@ -204,6 +404,13 @@ int getProtectedState(ctrl_request* req) {
     pbRep.state = security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
     CHECK(encodeReplyMessage(req, PB(GetProtectedStateReply_fields), &pbRep));
     return 0;
+}
+
+void setProtectedState(ctrl_request* req) {
+    int r = setProtectedStateImpl(req);
+    if (r < 0) {
+        system_ctrl_set_result(req, r, nullptr /* handler */, nullptr /* data */, nullptr /* reserved */);
+    }
 }
 
 int setFeature(ctrl_request* req) {

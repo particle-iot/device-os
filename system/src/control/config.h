@@ -33,6 +33,7 @@ int setDeviceSetupDone(ctrl_request* req);
 int isDeviceSetupDone(ctrl_request* req);
 int setStartupMode(ctrl_request* req);
 int getProtectedState(ctrl_request* req);
+void setProtectedState(ctrl_request* req);
 int setFeature(ctrl_request* req);
 int getFeature(ctrl_request* req);
 int echo(ctrl_request* req);

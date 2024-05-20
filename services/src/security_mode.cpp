@@ -100,6 +100,7 @@ int security_mode_check_request(security_mode_transport transport, uint16_t id) 
 
     if (transport == SECURITY_MODE_TRANSPORT_USB || transport == SECURITY_MODE_TRANSPORT_BLE) {
         switch (id) {
+            case CTRL_REQUEST_SET_PROTECTED_STATE:
             case CTRL_REQUEST_GET_PROTECTED_STATE:
             case CTRL_REQUEST_DEVICE_ID:
             case CTRL_REQUEST_APP_CUSTOM: {

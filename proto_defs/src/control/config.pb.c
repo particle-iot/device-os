@@ -132,6 +132,12 @@ PB_BIND(particle_ctrl_GetProtectedStateRequest, particle_ctrl_GetProtectedStateR
 PB_BIND(particle_ctrl_GetProtectedStateReply, particle_ctrl_GetProtectedStateReply, AUTO)
 
 
+PB_BIND(particle_ctrl_SetProtectedStateRequest, particle_ctrl_SetProtectedStateRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_SetProtectedStateReply, particle_ctrl_SetProtectedStateReply, AUTO)
+
+
 PB_BIND(particle_ctrl_SystemResetRequest, particle_ctrl_SystemResetRequest, AUTO)
 
 
@@ -160,6 +166,7 @@ PB_BIND(particle_ctrl_StopNyanSignalRequest, particle_ctrl_StopNyanSignalRequest
 
 
 PB_BIND(particle_ctrl_StopNyanSignalReply, particle_ctrl_StopNyanSignalReply, AUTO)
+
 
 
 
