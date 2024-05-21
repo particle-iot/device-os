@@ -64,22 +64,22 @@ namespace {
 
 using namespace particle::control::common;
 
-struct ProtectedStateChangeContext {
+struct SecurityModeChangeContext {
     char clientNonce[32];
 };
 
-std::unique_ptr<ProtectedStateChangeContext> g_protectedStateChangeCtx;
-bool g_protectedStateChangePending = false;
+std::unique_ptr<SecurityModeChangeContext> g_securityModeChangeCtx;
+bool g_securityModeChangePending = false;
 
-inline void setProtectedStateOverride() {
-    HAL_Core_Write_Backup_Register(BKP_DR_08, 1); // Disable protection
+inline void setSecurityModeOverride() {
+    HAL_Core_Write_Backup_Register(BKP_DR_08, 1); // Disable security
 }
 
-inline void clearProtectedStateOverride() {
-    HAL_Core_Write_Backup_Register(BKP_DR_08, 0); // Use normal protection settings
+inline void clearSecurityModeOverride() {
+    HAL_Core_Write_Backup_Register(BKP_DR_08, 0); // Use default security mode
 }
 
-inline bool protectedStateOverride() {
+inline bool isSecurityModeOverridden() {
     return HAL_Core_Read_Backup_Register(BKP_DR_08);
 }
 
@@ -131,7 +131,7 @@ int setProtectedStateImpl(ctrl_request* req) {
     if (!HAL_Feature_Get(FEATURE_CLOUD_UDP)) {
         return SYSTEM_ERROR_PROTOCOL;
     }
-    if (g_protectedStateChangePending) {
+    if (g_securityModeChangePending) {
         return SYSTEM_ERROR_BUSY;
     }
 
@@ -144,19 +144,19 @@ int setProtectedStateImpl(ctrl_request* req) {
 
     switch (pbReq.action) {
     case PB(SetProtectedStateRequest_Action_RESET): {
-        if (protectedStateOverride()) {
-            clearProtectedStateOverride();
+        if (isSecurityModeOverridden()) {
+            clearSecurityModeOverride();
             changePending = true;
         }
-        g_protectedStateChangeCtx.reset();
+        g_securityModeChangeCtx.reset();
         break;
     }
     case PB(SetProtectedStateRequest_Action_DISABLE_REQUEST): {
-        g_protectedStateChangeCtx.reset();
+        g_securityModeChangeCtx.reset();
         if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_NONE) {
             return 0; // Not protected
         }
-        std::unique_ptr<ProtectedStateChangeContext> ctx(new(std::nothrow) ProtectedStateChangeContext());
+        std::unique_ptr<SecurityModeChangeContext> ctx(new(std::nothrow) SecurityModeChangeContext());
         if (!ctx) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
@@ -198,14 +198,14 @@ int setProtectedStateImpl(ctrl_request* req) {
         pbRep.has_client_nonce = true;
         CHECK(encodeReplyMessage(req, &PB(SetProtectedStateReply_msg), &pbRep));
 
-        g_protectedStateChangeCtx = std::move(ctx);
+        g_securityModeChangeCtx = std::move(ctx);
         break;
     }
     case PB(SetProtectedStateRequest_Action_DISABLE_CONFIRM): {
         if (!pbReq.has_server_nonce || !pbReq.server_nonce.size) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        if (!g_protectedStateChangeCtx) {
+        if (!g_securityModeChangeCtx) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
 
@@ -228,8 +228,8 @@ int setProtectedStateImpl(ctrl_request* req) {
         CHECK(sha.start());
         CHECK(sha.update("server", 6));
         CHECK(sha.update((const char*)devId, HAL_DEVICE_ID_SIZE));
-        updateSha256Delimited(sha, g_protectedStateChangeCtx->clientNonce, sizeof(g_protectedStateChangeCtx->clientNonce));
         updateSha256Delimited(sha, (const char*)pbReq.server_nonce.bytes, pbReq.server_nonce.size);
+        updateSha256Delimited(sha, g_securityModeChangeCtx->clientNonce, sizeof(g_securityModeChangeCtx->clientNonce));
         char hash[Sha256::HASH_SIZE] = {};
         CHECK(sha.finish(hash));
 
@@ -239,8 +239,8 @@ int setProtectedStateImpl(ctrl_request* req) {
             return SYSTEM_ERROR_NOT_ALLOWED;
         }
 
-        g_protectedStateChangeCtx.reset();
-        setProtectedStateOverride();
+        g_securityModeChangeCtx.reset();
+        setSecurityModeOverride();
         changePending = true;
         break;
     }
@@ -248,7 +248,7 @@ int setProtectedStateImpl(ctrl_request* req) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
-    g_protectedStateChangePending = changePending;
+    g_securityModeChangePending = changePending;
     auto compHandler = changePending ? systemResetCompletionHandler : nullptr;
     system_ctrl_set_result(req, 0 /* result */, compHandler, nullptr /* data */, nullptr /* reserved */);
 
@@ -402,6 +402,7 @@ int setStartupMode(ctrl_request* req) {
 int getProtectedState(ctrl_request* req) {
     PB(GetProtectedStateReply) pbRep = {};
     pbRep.state = security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
+    pbRep.overridden = isSecurityModeOverridden();
     CHECK(encodeReplyMessage(req, PB(GetProtectedStateReply_fields), &pbRep));
     return 0;
 }
