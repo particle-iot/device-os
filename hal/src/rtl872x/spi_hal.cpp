@@ -362,10 +362,15 @@ public:
             hal_interrupt_attach(csPin_, onSelectedHandler, this, CHANGE, nullptr);
         }
         SSI_Init(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, &SSI_InitStruct);
-
-        hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_HIGH);
-        hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_HIGH);
-        hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_HIGH);
+        if (config_.spiMode == SPI_MODE_MASTER) {
+            hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_HIGH);
+            hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_HIGH);
+            hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_HIGH);
+        } else {
+            hal_gpio_set_drive_strength(sclkPin_, HAL_GPIO_DRIVE_STANDARD);
+            hal_gpio_set_drive_strength(mosiPin_, HAL_GPIO_DRIVE_STANDARD);
+            hal_gpio_set_drive_strength(misoPin_, HAL_GPIO_DRIVE_STANDARD);
+        }
 
         // Set data mode
         setDataMode(config_.dataMode, true /* force */);
@@ -414,19 +419,15 @@ public:
         SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_RDMAE);
         SSI_SetDmaEnable(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE, BIT_SHIFT_DMACR_TDMAE);
 
-        GDMA_ChCleanAutoReload(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
-        GDMA_ChCleanAutoReload(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, CLEAN_RELOAD_SRC_DST);
+        status_.slaveTransferPending = false;
+        transferDmaCancel();
 
-        /* Clear Pending ISR */
-        GDMA_ClearINT(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
-        GDMA_ClearINT(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
         if (!ignoreGpio) {
             GDMA_ChnlFree(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum);
             GDMA_ChnlFree(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum);
         }
 
-        GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, DISABLE);
-        GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, DISABLE);
+        SSI_Cmd(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, DISABLE);
 
         // Set GPIO, pin function and pinmux
         if (!ignoreGpio) {
