@@ -149,9 +149,9 @@
  *
  * Master             Slave       Master              Slave
  * CS   D5 <-------> D5 CS        CS   S3 <---------> D5 CS
- * MISO D4 <-------> D3 MISO      MISO S1 <---------> D3 MISO
- * MOSI D3 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
- * SCK  D2 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
+ * MISO D3 <-------> D3 MISO      MISO S1 <---------> D3 MISO
+ * MOSI D2 <-------> D2 MOSI      MOSI S0 <---------> D2 MOSI
+ * SCK  D4 <-------> D4 SCK       SCK  S2 <---------> D4 SCK
  *
  *********************************************************************************************
  *
@@ -277,8 +277,8 @@ test(00_SPI_Master_Slave_Slave_Transfer)
             Serial.println();
         }
 
-        Serial.printlnf("< (%u) ", MY_SPI.available());
-        Serial.println((const char *)SPI_Slave_Rx_Buffer);
+        // Serial.printlnf("< (%u) ", MY_SPI.available());
+        // Serial.println((const char *)SPI_Slave_Rx_Buffer);
 
         /* Check how many bytes we have received */
         assertEqual(MY_SPI.available(), TRANSFER_LENGTH_1);
@@ -314,8 +314,8 @@ test(00_SPI_Master_Slave_Slave_Transfer)
 
         memcpy(SPI_Slave_Tx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength);
         SPI_Slave_Tx_Buffer[requestedLength] = '\0';
-        Serial.print("> ");
-        Serial.println((const char *)SPI_Slave_Tx_Buffer);
+        // Serial.print("> ");
+        // Serial.println((const char *)SPI_Slave_Tx_Buffer);
 
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, requestedLength, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
         /* Check that we have transferred requestedLength bytes as requested */
@@ -345,8 +345,8 @@ test(01_SPI_Master_Slave_Slave_Receiption)
 
     SPI_Transfer_DMA(nullptr, SPI_Slave_Rx_Buffer_Supper, sizeof(SPI_Slave_Rx_Buffer_Supper), &SPI_DMA_Completed_Callback);
 
-    Serial.print("< ");
-    Serial.println((const char *)SPI_Slave_Rx_Buffer_Supper);
+    // Serial.print("< ");
+    // Serial.println((const char *)SPI_Slave_Rx_Buffer_Supper);
     /* Check how many bytes we have received */
     assertEqual(MY_SPI.available(), strlen(txString));
 
@@ -363,7 +363,7 @@ test(02_SPI_Master_Slave_Slave_Const_String_Transfer_DMA)
     // FIXME: The rx_buffer has to be nullptr, otherwise, the the rx_buffer will overflow
     // as the length of the rx buffer given in this file is not equal to the length of tx data
     MY_SPI.transfer(txString, nullptr, strlen(txString), NULL);
-    assertEqual(MY_SPI.available(), 0);
+    assertEqual(MY_SPI.available(), strlen(txString));
 }
 
 #endif // #ifdef MY_SPI

@@ -237,7 +237,6 @@ bool SPI_Master_Slave_Change_Mode(uint8_t mode, uint8_t bitOrder, std::function<
 
     uint32_t requestedLength = 0;
     uint32_t switchMode = ((uint32_t)mode) | ((uint32_t)bitOrder << 8) | (0x8DC6 << 16);
-    memset(SPI_Master_Tx_Buffer, 0, sizeof(SPI_Master_Tx_Buffer));
 
     memset(SPI_Master_Tx_Buffer, 0, sizeof(SPI_Master_Tx_Buffer));
     memset(SPI_Master_Rx_Buffer, 0, sizeof(SPI_Master_Rx_Buffer));
@@ -317,7 +316,7 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
 
         // Received a good first reply from Slave
         // Now read out requestedLength bytes
-        memset(SPI_Master_Rx_Buffer, 0xaa, sizeof(SPI_Master_Rx_Buffer));
+        memset(SPI_Master_Rx_Buffer, '\0', sizeof(SPI_Master_Rx_Buffer));
         transferFunc(NULL, SPI_Master_Rx_Buffer, requestedLength);
         // Deselect
         digitalWrite(MY_CS, HIGH);
@@ -542,6 +541,9 @@ test(23_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE2_L
 // The following tests inherit the last mode and bit order being set above
 test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
 {
+    // FIXME: On Gen4, slave's usb serial log may take longer before the next test is ready for a new transaction
+    delay(300);
+
     // Select
     // Workaround for some platforms requiring the CS to be high when configuring
     // the DMA buffers
@@ -566,6 +568,9 @@ test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
 
 test(25_SPI_Master_Slave_Master_Reception)
 {
+    // FIXME: On Gen4, slave's usb serial log may take longer before the next test is ready for a new transaction
+    delay(300);
+
     memset(SPI_Master_Rx_Buffer_Supper, '\0', sizeof(SPI_Master_Rx_Buffer_Supper));
 
     // Select

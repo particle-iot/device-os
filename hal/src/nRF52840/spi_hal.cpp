@@ -160,7 +160,7 @@ static void spiSlaveEventHandler(nrfx_spis_evt_t const * p_event, void * p_conte
             return;
         }
         
-        spiMap[spi].transfer_length = p_event->rx_amount;
+        spiMap[spi].transfer_length = std::max(p_event->rx_amount, p_event->tx_amount);
         spiMap[spi].transmitting = false;
         
         // We should notify application, despite of how many data we received.
