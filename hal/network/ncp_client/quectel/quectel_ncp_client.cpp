@@ -136,7 +136,7 @@ const int IMSI_MAX_RETRY_CNT = 10;
 const int CCID_MAX_RETRY_CNT = 2;
 
 const int DATA_MODE_BREAK_ATTEMPTS = 5;
-const int PPP_ECHO_REQUEST_ATTEMPTS = 3;
+const int PPP_ECHO_REQUEST_ATTEMPTS = 10;
 const int CGDCONT_ATTEMPTS = 5;
 
 const int COPS_MAX_RETRY_CNT = 3;
@@ -1573,7 +1573,10 @@ int QuectelNcpClient::enterDataMode() {
         // Send data mode break
         const char breakCmd[] = "+++";
         muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
-        skipAll(muxerDataStream_.get(), 1000);
+        // XXX: EG91-NAX required 1000ms delay after +++ needs to be at least 1004ms to resolve a
+        //      bug during warm boot where PPP LCP echo requests will not be sent out of the modem
+        //      on the hardware UART interface. Setting 100ms higher based on Quectel's recommendation.
+        skipAll(muxerDataStream_.get(), (1000 + 100));
 
         dataParser_.reset();
         responsive = waitAtResponse(dataParser_, 1000, 500) == 0;
