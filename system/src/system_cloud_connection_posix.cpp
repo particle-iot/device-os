@@ -166,7 +166,6 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
                 break;
             }
         }
-        LOG(INFO, "Cloud socket=%d, connecting to %s#%u", s, serverHost, serverPort);
 
         /* We are using fixed source port only for IPv6 connections */
         if (protocol == IPPROTO_UDP && a->ai_family == AF_INET6) {
@@ -203,6 +202,8 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
 
         network_interface_t cloudInterface = particle::system::ConnectionManager::instance()->selectCloudConnectionNetwork();
 
+        LOG(INFO, "Cloud socket=%d, connecting to %s#%u using if %d", s, serverHost, serverPort, cloudInterface);
+
         if (cloudInterface != NETWORK_INTERFACE_ALL) {    
             // Bind to specific netif
             struct ifreq ifr = {};
@@ -212,7 +213,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
             if (sockOptRet) {
                 LOG(WARN, "Failed to bind cloud socket to interface %u error: %d", cloudInterface, sockOptRet);
             } else {
-                LOG(INFO, "Bound cloud socket to lwip interface %u name \"%s\" ", cloudInterface, ifr.ifr_name);
+                LOG(INFO, "Bound cloud socket to lwip if %u (\"%s\")", cloudInterface, ifr.ifr_name);
             }
         }
 

@@ -372,7 +372,7 @@ int ConnectionTester::testConnections() {
             auto network = spark::Network.from(connectionMetrics.interface);
             if (network == spark::Network) {
                 LOG(ERROR, "No Network associated with interface %d", connectionMetrics.interface);
-                return SYSTEM_ERROR_NETWORK;
+                return SYSTEM_ERROR_BAD_DATA;
             }
             if (!network_ready(network, 0, nullptr)) {
                 LOG_DEBUG(TRACE,"%s not ready, skipping test", netifToName(connectionMetrics.interface));
@@ -481,13 +481,13 @@ const Vector<ConnectionMetrics> ConnectionTester::getConnectionMetrics(){
 const Vector<network_interface_t> ConnectionTester::getSupportedInterfaces() {
     const Vector<network_interface_t> interfaceList = { 
 #if HAL_PLATFORM_ETHERNET
-    static_cast<network_interface_t>(NetworkDiagnosticsInterface::ETHERNET),
+    NETWORK_INTERFACE_ETHERNET,
 #endif
 #if HAL_PLATFORM_WIFI 
-    static_cast<network_interface_t>(NetworkDiagnosticsInterface::WIFI_STA),
+    NETWORK_INTERFACE_WIFI_STA,
 #endif
 #if HAL_PLATFORM_CELLULAR
-    static_cast<network_interface_t>(NetworkDiagnosticsInterface::CELLULAR)
+    NETWORK_INTERFACE_CELLULAR
 #endif
     };
 
