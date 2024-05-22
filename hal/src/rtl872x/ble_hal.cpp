@@ -130,9 +130,9 @@ void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
                 s_bleScanReported = false;
             }
         } else if (p[5] == BT_COEX_EVENT_UNK) {
-            LOG(INFO, "btcoex event unk suppress len=%u", (unsigned)len);
-            LOG_DUMP(INFO, p, len);
-            LOG_PRINTF(INFO, "\r\n");
+            // LOG(INFO, "btcoex event unk suppress len=%u", (unsigned)len);
+            // LOG_DUMP(INFO, p, len);
+            // LOG_PRINTF(INFO, "\r\n");
             // Must ignore
             return;
         }
@@ -1672,6 +1672,9 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     scanResultCallback_ = callback;
     context_ = context;
 
+    // Just in case
+    os_semaphore_take(scanSemaphore_, 0, false);
+
     CHECK_RTL(WRAP_BLE_EVT_LOCK(le_scan_start()));
     isScanning_ = true;
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
@@ -1739,8 +1742,6 @@ int BleGap::stopScanning(bool resetStack) {
     }
 
     os_semaphore_give(scanSemaphore_, false);
-    // Just in case
-    os_semaphore_take(scanSemaphore_, 0, false);
     return SYSTEM_ERROR_NONE;
 }
 

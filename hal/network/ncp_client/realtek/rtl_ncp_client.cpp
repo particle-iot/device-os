@@ -528,8 +528,6 @@ void RealtekNcpClient::ncpPowerState(NcpPowerState state) {
     }
 }
 
-extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
-
 void RealtekNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;
@@ -538,32 +536,9 @@ void RealtekNcpClient::connectionState(NcpConnectionState state) {
         return;
     }
     if (state == NcpConnectionState::CONNECTED) {
-        hal_ble_lock(nullptr);
-
         rtwCoexSetWifiConnectedState(true);
-
-        wifi_set_power_mode(0, 0);
-        wifi_disable_powersave();
-
-        rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(94);
-
-        if (hal_ble_gap_is_scanning(nullptr)) {
-            uint8_t blah[] = {0x27, 0x06, 0x00, 0x00, 0x00, 0x28, 0x00, 0x7f};
-            __real_bt_coex_handle_specific_evt(blah, sizeof(blah));
-        }
-
-        hal_ble_unlock(nullptr);
     } else if (state == NcpConnectionState::DISCONNECTED) {
-        hal_ble_lock(nullptr);
         rtwCoexSetWifiConnectedState(false);
-        wifi_set_power_mode(0, 0);
-        wifi_disable_powersave();
-
-        rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(94);
-
-        hal_ble_unlock(nullptr);
     }
     LOG(TRACE, "NCP connection state changed: %d", (int)state);
     connState_ = state;

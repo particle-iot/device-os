@@ -18,8 +18,8 @@
 #ifndef USB_SETTINGS_H_
 #define USB_SETTINGS_H_
 
-#define USB_TX_BUFFER_SIZE              8192
-#define USB_RX_BUFFER_SIZE              8192
+#define USB_TX_BUFFER_SIZE              256
+#define USB_RX_BUFFER_SIZE              256
 
 #define USB_SERIAL_USERSPACE_BUFFERS    1
 

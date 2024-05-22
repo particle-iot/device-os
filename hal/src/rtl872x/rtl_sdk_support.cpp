@@ -19,7 +19,7 @@
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_INFO
 
 // Uncomment to enable coex/tdma debug
-//#define RTL_DEBUG_COEX
+// #define RTL_DEBUG_COEX
 
 #include <cstdio>
 #include <cstdarg>
@@ -225,25 +225,55 @@ extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint
     }
 }
 
+extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
+
 void rtwCoexSetWifiConnectedState(bool state) {
+    if (state == s_wifiConnectionState) {
+        return;
+    }
     s_wifiConnectionState = state;
+
+    if (state) {
+        hal_ble_lock(nullptr);
+
+        wifi_set_power_mode(0, 0);
+        wifi_disable_powersave();
+
+        rltk_coex_set_wlan_slot_preempting(0b111);
+        rltk_coex_set_wifi_slot(94);
+
+        // Notify that we are scanning if we are in fact already scanning
+        if (hal_ble_gap_is_scanning(nullptr)) {
+            uint8_t evt[] = {0x27, 0x06, 0x00, 0x00, 0x00, 0x28, 0x00, 0x7f};
+            __real_bt_coex_handle_specific_evt(evt, sizeof(evt));
+        }
+
+        hal_ble_unlock(nullptr);
+    } else {
+        hal_ble_lock(nullptr);
+
+        wifi_set_power_mode(0, 0);
+        wifi_disable_powersave();
+
+        rltk_coex_set_wlan_slot_preempting(0b111);
+        rltk_coex_set_wifi_slot(94);
+
+        // Notify that we are not scanning, this will make sure that
+        // by default we are in BLE priority mode and when connecting to WiFi
+        // access point we are switching to WiFi prioirity mode.
+        // When we do get connected to an access point we'll again notify
+        // that we are scanning and switch over to time-sharing between
+        // BLE and WiFi (see above).
+        uint8_t evt[] = {0x27, 0x06, 0x00, 0x00, 0x00, 0x08, 0x00, 0x7f};
+        __real_bt_coex_handle_specific_evt(evt, sizeof(evt));
+
+        hal_ble_unlock(nullptr);
+    }
 }
 
 bool rtwCoexWifiConnectedState() {
     return s_wifiConnectionState;
 }
-
-enum coex_wl_priority_mask {
-	COEX_WLPRI_RX_RSP	= 2,
-	COEX_WLPRI_TX_RSP	= 3,
-	COEX_WLPRI_TX_BEACON	= 4,
-	COEX_WLPRI_TX_OFDM	= 11,
-	COEX_WLPRI_TX_CCK	= 12,
-	COEX_WLPRI_TX_BEACONQ	= 27,
-	COEX_WLPRI_RX_CCK	= 28,
-	COEX_WLPRI_RX_OFDM	= 29,
-	COEX_WLPRI_MAX
-};
 
 extern "C" void rtw_write32(void* p, uint32_t offset, uint32_t val);
 
@@ -259,8 +289,6 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
 
     if (v0 == 0x5a5a5a5a && v1 == 0x5a5a5a5a) {
         rtlk_bt_set_gnt_bt(PTA_WIFI);
-        // Connecting state
-        //v3 = COEX_WLPRI_TX_RSP | COEX_WLPRI_TX_BEACON | COEX_WLPRI_TX_BEACONQ;
     }
 
     // WiFi connected and BLE scan state
@@ -270,10 +298,7 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
         v0 = s_coexTable[0];
         v1 = s_coexTable[1];
         v2 = s_coexTable[2];
-    } else {
-        //v3 = COEX_WLPRI_TX_RSP | COEX_WLPRI_TX_BEACON | COEX_WLPRI_TX_BEACONQ;
     }
-    // v3 = 0xffffffff;
 
 // #ifdef RTL_DEBUG_COEX
     constexpr auto REG_BT_COEX_TABLE1 = 0x06c0;
@@ -318,9 +343,6 @@ int rtwCoexSet(uint32_t coex[3], uint8_t tdma[5], bool apply) {
 
 extern "C" void rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer);
 extern "C" void __copy_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer) {
-    // LOG(INFO, "h2c cmd element=%02x cmd_len=%u", element_id, cmd_len);
-    // LOG_DUMP(INFO, cmdbuffer, cmd_len);
-    // LOG_PRINTF(INFO, "\r\n");
     // Pass through to actual implementation
     rtw_hal_fill_h2c_cmd(coex, element_id, cmd_len, cmdbuffer);
 }
@@ -362,9 +384,9 @@ extern "C" void __wrap_rtw_write8(void* p, uint32_t offset, uint32_t val) {
 
 extern "C" void __copy_rtw_write32(void* p, uint32_t offset, uint32_t val) {
     // Pass through to actual implementation
-#ifdef RTL_DEBUG_COEX
-    LOG(INFO, "write %08x (%08x + %08x)=%08x", (uint32_t)p + offset, p, offset, val);
-#endif // RTL_DEBUG_COEX
+// #ifdef RTL_DEBUG_COEX
+//     LOG(INFO, "write %08x (%08x + %08x)=%08x", (uint32_t)p + offset, p, offset, val);
+// #endif // RTL_DEBUG_COEX
     return rtw_write32(p, offset, val);
 }
 
