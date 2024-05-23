@@ -61,8 +61,9 @@ typedef struct hal_power_config {
     uint16_t charge_current; // charge current
     uint16_t termination_voltage; // termination voltage
     uint8_t soc_bits; // bits precision for SoC calculation (18 (default) or 19)
-    uint8_t reserved2;
-    uint32_t reserved3[4];
+    uint8_t aux_pwr_ctrl_pin; // pin number for auxiliary power control
+    uint8_t aux_pwr_ctrl_pin_level; // active level for auxiliary power control
+    uint32_t reserved3[3];
 } hal_power_config;
 static_assert(sizeof(hal_power_config) == 32, "hal_power_config size changed");
 
