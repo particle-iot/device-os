@@ -26,6 +26,7 @@
 
 #include "deviceid_hal.h"
 #include "core_hal.h"
+#include "timer_hal.h"
 #include "ota_flash_hal_impl.h"
 #include "hal_platform.h"
 #include "platforms.h"
@@ -66,6 +67,7 @@ using namespace particle::control::common;
 
 struct SecurityModeChangeContext {
     char clientNonce[32];
+    uint64_t requestTime;
 };
 
 std::unique_ptr<SecurityModeChangeContext> g_securityModeChangeCtx;
@@ -198,6 +200,7 @@ int setProtectedStateImpl(ctrl_request* req) {
         pbRep.has_client_nonce = true;
         CHECK(encodeReplyMessage(req, &PB(SetProtectedStateReply_msg), &pbRep));
 
+        ctx->requestTime = hal_timer_millis(nullptr);
         g_securityModeChangeCtx = std::move(ctx);
         break;
     }
@@ -207,6 +210,10 @@ int setProtectedStateImpl(ctrl_request* req) {
         }
         if (!g_securityModeChangeCtx) {
             return SYSTEM_ERROR_INVALID_STATE;
+        }
+        if (hal_timer_millis(nullptr) - g_securityModeChangeCtx->requestTime >= 60000) {
+            g_securityModeChangeCtx.reset();
+            return SYSTEM_ERROR_TIMEOUT;
         }
 
         // Get the device ID and server public key
