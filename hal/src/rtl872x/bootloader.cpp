@@ -91,8 +91,7 @@ uint16_t bootloader_get_version(void)
 
 int bootloader_init_security_mode(void* reserved) {
     // Skip setting the security mode if device protection is temporarily disabled
-    uint32_t disabled = HAL_Core_Read_Backup_Register(BKP_DR_08);
-    if (disabled) {
+    if (security_mode_is_overridden()) {
         return 0;
     }
 

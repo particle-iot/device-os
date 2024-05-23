@@ -49,6 +49,10 @@ int security_mode_set(module_info_security_mode mode, void* reserved);
 int security_mode_get(void* reserved);
 int security_mode_check_request(security_mode_transport transport, uint16_t id);
 
+void security_mode_set_override();
+void security_mode_clear_override();
+bool security_mode_is_overridden();
+
 #ifdef __cplusplus
 }
 

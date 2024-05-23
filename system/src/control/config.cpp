@@ -73,18 +73,6 @@ struct SecurityModeChangeContext {
 std::unique_ptr<SecurityModeChangeContext> g_securityModeChangeCtx;
 bool g_securityModeChangePending = false;
 
-inline void setSecurityModeOverride() {
-    HAL_Core_Write_Backup_Register(BKP_DR_08, 1); // Disable security
-}
-
-inline void clearSecurityModeOverride() {
-    HAL_Core_Write_Backup_Register(BKP_DR_08, 0); // Use default security mode
-}
-
-inline bool isSecurityModeOverridden() {
-    return HAL_Core_Read_Backup_Register(BKP_DR_08);
-}
-
 // Completion handler for system_ctrl_set_result()
 void systemResetCompletionHandler(int result, void* data) {
     system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, 0 /* flags */, nullptr /* reserved */);
@@ -146,8 +134,8 @@ int setProtectedStateImpl(ctrl_request* req) {
 
     switch (pbReq.action) {
     case PB(SetProtectedStateRequest_Action_RESET): {
-        if (isSecurityModeOverridden()) {
-            clearSecurityModeOverride();
+        if (security_mode_is_overridden()) {
+            security_mode_clear_override();
             changePending = true;
         }
         g_securityModeChangeCtx.reset();
@@ -247,7 +235,7 @@ int setProtectedStateImpl(ctrl_request* req) {
         }
 
         g_securityModeChangeCtx.reset();
-        setSecurityModeOverride();
+        security_mode_set_override();
         changePending = true;
         break;
     }
@@ -409,7 +397,7 @@ int setStartupMode(ctrl_request* req) {
 int getProtectedState(ctrl_request* req) {
     PB(GetProtectedStateReply) pbRep = {};
     pbRep.state = security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
-    pbRep.overridden = isSecurityModeOverridden();
+    pbRep.overridden = security_mode_is_overridden();
     CHECK(encodeReplyMessage(req, PB(GetProtectedStateReply_fields), &pbRep));
     return 0;
 }

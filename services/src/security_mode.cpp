@@ -23,8 +23,11 @@
 #include <algorithm>
 #include "system_control.h"
 #include "flash_device_hal.h"
+#include "core_hal.h"
 
 namespace {
+
+const uint32_t SECURITY_MODE_OVERRIDE_MAGIC = 0x8cd69adfu;
 
 module_info_security_mode sSecurityMode = MODULE_INFO_SECURITY_MODE_NONE;
 
@@ -120,4 +123,16 @@ int security_mode_check_request(security_mode_transport transport, uint16_t id) 
     }
 
     return SYSTEM_ERROR_PROTECTED;
+}
+
+void security_mode_set_override() {
+    HAL_Core_Write_Backup_Register(BKP_DR_08, SECURITY_MODE_OVERRIDE_MAGIC); // Disable security
+}
+
+void security_mode_clear_override() {
+    HAL_Core_Write_Backup_Register(BKP_DR_08, 0); // Use default security mode
+}
+
+bool security_mode_is_overridden() {
+    return HAL_Core_Read_Backup_Register(BKP_DR_08) == SECURITY_MODE_OVERRIDE_MAGIC;
 }
