@@ -40,6 +40,7 @@ public:
     SystemPowerConfiguration()
             : conf_{} {
         conf_.size = sizeof(conf_);
+        conf_.aux_pwr_ctrl_pin = PIN_INVALID;
     }
 
     SystemPowerConfiguration(SystemPowerConfiguration&&) = default;
@@ -103,6 +104,20 @@ public:
 
     uint8_t socBitPrecision() const {
         return conf_.soc_bits;
+    }
+
+    SystemPowerConfiguration& auxPowerControlPin(uint8_t pin, bool activeLevel = 1) {
+        conf_.aux_pwr_ctrl_pin = pin;
+        conf_.aux_pwr_ctrl_pin_level = activeLevel;
+        return *this;
+    }
+
+    uint8_t auxPowerControlPin() const {
+        return conf_.aux_pwr_ctrl_pin;
+    }
+
+    uint8_t auxPowerControlActiveLevel() const {
+        return conf_.aux_pwr_ctrl_pin_level;
     }
 
     const hal_power_config* config() const {

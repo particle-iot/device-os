@@ -750,6 +750,8 @@ void app_setup_and_loop(void)
 
     system_power_management_init();
 
+    if_init_platform_postpone(nullptr);
+
     // Start the diagnostics service
     diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);
 

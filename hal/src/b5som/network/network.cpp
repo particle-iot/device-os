@@ -152,6 +152,23 @@ int if_init_platform(void*) {
     return 0;
 }
 
+int if_init_platform_postpone(void*) {
+    if (en2) {
+        uint8_t dummy;
+        if (!if_get_index(en2->interface(), &dummy)) {
+            auto wizNetif = reinterpret_cast<WizNetif*>(en2);
+            if (wizNetif->isPresent()) {
+                return 0;
+            }
+            netifapi_netif_remove(en2->interface());
+        }
+        LOG(INFO, "Ethernet interface is not present");
+        delete en2;
+        en2 = nullptr;
+    }
+    return 0;
+}
+
 extern "C" {
 
 struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst) {
