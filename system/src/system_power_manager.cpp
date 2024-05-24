@@ -138,15 +138,15 @@ PowerManager* PowerManager::instance() {
 }
 
 void PowerManager::init() {
-  os_thread_t th = nullptr;
-  size_t stack_size = HAL_PLATFORM_POWER_MANAGEMENT_STACK_SIZE;
-
-  #if defined(DEBUG_BUILD) || DEBUG_POWER
-    stack_size = 4 * 1024;
-  #endif // defined(DEBUG_BUILD)
-
   // Load configuration
   loadConfig();
+
+  // We should always initialize the aux power control pin,
+  // in case that there is a Power Module for DC power supply present.
+  if (config_.aux_pwr_ctrl_pin != PIN_INVALID) {
+    hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
+    hal_gpio_write(config_.aux_pwr_ctrl_pin, config_.aux_pwr_ctrl_pin_level);
+  }
 
   if (config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
     return;
@@ -196,6 +196,13 @@ void PowerManager::init() {
     fuel.setAlertThreshold(20); // Low Battery alert at 10% (about 3.6V)
   }
   fuel.clearAlert(); // Ensure this is cleared, or interrupts will never occur
+
+  os_thread_t th = nullptr;
+  size_t stack_size = HAL_PLATFORM_POWER_MANAGEMENT_STACK_SIZE;
+
+  #if defined(DEBUG_BUILD) || DEBUG_POWER
+    stack_size = 4 * 1024;
+  #endif // defined(DEBUG_BUILD)
 
   battMonitorPeriod_ = BATTERY_STATE_NORMAL_CHECK_PERIOD;
   os_thread_create(&th, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr, stack_size);
@@ -518,11 +525,6 @@ void PowerManager::initDefault(bool dpdm) {
       }
       power.enableDPDM();
     }
-  }
-
-  if (config_.aux_pwr_ctrl_pin != PIN_INVALID) {
-    hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
-    hal_gpio_write(config_.aux_pwr_ctrl_pin, config_.aux_pwr_ctrl_pin_level);
   }
 
   clearIntermediateBatteryState(STATE_ALL);
