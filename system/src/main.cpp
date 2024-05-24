@@ -735,6 +735,11 @@ void app_setup_and_loop(void)
     }
 #endif // HAL_PLATFORM_ASSETS
 
+    // Reset all persistent settings to factory defaults if necessary
+    // This should be called before system_part2_post_init() so that the
+    // configurations set in STARTUP() is not reset by factory reset
+    resetSettingsToFactoryDefaultsIfNeeded();
+
     // NOTE: this calls user app global constructors
     system_part2_post_init();
 
@@ -744,9 +749,6 @@ void app_setup_and_loop(void)
     DECLARE_SYS_HEALTH(ENTERED_Main);
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
-
-    // Reset all persistent settings to factory defaults if necessary
-    resetSettingsToFactoryDefaultsIfNeeded();
 
     system_power_management_init();
 
