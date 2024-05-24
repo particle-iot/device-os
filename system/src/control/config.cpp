@@ -165,7 +165,7 @@ int setProtectedStateImpl(ctrl_request* req) {
     case PB(SetProtectedStateRequest_Action_DISABLE_REQUEST): {
         g_securityModeChangeCtx.reset();
         if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_NONE) {
-            return 0; // Not protected
+            break; // Not protected
         }
         std::unique_ptr<SecurityModeChangeContext> ctx(new(std::nothrow) SecurityModeChangeContext());
         if (!ctx) {
