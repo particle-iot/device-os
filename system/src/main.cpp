@@ -752,7 +752,9 @@ void app_setup_and_loop(void)
 
     system_power_management_init();
 
+#if HAL_PLATFORM_LWIP
     if_init_platform_postpone(nullptr);
+#endif /* HAL_PLATFORM_LWIP */
 
     // Start the diagnostics service
     diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);
