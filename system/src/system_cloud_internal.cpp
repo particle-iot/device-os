@@ -1277,16 +1277,6 @@ int Spark_Handshake(bool presence_announce)
             publishEvent("spark/device/claim/code", buf);
         }
 
-        // open up for possibility of retrieving multiple ID datums
-        if (!HAL_Get_Device_Identifier(NULL, buf, sizeof(buf), 0, NULL) && *buf) {
-            LOG(INFO,"Send spark/device/ident/0 event");
-            publishEvent("spark/device/ident/0", buf);
-        }
-
-        publishSafeModeEventIfNeeded();
-        publishResetReasonIfNeeded();
-        Send_Firmware_Update_Flags();
-
         if (presence_announce) {
             Multicast_Presence_Announcement();
         }
@@ -1294,14 +1284,15 @@ int Spark_Handshake(bool presence_announce)
     } else {
         LOG(INFO,"cloud connected from existing session.");
 
-        publishSafeModeEventIfNeeded();
-        publishResetReasonIfNeeded();
-        Send_Firmware_Update_Flags();
-
         if (!hal_rtc_time_is_valid(nullptr) && spark_sync_time_last(nullptr, nullptr) == 0) {
             spark_protocol_send_time_request(sp);
         }
     }
+
+    publishSafeModeEventIfNeeded();
+    publishResetReasonIfNeeded();
+    Send_Firmware_Update_Flags();
+
     if (system_mode() != AUTOMATIC || APPLICATION_SETUP_DONE) {
         err = sendApplicationDescription();
         if (err != 0) {
