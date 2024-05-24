@@ -163,7 +163,7 @@ int if_init_platform(void*) {
         wizNetifConfigData.size = sizeof(WizNetifConfigData);
         wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
         WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac, true);
     }
 
     uint8_t dummy;
@@ -208,9 +208,9 @@ int if_init_platform_postpone(void*) {
             if (wizNetif->isPresent()) {
                 return 0;
             }
+            LOG(INFO, "Remove Ethernet interface");
             netifapi_netif_remove(en2->interface());
         }
-        LOG(INFO, "Ethernet interface is not present");
         delete en2;
         en2 = nullptr;
     }
