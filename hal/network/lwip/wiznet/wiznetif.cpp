@@ -337,7 +337,7 @@ void WizNetif::loop(void* arg) {
         if (p) {
             self->output(p);
         }
-        if (self->inRecv_) {
+        if (self->inRecv_ || self->interrupt_ == PIN_INVALID) {
             int r = 1;
             if (!p) {
                 r = self->input();
