@@ -40,6 +40,7 @@ public:
     SystemPowerConfiguration()
             : conf_{} {
         conf_.size = sizeof(conf_);
+        conf_.aux_pwr_ctrl = 1;
         conf_.aux_pwr_ctrl_pin = PIN_INVALID;
     }
 
@@ -107,6 +108,7 @@ public:
     }
 
     SystemPowerConfiguration& auxPowerControlPin(uint8_t pin, bool activeLevel = 1) {
+        conf_.aux_pwr_ctrl = 1;
         conf_.aux_pwr_ctrl_pin = pin;
         conf_.aux_pwr_ctrl_pin_level = activeLevel;
         return *this;
