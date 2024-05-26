@@ -79,8 +79,10 @@ constexpr hal_power_config defaultPowerConfig = {
   .charge_current = DEFAULT_CHARGE_CURRENT,
   .termination_voltage = DEFAULT_TERMINATION_VOLTAGE,
   .soc_bits = DEFAULT_SOC_18_BIT_PRECISION,
+  .aux_pwr_ctrl = 1,
   .aux_pwr_ctrl_pin = PIN_INVALID,
   .aux_pwr_ctrl_pin_level = 1,
+  .reserved2 = {0},
   .reserved3 = {0}
 };
 
@@ -143,12 +145,13 @@ void PowerManager::init() {
 
   // We should always initialize the aux power control pin,
   // in case that there is a Power Module for DC power supply present.
-  if (config_.aux_pwr_ctrl_pin != PIN_INVALID) {
+  if (config_.aux_pwr_ctrl && config_.aux_pwr_ctrl_pin != PIN_INVALID) {
     hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
     hal_gpio_write(config_.aux_pwr_ctrl_pin, config_.aux_pwr_ctrl_pin_level);
   }
 
   if (config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
+    LOG(WARN, "Disabled by configuration");
     return;
   }
 
