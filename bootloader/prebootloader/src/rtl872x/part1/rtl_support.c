@@ -223,7 +223,7 @@ static uint32_t boot_reason_set(void) {
     /* backup boot reason to REG_LP_SYSTEM_CFG2 */
     temp_bootcfg = HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_SYSTEM_CFG2);
     temp_bootcfg |= tmp_reason;
-    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_SYSTEM_CFG2, tmp_reason); // Should tmp_reason be `temp_bootcfg`? If we have deepsleep or brownout boots, we will clear some of the bits in REG_LP_SYSTEM_CFG2
+    HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_LP_SYSTEM_CFG2, tmp_reason);
     
     return 0;
 }
