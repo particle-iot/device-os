@@ -47,7 +47,8 @@ test(WATCHDOG_00_setup_disconnect_power_off_ncp) {
     Cellular.off();
     waitFor(Cellular.isOff, 120000);
     assertTrue(Cellular.isOff());
-#elif Wiring_WiFi
+#endif
+#if Wiring_WiFi
     WiFi.disconnect();
     waitForNot(WiFi.ready, 60000);
     WiFi.off();
