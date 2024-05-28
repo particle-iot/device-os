@@ -230,7 +230,7 @@ jobs:
       - checkout
       # https://support.circleci.com/hc/en-us/articles/360050934711
       - setup_remote_docker:
-          version: 19.03.13
+          version: docker23
       - run:
           name: "Install bash"
           command: |
