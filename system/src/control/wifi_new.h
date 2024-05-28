@@ -32,6 +32,7 @@ int removeKnownNetwork(ctrl_request* req);
 int clearKnownNetworks(ctrl_request* req);
 int getCurrentNetwork(ctrl_request* req);
 int scanNetworks(ctrl_request* req);
+int setNetworkCredentials(ctrl_request* req);
 
 } // particle::ctrl::wifi
 

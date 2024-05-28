@@ -277,6 +277,38 @@ int scanNetworks(ctrl_request* req) {
     return 0;
 }
 
+int setNetworkCredentials(ctrl_request* req) {
+    PB(SetNetworkCredentialsRequest) pbReq = {};
+    DecodedCString dSsid(&pbReq.ssid);
+    DecodedCString dPwd(&pbReq.credentials.password);
+    CHECK(decodeRequestMessage(req, PB(SetNetworkCredentialsRequest_fields), &pbReq));
+    // Parse new network configuration
+    if (pbReq.credentials.type != PB(CredentialsType_NO_CREDENTIALS) &&
+            pbReq.credentials.type != PB(CredentialsType_PASSWORD)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    WifiCredentials cred;
+    cred.type((WifiCredentials::Type)pbReq.credentials.type);
+    if (pbReq.credentials.type == PB(CredentialsType_PASSWORD)) {
+        cred.password(dPwd.data);
+    }
+    WifiNetworkConfig conf;
+    conf.ssid(dSsid.data);
+    MacAddress bssid = INVALID_MAC_ADDRESS;
+    bssidFromPb(&bssid, pbReq.bssid);
+    conf.bssid(bssid);
+    conf.hidden(pbReq.hidden);
+    conf.security((WifiSecurity)pbReq.security);
+    conf.credentials(std::move(cred));
+
+    const auto wifiMgr = wifiNetworkManager();
+    CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::NONE));
+    system_notify_event(network_credentials, network_credentials_added);
+
+    return 0;
+}
+
 } // particle::ctrl::wifi
 
 } // particle::ctrl
