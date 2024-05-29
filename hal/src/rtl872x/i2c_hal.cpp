@@ -77,6 +77,9 @@ extern "C" {
     res;                                                                        \
 })
 
+class I2cClass;
+I2cClass* getInstanceImpl(hal_i2c_interface_t i2c);
+
 class I2cClass {
 public:
     bool isConfigured() const {
@@ -120,7 +123,7 @@ public:
             heapBuffer_ = true;
         }
         slaveRxCacheDepth_ = rxBuffer_.size() * 2;
-        I2C_StructInit(&i2cInitStruct_);
+        structInitImpl();
         configured_ = true;
         unlock();
         return SYSTEM_ERROR_NONE;
@@ -165,21 +168,12 @@ public:
             i2cInitStruct_.I2CMaster  = I2C_SLAVE_MODE;
             i2cInitStruct_.I2CAckAddr = address; // This is the local device's slave address in slave mode
         }
-        I2C_Init(i2cDev_, &i2cInitStruct_);
-
-        // Enable restart function
-        i2cDev_->IC_CON |= BIT_CTRL_IC_CON_IC_RESTART_EN;
-        i2cDev_->IC_RX_TL = std::min(rxBuffer_.size(), (size_t)0); // FIFO depth 1
-
-	    I2C_Cmd(i2cDev_, ENABLE);
+        initImpl();
 
         if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
-            InterruptRegister((IRQ_FUN)i2cSlaveIntHandler, I2C0_IRQ_LP, (uint32_t)this, 7);
-            I2C_INTConfig(i2cDev_, (BIT_IC_INTR_MASK_M_START_DET | BIT_IC_INTR_MASK_M_RX_FULL | BIT_IC_INTR_MASK_M_STOP_DET |
-                                    BIT_IC_INTR_MASK_M_RD_REQ | BIT_IC_INTR_MASK_M_RX_DONE), ENABLE);
-            I2C_ClearAllINT(i2cDev_);
-            InterruptEn(I2C0_IRQ_LP, 7);
+            slaveIntConfigImpl(true);
         }
+        enableImpl(true);
 
         if (state_ == HAL_I2C_STATE_DISABLED) {
             txBuffer_.reset();
@@ -203,12 +197,9 @@ public:
             hal_gpio_configure(sclPin_, &conf, nullptr);
             hal_gpio_configure(sdaPin_, &conf, nullptr);
             if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
-                InterruptDis(I2C0_IRQ_LP);
-	            InterruptUnRegister(I2C0_IRQ_LP);
-                I2C_INTConfig(i2cDev_, (BIT_IC_INTR_MASK_M_START_DET | BIT_IC_INTR_MASK_M_RX_FULL | BIT_IC_INTR_MASK_M_STOP_DET |
-                                        BIT_IC_INTR_MASK_M_RD_REQ | BIT_IC_INTR_MASK_M_RX_DONE), DISABLE);
+                slaveIntConfigImpl(false);
             }
-            I2C_Cmd(i2cDev_, DISABLE);
+            enableImpl(false);
             state_ = HAL_I2C_STATE_DISABLED;
             // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, DISABLE);
         }
@@ -280,14 +271,14 @@ public:
     int setSpeed(uint32_t speed) {
         bool enabled = isEnabled();
         if (enabled) {
-            I2C_Cmd(i2cDev_, DISABLE);
+            enableImpl(false);
             state_ = HAL_I2C_STATE_DISABLED;
         }
         i2cInitStruct_.I2CSpdMod = ((speed == CLOCK_SPEED_100KHZ) ? I2C_SS_MODE : I2C_FS_MODE);
         i2cInitStruct_.I2CClk    = ((speed == CLOCK_SPEED_100KHZ) ? 100 : 400);
         if (enabled) {
-            I2C_Init(i2cDev_, &i2cInitStruct_);
-            I2C_Cmd(i2cDev_, ENABLE);
+            initImpl();
+            enableImpl(true);
             state_ = HAL_I2C_STATE_ENABLED;
         }
         return SYSTEM_ERROR_NONE;
@@ -297,13 +288,13 @@ public:
         if (i2cInitStruct_.I2CAckAddr != address) {
             bool enabled = isEnabled();
             if (enabled) {
-                I2C_Cmd(i2cDev_, DISABLE);
+                enableImpl(false);
                 state_ = HAL_I2C_STATE_DISABLED;
             }
             i2cInitStruct_.I2CAckAddr = address;
             if (enabled) {
-                I2C_Init(i2cDev_, &i2cInitStruct_);
-                I2C_Cmd(i2cDev_, ENABLE);
+                initImpl();
+                enableImpl(true);
                 state_ = HAL_I2C_STATE_ENABLED;
             }
         }
@@ -324,36 +315,28 @@ public:
 
         setAddress(config->address);
 
-        bool waitStop = false;
+        bool waitStop = (config->flags & HAL_I2C_TRANSMISSION_FLAG_STOP);
         for (uint32_t i = 0; i < quantity; i++) {
             if(i >= quantity - 1) {
-                if (config->flags & HAL_I2C_TRANSMISSION_FLAG_STOP) {
-                    // Generate stop signal
-                    i2cDev_->IC_DATA_CMD = 0x0003 << 8;
-                    waitStop = true;
-                } else {
-                    // Generate restart signal
-                    i2cDev_->IC_DATA_CMD = 0x0005 << 8;
-                }
+                readByteTrigImpl(true, waitStop);
             } else {
-                i2cDev_->IC_DATA_CMD = 0x0001 << 8;
+                readByteTrigImpl(false, false);
             }
-            // Wait for I2C_FLAG_RFNE flag
-            if (WAIT_TIMED_ROUTINE(config->timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_RFNE) == 0, checkAbrt) < 0) {
+            if (WAIT_TIMED_ROUTINE(config->timeout_ms, isReadableImpl() == 0, isAbortedImpl) < 0) {
                 reset();
-                LOG_DEBUG(TRACE, "Wait BIT_IC_STATUS_RFNE timeout");
+                LOG_DEBUG(TRACE, "Wait RX data timeout");
                 goto ret;
             }
-            if(checkAbrt()) {
-                LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
-                I2C_ClearAllINT(i2cDev_);
+            if(isAbortedImpl()) {
+                LOG(TRACE, "Abort: %08X", abortSourceImpl());
+                clearAllIntImpl();
                 goto ret;
             }
-            if (waitStop && !WAIT_TIMED(config->timeout_ms, !stopDetected())) {
-                reset();
-                return SYSTEM_ERROR_I2C_STOP_TIMEOUT;
-            }
-            rxBuffer_.put((uint8_t)i2cDev_->IC_DATA_CMD);
+            rxBuffer_.put(readByteImpl());
+        }
+        if (waitStop && !WAIT_TIMED(config->timeout_ms, !isStopDetectedImpl())) {
+            reset();
+            return SYSTEM_ERROR_I2C_STOP_TIMEOUT;
         }
     ret:
         return rxBuffer_.data();
@@ -413,30 +396,12 @@ public:
 
         uint32_t quantity = txBuffer_.data();
         if (quantity == 0) {
-            // Clear flags
-            uint32_t temp = i2cDev_->IC_CLR_TX_ABRT;
-            temp = i2cDev_->IC_CLR_STOP_DET;
-            (void)temp;
-            if ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK)
-                 || (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_RAW_INTR_STAT_STOP_DET)) {
-                return SYSTEM_ERROR_I2C_ABORT;
-            }
-            // Send the slave address only
-            i2cDev_->IC_DATA_CMD = (transConfig_.address << 1) | BIT_CTRL_IC_DATA_CMD_NULLDATA | BIT_CTRL_IC_DATA_CMD_STOP;
-            // If slave is not detected, the STOP_DET bit won't be set, and the TX_ABRT is set instead.
-            if (!WAIT_TIMED(transConfig_.timeout_ms, ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) == 0)
-                                                  && ((i2cDev_->IC_RAW_INTR_STAT & BIT_IC_RAW_INTR_STAT_STOP_DET) == 0))) {
-                return SYSTEM_ERROR_I2C_TX_ADDR_TIMEOUT;
-            }
-            if (i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) {
-                return SYSTEM_ERROR_I2C_ABORT;
-            }
-            return SYSTEM_ERROR_NONE;
+            return writeAddressOnlyImpl();
         }
 
-        bool waitStop = false;
+        bool waitStop = stop;
         for (uint32_t i = 0; i < quantity; i++) {
-            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
+            if (!WAIT_TIMED(transConfig_.timeout_ms, isWritableImpl() == 0)) {
                 reset();
                 return SYSTEM_ERROR_I2C_FILL_DATA_TIMEOUT;
             }
@@ -445,29 +410,22 @@ public:
                 return SYSTEM_ERROR_NOT_ENOUGH_DATA;
             }
             if(i >= quantity - 1) {
-                if (stop) {
-                    // Generate stop signal
-                    i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_STOP;
-                    waitStop = true;
-                } else {
-                    // Generate restart signal
-                    i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_RESTART;
-                }
+                writeByteImpl(data, true, stop);
             } else {
                 // The address will be sent before sending the first data byte
-                i2cDev_->IC_DATA_CMD = data;
+                writeByteImpl(data, false, false);
             }
-            if (WAIT_TIMED_ROUTINE(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFE) == 0, checkAbrt) < 0) {
+            if (WAIT_TIMED_ROUTINE(transConfig_.timeout_ms, isTxFifoEmptyImpl() == 0, isAbortedImpl) < 0) {
                 reset();
                 return SYSTEM_ERROR_I2C_TX_DATA_TIMEOUT;
             }
-            if(checkAbrt()) {
-                LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
-                I2C_ClearAllINT(i2cDev_);
+            if(isAbortedImpl()) {
+                LOG(TRACE, "Abort: %08X", abortSourceImpl());
+                clearAllIntImpl();
                 return SYSTEM_ERROR_CANCELLED;
             }
         }
-        if (waitStop && !WAIT_TIMED(transConfig_.timeout_ms, !stopDetected())) {
+        if (waitStop && !WAIT_TIMED(transConfig_.timeout_ms, !isStopDetectedImpl())) {
             reset();
             return SYSTEM_ERROR_I2C_STOP_TIMEOUT;
         }
@@ -502,12 +460,91 @@ public:
     }
 
     static I2cClass* getInstance(hal_i2c_interface_t i2c) {
-        static I2cClass i2cs[] = {
-            { I2C0_DEV, SDA, SCL }
-        };
-        CHECK_TRUE(i2c < sizeof(i2cs) / sizeof(i2cs[0]), nullptr);
-        return &i2cs[i2c];
+        return getInstanceImpl(i2c);
     }
+
+protected:
+    I2cClass(hal_pin_t sda, hal_pin_t scl)
+            : i2cInitStruct_(),
+              sdaPin_(sda),
+              sclPin_(scl),
+              configured_(false),
+              slaveStatus_(I2C_SLAVE_STOPPED),
+              heapBuffer_(false),
+              onRequested_(nullptr),
+              onReceived_(nullptr),
+              mutex_(nullptr),
+              slaveRxCache_(nullptr),
+              slaveRxCacheLen_(0),
+              slaveRxCacheDepth_(HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1) * 2) {
+    }
+    ~I2cClass() = default;
+
+    // WARNNING: critical timing section.
+    static void i2cSlaveIntHandler(void* context) {
+        auto instance = (I2cClass*)context;
+        uint32_t intStatus = instance->getIntStatusImpl();
+        switch (instance->slaveStatus_) {
+            case I2C_SLAVE_STOPPED: {
+                instance->handleStartStop();
+                break;
+            }
+            case I2C_SLAVE_STARTED:
+            case I2C_SLAVE_RESTARTED: {
+                if (instance->isIntRxFullImpl(intStatus)) {
+                    // Slave receiver
+                    if (instance->slaveStatus_ == I2C_SLAVE_STARTED) {
+                        memset(instance->slaveRxCache_.get(), 0xFF, instance->slaveRxCacheDepth_);
+                        instance->slaveRxCacheLen_ = 0;
+                    }
+                    instance->slaveStatus_ = I2C_SLAVE_RX;
+                    if (instance->slaveRead()) {
+                        break;
+                    }
+                } else if (instance->isIntReadRequestImpl(intStatus)) {
+                    // Slave transmitter
+                    instance->clearReadRequestIntImpl();
+                    instance->slaveStatus_ = I2C_SLAVE_TX;
+                    instance->slaveWrite();
+                }
+                instance->handleStartStop();
+                break;
+            }
+            case I2C_SLAVE_RX: {
+                if (instance->isIntRxFullImpl(intStatus)) {
+                    if (instance->slaveRead()) {
+                        break;
+                    }
+                }
+                if (instance->handleStartStop()) {
+                    if (instance->slaveRxCacheLen_ > 0 && instance->onReceived_) {
+                        instance->slaveRxDone(instance->slaveRxCacheLen_, true); // it will discard the data that cannot be filled
+                    }
+                }
+                break;
+            }
+            case I2C_SLAVE_TX: {
+                if (instance->isIntReadRequestImpl(intStatus)) {
+                    instance->clearReadRequestIntImpl();
+                    instance->slaveWrite();
+                }
+                if (instance->isIntRxDoneImpl(intStatus)) {
+                    instance->clearRxDoneIntImpl();
+                    instance->txBuffer_.reset();
+                }
+                if (instance->handleStartStop()) {
+                    instance->txBuffer_.reset();
+                }
+                break;
+            }
+            default: break;
+        }
+    }
+
+    I2C_InitTypeDef i2cInitStruct_;
+    hal_i2c_transmission_config_t transConfig_;
+    particle::services::RingBuffer<uint8_t> txBuffer_;
+    particle::services::RingBuffer<uint8_t> rxBuffer_;
 
 private:
     enum I2cSlaveStatus {
@@ -518,50 +555,21 @@ private:
         I2C_SLAVE_RX,
     };
 
-    I2cClass(I2C_TypeDef* i2cDev, hal_pin_t sda, hal_pin_t scl)
-            : i2cDev_(i2cDev),
-              sdaPin_(sda),
-              sclPin_(scl),
-              configured_(false),
-              slaveStatus_(I2C_SLAVE_STOPPED),
-              heapBuffer_(false),
-              i2cInitStruct_(),
-              onRequested_(nullptr),
-              onReceived_(nullptr),
-              mutex_(nullptr),
-              slaveRxCache_(nullptr),
-              slaveRxCacheLen_(0),
-              slaveRxCacheDepth_(HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1) * 2) {
-    }
-    ~I2cClass() = default;
-
-    bool masterRestarted() {
-        return (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_START_DET) &&
-                !(i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_STOP_DET) &&
-                (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_ACTIVITY);
-    }
-
     int reEnableIfNeeded() {
-        if (!masterRestarted()) {
-            I2C_Cmd(i2cDev_, DISABLE);
-            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
+        if (!needRenableImpl()) {
+            return SYSTEM_ERROR_NONE;
+        }
+        if (!isMasterStartedImpl()) {
+            enableImpl(false);
+            if (!WAIT_TIMED(transConfig_.timeout_ms, isActiveImpl() == 1)) {
                 reset();
                 LOG_DEBUG(TRACE, "SYSTEM_ERROR_I2C_BUS_BUSY");
                 return SYSTEM_ERROR_I2C_BUS_BUSY;
             }
-            I2C_Cmd(i2cDev_, ENABLE);
+            enableImpl(true);
         }
-        clearIntStatus();
+        clearAllIntImpl();
         return SYSTEM_ERROR_NONE;
-    }
-
-    bool stopDetected() {
-        return (i2cDev_->IC_RAW_INTR_STAT & BIT_IC_INTR_STAT_R_STOP_DET) == BIT_IC_INTR_STAT_R_STOP_DET;
-    }
-
-    void clearIntStatus() {
-        uint32_t temp = i2cDev_->IC_CLR_INTR;
-        (void)temp;
     }
 
     bool isConfigValid(const hal_i2c_config_t* config) {
@@ -572,26 +580,19 @@ private:
         return true;
     }
 
-    bool checkAbrt() {
-        if(I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_TX_ABRT) {
-            return true;
-        }
-        return false;
-    }
-
     bool handleStartStop() {
         // These bits may be both set in single ISR
         // start | stop
         //   0   |   1    : STOPPED
         //   1   |   0    : RESTARTED
         //   1   |   1    : STOPPED -> STARTED (most likely happen) or RESTARTED -> STOPPED
-        uint32_t intStatus = I2C_GetINT(i2cDev_);
-        if ((intStatus & BIT_IC_INTR_STAT_R_START_DET) || (intStatus & BIT_IC_INTR_STAT_R_STOP_DET)) {
-            I2C_ClearINT(i2cDev_, BIT_IC_INTR_STAT_R_START_DET);
-            I2C_ClearINT(i2cDev_, BIT_IC_INTR_STAT_R_STOP_DET);
-            if ((intStatus & BIT_IC_INTR_STAT_R_START_DET) && !(intStatus & BIT_IC_INTR_STAT_R_STOP_DET)) {
+        uint32_t intStatus = getIntStatusImpl();
+        if (isIntStartDetectedImpl(intStatus) || isIntStopDetectedImpl(intStatus)) {
+            clearStartDetectedIntImpl();
+            clearStopDetectedIntImpl();
+            if (isIntStartDetectedImpl(intStatus) && !isIntStopDetectedImpl(intStatus)) {
                 slaveStatus_ = I2C_SLAVE_RESTARTED;
-            } else if (intStatus & BIT_IC_INTR_STAT_R_START_DET) {
+            } else if (isIntStartDetectedImpl(intStatus)) {
                 slaveStatus_ = I2C_SLAVE_STARTED;
                 // FIXME: It might be RESTARTED -> STOPPED
             } else {
@@ -623,10 +624,10 @@ private:
     bool slaveRead() {
         uint16_t reportLen = 0;
         uint32_t intStatus;
-        while (I2C_CheckFlagState(i2cDev_, (BIT_IC_STATUS_RFNE | BIT_IC_STATUS_RFF))) {
-            slaveRxCache_[slaveRxCacheLen_++] = (uint8_t)I2C_ReceiveData(i2cDev_);
-            intStatus = I2C_GetINT(i2cDev_);
-            if ((intStatus & BIT_IC_INTR_STAT_R_START_DET) || (intStatus & BIT_IC_INTR_STAT_R_STOP_DET)) {
+        while (isReadableImpl()) {
+            slaveRxCache_[slaveRxCacheLen_++] = (uint8_t)readByteImpl();
+            intStatus = getIntStatusImpl();
+            if (isIntStartDetectedImpl(intStatus) || isIntStopDetectedImpl(intStatus)) {
                 reportLen = slaveRxCacheLen_;
                 // We don't clear start/stop INT flag and keep reading data that is already in FIFO.
             }
@@ -648,75 +649,41 @@ private:
         }
         uint8_t data = 0xFF;
         if (txBuffer_.get(&data) == 1) {
-            I2C_SlaveSend(i2cDev_, data);
+            writeByteImpl(data, false, false);
         } else {
-            I2C_SlaveSend(i2cDev_, 0xFF);
+            writeByteImpl(0xFF, false, false);
         }
     }
 
-    // WARNNING: critical timing section.
-    static void i2cSlaveIntHandler(void* context) {
-        auto instance = (I2cClass*)context;
-        uint32_t intStatus = I2C_GetINT(instance->i2cDev_);
+    virtual void structInitImpl() = 0;
+    virtual void initImpl() = 0;
+    virtual void slaveIntConfigImpl(bool en) = 0;
+    virtual uint32_t getIntStatusImpl() = 0;
+    virtual void clearAllIntImpl() = 0;
+    virtual void clearReadRequestIntImpl() = 0;
+    virtual void clearRxDoneIntImpl() = 0;
+    virtual void clearStartDetectedIntImpl() = 0;
+    virtual void clearStopDetectedIntImpl() = 0;
+    virtual bool isIntRxFullImpl(uint32_t intStatus) = 0;
+    virtual bool isIntReadRequestImpl(uint32_t intStatus) = 0;
+    virtual bool isIntRxDoneImpl(uint32_t intStatus) = 0;
+    virtual bool isIntStartDetectedImpl(uint32_t intStatus) = 0;
+    virtual bool isIntStopDetectedImpl(uint32_t intStatus) = 0;
+    virtual void enableImpl(bool en) = 0;
+    virtual bool needRenableImpl() = 0;
+    virtual bool isReadableImpl() = 0;
+    virtual void readByteTrigImpl(bool lastByte, bool stop) = 0;
+    virtual uint8_t readByteImpl() = 0;
+    virtual bool isWritableImpl() = 0;
+    virtual bool isTxFifoEmptyImpl() = 0;
+    virtual int writeAddressOnlyImpl() = 0;
+    virtual void writeByteImpl(uint8_t data, bool lastByte, bool stop) = 0;
+    virtual bool isAbortedImpl() = 0;
+    virtual uint32_t abortSourceImpl() = 0;
+    virtual bool isMasterStartedImpl() = 0;
+    virtual bool isStopDetectedImpl() = 0;
+    virtual bool isActiveImpl() = 0;
 
-        switch (instance->slaveStatus_) {
-            case I2C_SLAVE_STOPPED: {
-                instance->handleStartStop();
-                break;
-            }
-            case I2C_SLAVE_STARTED:
-            case I2C_SLAVE_RESTARTED: {
-                if ((intStatus & BIT_IC_INTR_STAT_R_RX_FULL)) {
-                    // Slave receiver
-                    if (instance->slaveStatus_ == I2C_SLAVE_STARTED) {
-                        memset(instance->slaveRxCache_.get(), 0xFF, instance->slaveRxCacheDepth_);
-                        instance->slaveRxCacheLen_ = 0;
-                    }
-                    instance->slaveStatus_ = I2C_SLAVE_RX;
-                    if (instance->slaveRead()) {
-                        break;
-                    }
-                } else if (intStatus & BIT_IC_INTR_STAT_R_RD_REQ) {
-                    // Slave transmitter
-                    I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RD_REQ);
-                    instance->slaveStatus_ = I2C_SLAVE_TX;
-                    instance->slaveWrite();
-                }
-                instance->handleStartStop();
-                break;
-            }
-            case I2C_SLAVE_RX: {
-                if ((intStatus & BIT_IC_INTR_STAT_R_RX_FULL)) {
-                    if (instance->slaveRead()) {
-                        break;
-                    }
-                }
-                if (instance->handleStartStop()) {
-                    if (instance->slaveRxCacheLen_ > 0 && instance->onReceived_) {
-                        instance->slaveRxDone(instance->slaveRxCacheLen_, true); // it will discard the data that cannot be filled
-                    }
-                }
-                break;
-            }
-            case I2C_SLAVE_TX: {
-                if (intStatus & BIT_IC_INTR_STAT_R_RD_REQ) {
-                    I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RD_REQ);
-                    instance->slaveWrite();
-                }
-                if (intStatus & BIT_IC_INTR_STAT_R_RX_DONE) {
-                    I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RX_DONE);
-                    instance->txBuffer_.reset();
-                }
-                if (instance->handleStartStop()) {
-                    instance->txBuffer_.reset();
-                }
-                break;
-            }
-            default: break;
-        }
-    }
-
-    I2C_TypeDef* i2cDev_;
     hal_pin_t sdaPin_;
     hal_pin_t sclPin_;
 
@@ -724,12 +691,7 @@ private:
     volatile hal_i2c_state_t state_;
     volatile uint8_t slaveStatus_;
 
-    particle::services::RingBuffer<uint8_t> txBuffer_;
-    particle::services::RingBuffer<uint8_t> rxBuffer_;
     bool heapBuffer_;
-
-    I2C_InitTypeDef i2cInitStruct_;
-    hal_i2c_transmission_config_t transConfig_;
 
     void (*onRequested_)(void);
     void (*onReceived_)(int);
@@ -758,6 +720,356 @@ private:
     I2cClass* i2c_;
 };
 
+class LpI2cClass : public I2cClass {
+public:
+    LpI2cClass(hal_pin_t sda, hal_pin_t scl)
+            : I2cClass(sda, scl) {
+        i2cDev_ = I2C0_DEV;
+    }
+
+    ~LpI2cClass() = default;
+
+    void structInitImpl() override {
+        I2C_StructInit(&i2cInitStruct_);
+    }
+
+    void initImpl() override {
+        I2C_Init(i2cDev_, &i2cInitStruct_);
+        // Enable restart function and set RX FIFO level
+        i2cDev_->IC_CON |= BIT_CTRL_IC_CON_IC_RESTART_EN;
+        i2cDev_->IC_RX_TL = std::min(rxBuffer_.size(), (size_t)0); // FIFO depth 1
+    }
+
+    void slaveIntConfigImpl(bool en) override {
+        if (en) {
+            InterruptRegister((IRQ_FUN)i2cSlaveIntHandler, I2C0_IRQ_LP, (uint32_t)this, 7);
+            I2C_INTConfig(i2cDev_, (BIT_IC_INTR_MASK_M_START_DET | BIT_IC_INTR_MASK_M_RX_FULL | BIT_IC_INTR_MASK_M_STOP_DET |
+                                    BIT_IC_INTR_MASK_M_RD_REQ | BIT_IC_INTR_MASK_M_RX_DONE), ENABLE);
+            I2C_ClearAllINT(i2cDev_);
+            InterruptEn(I2C0_IRQ_LP, 7);
+        } else {
+            InterruptDis(I2C0_IRQ_LP);
+            InterruptUnRegister(I2C0_IRQ_LP);
+            I2C_INTConfig(i2cDev_, (BIT_IC_INTR_MASK_M_START_DET | BIT_IC_INTR_MASK_M_RX_FULL | BIT_IC_INTR_MASK_M_STOP_DET |
+                                    BIT_IC_INTR_MASK_M_RD_REQ | BIT_IC_INTR_MASK_M_RX_DONE), DISABLE);
+        }
+    }
+
+    void clearAllIntImpl() override {
+        I2C_ClearAllINT(i2cDev_);
+    }
+
+    void clearReadRequestIntImpl() override {
+        I2C_ClearINT(i2cDev_, BIT_IC_INTR_STAT_R_RD_REQ);
+    }
+
+    void clearRxDoneIntImpl() override {
+        I2C_ClearINT(i2cDev_, BIT_IC_INTR_STAT_R_RX_DONE);
+    }
+
+    void clearStartDetectedIntImpl() override {
+        I2C_ClearINT(i2cDev_, BIT_IC_INTR_STAT_R_START_DET);
+    }
+
+    void clearStopDetectedIntImpl() override {
+        return I2C_ClearINT(i2cDev_, BIT_IC_INTR_STAT_R_STOP_DET);
+    }
+
+    uint32_t getIntStatusImpl() override {
+        return I2C_GetINT(i2cDev_);
+    }
+
+    bool isIntRxFullImpl(uint32_t intStatus) override {
+        return (intStatus & BIT_IC_INTR_STAT_R_RX_FULL);
+    }
+
+    bool isIntReadRequestImpl(uint32_t intStatus) override {
+        return (intStatus & BIT_IC_INTR_STAT_R_RD_REQ);
+    }
+
+    bool isIntRxDoneImpl(uint32_t intStatus) override {
+        return (intStatus & BIT_IC_INTR_STAT_R_RX_DONE);
+    }
+
+    bool isIntStartDetectedImpl(uint32_t intStatus) override {
+        return (intStatus & BIT_IC_INTR_STAT_R_START_DET);
+    }
+
+    bool isIntStopDetectedImpl(uint32_t intStatus) override {
+        return (intStatus & BIT_IC_INTR_STAT_R_STOP_DET);
+    }
+
+    void enableImpl(bool en) override {
+        I2C_Cmd(i2cDev_, en ? ENABLE : DISABLE);
+    }
+
+    bool isActiveImpl() override {
+        return I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY);
+    }
+
+    bool needRenableImpl() override {
+        return true;
+    }
+
+    bool isReadableImpl() override {
+        return I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_RFNE | BIT_IC_STATUS_RFF);
+    }
+
+    void readByteTrigImpl(bool lastByte, bool stop) override {
+        if (!lastByte) {
+            i2cDev_->IC_DATA_CMD = BIT_CTRL_IC_DATA_CMD_CMD;
+            return;
+        }
+        if (stop) {
+            i2cDev_->IC_DATA_CMD = BIT_CTRL_IC_DATA_CMD_CMD | BIT_CTRL_IC_DATA_CMD_STOP; // Generate stop signal
+        } else {
+            i2cDev_->IC_DATA_CMD = BIT_CTRL_IC_DATA_CMD_CMD | BIT_CTRL_IC_DATA_CMD_RESTART; // Generate restart signal
+        }
+    }
+
+    uint8_t readByteImpl() override {
+        return i2cDev_->IC_DATA_CMD;
+    }
+
+    int writeAddressOnlyImpl() override {
+        // Clear flags
+        uint32_t temp = i2cDev_->IC_CLR_TX_ABRT;
+        temp = i2cDev_->IC_CLR_STOP_DET;
+        (void)temp;
+        if ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK)
+            || (I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_STOP_DET)) {
+            return SYSTEM_ERROR_I2C_ABORT;
+        }
+        // Send the slave address only
+        i2cDev_->IC_DATA_CMD = (transConfig_.address << 1) | BIT_CTRL_IC_DATA_CMD_NULLDATA | BIT_CTRL_IC_DATA_CMD_STOP;
+        // If slave is not detected, the STOP_DET bit won't be set, and the TX_ABRT is set instead.
+        if (!WAIT_TIMED(transConfig_.timeout_ms, ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) == 0)
+                                            && ((I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_STOP_DET) == 0))) {
+            return SYSTEM_ERROR_I2C_TX_ADDR_TIMEOUT;
+        }
+        if (i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) {
+            return SYSTEM_ERROR_I2C_ABORT;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    bool isWritableImpl() override {
+        return I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF);
+    }
+
+    bool isTxFifoEmptyImpl() override {
+        return I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFE);
+    }
+
+    void writeByteImpl(uint8_t data, bool lastByte, bool stop) override {
+        if (!lastByte) {
+            i2cDev_->IC_DATA_CMD = data;
+            return;
+        }
+        if (stop) {
+            i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_STOP;
+        } else {
+            i2cDev_->IC_DATA_CMD = data | BIT_CTRL_IC_DATA_CMD_RESTART;
+        }
+    }
+
+    bool isAbortedImpl() {
+        return (I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_TX_ABRT);
+    }
+
+    uint32_t abortSourceImpl() override {
+        return i2cDev_->IC_TX_ABRT_SOURCE;
+    }
+
+    bool isMasterStartedImpl() override {
+        return (I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_START_DET) &&
+                  !(I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_STOP_DET) &&
+                   (I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_ACTIVITY);
+    }
+
+    bool isStopDetectedImpl() {
+        return (I2C_GetRawINT(i2cDev_) & BIT_IC_RAW_INTR_STAT_STOP_DET);
+    }
+
+private:
+    I2C_TypeDef* i2cDev_;
+};
+
+class UsiI2cClass : public I2cClass {
+public:
+    UsiI2cClass(hal_pin_t sda, hal_pin_t scl)
+            : I2cClass(sda, scl) {
+        usiDev_ = USI0_DEV;
+    }
+
+    ~UsiI2cClass() = default;
+
+    void structInitImpl() override {
+        // Memory layout of USI_I2C_InitTypeDef is compatible with I2C_InitTypeDef
+        USI_I2C_StructInit((USI_I2C_InitTypeDef*)&i2cInitStruct_);
+    }
+
+    void initImpl() override {
+        USI_I2C_Init(usiDev_, (USI_I2C_InitTypeDef*)&i2cInitStruct_);
+        // Enable restart function and set RX FIFO level
+        usiDev_->I2C_CTRL |= (1 << 1);
+        usiDev_->RX_FIFO_CTRL = std::min(rxBuffer_.size(), (size_t)0); // FIFO depth 1
+    }
+
+    void slaveIntConfigImpl(bool en) override {
+        if (en) {
+            InterruptRegister((IRQ_FUN)i2cSlaveIntHandler, USI_IRQ, (uint32_t)this, 7);
+            USI_I2C_INTConfig(usiDev_, (USI_I2C_START_DET_INTER_EN | USI_RXFIFO_ALMOST_FULL_INTR_EN | USI_I2C_STOP_DET_INTER_EN |
+                                    USI_I2C_RD_REQ_INTER_EN | USI_I2C_RX_DONE_INTER_EN), ENABLE);
+            USI_I2C_ClearAllINT(usiDev_);
+            InterruptEn(USI_IRQ, 7);
+        } else {
+            InterruptDis(USI_IRQ);
+            InterruptUnRegister(USI_IRQ);
+        }
+    }
+
+    void clearAllIntImpl() override {
+        USI_I2C_ClearAllINT(usiDev_);
+    }
+
+    void clearReadRequestIntImpl() override {
+        USI_I2C_ClearINT(usiDev_, USI_I2C_RD_REQ_INTS);
+    }
+
+    void clearRxDoneIntImpl() override {
+        USI_I2C_ClearINT(usiDev_, USI_I2C_RX_DONE_INTS);
+    }
+
+    void clearStartDetectedIntImpl() override {
+        USI_I2C_ClearINT(usiDev_, USI_I2C_START_DET_INTS);
+    }
+
+    void clearStopDetectedIntImpl() override {
+        return USI_I2C_ClearINT(usiDev_, USI_I2C_STOP_DET_INTS);
+    }
+
+    uint32_t getIntStatusImpl() override {
+        return USI_I2C_GetINT(usiDev_);
+    }
+
+    bool isIntRxFullImpl(uint32_t intStatus) override {
+        return (intStatus & USI_RXFIFO_ALMOST_FULL_INTS);
+    }
+
+    bool isIntReadRequestImpl(uint32_t intStatus) override {
+        return (intStatus & USI_I2C_RD_REQ_INTS);
+    }
+
+    bool isIntRxDoneImpl(uint32_t intStatus) override {
+        return (intStatus & USI_I2C_RX_DONE_INTS);
+    }
+
+    bool isIntStartDetectedImpl(uint32_t intStatus) override {
+        return (intStatus & USI_I2C_START_DET_INTS);
+    }
+
+    bool isIntStopDetectedImpl(uint32_t intStatus) override {
+        return (intStatus & USI_I2C_STOP_DET_INTS);
+    }
+
+    void enableImpl(bool en) override {
+        USI_I2C_Cmd(usiDev_, en ? ENABLE : DISABLE);
+    }
+
+    bool isActiveImpl() override {
+        return (USI_I2C_GetRawINT(usiDev_) & USI_I2C_ACTIVITY_RSTS);
+    }
+
+    bool needRenableImpl() override {
+        return false;
+    }
+
+    bool isReadableImpl() override {
+        return USI_I2C_CheckRXFIFOState(usiDev_, USI_RXFIFO_EMPTY) != 1;
+    }
+
+    void readByteTrigImpl(bool lastByte, bool stop) override {
+        if (!lastByte) {
+            usiDev_->TX_FIFO_WRITE = BIT_CTRL_IC_DATA_CMD_CMD;
+            return;
+        }
+        if (stop) {
+            usiDev_->TX_FIFO_WRITE = BIT_CTRL_IC_DATA_CMD_CMD | BIT_CTRL_IC_DATA_CMD_STOP; // Generate stop signal
+        } else {
+            usiDev_->TX_FIFO_WRITE = BIT_CTRL_IC_DATA_CMD_CMD | BIT_CTRL_IC_DATA_CMD_RESTART; // Generate restart signal
+        }
+    }
+
+    uint8_t readByteImpl() override {
+        return usiDev_->RX_FIFO_READ;
+    }
+
+    int writeAddressOnlyImpl() override {
+        // Clear flags
+        usiDev_->INTERRUPT_STATUS_CLR = USI_I2C_TX_ABRT_CLR | USI_I2C_STOP_DET_CLR;
+        // Send the slave address only
+        usiDev_->TX_FIFO_WRITE = (transConfig_.address << 1) | (1 << 11) | (1 << 9);
+        // If slave is not detected, the STOP_DET bit won't be set, and the TX_ABRT is set instead.
+        if (!WAIT_TIMED(transConfig_.timeout_ms, ((USI_I2C_GetRawINT(usiDev_) & USI_I2C_STOP_DET_RSTS) == 0))) {
+            return SYSTEM_ERROR_I2C_TX_ADDR_TIMEOUT;
+        }
+        if (USI_I2C_GetRawINT(usiDev_) & USI_I2C_STOP_DET_RSTS) {
+            return SYSTEM_ERROR_I2C_ABORT;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
+    bool isWritableImpl() override {
+        return USI_I2C_CheckTXFIFOState(usiDev_, USI_TXFIFO_EMPTY);
+    }
+
+    bool isTxFifoEmptyImpl() override {
+        return USI_I2C_CheckTXFIFOState(usiDev_, USI_TXFIFO_EMPTY);
+    }
+
+    void writeByteImpl(uint8_t data, bool lastByte, bool stop) override {
+        if (!lastByte) {
+            usiDev_->TX_FIFO_WRITE = data;
+            return;
+        }
+        if (stop) {
+            usiDev_->TX_FIFO_WRITE = data | BIT_CTRL_IC_DATA_CMD_STOP;
+        } else {
+            usiDev_->TX_FIFO_WRITE = data | BIT_CTRL_IC_DATA_CMD_RESTART;
+        }
+    }
+
+    bool isAbortedImpl() {
+        return (USI_I2C_GetRawINT(usiDev_) & USI_I2C_TX_ABRT_RSTS);
+    }
+
+    uint32_t abortSourceImpl() override {
+        return usiDev_->I2C_TX_ABRT_SOURCE;
+    }
+
+    bool isMasterStartedImpl() override {
+        return (USI_I2C_GetRawINT(usiDev_) & USI_I2C_START_DET_RSTS) &&
+                  !(USI_I2C_GetRawINT(usiDev_) & USI_I2C_STOP_DET_RSTS) &&
+                   (USI_I2C_GetRawINT(usiDev_) & USI_I2C_ACTIVITY_RSTS);
+    }
+
+    bool isStopDetectedImpl() {
+        return (USI_I2C_GetRawINT(usiDev_) & USI_I2C_STOP_DET_RSTS);
+    }
+
+private:
+    USI_TypeDef* usiDev_;
+};
+
+static LpI2cClass i2c0(SDA, SCL);
+static UsiI2cClass i2c1(SDA1, SCL1);
+
+I2cClass* getInstanceImpl(hal_i2c_interface_t i2c) {
+    static I2cClass* i2cs[] = { &i2c0, &i2c1 };
+    CHECK_TRUE(i2c < sizeof(i2cs) / sizeof(i2cs[0]), nullptr);
+    return i2cs[i2c];
+}
 
 int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);

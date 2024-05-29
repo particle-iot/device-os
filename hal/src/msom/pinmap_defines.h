@@ -78,6 +78,9 @@
 #define SDA                 D0
 #define SCL                 D1
 
+#define SDA1                D7
+#define SCL1                D6
+
 // UART (Serial1)
 #define TX                  D9
 #define RX                  D10
