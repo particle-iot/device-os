@@ -81,6 +81,7 @@ constexpr hal_power_config defaultPowerConfig = {
   .soc_bits = DEFAULT_SOC_18_BIT_PRECISION,
   .aux_pwr_ctrl_pin = PIN_INVALID,
   .aux_pwr_ctrl_pin_level = 1,
+  .int_pin = PIN_INVALID, // Use the default: LOW_BAT_UC
   .reserved2 = {0},
   .reserved3 = {0}
 };
@@ -138,6 +139,21 @@ PowerManager* PowerManager::instance() {
   return &mng;
 }
 
+hal_pin_t PowerManager::getIntPin() const {
+  hal_pin_t pin = LOW_BAT_UC;
+#if PLATFORM_ID == PLATFORM_MSOM
+  uint32_t revision = 0xFFFFFFFF;
+  hal_get_device_hw_version(&revision, nullptr);
+  if (revision == 1) {
+    pin = LOW_BAT_DEPRECATED;
+  }
+#endif
+  if (config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.int_pin != PIN_INVALID) {
+    pin = config_.int_pin;
+  }
+  return pin;
+}
+
 void PowerManager::init() {
   // Load configuration
   loadConfig();
@@ -175,15 +191,7 @@ void PowerManager::init() {
   attachInterrupt(PMIC_INT, &PowerManager::isrHandler, FALLING);
 #endif // HAL_PLATFORM_SHARED_INTERRUPT
 #endif // HAL_PLATFORM_PMIC_INT_PIN_PRESENT
-  hal_pin_t pmicIntPin = LOW_BAT_UC;
-#if PLATFORM_ID == PLATFORM_MSOM
-  uint32_t revision = 0xFFFFFFFF;
-  hal_get_device_hw_version(&revision, nullptr);
-  if (revision == 1) {
-    pmicIntPin = LOW_BAT_DEPRECATED;
-  }
-#endif
-
+  hal_pin_t pmicIntPin = getIntPin();
   hal_gpio_mode(pmicIntPin, INPUT_PULLUP);
   attachInterrupt(pmicIntPin, &PowerManager::isrHandler, FALLING);
   PMIC power(true);
@@ -936,14 +944,15 @@ void PowerManager::deinit() {
     }
   }
 
-  hal_pin_t pmicIntPin = LOW_BAT_UC;
-#if PLATFORM_ID == PLATFORM_MSOM
-  uint32_t revision = 0xFFFFFFFF;
-  hal_get_device_hw_version(&revision, nullptr);
-  if (revision == 1) {
-    pmicIntPin = LOW_BAT_DEPRECATED;
-  }
+#if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
+#if HAL_PLATFORM_SHARED_INTERRUPT
+  hal_interrupt_detach_ext(PMIC_INT, 0, &isrHandlerEx);
+#else
+  detachInterrupt(PMIC_INT);
+#endif // HAL_PLATFORM_SHARED_INTERRUPT
 #endif
+
+  hal_pin_t pmicIntPin = getIntPin();
   detachInterrupt(pmicIntPin);
 
   g_batteryState = BATTERY_STATE_UNKNOWN;
