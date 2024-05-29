@@ -229,7 +229,7 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* cha
         break;
     }
     case CTRL_REQUEST_SET_PROTECTED_STATE: {
-        control::config::setProtectedState(req);
+        setResult(req, control::config::setProtectedState(req));
         break;
     }
     case CTRL_REQUEST_ECHO: {
