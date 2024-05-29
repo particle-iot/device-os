@@ -19,6 +19,7 @@
 
 #include "module_info.h"
 #include "system_error.h"
+
 #include <stdint.h>
 
 #define CHECK_SECURITY_MODE_PROTECTED() \
@@ -32,11 +33,7 @@
     _ret _fn ## _protected _args; \
     _ret _fn _args
 
-#include "storage_hal.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
+#include "storage_hal.h" // Needs SECURITY_MODE_PROTECTED_FN
 
 typedef enum security_mode_transport {
     SECURITY_MODE_TRANSPORT_NONE = 0,
@@ -44,16 +41,25 @@ typedef enum security_mode_transport {
     SECURITY_MODE_TRANSPORT_BLE = 2
 } security_mode_transport;
 
-int security_mode_find_extension(hal_storage_id storageId, uintptr_t start, module_info_security_mode_ext_t* ext);
-int security_mode_set(module_info_security_mode mode, void* reserved);
-int security_mode_get(void* reserved);
-int security_mode_check_request(security_mode_transport transport, uint16_t id);
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
-void security_mode_set_override();
+int security_mode_init();
+
+int security_mode_get(void* reserved);
+
+int security_mode_find_module_extension(hal_storage_id storageId, uintptr_t start, module_info_security_mode_ext_t* ext);
+int security_mode_check_control_request(security_mode_transport transport, uint16_t id);
+
+void security_mode_override_to_none();
 void security_mode_clear_override();
 bool security_mode_is_overridden();
 
+void security_mode_notify_system_ready(); // Called in the system firmware
+void security_mode_notify_system_reset(); // Called in the bootloader
+void security_mode_notify_system_tick(); // ditto
+
 #ifdef __cplusplus
 }
-
 #endif // __cplusplus

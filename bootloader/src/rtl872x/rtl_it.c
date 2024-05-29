@@ -23,6 +23,7 @@
 #include "button_hal.h"
 #include "hal_platform_config.h"
 #include "interrupts_irq.h"
+#include "security_mode.h"
 
 extern void Timing_Decrement(void);
 
@@ -170,6 +171,7 @@ void SecureFault_Handler(void) {
 void SysTick_Handler(void)
 {
     System1MsTick();
+    security_mode_notify_system_tick();
     Timing_Decrement();
 
 #if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK

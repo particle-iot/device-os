@@ -115,7 +115,7 @@ void SystemControl::run() {
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* channel) {
-    auto secModeCheck = security_mode_check_request(channel == &bleChannel_ ? SECURITY_MODE_TRANSPORT_BLE : SECURITY_MODE_TRANSPORT_USB, req->type);
+    auto secModeCheck = security_mode_check_control_request(channel == &bleChannel_ ? SECURITY_MODE_TRANSPORT_BLE : SECURITY_MODE_TRANSPORT_USB, req->type);
     if (secModeCheck) {
         setResult(req, secModeCheck);
         return;

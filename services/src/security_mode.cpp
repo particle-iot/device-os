@@ -15,25 +15,111 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+
 #include "security_mode.h"
 #include "flash_mal.h"
 #include "system_error.h"
 #include "check.h"
 #include "scope_guard.h"
-#include <algorithm>
+#include "atomic_section.h"
 #include "system_control.h"
 #include "flash_device_hal.h"
-#include "core_hal.h"
+#include "concurrent_hal.h"
+#include "ota_flash_hal_impl.h"
+#include "hw_config.h"
 
 namespace {
 
-const uint32_t SECURITY_MODE_OVERRIDE_MAGIC = 0x8cd69adfu;
+volatile int sCurrentSecurityMode = MODULE_INFO_SECURITY_MODE_NONE;
+int sNormalSecurityMode = MODULE_INFO_SECURITY_MODE_NONE;
 
-module_info_security_mode sSecurityMode = MODULE_INFO_SECURITY_MODE_NONE;
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+
+volatile int sSystemTickCount = 1000;
+
+#else
+
+os_timer_t sTimer = nullptr;
+
+void timerCallback(os_timer_t timer);
+
+void stopTimer() {
+    if (sTimer) {
+        int r = os_timer_change(sTimer, OS_TIMER_CHANGE_STOP, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
+        if (r != 0) {
+            LOG_DEBUG(ERROR, "Failed to stop timer"); // Should not happen
+        }
+    }
+}
+
+int startTimer() {
+    if (!sTimer) {
+        int r = os_timer_create(&sTimer, 1000 /* period */, timerCallback, nullptr /* timer_id */, false /* one_shot */, nullptr /* reserved */);
+        if (r != 0) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+    } else {
+        stopTimer();
+    }
+    int r = os_timer_change(sTimer, OS_TIMER_CHANGE_START, false /* fromISR */, 0 /* period */, 0xffffffffu /* block */, nullptr /* reserved */);
+    if (r != 0) {
+        return SYSTEM_ERROR_UNKNOWN; // Should not happen
+    }
+    return 0;
+}
+
+void timerCallback(os_timer_t) {
+    bool stop = false;
+    ATOMIC_BLOCK() {
+        Load_SystemFlags();
+        if (system_flags.security_mode_is_overridden) {
+            if (system_flags.security_mode_override_timeout > 0) {
+                --system_flags.security_mode_override_timeout;
+            }
+            if (!system_flags.security_mode_override_timeout) {
+                system_flags.security_mode_is_overridden = 0;
+            }
+            Save_SystemFlags();
+        }
+        if (!system_flags.security_mode_is_overridden) {
+            sCurrentSecurityMode = sNormalSecurityMode;
+            stop = true;
+        }
+    }
+    if (stop) {
+        stopTimer();
+    }
+}
+
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 } // namespace
 
-int security_mode_find_extension(hal_storage_id storageId, uintptr_t start, module_info_security_mode_ext_t* securityModeExt) {
+int security_mode_init() {
+    // Note that this function is called early on boot, before the heap is configured and C++
+    // constructors are called
+    if (!FLASH_VerifyCRC32(FLASH_INTERNAL, module_bootloader.start_address, FLASH_ModuleLength(FLASH_INTERNAL, module_bootloader.start_address))) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    module_info_security_mode_ext_t ext = {};
+    ext.ext.length = sizeof(ext);
+    CHECK(security_mode_find_module_extension(HAL_STORAGE_ID_INTERNAL_FLASH, module_bootloader.start_address, &ext));
+    if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        sNormalSecurityMode = ext.security_mode;
+    }
+    if (sNormalSecurityMode != MODULE_INFO_SECURITY_MODE_NONE) {
+        Load_SystemFlags();
+        sCurrentSecurityMode = system_flags.security_mode_is_overridden ? MODULE_INFO_SECURITY_MODE_NONE : sNormalSecurityMode;
+    }
+    return 0;
+}
+
+int security_mode_get(void* reserved) {
+    return sCurrentSecurityMode;
+}
+
+int security_mode_find_module_extension(hal_storage_id storageId, uintptr_t start, module_info_security_mode_ext_t* securityModeExt) {
     module_info_t info = {};
     int flashDevId = -1;
     if (storageId == HAL_STORAGE_ID_INTERNAL_FLASH) {
@@ -84,29 +170,24 @@ int security_mode_find_extension(hal_storage_id storageId, uintptr_t start, modu
     return SYSTEM_ERROR_NOT_FOUND;
 }
 
-int security_mode_set(module_info_security_mode mode, void* reserved) {
-    if (sSecurityMode == MODULE_INFO_SECURITY_MODE_NONE) {
-        sSecurityMode = mode;
-        return 0;
-    }
-    return SYSTEM_ERROR_INVALID_STATE;
-}
-
-int security_mode_get(void* reserved) {
-    return sSecurityMode;
-}
-
-int security_mode_check_request(security_mode_transport transport, uint16_t id) {
+int security_mode_check_control_request(security_mode_transport transport, uint16_t id) {
     if (security_mode_get(nullptr) != MODULE_INFO_SECURITY_MODE_PROTECTED) {
         return 0;
     }
 
     if (transport == SECURITY_MODE_TRANSPORT_USB || transport == SECURITY_MODE_TRANSPORT_BLE) {
         switch (id) {
-            case CTRL_REQUEST_SET_PROTECTED_STATE:
             case CTRL_REQUEST_GET_PROTECTED_STATE:
             case CTRL_REQUEST_DEVICE_ID:
             case CTRL_REQUEST_APP_CUSTOM: {
+                return 0;
+            }
+        }
+    }
+
+    if (transport == SECURITY_MODE_TRANSPORT_USB) {
+        switch (id) {
+            case CTRL_REQUEST_SET_PROTECTED_STATE: {
                 return 0;
             }
         }
@@ -125,14 +206,96 @@ int security_mode_check_request(security_mode_transport transport, uint16_t id) 
     return SYSTEM_ERROR_PROTECTED;
 }
 
-void security_mode_set_override() {
-    HAL_Core_Write_Backup_Register(BKP_DR_08, SECURITY_MODE_OVERRIDE_MAGIC); // Disable security
+void security_mode_override_to_none() {
+    if (sNormalSecurityMode == MODULE_INFO_SECURITY_MODE_NONE) {
+        return;
+    }
+    ATOMIC_BLOCK() {
+        Load_SystemFlags();
+        system_flags.security_mode_is_overridden = 1;
+        system_flags.security_mode_override_reset_count = 20;
+        system_flags.security_mode_override_timeout = 24 * 60 * 60; // Seconds
+        Save_SystemFlags();
+        sCurrentSecurityMode = MODULE_INFO_SECURITY_MODE_NONE;
+    }
+    startTimer();
 }
 
 void security_mode_clear_override() {
-    HAL_Core_Write_Backup_Register(BKP_DR_08, 0); // Use default security mode
+    if (sCurrentSecurityMode == sNormalSecurityMode) {
+        return;
+    }
+    ATOMIC_BLOCK() {
+        Load_SystemFlags();
+        system_flags.security_mode_is_overridden = 0;
+        Save_SystemFlags();
+        sCurrentSecurityMode = sNormalSecurityMode;
+    }
+    stopTimer();
 }
 
 bool security_mode_is_overridden() {
-    return HAL_Core_Read_Backup_Register(BKP_DR_08) == SECURITY_MODE_OVERRIDE_MAGIC;
+    return sCurrentSecurityMode != sNormalSecurityMode;
 }
+
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+
+void security_mode_notify_system_reset() {
+    if (sCurrentSecurityMode == sNormalSecurityMode) {
+        return;
+    }
+    ATOMIC_BLOCK() {
+        Load_SystemFlags();
+        if (system_flags.security_mode_override_reset_count > 0) {
+            --system_flags.security_mode_override_reset_count;
+        }
+        if (!system_flags.security_mode_override_reset_count) {
+            system_flags.security_mode_is_overridden = 0;
+        }
+        Save_SystemFlags();
+        if (!system_flags.security_mode_is_overridden) {
+            sCurrentSecurityMode = sNormalSecurityMode;
+        }
+    }
+}
+
+void security_mode_notify_system_tick() {
+    if (sCurrentSecurityMode == sNormalSecurityMode) {
+        return;
+    }
+    if (sSystemTickCount > 0) {
+        --sSystemTickCount;
+    }
+    if (!sSystemTickCount) {
+        ATOMIC_BLOCK() {
+            Load_SystemFlags();
+            if (system_flags.security_mode_is_overridden) {
+                if (system_flags.security_mode_override_timeout > 0) {
+                    --system_flags.security_mode_override_timeout;
+                }
+                if (!system_flags.security_mode_override_timeout) {
+                    system_flags.security_mode_is_overridden = 0;
+                }
+                Save_SystemFlags();
+            }
+            if (!system_flags.security_mode_is_overridden) {
+                sCurrentSecurityMode = sNormalSecurityMode;
+            }
+        }
+        sSystemTickCount = 1000;
+    }
+}
+
+#else
+
+void security_mode_notify_system_ready() {
+    if (sCurrentSecurityMode == sNormalSecurityMode) {
+        return;
+    }
+    int r = startTimer();
+    if (r < 0) {
+        LOG(ERROR, "Failed to start timer: %d", r);
+    }
+}
+
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER

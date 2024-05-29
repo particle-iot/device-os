@@ -24,6 +24,7 @@
 #include "hw_config.h"
 #include "button_hal.h"
 #include "hal_platform_nrf52840_config.h"
+#include "security_mode.h"
 
 extern void Timing_Decrement(void);
 
@@ -120,6 +121,7 @@ void UsageFault_Handler(void)
 void SysTick_Handler(void)
 {
     System1MsTick();
+    security_mode_notify_system_tick();
     Timing_Decrement();
 
 #if HAL_PLATFORM_BUTTON_DEBOUNCE_IN_SYSTICK

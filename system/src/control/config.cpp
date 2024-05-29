@@ -256,7 +256,7 @@ int setProtectedStateImpl(ctrl_request* req) {
         }
 
         g_securityModeChangeCtx.reset();
-        security_mode_set_override();
+        security_mode_override_to_none();
         changePending = true;
         break;
     }
