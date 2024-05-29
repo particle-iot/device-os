@@ -22,6 +22,11 @@
 #include <stddef.h>
 #include "static_assert.h"
 
+#define HAL_POWER_CONFIG_VERSION_0          0
+#define HAL_POWER_CONFIG_VERSION_1          1
+
+#define HAL_POWER_CONFIG_VERSION            HAL_POWER_CONFIG_VERSION_1
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -61,13 +66,9 @@ typedef struct hal_power_config {
     uint16_t charge_current; // charge current
     uint16_t termination_voltage; // termination voltage
     uint8_t soc_bits; // bits precision for SoC calculation (18 (default) or 19)
-    /* Since the old firmware resets all the reserved fields to 0, we use this field
-     * to determine if the aux_pwr_ctrl_pin being 0 is set by user or just inherits
-     * from the old DCT due to firmware upgrading. */
-    uint8_t aux_pwr_ctrl;
     uint8_t aux_pwr_ctrl_pin; // pin number for auxiliary power control
     uint8_t aux_pwr_ctrl_pin_level; // active level for auxiliary power control
-    uint8_t reserved2[2];
+    uint8_t reserved2[3];
     uint32_t reserved3[3];
 } hal_power_config;
 static_assert(sizeof(hal_power_config) == 32, "hal_power_config size changed");
