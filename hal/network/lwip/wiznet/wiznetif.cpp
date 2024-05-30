@@ -124,12 +124,13 @@ const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
 
 WizNetif* WizNetif::instance_ = nullptr;
 
-WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_pin_t interrupt, const uint8_t mac[6])
+WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_pin_t interrupt, const uint8_t mac[6], bool postpone)
         : BaseNetif(),
           spi_(spi),
           cs_(cs),
           reset_(reset),
           interrupt_(interrupt),
+          postpone_(postpone),
           pwrState_(IF_POWER_STATE_NONE),
           spiLock_(spi, WIZNET_DEFAULT_CONFIG) {
 
@@ -283,6 +284,9 @@ err_t WizNetif::initInterface() {
     hwReset();
     if (!isPresent()) {
         pwrState_ = IF_POWER_STATE_DOWN;
+        if (postpone_) {
+            return ERR_OK;
+        }
         return ERR_IF;
     }
     pwrState_ = IF_POWER_STATE_UP;
@@ -303,6 +307,12 @@ bool WizNetif::isPresent() {
     if (cv != 0x04) {
         LOG(INFO, "No W5500 present");
         return false;
+    }
+
+    auto pwr = pwrState_.load();
+    pwrState_ = IF_POWER_STATE_UP;
+    if (pwr != IF_POWER_STATE_UP) {
+        notifyPowerState(IF_POWER_STATE_UP);
     }
 
     return true;

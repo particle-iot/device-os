@@ -20,6 +20,7 @@
 
 #include "socket_hal_posix.h"
 #include <lwip/netif.h>
+#include <lwip/netifapi.h>
 
 #define IF_T_DEFINED
 typedef struct netif* if_t;

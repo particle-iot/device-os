@@ -735,6 +735,11 @@ void app_setup_and_loop(void)
     }
 #endif // HAL_PLATFORM_ASSETS
 
+    // Reset all persistent settings to factory defaults if necessary
+    // This should be called before system_part2_post_init() so that the
+    // configurations set in STARTUP() is not reset by factory reset
+    resetSettingsToFactoryDefaultsIfNeeded();
+
     // NOTE: this calls user app global constructors
     system_part2_post_init();
 
@@ -745,10 +750,11 @@ void app_setup_and_loop(void)
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
-    // Reset all persistent settings to factory defaults if necessary
-    resetSettingsToFactoryDefaultsIfNeeded();
-
     system_power_management_init();
+
+#if HAL_PLATFORM_LWIP
+    if_init_platform_postpone(nullptr);
+#endif /* HAL_PLATFORM_LWIP */
 
     // Start the diagnostics service
     diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);
