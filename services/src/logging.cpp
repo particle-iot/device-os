@@ -73,9 +73,6 @@ volatile log_enabled_callback_type log_enabled_callback = 0;
 
 void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_type log_write,
         log_enabled_callback_type log_enabled, void *reserved) {
-    if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
-        return;
-    }
     log_msg_callback = log_msg;
     log_write_callback = log_write;
     log_enabled_callback = log_enabled;
@@ -83,7 +80,8 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
 
 void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, va_list args) {
     const log_message_callback_type msg_callback = log_msg_callback;
-    if (!msg_callback && (!log_compat_callback || level < log_compat_level)) {
+    if ((!msg_callback && (!log_compat_callback || level < log_compat_level)) ||
+            security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
         return;
     }
     // Set default attributes
@@ -131,7 +129,7 @@ void log_message(int level, const char *category, LogAttributes *attr, void *res
 }
 
 void log_write(int level, const char *category, const char *data, size_t size, void *reserved) {
-    if (!size) {
+    if (!size || security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
         return;
     }
     const log_write_callback_type write_callback = log_write_callback;
