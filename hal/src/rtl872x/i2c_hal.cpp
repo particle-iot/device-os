@@ -1063,10 +1063,17 @@ private:
 };
 
 static LpI2cClass i2c0(SDA, SCL);
+#if HAL_PLATFORM_I2C2
 static UsiI2cClass i2c1(SDA1, SCL1);
+#endif
 
 I2cClass* getInstanceImpl(hal_i2c_interface_t i2c) {
-    static I2cClass* i2cs[] = { &i2c0, &i2c1 };
+    static I2cClass* i2cs[] = {
+        &i2c0
+#if HAL_PLATFORM_I2C2
+        , &i2c1
+#endif
+    };
     CHECK_TRUE(i2c < sizeof(i2cs) / sizeof(i2cs[0]), nullptr);
     return i2cs[i2c];
 }
