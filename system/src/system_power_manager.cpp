@@ -946,7 +946,7 @@ void PowerManager::deinit() {
 
 #if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
 #if HAL_PLATFORM_SHARED_INTERRUPT
-  hal_interrupt_detach_ext(PMIC_INT, 0, &isrHandlerEx);
+  hal_interrupt_detach_ext(PMIC_INT, 0, (void*)isrHandlerEx);
 #else
   detachInterrupt(PMIC_INT);
 #endif // HAL_PLATFORM_SHARED_INTERRUPT
