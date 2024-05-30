@@ -6,6 +6,7 @@
 #include "application.h"
 #include "mcp23s17.h"
 #include "SparkFun_STUSB4500.h"
+#include "am18x5.h"
 
 SYSTEM_MODE(MANUAL);
 
@@ -415,24 +416,20 @@ void loopReadTemperature() {
     }
     constexpr uint8_t TMP112A_ADDR = 0x48;
     constexpr uint8_t TEMP_REG = 0x00;
-    static system_tick_t startTime = 0;
-    if (millis() - startTime > 3000) {
-        startTime = millis();
-        Wire.beginTransmission(TMP112A_ADDR);
-        Wire.write(TEMP_REG);
-        Wire.endTransmission(false);
-        Wire.requestFrom(TMP112A_ADDR, 2);
-        uint16_t val = Wire.read() << 8;
-        val |= Wire.read();
-        val >>= 4;
-        bool neg = false;
-        if (val & 0x800) {
-            val = (~val) + 1;
-            neg = true;
-        }
-        float temp = val * 0.0625;
-        Log.info("Temperature: (0x%04x) %c%.1f", val, (neg ? '-' : '+'), temp);
+    Wire.beginTransmission(TMP112A_ADDR);
+    Wire.write(TEMP_REG);
+    Wire.endTransmission(false);
+    Wire.requestFrom(TMP112A_ADDR, 2);
+    uint16_t val = Wire.read() << 8;
+    val |= Wire.read();
+    val >>= 4;
+    bool neg = false;
+    if (val & 0x800) {
+        val = (~val) + 1;
+        neg = true;
     }
+    float temp = val * 0.0625;
+    Log.info("Temperature: (0x%04x) %c%.1f", val, (neg ? '-' : '+'), temp);
 }
 
 void testLora() {
@@ -474,9 +471,27 @@ void setup() {
     testLora();
 
     System.on(button_click, onButtonClick);
+
+    struct timeval tv = {};
+    tv.tv_sec = 1716819790;
+    Log.info("Set time: %ld", tv.tv_sec);
+    Am18x5::getInstance().setTime(&tv);
+
+    // Am18x5::getInstance().setPsw(1); // Disable the power module
 }
 
 void loop() {
-    // loopStusb4500();
-    loopReadTemperature();
+    static system_tick_t startTime = 0;
+    if (millis() - startTime > 3000) {
+        startTime = millis();
+        // loopStusb4500();
+        loopReadTemperature();
+
+        struct timeval tv = {};
+        Am18x5::getInstance().getTime(&tv);
+        struct tm calendar = {};
+        gmtime_r(&tv.tv_sec, &calendar);
+        Log.info("Time: %ld-%ld-%ld, %ld:%ld:%ld",
+            calendar.tm_year + 1900, calendar.tm_mon + 1, calendar.tm_mday, calendar.tm_hour, calendar.tm_min, calendar.tm_sec);
+    }
 }
