@@ -332,6 +332,18 @@ int Device::getRawString(const char* data, size_t len, uint8_t* buf, size_t bufl
     return len + 2;
 }
 
+const char * Device::getPlatformUsbName(void) {
+#if PLATFORM_ID == PLATFORM_P2
+    uint32_t model, variant = 0;
+    hal_get_device_hw_model(&model, &variant, nullptr);
+    if (variant == PLATFORM_P2_PHOTON_2) {
+        return HAL_PLATFORM_PHOTON2_USB_PRODUCT_STRING;
+    }
+#endif
+
+    return HAL_PLATFORM_USB_PRODUCT_STRING;
+}
+
 int Device::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t len) {
     switch (id) {
     case STRING_IDX_LANGID: {
@@ -341,14 +353,14 @@ int Device::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t len) {
         return getUnicodeString(HAL_PLATFORM_USB_MANUFACTURER_STRING, sizeof(HAL_PLATFORM_USB_MANUFACTURER_STRING) - 1, buf, len);
     }
     case STRING_IDX_PRODUCT: {
-        return getUnicodeString(HAL_PLATFORM_USB_PRODUCT_STRING, sizeof(HAL_PLATFORM_USB_PRODUCT_STRING) - 1, buf, len);
+        return getUnicodeString(getPlatformUsbName(), strlen(getPlatformUsbName()), buf, len);
     }
     case STRING_IDX_SERIAL: {
         char deviceid[HAL_DEVICE_ID_SIZE * 2] = {};
         return getUnicodeString(device_id_as_string(deviceid), sizeof(deviceid), buf, len);
     }
     case STRING_IDX_CONFIG: {
-        return getUnicodeString(HAL_PLATFORM_USB_CONFIGURATION_STRING, sizeof(HAL_PLATFORM_USB_CONFIGURATION_STRING) - 1, buf, len);
+        return getUnicodeString(getPlatformUsbName(), strlen(getPlatformUsbName()), buf, len);
     }
     case STRING_IDX_MSFT: {
         return getRawString((const char*)MSFT_STR_DESC, sizeof(MSFT_STR_DESC), buf, len);

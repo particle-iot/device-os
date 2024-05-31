@@ -33,7 +33,7 @@ using namespace particle::usbd;
 
 namespace {
 
-const char DEFAULT_NAME[] = HAL_PLATFORM_USB_PRODUCT_STRING " " "USB Serial";
+const char DEFAULT_NAME_SUFFIX[] = " USB Serial";
 const uint8_t DUMMY_IN_EP = 0x8a;
 
 } // anonymous
@@ -378,7 +378,12 @@ int CdcClassDriver::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t
         if (name_) {
             return dev_->getUnicodeString(name_, strlen(name_), buf, length);
         }
-        return dev_->getUnicodeString(DEFAULT_NAME, sizeof(DEFAULT_NAME) - 1, buf, length);
+
+        char strBuffer[256] = {}; 
+        BufferAppender appender(strBuffer, sizeof(strBuffer));
+        appender.appendString(dev_->getPlatformUsbName());
+        appender.appendString(DEFAULT_NAME_SUFFIX);
+        return dev_->getUnicodeString(appender.buffer(), appender.dataSize(), buf, length);
     }
     return SYSTEM_ERROR_NOT_FOUND;
 }

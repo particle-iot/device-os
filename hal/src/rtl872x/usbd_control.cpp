@@ -217,8 +217,11 @@ int ControlInterfaceClassDriver::getConfigurationDescriptor(uint8_t* buf, size_t
 
 int ControlInterfaceClassDriver::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t length) {
     if (id == stringBase_) {
-        const char str[] = HAL_PLATFORM_USB_PRODUCT_STRING " " "Control Interface";
-        return dev_->getUnicodeString(str, strlen(str), buf, length);
+        char strBuffer[256] = {}; 
+        BufferAppender appender(strBuffer, sizeof(strBuffer));
+        appender.appendString(dev_->getPlatformUsbName());
+        appender.appendString(" Control Interface");
+        return dev_->getUnicodeString(appender.buffer(), appender.dataSize(), buf, length);
     }
     return SYSTEM_ERROR_NOT_FOUND;
 }
