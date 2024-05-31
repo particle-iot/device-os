@@ -116,10 +116,12 @@ private:
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
     bool checkImsi_ = false;
+    unsigned int fwVersion_ = 0;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
     int waitReady(bool powerOn = false);
+    int getAppFirmwareVersion();
     int initReady(ModemState state);
     int checkRuntimeState(ModemState& state);
     int initMuxer();
