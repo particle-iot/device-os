@@ -85,6 +85,18 @@ bool fetch_or_generate_setup_ssid(device_code_t* code) {
     return true;
 }
 
+static const char * get_product_series_name(void) {
+#if PLATFORM_ID == PLATFORM_P2
+    uint32_t model, variant = 0;
+    hal_get_device_hw_model(&model, &variant, nullptr);
+    if (variant == PLATFORM_P2_PHOTON_2) {
+        return PRODUCT_SERIES_PHOTON2;
+    }
+#endif
+
+    return PRODUCT_SERIES;
+}
+
 int get_device_name(char* buf, size_t size) {
     char dctName[DEVICE_NAME_DCT_SIZE] = {};
     int ret = dct_read_app_data_copy(DEVICE_NAME_DCT_OFFSET, dctName, DEVICE_NAME_DCT_SIZE);
@@ -101,8 +113,8 @@ int get_device_name(char* buf, size_t size) {
             return ret;
         }
         // Get platform name
-        const char* const platform = PRODUCT_SERIES;
-        nameSize = sizeof(PRODUCT_SERIES) - 1; // Exclude term. null
+        const char* const platform = get_product_series_name();
+        nameSize = strlen(platform); // Exclude term. null
         if (nameSize + SETUP_CODE_SIZE + 1 > DEVICE_NAME_MAX_SIZE) { // Reserve 1 character for '-'
             nameSize = DEVICE_NAME_MAX_SIZE - SETUP_CODE_SIZE - 1;
         }
