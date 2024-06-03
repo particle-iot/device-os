@@ -234,7 +234,6 @@ public:
     int setupReceive(SetupRequest* r, uint8_t* data, size_t size);
     int setupError(SetupRequest* r);
 
-    const char * getPlatformUsbName(void);
     static int getUnicodeString(const char* ascii, size_t len, uint8_t* buf, size_t buflen);
     static int getRawString(const char* data, size_t len, uint8_t* buf, size_t buflen);
 

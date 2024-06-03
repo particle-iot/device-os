@@ -124,3 +124,7 @@ int get_device_name(char* buf, size_t size) {
     }
     return nameSize;
 }
+
+int get_device_usb_name(char* buf, size_t size) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

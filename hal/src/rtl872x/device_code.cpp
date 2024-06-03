@@ -93,7 +93,6 @@ static const char * get_product_series_name(void) {
         return PRODUCT_SERIES_PHOTON2;
     }
 #endif
-
     return PRODUCT_SERIES;
 }
 
@@ -133,4 +132,17 @@ int get_device_name(char* buf, size_t size) {
         buf[size - 1] = '\0';
     }
     return nameSize;
+}
+
+int get_device_usb_name(char* buf, size_t size) {
+#if PLATFORM_ID == PLATFORM_P2
+    uint32_t model, variant = 0;
+    hal_get_device_hw_model(&model, &variant, nullptr);
+    if (variant == PLATFORM_P2_PHOTON_2) {
+        snprintf(buf, size, "%s", HAL_PLATFORM_PHOTON2_USB_PRODUCT_STRING);
+        return 0;
+    }
+#endif
+    snprintf(buf, size, "%s", HAL_PLATFORM_USB_PRODUCT_STRING);
+    return 0;
 }
