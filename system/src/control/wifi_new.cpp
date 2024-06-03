@@ -94,6 +94,8 @@ int joinNewNetwork(ctrl_request* req) {
     const NcpClientLock lock(ncpClient);
 #if HAL_PLATFORM_RTL872X
     if (!conf.hidden()) {
+        // scan checks that the NcpState is ON
+        CHECK(ncpClient->on());
         // Scan for networks to detect the network security type
         Vector<WifiScanResult> networks;
         CHECK(ncpClient->scan([](WifiScanResult network, void* data) -> int {
