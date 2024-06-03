@@ -81,6 +81,8 @@
 /* Maximum length of advertising and scan response data */
 #define BLE_MAX_ADV_DATA_LEN                        31
 
+#define BLE_MAX_SUPPORTED_ADV_DATA_LEN 				BLE_MAX_ADV_DATA_LEN
+
 /* Maximum length of the buffer to store scan report data */
 #define BLE_MAX_SCAN_REPORT_BUF_LEN                 255  /* Must support extended length for CODED_PHY scanning */
 
