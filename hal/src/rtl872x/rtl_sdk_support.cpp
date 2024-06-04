@@ -80,10 +80,10 @@ volatile bool s_tdmaSkip = false;
 
 // uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf000ffff};
 // uint8_t s_tdmaTable[5] = {0x61, 0x4f, 0x03, 0x10, 0x10};
-uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf0e7ffff};
-uint8_t s_tdmaTable[5] = {0x51, 0x30, 0x00, 0x10, 0x11};
-//uint8_t s_tdmaTable[5] = {0x61, 0x30, 0x03, 0x10, 0x11};
-//uint8_t s_tdmaTable[5] = {0x61 /* no null packet */, 0x30 /* wifi slot duration */, 0x03 /* unknown */, 0x10 /* no tx pause at bt slot */, 0x50 /* d/1 toggle, dynamic slot */ | 0x01 /* not blocking bt low priority packets */}; 
+uint32_t s_coexTable[3] = {0x55555555, 0xaaaaaaaa, 0xf0ffffff};
+//uint8_t s_tdmaTable[5] = {0x51, 0x30, 0x00, 0x10, 0x11};
+uint8_t s_tdmaTable[5] = {0x51, 0x30, 0x03, 0x11, 0x10};
+//uint8_t s_tdmaTable[5] = {0x61 /* no null packet */, 0x30 /* wifi slot duration */, 0x03 /* unknown */, 0x11 /* no tx pause at bt slot */, 0x50 /* d/1 toggle, dynamic slot */ | 0x01 /* not blocking bt low priority packets */}; 
 void* s_coex_struct = nullptr;
 #endif
 }
@@ -249,32 +249,32 @@ extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint
 #endif
     // Skip setting TDMA parameters in some cases as to keep current settings and not reset the internal state
     // even if the values (old/new) are matching.
-    if (s_tdmaSkip) {
-#ifdef RTL_DEBUG_COEX
-        LOG(INFO, "tdma skip");
-#endif // RTL_DEBUG_COEX
-        s_tdmaSkip = false;
-        return;
-    }
-    if (b1 != 0x00 && 0) {
+//     if (s_tdmaSkip) {
+// #ifdef RTL_DEBUG_COEX
+//         LOG(INFO, "tdma skip");
+// #endif // RTL_DEBUG_COEX
+//         s_tdmaSkip = false;
+//         return;
+//     }
+    if (b1 != 0x00 && !s_tdmaSkip) {
         // Force our own
         b1 = s_tdmaTable[0];
         b2 = s_tdmaTable[1];
         b3 = s_tdmaTable[2];
         b4 = s_tdmaTable[3];
         b5 = s_tdmaTable[4];
-        if (b1 == 0x61) {
-            uint8_t tmp[2] = {0x0b, 0x01};
-            rtw_hal_fill_h2c_cmd(coex, 0x69, 2, tmp);
-        } else if (b1 == 0x51) {
-            uint8_t tmp[2] = {0x0b, 0xc1};
-            rtw_hal_fill_h2c_cmd(coex, 0x69, 2, tmp);
-        }
-        uint8_t tmp[5] = {0x8, 0, 0, 0, 0};
-        rtw_hal_fill_h2c_cmd(coex, 0x60, 5, tmp);
+        // if (b1 == 0x61) {
+        //     uint8_t tmp[2] = {0x0b, 0x01};
+        //     rtw_hal_fill_h2c_cmd(coex, 0x69, 2, tmp);
+        // } else if (b1 == 0x51) {
+        //     uint8_t tmp[2] = {0x0b, 0xc1};
+        //     rtw_hal_fill_h2c_cmd(coex, 0x69, 2, tmp);
+        // }
+        // uint8_t tmp[5] = {0x8, 0, 0, 0, 0};
+        // rtw_hal_fill_h2c_cmd(coex, 0x60, 5, tmp);
 
-        rtw_write8_mask(coex, 0x550, 0x8, 0x1);
-        rtw_write16(coex, 0xaa, 0x8200 | 0b11);
+        // rtw_write8_mask(coex, 0x550, 0x8, 0x1);
+        // rtw_write16(coex, 0xaa, 0x8200 | 0b11);
     }
 
     // Pass through to actual implementation
@@ -299,11 +299,12 @@ void rtwCoexSetWifiConnectedState(bool state) {
     if (state) {
         hal_ble_lock(nullptr);
 
-        wifi_set_power_mode(0, 0);
-        wifi_disable_powersave();
+        // wifi_set_power_mode(0, 0);
+        // wifi_disable_powersave();
 
         rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(50);
+        //rltk_coex_set_wifi_slot(70);
+        //rltk_coex_set_wlan_slot_random(1);
 
 #if 0
         // Notify that we are scanning if we are in fact already scanning
@@ -316,11 +317,12 @@ void rtwCoexSetWifiConnectedState(bool state) {
     } else {
         hal_ble_lock(nullptr);
 
-        wifi_set_power_mode(0, 0);
-        wifi_disable_powersave();
+        // wifi_set_power_mode(0, 0);
+        // wifi_disable_powersave();
 
         rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(50);
+        // rltk_coex_set_wifi_slot(50);
+        //rltk_coex_set_wlan_slot_random(1);
 
         // Notify that we are not scanning, this will make sure that
         // by default we are in BLE priority mode and when connecting to WiFi
@@ -328,8 +330,8 @@ void rtwCoexSetWifiConnectedState(bool state) {
         // When we do get connected to an access point we'll again notify
         // that we are scanning and switch over to time-sharing between
         // BLE and WiFi (see above).
-        uint8_t evt[] = {0x27, 0x06, 0x00, 0x00, 0x00, 0x08, 0x00, 0x7f};
-        __real_bt_coex_handle_specific_evt(evt, sizeof(evt));
+        // uint8_t evt[] = {0x27, 0x06, 0x00, 0x00, 0x00, 0x08, 0x00, 0x7f};
+        // __real_bt_coex_handle_specific_evt(evt, sizeof(evt));
 
         hal_ble_unlock(nullptr);
     }
@@ -356,6 +358,8 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
         return;
     }
 
+    s_tdmaSkip = true;
+
     if (v0 == 0x5a5a5a5a && v1 == 0x5a5a5a5a) {
         //rtlk_bt_set_gnt_bt(PTA_WIFI);
     }
@@ -363,11 +367,12 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
     // WiFi connected and BLE scan state
     // BT > WiFi in BT slot; WLAN high-Priority > BT high-Priority > WLAN low-Priority> BT low-Priority in WiFi slot
     // with TDMA working (default 0xf3ffffff break table does not work correctly)
-    if (v0 == 0x55555555 && (v1 == 0x5a5a5a5a || v1 == 0xaaaa5a5a || v1 == 0xaaaaaaaa)) {
-        // v0 = s_coexTable[0];
-        // v1 = s_coexTable[1];
-        // v2 = s_coexTable[2];
-        v3 = 0;
+    if (v0 == 0x55555555 && v1 == 0xaaaaaaaa) {
+        v0 = s_coexTable[0];
+        v1 = s_coexTable[1];
+        v2 = s_coexTable[2];
+        v3 = 0xb;
+        s_tdmaSkip = false;
     }
 
 // #ifdef RTL_DEBUG_COEX
@@ -452,7 +457,7 @@ extern "C" void __wrap_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint
     //     cmdbuffer[1] = 0x1;
     // }
 #ifdef RTL_DEBUG_COEX
-    LOG(INFO, "h2c cmd element=%02x cmd_len=%u return=%08x", element_id, cmd_len, __builtin_extract_return_addr (__builtin_return_address (0)));
+    LOG(INFO, "h2c cmd element=%02x cmd_len=%u return=%08x %08x", element_id, cmd_len, __builtin_extract_return_addr (__builtin_return_address (0)), HAL_READ8(WIFI_REG_BASE, 0x06cc));
     LOG_DUMP(INFO, cmdbuffer, cmd_len);
     LOG_PRINTF(INFO, "\r\n");
 #endif // RTL_DEBUG_COEX
@@ -521,10 +526,11 @@ void rtwRadioAcquire(RtwRadio r) {
         SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
 
         LOG(INFO, "WiFi on");
-        wifi_set_power_mode(0, 0);
-        wifi_disable_powersave();
+        // wifi_set_power_mode(0, 0);
+        // wifi_disable_powersave();
         rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(50);
+        // rltk_coex_set_wifi_slot(50);
+        // rltk_coex_set_wlan_lps_coex(1);
     }
 }
 
