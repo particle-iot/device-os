@@ -19,7 +19,7 @@
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_INFO
 
 // Uncomment to enable coex/tdma debug
-#define RTL_DEBUG_COEX
+//#define RTL_DEBUG_COEX
 
 #include <cstdio>
 #include <cstdarg>
@@ -244,7 +244,9 @@ extern "C" void rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cm
 
 extern "C" void __copy_rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5);
 extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5) {
+#ifdef RTL_DEBUG_COEX
     LOG(INFO, "original %02x %02x %02x %02x %02x", b1, b2, b3, b4, b5);
+#endif
     // Skip setting TDMA parameters in some cases as to keep current settings and not reset the internal state
     // even if the values (old/new) are matching.
     if (s_tdmaSkip) {
@@ -343,7 +345,9 @@ extern "C" void rtw_write32(void* p, uint32_t offset, uint32_t val);
 
 extern "C" void __copy_rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3);
 extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) {
+#ifdef RTL_DEBUG_COEX
     LOG(INFO, "original %08x %08x %08x %08x", v0, v1, v2, v3);
+#endif
     if (v0 == 0x5a5a5a5a && v1 == 0x5a5a5a5a && v2 == 0xf3ffffff && rtwCoexWifiConnectedState()) {
 #ifdef RTL_DEBUG_COEX
         LOG(INFO, "Disallow bt high > wifi > bt low mode when WiFi is in connected state");
