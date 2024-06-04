@@ -101,6 +101,7 @@ volatile bool s_bleScanReported = false;
 } // anonymous
 
 void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
+#if 0
     const auto BT_COEX_EVENT_SCAN_START = 0x28;
     const auto BT_COEX_EVENT_SCAN_STOP = 0x08;
     const auto BT_COEX_EVENT_UNK = 0x2a;
@@ -137,6 +138,7 @@ void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
             return;
         }
     }
+#endif
 	__real_bt_coex_handle_specific_evt(p, len);
     // LOG(INFO, "btcoex event len=%u", (unsigned)len);
     // LOG_DUMP(INFO, p, len);
@@ -4047,16 +4049,16 @@ ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr
 int hal_ble_internal(int type, void* data, size_t size, void* reserved) {
     switch (type) {
         case 1000: {
-            struct hal_ble_internal_coex {
-                uint32_t coex[3];
-                uint8_t tdma[5];
-                uint8_t apply;
-            } __attribute__((packed));
-            auto p = (hal_ble_internal_coex*)data;
+            // struct hal_ble_internal_coex {
+            //     uint32_t coex[3];
+            //     uint8_t tdma[5];
+            //     uint8_t apply;
+            // } __attribute__((packed));
+            // auto p = (hal_ble_internal_coex*)data;
             // FIXME: unaligned with packed
-            uint32_t coex[] = { p->coex[0], p->coex[1], p->coex[2] };
-            uint8_t tdma[] = { p->tdma[0], p->tdma[1], p->tdma[2], p->tdma[3], p->tdma[4] };
-            return rtwCoexSet(coex, tdma, p->apply);
+            uint32_t coex[] = { 1, 2, 3 };
+            uint8_t tdma[] = { 1, 2, 3, 4,5 };
+            return rtwCoexSet(coex, tdma, size);
         }
     }
     return SYSTEM_ERROR_NOT_SUPPORTED;

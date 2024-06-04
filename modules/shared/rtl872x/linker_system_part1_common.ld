@@ -38,6 +38,17 @@ SECTIONS
         link_dynalib_end = . ;
     } > PSRAM AT> APP_FLASH
 
+    /*.prebootloader_psram : ALIGN()
+    {
+        . = link_dynalib_start + 4096;
+        BYTE(0x00)
+        BYTE(0x00)
+        BYTE(0x00)
+        BYTE(0x00)
+        KEEP(*(.prebootloader_psram))
+        . = link_dynalib_start + 4096 + 100K;
+    } > PSRAM AT>APP_FLASH*/
+
     .psram_text : ALIGN(4)
     {
         link_psram_code_flash_start = LOADADDR( .psram_text );
@@ -143,6 +154,14 @@ SECTIONS
         link_ram_interrupt_vectors_location_end = .;
     } > SRAM
 
+    prebootloader_psram :
+    {
+        . = ALIGN(32);
+        prebootloader_psram_start = .;
+        . = . + 100K;
+    } > SRAM
+
+
     /* Non-zero initialised global and static variables */
     .data :
     {
@@ -186,6 +205,7 @@ SECTIONS
         *(.image2.ram.bss*)
         *(.image2.net.ram.bss*)
         *(COMMON)
+        
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;

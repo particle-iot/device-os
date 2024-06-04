@@ -48,6 +48,8 @@ extern "C" int _freertos_create_task(struct task_struct *ptask, const char *name
         stack_size *= 2;
         // IMPORTANT: works better at this priority
         priority = OS_THREAD_PRIORITY_CRITICAL - 1;
+    } else {
+        stack_size *= 2;
     }
 
     // Copy-paste from freertos_service.c

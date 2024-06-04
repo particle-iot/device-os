@@ -92,8 +92,10 @@ task.h is included from an application file. */
 
 #include "debug.h"
 
+#if !defined(configHEAP_NO_ASSERT_OVERRIDE) || configHEAP_NO_ASSERT_OVERRIDE == 0
 #undef configASSERT
 #define configASSERT(x) SPARK_ASSERT(x)
+#endif
 
 /* Block sizes must not get too small. */
 #define heapMINIMUM_BLOCK_SIZE  ( ( size_t ) ( xHeapStructSize << 1 ) )
@@ -103,6 +105,7 @@ task.h is included from an application file. */
 
 /* Allocate the memory for the heap. */
 #if( configAPPLICATION_ALLOCATED_HEAP == 1 ) && ( configDYNAMIC_HEAP_SIZE == 1 )
+
     extern char link_heap_location, link_heap_location_end;
     void *ucHeap = &link_heap_location;
     void *ucHeapEnd = &link_heap_location_end;

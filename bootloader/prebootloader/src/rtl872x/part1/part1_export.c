@@ -20,6 +20,7 @@
 #include "km0_km4_ipc.h"
 #include "sleep_handler.h"
 #include "update_handler.h"
+#include "wififw_handler.h"
 
 extern uintptr_t link_dynalib_flash_start;
 extern uintptr_t link_dynalib_start;
@@ -35,6 +36,11 @@ extern uintptr_t link_ram_copy_start;
 extern uintptr_t link_ram_copy_end;
 #define link_ram_copy_size ((uintptr_t)&link_ram_copy_end - (uintptr_t)&link_ram_copy_start)
 
+extern uintptr_t link_global_data_initial_values;
+extern uintptr_t link_global_data_start;
+extern uintptr_t link_global_data_end;
+#define link_global_data_size ((uintptr_t)&link_global_data_end - (uintptr_t)&link_global_data_start)
+
 __attribute__((section(".xip.text"), used)) int bootloader_part1_preinit(void) {
     // Copy the dynalib table to SRAM
     if ((&link_dynalib_start != &link_dynalib_flash_start) && (link_dynalib_table_size != 0)) {
@@ -42,9 +48,13 @@ __attribute__((section(".xip.text"), used)) int bootloader_part1_preinit(void) {
     }
     // Initialize .bss
     _memset(&link_bss_location, 0, link_bss_size );
-    // Copy RAM code and static data
+    // Copy .text
     if ((&link_ram_copy_start != &link_ram_copy_flash_start) && (link_ram_copy_size != 0)) {
         _memcpy(&link_ram_copy_start, &link_ram_copy_flash_start, link_ram_copy_size);
+    }
+    // Copy .data
+    if ((&link_global_data_start != &link_global_data_initial_values) && (link_global_data_size != 0)) {
+        _memcpy(&link_global_data_start, &link_global_data_initial_values, link_global_data_size);
     }
     return 0;
 }
@@ -74,12 +84,16 @@ int bootloader_part1_init(void) {
 int bootloader_part1_setup(void) {
     sleepInit();
     bootloaderUpdateInit();
+    wifiFwInit();
+
     return 0;
 }
 
 int bootloader_part1_loop(void) {
     sleepProcess();
     bootloaderUpdateProcess();
+    wifiFwProcess();
+
     return 0;
 }
 

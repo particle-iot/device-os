@@ -19,7 +19,7 @@
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_INFO
 
 // Uncomment to enable coex/tdma debug
-// #define RTL_DEBUG_COEX
+#define RTL_DEBUG_COEX
 
 #include <cstdio>
 #include <cstdarg>
@@ -73,11 +73,29 @@ RecursiveMutex radioMutex;
 volatile bool s_wifiConnectionState = false;
 volatile bool s_tdmaSkip = false;
 
-uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5555, 0xf0ffffff};
-uint8_t s_tdmaTable[5] = {0x61, 0x20, 0x03, 0x11, 0x10};
+// GOOD
+// uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf330ffff};
+// uint8_t s_tdmaTable[5] = {0x51, 0x30, 0x00, 0x10, 0x11};
+
+
+// uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf000ffff};
+// uint8_t s_tdmaTable[5] = {0x61, 0x4f, 0x03, 0x10, 0x10};
+uint32_t s_coexTable[3] = {0x55555555, 0xaaaa5a5a, 0xf0e7ffff};
+uint8_t s_tdmaTable[5] = {0x51, 0x30, 0x00, 0x10, 0x11};
+//uint8_t s_tdmaTable[5] = {0x61, 0x30, 0x03, 0x10, 0x11};
+//uint8_t s_tdmaTable[5] = {0x61 /* no null packet */, 0x30 /* wifi slot duration */, 0x03 /* unknown */, 0x10 /* no tx pause at bt slot */, 0x50 /* d/1 toggle, dynamic slot */ | 0x01 /* not blocking bt low priority packets */}; 
 void* s_coex_struct = nullptr;
 #endif
 }
+//			halbtc8821c1ant_table(btc, NM_EXCU, 2);
+// 			if (coex_sta->bt_ble_scan_type & 0x2)
+// 				halbtc8821c1ant_tdma(btc, NM_EXCU, TRUE, 36);
+// 			else
+// 				halbtc8821c1ant_tdma(btc, NM_EXCU, TRUE, 34);
+// 		} else {
+// 			halbtc8821c1ant_table(btc, NM_EXCU, 3);
+// 			halbtc8821c1ant_tdma(btc, NM_EXCU, TRUE, 33);
+// 		}
 
 extern "C" pcoex_reveng* pcoex[4];
 
@@ -195,8 +213,38 @@ void rtwRadioReset() {
 
 extern "C" u8 rltk_wlan_btcoex_lps_enabled(void);
 
+extern "C" void rtw_write8(void* p, uint32_t offset, uint32_t val);
+extern "C" void rtw_write16(void* p, uint32_t offset, uint32_t val);
+extern "C" uint8_t rtw_read8(void* p, uint32_t offset);
+extern "C" uint16_t rtw_read16(void* p, uint32_t offset);
+
+void rtw_write8_mask(void* p, u32 regAddr, u8 bitMask, u8 data1b)
+{
+    uint8_t bitShift = 0;
+    uint8_t i = 0;
+
+	if (bitMask != 0xFF)
+	{
+		uint8_t originalValue = rtw_read8(p, regAddr);
+
+		for (i=0; i<=7; i++)
+		{
+			if ((bitMask>>i)&0x1)
+				break;
+		}
+		bitShift = i;
+
+		data1b = (originalValue & ~bitMask) | ((data1b << bitShift) & bitMask);
+	}
+
+	rtw_write8(p, regAddr, data1b);
+}
+
+extern "C" void rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer);
+
 extern "C" void __copy_rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5);
 extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4, uint8_t b5) {
+    LOG(INFO, "original %02x %02x %02x %02x %02x", b1, b2, b3, b4, b5);
     // Skip setting TDMA parameters in some cases as to keep current settings and not reset the internal state
     // even if the values (old/new) are matching.
     if (s_tdmaSkip) {
@@ -206,19 +254,32 @@ extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint
         s_tdmaSkip = false;
         return;
     }
-    if (b1 != 0x00) {
+    if (b1 != 0x00 && 0) {
         // Force our own
         b1 = s_tdmaTable[0];
         b2 = s_tdmaTable[1];
         b3 = s_tdmaTable[2];
         b4 = s_tdmaTable[3];
         b5 = s_tdmaTable[4];
+        if (b1 == 0x61) {
+            uint8_t tmp[2] = {0x0b, 0x01};
+            rtw_hal_fill_h2c_cmd(coex, 0x69, 2, tmp);
+        } else if (b1 == 0x51) {
+            uint8_t tmp[2] = {0x0b, 0xc1};
+            rtw_hal_fill_h2c_cmd(coex, 0x69, 2, tmp);
+        }
+        uint8_t tmp[5] = {0x8, 0, 0, 0, 0};
+        rtw_hal_fill_h2c_cmd(coex, 0x60, 5, tmp);
+
+        rtw_write8_mask(coex, 0x550, 0x8, 0x1);
+        rtw_write16(coex, 0xaa, 0x8200 | 0b11);
     }
+
     // Pass through to actual implementation
     __copy_rtl8721d_set_pstdma_cmd(coex, b1, b2, b3, b4, b5);
 
 #ifdef RTL_DEBUG_COEX
-    LOG(INFO, "tdma set %02x %02x %02x %02x %02x lps=%d", b1, b2, b3, b4, b5, rltk_wlan_btcoex_lps_enabled());
+    LOG(INFO, "tdma set %02x %02x %02x %02x %02x tbtt=%02x lps=%d", b1, b2, b3, b4, b5, rtw_read8(coex, 0x550), rltk_wlan_btcoex_lps_enabled());
 #endif // RTL_DEBUG_COEX
     if (!s_coex_struct) {
         s_coex_struct = coex;
@@ -240,14 +301,15 @@ void rtwCoexSetWifiConnectedState(bool state) {
         wifi_disable_powersave();
 
         rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(94);
+        rltk_coex_set_wifi_slot(50);
 
+#if 0
         // Notify that we are scanning if we are in fact already scanning
         if (hal_ble_gap_is_scanning(nullptr)) {
             uint8_t evt[] = {0x27, 0x06, 0x00, 0x00, 0x00, 0x28, 0x00, 0x7f};
             __real_bt_coex_handle_specific_evt(evt, sizeof(evt));
         }
-
+#endif
         hal_ble_unlock(nullptr);
     } else {
         hal_ble_lock(nullptr);
@@ -256,7 +318,7 @@ void rtwCoexSetWifiConnectedState(bool state) {
         wifi_disable_powersave();
 
         rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(94);
+        rltk_coex_set_wifi_slot(50);
 
         // Notify that we are not scanning, this will make sure that
         // by default we are in BLE priority mode and when connecting to WiFi
@@ -275,10 +337,13 @@ bool rtwCoexWifiConnectedState() {
     return s_wifiConnectionState;
 }
 
+__attribute__((section(".prebootloader_psram"))) uint32_t blahBlah;
+
 extern "C" void rtw_write32(void* p, uint32_t offset, uint32_t val);
 
 extern "C" void __copy_rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3);
 extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3) {
+    LOG(INFO, "original %08x %08x %08x %08x", v0, v1, v2, v3);
     if (v0 == 0x5a5a5a5a && v1 == 0x5a5a5a5a && v2 == 0xf3ffffff && rtwCoexWifiConnectedState()) {
 #ifdef RTL_DEBUG_COEX
         LOG(INFO, "Disallow bt high > wifi > bt low mode when WiFi is in connected state");
@@ -288,16 +353,17 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
     }
 
     if (v0 == 0x5a5a5a5a && v1 == 0x5a5a5a5a) {
-        rtlk_bt_set_gnt_bt(PTA_WIFI);
+        //rtlk_bt_set_gnt_bt(PTA_WIFI);
     }
 
     // WiFi connected and BLE scan state
     // BT > WiFi in BT slot; WLAN high-Priority > BT high-Priority > WLAN low-Priority> BT low-Priority in WiFi slot
     // with TDMA working (default 0xf3ffffff break table does not work correctly)
     if (v0 == 0x55555555 && (v1 == 0x5a5a5a5a || v1 == 0xaaaa5a5a || v1 == 0xaaaaaaaa)) {
-        v0 = s_coexTable[0];
-        v1 = s_coexTable[1];
-        v2 = s_coexTable[2];
+        // v0 = s_coexTable[0];
+        // v1 = s_coexTable[1];
+        // v2 = s_coexTable[2];
+        v3 = 0;
     }
 
 // #ifdef RTL_DEBUG_COEX
@@ -308,11 +374,11 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
     uint32_t t1 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE1);
     uint32_t t2 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE2);
     uint32_t t3 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE3);
-    uint32_t t4 = HAL_READ32(WIFI_REG_BASE, REG_BT_COEX_TABLE4);
+    uint32_t t4 = HAL_READ8(WIFI_REG_BASE, REG_BT_COEX_TABLE4);
 // #endif // RTL_DEBUG_COEX
 
     if (t1 == 0x5a5a5a5a && t2 == 0x5a5a5a5a && v0 != t1 && v1 != t2) {
-        rtlk_bt_set_gnt_bt(PTA_AUTO);
+        //rtlk_bt_set_gnt_bt(PTA_AUTO);
     }
     (void)t3;
     (void)t4;
@@ -321,27 +387,55 @@ extern "C" void rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, ui
     __copy_rtl8721d_set_coex_table(coex, v0, v1, v2, v3);
 
 #ifdef RTL_DEBUG_COEX
-    LOG(INFO, "coex table %08x %08x %08x (? %08x ?) (before %08x %08x %08x %08x) lps=%d", v0, v1, v2, v3, t1, t2, t3, t4, rltk_wlan_btcoex_lps_enabled());
+    LOG(INFO, "coex table %08x %08x %08x (? %08x ?) (before %08x %08x %08x %08x) lps=%d %08x %08x", v0, v1, v2, v3, t1, t2, t3, t4, rltk_wlan_btcoex_lps_enabled(), HAL_READ8(WIFI_REG_BASE, REG_BT_COEX_TABLE4), coex);
 #endif // RTL_DEBUG_COEX
     if (!s_coex_struct) {
         s_coex_struct = coex;
     }
 }
 
+static uint32_t next = 0xf3ffffff;
+
 int rtwCoexSet(uint32_t coex[3], uint8_t tdma[5], bool apply) {
-    memcpy(s_coexTable, coex, sizeof(s_coexTable));
-    memcpy(s_tdmaTable, tdma, sizeof(s_tdmaTable));
+    // memcpy(s_coexTable, coex, sizeof(s_coexTable));
+    // memcpy(s_tdmaTable, tdma, sizeof(s_tdmaTable));
     //constexpr size_t COEX_OFFSET = 2664;
-    if (apply) {
+    if (apply || true) {
         // rtl8721d_set_coex_table(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), coex[0], coex[1], coex[2]);
         // rtl8721d_set_pstdma_cmd(*(void**)((uintptr_t)pcoex[0] + COEX_OFFSET), tdma[0], tdma[1], tdma[2], tdma[3], tdma[4]);
-        rtl8721d_set_coex_table(s_coex_struct, coex[0], coex[1], coex[2], 0);
-        rtl8721d_set_pstdma_cmd(s_coex_struct, tdma[0], tdma[1], tdma[2], tdma[3], tdma[4]);
+        // 0xf000ffff
+
+        // f3efffff -- good candidate high latency
+        // f3ed - latency
+        // f3eb f3e9 f3e7 (good?) f3e5 (good) f3e3 xz f3e1 f3cf (ok)
+        // f3cd good f3cb (good)
+        // f3af (good) f3ad f3ab f3a9 f3a7 f3a5 f3a3 f3a1
+        // f38f f38d f38b f389 f387 f385 f383 f381
+        // f36f
+        // f36d
+        uint32_t v = next;
+        v >>= 16;
+        if (apply) {
+            v++;
+        } else {
+            v--;
+        }
+        if (!(v & 1)) {
+            if (apply) {
+                v++;
+            } else {
+                v--;
+            }
+        }
+        v <<= 16;
+        v |= next & 0xffff;
+        next = v;
+        rtl8721d_set_coex_table(s_coex_struct, s_coexTable[0], 0xaaaa5a5a, next, 0x123123);
+        rtl8721d_set_pstdma_cmd(s_coex_struct, s_tdmaTable[0], s_tdmaTable[1], s_tdmaTable[2], s_tdmaTable[3], s_tdmaTable[4]);
     }
     return 0;
 }
 
-extern "C" void rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer);
 extern "C" void __copy_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer) {
     // Pass through to actual implementation
     rtw_hal_fill_h2c_cmd(coex, element_id, cmd_len, cmdbuffer);
@@ -349,6 +443,10 @@ extern "C" void __copy_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint
 
 extern "C" void __real_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer);
 extern "C" void __wrap_rtw_hal_fill_h2c_cmd(void* coex, uint8_t element_id, uint32_t cmd_len, uint8_t *cmdbuffer) {
+    // if (element_id == 0x69 && cmdbuffer[0] == 0x0b && cmdbuffer[1] == 0x40) {
+    //     // 100ms slot
+    //     cmdbuffer[1] = 0x1;
+    // }
 #ifdef RTL_DEBUG_COEX
     LOG(INFO, "h2c cmd element=%02x cmd_len=%u return=%08x", element_id, cmd_len, __builtin_extract_return_addr (__builtin_return_address (0)));
     LOG_DUMP(INFO, cmdbuffer, cmd_len);
@@ -400,6 +498,14 @@ void rtwRadioAcquire(RtwRadio r) {
         return;
     }
     if (radioStatus != RTW_RADIO_NONE) {
+        static std::once_flag once;
+        std::call_once(once, [](){
+            int r = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_WIFI_FW_INIT, nullptr, 0, [](km0_km4_ipc_msg_t* msg, void* context) -> void {
+                LOG(INFO, "wifi fw init result=%08x %08x %08x", ((uint32_t*)msg->data)[0], ((uint32_t*)msg->data)[1], ((uint32_t*)msg->data)[2]);
+            }, nullptr);
+            LOG(INFO, "wifi fw init send request=%d", r);
+        });
+
         RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);
         rtwCoexCleanup(0);
         SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
@@ -414,7 +520,7 @@ void rtwRadioAcquire(RtwRadio r) {
         wifi_set_power_mode(0, 0);
         wifi_disable_powersave();
         rltk_coex_set_wlan_slot_preempting(0b111);
-        rltk_coex_set_wifi_slot(94);
+        rltk_coex_set_wifi_slot(50);
     }
 }
 
@@ -552,10 +658,15 @@ void ipc_table_init() {
 
 void ipc_send_message(uint8_t channel, uint32_t message) {
     // stub
+    LOG(INFO, "IPC send message %02x %08x", channel, message);
+    if (channel == 1) {
+        ipc_send_message_alt(channel, message);
+    }
 }
 
 uint32_t ipc_get_message(uint8_t channel) {
     // stub
+    LOG(INFO, "IPC get message %02x %08x", channel);
     return 0;
 }
 
