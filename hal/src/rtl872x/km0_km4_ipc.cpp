@@ -27,6 +27,7 @@ extern "C" {
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "km0_km4_ipc.h"
 #include "align_util.h"
+#include "service_debug.h"
 
 using namespace particle;
 
