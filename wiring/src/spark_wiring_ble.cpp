@@ -2251,7 +2251,7 @@ ssize_t BleLocalDevice::getAdvertisingData(BleAdvertisingData* advertisingData) 
     advParams.size = sizeof(hal_ble_adv_params_t);
     hal_ble_gap_get_advertising_parameters(&advParams, nullptr);
     advertisingData->clear();
-    CHECK_TRUE(advertisingData->resize((advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_ADV_DATA_LEN_EXT : BLE_MAX_ADV_DATA_LEN), SYSTEM_ERROR_NO_MEMORY);// TODO:?
+    CHECK_TRUE(advertisingData->resize((advParams.primary_phy == BLE_PHYS_CODED) ? BLE_MAX_ADV_DATA_LEN_EXT : BLE_MAX_ADV_DATA_LEN), SYSTEM_ERROR_NO_MEMORY);
     size_t len = CHECK(hal_ble_gap_get_advertising_data(advertisingData->data(), advertisingData->length(), nullptr));
     advertisingData->resize(len);
     return len;
