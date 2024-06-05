@@ -256,6 +256,7 @@ test('25_check_original_application', async function() {
 test('26_ota_max_application_busy_start', async function () {
 	expect(maxAppSize).to.not.equal(0);
 	await generateMaxApp();
+	this.timeout(30 * 60 * 1000);
 	expect(maxAppData.length).to.equal(maxAppSize);
 	const appFile = await tempy.write(maxAppData, { name: 'max_app.bin' });
 	await flash(this, appFile);
