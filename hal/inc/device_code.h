@@ -52,6 +52,8 @@ int get_device_name(char* buf, size_t size);
 
 int get_device_setup_code(char* code, size_t size);
 
+int get_device_usb_name(char* buf, size_t size);
+
 #ifdef __cplusplus
 }
 #endif

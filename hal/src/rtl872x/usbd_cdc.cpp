@@ -28,12 +28,13 @@
 #include <algorithm>
 #include <mutex>
 #include "service_debug.h"
+#include "device_code.h"
 
 using namespace particle::usbd;
 
 namespace {
 
-const char DEFAULT_NAME[] = HAL_PLATFORM_USB_PRODUCT_STRING " " "USB Serial";
+const char DEFAULT_NAME_SUFFIX[] = "USB Serial";
 const uint8_t DUMMY_IN_EP = 0x8a;
 
 } // anonymous
@@ -378,7 +379,12 @@ int CdcClassDriver::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t
         if (name_) {
             return dev_->getUnicodeString(name_, strlen(name_), buf, length);
         }
-        return dev_->getUnicodeString(DEFAULT_NAME, sizeof(DEFAULT_NAME) - 1, buf, length);
+
+        char usbName[64] = {};
+        char strBuffer[256] = {};
+        get_device_usb_name(usbName, sizeof(usbName));
+        snprintf(strBuffer, sizeof(strBuffer), "%s %s", usbName, DEFAULT_NAME_SUFFIX);
+        return dev_->getUnicodeString(strBuffer, strlen(strBuffer), buf, length);
     }
     return SYSTEM_ERROR_NOT_FOUND;
 }

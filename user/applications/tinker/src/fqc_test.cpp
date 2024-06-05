@@ -348,13 +348,8 @@ bool FqcTest::ioTest(JSONValue req) {
     uint16_t pinB = 0;
 
     // Pick which set of pins to use based on hardware variant
-    uint32_t model, variant, efuseReadAttempts = 0;
+    uint32_t model, variant = 0;
     int result = hal_get_device_hw_model(&model, &variant, nullptr);
-    while (result != SYSTEM_ERROR_NONE && efuseReadAttempts < 5) {
-        Log.warn("Failed to read logical efuse: %d attempt: %lu", result, efuseReadAttempts);
-        result = hal_get_device_hw_model(&model, &variant, nullptr);
-        efuseReadAttempts++;
-    }
 
     if (result != SYSTEM_ERROR_NONE) {
         Log.error("Could not read logical efuse");

@@ -129,15 +129,15 @@ int BleProvisioningModeHandler::cacheUserConfigurations() {
     LOG_DEBUG(TRACE, "Cache user's BLE configurations.");
     CHECK_FALSE(exited_, SYSTEM_ERROR_INVALID_STATE);
 
-    Vector<uint8_t> tempAdvData(BLE_MAX_ADV_DATA_LEN);
-    Vector<uint8_t> tempSrData(BLE_MAX_ADV_DATA_LEN);
+    Vector<uint8_t> tempAdvData(BLE_MAX_SUPPORTED_ADV_DATA_LEN);
+    Vector<uint8_t> tempSrData(BLE_MAX_SUPPORTED_ADV_DATA_LEN);
 
     // Advertising data set by user application
-    size_t len = CHECK(hal_ble_gap_get_advertising_data(tempAdvData.data(), BLE_MAX_ADV_DATA_LEN, nullptr));
+    size_t len = CHECK(hal_ble_gap_get_advertising_data(tempAdvData.data(), BLE_MAX_SUPPORTED_ADV_DATA_LEN, nullptr));
     tempAdvData.resize(len);
 
     // Scan response data set by user application
-    len = CHECK(hal_ble_gap_get_scan_response_data(tempSrData.data(), BLE_MAX_ADV_DATA_LEN, nullptr));
+    len = CHECK(hal_ble_gap_get_scan_response_data(tempSrData.data(), BLE_MAX_SUPPORTED_ADV_DATA_LEN, nullptr));
     tempSrData.resize(len);
 
     // Advertising and connection parameters set by user application

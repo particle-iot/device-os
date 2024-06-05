@@ -25,6 +25,7 @@
 #include "usbd_wcid.h"
 #include <algorithm>
 #include "appender.h"
+#include "device_code.h"
 
 using namespace particle::usbd;
 
@@ -341,14 +342,18 @@ int Device::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t len) {
         return getUnicodeString(HAL_PLATFORM_USB_MANUFACTURER_STRING, sizeof(HAL_PLATFORM_USB_MANUFACTURER_STRING) - 1, buf, len);
     }
     case STRING_IDX_PRODUCT: {
-        return getUnicodeString(HAL_PLATFORM_USB_PRODUCT_STRING, sizeof(HAL_PLATFORM_USB_PRODUCT_STRING) - 1, buf, len);
+        char usbName[64] = {};
+        get_device_usb_name(usbName, sizeof(usbName));
+        return getUnicodeString(usbName, strlen(usbName), buf, len);
     }
     case STRING_IDX_SERIAL: {
         char deviceid[HAL_DEVICE_ID_SIZE * 2] = {};
         return getUnicodeString(device_id_as_string(deviceid), sizeof(deviceid), buf, len);
     }
     case STRING_IDX_CONFIG: {
-        return getUnicodeString(HAL_PLATFORM_USB_CONFIGURATION_STRING, sizeof(HAL_PLATFORM_USB_CONFIGURATION_STRING) - 1, buf, len);
+        char usbName[64] = {};
+        get_device_usb_name(usbName, sizeof(usbName));
+        return getUnicodeString(usbName, strlen(usbName), buf, len);
     }
     case STRING_IDX_MSFT: {
         return getRawString((const char*)MSFT_STR_DESC, sizeof(MSFT_STR_DESC), buf, len);
