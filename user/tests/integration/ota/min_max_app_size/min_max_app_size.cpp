@@ -69,15 +69,18 @@ void waitOta() {
 
 void highPriorityFunc() {
     while (1) {
-        // Busy loop up to 5ms
-        HAL_Delay_Microseconds(random(5) * 1000);
+        HAL_Delay_Microseconds(random(500));
         // Force frequent reschedule
         delay(1);
     }
 }
 
 void bleScanResultCallBack(const BleScanResult *result, void *context) {
-    Log.info("BLE adv: %s", result->address().toString().c_str());
+    static int count = 0;
+    if (count++ == 30) {
+        Log.info("BLE adv: %s", result->address().toString().c_str());
+        count = 0;
+    }
 }
 
 void wifiScanResultCallBack(WiFiAccessPoint* wap, void* context) {
@@ -87,7 +90,7 @@ void wifiScanResultCallBack(WiFiAccessPoint* wap, void* context) {
 
 void wifiScanThread() {
     unsigned int wifiSeconds = 0;
-    const int WIFI_SCAN_INTERVAL_SECONDS = 10;
+    const int WIFI_SCAN_INTERVAL_SECONDS = 30;
 
     while (1) {
 #if HAL_PLATFORM_WIFI
@@ -95,6 +98,7 @@ void wifiScanThread() {
             wifiSeconds = System.uptime() + WIFI_SCAN_INTERVAL_SECONDS;
             apList.clear();
 
+            Log.info("WiFi scan start");
             auto wifiResult = WiFi.scan(wifiScanResultCallBack, nullptr);
             for (auto ap: apList) {
                 String bssid = String::format("%02X:%02X:%02X:%02X:%02X:%02X",
@@ -117,14 +121,13 @@ void bleScanThread() {
         BleScanParams params = {};
         params.version = BLE_API_VERSION;
         params.size = sizeof(BleScanParams);
-        params.timeout = 50; // *10ms = 500ms overall duration
+        params.timeout = BLE_SCAN_TIMEOUT_UNLIMITED; // *10ms = 500ms overall duration
         params.interval = 800; // *0.625ms = 500ms
         params.window = 800; // *0.625 = 500s
         params.active = false;
         
         BLE.setScanParameters(params);
-        BLE.scan(bleScanResultCallBack, nullptr);
-
+        BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), bleScanResultCallBack, nullptr);
 #endif
         delay(500);
     }
@@ -158,8 +161,7 @@ void setup() {
 void loop() {
     if (busyMode) {
         // TODO: This breaks USB busy flashing while USB serial connected
-        auto delayMillisMax = 500;
-        delay(random(delayMillisMax));
+        delay(random(500));
     }
     testAppLoop();
 }
