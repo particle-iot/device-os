@@ -118,10 +118,16 @@ void wifiScanThread() {
 void bleScanThread() {
     while (1) {
 #if HAL_PLATFORM_BLE
+
+#if HAL_PLATFORM_RTL872X
+        auto bleScanTimeout = BLE_SCAN_TIMEOUT_UNLIMITED;
+#else 
+        auto bleScanTimeout = 50;
+#endif
         BleScanParams params = {};
         params.version = BLE_API_VERSION;
         params.size = sizeof(BleScanParams);
-        params.timeout = BLE_SCAN_TIMEOUT_UNLIMITED; // *10ms = 500ms overall duration
+        params.timeout = bleScanTimeout; // *10ms = 500ms overall duration
         params.interval = 800; // *0.625ms = 500ms
         params.window = 800; // *0.625 = 500s
         params.active = false;
