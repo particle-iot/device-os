@@ -69,7 +69,7 @@ void waitOta() {
 
 void highPriorityFunc() {
     while (1) {
-        HAL_Delay_Microseconds(random(500));
+        HAL_Delay_Microseconds(random(100));
         // Force frequent reschedule
         delay(1);
     }
@@ -166,8 +166,7 @@ void setup() {
 
 void loop() {
     if (busyMode) {
-        // TODO: This breaks USB busy flashing while USB serial connected
-        delay(random(500));
+        delay(random(100));
     }
     testAppLoop();
 }
