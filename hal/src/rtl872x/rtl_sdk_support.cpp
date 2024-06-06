@@ -82,7 +82,7 @@ volatile bool s_tdmaSkip = false;
 // uint8_t s_tdmaTable[5] = {0x61, 0x4f, 0x03, 0x10, 0x10};
 uint32_t s_coexTable[3] = {0x55555555, 0xaaaaaaaa, 0xf0ffffff};
 //uint8_t s_tdmaTable[5] = {0x51, 0x30, 0x00, 0x10, 0x11};
-uint8_t s_tdmaTable[5] = {0x51, 0x30, 0x03, 0x11, 0x10};
+uint8_t s_tdmaTable[5] = {0x51, 0x30, 0x03, 0x11, 0x11};
 //uint8_t s_tdmaTable[5] = {0x61 /* no null packet */, 0x30 /* wifi slot duration */, 0x03 /* unknown */, 0x11 /* no tx pause at bt slot */, 0x50 /* d/1 toggle, dynamic slot */ | 0x01 /* not blocking bt low priority packets */}; 
 void* s_coex_struct = nullptr;
 #endif
@@ -259,7 +259,7 @@ extern "C" void rtl8721d_set_pstdma_cmd(void* coex, uint8_t b1, uint8_t b2, uint
     if (b1 != 0x00 && !s_tdmaSkip) {
         // Force our own
         b1 = s_tdmaTable[0];
-        b2 = s_tdmaTable[1];
+        // b2 = s_tdmaTable[1];
         b3 = s_tdmaTable[2];
         b4 = s_tdmaTable[3];
         b5 = s_tdmaTable[4];
