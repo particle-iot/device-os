@@ -96,6 +96,7 @@ inline system_tick_t millis() {
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_S5 = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX = 921600; // version A08 or above
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q = 921600;
@@ -681,7 +682,7 @@ int QuectelNcpClient::getCellularGlobalIdentity(CellularGlobalIdentity* cgi) {
     // Fill in LAC and Cell ID based on current RAT, prefer PSD and EPS
     // fallback to CSD
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
+    if (isQuec2g3gEnabled()) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
         CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     }
@@ -1300,6 +1301,7 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
 bool QuectelNcpClient::isQuecCatM1Device() {
     int ncp_id = ncpId();
     return (ncp_id == PLATFORM_NCP_QUECTEL_BG96 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_S5 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
@@ -1320,6 +1322,7 @@ bool QuectelNcpClient::isQuecCat1Device() {
 bool QuectelNcpClient::isQuecCatNBxDevice() {
     int ncp_id = ncpId();
     return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_S5 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG77) ;
@@ -1327,10 +1330,22 @@ bool QuectelNcpClient::isQuecCatNBxDevice() {
 
 bool QuectelNcpClient::isQuecBG95xDevice() {
     int ncp_id = ncpId();
-    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+    return (ncp_id == PLATFORM_NCP_QUECTEL_BG95_S5 ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_M5 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M6 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_M1 ||
             ncp_id == PLATFORM_NCP_QUECTEL_BG95_MF) ;
+}
+
+bool QuectelNcpClient::isQuec2g3gEnabled() {
+    // PLATFORM_NCP_QUECTEL_BG96 (Tracker One) and PLATFORM_NCP_QUECTEL_BG95_M5 (M404) specifically not included to
+    // disable 2G support so that a 10W power supply is not required
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_EG91_E ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX ||
+            ncp_id == PLATFORM_NCP_QUECTEL_BG95_S5);
 }
 
 int QuectelNcpClient::getRuntimeBaudrate() {
@@ -1339,6 +1354,8 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         // Only change for MSoM, and currently MSoM only uses BG95_M5.
         // Not testing for PLATFORM_ID == PLATFORM_MSOM because another modem type might not support 921600.
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5;
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_S5;
     } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX) {
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX;
     } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
@@ -1386,6 +1403,10 @@ int QuectelNcpClient::initReady(ModemState state) {
 
     if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX) {
         setPolicymanServiceMode(CellularPolicymanServiceMode::FULL_SERVICE, true /* check */);
+    }
+
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
+        set2gAttenuation3dB();
     }
 
     auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
@@ -1668,7 +1689,7 @@ int QuectelNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool ch
 }
 
 int QuectelNcpClient::getPolicymanServiceMode() {
-    auto resp = parser_.sendCommand(QUECTEL_CFUN_TIMEOUT, "AT+QNVFR=\"policyman/svc_mode\"");
+    auto resp = parser_.sendCommand(10000, "AT+QNVFR=\"policyman/svc_mode\"");
     int curVal = (int)CellularPolicymanServiceMode::NONE;
     auto r = resp.scanf("+QNVFR: %d", &curVal);
     // Soft response on ERROR
@@ -1702,6 +1723,27 @@ int QuectelNcpClient::setPolicymanServiceMode(CellularPolicymanServiceMode mode,
 
     // AtResponse::Result!
     return r;
+}
+
+int QuectelNcpClient::set2gAttenuation3dB() {
+    // Reduce 2G power by 3dB, required by certification on BG95-S5
+    auto resp = parser_.sendCommand(10000, "AT+QNVFR=\"/nv/item_files/rfnv/00025063\"");
+    char curVal[40 + 1] = {};
+    auto r = resp.scanf("+QNVFR: %40[^\n]", curVal);
+    // Soft response on ERROR
+    const int result = CHECK_PARSER(resp.readResult());
+    if (result != AtResponse::OK) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    const char attn3dB[] = "5A0A2C0B780A140A0000F6099C09E80884080000";
+    if (r == 1 && strcmp(curVal, attn3dB) != 0) {
+        int r = parser_.execCommand(10000, "AT+QNVFW=\"/nv/item_files/rfnv/00025063\",%s", attn3dB);
+
+        CHECK_PARSER(r);
+    }
+
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
@@ -1806,13 +1848,14 @@ int QuectelNcpClient::registerNet() {
 
     resetRegistrationState();
 
-    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-        // Register GPRS, LTE, NB-IOT network
+    if (isQuec2g3gEnabled()) {
+        // Register GSM, GPRS network registration and location URCs
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     }
+    // Register LTE, NB-IoT network registration and location URCs
     r = CHECK_PARSER(parser_.execCommand("AT+CEREG=2"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
@@ -1847,65 +1890,71 @@ int QuectelNcpClient::registerNet() {
         // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     }
 
-    if (isQuecCatM1Device()) {
-        if (ncpId() == PLATFORM_NCP_QUECTEL_BG96 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-            // NOTE: BG96 supports 2G fallback which we disable explicitly so that a 10W power supply is not required
-            // Configure RATs to be searched
-            // Set to scan LTE only if not already set, take effect immediately
-            auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
-            int nwScanMode = -1;
-            r = CHECK_PARSER(respNwMode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
-            CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-            r = CHECK_PARSER(respNwMode.readResult());
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-        #if PLATFORM_ID == PLATFORM_MSOM
-            // M404/BG95M5 should be LTEM only, ie scan mode 3
-            // M524/EG91EX should be AUTO (both LTEM and 2G), ie scan mode 0
-            int desiredNwScanMode = (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) ? 3 : 0;
+    // nwscanmode: configure RATs to be searched
+    //             only valid on BG96, BG95-S5 and EG91xxx
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG96 ||
+            ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5 ||
+            isQuecCat1Device()) {
+        // NOTE: BG96 supports 2G fallback which we disable explicitly so that a 10W power supply is not required
+        //       Configure RATs to be searched. Set to scan LTE only if not already set, take effect immediately
+        auto respNwMode = parser_.sendCommand("AT+QCFG=\"nwscanmode\"");
+        int nwScanMode = -1;
+        r = CHECK_PARSER(respNwMode.scanf("+QCFG: \"nwscanmode\",%d", &nwScanMode));
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(respNwMode.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-            if (nwScanMode != desiredNwScanMode) {
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",%d,1", desiredNwScanMode));
-            }
-
-            if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-                auto respNwScanSeq = parser_.sendCommand("AT+QCFG=\"nwscanseq\"");
-                int nwScanSeq = -1;
-                r = CHECK_PARSER(respNwScanSeq.scanf("+QCFG: \"nwscanseq\",%d", &nwScanSeq));
-                CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-                r = CHECK_PARSER(respNwScanSeq.readResult());
-                CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-                if (nwScanSeq != 20103) { // i.e. 020103
-                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",020103,1")); // LTE 02, then GSM 01, then NBIOT 03
-                }
-            }
-        #else 
-            if (nwScanMode != 3) {
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
-            }
-        #endif
+        // M404/BG95M5 should be LTEM only, ie scan mode 3
+        // M635/BG95S5, M524/EG91EX should be AUTO (both LTEM and 2G), ie scan mode 0
+        int desiredNwScanMode = isQuec2g3gEnabled() ? 0 : 3; // 0: AUTO, 3: LTE-ONLY
+        if (nwScanMode != desiredNwScanMode) {
+            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",%d,1", desiredNwScanMode));
         }
+    }
 
-        if (isQuecCatNBxDevice()) {
-            // Configure Network Category to be searched
-            // Set to use LTE Cat-M1 ONLY (exclude NBIOT) if not already set, take effect immediately
-            auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
-
-            int iotOpMode = -1;
-            r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
-
-            CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
-            r = CHECK_PARSER(respOpMode.readResult());
-            CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
-            if (iotOpMode != 0) {
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+    // nwscanseq: only setting RAT scan order for M404/M635
+#if PLATFORM_ID == PLATFORM_MSOM
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+            ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
+        auto respNwScanSeq = parser_.sendCommand("AT+QCFG=\"nwscanseq\"");
+        int nwScanSeq = -1;
+        r = CHECK_PARSER(respNwScanSeq.scanf("+QCFG: \"nwscanseq\",%d", &nwScanSeq));
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(respNwScanSeq.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
+            if (nwScanSeq != 2010304) { // i.e. 02010304
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",02010304,1")); // LTE 02, then GSM 01, then NBIOT 03, then NTN
+            }
+        } else {
+            if (nwScanSeq != 20103) { // i.e. 020103
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanseq\",020103,1")); // LTE 02, then GSM 01, then NBIOT 03
             }
         }
     }
+#endif // PLATFORM_ID == PLATFORM_MSOM
+
+    // iotopmode: configure network category to be searched
+    //            Set to use LTE Cat-M1 ONLY (exclude NBIOT/NTN) if not already set, take effect immediately
+    if (isQuecCatNBxDevice()) {
+        auto respOpMode = parser_.sendCommand("AT+QCFG=\"iotopmode\"") ;
+
+        int iotOpMode = -1;
+        r = CHECK_PARSER(respOpMode.scanf("+QCFG: \"iotopmode\",%d", &iotOpMode));
+
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        r = CHECK_PARSER(respOpMode.readResult());
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+        if (iotOpMode != 0) {
+            CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+        }
+    }
+
     // Check GSM, GPRS, and LTE network registration status
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    if (isQuec2g3gEnabled()) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     }
 
     regStartTime_ = millis();
@@ -2388,7 +2437,7 @@ int QuectelNcpClient::interveneRegistration() {
     auto timeout = (registrationInterventions_ + 1) * REGISTRATION_INTERVENTION_TIMEOUT;
 
     // Intervention to speed up registration or recover in case of failure
-    if (!isQuecCatM1Device()) {
+    if (isQuecCat1Device()) {
         if (eps_.sticky() && eps_.duration() >= timeout) {
             if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csd_.status() == eps_.status()) {
                 LOG(TRACE, "Sticky not registering state for %lu s, PLMN reselection", eps_.duration() / 1000);
@@ -2397,6 +2446,7 @@ int QuectelNcpClient::interveneRegistration() {
                 eps_.reset();
                 registrationInterventions_++;
                 CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
+                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // LTE AUTO (0)
                 return 0;
             } else if (eps_.status() == CellularRegistrationStatus::DENIED && csd_.status() == eps_.status()) {
                 LOG(TRACE, "Sticky denied state for %lu s, RF reset", eps_.duration() / 1000);
@@ -2409,7 +2459,8 @@ int QuectelNcpClient::interveneRegistration() {
                 return 0;
             }
         }
-
+    }
+    if (isQuec2g3gEnabled()) {
         if (csd_.sticky() && csd_.duration() >= timeout ) {
             if (csd_.status() == CellularRegistrationStatus::DENIED && psd_.status() == csd_.status()) {
                 LOG(TRACE, "Sticky CSD and PSD denied state for %lu s, RF reset", csd_.duration() / 1000);
@@ -2422,7 +2473,6 @@ int QuectelNcpClient::interveneRegistration() {
                 return 0;
             }
         }
-
         if (csd_.registered() && psd_.sticky() && psd_.duration() >= timeout) {
             if (psd_.status() == CellularRegistrationStatus::NOT_REGISTERING && eps_.status() == psd_.status()) {
                 LOG(TRACE, "Sticky not registering PSD state for %lu s, force GPRS attach", psd_.duration() / 1000);
@@ -2439,15 +2489,21 @@ int QuectelNcpClient::interveneRegistration() {
                 }
             }
         }
-    } else {
+    }
+    if (isQuecCatM1Device()) {
         if (eps_.sticky() && eps_.duration() >= timeout) {
             if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING) {
                 LOG(TRACE, "Sticky not registering EPS state for %lu s, PLMN reselection", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
                 CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",3,1"));
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+                if (ncpId() == PLATFORM_NCP_QUECTEL_BG96 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
+                    int desiredNwScanMode = isQuec2g3gEnabled() ? 0 : 3; // 0: AUTO, 3: LTE-ONLY
+                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",%d,1", desiredNwScanMode));
+                }
+                if (isQuecCatNBxDevice()) {
+                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"iotopmode\",0,1"));
+                }
             } else if (eps_.status() == CellularRegistrationStatus::DENIED) {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
@@ -2457,6 +2513,7 @@ int QuectelNcpClient::interveneRegistration() {
             }
         }
     }
+
     return 0;
 }
 
@@ -2497,9 +2554,9 @@ int QuectelNcpClient::processEventsImpl() {
 
     // Check GSM, GPRS, and LTE network registration status
     CHECK_PARSER_OK(parser_.execCommand("AT+CEREG?"));
-    if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
+    if (isQuec2g3gEnabled()) {
         CHECK_PARSER_OK(parser_.execCommand("AT+CGREG?"));
+        CHECK_PARSER_OK(parser_.execCommand("AT+CREG?"));
     }
 
     // Check the signal seen by the module while trying to register

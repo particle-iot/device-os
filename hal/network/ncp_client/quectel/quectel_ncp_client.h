@@ -147,6 +147,7 @@ private:
     int setModuleFunctionality(CellularFunctionality cfun, bool check);
     int getPolicymanServiceMode();
     int setPolicymanServiceMode(CellularPolicymanServiceMode mode, bool check);
+    int set2gAttenuation3dB();
     int configureApn(const CellularNetworkConfig& conf);
     int registerNet();
     int changeBaudRate(unsigned int baud);
@@ -170,6 +171,8 @@ private:
     bool isQuecCatNBxDevice();
     /** Is this a Quectel BG95* device ? */
     bool isQuecBG95xDevice();
+    /** Is this a Quectel device we want to enable 2G and/or 3G on ? */
+    bool isQuec2g3gEnabled();
     int getRuntimeBaudrate();
     int modemInit() const;
     bool waitModemPowerState(bool onOff, system_tick_t timeout);
