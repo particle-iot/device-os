@@ -73,7 +73,7 @@ void timerCallback(os_timer_t) {
     bool stop = false;
     ATOMIC_BLOCK() {
         Load_SystemFlags();
-        if (system_flags.security_mode_is_overridden) {
+        if (system_flags.security_mode_is_overridden == 1) {
             if (system_flags.security_mode_override_timeout > 0) {
                 --system_flags.security_mode_override_timeout;
             }
@@ -82,7 +82,7 @@ void timerCallback(os_timer_t) {
             }
             Save_SystemFlags();
         }
-        if (!system_flags.security_mode_is_overridden) {
+        if (system_flags.security_mode_is_overridden != 1) {
             sCurrentSecurityMode = sNormalSecurityMode;
             stop = true;
         }
@@ -110,7 +110,7 @@ int security_mode_init() {
     }
     if (sNormalSecurityMode != MODULE_INFO_SECURITY_MODE_NONE) {
         Load_SystemFlags();
-        sCurrentSecurityMode = system_flags.security_mode_is_overridden ? MODULE_INFO_SECURITY_MODE_NONE : sNormalSecurityMode;
+        sCurrentSecurityMode = (system_flags.security_mode_is_overridden == 1) ? MODULE_INFO_SECURITY_MODE_NONE : sNormalSecurityMode;
     }
     return 0;
 }
@@ -246,14 +246,16 @@ void security_mode_notify_system_reset() {
     }
     ATOMIC_BLOCK() {
         Load_SystemFlags();
-        if (system_flags.security_mode_override_reset_count > 0) {
-            --system_flags.security_mode_override_reset_count;
+        if (system_flags.security_mode_is_overridden == 1) {
+            if (system_flags.security_mode_override_reset_count > 0) {
+                --system_flags.security_mode_override_reset_count;
+            }
+            if (!system_flags.security_mode_override_reset_count) {
+                system_flags.security_mode_is_overridden = 0;
+            }
+            Save_SystemFlags();
         }
-        if (!system_flags.security_mode_override_reset_count) {
-            system_flags.security_mode_is_overridden = 0;
-        }
-        Save_SystemFlags();
-        if (!system_flags.security_mode_is_overridden) {
+        if (system_flags.security_mode_is_overridden != 1) {
             sCurrentSecurityMode = sNormalSecurityMode;
         }
     }
@@ -269,7 +271,7 @@ void security_mode_notify_system_tick() {
     if (!sSystemTickCount) {
         ATOMIC_BLOCK() {
             Load_SystemFlags();
-            if (system_flags.security_mode_is_overridden) {
+            if (system_flags.security_mode_is_overridden == 1) {
                 if (system_flags.security_mode_override_timeout > 0) {
                     --system_flags.security_mode_override_timeout;
                 }
@@ -278,7 +280,7 @@ void security_mode_notify_system_tick() {
                 }
                 Save_SystemFlags();
             }
-            if (!system_flags.security_mode_is_overridden) {
+            if (system_flags.security_mode_is_overridden != 1) {
                 sCurrentSecurityMode = sNormalSecurityMode;
             }
         }
