@@ -72,7 +72,7 @@ Am18x5& Am18x5::getInstance() {
 
 int Am18x5::begin() {
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
-    
+
     if (!hal_i2c_is_enabled(wire_, nullptr)) {
         CHECK(hal_i2c_init(wire_, nullptr));
         hal_i2c_begin(wire_, I2C_MODE_MASTER, 0x00, nullptr);
@@ -319,6 +319,37 @@ int Am18x5::sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const {
     CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, newValue));
     // Transfer to SLEEP state without any delay
     return writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT);
+}
+
+int Am18x5::setPswWithDelay(uint8_t delayTicks, Am18x5TimerFrequency frequency) {
+    Am18x5Lock lock();
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+
+    // 配置 PSW 引脚为 nTIRQ 模式 (即反向定时器中断信号)
+    CHECK(writeRegister(Am18x5Register::CONTROL2, 0x4, false, true, CONTROL2_OUT2S_MASK, CONTROL2_OUT2S_SHIFT));
+
+    // 使能定时器中断
+    CHECK(writeRegister(Am18x5Register::INT_MASK, INTERRUPT_TIE_MASK, false, true, INTERRUPT_TIE_MASK, INTERRUPT_TIE_SHIFT));
+
+    // 设置定时器初始值
+    CHECK(writeRegister(Am18x5Register::TIMER, delayTicks));
+
+    // 配置并启动定时器
+    uint8_t timerControlValue = 0x00;
+    CHECK(readRegister(Am18x5Register::TIMER_CONTROL, &timerControlValue));
+    timerControlValue |= TIMER_CONTROL_TE_MASK; // 使能定时器
+    timerControlValue &= ~TIMER_CONTROL_TRPT_MASK; // 不重复
+    timerControlValue &= ~TIMER_CONTROL_TFS_MASK;
+    timerControlValue |= static_cast<uint8_t>(frequency); // 设置定时器频率
+    CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, timerControlValue));
+
+    // 拉高 PSW 引脚, 导通 mos 管, Power EN 接地
+    CHECK(setPsw(1));
+
+    // 等待定时器触发，PSW 引脚会自动恢复高电平
+    // 此时不需要额外的中断处理或延时逻辑
+
+    return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::setHundredths(uint8_t hundredths) const {
