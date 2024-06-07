@@ -9,8 +9,9 @@
 
 #include "platform_autoconf.h"
 #ifndef PLATFORM_FREERTOS
+#include "FreeRTOS.h"
+#include "task.h"
 #include "rtl8721d_freertos_pmu.h"
-#define xTaskGetTickCount() 0
 #endif // PLATFORM_FREERTOS
 
 /*For MP mode setting*/

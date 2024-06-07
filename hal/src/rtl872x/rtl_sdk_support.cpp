@@ -45,6 +45,7 @@ extern "C" {
 #endif
 #include "freertos/wrapper.h"
 #include "bt_intf.h"
+#include "system_error.h"
 
 extern "C" {
 
@@ -497,6 +498,9 @@ extern "C" void __copy_rtw_write32(void* p, uint32_t offset, uint32_t val) {
     return rtw_write32(p, offset, val);
 }
 
+extern uintptr_t link_prebootloader_km4_sram_start;
+extern uintptr_t link_prebootloader_km4_sram_end;
+
 void rtwRadioAcquire(RtwRadio r) {
     std::lock_guard<RecursiveMutex> lk(radioMutex);
     LOG_DEBUG(INFO, "rtwRadioAcquire: %d", r);
@@ -509,10 +513,20 @@ void rtwRadioAcquire(RtwRadio r) {
     if (radioStatus != RTW_RADIO_NONE) {
         static std::once_flag once;
         std::call_once(once, [](){
-            int r = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_WIFI_FW_INIT, nullptr, 0, [](km0_km4_ipc_msg_t* msg, void* context) -> void {
-                LOG(INFO, "wifi fw init result=%08x %08x %08x", ((uint32_t*)msg->data)[0], ((uint32_t*)msg->data)[1], ((uint32_t*)msg->data)[2]);
-            }, nullptr);
-            LOG(INFO, "wifi fw init send request=%d", r);
+            static rtl_wifi_fw_ram_alloc __attribute__((aligned(32))) info;
+            info.size = sizeof(info);
+            info.start = (uint32_t)&link_prebootloader_km4_sram_start;
+            info.end = (uint32_t)&link_prebootloader_km4_sram_end;
+            DCache_CleanInvalidate((uint32_t)&info, sizeof(info));
+            rtl_wifi_fw_resp resp = {};
+            int r = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_WIFI_FW_INIT, &info, sizeof(info), [](km0_km4_ipc_msg_t* msg, void* context) -> void {
+                memcpy(context, msg->data, std::min<size_t>(msg->size, sizeof(rtl_wifi_fw_resp)));
+            }, &resp);
+            LOG(INFO, "WiFi KM0 firmware initialization started   result=%d (RAM start=%08x end=%08x)", r, info.start, info.end);
+            LOG(INFO, "WiFi KM0 firmware initialization completed result=%d (RAM start=%08x end=%08x reserved=%08x)", resp.result, resp.start, resp.end, resp.reserved_heap);
+            if (resp.result == SYSTEM_ERROR_NO_MEMORY) {
+                LOG(ERROR, "Not enough memory for KM0 WiFi firmware to run");
+            }
         });
 
         RCC_PeriphClockCmd(APBPeriph_WL, APBPeriph_WL_CLOCK, ENABLE);

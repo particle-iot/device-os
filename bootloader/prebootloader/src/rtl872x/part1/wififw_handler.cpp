@@ -26,11 +26,15 @@
 extern "C" {
 #include "rtl8721d.h"
 }
+#include "rtl_sdk_support.h"
+#include <algorithm>
 
 namespace {
 
 volatile uint16_t sReqId = KM0_KM4_IPC_INVALID_REQ_ID;
-int32_t __attribute__((aligned(32))) sResult[8]; // 32 bytes for Dcache requirement
+rtl_wifi_fw_resp __attribute__((aligned(32))) sResult; // 32 bytes for Dcache requirement
+
+rtl_wifi_fw_ram_alloc sWifiFwRamAlloc = {};
 
 }
 
@@ -48,10 +52,19 @@ extern uintptr_t link_psram_data_start;
 extern uintptr_t link_psram_data_end;
 #define link_psram_data_size ((uintptr_t)&link_psram_data_end - (uintptr_t)&link_psram_data_start)
 
+extern uintptr_t link_psram_used_end;
+
+#define RESERVED_MINIMAL_HEAP_SIZE (20 * 1024)
+
 extern "C" void wifi_FW_init_ram(void);
 
 static void onWifiFwInitReceived(km0_km4_ipc_msg_t* msg, void* context) {
     sReqId = msg->req_id;
+    if (msg->data) {
+        memcpy(&sWifiFwRamAlloc, msg->data, std::min<size_t>(sizeof(sWifiFwRamAlloc), msg->size));
+    } else {
+        memset(&sWifiFwRamAlloc, 0, sizeof(sWifiFwRamAlloc));
+    }
 }
 
 void wifiFwInit() {
@@ -77,6 +90,24 @@ extern "C" void vApplicationIdleHook(void) {
 }
 
 static void wifiFwStart() {
+    sResult.size = sizeof(sResult);
+    sResult.start = (uint32_t)&link_psram_bss_start;
+    sResult.end = (uint32_t)&link_psram_used_end;
+    sResult.reserved_heap = RESERVED_MINIMAL_HEAP_SIZE;
+
+    if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
+        sResult.result = SYSTEM_ERROR_ALREADY_EXISTS;
+        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sReqId, &sResult, sizeof(sResult));
+        sReqId = KM0_KM4_IPC_INVALID_REQ_ID;
+        return;
+    }
+    if (sWifiFwRamAlloc.start != (uint32_t)&link_psram_bss_start ||
+            sWifiFwRamAlloc.end < ((uint32_t)&link_psram_used_end + RESERVED_MINIMAL_HEAP_SIZE)) {
+        sResult.result = SYSTEM_ERROR_NO_MEMORY;
+        km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sReqId, &sResult, sizeof(sResult));
+        sReqId = KM0_KM4_IPC_INVALID_REQ_ID;
+        return;
+    }
     _memset(&link_psram_bss_start, 0, link_psram_bss_size);
 
     hal_flash_read((uintptr_t)&link_psram_text_flash_start, (uint8_t*)&link_psram_text_start, link_psram_text_size);
@@ -92,26 +123,16 @@ static void wifiFwStart() {
 
     IPC_INTUserHandler(1, (void*)driver_fw_flow_ipc_int, (void*)IPCM4_DEV);
 
-    // TaskHandle_t tsk;
-    // xTaskCreate([](void*) -> void {
-    //     while (true) {
-    //         bootloader_part1_loop();
-    //         // FIXME: use semaphore
-    //         vTaskDelay(10);
-    //     }
-    // }, "loop", 4096 / sizeof(portSTACK_TYPE), nullptr, tskIDLE_PRIORITY + 1, &tsk);
-
-    sResult[0] = 0xdeadbeef;
-    km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sReqId, sResult, sizeof(sResult));
+    sResult.result = 0;
+    km0_km4_ipc_send_response(KM0_KM4_IPC_CHANNEL_GENERIC, sReqId, &sResult, sizeof(sResult));
     sReqId = KM0_KM4_IPC_INVALID_REQ_ID;
 
     vTaskStartScheduler(); // Does not exit
 }
 
 void wifiFwProcess() {
-    // Handle bootloader update
-    sResult[0] = SYSTEM_ERROR_NONE;
     if (sReqId != KM0_KM4_IPC_INVALID_REQ_ID) {
+        memset(&sResult, 0, sizeof(sResult));
         wifiFwStart(); // Should normally not exit
     }
 }

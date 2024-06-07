@@ -29,6 +29,22 @@ typedef enum {
     RTW_RADIO_ALL = 0x03
 } RtwRadio;
 
+typedef struct __attribute__((packed)) rtl_wifi_fw_ram_alloc {
+    uint16_t size;
+    uint16_t reserved;
+    uint32_t start;
+    uint32_t end;
+} rtl_wifi_fw_ram_alloc;
+
+typedef struct __attribute((packed)) rtl_wifi_fw_resp {
+    uint16_t size;
+    uint16_t reserved;
+    int result;
+    uint32_t start;
+    uint32_t end;
+    uint32_t reserved_heap;
+} rtl_wifi_fw_resp;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

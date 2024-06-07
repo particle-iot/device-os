@@ -157,8 +157,9 @@ SECTIONS
     prebootloader_psram :
     {
         . = ALIGN(32);
-        prebootloader_psram_start = .;
+        link_prebootloader_km4_sram_start = .;
         . = . + 100K;
+        link_prebootloader_km4_sram_end = .;
     } > SRAM
 
 

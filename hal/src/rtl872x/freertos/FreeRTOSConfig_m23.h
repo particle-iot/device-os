@@ -81,6 +81,7 @@ extern uint32_t SystemCoreClock;
 #define configAPPLICATION_ALLOCATED_HEAP                ( 1 )
 #define configDYNAMIC_HEAP_SIZE                         ( 1 )
 #define configHEAP_NO_ASSERT_OVERRIDE                   ( 1 )
+#define configSUPPORT_STATIC_ALLOCATION					( 1 )
 
 /* Constants that build features in or out. */
 #define configUSE_MUTEXES								1

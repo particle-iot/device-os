@@ -27,6 +27,8 @@ extern "C" {
 #include "simple_pool_allocator.h"
 #include "scope_guard.h"
 #include "sleep_handler.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 extern "C" void km4_clock_gate(void);
 extern "C" void km4_clock_on(void);
@@ -324,10 +326,15 @@ void sleepProcess(void) {
              */
             auto config = sleepConfigShadow.config();
             if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
+                SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+                taskENTER_CRITICAL();
                 configureDeepSleepWakeupSource(config);
                 enterDeepSleep();
                 // It should not reach here
             } else {
+                SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
+                taskENTER_CRITICAL();
+
                 // Copy and paste from km4_tickless_ipc_int()
                 km4_sleep_type = SLEEP_CG;
                 km4_clock_gate();
@@ -354,7 +361,10 @@ void sleepProcess(void) {
                 SOCPS_SleepCG();
                 SOCPS_SWRLDO_Suspend(DISABLE);
 
+                taskEXIT_CRITICAL();
+
                 SOCPS_AONTimerCmd(DISABLE);
+
 
 #if PLATFORM_ID != PLATFORM_TRACKERM
                 if (swdEnabled) {
