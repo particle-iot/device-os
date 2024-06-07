@@ -55,8 +55,6 @@
 #define PB(_name) particle_ctrl_##_name
 #define PB_FIELDS(_name) particle_ctrl_##_name##_fields
 
-#define USE_TEST_SERVER_KEY 1 // FIXME
-
 namespace particle {
 
 namespace control {
@@ -80,21 +78,6 @@ struct SecurityModeChangeContext {
 
 std::unique_ptr<SecurityModeChangeContext> g_securityModeChangeCtx;
 
-#if USE_TEST_SERVER_KEY
-
-const uint8_t TEST_SERVER_KEY[] = {
-    0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
-    0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
-    0x42, 0x00, 0x04, 0x02, 0x49, 0x5a, 0xee, 0xee, 0x46, 0xc4, 0x25, 0x22,
-    0x13, 0xa0, 0x95, 0xd5, 0x80, 0x17, 0x0e, 0x8a, 0xc2, 0xc1, 0x10, 0xb6,
-    0x42, 0x70, 0xd3, 0x29, 0x8c, 0xbf, 0x63, 0x53, 0x5a, 0x8e, 0xc3, 0x64,
-    0xea, 0x6b, 0xef, 0xf5, 0xde, 0xd7, 0x66, 0x11, 0x91, 0x19, 0x96, 0x65,
-    0x38, 0x38, 0x2f, 0x8d, 0x8e, 0xc0, 0xe1, 0xaa, 0x6d, 0x9b, 0x9c, 0xf1,
-    0xc9, 0xef, 0x1d, 0x28, 0x9c, 0x6e, 0x81
-};
-
-#endif // USE_TEST_SERVER_KEY
-
 int getDevicePrivateKey(mbedtls_pk_context& pk) {
     std::unique_ptr<uint8_t[]> keyData(new(std::nothrow) uint8_t[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
     int r = dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, keyData.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
@@ -113,9 +96,6 @@ int getDevicePrivateKey(mbedtls_pk_context& pk) {
 }
 
 int getServerPublicKey(mbedtls_pk_context& pk) {
-#if USE_TEST_SERVER_KEY
-    CHECK_MBEDTLS(mbedtls_pk_parse_public_key(&pk, TEST_SERVER_KEY, sizeof(TEST_SERVER_KEY) / sizeof(TEST_SERVER_KEY[0])));
-#else
     std::unique_ptr<uint8_t[]> keyData(new(std::nothrow) uint8_t[DCT_ALT_SERVER_PUBLIC_KEY_SIZE]);
     int r = dct_read_app_data_copy(DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, keyData.get(), DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
     if (r != 0) {
@@ -126,7 +106,6 @@ int getServerPublicKey(mbedtls_pk_context& pk) {
         return SYSTEM_ERROR_BAD_DATA;
     }
     CHECK_MBEDTLS(mbedtls_pk_parse_public_key(&pk, keyData.get(), keyLen));
-#endif // !USE_TEST_SERVER_KEY
     return 0;
 }
 
