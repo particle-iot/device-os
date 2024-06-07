@@ -140,7 +140,7 @@ public:
     int getAlarm(struct timeval* tv) const;
     int enableAlarm(bool enable, AlarmHandler handler, void* context);
 
-    int enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const;
+    int enableWatchdog(uint8_t value, Am18x5TimerFrequency frequency) const;
     int disableWatchdog() const;
     int feedWatchdog() const;
 

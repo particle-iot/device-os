@@ -95,8 +95,8 @@ void enterLoraApp() {
 void setup() {
     auxPowerControl(true);
 
-    Serial1.begin(921600, SERIAL_PARITY_EVEN);
-    Serial2.begin(921600, SERIAL_PARITY_EVEN);
+    Serial1.begin(115200, SERIAL_PARITY_EVEN);
+    Serial2.begin(115200, SERIAL_PARITY_EVEN);
 
     // pinMode(TX, INPUT_PULLUP);
     // pinMode(RX, INPUT_PULLUP);
