@@ -292,7 +292,7 @@ int setProtectedState(ctrl_request* req) {
     }
 
     PB(SetProtectedStateRequest) pbReq = {};
-    DecodedString pbServSig(&pbReq.confirm_change.server_signature);
+    DecodedString pbServSig(&pbReq.confirm.server_signature);
     CHECK(decodeRequestMessage(req, &PB(SetProtectedStateRequest_msg), &pbReq));
 
     PB(SetProtectedStateReply) pbRep = {};
@@ -303,8 +303,8 @@ int setProtectedState(ctrl_request* req) {
         g_securityModeChangeCtx.reset();
         break;
     }
-    case PB(SetProtectedStateRequest_Action_PREPARE_CHANGE): {
-        if (pbReq.prepare_change.server_nonce.size != SECURITY_MODE_NONCE_SIZE) {
+    case PB(SetProtectedStateRequest_Action_PREPARE): {
+        if (pbReq.prepare.server_nonce.size != SECURITY_MODE_NONCE_SIZE) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         g_securityModeChangeCtx.reset();
@@ -315,7 +315,7 @@ int setProtectedState(ctrl_request* req) {
         if (!ctx) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        std::memcpy(ctx->serverNonce, pbReq.prepare_change.server_nonce.bytes, SECURITY_MODE_NONCE_SIZE);
+        std::memcpy(ctx->serverNonce, pbReq.prepare.server_nonce.bytes, SECURITY_MODE_NONCE_SIZE);
 
         // Get the device ID and private key
         uint8_t devId[HAL_DEVICE_ID_SIZE] = {}; // Binary-encoded
@@ -348,22 +348,23 @@ int setProtectedState(ctrl_request* req) {
                 mbedtls_default_rng, nullptr /* p_rng */));
 
         // Encode a reply
-        EncodedString pbDevSig(&pbRep.prepare_change.device_signature, (const char*)devSig, devSigLen);
-        std::memcpy(pbRep.prepare_change.device_nonce.bytes, ctx->deviceNonce, SECURITY_MODE_NONCE_SIZE);
-        pbRep.prepare_change.device_nonce.size = SECURITY_MODE_NONCE_SIZE;
-        std::memcpy(pbRep.prepare_change.device_public_key_fingerprint.bytes, ctx->devicePublicKeyFingerprint, Sha256::HASH_SIZE);
-        pbRep.prepare_change.device_public_key_fingerprint.size = Sha256::HASH_SIZE;
+        EncodedString pbDevSig(&pbRep.prepare.device_signature, (const char*)devSig, devSigLen);
+        std::memcpy(pbRep.prepare.device_nonce.bytes, ctx->deviceNonce, SECURITY_MODE_NONCE_SIZE);
+        pbRep.prepare.device_nonce.size = SECURITY_MODE_NONCE_SIZE;
+        std::memcpy(pbRep.prepare.device_public_key_fingerprint.bytes, ctx->devicePublicKeyFingerprint, Sha256::HASH_SIZE);
+        pbRep.prepare.device_public_key_fingerprint.size = Sha256::HASH_SIZE;
+        pbRep.has_prepare = true;
         CHECK(encodeReplyMessage(req, &PB(SetProtectedStateReply_msg), &pbRep));
 
         ctx->prepareTime = hal_timer_millis(nullptr);
         g_securityModeChangeCtx = std::move(ctx);
         break;
     }
-    case PB(SetProtectedStateRequest_Action_CONFIRM_CHANGE): {
+    case PB(SetProtectedStateRequest_Action_CONFIRM): {
         if (!g_securityModeChangeCtx) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
-        if (pbServSig.size == 0 || pbReq.confirm_change.server_public_key_fingerprint.size != Sha256::HASH_SIZE) {
+        if (pbServSig.size == 0 || pbReq.confirm.server_public_key_fingerprint.size != Sha256::HASH_SIZE) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         if (hal_timer_millis(nullptr) - g_securityModeChangeCtx->prepareTime >= 60000) {
@@ -381,7 +382,7 @@ int setProtectedState(ctrl_request* req) {
         CHECK(getServerPublicKey(pk, servPubKeyFingerprint));
 
         // Validate that the server signature was generated using the correct key
-        if (std::memcmp(pbReq.confirm_change.server_public_key_fingerprint.bytes, servPubKeyFingerprint, Sha256::HASH_SIZE) != 0) {
+        if (std::memcmp(pbReq.confirm.server_public_key_fingerprint.bytes, servPubKeyFingerprint, Sha256::HASH_SIZE) != 0) {
             return SYSTEM_ERROR_KEY_MISMATCH;
         }
 
