@@ -363,8 +363,7 @@ int setProtectedState(ctrl_request* req) {
         if (!g_securityModeChangeCtx) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
-        if (pbReq.confirm_change.server_signature.size == 0 ||
-                pbReq.confirm_change.server_public_key_fingerprint.size != Sha256::HASH_SIZE) {
+        if (pbServSig.size == 0 || pbReq.confirm_change.server_public_key_fingerprint.size != Sha256::HASH_SIZE) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         if (hal_timer_millis(nullptr) - g_securityModeChangeCtx->prepareTime >= 60000) {
