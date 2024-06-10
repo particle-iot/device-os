@@ -218,7 +218,9 @@ void security_mode_override_to_none() {
         Save_SystemFlags();
         sCurrentSecurityMode = MODULE_INFO_SECURITY_MODE_NONE;
     }
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     startTimer();
+#endif
 }
 
 void security_mode_clear_override() {
@@ -231,7 +233,9 @@ void security_mode_clear_override() {
         Save_SystemFlags();
         sCurrentSecurityMode = sNormalSecurityMode;
     }
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     stopTimer();
+#endif
 }
 
 bool security_mode_is_overridden() {

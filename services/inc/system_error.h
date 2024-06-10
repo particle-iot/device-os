@@ -97,6 +97,8 @@
         (PPP_NO_CARRIER_IN_NETWORK_PHASE, "Received NO CARRIER in network phase", -1712), \
         (INVALID_SERVER_SETTINGS, "Server settings are invalid", -1800), /* -1899 ... -1800: Miscellaneous system errors */ \
         (PROTECTED, "Device is in a protected state, action prohibited", -1801), \
+        (KEY_MISMATCH, "Unrecognized cryptographic key", -1802), \
+        (INVALID_SIGNATURE, "Signature validation failed", -1803), \
         (FILESYSTEM, "Filesystem error", -1900), /* -1999 ... -1900: Filesystem errors */ \
         (FILESYSTEM_IO, "Filesystem IO error", -1901), \
         (FILESYSTEM_CORRUPT, "Filesystem corrupted", -1902), \

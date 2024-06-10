@@ -67,45 +67,62 @@ using namespace particle::control::common;
 
 const size_t SECURITY_MODE_NONCE_SIZE = 32;
 
-static_assert(sizeof(decltype(PB(SetProtectedStateRequest::server_nonce))::bytes) == SECURITY_MODE_NONCE_SIZE);
-static_assert(sizeof(decltype(PB(SetProtectedStateReply::client_nonce))::bytes) == SECURITY_MODE_NONCE_SIZE);
-
 struct SecurityModeChangeContext {
-    char clientNonce[SECURITY_MODE_NONCE_SIZE];
     char serverNonce[SECURITY_MODE_NONCE_SIZE];
-    uint64_t requestTime;
+    char deviceNonce[SECURITY_MODE_NONCE_SIZE];
+    char devicePublicKeyFingerprint[Sha256::HASH_SIZE];
+    uint64_t prepareTime;
 };
 
 std::unique_ptr<SecurityModeChangeContext> g_securityModeChangeCtx;
 
-int getDevicePrivateKey(mbedtls_pk_context& pk) {
+int getPublicKeyFingerprint(mbedtls_pk_context& pk, char fingerprint[Sha256::HASH_SIZE]) {
+    char pubKeyDer[128];
+    int n = mbedtls_pk_write_pubkey_der(&pk, (uint8_t*)pubKeyDer, sizeof(pubKeyDer));
+    if (n < 0) {
+        return mbedtls_to_system_error(n);
+    }
+    Sha256 sha;
+    CHECK(sha.init());
+    CHECK(sha.start());
+    CHECK(sha.update(pubKeyDer, n));
+    CHECK(sha.finish(fingerprint));
+    return 0;
+}
+
+int getDevicePrivateKey(mbedtls_pk_context& pk, char pubKeyFingerprint[Sha256::HASH_SIZE]) {
     std::unique_ptr<uint8_t[]> keyData(new(std::nothrow) uint8_t[DCT_ALT_DEVICE_PRIVATE_KEY_SIZE]);
     int r = dct_read_app_data_copy(DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, keyData.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
     if (r != 0) {
         return SYSTEM_ERROR_IO;
     }
     size_t keyLen = determine_der_length(keyData.get(), DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
-    if (!keyLen) {
+    if (!keyLen || keyLen > DCT_ALT_DEVICE_PRIVATE_KEY_SIZE) {
         return SYSTEM_ERROR_BAD_DATA;
     }
     CHECK_MBEDTLS(mbedtls_pk_parse_key(&pk, keyData.get(), keyLen, nullptr /* pwd */, 0 /* pwdlen */));
     if (!mbedtls_pk_can_do(&pk, MBEDTLS_PK_ECDSA)) { // Sanity check
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
+    CHECK(getPublicKeyFingerprint(pk, pubKeyFingerprint));
     return 0;
 }
 
-int getServerPublicKey(mbedtls_pk_context& pk) {
+int getServerPublicKey(mbedtls_pk_context& pk, char fingerprint[Sha256::HASH_SIZE]) {
     std::unique_ptr<uint8_t[]> keyData(new(std::nothrow) uint8_t[DCT_ALT_SERVER_PUBLIC_KEY_SIZE]);
     int r = dct_read_app_data_copy(DCT_ALT_SERVER_PUBLIC_KEY_OFFSET, keyData.get(), DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
     if (r != 0) {
         return SYSTEM_ERROR_IO;
     }
     size_t keyLen = determine_der_length(keyData.get(), DCT_ALT_SERVER_PUBLIC_KEY_SIZE);
-    if (!keyLen) {
+    if (!keyLen || keyLen > DCT_ALT_SERVER_PUBLIC_KEY_SIZE) {
         return SYSTEM_ERROR_BAD_DATA;
     }
     CHECK_MBEDTLS(mbedtls_pk_parse_public_key(&pk, keyData.get(), keyLen));
+    if (!mbedtls_pk_can_do(&pk, MBEDTLS_PK_ECDSA)) { // Sanity check
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    CHECK(getPublicKeyFingerprint(pk, fingerprint));
     return 0;
 }
 
@@ -275,7 +292,7 @@ int setProtectedState(ctrl_request* req) {
     }
 
     PB(SetProtectedStateRequest) pbReq = {};
-    DecodedString pbServSig(&pbReq.server_signature);
+    DecodedString pbServSig(&pbReq.confirm_change.server_signature);
     CHECK(decodeRequestMessage(req, &PB(SetProtectedStateRequest_msg), &pbReq));
 
     PB(SetProtectedStateReply) pbRep = {};
@@ -286,11 +303,10 @@ int setProtectedState(ctrl_request* req) {
         g_securityModeChangeCtx.reset();
         break;
     }
-    case PB(SetProtectedStateRequest_Action_DISABLE_REQUEST): {
-        if (!pbReq.has_server_nonce || pbReq.server_nonce.size != SECURITY_MODE_NONCE_SIZE) {
+    case PB(SetProtectedStateRequest_Action_PREPARE_CHANGE): {
+        if (pbReq.prepare_change.server_nonce.size != SECURITY_MODE_NONCE_SIZE) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-
         g_securityModeChangeCtx.reset();
         if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_NONE && !security_mode_is_overridden()) {
             break; // Not protected
@@ -299,7 +315,7 @@ int setProtectedState(ctrl_request* req) {
         if (!ctx) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        std::memcpy(ctx->serverNonce, pbReq.server_nonce.bytes, SECURITY_MODE_NONCE_SIZE);
+        std::memcpy(ctx->serverNonce, pbReq.prepare_change.server_nonce.bytes, SECURITY_MODE_NONCE_SIZE);
 
         // Get the device ID and private key
         uint8_t devId[HAL_DEVICE_ID_SIZE] = {}; // Binary-encoded
@@ -312,57 +328,70 @@ int setProtectedState(ctrl_request* req) {
         SCOPE_GUARD({
             mbedtls_pk_free(&pk);
         });
-        CHECK(getDevicePrivateKey(pk));
+        CHECK(getDevicePrivateKey(pk, ctx->devicePublicKeyFingerprint));
 
-        // Generate a client nonce and signature
-        Random::genSecure(ctx->clientNonce, SECURITY_MODE_NONCE_SIZE);
+        // Generate a device nonce and signature
+        Random::genSecure(ctx->deviceNonce, SECURITY_MODE_NONCE_SIZE);
         Sha256 sha;
         CHECK(sha.init());
         CHECK(sha.start());
-        CHECK(sha.update("client", 6));
+        CHECK(sha.update("device", 6));
         CHECK(sha.update((const char*)devId, HAL_DEVICE_ID_SIZE));
-        updateSha256Delimited(sha, ctx->clientNonce, SECURITY_MODE_NONCE_SIZE);
+        updateSha256Delimited(sha, ctx->deviceNonce, SECURITY_MODE_NONCE_SIZE);
         updateSha256Delimited(sha, ctx->serverNonce, SECURITY_MODE_NONCE_SIZE);
         char hash[Sha256::HASH_SIZE] = {};
         CHECK(sha.finish(hash));
 
-        uint8_t sig[MBEDTLS_ECDSA_MAX_LEN] = {};
-        size_t sigLen = 0;
-        CHECK_MBEDTLS(mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA256, (const uint8_t*)hash, sizeof(hash), sig, &sigLen,
+        uint8_t devSig[MBEDTLS_ECDSA_MAX_LEN] = {};
+        size_t devSigLen = 0;
+        CHECK_MBEDTLS(mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA256, (const uint8_t*)hash, sizeof(hash), devSig, &devSigLen,
                 mbedtls_default_rng, nullptr /* p_rng */));
 
         // Encode a reply
-        EncodedString pbSig(&pbRep.client_signature, (const char*)sig, sigLen);
-        std::memcpy(pbRep.client_nonce.bytes, ctx->clientNonce, SECURITY_MODE_NONCE_SIZE);
-        pbRep.client_nonce.size = SECURITY_MODE_NONCE_SIZE;
-        pbRep.has_client_nonce = true;
+        EncodedString pbDevSig(&pbRep.prepare_change.device_signature, (const char*)devSig, devSigLen);
+        std::memcpy(pbRep.prepare_change.device_nonce.bytes, ctx->deviceNonce, SECURITY_MODE_NONCE_SIZE);
+        pbRep.prepare_change.device_nonce.size = SECURITY_MODE_NONCE_SIZE;
+        std::memcpy(pbRep.prepare_change.device_public_key_fingerprint.bytes, ctx->devicePublicKeyFingerprint, Sha256::HASH_SIZE);
+        pbRep.prepare_change.device_public_key_fingerprint.size = Sha256::HASH_SIZE;
         CHECK(encodeReplyMessage(req, &PB(SetProtectedStateReply_msg), &pbRep));
 
-        ctx->requestTime = hal_timer_millis(nullptr);
+        ctx->prepareTime = hal_timer_millis(nullptr);
         g_securityModeChangeCtx = std::move(ctx);
         break;
     }
-    case PB(SetProtectedStateRequest_Action_DISABLE_CONFIRM): {
+    case PB(SetProtectedStateRequest_Action_CONFIRM_CHANGE): {
         if (!g_securityModeChangeCtx) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
-        if (hal_timer_millis(nullptr) - g_securityModeChangeCtx->requestTime >= 60000) {
+        if (pbReq.confirm_change.server_signature.size == 0 ||
+                pbReq.confirm_change.server_public_key_fingerprint.size != Sha256::HASH_SIZE) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (hal_timer_millis(nullptr) - g_securityModeChangeCtx->prepareTime >= 60000) {
             g_securityModeChangeCtx.reset();
             return SYSTEM_ERROR_TIMEOUT;
         }
 
-        // Get the device ID and server public key
-        uint8_t devId[HAL_DEVICE_ID_SIZE] = {};
-        const auto n = hal_get_device_id(devId, sizeof(devId));
-        if (n != HAL_DEVICE_ID_SIZE) {
-            return SYSTEM_ERROR_UNKNOWN;
-        }
+        // Get the server public key
         mbedtls_pk_context pk = {};
         mbedtls_pk_init(&pk);
         SCOPE_GUARD({
             mbedtls_pk_free(&pk);
         });
-        CHECK(getServerPublicKey(pk));
+        char servPubKeyFingerprint[Sha256::HASH_SIZE] = {};
+        CHECK(getServerPublicKey(pk, servPubKeyFingerprint));
+
+        // Validate that the server signature was generated using the correct key
+        if (std::memcmp(pbReq.confirm_change.server_public_key_fingerprint.bytes, servPubKeyFingerprint, Sha256::HASH_SIZE) != 0) {
+            return SYSTEM_ERROR_KEY_MISMATCH;
+        }
+
+        // Get the device ID
+        uint8_t devId[HAL_DEVICE_ID_SIZE] = {};
+        const auto n = hal_get_device_id(devId, sizeof(devId));
+        if (n != HAL_DEVICE_ID_SIZE) {
+            return SYSTEM_ERROR_UNKNOWN;
+        }
 
         // Validate the server signature
         Sha256 sha;
@@ -371,14 +400,15 @@ int setProtectedState(ctrl_request* req) {
         CHECK(sha.update("server", 6));
         CHECK(sha.update((const char*)devId, HAL_DEVICE_ID_SIZE));
         updateSha256Delimited(sha, g_securityModeChangeCtx->serverNonce, SECURITY_MODE_NONCE_SIZE);
-        updateSha256Delimited(sha, g_securityModeChangeCtx->clientNonce, SECURITY_MODE_NONCE_SIZE);
+        updateSha256Delimited(sha, g_securityModeChangeCtx->deviceNonce, SECURITY_MODE_NONCE_SIZE);
+        updateSha256Delimited(sha, g_securityModeChangeCtx->devicePublicKeyFingerprint, Sha256::HASH_SIZE);
         char hash[Sha256::HASH_SIZE] = {};
         CHECK(sha.finish(hash));
 
         int r = mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, (const uint8_t*)hash, sizeof(hash), (const uint8_t*)pbServSig.data,
                 pbServSig.size);
         if (r != 0) {
-            return SYSTEM_ERROR_NOT_ALLOWED;
+            return SYSTEM_ERROR_INVALID_SIGNATURE;
         }
 
         g_securityModeChangeCtx.reset();
