@@ -21,11 +21,24 @@ extern "C" {
 #include "system_task.h"
 #include <osdep_service.h>
 #include "concurrent_hal.h"
+#include "thread_runner.h"
+#include "free_worker.h"
+#include <mutex>
+
+using namespace particle;
+
+namespace {
+
+constexpr size_t FREE_QUEUE_SIZE = 256;
+FreeRunnable freeRunnable;
+ThreadRunner threadRunner;
+
+}
 
 extern "C" void _freertos_mfree(u8 *pbuf, u32 sz) {
-    if (__get_BASEPRI() != 0) {
-        // Defer freeing of memory to the SystemISRTaskQueue to be processed outside of this critical section
-        SPARK_ASSERT(system_isr_task_queue_free_memory((void*)pbuf) == 0);
+    if ((__get_BASEPRI() != 0) || (__get_PRIMASK() & 1)) {
+        // Defer freeing of memory to a dedicated 'free worker'.
+        SPARK_ASSERT(freeRunnable.enqueue((void*)pbuf) == 0);
     } else {
         free(pbuf);
     }
@@ -35,6 +48,16 @@ extern "C" int rtw_if_wifi_thread(char *name);
 
 extern "C" int _freertos_create_task(struct task_struct *ptask, const char *name,
 	    u32  stack_size, u32 priority, thread_func_t func, void *thctx) {
+
+    static std::once_flag once;
+    std::call_once(once, []() {
+        SPARK_ASSERT(freeRunnable.init(FREE_QUEUE_SIZE) == 0);
+        ThreadRunnerOptions opts;
+        opts.threadName("free_worker");
+        opts.priority(OS_THREAD_PRIORITY_CRITICAL);
+        opts.stackSize(OS_THREAD_STACK_SIZE_DEFAULT);
+        SPARK_ASSERT(threadRunner.init(&freeRunnable, opts) == 0); 
+    });
 
     if (rtw_if_wifi_thread((char*)name) == 0 || !strcmp(name, "rtw_coex_mailbox_thread")) {
         // Fixup priorities
