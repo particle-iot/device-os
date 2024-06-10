@@ -195,7 +195,7 @@ SECTIONS
         *(.image2.ram.bss*)
         *(.image2.net.ram.bss*)
         *(COMMON)
-        
+
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;

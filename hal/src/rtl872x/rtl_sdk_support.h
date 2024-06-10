@@ -70,7 +70,7 @@ void rtwRadioRelease(RtwRadio r);
 void rtwCoexStop();
 void rtwCoexSetWifiConnectedState(bool state);
 bool rtwCoexWifiConnectedState();
-int rtwCoexSet(uint32_t coex[3], uint8_t tmda[5], bool apply);
+int rtwCoexSet(uint32_t coex[4], uint8_t tmda[5], bool apply);
 
 #ifdef __cplusplus
 }

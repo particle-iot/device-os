@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_TRACE
 #include "logging.h"
 LOG_SOURCE_CATEGORY("hal.ble");
 
@@ -94,55 +95,15 @@ extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
 
-namespace {
-
-volatile bool s_bleScanReported = false;
-
-} // anonymous
+// #define BT_COEX_DEBUG
 
 void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
-#if 0
-    const auto BT_COEX_EVENT_SCAN_START = 0x28;
-    const auto BT_COEX_EVENT_SCAN_STOP = 0x08;
-    const auto BT_COEX_EVENT_UNK = 0x2a;
-    // FIXME: BLE/WiFi coexistence mechanism by default is somewhat broken.
-    // Suppress scan start/stop events in some cases to make it work a bit saner
-    if (len >= 6) {
-        if (p[5] == BT_COEX_EVENT_SCAN_START) {
-            // Scan start
-            if (!rtwCoexWifiConnectedState() || (rtwCoexWifiConnectedState() && s_bleScanReported)) {
-                // Suppress
-                return;
-            } else {
-                s_bleScanReported = true;
-            }
-        } else if (p[5] == BT_COEX_EVENT_SCAN_STOP) {
-            // Scan stop
-            if (!rtwCoexWifiConnectedState() && !s_bleScanReported) {
-                // Suppress
-                return;
-            } else if (rtwCoexWifiConnectedState() && s_bleScanReported) {
-                // Suppress
-                return;
-            } else if (rtwCoexWifiConnectedState() && !s_bleScanReported) {
-                return;
-            }
-            if (s_bleScanReported) {
-                s_bleScanReported = false;
-            }
-        } else if (p[5] == BT_COEX_EVENT_UNK) {
-            // LOG(INFO, "btcoex event unk suppress len=%u", (unsigned)len);
-            // LOG_DUMP(INFO, p, len);
-            // LOG_PRINTF(INFO, "\r\n");
-            // Must ignore
-            return;
-        }
-    }
-#endif
 	__real_bt_coex_handle_specific_evt(p, len);
-    // LOG(INFO, "btcoex event len=%u", (unsigned)len);
-    // LOG_DUMP(INFO, p, len);
-    // LOG_PRINTF(INFO, "\r\n");
+#ifdef BT_COEX_DEBUG
+    LOG(INFO, "btcoex event len=%u", (unsigned)len);
+    LOG_DUMP(INFO, p, len);
+    LOG_PRINTF(INFO, "\r\n");
+#endif // BT_COEX_DEBUG
 }
 
 namespace {
@@ -1170,7 +1131,6 @@ int BleGap::init() {
     return SYSTEM_ERROR_NONE;
 }
 
-extern "C" u8 rltk_wlan_btcoex_lps_enabled(void);
 int BleGap::start() {
     if (btStackStarted_) {
         return SYSTEM_ERROR_NONE;
@@ -4049,15 +4009,15 @@ ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr
 int hal_ble_internal(int type, void* data, size_t size, void* reserved) {
     switch (type) {
         case 1000: {
-            // struct hal_ble_internal_coex {
-            //     uint32_t coex[3];
-            //     uint8_t tdma[5];
-            //     uint8_t apply;
-            // } __attribute__((packed));
-            // auto p = (hal_ble_internal_coex*)data;
+            struct hal_ble_internal_coex {
+                uint32_t coex[4];
+                uint8_t tdma[5];
+                uint8_t apply;
+            } __attribute__((packed));
+            auto p = (hal_ble_internal_coex*)data;
             // FIXME: unaligned with packed
-            uint32_t coex[] = { 1, 2, 3 };
-            uint8_t tdma[] = { 1, 2, 3, 4,5 };
+            uint32_t coex[] = { p->coex[0], p->coex[1], p->coex[2], p->coex[3] };
+            uint8_t tdma[] = { p->tdma[0], p->tdma[1], p->tdma[2], p->tdma[3], p->tdma[4] };
             return rtwCoexSet(coex, tdma, size);
         }
     }

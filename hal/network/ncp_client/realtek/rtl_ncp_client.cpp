@@ -392,8 +392,6 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     return SYSTEM_ERROR_NONE;
 }
 
-extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
-
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data, bool forConnect) {
     CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);

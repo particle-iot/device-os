@@ -63,16 +63,14 @@ extern "C" int _freertos_create_task(struct task_struct *ptask, const char *name
         // Fixup priorities
         const unsigned base_priority = 5;
         priority -= base_priority;
-        priority += OS_THREAD_PRIORITY_NETWORK_HIGH;
+        priority += OS_THREAD_PRIORITY_NETWORK;
     }
 
     if (!strcmp(name, "rtw_coex_mailbox_thread")) {
         // Occasionally getting a stack overflow assertion
         stack_size *= 2;
         // IMPORTANT: works better at this priority
-        priority = OS_THREAD_PRIORITY_CRITICAL - 1;
-    } else {
-        stack_size *= 2;
+        priority = OS_THREAD_PRIORITY_NETWORK_HIGH + 1;
     }
 
     // Copy-paste from freertos_service.c
