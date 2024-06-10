@@ -45,10 +45,6 @@ platform_retention_ram_size = 1K;
 platform_retention_ram_start = 0x000C0000;
 platform_retention_ram_end = platform_retention_ram_start + platform_retention_ram_size;
 
-platform_psram_size  = 4M;
-platform_psram_start = 0x02000000;
-platform_psram_end   = platform_psram_start + platform_psram_size;
-
 /* FIXME: move to common file */
 /* All backup RAM size */
 platform_backup_ram_all_size = 4K;
@@ -101,3 +97,5 @@ platform_km0_monolithic_firmware_ram_end   = platform_km0_monolithic_firmware_ra
 
 /* The heap size after linkage should meet the minimum heap requirement. */
 platform_heap_min_size = 32K;
+
+INCLUDE platform_ram_shared.ld

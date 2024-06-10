@@ -342,8 +342,6 @@ bool rtwCoexWifiConnectedState() {
     return s_wifiConnectionState;
 }
 
-__attribute__((section(".prebootloader_psram"))) uint32_t blahBlah;
-
 extern "C" void rtw_write32(void* p, uint32_t offset, uint32_t val);
 
 extern "C" void __copy_rtl8721d_set_coex_table(void* coex, uint32_t v0, uint32_t v1, uint32_t v2, uint32_t v3);
@@ -498,8 +496,8 @@ extern "C" void __copy_rtw_write32(void* p, uint32_t offset, uint32_t val) {
     return rtw_write32(p, offset, val);
 }
 
-extern uintptr_t link_prebootloader_km4_sram_start;
-extern uintptr_t link_prebootloader_km4_sram_end;
+extern uintptr_t link_prebootloader_wifi_fw_ram_start;
+extern uintptr_t link_prebootloader_wifi_fw_ram_end;
 
 void rtwRadioAcquire(RtwRadio r) {
     std::lock_guard<RecursiveMutex> lk(radioMutex);
@@ -515,8 +513,8 @@ void rtwRadioAcquire(RtwRadio r) {
         std::call_once(once, [](){
             static rtl_wifi_fw_ram_alloc __attribute__((aligned(32))) info;
             info.size = sizeof(info);
-            info.start = (uint32_t)&link_prebootloader_km4_sram_start;
-            info.end = (uint32_t)&link_prebootloader_km4_sram_end;
+            info.start = (uint32_t)&link_prebootloader_wifi_fw_ram_start;
+            info.end = (uint32_t)&link_prebootloader_wifi_fw_ram_end;
             DCache_CleanInvalidate((uint32_t)&info, sizeof(info));
             rtl_wifi_fw_resp resp = {};
             int r = km0_km4_ipc_send_request(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_WIFI_FW_INIT, &info, sizeof(info), [](km0_km4_ipc_msg_t* msg, void* context) -> void {

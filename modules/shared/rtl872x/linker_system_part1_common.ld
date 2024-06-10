@@ -38,17 +38,6 @@ SECTIONS
         link_dynalib_end = . ;
     } > PSRAM AT> APP_FLASH
 
-    /*.prebootloader_psram : ALIGN()
-    {
-        . = link_dynalib_start + 4096;
-        BYTE(0x00)
-        BYTE(0x00)
-        BYTE(0x00)
-        BYTE(0x00)
-        KEEP(*(.prebootloader_psram))
-        . = link_dynalib_start + 4096 + 100K;
-    } > PSRAM AT>APP_FLASH*/
-
     .psram_text : ALIGN(4)
     {
         link_psram_code_flash_start = LOADADDR( .psram_text );
@@ -154,12 +143,12 @@ SECTIONS
         link_ram_interrupt_vectors_location_end = .;
     } > SRAM
 
-    prebootloader_psram :
+    prebootloader_wifi_fw_ram :
     {
-        . = ALIGN(32);
-        link_prebootloader_km4_sram_start = .;
-        . = . + 100K;
-        link_prebootloader_km4_sram_end = .;
+        . = ALIGN(platform_km4_ram_reserved);
+        link_prebootloader_wifi_fw_ram_start = .;
+        . = . + platform_km0_part1_wifi_fw_ram_size;
+        link_prebootloader_wifi_fw_ram_end = .;
     } > SRAM
 
 
