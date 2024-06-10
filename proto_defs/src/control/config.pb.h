@@ -320,11 +320,8 @@ typedef struct _particle_ctrl_SetProtectedStateReply {
 
 typedef struct _particle_ctrl_SetProtectedStateRequest { 
     particle_ctrl_SetProtectedStateRequest_Action action; 
-    pb_size_t which_data;
-    union {
-        particle_ctrl_SetProtectedStateRequest_PrepareChange prepare_change;
-        particle_ctrl_SetProtectedStateRequest_ConfirmChange confirm_change;
-    } data; 
+    particle_ctrl_SetProtectedStateRequest_PrepareChange prepare_change; 
+    particle_ctrl_SetProtectedStateRequest_ConfirmChange confirm_change; 
 } particle_ctrl_SetProtectedStateRequest;
 
 
@@ -401,7 +398,7 @@ extern "C" {
 #define particle_ctrl_SetStartupModeReply_init_default {0}
 #define particle_ctrl_GetProtectedStateRequest_init_default {0}
 #define particle_ctrl_GetProtectedStateReply_init_default {0, 0}
-#define particle_ctrl_SetProtectedStateRequest_init_default {_particle_ctrl_SetProtectedStateRequest_Action_MIN, 0, {particle_ctrl_SetProtectedStateRequest_PrepareChange_init_default}}
+#define particle_ctrl_SetProtectedStateRequest_init_default {_particle_ctrl_SetProtectedStateRequest_Action_MIN, particle_ctrl_SetProtectedStateRequest_PrepareChange_init_default, particle_ctrl_SetProtectedStateRequest_ConfirmChange_init_default}
 #define particle_ctrl_SetProtectedStateRequest_PrepareChange_init_default {{0, {0}}}
 #define particle_ctrl_SetProtectedStateRequest_ConfirmChange_init_default {{{NULL}, NULL}, {0, {0}}}
 #define particle_ctrl_SetProtectedStateReply_init_default {particle_ctrl_SetProtectedStateReply_PrepareChange_init_default}
@@ -458,7 +455,7 @@ extern "C" {
 #define particle_ctrl_SetStartupModeReply_init_zero {0}
 #define particle_ctrl_GetProtectedStateRequest_init_zero {0}
 #define particle_ctrl_GetProtectedStateReply_init_zero {0, 0}
-#define particle_ctrl_SetProtectedStateRequest_init_zero {_particle_ctrl_SetProtectedStateRequest_Action_MIN, 0, {particle_ctrl_SetProtectedStateRequest_PrepareChange_init_zero}}
+#define particle_ctrl_SetProtectedStateRequest_init_zero {_particle_ctrl_SetProtectedStateRequest_Action_MIN, particle_ctrl_SetProtectedStateRequest_PrepareChange_init_zero, particle_ctrl_SetProtectedStateRequest_ConfirmChange_init_zero}
 #define particle_ctrl_SetProtectedStateRequest_PrepareChange_init_zero {{0, {0}}}
 #define particle_ctrl_SetProtectedStateRequest_ConfirmChange_init_zero {{{NULL}, NULL}, {0, {0}}}
 #define particle_ctrl_SetProtectedStateReply_init_zero {particle_ctrl_SetProtectedStateReply_PrepareChange_init_zero}
@@ -738,12 +735,12 @@ X(a, STATIC,   SINGULAR, BOOL,     overridden,        2)
 
 #define particle_ctrl_SetProtectedStateRequest_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    action,            1) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (data,prepare_change,data.prepare_change),   2) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (data,confirm_change,data.confirm_change),   3)
+X(a, STATIC,   SINGULAR, MESSAGE,  prepare_change,    2) \
+X(a, STATIC,   SINGULAR, MESSAGE,  confirm_change,    3)
 #define particle_ctrl_SetProtectedStateRequest_CALLBACK NULL
 #define particle_ctrl_SetProtectedStateRequest_DEFAULT NULL
-#define particle_ctrl_SetProtectedStateRequest_data_prepare_change_MSGTYPE particle_ctrl_SetProtectedStateRequest_PrepareChange
-#define particle_ctrl_SetProtectedStateRequest_data_confirm_change_MSGTYPE particle_ctrl_SetProtectedStateRequest_ConfirmChange
+#define particle_ctrl_SetProtectedStateRequest_prepare_change_MSGTYPE particle_ctrl_SetProtectedStateRequest_PrepareChange
+#define particle_ctrl_SetProtectedStateRequest_confirm_change_MSGTYPE particle_ctrl_SetProtectedStateRequest_ConfirmChange
 
 #define particle_ctrl_SetProtectedStateRequest_PrepareChange_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, BYTES,    server_nonce,      1)
