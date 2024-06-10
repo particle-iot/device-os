@@ -50,8 +50,8 @@ typedef enum _particle_ctrl_Feature {
 /* Note: Use the same values as defined by the security_key_type enum */
 typedef enum _particle_ctrl_SetProtectedStateRequest_Action { 
     particle_ctrl_SetProtectedStateRequest_Action_RESET = 0, /* Invalid key */
-    particle_ctrl_SetProtectedStateRequest_Action_DISABLE_REQUEST = 1, /* TCP device private key */
-    particle_ctrl_SetProtectedStateRequest_Action_DISABLE_CONFIRM = 2 /* TCP device public key */
+    particle_ctrl_SetProtectedStateRequest_Action_PREPARE_CHANGE = 1, /* TCP device private key */
+    particle_ctrl_SetProtectedStateRequest_Action_CONFIRM_CHANGE = 2 /* TCP device public key */
 } particle_ctrl_SetProtectedStateRequest_Action;
 
 /* Struct definitions */
@@ -119,6 +119,7 @@ typedef struct _particle_ctrl_SetDeviceSetupDoneReply {
     char dummy_field;
 } particle_ctrl_SetDeviceSetupDoneReply;
 
+/* Make the device's status LED display a rainbow pattern aka Nyan mode */
 typedef struct _particle_ctrl_SetFeatureReply { 
     char dummy_field;
 } particle_ctrl_SetFeatureReply;
@@ -156,7 +157,6 @@ typedef struct _particle_ctrl_StartNyanSignalReply {
     char dummy_field;
 } particle_ctrl_StartNyanSignalReply;
 
-/* Make the device's status LED display a rainbow pattern aka Nyan mode */
 typedef struct _particle_ctrl_StartNyanSignalRequest { 
     char dummy_field;
 } particle_ctrl_StartNyanSignalRequest;
@@ -174,16 +174,15 @@ typedef struct _particle_ctrl_StopNyanSignalReply {
     char dummy_field;
 } particle_ctrl_StopNyanSignalReply;
 
-/* Exit the Nyan mode */
 typedef struct _particle_ctrl_StopNyanSignalRequest { 
     char dummy_field;
 } particle_ctrl_StopNyanSignalRequest;
 
+/* Check if the system feature is enabled or disabled */
 typedef struct _particle_ctrl_SystemResetReply { 
     char dummy_field;
 } particle_ctrl_SystemResetReply;
 
-/* Resets the device, just like hitting the reset button or powering down and back up */
 typedef struct _particle_ctrl_SystemResetRequest { 
     char dummy_field;
 } particle_ctrl_SystemResetRequest;
@@ -197,11 +196,11 @@ typedef struct _particle_ctrl_GetDeviceModeReply {
     particle_ctrl_DeviceMode mode; 
 } particle_ctrl_GetDeviceModeReply;
 
+/* Exit the Nyan mode */
 typedef struct _particle_ctrl_GetFeatureReply { 
     bool enabled; 
 } particle_ctrl_GetFeatureReply;
 
-/* Check if the system feature is enabled or disabled */
 typedef struct _particle_ctrl_GetFeatureRequest { 
     particle_ctrl_Feature feature; 
 } particle_ctrl_GetFeatureRequest;
@@ -263,26 +262,31 @@ typedef struct _particle_ctrl_SetDeviceSetupDoneRequest {
     bool done; 
 } particle_ctrl_SetDeviceSetupDoneRequest;
 
-/* Enable/disable system features */
 typedef struct _particle_ctrl_SetFeatureRequest { 
     particle_ctrl_Feature feature; 
     bool enabled; 
 } particle_ctrl_SetFeatureRequest;
 
-typedef PB_BYTES_ARRAY_T(32) particle_ctrl_SetProtectedStateReply_client_nonce_t;
-typedef struct _particle_ctrl_SetProtectedStateReply { 
-    bool has_client_nonce;
-    particle_ctrl_SetProtectedStateReply_client_nonce_t client_nonce; 
-    pb_callback_t client_signature; 
-} particle_ctrl_SetProtectedStateReply;
+typedef PB_BYTES_ARRAY_T(32) particle_ctrl_SetProtectedStateReply_PrepareChange_device_nonce_t;
+typedef PB_BYTES_ARRAY_T(32) particle_ctrl_SetProtectedStateReply_PrepareChange_device_public_key_fingerprint_t;
+/* Enable/disable system features */
+typedef struct _particle_ctrl_SetProtectedStateReply_PrepareChange { 
+    particle_ctrl_SetProtectedStateReply_PrepareChange_device_nonce_t device_nonce; 
+    pb_callback_t device_signature; 
+    particle_ctrl_SetProtectedStateReply_PrepareChange_device_public_key_fingerprint_t device_public_key_fingerprint; 
+} particle_ctrl_SetProtectedStateReply_PrepareChange;
 
-typedef PB_BYTES_ARRAY_T(32) particle_ctrl_SetProtectedStateRequest_server_nonce_t;
-typedef struct _particle_ctrl_SetProtectedStateRequest { 
-    particle_ctrl_SetProtectedStateRequest_Action action; 
-    bool has_server_nonce;
-    particle_ctrl_SetProtectedStateRequest_server_nonce_t server_nonce; 
+typedef PB_BYTES_ARRAY_T(32) particle_ctrl_SetProtectedStateRequest_ConfirmChange_server_public_key_fingerprint_t;
+/* Resets the device, just like hitting the reset button or powering down and back up */
+typedef struct _particle_ctrl_SetProtectedStateRequest_ConfirmChange { 
     pb_callback_t server_signature; 
-} particle_ctrl_SetProtectedStateRequest;
+    particle_ctrl_SetProtectedStateRequest_ConfirmChange_server_public_key_fingerprint_t server_public_key_fingerprint; 
+} particle_ctrl_SetProtectedStateRequest_ConfirmChange;
+
+typedef PB_BYTES_ARRAY_T(32) particle_ctrl_SetProtectedStateRequest_PrepareChange_server_nonce_t;
+typedef struct _particle_ctrl_SetProtectedStateRequest_PrepareChange { 
+    particle_ctrl_SetProtectedStateRequest_PrepareChange_server_nonce_t server_nonce; 
+} particle_ctrl_SetProtectedStateRequest_PrepareChange;
 
 typedef struct _particle_ctrl_SetSecurityKeyRequest { 
     particle_ctrl_SecurityKeyType type; /* Key type */
@@ -310,6 +314,19 @@ typedef struct _particle_ctrl_SetStartupModeRequest {
     particle_ctrl_DeviceMode mode; 
 } particle_ctrl_SetStartupModeRequest;
 
+typedef struct _particle_ctrl_SetProtectedStateReply { 
+    particle_ctrl_SetProtectedStateReply_PrepareChange prepare_change; 
+} particle_ctrl_SetProtectedStateReply;
+
+typedef struct _particle_ctrl_SetProtectedStateRequest { 
+    particle_ctrl_SetProtectedStateRequest_Action action; 
+    pb_size_t which_data;
+    union {
+        particle_ctrl_SetProtectedStateRequest_PrepareChange prepare_change;
+        particle_ctrl_SetProtectedStateRequest_ConfirmChange confirm_change;
+    } data; 
+} particle_ctrl_SetProtectedStateRequest;
+
 
 /* Helper constants for enums */
 #define _particle_ctrl_SecurityKeyType_MIN particle_ctrl_SecurityKeyType_INVALID_SECURITY_KEY
@@ -333,8 +350,8 @@ typedef struct _particle_ctrl_SetStartupModeRequest {
 #define _particle_ctrl_Feature_ARRAYSIZE ((particle_ctrl_Feature)(particle_ctrl_Feature_ETHERNET_DETECTION+1))
 
 #define _particle_ctrl_SetProtectedStateRequest_Action_MIN particle_ctrl_SetProtectedStateRequest_Action_RESET
-#define _particle_ctrl_SetProtectedStateRequest_Action_MAX particle_ctrl_SetProtectedStateRequest_Action_DISABLE_CONFIRM
-#define _particle_ctrl_SetProtectedStateRequest_Action_ARRAYSIZE ((particle_ctrl_SetProtectedStateRequest_Action)(particle_ctrl_SetProtectedStateRequest_Action_DISABLE_CONFIRM+1))
+#define _particle_ctrl_SetProtectedStateRequest_Action_MAX particle_ctrl_SetProtectedStateRequest_Action_CONFIRM_CHANGE
+#define _particle_ctrl_SetProtectedStateRequest_Action_ARRAYSIZE ((particle_ctrl_SetProtectedStateRequest_Action)(particle_ctrl_SetProtectedStateRequest_Action_CONFIRM_CHANGE+1))
 
 
 #ifdef __cplusplus
@@ -384,8 +401,11 @@ extern "C" {
 #define particle_ctrl_SetStartupModeReply_init_default {0}
 #define particle_ctrl_GetProtectedStateRequest_init_default {0}
 #define particle_ctrl_GetProtectedStateReply_init_default {0, 0}
-#define particle_ctrl_SetProtectedStateRequest_init_default {_particle_ctrl_SetProtectedStateRequest_Action_MIN, false, {0, {0}}, {{NULL}, NULL}}
-#define particle_ctrl_SetProtectedStateReply_init_default {false, {0, {0}}, {{NULL}, NULL}}
+#define particle_ctrl_SetProtectedStateRequest_init_default {_particle_ctrl_SetProtectedStateRequest_Action_MIN, 0, {particle_ctrl_SetProtectedStateRequest_PrepareChange_init_default}}
+#define particle_ctrl_SetProtectedStateRequest_PrepareChange_init_default {{0, {0}}}
+#define particle_ctrl_SetProtectedStateRequest_ConfirmChange_init_default {{{NULL}, NULL}, {0, {0}}}
+#define particle_ctrl_SetProtectedStateReply_init_default {particle_ctrl_SetProtectedStateReply_PrepareChange_init_default}
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_init_default {{0, {0}}, {{NULL}, NULL}, {0, {0}}}
 #define particle_ctrl_SystemResetRequest_init_default {0}
 #define particle_ctrl_SystemResetReply_init_default {0}
 #define particle_ctrl_SetFeatureRequest_init_default {_particle_ctrl_Feature_MIN, 0}
@@ -438,8 +458,11 @@ extern "C" {
 #define particle_ctrl_SetStartupModeReply_init_zero {0}
 #define particle_ctrl_GetProtectedStateRequest_init_zero {0}
 #define particle_ctrl_GetProtectedStateReply_init_zero {0, 0}
-#define particle_ctrl_SetProtectedStateRequest_init_zero {_particle_ctrl_SetProtectedStateRequest_Action_MIN, false, {0, {0}}, {{NULL}, NULL}}
-#define particle_ctrl_SetProtectedStateReply_init_zero {false, {0, {0}}, {{NULL}, NULL}}
+#define particle_ctrl_SetProtectedStateRequest_init_zero {_particle_ctrl_SetProtectedStateRequest_Action_MIN, 0, {particle_ctrl_SetProtectedStateRequest_PrepareChange_init_zero}}
+#define particle_ctrl_SetProtectedStateRequest_PrepareChange_init_zero {{0, {0}}}
+#define particle_ctrl_SetProtectedStateRequest_ConfirmChange_init_zero {{{NULL}, NULL}, {0, {0}}}
+#define particle_ctrl_SetProtectedStateReply_init_zero {particle_ctrl_SetProtectedStateReply_PrepareChange_init_zero}
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_init_zero {{0, {0}}, {{NULL}, NULL}, {0, {0}}}
 #define particle_ctrl_SystemResetRequest_init_zero {0}
 #define particle_ctrl_SystemResetReply_init_zero {0}
 #define particle_ctrl_SetFeatureRequest_init_zero {_particle_ctrl_Feature_MIN, 0}
@@ -475,11 +498,12 @@ extern "C" {
 #define particle_ctrl_SetDeviceSetupDoneRequest_done_tag 1
 #define particle_ctrl_SetFeatureRequest_feature_tag 1
 #define particle_ctrl_SetFeatureRequest_enabled_tag 2
-#define particle_ctrl_SetProtectedStateReply_client_nonce_tag 1
-#define particle_ctrl_SetProtectedStateReply_client_signature_tag 2
-#define particle_ctrl_SetProtectedStateRequest_action_tag 1
-#define particle_ctrl_SetProtectedStateRequest_server_nonce_tag 2
-#define particle_ctrl_SetProtectedStateRequest_server_signature_tag 3
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_device_nonce_tag 1
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_device_signature_tag 2
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_device_public_key_fingerprint_tag 3
+#define particle_ctrl_SetProtectedStateRequest_ConfirmChange_server_signature_tag 1
+#define particle_ctrl_SetProtectedStateRequest_ConfirmChange_server_public_key_fingerprint_tag 2
+#define particle_ctrl_SetProtectedStateRequest_PrepareChange_server_nonce_tag 1
 #define particle_ctrl_SetSecurityKeyRequest_type_tag 1
 #define particle_ctrl_SetSecurityKeyRequest_data_tag 2
 #define particle_ctrl_SetServerAddressRequest_protocol_tag 1
@@ -489,6 +513,10 @@ extern "C" {
 #define particle_ctrl_SetSoftApSsidRequest_prefix_tag 1
 #define particle_ctrl_SetSoftApSsidRequest_suffix_tag 2
 #define particle_ctrl_SetStartupModeRequest_mode_tag 1
+#define particle_ctrl_SetProtectedStateReply_prepare_change_tag 1
+#define particle_ctrl_SetProtectedStateRequest_action_tag 1
+#define particle_ctrl_SetProtectedStateRequest_prepare_change_tag 2
+#define particle_ctrl_SetProtectedStateRequest_confirm_change_tag 3
 
 /* Struct field encoding specification for nanopb */
 #define particle_ctrl_GetDeviceIdRequest_FIELDLIST(X, a) \
@@ -710,16 +738,36 @@ X(a, STATIC,   SINGULAR, BOOL,     overridden,        2)
 
 #define particle_ctrl_SetProtectedStateRequest_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, UENUM,    action,            1) \
-X(a, STATIC,   OPTIONAL, BYTES,    server_nonce,      2) \
-X(a, CALLBACK, OPTIONAL, BYTES,    server_signature,   3)
-#define particle_ctrl_SetProtectedStateRequest_CALLBACK pb_default_field_callback
+X(a, STATIC,   ONEOF,    MESSAGE,  (data,prepare_change,data.prepare_change),   2) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (data,confirm_change,data.confirm_change),   3)
+#define particle_ctrl_SetProtectedStateRequest_CALLBACK NULL
 #define particle_ctrl_SetProtectedStateRequest_DEFAULT NULL
+#define particle_ctrl_SetProtectedStateRequest_data_prepare_change_MSGTYPE particle_ctrl_SetProtectedStateRequest_PrepareChange
+#define particle_ctrl_SetProtectedStateRequest_data_confirm_change_MSGTYPE particle_ctrl_SetProtectedStateRequest_ConfirmChange
+
+#define particle_ctrl_SetProtectedStateRequest_PrepareChange_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, BYTES,    server_nonce,      1)
+#define particle_ctrl_SetProtectedStateRequest_PrepareChange_CALLBACK NULL
+#define particle_ctrl_SetProtectedStateRequest_PrepareChange_DEFAULT NULL
+
+#define particle_ctrl_SetProtectedStateRequest_ConfirmChange_FIELDLIST(X, a) \
+X(a, CALLBACK, SINGULAR, BYTES,    server_signature,   1) \
+X(a, STATIC,   SINGULAR, BYTES,    server_public_key_fingerprint,   2)
+#define particle_ctrl_SetProtectedStateRequest_ConfirmChange_CALLBACK pb_default_field_callback
+#define particle_ctrl_SetProtectedStateRequest_ConfirmChange_DEFAULT NULL
 
 #define particle_ctrl_SetProtectedStateReply_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, BYTES,    client_nonce,      1) \
-X(a, CALLBACK, OPTIONAL, BYTES,    client_signature,   2)
-#define particle_ctrl_SetProtectedStateReply_CALLBACK pb_default_field_callback
+X(a, STATIC,   SINGULAR, MESSAGE,  prepare_change,    1)
+#define particle_ctrl_SetProtectedStateReply_CALLBACK NULL
 #define particle_ctrl_SetProtectedStateReply_DEFAULT NULL
+#define particle_ctrl_SetProtectedStateReply_prepare_change_MSGTYPE particle_ctrl_SetProtectedStateReply_PrepareChange
+
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, BYTES,    device_nonce,      1) \
+X(a, CALLBACK, SINGULAR, BYTES,    device_signature,   2) \
+X(a, STATIC,   SINGULAR, BYTES,    device_public_key_fingerprint,   3)
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_CALLBACK pb_default_field_callback
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_DEFAULT NULL
 
 #define particle_ctrl_SystemResetRequest_FIELDLIST(X, a) \
 
@@ -815,7 +863,10 @@ extern const pb_msgdesc_t particle_ctrl_SetStartupModeReply_msg;
 extern const pb_msgdesc_t particle_ctrl_GetProtectedStateRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_GetProtectedStateReply_msg;
 extern const pb_msgdesc_t particle_ctrl_SetProtectedStateRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_SetProtectedStateRequest_PrepareChange_msg;
+extern const pb_msgdesc_t particle_ctrl_SetProtectedStateRequest_ConfirmChange_msg;
 extern const pb_msgdesc_t particle_ctrl_SetProtectedStateReply_msg;
+extern const pb_msgdesc_t particle_ctrl_SetProtectedStateReply_PrepareChange_msg;
 extern const pb_msgdesc_t particle_ctrl_SystemResetRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_SystemResetReply_msg;
 extern const pb_msgdesc_t particle_ctrl_SetFeatureRequest_msg;
@@ -871,7 +922,10 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 #define particle_ctrl_GetProtectedStateRequest_fields &particle_ctrl_GetProtectedStateRequest_msg
 #define particle_ctrl_GetProtectedStateReply_fields &particle_ctrl_GetProtectedStateReply_msg
 #define particle_ctrl_SetProtectedStateRequest_fields &particle_ctrl_SetProtectedStateRequest_msg
+#define particle_ctrl_SetProtectedStateRequest_PrepareChange_fields &particle_ctrl_SetProtectedStateRequest_PrepareChange_msg
+#define particle_ctrl_SetProtectedStateRequest_ConfirmChange_fields &particle_ctrl_SetProtectedStateRequest_ConfirmChange_msg
 #define particle_ctrl_SetProtectedStateReply_fields &particle_ctrl_SetProtectedStateReply_msg
+#define particle_ctrl_SetProtectedStateReply_PrepareChange_fields &particle_ctrl_SetProtectedStateReply_PrepareChange_msg
 #define particle_ctrl_SystemResetRequest_fields &particle_ctrl_SystemResetRequest_msg
 #define particle_ctrl_SystemResetReply_fields &particle_ctrl_SystemResetReply_msg
 #define particle_ctrl_SetFeatureRequest_fields &particle_ctrl_SetFeatureRequest_msg
@@ -890,7 +944,9 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 /* particle_ctrl_GetSecurityKeyReply_size depends on runtime parameters */
 /* particle_ctrl_GetServerAddressReply_size depends on runtime parameters */
 /* particle_ctrl_SetProtectedStateRequest_size depends on runtime parameters */
+/* particle_ctrl_SetProtectedStateRequest_ConfirmChange_size depends on runtime parameters */
 /* particle_ctrl_SetProtectedStateReply_size depends on runtime parameters */
+/* particle_ctrl_SetProtectedStateReply_PrepareChange_size depends on runtime parameters */
 #define particle_ctrl_GetDeviceIdReply_size      26
 #define particle_ctrl_GetDeviceIdRequest_size    0
 #define particle_ctrl_GetDeviceModeReply_size    2
@@ -919,6 +975,7 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 #define particle_ctrl_SetDeviceSetupDoneRequest_size 2
 #define particle_ctrl_SetFeatureReply_size       0
 #define particle_ctrl_SetFeatureRequest_size     4
+#define particle_ctrl_SetProtectedStateRequest_PrepareChange_size 34
 #define particle_ctrl_SetSecurityKeyReply_size   0
 #define particle_ctrl_SetServerAddressReply_size 0
 #define particle_ctrl_SetServerAddressRequest_size 79
