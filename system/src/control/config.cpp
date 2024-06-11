@@ -77,7 +77,7 @@ struct SecurityModeChangeContext {
 std::unique_ptr<SecurityModeChangeContext> g_securityModeChangeCtx;
 
 int getPublicKeyFingerprint(mbedtls_pk_context& pk, char fingerprint[Sha256::HASH_SIZE]) {
-    char pubKeyDer[128];
+    char pubKeyDer[128] = {}; // A secp256r1 public key is about 90 bytes long in DER format
     int n = mbedtls_pk_write_pubkey_der(&pk, (uint8_t*)pubKeyDer, sizeof(pubKeyDer));
     if (n < 0) {
         return mbedtls_to_system_error(n);
@@ -85,7 +85,8 @@ int getPublicKeyFingerprint(mbedtls_pk_context& pk, char fingerprint[Sha256::HAS
     Sha256 sha;
     CHECK(sha.init());
     CHECK(sha.start());
-    CHECK(sha.update(pubKeyDer, n));
+    // mbedtls_pk_write_pubkey_der() writes at the end of the buffer
+    CHECK(sha.update(pubKeyDer + sizeof(pubKeyDer) - n, n));
     CHECK(sha.finish(fingerprint));
     return 0;
 }
