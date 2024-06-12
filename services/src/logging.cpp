@@ -22,7 +22,6 @@
 #include "timer_hal.h"
 #include "service_debug.h"
 #include "static_assert.h"
-#include "security_mode.h"
 
 #define STATIC_ASSERT_FIELD_SIZE(struct, field, size) \
         STATIC_ASSERT(field_size_changed_##struct##_##field, sizeof(struct::field) == size);
@@ -80,8 +79,7 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
 
 void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, va_list args) {
     const log_message_callback_type msg_callback = log_msg_callback;
-    if ((!msg_callback && (!log_compat_callback || level < log_compat_level)) ||
-            security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+    if (!msg_callback && (!log_compat_callback || level < log_compat_level)) {
         return;
     }
     // Set default attributes
@@ -129,7 +127,7 @@ void log_message(int level, const char *category, LogAttributes *attr, void *res
 }
 
 void log_write(int level, const char *category, const char *data, size_t size, void *reserved) {
-    if (!size || security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+    if (!size) {
         return;
     }
     const log_write_callback_type write_callback = log_write_callback;
