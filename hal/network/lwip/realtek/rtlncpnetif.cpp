@@ -305,7 +305,7 @@ void RealtekNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
     if (ev.type == NcpEvent::CONNECTION_STATE_CHANGED) {
         LwipTcpIpCoreLock lk;
         if (!netif_is_up(self->interface())) {
-            // Ignore
+            LOG(WARN,"NCP connection state event ignored, netif not up");
             return;
         }
         const auto& cev = static_cast<const NcpConnectionStateChangedEvent&>(ev);

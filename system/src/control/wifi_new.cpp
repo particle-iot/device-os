@@ -134,6 +134,11 @@ int joinNewNetwork(ctrl_request* req) {
     // FIXME: synchronize NCP client / NcpNetif and system network manager state
     CHECK(ncpClient->enable());
     CHECK(ncpClient->on());
+    // Set new configuration
+    CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::VALIDATE));
+    // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
+    system_notify_event(network_credentials, network_credentials_added);
+
     network_connect(NETWORK_INTERFACE_WIFI_STA, NETWORK_CONNECT_FLAG_FORCE, 0, nullptr);
     NAMED_SCOPE_GUARD(networkDisconnectGuard, {
         // FIXME: synchronize NCP client / NcpNetif and system network manager state
@@ -141,10 +146,6 @@ int joinNewNetwork(ctrl_request* req) {
             network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
         }
     });
-    // Set new configuration
-    CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::VALIDATE));
-    // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
-    system_notify_event(network_credentials, network_credentials_added);
     networkDisconnectGuard.dismiss();
     return 0;
 }

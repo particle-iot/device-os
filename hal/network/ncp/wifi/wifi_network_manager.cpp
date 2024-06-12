@@ -332,6 +332,7 @@ int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, WifiNetworkConf
             }
         });
         CHECK(connect(conf));
+        client_->disconnect();
     } else {
         lock.unlock();
     }
