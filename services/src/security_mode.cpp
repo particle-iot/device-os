@@ -73,16 +73,16 @@ void timerCallback(os_timer_t) {
     bool stop = false;
     ATOMIC_BLOCK() {
         Load_SystemFlags();
-        if (system_flags.security_mode_is_overridden == 1) {
+        if (system_flags.security_mode_override_value != 0xff) {
             if (system_flags.security_mode_override_timeout > 0) {
                 --system_flags.security_mode_override_timeout;
             }
             if (!system_flags.security_mode_override_timeout) {
-                system_flags.security_mode_is_overridden = 0;
+                system_flags.security_mode_override_value = 0xff;
             }
             Save_SystemFlags();
         }
-        if (system_flags.security_mode_is_overridden != 1) {
+        if (system_flags.security_mode_override_value == 0xff) {
             sCurrentSecurityMode = sNormalSecurityMode;
             stop = true;
         }
@@ -108,9 +108,11 @@ int security_mode_init() {
     if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
         sNormalSecurityMode = ext.security_mode;
     }
-    if (sNormalSecurityMode != MODULE_INFO_SECURITY_MODE_NONE) {
-        Load_SystemFlags();
-        sCurrentSecurityMode = (system_flags.security_mode_is_overridden == 1) ? MODULE_INFO_SECURITY_MODE_NONE : sNormalSecurityMode;
+    Load_SystemFlags();
+    if (system_flags.security_mode_override_value != 0xff) {
+        sCurrentSecurityMode = system_flags.security_mode_override_value;
+    } else {
+        sCurrentSecurityMode = sNormalSecurityMode;
     }
     return 0;
 }
@@ -212,7 +214,7 @@ void security_mode_override_to_none() {
     }
     ATOMIC_BLOCK() {
         Load_SystemFlags();
-        system_flags.security_mode_is_overridden = 1;
+        system_flags.security_mode_override_value = MODULE_INFO_SECURITY_MODE_NONE;
         system_flags.security_mode_override_reset_count = 20;
         system_flags.security_mode_override_timeout = 24 * 60 * 60; // Seconds
         Save_SystemFlags();
@@ -229,7 +231,7 @@ void security_mode_clear_override() {
     }
     ATOMIC_BLOCK() {
         Load_SystemFlags();
-        system_flags.security_mode_is_overridden = 0;
+        system_flags.security_mode_override_value = 0xff;
         Save_SystemFlags();
         sCurrentSecurityMode = sNormalSecurityMode;
     }
@@ -250,16 +252,16 @@ void security_mode_notify_system_reset() {
     }
     ATOMIC_BLOCK() {
         Load_SystemFlags();
-        if (system_flags.security_mode_is_overridden == 1) {
+        if (system_flags.security_mode_override_value != 0xff) {
             if (system_flags.security_mode_override_reset_count > 0) {
                 --system_flags.security_mode_override_reset_count;
             }
             if (!system_flags.security_mode_override_reset_count) {
-                system_flags.security_mode_is_overridden = 0;
+                system_flags.security_mode_override_value = 0xff;
             }
             Save_SystemFlags();
         }
-        if (system_flags.security_mode_is_overridden != 1) {
+        if (system_flags.security_mode_override_value == 0xff) {
             sCurrentSecurityMode = sNormalSecurityMode;
         }
     }
@@ -275,16 +277,16 @@ void security_mode_notify_system_tick() {
     if (!sSystemTickCount) {
         ATOMIC_BLOCK() {
             Load_SystemFlags();
-            if (system_flags.security_mode_is_overridden == 1) {
+            if (system_flags.security_mode_override_value != 0xff) {
                 if (system_flags.security_mode_override_timeout > 0) {
                     --system_flags.security_mode_override_timeout;
                 }
                 if (!system_flags.security_mode_override_timeout) {
-                    system_flags.security_mode_is_overridden = 0;
+                    system_flags.security_mode_override_value = 0xff;
                 }
                 Save_SystemFlags();
             }
-            if (system_flags.security_mode_is_overridden != 1) {
+            if (system_flags.security_mode_override_value == 0xff) {
                 sCurrentSecurityMode = sNormalSecurityMode;
             }
         }

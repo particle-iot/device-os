@@ -37,7 +37,7 @@ typedef struct __attribute__((packed)) platform_system_flags {
                                             // This is to prevent against corrupted data causing the bootloader to be unavailable.
     uint32_t RCC_CSR_SysFlag;
 
-    uint8_t security_mode_is_overridden; // If 1, the security mode is temporarily lowered to NONE, otherwise the normal security mode is in effect
+    uint8_t security_mode_override_value; // If not 0xff, specifies the temporary security mode that overrides the normal mode
     uint8_t security_mode_override_reset_count; // Number of system resets after which the normal security mode will be restored
     uint32_t security_mode_override_timeout; // Timeout, in seconds, after which the normal security mode will be restored
 
