@@ -92,8 +92,18 @@ int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial) {
     return usb_uart_available_rx_data();
 }
 
+int32_t HAL_USB_USART_Available_Data_protected(HAL_USB_USART_Serial serial) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Available_Data(serial);
+}
+
 int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial) {
     return usb_uart_available_tx_data();
+}
+
+int32_t HAL_USB_USART_Available_Data_For_Write_protected(HAL_USB_USART_Serial serial) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Available_Data_For_Write(serial);
 }
 
 int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek) {
@@ -108,12 +118,29 @@ int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek) {
     }
 }
 
+int32_t HAL_USB_USART_Receive_Data_protected(HAL_USB_USART_Serial serial, uint8_t peek) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Receive_Data(serial, peek);
+}
+
 int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
     return usb_uart_send(&data, 1);
 }
 
+int32_t HAL_USB_USART_Send_Data_protected(HAL_USB_USART_Serial serial, uint8_t data) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Send_Data(serial, data);
+}
+
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial) {
     usb_uart_flush_tx_data();
+}
+
+void HAL_USB_USART_Flush_Data_protected(HAL_USB_USART_Serial serial) {
+    if (security_mode_get(NULL) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        return;
+    }
+    HAL_USB_USART_Flush_Data(serial);
 }
 
 bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial) {

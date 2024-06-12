@@ -43,6 +43,8 @@
 #include "hw_config.h"
 #endif
 
+#include "security_mode.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -204,11 +206,11 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
 void HAL_USB_USART_Begin(HAL_USB_USART_Serial serial, uint32_t baud, void *reserved);
 void HAL_USB_USART_End(HAL_USB_USART_Serial serial);
 unsigned int HAL_USB_USART_Baud_Rate(HAL_USB_USART_Serial serial);
-int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial);
-int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial);
-int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek);
-int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data);
-void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial);
+SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Available_Data, (HAL_USB_USART_Serial serial));
+SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Available_Data_For_Write, (HAL_USB_USART_Serial serial));
+SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Receive_Data, (HAL_USB_USART_Serial serial, uint8_t peek));
+SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Send_Data, (HAL_USB_USART_Serial serial, uint8_t data));
+SECURITY_MODE_PROTECTED_FN(void, HAL_USB_USART_Flush_Data, (HAL_USB_USART_Serial serial));
 bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial);
 bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial);
 int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved);
