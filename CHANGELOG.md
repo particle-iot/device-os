@@ -4,22 +4,38 @@
 
 - Protected mode [#2734](https://github.com/particle-iot/device-os/pull/2734)
 
-## 5.8.1
+## 5.8.2
 
 ### FEATURES
-
+- [Gen 4] [rtl872x] Improve coexistence between Wifi and BLE when both are used simultaneously [#2764](https://github.com/particle-iot/device-os/pull/2764) 
 - [Gen 4] [rtl872x] [BREAKING CHANGE] Backup RAM is no longer automatically written to flash periodically. Backup RAM will be saved when entering sleep. If users are going to reset, `hal_backup_ram_sync()` should be called first [#2766](https://github.com/particle-iot/device-os/pull/2766)
 
+### ENHANCEMENTS
+- [eg91e] [eg91ex] enable 921600 baud rate [#2782](https://github.com/particle-iot/device-os/pull/2782)
+- [rtl872x] SPI hal: set sample delay for SPI0@25MHz [#2784](https://github.com/particle-iot/device-os/pull/2784) 
+- [Gen 4] [msom]ACM Behavior changes [#2738](https://github.com/particle-iot/device-os/pull/2738) 
+- Update heap5 implementation to latest [6d1d9bff2](https://github.com/particle-iot/device-os/commit/6d1d9bff2a0f39ae2e331686357c593fc18108ed)[07104a8dc2](https://github.com/particle-iot/device-os/commit/07104a8dc26611ec4a312ec113824ffbd9bbed02)
 
 ### BUGFIXES
-
+- Fix wifi setup not connecting when in listening mode [#2783](https://github.com/particle-iot/device-os/pull/2783) [#2778](https://github.com/particle-iot/device-os/pull/2778) 
+- Resumable OTA fixes [#2769](https://github.com/particle-iot/device-os/pull/2769) 
+- [quectel] fixes PPP resume during warm boot [#2772](https://github.com/particle-iot/device-os/pull/2772)
+- [Gen 4] [bootloader] Implement bootloader reset reasons [#2773](https://github.com/particle-iot/device-os/pull/2773)
+- [RTL872x] multiple SPI fixes [#2768](https://github.com/particle-iot/device-os/pull/2768)
 - [Gen 4] [rtl872x] Reinitialize internal wifi stack if scan or connect fails [#2766](https://github.com/particle-iot/device-os/pull/2766) [#2760](https://github.com/particle-iot/device-os/pull/2760/)
 - [Gen 4] [rtl872x] Resolve deadlock with USB serial monitoring on boot in some cases[#2765](https://github.com/particle-iot/device-os/pull/2765)
+- [gen3] hal: fix gpio glitch [#2787](https://github.com/particle-iot/device-os/pull/2787)
+- [ACM] Dont change cloud connection to preferred network during OTA update [9abfb7c72](https://github.com/particle-iot/device-os/commit/9abfb7c721b7d68b0378eebe2f31483583343b86)
+- Avoid malloc/realloc while under ATOMIC_BLOCK in system event subscription [63fcc6b26](https://github.com/particle-iot/device-os/commit/63fcc6b26921fa75cd686972e74aba6e5ba83b0e)
+- [gen 4] network: Increase rtlkncp thread stack [29433d38c](https://github.com/particle-iot/device-os/commit/29433d38c567b57dc69f3d364b2080f4711feb0e)
 
 ### INTERNAL
+- [rtl872x] Display Photon 2 instead of P2, dont allow extended advertising data on rtl platforms [#2779](https://github.com/particle-iot/device-os/pull/2779) 
+- Add set credentials usb request [#2763](https://github.com/particle-iot/device-os/pull/2763)
 - [Gen 4] [rtl872x] Prevent M404/BG95M5 modems from connecting on 2G networks for the time being[#2761](https://github.com/particle-iot/device-os/pull/2761)
 - [Gen 4] [rtl872x] Query 2G registration status for M404/BG95M5 modems when querying CGMI [#2761](https://github.com/particle-iot/device-os/pull/2761)
-
+- [Gen 4] Update sdk submoudle ref to fix compiler warnings [#2789](https://github.com/particle-iot/device-os/pull/2789) 
+- [test] Adjust OTA tests [8ec558e63](https://github.com/particle-iot/device-os/commit/8ec558e63d8545856ff7ac37db1dda1546df8786)
 
 ## 5.8.0
 
