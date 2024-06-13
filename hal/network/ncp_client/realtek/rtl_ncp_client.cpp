@@ -505,6 +505,7 @@ void RealtekNcpClient::ncpPowerState(NcpPowerState state) {
         return;
     }
     pwrState_ = state;
+    LOG(TRACE, "NCP power state changed: %d", (int)pwrState_);
     const auto handler = conf_.eventHandler();
     if (handler) {
         NcpPowerStateChangedEvent event = {};
