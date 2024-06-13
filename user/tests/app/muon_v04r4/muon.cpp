@@ -359,6 +359,11 @@ void testFuelGauge() {
     delay(1000);
     auto ret = fuel.getVersion();
     Log.info("[testFuelGauge] version: 0x%04x", ret);
+
+    fuel.setAlertThreshold(25);
+    fuel.clearAlert();
+    Log.info("[testFuelGauge] Current percentage: %.2f%%", fuel.getSoC());
+    pinMode(A7, INPUT_PULLUP);
 }
 
 void testPmic() {
@@ -470,7 +475,7 @@ void setup() {
     uartRouteLora(false);
 
     WIRE.begin();
-    
+
     testFuelGauge();
     testPmic();
     testStusb4500();
@@ -507,5 +512,15 @@ void loop() {
         gmtime_r(&tv.tv_sec, &calendar);
         Log.info("Time: %ld-%ld-%ld, %ld:%ld:%ld",
             calendar.tm_year + 1900, calendar.tm_mon + 1, calendar.tm_mday, calendar.tm_hour, calendar.tm_min, calendar.tm_sec);
+
+        FuelGauge fuelGauge;
+        Log.info("Current percentage: %.2f%%", fuelGauge.getSoC());
+        int val = digitalRead(A7);
+        if (val == 0) {
+            Log.info("low battery alert, low than 25% !!!");
+            fuelGauge.begin();
+            fuelGauge.wakeup();
+            fuelGauge.clearAlert();  // Ensure this is cleared, or interrupts will never occur
+        }
     }
 }
