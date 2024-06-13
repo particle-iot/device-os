@@ -274,8 +274,8 @@ public:
             u32 rtlClockDivider = 256;
             clockDivToRtlClockDiv(config_.clockDiv, &rtlClockDivider);
             SSI_SetBaudDiv(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, rtlClockDivider);
-            // Set sample delay for SPI0@50MHz
-            if (rtlClockDivider == 2 && SPI_DEV_TABLE[rtlSpiIndex_].SPIx == SPI0_DEV) {
+            // Set sample delay for SPI0@50MHz/25MHz
+            if (rtlClockDivider <= 4 && SPI_DEV_TABLE[rtlSpiIndex_].SPIx == SPI0_DEV) {
                 SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x1);
             } else {
                 SSI_SetSampleDelay(SPI_DEV_TABLE[rtlSpiIndex_].SPIx, 0x0);
