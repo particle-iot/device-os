@@ -92,6 +92,7 @@ const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX = 921600; // version A08 or above
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1073,8 +1074,28 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5;
     } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX) {
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX;
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+        if (fwVersion_ >= 8) {
+            runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX;
+        }
     }
     return runtimeBaudrate;
+}
+
+int QuectelNcpClient::getAppFirmwareVersion() {
+    // example output: EG91NAXGAR07A03M1G_30.004.30.004
+    // Right now we only care about EG91EFBR06AxxM4G*
+    auto resp = parser_.sendCommand("AT+QGMR");
+    int ver = 0;
+    int major = 0;
+    int n = CHECK_PARSER(resp.scanf("EG91EFBR06A%dM4G", &major));
+    int r = resp.readResult();
+    if (r == AtResponse::OK && n == 1) {
+        ver = major;
+    }
+    // LOG(TRACE, "App firmware: %d", ver); // will be reported as 0 in case of error
+
+    return ver;
 }
 
 int QuectelNcpClient::initReady(ModemState state) {
@@ -1091,6 +1112,10 @@ int QuectelNcpClient::initReady(ModemState state) {
 
     if (state != ModemState::MuxerAtChannel) {
         // Cold Boot only, Warm Boot will skip the following block...
+
+        if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+            fwVersion_ = getAppFirmwareVersion();
+        }
 
         // Enable flow control and change to runtime baudrate
 #if PLATFORM_ID == PLATFORM_B5SOM
