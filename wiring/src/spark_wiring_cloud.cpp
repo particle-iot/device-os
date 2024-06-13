@@ -29,6 +29,7 @@ spark_cloud_disconnect_options CloudDisconnectOptions::toSystemOptions() const
     opts.graceful = graceful_;
     opts.timeout = timeout_;
     opts.clear_session = clearSession_;
+    opts.reconnect_immediately = reconnect_;
     return opts;
 }
 
@@ -39,7 +40,7 @@ CloudDisconnectOptions CloudDisconnectOptions::fromSystemOptions(const spark_clo
             sizeof(spark_cloud_disconnect_options::clear_session)) {
         clearSession = options->clear_session;
     }
-    return CloudDisconnectOptions(options->flags, options->timeout, options->graceful, clearSession);
+    return CloudDisconnectOptions(options->flags, options->timeout, options->graceful, clearSession, options->reconnect_immediately);
 }
 
 int CloudClass::call_raw_user_function(void* data, const char* param, void* reserved)
