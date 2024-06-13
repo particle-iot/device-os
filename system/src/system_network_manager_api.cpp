@@ -169,7 +169,7 @@ void network_connect(network_handle_t network, uint32_t flags, uint32_t param, v
 
         bool listenFlagSet = testAndClearListeningModeFlag();
         bool enterListen = listenFlagSet || !NetworkManager::instance()->isConfigured();
-        if (enterListen && ~(flags & NETWORK_CONNECT_FLAG_FORCE)) {
+        if (enterListen && !(flags & NETWORK_CONNECT_FLAG_FORCE)) {
             network_listen(0, 0, 0);
             return;
         }
