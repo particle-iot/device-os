@@ -1184,7 +1184,8 @@ void sys_unlock_tcpip_core(void);
  * The priority value itself is platform-dependent, but is passed to
  * sys_thread_new() when the thread is created.
  */
-#define TCPIP_THREAD_PRIO               OS_THREAD_PRIORITY_NETWORK
+// NOTE: above SDK network threads
+#define TCPIP_THREAD_PRIO               (OS_THREAD_PRIORITY_NETWORK_HIGH + 1)
 
 /**
  * TCPIP_MBOX_SIZE: The mailbox size for the tcpip thread messages

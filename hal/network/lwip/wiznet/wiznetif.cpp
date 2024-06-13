@@ -582,7 +582,7 @@ int WizNetif::input() {
 
 err_t WizNetif::linkOutput(pbuf* p) {
     if (!(netif_is_up(interface()) && netif_is_link_up(interface()))) {
-        return ERR_IF;
+        return ERR_RTE;
     }
 
     pbuf* q = pbuf_clone(PBUF_LINK, PBUF_RAM, p);

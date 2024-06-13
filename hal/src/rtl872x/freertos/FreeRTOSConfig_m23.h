@@ -30,13 +30,8 @@
 	definitions contained in this file.
 ******************************************************************************/
 
-#ifndef ARM_CPU_CORTEX_M33
-#include "FreeRTOSConfig_m23.h"
-#define FREERTOS_CONFIG_H
-#endif // ARM_CPU_CORTEX_M33
-
-#ifndef FREERTOS_CONFIG_H
-#define FREERTOS_CONFIG_H
+#ifndef FREERTOS_CONFIG_M23_H
+#define FREERTOS_CONFIG_M23_H
 
 /*-----------------------------------------------------------
  * Application specific definitions.
@@ -49,37 +44,23 @@
  * http://www.freertos.org/a00110.html
  *----------------------------------------------------------*/
 
+#if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__) 
 #include <stdint.h> 
 extern uint32_t SystemCoreClock; 
-
-
+#endif 
+#ifndef __IASMARM__
 #define __IASMARM__ 0 /* IAR */
-
+#endif
 #include "platform_autoconf.h"
 
 
-
-#define configAPPLICATION_ALLOCATED_HEAP ( 1 )
-#define configDYNAMIC_HEAP_SIZE     ( 1 )
-#define configSUPPORT_STATIC_ALLOCATION ( 1 )
-
-extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPendYield);
-#define portPRE_TASK_DELETE_HOOK(pvTaskToDelete, pxYieldPending) vApplicationTaskDeleteHook((pvTaskToDelete), (pxYieldPending))
-
-
-
-
-/* Cortex M33 port configuration. */
+/* Cortex M23 port configuration. */
 #define configENABLE_MPU								0
 
-#define configENABLE_FPU								1
+#define configENABLE_FPU								0
 
 /* Configure secure image(RDP) exists or not. Set configENABLE_TRUSTZONE to 1 if enable RDP. */
-#if defined(CONFIG_TRUSTZONE_EN) && (CONFIG_TRUSTZONE_EN == 1)
-#define configENABLE_TRUSTZONE							1
-#else
 #define configENABLE_TRUSTZONE							0
-#endif
 #define configRUN_FREERTOS_SECURE_ONLY					0
 
 
@@ -88,41 +69,25 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 #define configUSE_PREEMPTION							1
 #define configUSE_TIME_SLICING							1
 #define configMAX_PRIORITIES							( 11 )
-// #define configIDLE_SHOULD_YIELD							0
-#define configIDLE_SHOULD_YIELD                         1
+#define configIDLE_SHOULD_YIELD							0
 #define configUSE_16_BIT_TICKS							0 /* Only for 8 and 16-bit hardware. */
 
 /* Constants that describe the hardware and memory usage. */
 #define configCPU_CLOCK_HZ								SystemCoreClock
-// #define configMINIMAL_STACK_SIZE						( ( unsigned short ) 512 )
-#define configMINIMAL_STACK_SIZE                        ( ( unsigned short ) 128 )
+#define configMINIMAL_STACK_SIZE						( ( unsigned short ) 512 )
 #define configMINIMAL_SECURE_STACK_SIZE					( 1024 )
 #define configMAX_TASK_NAME_LEN							( 10 )
-#ifdef CONFIG_WIFI_EN
-#define configTOTAL_HEAP_SIZE						( ( size_t ) ( 250 * 1024 ) ) //default
-#if (defined CONFIG_HIGH_TP_TEST)
-	#define configTOTAL_HEAP_SIZE					( ( size_t ) ( 100 * 1024 ) )		
-#endif
-#else
-#define configTOTAL_HEAP_SIZE						( ( size_t ) ( 40 * 1024 ) )
-#endif
-#define  CONFIG_DYNAMIC_HEAP_SIZE                       0
-
-#define secureconfigTOTAL_SRAM_HEAP_SIZE			( ( ( size_t ) ( 6 * 1024 ) ) )
-#define secureconfigTOTAL_PSRAM_HEAP_SIZE			( ( ( size_t ) ( 128 * 1024 ) ) )
+#define configTOTAL_HEAP_SIZE							( ( size_t ) ( 20 * 1024 ) ) //max 42K
+#define configAPPLICATION_ALLOCATED_HEAP                ( 1 )
+#define configDYNAMIC_HEAP_SIZE                         ( 1 )
+#define configHEAP_NO_ASSERT_OVERRIDE                   ( 1 )
+#define configSUPPORT_STATIC_ALLOCATION					( 1 )
 
 /* Constants that build features in or out. */
 #define configUSE_MUTEXES								1
-#define configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE  1
 #define configUSE_APPLICATION_TASK_TAG					0
-#define configUSE_NEWLIB_REENTRANT						1
-
-struct _reent;
-extern void newlib_impure_ptr_change(struct _reent* r);
-#define traceTASK_SWITCHED_IN() newlib_impure_ptr_change(&(pxCurrentTCB->xNewLib_reent))
-
-// #define configUSE_CO_ROUTINES							1 ///
-#define configUSE_CO_ROUTINES							0 ///
+#define configUSE_NEWLIB_REENTRANT						0
+#define configUSE_CO_ROUTINES							1 ///
 #define configMAX_CO_ROUTINE_PRIORITIES 				( 2 )
 #define configUSE_COUNTING_SEMAPHORES					1
 #define configUSE_RECURSIVE_MUTEXES						1
@@ -133,7 +98,7 @@ extern void newlib_impure_ptr_change(struct _reent* r);
 /* Constants that define which hook (callback) functions should be used. */
 #define configUSE_IDLE_HOOK								1
 #define configUSE_TICK_HOOK								0
-#define configUSE_MALLOC_FAILED_HOOK					1
+#define configUSE_MALLOC_FAILED_HOOK					0
 
 /* Constants provided for debugging and optimisation assistance. */
 #define configCHECK_FOR_STACK_OVERFLOW					2
@@ -142,9 +107,9 @@ extern void newlib_impure_ptr_change(struct _reent* r);
 
 /* Software timer definitions. */
 #define configUSE_TIMERS								1
-#define configTIMER_TASK_PRIORITY						( configMAX_PRIORITIES - 1 )
-#define configTIMER_QUEUE_LENGTH						( 128 )
-#define configTIMER_TASK_STACK_DEPTH					( ( unsigned short ) (4096 / sizeof( portSTACK_TYPE )) )
+#define configTIMER_TASK_PRIORITY						1
+#define configTIMER_QUEUE_LENGTH						10
+#define configTIMER_TASK_STACK_DEPTH					( 512  )
 
 /* Set the following definitions to 1 to include the API function, or zero
  * to exclude the API function.  NOTE:  Setting an INCLUDE_ parameter to 0 is
@@ -159,8 +124,7 @@ extern void newlib_impure_ptr_change(struct _reent* r);
 #define INCLUDE_vTaskDelay								1
 #define INCLUDE_pcTaskGetTaskName       				1
 #define INCLUDE_uxTaskGetStackHighWaterMark				0
-// #define INCLUDE_xTaskGetIdleTaskHandle					0
-#define INCLUDE_xTaskGetIdleTaskHandle					1
+#define INCLUDE_xTaskGetIdleTaskHandle					0
 #define INCLUDE_eTaskGetState							1
 #define INCLUDE_xTaskResumeFromISR						0
 #define INCLUDE_xTaskGetCurrentTaskHandle				1
@@ -186,13 +150,12 @@ extern void newlib_impure_ptr_change(struct _reent* r);
 #ifdef __NVIC_PRIO_BITS
 	#define configPRIO_BITS								__NVIC_PRIO_BITS
 #else
-	#define configPRIO_BITS								3	 /* 8 priority levels. */
+	#define configPRIO_BITS								2	 /* 8 priority levels. */
 #endif
 
-/* The lowest interrupt priority that can be used in a call to a "set priority" function.
- * For KM4, each interrupt can have one of 8 priorities (0, 1, 2 ..., 7)
- */
-#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY         7
+/* The lowest interrupt priority that can be used in a call to a "set priority"
+ * function. */
+#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY			3
 
 /* The highest interrupt priority that can be used by any interrupt service
  * routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT
@@ -240,7 +203,7 @@ standard names - or at least those used in the unmodified vector table. */
 #define configUSE_TICKLESS_IDLE                 		0
 
 /* In wlan usage, this value is suggested to use value less than 80 milliseconds */
-// #define configEXPECTED_IDLE_TIME_BEFORE_SLEEP   		2
+#define configEXPECTED_IDLE_TIME_BEFORE_SLEEP   		2
 
 /* It's magic trick that let us can use our own sleep function */
 // #define configPRE_SLEEP_PROCESSING( x )         		( freertos_pre_sleep_processing((unsigned int *)&x) )
@@ -252,12 +215,13 @@ standard names - or at least those used in the unmodified vector table. */
 // extern int  freertos_ready_to_sleep(void);
 
 /* It's magic trick that let us can enable/disable tickless dynamically */
-#define traceLOW_POWER_IDLE_BEGIN()
-#define traceLOW_POWER_IDLE_END()
+// #define traceLOW_POWER_IDLE_BEGIN()
+// #define traceLOW_POWER_IDLE_END()
 
 /* It's FreeRTOS related feature but it's not included in FreeRTOS design. */
-#define configUSE_WAKELOCK_PMU                  		0
-
+// #define configUSE_WAKELOCK_PMU                  		1
+	
 #endif /* __IASMARM__ */
 
-#endif /* FREERTOS_CONFIG_H */
+#endif /* FREERTOS_CONFIG_M23_H */
+

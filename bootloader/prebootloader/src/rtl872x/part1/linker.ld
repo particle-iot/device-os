@@ -9,6 +9,7 @@ MEMORY
     SRAM          (xrw) : ORIGIN = platform_km0_part1_ram_start,   LENGTH = platform_km0_part1_ram_size
     APP_FLASH     (rx)  : ORIGIN = platform_km0_part1_flash_start, LENGTH = platform_km0_part1_flash_size
     RETENTION_RAM (xrw) : ORIGIN = platform_retention_ram_start,   LENGTH = platform_retention_ram_size
+    WIFI_FW_RAM   (rwx) : ORIGIN = platform_km0_part1_wifi_fw_ram_start, LENGTH = platform_km0_part1_wifi_fw_ram_size
 }
 
 SECTIONS
@@ -42,6 +43,39 @@ SECTIONS
 
     INCLUDE linker_build_id.ld
 
+    .wifi_fw_bss (NOLOAD):
+    {
+        . = ALIGN(4);
+        link_wifi_fw_bss_start = . ;
+        *lib_wifi_fw.a: (.bss .bss.* .FW.ram.bss .FW.ram.bss.*)
+        link_wifi_fw_bss_end = . ;
+        . = ALIGN(4);
+    } > WIFI_FW_RAM AT> WIFI_FW_RAM
+
+    .wifi_fw_text :
+    {
+        . = ALIGN(4);
+        link_wifi_fw_text_start = . ;
+        link_wifi_fw_text_flash_start = LOADADDR ( .wifi_fw_text );
+        link_code_start = .;
+        *lib_wifi_fw.a: (.text .text.* .rodata .rodata.*)
+        *(.wifi_fw_text)
+        *(.wifi_fw_text*)
+        link_wifi_fw_text_end = . ;
+        . = ALIGN(4);
+    } > WIFI_FW_RAM AT> APP_FLASH
+
+    .wifi_fw_data :
+    {
+        . = ALIGN(4);
+        link_wifi_fw_data_start = . ;
+        link_wifi_fw_data_flash_start = LOADADDR ( .wifi_fw_data );
+        *lib_wifi_fw.a: (.data .data.*)
+        link_wifi_fw_data_end = . ;
+        . = ALIGN(4);
+        link_wifi_fw_used_end = . ;
+    } > WIFI_FW_RAM AT> APP_FLASH
+
     .ram_text :
     {
         link_ram_copy_flash_start = LOADADDR( .ram_text );
@@ -49,7 +83,6 @@ SECTIONS
         link_ram_copy_start = .;
         
         /* Code */
-        link_code_start = .;
         *(.flashtext) /* Realtek specific */
         *(.text)
         *(.text.*)
@@ -89,8 +122,8 @@ SECTIONS
         KEEP (*(SORT(.dtors.*)))
         KEEP (*crtend.o(.dtors))
         link_destructors_end = .;
-        
         . = ALIGN(4);
+        link_ram_copy_end = .;
     } > SRAM AT> APP_FLASH
 
     /* Static RAM start */
@@ -119,7 +152,6 @@ SECTIONS
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
-        link_ram_copy_end = .;
     } > SRAM AT> APP_FLASH
     
     /* Zero initialised memory used for zero initialised variables */
@@ -180,8 +212,8 @@ SECTIONS
 }
 
 /* Heap location */
-link_heap_location     = link_bss_end;
-link_heap_location_end = platform_km0_ram_end - platform_km0_bootloader_stack_size;
+link_heap_location     = link_wifi_fw_used_end;
+link_heap_location_end = platform_km0_part1_wifi_fw_ram_end;
 
 /* Stack , used by startup*/
 link_stack_size     = platform_km0_bootloader_stack_size;

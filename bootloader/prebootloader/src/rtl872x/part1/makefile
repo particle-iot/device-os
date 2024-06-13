@@ -5,11 +5,11 @@ BOOTLOADER_SHARED_MODULAR = ../shared
 BUILD_PATH_EXT = $(PREBOOTLOADER_PART1_BUILD_PATH_EXT)
 RTL_BINARY_FLASH_START = 0x14000
 
-DEPENDENCIES = hal platform dynalib services wiring
-MAKE_DEPENDENCIES = $(PLATFORM_DEPS)
-# dependent on headers, but not the libraries
-# LIBS +=
-LIB_DEPS += $(PLATFORM_LIB_DEPS)
+DEPENDENCIES = hal platform dynalib services wiring third_party/freertos
+MAKE_DEPENDENCIES = $(PLATFORM_DEPS) third_party/freertos
+
+LIBS += $(notdir third_party/freertos)
+LIB_DEPS += $(PLATFORM_LIB_DEPS) $(FREERTOS_LIB_DEP)
 LIB_DIRS += $(dir $(LIB_DEPS))
 
 BOOTLOADER_USE_LTO?=y
