@@ -107,12 +107,12 @@ int security_mode_init() {
     CHECK(security_mode_find_module_extension(HAL_STORAGE_ID_INTERNAL_FLASH, module_bootloader.start_address, &ext));
     if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
         sNormalSecurityMode = ext.security_mode;
-    }
-    Load_SystemFlags();
-    if (system_flags.security_mode_override_value != 0xff) {
-        sCurrentSecurityMode = system_flags.security_mode_override_value;
-    } else {
-        sCurrentSecurityMode = sNormalSecurityMode;
+        Load_SystemFlags();
+        if (system_flags.security_mode_override_value != 0xff) {
+            sCurrentSecurityMode = system_flags.security_mode_override_value;
+        } else {
+            sCurrentSecurityMode = sNormalSecurityMode;
+        }
     }
     return 0;
 }
@@ -179,17 +179,10 @@ int security_mode_check_control_request(security_mode_transport transport, uint1
 
     if (transport == SECURITY_MODE_TRANSPORT_USB || transport == SECURITY_MODE_TRANSPORT_BLE) {
         switch (id) {
+            case CTRL_REQUEST_SET_PROTECTED_STATE:
             case CTRL_REQUEST_GET_PROTECTED_STATE:
             case CTRL_REQUEST_DEVICE_ID:
             case CTRL_REQUEST_APP_CUSTOM: {
-                return 0;
-            }
-        }
-    }
-
-    if (transport == SECURITY_MODE_TRANSPORT_USB) {
-        switch (id) {
-            case CTRL_REQUEST_SET_PROTECTED_STATE: {
                 return 0;
             }
         }
