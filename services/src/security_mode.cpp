@@ -15,9 +15,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <algorithm>
-
 #include "security_mode.h"
+#include "hal_platform.h"
+
+#if PLATFORM_ID != PLATFORM_GCC
+
 #include "flash_mal.h"
 #include "system_error.h"
 #include "check.h"
@@ -28,6 +30,8 @@
 #include "concurrent_hal.h"
 #include "ota_flash_hal_impl.h"
 #include "hw_config.h"
+
+#include <algorithm>
 
 namespace {
 
@@ -104,8 +108,8 @@ int security_mode_init() {
     }
     module_info_security_mode_ext_t ext = {};
     ext.ext.length = sizeof(ext);
-    CHECK(security_mode_find_module_extension(HAL_STORAGE_ID_INTERNAL_FLASH, module_bootloader.start_address, &ext));
-    if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+    int r = security_mode_find_module_extension(HAL_STORAGE_ID_INTERNAL_FLASH, module_bootloader.start_address, &ext);
+    if (r >= 0 && ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
         sNormalSecurityMode = ext.security_mode;
         Load_SystemFlags();
         if (system_flags.security_mode_override_value != 0xff) {
@@ -300,3 +304,22 @@ void security_mode_notify_system_ready() {
 }
 
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+#else // PLATFORM_ID == PLATFORM_GCC
+
+int security_mode_get(void* reserved) {
+    return MODULE_INFO_SECURITY_MODE_NONE;
+}
+
+bool security_mode_is_overridden() {
+    return false;
+}
+
+void security_mode_notify_system_ready() {
+}
+
+int security_mode_find_module_extension(hal_storage_id storageId, uintptr_t start, module_info_security_mode_ext_t* securityModeExt) {
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+#endif // PLATFORM_ID == PLATFORM_GCC
