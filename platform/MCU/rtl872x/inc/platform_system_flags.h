@@ -39,7 +39,12 @@ typedef struct __attribute__((packed)) platform_system_flags {
     // bit 0: 1: restore backup ram from flash
     // bit 1: 1: session data in flash is stale
     uint16_t restore_backup_ram;
-    uint16_t reserved[3];
+
+    uint8_t security_mode_override_value; // If not 0xff, specifies the temporary security mode that overrides the normal mode
+    uint8_t security_mode_override_reset_count; // Number of system resets after which the normal security mode will be restored
+    uint32_t security_mode_override_timeout; // Timeout, in seconds, after which the normal security mode will be restored
+
+    uint16_t reserved[0];
 } platform_system_flags_t;
 
 PARTICLE_STATIC_ASSERT(platform_system_flags_size_changed, sizeof(platform_system_flags_t) == 32);
