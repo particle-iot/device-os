@@ -103,31 +103,39 @@ void timerCallback(os_timer_t) {
 int security_mode_init() {
     // Note that this function is called early on boot, before the heap is configured and C++
     // constructors are called
-    if (!FLASH_VerifyCRC32(FLASH_INTERNAL, module_bootloader.start_address, FLASH_ModuleLength(FLASH_INTERNAL, module_bootloader.start_address))) {
-        return SYSTEM_ERROR_BAD_DATA;
-    }
-    module_info_security_mode_ext_t ext = {};
-    ext.ext.length = sizeof(ext);
-    int r = security_mode_find_module_extension(HAL_STORAGE_ID_INTERNAL_FLASH, module_bootloader.start_address, &ext);
-    // XXX: security_mode_find_module_extension() should ideally not return an error if the bootloader
-    // is not protected
-    if (r < 0 && r != SYSTEM_ERROR_NOT_FOUND) {
-        return r;
-    }
-    Load_SystemFlags();
-    if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
-        sNormalSecurityMode = ext.security_mode;
-        if (system_flags.security_mode_override_value != 0xff) {
-            sCurrentSecurityMode = system_flags.security_mode_override_value;
-        } else {
-            sCurrentSecurityMode = sNormalSecurityMode;
+    int result = 0;
+    int normalMode = MODULE_INFO_SECURITY_MODE_NONE;
+    if (FLASH_VerifyCRC32(FLASH_INTERNAL, module_bootloader.start_address, FLASH_ModuleLength(FLASH_INTERNAL, module_bootloader.start_address))) {
+        module_info_security_mode_ext_t ext = {};
+        ext.ext.length = sizeof(ext);
+        int r = security_mode_find_module_extension(HAL_STORAGE_ID_INTERNAL_FLASH, module_bootloader.start_address, &ext);
+        if (r >= 0 && ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+            normalMode = ext.security_mode;
+        } else if (r < 0 && r != SYSTEM_ERROR_NOT_FOUND) {
+            // XXX: It's not ideal that security_mode_find_module_extension() returns SYSTEM_ERROR_NOT_FOUND
+            // if the bootloader is not protected as that code may also indicate a legit error that occurred
+            // elsewhere down the stack
+            LOG(ERROR, "Failed to parse bootloader module extensions: %d", r);
+            result = r;
         }
-    } else if (system_flags.security_mode_override_value != 0xff) {
-        // Clear the override in case the bootloader was protected previously
-        system_flags.security_mode_override_value = 0xff;
-        Save_SystemFlags();
+    } else {
+        LOG(ERROR, "Invalid bootloader checksum");
+        result = SYSTEM_ERROR_BAD_DATA;
     }
-    return 0;
+    int currentMode = normalMode;
+    Load_SystemFlags();
+    if (system_flags.security_mode_override_value != 0xff) {
+        if (normalMode != MODULE_INFO_SECURITY_MODE_NONE) {
+            currentMode = system_flags.security_mode_override_value;
+        } else {
+            // Clear the override in case the bootloader was protected previously
+            system_flags.security_mode_override_value = 0xff;
+            Save_SystemFlags();
+        }
+    }
+    sNormalSecurityMode = normalMode;
+    sCurrentSecurityMode = currentMode;
+    return result;
 }
 
 int security_mode_get(void* reserved) {
