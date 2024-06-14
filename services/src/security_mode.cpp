@@ -114,14 +114,18 @@ int security_mode_init() {
     if (r < 0 && r != SYSTEM_ERROR_NOT_FOUND) {
         return r;
     }
+    Load_SystemFlags();
     if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
         sNormalSecurityMode = ext.security_mode;
-        Load_SystemFlags();
         if (system_flags.security_mode_override_value != 0xff) {
             sCurrentSecurityMode = system_flags.security_mode_override_value;
         } else {
             sCurrentSecurityMode = sNormalSecurityMode;
         }
+    } else if (system_flags.security_mode_override_value != 0xff) {
+        // Clear the override in case the bootloader was protected previously
+        system_flags.security_mode_override_value = 0xff;
+        Save_SystemFlags();
     }
     return 0;
 }
