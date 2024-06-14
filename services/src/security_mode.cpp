@@ -18,7 +18,7 @@
 #include "security_mode.h"
 #include "hal_platform.h"
 
-#if PLATFORM_ID != PLATFORM_GCC
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 
 #include "flash_mal.h"
 #include "system_error.h"
@@ -109,7 +109,12 @@ int security_mode_init() {
     module_info_security_mode_ext_t ext = {};
     ext.ext.length = sizeof(ext);
     int r = security_mode_find_module_extension(HAL_STORAGE_ID_INTERNAL_FLASH, module_bootloader.start_address, &ext);
-    if (r >= 0 && ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+    // XXX: security_mode_find_module_extension() should ideally not return an error if the bootloader
+    // is not protected
+    if (r < 0 && r != SYSTEM_ERROR_NOT_FOUND) {
+        return r;
+    }
+    if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
         sNormalSecurityMode = ext.security_mode;
         Load_SystemFlags();
         if (system_flags.security_mode_override_value != 0xff) {
@@ -305,7 +310,7 @@ void security_mode_notify_system_ready() {
 
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
-#else // PLATFORM_ID == PLATFORM_GCC
+#else // PLATFORM_ID == PLATFORM_GCC || PLATFORM_ID == PLATFORM_NEWHAL
 
 int security_mode_get(void* reserved) {
     return MODULE_INFO_SECURITY_MODE_NONE;
@@ -322,4 +327,4 @@ int security_mode_find_module_extension(hal_storage_id storageId, uintptr_t star
     return SYSTEM_ERROR_NOT_FOUND;
 }
 
-#endif // PLATFORM_ID == PLATFORM_GCC
+#endif // PLATFORM_ID == PLATFORM_GCC || PLATFORM_ID == PLATFORM_NEWHAL
