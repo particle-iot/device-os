@@ -30,6 +30,8 @@ bool isValidNcpId(uint8_t id) {
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_G350:
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_R410:
     case PlatformNCPIdentifier::PLATFORM_NCP_SARA_R510:
+    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG800Q_NA:
+    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG800Q_EU:
         return true;
     default:
         return false;

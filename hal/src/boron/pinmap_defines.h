@@ -87,6 +87,11 @@
 #define UBVINT 34
 #define LOW_BAT_UC 35
 
+#define BGPWR UBPWR
+#define BGRST UBRST
+#define BGVINT UBVINT
+#define BGDTR PIN_INVALID
+
 #endif // PLATFORM_ID == PLATFORM_BORON
 
 #if PLATFORM_ID == PLATFORM_BSOM
