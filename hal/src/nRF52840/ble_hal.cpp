@@ -869,7 +869,7 @@ int BleObject::BleGap::setDeviceAddress(const hal_ble_addr_t* address) const {
 
 int BleObject::BleGap::getDeviceAddress(hal_ble_addr_t* address) const {
     CHECK_TRUE(address, SYSTEM_ERROR_INVALID_ARGUMENT);
-    ble_gap_addr_t localAddr;
+    ble_gap_addr_t localAddr = {};
     int ret = sd_ble_gap_addr_get(&localAddr);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     *address = toHalAddress(localAddr);

@@ -5,6 +5,9 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
 PLATFORM_DFU = 0x30000
 
+# Add -fipa-pta to CFLAGS/LDFLAGS (interprocedural pointer analysis)
+export CFLAGS_USE_IPA_PTA=1
+
 DEPENDENCIES = newlib_nano modules/tracker/user-part modules/tracker/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto proto_defs wiring_globals
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto proto_defs wiring_globals
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
