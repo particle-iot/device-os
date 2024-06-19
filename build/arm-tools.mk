@@ -124,8 +124,8 @@ endif
 CFLAGS += --specs=nano.specs
 
 ifneq ($(LTO_EXTRA_OPTIMIZATIONS),)
-CFLAGS += -fipa-pta -fdevirtualize-at-ltrans
-LDFLAGS += -fipa-pta -fdevirtualize-at-ltrans
+CFLAGS += -fipa-pta -fdevirtualize-at-ltrans -fdevirtualize-speculatively -flto-partition=balanced -fmerge-all-constants
+LDFLAGS += -fipa-pta -fdevirtualize-at-ltrans -fdevirtualize-speculatively -flto-partition=balanced -fmerge-all-constants
 endif
 
 # Check if the compiler version is the minimum required
