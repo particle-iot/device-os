@@ -112,9 +112,9 @@ endif
 # We are using newlib-nano for all the platforms
 CFLAGS += --specs=nano.specs
 
-ifneq ($(CFLAGS_USE_IPA_PTA),)
-CFLAGS += -fipa-pta
-LDFLAGS += -fipa-pta
+ifneq ($(LTO_EXTRA_OPTIMIZATIONS),)
+CFLAGS += -fipa-pta -fdevirtualize-at-ltrans
+LDFLAGS += -fipa-pta -fdevirtualize-at-ltrans
 endif
 
 # Check if the compiler version is the minimum required

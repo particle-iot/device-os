@@ -5,8 +5,8 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
 PLATFORM_DFU = 0x30000
 
-# Add -fipa-pta to CFLAGS/LDFLAGS (interprocedural pointer analysis)
-export CFLAGS_USE_IPA_PTA=1
+# Add -fipa-pta and -fdevirtualize-at-ltrans to CFLAGS/LDFLAGS (interprocedural pointer analysis) + more aggressive virtual call optimizations
+export LTO_EXTRA_OPTIMIZATIONS=1
 
 DEPENDENCIES = newlib_nano modules/tracker/user-part modules/tracker/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto proto_defs wiring_globals
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto proto_defs wiring_globals
