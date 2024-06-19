@@ -61,9 +61,9 @@ void setup() {
 
 /* executes continuously after setup() runs */
 void loop() {
-    static system_tick_t now = millis();
-    if (millis() - now > 30000) {
-        now = millis();
-        Cellular.command("AT+QWIFISCAN");
-    }
+    // static system_tick_t now = millis();
+    // if (millis() - now > 30000) {
+    //     now = millis();
+    //     Cellular.command("AT+QWIFISCAN");
+    // }
 }

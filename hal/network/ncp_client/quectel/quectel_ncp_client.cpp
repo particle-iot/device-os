@@ -1391,7 +1391,7 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         }
     }
 
-    auto r = parser_.sendCommand("AT+QCFG=\"band\",0,10");
+    auto r = parser_.sendCommand("AT+QCFG=\"band\",0,7FFFFFFFFFFFFFFF");
     CHECK_PARSER(r.readResult());
 
     // XXX: we've seen CGDCONT fail on cold boot, retrying here a few times
