@@ -1,3 +1,9 @@
+## 6.1.1
+
+### FEATURES
+
+-  Allow temporarily disabling device protection [#2770](https://github.com/particle-iot/device-os/pull/2770)
+
 ## 6.1.0
 
 ### FEATURES
