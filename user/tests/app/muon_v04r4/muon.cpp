@@ -468,8 +468,13 @@ void testLora() {
     receiveAtResponse();
 }
 
+void wifiScanResultCallback(WiFiAccessPoint* wap, void* data) {
+    WiFiAccessPoint& ap = *wap;
+    Log.info("RSSI: %d, SSID: %s", ap.rssi, ap.ssid);
+}
+
 void setup() {
-    Log.info("<< Test program for Muon v0.3 >>\r\n");
+    Log.info("<< Test program for Muon v0.4r4 >>\r\n");
 
     // Route Serial1 to header pins
     uartRouteLora(false);
@@ -497,6 +502,10 @@ void setup() {
     Am18x5::getInstance().setTime(&tv);
 
     // Am18x5::getInstance().setPsw(1);
+
+#if HAL_PLATFORM_WIFI
+    WiFi.on();
+#endif
 }
 
 void loop() {
@@ -522,5 +531,10 @@ void loop() {
             fuelGauge.wakeup();
             fuelGauge.clearAlert();  // Ensure this is cleared, or interrupts will never occur
         }
+
+#if HAL_PLATFORM_WIFI
+        int count = WiFi.scan(wifiScanResultCallback);
+        Log.info("%d WIFI devices found", count);
+#endif
     }
 }
