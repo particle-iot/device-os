@@ -19,6 +19,8 @@
 #include <cstring>
 #include "hal_irq_flag.h"
 #include "security_mode.h"
+#include "core_hal.h"
+#include "syshealth_hal.h"
 
 using namespace particle::usbd;
 using namespace particle::usbd::dfu;
@@ -215,8 +217,9 @@ int DfuClassDriver::handleDfuUpload(SetupRequest* req) {
         transferBuf_[0] = detail::DFUSE_COMMAND_GET_COMMAND;
         transferBuf_[1] = detail::DFUSE_COMMAND_SET_ADDRESS_POINTER;
         transferBuf_[2] = detail::DFUSE_COMMAND_ERASE;
+        transferBuf_[3] = detail::DFUSE_COMMAND_ENTER_SAFE_MODE;
         setState(detail::dfuIDLE);
-        dev_->setupReply(req, transferBuf_, 3);
+        dev_->setupReply(req, transferBuf_, 4);
       } else if (req_.wValue > 1) {
         /* Normal request */
         setState(detail::dfuUPLOAD_IDLE);
@@ -486,6 +489,12 @@ int DfuClassDriver::inDone(uint8_t ep, unsigned status) {
             } else {
               setError(detail::errUNKNOWN);
             }
+            break;
+          }
+          case detail::DFUSE_COMMAND_ENTER_SAFE_MODE: {
+            HAL_Core_Write_Backup_Register(BKP_DR_01, ENTER_SAFE_MODE_APP_REQUEST);
+            setState(detail::dfuMANIFEST_SYNC);
+            setStatus(detail::OK);
             break;
           }
           case detail::DFUSE_COMMAND_READ_UNPROTECT: {

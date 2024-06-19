@@ -202,7 +202,10 @@ void Set_System(void)
     SPARK_ASSERT(!hal_flash_init());
     SPARK_ASSERT(!hal_exflash_init());
 
-    bootloader_init_security_mode(NULL);
+    security_mode_init();
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+    security_mode_notify_system_reset();
+#endif
 
     configure_uicr();
 
@@ -324,7 +327,7 @@ __attribute__((section(".retained_system_flags"))) platform_system_flags_t syste
 
 #define SYSTEM_FLAGS_MAGIC_NUMBER 0x1ADEACC0u
 
-void Load_SystemFlags()
+void Load_SystemFlags() // TODO: Rename to Init_SystemFlags() and call once on startup
 {
 	// if the header does not match the expected magic value, then initialize
 	if (system_flags.header!=SYSTEM_FLAGS_MAGIC_NUMBER) {
@@ -333,7 +336,7 @@ void Load_SystemFlags()
 	}
 }
 
-void Save_SystemFlags()
+void Save_SystemFlags() // TODO: Remove
 {
 	// nothing to do here
 }

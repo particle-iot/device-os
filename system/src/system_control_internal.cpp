@@ -115,7 +115,7 @@ void SystemControl::run() {
 }
 
 void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* channel) {
-    auto secModeCheck = security_mode_check_request(channel == &bleChannel_ ? SECURITY_MODE_TRANSPORT_BLE : SECURITY_MODE_TRANSPORT_USB, req->type);
+    auto secModeCheck = security_mode_check_control_request(channel == &bleChannel_ ? SECURITY_MODE_TRANSPORT_BLE : SECURITY_MODE_TRANSPORT_USB, req->type);
     if (secModeCheck) {
         setResult(req, secModeCheck);
         return;
@@ -226,6 +226,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* cha
     }
     case CTRL_REQUEST_GET_PROTECTED_STATE: {
         setResult(req, control::config::getProtectedState(req));
+        break;
+    }
+    case CTRL_REQUEST_SET_PROTECTED_STATE: {
+        setResult(req, control::config::setProtectedState(req));
         break;
     }
     case CTRL_REQUEST_ECHO: {

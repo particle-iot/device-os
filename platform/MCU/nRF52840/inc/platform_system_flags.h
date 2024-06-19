@@ -36,7 +36,12 @@ typedef struct __attribute__((packed)) platform_system_flags {
     uint8_t FeaturesEnabled_SysFlag;        // default is 0xFF all features enabled. If any bits are cleared in the bottom 4-bits, then the upper 4 bits should be the logical inverse of these.
                                             // This is to prevent against corrupted data causing the bootloader to be unavailable.
     uint32_t RCC_CSR_SysFlag;
-    uint16_t reserved[4];
+
+    uint8_t security_mode_override_value; // If not 0xff, specifies the temporary security mode that overrides the normal mode
+    uint8_t security_mode_override_reset_count; // Number of system resets after which the normal security mode will be restored
+    uint32_t security_mode_override_timeout; // Timeout, in seconds, after which the normal security mode will be restored
+
+    uint16_t reserved[1];
 } platform_system_flags_t;
 
 PARTICLE_STATIC_ASSERT(platform_system_flags_size_changed, sizeof(platform_system_flags_t) == 32);

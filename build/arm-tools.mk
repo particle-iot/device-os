@@ -102,8 +102,19 @@ CPPFLAGS += $(LTO_FLAGS) -fno-use-cxa-atexit
 CONLYFLAGS += $(LTO_FLAGS)
 LDFLAGS += -fno-use-cxa-atexit
 
+USE_LTO=0
+
+ifneq ($(FORCE_LTO),)
+USE_LTO=1
+endif
+
 ifeq ($(COMPILE_LTO),y)
+USE_LTO=1
+endif
+
+ifeq ($(USE_LTO),1)
 LDFLAGS += -flto -Os -fuse-linker-plugin
+CFLAGS += -fuse-linker-plugin
 else
 # Be explicit and disable LTO
 LDFLAGS += -fno-lto
@@ -111,6 +122,11 @@ endif
 
 # We are using newlib-nano for all the platforms
 CFLAGS += --specs=nano.specs
+
+ifneq ($(LTO_EXTRA_OPTIMIZATIONS),)
+CFLAGS += -fipa-pta -fdevirtualize-at-ltrans -fdevirtualize-speculatively -flto-partition=balanced -fmerge-all-constants
+LDFLAGS += -fipa-pta -fdevirtualize-at-ltrans -fdevirtualize-speculatively -flto-partition=balanced -fmerge-all-constants
+endif
 
 # Check if the compiler version is the minimum required
 version_to_number=$(shell v=$1; v=($${v//./ }); echo $$((v[0] * 10000 + v[1] * 100 + v[2])))

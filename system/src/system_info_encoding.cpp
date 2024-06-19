@@ -143,7 +143,7 @@ EncodeFirmwareModules::EncodeFirmwareModules(pb_callback_t* cb, Flags flags)
             if (module.info.module_function == MODULE_FUNCTION_BOOTLOADER && (module.validity_result & MODULE_VALIDATION_INTEGRITY)) {
                 module_info_security_mode_ext_t ext = {};
                 ext.ext.length = sizeof(ext);
-                if (!security_mode_find_extension(module.bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? HAL_STORAGE_ID_INTERNAL_FLASH : HAL_STORAGE_ID_EXTERNAL_FLASH,
+                if (!security_mode_find_module_extension(module.bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ? HAL_STORAGE_ID_INTERNAL_FLASH : HAL_STORAGE_ID_EXTERNAL_FLASH,
                         module.bounds.start_address, &ext)) {
                     if (ext.security_mode == MODULE_INFO_SECURITY_MODE_PROTECTED) {
                         pbModule.security.mode = PB(FirmwareModuleSecurityMode_PROTECTED);

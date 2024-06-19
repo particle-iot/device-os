@@ -767,6 +767,8 @@ void app_setup_and_loop(void)
     // Start the diagnostics service
     diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);
 
+    security_mode_notify_system_ready();
+
     DEBUG("Hello from Particle!");
     String s = spark_deviceID();
     INFO("Device %s started", s.c_str());

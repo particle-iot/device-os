@@ -170,6 +170,11 @@ int32_t HAL_USB_USART_Available_Data(HAL_USB_USART_Serial serial) {
     return getCdcClassDriver().available();
 }
 
+int32_t HAL_USB_USART_Available_Data_protected(HAL_USB_USART_Serial serial) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Available_Data(serial);
+}
+
 int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial) {
     if (serial != HAL_USB_USART_SERIAL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -178,6 +183,11 @@ int32_t HAL_USB_USART_Available_Data_For_Write(HAL_USB_USART_Serial serial) {
         return -1;
     }
     return getCdcClassDriver().availableForWrite();
+}
+
+int32_t HAL_USB_USART_Available_Data_For_Write_protected(HAL_USB_USART_Serial serial) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Available_Data_For_Write(serial);
 }
 
 int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek) {
@@ -195,6 +205,11 @@ int32_t HAL_USB_USART_Receive_Data(HAL_USB_USART_Serial serial, uint8_t peek) {
         return c;
     }
     return r;
+}
+
+int32_t HAL_USB_USART_Receive_Data_protected(HAL_USB_USART_Serial serial, uint8_t peek) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Receive_Data(serial, peek);
 }
 
 int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
@@ -220,11 +235,23 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
     return -1;
 }
 
+int32_t HAL_USB_USART_Send_Data_protected(HAL_USB_USART_Serial serial, uint8_t data) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Send_Data(serial, data);
+}
+
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial) {
     if (serial != HAL_USB_USART_SERIAL) {
         return;
     }
     return getCdcClassDriver().flush();
+}
+
+void HAL_USB_USART_Flush_Data_protected(HAL_USB_USART_Serial serial) {
+    if (security_mode_get(NULL) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
+        return;
+    }
+    return HAL_USB_USART_Flush_Data(serial);
 }
 
 bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial) {

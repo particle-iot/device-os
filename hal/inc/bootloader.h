@@ -36,8 +36,6 @@ int bootloader_update(const void* bootloader_image, unsigned length);
 // Make sure we have only one function to retrieve the bootloader version going forward.
 uint16_t bootloader_get_version(void);
 
-int bootloader_init_security_mode(void* reserved);
-
 #ifdef __cplusplus
 }
 #endif
