@@ -5,6 +5,8 @@ BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
 PLATFORM_DFU = 0x30000
 
+export FORCE_LTO=1
+
 DEPENDENCIES = newlib_nano modules/boron/user-part modules/boron/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto proto_defs wiring_globals
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto proto_defs wiring_globals
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
@@ -22,7 +24,7 @@ include $(PROJECT_ROOT)/build/arm-tlm.mk
 
 # NOTE: When compiling with LTO vTaskSwitchContext is getting linked out, despite the fact that it's
 # marked as used.
-LDFLAGS += -flto -Os -fuse-linker-plugin -Wl,--undefined=vTaskSwitchContext
+LDFLAGS += -Wl,--undefined=vTaskSwitchContext
 
 $(call check_modular)
 

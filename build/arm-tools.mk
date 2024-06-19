@@ -102,8 +102,19 @@ CPPFLAGS += $(LTO_FLAGS) -fno-use-cxa-atexit
 CONLYFLAGS += $(LTO_FLAGS)
 LDFLAGS += -fno-use-cxa-atexit
 
+USE_LTO=0
+
+ifneq ($(FORCE_LTO),)
+USE_LTO=1
+endif
+
 ifeq ($(COMPILE_LTO),y)
+USE_LTO=1
+endif
+
+ifeq ($(USE_LTO),1)
 LDFLAGS += -flto -Os -fuse-linker-plugin
+CFLAGS += -fuse-linker-plugin
 else
 # Be explicit and disable LTO
 LDFLAGS += -fno-lto

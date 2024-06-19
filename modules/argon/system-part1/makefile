@@ -9,6 +9,8 @@ NCP_FIRMWARE_MODULE_VERSION=4
 DEPENDENCIES = newlib_nano modules/argon/user-part modules/argon/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto proto_defs
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto proto_defs
 
+export FORCE_LTO=1
+
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
 MAKE_DEPENDENCIES = newlib_nano $(LIB_DEPENDENCIES)
 include ../modular.mk
@@ -29,7 +31,7 @@ include $(PROJECT_ROOT)/build/arm-tlm.mk
 
 # NOTE: When compiling with LTO vTaskSwitchContext is getting linked out, despite the fact that it's
 # marked as used.
-LDFLAGS += -flto -Os -fuse-linker-plugin -Wl,--undefined=vTaskSwitchContext
+LDFLAGS += -Wl,--undefined=vTaskSwitchContext
 
 $(call check_modular)
 
