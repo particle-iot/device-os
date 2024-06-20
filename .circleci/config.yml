@@ -11,6 +11,7 @@ tag_filters: &tag_filters
 
 orbs:
   win: circleci/windows@2.4.0
+  macos: circleci/macos@2.4.1
 
 aliases:
   - &tasks ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
@@ -104,13 +105,15 @@ jobs:
           platform: << parameters.platform >>
   build-for-darwin:
     macos:
-      xcode: "14.2"
+      xcode: "14.3.1"
+    resource_class: macos.m1.medium.gen1
     parameters:
       tasks:
         type: string
       platform:
         type: string
     steps:
+      - macos/install-rosetta
       - checkout
       - run: git submodule update --init --recursive
       - install-prtcl-darwin
