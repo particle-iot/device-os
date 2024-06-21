@@ -27,6 +27,16 @@ SerialLogHandler logHandler(LOG_LEVEL_ALL);
 #define QUECTEL_EG800Q_NA       0x6B
 #define QUECTEL_EG800Q_EU       0x6C
 
+STARTUP(
+    SystemPowerConfiguration conf;
+    conf.powerSourceMinVoltage(3880)
+        .powerSourceMaxCurrent(3000)
+        .batteryChargeVoltage(4112)
+        .batteryChargeCurrent(896)
+        .clearFeature(SystemPowerFeature::DISABLE);
+    System.setPowerConfiguration(conf);
+);
+
 void burnNcpId(uint8_t ncpId) {
     const uintptr_t NCP_ID_OTP_ADDRESS = 0x00000020;
     uint8_t readNcpId = 0xFF;
@@ -51,7 +61,7 @@ void setup() {
 
     delay(5s);
 
-    burnNcpId(QUECTEL_EG800Q_NA);
+    burnNcpId(QUECTEL_EG800Q_EU);
 
     Cellular.on();
     delay(5s);
