@@ -99,7 +99,7 @@ void ConnectionManager::setPreferredNetwork(network_handle_t network, bool prefe
             preferredNetwork_ = network;
 
             // If cloud is already connected, and a preferred network is set, and it is up, move cloud connection to it immediately
-            if (spark_cloud_flag_connected() && network_ready(spark::Network.from(preferredNetwork_), 0, nullptr)) {
+            if (spark_cloud_flag_connected() && network_ready(preferredNetwork_, 0, nullptr)) {
                 auto options = CloudDisconnectOptions().graceful(true).reconnect(true).toSystemOptions();
                 spark_cloud_disconnect(&options, nullptr);
             }
@@ -130,7 +130,7 @@ network_handle_t ConnectionManager::getCloudConnectionNetwork() {
 network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     network_handle_t bestNetwork = NETWORK_INTERFACE_ALL;
 
-    if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(spark::Network.from(preferredNetwork_), 0, nullptr)) {
+    if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(preferredNetwork_, 0, nullptr)) {
         LOG_DEBUG(TRACE, "Using preferred network: %lu", preferredNetwork_);
         return preferredNetwork_;
     }
@@ -139,7 +139,7 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     // Network is ready: ie configured + connected (see ipv4 routable hook)
     // Network has best criteria based on network tester results
     for (auto& i: bestNetworks_) {
-        if (network_ready(spark::Network.from(i), 0, nullptr)) {
+        if (network_ready(i, 0, nullptr)) {
             LOG_DEBUG(TRACE, "Using best network: %lu", i);
             return i;
         }
@@ -369,12 +369,7 @@ int ConnectionTester::testConnections() {
         // For each network interface to test, create + open a socket with the retrieved server address
         // If any of the sockets fail to be created + opened with this server address, return an error
         for (auto& connectionMetrics: metrics_) {
-            auto network = spark::Network.from(connectionMetrics.interface);
-            if (network == spark::Network) {
-                LOG(ERROR, "No Network associated with interface %d", connectionMetrics.interface);
-                return SYSTEM_ERROR_BAD_DATA;
-            }
-            if (!network_ready(network, 0, nullptr)) {
+            if (!network_ready(connectionMetrics.interface, 0, nullptr)) {
                 LOG_DEBUG(TRACE,"%s not ready, skipping test", netifToName(connectionMetrics.interface));
                 continue;
             }
