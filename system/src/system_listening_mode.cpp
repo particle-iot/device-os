@@ -72,7 +72,6 @@ int ListeningModeHandler::enter(unsigned int timeout) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    active_ = true;
     LOG(INFO, "Entering listening mode");
 
     /* Disconnect from cloud and network */
@@ -107,6 +106,7 @@ int ListeningModeHandler::enter(unsigned int timeout) {
     console_.reset(new WiFiSetupConsole(config));
 #endif // HAL_PLATFORM_WIFI
 
+    active_ = true;
     return 0;
 }
 
@@ -121,14 +121,13 @@ int ListeningModeHandler::exit() {
 
     console_.reset();
 
-    active_ = false;
-
     system_notify_event(setup_end, HAL_Timer_Get_Milli_Seconds() - timestampStarted_);
 
 #if HAL_PLATFORM_BLE
     BleProvisioningModeHandler::instance()->exit();
 #endif /* HAL_PLATFORM_BLE */
 
+    active_ = false;
     return 0;
 }
 
