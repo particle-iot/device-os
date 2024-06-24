@@ -541,7 +541,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
     uint8_t netIfIndex = 0;
     if_get_index(iface, &netIfIndex);
     bool disconnectCloud = false;
-    auto options = CloudDisconnectOptions().reconnect(true);
+    auto options = CloudDisconnectOptions();
 
     if (ev->ev_if_link->state) {
         /* Interface link state changed to UP */
@@ -620,7 +620,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         // If the preferred network becomes available, close the cloud connection to force migration to this network
         if (ConnectionManager::instance()->getPreferredNetwork() == netIfIndex) {
             LOG(INFO, "Preferred network %u available, moving cloud connection", netIfIndex);
-            options.graceful(true);
+            options.graceful(true).reconnect(true);
             disconnectCloud = true;
         }
 

@@ -158,7 +158,7 @@ void RealtekNcpNetif::loop(void* arg) {
             if (self->expectedNcpState_ == NcpState::ON && self->wifiMan_->ncpClient()->ncpState() != NcpState::ON) {
                 auto r = self->wifiMan_->ncpClient()->on();
                 if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
-                    LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
+                    LOG(ERROR, "Failed to initialize Realtek NCP client: %d", r);
                 }
             }
             if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED &&
@@ -304,12 +304,12 @@ void RealtekNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
     auto self = (RealtekNcpNetif*)ctx;
     if (ev.type == NcpEvent::CONNECTION_STATE_CHANGED) {
         LwipTcpIpCoreLock lk;
+        const auto& cev = static_cast<const NcpConnectionStateChangedEvent&>(ev);
+        LOG(TRACE, "State changed event: %d", (int)cev.state);
         if (!netif_is_up(self->interface())) {
             LOG(WARN,"NCP connection state event ignored, netif not up");
             return;
         }
-        const auto& cev = static_cast<const NcpConnectionStateChangedEvent&>(ev);
-        LOG(TRACE, "State changed event: %d", (int)cev.state);
         if (cev.state == NcpConnectionState::DISCONNECTED) {
             netif_set_link_down(self->interface());
         } else if (cev.state == NcpConnectionState::CONNECTED) {

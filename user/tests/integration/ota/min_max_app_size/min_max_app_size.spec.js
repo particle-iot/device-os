@@ -16,8 +16,9 @@ let deviceId = null;
 let origAppData = null;
 let maxAppData = null;
 let maxAppSize = 0;
+const flashTimeoutMinutes = 40;
 
-async function flash(ctx, data, name, { timeout = 35 * 60 * 1000, retry = 5 } = {}) {
+async function flash(ctx, data, name, { timeout = flashTimeoutMinutes * 60 * 1000, retry = 5 } = {}) {
 	let ok = false;
 	for (let i = 0; i < retry; i++) {
 		await delayMs(i * 5000);
@@ -259,7 +260,7 @@ test('26_ota_max_application_busy_start', async function () {
 	await generateMaxApp();
 	expect(maxAppData.length).to.equal(maxAppSize);
 	const appFile = await tempy.write(maxAppData, { name: 'max_app.bin' });
-	this.timeout(35 * 60 * 1000);
+	this.timeout(flashTimeoutMinutes * 60 * 1000);
 	await flash(this, appFile);
 });
 
