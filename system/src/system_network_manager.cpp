@@ -541,7 +541,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
     uint8_t netIfIndex = 0;
     if_get_index(iface, &netIfIndex);
     bool disconnectCloud = false;
-    auto options = CloudDisconnectOptions();
+    auto options = CloudDisconnectOptions().reconnect(true);
 
     if (ev->ev_if_link->state) {
         /* Interface link state changed to UP */
@@ -617,10 +617,10 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             refreshIpState();
         }
 
-        // If the preferred network becomes available, close the cloud connection to force migration to this network
-        if (ConnectionManager::instance()->getPreferredNetwork() == netIfIndex) {
+        // If the cloud is connected, and the preferred network becomes available, move to that network
+        if (spark_cloud_flag_connected() && ConnectionManager::instance()->getPreferredNetwork() == netIfIndex) {
             LOG(INFO, "Preferred network %u available, moving cloud connection", netIfIndex);
-            options.graceful(true).reconnect(true);
+            options.graceful(true);
             disconnectCloud = true;
         }
 
@@ -628,12 +628,6 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         // Disable by default
         if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
-
-        // If this is the current cloud connection, disconnect the cloud, but reconnect immediately on any other available interface
-        if (ConnectionManager::instance()->getCloudConnectionNetwork() == netIfIndex) {
-            LOG(WARN, "Cloud connection interface %d link state down, disconnecting", netIfIndex);
-            disconnectCloud = true;
-        }
 
         clearDnsConfiguration(iface);
         /* Interface link state changed to DOWN */
@@ -643,6 +637,12 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             } else {
                 refreshIpState();
             }
+        }
+        
+        // If the current cloud connection network interfaces goes down, and there are other configured interfaces, close the cloud and connect to them
+        if (ConnectionManager::instance()->getCloudConnectionNetwork() == netIfIndex && state_ == State::IP_CONFIGURED) {
+            LOG(WARN, "Cloud connection interface %d link state down, switching interfaces", netIfIndex);
+            disconnectCloud = true;
         }
     }
 
