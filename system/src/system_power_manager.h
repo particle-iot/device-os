@@ -70,6 +70,7 @@ private:
   void clearIntermediateBatteryState(uint8_t state);
 
   void enableAuxPwr();
+  hal_pin_t getIntPin() const;
 
   static power_source_t powerSourceFromStatus(uint8_t status);
 
