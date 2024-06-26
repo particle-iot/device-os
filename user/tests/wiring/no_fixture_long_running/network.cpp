@@ -201,6 +201,10 @@ test(NETWORK_02_network_connection_recovers_after_ncp_failure) {
 
     Network.on();
     Network.connect();
+#if PLATFORM_ID == PLATFORM_MSOM
+    // Force cloud connection to recover using Cellular USART / interface
+    WiFi.disconnect();
+#endif
     Particle.connect();
     waitFor(Particle.connected, WAIT_TIMEOUT);
     assertTrue(Particle.connected());
