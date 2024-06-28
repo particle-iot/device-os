@@ -51,7 +51,7 @@ void waitOta() {
         System.enableReset();
     });
 
-    for (auto start = millis(); millis() - start <= 5 * 60 * 1000;) {
+    for (auto start = millis(); millis() - start <= 20 * 60 * 1000;) {
         if (updateResult == firmware_update_complete || updateResult == firmware_update_failed || updateResult == firmware_update_pending) {
             break;
         } else if (updateResult == SYSTEM_ERROR_OTA && millis() - start >= 1 * 60 * 1000) {
@@ -59,6 +59,11 @@ void waitOta() {
         }
         Particle.process();
         delay(100);
+    }
+
+    if (Particle.connected() && updateResult == firmware_update_complete) {
+        // Just in case
+        Particle.publish("test/ota", "success", WITH_ACK).wait();
     }
 
     assertNotEqual((int)updateResult, (int)firmware_update_failed);

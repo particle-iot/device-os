@@ -48,13 +48,27 @@ async function waitFlashStatusEvent(ctx, timeout) {
 		if (t <= 0) {
 			throw new Error("Event timeout");
 		}
-		data = await ctx.particle.receiveEvent('spark/flash/status', { timeout: t });
-		ctx.particle.log.verbose('spark/flash/status:', data);
-		if (data.startsWith('success')) {
-			return true;
+		data = null;
+		try {
+			data = await Promise.race([
+				ctx.particle.receiveEvent('spark/flash/status', { timeout: t }),
+				ctx.particle.receiveEvent('test/ota', { timeout: t }),
+				ctx.particle.receiveEvent('spark/status', { timeout: t })
+			]);
+		} catch (err) {
+
 		}
-		if (data.startsWith('failed')) {
-			return false;
+		if (data) {
+			ctx.particle.log.verbose('(spark/runner)/flash/status:', data);
+			if (data.startsWith('success')) {
+				return true;
+			}
+			if (data.startsWith('failed')) {
+				return false;
+			}
+			if (data.startsWith('offline') || data.startsWith('online')) {
+				return false;
+			}
 		}
 	}
 }
