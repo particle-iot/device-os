@@ -618,7 +618,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         }
 
         // If the cloud is connected, and the preferred network becomes available, move to that network
-        if (spark_cloud_flag_connected() && ConnectionManager::instance()->getPreferredNetwork() == netIfIndex) {
+        if (spark_cloud_flag_connected() && ConnectionManager::instance()->getPreferredNetwork() == netIfIndex && !SPARK_FLASH_UPDATE) {
             LOG(INFO, "Preferred network %u available, moving cloud connection", netIfIndex);
             options.graceful(true);
             disconnectCloud = true;
