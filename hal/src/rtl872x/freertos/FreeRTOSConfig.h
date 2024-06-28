@@ -111,6 +111,8 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 #define secureconfigTOTAL_SRAM_HEAP_SIZE			( ( ( size_t ) ( 6 * 1024 ) ) )
 #define secureconfigTOTAL_PSRAM_HEAP_SIZE			( ( ( size_t ) ( 128 * 1024 ) ) )
 
+#define configENABLE_HEAP_PROTECTOR                     (0) // TODO: enable
+
 /* Constants that build features in or out. */
 #define configUSE_MUTEXES								1
 #define configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE  1
