@@ -77,7 +77,8 @@ RealtekNcpNetif::~RealtekNcpNetif() {
 void RealtekNcpNetif::init() {
     registerHandlers();
     SPARK_ASSERT(lwip_memp_event_handler_add(mempEventHandler, MEMP_PBUF_POOL, this) == 0);
-    SPARK_ASSERT(os_thread_create(&thread_, "rltkncp", OS_THREAD_PRIORITY_NETWORK, &RealtekNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
+    // XXX: stack size. some rtl SDK calls appear to be stack hungry
+    SPARK_ASSERT(os_thread_create(&thread_, "rltkncp", OS_THREAD_PRIORITY_NETWORK, &RealtekNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH * 2) == 0);
 }
 
 void RealtekNcpNetif::setWifiManager(particle::WifiNetworkManager* wifiMan) {
