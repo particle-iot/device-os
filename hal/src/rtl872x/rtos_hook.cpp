@@ -21,6 +21,7 @@
 #include "hal_event.h"
 #include "concurrent_hal.h"
 #include <atomic>
+#include "rng_hal.h"
 
 namespace {
 
@@ -117,6 +118,11 @@ void vApplicationIdleHook(void) {
         // Restore IDLE thread priority back to the default one
         vTaskPrioritySet(nullptr, tskIDLE_PRIORITY);
     }
+}
+
+void vApplicationGetRandomHeapCanary( portPOINTER_SIZE_TYPE * pxHeapCanary ) {
+    uint32_t canary = HAL_RNG_GetRandomNumber();
+    *pxHeapCanary = canary;
 }
 
 } // extern "C"
