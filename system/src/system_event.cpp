@@ -161,9 +161,14 @@ int system_subscribe_event(system_event_t events, system_event_handler_t* handle
 #if PLATFORM_THREADING
     std::lock_guard lk(sSubscriptionsMutex);
 #endif // PLATFORM_THREADING
-    int r = 0;
+    // FIXME: move to using a better container primitive than vector because of usage in ISR
+    // This is a temporary workaround
+    decltype(subscriptions) subsCopy = subscriptions;
+    int r = subsCopy.append(SystemEventSubscription(events, handler, context)) ? 0 : SYSTEM_ERROR_NO_MEMORY;
     ATOMIC_BLOCK() {
-        r = subscriptions.append(SystemEventSubscription(events, handler, context)) ? 0 : SYSTEM_ERROR_NO_MEMORY;
+        // FIXME: see the comment above. This is safe because of the current swap() overload implementation for Vector
+        // which simply swaps data/size/capacity inside.
+        std::swap(subsCopy, subscriptions);
     }
     return r;
 }
@@ -180,6 +185,7 @@ void system_unsubscribe_event(system_event_t events, system_event_handler_t* han
 #if PLATFORM_THREADING
     std::lock_guard lk(sSubscriptionsMutex);
 #endif // PLATFORM_THREADING
+    // FIXME: See comments in system_subscribe_event()
     ATOMIC_BLOCK() {
         auto it = std::remove_if(subscriptions.begin(), subscriptions.end(), [events, handler, context](const SystemEventSubscription& sub) {
             if (!sub.matchesEvent(events)) {
