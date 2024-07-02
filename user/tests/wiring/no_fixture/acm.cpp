@@ -61,16 +61,20 @@ test(ACM_02_particle_connect_uses_preferred_network) {
 
 #if PLATFORM_ID == PLATFORM_MSOM
 test(ACM_03_prefer_one_network_only) {
-	WiFi.prefer();
-	assertFalse(Cellular.isPreferred());
-	Cellular.prefer();
-	assertFalse(WiFi.isPreferred());
+    WiFi.prefer();
+    assertTrue(WiFi.isPreferred());
+    assertFalse(Cellular.isPreferred());
+    assertFalse(Ethernet.isPreferred());
+    Cellular.prefer();
+    assertTrue(Cellular.isPreferred());
+    assertFalse(WiFi.isPreferred());
+    assertFalse(Ethernet.isPreferred());
 }
 
 test(ACM_04_prefer_moves_cloud_connection_when_set) {
     // Default preference
-	Network.prefer();
-	
+    Network.prefer();
+    
     // Connect all interfaces
     Network.connect();
     Particle.connect();
@@ -80,11 +84,11 @@ test(ACM_04_prefer_moves_cloud_connection_when_set) {
 
     // Prefer whatever network we did not connect on in order to force the cloud connection to switch
     if (connectedNetwork == Cellular) {
-	    assertTrue(waitFor(WiFi.ready, WIFI_CONNECT_TIMEOUT_MS));
-    	WiFi.prefer();
+        assertTrue(waitFor(WiFi.ready, WIFI_CONNECT_TIMEOUT_MS));
+        WiFi.prefer();
     } else {
-    	assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
-    	Cellular.prefer();
+        assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
+        Cellular.prefer();
     }
 
     // Verify that we disconnect and reconnect on the newly preferred network
@@ -96,38 +100,39 @@ test(ACM_04_prefer_moves_cloud_connection_when_set) {
 test(ACM_05_cloud_connection_moves_to_preferred_network_when_available) {
     // Disconnect WiFi
     WiFi.disconnect();
+    assertTrue(waitForNot(WiFi.ready, DISCONNECT_TIMEOUT_MS));
     Particle.disconnect();
     assertTrue(waitForNot(Particle.connected, DISCONNECT_TIMEOUT_MS));
-    assertTrue(waitForNot(WiFi.ready, DISCONNECT_TIMEOUT_MS));
-
+    
     // Connect Cellular
-	Cellular.connect();
-	Particle.connect();
+    Cellular.connect();
     assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
-	assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     // Verify we are using celluar
-	auto connectedNetwork = Particle.connectionInterface();
-	assertEqual(Cellular, Particle.connectionInterface());
+    assertEqual(Cellular, Particle.connectionInterface());
 
     // Prefer wifi, switch to it
-	WiFi.prefer();
-	WiFi.connect();
+    WiFi.prefer();
+    WiFi.connect();
+    assertTrue(waitFor(WiFi.ready, WIFI_CONNECT_TIMEOUT_MS));
 
     // We should see the particle socket disconnect and reconnect
-	assertTrue(waitFor(WiFi.ready, WIFI_CONNECT_TIMEOUT_MS));
-	assertTrue(waitFor(Particle.disconnected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-	assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertTrue(waitFor(Particle.disconnected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     // Verify we are on wifi now
-	assertEqual(WiFi, Particle.connectionInterface());
+    assertEqual(WiFi, Particle.connectionInterface());
 } 
 
 test(ACM_06_cloud_connection_fails_over_automatically) {
-    Particle.disconnect();
+    Particle.connect();
     Cellular.connect();
     WiFi.connect();
 
+    assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     auto previousNetwork = Particle.connectionInterface();
     previousNetwork.disconnect();
