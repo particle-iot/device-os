@@ -42,10 +42,10 @@ int stusb4500Init(void) {
     Mcp23s17::getInstance().setPinMode(pdIntPin.first, pdIntPin.second, INPUT_PULLUP);
     Mcp23s17::getInstance().setPinMode(pdRstPin.first, pdRstPin.second, OUTPUT);
 
-    Mcp23s17::getInstance().writePinValue(pdRstPin.first, pdRstPin.second, HIGH); // Reset
-    delay(100);
-    Mcp23s17::getInstance().writePinValue(pdRstPin.first, pdRstPin.second, LOW);
-    delay(100);
+    // Mcp23s17::getInstance().writePinValue(pdRstPin.first, pdRstPin.second, HIGH); // Reset
+    // delay(100);
+    // Mcp23s17::getInstance().writePinValue(pdRstPin.first, pdRstPin.second, LOW);
+    // delay(100);
 
     if (!usb.begin()) {
         Log.info("Cannot connect to STUSB4500.");
