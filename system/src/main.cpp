@@ -709,6 +709,12 @@ RunTimeInfoDiagnosticData g_usedRamDiagData(DIAG_ID_SYSTEM_USED_RAM, DIAG_NAME_S
     }
 );
 
+void if_init_postpone(system_event_t event, int param, void* pointer, void* context) {
+    if (event == aux_power_state) {
+        if_init_platform_postpone(nullptr);
+    }
+}
+
 } // namespace
 
 /*******************************************************************************
@@ -750,11 +756,11 @@ void app_setup_and_loop(void)
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
-    system_power_management_init();
-
 #if HAL_PLATFORM_LWIP
-    if_init_platform_postpone(nullptr);
+    system_subscribe_event(aux_power_state, if_init_postpone, nullptr);
 #endif /* HAL_PLATFORM_LWIP */
+
+    system_power_management_init();
 
     // Start the diagnostics service
     diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);

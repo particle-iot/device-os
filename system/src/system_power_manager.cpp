@@ -69,6 +69,7 @@ constexpr uint16_t PMIC_NORMAL_TERM_CHARGE_CURRENT = 256; // mA
 constexpr uint16_t PMIC_FAULT_TERM_CHARGE_CURRENT = 128; // mA
 constexpr system_tick_t BATTERY_REPEATED_CHARGED_WINDOW = 5000; // ms
 constexpr uint8_t BATTERY_REPEATED_CHARGED_COUNT = 2;
+constexpr uint16_t AUX_PWR_EN_INPUT_CURRENT_THRESHOLD = 500; // mA
 
 constexpr hal_power_config defaultPowerConfig = {
   .flags = 0,
@@ -138,29 +139,47 @@ PowerManager* PowerManager::instance() {
   return &mng;
 }
 
+void PowerManager::enableAuxPwr() {
+  if (!auxPwrEnabled_ && config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.aux_pwr_ctrl_pin != PIN_INVALID) {
+    LOG(INFO, "Enable auxiliary power");
+    hal_gpio_write(config_.aux_pwr_ctrl_pin, config_.aux_pwr_ctrl_pin_level);
+    auxPwrEnabled_ = true;
+    system_notify_event(aux_power_state, 1);
+  }
+}
+
 void PowerManager::init() {
   // Load configuration
   loadConfig();
 
-  // We should always initialize the aux power control pin,
-  // in case that there is a Power Module for DC power supply present.
   if (config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.aux_pwr_ctrl_pin != PIN_INVALID) {
     hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
-    hal_gpio_write(config_.aux_pwr_ctrl_pin, config_.aux_pwr_ctrl_pin_level);
-  }
-
-  if (config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
-    LOG(WARN, "Disabled by configuration");
-    return;
+    hal_gpio_write(config_.aux_pwr_ctrl_pin, !config_.aux_pwr_ctrl_pin_level); // Turn off auxiliary power by default
   }
 
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  // We anyway need to detect the presence of PMIC even if HAL_POWER_MANAGEMENT_DISABLE is set
+  // to control the auxiliary power appropriately. So do it before checking the flag.
   if (!detect()) {
+    // It's probably powered by DC source
+    enableAuxPwr();
     return;
   }
 #else
   resetBus();
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+
+  if (config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
+    LOG(WARN, "Disabled by configuration");
+    // NOTE: We should at least apply the config in DCT in case of Safe mode.
+    // Do not run DPDM, since the event loop will not be started.
+    // User application should still call System.setPowerConfiguration() to set
+    // appropriate parameters for Safe mode if it is going to disable the power management.
+    if (system_mode() == SAFE_MODE) {
+      initDefault(false);
+    }
+    return;
+  }
 
   // IMPORTANT: attach the interrupt handler first
 #if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
@@ -410,6 +429,10 @@ void PowerManager::handleUpdate() {
   }
 
   logStat(status, curFault);
+
+  if (power.getInputCurrentLimit() >= AUX_PWR_EN_INPUT_CURRENT_THRESHOLD) {
+    enableAuxPwr();
+  }
 }
 
 void PowerManager::loop(void* arg) {
@@ -526,6 +549,13 @@ void PowerManager::initDefault(bool dpdm) {
         HAL_Delay_Milliseconds(50);
       }
       power.enableDPDM();
+    }
+  } else {
+    if (power.getInputCurrentLimit() != mapInputCurrentLimit(config_.vin_max_current)) {
+      power.setInputCurrentLimit(mapInputCurrentLimit(config_.vin_max_current));
+      if (power.getInputCurrentLimit() >= AUX_PWR_EN_INPUT_CURRENT_THRESHOLD) {
+        enableAuxPwr();
+      }
     }
   }
 
