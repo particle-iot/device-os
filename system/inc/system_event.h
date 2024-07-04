@@ -63,6 +63,7 @@ enum SystemEvents {
     out_of_memory = 1<<18,          // heap request was not satisfied
     ble_prov_mode = 1<<19,          // ble provisioning mode
     firmware_update_status = 1<<20, // firmware update status changed
+    aux_power_state = 1<<21,        // Auxiliary power status changed
 
     all_events = 0xFFFFFFFFFFFFFFFF
 };
