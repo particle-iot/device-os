@@ -144,9 +144,6 @@ int WizNetifConfig::getConfigData(WizNetifConfigData* configData) {
     if (configData->cs_pin == PIN_INVALID) {
         configData->cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
     }
-    if (configData->reset_pin == PIN_INVALID) {
-        configData->reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
-    }
     if (configData->int_pin == PIN_INVALID) {
         configData->int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
     }
@@ -168,7 +165,6 @@ int WizNetifConfig::validateWizNetifConfigData(const WizNetifConfigData* configD
     if (configData->size != sizeof(WizNetifConfigData) ||
             configData->version != WIZNETIF_CONFIG_DATA_VERSION ||
             !isPinValid(configData->cs_pin) ||
-            !isPinValid(configData->reset_pin) ||
             !isPinValid(configData->int_pin)) {
         LOG(ERROR, "configData not valid! size:%u ver:%u cs_pin:%u reset_pin:%u int_pin:%u",
                 configData->size,
