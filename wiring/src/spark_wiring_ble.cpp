@@ -2677,6 +2677,10 @@ int BleLocalDevice::stopScanning() const {
     return hal_ble_gap_stop_scan(nullptr);
 }
 
+bool BleLocalDevice::scanning() const {
+    return hal_ble_gap_is_scanning(nullptr);
+}
+
 int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const {
     hal_ble_conn_params_t ppcp = {};
     ppcp.size = sizeof(hal_ble_conn_params_t);
