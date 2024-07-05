@@ -1675,21 +1675,31 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
         resetStack = true;
         return SYSTEM_ERROR_TIMEOUT;
     }
+    // We unlock BLE lock here though so that other BLE APIs are accessible while we are performing a scan.
+    // Especially if it's a continuous scan.
+    lk.unlock();
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
-    if (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) {
-        lk.unlock();
-    }
     os_semaphore_take(scanSemaphore_, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
     return SYSTEM_ERROR_NONE;
 }
 
 int BleGap::stopScanning(bool resetStack) {
+    BleLock lk;
+
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
 
-    BleLock lk;
+    if (BleEventDispatcher::getInstance().isThreadCurrent()) {
+        // Can't stop scanning properly from event processing thread
+        // Unblock the caller of scan() and perform stopScanning()
+        // in there.
+        // XXX: It's not safe to call le_scan_stop() especially
+        // from inside the ble scan result callback! 
+        os_semaphore_give(scanSemaphore_, false);
+        return 0;
+    }
 
     const int LE_SCAN_STOP_RETRIES = 1;
     for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
@@ -1728,7 +1738,9 @@ int BleGap::stopScanning(bool resetStack) {
         clearPendingResult();
     }
 
+    // Just in case
     os_semaphore_give(scanSemaphore_, false);
+
     return SYSTEM_ERROR_NONE;
 }
 
