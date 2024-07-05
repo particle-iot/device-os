@@ -38,6 +38,7 @@ public:
 
     static PowerModule& getInstance();
     static uint8_t auxEnPin() { return auxEnPin_; }
+    static uint8_t intPin() { return intPin_; }
 
     bool initialized_;
     static constexpr uint8_t intPin_ = A7;

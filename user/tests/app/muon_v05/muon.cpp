@@ -30,7 +30,14 @@
 SYSTEM_MODE(MANUAL);
 
 STARTUP (
-    System.setPowerConfiguration(SystemPowerConfiguration().auxPowerControlPin(PowerModule::auxEnPin()).feature(SystemPowerFeature::PMIC_DETECTION));
+    System.setPowerConfiguration(SystemPowerConfiguration()
+        .powerSourceMinVoltage(3880)
+        .powerSourceMaxCurrent(3000)
+        .batteryChargeVoltage(4200)
+        .batteryChargeCurrent(900)
+        .auxPowerControlPin(PowerModule::auxEnPin())
+        .intPin(PowerModule::intPin())
+        .feature(SystemPowerFeature::PMIC_DETECTION));
 
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
 
