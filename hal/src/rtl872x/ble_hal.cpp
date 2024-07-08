@@ -1898,8 +1898,6 @@ int BleGap::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* con
     // Make sure that event dispatching is started
     CHECK(start());
 
-    // Stop scanning first to give the scanning semaphore if possible.
-    CHECK(stopScanning());
     SCOPE_GUARD ({
         connectingAddr_ = {};
         connecting_ = false;
