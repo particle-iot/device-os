@@ -39,8 +39,11 @@ int PowerModule::begin() {
     FuelGauge fuel;
     fuel.wakeup();
     fuel.clearAlert();
-    pinMode(intPin_, INPUT_PULLUP);
-    pinMode(auxEnPin_, OUTPUT);
+    // WARNING: System power management will take care of setting the pin mode
+    // Re-initializing the pinn mode will detach the interrupt handler that is
+    // registered by system poweer manager.
+    // pinMode(intPin_, INPUT_PULLUP);
+    // pinMode(auxEnPin_, OUTPUT);
     initialized_ = true;
     return SYSTEM_ERROR_NONE;
 }
