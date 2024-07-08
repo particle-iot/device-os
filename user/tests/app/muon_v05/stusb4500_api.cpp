@@ -120,7 +120,7 @@ void stusb4500SetDefaultParams(void) {
     //  usb.setExternalPower(false);
 
     /* USB 2.0 or 3.x data communication capability by sink system */
-    usb.setUsbCommCapable(false);
+    usb.setUsbCommCapable(true);
 
     /* Selects POWER_OK pins configuration
         0 - Configuration 1
