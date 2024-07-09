@@ -60,6 +60,9 @@ using namespace particle::test;
 constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 100;
 constexpr uint16_t PEER_DESIRED_ATT_MTU = 123;
 
+Thread* scanThread = nullptr;
+volatile unsigned scanResults = 0;
+
 test(BLE_000_Central_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
@@ -576,6 +579,93 @@ test(BLE_32_Att_Mtu_Exchange) {
         });
 
         assertTrue(waitFor([&]{ return effectiveAttMtu == LOCAL_DESIRED_ATT_MTU; }, 5000));
+    }
+}
+
+test(BLE_33_Central_Can_Connect_While_Scanning) {
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 0;
+    params.interval = 8000; // *0.625ms = 5s
+    params.window = 8000; // *0.625 = 5s
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    scanThread = new Thread("test", [](void* param) -> os_thread_return_t {
+        BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *param) -> void {
+            auto scanResults = (volatile unsigned int*)param;
+            (*scanResults)++;
+        }, param);
+    }, (void*)&scanResults);
+
+    assertTrue(BLE.scanning());
+    assertFalse(BLE.connected());
+    peer = BLE.connect(peerAddr, false);
+    assertTrue(peer.connected());
+    assertTrue(BLE.scanning());
+    SCOPE_GUARD({
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
+    });
+    scanResults = 0;
+    delay(2000);
+#if !HAL_PLATFORM_NRF52840
+    assertMoreOrEqual((unsigned)scanResults, 1);
+#endif
+    assertTrue(peer.connected());
+}
+
+test(BLE_34_Central_Can_Connect_While_Scanning_After_Disconnect) {
+    SCOPE_GUARD({
+        if (BLE.scanning() && scanThread) {
+            assertEqual(0, BLE.stopScanning());
+            scanThread->join();
+            delete scanThread;
+        }
+    });
+    assertTrue(BLE.scanning());
+    assertFalse(BLE.connected());
+    scanResults = 0;
+    delay(5000);
+    assertMoreOrEqual((unsigned)scanResults, 1);
+}
+
+test(BLE_35_Central_Can_Connect_While_Peripheral_Is_Scanning_Prepare) {
+}
+
+test(BLE_36_Central_Can_Connect_While_Peripheral_Is_Scanning) {
+    peer = BLE.connect(peerAddr, false);
+    assertTrue(peer.connected());
+    delay(5000);
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
+    }
+}
+
+test(BLE_37_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning_Prepare) {
+}
+
+test(BLE_38_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning) {
+    peer = BLE.connect(peerAddr, false);
+    assertTrue(peer.connected());
+    delay(5000);
+    {
+        SCOPE_GUARD ({
+            delay(500);
+            assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+            assertFalse(BLE.connected());
+            delay(500);
+        });
     }
 }
 
