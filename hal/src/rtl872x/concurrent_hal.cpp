@@ -244,7 +244,7 @@ os_result_t os_thread_delay_until(system_tick_t *previousWakeTime, system_tick_t
 
 os_thread_notify_t os_thread_wait(system_tick_t ms, void* reserved)
 {
-    return ulTaskNotifyTake(pdTRUE, ms);
+    return ulTaskNotifyTake(pdFALSE, ms);
 }
 
 int os_thread_notify(os_thread_t thread, void* reserved)
