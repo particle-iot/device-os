@@ -596,8 +596,8 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
     BleScanParams params = {};
     params.size = sizeof(BleScanParams);
     params.timeout = 0;
-    params.interval = 8000; // *0.625ms = 5s
-    params.window = 8000; // *0.625 = 5s
+    params.interval = 800; // *0.625ms = 500ms
+    params.window = 800; // *0.625 = 500ms
     params.active = true; // Send scan request
     params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     assertEqual(0, BLE.setScanParameters(&params));
@@ -625,9 +625,7 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
     });
     scanResults = 0;
     delay(2000);
-#if !HAL_PLATFORM_NRF52840
     assertMoreOrEqual((unsigned)scanResults, 1);
-#endif
     assertTrue(peer.connected());
 }
 

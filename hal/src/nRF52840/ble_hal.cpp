@@ -370,6 +370,7 @@ public:
     int getScanParams(hal_ble_scan_params_t* params) const;
     int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
     int stopScanning();
+    int continueScanning(bool stop = false);
     ble_gap_scan_params_t toPlatformScanParams() const;
     int processAdvReportEventFromThread(const ble_evt_t* event);
 
@@ -378,7 +379,6 @@ private:
     int addPendingResult(const hal_ble_scan_result_evt_t& resultEvt);
     void removePendingResult(const hal_ble_addr_t& address);
     void clearPendingResult();
-    int continueScanning();
     int constructObserverEvent(hal_ble_scan_result_evt_t& result, const ble_gap_evt_adv_report_t& advReport) const;
     void notifyScanResultEvent(const hal_ble_scan_result_evt_t& result);
     static void processObserverEvents(const ble_evt_t* event, void* context);
@@ -1406,9 +1406,17 @@ int BleObject::Observer::getScanParams(hal_ble_scan_params_t* params) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int BleObject::Observer::continueScanning() {
-    int ret = sd_ble_gap_scan_start(nullptr, &bleScanData_);
-    return nrf_system_error(ret);
+int BleObject::Observer::continueScanning(bool stop) {
+    if (!scanning()) {
+        return SYSTEM_ERROR_NONE;
+    }
+    if (stop) {
+        sd_ble_gap_scan_stop();
+        ble_gap_scan_params_t bleGapScanParams = toPlatformScanParams();
+        return nrf_system_error(sd_ble_gap_scan_start(&bleGapScanParams, &bleScanData_));
+    } else {
+        return nrf_system_error(sd_ble_gap_scan_start(nullptr, &bleScanData_));
+    }
 }
 
 void BleObject::Observer::onScanGuardTimerExpired(os_timer_t timer) {
@@ -1465,10 +1473,16 @@ int BleObject::Observer::stopScanning() {
     if (sd_ble_gap_scan_stop() != NRF_SUCCESS) {
         // LOG(ERROR, "Device is not in scanning state.");
     }
-    isScanning_ = false;
-
-    // Just in case
-    os_semaphore_give(scanSemaphore_, false);
+    bool give = false;
+    ATOMIC_BLOCK() {
+        if (isScanning_) {
+            isScanning_ = false;
+            give = true;
+        }
+    }
+    if (give) {
+        os_semaphore_give(scanSemaphore_, false);
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2565,6 +2579,7 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
     ConnectionsManager* connMgr = static_cast<ConnectionsManagerImpl*>(context)->instance;
     switch (event->header.evt_id) {
         case BLE_GAP_EVT_CONNECTED: {
+            BleObject::getInstance().observer()->continueScanning(true);
             LOG_DEBUG(TRACE, "BLE GAP event: connected.");
             const ble_gap_evt_connected_t& connected = event->evt.gap_evt.params.connected;
             ble_evt_t* connectedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
