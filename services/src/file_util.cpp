@@ -78,7 +78,11 @@ void dumpLine(const char* data, size_t size, size_t offs) {
     LOG_WRITE(TRACE, line, d - line);
 }
 
+#if 0
 // Removes a directory recursively
+//
+// FIXME: There's a bug in LittleFS which may cause this function to fail with FILESYSTEM_NOENT:
+// https://github.com/littlefs-project/littlefs/commit/a5d614fbfbf19b8605e08c28a53bc69ea3179a3e
 int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
     lfs_dir_t dir = {};
     CHECK_FS(lfs_dir_open(lfs, &dir, pathBuf));
@@ -88,7 +92,7 @@ int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
             LOG(ERROR, "Failed to close directory handle: %d", r);
         }
     });
-    pathBuf[pathLen++] = '/';
+    pathBuf[pathLen++] = '/'; // May overwrite the term. null
     int r = 0;
     lfs_info entry = {};
     while ((r = lfs_dir_read(lfs, &dir, &entry)) == 1) {
@@ -112,6 +116,40 @@ int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
     closeDirGuard.dismiss();
     CHECK_FS(lfs_dir_close(lfs, &dir));
     CHECK_FS(lfs_remove(lfs, pathBuf));
+    return 0;
+}
+#endif // 0
+
+int findLeafEntry(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen, bool& found) {
+    lfs_dir_t dir = {};
+    CHECK_FS(lfs_dir_open(lfs, &dir, pathBuf));
+    NAMED_SCOPE_GUARD(closeDirGuard, {
+        int r = lfs_dir_close(lfs, &dir);
+        if (r < 0) {
+            LOG(ERROR, "Failed to close directory handle: %d", r);
+        }
+    });
+    int r = 0;
+    lfs_info entry = {};
+    while ((r = lfs_dir_read(lfs, &dir, &entry)) == 1) {
+        if (entry.type == LFS_TYPE_DIR && (strcmp(entry.name, ".") == 0 || strcmp(entry.name, "..") == 0)) {
+            continue;
+        }
+        pathBuf[pathLen++] = '/'; // May overwrite the term. null
+        size_t n = strlcpy(pathBuf + pathLen, entry.name, bufSize - pathLen);
+        if (n >= bufSize - pathLen) {
+            return SYSTEM_ERROR_PATH_TOO_LONG;
+        }
+        pathLen += n;
+        if (entry.type == LFS_TYPE_DIR) {
+            CHECK(findLeafEntry(lfs, pathBuf, bufSize, pathLen, found));
+        }
+        break;
+    }
+    CHECK_FS(r);
+    found = !!r;
+    closeDirGuard.dismiss();
+    CHECK_FS(lfs_dir_close(lfs, &dir));
     return 0;
 }
 
@@ -202,7 +240,22 @@ int rmrf(const char* path) {
             if (pathLen >= sizeof(pathBuf)) {
                 return SYSTEM_ERROR_PATH_TOO_LONG;
             }
+#if 0
+            // See FIXME in removeDir()
             CHECK(removeDir(fs.instance(), pathBuf, sizeof(pathBuf), pathLen));
+#else
+            // Delete the directory "non-recursively"
+            for (;;) {
+                bool found = false;
+                CHECK(findLeafEntry(fs.instance(), pathBuf, sizeof(pathBuf), pathLen, found));
+                if (!found) {
+                    break;
+                }
+                CHECK_FS(lfs_remove(fs.instance(), pathBuf));
+                pathBuf[pathLen] = '\0';
+            }
+            CHECK_FS(lfs_remove(fs.instance(), path));
+#endif
         } else if (r != LFS_ERR_NOENT) {
             CHECK_FS(r); // Forward the error
         }
