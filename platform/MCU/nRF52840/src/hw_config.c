@@ -56,6 +56,7 @@ uint16_t tempFlag;
 // TODO: move somewhere else?
 // Defined in softdevice.ld
 extern uintptr_t platform_softdevice_reserved_flash_end;
+#define SOFTDEVICE_MBR_PARAM_ADDR_LEGACY (0x30000 - 4096)
 #define SOFTDEVICE_MBR_PARAM_ADDR (((uintptr_t)&platform_softdevice_reserved_flash_end) - INTERNAL_FLASH_PAGE_SIZE) // platform_softdevice_reserved_flash_end - 4K (1 page)
 #define SOFTDEVICE_MBR_PARAM_UNSET (0xffffffff)
 
@@ -90,7 +91,9 @@ static void power_failure_handler(void) {
 static void configure_uicr() {
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     bool modified = false;
-    if (NRF_UICR->NRFFW[1] == SOFTDEVICE_MBR_PARAM_UNSET) {
+    // NOTE: we can safely change the MBR parameter page from 0x2f000 (legacy) to 0x27000 as it's just a 1->0 bit flip
+    //
+    if (NRF_UICR->NRFFW[1] == SOFTDEVICE_MBR_PARAM_UNSET || NRF_UICR->NRFFW[1] == SOFTDEVICE_MBR_PARAM_ADDR_LEGACY) {
         NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
         while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {
             ;
@@ -103,6 +106,8 @@ static void configure_uicr() {
         while (NRF_NVMC->READY == NVMC_READY_READY_Busy){
             ;
         }
+        // Make sure to erase MBR parameter page
+        FLASH_EraseMemory(FLASH_INTERNAL, SOFTDEVICE_MBR_PARAM_ADDR, INTERNAL_FLASH_PAGE_SIZE);
         modified = true;
     }
 

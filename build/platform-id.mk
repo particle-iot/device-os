@@ -318,7 +318,7 @@ endif
 
 ifeq ("$(MCU_DEVICE)","nRF52840")
     PLATFORM_THREADING=1
-    PLATFORM_DFU ?= 0x30000
+    PLATFORM_DFU ?= 0x28000
 endif
 
 ifeq ("$(MCU_DEVICE)","rtl872x")

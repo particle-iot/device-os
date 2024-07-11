@@ -7,6 +7,8 @@
 #define APP_START_MASK              ((uint32_t)0x2FFC0000)
 #endif /* APP_START_MASK */
 
+#define SYSTEM_PART_LEGACY_ADDRESS (0x30000)
+
 uint8_t is_application_valid(uint32_t address, uint32_t* entry)
 {
     bool ret = false;
@@ -14,6 +16,14 @@ uint8_t is_application_valid(uint32_t address, uint32_t* entry)
     if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, address, address) &&
            FLASH_VerifyCRC32(FLASH_INTERNAL, address, FLASH_ModuleLength(FLASH_INTERNAL, address))) {
         ret = true;
+    }
+    if (ret == false) {
+        address = SYSTEM_PART_LEGACY_ADDRESS;
+        // Check legacy location
+        if (FLASH_isUserModuleInfoValid(FLASH_INTERNAL, address, address) &&
+           FLASH_VerifyCRC32(FLASH_INTERNAL, address, FLASH_ModuleLength(FLASH_INTERNAL, address))) {
+            ret = true;
+        }
     }
 #else
     if ((((*(volatile uint32_t*)address) & APP_START_MASK) == 0x20000000)) {

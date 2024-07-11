@@ -102,9 +102,10 @@ platform_user_part_compat_module_info_flash_end   = platform_user_part_compat_mo
 platform_user_part_compat_dynalib_table_flash_start = platform_user_part_compat_module_info_flash_end;
 
 /* System part 1 */
-platform_system_part1_flash_size  = 528K;
+platform_system_part1_flash_size  = 560K;
 platform_system_part1_flash_end   = platform_user_part_flash_start;
 platform_system_part1_flash_start = platform_system_part1_flash_end - platform_system_part1_flash_size;
+platform_system_part1_flash_start_legacy = 0x30000;
 
 /* System part 1 vector table */
 platform_system_part1_vector_table_flash_size  = platform_vector_table_flash_size;
@@ -117,11 +118,18 @@ platform_system_part1_module_info_flash_start = platform_system_part1_vector_tab
 platform_system_part1_module_info_flash_end   = platform_system_part1_module_info_flash_start + platform_system_part1_module_info_flash_size;
 
 /* System part 1 dynalib table */
-platform_system_part1_dynalib_table_flash_start = platform_system_part1_module_info_flash_end;
+platform_system_part1_dynalib_table_flash_start = platform_system_part1_flash_start_legacy + platform_vector_table_flash_size + platform_module_info_flash_size;
 
+/* System part 1 split flash areas */
+platform_system_part1_ext_flash_start = platform_system_part1_flash_start;
+platform_system_part1_ext_flash_end = platform_system_part1_dynalib_table_flash_start;
+platform_system_part1_ext_flash_size = platform_system_part1_ext_flash_end - platform_system_part1_ext_flash_start;
+platform_system_part1_std_flash_start = platform_system_part1_dynalib_table_flash_start;
+platform_system_part1_std_flash_end = platform_system_part1_flash_end;
+platform_system_part1_std_flash_size = platform_system_part1_std_flash_end - platform_system_part1_std_flash_start;
 
 /* Monolithic firmware*/
-platform_monolithic_firmware_flash_size  = 784K;
+platform_monolithic_firmware_flash_size  = 816K;
 platform_monolithic_firmware_flash_end   = platform_bootloader_flash_start;
 platform_monolithic_firmware_flash_start = platform_monolithic_firmware_flash_end - platform_monolithic_firmware_flash_size;
 
@@ -137,12 +145,12 @@ platform_monolithic_firmware_module_info_flash_end   = platform_monolithic_firmw
 
 
 /* Reserved for Softdevice extention */
-platform_softdevice_reserved_flash_size  = 40K;
+platform_softdevice_reserved_flash_size  = 4K;
 platform_softdevice_reserved_flash_end   = platform_system_part1_flash_start;
 platform_softdevice_reserved_flash_start = platform_softdevice_reserved_flash_end - platform_softdevice_reserved_flash_size;
 
 /* Softdevice */
-platform_softdevice_flash_size  = 152K;
+platform_softdevice_flash_size  = 156K;
 platform_softdevice_flash_start = platform_flash_start;
 platform_softdevice_flash_end   = platform_softdevice_flash_start + platform_softdevice_flash_size;
 
@@ -174,23 +182,23 @@ ASSERT (
     "Invalid user part compat flash memory map!"
 );
 ASSERT (
-    (platform_system_part1_flash_start == 0x30000) &&
+    (platform_system_part1_flash_start == 0x28000) &&
     (platform_system_part1_flash_end - platform_system_part1_flash_start == platform_system_part1_flash_size && platform_system_part1_flash_size > 0) &&
     (platform_system_part1_vector_table_flash_end - platform_system_part1_vector_table_flash_start == platform_system_part1_vector_table_flash_size && platform_system_part1_vector_table_flash_size > 0) &&
     (platform_system_part1_module_info_flash_end - platform_system_part1_module_info_flash_start == platform_system_part1_module_info_flash_size && platform_system_part1_module_info_flash_size > 0),
     "Invalid system part 1 flash memory map!"
 );
 ASSERT (
-    (platform_monolithic_firmware_flash_start == 0x30000) &&
+    (platform_monolithic_firmware_flash_start == 0x28000) &&
     (platform_monolithic_firmware_flash_end - platform_monolithic_firmware_flash_start == platform_monolithic_firmware_flash_size && platform_monolithic_firmware_flash_size > 0) &&
     (platform_monolithic_firmware_vector_table_flash_end - platform_monolithic_firmware_vector_table_flash_start == platform_monolithic_firmware_vector_table_flash_size && platform_monolithic_firmware_vector_table_flash_size > 0) &&
     (platform_monolithic_firmware_module_info_flash_end - platform_monolithic_firmware_module_info_flash_start == platform_monolithic_firmware_module_info_flash_size && platform_monolithic_firmware_module_info_flash_size > 0),
     "Invalid monolithic firmware flash memory map!"
 );
-/* NOTE: there is a reserved MBR parameter page at the end of the allocated SoftDevice area (192K - 4K) */
+/* NOTE: there is a reserved MBR parameter page at the end of the allocated SoftDevice area (0x27000 - 0x28000) */
 /* This page address is dependent on platform_softdevice_reserved_flash_end. Do not modify! */
 ASSERT (
-    (platform_softdevice_reserved_flash_end == 0x30000) &&
+    (platform_softdevice_reserved_flash_end == 0x28000) &&
     (platform_softdevice_reserved_flash_end - platform_softdevice_reserved_flash_start == platform_softdevice_reserved_flash_size && platform_softdevice_reserved_flash_size > 0) &&
     (platform_softdevice_flash_end - platform_softdevice_flash_start == platform_softdevice_flash_size && platform_softdevice_flash_size > 0),
     "Invalid softdevice flash memory map!"
