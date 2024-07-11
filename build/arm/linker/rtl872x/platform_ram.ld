@@ -193,3 +193,5 @@ platform_bootloader_secure_ram_end   = platform_bootloader_secure_ram_start + pl
 
 /* The heap size after linkage should meet the minimum heap requirement. */
 platform_heap_min_size = 32K;
+
+INCLUDE platform_ram_shared.ld

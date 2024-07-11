@@ -32,6 +32,7 @@ test(WIFI_00_connect)
     WiFi.on();
     WiFi.connect();
     Particle.connect();
+    assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 

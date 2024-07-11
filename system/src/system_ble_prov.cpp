@@ -33,8 +33,10 @@ using namespace particle::system;
 int system_ble_prov_mode(bool enabled, void* reserved) {
     SYSTEM_THREAD_CONTEXT_SYNC(system_ble_prov_mode(enabled, reserved));
     if (!HAL_Feature_Get(FEATURE_DISABLE_LISTENING_MODE)) {
-            LOG(ERROR, "Listening mode is not disabled. Cannot use prov mode");
-            return SYSTEM_ERROR_NOT_ALLOWED;
+        if (enabled) {
+            LOG(ERROR, "Provisioning mode not enabled, listening mode is not disabled");    
+        }
+        return SYSTEM_ERROR_NOT_ALLOWED;
     }
     if (enabled) {
         CHECK_FALSE(BleProvisioningModeHandler::instance()->getProvModeStatus(), SYSTEM_ERROR_NONE);

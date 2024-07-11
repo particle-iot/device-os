@@ -165,6 +165,7 @@ private:
     int finishRespId_; // Message ID of the UpdateFinish response
     int errorRespId_; // Message ID of the last confirmable error response sent to the server
     bool hasGaps_; // Whether the sequence of received chunks has gaps
+    bool discardData_; // Whether to discard the cached module data after the update
     bool updating_; // Whether an update is in progress
 
     ProtocolError handleRequest(Message* msg, RequestHandlerFn handler);

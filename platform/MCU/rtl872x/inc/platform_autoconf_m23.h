@@ -70,7 +70,7 @@
 /*
  * < CONFIG WIFI 
  */
-#undef CONFIG_WIFI_FW_EN
+#define CONFIG_WIFI_FW_EN 1
 #undef  CONFIG_USER_CTRL_PS
 
 /*

@@ -143,6 +143,15 @@ SECTIONS
         link_ram_interrupt_vectors_location_end = .;
     } > SRAM
 
+    prebootloader_wifi_fw_ram :
+    {
+        . = ALIGN(platform_km4_ram_reserved);
+        link_prebootloader_wifi_fw_ram_start = .;
+        . = . + platform_km0_part1_wifi_fw_ram_size;
+        link_prebootloader_wifi_fw_ram_end = .;
+    } > SRAM
+
+
     /* Non-zero initialised global and static variables */
     .data :
     {
@@ -186,6 +195,7 @@ SECTIONS
         *(.image2.ram.bss*)
         *(.image2.net.ram.bss*)
         *(COMMON)
+
         . = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
         link_bss_end = .;

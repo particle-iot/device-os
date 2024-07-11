@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,25 +17,13 @@
 
 #pragma once
 
-#include "system_control.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-namespace particle {
+void wifiFwInit();
+void wifiFwProcess();
 
-namespace ctrl {
-
-namespace wifi {
-
-int joinNewNetwork(ctrl_request* req);
-int joinKnownNetwork(ctrl_request* req);
-int getKnownNetworks(ctrl_request* req);
-int removeKnownNetwork(ctrl_request* req);
-int clearKnownNetworks(ctrl_request* req);
-int getCurrentNetwork(ctrl_request* req);
-int scanNetworks(ctrl_request* req);
-int setNetworkCredentials(ctrl_request* req);
-
-} // particle::ctrl::wifi
-
-} // particle::ctrl
-
-} // particle
+#ifdef __cplusplus
+}
+#endif

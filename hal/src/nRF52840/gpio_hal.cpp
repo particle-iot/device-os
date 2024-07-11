@@ -76,12 +76,17 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
         }
 
         // Pre-set the output value if requested to avoid a glitch
-        if (conf->set_value && (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP)) {
-            if (conf->value) {
-                nrf_gpio_pin_set(nrfPin);
-            } else {
-                nrf_gpio_pin_clear(nrfPin);
+        if (conf->set_value) {
+            if (mode == OUTPUT || mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP) {
+                if (conf->value) {
+                    nrf_gpio_pin_set(nrfPin);
+                } else {
+                    nrf_gpio_pin_clear(nrfPin);
+                }
             }
+        } else if (mode == OUTPUT_OPEN_DRAIN || mode == OUTPUT_OPEN_DRAIN_PULLUP) {
+            // Release the pin control by default
+            nrf_gpio_pin_set(nrfPin);
         }
 
         switch (mode) {

@@ -77,7 +77,8 @@ RealtekNcpNetif::~RealtekNcpNetif() {
 void RealtekNcpNetif::init() {
     registerHandlers();
     SPARK_ASSERT(lwip_memp_event_handler_add(mempEventHandler, MEMP_PBUF_POOL, this) == 0);
-    SPARK_ASSERT(os_thread_create(&thread_, "rltkncp", OS_THREAD_PRIORITY_NETWORK, &RealtekNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
+    // XXX: stack size. some rtl SDK calls appear to be stack hungry
+    SPARK_ASSERT(os_thread_create(&thread_, "rltkncp", OS_THREAD_PRIORITY_NETWORK, &RealtekNcpNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH * 2) == 0);
 }
 
 void RealtekNcpNetif::setWifiManager(particle::WifiNetworkManager* wifiMan) {
@@ -158,7 +159,7 @@ void RealtekNcpNetif::loop(void* arg) {
             if (self->expectedNcpState_ == NcpState::ON && self->wifiMan_->ncpClient()->ncpState() != NcpState::ON) {
                 auto r = self->wifiMan_->ncpClient()->on();
                 if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
-                    LOG(ERROR, "Failed to initialize cellular NCP client: %d", r);
+                    LOG(ERROR, "Failed to initialize Realtek NCP client: %d", r);
                 }
             }
             if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED &&
@@ -304,12 +305,12 @@ void RealtekNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
     auto self = (RealtekNcpNetif*)ctx;
     if (ev.type == NcpEvent::CONNECTION_STATE_CHANGED) {
         LwipTcpIpCoreLock lk;
-        if (!netif_is_up(self->interface())) {
-            // Ignore
-            return;
-        }
         const auto& cev = static_cast<const NcpConnectionStateChangedEvent&>(ev);
         LOG(TRACE, "State changed event: %d", (int)cev.state);
+        if (!netif_is_up(self->interface())) {
+            LOG(WARN,"NCP connection state event ignored, netif not up");
+            return;
+        }
         if (cev.state == NcpConnectionState::DISCONNECTED) {
             netif_set_link_down(self->interface());
         } else if (cev.state == NcpConnectionState::CONNECTED) {
@@ -418,8 +419,8 @@ int RealtekNcpNetif::downImpl() {
 
 err_t RealtekNcpNetif::linkOutput(pbuf* p) {
     if (!(netif_is_up(interface()) && netif_is_link_up(interface()))) {
-        LOG(ERROR, "linkOutput up=%d link_up=%d", netif_is_up(interface()), netif_is_link_up(interface()));
-        return ERR_IF;
+        // LOG(ERROR, "linkOutput up=%d link_up=%d", netif_is_up(interface()), netif_is_link_up(interface()));
+        return ERR_RTE;
     }
 
     // LOG_DEBUG(TRACE, "link output %x %u", p->payload, p->tot_len);

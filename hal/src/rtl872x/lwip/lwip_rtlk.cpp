@@ -112,20 +112,24 @@ int rltk_wlan_send(int idx, struct eth_drv_sg *sg_list, int sg_len, int total_le
 
     // WIFI_MONITOR_TIMER_START(wifi_time_test.wlan_send_time);
     if(idx == -1){
-        LOG(ERROR, "netif is DOWN");
         return -1;
     }
     // LOG(TRACE, "%s is called idx=%d", __FUNCTION__, idx);
 
     save_and_cli();
-    rltk_wlan_tx_inc(idx);
+    if (rltk_wlan_check_isup(idx)) {
+        rltk_wlan_tx_inc(idx);
+    } else {
+        restore_flags();
+        return -1;
+    }
     restore_flags();
 
     // WIFI_MONITOR_TIMER_START(wifi_time_test.wlan_send_time1);
     skb = rltk_wlan_alloc_skb(total_len);
     // WIFI_MONITOR_TIMER_END(wifi_time_test.wlan_send_time1, total_len);
     if (skb == NULL) {
-        LOG(ERROR, "rltk_wlan_alloc_skb() for data len=%d failed!", total_len);
+        LOG(WARN, "rltk_wlan_alloc_skb() for data len=%d failed!", total_len);
         ret = -1;
         goto exit;
     }

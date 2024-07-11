@@ -95,8 +95,15 @@ extern "C" void __real_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len);
 extern "C" int rltk_coex_set_wifi_slot(u8 wifi_slot);
 
+// #define BT_COEX_DEBUG
+
 void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
 	__real_bt_coex_handle_specific_evt(p, len);
+#ifdef BT_COEX_DEBUG
+    LOG(INFO, "btcoex event len=%u", (unsigned)len);
+    LOG_DUMP(INFO, p, len);
+    LOG_PRINTF(INFO, "\r\n");
+#endif // BT_COEX_DEBUG
 }
 
 namespace {
@@ -374,7 +381,7 @@ public:
     int setScanParams(const hal_ble_scan_params_t* params);
     int getScanParams(hal_ble_scan_params_t* params) const;
     int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
-    int stopScanning();
+    int stopScanning(bool resetStack = false);
 
     int setPpcp(const hal_ble_conn_params_t* ppcp);
     int getPpcp(hal_ble_conn_params_t* ppcp) const;
@@ -1149,15 +1156,6 @@ int BleGap::start() {
     btStackStarted_ = true;
     wifi_btcoex_set_bt_on();
 
-    rltk_coex_set_wlan_lps_coex(1);
-    // XXX: Supposedly 0x04 should be enough here:
-    // > - Let WIFI > BT in wifi slot, BT > WIFI in bt slot when ble scan + wifi connected
-    // But that doesn't work. 0b111 (setting two other options as enabled) seems to make things work correctly.
-    rltk_coex_set_wlan_slot_preempting(0b111);
-    // Leaving as default for now (unknown). This controls the prioritization
-    // between WiFi and BLE timeslots in percentage e.g. 50 is 50% for WiFi, 10 is 10% for WiFi etc
-    // rltk_coex_set_wifi_slot(50);
-
     if (cache_.isAdv || cache_.isConn) {
         LOG(TRACE, "Restore advertising state");
         startAdvertising(); // Despite of the result.
@@ -1624,51 +1622,20 @@ int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
 }
 
 int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
+    BleLock lk;
+
     CHECK(start());
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
     bool resetStack = false;
 
-    SCOPE_GUARD ({
-        if (isScanning_) {
-            const int LE_SCAN_STOP_RETRIES = 1;
-            for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
-                // This has seen failing a number of times at least
-                // with btgap logging enabled. Retry a few times just in case,
-                // otherwise the next scan operation fails with invalid state.
-                auto r = WRAP_BLE_EVT_LOCK(le_scan_stop());
-                if (r == GAP_CAUSE_SUCCESS) {
-                    // IMPORTANT: have to poll here, for some reason we may not get notified
-                    if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
-                        isScanning_ = false;
-                    }
-                    break;
-                }
-                HAL_Delay_Milliseconds(10);
-            }
-            if (isScanning_) {
-                // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
-                // the next scan operation will fail with invalid state.
-                RtlGapDevState s;
-                le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state);
-                LOG(TRACE, "Failed to stop scanning, resetting stack, scan state=%d", s.state.gap_scan_state);
-                resetStack = true;
-            }
-        }
-        if (resetStack) {
-            int ret = stop();
-            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
-            clearPendingResult();
-            ret = init();
-            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
-            ret = start();
-            SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
-        } else {
-            clearPendingResult();
-        }
-        isScanning_ = false;
+    NAMED_SCOPE_GUARD(sg, {
+        stopScanning(resetStack);
     });
     scanResultCallback_ = callback;
     context_ = context;
+
+    // Just in case
+    os_semaphore_take(scanSemaphore_, 0, false);
 
     CHECK_RTL(WRAP_BLE_EVT_LOCK(le_scan_start()));
     isScanning_ = true;
@@ -1685,14 +1652,57 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     }
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
+    if (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) {
+        lk.unlock();
+    }
     os_semaphore_take(scanSemaphore_, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
     return SYSTEM_ERROR_NONE;
 }
 
-int BleGap::stopScanning() {
+int BleGap::stopScanning(bool resetStack) {
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
+
+    BleLock lk;
+
+    const int LE_SCAN_STOP_RETRIES = 1;
+    for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
+        // This has seen failing a number of times at least
+        // with btgap logging enabled. Retry a few times just in case,
+        // otherwise the next scan operation fails with invalid state.
+        auto r = WRAP_BLE_EVT_LOCK(le_scan_stop());
+        if (r == GAP_CAUSE_SUCCESS) {
+            // IMPORTANT: have to poll here, for some reason we may not get notified
+            if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
+                isScanning_ = false;
+            }
+            break;
+        }
+        HAL_Delay_Milliseconds(10);
+    }
+
+    if (isScanning_) {
+        // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
+        // the next scan operation will fail with invalid state.
+        RtlGapDevState s;
+        le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state);
+        LOG(TRACE, "Failed to stop scanning, resetting stack, scan state=%d", s.state.gap_scan_state);
+        resetStack = true;
+    }
+
+    if (resetStack) {
+        int ret = stop();
+        SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+        clearPendingResult();
+        ret = init();
+        SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+        ret = start();
+        SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+    } else {
+        clearPendingResult();
+    }
+
     os_semaphore_give(scanSemaphore_, false);
     return SYSTEM_ERROR_NONE;
 }
@@ -3725,9 +3735,11 @@ int hal_ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* re
 }
 
 int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, void* reserved) {
-    BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_start_scan().");
-    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    {
+        BleLock lk;
+        LOG_DEBUG(TRACE, "hal_ble_gap_start_scan().");
+        CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    }
     return BleGap::getInstance().startScanning(callback, context);
 }
 
@@ -3994,6 +4006,23 @@ ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr
     return BleGatt::getInstance().readAttribute(conn_handle, value_handle, buf, len);
 }
 
+int hal_ble_internal(int type, void* data, size_t size, void* reserved) {
+    switch (type) {
+        case 1000: {
+            struct hal_ble_internal_coex {
+                uint32_t coex[4];
+                uint8_t tdma[5];
+                uint8_t apply;
+            } __attribute__((packed));
+            auto p = (hal_ble_internal_coex*)data;
+            // FIXME: unaligned with packed
+            uint32_t coex[] = { p->coex[0], p->coex[1], p->coex[2], p->coex[3] };
+            uint8_t tdma[] = { p->tdma[0], p->tdma[1], p->tdma[2], p->tdma[3], p->tdma[4] };
+            return rtwCoexSet(coex, tdma, size);
+        }
+    }
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
 
 #if HAL_PLATFORM_BLE_BETA_COMPAT
 

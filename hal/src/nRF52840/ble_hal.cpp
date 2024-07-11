@@ -4408,6 +4408,9 @@ ssize_t hal_ble_gatt_client_read(hal_ble_conn_handle_t conn_handle, hal_ble_attr
     return BleObject::getInstance().gattc()->readAttribute(conn_handle, value_handle, buf, len);
 }
 
+int hal_ble_internal(int type, void* data, size_t size, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
 
 #if HAL_PLATFORM_BLE_BETA_COMPAT
 

@@ -88,13 +88,22 @@ typedef struct _particle_ctrl_wifi_RemoveKnownNetworkRequest {
     pb_callback_t ssid; 
 } particle_ctrl_wifi_RemoveKnownNetworkRequest;
 
+/* *
+ Store network credential but do not attempt to power on wifi or connect.
+
+ On success, the network credentials get saved to a persistent storage.
+ On failure, there was not enough room to store the credentials */
 typedef struct _particle_ctrl_wifi_ScanNetworksReply { 
-    pb_callback_t networks; 
+    pb_callback_t networks; /* Network SSID */
 } particle_ctrl_wifi_ScanNetworksReply;
 
 typedef struct _particle_ctrl_wifi_ScanNetworksRequest { 
     char dummy_field;
 } particle_ctrl_wifi_ScanNetworksRequest;
+
+typedef struct _particle_ctrl_wifi_SetNetworkCredentialsReply { 
+    char dummy_field;
+} particle_ctrl_wifi_SetNetworkCredentialsReply;
 
 /* *
  Network credentials. */
@@ -144,6 +153,16 @@ typedef struct _particle_ctrl_wifi_JoinNewNetworkRequest {
     bool hidden; 
 } particle_ctrl_wifi_JoinNewNetworkRequest;
 
+typedef PB_BYTES_ARRAY_T(6) particle_ctrl_wifi_SetNetworkCredentialsRequest_bssid_t;
+typedef struct _particle_ctrl_wifi_SetNetworkCredentialsRequest { 
+    pb_callback_t ssid; 
+    particle_ctrl_wifi_SetNetworkCredentialsRequest_bssid_t bssid; 
+    particle_ctrl_wifi_Security security; 
+    particle_ctrl_wifi_Credentials credentials; 
+    particle_ctrl_Interface interface_config; 
+    bool hidden; 
+} particle_ctrl_wifi_SetNetworkCredentialsRequest;
+
 
 /* Helper constants for enums */
 #define _particle_ctrl_wifi_Security_MIN particle_ctrl_wifi_Security_NO_SECURITY
@@ -177,6 +196,8 @@ extern "C" {
 #define particle_ctrl_wifi_ScanNetworksRequest_init_default {0}
 #define particle_ctrl_wifi_ScanNetworksReply_init_default {{{NULL}, NULL}}
 #define particle_ctrl_wifi_ScanNetworksReply_Network_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, 0, 0}
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_init_default {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_default, particle_ctrl_Interface_init_default, 0}
+#define particle_ctrl_wifi_SetNetworkCredentialsReply_init_default {0}
 #define particle_ctrl_wifi_Credentials_init_zero {_particle_ctrl_wifi_CredentialsType_MIN, {{NULL}, NULL}}
 #define particle_ctrl_wifi_JoinNewNetworkRequest_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero, particle_ctrl_Interface_init_zero, 0}
 #define particle_ctrl_wifi_JoinNewNetworkReply_init_zero {0}
@@ -194,6 +215,8 @@ extern "C" {
 #define particle_ctrl_wifi_ScanNetworksRequest_init_zero {0}
 #define particle_ctrl_wifi_ScanNetworksReply_init_zero {{{NULL}, NULL}}
 #define particle_ctrl_wifi_ScanNetworksReply_Network_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, 0, 0}
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_init_zero {{{NULL}, NULL}, {0, {0}}, _particle_ctrl_wifi_Security_MIN, particle_ctrl_wifi_Credentials_init_zero, particle_ctrl_Interface_init_zero, 0}
+#define particle_ctrl_wifi_SetNetworkCredentialsReply_init_zero {0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_ctrl_wifi_GetKnownNetworksReply_networks_tag 1
@@ -220,6 +243,12 @@ extern "C" {
 #define particle_ctrl_wifi_JoinNewNetworkRequest_credentials_tag 4
 #define particle_ctrl_wifi_JoinNewNetworkRequest_interface_config_tag 5
 #define particle_ctrl_wifi_JoinNewNetworkRequest_hidden_tag 6
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_ssid_tag 1
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_bssid_tag 2
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_security_tag 3
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_credentials_tag 4
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_interface_config_tag 5
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_hidden_tag 6
 
 /* Struct field encoding specification for nanopb */
 #define particle_ctrl_wifi_Credentials_FIELDLIST(X, a) \
@@ -326,6 +355,23 @@ X(a, STATIC,   SINGULAR, INT32,    rssi,              5)
 #define particle_ctrl_wifi_ScanNetworksReply_Network_CALLBACK pb_default_field_callback
 #define particle_ctrl_wifi_ScanNetworksReply_Network_DEFAULT NULL
 
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_FIELDLIST(X, a) \
+X(a, CALLBACK, SINGULAR, STRING,   ssid,              1) \
+X(a, STATIC,   SINGULAR, BYTES,    bssid,             2) \
+X(a, STATIC,   SINGULAR, UENUM,    security,          3) \
+X(a, STATIC,   SINGULAR, MESSAGE,  credentials,       4) \
+X(a, STATIC,   SINGULAR, MESSAGE,  interface_config,   5) \
+X(a, STATIC,   SINGULAR, BOOL,     hidden,            6)
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_CALLBACK pb_default_field_callback
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_DEFAULT NULL
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_credentials_MSGTYPE particle_ctrl_wifi_Credentials
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_interface_config_MSGTYPE particle_ctrl_Interface
+
+#define particle_ctrl_wifi_SetNetworkCredentialsReply_FIELDLIST(X, a) \
+
+#define particle_ctrl_wifi_SetNetworkCredentialsReply_CALLBACK NULL
+#define particle_ctrl_wifi_SetNetworkCredentialsReply_DEFAULT NULL
+
 extern const pb_msgdesc_t particle_ctrl_wifi_Credentials_msg;
 extern const pb_msgdesc_t particle_ctrl_wifi_JoinNewNetworkRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_wifi_JoinNewNetworkReply_msg;
@@ -343,6 +389,8 @@ extern const pb_msgdesc_t particle_ctrl_wifi_GetCurrentNetworkReply_msg;
 extern const pb_msgdesc_t particle_ctrl_wifi_ScanNetworksRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_wifi_ScanNetworksReply_msg;
 extern const pb_msgdesc_t particle_ctrl_wifi_ScanNetworksReply_Network_msg;
+extern const pb_msgdesc_t particle_ctrl_wifi_SetNetworkCredentialsRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_wifi_SetNetworkCredentialsReply_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define particle_ctrl_wifi_Credentials_fields &particle_ctrl_wifi_Credentials_msg
@@ -362,6 +410,8 @@ extern const pb_msgdesc_t particle_ctrl_wifi_ScanNetworksReply_Network_msg;
 #define particle_ctrl_wifi_ScanNetworksRequest_fields &particle_ctrl_wifi_ScanNetworksRequest_msg
 #define particle_ctrl_wifi_ScanNetworksReply_fields &particle_ctrl_wifi_ScanNetworksReply_msg
 #define particle_ctrl_wifi_ScanNetworksReply_Network_fields &particle_ctrl_wifi_ScanNetworksReply_Network_msg
+#define particle_ctrl_wifi_SetNetworkCredentialsRequest_fields &particle_ctrl_wifi_SetNetworkCredentialsRequest_msg
+#define particle_ctrl_wifi_SetNetworkCredentialsReply_fields &particle_ctrl_wifi_SetNetworkCredentialsReply_msg
 
 /* Maximum encoded size of messages (where known) */
 /* particle_ctrl_wifi_Credentials_size depends on runtime parameters */
@@ -373,6 +423,7 @@ extern const pb_msgdesc_t particle_ctrl_wifi_ScanNetworksReply_Network_msg;
 /* particle_ctrl_wifi_GetCurrentNetworkReply_size depends on runtime parameters */
 /* particle_ctrl_wifi_ScanNetworksReply_size depends on runtime parameters */
 /* particle_ctrl_wifi_ScanNetworksReply_Network_size depends on runtime parameters */
+/* particle_ctrl_wifi_SetNetworkCredentialsRequest_size depends on runtime parameters */
 #define particle_ctrl_wifi_ClearKnownNetworksReply_size 0
 #define particle_ctrl_wifi_ClearKnownNetworksRequest_size 0
 #define particle_ctrl_wifi_GetCurrentNetworkRequest_size 0
@@ -381,6 +432,7 @@ extern const pb_msgdesc_t particle_ctrl_wifi_ScanNetworksReply_Network_msg;
 #define particle_ctrl_wifi_JoinNewNetworkReply_size 0
 #define particle_ctrl_wifi_RemoveKnownNetworkReply_size 0
 #define particle_ctrl_wifi_ScanNetworksRequest_size 0
+#define particle_ctrl_wifi_SetNetworkCredentialsReply_size 0
 
 #ifdef __cplusplus
 } /* extern "C" */

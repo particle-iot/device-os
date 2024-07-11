@@ -130,6 +130,15 @@ SECTIONS
         link_ram_interrupt_vectors_location_end = .;
     } > SRAM
 
+    prebootloader_wifi_fw_ram :
+    {
+        . = ALIGN(platform_km4_ram_reserved);
+        link_prebootloader_wifi_fw_ram_start = .;
+        . = . + platform_km0_part1_wifi_fw_ram_size;
+        link_prebootloader_wifi_fw_ram_end = .;
+    } > SRAM
+
+
     /* Non-zero initialised global and static variables */
     .data :
     {

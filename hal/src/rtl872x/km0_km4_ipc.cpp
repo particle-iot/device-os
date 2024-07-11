@@ -22,9 +22,12 @@ extern "C" {
 #include "hw_config.h"
 #include "rtl_sdk_support.h"
 #include "check.h"
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "static_recursive_mutex.h"
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "km0_km4_ipc.h"
 #include "align_util.h"
+#include "service_debug.h"
 
 using namespace particle;
 

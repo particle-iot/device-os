@@ -21,6 +21,7 @@
 #include "hal_event.h"
 #include "concurrent_hal.h"
 #include <atomic>
+#include "rng_hal.h"
 
 namespace {
 
@@ -118,5 +119,12 @@ void vApplicationIdleHook(void) {
         vTaskPrioritySet(nullptr, tskIDLE_PRIORITY);
     }
 }
+
+#if defined(configENABLE_HEAP_PROTECTOR) && configENABLE_HEAP_PROTECTOR == 1
+void vApplicationGetRandomHeapCanary( portPOINTER_SIZE_TYPE * pxHeapCanary ) {
+    uint32_t canary = HAL_RNG_GetRandomNumber();
+    *pxHeapCanary = canary;
+}
+#endif // defined(configENABLE_HEAP_PROTECTOR) && configENABLE_HEAP_PROTECTOR == 1
 
 } // extern "C"

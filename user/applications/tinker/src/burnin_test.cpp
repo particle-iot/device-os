@@ -296,8 +296,8 @@ bool BurninTest::testBleScan() {
         Log.info("Found %d beacons", count);
 
         for (int ii = 0; ii < count; ii++) {
-            uint8_t buf[BLE_MAX_ADV_DATA_LEN];
-            size_t len = scanResults[ii].advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, BLE_MAX_ADV_DATA_LEN);
+            uint8_t buf[BLE_MAX_SUPPORTED_ADV_DATA_LEN];
+            size_t len = scanResults[ii].advertisingData().get(BleAdvertisingDataType::MANUFACTURER_SPECIFIC_DATA, buf, sizeof(buf));
             Log.info("Beacon %d: rssi %d Advertising Data Len %u", ii, scanResults[ii].rssi(), len);
             if (len > 0) {
                 Log.print("Advertising Data: ");

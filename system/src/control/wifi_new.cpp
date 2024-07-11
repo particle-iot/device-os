@@ -94,6 +94,8 @@ int joinNewNetwork(ctrl_request* req) {
     const NcpClientLock lock(ncpClient);
 #if HAL_PLATFORM_RTL872X
     if (!conf.hidden()) {
+        // scan checks that the NcpState is ON
+        CHECK(ncpClient->on());
         // Scan for networks to detect the network security type
         Vector<WifiScanResult> networks;
         CHECK(ncpClient->scan([](WifiScanResult network, void* data) -> int {
@@ -132,6 +134,11 @@ int joinNewNetwork(ctrl_request* req) {
     // FIXME: synchronize NCP client / NcpNetif and system network manager state
     CHECK(ncpClient->enable());
     CHECK(ncpClient->on());
+    // Set new configuration
+    CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::VALIDATE));
+    // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
+    system_notify_event(network_credentials, network_credentials_added);
+
     network_connect(NETWORK_INTERFACE_WIFI_STA, NETWORK_CONNECT_FLAG_FORCE, 0, nullptr);
     NAMED_SCOPE_GUARD(networkDisconnectGuard, {
         // FIXME: synchronize NCP client / NcpNetif and system network manager state
@@ -139,10 +146,6 @@ int joinNewNetwork(ctrl_request* req) {
             network_disconnect(NETWORK_INTERFACE_WIFI_STA, NETWORK_DISCONNECT_REASON_USER, nullptr);
         }
     });
-    // Set new configuration
-    CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::VALIDATE));
-    // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
-    system_notify_event(network_credentials, network_credentials_added);
     networkDisconnectGuard.dismiss();
     return 0;
 }
@@ -274,6 +277,38 @@ int scanNetworks(ctrl_request* req) {
         return true;
     };
     CHECK(encodeReplyMessage(req, PB(ScanNetworksReply_fields), &pbRep));
+    return 0;
+}
+
+int setNetworkCredentials(ctrl_request* req) {
+    PB(SetNetworkCredentialsRequest) pbReq = {};
+    DecodedCString dSsid(&pbReq.ssid);
+    DecodedCString dPwd(&pbReq.credentials.password);
+    CHECK(decodeRequestMessage(req, PB(SetNetworkCredentialsRequest_fields), &pbReq));
+    // Parse new network configuration
+    if (pbReq.credentials.type != PB(CredentialsType_NO_CREDENTIALS) &&
+            pbReq.credentials.type != PB(CredentialsType_PASSWORD)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    WifiCredentials cred;
+    cred.type((WifiCredentials::Type)pbReq.credentials.type);
+    if (pbReq.credentials.type == PB(CredentialsType_PASSWORD)) {
+        cred.password(dPwd.data);
+    }
+    WifiNetworkConfig conf;
+    conf.ssid(dSsid.data);
+    MacAddress bssid = INVALID_MAC_ADDRESS;
+    bssidFromPb(&bssid, pbReq.bssid);
+    conf.bssid(bssid);
+    conf.hidden(pbReq.hidden);
+    conf.security((WifiSecurity)pbReq.security);
+    conf.credentials(std::move(cred));
+
+    const auto wifiMgr = wifiNetworkManager();
+    CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
+    CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::NONE));
+    system_notify_event(network_credentials, network_credentials_added);
+
     return 0;
 }
 

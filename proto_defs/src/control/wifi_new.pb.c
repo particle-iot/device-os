@@ -57,6 +57,12 @@ PB_BIND(particle_ctrl_wifi_ScanNetworksReply, particle_ctrl_wifi_ScanNetworksRep
 PB_BIND(particle_ctrl_wifi_ScanNetworksReply_Network, particle_ctrl_wifi_ScanNetworksReply_Network, AUTO)
 
 
+PB_BIND(particle_ctrl_wifi_SetNetworkCredentialsRequest, particle_ctrl_wifi_SetNetworkCredentialsRequest, 2)
+
+
+PB_BIND(particle_ctrl_wifi_SetNetworkCredentialsReply, particle_ctrl_wifi_SetNetworkCredentialsReply, AUTO)
+
+
 
 
 

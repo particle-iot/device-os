@@ -680,6 +680,10 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
             spark_cloud_socket_disconnect(graceful);
         }
 
+        if (opts.reconnect()) {
+            spark_cloud_flag_connect();
+        }
+
         // Note: Invoking the protocol's DISCONNECT or TERMINATE command cancels the ongoing firmware
         // if the device is being updated OTA, so there's no need to explicitly cancel the update here
         SPARK_CLOUD_CONNECTED = 0;

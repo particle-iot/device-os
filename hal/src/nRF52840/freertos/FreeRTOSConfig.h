@@ -140,6 +140,7 @@ extern void vApplicationTaskDeleteHook(void *pvTaskToDelete, volatile long* pxPe
 #define configDYNAMIC_HEAP_SIZE     ( 1 )
 #define configUSE_MALLOC_FAILED_HOOK ( 1 )
 #define configSUPPORT_STATIC_ALLOCATION ( 1 )
+#define configENABLE_HEAP_PROTECTOR (0) // TODO: enable
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES       0

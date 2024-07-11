@@ -3,6 +3,7 @@ TARGET_AMBD_SDK_SOC_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/soc/realte
 TARGET_AMBD_SDK_OS_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/os
 TARGET_AMBD_SDK_COMMON_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/component/common
 TARGET_AMBD_SDK_PROJECT_LIB_PATH = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/project/realtek_amebaD_va0_example/GCC-RELEASE/project_hp/asdk/lib/application
+TARGET_AMBD_SDK_PROJECT_LIB_PATH_LP = $(TARGET_AMBD_SDK_PATH)/ambd_sdk/project/realtek_amebaD_va0_example/GCC-RELEASE/project_lp/asdk/lib/application
 TARGET_AMBD_SDK_BLUETOOTH_PATH = $(TARGET_AMBD_SDK_COMMON_PATH)/bluetooth/realtek/sdk
 
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_PATH)
@@ -45,11 +46,21 @@ INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/file_system/ftl
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/usb/device_new/core
 INCLUDE_DIRS += $(TARGET_AMBD_SDK_COMMON_PATH)/drivers/usb/common_new
 
+
+ifneq ("$(ARM_CPU)","cortex-m23")
+# Cortex-M33 (KM4)
 # Hack of the century!
-LIBS_EXT_END += -Wl,--wrap=bt_coex_handle_specific_evt -Wl,--wrap=usb_hal_read_interrupts -Wl,--wrap=usb_hal_clear_interrupts
+LIBS_EXT_END += -Wl,--wrap=rtw_hal_fill_h2c_cmd -Wl,--wrap=rtw_write32 -Wl,--wrap=rtw_write16 -Wl,--wrap=rtw_write8 -Wl,--wrap=bt_coex_handle_specific_evt -Wl,--wrap=usb_hal_read_interrupts -Wl,--wrap=usb_hal_clear_interrupts
 LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wlan.a
 LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wps.a
 ifneq ("$(MODULE)", "user-part")
 LIBS_EXT_END += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/lib/btgap.a
 endif
 LIBS_EXT_END += -Wl,--wrap=usb_hal_read_packet $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_usbd_new.a
+
+else
+# Cortex-M23 (KM0)
+ifeq ("$(MODULE)","prebootloader-part1")
+LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH_LP)/lib_wifi_fw.a
+endif
+endif

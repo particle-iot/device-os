@@ -191,6 +191,7 @@
 | 2500 | 5700 | 5.7.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 | 2600 | 5800 | 5.8.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 | 2600 | 5801 | 5.8.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
+| 2601 | 5802 | 5.8.2         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 | 3000 | 6000 | 6.0.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 | 3000 | 6100 | 6.1.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 | 3001 | 6101 | 6.1.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, E Som X |

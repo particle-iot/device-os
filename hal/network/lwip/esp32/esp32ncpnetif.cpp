@@ -449,7 +449,7 @@ int Esp32NcpNetif::downImpl() {
 
 err_t Esp32NcpNetif::linkOutput(pbuf* p) {
     if (!(netif_is_up(interface()) && netif_is_link_up(interface()))) {
-        return ERR_IF;
+        return ERR_RTE;
     }
 
     // LOG_DEBUG(TRACE, "link output %x %u", p->payload, p->tot_len);

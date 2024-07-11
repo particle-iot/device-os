@@ -490,8 +490,7 @@ void Finish_Update()
 
     // USB_Cable_Config(DISABLE);
 
-    // FIXME: reset reason?
-    HAL_Core_System_Reset_Ex(0, 0, NULL);
+    HAL_Core_System_Reset_Ex(RESET_REASON_UPDATE, 0, NULL);
 }
 
 __attribute__((section(".retained_system_flags"))) platform_system_flags_t system_flags;

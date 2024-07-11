@@ -97,3 +97,5 @@ platform_km0_monolithic_firmware_ram_end   = platform_km0_monolithic_firmware_ra
 
 /* The heap size after linkage should meet the minimum heap requirement. */
 platform_heap_min_size = 32K;
+
+INCLUDE platform_ram_shared.ld
