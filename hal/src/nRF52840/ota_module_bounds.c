@@ -36,8 +36,8 @@ const module_bounds_t module_ota = {
 
 // Modular firmware
 const module_bounds_t module_system_part1 = {
-        .maximum_size = 0x000A4000, // 1M - APP_CODE_BASE - bootloader_flash_length - user_flash_length
-        .start_address = 0x00030000, // APP_CODE_BASE
+        .maximum_size = 0x0008C000, // 1M - APP_CODE_BASE - bootloader_flash_length - user_flash_length
+        .start_address = 0x00028000, // APP_CODE_BASE
         .end_address = 0x000B4000,
         .module_function = MODULE_FUNCTION_SYSTEM_PART,
         .module_index = 1,
@@ -91,8 +91,8 @@ const module_bounds_t module_factory = {
 
 // Monolithic firmware
 const module_bounds_t module_user_mono = {
-        .maximum_size = 0x000c4000, // 1M - APP_CODE_BASE - bootloader_flash_length
-        .start_address = 0x00030000, // APP_CODE_BASE
+        .maximum_size = 0x000cc000, // 1M - APP_CODE_BASE - bootloader_flash_length
+        .start_address = 0x00028000, // APP_CODE_BASE
         .end_address = 0x000f4000, // APP_CODE_BASE + module_user_mono.maximum_size
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,
@@ -147,9 +147,9 @@ const module_bounds_t module_ncp_mono = {
 
 #define MODULE_RADIO_STACK_START_ADDRESS (0x1000)
 const module_bounds_t module_radio_stack = {
-        .maximum_size = 0x30000 - MODULE_RADIO_STACK_START_ADDRESS, // APP_CODE_BASE - MBR_SIZE
+        .maximum_size = 0x27000 - MODULE_RADIO_STACK_START_ADDRESS, // APP_CODE_BASE - MBR_SIZE
         .start_address = MODULE_RADIO_STACK_START_ADDRESS, // MBR_SIZE
-        .end_address = 0x30000, // APP_CODE_BASE in softdevice.ld
+        .end_address = 0x27000, // APP_CODE_BASE in softdevice.ld
         .module_function = MODULE_FUNCTION_RADIO_STACK,
         .module_index = 0,
         .store = MODULE_STORE_MAIN

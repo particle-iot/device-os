@@ -3,13 +3,14 @@ SYSTEM_PART1_MODULE_PATH=.
 PROJECT_ROOT = ../../..
 BUILD_PATH_EXT = $(BUILD_TARGET_PLATFORM)
 HAL_LINK :=
-PLATFORM_DFU = 0x30000
+PLATFORM_DFU = 0x28000
 NCP_FIRMWARE_MODULE_VERSION=4
 # MODULE_DEPENDENCY2=7,0,$(NCP_FIRMWARE_MODULE_VERSION)
 DEPENDENCIES = newlib_nano modules/argon/user-part modules/argon/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto proto_defs
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto proto_defs
 
 export FORCE_LTO=1
+export LINKER_NON_CONT_REGIONS=1
 
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here
 MAKE_DEPENDENCIES = newlib_nano $(LIB_DEPENDENCIES)

@@ -128,6 +128,10 @@ CFLAGS += -fmerge-all-constants
 LDFLAGS += -fmerge-all-constants
 endif
 
+ifneq ($(LINKER_NON_CONT_REGIONS),)
+LDFLAGS += -Wl,--enable-non-contiguous-regions
+endif
+
 # Check if the compiler version is the minimum required
 version_to_number=$(shell v=$1; v=($${v//./ }); echo $$((v[0] * 10000 + v[1] * 100 + v[2])))
 get_major_version=$(shell v=$1; v=($${v//./ }); echo $${v[0]})

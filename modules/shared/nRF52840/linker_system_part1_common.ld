@@ -1,10 +1,7 @@
-/* nRF52840 specific sections */
-INCLUDE linker_nrf52840_sdk_ram.ld
-
 SECTIONS
 {
     /* Module start */
-    INCLUDE linker_module_start.ld
+    INCLUDE linker_module_start_ext.ld
     
     /* Interrupt vector table */
     .vectors :
@@ -14,10 +11,18 @@ SECTIONS
         KEEP (*(.isr_vector))
         link_interrupt_vectors_location_end = .;
         . = ALIGN(4);
-    } > APP_FLASH  AT> APP_FLASH
+    } > APP_FLASH_EXT  AT> APP_FLASH_EXT
 
     /* Module info */
-    INCLUDE linker_module_info.ld
+    INCLUDE linker_module_info_ext.ld
+
+    .text_ext :
+    {
+        . = ALIGN(4);
+        link_code_ext_start = .;
+        *(.text.*)
+        link_code_ext_end = .;
+    } > APP_FLASH_EXT AT>APP_FLASH_EXT
     
     /* Dynalib table */
     .dynalib :
@@ -121,6 +126,9 @@ SECTIONS
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH
 
+    /* nRF52840 specific sections */
+    INCLUDE linker_nrf52840_sdk_ram.ld
+
     /* Zero initialised memory used for zero initialised variables */
     .bss :
     {
@@ -187,12 +195,12 @@ __data_end__   = link_global_data_end;
 /* Basic sanity checks */
 ASSERT (
     (ORIGIN(SRAM) >= platform_ram_start && ORIGIN(SRAM) + LENGTH(SRAM) <= platform_ram_end) &&
-    (ORIGIN(APP_FLASH) >= platform_flash_start && ORIGIN(APP_FLASH) + LENGTH(APP_FLASH) <= platform_flash_end) &&
-    (link_module_start == ORIGIN(APP_FLASH)) &&
+    (ORIGIN(APP_FLASH_EXT) >= platform_flash_start && ORIGIN(APP_FLASH_EXT) + LENGTH(APP_FLASH_EXT) + LENGTH(APP_FLASH) <= platform_flash_end) &&
+    (link_module_start == ORIGIN(APP_FLASH_EXT)) &&
     (link_module_start == platform_system_part1_flash_start) &&
     (link_static_ram_start == ORIGIN(SRAM)) &&
     (link_static_ram_start == platform_system_part1_static_ram_start) &&
-    (PLATFORM_DFU == ORIGIN(APP_FLASH)),
+    (PLATFORM_DFU == ORIGIN(APP_FLASH_EXT)),
     "Invalid memory boundary!"
 );
 ASSERT (
