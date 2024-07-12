@@ -91,8 +91,8 @@ const module_bounds_t module_factory = {
 
 // Monolithic firmware
 const module_bounds_t module_user_mono = {
-        .maximum_size = 0x000c4000, // 1M - APP_CODE_BASE - bootloader_flash_length
-        .start_address = 0x00030000, // APP_CODE_BASE
+        .maximum_size = 0x000cc000, // 1M - APP_CODE_BASE - bootloader_flash_length
+        .start_address = 0x00028000, // APP_CODE_BASE
         .end_address = 0x000f4000, // APP_CODE_BASE + module_user_mono.maximum_size
         .module_function = MODULE_FUNCTION_MONO_FIRMWARE,
         .module_index = 0,

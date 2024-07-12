@@ -1,8 +1,7 @@
 /*
 Platform FLASH memory map for Argon, Boron, Xenon, ASoM, BSoM, XSoM.
 
-Modular firmware:                          Monolithic firmware:
-
+Modular firmware:                             Monolithic firmware:
 +--------------------------------+ 0x00100000 +----------------------------------+
 |                                |            |                                  |
 | Bootloader                     |            | Bootloader                       |
@@ -34,14 +33,18 @@ Modular firmware:                          Monolithic firmware:
 |                                |            |                                  |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                  |
 | System part 1 dynalib table    |            |                                  |
-+--------------------------------+ 0x00030218 +----------------------------------+
-| System part 1 module info      |            | Monolithic firmware module info  |
-+--------------------------------+ 0x00030200 +----------------------------------+
++--------------------------------+ 0x00030218 |                                  |
+| System part 1                  |            |                                  |
++--------------------------------+ 0x00028200 +----------------------------------+
+| System part 1 module info      |            | Monolothic firmware module info  |
++--------------------------------+ 0x00028200 +----------------------------------+
 | System part 1 vector table     |            | Monolithic firmware vector table |
-+--------------------------------+ 0x00030000 +----------------------------------+
-| Reserved for SoftDevice        |            | Reserved for SoftDevice          |
-+--------------------------------+ 0x00026000 +----------------------------------+
++--------------------------------+ 0x00028000 +----------------------------------+
+| MBR parameter page             |            | MBR parameter page               |
++--------------------------------+ 0x00027000 +----------------------------------+
 | SoftDevice                     |            | SoftDevice                       |
++--------------------------------+ 0x00001000 +----------------------------------+
+| MBR                            |            | MBR                              |
 +--------------------------------+ 0x00000000 +----------------------------------+
 
 Note: Keep the diagrams up to date with the actual memory maps defined in this file.
