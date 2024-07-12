@@ -120,7 +120,7 @@ int removeDir(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen) {
 }
 #endif // 0
 
-int findLeafEntry(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen, bool& found) {
+int findLeafEntry(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen, bool* found = nullptr) {
     lfs_dir_t dir = {};
     CHECK_FS(lfs_dir_open(lfs, &dir, pathBuf));
     NAMED_SCOPE_GUARD(closeDirGuard, {
@@ -140,16 +140,21 @@ int findLeafEntry(lfs_t* lfs, char* pathBuf, size_t bufSize, size_t pathLen, boo
         if (n >= bufSize - pathLen) {
             return SYSTEM_ERROR_PATH_TOO_LONG;
         }
-        pathLen += n;
+        closeDirGuard.dismiss();
+        CHECK_FS(lfs_dir_close(lfs, &dir));
         if (entry.type == LFS_TYPE_DIR) {
-            CHECK(findLeafEntry(lfs, pathBuf, bufSize, pathLen, found));
+            CHECK(findLeafEntry(lfs, pathBuf, bufSize, pathLen + n));
         }
         break;
     }
     CHECK_FS(r);
-    found = !!r;
-    closeDirGuard.dismiss();
-    CHECK_FS(lfs_dir_close(lfs, &dir));
+    if (!r) {
+        closeDirGuard.dismiss();
+        CHECK_FS(lfs_dir_close(lfs, &dir));
+    }
+    if (found) {
+        *found = !!r;
+    }
     return 0;
 }
 
@@ -247,12 +252,12 @@ int rmrf(const char* path) {
             // Delete the directory "non-recursively"
             for (;;) {
                 bool found = false;
-                CHECK(findLeafEntry(fs.instance(), pathBuf, sizeof(pathBuf), pathLen, found));
+                CHECK(findLeafEntry(fs.instance(), pathBuf, sizeof(pathBuf), pathLen, &found));
                 if (!found) {
                     break;
                 }
                 CHECK_FS(lfs_remove(fs.instance(), pathBuf));
-                pathBuf[pathLen] = '\0';
+                pathBuf[pathLen] = '\0'; // Reset to the base path
             }
             CHECK_FS(lfs_remove(fs.instance(), path));
 #endif
