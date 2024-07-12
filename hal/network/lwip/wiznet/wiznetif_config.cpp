@@ -196,6 +196,22 @@ int WizNetifConfig::unlock() {
     return mutex_.unlock();
 }
 
+int WizNetifConfig::request(if_req_driver_specific* req, size_t reqsize) {
+    CHECK_TRUE(req->type == IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP, -1);
+    CHECK_TRUE(reqsize >= sizeof(if_wiznet_pin_remap), -1);
+
+    if_wiznet_pin_remap* wzpr = (if_wiznet_pin_remap*)req;
+    WizNetifConfigData wizNetifConfigData;
+    wizNetifConfigData.size = sizeof(WizNetifConfigData);
+    wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
+    wizNetifConfigData.cs_pin = wzpr->cs_pin;
+    wizNetifConfigData.reset_pin = wzpr->reset_pin;
+    wizNetifConfigData.int_pin = wzpr->int_pin;
+    // LOG(INFO, "IF_REQUEST cs_pin:%u reset_pin:%u int_pin:%u",
+    //         wzpr->cs_pin, wzpr->reset_pin, wzpr->int_pin);
+    return setConfigData(&wizNetifConfigData);
+}
+
 } // namespace net
 
 } // namespace particle

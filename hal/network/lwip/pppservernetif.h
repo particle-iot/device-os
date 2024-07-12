@@ -60,6 +60,8 @@ public:
 
     void notifyPowerState(if_power_state_t state);
 
+    int start();
+
 protected:
     virtual void ifEventHandler(const if_event* ev) override;
     virtual void netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) override;
@@ -88,6 +90,8 @@ private:
     void pppEventHandler(uint64_t ev, int data);
     static void mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx);
 
+    int request(if_req_driver_specific* req, size_t size) override;
+
 private:
     os_thread_t thread_ = nullptr;
     std::atomic_bool exit_;
@@ -97,6 +101,7 @@ private:
     std::unique_ptr<Dns> dns_;
     std::unique_ptr<::particle::ThreadRunner> dnsRunner_;
     std::unique_ptr<particle::net::nat::Nat64> nat_;
+    if_req_ppp_server_uart_settings settings_;
 };
 
 } } // namespace particle::net

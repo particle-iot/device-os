@@ -15,10 +15,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hal_platform.h"
-
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL (LOG_LEVEL_ALL)
+
+#include "hal_platform.h"
 
 #if HAL_PLATFORM_PPP_SERVER
 
@@ -59,6 +59,8 @@ namespace {
 enum PppServerNetifEvent {
     PPP_SERVER_NETIF_EVENT_EXIT = 0x01 << __builtin_ffs(HAL_USART_PVT_EVENT_MAX),
 };
+
+constexpr auto DEFAULT_SERIAL_BUFFER_SIZE = 4096;
 
 #if 0
 int pppErrorToSystem(int err) {
@@ -118,13 +120,19 @@ int pppErrorToSystem(int err) {
 PppServerNetif::PppServerNetif()
         : BaseNetif(),
           exit_(false),
-          pwrState_(IF_POWER_STATE_NONE) {
+          pwrState_(IF_POWER_STATE_NONE),
+          settings_{} {
 
     LOG(INFO, "Creating PppServerNetif LwIP interface");
 
     client_.setServer(true);
     client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
+
+    // Defaults
+    settings_.serial = HAL_PLATFORM_PPP_SERVER_USART;
+    settings_.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
+    settings_.config = HAL_PLATFORM_PPP_SERVER_USART_FLAGS;
 }
 
 PppServerNetif::~PppServerNetif() {
@@ -138,7 +146,17 @@ PppServerNetif::~PppServerNetif() {
 void PppServerNetif::init() {
     registerHandlers();
 
-    auto serial = std::make_unique<SerialStream>(HAL_PLATFORM_PPP_SERVER_USART, HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE, HAL_PLATFORM_PPP_SERVER_USART_FLAGS, 4096, 4096);
+    SPARK_ASSERT(lwip_memp_event_handler_add(mempEventHandler, MEMP_PBUF_POOL, this) == 0);
+}
+
+int PppServerNetif::start() {
+    if (thread_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    LOG(TRACE, "Starting PppServerNetif interface");
+
+    auto serial = std::make_unique<SerialStream>((hal_usart_interface_t)settings_.serial, settings_.baud, settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
     SPARK_ASSERT(serial);
     serial_ = std::move(serial);
 
@@ -153,8 +171,8 @@ void PppServerNetif::init() {
 
     g_natInstance = nat_.get();
 
-    SPARK_ASSERT(lwip_memp_event_handler_add(mempEventHandler, MEMP_PBUF_POOL, this) == 0);
     SPARK_ASSERT(os_thread_create(&thread_, "pppserver", OS_THREAD_PRIORITY_NETWORK, &PppServerNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
+    return 0;
 }
 
 if_t PppServerNetif::interface() {
@@ -189,6 +207,7 @@ void PppServerNetif::loop(void* arg) {
 
 int PppServerNetif::up() {
     LOG(INFO, "up");
+    CHECK(start());
     client_.setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
         // LOG(INFO, "output %u", size);
         auto c = (PppServerNetif*)ctx;
@@ -309,6 +328,17 @@ void PppServerNetif::pppEventHandler(uint64_t ev, int data) {
 
 void PppServerNetif::mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx) {
     //
+}
+
+int PppServerNetif::request(if_req_driver_specific* req, size_t size) {
+    CHECK_TRUE(req, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(req->type == IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_UART_SETTINGS, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(size >= sizeof(if_req_ppp_server_uart_settings), SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    auto settings = (if_req_ppp_server_uart_settings*)req;
+    memcpy(&settings_, settings, std::min(sizeof(settings_), size));
+    LOG(INFO, "Update PPP server netif settings: serial=%u baud=%u config=%08x", (unsigned)settings->serial, settings->baud, settings->config);
+    return 0;
 }
 
 #endif // HAL_PLATFORM_PPP_SERVER

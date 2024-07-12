@@ -68,3 +68,7 @@ void BaseNetif::netifEventCb(netif* iface, netif_nsc_reason_t reason, const neti
         self->netifEventHandler(reason, args);
     }
 }
+
+int BaseNetif::request(if_req_driver_specific* req, size_t size) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

@@ -73,6 +73,18 @@ const char* pppPhaseToString(uint8_t phase) {
 }
 #endif // !PPP_DEBUG
 
+// FIXME: export one from LwIP
+void pppos_drop_packet(pppos_pcb* pppos) {
+  if (pppos->in_head != NULL) {
+    if (pppos->in_tail && (pppos->in_tail != pppos->in_head)) {
+      pbuf_free(pppos->in_tail);
+    }
+    pbuf_free(pppos->in_head);
+    pppos->in_head = NULL;
+  }
+  pppos->in_tail = NULL;
+}
+
 } // anonymous
 
 Client::Client() {
@@ -315,6 +327,7 @@ int Client::input(const uint8_t* data, size_t size) {
                 const char okResponse[] = "\r\nCONNECT\r\n";
                 output((const uint8_t*)okResponse, strlen(okResponse));
               } else if (len >= strlen(breakAndAt) && !strncmp(((const char*)pppos->in_head->payload) + header, breakAndAt, strlen(breakAndAt))) {
+                pppos_drop_packet(pppos);
                 const char okResponse[] = "\r\nOK\r\n";
                 output((const uint8_t*)okResponse, strlen(okResponse));
               }
