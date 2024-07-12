@@ -25,7 +25,7 @@ extern "C" {
 /* IPv4 hooks */
 #if LWIP_IPV4
 int lwip_hook_ip4_input(struct pbuf *p, struct netif *inp);
-int lwip_hook_ip4_input_post_validation(struct pbuf* p, struct netif* inp);
+int lwip_hook_ip4_input_post_validation(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp);
 struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* dst);
 int lwip_hook_ip4_input_pre_upper_layers(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp);
 #endif /* LWIP_IPV4 */
