@@ -55,6 +55,14 @@ static void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice&
     }
 }
 
+static void tryConnecting(bool autoDiscover = true) {
+    uint8_t retry = 0;
+    do {
+        peer = BLE.connect(peerAddr, autoDiscover);
+        delay(100);
+    } while (!peer.connected() && retry++ < 3);
+}
+
 using namespace particle::test;
 
 constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 100;
@@ -251,7 +259,7 @@ test(BLE_21_Peripheral_Notify_Characteristic_With_Indicate_Property_Nack) {
 }
 
 test(BLE_22_Discover_All_Services) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
 
     Vector<BleService> services = peer.discoverAllServices();
@@ -264,7 +272,7 @@ test(BLE_22_Discover_All_Services) {
 }
 
 test(BLE_23_Discover_All_Characteristics) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
 
     Vector<BleCharacteristic> allCharacteristics = peer.discoverAllCharacteristics();
@@ -291,7 +299,7 @@ test(BLE_23_Discover_All_Characteristics) {
 }
 
 test(BLE_24_Discover_Characteristics_Of_Service) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
 
     Vector<BleService> services = peer.discoverAllServices();
@@ -319,7 +327,7 @@ test(BLE_24_Discover_Characteristics_Of_Service) {
 
 test(BLE_25_Pairing_Sync) {
     // Indicate the peer device to start pairing tests.
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
 
     const String str("deadbeef");
@@ -439,7 +447,7 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
     // Some platforms may have to restart BT stack to set IO caps, which may fail the connection attempt
     delay(1s);
 
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     disconnect = false;
     {
@@ -495,7 +503,7 @@ test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     // Some platforms may have to restart BT stack to set IO caps, which may fail the connection attempt
     delay(1s);
 
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     {
         SCOPE_GUARD ({
@@ -522,7 +530,7 @@ test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
 }
 
 test(BLE_30_Initiate_Pairing_Being_Rejected) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     {
         SCOPE_GUARD ({
@@ -555,7 +563,7 @@ test(BLE_31_Pairing_Receiption_Reject) {
     assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::AUTO), (int)SYSTEM_ERROR_NONE);
 #endif
 
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     {
         SCOPE_GUARD ({
@@ -578,7 +586,7 @@ test(BLE_32_Att_Mtu_Exchange) {
         BLE.onAttMtuExchanged(nullptr, nullptr);
     });
 
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     {
         SCOPE_GUARD ({
@@ -612,7 +620,7 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
 
     waitFor([]{ return BLE.scanning(); }, 5000);
     assertFalse(BLE.connected());
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     assertTrue(BLE.scanning());
     SCOPE_GUARD({
@@ -648,7 +656,7 @@ test(BLE_35_Central_Can_Connect_While_Peripheral_Is_Scanning_Prepare) {
 }
 
 test(BLE_36_Central_Can_Connect_While_Peripheral_Is_Scanning) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     delay(5000);
     {
@@ -665,7 +673,7 @@ test(BLE_37_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning_
 }
 
 test(BLE_38_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     delay(5000);
     {

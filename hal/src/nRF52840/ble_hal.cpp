@@ -43,6 +43,8 @@ LOG_SOURCE_CATEGORY("hal.ble");
 #include <mutex>
 
 #include "gpio_hal.h"
+#include "delay_hal.h"
+#include "timer_hal.h"
 #include "device_code.h"
 #include "radio_common.h"
 #include "nrf_system_error.h"
@@ -76,6 +78,19 @@ using namespace particle::ble;
 #define BLE_API_VERSION_2   2
 #define BLE_API_VERSION_3   3
 
+#define BLE_BUSY_RETRY(_expr, _retries, _delay) ({                              \
+    uint8_t _retry = 0;                                                         \
+    uint32_t _ret = 0;                                                          \
+    do {                                                                        \
+        if (_retry > 0) {                                                       \
+            HAL_Delay_Milliseconds(_delay);                                     \
+            LOG(ERROR, #_expr " retry: %d", (int)_retry);                       \
+        }                                                                       \
+        _ret = _expr;                                                           \
+    } while (_ret == NRF_ERROR_BUSY && (_retry++ < _retries));                  \
+    _ret;                                                                       \
+})
+
 //anonymous namespace
 namespace {
 
@@ -100,6 +115,8 @@ constexpr uint32_t BLE_ATT_MTU_EXCHANGE_DELAY_MS = 800;
 
 constexpr uint8_t BLE_ENC_MIN_KEY_SIZE = 7;
 constexpr uint8_t BLE_ENC_MAX_KEY_SIZE = 16;
+
+constexpr uint8_t BLE_GATTC_DISC_RETRIES = 3;
 
 static const uint8_t BleAdvEvtTypeMap[] = {
     BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED,
@@ -2281,6 +2298,27 @@ void BleObject::ConnectionsManager::notifyLinkEvent(const hal_ble_link_evt_t& ev
 
 int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt_t* event) {
     const ble_gap_evt_connected_t& connected = event->evt.gap_evt.params.connected;
+    if (isConnecting_) {
+        sd_ble_gap_rssi_start(event->evt.gap_evt.conn_handle, BLE_GAP_RSSI_THRESHOLD_INVALID, 0x00);
+        SCOPE_GUARD ({
+            sd_ble_gap_rssi_stop(event->evt.gap_evt.conn_handle);
+        });
+        uint16_t rssiTimeout = connected.conn_params.max_conn_interval * 3;
+        int8_t rssi;
+        uint8_t chIdx;
+        uint64_t start = hal_timer_millis(nullptr);
+        while (sd_ble_gap_rssi_get(event->evt.gap_evt.conn_handle, &rssi, &chIdx) != NRF_SUCCESS) {
+            if ((hal_timer_millis(nullptr) - start) > rssiTimeout) {
+                LOG(ERROR, "Not a proven connection!!!");
+                if (isConnecting_) {
+                    isConnecting_ = false;
+                    os_semaphore_give(connectSemaphore_, false);
+                }
+                return SYSTEM_ERROR_INTERNAL;
+            }
+            HAL_Delay_Milliseconds(5);
+        }
+    }
     BleConnection connection = {};
     connection.info.version = BLE_API_VERSION;
     connection.info.size = sizeof(hal_ble_conn_info_t);
@@ -3104,11 +3142,11 @@ int BleObject::GattClient::discoverServices(hal_ble_conn_handle_t connHandle, co
     int ret;
     if (uuid == nullptr) {
         discoverAll_ = true;
-        ret = sd_ble_gattc_primary_services_discover(connHandle, SERVICES_BASE_START_HANDLE, nullptr);
+        ret = BLE_BUSY_RETRY(sd_ble_gattc_primary_services_discover(connHandle, SERVICES_BASE_START_HANDLE, nullptr), BLE_GATTC_DISC_RETRIES, 50);
     } else {
         ble_uuid_t svcUUID;
         BleObject::toPlatformUUID(uuid, &svcUUID);
-        ret = sd_ble_gattc_primary_services_discover(connHandle, SERVICES_BASE_START_HANDLE, &svcUUID);
+        ret = BLE_BUSY_RETRY(sd_ble_gattc_primary_services_discover(connHandle, SERVICES_BASE_START_HANDLE, &svcUUID), BLE_GATTC_DISC_RETRIES, 50);
     }
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isDiscovering_ = true;
@@ -3134,7 +3172,7 @@ int BleObject::GattClient::discoverCharacteristics(hal_ble_conn_handle_t connHan
     ble_gattc_handle_range_t handleRange = {};
     handleRange.start_handle = currDiscSvc_.start_handle;
     handleRange.end_handle = currDiscSvc_.end_handle;
-    int ret = sd_ble_gattc_characteristics_discover(connHandle, &handleRange);
+    int ret = BLE_BUSY_RETRY(sd_ble_gattc_characteristics_discover(connHandle, &handleRange), BLE_GATTC_DISC_RETRIES, 50);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isDiscovering_ = true;
     if (os_semaphore_take(discoverySemaphore_, BLE_OPERATION_TIMEOUT_MS, false)) {
@@ -3363,7 +3401,7 @@ int BleObject::GattClient::processSvcDiscEventFromThread(const ble_evt_t* event)
             hal_ble_attr_handle_t currEndHandle = primSvcDiscRsp.services[primSvcDiscRsp.count - 1].handle_range.end_handle;
             if (discoverAll_ && currEndHandle < SERVICES_TOP_END_HANDLE) {
                 // Continue discovering services.
-                if (sd_ble_gattc_primary_services_discover(currDiscConnHandle_, currEndHandle + 1, nullptr) == NRF_SUCCESS) {
+                if (BLE_BUSY_RETRY(sd_ble_gattc_primary_services_discover(currDiscConnHandle_, currEndHandle + 1, nullptr), BLE_GATTC_DISC_RETRIES, 50) == NRF_SUCCESS) {
                     return SYSTEM_ERROR_NONE;
                 }
                 LOG(ERROR, "sd_ble_gattc_primary_services_discover() failed");
@@ -3432,7 +3470,7 @@ int BleObject::GattClient::processCharDiscEventFromThread(const ble_evt_t* event
                     ble_gattc_handle_range_t handleRange = {};
                     handleRange.start_handle = currEndHandle + 1;
                     handleRange.end_handle = currDiscSvc_.end_handle;
-                    if (sd_ble_gattc_characteristics_discover(currDiscConnHandle_, &handleRange) == NRF_SUCCESS) {
+                    if (BLE_BUSY_RETRY(sd_ble_gattc_characteristics_discover(currDiscConnHandle_, &handleRange), BLE_GATTC_DISC_RETRIES, 50) == NRF_SUCCESS) {
                         return SYSTEM_ERROR_NONE;
                     }
                     LOG(ERROR, "sd_ble_gattc_characteristics_discover() failed");
@@ -3459,7 +3497,7 @@ int BleObject::GattClient::processCharDiscEventFromThread(const ble_evt_t* event
         ble_gattc_handle_range_t handleRange = {};
         handleRange.start_handle = currDiscSvc_.start_handle;
         handleRange.end_handle = currDiscSvc_.end_handle;
-        if (sd_ble_gattc_descriptors_discover(currDiscConnHandle_, &handleRange) == NRF_SUCCESS) {
+        if (BLE_BUSY_RETRY(sd_ble_gattc_descriptors_discover(currDiscConnHandle_, &handleRange), BLE_GATTC_DISC_RETRIES, 50) == NRF_SUCCESS) {
             return SYSTEM_ERROR_NONE;
         }
         LOG(ERROR, "sd_ble_gattc_descriptors_discover() failed");
@@ -3500,7 +3538,7 @@ int BleObject::GattClient::processCharDiscEventFromThread(const ble_evt_t* event
                 ble_gattc_handle_range_t handleRange = {};
                 handleRange.start_handle = currEndHandle + 1;
                 handleRange.end_handle = currDiscSvc_.end_handle;
-                if (sd_ble_gattc_descriptors_discover(currDiscConnHandle_, &handleRange) == NRF_SUCCESS) {
+                if (BLE_BUSY_RETRY(sd_ble_gattc_descriptors_discover(currDiscConnHandle_, &handleRange), BLE_GATTC_DISC_RETRIES, 50) == NRF_SUCCESS) {
                     return SYSTEM_ERROR_NONE;
                 }
                 LOG(ERROR, "sd_ble_gattc_descriptors_discover() failed");
