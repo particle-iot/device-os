@@ -341,7 +341,7 @@ public:
     ssize_t flush() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         while (true) {
-            while (transmitting_) {
+            while (transmitting_ || busy_) {
                 // FIXME: busy loop
             }
             {
@@ -472,6 +472,7 @@ public:
         if (event & HAL_USART_PVT_EVENT_WRITABLE) {
             if (space() <= 0) {
                 TxLock lk(this);
+                xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
                 UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
                 // Temporarily disable TX DMA, otherwise, the TX FIFO won't be empty until all data is transferred by DMA.
                 UART_TXDMACmd(uartInstance, DISABLE);
@@ -574,7 +575,9 @@ public:
                 } else {
                     UART_TXDMACmd(uartInstance, ENABLE);
                     BaseType_t yield = pdFALSE;
-                    uart->busy_ = false;
+                    if (!uart->transmitting_) {
+                        uart->busy_ = false; // All bytes sent if no new DMA transfers are in progress
+                    }
                     if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
                         portYIELD_FROM_ISR(yield);
                     }
@@ -843,7 +846,6 @@ private:
                 auto ptr = txBuffer_.consume(consumable);
                 for (size_t i = 0; i < consumable; i++, ptr++) {
                     UART_CharPut(uartInstance, *ptr);
-                    UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
                 }
                 curTxCount_ = consumable;
                 UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
