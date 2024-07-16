@@ -288,6 +288,7 @@ public:
         txBuffer_.reset();
         curTxCount_ = 0;
         transmitting_ = false;
+        busy_ = false;
         receiving_ = false;
         state_ = HAL_USART_STATE_DISABLED;
         return SYSTEM_ERROR_NONE;
@@ -300,6 +301,7 @@ public:
         dataInFlight(true /* commit */);
         CHECK(disable(false));
         transmitting_ = false;
+        busy_ = false;
         receiving_ = 0;
         rxBuffer_.prune();
         txBuffer_.reset();
@@ -344,7 +346,7 @@ public:
             }
             {
                 AtomicBlock atomic(this);
-                if (!isEnabled() || txBuffer_.empty()) {
+                if ((!isEnabled() || txBuffer_.empty()) && !busy_) {
                     break;
                 }
             }
@@ -572,6 +574,7 @@ public:
                 } else {
                     UART_TXDMACmd(uartInstance, ENABLE);
                     BaseType_t yield = pdFALSE;
+                    uart->busy_ = false;
                     if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
                         portYIELD_FROM_ISR(yield);
                     }
@@ -618,6 +621,7 @@ private:
               curTxCount_(0),
               state_(HAL_USART_STATE_DISABLED),
               transmitting_(false),
+              busy_(false),
               receiving_(false),
               configured_(false),
               index_(index),
@@ -831,12 +835,15 @@ private:
                 curTxCount_ = consumable;
                 GDMA_Init(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, &txDmaInitStruct_);
                 GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, ENABLE);
+                busy_ = true;
+                UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
             } else {
                 // LOG UART doesn't support DMA transmission
                 consumable = std::min(MAX_UART_FIFO_SIZE, consumable);
                 auto ptr = txBuffer_.consume(consumable);
                 for (size_t i = 0; i < consumable; i++, ptr++) {
                     UART_CharPut(uartInstance, *ptr);
+                    UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
                 }
                 curTxCount_ = consumable;
                 UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
@@ -982,6 +989,7 @@ private:
 
     volatile hal_usart_state_t state_;
     volatile bool transmitting_;
+    volatile bool busy_;
     volatile bool receiving_;
     bool configured_;
 
