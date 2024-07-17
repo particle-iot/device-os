@@ -517,6 +517,7 @@ private:
     volatile bool isConnecting_;                                /**< If it is connecting or not. */
     hal_ble_addr_t connectingAddr_;                             /**< Address of peer the Central is connecting to. */
     volatile hal_ble_conn_handle_t disconnectingHandle_;        /**< Handle of connection to be disconnected. */
+    volatile hal_ble_conn_handle_t provingConnHandle_;          /**< Handle of connection to be proven. */
     volatile hal_ble_conn_handle_t centralConnParamUpdateHandle_;/**< Handle of the central connection to send peripheral connection update command. */
     volatile hal_ble_conn_handle_t periphConnParamUpdateHandle_;/**< Handle of the peripheral connection to send peripheral connection update request. */
     volatile uint8_t connParamsUpdateAttempts_;                 /**< Attempts for peripheral to update connection parameters. */
@@ -2298,32 +2299,39 @@ void BleObject::ConnectionsManager::notifyLinkEvent(const hal_ble_link_evt_t& ev
 
 int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt_t* event) {
     const ble_gap_evt_connected_t& connected = event->evt.gap_evt.params.connected;
+    auto connHandle = event->evt.gap_evt.conn_handle;
     if (isConnecting_) {
-        sd_ble_gap_rssi_start(event->evt.gap_evt.conn_handle, BLE_GAP_RSSI_THRESHOLD_INVALID, 0x00);
+        provingConnHandle_ = connHandle;
+        sd_ble_gap_rssi_start(connHandle, BLE_GAP_RSSI_THRESHOLD_INVALID, 0x00);
         SCOPE_GUARD ({
-            sd_ble_gap_rssi_stop(event->evt.gap_evt.conn_handle);
+            sd_ble_gap_rssi_stop(connHandle);
         });
-        uint16_t rssiTimeout = connected.conn_params.max_conn_interval * 3;
+        uint32_t rssiTimeout = connected.conn_params.conn_sup_timeout * 10;
         int8_t rssi;
         uint8_t chIdx;
         uint64_t start = hal_timer_millis(nullptr);
-        while (sd_ble_gap_rssi_get(event->evt.gap_evt.conn_handle, &rssi, &chIdx) != NRF_SUCCESS) {
+        while (provingConnHandle_ == connHandle && sd_ble_gap_rssi_get(connHandle, &rssi, &chIdx) != NRF_SUCCESS) {
             if ((hal_timer_millis(nullptr) - start) > rssiTimeout) {
-                LOG(ERROR, "Not a proven connection!!!");
-                if (isConnecting_) {
-                    isConnecting_ = false;
-                    os_semaphore_give(connectSemaphore_, false);
-                }
-                return SYSTEM_ERROR_INTERNAL;
+                provingConnHandle_ = BLE_INVALID_CONN_HANDLE;
+                break;
             }
             HAL_Delay_Milliseconds(5);
         }
+        if (provingConnHandle_ != connHandle) {
+            LOG(ERROR, "Not a proven connection!!!");
+            if (isConnecting_) {
+                isConnecting_ = false;
+                os_semaphore_give(connectSemaphore_, false);
+            }
+            return SYSTEM_ERROR_INTERNAL;
+        }
+        provingConnHandle_ = BLE_INVALID_CONN_HANDLE;
     }
     BleConnection connection = {};
     connection.info.version = BLE_API_VERSION;
     connection.info.size = sizeof(hal_ble_conn_info_t);
     connection.info.role = (hal_ble_role_t)connected.role;
-    connection.info.conn_handle = event->evt.gap_evt.conn_handle;
+    connection.info.conn_handle = connHandle;
     connection.info.conn_params = toHalConnParams(&connected.conn_params);
     connection.info.address = toHalAddress(connected.peer_addr);
     connection.info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
@@ -2637,6 +2645,9 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
         }
         case BLE_GAP_EVT_DISCONNECTED: {
             LOG_DEBUG(TRACE, "BLE GAP event: disconnected.");
+            if (event->evt.gap_evt.conn_handle == connMgr->provingConnHandle_) {
+                connMgr->provingConnHandle_ = BLE_INVALID_CONN_HANDLE;
+            }
             BleObject::getInstance().dispatcher()->enqueue(event);
             break;
         }
