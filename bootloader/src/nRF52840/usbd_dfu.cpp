@@ -218,8 +218,9 @@ int DfuClassDriver::handleDfuUpload(SetupRequest* req) {
         transferBuf_[1] = detail::DFUSE_COMMAND_SET_ADDRESS_POINTER;
         transferBuf_[2] = detail::DFUSE_COMMAND_ERASE;
         transferBuf_[3] = detail::DFUSE_COMMAND_ENTER_SAFE_MODE;
+        transferBuf_[4] = detail::DFUSE_COMMAND_CLEAR_SECURITY_MODE_OVERRIDE;
         setState(detail::dfuIDLE);
-        dev_->setupReply(req, transferBuf_, 4);
+        dev_->setupReply(req, transferBuf_, 5);
       } else if (req_.wValue > 1) {
         /* Normal request */
         setState(detail::dfuUPLOAD_IDLE);
@@ -273,6 +274,7 @@ int DfuClassDriver::handleDfuGetStatus(SetupRequest* req) {
             auto cmd = (detail::DfuseCommand)transferBuf_[0];
             switch (cmd) {
             case detail::DFUSE_COMMAND_ENTER_SAFE_MODE:
+            case detail::DFUSE_COMMAND_CLEAR_SECURITY_MODE_OVERRIDE:
               error = false;
               break;
             default:
@@ -509,6 +511,10 @@ int DfuClassDriver::inDone(uint8_t ep, unsigned status) {
             HAL_Core_Write_Backup_Register(BKP_DR_01, ENTER_SAFE_MODE_APP_REQUEST);
             setState(detail::dfuMANIFEST_SYNC);
             setStatus(detail::OK);
+            break;
+          }
+          case detail::DFUSE_COMMAND_CLEAR_SECURITY_MODE_OVERRIDE: {
+            security_mode_clear_override();
             break;
           }
           case detail::DFUSE_COMMAND_READ_UNPROTECT: {
