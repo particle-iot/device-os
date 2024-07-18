@@ -267,7 +267,21 @@ int DfuClassDriver::handleDfuGetStatus(SetupRequest* req) {
          */
         setState(detail::dfuDNBUSY);
         if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
-          setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+          bool error = true;
+          if (req_.wValue == 0) {
+            // Certain DfuSe commands are allowed when the device is protected
+            auto cmd = (detail::DfuseCommand)transferBuf_[0];
+            switch (cmd) {
+            case detail::DFUSE_COMMAND_ENTER_SAFE_MODE:
+              error = false;
+              break;
+            default:
+              break;
+            }
+          }
+          if (error) {
+            setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+          }
         }
         /* Ask MAL to update bwPollTimeout depending on the current DfuSe command */
         currentMal()->getStatus(&status_, dfuseCmd_);
