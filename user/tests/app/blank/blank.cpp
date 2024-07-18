@@ -1,28 +1,80 @@
-/*
- * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation, either
- * version 3 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, see <http://www.gnu.org/licenses/>.
- */
-
 #include "application.h"
+#include "audio_hal.h"
+#include "i2s_hal.h"
 
-/* executes once at startup */
-void setup() {
+namespace {
 
+short sine_wave[256] = {0, 0, 12539, 12539, 23170, 23170, 30273, 30273, 32767, 32767, 30273, 30273, 23170, 23170, 12539, 12539,
+                               0, 0, -12539, -12539, -23170, -23170, -30273, -30273, -32767, -32767, -30273, -30273, -23170, -23170, -12539, -12539,
+                               0, 0, 12539, 12539, 23170, 23170, 30273, 30273, 32767, 32767, 30273, 30273, 23170, 23170, 12539, 12539,
+                               0, 0, -12539, -12539, -23170, -23170, -30273, -30273, -32767, -32767, -30273, -30273, -23170, -23170, -12539, -12539,
+                               0, 0, 12539, 12539, 23170, 23170, 30273, 30273, 32767, 32767, 30273, 30273, 23170, 23170, 12539, 12539,
+                               0, 0, -12539, -12539, -23170, -23170, -30273, -30273, -32767, -32767, -30273, -30273, -23170, -23170, -12539, -12539,
+                               0, 0, 12539, 12539, 23170, 23170, 30273, 30273, 32767, 32767, 30273, 30273, 23170, 23170, 12539, 12539,
+                               0, 0, -12539, -12539, -23170, -23170, -30273, -30273, -32767, -32767, -30273, -30273, -23170, -23170, -12539, -12539,
+                               0, 0, 12539, 12539, 23170, 23170, 30273, 30273, 32767, 32767, 30273, 30273, 23170, 23170, 12539, 12539,
+                               0, 0, -12539, -12539, -23170, -23170, -30273, -30273, -32767, -32767, -30273, -30273, -23170, -23170, -12539, -12539,
+                               0, 0, 12539, 12539, 23170, 23170, 30273, 30273, 32767, 32767, 30273, 30273, 23170, 23170, 12539, 12539,
+                               0, 0, -12539, -12539, -23170, -23170, -30273, -30273, -32767, -32767, -30273, -30273, -23170, -23170, -12539, -12539,
+                               0, 0, 12539, 12539, 23170, 23170, 30273, 30273, 32767, 32767, 30273, 30273, 23170, 23170, 12539, 12539,
+                               0, 0, -12539, -12539, -23170, -23170, -30273, -30273, -32767, -32767, -30273, -30273, -23170, -23170, -12539, -12539,
+                               0, 0, 12539, 12539, 23170, 23170, 30273, 30273, 32767, 32767, 30273, 30273, 23170, 23170, 12539, 12539,
+                               0, 0, -12539, -12539, -23170, -23170, -30273, -30273, -32767, -32767, -30273, -30273, -23170, -23170, -12539, -12539,
+};
+
+} // Anonymous
+
+static volatile bool buttonClicked = false;
+static void onButtonClick(system_event_t ev, int button_data) {
+    buttonClicked = true;
 }
 
-/* executes continuously after setup() runs */
+void demo_dmic_i2s_recorder() {
+    RGB.control(true);
+    RGB.color(0, 255, 0);
+    hal_audio_init(HAL_AUDIO_OUT_DEVICE_NONE, HAL_AUDIO_MODE_MONO, HAL_AUDIO_SAMPLE_RATE_16K, HAL_AUDIO_WORD_LEN_16);
+    hal_i2s_init();
+    System.on(button_click, onButtonClick);
+
+    size_t voiceDataSize = 48 * 1024 * 30;
+    void* voiceData = nullptr;
+    voiceData = malloc(voiceDataSize);
+
+    while (1) {
+        if (buttonClicked) {
+            buttonClicked = false;
+
+            RGB.color(255, 0, 0); // red
+            delay(1000);
+            hal_audio_read_dmic(voiceData, voiceDataSize);
+            RGB.color(0, 0, 255); // blue
+            delay(1000);
+            uint8_t *data = (uint8_t *)voiceData;
+            for (size_t i = 0; i < voiceDataSize / 512; i++) {
+                while (!hal_i2s_ready()) {
+                    ;
+                }
+                hal_i2s_play(&data[i * 512], 512);
+            }
+            RGB.color(0, 255, 0); // green
+        }
+    }
+}
+
+void demo_i2s_play() {
+    hal_i2s_init();
+
+    while (1) {
+        hal_i2s_play(sine_wave, 512);
+        delay(3000);
+    }
+}
+
+void setup() {
+    // demo_dmic_i2s_recorder();
+    demo_i2s_play();
+}
+
 void loop() {
 
 }
