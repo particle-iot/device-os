@@ -500,6 +500,8 @@ int DfuClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
           }
           case detail::DFUSE_COMMAND_CLEAR_SECURITY_MODE_OVERRIDE: {
             security_mode_clear_override();
+            setState(detail::dfuDNLOAD_IDLE);
+            setStatus(detail::OK);
             break;
           }
           case detail::DFUSE_COMMAND_READ_UNPROTECT: {
