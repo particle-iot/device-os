@@ -163,7 +163,8 @@ enum DfuseCommand {
   DFUSE_COMMAND_SET_ADDRESS_POINTER = 0x21,
   DFUSE_COMMAND_ERASE               = 0x41,
   DFUSE_COMMAND_READ_UNPROTECT      = 0x92,
-  DFUSE_COMMAND_ENTER_SAFE_MODE     = 0xfa /* Particle's extension */
+  DFUSE_COMMAND_ENTER_SAFE_MODE     = 0xfa, /* Particle's extension */
+  DFUSE_COMMAND_CLEAR_SECURITY_MODE_OVERRIDE = 0xfb /* ditto */
 };
 
 #pragma pack(push, 1)

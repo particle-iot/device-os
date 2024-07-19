@@ -219,8 +219,9 @@ int DfuClassDriver::handleDfuUpload(SetupRequest* req) {
         transferBuf_[1] = detail::DFUSE_COMMAND_SET_ADDRESS_POINTER;
         transferBuf_[2] = detail::DFUSE_COMMAND_ERASE;
         transferBuf_[3] = detail::DFUSE_COMMAND_ENTER_SAFE_MODE;
+        transferBuf_[4] = detail::DFUSE_COMMAND_CLEAR_SECURITY_MODE_OVERRIDE;
         setState(detail::dfuIDLE);
-        dev_->setupReply(req, transferBuf_, 4);
+        dev_->setupReply(req, transferBuf_, 5);
       } else if (req_.wValue > 1) {
         /* Normal request */
         setState(detail::dfuUPLOAD_IDLE);
@@ -268,7 +269,22 @@ int DfuClassDriver::handleDfuGetStatus(SetupRequest* req) {
          */
         setState(detail::dfuDNBUSY);
         if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED) {
-          setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+          bool error = true;
+          if (req_.wValue == 0) {
+            // Certain DfuSe commands are allowed when the device is protected
+            auto cmd = (detail::DfuseCommand)transferBuf_[0];
+            switch (cmd) {
+            case detail::DFUSE_COMMAND_ENTER_SAFE_MODE:
+            case detail::DFUSE_COMMAND_CLEAR_SECURITY_MODE_OVERRIDE:
+              error = false;
+              break;
+            default:
+              break;
+            }
+          }
+          if (error) {
+            setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+          }
         }
         /* Ask MAL to update bwPollTimeout depending on the current DfuSe command */
         currentMal()->getStatus(&status_, dfuseCmd_);
@@ -479,6 +495,12 @@ int DfuClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
           case detail::DFUSE_COMMAND_ENTER_SAFE_MODE: {
             HAL_Core_Write_Backup_Register(BKP_DR_01, ENTER_SAFE_MODE_APP_REQUEST);
             setState(detail::dfuMANIFEST_SYNC);
+            setStatus(detail::OK);
+            break;
+          }
+          case detail::DFUSE_COMMAND_CLEAR_SECURITY_MODE_OVERRIDE: {
+            security_mode_clear_override();
+            setState(detail::dfuDNLOAD_IDLE);
             setStatus(detail::OK);
             break;
           }
