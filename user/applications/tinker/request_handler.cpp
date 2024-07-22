@@ -5,6 +5,7 @@
 #include "check.h"
 
 #include "src/fqc_test.h"
+#include "src/board_config.h"
 
 namespace particle {
 
@@ -143,12 +144,13 @@ int RequestHandler::request(Request* req) {
     auto FqcTester = FqcTest::instance();
 
     // Check for FQC commands
-    if(FqcTester->process(req->data()))
-    {
+    if(FqcTester->process(req->data())) {
         req->reply(FqcTester->reply(), FqcTester->replySize());
         return SYSTEM_ERROR_NONE;
-    }
-    else if (req->isEmpty()) { // Ping request
+    } else if (BoardConfig::instance()->process(req->data())) {
+        req->reply(BoardConfig::instance()->reply(), BoardConfig::instance()->replySize());
+        return SYSTEM_ERROR_NONE;
+    } else if (req->isEmpty()) { // Ping request
         return SYSTEM_ERROR_NONE;
     } else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;

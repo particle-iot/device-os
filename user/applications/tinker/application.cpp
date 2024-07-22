@@ -103,9 +103,9 @@ int tinkerDigitalWrite(String command);
 int tinkerAnalogRead(String pin);
 int tinkerAnalogWrite(String command);
 
-#ifdef LOG_SERIAL1
+// #ifdef LOG_SERIAL1
 Serial1LogHandler g_logSerial1(115200, LOG_LEVEL_ALL);
-#endif // LOG_SERIAL1
+// #endif // LOG_SERIAL1
 
 #ifdef LOG_SERIAL
 SerialLogHandler g_logSerial(LOG_LEVEL_ALL);
