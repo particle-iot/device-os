@@ -584,16 +584,6 @@ again:
         }
         goto again;
     }
-    // else {
-    //     HAL_Delay_Milliseconds(1);
-    //     goto again;
-    // }
-    // TODO: example 里面有延迟, 但是这里加延迟会导致异响
-    // else {
-    //     // HAL_Delay_Milliseconds(1);
-    //     vTaskDelay(1);
-    //     goto again;
-    // }
 }
 
 int hal_i2s_init() {
