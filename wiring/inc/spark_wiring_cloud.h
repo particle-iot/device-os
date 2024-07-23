@@ -285,8 +285,13 @@ public:
     particle::Future<bool> publish(const char* name, const char* data);
     particle::Future<bool> publish(const char* name, const char* data, int ttl);
 
-    particle::Future<bool> publish(const char* name, const char* data, particle::ContentType type, PublishFlags flags = PublishFlags());
-    particle::Future<bool> publish(const char* name, const uint8_t* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags());
+    particle::Future<bool> publish(const char* name, const char* data, particle::ContentType type, PublishFlags flags = PublishFlags()) {
+        return publish_event(name, data, std::strlen(data), type, DEFAULT_CLOUD_EVENT_TTL, flags);
+    }
+
+    particle::Future<bool> publish(const char* name, const uint8_t* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags()) {
+        return publish_event(name, (const char*)data, size, type, DEFAULT_CLOUD_EVENT_TTL, flags);
+    }
 
     /**
      * @brief Publish vitals information
