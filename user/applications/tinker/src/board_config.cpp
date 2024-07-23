@@ -138,53 +138,6 @@ void BoardConfig::configForMuon() {
     if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
 
-    // USB PD
-    Log.info("Set USB PD configuration");
-    STUSB4500 usb;
-    if (usb.begin()) {
-        usb.setPdoNumber(3);
-        /* PDO1:
-            - Voltage fixed at 5V
-            - Current value for PDO1 0-5A, if 0 used, FLEX_I value is used
-            - Under Voltage Lock Out (setUnderVoltageLimit) fixed at 3.3V
-            - Over Voltage Lock Out (setUpperVoltageLimit) 5-20%
-        */
-        usb.setCurrent(1, 3); // 5V3A
-        usb.setUpperVoltageLimit(1, 20);
-        /* PDO2:
-            - Voltage 5-20V
-            - Current value for PDO2 0-5A, if 0 used, FLEX_I value is used
-            - Under Voltage Lock Out (setUnderVoltageLimit) 5-20%
-            - Over Voltage Lock Out (setUpperVoltageLimit) 5-20%
-        */
-        usb.setVoltage(2, 9.0);
-        usb.setCurrent(2, 1.5); // 9V1.5A
-        usb.setLowerVoltageLimit(2, 20);
-        usb.setUpperVoltageLimit(2, 20);
-        /* PDO3:
-            - Voltage 5-20V
-            - Current value for PDO3 0-5A, if 0 used, FLEX_I value is used
-            - Under Voltage Lock Out (setUnderVoltageLimit) 5-20%
-            - Over Voltage Lock Out (setUpperVoltageLimit) 5-20%
-        */
-        usb.setVoltage(3, 12.0);
-        usb.setCurrent(3, 1); // 12V1A
-        usb.setLowerVoltageLimit(3, 20);
-        usb.setUpperVoltageLimit(3, 20);
-        // USB 2.0 or 3.x data communication capability by sink system
-        usb.setUsbCommCapable(true);
-        /* Selects GPIO pin configuration
-            0 - SW_CTRL_GPIO
-            1 - ERROR_RECOVERY
-            2 - DEBUG
-            3 - SINK_POWER
-        */
-        usb.setGpioCtrl(3);
-        // Selects VBUS_EN_SNK pin configuration
-        usb.setPowerAbove5vOnly(false);
-        // Write the new settings to the NVM
-        usb.write();
-    }
     Log.info("Device needs reset to apply the settings");
 #endif
 }
