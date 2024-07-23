@@ -36,14 +36,20 @@ private:
     JSONBufferWriter replyWriter_;
     char replyBuffer_[64];
 
+#if HAL_PLATFORM_POWER_MANAGEMENT
     static constexpr uint8_t auxPwrCtrlPin_ = D7;
     static constexpr uint8_t pmicIntPin_ = A7;
+#endif
+#if HAL_PLATFORM_ETHERNET
     static constexpr uint8_t ethernetCsPin_ = A3;
     static constexpr uint8_t ethernetIntPin_ = A4;
     static constexpr uint8_t ethernetResetPin_ = PIN_INVALID;
+#endif
 
-    void configForBaseBoard();
+    void configureBaseBoard();
     bool detectI2cSlave(uint8_t addr);
+    void configForMuon();
+    void configForGeneric();
 };
 
 }

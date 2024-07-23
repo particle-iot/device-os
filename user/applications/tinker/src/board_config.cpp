@@ -52,8 +52,8 @@ BoardConfig* BoardConfig::instance() {
 bool BoardConfig::process(JSONValue config) {
     memset(replyBuffer_, 0x00, sizeof(replyBuffer_));
     replyWriter_ = JSONBufferWriter((char*)replyBuffer_, sizeof(replyBuffer_));
-    if (has(config, "IDENTIFY_BASE_BOARD")) {
-        BoardConfig::instance()->configForBaseBoard();
+    if (has(config, "CONFIGURE_BASE_BOARD")) {
+        configureBaseBoard();
         return true;
     }
     return false;
@@ -67,20 +67,22 @@ size_t BoardConfig::replySize() {
     return replyWriter_.dataSize();
 }
 
-void BoardConfig::configForBaseBoard() {
-    Log.info("Identifying the base board...");
-
+void BoardConfig::configureBaseBoard() {
     bool isMuon = true;
     SCOPE_GUARD({
         replyWriter_.beginObject();
         if (isMuon) {
             replyWriter_.name("board").value("Particle Muon");
+            configForMuon();
         } else {
             replyWriter_.name("board").value("Generic Module");
+            configForGeneric();
         }
         replyWriter_.endObject();
     });
 
+#if PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_MSOM
+    Log.info("Identifying the base board...");
     constexpr uint8_t addrs[] = {
         0x28,   // STUSB4500 USB PD chip
         0x61,   // KG200Z Lora module
@@ -93,26 +95,46 @@ void BoardConfig::configForBaseBoard() {
     for (uint8_t i = 0; i < sizeof(addrs); i++) {
         if (!detectI2cSlave(addrs[i])) {
             isMuon = false;
-            Log.info("Generic module detected");
+            Log.info("Generic M.2 base board detected");
             return;
         }
     }
     Log.info("Muon board detected");
+#else
+    isMuon = false;
+#endif
+}
+
+bool BoardConfig::detectI2cSlave(uint8_t addr) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+        return true;
+    }
+    return false;
+}
+
+void BoardConfig::configForMuon() {
+#if PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_MSOM
+    static constexpr uint8_t auxPwrCtrlPin = D7;
+    static constexpr uint8_t pmicIntPin = A7;
+    static constexpr uint8_t ethernetCsPin = A3;
+    static constexpr uint8_t ethernetIntPin = A4;
+    static constexpr uint8_t ethernetResetPin = PIN_INVALID;
 
     // System power manager
     Log.info("Set system power configuration");
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
-    powerConfig.auxPowerControlPin(auxPwrCtrlPin_)
-               .intPin(pmicIntPin_);
+    powerConfig.auxPowerControlPin(auxPwrCtrlPin)
+               .intPin(pmicIntPin);
     System.setPowerConfiguration(powerConfig);
 
     // Etehrnet
     Log.info("Set Ethernet configuration");
     if_wiznet_pin_remap remap = {};
     remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
-    remap.cs_pin = ethernetCsPin_;
-    remap.reset_pin = ethernetResetPin_;
-    remap.int_pin = ethernetIntPin_;
+    remap.cs_pin = ethernetCsPin;
+    remap.reset_pin = ethernetResetPin;
+    remap.int_pin = ethernetIntPin;
     if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
 
@@ -163,16 +185,30 @@ void BoardConfig::configForBaseBoard() {
         // Write the new settings to the NVM
         usb.write();
     }
-
     Log.info("Device needs reset to apply the settings");
+#endif
 }
 
-bool BoardConfig::detectI2cSlave(uint8_t addr) {
-    Wire.beginTransmission(addr);
-    if (Wire.endTransmission() == 0) {
-        return true;
-    }
-    return false;
+void BoardConfig::configForGeneric() {
+#if HAL_PLATFORM_POWER_MANAGEMENT
+    SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
+    // FIXME: M.2 breakout board has the aux power control pin connected to D23.
+    // But what if the base board is other kind of M.2 board?
+    powerConfig.auxPowerControlPin(PIN_INVALID)
+               .intPin(LOW_BAT_UC);
+    System.setPowerConfiguration(powerConfig);
+#endif
+
+#if HAL_PLATFORM_ETHERNET
+    if_wiznet_pin_remap remap = {};
+    remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
+    remap.cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
+    remap.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
+    remap.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
+    if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
+#endif
+
+    Log.info("Device needs reset to apply the settings");
 }
 
 } // particle
