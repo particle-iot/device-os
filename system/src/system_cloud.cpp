@@ -187,11 +187,23 @@ bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flag
 
     spark_protocol_send_event_data d = {};
     d.size = sizeof(d);
+    d.content_type = 0; // text/plain; charset=utf-8
+
+    bool hasDataSize = false;
     if (reserved) {
         // Forward completion callback to the protocol implementation
         auto r = static_cast<const spark_send_event_data*>(reserved);
         d.handler_callback = r->handler_callback;
         d.handler_data = r->handler_data;
+        if (r->size >= offsetof(spark_send_event_data, data_size) + sizeof(spark_send_event_data::data_size) +
+                sizeof(spark_send_event_data::content_type)) {
+            d.data_size = r->data_size;
+            d.content_type = r->content_type;
+            hasDataSize = true;
+        }
+    }
+    if (!hasDataSize) {
+        d.data_size = data ? std::strlen(data) : 0;
     }
 
     return spark_protocol_send_event(sp, name, data, ttl, convert(flags), &d);
