@@ -256,6 +256,8 @@ typedef struct {
     size_t size;
     completion_callback handler_callback;
     void* handler_data;
+    size_t data_size;
+    int content_type;
 } spark_send_event_data;
 
 /**

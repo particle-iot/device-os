@@ -500,7 +500,7 @@ public:
 	ProtocolError post_description(int desc_flags, bool force);
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
-	bool send_event(const char *event_name, const char *data, int ttl,
+	bool send_event(const char *event_name, const char *data, size_t data_size, int content_type, int ttl,
 			EventType::Enum event_type, int flags, CompletionHandler handler)
 	{
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
@@ -513,8 +513,8 @@ public:
 			handler.setError(SYSTEM_ERROR_BUSY);
 			return false;
 		}
-		const ProtocolError error = publisher.send_event(channel, event_name, data, ttl, event_type, flags,
-				callbacks.millis(), std::move(handler));
+		const ProtocolError error = publisher.send_event(channel, event_name, data, data_size, content_type, ttl,
+				event_type, flags, callbacks.millis(), std::move(handler));
 		if (error != NO_ERROR)
 		{
 			handler.setError(toSystemError(error));

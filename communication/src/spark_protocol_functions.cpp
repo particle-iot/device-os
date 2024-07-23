@@ -17,12 +17,16 @@
  ******************************************************************************
  */
 
+#include <optional>
+#include <cstdlib>
+#include <cstring>
+
 #include "protocol_defs.h"
 #include "protocol_selector.h"
+#include "coap_defs.h"
 #include "spark_protocol_functions.h"
 #include "handshake.h"
 #include "debug.h"
-#include <stdlib.h>
 
 using namespace particle;
 using namespace particle::protocol;
@@ -111,15 +115,28 @@ int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags, vo
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
-                int ttl, uint32_t flags, void* reserved) {
+        int ttl, uint32_t flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
-	CompletionHandler handler;
-	if (reserved) {
-		auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
-		handler = CompletionHandler(r->handler_callback, r->handler_data);
-	}
-	EventType::Enum event_type = EventType::extract_event_type(flags);
-	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
+    CompletionHandler handler;
+    std::optional<size_t> data_size = 0;
+    int content_type = static_cast<int>(CoapContentFormat::TEXT_PLAIN);
+    if (reserved) {
+        auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
+        handler = CompletionHandler(r->handler_callback, r->handler_data);
+        // Even though this library is now in the same module with the rest of the system on all
+        // supported platforms, this function is still exposed via a dynalib so normal checks apply
+        // when accessing extra parameters
+        if (r->size >= offsetof(spark_protocol_send_event_data, data_size) + sizeof(spark_protocol_send_event_data::data_size) +
+                sizeof(spark_protocol_send_event_data::content_type)) {
+            data_size = r->data_size;
+            content_type = r->content_type;
+        }
+    }
+    if (!data_size.has_value()) {
+        data_size = data ? std::strlen(data) : 0;
+    }
+    EventType::Enum event_type = EventType::extract_event_type(flags);
+    return protocol->send_event(event_name, data, data_size.value(), content_type, ttl, event_type, flags, std::move(handler));
 }
 
 bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {

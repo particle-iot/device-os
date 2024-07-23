@@ -72,19 +72,22 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }
 
-Future<bool> CloudClass::publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags) {
+Future<bool> CloudClass::publish_event(const char* name, const char* data, size_t size, ContentType type, int ttl,
+        PublishFlags flags) {
     if (!connected()) {
         return Future<bool>(Error::INVALID_STATE);
     }
     spark_send_event_data d = {};
     d.size = sizeof(spark_send_event_data);
+    d.data_size = size;
+    d.content_type = static_cast<int>(type);
 
     // Completion handler
     Promise<bool> p;
     d.handler_callback = publishCompletionCallback;
     d.handler_data = p.dataPtr();
 
-    if (!spark_send_event(eventName, eventData, ttl, flags.value(), &d) && !p.isDone()) {
+    if (!spark_send_event(name, data, ttl, flags.value(), &d) && !p.isDone()) {
         // Set generic error code in case completion callback wasn't invoked for some reason
         p.setError(Error::UNKNOWN);
         p.fromDataPtr(d.handler_data); // Free wrapper object

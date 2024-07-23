@@ -317,39 +317,6 @@ size_t Messages::separate_response_with_payload(unsigned char *buf, uint16_t mes
 	return len;
 }
 
-size_t Messages::event(uint8_t buf[], uint16_t message_id, const char *event_name,
-             const char *data, size_t data_size, int ttl, EventType::Enum event_type, bool confirmable)
-{
-  uint8_t *p = buf;
-  *p++ = confirmable ? 0x40 : 0x50; // non-confirmable /confirmable, no token
-  *p++ = 0x02; // code 0.02 POST request
-  *p++ = message_id >> 8;
-  *p++ = message_id & 0xff;
-  *p++ = 0xb1; // one-byte Uri-Path option
-  *p++ = event_type;
-
-  size_t name_data_len = strnlen(event_name, MAX_EVENT_NAME_LENGTH);
-  p += event_name_uri_path(p, event_name, name_data_len);
-
-  if (60 != ttl)
-  {
-    *p++ = 0x33;
-    *p++ = (ttl >> 16) & 0xff;
-    *p++ = (ttl >> 8) & 0xff;
-    *p++ = ttl & 0xff;
-  }
-
-  if (NULL != data && data_size > 0)
-  {
-    *p++ = 0xff;
-
-    memcpy(p, data, data_size);
-    p += data_size;
-  }
-
-  return p - buf;
-}
-
 size_t Messages::coded_ack(uint8_t* buf, uint8_t token, uint8_t code,
                            uint8_t message_id_msb, uint8_t message_id_lsb,
                            uint8_t* data, size_t data_len)

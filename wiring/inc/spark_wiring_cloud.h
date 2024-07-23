@@ -23,6 +23,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstring>
 
 #include "spark_wiring_string.h"
 #include "events.h"
@@ -71,6 +72,18 @@ struct is_string_literal {
 namespace particle {
 
 class Ledger;
+
+/**
+ * Content type.
+ */
+enum class ContentType {
+    TEXT = 0, ///< text/plain; charset=utf-8
+    JPEG = 22, ///< image/jpeg
+    PNG = 23, ///< image/png
+    BINARY = 42, ///< application/octet-stream
+    JSON = 50, ///< application/json
+    CBOR = 60, ///< application/cbor
+};
 
 } // namespace particle
 
@@ -265,12 +278,15 @@ public:
 
     inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
     {
-        return publish_event(eventName, eventData, ttl, flags1 | flags2);
+        return publish_event(eventName, eventData, eventData ? std::strlen(eventData) : 0, particle::ContentType::TEXT, ttl, flags1 | flags2);
     }
 
     particle::Future<bool> publish(const char* name);
     particle::Future<bool> publish(const char* name, const char* data);
     particle::Future<bool> publish(const char* name, const char* data, int ttl);
+
+    particle::Future<bool> publish(const char* name, const char* data, particle::ContentType type, PublishFlags flags = PublishFlags());
+    particle::Future<bool> publish(const char* name, const uint8_t* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags());
 
     /**
      * @brief Publish vitals information
@@ -490,7 +506,8 @@ private:
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
-    static particle::Future<bool> publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags);
+    static particle::Future<bool> publish_event(const char* name, const char* data, size_t size, particle::ContentType type,
+            int ttl, PublishFlags flags);
 
     bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {

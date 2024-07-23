@@ -88,7 +88,7 @@ public:
 	}
 
 	ProtocolError send_event(MessageChannel& channel, const char* event_name,
-			const char* data, int ttl, EventType::Enum event_type, int flags,
+			const char* data, size_t data_size, int content_type, int ttl, EventType::Enum event_type, int flags,
 			system_tick_t time, CompletionHandler handler);
 
 private:
