@@ -709,11 +709,13 @@ RunTimeInfoDiagnosticData g_usedRamDiagData(DIAG_ID_SYSTEM_USED_RAM, DIAG_NAME_S
     }
 );
 
+#if HAL_PLATFORM_LWIP
 void if_init_postpone(system_event_t event, int param, void* pointer, void* context) {
     if (event == aux_power_state) {
         if_init_platform_postpone(nullptr);
     }
 }
+#endif /* HAL_PLATFORM_LWIP */
 
 } // namespace
 
