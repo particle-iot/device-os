@@ -162,7 +162,7 @@ int if_init_platform_postpone(void*) {
         uint8_t dummy;
         if (!if_get_index(en2->interface(), &dummy)) {
             auto wizNetif = reinterpret_cast<WizNetif*>(en2);
-            for (uint8_t retries = 0; retries < 5; retries++) {
+            for (uint8_t retries = 0; retries < 10; retries++) {
                 if (wizNetif->isPresent()) {
                     LOG(INFO, "W5500 present");
                     return 0;
