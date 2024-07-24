@@ -3,9 +3,12 @@
 
 #include "delay_hal.h"
 #include "check.h"
-
+#ifdef ENABLE_FQC_FUNCTIONALITY
 #include "src/fqc_test.h"
+#endif
+#ifdef ENABLE_MUON_DETECTION
 #include "src/board_config.h"
+#endif
 
 namespace particle {
 
@@ -141,19 +144,23 @@ int RequestHandler::request(ctrl_request* ctrlReq) {
 }
 
 int RequestHandler::request(Request* req) {
-    auto FqcTester = FqcTest::instance();
-
+#ifdef ENABLE_FQC_FUNCTIONALITY
     // Check for FQC commands
-    if(FqcTester->process(req->data())) {
-        req->reply(FqcTester->reply(), FqcTester->replySize());
+    if(FqcTest::instance()->process(req->data())) {
+        req->reply(FqcTest::instance()->reply(), FqcTest::instance()->replySize());
         return SYSTEM_ERROR_NONE;
-    } else if (BoardConfig::instance()->process(req->data())) {
+    } else
+#endif
+#ifdef ENABLE_MUON_DETECTION
+    if (BoardConfig::instance()->process(req->data())) {
         req->reply(BoardConfig::instance()->reply(), BoardConfig::instance()->replySize());
         return SYSTEM_ERROR_NONE;
-    } else if (req->isEmpty()) { // Ping request
+    } else
+#endif
+    if (req->isEmpty()) { // Ping request
         return SYSTEM_ERROR_NONE;
     } else {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 }
 

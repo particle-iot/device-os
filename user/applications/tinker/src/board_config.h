@@ -17,6 +17,8 @@
 
 #pragma once
 
+#ifdef ENABLE_MUON_DETECTION
+
 #include "Particle.h"
 
 namespace particle {
@@ -35,21 +37,15 @@ public:
 private:
     JSONBufferWriter replyWriter_;
     char replyBuffer_[64];
+    bool isMuon_;
+    bool isMuonDetected_;
 
-#if HAL_PLATFORM_POWER_MANAGEMENT
-    static constexpr uint8_t auxPwrCtrlPin_ = D7;
-    static constexpr uint8_t pmicIntPin_ = A7;
-#endif
-#if HAL_PLATFORM_ETHERNET
-    static constexpr uint8_t ethernetCsPin_ = A3;
-    static constexpr uint8_t ethernetIntPin_ = A4;
-    static constexpr uint8_t ethernetResetPin_ = PIN_INVALID;
-#endif
-
-    void configureBaseBoard();
-    bool detectI2cSlave(uint8_t addr);
-    void configForMuon();
-    void configForGeneric();
+    void detectBaseBoard();
+    void configureBaseBoard(JSONValue value);
+    void detectI2cSlaves(bool force = true);
+    int configure(bool muon);
 };
 
-}
+} // particle
+
+#endif // ENABLE_MUON_DETECTION

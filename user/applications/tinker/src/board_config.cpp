@@ -16,6 +16,8 @@
  */
 
 #include "board_config.h"
+
+#ifdef ENABLE_MUON_DETECTION
 #include "SparkFun_STUSB4500.h"
 #include "stusb4500_register_map.h"
 
@@ -38,7 +40,9 @@ namespace {
 namespace particle {
 
 BoardConfig::BoardConfig()
-        : replyWriter_(nullptr, 0) {
+        : replyWriter_(nullptr, 0),
+          isMuon_(false),
+          isMuonDetected_(false) {
 }
 
 BoardConfig::~BoardConfig() {
@@ -52,8 +56,12 @@ BoardConfig* BoardConfig::instance() {
 bool BoardConfig::process(JSONValue config) {
     memset(replyBuffer_, 0x00, sizeof(replyBuffer_));
     replyWriter_ = JSONBufferWriter((char*)replyBuffer_, sizeof(replyBuffer_));
-    if (has(config, "CONFIGURE_BASE_BOARD")) {
-        configureBaseBoard();
+    if (has(config, "BASE_BOARD_DETECT")) {
+        detectBaseBoard();
+        return true;
+    } else if (has(config, "CONFIGURE_MODULE_BOARD")) {
+        auto value = getValue(config, "CONFIGURE_MODULE_BOARD");
+        configureBaseBoard(value);
         return true;
     }
     return false;
@@ -67,25 +75,41 @@ size_t BoardConfig::replySize() {
     return replyWriter_.dataSize();
 }
 
-void BoardConfig::configureBaseBoard() {
-    bool isMuon = true;
-    SCOPE_GUARD({
-        replyWriter_.beginObject();
-        if (isMuon) {
-            replyWriter_.name("board").value("Particle Muon");
-            configForMuon();
-        } else {
-            replyWriter_.name("board").value("Generic Module");
-            configForGeneric();
-        }
-        replyWriter_.endObject();
-    });
+void BoardConfig::detectBaseBoard() {
+    detectI2cSlaves();
+    replyWriter_.beginObject();
+    if (isMuon_) {
+        replyWriter_.name("board").value("muon");
+    } else {
+        replyWriter_.name("board").value("none");
+    }
+    replyWriter_.endObject();
+}
 
-#if PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_MSOM
-    Log.info("Identifying the base board...");
+void BoardConfig::configureBaseBoard(JSONValue value) {
+    detectI2cSlaves(false);
+    int ret;
+    if (isMuon_ && value.toString() == "muon") {
+        ret = configure(true);
+    } else if (!isMuon_ && value.toString() == "none") {
+        ret = configure(false);
+    } else {
+        ret = SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    replyWriter_.beginObject();
+    replyWriter_.name("status").value(ret);
+    replyWriter_.endObject();
+}
+
+void BoardConfig::detectI2cSlaves(bool force) {
+    if (!force && isMuonDetected_) {
+        return;
+    }
+    SCOPE_GUARD({
+        isMuonDetected_ = true;
+    });
     constexpr uint8_t addrs[] = {
         0x28,   // STUSB4500 USB PD chip
-        0x61,   // KG200Z Lora module
         0x69,   // AM18x5 RTC
         0x48,   // TMP112A temperature sensor
         0x6B,   // BQ24195 PMIC
@@ -93,75 +117,45 @@ void BoardConfig::configureBaseBoard() {
     };
     Wire.begin();
     for (uint8_t i = 0; i < sizeof(addrs); i++) {
-        if (!detectI2cSlave(addrs[i])) {
-            isMuon = false;
-            Log.info("Generic M.2 base board detected");
+        Wire.beginTransmission(addrs[i]);
+        if (Wire.endTransmission() != 0) {
+            isMuon_ = false;
             return;
         }
     }
-    Log.info("Muon board detected");
-#else
-    isMuon = false;
-#endif
+    isMuon_ = true;
 }
 
-bool BoardConfig::detectI2cSlave(uint8_t addr) {
-    Wire.beginTransmission(addr);
-    if (Wire.endTransmission() == 0) {
-        return true;
-    }
-    return false;
-}
-
-void BoardConfig::configForMuon() {
-#if PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_MSOM
-    static constexpr uint8_t auxPwrCtrlPin = D7;
-    static constexpr uint8_t pmicIntPin = A7;
-    static constexpr uint8_t ethernetCsPin = A3;
-    static constexpr uint8_t ethernetIntPin = A4;
-    static constexpr uint8_t ethernetResetPin = PIN_INVALID;
-
-    // System power manager
+int BoardConfig::configure(bool muon) {
     Log.info("Set system power configuration");
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
-    powerConfig.auxPowerControlPin(auxPwrCtrlPin)
-               .intPin(pmicIntPin);
-    System.setPowerConfiguration(powerConfig);
+    if (muon) {
+        powerConfig.auxPowerControlPin(D7).intPin(A7);
+    } else {
+        powerConfig.auxPowerControlPin(PIN_INVALID).intPin(LOW_BAT_UC);
+    }
+    CHECK(System.setPowerConfiguration(powerConfig));
 
-    // Etehrnet
     Log.info("Set Ethernet configuration");
     if_wiznet_pin_remap remap = {};
     remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
-    remap.cs_pin = ethernetCsPin;
-    remap.reset_pin = ethernetResetPin;
-    remap.int_pin = ethernetIntPin;
-    if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
-    System.enableFeature(FEATURE_ETHERNET_DETECTION);
+    if (muon) {
+        System.enableFeature(FEATURE_ETHERNET_DETECTION);
+        remap.cs_pin = A3;
+        remap.reset_pin = PIN_INVALID;
+        remap.int_pin = A4;
+    } else {
+        System.disableFeature(FEATURE_ETHERNET_DETECTION);
+        remap.cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
+        remap.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
+        remap.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
+    }
+    CHECK(if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr));
 
-    Log.info("Device needs reset to apply the settings");
-#endif
-}
-
-void BoardConfig::configForGeneric() {
-#if HAL_PLATFORM_POWER_MANAGEMENT
-    SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
-    // FIXME: M.2 breakout board has the aux power control pin connected to D23.
-    // But what if the base board is other kind of M.2 board?
-    powerConfig.auxPowerControlPin(PIN_INVALID)
-               .intPin(LOW_BAT_UC);
-    System.setPowerConfiguration(powerConfig);
-#endif
-
-#if HAL_PLATFORM_ETHERNET
-    if_wiznet_pin_remap remap = {};
-    remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
-    remap.cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
-    remap.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
-    remap.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
-    if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
-#endif
-
-    Log.info("Device needs reset to apply the settings");
+    Log.info("Device need reset to apply new configurations");
+    return SYSTEM_ERROR_NONE;
 }
 
 } // particle
+
+#endif // ENABLE_MUON_DETECTION
