@@ -16,7 +16,7 @@
  */
 
 #include "hal_platform.h"
-#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY)
+#ifdef ENABLE_FQC_FUNCTIONALITY
 #include "spark_wiring.h"
 #include "spark_wiring_ble.h"
 #include "spark_wiring_logging.h"
@@ -645,5 +645,5 @@ bool FqcTest::gnssTest(JSONValue req) {
 #endif // PLATFORM_ID == PLATFORM_MSOM
 
 }
-#endif // HAL_PLATFORM_RTL872X
+#endif // ENABLE_FQC_FUNCTIONALITY
 
