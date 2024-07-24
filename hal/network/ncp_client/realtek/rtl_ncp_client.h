@@ -81,6 +81,7 @@ private:
 
     int rltkOn();
     int rltkOff();
+    void parseDisconnectReason(char* buf, size_t bufLen);
 };
 
 inline void RealtekNcpClient::lock() {
