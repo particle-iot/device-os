@@ -16,7 +16,7 @@
  */
 
 #include "hal_platform.h"
-#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY) 
+#ifdef ENABLE_FQC_FUNCTIONALITY
 #include "application.h"
 
 // Needed for hal_storage_read
@@ -640,7 +640,7 @@ bool BurninTest::testGnss() {
     return gnssLocked;
 }
 
-#endif
+#endif // PLATFORM_ID == PLATFORM_MSOM
 
 } // particle
-#endif // HAL_PLATFORM_RTL872X
+#endif // ENABLE_FQC_FUNCTIONALITY
