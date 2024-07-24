@@ -142,6 +142,7 @@ PowerManager* PowerManager::instance() {
 void PowerManager::enableAuxPwr() {
   if (!auxPwrEnabled_ && config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.aux_pwr_ctrl_pin != PIN_INVALID) {
     LOG(INFO, "Enable auxiliary power");
+    hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
     hal_gpio_write(config_.aux_pwr_ctrl_pin, config_.aux_pwr_ctrl_pin_level);
     auxPwrEnabled_ = true;
     system_notify_event(aux_power_state, 1);
