@@ -671,7 +671,14 @@ void PowerManager::batteryStateTransitioningTo(battery_state_t targetState, bool
       battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
       DBG_PWR("notChargingDebounceCount_: %d", notChargingDebounceCount_);
       if (notChargingDebounceCount_ >= BATTERY_NOT_CHARGING_DEBOUNCE_COUNT) {
-        confirmBatteryState(g_batteryState, BATTERY_STATE_NOT_CHARGING);
+        PMIC power(true);
+        uint8_t status = power.getSystemStatus();
+        if (status & 0x01) {
+            // In VSYSMIN regulation (BAT < VSYSMIN), it's probably disconnected
+            confirmBatteryState(g_batteryState, BATTERY_STATE_DISCONNECTED);
+        } else {
+            confirmBatteryState(g_batteryState, BATTERY_STATE_NOT_CHARGING);
+        }
       }
     }
   } else if (targetState == BATTERY_STATE_CHARGING) {
