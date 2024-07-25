@@ -19,6 +19,16 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
     }
 }
 
+void subscribeWithContentTypeCallbackWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
+    auto cb = (EventHandlerWithContentType)arg;
+    cb(name, (const uint8_t*)data, dataSize, (ContentType)contentType);
+}
+
+void subscribeWithContentTypeFunctionWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
+    auto fn = (EventHandlerWithContentTypeFn*)arg;
+    (*fn)(name, (const uint8_t*)data, dataSize, (ContentType)contentType);
+}
+
 } // namespace
 
 spark_cloud_disconnect_options CloudDisconnectOptions::toSystemOptions() const
@@ -166,3 +176,17 @@ int CloudClass::useLedgersImpl(const Vector<const char*>& usedNames) {
 }
 
 #endif // Wiring_Ledger
+
+bool CloudClass::subscribe(const char* name, EventHandlerWithContentType handler) {
+    return spark_subscribe(name, (EventHandler)subscribeWithContentTypeCallbackWrapper, (void*)handler, ALL_DEVICES,
+            nullptr /* deviceID */, nullptr /* reserved */);
+}
+
+bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handler) {
+    auto fnPtr = new(std::nothrow) EventHandlerWithContentTypeFn(std::move(handler));
+    if (!fnPtr) {
+        return false;
+    }
+    return spark_subscribe(name, (EventHandler)subscribeWithContentTypeFunctionWrapper, fnPtr, ALL_DEVICES,
+            nullptr /* deviceID */, nullptr /* reserved */);
+}

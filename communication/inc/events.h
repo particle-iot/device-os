@@ -85,7 +85,7 @@ typedef void (*EventHandlerWithData)(void *handler_data, const char *event_name,
  */
 struct FilteringEventHandler
 {
-  char filter[64]; // XXX: Not null-terminated if the length of the filter is 64 characters
+  char filter[64]; // XXX: Not null-terminated if 64 characters long
   EventHandler handler;
   void *handler_data;
   SubscriptionScope::Enum scope;
