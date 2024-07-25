@@ -118,16 +118,16 @@ public:
         return conf_.aux_pwr_ctrl_pin;
     }
 
-    uint8_t auxPowerControlActiveLevel() const {
+    uint8_t auxiliaryPowerControlActiveLevel() const {
         return conf_.aux_pwr_ctrl_pin_level;
     }
     
-    SystemPowerConfiguration& intPin(uint8_t pin) {
+    SystemPowerConfiguration& interruptPin(uint8_t pin) {
         conf_.int_pin = pin;
         return *this;
     }
 
-    uint8_t intPin() const {
+    uint8_t interruptPin() const {
         return conf_.int_pin;
     }
 
