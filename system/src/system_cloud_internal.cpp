@@ -453,16 +453,16 @@ bool spark_function_internal(const cloud_function_descriptor* desc, void* reserv
 }
 
 
-void invokeEventHandlerInternal(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
-                const char* event_name, const char* data, void* reserved)
+void invokeEventHandlerInternal(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const char* event_name,
+        const char* data, size_t data_size, int content_type)
 {
     if(handlerInfo->handler_data)
     {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
-        EventHandlerWithData handler = (EventHandlerWithData) handlerInfo->handler;
+        EventHandlerWithData handler = (EventHandlerWithData)handlerInfo->handler;
 #pragma GCC diagnostic pop
-        handler(handlerInfo->handler_data, event_name, data);
+        handler(handlerInfo->handler_data, event_name, data, data_size, content_type);
     }
     else
     {
@@ -470,10 +470,10 @@ void invokeEventHandlerInternal(uint16_t handlerInfoSize, FilteringEventHandler*
     }
 }
 
-void invokeEventHandlerString(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
-                const String& name, const String& data, void* reserved)
+void invokeEventHandlerString(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const String& name,
+        const String& data, int content_type)
 {
-    invokeEventHandlerInternal(handlerInfoSize, handlerInfo, name.c_str(), data.c_str(), reserved);
+    invokeEventHandlerInternal(handlerInfoSize, handlerInfo, name.c_str(), data.c_str(), data.length(), content_type);
 }
 
 bool is_system_handler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo) {
@@ -481,19 +481,19 @@ bool is_system_handler(uint16_t handlerInfoSize, FilteringEventHandler* handlerI
     return handlerInfo->handler == systemEventHandler;
 }
 
-void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
-                const char* event_name, const char* event_data, void* reserved)
+void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const char* event_name,
+        const char* event_data, size_t data_size, int content_type)
 {
     if (is_system_handler(handlerInfoSize, handlerInfo) || system_thread_get_state(NULL)==spark::feature::DISABLED)
     {
-        invokeEventHandlerInternal(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
+        invokeEventHandlerInternal(handlerInfoSize, handlerInfo, event_name, event_data, data_size, content_type);
     }
     else
     {
         // copy the buffers to dynamically allocated storage.
         String name(event_name);
-        String data(event_data);
-        APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, data, reserved));
+        String data(event_data, data_size);
+        APPLICATION_THREAD_CONTEXT_ASYNC(invokeEventHandlerString(handlerInfoSize, handlerInfo, name, data, content_type));
     }
 }
 

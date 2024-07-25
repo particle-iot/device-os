@@ -44,6 +44,7 @@
 #include "string_convert.h"
 #include "spark_protocol_functions.h"
 #include "events.h"
+#include "coap_defs.h"
 #include "deviceid_hal.h"
 #include "system_mode.h"
 
@@ -187,7 +188,7 @@ bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flag
 
     spark_protocol_send_event_data d = {};
     d.size = sizeof(d);
-    d.content_type = 0; // text/plain; charset=utf-8
+    d.content_type = (int)protocol::CoapContentFormat::TEXT_PLAIN;
 
     bool hasDataSize = false;
     if (reserved) {
