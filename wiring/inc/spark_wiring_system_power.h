@@ -42,6 +42,7 @@ public:
         conf_.size = sizeof(conf_);
         conf_.version = HAL_POWER_CONFIG_VERSION;
         conf_.aux_pwr_ctrl_pin = PIN_INVALID;
+        conf_.int_pin = PIN_INVALID;
     }
 
     SystemPowerConfiguration(SystemPowerConfiguration&&) = default;
@@ -117,8 +118,17 @@ public:
         return conf_.aux_pwr_ctrl_pin;
     }
 
-    uint8_t auxPowerControlActiveLevel() const {
+    uint8_t auxiliaryPowerControlActiveLevel() const {
         return conf_.aux_pwr_ctrl_pin_level;
+    }
+    
+    SystemPowerConfiguration& interruptPin(uint8_t pin) {
+        conf_.int_pin = pin;
+        return *this;
+    }
+
+    uint8_t interruptPin() const {
+        return conf_.int_pin;
     }
 
     const hal_power_config* config() const {
