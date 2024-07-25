@@ -127,7 +127,7 @@ int if_init_platform(void*) {
         wizNetifConfigData.size = sizeof(WizNetifConfigData);
         wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
         WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac, true);
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac, true /* postpone initialization */);
     }
 
     uint8_t dummy;
