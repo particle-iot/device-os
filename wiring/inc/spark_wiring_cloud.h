@@ -86,6 +86,9 @@ enum class ContentType {
     CBOR = (int)protocol::CoapContentFormat::APPLICATION_CBOR ///< `application/cbor`.
 };
 
+typedef void (*EventHandlerWithContentType)(const char* name, const uint8_t* data, size_t size, ContentType type);
+typedef std::function<void(const char* name, const uint8_t* data, size_t size, ContentType type)> EventHandlerWithContentTypeFn;
+
 } // namespace particle
 
 class CloudDisconnectOptions {
@@ -357,6 +360,9 @@ public:
     bool subscribe(const char* name, wiring_event_handler_t handler);
     template<typename T>
     bool subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance);
+
+    bool subscribe(const char* name, particle::EventHandlerWithContentType handler);
+    bool subscribe(const char* name, particle::EventHandlerWithContentTypeFn handler);
 
     void unsubscribe()
     {
