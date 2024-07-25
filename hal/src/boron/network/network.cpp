@@ -129,7 +129,7 @@ int if_init_platform(void*) {
         WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
         bool postpone = false;
 #if PLATFORM_ID == PLATFORM_BSOM
-        postpone = true;
+        postpone = true; /* postpone initialization */
 #endif
         en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac, postpone);
     }
