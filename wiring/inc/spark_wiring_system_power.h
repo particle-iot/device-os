@@ -107,13 +107,13 @@ public:
         return conf_.soc_bits;
     }
 
-    SystemPowerConfiguration& auxPowerControlPin(uint8_t pin, bool activeLevel = 1) {
+    SystemPowerConfiguration& auxiliaryPowerControlPin(uint8_t pin, bool activeLevel = 1) {
         conf_.aux_pwr_ctrl_pin = pin;
         conf_.aux_pwr_ctrl_pin_level = activeLevel;
         return *this;
     }
 
-    uint8_t auxPowerControlPin() const {
+    uint8_t auxiliaryPowerControlPin() const {
         return conf_.aux_pwr_ctrl_pin;
     }
 

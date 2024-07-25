@@ -70,7 +70,7 @@ typedef struct hal_power_config {
     uint8_t aux_pwr_ctrl_pin_level; // active level for auxiliary power control
     uint8_t reserved2[3];
     uint32_t reserved3[3];
-} hal_power_config;
+} __attribute__((packed)) hal_power_config;
 static_assert(sizeof(hal_power_config) == 32, "hal_power_config size changed");
 
 int hal_power_load_config(hal_power_config* conf, void* reserved);
