@@ -108,9 +108,13 @@ enum class CoapOption {
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapOption)
 
 enum class CoapContentFormat {
-    // RFC 7252 12.3. CoAP Content-Formats Registry
-    TEXT_PLAIN = 0,
-    APPLICATION_OCTET_STREAM = 42
+    // https://www.iana.org/assignments/core-parameters/core-parameters.xhtml#content-formats
+    TEXT_PLAIN = 0, // text/plain; charset=utf-8
+    IMAGE_JPEG = 22,
+    IMAGE_PNG = 23,
+    APPLICATION_OCTET_STREAM = 42,
+    APPLICATION_JSON = 50,
+    APPLICATION_CBOR = 60
 };
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapContentFormat)

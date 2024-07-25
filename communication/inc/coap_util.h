@@ -87,6 +87,7 @@ private:
 
 namespace protocol {
 
+class Message;
 class MessageChannel;
 class CoapOptionIterator;
 

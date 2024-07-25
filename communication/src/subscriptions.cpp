@@ -26,13 +26,13 @@ namespace particle::protocol {
 
 ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel) {
     CoapMessageDecoder d;
-    int r = d.decode((const char*)message.buf(), message.length());
+    int r = d.decode((const char*)msg.buf(), msg.length());
     if (r < 0) {
         return ProtocolError::MALFORMED_MESSAGE;
     }
 
     if (d.type() == CoapType::CON && channel.is_unreliable()) {
-        int r = sendEmptyAckOrRst(channel, resp, CoapType::ACK);
+        int r = sendEmptyAckOrRst(channel, msg, CoapType::ACK);
         if (r < 0) {
             LOG(ERROR, "Failed to send ACK: %d", r);
             return ProtocolError::COAP_ERROR;
@@ -47,7 +47,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
     auto it = d.options();
     while (it.next()) {
         switch (it.option()) {
-        case CoapOption::URI_PATH: {
+        case (int)CoapOption::URI_PATH: {
             if (skipUriPrefix) {
                 skipUriPrefix = false;
                 continue; // Skip the "e/" or "E/" part
@@ -59,7 +59,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
             }
             break;
         }
-        case CoapOption::CONTENT_FORMAT: {
+        case (int)CoapOption::CONTENT_FORMAT: {
             contentFmt = it.toUInt();
         }
         default:
@@ -76,14 +76,15 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
             continue;
         }
         if (!std::memcmp(event_handlers[i].filter, name, filterLen)) {
-            const char* data = nullptr;
+            char* data = nullptr;
             size_t dataSize = d.payloadSize();
             if (dataSize > 0) {
-                data = d.payload();
+                data = const_cast<char*>(d.payload());
                 // Historically, the event handler callback expected a null-terminated string. Keeping that
                 // behavior for now
                 if (msg.length() >= msg.capacity()) {
                     std::memmove(data - 1, data, dataSize); // Overwrites the payload marker
+                    --data;
                 }
                 data[dataSize] = '\0';
             }

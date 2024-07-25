@@ -38,7 +38,7 @@ int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type) {
     if (err != ProtocolError::NO_ERROR) {
         return toSystemError(err);
     }
-    CoapMessageEncoder e((char*)resp->buf(), resp->capacity());
+    CoapMessageEncoder e((char*)resp.buf(), resp.capacity());
     e.type(type);
     e.code(CoapCode::EMPTY);
     e.id(0); // Serialized by the message channel
@@ -46,10 +46,10 @@ int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type) {
     if (n > resp.capacity()) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    resp->set_length(n);
-    resp->set_id(msg.get_id());
+    resp.set_length(n);
+    resp.set_id(msg.get_id());
     err = channel.send(resp);
-    if (r != ProtocolError::NO_ERROR) {
+    if (err != ProtocolError::NO_ERROR) {
         return toSystemError(err);
     }
     return 0;
@@ -61,15 +61,15 @@ size_t appendUriPath(char* buf, size_t bufSize, size_t pathLen, const CoapOption
     buf += pathLen;
     if (buf < end) {
         *buf++ = '/';
-        size_t n = std::min(iter.size(), end - buf);
-        std::memcpy(buf, iter.data(), n);
+        size_t n = std::min<size_t>(it.size(), end - buf);
+        std::memcpy(buf, it.data(), n);
         buf += n;
         if (buf == end) {
             --buf;
         }
         *buf = '\0';
     }
-    return iter.size() + 1;
+    return it.size() + 1;
 }
 
 void logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload) {

@@ -27,6 +27,7 @@
 
 #include "spark_wiring_string.h"
 #include "events.h"
+#include "coap_defs.h"
 #include "system_cloud.h"
 #include "system_sleep.h"
 #include "system_tick_hal.h"
@@ -77,12 +78,12 @@ class Ledger;
  * Content type.
  */
 enum class ContentType {
-    TEXT = 0, ///< `text/plain; charset=utf-8`.
-    JPEG = 22, ///< `image/jpeg`.
-    PNG = 23, ///< `image/png`.
-    BINARY = 42, ///< `application/octet-stream`.
-    JSON = 50, ///< `application/json`.
-    CBOR = 60, ///< `application/cbor`.
+    TEXT = (int)protocol::CoapContentFormat::TEXT_PLAIN, ///< `text/plain; charset=utf-8`.
+    JPEG = (int)protocol::CoapContentFormat::IMAGE_JPEG, ///< `image/jpeg`.
+    PNG = (int)protocol::CoapContentFormat::IMAGE_PNG, ///< `image/png`.
+    BINARY = (int)protocol::CoapContentFormat::APPLICATION_OCTET_STREAM, ///< `application/octet-stream`.
+    JSON = (int)protocol::CoapContentFormat::APPLICATION_JSON, ///< `application/json`.
+    CBOR = (int)protocol::CoapContentFormat::APPLICATION_CBOR ///< `application/cbor`.
 };
 
 } // namespace particle

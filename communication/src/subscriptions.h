@@ -19,14 +19,15 @@
 
 #pragma once
 
+#include <cstring>
+#include <cstdint>
+
 #include "protocol_defs.h"
 #include "events.h"
 #include "message_channel.h"
 #include "spark_descriptor.h"
 
 #include "spark_wiring_vector.h"
-
-#include <stdint.h>
 
 namespace particle
 {
