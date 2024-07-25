@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "platforms.h"
+#include "protocol_defs.h"
 
 namespace EventType {
   enum Enum : char {
@@ -76,14 +77,15 @@ namespace SubscriptionScope {
 }
 
 typedef void (*EventHandler)(const char *event_name, const char *data);
-typedef void (*EventHandlerWithData)(void *handler_data, const char *event_name, const char *data);
+typedef void (*EventHandlerWithData)(void *handler_data, const char *event_name, const char *data, size_t data_size,
+    int content_type);
 
 /**
  *  This is used in a callback so only change by adding fields to the end
  */
 struct FilteringEventHandler
 {
-  char filter[64];
+  char filter[64]; // XXX: Not null-terminated if the length of the filter is 64 characters
   EventHandler handler;
   void *handler_data;
   SubscriptionScope::Enum scope;

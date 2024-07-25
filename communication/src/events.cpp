@@ -39,7 +39,7 @@ uint8_t *subscription_prelude(uint8_t buf[], uint16_t message_id,
 
   if (NULL != event_name)
   {
-    size_t len = strnlen(event_name, 63);
+    size_t len = strnlen(event_name, 64);
     p += event_name_uri_path(p, event_name, len);
   }
 

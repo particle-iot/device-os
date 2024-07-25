@@ -22,6 +22,7 @@
 #include "protocol_defs.h"
 #include "events.h"
 #include "message_channel.h"
+#include "spark_descriptor.h"
 
 #include "spark_wiring_vector.h"
 
@@ -88,128 +89,7 @@ public:
 		return checksum;
 	}
 
-	ProtocolError handle_event(Message& message,
-			void (*call_event_handler)(uint16_t size,
-					FilteringEventHandler* handler, const char* event,
-					const char* data, void* reserved),
-					MessageChannel& channel)
-	{
-		const unsigned len = message.length();
-		uint8_t* queue = message.buf();
-		if (CoAP::type(queue)==CoAPType::CON && channel.is_unreliable())
-		{
-			Message response;
-			if (channel.response(message, response, 5)==NO_ERROR)
-			{
-				size_t len = Messages::empty_ack(response.buf(), 0, 0);
-				response.set_length(len);
-				response.set_id(message.get_id());
-				ProtocolError error = channel.send(response);
-				if (error)
-					return error;
-			}
-		}
-
-		// end of CoAP message
-		unsigned char *end = queue + len;
-		// start of event name option (location path) - 6 bytes
-		// 4 bytes coap header, 2 bytes for the location path of the message
-		// plus the size of the token.
-		unsigned char *event_name = queue + 6 + (queue[0] & 0xF);
-		size_t event_name_length = CoAP::option_decode(&event_name);
-		if (0 == event_name_length)
-		{
-			// error, malformed CoAP option
-			return MALFORMED_MESSAGE;
-		}
-
-		unsigned char *next_src = event_name + event_name_length;
-		unsigned char *next_dst = next_src;
-		while (next_src < end && 0x00 == (*next_src & 0xf0))
-		{
-			// there's another Uri-Path option, i.e., event name with slashes
-			size_t option_len = CoAP::option_decode(&next_src);
-			*next_dst++ = '/';
-			if (next_dst != next_src)
-			{
-				// at least one extra byte has been used to encode a CoAP Uri-Path option length
-				memmove(next_dst, next_src, option_len);
-			}
-			next_src += option_len;
-			next_dst += option_len;
-		}
-		event_name_length = next_dst - event_name;
-
-		if (next_src < end && 0x30 == (*next_src & 0xf0))
-		{
-			// Max-Age option is next, which we ignore
-			size_t next_len = CoAP::option_decode(&next_src);
-			next_src += next_len;
-		}
-
-		unsigned char *data = NULL;
-		if (next_src < end && 0xff == *next_src)
-		{
-			// payload is next
-			data = next_src + 1;
-			// null terminate data string
-			*end = 0;
-		}
-		// null terminate event name string
-		event_name[event_name_length] = 0;
-
-		const int NUM_HANDLERS = sizeof(event_handlers)
-				/ sizeof(FilteringEventHandler);
-		for (int i = 0; i < NUM_HANDLERS; i++)
-		{
-			if (NULL == event_handlers[i].handler)
-			{
-				break;
-			}
-			const size_t MAX_FILTER_LENGTH = sizeof(event_handlers[i].filter);
-			const size_t filter_length = strnlen(event_handlers[i].filter,
-					MAX_FILTER_LENGTH);
-
-			if (event_name_length < filter_length)
-			{
-				// does not match this filter, try the next event handler
-				continue;
-			}
-
-			const int cmp = memcmp(event_handlers[i].filter, event_name,
-					filter_length);
-			if (0 == cmp)
-			{
-				// don't call the handler directly, use a callback for it.
-				if (!call_event_handler)
-				{
-					if (event_handlers[i].handler_data)
-					{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-function-type"
-						EventHandlerWithData handler =
-								(EventHandlerWithData) event_handlers[i].handler;
-#pragma GCC diagnostic pop
-						handler(event_handlers[i].handler_data,
-								(char *) event_name, (char *) data);
-					}
-					else
-					{
-						event_handlers[i].handler((char *) event_name,
-								(char *) data);
-					}
-				}
-				else
-				{
-					call_event_handler(sizeof(FilteringEventHandler),
-							&event_handlers[i], (const char*) event_name,
-							(const char*) data, NULL);
-				}
-			}
-			// else continue the for loop to try the next handler
-		}
-		return NO_ERROR;
-	}
+	ProtocolError handle_event(Message& message, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel);
 
 	template<typename F> ProtocolError for_each(F callback)
 	{
@@ -241,7 +121,7 @@ public:
 			int dest = 0;
 			for (int i = 0; i < NUM_HANDLERS; i++)
 			{
-				if (!strcmp(event_name, event_handlers[i].filter))
+				if (!strncmp(event_name, event_handlers[i].filter, sizeof(event_handlers[i].filter)))
 				{
 					memset(&event_handlers[i], 0, sizeof(event_handlers[i]));
 				}

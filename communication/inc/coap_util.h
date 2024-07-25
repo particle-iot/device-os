@@ -18,6 +18,7 @@
 #pragma once
 
 #include "coap_api.h"
+#include "coap_defs.h"
 #include "logging.h"
 
 namespace particle {
@@ -85,6 +86,32 @@ private:
 };
 
 namespace protocol {
+
+class MessageChannel;
+class CoapOptionIterator;
+
+/**
+ * Send an empty ACK or RST message.
+ *
+ * @param channel Message channel.
+ * @param msg Received message.
+ * @param type Type of the message to send.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type);
+
+/**
+ * Append an URI path entry to a string.
+ *
+ * The output is null-terminated unless the size of the buffer is 0.
+ *
+ * @param buf Destination buffer.
+ * @param bufSize Buffer size.
+ * @param pathLen Length of the URI path already stored in the buffer.
+ * @param it CoAP options iterator.
+ * @return Length of the URI path entry plus one character for a path separator.
+ */
+size_t appendUriPath(char* buf, size_t bufSize, size_t pathLen, const CoapOptionIterator& it);
 
 /**
  * Log the contents of a CoAP message.

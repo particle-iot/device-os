@@ -15,14 +15,62 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#if !defined(DEBUG_BUILD) && !defined(UNIT_TEST)
+#define NDEBUG // TODO: Define NDEBUG in release builds
+#endif
+
 #include <algorithm>
 #include <cstdio>
 
 #include "coap_util.h"
+
+#include "message_channel.h"
+#include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
 #include "str_util.h"
+#include "check.h"
 
 namespace particle::protocol {
+
+int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type) {
+    Message resp;
+    auto err = channel.response(msg, resp, msg.capacity() - msg.length());
+    if (err != ProtocolError::NO_ERROR) {
+        return toSystemError(err);
+    }
+    CoapMessageEncoder e((char*)resp->buf(), resp->capacity());
+    e.type(type);
+    e.code(CoapCode::EMPTY);
+    e.id(0); // Serialized by the message channel
+    size_t n = CHECK(e.encode());
+    if (n > resp.capacity()) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    resp->set_length(n);
+    resp->set_id(msg.get_id());
+    err = channel.send(resp);
+    if (r != ProtocolError::NO_ERROR) {
+        return toSystemError(err);
+    }
+    return 0;
+}
+
+size_t appendUriPath(char* buf, size_t bufSize, size_t pathLen, const CoapOptionIterator& it) {
+    assert(it.option() == CoapOption::URI_PATH);
+    auto end = buf + bufSize;
+    buf += pathLen;
+    if (buf < end) {
+        *buf++ = '/';
+        size_t n = std::min(iter.size(), end - buf);
+        std::memcpy(buf, iter.data(), n);
+        buf += n;
+        if (buf == end) {
+            --buf;
+        }
+        *buf = '\0';
+    }
+    return iter.size() + 1;
+}
 
 void logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload) {
     CoapMessageDecoder d;

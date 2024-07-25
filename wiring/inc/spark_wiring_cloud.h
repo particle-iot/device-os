@@ -77,12 +77,12 @@ class Ledger;
  * Content type.
  */
 enum class ContentType {
-    TEXT = 0, ///< text/plain; charset=utf-8
-    JPEG = 22, ///< image/jpeg
-    PNG = 23, ///< image/png
-    BINARY = 42, ///< application/octet-stream
-    JSON = 50, ///< application/json
-    CBOR = 60, ///< application/cbor
+    TEXT = 0, ///< `text/plain; charset=utf-8`.
+    JPEG = 22, ///< `image/jpeg`.
+    PNG = 23, ///< `image/png`.
+    BINARY = 42, ///< `application/octet-stream`.
+    JSON = 50, ///< `application/json`.
+    CBOR = 60, ///< `application/cbor`.
 };
 
 } // namespace particle
