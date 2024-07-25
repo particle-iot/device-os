@@ -22,6 +22,11 @@
 #include <stddef.h>
 #include "static_assert.h"
 
+#define HAL_POWER_CONFIG_VERSION_0          0
+#define HAL_POWER_CONFIG_VERSION_1          1
+
+#define HAL_POWER_CONFIG_VERSION            HAL_POWER_CONFIG_VERSION_1
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -61,9 +66,11 @@ typedef struct hal_power_config {
     uint16_t charge_current; // charge current
     uint16_t termination_voltage; // termination voltage
     uint8_t soc_bits; // bits precision for SoC calculation (18 (default) or 19)
-    uint8_t reserved2;
-    uint32_t reserved3[4];
-} hal_power_config;
+    uint8_t aux_pwr_ctrl_pin; // pin number for auxiliary power control
+    uint8_t aux_pwr_ctrl_pin_level; // active level for auxiliary power control
+    uint8_t reserved2[3];
+    uint32_t reserved3[3];
+} __attribute__((packed)) hal_power_config;
 static_assert(sizeof(hal_power_config) == 32, "hal_power_config size changed");
 
 int hal_power_load_config(hal_power_config* conf, void* reserved);

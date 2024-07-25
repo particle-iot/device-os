@@ -709,6 +709,14 @@ RunTimeInfoDiagnosticData g_usedRamDiagData(DIAG_ID_SYSTEM_USED_RAM, DIAG_NAME_S
     }
 );
 
+#if HAL_PLATFORM_LWIP
+void if_init_postpone(system_event_t event, int param, void* pointer, void* context) {
+    if (event == aux_power_state) {
+        if_init_platform_postpone(nullptr);
+    }
+}
+#endif /* HAL_PLATFORM_LWIP */
+
 } // namespace
 
 /*******************************************************************************
@@ -735,6 +743,11 @@ void app_setup_and_loop(void)
     }
 #endif // HAL_PLATFORM_ASSETS
 
+    // Reset all persistent settings to factory defaults if necessary
+    // This should be called before system_part2_post_init() so that the
+    // configurations set in STARTUP() is not reset by factory reset
+    resetSettingsToFactoryDefaultsIfNeeded();
+
     // NOTE: this calls user app global constructors
     system_part2_post_init();
 
@@ -745,8 +758,9 @@ void app_setup_and_loop(void)
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
-    // Reset all persistent settings to factory defaults if necessary
-    resetSettingsToFactoryDefaultsIfNeeded();
+#if HAL_PLATFORM_LWIP
+    system_subscribe_event(aux_power_state, if_init_postpone, nullptr);
+#endif /* HAL_PLATFORM_LWIP */
 
     system_power_management_init();
 
