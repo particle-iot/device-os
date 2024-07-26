@@ -286,9 +286,14 @@ err_t WizNetif::initInterface() {
     if (!isPresent()) {
         pwrState_ = IF_POWER_STATE_DOWN;
         if (postpone_) {
+            // Note: We don't need to perform soft-reset when the chip is detected later on,
+            // since the other time the chip is probably powered cycled.
             return ERR_OK;
         }
         return ERR_IF;
+    }
+    if (reset_ == PIN_INVALID) {
+        swReset();
     }
     pwrState_ = IF_POWER_STATE_UP;
 
@@ -302,9 +307,22 @@ void WizNetif::hwReset() {
     HAL_Delay_Milliseconds(1);
 }
 
-bool WizNetif::isPresent() {
-    /* VERSIONR always indicates the W5500 version as 0x04 */
-    const uint8_t cv = getVERSIONR();
+void WizNetif::swReset() {
+    wizchip_sw_reset();
+}
+
+bool WizNetif::isPresent(bool retry) {
+    uint8_t retries = retry ? 10 : 1;
+    uint8_t cv = 0;
+    for (uint8_t i = 0; i < retries; i++) {
+        cv = getVERSIONR();
+        /* VERSIONR always indicates the W5500 version as 0x04 */
+        if (cv != 0x04 && retry) {
+            HAL_Delay_Milliseconds(50);
+            continue;
+        }
+        break;
+    }
     if (cv != 0x04) {
         LOG(INFO, "No W5500 present");
         return false;
