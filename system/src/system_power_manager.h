@@ -69,6 +69,8 @@ private:
   void batteryStateTransitioningTo(battery_state_t targetState, bool count = true);
   void clearIntermediateBatteryState(uint8_t state);
 
+  void runDpdm();
+
   static power_source_t powerSourceFromStatus(uint8_t status);
 
 private:

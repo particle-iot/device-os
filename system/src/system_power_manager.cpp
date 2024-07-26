@@ -70,6 +70,9 @@ constexpr uint16_t PMIC_FAULT_TERM_CHARGE_CURRENT = 128; // mA
 constexpr system_tick_t BATTERY_REPEATED_CHARGED_WINDOW = 5000; // ms
 constexpr uint8_t BATTERY_REPEATED_CHARGED_COUNT = 2;
 
+constexpr system_tick_t DPDM_PERIOD = 1000;
+constexpr uint8_t DPDM_RETRY_COUNT = 3;
+
 constexpr hal_power_config defaultPowerConfig = {
   .flags = 0,
   .version = 0,
@@ -325,10 +328,11 @@ void PowerManager::handleUpdate() {
         break;
     }
   } else {
-    if (g_batteryState == BATTERY_STATE_DISCHARGING) {
-      src = POWER_SOURCE_BATTERY;
-    } else {
-      src = POWER_SOURCE_UNKNOWN;
+    // Do not update power source if power is good and in DPDM
+    if (!pwr_good || !power.isInDPDM()) {
+      if (g_batteryState == BATTERY_STATE_DISCHARGING) {
+        src = POWER_SOURCE_BATTERY;
+      }
     }
   }
 
@@ -445,6 +449,7 @@ void PowerManager::loop(void* arg) {
     }
     self->checkWatchdog();
     self->deduceBatteryStateLoop();
+    self->runDpdm();
   }
 
 exit:
@@ -530,6 +535,31 @@ void PowerManager::initDefault(bool dpdm) {
   }
 
   clearIntermediateBatteryState(STATE_ALL);
+}
+
+void PowerManager::runDpdm() {
+// FIXME: maybe introduce a new flag?
+#if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
+  static system_tick_t lastRun = 0;
+  static uint8_t dpdmRetry = 0;
+
+  if (millis() - lastRun >= DPDM_PERIOD) {
+    lastRun = millis();
+    if (g_powerSource == POWER_SOURCE_VIN && HAL_USB_Get_State(nullptr) >= HAL_USB_STATE_POWERED) {
+      if (dpdmRetry >= DPDM_RETRY_COUNT) {
+        return;
+      }
+      PMIC power(true);
+      if (power.isInDPDM()) {
+        return;
+      }
+      power.enableDPDM();
+      dpdmRetry++;
+    } else {
+      dpdmRetry = 0;
+    }
+  }
+#endif
 }
 
 void PowerManager::confirmBatteryState(battery_state_t from, battery_state_t to) {
