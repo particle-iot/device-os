@@ -49,6 +49,20 @@ char* device_id_as_string(char* buf) {
     return buf;
 }
 
+char* device_state_as_string(char* buf) {
+    int mode = security_mode_get(nullptr);
+    const char* state;
+    
+    if (mode == MODULE_INFO_SECURITY_MODE_NONE) {
+        state = security_mode_is_overridden() ? "sm=s" : "sm=o";
+    } else {
+        state = "sm=p";
+    }
+    
+    memcpy(buf, state, 4); // "sm=?" is always 4 bytes
+    return buf;
+}
+
 /* MS OS String Descriptor */
 const uint8_t MSFT_STR_DESC[] = {
     USB_WCID_MS_OS_STRING_DESCRIPTOR(
@@ -357,6 +371,11 @@ int Device::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t len) {
     }
     case STRING_IDX_MSFT: {
         return getRawString((const char*)MSFT_STR_DESC, sizeof(MSFT_STR_DESC), buf, len);
+    }
+    case STRING_IDX_DEVICE_STATE: {
+      /* No conversion to UTF-16 */
+      char deviceStateStr[8] = {0};
+      return getUnicodeString(device_state_as_string(deviceStateStr), sizeof(deviceStateStr)-1, len, false);
     }
     default: {
         for (auto& cls: classDrivers_) {
