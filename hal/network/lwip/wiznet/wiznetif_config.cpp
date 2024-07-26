@@ -161,7 +161,7 @@ int WizNetifConfig::validateWizNetifConfigData(const WizNetifConfigData* configD
     // XXX: If we add a new version in the future this will need to handle that
     if (configData->size != sizeof(WizNetifConfigData) ||
             configData->version != WIZNETIF_CONFIG_DATA_VERSION ||
-            !isPinValid(configData->cs_pin) {
+            !isPinValid(configData->cs_pin)) {
         LOG(ERROR, "configData not valid! size:%u ver:%u cs_pin:%u reset_pin:%u int_pin:%u",
                 configData->size,
                 configData->version,
