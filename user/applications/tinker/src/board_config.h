@@ -37,12 +37,10 @@ public:
 private:
     JSONBufferWriter replyWriter_;
     char replyBuffer_[64];
-    bool isMuon_;
-    bool isMuonDetected_;
 
     void detectBaseBoard();
     void configureBaseBoard(JSONValue value);
-    void detectI2cSlaves(bool force = true);
+    bool detectI2cSlaves();
     int configure(bool muon);
 };
 

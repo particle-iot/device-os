@@ -38,9 +38,7 @@ namespace {
 namespace particle {
 
 BoardConfig::BoardConfig()
-        : replyWriter_(nullptr, 0),
-          isMuon_(false),
-          isMuonDetected_(false) {
+        : replyWriter_(nullptr, 0) {
 }
 
 BoardConfig::~BoardConfig() {
@@ -74,9 +72,9 @@ size_t BoardConfig::replySize() {
 }
 
 void BoardConfig::detectBaseBoard() {
-    detectI2cSlaves();
+    bool isMuon = detectI2cSlaves();
     replyWriter_.beginObject();
-    if (isMuon_) {
+    if (isMuon) {
         replyWriter_.name("board").value("muon");
     } else {
         replyWriter_.name("board").value("none");
@@ -85,27 +83,18 @@ void BoardConfig::detectBaseBoard() {
 }
 
 void BoardConfig::configureBaseBoard(JSONValue value) {
-    detectI2cSlaves(false);
-    int ret;
-    if (isMuon_ && value.toString() == "muon") {
+    int ret = SYSTEM_ERROR_INVALID_ARGUMENT;
+    if (value.toString() == "muon") {
         ret = configure(true);
-    } else if (!isMuon_ && value.toString() == "none") {
+    } else if (value.toString() == "none") {
         ret = configure(false);
-    } else {
-        ret = SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     replyWriter_.beginObject();
     replyWriter_.name("status").value(ret);
     replyWriter_.endObject();
 }
 
-void BoardConfig::detectI2cSlaves(bool force) {
-    if (!force && isMuonDetected_) {
-        return;
-    }
-    SCOPE_GUARD({
-        isMuonDetected_ = true;
-    });
+bool BoardConfig::detectI2cSlaves() {
     constexpr uint8_t addrs[] = {
         0x28,   // STUSB4500 USB PD chip
         0x69,   // AM18x5 RTC
@@ -117,20 +106,19 @@ void BoardConfig::detectI2cSlaves(bool force) {
     for (uint8_t i = 0; i < sizeof(addrs); i++) {
         Wire.beginTransmission(addrs[i]);
         if (Wire.endTransmission() != 0) {
-            isMuon_ = false;
-            return;
+            return false;
         }
     }
-    isMuon_ = true;
+    return true;
 }
 
 int BoardConfig::configure(bool muon) {
     Log.info("Set system power configuration");
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
     if (muon) {
-        powerConfig.auxPowerControlPin(D7).intPin(A7);
+        powerConfig.auxiliaryPowerControlPin(D7).interruptPin(A7);
     } else {
-        powerConfig.auxPowerControlPin(PIN_INVALID).intPin(LOW_BAT_UC);
+        powerConfig.auxiliaryPowerControlPin(PIN_INVALID).interruptPin(LOW_BAT_UC);
     }
     CHECK(System.setPowerConfiguration(powerConfig));
 
