@@ -24,8 +24,8 @@ ifeq ($(APP),tinker)
 ifeq ("$(PLATFORM_MCU)","rtl872x")
 CFLAGS += -DENABLE_FQC_FUNCTIONALITY=1
 CXXFLAGS += -DENABLE_FQC_FUNCTIONALITY=1
-MAKE_DEPENDENCIES += third_party/coremark
 endif
+MAKE_DEPENDENCIES += third_party/coremark
 endif
 
 # SoMs
