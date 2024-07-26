@@ -157,12 +157,13 @@ int if_init_platform_postpone(void*) {
         uint8_t dummy;
         if (!if_get_index(en2->interface(), &dummy)) {
             auto wizNetif = reinterpret_cast<WizNetif*>(en2);
-            if (wizNetif->isPresent()) {
+            if (wizNetif->isPresent(true)) {
+                LOG(INFO, "W5500 present");
                 return 0;
             }
+            LOG(INFO, "Remove Ethernet interface");
             netifapi_netif_remove(en2->interface());
         }
-        LOG(INFO, "Ethernet interface is not present");
         delete en2;
         en2 = nullptr;
     }
