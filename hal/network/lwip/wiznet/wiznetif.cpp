@@ -116,6 +116,7 @@ const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
 };
 
 const int WIZNET_DEFAULT_TIMEOUT = 500;
+const int WIZNET_DEFAULT_TIMEOUT_POLL = 250;
 /* FIXME */
 const unsigned int WIZNET_INRECV_NEXT_BACKOFF = 50;
 const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
@@ -333,7 +334,7 @@ void WizNetif::loop(void* arg) {
     while(!self->exit_) {
         pbuf* p = nullptr;
         os_queue_take(self->queue_, (void*)&p, timeout, nullptr);
-        timeout = WIZNET_DEFAULT_TIMEOUT;
+        timeout = (self->interrupt_ == PIN_INVALID) ? WIZNET_DEFAULT_TIMEOUT_POLL : WIZNET_DEFAULT_TIMEOUT;
         if (p) {
             self->output(p);
         }
