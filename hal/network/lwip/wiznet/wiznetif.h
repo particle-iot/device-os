@@ -43,7 +43,7 @@ public:
 
     virtual int getPowerState(if_power_state_t* state) const override;
     virtual int getNcpState(unsigned int* state) const override;
-    bool isPresent();
+    bool isPresent(bool retry = false);
 
     static WizNetif* instance() {
         return instance_;
@@ -59,6 +59,7 @@ private:
     err_t initInterface();
 
     void hwReset();
+    void swReset();
 
     static void interruptCb(void* arg);
     static void loop(void* arg);
