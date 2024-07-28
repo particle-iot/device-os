@@ -127,7 +127,11 @@ int if_init_platform(void*) {
         wizNetifConfigData.size = sizeof(WizNetifConfigData);
         wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
         WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac, true /* postpone initialization */);
+        bool postpone = false;
+#if HAL_PLATFORM_IF_INIT_POSTPONE
+        postpone = true;
+#endif
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac, postpone /* postpone initialization */);
     }
 
     uint8_t dummy;
@@ -152,6 +156,7 @@ int if_init_platform(void*) {
     return 0;
 }
 
+#if HAL_PLATFORM_IF_INIT_POSTPONE
 int if_init_platform_postpone(void*) {
     if (en2) {
         uint8_t dummy;
@@ -169,6 +174,7 @@ int if_init_platform_postpone(void*) {
     }
     return 0;
 }
+#endif
 
 extern "C" {
 
