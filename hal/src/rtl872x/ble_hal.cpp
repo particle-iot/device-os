@@ -1018,9 +1018,9 @@ void BleEventDispatcher::bleEventDispatchThread(void *context) {
 
 void BleGap::bleCommandThread(void *context) {
     BleGap* gap = (BleGap*)context;
+    uint8_t command = 0;
     while (true) {
         bool locked = false;
-        uint8_t command;
         if (!os_queue_peek(gap->cmdQueue_, &command, CONCURRENT_WAIT_FOREVER, nullptr)) {
             LOCAL_DEBUG("---> Enter ble cmd thread, cmd: %d", command);
             if (command == BLE_CMD_STOP_ADV || command == BLE_CMD_STOP_ADV_NOTIFY) {
@@ -1070,6 +1070,8 @@ void BleGap::bleCommandThread(void *context) {
             os_queue_take(gap->cmdQueue_, &command, 0, nullptr);
         }
     }
+    // Just in case clean up the queue on exit
+    while (!os_queue_take(gap->cmdQueue_, &command, 0, nullptr));
     os_thread_exit(nullptr);
 }
 
