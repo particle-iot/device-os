@@ -1044,7 +1044,6 @@ void BleGap::bleCommandThread(void *context) {
                     if (command == BLE_CMD_STOP_ADV_NOTIFY) {
                         gap->notifyAdvStop();
                     }
-                    hal_ble_unlock(nullptr);
                 }
             } else if (command == BLE_CMD_START_ADV) {
                 LOCAL_DEBUG("startAdvertising in ble cmd thread");
