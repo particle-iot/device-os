@@ -77,7 +77,7 @@ class Ledger;
 /**
  * Content type.
  */
-enum class ContentType {
+enum class ContentType: int {
     TEXT = (int)protocol::CoapContentFormat::TEXT_PLAIN, ///< `text/plain; charset=utf-8`.
     JPEG = (int)protocol::CoapContentFormat::IMAGE_JPEG, ///< `image/jpeg`.
     PNG = (int)protocol::CoapContentFormat::IMAGE_PNG, ///< `image/png`.
