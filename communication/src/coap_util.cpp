@@ -60,7 +60,9 @@ size_t appendUriPath(char* buf, size_t bufSize, size_t pathLen, const CoapOption
     auto end = buf + bufSize;
     buf += pathLen;
     if (buf < end) {
-        *buf++ = '/';
+        if (pathLen > 0) {
+            *buf++ = '/';
+        }
         size_t n = std::min<size_t>(it.size(), end - buf);
         std::memcpy(buf, it.data(), n);
         buf += n;
