@@ -437,17 +437,12 @@ public:
         CHECK_TRUE(cmdQueue_, SYSTEM_ERROR_INVALID_STATE);
         if (os_queue_put(cmdQueue_, &cmd, BLE_ENQUEUE_TIMEOUT_MS, nullptr)) {
             LOG(ERROR, "os_queue_put() failed.");
-            SPARK_ASSERT(false);
+            if (cmd != BLE_CMD_EXIT_THREAD) {
+                SPARK_ASSERT(false);
+            }
+            return SYSTEM_ERROR_TIMEOUT;
         }
         return SYSTEM_ERROR_NONE;
-    }
-
-    bool isQueueAvailable() const {
-        uint8_t command;
-        if (!os_queue_peek(cmdQueue_, &command, 0, nullptr)) {
-            return true;
-        }
-        return false;
     }
 
     void lockMode(bool lock) {
@@ -676,6 +671,9 @@ private:
     static constexpr uint8_t BLE_CMD_THREAD_PRIORITY = OS_THREAD_PRIORITY_NETWORK - 1; // IMPORTANT: below network for coexistence to work!
     static constexpr uint16_t BLE_CMD_THREAD_STACK_SIZE = 2048;
     static constexpr uint8_t BLE_CMD_QUEUE_SIZE = 0x20;
+
+    volatile bool bleCommandThreadExit_ = false;
+    static constexpr system_tick_t BLE_WAIT_CMD_THREAD_TRY_LOCK = 10;
 };
 
 
@@ -1021,22 +1019,48 @@ void BleEventDispatcher::bleEventDispatchThread(void *context) {
 void BleGap::bleCommandThread(void *context) {
     BleGap* gap = (BleGap*)context;
     while (true) {
+        bool locked = false;
         uint8_t command;
         if (!os_queue_peek(gap->cmdQueue_, &command, CONCURRENT_WAIT_FOREVER, nullptr)) {
             LOCAL_DEBUG("---> Enter ble cmd thread, cmd: %d", command);
             if (command == BLE_CMD_STOP_ADV || command == BLE_CMD_STOP_ADV_NOTIFY) {
                 if (gap->isAdvertising()) {
                     LOCAL_DEBUG( "stopAdvertising in ble cmd thread");
-                    BleLock lk;
+                    // FIXME: duplication, but for now works as a workaround
+                    while (!(locked = s_bleMutex.lock(BLE_WAIT_CMD_THREAD_TRY_LOCK)) && !gap->bleCommandThreadExit_) {
+                        // Nothing
+                    }
+                    SCOPE_GUARD({
+                        if (locked) {
+                            s_bleMutex.unlock();
+                        }
+                    });
+                    if (gap->bleCommandThreadExit_) {
+                        LOCAL_DEBUG("Exit ble cmd thread");
+                        break;
+                    }
                     gap->stopAdvertising();
                     LOCAL_DEBUG("notifyAdvStop in ble cmd thread");
                     if (command == BLE_CMD_STOP_ADV_NOTIFY) {
                         gap->notifyAdvStop();
                     }
+                    hal_ble_unlock(nullptr);
                 }
             } else if (command == BLE_CMD_START_ADV) {
                 LOCAL_DEBUG("startAdvertising in ble cmd thread");
-                BleLock lk;
+                // FIXME: duplication, but for now works as a workaround
+                while (!(locked = s_bleMutex.lock(BLE_WAIT_CMD_THREAD_TRY_LOCK)) && !gap->bleCommandThreadExit_) {
+                    // Nothing
+                }
+                SCOPE_GUARD({
+                    if (locked) {
+                        s_bleMutex.unlock();
+                    }
+                });
+                if (gap->bleCommandThreadExit_) {
+                    LOCAL_DEBUG("Exit ble cmd thread");
+                    break;
+                }
                 gap->startAdvertising();
             } else if (command == BLE_CMD_EXIT_THREAD) {
                 LOCAL_DEBUG("Exit ble cmd thread");
@@ -1181,14 +1205,14 @@ int BleGap::stop(bool restore) {
     if (btStackStarted_) {
         // Abort any commands, e.g. the re-adv command after disconnection.
         if (cmdThread_ && !os_thread_is_current(cmdThread_)) {
-            if (isQueueAvailable()) {
-                LOCAL_DEBUG(" >>>>>>>>>>>> s_bleMutex.unlock() <<<<<<<<<<<<<<");
-                s_bleMutex.unlock();
+            bleCommandThreadExit_ = true;
+            // It's fine even if this call below fails, but just in case loop here
+            while (enqueue(BLE_CMD_EXIT_THREAD)) {
+                // Nothing
             }
-            if (enqueue(BLE_CMD_EXIT_THREAD) == SYSTEM_ERROR_NONE) {
-                os_thread_join(cmdThread_);
-                cmdThread_ = nullptr;
-            }
+            os_thread_join(cmdThread_);
+            cmdThread_ = nullptr;
+            bleCommandThreadExit_ = false;
         }
         if (cmdQueue_) {
             if (!cmdThread_) {
