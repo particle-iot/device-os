@@ -18,11 +18,47 @@
 #include "subscriptions.h"
 
 #include "spark_descriptor.h"
+#include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
 #include "coap_util.h"
 #include "logging.h"
 
 namespace particle::protocol {
+
+ProtocolError Subscriptions::send_subscription(MessageChannel& channel, const char* filter, size_t filterLen, int flags) {
+    Message msg;
+    auto err = channel.create(msg);
+    if (err != ProtocolError::NO_ERROR) {
+        return err;
+    }
+
+    CoapMessageEncoder e((char*)msg.buf(), msg.capacity());
+    e.type(channel.is_unreliable() ? CoapType::CON : CoapType::NON);
+    e.code(CoapCode::GET);
+    e.id(0); // Will be assigned by the message channel
+    // Subscription messages have an empty token
+    e.option(CoapOption::URI_PATH, "e"); // 11
+    e.option(CoapOption::URI_PATH, filter, filterLen); // 11
+    if (flags & SubscriptionFlag::BINARY_DATA) {
+        e.option(CoapOption::URI_QUERY, "b"); // 15
+    }
+    int r = e.encode();
+    if (r < 0) {
+        return ProtocolError::INTERNAL; // Should not happen
+    }
+    if (r > (int)msg.capacity()) {
+        return ProtocolError::INSUFFICIENT_STORAGE;
+    }
+    msg.set_length(r);
+
+    err = channel.send(msg);
+    if (err != ProtocolError::NO_ERROR) {
+        return err;
+    }
+    subscription_msg_ids.append(msg.get_id());
+
+    return ProtocolError::NO_ERROR;
+}
 
 ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel) {
     CoapMessageDecoder d;

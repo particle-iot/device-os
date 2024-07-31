@@ -139,22 +139,21 @@ bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name,
     return protocol->send_event(event_name, data, data_size.value(), content_type, ttl, event_type, flags, std::move(handler));
 }
 
-bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {
+bool spark_protocol_send_subscription_device_deprecated(ProtocolFacade* protocol, const char* event_name,
+        const char* /* device_id */, void* /* reserved */) {
+    return spark_protocol_send_subscription(protocol, event_name, 0 /* flags */, nullptr /* reserved */);
+}
+
+bool spark_protocol_send_subscription(ProtocolFacade* protocol, const char* event_name, uint8_t flags, void* /* reserved */) {
     ASSERT_ON_SYSTEM_THREAD();
-    const auto error = protocol->send_subscription(event_name, device_id);
+    const auto error = protocol->send_subscription(event_name, flags);
     return (error == ProtocolError::NO_ERROR);
 }
 
-bool spark_protocol_send_subscription_scope(ProtocolFacade* protocol, const char *event_name, SubscriptionScope::Enum scope, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    const auto error = protocol->send_subscription(event_name, scope);
-    return (error == ProtocolError::NO_ERROR);
-}
-
-bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char *event_name,
-    EventHandler handler, SubscriptionScope::Enum scope, const char* device_id, void* handler_data) {
+bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char* event_name, EventHandler handler, uint8_t flags,
+        const char* /* device_id_deprecated */, void* handler_data) {
     ASSERT_ON_SYSTEM_OR_MAIN_THREAD();
-    return protocol->add_event_handler(event_name, handler, handler_data, scope, device_id);
+    return protocol->add_event_handler(event_name, handler, handler_data, flags);
 }
 
 bool spark_protocol_send_time_request(ProtocolFacade* protocol, void* reserved) {

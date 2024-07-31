@@ -44,29 +44,7 @@ private:
 	Vector<message_handle_t> subscription_msg_ids;
 
 protected:
-
-	ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id, SubscriptionScope::Enum scope)
-	{
-		size_t msglen;
-		Message message;
-		channel.create(message);
-		if (device_id) {
-			msglen = subscription(message.buf(), 0, filter, device_id);
-		} else {
-			msglen = subscription(message.buf(), 0, filter, scope);
-		}
-		message.set_length(msglen);
-		ProtocolError result = channel.send(message);
-		if (result == ProtocolError::NO_ERROR) {
-			subscription_msg_ids.append(message.get_id());
-		}
-		return result;
-	}
-
-	inline ProtocolError send_subscription(MessageChannel& channel, const FilteringEventHandler& handler)
-	{
-		return send_subscription(channel, handler.filter, handler.device_id[0] ? handler.device_id : nullptr, handler.scope);
-	}
+	ProtocolError send_subscription(MessageChannel& channel, const char* filter, size_t filter_len, int flags);
 
 public:
 
@@ -79,11 +57,10 @@ public:
 	{
 		uint32_t checksum = 0;
 		for_each([&checksum, calculate_crc](FilteringEventHandler& handler){
-			uint32_t chk[4];
+			uint32_t chk[3];
 			chk[0] = checksum;
-			chk[1] = calculate_crc((const uint8_t*)handler.device_id, sizeof(handler.device_id));
-			chk[2] = calculate_crc((const uint8_t*)handler.filter, sizeof(handler.filter));
-			chk[3] = calculate_crc((const uint8_t*)&handler.scope, sizeof(handler.scope));
+			chk[1] = calculate_crc((const uint8_t*)handler.filter, sizeof(handler.filter));
+			chk[2] = calculate_crc((const uint8_t*)&handler.flags, sizeof(handler.flags));
 			checksum = calculate_crc((const uint8_t*)chk, sizeof(chk));
 			return NO_ERROR;
 		});
@@ -144,28 +121,19 @@ public:
 	/**
 	 * Determines if the given handler exists.
 	 */
-	bool event_handler_exists(const char *event_name, EventHandler handler,
-			void *handler_data, SubscriptionScope::Enum scope, const char* id)
+	bool event_handler_exists(const char *event_name, EventHandler handler, void *handler_data)
 	{
 		const int NUM_HANDLERS = sizeof(event_handlers)
 				/ sizeof(FilteringEventHandler);
 		for (int i = 0; i < NUM_HANDLERS; i++)
 		{
-			if (event_handlers[i].handler == handler
-					&& event_handlers[i].handler_data == handler_data
-					&& event_handlers[i].scope == scope)
+			if (event_handlers[i].handler == handler && event_handlers[i].handler_data == handler_data)
 			{
 				const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
 				const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
 				if (!strncmp(event_handlers[i].filter, event_name, FILTER_LEN))
 				{
-					const size_t MAX_ID_LEN =
-							sizeof(event_handlers[i].device_id) - 1;
-					const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
-					if (id_len)
-						return !strncmp(event_handlers[i].device_id, id, id_len);
-					else
-						return !event_handlers[i].device_id[0];
+					return true;
 				}
 			}
 		}
@@ -175,10 +143,9 @@ public:
 	/**
 	 * Adds the given handler.
 	 */
-	ProtocolError add_event_handler(const char *event_name, EventHandler handler,
-			void *handler_data, SubscriptionScope::Enum scope, const char* id)
+	ProtocolError add_event_handler(const char *event_name, EventHandler handler, void *handler_data, int flags)
 	{
-		if (event_handler_exists(event_name, handler, handler_data, scope, id))
+		if (event_handler_exists(event_name, handler, handler_data))
 			return NO_ERROR;
 
 		const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
@@ -192,46 +159,34 @@ public:
 				memset(event_handlers[i].filter + FILTER_LEN, 0, MAX_FILTER_LEN - FILTER_LEN);
 				event_handlers[i].handler = handler;
 				event_handlers[i].handler_data = handler_data;
-				event_handlers[i].device_id[0] = 0;
-				const size_t MAX_ID_LEN = sizeof(event_handlers[i].device_id) - 1;
-				const size_t id_len = id ? strnlen(id, MAX_ID_LEN) : 0;
-				memcpy(event_handlers[i].device_id, id, id_len);
-				event_handlers[i].device_id[id_len] = 0;
-				event_handlers[i].scope = scope;
+				event_handlers[i].flags = flags;
 				return NO_ERROR;
 			}
 		}
 		return INSUFFICIENT_STORAGE;
 	}
 
-	inline ProtocolError send_subscriptions(MessageChannel& channel)
+	ProtocolError send_subscriptions(MessageChannel& channel)
 	{
 		subscription_msg_ids.clear();
-		ProtocolError result = for_each([&](const FilteringEventHandler& handler){return send_subscription(channel, handler);});
-		if (result==NO_ERROR) {
-			//
-		}
+		ProtocolError result = for_each([&](const FilteringEventHandler& handler) {
+			return send_subscription(channel, handler.filter, strnlen(handler.filter, sizeof(handler.filter)), handler.flags);
+		});
 		return result;
 	}
 
-	inline ProtocolError send_subscription(MessageChannel& channel, const char* filter, const char* device_id)
+	ProtocolError send_subscription(MessageChannel& channel, const char* filter, int flags)
 	{
 		subscription_msg_ids.clear();
-		return send_subscription(channel, filter, device_id, SubscriptionScope::MY_DEVICES);
-	}
-
-	inline ProtocolError send_subscription(MessageChannel& channel, const char* filter, SubscriptionScope::Enum scope)
-	{
-		subscription_msg_ids.clear();
-		return send_subscription(channel, filter, nullptr, scope);
+		return send_subscription(channel, filter, flags);
 	}
 
 	const Vector<message_handle_t>& subscription_message_ids() const
 	{
 		return subscription_msg_ids;
 	}
-
 };
 
-}
-}
+} // namespace protocol
+
+} // namespace particle

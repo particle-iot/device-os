@@ -322,27 +322,32 @@ public:
     int publishVitals(system_tick_t period_s = particle::NOW);
     inline int publishVitals(std::chrono::seconds s) { return publishVitals(s.count()); }
 
+    [[deprecated("Subscription scope has no effect")]]
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
         return spark_subscribe(eventName, handler, NULL, scope, NULL, NULL);
     }
 
+    [[deprecated("Subscription scope has no effect")]]
     inline bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
         return spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL);
     }
 
+    [[deprecated("Subscription scope has no effect")]]
     bool subscribe(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope)
     {
         return subscribe_wiring(eventName, handler, scope);
     }
 
+    [[deprecated("Subscription scope has no effect")]]
     bool subscribe(const char *eventName, wiring_event_handler_t handler, const char *deviceID)
     {
         return subscribe_wiring(eventName, handler, MY_DEVICES, deviceID);
     }
 
     template <typename T>
+    [[deprecated("Subscription scope has no effect")]]
     bool subscribe(const char *eventName, void (T::*handler)(const char *, const char *), T *instance, Spark_Subscription_Scope_TypeDef scope)
     {
         using namespace std::placeholders;
@@ -350,6 +355,7 @@ public:
     }
 
     template <typename T>
+    [[deprecated("Subscription scope has no effect")]]
     bool subscribe(const char *eventName, void (T::*handler)(const char *, const char *), T *instance, const char *deviceID)
     {
         using namespace std::placeholders;

@@ -66,15 +66,20 @@ namespace EventType {
 } // namespace EventType
 
 #if PLATFORM_ID != PLATFORM_GCC
-static_assert(sizeof(EventType::Enum)==1, "EventType size is 1");
+static_assert(sizeof(EventType::Enum) == 1, "EventType::Enum size is not 1");
 #endif
 
-namespace SubscriptionScope {
+namespace SubscriptionFlag {
   enum Enum {
-    MY_DEVICES,
-    FIREHOSE
+    MY_DEVICES = 0x00, // Deprecated
+    FIREHOSE = 0x01, // Deprecated
+    BINARY_DATA = 0x02 // The subscription handler accepts binary data
   };
 }
+
+#if PLATFORM_ID != PLATFORM_GCC
+static_assert(sizeof(SubscriptionFlag::Enum) == 1, "SubscriptionFlag::Enum size is not 1");
+#endif
 
 typedef void (*EventHandler)(const char *event_name, const char *data);
 typedef void (*EventHandlerWithData)(void *handler_data, const char *event_name, const char *data, size_t data_size,
@@ -88,17 +93,8 @@ struct FilteringEventHandler
   char filter[64]; // XXX: Not null-terminated if 64 characters long
   EventHandler handler;
   void *handler_data;
-  SubscriptionScope::Enum scope;
-  char device_id[13];
+  uint8_t flags;
+  char device_id[13]; // XXX: Unused field. Keeping for ABI compatibility for now
 };
-
-
-size_t subscription(uint8_t buf[], uint16_t message_id,
-                    const char *event_name, const char *device_id);
-
-size_t subscription(uint8_t buf[], uint16_t message_id,
-                    const char *event_name, SubscriptionScope::Enum scope);
-
-size_t event_name_uri_path(uint8_t buf[], const char *name, size_t name_len);
 
 #endif // __EVENTS_H
