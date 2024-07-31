@@ -409,7 +409,10 @@ private:
     }
 
     int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_rtc_t* rtc) {
-        if ((rtc->ms / 1000) == 0) {
+        // It uses a 32.768KHz timer, max counter = 0x3FFFFFFF/32768 * 1000 = 32768000(ms).
+        // But due to the simplified calculation formula in SOCPS_AONTimer(), the maximum
+        // argument is 32767933, otherwise, the calculated timer counter will overflow.
+        if ((rtc->ms / 1000) == 0 || rtc->ms > 32767933) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         return SYSTEM_ERROR_NONE;
