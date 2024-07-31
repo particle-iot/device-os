@@ -19,6 +19,14 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
     }
 }
 
+inline bool subscribeWithContentType(const char* name, EventHandler handler, void* handlerData) {
+    spark_subscribe_param param = {};
+    param.size = sizeof(param);
+    param.flags |= SUBSCRIBE_FLAG_BINARY_DATA;
+
+    return spark_subscribe(name, handler, handlerData, MY_DEVICES, nullptr /* device_id_deprecated */, &param);
+}
+
 void subscribeWithContentTypeCallbackWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
     auto cb = (EventHandlerWithContentType)arg;
     cb(name, (const uint8_t*)data, dataSize, (ContentType)contentType);
@@ -178,8 +186,7 @@ int CloudClass::useLedgersImpl(const Vector<const char*>& usedNames) {
 #endif // Wiring_Ledger
 
 bool CloudClass::subscribe(const char* name, EventHandlerWithContentType handler) {
-    return spark_subscribe(name, (EventHandler)subscribeWithContentTypeCallbackWrapper, (void*)handler, ALL_DEVICES,
-            nullptr /* deviceID */, nullptr /* reserved */);
+    return subscribeWithContentType(name, (EventHandler)subscribeWithContentTypeCallbackWrapper, (void*)handler);
 }
 
 bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handler) {
@@ -187,6 +194,5 @@ bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handl
     if (!fnPtr) {
         return false;
     }
-    return spark_subscribe(name, (EventHandler)subscribeWithContentTypeFunctionWrapper, fnPtr, ALL_DEVICES,
-            nullptr /* deviceID */, nullptr /* reserved */);
+    return subscribeWithContentType(name, (EventHandler)subscribeWithContentTypeFunctionWrapper, fnPtr);
 }

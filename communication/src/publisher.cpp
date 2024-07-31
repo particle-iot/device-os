@@ -78,6 +78,9 @@ ProtocolError Publisher::send_event(MessageChannel& channel, const char* event_n
     if (r < 0) {
         return ProtocolError::INTERNAL; // Should not happen
     }
+    if (r > (int)msg.capacity()) {
+        return ProtocolError::INSUFFICIENT_STORAGE;
+    }
     msg.set_length(r);
 
     err = channel.send(msg);

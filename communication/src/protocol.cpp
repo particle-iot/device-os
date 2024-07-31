@@ -697,18 +697,9 @@ ProtocolError Protocol::post_description(int desc_flags, bool force)
 	return description.sendRequest(desc_flags);
 }
 
-ProtocolError Protocol::send_subscription(const char *event_name, const char *device_id)
+ProtocolError Protocol::send_subscription(const char *event_name, int flags)
 {
-	const ProtocolError error = subscriptions.send_subscription(channel, event_name, device_id);
-	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
-		subscription_msg_ids.append(subscriptions.subscription_message_ids());
-	}
-	return error;
-}
-
-ProtocolError Protocol::send_subscription(const char *event_name, SubscriptionScope::Enum scope)
-{
-	const ProtocolError error = subscriptions.send_subscription(channel, event_name, scope);
+	const ProtocolError error = subscriptions.send_subscription(channel, event_name, flags);
 	if (error == ProtocolError::NO_ERROR && descriptor.app_state_selector_info) {
 		subscription_msg_ids.append(subscriptions.subscription_message_ids());
 	}
