@@ -26,6 +26,7 @@
 #include <algorithm>
 #include "appender.h"
 #include "device_code.h"
+#include "security_mode.h"
 
 using namespace particle::usbd;
 
@@ -46,6 +47,18 @@ char* device_id_as_string(char* buf) {
     uint8_t deviceId[HAL_DEVICE_ID_SIZE] = {};
     unsigned deviceIdLen = hal_get_device_id(deviceId, sizeof(deviceId));
     bytes2hexbuf_lower_case(deviceId, deviceIdLen, buf);
+    return buf;
+}
+
+char* device_state_as_string(char* buf) {
+    int mode = security_mode_get(nullptr);
+    
+    if (mode == MODULE_INFO_SECURITY_MODE_NONE) {
+      memcpy(buf, security_mode_is_overridden() ? "sm=s" : "sm=o", 4);
+    } else {
+      memcpy(buf, "sm=p", 4);
+    }
+
     return buf;
 }
 
@@ -357,6 +370,11 @@ int Device::getString(unsigned id, uint16_t langId, uint8_t* buf, size_t len) {
     }
     case STRING_IDX_MSFT: {
         return getRawString((const char*)MSFT_STR_DESC, sizeof(MSFT_STR_DESC), buf, len);
+    }
+    case STRING_IDX_DEVICE_STATE: {
+      /* No conversion to UTF-16 */
+      char deviceStateStr[8] = {0};
+      return getUnicodeString(device_state_as_string(deviceStateStr), sizeof(deviceStateStr), buf, len);
     }
     default: {
         for (auto& cls: classDrivers_) {

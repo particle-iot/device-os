@@ -39,6 +39,7 @@
 #include "deviceid_hal.h"
 #include "bytes2hexbuf.h"
 #include "platforms.h"
+#include "security_mode.h"
 
 using namespace particle::usbd;
 
@@ -192,6 +193,18 @@ char* device_id_as_string(char* buf) {
   unsigned deviceIdLen = hal_get_device_id(deviceId, sizeof(deviceId));
   bytes2hexbuf_lower_case(deviceId, deviceIdLen, buf);
   return buf;
+}
+
+char* device_state_as_string(char* buf) {
+    int mode = security_mode_get(nullptr);
+    
+    if (mode == MODULE_INFO_SECURITY_MODE_NONE) {
+      memcpy(buf, security_mode_is_overridden() ? "sm=s" : "sm=o", 4);
+    } else {
+      memcpy(buf, "sm=p", 4);
+    }
+
+    return buf;
 }
 
 } /* anonymous */
@@ -752,6 +765,11 @@ const uint8_t* NrfDevice::getString(SetupRequest* r, uint16_t* len) {
     case STRING_IDX_MSFT: {
       /* No conversion to UTF-16 */
       return getUnicodeString(USBD_MsftStrDesc, sizeof(USBD_MsftStrDesc), len, true);
+    }
+    case STRING_IDX_DEVICE_STATE: {
+      /* No conversion to UTF-16 */
+      char deviceStateStr[8] = {0};
+      return getUnicodeString(device_state_as_string(deviceStateStr), sizeof(deviceStateStr), len, false);
     }
     default: {
       if (drv_) {

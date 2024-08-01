@@ -112,7 +112,8 @@ public:
     STRING_IDX_SERIAL       = 0x03,
     STRING_IDX_CONFIG       = 0x04,
     STRING_IDX_INTERFACE    = 0x05,
-    STRING_IDX_MSFT         = 0xee
+    STRING_IDX_MSFT         = 0xee,
+    STRING_IDX_DEVICE_STATE = 0xfa
   };
 
   enum Feature {
