@@ -112,6 +112,9 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
             continue;
         }
         if (!std::memcmp(event_handlers[i].filter, name, filterLen)) {
+            if (!(event_handlers[i].flags & SubscriptionFlag::BINARY_DATA) && !isCoapTextContentFormat(contentFmt)) {
+                continue; // Do not invoke a handler that only accepts text data
+            }
             char* data = nullptr;
             size_t dataSize = d.payloadSize();
             if (dataSize > 0) {
