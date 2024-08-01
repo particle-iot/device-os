@@ -77,7 +77,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
 
     char name[MAX_EVENT_NAME_LENGTH + 1];
     size_t nameLen = 0;
-    int contentFmt = -1;
+    int contentFmt = (int)CoapContentFormat::TEXT_PLAIN;
     bool skipUriPrefix = true;
 
     auto it = d.options();
