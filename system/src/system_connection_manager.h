@@ -61,11 +61,14 @@ public:
     network_handle_t getCloudConnectionNetwork();
     network_handle_t selectCloudConnectionNetwork();
 
-    int testConnections();
+    int testConnections(bool cache = false);
+    int scheduleCloudConnectionNetworkCheck();
+    int checkCloudConnectionNetwork();
 
 private:
     network_handle_t preferredNetwork_;
     Vector<network_handle_t> bestNetworks_;
+    volatile bool testResultsActual_ = false;
 };
 
 class ConnectionTester {

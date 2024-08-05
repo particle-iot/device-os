@@ -151,7 +151,15 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     return bestNetwork;
 }
 
-int ConnectionManager::testConnections() {
+int ConnectionManager::testConnections(bool cache) {
+    if (cache) {
+        testResultsActual_ = true;
+    } else if (!cache && testResultsActual_) {
+        // Skip the test once
+        testResultsActual_ = false;
+        LOG_DEBUG(TRACE, "Skipping connection test as there are valid cached results");
+        return 0;
+    }
     ConnectionTester tester;
     int r = tester.testConnections();
     if (r == 0) {
@@ -162,6 +170,57 @@ int ConnectionManager::testConnections() {
         }
     }
     return r;
+}
+
+int ConnectionManager::scheduleCloudConnectionNetworkCheck() {
+    testResultsActual_ = false;
+    const auto task = new(std::nothrow) ISRTaskQueue::Task();
+    if (!task) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    task->func = [](ISRTaskQueue::Task* task) {
+        delete task;
+        ConnectionManager::instance()->checkCloudConnectionNetwork();
+    };
+    SystemISRTaskQueue.enqueue(task);
+    return 0;
+}
+
+int ConnectionManager::checkCloudConnectionNetwork() {
+    if (!spark_cloud_flag_connected()) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    unsigned countReady = 0;
+    bool matchesCurrent = false;
+    for (const auto& i: bestNetworks_) {
+        if (network_ready(i, 0, nullptr)) {
+            countReady++;
+            if (i == getCloudConnectionNetwork()) {
+                matchesCurrent = true;
+            }
+        }
+    }
+    // Simple case, just perform a cloud ping
+    if (countReady == 1 && matchesCurrent) {
+        spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
+        LOG_DEBUG(TRACE, "Still using the same network interface for the cloud connection - perform a cloud ping");
+        return 0;
+    }
+    // Re-test connections
+    CHECK(testConnections(true /* cache */));
+    auto best = selectCloudConnectionNetwork();
+    // If matches current again just perform a ping
+    if (best == getCloudConnectionNetwork()) {
+        spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
+        LOG_DEBUG(TRACE, "Best network interface candidate for the cloud connection is still the same - perform a cloud ping");
+        return 0;
+    }
+    // If best candidate doesn't match current network interface - reconnect
+    LOG_DEBUG(TRACE, "Best network interface for cloud connection changed - move the cloud session");
+    auto options = CloudDisconnectOptions().reconnect(true);
+    auto systemOptions = options.toSystemOptions();
+    spark_cloud_disconnect(&systemOptions, nullptr);
+    return 0;
 }
 
 ConnectionTester::ConnectionTester() {
