@@ -104,13 +104,17 @@ int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type);
 /**
  * Append an URI path entry to a string.
  *
+ * If the path in the buffer is not empty (`pathLen > 0`), appends a separator character to it,
+ * otherwise appends just the value of the URI path option.
+ *
  * The output is null-terminated unless the size of the buffer is 0.
  *
  * @param buf Destination buffer.
  * @param bufSize Buffer size.
  * @param pathLen Length of the URI path already stored in the buffer.
- * @param it CoAP options iterator.
- * @return Length of the URI path entry plus one character for a path separator.
+ * @param it Iterator pointing to a URI path CoAP option.
+ * @return Length of the URI path entry plus one character for a path separator if the path in the
+ *        buffer wasn't empty.
  */
 size_t appendUriPath(char* buf, size_t bufSize, size_t pathLen, const CoapOptionIterator& it);
 
