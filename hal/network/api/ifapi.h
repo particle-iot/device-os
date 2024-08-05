@@ -276,6 +276,7 @@ typedef struct if_wiznet_pin_remap {
 
 int if_init(void);
 int if_init_platform(void*);
+int if_init_platform_postpone(void*);
 
 int if_get_list(struct if_list** ifs);
 int if_free_list(struct if_list* ifs);

@@ -116,6 +116,7 @@ const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
 };
 
 const int WIZNET_DEFAULT_TIMEOUT = 500;
+const int WIZNET_DEFAULT_TIMEOUT_POLL = 250;
 /* FIXME */
 const unsigned int WIZNET_INRECV_NEXT_BACKOFF = 50;
 const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
@@ -124,12 +125,13 @@ const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
 
 WizNetif* WizNetif::instance_ = nullptr;
 
-WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_pin_t interrupt, const uint8_t mac[6])
+WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_pin_t interrupt, const uint8_t mac[6], bool postpone)
         : BaseNetif(),
           spi_(spi),
           cs_(cs),
           reset_(reset),
           interrupt_(interrupt),
+          postpone_(postpone),
           pwrState_(IF_POWER_STATE_NONE),
           spiLock_(spi, WIZNET_DEFAULT_CONFIG) {
 
@@ -283,7 +285,15 @@ err_t WizNetif::initInterface() {
     hwReset();
     if (!isPresent()) {
         pwrState_ = IF_POWER_STATE_DOWN;
+        if (postpone_) {
+            // Note: We don't need to perform soft-reset when the chip is detected later on,
+            // since the other time the chip is probably powered cycled.
+            return ERR_OK;
+        }
         return ERR_IF;
+    }
+    if (reset_ == PIN_INVALID) {
+        swReset();
     }
     pwrState_ = IF_POWER_STATE_UP;
 
@@ -297,12 +307,31 @@ void WizNetif::hwReset() {
     HAL_Delay_Milliseconds(1);
 }
 
-bool WizNetif::isPresent() {
-    /* VERSIONR always indicates the W5500 version as 0x04 */
-    const uint8_t cv = getVERSIONR();
+void WizNetif::swReset() {
+    wizchip_sw_reset();
+}
+
+bool WizNetif::isPresent(bool retry) {
+    uint8_t retries = retry ? 10 : 1;
+    uint8_t cv = 0;
+    for (uint8_t i = 0; i < retries; i++) {
+        cv = getVERSIONR();
+        /* VERSIONR always indicates the W5500 version as 0x04 */
+        if (cv != 0x04 && retry) {
+            HAL_Delay_Milliseconds(50);
+            continue;
+        }
+        break;
+    }
     if (cv != 0x04) {
         LOG(INFO, "No W5500 present");
         return false;
+    }
+
+    auto pwr = pwrState_.load();
+    pwrState_ = IF_POWER_STATE_UP;
+    if (pwr != IF_POWER_STATE_UP) {
+        notifyPowerState(IF_POWER_STATE_UP);
     }
 
     return true;
@@ -323,11 +352,11 @@ void WizNetif::loop(void* arg) {
     while(!self->exit_) {
         pbuf* p = nullptr;
         os_queue_take(self->queue_, (void*)&p, timeout, nullptr);
-        timeout = WIZNET_DEFAULT_TIMEOUT;
+        timeout = (self->interrupt_ == PIN_INVALID) ? WIZNET_DEFAULT_TIMEOUT_POLL : WIZNET_DEFAULT_TIMEOUT;
         if (p) {
             self->output(p);
         }
-        if (self->inRecv_) {
+        if (self->inRecv_ || self->interrupt_ == PIN_INVALID) {
             int r = 1;
             if (!p) {
                 r = self->input();

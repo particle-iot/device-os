@@ -350,6 +350,10 @@ __attribute__((weak)) int if_init_platform(void*) {
     return 0;
 }
 
+__attribute__((weak)) int if_init_platform_postpone(void*) {
+    return 0;
+}
+
 int if_get_list(struct if_list** ifs) {
     if (ifs == nullptr) {
         return -1;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,14 +15,35 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NETWORK_LWIP_IFAPI_IMPL_H
-#define NETWORK_LWIP_IFAPI_IMPL_H
+#pragma once
 
-#include "socket_hal_posix.h"
-#include <lwip/netif.h>
-#include <lwip/netifapi.h>
+#ifdef ENABLE_MUON_DETECTION
 
-#define IF_T_DEFINED
-typedef struct netif* if_t;
+#include "Particle.h"
 
-#endif /* NETWORK_LWIP_IFAPI_IMPL_H */
+namespace particle {
+
+class BoardConfig {
+public:
+    BoardConfig();
+    ~BoardConfig();
+
+    static BoardConfig* instance();
+
+    bool process(JSONValue config);
+    char* reply();
+    size_t replySize();
+    
+private:
+    JSONBufferWriter replyWriter_;
+    char replyBuffer_[64];
+
+    void detectBaseBoard();
+    void configureBaseBoard(JSONValue value);
+    bool detectI2cSlaves();
+    int configure(bool muon);
+};
+
+} // particle
+
+#endif // ENABLE_MUON_DETECTION

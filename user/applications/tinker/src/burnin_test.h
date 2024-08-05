@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef ENABLE_FQC_FUNCTIONALITY
+
 #include "spark_wiring_vector.h"
 #include "debug_output_handler.h"
 
@@ -57,3 +59,5 @@ private:
 };
 
 }
+
+#endif // ENABLE_FQC_FUNCTIONALITY

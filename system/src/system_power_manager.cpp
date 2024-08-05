@@ -69,17 +69,21 @@ constexpr uint16_t PMIC_NORMAL_TERM_CHARGE_CURRENT = 256; // mA
 constexpr uint16_t PMIC_FAULT_TERM_CHARGE_CURRENT = 128; // mA
 constexpr system_tick_t BATTERY_REPEATED_CHARGED_WINDOW = 5000; // ms
 constexpr uint8_t BATTERY_REPEATED_CHARGED_COUNT = 2;
+constexpr uint16_t AUX_PWR_EN_INPUT_CURRENT_THRESHOLD = 500; // mA
 
 constexpr hal_power_config defaultPowerConfig = {
   .flags = 0,
-  .version = 0,
+  .version = HAL_POWER_CONFIG_VERSION,
   .size = sizeof(hal_power_config),
   .vin_min_voltage = DEFAULT_INPUT_VOLTAGE_LIMIT,
   .vin_max_current = DEFAULT_INPUT_CURRENT_LIMIT,
   .charge_current = DEFAULT_CHARGE_CURRENT,
   .termination_voltage = DEFAULT_TERMINATION_VOLTAGE,
   .soc_bits = DEFAULT_SOC_18_BIT_PRECISION,
-  .reserved2 = 0,
+  .aux_pwr_ctrl_pin = PIN_INVALID,
+  .aux_pwr_ctrl_pin_level = 1,
+  .int_pin = PIN_INVALID, // Use the default: LOW_BAT_UC
+  .reserved2 = {0},
   .reserved3 = {0}
 };
 
@@ -136,7 +140,94 @@ PowerManager* PowerManager::instance() {
   return &mng;
 }
 
+void PowerManager::enableAuxPwr() {
+  if (!auxPwrEnabled_ && config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.aux_pwr_ctrl_pin != PIN_INVALID) {
+    LOG(INFO, "Enable auxiliary power");
+    hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
+    hal_gpio_write(config_.aux_pwr_ctrl_pin, config_.aux_pwr_ctrl_pin_level);
+    auxPwrEnabled_ = true;
+    system_notify_event(aux_power_state, 1);
+  }
+}
+
+hal_pin_t PowerManager::getIntPin() const {
+  hal_pin_t pin = LOW_BAT_UC;
+#if PLATFORM_ID == PLATFORM_MSOM
+  uint32_t revision = 0xFFFFFFFF;
+  hal_get_device_hw_version(&revision, nullptr);
+  if (revision == 1) {
+    pin = LOW_BAT_DEPRECATED;
+  }
+#endif
+  if (config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.int_pin != PIN_INVALID) {
+    pin = config_.int_pin;
+  }
+  return pin;
+}
+
 void PowerManager::init() {
+  // Load configuration
+  loadConfig();
+
+  if (config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.aux_pwr_ctrl_pin != PIN_INVALID) {
+    hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
+    hal_gpio_write(config_.aux_pwr_ctrl_pin, !config_.aux_pwr_ctrl_pin_level); // Turn off auxiliary power by default
+  }
+
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+  // We anyway need to detect the presence of PMIC even if HAL_POWER_MANAGEMENT_DISABLE is set
+  // to control the auxiliary power appropriately. So do it before checking the flag.
+  if (!detect()) {
+    // It's probably powered by DC source
+    enableAuxPwr();
+    return;
+  }
+#else
+  resetBus();
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+
+  if (config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
+    LOG(WARN, "Disabled by configuration");
+    // NOTE: We should at least apply the config in DCT in case of Safe mode.
+    // Do not run DPDM, since the event loop will not be started.
+    // User application should still call System.setPowerConfiguration() to set
+    // appropriate parameters for Safe mode if it is going to disable the power management.
+    if (system_mode() == SAFE_MODE) {
+      initDefault(false);
+    }
+    return;
+  }
+
+  // IMPORTANT: attach the interrupt handler first
+#if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
+  hal_gpio_mode(PMIC_INT, INPUT_PULLUP);
+#if HAL_PLATFORM_SHARED_INTERRUPT
+  hal_interrupt_extra_configuration_t extra = {};
+  extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
+  extra.appendHandler = 1;
+  extra.chainPriority = 0x0; // Highest priority
+  hal_interrupt_attach(PMIC_INT, &isrHandlerEx, nullptr, FALLING, &extra);
+#else
+  attachInterrupt(PMIC_INT, &PowerManager::isrHandler, FALLING);
+#endif // HAL_PLATFORM_SHARED_INTERRUPT
+#endif // HAL_PLATFORM_PMIC_INT_PIN_PRESENT
+  hal_pin_t pmicIntPin = getIntPin();
+
+  hal_gpio_mode(pmicIntPin, INPUT_PULLUP);
+  attachInterrupt(pmicIntPin, &PowerManager::isrHandler, FALLING);
+  PMIC power(true);
+  power.begin();
+  initDefault();
+  // Clear old fault register state
+  power.getFault();
+  power.getFault();
+  FuelGauge fuel(true);
+  fuel.wakeup();
+  if ((config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) == 0) {
+    fuel.setAlertThreshold(20); // Low Battery alert at 10% (about 3.6V)
+  }
+  fuel.clearAlert(); // Ensure this is cleared, or interrupts will never occur
+
   os_thread_t th = nullptr;
   size_t stack_size = HAL_PLATFORM_POWER_MANAGEMENT_STACK_SIZE;
 
@@ -144,6 +235,7 @@ void PowerManager::init() {
     stack_size = 4 * 1024;
   #endif // defined(DEBUG_BUILD)
 
+  battMonitorPeriod_ = BATTERY_STATE_NORMAL_CHECK_PERIOD;
   os_thread_create(&th, "pwr", OS_THREAD_PRIORITY_CRITICAL, &PowerManager::loop, nullptr, stack_size);
   SPARK_ASSERT(th != nullptr);
 }
@@ -347,77 +439,19 @@ void PowerManager::handleUpdate() {
   }
 
   logStat(status, curFault);
+
+  if (power.getInputCurrentLimit() >= AUX_PWR_EN_INPUT_CURRENT_THRESHOLD) {
+    enableAuxPwr();
+  }
 }
 
 void PowerManager::loop(void* arg) {
   PowerManager* self = PowerManager::instance();
   self->thread_ = os_thread_current(nullptr);
 
-  {
-    // FIXME: perform these before creating the thread
-
-    // Load configuration
-    self->loadConfig();
-
-    if (self->config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
-      LOG(WARN, "Disabled by configuration");
-      goto exit;
-    }
-
-    LOG_DEBUG(INFO, "Power Management Initializing.");
-#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-    if (!self->detect()) {
-      goto exit;
-    }
-#else
-    self->resetBus();
-#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
-
-    // IMPORTANT: attach the interrupt handler first
-#if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
-    hal_gpio_mode(PMIC_INT, INPUT_PULLUP);
-#if HAL_PLATFORM_SHARED_INTERRUPT
-    hal_interrupt_extra_configuration_t extra = {};
-    extra.version = HAL_INTERRUPT_EXTRA_CONFIGURATION_VERSION;
-    extra.appendHandler = 1;
-    extra.chainPriority = 0x0; // Highest priority
-    hal_interrupt_attach(PMIC_INT, &isrHandlerEx, nullptr, FALLING, &extra);
-#else
-    attachInterrupt(PMIC_INT, &PowerManager::isrHandler, FALLING);
-#endif // HAL_PLATFORM_SHARED_INTERRUPT
-#endif // HAL_PLATFORM_PMIC_INT_PIN_PRESENT
-    hal_pin_t pmicIntPin = LOW_BAT_UC;
-#if PLATFORM_ID == PLATFORM_MSOM
-    uint32_t revision = 0xFFFFFFFF;
-    hal_get_device_hw_version(&revision, nullptr);
-    if (revision == 1) {
-      pmicIntPin = LOW_BAT_DEPRECATED;
-    }
-#endif
-
-    hal_gpio_mode(pmicIntPin, INPUT_PULLUP);
-    attachInterrupt(pmicIntPin, &PowerManager::isrHandler, FALLING);
-    PMIC power(true);
-    power.begin();
-    self->initDefault();
-    // Clear old fault register state
-    power.getFault();
-    power.getFault();
-    FuelGauge fuel(true);
-    fuel.wakeup();
-    if ((self->config_.flags & HAL_POWER_CHARGE_STATE_DISABLE) == 0) {
-      fuel.setAlertThreshold(20); // Low Battery alert at 10% (about 3.6V)
-    }
-    fuel.clearAlert(); // Ensure this is cleared, or interrupts will never occur
-    LOG_DEBUG(INFO, "State of Charge: %-6.2f%%", fuel.getSoC());
-    LOG_DEBUG(INFO, "Battery Voltage: %-4.2fV", fuel.getVCell());
-
 #if HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
-    HAL_USB_Set_State_Change_Callback(usbStateChangeHandler, (void*)self, nullptr);
+  HAL_USB_Set_State_Change_Callback(usbStateChangeHandler, (void*)self, nullptr);
 #endif
-
-    self->battMonitorPeriod_ = BATTERY_STATE_NORMAL_CHECK_PERIOD;
-  }
 
   Event ev;
   while (true) {
@@ -447,7 +481,6 @@ void PowerManager::loop(void* arg) {
     self->deduceBatteryStateLoop();
   }
 
-exit:
   self->deinit();
   os_thread_exit(nullptr);
 }
@@ -526,6 +559,13 @@ void PowerManager::initDefault(bool dpdm) {
         HAL_Delay_Milliseconds(50);
       }
       power.enableDPDM();
+    }
+  } else {
+    if (power.getInputCurrentLimit() != mapInputCurrentLimit(config_.vin_max_current)) {
+      power.setInputCurrentLimit(mapInputCurrentLimit(config_.vin_max_current));
+      if (power.getInputCurrentLimit() >= AUX_PWR_EN_INPUT_CURRENT_THRESHOLD) {
+        enableAuxPwr();
+      }
     }
   }
 
@@ -640,7 +680,14 @@ void PowerManager::batteryStateTransitioningTo(battery_state_t targetState, bool
       battMonitorPeriod_ = BATTERY_STATE_CHANGE_CHECK_PERIOD;
       DBG_PWR("notChargingDebounceCount_: %d", notChargingDebounceCount_);
       if (notChargingDebounceCount_ >= BATTERY_NOT_CHARGING_DEBOUNCE_COUNT) {
-        confirmBatteryState(g_batteryState, BATTERY_STATE_NOT_CHARGING);
+        PMIC power(true);
+        uint8_t status = power.getSystemStatus();
+        if (status & 0x01) {
+            // In VSYSMIN regulation (BAT < VSYSMIN), it's probably disconnected
+            confirmBatteryState(g_batteryState, BATTERY_STATE_DISCONNECTED);
+        } else {
+            confirmBatteryState(g_batteryState, BATTERY_STATE_NOT_CHARGING);
+        }
       }
     }
   } else if (targetState == BATTERY_STATE_CHARGING) {
@@ -936,14 +983,15 @@ void PowerManager::deinit() {
     }
   }
 
-  hal_pin_t pmicIntPin = LOW_BAT_UC;
-#if PLATFORM_ID == PLATFORM_MSOM
-  uint32_t revision = 0xFFFFFFFF;
-  hal_get_device_hw_version(&revision, nullptr);
-  if (revision == 1) {
-    pmicIntPin = LOW_BAT_DEPRECATED;
-  }
+#if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
+#if HAL_PLATFORM_SHARED_INTERRUPT
+  hal_interrupt_detach_ext(PMIC_INT, 0, (void*)isrHandlerEx);
+#else
+  detachInterrupt(PMIC_INT);
+#endif // HAL_PLATFORM_SHARED_INTERRUPT
 #endif
+
+  hal_pin_t pmicIntPin = getIntPin();
   detachInterrupt(pmicIntPin);
 
   g_batteryState = BATTERY_STATE_UNKNOWN;

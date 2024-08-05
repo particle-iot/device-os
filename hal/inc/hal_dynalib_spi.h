@@ -63,6 +63,7 @@ DYNALIB_FN(17, hal_spi, hal_spi_release, int32_t(hal_spi_interface_t, void*))
 #define BASE_IDX 16
 #endif
 DYNALIB_FN(BASE_IDX + 0, hal_spi, hal_spi_sleep, int(hal_spi_interface_t, bool, void*))
+DYNALIB_FN(BASE_IDX + 1, hal_spi, hal_spi_get_clock_divider, int(hal_spi_interface_t, uint32_t, void*))
 DYNALIB_END(hal_spi)
 
 #undef BASE_IDX
