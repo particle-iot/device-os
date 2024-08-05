@@ -71,7 +71,7 @@ size_t appendUriPath(char* buf, size_t bufSize, size_t pathLen, const CoapOption
         }
         *buf = '\0';
     }
-    return it.size() + 1;
+    return it.size() + (pathLen > 0) ? 1 : 0;
 }
 
 void logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload) {
