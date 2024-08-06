@@ -44,7 +44,7 @@ private:
 	Vector<message_handle_t> subscription_msg_ids;
 
 protected:
-	ProtocolError send_subscription(MessageChannel& channel, const char* filter, size_t filter_len, int flags);
+	ProtocolError send_subscription_impl(MessageChannel& channel, const char* filter, size_t filter_len, int flags);
 
 public:
 
@@ -170,7 +170,7 @@ public:
 	{
 		subscription_msg_ids.clear();
 		ProtocolError result = for_each([&](const FilteringEventHandler& handler) {
-			return send_subscription(channel, handler.filter, strnlen(handler.filter, sizeof(handler.filter)), handler.flags);
+			return send_subscription_impl(channel, handler.filter, strnlen(handler.filter, sizeof(handler.filter)), handler.flags);
 		});
 		return result;
 	}
@@ -178,7 +178,7 @@ public:
 	ProtocolError send_subscription(MessageChannel& channel, const char* filter, int flags)
 	{
 		subscription_msg_ids.clear();
-		return send_subscription(channel, filter, flags);
+		return send_subscription_impl(channel, filter, std::strlen(filter), flags);
 	}
 
 	const Vector<message_handle_t>& subscription_message_ids() const
