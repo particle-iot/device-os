@@ -86,8 +86,8 @@ enum class ContentType: int {
     CBOR = (int)protocol::CoapContentFormat::APPLICATION_CBOR ///< `application/cbor`.
 };
 
-typedef void (*EventHandlerWithContentType)(const char* name, const uint8_t* data, size_t size, ContentType type);
-typedef std::function<void(const char* name, const uint8_t* data, size_t size, ContentType type)> EventHandlerWithContentTypeFn;
+typedef void (*EventHandlerWithContentType)(const char* name, const char* data, size_t size, ContentType type);
+typedef std::function<void(const char* name, const char* data, size_t size, ContentType type)> EventHandlerWithContentTypeFn;
 
 } // namespace particle
 
@@ -290,11 +290,11 @@ public:
     particle::Future<bool> publish(const char* name, const char* data, int ttl);
 
     particle::Future<bool> publish(const char* name, const char* data, particle::ContentType type, PublishFlags flags = PublishFlags()) {
-        return publish_event(name, data, std::strlen(data), type, DEFAULT_CLOUD_EVENT_TTL, flags);
+        return publish(name, data, std::strlen(data), type, flags);
     }
 
-    particle::Future<bool> publish(const char* name, const uint8_t* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags()) {
-        return publish_event(name, (const char*)data, size, type, DEFAULT_CLOUD_EVENT_TTL, flags);
+    particle::Future<bool> publish(const char* name, const char* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags()) {
+        return publish_event(name, data, size, type, DEFAULT_CLOUD_EVENT_TTL, flags);
     }
 
     /**

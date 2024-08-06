@@ -31,9 +31,8 @@ void Publisher::add_ack_handler(message_id_t msg_id, CompletionHandler handler) 
     protocol->add_ack_handler(msg_id, std::move(handler), SEND_EVENT_ACK_TIMEOUT);
 }
 
-ProtocolError Publisher::send_event(MessageChannel& channel, const char* event_name,
-            const char* data, size_t data_size, int content_type, int ttl, EventType::Enum event_type, int flags,
-            system_tick_t time, CompletionHandler handler) {
+ProtocolError Publisher::send_event(MessageChannel& channel, const char* event_name, const char* data, size_t data_size,
+        int content_type, int ttl, int flags, system_tick_t time, CompletionHandler handler) {
     bool is_system_event = is_system(event_name);
     bool rate_limited = is_rate_limited(is_system_event, time);
     if (rate_limited) {
@@ -59,7 +58,7 @@ ProtocolError Publisher::send_event(MessageChannel& channel, const char* event_n
     e.code(CoapCode::POST);
     e.id(0); // Will be assigned and serialized by the message channel
     // Event messages have an empty token
-    e.option(CoapOption::URI_PATH, event_type); // "e" or "E" (option number: 11)
+    e.option(CoapOption::URI_PATH, "E"); // 11
     size_t name_len = strnlen(event_name, MAX_EVENT_NAME_LENGTH);
     e.option(CoapOption::URI_PATH, event_name, name_len); // 11
     if (content_type != CoapContentFormat::TEXT_PLAIN) {

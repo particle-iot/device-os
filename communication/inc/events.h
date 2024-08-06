@@ -32,19 +32,19 @@
 
 namespace EventType {
   enum Enum : char {
-    PUBLIC = 'e',			// 0x65
-    PRIVATE = 'E',			// 0x45
+    PUBLIC = 'e', // Deprecated (0x65)
+    PRIVATE = 'E', // Deprecated (0x45)
   };
 
   /**
    * These flags are encoded into the same 32-bit integer that already holds EventType::Enum
    */
   enum Flags {
-	  EMPTY_FLAGS = 0,
-	   NO_ACK = 0x2,
-	   WITH_ACK = 0x8,
-	   ASYNC = 0x10,        // not used here, but reserved since it's used in the system layer. Makes conversion simpler.
-	   ALL_FLAGS = NO_ACK | WITH_ACK | ASYNC
+    EMPTY_FLAGS = 0,
+    NO_ACK = 0x2,
+    WITH_ACK = 0x8,
+    ASYNC = 0x10,        // not used here, but reserved since it's used in the system layer. Makes conversion simpler.
+    ALL_FLAGS = NO_ACK | WITH_ACK | ASYNC
   };
 
   static_assert((PUBLIC & NO_ACK)==0 &&
@@ -53,16 +53,6 @@ namespace EventType {
 	  (PRIVATE & WITH_ACK)==0 &&
 	  (PRIVATE & ASYNC)==0 &&
 	  (PUBLIC & ASYNC)==0, "flags should be distinct from event type");
-
-/**
- * The flags are encoded in with the event type.
- */
-  inline Enum extract_event_type(uint32_t& value)
-  {
-	  Enum et = Enum(value & ~ALL_FLAGS);
-	  value = value & ALL_FLAGS;
-	  return et;
-  }
 } // namespace EventType
 
 #if PLATFORM_ID != PLATFORM_GCC

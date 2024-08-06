@@ -29,12 +29,12 @@ inline bool subscribeWithContentType(const char* name, EventHandler handler, voi
 
 void subscribeWithContentTypeCallbackWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
     auto cb = (EventHandlerWithContentType)arg;
-    cb(name, (const uint8_t*)data, dataSize, (ContentType)contentType);
+    cb(name, data, dataSize, (ContentType)contentType);
 }
 
 void subscribeWithContentTypeFunctionWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
     auto fn = (EventHandlerWithContentTypeFn*)arg;
-    (*fn)(name, (const uint8_t*)data, dataSize, (ContentType)contentType);
+    (*fn)(name, data, dataSize, (ContentType)contentType);
 }
 
 } // namespace
