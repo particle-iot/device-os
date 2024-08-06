@@ -186,7 +186,11 @@ int CloudClass::useLedgersImpl(const Vector<const char*>& usedNames) {
 #endif // Wiring_Ledger
 
 bool CloudClass::subscribe(const char* name, EventHandlerWithContentType handler) {
-    return subscribeWithContentType(name, (EventHandler)subscribeWithContentTypeCallbackWrapper, (void*)handler);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+    auto h = (EventHandler)subscribeWithContentTypeCallbackWrapper;
+#pragma GCC diagnostic pop
+    return subscribeWithContentType(name, h, (void*)handler);
 }
 
 bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handler) {
@@ -194,5 +198,9 @@ bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handl
     if (!fnPtr) {
         return false;
     }
-    return subscribeWithContentType(name, (EventHandler)subscribeWithContentTypeFunctionWrapper, fnPtr);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+    auto h = (EventHandler)subscribeWithContentTypeFunctionWrapper;
+#pragma GCC diagnostic pop
+    return subscribeWithContentType(name, h, fnPtr);
 }
