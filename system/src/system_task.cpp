@@ -770,7 +770,8 @@ int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler*
                 const char* event_name, const char* event_data, void* reserved)
 {
 #if HAL_PLATFORM_NRF52840
-	invokeEventHandler(handlerInfoSize, handlerInfo, event_name, event_data, reserved);
+	invokeEventHandler(handlerInfoSize, handlerInfo, event_name, event_data, event_data ? std::strlen(event_data) : 0,
+            (int)ContentType::TEXT);
 	return SYSTEM_ERROR_NONE;
 #else
     return SYSTEM_ERROR_NOT_SUPPORTED;
