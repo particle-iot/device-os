@@ -18,6 +18,7 @@
  */
 
 #include "protocol.h"
+#include "util/coap_message.h"
 
 #include <catch2/catch.hpp>
 #include "fakeit.hpp"
@@ -25,6 +26,8 @@ using namespace fakeit;
 
 using namespace particle;
 using namespace particle::protocol;
+
+namespace {
 
 class AbstractProtocol : public Protocol
 {
@@ -54,6 +57,28 @@ public:
 		return 0;
 	}
 };
+
+size_t encodeEvent(uint8_t* buf, size_t buf_size, uint16_t msg_id, const char *event_name, const char *data,
+		size_t data_size, int ttl, EventType::Enum event_type, bool confirmable)
+{
+	test::CoapMessage m;
+	m.type(confirmable ? CoapType::CON : CoapType::NON);
+	m.code(CoapCode::POST);
+	m.id(msg_id);
+	m.option(CoapOption::URI_PATH, event_type); // "e" or "E"
+	m.option(CoapOption::URI_PATH, event_name);
+	if (ttl != 60) {
+		m.option(CoapOption::MAX_AGE, ttl);
+	}
+	if (data_size > 0) {
+		m.payload(data, data_size);
+	}
+	auto s = m.encode();
+	std::memcpy(buf, s.data(), std::min(s.size(), buf_size));
+	return s.size();
+}
+
+} // namespace
 
 SCENARIO("default product co-ordinates are set")
 {
@@ -136,7 +161,7 @@ void event_ack(bool confirmable, bool unreliable)
 	Message event;
 	uint8_t event_buf[50];
 	event.set_buffer(event_buf, sizeof(event_buf));
-	size_t msglen = Messages::event(event_buf, 0x1234, "e", "", 0, 60, EventType::PUBLIC, confirmable);
+	size_t msglen = encodeEvent(event_buf, sizeof(event_buf), 0x1234, "e", "", 0, 60, EventType::PUBLIC, confirmable);
 	event.set_length(msglen);
 	event.decode_id();	// need this in the test since it's not done by our mock MessageChannel
 
@@ -225,7 +250,8 @@ void verify_event_type_with_flags(int flags, CoAPType::Enum coapType)
 	AbstractProtocol p(channel.get());
 	Publisher publisher(&p);
 	CompletionHandler completionHandler;
-	publisher.send_event(channel.get(),"abc","def", 60, EventType::PUBLIC, flags, 0, std::move(completionHandler));
+	publisher.send_event(channel.get(), "abc", "def", 3 /* data_size */, 0 /* content_type */, 60 /* ttl */, flags,
+			0 /* time */, std::move(completionHandler));
 
 	Verify(Method(channel,send));
 }

@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cassert>
 
 #include "coap_util.h"
 
@@ -28,6 +29,7 @@
 #include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
 #include "str_util.h"
+#include "logging.h"
 #include "check.h"
 
 namespace particle::protocol {
@@ -75,6 +77,7 @@ size_t appendUriPath(char* buf, size_t bufSize, size_t pathLen, const CoapOption
 }
 
 void logCoapMessage(LogLevel level, const char* category, const char* data, size_t size, bool logPayload) {
+#ifndef LOG_DISABLE
     CoapMessageDecoder d;
     const int r = d.decode(data, size);
     if (r < 0) {
@@ -144,6 +147,7 @@ void logCoapMessage(LogLevel level, const char* category, const char* data, size
         log_dump(level, category, d.payload(), d.payloadSize(), 0 /* flags */, nullptr /* reserved */);
         log_write(level, category, "\r\n", 2 /* size */, nullptr /* reserved */);
     }
+#endif // !defined(LOG_DISABLE)
 }
 
 } // namespace particle::protocol
