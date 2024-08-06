@@ -243,9 +243,8 @@ extern "C" {
 
 size_t system_interpolate_cloud_server_hostname(const char* var, size_t var_len, char* buf, size_t buf_len);
 
-void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo,
-                const char* event_name, const char* event_data, void* reserved);
-
+void invokeEventHandler(uint16_t handlerInfoSize, FilteringEventHandler* handlerInfo, const char* event_name,
+        const char* event_data, size_t data_size, int content_type);
 
 #ifdef __cplusplus
 }
