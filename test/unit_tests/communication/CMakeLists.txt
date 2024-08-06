@@ -6,12 +6,13 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/coap.cpp
   ${DEVICE_OS_DIR}/communication/src/coap_channel.cpp
   ${DEVICE_OS_DIR}/communication/src/communication_diagnostic.cpp
-  ${DEVICE_OS_DIR}/communication/src/events.cpp
+  ${DEVICE_OS_DIR}/communication/src/subscriptions.cpp
   ${DEVICE_OS_DIR}/communication/src/messages.cpp
   ${DEVICE_OS_DIR}/communication/src/protocol.cpp
   ${DEVICE_OS_DIR}/communication/src/publisher.cpp
   ${DEVICE_OS_DIR}/communication/src/variables.cpp
   ${DEVICE_OS_DIR}/communication/src/coap_defs.cpp
+  ${DEVICE_OS_DIR}/communication/src/coap_util.cpp
   ${DEVICE_OS_DIR}/communication/src/coap_message_encoder.cpp
   ${DEVICE_OS_DIR}/communication/src/coap_message_decoder.cpp
   ${DEVICE_OS_DIR}/communication/src/firmware_update.cpp
