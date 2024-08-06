@@ -293,6 +293,10 @@ public:
         return publish(name, data, std::strlen(data), type, flags);
     }
 
+    particle::Future<bool> publish(const char* name, const String& data, particle::ContentType type, PublishFlags flags = PublishFlags()) {
+        return publish(name, data.c_str(), data.length(), type, flags);
+    }
+
     particle::Future<bool> publish(const char* name, const char* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags()) {
         return publish_event(name, data, size, type, DEFAULT_CLOUD_EVENT_TTL, flags);
     }
