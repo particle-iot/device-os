@@ -101,6 +101,9 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
             break;
         }
     }
+    if (!nameLen) {
+        return ProtocolError::NO_ERROR; // Ignore an event without a name
+    }
 
     for (size_t i = 0; i < MAX_SUBSCRIPTIONS; ++i) {
         if (!event_handlers[i].handler) {
