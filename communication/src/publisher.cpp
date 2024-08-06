@@ -57,7 +57,7 @@ ProtocolError Publisher::send_event(MessageChannel& channel, const char* event_n
     CoapMessageEncoder e((char*)msg.buf(), msg.capacity());
     e.type(confirmable ? CoapType::CON : CoapType::NON);
     e.code(CoapCode::POST);
-    e.id(0); // Will be assigned by the message channel
+    e.id(0); // Will be assigned and serialized by the message channel
     // Event messages have an empty token
     e.option(CoapOption::URI_PATH, event_type); // "e" or "E" (option number: 11)
     size_t name_len = strnlen(event_name, MAX_EVENT_NAME_LENGTH);

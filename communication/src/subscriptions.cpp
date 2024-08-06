@@ -35,7 +35,7 @@ ProtocolError Subscriptions::send_subscription(MessageChannel& channel, const ch
     CoapMessageEncoder e((char*)msg.buf(), msg.capacity());
     e.type(channel.is_unreliable() ? CoapType::CON : CoapType::NON);
     e.code(CoapCode::GET);
-    e.id(0); // Will be assigned by the message channel
+    e.id(0); // Will be assigned and serialized by the message channel
     // Subscription messages have an empty token
     e.option(CoapOption::URI_PATH, "e"); // 11
     e.option(CoapOption::URI_PATH, filter, filterLen); // 11
@@ -90,8 +90,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
             }
             nameLen += appendUriPath(name, sizeof(name), nameLen, it);
             if (nameLen >= sizeof(name)) {
-                LOG(ERROR, "Event name is too long");
-                return ProtocolError::MALFORMED_MESSAGE;
+                nameLen = sizeof(name) - 1; // Truncate the event name
             }
             break;
         }
