@@ -500,8 +500,8 @@ public:
 	ProtocolError post_description(int desc_flags, bool force);
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
-	bool send_event(const char *event_name, const char *data, size_t data_size, int content_type, int ttl,
-			EventType::Enum event_type, int flags, CompletionHandler handler)
+	bool send_event(const char *event_name, const char *data, size_t data_size, int content_type, int ttl, int flags,
+			CompletionHandler handler)
 	{
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		const bool updating = firmwareUpdate.isRunning();
@@ -514,7 +514,7 @@ public:
 			return false;
 		}
 		const ProtocolError error = publisher.send_event(channel, event_name, data, data_size, content_type, ttl,
-				event_type, flags, callbacks.millis(), std::move(handler));
+				flags, callbacks.millis(), std::move(handler));
 		if (error != NO_ERROR)
 		{
 			handler.setError(toSystemError(error));

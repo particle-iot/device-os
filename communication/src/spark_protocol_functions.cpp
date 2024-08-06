@@ -135,8 +135,7 @@ bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name,
     if (!data_size.has_value()) {
         data_size = data ? std::strlen(data) : 0;
     }
-    EventType::Enum event_type = EventType::extract_event_type(flags);
-    return protocol->send_event(event_name, data, data_size.value(), content_type, ttl, event_type, flags, std::move(handler));
+    return protocol->send_event(event_name, data, data_size.value(), content_type, ttl, flags, std::move(handler));
 }
 
 bool spark_protocol_send_subscription_device_deprecated(ProtocolFacade* protocol, const char* event_name,

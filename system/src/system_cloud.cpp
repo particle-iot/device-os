@@ -153,24 +153,12 @@ system_tick_t spark_sync_time_last(time32_t* tm32, time_t* tm)
     return spark_protocol_time_last_synced(system_cloud_protocol_instance(), tm32, tm);
 }
 
-/**
- * Convert from the API flags to the communications lib flags
- * The event visibility flag (public/private) is encoded differently. The other flags map directly.
- */
-inline uint32_t convert_event_flags(uint32_t flags) {
-	bool priv = flags & PUBLISH_EVENT_FLAG_PRIVATE;
-	flags &= ~PUBLISH_EVENT_FLAG_PRIVATE;
-	flags |= !priv ? EventType::PUBLIC : EventType::PRIVATE;
-	return flags;
-}
-
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved)
 {
     if (flags & PUBLISH_EVENT_FLAG_ASYNC) {
         SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(spark_send_event(name, data, ttl, flags, reserved), true);
-    }
-    else {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
+    } else {
+        SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
     }
 
     spark_protocol_send_event_data d = {};
@@ -194,7 +182,10 @@ bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flag
         d.data_size = data ? std::strlen(data) : 0;
     }
 
-    return spark_protocol_send_event(sp, name, data, ttl, convert_event_flags(flags), &d);
+    // Visibility flags no longer have effect
+    flags &= ~PUBLISH_EVENT_FLAG_PRIVATE;
+
+    return spark_protocol_send_event(sp, name, data, ttl, flags, &d);
 }
 
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)
