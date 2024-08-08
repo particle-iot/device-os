@@ -118,7 +118,7 @@ bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name,
         int ttl, uint32_t flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
     CompletionHandler handler;
-    std::optional<size_t> data_size = 0;
+    std::optional<size_t> data_size;
     int content_type = (int)CoapContentFormat::TEXT_PLAIN;
     if (reserved) {
         auto r = static_cast<const spark_protocol_send_event_data*>(reserved);

@@ -111,7 +111,7 @@ bool spark_subscribe(const char* event_name, EventHandler handler, void* handler
 {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_subscribe(event_name, handler, handler_data, scope_deprecated, device_id_deprecated, param));
     int flags = 0;
-    if (param && param->flags & SUBSCRIBE_FLAG_BINARY_DATA) {
+    if (param && (param->flags & SUBSCRIBE_FLAG_BINARY_DATA)) {
         flags |= SubscriptionFlag::BINARY_DATA;
     }
     bool ok = spark_protocol_add_event_handler(sp, event_name, handler, flags, nullptr /* device_id_deprecated */, handler_data);
