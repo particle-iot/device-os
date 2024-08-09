@@ -30,16 +30,25 @@
 #include "coap_message_decoder.h"
 #include "str_util.h"
 #include "logging.h"
+#include "scope_guard.h"
 #include "check.h"
 
 namespace particle::protocol {
 
 int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type) {
+    auto msgLen = msg.length();
+    auto msgCapacity = msg.capacity();
     Message resp;
-    auto err = channel.response(msg, resp, msg.capacity() - msg.length());
+    auto err = channel.response(msg, resp, msgCapacity - msgLen);
     if (err != ProtocolError::NO_ERROR) {
         return toSystemError(err);
     }
+    SCOPE_GUARD({
+        // BufferMessageChannel::response() alters the capacity of the original message. Restore it
+        // so that the calling code could still use the extra space available in the message
+        msg.set_buffer(msg.buf(), msgCapacity);
+        msg.set_length(msgLen);
+    });
     CoapMessageEncoder e((char*)resp.buf(), resp.capacity());
     e.type(type);
     e.code(CoapCode::EMPTY);
