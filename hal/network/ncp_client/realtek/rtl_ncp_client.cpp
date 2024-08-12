@@ -56,6 +56,7 @@ extern "C" {
 #include "bt_intf.h"
 
 extern "C" void rtw_efuse_boot_write(void);
+extern "C" uint32_t rltk_wlan_get_link_err(void);
 
 void wifi_set_country_code(void) {
     uint8_t channel_plan;
@@ -300,6 +301,84 @@ NcpConnectionState RealtekNcpClient::connectionState() {
     return connState_;
 }
 
+void RealtekNcpClient::parseDisconnectReason(char* buf, size_t bufLen) {
+    uint16_t reason = 0;
+    if (buf) {
+        reason = *(uint16_t*)(buf + 6 /* skip MAC */);
+    }
+    uint32_t linkErr = rltk_wlan_get_link_err();
+
+    const char* msg = "";
+    const char* extraMsg = "";
+    const char* reasonMsg = "";
+
+    // From wifi_link_err_parse()
+    if(linkErr & BIT(0)) {
+        msg = "received deauth";
+    } else if(linkErr & BIT(1)) {
+        msg = "received deassoc";
+    } else if (linkErr & BIT(2)) {
+        msg = "scan stage, no beacon while connecting";
+    } else if(linkErr & BIT(3)) {
+        msg = "auth stage, auth timeout";
+        if (reason == 65531) {
+            extraMsg = "request has been declined";
+        }
+    } else if(linkErr & BIT(4)) {
+        msg = "assoc stage, assoc timeout";
+    } else if(linkErr & (BIT(5) | BIT(6) | BIT(7))) {
+        msg = "4handshake stage, 4-way waiting timeout";
+    } else if(linkErr & BIT(8)) {
+        msg = "assoc stage, assoc reject (assoc rsp status > 0)";
+    } else if(linkErr & BIT(9)) {
+        msg = "auth stage, auth fail (auth rsp status > 0)";
+    } else if(linkErr & BIT(10)){
+        msg = "scan stage, scan timeout";
+    } else if(linkErr & BIT(11)) {
+        msg = "auth stage, WPA3 auth fail";
+        if (reason == 65531) {
+            extraMsg = "request has been declined";
+        } else {
+            extraMsg = "password error";
+        }
+    }
+
+    if(linkErr & (BIT(0) | BIT(1))) {
+        if(linkErr & BIT(20)) {
+            msg = "handshake done, connected stage, recv deauth/deassoc";
+        } else if(linkErr & BIT(19)) {
+            msg = "handshake processing, 4handshake stage, recv deauth/deassoc";
+        } else if(linkErr & BIT(18)) {
+            msg = "assoc successed, 4handshake stage, recv deauth/deassoc";
+        } else if(linkErr & BIT(17)) {
+            msg = "auth successed, assoc stage, recv deauth/deassoc";
+        } else if(linkErr & BIT(16)) {
+            msg = "scan done, found ssid, auth stage, recv deauth/deassoc";
+        } else {
+            msg = "connected stage, recv deauth/deassoc";
+        }
+    }
+
+    switch(reason) {
+        case 17:
+            reasonMsg = "auth stage, ap auth full";
+            break;
+        case 65530:
+            reasonMsg = "SA query timeout";
+            break;
+        case 65534:
+            reasonMsg = "connected stage, ap changed";
+            break;
+        case 65535:
+            reasonMsg = "connected stage, loss beacon";
+            break;
+        default:
+            break;
+    }
+
+    LOG(WARN, "Disconnect linkError=%08x reason=%04x: %s %s %s", linkErr, reason, msg, extraMsg, reasonMsg);
+}
+
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
     CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     int rtlError = RTW_ERROR;
@@ -310,12 +389,13 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
 
             connectionState(NcpConnectionState::CONNECTING);
 
-            wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int buf_len, int flags, void* userdata) -> void {
+            wifi_reg_event_handler(WIFI_EVENT_DISCONNECT, [](char* buf, int bufLen, int flags, void* userdata) -> void {
                 RealtekNcpClient* client = (RealtekNcpClient*)userdata;
                 if (client->connectionState() == NcpConnectionState::CONNECTED) {
                     LOG(TRACE, "Disconnected");
                     client->connectionState(NcpConnectionState::DISCONNECTED);
                 }
+                client->parseDisconnectReason(buf, (size_t)bufLen);
             }, (void*)this);
 
             LOG(INFO, "Try to connect to ssid: %s", ssid);
@@ -357,7 +437,7 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
         info->channel(channel_num);
     }
 
-	char ssid_buf[33] = {};//32 octets for SSID, plus null terminator
+    char ssid_buf[33] = {};//32 octets for SSID, plus null terminator
     rtlError = wext_get_ssid(WLAN0_NAME, (unsigned char *) ssid_buf);
     if (rtlError < 0) {
         LOG(WARN, "wext_get_ssid err: %d", rtlError);
