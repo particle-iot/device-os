@@ -508,5 +508,481 @@ test(BLE_12_BLE_Address_Validation) {
     assertFalse(address.isValid());
 }
 
+test(BLE_13_timed_scan) {
+    BLE.on();
+
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 500; // *10ms = 5s overall duration
+    params.interval = 8000; // *0.625ms = 5s
+    params.window = 8000; // *0.625 = 5s
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    struct BleScanData {
+        size_t results;
+        int retval;
+    };
+    BleScanData data = {};
+
+    // Scan with duplicates
+    auto start = millis();
+    int r = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+        auto data = (BleScanData*)context;
+        data->results++;
+    }, &data);
+    auto end = millis();
+
+    assertFalse(BLE.scanning());
+    assertMore(r, 0);
+    assertMoreOrEqual(end - start, 5000);
+    assertLessOrEqual(end - start, 6000);
+
+    // Regular scan
+    memset(&data, 0, sizeof(data));
+    start = millis();
+    r = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+        auto data = (BleScanData*)context;
+        data->results++;
+    }, &data);
+    end = millis();
+
+    assertFalse(BLE.scanning());
+    assertMore(r, 0);
+    assertMoreOrEqual(end - start, 5000);
+    assertLessOrEqual(end - start, 6000);
+
+    // Scan with duplicates in a separate thread
+    memset(&data, 0, sizeof(data));
+    start = millis();
+    Thread* t = new Thread("test", [](void* param) -> os_thread_return_t {
+        auto data = (BleScanData*)param;
+        data->retval = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, param);
+    }, (void*)&data);
+    SCOPE_GUARD({
+        if (t) {
+            t->join();
+            delete t;
+        }
+    });
+    assertTrue(t);
+    delay(500);
+    assertTrue(BLE.scanning());
+    waitForNot(BLE.scanning, 10000);
+    end = millis();
+    assertFalse(BLE.scanning());
+    t->join();
+    delete t;
+    t = nullptr;
+    assertMore(data.retval, 0);
+    assertMore(data.results, 0);
+    assertMoreOrEqual(end - start, 5000);
+    assertLessOrEqual(end - start, 6000);
+
+    // Regular scan in a separate thread
+    memset(&data, 0, sizeof(data));
+    start = millis();
+    t = new Thread("test", [](void* param) -> os_thread_return_t {
+        auto data = (BleScanData*)param;
+        data->retval = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, param);
+    }, (void*)&data);
+    SCOPE_GUARD({
+        if (t) {
+            t->join();
+            delete t;
+        }
+    });
+    assertTrue(t);
+    delay(500);
+    assertTrue(BLE.scanning());
+    waitForNot(BLE.scanning, 10000);
+    end = millis();
+    assertFalse(BLE.scanning());
+    t->join();
+    delete t;
+    t = nullptr;
+    assertMore(data.retval, 0);
+    assertMore(data.results, 0);
+    assertMoreOrEqual(end - start, 5000);
+    assertLessOrEqual(end - start, 6000);
+}
+
+test(BLE_14_timed_scan_interrupted_externally) {
+    BLE.on();
+
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 500; // *10ms = 5s overall duration
+    params.interval = 8000; // *0.625ms = 5s
+    params.window = 8000; // *0.625 = 5s
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    struct BleScanData {
+        size_t results;
+        int retval;
+    };
+    BleScanData data = {};
+
+    // Scan with duplicates in a separate thread
+    memset(&data, 0, sizeof(data));
+    auto start = millis();
+    Thread* t = new Thread("test", [](void* param) -> os_thread_return_t {
+        auto data = (BleScanData*)param;
+        data->retval = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, param);
+    }, (void*)&data);
+    SCOPE_GUARD({
+        if (t) {
+            t->join();
+            delete t;
+        }
+    });
+    assertTrue(t);
+    delay(1000);
+    assertTrue(BLE.scanning());
+    assertEqual(0, BLE.stopScanning());
+    waitForNot(BLE.scanning, 10000);
+    auto end = millis();
+    assertFalse(BLE.scanning());
+    t->join();
+    delete t;
+    t = nullptr;
+    assertMore(data.retval, 0);
+    assertMoreOrEqual(end - start, 1000);
+    assertLessOrEqual(end - start, 2000);
+
+    // Regular scan in a separate thread
+    memset(&data, 0, sizeof(data));
+    start = millis();
+    t = new Thread("test", [](void* param) -> os_thread_return_t {
+        auto data = (BleScanData*)param;
+        data->retval = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, param);
+    }, (void*)&data);
+    SCOPE_GUARD({
+        if (t) {
+            t->join();
+            delete t;
+        }
+    });
+    assertTrue(t);
+    delay(1000);
+    assertTrue(BLE.scanning());
+    assertEqual(0, BLE.stopScanning());
+    waitForNot(BLE.scanning, 10000);
+    end = millis();
+    assertFalse(BLE.scanning());
+    t->join();
+    delete t;
+    t = nullptr;
+    assertMore(data.retval, 0);
+    assertMoreOrEqual(end - start, 1000);
+    assertLessOrEqual(end - start, 2000);
+}
+
+test(BLE_15_timed_scan_interrupted_inside_scan_callback) {
+    BLE.on();
+
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 500; // *10ms = 5s overall duration
+    params.interval = 8000; // *0.625ms = 5s
+    params.window = 8000; // *0.625 = 5s
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    struct BleScanData {
+        size_t results;
+        int retval;
+    };
+    BleScanData data = {};
+
+    // Scan with duplicates
+    auto start = millis();
+    int r = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+        auto data = (BleScanData*)context;
+        data->results++;
+        BLE.stopScanning();
+    }, &data);
+    auto end = millis();
+
+    assertFalse(BLE.scanning());
+    assertMoreOrEqual(r, 1);
+    assertLess(end - start, 2500);
+
+    // Regular scan
+    memset(&data, 0, sizeof(data));
+    start = millis();
+    r = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+        auto data = (BleScanData*)context;
+        data->results++;
+        BLE.stopScanning();
+    }, &data);
+    end = millis();
+
+    assertFalse(BLE.scanning());
+    assertMoreOrEqual(r, 1);
+    assertLess(end - start, 2500);
+}
+
+test(BLE_16_indefinite_scan_interrupted_externally) {
+    BLE.on();
+
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 0; // indefinite
+    params.interval = 8000; // *0.625ms = 5s
+    params.window = 8000; // *0.625 = 5s
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    struct BleScanData {
+        size_t results;
+        int retval;
+    };
+    BleScanData data = {};
+
+    // Scan with duplicates in a separate thread
+    memset(&data, 0, sizeof(data));
+    auto start = millis();
+    Thread* t = new Thread("test", [](void* param) -> os_thread_return_t {
+        auto data = (BleScanData*)param;
+        data->retval = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, param);
+    }, (void*)&data);
+    SCOPE_GUARD({
+        if (t) {
+            t->join();
+            delete t;
+        }
+    });
+    assertTrue(t);
+    delay(1000);
+    assertTrue(BLE.scanning());
+    assertEqual(0, BLE.stopScanning());
+    waitForNot(BLE.scanning, 10000);
+    auto end = millis();
+    assertFalse(BLE.scanning());
+    t->join();
+    delete t;
+    t = nullptr;
+    assertMore(data.retval, 0);
+    assertMoreOrEqual(end - start, 1000);
+    assertLessOrEqual(end - start, 2000);
+
+    // Regular scan in a separate thread
+    memset(&data, 0, sizeof(data));
+    start = millis();
+    t = new Thread("test", [](void* param) -> os_thread_return_t {
+        auto data = (BleScanData*)param;
+        data->retval = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, param);
+    }, (void*)&data);
+    SCOPE_GUARD({
+        if (t) {
+            t->join();
+            delete t;
+        }
+    });
+    assertTrue(t);
+    delay(1000);
+    assertTrue(BLE.scanning());
+    assertEqual(0, BLE.stopScanning());
+    waitForNot(BLE.scanning, 10000);
+    end = millis();
+    assertFalse(BLE.scanning());
+    t->join();
+    delete t;
+    t = nullptr;
+    assertMore(data.retval, 0);
+    assertMoreOrEqual(end - start, 1000);
+    assertLessOrEqual(end - start, 2000);
+}
+
+test(BLE_17_indefinite_scan_interrupted_inside_scan_callback) {
+    BLE.on();
+
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 0; // indefinite
+    params.interval = 8000; // *0.625ms = 5s
+    params.window = 8000; // *0.625 = 5s
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    struct BleScanData {
+        size_t results;
+        int retval;
+    };
+    BleScanData data = {};
+
+    // Scan with duplicates
+    auto start = millis();
+    int r = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+        auto data = (BleScanData*)context;
+        data->results++;
+        BLE.stopScanning();
+    }, &data);
+    auto end = millis();
+
+    assertFalse(BLE.scanning());
+    assertMoreOrEqual(r, 1);
+    assertLess(end - start, 2500);
+
+    // Regular scan
+    memset(&data, 0, sizeof(data));
+    start = millis();
+    r = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+        auto data = (BleScanData*)context;
+        data->results++;
+        BLE.stopScanning();
+    }, &data);
+    end = millis();
+
+    assertFalse(BLE.scanning());
+    assertMoreOrEqual(r, 1);
+    assertLess(end - start, 2500);
+}
+
+test(BLE_17_other_ble_operations_while_timed_scanning) {
+    BLE.on();
+
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 3000; // *10ms = 30s overall duration
+    params.interval = 8000; // *0.625ms = 5s
+    params.window = 8000; // *0.625 = 5s
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    struct BleScanData {
+        size_t results;
+        int retval;
+    };
+    BleScanData data = {};
+
+    // Scan with duplicates in a separate thread
+    memset(&data, 0, sizeof(data));
+    auto start = millis();
+    Thread* t = new Thread("test", [](void* param) -> os_thread_return_t {
+        auto data = (BleScanData*)param;
+        data->retval = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, param);
+    }, (void*)&data);
+    SCOPE_GUARD({
+        if (t) {
+            t->join();
+            delete t;
+        }
+    });
+    assertTrue(t);
+    delay(1000);
+    assertTrue(BLE.scanning());
+
+    assertFalse(BLE.advertising());
+    assertEqual(0, BLE.advertise());
+    assertTrue(BLE.advertising());
+    assertEqual(0, BLE.stopAdvertising());
+    assertFalse(BLE.advertising());
+
+    assertTrue(BLE.scanning());
+
+    auto m = millis();
+
+    assertEqual(0, BLE.stopScanning());
+    waitForNot(BLE.scanning, 10000);
+    auto end = millis();
+    assertFalse(BLE.scanning());
+    t->join();
+    delete t;
+    t = nullptr;
+    assertMore(data.retval, 0);
+    assertMoreOrEqual(end - start, m - start);
+    assertLessOrEqual(end - start, (m - start) + 2000);
+}
+
+test(BLE_18_other_ble_operations_while_indefinite_scanning) {
+    BLE.on();
+
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 0; // indefinite
+    params.interval = 8000; // *0.625ms = 5s
+    params.window = 8000; // *0.625 = 5s
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    struct BleScanData {
+        size_t results;
+        int retval;
+    };
+    BleScanData data = {};
+
+    // Scan with duplicates in a separate thread
+    memset(&data, 0, sizeof(data));
+    auto start = millis();
+    Thread* t = new Thread("test", [](void* param) -> os_thread_return_t {
+        auto data = (BleScanData*)param;
+        data->retval = BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, param);
+    }, (void*)&data);
+    SCOPE_GUARD({
+        if (t) {
+            t->join();
+            delete t;
+        }
+    });
+    assertTrue(t);
+    delay(1000);
+    assertTrue(BLE.scanning());
+
+    assertFalse(BLE.advertising());
+    assertEqual(0, BLE.advertise());
+    assertTrue(BLE.advertising());
+    assertEqual(0, BLE.stopAdvertising());
+    assertFalse(BLE.advertising());
+
+    assertTrue(BLE.scanning());
+
+    auto m = millis();
+
+    assertEqual(0, BLE.stopScanning());
+    waitForNot(BLE.scanning, 10000);
+    auto end = millis();
+    assertFalse(BLE.scanning());
+    t->join();
+    delete t;
+    t = nullptr;
+    assertMore(data.retval, 0);
+    assertMoreOrEqual(end - start, m - start);
+    assertLessOrEqual(end - start, (m - start) + 2000);
+}
+
 #endif // #if Wiring_BLE == 1
 

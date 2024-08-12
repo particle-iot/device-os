@@ -1418,8 +1418,11 @@ void BleObject::Observer::onScanGuardTimerExpired(os_timer_t timer) {
 }
 
 int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
+    BleLock lk;
+
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
     SCOPE_GUARD ({
+        stopScanning();
         clearPendingResult();
     });
     ble_gap_scan_params_t bleGapScanParams = toPlatformScanParams();
@@ -1439,6 +1442,7 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
             // We don't return here, as scanning may still timeout by Softdevice as expected.
         }
     }
+    lk.unlock();
     if (os_semaphore_take(scanSemaphore_, CONCURRENT_WAIT_FOREVER, false)) {
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
@@ -1447,9 +1451,12 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
 }
 
 int BleObject::Observer::stopScanning() {
+    BleLock lk;
+
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
+
     if (os_timer_is_active(scanGuardTimer_, nullptr)) {
         os_timer_change(scanGuardTimer_, OS_TIMER_CHANGE_STOP, hal_interrupt_is_isr() ? true : false, 0, 0, nullptr);
     }
@@ -1458,16 +1465,10 @@ int BleObject::Observer::stopScanning() {
     if (sd_ble_gap_scan_stop() != NRF_SUCCESS) {
         // LOG(ERROR, "Device is not in scanning state.");
     }
-    bool give = false;
-    ATOMIC_BLOCK() {
-        if (isScanning_) {
-            isScanning_ = false;
-            give = true;
-        }
-    }
-    if (give) {
-        os_semaphore_give(scanSemaphore_, false);
-    }
+    isScanning_ = false;
+
+    // Just in case
+    os_semaphore_give(scanSemaphore_, false);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1783,8 +1784,6 @@ int BleObject::ConnectionsManager::connect(const hal_ble_conn_cfg_t* config, hal
     CHECK_TRUE(connections_.size() < BLE_MAX_LINK_COUNT, SYSTEM_ERROR_LIMIT_EXCEEDED);
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(connHandle, SYSTEM_ERROR_INVALID_ARGUMENT);
-    // Stop scanning first to give the scanning semaphore if possible.
-    CHECK(BleObject::getInstance().observer()->stopScanning());
     SCOPE_GUARD ({
         connectingAddr_ = {};
     });
@@ -4133,7 +4132,6 @@ int hal_ble_gap_get_scan_parameters(hal_ble_scan_params_t* scan_params, void* re
 }
 
 int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, void* reserved) {
-    BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_start_scan().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().observer()->startScanning(callback, context);
