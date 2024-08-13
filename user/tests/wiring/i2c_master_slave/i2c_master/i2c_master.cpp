@@ -8,6 +8,11 @@ static void I2C_Master_Configure()
     USE_WIRE.begin();
 }
 
+test(I2C_000_Prepare)
+{
+
+}
+
 test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
 {
     Serial.println("This is Master");
@@ -33,7 +38,7 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
 
         USE_WIRE.beginTransmission(I2C_ADDRESS);
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
-        
+
         // Sleep API should keep the buffer state as-is
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
@@ -69,7 +74,7 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
 
         // Enter sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
-        
+
         // Exit sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
@@ -104,7 +109,7 @@ test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underfl
 
         USE_WIRE.beginTransmission(I2C_ADDRESS);
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
-        
+
         // End with STOP
         assertEqual(USE_WIRE.endTransmission(true), 0);
         // delay(I2C_DELAY);
@@ -323,10 +328,15 @@ test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
 
         // Enter sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
-        
+
         // Exit sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
+}
+
+test(I2C_ZZZ_Cleanup)
+{
+
 }

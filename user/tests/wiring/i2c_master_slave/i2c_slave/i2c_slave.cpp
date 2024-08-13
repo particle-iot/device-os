@@ -50,7 +50,7 @@ void I2C_Slave_On_Receive_Callback(int) {
         done = 1;
 }
 
-test(I2C_01_Master_Slave_Slave_Transfer)
+test(I2C_000_Prepare)
 {
     Serial.println("This is Slave");
     Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
@@ -64,9 +64,37 @@ test(I2C_01_Master_Slave_Slave_Transfer)
     // Dummy call to initialize the seed
     (void)random_range(0, 1);
 
-    while(done == 0) {
-        delay(100);
-    }
+    // while(done == 0) {
+    //     delay(100);
+    // }
+}
 
+test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
+{
+
+}
+
+test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underflow)
+{
+
+}
+
+test(I2C_03_Master_Slave_Master_WireTransmission_And_Short_Timeout)
+{
+
+}
+
+test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_And_Standard_Timeout)
+{
+
+}
+
+test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
+{
+
+}
+
+test(I2C_ZZZ_Cleanup)
+{
     USE_WIRE.end();
 }
