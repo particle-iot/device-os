@@ -12,6 +12,16 @@ static uint8_t s_mcpAddress = 0x00;
 
 #define LOOP_COUNT 10000
 
+// Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
+//     // { "comm", LOG_LEVEL_NONE }, // filter out comm messages
+//     // { "system", LOG_LEVEL_INFO } // only info level for system messages
+// });
+
+test(000_I2C_MCP23017_Prepare) {
+    // Serial1.begin(115200);
+    // Test::out = &Serial1;
+}
+
 externTest(0_I2C_scanBus);
 
 test(1_I2C_MCP23017_doRequestControlNoStopReadNoStop) {

@@ -15,15 +15,22 @@ test(0_I2C_scanBus) {
 
         if (err == 0) {
             i2c::devices.append(addr);
-            DEBUG("I2C device @ 0x%02x", addr);
+            // Test::out->printlnf("I2C device @ 0x%02x", addr);
+            Log.trace("I2C device @ 0x%02x", addr);
         } else if (err == 0x03) {
             // No one ACKed the address
             // Check that this doesn't cause standard 100ms delay in I2C HAL
             assertMoreOrEqual(ts2, ts1);
             assertLessOrEqual(ts2 - ts1, 50);
+            // Test::out->printlnf("err1 @ 0x%02x %ld", addr, err);
+            Log.trace("err1 @ 0x%02x %ld", addr, err);
         } else {
-            DEBUG("err @ 0x%02x %d", addr, err);
+            // Test::out->printlnf("err2 @ 0x%02x %ld", addr, err);
+            Log.trace("err2 @ 0x%02x %ld", addr, err);
         }
+        // Test::out->printlnf("addr 0x%02x", addr);
+        Log.trace("addr 0x%02x", addr);
+        // assertEqual(addr, 19);
     }
 
     assertEqual(i2c::errorCount, 0);
