@@ -112,6 +112,11 @@ endif
 # We are using newlib-nano for all the platforms
 CFLAGS += --specs=nano.specs
 
+ifneq ($(LTO_EXTRA_OPTIMIZATIONS),)
+CFLAGS += -fipa-pta -fdevirtualize-at-ltrans -fdevirtualize-speculatively -fmerge-all-constants
+LDFLAGS += -fipa-pta -fdevirtualize-at-ltrans -fdevirtualize-speculatively -fmerge-all-constants
+endif
+
 # Check if the compiler version is the minimum required
 version_to_number=$(shell v=$1; v=($${v//./ }); echo $$((v[0] * 10000 + v[1] * 100 + v[2])))
 get_major_version=$(shell v=$1; v=($${v//./ }); echo $${v[0]})
