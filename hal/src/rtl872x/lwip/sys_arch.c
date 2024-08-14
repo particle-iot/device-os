@@ -39,6 +39,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
+#include "timer_hal.h"
 
 /** Set this to 1 if you want the stack size passed to sys_thread_new() to be
  * interpreted as number of stack words (FreeRTOS-like).
@@ -78,7 +79,7 @@
  * Default is 1, where FreeRTOS ticks are used to calculate back to ms.
  */
 #ifndef LWIP_FREERTOS_SYS_NOW_FROM_FREERTOS
-#define LWIP_FREERTOS_SYS_NOW_FROM_FREERTOS           1
+#define LWIP_FREERTOS_SYS_NOW_FROM_FREERTOS           0
 #endif
 
 #if !configSUPPORT_DYNAMIC_ALLOCATION
@@ -134,6 +135,12 @@ u32_t
 sys_now(void)
 {
   return xTaskGetTickCount() * portTICK_PERIOD_MS;
+}
+#else
+u32_t
+sys_now(void)
+{
+  return HAL_Timer_Get_Milli_Seconds();
 }
 #endif
 

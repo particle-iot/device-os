@@ -14,6 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+#define DEBUG_BUILD
 #include "logging.h"
 LOG_SOURCE_CATEGORY("system.cm")
 
@@ -38,13 +39,15 @@ LOG_SOURCE_CATEGORY("system.cm")
 
 namespace particle { namespace system {
 
-typedef struct {
+typedef struct DTLSPlaintext_t {
     uint8_t type;
     uint8_t version[2];
     uint16_t epoch;
     uint8_t sequence_number[6];
     uint16_t length;
 } __attribute__((__packed__)) DTLSPlaintext_t;
+
+constexpr uint16_t EPOCH_BASE = 0x8000;
 
 static const char* netifToName(uint8_t interfaceNumber) {
     switch(interfaceNumber) {
@@ -56,32 +59,22 @@ static const char* netifToName(uint8_t interfaceNumber) {
 #endif
 #if HAL_PLATFORM_WIFI
         case NETWORK_INTERFACE_WIFI_STA:
-            return "WiFi    ";
+            return "WiFi";
 #endif
         default:
             return "";
     }
 }
 
-static int getCloudHostnameAndPort(uint16_t * port, char * hostname, int hostnameLength) {
+static int getCloudHostnameAndPort(addrinfo** info, CloudServerAddressType* type, bool allowCached = false) {
     ServerAddress server_addr = {};
-    char tmphost[sizeof(server_addr.domain) + 32] = {};
-    if (hostnameLength < (int)(sizeof(tmphost)+1)) {
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
-
     HAL_FLASH_Read_ServerAddress(&server_addr);
     if (server_addr.port == 0 || server_addr.port == 0xFFFF) {
         server_addr.port = spark_cloud_udp_port_get();
     }
 
-    system_string_interpolate(server_addr.domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
-    strcpy(hostname, tmphost);
-    *port = server_addr.port;
-
-    LOG_DEBUG(TRACE, "Cloud hostname#port %s#%d", hostname, *port);
-    return 0;
-};
+    return system_cloud_resolv_address(IPPROTO_UDP, &server_addr, allowCached ? (sockaddr*)&g_system_cloud_session_data.address : nullptr, info, type, false /* useCachedAddrInfo */);
+}
 
 ConnectionManager::ConnectionManager()
     : preferredNetwork_(NETWORK_INTERFACE_ALL) {
@@ -131,7 +124,7 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     network_handle_t bestNetwork = NETWORK_INTERFACE_ALL;
 
     if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(preferredNetwork_, 0, nullptr)) {
-        LOG_DEBUG(TRACE, "Using preferred network: %lu", preferredNetwork_);
+        LOG_DEBUG(TRACE, "Using preferred network: %s", netifToName(preferredNetwork_));
         return preferredNetwork_;
     }
 
@@ -140,7 +133,7 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     // Network has best criteria based on network tester results
     for (auto& i: bestNetworks_) {
         if (network_ready(i, 0, nullptr)) {
-            LOG_DEBUG(TRACE, "Using best network: %lu", i);
+            LOG_DEBUG(TRACE, "Using best network: %s", netifToName(i));
             return i;
         }
     }
@@ -151,22 +144,61 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     return bestNetwork;
 }
 
-int ConnectionManager::testConnections(bool cache) {
-    if (cache) {
-        testResultsActual_ = true;
-    } else if (!cache && testResultsActual_) {
+int ConnectionManager::testConnections(bool background) {
+    if (!background) {
+        LOG(INFO, "testConnections full");
+    }
+    if (!background && testResultsActual_) {
         // Skip the test once
         testResultsActual_ = false;
         LOG_DEBUG(TRACE, "Skipping connection test as there are valid cached results");
         return 0;
     }
-    ConnectionTester tester;
-    int r = tester.testConnections();
+
+    int r = SYSTEM_ERROR_NETWORK;
+    Vector<ConnectionMetrics> metrics;
+
+    if (!background) {
+        if (backgroundTestInProgress_) {
+            LOG(WARN, "Background reachability test aborted");
+        }
+        backgroundTestInProgress_ = false;
+        backgroundTester_.reset();
+        testResultsActual_ = false;
+
+        LOG(INFO, "Full reachability test started");
+        ConnectionTester tester;
+        CHECK(tester.prepare(true /* full test */));
+        // Blocking call
+        r = tester.runTest();
+        LOG(INFO, "Full reachability test finished (%d)", r);
+        metrics = tester.getConnectionMetrics();
+    } else {
+        // Background test
+        testResultsActual_ = false;
+        if (!backgroundTestInProgress_) {
+            LOG(INFO, "Background reachability test started");
+            backgroundTester_ = std::make_unique<ConnectionTester>();
+            CHECK_TRUE(backgroundTester_, SYSTEM_ERROR_NO_MEMORY);
+            CHECK(backgroundTester_->prepare(false /* full test*/));
+            backgroundTestInProgress_ = true;
+        }
+        r = backgroundTester_->runTest(0 /* non blocking */);
+        if (!r || r != SYSTEM_ERROR_BUSY) {
+            LOG(INFO, "Background reachability test finished (%d)", r);
+            backgroundTestInProgress_ = false;
+            metrics = backgroundTester_->getConnectionMetrics();
+            backgroundTester_.reset();
+        }
+    }
     if (r == 0) {
-        auto metrics = tester.getConnectionMetrics();
         bestNetworks_.clear();
         for (auto& i: metrics) {
             bestNetworks_.append(i.interface);
+        }
+        if (background) {
+            // Disable this for now
+            // testResultsActual_ = true;
         }
     }
     return r;
@@ -174,49 +206,84 @@ int ConnectionManager::testConnections(bool cache) {
 
 int ConnectionManager::scheduleCloudConnectionNetworkCheck() {
     testResultsActual_ = false;
-    const auto task = new(std::nothrow) ISRTaskQueue::Task();
-    if (!task) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    task->func = [](ISRTaskQueue::Task* task) {
-        delete task;
-        ConnectionManager::instance()->checkCloudConnectionNetwork();
-    };
-    SystemISRTaskQueue.enqueue(task);
+    LOG(INFO, "schedule currently scheduled=%d", checkScheduled_);
+    checkScheduled_ = true;
     return 0;
 }
 
 int ConnectionManager::checkCloudConnectionNetwork() {
-    if (!spark_cloud_flag_connected()) {
+    bool finishedBackgroundTest = false;
+    if (backgroundTestInProgress_) {
+        int r = testConnections(true /* background */);
+        if (checkScheduled_) {
+            // Invalidate results
+            r = SYSTEM_ERROR_ABORTED;
+        }
+        if (!r) {
+            // Finished without errors
+            finishedBackgroundTest = true;
+        } else if (r == SYSTEM_ERROR_BUSY) {
+            // Wait to complete
+            return 0;
+        } else if (r != SYSTEM_ERROR_ABORTED) {
+            // Finished with an error, reschedule a check, if aborted - do nothing
+            return scheduleCloudConnectionNetworkCheck();
+        }
+    }
+
+    if (!checkScheduled_ && !finishedBackgroundTest) {
+        return 0;
+    }
+
+    uint8_t resetPending = 0;
+    system_get_flag(SYSTEM_FLAG_RESET_PENDING, &resetPending, nullptr);
+
+    if (!spark_cloud_flag_connected() || resetPending || SPARK_FLASH_UPDATE) {
+        // Postpone until cloud connection is established or while in OTA
         return SYSTEM_ERROR_INVALID_STATE;
     }
+
+    checkScheduled_ = false;
+
     unsigned countReady = 0;
     bool matchesCurrent = false;
+    network_handle_t best = NETWORK_INTERFACE_ALL;
     for (const auto& i: bestNetworks_) {
+        LOG_DEBUG(TRACE, "%s - ready=%d (getCloudConnectionNetwork()=%s)", netifToName(i), network_ready(i, 0, nullptr), netifToName(getCloudConnectionNetwork()));
         if (network_ready(i, 0, nullptr)) {
             countReady++;
             if (i == getCloudConnectionNetwork()) {
                 matchesCurrent = true;
             }
+            best = i;
         }
     }
+    if (countReady == 0) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     // Simple case, just perform a cloud ping
-    if (countReady == 1 && matchesCurrent) {
+    if (matchesCurrent && (countReady == 1 || getCloudConnectionNetwork() == getPreferredNetwork())) {
         spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
-        LOG_DEBUG(TRACE, "Still using the same network interface for the cloud connection - perform a cloud ping");
+        LOG_DEBUG(TRACE, "Still using the same network interface (%s) for the cloud connection - perform a cloud ping", netifToName(getCloudConnectionNetwork()));
         return 0;
     }
-    // Re-test connections
-    CHECK(testConnections(true /* cache */));
-    auto best = selectCloudConnectionNetwork();
-    // If matches current again just perform a ping
-    if (best == getCloudConnectionNetwork()) {
-        spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
-        LOG_DEBUG(TRACE, "Best network interface candidate for the cloud connection is still the same - perform a cloud ping");
-        return 0;
+    if (countReady > 1) {
+        if (!finishedBackgroundTest) {
+            // Re-test connections
+            backgroundTestInProgress_ = false;
+            return testConnections(true /* background */);
+        } else {
+            best = selectCloudConnectionNetwork();
+            // If matches current again just perform a ping
+            if (best == getCloudConnectionNetwork()) {
+                spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
+                LOG_DEBUG(TRACE, "Best network interface candidate for the cloud connection is still the same (%s) - perform a cloud ping", netifToName(best));
+                return 0;
+            }
+        }
     }
     // If best candidate doesn't match current network interface - reconnect
-    LOG_DEBUG(TRACE, "Best network interface for cloud connection changed - move the cloud session");
+    LOG_DEBUG(TRACE, "Best network interface for cloud connection changed (to %s) - move the cloud session", netifToName(best));
     auto options = CloudDisconnectOptions().reconnect(true);
     auto systemOptions = options.toSystemOptions();
     spark_cloud_disconnect(&systemOptions, nullptr);
@@ -243,7 +310,7 @@ ConnectionTester::~ConnectionTester() {
             free(i.rxBuffer);
         }
     }
-};
+}
 
 ConnectionMetrics* ConnectionTester::metricsFromSocketDescriptor(int socketDescriptor) {
     for (auto& i : metrics_) {
@@ -252,16 +319,16 @@ ConnectionMetrics* ConnectionTester::metricsFromSocketDescriptor(int socketDescr
         }
     }
     return nullptr;
-};
+}
 
 bool ConnectionTester::testPacketsOutstanding() {
     for (auto& i : metrics_) {
-        if (i.txPacketCount > i.rxPacketCount) {
+        if (i.txPacketCount != REACHABILITY_TEST_MAX_TX_PACKET_COUNT && i.txPacketCount != i.rxPacketCount) {
             return true;
         }
     }
     return false;
-};
+}
 
 int ConnectionTester::allocateTestPacketBuffers(ConnectionMetrics* metrics) {
     int maxMessageLength = REACHABILITY_MAX_PAYLOAD_SIZE + sizeof(DTLSPlaintext_t);
@@ -282,54 +349,92 @@ int ConnectionTester::allocateTestPacketBuffers(ConnectionMetrics* metrics) {
     metrics->txBuffer = txBuffer;
     metrics->rxBuffer = rxBuffer;
     return 0;
-};
+}
 
 int ConnectionTester::sendTestPacket(ConnectionMetrics* metrics) {
     int r = 0;
-    // Only send a new packet if we have received the previous one, or we timeout waiting for a response
-    if (metrics->txPacketCount == metrics->rxPacketCount || 
-        (millis() > metrics->txPacketStartMillis + REACHABILITY_TEST_PACKET_TIMEOUT_MS)) {
+    // Only send a new packet every REACHABILITY_TEST_PACKET_TX_TIMEOUT_MS milliseconds
+    if (HAL_Timer_Get_Milli_Seconds() >= (metrics->txPacketStartMillis + REACHABILITY_TEST_PACKET_TX_TIMEOUT_MS) && metrics->txPacketCount < REACHABILITY_TEST_MAX_TX_PACKET_COUNT) {
+        size_t testPacketSize = CHECK(generateTestPacket(metrics));
 
-        generateTestPacket(metrics);
-
-        int r = sock_send(metrics->socketDescriptor, metrics->txBuffer, metrics->testPacketSize, 0);
+        int r = sock_send(metrics->socketDescriptor, metrics->txBuffer, testPacketSize, 0);
+        // Take TX errors into account too
+        metrics->txPacketStartMillis = HAL_Timer_Get_Milli_Seconds();
+        metrics->txPacketCount++;
+        metrics->testPacketSequenceNumber++;
         if (r > 0) {
-            metrics->txPacketStartMillis = millis();
-            metrics->txPacketCount++;
-            metrics->testPacketSequenceNumber++;
-            metrics->txBytes += metrics->testPacketSize;
+            metrics->txBytes += testPacketSize;
         } else {
+            metrics->txPacketErrors++;
             LOG_DEBUG(WARN, "Test sock_send failed %d errno %d interface %d", r, errno, metrics->interface);
             return SYSTEM_ERROR_NETWORK;
         }
         
-        LOG_DEBUG(TRACE, "Sock %d packet # %d tx > %d", metrics->socketDescriptor, metrics->txPacketCount, r);
+        // LOG_DEBUG(TRACE, "Sock %d packet # %d tx > %d", metrics->socketDescriptor, metrics->txPacketCount, r);
     }
     return r;
-};
+}
 
 int ConnectionTester::receiveTestPacket(ConnectionMetrics* metrics) {
-    int r = sock_recv(metrics->socketDescriptor, metrics->rxBuffer, metrics->testPacketSize, MSG_DONTWAIT);
-    if (r > 0) {
-        metrics->totalPacketWaitMillis += (millis() - metrics->txPacketStartMillis);
-        metrics->rxPacketCount++;
-        metrics->rxBytes += metrics->testPacketSize;
+    msghdr msg = {};
+    iovec iov = {};
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    iov.iov_base = metrics->rxBuffer;
+    iov.iov_len = REACHABILITY_MAX_PAYLOAD_SIZE + sizeof(DTLSPlaintext_t);
+    char controlBuf[CMSG_SPACE(sizeof(timespec))] = {};
+    msg.msg_control = controlBuf;
+    msg.msg_controllen = sizeof(controlBuf);
 
-        CHECK_TRUE((uint32_t)r == metrics->testPacketSize, SYSTEM_ERROR_BAD_DATA);
-
-        if (memcmp(metrics->rxBuffer, metrics->txBuffer, r)) {
-            LOG(WARN, "Socket %d Interface %d did not receive the same echo data: %d", metrics->socketDescriptor, metrics->interface, r);
-            return SYSTEM_ERROR_BAD_DATA;
+    int r = sock_recvmsg(metrics->socketDescriptor, &msg, MSG_DONTWAIT);
+    if (r >= (int)sizeof(DTLSPlaintext_t)) {
+        system_tick_t rxTimestamp = 0;
+        for (cmsghdr* cm = CMSG_FIRSTHDR(&msg); cm != nullptr; cm = CMSG_NXTHDR(&msg, cm)) {
+            if (cm->cmsg_level == SOL_SOCKET && cm->cmsg_type == SO_TIMESTAMPING) {
+                auto ts = (timespec*)CMSG_DATA(cm);
+                rxTimestamp = (ts->tv_sec * 1000 + ts->tv_nsec / 1000000);
+            }
         }
-
+        if (!rxTimestamp) {
+            // Just in case
+            LOG(WARN, "No RX timestamp from SO_TIMESTAMPING");
+            rxTimestamp = HAL_Timer_Get_Milli_Seconds();
+        }
+        // Parse packet
+        auto header = (DTLSPlaintext_t*)metrics->rxBuffer;
+        header->epoch = bigEndianToNative(header->epoch);
+        // LOG(TRACE, "epoch=%04x", header->epoch);
+        CHECK_TRUE(header->epoch >= EPOCH_BASE, SYSTEM_ERROR_BAD_DATA);
+        CHECK_TRUE((header->epoch & ~(EPOCH_BASE)) == metrics->interface, SYSTEM_ERROR_BAD_DATA);
+        header->length = bigEndianToNative(header->length);
+        // LOG(TRACE, "length=%u (r=%d)", header->length, r);
+        CHECK_TRUE(header->length == (r - sizeof(DTLSPlaintext_t)), SYSTEM_ERROR_BAD_DATA);
+        uint32_t sentTimestamp = 0;
+        uint16_t seqNum = 0;
+        memcpy(&sentTimestamp, header->sequence_number, sizeof(sentTimestamp));
+        memcpy(&seqNum, header->sequence_number + sizeof(uint32_t), sizeof(uint16_t));
+        seqNum = bigEndianToNative(seqNum);
+        sentTimestamp = bigEndianToNative(sentTimestamp);
+        // LOG(TRACE, "seqNum=%u testSeqNum=%u sentTimestamp=%u now=%u", seqNum, metrics->testPacketSequenceNumber, sentTimestamp, HAL_Timer_Get_Milli_Seconds());
+        CHECK_TRUE(seqNum <= metrics->testPacketSequenceNumber, SYSTEM_ERROR_BAD_DATA);
+        CHECK_TRUE(sentTimestamp < HAL_Timer_Get_Milli_Seconds(), SYSTEM_ERROR_BAD_DATA);
+        if (metrics->rxPacketMask & (1 << seqNum)) {
+            LOG(TRACE, "Duplicate packet seq=%u mask=%04x", seqNum, metrics->rxPacketMask);
+            // Already seen this seq num
+            return 0;
+        }
+        metrics->rxPacketMask |= (1 << seqNum);
+        metrics->totalPacketWaitMillis += (rxTimestamp - sentTimestamp);
+        metrics->rxPacketCount++;
+        metrics->rxBytes += header->length;
+        // LOG_DEBUG(TRACE, "Sock %d packet # %u rx < %d", metrics->socketDescriptor, seqNum, r);
     } else {
         LOG_DEBUG(WARN, "Test sock_recv failed %d errno %d interface %d", r, errno, metrics->interface);
         return SYSTEM_ERROR_NETWORK;
     }
     
-    LOG_DEBUG(TRACE, "Sock %d packet # %d rx < %d", metrics->socketDescriptor, metrics->rxPacketCount, r);
     return r;
-};
+}
 
 int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics) {
     unsigned packetDataLength = random(1, REACHABILITY_MAX_PAYLOAD_SIZE);
@@ -337,7 +442,7 @@ int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics) {
     DTLSPlaintext_t msg = {
         REACHABILITY_TEST_MSG, // DTLS Message Type
         {0xfe, 0xfd},          // DTLS type 1.2
-        0x8000,                // Differentiate interfaces by epoch field
+        EPOCH_BASE,            // Differentiate interfaces by epoch field
         {},                    // Sequence number
         0                      // Payload length
     };
@@ -347,21 +452,22 @@ int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics) {
 
     msg.epoch |= metrics->interface;
     msg.length = packetDataLength;
-    uint32_t sequenceNumber = nativeToBigEndian(metrics->testPacketSequenceNumber);
+    uint16_t sequenceNumber = nativeToBigEndian((uint16_t)metrics->testPacketSequenceNumber);
 
     msg.epoch = nativeToBigEndian(msg.epoch);
     msg.length = nativeToBigEndian(msg.length);
-    memcpy(&msg.sequence_number, &sequenceNumber, sizeof(sequenceNumber));
+    uint32_t ts = nativeToBigEndian(HAL_Timer_Get_Milli_Seconds());
+    memcpy(msg.sequence_number, &ts, sizeof(ts));
+    memcpy(msg.sequence_number + sizeof(ts), &sequenceNumber, sizeof(sequenceNumber));
 
     Random rand;
     rand.gen((char*)metrics->txBuffer + sizeof(msg), packetDataLength);    
     memcpy(metrics->txBuffer, &msg, headerLength);
-    metrics->testPacketSize = totalMessageLength;
-    return 0;
-};
+    return totalMessageLength;
+}
 
 int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
-    int pollCount = sock_poll(pfds, socketCount, 0);
+    int pollCount = sock_poll(pfds, socketCount, 1 /* ms */);
 
     if (pollCount < 0) {
         LOG(ERROR, "Connection test poll error %d", pollCount);
@@ -375,15 +481,18 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
             return SYSTEM_ERROR_BAD_DATA;
         }
 
+        // Ignore errors
+        sendTestPacket(connection);
+
         if (pfds[i].revents & POLLIN) {
-            receiveTestPacket(connection);
-        }
-        if (pfds[i].revents & POLLOUT) {
-            CHECK(sendTestPacket(connection));
+            int r = receiveTestPacket(connection);
+            if (r == SYSTEM_ERROR_BAD_DATA) {
+                LOG(WARN, "Reachability packet failed validation");
+            }
         }
     }
     return 0;
-};
+}
 
 // GOAL: To maintain a list of which network interface is "best" at any given time
 // 1) Retrieve the server hostname and port. Resolve the hostname to an addrinfo list (ie IP addresses of server)
@@ -391,40 +500,26 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
 // 3) Add these created+connected sockets to a pollfd structure. Allocate buffers for the reachability test messages.
 // 4) Poll all the sockets. Polling sends a reachability test message and waits for the response. The test continues for the test duration
 // 5) After polling completes, free the allocated buffers, reset diagnostics and calculate updated metrics. 
-int ConnectionTester::testConnections() {
-    // Step 1: resolve server hostname to IP address
+int ConnectionTester::prepare(bool fullTest) {
     struct addrinfo* info = nullptr;
-    struct addrinfo hints = {};
-    hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
-    hints.ai_protocol = IPPROTO_UDP;
-    hints.ai_socktype = SOCK_DGRAM;
+    CloudServerAddressType type = CLOUD_SERVER_ADDRESS_TYPE_NONE;
 
-    char tmphost[128] = {}; // TODO: better size ie sizeof(address->domain)
-    char tmpserv[8] = {};
-    uint16_t tmpport = 0;
-
-    int r = SYSTEM_ERROR_NETWORK;
-
-    getCloudHostnameAndPort(&tmpport, tmphost, sizeof(tmphost));
-    snprintf(tmpserv, sizeof(tmpserv), "%u", tmpport);
-    LOG(TRACE, "Resolving %s#%s", tmphost, tmpserv);
-    // FIXME: get addrinfo/server IP from DNS lookup using the specific interfaces DNS server 
-    r = netdb_getaddrinfo(tmphost, tmpserv, &hints, &info); 
-    if (r) {
-        LOG(ERROR, "No addrinfo for %s#%s", tmphost, tmpserv);
-        return SYSTEM_ERROR_NETWORK;
-    }
+    // Step 1: Retrieve the server hostname and port. Resolve the hostname to an addrinfo list (ie IP addresses of server)
+    CHECK(getCloudHostnameAndPort(&info, &type, !fullTest));
 
     SCOPE_GUARD({
         netdb_freeaddrinfo(info);
     });
 
     int socketCount = 0;
-    auto pfds = std::make_unique<pollfd[]>(metrics_.size());;
+    auto pfds = std::make_unique<pollfd[]>(metrics_.size());
     CHECK_TRUE(pfds, SYSTEM_ERROR_NO_MEMORY);
+
+    int r = SYSTEM_ERROR_NETWORK;
     
     // Step 2: Create, bind, and connect sockets for each network interface to test
     for (struct addrinfo* a = info; a != nullptr; a = a->ai_next) {
+        bool ok = true;
         // For each network interface to test, create + open a socket with the retrieved server address
         // If any of the sockets fail to be created + opened with this server address, return an error
         for (auto& connectionMetrics: metrics_) {
@@ -436,6 +531,7 @@ int ConnectionTester::testConnections() {
             int s = sock_socket(a->ai_family, a->ai_socktype, a->ai_protocol);
             NAMED_SCOPE_GUARD(guard, {
                 sock_close(s);
+                ok = false;
             });
 
             if (s < 0) {
@@ -467,6 +563,14 @@ int ConnectionTester::testConnections() {
                 return SYSTEM_ERROR_NETWORK;
             }
 
+            // Enable timestamps on recvd packets
+            int dummy = 1;
+            r = sock_setsockopt(s, SOL_SOCKET, SO_TIMESTAMPING, &dummy, sizeof(dummy));
+            if (r) {
+                LOG(WARN, "test socket=%d, failed to enable timestamping");
+                // Not a critical error
+            }
+
             connectionMetrics.socketConnAttempts++;
             r = sock_connect(s, a->ai_addr, a->ai_addrlen);
             if (r) {
@@ -479,53 +583,87 @@ int ConnectionTester::testConnections() {
             // Step 3: Use the socket descriptor for the polling structure, allocate our test buffers
             connectionMetrics.socketDescriptor = s;
             pfds[socketCount].fd = connectionMetrics.socketDescriptor;
-            pfds[socketCount].events = (POLLIN | POLLOUT);
+            pfds[socketCount].events = (POLLIN);
             socketCount++;
 
             guard.dismiss();
             CHECK(allocateTestPacketBuffers(&connectionMetrics));
         }
-    }
-    
-    // Step 4: Send/Receive data on the sockets for the duration of the test time
-    auto endTime = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
-    while (HAL_Timer_Get_Milli_Seconds() < endTime) {
-        CHECK(pollSockets(pfds.get(), socketCount));
-        SystemISRTaskQueue.process();
-    }
-
-    // Only read from sockets to receive any final outstanding packets
-    for (int i = 0; i < socketCount; i++) {
-        pfds[i].events = (POLLIN);
-    }
-
-    endTime = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
-    while(testPacketsOutstanding() && HAL_Timer_Get_Milli_Seconds() < endTime) {
-        pollSockets(pfds.get(), socketCount);
-        SystemISRTaskQueue.process();
-    }
-
-    // Step 5: calculate updated metrics
-    for (auto& i: metrics_) {
-        if (i.rxPacketCount > 0) {
-            i.avgPacketRoundTripTime = (i.totalPacketWaitMillis / i.rxPacketCount);
-
-            LOG(INFO,"%s: %d/%d packets %d/%d bytes received, avg rtt: %d", 
-                netifToName(i.interface), 
-                i.rxPacketCount,
-                i.txPacketCount, 
-                i.rxBytes,
-                i.txBytes,
-                i.avgPacketRoundTripTime);
+        if (ok) {
+            r = SYSTEM_ERROR_NONE;
+            break;
         }
     }
 
-    // Sort list by packet latency in ascending order, ie fastest to slowest
-    std::sort(metrics_.begin(), metrics_.end(), [](const ConnectionMetrics& dg1, const ConnectionMetrics& dg2) {
-        return (dg1.avgPacketRoundTripTime < dg2.avgPacketRoundTripTime); 
-    });
+    if (!r) {
+        socketCount_ = socketCount;
+        pfds_ = std::move(pfds);
+    }
 
-    return 0;
+    endTime_ = HAL_Timer_Get_Milli_Seconds() + REACHABILITY_TEST_DURATION_MS;
+
+    return r;
+}
+
+int ConnectionTester::runTest(system_tick_t maxBlockTime) {
+    if (finished_) {
+        return 0;
+    }
+
+    auto start = HAL_Timer_Get_Milli_Seconds();
+
+    // Step 4: Send/Receive data on the sockets for the duration of the test time
+    while(testPacketsOutstanding() || HAL_Timer_Get_Milli_Seconds() < endTime_) {
+        pollSockets(pfds_.get(), socketCount_);
+        SystemISRTaskQueue.process();
+        if (HAL_Timer_Get_Milli_Seconds() - start >= maxBlockTime) {
+            break;
+        }
+    }
+
+    finished_ = !testPacketsOutstanding() || HAL_Timer_Get_Milli_Seconds() >= endTime_;
+    if (finished_) {
+        // Step 5: calculate updated metrics
+        for (auto& i: metrics_) {
+            if (i.rxPacketCount > 0) {
+                i.avgPacketRoundTripTime = (i.totalPacketWaitMillis / i.rxPacketCount);
+                i.resultingScore = i.totalPacketWaitMillis;
+                unsigned penalty = 0;
+                unsigned consecutive = 0;
+                for (unsigned j = 0; j < i.txPacketCount; j++) {
+                    if (i.rxPacketMask & (1 << j)) {
+                        // Received
+                        penalty = 0;
+                        consecutive = 0;
+                    } else {
+                        penalty = i.avgPacketRoundTripTime * (2 << consecutive++) /* 2^(conscutive++) */;
+                        LOG(TRACE, "%d: total=%u consecutive=%u penalty=%u resultingScore=%u new=%u", i.interface, i.totalPacketWaitMillis, consecutive, penalty, i.resultingScore, i.resultingScore + penalty);
+                        i.resultingScore += penalty;
+                    }
+                }
+                i.resultingScore /= i.rxPacketCount;
+            } else {
+                i.avgPacketRoundTripTime = 0;
+                i.resultingScore = std::numeric_limits<decltype(i.resultingScore)>::max();
+            }
+            LOG(INFO,"%s: %lu/%lu packets (%lu tx errors) %lu/%lu bytes received, avg rtt: %lu, mask=%04x, score=%lu",
+                    netifToName(i.interface), 
+                    i.rxPacketCount,
+                    i.txPacketCount, 
+                    i.txPacketErrors,
+                    i.rxBytes,
+                    i.txBytes,
+                    i.avgPacketRoundTripTime,
+                    i.rxPacketMask,
+                    i.resultingScore);
+        }
+        // Sort list by packet latency in ascending order, ie fastest to slowest
+        std::sort(metrics_.begin(), metrics_.end(), [](const ConnectionMetrics& dg1, const ConnectionMetrics& dg2) {
+            return (dg1.resultingScore < dg2.resultingScore); 
+        });
+        return 0;
+    }
+    return SYSTEM_ERROR_BUSY;
 }
 
 const Vector<ConnectionMetrics> ConnectionTester::getConnectionMetrics(){

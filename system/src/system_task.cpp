@@ -57,6 +57,7 @@
 #include "spark_wiring_led.h"
 #if HAL_PLATFORM_IFAPI
 #include "system_listening_mode.h"
+#include "system_connection_manager.h"
 #endif
 
 #if HAL_PLATFORM_BLE_SETUP
@@ -447,6 +448,10 @@ void manage_cloud_connection(bool force_events)
     }
     else // cloud connection is wanted
     {
+#if HAL_PLATFORM_IFAPI
+        ConnectionManager::instance()->checkCloudConnectionNetwork();
+#endif // HAL_PLATFORM_IFAPI
+
         establish_cloud_connection();
 
         handle_cloud_connection(force_events);
