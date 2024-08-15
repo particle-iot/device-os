@@ -301,7 +301,7 @@ public:
             started(false) {
     }
 
-    bool process();
+    bool process(int timeout = -1);
 
     bool isCurrentThread() {
         return os_thread_is_current(_thread);
@@ -394,11 +394,6 @@ public:
         createQueue();
         setCurrentThread();
         run();
-    }
-
-    bool process()
-    {
-        return ActiveObjectQueue::process();
     }
 };
 
