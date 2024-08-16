@@ -1,6 +1,6 @@
 suite('SPI MASTER SLAVE');
 
-platform('gen3');
+platform('p2','argon');
 systemThread('enabled');
 timeout(20 * 60 * 1000);
 
