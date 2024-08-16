@@ -557,7 +557,7 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
 namespace {
 
-// Old implementation for non-threaded applications
+// Old implementation for a non-threaded system configuration
 void system_delay_pump_no_threading_impl(unsigned long ms, system_tick_t start_millis, bool force_no_background_loop = false)
 {
     if (ms==0) return;
