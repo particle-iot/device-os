@@ -50,8 +50,8 @@ test(THREAD_01_delay_does_not_introduce_extra_latency_when_processing_app_events
             d->recvCount = &recvCount;
             now = HAL_Timer_Milliseconds();
             d->sendTime = now;
-            ++sendCount;
             application_thread_invoke(TestData::callback, d.release(), nullptr);
+            ++sendCount;
         } while (now - startTime < 10000);
         stop = true;
     });

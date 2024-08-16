@@ -637,11 +637,12 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop)
 {
     system_tick_t startMillis = HAL_Timer_Get_Milli_Seconds();
 
-    if (!system_thread_get_state(nullptr) || !APPLICATION_THREAD_CURRENT()) {
+    if (!PLATFORM_THREADING || !system_thread_get_state(nullptr) || !APPLICATION_THREAD_CURRENT()) {
         system_delay_pump_no_threading_impl(ms, startMillis, force_no_background_loop);
         return;
     }
 
+#if PLATFORM_THREADING
     if (!ms || force_no_background_loop) {
         HAL_Delay_Milliseconds(ms);
         return;
@@ -657,6 +658,7 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop)
         }
         ApplicationThread.process(d);
     }
+#endif // PLATFORM_THREADING
 }
 
 /**
