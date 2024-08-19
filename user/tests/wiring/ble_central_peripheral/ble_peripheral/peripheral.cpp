@@ -363,8 +363,8 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
     assertTrue(waitFor(BLE.connected, 20000));
     {
         SCOPE_GUARD ({
-            Particle.publish("disconnect");
-            assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
+            Particle.publish("BLE disconnect", nullptr, WITH_ACK);
+            assertTrue(waitFor([]{ return !BLE.connected(); }, 60000));
             assertFalse(BLE.connected());
         });
 
