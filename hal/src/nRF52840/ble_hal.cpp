@@ -524,6 +524,7 @@ private:
     os_timer_t connParamsUpdateTimer_;                          /**< Timer used for sending peripheral connection update request after connection established. */
     os_semaphore_t connParamsUpdateSemaphore_;                  /**< Semaphore to wait until connection parameters updated. */
     os_semaphore_t connectSemaphore_;                           /**< Semaphore to wait until connection established. */
+    BleLinkEventHandler centralLinkCbCache_;                    // It is used for central link only.
     os_semaphore_t disconnectSemaphore_;                        /**< Semaphore to wait until connection disconnected. */
     Vector<BleConnection> connections_;
     Vector<BleLinkEventHandler> peripheralLinkEventHandlers_;   /**< It is used for peripheral link only. */
@@ -1828,6 +1829,8 @@ int BleObject::ConnectionsManager::connect(const hal_ble_conn_cfg_t* config, hal
     } else {
         bleGapConnParams = toPlatformConnParams(config->conn_params);
     }
+    centralLinkCbCache_.callback = config->callback;
+    centralLinkCbCache_.context = config->context;
     int ret = sd_ble_gap_connect(&bleDevAddr, &bleGapScanParams, &bleGapConnParams, BLE_CONN_CFG_TAG);
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     isConnecting_ = true;
@@ -1838,8 +1841,6 @@ int BleObject::ConnectionsManager::connect(const hal_ble_conn_cfg_t* config, hal
     }
     BleConnection* connection = fetchConnection(&config->address);
     CHECK_TRUE(connection, SYSTEM_ERROR_INTERNAL);
-    connection->handler.callback = config->callback;
-    connection->handler.context = config->context;
     *connHandle = connection->info.conn_handle;
     // FIXME: if the semaphore is given due to a GAP timeout event.
     return SYSTEM_ERROR_NONE;
@@ -2337,6 +2338,9 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
     connection.info.att_mtu = BLE_DEFAULT_ATT_MTU_SIZE; // Use the default ATT_MTU on connected.
     connection.isMtuExchanged = false;
     connection.pairState = BLE_PAIRING_STATE_NOT_INITIATED;
+    if (addressEqual(connection.info.address, connectingAddr_)) {
+        connection.handler = centralLinkCbCache_;
+    }
     int ret = addConnection(std::move(connection));
     if (ret != SYSTEM_ERROR_NONE) {
         LOG(ERROR, "Add new connection failed. Disconnects from peer.");
@@ -2353,13 +2357,13 @@ int BleObject::ConnectionsManager::processConnectedEventFromThread(const ble_evt
         // Update connection parameters if needed.
         connParamsUpdateAttempts_ = 0;
         initiateConnParamsUpdateIfNeeded(&connection);
-        // Notify the connected event.
-        hal_ble_link_evt_t linkEvent = {};
-        linkEvent.type = BLE_EVT_CONNECTED;
-        linkEvent.conn_handle = connection.info.conn_handle;
-        linkEvent.params.connected.info = &connection.info;
-        notifyLinkEvent(linkEvent);
     }
+    // Notify the connected event.
+    hal_ble_link_evt_t linkEvent = {};
+    linkEvent.type = BLE_EVT_CONNECTED;
+    linkEvent.conn_handle = connection.info.conn_handle;
+    linkEvent.params.connected.info = &connection.info;
+    notifyLinkEvent(linkEvent);
     // If the connection is initiated by Central.
     if (isConnecting_ && connection.info.role == BLE_ROLE_CENTRAL && addressEqual(connection.info.address, connectingAddr_)) {
         isConnecting_ = false;
@@ -2390,6 +2394,12 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
         centralConnParamUpdateHandle_ = BLE_INVALID_CONN_HANDLE;
         os_semaphore_give(connParamsUpdateSemaphore_, false);
     }
+    // Notify the disconnected event.
+    hal_ble_link_evt_t linkEvent = {};
+    linkEvent.type = BLE_EVT_DISCONNECTED;
+    linkEvent.conn_handle = connection->info.conn_handle;
+    linkEvent.params.disconnected.reason = disconnected.reason;
+    notifyLinkEvent(linkEvent);
     // Remove the GATTS subscriber.
     BleObject::getInstance().gatts()->removeSubscriberFromAllCharacteristics(connection->info.conn_handle);
     // Remove the publishers on this connection.
@@ -2397,13 +2407,6 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
     // If the disconnection is initiated by application.
     if (disconnectingHandle_ == connection->info.conn_handle) {
         os_semaphore_give(disconnectSemaphore_, false);
-    } else {
-        // Notify the disconnected event.
-        hal_ble_link_evt_t linkEvent = {};
-        linkEvent.type = BLE_EVT_DISCONNECTED;
-        linkEvent.conn_handle = connection->info.conn_handle;
-        linkEvent.params.disconnected.reason = disconnected.reason;
-        notifyLinkEvent(linkEvent);
     }
     removeConnection(connection->info.conn_handle);
     return SYSTEM_ERROR_NONE;

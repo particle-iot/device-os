@@ -2329,18 +2329,12 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             if (disconnectingHandle_ == connection->info.conn_handle) {
                 os_semaphore_give(disconnectSemaphore_, false);
             }
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
-            {
-#else
-            else {
-#endif
-                // Notify the disconnected event.
-                hal_ble_link_evt_t evt = {};
-                evt.type = BLE_EVT_DISCONNECTED;
-                evt.conn_handle = connHandle;
-                evt.params.disconnected.reason = (uint8_t)discCause;
-                notifyLinkEvent(evt);
-            }
+            // Notify the disconnected event.
+            hal_ble_link_evt_t evt = {};
+            evt.type = BLE_EVT_DISCONNECTED;
+            evt.conn_handle = connHandle;
+            evt.params.disconnected.reason = (uint8_t)discCause;
+            notifyLinkEvent(evt);
             hal_ble_role_t role = connection->info.role;
             removeConnection(connHandle);
             BleGatt::getInstance().removeSubscriber(connHandle);
@@ -2400,20 +2394,13 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 disconnect(connHandle);
                 return;
             }
-
-            if (connection.info.role == BLE_ROLE_PERIPHERAL
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
-                || (connecting_ && connection.info.role == BLE_ROLE_CENTRAL)) {
-#else
-            ) {
-#endif
+            hal_ble_link_evt_t evt = {};
+            evt.type = BLE_EVT_CONNECTED;
+            evt.conn_handle = connHandle;
+            evt.params.connected.info = &connection.info;
+            notifyLinkEvent(evt);
+            if (connecting_ && connection.info.role == BLE_ROLE_CENTRAL) {
                 connecting_ = false;
-                hal_ble_link_evt_t evt = {};
-                evt.type = BLE_EVT_CONNECTED;
-                evt.conn_handle = connHandle;
-                evt.params.connected.info = &connection.info;
-                notifyLinkEvent(evt);
-            } else {
                 // See: handleMtuUpdated()
                 // os_semaphore_give(connectSemaphore_, false);
             }

@@ -358,6 +358,10 @@ const char* ioCapsStr[5] = {
     "BlePairingIoCaps::KEYBOARD_DISPLAY"
 };
 
+// commonEventHandler() in util.h is processed in application thread.
+// If the onPairingEvent() handler is blocking the application thread,
+// for instance, application thread tries acquiring a (HAL/Wiring) BLE mutex while the handler
+// is holding the mutex, then getBleTestPasskey() in the handler will be also blocked until timeout.
 static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         BlePairingIoCaps ours = BlePairingIoCaps::NONE, BlePairingIoCaps theirs = BlePairingIoCaps::NONE) {
     pairingStatus = -1;
