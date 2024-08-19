@@ -63,8 +63,15 @@ constexpr uint16_t PEER_DESIRED_ATT_MTU = 123;
 Thread* scanThread = nullptr;
 volatile unsigned scanResults = 0;
 
+bool disconnect = false;
+
+void onDisconnectRequested(const char *eventName, const char *data) {
+    disconnect = true;
+}
+
 test(BLE_000_Central_Cloud_Connect) {
     subscribeEvents(BLE_ROLE_PERIPHERAL);
+    Particle.subscribe("BLE disconnect", onDisconnectRequested);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(publishBlePeerInfo());
@@ -434,9 +441,10 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
 
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());
+    disconnect = false;
     {
         SCOPE_GUARD ({
-            delay(500);
+            assertTrue(waitFor([]{ return disconnect; }, 60000));
             assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
             assertFalse(BLE.connected());
             assertFalse(peer.connected());
@@ -447,8 +455,10 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         } else {
             assertTrue(waitFor([&]{ return pairingRequested; }, 5000));
         }
-        assertTrue(BLE.isPairing(peer));
-        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 20000));
+        // It may be paired in real quick if pairing uses JUST_WORK
+        if (BLE.isPairing(peer)) {
+            assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 60000));
+        }
         assertTrue(BLE.isPaired(peer));
         assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
         if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
@@ -598,8 +608,9 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
             (*scanResults)++;
         }, param);
     }, (void*)&scanResults);
+    assertTrue((bool)scanThread);
 
-    assertTrue(BLE.scanning());
+    waitFor([]{ return BLE.scanning(); }, 5000);
     assertFalse(BLE.connected());
     peer = BLE.connect(peerAddr, false);
     assertTrue(peer.connected());

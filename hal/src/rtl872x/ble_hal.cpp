@@ -394,11 +394,11 @@ public:
     bool valid(hal_ble_conn_handle_t connHandle);
 
     bool connected(const hal_ble_addr_t* address) {
-        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
         if (address == nullptr) {
+            std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
             return connections_.size() > 0;
         }
-        if (fetchConnection(address)) {
+        if (peekConnection(address).valid()) {
             return true;
         }
         return false;
@@ -489,6 +489,12 @@ private:
         hal_ble_conn_info_t info;
         std::pair<hal_ble_on_link_evt_cb_t, void*> handler; // It is used for central link only.
         BlePairingState pairState;
+        BleConnection() {
+            info.conn_handle = BLE_INVALID_CONN_HANDLE;
+        }
+        bool valid() {
+            return info.conn_handle != BLE_INVALID_CONN_HANDLE;
+        }
     };
 
     BleGap()
@@ -609,6 +615,8 @@ private:
 
     BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(const hal_ble_addr_t* address);
+    BleConnection peekConnection(hal_ble_conn_handle_t connHandle);
+    BleConnection peekConnection(const hal_ble_addr_t* address);
     int addConnection(BleConnection&& connection);
     void removeConnection(hal_ble_conn_handle_t connHandle);
 
@@ -1840,7 +1848,8 @@ void BleGap::removePendingResult(const hal_ble_addr_t& address) {
 void BleGap::clearPendingResult() {
     for (const auto& result : pendingResults_) {
         // Notify the pending results, in case that they are not expecting scan response data.
-        scanResultCallback_(&result, context_);
+        // To be consistent with Gen3
+        // scanResultCallback_(&result, context_);
         if (result.adv_data) {
             free(result.adv_data);
         }
@@ -1849,18 +1858,16 @@ void BleGap::clearPendingResult() {
 }
 
 ssize_t BleGap::getAttMtu(hal_ble_conn_handle_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    const auto connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    return connection->info.att_mtu;
+    auto connection = peekConnection(connHandle);
+    CHECK_TRUE(connection.valid(), SYSTEM_ERROR_NOT_FOUND);
+    return connection.info.att_mtu;
 }
 
 int BleGap::getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    const BleConnection* connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    uint16_t size = std::min(connection->info.size, info->size);
-    memcpy(info, &connection->info, size);
+    auto connection = peekConnection(connHandle);
+    CHECK_TRUE(connection.valid(), SYSTEM_ERROR_NOT_FOUND);
+    uint16_t size = std::min(connection.info.size, info->size);
+    memcpy(info, &connection.info, size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1935,10 +1942,9 @@ int BleGap::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* con
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(&config->address);
-    CHECK_TRUE(connection, SYSTEM_ERROR_INTERNAL);
-    *connHandle = connection->info.conn_handle;
+    auto connection = peekConnection(&config->address);
+    CHECK_TRUE(connection.valid(), SYSTEM_ERROR_INTERNAL);
+    *connHandle = connection.info.conn_handle;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1951,21 +1957,14 @@ int BleGap::connectCancel(const hal_ble_addr_t* address) {
     if (!WAIT_TIMED(BLE_OPERATION_TIMEOUT_MS, connecting_)) {
         return SYSTEM_ERROR_TIMEOUT;
     }
-    BleConnection* connection = nullptr;
-    {
-        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-        connection = fetchConnection(address);
-    }
-    CHECK_TRUE(connection, SYSTEM_ERROR_NONE); // Connection is not established
-    CHECK(disconnect(connection->info.conn_handle));
+    auto connection = peekConnection(address);
+    CHECK_TRUE(connection.valid(), SYSTEM_ERROR_NONE); // Connection is not established
+    CHECK(disconnect(connection.info.conn_handle));
     return SYSTEM_ERROR_NONE;
 }
 
 int BleGap::disconnect(hal_ble_conn_handle_t connHandle) {
-    {
-        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-        CHECK_TRUE(fetchConnection(connHandle), SYSTEM_ERROR_NOT_FOUND);
-    }
+    CHECK_TRUE(peekConnection(connHandle).valid(), SYSTEM_ERROR_NOT_FOUND);
     SCOPE_GUARD ({
         disconnectingHandle_ = BLE_INVALID_CONN_HANDLE;
     });
@@ -1996,12 +1995,11 @@ int BleGap::disconnectAll() {
 }
 
 void BleGap::notifyLinkEvent(const hal_ble_link_evt_t& event) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(event.conn_handle);
-    if (connection) {
-        if (connection->info.role == BLE_ROLE_CENTRAL) {
-            if (connection->handler.first) {
-                connection->handler.first(&event, connection->handler.second);
+    auto connection = peekConnection(event.conn_handle);
+    if (connection.valid()) {
+        if (connection.info.role == BLE_ROLE_CENTRAL) {
+            if (connection.handler.first) {
+                connection.handler.first(&event, connection.handler.second);
             }
         } else {
             for (const auto& handler : periphEvtCallbacks_) {
@@ -2014,9 +2012,7 @@ void BleGap::notifyLinkEvent(const hal_ble_link_evt_t& event) {
 }
 
 bool BleGap::valid(hal_ble_conn_handle_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    const BleConnection* connection = fetchConnection(connHandle);
-    return connection != nullptr;
+    return peekConnection(connHandle).valid();
 }
 
 BleGap::BleConnection* BleGap::fetchConnection(hal_ble_conn_handle_t connHandle) {
@@ -2037,6 +2033,30 @@ BleGap::BleConnection* BleGap::fetchConnection(const hal_ble_addr_t* address) {
         }
     }
     return nullptr;
+}
+
+BleGap::BleConnection BleGap::peekConnection(hal_ble_conn_handle_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    if (connHandle != BLE_INVALID_CONN_HANDLE) {
+        for (auto& connection : connections_) {
+            if (connection.info.conn_handle == connHandle) {
+                return connection;
+            }
+        }
+    }
+    return BleConnection();
+}
+
+BleGap::BleConnection BleGap::peekConnection(const hal_ble_addr_t* address) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    if (address != nullptr) {
+        for (auto& connection : connections_) {
+            if (addressEqual(connection.info.address, *address)) {
+                return connection;
+            }
+        }
+    }
+    return BleConnection();
 }
 
 int BleGap::addConnection(BleConnection&& connection) {
@@ -2188,20 +2208,18 @@ int BleGap::rejectPairing(hal_ble_conn_handle_t connHandle) {
 }
 
 bool BleGap::isPairing(hal_ble_conn_handle_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, false);
-    return connection->pairState == BLE_PAIRING_STATE_INITIATED ||
-           connection->pairState == BLE_PAIRING_STATE_STARTED ||
-           connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA ||
-           connection->pairState == BLE_PAIRING_STATE_USER_REQ_REJECT;
+    auto connection = peekConnection(connHandle);
+    CHECK_TRUE(connection.valid(), false);
+    return connection.pairState == BLE_PAIRING_STATE_INITIATED ||
+           connection.pairState == BLE_PAIRING_STATE_STARTED ||
+           connection.pairState == BLE_PAIRING_STATE_SET_AUTH_DATA ||
+           connection.pairState == BLE_PAIRING_STATE_USER_REQ_REJECT;
 }
 
 bool BleGap::isPaired(hal_ble_conn_handle_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, false);
-    return connection->pairState == BLE_PAIRING_STATE_PAIRED;
+    auto connection = peekConnection(connHandle);
+    CHECK_TRUE(connection.valid(), false);
+    return connection.pairState == BLE_PAIRING_STATE_PAIRED;
 }
 
 int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePoll) {
@@ -2479,10 +2497,10 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
     switch (state) {
         case GAP_AUTHEN_STATE_STARTED: {
             LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_STARTED");
-            auto state = connection->pairState;
+            auto pairState = connection->pairState;
             connection->pairState = BLE_PAIRING_STATE_STARTED;
             // Notify the event only if the other side initiates the pairing procedure
-            if (state == BLE_PAIRING_STATE_NOT_INITIATED || state == BLE_PAIRING_STATE_REJECTED) {
+            if (pairState == BLE_PAIRING_STATE_NOT_INITIATED || pairState == BLE_PAIRING_STATE_REJECTED) {
                 hal_ble_link_evt_t linkEvent = {};
                 linkEvent.type = BLE_EVT_PAIRING_REQUEST_RECEIVED;
                 linkEvent.conn_handle = connHandle;
@@ -2520,10 +2538,9 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
 }
 
 int BleGap::handlePairJustWork(uint8_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
+    auto connection = peekConnection(connHandle);
     T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
-    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    if (ret == GAP_CAUSE_SUCCESS && connection.valid() && connection.pairState == BLE_PAIRING_STATE_STARTED) {
         CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT));
     } else {
         CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
@@ -2532,10 +2549,9 @@ int BleGap::handlePairJustWork(uint8_t connHandle) {
 }
 
 int BleGap::handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
+    auto connection = peekConnection(connHandle);
     T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
-    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    if (ret == GAP_CAUSE_SUCCESS && connection.valid() && connection.pairState == BLE_PAIRING_STATE_STARTED) {
         uint32_t displayValue = 0;
         le_bond_get_display_key(connHandle, &displayValue);
         char passkey[BLE_PAIRING_PASSKEY_LEN + 1];
@@ -2550,12 +2566,13 @@ int BleGap::handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly) {
         linkEvent.params.passkey_display.passkey = (const uint8_t*)passkey;
         // User may call rejectPairing() in the event handler
         notifyLinkEvent(linkEvent);
-        if (connection->pairState == BLE_PAIRING_STATE_USER_REQ_REJECT) {
+        connection = peekConnection(connHandle);
+        if (connection.pairState == BLE_PAIRING_STATE_USER_REQ_REJECT) {
             goto reject;
         }
         if (displayOnly) {
             le_bond_passkey_display_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT);
-        } else if (connection->pairState != BLE_PAIRING_STATE_SET_AUTH_DATA) {
+        } else if (connection.pairState != BLE_PAIRING_STATE_SET_AUTH_DATA) {
             // User didn't set authentication data in event callback, reject pairing automatically
             goto reject;
         }
@@ -2572,15 +2589,15 @@ reject:
 }
 
 int BleGap::handlePairPasskeyInput(uint8_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
+    auto connection = peekConnection(connHandle);
     T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
-    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    if (ret == GAP_CAUSE_SUCCESS && connection.valid() && connection.pairState == BLE_PAIRING_STATE_STARTED) {
         hal_ble_link_evt_t linkEvent = {};
         linkEvent.type = BLE_EVT_PAIRING_PASSKEY_INPUT;
         linkEvent.conn_handle = connHandle;
         notifyLinkEvent(linkEvent);
-        if (connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA) {
+        connection = peekConnection(connHandle);
+        if (connection.pairState == BLE_PAIRING_STATE_SET_AUTH_DATA) {
             return SYSTEM_ERROR_NONE;
         }
     }
