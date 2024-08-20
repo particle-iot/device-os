@@ -70,12 +70,18 @@ public:
     int checkCloudConnectionNetwork();
 
 private:
+    void handlePeriodicCheck();
+    bool testIsAllowed() const;
+
+private:
     network_handle_t preferredNetwork_;
     Vector<network_handle_t> bestNetworks_;
     volatile bool testResultsActual_ = false;
     volatile bool checkScheduled_ = false;
     bool backgroundTestInProgress_ = false;
     std::unique_ptr<ConnectionTester> backgroundTester_;
+    static constexpr system_tick_t PERIODIC_CHECK_PERIOD_MS = 5 * 60 * 100;
+    system_tick_t nextPeriodicCheck_ = 0;
 };
 
 class ConnectionTester {

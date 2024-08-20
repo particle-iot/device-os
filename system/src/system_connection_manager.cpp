@@ -143,6 +143,9 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     // We should have some historical stats to rely on and then bring that network up? 
 
     if (!canUsePreferred) {
+        if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(preferredNetwork_, 0, nullptr)) {
+            nextPeriodicCheck_ = HAL_Timer_Get_Milli_Seconds() + PERIODIC_CHECK_PERIOD_MS;
+        }
         LOG_DEBUG(TRACE, "Using best network: %s", netifToName(bestNetwork));
         return bestNetwork;
     } else {
@@ -220,6 +223,26 @@ int ConnectionManager::scheduleCloudConnectionNetworkCheck() {
     return 0;
 }
 
+void ConnectionManager::handlePeriodicCheck() {
+    if (nextPeriodicCheck_ != 0 && HAL_Timer_Get_Milli_Seconds() >= nextPeriodicCheck_) {
+        if (!testIsAllowed()) {
+            return;
+        }
+        if (preferredNetwork_ != NETWORK_INTERFACE_ALL && getCloudConnectionNetwork() != preferredNetwork_) {
+            LOG(TRACE, "Periodic check because preferred interface was not picked during last run");
+            scheduleCloudConnectionNetworkCheck();
+        }
+        nextPeriodicCheck_ = 0;
+    }
+}
+
+bool ConnectionManager::testIsAllowed() const {
+    uint8_t resetPending = 0;
+    system_get_flag(SYSTEM_FLAG_RESET_PENDING, &resetPending, nullptr);
+
+    return spark_cloud_flag_connected() && !resetPending && !SPARK_FLASH_UPDATE;
+}
+
 int ConnectionManager::checkCloudConnectionNetwork() {
     bool finishedBackgroundTest = false;
     if (backgroundTestInProgress_) {
@@ -240,14 +263,15 @@ int ConnectionManager::checkCloudConnectionNetwork() {
         }
     }
 
+    if (!checkScheduled_) {
+        handlePeriodicCheck();
+    }
+
     if (!checkScheduled_ && !finishedBackgroundTest) {
         return 0;
     }
 
-    uint8_t resetPending = 0;
-    system_get_flag(SYSTEM_FLAG_RESET_PENDING, &resetPending, nullptr);
-
-    if (!spark_cloud_flag_connected() || resetPending || SPARK_FLASH_UPDATE) {
+    if (!testIsAllowed()) {
         // Postpone until cloud connection is established or while in OTA
         return SYSTEM_ERROR_INVALID_STATE;
     }
