@@ -123,25 +123,32 @@ network_handle_t ConnectionManager::getCloudConnectionNetwork() {
 network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     network_handle_t bestNetwork = NETWORK_INTERFACE_ALL;
 
-    if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(preferredNetwork_, 0, nullptr)) {
-        LOG_DEBUG(TRACE, "Using preferred network: %s", netifToName(preferredNetwork_));
-        return preferredNetwork_;
-    }
-
+    bool canUsePreferred = false;
     // If no preferred network, use the 'best' network based on criteria
     // Network is ready: ie configured + connected (see ipv4 routable hook)
     // Network has best criteria based on network tester results
     for (auto& i: bestNetworks_) {
         if (network_ready(i, 0, nullptr)) {
-            LOG_DEBUG(TRACE, "Using best network: %s", netifToName(i));
-            return i;
+            if (bestNetwork == NETWORK_INTERFACE_ALL) {
+                bestNetwork = i;
+            }
+            if (preferredNetwork_ != NETWORK_INTERFACE_ALL && preferredNetwork_ == i) {
+                canUsePreferred = true;
+            }
         }
     }
 
     // TODO: Determine a specific interface to bind to, even in the default case.
     // ie: How should we handle selecting a cloud connection when no interfaces are up/ready?
     // We should have some historical stats to rely on and then bring that network up? 
-    return bestNetwork;
+
+    if (!canUsePreferred) {
+        LOG_DEBUG(TRACE, "Using best network: %s", netifToName(bestNetwork));
+        return bestNetwork;
+    } else {
+        LOG_DEBUG(TRACE, "Using preferred network: %s", netifToName(preferredNetwork_));
+        return preferredNetwork_;
+    }
 }
 
 int ConnectionManager::testConnections(bool background) {
@@ -194,7 +201,9 @@ int ConnectionManager::testConnections(bool background) {
     if (r == 0) {
         bestNetworks_.clear();
         for (auto& i: metrics) {
-            bestNetworks_.append(i.interface);
+            if (i.resultingScore != std::numeric_limits<decltype(i.resultingScore)>::max()) {
+                bestNetworks_.append(i.interface);
+            }
         }
         if (background) {
             // Disable this for now
