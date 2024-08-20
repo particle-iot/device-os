@@ -648,16 +648,12 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop)
         return;
     }
 
-    system_tick_t endMillis = startMillis + ms;
-
-    for (;;) {
-        system_tick_t d = endMillis - HAL_Timer_Get_Milli_Seconds();
-        static_assert(std::is_unsigned_v<system_tick_t>);
-        if (d == 0 || d > std::numeric_limits<system_tick_t>::max() / 2) {
-            break;
-        }
-        ApplicationThread.process(d);
-    }
+    system_tick_t timeout;
+    do {
+        system_tick_t elapsed = HAL_Timer_Get_Milli_Seconds() - startMillis;
+        timeout = (ms > elapsed) ? (ms - elapsed) : 0;
+        ApplicationThread.process(timeout);
+    } while (timeout > 0);
 #endif // PLATFORM_THREADING
 }
 

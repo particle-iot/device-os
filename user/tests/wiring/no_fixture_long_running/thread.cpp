@@ -13,24 +13,24 @@ test(THREAD_01_delay_does_not_introduce_extra_latency_when_processing_app_events
     }
 
     struct TestData {
-        system_tick_t sendTime;
-        system_tick_t* maxDelay;
-        int* recvCount;
+        system_tick_t eventSendTime;
+        system_tick_t* maxEventDelay;
+        int* eventRecvCount;
 
         static void callback(void* data) {
-            auto recvTime = HAL_Timer_Milliseconds();
+            auto now = HAL_Timer_Milliseconds();
             std::unique_ptr<TestData> d(static_cast<TestData*>(data));
-            auto delay = recvTime - d->sendTime;
-            if (delay > *d->maxDelay) {
-                *d->maxDelay = delay;
+            auto delay = now - d->eventSendTime;
+            if (delay > *d->maxEventDelay) {
+                *d->maxEventDelay = delay;
             }
-            ++*d->recvCount;
+            ++*d->eventRecvCount;
         }
     };
 
-    system_tick_t maxDelay = 0;
-    int sendCount = 0;
-    int recvCount = 0;
+    system_tick_t maxEventDelay = 0;
+    int eventSendCount = 0;
+    int eventRecvCount = 0;
 
     volatile bool stop = false;
     volatile bool failed = false;
@@ -46,25 +46,33 @@ test(THREAD_01_delay_does_not_introduce_extra_latency_when_processing_app_events
                 failed = true;
                 break;
             }
-            d->maxDelay = &maxDelay;
-            d->recvCount = &recvCount;
+            d->maxEventDelay = &maxEventDelay;
+            d->eventRecvCount = &eventRecvCount;
             now = HAL_Timer_Milliseconds();
-            d->sendTime = now;
+            d->eventSendTime = now;
             application_thread_invoke(TestData::callback, d.release(), nullptr);
-            ++sendCount;
+            ++eventSendCount;
         } while (now - startTime < 10000);
         stop = true;
     });
 
+    int delayMillis = 0;
+    int elapsedMillis = 0;
     do {
-        delay((rand() % 2900) + 100);
+        auto ms = (rand() % 2900) + 100;
+        auto t1 = HAL_Timer_Milliseconds();
+        delay(ms);
+        elapsedMillis += HAL_Timer_Milliseconds() - t1;
+        delayMillis += ms;
     } while (!stop);
 
     thread.join();
     Particle.process();
 
     assertFalse(!!failed);
-    assertLessOrEqual(maxDelay, 2);
-    assertMore(sendCount, 10);
-    assertEqual(recvCount, sendCount);
+    assertMoreOrEqual(elapsedMillis, delayMillis);
+    assertLessOrEqual(elapsedMillis - delayMillis, 2);
+    assertLessOrEqual(maxEventDelay, 2);
+    assertMore(eventSendCount, 10);
+    assertEqual(eventRecvCount, eventSendCount);
 }
