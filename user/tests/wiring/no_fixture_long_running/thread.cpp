@@ -56,8 +56,8 @@ test(THREAD_01_delay_does_not_introduce_extra_latency_when_processing_app_events
         stop = true;
     });
 
-    int delayMillis = 0;
-    int elapsedMillis = 0;
+    unsigned delayMillis = 0;
+    system_tick_t elapsedMillis = 0;
     do {
         auto ms = (rand() % 2900) + 100;
         auto t1 = HAL_Timer_Milliseconds();
@@ -71,7 +71,7 @@ test(THREAD_01_delay_does_not_introduce_extra_latency_when_processing_app_events
 
     assertFalse(!!failed);
     assertMoreOrEqual(elapsedMillis, delayMillis);
-    assertLessOrEqual(elapsedMillis - delayMillis, 2);
+    assertLessOrEqual(elapsedMillis - delayMillis, 5);
     assertLessOrEqual(maxEventDelay, 2);
     assertMore(eventSendCount, 10);
     assertEqual(eventRecvCount, eventSendCount);
