@@ -71,3 +71,6 @@ __attribute__((weak)) struct netif* lwip_hook_ip6_route(const ip6_addr_t* src, c
     return NULL;
 }
 
+__attribute__((weak)) struct netif* lwip_hook_dns_get_netif_for_server_index(int index) {
+    return NULL;
+}
