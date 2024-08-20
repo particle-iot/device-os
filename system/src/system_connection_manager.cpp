@@ -66,6 +66,10 @@ static const char* netifToName(uint8_t interfaceNumber) {
     }
 }
 
+bool isValidScore(uint32_t score) {
+    return std::numeric_limits<uint32_t>::max() != score;
+}
+
 static int getCloudHostnameAndPort(addrinfo** info, CloudServerAddressType* type, bool allowCached = false) {
     ServerAddress server_addr = {};
     HAL_FLASH_Read_ServerAddress(&server_addr);
@@ -128,11 +132,11 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     // Network is ready: ie configured + connected (see ipv4 routable hook)
     // Network has best criteria based on network tester results
     for (auto& i: bestNetworks_) {
-        if (network_ready(i, 0, nullptr)) {
+        if (network_ready(i.first, 0, nullptr)) {
             if (bestNetwork == NETWORK_INTERFACE_ALL) {
-                bestNetwork = i;
+                bestNetwork = i.first;
             }
-            if (preferredNetwork_ != NETWORK_INTERFACE_ALL && preferredNetwork_ == i) {
+            if (preferredNetwork_ != NETWORK_INTERFACE_ALL && preferredNetwork_ == i.first && isValidScore(i.second) /* score */) {
                 canUsePreferred = true;
             }
         }
@@ -204,9 +208,7 @@ int ConnectionManager::testConnections(bool background) {
     if (r == 0) {
         bestNetworks_.clear();
         for (auto& i: metrics) {
-            if (i.resultingScore != std::numeric_limits<decltype(i.resultingScore)>::max()) {
-                bestNetworks_.append(i.interface);
-            }
+            bestNetworks_.append(std::make_pair(i.interface, i.resultingScore));
         }
         if (background) {
             // Disable this for now
@@ -282,13 +284,13 @@ int ConnectionManager::checkCloudConnectionNetwork() {
     bool matchesCurrent = false;
     network_handle_t best = NETWORK_INTERFACE_ALL;
     for (const auto& i: bestNetworks_) {
-        LOG_DEBUG(TRACE, "%s - ready=%d (getCloudConnectionNetwork()=%s)", netifToName(i), network_ready(i, 0, nullptr), netifToName(getCloudConnectionNetwork()));
-        if (network_ready(i, 0, nullptr)) {
+        LOG_DEBUG(TRACE, "%s - ready=%d (getCloudConnectionNetwork()=%s)", netifToName(i.first), network_ready(i.first, 0, nullptr), netifToName(getCloudConnectionNetwork()));
+        if (network_ready(i.first, 0, nullptr)) {
             countReady++;
-            if (i == getCloudConnectionNetwork()) {
+            if (i.first == getCloudConnectionNetwork()) {
                 matchesCurrent = true;
             }
-            best = i;
+            best = i.first;
         }
     }
     if (countReady == 0) {
@@ -326,7 +328,7 @@ int ConnectionManager::checkCloudConnectionNetwork() {
 ConnectionTester::ConnectionTester() {
     for (const auto& i: getSupportedInterfaces()) {
         struct ConnectionMetrics interfaceDiagnostics = {};
-        interfaceDiagnostics.interface = i;
+        interfaceDiagnostics.interface = i.first;
         interfaceDiagnostics.socketDescriptor = -1; // 0 is a valid socket fd number
         metrics_.append(interfaceDiagnostics);
     }
@@ -703,16 +705,16 @@ const Vector<ConnectionMetrics> ConnectionTester::getConnectionMetrics(){
     return metrics_;
 }
 
-const Vector<network_interface_t> ConnectionTester::getSupportedInterfaces() {
-    const Vector<network_interface_t> interfaceList = { 
+const Vector<std::pair<network_interface_t, uint32_t>> ConnectionTester::getSupportedInterfaces() {
+    const Vector<std::pair<network_interface_t, uint32_t>> interfaceList = { 
 #if HAL_PLATFORM_ETHERNET
-    NETWORK_INTERFACE_ETHERNET,
+    {NETWORK_INTERFACE_ETHERNET, 0},
 #endif
 #if HAL_PLATFORM_WIFI 
-    NETWORK_INTERFACE_WIFI_STA,
+    {NETWORK_INTERFACE_WIFI_STA, 0},
 #endif
 #if HAL_PLATFORM_CELLULAR
-    NETWORK_INTERFACE_CELLULAR
+    {NETWORK_INTERFACE_CELLULAR, 0}
 #endif
     };
 

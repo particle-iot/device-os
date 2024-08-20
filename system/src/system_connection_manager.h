@@ -75,12 +75,12 @@ private:
 
 private:
     network_handle_t preferredNetwork_;
-    Vector<network_handle_t> bestNetworks_;
+    Vector<std::pair<network_handle_t, uint32_t>> bestNetworks_;
     volatile bool testResultsActual_ = false;
     volatile bool checkScheduled_ = false;
     bool backgroundTestInProgress_ = false;
     std::unique_ptr<ConnectionTester> backgroundTester_;
-    static constexpr system_tick_t PERIODIC_CHECK_PERIOD_MS = 5 * 60 * 100;
+    static constexpr system_tick_t PERIODIC_CHECK_PERIOD_MS = 5 * 60 * 1000;
     system_tick_t nextPeriodicCheck_ = 0;
 };
 
@@ -93,7 +93,7 @@ public:
     int runTest(system_tick_t maxBlockTime = 0xffffffff);
 
     const Vector<ConnectionMetrics> getConnectionMetrics();
-    static const Vector<network_interface_t> getSupportedInterfaces();
+    static const Vector<std::pair<network_interface_t, uint32_t>> getSupportedInterfaces();
 
 private:
     int allocateTestPacketBuffers(ConnectionMetrics* metrics);
