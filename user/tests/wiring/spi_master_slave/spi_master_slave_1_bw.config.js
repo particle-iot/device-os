@@ -7,7 +7,7 @@
             ]
         },
         {
-            "name": "spi_slave",
+            "name": "spi1_slave",
             "devices": [
                 "e00fce68db4bf859656a8cb1" // Argon
             ]

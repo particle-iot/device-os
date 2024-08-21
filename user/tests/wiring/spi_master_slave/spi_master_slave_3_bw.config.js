@@ -1,15 +1,15 @@
 {
     "fixtures": [
         {
-            "name": "spi_master",
+            "name": "spi1_master",
             "devices": [
-                "e00fce682e1435f9a333a27b" // Argon Left
+                "0a10aced202194944a05a360" // Photon2 Left
             ]
         },
         {
             "name": "spi1_slave",
             "devices": [
-                "e00fce68e8835942f242ab86" // Argon Right
+                "0a10aced202194944a05a2bc" // Photon2 Right
             ]
         }
     ]
