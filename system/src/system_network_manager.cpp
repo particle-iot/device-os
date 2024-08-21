@@ -616,7 +616,6 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             }
         }
     }
-    LOG(INFO, "handleIfLink system.cm");
     forceCloudPingOrTest();
 }
 
@@ -630,7 +629,6 @@ void NetworkManager::handleIfAddr(if_t iface, const struct if_event* ev) {
     if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
         refreshIpState();
     }
-    LOG(INFO, "handleIfAddr system.cm");
     forceCloudPingOrTest();
 }
 

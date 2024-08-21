@@ -363,7 +363,6 @@ int system_cloud_recv(uint8_t* buf, size_t buflen, int flags)
 
 int system_internet_test(void* reserved)
 {
-    LOG(INFO, "internet test system.cm");
     return particle::system::ConnectionManager::instance()->testConnections();
 }
 

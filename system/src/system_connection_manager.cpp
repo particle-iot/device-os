@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#define DEBUG_BUILD
+
 #include "logging.h"
 LOG_SOURCE_CATEGORY("system.cm")
 
@@ -148,20 +148,20 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     if (!canUsePreferred) {
         if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(preferredNetwork_, 0, nullptr)) {
             nextPeriodicCheck_ = HAL_Timer_Get_Milli_Seconds() + PERIODIC_CHECK_PERIOD_MS;
-            LOG(TRACE, "Scheduled a periodic check @ %lu ms", nextPeriodicCheck_);
+            LOG_DEBUG(TRACE, "Scheduled a periodic check @ %lu ms", nextPeriodicCheck_);
         }
-        LOG_DEBUG(TRACE, "Using best network: %s", netifToName(bestNetwork));
+        LOG(TRACE, "Using best network: %s", netifToName(bestNetwork));
         return bestNetwork;
     } else {
         nextPeriodicCheck_ = 0;
-        LOG_DEBUG(TRACE, "Using preferred network: %s", netifToName(preferredNetwork_));
+        LOG(TRACE, "Using preferred network: %s", netifToName(preferredNetwork_));
         return preferredNetwork_;
     }
 }
 
 int ConnectionManager::testConnections(bool background) {
     if (!background) {
-        LOG(INFO, "testConnections full");
+        LOG_DEBUG(INFO, "testConnections full");
     }
     if (!background && testResultsActual_) {
         // Skip the test once
@@ -175,24 +175,24 @@ int ConnectionManager::testConnections(bool background) {
 
     if (!background) {
         if (backgroundTestInProgress_) {
-            LOG(WARN, "Background reachability test aborted");
+            LOG_DEBUG(WARN, "Background reachability test aborted");
         }
         backgroundTestInProgress_ = false;
         backgroundTester_.reset();
         testResultsActual_ = false;
 
-        LOG(INFO, "Full reachability test started");
+        LOG_DEBUG(INFO, "Full reachability test started");
         ConnectionTester tester;
         CHECK(tester.prepare(true /* full test */));
         // Blocking call
         r = tester.runTest();
-        LOG(INFO, "Full reachability test finished (%d)", r);
+        LOG_DEBUG(INFO, "Full reachability test finished (%d)", r);
         metrics = tester.getConnectionMetrics();
     } else {
         // Background test
         testResultsActual_ = false;
         if (!backgroundTestInProgress_) {
-            LOG(INFO, "Background reachability test started");
+            LOG_DEBUG(INFO, "Background reachability test started");
             backgroundTester_ = std::make_unique<ConnectionTester>();
             CHECK_TRUE(backgroundTester_, SYSTEM_ERROR_NO_MEMORY);
             CHECK(backgroundTester_->prepare(false /* full test*/));
@@ -200,7 +200,7 @@ int ConnectionManager::testConnections(bool background) {
         }
         r = backgroundTester_->runTest(0 /* non blocking */);
         if (!r || r != SYSTEM_ERROR_BUSY) {
-            LOG(INFO, "Background reachability test finished (%d)", r);
+            LOG_DEBUG(INFO, "Background reachability test finished (%d)", r);
             backgroundTestInProgress_ = false;
             metrics = backgroundTester_->getConnectionMetrics();
             backgroundTester_.reset();
@@ -221,7 +221,6 @@ int ConnectionManager::testConnections(bool background) {
 
 int ConnectionManager::scheduleCloudConnectionNetworkCheck() {
     testResultsActual_ = false;
-    LOG(INFO, "schedule currently scheduled=%d", checkScheduled_);
     checkScheduled_ = true;
     return 0;
 }
@@ -229,14 +228,11 @@ int ConnectionManager::scheduleCloudConnectionNetworkCheck() {
 void ConnectionManager::handlePeriodicCheck() {
     if (nextPeriodicCheck_ != 0 && HAL_Timer_Get_Milli_Seconds() >= nextPeriodicCheck_) {
         if (!testIsAllowed()) {
-            LOG(ERROR, "Periodic check not allowed");
             return;
         }
         if (preferredNetwork_ != NETWORK_INTERFACE_ALL && getCloudConnectionNetwork() != preferredNetwork_) {
-            LOG(TRACE, "Periodic check because preferred interface was not picked during last run");
+            LOG_DEBUG(TRACE, "Periodic check because preferred interface was not picked during last run");
             scheduleCloudConnectionNetworkCheck();
-        } else {
-            LOG(INFO, "Periodic check not run preferred=%d cloud=%d", preferredNetwork_, getCloudConnectionNetwork());
         }
         nextPeriodicCheck_ = 0;
     }
@@ -322,7 +318,7 @@ int ConnectionManager::checkCloudConnectionNetwork() {
         }
     }
     // If best candidate doesn't match current network interface - reconnect
-    LOG_DEBUG(TRACE, "Best network interface for cloud connection changed (to %s) - move the cloud session", netifToName(best));
+    LOG(TRACE, "Best network interface for cloud connection changed (to %s) - move the cloud session", netifToName(best));
     auto options = CloudDisconnectOptions().reconnect(true);
     auto systemOptions = options.toSystemOptions();
     spark_cloud_disconnect(&systemOptions, nullptr);
@@ -381,7 +377,7 @@ int ConnectionTester::allocateTestPacketBuffers(ConnectionMetrics* metrics) {
         if (rxBuffer) {
             free(rxBuffer);
         }
-        LOG(ERROR, "%s failed to allocate connection test buffers of size %d", netifToName(metrics->interface), maxMessageLength);
+        LOG_DEBUG(ERROR, "%s failed to allocate connection test buffers of size %d", netifToName(metrics->interface), maxMessageLength);
         return SYSTEM_ERROR_NO_MEMORY;
     }
 
@@ -436,7 +432,7 @@ int ConnectionTester::receiveTestPacket(ConnectionMetrics* metrics) {
         }
         if (!rxTimestamp) {
             // Just in case
-            LOG(WARN, "No RX timestamp from SO_TIMESTAMPING");
+            LOG_DEBUG(WARN, "No RX timestamp from SO_TIMESTAMPING");
             rxTimestamp = HAL_Timer_Get_Milli_Seconds();
         }
         // Parse packet
@@ -509,14 +505,14 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
     int pollCount = sock_poll(pfds, socketCount, 1 /* ms */);
 
     if (pollCount < 0) {
-        LOG(ERROR, "Connection test poll error %d", pollCount);
+        LOG_DEBUG(ERROR, "Connection test poll error %d", pollCount);
         return 0;
     }
 
     for (int i = 0; i < socketCount; i++) {
         ConnectionMetrics* connection = metricsFromSocketDescriptor(pfds[i].fd);
         if (!connection) {
-            LOG(ERROR, "No connection associated with socket descriptor %d", pfds[i].fd);
+            LOG_DEBUG(ERROR, "No connection associated with socket descriptor %d", pfds[i].fd);
             return SYSTEM_ERROR_BAD_DATA;
         }
 
@@ -526,7 +522,7 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
         if (pfds[i].revents & POLLIN) {
             int r = receiveTestPacket(connection);
             if (r == SYSTEM_ERROR_BAD_DATA) {
-                LOG(WARN, "Reachability packet failed validation");
+                LOG_DEBUG(WARN, "Reachability packet failed validation");
             }
         }
     }
@@ -574,10 +570,10 @@ int ConnectionTester::prepare(bool fullTest) {
             });
 
             if (s < 0) {
-                LOG(ERROR, "test socket failed, family=%d, type=%d, protocol=%d, errno=%d", a->ai_family, a->ai_socktype, a->ai_protocol, errno);
+                LOG_DEBUG(ERROR, "test socket failed, family=%d, type=%d, protocol=%d, errno=%d", a->ai_family, a->ai_socktype, a->ai_protocol, errno);
                 return SYSTEM_ERROR_NETWORK;
             }
-       
+#ifdef DEBUG_BUILD
             char serverHost[INET6_ADDRSTRLEN] = {};
             uint16_t serverPort = 0;
             switch (a->ai_family) {
@@ -593,12 +589,12 @@ int ConnectionTester::prepare(bool fullTest) {
                 }
             }
             LOG_DEBUG(TRACE, "test socket=%d, connecting to %s#%u", s, serverHost, serverPort);
-
+#endif
             struct ifreq ifr = {};
             if_index_to_name(connectionMetrics.interface, ifr.ifr_name);
             r = sock_setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
             if (r) {
-                LOG(ERROR, "test socket=%d, failed to sock_setsockopt to IF %s, errno=%d", s, ifr.ifr_name, errno);
+                LOG_DEBUG(ERROR, "test socket=%d, failed to sock_setsockopt to IF %s, errno=%d", s, ifr.ifr_name, errno);
                 return SYSTEM_ERROR_NETWORK;
             }
 
@@ -606,14 +602,14 @@ int ConnectionTester::prepare(bool fullTest) {
             int dummy = 1;
             r = sock_setsockopt(s, SOL_SOCKET, SO_TIMESTAMPING, &dummy, sizeof(dummy));
             if (r) {
-                LOG(WARN, "test socket=%d, failed to enable timestamping");
+                LOG_DEBUG(WARN, "test socket=%d, failed to enable timestamping");
                 // Not a critical error
             }
 
             connectionMetrics.socketConnAttempts++;
             r = sock_connect(s, a->ai_addr, a->ai_addrlen);
             if (r) {
-                LOG(ERROR, "test socket=%d, failed to connect to %s#%u, errno=%d", s, serverHost, serverPort, errno);
+                LOG_DEBUG(ERROR, "test socket=%d, failed to connect to %s#%u, errno=%d", s, serverHost, serverPort, errno);
                 connectionMetrics.socketConnFailures++;
                 return SYSTEM_ERROR_NETWORK;
             }
@@ -676,7 +672,7 @@ int ConnectionTester::runTest(system_tick_t maxBlockTime) {
                         consecutive = 0;
                     } else {
                         penalty = i.avgPacketRoundTripTime * (2 << consecutive++) /* 2^(conscutive++) */;
-                        LOG(TRACE, "%d: total=%u consecutive=%u penalty=%u resultingScore=%u new=%u", i.interface, i.totalPacketWaitMillis, consecutive, penalty, i.resultingScore, i.resultingScore + penalty);
+                        LOG_DEBUG(TRACE, "%d: total=%u consecutive=%u penalty=%u resultingScore=%u new=%u", i.interface, i.totalPacketWaitMillis, consecutive, penalty, i.resultingScore, i.resultingScore + penalty);
                         i.resultingScore += penalty;
                     }
                 }
