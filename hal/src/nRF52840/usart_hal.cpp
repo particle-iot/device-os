@@ -261,7 +261,14 @@ public:
         AtomicSection lk;
 
         // Update current available received data
-        data();
+        size_t consumable = 0;
+        {
+            RxLock lk(uarte_);
+            CHECK(data(&consumable));
+            if (consumable > 0) {
+                rxBuffer_.acquireCommit(consumable);
+            }
+        }
         CHECK(disable(false));
 
         state_ = HAL_USART_STATE_SUSPENDED;
