@@ -12,6 +12,16 @@ namespace {
 
 using namespace particle;
 
+bool parseVariantFromCbor(Variant& v, const char* data, size_t size) {
+    InputBufferStream stream(data, size);
+    int r = decodeFromCBOR(v, stream);
+    if (r < 0) {
+        LOG(ERROR, "Failed to parse CBOR: %d", r);
+        return false;
+    }
+    return true;
+}
+
 void publishCompletionCallback(int error, const void* data, void* callbackData, void* reserved) {
     auto p = Promise<bool>::fromDataPtr(callbackData);
     if (error != Error::NONE) {
@@ -21,10 +31,10 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
     }
 }
 
-inline bool subscribeWithContentType(const char* name, EventHandler handler, void* handlerData) {
+inline bool subscribeWithFlags(const char* name, EventHandler handler, void* handlerData, int flags) {
     spark_subscribe_param param = {};
     param.size = sizeof(param);
-    param.flags |= SUBSCRIBE_FLAG_BINARY_DATA;
+    param.flags = flags;
 
     return spark_subscribe(name, handler, handlerData, MY_DEVICES, nullptr /* device_id_deprecated */, &param);
 }
@@ -37,6 +47,32 @@ void subscribeWithContentTypeCallbackWrapper(void* arg, const char* name, const 
 void subscribeWithContentTypeFunctionWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
     auto fn = (EventHandlerWithContentTypeFn*)arg;
     (*fn)(name, data, dataSize, (ContentType)contentType);
+}
+
+void subscribeWithVariantCallbackWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
+    Variant v;
+    if (!parseVariantFromCbor(v, data, dataSize)) {
+        return;
+    }
+    auto cb = (EventHandlerWithVariant)arg;
+    cb(name, std::move(v));
+}
+
+void subscribeWithVariantFunctionWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
+    Variant v;
+    if (!parseVariantFromCbor(v, data, dataSize)) {
+        return;
+    }
+    auto fn = (EventHandlerWithVariantFn*)arg;
+    (*fn)(name, std::move(v));
+}
+
+template<typename T>
+inline EventHandler eventHandlerCast(T* fn) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+    return (EventHandler)fn;
+#pragma GCC diagnostic pop
 }
 
 } // namespace
@@ -198,11 +234,8 @@ int CloudClass::useLedgersImpl(const Vector<const char*>& usedNames) {
 #endif // Wiring_Ledger
 
 bool CloudClass::subscribe(const char* name, EventHandlerWithContentType handler) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-function-type"
-    auto h = (EventHandler)subscribeWithContentTypeCallbackWrapper;
-#pragma GCC diagnostic pop
-    return subscribeWithContentType(name, h, (void*)handler);
+    auto h = eventHandlerCast(subscribeWithContentTypeCallbackWrapper);
+    return subscribeWithFlags(name, h, (void*)handler, SUBSCRIBE_FLAG_BINARY_DATA);
 }
 
 bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handler) {
@@ -210,9 +243,20 @@ bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handl
     if (!fnPtr) {
         return false;
     }
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-function-type"
-    auto h = (EventHandler)subscribeWithContentTypeFunctionWrapper;
-#pragma GCC diagnostic pop
-    return subscribeWithContentType(name, h, fnPtr);
+    auto h = eventHandlerCast(subscribeWithContentTypeFunctionWrapper);
+    return subscribeWithFlags(name, h, fnPtr, SUBSCRIBE_FLAG_BINARY_DATA);
+}
+
+bool subscribe(const char* name, particle::EventHandlerWithVariant handler) {
+    auto h = eventHandlerCast(subscribeWithVariantCallbackWrapper);
+    return subscribeWithFlags(name, h, (void*)handler, SUBSCRIBE_FLAG_CBOR_DATA);
+}
+
+bool subscribe(const char* name, particle::EventHandlerWithVariantFn handler) {
+    auto fnPtr = new(std::nothrow) EventHandlerWithVariantFn(std::move(handler));
+    if (!fnPtr) {
+        return false;
+    }
+    auto h = eventHandlerCast(subscribeWithVariantFunctionWrapper);
+    return subscribeWithFlags(name, h, fnPtr, SUBSCRIBE_FLAG_CBOR_DATA);
 }

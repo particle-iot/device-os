@@ -63,7 +63,8 @@ namespace SubscriptionFlag {
   enum Enum {
     MY_DEVICES = 0x00, // Deprecated
     FIREHOSE = 0x01, // Deprecated
-    BINARY_DATA = 0x02 // The subscription handler accepts binary data
+    BINARY_DATA = 0x02, // The subscription handler accepts binary data
+    CBOR_DATA = 0x04 // The subscription handler accepts CBOR data
   };
 }
 
