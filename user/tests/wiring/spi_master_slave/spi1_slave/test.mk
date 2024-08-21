@@ -9,8 +9,8 @@ ifeq ($(strip $(APPSOURCES)),)
 $(error "No sources found in $(SOURCE_PATH)/$(USRSRC)")
 endif
 
-USE_SPI=SPI
-USE_CS=SPI
+USE_SPI=SPI1
+USE_CS=SPI1
 
 ifeq ("${USE_SPI}","SPI")
 USE_SPI_VAL=0
