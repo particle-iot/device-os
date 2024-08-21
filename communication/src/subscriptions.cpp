@@ -39,7 +39,9 @@ ProtocolError Subscriptions::send_subscription_impl(MessageChannel& channel, con
     // Subscription messages have an empty token
     e.option(CoapOption::URI_PATH, "e"); // 11
     e.option(CoapOption::URI_PATH, filter, filterLen); // 11
-    if (flags & SubscriptionFlag::BINARY_DATA) {
+    if (flags & SubscriptionFlag::CBOR_DATA) {
+        e.option(CoapOption::URI_QUERY, "c"); // 15
+    } else if (flags & SubscriptionFlag::BINARY_DATA) {
         e.option(CoapOption::URI_QUERY, "b"); // 15
     }
     int r = e.encode();
