@@ -1335,8 +1335,17 @@ void Spark_Process_Events()
 {
     if (SPARK_CLOUD_SOCKETED && !Spark_Communication_Loop())
     {
-        WARN("Communication loop error, closing cloud socket");
-        cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? CLOUD_DISCONNECT_DONT_CLOSE : 0, CLOUD_DISCONNECT_REASON_ERROR);
+        // The error is only handled here if we are already out of handshake (or sesssion resume)
+        // In case of handshake/session resume errors the error is handled in handle_cloud_connection()
+        // and cloud_disconnect() will also eventually be called with CLOUD_DISCONNECT_REASON_ERROR.
+        if (SPARK_CLOUD_CONNECTED) {
+            WARN("Communication loop error, closing cloud socket");
+            cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? CLOUD_DISCONNECT_DONT_CLOSE : 0, CLOUD_DISCONNECT_REASON_ERROR);
+        } else if (SPARK_CLOUD_HANDSHAKE_PENDING) {
+            // FIXME: this is a temporary workaround. communication layer should call the appropriate callback on its own in case of errors (?)
+            SPARK_CLOUD_HANDSHAKE_PENDING = 0;
+            SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
+        }
     }
     else
     {

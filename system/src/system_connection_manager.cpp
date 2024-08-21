@@ -153,6 +153,7 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
         LOG_DEBUG(TRACE, "Using best network: %s", netifToName(bestNetwork));
         return bestNetwork;
     } else {
+        nextPeriodicCheck_ = 0;
         LOG_DEBUG(TRACE, "Using preferred network: %s", netifToName(preferredNetwork_));
         return preferredNetwork_;
     }

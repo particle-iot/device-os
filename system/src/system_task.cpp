@@ -428,7 +428,7 @@ void handle_cloud_connection(bool force_events)
                 }
                 const auto diag = CloudDiagnostics::instance();
                 diag->lastError(err);
-                cloud_disconnect();
+                cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? CLOUD_DISCONNECT_DONT_CLOSE : 0, CLOUD_DISCONNECT_REASON_ERROR);
             } else {
                 cfod_count = 0;
             }
