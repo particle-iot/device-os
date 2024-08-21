@@ -95,10 +95,9 @@ void ConnectionManager::setPreferredNetwork(network_handle_t network, bool prefe
         if (network != NETWORK_INTERFACE_ALL) {
             preferredNetwork_ = network;
 
-            // If cloud is already connected, and a preferred network is set, and it is up, move cloud connection to it immediately
+            // If cloud is already connected, and a preferred network is set, and it is up, attempt to move cloud connection to it immediately
             if (spark_cloud_flag_connected() && network_ready(preferredNetwork_, 0, nullptr)) {
-                auto options = CloudDisconnectOptions().graceful(true).reconnect(true).toSystemOptions();
-                spark_cloud_disconnect(&options, nullptr);
+                scheduleCloudConnectionNetworkCheck();
             }
         }
     } else {
