@@ -149,6 +149,7 @@ network_handle_t ConnectionManager::selectCloudConnectionNetwork() {
     if (!canUsePreferred) {
         if (preferredNetwork_ != NETWORK_INTERFACE_ALL && network_ready(preferredNetwork_, 0, nullptr)) {
             nextPeriodicCheck_ = HAL_Timer_Get_Milli_Seconds() + PERIODIC_CHECK_PERIOD_MS;
+            LOG(TRACE, "Scheduled a periodic check @ %lu ms", nextPeriodicCheck_);
         }
         LOG_DEBUG(TRACE, "Using best network: %s", netifToName(bestNetwork));
         return bestNetwork;
@@ -229,11 +230,14 @@ int ConnectionManager::scheduleCloudConnectionNetworkCheck() {
 void ConnectionManager::handlePeriodicCheck() {
     if (nextPeriodicCheck_ != 0 && HAL_Timer_Get_Milli_Seconds() >= nextPeriodicCheck_) {
         if (!testIsAllowed()) {
+            LOG(ERROR, "Periodic check not allowed");
             return;
         }
         if (preferredNetwork_ != NETWORK_INTERFACE_ALL && getCloudConnectionNetwork() != preferredNetwork_) {
             LOG(TRACE, "Periodic check because preferred interface was not picked during last run");
             scheduleCloudConnectionNetworkCheck();
+        } else {
+            LOG(INFO, "Periodic check not run preferred=%d cloud=%d", preferredNetwork_, getCloudConnectionNetwork());
         }
         nextPeriodicCheck_ = 0;
     }
