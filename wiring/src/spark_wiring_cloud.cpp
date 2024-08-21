@@ -1,6 +1,8 @@
 #include "spark_wiring_cloud.h"
 
 #include "spark_wiring_ledger.h"
+#include "spark_wiring_variant.h"
+#include "spark_wiring_print.h"
 
 #include <functional>
 #include "system_cloud.h"
@@ -112,6 +114,16 @@ Future<bool> CloudClass::publish_event(const char* name, const char* data, size_
     }
 
     return p.future();
+}
+
+Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishFlags flags) {
+    String s;
+    OutputStringStream stream(s);
+    int r = encodeToCBOR(data, stream);
+    if (r < 0) {
+        return Future<bool>((Error::Type)r);
+    }
+    return publish(name, s.c_str(), s.length(), ContentType::CBOR, flags);
 }
 
 int CloudClass::publishVitals(system_tick_t period_s_) {

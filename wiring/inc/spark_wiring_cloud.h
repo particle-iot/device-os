@@ -73,6 +73,7 @@ struct is_string_literal {
 namespace particle {
 
 class Ledger;
+class Variant;
 
 /**
  * Content type.
@@ -298,6 +299,8 @@ public:
     particle::Future<bool> publish(const char* name, const char* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags()) {
         return publish_event(name, data, size, type, DEFAULT_CLOUD_EVENT_TTL, flags);
     }
+
+    particle::Future<bool> publish(const char* name, const particle::Variant& data, PublishFlags flags = PublishFlags());
 
     /**
      * @brief Publish vitals information
