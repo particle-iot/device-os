@@ -70,6 +70,7 @@ constexpr uint16_t PEER_DESIRED_ATT_MTU = 123;
 
 Thread* scanThread = nullptr;
 volatile unsigned scanResults = 0;
+String nameInSr;
 
 bool disconnect = false;
 
@@ -618,6 +619,12 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
         BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *param) -> void {
             auto scanResults = (volatile unsigned int*)param;
             (*scanResults)++;
+            if (result->scanResponse().length() > 0 && nameInSr.length() == 0) {
+                nameInSr = result->scanResponse().deviceName();
+                if (nameInSr != "ble-test") {
+                    nameInSr = String();
+                }
+            }
         }, param);
     }, (void*)&scanResults);
     assertTrue((bool)scanThread);
@@ -636,12 +643,14 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
         });
     });
     scanResults = 0;
+    nameInSr = String();
     delay(2000);
     assertMoreOrEqual((unsigned)scanResults, 1);
+    assertTrue(nameInSr == "ble-test");
     assertTrue(peer.connected());
 }
 
-test(BLE_34_Central_Can_Connect_While_Scanning_After_Disconnect) {
+test(BLE_34_Central_Is_Still_Scanning_After_Disconnect) {
     SCOPE_GUARD({
         if (BLE.scanning() && scanThread) {
             assertEqual(0, BLE.stopScanning());
@@ -652,8 +661,10 @@ test(BLE_34_Central_Can_Connect_While_Scanning_After_Disconnect) {
     assertTrue(BLE.scanning());
     assertFalse(BLE.connected());
     scanResults = 0;
+    nameInSr = String();
     delay(5000);
     assertMoreOrEqual((unsigned)scanResults, 1);
+    assertTrue(nameInSr == "ble-test");
 }
 
 test(BLE_35_Central_Can_Connect_While_Peripheral_Is_Scanning_Prepare) {

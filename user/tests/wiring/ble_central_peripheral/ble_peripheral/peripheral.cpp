@@ -499,9 +499,16 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
         assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
         assertFalse(BLE.connected());
     });
+    BleAdvertisingData advData;
+    advData.appendServiceUUID(serviceUuid);
+    BleAdvertisingData srData;
+    srData.appendLocalName("ble-test");
+    int ret = BLE.advertise(&advData, &srData);
+    assertEqual(ret, 0);
+    assertTrue(BLE.advertising());
 }
 
-test(BLE_34_Central_Can_Connect_While_Scanning_After_Disconnect) {
+test(BLE_34_Central_Is_Still_Scanning_After_Disconnect) {
 }
 
 test(BLE_35_Central_Can_Connect_While_Peripheral_Is_Scanning_Prepare) {
