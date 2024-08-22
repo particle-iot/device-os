@@ -247,12 +247,12 @@ bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handl
     return subscribeWithFlags(name, h, fnPtr, SUBSCRIBE_FLAG_BINARY_DATA);
 }
 
-bool subscribe(const char* name, particle::EventHandlerWithVariant handler) {
+bool CloudClass::subscribe(const char* name, particle::EventHandlerWithVariant handler) {
     auto h = eventHandlerCast(subscribeWithVariantCallbackWrapper);
     return subscribeWithFlags(name, h, (void*)handler, SUBSCRIBE_FLAG_CBOR_DATA);
 }
 
-bool subscribe(const char* name, particle::EventHandlerWithVariantFn handler) {
+bool CloudClass::subscribe(const char* name, particle::EventHandlerWithVariantFn handler) {
     auto fnPtr = new(std::nothrow) EventHandlerWithVariantFn(std::move(handler));
     if (!fnPtr) {
         return false;
