@@ -12,21 +12,45 @@ static uint8_t s_mcpAddress = 0x00;
 
 #define LOOP_COUNT 10000
 
-// Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
-//     // { "comm", LOG_LEVEL_NONE }, // filter out comm messages
-//     // { "system", LOG_LEVEL_INFO } // only info level for system messages
-// });
+Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
+    // { "comm", LOG_LEVEL_NONE }, // filter out comm messages
+    // { "system", LOG_LEVEL_INFO } // only info level for system messages
+});
 
 test(000_I2C_MCP23017_Prepare) {
     // Serial1.begin(115200);
     // Test::out = &Serial1;
 }
 
-externTest(0_I2C_scanBus);
+test(0_I2C_MCP23017_scanBus) {
+    i2c::reset();
+
+    uint32_t ts1 = 0, ts2 = 0;
+    // Scan I2C bus
+    for (uint8_t addr = 0x01; addr < 0x7f; addr++) {
+        ts1 = millis();
+        USE_WIRE.beginTransmission(addr);
+        int32_t err = USE_WIRE.endTransmission();
+        ts2 = millis();
+
+        if (err == 0) {
+            i2c::devices.append(addr);
+            Log.trace("I2C device @ 0x%02x", addr);
+        } else if (err == 0x03) {
+            // No one ACKed the address
+            // Check that this doesn't cause standard 100ms delay in I2C HAL
+            assertMoreOrEqual(ts2, ts1);
+            assertLessOrEqual(ts2 - ts1, 50);
+            // Log.trace("err1 @ 0x%02x %ld", addr, err);
+        } else {
+            // Log.trace("err2 @ 0x%02x %ld", addr, err);
+        }
+    }
+
+    assertEqual(i2c::errorCount, 0);
+}
 
 test(1_I2C_MCP23017_doRequestControlNoStopReadNoStop) {
-    assertTestPass(0_I2C_scanBus);
-
     // Check whether we have found the MCP23017
     for (uint8_t addr = MCP23017_BASE_ADDRESS; addr <= MCP23017_BASE_ADDRESS + 0b111; addr++) {
         if (std::find(i2c::devices.begin(), i2c::devices.end(), addr) != i2c::devices.end()) {
@@ -177,6 +201,7 @@ test(5_I2C_MCP23017_HighPriorityInterruptsDoNotInterfere) {
     for (int i = 0; i < LOOP_COUNT; i++) {
         mcp23017_looped_test();
         assertEqual(i2c::errorCount, 0);
+        // if (i%1000==0) Log.trace("Loop Iteration: %d", i);
     }
 
     assertEqual(i2c::errorCount, 0);
@@ -204,6 +229,7 @@ test(6_I2C_MCP23017_NastyThreadDisablingContextSwitchingDoesNotInterfere) {
     for (int i = 0; i < LOOP_COUNT; i++) {
         mcp23017_looped_test();
         assertEqual(i2c::errorCount, 0);
+        // if (i%1000==0) Log.trace("Loop Iteration: %d", i);
     }
 
     assertEqual(i2c::errorCount, 0);
@@ -232,6 +258,7 @@ test(7_I2C_MCP23017_HighPriorityInterruptsAndNastyThreadDisablingContextSwitchin
     for (int i = 0; i < LOOP_COUNT; i++) {
         mcp23017_looped_test();
         assertEqual(i2c::errorCount, 0);
+        // if (i%1000==0) Log.trace("Loop Iteration: %d", i);
     }
 
     assertEqual(i2c::errorCount, 0);

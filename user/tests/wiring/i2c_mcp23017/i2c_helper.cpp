@@ -23,7 +23,7 @@ int32_t writeRegister(uint8_t slaveAddress, uint8_t addr, uint8_t val, bool stop
     int32_t err = USE_WIRE.endTransmission(stop);
     if (err < 0) {
         ++errorCount;
-        Test::out->printlnf("%lu e %ld 0x%02x 0x%02x 1 %d", errorCount, err, slaveAddress, addr, stop);
+        Log.trace("errcnt:%lu err:%ld saddr:0x%02x addr:0x%02x stop:%d", errorCount, err, slaveAddress, addr, stop);
     }
     return err;
 }
@@ -35,7 +35,7 @@ int32_t writeRegister(uint8_t slaveAddress, uint8_t addr, uint8_t* buffer, uint8
     int32_t err = USE_WIRE.endTransmission(stop);
     if (err < 0) {
         ++errorCount;
-        Test::out->printlnf("%lu e %ld 0x%02x 0x%02x %d %d", errorCount, err, slaveAddress, addr, len, stop);
+        Log.trace("errcnt:%lu err:%ld saddr:0x%02x addr:0x%02x len:%d stop:%d", errorCount, err, slaveAddress, addr, len, stop);
     }
     return err;
 }
@@ -50,11 +50,11 @@ int32_t readRegister(uint8_t slaveAddress, uint8_t addr, bool stop, bool stopAft
             return USE_WIRE.read();
         } else {
             ++errorCount;
-            Test::out->printlnf("%lu r %ld 0x%02x 0x%02x %d", errorCount, err, slaveAddress, addr, stop);
+            Log.trace("errcnt:%lu err:%ld saddr:0x%02x addr:0x%02x stop:%d", errorCount, err, slaveAddress, addr, stop);
         }
     } else {
         ++errorCount;
-        Test::out->printlnf("%lu e %ld 0x%02x 0x%02x %d", errorCount, err, slaveAddress, addr, stop);
+        Log.trace("errcnt:%lu err:%ld saddr:0x%02x addr:0x%02x stop:%d", errorCount, err, slaveAddress, addr, stop);
     }
     return err;
 }
@@ -73,11 +73,11 @@ int32_t readRegister(uint8_t slaveAddress, uint8_t addr, uint8_t* buffer, uint8_
             }
         } else {
             ++errorCount;
-            Test::out->printlnf("%lu r %ld 0x%02x 0x%02x %d %d", errorCount, err, slaveAddress, addr, len, stop);
+            Log.trace("errcnt:%lu err:%ld saddr:0x%02x addr:0x%02x len:%d stop:%d", errorCount, err, slaveAddress, addr, len, stop);
         }
     } else {
         ++errorCount;
-        Test::out->printlnf("%lu e %ld 0x%02x 0x%02x %d %d", errorCount, err, slaveAddress, addr, len, stop);
+        Log.trace("errcnt:%lu err:%ld saddr:0x%02x addr:0x%02x len:%d stop:%d", errorCount, err, slaveAddress, addr, len, stop);
     }
     return err;
 }
@@ -90,7 +90,7 @@ int32_t readAddr(uint8_t slaveAddress, uint8_t* buffer, uint8_t len, bool stop) 
         }
     } else {
         ++errorCount;
-        Test::out->printlnf("%lu, r l%d 0x%02x %d %d", errorCount, err, slaveAddress, len, stop);
+        Log.trace("errcnt:%lu err:%ld saddr:0x%02x len:%d stop:%d", errorCount, err, slaveAddress, len, stop);
     }
     return err;
 }
