@@ -131,6 +131,13 @@ public:
         unsigned int config;
     };
 
+    int getFeatures(uint32_t* features) {
+        *features = 0;
+        *features |= (SERIAL_8N1 | SERIAL_8E1 | SERIAL_8N2 | SERIAL_8E2);
+        *features |= SERIAL_FLOW_CONTROL_RTS_CTS;
+        return SYSTEM_ERROR_NONE;
+    }
+
     int init(const hal_usart_buffer_config_t& conf) {
         if (isEnabled()) {
             CHECK(end());
@@ -827,6 +834,12 @@ void uarte1InterruptHandler(void) {
 
 extern "C" void UARTE1_IRQHandler(void) {
     uarte1InterruptHandler();
+}
+
+int hal_usart_get_features(hal_usart_interface_t serial, uint32_t* features, void* reserved) {
+    CHECK_TRUE(features, SYSTEM_ERROR_INVALID_ARGUMENT);
+    auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    return usart->getFeatures(features);
 }
 
 int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*) {

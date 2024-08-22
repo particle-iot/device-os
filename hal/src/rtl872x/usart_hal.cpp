@@ -128,6 +128,16 @@ public:
         return configured_;
     }
 
+    int getFeatures(uint32_t* features) {
+        *features = 0;
+        *features |= (SERIAL_7E1 | SERIAL_7E2 | SERIAL_7O1 | SERIAL_7O2
+                     |SERIAL_8N1 | SERIAL_8E1 | SERIAL_8N2 | SERIAL_8E2 | SERIAL_8O1 | SERIAL_8O2);
+        if (index_ != 2) {
+            *features |= SERIAL_FLOW_CONTROL_RTS_CTS;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
     int init(const hal_usart_buffer_config_t& conf) {
         if (isEnabled()) {
             flush();
@@ -1003,6 +1013,12 @@ private:
 
     EventGroupHandle_t evGroup_;
 };
+
+int hal_usart_get_features(hal_usart_interface_t serial, uint32_t* features, void* reserved) {
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(features, SYSTEM_ERROR_INVALID_ARGUMENT);
+    return usart->getFeatures(features);
+}
 
 int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
