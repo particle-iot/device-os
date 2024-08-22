@@ -537,7 +537,7 @@ namespace particle {
 // timeout after attempting to put calls into the application queue, so the system thread does not deadlock  (since the application may also
 // be trying to put events in the system queue.)
 ActiveObjectCurrentThreadQueue ApplicationThread(ActiveObjectConfiguration(app_thread_idle,
-		0, /* take time */
+		0, /* default take time */
 		5000, /* put time */
 		20 /* queue size */));
 
