@@ -363,7 +363,8 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
     assertTrue(waitFor(BLE.connected, 20000));
     {
         SCOPE_GUARD ({
-            assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
+            Particle.publish("BLE disconnect", nullptr, WITH_ACK);
+            assertTrue(waitFor([]{ return !BLE.connected(); }, 60000));
             assertFalse(BLE.connected());
         });
 
@@ -374,8 +375,10 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         } else {
             assertTrue(waitFor([&]{ return pairingRequested; }, 20000));
         }
-        assertTrue(BLE.isPairing(peer));
-        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 60000));
+        // It may be paired in real quick if pairing uses JUST_WORK
+        if (BLE.isPairing(peer)) {
+            assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 60000));
+        }
         assertTrue(BLE.isPaired(peer));
         assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
         if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
@@ -569,6 +572,7 @@ test(BLE_37_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning_
         }, nullptr);
     }, nullptr);
     assertTrue((bool)scanThread);
+    waitFor([]{ return BLE.scanning(); }, 5000);
 }
 
 test(BLE_38_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning) {
