@@ -57,11 +57,17 @@ hal_usart_buffer_config_t acquireSerial1Buffer()
 #define Serial1_IRQn USART1_IRQn
 #endif
 
-/*
- * Serial1 Test requires TX to be jumpered to RX as follows:
- *           WIRE
- * (TX) --==========-- (RX)
- *
+/* WIRING
+ *                       74xx126
+ *          10k          ___ ____
+ * (GND)--/\/\/\--(A2)--|1  u  14|-- (3V3)
+ * (TX)-----------------|2       |
+ * (RX)-----------------|3       |
+ *                      |4       |
+ *                      |5       |
+ *                      |6       |
+ * (GND)----------------|7      8|
+ *                       ^^^^^^^^
  */
 
 /*
@@ -141,6 +147,11 @@ void commonTestRoutine(uint32_t baudrate, uint32_t mode, uint16_t mask) {
     message[len] = '\0';
     // Compare strings
     assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_000_Prepare) {
+    pinMode(A2, OUTPUT);
+    digitalWrite(A2, HIGH);
 }
 
 test(SERIAL1_IncorrectConfigurationPassed) {
@@ -513,4 +524,8 @@ test(SERIAL1_LINMasterReadWriteBreakSucceedsInLoopbackWithTxRxShorted) {
     assertTrue(Serial1.breakRx());
 
     Serial1.end();
+}
+
+test(SERIAL1_ZZZ_Cleanup) {
+    pinMode(A2, INPUT);
 }
