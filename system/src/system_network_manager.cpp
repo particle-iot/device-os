@@ -96,18 +96,8 @@ int for_each_iface(F&& f) {
     return 0;
 }
 
-void forceCloudPingIfConnected() {
-    const auto task = new(std::nothrow) ISRTaskQueue::Task();
-    if (!task) {
-        return;
-    }
-    task->func = [](ISRTaskQueue::Task* task) {
-        delete task;
-        if (spark_cloud_flag_connected()) {
-            spark_protocol_command(system_cloud_protocol_instance(), ProtocolCommands::PING, 0, nullptr);
-        }
-    };
-    SystemISRTaskQueue.enqueue(task);
+void forceCloudPingOrTest() {
+    ConnectionManager::instance()->scheduleCloudConnectionNetworkCheck();
 }
 
 const char NETWORK_CONFIG_FILE[] = "/sys/network.dat";
@@ -538,11 +528,6 @@ void NetworkManager::handleIfState(if_t iface, const struct if_event* ev) {
 }
 
 void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
-    uint8_t netIfIndex = 0;
-    if_get_index(iface, &netIfIndex);
-    bool disconnectCloud = false;
-    auto options = CloudDisconnectOptions().reconnect(true);
-
     if (ev->ev_if_link->state) {
         /* Interface link state changed to UP */
         NetworkInterfaceConfig conf;
@@ -617,14 +602,11 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
             refreshIpState();
         }
 
-        // If the cloud is connected, and the preferred network becomes available, move to that network
-        if (spark_cloud_flag_connected() && ConnectionManager::instance()->getPreferredNetwork() == netIfIndex && !SPARK_FLASH_UPDATE) {
-            LOG(INFO, "Preferred network %u available, moving cloud connection", netIfIndex);
-            options.graceful(true);
-            disconnectCloud = true;
+        if (getInterfaceIp4State(iface) == ProtocolState::CONFIGURED || getInterfaceIp6State(iface) == ProtocolState::CONFIGURED) {
+            forceCloudPingOrTest();
         }
-
     } else {
+        auto state = getInterfaceRuntimeState(iface);
         // Disable by default
         if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
@@ -638,20 +620,11 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
                 refreshIpState();
             }
         }
-        
-        // If the current cloud connection network interfaces goes down, and there are other configured interfaces, close the cloud and connect to them
-        if (ConnectionManager::instance()->getCloudConnectionNetwork() == netIfIndex && state_ == State::IP_CONFIGURED) {
-            LOG(WARN, "Cloud connection interface %d link state down, switching interfaces", netIfIndex);
-            disconnectCloud = true;
+
+        if (state && (state->ip4State == ProtocolState::CONFIGURED || state->ip6State == ProtocolState::CONFIGURED)) {
+            forceCloudPingOrTest();
         }
     }
-
-    if (spark_cloud_flag_connected() && disconnectCloud) {
-        auto systemOptions = options.toSystemOptions();
-        spark_cloud_disconnect(&systemOptions, nullptr);
-    }
-
-    forceCloudPingIfConnected();
 }
 
 void NetworkManager::clearDnsConfiguration(if_t iface) {
@@ -664,7 +637,7 @@ void NetworkManager::handleIfAddr(if_t iface, const struct if_event* ev) {
     if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
         refreshIpState();
     }
-    forceCloudPingIfConnected();
+    forceCloudPingOrTest();
 }
 
 void NetworkManager::handleIfLinkLayerAddr(if_t iface, const struct if_event* ev) {
@@ -868,7 +841,7 @@ void NetworkManager::resolvEventHandler(const void* data) {
     refreshIpState();
     // NOTE: we could potentially force a cloud ping on DNS change, but
     // this seems excessive, and it's better to rely on IP state only instead
-    // forceCloudPingIfConnected();
+    // forceCloudPingOrTest();
 }
 
 const char* NetworkManager::stateToName(State state) const {

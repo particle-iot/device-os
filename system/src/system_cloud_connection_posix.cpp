@@ -35,13 +35,6 @@
 
 namespace {
 
-enum CloudServerAddressType {
-    CLOUD_SERVER_ADDRESS_TYPE_NONE            = 0,
-    CLOUD_SERVER_ADDRESS_TYPE_CACHED          = 1,
-    CLOUD_SERVER_ADDRESS_TYPE_CACHED_ADDRINFO = 2,
-    CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO    = 3
-};
-
 struct SystemCloudState {
     int socket = -1;
     struct addrinfo* addr = nullptr;
@@ -54,11 +47,10 @@ const unsigned CLOUD_SOCKET_HALF_CLOSED_WAIT_TIMEOUT = 5000;
 
 } /* anonymous */
 
-int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* saddrCache)
-{
-    struct addrinfo* info = nullptr;
-    CloudServerAddressType type = CLOUD_SERVER_ADDRESS_TYPE_NONE;
-    bool clean = true;
+int system_cloud_resolv_address(int protocol, const ServerAddress* address, sockaddr* saddrCache, addrinfo** info, CloudServerAddressType* type, bool useCachedAddrInfo) {
+    CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    *type = CLOUD_SERVER_ADDRESS_TYPE_NONE;
 
     if (saddrCache && /* protocol == IPPROTO_UDP && */ saddrCache->sa_family != AF_UNSPEC) {
         char tmphost[INET6_ADDRSTRLEN] = {};
@@ -73,21 +65,21 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
             /* FIXME: */
             hints.ai_socktype = hints.ai_protocol == IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
 
-            if (!netdb_getaddrinfo(tmphost, tmpserv, &hints, &info)) {
-                type = CLOUD_SERVER_ADDRESS_TYPE_CACHED;
+            if (!netdb_getaddrinfo(tmphost, tmpserv, &hints, info)) {
+                *type = CLOUD_SERVER_ADDRESS_TYPE_CACHED;
             }
         }
     }
 
-    if (type == CLOUD_SERVER_ADDRESS_TYPE_NONE) {
+    if (*type == CLOUD_SERVER_ADDRESS_TYPE_NONE && useCachedAddrInfo) {
         /* Check if we have another address to try from the cached addrinfo list */
         if (s_state.addr && s_state.next) {
-            info = s_state.next;
-            type = CLOUD_SERVER_ADDRESS_TYPE_CACHED_ADDRINFO;
+            *info = s_state.next;
+            *type = CLOUD_SERVER_ADDRESS_TYPE_CACHED_ADDRINFO;
         }
     }
 
-    if ((type == CLOUD_SERVER_ADDRESS_TYPE_NONE) && address) {
+    if ((*type == CLOUD_SERVER_ADDRESS_TYPE_NONE) && address) {
         /* Use passed ServerAddress */
         switch (address->addr_type) {
             case IP_ADDRESS: {
@@ -107,8 +99,8 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
                 if (inet_inet_ntop(AF_INET, &in, tmphost, sizeof(tmphost))) {
                     snprintf(tmpserv, sizeof(tmpserv), "%u", address->port);
 
-                    netdb_getaddrinfo(tmphost, tmpserv, &hints, &info);
-                    type = CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO;
+                    netdb_getaddrinfo(tmphost, tmpserv, &hints, info);
+                    *type = CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO;
                 }
                 break;
             }
@@ -126,18 +118,30 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
                 system_string_interpolate(address->domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
                 snprintf(tmpserv, sizeof(tmpserv), "%u", address->port);
                 LOG(TRACE, "Resolving %s#%s", tmphost, tmpserv);
-                netdb_getaddrinfo(tmphost, tmpserv, &hints, &info);
-                type = CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO;
+                netdb_getaddrinfo(tmphost, tmpserv, &hints, info);
+                *type = CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO;
                 break;
             }
         }
     }
 
-    int r = SYSTEM_ERROR_NETWORK;
-
-    if (info == nullptr) {
+    if (*info == nullptr) {
         LOG(ERROR, "Failed to determine server address");
+        return SYSTEM_ERROR_NOT_FOUND;
     }
+
+    return 0;
+}
+
+int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* saddrCache)
+{
+    struct addrinfo* info = nullptr;
+    CloudServerAddressType type = CLOUD_SERVER_ADDRESS_TYPE_NONE;
+    bool clean = true;
+
+    system_cloud_resolv_address(protocol, address, saddrCache, &info, &type, true /* useCachedAddrInfo */);
+
+    int r = SYSTEM_ERROR_NETWORK;
 
     LOG(TRACE, "Address type: %d", type);
 
