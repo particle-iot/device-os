@@ -358,8 +358,12 @@ ConnectionMetrics* ConnectionTester::metricsFromSocketDescriptor(int socketDescr
 
 bool ConnectionTester::testPacketsOutstanding() {
     for (auto& i : metrics_) {
-        if (i.txPacketCount != REACHABILITY_TEST_MAX_TX_PACKET_COUNT && i.txPacketCount != i.rxPacketCount) {
+        if (i.txPacketCount != REACHABILITY_TEST_MAX_TX_PACKET_COUNT) {
             return true;
+        } else {
+            if (i.txPacketCount != i.rxPacketCount) {
+                return true;
+            }
         }
     }
     return false;
@@ -648,7 +652,7 @@ int ConnectionTester::runTest(system_tick_t maxBlockTime) {
     auto start = HAL_Timer_Get_Milli_Seconds();
 
     // Step 4: Send/Receive data on the sockets for the duration of the test time
-    while(testPacketsOutstanding() || HAL_Timer_Get_Milli_Seconds() < endTime_) {
+    while(testPacketsOutstanding() && HAL_Timer_Get_Milli_Seconds() < endTime_) {
         pollSockets(pfds_.get(), socketCount_);
         SystemISRTaskQueue.process();
         if (HAL_Timer_Get_Milli_Seconds() - start >= maxBlockTime) {
