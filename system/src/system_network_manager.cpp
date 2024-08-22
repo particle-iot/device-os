@@ -601,7 +601,12 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         } else if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
             refreshIpState();
         }
+
+        if (getInterfaceIp4State(iface) == ProtocolState::CONFIGURED || getInterfaceIp6State(iface) == ProtocolState::CONFIGURED) {
+            forceCloudPingOrTest();
+        }
     } else {
+        auto state = getInterfaceRuntimeState(iface);
         // Disable by default
         if_clear_xflags(iface, IFXF_DHCP);
         resetInterfaceProtocolState(iface);
@@ -615,8 +620,11 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
                 refreshIpState();
             }
         }
+
+        if (state && (state->ip4State == ProtocolState::CONFIGURED || state->ip6State == ProtocolState::CONFIGURED)) {
+            forceCloudPingOrTest();
+        }
     }
-    forceCloudPingOrTest();
 }
 
 void NetworkManager::clearDnsConfiguration(if_t iface) {
