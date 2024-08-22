@@ -698,12 +698,12 @@ private:
 int BleObject::BleEventDispatcher::init() {
     if (os_queue_create(&evtQueue_, sizeof(ble_evt_t*), BLE_EVENT_QUEUE_ITEM_COUNT, nullptr)) {
         evtQueue_ = nullptr;
-        LOG(ERROR, "os_queue_create() failed");
+        LOG_DEBUG(ERROR, "os_queue_create() failed");
         goto error;
     }
     if (os_thread_create(&evtThread_, "BLE Event Thread", OS_THREAD_PRIORITY_NETWORK, processBleEventFromThread, this, BLE_EVENT_THREAD_STACK_SIZE)) {
         evtThread_ = nullptr;
-        LOG(ERROR, "os_thread_create() failed");
+        LOG_DEBUG(ERROR, "os_thread_create() failed");
         goto error;
     }
     if (pool_.init(BLE_EVT_DATA_POOL_SIZE) != SYSTEM_ERROR_NONE) {
@@ -725,7 +725,7 @@ error:
 
 void BleObject::BleEventDispatcher::enqueue(ble_evt_t** event) {
     if (os_queue_put(evtQueue_, event, 0, nullptr)) {
-        LOG(ERROR, "os_queue_put() failed.");
+        LOG_DEBUG(ERROR, "os_queue_put() failed.");
         SPARK_ASSERT(false);
     }
 }
@@ -814,7 +814,7 @@ os_thread_return_t BleObject::BleEventDispatcher::processBleEventFromThread(void
                 }
             }
         } else {
-            LOG(ERROR, "BLE event thread exited.");
+            LOG_DEBUG(ERROR, "BLE event thread exited.");
             break;
         }
     }
@@ -1071,9 +1071,7 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
         tempParams.type = BLE_ADV_SCANABLE_UNDIRECTED_EVT;
         int ret = configure(&tempParams);
         if (ret != SYSTEM_ERROR_NONE) {
-            if (resume() != SYSTEM_ERROR_NONE) {
-                LOG(ERROR, "Failed to resume BLE advertising.");
-            }
+            resume();
             return ret;
         }
         if (params == nullptr) {
@@ -1088,9 +1086,7 @@ int BleObject::Broadcaster::setAdvertisingParams(const hal_ble_adv_params_t* par
     } else {
         int ret = configure(&tempParams);
         if (ret != SYSTEM_ERROR_NONE) {
-            if (resume() != SYSTEM_ERROR_NONE) {
-                LOG(ERROR, "Failed to resume BLE advertising.");
-            }
+            resume();
             return ret;
         }
         memcpy(&advParams_, &tempParams, std::min(advParams_.size, tempParams.size));
@@ -1118,9 +1114,7 @@ int BleObject::Broadcaster::setAdvertisingData(const uint8_t* buf, size_t len) {
     advDataLen_ = len;
     int ret = configure(nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        if (resume() != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to resume BLE advertising.");
-        }
+        resume();
         return ret;
     }
     return CHECK(resume());
@@ -1147,9 +1141,7 @@ int BleObject::Broadcaster::setScanResponseData(const uint8_t* buf, size_t len) 
     scanRespDataLen_ = len;
     int ret = configure(nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
-        if (resume() != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to resume BLE advertising.");
-        }
+        resume();
         return ret;
     }
     return CHECK(resume());
@@ -1237,7 +1229,11 @@ int BleObject::Broadcaster::suspend() {
 int BleObject::Broadcaster::resume() {
     if (advPending_) {
         advPending_ = false;
-        CHECK(startAdvertising());
+        int ret = startAdvertising();
+        if (ret != SYSTEM_ERROR_NONE) {
+            LOG(ERROR, "Failed to resume BLE advertising.");
+            return ret;
+        }
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -1377,12 +1373,12 @@ static ObserverImpl observerImpl;
 int BleObject::Observer::init() {
     if (os_semaphore_create(&scanSemaphore_, 1, 0)) {
         scanSemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+        LOG_DEBUG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
     if (os_timer_create(&scanGuardTimer_, BLE_DEFAULT_SCANNING_TIMEOUT_MS, onScanGuardTimerExpired, this, true, nullptr)) {
         scanGuardTimer_ = nullptr;
-        LOG(ERROR, "os_timer_create() failed.");
+        LOG_DEBUG(ERROR, "os_timer_create() failed.");
         if (scanSemaphore_) {
             os_semaphore_destroy(scanSemaphore_);
             scanSemaphore_ = nullptr;
@@ -1719,22 +1715,22 @@ int BleObject::ConnectionsManager::init() {
     CHECK_NRF_RETURN(ret, nrf_system_error(ret));
     if (os_semaphore_create(&connectSemaphore_, 1, 0)) {
         connectSemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+        LOG_DEBUG(ERROR, "os_semaphore_create() failed");
         goto error;
     }
     if (os_semaphore_create(&disconnectSemaphore_, 1, 0)) {
         disconnectSemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+        LOG_DEBUG(ERROR, "os_semaphore_create() failed");
         goto error;
     }
     if (os_semaphore_create(&connParamsUpdateSemaphore_, 1, 0)) {
         connParamsUpdateSemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+        LOG_DEBUG(ERROR, "os_semaphore_create() failed");
         goto error;
     }
     if (os_timer_create(&connParamsUpdateTimer_, BLE_CONN_PARAMS_UPDATE_DELAY_MS, onConnParamsUpdateTimerExpired, this, true, nullptr)) {
         connParamsUpdateTimer_ = nullptr;
-        LOG(ERROR, "os_timer_create() failed.");
+        LOG_DEBUG(ERROR, "os_timer_create() failed.");
         goto error;
     }
     connMgrImpl.instance = this;
@@ -2702,7 +2698,7 @@ static GattServerImpl gattsImpl;
 int BleObject::GattServer::init() {
     if (os_semaphore_create(&hvxSemaphore_, 1, 0)) {
         hvxSemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+        LOG_DEBUG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
     gattsImpl.instance = this;
@@ -3096,22 +3092,22 @@ static GattClientImpl gattcImpl;
 int BleObject::GattClient::init() {
     if (os_semaphore_create(&discoverySemaphore_, 1, 0)) {
         discoverySemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+        LOG_DEBUG(ERROR, "os_semaphore_create() failed");
         goto error;
     }
     if (os_semaphore_create(&readSemaphore_, 1, 0)) {
         readSemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+        LOG_DEBUG(ERROR, "os_semaphore_create() failed");
         goto error;
     }
     if (os_semaphore_create(&writeSemaphore_, 1, 0)) {
         writeSemaphore_ = nullptr;
-        LOG(ERROR, "os_semaphore_create() failed");
+        LOG_DEBUG(ERROR, "os_semaphore_create() failed");
         goto error;
     }
     if (os_timer_create(&attMtuExchangeTimer_, BLE_ATT_MTU_EXCHANGE_DELAY_MS, onAttMtuExchangeTimerExpired, this, true, nullptr)) {
         attMtuExchangeTimer_ = nullptr;
-        LOG(ERROR, "os_timer_create() failed.");
+        LOG_DEBUG(ERROR, "os_timer_create() failed.");
         goto error;
     }
     gattcImpl.instance = this;
