@@ -40,7 +40,7 @@ ProtocolError Subscriptions::send_subscription_impl(MessageChannel& channel, con
     e.option(CoapOption::URI_PATH, "e"); // 11
     e.option(CoapOption::URI_PATH, filter, filterLen); // 11
     if (flags & SubscriptionFlag::CBOR_DATA) {
-        e.option(CoapOption::URI_QUERY, "c"); // 15
+        e.option(CoapOption::URI_QUERY, "b"); // 15 FIXME
     } else if (flags & SubscriptionFlag::BINARY_DATA) {
         e.option(CoapOption::URI_QUERY, "b"); // 15
     }
@@ -116,7 +116,9 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
             continue;
         }
         if (!std::memcmp(event_handlers[i].filter, name, filterLen)) {
-            if (!(event_handlers[i].flags & SubscriptionFlag::BINARY_DATA) && !isCoapTextContentFormat(contentFmt)) {
+            if (!(event_handlers[i].flags & SubscriptionFlag::BINARY_DATA) &&
+                    !(event_handlers[i].flags & SubscriptionFlag::CBOR_DATA) && 
+                    !isCoapTextContentFormat(contentFmt)) {
                 continue; // Do not invoke a handler that only accepts text data
             }
             char* data = nullptr;
