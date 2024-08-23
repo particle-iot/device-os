@@ -1,3 +1,3 @@
 suite('String format');
 
-platform('gen3');
+platform('gen3', 'gen4');

@@ -1,3 +1,3 @@
 suite('time_t 32/64-bit compatibility');
 
-platform('gen3');
+platform('gen3', 'gen4');

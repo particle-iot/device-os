@@ -9,7 +9,7 @@
 
 suite('Device startup service level objectives (SLOs)');
 
-platform('gen3');
+platform('gen3', 'gen4');
 // Enabling system thread, in order to account for its overhead in the measurements
 systemThread('enabled');
 

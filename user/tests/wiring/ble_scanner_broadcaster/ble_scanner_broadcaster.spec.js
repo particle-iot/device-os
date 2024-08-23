@@ -1,5 +1,5 @@
 suite('BLE scanner broadcaster');
-platform('gen3');
+platform('gen3', 'gen4');
 fixture('ble_scanner', 'ble_broadcaster');
 systemThread('enabled');
 // This tag should be filtered out by default
