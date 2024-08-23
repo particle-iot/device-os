@@ -257,7 +257,11 @@ public:
     void enqueue(const ble_evt_t* event);
 
     void* allocEventData(size_t size) {
-        return pool_.alloc(size);
+        auto ptr = pool_.alloc(size);
+        if (!ptr) {
+            LOG(ERROR, "allocEventData() failed.");
+        }
+        return ptr;
     }
 
     void freeEventData(void* p) {
@@ -733,7 +737,6 @@ void BleObject::BleEventDispatcher::enqueue(ble_evt_t** event) {
 void BleObject::BleEventDispatcher::enqueue(const ble_evt_t* event) {
     ble_evt_t* pBleEvent = (ble_evt_t*)allocEventData(sizeof(ble_evt_t));
     if (!pBleEvent) {
-        LOG(ERROR, "Allocate memory for BLE event failed.");
         SPARK_ASSERT(false);
     }
     memcpy(pBleEvent, event, sizeof(ble_evt_t));
@@ -1318,7 +1321,6 @@ void BleObject::Broadcaster::processBroadcasterEvents(const ble_evt_t* event, vo
             broadcaster->isAdvertising_ = false;
             ble_evt_t* advStoppedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
             if (!advStoppedEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
                 break;
             }
             memcpy(advStoppedEvent, event, sizeof(ble_evt_t));
@@ -1653,7 +1655,6 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
             }
             ble_evt_t* observerEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
             if (!observerEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
                 observer->stopScanning();
                 break;
             }
@@ -1663,7 +1664,6 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
             if (event->evt.gap_evt.params.adv_report.data.len > 0) {
                 advReport.data.p_data = (uint8_t*)BleObject::getInstance().dispatcher()->allocEventData(advReport.data.len);
                 if (!advReport.data.p_data) {
-                    LOG(ERROR, "Allocate memory for adv report data failed.");
                     BleObject::getInstance().dispatcher()->freeEventData(observerEvent);
                     observer->stopScanning();
                     break;
@@ -2372,7 +2372,7 @@ int BleObject::ConnectionsManager::processDisconnectedEventFromThread(const ble_
     const ble_gap_evt_disconnected_t& disconnected = event->evt.gap_evt.params.disconnected;
     BleConnection* connection = fetchConnection(event->evt.gap_evt.conn_handle);
     if (!connection) {
-        LOG(ERROR, "Connection not found.");
+        LOG_DEBUG(ERROR, "Connection not found.");
         return SYSTEM_ERROR_NOT_FOUND;
     }
     // Cancel the on-going connection parameters update procedure.
@@ -2568,7 +2568,7 @@ int BleObject::ConnectionsManager::processConnParamsUpdatedEventFromThread(const
     const ble_gap_evt_conn_param_update_t& connParamsUpdate = event->evt.gap_evt.params.conn_param_update;
     BleConnection* connection = fetchConnection(event->evt.gap_evt.conn_handle);
     if (!connection) {
-        LOG(ERROR, "Connection not found.");
+        LOG_DEBUG(ERROR, "Connection not found.");
         return SYSTEM_ERROR_NOT_FOUND;
     }
     connection->info.conn_params = toHalConnParams(&connParamsUpdate.conn_params);
@@ -2629,7 +2629,6 @@ void BleObject::ConnectionsManager::processConnectionEvents(const ble_evt_t* eve
             const ble_gap_evt_connected_t& connected = event->evt.gap_evt.params.connected;
             ble_evt_t* connectedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
             if (!connectedEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed. Disconnect from peer.");
                 sd_ble_gap_disconnect(event->evt.gap_evt.conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
                 hal_ble_addr_t address = toHalAddress(connected.peer_addr);
                 if (connMgr->isConnecting_ && connected.role == BLE_GAP_ROLE_CENTRAL && addressEqual(address, connMgr->connectingAddr_)) {
@@ -3029,7 +3028,6 @@ void BleObject::GattServer::processGattServerEvents(const ble_evt_t* event, void
             ble_evt_t* dataWrittenEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
                     SUB1(event->evt.gatts_evt.params.write.len) * sizeof(uint8_t));
             if (!dataWrittenEvent) {
-                LOG(ERROR, "Allocate memory for received data failed.");
                 break;
             }
             memcpy(dataWrittenEvent, event, sizeof(ble_evt_t));
@@ -3674,7 +3672,6 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             ble_evt_t* svcDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
                     SUB1(event->evt.gattc_evt.params.prim_srvc_disc_rsp.count) * sizeof(ble_gattc_service_t));
             if (!svcDiscEvent) {
-                LOG(ERROR, "Allocate memory for discovered services failed.");
                 // Assert it since the discovered services are incomplete.
                 SPARK_ASSERT(false);
                 break;
@@ -3694,7 +3691,6 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             ble_evt_t* charDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
                     SUB1(event->evt.gattc_evt.params.char_disc_rsp.count) * sizeof(ble_gattc_char_t));
             if (!charDiscEvent) {
-                LOG(ERROR, "Allocate memory for discovered characteristics failed.");
                 // Assert it since the discovered characteristics are incomplete.
                 SPARK_ASSERT(false);
                 break;
@@ -3714,7 +3710,6 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             ble_evt_t* descDiscEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
                     SUB1(event->evt.gattc_evt.params.desc_disc_rsp.count) * sizeof(ble_gattc_desc_t));
             if (!descDiscEvent) {
-                LOG(ERROR, "Allocate memory for discovered descriptors failed.");
                 // Assert it since the discovered descriptors are incomplete.
                 SPARK_ASSERT(false);
                 break;
@@ -3730,7 +3725,6 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             ble_evt_t* readRspEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
                     SUB1(event->evt.gattc_evt.params.read_rsp.len) * sizeof(uint8_t));
             if (!readRspEvent) {
-                LOG(ERROR, "Allocate memory for read response failed.");
                 if (gattc->isReading_ && gattc->currReadConnHandle_ == event->evt.gattc_evt.conn_handle) {
                     gattc->isReading_ = false;
                     os_semaphore_give(gattc->readSemaphore_, false);
@@ -3764,7 +3758,6 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             ble_evt_t* dataNotifiedEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t) +
                     SUB1(event->evt.gattc_evt.params.hvx.len) * sizeof(uint8_t));
             if (!dataNotifiedEvent) {
-                LOG(ERROR, "Allocate memory for received data failed.");
                 break;
             }
             memcpy(dataNotifiedEvent, event, sizeof(ble_evt_t));
@@ -3777,7 +3770,6 @@ void BleObject::GattClient::processGattClientEvents(const ble_evt_t* event, void
             LOG_DEBUG(TRACE, "BLE GAP event: exchange MTU response.");
             ble_evt_t* attMtuExchangeEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
             if (!attMtuExchangeEvent) {
-                LOG(ERROR, "Allocate memory for BLE event failed.");
                 SPARK_ASSERT(false);
                 break;
             }
