@@ -40,7 +40,7 @@ ProtocolError Subscriptions::send_subscription_impl(MessageChannel& channel, con
     e.option(CoapOption::URI_PATH, "e"); // 11
     e.option(CoapOption::URI_PATH, filter, filterLen); // 11
     if (flags & SubscriptionFlag::CBOR_DATA) {
-        e.option(CoapOption::URI_QUERY, "b"); // 15 FIXME
+        e.option(CoapOption::URI_QUERY, "c"); // 15
     } else if (flags & SubscriptionFlag::BINARY_DATA) {
         e.option(CoapOption::URI_QUERY, "b"); // 15
     }
@@ -108,33 +108,31 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
     }
 
     for (size_t i = 0; i < MAX_SUBSCRIPTIONS; ++i) {
-        if (!event_handlers[i].handler) {
+        auto& eventHandler = event_handlers[i];
+        if (!eventHandler.handler) {
             break;
         }
-        size_t filterLen = strnlen(event_handlers[i].filter, sizeof(event_handlers[i].filter));
-        if (nameLen < filterLen) {
-            continue;
+        size_t filterLen = strnlen(eventHandler.filter, sizeof(eventHandler.filter));
+        if (nameLen < filterLen || std::memcmp(eventHandler.filter, name, filterLen) != 0) {
+            continue; // Event name mismatch
         }
-        if (!std::memcmp(event_handlers[i].filter, name, filterLen)) {
-            if (!(event_handlers[i].flags & SubscriptionFlag::BINARY_DATA) &&
-                    !(event_handlers[i].flags & SubscriptionFlag::CBOR_DATA) && 
-                    !isCoapTextContentFormat(contentFmt)) {
-                continue; // Do not invoke a handler that only accepts text data
-            }
-            char* data = nullptr;
-            size_t dataSize = d.payloadSize();
-            if (dataSize > 0) {
-                data = const_cast<char*>(d.payload());
-                // Historically, the event handler callback expected a null-terminated string. Keeping that
-                // behavior for now
-                if (msg.length() >= msg.capacity()) {
-                    std::memmove(data - 1, data, dataSize); // Overwrites the payload marker
-                    --data;
-                }
-                data[dataSize] = '\0';
-            }
-            callback(sizeof(FilteringEventHandler), &event_handlers[i], name, data, dataSize, contentFmt);
+        if (((eventHandler.flags & SubscriptionFlag::CBOR_DATA) && contentFmt != CoapContentFormat::APPLICATION_CBOR) ||
+                (!(eventHandler.flags & (SubscriptionFlag::BINARY_DATA | SubscriptionFlag::CBOR_DATA)) && !isCoapTextContentFormat(contentFmt))) {
+            continue; // Encoding mismatch
         }
+        char* data = nullptr;
+        size_t dataSize = d.payloadSize();
+        if (dataSize > 0) {
+            data = const_cast<char*>(d.payload());
+            // Historically, the event handler callback expected a null-terminated string. Keeping that
+            // behavior for now
+            if (msg.length() >= msg.capacity()) {
+                std::memmove(data - 1, data, dataSize); // Overwrites the payload marker
+                --data;
+            }
+            data[dataSize] = '\0';
+        }
+        callback(sizeof(FilteringEventHandler), &eventHandler, name, data, dataSize, contentFmt);
     }
     return ProtocolError::NO_ERROR;
 }
