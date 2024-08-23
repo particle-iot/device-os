@@ -377,7 +377,7 @@ int SaraNcpClient::on() {
     // This is helpful for R5 modems after hard resets, when entering this function.
     auto powerState = ncpPowerState();
     // Power on the modem
-    LOG(TRACE, "Powering modem on, ncpId: 0x%02x", ncpId());
+    LOG(TRACE, "Powering on, ncpId: 0x%02x", ncpId());
     auto r = modemPowerOn();
     if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
         return r;
@@ -408,18 +408,18 @@ int SaraNcpClient::off() {
     modemSetUartState(false);
 
     if (!r) {
-        LOG(TRACE, "Soft power off modem successfully");
+        LOG(TRACE, "Soft power off success");
         // WARN: We assume that the modem can turn off itself reliably.
     } else {
         // Power down using hardware
         if (modemPowerOff() != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to turn off the modem.");
+            LOG(ERROR, "Failed to turn off");
         }
         // FIXME: There is power leakage still if powering off the modem failed.
     }
 
     // Disable the UART interface.
-    LOG(TRACE, "Deinit modem serial.");
+    LOG(TRACE, "Deinit UART");
     serial_->on(false);
 
     ready_ = false;
@@ -1005,18 +1005,19 @@ int SaraNcpClient::waitReady(bool powerOn) {
     HAL_Delay_Milliseconds(100);
     CHECK(modemSetUartState(true));
 
+    #define WAITING_STR "Waiting to be ready"
     if (powerOn) {
-        LOG_DEBUG(TRACE, "Waiting for modem to be ready from power on");
+        LOG_DEBUG(TRACE, "%s", WAITING_STR);
         ready_ = waitAtResponseFromPowerOn(modemState) == 0;
     } else if (ncpState() == NcpState::OFF) {
-        LOG_DEBUG(TRACE, "Waiting for modem to be ready from current unknown state");
+        LOG_DEBUG(TRACE, "%s from current unknown state", WAITING_STR);
         ready_ = checkRuntimeState(modemState) == 0;
         if (ready_) {
             LOG_DEBUG(TRACE, "Runtime state %d", (int)modemState);
         }
     } else {
         // Most likely we just had a parser error, try to get a response from the modem as-is
-        LOG_DEBUG(TRACE, "Waiting for modem to be ready after parser error");
+        LOG_DEBUG(TRACE, "%s after parser error", WAITING_STR);
         auto stream = parser_.config().stream();
         if (stream) {
             skipAll(stream, 1000);
@@ -1696,7 +1697,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
         // responses from the modem.
         // Stop the muxer and error out
         muxer_.stop();
-        LOG(TRACE, "Modem failed to respond on a muxed AT channel after resuming muxed session");
+        LOG(TRACE, "Failed to respond on a muxed AT channel after resuming muxed session");
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
@@ -1713,7 +1714,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
         state = ModemState::RuntimeBaudrate;
         return SYSTEM_ERROR_NONE;
     }
-    LOG(TRACE, "Modem is not responsive @ %u baudrate", runtimeBaudrate);
+    LOG(TRACE, "Not responsive @ %u baudrate", runtimeBaudrate);
     if (firmwareUpdateR510_) {
         state = ModemState::Unknown;
         return SYSTEM_ERROR_UNKNOWN;
@@ -1728,7 +1729,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
         state = ModemState::DefaultBaudrate;
         return SYSTEM_ERROR_NONE;
     }
-    LOG(TRACE, "Modem is not responsive @ %u baudrate", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
+    LOG(TRACE, "Not responsive @ %u baudrate", UBLOX_NCP_DEFAULT_SERIAL_BAUDRATE);
 
     state = ModemState::Unknown;
     return SYSTEM_ERROR_UNKNOWN;
@@ -2575,7 +2576,7 @@ int SaraNcpClient::modemInit() const {
     conf.mode = INPUT;
     CHECK(hal_gpio_configure(UBVINT, &conf, nullptr));
 
-    LOG(TRACE, "Modem low level initialization OK");
+    LOG_DEBUG(TRACE, "Low level initialization OK");
 
     return SYSTEM_ERROR_NONE;
 }
@@ -2628,12 +2629,12 @@ int SaraNcpClient::modemPowerOn() {
 
         // Verify that the module was powered up by checking the VINT pin up to 1 sec
         if (waitModemPowerState(1, 1000)) {
-            LOG(TRACE, "Modem powered on");
+            LOG(TRACE, "Powered on");
         } else {
-            LOG(ERROR, "Failed to power on modem");
+            LOG(ERROR, "Failed to power on");
         }
     } else {
-        LOG(TRACE, "Modem already on");
+        LOG(TRACE, "Already on");
         ncpPowerState(NcpPowerState::ON);
         // FIXME:
         return SYSTEM_ERROR_ALREADY_EXISTS;
@@ -2669,7 +2670,7 @@ int SaraNcpClient::modemPowerOff() {
     if (modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
 
-        LOG(TRACE, "Powering modem off using hardware control");
+        LOG(TRACE, "Powering off using hardware control");
         // Important! We need to disable voltage translator here
         // otherwise V_INT will never go low
         modemSetUartState(false);
@@ -2696,23 +2697,23 @@ int SaraNcpClient::modemPowerOff() {
 
         // Verify that the module was powered down by checking the VINT pin up to 10 sec
         if (waitModemPowerState(0, 10000)) {
-            LOG(TRACE, "Modem powered off");
+            LOG(TRACE, "Powered off");
         } else {
-            LOG(ERROR, "Failed to power off modem");
+            LOG(ERROR, "Failed to power off");
             if (ncpId() == PLATFORM_NCP_SARA_R510) {
                 // XXX: modemHardReset() does not recover the modem
                 modemEmergencyHardReset();
-                // Modem will be OFF after emergency hard reset, but we set the state based on V_INT
+                // Modem will be OFF after Emergency Hardware Shutdown, but we set the state based on V_INT
                 if (modemPowerState()) {
                     ncpPowerState(NcpPowerState::ON);
                 } else {
                     ncpPowerState(NcpPowerState::OFF);
-                    LOG(TRACE, "Modem off after emergency hard reset");
+                    LOG(TRACE, "Off after EHS");
                 }
             }
         }
     } else {
-        LOG(TRACE, "Modem already off");
+        LOG(TRACE, "Already off");
     }
 
     CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
@@ -2744,26 +2745,26 @@ int SaraNcpClient::modemSoftPowerOff() {
 
     if (modemPowerState()) {
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
-        LOG(TRACE, "Try powering modem off using AT command");
+        LOG(TRACE, "Powering off using AT command");
         if (!ready_) {
             LOG(ERROR, "NCP client is not ready");
             return SYSTEM_ERROR_INVALID_STATE;
         }
         int r = CHECK_PARSER(parser_.execCommand("AT+CPWROFF"));
         if (r != AtResponse::OK) {
-            LOG(ERROR, "AT+CPWROFF command is not responding");
+            LOG(ERROR, "AT not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
         }
         system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-        LOG(TRACE, "Waiting the modem to be turned off...");
+        LOG(TRACE, "Waiting to be turned off");
         // Verify that the module was powered down by checking the VINT pin up to 10 sec
         if (waitModemPowerState(0, 10000)) {
-            LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+            LOG(TRACE, "%d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
         } else {
-            LOG(ERROR, "Failed to power off modem using AT command");
+            LOG(ERROR, "Failed to power off");
         }
     } else {
-        LOG(TRACE, "Modem already off");
+        LOG(TRACE, "Already off");
     }
 
     CHECK_TRUE(!modemPowerState(), SYSTEM_ERROR_INVALID_STATE);
@@ -2774,11 +2775,11 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
     const auto pwrState = modemPowerState();
     // We can only reset the modem in the powered state
     if (!pwrState) {
-        LOG(ERROR, "Cannot hard reset the modem, it's not on");
+        LOG(ERROR, "Not powered on!");
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    LOG(TRACE, "Hard resetting the modem");
+    LOG(TRACE, "Hard reset");
     if (ncpId() == PLATFORM_NCP_SARA_U201) {
         // Low pulse for 50ms
         hal_gpio_write(UBRST, 0);
@@ -2809,12 +2810,12 @@ int SaraNcpClient::modemHardReset(bool powerOff) {
         HAL_Delay_Milliseconds(1000);   // just in case
         // IMPORTANT: R4 is powered-off after applying RESET!
         if (!powerOff) {
-            LOG(TRACE, "Powering modem on after hard reset, ncpId: 0x%02x", ncpId());
+            LOG(TRACE, "Powering on after hard reset, ncpId: 0x%02x", ncpId());
             return modemPowerOn();
         } else {
             ncpPowerState(NcpPowerState::OFF);
             // Disable the UART interface.
-            LOG(TRACE, "Deinit modem serial.");
+            LOG(TRACE, "Deinit UART");
             serial_->on(false);
         }
     }
@@ -2826,11 +2827,11 @@ int SaraNcpClient::modemEmergencyHardReset() {
         return SYSTEM_ERROR_NONE;
     }
 
-    LOG(TRACE, "Emergency hardware shutdown the modem");
+    LOG(TRACE, "Emergency hardware shutdown");
     const auto pwrState = modemPowerState();
     // We can only reset the modem in the powered state
     if (!pwrState) {
-        LOG(ERROR, "Modem is not powered on!");
+        LOG(ERROR, "Not powered on");
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
@@ -2856,14 +2857,14 @@ bool SaraNcpClient::modemPowerState() const {
 
 int SaraNcpClient::modemSetUartState(bool state) const {
 #if HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
-    LOG(TRACE, "Setting UART voltage translator state %d", state);
+    LOG_DEBUG(TRACE, "Setting UART voltage translator state %d", state);
     hal_gpio_write(BUFEN, state ? 0 : 1);
 #endif // HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
     return SYSTEM_ERROR_NONE;
 }
 
 void SaraNcpClient::waitForPowerOff() {
-    LOG(TRACE, "Modem waiting up to 30s to power off with PWR_UC...");
+    LOG(TRACE, "Waiting up to 30s to power off with PWR_UC");
     system_tick_t now = millis();
     if (powerOnTime_ == 0) {
         powerOnTime_ = now; // fallback to max timeout of 30s to be safe
