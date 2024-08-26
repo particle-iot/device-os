@@ -23,7 +23,7 @@
 #ifdef __cplusplus
 
 #include "spark_wiring_string.h"
-#include "buffer.h"
+#include "spark_wiring_buffer.h"
 #include "str_util.h"
 
 namespace particle {
