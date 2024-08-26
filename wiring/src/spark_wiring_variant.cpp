@@ -157,6 +157,15 @@ int readAndAppendToString(DecodingStream& stream, size_t size, String& str) {
     return 0;
 }
 
+int readAndAppendToBuffer(DecodingStream& stream, size_t size, Buffer& buf) {
+    auto oldSize = buf.size();
+    if (!buf.resize(oldSize + size)) {
+        return Error::NO_MEMORY;
+    }
+    CHECK(stream.read(buf.data() + oldSize, size));
+    return 0;
+}
+
 int readCborHead(DecodingStream& stream, CborHead& head) {
     uint8_t b;
     CHECK(stream.readUint8(b));
@@ -237,8 +246,9 @@ int writeCborSignedInteger(EncodingStream& stream, int64_t val) {
     return 0;
 }
 
-int readCborString(DecodingStream& stream, const CborHead& head, String& str) {
-    String s;
+template<typename T, typename F>
+int readCborString(DecodingStream& stream, const CborHead& head, T& output, const F& read) {
+    T out;
     if (head.detail == 31 /* Indefinite length */) {
         for (;;) {
             CborHead h;
@@ -246,27 +256,43 @@ int readCborString(DecodingStream& stream, const CborHead& head, String& str) {
             if (h.type == 7 /* Misc. items */ && h.detail == 31 /* Stop code */) {
                 break;
             }
-            if (h.type != 3 /* Text string */ || h.detail == 31 /* Indefinite length */) { // Chunks of indefinite length are not permitted
+            if (h.type != head.type || h.detail == 31 /* Indefinite length */) { // Chunks of indefinite length are not permitted
                 return Error::BAD_DATA;
             }
             if (h.arg > std::numeric_limits<unsigned>::max()) {
                 return Error::OUT_OF_RANGE;
             }
-            CHECK(readAndAppendToString(stream, h.arg, s));
+            CHECK(read(stream, h.arg, out));
         }
     } else {
         if (head.arg > std::numeric_limits<unsigned>::max()) {
             return Error::OUT_OF_RANGE;
         }
-        CHECK(readAndAppendToString(stream, head.arg, s));
+        CHECK(read(stream, head.arg, out));
     }
-    str = std::move(s);
+    output = std::move(out);
     return 0;
 }
 
-int writeCborString(EncodingStream& stream, const String& str) {
+int readCborTextString(DecodingStream& stream, const CborHead& head, String& str) {
+    CHECK(readCborString(stream, head, str, readAndAppendToString));
+    return 0;
+}
+
+int writeCborTextString(EncodingStream& stream, const String& str) {
     CHECK(writeCborHeadWithArgument(stream, 3 /* Text string */, str.length()));
     CHECK(stream.write(str.c_str(), str.length()));
+    return 0;
+}
+
+int readCborByteString(DecodingStream& stream, const CborHead& head, Buffer& buf) {
+    CHECK(readCborString(stream, head, buf, readAndAppendToBuffer));
+    return 0;
+}
+
+int writeCborByteString(EncodingStream& stream, const Buffer& buf) {
+    CHECK(writeCborHeadWithArgument(stream, 2 /* Byte string */, buf.size()));
+    CHECK(stream.write(buf.data(), buf.size()));
     return 0;
 }
 
@@ -311,7 +337,11 @@ int encodeToCbor(EncodingStream& stream, const Variant& var) {
         break;
     }
     case Variant::STRING: {
-        CHECK(writeCborString(stream, var.value<String>()));
+        CHECK(writeCborTextString(stream, var.value<String>()));
+        break;
+    }
+    case Variant::BUFFER: {
+        CHECK(writeCborByteString(stream, var.value<Buffer>()));
         break;
     }
     case Variant::ARRAY: {
@@ -326,7 +356,7 @@ int encodeToCbor(EncodingStream& stream, const Variant& var) {
         auto& entries = var.value<VariantMap>().entries();
         CHECK(writeCborHeadWithArgument(stream, 5 /* Map */, entries.size()));
         for (auto& e: entries) {
-            CHECK(writeCborString(stream, e.first));
+            CHECK(writeCborTextString(stream, e.first));
             CHECK(encodeToCbor(stream, e.second));
         }
         break;
@@ -360,11 +390,14 @@ int decodeFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
         break;
     }
     case 2: { // Byte string
-        return Error::NOT_SUPPORTED; // Not supported
+        Buffer b;
+        CHECK(readCborByteString(stream, head, b));
+        var = std::move(b);
+        break;
     }
     case 3: { // Text string
         String s;
-        CHECK(readCborString(stream, head, s));
+        CHECK(readCborTextString(stream, head, s));
         var = std::move(s);
         break;
     }
@@ -429,7 +462,7 @@ int decodeFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
                 return Error::NOT_SUPPORTED; // Non-string keys are not supported
             }
             String k;
-            CHECK(readCborString(stream, h, k));
+            CHECK(readCborTextString(stream, h, k));
             Variant v;
             CHECK(readCborHead(stream, h));
             CHECK(decodeFromCbor(stream, h, v));
