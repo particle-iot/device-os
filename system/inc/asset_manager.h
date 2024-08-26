@@ -17,9 +17,11 @@
 
 #pragma once
 
+#include <memory>
 #include <cstdint>
+
 #include "spark_wiring_vector.h"
-#include "buffer.h"
+#include "spark_wiring_buffer.h"
 #include "spark_wiring_string.h"
 #include "ota_flash_hal.h"
 #include "stream.h"
