@@ -134,6 +134,42 @@ inline size_t toHex(const void* src, size_t srcSize, char* dest, size_t destSize
 }
 
 /**
+ * Parse a hex-encoded string.
+ *
+ * @param src Source string.
+ * @param srcSize Size of the source string.
+ * @param dest Destination buffer.
+ * @param destSize Size of the destination buffer.
+ * @return Number of bytes written to the destination buffer.
+ */
+inline size_t fromHex(const char* src, size_t srcSize, char* dest, size_t destSize) {
+    size_t n = 0;
+    uint8_t b = 0;
+    for (size_t i = 0; i < srcSize; ++i) {
+        if (n >= destSize) {
+            break;
+        }
+        char c = src[i];
+        if (c >= '0' && c <= '9') {
+            b |= c - '0';
+        } else if (c >= 'A' && c <= 'F') {
+            b |= c - 'A' + 10;
+        } else if (c >= 'a' && c <= 'f') {
+            b |= c - 'a' + 10;
+        } else {
+            break;
+        }
+        if (i % 2) {
+            dest[n++] = b;
+            b = 0;
+        } else {
+            b <<= 4;
+        }
+    }
+    return n;
+}
+
+/**
  * Converts binary data to a printable string. The output is null-terminated unless the size of the
  * destination buffer is 0.
  *
