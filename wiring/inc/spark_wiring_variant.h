@@ -24,6 +24,7 @@
 #include <cstdint>
 
 #include "spark_wiring_string.h"
+#include "spark_wiring_buffer.h"
 #include "spark_wiring_vector.h"
 #include "spark_wiring_map.h"
 
@@ -61,7 +62,7 @@ struct IsComparableWithVariant {
     // TODO: This is not ideal as we'd like Variant to be comparable with any type as long as it's
     // comparable with one of the Variant's alternative types
     static constexpr bool value = std::is_same_v<T, std::monostate> || std::is_arithmetic_v<T> || std::is_same_v<T, const char*> ||
-            std::is_same_v<T, String> || std::is_same_v<T, VariantArray> || std::is_same_v<T, VariantMap>;
+            std::is_same_v<T, String> || std::is_same_v<T, Buffer> || std::is_same_v<T, VariantArray> || std::is_same_v<T, VariantMap>;
 };
 
 } // namespace detail
@@ -83,6 +84,7 @@ public:
         UINT64, ///< `uint64_t`.
         DOUBLE, ///< `double`.
         STRING, ///< `String`.
+        BUFFER, ///< `Buffer`.
         ARRAY, ///< `VariantArray`.
         MAP ///< `VariantMap`.
     };
@@ -147,6 +149,10 @@ public:
     }
 
     Variant(String val) :
+            v_(std::move(val)) {
+    }
+
+    Variant(Buffer val) :
             v_(std::move(val)) {
     }
 
@@ -230,6 +236,10 @@ public:
         return is<String>();
     }
 
+    bool isBuffer() const {
+        return is<Buffer>();
+    }
+
     bool isArray() const {
         return is<VariantArray>();
     }
@@ -289,6 +299,10 @@ public:
         return to<String>();
     }
 
+    Buffer toBuffer() const {
+        return to<Buffer>();
+    }
+
     VariantArray toArray() const {
         return to<VariantArray>();
     }
@@ -334,6 +348,10 @@ public:
 
     String toString(bool& ok) const {
         return to<String>(ok);
+    }
+
+    Buffer toBuffer(bool& ok) const {
+        return to<Buffer>(ok);
     }
 
     VariantArray toArray(bool& ok) const {
@@ -425,6 +443,10 @@ public:
 
     String& asString() {
         return as<String>();
+    }
+
+    Buffer& asBuffer() {
+        return as<Buffer>();
     }
 
     VariantArray& asArray() {
@@ -795,7 +817,7 @@ private:
         static constexpr bool value = false;
     };
 
-    typedef std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, VariantArray, VariantMap> VariantType;
+    typedef std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, Buffer, VariantArray, VariantMap> VariantType;
 
     VariantType v_;
 
@@ -887,7 +909,7 @@ public:
         if constexpr (std::is_arithmetic_v<SourceT>) {
             ok = true;
             return static_cast<bool>(val);
-        } else { // std::monostate, VariantArray, VariantMap
+        } else { // std::monostate, Buffer, VariantArray, VariantMap
             return false;
         }
     }
@@ -913,7 +935,7 @@ struct Variant::ConvertToVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<
         if constexpr (std::is_arithmetic_v<SourceT>) {
             ok = true;
             return static_cast<TargetT>(val);
-        } else { // std::monostate, VariantArray, VariantMap
+        } else { // std::monostate, Buffer, VariantArray, VariantMap
             return TargetT();
         }
     }
@@ -941,9 +963,24 @@ struct Variant::ConvertToVisitor<String> {
             SPARK_ASSERT(r.ec == std::errc());
             ok = true;
             return String(buf, r.ptr - buf);
-        } else { // std::monostate, VariantArray, VariantMap
+        } else { // std::monostate, Buffer, VariantArray, VariantMap
             return String();
         }
+    }
+};
+
+template<>
+struct Variant::ConvertToVisitor<Buffer> {
+    bool ok = false;
+
+    Buffer operator()(const String& val) {
+        ok = true;
+        return Buffer(val.c_str(), val.length());
+    }
+
+    template<typename SourceT>
+    Buffer operator()(const SourceT& val) {
+        return Buffer();
     }
 };
 
@@ -1014,6 +1051,11 @@ struct Variant::IsAlternativeType<double> {
 
 template<>
 struct Variant::IsAlternativeType<String> {
+    static const bool value = true;
+};
+
+template<>
+struct Variant::IsAlternativeType<Buffer> {
     static const bool value = true;
 };
 

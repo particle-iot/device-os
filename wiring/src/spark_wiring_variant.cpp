@@ -759,6 +759,8 @@ int Variant::size() const {
     switch (type()) {
     case Type::STRING:
         return value<String>().length();
+    case Type::BUFFER:
+        return value<Buffer>().size();
     case Type::ARRAY:
         return value<VariantArray>().size();
     case Type::MAP:
@@ -774,6 +776,8 @@ bool Variant::isEmpty() const {
         return true; // A default-constructed Variant is empty
     case Type::STRING:
         return value<String>().length() == 0;
+    case Type::BUFFER:
+        return value<Buffer>().size() == 0;
     case Type::ARRAY:
         return value<VariantArray>().isEmpty();
     case Type::MAP:
