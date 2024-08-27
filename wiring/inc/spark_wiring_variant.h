@@ -978,6 +978,11 @@ struct Variant::ConvertToVisitor<Buffer> {
         return Buffer(val.c_str(), val.length());
     }
 
+    Buffer operator()(const Buffer& val) {
+        ok = true;
+        return val;
+    }
+
     template<typename SourceT>
     Buffer operator()(const SourceT& val) {
         return Buffer();

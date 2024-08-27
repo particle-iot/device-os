@@ -68,7 +68,7 @@ public:
     int read(char* data, size_t size) {
         size_t n = stream_.readBytes(data, size);
         if (n != size) {
-            return Error::IO;
+            return Error::END_OF_STREAM;
         }
         return 0;
     }
@@ -143,12 +143,16 @@ struct CborHead {
     int detail;
 };
 
-int appendKeyValue(VariantArray& arr, Variant key, Variant val) {
-    if (!arr.reserve(arr.size() + 2)) {
+int appendKeyValueArray(VariantArray& arr, Variant key, Variant val) {
+    VariantArray arr2;
+    if (!arr2.reserve(2)) {
         return Error::NO_MEMORY;
     }
-    arr.append(std::move(key));
-    arr.append(std::move(val));
+    arr2.append(std::move(key));
+    arr2.append(std::move(val));
+    if (!arr.append(Variant(std::move(arr2)))) {
+        return Error::NO_MEMORY;
+    }
     return 0;
 }
 
@@ -474,15 +478,15 @@ int decodeFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
             CHECK(decodeFromCbor(stream, h, v));
             if (cont.isMap()) {
                 if (!k.isString()) {
-                    // VariantMap can only contain string keys. If any of the keys is not a string,
-                    // the map is parsed as an array of key-value pairs
+                    // VariantMap can only contain string keys. Convert the map to an array of
+                    // key-value pairs
                     VariantArray arr;
                     int capacity = (len < 0) ? (cont.size() + 1) : len;
                     if (!arr.reserve(capacity)) {
                         return Error::NO_MEMORY;
                     }
                     for (auto& entry: cont.asMap()) {
-                        CHECK(appendKeyValue(arr, std::move(entry.first), std::move(entry.second)));
+                        CHECK(appendKeyValueArray(arr, entry.first, std::move(entry.second))); // Can't move the key
                     }
                     cont = std::move(arr);
                 } else if (!cont.asMap().set(std::move(k.asString()), std::move(v))) {
@@ -490,7 +494,7 @@ int decodeFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
                 }
             }
             if (cont.isArray()) {
-                CHECK(appendKeyValue(cont.asArray(), std::move(k), std::move(v)));
+                CHECK(appendKeyValueArray(cont.asArray(), std::move(k), std::move(v)));
             }
         }
         var = std::move(cont);
