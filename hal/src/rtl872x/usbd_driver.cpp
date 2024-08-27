@@ -224,6 +224,7 @@ void RtlUsbDriver::loop(void* ctx) {
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (!self->initialized_ && !error) {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+            HAL_Delay_Milliseconds(5);
             continue;
 #else
             return;
