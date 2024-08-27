@@ -223,6 +223,11 @@ TEST_CASE("Buffer") {
                 CHECK(std::memcmp(b.data(), "\x01\x23\x45\x67\x89\xab\xcd\xef", 8) == 0);
             }
             {
+                Buffer b = Buffer::fromHex("0123456789ABCDEF");
+                CHECK(b.size() == 8);
+                CHECK(std::memcmp(b.data(), "\x01\x23\x45\x67\x89\xab\xcd\xef", 8) == 0);
+            }
+            {
                 Buffer b = Buffer::fromHex("01234");
                 CHECK(b.size() == 2);
                 CHECK(std::memcmp(b.data(), "\x01\x23", 2) == 0);
