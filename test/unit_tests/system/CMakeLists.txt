@@ -10,6 +10,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/hal/src/gcc/interrupts_hal.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_string.cpp
+  ${DEVICE_OS_DIR}/wiring/src/spark_wiring_buffer.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_print.cpp
   ${DEVICE_OS_DIR}/wiring/src/string_convert.cpp
   ${DEVICE_OS_DIR}/system/src/system_utilities.cpp

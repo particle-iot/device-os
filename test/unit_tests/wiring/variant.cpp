@@ -331,6 +331,9 @@ TEST_CASE("Variant") {
         v = "abc";
         CHECK(v.toJSON() == "\"abc\"");
 
+        v = Buffer("\x01\x02\x03", 3);
+        CHECK(v.toJSON() == "\"010203\"");
+
         v.append(123);
         v.append("abc");
         CHECK(v.toJSON() == "[123,\"abc\"]");

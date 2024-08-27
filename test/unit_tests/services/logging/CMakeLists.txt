@@ -5,6 +5,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_logging.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_json.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_string.cpp
+  ${DEVICE_OS_DIR}/wiring/src/spark_wiring_buffer.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_print.cpp
   ${DEVICE_OS_DIR}/wiring/src/string_convert.cpp
   ${DEVICE_OS_DIR}/services/src/logging.cpp

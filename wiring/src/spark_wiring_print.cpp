@@ -71,6 +71,10 @@ void writeVariant(const Variant& var, JSONStreamWriter& writer) {
         writer.value(var.value<String>());
         break;
     }
+    case Variant::BUFFER: {
+        writer.value(var.value<Buffer>().toHex());
+        break;
+    }
     case Variant::ARRAY: {
         writer.beginArray();
         for (auto& v: var.value<VariantArray>()) {
