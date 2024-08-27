@@ -346,7 +346,7 @@ TEST_CASE("Variant") {
         checkVariant(v, VariantMap{ { "a", 1 }, { "b", 2 }, { "c", 3 } });
     }
 
-    SECTION("encodeVariantToCBOR()") {
+    SECTION("encodeToCBOR()") {
         using test::toHex;
         CHECK(toHex(toCbor(0)) == "00");
         CHECK(toHex(toCbor(1)) == "01");
@@ -399,7 +399,7 @@ TEST_CASE("Variant") {
         CHECK(toHex(toCbor(VariantMap{{"a", "A"}, {"b", "B"}, {"c", "C"}, {"d", "D"}, {"e", "E"}})) == "a56161614161626142616361436164614461656145");
     }
 
-    SECTION("decodeVariantFromCBOR") {
+    SECTION("decodeFromCBOR()") {
         using test::fromHex;
         CHECK(fromCbor(fromHex("00")) == Variant(0));
         CHECK(fromCbor(fromHex("01")) == Variant(1));

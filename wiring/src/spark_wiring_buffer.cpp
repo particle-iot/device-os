@@ -23,19 +23,23 @@ namespace particle {
 
 String Buffer::toHex() const {
     String s;
-    if (!s.reserve(d_.size() * 2)) {
+    if (!s.resize(d_.size() * 2)) {
         return String();
     }
-    particle::toHex(d_.data(), d_.size(), &s.operator[](0), s.length() + 1);
+    toHex(&s.operator[](0), s.length() + 1); // Overwrites the term. null
     return s;
+}
+
+size_t Buffer::toHex(char* out, size_t size) const {
+    return particle::toHex(d_.data(), d_.size(), out, size);
 }
 
 Buffer Buffer::fromHex(const char* str, size_t len) {
     Buffer buf;
-    if (!buf.reserve(len / 2)) {
+    if (!buf.resize(len / 2)) {
         return Buffer();
     }
-    size_t n = particle::fromHex(str, len, buf.d_.data(), buf.d_.capacity());
+    size_t n = particle::fromHex(str, len, buf.d_.data(), buf.d_.size());
     buf.resize(n);
     return buf;
 }
