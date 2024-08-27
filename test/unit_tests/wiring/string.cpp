@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <limits.h>
+#include <cstring>
 #include "util/catch.h"
 
 #include "spark_wiring_string.h"
@@ -207,5 +208,32 @@ TEST_CASE("String concat", "[ParticleString]") {
         String str1("Hello ");
         str1.concat((unsigned long long)18446744073709551615ULL);
         REQUIRE(str1 == "Hello 18446744073709551615");
+    }
+}
+
+TEST_CASE("String resize") {
+    SECTION("can increase the string length") {
+        String s;
+        CHECK(s.resize(5));
+        CHECK(s.capacity() == 5);
+        CHECK(s.length() == 5);
+        CHECK(std::memcmp(s.c_str(), "\0\0\0\0\0\0", 6) == 0);
+        s.setCharAt(4, 'a');
+        CHECK(s.resize(6));
+        CHECK(s.capacity() == 6);
+        CHECK(s.length() == 6);
+        CHECK(std::memcmp(s.c_str(), "\0\0\0\0a\0\0", 7) == 0);
+    }
+
+    SECTION("can decrease the string length") {
+        String s("abcde");
+        CHECK(s.resize(4));
+        CHECK(s.capacity() == 5);
+        CHECK(s.length() == 4);
+        CHECK(std::memcmp(s.c_str(), "abcd\0", 5) == 0);
+        CHECK(s.resize(0));
+        CHECK(s.capacity() == 5);
+        CHECK(s.length() == 0);
+        CHECK(std::memcmp(s.c_str(), "\0", 1) == 0);
     }
 }

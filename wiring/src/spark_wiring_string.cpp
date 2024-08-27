@@ -32,6 +32,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <charconv>
+#include <cstring>
 #include "string_convert.h"
 
 using namespace particle;
@@ -231,6 +232,18 @@ unsigned char String::reserve(unsigned int size)
         return 1;
     }
     return 0;
+}
+
+bool String::resize(size_t size) {
+    if (size > capacity_ && !changeBuffer(size)) {
+        return false;
+    }
+    if (size > len) {
+        std::memset(buffer + len, 0, size - len);
+    }
+    buffer[size] = '\0';
+    len = size;
+    return true;
 }
 
 unsigned char String::changeBuffer(unsigned int maxStrLen)
