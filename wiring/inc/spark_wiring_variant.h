@@ -393,7 +393,11 @@ public:
      *   to or from string is performed. When converted to a string, boolean values are represented
      *   as "true" or "false".
      *
-     * - For the null, array and map types, only a trivial conversion to the same type is defined.
+     * - A `String` can be converted to a `Buffer` but only a trivial conversion to a value of its
+     *   own type is defined for `Buffer`.
+     *
+     * - For the null, array and map types, only a trivial conversion to the respective type is
+     *   defined.
      *
      * - If no conversion is defined for the current and target types, a default-constructed value
      *   of the target type is returned.
@@ -667,6 +671,11 @@ public:
 
     /**
      * Convert the variant to JSON.
+     *
+     * Note that values of certain types supported by `Variant`, such as `Buffer`, cannot normally be
+     * represented in JSON. If the variant contains a value of such a type, it is not guaranteed that a
+     * backward conversion from a JSON string returned by this method would produce a variant equal to
+     * the original variant.
      *
      * @return JSON document.
      */
