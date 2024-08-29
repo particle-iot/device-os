@@ -1,6 +1,6 @@
 suite('Ledger')
 
-platform('gen3');
+platform('gen3', 'gen4');
 
 const Particle = require('particle-api-js');
 

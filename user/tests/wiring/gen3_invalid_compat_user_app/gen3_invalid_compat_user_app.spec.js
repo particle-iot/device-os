@@ -1,3 +1,3 @@
 suite('Gen 3 invalid compat user app');
 
-platform('gen3');
+platform('gen3', 'gen4');

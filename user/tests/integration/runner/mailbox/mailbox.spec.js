@@ -1,6 +1,6 @@
 suite('Test runner mailbox');
 
-platform('gen3');
+platform('gen3', 'gen4');
 systemThread('enabled');
 
 let device = null;

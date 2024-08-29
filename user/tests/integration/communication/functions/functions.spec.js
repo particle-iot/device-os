@@ -1,6 +1,6 @@
 suite('Cloud functions')
 
-platform('gen3');
+platform('gen3', 'gen4');
 
 let api = null;
 let auth = null;
