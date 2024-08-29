@@ -36,6 +36,7 @@
 #include <memory>
 #include "check.h"
 #include "service_debug.h"
+#include "scope_guard.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -401,7 +402,16 @@ public:
         return 1;
     }
 
+    int beginTransmission(uint8_t address, const hal_i2c_transmission_config_t* config) {
+        setConfigOrDefault(config, address);
+        txBuffer_.reset();
+        return SYSTEM_ERROR_NONE;
+    }
+
     int endTransmission(uint8_t stop) {
+        SCOPE_GUARD({
+            txBuffer_.reset();
+        });
         if (i2cInitStruct_.I2CMaster != I2C_MASTER_MODE) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
@@ -828,7 +838,7 @@ void hal_i2c_begin_transmission(hal_i2c_interface_t i2c, uint8_t address, const 
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
         return;
     }
-    instance->setConfigOrDefault(config, address);
+    instance->beginTransmission(address, config);
 }
 
 uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
