@@ -19,8 +19,8 @@
  *
  * Gen 3/P2 Wiring diagram
  *
- * Sleep20-Tester
- * Sleep20-Device
+ * Sleep20 Tester
+ * Sleep20 Device
  *
  * Tester              Device
  * ----------          ----------

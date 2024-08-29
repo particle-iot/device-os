@@ -19,8 +19,8 @@
  *
  * Gen 3/P2 Wiring diagram
  *
- * Sleep20-Tester
- * Sleep20-Device
+ * Sleep20 Tester
+ * Sleep20 Device
  *
  * Tester              Device
  * ----------          ----------
@@ -431,7 +431,7 @@ test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular_1) {
             break;
         }
         if (millis() - s > CLOUD_CONNECT_TIMEOUT) {
-            assertEqual(strcmp("sleep20-tester timeout waiting for sleep20-device to connect to cloud!",""), 0);
+            assertEqual(strcmp("sleep20_tester timeout waiting for sleep20_device to connect to cloud!",""), 0);
         }
     }
     delay(10000); // wait for message flush and sleep
@@ -459,7 +459,7 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ce
             break;
         }
         if (millis() - s > CLOUD_CONNECT_TIMEOUT) {
-            assertEqual(strcmp("sleep20-tester timeout waiting for sleep20-device to connect to cloud!",""), 0);
+            assertEqual(strcmp("sleep20_tester timeout waiting for sleep20_device to connect to cloud!",""), 0);
         }
     }
     delay(10000); // wait for message flush and sleep
@@ -489,7 +489,7 @@ test(30_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_WiFi_1) {
             break;
         }
         if (millis() - s > CLOUD_CONNECT_TIMEOUT) {
-            assertEqual(strcmp("sleep20-tester timeout waiting for sleep20-device to connect to cloud!",""), 0);
+            assertEqual(strcmp("sleep20_tester timeout waiting for sleep20_device to connect to cloud!",""), 0);
         }
     }
     delay(15000); // wait for message flush and sleep
@@ -517,7 +517,7 @@ test(31_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Wi
             break;
         }
         if (millis() - s > CLOUD_CONNECT_TIMEOUT) {
-            assertEqual(strcmp("sleep20-tester timeout waiting for sleep20-device to connect to cloud!",""), 0);
+            assertEqual(strcmp("sleep20_tester timeout waiting for sleep20_device to connect to cloud!",""), 0);
         }
     }
     delay(15000); // wait for message flush and sleep

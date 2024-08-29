@@ -4,7 +4,7 @@ platform('p2','argon');
 systemThread('enabled');
 timeout(15 * 60 * 1000);
 
-fixture('sleep20-tester','sleep20-device');
+fixture('sleep20_tester','sleep20_device');
 
 // This tag should be filtered out by default
 tag('fixture');
@@ -24,10 +24,10 @@ before(function() {
         if (!fixture || !fixture.name) {
             continue;
         }
-        if (fixture.name === 'sleep20-tester' && !centralDevice) {
+        if (fixture.name === 'sleep20_tester' && !centralDevice) {
             centralDevice = d;
         }
-        if (fixture.name === 'sleep20-device' && !peripheralDevice) {
+        if (fixture.name === 'sleep20_device' && !peripheralDevice) {
             peripheralDevice = d;
         }
     }
