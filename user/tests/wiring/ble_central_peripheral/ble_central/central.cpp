@@ -55,6 +55,14 @@ static void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice&
     }
 }
 
+static void tryConnecting(bool autoDiscover = true) {
+    uint8_t retry = 0;
+    do {
+        peer = BLE.connect(peerAddr, autoDiscover);
+        delay(100);
+    } while (!peer.connected() && retry++ < 3);
+}
+
 using namespace particle::test;
 
 constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 100;
@@ -62,6 +70,7 @@ constexpr uint16_t PEER_DESIRED_ATT_MTU = 123;
 
 Thread* scanThread = nullptr;
 volatile unsigned scanResults = 0;
+String nameInSr;
 
 bool disconnect = false;
 
@@ -251,7 +260,7 @@ test(BLE_21_Peripheral_Notify_Characteristic_With_Indicate_Property_Nack) {
 }
 
 test(BLE_22_Discover_All_Services) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
 
     Vector<BleService> services = peer.discoverAllServices();
@@ -264,7 +273,7 @@ test(BLE_22_Discover_All_Services) {
 }
 
 test(BLE_23_Discover_All_Characteristics) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
 
     Vector<BleCharacteristic> allCharacteristics = peer.discoverAllCharacteristics();
@@ -291,7 +300,7 @@ test(BLE_23_Discover_All_Characteristics) {
 }
 
 test(BLE_24_Discover_Characteristics_Of_Service) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
 
     Vector<BleService> services = peer.discoverAllServices();
@@ -319,7 +328,7 @@ test(BLE_24_Discover_Characteristics_Of_Service) {
 
 test(BLE_25_Pairing_Sync) {
     // Indicate the peer device to start pairing tests.
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
 
     const String str("deadbeef");
@@ -350,6 +359,10 @@ const char* ioCapsStr[5] = {
     "BlePairingIoCaps::KEYBOARD_DISPLAY"
 };
 
+// commonEventHandler() in util.h is processed in application thread.
+// If the onPairingEvent() handler is blocking the application thread,
+// for instance, application thread tries acquiring a (HAL/Wiring) BLE mutex while the handler
+// is holding the mutex, then getBleTestPasskey() in the handler will be also blocked until timeout.
 static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         BlePairingIoCaps ours = BlePairingIoCaps::NONE, BlePairingIoCaps theirs = BlePairingIoCaps::NONE) {
     pairingStatus = -1;
@@ -439,7 +452,7 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
     // Some platforms may have to restart BT stack to set IO caps, which may fail the connection attempt
     delay(1s);
 
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     disconnect = false;
     {
@@ -495,7 +508,7 @@ test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
     // Some platforms may have to restart BT stack to set IO caps, which may fail the connection attempt
     delay(1s);
 
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     {
         SCOPE_GUARD ({
@@ -522,7 +535,7 @@ test(BLE_29_Pairing_Algorithm_Lesc_Only_Reject_Legacy) {
 }
 
 test(BLE_30_Initiate_Pairing_Being_Rejected) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     {
         SCOPE_GUARD ({
@@ -555,7 +568,7 @@ test(BLE_31_Pairing_Receiption_Reject) {
     assertEqual(BLE.setPairingAlgorithm(BlePairingAlgorithm::AUTO), (int)SYSTEM_ERROR_NONE);
 #endif
 
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     {
         SCOPE_GUARD ({
@@ -578,7 +591,7 @@ test(BLE_32_Att_Mtu_Exchange) {
         BLE.onAttMtuExchanged(nullptr, nullptr);
     });
 
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     {
         SCOPE_GUARD ({
@@ -596,8 +609,8 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
     BleScanParams params = {};
     params.size = sizeof(BleScanParams);
     params.timeout = 0;
-    params.interval = 8000; // *0.625ms = 5s
-    params.window = 8000; // *0.625 = 5s
+    params.interval = 800; // *0.625ms = 500ms
+    params.window = 800; // *0.625 = 500ms
     params.active = true; // Send scan request
     params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     assertEqual(0, BLE.setScanParameters(&params));
@@ -606,13 +619,19 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
         BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *param) -> void {
             auto scanResults = (volatile unsigned int*)param;
             (*scanResults)++;
+            if (result->scanResponse().length() > 0 && nameInSr.length() == 0) {
+                nameInSr = result->scanResponse().deviceName();
+                if (nameInSr != "ble-test") {
+                    nameInSr = String();
+                }
+            }
         }, param);
     }, (void*)&scanResults);
     assertTrue((bool)scanThread);
 
     waitFor([]{ return BLE.scanning(); }, 5000);
     assertFalse(BLE.connected());
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     assertTrue(BLE.scanning());
     SCOPE_GUARD({
@@ -624,14 +643,14 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
         });
     });
     scanResults = 0;
+    nameInSr = String();
     delay(2000);
-#if !HAL_PLATFORM_NRF52840
     assertMoreOrEqual((unsigned)scanResults, 1);
-#endif
+    assertTrue(nameInSr == "ble-test");
     assertTrue(peer.connected());
 }
 
-test(BLE_34_Central_Can_Connect_While_Scanning_After_Disconnect) {
+test(BLE_34_Central_Is_Still_Scanning_After_Disconnect) {
     SCOPE_GUARD({
         if (BLE.scanning() && scanThread) {
             assertEqual(0, BLE.stopScanning());
@@ -642,15 +661,17 @@ test(BLE_34_Central_Can_Connect_While_Scanning_After_Disconnect) {
     assertTrue(BLE.scanning());
     assertFalse(BLE.connected());
     scanResults = 0;
+    nameInSr = String();
     delay(5000);
     assertMoreOrEqual((unsigned)scanResults, 1);
+    assertTrue(nameInSr == "ble-test");
 }
 
 test(BLE_35_Central_Can_Connect_While_Peripheral_Is_Scanning_Prepare) {
 }
 
 test(BLE_36_Central_Can_Connect_While_Peripheral_Is_Scanning) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     delay(5000);
     {
@@ -667,7 +688,7 @@ test(BLE_37_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning_
 }
 
 test(BLE_38_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning) {
-    peer = BLE.connect(peerAddr, false);
+    tryConnecting(false);
     assertTrue(peer.connected());
     delay(5000);
     {

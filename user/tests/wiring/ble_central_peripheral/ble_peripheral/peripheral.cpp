@@ -499,17 +499,24 @@ test(BLE_33_Central_Can_Connect_While_Scanning) {
         assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
         assertFalse(BLE.connected());
     });
+    BleAdvertisingData advData;
+    advData.appendServiceUUID(serviceUuid);
+    BleAdvertisingData srData;
+    srData.appendLocalName("ble-test");
+    int ret = BLE.advertise(&advData, &srData);
+    assertEqual(ret, 0);
+    assertTrue(BLE.advertising());
 }
 
-test(BLE_34_Central_Can_Connect_While_Scanning_After_Disconnect) {
+test(BLE_34_Central_Is_Still_Scanning_After_Disconnect) {
 }
 
 test(BLE_35_Central_Can_Connect_While_Peripheral_Is_Scanning_Prepare) {
     BleScanParams params = {};
     params.size = sizeof(BleScanParams);
     params.timeout = 0;
-    params.interval = 8000; // *0.625ms = 5s
-    params.window = 8000; // *0.625 = 5s
+    params.interval = 800; // *0.625ms = 500ms
+    params.window = 800; // *0.625 = 500ms
     params.active = true; // Send scan request
     params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     assertEqual(0, BLE.setScanParameters(&params));
@@ -520,6 +527,7 @@ test(BLE_35_Central_Can_Connect_While_Peripheral_Is_Scanning_Prepare) {
         }, nullptr);
     }, nullptr);
     assertTrue((bool)scanThread);
+    assertTrue(waitFor(BLE.scanning, 500));
 }
 
 test(BLE_36_Central_Can_Connect_While_Peripheral_Is_Scanning) {
@@ -535,18 +543,14 @@ test(BLE_36_Central_Can_Connect_While_Peripheral_Is_Scanning) {
     assertTrue(waitFor(BLE.connected, 60000));
     scanResults = 0;
     delay(2000);
-#if !HAL_PLATFORM_NRF52840
     assertMoreOrEqual((unsigned)scanResults, 1);
-#endif
     SCOPE_GUARD ({
         assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
         assertFalse(BLE.connected());
         
         scanResults = 0;
         delay(2000);
-#if !HAL_PLATFORM_NRF52840
         assertMoreOrEqual((unsigned)scanResults, 1);
-#endif
 
         assertEqual(0, BLE.stopScanning());
         assertFalse(BLE.scanning());
@@ -560,8 +564,8 @@ test(BLE_37_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning_
     BleScanParams params = {};
     params.size = sizeof(BleScanParams);
     params.timeout = 0;
-    params.interval = 8000; // *0.625ms = 5s
-    params.window = 8000; // *0.625 = 5s
+    params.interval = 800; // *0.625ms = 500ms
+    params.window = 800; // *0.625 = 500ms
     params.active = true; // Send scan request
     params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
     assertEqual(0, BLE.setScanParameters(&params));
@@ -588,9 +592,7 @@ test(BLE_38_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning)
     assertTrue(waitFor(BLE.connected, 60000));
     scanResults = 0;
     delay(2000);
-#if !HAL_PLATFORM_NRF52840
     assertMoreOrEqual((unsigned)scanResults, 1);
-#endif
 
     assertEqual(0, BLE.stopScanning());
     assertFalse(BLE.scanning());
