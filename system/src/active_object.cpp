@@ -75,11 +75,11 @@ void ActiveObjectBase::run()
 #endif // !HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 }
 
-bool ActiveObjectBase::process(int timeout)
+bool ActiveObjectBase::process()
 {
     bool result = false;
     Item item = nullptr;
-    if (take(item, timeout) && item)
+    if (take(item) && item)
     {
         Message& msg = *item;
         msg();

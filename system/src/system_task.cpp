@@ -555,16 +555,17 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     system_shutdown_if_needed();
 }
 
-namespace {
-
-// Old implementation for a non-threaded system configuration
-void system_delay_pump_no_threading_impl(unsigned long ms, system_tick_t start_millis, bool force_no_background_loop = false)
+/*
+ * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
+ */
+void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
 {
     if (ms==0) return;
 
     system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
     spark_loop_total_millis += ms;
 
+    system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
     system_tick_t end_micros = HAL_Timer_Get_Micro_Seconds() + (1000*ms);
 
     // Ensure that RTOS vTaskDelay(0) is called to force a reschedule to avoid task starvation in tight delay(1) loops
@@ -626,35 +627,6 @@ void system_delay_pump_no_threading_impl(unsigned long ms, system_tick_t start_m
         // Always pump the system thread at least once
         spark_process();
     }
-}
-
-} // namespace
-
-/*
- * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
- */
-void system_delay_pump(unsigned long ms, bool force_no_background_loop)
-{
-    system_tick_t startMillis = HAL_Timer_Get_Milli_Seconds();
-
-    if (!PLATFORM_THREADING || !system_thread_get_state(nullptr) || !APPLICATION_THREAD_CURRENT()) {
-        system_delay_pump_no_threading_impl(ms, startMillis, force_no_background_loop);
-        return;
-    }
-
-#if PLATFORM_THREADING
-    if (!ms || force_no_background_loop) {
-        HAL_Delay_Milliseconds(ms);
-        return;
-    }
-
-    system_tick_t timeout;
-    do {
-        system_tick_t elapsed = HAL_Timer_Get_Milli_Seconds() - startMillis;
-        timeout = (ms > elapsed) ? (ms - elapsed) : 0;
-        ApplicationThread.process(timeout);
-    } while (timeout > 0);
-#endif // PLATFORM_THREADING
 }
 
 /**

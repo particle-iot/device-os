@@ -53,10 +53,10 @@ struct ActiveObjectConfiguration
     size_t stack_size;
 
     /**
-     * Default Time to wait for a message in the queue. This governs how often the
+     * Time to wait for a message in the queue. This governs how often the
      * background task is executed.
      */
-    unsigned default_take_wait;
+    unsigned take_wait;
 
     /**
      * How long to wait to put items in the queue before giving up.
@@ -80,12 +80,12 @@ struct ActiveObjectConfiguration
     static constexpr const char DEFAULT_TASK_NAME[] = "active_object";
 
 public:
-    ActiveObjectConfiguration(background_task_t task, unsigned default_take_wait, unsigned put_wait_, uint16_t queue_size_,
+    ActiveObjectConfiguration(background_task_t task, unsigned take_wait_, unsigned put_wait_, uint16_t queue_size_,
             size_t stack_size_ = OS_THREAD_STACK_SIZE_DEFAULT, os_thread_prio_t priority = OS_THREAD_PRIORITY_DEFAULT,
             const char* name = nullptr) :
             background_task(task),
             stack_size(stack_size_),
-            default_take_wait(default_take_wait),
+            take_wait(take_wait_),
             put_wait(put_wait_),
             queue_size(queue_size_),
             priority(priority) {
@@ -282,8 +282,8 @@ protected:
 
 
     // todo - concurrent queue should be a strategy so it's pluggable without requiring inheritance
-    virtual bool take(Item& item, int timeout = -1) = 0;
-    virtual bool put(Item& item, bool dontBlock = false) = 0;
+    virtual bool take(Item& item)=0;
+    virtual bool put(Item& item, bool dontBlock = false)=0;
 
     /**
      * Static thread entrypoint to run this active object loop.
@@ -301,7 +301,7 @@ public:
             started(false) {
     }
 
-    bool process(int timeout = -1);
+    bool process();
 
     bool isCurrentThread() {
         return os_thread_is_current(_thread);
@@ -352,12 +352,12 @@ protected:
 
     os_queue_t  queue;
 
-    bool take(Item& result, int timeout) override
+    virtual bool take(Item& result)
     {
-        return !os_queue_take(queue, &result, (timeout < 0) ? configuration.default_take_wait : (unsigned)timeout, nullptr);
+        return !os_queue_take(queue, &result, configuration.take_wait, nullptr);
     }
 
-    bool put(Item& item, bool dontBlock) override
+    virtual bool put(Item& item, bool dontBlock)
     {
         return !os_queue_put(queue, &item, dontBlock ? 0 : configuration.put_wait, nullptr);
     }
@@ -395,6 +395,11 @@ public:
         setCurrentThread();
         run();
     }
+
+    bool process()
+    {
+        return ActiveObjectQueue::process();
+    }
 };
 
 
@@ -411,9 +416,9 @@ public:
 
 // FIXME: some other feature flag?
 #if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
-    virtual bool take(Item& result, int timeout) override
+    virtual bool take(Item& result) override
     {
-        auto r = os_thread_wait((timeout < 0) ? configuration.default_take_wait : (unsigned)timeout, nullptr);
+        auto r = os_thread_wait(configuration.take_wait, nullptr);
         if (!os_queue_take(queue, &result, 0, nullptr)) {
             return true;
         }
