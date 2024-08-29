@@ -62,3 +62,28 @@ test('06_update_cloud_to_device_large_size', async function() {
 test('07_validate_cloud_to_device_sync_large_size', async function() {
   // See ledger.cpp
 });
+
+test('08_sync_device_to_cloud_binary_data', async function() {
+  await delay(1000);
+  const { body: { instance } } = await api.getLedgerInstance({ ledgerName: DEVICE_TO_CLOUD_LEDGER, scopeValue: deviceId, org: ORG_ID, auth });
+  expect(instance.data).to.deep.equal({
+    b: {
+      _type: 'buffer',
+      _data: 'krNAn4cAK+Id0nK1pKXJ9KlgzfCJlNxQtKs7K6J3J6vP3eim6BVmtxG5EvL0JWcWIk0='
+    }
+  });
+});
+
+test('09_update_cloud_to_device_binary_data', async function() {
+  const data = {
+    c: {
+      _type: 'buffer',
+      _data: 't7Xor2jRAFHID25AHXiu6jQhq6xhmDqyZ/QFNK4h/maZNHEkr6ieGziH7HH12QQqzSg='
+    }
+  };
+  await api.setLedgerInstance({ ledgerName: CLOUD_TO_DEVICE_LEDGER, instance: { data }, scopeValue: deviceId, org: ORG_ID, auth });
+});
+
+test('10_validate_cloud_to_device_sync_binary_data', async function() {
+  // See ledger.cpp
+});

@@ -180,4 +180,40 @@ test(07_validate_cloud_to_device_sync_large_size) {
     }
 }
 
+test(08_sync_device_to_cloud_binary_data) {
+    g_synced = false;
+    auto ledger = Particle.ledger(DEVICE_TO_CLOUD_LEDGER);
+    ledger.onSync([](Ledger /* ledger */) {
+        g_synced = true;
+    });
+    SCOPE_GUARD({
+        ledger.onSync(nullptr);
+    });
+    LedgerData d = { { "b", Buffer::fromHex("92b3409f87002be21dd272b5a4a5c9f4a960cdf08994dc50b4ab3b2ba27727abcfdde8a6e81566b711b912f2f4256716224d") } };
+    ledger.set(d);
+    waitFor([]() {
+        return g_synced;
+    }, 60000);
+    assertTrue(g_synced);
+}
+
+test(09_update_cloud_to_device_binary_data) {
+    g_synced = false;
+    auto ledger = Particle.ledger(CLOUD_TO_DEVICE_LEDGER);
+    ledger.onSync([](Ledger /* ledger */) {
+        g_synced = true;
+    });
+}
+
+test(10_validate_cloud_to_device_sync_binary_data) {
+    waitFor([]() {
+        return g_synced;
+    }, 60000);
+    auto ledger = Particle.ledger(CLOUD_TO_DEVICE_LEDGER);
+    ledger.onSync(nullptr);
+    assertTrue(g_synced);
+    auto d = ledger.get();
+    assertTrue((d == LedgerData{ { "c", Buffer::fromHex("b7b5e8af68d10051c80f6e401d78aeea3421abac61983ab267f40534ae21fe6699347124afa89e1b3887ec71f5d9042acd28") } }));
+}
+
 #endif // Wiring_Ledger
