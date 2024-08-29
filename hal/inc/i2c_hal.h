@@ -74,6 +74,7 @@ typedef struct hal_i2c_transmission_config_t {
     uint32_t quantity;
     system_tick_t timeout_ms;
     uint32_t flags;
+    uint8_t* buffer;
 } hal_i2c_transmission_config_t;
 
 typedef enum hal_i2c_state_t {
@@ -116,6 +117,7 @@ int hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserve1);
 int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved);
 int32_t hal_i2c_lock(hal_i2c_interface_t i2c, void* reserved);
 int32_t hal_i2c_unlock(hal_i2c_interface_t i2c, void* reserved);
+int hal_i2c_transaction(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* tx_config, const hal_i2c_transmission_config_t* rx_config, void* reserved);
 
 void hal_i2c_set_speed_deprecated(uint32_t speed);
 void hal_i2c_enable_dma_mode_deprecated(bool enable);

@@ -392,7 +392,8 @@ public:
                 .reserved = {0},
                 .quantity = 0,
                 .timeout_ms = HAL_I2C_DEFAULT_TIMEOUT_MS,
-                .flags = HAL_I2C_TRANSMISSION_FLAG_STOP
+                .flags = HAL_I2C_TRANSMISSION_FLAG_STOP,
+                .buffer = nullptr
             };
         }
     }
@@ -408,7 +409,12 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
-    int endTransmission(uint8_t stop) {
+    int endTransmission(uint8_t stop, const hal_i2c_transmission_config_t* config = nullptr) {
+        auto transConfig = transConfig_;
+        if (config) {
+            memset(&transConfig, 0, sizeof(transConfig));
+            memcpy(&transConfig, config, std::min((size_t)config->size, sizeof(transConfig)));
+        }
         SCOPE_GUARD({
             txBuffer_.reset();
         });
@@ -419,7 +425,7 @@ public:
         // Dirty-hack: It may not generate the start signal when communicating with certain type of slave device.
         CHECK(reEnableIfNeeded());
 
-        setAddress(transConfig_.address);
+        setAddress(transConfig.address);
 
         uint32_t quantity = txBuffer_.data();
         if (quantity == 0) {
@@ -432,9 +438,9 @@ public:
                 return SYSTEM_ERROR_I2C_ABORT;
             }
             // Send the slave address only
-            i2cDev_->IC_DATA_CMD = (transConfig_.address << 1) | BIT_CTRL_IC_DATA_CMD_NULLDATA | BIT_CTRL_IC_DATA_CMD_STOP;
+            i2cDev_->IC_DATA_CMD = (transConfig.address << 1) | BIT_CTRL_IC_DATA_CMD_NULLDATA | BIT_CTRL_IC_DATA_CMD_STOP;
             // If slave is not detected, the STOP_DET bit won't be set, and the TX_ABRT is set instead.
-            if (!WAIT_TIMED(transConfig_.timeout_ms, ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) == 0)
+            if (!WAIT_TIMED(transConfig.timeout_ms, ((i2cDev_->IC_TX_ABRT_SOURCE & BIT_IC_TX_ABRT_SOURCE_ABRT_7B_ADDR_NOACK) == 0)
                                                   && ((i2cDev_->IC_RAW_INTR_STAT & BIT_IC_RAW_INTR_STAT_STOP_DET) == 0))) {
                 return SYSTEM_ERROR_I2C_TX_ADDR_TIMEOUT;
             }
@@ -446,7 +452,7 @@ public:
 
         bool waitStop = false;
         for (uint32_t i = 0; i < quantity; i++) {
-            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
+            if (!WAIT_TIMED(transConfig.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFNF) == 0)) {
                 reset();
                 return SYSTEM_ERROR_I2C_FILL_DATA_TIMEOUT;
             }
@@ -467,7 +473,7 @@ public:
                 // The address will be sent before sending the first data byte
                 i2cDev_->IC_DATA_CMD = data;
             }
-            if (WAIT_TIMED_ROUTINE(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFE) == 0, checkAbrt) < 0) {
+            if (WAIT_TIMED_ROUTINE(transConfig.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_TFE) == 0, checkAbrt) < 0) {
                 reset();
                 return SYSTEM_ERROR_I2C_TX_DATA_TIMEOUT;
             }
@@ -477,11 +483,40 @@ public:
                 return SYSTEM_ERROR_CANCELLED;
             }
         }
-        if (waitStop && !WAIT_TIMED(transConfig_.timeout_ms, !stopDetected())) {
+        if (waitStop && !WAIT_TIMED(transConfig.timeout_ms, !stopDetected())) {
             reset();
             return SYSTEM_ERROR_I2C_STOP_TIMEOUT;
         }
         return SYSTEM_ERROR_NONE;
+    }
+
+    int transaction(const hal_i2c_transmission_config_t* txConfig, const hal_i2c_transmission_config_t* rxConfig) {
+        // A quick hack for now with a temp copy
+        particle::services::RingBuffer<uint8_t> txBuffer(txConfig ? txConfig->buffer : nullptr, txConfig ? txConfig->quantity : 0);
+        particle::services::RingBuffer<uint8_t> rxBuffer(rxConfig ? rxConfig->buffer : nullptr, rxConfig ? rxConfig->quantity : 0);
+        if (txConfig) {
+            txBuffer.acquire(txConfig->quantity);
+            txBuffer.acquireCommit(txConfig->quantity);
+            std::swap(txBuffer, txBuffer_);
+        }
+        if (rxConfig) {
+            std::swap(rxBuffer, rxBuffer_);
+        }
+        SCOPE_GUARD({
+            if (txConfig) {
+                std::swap(txBuffer, txBuffer_);
+            }
+            if (rxConfig) {
+                std::swap(rxBuffer, rxBuffer_);
+            }
+        });
+        if (txConfig) {
+            CHECK(endTransmission(!!(txConfig->flags & HAL_I2C_TRANSMISSION_FLAG_STOP), txConfig));
+        }
+        if (rxConfig) {
+            return requestFrom(rxConfig);
+        }
+        return 0;
     }
 
     void flush() {
@@ -815,7 +850,8 @@ uint32_t hal_i2c_request(hal_i2c_interface_t i2c, uint8_t address, uint8_t quant
         .reserved = {0},
         .quantity = quantity,
         .timeout_ms = HAL_I2C_DEFAULT_TIMEOUT_MS,
-        .flags = (uint32_t)(stop ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0)
+        .flags = (uint32_t)(stop ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0),
+        .buffer = nullptr
     };
     return hal_i2c_request_ex(i2c, &conf, nullptr);
 }
@@ -943,4 +979,10 @@ int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
         return instance->restore();
     }
     return SYSTEM_ERROR_NONE;
+}
+
+int hal_i2c_transaction(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* tx_config, const hal_i2c_transmission_config_t* rx_config, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
+    return instance->transaction(tx_config, rx_config);
 }

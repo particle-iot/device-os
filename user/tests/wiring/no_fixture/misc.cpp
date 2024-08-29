@@ -17,6 +17,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "ringbuffer.h"
 
 test(MISC_01_map) {
     // int map(int, int, int, int, int)
@@ -33,4 +34,37 @@ test(MISC_02_alignment) {
     // This should just build correctly
     static __attribute__((used, aligned(256))) uint8_t test[63] = {};
     assertEqual((int)test[0], 0);
+}
+
+// FIXME: operator== ?
+bool dumbCompareRingBuffer(const auto& a, const auto& b) {
+    return a.buffer_ == b.buffer_ &&
+            a.head_ == b.head_ &&
+            a.tail_ == b.tail_ &&
+            a.headPending_ == b.headPending_ &&
+            a.tailPending_ == b.tailPending_ &&
+            a.size_ == b.size_ &&
+            a.curSize_ == b.curSize_ &&
+            a.full_ == b.full_;
+}
+
+test(MISC_03_ringbuffer_swap_is_sane) {
+    services::RingBuffer<uint8_t> a((uint8_t*)0x12345, 10);
+    services::RingBuffer<uint8_t> b((uint8_t*)0xabcde, 100);
+    a.head_ = 12345;
+    a.tail_ = 54321;
+    a.headPending_ = 12345;
+    a.tailPending_ = 54321;
+    b.head_ = 0xabcde;
+    b.tail_ = 0xedcba;
+    b.headPending_ = 0xabcde;
+    b.tailPending_ = 0xedcba;
+
+    auto copyA = a;
+    auto copyB = b;
+    assertTrue(dumbCompareRingBuffer(copyA, a));
+    assertTrue(dumbCompareRingBuffer(copyB, b));
+    std::swap(a, b);
+    assertTrue(dumbCompareRingBuffer(copyA, b));
+    assertTrue(dumbCompareRingBuffer(copyB, a));
 }

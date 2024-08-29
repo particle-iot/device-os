@@ -375,5 +375,41 @@ test(I2C_07_bus_reset_is_not_destructive) {
         assertEqual(config, MAX17043_DEFAULT_CONFIG);
     }
 }
-
 #endif // HAL_PLATFORM_FUELGAUGE_MAX17043
+
+Serial1LogHandler dbg(115200, LOG_LEVEL_ALL);
+
+#if HAL_PLATFORM_FUELGAUGE_MAX17043 && HAL_PLATFORM_I2C_NUM == 1
+// Uses transactions
+test(I2C_08_can_talk_to_fuelgauge_with_transactions) {
+    FuelGauge fuel;
+    fuel.begin();
+    fuel.wakeup();
+    auto ver = fuel.getVersion();
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL && !HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (ver < 0) {
+        skip();
+        return;
+    }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL && !HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    assertMoreOrEqual(ver, 0);
+    assertNotEqual(ver, 0x0000);
+    assertNotEqual(ver, 0xffff);
+}
+#endif // HAL_PLATFORM_FUELGAUGE_MAX17043 && HAL_PLATFORM_I2C_NUM == 1
+
+#if HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_I2C_NUM == 1
+test(I2C_09_can_talk_to_pmic_with_transactions) {
+    constexpr uint8_t BQ24195_VERSION = 0x23;
+    PMIC power;
+    power.begin();
+    auto ver = power.getVersion();
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL && !HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (ver != BQ24195_VERSION) {
+        skip();
+        return;
+    }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL && !HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    assertEqual(ver, BQ24195_VERSION);
+}
+#endif // HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_I2C_NUM == 1
