@@ -1,10 +1,19 @@
 SERIAL testing hardware requirements
 ------------------------------------
 
-Connect a jumper to TX and RX pins i.e. TX-RX lines should be shorted
+Wiring
 
 ```none
-TX <-------> RX
+                        74xx126
+           10k          ___ ____
+  (GND)--/\/\/\--(A2)--|1  u  14|-- (3V3)
+  (TX)-----------------|2       |
+  (RX)-----------------|3       |
+                       |4       |
+                       |5       |
+                       |6       |
+  (GND)----------------|7      8|
+                        ^^^^^^^^
 ```
 
 Flashing the wiring/serial_loopback files

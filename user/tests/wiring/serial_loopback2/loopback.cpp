@@ -19,6 +19,19 @@
 #include "unit-test/unit-test.h"
 #include "random.h"
 
+/* WIRING
+ *                       74xx126
+ *          10k          ___ ____
+ * (GND)--/\/\/\--(A2)--|1  u  14|-- (3V3)
+ * (TX)-----------------|2       |
+ * (RX)-----------------|3       |
+ *                      |4       |
+ *                      |5       |
+ *                      |6       |
+ * (GND)----------------|7      8|
+ *                       ^^^^^^^^
+ */
+
 #ifndef USE_BUFFER_SIZE
 #warning "Using default 64 byte buffer"
 #define USE_BUFFER_SIZE (SERIAL_BUFFER_SIZE)
@@ -87,6 +100,11 @@ void runLoopback(size_t buffer_size_min, size_t buffer_size_max, bool sleep, boo
     } while (++pos <= bufferSize);
 
     assertTrue(!strncmp(txBuf, rxBuf, bufferSize));
+}
+
+test(SERIAL_000_Prepare) {
+    pinMode(A2, OUTPUT);
+    digitalWrite(A2, HIGH);
 }
 
 test(SERIAL_00_LoopbackNoDataLossAndAvailableIsCorrect) {
@@ -188,6 +206,10 @@ test(SERIAL_05_Loopback9BitReceivedDataShouldRetainAfterSleepWakeup) {
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, true);
     }
+}
+
+test(SERIAL_ZZZ_Cleanup) {
+    pinMode(A2, INPUT);
 }
 
 #endif // HAL_PLATFORM_USART_9BIT_SUPPORTED
