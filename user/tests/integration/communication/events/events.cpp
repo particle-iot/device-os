@@ -4,28 +4,37 @@
 namespace {
 
 String eventName;
-String eventData;
+Variant eventData;
 ContentType eventContentType = ContentType();
 bool eventReceived = false;
 
+void clearReceivedEvent() {
+    eventName = String();
+    eventData = Variant();
+    eventContentType = ContentType();
+    eventReceived = false;
+}
+
 void eventHandler(const char* name, const char* data, size_t size, ContentType type) {
+    clearReceivedEvent();
     eventName = name;
-    eventData = String(data, size);
+    eventData = Buffer(data, size);
     eventContentType = type;
     eventReceived = true;
 }
 
-void clearReceivedEvent() {
-    eventName = String();
-    eventData = String();
-    eventContentType = ContentType();
-    eventReceived = false;
+void eventHandler2(const char* name, Variant data) {
+    clearReceivedEvent();
+    eventName = name;
+    eventData = std::move(data);
+    eventReceived = true;
 }
 
 } // namespace
 
 test(connect) {
     Particle.subscribe(System.deviceID() + "/my_event", eventHandler);
+    Particle.subscribe(System.deviceID() + "/my_event2", eventHandler2);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, 60000));
 }
@@ -46,9 +55,16 @@ test(verify_max_event_data_size) {
     assertTrue((bool)Particle.publish("my_event", data, PRIVATE | WITH_ACK));
 }
 
-test(device_to_cloud_event_with_content_type) {
-    uint8_t data[] = { 0x92, 0xb2, 0xd1, 0x00, 0x23, 0x8c, 0x49, 0x0b, 0xd6, 0xe7, 0xa8, 0x90, 0x50, 0xdb, 0xc5, 0xbb, 0xe5, 0x3f, 0xf3, 0x29, 0xb2, 0x4c, 0xef, 0xad, 0xad, 0xd8, 0x10, 0xd9, 0xc3, 0xa4, 0xf1, 0xb0, 0xe7, 0x74, 0x8e, 0x7e, 0x2e, 0xcf, 0x48, 0xbe, 0x4d, 0xd3, 0xae, 0x08, 0x36, 0x8f, 0x76, 0xa8, 0xd5, 0x50, 0xec, 0x13, 0x9d, 0x5b, 0xca, 0x62, 0x4e, 0x3c, 0x6b, 0x3c, 0xbc, 0x75, 0x85, 0x65, 0x35, 0x6c, 0x00, 0xaf, 0xee, 0x12, 0xf2, 0xbd, 0x3f, 0xf2, 0x27, 0x00, 0xdc, 0x4c, 0xc6, 0xfa, 0x02, 0x16, 0x8e, 0xe5, 0xa1, 0xe6, 0xe9, 0x40, 0x4a, 0x71, 0xd1, 0x7d, 0xa5, 0xa6, 0xb7, 0x8d, 0x7d, 0x47, 0x5f, 0xf2 };
-    assertTrue((bool)Particle.publish("my_event", (const char*)data, sizeof(data), ContentType::BINARY, WITH_ACK));
+test(publish_device_to_cloud_event_with_content_type) {
+    auto data = Buffer::fromHex("92b2d100238c490bd6e7a89050dbc5bbe53ff329b24cefadadd810d9c3a4f1b0e7748e7e2ecf48be4dd3ae08368f76a8d550ec139d5bca624e3c6b3cbc758565356c00afee12f2bd3ff22700dc4cc6fa02168ee5a1e6e9404a71d17da5a6b78d7d475ff2");
+    assertTrue((bool)Particle.publish("my_event", data.data(), data.size(), ContentType::BINARY, WITH_ACK));
+}
+
+test(publish_device_to_cloud_event_as_variant) {
+    Variant v;
+    v["a"] = 123;
+    v["b"] = Buffer::fromHex("6e7200463f1bb774472f");
+    assertTrue((bool)Particle.publish("my_event", v, WITH_ACK));
 }
 
 test(publish_cloud_to_device_event_with_content_type) {
@@ -59,9 +75,23 @@ test(validate_cloud_to_device_event_with_content_type) {
     assertTrue(waitFor([]() {
         return eventReceived;
     }, 10000));
-    uint8_t expectedData[] = { 0xcb, 0xdf, 0x43, 0x83, 0x00, 0x86, 0x31, 0x72, 0x8b, 0xaf, 0x35, 0xc2, 0xaa, 0xae, 0x5d, 0x2e, 0x77, 0x76, 0x91, 0xb1, 0x31, 0xa5, 0xf1, 0x05, 0x1d, 0x7f, 0xc1, 0x47, 0xa8, 0x1f, 0x2a, 0x90, 0xe5, 0x75, 0x30, 0x9d, 0xdc, 0x28, 0x90, 0x68, 0x8b, 0xb8, 0x6e, 0x6e, 0x85, 0x14, 0x0d, 0x95, 0xc0, 0x64, 0xfd, 0xf3, 0xce, 0x3d, 0xfb, 0x45, 0xa3, 0xa7, 0xfe, 0x3d, 0xcf, 0x94, 0xd8, 0x69, 0xcb, 0x21, 0x39, 0x2c, 0x9a, 0xc9, 0xbb, 0x5b, 0xcb, 0x2d, 0xd9, 0x43, 0xb5, 0xbe, 0x21, 0xdd, 0x3b, 0xe1, 0x8c, 0x87, 0x64, 0x68, 0x00, 0x4d, 0x98, 0x1e, 0x6a, 0xe0, 0x2a, 0x42, 0xe8, 0x05, 0xb9, 0x89, 0xef, 0xcd };
+    auto expectedData = Buffer::fromHex("cbdf4383008631728baf35c2aaae5d2e777691b131a5f1051d7fc147a81f2a90e575309ddc2890688bb86e6e85140d95c064fdf3ce3dfb45a3a7fe3dcf94d869cb21392c9ac9bb5bcb2dd943b5be21dd3be18c876468004d981e6ae02a42e805b989efcd");
     assertTrue(eventName == System.deviceID() + "/my_event");
-    assertTrue(eventData.length() == sizeof(expectedData));
-    assertTrue(std::memcmp(eventData.c_str(), expectedData, sizeof(expectedData)) == 0);
+    assertTrue(eventData.asBuffer() == expectedData);
     assertTrue(eventContentType == ContentType::BINARY);
+}
+
+test(publish_cloud_to_device_event_with_cbor_data) {
+    clearReceivedEvent();
+}
+
+test(validate_cloud_to_device_event_with_cbor_data) {
+    assertTrue(waitFor([]() {
+        return eventReceived;
+    }, 10000));
+    assertTrue(eventName == System.deviceID() + "/my_event2");
+    Variant v;
+    v["c"] = 456;
+    v["d"] = Buffer::fromHex("921bff008d91814e789b");
+    assertTrue(eventData == v);
 }
