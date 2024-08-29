@@ -507,6 +507,7 @@ private:
               advParams_{},
               advTimeoutTimer_(nullptr),
               isScanning_(false),
+              notifyScanResult_(false),
               scanParams_{},
               scanSemaphore_(nullptr),
               scanResultCallback_(nullptr),
@@ -640,6 +641,7 @@ private:
     hal_ble_adv_params_t advParams_;
     os_timer_t advTimeoutTimer_;                    /**< Timer for advertising timeout.  */
     volatile bool isScanning_;                      /**< If it is scanning or not. */
+    volatile bool notifyScanResult_;
     hal_ble_scan_params_t scanParams_;              /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                  /**< Semaphore to wait until the scan procedure completed. */
     hal_ble_on_scan_result_cb_t scanResultCallback_;    /**< Callback function on scan result. */
@@ -1672,6 +1674,7 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
 
     CHECK_RTL(WRAP_BLE_EVT_LOCK(le_scan_start()));
     isScanning_ = true;
+    notifyScanResult_ = true;
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
     // IMPORTANT: have to poll here, for some reason we may not get notified
     if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
@@ -1694,7 +1697,7 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
 
 int BleGap::stopScanning(bool resetStack) {
     BleLock lk;
-
+    notifyScanResult_ = false;
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
@@ -1754,7 +1757,7 @@ int BleGap::stopScanning(bool resetStack) {
 
 // This function is called from thread
 void BleGap::notifyScanResult(T_LE_SCAN_INFO* advReport) {
-    if (!isScanning_ || !scanResultCallback_) {
+    if (!isScanning_ || !scanResultCallback_ || !notifyScanResult_) {
         return;
     }
 
