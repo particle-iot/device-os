@@ -2,7 +2,7 @@
   "description": "Device OS Integration Tests",
   "private": true,
   "dependencies": {
-    "@particle/device-constants": "^3.3.1",
+    "@particle/device-constants": "^3.5.0",
     "binary-version-reader": "^2.4.0",
     "chai-exclude": "^2.1.0",
     "particle-api-js": "^10.4.2",
