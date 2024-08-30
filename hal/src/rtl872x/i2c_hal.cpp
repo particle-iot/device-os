@@ -495,11 +495,17 @@ public:
         particle::services::RingBuffer<uint8_t> txBuffer(txConfig ? txConfig->buffer : nullptr, txConfig ? txConfig->quantity : 0);
         particle::services::RingBuffer<uint8_t> rxBuffer(rxConfig ? rxConfig->buffer : nullptr, rxConfig ? rxConfig->quantity : 0);
         if (txConfig) {
+            if (txConfig->quantity) {
+                CHECK_TRUE(txConfig->buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
+            }
             txBuffer.acquire(txConfig->quantity);
             txBuffer.acquireCommit(txConfig->quantity);
             std::swap(txBuffer, txBuffer_);
         }
         if (rxConfig) {
+            if (rxConfig->quantity) {
+                CHECK_TRUE(rxConfig->buffer, SYSTEM_ERROR_INVALID_ARGUMENT);
+            }
             std::swap(rxBuffer, rxBuffer_);
         }
         SCOPE_GUARD({

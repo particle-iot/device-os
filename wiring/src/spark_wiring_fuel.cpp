@@ -298,7 +298,7 @@ int FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
     config.buffer(&startAddress);
     config.stop(false); // Use repeated start
     WireTransmission rxConfig(MAX17043_ADDRESS);
-    rxConfig.timeout(MAX17043_ADDRESS);
+    rxConfig.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
     rxConfig.quantity(2);
     rxConfig.stop(true);
     uint8_t buf[2] = {};
