@@ -284,6 +284,7 @@ int FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
     std::lock_guard<FuelGauge> l(*this);
     WireTransmission config(MAX17043_ADDRESS);
     config.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
+#if (HAL_PLATFORM_I2C_NUM != 1)
     i2c_.beginTransmission(config);
     i2c_.write(startAddress);
     CHECK_TRUE(i2c_.endTransmission(true) == 0, SYSTEM_ERROR_TIMEOUT);
@@ -292,7 +293,24 @@ int FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
     CHECK_TRUE(i2c_.requestFrom(config) == 2, SYSTEM_ERROR_TIMEOUT);
     MSB = i2c_.read();
     LSB = i2c_.read();
-
+#else
+    config.quantity(1);
+    config.buffer(&startAddress);
+    config.stop(false); // Use repeated start
+    WireTransmission rxConfig(MAX17043_ADDRESS);
+    rxConfig.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
+    rxConfig.quantity(2);
+    rxConfig.stop(true);
+    uint8_t buf[2] = {};
+    rxConfig.buffer(buf);
+    auto r = CHECK(i2c_.transaction(config, rxConfig));
+    if (r == 2) {
+        MSB = buf[0];
+        LSB = buf[1];
+    } else {
+        return r;
+    }
+#endif // HAL_PLATFORM_I2C_NUM != 1
     return SYSTEM_ERROR_NONE;
 }
 
@@ -300,11 +318,19 @@ int FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
     std::lock_guard<FuelGauge> l(*this);
     WireTransmission config(MAX17043_ADDRESS);
     config.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
+#if (HAL_PLATFORM_I2C_NUM != 1)
     i2c_.beginTransmission(config);
     i2c_.write(address);
     i2c_.write(MSB);
     i2c_.write(LSB);
     CHECK_TRUE(i2c_.endTransmission(true) == 0, SYSTEM_ERROR_TIMEOUT);
+#else
+    uint8_t buf[] = {address, MSB, LSB};
+    config.stop(true);
+    config.buffer(buf);
+    config.quantity(sizeof(buf));
+    return i2c_.transaction(config);
+#endif // HAL_PLATFORM_I2C_NUM != 1
     return SYSTEM_ERROR_NONE;
 }
 

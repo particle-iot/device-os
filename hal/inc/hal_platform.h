@@ -626,4 +626,8 @@
 #define HAL_PLATFORM_LEDGER (1)
 #endif // HAL_PLATFORM_LEDGER
 
+#if HAL_PLATFORM_NRF52840 && HAL_PLATFORM_I2C_NUM == 1
+#error "I2C transaction API is not implemented on Gen 3 platforms"
+#endif // HAL_PLATFORM_NRF52840 && HAL_PLATFORM_I2C_NUM == 1
+
 #endif /* HAL_PLATFORM_H */

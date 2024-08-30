@@ -219,3 +219,18 @@ bool TwoWire::unlock()
 {
   return hal_i2c_unlock(_i2c, NULL) == 0;
 }
+
+#if HAL_PLATFORM_I2C_NUM == 1
+int TwoWire::transaction(const WireTransmission& tx, const WireTransmission& rx)
+{
+  auto txConf = tx.halConfig();
+  auto rxConf = rx.halConfig();
+  return hal_i2c_transaction(_i2c, tx.isValid() ? &txConf : nullptr, rx.isValid() ? &rxConf : nullptr, nullptr);
+}
+#endif // HAL_PLATFORM_I2C_NUM == 1
+
+namespace particle {
+namespace detail {
+const WireTransmission WIRE_INVALID_TRANSMISSION(0xff);
+} // detail
+} // particle
