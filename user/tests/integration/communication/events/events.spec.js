@@ -83,7 +83,11 @@ test('publish_cloud_to_device_event_with_cbor_data', async function() {
 	const data = Buffer.from('a261631901c861644a921bff008d91814e789b', 'hex');
 	await this.particle.apiClient.instance.publishEvent({
 		name: `${deviceId}/my_event2`,
-		data: `data:application/octet-stream;base64,${data.toString('base64')}`,
+		data: `data:application/cbor;base64,${data.toString('base64')}`,
 		auth: this.particle.apiClient.token
 	});
+});
+
+test('validate_cloud_to_device_event_with_cbor_data', async function() {
+	// See events.cpp
 });
