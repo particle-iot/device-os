@@ -274,12 +274,17 @@ public:
 
     inline particle::Future<bool> publish(const char *eventName, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
     {
-        return publish(eventName, NULL, flags1, flags2);
+        return publish(eventName, nullptr, DEFAULT_CLOUD_EVENT_TTL, flags1, flags2);
     }
 
     inline particle::Future<bool> publish(const char *eventName, const char *eventData, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
     {
         return publish(eventName, eventData, DEFAULT_CLOUD_EVENT_TTL, flags1, flags2);
+    }
+
+    inline particle::Future<bool> publish(const char *eventName, const String& eventData, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
+    {
+        return publish(eventName, eventData.c_str(), DEFAULT_CLOUD_EVENT_TTL, flags1, flags2);
     }
 
     inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
@@ -289,7 +294,9 @@ public:
 
     particle::Future<bool> publish(const char* name);
     particle::Future<bool> publish(const char* name, const char* data);
+    particle::Future<bool> publish(const char* name, const String& data);
     particle::Future<bool> publish(const char* name, const char* data, int ttl);
+    particle::Future<bool> publish(const char* name, const String& data, int ttl);
 
     particle::Future<bool> publish(const char* name, const char* data, particle::ContentType type, PublishFlags flags = PublishFlags()) {
         return publish(name, data, std::strlen(data), type, flags);
@@ -735,8 +742,16 @@ inline particle::Future<bool> CloudClass::publish(const char* name, const char* 
     return publish(name, data, PUBLIC);
 }
 
+inline particle::Future<bool> CloudClass::publish(const char* name, const String& data) {
+    return publish(name, data.c_str(), PUBLIC);
+}
+
 inline particle::Future<bool> CloudClass::publish(const char* name, const char* data, int ttl) {
     return publish(name, data, ttl, PUBLIC);
+}
+
+inline particle::Future<bool> CloudClass::publish(const char* name, const String& data, int ttl) {
+    return publish(name, data.c_str(), ttl, PUBLIC);
 }
 
 inline bool CloudClass::subscribe(const char* name, EventHandler handler) {
