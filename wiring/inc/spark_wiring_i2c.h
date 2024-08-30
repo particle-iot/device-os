@@ -155,9 +155,9 @@ public:
     return _i2c;
   }
 
-#if HAL_PLATFORM_I2C_NUM == 1 && HAL_PLATFORM_POWER_MANAGEMENT
+#if HAL_PLATFORM_I2C_NUM == 1
   int transaction(const WireTransmission& tx, const WireTransmission& rx = particle::detail::WIRE_INVALID_TRANSMISSION);
-#endif // HAL_PLATFORM_I2C_NUM == 1 && HAL_PLATFORM_POWER_MANAGEMENT
+#endif // HAL_PLATFORM_I2C_NUM == 1
 };
 
 /**
