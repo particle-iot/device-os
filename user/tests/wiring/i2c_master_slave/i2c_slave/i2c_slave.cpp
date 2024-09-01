@@ -31,7 +31,8 @@ void I2C_Slave_On_Receive_Callback(int) {
         requested = true;
         requestedLength = 0;
     }
-    assertEqual(USE_WIRE.available(), TRANSFER_LENGTH_1);
+    uint32_t i2cAvailable = USE_WIRE.available();
+    assertEqual(i2cAvailable, TRANSFER_LENGTH_1);
     int count = 0;
     while(USE_WIRE.available()) {
         I2C_Test_Rx_Buffer[count++] = USE_WIRE.read();
@@ -52,10 +53,10 @@ void I2C_Slave_On_Receive_Callback(int) {
 
 test(I2C_000_Prepare)
 {
-    Serial.println("This is Slave");
-    Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
-    Serial.printlnf("Slave message: %s", SLAVE_TEST_MESSAGE);
-    Serial.blockOnOverrun(false);
+    // Serial.println("This is Slave");
+    // Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
+    // Serial.printlnf("Slave message: %s", SLAVE_TEST_MESSAGE);
+    // Serial.blockOnOverrun(false);
     USE_WIRE.begin(I2C_ADDRESS);
     USE_WIRE.stretchClock(true);
     USE_WIRE.onRequest(I2C_Slave_On_Request_Callback);
