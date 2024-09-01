@@ -20,9 +20,9 @@
 #include "random.h"
 
 /* WIRING
- *                       74xx126
+ *                       74xx125
  *          10k          ___ ____
- * (GND)--/\/\/\--(A2)--|1  u  14|-- (3V3)
+ * (3V3)--/\/\/\--(A2)--|1  u  14|-- (3V3)
  * (TX)-----------------|2       |
  * (RX)-----------------|3       |
  *                      |4       |
@@ -87,7 +87,8 @@ void runLoopback(size_t buffer_size_min, size_t buffer_size_max, bool sleep, boo
     char rxBuf[bufferSize] = {};
     do {
         size_t available = bufferSize - pos;
-        assertEqual(available, Serial1.available());
+        size_t serial1Available = Serial1.available();
+        assertEqual(available, serial1Available);
         if (available) {
             uint16_t c = Serial1.read();
             if (ninebit) {
@@ -103,8 +104,8 @@ void runLoopback(size_t buffer_size_min, size_t buffer_size_max, bool sleep, boo
 }
 
 test(SERIAL_000_Prepare) {
-    pinMode(A2, OUTPUT);
-    digitalWrite(A2, HIGH);
+    pinMode(A2, OUTPUT); // ACTIVE LOW
+    digitalWrite(A2, LOW);
 }
 
 test(SERIAL_00_LoopbackNoDataLossAndAvailableIsCorrect) {
@@ -209,7 +210,7 @@ test(SERIAL_05_Loopback9BitReceivedDataShouldRetainAfterSleepWakeup) {
 }
 
 test(SERIAL_ZZZ_Cleanup) {
-    pinMode(A2, INPUT);
+    pinMode(A2, INPUT); // PULL-UP HIGH
 }
 
 #endif // HAL_PLATFORM_USART_9BIT_SUPPORTED
