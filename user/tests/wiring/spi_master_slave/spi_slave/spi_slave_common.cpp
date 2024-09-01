@@ -286,14 +286,13 @@ test(00_to_23_SPI_Master_Slave)
 
         if (MY_SPI.available() != TRANSFER_LENGTH_1 || strncmp((const char *)SPI_Slave_Rx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE))) {
             Log.trace("Received invalid request");
-            for (int i = 0; i < 32; i++) {
+            for (int i = 0; i < sizeof(SPI_Slave_Rx_Buffer); i++) {
                 LOG_PRINTF_C(TRACE, "app", "%02x", SPI_Slave_Rx_Buffer[i]);
             }
             LOG_PRINTF_C(TRACE, "app", "\r\n");
         }
 
-        // Serial.printlnf("< (%u) ", MY_SPI.available());
-        // Serial.println((const char *)SPI_Slave_Rx_Buffer);
+        Log.trace("< (%u) %s", MY_SPI.available(), (const char *)SPI_Slave_Rx_Buffer);
 
         /* Check how many bytes we have received */
         assertEqual(MY_SPI.available(), TRANSFER_LENGTH_1);
@@ -329,8 +328,7 @@ test(00_to_23_SPI_Master_Slave)
 
         memcpy(SPI_Slave_Tx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength);
         SPI_Slave_Tx_Buffer[requestedLength] = '\0';
-        // Serial.print("> ");
-        // Serial.println((const char *)SPI_Slave_Tx_Buffer);
+        Log.trace("> %s", (const char *)SPI_Slave_Tx_Buffer);
 
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, requestedLength, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
         /* Check that we have transferred requestedLength bytes as requested */

@@ -353,6 +353,7 @@ test(00_to_23_SPI_Master_Slave)
     // Throw away the first transfer
     auto transferFunc1 = SPI_Master_Transfer_No_DMA;
 
+// EXTRA CODE TO CONSUME GARBAGE vvv
     uint32_t requestedLength = TRANSFER_LENGTH_2;
     SPI_Master_Configure();
     memset(SPI_Master_Tx_Buffer, 0, sizeof(SPI_Master_Tx_Buffer));
@@ -382,8 +383,10 @@ test(00_to_23_SPI_Master_Slave)
     LOG_PRINTF_C(TRACE, "app", "\r\n");
     // assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
     Log.trace("strncmp == %d", strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)));
+// EXTRA CODE TO CONSUME GARBAGE ^^^
 
     SPI_Master_Slave_Master_Test_Routine(transferFunc1);
+
 // }
 
 // test(01_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Default_MODE3_MSB)
