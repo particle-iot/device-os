@@ -37,6 +37,9 @@ async function distributePeerInfo() {
     }
 }
 
+test('BLE_0000_Check_Feature_Disable_Listening_Mode', async function () {
+});
+
 test('BLE_000_Peripheral_Cloud_Connect', async function() {
     console.log(`Waiting for peer info from Peripheral device ${peripheralDevice.id}`);
     const data = await this.particle.receiveEvent(BASE_EVENT_NAME + peripheralDevice.id);

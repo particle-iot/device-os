@@ -29,7 +29,16 @@ void onDataReceived(const uint8_t* data, size_t len, const BlePeerDevice& peer, 
 
 using namespace particle::test;
 
-test(BLE_000_Broacaster_Cloud_Connect) {
+test(BLE_0000_Check_Feature_Disable_Listening_Mode) {
+    if (System.featureEnabled(FEATURE_DISABLE_LISTENING_MODE)) {
+        System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+        assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+        System.reset();
+    }
+}
+
+test(BLE_000_Broadcaster_Cloud_Connect) {
+    assertFalse(System.featureEnabled(FEATURE_DISABLE_LISTENING_MODE));
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
