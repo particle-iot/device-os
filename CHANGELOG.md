@@ -4,6 +4,42 @@
 
 - Protected mode [#2734](https://github.com/particle-iot/device-os/pull/2734)
 
+## 5.9.0
+
+### FEATURES
+- Supports M.2 breakout board and Muon [#2809](https://github.com/particle-iot/device-os/pull/2809)
+
+
+### ENHANCEMENTS
+- [Gen 4] Wi-Fi logging [#2805](https://github.com/particle-iot/device-os/pull/2805)
+- [ACM] Perform cloud ping or reachability test on network events; non-blocking background reachability test [#2811](https://github.com/particle-iot/device-os/pull/2811)
+- [cellular][r510] unmask bands for global use [#2803](https://github.com/particle-iot/device-os/pull/2803)
+- [gen3] hal: improves BLE connect and discovery procedure [#2801](https://github.com/particle-iot/device-os/pull/2801)
+- [gen4] i2c: use transactions for fuelgauge and pmic on platforms with single i2c bus [#2822](https://github.com/particle-iot/device-os/pull/2822)
+
+### BUGFIXES
+- Reduce latency of the system loop [#2797](https://github.com/particle-iot/device-os/pull/2797)
+- Work around a bug in lfs_remove() [#2798](https://github.com/particle-iot/device-os/pull/2798)
+- [gen4] set sleep timer upper bounds [#2810](https://github.com/particle-iot/device-os/pull/2710)
+- [Gen 4] Wi-Fi fix [#2805](https://github.com/particle-iot/device-os/pull/2805)
+- [rtl872x] fixes DMA enabled USART flush [#2800](https://github.com/particle-iot/device-os/pull/2800)
+- Fix/ble stop scanning [#2796](https://github.com/particle-iot/device-os/pull/2796)
+- [gen4] BLE fixes [#2813](https://github.com/particle-iot/device-os/pull/2813)
+- [gen4] clear I2C tx buffer per transmission [#2819](https://github.com/particle-iot/device-os/pull/2819)
+- fixes USART::available() after waking from sleep [#2816](https://github.com/particle-iot/device-os/pull/2816)
+- [gen4] fixes BLE race condition while scanning [#2818](https://github.com/particle-iot/device-os/pull/2818)
+- [gen3] hal: improves BLE connect and discovery procedure [#2801](https://github.com/particle-iot/device-os/pull/2801)
+- [gen4] usb: fix an issue with USB re-attach after sleep [#2824](https://github.com/particle-iot/device-os/pull/2824) [#2823](https://github.com/particle-iot/device-os/pull/2823)
+- [gen4] prebootloader: fix STOP/ULP sleep with disabled rtos, get correct wake-up reason [#2825](https://github.com/particle-iot/device-os/pull/2825)
+- Fixes I2C hal issues [#2826](https://github.com/particle-iot/device-os/pull/2826)
+
+
+### INTERNAL
+- Add serial loopback to test runner [#2816](https://github.com/particle-iot/device-os/pull/2816)
+- [tests] Support integration tests on gen4 after device-constants update [#2814](https://github.com/particle-iot/device-os/pull/2814)
+- Adds fixture tests [#2823](https://github.com/particle-iot/device-os/pull/2823)
+- [tests] ACM prefer feature, adjust logging [#2795](https://github.com/particle-iot/device-os/pull/2795)
+
 ## 5.8.2
 
 ### FEATURES
