@@ -189,7 +189,9 @@ int RtlUsbDriver::detach() {
     std::lock_guard<RtlUsbDriver> lk(*this);
     needsReset_ = false;
     initialized_ = false;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     HAL_Delay_Milliseconds(10);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
     usb_hal_disable_global_interrupt();
     usbd_unregister_class();
