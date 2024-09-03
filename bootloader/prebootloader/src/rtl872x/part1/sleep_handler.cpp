@@ -301,6 +301,10 @@ void sleepInit(void) {
     km0_km4_ipc_on_request_received(KM0_KM4_IPC_CHANNEL_GENERIC, KM0_KM4_IPC_MSG_SLEEP, onSleepRequestReceived, nullptr);
 }
 
+// From rtl8721dlp_pmc.c
+extern "C" u32 WakeEventAon;
+extern "C" u32 WakeEvent;
+
 void sleepProcess(void) {
     // Handle sleep
     sleepResult[0] = SYSTEM_ERROR_NONE;
@@ -327,13 +331,22 @@ void sleepProcess(void) {
             auto config = sleepConfigShadow.config();
             if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
                 SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-                taskENTER_CRITICAL();
+                if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
+                    taskENTER_CRITICAL();
+                }
                 configureDeepSleepWakeupSource(config);
                 enterDeepSleep();
                 // It should not reach here
             } else {
                 SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk;
-                taskENTER_CRITICAL();
+                if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
+                    taskENTER_CRITICAL();
+                }
+
+                // Make sure to invalidate previous wake-up reason
+                HAL_WRITE32(SYSTEM_CTRL_BASE_HP, REG_HS_WAKE_EVENT_STATUS1, 0);
+                __DSB();
+                __ISB();
 
                 // Copy and paste from km4_tickless_ipc_int()
                 km4_sleep_type = SLEEP_CG;
@@ -361,7 +374,9 @@ void sleepProcess(void) {
                 SOCPS_SleepCG();
                 SOCPS_SWRLDO_Suspend(DISABLE);
 
-                taskEXIT_CRITICAL();
+                if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) {
+                    taskEXIT_CRITICAL();
+                }
 
                 SOCPS_AONTimerCmd(DISABLE);
 
@@ -375,10 +390,10 @@ void sleepProcess(void) {
                 }
 #endif
 
-                // Figure out the wakeup reason
                 uint32_t wakeReason = 0;
-                uint32_t sleepEnd = SYSTIMER_GetPassTime(0);
-                if ((sleepDuration > 0) && ((sleepEnd - sleepStart) >= sleepDuration)) {
+                // Figure out the wakeup reason
+                if (WakeEventAon & 0x02) {
+                    // AON RTC wake-up reason
                     wakeReason |= BIT_HP_WEVT_TIMER_STS;
                 }
                 uint32_t intStatusA = HAL_READ32((uint32_t)GPIOA_BASE, 0x40);
