@@ -170,6 +170,7 @@ static void twisHandler(hal_i2c_interface_t i2c, nrfx_twis_evt_t const * p_event
             break;
         }
         case NRFX_TWIS_EVT_WRITE_REQ: {
+            i2cMap[i2c].rx_index_head = i2cMap[i2c].rx_index_tail = 0;
             if (p_event->data.buf_req) {
                 nrfx_twis_rx_prepare(i2cMap[i2c].slave, (void *)i2cMap[i2c].rx_buf, i2cMap[i2c].rx_buf_size);
             }
@@ -185,6 +186,8 @@ static void twisHandler(hal_i2c_interface_t i2c, nrfx_twis_evt_t const * p_event
         case NRFX_TWIS_EVT_WRITE_ERROR:
         case NRFX_TWIS_EVT_GENERAL_ERROR: {
             LOG_DEBUG(TRACE, "TWIS ERROR");
+            i2cMap[i2c].tx_index_tail = i2cMap[i2c].tx_index_head = 0;
+            i2cMap[i2c].rx_index_head = i2cMap[i2c].rx_index_tail = 0;
             break;
         }
         default: {
