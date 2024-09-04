@@ -93,6 +93,7 @@ const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX = 921600; // version A08 or above
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q = 921600;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1029,6 +1030,9 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
     auto resp = parser_.sendCommand("AT+IPR=%u", baud);
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+        HAL_Delay_Milliseconds(500); // As per the spec: After the baud rate is changed, it is necessary to wait for 500 ms to send the next command.
+    }
     return serial_->setBaudRate(baud);
 }
 
@@ -1080,6 +1084,8 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         if (fwVersion_ >= 8) {
             runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX;
         }
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q;
     }
     return runtimeBaudrate;
 }
@@ -1111,6 +1117,13 @@ int QuectelNcpClient::initReady(ModemState state) {
         HAL_Delay_Milliseconds(1000);
     }
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+        // Disable URCs for SMS, RI and other, otherwise, the remote modem state in muxer channel will be set to 0 
+        // CHECK_PARSER(parser_.execCommand("AT+QCFG=\"urc/ri/ring\",\"off\""));
+        // CHECK_PARSER(parser_.execCommand("AT+QCFG=\"urc/ri/sms\",\"off\""));
+        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"urc/ri/other\",\"off\""));
+    }
 
     if (state != ModemState::MuxerAtChannel) {
         // Cold Boot only, Warm Boot will skip the following block...
