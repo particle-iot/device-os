@@ -594,13 +594,17 @@ private:
 
     int reEnableIfNeeded() {
         if (!masterRestarted()) {
+            i2cDev_->IC_ENABLE |= 0x00000002; // Abort the current transfer without flush Tx/Rx FIFO
             I2C_Cmd(i2cDev_, DISABLE);
-            if (!WAIT_TIMED(transConfig_.timeout_ms, I2C_CheckFlagState(i2cDev_, BIT_IC_STATUS_ACTIVITY) == 1)) {
+            if (!WAIT_TIMED(transConfig_.timeout_ms, (i2cDev_->IC_ENABLE_STATUS & 0x00000001) == 1)) {
                 reset();
                 LOG_DEBUG(TRACE, "SYSTEM_ERROR_I2C_BUS_BUSY");
                 return SYSTEM_ERROR_I2C_BUS_BUSY;
             }
             I2C_Cmd(i2cDev_, ENABLE);
+            if (!WAIT_TIMED(transConfig_.timeout_ms, (i2cDev_->IC_ENABLE_STATUS & 0x00000001) == 0)) {
+                return SYSTEM_ERROR_INTERNAL;
+            }
         }
         clearIntStatus();
         return SYSTEM_ERROR_NONE;
