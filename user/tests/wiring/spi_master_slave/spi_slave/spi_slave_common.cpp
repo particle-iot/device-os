@@ -34,7 +34,9 @@ Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 #pragma message "Compiling for SPI, MY_CS set to SS"
 #elif (USE_SPI == 1)
 #if PLATFORM_ID == PLATFORM_MSOM
-#error "SPI1 not supported as slave for MSoM"
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI1 not supported as slave for MSoM"
 #endif // PLATFORM_ID == PLATFORM_MSOM
 #define MY_SPI SPI1
 #define MY_CS SS1

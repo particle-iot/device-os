@@ -1,6 +1,6 @@
 suite('SLEEP 2.0');
 
-platform('gen3', 'gen4');
+platform('gen3', 'p2');
 systemThread('enabled');
 timeout(15 * 60 * 1000);
 

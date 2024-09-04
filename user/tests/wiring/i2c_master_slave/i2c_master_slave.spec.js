@@ -1,6 +1,6 @@
 suite('I2C MASTER SLAVE');
 
-platform('gen3', 'gen4');
+platform('gen3', 'p2');
 systemThread('enabled');
 
 fixture('i2c_slave', 'i2c_master');

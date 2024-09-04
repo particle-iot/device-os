@@ -26,7 +26,7 @@
  * ----------          ----------
  * RESET   D5 -------> RST RESET
  * GPIO    D0 -------> D0
- * ADC     A0 -------> A0
+ * ADC     A1 -------> A1
  * WKP D8/D10 -------> D8/D10/WKP // Argon=D8, P2=D10
  * SERIAL1 TX -------> RX SERIAL1
  *        GND <------> GND
@@ -156,7 +156,7 @@ time32_t sNetworkOffTimestamp = 0;
 
 constexpr int SLEEP_PIN_RESET = D5;
 constexpr int SLEEP_PIN_GPIO_WAKE_UP = D0;
-constexpr int SLEEP_PIN_ADC_WAKE_UP = A0;
+constexpr int SLEEP_PIN_ADC_WAKE_UP = A1;
 constexpr int SLEEP_PIN_WKP_WAKE_UP = WKP; // Argon=D8, P2=D10
 
 } // anonymous

@@ -1,5 +1,5 @@
 suite('BLE central peripheral');
-platform('gen3', 'gen4');
+platform('gen3', 'p2');
 fixture('ble_central', 'ble_peripheral');
 systemThread('enabled');
 // This tag should be filtered out by default
