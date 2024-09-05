@@ -66,7 +66,9 @@ Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 #define MY_CS D0 // FIXME
 #pragma message "Compiling for SPI, MY_CS set to D0"
 #elif (USE_SPI == 1) || (USE_SPI == 2)
-#error "SPI2 not supported for tracker"
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI2 not supported for tracker"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)

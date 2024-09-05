@@ -60,6 +60,20 @@ Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
 
+#elif (PLATFORM_ID == PLATFORM_TRACKER)
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS D0 // FIXME
+#pragma message "Compiling for SPI, MY_CS set to D0"
+#elif (USE_SPI == 1) || (USE_SPI == 2)
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI2 not supported for tracker"
+#else
+#error "Not supported for Gen 3"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
 #else // argon, boron
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
