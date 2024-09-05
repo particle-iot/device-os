@@ -108,23 +108,22 @@ void preferSwitchTest(NetworkClass& network, bool connect, bool& ok) {
             WiFi.prefer();
             assertTrue(WiFi.isPreferred());
             switched = true;
-        }
+        } else
 #endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
 #if HAL_PLATFORM_CELLULAR
-        else if (network != Cellular) {
+        if (network != Cellular) {
             assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
             Cellular.prefer();
             assertTrue(Cellular.isPreferred());
             switched = true;
-        }
+        } else
 #endif // HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_ETHERNET
-        else if (network != Ethernet && s_ethernetAvailable) {
+        if (network != Ethernet && s_ethernetAvailable) {
             assertTrue(waitFor(Ethernet.ready, WIFI_CONNECT_TIMEOUT_MS));
             Ethernet.prefer();
             assertTrue(Ethernet.isPreferred());
             switched = true;
-        } else {
         }
 #endif // HAL_PLATFORM_ETHERNET
     }
