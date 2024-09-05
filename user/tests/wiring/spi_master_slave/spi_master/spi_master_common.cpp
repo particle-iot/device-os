@@ -356,35 +356,35 @@ test(00_to_23_SPI_Master_Slave)
     auto transferFunc1 = SPI_Master_Transfer_No_DMA;
 
 // EXTRA CODE TO CONSUME GARBAGE vvv
-    uint32_t requestedLength = TRANSFER_LENGTH_2;
-    SPI_Master_Configure();
-    memset(SPI_Master_Tx_Buffer, 0, sizeof(SPI_Master_Tx_Buffer));
-    memset(SPI_Master_Rx_Buffer, 0, sizeof(SPI_Master_Rx_Buffer));
+    // uint32_t requestedLength = TRANSFER_LENGTH_2;
+    // SPI_Master_Configure();
+    // memset(SPI_Master_Tx_Buffer, 0, sizeof(SPI_Master_Tx_Buffer));
+    // memset(SPI_Master_Rx_Buffer, 0, sizeof(SPI_Master_Rx_Buffer));
 
-    hal_spi_sleep(MY_SPI.interface(), false, nullptr);
-    // assertEqual(ret, (int)SYSTEM_ERROR_NONE); // Device may be awake
+    // hal_spi_sleep(MY_SPI.interface(), false, nullptr);
+    // // assertEqual(ret, (int)SYSTEM_ERROR_NONE); // Device may be awake
 
-    // Select
-    // Workaround for some platforms requiring the CS to be high when configuring
-    // the DMA buffers
-    digitalWrite(MY_CS, LOW);
-    delay(SPI_DELAY);
-    digitalWrite(MY_CS, HIGH);
-    delay(10 * SPI_DELAY);
-    digitalWrite(MY_CS, LOW);
-    delay(SPI_DELAY);
+    // // Select
+    // // Workaround for some platforms requiring the CS to be high when configuring
+    // // the DMA buffers
+    // digitalWrite(MY_CS, LOW);
+    // delay(SPI_DELAY);
+    // digitalWrite(MY_CS, HIGH);
+    // delay(10 * SPI_DELAY);
+    // digitalWrite(MY_CS, LOW);
+    // delay(SPI_DELAY);
 
-    memcpy(SPI_Master_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
-    memcpy(SPI_Master_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
+    // memcpy(SPI_Master_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
+    // memcpy(SPI_Master_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
 
-    transferFunc1(SPI_Master_Tx_Buffer, SPI_Master_Rx_Buffer, TRANSFER_LENGTH_1);
-    digitalWrite(MY_CS, HIGH);
-    delay(50 * SPI_DELAY);
-    Log.trace("< %s", (const char *)SPI_Master_Rx_Buffer);
-    LOG_DUMP(TRACE, (const char *)SPI_Master_Rx_Buffer, strlen((const char *)SPI_Master_Rx_Buffer));
-    LOG_PRINTF_C(TRACE, "app", "\r\n");
-    // assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
-    Log.trace("strncmp == %d", strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)));
+    // transferFunc1(SPI_Master_Tx_Buffer, SPI_Master_Rx_Buffer, TRANSFER_LENGTH_1);
+    // digitalWrite(MY_CS, HIGH);
+    // delay(50 * SPI_DELAY);
+    // Log.trace("< %s", (const char *)SPI_Master_Rx_Buffer);
+    // LOG_DUMP(TRACE, (const char *)SPI_Master_Rx_Buffer, strlen((const char *)SPI_Master_Rx_Buffer));
+    // LOG_PRINTF_C(TRACE, "app", "\r\n");
+    // // assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
+    // Log.trace("strncmp == %d", strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)));
 // EXTRA CODE TO CONSUME GARBAGE ^^^
 
     SPI_Master_Slave_Master_Test_Routine(transferFunc1);
