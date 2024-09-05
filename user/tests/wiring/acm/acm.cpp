@@ -221,7 +221,7 @@ test(ACM_02_particle_connect_uses_preferred_wifi_network) {
 test(ACM_03_particle_connect_uses_preferred_cellular_network) {
     assertMoreOrEqual(s_availableNetworkCount, 2);
     bool ok = false;
-    preferConnectTest(WiFi, ok);
+    preferConnectTest(Cellular, ok);
     assertTrue(ok);
 }
 #endif // HAL_PLATFORM_CELLULAR
@@ -429,7 +429,7 @@ test(ACM_17_non_eth_particle_connect_uses_preferred_cellular_network) {
     }
     assertMoreOrEqual(s_availableNetworkCount, 2);
     bool ok = false;
-    preferConnectTest(WiFi, ok);
+    preferConnectTest(Cellular, ok);
     assertTrue(ok);
 }
 #endif // HAL_PLATFORM_CELLULAR
