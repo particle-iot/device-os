@@ -4,9 +4,9 @@ SERIAL testing hardware requirements
 Wiring
 
 ```none
-                        74xx126
+                        74xx125
            10k          ___ ____
-  (GND)--/\/\/\--(A2)--|1  u  14|-- (3V3)
+  (3V3)--/\/\/\--(A2)--|1  u  14|-- (3V3)
   (TX)-----------------|2       |
   (RX)-----------------|3       |
                        |4       |

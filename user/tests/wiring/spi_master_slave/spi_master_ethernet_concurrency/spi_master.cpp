@@ -3,6 +3,12 @@
 #include <functional>
 #include "random.h"
 
+// Can keep this enabled as it won't hurt the test
+Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
+    // { "comm", LOG_LEVEL_NONE }, // filter out comm messages
+    // { "system", LOG_LEVEL_INFO } // only info level for system messages
+});
+
 #define MASTER_TEST_MESSAGE "Hello from SPI Master!?"
 #define SLAVE_TEST_MESSAGE_1  "SPI Slave is doing good"
 #define SLAVE_TEST_MESSAGE_2  "All work and no play makes Jack a dull boy"
@@ -19,7 +25,25 @@
 #error Define USE_CS
 #endif // #ifndef USE_CS
 
-#if HAL_PLATFORM_NRF52840
+
+#if HAL_PLATFORM_RTL872X
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS SS
+#pragma message "Compiling for SPI, MY_CS set to SS"
+#elif (USE_SPI == 1)
+#define MY_SPI SPI1
+#define MY_CS SS1
+#pragma message "Compiling for SPI1, MY_CS set to SS1"
+#elif (USE_SPI == 2)
+#error "SPI2 not supported for p2/TrackerM/MSoM"
+#else
+#error "Not supported for P2/TrackerM/MSoM"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
+#elif HAL_PLATFORM_NRF52840
+
 #if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
@@ -32,6 +56,20 @@
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
 #error "SPI2 not supported for asom, bsom and b5som"
+#else
+#error "Not supported for Gen 3"
+#endif // (USE_SPI == 0 || USE_SPI == 255)
+
+#elif (PLATFORM_ID == PLATFORM_TRACKER)
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+#define MY_SPI SPI
+#define MY_CS D0 // FIXME
+#pragma message "Compiling for SPI, MY_CS set to D0"
+#elif (USE_SPI == 1) || (USE_SPI == 2)
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI2 not supported for tracker"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)

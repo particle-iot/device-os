@@ -58,9 +58,9 @@ hal_usart_buffer_config_t acquireSerial1Buffer()
 #endif
 
 /* WIRING
- *                       74xx126
+ *                       74xx125
  *          10k          ___ ____
- * (GND)--/\/\/\--(A2)--|1  u  14|-- (3V3)
+ * (3V3)--/\/\/\--(A2)--|1  u  14|-- (3V3)
  * (TX)-----------------|2       |
  * (RX)-----------------|3       |
  *                      |4       |
@@ -150,8 +150,7 @@ void commonTestRoutine(uint32_t baudrate, uint32_t mode, uint16_t mask) {
 }
 
 test(SERIAL1_000_Prepare) {
-    pinMode(A2, OUTPUT);
-    digitalWrite(A2, HIGH);
+    pinMode(A2, OUTPUT); // ACTIVE LOW
 }
 
 test(SERIAL1_IncorrectConfigurationPassed) {
@@ -527,5 +526,5 @@ test(SERIAL1_LINMasterReadWriteBreakSucceedsInLoopbackWithTxRxShorted) {
 }
 
 test(SERIAL1_ZZZ_Cleanup) {
-    pinMode(A2, INPUT);
+    pinMode(A2, INPUT); // PULL-UP HIGH
 }

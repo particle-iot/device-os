@@ -72,7 +72,17 @@ constexpr uint16_t PEER_DESIRED_ATT_MTU = 100;
 Thread* scanThread = nullptr;
 volatile unsigned scanResults = 0;
 
+test(BLE_0000_Check_Feature_Disable_Listening_Mode) {
+    // System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    if (System.featureEnabled(FEATURE_DISABLE_LISTENING_MODE)) {
+        System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+        assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+        System.reset();
+    }
+}
+
 test(BLE_000_Peripheral_Cloud_Connect) {
+    assertFalse(System.featureEnabled(FEATURE_DISABLE_LISTENING_MODE));
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));

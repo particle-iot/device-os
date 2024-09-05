@@ -1,5 +1,5 @@
 suite('BLE central peripheral');
-platform('gen3', 'gen4');
+platform('gen3', 'p2');
 fixture('ble_central', 'ble_peripheral');
 systemThread('enabled');
 // This tag should be filtered out by default
@@ -36,6 +36,9 @@ async function distributePeerInfo() {
         await api.publishEvent({ name: BASE_EVENT_NAME + peripheralDevice.id, data: centralDevice.peerInfo, auth: auth });
     }
 }
+
+test('BLE_0000_Check_Feature_Disable_Listening_Mode', async function () {
+});
 
 test('BLE_000_Peripheral_Cloud_Connect', async function() {
     console.log(`Waiting for peer info from Peripheral device ${peripheralDevice.id}`);

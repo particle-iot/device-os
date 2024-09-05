@@ -1,6 +1,9 @@
-suite('Serial loopback2');
+suite('I2C MASTER SLAVE');
+
 platform('gen3', 'p2');
-fixture('serial_loopback2');
 systemThread('enabled');
+
+fixture('i2c_slave', 'i2c_master');
+
 // This tag should be filtered out by default
 tag('fixture');

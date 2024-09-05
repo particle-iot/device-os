@@ -196,7 +196,6 @@ int RtlUsbDriver::detach() {
     usb_hal_disable_global_interrupt();
     usbd_unregister_class();
     usbd_deinit();
-    needsReset_ = true;
     resetCount_ = 0;
     return 0;
 }
