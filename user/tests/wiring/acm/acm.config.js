@@ -1,0 +1,9 @@
+{
+    "fixtures": [
+        {
+            "name": "acm",
+            "devices": [
+            ]
+        }
+    ]
+}
