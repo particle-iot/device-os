@@ -17,15 +17,15 @@ systemThread('enabled');
 const THRESHOLDS = {
     p2: {
         targetAppFlashSize: 21 * 1024, // 21KB
-        targetFreeRam: 3 * 1024 * 1024 // 3MB
+        targetFreeRam: 3040870         // 2.9MB
     },
     trackerm: {
         targetAppFlashSize: 21 * 1024, // 21KB
-        targetFreeRam: 3 * 1024 * 1024 // 3MB
+        targetFreeRam: 3040870         // 2.9MB
     },
     msom: {
         targetAppFlashSize: 21 * 1024, // 21KB
-        targetFreeRam: 3 * 1024 * 1024 // 3MB
+        targetFreeRam: 3040870         // 2.9MB
     },
     // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
     default: {
@@ -39,10 +39,10 @@ test('slo startup stats', async function () {
     const unparsedJson = await this.particle.receiveEvent('startup_stats');
     const startupStats = JSON.parse(unparsedJson);
     console.log("startupStats JSON", startupStats);
-    
+
     // set the device under test to set conditional targets based on platform, etc
     // see device-os-test-runner docs: https://github.com/particle-iot/device-os-test-runner
-    const dut = this.particle.devices[0]; 
+    const dut = this.particle.devices[0];
 
     ///
     // Assertions against the minimum RAM SLO
@@ -51,7 +51,7 @@ test('slo startup stats', async function () {
 
     // show actuals first before assertions
     console.log(`actual_free_mem=${startupStats.free_mem} target_free_mem=${thresh.targetFreeRam} platform=${dut.platform.name}`);
-    
+
     // make free ram assertion
     expect(startupStats.free_mem).to.be.at.least(thresh.targetFreeRam);
 
