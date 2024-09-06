@@ -261,7 +261,9 @@ bool spark_process(void)
 #if PLATFORM_THREADING
     if (APPLICATION_THREAD_CURRENT()) {
         if (system_thread_get_state(NULL)) {
-            return ApplicationThread.process();
+            bool result = ApplicationThread.process();
+            g_lastAppLoopProcessTime = HAL_Timer_Get_Milli_Seconds();
+            return result;
         } else {
             Spark_Idle_Events(true);
         }
