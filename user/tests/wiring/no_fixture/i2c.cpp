@@ -377,8 +377,6 @@ test(I2C_07_bus_reset_is_not_destructive) {
 }
 #endif // HAL_PLATFORM_FUELGAUGE_MAX17043
 
-Serial1LogHandler dbg(115200, LOG_LEVEL_ALL);
-
 #if HAL_PLATFORM_FUELGAUGE_MAX17043 && HAL_PLATFORM_I2C_NUM == 1
 // Uses transactions
 test(I2C_08_can_talk_to_fuelgauge_with_transactions) {
