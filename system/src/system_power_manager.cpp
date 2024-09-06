@@ -172,6 +172,9 @@ void PowerManager::init() {
   if (config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.aux_pwr_ctrl_pin != PIN_INVALID) {
     hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
     hal_gpio_write(config_.aux_pwr_ctrl_pin, !config_.aux_pwr_ctrl_pin_level); // Turn off auxiliary power by default
+  } else {
+    // No aux power control
+    system_notify_event(aux_power_state, 0);
   }
 
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
