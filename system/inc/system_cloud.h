@@ -385,7 +385,7 @@ int spark_set_random_seed_from_cloud_handler(void (*handler)(unsigned int), void
 #define SPARK_SERVER_PORT             5683
 #define PORT_COAPS                    (5684)
 
-// Periodicity of processing system/app events while in a delay() call
+// Periodicity of processing system/app events while delay() is running
 #define SPARK_LOOP_DELAY_MILLIS       1000    //1sec
 
 #define SPARK_RECEIVE_DELAY_MILLIS    10      //10ms

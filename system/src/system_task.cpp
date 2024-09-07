@@ -555,11 +555,8 @@ namespace {
 
 void delayThreadedImpl(system_tick_t duration, system_tick_t startMillis, system_tick_t startMicros, bool processAppEvents) {
     if (processAppEvents) {
-        // Time elapsed since this function was called
-        system_tick_t elapsedSinceStart = 0;
-
         // Time elapsed since the app queue was last processed
-        auto elapsedSinceLoop = startMillis - g_lastAppLoopProcessTime;
+        auto elapsedSinceLoop = HAL_Timer_Get_Milli_Seconds() - g_lastAppLoopProcessTime;
 
         // Time to wait before the app queue can be processed again
         system_tick_t leftUntilLoop = 0;
@@ -568,6 +565,12 @@ void delayThreadedImpl(system_tick_t duration, system_tick_t startMillis, system
         }
 
         for (;;) {
+            // Time elapsed since delay() was called
+            auto elapsedSinceStart = HAL_Timer_Get_Milli_Seconds() - startMillis;
+            if (elapsedSinceStart >= duration) {
+                break;
+            }
+
             // Remaining time to run this function
             auto leftUntilStop = duration - elapsedSinceStart;
             if (leftUntilStop < leftUntilLoop) {
@@ -579,20 +582,20 @@ void delayThreadedImpl(system_tick_t duration, system_tick_t startMillis, system
             HAL_Delay_Milliseconds(leftUntilLoop);
 
             ApplicationThread.process();
-            auto now = HAL_Timer_Get_Milli_Seconds();
-            g_lastAppLoopProcessTime = now;
+            g_lastAppLoopProcessTime = HAL_Timer_Get_Milli_Seconds();
 
-            elapsedSinceStart = now - startMillis;
-            if (elapsedSinceStart >= duration) {
-                break;
-            }
             leftUntilLoop = SPARK_LOOP_DELAY_MILLIS;
         }
     } else {
-        HAL_Delay_Milliseconds(duration);
+        auto elapsedSinceStart = HAL_Timer_Get_Milli_Seconds() - startMillis;
+        if (elapsedSinceStart < duration) {
+            HAL_Delay_Milliseconds(duration - elapsedSinceStart);
+        }
     }
 
-    // Make sure not to return early by a fraction of a millisecond
+    // XXX: Despite what the name suggests, HAL_Delay_Milliseconds() operates with ticks, not
+    // milliseconds. Depending on how far into the current tick the calling thread is, it may return
+    // earlier by a fraction of a millisecond so we need to adjust for that inaccuracy
     if (duration < 60000) { // Just some threshold that a) is large enough for delay() to remain precise in typical use cases b) ensures that the micros counter couldn't wrap around more than once
         duration *= 1000;
         auto elapsedMicros = HAL_Timer_Get_Micro_Seconds() - startMicros;
@@ -600,14 +603,15 @@ void delayThreadedImpl(system_tick_t duration, system_tick_t startMillis, system
             HAL_Delay_Microseconds(duration - elapsedMicros);
         }
     } else {
-        HAL_Delay_Milliseconds(1); // Wait until the next tick
+        // Let delay() slip by one more millisecond or less
+        HAL_Delay_Milliseconds(1);
     }
 }
 
 #endif // PLATFORM_THREADING
 
 // Legacy implementation for non-threaded mode
-void delayNonThreadedImpl(unsigned long ms, system_tick_t start_millis, system_tick_t start_micros, bool force_no_background_loop=false)
+void delayNonThreadedImpl(unsigned long ms, system_tick_t start_millis, system_tick_t start_micros, bool force_no_background_loop)
 {
     if (ms==0) return;
 
@@ -637,7 +641,7 @@ void delayNonThreadedImpl(unsigned long ms, system_tick_t start_millis, system_t
                 if (delay > 100000) {
                     return;
                 }
-                HAL_Delay_Microseconds(min(delay/2, 1u));
+                HAL_Delay_Microseconds(std::max<system_tick_t>(delay/2, 1));
             }
         }
         else
@@ -695,7 +699,7 @@ void system_delay_ms(unsigned long ms, bool force_no_background_loop)
 #if PLATFORM_THREADING
     if (!APPLICATION_THREAD_CURRENT()) {
         delayThreadedImpl(ms, startMillis, startMicros, false /* processAppEvents */);
-    } else if (system_thread_get_state(nullptr)) { // Is system thread enabled?
+    } else if (system_thread_get_state(nullptr)) {
         delayThreadedImpl(ms, startMillis, startMicros, !force_no_background_loop);
     } else {
         delayNonThreadedImpl(ms, startMillis, startMicros, force_no_background_loop);
