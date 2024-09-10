@@ -2,7 +2,7 @@
 
 # Particle Device OS Firmware
 
-This is the main source code repository of the Particle firmware libraries.
+This is the main source code repository of the [Particle](https://docs.particle.io/) firmware libraries.
 
 # Getting Started
 
