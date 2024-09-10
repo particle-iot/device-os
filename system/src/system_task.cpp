@@ -595,7 +595,7 @@ void delayThreadedImpl(system_tick_t duration, system_tick_t startMillis, system
 
     // XXX: Despite what the name suggests, HAL_Delay_Milliseconds() operates with ticks, not
     // milliseconds. Depending on how far into the current tick the calling thread is, it may return
-    // earlier by a fraction of a millisecond so we need to adjust for that inaccuracy
+    // early by a fraction of a millisecond so we need to adjust for that inaccuracy
     if (duration < 60000) { // Just some threshold that a) is large enough for delay() to remain precise in typical use cases b) ensures that the micros counter couldn't wrap around more than once
         duration *= 1000;
         auto elapsedMicros = HAL_Timer_Get_Micro_Seconds() - startMicros;
