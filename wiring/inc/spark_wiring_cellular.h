@@ -177,6 +177,18 @@ public:
     {
         cellular_unlock(nullptr);
     }
+
+#if HAL_PLATFORM_NCP_FW_UPDATE
+    int enableUpdates()
+    {
+        return cellular_enable_updates(nullptr);
+    }
+
+    int updateStatus()
+    {
+        return cellular_update_status(nullptr);
+    }
+#endif // HAL_PLATFORM_NCP_FW_UPDATE
 };
 
 

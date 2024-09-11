@@ -86,6 +86,14 @@
 #include "network/ncp/cellular/ncp.h"
 #endif
 
+#if HAL_PLATFORM_NCP_FW_UPDATE
+#include "ncp_fw_update.h"
+
+// UNCOMMENT TO DEBUG SAFE MODE
+// #include "debug_output_handler.h"
+// spark::Serial1LogHandler g_logHandlerSerial1(115200, LOG_LEVEL_ALL);
+#endif
+
 #if HAL_PLATFORM_RADIO_STACK
 #include "radio_common.h"
 #endif
@@ -781,6 +789,18 @@ void app_setup_and_loop(void)
     }
 
     Network_Setup(threaded);    // todo - why does this come before system thread initialization?
+
+#if HAL_PLATFORM_NCP_FW_UPDATE
+    SaraNcpFwUpdateCallbacks saraNcpFwUpdateCallbacks;
+    memset(&saraNcpFwUpdateCallbacks, 0, sizeof(saraNcpFwUpdateCallbacks));
+    saraNcpFwUpdateCallbacks.size = sizeof(saraNcpFwUpdateCallbacks);
+    saraNcpFwUpdateCallbacks.system_get_flag = system_get_flag;
+    saraNcpFwUpdateCallbacks.spark_cloud_flag_connected = spark_cloud_flag_connected;
+    saraNcpFwUpdateCallbacks.spark_cloud_flag_connect = spark_cloud_flag_connect;
+    saraNcpFwUpdateCallbacks.spark_cloud_flag_disconnect = spark_cloud_flag_disconnect;
+    saraNcpFwUpdateCallbacks.publishEvent = publishEvent;
+    services::SaraNcpFwUpdate::instance()->init(saraNcpFwUpdateCallbacks);
+#endif
 
 #if PLATFORM_THREADING
     if (threaded)
