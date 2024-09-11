@@ -23,7 +23,8 @@
 #define KEY_PRESSED_DURATION_POWER_ON 2000
 #define KEY_PRESSED_DURATION_SLEEP_WAKEUP 100
 
-SYSTEM_MODE(MANUAL);
+// SYSTEM_MODE(MANUAL);
+SYSTEM_THREAD(ENABLED);
 
 SerialLogHandler l(LOG_LEVEL_INFO);
 
@@ -94,7 +95,7 @@ void rgbColor(uint8_t r, uint8_t g, uint8_t b) {
 void moduleInit() {
     Log.info("Initializing core module ...");
     pinMode(MODEM_RESET_N, OUTPUT);
-    digitalWrite(MODEM_RESET_N, HIGH); // Put the module in reset state
+    digitalWrite(MODEM_RESET_N, LOW);
 
     pinMode(MODEM_PWR_KEY, OUTPUT);
     digitalWrite(MODEM_PWR_KEY, LOW);
@@ -154,7 +155,7 @@ uint16_t fuelgaugeRead() {
 
 void powerInit() {
     pinMode(V5_3V3_1V8_PWR_EN, OUTPUT);
-    digitalWrite(V5_3V3_1V8_PWR_EN, HIGH); // Turn off 5V, 3.3V and 1.8V power
+    digitalWrite(V5_3V3_1V8_PWR_EN, LOW);
 }
 
 void powerEnable(bool enable) {
@@ -167,8 +168,11 @@ void powerEnable(bool enable) {
 
 
 void setup() {
-    waitFor(Serial.isConnected, 5000);
+    // waitFor(Serial.isConnected, 5000);
     Log.info("Co-processor started");
+
+    // To/from Tachyon's debug UART
+    Serial1.begin(115200);
 
     keysInit();
     rgbInit();
@@ -187,11 +191,11 @@ void loop() {
         rgbColor(random(255), random(255), random(255));
     }
 
-    static system_tick_t lastVbat = millis();
-    if (millis() - lastVbat >= 3000) {
-        lastVbat = millis();
-        Log.info("Vbat: %d", fuelgaugeRead());
-    }
+    // static system_tick_t lastVbat = millis();
+    // if (millis() - lastVbat >= 3000) {
+    //     lastVbat = millis();
+    //     Log.info("Vbat: %d", fuelgaugeRead());
+    // }
 
     static bool ready = false;
     if (!ready && moduleIsReady()) {
@@ -230,5 +234,12 @@ void loop() {
     } else if (volDKeyPressed > 100) {
         Log.info("Volume +");
         moduleVolDown();
+    }
+
+    while (Serial.available()) {
+        Serial1.write(Serial.read());
+    }
+    while (Serial1.available()) {
+        Serial.write(Serial1.read());
     }
 }
