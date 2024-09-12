@@ -8,6 +8,8 @@ PLATFORM_DFU = 0x28000
 export FORCE_LTO=1
 export LINKER_NON_CONT_REGIONS=1
 
+export LTO_EXTRA_OPTIMIZATIONS=1
+
 DEPENDENCIES = newlib_nano modules/b5som/user-part modules/b5som/system-part1 dynalib services hal platform system wiring communication rt-dynalib crypto proto_defs wiring_globals
 LIB_DEPENDENCIES = services system wiring communication hal platform crypto proto_defs wiring_globals
 # newlib_nano is special in that it's linked automatically by the system, so no need to add it to the library path here

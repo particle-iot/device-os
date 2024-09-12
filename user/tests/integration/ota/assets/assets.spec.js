@@ -1,6 +1,6 @@
 suite('Assets OTA')
 
-platform('gen3');
+platform('gen3', 'gen4');
 
 // Some platforms have pretty slow connectivity
 timeout(30 * 60 * 1000);

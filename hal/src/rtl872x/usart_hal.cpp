@@ -128,6 +128,16 @@ public:
         return configured_;
     }
 
+    int getFeatures(uint32_t* features) {
+        *features = 0;
+        *features |= (SERIAL_7E1 | SERIAL_7E2 | SERIAL_7O1 | SERIAL_7O2
+                     |SERIAL_8N1 | SERIAL_8E1 | SERIAL_8N2 | SERIAL_8E2 | SERIAL_8O1 | SERIAL_8O2);
+        if (index_ != 2) {
+            *features |= SERIAL_FLOW_CONTROL_RTS_CTS;
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
     int init(const hal_usart_buffer_config_t& conf) {
         if (isEnabled()) {
             flush();
@@ -288,6 +298,7 @@ public:
         txBuffer_.reset();
         curTxCount_ = 0;
         transmitting_ = false;
+        busy_ = false;
         receiving_ = false;
         state_ = HAL_USART_STATE_DISABLED;
         return SYSTEM_ERROR_NONE;
@@ -300,6 +311,7 @@ public:
         dataInFlight(true /* commit */);
         CHECK(disable(false));
         transmitting_ = false;
+        busy_ = false;
         receiving_ = 0;
         rxBuffer_.prune();
         txBuffer_.reset();
@@ -339,12 +351,12 @@ public:
     ssize_t flush() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         while (true) {
-            while (transmitting_) {
+            while (transmitting_ || busy_) {
                 // FIXME: busy loop
             }
             {
                 AtomicBlock atomic(this);
-                if (!isEnabled() || txBuffer_.empty()) {
+                if ((!isEnabled() || txBuffer_.empty()) && !busy_) {
                     break;
                 }
             }
@@ -470,6 +482,7 @@ public:
         if (event & HAL_USART_PVT_EVENT_WRITABLE) {
             if (space() <= 0) {
                 TxLock lk(this);
+                xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
                 UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
                 // Temporarily disable TX DMA, otherwise, the TX FIFO won't be empty until all data is transferred by DMA.
                 UART_TXDMACmd(uartInstance, DISABLE);
@@ -572,6 +585,9 @@ public:
                 } else {
                     UART_TXDMACmd(uartInstance, ENABLE);
                     BaseType_t yield = pdFALSE;
+                    if (!uart->transmitting_) {
+                        uart->busy_ = false; // All bytes sent if no new DMA transfers are in progress
+                    }
                     if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
                         portYIELD_FROM_ISR(yield);
                     }
@@ -618,6 +634,7 @@ private:
               curTxCount_(0),
               state_(HAL_USART_STATE_DISABLED),
               transmitting_(false),
+              busy_(false),
               receiving_(false),
               configured_(false),
               index_(index),
@@ -831,6 +848,8 @@ private:
                 curTxCount_ = consumable;
                 GDMA_Init(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, &txDmaInitStruct_);
                 GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, ENABLE);
+                busy_ = true;
+                UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
             } else {
                 // LOG UART doesn't support DMA transmission
                 consumable = std::min(MAX_UART_FIFO_SIZE, consumable);
@@ -982,6 +1001,7 @@ private:
 
     volatile hal_usart_state_t state_;
     volatile bool transmitting_;
+    volatile bool busy_;
     volatile bool receiving_;
     bool configured_;
 
@@ -993,6 +1013,12 @@ private:
 
     EventGroupHandle_t evGroup_;
 };
+
+int hal_usart_get_features(hal_usart_interface_t serial, uint32_t* features, void* reserved) {
+    auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+    CHECK_TRUE(features, SYSTEM_ERROR_INVALID_ARGUMENT);
+    return usart->getFeatures(features);
+}
 
 int hal_usart_init_ex(hal_usart_interface_t serial, const hal_usart_buffer_config_t* config, void*) {
     auto usart = CHECK_TRUE_RETURN(Usart::getInstance(serial), SYSTEM_ERROR_NOT_FOUND);

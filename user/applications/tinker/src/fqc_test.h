@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef ENABLE_FQC_FUNCTIONALITY
+
 #include "system_control.h"
 #include "spark_wiring_tcpclient.h"
 #include "spark_wiring_vector.h"
@@ -59,3 +61,5 @@ private:
 };
 
 } // namespace particle
+
+#endif // ENABLE_FQC_FUNCTIONALITY

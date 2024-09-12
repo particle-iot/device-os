@@ -1,3 +1,3 @@
 suite('Ledger API');
 
-platform('gen3');
+platform('gen3', 'gen4');

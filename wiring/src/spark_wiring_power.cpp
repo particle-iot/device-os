@@ -1157,6 +1157,7 @@ byte PMIC::readRegister(byte startAddress) {
     byte DATA = 0;
     WireTransmission config(PMIC_ADDRESS);
     config.timeout(PMIC_DEFAULT_TIMEOUT);
+#if (HAL_PLATFORM_I2C_NUM != 1)
     pmicWireInstance()->beginTransmission(config);
     pmicWireInstance()->write(startAddress);
     pmicWireInstance()->endTransmission(true);
@@ -1164,6 +1165,20 @@ byte PMIC::readRegister(byte startAddress) {
     config.quantity(1);
     pmicWireInstance()->requestFrom(config);
     DATA = pmicWireInstance()->read();
+#else
+    config.buffer(&startAddress);
+    config.quantity(1);
+    config.stop(false); // Use repeated start
+    WireTransmission rxConfig(PMIC_ADDRESS);
+    rxConfig.timeout(PMIC_DEFAULT_TIMEOUT);
+    rxConfig.quantity(1);
+    rxConfig.stop(true);
+    rxConfig.buffer(&DATA);
+    auto r = pmicWireInstance()->transaction(config, rxConfig);
+    if (r != 1) {
+        DATA = 0;
+    }
+#endif // (HAL_PLATFORM_I2C_NUM != 1)
     return DATA;
 }
 
@@ -1178,10 +1193,18 @@ void PMIC::writeRegister(byte address, byte DATA) {
     std::lock_guard<PMIC> l(*this);
     WireTransmission config(PMIC_ADDRESS);
     config.timeout(PMIC_DEFAULT_TIMEOUT);
+#if (HAL_PLATFORM_I2C_NUM != 1)
     pmicWireInstance()->beginTransmission(config);
     pmicWireInstance()->write(address);
     pmicWireInstance()->write(DATA);
     pmicWireInstance()->endTransmission(true);
+#else
+    config.stop(true);
+    uint8_t buf[2] = {address, DATA};
+    config.buffer(buf);
+    config.quantity(sizeof(buf));
+    pmicWireInstance()->transaction(config);
+#endif // (HAL_PLATFORM_I2C_NUM != 1)
 }
 
 bool PMIC::lock() {

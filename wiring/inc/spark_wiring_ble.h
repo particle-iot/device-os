@@ -1051,6 +1051,7 @@ public:
     }
 
     int stopScanning() const;
+    bool scanning() const;
 
     // Access local characteristics
     BleCharacteristic addCharacteristic(const BleCharacteristic& characteristic);

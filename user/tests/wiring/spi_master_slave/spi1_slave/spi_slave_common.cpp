@@ -1,6 +1,12 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+// Can keep this enabled as it won't hurt the test
+Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
+    // { "comm", LOG_LEVEL_NONE }, // filter out comm messages
+    // { "system", LOG_LEVEL_INFO } // only info level for system messages
+});
+
 #define MASTER_TEST_MESSAGE "Hello from SPI Master!?"
 #define SLAVE_TEST_MESSAGE_1  "SPI Slave is doing good"
 #define SLAVE_TEST_MESSAGE_2  "All work and no play makes Jack a dull boy"
@@ -19,14 +25,18 @@
 
 #if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
-#error "SPI not supported as slave for p2"
+#undef USE_SPI
+#define USE_SPI 1
+// #error "SPI not supported as slave for p2"
 #endif // PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
 #define MY_SPI SPI
 #define MY_CS SS
 #pragma message "Compiling for SPI, MY_CS set to SS"
 #elif (USE_SPI == 1)
 #if PLATFORM_ID == PLATFORM_MSOM
-#error "SPI1 not supported as slave for MSoM"
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI1 not supported as slave for MSoM"
 #endif // PLATFORM_ID == PLATFORM_MSOM
 #define MY_SPI SPI1
 #define MY_CS SS1
@@ -39,8 +49,10 @@
 
 #elif HAL_PLATFORM_NRF52840
 
-#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI, but SPI slave is not supported on Gen3
-#error "SPI slave is not supported on SPI instance on Gen3 platforms. Please specify USE_SPI=SPI1."
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI1, SPI slave is not supported on Gen3
+#undef USE_SPI
+#define USE_SPI 1
+// #error "SPI slave is not supported on SPI instance on Gen3 platforms. Please specify USE_SPI=SPI1."
 #endif
 
 #if (PLATFORM_ID == PLATFORM_ASOM) || (PLATFORM_ID == PLATFORM_BSOM) || (PLATFORM_ID == PLATFORM_B5SOM)
@@ -54,7 +66,9 @@
 #define MY_CS D5
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
-#error "SPI2 not supported for asom, bsom or b5som"
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI2 not supported for asom, bsom or b5som"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
@@ -66,7 +80,9 @@
 #define MY_CS D0 // FIXME
 #pragma message "Compiling for SPI, MY_CS set to D0"
 #elif (USE_SPI == 2) || (USE_SPI == 1)
-#error "SPI2 not supported for bsom and b5som"
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI2 not supported for bsom and b5som"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
@@ -82,7 +98,9 @@
 #define MY_CS D5
 #pragma message "Compiling for SPI1, MY_CS set to D5"
 #elif (USE_SPI == 2)
-#error "SPI2 not supported for argon or boron"
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI2 not supported for argon or boron"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
@@ -239,14 +257,19 @@ static void SPI_Init(uint8_t mode, uint8_t bitOrder) {
 #endif
 }
 
-test(00_SPI_Master_Slave_Slave_Transfer)
+test(000_SPI_Master_Slave_Prepare)
 {
     /* Test will alternate between asynchronous and synchronous SPI.transfer() */
-    Serial.println("This is Slave");
+    Log.trace("This is Slave");
 
     // Default SPI_MODE3, MSBFIRST
     SPI_Init(SPI_MODE3, MSBFIRST);
 
+    delay(500);
+}
+
+test(00_to_23_SPI_Master_Slave)
+{
     uint32_t requestedLength = 0;
 
     uint32_t count = 0;
@@ -270,15 +293,14 @@ test(00_SPI_Master_Slave_Slave_Transfer)
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, TRANSFER_LENGTH_2, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
 
         if (MY_SPI.available() != TRANSFER_LENGTH_1 || strncmp((const char *)SPI_Slave_Rx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE))) {
-            Serial.printlnf("Received invalid request");
-            for (int i = 0; i < 32; i++) {
-                Serial.printf("%02x", SPI_Slave_Rx_Buffer[i]);
+            Log.trace("Received invalid request");
+            for (int i = 0; i < sizeof(SPI_Slave_Rx_Buffer); i++) {
+                LOG_PRINTF_C(TRACE, "app", "%02x", SPI_Slave_Rx_Buffer[i]);
             }
-            Serial.println();
+            LOG_PRINTF_C(TRACE, "app", "\r\n");
         }
 
-        // Serial.printlnf("< (%u) ", MY_SPI.available());
-        // Serial.println((const char *)SPI_Slave_Rx_Buffer);
+        Log.trace("< (%u) %s", MY_SPI.available(), (const char *)SPI_Slave_Rx_Buffer);
 
         /* Check how many bytes we have received */
         assertEqual(MY_SPI.available(), TRANSFER_LENGTH_1);
@@ -300,7 +322,7 @@ test(00_SPI_Master_Slave_Slave_Transfer)
 
                 assertTrue((bitOrder == MSBFIRST) || (bitOrder == LSBFIRST));
 
-                Serial.printf("Switching SPI mode to MODE%1d %s\r\n", mode,
+                Log.trace("Switching SPI mode to MODE%1d %s\r\n", mode,
                               bitOrder == MSBFIRST ? "MSBFIRST" : "LSBFIRST");
 
                 SPI_Init(mode, bitOrder);
@@ -314,8 +336,7 @@ test(00_SPI_Master_Slave_Slave_Transfer)
 
         memcpy(SPI_Slave_Tx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength);
         SPI_Slave_Tx_Buffer[requestedLength] = '\0';
-        // Serial.print("> ");
-        // Serial.println((const char *)SPI_Slave_Tx_Buffer);
+        Log.trace("> %s", (const char *)SPI_Slave_Tx_Buffer);
 
         SPI_Transfer_DMA(SPI_Slave_Tx_Buffer, SPI_Slave_Rx_Buffer, requestedLength, count % 2 == 0 ? &SPI_DMA_Completed_Callback : NULL);
         /* Check that we have transferred requestedLength bytes as requested */
@@ -334,7 +355,7 @@ test(00_SPI_Master_Slave_Slave_Transfer)
     }
 }
 
-test(01_SPI_Master_Slave_Slave_Receiption)
+test(24_SPI_Master_Slave_Const_String_Transfer_DMA)
 {
     /* IMPORTANT: NOT waiting for Master to select us, as some of the platforms
      * require TX and RX buffers to be configured before CS goes low
@@ -353,7 +374,7 @@ test(01_SPI_Master_Slave_Slave_Receiption)
     assertTrue(strncmp((const char *)SPI_Slave_Rx_Buffer_Supper, txString, strlen(txString)) == 0);
 }
 
-test(02_SPI_Master_Slave_Slave_Const_String_Transfer_DMA)
+test(25_SPI_Master_Slave_Reception)
 {
     /* IMPORTANT: NOT waiting for Master to select us, as some of the platforms
     * require TX and RX buffers to be configured before CS goes low

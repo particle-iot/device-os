@@ -22,6 +22,7 @@
 #include "logging.h"
 #include "ifapi.h"
 #include <algorithm>
+#include "lwiphooks.h"
 
 using namespace particle::net;
 
@@ -220,4 +221,11 @@ int resolv_get_dns_server_priority_for_iface(if_t iface, int priority) {
 
     index = index * LWIP_DNS_SERVERS_PER_NETIF + std::min<int>(LWIP_DNS_SERVERS_PER_NETIF, priority);
     return index;
+}
+
+struct netif* lwip_hook_dns_get_netif_for_server_index(int index) {
+    uint8_t netifIdx = index / LWIP_DNS_SERVERS_PER_NETIF;
+    if_t iface = nullptr;
+    if_get_by_index(netifIdx, &iface);
+    return (netif*)iface;
 }

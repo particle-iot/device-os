@@ -98,6 +98,7 @@ uint8_t usb_hal_flush_tx_fifo(uint32_t num);
 uint8_t usb_hal_flush_rx_fifo();
 uint8_t usb_hal_write_packet(uint8_t *src, uint8_t ep_ch_num, uint16_t len);
 void usb_hal_disable_global_interrupt(void);
+void usb_hal_enable_global_interrupt(void);
 void usbd_pcd_set_address(void* pcd, uint8_t addr);
 void usbd_pcd_stop(void* pcd);
 void usbd_pcd_start(void* pcd);
@@ -185,11 +186,16 @@ int RtlUsbDriver::attach() {
 }
 
 int RtlUsbDriver::detach() {
-    usb_hal_disable_global_interrupt();
     std::lock_guard<RtlUsbDriver> lk(*this);
+    needsReset_ = false;
+    initialized_ = false;
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    HAL_Delay_Milliseconds(10);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+    usb_hal_disable_global_interrupt();
     usbd_unregister_class();
     usbd_deinit();
-    initialized_ = false;
     resetCount_ = 0;
     return 0;
 }
@@ -224,6 +230,7 @@ void RtlUsbDriver::loop(void* ctx) {
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (!self->initialized_ && !error) {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+            HAL_Delay_Milliseconds(period / 10);
             continue;
 #else
             return;

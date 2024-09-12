@@ -167,6 +167,7 @@ ssize_t hal_usart_write_buffer(hal_usart_interface_t serial, const void* buffer,
 ssize_t hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
 ssize_t hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
 
+int hal_usart_get_features(hal_usart_interface_t serial, uint32_t* features, void* reserved);
 
 #include "usart_hal_compat.h"
 

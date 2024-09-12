@@ -24,6 +24,7 @@
 
 #include "system_network.h"
 #include "spark_wiring_vector.h"
+#include <memory>
 
 namespace particle { namespace system {
 
@@ -32,11 +33,11 @@ struct ConnectionMetrics {
     int socketDescriptor;
     uint8_t *txBuffer;
     uint8_t *rxBuffer;
-    uint32_t testPacketSize;
     uint32_t testPacketSequenceNumber;
-    uint32_t testPacketTxMillis;
     uint32_t txPacketCount;
+    uint32_t txPacketErrors;
     uint32_t rxPacketCount;
+    uint32_t rxPacketMask;
     uint32_t txPacketStartMillis;
     uint32_t totalPacketWaitMillis;
 
@@ -47,7 +48,10 @@ struct ConnectionMetrics {
     uint32_t txBytes;
     uint32_t rxBytes;
     uint32_t avgPacketRoundTripTime;
+    uint32_t resultingScore;
 };
+
+class ConnectionTester;
 
 class ConnectionManager {
 public:
@@ -61,11 +65,23 @@ public:
     network_handle_t getCloudConnectionNetwork();
     network_handle_t selectCloudConnectionNetwork();
 
-    int testConnections();
+    int testConnections(bool background = false);
+    int scheduleCloudConnectionNetworkCheck();
+    int checkCloudConnectionNetwork();
+
+private:
+    void handlePeriodicCheck();
+    bool testIsAllowed() const;
 
 private:
     network_handle_t preferredNetwork_;
-    Vector<network_handle_t> bestNetworks_;
+    Vector<std::pair<network_handle_t, uint32_t>> bestNetworks_;
+    volatile bool testResultsActual_ = false;
+    volatile bool checkScheduled_ = false;
+    bool backgroundTestInProgress_ = false;
+    std::unique_ptr<ConnectionTester> backgroundTester_;
+    static constexpr system_tick_t PERIODIC_CHECK_PERIOD_MS = 5 * 60 * 1000;
+    system_tick_t nextPeriodicCheck_ = 0;
 };
 
 class ConnectionTester {
@@ -73,10 +89,11 @@ public:
     ConnectionTester();
     ~ConnectionTester();
 
-    int testConnections();
+    int prepare(bool fullTest = true);
+    int runTest(system_tick_t maxBlockTime = 0xffffffff);
 
     const Vector<ConnectionMetrics> getConnectionMetrics();
-    static const Vector<network_interface_t> getSupportedInterfaces();
+    static const Vector<std::pair<network_interface_t, uint32_t>> getSupportedInterfaces();
 
 private:
     int allocateTestPacketBuffers(ConnectionMetrics* metrics);
@@ -88,11 +105,16 @@ private:
     bool testPacketsOutstanding();
 
     const uint8_t REACHABILITY_TEST_MSG = 252;
-    const unsigned REACHABILITY_MAX_PAYLOAD_SIZE = 256;
-    const unsigned REACHABILITY_TEST_DURATION_MS = 2500;
-    const unsigned REACHABILITY_TEST_PACKET_TIMEOUT_MS = 500;
+    const system_tick_t REACHABILITY_MAX_PAYLOAD_SIZE = 512; // FIXME: get some constant from cloud layer
+    const system_tick_t REACHABILITY_TEST_DURATION_MS = 5000;
+    const system_tick_t REACHABILITY_TEST_PACKET_TX_TIMEOUT_MS = 250;
+    const unsigned REACHABILITY_TEST_MAX_TX_PACKET_COUNT = 10;
 
     Vector<ConnectionMetrics> metrics_;
+    std::unique_ptr<pollfd[]> pfds_;
+    system_tick_t endTime_ = 0;
+    bool finished_ = false;
+    size_t socketCount_ = 0;
 };
 
 } } /* particle::system */

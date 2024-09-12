@@ -1110,7 +1110,6 @@ public:
         return peers_;
     }
 
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
     BlePeerDevice& connectingPeer() {
         return connectingPeer_;
     }
@@ -1118,7 +1117,6 @@ public:
     BlePeerDevice& disconnectingPeer() {
         return disconnectingPeer_;
     }
-#endif
 
     void onConnectedCallback(BleOnConnectedCallback callback, void* context) {
         connectedCallback_ = callback ? std::bind(callback, _1, context) : (BleOnConnectedStdFunction)nullptr;
@@ -1172,14 +1170,11 @@ public:
         WiringBleLock lk;
         switch (event->type) {
             case BLE_EVT_CONNECTED: {
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
                 if (impl->connectingPeer_.impl()->address().isValid()) {
                     impl->connectingPeer_.impl()->connHandle() = event->conn_handle;
                     impl->peers_.append(impl->connectingPeer_);
                     impl->connectingPeer_ = {};
-                } else
-#endif
-                {
+                } else {
                     BlePeerDevice peer;
                     peer.impl()->connHandle() = event->conn_handle;
                     peer.impl()->address() = event->params.connected.info->address;
@@ -1202,12 +1197,9 @@ public:
             case BLE_EVT_DISCONNECTED: {
                 BlePeerDevice* peer = impl->findPeerDevice(event->conn_handle);
                 if (peer) {
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
                     if (impl->disconnectingPeer_ == *peer) {
                         impl->peers_.removeOne(*peer);
-                    } else
-#endif
-                    {
+                    } else {
                         peer->impl()->onDisconnected();
                         if (impl->disconnectedCallback_) {
                             impl->disconnectedCallback_(*peer);
@@ -1267,10 +1259,8 @@ private:
     Vector<BleService> services_;
     Vector<BleCharacteristic> characteristics_;
     Vector<BlePeerDevice> peers_;
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
     BlePeerDevice connectingPeer_;
     BlePeerDevice disconnectingPeer_;
-#endif
     BleOnConnectedStdFunction connectedCallback_;
     BleOnDisconnectedStdFunction disconnectedCallback_;
     BleOnPairingEventStdFunction pairingEventCallback_;
@@ -1869,13 +1859,11 @@ int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* pa
     connCfg.callback = BleLocalDevice::getInstance().impl()->onBleLinkEvents;
     connCfg.context = BleLocalDevice::getInstance().impl();
 
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
     SCOPE_GUARD ({
         BleLocalDevice::getInstance().impl()->connectingPeer() = BlePeerDevice();
     });
     bind(addr);
     BleLocalDevice::getInstance().impl()->connectingPeer() = *this;
-#endif
 
     int ret = hal_ble_gap_connect(&connCfg, &impl()->connHandle(), nullptr);
     if (ret != SYSTEM_ERROR_NONE) {
@@ -1884,12 +1872,7 @@ int BlePeerDevice::connect(const BleAddress& addr, const BleConnectionParams* pa
     }
     {
         WiringBleLock lk;
-#if !HAL_PLATFORM_BLE_ACTIVE_EVENT
-        bind(addr);
-        if (!BleLocalDevice::getInstance().impl()->peers().append(*this)) {
-#else
         if (!BleLocalDevice::getInstance().impl()->findPeerDevice(impl()->connHandle())) {
-#endif
             LOG(ERROR, "Cannot add new peer device.");
             lk.unlock();
             hal_ble_gap_disconnect(impl()->connHandle(), nullptr);
@@ -1946,19 +1929,14 @@ int BlePeerDevice::connect(bool automatic) {
 int BlePeerDevice::disconnect() const {
     CHECK_TRUE(connected(), SYSTEM_ERROR_INVALID_STATE);
 
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
     SCOPE_GUARD ({
         BleLocalDevice::getInstance().impl()->disconnectingPeer() = BlePeerDevice();
     });
     BleLocalDevice::getInstance().impl()->disconnectingPeer() = *this;
-#endif
 
     CHECK(hal_ble_gap_disconnect(impl()->connHandle(), nullptr));
     {
         WiringBleLock lk;
-#if !HAL_PLATFORM_BLE_ACTIVE_EVENT
-        BleLocalDevice::getInstance().impl()->peers().removeOne(*this);
-#endif
         /*
         * Only the connection handle is invalid. The service and characteristics being
         * discovered previously can be re-used next time once connected if needed.
@@ -1969,7 +1947,8 @@ int BlePeerDevice::disconnect() const {
 }
 
 bool BlePeerDevice::connected() const {
-    WiringBleLock lk;
+    // FIXME: do not use a single wiring lock for all BLE wiring operations
+    // WiringBleLock lk;
     return impl()->connHandle() != BLE_INVALID_CONN_HANDLE;
 }
 
@@ -2675,6 +2654,10 @@ Vector<BleScanResult> BleLocalDevice::scanWithFilter(const BleScanFilter& filter
 
 int BleLocalDevice::stopScanning() const {
     return hal_ble_gap_stop_scan(nullptr);
+}
+
+bool BleLocalDevice::scanning() const {
+    return hal_ble_gap_is_scanning(nullptr);
 }
 
 int BleLocalDevice::setPPCP(uint16_t minInterval, uint16_t maxInterval, uint16_t latency, uint16_t timeout) const {

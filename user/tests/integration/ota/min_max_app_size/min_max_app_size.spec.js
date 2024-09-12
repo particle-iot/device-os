@@ -1,6 +1,6 @@
 suite('Minimum and maximum app size OTA');
 
-platform('gen3');
+platform('gen3', 'gen4');
 systemThread('enabled');
 
 const { HalModuleParser, ModuleInfo, compressModule, updateModuleCrc32, updateModulePrefix, updateModuleSuffix, updateModuleSha256 } = require('binary-version-reader');

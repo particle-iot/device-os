@@ -19,7 +19,7 @@
 #define PARTICLE_USE_UNSTABLE_API 1
 
 #include "hal_platform.h"
-#if HAL_PLATFORM_RTL872X && defined(ENABLE_FQC_FUNCTIONALITY) 
+#ifdef ENABLE_FQC_FUNCTIONALITY
 #include "application.h"
 
 #include "spark_wiring_logging.h"
@@ -640,7 +640,7 @@ bool BurninTest::testGnss() {
     return gnssLocked;
 }
 
-#endif
+#endif // PLATFORM_ID == PLATFORM_MSOM
 
 } // particle
-#endif // HAL_PLATFORM_RTL872X
+#endif // ENABLE_FQC_FUNCTIONALITY

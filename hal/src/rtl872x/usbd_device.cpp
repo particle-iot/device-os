@@ -152,6 +152,7 @@ int Device::attach() {
 
 int Device::detach() {
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
+    clearConfig(0); // config index shouldn't matter here
     CHECK(driver_->detach());
     return 0;
 }

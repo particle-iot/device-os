@@ -49,11 +49,25 @@ hal_usart_buffer_config_t acquireSerial1Buffer()
 }
 #endif // USE_BUFFER_SIZE
 
-/*
- * Serial1 Test requires TX to be jumpered to RX as follows:
- *           WIRE
- * (TX) --==========-- (RX)
- *
+#if HAL_PLATFORM_NRF52840
+#define Serial1_IRQn UARTE0_UART0_IRQn
+#elif HAL_PLATFORM_RTL872X
+#define Serial1_IRQn UART_LOG_IRQ
+#else
+#define Serial1_IRQn USART1_IRQn
+#endif
+
+/* WIRING
+ *                       74xx125
+ *          10k          ___ ____
+ * (3V3)--/\/\/\--(A2)--|1  u  14|-- (3V3)
+ * (TX)-----------------|2       |
+ * (RX)-----------------|3       |
+ *                      |4       |
+ *                      |5       |
+ *                      |6       |
+ * (GND)----------------|7      8|
+ *                       ^^^^^^^^
  */
 
 /*
@@ -101,9 +115,42 @@ void consume(Stream& serial)
 void printlnMasked(Stream& serial, char* str, uint16_t mask)
 {
     for (unsigned i = 0; i < strlen(str); i++) {
+#if !HAL_PLATFORM_USART_9BIT_SUPPORTED
+        serial.write(str[i]);
+#else
         serial.write(((uint16_t)str[i]) | mask);
+#endif
     }
     serial.println();
+}
+
+void commonTestRoutine(uint32_t baudrate, uint32_t mode, uint16_t mask) {
+    //The following code will test all the important USART Serial1 routines
+    char test[] = "hello";
+    uint16_t message16[10];
+    char message[10];
+    int len = 0;
+    // when
+    Serial1.begin(baudrate, mode);
+    assertEqual(Serial1.isEnabled(), true);
+    consume(Serial1);
+    printlnMasked(Serial1, test, mask); // Set 9-th bit
+    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
+    Serial1.end();
+    // then
+    // Check that MSB is 0 in each uint16_t and copy into char buffer
+    for (int i = 0; i < len; i++) {
+        uint16_t msb = message16[i] & 0xFF00;
+        assertEqual(msb, 0x0000);
+        message[i] = (char)message16[i];
+    }
+    message[len] = '\0';
+    // Compare strings
+    assertTrue(strncmp(test, message, 5)==0);
+}
+
+test(SERIAL1_000_Prepare) {
+    pinMode(A2, OUTPUT); // ACTIVE LOW
 }
 
 test(SERIAL1_IncorrectConfigurationPassed) {
@@ -113,281 +160,122 @@ test(SERIAL1_IncorrectConfigurationPassed) {
 }
 
 test(SERIAL1_ReadWriteSucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8)); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that MSB is 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF00;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_8N1) != SERIAL_8N1) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_8N1, (1 << 8));
 }
 
 test(SERIAL1_ReadWriteParity7E1SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_7E1);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8) | (1 << 7)); // Set 8-th and 9-th bits
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that upper (16 - 7) bits are 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF80;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_7E1) != SERIAL_7E1) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_7E1, (1 << 8) | (1 << 7));
 }
 
 test(SERIAL1_ReadWriteParity7E2SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_7E2);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8) | (1 << 7)); // Set 8-th and 9-th bits
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that upper (16 - 7) bits are 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF80;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_7E2) != SERIAL_7E2) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_7E2, (1 << 8) | (1 << 7));
 }
 
 test(SERIAL1_ReadWriteParity7O1SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_7O1);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8) | (1 << 7)); // Set 8-th and 9-th bits
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that upper (16 - 7) bits are 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF80;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_7O1) != SERIAL_7O1) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_7O1, (1 << 8) | (1 << 7));
 }
 
 test(SERIAL1_ReadWriteParity7O2SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_7E1);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8) | (1 << 7)); // Set 8-th and 9-th bits
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that upper (16 - 7) bits are 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF80;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_7E1) != SERIAL_7E1) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_7E1, (1 << 8) | (1 << 7));
 }
 
 test(SERIAL1_ReadWriteParity8N1SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_8N1);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8)); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that MSB is 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF00;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_8N1) != SERIAL_8N1) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_8N1, (1 << 8));
 }
 
 test(SERIAL1_ReadWriteParity8E1SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_8E1);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8)); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that MSB is 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF00;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_8E1) != SERIAL_8E1) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_8E1, (1 << 8));
 }
 
 test(SERIAL1_ReadWriteParity8O1SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_8O1);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8)); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that MSB is 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF00;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_8O1) != SERIAL_8O1) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_8O1, (1 << 8));
 }
 
 test(SERIAL1_ReadWriteParity8N2SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_8N2);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8)); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that MSB is 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF00;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_8N2) != SERIAL_8N2) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_8N2, (1 << 8));
 }
 
 test(SERIAL1_ReadWriteParity8E2SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_8E2);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8)); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that MSB is 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF00;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_8E2) != SERIAL_8E2) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_8E2, (1 << 8));
 }
 
 test(SERIAL1_ReadWriteParity8O2SucceedsInLoopbackWithTxRxShorted) {
-    //The following code will test all the important USART Serial1 routines
-    char test[] = "hello";
-    uint16_t message16[10];
-    char message[10];
-    int len = 0;
-    // when
-    Serial1.begin(9600, SERIAL_8O2);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, (1 << 8)); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
-    // then
-    // Check that MSB is 0 in each uint16_t and copy into char buffer
-    for (int i = 0; i < len; i++) {
-        uint16_t msb = message16[i] & 0xFF00;
-        assertEqual(msb, 0x0000);
-        message[i] = (char)message16[i];
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_8O2) != SERIAL_8O2) {
+        skip();
+        return;
     }
-    message[len] = '\0';
-    // Compare strings
-    assertTrue(strncmp(test, message, 5)==0);
+    commonTestRoutine(9600, SERIAL_8O2, (1 << 8));
 }
 
 test(SERIAL1_ReadWriteParity9N1SucceedsInLoopbackWithTxRxShorted) {
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_9N1) != SERIAL_9N1) {
+        skip();
+        return;
+    }
     //The following code will test all the important USART Serial1 routines
     char test[] = "helloworld1234";
     uint16_t test2 = ((uint16_t)'p' << 7) | (uint16_t)'a'; // "pa"
@@ -423,6 +311,12 @@ test(SERIAL1_ReadWriteParity9N1SucceedsInLoopbackWithTxRxShorted) {
 }
 
 test(SERIAL1_ReadWriteParity9N2SucceedsInLoopbackWithTxRxShorted) {
+    uint32_t features = 0;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & SERIAL_9N2) != SERIAL_9N2) {
+        skip();
+        return;
+    }
     //The following code will test all the important USART Serial1 routines
     char test[] = "helloworld1234";
     uint16_t test2 = ((uint16_t)'p' << 7) | (uint16_t)'a'; // "pa"
@@ -470,7 +364,7 @@ test(SERIAL1_AvailableForWriteWorksCorrectly) {
     assertEqual(Serial1.availableForWrite(), bufferSize);
 
     // Disable Serial1 IRQ to prevent it from sending data
-    NVIC_DisableIRQ(USART1_IRQn);
+    NVIC_DisableIRQ(Serial1_IRQn);
     // Write (bufferSize / 2) bytes into TX buffer
     for (int i = 0; i < bufferSize / 2; i++) {
         Serial1.write('a');
@@ -485,7 +379,7 @@ test(SERIAL1_AvailableForWriteWorksCorrectly) {
     // There should only be 1 byte available in TX buffer
     assertEqual(Serial1.availableForWrite(), 1);
     // Enable Serial1 IRQ again to send out the data from TX buffer
-    NVIC_EnableIRQ(USART1_IRQn);
+    NVIC_EnableIRQ(Serial1_IRQn);
     Serial1.flush();
 
     // There should be bufferSize available in TX buffer again
@@ -494,15 +388,15 @@ test(SERIAL1_AvailableForWriteWorksCorrectly) {
     // At this point tx_buffer->head = (bufferSize - 1), tx_buffer->tail = (bufferSize - 1)
     // Now test that availableForWrite() returns correct results for cases where tx_buffer->head < tx_buffer->tail
     // Disable Serial1 IRQ again to prevent it from sending data
-    NVIC_DisableIRQ(USART1_IRQn);
+    NVIC_DisableIRQ(Serial1_IRQn);
     // Write (bufferSize / 2 + 1) bytes into TX buffer
     for (int i = 0; i < bufferSize / 2 + 1; i++) {
         Serial1.write('c');
     }
-    // There should be (bufferSize / 2) bytes available in TX buffer
-    assertEqual(Serial1.availableForWrite(), bufferSize / 2);
+    // There should be (bufferSize / 2 - 1) bytes available in TX buffer
+    assertEqual(Serial1.availableForWrite(), bufferSize / 2 - 1);
     // Enable Serial1 IRQ again to send out the data from TX buffer
-    NVIC_EnableIRQ(USART1_IRQn);
+    NVIC_EnableIRQ(Serial1_IRQn);
     Serial1.flush();
 
     // There should be bufferSize available in TX buffer again
@@ -520,7 +414,7 @@ test(SERIAL1_AvailableForWriteIn9BitModeWorksCorrectly) {
     assertEqual(Serial1.availableForWrite(), bufferSize);
 
     // Disable Serial1 IRQ to prevent it from sending data
-    NVIC_DisableIRQ(USART1_IRQn);
+    NVIC_DisableIRQ(Serial1_IRQn);
     // Write (bufferSize / 2) bytes into TX buffer
     for (int i = 0; i < bufferSize / 2; i++) {
         Serial1.write('a');
@@ -535,7 +429,7 @@ test(SERIAL1_AvailableForWriteIn9BitModeWorksCorrectly) {
     // There should only be 1 byte available in TX buffer
     assertEqual(Serial1.availableForWrite(), 1);
     // Enable Serial1 IRQ again to send out the data from TX buffer
-    NVIC_EnableIRQ(USART1_IRQn);
+    NVIC_EnableIRQ(Serial1_IRQn);
     Serial1.flush();
 
     // There should be bufferSize available in TX buffer again
@@ -544,7 +438,7 @@ test(SERIAL1_AvailableForWriteIn9BitModeWorksCorrectly) {
     // At this point tx_buffer->head = (bufferSize - 1), tx_buffer->tail = (bufferSize - 1)
     // Now test that availableForWrite() returns correct results for cases where tx_buffer->head < tx_buffer->tail
     // Disable Serial1 IRQ again to prevent it from sending data
-    NVIC_DisableIRQ(USART1_IRQn);
+    NVIC_DisableIRQ(Serial1_IRQn);
     // Write (bufferSize / 2 + 1) bytes into TX buffer
     for (int i = 0; i < bufferSize / 2 + 1; i++) {
         Serial1.write('c');
@@ -552,7 +446,7 @@ test(SERIAL1_AvailableForWriteIn9BitModeWorksCorrectly) {
     // There should be (bufferSize / 2) bytes available in TX buffer
     assertEqual(Serial1.availableForWrite(), bufferSize / 2);
     // Enable Serial1 IRQ again to send out the data from TX buffer
-    NVIC_EnableIRQ(USART1_IRQn);
+    NVIC_EnableIRQ(Serial1_IRQn);
     Serial1.flush();
 
     // There should be bufferSize available in TX buffer again
@@ -563,6 +457,13 @@ test(SERIAL1_AvailableForWriteIn9BitModeWorksCorrectly) {
 #endif // HAL_PLATFORM_USART_9BIT_SUPPORTED
 
 test(SERIAL1_LINMasterReadWriteBreakSucceedsInLoopbackWithTxRxShorted) {
+    uint32_t features = 0;
+    uint32_t mode = LIN_MASTER_13B | LIN_BREAK_10B;
+    hal_usart_get_features(HAL_USART_SERIAL1, &features, nullptr);
+    if ((features & mode) != mode) {
+        skip();
+        return;
+    }
     // Test for LIN mode
     // 1. The test will configure Serial1 in LIN Master mode (with 11 bit break detection
     // enabled as in Slave mode)
@@ -578,7 +479,7 @@ test(SERIAL1_LINMasterReadWriteBreakSucceedsInLoopbackWithTxRxShorted) {
     // when
     if (Serial1.isEnabled())
         Serial1.end();
-    Serial1.begin(9600, LIN_MASTER_13B | LIN_BREAK_10B);
+    Serial1.begin(9600, mode);
     assertEqual(Serial1.isEnabled(), true);
     // then
 
@@ -622,4 +523,8 @@ test(SERIAL1_LINMasterReadWriteBreakSucceedsInLoopbackWithTxRxShorted) {
     assertTrue(Serial1.breakRx());
 
     Serial1.end();
+}
+
+test(SERIAL1_ZZZ_Cleanup) {
+    pinMode(A2, INPUT); // PULL-UP HIGH
 }

@@ -150,7 +150,8 @@ static void setConfigOrDefault(hal_i2c_interface_t i2c, const hal_i2c_transmissi
             .reserved = {0},
             .quantity = 0,
             .timeout_ms = HAL_I2C_DEFAULT_TIMEOUT_MS,
-            .flags = HAL_I2C_TRANSMISSION_FLAG_STOP
+            .flags = HAL_I2C_TRANSMISSION_FLAG_STOP,
+            .buffer = nullptr
         };
     }
 }
@@ -169,6 +170,7 @@ static void twisHandler(hal_i2c_interface_t i2c, nrfx_twis_evt_t const * p_event
             break;
         }
         case NRFX_TWIS_EVT_WRITE_REQ: {
+            i2cMap[i2c].rx_index_head = i2cMap[i2c].rx_index_tail = 0;
             if (p_event->data.buf_req) {
                 nrfx_twis_rx_prepare(i2cMap[i2c].slave, (void *)i2cMap[i2c].rx_buf, i2cMap[i2c].rx_buf_size);
             }
@@ -184,6 +186,8 @@ static void twisHandler(hal_i2c_interface_t i2c, nrfx_twis_evt_t const * p_event
         case NRFX_TWIS_EVT_WRITE_ERROR:
         case NRFX_TWIS_EVT_GENERAL_ERROR: {
             LOG_DEBUG(TRACE, "TWIS ERROR");
+            i2cMap[i2c].tx_index_tail = i2cMap[i2c].tx_index_head = 0;
+            i2cMap[i2c].rx_index_head = i2cMap[i2c].rx_index_tail = 0;
             break;
         }
         default: {
@@ -459,7 +463,8 @@ uint32_t hal_i2c_request(hal_i2c_interface_t i2c, uint8_t address, uint8_t quant
         .reserved = {0},
         .quantity = quantity,
         .timeout_ms = HAL_I2C_DEFAULT_TIMEOUT_MS,
-        .flags = (uint32_t)(stop ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0)
+        .flags = (uint32_t)(stop ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0),
+        .buffer = nullptr
     };
     return hal_i2c_request_ex(i2c, &conf, nullptr);
 }
@@ -768,4 +773,9 @@ int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
     }
 
     return SYSTEM_ERROR_NONE;
+}
+
+int hal_i2c_transaction(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* tx_config, const hal_i2c_transmission_config_t* rx_config, void* reserved) {
+    // TODO
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }

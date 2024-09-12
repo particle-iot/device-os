@@ -394,11 +394,11 @@ public:
     bool valid(hal_ble_conn_handle_t connHandle);
 
     bool connected(const hal_ble_addr_t* address) {
-        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
         if (address == nullptr) {
+            std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
             return connections_.size() > 0;
         }
-        if (fetchConnection(address)) {
+        if (peekConnection(address).valid()) {
             return true;
         }
         return false;
@@ -437,17 +437,12 @@ public:
         CHECK_TRUE(cmdQueue_, SYSTEM_ERROR_INVALID_STATE);
         if (os_queue_put(cmdQueue_, &cmd, BLE_ENQUEUE_TIMEOUT_MS, nullptr)) {
             LOG(ERROR, "os_queue_put() failed.");
-            SPARK_ASSERT(false);
+            if (cmd != BLE_CMD_EXIT_THREAD) {
+                SPARK_ASSERT(false);
+            }
+            return SYSTEM_ERROR_TIMEOUT;
         }
         return SYSTEM_ERROR_NONE;
-    }
-
-    bool isQueueAvailable() const {
-        uint8_t command;
-        if (!os_queue_peek(cmdQueue_, &command, 0, nullptr)) {
-            return true;
-        }
-        return false;
     }
 
     void lockMode(bool lock) {
@@ -494,6 +489,12 @@ private:
         hal_ble_conn_info_t info;
         std::pair<hal_ble_on_link_evt_cb_t, void*> handler; // It is used for central link only.
         BlePairingState pairState;
+        BleConnection() {
+            info.conn_handle = BLE_INVALID_CONN_HANDLE;
+        }
+        bool valid() {
+            return info.conn_handle != BLE_INVALID_CONN_HANDLE;
+        }
     };
 
     BleGap()
@@ -506,6 +507,7 @@ private:
               advParams_{},
               advTimeoutTimer_(nullptr),
               isScanning_(false),
+              notifyScanResult_(false),
               scanParams_{},
               scanSemaphore_(nullptr),
               scanResultCallback_(nullptr),
@@ -614,6 +616,8 @@ private:
 
     BleConnection* fetchConnection(hal_ble_conn_handle_t connHandle);
     BleConnection* fetchConnection(const hal_ble_addr_t* address);
+    BleConnection peekConnection(hal_ble_conn_handle_t connHandle);
+    BleConnection peekConnection(const hal_ble_addr_t* address);
     int addConnection(BleConnection&& connection);
     void removeConnection(hal_ble_conn_handle_t connHandle);
 
@@ -637,6 +641,7 @@ private:
     hal_ble_adv_params_t advParams_;
     os_timer_t advTimeoutTimer_;                    /**< Timer for advertising timeout.  */
     volatile bool isScanning_;                      /**< If it is scanning or not. */
+    volatile bool notifyScanResult_;
     hal_ble_scan_params_t scanParams_;              /**< BLE scanning parameters. */
     os_semaphore_t scanSemaphore_;                  /**< Semaphore to wait until the scan procedure completed. */
     hal_ble_on_scan_result_cb_t scanResultCallback_;    /**< Callback function on scan result. */
@@ -676,6 +681,9 @@ private:
     static constexpr uint8_t BLE_CMD_THREAD_PRIORITY = OS_THREAD_PRIORITY_NETWORK - 1; // IMPORTANT: below network for coexistence to work!
     static constexpr uint16_t BLE_CMD_THREAD_STACK_SIZE = 2048;
     static constexpr uint8_t BLE_CMD_QUEUE_SIZE = 0x20;
+
+    volatile bool bleCommandThreadExit_ = false;
+    static constexpr system_tick_t BLE_WAIT_CMD_THREAD_TRY_LOCK = 10;
 };
 
 
@@ -1020,14 +1028,27 @@ void BleEventDispatcher::bleEventDispatchThread(void *context) {
 
 void BleGap::bleCommandThread(void *context) {
     BleGap* gap = (BleGap*)context;
+    uint8_t command = 0;
     while (true) {
-        uint8_t command;
+        bool locked = false;
         if (!os_queue_peek(gap->cmdQueue_, &command, CONCURRENT_WAIT_FOREVER, nullptr)) {
             LOCAL_DEBUG("---> Enter ble cmd thread, cmd: %d", command);
             if (command == BLE_CMD_STOP_ADV || command == BLE_CMD_STOP_ADV_NOTIFY) {
                 if (gap->isAdvertising()) {
                     LOCAL_DEBUG( "stopAdvertising in ble cmd thread");
-                    BleLock lk;
+                    // FIXME: duplication, but for now works as a workaround
+                    while (!(locked = s_bleMutex.lock(BLE_WAIT_CMD_THREAD_TRY_LOCK)) && !gap->bleCommandThreadExit_) {
+                        // Nothing
+                    }
+                    SCOPE_GUARD({
+                        if (locked) {
+                            s_bleMutex.unlock();
+                        }
+                    });
+                    if (gap->bleCommandThreadExit_) {
+                        LOCAL_DEBUG("Exit ble cmd thread");
+                        break;
+                    }
                     gap->stopAdvertising();
                     LOCAL_DEBUG("notifyAdvStop in ble cmd thread");
                     if (command == BLE_CMD_STOP_ADV_NOTIFY) {
@@ -1036,7 +1057,19 @@ void BleGap::bleCommandThread(void *context) {
                 }
             } else if (command == BLE_CMD_START_ADV) {
                 LOCAL_DEBUG("startAdvertising in ble cmd thread");
-                BleLock lk;
+                // FIXME: duplication, but for now works as a workaround
+                while (!(locked = s_bleMutex.lock(BLE_WAIT_CMD_THREAD_TRY_LOCK)) && !gap->bleCommandThreadExit_) {
+                    // Nothing
+                }
+                SCOPE_GUARD({
+                    if (locked) {
+                        s_bleMutex.unlock();
+                    }
+                });
+                if (gap->bleCommandThreadExit_) {
+                    LOCAL_DEBUG("Exit ble cmd thread");
+                    break;
+                }
                 gap->startAdvertising();
             } else if (command == BLE_CMD_EXIT_THREAD) {
                 LOCAL_DEBUG("Exit ble cmd thread");
@@ -1046,6 +1079,8 @@ void BleGap::bleCommandThread(void *context) {
             os_queue_take(gap->cmdQueue_, &command, 0, nullptr);
         }
     }
+    // Just in case clean up the queue on exit
+    while (!os_queue_take(gap->cmdQueue_, &command, 0, nullptr));
     os_thread_exit(nullptr);
 }
 
@@ -1181,14 +1216,14 @@ int BleGap::stop(bool restore) {
     if (btStackStarted_) {
         // Abort any commands, e.g. the re-adv command after disconnection.
         if (cmdThread_ && !os_thread_is_current(cmdThread_)) {
-            if (isQueueAvailable()) {
-                LOCAL_DEBUG(" >>>>>>>>>>>> s_bleMutex.unlock() <<<<<<<<<<<<<<");
-                s_bleMutex.unlock();
+            bleCommandThreadExit_ = true;
+            // It's fine even if this call below fails, but just in case loop here
+            while (enqueue(BLE_CMD_EXIT_THREAD)) {
+                // Nothing
             }
-            if (enqueue(BLE_CMD_EXIT_THREAD) == SYSTEM_ERROR_NONE) {
-                os_thread_join(cmdThread_);
-                cmdThread_ = nullptr;
-            }
+            os_thread_join(cmdThread_);
+            cmdThread_ = nullptr;
+            bleCommandThreadExit_ = false;
         }
         if (cmdQueue_) {
             if (!cmdThread_) {
@@ -1639,6 +1674,7 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
 
     CHECK_RTL(WRAP_BLE_EVT_LOCK(le_scan_start()));
     isScanning_ = true;
+    notifyScanResult_ = true;
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
     // IMPORTANT: have to poll here, for some reason we may not get notified
     if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
@@ -1650,21 +1686,31 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
         resetStack = true;
         return SYSTEM_ERROR_TIMEOUT;
     }
+    // We unlock BLE lock here though so that other BLE APIs are accessible while we are performing a scan.
+    // Especially if it's a continuous scan.
+    lk.unlock();
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
-    if (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) {
-        lk.unlock();
-    }
     os_semaphore_take(scanSemaphore_, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
     return SYSTEM_ERROR_NONE;
 }
 
 int BleGap::stopScanning(bool resetStack) {
+    BleLock lk;
+    notifyScanResult_ = false;
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
 
-    BleLock lk;
+    if (BleEventDispatcher::getInstance().isThreadCurrent()) {
+        // Can't stop scanning properly from event processing thread
+        // Unblock the caller of scan() and perform stopScanning()
+        // in there.
+        // XXX: It's not safe to call le_scan_stop() especially
+        // from inside the ble scan result callback! 
+        os_semaphore_give(scanSemaphore_, false);
+        return 0;
+    }
 
     const int LE_SCAN_STOP_RETRIES = 1;
     for (int i = 0; i < LE_SCAN_STOP_RETRIES; i++) {
@@ -1703,13 +1749,15 @@ int BleGap::stopScanning(bool resetStack) {
         clearPendingResult();
     }
 
+    // Just in case
     os_semaphore_give(scanSemaphore_, false);
+
     return SYSTEM_ERROR_NONE;
 }
 
 // This function is called from thread
 void BleGap::notifyScanResult(T_LE_SCAN_INFO* advReport) {
-    if (!isScanning_ || !scanResultCallback_) {
+    if (!isScanning_ || !scanResultCallback_ || !notifyScanResult_) {
         return;
     }
 
@@ -1803,7 +1851,8 @@ void BleGap::removePendingResult(const hal_ble_addr_t& address) {
 void BleGap::clearPendingResult() {
     for (const auto& result : pendingResults_) {
         // Notify the pending results, in case that they are not expecting scan response data.
-        scanResultCallback_(&result, context_);
+        // To be consistent with Gen3
+        // scanResultCallback_(&result, context_);
         if (result.adv_data) {
             free(result.adv_data);
         }
@@ -1812,18 +1861,16 @@ void BleGap::clearPendingResult() {
 }
 
 ssize_t BleGap::getAttMtu(hal_ble_conn_handle_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    const auto connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    return connection->info.att_mtu;
+    auto connection = peekConnection(connHandle);
+    CHECK_TRUE(connection.valid(), SYSTEM_ERROR_NOT_FOUND);
+    return connection.info.att_mtu;
 }
 
 int BleGap::getConnectionInfo(hal_ble_conn_handle_t connHandle, hal_ble_conn_info_t* info) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    const BleConnection* connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, SYSTEM_ERROR_NOT_FOUND);
-    uint16_t size = std::min(connection->info.size, info->size);
-    memcpy(info, &connection->info, size);
+    auto connection = peekConnection(connHandle);
+    CHECK_TRUE(connection.valid(), SYSTEM_ERROR_NOT_FOUND);
+    uint16_t size = std::min(connection.info.size, info->size);
+    memcpy(info, &connection.info, size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1861,8 +1908,6 @@ int BleGap::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* con
     // Make sure that event dispatching is started
     CHECK(start());
 
-    // Stop scanning first to give the scanning semaphore if possible.
-    CHECK(stopScanning());
     SCOPE_GUARD ({
         connectingAddr_ = {};
         connecting_ = false;
@@ -1900,10 +1945,9 @@ int BleGap::connect(const hal_ble_conn_cfg_t* config, hal_ble_conn_handle_t* con
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
     }
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(&config->address);
-    CHECK_TRUE(connection, SYSTEM_ERROR_INTERNAL);
-    *connHandle = connection->info.conn_handle;
+    auto connection = peekConnection(&config->address);
+    CHECK_TRUE(connection.valid(), SYSTEM_ERROR_INTERNAL);
+    *connHandle = connection.info.conn_handle;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -1916,21 +1960,14 @@ int BleGap::connectCancel(const hal_ble_addr_t* address) {
     if (!WAIT_TIMED(BLE_OPERATION_TIMEOUT_MS, connecting_)) {
         return SYSTEM_ERROR_TIMEOUT;
     }
-    BleConnection* connection = nullptr;
-    {
-        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-        connection = fetchConnection(address);
-    }
-    CHECK_TRUE(connection, SYSTEM_ERROR_NONE); // Connection is not established
-    CHECK(disconnect(connection->info.conn_handle));
+    auto connection = peekConnection(address);
+    CHECK_TRUE(connection.valid(), SYSTEM_ERROR_NONE); // Connection is not established
+    CHECK(disconnect(connection.info.conn_handle));
     return SYSTEM_ERROR_NONE;
 }
 
 int BleGap::disconnect(hal_ble_conn_handle_t connHandle) {
-    {
-        std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-        CHECK_TRUE(fetchConnection(connHandle), SYSTEM_ERROR_NOT_FOUND);
-    }
+    CHECK_TRUE(peekConnection(connHandle).valid(), SYSTEM_ERROR_NOT_FOUND);
     SCOPE_GUARD ({
         disconnectingHandle_ = BLE_INVALID_CONN_HANDLE;
     });
@@ -1961,12 +1998,11 @@ int BleGap::disconnectAll() {
 }
 
 void BleGap::notifyLinkEvent(const hal_ble_link_evt_t& event) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(event.conn_handle);
-    if (connection) {
-        if (connection->info.role == BLE_ROLE_CENTRAL) {
-            if (connection->handler.first) {
-                connection->handler.first(&event, connection->handler.second);
+    auto connection = peekConnection(event.conn_handle);
+    if (connection.valid()) {
+        if (connection.info.role == BLE_ROLE_CENTRAL) {
+            if (connection.handler.first) {
+                connection.handler.first(&event, connection.handler.second);
             }
         } else {
             for (const auto& handler : periphEvtCallbacks_) {
@@ -1979,9 +2015,7 @@ void BleGap::notifyLinkEvent(const hal_ble_link_evt_t& event) {
 }
 
 bool BleGap::valid(hal_ble_conn_handle_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    const BleConnection* connection = fetchConnection(connHandle);
-    return connection != nullptr;
+    return peekConnection(connHandle).valid();
 }
 
 BleGap::BleConnection* BleGap::fetchConnection(hal_ble_conn_handle_t connHandle) {
@@ -2002,6 +2036,30 @@ BleGap::BleConnection* BleGap::fetchConnection(const hal_ble_addr_t* address) {
         }
     }
     return nullptr;
+}
+
+BleGap::BleConnection BleGap::peekConnection(hal_ble_conn_handle_t connHandle) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    if (connHandle != BLE_INVALID_CONN_HANDLE) {
+        for (auto& connection : connections_) {
+            if (connection.info.conn_handle == connHandle) {
+                return connection;
+            }
+        }
+    }
+    return BleConnection();
+}
+
+BleGap::BleConnection BleGap::peekConnection(const hal_ble_addr_t* address) {
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    if (address != nullptr) {
+        for (auto& connection : connections_) {
+            if (addressEqual(connection.info.address, *address)) {
+                return connection;
+            }
+        }
+    }
+    return BleConnection();
 }
 
 int BleGap::addConnection(BleConnection&& connection) {
@@ -2153,20 +2211,18 @@ int BleGap::rejectPairing(hal_ble_conn_handle_t connHandle) {
 }
 
 bool BleGap::isPairing(hal_ble_conn_handle_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, false);
-    return connection->pairState == BLE_PAIRING_STATE_INITIATED ||
-           connection->pairState == BLE_PAIRING_STATE_STARTED ||
-           connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA ||
-           connection->pairState == BLE_PAIRING_STATE_USER_REQ_REJECT;
+    auto connection = peekConnection(connHandle);
+    CHECK_TRUE(connection.valid(), false);
+    return connection.pairState == BLE_PAIRING_STATE_INITIATED ||
+           connection.pairState == BLE_PAIRING_STATE_STARTED ||
+           connection.pairState == BLE_PAIRING_STATE_SET_AUTH_DATA ||
+           connection.pairState == BLE_PAIRING_STATE_USER_REQ_REJECT;
 }
 
 bool BleGap::isPaired(hal_ble_conn_handle_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
-    CHECK_TRUE(connection, false);
-    return connection->pairState == BLE_PAIRING_STATE_PAIRED;
+    auto connection = peekConnection(connHandle);
+    CHECK_TRUE(connection.valid(), false);
+    return connection.pairState == BLE_PAIRING_STATE_PAIRED;
 }
 
 int BleGap::waitState(BleGapDevState state, system_tick_t timeout, bool forcePoll) {
@@ -2273,18 +2329,12 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             if (disconnectingHandle_ == connection->info.conn_handle) {
                 os_semaphore_give(disconnectSemaphore_, false);
             }
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
-            {
-#else
-            else {
-#endif
-                // Notify the disconnected event.
-                hal_ble_link_evt_t evt = {};
-                evt.type = BLE_EVT_DISCONNECTED;
-                evt.conn_handle = connHandle;
-                evt.params.disconnected.reason = (uint8_t)discCause;
-                notifyLinkEvent(evt);
-            }
+            // Notify the disconnected event.
+            hal_ble_link_evt_t evt = {};
+            evt.type = BLE_EVT_DISCONNECTED;
+            evt.conn_handle = connHandle;
+            evt.params.disconnected.reason = (uint8_t)discCause;
+            notifyLinkEvent(evt);
             hal_ble_role_t role = connection->info.role;
             removeConnection(connHandle);
             BleGatt::getInstance().removeSubscriber(connHandle);
@@ -2344,20 +2394,13 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 disconnect(connHandle);
                 return;
             }
-
-            if (connection.info.role == BLE_ROLE_PERIPHERAL
-#if HAL_PLATFORM_BLE_ACTIVE_EVENT
-                || (connecting_ && connection.info.role == BLE_ROLE_CENTRAL)) {
-#else
-            ) {
-#endif
+            hal_ble_link_evt_t evt = {};
+            evt.type = BLE_EVT_CONNECTED;
+            evt.conn_handle = connHandle;
+            evt.params.connected.info = &connection.info;
+            notifyLinkEvent(evt);
+            if (connecting_ && connection.info.role == BLE_ROLE_CENTRAL) {
                 connecting_ = false;
-                hal_ble_link_evt_t evt = {};
-                evt.type = BLE_EVT_CONNECTED;
-                evt.conn_handle = connHandle;
-                evt.params.connected.info = &connection.info;
-                notifyLinkEvent(evt);
-            } else {
                 // See: handleMtuUpdated()
                 // os_semaphore_give(connectSemaphore_, false);
             }
@@ -2444,10 +2487,10 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
     switch (state) {
         case GAP_AUTHEN_STATE_STARTED: {
             LOG_DEBUG(TRACE, "GAP_AUTHEN_STATE_STARTED");
-            auto state = connection->pairState;
+            auto pairState = connection->pairState;
             connection->pairState = BLE_PAIRING_STATE_STARTED;
             // Notify the event only if the other side initiates the pairing procedure
-            if (state == BLE_PAIRING_STATE_NOT_INITIATED || state == BLE_PAIRING_STATE_REJECTED) {
+            if (pairState == BLE_PAIRING_STATE_NOT_INITIATED || pairState == BLE_PAIRING_STATE_REJECTED) {
                 hal_ble_link_evt_t linkEvent = {};
                 linkEvent.type = BLE_EVT_PAIRING_REQUEST_RECEIVED;
                 linkEvent.conn_handle = connHandle;
@@ -2485,10 +2528,9 @@ int BleGap::handleAuthenStateChanged(uint8_t connHandle, uint8_t state, uint16_t
 }
 
 int BleGap::handlePairJustWork(uint8_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
+    auto connection = peekConnection(connHandle);
     T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
-    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    if (ret == GAP_CAUSE_SUCCESS && connection.valid() && connection.pairState == BLE_PAIRING_STATE_STARTED) {
         CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT));
     } else {
         CHECK_RTL(le_bond_just_work_confirm(connHandle, GAP_CFM_CAUSE_REJECT));
@@ -2497,10 +2539,9 @@ int BleGap::handlePairJustWork(uint8_t connHandle) {
 }
 
 int BleGap::handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
+    auto connection = peekConnection(connHandle);
     T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
-    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    if (ret == GAP_CAUSE_SUCCESS && connection.valid() && connection.pairState == BLE_PAIRING_STATE_STARTED) {
         uint32_t displayValue = 0;
         le_bond_get_display_key(connHandle, &displayValue);
         char passkey[BLE_PAIRING_PASSKEY_LEN + 1];
@@ -2515,12 +2556,13 @@ int BleGap::handlePairPasskeyDisplay(uint8_t connHandle, bool displayOnly) {
         linkEvent.params.passkey_display.passkey = (const uint8_t*)passkey;
         // User may call rejectPairing() in the event handler
         notifyLinkEvent(linkEvent);
-        if (connection->pairState == BLE_PAIRING_STATE_USER_REQ_REJECT) {
+        connection = peekConnection(connHandle);
+        if (connection.pairState == BLE_PAIRING_STATE_USER_REQ_REJECT) {
             goto reject;
         }
         if (displayOnly) {
             le_bond_passkey_display_confirm(connHandle, GAP_CFM_CAUSE_ACCEPT);
-        } else if (connection->pairState != BLE_PAIRING_STATE_SET_AUTH_DATA) {
+        } else if (connection.pairState != BLE_PAIRING_STATE_SET_AUTH_DATA) {
             // User didn't set authentication data in event callback, reject pairing automatically
             goto reject;
         }
@@ -2537,15 +2579,15 @@ reject:
 }
 
 int BleGap::handlePairPasskeyInput(uint8_t connHandle) {
-    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
-    BleConnection* connection = fetchConnection(connHandle);
+    auto connection = peekConnection(connHandle);
     T_GAP_CAUSE ret = le_bond_get_pair_procedure_type(connHandle, &pairingLesc_);
-    if (ret == GAP_CAUSE_SUCCESS && connection && connection->pairState == BLE_PAIRING_STATE_STARTED) {
+    if (ret == GAP_CAUSE_SUCCESS && connection.valid() && connection.pairState == BLE_PAIRING_STATE_STARTED) {
         hal_ble_link_evt_t linkEvent = {};
         linkEvent.type = BLE_EVT_PAIRING_PASSKEY_INPUT;
         linkEvent.conn_handle = connHandle;
         notifyLinkEvent(linkEvent);
-        if (connection->pairState == BLE_PAIRING_STATE_SET_AUTH_DATA) {
+        connection = peekConnection(connHandle);
+        if (connection.pairState == BLE_PAIRING_STATE_SET_AUTH_DATA) {
             return SYSTEM_ERROR_NONE;
         }
     }

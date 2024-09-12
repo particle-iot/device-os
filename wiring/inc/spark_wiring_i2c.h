@@ -38,7 +38,8 @@ public:
       : address_{address},
         size_{0},
         stop_{true},
-        timeout_{HAL_I2C_DEFAULT_TIMEOUT_MS} {
+        timeout_{HAL_I2C_DEFAULT_TIMEOUT_MS},
+        buffer_(nullptr) {
   }
 
   WireTransmission() = delete;
@@ -62,6 +63,15 @@ public:
     return *this;
   }
 
+  WireTransmission& buffer(uint8_t* buf) {
+    buffer_ = buf;
+    return *this;
+  }
+
+  bool isValid() const {
+    return address_ != 0xff;
+  }
+
   hal_i2c_transmission_config_t halConfig() const {
     hal_i2c_transmission_config_t conf = {
       .size = sizeof(hal_i2c_transmission_config_t),
@@ -70,7 +80,8 @@ public:
       .reserved = {0},
       .quantity = (uint32_t)size_,
       .timeout_ms = timeout_,
-      .flags = (uint32_t)(stop_ ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0)
+      .flags = (uint32_t)(stop_ ? HAL_I2C_TRANSMISSION_FLAG_STOP : 0),
+      .buffer = buffer_
     };
     return conf;
   }
@@ -80,7 +91,14 @@ private:
   size_t size_;
   bool stop_;
   system_tick_t timeout_;
+  uint8_t* buffer_;
 };
+
+namespace particle {
+namespace detail {
+extern const WireTransmission WIRE_INVALID_TRANSMISSION;
+} // detail
+} // particle
 
 class TwoWire : public Stream
 {
@@ -136,6 +154,10 @@ public:
   hal_i2c_interface_t interface() const {
     return _i2c;
   }
+
+#if HAL_PLATFORM_I2C_NUM == 1
+  int transaction(const WireTransmission& tx, const WireTransmission& rx = particle::detail::WIRE_INVALID_TRANSMISSION);
+#endif // HAL_PLATFORM_I2C_NUM == 1
 };
 
 /**

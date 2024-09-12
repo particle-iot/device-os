@@ -24,6 +24,9 @@
 #include "ota_flash_hal.h"
 #include "socket_hal.h"
 #include <type_traits>
+#if HAL_PLATFORM_IFAPI
+#include "netdb_hal.h"
+#endif // HAL_PLATFORM_IFAPI
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +35,13 @@ extern "C" {
 typedef enum {
     SYSTEM_CLOUD_DISCONNECT_GRACEFULLY = 1
 } system_cloud_connection_flags_t;
+
+typedef enum CloudServerAddressType {
+    CLOUD_SERVER_ADDRESS_TYPE_NONE            = 0,
+    CLOUD_SERVER_ADDRESS_TYPE_CACHED          = 1,
+    CLOUD_SERVER_ADDRESS_TYPE_CACHED_ADDRINFO = 2,
+    CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO    = 3
+} CloudServerAddressType;
 
 int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* saddrCache);
 int system_cloud_disconnect(int flags);
@@ -43,6 +53,10 @@ int system_multicast_announce_presence(void* reserved);
 int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags);
 int system_cloud_get_inet_family_keepalive(int af, unsigned int* value);
 sock_handle_t system_cloud_get_socket_handle();
+
+#if HAL_PLATFORM_IFAPI
+int system_cloud_resolv_address(int protocol, const ServerAddress* address, sockaddr* saddrCache, addrinfo** info, CloudServerAddressType* type, bool useCachedAddrInfo);
+#endif // HAL_PLATFORM_IFAPI
 
 #ifdef __cplusplus
 }

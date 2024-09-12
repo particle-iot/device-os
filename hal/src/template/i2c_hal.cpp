@@ -153,3 +153,7 @@ int32_t hal_i2c_unlock(hal_i2c_interface_t i2c, void* reserved)
 {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
+
+int hal_i2c_transaction(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* tx_config, const hal_i2c_transmission_config_t* rx_config, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

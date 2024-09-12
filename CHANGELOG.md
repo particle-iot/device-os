@@ -51,6 +51,44 @@
 
 - Protected mode [#2734](https://github.com/particle-iot/device-os/pull/2734)
 
+## 5.9.0
+
+### FEATURES
+- Supports M.2 breakout board and Muon [#2809](https://github.com/particle-iot/device-os/pull/2809)
+
+
+### ENHANCEMENTS
+- [Gen 4] Adds detailed WiFi access point disconnect reason logging [#2805](https://github.com/particle-iot/device-os/pull/2805)
+- [ACM] Perform cloud ping or reachability test on network events; non-blocking background reachability test [#2811](https://github.com/particle-iot/device-os/pull/2811)
+- [Gen 3] BLE: increase a number of retries for service discovery in central role [#2801](https://github.com/particle-iot/device-os/pull/2801)
+- [Gen 3] BLE: suspend scanning while in connected state and restore scanning after a disconnect (SoftDevice limitation) [#2801](https://github.com/particle-iot/device-os/pull/2801)
+- [cellular][r510] unmask bands for global use [#2803](https://github.com/particle-iot/device-os/pull/2803)
+- BLE: streamlines `BLE.scan()` behavior to be blocking irrespective of timeout, but allows other BLE operations to be performed [#2796](https://github.com/particle-iot/device-os/pull/2796)
+- BLE: streamlines `BLE.stopScanning()` behavior to be blocking when not called from BLE callback and guarantees scanning to be stopped on return [#2796](https://github.com/particle-iot/device-os/pull/2796)
+- [Gen 4] BLE: improves locking in a number of BLE API calls [#2813](https://github.com/particle-iot/device-os/pull/2813)
+
+### BUGFIXES
+- [Gen 3] BLE: fixes a race condition in connected state reporting in central and peripheral roles [#2801](https://github.com/particle-iot/device-os/pull/2801)
+- [Gen 4] i2c: use transactions for fuelgauge and pmic on platforms with single i2c bus to avoid cutting into compound application I2C transmissions [#2822](https://github.com/particle-iot/device-os/pull/2822)
+- Reduce latency of the system loop [#2797](https://github.com/particle-iot/device-os/pull/2797)
+- Work around a bug in lfs_remove() while recursive traversing directories [#2798](https://github.com/particle-iot/device-os/pull/2798)
+- [Gen 4] set sleep timer upper bounds [#2810](https://github.com/particle-iot/device-os/pull/2810)
+- [Gen 4] Fixes potential deadlock in WiFi and BLE stacks [#2805](https://github.com/particle-iot/device-os/pull/2805)
+- [Gen 4] fixes DMA enabled USART flush [#2800](https://github.com/particle-iot/device-os/pull/2800)
+- [Gen 4] Fixes `BLE.stopScanning()` deadlock when called from inside BLE callback [#2796](https://github.com/particle-iot/device-os/pull/2796)
+- [Gen 4] i2c: clear I2C tx buffer before each transmission [#2819](https://github.com/particle-iot/device-os/pull/2819)
+- fixes `USART::available()` after waking from sleep [#2816](https://github.com/particle-iot/device-os/pull/2816)
+- [Gen 4] fixes BLE race condition while scanning [#2818](https://github.com/particle-iot/device-os/pull/2818)
+- [Gen 4] usb: fix an issue with USB re-attach after sleep [#2824](https://github.com/particle-iot/device-os/pull/2824) [#2823](https://github.com/particle-iot/device-os/pull/2823)
+- [Gen 4] prebootloader: fix STOP/ULP sleep with disabled KM0 RTOS, get correct wake-up reason [#2825](https://github.com/particle-iot/device-os/pull/2825)
+- Fixes I2C hal issues [#2826](https://github.com/particle-iot/device-os/pull/2826)
+
+### INTERNAL
+- Add serial loopback to test runner [#2816](https://github.com/particle-iot/device-os/pull/2816)
+- [tests] Support integration tests on gen4 after device-constants update [#2814](https://github.com/particle-iot/device-os/pull/2814)
+- Adds fixture tests [#2823](https://github.com/particle-iot/device-os/pull/2823)
+- [tests] ACM prefer feature, adjust logging [#2795](https://github.com/particle-iot/device-os/pull/2795)
+
 ## 5.8.2
 
 ### FEATURES

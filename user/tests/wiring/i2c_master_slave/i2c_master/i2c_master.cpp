@@ -8,11 +8,16 @@ static void I2C_Master_Configure()
     USE_WIRE.begin();
 }
 
+test(I2C_000_Prepare)
+{
+
+}
+
 test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
 {
-    Serial.println("This is Master");
-    Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
-    Serial.printlnf("Slave message: %s", SLAVE_TEST_MESSAGE);
+    // Serial.println("This is Master");
+    // Serial.printlnf("Master message: %s", MASTER_TEST_MESSAGE);
+    // Serial.printlnf("Slave message: %s", SLAVE_TEST_MESSAGE);
     uint32_t requestedLength = TEST_I2C_BUFFER_SIZE;
     I2C_Master_Configure();
 
@@ -33,7 +38,7 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
 
         USE_WIRE.beginTransmission(I2C_ADDRESS);
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
-        
+
         // Sleep API should keep the buffer state as-is
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
@@ -51,7 +56,8 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
         // Now read out requestedLength bytes
         memset(I2C_Test_Rx_Buffer, 0, sizeof(I2C_Test_Rx_Buffer));
         USE_WIRE.requestFrom(I2C_ADDRESS, requestedLength);
-        assertEqual(requestedLength, USE_WIRE.available());
+        uint32_t i2cAvailable = USE_WIRE.available();
+        assertEqual(requestedLength, i2cAvailable);
 
         // Sleep API should keep the buffer state as-is
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
@@ -69,7 +75,7 @@ test(I2C_01_Master_Slave_Master_Variable_Length_Transfer)
 
         // Enter sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
-        
+
         // Exit sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
@@ -104,7 +110,7 @@ test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underfl
 
         USE_WIRE.beginTransmission(I2C_ADDRESS);
         USE_WIRE.write(I2C_Test_Tx_Buffer, TRANSFER_LENGTH_1);
-        
+
         // End with STOP
         assertEqual(USE_WIRE.endTransmission(true), 0);
         // delay(I2C_DELAY);
@@ -117,8 +123,9 @@ test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underfl
         while (count--) {
             memset(I2C_Test_Rx_Buffer, 0, sizeof(I2C_Test_Rx_Buffer));
             USE_WIRE.requestFrom(I2C_ADDRESS, requestedLength + (requestedLength & 0x01));
-            if (USE_WIRE.available() != 0) {
-                assertEqual(requestedLength + (requestedLength & 0x01), USE_WIRE.available());
+            uint32_t i2cAvailable = USE_WIRE.available();
+            if (i2cAvailable != 0) {
+                assertEqual(requestedLength + (requestedLength & 0x01), i2cAvailable);
 
                 uint32_t count = 0;
                 while(USE_WIRE.available()) {
@@ -128,9 +135,9 @@ test(I2C_02_Master_Slave_Master_Variable_Length_Transfer_Slave_Tx_Buffer_Underfl
                 // Serial.println((const char *)I2C_Test_Rx_Buffer);
                 assertTrue(strncmp((const char *)I2C_Test_Rx_Buffer, SLAVE_TEST_MESSAGE, requestedLength) == 0);
             } else if (requestedLength & 0x01) {
-                Serial.println("Error reading from Slave, checking if we can recover");
+                // Serial.println("Error reading from Slave, checking if we can recover");
             } else {
-                Serial.println("Failed to recover");
+                // Serial.println("Failed to recover");
                 assertTrue(false);
             }
         }
@@ -185,7 +192,8 @@ test(I2C_03_Master_Slave_Master_WireTransmission_And_Short_Timeout)
         USE_WIRE.requestFrom(WireTransmission(I2C_ADDRESS + 1).quantity(requestedLength).timeout(1ms));
         t2 = millis();
         assertLessOrEqual(t2 - t1, 55);
-        assertNotEqual(requestedLength, USE_WIRE.available());
+        uint32_t i2cAvailable = USE_WIRE.available();
+        assertNotEqual(requestedLength, i2cAvailable);
 
         requestedLength--;
 
@@ -236,7 +244,8 @@ test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_A
         // Now read out requestedLength bytes
         memset(I2C_Test_Rx_Buffer, 0, sizeof(I2C_Test_Rx_Buffer));
         USE_WIRE.requestFrom(WireTransmission(I2C_ADDRESS).quantity(requestedLength).timeout(100ms));
-        assertEqual(requestedLength, USE_WIRE.available());
+        uint32_t i2cAvailable = USE_WIRE.available();
+        assertEqual(requestedLength, i2cAvailable);
 
         uint32_t count = 0;
         while(USE_WIRE.available()) {
@@ -309,7 +318,8 @@ test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
         // Now read out requestedLength bytes
         memset(I2C_Test_Rx_Buffer, 0, sizeof(I2C_Test_Rx_Buffer));
         USE_WIRE.requestFrom(I2C_ADDRESS, requestedLength);
-        assertEqual(requestedLength, USE_WIRE.available());
+        uint32_t i2cAvailable = USE_WIRE.available();
+        assertEqual(requestedLength, i2cAvailable);
 
         uint32_t count = 0;
         while(USE_WIRE.available()) {
@@ -323,10 +333,15 @@ test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
 
         // Enter sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), true, NULL), (int)SYSTEM_ERROR_NONE);
-        
+
         // Exit sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
 
     USE_WIRE.end();
+}
+
+test(I2C_ZZZ_Cleanup)
+{
+
 }

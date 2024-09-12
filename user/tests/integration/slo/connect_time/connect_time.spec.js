@@ -7,7 +7,7 @@
 //   and less than 30 seconds when starting from a warm boot
 suite('Network/cloud connection time SLOs');
 
-platform('gen3');
+platform('gen3', 'gen4');
 systemThread('enabled');
 
 // Parameters validated by this test

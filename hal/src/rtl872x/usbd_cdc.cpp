@@ -84,6 +84,9 @@ int CdcClassDriver::deinit(unsigned cfgIdx) {
         if (txState_) {
             dev_->flushEndpoint(epInData_);
         }
+        if (rxState_) {
+            dev_->flushEndpoint(epOutData_);
+        }
     }
 #if !HAL_PLATFORM_USB_SOF
     stopTxTimeoutTimer();

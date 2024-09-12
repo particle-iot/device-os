@@ -753,6 +753,13 @@ void sys_unlock_tcpip_core(void);
  * LWIP_NETBUF_RECVINFO==1: append destination addr and port to every netbuf.
  */
 #define LWIP_NETBUF_RECVINFO            0
+
+
+/**
+ * LWIP_NETBUF_TIMESTAMP==1: append timestamp to netbufs
+ */
+#define LWIP_NETBUF_TIMESTAMP           1
+
 /**
  * @}
  */

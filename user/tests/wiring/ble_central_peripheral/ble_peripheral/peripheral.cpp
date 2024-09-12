@@ -69,7 +69,20 @@ using namespace particle::test;
 constexpr uint16_t LOCAL_DESIRED_ATT_MTU = 123;
 constexpr uint16_t PEER_DESIRED_ATT_MTU = 100;
 
+Thread* scanThread = nullptr;
+volatile unsigned scanResults = 0;
+
+test(BLE_0000_Check_Feature_Disable_Listening_Mode) {
+    // System.enableFeature(FEATURE_DISABLE_LISTENING_MODE);
+    if (System.featureEnabled(FEATURE_DISABLE_LISTENING_MODE)) {
+        System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+        assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+        System.reset();
+    }
+}
+
 test(BLE_000_Peripheral_Cloud_Connect) {
+    assertFalse(System.featureEnabled(FEATURE_DISABLE_LISTENING_MODE));
     subscribeEvents(BLE_ROLE_PERIPHERAL);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
@@ -360,7 +373,8 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
     assertTrue(waitFor(BLE.connected, 20000));
     {
         SCOPE_GUARD ({
-            assertTrue(waitFor([]{ return !BLE.connected(); }, 5000));
+            Particle.publish("BLE disconnect", nullptr, WITH_ACK);
+            assertTrue(waitFor([]{ return !BLE.connected(); }, 60000));
             assertFalse(BLE.connected());
         });
 
@@ -371,8 +385,10 @@ static void pairingTestRoutine(bool request, BlePairingAlgorithm algorithm,
         } else {
             assertTrue(waitFor([&]{ return pairingRequested; }, 20000));
         }
-        assertTrue(BLE.isPairing(peer));
-        assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 60000));
+        // It may be paired in real quick if pairing uses JUST_WORK
+        if (BLE.isPairing(peer)) {
+            assertTrue(waitFor([&]{ return !BLE.isPairing(peer); }, 60000));
+        }
         assertTrue(BLE.isPaired(peer));
         assertEqual(pairingStatus, (int)SYSTEM_ERROR_NONE);
         if (algorithm != BlePairingAlgorithm::LEGACY_ONLY) {
@@ -486,6 +502,122 @@ test(BLE_32_Att_Mtu_Exchange) {
         assertTrue(waitFor([]{ return effectiveAttMtu == PEER_DESIRED_ATT_MTU; }, 5000));
     }
 }
+
+test(BLE_33_Central_Can_Connect_While_Scanning) {
+    assertTrue(waitFor(BLE.connected, 20000));
+    SCOPE_GUARD ({
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+    });
+    BleAdvertisingData advData;
+    advData.appendServiceUUID(serviceUuid);
+    BleAdvertisingData srData;
+    srData.appendLocalName("ble-test");
+    int ret = BLE.advertise(&advData, &srData);
+    assertEqual(ret, 0);
+    assertTrue(BLE.advertising());
+}
+
+test(BLE_34_Central_Is_Still_Scanning_After_Disconnect) {
+}
+
+test(BLE_35_Central_Can_Connect_While_Peripheral_Is_Scanning_Prepare) {
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 0;
+    params.interval = 800; // *0.625ms = 500ms
+    params.window = 800; // *0.625 = 500ms
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    scanThread = new Thread("test", [](void* param) -> os_thread_return_t {
+        BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+            scanResults++;
+        }, nullptr);
+    }, nullptr);
+    assertTrue((bool)scanThread);
+    assertTrue(waitFor(BLE.scanning, 500));
+}
+
+test(BLE_36_Central_Can_Connect_While_Peripheral_Is_Scanning) {
+    SCOPE_GUARD({
+        if (BLE.scanning() && scanThread) {
+            BLE.stopScanning();
+            scanThread->join();
+            delete scanThread;
+            scanThread = nullptr;
+        }
+    });
+    assertTrue(BLE.scanning());
+    assertTrue(waitFor(BLE.connected, 60000));
+    scanResults = 0;
+    delay(2000);
+    assertMoreOrEqual((unsigned)scanResults, 1);
+    SCOPE_GUARD ({
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+        
+        scanResults = 0;
+        delay(2000);
+        assertMoreOrEqual((unsigned)scanResults, 1);
+
+        assertEqual(0, BLE.stopScanning());
+        assertFalse(BLE.scanning());
+        scanThread->join();
+        delete scanThread;
+        scanThread = nullptr;
+    });
+}
+
+test(BLE_37_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning_Prepare) {
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = 0;
+    params.interval = 800; // *0.625ms = 500ms
+    params.window = 800; // *0.625 = 500ms
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    assertEqual(0, BLE.setScanParameters(&params));
+
+    scanThread = new Thread("test", [](void* param) -> os_thread_return_t {
+        BLE.scanWithFilter(BleScanFilter().allowDuplicates(true), +[](const BleScanResult *result, void *context) -> void {
+            scanResults++;
+        }, nullptr);
+    }, nullptr);
+    assertTrue((bool)scanThread);
+    waitFor([]{ return BLE.scanning(); }, 5000);
+}
+
+test(BLE_38_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning) {
+    SCOPE_GUARD({
+        if (BLE.scanning() && scanThread) {
+            BLE.stopScanning();
+            scanThread->join();
+            delete scanThread;
+            scanThread = nullptr;
+        }
+    });
+    assertTrue(BLE.scanning());
+    assertTrue(waitFor(BLE.connected, 60000));
+    scanResults = 0;
+    delay(2000);
+    assertMoreOrEqual((unsigned)scanResults, 1);
+
+    assertEqual(0, BLE.stopScanning());
+    assertFalse(BLE.scanning());
+    scanThread->join();
+    delete scanThread;
+    scanThread = nullptr;
+
+    assertTrue(BLE.connected());
+
+    SCOPE_GUARD ({
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+    });
+}
+
 
 #endif // #if Wiring_BLE == 1
 

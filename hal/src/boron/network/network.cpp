@@ -127,7 +127,11 @@ int if_init_platform(void*) {
         wizNetifConfigData.size = sizeof(WizNetifConfigData);
         wizNetifConfigData.version = WIZNETIF_CONFIG_DATA_VERSION;
         WizNetifConfig::instance()->getConfigData(&wizNetifConfigData);
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac);
+        bool postpone = false;
+#if HAL_PLATFORM_IF_INIT_POSTPONE
+        postpone = true; /* postpone initialization */
+#endif
+        en2 = new WizNetif(HAL_SPI_INTERFACE1, wizNetifConfigData.cs_pin, wizNetifConfigData.reset_pin, wizNetifConfigData.int_pin, mac, postpone /* postpone initialization */);
     }
 
     uint8_t dummy;
@@ -151,6 +155,26 @@ int if_init_platform(void*) {
 
     return 0;
 }
+
+#if HAL_PLATFORM_IF_INIT_POSTPONE
+int if_init_platform_postpone(void*) {
+    if (en2) {
+        uint8_t dummy;
+        if (!if_get_index(en2->interface(), &dummy)) {
+            auto wizNetif = reinterpret_cast<WizNetif*>(en2);
+            if (wizNetif->isPresent(true)) {
+                LOG(INFO, "W5500 present");
+                return 0;
+            }
+            LOG(INFO, "Remove Ethernet interface");
+            netifapi_netif_remove(en2->interface());
+        }
+        delete en2;
+        en2 = nullptr;
+    }
+    return 0;
+}
+#endif
 
 extern "C" {
 

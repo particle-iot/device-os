@@ -2,7 +2,13 @@
 #include "unit-test/unit-test.h"
 #include <functional>
 
-#define MASTER_TEST_MESSAGE "Hello from SPI Master!?"
+// Can keep this enabled as it won't hurt the test
+Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
+    // { "comm", LOG_LEVEL_NONE }, // filter out comm messages
+    // { "system", LOG_LEVEL_INFO } // only info level for system messages
+});
+
+#define MASTER_TEST_MESSAGE   "Hello from SPI Master!?"
 #define SLAVE_TEST_MESSAGE_1  "SPI Slave is doing good"
 #define SLAVE_TEST_MESSAGE_2  "All work and no play makes Jack a dull boy"
 #define TRANSFER_LENGTH_1 (sizeof(MASTER_TEST_MESSAGE) + sizeof(uint32_t) + sizeof(uint32_t))
@@ -60,7 +66,9 @@
 #define MY_CS D0 // FIXME
 #pragma message "Compiling for SPI, MY_CS set to D0"
 #elif (USE_SPI == 1) || (USE_SPI == 2)
-#error "SPI2 not supported for tracker"
+#undef USE_SPI
+#define USE_SPI 0
+// #error "SPI2 not supported for tracker"
 #else
 #error "Not supported for Gen 3"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
@@ -304,9 +312,11 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
         transferFunc(SPI_Master_Tx_Buffer, SPI_Master_Rx_Buffer, TRANSFER_LENGTH_1);
         digitalWrite(MY_CS, HIGH);
         delay(50 * SPI_DELAY);
-        Serial.print("< ");
-        Serial.println((const char *)SPI_Master_Rx_Buffer);
+        Log.trace("< %s", (const char *)SPI_Master_Rx_Buffer);
+        // LOG_DUMP(TRACE, (const char *)SPI_Master_Rx_Buffer, strlen((const char *)SPI_Master_Rx_Buffer));
+        // LOG_PRINTF_C(TRACE, "app", "\r\n");
         assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
+        Log.trace("strncmp == %d", strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)));
 
         if (requestedLength == 0)
             break;
@@ -321,8 +331,7 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
         // Deselect
         digitalWrite(MY_CS, HIGH);
         delay(50 * SPI_DELAY);
-        Serial.print("< ");
-        Serial.println((const char *)SPI_Master_Rx_Buffer);
+        Log.trace("< %s", (const char *)SPI_Master_Rx_Buffer);
         assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_2, requestedLength) == 0);
 
         requestedLength--;
@@ -332,215 +341,282 @@ void SPI_Master_Slave_Master_Test_Routine(std::function<void(uint8_t*, uint8_t*,
     }
 }
 
+test(000_SPI_Master_Slave_Prepare) {
+    Log.trace("This is Master");
+}
+
 /*
  * Default mode: SPI_MODE3, MSBFIRST
  */
-test(00_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_Default_MODE3_MSB)
+test(00_to_23_SPI_Master_Slave)
 {
-    Serial.println("This is Master");
-    auto transferFunc = SPI_Master_Transfer_No_DMA;
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+    Log.trace("00_SPI_Master_Slave_Master");
 
-test(01_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Default_MODE3_MSB)
-{
+    // Throw away the first transfer
+    auto transferFunc1 = SPI_Master_Transfer_No_DMA;
+
+// EXTRA CODE TO CONSUME GARBAGE vvv
+    // uint32_t requestedLength = TRANSFER_LENGTH_2;
+    // SPI_Master_Configure();
+    // memset(SPI_Master_Tx_Buffer, 0, sizeof(SPI_Master_Tx_Buffer));
+    // memset(SPI_Master_Rx_Buffer, 0, sizeof(SPI_Master_Rx_Buffer));
+
+    // hal_spi_sleep(MY_SPI.interface(), false, nullptr);
+    // // assertEqual(ret, (int)SYSTEM_ERROR_NONE); // Device may be awake
+
+    // // Select
+    // // Workaround for some platforms requiring the CS to be high when configuring
+    // // the DMA buffers
+    // digitalWrite(MY_CS, LOW);
+    // delay(SPI_DELAY);
+    // digitalWrite(MY_CS, HIGH);
+    // delay(10 * SPI_DELAY);
+    // digitalWrite(MY_CS, LOW);
+    // delay(SPI_DELAY);
+
+    // memcpy(SPI_Master_Tx_Buffer, MASTER_TEST_MESSAGE, sizeof(MASTER_TEST_MESSAGE));
+    // memcpy(SPI_Master_Tx_Buffer + sizeof(MASTER_TEST_MESSAGE), (void*)&requestedLength, sizeof(uint32_t));
+
+    // transferFunc1(SPI_Master_Tx_Buffer, SPI_Master_Rx_Buffer, TRANSFER_LENGTH_1);
+    // digitalWrite(MY_CS, HIGH);
+    // delay(50 * SPI_DELAY);
+    // Log.trace("< %s", (const char *)SPI_Master_Rx_Buffer);
+    // LOG_DUMP(TRACE, (const char *)SPI_Master_Rx_Buffer, strlen((const char *)SPI_Master_Rx_Buffer));
+    // LOG_PRINTF_C(TRACE, "app", "\r\n");
+    // // assertTrue(strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)) == 0);
+    // Log.trace("strncmp == %d", strncmp((const char *)SPI_Master_Rx_Buffer, SLAVE_TEST_MESSAGE_1, sizeof(SLAVE_TEST_MESSAGE_1)));
+// EXTRA CODE TO CONSUME GARBAGE ^^^
+
+    SPI_Master_Slave_Master_Test_Routine(transferFunc1);
+
+// }
+
+// test(01_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Default_MODE3_MSB)
+// {
+    Log.trace("01_SPI_Master_Slave_Master");
     using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+    auto transferFunc2 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
+    SPI_Master_Slave_Master_Test_Routine(transferFunc2);
+// }
 
-test(02_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_Default_MODE3_MSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(02_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_Default_MODE3_MSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("02_SPI_Master_Slave_Master");
+    auto transferFunc3 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    SPI_Master_Slave_Master_Test_Routine(transferFunc3);
+// }
 
-/*
- * SPI_MODE3, LSBFIRST
- */
-test(03_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE3_LSB)
-{
-    auto transferFunc = SPI_Master_Transfer_No_DMA;
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE3, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// /*
+//  * SPI_MODE3, LSBFIRST
+//  */
+// test(03_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE3_LSB)
+// {
+    Log.trace("03_SPI_Master_Slave_Master");
+    auto transferFunc4 = SPI_Master_Transfer_No_DMA;
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE3, LSBFIRST, transferFunc4));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc4);
+// }
 
-test(04_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE3_LSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE3, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(04_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE3_LSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("04_SPI_Master_Slave_Master");
+    auto transferFunc5 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE3, LSBFIRST, transferFunc5));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc5);
+// }
 
-test(05_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE3_LSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE3, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(05_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE3_LSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("05_SPI_Master_Slave_Master");
+    auto transferFunc6 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE3, LSBFIRST, transferFunc6));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc6);
+// }
 
-/*
- * SPI_MODE0, MSBFIRST
- */
-test(06_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE0_MSB)
-{
-    auto transferFunc = SPI_Master_Transfer_No_DMA;
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// /*
+//  * SPI_MODE0, MSBFIRST
+//  */
+// test(06_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE0_MSB)
+// {
+    Log.trace("06_SPI_Master_Slave_Master");
+    auto transferFunc7 = SPI_Master_Transfer_No_DMA;
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, MSBFIRST, transferFunc7));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc7);
+// }
 
-test(07_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE0_MSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(07_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE0_MSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("07_SPI_Master_Slave_Master");
+    auto transferFunc8 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, MSBFIRST, transferFunc8));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc8);
+// }
 
-test(08_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE0_MSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(08_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE0_MSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("08_SPI_Master_Slave_Master");
+    auto transferFunc9 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, MSBFIRST, transferFunc9));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc9);
+// }
 
-/*
- * SPI_MODE0, LSBFIRST
- */
-test(09_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE0_LSB)
-{
-    auto transferFunc = SPI_Master_Transfer_No_DMA;
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// /*
+//  * SPI_MODE0, LSBFIRST
+//  */
+// test(09_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE0_LSB)
+// {
+    Log.trace("09_SPI_Master_Slave_Master");
+    auto transferFunc10 = SPI_Master_Transfer_No_DMA;
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, LSBFIRST, transferFunc10));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc10);
+// }
 
-test(10_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE0_LSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(10_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE0_LSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("10_SPI_Master_Slave_Master");
+    auto transferFunc11 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, LSBFIRST, transferFunc11));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc11);
+// }
 
-test(11_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE0_LSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(11_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE0_LSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("11_SPI_Master_Slave_Master");
+    auto transferFunc12 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE0, LSBFIRST, transferFunc12));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc12);
+// }
 
-/*
- * SPI_MODE1, MSBFIRST
- */
-test(12_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE1_MSB)
-{
-    auto transferFunc = SPI_Master_Transfer_No_DMA;
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// /*
+//  * SPI_MODE1, MSBFIRST
+//  */
+// test(12_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE1_MSB)
+// {
+    Log.trace("12_SPI_Master_Slave_Master");
+    auto transferFunc13 = SPI_Master_Transfer_No_DMA;
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, MSBFIRST, transferFunc13));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc13);
+// }
 
-test(13_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE1_MSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(13_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE1_MSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("13_SPI_Master_Slave_Master");
+    auto transferFunc14 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, MSBFIRST, transferFunc14));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc14);
+// }
 
-test(14_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE1_MSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(14_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE1_MSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("14_SPI_Master_Slave_Master");
+    auto transferFunc15 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, MSBFIRST, transferFunc15));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc15);
+// }
 
-/*
- * SPI_MODE1, LSBFIRST
- */
-test(15_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE1_LSB)
-{
-    auto transferFunc = SPI_Master_Transfer_No_DMA;
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// /*
+//  * SPI_MODE1, LSBFIRST
+//  */
+// test(15_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE1_LSB)
+// {
+    Log.trace("15_SPI_Master_Slave_Master");
+    auto transferFunc16 = SPI_Master_Transfer_No_DMA;
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, LSBFIRST, transferFunc16));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc16);
+// }
 
-test(16_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE1_LSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(16_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE1_LSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("16_SPI_Master_Slave_Master");
+    auto transferFunc17 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, LSBFIRST, transferFunc17));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc17);
+// }
 
-test(17_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE1_LSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(17_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE1_LSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("17_SPI_Master_Slave_Master");
+    auto transferFunc18 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE1, LSBFIRST, transferFunc18));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc18);
+// }
 
-/*
- * SPI_MODE2, MSBFIRST
- */
-test(18_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE2_MSB)
-{
-    auto transferFunc = SPI_Master_Transfer_No_DMA;
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// /*
+//  * SPI_MODE2, MSBFIRST
+//  */
+// test(18_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE2_MSB)
+// {
+    Log.trace("18_SPI_Master_Slave_Master");
+    auto transferFunc19 = SPI_Master_Transfer_No_DMA;
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, MSBFIRST, transferFunc19));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc19);
+// }
 
-test(19_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE2_MSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(19_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE2_MSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("19_SPI_Master_Slave_Master");
+    auto transferFunc20 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, MSBFIRST, transferFunc20));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc20);
+// }
 
-test(20_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE2_MSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, MSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(20_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE2_MSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("20_SPI_Master_Slave_Master");
+    auto transferFunc21 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, MSBFIRST, transferFunc21));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc21);
+// }
 
-/*
- * SPI_MODE2, LSBFIRST
- */
-test(21_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE2_LSB)
-{
-    auto transferFunc = SPI_Master_Transfer_No_DMA;
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// /*
+//  * SPI_MODE2, LSBFIRST
+//  */
+// test(21_SPI_Master_Slave_Master_Variable_Length_Transfer_No_DMA_MODE2_LSB)
+// {
+    Log.trace("21_SPI_Master_Slave_Master");
+    auto transferFunc22 = SPI_Master_Transfer_No_DMA;
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, LSBFIRST, transferFunc22));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc22);
+// }
 
-test(22_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE2_LSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc);
-}
+// test(22_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_MODE2_LSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("22_SPI_Master_Slave_Master");
+    auto transferFunc23 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, &SPI_DMA_Completed_Callback);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, LSBFIRST, transferFunc23));
+    SPI_Master_Slave_Master_Test_Routine(transferFunc23);
+// }
 
-test(23_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE2_LSB)
-{
-    using namespace std::placeholders;
-    auto transferFunc = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
-    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, LSBFIRST, transferFunc));
-    SPI_Master_Slave_Master_Test_Routine(transferFunc, true);
+
+// test(23_SPI_Master_Slave_Master_Variable_Length_Transfer_DMA_Synchronous_MODE2_LSB)
+// {
+//     using namespace std::placeholders;
+    Log.trace("23_SPI_Master_Slave_Master");
+    auto transferFunc24 = std::bind(SPI_Master_Transfer_DMA, _1, _2, _3, (hal_spi_dma_user_callback)NULL);
+    assertTrue(SPI_Master_Slave_Change_Mode(SPI_MODE2, LSBFIRST, transferFunc24));
+    Log.trace("23_SPI_Master_Slave_Master2");
+    SPI_Master_Slave_Master_Test_Routine(transferFunc24, true);
+    Log.trace("23_SPI_Master_Slave_Master3");
 }
 
 // The following tests inherit the last mode and bit order being set above
-test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
+test(24_SPI_Master_Slave_Const_String_Transfer_DMA)
 {
+    Log.trace("24_SPI_Master_Slave_Master");
     // FIXME: On Gen4, slave's usb serial log may take longer before the next test is ready for a new transaction
     delay(300);
 
@@ -566,8 +642,9 @@ test(24_SPI_Master_Slave_Master_Const_String_Transfer_DMA)
     assertEqual(MY_SPI.available(), strlen(txString));
 }
 
-test(25_SPI_Master_Slave_Master_Reception)
+test(25_SPI_Master_Slave_Reception)
 {
+    Log.trace("25_SPI_Master_Slave_Master");
     // FIXME: On Gen4, slave's usb serial log may take longer before the next test is ready for a new transaction
     delay(300);
 

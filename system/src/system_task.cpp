@@ -57,6 +57,7 @@
 #include "spark_wiring_led.h"
 #if HAL_PLATFORM_IFAPI
 #include "system_listening_mode.h"
+#include "system_connection_manager.h"
 #endif
 
 #if HAL_PLATFORM_BLE_SETUP
@@ -416,7 +417,7 @@ void handle_cloud_connection(bool force_events)
                 }
                 const auto diag = CloudDiagnostics::instance();
                 diag->lastError(err);
-                cloud_disconnect();
+                cloud_disconnect(HAL_PLATFORM_MAY_LEAK_SOCKETS ? CLOUD_DISCONNECT_DONT_CLOSE : 0, CLOUD_DISCONNECT_REASON_ERROR);
             } else {
                 cfod_count = 0;
             }
@@ -436,6 +437,10 @@ void manage_cloud_connection(bool force_events)
     }
     else // cloud connection is wanted
     {
+#if HAL_PLATFORM_IFAPI
+        ConnectionManager::instance()->checkCloudConnectionNetwork();
+#endif // HAL_PLATFORM_IFAPI
+
         establish_cloud_connection();
 
         handle_cloud_connection(force_events);
