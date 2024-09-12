@@ -18,3 +18,6 @@ test('DELAY_02_accuracy_is_within_tolerance', async () => {
   console.log(`Nth percentile variation: ${msg[0]}us`);
   console.log(`Maximum variation: ${msg[1]}us`);
 });
+
+test('DELAY_03_app_events_are_processed_at_expected_rate_in_threaded_mode', async () => {
+});
