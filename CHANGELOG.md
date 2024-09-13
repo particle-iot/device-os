@@ -1,3 +1,9 @@
+## 6.1.2
+
+### FEATURES
+
+- [Gen 3] Increase system-part1 size by reserved 32KB [#2799](https://github.com/particle-iot/device-os/pull/2799)
+
 ## 6.1.1
 
 ### FEATURES

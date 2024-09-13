@@ -721,3 +721,7 @@ void WizNetif::ifEventHandler(const if_event* ev) {
 void WizNetif::netifEventHandler(netif_nsc_reason_t reason, const netif_ext_callback_args_t* args) {
     /* Nothing to do here */
 }
+
+int WizNetif::request(if_req_driver_specific* req, size_t size) {
+    return WizNetifConfig::instance()->request(req, size);
+}

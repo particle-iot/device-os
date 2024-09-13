@@ -25,7 +25,7 @@ __attribute__((weak)) int lwip_hook_ip4_input(struct pbuf *p, struct netif *inp)
     return 0;
 }
 
-__attribute__((weak)) int lwip_hook_ip4_input_post_validation(struct pbuf* p, struct netif* inp) {
+__attribute__((weak)) int lwip_hook_ip4_input_post_validation(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp) {
     return 0;
 }
 

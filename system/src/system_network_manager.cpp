@@ -708,6 +708,10 @@ void NetworkManager::refreshIpState() {
             continue;
         }
 
+        if (addr->ifflags & IFF_DEBUG) {
+            continue;
+        }
+
         /* Skip non-UP and non-LINK_UP interfaces */
         if ((addr->ifflags & (IFF_UP | IFF_LOWER_UP)) != (IFF_UP | IFF_LOWER_UP)) {
             continue;
@@ -883,6 +887,13 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
         }
         if (state) {
             state->enabled = st;
+            unsigned int curFlags = 0;
+            if (if_get_flags(iface, &curFlags)) {
+                return;
+            }
+            if (curFlags & IFF_DEBUG) {
+                state->enabled = false;
+            }
             if_power_state_t pwr = IF_POWER_STATE_NONE;
             if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
                 return;

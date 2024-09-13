@@ -24,6 +24,7 @@
 // app_util.h unconditionally defines STATIC_ASSERT
 #include "static_recursive_mutex.h"
 #include "platforms.h"
+#include "ifapi.h"
 
 #ifdef __cplusplus
 
@@ -57,6 +58,7 @@ public:
     int getConfigData(WizNetifConfigData* configData);
     int lock();
     int unlock();
+    int request(if_req_driver_specific* req, size_t size);
 
 protected:
     WizNetifConfig();

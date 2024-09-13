@@ -19,6 +19,7 @@
 #define HAL_LWIP_LWIPPPPOPTS_H
 
 #include "platforms.h"
+#include "hal_platform.h"
 
 /**
  * PPP_SUPPORT==1: Enable PPP.
@@ -60,7 +61,7 @@
  * MEMP_NUM_PPP_PCB: the number of simultaneously active PPP
  * connections (requires the PPP_SUPPORT option)
  */
-#define MEMP_NUM_PPP_PCB                1
+#define MEMP_NUM_PPP_PCB                (1 + HAL_PLATFORM_PPP_SERVER)
 
 /**
  * PPP_NUM_TIMEOUTS_PER_PCB: the number of sys_timeouts running in parallel per
@@ -239,13 +240,13 @@
  *
  * Currently only supported for PPPoS.
  */
-#define PPP_SERVER                      0
+#define PPP_SERVER                      (HAL_PLATFORM_PPP_SERVER)
 
 #if PPP_SERVER
 /*
  * PPP_OUR_NAME: Our name for authentication purposes
  */
-#define PPP_OUR_NAME                    "lwIP"
+#define PPP_OUR_NAME                    "Particle"
 #endif /* PPP_SERVER */
 
 /**

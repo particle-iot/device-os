@@ -42,6 +42,8 @@ public:
 
     virtual int getCurrentProfile(spark::Vector<char>* profile) const;
 
+    virtual int request(if_req_driver_specific* req, size_t size);
+
 protected:
     void registerHandlers();
 

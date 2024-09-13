@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 #include "ifapi_impl.h"
+#include "ifapi_driver_specific.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -258,21 +259,6 @@ typedef enum if_req_t {
     IF_REQ_DRIVER_SPECIFIC = 3,
     IF_REQ_DHCP_SETTINGS = 4,
 } if_req_t;
-
-typedef struct if_req_driver_specific {
-    uint32_t type;
-} if_req_driver_specific;
-
-typedef enum if_wiznet_driver_specific {
-    IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP = 1,
-} if_wiznet_driver_specific;
-
-typedef struct if_wiznet_pin_remap {
-    if_req_driver_specific base;
-    uint16_t cs_pin;
-    uint16_t reset_pin;
-    uint16_t int_pin;
-} if_wiznet_pin_remap;
 
 int if_init(void);
 int if_init_platform(void*);

@@ -32,13 +32,14 @@ typedef enum network_interface_index {
     // XXX: we cannot easily change these numbers for existing platforms,
     // as it will break ABI compatibility.
     NETWORK_INTERFACE_WIFI_STA = 4,
-    NETWORK_INTERFACE_WIFI_AP = 5
+    NETWORK_INTERFACE_WIFI_AP = 5,
 #else
     // For new platforms that have both cellular and wifi interfaces available
     // we use new correct definitions.
     NETWORK_INTERFACE_WIFI_STA = 5,
-    NETWORK_INTERFACE_WIFI_AP = 6
+    NETWORK_INTERFACE_WIFI_AP = 6,
 #endif // !(HAL_PLATFORM_CELLULAR && HAL_PLATFORM_WIFI)
+    NETWORK_INTERFACE_PPP_SERVER = NETWORK_INTERFACE_WIFI_AP + 1
 } network_interface_index;
 
 /**

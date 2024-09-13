@@ -630,4 +630,18 @@
 #error "I2C transaction API is not implemented on Gen 3 platforms"
 #endif // HAL_PLATFORM_NRF52840 && HAL_PLATFORM_I2C_NUM == 1
 
+#ifndef HAL_PLATFORM_PPP_SERVER
+#define HAL_PLATFORM_PPP_SERVER (0)
+#else
+#ifndef HAL_PLATFORM_PPP_SERVER_USART
+#error "HAL_PLATFORM_PPP_SERVER_USART needs to be defined"
+#endif
+#ifndef HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE
+#error "HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE needs to be defined"
+#endif
+#ifndef HAL_PLATFORM_PPP_SERVER_USART_FLAGS
+#error "HAL_PLATFORM_PPP_SERVER_USART_FLAGS needs to be defined"
+#endif
+#endif // HAL_PLATFORM_PPP_SERVER
+
 #endif /* HAL_PLATFORM_H */
