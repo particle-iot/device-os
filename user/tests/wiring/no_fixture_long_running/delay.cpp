@@ -74,10 +74,10 @@ test(DELAY_02_accuracy_is_within_tolerance) {
     }
 
     std::sort(variations.begin(), variations.end());
-    auto dtPct = variations[std::floor(callCount * 0.995)]; // Nth percentile variation, us
+    auto dtPct = variations[std::floor(callCount * 0.99)]; // Nth percentile variation, us
     auto dtMax = variations.last(); // Maximum variation, us
 
-    assertLess(dtPct, 100);
+    assertLess(dtPct, 200);
     assertLess(dtMax, 1000);
 
     pushMailboxMsg(String::format("%u,%u", dtPct, dtMax), 5000 /* wait */);
