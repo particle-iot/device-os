@@ -32,11 +32,6 @@ void system_part1_pre_init() {
         // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
-    // XXX: temporary solution for continuing active development on 5.x
-    if (user_descriptor.info.dependency.module_version > 5700 &&
-            user_descriptor.info.dependency.module_version < 6000) {
-        set_system_mode(SAFE_MODE);
-    }
 }
 
 /*

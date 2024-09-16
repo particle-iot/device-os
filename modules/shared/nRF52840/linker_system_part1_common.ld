@@ -2,7 +2,7 @@ SECTIONS
 {
     /* Module start */
     INCLUDE linker_module_start_ext.ld
-    
+
     /* Interrupt vector table */
     .vectors :
     {
@@ -23,6 +23,31 @@ SECTIONS
         *(.text.*)
         link_code_ext_end = .;
     } > APP_FLASH_EXT AT>APP_FLASH_EXT
+
+    /* Interrupt vector table */
+    .vectors_legacy :
+    {
+        . = ALIGN(4);
+        link_module_start_legacy = .;
+        KEEP (*(.isr_vector_legacy))
+        . = ALIGN(4);
+    } > APP_FLASH_LEGACY_VTOR  AT> APP_FLASH_LEGACY_VTOR
+
+    .text_legacy_vtor :
+    {
+        . = ALIGN(4);
+        link_code_legacy_vtor_start = .;
+        *(.text.*)
+        link_code_legacy_vtor_end = .;
+    } > APP_FLASH_LEGACY_VTOR AT>APP_FLASH_LEGACY_VTOR
+
+    .module_info_legacy :
+    {
+        . = ALIGN(4);
+        link_module_info_legacy_start = .;
+        KEEP (*.o(.modinfo.module_info_legacy))
+        link_module_info_legacy_end = .;
+    } > APP_FLASH  AT> APP_FLASH
     
     /* Dynalib table */
     .dynalib :
@@ -31,6 +56,14 @@ SECTIONS
         KEEP (*(*.system_part1_module))
         link_dynalib_end = . ;
     } > APP_FLASH AT> APP_FLASH
+
+    .module_info_crc_legacy :
+    {
+        link_module_end_legacy = .;
+        link_module_info_crc_legacy_start = .;
+        KEEP (*.o(.modinfo.module_info_crc_legacy))
+        link_module_info_crc_legacy_end = .;
+    } > APP_FLASH
 
     .text :
     {

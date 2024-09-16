@@ -87,8 +87,8 @@ extern uintptr_t link_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location[];
 extern uintptr_t link_ram_interrupt_vectors_location_end;
 extern char link_stack_location;
-
-
+extern uintptr_t link_stack_end;
+extern void Reset_Handler();
 static void* new_heap_end = &link_heap_location_end;
 
 extern void malloc_enable(uint8_t);
@@ -97,6 +97,12 @@ extern void* malloc_heap_end();
 #if defined(MODULAR_FIRMWARE)
 void* module_user_pre_init();
 #endif
+
+__attribute__((used, section(".isr_vector_legacy"))) static uintptr_t* legacy_vectors[2] = {
+    &link_stack_end,
+    (uintptr_t*)&Reset_Handler
+};
+
 
 __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
