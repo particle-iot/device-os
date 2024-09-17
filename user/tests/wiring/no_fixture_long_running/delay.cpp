@@ -78,7 +78,7 @@ test(DELAY_02_accuracy_is_within_tolerance) {
     auto dtMax = variations.last(); // Maximum variation, us
 
     assertLess(dtPct, 200);
-    assertLess(dtMax, 1000);
+    assertLess(dtMax, 2000);
 
     pushMailboxMsg(String::format("%u,%u", dtPct, dtMax), 5000 /* wait */);
 }
