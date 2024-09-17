@@ -26,6 +26,7 @@
 #include "nrf_rtc.h"
 #include "nrf_power.h"
 #include "nrf_delay.h"
+#include "nrf_nvmc.h"
 
 #ifdef SOFTDEVICE_PRESENT
 #include "nrf_sdh.h"
@@ -89,7 +90,6 @@ static void power_failure_handler(void) {
 }
 
 static void configure_uicr() {
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     bool modified = false;
     // NOTE: we can safely change the MBR parameter page from 0x2f000 (legacy) to 0x27000 as it's just a 1->0 bit flip
     //
@@ -106,11 +106,11 @@ static void configure_uicr() {
         while (NRF_NVMC->READY == NVMC_READY_READY_Busy){
             ;
         }
-        // Make sure to erase MBR parameter page
-        FLASH_EraseMemory(FLASH_INTERNAL, SOFTDEVICE_MBR_PARAM_ADDR, INTERNAL_FLASH_PAGE_SIZE);
+        // Make sure to erase MBR parameter page. Use low level NVMC API here as flash_hal might not be initialized at this point.
+        nrf_nvmc_page_erase(SOFTDEVICE_MBR_PARAM_ADDR);
         modified = true;
     }
-
+#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     if (security_mode_get(NULL) == MODULE_INFO_SECURITY_MODE_PROTECTED && (NRF_UICR->APPROTECT & UICR_APPROTECT_PALL_Msk) == NRF_UICR_APPROTECT_DISABLED) {
         NRF_NVMC->CONFIG = (NVMC_CONFIG_WEN_Wen << NVMC_CONFIG_WEN_Pos);
         while (NRF_NVMC->READY == NVMC_READY_READY_Busy) {
@@ -126,11 +126,10 @@ static void configure_uicr() {
         }
         modified = true;
     }
-
+#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     if (modified) {
         NVIC_SystemReset();
     }
-#endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
 }
 
 /**
