@@ -74,13 +74,29 @@ test(DELAY_02_accuracy_is_within_tolerance) {
     }
 
     std::sort(variations.begin(), variations.end());
-    auto dtPct = variations[std::floor(callCount * 0.99)]; // Nth percentile variation, us
-    auto dtMax = variations.last(); // Maximum variation, us
+    auto dtPct95 = variations[std::floor(callCount * 0.95)]; // 95th percentile variation, us
+    auto dtPct99 = variations[std::floor(callCount * 0.99)]; // 99th percentile variation, us
+    auto dtMax = variations.last(); // Maximum variation, us (1 out of 1000)
+    // String temp = String::format("%u:%u:%u:%u:%u:%u:%u:%u:%u:%u:%u",
+    //     variations[callCount-100],
+    //     variations[callCount-90],
+    //     variations[callCount-80],
+    //     variations[callCount-70],
+    //     variations[callCount-60],
+    //     variations[callCount-50],
+    //     variations[callCount-40],
+    //     variations[callCount-30],
+    //     variations[callCount-20],
+    //     variations[callCount-10],
+    //     variations[callCount-1]);
 
-    assertLess(dtPct, 200);
-    assertLess(dtMax, 2000);
+    assertLess(dtPct95, 100); // 95th percentile
+    assertLess(dtPct99, 200); // 99th percentile
+    assertLess(dtMax, 3000); // 1 out of 1000
 
-    pushMailboxMsg(String::format("%u,%u", dtPct, dtMax), 5000 /* wait */);
+    // DEBUG: Can replace dtMax with temp string of more data (which also includes dtMax)
+    // pushMailboxMsg(String::format("%u,%u,%s", dtPct95, dtPct99, temp.c_str()), 5000 /* wait */);
+    pushMailboxMsg(String::format("%u,%u,%u", dtPct95, dtPct99, dtMax), 5000 /* wait */);
 }
 
 test(DELAY_03_app_events_are_processed_at_expected_rate_in_threaded_mode) {

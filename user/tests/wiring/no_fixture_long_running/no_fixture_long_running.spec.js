@@ -15,8 +15,9 @@ test('DELAY_01_init', async () => {
 test('DELAY_02_accuracy_is_within_tolerance', async () => {
   expect(device.mailBox).to.not.be.empty;
   const msg = device.mailBox[0].d.split(',');
-  console.log(`Nth percentile variation: ${msg[0]}us`);
-  console.log(`Maximum variation: ${msg[1]}us`);
+  console.log(`95th percentile variation: ${msg[0]}us`);
+  console.log(`99th percentile variation: ${msg[1]}us`);
+  console.log(`Maximum variation: ${msg[2]}us`);
 });
 
 test('DELAY_03_app_events_are_processed_at_expected_rate_in_threaded_mode', async () => {
