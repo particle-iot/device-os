@@ -159,7 +159,7 @@ Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishF
     if (r < 0) {
         return Future<bool>((Error::Type)r);
     }
-    return publish(name, s.c_str(), s.length(), ContentType::CBOR, flags);
+    return publish(name, s.c_str(), s.length(), ContentType::JSON_AS_CBOR, flags);
 }
 
 int CloudClass::publishVitals(system_tick_t period_s_) {
