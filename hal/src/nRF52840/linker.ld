@@ -10,10 +10,6 @@ MEMORY
     SRAM      (rwx) : ORIGIN = platform_monolithic_firmware_static_ram_start, LENGTH = platform_monolithic_firmware_static_ram_size
 }
 
-/* TODO: Below sections are required by the Nordic SDK and were copy-pasted from a BLE example code.
- * Consider revising them, especially for modular builds */
-INCLUDE linker_nrf52840_sdk_ram.ld
-
 SECTIONS
 {
     /* Module start */
@@ -111,6 +107,9 @@ SECTIONS
         /* This is used by the startup in order to initialize the .data secion */
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH
+
+    /* nRF52840 specific sections */
+    INCLUDE linker_nrf52840_sdk_ram.ld
 
     /* Zero initialised memory used for zero initialised variables */
     .bss :
