@@ -260,3 +260,11 @@ bool CloudClass::subscribe(const char* name, particle::EventHandlerWithVariantFn
     auto h = eventHandlerCast(subscribeWithVariantFunctionWrapper);
     return subscribeWithFlags(name, h, fnPtr, SUBSCRIBE_FLAG_CBOR_DATA);
 }
+
+namespace particle {
+
+size_t getEventDataSize(const EventData& data) {
+    return getCBORSize(data);
+}
+
+} // namespace particle
