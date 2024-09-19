@@ -36,6 +36,29 @@ namespace particle {
 
 namespace {
 
+class NullOutputStream: public Print {
+public:
+    explicit NullOutputStream() :
+            size_(0) {
+    }
+
+    size_t write(uint8_t b) override {
+        return write(&b, 1);
+    }
+
+    size_t write(const uint8_t* data, size_t size) override {
+        size_ += size;
+        return size;
+    }
+
+    size_t size() const {
+        return size_;
+    }
+
+private:
+    size_t size_;
+};
+
 class DecodingStream {
 public:
     explicit DecodingStream(Stream& stream) :
@@ -882,6 +905,15 @@ int decodeFromCBOR(Variant& var, Stream& stream) {
     CHECK(readCborHead(s, h));
     CHECK(decodeFromCbor(s, h, var));
     return 0;
+}
+
+size_t getCBORSize(const Variant& var) {
+    NullOutputStream s;
+    int r = encodeToCBOR(var, s);
+    if (r < 0) {
+        return 0; // Shouldn't happen
+    }
+    return s.size();
 }
 
 } // namespace particle

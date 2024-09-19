@@ -1111,4 +1111,12 @@ int encodeToCBOR(const Variant& var, Print& stream);
  */
 int decodeFromCBOR(Variant& var, Stream& stream);
 
+/**
+ * Calculate the size of a Variant in CBOR format.
+ *
+ * @param var Variant.
+ * @return Size of CBOR data.
+ */
+size_t getCBORSize(const Variant& var);
+
 } // namespace particle
