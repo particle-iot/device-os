@@ -202,6 +202,13 @@ endif
 		$(OBJCOPY) $< --update-section '.module_info_suffix=$@.suffix'; \
 	fi
 	$(VERBOSE)$(OBJCOPY) -O binary $< $@.pre_crc
+	$(VERBOSE)if $(OBJDUMP) -h $< -j '.module_info_legacy' $(VERBOSE_REDIRECT) >/dev/null 2>&1; then \
+		([ ! -f $@.legacy_info ] || rm $@.legacy_info) && \
+		dd if=$@.pre_crc of=$@.legacy_info bs=1 skip=$$(($(call get_symbol_address,$<,link_module_start_legacy) - $(call get_symbol_address,$<,link_module_start))) \
+			conv=notrunc count=$$(($(call get_symbol_address,$<,link_module_info_crc_legacy_start) - $(call get_symbol_address,$<,link_module_start_legacy))) $(VERBOSE_REDIRECT) && \
+		$(CRC) $@.legacy_info | cut -c 1-10 | $(XXD) -r -p | \
+			dd bs=1 of=$@.pre_crc seek=$$(($(call get_symbol_address,$<,link_module_info_crc_legacy_start) - $(call get_symbol_address,$<,link_module_start))) conv=notrunc $(VERBOSE_REDIRECT); \
+	fi
 	$(VERBOSE)if [ -s $@.pre_crc ]; then \
 	head -c $$(($(call filesize,$@.pre_crc) - $(CRC_BLOCK_LEN))) $@.pre_crc > $@.no_crc && \
 	tail -c $(CRC_BLOCK_LEN) $@.pre_crc > $@.crc_block && \

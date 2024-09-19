@@ -168,6 +168,29 @@ __attribute__((section(".modinfo.module_info_crc"), used)) const module_info_crc
     0x12345678
 };
 
+#if HAL_PLATFORM_INCLUDE_LEGACY_MODULE_INFO
+extern uintptr_t link_module_start_legacy;
+extern uintptr_t link_module_end_legacy;
+
+__attribute__((section(".modinfo.module_info_legacy"), used))
+const module_info_t module_info_legacy = {
+    &link_module_start_legacy,         /* start address */
+    &link_module_end_legacy,           /* end address */
+    0, 0,                       /* reserved, reserved2 */
+    MODULE_VERSION,             /* module version */
+    (uint16_t)(PLATFORM_ID),    /* platform ID */
+    (uint8_t)(MODULE_FUNCTION), /* module function */
+    (uint8_t)(MODULE_INDEX),    /* module index (part1 part2 etc..) */
+    { MODULE_DEPENDENCY },
+    { MODULE_DEPENDENCY2 }
+};
+
+__attribute__((section(".modinfo.module_info_crc_legacy"), used)) const module_info_crc_t module_info_crc_legacy = {
+    0x12345678
+};
+
+#endif // HAL_PLATFORM_INCLUDE_LEGACY_MODULE_INFO
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
