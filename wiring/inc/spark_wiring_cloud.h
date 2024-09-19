@@ -75,6 +75,8 @@ namespace particle {
 class Ledger;
 class Variant;
 
+typedef Variant EventData;
+
 /**
  * Content type.
  */
@@ -89,8 +91,10 @@ enum class ContentType: int {
 typedef void (*EventHandlerWithContentType)(const char* name, const char* data, size_t size, ContentType type);
 typedef std::function<void(const char* name, const char* data, size_t size, ContentType type)> EventHandlerWithContentTypeFn;
 
-typedef void (*EventHandlerWithVariant)(const char* name, Variant data);
-typedef std::function<void(const char* name, Variant data)> EventHandlerWithVariantFn;
+typedef void (*EventHandlerWithVariant)(const char* name, EventData data);
+typedef std::function<void(const char* name, EventData data)> EventHandlerWithVariantFn;
+
+size_t getEventDataSize(const EventData& data);
 
 } // namespace particle
 
@@ -311,7 +315,7 @@ public:
         return publish_event(name, data, size, type, DEFAULT_CLOUD_EVENT_TTL, flags);
     }
 
-    particle::Future<bool> publish(const char* name, const particle::Variant& data, PublishFlags flags = PublishFlags());
+    particle::Future<bool> publish(const char* name, const particle::EventData& data, PublishFlags flags = PublishFlags());
 
     /**
      * @brief Publish vitals information
