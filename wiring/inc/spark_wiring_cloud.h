@@ -84,8 +84,7 @@ enum class ContentType: int {
     TEXT = (int)protocol::CoapContentFormat::TEXT_PLAIN, ///< `text/plain; charset=utf-8`.
     JPEG = (int)protocol::CoapContentFormat::IMAGE_JPEG, ///< `image/jpeg`.
     PNG = (int)protocol::CoapContentFormat::IMAGE_PNG, ///< `image/png`.
-    BINARY = (int)protocol::CoapContentFormat::APPLICATION_OCTET_STREAM, ///< `application/octet-stream`.
-    JSON_AS_CBOR = (int)protocol::CoapContentFormat::PARTICLE_JSON_AS_CBOR ///< `application/vnd.particle.json+cbor` (vendor-specific).
+    BINARY = (int)protocol::CoapContentFormat::APPLICATION_OCTET_STREAM ///< `application/octet-stream`.
 };
 
 typedef void (*EventHandlerWithContentType)(const char* name, const char* data, size_t size, ContentType type);
@@ -294,7 +293,7 @@ public:
 
     inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
     {
-        return publish_event(eventName, eventData, eventData ? std::strlen(eventData) : 0, particle::ContentType::TEXT, ttl, flags1 | flags2);
+        return publish_event(eventName, eventData, eventData ? std::strlen(eventData) : 0, static_cast<int>(particle::ContentType::TEXT), ttl, flags1 | flags2);
     }
 
     particle::Future<bool> publish(const char* name);
@@ -312,7 +311,7 @@ public:
     }
 
     particle::Future<bool> publish(const char* name, const char* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags()) {
-        return publish_event(name, data, size, type, DEFAULT_CLOUD_EVENT_TTL, flags);
+        return publish_event(name, data, size, static_cast<int>(type), DEFAULT_CLOUD_EVENT_TTL, flags);
     }
 
     particle::Future<bool> publish(const char* name, const particle::EventData& data, PublishFlags flags = PublishFlags());
@@ -547,8 +546,8 @@ private:
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
-    static particle::Future<bool> publish_event(const char* name, const char* data, size_t size, particle::ContentType type,
-            int ttl, PublishFlags flags);
+    static particle::Future<bool> publish_event(const char* name, const char* data, size_t size, int type, int ttl,
+            PublishFlags flags);
 
     bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {

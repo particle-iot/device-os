@@ -128,7 +128,7 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }
 
-Future<bool> CloudClass::publish_event(const char* name, const char* data, size_t size, ContentType type, int ttl,
+Future<bool> CloudClass::publish_event(const char* name, const char* data, size_t size, int type, int ttl,
         PublishFlags flags) {
     if (!connected()) {
         return Future<bool>(Error::INVALID_STATE);
@@ -159,7 +159,8 @@ Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishF
     if (r < 0) {
         return Future<bool>((Error::Type)r);
     }
-    return publish(name, s.c_str(), s.length(), ContentType::JSON_AS_CBOR, flags);
+    return publish_event(name, s.c_str(), s.length(), static_cast<int>(protocol::CoapContentFormat::PARTICLE_JSON_AS_CBOR),
+            DEFAULT_CLOUD_EVENT_TTL, flags);
 }
 
 int CloudClass::publishVitals(system_tick_t period_s_) {
