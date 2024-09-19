@@ -81,9 +81,7 @@ enum class ContentType: int {
     TEXT = (int)protocol::CoapContentFormat::TEXT_PLAIN, ///< `text/plain; charset=utf-8`.
     JPEG = (int)protocol::CoapContentFormat::IMAGE_JPEG, ///< `image/jpeg`.
     PNG = (int)protocol::CoapContentFormat::IMAGE_PNG, ///< `image/png`.
-    BINARY = (int)protocol::CoapContentFormat::APPLICATION_OCTET_STREAM, ///< `application/octet-stream`.
-    JSON = (int)protocol::CoapContentFormat::APPLICATION_JSON, ///< `application/json`.
-    CBOR = (int)protocol::CoapContentFormat::APPLICATION_CBOR ///< `application/cbor`.
+    BINARY = (int)protocol::CoapContentFormat::APPLICATION_OCTET_STREAM ///< `application/octet-stream`.
 };
 
 typedef void (*EventHandlerWithContentType)(const char* name, const char* data, size_t size, ContentType type);
