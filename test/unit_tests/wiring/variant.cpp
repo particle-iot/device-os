@@ -510,4 +510,17 @@ TEST_CASE("Variant") {
             CHECK(fromCbor(fromHex("a181018102")) == VariantArray{VariantArray{VariantArray{1}, VariantArray{2}}}); // {[1]: [2]}
         }
     }
+
+    SECTION("getCBORSize()") {
+        SECTION("returns the size of a Variant in CBOR format") {
+            Variant v = VariantMap{
+                {"a", 1234},
+                {"b", Buffer::fromHex("1234")},
+                {"c", VariantArray{1, 2, 3, 4}}
+            };
+            auto s = toCbor(v);
+            CHECK(test::toHex(s) == "a361611904d2616242123461638401020304");
+            CHECK(getCBORSize(v) == s.size());
+        }
+    }
 }
