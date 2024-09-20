@@ -44,9 +44,9 @@ DYNALIB_FN(7, communication, spark_protocol_event_loop, bool(ProtocolFacade* pro
 DYNALIB_FN(8, communication, spark_protocol_is_initialized, bool(ProtocolFacade*))
 DYNALIB_FN(9, communication, spark_protocol_presence_announcement, int(ProtocolFacade*, uint8_t*, const uint8_t*, void*))
 DYNALIB_FN(10, communication, spark_protocol_send_event, bool(ProtocolFacade*, const char*, const char*, int, uint32_t, void*))
-DYNALIB_FN(11, communication, spark_protocol_send_subscription_device, bool(ProtocolFacade*, const char*, const char*, void*))
-DYNALIB_FN(12, communication, spark_protocol_send_subscription_scope, bool(ProtocolFacade*, const char*, SubscriptionScope::Enum, void*))
-DYNALIB_FN(13, communication, spark_protocol_add_event_handler, bool(ProtocolFacade*, const char*, EventHandler, SubscriptionScope::Enum, const char*, void*))
+DYNALIB_FN(11, communication, spark_protocol_send_subscription_device_deprecated, bool(ProtocolFacade*, const char*, const char*, void*))
+DYNALIB_FN(12, communication, spark_protocol_send_subscription, bool(ProtocolFacade*, const char*, uint8_t, void*))
+DYNALIB_FN(13, communication, spark_protocol_add_event_handler, bool(ProtocolFacade*, const char*, EventHandler, uint8_t, const char*, void*))
 DYNALIB_FN(14, communication, spark_protocol_send_time_request, bool(ProtocolFacade*, void*))
 DYNALIB_FN(15, communication, spark_protocol_send_subscriptions, void(ProtocolFacade*, void*))
 

@@ -23,7 +23,7 @@
 #ifdef __cplusplus
 
 #include "spark_wiring_string.h"
-#include "buffer.h"
+#include "spark_wiring_buffer.h"
 #include "str_util.h"
 
 namespace particle {
@@ -158,7 +158,7 @@ inline AssetHash::AssetHash(const char* hash, size_t length, Type type)
 }
 
 inline AssetHash::AssetHash(const uint8_t* hash, size_t length, Type type)
-        : AssetHash(Buffer(hash, length), type) {
+        : AssetHash(Buffer((const char*)hash, length), type) {
 }
 
 inline AssetHash::AssetHash(const Buffer& hash, Type type)

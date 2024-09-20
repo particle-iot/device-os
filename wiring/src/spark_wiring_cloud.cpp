@@ -1,6 +1,8 @@
 #include "spark_wiring_cloud.h"
 
 #include "spark_wiring_ledger.h"
+#include "spark_wiring_variant.h"
+#include "spark_wiring_print.h"
 
 #include <functional>
 #include "system_cloud.h"
@@ -10,6 +12,16 @@ namespace {
 
 using namespace particle;
 
+bool parseVariantFromCbor(Variant& v, const char* data, size_t size) {
+    InputBufferStream stream(data, size);
+    int r = decodeFromCBOR(v, stream);
+    if (r < 0) {
+        LOG(ERROR, "Failed to parse CBOR: %d", r);
+        return false;
+    }
+    return true;
+}
+
 void publishCompletionCallback(int error, const void* data, void* callbackData, void* reserved) {
     auto p = Promise<bool>::fromDataPtr(callbackData);
     if (error != Error::NONE) {
@@ -17,6 +29,50 @@ void publishCompletionCallback(int error, const void* data, void* callbackData, 
     } else {
         p.setResult(true);
     }
+}
+
+inline bool subscribeWithFlags(const char* name, EventHandler handler, void* handlerData, int flags) {
+    spark_subscribe_param param = {};
+    param.size = sizeof(param);
+    param.flags = flags;
+
+    return spark_subscribe(name, handler, handlerData, MY_DEVICES, nullptr /* device_id_deprecated */, &param);
+}
+
+void subscribeWithContentTypeCallbackWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
+    auto cb = (EventHandlerWithContentType)arg;
+    cb(name, data, dataSize, (ContentType)contentType);
+}
+
+void subscribeWithContentTypeFunctionWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
+    auto fn = (EventHandlerWithContentTypeFn*)arg;
+    (*fn)(name, data, dataSize, (ContentType)contentType);
+}
+
+void subscribeWithVariantCallbackWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
+    Variant v;
+    if (!parseVariantFromCbor(v, data, dataSize)) {
+        return;
+    }
+    auto cb = (EventHandlerWithVariant)arg;
+    cb(name, std::move(v));
+}
+
+void subscribeWithVariantFunctionWrapper(void* arg, const char* name, const char* data, size_t dataSize, int contentType) {
+    Variant v;
+    if (!parseVariantFromCbor(v, data, dataSize)) {
+        return;
+    }
+    auto fn = (EventHandlerWithVariantFn*)arg;
+    (*fn)(name, std::move(v));
+}
+
+template<typename T>
+inline EventHandler eventHandlerCast(T* fn) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+    return (EventHandler)fn;
+#pragma GCC diagnostic pop
 }
 
 } // namespace
@@ -72,25 +128,39 @@ bool CloudClass::register_function(cloud_function_t fn, void* data, const char* 
     return spark_function(NULL, (user_function_int_str_t*)&desc, NULL);
 }
 
-Future<bool> CloudClass::publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags) {
+Future<bool> CloudClass::publish_event(const char* name, const char* data, size_t size, int type, int ttl,
+        PublishFlags flags) {
     if (!connected()) {
         return Future<bool>(Error::INVALID_STATE);
     }
     spark_send_event_data d = {};
     d.size = sizeof(spark_send_event_data);
+    d.data_size = size;
+    d.content_type = static_cast<int>(type);
 
     // Completion handler
     Promise<bool> p;
     d.handler_callback = publishCompletionCallback;
     d.handler_data = p.dataPtr();
 
-    if (!spark_send_event(eventName, eventData, ttl, flags.value(), &d) && !p.isDone()) {
+    if (!spark_send_event(name, data, ttl, flags.value(), &d) && !p.isDone()) {
         // Set generic error code in case completion callback wasn't invoked for some reason
         p.setError(Error::UNKNOWN);
         p.fromDataPtr(d.handler_data); // Free wrapper object
     }
 
     return p.future();
+}
+
+Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishFlags flags) {
+    String s;
+    OutputStringStream stream(s);
+    int r = encodeToCBOR(data, stream);
+    if (r < 0) {
+        return Future<bool>((Error::Type)r);
+    }
+    return publish_event(name, s.c_str(), s.length(), static_cast<int>(protocol::CoapContentFormat::PARTICLE_JSON_AS_CBOR),
+            DEFAULT_CLOUD_EVENT_TTL, flags);
 }
 
 int CloudClass::publishVitals(system_tick_t period_s_) {
@@ -163,3 +233,39 @@ int CloudClass::useLedgersImpl(const Vector<const char*>& usedNames) {
 }
 
 #endif // Wiring_Ledger
+
+bool CloudClass::subscribe(const char* name, EventHandlerWithContentType handler) {
+    auto h = eventHandlerCast(subscribeWithContentTypeCallbackWrapper);
+    return subscribeWithFlags(name, h, (void*)handler, SUBSCRIBE_FLAG_BINARY_DATA);
+}
+
+bool CloudClass::subscribe(const char* name, EventHandlerWithContentTypeFn handler) {
+    auto fnPtr = new(std::nothrow) EventHandlerWithContentTypeFn(std::move(handler));
+    if (!fnPtr) {
+        return false;
+    }
+    auto h = eventHandlerCast(subscribeWithContentTypeFunctionWrapper);
+    return subscribeWithFlags(name, h, fnPtr, SUBSCRIBE_FLAG_BINARY_DATA);
+}
+
+bool CloudClass::subscribe(const char* name, particle::EventHandlerWithVariant handler) {
+    auto h = eventHandlerCast(subscribeWithVariantCallbackWrapper);
+    return subscribeWithFlags(name, h, (void*)handler, SUBSCRIBE_FLAG_CBOR_DATA);
+}
+
+bool CloudClass::subscribe(const char* name, particle::EventHandlerWithVariantFn handler) {
+    auto fnPtr = new(std::nothrow) EventHandlerWithVariantFn(std::move(handler));
+    if (!fnPtr) {
+        return false;
+    }
+    auto h = eventHandlerCast(subscribeWithVariantFunctionWrapper);
+    return subscribeWithFlags(name, h, fnPtr, SUBSCRIBE_FLAG_CBOR_DATA);
+}
+
+namespace particle {
+
+size_t getEventDataSize(const EventData& data) {
+    return getCBORSize(data);
+}
+
+} // namespace particle

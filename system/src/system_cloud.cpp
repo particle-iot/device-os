@@ -44,6 +44,7 @@
 #include "string_convert.h"
 #include "spark_protocol_functions.h"
 #include "events.h"
+#include "coap_defs.h"
 #include "deviceid_hal.h"
 #include "system_mode.h"
 
@@ -82,21 +83,6 @@ int getConnectionProperty(protocol::Connection::Enum property, void* data, size_
 
 } // namespace
 
-SubscriptionScope::Enum convert(Spark_Subscription_Scope_TypeDef subscription_type)
-{
-    return(subscription_type==MY_DEVICES) ? SubscriptionScope::MY_DEVICES : SubscriptionScope::FIREHOSE;
-}
-
-bool register_event(const char* eventName, SubscriptionScope::Enum event_scope, const char* deviceID)
-{
-    bool success;
-    if (deviceID)
-        success = spark_protocol_send_subscription_device(sp, eventName, deviceID);
-    else
-        success = spark_protocol_send_subscription_scope(sp, eventName, event_scope);
-    return success;
-}
-
 int spark_publish_vitals(system_tick_t period_s_, void* reserved_)
 {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_publish_vitals(period_s_, reserved_));
@@ -120,17 +106,24 @@ int spark_publish_vitals(system_tick_t period_s_, void* reserved_)
     return result;
 }
 
-bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
-        Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved)
+bool spark_subscribe(const char* event_name, EventHandler handler, void* handler_data,
+        Spark_Subscription_Scope_TypeDef scope_deprecated, const char* device_id_deprecated, spark_subscribe_param* param)
 {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_subscribe(eventName, handler, handler_data, scope, deviceID, reserved));
-    auto event_scope = convert(scope);
-    bool success = spark_protocol_add_event_handler(sp, eventName, handler, event_scope, deviceID, handler_data);
-    if (success && spark_cloud_flag_connected() && (system_mode() != AUTOMATIC || APPLICATION_SETUP_DONE))
-    {
-        register_event(eventName, event_scope, deviceID);
+    SYSTEM_THREAD_CONTEXT_SYNC(spark_subscribe(event_name, handler, handler_data, scope_deprecated, device_id_deprecated, param));
+    int flags = 0;
+    if (param) {
+        if (param->flags & SUBSCRIBE_FLAG_CBOR_DATA) {
+            flags |= SubscriptionFlag::CBOR_DATA;
+        }
+        if (param->flags & SUBSCRIBE_FLAG_BINARY_DATA) {
+            flags |= SubscriptionFlag::BINARY_DATA;
+        }
     }
-    return success;
+    bool ok = spark_protocol_add_event_handler(sp, event_name, handler, flags, nullptr /* device_id_deprecated */, handler_data);
+    if (ok && spark_cloud_flag_connected() && (system_mode() != AUTOMATIC || APPLICATION_SETUP_DONE)) {
+        ok = spark_protocol_send_subscription(sp, event_name, flags, nullptr /* reserved */);
+    }
+    return ok;
 }
 
 void spark_unsubscribe(void *reserved)
@@ -165,36 +158,39 @@ system_tick_t spark_sync_time_last(time32_t* tm32, time_t* tm)
     return spark_protocol_time_last_synced(system_cloud_protocol_instance(), tm32, tm);
 }
 
-/**
- * Convert from the API flags to the communications lib flags
- * The event visibility flag (public/private) is encoded differently. The other flags map directly.
- */
-inline uint32_t convert(uint32_t flags) {
-	bool priv = flags & PUBLISH_EVENT_FLAG_PRIVATE;
-	flags &= ~PUBLISH_EVENT_FLAG_PRIVATE;
-	flags |= !priv ? EventType::PUBLIC : EventType::PRIVATE;
-	return flags;
-}
-
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved)
 {
     if (flags & PUBLISH_EVENT_FLAG_ASYNC) {
         SYSTEM_THREAD_CONTEXT_ASYNC_RESULT(spark_send_event(name, data, ttl, flags, reserved), true);
-    }
-    else {
-    SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
+    } else {
+        SYSTEM_THREAD_CONTEXT_SYNC(spark_send_event(name, data, ttl, flags, reserved));
     }
 
     spark_protocol_send_event_data d = {};
     d.size = sizeof(d);
+    d.content_type = (int)protocol::CoapContentFormat::TEXT_PLAIN;
+
+    bool hasDataSize = false;
     if (reserved) {
         // Forward completion callback to the protocol implementation
         auto r = static_cast<const spark_send_event_data*>(reserved);
         d.handler_callback = r->handler_callback;
         d.handler_data = r->handler_data;
+        if (r->size >= offsetof(spark_send_event_data, data_size) + sizeof(spark_send_event_data::data_size) +
+                sizeof(spark_send_event_data::content_type)) {
+            d.data_size = r->data_size;
+            d.content_type = r->content_type;
+            hasDataSize = true;
+        }
+    }
+    if (!hasDataSize) {
+        d.data_size = data ? std::strlen(data) : 0;
     }
 
-    return spark_protocol_send_event(sp, name, data, ttl, convert(flags), &d);
+    // Visibility flags no longer have effect
+    flags &= ~PUBLISH_EVENT_FLAG_PRIVATE;
+
+    return spark_protocol_send_event(sp, name, data, ttl, flags, &d);
 }
 
 bool spark_variable(const char *varKey, const void *userVar, Spark_Data_TypeDef userVarType, spark_variable_t* extra)

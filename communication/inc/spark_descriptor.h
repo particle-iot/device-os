@@ -68,6 +68,9 @@ namespace SparkAppStateUpdate {
 
 struct SparkDescriptor
 {
+    typedef void (*CallEventHandlerCallback)(uint16_t size, FilteringEventHandler* handler, const char* event,
+        const char* data, size_t data_size, int content_type);
+
     typedef std::function<bool(const void*, SparkReturnType::Enum)> FunctionResultCallback;
 
     /**
@@ -96,7 +99,7 @@ struct SparkDescriptor
 
     bool (*append_system_info)(appender_fn appender, void* append, void* reserved);
 
-    void (*call_event_handler)(uint16_t size, FilteringEventHandler* handler, const char* event, const char* data, void* reserved);
+    CallEventHandlerCallback call_event_handler;
 
     /**
      * Optional callback - may be null.

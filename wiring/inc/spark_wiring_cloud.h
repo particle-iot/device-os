@@ -23,9 +23,11 @@
 #pragma once
 
 #include <chrono>
+#include <cstring>
 
 #include "spark_wiring_string.h"
 #include "events.h"
+#include "coap_defs.h"
 #include "system_cloud.h"
 #include "system_sleep.h"
 #include "system_tick_hal.h"
@@ -71,6 +73,27 @@ struct is_string_literal {
 namespace particle {
 
 class Ledger;
+class Variant;
+
+typedef Variant EventData;
+
+/**
+ * Content type.
+ */
+enum class ContentType: int {
+    TEXT = (int)protocol::CoapContentFormat::TEXT_PLAIN, ///< `text/plain; charset=utf-8`.
+    JPEG = (int)protocol::CoapContentFormat::IMAGE_JPEG, ///< `image/jpeg`.
+    PNG = (int)protocol::CoapContentFormat::IMAGE_PNG, ///< `image/png`.
+    BINARY = (int)protocol::CoapContentFormat::APPLICATION_OCTET_STREAM ///< `application/octet-stream`.
+};
+
+typedef void (*EventHandlerWithContentType)(const char* name, const char* data, size_t size, ContentType type);
+typedef std::function<void(const char* name, const char* data, size_t size, ContentType type)> EventHandlerWithContentTypeFn;
+
+typedef void (*EventHandlerWithVariant)(const char* name, EventData data);
+typedef std::function<void(const char* name, EventData data)> EventHandlerWithVariantFn;
+
+size_t getEventDataSize(const EventData& data);
 
 } // namespace particle
 
@@ -255,7 +278,7 @@ public:
 
     inline particle::Future<bool> publish(const char *eventName, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
     {
-        return publish(eventName, NULL, flags1, flags2);
+        return publish(eventName, nullptr, DEFAULT_CLOUD_EVENT_TTL, flags1, flags2);
     }
 
     inline particle::Future<bool> publish(const char *eventName, const char *eventData, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
@@ -263,14 +286,35 @@ public:
         return publish(eventName, eventData, DEFAULT_CLOUD_EVENT_TTL, flags1, flags2);
     }
 
+    inline particle::Future<bool> publish(const char *eventName, const String& eventData, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
+    {
+        return publish(eventName, eventData.c_str(), DEFAULT_CLOUD_EVENT_TTL, flags1, flags2);
+    }
+
     inline particle::Future<bool> publish(const char *eventName, const char *eventData, int ttl, PublishFlags flags1, PublishFlags flags2 = PublishFlags())
     {
-        return publish_event(eventName, eventData, ttl, flags1 | flags2);
+        return publish_event(eventName, eventData, eventData ? std::strlen(eventData) : 0, static_cast<int>(particle::ContentType::TEXT), ttl, flags1 | flags2);
     }
 
     particle::Future<bool> publish(const char* name);
     particle::Future<bool> publish(const char* name, const char* data);
+    particle::Future<bool> publish(const char* name, const String& data);
     particle::Future<bool> publish(const char* name, const char* data, int ttl);
+    particle::Future<bool> publish(const char* name, const String& data, int ttl);
+
+    particle::Future<bool> publish(const char* name, const char* data, particle::ContentType type, PublishFlags flags = PublishFlags()) {
+        return publish(name, data, std::strlen(data), type, flags);
+    }
+
+    particle::Future<bool> publish(const char* name, const String& data, particle::ContentType type, PublishFlags flags = PublishFlags()) {
+        return publish(name, data.c_str(), data.length(), type, flags);
+    }
+
+    particle::Future<bool> publish(const char* name, const char* data, size_t size, particle::ContentType type, PublishFlags flags = PublishFlags()) {
+        return publish_event(name, data, size, static_cast<int>(type), DEFAULT_CLOUD_EVENT_TTL, flags);
+    }
+
+    particle::Future<bool> publish(const char* name, const particle::EventData& data, PublishFlags flags = PublishFlags());
 
     /**
      * @brief Publish vitals information
@@ -297,27 +341,32 @@ public:
     int publishVitals(system_tick_t period_s = particle::NOW);
     inline int publishVitals(std::chrono::seconds s) { return publishVitals(s.count()); }
 
+    [[deprecated("Subscription scope has no effect")]]
     inline bool subscribe(const char *eventName, EventHandler handler, Spark_Subscription_Scope_TypeDef scope)
     {
         return spark_subscribe(eventName, handler, NULL, scope, NULL, NULL);
     }
 
+    [[deprecated("Subscription scope has no effect")]]
     inline bool subscribe(const char *eventName, EventHandler handler, const char *deviceID)
     {
         return spark_subscribe(eventName, handler, NULL, MY_DEVICES, deviceID, NULL);
     }
 
+    [[deprecated("Subscription scope has no effect")]]
     bool subscribe(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope)
     {
         return subscribe_wiring(eventName, handler, scope);
     }
 
+    [[deprecated("Subscription scope has no effect")]]
     bool subscribe(const char *eventName, wiring_event_handler_t handler, const char *deviceID)
     {
         return subscribe_wiring(eventName, handler, MY_DEVICES, deviceID);
     }
 
     template <typename T>
+    [[deprecated("Subscription scope has no effect")]]
     bool subscribe(const char *eventName, void (T::*handler)(const char *, const char *), T *instance, Spark_Subscription_Scope_TypeDef scope)
     {
         using namespace std::placeholders;
@@ -325,6 +374,7 @@ public:
     }
 
     template <typename T>
+    [[deprecated("Subscription scope has no effect")]]
     bool subscribe(const char *eventName, void (T::*handler)(const char *, const char *), T *instance, const char *deviceID)
     {
         using namespace std::placeholders;
@@ -335,6 +385,12 @@ public:
     bool subscribe(const char* name, wiring_event_handler_t handler);
     template<typename T>
     bool subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance);
+
+    bool subscribe(const char* name, particle::EventHandlerWithContentType handler);
+    bool subscribe(const char* name, particle::EventHandlerWithContentTypeFn handler);
+
+    bool subscribe(const char* name, particle::EventHandlerWithVariant handler);
+    bool subscribe(const char* name, particle::EventHandlerWithVariantFn handler);
 
     void unsubscribe()
     {
@@ -490,7 +546,8 @@ private:
 
     static void call_wiring_event_handler(const void* param, const char *event_name, const char *data);
 
-    static particle::Future<bool> publish_event(const char *eventName, const char *eventData, int ttl, PublishFlags flags);
+    static particle::Future<bool> publish_event(const char* name, const char* data, size_t size, int type, int ttl,
+            PublishFlags flags);
 
     bool subscribe_wiring(const char *eventName, wiring_event_handler_t handler, Spark_Subscription_Scope_TypeDef scope, const char *deviceID = NULL)
     {
@@ -689,8 +746,16 @@ inline particle::Future<bool> CloudClass::publish(const char* name, const char* 
     return publish(name, data, PUBLIC);
 }
 
+inline particle::Future<bool> CloudClass::publish(const char* name, const String& data) {
+    return publish(name, data.c_str(), PUBLIC);
+}
+
 inline particle::Future<bool> CloudClass::publish(const char* name, const char* data, int ttl) {
     return publish(name, data, ttl, PUBLIC);
+}
+
+inline particle::Future<bool> CloudClass::publish(const char* name, const String& data, int ttl) {
+    return publish(name, data.c_str(), ttl, PUBLIC);
 }
 
 inline bool CloudClass::subscribe(const char* name, EventHandler handler) {

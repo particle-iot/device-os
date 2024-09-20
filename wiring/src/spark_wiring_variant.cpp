@@ -36,6 +36,29 @@ namespace particle {
 
 namespace {
 
+class NullOutputStream: public Print {
+public:
+    explicit NullOutputStream() :
+            size_(0) {
+    }
+
+    size_t write(uint8_t b) override {
+        return write(&b, 1);
+    }
+
+    size_t write(const uint8_t* data, size_t size) override {
+        size_ += size;
+        return size;
+    }
+
+    size_t size() const {
+        return size_;
+    }
+
+private:
+    size_t size_;
+};
+
 class DecodingStream {
 public:
     explicit DecodingStream(Stream& stream) :
@@ -68,7 +91,7 @@ public:
     int read(char* data, size_t size) {
         size_t n = stream_.readBytes(data, size);
         if (n != size) {
-            return Error::IO;
+            return Error::END_OF_STREAM;
         }
         return 0;
     }
@@ -143,6 +166,19 @@ struct CborHead {
     int detail;
 };
 
+int appendKeyValueArray(VariantArray& arr, Variant key, Variant val) {
+    VariantArray arr2;
+    if (!arr2.reserve(2)) {
+        return Error::NO_MEMORY;
+    }
+    arr2.append(std::move(key));
+    arr2.append(std::move(val));
+    if (!arr.append(Variant(std::move(arr2)))) {
+        return Error::NO_MEMORY;
+    }
+    return 0;
+}
+
 int readAndAppendToString(DecodingStream& stream, size_t size, String& str) {
     if (!str.reserve(str.length() + size)) {
         return Error::NO_MEMORY;
@@ -154,6 +190,15 @@ int readAndAppendToString(DecodingStream& stream, size_t size, String& str) {
         str.concat(buf, n);
         size -= n;
     }
+    return 0;
+}
+
+int readAndAppendToBuffer(DecodingStream& stream, size_t size, Buffer& buf) {
+    auto oldSize = buf.size();
+    if (!buf.resize(oldSize + size)) {
+        return Error::NO_MEMORY;
+    }
+    CHECK(stream.read(buf.data() + oldSize, size));
     return 0;
 }
 
@@ -202,7 +247,7 @@ int readCborHead(DecodingStream& stream, CborHead& head) {
     return 0;
 }
 
-int writeCborHeadWithArgument(EncodingStream& stream, int type, uint64_t arg) {
+int writeCborHead(EncodingStream& stream, int type, uint64_t arg) {
     type <<= 5;
     if (arg < 24) {
         CHECK(stream.writeUint8(arg | type));
@@ -223,22 +268,23 @@ int writeCborHeadWithArgument(EncodingStream& stream, int type, uint64_t arg) {
 }
 
 int writeCborUnsignedInteger(EncodingStream& stream, uint64_t val) {
-    CHECK(writeCborHeadWithArgument(stream, 0 /* Unsigned integer */, val));
+    CHECK(writeCborHead(stream, 0 /* Unsigned integer */, val));
     return 0;
 }
 
 int writeCborSignedInteger(EncodingStream& stream, int64_t val) {
     if (val < 0) {
         val = -(val + 1);
-        CHECK(writeCborHeadWithArgument(stream, 1 /* Negative integer */, val));
+        CHECK(writeCborHead(stream, 1 /* Negative integer */, val));
     } else {
-        CHECK(writeCborHeadWithArgument(stream, 0 /* Unsigned integer */, val));
+        CHECK(writeCborHead(stream, 0 /* Unsigned integer */, val));
     }
     return 0;
 }
 
-int readCborString(DecodingStream& stream, const CborHead& head, String& str) {
-    String s;
+template<typename T, typename F>
+int readCborString(DecodingStream& stream, const CborHead& head, T& output, const F& read) {
+    T out;
     if (head.detail == 31 /* Indefinite length */) {
         for (;;) {
             CborHead h;
@@ -246,27 +292,43 @@ int readCborString(DecodingStream& stream, const CborHead& head, String& str) {
             if (h.type == 7 /* Misc. items */ && h.detail == 31 /* Stop code */) {
                 break;
             }
-            if (h.type != 3 /* Text string */ || h.detail == 31 /* Indefinite length */) { // Chunks of indefinite length are not permitted
+            if (h.type != head.type || h.detail == 31 /* Indefinite length */) { // Chunks of indefinite length are not permitted
                 return Error::BAD_DATA;
             }
             if (h.arg > std::numeric_limits<unsigned>::max()) {
                 return Error::OUT_OF_RANGE;
             }
-            CHECK(readAndAppendToString(stream, h.arg, s));
+            CHECK(read(stream, h.arg, out));
         }
     } else {
         if (head.arg > std::numeric_limits<unsigned>::max()) {
             return Error::OUT_OF_RANGE;
         }
-        CHECK(readAndAppendToString(stream, head.arg, s));
+        CHECK(read(stream, head.arg, out));
     }
-    str = std::move(s);
+    output = std::move(out);
     return 0;
 }
 
-int writeCborString(EncodingStream& stream, const String& str) {
-    CHECK(writeCborHeadWithArgument(stream, 3 /* Text string */, str.length()));
+int readCborTextString(DecodingStream& stream, const CborHead& head, String& str) {
+    CHECK(readCborString(stream, head, str, readAndAppendToString));
+    return 0;
+}
+
+int writeCborTextString(EncodingStream& stream, const String& str) {
+    CHECK(writeCborHead(stream, 3 /* Text string */, str.length()));
     CHECK(stream.write(str.c_str(), str.length()));
+    return 0;
+}
+
+int readCborByteString(DecodingStream& stream, const CborHead& head, Buffer& buf) {
+    CHECK(readCborString(stream, head, buf, readAndAppendToBuffer));
+    return 0;
+}
+
+int writeCborByteString(EncodingStream& stream, const Buffer& buf) {
+    CHECK(writeCborHead(stream, 2 /* Byte string */, buf.size()));
+    CHECK(stream.write(buf.data(), buf.size()));
     return 0;
 }
 
@@ -311,12 +373,16 @@ int encodeToCbor(EncodingStream& stream, const Variant& var) {
         break;
     }
     case Variant::STRING: {
-        CHECK(writeCborString(stream, var.value<String>()));
+        CHECK(writeCborTextString(stream, var.value<String>()));
+        break;
+    }
+    case Variant::BUFFER: {
+        CHECK(writeCborByteString(stream, var.value<Buffer>()));
         break;
     }
     case Variant::ARRAY: {
         auto& arr = var.value<VariantArray>();
-        CHECK(writeCborHeadWithArgument(stream, 4 /* Array */, arr.size()));
+        CHECK(writeCborHead(stream, 4 /* Array */, arr.size()));
         for (auto& v: arr) {
             CHECK(encodeToCbor(stream, v));
         }
@@ -324,9 +390,9 @@ int encodeToCbor(EncodingStream& stream, const Variant& var) {
     }
     case Variant::MAP: {
         auto& entries = var.value<VariantMap>().entries();
-        CHECK(writeCborHeadWithArgument(stream, 5 /* Map */, entries.size()));
+        CHECK(writeCborHead(stream, 5 /* Map */, entries.size()));
         for (auto& e: entries) {
-            CHECK(writeCborString(stream, e.first));
+            CHECK(writeCborTextString(stream, e.first));
             CHECK(encodeToCbor(stream, e.second));
         }
         break;
@@ -360,11 +426,14 @@ int decodeFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
         break;
     }
     case 2: { // Byte string
-        return Error::NOT_SUPPORTED; // Not supported
+        Buffer b;
+        CHECK(readCborByteString(stream, head, b));
+        var = std::move(b);
+        break;
     }
     case 3: { // Text string
         String s;
-        CHECK(readCborString(stream, head, s));
+        CHECK(readCborTextString(stream, head, s));
         var = std::move(s);
         break;
     }
@@ -402,19 +471,19 @@ int decodeFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
         break;
     }
     case 5: { // Map
-        VariantMap map;
+        Variant cont = VariantMap(); // Initially a map but can be an array
         int len = -1;
         if (head.detail != 31 /* Indefinite length */) {
             if (head.arg > (uint64_t)std::numeric_limits<int>::max()) {
                 return Error::OUT_OF_RANGE;
             }
             len = head.arg;
-            if (!map.reserve(len)) {
+            if (!cont.asMap().reserve(len)) {
                 return Error::NO_MEMORY;
             }
         }
         for (;;) {
-            if (len >= 0 && map.size() == len) {
+            if (len >= 0 && cont.size() == len) {
                 break;
             }
             CborHead h;
@@ -425,19 +494,33 @@ int decodeFromCbor(DecodingStream& stream, const CborHead& head, Variant& var) {
                 }
                 break;
             }
-            if (h.type != 3 /* Text string */) {
-                return Error::NOT_SUPPORTED; // Non-string keys are not supported
-            }
-            String k;
-            CHECK(readCborString(stream, h, k));
+            Variant k;
+            CHECK(decodeFromCbor(stream, h, k));
             Variant v;
             CHECK(readCborHead(stream, h));
             CHECK(decodeFromCbor(stream, h, v));
-            if (!map.set(std::move(k), std::move(v))) {
-                return Error::NO_MEMORY;
+            if (cont.isMap()) {
+                if (!k.isString()) {
+                    // VariantMap can only contain string keys. Convert the map to an array of
+                    // key-value pairs
+                    VariantArray arr;
+                    int capacity = (len < 0) ? (cont.size() + 1) : len;
+                    if (!arr.reserve(capacity)) {
+                        return Error::NO_MEMORY;
+                    }
+                    for (auto& entry: cont.asMap()) {
+                        CHECK(appendKeyValueArray(arr, entry.first, std::move(entry.second))); // Can't move the key
+                    }
+                    cont = std::move(arr);
+                } else if (!cont.asMap().set(std::move(k.asString()), std::move(v))) {
+                    return Error::NO_MEMORY;
+                }
+            }
+            if (cont.isArray()) {
+                CHECK(appendKeyValueArray(cont.asArray(), std::move(k), std::move(v)));
             }
         }
-        var = std::move(map);
+        var = std::move(cont);
         break;
     }
     case 6: { // Tagged item
@@ -759,6 +842,8 @@ int Variant::size() const {
     switch (type()) {
     case Type::STRING:
         return value<String>().length();
+    case Type::BUFFER:
+        return value<Buffer>().size();
     case Type::ARRAY:
         return value<VariantArray>().size();
     case Type::MAP:
@@ -774,6 +859,8 @@ bool Variant::isEmpty() const {
         return true; // A default-constructed Variant is empty
     case Type::STRING:
         return value<String>().length() == 0;
+    case Type::BUFFER:
+        return value<Buffer>().size() == 0;
     case Type::ARRAY:
         return value<VariantArray>().isEmpty();
     case Type::MAP:
@@ -818,6 +905,15 @@ int decodeFromCBOR(Variant& var, Stream& stream) {
     CHECK(readCborHead(s, h));
     CHECK(decodeFromCbor(s, h, var));
     return 0;
+}
+
+size_t getCBORSize(const Variant& var) {
+    NullOutputStream s;
+    int r = encodeToCBOR(var, s);
+    if (r < 0) {
+        return 0; // Shouldn't happen
+    }
+    return s.size();
 }
 
 } // namespace particle

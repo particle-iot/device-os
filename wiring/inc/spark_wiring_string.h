@@ -92,6 +92,7 @@ public:
     // is left unchanged).  reserve(0), if successful, will validate an
     // invalid string (i.e., "if (s)" will be true afterwards)
     unsigned char reserve(unsigned int size);
+    bool resize(size_t size);
     inline unsigned int length(void) const {return len;}
 
     unsigned int capacity() const {

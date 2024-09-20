@@ -145,6 +145,11 @@ test(api_spark_publish) {
     API_COMPILE(Particle.publish("event", "data", 60, PUBLIC, NO_ACK));
     API_COMPILE(Particle.publish("event", "data", 60, PUBLIC | NO_ACK));
 
+    API_COMPILE(Particle.publish("event", "data", ContentType::TEXT));
+    API_COMPILE(Particle.publish("event", "data", ContentType::TEXT, NO_ACK));
+    API_COMPILE(Particle.publish("event", "data", 4 /* size */, ContentType::TEXT));
+    API_COMPILE(Particle.publish("event", "data", 4 /* size */, ContentType::TEXT, NO_ACK));
+
     // Particle.publish(String, String, ...)
     API_COMPILE(Particle.publish(String("event")));
     API_COMPILE(Particle.publish(String("event"), PUBLIC));
@@ -160,6 +165,12 @@ test(api_spark_publish) {
     API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC));
     API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC, NO_ACK));
     API_COMPILE(Particle.publish(String("event"), String("data"), 60, PUBLIC | NO_ACK));
+
+    API_COMPILE(Particle.publish("event", String("data"), ContentType::TEXT));
+    API_COMPILE(Particle.publish("event", String("data"), ContentType::TEXT, NO_ACK));
+
+    API_COMPILE(Particle.publish("event", EventData("data")));
+    API_COMPILE(Particle.publish("event", EventData("data"), NO_ACK));
 }
 
 test(api_spark_publish_vitals) {
@@ -198,6 +209,11 @@ test(api_spark_subscribe) {
 
     API_COMPILE(Particle.subscribe("name", &MyClass::handler, &myObj, "1234"));
 
+    void (*handlerWithContentType)(const char* name, const char* data, size_t size, ContentType type) = nullptr;
+    API_COMPILE(Particle.subscribe("name", handlerWithContentType));
+
+    void (*handlerWithVariant)(const char* name, EventData data) = nullptr;
+    API_COMPILE(Particle.subscribe("name", handlerWithVariant));
 }
 
 test(api_spark_sleep) {

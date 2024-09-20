@@ -28,22 +28,23 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "platforms.h"
+#include "protocol_defs.h"
 
 namespace EventType {
   enum Enum : char {
-    PUBLIC = 'e',			// 0x65
-    PRIVATE = 'E',			// 0x45
+    PUBLIC = 'e', // Deprecated (0x65)
+    PRIVATE = 'E', // Deprecated (0x45)
   };
 
   /**
    * These flags are encoded into the same 32-bit integer that already holds EventType::Enum
    */
   enum Flags {
-	  EMPTY_FLAGS = 0,
-	   NO_ACK = 0x2,
-	   WITH_ACK = 0x8,
-	   ASYNC = 0x10,        // not used here, but reserved since it's used in the system layer. Makes conversion simpler.
-	   ALL_FLAGS = NO_ACK | WITH_ACK | ASYNC
+    EMPTY_FLAGS = 0,
+    NO_ACK = 0x2,
+    WITH_ACK = 0x8,
+    ASYNC = 0x10,        // not used here, but reserved since it's used in the system layer. Makes conversion simpler.
+    ALL_FLAGS = NO_ACK | WITH_ACK | ASYNC
   };
 
   static_assert((PUBLIC & NO_ACK)==0 &&
@@ -52,51 +53,39 @@ namespace EventType {
 	  (PRIVATE & WITH_ACK)==0 &&
 	  (PRIVATE & ASYNC)==0 &&
 	  (PUBLIC & ASYNC)==0, "flags should be distinct from event type");
-
-/**
- * The flags are encoded in with the event type.
- */
-  inline Enum extract_event_type(uint32_t& value)
-  {
-	  Enum et = Enum(value & ~ALL_FLAGS);
-	  value = value & ALL_FLAGS;
-	  return et;
-  }
 } // namespace EventType
 
 #if PLATFORM_ID != PLATFORM_GCC
-static_assert(sizeof(EventType::Enum)==1, "EventType size is 1");
+static_assert(sizeof(EventType::Enum) == 1, "EventType::Enum size is not 1");
 #endif
 
-namespace SubscriptionScope {
+namespace SubscriptionFlag {
   enum Enum {
-    MY_DEVICES,
-    FIREHOSE
+    MY_DEVICES = 0x00, // Deprecated
+    FIREHOSE = 0x01, // Deprecated
+    BINARY_DATA = 0x02, // The subscription handler accepts binary data
+    CBOR_DATA = 0x04 // The subscription handler accepts CBOR data
   };
 }
 
+#if PLATFORM_ID != PLATFORM_GCC
+static_assert(sizeof(SubscriptionFlag::Enum) == 1, "SubscriptionFlag::Enum size is not 1");
+#endif
+
 typedef void (*EventHandler)(const char *event_name, const char *data);
-typedef void (*EventHandlerWithData)(void *handler_data, const char *event_name, const char *data);
+typedef void (*EventHandlerWithData)(void *handler_data, const char *event_name, const char *data, size_t data_size,
+    int content_type);
 
 /**
  *  This is used in a callback so only change by adding fields to the end
  */
 struct FilteringEventHandler
 {
-  char filter[64];
+  char filter[64]; // XXX: Not null-terminated if 64 characters long
   EventHandler handler;
   void *handler_data;
-  SubscriptionScope::Enum scope;
-  char device_id[13];
+  uint8_t flags;
+  char device_id[13]; // XXX: Unused field. Keeping for ABI compatibility for now
 };
-
-
-size_t subscription(uint8_t buf[], uint16_t message_id,
-                    const char *event_name, const char *device_id);
-
-size_t subscription(uint8_t buf[], uint16_t message_id,
-                    const char *event_name, SubscriptionScope::Enum scope);
-
-size_t event_name_uri_path(uint8_t buf[], const char *name, size_t name_len);
 
 #endif // __EVENTS_H

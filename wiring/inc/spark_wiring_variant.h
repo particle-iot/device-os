@@ -24,6 +24,7 @@
 #include <cstdint>
 
 #include "spark_wiring_string.h"
+#include "spark_wiring_buffer.h"
 #include "spark_wiring_vector.h"
 #include "spark_wiring_map.h"
 
@@ -61,7 +62,7 @@ struct IsComparableWithVariant {
     // TODO: This is not ideal as we'd like Variant to be comparable with any type as long as it's
     // comparable with one of the Variant's alternative types
     static constexpr bool value = std::is_same_v<T, std::monostate> || std::is_arithmetic_v<T> || std::is_same_v<T, const char*> ||
-            std::is_same_v<T, String> || std::is_same_v<T, VariantArray> || std::is_same_v<T, VariantMap>;
+            std::is_same_v<T, String> || std::is_same_v<T, Buffer> || std::is_same_v<T, VariantArray> || std::is_same_v<T, VariantMap>;
 };
 
 } // namespace detail
@@ -83,6 +84,7 @@ public:
         UINT64, ///< `uint64_t`.
         DOUBLE, ///< `double`.
         STRING, ///< `String`.
+        BUFFER, ///< `Buffer`.
         ARRAY, ///< `VariantArray`.
         MAP ///< `VariantMap`.
     };
@@ -147,6 +149,10 @@ public:
     }
 
     Variant(String val) :
+            v_(std::move(val)) {
+    }
+
+    Variant(Buffer val) :
             v_(std::move(val)) {
     }
 
@@ -230,6 +236,10 @@ public:
         return is<String>();
     }
 
+    bool isBuffer() const {
+        return is<Buffer>();
+    }
+
     bool isArray() const {
         return is<VariantArray>();
     }
@@ -289,6 +299,10 @@ public:
         return to<String>();
     }
 
+    Buffer toBuffer() const {
+        return to<Buffer>();
+    }
+
     VariantArray toArray() const {
         return to<VariantArray>();
     }
@@ -336,6 +350,10 @@ public:
         return to<String>(ok);
     }
 
+    Buffer toBuffer(bool& ok) const {
+        return to<Buffer>(ok);
+    }
+
     VariantArray toArray(bool& ok) const {
         return to<VariantArray>(ok);
     }
@@ -375,7 +393,11 @@ public:
      *   to or from string is performed. When converted to a string, boolean values are represented
      *   as "true" or "false".
      *
-     * - For the null, array and map types, only a trivial conversion to the same type is defined.
+     * - A `String` can be converted to a `Buffer` but only a trivial conversion to a value of its
+     *   own type is defined for `Buffer`.
+     *
+     * - For the null, array and map types, only a trivial conversion to the respective type is
+     *   defined.
      *
      * - If no conversion is defined for the current and target types, a default-constructed value
      *   of the target type is returned.
@@ -425,6 +447,10 @@ public:
 
     String& asString() {
         return as<String>();
+    }
+
+    Buffer& asBuffer() {
+        return as<Buffer>();
     }
 
     VariantArray& asArray() {
@@ -646,6 +672,11 @@ public:
     /**
      * Convert the variant to JSON.
      *
+     * Note that values of certain types supported by `Variant`, such as `Buffer`, cannot normally be
+     * represented in JSON. If the variant contains a value of such a type, it is not guaranteed that a
+     * backward conversion from a JSON string returned by this method would produce a variant equal to
+     * the original variant.
+     *
      * @return JSON document.
      */
     String toJSON() const;
@@ -795,7 +826,7 @@ private:
         static constexpr bool value = false;
     };
 
-    typedef std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, VariantArray, VariantMap> VariantType;
+    typedef std::variant<std::monostate, bool, int, unsigned, int64_t, uint64_t, double, String, Buffer, VariantArray, VariantMap> VariantType;
 
     VariantType v_;
 
@@ -887,7 +918,7 @@ public:
         if constexpr (std::is_arithmetic_v<SourceT>) {
             ok = true;
             return static_cast<bool>(val);
-        } else { // std::monostate, VariantArray, VariantMap
+        } else { // std::monostate, Buffer, VariantArray, VariantMap
             return false;
         }
     }
@@ -913,7 +944,7 @@ struct Variant::ConvertToVisitor<TargetT, std::enable_if_t<std::is_arithmetic_v<
         if constexpr (std::is_arithmetic_v<SourceT>) {
             ok = true;
             return static_cast<TargetT>(val);
-        } else { // std::monostate, VariantArray, VariantMap
+        } else { // std::monostate, Buffer, VariantArray, VariantMap
             return TargetT();
         }
     }
@@ -941,9 +972,29 @@ struct Variant::ConvertToVisitor<String> {
             SPARK_ASSERT(r.ec == std::errc());
             ok = true;
             return String(buf, r.ptr - buf);
-        } else { // std::monostate, VariantArray, VariantMap
+        } else { // std::monostate, Buffer, VariantArray, VariantMap
             return String();
         }
+    }
+};
+
+template<>
+struct Variant::ConvertToVisitor<Buffer> {
+    bool ok = false;
+
+    Buffer operator()(const String& val) {
+        ok = true;
+        return Buffer(val.c_str(), val.length());
+    }
+
+    Buffer operator()(const Buffer& val) {
+        ok = true;
+        return val;
+    }
+
+    template<typename SourceT>
+    Buffer operator()(const SourceT& val) {
+        return Buffer();
     }
 };
 
@@ -1018,6 +1069,11 @@ struct Variant::IsAlternativeType<String> {
 };
 
 template<>
+struct Variant::IsAlternativeType<Buffer> {
+    static const bool value = true;
+};
+
+template<>
 struct Variant::IsAlternativeType<VariantArray> {
     static const bool value = true;
 };
@@ -1054,5 +1110,13 @@ int encodeToCBOR(const Variant& var, Print& stream);
  * @return 0 on success, otherwise an error code defined by `Error::Type`.
  */
 int decodeFromCBOR(Variant& var, Stream& stream);
+
+/**
+ * Calculate the size of a Variant in CBOR format.
+ *
+ * @param var Variant.
+ * @return Size of CBOR data.
+ */
+size_t getCBORSize(const Variant& var);
 
 } // namespace particle

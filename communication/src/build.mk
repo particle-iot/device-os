@@ -14,7 +14,6 @@ INCLUDE_DIRS += $(TARGET_SRC_PATH)
 # C++ source files included in this build.
 CPPSRC += $(TARGET_SRC_PATH)/coap.cpp
 CPPSRC += $(TARGET_SRC_PATH)/handshake.cpp
-CPPSRC += $(TARGET_SRC_PATH)/events.cpp
 CPPSRC += $(TARGET_SRC_PATH)/spark_protocol_functions.cpp
 CPPSRC += $(TARGET_SRC_PATH)/communication_dynalib.cpp
 CPPSRC += $(TARGET_SRC_PATH)/dsakeygen.cpp
@@ -28,6 +27,7 @@ CPPSRC += $(TARGET_SRC_PATH)/messages.cpp
 CPPSRC += $(TARGET_SRC_PATH)/chunked_transfer.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_channel.cpp
 CPPSRC += $(TARGET_SRC_PATH)/publisher.cpp
+CPPSRC += $(TARGET_SRC_PATH)/subscriptions.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol_defs.cpp
 CPPSRC += $(TARGET_SRC_PATH)/protocol_util.cpp
 CPPSRC += $(TARGET_SRC_PATH)/communication_diagnostic.cpp

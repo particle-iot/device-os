@@ -191,15 +191,17 @@ typedef struct {
     size_t size;
     completion_callback handler_callback;
     void* handler_data;
+    size_t data_size;
+    int content_type;
 } completion_handler_data;
 
 typedef completion_handler_data spark_protocol_send_event_data;
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
                 int ttl, uint32_t flags, void* reserved);
-bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
-bool spark_protocol_send_subscription_scope(ProtocolFacade* protocol, const char *event_name, SubscriptionScope::Enum scope, void* reserved=NULL);
-bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char *event_name, EventHandler handler, SubscriptionScope::Enum scope, const char* id, void* handler_data=NULL);
+bool spark_protocol_send_subscription_device_deprecated(ProtocolFacade* protocol, const char *event_name, const char *device_id, void* reserved=NULL);
+bool spark_protocol_send_subscription(ProtocolFacade* protocol, const char *event_name, uint8_t flags, void* reserved=NULL);
+bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char *event_name, EventHandler handler, uint8_t flags, const char* device_id_deprecated, void* handler_data=NULL);
 bool spark_protocol_send_time_request(ProtocolFacade* protocol, void* reserved=NULL);
 void spark_protocol_send_subscriptions(ProtocolFacade* protocol, void* reserved=NULL);
 void spark_protocol_remove_event_handlers(ProtocolFacade* protocol, const char *event_name, void* reserved=NULL);

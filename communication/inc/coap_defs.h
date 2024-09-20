@@ -108,13 +108,19 @@ enum class CoapOption {
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapOption)
 
 enum class CoapContentFormat {
-    // RFC 7252 12.3. CoAP Content-Formats Registry
-    TEXT_PLAIN_CHARSET_UTF8 = 0,
+    // RFC 7252
+    TEXT_PLAIN = 0, // text/plain;charset=utf-8
     APPLICATION_LINK_FORMAT = 40,
     APPLICATION_XML = 41,
     APPLICATION_OCTET_STREAM = 42,
     APPLICATION_EXI = 47,
-    APPLICATION_JSON = 50
+    APPLICATION_JSON = 50,
+    // https://www.iana.org/assignments/core-parameters/core-parameters.xhtml#content-formats
+    IMAGE_JPEG = 22,
+    IMAGE_PNG = 23,
+    APPLICATION_CBOR = 60,
+    // Vendor-specific formats
+    PARTICLE_JSON_AS_CBOR = 65001 // application/vnd.particle.json+cbor
 };
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapContentFormat)
@@ -187,6 +193,8 @@ inline bool isCoapResponse(CoapType type, unsigned code) {
 inline bool isCoapEmptyAck(CoapType type, unsigned code) {
     return type == CoapType::ACK && code == CoapCode::EMPTY;
 }
+
+bool isCoapTextContentFormat(unsigned fmt);
 
 } // namespace protocol
 

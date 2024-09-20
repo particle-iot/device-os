@@ -500,8 +500,8 @@ public:
 	ProtocolError post_description(int desc_flags, bool force);
 
 	// Returns true on success, false on sending timeout or rate-limiting failure
-	bool send_event(const char *event_name, const char *data, int ttl,
-			EventType::Enum event_type, int flags, CompletionHandler handler)
+	bool send_event(const char *event_name, const char *data, size_t data_size, int content_type, int ttl, int flags,
+			CompletionHandler handler)
 	{
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 		const bool updating = firmwareUpdate.isRunning();
@@ -513,8 +513,8 @@ public:
 			handler.setError(SYSTEM_ERROR_BUSY);
 			return false;
 		}
-		const ProtocolError error = publisher.send_event(channel, event_name, data, ttl, event_type, flags,
-				callbacks.millis(), std::move(handler));
+		const ProtocolError error = publisher.send_event(channel, event_name, data, data_size, content_type, ttl,
+				flags, callbacks.millis(), std::move(handler));
 		if (error != NO_ERROR)
 		{
 			handler.setError(toSystemError(error));
@@ -525,28 +525,24 @@ public:
 
 	void build_describe_message(Appender& appender, int desc_flags);
 
-	inline bool add_event_handler(const char *event_name, EventHandler handler)
+	bool add_event_handler(const char *event_name, EventHandler handler)
 	{
-		return add_event_handler(event_name, handler, NULL,
-				SubscriptionScope::FIREHOSE, NULL);
+		return add_event_handler(event_name, handler, nullptr /* handler_data */, 0 /* flags */);
 	}
 
-	inline bool add_event_handler(const char *event_name, EventHandler handler,
-			void *handler_data, SubscriptionScope::Enum scope,
-			const char* device_id)
+	bool add_event_handler(const char *event_name, EventHandler handler, void *handler_data, int flags)
 	{
-		return !subscriptions.add_event_handler(event_name, handler,
-				handler_data, scope, device_id);
+		auto err = subscriptions.add_event_handler(event_name, handler, handler_data, flags);
+		return err == ProtocolError::NO_ERROR;
 	}
 
-	inline bool remove_event_handlers(const char* name)
+	bool remove_event_handlers(const char* name)
 	{
 		subscriptions.remove_event_handlers(name);
 		return true;
 	}
 
-	ProtocolError send_subscription(const char *event_name, const char *device_id);
-	ProtocolError send_subscription(const char *event_name, SubscriptionScope::Enum scope);
+	ProtocolError send_subscription(const char *event_name, int flags);
 	ProtocolError send_subscriptions(bool force);
 
 	/**

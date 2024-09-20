@@ -29,6 +29,7 @@
 
 #include "spark_wiring_string.h"
 #include "spark_wiring_print.h"
+#include "spark_wiring_error.h"
 #include "system_tick_hal.h"
 
 // compatability macros for testing
@@ -98,5 +99,56 @@ class Stream : public Print
 
   float parseFloat(char skipChar);  // as above but the given skipChar is ignored
 };
+
+namespace particle {
+
+class InputBufferStream: public Stream {
+public:
+  InputBufferStream(const char* data, size_t size) :
+      p_(data),
+      end_(data + size) {
+  }
+
+  // Stream
+  int available() override {
+    return end_ - p_;
+  }
+
+  int read() override {
+    if (p_ == end_) {
+      return Error::END_OF_STREAM;
+    }
+    return (uint8_t)*p_++;
+  }
+
+  int peek() override {
+    if (p_ == end_) {
+      return Error::END_OF_STREAM;
+    }
+    return (uint8_t)*p_;
+  }
+
+  // Print
+  size_t write(uint8_t b) override {
+    setWriteError(Error::NOT_SUPPORTED);
+    return 0;
+  }
+
+  void flush() override {
+  }
+
+private:
+  const char* p_;
+  const char* end_;
+};
+
+class InputStringStream: public InputBufferStream {
+public:
+  explicit InputStringStream(const String& str) :
+      InputBufferStream(str.c_str(), str.length()) {
+  }
+};
+
+} // namespace particle
 
 #endif

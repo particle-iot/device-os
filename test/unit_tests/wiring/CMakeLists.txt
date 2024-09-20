@@ -19,6 +19,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_i2c.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_ipaddress.cpp
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_variant.cpp
+  ${DEVICE_OS_DIR}/wiring/src/spark_wiring_buffer.cpp
   ${DEVICE_OS_DIR}/wiring_globals/src/wiring_globals_i2c.cpp
   ${DEVICE_OS_DIR}/hal/src/template/i2c_hal.cpp
   ${DEVICE_OS_DIR}/wiring/src/string_convert.cpp
@@ -44,6 +45,7 @@ add_executable( ${target_name}
   wlan.cpp
   map.cpp
   variant.cpp
+  buffer.cpp
 )
 
 # Set defines specific to target

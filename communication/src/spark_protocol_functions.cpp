@@ -17,12 +17,16 @@
  ******************************************************************************
  */
 
+#include <optional>
+#include <cstdlib>
+#include <cstring>
+
 #include "protocol_defs.h"
 #include "protocol_selector.h"
+#include "coap_defs.h"
 #include "spark_protocol_functions.h"
 #include "handshake.h"
 #include "debug.h"
-#include <stdlib.h>
 
 using namespace particle;
 using namespace particle::protocol;
@@ -111,33 +115,44 @@ int spark_protocol_post_description(ProtocolFacade* protocol, int desc_flags, vo
 }
 
 bool spark_protocol_send_event(ProtocolFacade* protocol, const char *event_name, const char *data,
-                int ttl, uint32_t flags, void* reserved) {
+        int ttl, uint32_t flags, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
-	CompletionHandler handler;
-	if (reserved) {
-		auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
-		handler = CompletionHandler(r->handler_callback, r->handler_data);
-	}
-	EventType::Enum event_type = EventType::extract_event_type(flags);
-	return protocol->send_event(event_name, data, ttl, event_type, flags, std::move(handler));
+    CompletionHandler handler;
+    std::optional<size_t> data_size;
+    int content_type = (int)CoapContentFormat::TEXT_PLAIN;
+    if (reserved) {
+        auto r = static_cast<const spark_protocol_send_event_data*>(reserved);
+        handler = CompletionHandler(r->handler_callback, r->handler_data);
+        // Even though this library is now in the same module with the rest of the system on all
+        // supported platforms, this function is still exposed via a dynalib so normal checks apply
+        // when accessing extra parameters
+        if (r->size >= offsetof(spark_protocol_send_event_data, data_size) + sizeof(spark_protocol_send_event_data::data_size) +
+                sizeof(spark_protocol_send_event_data::content_type)) {
+            data_size = r->data_size;
+            content_type = r->content_type;
+        }
+    }
+    if (!data_size.has_value()) {
+        data_size = data ? std::strlen(data) : 0;
+    }
+    return protocol->send_event(event_name, data, data_size.value(), content_type, ttl, flags, std::move(handler));
 }
 
-bool spark_protocol_send_subscription_device(ProtocolFacade* protocol, const char *event_name, const char *device_id, void*) {
+bool spark_protocol_send_subscription_device_deprecated(ProtocolFacade* protocol, const char* event_name,
+        const char* /* device_id */, void* /* reserved */) {
+    return spark_protocol_send_subscription(protocol, event_name, 0 /* flags */, nullptr /* reserved */);
+}
+
+bool spark_protocol_send_subscription(ProtocolFacade* protocol, const char* event_name, uint8_t flags, void* /* reserved */) {
     ASSERT_ON_SYSTEM_THREAD();
-    const auto error = protocol->send_subscription(event_name, device_id);
+    const auto error = protocol->send_subscription(event_name, flags);
     return (error == ProtocolError::NO_ERROR);
 }
 
-bool spark_protocol_send_subscription_scope(ProtocolFacade* protocol, const char *event_name, SubscriptionScope::Enum scope, void*) {
-    ASSERT_ON_SYSTEM_THREAD();
-    const auto error = protocol->send_subscription(event_name, scope);
-    return (error == ProtocolError::NO_ERROR);
-}
-
-bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char *event_name,
-    EventHandler handler, SubscriptionScope::Enum scope, const char* device_id, void* handler_data) {
+bool spark_protocol_add_event_handler(ProtocolFacade* protocol, const char* event_name, EventHandler handler, uint8_t flags,
+        const char* /* device_id_deprecated */, void* handler_data) {
     ASSERT_ON_SYSTEM_OR_MAIN_THREAD();
-    return protocol->add_event_handler(event_name, handler, handler_data, scope, device_id);
+    return protocol->add_event_handler(event_name, handler, handler_data, flags);
 }
 
 bool spark_protocol_send_time_request(ProtocolFacade* protocol, void* reserved) {

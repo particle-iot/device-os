@@ -79,10 +79,6 @@ public:
 			unsigned char token, unsigned char code, const unsigned char* payload,
 			unsigned payload_len, bool confirmable);
 
-	static size_t event(uint8_t buf[], uint16_t message_id, const char *event_name,
-	             const char *data, size_t data_size, int ttl, EventType::Enum event_type, bool confirmable);
-
-
     static inline size_t empty_ack(unsigned char *buf,
                           unsigned char message_id_msb,
                           unsigned char message_id_lsb) {

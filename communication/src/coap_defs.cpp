@@ -60,6 +60,18 @@ CoapCode coapCodeForSystemError(int error) {
     }
 }
 
+bool isCoapTextContentFormat(unsigned fmt) {
+    switch (fmt) {
+    case (unsigned)CoapContentFormat::TEXT_PLAIN:
+    case (unsigned)CoapContentFormat::APPLICATION_LINK_FORMAT:
+    case (unsigned)CoapContentFormat::APPLICATION_XML:
+    case (unsigned)CoapContentFormat::APPLICATION_JSON:
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace protocol
 
 } // namespace particle

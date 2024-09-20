@@ -189,11 +189,18 @@ PARTICLE_STATIC_ASSERT(publish_no_ack_flag_matches, PUBLISH_EVENT_FLAG_NO_ACK==E
 
 typedef void (*EventHandler)(const char* name, const char* data);
 
-typedef enum
-{
-  MY_DEVICES,
-  ALL_DEVICES
+typedef enum {
+    MY_DEVICES, // Deprecated
+    ALL_DEVICES // Deprecated
 } Spark_Subscription_Scope_TypeDef;
+
+/**
+ * Subscription flags.
+ */
+typedef enum {
+    SUBSCRIBE_FLAG_BINARY_DATA = 0x01, ///< The subscription handler accepts binary data.
+    SUBSCRIBE_FLAG_CBOR_DATA = 0x02 ///< The subscription handler accepts CBOR data.
+} spark_subscribe_flag;
 
 typedef int (*cloud_function_t)(void* data, const char* param, void* reserved);
 
@@ -256,7 +263,17 @@ typedef struct {
     size_t size;
     completion_callback handler_callback;
     void* handler_data;
+    size_t data_size;
+    int content_type;
 } spark_send_event_data;
+
+/**
+ * Additional parameters for `spark_subscribe()`.
+ */
+typedef struct {
+    size_t size; ///< Size of this structure.
+    int flags; ///< Subscription flags defined by the `spark_subscribe_flag` enum.
+} spark_subscribe_param;
 
 /**
  * @brief Publish vitals information
@@ -282,8 +299,8 @@ typedef struct {
  */
 int spark_publish_vitals(system_tick_t period_s, void *reserved);
 bool spark_send_event(const char* name, const char* data, int ttl, uint32_t flags, void* reserved);
-bool spark_subscribe(const char *eventName, EventHandler handler, void* handler_data,
-        Spark_Subscription_Scope_TypeDef scope, const char* deviceID, void* reserved);
+bool spark_subscribe(const char* event_name, EventHandler handler, void* handler_data,
+        Spark_Subscription_Scope_TypeDef scope_deprecated, const char* device_id_deprecated, spark_subscribe_param* param);
 void spark_unsubscribe(void *reserved);
 bool spark_sync_time(void *reserved);
 bool spark_sync_time_pending(void* reserved);
