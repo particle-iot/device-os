@@ -169,8 +169,8 @@ test(api_spark_publish) {
     API_COMPILE(Particle.publish("event", String("data"), ContentType::TEXT));
     API_COMPILE(Particle.publish("event", String("data"), ContentType::TEXT, NO_ACK));
 
-    API_COMPILE(Particle.publish("event", Variant("data")));
-    API_COMPILE(Particle.publish("event", Variant("data"), NO_ACK));
+    API_COMPILE(Particle.publish("event", EventData("data")));
+    API_COMPILE(Particle.publish("event", EventData("data"), NO_ACK));
 }
 
 test(api_spark_publish_vitals) {
@@ -212,7 +212,7 @@ test(api_spark_subscribe) {
     void (*handlerWithContentType)(const char* name, const char* data, size_t size, ContentType type) = nullptr;
     API_COMPILE(Particle.subscribe("name", handlerWithContentType));
 
-    void (*handlerWithVariant)(const char* name, Variant data) = nullptr;
+    void (*handlerWithVariant)(const char* name, EventData data) = nullptr;
     API_COMPILE(Particle.subscribe("name", handlerWithVariant));
 }
 
