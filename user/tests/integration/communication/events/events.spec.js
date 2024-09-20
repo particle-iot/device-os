@@ -59,11 +59,15 @@ test('publish_device_to_cloud_event_with_content_type', async function() {
 });
 
 test('publish_device_to_cloud_event_as_variant', async function() {
-	const expectedData = Buffer.from('a26161187b61624a6e7200463f1bb774472f', 'hex');
 	let d = await this.particle.receiveEvent('my_event');
-	d = parseDataUri(d);
-	expect(d.type).to.equal('application/cbor');
-	expect(d.data.equals(expectedData)).to.be.true;
+	d = JSON.parse(d);
+	expect(d).to.deep.equal({
+		a: 123,
+		b: {
+			_type: 'buffer',
+			_data: Buffer.from('6e7200463f1bb774472f', 'hex').toString('base64')
+		}
+	});
 });
 
 test('publish_cloud_to_device_event_with_content_type', async function() {
