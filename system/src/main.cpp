@@ -528,6 +528,8 @@ void app_loop(bool threaded)
 
 void app_thread_idle()
 {
+    // The idle function is called right after the app thread's event queue has been processed
+    system::g_lastAppLoopProcessTime = HAL_Timer_Get_Milli_Seconds();
     app_loop(true);
 }
 

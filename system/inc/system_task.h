@@ -125,6 +125,9 @@ int system_isr_task_queue_free_memory(void *ptrToFree);
 
 namespace particle::system {
 
+// Time the app event queue was last processed
+extern system_tick_t g_lastAppLoopProcessTime;
+
 /**
  * Allocate an object in the system pool.
  *

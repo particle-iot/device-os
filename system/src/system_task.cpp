@@ -97,6 +97,12 @@ static struct SetThreadCurrentFunctionPointers {
 
 namespace particle {
 
+namespace system {
+
+system_tick_t g_lastAppLoopProcessTime = 0;
+
+} // system
+
 ISRTaskQueue SystemISRTaskQueue;
 
 } // particle
@@ -543,18 +549,76 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     system_shutdown_if_needed();
 }
 
-/*
- * @brief This should block for a certain number of milliseconds and also execute spark_wlan_loop
- */
-void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
+namespace {
+
+#if PLATFORM_THREADING
+
+void delayThreadedImpl(system_tick_t duration, system_tick_t startMillis, system_tick_t startMicros, bool processAppEvents) {
+    if (processAppEvents) {
+        // Time elapsed since the app queue was last processed
+        auto elapsedSinceLoop = HAL_Timer_Get_Milli_Seconds() - g_lastAppLoopProcessTime;
+
+        // Time to wait before the app queue can be processed again
+        system_tick_t leftUntilLoop = 0;
+        if (elapsedSinceLoop < SPARK_LOOP_DELAY_MILLIS) {
+            leftUntilLoop = SPARK_LOOP_DELAY_MILLIS - elapsedSinceLoop;
+        }
+
+        for (;;) {
+            // Time elapsed since delay() was called
+            auto elapsedSinceStart = HAL_Timer_Get_Milli_Seconds() - startMillis;
+            if (elapsedSinceStart >= duration) {
+                break;
+            }
+
+            // Remaining time to run this function
+            auto leftUntilStop = duration - elapsedSinceStart;
+            if (leftUntilStop < leftUntilLoop) {
+                HAL_Delay_Milliseconds(leftUntilStop);
+                break;
+            }
+
+            // Wait until the app queue can be processed again
+            HAL_Delay_Milliseconds(leftUntilLoop);
+
+            ApplicationThread.process();
+            g_lastAppLoopProcessTime = HAL_Timer_Get_Milli_Seconds();
+
+            leftUntilLoop = SPARK_LOOP_DELAY_MILLIS;
+        }
+    } else {
+        auto elapsedSinceStart = HAL_Timer_Get_Milli_Seconds() - startMillis;
+        if (elapsedSinceStart < duration) {
+            HAL_Delay_Milliseconds(duration - elapsedSinceStart);
+        }
+    }
+
+    // XXX: Despite what the name suggests, HAL_Delay_Milliseconds() operates with ticks, not
+    // milliseconds. Depending on how far into the current tick the calling thread is, it may return
+    // early by a fraction of a millisecond so we need to adjust for that inaccuracy
+    if (duration < 60000) { // Just some threshold that a) is large enough for delay() to remain precise in typical use cases b) ensures that the micros counter couldn't wrap around more than once
+        duration *= 1000;
+        auto elapsedMicros = HAL_Timer_Get_Micro_Seconds() - startMicros;
+        if (elapsedMicros < duration) {
+            HAL_Delay_Microseconds(duration - elapsedMicros);
+        }
+    } else {
+        // Let delay() slip by one more millisecond or less
+        HAL_Delay_Milliseconds(1);
+    }
+}
+
+#endif // PLATFORM_THREADING
+
+// Legacy implementation for non-threaded mode
+void delayNonThreadedImpl(unsigned long ms, system_tick_t start_millis, system_tick_t start_micros, bool force_no_background_loop)
 {
     if (ms==0) return;
 
     system_tick_t spark_loop_elapsed_millis = SPARK_LOOP_DELAY_MILLIS;
     spark_loop_total_millis += ms;
 
-    system_tick_t start_millis = HAL_Timer_Get_Milli_Seconds();
-    system_tick_t end_micros = HAL_Timer_Get_Micro_Seconds() + (1000*ms);
+    system_tick_t end_micros = start_micros + (1000*ms);
 
     // Ensure that RTOS vTaskDelay(0) is called to force a reschedule to avoid task starvation in tight delay(1) loops
     HAL_Delay_Milliseconds(0);
@@ -577,7 +641,7 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
                 if (delay > 100000) {
                     return;
                 }
-                HAL_Delay_Microseconds(min(delay/2, 1u));
+                HAL_Delay_Microseconds(std::max<system_tick_t>(delay/2, 1));
             }
         }
         else
@@ -617,23 +681,32 @@ void system_delay_pump(unsigned long ms, bool force_no_background_loop=false)
     }
 }
 
+} // unnamed
+
 /**
  * On a non threaded platform, or when called from the application thread, then
  * run the background loop so that application events are processed.
  */
-void system_delay_ms(unsigned long ms, bool force_no_background_loop=false)
+void system_delay_ms(unsigned long ms, bool force_no_background_loop)
 {
-	// if not threading, or we are the application thread, then implement delay
-	// as a background message pump
+    auto startMicros = HAL_Timer_Get_Micro_Seconds();
+    auto startMillis = HAL_Timer_Get_Milli_Seconds();
 
-    if ((!PLATFORM_THREADING || APPLICATION_THREAD_CURRENT()) && !hal_interrupt_is_isr())
-    {
-        system_delay_pump(ms, force_no_background_loop);
+    if (hal_interrupt_is_isr()) {
+        return;
     }
-    else
-    {
-        HAL_Delay_Milliseconds(ms);
+
+#if PLATFORM_THREADING
+    if (!APPLICATION_THREAD_CURRENT()) {
+        delayThreadedImpl(ms, startMillis, startMicros, false /* processAppEvents */);
+    } else if (system_thread_get_state(nullptr)) {
+        delayThreadedImpl(ms, startMillis, startMicros, !force_no_background_loop);
+    } else {
+        delayNonThreadedImpl(ms, startMillis, startMicros, force_no_background_loop);
     }
+#else // !PLATFORM_THREADING
+    delayNonThreadedImpl(ms, startMillis, startMicros, force_no_background_loop);
+#endif
 }
 
 void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, network_disconnect_reason networkReason,
