@@ -4,13 +4,13 @@
 namespace {
 
 String eventName;
-Variant eventData;
+EventData eventData;
 ContentType eventContentType = ContentType();
 bool eventReceived = false;
 
 void clearReceivedEvent() {
     eventName = String();
-    eventData = Variant();
+    eventData = EventData();
     eventContentType = ContentType();
     eventReceived = false;
 }
@@ -23,7 +23,7 @@ void eventHandler1(const char* name, const char* data, size_t size, ContentType 
     eventReceived = true;
 }
 
-void eventHandler2(const char* name, Variant data) {
+void eventHandler2(const char* name, EventData data) {
     clearReceivedEvent();
     eventName = name;
     eventData = std::move(data);
@@ -61,7 +61,7 @@ test(publish_device_to_cloud_event_with_content_type) {
 }
 
 test(publish_device_to_cloud_event_as_variant) {
-    Variant v;
+    EventData v;
     v["a"] = 123;
     v["b"] = Buffer::fromHex("6e7200463f1bb774472f");
     assertTrue((bool)Particle.publish("my_event", v, WITH_ACK));
@@ -90,7 +90,7 @@ test(validate_cloud_to_device_event_with_cbor_data) {
         return eventReceived;
     }, 10000));
     assertTrue(eventName == System.deviceID() + "/my_event2");
-    Variant v;
+    EventData v;
     v["c"] = 456;
     v["d"] = Buffer::fromHex("921bff008d91814e789b");
     assertTrue(eventData == v);
