@@ -79,7 +79,7 @@ When building `main` or `modules`:
 - `APPDIR`: builds the application located in $(APPDIR). The directory specified
     should be outside of the firmware repo working directory, allowing 3rd party applications to be built.
     See `USER_MAKEFILE`.
-- `APPLIBS`: directories containing external firmware libraries. See [External Libraries](#external_libs)
+- `APPLIBSV1` and `APPLIBSV2`: directories containing external firmware libraries. See [External Libraries](#external_libs)
 - `TEST` builds the test application stored in `user/tests/$(TEST)`.
 - `USER_MAKEFILE`: when `APPDIR` is used this specifies the location of the makefile
     to include, relative to `APPDIR`. The default is `build.mk`.
@@ -347,7 +347,7 @@ External Particle libraries can be compiled and linked with firmware. To add one
 
 1. download the library sources store it in a directory outside the firmware, e.g.`/particle/libs/neopixel` for the neopixel library. 
 
-2. remove the `examples` directory if it exists
+2. remove the `examples` directory if it exists (to prevent symbols in the examples clashing with your code)
 ```
 cd /particle/libs/neopixel
 rm -rf device-os/examples
@@ -359,11 +359,15 @@ mv firmware neopixel
 ```
 This is so that includes like `#include "neopixel/neopixel.h"` will function correctly. 
 
-4. Add the APPLIBS variable to the make command which lists the directories contianing libraries to use. 
+4. Add the APPLIBSV2 variable to the make command which lists the directories contianing libraries to use. 
 ```
-make APPDIR=/particle/apps/myapp APPLIBS=/particle/libs/neopixel
+make APPDIR=/particle/apps/myapp APPLIBSV2=/particle/libs/neopixel
 ```
 
+Notes:
+ * The APPLIBSV1/2 variables allow space separated values so you can have multiple library directories.
+ * The APPLIBSV1 uses the exact path specified so the #include directive should be relative to the path
+ * The APPLIBSV2 appends src/ to the path for libraries that comply with this standard and this will affect the #include as above
 
 ## Default application.cpp integrated with firmware
 
