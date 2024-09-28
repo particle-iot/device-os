@@ -24,6 +24,8 @@
   ******************************************************************************
  */
 
+#include <algorithm>
+
 #include "spark_wiring_usbserial.h"
 #include "platform_headers.h"
 
