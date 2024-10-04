@@ -72,6 +72,8 @@ public:
   hal_usart_interface_t interface() const {
     return _serial;
   }
+
+  static USARTSerial& from(hal_usart_interface_t iface);
 };
 
 #if Wiring_Serial2
@@ -130,6 +132,38 @@ hal_usart_buffer_config_t __attribute__((weak)) acquireSerial4Buffer();
 extern USARTSerial& __fetch_global_Serial5();
 hal_usart_buffer_config_t __attribute__((weak)) acquireSerial5Buffer();
 #endif
+
+inline USARTSerial& USARTSerial::from(hal_usart_interface_t iface) {
+    switch (iface) {
+    case HAL_USART_SERIAL1: {
+        return Serial1;
+    }
+#if Wiring_Serial2
+    case HAL_USART_SERIAL2: {
+        return Serial2;
+    }
+#endif
+#if Wiring_Serial3
+    case HAL_USART_SERIAL3: {
+        return Serial3;
+    }
+#endif
+#if Wiring_Serial4
+    case HAL_USART_SERIAL4: {
+        return Serial4;
+    }
+#endif
+#if Wiring_Serial5
+    case HAL_USART_SERIAL5: {
+        return Serial5;
+    }
+#endif
+
+    default: {
+        return Serial1;
+    }
+    }
+}
 
 #endif
 

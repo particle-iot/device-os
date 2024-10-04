@@ -20,6 +20,7 @@
 #include "spark_wiring_wifi.h"
 #include "spark_wiring_cellular.h"
 #include "spark_wiring_ethernet.h"
+#include "spark_wiring_tether.h"
 #include "hal_platform.h"
 #if HAL_USE_INET_HAL_POSIX
 #include <netdb.h>
@@ -47,6 +48,10 @@ NetworkClass& NetworkClass::from(network_interface_t nif) {
 #if Wiring_Cellular
     case NETWORK_INTERFACE_CELLULAR:
         return Cellular;
+#endif
+#if HAL_PLATFORM_PPP_SERVER
+    case NETWORK_INTERFACE_PPP_SERVER:
+        return Tether;
 #endif
     default:
         return Network;

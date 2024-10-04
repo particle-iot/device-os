@@ -43,6 +43,9 @@ public:
     int setBaudRate(unsigned int baudrate);
     int setConfig(uint32_t config, unsigned int baudrate = 0);
 
+    uint32_t config() const;
+    unsigned int baudrate() const;
+
     void enabled(bool enabled);
     bool enabled() const;
 
@@ -72,6 +75,14 @@ inline bool SerialStream::enabled() const {
 
 inline bool SerialStream::on() const {
     return phyOn_;
+}
+
+inline uint32_t SerialStream::config() const {
+    return config_;
+}
+
+inline unsigned int SerialStream::baudrate() const {
+    return baudrate_;
 }
 
 static_assert((int)SerialStream::READABLE == (int)HAL_USART_PVT_EVENT_READABLE, "Serial::READABLE needs to match HAL_USART_PVT_EVENT_READABLE");

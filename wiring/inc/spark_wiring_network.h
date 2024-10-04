@@ -36,6 +36,31 @@ class NetworkClass;
 // Defined as the primary network
 extern NetworkClass Network;
 
+#if HAL_PLATFORM_IFAPI
+
+#define GET_IF_ADDR(_ifindex, _addrType, _addr) \
+    if_t iface = nullptr; \
+    if (!if_get_by_index(_ifindex, &iface)) { \
+        if_addrs* ifAddrList = nullptr; \
+        if (!if_get_addrs(iface, &ifAddrList)) { \
+            SCOPE_GUARD({ \
+                if_free_if_addrs(ifAddrList); \
+            }); \
+            if_addr* ifAddr = nullptr; \
+            for (if_addrs* i = ifAddrList; i; i = i->next) { \
+                if (i->if_addr->addr->sa_family == AF_INET) { \
+                    ifAddr = i->if_addr; \
+                    break; \
+                } \
+            } \
+            if (ifAddr) { \
+                auto sockAddr = (const sockaddr_in*)ifAddr->_addrType; \
+                _addr = (const uint8_t*)(&sockAddr->sin_addr.s_addr); \
+            } \
+        } \
+    }
+#endif // HAL_PLATFORM_IFAPI
+
 //Retained for compatibility and to flag compiler warnings as build errors
 class NetworkClass
 {
