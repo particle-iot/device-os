@@ -88,7 +88,7 @@ ALLDEPS += $(addprefix $(BUILD_PATH)/, $(patsubst $(COMMON_BUILD)/arm/%,%,$(ASRC
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CSRC:.c=.o.d))
 ALLDEPS += $(addprefix $(BUILD_PATH)/, $(CPPSRC:.cpp=.o.d))
 
-CLOUD_FLASH_URL ?= https://api.particle.io/v1/devices/$(PARTICLE_DEVICE_ID)\?access_token=$(PARTICLE_ACCESS_TOKEN)
+CLOUD_FLASH_URL ?= https://api.particle.io/v1/devices/$(PARTICLE_DEVICE_ID)
 
 # All Target
 all: prebuild $(MAKE_DEPENDENCIES) $(TARGET) postbuild
@@ -134,7 +134,7 @@ endif
 # have been defined in the environment before invoking 'make program-cloud'
 program-cloud: $(MAKE_DEPENDENCIES) $(TARGET_BASE).bin
 	@echo Flashing using cloud API, CORE_ID=$(PARTICLE_DEVICE_ID):
-	$(CURL) -X PUT -F file=@$(lastword $^) -F file_type=binary $(CLOUD_FLASH_URL)
+	$(CURL) -X PUT -F file=@$(lastword $^) -F file_type=binary $(CLOUD_FLASH_URL) -H "Authorization: Bearer $(PARTICLE_ACCESS_TOKEN)"
 
 # Display size
 size: $(TARGET_BASE).elf
