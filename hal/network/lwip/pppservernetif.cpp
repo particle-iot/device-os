@@ -203,12 +203,14 @@ int PppServerNetif::start() {
         request->server()->init(conf);
         return 0;
     }, nullptr));
-    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::EXEC, "E", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
+    auto enableFlowControl = [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
         auto conf = request->server()->config();
         conf.echoEnabled(true);
         request->server()->init(conf);
         return 0;
-    }, nullptr));
+    };
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::EXEC, "E", enableFlowControl, nullptr));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::EXEC, "E1", enableFlowControl, nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::ONE_INT_ARG, "X", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::ONE_INT_ARG, "V", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::ONE_INT_ARG, "&C", nullptr));
@@ -237,6 +239,7 @@ int PppServerNetif::start() {
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+URAT", "+URAT: 3")); // Pretend to be LTE
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::TEST, "+CGDCONT", "+CGDCONT: (0-1),\"IP\",,,(0-2),(0-4),(0,1),(0,3),(0,1),(0,1),(0,1),(0,1),(0,1),(0,1)"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+CGDCONT", "+CGDCONT: 1,\"IP\",\"particle\",0,0"));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CGDCONT", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+CFUN", "+CFUN: 1,0")); // Full functionality
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CMER", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CGACT", nullptr));
@@ -332,7 +335,7 @@ int PppServerNetif::start() {
         return 0;
     };
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WILDCARD, "D*", connectRequest, &client_));
-    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::EXEC, "D", connectRequest, &client_));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::ONE_INT_ARG, "D", connectRequest, &client_));
     
     SPARK_ASSERT(os_thread_create(&thread_, "pppserver", OS_THREAD_PRIORITY_NETWORK, &PppServerNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
     return 0;
