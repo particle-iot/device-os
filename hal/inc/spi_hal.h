@@ -149,8 +149,6 @@ int32_t hal_spi_release(hal_spi_interface_t spi, void* reserved);
 
 int hal_spi_get_clock_divider(hal_spi_interface_t spi, uint32_t clock, void* reserved);
 
-#include "spi_hal_compat.h"
-
 #ifdef __cplusplus
 }
 #endif

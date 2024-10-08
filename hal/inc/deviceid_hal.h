@@ -114,8 +114,6 @@ typedef struct hal_device_hw_info {
  */
 int hal_get_device_hw_info(hal_device_hw_info* info, void* reserved);
 
-#include "deviceid_hal_compat.h"
-
 #include "deviceid_hal_impl.h"
 
 #ifdef	__cplusplus

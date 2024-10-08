@@ -152,8 +152,6 @@ hal_i2c_compat_error_from(int system_error) {
     }
 }
 
-#include "i2c_hal_compat.h"
-
 #ifdef __cplusplus
 }
 #endif

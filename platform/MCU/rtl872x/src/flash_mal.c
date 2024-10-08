@@ -316,6 +316,8 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
     }
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
     // FIXME: remove magic numbers
     uint32_t endAddress = startAddress + length - 1;
     if (flashDeviceID == FLASH_INTERNAL) {
@@ -331,6 +333,7 @@ bool FLASH_CheckValidAddressRange(flash_device_t flashDeviceID, uint32_t startAd
 #else
         return false;
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+#pragma GCC diagnostic pop
     }
     return false;
 }

@@ -169,8 +169,6 @@ ssize_t hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t
 
 int hal_usart_get_features(hal_usart_interface_t serial, uint32_t* features, void* reserved);
 
-#include "usart_hal_compat.h"
-
 #ifdef __cplusplus
 }
 #endif

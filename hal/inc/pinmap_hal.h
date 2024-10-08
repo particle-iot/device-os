@@ -29,7 +29,7 @@ extern "C" {
 typedef struct hal_pin_info_t hal_pin_info_t;
 
 typedef uint16_t hal_pin_t;
-typedef hal_pin_t pin_t; // __attribute__((deprecated("Use hal_pin_t instead")));
+typedef hal_pin_t pin_t;
 
 #if HAL_PLATFORM_IO_EXTENSION
 typedef enum hal_pin_type_t {
@@ -78,21 +78,11 @@ void hal_pin_set_function(hal_pin_t pin, PinFunction pin_func);
 
 #define hal_pin_is_valid(pin) ((pin) < TOTAL_PINS)
 
-typedef hal_pin_info_t Hal_Pin_Info __attribute__((deprecated("Use hal_pin_info_t instead")));
+// Leaving these for compatibility just in case
+typedef hal_pin_info_t Hal_Pin_Info;
 #if HAL_PLATFORM_IO_EXTENSION
-typedef hal_pin_type_t Hal_Pin_Type __attribute__((deprecated("Use hal_pin_type_t instead")));
+typedef hal_pin_type_t Hal_Pin_Type;
 #endif // #if HAL_PLATFORM_IO_EXTENSION
-
-static inline PinFunction __attribute__((deprecated("Use hal_pin_validate_function() instead"), always_inline))
-HAL_Validate_Pin_Function(pin_t pin, PinFunction pinFunction) {
-    return hal_pin_validate_function(pin, pinFunction);
-}
-
-static inline Hal_Pin_Info* __attribute__((deprecated("Use hal_pin_map() instead"), always_inline))
-Hal_Pin_Map(void) {
-    return hal_pin_map();
-}
-
 
 #ifdef __cplusplus
 }

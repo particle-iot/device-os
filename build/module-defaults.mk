@@ -45,9 +45,16 @@ CFLAGS += -MD -MP -MF $@.d
 CFLAGS += -ffunction-sections -fdata-sections -Wall -Wno-switch -fmessage-length=0
 CFLAGS += -Wno-error=deprecated-declarations -Wno-error=unused-parameter
 
-ifneq ("$(MODULE)", "user-part")
-CFLAGS += -Wno-deprecated-declarations 
+ifeq ("$(MODULE)","user-part")
+export ENABLE_DEPRECATION_WARNINGS=1
 endif
+
+ifeq ($(ENABLE_DEPRECATION_WARNINGS),1)
+CFLAGS += -Wdeprecated-declarations
+else
+CFLAGS += -Wno-deprecated-declarations
+endif
+
 # accepts any comment that contains something that matches (case insensitively) "falls?[ \t-]*thr(ough|u)" regular expression
 # FIXME: we are using GCC 4.9 on CI for GCC platform which does not support implicit-fallthrough options and others
 ifneq ($(PLATFORM_ID),3)

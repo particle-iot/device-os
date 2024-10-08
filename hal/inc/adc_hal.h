@@ -44,8 +44,6 @@ int hal_adc_sleep(bool sleep, void* reserved);
 int hal_adc_set_reference(uint32_t reference, void* reserved);
 int hal_adc_get_reference(void* reserved);
 
-#include "adc_hal_compat.h"
-
 #ifdef __cplusplus
 }
 #endif
