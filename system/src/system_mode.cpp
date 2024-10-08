@@ -116,7 +116,7 @@ System_Mode_TypeDef system_mode()
 
 #if PLATFORM_THREADING
 
-static volatile spark::feature::State system_thread_enable = spark::feature::DISABLED;
+static volatile spark::feature::State system_thread_enable = spark::feature::ENABLED;
 
 void system_thread_set_state(spark::feature::State state, void*)
 {
