@@ -18,7 +18,7 @@
 #include "Particle.h"
 #include "unit-test/unit-test.h"
 
-static pin_t expectedSsPin(HAL_SPI_Interface spi) {
+static pin_t expectedSsPin(hal_spi_interface_t spi) {
 #if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
     return (spi == HAL_SPI_INTERFACE1) ? D14 : D5;
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
@@ -39,7 +39,7 @@ static pin_t expectedSsPin(HAL_SPI_Interface spi) {
     return PIN_INVALID;
 }
 
-static bool isSlaveModeSupported(HAL_SPI_Interface spi) {
+static bool isSlaveModeSupported(hal_spi_interface_t spi) {
     // NRF52840 platform
     //   SPI - only supports master mode
     //   SPI1 - supports master and slave mode
@@ -65,7 +65,7 @@ static bool isSlaveModeSupported(HAL_SPI_Interface spi) {
 #endif // HAL_PLATFORM_NRF52840
 }
 
-static void querySpiInfo(HAL_SPI_Interface spi, hal_spi_info_t* info)
+static void querySpiInfo(hal_spi_interface_t spi, hal_spi_info_t* info)
 {
     memset(info, 0, sizeof(hal_spi_info_t));
     info->version = HAL_SPI_INFO_VERSION;
