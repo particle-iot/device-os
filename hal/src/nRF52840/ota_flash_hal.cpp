@@ -640,6 +640,11 @@ int HAL_FLASH_End(void* reserved)
         }
         // Fall through after we've patched the destination.
         default: { // User part, system part or a radio stack module or bootloader if MBR updates are supported
+            if (system_protected_or_service_mode && SPARK_FLASH_UPDATE == 2 /* local update */ &&
+                    moduleFunc == MODULE_FUNCTION_SYSTEM_PART && info.module_version < 6000 /* 6.0.0 */) {
+                result = SYSTEM_ERROR_PROTECTED;
+                break;
+            }
             uint8_t slotFlags = MODULE_VERIFY_CRC | MODULE_VERIFY_DESTINATION_IS_START_ADDRESS | MODULE_VERIFY_FUNCTION;
             if (info.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO) {
                 slotFlags |= MODULE_DROP_MODULE_INFO;

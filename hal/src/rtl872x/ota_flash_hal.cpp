@@ -565,6 +565,11 @@ int HAL_FLASH_End(void* reserved)
                     }
                 }
             }
+            if (system_protected_or_service_mode && SPARK_FLASH_UPDATE == 2 /* local update */ &&
+                    moduleFunc == MODULE_FUNCTION_SYSTEM_PART && info.module_version < 6000 /* 6.0.0 */) {
+                result = SYSTEM_ERROR_PROTECTED;
+                break;
+            }
             flash_device_t id = (module_ota.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) ? FLASH_INTERNAL : FLASH_SERIAL;
             const bool ok = FLASH_AddToNextAvailableModulesSlot(id, module->bounds.start_address, FLASH_INTERNAL,
                     (uint32_t)info.module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
