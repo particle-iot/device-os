@@ -110,7 +110,8 @@ enum class FirmwareUpdateFlag {
     DISCARD_DATA = 0x01, ///< Discard any previously received firmware data.
     NON_RESUMABLE = 0x02, ///< Indicates that the update cannot be resumed.
     VALIDATE_ONLY = 0x04, ///< Validate the parameters but do not start/finish the update.
-    CANCEL = 0x08 ///< Cancel the update.
+    CANCEL = 0x08, ///< Cancel the update.
+    LOCAL_UPDATE = 0x10 ///< Indicates Local update
 };
 
 typedef EnumFlags<FirmwareUpdateFlag> FirmwareUpdateFlags;

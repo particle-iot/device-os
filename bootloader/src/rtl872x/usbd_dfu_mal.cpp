@@ -21,10 +21,24 @@
 #include "dct.h"
 #include "flash_mal.h"
 #include "security_mode.h"
+#include "flash_common.h"
 
 using namespace particle::usbd::dfu::mal;
 
+extern "C" uintptr_t platform_system_part1_flash_start;
+extern "C" uintptr_t platform_system_part1_flash_end;
+
 namespace {
+
+bool inServiceMode() {
+    int mode = security_mode_get(nullptr);
+    if (mode == MODULE_INFO_SECURITY_MODE_NONE && security_mode_is_overridden()) {
+        return true;
+    }
+    return false;
+}
+
+volatile bool s_systemRegionProtected = false;
 
 } /* anonymous */
 
@@ -48,6 +62,15 @@ bool InternalFlashMal::validate(uintptr_t addr, size_t len) {
     if ((addr >= INTERNAL_FLASH_START_ADD && addr <= INTERNAL_FLASH_END_ADDR) &&
         (end >= INTERNAL_FLASH_START_ADD && end <= INTERNAL_FLASH_END_ADDR))
     {
+        // Deny OTA region access while in Service Mode
+        if (inServiceMode()) {
+            // XXX: move these constants/calculations somewhere else. core_hal.c does the same too.
+            uintptr_t otaStart = (uintptr_t)&platform_system_part1_flash_start + 0x180000 /* max system-part1 size */ + 0x120000 /* asset fs max size */;
+            uintptr_t otaEnd = otaStart + 0x180000;
+            if (addr >= otaStart && addr < otaEnd) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -68,6 +91,36 @@ int InternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
         return 1;
     }
 
+    if (inServiceMode() && addr >= (uintptr_t)&platform_system_part1_flash_start && addr < (uintptr_t)&platform_system_part1_flash_end) {
+        // Within part1 region
+        if (addr == (uintptr_t)&platform_system_part1_flash_start) {
+            s_systemRegionProtected = true;
+            if (len < sizeof(module_info_t)) {
+                // Deny such short writes
+                return SYSTEM_ERROR_PROTECTED;
+            }
+            module_info_t info = {};
+            if (FLASH_ModuleInfo(&info, FLASH_ADDRESS, (uintptr_t)buf, nullptr) != 0) {
+                return SYSTEM_ERROR_PROTECTED;
+            }
+            if (info.module_version < 6000 /* 6.0.0 */) {
+                // This check works for both legacy and new default locations
+                return SYSTEM_ERROR_PROTECTED;
+            }
+            s_systemRegionProtected = false;
+        } else {
+            if (s_systemRegionProtected) {
+                return SYSTEM_ERROR_PROTECTED;
+            }
+        }
+        if ((addr % INTERNAL_FLASH_PAGE_SIZE) == 0) {
+            if (hal_flash_erase_sector(addr, CEIL_DIV(len, INTERNAL_FLASH_PAGE_SIZE)) != 0) {
+                return 1;
+            }
+        }
+    }
+
+
     if (hal_flash_write(addr, buf, len) != 0) {
         return 1;
     }
@@ -81,6 +134,11 @@ int InternalFlashMal::erase(uintptr_t addr, size_t len) {
     }
 
     (void)len;
+
+    if (inServiceMode() && addr >= (uintptr_t)&platform_system_part1_flash_start && addr < (uintptr_t)&platform_system_part1_flash_end) {
+        // Ignore erasure for now
+        return 0;
+    }
 
     if (hal_flash_erase_sector(addr, 1) != 0) {
         return 1;
@@ -115,8 +173,11 @@ int DctMal::deInit() {
 
 bool DctMal::validate(uintptr_t addr, size_t len) {
     uintptr_t end = addr + len;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
     if ((addr >= DCT_START_ADD && addr <= DCT_END_ADDR) &&
         (end >= DCT_START_ADD && end <= DCT_END_ADDR))
+#pragma GCC diagnostic pop
     {
         return true;
     }

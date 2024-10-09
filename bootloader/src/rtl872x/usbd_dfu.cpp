@@ -528,7 +528,11 @@ int DfuClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
         uintptr_t addr = ((req_.wValue - 2) * USBD_DFU_TRANSFER_SIZE) + address_;
         auto ret = currentMal()->write(transferBuf_, addr, req_.wLength);
         if (ret != detail::OK) {
-          setError(detail::errUNKNOWN);
+          if (ret != SYSTEM_ERROR_PROTECTED) {
+            setError(detail::errUNKNOWN);
+          } else {
+            setError(detail::DfuDeviceStatus::errVENDOR, false /* stall */, PROTECTED_MODE_ERROR);
+          }
         } else {
           setState(detail::dfuDNLOAD_IDLE);
           setStatus(detail::OK);

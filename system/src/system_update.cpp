@@ -327,6 +327,7 @@ int Spark_Prepare_For_Firmware_Update(FileTransfer::Descriptor& file, uint32_t f
     if (flags & 1) { // See ChunkedTransfer::handle_update_begin()
         f |= FirmwareUpdateFlag::VALIDATE_ONLY;
     }
+    f |= FirmwareUpdateFlag::LOCAL_UPDATE;
     return FirmwareUpdate::instance()->startUpdate(file.file_length, nullptr /* fileHash */, nullptr /* partialSize */, f);
 }
 
