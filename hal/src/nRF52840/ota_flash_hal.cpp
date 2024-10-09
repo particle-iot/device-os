@@ -618,7 +618,8 @@ int HAL_FLASH_End(void* reserved)
             if (system_protected_or_service_mode && SPARK_FLASH_UPDATE == 2 /* local update */) {
                 module_info_security_mode_ext_t ext = {};
                 ext.ext.length = sizeof(ext);
-                int r = security_mode_find_module_extension(HAL_STORAGE_ID_EXTERNAL_FLASH, module->bounds.start_address, &ext);
+                int r = security_mode_find_module_extension(module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ?
+                            HAL_STORAGE_ID_INTERNAL_FLASH : HAL_STORAGE_ID_EXTERNAL_FLASH, module->bounds.start_address, &ext);
                 if (r == SYSTEM_ERROR_NOT_FOUND) {
                     result = SYSTEM_ERROR_PROTECTED;
                     break;
