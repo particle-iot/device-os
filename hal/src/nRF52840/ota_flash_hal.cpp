@@ -49,6 +49,9 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #include <memory>
 #include "platform_radio_stack.h"
 #include "check.h"
+#include "security_mode.h"
+
+extern volatile uint8_t SPARK_FLASH_UPDATE;
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -583,6 +586,12 @@ int HAL_FLASH_End(void* reserved)
         moduleCount = MAX_COMBINED_MODULE_COUNT;
     }
     CHECK(validateModules(modules, moduleCount));
+
+    int system_protected_or_service_mode = 0;
+    if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED || security_mode_is_overridden()) {
+        system_protected_or_service_mode = 1;
+    }
+
     bool restartPending = false;
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = &modules[i];
@@ -606,6 +615,16 @@ int HAL_FLASH_End(void* reserved)
         }
 #endif // HAL_PLATFORM_ASSETS
         case MODULE_FUNCTION_BOOTLOADER: {
+            if (system_protected_or_service_mode && SPARK_FLASH_UPDATE == 2 /* local update */) {
+                module_info_security_mode_ext_t ext = {};
+                ext.ext.length = sizeof(ext);
+                int r = security_mode_find_module_extension(HAL_STORAGE_ID_EXTERNAL_FLASH, module->bounds.start_address, &ext);
+                if (r == SYSTEM_ERROR_NOT_FOUND) {
+                    result = SYSTEM_ERROR_PROTECTED;
+                    break;
+                }
+            }
+
             if (bootloader_get_version() < BOOTLOADER_MBR_UPDATE_MIN_VERSION) {
                 result = flash_bootloader(module, moduleSize);
                 break;

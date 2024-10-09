@@ -110,6 +110,7 @@ FirmwareUpdate::FirmwareUpdate() :
 }
 
 int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* partialSize, FirmwareUpdateFlags flags) {
+    const bool localUpdate = flags & FirmwareUpdateFlag::LOCAL_UPDATE;
     const bool validateOnly = flags & FirmwareUpdateFlag::VALIDATE_ONLY;
 #if HAL_PLATFORM_RESUMABLE_OTA
     const bool discardData = flags & FirmwareUpdateFlag::DISCARD_DATA;
@@ -168,7 +169,12 @@ int FirmwareUpdate::startUpdate(size_t fileSize, const char* fileHash, size_t* p
             const LEDStatusData* status = led_signal_status(LED_SIGNAL_FIRMWARE_UPDATE, nullptr);
             RGB.color(status ? status->color : RGB_COLOR_MAGENTA);
         }
-        SPARK_FLASH_UPDATE = 1; // TODO: Get rid of legacy state variables
+        if (localUpdate) {
+            // TODO: Get rid of legacy state variables
+            SPARK_FLASH_UPDATE = 2; // Local update
+        } else {
+            SPARK_FLASH_UPDATE = 1; // Cloud update
+        }
         updating_ = true;
         // Generate system events
         fileDesc_ = FileTransfer::Descriptor();
