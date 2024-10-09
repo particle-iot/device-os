@@ -23,10 +23,25 @@
 #include "exflash_hal.h"
 #include "dct.h"
 #include "flash_mal.h"
+#include "flash_common.h"
 
 using namespace particle::usbd::dfu::mal;
 
+extern "C" uintptr_t platform_system_part1_flash_start;
+extern "C" uintptr_t platform_system_part1_flash_start_legacy;
+extern "C" uintptr_t platform_system_part1_flash_end;
+
 namespace {
+
+bool inServiceMode() {
+    int mode = security_mode_get(nullptr);
+    if (mode == MODULE_INFO_SECURITY_MODE_NONE && security_mode_is_overridden()) {
+        return true;
+    }
+    return false;
+}
+
+volatile bool s_systemRegionProtected = false;
 
 } /* anonymous */
 
@@ -73,6 +88,35 @@ int InternalFlashMal::write(const uint8_t* buf, uintptr_t addr, size_t len) {
         return 1;
     }
 
+    if (inServiceMode() && addr >= (uintptr_t)&platform_system_part1_flash_start && addr < (uintptr_t)&platform_system_part1_flash_end) {
+        // Within part1 region
+        if ((addr == (uintptr_t)&platform_system_part1_flash_start || addr == (uintptr_t)&platform_system_part1_flash_start_legacy)) {
+            s_systemRegionProtected = true;
+            if (len < (sizeof(module_info_t) + 0x200 /* vector table */)) {
+                // Deny such short writes
+                return SYSTEM_ERROR_PROTECTED;
+            }
+            module_info_t info = {};
+            if (FLASH_ModuleInfo(&info, FLASH_INTERNAL, (uintptr_t)buf, nullptr) != 0) {
+                return SYSTEM_ERROR_PROTECTED;
+            }
+            if (info.module_version < 6000 /* 6.0.0 */) {
+                // This check works for both legacy and new default locations
+                return SYSTEM_ERROR_PROTECTED;
+            }
+            s_systemRegionProtected = false;
+        } else {
+            if (s_systemRegionProtected) {
+                return SYSTEM_ERROR_PROTECTED;
+            }
+        }
+        if ((addr % INTERNAL_FLASH_PAGE_SIZE) == 0) {
+            if (hal_flash_erase_sector(addr, CEIL_DIV(len, INTERNAL_FLASH_PAGE_SIZE)) != 0) {
+                return 1;
+            }
+        }
+    }
+
     if (hal_flash_write(addr, buf, len) != 0) {
         return 1;
     }
@@ -96,6 +140,11 @@ int InternalFlashMal::erase(uintptr_t addr, size_t len) {
     }
 
     (void)len;
+
+    if (inServiceMode() && addr >= (uintptr_t)&platform_system_part1_flash_start && addr < (uintptr_t)&platform_system_part1_flash_end) {
+        // Ignore erasure for now
+        return 0;
+    }
 
     if (hal_flash_erase_sector(addr, 1) != 0) {
         return 1;
@@ -204,6 +253,11 @@ bool ExternalFlashMal::validate(uintptr_t addr, size_t len) {
         (end >= EXTERNAL_FLASH_START_ADD && end <= EXTERNAL_FLASH_END_ADDR))
 #pragma GCC diagnostic pop
     {
+        // Deny OTA region access while in Service Mode
+        if ((addr >= EXTERNAL_FLASH_OTA_ADDRESS && addr < (EXTERNAL_FLASH_OTA_ADDRESS + EXTERNAL_FLASH_OTA_LENGTH)) &&
+                inServiceMode()) {
+            return false;
+        }
         return true;
     }
 
