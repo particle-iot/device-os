@@ -423,6 +423,11 @@ int fetchModules(hal_module_t* modules, size_t maxModuleCount, bool userDepsOpti
 }
 
 int validateModules(const hal_module_t* modules, size_t moduleCount) {
+    int system_protected_or_service_mode = 0;
+    if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED || security_mode_is_overridden()) {
+        system_protected_or_service_mode = 1;
+    }
+
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = modules + i;
         const auto info = &module->info;
@@ -475,6 +480,22 @@ int validateModules(const hal_module_t* modules, size_t moduleCount) {
             SYSTEM_ERROR_MESSAGE("NCP module is not updatable on this platform");
             return SYSTEM_ERROR_OTA_UNSUPPORTED_MODULE;
 #endif // !HAL_PLATFORM_NCP_UPDATABLE
+        } else if (moduleFunc == MODULE_FUNCTION_BOOTLOADER) {
+            if (system_protected_or_service_mode && SPARK_FLASH_UPDATE == 2 /* local update */ &&
+                        info->module_index == 0) {
+                module_info_security_mode_ext_t ext = {};
+                ext.ext.length = sizeof(ext);
+                int r = security_mode_find_module_extension(module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ?
+                        HAL_STORAGE_ID_INTERNAL_FLASH : HAL_STORAGE_ID_EXTERNAL_FLASH, module->bounds.start_address, &ext);
+                if (r == SYSTEM_ERROR_NOT_FOUND) {
+                    return SYSTEM_ERROR_PROTECTED;
+                }
+            }
+        } else if (moduleFunc == MODULE_FUNCTION_SYSTEM_PART) {
+            if (system_protected_or_service_mode && SPARK_FLASH_UPDATE == 2 /* local update */ &&
+                    info->module_version < 6000 /* 6.0.0 */) {
+                return SYSTEM_ERROR_PROTECTED;
+            }
         }
     }
     return 0;
@@ -514,11 +535,6 @@ int HAL_FLASH_End(void* reserved)
     }
     CHECK(validateModules(modules, moduleCount));
 
-    int system_protected_or_service_mode = 0;
-    if (security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED || security_mode_is_overridden()) {
-        system_protected_or_service_mode = 1;
-    }
-
     bool restartPending = false;
     for (size_t i = 0; i < moduleCount; ++i) {
         const auto module = &modules[i];
@@ -553,23 +569,6 @@ int HAL_FLASH_End(void* reserved)
                 slotFlags |= MODULE_ENCRYPTED;
             }
             LOG(INFO,"OTA module flags: 0x%X DCT slot flags: 0x%X", info.flags, slotFlags);
-            if (moduleFunc == MODULE_FUNCTION_BOOTLOADER) {
-                if (system_protected_or_service_mode && SPARK_FLASH_UPDATE == 2 /* local update */) {
-                    module_info_security_mode_ext_t ext = {};
-                    ext.ext.length = sizeof(ext);
-                    int r = security_mode_find_module_extension(module->bounds.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH ?
-                            HAL_STORAGE_ID_INTERNAL_FLASH : HAL_STORAGE_ID_EXTERNAL_FLASH, module->bounds.start_address, &ext);
-                    if (r == SYSTEM_ERROR_NOT_FOUND) {
-                        result = SYSTEM_ERROR_PROTECTED;
-                        break;
-                    }
-                }
-            }
-            if (system_protected_or_service_mode && SPARK_FLASH_UPDATE == 2 /* local update */ &&
-                    moduleFunc == MODULE_FUNCTION_SYSTEM_PART && info.module_version < 6000 /* 6.0.0 */) {
-                result = SYSTEM_ERROR_PROTECTED;
-                break;
-            }
             flash_device_t id = (module_ota.location == MODULE_BOUNDS_LOC_INTERNAL_FLASH) ? FLASH_INTERNAL : FLASH_SERIAL;
             const bool ok = FLASH_AddToNextAvailableModulesSlot(id, module->bounds.start_address, FLASH_INTERNAL,
                     (uint32_t)info.module_start_address, moduleSize + 4 /* CRC-32 */, moduleFunc, slotFlags);
