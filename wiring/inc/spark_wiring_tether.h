@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,25 +15,43 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SPARK_WIRING_ETHERNET_H
-#define SPARK_WIRING_ETHERNET_H
+#pragma once
 
 #include "spark_wiring_platform.h"
 
-#if Wiring_Ethernet
+#if HAL_PLATFORM_PPP_SERVER
 
 #include "spark_wiring_network.h"
 #include "system_network.h"
+#include "spark_wiring_usartserial.h"
 #include "ifapi.h"
 #include "scope_guard.h"
 #include "check.h"
 
-namespace spark {
+namespace particle {
 
-class EthernetClass : public NetworkClass {
+struct TetherSerialConfig {
+    TetherSerialConfig();
+
+    TetherSerialConfig& serial(USARTSerial& s);
+    USARTSerial& serial() const;
+
+    TetherSerialConfig& config(unsigned conf);
+    unsigned config() const;
+
+    TetherSerialConfig& baudrate(unsigned baud);
+    unsigned baudrate() const;
+
+private:
+    USARTSerial& serial_;
+    unsigned config_;
+    unsigned baudrate_;
+};
+
+class TetherClass : public spark::NetworkClass {
 public:
-    EthernetClass() :
-            NetworkClass(NETWORK_INTERFACE_ETHERNET) {
+    TetherClass() :
+            NetworkClass(NETWORK_INTERFACE_PPP_SERVER) {
     }
 
     void on() {
@@ -76,33 +94,21 @@ public:
         return network_ready(*this, 0,  NULL);
     }
 
-    uint8_t* macAddress(uint8_t* mac) {
-        if_t iface = nullptr;
-        if (!if_get_by_index(NETWORK_INTERFACE_ETHERNET, &iface)) {
-            sockaddr_ll hwAddr = {};
-            if (!if_get_lladdr(iface, &hwAddr)) {
-                memcpy(mac, hwAddr.sll_addr, 6);
-                return mac;
-            }
-        }
-        return nullptr;
-    }
-
     IPAddress localIP() {
         IPAddress addr;
-        GET_IF_ADDR(NETWORK_INTERFACE_ETHERNET, addr, addr);
+        GET_IF_ADDR(NETWORK_INTERFACE_PPP_SERVER, addr, addr);
         return addr;
     }
 
     IPAddress subnetMask() {
         IPAddress addr;
-        GET_IF_ADDR(NETWORK_INTERFACE_ETHERNET, netmask, addr);
+        GET_IF_ADDR(NETWORK_INTERFACE_PPP_SERVER, netmask, addr);
         return addr;
     }
 
     IPAddress gatewayIP() {
         IPAddress addr;
-        GET_IF_ADDR(NETWORK_INTERFACE_ETHERNET, gw, addr);
+        GET_IF_ADDR(NETWORK_INTERFACE_PPP_SERVER, gw, addr);
         return addr;
     }
 
@@ -113,12 +119,12 @@ public:
     IPAddress dhcpServerIP() {
         return IPAddress();
     }
+
+    int bind(const TetherSerialConfig& config);
 };
 
+extern TetherClass Tether;
 
-extern EthernetClass Ethernet;
+} /* namespace particle */
 
-} /* namespace spark */
-
-#endif /* Wiring_Ethernet */
-#endif /* SPARK_WIRING_ETHERNET_H */
+#endif /* HAL_PLATFORM_PPP_SERVER */

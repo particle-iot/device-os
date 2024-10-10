@@ -420,9 +420,11 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
                         auto outif = ip4_route_src(ip_2_ip4(&srcAddr.address()), ip_2_ip4(&dstAddr.address()));
                         if (outif) {
                             uint16_t newMss = lwip_htons(outif->mtu - 40);
-                            uint16_t oldMss = lwip_ntohs(*(uint16_t*)(o + 2));
+                            // uint16_t oldMss = lwip_ntohs(*(uint16_t*)(o + 2));
                             *(uint16_t*)(o + 2) = newMss;
-                            LOG(ERROR, "Adjusted MSS from %u to %u", (unsigned)oldMss, outif->mtu - 40);
+                            // if (oldMss != newMss) {
+                            //     LOG(WARN, "Adjusted MSS from %u to %u", (unsigned)oldMss, outif->mtu - 40);
+                            // }
                         }
                         o += 4;
                         break;

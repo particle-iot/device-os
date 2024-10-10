@@ -26,6 +26,7 @@
 #include <lwip/pbuf.h>
 #include "ppp_client.h"
 #include "serial_stream.h"
+#include "at_server.h"
 
 #ifdef __cplusplus
 
@@ -102,6 +103,8 @@ private:
     std::unique_ptr<::particle::ThreadRunner> dnsRunner_;
     std::unique_ptr<particle::net::nat::Nat64> nat_;
     if_req_ppp_server_uart_settings settings_;
+    std::unique_ptr<AtServer> server_;
+
 };
 
 } } // namespace particle::net

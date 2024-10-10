@@ -58,6 +58,7 @@ constexpr const char* Client::stateNames_[];
 const auto NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_DEFAULT = 5;
 const auto NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_R510 = 240; // 4 minutes (4.25 minutes max)
 const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT = 10;
+const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT_SERVER = 2;
 const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_R510 = 1;
 
 namespace {
@@ -115,6 +116,10 @@ void Client::init() {
     SPARK_ASSERT(pcb_);
     if_.flags &= ~NETIF_FLAG_UP;
 
+    if (server_) {
+      if_.name[1] = 's'; // "ps" instead of "pp"
+    }
+
     LOCK_TCPIP_CORE();
     ipcp_ = std::make_unique<Ipcp>(pcb_);
     SPARK_ASSERT(ipcp_);
@@ -152,6 +157,11 @@ void Client::init() {
       pcb_->settings.lcp_echo_interval = NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_R510;
       pcb_->settings.lcp_echo_fails = NCP_CLIENT_LCP_ECHO_MAX_FAILS_R510;
       pcb_->lcp_echos_pending = 0; // reset echo count
+    }
+
+    if (server_) {
+      pcb_->settings.lcp_echo_interval = NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_DEFAULT;
+      pcb_->settings.lcp_echo_fails = NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT_SERVER;
     }
 
     pppapi_set_notify_phase_callback(pcb_, &Client::notifyPhaseCb);
@@ -219,7 +229,7 @@ int Client::prepareConnect() {
 #if HAL_PLATFORM_PPP_SERVER
   LOCK_TCPIP_CORE();
   if (server_) {
-    ppp_set_silent(pcb_, 1);
+    ppp_set_silent(pcb_, 0);
     ppp_set_auth(pcb_, PPPAUTHTYPE_ANY, "particle", "particle");
     ppp_set_auth_required(pcb_, 0);
   } else {
@@ -321,15 +331,10 @@ int Client::input(const uint8_t* data, size_t size) {
             const size_t header = 19;
             if (pppos->in_state == PDDATA && pppos->in_head->len >= header) {
               const size_t len = pppos->in_head->len - header;
-              const char breakAndAt[] = "+++AT";
-              const char breakAndAtDial[] = "+++ATD";
-              if (len >= strlen(breakAndAtDial) && !strncmp(((const char*)pppos->in_head->payload) + header, breakAndAtDial, strlen(breakAndAtDial))) {
-                const char okResponse[] = "\r\nCONNECT\r\n";
-                output((const uint8_t*)okResponse, strlen(okResponse));
-              } else if (len >= strlen(breakAndAt) && !strncmp(((const char*)pppos->in_head->payload) + header, breakAndAt, strlen(breakAndAt))) {
+              const char breakSeq[] = "+++";
+              if (len >= strlen(breakSeq) && !strncmp(((const char*)pppos->in_head->payload) + header, breakSeq, strlen(breakSeq))) {
                 pppos_drop_packet(pppos);
-                const char okResponse[] = "\r\nOK\r\n";
-                output((const uint8_t*)okResponse, strlen(okResponse));
+                disconnect();
               }
             }
           }

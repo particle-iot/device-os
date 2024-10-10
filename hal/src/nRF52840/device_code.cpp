@@ -126,5 +126,6 @@ int get_device_name(char* buf, size_t size) {
 }
 
 int get_device_usb_name(char* buf, size_t size) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    strncpy(buf, HAL_PLATFORM_USB_PRODUCT_STRING, size);
+    return 0;
 }
