@@ -1,5 +1,8 @@
 #pragma once
 
+// Must be before hal_platform_rtl8721x_config.h
+#define HAL_PLATFORM_ETHERNET_FEATHERWING_SPI_CLOCK (25000000 / 2)
+
 #include "hal_platform_rtl8721x_config.h"
 #include "platforms.h"
 
