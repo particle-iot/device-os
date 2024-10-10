@@ -20,6 +20,7 @@
 #include <functional>
 #include <cstring>
 
+#include "spark_wiring_cloud.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_error.h"
 
@@ -130,7 +131,7 @@ public:
     CloudEvent& data(const Variant& data);
 
     Buffer data() const;
-    Variant dataAsVariant() const;
+    Variant dataAsVariant() /* FIXME: const */;
 
     CloudEvent& size(size_t size) {
         if (ev_) {
@@ -191,7 +192,7 @@ public:
     void flush() override {
     }
 
-    CloudEvent& pos(size_t pos) {
+    const CloudEvent& pos(size_t pos) const /* FIXME */ {
         if (ev_) {
             cloud_event_seek(ev_, pos, nullptr /* reserved */);
         }

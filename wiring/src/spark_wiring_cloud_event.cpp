@@ -27,18 +27,19 @@ namespace particle {
 
 namespace {
 
+/*
 void statusChangeCallback(cloud_event* event, void* arg) {
 }
+*/
 
 } // namespace
 
 CloudEvent& CloudEvent::contentType(ContentType type) {
     if (ev_) {
-        cloud_event_properties prop = {
-            .version = CLOUD_EVENT_API_VERSION,
-            .flags = CLOUD_EVENT_PROPERTY_CONTENT_TYPE,
-            .content_type = static_cast<int>(type)
-        };
+        cloud_event_properties prop = {};
+        prop.version = CLOUD_EVENT_API_VERSION;
+        prop.flags = CLOUD_EVENT_PROPERTY_CONTENT_TYPE;
+        prop.content_type = static_cast<int>(type);
         cloud_event_set_properties(ev_, &prop, nullptr /* reserved */);
     }
     return *this;
@@ -48,10 +49,9 @@ ContentType CloudEvent::contentType() const {
     if (!ev_) {
         return ContentType::TEXT;
     }
-    cloud_event_properties prop = {
-        .version = CLOUD_EVENT_API_VERSION,
-        .flags = CLOUD_EVENT_PROPERTY_CONTENT_TYPE
-    };
+    cloud_event_properties prop = {};
+    prop.version = CLOUD_EVENT_API_VERSION;
+    prop.flags = CLOUD_EVENT_PROPERTY_CONTENT_TYPE;
     int r = cloud_event_get_properties(ev_, &prop, nullptr /* reserved */);
     if (r < 0) {
         LOG(ERROR, "cloud_event_get_properties() failed: %d", r);
@@ -74,7 +74,7 @@ CloudEvent& CloudEvent::data(const Variant& data) {
         pos(0);
         int r = encodeToCBOR(data, *this);
         if (r < 0) {
-            cloud_event_set_error(ev_, r, nullptr /* reserved */)
+            cloud_event_set_error(ev_, r, nullptr /* reserved */);
         } else {
             this->size(pos());
         }
@@ -82,7 +82,7 @@ CloudEvent& CloudEvent::data(const Variant& data) {
     return *this;
 }
 
-Buffer data() const {
+Buffer CloudEvent::data() const {
     if (!ev_) {
         return Buffer();
     }
@@ -101,7 +101,7 @@ Buffer data() const {
     return buf;
 }
 
-Variant dataAsVariant() const {
+Variant CloudEvent::dataAsVariant() {
     if (!ev_) {
         return Variant();
     }
@@ -117,17 +117,17 @@ Variant dataAsVariant() const {
     return v;
 }
 
-CloudEvent& onStatusChange(OnStatusChange callback, void* arg) {
+CloudEvent& CloudEvent::onStatusChange(OnStatusChange callback, void* arg) {
     // TODO
     return *this;
 }
 
-CloudEvent& onStatusChange(OnStatusChangeFn callback) {
+CloudEvent& CloudEvent::onStatusChange(OnStatusChangeFn callback) {
     // TODO
     return *this;
 }
 
-int CloudEvent::read() override {
+int CloudEvent::read() {
     if (!ev_) {
         return -1;
     }
@@ -139,7 +139,7 @@ int CloudEvent::read() override {
     return (unsigned char)c;
 }
 
-size_t CloudEvent::readBytes(char* data, size_t size) override {
+size_t CloudEvent::readBytes(char* data, size_t size) {
     if (!ev_) {
         return 0;
     }
@@ -150,7 +150,7 @@ size_t CloudEvent::readBytes(char* data, size_t size) override {
     return r;
 }
 
-int CloudEvent::peek() override {
+int CloudEvent::peek() {
     if (!ev_) {
         return -1;
     }
@@ -162,7 +162,7 @@ int CloudEvent::peek() override {
     return (unsigned char)c;
 }
 
-size_t CloudEvent::write(const uint8_t* data, size_t size) override {
+size_t CloudEvent::write(const uint8_t* data, size_t size) {
     if (!ev_) {
         return 0;
     }
