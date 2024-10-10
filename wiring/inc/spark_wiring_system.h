@@ -1169,7 +1169,8 @@ extern SystemClass System;
 
 #define SYSTEM_MODE(mode)  SystemClass SystemMode(mode);
 
-#define SYSTEM_THREAD(state) STARTUP(system_thread_set_state(spark::feature::state, nullptr));
+#define SYSTEM_THREAD(state) _Pragma("GCC warning \"System thread is enabled by default starting with Device OS 6.2.0. SYSTEM_THREAD(DISABLED) may still be explicitly called, however non-threaded behavior is soon to be completely deprecated in later releases.\"") \
+    STARTUP(system_thread_set_state(spark::feature::state, nullptr));
 
 #define waitFor(condition, timeout) System.waitCondition([]{ return (condition)(); }, (timeout))
 #define waitUntil(condition) System.waitCondition([]{ return (condition)(); })

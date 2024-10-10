@@ -54,6 +54,4 @@ void hal_rtc_set_unixtime_deprecated(time32_t value);
 }
 #endif
 
-#include "rtc_hal_compat.h"
-
 #endif  /* RTC_HAL_H */

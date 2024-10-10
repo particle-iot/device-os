@@ -55,9 +55,6 @@ void hal_pwm_set_resolution(uint16_t pin, uint8_t resolution);
 void hal_pwm_reset_pin(uint16_t pin);
 int hal_pwm_sleep(bool sleep, void* reserved);
 
-
-#include "pwm_hal_compat.h"
-
 #ifdef __cplusplus
 }
 #endif

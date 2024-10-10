@@ -36,7 +36,7 @@ enum Result {
 class TestSuiteConfig {
 public:
     static const System_Mode_TypeDef DEFAULT_SYSTEM_MODE = SEMI_AUTOMATIC;
-    static const bool DEFAULT_SYSTEM_THREAD_ENABLED = false;
+    static const bool DEFAULT_SYSTEM_THREAD_ENABLED = true;
 
     TestSuiteConfig();
 

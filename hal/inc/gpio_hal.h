@@ -76,8 +76,6 @@ uint32_t hal_gpio_pulse_in(hal_pin_t pin, uint16_t value);
 int hal_gpio_get_drive_strength(hal_pin_t pin, hal_gpio_drive_t* drive);
 int hal_gpio_set_drive_strength(hal_pin_t pin, hal_gpio_drive_t drive);
 
-#include "gpio_hal_compat.h"
-
 #ifdef __cplusplus
 }
 #endif

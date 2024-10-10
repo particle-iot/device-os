@@ -231,8 +231,6 @@ inline bool hal_interrupt_is_irq_masked(int32_t irqn) {
 
 #endif
 
-#include "interrupts_hal_compat.h"
-
 #endif // defined(USE_STDPERIPH_DRIVER)
 
 #ifdef __cplusplus

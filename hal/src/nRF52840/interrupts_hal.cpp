@@ -40,8 +40,8 @@ using namespace particle;
 #define EXTI_CHANNEL_NUM                (GPIOTE_CHANNEL_NUM + PORT_EVENT_CHANNEL_NUM)
 
 static struct {
-    uint8_t                 pin;
-    HAL_InterruptCallback   interrupt_callback;
+    uint8_t                    pin;
+    hal_interrupt_callback_t   interrupt_callback;
 } m_exti_channels[EXTI_CHANNEL_NUM] = {{0, {nullptr, nullptr}}};
 
 struct hal_interrupts_suspend_data_t {

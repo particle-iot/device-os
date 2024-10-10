@@ -93,4 +93,4 @@ endif
 #endif
 endif
 
-CFLAGS += -Wno-error=unused-variable
+CFLAGS += -Wno-unused-variable

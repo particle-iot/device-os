@@ -759,14 +759,23 @@ inline particle::Future<bool> CloudClass::publish(const char* name, const String
 }
 
 inline bool CloudClass::subscribe(const char* name, EventHandler handler) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     return subscribe(name, handler, ALL_DEVICES);
+#pragma GCC diagnostic pop
 }
 
 inline bool CloudClass::subscribe(const char* name, wiring_event_handler_t handler) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     return subscribe(name, handler, ALL_DEVICES);
+#pragma GCC diagnostic pop
 }
 
 template<typename T>
 inline bool CloudClass::subscribe(const char* name, void (T::*handler)(const char*, const char*), T* instance) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     return subscribe(name, handler, instance, ALL_DEVICES);
+#pragma GCC diagnostic pop
 }

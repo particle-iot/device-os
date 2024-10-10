@@ -151,7 +151,6 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_THEME_OFFSET (offsetof(application_dct_t, led_theme))
 #define DCT_EAP_CONFIG_OFFSET (offsetof(application_dct_t, eap_config))
 #define DCT_DEVICE_SECRET_OFFSET (offsetof(application_dct_t, device_secret))
-// #define DCT_SETUP_DONE_OFFSET (offsetof(application_dct_t, setup_done))
 #define DCT_NCP_ID_OFFSET (offsetof(application_dct_t, ncp_id))
 #define DCT_POWER_CONFIG_OFFSET (offsetof(application_dct_t, power_config))
 #define DCT_RADIO_ANTENNA_OFFSET (offsetof(application_dct_t, radio_antenna))
@@ -184,7 +183,6 @@ typedef struct __attribute__((packed)) application_dct {
 #define DCT_LED_THEME_SIZE (sizeof((application_dct_t*)0)->led_theme)
 #define DCT_EAP_CONFIG_SIZE (sizeof((application_dct_t*)0)->eap_config)
 #define DCT_DEVICE_SECRET_SIZE (sizeof((application_dct_t*)0)->device_secret)
-// #define DCT_SETUP_DONE_SIZE (sizeof((application_dct_t*)0)->setup_done)
 #define DCT_NCP_ID_SIZE (sizeof((application_dct_t*)0)->ncp_id)
 #define DCT_POWER_CONFIG_SIZE (sizeof((application_dct_t*)0)->power_config)
 #define DCT_RADIO_ANTENNA_SIZE (sizeof((application_dct_t*)0)->radio_antenna)
@@ -194,13 +192,6 @@ typedef struct __attribute__((packed)) application_dct {
 
 #define DCT_OTA_UPDATE_FLAG_SET (0xA5)
 #define DCT_OTA_UPDATE_FLAG_CLEAR (0XFF)
-
-typedef enum platform_dct_deprecated {
-    DCT_SETUP_DONE_OFFSET __attribute__((deprecated("Setup Done flag has been deprecated since Device OS 4.0 and has no effect on device behavior. This will be removed in Device OS 5.x causing build error!")))
-            = (offsetof(application_dct_t, setup_done)),
-    DCT_SETUP_DONE_SIZE __attribute__((deprecated("Setup Done flag has been deprecated since Device OS 4.0 and has no effect on device behavior. This will be removed in Device OS 5.x causing build error!")))
-            = sizeof(((application_dct_t*)0)->setup_done)
-} platform_dct_deprecated;
 
 /**
  * Assert offsets. These ensure that the layout in flash isn't inadvertently changed.
