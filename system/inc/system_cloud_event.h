@@ -18,11 +18,6 @@
 #pragma once
 
 /**
- * API version.
- */
-#define CLOUD_EVENT_API_VERSION 1
-
-/**
  * Maximum length of an event name.
  */
 #define CLOUD_EVENT_MAX_NAME_LENGTH 64
@@ -49,6 +44,13 @@ typedef void (*cloud_event_status_change_callback)(cloud_event* event, void* arg
 typedef void (*cloud_event_subscribe_callback)(cloud_event* event, void* arg);
 
 /**
+ * Destructor callback.
+ *
+ * @param arg User data.
+ */
+typedef void (*cloud_event_destroy_callback)(void* arg);
+
+/**
  * Event status.
  */
 typedef enum cloud_event_status {
@@ -63,17 +65,13 @@ typedef enum cloud_event_status {
  */
 typedef enum cloud_event_property {
     CLOUD_EVENT_PROPERTY_CONTENT_TYPE = 0x01, ///< Content type of the event data.
-    CLOUD_EVENT_PROPERTY_ALL = 0x7fffffff ///< Set/get all properies.
+    CLOUD_EVENT_PROPERTY_ALL = CLOUD_EVENT_PROPERTY_CONTENT_TYPE ///< All properies.
 } cloud_event_property;
 
 /**
  * Event properties.
  */
 typedef struct cloud_event_properties {
-    /**
-     * API version. Must be set to `CLOUD_EVENT_API_VERSION`.
-     */
-    int version;
     /**
      * Combination of flags defined by `cloud_event_property`.
      *
@@ -122,7 +120,8 @@ int cloud_event_tell(cloud_event* event, void* reserved);
 int cloud_event_set_size(cloud_event* event, size_t size, void* reserved);
 int cloud_event_get_size(cloud_event* event, void* reserved);
 
-void cloud_event_set_status_change_callback(cloud_event* event, cloud_event_status_change_callback callback, void* reserved);
+void cloud_event_set_status_change_callback(cloud_event* event, cloud_event_status_change_callback status_change,
+        cloud_event_destroy_callback destroy, void* arg, void* reserved);
 int cloud_event_get_status(cloud_event* event, void* reserved);
 
 void cloud_event_set_error(cloud_event* event, int error, void* reserved);
@@ -131,7 +130,9 @@ void cloud_event_clear_error(cloud_event* event, void* reserved);
 
 int cloud_event_publish(cloud_event* event, const cloud_event_publish_options* opts, void* reserved);
 
-int cloud_event_subscribe(const char* topic, cloud_event_subscribe_callback callback, const cloud_event_subscribe_options* opts, void* reserved);
+int cloud_event_subscribe(const char* prefix, cloud_event_subscribe_callback subscribe, cloud_event_destroy_callback destroy,
+        void* arg, const cloud_event_subscribe_options* opts, void* reserved);
+void cloud_event_unsubscribe(const char* prefix, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"

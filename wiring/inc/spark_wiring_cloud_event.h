@@ -40,8 +40,7 @@ public:
         FAILED
     };
 
-    typedef void (*OnStatusChange)(CloudEvent event, void* arg);
-    typedef std::function<void(CloudEvent event)> OnStatusChangeFn;
+    typedef void OnStatusChange(CloudEvent event);
 
     CloudEvent() :
             ev_(nullptr) {
@@ -71,6 +70,14 @@ public:
     CloudEvent(const char* name, const Variant& data) :
             CloudEvent(name) {
         this->data(data);
+    }
+
+    // This constructor is for internal use only
+    explicit CloudEvent(cloud_event* event) :
+            ev_(event) {
+        if (ev_) {
+            cloud_event_add_ref(ev_, nullptr /* reserved */);
+        }
     }
 
     CloudEvent(const CloudEvent& event) :
@@ -147,8 +154,8 @@ public:
         return cloud_event_get_size(ev_, nullptr /* reserved */);
     }
 
-    CloudEvent& onStatusChange(OnStatusChange callback, void* arg = nullptr);
-    CloudEvent& onStatusChange(OnStatusChangeFn callback);
+    CloudEvent& onStatusChange(OnStatusChange* callback);
+    CloudEvent& onStatusChange(std::function<OnStatusChange> callback);
 
     Status status() const {
         if (!ev_) {
@@ -214,9 +221,22 @@ public:
         }
     }
 
+    // This method is for internal use only
+    cloud_event* handle() const {
+        return ev_;
+    }
+
     CloudEvent& operator=(CloudEvent event) {
         swap(*this, event);
         return *this;
+    }
+
+    bool operator==(CloudEvent event) const {
+        return ev_ == event.ev_;
+    }
+
+    bool operator!=(CloudEvent event) const {
+        return ev_ != event.ev_;
     }
 
     friend void swap(CloudEvent& event1, CloudEvent& event2) {

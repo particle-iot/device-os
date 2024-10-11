@@ -72,6 +72,7 @@ struct is_string_literal {
 
 namespace particle {
 
+class CloudEvent;
 class Ledger;
 class Variant;
 
@@ -92,6 +93,8 @@ typedef std::function<void(const char* name, const char* data, size_t size, Cont
 
 typedef void (*EventHandlerWithVariant)(const char* name, EventData data);
 typedef std::function<void(const char* name, EventData data)> EventHandlerWithVariantFn;
+
+typedef void (EventHandlerWithCloudEvent)(CloudEvent event);
 
 size_t getEventDataSize(const EventData& data);
 
@@ -316,6 +319,8 @@ public:
 
     particle::Future<bool> publish(const char* name, const particle::EventData& data, PublishFlags flags = PublishFlags());
 
+    bool publish(particle::CloudEvent event);
+
     /**
      * @brief Publish vitals information
      *
@@ -391,6 +396,9 @@ public:
 
     bool subscribe(const char* name, particle::EventHandlerWithVariant handler);
     bool subscribe(const char* name, particle::EventHandlerWithVariantFn handler);
+
+    bool subscribe(const char* name, particle::EventHandlerWithCloudEvent* handler);
+    bool subscribe(const char* name, std::function<particle::EventHandlerWithCloudEvent> handler);
 
     void unsubscribe()
     {
