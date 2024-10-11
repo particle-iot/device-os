@@ -27,21 +27,33 @@ namespace particle {
 
 namespace {
 
-/*
-void statusChangeCallback(cloud_event* event, void* arg) {
+void statusChangeCallbackWrapper(cloud_event* ev, void* arg) {
+    CloudEvent event(ev);
+    auto cb = (CloudEvent::OnStatusChange*)arg;
+    cb(std::move(event));
 }
-*/
+
+void statusChangeFunctionWrapper(cloud_event* ev, void* arg) {
+    CloudEvent event(ev);
+    auto fn = (std::function<CloudEvent::OnStatusChange>*)arg;
+    (*fn)(std::move(event));
+}
+
+void destroyStatusChangeFunction(void* arg) {
+    auto fn = (std::function<CloudEvent::OnStatusChange>*)arg;
+    delete fn;
+}
 
 } // namespace
 
 CloudEvent& CloudEvent::contentType(ContentType type) {
-    if (ev_) {
-        cloud_event_properties prop = {};
-        prop.version = CLOUD_EVENT_API_VERSION;
-        prop.flags = CLOUD_EVENT_PROPERTY_CONTENT_TYPE;
-        prop.content_type = static_cast<int>(type);
-        cloud_event_set_properties(ev_, &prop, nullptr /* reserved */);
+    if (!ev_) {
+        return *this;
     }
+    cloud_event_properties prop = {};
+    prop.flags = CLOUD_EVENT_PROPERTY_CONTENT_TYPE;
+    prop.content_type = static_cast<int>(type);
+    cloud_event_set_properties(ev_, &prop, nullptr /* reserved */);
     return *this;
 }
 
@@ -50,7 +62,6 @@ ContentType CloudEvent::contentType() const {
         return ContentType::TEXT;
     }
     cloud_event_properties prop = {};
-    prop.version = CLOUD_EVENT_API_VERSION;
     prop.flags = CLOUD_EVENT_PROPERTY_CONTENT_TYPE;
     int r = cloud_event_get_properties(ev_, &prop, nullptr /* reserved */);
     if (r < 0) {
@@ -61,24 +72,26 @@ ContentType CloudEvent::contentType() const {
 }
 
 CloudEvent& CloudEvent::data(const char* data, size_t size) {
-    if (ev_) {
-        pos(0);
-        write((const uint8_t*)data, size);
-        this->size(size);
+    if (!ev_) {
+        return *this;
     }
+    pos(0);
+    write((const uint8_t*)data, size);
+    this->size(size);
     return *this;
 }
 
 CloudEvent& CloudEvent::data(const Variant& data) {
-    if (ev_) {
-        pos(0);
-        int r = encodeToCBOR(data, *this);
-        if (r < 0) {
-            cloud_event_set_error(ev_, r, nullptr /* reserved */);
-        } else {
-            this->size(pos());
-        }
+    if (!ev_) {
+        return *this;
     }
+    pos(0);
+    int r = encodeToCBOR(data, *this);
+    if (r < 0) {
+        cloud_event_set_error(ev_, r, nullptr /* reserved */);
+        return *this;
+    }
+    this->size(pos());
     return *this;
 }
 
@@ -117,13 +130,29 @@ Variant CloudEvent::dataAsVariant() {
     return v;
 }
 
-CloudEvent& CloudEvent::onStatusChange(OnStatusChange callback, void* arg) {
-    // TODO
+CloudEvent& CloudEvent::onStatusChange(OnStatusChange* callback) {
+    if (!ev_) {
+        return *this;
+    }
+    cloud_event_set_status_change_callback(ev_, callback ? statusChangeCallbackWrapper : nullptr, nullptr /* destroy */,
+            (void*)callback, nullptr /* reserved */);
     return *this;
 }
 
-CloudEvent& CloudEvent::onStatusChange(OnStatusChangeFn callback) {
-    // TODO
+CloudEvent& CloudEvent::onStatusChange(std::function<OnStatusChange> callback) {
+    if (!ev_) {
+        return *this;
+    }
+    if (callback) {
+        auto fn = new(std::nothrow) std::function<OnStatusChange>(std::move(callback));
+        if (!fn) {
+            cloud_event_set_error(ev_, Error::NO_MEMORY, nullptr /* reserved */);
+            return *this;
+        }
+        cloud_event_set_status_change_callback(ev_, statusChangeFunctionWrapper, destroyStatusChangeFunction, fn, nullptr /* reserved */);
+    } else {
+        onStatusChange(nullptr); // Clear the callback
+    }
     return *this;
 }
 
