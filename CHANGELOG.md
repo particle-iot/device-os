@@ -1,3 +1,7 @@
+## 6.2.98
+
+- OTA forward update
+
 ## 6.2.0
 
 ### BREAKING CHANGES
