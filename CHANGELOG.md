@@ -1,3 +1,7 @@
+## 6.2.99
+
+- OTA forward update w/bootloader bump
+
 ## 6.2.98
 
 - OTA forward update
