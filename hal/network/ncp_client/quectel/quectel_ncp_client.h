@@ -155,6 +155,8 @@ private:
     bool isQuecCatNBxDevice();
     /** Is this a Quectel BG95* device ? */
     bool isQuecBG95xDevice();
+    /** Is this a Quectel device we want to enable 2G and/or 3G on ? */
+    bool isQuec2g3gEnabled();
     int getRuntimeBaudrate();
     int modemInit() const;
     bool waitModemPowerState(bool onOff, system_tick_t timeout);
