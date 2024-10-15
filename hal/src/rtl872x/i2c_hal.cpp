@@ -346,7 +346,7 @@ public:
                 goto ret;
             }
             if(checkAbrt()) {
-                LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
+                //LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
                 I2C_ClearAllINT(i2cDev_);
                 goto ret;
             }
@@ -478,7 +478,7 @@ public:
                 return SYSTEM_ERROR_I2C_TX_DATA_TIMEOUT;
             }
             if(checkAbrt()) {
-                LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
+                //LOG(TRACE, "Abort: %08X", i2cDev_->IC_TX_ABRT_SOURCE);
                 I2C_ClearAllINT(i2cDev_);
                 return SYSTEM_ERROR_CANCELLED;
             }

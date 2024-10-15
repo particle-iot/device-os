@@ -217,9 +217,9 @@ int WifiNetworkManager::connect(const char* ssid) {
     // Connect to the network
     bool updateConfig = false;
     auto network = &networks.at(index);
-    // Perform a network scan on ESP32 devices because ESP32 doesn't support 802.11v/k/r
+    // Perform a network scan on ESP32/RTL872x devices because they don't support 802.11v/k/r properly
     int r = SYSTEM_ERROR_INTERNAL;
-    if (client_->ncpId() != PlatformNCPIdentifier::PLATFORM_NCP_ESP32) {
+    if (client_->ncpId() != PlatformNCPIdentifier::PLATFORM_NCP_ESP32 && client_->ncpId() != PlatformNCPIdentifier::PLATFORM_NCP_REALTEK_RTL872X) {
         r = connect(*network);
     }
     if (r < 0) {
@@ -250,7 +250,12 @@ int WifiNetworkManager::connect(const char* ssid) {
             } else if (strcmp(ssid, ap.ssid()) != 0) {
                 continue;
             }
-            r = connect(*network);
+            {
+                // Use BSSID from scan result
+                auto tmp = *network;
+                tmp.bssid(ap.bssid());
+                r = connect(tmp);
+            }
             if (r == 0) {
                 if (network->bssid() != ap.bssid()) {
                     // Update BSSID
