@@ -155,6 +155,21 @@ constexpr system_tick_t BLE_ENQUEUE_TIMEOUT_MS = 5000;
 
 StaticRecursiveMutex s_bleMutex;
 
+int hal_ble_try_lock(void* reserved) {
+    return !s_bleMutex.lock(1);
+}
+
+#define TRY_LOCK_GUARD(_expr) \
+        ({ \
+            if (hal_ble_try_lock(nullptr) != 0) { \
+                return SYSTEM_ERROR_BUSY; \
+            } \
+            SCOPE_GUARD({ \
+                hal_ble_unlock(nullptr); \
+            }); \
+            _expr; \
+        })
+
 bool isUuidEqual(const hal_ble_uuid_t* uuid1, const hal_ble_uuid_t* uuid2) {
     if (uuid1->type != uuid2->type) {
         return false;
@@ -3843,10 +3858,11 @@ int hal_ble_gap_update_connection_params(hal_ble_conn_handle_t conn_handle, cons
 }
 
 int hal_ble_gap_get_connection_info(hal_ble_conn_handle_t conn_handle, hal_ble_conn_info_t* info, void* reserved) {
-    BleLock lk;
-    LOG_DEBUG(TRACE, "hal_ble_gap_get_connection_info().");
-    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    return BleGap::getInstance().getConnectionInfo(conn_handle, info);
+    TRY_LOCK_GUARD({
+        LOG_DEBUG(TRACE, "hal_ble_gap_get_connection_info().");
+        CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+        return BleGap::getInstance().getConnectionInfo(conn_handle, info);
+    });
 }
 
 int hal_ble_gap_get_rssi(hal_ble_conn_handle_t conn_handle, void* reserved) {
