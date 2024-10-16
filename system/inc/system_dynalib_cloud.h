@@ -30,6 +30,7 @@
 
 #ifdef DYNALIB_EXPORT
 #include "system_cloud.h"
+#include "system_cloud_event.h"
 #endif
 
 
@@ -54,6 +55,29 @@ DYNALIB_FN(15, system_cloud, spark_set_random_seed_from_cloud_handler, int(void 
 DYNALIB_FN(16, system_cloud, spark_publish_vitals, int(system_tick_t, void*))
 DYNALIB_FN(17, system_cloud, spark_cloud_disconnect, int(const spark_cloud_disconnect_options*, void*))
 DYNALIB_FN(18, system_cloud, spark_get_connection_property, int(unsigned, void*, size_t*, void*))
+
+DYNALIB_FN(19, system_cloud, cloud_event_create, int(cloud_event**, void*))
+DYNALIB_FN(20, system_cloud, cloud_event_add_ref, void(cloud_event*, void*))
+DYNALIB_FN(21, system_cloud, cloud_event_release, void(cloud_event*, void*))
+DYNALIB_FN(22, system_cloud, cloud_event_set_name, int(cloud_event*, const char*, void*))
+DYNALIB_FN(23, system_cloud, cloud_event_get_name, const char*(cloud_event*, void*))
+DYNALIB_FN(24, system_cloud, cloud_event_set_properties, int(cloud_event*, const cloud_event_properties*, void*))
+DYNALIB_FN(25, system_cloud, cloud_event_get_properties, int(cloud_event*, cloud_event_properties*, void*))
+DYNALIB_FN(26, system_cloud, cloud_event_read, int(cloud_event*, char*, size_t, void*))
+DYNALIB_FN(27, system_cloud, cloud_event_peek, int(cloud_event*, char*, size_t, void*))
+DYNALIB_FN(28, system_cloud, cloud_event_write, int(cloud_event*, const char*, size_t, void*))
+DYNALIB_FN(29, system_cloud, cloud_event_seek, int(cloud_event*, size_t, void*))
+DYNALIB_FN(30, system_cloud, cloud_event_tell, int(cloud_event*, void*))
+DYNALIB_FN(31, system_cloud, cloud_event_set_size, int(cloud_event*, size_t, void*))
+DYNALIB_FN(32, system_cloud, cloud_event_get_size, int(cloud_event*, void*))
+DYNALIB_FN(33, system_cloud, cloud_event_set_status_change_callback, void(cloud_event*, cloud_event_status_change_callback, cloud_event_destroy_callback, void*, void*))
+DYNALIB_FN(34, system_cloud, cloud_event_get_status, int(cloud_event*, void*))
+DYNALIB_FN(35, system_cloud, cloud_event_set_error, void(cloud_event*, int, void*))
+DYNALIB_FN(36, system_cloud, cloud_event_get_error, int(cloud_event*, void*))
+DYNALIB_FN(37, system_cloud, cloud_event_clear_error, void(cloud_event*, void*))
+DYNALIB_FN(38, system_cloud, cloud_event_publish, int(cloud_event*, const cloud_event_publish_options*, void*))
+DYNALIB_FN(39, system_cloud, cloud_event_subscribe, int(const char*, cloud_event_subscribe_callback, cloud_event_destroy_callback, void*, const cloud_event_subscribe_options*, void*))
+DYNALIB_FN(40, system_cloud, cloud_event_unsubscribe, void(const char*, void*))
 
 DYNALIB_END(system_cloud)
 
