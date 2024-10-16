@@ -179,6 +179,12 @@ enum class BlePairingEventType : uint8_t {
     NUMERIC_COMPARISON = BLE_EVT_PAIRING_NUMERIC_COMPARISON
 };
 
+enum class BleAdvertisingScheme : uint8_t {
+    STOP_ADV_ON_DISCONNECTED = BLE_AUTO_ADV_FORBIDDEN,
+    STOP_ADV_ON_DISCONNECTED_ONCE = BLE_AUTO_ADV_SINCE_NEXT_CONN,
+    RESTART_ADV_ON_DISCONNECTED = BLE_AUTO_ADV_ALWAYS,
+};
+
 struct BlePairingStatus {
     int status;
     bool bonded;
@@ -1009,6 +1015,9 @@ public:
     ssize_t getAdvertisingData(BleAdvertisingData& advertisingData) const;
     ssize_t getScanResponseData(BleAdvertisingData* scanResponse) const;
     ssize_t getScanResponseData(BleAdvertisingData& scanResponse) const;
+
+    int setAdvertisingScheme(BleAdvertisingScheme scheme) const;
+    int getAdvertisingScheme(BleAdvertisingScheme* scheme) const;
 
     // Advertising control
     int advertise() const;
