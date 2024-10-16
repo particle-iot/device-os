@@ -204,6 +204,14 @@ test(ble_pairing_event_type) {
     (void)type;
 }
 
+test(ble_advertising_scheme) {
+    BleAdvertisingScheme scheme;
+    API_COMPILE({ scheme = BleAdvertisingScheme::STOP_ADV_ON_DISCONNECTED; });
+    API_COMPILE({ scheme = BleAdvertisingScheme::STOP_ADV_ON_DISCONNECTED_ONCE; });
+    API_COMPILE({ scheme = BleAdvertisingScheme::RESTART_ADV_ON_DISCONNECTED; });
+    (void)scheme;
+}
+
 test(ble_phys_type) {
     BlePhy phy;
     API_COMPILE({ phy = BlePhy::BLE_PHYS_AUTO; });
@@ -680,6 +688,7 @@ test(ble_local_device_class) {
     BleUuid charUuid;
     BleUuid svcUuid;
     BlePeerDevice peer;
+    BleAdvertisingScheme scheme = BleAdvertisingScheme::RESTART_ADV_ON_DISCONNECTED;
 
     API_COMPILE({ int ret = BleLocalDevice::getInstance().on(); (void)ret; });
 
@@ -726,6 +735,8 @@ test(ble_local_device_class) {
     API_COMPILE({ size_t ret = BLE.getAdvertisingData(advData); (void)ret; });
     API_COMPILE({ size_t ret = BLE.getScanResponseData(&srData); (void)ret; });
     API_COMPILE({ size_t ret = BLE.getScanResponseData(srData); (void)ret; });
+    API_COMPILE({ size_t ret = BLE.setAdvertisingScheme(scheme); (void)ret; });
+    API_COMPILE({ size_t ret = BLE.getAdvertisingScheme(&scheme); (void)ret; });
 
     API_COMPILE({ int ret = BLE.advertise(); (void)ret; });
     API_COMPILE({ int ret = BLE.advertise(&advData); (void)ret; });

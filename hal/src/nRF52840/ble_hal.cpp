@@ -4154,7 +4154,7 @@ int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved
 int hal_ble_gap_get_auto_advertise(hal_ble_auto_adv_cfg_t* cfg, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_auto_advertise().");
-    CHECK_TRUE(BleObject::getInstance().initialized(), BLE_AUTO_ADV_FORBIDDEN);
+    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().broadcaster()->getAutoAdvertiseScheme(cfg);
 }
 
