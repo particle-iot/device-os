@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <stddef.h>
+
 /**
  * Maximum length of an event name.
  */
@@ -108,8 +110,8 @@ void cloud_event_release(cloud_event* event, void* reserved);
 int cloud_event_set_name(cloud_event* event, const char* name, void* reserved);
 const char* cloud_event_get_name(cloud_event* event, void* reserved);
 
-int cloud_event_set_properties(cloud_event* event, const cloud_event_properties* properties, void* reserved);
-int cloud_event_get_properties(cloud_event* event, cloud_event_properties* properties, void* reserved);
+int cloud_event_set_properties(cloud_event* event, const cloud_event_properties* prop, void* reserved);
+int cloud_event_get_properties(cloud_event* event, cloud_event_properties* prop, void* reserved);
 
 int cloud_event_read(cloud_event* event, char* data, size_t size, void* reserved);
 int cloud_event_peek(cloud_event* event, char* data, size_t size, void* reserved);
