@@ -47,7 +47,7 @@ int Cloud::publish(RefCountPtr<Event> event) {
     if (r < 0) {
         event->publishComplete(r);
     }
-    return 0;
+    return r;
 }
 
 Cloud* Cloud::instance() {
@@ -56,6 +56,7 @@ Cloud* Cloud::instance() {
 }
 
 int Cloud::publishImpl(RefCountPtr<Event> event) {
+    CHECK(event->prepareForPublish());
 /*
     // FIXME
     char uri[MAX_URI_LEN + 1];
