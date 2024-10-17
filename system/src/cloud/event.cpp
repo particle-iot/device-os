@@ -98,13 +98,16 @@ int Event::size() const {
 int Event::prepareForPublish() {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
     if (!*name_) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+        return error(SYSTEM_ERROR_INVALID_ARGUMENT);
     }
     status_ = CLOUD_EVENT_STATUS_SENDING;
     return 0;
 }
 
 void Event::publishComplete(int error) {
+    if (status_ != CLOUD_EVENT_STATUS_SENDING) {
+        return;
+    }
     if (error < 0) {
         status_ = CLOUD_EVENT_STATUS_FAILED;
         error_ = error;

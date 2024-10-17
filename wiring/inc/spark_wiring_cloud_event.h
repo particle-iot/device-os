@@ -196,6 +196,14 @@ public:
 
     size_t write(const uint8_t* data, size_t size) override;
 
+    size_t write(const char* data) {
+        return write((const uint8_t*)data, std::strlen(data));
+    }
+
+    size_t write(const char* data, size_t size) {
+        return write((const uint8_t*)data, size);
+    }
+
     void flush() override {
     }
 
