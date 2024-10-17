@@ -56,12 +56,16 @@ Cloud* Cloud::instance() {
 }
 
 int Cloud::publishImpl(RefCountPtr<Event> event) {
+/*
+    // FIXME
     char uri[MAX_URI_LEN + 1];
     CHECK(formatUri(uri, sizeof(uri), "E/%s", event->name()));
-
+*/
     coap_message* apiMsg = nullptr;
-    /* int reqId = */ CHECK(coap_begin_request(&apiMsg, uri, COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
+    /* int reqId = */ CHECK(coap_begin_request(&apiMsg, "E", COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
     CoapMessagePtr msg(apiMsg);
+
+    CHECK(coap_add_string_option(msg.get(), COAP_OPTION_URI_PATH, event->name(), nullptr /* reserved */)); // FIXME
 
     size_t size = event->size();
     CHECK(coap_write_payload(msg.get(), event->data(), &size, nullptr /* block_cb */, nullptr /* error_cb */,

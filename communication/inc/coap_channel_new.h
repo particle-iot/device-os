@@ -59,6 +59,8 @@ public:
             coap_error_callback errorCallback, void* callbackArg);
     int peekPayload(coap_message* msg, char* data, size_t size);
 
+    int addStringOption(coap_message* msg, int num, const char* val);
+
     void destroyMessage(coap_message* msg);
 
     void cancelRequest(int requestId);
