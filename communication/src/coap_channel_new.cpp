@@ -39,6 +39,9 @@ LOG_SOURCE_CATEGORY("system.coap")
 #include "scope_guard.h"
 #include "check.h"
 
+#include "spark_wiring_variant.h" // FIXME
+#include "spark_wiring_map.h"
+
 #define CHECK_PROTOCOL(_expr) \
         do { \
             auto _r = _expr; \
@@ -179,6 +182,8 @@ inline void forEachRefInList(T* head, const F& fn) {
 } // namespace
 
 struct CoapChannel::CoapMessage: RefCount {
+    Map<unsigned, Variant> options; // CoAP options
+
     coap_block_callback blockCallback; // Callback to invoke when a message block is sent or received
     coap_ack_callback ackCallback; // Callback to invoke when the message is acknowledged
     coap_error_callback errorCallback; // Callback to invoke when an error occurs
@@ -583,6 +588,25 @@ int CoapChannel::peekPayload(coap_message* apiMsg, char* data, size_t size) {
         }
     }
     return size;
+}
+
+int CoapChannel::addStringOption(coap_message* apiMsg, int num, const char* val) {
+    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    if (msg->sessionId != sessId_) {
+        return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
+    }
+    if (msg->state != MessageState::WRITE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    size_t len = std::strlen(val);
+    Variant v(val, len);
+    if (v.size() != (int)len) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    if (!msg->options.set(num, std::move(v))) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    return 0;
 }
 
 void CoapChannel::destroyMessage(coap_message* apiMsg) {
@@ -1208,6 +1232,16 @@ int CoapChannel::updateMessage(const RefCountPtr<CoapMessage>& msg) {
             e.option(CoapOption::ETAG /* 4 */, req->tag, req->tagSize);
         }
         e.option(CoapOption::URI_PATH /* 11 */, &req->uri, 1); // TODO: Support longer URIs
+
+        // FIXME
+        for (auto& entry: req->options) {
+            auto& v = entry.second;
+            if (v.isString()) {
+                auto& s = v.value<String>();
+                e.option(entry.first, s.c_str(), s.length());
+            }
+        }
+
         if (req->blockIndex.has_value()) {
             // See control vs descriptive usage of the block options in RFC 7959, 2.3
             if (req->type == MessageType::BLOCK_REQUEST) {
@@ -1466,7 +1500,8 @@ int coap_add_uint64_option(coap_message* msg, int num, uint64_t val, void* reser
 }
 
 int coap_add_string_option(coap_message* msg, int num, const char* val, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+    CHECK(CoapChannel::instance()->addStringOption(msg, num, val));
+    return 0;
 }
 
 int coap_add_opaque_option(coap_message* msg, int num, const char* data, size_t size, void* reserved) {
