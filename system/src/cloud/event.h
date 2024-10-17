@@ -41,6 +41,7 @@ public:
     Event() :
             name_(),
             status_(CLOUD_EVENT_STATUS_NEW),
+            pos_(0),
             error_(0) {
     }
 
