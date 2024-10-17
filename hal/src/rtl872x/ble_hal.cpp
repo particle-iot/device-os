@@ -2381,6 +2381,7 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 LOG_DEBUG(TRACE, "Connected as Central");
             } else {
                 connection.info.role = BLE_ROLE_PERIPHERAL;
+                connecting_ = false;
                 LOG_DEBUG(TRACE, "Connected as Peripheral");
             }
             connection.info.conn_handle = connHandle;
