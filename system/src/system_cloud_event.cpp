@@ -141,8 +141,9 @@ int cloud_event_publish(cloud_event* event, const cloud_event_publish_options* o
 }
 
 int cloud_event_subscribe(const char* prefix, cloud_event_subscribe_callback subscribe, cloud_event_destroy_callback destroy, void* arg, const cloud_event_subscribe_options* opts, void* reserved) {
-    // TODO
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    SYSTEM_THREAD_CONTEXT_SYNC(cloud_event_subscribe(prefix, subscribe, destroy, arg, opts, reserved));
+    CHECK(Cloud::instance()->subscribe(prefix, subscribe, arg));
+    return 0;
 }
 
 void cloud_event_unsubscribe(const char* prefix, void* reserved) {

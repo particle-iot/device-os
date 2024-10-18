@@ -23,6 +23,7 @@
 #include "coap_api.h"
 #include "coap_util.h"
 
+#include "str_util.h"
 #include "check.h"
 
 namespace particle::system::cloud {
@@ -42,12 +43,32 @@ int formatUri(char* buf, size_t size, ArgsT&&... args) {
 
 } // namespace
 
+int Cloud::init() {
+    CHECK(coap_add_request_handler("E", COAP_METHOD_POST, 0 /* flags */, coapRequestCallback, this, nullptr /* reserved */));
+    return 0;
+}
+
 int Cloud::publish(RefCountPtr<Event> event) {
     int r = publishImpl(std::move(event));
     if (r < 0) {
         event->publishComplete(r);
     }
     return r;
+}
+
+int Cloud::subscribe(const char* prefix, cloud_event_subscribe_callback handler, void* arg) {
+    Subscription sub;
+    sub.prefix = prefix;
+    if (!sub.prefix && prefix) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    sub.prefixLen = std::strlen(prefix);
+    sub.handler = handler;
+    sub.handlerArg = arg;
+    if (!subs_.append(std::move(sub))) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    return 0;
 }
 
 Cloud* Cloud::instance() {
@@ -73,6 +94,56 @@ int Cloud::publishImpl(RefCountPtr<Event> event) {
             nullptr /* arg */, nullptr /* reserved */));
     CHECK(coap_end_request(msg.get(), nullptr /* resp_cb */, coapAckCallback, coapErrorCallback, event.get(), nullptr /* reserved */));
     event->addRef();
+
+    return 0;
+}
+
+int Cloud::coapRequestCallback(coap_message* apiMsg, const char* uri, int method, int reqId, void* arg) {
+    auto self = static_cast<Cloud*>(arg);
+
+    CoapMessagePtr msg(apiMsg);
+
+    const char* eventName = uri + 3; // Skip the "/E/" part
+    size_t eventNameLen = std::strlen(eventName);
+
+    // Find a subscription handler
+    cloud_event_subscribe_callback handler = nullptr;
+    void* handlerArg = nullptr;
+    for (auto& sub: self->subs_) {
+        if (startsWith(eventName, eventNameLen, sub.prefix, sub.prefixLen)) {
+            handler = sub.handler;
+            handlerArg = sub.handlerArg;
+            break;
+        }
+    }
+    if (!handler) {
+        return 0; // Ignore event
+    }
+
+    auto ev = makeRefCountPtr<Event>();
+    if (!ev) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK(ev->name(eventName)); 
+
+    char buf[128];
+    for (;;) {
+        size_t size = sizeof(buf);
+        int r = coap_read_payload(msg.get(), buf, &size, nullptr /* block_cb */, nullptr /* error_cb */, nullptr /* arg */, nullptr /* reserved */);
+        if (r < 0) {
+            if (r == SYSTEM_ERROR_END_OF_STREAM) {
+                break;
+            }
+            return r;
+        }
+        if (r == COAP_RESULT_WAIT_BLOCK) {
+            return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+        }
+        CHECK(ev->write(buf, size));
+    }
+    CHECK(ev->seek(0));
+
+    handler(reinterpret_cast<cloud_event*>(ev.unwrap()), handlerArg);
 
     return 0;
 }

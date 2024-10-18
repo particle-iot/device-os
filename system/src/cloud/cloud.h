@@ -17,7 +17,14 @@
 
 #pragma once
 
+#include "system_cloud_event.h"
+
+#include "c_string.h"
 #include "ref_count.h"
+
+#include "spark_wiring_vector.h"
+
+struct coap_message;
 
 namespace particle::system::cloud {
 
@@ -25,13 +32,31 @@ class Event;
 
 class Cloud {
 public:
+    int init();
+
+/*
+int cloud_event_subscribe(const char* prefix, cloud_event_subscribe_callback subscribe, cloud_event_destroy_callback destroy,
+        void* arg, const cloud_event_subscribe_options* opts, void* reserved);
+*/
+
     int publish(RefCountPtr<Event> event);
+    int subscribe(const char* prefix, cloud_event_subscribe_callback handler, void* arg);
 
     static Cloud* instance();
 
 private:
+    struct Subscription {
+        CString prefix;
+        cloud_event_subscribe_callback handler;
+        void* handlerArg;
+        size_t prefixLen;
+    };
+
+    Vector<Subscription> subs_; // TODO: Use a map
+
     int publishImpl(RefCountPtr<Event> event);
 
+    static int coapRequestCallback(coap_message* msg, const char* uri, int method, int reqId, void* arg);
     static int coapAckCallback(int reqId, void* arg);
     static void coapErrorCallback(int error, int reqId, void* arg);
 };

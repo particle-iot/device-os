@@ -32,6 +32,7 @@ LOG_SOURCE_CATEGORY("system.coap")
 
 #include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
+#include "coap_util.h"
 #include "protocol.h"
 #include "spark_protocol_functions.h"
 
@@ -56,6 +57,7 @@ namespace {
 
 const size_t MAX_TOKEN_SIZE = sizeof(token_t); // TODO: Support longer tokens
 const size_t MAX_TAG_SIZE = 8; // Maximum size of an ETag (RFC 7252) or Request-Tag (RFC 9175) option
+const size_t MAX_URI_PATH_LEN = 127; // Maximum length of an URI path
 
 const unsigned BLOCK_SZX = 6; // Value of the SZX field for 1024-byte blocks (RFC 7959, 2.2)
 static_assert(COAP_BLOCK_SIZE == 1024); // When changing the block size, make sure to update BLOCK_SZX accordingly
@@ -905,32 +907,23 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
     if (d.tokenSize() != sizeof(token_t)) { // TODO: Support empty tokens
         return 0;
     }
-    // Get the request URI
-    char uri = '/'; // TODO: Support longer URIs
-    bool hasUri = false;
+    // Get the request URI path
+    char path[MAX_URI_PATH_LEN + 1] = { '/', '\0' };
+    size_t pathLen = 1;
     bool hasBlockOpt = false;
-    // TODO: Add a helper function for reconstructing the URI string from CoAP options
     auto it = d.options();
     while (it.next()) {
         if (it.option() == CoapOption::URI_PATH) {
-            if (it.size() > 1) {
-                return 0; // URI is too long, treat as an unrecognized request
-            }
-            if (it.size() > 0) {
-                if (hasUri) {
-                    return 0; // ditto
-                }
-                uri = *it.data();
-                hasUri = true;
-            }
+            pathLen += appendUriPath(path, sizeof(path), pathLen, it);
         } else if (it.option() == CoapOption::BLOCK1) {
             hasBlockOpt = true;
         }
     }
     // Find a request handler
+    auto uriChar = (pathLen > 1) ? path[1] : '/'; // TODO: Support longer URIs
     auto method = d.code();
     auto h = findInList(reqHandlers_, [=](auto h) {
-        return h->uri == uri && h->method == method;
+        return h->uri == uriChar && h->method == method;
     });
     if (!h) {
         // The new CoAP API is implemented as an extension to the old protocol layer so, technically,
@@ -955,7 +948,7 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
     req->id = msgId;
     req->requestId = msgId;
     req->sessionId = sessId_;
-    req->uri = uri;
+    req->uri = uriChar;
     req->method = static_cast<coap_method>(method);
     req->coapId = d.id();
     assert(d.tokenSize() == sizeof(req->token));
@@ -973,12 +966,8 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
         releaseMessageBuffer();
     });
     // Invoke the request handler
-    char uriStr[3] = { '/' };
-    if (hasUri) {
-        uriStr[1] = uri;
-    }
     assert(h->callback);
-    int r = h->callback(reinterpret_cast<coap_message*>(req.get()), uriStr, req->method, req->id, h->callbackArg);
+    int r = h->callback(reinterpret_cast<coap_message*>(req.get()), path, req->method, req->id, h->callbackArg);
     if (r < 0) {
         LOG(ERROR, "Request handler failed: %d", r);
         clearMessage(req);
