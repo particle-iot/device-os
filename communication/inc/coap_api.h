@@ -393,10 +393,9 @@ int coap_read_payload(coap_message* msg, char* data, size_t *size, coap_block_ca
 int coap_peek_payload(coap_message* msg, char* data, size_t size, void* reserved);
 
 /**
- * Get a message option.
+ * Get the first message option with a given number.
  *
- * @param[out] opt Message option. If the option with the given number cannot be found, the argument
- *        is set to `NULL`.
+ * @param[out] opt Message option. If the option cannot be found, the argument is set to `NULL`.
  * @param num Option number.
  * @param msg Request or response message.
  * @param reserved Reserved argument. Must be set to `NULL`.
