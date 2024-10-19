@@ -372,6 +372,8 @@ public:
     int startAdvertising(bool wait = true); // TODO: always wait, now we have command thread to execute asynchronously
     int stopAdvertising(bool wait = true); // TODO: always wait, now we have command thread to execute asynchronously
     int notifyAdvStop();
+    int setAutoAdvertiseScheme(hal_ble_auto_adv_cfg_t config);
+    int getAutoAdvertiseScheme(hal_ble_auto_adv_cfg_t* cfg);
 
     bool isAdvertising() const {
         return isAdvertising_;
@@ -506,6 +508,7 @@ private:
               addr_{},
               advParams_{},
               advTimeoutTimer_(nullptr),
+              autoAdvCfg_(BLE_AUTO_ADV_ALWAYS),
               isScanning_(false),
               notifyScanResult_(false),
               scanParams_{},
@@ -640,6 +643,7 @@ private:
     hal_ble_addr_t addr_;
     hal_ble_adv_params_t advParams_;
     os_timer_t advTimeoutTimer_;                    /**< Timer for advertising timeout.  */
+    volatile hal_ble_auto_adv_cfg_t autoAdvCfg_;    /**< Automatic advertising configuration. */
     volatile bool isScanning_;                      /**< If it is scanning or not. */
     volatile bool notifyScanResult_;
     hal_ble_scan_params_t scanParams_;              /**< BLE scanning parameters. */
@@ -1621,6 +1625,28 @@ int BleGap::notifyAdvStop() {
     return SYSTEM_ERROR_NONE;
 }
 
+int BleGap::setAutoAdvertiseScheme(hal_ble_auto_adv_cfg_t config) {
+    autoAdvCfg_ = config;
+    bool connectedAsPeripheral = false;
+    std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
+    for (auto& connection : connections_) {
+        if (connection.info.role == BLE_ROLE_PERIPHERAL) {
+            connectedAsPeripheral = true;
+            break;
+        }
+    }
+    if (!connectedAsPeripheral && autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
+        // If it is not connected as Peripheral currently.
+        autoAdvCfg_ = BLE_AUTO_ADV_ALWAYS;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int BleGap::getAutoAdvertiseScheme(hal_ble_auto_adv_cfg_t* cfg) {
+    *cfg = autoAdvCfg_;
+    return SYSTEM_ERROR_NONE;
+}
+
 void BleGap::onAdvTimeoutTimerExpired(os_timer_t timer) {
     BleGap* gap;
     os_timer_get_id(timer, (void**)&gap);
@@ -2339,9 +2365,19 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             removeConnection(connHandle);
             BleGatt::getInstance().removeSubscriber(connHandle);
             if (role == BLE_ROLE_PERIPHERAL) {
+                SCOPE_GUARD ({
+                    if (autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
+                        autoAdvCfg_ = BLE_AUTO_ADV_ALWAYS;
+                    }
+                });
                 // FIXME: check whether it's enabled?
                 if (isAdvertising()) {
                     enqueue(BLE_CMD_STOP_ADV);
+                    enqueue(BLE_CMD_START_ADV);
+                    return;
+                }
+                if (autoAdvCfg_ == BLE_AUTO_ADV_FORBIDDEN || autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
+                    return;
                 }
                 enqueue(BLE_CMD_START_ADV);
             }
@@ -3738,14 +3774,16 @@ int hal_ble_gap_start_advertising(void* reserved) {
 int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_set_auto_advertise().");
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     CHECK_FALSE(BleGap::getInstance().lockMode(), SYSTEM_ERROR_INVALID_STATE);
-    return SYSTEM_ERROR_NONE;
+    return BleGap::getInstance().setAutoAdvertiseScheme(config);
 }
 
 int hal_ble_gap_get_auto_advertise(hal_ble_auto_adv_cfg_t* cfg, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_auto_advertise().");
-    return SYSTEM_ERROR_NONE;
+    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
+    return BleGap::getInstance().getAutoAdvertiseScheme(cfg);
 }
 
 int hal_ble_gap_stop_advertising(void* reserved) {

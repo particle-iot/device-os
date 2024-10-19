@@ -1340,19 +1340,21 @@ void BleObject::Broadcaster::processBroadcasterEvents(const ble_evt_t* event, vo
             if (broadcaster->connHandle_ != event->evt.gap_evt.conn_handle) {
                 return;
             }
-            if (broadcaster->autoAdvCfg_ == BLE_AUTO_ADV_FORBIDDEN) {
-                return;
-            }
             // The connection handle must be cleared before re-start advertising.
             // Otherwise, it cannot restore the normal advertising parameters.
             broadcaster->connHandle_ = BLE_INVALID_CONN_HANDLE;
+            SCOPE_GUARD ({
+                if (broadcaster->autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
+                    broadcaster->autoAdvCfg_ = BLE_AUTO_ADV_ALWAYS;
+                }
+            });
+            // If it is advertising while connected, we should restart advertising, despite of autoAdvCfg_.
             if (broadcaster->isAdvertising_) {
                 LOG_DEBUG(TRACE, "Restart BLE advertising.");
                 broadcaster->startAdvertising();
                 return;
             }
-            if (broadcaster->autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
-                broadcaster->autoAdvCfg_ = BLE_AUTO_ADV_ALWAYS;
+            if (broadcaster->autoAdvCfg_ == BLE_AUTO_ADV_FORBIDDEN || broadcaster->autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
                 return;
             }
             LOG_DEBUG(TRACE, "Restart BLE advertising.");
@@ -4154,7 +4156,7 @@ int hal_ble_gap_set_auto_advertise(hal_ble_auto_adv_cfg_t config, void* reserved
 int hal_ble_gap_get_auto_advertise(hal_ble_auto_adv_cfg_t* cfg, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gap_get_auto_advertise().");
-    CHECK_TRUE(BleObject::getInstance().initialized(), BLE_AUTO_ADV_FORBIDDEN);
+    CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleObject::getInstance().broadcaster()->getAutoAdvertiseScheme(cfg);
 }
 
