@@ -618,6 +618,104 @@ test(BLE_38_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning)
     });
 }
 
+test(BLE_39_Advertising_Scheme_Auto_Adv_After_Disconnect) {
+    BleAdvertisingScheme defaultScheme;
+    BLE.getAdvertisingScheme(&defaultScheme);
+    assertEqual((int)defaultScheme, (int)BleAdvertisingScheme::AUTO_ADV_ALWAYS);
+
+    SCOPE_GUARD ({
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+        // Stop advertising, otherwise, test BLE_40 will enter the connected-advertising state
+        BLE.stopAdvertising();
+        assertFalse(BLE.advertising());
+    });
+
+    BLE.setAdvertisingScheme(BleAdvertisingScheme::AUTO_ADV_ALWAYS);
+    BLE.advertise();
+    assertTrue(waitFor(BLE.connected, 60000));
+    assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+    assertFalse(BLE.connected());
+    delay(1000);
+    assertTrue(BLE.advertising());
+}
+
+test(BLE_40_Advertising_Scheme_Stop_Adv_After_Current_Connection_Disconnect) {
+    SCOPE_GUARD ({
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+        // Stop advertising, otherwise, test BLE_41 will enter the connected-advertising state
+        BLE.stopAdvertising();
+        assertFalse(BLE.advertising());
+    });
+
+    for (uint8_t i = 0; i < 3; i++) { // try 3 times
+        BLE.advertise();
+        assertTrue(waitFor(BLE.connected, 60000));
+        BLE.setAdvertisingScheme(BleAdvertisingScheme::AUTO_ADV_SINCE_NEXT_CONN);
+        BleAdvertisingScheme scheme;
+        BLE.getAdvertisingScheme(&scheme);
+        assertEqual((int)scheme, (int)BleAdvertisingScheme::AUTO_ADV_SINCE_NEXT_CONN);
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+        delay(1000);
+        assertFalse(BLE.advertising());
+    }
+
+    // Without calling BLE.setAdvertisingScheme(BleAdvertisingScheme::AUTO_ADV_SINCE_NEXT_CONN),
+    // it should be AUTO_ADV_ALWAYS
+    BLE.advertise();
+    assertTrue(waitFor(BLE.connected, 60000));
+    BleAdvertisingScheme scheme;
+    BLE.getAdvertisingScheme(&scheme);
+    assertEqual((int)scheme, (int)BleAdvertisingScheme::AUTO_ADV_ALWAYS);
+    assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+    assertFalse(BLE.connected());
+    delay(1000);
+    assertTrue(BLE.advertising());
+}
+
+test(BLE_41_Advertising_Scheme_Stop_Adv_After_Disconnect) {
+    SCOPE_GUARD ({
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+    });
+
+    BLE.setAdvertisingScheme(BleAdvertisingScheme::AUTO_ADV_FORBIDDEN);
+    for (uint8_t i = 0; i < 4; i++) {
+        BLE.advertise();
+        BleAdvertisingScheme scheme;
+        BLE.getAdvertisingScheme(&scheme);
+        assertEqual((int)scheme, (int)BleAdvertisingScheme::AUTO_ADV_FORBIDDEN);
+        assertTrue(waitFor(BLE.connected, 60000));
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+        delay(1000);
+        assertFalse(BLE.advertising());
+    }
+}
+
+test(BLE_42_Advertising_Scheme_Ignored_After_Disconnect_If_Advertising_While_Connected) {
+    SCOPE_GUARD ({
+        assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+        assertFalse(BLE.connected());
+    });
+
+    BLE.setAdvertisingScheme(BleAdvertisingScheme::AUTO_ADV_FORBIDDEN);
+    BleAdvertisingScheme scheme;
+    BLE.getAdvertisingScheme(&scheme);
+    assertEqual((int)scheme, (int)BleAdvertisingScheme::AUTO_ADV_FORBIDDEN);
+
+    BLE.advertise();
+    assertTrue(waitFor(BLE.connected, 60000));
+    // Enter the connected-advertising state
+    BLE.advertise();
+
+    assertTrue(waitFor([]{ return !BLE.connected(); }, 10000));
+    assertFalse(BLE.connected());
+    assertTrue(BLE.advertising());
+}
+
 
 #endif // #if Wiring_BLE == 1
 

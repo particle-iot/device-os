@@ -710,5 +710,45 @@ test(BLE_38_Central_Can_Connect_While_Peripheral_Is_Scanning_And_Stops_Scanning)
     }
 }
 
+test(BLE_39_Advertising_Scheme_Auto_Adv_After_Disconnect) {
+    tryConnecting(false);
+    assertTrue(peer.connected());
+    delay(3000);
+    assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+    assertFalse(BLE.connected());
+    delay(5000);
+}
+
+test(BLE_40_Advertising_Scheme_Stop_Adv_After_Current_Connection_Disconnect) {
+    for (uint8_t i = 0; i < 4; i++) {
+        tryConnecting(false);
+        assertTrue(peer.connected());
+        delay(3000);
+        assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+        assertFalse(BLE.connected());
+        delay(5000);
+    }
+}
+
+test(BLE_41_Advertising_Scheme_Stop_Adv_After_Disconnect) {
+    for (uint8_t i = 0; i < 4; i++) {
+        tryConnecting(false);
+        assertTrue(peer.connected());
+        delay(3000);
+        assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+        assertFalse(BLE.connected());
+        delay(5000);
+    }
+}
+
+test(BLE_42_Advertising_Scheme_Ignored_After_Disconnect_If_Advertising_While_Connected) {
+    tryConnecting(false);
+    assertTrue(peer.connected());
+    delay(3000);
+    assertEqual(BLE.disconnect(peer), (int)SYSTEM_ERROR_NONE);
+    assertFalse(BLE.connected());
+    delay(5000);
+}
+
 #endif // #if Wiring_BLE == 1
 
