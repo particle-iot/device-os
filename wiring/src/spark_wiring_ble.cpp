@@ -2266,6 +2266,10 @@ int BleLocalDevice::getAdvertisingScheme(BleAdvertisingScheme* scheme) const {
     return ret;
 }
 
+int BleLocalDevice::getAdvertisingScheme(BleAdvertisingScheme& scheme) const {
+    return getAdvertisingScheme(&scheme);
+}
+
 int BleLocalDevice::advertise() const {
     return hal_ble_gap_start_advertising(nullptr);
 }

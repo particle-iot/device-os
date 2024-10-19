@@ -2365,17 +2365,18 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             removeConnection(connHandle);
             BleGatt::getInstance().removeSubscriber(connHandle);
             if (role == BLE_ROLE_PERIPHERAL) {
+                SCOPE_GUARD ({
+                    if (autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
+                        autoAdvCfg_ = BLE_AUTO_ADV_ALWAYS;
+                    }
+                });
                 // FIXME: check whether it's enabled?
                 if (isAdvertising()) {
                     enqueue(BLE_CMD_STOP_ADV);
                     enqueue(BLE_CMD_START_ADV);
                     return;
                 }
-                if (autoAdvCfg_ == BLE_AUTO_ADV_FORBIDDEN) {
-                    return;
-                }
-                if (autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
-                    autoAdvCfg_ = BLE_AUTO_ADV_ALWAYS;
+                if (autoAdvCfg_ == BLE_AUTO_ADV_FORBIDDEN || autoAdvCfg_ == BLE_AUTO_ADV_SINCE_NEXT_CONN) {
                     return;
                 }
                 enqueue(BLE_CMD_START_ADV);
