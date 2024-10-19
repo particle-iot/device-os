@@ -180,9 +180,9 @@ enum class BlePairingEventType : uint8_t {
 };
 
 enum class BleAdvertisingScheme : uint8_t {
-    STOP_ADV_ON_DISCONNECTED = BLE_AUTO_ADV_FORBIDDEN,
-    STOP_ADV_ON_DISCONNECTED_ONCE = BLE_AUTO_ADV_SINCE_NEXT_CONN,
-    RESTART_ADV_ON_DISCONNECTED = BLE_AUTO_ADV_ALWAYS,
+    AUTO_ADV_FORBIDDEN = BLE_AUTO_ADV_FORBIDDEN,
+    AUTO_ADV_SINCE_NEXT_CONN = BLE_AUTO_ADV_SINCE_NEXT_CONN,
+    AUTO_ADV_ALWAYS = BLE_AUTO_ADV_ALWAYS,
 };
 
 struct BlePairingStatus {
@@ -1018,6 +1018,7 @@ public:
 
     int setAdvertisingScheme(BleAdvertisingScheme scheme) const;
     int getAdvertisingScheme(BleAdvertisingScheme* scheme) const;
+    int getAdvertisingScheme(BleAdvertisingScheme& scheme) const;
 
     // Advertising control
     int advertise() const;
