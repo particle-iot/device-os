@@ -2816,7 +2816,9 @@ int BleLocalDevice::disconnectAll() const {
 
 BlePeerDevice BleLocalDevice::peerCentral() const {
     WiringBleLock lk;
-    for (auto& p : impl()->peers()) {
+    Vector<BlePeerDevice> peers = impl()->peers();
+    lk.unlock();
+    for (auto& p : peers) {
         hal_ble_conn_info_t connInfo = {};
         connInfo.version = BLE_API_VERSION;
         connInfo.size = sizeof(hal_ble_conn_info_t);
