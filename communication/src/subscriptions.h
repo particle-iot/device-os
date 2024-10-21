@@ -67,7 +67,7 @@ public:
 		return checksum;
 	}
 
-	ProtocolError handle_event(Message& message, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel);
+	ProtocolError handle_event(Message& message, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel, bool& handled);
 
 	template<typename F> ProtocolError for_each(F callback)
 	{
