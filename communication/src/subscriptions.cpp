@@ -62,7 +62,7 @@ ProtocolError Subscriptions::send_subscription_impl(MessageChannel& channel, con
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel) {
+ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel, bool& handled) {
     CoapMessageDecoder d;
     int r = d.decode((const char*)msg.buf(), msg.length());
     if (r < 0) {
@@ -107,6 +107,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
         return ProtocolError::NO_ERROR; // Ignore an event without a name
     }
 
+    handled = false;
     for (size_t i = 0; i < MAX_SUBSCRIPTIONS; ++i) {
         auto& eventHandler = event_handlers[i];
         if (!eventHandler.handler) {
@@ -133,6 +134,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
             data[dataSize] = '\0';
         }
         callback(sizeof(FilteringEventHandler), &eventHandler, name, data, dataSize, contentFmt);
+        handled = true;
     }
     return ProtocolError::NO_ERROR;
 }

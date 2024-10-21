@@ -909,18 +909,18 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
     }
     // Get the request URI path
     char path[MAX_URI_PATH_LEN + 1] = { '/', '\0' };
-    size_t pathLen = 1;
+    size_t pathLen = 0;
     bool hasBlockOpt = false;
     auto it = d.options();
     while (it.next()) {
         if (it.option() == CoapOption::URI_PATH) {
-            pathLen += appendUriPath(path, sizeof(path), pathLen, it);
+            pathLen += appendUriPath(path + 1, sizeof(path) - 1, pathLen, it); // Preserve leading '/'
         } else if (it.option() == CoapOption::BLOCK1) {
             hasBlockOpt = true;
         }
     }
     // Find a request handler
-    auto uriChar = (pathLen > 1) ? path[1] : '/'; // TODO: Support longer URIs
+    auto uriChar = (pathLen > 0) ? path[1] : '/'; // TODO: Support longer URIs
     auto method = d.code();
     auto h = findInList(reqHandlers_, [=](auto h) {
         return h->uri == uriChar && h->method == method;

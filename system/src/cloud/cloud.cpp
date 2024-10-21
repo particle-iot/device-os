@@ -20,6 +20,8 @@
 #include "cloud.h"
 #include "event.h"
 
+#include "spark_protocol_functions.h"
+
 #include "coap_api.h"
 #include "coap_util.h"
 
@@ -67,6 +69,11 @@ int Cloud::subscribe(const char* prefix, cloud_event_subscribe_callback handler,
     sub.handlerArg = arg;
     if (!subs_.append(std::move(sub))) {
         return SYSTEM_ERROR_NO_MEMORY;
+    }
+    auto protocol = spark_protocol_instance();
+    bool ok = spark_protocol_send_subscription(protocol, prefix, 0 /* flags */, nullptr /* reserved */);
+    if (!ok) {
+        LOG(ERROR, "spark_protocol_send_subscription() failed");
     }
     return 0;
 }

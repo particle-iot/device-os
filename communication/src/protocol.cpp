@@ -176,9 +176,6 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	case CoAPMessageType::UPDATE_DONE:
 		return chunkedTransfer.handle_update_done(token, message, channel);
 #endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
-	case CoAPMessageType::EVENT:
-		return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
-
 	case CoAPMessageType::KEY_CHANGE:
 		return handle_key_change(message);
 
@@ -217,12 +214,22 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return handle_server_moved_request(message);
 		break;
 
-	case CoAPMessageType::UNKNOWN:
-	case CoAPMessageType::EMPTY_ACK: {
-		// Forward the message to the new CoAP implementation
+	case CoAPMessageType::EVENT:
+	case CoAPMessageType::EMPTY_ACK:
+	case CoAPMessageType::UNKNOWN: {
 		int r = 0;
 		if (type == CoAPType::CON) {
-			r = experimental::CoapChannel::instance()->handleCon(message);
+			bool eventHandled = false;
+			if (message_type == CoAPMessageType::EVENT) {
+				auto err = subscriptions.handle_event(message, descriptor.call_event_handler, channel, eventHandled);
+				if (err != ProtocolError::NO_ERROR) {
+					return err;
+				}
+			}
+			if (!eventHandled) {
+				// Forward the message to the new CoAP implementation
+				r = experimental::CoapChannel::instance()->handleCon(message);
+			}
 		} else if (type == CoAPType::ACK) {
 			r = experimental::CoapChannel::instance()->handleAck(message);
 		}
