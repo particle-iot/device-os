@@ -148,6 +148,10 @@ public:
             v_(String(val)) {
     }
 
+    Variant(const char* val, size_t len) :
+            v_(String(val, len)) {
+    }
+
     Variant(String val) :
             v_(std::move(val)) {
     }

@@ -151,19 +151,16 @@ CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt, const char* data, s
 }
 
 CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt, unsigned val) {
-    if (val == 0) {
-        option(opt, nullptr, 0);
-    } else if (val <= 255) {
-        const uint8_t v = val;
-        option(opt, (const char*)&v, 1);
-    } else if (val <= 65535) {
-        const uint16_t v = nativeToBigEndian<uint16_t>(val);
-        option(opt, (const char*)&v, 2);
-    } else {
-        const uint32_t v = nativeToBigEndian<uint32_t>(val);
-        option(opt, (const char*)&v, 4);
+    if (error_) {
+        return *this;
     }
-    return *this;
+    char d[MAX_UINT_OPTION_VALUE_SIZE] = {};
+    int n = encodeUintOptionValue(d, sizeof(d), val);
+    if (n < 0) {
+        error_ = n;
+        return *this;
+    }
+    return option(opt, d, n);
 }
 
 CoapMessageEncoder& CoapMessageEncoder::payload(const char* data, size_t size) {
@@ -274,6 +271,25 @@ int CoapMessageEncoder::uintOptionSize(unsigned opt, unsigned prevOpt, unsigned 
         valSize = 2;
     }
     return optionSize(opt, prevOpt, valSize);
+}
+
+int CoapMessageEncoder::encodeUintOptionValue(char* data, size_t size, unsigned val) {
+    size_t n = 0;
+    if (val > 0) {
+        if (val <= 255) {
+            n = 1;
+        } else if (val <= 65535) {
+            n = 2;
+        } else {
+            n = 4;
+        }
+        if (size > n) {
+            size = n;
+        }
+        auto v = nativeToBigEndian<uint32_t>(val);
+        std::memcpy(data, (const char*)&v + 4 - n, size);
+    }
+    return n;
 }
 
 } // namespace protocol

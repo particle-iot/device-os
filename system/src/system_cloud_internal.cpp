@@ -25,6 +25,7 @@
 #include "spark_wiring_led.h"
 #include "spark_wiring_vector.h"
 #include "system_cloud_internal.h"
+#include "cloud/cloud.h"
 #include "system_mode.h"
 #include "system_task.h"
 #include "system_threading.h"
@@ -1204,6 +1205,11 @@ void Spark_Protocol_Init(void)
         spark_protocol_set_connection_property(sp, protocol::Connection::PING, isCellular ? HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL :
                 HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL, &connProp, nullptr);
 #endif // PLATFORM_ID == PLATFORM_GCC
+
+        r = cloud::Cloud::instance()->init();
+        if (r < 0) {
+            LOG(ERROR, "Cloud::init() failed: %d", r);
+        }
     }
 }
 

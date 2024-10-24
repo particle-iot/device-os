@@ -20,6 +20,7 @@
 #include <type_traits>
 #include <utility>
 #include <atomic>
+#include <new>
 
 static_assert(std::atomic_int::is_always_lock_free, "std::atomic<int> is not always lock-free");
 
