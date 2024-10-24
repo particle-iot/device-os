@@ -36,6 +36,8 @@ namespace protocol {
  */
 class CoapMessageEncoder {
 public:
+    static const size_t MAX_UINT_OPTION_VALUE_SIZE = 4;
+
     CoapMessageEncoder(char* buf, size_t size);
 
     CoapMessageEncoder& type(CoapType type);
@@ -55,7 +57,7 @@ public:
     template<typename... ArgsT>
     CoapMessageEncoder& option(CoapOption opt, ArgsT&&... args);
 
-    // TODO: Add convenience methods for encoding URI path and query options
+    unsigned lastOption() const;
 
     CoapMessageEncoder& payload(const char* data, size_t size);
     CoapMessageEncoder& payload(const char* str);
@@ -71,6 +73,8 @@ public:
     // Returns the size of an encoded option or a negative value if the arguments are invalid
     static int optionSize(unsigned opt, unsigned prevOpt, size_t optSize);
     static int uintOptionSize(unsigned opt, unsigned prevOpt, unsigned val);
+
+    static int encodeUintOptionValue(char* data, size_t size, unsigned val);
 
 private:
     enum Flag {
@@ -117,6 +121,10 @@ inline CoapMessageEncoder& CoapMessageEncoder::option(unsigned opt) {
 template<typename... ArgsT>
 inline CoapMessageEncoder& CoapMessageEncoder::option(CoapOption opt, ArgsT&&... args) {
     return option((unsigned)opt, std::forward<ArgsT>(args)...);
+}
+
+inline unsigned CoapMessageEncoder::lastOption() const {
+    return prevOpt_;
 }
 
 inline CoapMessageEncoder& CoapMessageEncoder::payload(const char* str) {

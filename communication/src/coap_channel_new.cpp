@@ -25,6 +25,7 @@ LOG_SOURCE_CATEGORY("system.coap")
 
 #include <type_traits>
 #include <algorithm>
+#include <variant>
 #include <optional>
 #include <cstring>
 
@@ -36,12 +37,13 @@ LOG_SOURCE_CATEGORY("system.coap")
 #include "protocol.h"
 #include "spark_protocol_functions.h"
 
+#include "spark_wiring_buffer.h"
+#include "spark_wiring_map.h"
+
+#include "c_string.h"
 #include "random.h"
 #include "scope_guard.h"
 #include "check.h"
-
-#include "spark_wiring_variant.h" // FIXME
-#include "spark_wiring_map.h"
 
 #define CHECK_PROTOCOL(_expr) \
         do { \
@@ -57,7 +59,6 @@ namespace {
 
 const size_t MAX_TOKEN_SIZE = sizeof(token_t); // TODO: Support longer tokens
 const size_t MAX_TAG_SIZE = 8; // Maximum size of an ETag (RFC 7252) or Request-Tag (RFC 9175) option
-const size_t MAX_URI_PATH_LEN = 127; // Maximum length of an URI path
 
 const unsigned BLOCK_SZX = 6; // Value of the SZX field for 1024-byte blocks (RFC 7959, 2.2)
 static_assert(COAP_BLOCK_SIZE == 1024); // When changing the block size, make sure to update BLOCK_SZX accordingly
@@ -184,8 +185,6 @@ inline void forEachRefInList(T* head, const F& fn) {
 } // namespace
 
 struct CoapChannel::CoapMessage: RefCount {
-    Map<unsigned, Variant> options; // CoAP options
-
     coap_block_callback blockCallback; // Callback to invoke when a message block is sent or received
     coap_ack_callback ackCallback; // Callback to invoke when the message is acknowledged
     coap_error_callback errorCallback; // Callback to invoke when an error occurs
@@ -194,11 +193,14 @@ struct CoapChannel::CoapMessage: RefCount {
     int id; // Internal message ID
     int requestId; // Internal ID of the request that started this message exchange
     int sessionId; // ID of the session for which this message was created
+    int flags; // Message flags
 
     char tag[MAX_TAG_SIZE]; // ETag or Request-Tag option
     size_t tagSize; // Size of the ETag or Request-Tag option
     int coapId; // CoAP message ID
     token_t token; // CoAP token. TODO: Support longer tokens
+
+    Map<unsigned, Buffer> options; // CoAP options. TODO: Use pooling or small object optimization
 
     std::optional<int> blockIndex; // Index of the current message block
     std::optional<bool> hasMore; // Whether more blocks are expected for this message
@@ -221,6 +223,7 @@ struct CoapChannel::CoapMessage: RefCount {
             id(0),
             requestId(0),
             sessionId(0),
+            flags(0),
             tag(),
             tagSize(0),
             coapId(0),
@@ -244,8 +247,7 @@ struct CoapChannel::RequestMessage: CoapMessage {
     system_tick_t timeSent; // Time the request was sent
     unsigned timeout; // Request timeout
 
-    coap_method method; // CoAP method code
-    char uri; // Request URI. TODO: Support longer URIs
+    coap_method method; // Method code
 
     explicit RequestMessage(bool blockRequest = false) :
             CoapMessage(blockRequest ? MessageType::BLOCK_REQUEST : MessageType::REQUEST),
@@ -253,8 +255,7 @@ struct CoapChannel::RequestMessage: CoapMessage {
             blockResponse(nullptr),
             timeSent(0),
             timeout(0),
-            method(),
-            uri(0) {
+            method() {
     }
 };
 
@@ -270,20 +271,25 @@ struct CoapChannel::ResponseMessage: CoapMessage {
 };
 
 struct CoapChannel::RequestHandler {
+    CString path; // Base URI path
+    size_t pathLen; // Path length
+    coap_method method; // Method code
+
     coap_request_callback callback; // Callback to invoke when a request is received
     void* callbackArg; // User argument to pass to the callback
 
-    coap_method method; // CoAP method code
-    char uri; // Request URI. TODO: Support longer URIs
+    int flags; // Message flags
 
     RequestHandler* next; // Next handler in the list
     RequestHandler* prev; // Previous handler in the list
 
-    RequestHandler(char uri, coap_method method, coap_request_callback callback, void* callbackArg) :
+    RequestHandler(CString path, size_t pathLen, coap_method method, coap_request_callback callback, void* callbackArg, int flags) :
+            path(std::move(path)),
+            pathLen(pathLen),
+            method(method),
             callback(callback),
             callbackArg(callbackArg),
-            method(method),
-            uri(uri),
+            flags(flags),
             next(nullptr),
             prev(nullptr) {
     }
@@ -337,8 +343,8 @@ CoapChannel::~CoapChannel() {
     });
 }
 
-int CoapChannel::beginRequest(coap_message** msg, const char* uri, coap_method method, int timeout) {
-    if (timeout < 0 || std::strlen(uri) != 1) { // TODO: Support longer URIs
+int CoapChannel::beginRequest(coap_message** msg, const char* path, coap_method method, int timeout, int flags) {
+    if (timeout < 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (state_ != State::OPEN) {
@@ -348,13 +354,31 @@ int CoapChannel::beginRequest(coap_message** msg, const char* uri, coap_method m
     if (!req) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
+
+    // Parse URI path
+    auto p = path;
+    auto end = path + std::strlen(path);
+    for (auto p2 = path; p2 < end; ++p2) {
+        if (*p2 == '/' || *p2 == '\0') {
+            Buffer d;
+            if (!d.resize(p2 - p)) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            std::memcpy(d.data(), p, p2 - p);
+            if (!req->options.set(COAP_OPTION_URI_PATH, std::move(d))) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            p = p2 + 1;
+        }
+    }
+
     auto msgId = ++lastMsgId_;
     req->id = msgId;
     req->requestId = msgId;
     req->sessionId = sessId_;
-    req->uri = *uri;
     req->method = method;
     req->timeout = (timeout > 0) ? timeout : DEFAULT_REQUEST_TIMEOUT;
+    req->flags = flags;
     req->state = MessageState::WRITE;
     // Transfer ownership over the message to the calling code
     *msg = reinterpret_cast<coap_message*>(req.unwrap());
@@ -396,7 +420,7 @@ int CoapChannel::endRequest(coap_message* apiMsg, coap_response_callback respCal
     return 0;
 }
 
-int CoapChannel::beginResponse(coap_message** msg, int status, int requestId) {
+int CoapChannel::beginResponse(coap_message** msg, int status, int requestId, int flags) {
     if (state_ != State::OPEN) {
         return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
@@ -592,7 +616,7 @@ int CoapChannel::peekPayload(coap_message* apiMsg, char* data, size_t size) {
     return size;
 }
 
-int CoapChannel::addStringOption(coap_message* apiMsg, int num, const char* val) {
+int CoapChannel::addOption(coap_message* apiMsg, int num, const char* data, size_t size) {
     auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
@@ -600,12 +624,12 @@ int CoapChannel::addStringOption(coap_message* apiMsg, int num, const char* val)
     if (msg->state != MessageState::WRITE) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    size_t len = std::strlen(val);
-    Variant v(val, len);
-    if (v.size() != (int)len) {
+    Buffer d;
+    if (!d.resize(size)) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    if (!msg->options.set(num, std::move(v))) {
+    std::memcpy(d.data(), data, size);
+    if (!msg->options.set(num, std::move(d))) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     return 0;
@@ -642,42 +666,86 @@ void CoapChannel::cancelRequest(int requestId) {
     }
 }
 
-int CoapChannel::addRequestHandler(const char* uri, coap_method method, coap_request_callback callback, void* callbackArg) {
-    if (!*uri || !callback) {
+int CoapChannel::addRequestHandler(const char* path, coap_method method, int flags, coap_request_callback callback,
+        void* callbackArg) {
+    if (!callback) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    if (std::strlen(uri) != 1) {
-        return SYSTEM_ERROR_NOT_SUPPORTED; // TODO: Support longer URIs
     }
     if (state_ != State::CLOSED) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    auto h = findInList(reqHandlers_, [=](auto h) {
-        return h->uri == *uri && h->method;
+    size_t pathLen = 0;
+    if (path) {
+        if (path[0] == '/') {
+            ++path; // Skip the leading '/'
+        }
+        pathLen = std::strlen(path);
+        if (pathLen && path[pathLen - 1] == '/') {
+            --pathLen; // Skip the trailing '/'
+        }
+        if (!pathLen) {
+            path = nullptr;
+        }
+    }
+    if (pathLen > COAP_MAX_URI_PATH_LENGTH) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    auto handler = findInList(reqHandlers_, [=](auto h) {
+        return h->method == method && h->pathLen == pathLen && (!pathLen || std::memcmp(h->path, path, pathLen) == 0);
     });
-    if (h) {
-        h->callback = callback;
-        h->callbackArg = callbackArg;
+    if (handler) {
+        handler->callback = callback;
+        handler->callbackArg = callbackArg;
     } else {
-        std::unique_ptr<RequestHandler> h(new(std::nothrow) RequestHandler(*uri, method, callback, callbackArg));
-        if (!h) {
+        CString pathStr(path, pathLen);
+        if (!pathStr && path) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        addToList(reqHandlers_, h.release());
+        std::unique_ptr<RequestHandler> handler(new(std::nothrow) RequestHandler(std::move(pathStr), pathLen, method, callback,
+                callbackArg, flags));
+        if (!handler) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        // Keep the handlers sorted from longest to shortest path
+        RequestHandler* last = nullptr;
+        auto h = reqHandlers_;
+        while (h && h->pathLen > pathLen) {
+            last = h;
+            h = h->next;
+        }
+        if (h) {
+            handler->next = h;
+            handler->prev = h->prev;
+            h->prev = handler.get();
+        } else if (last) {
+            handler->prev = last;
+            last->next = handler.get();
+        }
+        if (!handler->prev) {
+            reqHandlers_ = handler.get();
+        }
+        handler.release();
     }
     return 0;
 }
 
-void CoapChannel::removeRequestHandler(const char* uri, coap_method method) {
-    if (std::strlen(uri) != 1) { // TODO: Support longer URIs
-        return;
-    }
+void CoapChannel::removeRequestHandler(const char* path, coap_method method) {
     if (state_ != State::CLOSED) {
         LOG(ERROR, "Cannot remove handler while channel is open");
         return;
     }
+    size_t pathLen = 0;
+    if (path) {
+        if (path[0] == '/') {
+            ++path; // Skip the leading '/'
+        }
+        pathLen = std::strlen(path);
+        if (pathLen && path[pathLen - 1] == '/') {
+            --pathLen; // Skip the trailing '/'
+        }
+    }
     auto h = findInList(reqHandlers_, [=](auto h) {
-        return h->uri == *uri && h->method == method;
+        return h->method == method && h->pathLen == pathLen && (!pathLen || std::memcmp(h->path, path, pathLen) == 0);
     });
     if (h) {
         removeFromList(reqHandlers_, h);
@@ -908,27 +976,60 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
         return 0;
     }
     // Get the request URI path
-    char path[MAX_URI_PATH_LEN + 1] = { '/', '\0' };
-    size_t pathLen = 0;
-    bool hasBlockOpt = false;
+    char path[COAP_MAX_URI_PATH_LENGTH + 1] = { '/', '\0' };
+    size_t pathLen = 0; // Path length not including the leading '/'
     auto it = d.options();
     while (it.next()) {
         if (it.option() == CoapOption::URI_PATH) {
-            pathLen += appendUriPath(path + 1, sizeof(path) - 1, pathLen, it); // Preserve leading '/'
-        } else if (it.option() == CoapOption::BLOCK1) {
-            hasBlockOpt = true;
+            pathLen += appendUriPath(path + 1, sizeof(path) - 1, pathLen, it);
         }
     }
-    // Find a request handler
-    auto uriChar = (pathLen > 0) ? path[1] : '/'; // TODO: Support longer URIs
-    auto method = d.code();
-    auto h = findInList(reqHandlers_, [=](auto h) {
-        return h->uri == uriChar && h->method == method;
-    });
-    if (!h) {
+    if (pathLen >= COAP_MAX_URI_PATH_LENGTH) {
+        LOG(WARN, "URI path is too long");
         // The new CoAP API is implemented as an extension to the old protocol layer so, technically,
         // the request may still be handled elsewhere
         return 0;
+    }
+    if (pathLen > 0 && path[pathLen] == '/') {
+        path[pathLen--] = '\0'; // Remove the trailing '/'
+    }
+    // Find a request handler
+    auto method = d.code();
+    auto handler = findInList(reqHandlers_, [=](auto h) {
+        if (h->method != method) {
+            return false;
+        }
+        if (!h->pathLen) {
+            return true; // Catch-all handler
+        }
+        if (h->pathLen > pathLen || std::memcmp(h->path, path + 1, h->pathLen) != 0) {
+            return false;
+        }
+        if (h->pathLen < pathLen && path[h->pathLen + 1] != '/') { // Match complete path segments
+            return false;
+        }
+        return true;
+    });
+    if (!handler) {
+        return 0;
+    }
+    // Parse options
+    Map<unsigned, Buffer> opts;
+    bool hasBlockOpt = false;
+    it = d.options();
+    while (it.next()) {
+        if (it.option() == CoapOption::BLOCK1) {
+            hasBlockOpt = true;
+        } else {
+            Buffer d;
+            if (!d.resize(it.size())) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            std::memcpy(d.data(), it.data(), it.size());
+            if (!opts.set(it.option(), std::move(d))) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+        }
     }
     if (hasBlockOpt) {
         // TODO: Support cloud-to-device blockwise requests
@@ -948,7 +1049,7 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
     req->id = msgId;
     req->requestId = msgId;
     req->sessionId = sessId_;
-    req->uri = uriChar;
+    req->options = std::move(opts);
     req->method = static_cast<coap_method>(method);
     req->coapId = d.id();
     assert(d.tokenSize() == sizeof(req->token));
@@ -966,8 +1067,8 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
         releaseMessageBuffer();
     });
     // Invoke the request handler
-    assert(h->callback);
-    int r = h->callback(reinterpret_cast<coap_message*>(req.get()), path, req->method, req->id, h->callbackArg);
+    assert(handler->callback);
+    int r = handler->callback(reinterpret_cast<coap_message*>(req.get()), path, req->method, req->id, handler->callbackArg);
     if (r < 0) {
         LOG(ERROR, "Request handler failed: %d", r);
         clearMessage(req);
@@ -1218,35 +1319,28 @@ int CoapChannel::updateMessage(const RefCountPtr<CoapMessage>& msg) {
         auto req = staticPtrCast<RequestMessage>(msg);
         if (req->type == MessageType::BLOCK_REQUEST && req->tagSize > 0) {
             // Requesting the next block of a blockwise response
-            e.option(CoapOption::ETAG /* 4 */, req->tag, req->tagSize);
+            encodeOption(e, req, (unsigned)CoapOption::ETAG /* 4 */, req->tag, req->tagSize);
         }
-        e.option(CoapOption::URI_PATH /* 11 */, &req->uri, 1); // TODO: Support longer URIs
-
-        // FIXME
-        for (auto& entry: req->options) {
-            auto& v = entry.second;
-            if (v.isString()) {
-                auto& s = v.value<String>();
-                e.option(entry.first, s.c_str(), s.length());
-            }
-        }
-
         if (req->blockIndex.has_value()) {
             // See control vs descriptive usage of the block options in RFC 7959, 2.3
             if (req->type == MessageType::BLOCK_REQUEST) {
                 auto opt = encodeBlockOption(req->blockIndex.value(), false /* m */);
-                e.option(CoapOption::BLOCK2 /* 23 */, opt);
+                encodeOption(e, req, (unsigned)CoapOption::BLOCK2 /* 23 */, opt);
             } else {
                 assert(req->hasMore.has_value());
                 auto opt = encodeBlockOption(req->blockIndex.value(), req->hasMore.value());
-                e.option(CoapOption::BLOCK1 /* 27 */, opt);
+                encodeOption(e, req, (unsigned)CoapOption::BLOCK1 /* 27 */, opt);
             }
         }
         if (req->type == MessageType::REQUEST && req->tagSize > 0) {
             // Sending the next block of a blockwise request
-            e.option(CoapOption::REQUEST_TAG /* 292 */, req->tag, req->tagSize);
+            encodeOption(e, req, (unsigned)CoapOption::REQUEST_TAG /* 292 */, req->tag, req->tagSize);
         }
     } // TODO: Support device-to-cloud blockwise responses
+
+    // Encode remaining options
+    encodeOptions(e, msg);
+
     auto msgBuf = (char*)msgBuf_.buf();
     size_t newPrefixSize = CHECK(e.encode());
     if (newPrefixSize > sizeof(prefix)) {
@@ -1351,6 +1445,32 @@ void CoapChannel::clearMessage(const RefCountPtr<CoapMessage>& msg) {
     msg->state = MessageState::DONE;
 }
 
+void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned opt, const char* data,
+        size_t size) {
+    auto lastOpt = e.lastOption();
+    for (auto& [o, d]: msg->options) { // TODO: Use lowerBound()
+        if (o > lastOpt && o <= opt) {
+            e.option(o, d.data(), d.size());
+        }
+    }
+    e.option(opt, data, size);
+}
+
+void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned opt, unsigned val) {
+    char d[CoapMessageEncoder::MAX_UINT_OPTION_VALUE_SIZE] = {};
+    size_t n = CoapMessageEncoder::encodeUintOptionValue(d, sizeof(d), val);
+    encodeOption(e, msg, opt, d, n);
+}
+
+void CoapChannel::encodeOptions(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg) {
+    auto lastOpt = e.lastOption();
+    for (auto& [o, d]: msg->options) { // TODO: Use lowerBound()
+        if (o > lastOpt) {
+            e.option(o, d.data(), d.size());
+        }
+    }
+}
+
 int CoapChannel::handleProtocolError(ProtocolError error) {
     if (error == ProtocolError::NO_ERROR) {
         return 0;
@@ -1376,6 +1496,7 @@ system_tick_t CoapChannel::millis() const {
 
 } // namespace particle::protocol::experimental
 
+using namespace particle::protocol;
 using namespace particle::protocol::experimental;
 
 int coap_add_connection_handler(coap_connection_callback cb, void* arg, void* reserved) {
@@ -1387,26 +1508,26 @@ void coap_remove_connection_handler(coap_connection_callback cb, void* reserved)
     CoapChannel::instance()->removeConnectionHandler(cb);
 }
 
-int coap_add_request_handler(const char* uri, int method, int flags, coap_request_callback cb, void* arg, void* reserved) {
+int coap_add_request_handler(const char* path, int method, int flags, coap_request_callback cb, void* arg, void* reserved) {
     if (!isValidCoapMethod(method) || flags != 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    CHECK(CoapChannel::instance()->addRequestHandler(uri, static_cast<coap_method>(method), cb, arg));
+    CHECK(CoapChannel::instance()->addRequestHandler(path, static_cast<coap_method>(method), flags, cb, arg));
     return 0;
 }
 
-void coap_remove_request_handler(const char* uri, int method, void* reserved) {
+void coap_remove_request_handler(const char* path, int method, void* reserved) {
     if (!isValidCoapMethod(method)) {
         return;
     }
-    CoapChannel::instance()->removeRequestHandler(uri, static_cast<coap_method>(method));
+    CoapChannel::instance()->removeRequestHandler(path, static_cast<coap_method>(method));
 }
 
-int coap_begin_request(coap_message** msg, const char* uri, int method, int timeout, int flags, void* reserved) {
+int coap_begin_request(coap_message** msg, const char* path, int method, int timeout, int flags, void* reserved) {
     if (!isValidCoapMethod(method) || flags != 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    auto reqId = CHECK(CoapChannel::instance()->beginRequest(msg, uri, static_cast<coap_method>(method), timeout));
+    auto reqId = CHECK(CoapChannel::instance()->beginRequest(msg, path, static_cast<coap_method>(method), timeout, flags));
     return reqId;
 }
 
@@ -1417,12 +1538,11 @@ int coap_end_request(coap_message* msg, coap_response_callback resp_cb, coap_ack
 }
 
 int coap_begin_response(coap_message** msg, int status, int req_id, int flags, void* reserved) {
-    CHECK(CoapChannel::instance()->beginResponse(msg, status, req_id));
+    CHECK(CoapChannel::instance()->beginResponse(msg, status, req_id, flags));
     return 0;
 }
 
-int coap_end_response(coap_message* msg, coap_ack_callback ack_cb, coap_error_callback error_cb,
-        void* arg, void* reserved) {
+int coap_end_response(coap_message* msg, coap_ack_callback ack_cb, coap_error_callback error_cb, void* arg, void* reserved) {
     CHECK(CoapChannel::instance()->endResponse(msg, ack_cb, error_cb, arg));
     return 0;
 }
@@ -1464,10 +1584,6 @@ int coap_get_uint_option_value(const coap_option* opt, unsigned* val, void* rese
     return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
 }
 
-int coap_get_uint64_option_value(const coap_option* opt, uint64_t* val, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
-}
-
 int coap_get_string_option_value(const coap_option* opt, char* data, size_t size, void* reserved) {
     return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
 }
@@ -1477,22 +1593,23 @@ int coap_get_opaque_option_value(const coap_option* opt, char* data, size_t size
 }
 
 int coap_add_empty_option(coap_message* msg, int num, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+    CHECK(CoapChannel::instance()->addOption(msg, num, nullptr /* data */, 0 /* size */));
+    return 0;
 }
 
 int coap_add_uint_option(coap_message* msg, int num, unsigned val, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
-}
-
-int coap_add_uint64_option(coap_message* msg, int num, uint64_t val, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+    char d[CoapMessageEncoder::MAX_UINT_OPTION_VALUE_SIZE] = {};
+    size_t n = CoapMessageEncoder::encodeUintOptionValue(d, sizeof(d), val);
+    CHECK(CoapChannel::instance()->addOption(msg, num, d, n));
+    return 0;
 }
 
 int coap_add_string_option(coap_message* msg, int num, const char* val, void* reserved) {
-    CHECK(CoapChannel::instance()->addStringOption(msg, num, val));
+    CHECK(CoapChannel::instance()->addOption(msg, num, val, std::strlen(val)));
     return 0;
 }
 
 int coap_add_opaque_option(coap_message* msg, int num, const char* data, size_t size, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+    CHECK(CoapChannel::instance()->addOption(msg, num, data, size));
+    return 0;
 }

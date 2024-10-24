@@ -28,6 +28,7 @@
 
 namespace particle::protocol {
 
+class CoapMessageEncoder;
 class CoapMessageDecoder;
 class Protocol;
 
@@ -45,11 +46,11 @@ public:
 
     // Methods called by the new CoAP API (coap_api.h)
 
-    int beginRequest(coap_message** msg, const char* uri, coap_method method, int timeout);
+    int beginRequest(coap_message** msg, const char* uri, coap_method method, int timeout, int flags);
     int endRequest(coap_message* msg, coap_response_callback respCallback, coap_ack_callback ackCallback,
             coap_error_callback errorCallback, void* callbackArg);
 
-    int beginResponse(coap_message** msg, int code, int requestId);
+    int beginResponse(coap_message** msg, int code, int requestId, int flags);
     int endResponse(coap_message* msg, coap_ack_callback ackCallback, coap_error_callback errorCallback,
             void* callbackArg);
 
@@ -59,14 +60,14 @@ public:
             coap_error_callback errorCallback, void* callbackArg);
     int peekPayload(coap_message* msg, char* data, size_t size);
 
-    int addStringOption(coap_message* msg, int num, const char* val);
+    int addOption(coap_message* msg, int num, const char* data, size_t size);
 
     void destroyMessage(coap_message* msg);
 
     void cancelRequest(int requestId);
 
-    int addRequestHandler(const char* uri, coap_method method, coap_request_callback callback, void* callbackArg);
-    void removeRequestHandler(const char* uri, coap_method method);
+    int addRequestHandler(const char* path, coap_method method, int flags, coap_request_callback callback, void* callbackArg);
+    void removeRequestHandler(const char* path, coap_method method);
 
     int addConnectionHandler(coap_connection_callback callback, void* callbackArg);
     void removeConnectionHandler(coap_connection_callback callback);
@@ -141,6 +142,10 @@ private:
     int updateMessage(const RefCountPtr<CoapMessage>& msg);
     int sendMessage(RefCountPtr<CoapMessage> msg);
     void clearMessage(const RefCountPtr<CoapMessage>& msg);
+
+    void encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned opt, const char* data, size_t size);
+    void encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned opt, unsigned val);
+    void encodeOptions(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg);
 
     int sendAck(int coapId, bool rst = false);
 
