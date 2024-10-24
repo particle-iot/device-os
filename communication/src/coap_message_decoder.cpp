@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <type_traits>
+#include <cstring>
 
 namespace particle {
 
@@ -148,6 +149,16 @@ CoapOptionIterator CoapMessageDecoder::findOption(unsigned opt) const {
     return it;
 }
 
+int CoapMessageDecoder::decodeUintOptionValue(const char* data, size_t size, unsigned& val) {
+    if (size > 4) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    uint32_t v = 0;
+    std::memcpy((char*)&v + 4 - size, data, size);
+    val = bigEndianToNative(v);
+    return 0;
+}
+
 bool CoapOptionIterator::next() {
     if (!nextOpt_) {
         reset();
@@ -175,11 +186,9 @@ bool CoapOptionIterator::next() {
 }
 
 unsigned CoapOptionIterator::toUInt() const {
-    uint32_t v = 0;
-    if (optData_ && optSize_ <= 4) {
-        memcpy((char*)&v + 4 - optSize_, optData_, optSize_);
-    }
-    return bigEndianToNative(v);
+    unsigned v = 0;
+    CoapMessageDecoder::decodeUintOptionValue(optData_, optSize_, v);
+    return v;
 }
 
 void CoapOptionIterator::reset() {

@@ -20,6 +20,11 @@
 #include <stdint.h>
 
 /**
+ * Maximum supported length of an URI path.
+ */
+#define COAP_MAX_URI_PATH_LENGTH 127
+
+/**
  * Maximum size of payload data that can be sent or received without splitting the request or
  * response message into multiple CoAP messages.
  */
@@ -67,13 +72,13 @@ typedef int (*coap_connection_callback)(int error, int status, void* arg);
  * needed.
  *
  * @param msg Request message.
- * @param uri Request URI.
+ * @param path URI path.
  * @param method Method code as defined by the `coap_method` enum.
  * @param req_id Request ID.
  * @param arg User argument.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-typedef int (*coap_request_callback)(coap_message* msg, const char* uri, int method, int req_id, void* arg);
+typedef int (*coap_request_callback)(coap_message* msg, const char* path, int method, int req_id, void* arg);
 
 /**
  * Callback invoked when a response message is received.
@@ -199,6 +204,17 @@ typedef enum coap_connection_status {
 } coap_connection_status;
 
 /**
+ * Message option flag.
+ */
+typedef enum coap_message_flag {
+    /**
+     * Store the full message contents prior to sending an outgoing message or notifying the user
+     * when an incoming message is received.
+     */
+    COAP_MESSAGE_FULL = 0x01
+} coap_message_flag;
+
+/**
  * Result code.
  */
 typedef enum coap_result {
@@ -230,40 +246,43 @@ void coap_remove_connection_handler(coap_connection_callback cb, void* reserved)
 /**
  * Register a handler for incoming requests.
  *
- * If a handler is already registered for the given combination of URI prefix and method code, it
+ * If a handler is already registered for the given combination of base URI path and method code, it
  * will be replaced.
  *
- * @param uri URI prefix.
+ * @param path Base URI path. If `NULL`, the handler will be invoked for any request not matching
+ *        any other handler.
  * @param method Method code as defined by the `coap_method` enum.
- * @param flags Reserved argument. Must be set to 0.
+ * @param flags Flags defined by the `coap_message_flag` enum. Supported flags:
+ *        - `COAP_MESSAGE_FULL`.
  * @param cb Handler callback.
  * @param arg User argument to pass to the callback.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_add_request_handler(const char* uri, int method, int flags, coap_request_callback cb, void* arg, void* reserved);
+int coap_add_request_handler(const char* path, int method, int flags, coap_request_callback cb, void* arg, void* reserved);
 
 /**
  * Unregister a handler for incoming requests.
  *
- * @param uri URI prefix.
+ * @param path Base URI path.
  * @param method Method code as defined by the `coap_method` enum.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void coap_remove_request_handler(const char* uri, int method, void* reserved);
+void coap_remove_request_handler(const char* path, int method, void* reserved);
 
 /**
  * Begin sending a request message.
  *
  * @param[out] msg Request message.
- * @param uri Request URI.
+ * @param path URI path.
  * @param method Method code as defined by the `coap_method` enum.
  * @param timeout Request timeout in milliseconds. If 0, the default timeout is used.
- * @param flags Reserved argument. Must be set to 0.
+ * @param flags Flags defined by the `coap_message_flag` enum. Supported flags:
+ *        - `COAP_MESSAGE_FULL`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return ID of the request on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_begin_request(coap_message** msg, const char* uri, int method, int timeout, int flags, void* reserved);
+int coap_begin_request(coap_message** msg, const char* path, int method, int timeout, int flags, void* reserved);
 
 /**
  * Finish sending a request message.
@@ -288,7 +307,8 @@ int coap_end_request(coap_message* msg, coap_response_callback resp_cb, coap_ack
  * @param[out] msg Response message.
  * @param status Response code as defined by the `coap_status` enum.
  * @param req_id ID of the request which this response is meant for.
- * @param flags Reserved argument. Must be set to 0.
+ * @param flags Flags defined by the `coap_message_flag` enum. Supported flags:
+ *        - `COAP_MESSAGE_FULL`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
@@ -426,16 +446,6 @@ int coap_get_next_option(coap_option** opt, int* num, coap_message* msg, void* r
 int coap_get_uint_option_value(const coap_option* opt, unsigned* val, void* reserved);
 
 /**
- * Get the value of an `uint` option as a 64-bit integer.
- *
- * @param opt Message option.
- * @param[out] val Option value.
- * @param reserved Reserved argument. Must be set to `NULL`.
- * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
- */
-int coap_get_uint64_option_value(const coap_option* opt, uint64_t* val, void* reserved);
-
-/**
  * Get the value of a string option.
  *
  * The output is null-terminated unless the size of the output buffer is 0.
@@ -481,17 +491,6 @@ int coap_add_empty_option(coap_message* msg, int num, void* reserved);
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
 int coap_add_uint_option(coap_message* msg, int num, unsigned val, void* reserved);
-
-/**
- * Add a `uint` option to a message as a 64-bit integer.
- *
- * @param msg Request of response message.
- * @param num Option number.
- * @param val Option value.
- * @param reserved Reserved argument. Must be set to `NULL`.
- * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
- */
-int coap_add_uint64_option(coap_message* msg, int num, uint64_t val, void* reserved);
 
 /**
  * Add a string option to a message.
