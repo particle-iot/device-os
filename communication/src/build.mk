@@ -39,6 +39,7 @@ CPPSRC += $(TARGET_SRC_PATH)/coap_util.cpp
 CPPSRC += $(TARGET_SRC_PATH)/firmware_update.cpp
 CPPSRC += $(TARGET_SRC_PATH)/description.cpp
 CPPSRC += $(TARGET_SRC_PATH)/coap_channel_new.cpp
+CPPSRC += $(TARGET_SRC_PATH)/coap_payload.cpp
 
 # ASM source files included in this build.
 ASRC +=
