@@ -50,6 +50,11 @@
 typedef struct coap_message coap_message;
 
 /**
+ * Payload data.
+ */
+typedef struct coap_payload coap_payload;
+
+/**
  * Message option.
  */
 typedef struct coap_option coap_option;
@@ -356,7 +361,7 @@ void coap_destroy_message(coap_message* msg, void* reserved);
 void coap_cancel_request(int req_id, void* reserved);
 
 /**
- * Write the payload data of a message.
+ * Write to the current block of a message's payload data.
  *
  * If the data can't be sent in one message block, the function will return `COAP_RESULT_WAIT_BLOCK`.
  * When that happens, the caller must stop writing the payload data until the `block_cb` callback is
@@ -376,11 +381,11 @@ void coap_cancel_request(int req_id, void* reserved);
  * @return 0 or `COAP_RESULT_WAIT_BLOCK` on success, otherwise an error code defined by the
  *        `system_error_t` enum.
  */
-int coap_write_payload(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
+int coap_write_block(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved);
 
 /**
- * Read the payload data of a message.
+ * Read from the current block of a message's payload data.
  *
  * If the end of the current message block is reached and more blocks are expected to be received for
  * this message, the function will return `COAP_RESULT_WAIT_BLOCK`. The `block_cb` callback will be
@@ -398,11 +403,11 @@ int coap_write_payload(coap_message* msg, const char* data, size_t* size, coap_b
  * @return 0 or `COAP_RESULT_WAIT_BLOCK` on success, otherwise an error code defined by the
  *        `system_error_t` enum.
  */
-int coap_read_payload(coap_message* msg, char* data, size_t *size, coap_block_callback block_cb,
+int coap_read_block(coap_message* msg, char* data, size_t *size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved);
 
 /**
- * Read the payload data of the current message block without changing the reading position in it.
+ * Read from the current block of a message's payload data without changing the reading position in it.
  *
  * @param msg Request or response message.
  * @param[out] data Output buffer. Can be `NULL`.
@@ -410,7 +415,18 @@ int coap_read_payload(coap_message* msg, char* data, size_t *size, coap_block_ca
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return Number of bytes read or an error code defined by the `system_error_t` enum.
  */
-int coap_peek_payload(coap_message* msg, char* data, size_t size, void* reserved);
+int coap_peek_block(coap_message* msg, char* data, size_t size, void* reserved);
+
+int coap_create_payload(coap_payload** payload, void* reserved);
+void coap_destroy_payload(coap_payload* payload, void* reserved);
+int coap_write_payload(coap_payload* payload, const char* data, size_t size, void* reserved);
+int coap_read_payload(coap_payload* payload, char* data, size_t size, void* reserved);
+int coap_set_payload_pos(coap_payload* payload, size_t pos, void* reserved);
+int coap_get_payload_pos(coap_payload* payload, void* reserved);
+int coap_set_payload_size(coap_payload* payload, size_t size, void* reserved);
+int coap_get_payload_size(coap_payload* payload, void* reserved);
+int coap_set_payload(coap_message* msg, coap_payload* payload, void* reserved);
+int coap_get_payload(coap_message* msg, coap_payload** payload, void* reserved);
 
 /**
  * Get the first message option with a given number.

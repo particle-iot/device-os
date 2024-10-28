@@ -577,7 +577,7 @@ int LedgerManager::receiveRequest(CoapMessagePtr& msg, int reqId) {
     // Get the request type. XXX: It's assumed that the message fields are encoded in order of their
     // field numbers, which is not guaranteed by the Protobuf spec in general
     char buf[32] = {};
-    size_t n = CHECK(coap_peek_payload(msg.get(), buf, sizeof(buf), nullptr));
+    size_t n = CHECK(coap_peek_block(msg.get(), buf, sizeof(buf), nullptr));
     pb_istream_t stream = pb_istream_from_buffer((const pb_byte_t*)buf, n);
     uint32_t reqType = 0;
     uint32_t fieldTag = 0;
@@ -669,7 +669,7 @@ int LedgerManager::receiveResponse(CoapMessagePtr& msg, int status) {
     // Get the protocol-specific result code. XXX: It's assumed that the message fields are encoded
     // in order of their field numbers, which is not guaranteed by the Protobuf spec in general
     char buf[32] = {};
-    int r = coap_peek_payload(msg.get(), buf, sizeof(buf), nullptr);
+    int r = coap_peek_block(msg.get(), buf, sizeof(buf), nullptr);
     if (r < 0) {
         if (r != SYSTEM_ERROR_END_OF_STREAM) {
             return r;
@@ -1243,7 +1243,7 @@ int LedgerManager::sendLedgerData() {
     for (;;) {
         if (bytesInBuf_ > 0) {
             size_t size = bytesInBuf_;
-            int r = CHECK(coap_write_payload(msg_.get(), buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr));
+            int r = CHECK(coap_write_block(msg_.get(), buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr));
             if (r == COAP_RESULT_WAIT_BLOCK) {
                 assert(size < bytesInBuf_);
                 bytesInBuf_ -= size;
@@ -1283,7 +1283,7 @@ int LedgerManager::receiveLedgerData() {
             bytesInBuf_ = 0;
         }
         size_t size = STREAM_BUFFER_SIZE;
-        int r = coap_read_payload(msg_.get(), buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr);
+        int r = coap_read_block(msg_.get(), buf_.get(), &size, messageBlockCallback, requestErrorCallback, this, nullptr);
         if (r < 0) {
             if (r == SYSTEM_ERROR_END_OF_STREAM) {
                 eof = true;

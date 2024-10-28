@@ -41,13 +41,13 @@ public:
     int read(char* data, size_t size);
     int write(const char* data, size_t size);
 
-    int size(size_t size);
+    int setSize(size_t size);
 
     int size() const {
         return size_;
     }
 
-    int pos(size_t pos);
+    int setPos(size_t pos);
 
     int pos() const {
         return pos_;

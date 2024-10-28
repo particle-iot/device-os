@@ -97,7 +97,7 @@ int Cloud::publishImpl(RefCountPtr<Event> event) {
     CHECK(coap_add_string_option(msg.get(), COAP_OPTION_URI_PATH, event->name(), nullptr /* reserved */)); // FIXME
 
     size_t size = event->size();
-    CHECK(coap_write_payload(msg.get(), event->data(), &size, nullptr /* block_cb */, nullptr /* error_cb */,
+    CHECK(coap_write_block(msg.get(), event->data(), &size, nullptr /* block_cb */, nullptr /* error_cb */,
             nullptr /* arg */, nullptr /* reserved */));
     CHECK(coap_end_request(msg.get(), nullptr /* resp_cb */, coapAckCallback, coapErrorCallback, event.get(), nullptr /* reserved */));
     event->addRef();
@@ -136,7 +136,7 @@ int Cloud::coapRequestCallback(coap_message* apiMsg, const char* uri, int method
     char buf[128];
     for (;;) {
         size_t size = sizeof(buf);
-        int r = coap_read_payload(msg.get(), buf, &size, nullptr /* block_cb */, nullptr /* error_cb */, nullptr /* arg */, nullptr /* reserved */);
+        int r = coap_read_block(msg.get(), buf, &size, nullptr /* block_cb */, nullptr /* error_cb */, nullptr /* arg */, nullptr /* reserved */);
         if (r < 0) {
             if (r == SYSTEM_ERROR_END_OF_STREAM) {
                 break;

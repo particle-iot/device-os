@@ -56,11 +56,22 @@ public:
     int endResponse(coap_message* msg, coap_ack_callback ackCallback, coap_error_callback errorCallback,
             void* callbackArg);
 
-    int writePayload(coap_message* msg, const char* data, size_t& size, coap_block_callback blockCallback,
+    int writeBlock(coap_message* msg, const char* data, size_t& size, coap_block_callback blockCallback,
             coap_error_callback errorCallback, void* callbackArg);
-    int readPayload(coap_message* msg, char* data, size_t& size, coap_block_callback blockCallback,
+    int readBlock(coap_message* msg, char* data, size_t& size, coap_block_callback blockCallback,
             coap_error_callback errorCallback, void* callbackArg);
-    int peekPayload(coap_message* msg, char* data, size_t size);
+    int peekBlock(coap_message* msg, char* data, size_t size);
+
+    int createPayload(coap_payload** payload);
+    void destroyPayload(coap_payload* payload);
+    int writePayload(coap_payload* payload, const char* data, size_t size);
+    int readPayload(coap_payload* payload, char* data, size_t size);
+    int setPayloadPos(coap_payload* payload, size_t pos);
+    int getPayloadPos(coap_payload* payload);
+    int setPayloadSize(coap_payload* payload, size_t size);
+    int getPayloadSize(coap_payload* payload);
+    int setPayload(coap_message* msg, coap_payload* payload);
+    int getPayload(coap_message* msg, coap_payload** payload);
 
     int addOption(coap_message* msg, int num, const char* data, size_t size);
 

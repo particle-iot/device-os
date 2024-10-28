@@ -30,7 +30,7 @@ LOG_SOURCE_CATEGORY("system.coap")
 #include <cstring>
 
 #include "coap_channel_new.h"
-
+#include "coap_payload.h"
 #include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
 #include "coap_util.h"
@@ -479,7 +479,7 @@ int CoapChannel::endResponse(coap_message* apiMsg, coap_ack_callback ackCallback
     return 0;
 }
 
-int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& size, coap_block_callback blockCallback,
+int CoapChannel::writeBlock(coap_message* apiMsg, const char* data, size_t& size, coap_block_callback blockCallback,
         coap_error_callback errorCallback, void* callbackArg) {
     auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
     if (msg->sessionId != sessId_) {
@@ -539,7 +539,7 @@ int CoapChannel::writePayload(coap_message* apiMsg, const char* data, size_t& si
     return sendBlock ? COAP_RESULT_WAIT_BLOCK : 0;
 }
 
-int CoapChannel::readPayload(coap_message* apiMsg, char* data, size_t& size, coap_block_callback blockCallback,
+int CoapChannel::readBlock(coap_message* apiMsg, char* data, size_t& size, coap_block_callback blockCallback,
         coap_error_callback errorCallback, void* callbackArg) {
     auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
     if (msg->sessionId != sessId_) {
@@ -591,7 +591,7 @@ int CoapChannel::readPayload(coap_message* apiMsg, char* data, size_t& size, coa
     return getBlock ? COAP_RESULT_WAIT_BLOCK : 0;
 }
 
-int CoapChannel::peekPayload(coap_message* apiMsg, char* data, size_t size) {
+int CoapChannel::peekBlock(coap_message* apiMsg, char* data, size_t size) {
     auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
@@ -614,6 +614,65 @@ int CoapChannel::peekPayload(coap_message* apiMsg, char* data, size_t size) {
         }
     }
     return size;
+}
+
+int CoapChannel::createPayload(coap_payload** payload) {
+    auto p = makeRefCountPtr<CoapPayload>();
+    if (!p) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    *payload = reinterpret_cast<coap_payload*>(p.unwrap());
+    return 0;
+}
+
+void CoapChannel::destroyPayload(coap_payload* payload) {
+    if (!payload) {
+        return;
+    }
+    auto p = reinterpret_cast<CoapPayload*>(payload);
+    p->release();
+}
+
+int CoapChannel::writePayload(coap_payload* payload, const char* data, size_t size) {
+    auto p = reinterpret_cast<CoapPayload*>(payload);
+    size_t n = CHECK(p->write(data, size));
+    return n;
+}
+
+int CoapChannel::readPayload(coap_payload* payload, char* data, size_t size) {
+    auto p = reinterpret_cast<CoapPayload*>(payload);
+    size_t n = CHECK(p->read(data, size));
+    return n;
+}
+
+int CoapChannel::setPayloadPos(coap_payload* payload, size_t pos) {
+    auto p = reinterpret_cast<CoapPayload*>(payload);
+    size_t n = CHECK(p->setPos(pos));
+    return n;
+}
+
+int CoapChannel::getPayloadPos(coap_payload* payload) {
+    auto p = reinterpret_cast<CoapPayload*>(payload);
+    return p->pos();
+}
+
+int CoapChannel::setPayloadSize(coap_payload* payload, size_t size) {
+    auto p = reinterpret_cast<CoapPayload*>(payload);
+    CHECK(p->setSize(size));
+    return 0;
+}
+
+int CoapChannel::getPayloadSize(coap_payload* payload) {
+    auto p = reinterpret_cast<CoapPayload*>(payload);
+    return p->size();
+}
+
+int CoapChannel::setPayload(coap_message* msg, coap_payload* payload) {
+    return 0; // TODO
+}
+
+int CoapChannel::getPayload(coap_message* msg, coap_payload** payload) {
+    return 0; // TODO
 }
 
 int CoapChannel::addOption(coap_message* apiMsg, int num, const char* data, size_t size) {
@@ -836,7 +895,7 @@ void CoapChannel::close(int error) {
     // Cancel device requests awaiting a response
     forEachRefInList(sentReqs_, [=](auto req) {
         if (req->type != MessageType::BLOCK_REQUEST && req->state == MessageState::WAIT_RESPONSE && req->errorCallback) {
-            req->errorCallback(error, req->id, req->callbackArg); // Callback passed to coap_write_payload() or coap_end_request()
+            req->errorCallback(error, req->id, req->callbackArg); // Callback passed to coap_write_block() or coap_end_request()
         }
         req->state = MessageState::DONE;
         // Release the unmanaged reference to the message
@@ -846,7 +905,7 @@ void CoapChannel::close(int error) {
     // Cancel device requests and responses awaiting an ACK
     forEachRefInList(unackMsgs_, [=](auto msg) {
         if (msg->type != MessageType::BLOCK_REQUEST && msg->state == MessageState::WAIT_ACK && msg->errorCallback) {
-            msg->errorCallback(error, msg->requestId, msg->callbackArg); // Callback passed to coap_write_payload(), coap_end_request() or coap_end_response()
+            msg->errorCallback(error, msg->requestId, msg->callbackArg); // Callback passed to coap_write_block(), coap_end_request() or coap_end_response()
         }
         msg->state = MessageState::DONE;
         msg->release();
@@ -856,7 +915,7 @@ void CoapChannel::close(int error) {
     forEachRefInList(blockResps_, [=](auto msg) {
         assert(msg->state == MessageState::WAIT_BLOCK);
         if (msg->errorCallback) {
-            msg->errorCallback(error, msg->requestId, msg->callbackArg); // Callback passed to coap_read_payload()
+            msg->errorCallback(error, msg->requestId, msg->callbackArg); // Callback passed to coap_read_block()
         }
         msg->state = MessageState::DONE;
         msg->release();
@@ -954,7 +1013,7 @@ int CoapChannel::handleRst(const Message& msgBuf) {
             resp->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, resp->requestId, resp->callbackArg); // Callback passed to coap_read_response()
         }
     } else if (msg->errorCallback) { // REQUEST or RESPONSE
-        msg->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, msg->requestId, msg->callbackArg); // Callback passed to coap_write_payload(), coap_end_request() or coap_end_response()
+        msg->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, msg->requestId, msg->callbackArg); // Callback passed to coap_write_block(), coap_end_request() or coap_end_response()
     }
     clearMessage(msg);
     return Result::HANDLED;
@@ -1189,7 +1248,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         } else {
             LOG(ERROR, "Blockwise transfer failed: %d.%02d", (int)coapCodeClass(code), (int)coapCodeDetail(code));
             if (req->errorCallback) {
-                req->errorCallback(SYSTEM_ERROR_COAP, req->id, req->callbackArg); // Callback passed to coap_write_payload()
+                req->errorCallback(SYSTEM_ERROR_COAP, req->id, req->callbackArg); // Callback passed to coap_write_block()
             }
             clearMessage(req);
         }
@@ -1555,21 +1614,70 @@ void coap_cancel_request(int req_id, void* reserved) {
     CoapChannel::instance()->cancelRequest(req_id);
 }
 
-int coap_write_payload(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
+int coap_write_block(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved) {
-    int r = CHECK(CoapChannel::instance()->writePayload(msg, data, *size, block_cb, error_cb, arg));
+    int r = CHECK(CoapChannel::instance()->writeBlock(msg, data, *size, block_cb, error_cb, arg));
     return r; // 0 or COAP_RESULT_WAIT_BLOCK
 }
 
-int coap_read_payload(coap_message* msg, char* data, size_t* size, coap_block_callback block_cb,
+int coap_read_block(coap_message* msg, char* data, size_t* size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved) {
-    int r = CHECK(CoapChannel::instance()->readPayload(msg, data, *size, block_cb, error_cb, arg));
+    int r = CHECK(CoapChannel::instance()->readBlock(msg, data, *size, block_cb, error_cb, arg));
     return r; // 0 or COAP_RESULT_WAIT_BLOCK
 }
 
-int coap_peek_payload(coap_message* msg, char* data, size_t size, void* reserved) {
-    size_t n = CHECK(CoapChannel::instance()->peekPayload(msg, data, size));
+int coap_peek_block(coap_message* msg, char* data, size_t size, void* reserved) {
+    size_t n = CHECK(CoapChannel::instance()->peekBlock(msg, data, size));
     return n;
+}
+
+int coap_create_payload(coap_payload** payload, void* reserved) {
+    CHECK(CoapChannel::instance()->createPayload(payload));
+    return 0;
+}
+
+void coap_destroy_payload(coap_payload* payload, void* reserved) {
+    CoapChannel::instance()->destroyPayload(payload);
+}
+
+int coap_write_payload(coap_payload* payload, const char* data, size_t size, void* reserved) {
+    size_t n = CHECK(CoapChannel::instance()->writePayload(payload, data, size));
+    return n;
+}
+
+int coap_read_payload(coap_payload* payload, char* data, size_t size, void* reserved) {
+    size_t n = CHECK(CoapChannel::instance()->readPayload(payload, data, size));
+    return n;
+}
+
+int coap_set_payload_pos(coap_payload* payload, size_t pos, void* reserved) {
+    CHECK(CoapChannel::instance()->setPayloadPos(payload, pos));
+    return 0;
+}
+
+int coap_get_payload_pos(coap_payload* payload, void* reserved) {
+    size_t pos = CHECK(CoapChannel::instance()->getPayloadPos(payload));
+    return pos;
+}
+
+int coap_set_payload_size(coap_payload* payload, size_t size, void* reserved) {
+    CHECK(CoapChannel::instance()->setPayloadSize(payload, size));
+    return 0;
+}
+
+int coap_get_payload_size(coap_payload* payload, void* reserved) {
+    size_t size = CHECK(CoapChannel::instance()->getPayloadSize(payload));
+    return size;
+}
+
+int coap_set_payload(coap_message* msg, coap_payload* payload, void* reserved) {
+    CHECK(CoapChannel::instance()->setPayload(msg, payload));
+    return 0;
+}
+
+int coap_get_payload(coap_message* msg, coap_payload** payload, void* reserved) {
+    CHECK(CoapChannel::instance()->getPayload(msg, payload));
+    return 0;
 }
 
 int coap_get_option(coap_option** opt, int num, coap_message* msg, void* reserved) {

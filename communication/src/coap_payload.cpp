@@ -143,7 +143,7 @@ int CoapPayload::write(const char* data, size_t size) {
     return size;
 }
 
-int CoapPayload::size(size_t size) {
+int CoapPayload::setSize(size_t size) {
     if (size > MAX_PAYLOAD_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
@@ -171,7 +171,7 @@ int CoapPayload::size(size_t size) {
     return 0;
 }
 
-int CoapPayload::pos(size_t pos) {
+int CoapPayload::setPos(size_t pos) {
     if (pos > size_) {
         pos = size_;
     }
