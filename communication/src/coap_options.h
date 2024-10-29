@@ -17,6 +17,10 @@
 
 #pragma once
 
+#include <cstring>
+
+#include "coap_defs.h"
+
 #include "spark_wiring_vector.h"
 
 namespace particle::protocol::experimental {
@@ -25,15 +29,11 @@ class CoapOptions;
 
 namespace detail {
 
+/**
+ * A CoAP option.
+ */
 class CoapOption {
 public:
-    CoapOption() :
-            dataPtr_(nullptr),
-            next_(nullptr),
-            size_(0),
-            num_(0) {
-    }
-
     CoapOption(const CoapOption&) = delete; // Non-copyable
 
     CoapOption(CoapOption&& opt) :
@@ -47,20 +47,45 @@ public:
         }
     }
 
+    /**
+     * Get the option number.
+     *
+     * @return Option number.
+     */
     unsigned number() const {
         return num_;
     }
 
+    /**
+     * Get the option data.
+     *
+     * @return Option data.
+     */
     const char* data() const {
         return (size_ <= sizeof(char*)) ? data_ : dataPtr_;
     }
 
+    /**
+     * Get the size of the option data.
+     *
+     * @return Data size.
+     */
     size_t size() const {
         return size_;
     }
 
+    /**
+     * Get the value of the `uint` option.
+     *
+     * @return Option value.
+     */
     unsigned toUint() const;
 
+    /**
+     * Get the next option in the list.
+     *
+     * @return Pointer to the next option object or `nullptr` if this is the last option in the list.
+     */
     const CoapOption* next() const {
         return next_;
     }
@@ -73,6 +98,13 @@ public:
     }
 
 protected:
+    CoapOption() :
+            dataPtr_(nullptr),
+            next_(nullptr),
+            size_(0),
+            num_(0) {
+    }
+
     int init(unsigned num, const char* data, size_t size); // Called by CoapOptions
 
     void next(const CoapOption* next) { // ditto
@@ -105,12 +137,51 @@ class CoapOptions {
 public:
     using Option = detail::CoapOption;
 
+    /**
+     * Add an empty option.
+     *
+     * @param num Option number.
+     * @return 0 on success, otherwise an error code defined by `system_error_t`.
+     */
     int add(unsigned num) {
         return add(num, nullptr /* data */, 0 /* size */);
     }
 
+    /**
+     * Add a `uint` option.
+     *
+     * @param num Option number.
+     * @param val Option value.
+     * @return 0 on success, otherwise an error code defined by `system_error_t`.
+     */
     int add(unsigned num, unsigned val);
+
+    /**
+     * Add a string option.
+     *
+     * @param num Option number.
+     * @param val Option value.
+     * @return 0 on success, otherwise an error code defined by `system_error_t`.
+     */
+    int add(unsigned num, const char* val) {
+        return add(num, val, std::strlen(val));
+    }
+
+    /**
+     * Add an opaque option.
+     *
+     * @param num Option number.
+     * @param data Option data.
+     * @param size Data size.
+     * @return 0 on success, otherwise an error code defined by `system_error_t`.
+     */
     int add(unsigned num, const char* data, size_t size);
+
+    // An overload taking a CoapOption enum class value as the option number
+    template<typename... ArgsT>
+    int add(CoapOption num, ArgsT&&... args) {
+        return add((unsigned)num, std::forward<ArgsT>(args)...);
+    }
 
     /**
      * Find the first option with a given number.
@@ -137,10 +208,20 @@ public:
         return opts_.isEmpty() ? nullptr : &opts_.first();
     }
 
+    /**
+     * Get the number of options stored in the list.
+     *
+     * @return Number of options.
+     */
     size_t size() const {
         return opts_.size();
     }
 
+    /**
+     * Check if the list is empty.
+     *
+     * @return `true` if the list is empty, or `false` otherwise.
+     */
     bool isEmpty() const {
         return opts_.isEmpty();
     }

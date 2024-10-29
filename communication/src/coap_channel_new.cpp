@@ -25,20 +25,16 @@ LOG_SOURCE_CATEGORY("system.coap")
 
 #include <type_traits>
 #include <algorithm>
-#include <variant>
 #include <optional>
-#include <cstring>
 
 #include "coap_channel_new.h"
 #include "coap_payload.h"
+#include "coap_options.h"
 #include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
 #include "coap_util.h"
 #include "protocol.h"
 #include "spark_protocol_functions.h"
-
-#include "spark_wiring_buffer.h"
-#include "spark_wiring_map.h"
 
 #include "c_string.h"
 #include "random.h"
@@ -66,6 +62,23 @@ static_assert(COAP_BLOCK_SIZE == 1024); // When changing the block size, make su
 const unsigned DEFAULT_REQUEST_TIMEOUT = 60000;
 
 static_assert(COAP_INVALID_REQUEST_ID == 0); // Used by value in the code
+
+int parseUriPath(const char* path, CoapOptions& opts) {
+    auto p = path;
+    for (auto p2 = p;; ++p2) {
+        if (*p2 == '/' || *p2 == '\0') {
+            // Skip the leading '/' and make sure not to add an empty Uri-Path option if the path is empty
+            if (p2 != path) {
+                CHECK(opts.add(CoapOption::URI_PATH, p, p2 - p));
+                p = p2 + 1;
+            }
+            if (*p2 == '\0') {
+                break;
+            }
+        }
+    }
+    return 0;
+}
 
 unsigned encodeBlockOption(int num, bool m) {
     unsigned opt = (num << 4) | BLOCK_SZX;
@@ -200,7 +213,8 @@ struct CoapChannel::CoapMessage: RefCount {
     int coapId; // CoAP message ID
     token_t token; // CoAP token. TODO: Support longer tokens
 
-    Map<unsigned, Buffer> options; // CoAP options. TODO: Use pooling or small object optimization
+    RefCountPtr<CoapPayload> payload; // Payload data
+    CoapOptions options; // CoAP options
 
     std::optional<int> blockIndex; // Index of the current message block
     std::optional<bool> hasMore; // Whether more blocks are expected for this message
@@ -354,24 +368,7 @@ int CoapChannel::beginRequest(coap_message** msg, const char* path, coap_method 
     if (!req) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-
-    // Parse URI path
-    auto p = path;
-    auto end = path + std::strlen(path);
-    for (auto p2 = path; p2 < end; ++p2) {
-        if (*p2 == '/' || *p2 == '\0') {
-            Buffer d;
-            if (!d.resize(p2 - p)) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-            std::memcpy(d.data(), p, p2 - p);
-            if (!req->options.set(COAP_OPTION_URI_PATH, std::move(d))) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-            p = p2 + 1;
-        }
-    }
-
+    CHECK(parseUriPath(path, req->options));
     auto msgId = ++lastMsgId_;
     req->id = msgId;
     req->requestId = msgId;
@@ -675,7 +672,10 @@ int CoapChannel::getPayload(coap_message* msg, coap_payload** payload) {
     return 0; // TODO
 }
 
-int CoapChannel::addOption(coap_message* apiMsg, int num, const char* data, size_t size) {
+int CoapChannel::addOption(coap_message* apiMsg, int num, unsigned val) {
+    if (num < 0 || (unsigned)num > MAX_COAP_OPTION_NUMBER) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
@@ -683,14 +683,22 @@ int CoapChannel::addOption(coap_message* apiMsg, int num, const char* data, size
     if (msg->state != MessageState::WRITE) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    Buffer d;
-    if (!d.resize(size)) {
-        return SYSTEM_ERROR_NO_MEMORY;
+    CHECK(msg->options.add(num, val));
+    return 0;
+}
+
+int CoapChannel::addOption(coap_message* apiMsg, int num, const char* data, size_t size) {
+    if (num < 0 || (unsigned)num > MAX_COAP_OPTION_NUMBER) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    std::memcpy(d.data(), data, size);
-    if (!msg->options.set(num, std::move(d))) {
-        return SYSTEM_ERROR_NO_MEMORY;
+    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    if (msg->sessionId != sessId_) {
+        return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
+    if (msg->state != MessageState::WRITE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    CHECK(msg->options.add(num, data, size));
     return 0;
 }
 
@@ -1073,21 +1081,14 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
         return 0;
     }
     // Parse options
-    Map<unsigned, Buffer> opts;
+    CoapOptions opts;
     bool hasBlockOpt = false;
     it = d.options();
     while (it.next()) {
         if (it.option() == CoapOption::BLOCK1) {
             hasBlockOpt = true;
         } else {
-            Buffer d;
-            if (!d.resize(it.size())) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-            std::memcpy(d.data(), it.data(), it.size());
-            if (!opts.set(it.option(), std::move(d))) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
+            CHECK(opts.add(it.option(), it.data(), it.size()));
         }
     }
     if (hasBlockOpt) {
@@ -1373,27 +1374,27 @@ int CoapChannel::updateMessage(const RefCountPtr<CoapMessage>& msg) {
         e.code(resp->status);
     }
     e.token((const char*)&msg->token, sizeof(msg->token));
-    // TODO: Support user-provided options
+
     if (isRequest) {
         auto req = staticPtrCast<RequestMessage>(msg);
         if (req->type == MessageType::BLOCK_REQUEST && req->tagSize > 0) {
             // Requesting the next block of a blockwise response
-            encodeOption(e, req, (unsigned)CoapOption::ETAG /* 4 */, req->tag, req->tagSize);
+            encodeOption(e, req, CoapOption::ETAG /* 4 */, req->tag, req->tagSize);
         }
         if (req->blockIndex.has_value()) {
             // See control vs descriptive usage of the block options in RFC 7959, 2.3
             if (req->type == MessageType::BLOCK_REQUEST) {
                 auto opt = encodeBlockOption(req->blockIndex.value(), false /* m */);
-                encodeOption(e, req, (unsigned)CoapOption::BLOCK2 /* 23 */, opt);
+                encodeOption(e, req, CoapOption::BLOCK2 /* 23 */, opt);
             } else {
                 assert(req->hasMore.has_value());
                 auto opt = encodeBlockOption(req->blockIndex.value(), req->hasMore.value());
-                encodeOption(e, req, (unsigned)CoapOption::BLOCK1 /* 27 */, opt);
+                encodeOption(e, req, CoapOption::BLOCK1 /* 27 */, opt);
             }
         }
         if (req->type == MessageType::REQUEST && req->tagSize > 0) {
             // Sending the next block of a blockwise request
-            encodeOption(e, req, (unsigned)CoapOption::REQUEST_TAG /* 292 */, req->tag, req->tagSize);
+            encodeOption(e, req, CoapOption::REQUEST_TAG /* 292 */, req->tag, req->tagSize);
         }
     } // TODO: Support device-to-cloud blockwise responses
 
@@ -1504,29 +1505,25 @@ void CoapChannel::clearMessage(const RefCountPtr<CoapMessage>& msg) {
     msg->state = MessageState::DONE;
 }
 
-void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned opt, const char* data,
-        size_t size) {
-    auto lastOpt = e.lastOption();
-    for (auto& [o, d]: msg->options) { // TODO: Use lowerBound()
-        if (o > lastOpt && o <= opt) {
-            e.option(o, d.data(), d.size());
-        }
-    }
-    e.option(opt, data, size);
+void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, CoapOption num,
+        const char* data, size_t size) {
+    // Encode the options that must precede the given option in the serialized message
+    encodeOptions(e, msg, (unsigned)num);
+    // Encode the given option
+    e.option(num, data, size);
 }
 
-void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned opt, unsigned val) {
-    char d[CoapMessageEncoder::MAX_UINT_OPTION_VALUE_SIZE] = {};
-    size_t n = CoapMessageEncoder::encodeUintOptionValue(d, sizeof(d), val);
-    encodeOption(e, msg, opt, d, n);
+void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, CoapOption num, unsigned val) {
+    encodeOptions(e, msg, (unsigned)num);
+    e.option(num, val);
 }
 
-void CoapChannel::encodeOptions(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg) {
-    auto lastOpt = e.lastOption();
-    for (auto& [o, d]: msg->options) { // TODO: Use lowerBound()
-        if (o > lastOpt) {
-            e.option(o, d.data(), d.size());
-        }
+void CoapChannel::encodeOptions(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned lastNum) {
+    auto lastEncodedNum = e.lastOptionNumber();
+    auto opt = msg->options.findNext(lastEncodedNum);
+    while (opt && opt->number() <= lastNum) {
+        e.option(opt->number(), opt->data(), opt->size());
+        opt = opt->next();
     }
 }
 
@@ -1701,19 +1698,17 @@ int coap_get_opaque_option_value(const coap_option* opt, char* data, size_t size
 }
 
 int coap_add_empty_option(coap_message* msg, int num, void* reserved) {
-    CHECK(CoapChannel::instance()->addOption(msg, num, nullptr /* data */, 0 /* size */));
+    CHECK(CoapChannel::instance()->addOption(msg, num));
     return 0;
 }
 
 int coap_add_uint_option(coap_message* msg, int num, unsigned val, void* reserved) {
-    char d[CoapMessageEncoder::MAX_UINT_OPTION_VALUE_SIZE] = {};
-    size_t n = CoapMessageEncoder::encodeUintOptionValue(d, sizeof(d), val);
-    CHECK(CoapChannel::instance()->addOption(msg, num, d, n));
+    CHECK(CoapChannel::instance()->addOption(msg, num, val));
     return 0;
 }
 
 int coap_add_string_option(coap_message* msg, int num, const char* val, void* reserved) {
-    CHECK(CoapChannel::instance()->addOption(msg, num, val, std::strlen(val)));
+    CHECK(CoapChannel::instance()->addOption(msg, num, val));
     return 0;
 }
 

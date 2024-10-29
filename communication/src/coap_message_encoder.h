@@ -57,7 +57,7 @@ public:
     template<typename... ArgsT>
     CoapMessageEncoder& option(CoapOption opt, ArgsT&&... args);
 
-    unsigned lastOption() const;
+    unsigned lastOptionNumber() const;
 
     CoapMessageEncoder& payload(const char* data, size_t size);
     CoapMessageEncoder& payload(const char* str);
@@ -123,7 +123,7 @@ inline CoapMessageEncoder& CoapMessageEncoder::option(CoapOption opt, ArgsT&&...
     return option((unsigned)opt, std::forward<ArgsT>(args)...);
 }
 
-inline unsigned CoapMessageEncoder::lastOption() const {
+inline unsigned CoapMessageEncoder::lastOptionNumber() const {
     return prevOpt_;
 }
 

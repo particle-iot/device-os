@@ -31,6 +31,8 @@ const size_t MIN_COAP_MESSAGE_SIZE = 4;
 
 const size_t MAX_COAP_TOKEN_SIZE = 8;
 
+const unsigned MAX_COAP_OPTION_NUMBER = 65535;
+
 constexpr unsigned coapCode(unsigned cls, unsigned detail) {
     return ((cls & 0x07) << 5) | (detail & 0x1f);
 }

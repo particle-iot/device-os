@@ -18,9 +18,11 @@
 #pragma once
 
 #include <memory>
+#include <cstring>
 #include <cstdint>
 
 #include "message_channel.h"
+#include "coap_defs.h"
 #include "coap_api.h"
 #include "coap.h" // For token_t
 
@@ -73,6 +75,15 @@ public:
     int setPayload(coap_message* msg, coap_payload* payload);
     int getPayload(coap_message* msg, coap_payload** payload);
 
+    int addOption(coap_message* msg, int num) {
+        return addOption(msg, num, nullptr /* data */, 0 /* size */);
+    }
+
+    int addOption(coap_message* msg, int num, const char* val) {
+        return addOption(msg, num, val, std::strlen(val));
+    }
+
+    int addOption(coap_message* msg, int num, unsigned val);
     int addOption(coap_message* msg, int num, const char* data, size_t size);
 
     void destroyMessage(coap_message* msg);
@@ -156,9 +167,9 @@ private:
     int sendMessage(RefCountPtr<CoapMessage> msg);
     void clearMessage(const RefCountPtr<CoapMessage>& msg);
 
-    void encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned opt, const char* data, size_t size);
-    void encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned opt, unsigned val);
-    void encodeOptions(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg);
+    void encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, CoapOption num, const char* data, size_t size);
+    void encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, CoapOption num, unsigned val);
+    void encodeOptions(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned lastNum = MAX_COAP_OPTION_NUMBER);
 
     int sendAck(int coapId, bool rst = false);
 

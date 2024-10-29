@@ -16,8 +16,6 @@
  */
 
 #include <algorithm>
-#include <iterator>
-#include <cstring>
 
 #include "coap_options.h"
 #include "coap_message_encoder.h"
@@ -52,6 +50,7 @@ int CoapOption::init(unsigned num, const char* data, size_t size) {
 }
 
 void swap(CoapOption& opt1, CoapOption& opt2) {
+    // Instances of this class are trivially swappable despite not being copy-assignable
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
     char tmp[sizeof(CoapOption)];
