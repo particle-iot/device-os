@@ -89,7 +89,7 @@ public:
     int prepareForPublish(); // Called by Cloud
     void publishComplete(int error); // ditto
 
-    coap_payload* payload() const {
+    coap_payload* apiPayload() const {
         return payload_.get();
     }
 

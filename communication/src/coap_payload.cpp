@@ -76,7 +76,7 @@ int CoapPayload::read(char* data, size_t size) {
     }
     auto d = data;
     size_t p = pos_;
-    size_t bytesToRead = size;
+    size_t bytesToRead = std::min(size, size_ - pos_);
     if (p < MAX_PAYLOAD_SIZE_IN_RAM) {
         size_t bytesInRam = std::min(size_, MAX_PAYLOAD_SIZE_IN_RAM) - p;
         size_t n = std::min(bytesToRead, bytesInRam);
@@ -139,6 +139,7 @@ int CoapPayload::write(const char* data, size_t size) {
         }
         p += n;
     }
+    size_ += size;
     pos_ = p;
     return size;
 }

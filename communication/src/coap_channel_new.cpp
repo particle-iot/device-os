@@ -689,7 +689,7 @@ int CoapChannel::getPayload(coap_message* apiMsg, coap_payload** apiPayload) {
     // if (msg->state != MessageState::READ) {
     //     return SYSTEM_ERROR_INVALID_STATE;
     // }
-    auto payload = RefCountPtr(reinterpret_cast<CoapPayload*>(apiPayload));
+    auto payload = msg->payload;
     assert(apiPayload);
     *apiPayload = reinterpret_cast<coap_payload*>(payload.unwrap());
     return 0;

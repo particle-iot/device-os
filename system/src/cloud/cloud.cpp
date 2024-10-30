@@ -57,7 +57,7 @@ public:
         CHECK(coap_begin_request(&apiMsg, uri, COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
         CoapMessagePtr msg(apiMsg);
 
-        auto apiPayload = event->payload();
+        auto apiPayload = event->apiPayload();
         CHECK(coap_set_payload(msg.get(), apiPayload, nullptr /* reserved */));
 
         ctx->event_ = std::move(event);
