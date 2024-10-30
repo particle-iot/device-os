@@ -157,7 +157,7 @@ int Cloud::init() {
 }
 
 int Cloud::publish(RefCountPtr<Event> event) {
-    int r = publishImpl(std::move(event));
+    int r = publishImpl(event);
     if (r < 0) {
         event->publishComplete(r);
     }
@@ -243,15 +243,6 @@ int Cloud::coapRequestCallback(coap_message* apiMsg, const char* uri, int method
     handler(reinterpret_cast<cloud_event*>(ev.unwrap()), handlerArg);
 
     return 0;
-}
-
-int Cloud::coapAckCallback(int reqId, void* arg) {
-    auto event = RefCountPtr<Event>::wrap(static_cast<Event*>(arg));
-    event->publishComplete(0 /* error */);
-    return 0;
-}
-
-void Cloud::coapErrorCallback(int error, int reqId, void* arg) {
 }
 
 } // namespace particle::system::cloud

@@ -41,8 +41,6 @@ public:
             error_(0) {
     }
 
-    int init();
-
     int name(const char* name);
 
     const char* name() const {
@@ -82,10 +80,10 @@ public:
     int write(const char* data, size_t size);
 
     int seek(size_t pos);
-    int tell() const;
+    int tell();
 
     int resize(size_t size);
-    int size() const;
+    int size();
 
 // protected:
     int prepareForPublish(); // Called by Cloud
@@ -101,6 +99,8 @@ private:
     std::optional<CoapContentFormat> contentFmt_;
     cloud_event_status status_;
     int error_;
+
+    int initPayload();
 
     int checkStatus(cloud_event_status expectedStatus) const {
         if (status_ != expectedStatus) {

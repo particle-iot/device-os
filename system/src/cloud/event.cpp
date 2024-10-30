@@ -24,13 +24,6 @@
 
 namespace particle::system::cloud {
 
-int Event::init() {
-    coap_payload* payload = nullptr;
-    CHECK(coap_create_payload(&payload, nullptr /* reserved */));
-    payload_.reset(payload);
-    return 0;
-}
-
 int Event::name(const char* name) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
     size_t len = std::strlen(name);
@@ -43,12 +36,14 @@ int Event::name(const char* name) {
 
 int Event::read(char* data, size_t size) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    CHECK(initPayload());
     size_t n = CHECK(coap_read_payload(payload_.get(), data, size, nullptr /* reserved */));
     return n;
 }
 
 int Event::peek(char* data, size_t size) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    CHECK(initPayload());
     size_t oldPos = CHECK(coap_get_payload_pos(payload_.get(), nullptr /* reserved */));
     size_t n = CHECK(coap_read_payload(payload_.get(), data, size, nullptr /* reserved */));
     CHECK(coap_set_payload_pos(payload_.get(), oldPos, nullptr /* reserved */));
@@ -57,30 +52,35 @@ int Event::peek(char* data, size_t size) {
 
 int Event::write(const char* data, size_t size) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    CHECK(initPayload());
     size_t n = CHECK(coap_write_payload(payload_.get(), data, size, nullptr /* reserved */));
     return n;
 }
 
 int Event::seek(size_t pos) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    CHECK(initPayload());
     size_t newPos = CHECK(coap_set_payload_pos(payload_.get(), pos, nullptr /* reserved */));
     return newPos;
 }
 
-int Event::tell() const {
+int Event::tell() {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    CHECK(initPayload());
     size_t pos = CHECK(coap_get_payload_pos(payload_.get(), nullptr /* reserved */));
     return pos;
 }
 
 int Event::resize(size_t size) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    CHECK(initPayload());
     CHECK(coap_set_payload_size(payload_.get(), size, nullptr /* reserved */));
     return 0;
 }
 
-int Event::size() const {
+int Event::size() {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    CHECK(initPayload());
     size_t size = CHECK(coap_get_payload_size(payload_.get(), nullptr /* reserved */));
     return size;
 }
@@ -90,6 +90,7 @@ int Event::prepareForPublish() {
     if (!*name_) {
         return error(SYSTEM_ERROR_INVALID_ARGUMENT);
     }
+    CHECK(initPayload());
     CHECK(coap_set_payload_pos(payload_.get(), 0 /* pos */, nullptr /* reserved */));
     status_ = CLOUD_EVENT_STATUS_SENDING;
     return 0;
@@ -105,6 +106,16 @@ void Event::publishComplete(int error) {
     } else {
         status_ = CLOUD_EVENT_STATUS_SENT;
     }
+}
+
+int Event::initPayload() {
+    if (payload_) {
+        return 0;
+    }
+    coap_payload* apiPayload = nullptr;
+    CHECK(coap_create_payload(&apiPayload, nullptr /* reserved */));
+    payload_.reset(apiPayload);
+    return 0;
 }
 
 } // namespace particle::system::cloud

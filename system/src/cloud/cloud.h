@@ -34,11 +34,6 @@ class Cloud {
 public:
     int init();
 
-/*
-int cloud_event_subscribe(const char* prefix, cloud_event_subscribe_callback subscribe, cloud_event_destroy_callback destroy,
-        void* arg, const cloud_event_subscribe_options* opts, void* reserved);
-*/
-
     int publish(RefCountPtr<Event> event);
     int subscribe(const char* prefix, cloud_event_subscribe_callback handler, void* arg);
 
@@ -57,8 +52,6 @@ private:
     int publishImpl(RefCountPtr<Event> event);
 
     static int coapRequestCallback(coap_message* msg, const char* uri, int method, int reqId, void* arg);
-    static int coapAckCallback(int reqId, void* arg);
-    static void coapErrorCallback(int error, int reqId, void* arg);
 };
 
 } // namespace particle::system::cloud

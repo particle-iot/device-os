@@ -685,9 +685,10 @@ int CoapChannel::getPayload(coap_message* apiMsg, coap_payload** apiPayload) {
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
-    if (msg->state != MessageState::READ) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
+    // FIXME
+    // if (msg->state != MessageState::READ) {
+    //     return SYSTEM_ERROR_INVALID_STATE;
+    // }
     auto payload = RefCountPtr(reinterpret_cast<CoapPayload*>(apiPayload));
     assert(apiPayload);
     *apiPayload = reinterpret_cast<coap_payload*>(payload.unwrap());
