@@ -75,16 +75,23 @@ public:
     int setPayload(coap_message* msg, coap_payload* payload);
     int getPayload(coap_message* msg, coap_payload** payload);
 
-    int addOption(coap_message* msg, int num) {
-        return addOption(msg, num, nullptr /* data */, 0 /* size */);
+    int getOption(coap_message* msg, coap_option** opt, int num);
+    int getNextOption(coap_message* msg, coap_option** opt, int* num);
+    int getUintOptionValue(coap_option* opt, unsigned* val);
+    int getStringOptionValue(coap_option* opt, char* data, size_t size);
+    int getOpaqueOptionValue(coap_option* opt, char* data, size_t size);
+
+    int addEmptyOption(coap_message* msg, int num) {
+        return addOpaqueOption(msg, num, nullptr /* data */, 0 /* size */);
     }
 
-    int addOption(coap_message* msg, int num, const char* val) {
-        return addOption(msg, num, val, std::strlen(val));
+    int addUintOption(coap_message* msg, int num, unsigned val);
+
+    int addStringOption(coap_message* msg, int num, const char* val) {
+        return addOpaqueOption(msg, num, val, std::strlen(val));
     }
 
-    int addOption(coap_message* msg, int num, unsigned val);
-    int addOption(coap_message* msg, int num, const char* data, size_t size);
+    int addOpaqueOption(coap_message* msg, int num, const char* data, size_t size);
 
     void destroyMessage(coap_message* msg);
 
@@ -96,16 +103,18 @@ public:
     int addConnectionHandler(coap_connection_callback callback, void* callbackArg);
     void removeConnectionHandler(coap_connection_callback callback);
 
-    // Methods called by the old protocol implementation
+    // Methods called by the system
 
     void open();
     void close(int error = SYSTEM_ERROR_COAP_CONNECTION_CLOSED);
 
+    int run();
+
+    // Methods called by the old protocol implementation
+
     int handleCon(const Message& msg);
     int handleAck(const Message& msg);
     int handleRst(const Message& msg);
-
-    int run();
 
     static CoapChannel* instance();
 

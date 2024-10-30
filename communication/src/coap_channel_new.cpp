@@ -672,7 +672,65 @@ int CoapChannel::getPayload(coap_message* msg, coap_payload** payload) {
     return 0; // TODO
 }
 
-int CoapChannel::addOption(coap_message* apiMsg, int num, unsigned val) {
+int CoapChannel::getOption(coap_message* apiMsg, coap_option** apiOpt, int num) {
+    if (num < 0 || (unsigned)num > MAX_COAP_OPTION_NUMBER) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    assert(apiMsg);
+    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    if (msg->state != MessageState::READ) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    auto opt = msg->options.findFirst(num);
+    assert(apiOpt);
+    *apiOpt = const_cast<coap_option*>(reinterpret_cast<const coap_option*>(opt));
+    return 0;
+}
+
+int CoapChannel::getNextOption(coap_message* apiMsg, coap_option** apiOpt, int* num) {
+    assert(apiOpt);
+    auto opt = reinterpret_cast<const CoapOptions::Option*>(*apiOpt);
+    if (opt) {
+        opt = opt->next();
+    } else {
+        assert(apiMsg);
+        auto msg = reinterpret_cast<const CoapMessage*>(apiMsg);
+        opt = msg->options.first();
+    }
+    *apiOpt = const_cast<coap_option*>(reinterpret_cast<const coap_option*>(opt));
+    assert(num);
+    *num = opt ? opt->number() : 0;
+    return 0;
+}
+
+int CoapChannel::getUintOptionValue(coap_option* apiOpt, unsigned* val) {
+    auto opt = reinterpret_cast<const CoapOptions::Option*>(apiOpt);
+    assert(opt && val);
+    *val = opt->toUint();
+    return 0;
+}
+
+int CoapChannel::getStringOptionValue(coap_option* apiOpt, char* data, size_t size) {
+    auto opt = reinterpret_cast<const CoapOptions::Option*>(apiOpt);
+    assert(opt);
+    if (data && size > 0) {
+        auto n = std::min(opt->size(), size - 1);
+        std::memcpy(data, opt->data(), n);
+        data[n] = '\0';
+    }
+    return opt->size();
+}
+
+int CoapChannel::getOpaqueOptionValue(coap_option* apiOpt, char* data, size_t size) {
+    auto opt = reinterpret_cast<const CoapOptions::Option*>(apiOpt);
+    assert(opt);
+    if (data) {
+        std::memcpy(data, opt->data(), std::min(opt->size(), size));
+    }
+    return opt->size();
+}
+
+int CoapChannel::addUintOption(coap_message* apiMsg, int num, unsigned val) {
     if (num < 0 || (unsigned)num > MAX_COAP_OPTION_NUMBER) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -687,7 +745,7 @@ int CoapChannel::addOption(coap_message* apiMsg, int num, unsigned val) {
     return 0;
 }
 
-int CoapChannel::addOption(coap_message* apiMsg, int num, const char* data, size_t size) {
+int CoapChannel::addOpaqueOption(coap_message* apiMsg, int num, const char* data, size_t size) {
     if (num < 0 || (unsigned)num > MAX_COAP_OPTION_NUMBER) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -1677,42 +1735,47 @@ int coap_get_payload(coap_message* msg, coap_payload** payload, void* reserved) 
     return 0;
 }
 
-int coap_get_option(coap_option** opt, int num, coap_message* msg, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+int coap_get_option(coap_message* msg, coap_option** opt, int num, void* reserved) {
+    CHECK(CoapChannel::instance()->getOption(msg, opt, num));
+    return 0;
 }
 
-int coap_get_next_option(coap_option** opt, int* num, coap_message* msg, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+int coap_get_next_option(coap_message* msg, coap_option** opt, int* num, void* reserved) {
+    CHECK(CoapChannel::instance()->getNextOption(msg, opt, num));
+    return 0;
 }
 
-int coap_get_uint_option_value(const coap_option* opt, unsigned* val, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+int coap_get_uint_option_value(coap_option* opt, unsigned* val, void* reserved) {
+    CHECK(CoapChannel::instance()->getUintOptionValue(opt, val));
+    return 0;
 }
 
-int coap_get_string_option_value(const coap_option* opt, char* data, size_t size, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+int coap_get_string_option_value(coap_option* opt, char* data, size_t size, void* reserved) {
+    CHECK(CoapChannel::instance()->getStringOptionValue(opt, data, size));
+    return 0;
 }
 
-int coap_get_opaque_option_value(const coap_option* opt, char* data, size_t size, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+int coap_get_opaque_option_value(coap_option* opt, char* data, size_t size, void* reserved) {
+    CHECK(CoapChannel::instance()->getOpaqueOptionValue(opt, data, size));
+    return 0;
 }
 
 int coap_add_empty_option(coap_message* msg, int num, void* reserved) {
-    CHECK(CoapChannel::instance()->addOption(msg, num));
+    CHECK(CoapChannel::instance()->addEmptyOption(msg, num));
     return 0;
 }
 
 int coap_add_uint_option(coap_message* msg, int num, unsigned val, void* reserved) {
-    CHECK(CoapChannel::instance()->addOption(msg, num, val));
+    CHECK(CoapChannel::instance()->addUintOption(msg, num, val));
     return 0;
 }
 
 int coap_add_string_option(coap_message* msg, int num, const char* val, void* reserved) {
-    CHECK(CoapChannel::instance()->addOption(msg, num, val));
+    CHECK(CoapChannel::instance()->addStringOption(msg, num, val));
     return 0;
 }
 
 int coap_add_opaque_option(coap_message* msg, int num, const char* data, size_t size, void* reserved) {
-    CHECK(CoapChannel::instance()->addOption(msg, num, data, size));
+    CHECK(CoapChannel::instance()->addOpaqueOption(msg, num, data, size));
     return 0;
 }

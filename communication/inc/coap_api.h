@@ -431,35 +431,35 @@ int coap_get_payload(coap_message* msg, coap_payload** payload, void* reserved);
 /**
  * Get the first message option with a given number.
  *
+ * @param msg Request or response message.
  * @param[out] opt Message option. If the option cannot be found, the argument is set to `NULL`.
  * @param num Option number.
- * @param msg Request or response message.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_get_option(coap_option** opt, int num, coap_message* msg, void* reserved);
+int coap_get_option(coap_message* msg, coap_option** opt, int num, void* reserved);
 
 /**
  * Get the next message option.
  *
+ * @param msg Request or response message.
  * @param[in,out] opt **in:** Current option. If `NULL`, the first option of the message is returned.
  *        **out:** Next option. If `NULL`, the option provided is the last option of the message.
  * @param[out] num Option number.
- * @param msg Request or response message.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_get_next_option(coap_option** opt, int* num, coap_message* msg, void* reserved);
+int coap_get_next_option(coap_message* msg, coap_option** opt, int* num, void* reserved);
 
 /**
- * Get the value of an `uint` option.
+ * Get the value of a `uint` option.
  *
  * @param opt Message option.
  * @param[out] val Option value.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_get_uint_option_value(const coap_option* opt, unsigned* val, void* reserved);
+int coap_get_uint_option_value(coap_option* opt, unsigned* val, void* reserved);
 
 /**
  * Get the value of a string option.
@@ -473,7 +473,7 @@ int coap_get_uint_option_value(const coap_option* opt, unsigned* val, void* rese
  * @return On success, the actual size of the option value not including the terminating null (can
  *        be greater than `size`). Otherwise, an error code defined by the `system_error_t` enum.
  */
-int coap_get_string_option_value(const coap_option* opt, char* data, size_t size, void* reserved);
+int coap_get_string_option_value(coap_option* opt, char* data, size_t size, void* reserved);
 
 /**
  * Get the value of an opaque option.
@@ -485,7 +485,7 @@ int coap_get_string_option_value(const coap_option* opt, char* data, size_t size
  * @return On success, the actual size of the option value (can be greater than `size`). Otherwise,
  *        an error code defined by the `system_error_t` enum.
  */
-int coap_get_opaque_option_value(const coap_option* opt, char* data, size_t size, void* reserved);
+int coap_get_opaque_option_value(coap_option* opt, char* data, size_t size, void* reserved);
 
 /**
  * Add an empty option to a message.
