@@ -1046,10 +1046,11 @@ void Spark_Protocol_Init(void)
 
     if (!spark_protocol_is_initialized(sp))
     {
+        int r = 0;
 #if PLATFORM_ID != PLATFORM_GCC
         // Validate the server key and address in the DCT and restore the factory defaults if needed
         auto servConf = ServerConfig::instance();
-        int r = servConf->validateSettings();
+        r = servConf->validateSettings();
         if (r == SYSTEM_ERROR_INVALID_SERVER_SETTINGS) {
             LOG(ERROR, "Server settings are invalid, restoring defaults");
             particle_key_errors |= ParticleKeyErrorFlag::SERVER_SETTINGS_CORRUPTED;

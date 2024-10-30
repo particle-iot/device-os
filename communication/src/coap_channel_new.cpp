@@ -664,12 +664,34 @@ int CoapChannel::getPayloadSize(coap_payload* payload) {
     return p->size();
 }
 
-int CoapChannel::setPayload(coap_message* msg, coap_payload* payload) {
-    return 0; // TODO
+int CoapChannel::setPayload(coap_message* apiMsg, coap_payload* apiPayload) {
+    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    assert(msg);
+    if (msg->sessionId != sessId_) {
+        return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
+    }
+    if (msg->state != MessageState::WRITE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    auto payload = RefCountPtr(reinterpret_cast<CoapPayload*>(apiPayload));
+    assert(payload);
+    msg->payload = std::move(payload);
+    return 0;
 }
 
-int CoapChannel::getPayload(coap_message* msg, coap_payload** payload) {
-    return 0; // TODO
+int CoapChannel::getPayload(coap_message* apiMsg, coap_payload** apiPayload) {
+    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    assert(msg);
+    if (msg->sessionId != sessId_) {
+        return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
+    }
+    if (msg->state != MessageState::READ) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    auto payload = RefCountPtr(reinterpret_cast<CoapPayload*>(apiPayload));
+    assert(apiPayload);
+    *apiPayload = reinterpret_cast<coap_payload*>(payload.unwrap());
+    return 0;
 }
 
 int CoapChannel::getOption(coap_message* apiMsg, coap_option** apiOpt, int num) {

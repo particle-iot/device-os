@@ -24,11 +24,12 @@
 
 namespace particle::system::cloud {
 
-namespace {
-
-const size_t MAX_PAYLOAD_SIZE = 1024; // FIXME
-
-} // namespace
+int Event::init() {
+    coap_payload* payload = nullptr;
+    CHECK(coap_create_payload(&payload, nullptr /* reserved */));
+    payload_.reset(payload);
+    return 0;
+}
 
 int Event::name(const char* name) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
@@ -41,58 +42,47 @@ int Event::name(const char* name) {
 }
 
 int Event::read(char* data, size_t size) {
-    size_t n = CHECK(peek(data, size));
-    pos_ += n;
+    CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    size_t n = CHECK(coap_read_payload(payload_.get(), data, size, nullptr /* reserved */));
     return n;
 }
 
 int Event::peek(char* data, size_t size) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
-    if (pos_ == data_.size()) {
-        return SYSTEM_ERROR_END_OF_STREAM;
-    }
-    size_t n = std::min(data_.size() - pos_, size);
-    std::memcpy(data, data_.data() + pos_, n);
+    size_t oldPos = CHECK(coap_get_payload_pos(payload_.get(), nullptr /* reserved */));
+    size_t n = CHECK(coap_read_payload(payload_.get(), data, size, nullptr /* reserved */));
+    CHECK(coap_set_payload_pos(payload_.get(), oldPos, nullptr /* reserved */));
     return n;
 }
 
 int Event::write(const char* data, size_t size) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
-    if (pos_ + size > MAX_PAYLOAD_SIZE) {
-        return error(SYSTEM_ERROR_TOO_LARGE);
-    }
-    if (pos_ + size > data_.size() && !data_.resize(pos_ + size)) {
-        return error(SYSTEM_ERROR_NO_MEMORY);
-    }
-    std::memcpy(data_.data() + pos_, data, size);
-    pos_ += size;
-    return size;
+    size_t n = CHECK(coap_write_payload(payload_.get(), data, size, nullptr /* reserved */));
+    return n;
 }
 
 int Event::seek(size_t pos) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
-    pos_ = (pos < data_.size()) ? pos : data_.size();
-    return pos_;
+    size_t newPos = CHECK(coap_set_payload_pos(payload_.get(), pos, nullptr /* reserved */));
+    return newPos;
 }
 
 int Event::tell() const {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
-    return pos_;
+    size_t pos = CHECK(coap_get_payload_pos(payload_.get(), nullptr /* reserved */));
+    return pos;
 }
 
 int Event::resize(size_t size) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
-    if (!data_.resize(size)) {
-        return error(SYSTEM_ERROR_NO_MEMORY);
-    }
-    if (pos_ > data_.size()) {
-        pos_ = data_.size();
-    }
+    CHECK(coap_set_payload_size(payload_.get(), size, nullptr /* reserved */));
     return 0;
 }
 
 int Event::size() const {
-    return data_.size();
+    CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
+    size_t size = CHECK(coap_get_payload_size(payload_.get(), nullptr /* reserved */));
+    return size;
 }
 
 int Event::prepareForPublish() {
@@ -100,6 +90,7 @@ int Event::prepareForPublish() {
     if (!*name_) {
         return error(SYSTEM_ERROR_INVALID_ARGUMENT);
     }
+    CHECK(coap_set_payload_pos(payload_.get(), 0 /* pos */, nullptr /* reserved */));
     status_ = CLOUD_EVENT_STATUS_SENDING;
     return 0;
 }

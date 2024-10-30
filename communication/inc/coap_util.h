@@ -85,6 +85,68 @@ private:
     coap_message* msg_;
 };
 
+/**
+ * Smart pointer for CoAP payload instances.
+ */
+class CoapPayloadPtr {
+public:
+    CoapPayloadPtr() :
+            p_(nullptr) {
+    }
+
+    explicit CoapPayloadPtr(coap_payload* payload) :
+            p_(payload) {
+    }
+
+    CoapPayloadPtr(const CoapPayloadPtr&) = delete;
+
+    CoapPayloadPtr(CoapPayloadPtr&& ptr) :
+            p_(ptr.p_) {
+        ptr.p_ = nullptr;
+    }
+
+    ~CoapPayloadPtr() {
+        coap_destroy_payload(p_, nullptr);
+    }
+
+    coap_payload* get() const {
+        return p_;
+    }
+
+    coap_payload* release() {
+        auto p = p_;
+        p_ = nullptr;
+        return p;
+    }
+
+    void reset(coap_payload* payload = nullptr) {
+        coap_destroy_payload(p_, nullptr);
+        p_ = payload;
+    }
+
+    CoapPayloadPtr& operator=(const CoapPayloadPtr&) = delete;
+
+    CoapPayloadPtr& operator=(CoapPayloadPtr&& ptr) {
+        coap_destroy_payload(p_, nullptr);
+        p_ = ptr.p_;
+        ptr.p_ = nullptr;
+        return *this;
+    }
+
+    explicit operator bool() const {
+        return p_;
+    }
+
+    friend void swap(CoapPayloadPtr& ptr1, CoapPayloadPtr& ptr2) {
+        auto p = ptr1.p_;
+        ptr1.p_ = ptr2.p_;
+        ptr2.p_ = p;
+    }
+
+private:
+    coap_payload* p_;
+};
+
 namespace protocol {
 
 class Message;

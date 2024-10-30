@@ -421,7 +421,7 @@ int coap_create_payload(coap_payload** payload, void* reserved);
 void coap_destroy_payload(coap_payload* payload, void* reserved);
 int coap_write_payload(coap_payload* payload, const char* data, size_t size, void* reserved);
 int coap_read_payload(coap_payload* payload, char* data, size_t size, void* reserved);
-int coap_set_payload_pos(coap_payload* payload, size_t pos, void* reserved);
+int coap_set_payload_pos(coap_payload* payload, size_t pos, void* reserved); // TODO: Support a negative offset
 int coap_get_payload_pos(coap_payload* payload, void* reserved);
 int coap_set_payload_size(coap_payload* payload, size_t size, void* reserved);
 int coap_get_payload_size(coap_payload* payload, void* reserved);

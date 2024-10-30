@@ -19,11 +19,10 @@
 
 #include <optional>
 
-#include "spark_wiring_buffer.h"
-
 #include "system_cloud_event.h"
 
 #include "coap_defs.h"
+#include "coap_util.h"
 
 #include "system_error.h"
 #include "ref_count.h"
@@ -34,16 +33,15 @@ using particle::protocol::CoapContentFormat;
 
 class Cloud;
 
-const size_t MAX_EVENT_DATA_SIZE_IN_RAM = 1024;
-
 class Event: public RefCount {
 public:
     Event() :
             name_(),
             status_(CLOUD_EVENT_STATUS_NEW),
-            pos_(0),
             error_(0) {
     }
+
+    int init();
 
     int name(const char* name);
 
@@ -89,20 +87,19 @@ public:
     int resize(size_t size);
     int size() const;
 
-protected:
+// protected:
     int prepareForPublish(); // Called by Cloud
     void publishComplete(int error); // ditto
 
-    const char* data() const { // FIXME
-        return data_.data();
+    coap_payload* payload() const {
+        return payload_.get();
     }
 
 private:
     char name_[CLOUD_EVENT_MAX_NAME_LENGTH + 1];
-    Buffer data_;
+    CoapPayloadPtr payload_;
     std::optional<CoapContentFormat> contentFmt_;
     cloud_event_status status_;
-    size_t pos_;
     int error_;
 
     int checkStatus(cloud_event_status expectedStatus) const {

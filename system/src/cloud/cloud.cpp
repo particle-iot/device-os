@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <memory>
 #include <cstdio>
 
 #include "cloud.h"
@@ -32,8 +33,6 @@ namespace particle::system::cloud {
 
 namespace {
 
-const size_t MAX_URI_LEN = 127;
-
 template<typename... ArgsT>
 int formatUri(char* buf, size_t size, ArgsT&&... args) {
     int n = std::snprintf(buf, size, std::forward<ArgsT>(args)...);
@@ -42,6 +41,113 @@ int formatUri(char* buf, size_t size, ArgsT&&... args) {
     }
     return n;
 }
+
+class PublishCtx {
+public:
+    static int create(RefCountPtr<Event> event) {
+        std::unique_ptr<PublishCtx> ctx(new(std::nothrow) PublishCtx());
+        if (!ctx) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+
+        char uri[COAP_MAX_URI_PATH_LENGTH + 1];
+        CHECK(formatUri(uri, sizeof(uri), "E/%s", event->name()));
+
+        coap_message* apiMsg = nullptr;
+        CHECK(coap_begin_request(&apiMsg, uri, COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
+        CoapMessagePtr msg(apiMsg);
+
+        auto apiPayload = event->payload();
+        CHECK(coap_set_payload(msg.get(), apiPayload, nullptr /* reserved */));
+
+        ctx->event_ = std::move(event);
+        ctx->msg_ = std::move(msg);
+
+        CHECK(ctx->sendNext());
+        ctx.release();
+        return 0;
+    }
+
+private:
+    RefCountPtr<Event> event_;
+    CoapMessagePtr msg_;
+
+    PublishCtx() {
+    }
+
+    // FIXME: Move this to the CoAP API implementation
+    int sendNext() {
+        CoapPayloadPtr payload;
+        CHECK(getPayload(payload));
+
+        char buf[128];
+        bool eof = false;
+
+        for(;;) {
+            int r = coap_read_payload(payload.get(), buf, sizeof(buf), nullptr /* reserved */);
+            if (r < 0) {
+                if (r == SYSTEM_ERROR_END_OF_STREAM) {
+                    eof = true;
+                    break;
+                }
+                return r;
+            }
+            size_t bytesRead = r;
+            size_t bytesWritten = bytesRead;
+            r = CHECK(coap_write_block(msg_.get(), buf, &bytesWritten, blockCallback, errorCallback, this, nullptr /* reserved */));
+            if (r == COAP_RESULT_WAIT_BLOCK) {
+                size_t pos = CHECK(coap_get_payload_pos(payload.get(), nullptr /* reserved */));
+                pos -= bytesRead - bytesWritten;
+                CHECK(coap_set_payload_pos(payload.get(), pos, nullptr /* reserved */));
+                break;
+            }
+        }
+
+        if (eof) {
+            CHECK(coap_end_request(msg_.get(), nullptr /* resp_cb */, ackCallback, errorCallback, this, nullptr /* reserved */));
+        }
+        return 0;
+    }
+
+    int getPayload(CoapPayloadPtr& payload) const {
+        coap_payload* apiPayload = nullptr;
+        CHECK(coap_get_payload(msg_.get(), &apiPayload, nullptr /* reserved */));
+        payload.reset(apiPayload);
+        return 0;
+    }
+
+    static int blockCallback(coap_message* msg, int reqId, void* arg) {
+        auto self = static_cast<PublishCtx*>(arg);
+        if (!self->event_) {
+            return 0;
+        }
+        int r = self->sendNext();
+        if (r < 0) {
+            delete self;
+            return r;
+        }
+        return 0;
+    }
+
+    static int ackCallback(int reqId, void* arg) {
+        auto self = static_cast<PublishCtx*>(arg);
+        if (!self->event_) {
+            return 0;
+        }
+        self->event_->publishComplete(0 /* error */);
+        delete self;
+        return 0;
+    }
+
+    static void errorCallback(int error, int reqId, void* arg) {
+        auto self = static_cast<PublishCtx*>(arg);
+        if (!self->event_) {
+            return;
+        }
+        self->event_->publishComplete(error);
+        delete self;
+    }
+};
 
 } // namespace
 
@@ -85,23 +191,7 @@ Cloud* Cloud::instance() {
 
 int Cloud::publishImpl(RefCountPtr<Event> event) {
     CHECK(event->prepareForPublish());
-/*
-    // FIXME
-    char uri[MAX_URI_LEN + 1];
-    CHECK(formatUri(uri, sizeof(uri), "E/%s", event->name()));
-*/
-    coap_message* apiMsg = nullptr;
-    /* int reqId = */ CHECK(coap_begin_request(&apiMsg, "E", COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
-    CoapMessagePtr msg(apiMsg);
-
-    CHECK(coap_add_string_option(msg.get(), COAP_OPTION_URI_PATH, event->name(), nullptr /* reserved */)); // FIXME
-
-    size_t size = event->size();
-    CHECK(coap_write_block(msg.get(), event->data(), &size, nullptr /* block_cb */, nullptr /* error_cb */,
-            nullptr /* arg */, nullptr /* reserved */));
-    CHECK(coap_end_request(msg.get(), nullptr /* resp_cb */, coapAckCallback, coapErrorCallback, event.get(), nullptr /* reserved */));
-    event->addRef();
-
+    CHECK(PublishCtx::create(std::move(event)));
     return 0;
 }
 
@@ -162,8 +252,6 @@ int Cloud::coapAckCallback(int reqId, void* arg) {
 }
 
 void Cloud::coapErrorCallback(int error, int reqId, void* arg) {
-    auto event = RefCountPtr<Event>::wrap(static_cast<Event*>(arg));
-    event->publishComplete(error);
 }
 
 } // namespace particle::system::cloud
