@@ -209,15 +209,26 @@ typedef enum coap_connection_status {
 } coap_connection_status;
 
 /**
- * Message option flag.
+ * Message option flags.
  */
 typedef enum coap_message_flag {
     /**
-     * Store the full message contents prior to sending an outgoing message or notifying the user
-     * when an incoming message is received.
+     * Store the entire payload data of the message prior to sending an outgoing message or notifying
+     * the user when an incoming message is received.
      */
     COAP_MESSAGE_FULL = 0x01
 } coap_message_flag;
+
+/**
+ * Position relative to which to change the current position in payload data.
+ *
+ * @see `coap_set_payload_pos()`.
+ */
+typedef enum coap_whence {
+    COAP_SEEK_SET = 1, ///< Set an absolute position.
+    COAP_SEEK_CUR = 2, ///< Set a position relative to the current position.
+    COAP_SEEK_END = 3 ///< Set a position relative to the end of the payload data.
+} coap_whence;
 
 /**
  * Result code.
@@ -361,7 +372,7 @@ void coap_destroy_message(coap_message* msg, void* reserved);
 void coap_cancel_request(int req_id, void* reserved);
 
 /**
- * Write to the current block of a message's payload data.
+ * Write payload data to the current block of a message.
  *
  * If the data can't be sent in one message block, the function will return `COAP_RESULT_WAIT_BLOCK`.
  * When that happens, the caller must stop writing the payload data until the `block_cb` callback is
@@ -385,7 +396,7 @@ int coap_write_block(coap_message* msg, const char* data, size_t* size, coap_blo
         coap_error_callback error_cb, void* arg, void* reserved);
 
 /**
- * Read from the current block of a message's payload data.
+ * Read payload data from the current block of a message.
  *
  * If the end of the current message block is reached and more blocks are expected to be received for
  * this message, the function will return `COAP_RESULT_WAIT_BLOCK`. The `block_cb` callback will be
@@ -407,7 +418,7 @@ int coap_read_block(coap_message* msg, char* data, size_t *size, coap_block_call
         coap_error_callback error_cb, void* arg, void* reserved);
 
 /**
- * Read from the current block of a message's payload data without changing the reading position in it.
+ * Read payload data from the current block of a message without changing the reading position in it.
  *
  * @param msg Request or response message.
  * @param[out] data Output buffer. Can be `NULL`.
@@ -417,15 +428,108 @@ int coap_read_block(coap_message* msg, char* data, size_t *size, coap_block_call
  */
 int coap_peek_block(coap_message* msg, char* data, size_t size, void* reserved);
 
+/**
+ * Create a payload data instance.
+ *
+ * @param payload Payload data instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
 int coap_create_payload(coap_payload** payload, void* reserved);
+
+/**
+ * Destroy a payload data instance.
+ *
+ * @param payload Payload data instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
 void coap_destroy_payload(coap_payload* payload, void* reserved);
+
+/**
+ * Write payload data.
+ *
+ * @param payload Payload data instance.
+ * @param data Input buffer.
+ * @param size Number of bytes to write.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the number of bytes written. Otherwise, an error code defined by the
+ *     `system_error_t` enum.
+ */
 int coap_write_payload(coap_payload* payload, const char* data, size_t size, void* reserved);
+
+/**
+ * Read payload data.
+ *
+ * @param payload Payload data instance.
+ * @param data Output buffer.
+ * @param size Number of bytes to read.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the number of bytes read. Otherwise, an error code defined by the
+ *     `system_error_t` enum.
+ */
 int coap_read_payload(coap_payload* payload, char* data, size_t size, void* reserved);
-int coap_set_payload_pos(coap_payload* payload, size_t pos, void* reserved); // TODO: Support a negative offset
+
+/**
+ * Set the current position in payload data.
+ *
+ * @param payload Payload data instance.
+ * @param pos New position (can be negative).
+ * @param whence Position relative to which to change the current position as defined by the
+ *     `coap_whence` enum.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the new absolute position in the payload data. Otherwise, an error code
+ *     defined by the `system_error_t` enum.
+ */
+int coap_set_payload_pos(coap_payload* payload, int pos, int whence, void* reserved);
+
+/**
+ * Get the current position in payload data.
+ *
+ * @param payload Payload data instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the current position in the payload data. Otherwise, an error code defined by
+ *     the `system_error_t` enum.
+ */
 int coap_get_payload_pos(coap_payload* payload, void* reserved);
+
+/**
+ * Set the size of payload data.
+ *
+ * @param payload Payload data instance.
+ * @param size New data size.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise, an error code defined by the `system_error_t` enum.
+ */
 int coap_set_payload_size(coap_payload* payload, size_t size, void* reserved);
+
+/**
+ * Get the size of payload data.
+ *
+ * @param payload Payload data instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the size of the payload data. Otherwise, an error code defined by the
+ *     `system_error_t` enum.
+ */
 int coap_get_payload_size(coap_payload* payload, void* reserved);
+
+/**
+ * Set the payload data of a message.
+ *
+ * @param msg Request or response message.
+ * @param payload Payload data instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise, an error code defined by the `system_error_t` enum.
+ */
 int coap_set_payload(coap_message* msg, coap_payload* payload, void* reserved);
+
+/**
+ * Get the payload data of a message.
+ *
+ * @param msg Request or response message.
+ * @param[out] payload Payload data instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise, an error code defined by the `system_error_t` enum.
+ */
 int coap_get_payload(coap_message* msg, coap_payload** payload, void* reserved);
 
 /**

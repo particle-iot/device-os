@@ -19,6 +19,8 @@
 
 #include <memory>
 
+#include "coap_api.h"
+
 #include "spark_wiring_buffer.h"
 
 #include "filesystem.h"
@@ -47,7 +49,7 @@ public:
         return size_;
     }
 
-    int setPos(size_t pos);
+    int setPos(int pos, coap_whence whence);
 
     int pos() const {
         return pos_;

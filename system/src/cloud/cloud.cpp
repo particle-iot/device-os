@@ -98,7 +98,7 @@ private:
             if (r == COAP_RESULT_WAIT_BLOCK) {
                 size_t pos = CHECK(coap_get_payload_pos(payload.get(), nullptr /* reserved */));
                 pos -= bytesRead - bytesWritten;
-                CHECK(coap_set_payload_pos(payload.get(), pos, nullptr /* reserved */));
+                CHECK(coap_set_payload_pos(payload.get(), pos, COAP_SEEK_SET, nullptr /* reserved */));
                 break;
             }
         }

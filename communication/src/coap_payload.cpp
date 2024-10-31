@@ -25,7 +25,6 @@
 #include <cassert>
 
 #include "coap_payload.h"
-#include "coap_api.h"
 
 #include "file_util.h"
 #include "check.h"
@@ -48,6 +47,7 @@ const size_t INITIAL_BUFFER_CAPACITY = 128;
 const size_t MAX_PATH_LEN = 127;
 
 unsigned g_tempFileCount = 0;
+bool g_tempDirInited = false;
 
 int formatTempFilePath(char* buf, size_t size, unsigned fileNum) {
     int n = std::snprintf(buf, size, "%s/p%u", COAP_TEMP_DIR, fileNum);
@@ -172,11 +172,21 @@ int CoapPayload::setSize(size_t size) {
     return 0;
 }
 
-int CoapPayload::setPos(size_t pos) {
-    if (pos > size_) {
+int CoapPayload::setPos(int pos, coap_whence whence) {
+    switch (whence) {
+    case COAP_SEEK_CUR:
+        pos = (int)pos_ + pos;
+        break;
+    case COAP_SEEK_END:
+        pos = (int)size_ + pos;
+        break;
+    }
+    if (pos < 0) {
+        pos = 0;
+    } else if ((size_t)pos > size_) {
         pos = size_;
     }
-    if (pos > MAX_PAYLOAD_SIZE_IN_RAM) {
+    if ((size_t)pos > MAX_PAYLOAD_SIZE_IN_RAM) {
         FsLock fs;
         assert(file_);
         size_t fileOffs = pos - MAX_PAYLOAD_SIZE_IN_RAM;
@@ -196,6 +206,10 @@ int CoapPayload::initTempDir() {
 }
 
 int CoapPayload::createTempFile() {
+    if (!g_tempDirInited) {
+        CHECK(initTempDir());
+        g_tempDirInited = true;
+    }
     assert(!file_);
     std::unique_ptr<lfs_file_t> file(new(std::nothrow) lfs_file_t());
     if (!file) {

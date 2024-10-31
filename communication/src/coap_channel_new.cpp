@@ -642,9 +642,9 @@ int CoapChannel::readPayload(coap_payload* payload, char* data, size_t size) {
     return n;
 }
 
-int CoapChannel::setPayloadPos(coap_payload* payload, size_t pos) {
+int CoapChannel::setPayloadPos(coap_payload* payload, int pos, int whence) {
     auto p = reinterpret_cast<CoapPayload*>(payload);
-    size_t n = CHECK(p->setPos(pos));
+    size_t n = CHECK(p->setPos(pos, static_cast<coap_whence>(whence)));
     return n;
 }
 
@@ -1728,8 +1728,8 @@ int coap_read_payload(coap_payload* payload, char* data, size_t size, void* rese
     return n;
 }
 
-int coap_set_payload_pos(coap_payload* payload, size_t pos, void* reserved) {
-    CHECK(CoapChannel::instance()->setPayloadPos(payload, pos));
+int coap_set_payload_pos(coap_payload* payload, int pos, int whence, void* reserved) {
+    CHECK(CoapChannel::instance()->setPayloadPos(payload, pos, whence));
     return 0;
 }
 

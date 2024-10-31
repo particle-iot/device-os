@@ -46,7 +46,7 @@ int Event::peek(char* data, size_t size) {
     CHECK(initPayload());
     size_t oldPos = CHECK(coap_get_payload_pos(payload_.get(), nullptr /* reserved */));
     size_t n = CHECK(coap_read_payload(payload_.get(), data, size, nullptr /* reserved */));
-    CHECK(coap_set_payload_pos(payload_.get(), oldPos, nullptr /* reserved */));
+    CHECK(coap_set_payload_pos(payload_.get(), oldPos, COAP_SEEK_SET, nullptr /* reserved */));
     return n;
 }
 
@@ -60,7 +60,7 @@ int Event::write(const char* data, size_t size) {
 int Event::seek(size_t pos) {
     CHECK(checkStatus(CLOUD_EVENT_STATUS_NEW));
     CHECK(initPayload());
-    size_t newPos = CHECK(coap_set_payload_pos(payload_.get(), pos, nullptr /* reserved */));
+    size_t newPos = CHECK(coap_set_payload_pos(payload_.get(), pos, COAP_SEEK_SET, nullptr /* reserved */));
     return newPos;
 }
 
@@ -91,7 +91,7 @@ int Event::prepareForPublish() {
         return error(SYSTEM_ERROR_INVALID_ARGUMENT);
     }
     CHECK(initPayload());
-    CHECK(coap_set_payload_pos(payload_.get(), 0 /* pos */, nullptr /* reserved */));
+    CHECK(coap_set_payload_pos(payload_.get(), 0 /* pos */, COAP_SEEK_SET, nullptr /* reserved */));
     status_ = CLOUD_EVENT_STATUS_SENDING;
     return 0;
 }

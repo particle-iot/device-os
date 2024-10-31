@@ -68,7 +68,7 @@ public:
     void destroyPayload(coap_payload* payload);
     int writePayload(coap_payload* payload, const char* data, size_t size);
     int readPayload(coap_payload* payload, char* data, size_t size);
-    int setPayloadPos(coap_payload* payload, size_t pos);
+    int setPayloadPos(coap_payload* payload, int pos, int whence);
     int getPayloadPos(coap_payload* payload);
     int setPayloadSize(coap_payload* payload, size_t size);
     int getPayloadSize(coap_payload* payload);
