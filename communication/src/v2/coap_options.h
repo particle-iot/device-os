@@ -23,7 +23,7 @@
 
 #include "spark_wiring_vector.h"
 
-namespace particle::protocol::experimental {
+namespace particle::protocol::v2 {
 
 class CoapOptions;
 
@@ -122,7 +122,7 @@ private:
 
     friend void swap(CoapOption& opt1, CoapOption& opt2);
 
-    friend class experimental::CoapOptions;
+    friend class v2::CoapOptions;
 };
 
 } // namespace detail
@@ -230,4 +230,4 @@ private:
     Vector<Option> opts_; // TODO: Use a pool
 };
 
-} // namespace particle::protocol::experimental
+} // namespace particle::protocol::v2

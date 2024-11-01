@@ -27,7 +27,7 @@
 
 #include "ref_count.h"
 
-namespace particle::protocol::experimental {
+namespace particle::protocol::v2 {
 
 class CoapPayload: public RefCount {
 public:
@@ -68,4 +68,4 @@ private:
     void removeTempFile();
 };
 
-} // namespace particle::protocol::experimental
+} // namespace particle::protocol::v2

@@ -31,7 +31,7 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
-#include "coap_channel_new.h"
+#include "v2/coap_channel.h"
 #include "coap_message_decoder.h"
 #include "coap_message_encoder.h"
 
@@ -228,10 +228,10 @@ ProtocolError Protocol::handle_received_message(Message& message,
 			}
 			if (!eventHandled) {
 				// Forward the message to the new CoAP implementation
-				r = experimental::CoapChannel::instance()->handleCon(message);
+				r = v2::CoapChannel::instance()->handleCon(message);
 			}
 		} else if (type == CoAPType::ACK) {
-			r = experimental::CoapChannel::instance()->handleAck(message);
+			r = v2::CoapChannel::instance()->handleAck(message);
 		}
 		if (r < 0) {
 			return ProtocolError::COAP_ERROR;
@@ -566,7 +566,7 @@ void Protocol::reset() {
 	ack_handlers.clear();
 	channel.reset();
 	subscription_msg_ids.clear();
-	experimental::CoapChannel::instance()->close();
+	v2::CoapChannel::instance()->close();
 }
 
 /**

@@ -29,7 +29,7 @@
 #include "file_util.h"
 #include "check.h"
 
-namespace particle::protocol::experimental {
+namespace particle::protocol::v2 {
 
 using fs::FsLock;
 
@@ -246,4 +246,4 @@ void CoapPayload::removeTempFile() {
     }
 }
 
-} // namespace particle::protocol::experimental
+} // namespace particle::protocol::v2

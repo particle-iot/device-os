@@ -23,7 +23,7 @@
 
 #include "check.h"
 
-namespace particle::protocol::experimental {
+namespace particle::protocol::v2 {
 
 namespace detail {
 
@@ -110,4 +110,4 @@ const CoapOptions::Option* CoapOptions::findNext(unsigned num) const {
     return &*it;
 }
 
-} // namespace particle::protocol::experimental
+} // namespace particle::protocol::v2

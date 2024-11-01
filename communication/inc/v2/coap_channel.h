@@ -36,10 +36,10 @@ class CoapMessageEncoder;
 class CoapMessageDecoder;
 class Protocol;
 
-namespace experimental {
+namespace v2 {
 
-// This class implements the new experimental protocol API that allows the system to interact with
-// the server at the CoAP level. It's meant to be used through the functions defined in coap_api.h
+// This class implements the new protocol API that allows the system to interact with the server at
+// the CoAP level. It's meant to be used through the functions defined in coap_api.h
 class CoapChannel {
 public:
     enum Result {
@@ -189,6 +189,6 @@ private:
     system_tick_t millis() const;
 };
 
-} // namespace experimental
+} // namespace v2
 
 } // namespace particle::protocol
