@@ -15,22 +15,43 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#if !defined(DEBUG_BUILD) && !defined(UNIT_TEST)
+#define NDEBUG // TODO: Define NDEBUG in release builds
+#endif
+
+#include <algorithm>
+#include <cstring>
+
 #include "v2/coap_channel.h"
+#include "v2/coap_payload.h"
+#include "v2/coap_options.h"
 #include "coap_api.h"
 
 #include "check.h"
 
+using namespace particle;
 using namespace particle::protocol;
 using namespace particle::protocol::v2;
 
 namespace {
 
-bool isValidCoapMethod(int method) {
+bool isValidMethod(int method) {
     switch (method) {
     case COAP_METHOD_GET:
     case COAP_METHOD_POST:
     case COAP_METHOD_PUT:
     case COAP_METHOD_DELETE:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool isValidWhence(int whence) {
+    switch (whence) {
+    case COAP_SEEK_SET:
+    case COAP_SEEK_CUR:
+    case COAP_SEEK_END:
         return true;
     default:
         return false;
@@ -49,159 +70,225 @@ void coap_remove_connection_handler(coap_connection_callback cb, void* reserved)
 }
 
 int coap_add_request_handler(const char* path, int method, int flags, coap_request_callback cb, void* arg, void* reserved) {
-    if (!isValidCoapMethod(method) || flags != 0) {
+    if (!isValidMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    CHECK(CoapChannel::instance()->addRequestHandler(path, static_cast<coap_method>(method), flags, cb, arg));
+    CHECK(CoapChannel::instance()->addRequestHandler(path, static_cast<coap_method>(method), cb, arg, flags));
     return 0;
 }
 
 void coap_remove_request_handler(const char* path, int method, void* reserved) {
-    if (!isValidCoapMethod(method)) {
+    if (!isValidMethod(method)) {
         return;
     }
     CoapChannel::instance()->removeRequestHandler(path, static_cast<coap_method>(method));
 }
 
-int coap_begin_request(coap_message** msg, const char* path, int method, int timeout, int flags, void* reserved) {
-    if (!isValidCoapMethod(method) || flags != 0) {
+int coap_begin_request(coap_message** apiMsg, const char* path, int method, int timeout, int flags, void* reserved) {
+    if (!isValidMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
+    RefCountPtr<CoapMessage> msg;
     auto reqId = CHECK(CoapChannel::instance()->beginRequest(msg, path, static_cast<coap_method>(method), timeout, flags));
+    assert(apiMsg);
+    *apiMsg = reinterpret_cast<coap_message*>(msg.unwrap()); // Transfer ownership over the message to the calling code
     return reqId;
 }
 
-int coap_end_request(coap_message* msg, coap_response_callback resp_cb, coap_ack_callback ack_cb,
-        coap_error_callback error_cb, void* arg, void* reserved) {
-    CHECK(CoapChannel::instance()->endRequest(msg, resp_cb, ack_cb, error_cb, arg));
+int coap_end_request(coap_message* apiMsg, coap_response_callback respCb, coap_ack_callback ackCb,
+        coap_error_callback errorCb, void* arg, void* reserved) {
+    auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
+    int r = CoapChannel::instance()->endRequest(msg, respCb, ackCb, errorCb, arg);
+    if (r < 0) {
+        msg.unwrap(); // The calling code retains ownership over the message
+        return r;
+    }
     return 0;
 }
 
-int coap_begin_response(coap_message** msg, int status, int req_id, int flags, void* reserved) {
-    CHECK(CoapChannel::instance()->beginResponse(msg, status, req_id, flags));
+int coap_begin_response(coap_message** apiMsg, int status, int reqId, int flags, void* reserved) {
+    RefCountPtr<CoapMessage> msg;
+    CHECK(CoapChannel::instance()->beginResponse(msg, status, reqId, flags));
+    assert(apiMsg);
+    *apiMsg = reinterpret_cast<coap_message*>(msg.unwrap()); // Transfer ownership over the message to the calling code
     return 0;
 }
 
-int coap_end_response(coap_message* msg, coap_ack_callback ack_cb, coap_error_callback error_cb, void* arg, void* reserved) {
-    CHECK(CoapChannel::instance()->endResponse(msg, ack_cb, error_cb, arg));
+int coap_end_response(coap_message* apiMsg, coap_ack_callback ackCb, coap_error_callback errorCb, void* arg, void* reserved) {
+    auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
+    int r = CoapChannel::instance()->endResponse(msg, ackCb, errorCb, arg);
+    if (r < 0) {
+        msg.unwrap(); // The calling code retains ownership over the message
+        return r;
+    }
     return 0;
 }
 
-void coap_destroy_message(coap_message* msg, void* reserved) {
-    CoapChannel::instance()->destroyMessage(msg);
+void coap_destroy_message(coap_message* apiMsg, void* reserved) {
+    auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
+    CoapChannel::instance()->disposeMessage(msg);
 }
 
-void coap_cancel_request(int req_id, void* reserved) {
-    CoapChannel::instance()->cancelRequest(req_id);
+void coap_cancel_request(int reqId, void* reserved) {
+    CoapChannel::instance()->cancelRequest(reqId);
 }
 
-int coap_write_block(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
-        coap_error_callback error_cb, void* arg, void* reserved) {
-    int r = CHECK(CoapChannel::instance()->writeBlock(msg, data, *size, block_cb, error_cb, arg));
+int coap_write_block(coap_message* apiMsg, const char* data, size_t* size, coap_block_callback blockCb,
+        coap_error_callback errorCb, void* arg, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    int r = CHECK(CoapChannel::instance()->writeBlock(msg, data, *size, blockCb, errorCb, arg));
     return r; // 0 or COAP_RESULT_WAIT_BLOCK
 }
 
-int coap_read_block(coap_message* msg, char* data, size_t* size, coap_block_callback block_cb,
-        coap_error_callback error_cb, void* arg, void* reserved) {
-    int r = CHECK(CoapChannel::instance()->readBlock(msg, data, *size, block_cb, error_cb, arg));
+int coap_read_block(coap_message* apiMsg, char* data, size_t* size, coap_block_callback blockCb,
+        coap_error_callback errorCb, void* arg, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    int r = CHECK(CoapChannel::instance()->readBlock(msg, data, *size, blockCb, errorCb, arg));
     return r; // 0 or COAP_RESULT_WAIT_BLOCK
 }
 
-int coap_peek_block(coap_message* msg, char* data, size_t size, void* reserved) {
+int coap_peek_block(coap_message* apiMsg, char* data, size_t size, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     size_t n = CHECK(CoapChannel::instance()->peekBlock(msg, data, size));
     return n;
 }
 
-int coap_create_payload(coap_payload** payload, void* reserved) {
-    CHECK(CoapChannel::instance()->createPayload(payload));
+int coap_create_payload(coap_payload** apiPayload, void* reserved) {
+    auto payload = makeRefCountPtr<CoapPayload>();
+    if (!payload) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    assert(apiPayload);
+    *apiPayload = reinterpret_cast<coap_payload*>(payload.unwrap()); // Transfer ownership over the payload instance to the calling code
     return 0;
 }
 
-void coap_destroy_payload(coap_payload* payload, void* reserved) {
-    CoapChannel::instance()->destroyPayload(payload);
+void coap_destroy_payload(coap_payload* apiPayload, void* reserved) {
+    RefCountPtr<CoapPayload>::wrap(reinterpret_cast<CoapPayload*>(apiPayload));
 }
 
-int coap_write_payload(coap_payload* payload, const char* data, size_t size, void* reserved) {
-    size_t n = CHECK(CoapChannel::instance()->writePayload(payload, data, size));
+int coap_write_payload(coap_payload* apiPayload, const char* data, size_t size, void* reserved) {
+    auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
+    size_t n = CHECK(payload->write(data, size));
     return n;
 }
 
-int coap_read_payload(coap_payload* payload, char* data, size_t size, void* reserved) {
-    size_t n = CHECK(CoapChannel::instance()->readPayload(payload, data, size));
+int coap_read_payload(coap_payload* apiPayload, char* data, size_t size, void* reserved) {
+    auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
+    size_t n = CHECK(payload->read(data, size));
     return n;
 }
 
-int coap_set_payload_pos(coap_payload* payload, int pos, int whence, void* reserved) {
-    CHECK(CoapChannel::instance()->setPayloadPos(payload, pos, whence));
+int coap_set_payload_pos(coap_payload* apiPayload, int pos, int whence, void* reserved) {
+    if (!isValidWhence(whence)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
+    size_t newPos = CHECK(payload->setPos(pos, static_cast<coap_whence>(whence)));
+    return newPos;
+}
+
+int coap_get_payload_pos(coap_payload* apiPayload, void* reserved) {
+    auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
+    return payload->pos();
+}
+
+int coap_set_payload_size(coap_payload* apiPayload, size_t size, void* reserved) {
+    auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
+    CHECK(payload->setSize(size));
     return 0;
 }
 
-int coap_get_payload_pos(coap_payload* payload, void* reserved) {
-    size_t pos = CHECK(CoapChannel::instance()->getPayloadPos(payload));
-    return pos;
+int coap_get_payload_size(coap_payload* apiPayload, void* reserved) {
+    auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
+    return payload->size();
 }
 
-int coap_set_payload_size(coap_payload* payload, size_t size, void* reserved) {
-    CHECK(CoapChannel::instance()->setPayloadSize(payload, size));
-    return 0;
-}
-
-int coap_get_payload_size(coap_payload* payload, void* reserved) {
-    size_t size = CHECK(CoapChannel::instance()->getPayloadSize(payload));
-    return size;
-}
-
-int coap_set_payload(coap_message* msg, coap_payload* payload, void* reserved) {
+int coap_set_payload(coap_message* apiMsg, coap_payload* apiPayload, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    RefCountPtr<CoapPayload> payload(reinterpret_cast<CoapPayload*>(apiPayload));
     CHECK(CoapChannel::instance()->setPayload(msg, payload));
     return 0;
 }
 
-int coap_get_payload(coap_message* msg, coap_payload** payload, void* reserved) {
+int coap_get_payload(coap_message* apiMsg, coap_payload** apiPayload, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    RefCountPtr<CoapPayload> payload;
     CHECK(CoapChannel::instance()->getPayload(msg, payload));
+    assert(apiPayload);
+    *apiPayload = reinterpret_cast<coap_payload*>(payload.unwrap());
     return 0;
 }
 
-int coap_get_option(coap_message* msg, coap_option** opt, int num, void* reserved) {
-    CHECK(CoapChannel::instance()->getOption(msg, opt, num));
+int coap_get_option(coap_message* apiMsg, coap_option** apiOpt, int num, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    const CoapOptions::Entry* opt = nullptr;
+    CHECK(CoapChannel::instance()->getOption(msg, num, opt));
+    assert(apiOpt);
+    *apiOpt = const_cast<coap_option*>(reinterpret_cast<const coap_option*>(opt));
     return 0;
 }
 
-int coap_get_next_option(coap_message* msg, coap_option** opt, int* num, void* reserved) {
-    CHECK(CoapChannel::instance()->getNextOption(msg, opt, num));
+int coap_get_next_option(coap_message* apiMsg, coap_option** apiOpt, int* num, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    assert(apiOpt);
+    auto opt = reinterpret_cast<const CoapOptions::Entry*>(*apiOpt);
+    if (opt) {
+        opt = opt->next();
+    } else {
+        CHECK(CoapChannel::instance()->getFirstOption(msg, opt));
+    }
+    *apiOpt = const_cast<coap_option*>(reinterpret_cast<const coap_option*>(opt));
+    assert(num);
+    *num = opt ? opt->number() : 0u;
     return 0;
 }
 
-int coap_get_uint_option_value(coap_option* opt, unsigned* val, void* reserved) {
-    CHECK(CoapChannel::instance()->getUintOptionValue(opt, val));
+int coap_get_uint_option_value(coap_option* apiOpt, unsigned* val, void* reserved) {
+    auto opt = reinterpret_cast<const CoapOptions::Entry*>(apiOpt);
+    assert(opt && val);
+    *val = opt->toUint();
     return 0;
 }
 
-int coap_get_string_option_value(coap_option* opt, char* data, size_t size, void* reserved) {
-    CHECK(CoapChannel::instance()->getStringOptionValue(opt, data, size));
+int coap_get_string_option_value(coap_option* apiOpt, char* data, size_t size, void* reserved) {
+    auto opt = reinterpret_cast<const CoapOptions::Entry*>(apiOpt);
+    assert(opt);
+    if (size > 0) {
+        size_t n = std::min(size - 1, opt->size());
+        std::memcpy(data, opt->data(), n);
+        data[n] = '\0';
+    }
+    return opt->size();
+}
+
+int coap_get_opaque_option_value(coap_option* apiOpt, char* data, size_t size, void* reserved) {
+    auto opt = reinterpret_cast<const CoapOptions::Entry*>(apiOpt);
+    assert(opt);
+    std::memcpy(data, opt->data(), std::min(size, opt->size()));
+    return opt->size();
+}
+
+int coap_add_empty_option(coap_message* apiMsg, int num, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    CHECK(CoapChannel::instance()->addOption(msg, num, nullptr /* data */, 0 /* size */));
     return 0;
 }
 
-int coap_get_opaque_option_value(coap_option* opt, char* data, size_t size, void* reserved) {
-    CHECK(CoapChannel::instance()->getOpaqueOptionValue(opt, data, size));
+int coap_add_uint_option(coap_message* apiMsg, int num, unsigned val, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    CHECK(CoapChannel::instance()->addOption(msg, num, val));
     return 0;
 }
 
-int coap_add_empty_option(coap_message* msg, int num, void* reserved) {
-    CHECK(CoapChannel::instance()->addEmptyOption(msg, num));
+int coap_add_string_option(coap_message* apiMsg, int num, const char* val, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    CHECK(CoapChannel::instance()->addOption(msg, num, val, std::strlen(val)));
     return 0;
 }
 
-int coap_add_uint_option(coap_message* msg, int num, unsigned val, void* reserved) {
-    CHECK(CoapChannel::instance()->addUintOption(msg, num, val));
-    return 0;
-}
-
-int coap_add_string_option(coap_message* msg, int num, const char* val, void* reserved) {
-    CHECK(CoapChannel::instance()->addStringOption(msg, num, val));
-    return 0;
-}
-
-int coap_add_opaque_option(coap_message* msg, int num, const char* data, size_t size, void* reserved) {
-    CHECK(CoapChannel::instance()->addOpaqueOption(msg, num, data, size));
+int coap_add_opaque_option(coap_message* apiMsg, int num, const char* data, size_t size, void* reserved) {
+    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+    CHECK(CoapChannel::instance()->addOption(msg, num, data, size));
     return 0;
 }

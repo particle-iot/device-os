@@ -25,6 +25,12 @@
 #define COAP_MAX_URI_PATH_LENGTH 127
 
 /**
+ * Maximum supported size of payload data that can be sent or received in a request or response
+ * message.
+ */
+#define COAP_MAX_PAYLOAD_SIZE 16384
+
+/**
  * Maximum size of payload data that can be sent or received without splitting the request or
  * response message into multiple CoAP messages.
  */

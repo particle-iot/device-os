@@ -41,6 +41,7 @@ CPPSRC += $(TARGET_SRC_PATH)/description.cpp
 CPPSRC += $(TARGET_SRC_PATH)/v2/coap_channel.cpp
 CPPSRC += $(TARGET_SRC_PATH)/v2/coap_payload.cpp
 CPPSRC += $(TARGET_SRC_PATH)/v2/coap_options.cpp
+CPPSRC += $(TARGET_SRC_PATH)/v2/coap_tag.cpp
 CPPSRC += $(TARGET_SRC_PATH)/v2/coap_api.cpp
 
 # ASM source files included in this build.

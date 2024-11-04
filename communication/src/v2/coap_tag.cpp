@@ -18,42 +18,47 @@
 #include <algorithm>
 #include <cstring>
 
-#include "coap_token.h"
+#include "v2/coap_tag.h"
+#include "coap_defs.h"
 
 #include "endian_util.h"
 #include "random.h"
 
 namespace particle::protocol::v2 {
 
-CoapToken::CoapToken(const char* data, size_t size) :
-        size_(std::min(size, MAX_COAP_TOKEN_SIZE)) {
+static_assert(CoapTag::MAX_SIZE >= MAX_COAP_TOKEN_SIZE &&
+        CoapTag::MAX_SIZE >= MAX_COAP_ETAG_OPTION_SIZE &&
+        CoapTag::MAX_SIZE >= MAX_COAP_REQUEST_TAG_OPTION_SIZE);
+
+CoapTag::CoapTag(const char* data, size_t size) :
+        size_(std::min(size, MAX_SIZE)) {
     std::memcpy(data_, data, size_);
 }
 
-CoapToken& CoapToken::increment() {
+CoapTag& CoapTag::increment() {
     uint64_t v = 0;
-    static_assert(sizeof(v) >= MAX_COAP_TOKEN_SIZE);
+    static_assert(sizeof(v) >= MAX_SIZE);
     std::memcpy(&v, data_, size_);
     v = nativeToLittleEndian(littleEndianToNative(v) + 1);
     std::memcpy(data_, &v, size_);
     return *this;
 }
 
-int CoapToken::compareWith(const CoapToken& token) const {
-    if (size_ < token.size_) {
+int CoapTag::compareWith(const CoapTag& tag) const {
+    if (size_ < tag.size_) {
         return -1;
     }
-    if (size_ > token.size_) {
+    if (size_ > tag.size_) {
         return 1;
     }
-    return std::memcmp(data_, token.data_, size_);
+    return std::memcmp(data_, tag.data_, size_);
 }
 
-static CoapToken CoapToken::generate(size_t size) {
-    CoapToken token;
-    token.size_ = std::min(size, MAX_COAP_TOKEN_SIZE);
-    Random::genSecure(token.data_, token.size_);
-    return token;
+CoapTag CoapTag::generate(size_t size) {
+    CoapTag tag;
+    tag.size_ = std::min(size, MAX_SIZE);
+    Random::genSecure(tag.data_, tag.size_);
+    return tag;
 }
 
 } // particle::protocol::v2

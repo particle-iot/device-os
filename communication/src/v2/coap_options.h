@@ -27,21 +27,19 @@ namespace particle::protocol::v2 {
 
 class CoapOptions;
 
-namespace detail {
-
 /**
  * A CoAP option.
  */
-class CoapOption {
+class CoapOptionEntry {
 public:
-    CoapOption(const CoapOption&) = delete; // Non-copyable
+    CoapOptionEntry(const CoapOptionEntry&) = delete; // Non-copyable
 
-    CoapOption(CoapOption&& opt) :
-            CoapOption() {
+    CoapOptionEntry(CoapOptionEntry&& opt) :
+            CoapOptionEntry() {
         swap(*this, opt);
     }
 
-    ~CoapOption() {
+    ~CoapOptionEntry() {
         if (size_ > sizeof(char*)) {
             delete[] dataPtr_;
         }
@@ -86,19 +84,19 @@ public:
      *
      * @return Pointer to the next option object or `nullptr` if this is the last option in the list.
      */
-    const CoapOption* next() const {
+    const CoapOptionEntry* next() const {
         return next_;
     }
 
-    CoapOption& operator=(const CoapOption&) = delete; // Non-copyable
+    CoapOptionEntry& operator=(const CoapOptionEntry&) = delete; // Non-copyable
 
-    CoapOption& operator=(CoapOption&& opt) {
+    CoapOptionEntry& operator=(CoapOptionEntry&& opt) {
         swap(*this, opt);
         return *this;
     }
 
 protected:
-    CoapOption() :
+    CoapOptionEntry() :
             dataPtr_(nullptr),
             next_(nullptr),
             size_(0),
@@ -107,7 +105,7 @@ protected:
 
     int init(unsigned num, const char* data, size_t size); // Called by CoapOptions
 
-    void next(const CoapOption* next) { // ditto
+    void next(const CoapOptionEntry* next) { // ditto
         next_ = next;
     }
 
@@ -116,16 +114,14 @@ private:
         char* dataPtr_;
         char data_[sizeof(char*)]; // Small object optimization
     };
-    const CoapOption* next_;
+    const CoapOptionEntry* next_;
     size_t size_;
     unsigned num_;
 
-    friend void swap(CoapOption& opt1, CoapOption& opt2);
+    friend void swap(CoapOptionEntry& opt1, CoapOptionEntry& opt2);
 
     friend class v2::CoapOptions;
 };
-
-} // namespace detail
 
 /**
  * A container for CoAP options.
@@ -135,7 +131,7 @@ private:
  */
 class CoapOptions {
 public:
-    using Option = detail::CoapOption;
+    using Entry = CoapOptionEntry;
 
     /**
      * Add an empty option.
@@ -189,7 +185,7 @@ public:
      * @param num Option number.
      * @return Pointer to the option object or `nullptr` if such an option cannot be found.
      */
-    const Option* findFirst(unsigned num) const;
+    const Entry* findFirst(unsigned num) const;
 
     /**
      * Find the first option with a number greater than a given one.
@@ -197,14 +193,14 @@ public:
      * @param num Option number.
      * @return Pointer to the option object or `nullptr` if such an option cannot be found.
      */
-    const Option* findNext(unsigned num) const;
+    const Entry* findNext(unsigned num) const;
 
     /**
      * Get the first option in the list.
      *
      * @return Pointer to the option object or `nullptr` if the list is empty.
      */
-    const Option* first() const {
+    const Entry* first() const {
         return opts_.isEmpty() ? nullptr : &opts_.first();
     }
 
@@ -227,7 +223,7 @@ public:
     }
 
 private:
-    Vector<Option> opts_; // TODO: Use a pool
+    Vector<Entry> opts_; // TODO: Use a pool
 };
 
 } // namespace particle::protocol::v2

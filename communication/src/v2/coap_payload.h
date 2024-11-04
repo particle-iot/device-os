@@ -19,9 +19,9 @@
 
 #include <memory>
 
-#include "coap_api.h"
-
 #include "spark_wiring_buffer.h"
+
+#include "coap_api.h"
 
 #include "filesystem.h"
 
@@ -29,43 +29,49 @@
 
 namespace particle::protocol::v2 {
 
+/**
+ * Payload data of a CoAP message.
+ *
+ * The initial portion of the data is stored in RAM. The data above the certain size is stored in a
+ * temporary file.
+ */
 class CoapPayload: public RefCount {
 public:
     CoapPayload() :
             pos_(0),
-            size_(0) {
+            size_(0),
+            fileNum_(0) {
     }
 
-    ~CoapPayload() {
-        removeTempFile();
-    }
+    ~CoapPayload();
 
     int read(char* data, size_t size);
+    int read(char* data, size_t size, size_t pos);
+
     int write(const char* data, size_t size);
+    int write(const char* data, size_t size, size_t pos);
 
     int setSize(size_t size);
 
-    int size() const {
+    size_t size() const {
         return size_;
     }
 
     int setPos(int pos, coap_whence whence);
 
-    int pos() const {
+    size_t pos() const {
         return pos_;
     }
 
-    static int initTempDir();
-
 private:
     Buffer buf_; // Portion of the payload data stored in RAM
-    std::unique_ptr<lfs_file_t> file_; // Temporary file with the rest of the payload data
+    std::unique_ptr<lfs_file_t> file_; // Handle of the temporary file with the rest of the payload data
     size_t pos_; // Current position in the payload data
     size_t size_; // Total size of the payload data
-    unsigned fileNum_; // Sequence number of the temporary file created
+    unsigned fileNum_; // Sequence number of the temporary file
 
-    int createTempFile();
-    void removeTempFile();
+    int createTempFile(lfs_t* fs);
+    void removeTempFile(lfs_t* fs);
 };
 
 } // namespace particle::protocol::v2

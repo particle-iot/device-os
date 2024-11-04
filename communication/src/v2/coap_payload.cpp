@@ -35,24 +35,38 @@ using fs::FsLock;
 
 namespace {
 
-const auto COAP_TEMP_DIR = "/tmp/coap";
-
-const size_t MAX_PAYLOAD_SIZE = 16 * 1024;
+// Maximum amount of payload data that can be stored on the heap for a single message
 const size_t MAX_PAYLOAD_SIZE_IN_RAM = COAP_BLOCK_SIZE;
 
-static_assert(MAX_PAYLOAD_SIZE_IN_RAM <= MAX_PAYLOAD_SIZE);
-
+// Initial amount of the heap memory allocated for storing payload data
 const size_t INITIAL_BUFFER_CAPACITY = 128;
 
+// Maximum expected length of a filesystem path
 const size_t MAX_PATH_LEN = 127;
 
+// Directory for storing temporary files
+const auto TEMP_DIR = "/tmp/coap";
+
+static_assert(MAX_PAYLOAD_SIZE_IN_RAM <= COAP_MAX_PAYLOAD_SIZE);
+
+static_assert(INITIAL_BUFFER_CAPACITY <= MAX_PAYLOAD_SIZE_IN_RAM);
+
 unsigned g_tempFileCount = 0;
-bool g_tempDirInited = false;
+bool g_tempDirCreated = false;
 
 int formatTempFilePath(char* buf, size_t size, unsigned fileNum) {
-    int n = std::snprintf(buf, size, "%s/p%u", COAP_TEMP_DIR, fileNum);
+    int n = std::snprintf(buf, size, "%s/payload_%u", TEMP_DIR, fileNum);
     if (n < 0 || (size_t)n >= size) {
         return SYSTEM_ERROR_PATH_TOO_LONG;
+    }
+    return 0;
+}
+
+int seekInFile(lfs_t* fs, lfs_file_t* file, size_t pos) {
+    size_t curPos = CHECK_FS(lfs_file_tell(fs, file));
+    // Prevent LittleFS from flushing the file if the offset hasn't changed
+    if (pos != curPos) {
+        CHECK_FS(lfs_file_seek(fs, file, pos, LFS_SEEK_SET));
     }
     return 0;
 }
@@ -69,46 +83,60 @@ inline int removeFile(lfs_t* fs, const char* path) {
 
 } // namespace
 
+CoapPayload::~CoapPayload() {
+    if (file_) {
+        FsLock fs;
+        removeTempFile(fs.instance());
+    }
+}
+
 int CoapPayload::read(char* data, size_t size) {
     assert(pos_ <= size_);
-    if (pos_ == size_) {
+    size_t n = CHECK(read(data, size, pos_));
+    pos_ += n;
+    return n;
+}
+
+int CoapPayload::read(char* data, size_t size, size_t pos) {
+    if (pos >= size_) {
         return SYSTEM_ERROR_END_OF_STREAM;
     }
-    auto d = data;
-    size_t p = pos_;
-    size_t bytesToRead = std::min(size, size_ - pos_);
-    if (p < MAX_PAYLOAD_SIZE_IN_RAM) {
-        size_t bytesInRam = std::min(size_, MAX_PAYLOAD_SIZE_IN_RAM) - p;
+    char* d = data;
+    size_t bytesToRead = std::min(size, size_ - pos);
+    if (pos < MAX_PAYLOAD_SIZE_IN_RAM) {
+        size_t bytesInRam = std::min(size_, MAX_PAYLOAD_SIZE_IN_RAM) - pos;
         size_t n = std::min(bytesToRead, bytesInRam);
-        std::memcpy(d, buf_.data() + p, n);
+        std::memcpy(d, buf_.data() + pos, n);
         bytesToRead -= n;
+        pos += n;
         d += n;
-        p += n;
     }
     if (bytesToRead > 0) {
         FsLock fs;
-        size_t bytesInFile = size_ + MAX_PAYLOAD_SIZE_IN_RAM - p;
-        if (bytesToRead > bytesInFile) {
-            bytesToRead = bytesInFile;
-        }
         assert(file_);
-        size_t n = CHECK_FS(lfs_file_read(fs.instance(), file_.get(), d, size));
-        if (n != bytesToRead) {
-            LOG(ERROR, "Unexpected end of payload data");
-            return SYSTEM_ERROR_BAD_DATA; // Somebody modified the file
+        CHECK(seekInFile(fs.instance(), file_.get(), pos - MAX_PAYLOAD_SIZE_IN_RAM));
+        size_t n = CHECK_FS(lfs_file_read(fs.instance(), file_.get(), d, bytesToRead));
+        if (n < bytesToRead) {
+            // The payload size was set using setSize() or the file was modifed by somebody else
+            std::memset(d + n, 0, bytesToRead - n);
         }
-        d += n;
-        p += n;
+        d += bytesToRead;
     }
-    pos_ = p;
     return d - data;
 }
 
 int CoapPayload::write(const char* data, size_t size) {
-    if (pos_ + size > MAX_PAYLOAD_SIZE) {
+    assert(pos_ <= size_);
+    size_t n = CHECK(write(data, size, pos_));
+    pos_ += n;
+    return n;
+}
+
+int CoapPayload::write(const char* data, size_t size, size_t pos) {
+    if (pos + size > COAP_MAX_PAYLOAD_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    size_t p = pos_;
+    size_t p = pos;
     size_t bytesToWrite = size;
     if (p < MAX_PAYLOAD_SIZE_IN_RAM) {
         size_t n = std::min(bytesToWrite, MAX_PAYLOAD_SIZE_IN_RAM - p);
@@ -124,51 +152,43 @@ int CoapPayload::write(const char* data, size_t size) {
         buf_.resize(newSize);
         std::memcpy(buf_.data() + p, data, n);
         bytesToWrite -= n;
-        data += n;
         p += n;
+        data += n;
     }
     if (bytesToWrite > 0) {
         FsLock fs;
         if (!file_) {
-            CHECK(createTempFile());
+            CHECK(createTempFile(fs.instance()));
         }
         assert(file_);
+        CHECK(seekInFile(fs.instance(), file_.get(), p - MAX_PAYLOAD_SIZE_IN_RAM));
         size_t n = CHECK_FS(lfs_file_write(fs.instance(), file_.get(), data, bytesToWrite));
         if (n != bytesToWrite) {
             return SYSTEM_ERROR_FILESYSTEM;
         }
-        p += n;
     }
-    size_ += size;
-    pos_ = p;
+    if (pos + size > size_) {
+        size_ = pos + size;
+    }
     return size;
 }
 
 int CoapPayload::setSize(size_t size) {
-    if (size > MAX_PAYLOAD_SIZE) {
+    if (size > COAP_MAX_PAYLOAD_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    size_t p = std::min(pos_, size);
     size_t bytesInRam = std::min(size, MAX_PAYLOAD_SIZE_IN_RAM);
-    if (!buf_.resize(bytesInRam)) {
+    if (!buf_.resize(bytesInRam)) { // The uninitialized data is zero-filled as necessary
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    if (size > MAX_PAYLOAD_SIZE_IN_RAM) {
+    if (size > MAX_PAYLOAD_SIZE_IN_RAM && !file_) {
         FsLock fs;
-        if (!file_) {
-            CHECK(createTempFile());
-        }
-        size_t fileOffs = 0;
-        if (p > MAX_PAYLOAD_SIZE_IN_RAM) {
-            fileOffs = p - MAX_PAYLOAD_SIZE_IN_RAM;
-        }
-        CHECK_FS(lfs_file_seek(fs.instance(), file_.get(), fileOffs, LFS_SEEK_SET));
-    } else if (file_) {
-        FsLock fs;
-        CHECK_FS(lfs_file_seek(fs.instance(), file_.get(), 0 /* off */, LFS_SEEK_SET));
+        CHECK(createTempFile(fs.instance()));
+    }
+    if (pos_ > size) {
+        pos_ = size;
     }
     size_ = size;
-    pos_ = p;
     return 0;
 }
 
@@ -186,51 +206,34 @@ int CoapPayload::setPos(int pos, coap_whence whence) {
     } else if ((size_t)pos > size_) {
         pos = size_;
     }
-    if ((size_t)pos > MAX_PAYLOAD_SIZE_IN_RAM) {
-        FsLock fs;
-        assert(file_);
-        size_t fileOffs = pos - MAX_PAYLOAD_SIZE_IN_RAM;
-        CHECK_FS(lfs_file_seek(fs.instance(), file_.get(), fileOffs, LFS_SEEK_SET));
-    } else if (file_) {
-        FsLock fs;
-        CHECK_FS(lfs_file_seek(fs.instance(), file_.get(), 0 /* off */, LFS_SEEK_SET));
-    }
     pos_ = pos;
-    return 0;
+    return pos_;
 }
 
-int CoapPayload::initTempDir() {
-    CHECK(rmrf(COAP_TEMP_DIR)); // FIXME: Don't remove the directory itself
-    CHECK(mkdirp(COAP_TEMP_DIR));
-    return 0;
-}
-
-int CoapPayload::createTempFile() {
-    if (!g_tempDirInited) {
-        CHECK(initTempDir());
-        g_tempDirInited = true;
-    }
+int CoapPayload::createTempFile(lfs_t* fs) {
     assert(!file_);
     std::unique_ptr<lfs_file_t> file(new(std::nothrow) lfs_file_t());
     if (!file) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    FsLock fs;
-    auto fileNum = ++g_tempFileCount; // Incremented under the filesystem lock
+    if (!g_tempDirCreated) {
+        CHECK(mkdirp(TEMP_DIR));
+        g_tempDirCreated = true;
+    }
+    auto fileNum = ++g_tempFileCount;
     char path[MAX_PATH_LEN + 1];
     CHECK(formatTempFilePath(path, sizeof(path), fileNum));
-    CHECK_FS(lfs_file_open(fs.instance(), file.get(), path, LFS_O_RDWR | LFS_O_CREAT | LFS_O_EXCL));
+    CHECK_FS(lfs_file_open(fs, file.get(), path, LFS_O_RDWR | LFS_O_CREAT | LFS_O_EXCL));
     file_ = std::move(file);
     fileNum_ = fileNum;
     return 0;
 }
 
-void CoapPayload::removeTempFile() {
+void CoapPayload::removeTempFile(lfs_t* fs) {
     if (!file_) {
         return;
     }
-    FsLock fs;
-    int r = closeFile(fs.instance(), file_.get());
+    int r = closeFile(fs, file_.get());
     if (r < 0) {
         LOG(ERROR, "Error while closing file: %d", r);
         // Try removing the file anyway
@@ -239,7 +242,7 @@ void CoapPayload::removeTempFile() {
     char path[MAX_PATH_LEN + 1];
     r = formatTempFilePath(path, sizeof(path), fileNum_);
     if (r >= 0) {
-        r = removeFile(fs.instance(), path);
+        r = removeFile(fs, path);
     }
     if (r < 0) {
         LOG(ERROR, "Failed to remove file: %d", r);

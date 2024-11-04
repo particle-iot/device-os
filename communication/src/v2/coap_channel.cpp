@@ -37,7 +37,7 @@ LOG_SOURCE_CATEGORY("system.coap")
 #include "spark_protocol_functions.h"
 
 #include "c_string.h"
-#include "random.h"
+#include "endian_util.h"
 #include "scope_guard.h"
 #include "check.h"
 
@@ -53,11 +53,15 @@ namespace particle::protocol::v2 {
 
 namespace {
 
-const size_t MAX_TOKEN_SIZE = sizeof(token_t); // TODO: Support longer tokens
-const size_t MAX_TAG_SIZE = 8; // Maximum size of an ETag (RFC 7252) or Request-Tag (RFC 9175) option
+// Maximum supported size of CoAP framing data, i.e. everything preceeding the payload data in a CoAP
+// message including the payload marker
+const size_t MAX_MESSAGE_PREFIX_SIZE = 128;
+static_assert(MAX_MESSAGE_PREFIX_SIZE + COAP_BLOCK_SIZE <= PROTOCOL_BUFFER_SIZE);
 
 const unsigned BLOCK_SZX = 6; // Value of the SZX field for 1024-byte blocks (RFC 7959, 2.2)
 static_assert(COAP_BLOCK_SIZE == 1024); // When changing the block size, make sure to update BLOCK_SZX accordingly
+
+const size_t TAG_SIZE = 4; // Default size of an ETag (RFC 7252) or Request-Tag (RFC 9175) option
 
 const unsigned DEFAULT_REQUEST_TIMEOUT = 60000;
 
@@ -97,6 +101,13 @@ int decodeBlockOption(unsigned opt, int& num, bool& m) {
     num = opt >> 4;
     m = opt & 0x08;
     return 0;
+}
+
+// Converts a legacy token_t value to a CoapToken
+inline CoapToken tokenFrom(token_t token) {
+    static_assert(sizeof(token) <= CoapToken::MAX_SIZE);
+    token = nativeToLittleEndian(token);
+    return CoapToken((const char*)&token, sizeof(token));
 }
 
 // TODO: Use a generic intrusive list container
@@ -185,7 +196,7 @@ inline void forEachRefInList(T* head, const F& fn) {
 
 } // namespace
 
-struct CoapChannel::CoapMessage: RefCount {
+struct CoapChannel::Message: CoapMessage {
     coap_block_callback blockCallback; // Callback to invoke when a message block is sent or received
     coap_ack_callback ackCallback; // Callback to invoke when the message is acknowledged
     coap_error_callback errorCallback; // Callback to invoke when an error occurs
@@ -196,12 +207,13 @@ struct CoapChannel::CoapMessage: RefCount {
     int sessionId; // ID of the session for which this message was created
     int flags; // Message flags
 
-    char tag[MAX_TAG_SIZE]; // ETag or Request-Tag option
-    size_t tagSize; // Size of the ETag or Request-Tag option
+    CoapToken token; // CoAP token
+    CoapTag tag; // ETag or Request-Tag option
     int coapId; // CoAP message ID
-    token_t token; // CoAP token. TODO: Support longer tokens
 
     RefCountPtr<CoapPayload> payload; // Payload data
+    size_t payloadPos; // Position in the payload data object
+
     CoapOptions options; // CoAP options
 
     std::optional<int> blockIndex; // Index of the current message block
@@ -214,10 +226,10 @@ struct CoapChannel::CoapMessage: RefCount {
     MessageType type; // Message type
     MessageState state; // Message state
 
-    CoapMessage* next; // Next message in the list
-    CoapMessage* prev; // Previous message in the list
+    Message* next; // Next message in the list
+    Message* prev; // Previous message in the list
 
-    explicit CoapMessage(MessageType type) :
+    explicit Message(MessageType type) :
             blockCallback(nullptr),
             ackCallback(nullptr),
             errorCallback(nullptr),
@@ -226,10 +238,8 @@ struct CoapChannel::CoapMessage: RefCount {
             requestId(0),
             sessionId(0),
             flags(0),
-            tag(),
-            tagSize(0),
             coapId(0),
-            token(0),
+            payloadPos(0),
             pos(nullptr),
             end(nullptr),
             prefixSize(0),
@@ -241,7 +251,7 @@ struct CoapChannel::CoapMessage: RefCount {
 };
 
 // TODO: Use separate message classes for different transfer directions
-struct CoapChannel::RequestMessage: CoapMessage {
+struct CoapChannel::RequestMessage: Message {
     coap_response_callback responseCallback; // Callback to invoke when a response for this request is received
 
     ResponseMessage* blockResponse; // Response for which this block request is retrieving data
@@ -252,7 +262,7 @@ struct CoapChannel::RequestMessage: CoapMessage {
     coap_method method; // Method code
 
     explicit RequestMessage(bool blockRequest = false) :
-            CoapMessage(blockRequest ? MessageType::BLOCK_REQUEST : MessageType::REQUEST),
+            Message(blockRequest ? MessageType::BLOCK_REQUEST : MessageType::REQUEST),
             responseCallback(nullptr),
             blockResponse(nullptr),
             timeSent(0),
@@ -261,13 +271,13 @@ struct CoapChannel::RequestMessage: CoapMessage {
     }
 };
 
-struct CoapChannel::ResponseMessage: CoapMessage {
+struct CoapChannel::ResponseMessage: Message {
     RefCountPtr<RequestMessage> blockRequest; // Request message used to get the last received block of this message
 
     int status; // CoAP response code
 
     ResponseMessage() :
-            CoapMessage(MessageType::RESPONSE),
+            Message(MessageType::RESPONSE),
             status(0) {
     }
 };
@@ -323,8 +333,8 @@ CoapChannel::CoapChannel() :
         blockResps_(nullptr),
         unackMsgs_(nullptr),
         protocol_(spark_protocol_instance()),
+        lastReqTag_(CoapTag::generate(TAG_SIZE)),
         state_(State::CLOSED),
-        lastReqTag_(Random().gen<decltype(lastReqTag_)>()),
         lastMsgId_(0),
         curMsgId_(0),
         sessId_(0),
@@ -345,7 +355,7 @@ CoapChannel::~CoapChannel() {
     });
 }
 
-int CoapChannel::beginRequest(coap_message** msg, const char* path, coap_method method, int timeout, int flags) {
+int CoapChannel::beginRequest(RefCountPtr<CoapMessage>& coapMsg, const char* path, coap_method method, int timeout, int flags) {
     if (timeout < 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -365,14 +375,13 @@ int CoapChannel::beginRequest(coap_message** msg, const char* path, coap_method 
     req->timeout = (timeout > 0) ? timeout : DEFAULT_REQUEST_TIMEOUT;
     req->flags = flags;
     req->state = MessageState::WRITE;
-    // Transfer ownership over the message to the calling code
-    *msg = reinterpret_cast<coap_message*>(req.unwrap());
+    coapMsg = std::move(req);
     return msgId;
 }
 
-int CoapChannel::endRequest(coap_message* apiMsg, coap_response_callback respCallback, coap_ack_callback ackCallback,
+int CoapChannel::endRequest(RefCountPtr<CoapMessage> coapMsg, coap_response_callback respCallback, coap_ack_callback ackCallback,
         coap_error_callback errorCallback, void* callbackArg) {
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->type != MessageType::REQUEST) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -399,18 +408,15 @@ int CoapChannel::endRequest(coap_message* apiMsg, coap_response_callback respCal
     req->ackCallback = ackCallback;
     req->errorCallback = errorCallback;
     req->callbackArg = callbackArg;
-    // Take ownership over the message by releasing the reference to the message that was previously
-    // managed by the calling code
-    req->release();
     return 0;
 }
 
-int CoapChannel::beginResponse(coap_message** msg, int status, int requestId, int flags) {
+int CoapChannel::beginResponse(RefCountPtr<CoapMessage>& coapMsg, int status, int reqId, int flags) {
     if (state_ != State::OPEN) {
         return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
     auto req = findRefInList(recvReqs_, [=](auto req) {
-        return req->id == requestId;
+        return req->id == reqId;
     });
     if (!req) {
         return SYSTEM_ERROR_COAP_REQUEST_NOT_FOUND;
@@ -425,14 +431,13 @@ int CoapChannel::beginResponse(coap_message** msg, int status, int requestId, in
     resp->token = req->token;
     resp->status = status;
     resp->state = MessageState::WRITE;
-    // Transfer ownership over the message to the calling code
-    *msg = reinterpret_cast<coap_message*>(resp.unwrap());
+    coapMsg = std::move(resp);
     return 0;
 }
 
-int CoapChannel::endResponse(coap_message* apiMsg, coap_ack_callback ackCallback, coap_error_callback errorCallback,
+int CoapChannel::endResponse(RefCountPtr<CoapMessage> coapMsg, coap_ack_callback ackCallback, coap_error_callback errorCallback,
         void* callbackArg) {
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->type != MessageType::RESPONSE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -458,20 +463,20 @@ int CoapChannel::endResponse(coap_message* apiMsg, coap_ack_callback ackCallback
     resp->ackCallback = ackCallback;
     resp->errorCallback = errorCallback;
     resp->callbackArg = callbackArg;
-    // Take ownership over the message by releasing the reference to the message that was previously
-    // managed by the calling code
-    resp->release();
     return 0;
 }
 
-int CoapChannel::writeBlock(coap_message* apiMsg, const char* data, size_t& size, coap_block_callback blockCallback,
+int CoapChannel::writeBlock(const RefCountPtr<CoapMessage>& coapMsg, const char* data, size_t& size, coap_block_callback blockCallback,
         coap_error_callback errorCallback, void* callbackArg) {
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
     if (msg->state != MessageState::WRITE) {
         return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (msg->payload) {
+        return SYSTEM_ERROR_INVALID_STATE; // Can't mix coap_set_payload() and coap_write_block()
     }
     bool sendBlock = false;
     if (size > 0) {
@@ -507,10 +512,7 @@ int CoapChannel::writeBlock(coap_message* apiMsg, const char* data, size_t& size
             if (!msg->blockIndex.has_value()) {
                 msg->blockIndex = 0;
                 // Add a Request-Tag option
-                auto tag = ++lastReqTag_;
-                static_assert(sizeof(tag) <= sizeof(msg->tag));
-                std::memcpy(msg->tag, &tag, sizeof(tag));
-                msg->tagSize = sizeof(tag);
+                msg->tag = lastReqTag_.increment();
             }
             msg->hasMore = true;
             CHECK(updateMessage(msg)); // Update or add blockwise transfer options to the message
@@ -524,14 +526,17 @@ int CoapChannel::writeBlock(coap_message* apiMsg, const char* data, size_t& size
     return sendBlock ? COAP_RESULT_WAIT_BLOCK : 0;
 }
 
-int CoapChannel::readBlock(coap_message* apiMsg, char* data, size_t& size, coap_block_callback blockCallback,
+int CoapChannel::readBlock(const RefCountPtr<CoapMessage>& coapMsg, char* data, size_t& size, coap_block_callback blockCallback,
         coap_error_callback errorCallback, void* callbackArg) {
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+    auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
     if (msg->state != MessageState::READ) {
         return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (msg->payload) {
+        return SYSTEM_ERROR_INVALID_STATE; // Can't use coap_read_block() together with the COAP_MESSAGE_FULL flag
     }
     bool getBlock = false;
     if (size > 0) {
@@ -576,13 +581,16 @@ int CoapChannel::readBlock(coap_message* apiMsg, char* data, size_t& size, coap_
     return getBlock ? COAP_RESULT_WAIT_BLOCK : 0;
 }
 
-int CoapChannel::peekBlock(coap_message* apiMsg, char* data, size_t size) {
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+int CoapChannel::peekBlock(const RefCountPtr<CoapMessage>& coapMsg, char* data, size_t size) {
+    auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
     if (msg->state != MessageState::READ) {
         return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (msg->payload) {
+        return SYSTEM_ERROR_INVALID_STATE; // Can't use coap_peek_block() together with the COAP_MESSAGE_FULL flag
     }
     if (size > 0) {
         if (msg->pos == msg->end) {
@@ -601,166 +609,29 @@ int CoapChannel::peekBlock(coap_message* apiMsg, char* data, size_t size) {
     return size;
 }
 
-int CoapChannel::createPayload(coap_payload** payload) {
-    auto p = makeRefCountPtr<CoapPayload>();
-    if (!p) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    *payload = reinterpret_cast<coap_payload*>(p.unwrap());
-    return 0;
-}
-
-void CoapChannel::destroyPayload(coap_payload* payload) {
-    if (!payload) {
-        return;
-    }
-    auto p = reinterpret_cast<CoapPayload*>(payload);
-    p->release();
-}
-
-int CoapChannel::writePayload(coap_payload* payload, const char* data, size_t size) {
-    auto p = reinterpret_cast<CoapPayload*>(payload);
-    size_t n = CHECK(p->write(data, size));
-    return n;
-}
-
-int CoapChannel::readPayload(coap_payload* payload, char* data, size_t size) {
-    auto p = reinterpret_cast<CoapPayload*>(payload);
-    size_t n = CHECK(p->read(data, size));
-    return n;
-}
-
-int CoapChannel::setPayloadPos(coap_payload* payload, int pos, int whence) {
-    auto p = reinterpret_cast<CoapPayload*>(payload);
-    size_t n = CHECK(p->setPos(pos, static_cast<coap_whence>(whence)));
-    return n;
-}
-
-int CoapChannel::getPayloadPos(coap_payload* payload) {
-    auto p = reinterpret_cast<CoapPayload*>(payload);
-    return p->pos();
-}
-
-int CoapChannel::setPayloadSize(coap_payload* payload, size_t size) {
-    auto p = reinterpret_cast<CoapPayload*>(payload);
-    CHECK(p->setSize(size));
-    return 0;
-}
-
-int CoapChannel::getPayloadSize(coap_payload* payload) {
-    auto p = reinterpret_cast<CoapPayload*>(payload);
-    return p->size();
-}
-
-int CoapChannel::setPayload(coap_message* apiMsg, coap_payload* apiPayload) {
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
-    assert(msg);
+int CoapChannel::setPayload(const RefCountPtr<CoapMessage>& coapMsg, RefCountPtr<CoapPayload> payload) {
+    auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
     if (msg->state != MessageState::WRITE) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    auto payload = RefCountPtr(reinterpret_cast<CoapPayload*>(apiPayload));
-    assert(payload);
+    if (!msg->payload && (msg->pos || msg->blockIndex.has_value())) {
+        return SYSTEM_ERROR_INVALID_STATE; // Can't mix coap_set_payload() and coap_write_block()
+    }
     msg->payload = std::move(payload);
     return 0;
 }
 
-int CoapChannel::getPayload(coap_message* apiMsg, coap_payload** apiPayload) {
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
-    assert(msg);
-    if (msg->sessionId != sessId_) {
-        return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
-    }
-    // FIXME
-    // if (msg->state != MessageState::READ) {
-    //     return SYSTEM_ERROR_INVALID_STATE;
-    // }
-    auto payload = msg->payload;
-    assert(apiPayload);
-    *apiPayload = reinterpret_cast<coap_payload*>(payload.unwrap());
+int CoapChannel::getPayload(const RefCountPtr<CoapMessage>& coapMsg, RefCountPtr<CoapPayload>& payload) {
+    auto msg = staticPtrCast<Message>(coapMsg);
+    payload = msg->payload;
     return 0;
 }
 
-int CoapChannel::getOption(coap_message* apiMsg, coap_option** apiOpt, int num) {
-    if (num < 0 || (unsigned)num > MAX_COAP_OPTION_NUMBER) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    assert(apiMsg);
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
-    if (msg->state != MessageState::READ) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    auto opt = msg->options.findFirst(num);
-    assert(apiOpt);
-    *apiOpt = const_cast<coap_option*>(reinterpret_cast<const coap_option*>(opt));
-    return 0;
-}
-
-int CoapChannel::getNextOption(coap_message* apiMsg, coap_option** apiOpt, int* num) {
-    assert(apiOpt);
-    auto opt = reinterpret_cast<const CoapOptions::Option*>(*apiOpt);
-    if (opt) {
-        opt = opt->next();
-    } else {
-        assert(apiMsg);
-        auto msg = reinterpret_cast<const CoapMessage*>(apiMsg);
-        opt = msg->options.first();
-    }
-    *apiOpt = const_cast<coap_option*>(reinterpret_cast<const coap_option*>(opt));
-    assert(num);
-    *num = opt ? opt->number() : 0;
-    return 0;
-}
-
-int CoapChannel::getUintOptionValue(coap_option* apiOpt, unsigned* val) {
-    auto opt = reinterpret_cast<const CoapOptions::Option*>(apiOpt);
-    assert(opt && val);
-    *val = opt->toUint();
-    return 0;
-}
-
-int CoapChannel::getStringOptionValue(coap_option* apiOpt, char* data, size_t size) {
-    auto opt = reinterpret_cast<const CoapOptions::Option*>(apiOpt);
-    assert(opt);
-    if (data && size > 0) {
-        auto n = std::min(opt->size(), size - 1);
-        std::memcpy(data, opt->data(), n);
-        data[n] = '\0';
-    }
-    return opt->size();
-}
-
-int CoapChannel::getOpaqueOptionValue(coap_option* apiOpt, char* data, size_t size) {
-    auto opt = reinterpret_cast<const CoapOptions::Option*>(apiOpt);
-    assert(opt);
-    if (data) {
-        std::memcpy(data, opt->data(), std::min(opt->size(), size));
-    }
-    return opt->size();
-}
-
-int CoapChannel::addUintOption(coap_message* apiMsg, int num, unsigned val) {
-    if (num < 0 || (unsigned)num > MAX_COAP_OPTION_NUMBER) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
-    if (msg->sessionId != sessId_) {
-        return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
-    }
-    if (msg->state != MessageState::WRITE) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    CHECK(msg->options.add(num, val));
-    return 0;
-}
-
-int CoapChannel::addOpaqueOption(coap_message* apiMsg, int num, const char* data, size_t size) {
-    if (num < 0 || (unsigned)num > MAX_COAP_OPTION_NUMBER) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    auto msg = RefCountPtr(reinterpret_cast<CoapMessage*>(apiMsg));
+int CoapChannel::addOption(const RefCountPtr<CoapMessage>& coapMsg, unsigned num, const char* data, size_t size) {
+    auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
@@ -771,29 +642,45 @@ int CoapChannel::addOpaqueOption(coap_message* apiMsg, int num, const char* data
     return 0;
 }
 
-void CoapChannel::destroyMessage(coap_message* apiMsg) {
-    if (!apiMsg) {
-        return;
+int CoapChannel::addOption(const RefCountPtr<CoapMessage>& coapMsg, unsigned num, unsigned val) {
+    auto msg = staticPtrCast<Message>(coapMsg);
+    if (msg->sessionId != sessId_) {
+        return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
-    auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg)); // Take ownership
-    clearMessage(msg);
+    if (msg->state != MessageState::WRITE) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    CHECK(msg->options.add(num, val));
+    return 0;
 }
 
-void CoapChannel::cancelRequest(int requestId) {
-    if (requestId <= 0) {
+int CoapChannel::getOption(const RefCountPtr<CoapMessage>& coapMsg, unsigned num, const CoapOptionEntry*& opt) {
+    auto msg = staticPtrCast<Message>(coapMsg);
+    opt = msg->options.findFirst(num);
+    return 0;
+}
+
+int CoapChannel::getFirstOption(const RefCountPtr<CoapMessage>& coapMsg, const CoapOptionEntry*& opt) {
+    auto msg = staticPtrCast<Message>(coapMsg);
+    opt = msg->options.first();
+    return 0;
+}
+
+void CoapChannel::cancelRequest(int reqId) {
+    if (reqId <= 0) {
         return;
     }
     // Search among the messages for which a user callback may still need to be invoked
-    RefCountPtr<CoapMessage> msg = findRefInList(sentReqs_, [=](auto req) {
-        return req->type != MessageType::BLOCK_REQUEST && req->id == requestId;
+    RefCountPtr<Message> msg = findRefInList(sentReqs_, [=](auto req) {
+        return req->type != MessageType::BLOCK_REQUEST && req->id == reqId;
     });
     if (!msg) {
         msg = findRefInList(unackMsgs_, [=](auto msg) {
-            return msg->type != MessageType::BLOCK_REQUEST && msg->requestId == requestId;
+            return msg->type != MessageType::BLOCK_REQUEST && msg->requestId == reqId;
         });
         if (!msg) {
             msg = findRefInList(blockResps_, [=](auto msg) {
-                return msg->requestId == requestId;
+                return msg->requestId == reqId;
             });
         }
     }
@@ -802,8 +689,13 @@ void CoapChannel::cancelRequest(int requestId) {
     }
 }
 
-int CoapChannel::addRequestHandler(const char* path, coap_method method, int flags, coap_request_callback callback,
-        void* callbackArg) {
+void CoapChannel::disposeMessage(const RefCountPtr<CoapMessage>& coapMsg) {
+    auto msg = staticPtrCast<Message>(coapMsg);
+    clearMessage(msg);
+}
+
+int CoapChannel::addRequestHandler(const char* path, coap_method method, coap_request_callback callback,
+        void* callbackArg, int flags) {
     if (!callback) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -1024,7 +916,7 @@ void CoapChannel::close(int error) {
     }
 }
 
-int CoapChannel::handleCon(const Message& msgBuf) {
+int CoapChannel::handleCon(const MessageBuffer& msgBuf) {
     if (curMsgId_) {
         // TODO: Support asynchronous reading/writing to multiple message instances
         LOG(WARN, "CoAP message buffer is already in use");
@@ -1046,7 +938,7 @@ int CoapChannel::handleCon(const Message& msgBuf) {
     return r; // 0 or Result::HANDLED
 }
 
-int CoapChannel::handleAck(const Message& msgBuf) {
+int CoapChannel::handleAck(const MessageBuffer& msgBuf) {
     if (curMsgId_) {
         // TODO: Support asynchronous reading/writing to multiple message instances
         LOG(WARN, "CoAP message buffer is already in use");
@@ -1062,7 +954,7 @@ int CoapChannel::handleAck(const Message& msgBuf) {
     return CHECK(handleAck(d));
 }
 
-int CoapChannel::handleRst(const Message& msgBuf) {
+int CoapChannel::handleRst(const MessageBuffer& msgBuf) {
     if (curMsgId_) {
         // TODO: Support asynchronous reading/writing to multiple message instances
         LOG(WARN, "CoAP message buffer is already in use");
@@ -1108,9 +1000,6 @@ CoapChannel* CoapChannel::instance() {
 }
 
 int CoapChannel::handleRequest(CoapMessageDecoder& d) {
-    if (d.tokenSize() != sizeof(token_t)) { // TODO: Support empty tokens
-        return 0;
-    }
     // Get the request URI path
     char path[COAP_MAX_URI_PATH_LENGTH + 1] = { '/', '\0' };
     size_t pathLen = 0; // Path length not including the leading '/'
@@ -1181,8 +1070,7 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
     req->options = std::move(opts);
     req->method = static_cast<coap_method>(method);
     req->coapId = d.id();
-    assert(d.tokenSize() == sizeof(req->token));
-    std::memcpy(&req->token, d.token(), d.tokenSize());
+    req->token = CoapToken(d.token(), d.tokenSize());
     req->pos = const_cast<char*>(d.payload());
     req->end = req->pos + d.payloadSize();
     req->state = MessageState::READ;
@@ -1210,13 +1098,9 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
 }
 
 int CoapChannel::handleResponse(CoapMessageDecoder& d) {
-    if (d.tokenSize() != sizeof(token_t)) { // TODO: Support empty tokens
-        return 0;
-    }
-    token_t token = 0;
-    std::memcpy(&token, d.token(), d.tokenSize());
+    CoapToken token(d.token(), d.tokenSize());
     // Find the request which this response is meant for
-    auto req = findRefInList(sentReqs_, [=](auto req) {
+    auto req = findRefInList(sentReqs_, [&](auto req) {
         return req->token == token;
     });
     if (!req) {
@@ -1237,8 +1121,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     }
     // Check if it's a blockwise response
     auto resp = RefCountPtr(req->blockResponse); // blockResponse is a raw pointer. If null, a response object hasn't been created yet
-    const char* etag = nullptr;
-    size_t etagSize = 0;
+    CoapTag etag;
     int blockIndex = -1;
     bool hasMore = false;
     auto it = d.options();
@@ -1247,9 +1130,9 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         if (it.option() == CoapOption::BLOCK2) {
             r = decodeBlockOption(it.toUInt(), blockIndex, hasMore);
         } else if (it.option() == CoapOption::ETAG) {
-            etag = it.data();
-            etagSize = it.size();
-            if (etagSize > MAX_TAG_SIZE) {
+            if (it.size() <= CoapTag::MAX_SIZE) {
+                etag = CoapTag(it.data(), it.size());
+            } else {
                 r = SYSTEM_ERROR_COAP;
             }
         }
@@ -1267,8 +1150,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     if (req->type == MessageType::BLOCK_REQUEST) {
         // Received another block of a blockwise response
         assert(req->blockIndex.has_value() && resp);
-        if (blockIndex != req->blockIndex.value() || !etag || etagSize != req->tagSize ||
-                std::memcmp(etag, req->tag, etagSize) != 0) {
+        if (blockIndex != req->blockIndex.value() || etag != req->tag) {
             auto code = d.code();
             LOG(ERROR, "Blockwise transfer failed: %d.%02d", (int)coapCodeClass(code), (int)coapCodeDetail(code));
             if (resp->errorCallback) {
@@ -1345,7 +1227,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     if (blockIndex >= 0) {
         // This CoAP implementation requires the server to use a ETag option with all blockwise
         // responses. The first block must have an index of 0
-        if (blockIndex != 0 || !etagSize) {
+        if (blockIndex != 0 || etag.isEmpty()) {
             LOG(ERROR, "Received invalid blockwise response");
             if (req->errorCallback) {
                 req->errorCallback(SYSTEM_ERROR_COAP, req->id, req->callbackArg); // Callback passed to coap_end_request()
@@ -1359,8 +1241,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         req->blockResponse = resp.get();
         req->blockIndex = resp->blockIndex;
         req->hasMore = false;
-        req->tagSize = etagSize;
-        std::memcpy(req->tag, etag, etagSize);
+        req->tag = etag;
     }
     // Acquire the message buffer
     assert(!curMsgId_);
@@ -1415,11 +1296,11 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
     return Result::HANDLED;
 }
 
-int CoapChannel::prepareMessage(const RefCountPtr<CoapMessage>& msg) {
+int CoapChannel::prepareMessage(const RefCountPtr<Message>& msg) {
     assert(!curMsgId_);
     CHECK_PROTOCOL(protocol_->get_channel().create(msgBuf_));
     if (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST) {
-        msg->token = protocol_->get_next_token();
+        msg->token = tokenFrom(protocol_->get_next_token()); // TODO: Use longer tokens with outgoing requests
     }
     msg->prefixSize = 0;
     msg->pos = (char*)msgBuf_.buf();
@@ -1428,9 +1309,9 @@ int CoapChannel::prepareMessage(const RefCountPtr<CoapMessage>& msg) {
     return 0;
 }
 
-int CoapChannel::updateMessage(const RefCountPtr<CoapMessage>& msg) {
+int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
     assert(curMsgId_ == msg->id);
-    char prefix[128];
+    char prefix[MAX_MESSAGE_PREFIX_SIZE];
     CoapMessageEncoder e(prefix, sizeof(prefix));
     e.type(CoapType::CON);
     e.id(0); // Will be set by the underlying message channel
@@ -1442,13 +1323,13 @@ int CoapChannel::updateMessage(const RefCountPtr<CoapMessage>& msg) {
         auto resp = staticPtrCast<ResponseMessage>(msg);
         e.code(resp->status);
     }
-    e.token((const char*)&msg->token, sizeof(msg->token));
+    e.token(msg->token.data(), msg->token.size());
 
     if (isRequest) {
         auto req = staticPtrCast<RequestMessage>(msg);
-        if (req->type == MessageType::BLOCK_REQUEST && req->tagSize > 0) {
+        if (req->type == MessageType::BLOCK_REQUEST && req->tag.size() > 0) {
             // Requesting the next block of a blockwise response
-            encodeOption(e, req, CoapOption::ETAG /* 4 */, req->tag, req->tagSize);
+            encodeOption(e, req, CoapOption::ETAG /* 4 */, req->tag.data(), req->tag.size());
         }
         if (req->blockIndex.has_value()) {
             // See control vs descriptive usage of the block options in RFC 7959, 2.3
@@ -1461,9 +1342,9 @@ int CoapChannel::updateMessage(const RefCountPtr<CoapMessage>& msg) {
                 encodeOption(e, req, CoapOption::BLOCK1 /* 27 */, opt);
             }
         }
-        if (req->type == MessageType::REQUEST && req->tagSize > 0) {
+        if (req->type == MessageType::REQUEST && req->tag.size() > 0) {
             // Sending the next block of a blockwise request
-            encodeOption(e, req, CoapOption::REQUEST_TAG /* 292 */, req->tag, req->tagSize);
+            encodeOption(e, req, CoapOption::REQUEST_TAG /* 292 */, req->tag.data(), req->tag.size());
         }
     } // TODO: Support device-to-cloud blockwise responses
 
@@ -1472,7 +1353,7 @@ int CoapChannel::updateMessage(const RefCountPtr<CoapMessage>& msg) {
 
     auto msgBuf = (char*)msgBuf_.buf();
     size_t newPrefixSize = CHECK(e.encode());
-    if (newPrefixSize > sizeof(prefix)) {
+    if (newPrefixSize > MAX_MESSAGE_PREFIX_SIZE) {
         LOG(ERROR, "Too many CoAP options");
         return SYSTEM_ERROR_TOO_LARGE;
     }
@@ -1493,7 +1374,7 @@ int CoapChannel::updateMessage(const RefCountPtr<CoapMessage>& msg) {
     return 0;
 }
 
-int CoapChannel::sendMessage(RefCountPtr<CoapMessage> msg) {
+int CoapChannel::sendMessage(RefCountPtr<Message> msg) {
     assert(curMsgId_ == msg->id);
     msgBuf_.set_length(msg->pos - (char*)msgBuf_.buf());
     CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
@@ -1505,25 +1386,7 @@ int CoapChannel::sendMessage(RefCountPtr<CoapMessage> msg) {
     return 0;
 }
 
-int CoapChannel::sendAck(int coapId, bool rst) {
-    Message msg;
-    CHECK_PROTOCOL(protocol_->get_channel().response(msgBuf_, msg, msgBuf_.capacity() - msgBuf_.length()));
-    CoapMessageEncoder e((char*)msg.buf(), msg.capacity());
-    e.type(rst ? CoapType::RST : CoapType::ACK);
-    e.code(CoapCode::EMPTY);
-    e.id(0); // Will be set by the underlying message channel
-    size_t n = CHECK(e.encode());
-    if (n > msg.capacity()) {
-        LOG(ERROR, "No enough space in CoAP message buffer");
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
-    msg.set_length(n);
-    msg.set_id(coapId);
-    CHECK_PROTOCOL(protocol_->get_channel().send(msg));
-    return 0;
-}
-
-void CoapChannel::clearMessage(const RefCountPtr<CoapMessage>& msg) {
+void CoapChannel::clearMessage(const RefCountPtr<Message>& msg) {
     if (!msg || msg->sessionId != sessId_) {
         return;
     }
@@ -1574,7 +1437,25 @@ void CoapChannel::clearMessage(const RefCountPtr<CoapMessage>& msg) {
     msg->state = MessageState::DONE;
 }
 
-void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, CoapOption num,
+int CoapChannel::sendAck(int coapId, bool rst) {
+    MessageBuffer msg;
+    CHECK_PROTOCOL(protocol_->get_channel().response(msgBuf_, msg, msgBuf_.capacity() - msgBuf_.length()));
+    CoapMessageEncoder e((char*)msg.buf(), msg.capacity());
+    e.type(rst ? CoapType::RST : CoapType::ACK);
+    e.code(CoapCode::EMPTY);
+    e.id(0); // Will be set by the underlying message channel
+    size_t n = CHECK(e.encode());
+    if (n > msg.capacity()) {
+        LOG(ERROR, "No enough space in CoAP message buffer");
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    msg.set_length(n);
+    msg.set_id(coapId);
+    CHECK_PROTOCOL(protocol_->get_channel().send(msg));
+    return 0;
+}
+
+void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num,
         const char* data, size_t size) {
     // Encode the options that must precede the given option in the serialized message
     encodeOptions(e, msg, (unsigned)num);
@@ -1582,12 +1463,12 @@ void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMess
     e.option(num, data, size);
 }
 
-void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, CoapOption num, unsigned val) {
+void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, unsigned val) {
     encodeOptions(e, msg, (unsigned)num);
     e.option(num, val);
 }
 
-void CoapChannel::encodeOptions(CoapMessageEncoder& e, const RefCountPtr<CoapMessage>& msg, unsigned lastNum) {
+void CoapChannel::encodeOptions(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, unsigned lastNum) {
     auto lastEncodedNum = e.lastOptionNumber();
     auto opt = msg->options.findNext(lastEncodedNum);
     while (opt && opt->number() <= lastNum) {

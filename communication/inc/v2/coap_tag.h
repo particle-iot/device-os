@@ -19,17 +19,23 @@
 
 #include <cstddef>
 
-#include "coap_defs.h"
-
 namespace particle::protocol::v2 {
 
-class CoapToken {
+/**
+ * An opaque variable-length identifer.
+ *
+ * Allows storing up to 8 bytes of data and is suitable for storing the value of a CoAP token, ETag
+ * or Request-Tag option.
+ */
+class CoapTag {
 public:
-    CoapToken() :
+    static const size_t MAX_SIZE = 8;
+
+    CoapTag() :
             size_(0) {
     }
 
-    CoapToken(const char* data, size_t size);
+    CoapTag(const char* data, size_t size);
 
     const char* data() const {
         return data_;
@@ -43,39 +49,41 @@ public:
         return !size_;
     }
 
-    CoapToken& increment();
+    CoapTag& increment();
 
-    int compareWith(const CoapToken& token) const;
+    int compareWith(const CoapTag& tag) const;
 
-    static CoapToken generate(size_t size);
+    static CoapTag generate(size_t size);
 
-    bool operator==(const CoapToken& token) const {
-        return compareWith(token) == 0;
+    bool operator==(const CoapTag& tag) const {
+        return compareWith(tag) == 0;
     }
 
-    bool operator!=(const CoapToken& token) const {
-        return compareWith(token) != 0;
+    bool operator!=(const CoapTag& tag) const {
+        return compareWith(tag) != 0;
     }
 
-    bool operator<(const CoapToken& token) const {
-        return compareWith(token) < 0;
+    bool operator<(const CoapTag& tag) const {
+        return compareWith(tag) < 0;
     }
 
-    bool operator<=(const CoapToken& token) const {
-        return compareWith(token) <= 0;
+    bool operator<=(const CoapTag& tag) const {
+        return compareWith(tag) <= 0;
     }
 
-    bool operator>(const CoapToken& token) const {
-        return compareWith(token) > 0;
+    bool operator>(const CoapTag& tag) const {
+        return compareWith(tag) > 0;
     }
 
-    bool operator>=(const CoapToken& token) const {
-        return compareWith(token) >= 0;
+    bool operator>=(const CoapTag& tag) const {
+        return compareWith(tag) >= 0;
     }
 
 private:
-    char data_[MAX_COAP_TOKEN_SIZE];
+    char data_[MAX_SIZE];
     size_t size_;
 };
+
+typedef CoapTag CoapToken;
 
 } // particle::protocol::v2

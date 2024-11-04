@@ -25,16 +25,14 @@
 
 namespace particle::protocol::v2 {
 
-namespace detail {
-
-unsigned CoapOption::toUint() const {
+unsigned CoapOptionEntry::toUint() const {
     unsigned v = 0;
     auto d = (size_ <= sizeof(char*)) ? data_ : dataPtr_;
     CoapMessageDecoder::decodeUintOptionValue(d, size_, v); // Ignore error
     return v;
 }
 
-int CoapOption::init(unsigned num, const char* data, size_t size) {
+int CoapOptionEntry::init(unsigned num, const char* data, size_t size) {
     char* d = data_;
     if (size > sizeof(char*)) {
         d = new(std::nothrow) char[size];
@@ -49,18 +47,16 @@ int CoapOption::init(unsigned num, const char* data, size_t size) {
     return 0;
 }
 
-void swap(CoapOption& opt1, CoapOption& opt2) {
+void swap(CoapOptionEntry& opt1, CoapOptionEntry& opt2) {
     // Instances of this class are trivially swappable despite not being copy-assignable
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
-    char tmp[sizeof(CoapOption)];
-    std::memcpy(tmp, &opt1, sizeof(CoapOption));
-    std::memcpy(&opt1, &opt2, sizeof(CoapOption));
-    std::memcpy(&opt2, tmp, sizeof(CoapOption));
+    char tmp[sizeof(CoapOptionEntry)];
+    std::memcpy(tmp, &opt1, sizeof(CoapOptionEntry));
+    std::memcpy(&opt1, &opt2, sizeof(CoapOptionEntry));
+    std::memcpy(&opt2, tmp, sizeof(CoapOptionEntry));
 #pragma GCC diagnostic pop
 }
-
-} // namespace detail
 
 int CoapOptions::add(unsigned num, unsigned val) {
     char d[CoapMessageEncoder::MAX_UINT_OPTION_VALUE_SIZE] = {};
@@ -70,9 +66,9 @@ int CoapOptions::add(unsigned num, unsigned val) {
 }
 
 int CoapOptions::add(unsigned num, const char* data, size_t size) {
-    Option opt;
+    Entry opt;
     CHECK(opt.init(num, data, size));
-    auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const Option& opt) {
+    auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const Entry& opt) {
         return num < opt.number();
     });
     it = opts_.insert(it, std::move(opt));
@@ -90,8 +86,8 @@ int CoapOptions::add(unsigned num, const char* data, size_t size) {
     return 0;
 }
 
-const CoapOptions::Option* CoapOptions::findFirst(unsigned num) const {
-    auto it = std::lower_bound(opts_.begin(), opts_.end(), num, [](const Option& opt, unsigned num) {
+const CoapOptions::Entry* CoapOptions::findFirst(unsigned num) const {
+    auto it = std::lower_bound(opts_.begin(), opts_.end(), num, [](const Entry& opt, unsigned num) {
         return opt.number() < num;
     });
     if (it == opts_.end() || it->number() != num) {
@@ -100,8 +96,8 @@ const CoapOptions::Option* CoapOptions::findFirst(unsigned num) const {
     return &*it;
 }
 
-const CoapOptions::Option* CoapOptions::findNext(unsigned num) const {
-    auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const Option& opt) {
+const CoapOptions::Entry* CoapOptions::findNext(unsigned num) const {
+    auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const Entry& opt) {
         return num < opt.number();
     });
     if (it == opts_.end()) {
