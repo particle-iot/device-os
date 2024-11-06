@@ -187,6 +187,10 @@ public:
      */
     const Entry* findFirst(unsigned num) const;
 
+    const Entry* findFirst(CoapOption num) const {
+        return findFirst((unsigned)num);
+    }
+
     /**
      * Find the first option with a number greater than a given one.
      *
@@ -194,6 +198,10 @@ public:
      * @return Pointer to the option object or `nullptr` if such an option cannot be found.
      */
     const Entry* findNext(unsigned num) const;
+
+    const Entry* findNext(CoapOption num) const {
+        return findNext((unsigned)num);
+    }
 
     /**
      * Get the first option in the list.

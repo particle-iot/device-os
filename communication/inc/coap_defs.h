@@ -106,6 +106,8 @@ enum class CoapOption {
     BLOCK2 = 23,
     BLOCK1 = 27,
     SIZE2 = 28,
+    // RFC 7967
+    NO_RESPONSE = 258,
     // RFC 9175, 3.2. The Request-Tag Option
     REQUEST_TAG = 292
 };

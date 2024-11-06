@@ -173,13 +173,14 @@ private:
     int prepareMessage(const RefCountPtr<Message>& msg);
     int updateMessage(const RefCountPtr<Message>& msg);
     int sendMessage(RefCountPtr<Message> msg);
+    int sendPayloadBlock(const RefCountPtr<Message>& msg);
     void clearMessage(const RefCountPtr<Message>& msg);
+
+    int sendAck(int coapId, bool rst = false);
 
     void encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, const char* data, size_t size);
     void encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, unsigned val);
     void encodeOptions(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, unsigned lastNum = MAX_COAP_OPTION_NUMBER);
-
-    int sendAck(int coapId, bool rst = false);
 
     int handleProtocolError(ProtocolError error);
 

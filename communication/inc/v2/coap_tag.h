@@ -49,7 +49,7 @@ public:
         return !size_;
     }
 
-    CoapTag& increment();
+    CoapTag& next();
 
     int compareWith(const CoapTag& tag) const;
 

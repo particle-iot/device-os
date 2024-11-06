@@ -35,7 +35,7 @@ CoapTag::CoapTag(const char* data, size_t size) :
     std::memcpy(data_, data, size_);
 }
 
-CoapTag& CoapTag::increment() {
+CoapTag& CoapTag::next() {
     uint64_t v = 0;
     static_assert(sizeof(v) >= MAX_SIZE);
     std::memcpy(&v, data_, size_);

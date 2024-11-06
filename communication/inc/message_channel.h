@@ -89,7 +89,7 @@ public:
 
     void send_direct(bool enabled)
     {
-    	return send_direct_ = enabled;
+    	send_direct_ = enabled;
     }
 
     CoAPType::Enum get_type() const

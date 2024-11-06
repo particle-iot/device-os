@@ -388,22 +388,26 @@ int CoapChannel::endRequest(RefCountPtr<CoapMessage> coapMsg, coap_response_call
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
     }
-    auto req = staticPtrCast<RequestMessage>(msg);
-    if (req->state != MessageState::WRITE || req->hasMore.value_or(false)) {
+    if (msg->state != MessageState::WRITE || msg->hasMore.value_or(false)) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    if (!req->pos) {
-        if (curMsgId_) {
-            // TODO: Support asynchronous writing to multiple message instances
-            LOG(WARN, "CoAP message buffer is already in use");
-            releaseMessageBuffer();
-        }
-        CHECK(prepareMessage(req));
-    } else if (curMsgId_ != req->id) {
-        LOG(ERROR, "CoAP message buffer is no longer available");
-        return SYSTEM_ERROR_NOT_SUPPORTED;
+    auto req = staticPtrCast<RequestMessage>(msg);
+    if (!req->pos && curMsgId_) {
+        // TODO: Support asynchronous writing to multiple message instances
+        LOG(WARN, "CoAP message buffer is already in use");
+        releaseMessageBuffer();
     }
-    CHECK(sendMessage(req));
+    if (req->payload) {
+        CHECK(sendPayloadBlock(req));
+    } else {
+        if (!req->pos) {
+            CHECK(prepareMessage(req));
+        } else if (curMsgId_ != req->id) {
+            LOG(ERROR, "CoAP message buffer is no longer available");
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+        CHECK(sendMessage(req));
+    }
     req->responseCallback = respCallback;
     req->ackCallback = ackCallback;
     req->errorCallback = errorCallback;
@@ -475,8 +479,10 @@ int CoapChannel::writeBlock(const RefCountPtr<CoapMessage>& coapMsg, const char*
     if (msg->state != MessageState::WRITE) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    if (msg->payload) {
-        return SYSTEM_ERROR_INVALID_STATE; // Can't mix coap_set_payload() and coap_write_block()
+    if (msg->payload || (msg->flags & COAP_MESSAGE_FULL)) {
+        // Can't mix coap_write_block() with coap_set_payload() or use it together with the
+        // COAP_MESSAGE_FULL flag
+        return SYSTEM_ERROR_INVALID_STATE;
     }
     bool sendBlock = false;
     if (size > 0) {
@@ -512,7 +518,7 @@ int CoapChannel::writeBlock(const RefCountPtr<CoapMessage>& coapMsg, const char*
             if (!msg->blockIndex.has_value()) {
                 msg->blockIndex = 0;
                 // Add a Request-Tag option
-                msg->tag = lastReqTag_.increment();
+                msg->tag = lastReqTag_.next();
             }
             msg->hasMore = true;
             CHECK(updateMessage(msg)); // Update or add blockwise transfer options to the message
@@ -536,7 +542,8 @@ int CoapChannel::readBlock(const RefCountPtr<CoapMessage>& coapMsg, char* data, 
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (msg->payload) {
-        return SYSTEM_ERROR_INVALID_STATE; // Can't use coap_read_block() together with the COAP_MESSAGE_FULL flag
+        // Can't use coap_read_block() together with the COAP_MESSAGE_FULL flag
+        return SYSTEM_ERROR_INVALID_STATE;
     }
     bool getBlock = false;
     if (size > 0) {
@@ -590,7 +597,8 @@ int CoapChannel::peekBlock(const RefCountPtr<CoapMessage>& coapMsg, char* data, 
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (msg->payload) {
-        return SYSTEM_ERROR_INVALID_STATE; // Can't use coap_peek_block() together with the COAP_MESSAGE_FULL flag
+        // Can't use coap_peek_block() together with the COAP_MESSAGE_FULL flag
+        return SYSTEM_ERROR_INVALID_STATE;
     }
     if (size > 0) {
         if (msg->pos == msg->end) {
@@ -1112,6 +1120,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         }
         return r; // 0 or Result::HANDLED
     }
+    // TODO: What happens when a response arrives for a request with a No-Reponse option set?
     assert(req->state == MessageState::WAIT_RESPONSE);
     removeRefFromList(sentReqs_, req);
     req->state = MessageState::DONE;
@@ -1190,12 +1199,17 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         auto code = d.code();
         if (code == CoapCode::CONTINUE) {
             req->state = MessageState::WRITE;
-            // Invoke the block handler
-            assert(req->blockCallback);
-            int r = req->blockCallback(reinterpret_cast<coap_message*>(req.get()), req->id, req->callbackArg);
-            if (r < 0) {
-                LOG(ERROR, "Message block handler failed: %d", r);
-                clearMessage(req);
+            if (req->payload) {
+                req->payloadPos += COAP_BLOCK_SIZE;
+                CHECK(sendPayloadBlock(req)); // TODO: Any additional error handling?
+            } else {
+                // Invoke the block handler
+                assert(req->blockCallback);
+                int r = req->blockCallback(reinterpret_cast<coap_message*>(req.get()), req->id, req->callbackArg);
+                if (r < 0) {
+                    LOG(ERROR, "Message block handler failed: %d", r);
+                    clearMessage(req);
+                }
             }
         } else {
             LOG(ERROR, "Blockwise transfer failed: %d.%02d", (int)coapCodeClass(code), (int)coapCodeDetail(code));
@@ -1286,10 +1300,20 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
         removeRefFromList(unackMsgs_, msg);
         msg->state = MessageState::DONE;
         if (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST) {
-            msg->state = MessageState::WAIT_RESPONSE;
-            addRefToList(sentReqs_, staticPtrCast<RequestMessage>(msg));
-            if (isCoapResponseCode(d.code())) {
-                CHECK(handleResponse(d));
+            bool noResp = false;
+            if (msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) {
+                // Check if a response is needed
+                auto opt = msg->options.findFirst(CoapOption::NO_RESPONSE);
+                if (opt && (opt->toUint() & 0x1a) == 0x1a) { // RFC 7967, 2.1
+                    noResp = true;
+                }
+            }
+            if (!noResp) {
+                msg->state = MessageState::WAIT_RESPONSE;
+                addRefToList(sentReqs_, staticPtrCast<RequestMessage>(msg));
+                if (isCoapResponseCode(d.code())) {
+                    CHECK(handleResponse(d));
+                }
             }
         }
     }
@@ -1383,6 +1407,30 @@ int CoapChannel::sendMessage(RefCountPtr<Message> msg) {
     msg->pos = nullptr;
     addRefToList(unackMsgs_, std::move(msg));
     releaseMessageBuffer();
+    return 0;
+}
+
+int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg) {
+    assert(msg->type == MessageType::REQUEST && // TODO: Support device-to-cloud blockwise responses
+            msg->payload && !curMsgId_);
+    size_t bytesToSend = msg->payload->size() - msg->payloadPos;
+    if (bytesToSend > COAP_BLOCK_SIZE || msg->blockIndex.has_value()) {
+        if (bytesToSend > COAP_BLOCK_SIZE) {
+            bytesToSend = COAP_BLOCK_SIZE;
+        }
+        if (!msg->blockIndex.has_value()) {
+            // Add a Request-Tag option
+            msg->tag = lastReqTag_.next();
+        }
+        msg->blockIndex = msg->payloadPos / COAP_BLOCK_SIZE;
+        msg->hasMore = msg->payloadPos + bytesToSend < msg->payload->size();
+    }
+    CHECK(prepareMessage(msg));
+    if (bytesToSend > 0) {
+        *msg->pos++ = 0xff; // Payload marker
+        msg->pos += CHECK(msg->payload->read(msg->pos, bytesToSend, msg->payloadPos));
+    }
+    CHECK(sendMessage(msg));
     return 0;
 }
 
