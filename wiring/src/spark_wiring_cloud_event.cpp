@@ -59,6 +59,14 @@ CloudEvent::CloudEvent() :
         d_(makeRefCountPtr<Data>()) {
 }
 
+CloudEvent::CloudEvent(const CloudEvent& event) :
+        d_(event.d_) {
+}
+
+CloudEvent::CloudEvent(CloudEvent&& event) {
+    swap(*this, event);
+}
+
 CloudEvent::~CloudEvent() {
 }
 
@@ -255,6 +263,17 @@ int CloudEvent::peek() {
     return (unsigned char)c;
 }
 
+int CloudEvent::available() {
+    if (!d_ || !d_->payload) {
+        return 0;
+    }
+    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
+    if (r < 0) {
+        return 0;
+    }
+    return r - d_->pos;
+}
+
 size_t CloudEvent::write(const uint8_t* data, size_t size) {
     if (!isWritable()) {
         return 0;
@@ -300,6 +319,11 @@ void CloudEvent::clearError() {
     }
     d_->error = 0;
     d_->status = Status::NEW;
+}
+
+CloudEvent& CloudEvent::operator=(CloudEvent event) {
+    swap(*this, event);
+    return *this;
 }
 
 coap_payload* CloudEvent::getMutablePayload() {

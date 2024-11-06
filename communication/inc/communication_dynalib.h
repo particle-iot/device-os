@@ -27,6 +27,10 @@
 #include "hal_platform.h"
 #include "time_compat.h"
 
+#ifdef DYNALIB_EXPORT
+#include "coap_api.h"
+#endif
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -78,6 +82,37 @@ DYNALIB_FN(BASE_IDX2 + 5, communication, spark_protocol_post_description, int(Pr
 DYNALIB_FN(BASE_IDX2 + 6, communication, spark_protocol_to_system_error, int(int))
 DYNALIB_FN(BASE_IDX2 + 7, communication, spark_protocol_get_status, int(ProtocolFacade*, protocol_status*, void*))
 DYNALIB_FN(BASE_IDX2 + 8, communication, spark_protocol_get_connection_property, int(ProtocolFacade*, unsigned, void*, size_t*, void*))
+
+DYNALIB_FN(BASE_IDX2 + 9, communication, coap_add_connection_handler, int(coap_connection_callback, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 10, communication, coap_remove_connection_handler, void(coap_connection_callback, void*))
+DYNALIB_FN(BASE_IDX2 + 11, communication, coap_add_request_handler, int(const char*, int, int, coap_request_callback, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 12, communication, coap_remove_request_handler, void(const char*, int, void*))
+DYNALIB_FN(BASE_IDX2 + 13, communication, coap_begin_request, int(coap_message**, const char*, int, int, int, void*))
+DYNALIB_FN(BASE_IDX2 + 14, communication, coap_end_request, int(coap_message*, coap_response_callback, coap_ack_callback, coap_error_callback, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 15, communication, coap_begin_response, int(coap_message**, int, int, int, void*))
+DYNALIB_FN(BASE_IDX2 + 16, communication, coap_end_response, int(coap_message*, coap_ack_callback, coap_error_callback, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 17, communication, coap_destroy_message, void(coap_message*, void*))
+DYNALIB_FN(BASE_IDX2 + 18, communication, coap_cancel_request, void(int, void*))
+DYNALIB_FN(BASE_IDX2 + 19, communication, coap_write_block, int(coap_message*, const char*, size_t*, coap_block_callback, coap_error_callback, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 20, communication, coap_read_block, int(coap_message*, char*, size_t*, coap_block_callback, coap_error_callback, void*, void*))
+DYNALIB_FN(BASE_IDX2 + 21, communication, coap_peek_block, int(coap_message*, char*, size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 22, communication, coap_create_payload, int(coap_payload**, void*))
+DYNALIB_FN(BASE_IDX2 + 23, communication, coap_destroy_payload, void(coap_payload*, void*))
+DYNALIB_FN(BASE_IDX2 + 24, communication, coap_write_payload, int(coap_payload*, const char*, size_t, size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 25, communication, coap_read_payload, int(coap_payload*, char*, size_t, size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 26, communication, coap_set_payload_size, int(coap_payload*, size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 27, communication, coap_get_payload_size, int(coap_payload*, void*))
+DYNALIB_FN(BASE_IDX2 + 28, communication, coap_set_payload, int(coap_message*, coap_payload*, void*))
+DYNALIB_FN(BASE_IDX2 + 29, communication, coap_get_payload, int(coap_message*, coap_payload**, void*))
+DYNALIB_FN(BASE_IDX2 + 30, communication, coap_get_option, int(coap_message*, coap_option**, int, void*))
+DYNALIB_FN(BASE_IDX2 + 31, communication, coap_get_next_option, int(coap_message*, coap_option**, int*, void*))
+DYNALIB_FN(BASE_IDX2 + 32, communication, coap_get_uint_option_value, int(coap_option*, unsigned*, void*))
+DYNALIB_FN(BASE_IDX2 + 33, communication, coap_get_string_option_value, int(coap_option*, char*, size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 34, communication, coap_get_opaque_option_value, int(coap_option*, char*, size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 35, communication, coap_add_empty_option, int(coap_message*, int, void*))
+DYNALIB_FN(BASE_IDX2 + 36, communication, coap_add_uint_option, int(coap_message*, int, unsigned, void*))
+DYNALIB_FN(BASE_IDX2 + 37, communication, coap_add_string_option, int(coap_message*, int, const char*, void*))
+DYNALIB_FN(BASE_IDX2 + 38, communication, coap_add_opaque_option, int(coap_message*, int, const char*, size_t, void*))
 
 DYNALIB_END(communication)
 

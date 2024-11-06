@@ -18,6 +18,7 @@
 #pragma once
 
 #include <functional>
+#include <utility>
 #include <cstring>
 
 #include "spark_wiring_cloud.h"
@@ -69,6 +70,9 @@ public:
             CloudEvent(name) {
         this->data(data);
     }
+
+    CloudEvent(const CloudEvent& event);
+    CloudEvent(CloudEvent&& event);
 
     ~CloudEvent();
 
@@ -150,12 +154,19 @@ public:
 
     void clearError();
 
-    bool operator==(CloudEvent event) const {
+    CloudEvent& operator=(CloudEvent event);
+
+    bool operator==(const CloudEvent& event) const {
         return d_.get() == event.d_.get();
     }
 
-    bool operator!=(CloudEvent event) const {
+    bool operator!=(const CloudEvent& event) const {
         return d_.get() != event.d_.get();
+    }
+
+    friend void swap(CloudEvent& event1, CloudEvent& event2) {
+        using std::swap;
+        swap(event1.d_, event2.d_);
     }
 
 private:

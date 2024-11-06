@@ -409,7 +409,7 @@ int coap_write_block(coap_message* msg, const char* data, size_t* size, coap_blo
  * @return 0 or `COAP_RESULT_WAIT_BLOCK` on success, otherwise an error code defined by the
  *        `system_error_t` enum.
  */
-int coap_read_block(coap_message* msg, char* data, size_t *size, coap_block_callback block_cb,
+int coap_read_block(coap_message* msg, char* data, size_t* size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved);
 
 /**

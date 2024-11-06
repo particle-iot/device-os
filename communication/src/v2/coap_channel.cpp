@@ -639,6 +639,9 @@ int CoapChannel::getPayload(const RefCountPtr<CoapMessage>& coapMsg, RefCountPtr
 }
 
 int CoapChannel::addOption(const RefCountPtr<CoapMessage>& coapMsg, unsigned num, const char* data, size_t size) {
+    if (num > MAX_COAP_OPTION_NUMBER) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;
@@ -651,6 +654,9 @@ int CoapChannel::addOption(const RefCountPtr<CoapMessage>& coapMsg, unsigned num
 }
 
 int CoapChannel::addOption(const RefCountPtr<CoapMessage>& coapMsg, unsigned num, unsigned val) {
+    if (num > MAX_COAP_OPTION_NUMBER) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     auto msg = staticPtrCast<Message>(coapMsg);
     if (msg->sessionId != sessId_) {
         return SYSTEM_ERROR_COAP_REQUEST_CANCELLED;

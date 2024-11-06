@@ -196,9 +196,11 @@ int coap_get_payload(coap_message* apiMsg, coap_payload** apiPayload, void* rese
 }
 
 int coap_get_option(coap_message* apiMsg, coap_option** apiOpt, int num, void* reserved) {
-    RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     const CoapOptions::Entry* opt = nullptr;
-    CHECK(CoapChannel::instance()->getOption(msg, num, opt));
+    if (num >= 0) {
+        RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
+        CHECK(CoapChannel::instance()->getOption(msg, num, opt));
+    }
     assert(apiOpt);
     *apiOpt = const_cast<coap_option*>(reinterpret_cast<const coap_option*>(opt));
     return 0;
@@ -245,24 +247,36 @@ int coap_get_opaque_option_value(coap_option* apiOpt, char* data, size_t size, v
 }
 
 int coap_add_empty_option(coap_message* apiMsg, int num, void* reserved) {
+    if (num < 0) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     CHECK(CoapChannel::instance()->addOption(msg, num, nullptr /* data */, 0 /* size */));
     return 0;
 }
 
 int coap_add_uint_option(coap_message* apiMsg, int num, unsigned val, void* reserved) {
+    if (num < 0) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     CHECK(CoapChannel::instance()->addOption(msg, num, val));
     return 0;
 }
 
 int coap_add_string_option(coap_message* apiMsg, int num, const char* val, void* reserved) {
+    if (num < 0) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     CHECK(CoapChannel::instance()->addOption(msg, num, val, std::strlen(val)));
     return 0;
 }
 
 int coap_add_opaque_option(coap_message* apiMsg, int num, const char* data, size_t size, void* reserved) {
+    if (num < 0) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     CHECK(CoapChannel::instance()->addOption(msg, num, data, size));
     return 0;
