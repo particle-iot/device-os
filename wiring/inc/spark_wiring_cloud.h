@@ -668,6 +668,9 @@ private:
 
     static int useLedgersImpl(const Vector<const char*>& names);
 #endif // Wiring_Ledger
+
+    static int eventRequestAckCallback(int reqId, void* arg);
+    static void eventRequestErrorCallback(int err, int reqId, void* arg);
 };
 
 extern CloudClass Spark __attribute__((deprecated("Spark is now Particle.")));

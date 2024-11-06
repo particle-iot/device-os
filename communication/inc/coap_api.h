@@ -191,7 +191,8 @@ typedef enum coap_option_number {
     COAP_OPTION_LOCATION_QUERY = 20, ///< Location-Query.
     COAP_OPTION_PROXY_URI = 35, ///< Proxy-Uri.
     COAP_OPTION_PROXY_SCHEME = 39, ///< Proxy-Scheme.
-    COAP_OPTION_SIZE1 = 60 ///< Size1.
+    COAP_OPTION_SIZE1 = 60, ///< Size1.
+    COAP_OPTION_NO_RESPONSE = 258 ///< No-Response (RFC 7967).
 } coap_option_number;
 
 /**

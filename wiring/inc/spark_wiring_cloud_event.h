@@ -152,8 +152,6 @@ public:
 
     int error() const;
 
-    void clearError();
-
     CloudEvent& operator=(CloudEvent event);
 
     bool operator==(const CloudEvent& event) const {
@@ -169,14 +167,35 @@ public:
         swap(event1.d_, event2.d_);
     }
 
+protected:
+    // Methods called by CloudClass
+
+    int prepareForPublish();
+    void finishPublish(int error);
+
+    coap_payload* payload() const;
+
+    void* ref() const {
+        return d_.get();
+    }
+
+    void addRef();
+
+    static CloudEvent wrapRef(void* ref);
+
 private:
     struct Data;
 
     RefCountPtr<Data> d_;
 
-    coap_payload* getMutablePayload();
+    coap_payload* getValidPayload();
+    void setStatus(Status status);
     CloudEvent& setError(int error);
     bool isWritable() const;
+
+    explicit CloudEvent(RefCountPtr<Data> data);
+
+    friend class ::CloudClass;
 };
 
 } // namespace particle

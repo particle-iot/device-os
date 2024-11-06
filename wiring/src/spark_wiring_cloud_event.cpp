@@ -36,6 +36,15 @@
             _r; \
         })
 
+#define CHECK_AND_RETURN_DEFAULT(_expr, _type) \
+        ({ \
+            const auto _r = _expr; \
+            if (_r < 0) { \
+                return _type(); \
+            } \
+            _r; \
+        })
+
 namespace particle {
 
 struct CloudEvent::Data: public RefCount {
@@ -46,12 +55,14 @@ struct CloudEvent::Data: public RefCount {
     Status status;
     size_t pos;
     int error;
+    bool sendFailed; // TODO: Use a separate status?
 
     Data() :
             contentType(ContentType::TEXT),
             status(Status::NEW),
             pos(0),
-            error(0) {
+            error(0),
+            sendFailed(false) {
     }
 };
 
@@ -67,6 +78,10 @@ CloudEvent::CloudEvent(CloudEvent&& event) {
     swap(*this, event);
 }
 
+CloudEvent::CloudEvent(RefCountPtr<Data> data) :
+        d_(std::move(data)) {
+}
+
 CloudEvent::~CloudEvent() {
 }
 
@@ -74,7 +89,11 @@ CloudEvent& CloudEvent::name(const char* name) {
     if (!isWritable()) {
         return *this;
     }
-    CString nameCopy(name);
+    size_t nameLen = std::strlen(name);
+    if (!nameLen) {
+        return setError(Error::INVALID_ARGUMENT);
+    }
+    CString nameCopy(name, nameLen);
     if (!nameCopy) {
         return setError(Error::NO_MEMORY);
     }
@@ -108,7 +127,7 @@ CloudEvent& CloudEvent::data(const char* data, size_t size) {
     if (!isWritable()) {
         return *this;
     }
-    auto payload = getMutablePayload();
+    auto payload = getValidPayload();
     if (!payload) {
         return *this;
     }
@@ -122,10 +141,11 @@ CloudEvent& CloudEvent::data(const Variant& data) {
     if (!isWritable()) {
         return *this;
     }
-    auto payload = getMutablePayload();
+    auto payload = getValidPayload();
     if (!payload) {
         return *this;
     }
+    // TODO: Don't use this stream object directly
     d_->pos = 0;
     size_t size = CHECK_AND_SET_ERROR(encodeToCBOR(data, *this));
     CHECK_AND_SET_ERROR(coap_set_payload_size(payload, size, nullptr /* reserved */));
@@ -136,19 +156,12 @@ String CloudEvent::data() const {
     if (!d_ || !d_->payload) {
         return String();
     }
-    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
-    if (r < 0) {
-        return String();
-    }
-    size_t size = r;
+    size_t size = CHECK_AND_RETURN_DEFAULT(coap_get_payload_size(d_->payload.get(), nullptr /* reserved */), String);
     String str;
     if (!str.resize(size)) {
         return String();
     }
-    r = coap_read_payload(d_->payload.get(), &str.operator[](0), size, 0 /* pos */, nullptr /* reserved */);
-    if (r < 0) {
-        return String();
-    }
+    CHECK_AND_RETURN_DEFAULT(coap_read_payload(d_->payload.get(), &str.operator[](0), size, 0 /* pos */, nullptr /* reserved */), String);
     return str;
 }
 
@@ -156,19 +169,12 @@ Buffer CloudEvent::dataAsBuffer() const {
     if (!d_ || !d_->payload) {
         return Buffer();
     }
-    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
-    if (r < 0) {
-        return Buffer();
-    }
-    size_t size = r;
+    size_t size = CHECK_AND_RETURN_DEFAULT(coap_get_payload_size(d_->payload.get(), nullptr /* reserved */), Buffer);
     Buffer buf;
     if (!buf.resize(size)) {
         return Buffer();
     }
-    r = coap_read_payload(d_->payload.get(), buf.data(), size, 0 /* pos */, nullptr /* reserved */);
-    if (r < 0) {
-        return Buffer();
-    }
+    CHECK_AND_RETURN_DEFAULT(coap_read_payload(d_->payload.get(), buf.data(), size, 0 /* pos */, nullptr /* reserved */), Buffer);
     return buf;
 }
 
@@ -176,16 +182,14 @@ Variant CloudEvent::dataAsVariant() {
     if (!d_ || !d_->payload) {
         return Variant();
     }
+    // TODO: Don't use this stream object directly
     auto origPos = d_->pos;
     d_->pos = 0;
     SCOPE_GUARD({
         d_->pos = origPos;
     });
     Variant v;
-    int r = decodeFromCBOR(v, *this);
-    if (r < 0) {
-        return Variant();
-    }
+    CHECK_AND_RETURN_DEFAULT(decodeFromCBOR(v, *this), Variant);
     return v;
 }
 
@@ -193,7 +197,7 @@ CloudEvent& CloudEvent::size(size_t size) {
     if (!isWritable()) {
         return *this;
     }
-    auto payload = getMutablePayload();
+    auto payload = getValidPayload();
     if (!payload) {
         return *this;
     }
@@ -208,11 +212,8 @@ size_t CloudEvent::size() const {
     if (!d_ || !d_->payload) {
         return 0;
     }
-    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
-    if (r < 0) {
-        return 0;
-    }
-    return r;
+    size_t size = CHECK_AND_RETURN_DEFAULT(coap_get_payload_size(d_->payload.get(), nullptr /* reserved */), size_t);
+    return size;
 }
 
 CloudEvent& CloudEvent::onStatusChange(std::function<OnStatusChange> callback) {
@@ -278,7 +279,7 @@ size_t CloudEvent::write(const uint8_t* data, size_t size) {
     if (!isWritable()) {
         return 0;
     }
-    auto payload = getMutablePayload();
+    auto payload = getValidPayload();
     if (!payload) {
         return 0;
     }
@@ -313,12 +314,51 @@ int CloudEvent::error() const {
     return d_->error;
 }
 
-void CloudEvent::clearError() {
-    if (!d_ || d_->status != Status::FAILED) {
-        return;
+int CloudEvent::prepareForPublish() {
+    auto status = this->status();
+    if (status == Status::SENDING) {
+        return SYSTEM_ERROR_INVALID_STATE;
     }
-    d_->error = 0;
-    d_->status = Status::NEW;
+    if (status == Status::FAILED) {
+        if (!d_ || !d_->sendFailed) {
+            return error(); // Irrecoverable error
+        }
+        d_->sendFailed = false;
+    }
+    if (!d_->name) {
+        setError(SYSTEM_ERROR_INVALID_STATE);
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    setStatus(Status::SENDING);
+    return 0;
+}
+
+void CloudEvent::finishPublish(int error) {
+    if (error < 0) {
+        d_->error = error;
+        d_->sendFailed = true;
+        setStatus(Status::FAILED);
+    } else {
+        setStatus(Status::SENT);
+    }
+}
+
+coap_payload* CloudEvent::payload() const {
+    if (!d_) {
+        return nullptr;
+    }
+    return d_->payload.get();
+}
+
+void CloudEvent::addRef() {
+    if (d_) {
+        d_->addRef();
+    }
+}
+
+CloudEvent CloudEvent::wrapRef(void* ref) {
+    auto d = RefCountPtr<Data>::wrap(static_cast<Data*>(ref));
+    return CloudEvent(std::move(d));
 }
 
 CloudEvent& CloudEvent::operator=(CloudEvent event) {
@@ -326,7 +366,7 @@ CloudEvent& CloudEvent::operator=(CloudEvent event) {
     return *this;
 }
 
-coap_payload* CloudEvent::getMutablePayload() {
+coap_payload* CloudEvent::getValidPayload() {
     if (!d_) {
         return nullptr;
     }
@@ -342,19 +382,24 @@ coap_payload* CloudEvent::getMutablePayload() {
     return d_->payload.get();
 }
 
+void CloudEvent::setStatus(Status status) {
+    if (!d_) {
+        return;
+    }
+    d_->status = status;
+    // TODO: Invoke the status change callback
+}
+
 CloudEvent& CloudEvent::setError(int error) {
     if (d_ && d_->status != Status::FAILED) {
         d_->error = error;
-        d_->status = Status::FAILED;
+        setStatus(Status::FAILED);
     }
     return *this;
 }
 
 bool CloudEvent::isWritable() const {
-    if (!d_ || d_->status != Status::NEW) {
-        return false;
-    }
-    return true;
+    return d_ && (d_->status == Status::NEW || d_->status == Status::SENT);
 }
 
 } // namespace particle

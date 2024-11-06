@@ -1,4 +1,5 @@
 #include <functional>
+#include <cstdio>
 
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_cloud_event.h"
@@ -7,6 +8,9 @@
 #include "spark_wiring_print.h"
 
 #include "system_cloud.h"
+
+#include "coap_api.h"
+#include "coap_util.h"
 
 #include "check.h"
 
@@ -166,6 +170,39 @@ Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishF
 }
 
 bool CloudClass::publish(CloudEvent event) {
+    char uriPath[COAP_MAX_URI_PATH_LENGTH];
+    int r = std::snprintf(uriPath, sizeof(uriPath), "E/%s", event.name());
+    if (r < 0 || (size_t)r >= sizeof(uriPath)) {
+        LOG(ERROR, "Event name is too long");
+        return false;
+    }
+    coap_message* apiMsg = nullptr;
+    r = coap_begin_request(&apiMsg, uriPath, COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */);
+    if (r < 0) {
+        LOG(ERROR, "coap_begin_request() failed: %d", r);
+        return false;
+    }
+    CoapMessagePtr msg(apiMsg);
+    r = event.prepareForPublish();
+    if (r < 0) {
+        return false;
+    }
+    r = coap_set_payload(msg.get(), event.payload(), nullptr /* reserved */);
+    if (r < 0) {
+        LOG(ERROR, "coap_set_payload() failed: %d", r);
+        return false;
+    }
+    r = coap_add_uint_option(msg.get(), COAP_OPTION_NO_RESPONSE, 26, nullptr /* reserved */); // RFC 7967, 2.1
+    if (r < 0) {
+        LOG(ERROR, "coap_add_uint_option() failed: %d", r);
+        return false;
+    }
+    r = coap_end_request(msg.get(), nullptr /* resp_cb */, eventRequestAckCallback, eventRequestErrorCallback, event.ref(), nullptr /* reserved */);
+    if (r < 0) {
+        LOG(ERROR, "coap_end_request() failed: %d", r);
+        return false;
+    }
+    event.addRef();
     return true;
 }
 
@@ -274,6 +311,19 @@ bool CloudClass::subscribe(const char* name, EventHandlerWithCloudEvent* handler
 
 bool CloudClass::subscribe(const char* name, std::function<EventHandlerWithCloudEvent> handler) {
     return true;
+}
+
+int CloudClass::eventRequestAckCallback(int reqId, void* arg) {
+    // TODO: Invoke in the app thread
+    auto event = CloudEvent::wrapRef(arg);
+    event.finishPublish(0 /* error */);
+    return 0;
+}
+
+void CloudClass::eventRequestErrorCallback(int err, int reqId, void* arg) {
+    // TODO: Invoke in the app thread
+    auto event = CloudEvent::wrapRef(arg);
+    event.finishPublish(err);
 }
 
 namespace particle {
