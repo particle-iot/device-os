@@ -27,6 +27,8 @@ LOG_SOURCE_CATEGORY("system.coap")
 #include <algorithm>
 #include <optional>
 
+#include "mbedtls_config.h" // For MBEDTLS_SSL_MAX_CONTENT_LEN
+
 #include "v2/coap_channel.h"
 #include "coap_payload.h"
 #include "coap_options.h"

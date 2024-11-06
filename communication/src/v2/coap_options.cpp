@@ -66,10 +66,13 @@ int CoapOptions::add(unsigned num, unsigned val) {
 }
 
 int CoapOptions::add(unsigned num, const char* data, size_t size) {
-    Entry opt;
-    CHECK(opt.init(num, data, size));
-    auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const Entry& opt) {
-        return num < opt.number();
+    std::unique_ptr<Entry> opt(new(std::nothrow) Entry());
+    if (!opt) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK(opt->init(num, data, size));
+    auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const auto& opt) {
+        return num < opt->number();
     });
     it = opts_.insert(it, std::move(opt));
     if (it == opts_.end()) {
@@ -77,33 +80,33 @@ int CoapOptions::add(unsigned num, const char* data, size_t size) {
     }
     if (it != opts_.begin()) {
         auto prev = std::prev(it);
-        prev->next(&*it);
+        (*prev)->next(it->get());
     }
     auto next = std::next(it);
     if (next != opts_.end()) {
-        it->next(&*next);
+        (*it)->next(next->get());
     }
     return 0;
 }
 
 const CoapOptions::Entry* CoapOptions::findFirst(unsigned num) const {
-    auto it = std::lower_bound(opts_.begin(), opts_.end(), num, [](const Entry& opt, unsigned num) {
-        return opt.number() < num;
+    auto it = std::lower_bound(opts_.begin(), opts_.end(), num, [](const auto& opt, unsigned num) {
+        return opt->number() < num;
     });
-    if (it == opts_.end() || it->number() != num) {
+    if (it == opts_.end() || (*it)->number() != num) {
         return nullptr;
     }
-    return &*it;
+    return it->get();
 }
 
 const CoapOptions::Entry* CoapOptions::findNext(unsigned num) const {
-    auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const Entry& opt) {
-        return num < opt.number();
+    auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const auto& opt) {
+        return num < opt->number();
     });
     if (it == opts_.end()) {
         return nullptr;
     }
-    return &*it;
+    return it->get();
 }
 
 } // namespace particle::protocol::v2

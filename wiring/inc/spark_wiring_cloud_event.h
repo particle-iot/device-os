@@ -106,7 +106,7 @@ public:
 
     String data() const;
     Buffer dataAsBuffer() const;
-    Variant dataAsVariant() /* FIXME: const */;
+    Variant dataAsVariant() /* FIXME: const */; // TODO: Rename?
 
     CloudEvent& size(size_t size);
     size_t size() const;

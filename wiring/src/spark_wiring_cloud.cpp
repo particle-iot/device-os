@@ -203,6 +203,7 @@ bool CloudClass::publish(CloudEvent event) {
         return false;
     }
     event.addRef();
+    msg.release();
     return true;
 }
 

@@ -21,6 +21,8 @@
 #include "spark_wiring_variant.h"
 #include "spark_wiring_error.h"
 
+#include "system_cloud.h" // For MAX_EVENT_NAME_LENGTH
+
 #include "coap_api.h"
 #include "coap_util.h"
 
@@ -90,7 +92,7 @@ CloudEvent& CloudEvent::name(const char* name) {
         return *this;
     }
     size_t nameLen = std::strlen(name);
-    if (!nameLen) {
+    if (!nameLen || nameLen > protocol::MAX_EVENT_NAME_LENGTH) {
         return setError(Error::INVALID_ARGUMENT);
     }
     CString nameCopy(name, nameLen);

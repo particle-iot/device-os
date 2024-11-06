@@ -25,14 +25,13 @@
 #define COAP_MAX_URI_PATH_LENGTH 127
 
 /**
- * Maximum supported size of payload data that can be sent or received in a request or response
- * message.
+ * Maximum supported size of payload data.
  */
 #define COAP_MAX_PAYLOAD_SIZE 16384
 
 /**
- * Maximum size of payload data that can be sent or received without splitting the request or
- * response message into multiple CoAP messages.
+ * Maximum amount of payload data that can be sent or received in a request or response message
+ * without it being split into multiple CoAP messages.
  */
 #define COAP_BLOCK_SIZE 1024
 
@@ -220,8 +219,8 @@ typedef enum coap_connection_status {
  */
 typedef enum coap_message_flag {
     /**
-     * Store the entire payload data of the message prior to sending an outgoing message or notifying
-     * the user when an incoming message is received.
+     * Store the entire payload data of the message prior to notifying the user that an incoming
+     * message is received.
      */
     COAP_MESSAGE_FULL = 0x01
 } coap_message_flag;

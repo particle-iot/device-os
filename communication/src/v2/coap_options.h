@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <memory>
 #include <cstring>
 
 #include "coap_defs.h"
@@ -209,7 +210,7 @@ public:
      * @return Pointer to the option object or `nullptr` if the list is empty.
      */
     const Entry* first() const {
-        return opts_.isEmpty() ? nullptr : &opts_.first();
+        return opts_.isEmpty() ? nullptr : opts_.first().get();
     }
 
     /**
@@ -231,7 +232,7 @@ public:
     }
 
 private:
-    Vector<Entry> opts_; // TODO: Use a pool
+    Vector<std::unique_ptr<Entry>> opts_; // TODO: Use a pool
 };
 
 } // namespace particle::protocol::v2
