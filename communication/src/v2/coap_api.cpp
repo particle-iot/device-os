@@ -35,23 +35,12 @@ using namespace particle::protocol::v2;
 
 namespace {
 
-bool isValidMethod(int method) {
+bool isValidCoapMethod(int method) {
     switch (method) {
     case COAP_METHOD_GET:
     case COAP_METHOD_POST:
     case COAP_METHOD_PUT:
     case COAP_METHOD_DELETE:
-        return true;
-    default:
-        return false;
-    }
-}
-
-bool isValidWhence(int whence) {
-    switch (whence) {
-    case COAP_SEEK_SET:
-    case COAP_SEEK_CUR:
-    case COAP_SEEK_END:
         return true;
     default:
         return false;
@@ -70,7 +59,7 @@ void coap_remove_connection_handler(coap_connection_callback cb, void* reserved)
 }
 
 int coap_add_request_handler(const char* path, int method, int flags, coap_request_callback cb, void* arg, void* reserved) {
-    if (!isValidMethod(method)) {
+    if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     CHECK(CoapChannel::instance()->addRequestHandler(path, static_cast<coap_method>(method), cb, arg, flags));
@@ -78,14 +67,14 @@ int coap_add_request_handler(const char* path, int method, int flags, coap_reque
 }
 
 void coap_remove_request_handler(const char* path, int method, void* reserved) {
-    if (!isValidMethod(method)) {
+    if (!isValidCoapMethod(method)) {
         return;
     }
     CoapChannel::instance()->removeRequestHandler(path, static_cast<coap_method>(method));
 }
 
 int coap_begin_request(coap_message** apiMsg, const char* path, int method, int timeout, int flags, void* reserved) {
-    if (!isValidMethod(method)) {
+    if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     RefCountPtr<CoapMessage> msg;
@@ -167,30 +156,16 @@ void coap_destroy_payload(coap_payload* apiPayload, void* reserved) {
     RefCountPtr<CoapPayload>::wrap(reinterpret_cast<CoapPayload*>(apiPayload));
 }
 
-int coap_write_payload(coap_payload* apiPayload, const char* data, size_t size, void* reserved) {
+int coap_write_payload(coap_payload* apiPayload, const char* data, size_t size, size_t pos, void* reserved) {
     auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
-    size_t n = CHECK(payload->write(data, size));
+    size_t n = CHECK(payload->write(data, size, pos));
     return n;
 }
 
-int coap_read_payload(coap_payload* apiPayload, char* data, size_t size, void* reserved) {
+int coap_read_payload(coap_payload* apiPayload, char* data, size_t size, size_t pos, void* reserved) {
     auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
-    size_t n = CHECK(payload->read(data, size));
+    size_t n = CHECK(payload->read(data, size, pos));
     return n;
-}
-
-int coap_set_payload_pos(coap_payload* apiPayload, int pos, int whence, void* reserved) {
-    if (!isValidWhence(whence)) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
-    size_t newPos = CHECK(payload->setPos(pos, static_cast<coap_whence>(whence)));
-    return newPos;
-}
-
-int coap_get_payload_pos(coap_payload* apiPayload, void* reserved) {
-    auto payload = reinterpret_cast<CoapPayload*>(apiPayload);
-    return payload->pos();
 }
 
 int coap_set_payload_size(coap_payload* apiPayload, size_t size, void* reserved) {

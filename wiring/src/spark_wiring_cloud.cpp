@@ -7,7 +7,6 @@
 #include "spark_wiring_print.h"
 
 #include "system_cloud.h"
-#include "system_cloud_event.h"
 
 #include "check.h"
 
@@ -68,23 +67,6 @@ void subscribeWithVariantFunctionWrapper(void* arg, const char* name, const char
     }
     auto fn = (EventHandlerWithVariantFn*)arg;
     (*fn)(name, std::move(v));
-}
-
-void subscribeWithCloudEventCallbackWrapper(cloud_event* ev, void* arg) {
-    CloudEvent event(ev);
-    auto cb = (EventHandlerWithCloudEvent*)arg;
-    cb(std::move(event));
-}
-
-void subscribeWithCloudEventFunctionWrapper(cloud_event* ev, void* arg) {
-    CloudEvent event(ev);
-    auto fn = (std::function<EventHandlerWithCloudEvent>*)arg;
-    (*fn)(std::move(event));
-}
-
-void destroyEventHandlerWithCloudEventFunction(void* arg) {
-    auto fn = (std::function<EventHandlerWithCloudEvent>*)arg;
-    delete fn;
 }
 
 template<typename T>
@@ -184,14 +166,6 @@ Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishF
 }
 
 bool CloudClass::publish(CloudEvent event) {
-    auto ev = event.handle();
-    if (!ev) {
-        return false;
-    }
-    int r = cloud_event_publish(ev, nullptr /* opts */, nullptr /* reserved */);
-    if (r < 0) {
-        return false;
-    }
     return true;
 }
 
@@ -295,28 +269,10 @@ bool CloudClass::subscribe(const char* name, particle::EventHandlerWithVariantFn
 }
 
 bool CloudClass::subscribe(const char* name, EventHandlerWithCloudEvent* handler) {
-    int r = cloud_event_subscribe(name, subscribeWithCloudEventCallbackWrapper, nullptr /* destroy */, (void*)handler,
-            nullptr /* opts */, nullptr /* reserved */);
-    if (r < 0) {
-        LOG(ERROR, "cloud_event_subscribe() failed: %d", r);
-        return false;
-    }
     return true;
 }
 
 bool CloudClass::subscribe(const char* name, std::function<EventHandlerWithCloudEvent> handler) {
-    std::unique_ptr<std::function<EventHandlerWithCloudEvent>> fn(new(std::nothrow) std::function<EventHandlerWithCloudEvent>(std::move(handler)));
-    if (!fn) {
-        LOG(ERROR, "Memory allocation error");
-        return false;
-    }
-    int r = cloud_event_subscribe(name, subscribeWithCloudEventFunctionWrapper, destroyEventHandlerWithCloudEventFunction,
-            fn.get(), nullptr /* opts */, nullptr /* reserved */);
-    if (r < 0) {
-        LOG(ERROR, "cloud_event_subscribe() failed: %d", r);
-        return false;
-    }
-    fn.release(); // Transfer ownership to the system
     return true;
 }
 

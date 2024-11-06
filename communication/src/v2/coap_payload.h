@@ -38,17 +38,13 @@ namespace particle::protocol::v2 {
 class CoapPayload: public RefCount {
 public:
     CoapPayload() :
-            pos_(0),
             size_(0),
             fileNum_(0) {
     }
 
     ~CoapPayload();
 
-    int read(char* data, size_t size);
     int read(char* data, size_t size, size_t pos);
-
-    int write(const char* data, size_t size);
     int write(const char* data, size_t size, size_t pos);
 
     int setSize(size_t size);
@@ -57,16 +53,9 @@ public:
         return size_;
     }
 
-    int setPos(int pos, coap_whence whence);
-
-    size_t pos() const {
-        return pos_;
-    }
-
 private:
     Buffer buf_; // Portion of the payload data stored in RAM
     std::unique_ptr<lfs_file_t> file_; // Handle of the temporary file with the rest of the payload data
-    size_t pos_; // Current position in the payload data
     size_t size_; // Total size of the payload data
     unsigned fileNum_; // Sequence number of the temporary file
 

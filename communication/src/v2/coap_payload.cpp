@@ -90,13 +90,6 @@ CoapPayload::~CoapPayload() {
     }
 }
 
-int CoapPayload::read(char* data, size_t size) {
-    assert(pos_ <= size_);
-    size_t n = CHECK(read(data, size, pos_));
-    pos_ += n;
-    return n;
-}
-
 int CoapPayload::read(char* data, size_t size, size_t pos) {
     if (pos >= size_) {
         return SYSTEM_ERROR_END_OF_STREAM;
@@ -123,13 +116,6 @@ int CoapPayload::read(char* data, size_t size, size_t pos) {
         d += bytesToRead;
     }
     return d - data;
-}
-
-int CoapPayload::write(const char* data, size_t size) {
-    assert(pos_ <= size_);
-    size_t n = CHECK(write(data, size, pos_));
-    pos_ += n;
-    return n;
 }
 
 int CoapPayload::write(const char* data, size_t size, size_t pos) {
@@ -185,29 +171,8 @@ int CoapPayload::setSize(size_t size) {
         FsLock fs;
         CHECK(createTempFile(fs.instance()));
     }
-    if (pos_ > size) {
-        pos_ = size;
-    }
     size_ = size;
     return 0;
-}
-
-int CoapPayload::setPos(int pos, coap_whence whence) {
-    switch (whence) {
-    case COAP_SEEK_CUR:
-        pos = (int)pos_ + pos;
-        break;
-    case COAP_SEEK_END:
-        pos = (int)size_ + pos;
-        break;
-    }
-    if (pos < 0) {
-        pos = 0;
-    } else if ((size_t)pos > size_) {
-        pos = size_;
-    }
-    pos_ = pos;
-    return pos_;
 }
 
 int CoapPayload::createTempFile(lfs_t* fs) {

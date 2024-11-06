@@ -22,9 +22,10 @@
 
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_stream.h"
-#include "spark_wiring_error.h"
 
-#include "system_cloud_event.h"
+#include "ref_count.h"
+
+struct coap_payload;
 
 namespace particle {
 
@@ -42,10 +43,7 @@ public:
 
     typedef void OnStatusChange(CloudEvent event);
 
-    CloudEvent() :
-            ev_(nullptr) {
-        cloud_event_create(&ev_, nullptr /* reserved */);
-    }
+    CloudEvent();
 
     explicit CloudEvent(const char* name) :
             CloudEvent() {
@@ -72,43 +70,10 @@ public:
         this->data(data);
     }
 
-    // This constructor is for internal use only
-    explicit CloudEvent(cloud_event* event) :
-            ev_(event) {
-        if (ev_) {
-            cloud_event_add_ref(ev_, nullptr /* reserved */);
-        }
-    }
+    ~CloudEvent();
 
-    CloudEvent(const CloudEvent& event) :
-            ev_(event.ev_) {
-        cloud_event_add_ref(ev_, nullptr /* reserved */);
-    }
-
-    CloudEvent(CloudEvent&& event) :
-            ev_(event.ev_) {
-        event.ev_ = nullptr;
-    }
-
-    ~CloudEvent() {
-        if (ev_) {
-            cloud_event_release(ev_, nullptr /* reserved */);
-        }
-    }
-
-    CloudEvent& name(const char* name) {
-        if (ev_) {
-            cloud_event_set_name(ev_, name, nullptr /* reserved */);
-        }
-        return *this;
-    }
-
-    const char* name() const {
-        if (!ev_) {
-            return "";
-        }
-        return cloud_event_get_name(ev_, nullptr /* reserved */);
-    }
+    CloudEvent& name(const char* name);
+    const char* name() const;
 
     CloudEvent& contentType(ContentType type);
     ContentType contentType() const;
@@ -120,10 +85,8 @@ public:
     CloudEvent& data(const char* data, size_t size);
 
     CloudEvent& data(const char* data, size_t size, ContentType type) {
-        if (ev_) {
-            this->data(data, size);
-            contentType(type);
-        }
+        this->data(data, size);
+        contentType(type);
         return *this;
     }
 
@@ -137,33 +100,16 @@ public:
 
     CloudEvent& data(const Variant& data);
 
-    Buffer data() const;
+    String data() const;
+    Buffer dataAsBuffer() const;
     Variant dataAsVariant() /* FIXME: const */;
 
-    CloudEvent& size(size_t size) {
-        if (ev_) {
-            cloud_event_set_size(ev_, size, nullptr /* reserved */);
-        }
-        return *this;
-    }
+    CloudEvent& size(size_t size);
+    size_t size() const;
 
-    size_t size() const {
-        if (!ev_) {
-            return 0;
-        }
-        return cloud_event_get_size(ev_, nullptr /* reserved */);
-    }
-
-    CloudEvent& onStatusChange(OnStatusChange* callback);
     CloudEvent& onStatusChange(std::function<OnStatusChange> callback);
 
-    Status status() const {
-        if (!ev_) {
-            return Status::FAILED;
-        }
-        int s = cloud_event_get_status(ev_, nullptr /* reserved */);
-        return static_cast<Status>(s);
-    }
+    Status status() const;
 
     bool isSent() const {
         return status() == Status::SENT;
@@ -173,22 +119,12 @@ public:
         return status() != Status::FAILED;
     }
     
-    int save(const char* filename);
-    int save(int fd);
-
-    static CloudEvent load(const char* filename);
-    static CloudEvent load(int fd);
+    // TODO: saveData(), loadData()
 
     int read() override;
     size_t readBytes(char* data, size_t size) override;
     int peek() override;
-
-    int available() override {
-        if (!ev_) {
-            return 0;
-        }
-        return size() - pos();
-    }
+    int available() override;
 
     size_t write(uint8_t b) override {
         return write(&b, 1);
@@ -207,54 +143,29 @@ public:
     void flush() override {
     }
 
-    const CloudEvent& pos(size_t pos) const /* FIXME */ {
-        if (ev_) {
-            cloud_event_seek(ev_, pos, nullptr /* reserved */);
-        }
-        return *this;
-    }
-
+    CloudEvent& pos(size_t pos);
     size_t pos() const;
 
-    int error() const {
-        if (!ev_) {
-            return Error::NO_MEMORY;
-        }
-        return cloud_event_get_error(ev_, nullptr /* reserved */);
-    }
+    int error() const;
 
-    void clearError() {
-        if (ev_) {
-            cloud_event_clear_error(ev_, nullptr /* reserved */);
-        }
-    }
-
-    // This method is for internal use only
-    cloud_event* handle() const {
-        return ev_;
-    }
-
-    CloudEvent& operator=(CloudEvent event) {
-        swap(*this, event);
-        return *this;
-    }
+    void clearError();
 
     bool operator==(CloudEvent event) const {
-        return ev_ == event.ev_;
+        return d_.get() == event.d_.get();
     }
 
     bool operator!=(CloudEvent event) const {
-        return ev_ != event.ev_;
-    }
-
-    friend void swap(CloudEvent& event1, CloudEvent& event2) {
-        auto ev = event1.ev_;
-        event1.ev_ = event2.ev_;
-        event2.ev_ = ev;
+        return d_.get() != event.d_.get();
     }
 
 private:
-    cloud_event* ev_;
+    struct Data;
+
+    RefCountPtr<Data> d_;
+
+    coap_payload* getMutablePayload();
+    CloudEvent& setError(int error);
+    bool isWritable() const;
 };
 
 } // namespace particle

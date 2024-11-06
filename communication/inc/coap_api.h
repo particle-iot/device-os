@@ -226,17 +226,6 @@ typedef enum coap_message_flag {
 } coap_message_flag;
 
 /**
- * Position relative to which to change the current position in payload data.
- *
- * @see `coap_set_payload_pos()`.
- */
-typedef enum coap_whence {
-    COAP_SEEK_SET = 1, ///< Set an absolute position.
-    COAP_SEEK_CUR = 2, ///< Set a position relative to the current position.
-    COAP_SEEK_END = 3 ///< Set a position relative to the end of the payload data.
-} coap_whence;
-
-/**
  * Result code.
  */
 typedef enum coap_result {
@@ -461,7 +450,7 @@ void coap_destroy_payload(coap_payload* payload, void* reserved);
  * @return On success, the number of bytes written. Otherwise, an error code defined by the
  *     `system_error_t` enum.
  */
-int coap_write_payload(coap_payload* payload, const char* data, size_t size, void* reserved);
+int coap_write_payload(coap_payload* payload, const char* data, size_t size, size_t pos, void* reserved);
 
 /**
  * Read payload data.
@@ -473,30 +462,7 @@ int coap_write_payload(coap_payload* payload, const char* data, size_t size, voi
  * @return On success, the number of bytes read. Otherwise, an error code defined by the
  *     `system_error_t` enum.
  */
-int coap_read_payload(coap_payload* payload, char* data, size_t size, void* reserved);
-
-/**
- * Set the current position in payload data.
- *
- * @param payload Payload data instance.
- * @param pos New position (can be negative).
- * @param whence Position relative to which to change the current position as defined by the
- *     `coap_whence` enum.
- * @param reserved Reserved argument. Must be set to `NULL`.
- * @return On success, the new absolute position in the payload data. Otherwise, an error code
- *     defined by the `system_error_t` enum.
- */
-int coap_set_payload_pos(coap_payload* payload, int pos, int whence, void* reserved);
-
-/**
- * Get the current position in payload data.
- *
- * @param payload Payload data instance.
- * @param reserved Reserved argument. Must be set to `NULL`.
- * @return On success, the current position in the payload data. Otherwise, an error code defined by
- *     the `system_error_t` enum.
- */
-int coap_get_payload_pos(coap_payload* payload, void* reserved);
+int coap_read_payload(coap_payload* payload, char* data, size_t size, size_t pos, void* reserved);
 
 /**
  * Set the size of payload data.
