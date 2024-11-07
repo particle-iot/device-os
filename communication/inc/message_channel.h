@@ -40,7 +40,7 @@ class Message
 	size_t message_length;
     int id;                     // if < 0 then not-defined.
     bool confirm_received;
-    bool send_direct_;
+    bool passthrough_;
 
 	size_t trim_capacity()
 	{
@@ -65,7 +65,7 @@ class Message
 public:
 	Message() : Message(nullptr, 0, 0) {}
 
-	Message(uint8_t* buf, size_t buflen, size_t msglen=0) : buffer(buf), buffer_length(buflen), message_length(msglen), id(-1), confirm_received(false), send_direct_(false) {}
+	Message(uint8_t* buf, size_t buflen, size_t msglen=0) : buffer(buf), buffer_length(buflen), message_length(msglen), id(-1), confirm_received(false), passthrough_(false) {}
 
 	void clear() { id = -1; }
 
@@ -84,12 +84,17 @@ public:
     {
     	// TODO: Investigate if sending non-CoAP messages, such as zero- or 1-byte messages, still
     	// needs to be supported
-    	return send_direct_ || length() < MINIMUM_COAP_MESSAGE_LENGTH;
+    	return length() < MINIMUM_COAP_MESSAGE_LENGTH;
     }
 
-    void send_direct(bool enabled)
+    bool passthrough() const
     {
-    	send_direct_ = enabled;
+    	return passthrough_;
+    }
+
+    void passthrough(bool enabled)
+    {
+    	passthrough_ = enabled;
     }
 
     CoAPType::Enum get_type() const
@@ -148,7 +153,7 @@ public:
 		this->message_length = msg.message_length;
 		this->id = msg.id;
 		this->confirm_received = msg.confirm_received;
-		this->send_direct_ = msg.send_direct_;
+		this->passthrough_ = msg.passthrough_;
 		return *this;
 	}
 

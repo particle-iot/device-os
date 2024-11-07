@@ -1,5 +1,6 @@
 #pragma once
 
+#include "v2/coap_channel.h"
 #include "message_channel.h"
 #include "service_debug.h"
 #include "protocol_defs.h"
@@ -262,6 +263,10 @@ protected:
 	 */
 	ProtocolError event_loop_idle()
 	{
+		int r = v2::CoapChannel::instance()->run();
+		if (r < 0) {
+			return ProtocolError::COAP_ERROR;
+		}
 		ProtocolError error = description.processTimeouts();
 		if (error)
 		{

@@ -396,7 +396,7 @@ int CloudEvent::publishImpl() {
             [](int err, int reqId, void* arg) { // error_cb
                 publishComplete(err, arg);
             }, d_.get(), nullptr /* reserved */));
-    // The CoAP API now own the message
+    // The system now owns the message
     msg.release();
     // Keep the reference around until either the ACK or error callback is called
     d_->addRef();

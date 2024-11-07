@@ -156,7 +156,8 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 			channel.command(Channel::DISCARD_SESSION, nullptr);
 		}
 		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
-			msg.set_length(0);
+			// FIXME
+			// msg.set_length(0);
 		}
 	}
 	else if (msgtype==CoAPType::CON)

@@ -597,7 +597,7 @@ public:
 	 */
 	ProtocolError send(Message& msg) override
 	{
-		if (msg.send_direct())
+		if (msg.send_direct() || msg.passthrough())
 			return delegateChannel.send(msg);
 
 		if (msg.is_request() && msg.get_confirm_received())

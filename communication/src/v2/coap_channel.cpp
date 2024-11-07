@@ -1030,10 +1030,10 @@ int CoapChannel::run() {
         if (req->errorCallback) {
             req->errorCallback(SYSTEM_ERROR_COAP_TIMEOUT, req->requestId, req->callbackArg);
         }
-    } else {
-        // Retransmit message
-        CHECK(sendPayloadBlock(req));
+        return SYSTEM_ERROR_COAP_TIMEOUT;
     }
+    // Retransmit message
+    CHECK(sendPayloadBlock(req));
     // TODO: As of now, the server always replies with piggybacked responses so we don't need to
     // handle separate response timeouts
     return 0;
@@ -1435,10 +1435,10 @@ int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
     return 0;
 }
 
-int CoapChannel::sendMessage(RefCountPtr<Message> msg, bool sendDirect) {
+int CoapChannel::sendMessage(RefCountPtr<Message> msg, bool passthrough) {
     assert(curMsgId_ == msg->id);
     msgBuf_.set_length(msg->pos - (char*)msgBuf_.buf());
-    msgBuf_.send_direct(sendDirect);
+    msgBuf_.passthrough(passthrough);
     CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
     msg->coapId = msgBuf_.get_id();
     msg->state = MessageState::WAIT_ACK;
@@ -1468,7 +1468,7 @@ int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg) {
         *msg->pos++ = 0xff; // Payload marker
         msg->pos += CHECK(msg->payload->read(msg->pos, bytesToSend, msg->payloadPos));
     }
-    CHECK(sendMessage(msg, true /* sendDirect */));
+    CHECK(sendMessage(msg, true /* passthrough */));
     // TODO: Handle retransmissions for all outgoing messages, not just requests that have a payload object
     auto req = staticPtrCast<RequestMessage>(msg);
     req->transmitTime = millis();

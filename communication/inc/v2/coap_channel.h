@@ -172,7 +172,7 @@ private:
 
     int prepareMessage(const RefCountPtr<Message>& msg);
     int updateMessage(const RefCountPtr<Message>& msg);
-    int sendMessage(RefCountPtr<Message> msg, bool sendDirect = false);
+    int sendMessage(RefCountPtr<Message> msg, bool passthrough = false);
     int sendPayloadBlock(const RefCountPtr<Message>& msg);
     void clearMessage(const RefCountPtr<Message>& msg);
 
