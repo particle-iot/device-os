@@ -24,6 +24,8 @@
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_stream.h"
 
+#include "coap_api.h"
+
 #include "ref_count.h"
 
 struct coap_payload;
@@ -43,6 +45,8 @@ public:
     };
 
     typedef void OnStatusChange(CloudEvent event);
+
+    static const size_t MAX_DATA_SIZE = COAP_MAX_PAYLOAD_SIZE;
 
     CloudEvent();
 
@@ -104,8 +108,8 @@ public:
 
     CloudEvent& data(const Variant& data);
 
-    String data() const;
-    Buffer dataAsBuffer() const;
+    Buffer data() const;
+    String dataAsString() const;
     Variant dataAsVariant() /* FIXME: const */; // TODO: Rename?
 
     CloudEvent& size(size_t size);
@@ -168,32 +172,24 @@ public:
     }
 
 protected:
-    // Methods called by CloudClass
-
-    int prepareForPublish();
-    void finishPublish(int error);
-
-    coap_payload* payload() const;
-
-    void* ref() const {
-        return d_.get();
-    }
-
-    void addRef();
-
-    static CloudEvent wrapRef(void* ref);
+    int publish(); // Called by CloudClass
 
 private:
     struct Data;
 
     RefCountPtr<Data> d_;
 
+    explicit CloudEvent(RefCountPtr<Data> data);
+
+    int publishImpl();
+
     coap_payload* getValidPayload();
-    void setStatus(Status status);
-    CloudEvent& setError(int error);
     bool isWritable() const;
 
-    explicit CloudEvent(RefCountPtr<Data> data);
+    void setStatus(Status status);
+    int setError(int error);
+
+    static void publishComplete(int err, void* arg);
 
     friend class ::CloudClass;
 };
