@@ -258,7 +258,9 @@ struct CoapChannel::RequestMessage: Message {
 
     ResponseMessage* blockResponse; // Response for which this block request is retrieving data
 
-    system_tick_t timeSent; // Time the request was sent
+    system_tick_t transmitTime; // Time the request was last sent
+    unsigned transmitTimeout; // Retransmission timeout
+    unsigned transmitCount; // Number of transmissions
     unsigned timeout; // Request timeout
 
     coap_method method; // Method code
@@ -267,8 +269,9 @@ struct CoapChannel::RequestMessage: Message {
             Message(blockRequest ? MessageType::BLOCK_REQUEST : MessageType::REQUEST),
             responseCallback(nullptr),
             blockResponse(nullptr),
-            timeSent(0),
-            timeout(0),
+            transmitTime(0),
+            transmitTimeout(0),
+            transmitCount(0),
             method() {
     }
 };
@@ -1005,8 +1008,34 @@ int CoapChannel::handleRst(const MessageBuffer& msgBuf) {
 }
 
 int CoapChannel::run() {
-    // TODO: ACK timeouts are handled by the old protocol implementation. As of now, the server always
-    // replies with piggybacked responses so we don't need to handle separate response timeouts either
+    if (state_ != State::OPEN) {
+        return 0;
+    }
+    auto now = millis();
+    auto msg = findRefInList(unackMsgs_, [&](auto msg) {
+        // TODO: Handle retransmissions for all outgoing messages, not just requests that have a payload object
+        if (msg->type != MessageType::REQUEST) {
+            return false;
+        }
+        auto req = static_cast<RequestMessage*>(msg);
+        return req->transmitTimeout && now - req->transmitTime >= req->transmitTimeout;
+    });
+    if (!msg) {
+        return 0;
+    }
+    removeRefFromList(unackMsgs_, msg);
+    auto req = staticPtrCast<RequestMessage>(msg);
+    if (req->transmitCount >= 3) {
+        clearMessage(req);
+        if (req->errorCallback) {
+            req->errorCallback(SYSTEM_ERROR_COAP_TIMEOUT, req->requestId, req->callbackArg);
+        }
+    } else {
+        // Retransmit message
+        CHECK(sendPayloadBlock(req));
+    }
+    // TODO: As of now, the server always replies with piggybacked responses so we don't need to
+    // handle separate response timeouts
     return 0;
 }
 
@@ -1406,9 +1435,10 @@ int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
     return 0;
 }
 
-int CoapChannel::sendMessage(RefCountPtr<Message> msg) {
+int CoapChannel::sendMessage(RefCountPtr<Message> msg, bool sendDirect) {
     assert(curMsgId_ == msg->id);
     msgBuf_.set_length(msg->pos - (char*)msgBuf_.buf());
+    msgBuf_.send_direct(sendDirect);
     CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
     msg->coapId = msgBuf_.get_id();
     msg->state = MessageState::WAIT_ACK;
@@ -1438,7 +1468,16 @@ int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg) {
         *msg->pos++ = 0xff; // Payload marker
         msg->pos += CHECK(msg->payload->read(msg->pos, bytesToSend, msg->payloadPos));
     }
-    CHECK(sendMessage(msg));
+    CHECK(sendMessage(msg, true /* sendDirect */));
+    // TODO: Handle retransmissions for all outgoing messages, not just requests that have a payload object
+    auto req = staticPtrCast<RequestMessage>(msg);
+    req->transmitTime = millis();
+    if (!req->transmitCount) {
+        req->transmitTimeout = 3000; // TODO: Randomize
+    } else {
+        req->transmitTimeout *= 2;
+    }
+    ++req->transmitCount;
     return 0;
 }
 
