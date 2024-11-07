@@ -27,6 +27,8 @@
 #include "v2/coap_options.h"
 #include "coap_api.h"
 
+#include "../../../system/inc/system_threading.h" // FIXME
+
 #include "check.h"
 
 using namespace particle;
@@ -47,18 +49,54 @@ bool isValidCoapMethod(int method) {
     }
 }
 
+int removeConnectionHandlerImpl(coap_connection_callback cb) {
+    SYSTEM_THREAD_CONTEXT_SYNC(removeConnectionHandlerImpl(cb));
+
+    CoapChannel::instance()->removeConnectionHandler(cb);
+    return 0;
+}
+
+int removeRequestHandlerImpl(const char* path, int method) {
+    SYSTEM_THREAD_CONTEXT_SYNC(removeRequestHandlerImpl(path, method));
+
+    if (!isValidCoapMethod(method)) {
+        return 0;
+    }
+    CoapChannel::instance()->removeRequestHandler(path, static_cast<coap_method>(method));
+    return 0;
+}
+
+int destroyMessageImpl(coap_message* apiMsg) {
+    SYSTEM_THREAD_CONTEXT_SYNC(destroyMessageImpl(apiMsg));
+
+    auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
+    CoapChannel::instance()->disposeMessage(msg);
+    return 0;
+}
+
+int cancelRequestImpl(int reqId) {
+    SYSTEM_THREAD_CONTEXT_SYNC(cancelRequestImpl(reqId));
+
+    CoapChannel::instance()->cancelRequest(reqId);
+    return 0;
+}
+
 } // namespace
 
 int coap_add_connection_handler(coap_connection_callback cb, void* arg, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_add_connection_handler(cb, arg, reserved));
+
     CHECK(CoapChannel::instance()->addConnectionHandler(cb, arg));
     return 0;
 }
 
 void coap_remove_connection_handler(coap_connection_callback cb, void* reserved) {
-    CoapChannel::instance()->removeConnectionHandler(cb);
+    removeConnectionHandlerImpl(cb);
 }
 
 int coap_add_request_handler(const char* path, int method, int flags, coap_request_callback cb, void* arg, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_add_request_handler(path, method, flags, cb, arg, reserved));
+
     if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -67,13 +105,12 @@ int coap_add_request_handler(const char* path, int method, int flags, coap_reque
 }
 
 void coap_remove_request_handler(const char* path, int method, void* reserved) {
-    if (!isValidCoapMethod(method)) {
-        return;
-    }
-    CoapChannel::instance()->removeRequestHandler(path, static_cast<coap_method>(method));
+    removeRequestHandlerImpl(path, method);
 }
 
 int coap_begin_request(coap_message** apiMsg, const char* path, int method, int timeout, int flags, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_begin_request(apiMsg, path, method, timeout, flags, reserved));
+
     if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -86,6 +123,8 @@ int coap_begin_request(coap_message** apiMsg, const char* path, int method, int 
 
 int coap_end_request(coap_message* apiMsg, coap_response_callback respCb, coap_ack_callback ackCb,
         coap_error_callback errorCb, void* arg, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_end_request(apiMsg, respCb, ackCb, errorCb, arg, reserved));
+
     auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CoapChannel::instance()->endRequest(msg, respCb, ackCb, errorCb, arg);
     if (r < 0) {
@@ -96,6 +135,8 @@ int coap_end_request(coap_message* apiMsg, coap_response_callback respCb, coap_a
 }
 
 int coap_begin_response(coap_message** apiMsg, int status, int reqId, int flags, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_begin_response(apiMsg, status, reqId, flags, reserved));
+
     RefCountPtr<CoapMessage> msg;
     CHECK(CoapChannel::instance()->beginResponse(msg, status, reqId, flags));
     assert(apiMsg);
@@ -104,6 +145,8 @@ int coap_begin_response(coap_message** apiMsg, int status, int reqId, int flags,
 }
 
 int coap_end_response(coap_message* apiMsg, coap_ack_callback ackCb, coap_error_callback errorCb, void* arg, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_end_response(apiMsg, ackCb, errorCb, arg, reserved));
+
     auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CoapChannel::instance()->endResponse(msg, ackCb, errorCb, arg);
     if (r < 0) {
@@ -114,16 +157,17 @@ int coap_end_response(coap_message* apiMsg, coap_ack_callback ackCb, coap_error_
 }
 
 void coap_destroy_message(coap_message* apiMsg, void* reserved) {
-    auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
-    CoapChannel::instance()->disposeMessage(msg);
+    destroyMessageImpl(apiMsg);
 }
 
 void coap_cancel_request(int reqId, void* reserved) {
-    CoapChannel::instance()->cancelRequest(reqId);
+    cancelRequestImpl(reqId);
 }
 
 int coap_write_block(coap_message* apiMsg, const char* data, size_t* size, coap_block_callback blockCb,
         coap_error_callback errorCb, void* arg, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_write_block(apiMsg, data, size, blockCb, errorCb, arg, reserved));
+
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CHECK(CoapChannel::instance()->writeBlock(msg, data, *size, blockCb, errorCb, arg));
     return r; // 0 or COAP_RESULT_WAIT_BLOCK
@@ -131,12 +175,16 @@ int coap_write_block(coap_message* apiMsg, const char* data, size_t* size, coap_
 
 int coap_read_block(coap_message* apiMsg, char* data, size_t* size, coap_block_callback blockCb,
         coap_error_callback errorCb, void* arg, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_read_block(apiMsg, data, size, blockCb, errorCb, arg, reserved));
+
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CHECK(CoapChannel::instance()->readBlock(msg, data, *size, blockCb, errorCb, arg));
     return r; // 0 or COAP_RESULT_WAIT_BLOCK
 }
 
 int coap_peek_block(coap_message* apiMsg, char* data, size_t size, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_peek_block(apiMsg, data, size, reserved));
+
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     size_t n = CHECK(CoapChannel::instance()->peekBlock(msg, data, size));
     return n;
@@ -180,6 +228,8 @@ int coap_get_payload_size(coap_payload* apiPayload, void* reserved) {
 }
 
 int coap_set_payload(coap_message* apiMsg, coap_payload* apiPayload, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_set_payload(apiMsg, apiPayload, reserved));
+
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     RefCountPtr<CoapPayload> payload(reinterpret_cast<CoapPayload*>(apiPayload));
     CHECK(CoapChannel::instance()->setPayload(msg, payload));
@@ -187,6 +237,8 @@ int coap_set_payload(coap_message* apiMsg, coap_payload* apiPayload, void* reser
 }
 
 int coap_get_payload(coap_message* apiMsg, coap_payload** apiPayload, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_get_payload(apiMsg, apiPayload, reserved));
+
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     RefCountPtr<CoapPayload> payload;
     CHECK(CoapChannel::instance()->getPayload(msg, payload));
