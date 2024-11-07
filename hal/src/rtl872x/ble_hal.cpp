@@ -2329,6 +2329,10 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             if (!connection || (connection && addressEqual(connectingAddr_, connection->info.address))) {
                 if (connecting_) {
                     connecting_ = false;
+                }
+                hal_ble_addr_t dummyAddr = {};
+                if (!addressEqual(connectingAddr_, dummyAddr)) {
+                    // connecting_ might have been set to false on GAP_CONN_STATE_CONNECTED event, but the ATT MTU callback is not invoked
                     // Central failed to connect
                     os_semaphore_give(connectSemaphore_, false);
                 }
