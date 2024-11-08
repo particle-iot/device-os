@@ -37,11 +37,46 @@ class Variant;
 
 class CloudEvent: public Stream {
 public:
+    /**
+     * Event status.
+     */
     enum Status {
+        /**
+         * The initial status of a newly created event.
+         *
+         * The event data is accessible for reading and writing.
+         */
         NEW,
+        /**
+         * The event is being sent to the Cloud.
+         *
+         * The event data is accessible for reading only.
+         */
         SENDING,
+        /**
+         * The event was successfully sent to the Cloud.
+         *
+         * The event data is accessible for reading and writing.
+         */
         SENT,
-        FAILED
+        /**
+         * An error occured while creating the event or sending it to the Cloud.
+         *
+         * The failed operation can be retried when the condition that caused the error is resolved.
+         *
+         * The event data is accessible for reading and writing.
+         *
+         * @see `error()`.
+         */
+        FAILED,
+        /**
+         * An irrecoverable error occured while creating the event.
+         *
+         * The event data is not accessible for reading or writing.
+         *
+         * @see `error()`.
+         */
+        INVALID
     };
 
     typedef void OnStatusChange(CloudEvent event);
@@ -112,49 +147,88 @@ public:
     String dataAsString() const;
     Variant dataAsVariant() /* FIXME: const */; // TODO: Rename?
 
-    CloudEvent& size(size_t size);
-    size_t size() const;
-
     CloudEvent& onStatusChange(std::function<OnStatusChange> callback);
 
     Status status() const;
 
-    bool isSent() const {
+    bool valid() const {
+        return status() != Status::INVALID;
+    }
+
+    bool sending() {
+        return status() == Status::SENDING;
+    }
+
+    bool sent() const {
         return status() == Status::SENT;
     }
 
     bool ok() const {
-        return status() != Status::FAILED;
+        auto s = status();
+        return s != Status::FAILED && s != Status::INVALID;
     }
-    
+
+    int error() const;
+
     // TODO: saveData(), loadData()
 
-    int read() override;
-    size_t readBytes(char* data, size_t size) override;
-    int peek() override;
+    void reset();
+
+    int read() override {
+        char c;
+        size_t n = read(&c, 1);
+        if (n != 1) {
+            return -1;
+        }
+        return (unsigned char)c;
+    }
+
+    size_t readBytes(char* data, size_t size) override {
+        return read(data, size);
+    }
+
+    int peek() override {
+        char c;
+        size_t n = peek(&c, 1);
+        if (n != 1) {
+            return -1;
+        }
+        return (unsigned char)c;
+    }
+
     int available() override;
+
+    // Convenience overloads not available in Stream
+    int read(char* data, size_t size);
+    int peek(char* data, size_t size);
 
     size_t write(uint8_t b) override {
         return write(&b, 1);
     }
 
-    size_t write(const uint8_t* data, size_t size) override;
-
-    size_t write(const char* data) {
-        return write((const uint8_t*)data, std::strlen(data));
+    size_t write(const uint8_t* data, size_t size) override {
+        int r = write((const char*)data, size);
+        if (r < 0) {
+            return 0;
+        }
+        return r;
     }
 
-    size_t write(const char* data, size_t size) {
-        return write((const uint8_t*)data, size);
+    // Convenience overloads not available in Print
+    int write(const char* data) {
+        return write(data, std::strlen(data));
     }
+
+    int write(const char* data, size_t size);
 
     void flush() override {
     }
 
-    CloudEvent& pos(size_t pos);
-    size_t pos() const;
+    int size(size_t size);
+    size_t size() const;
 
-    int error() const;
+    int pos(size_t pos);
+    size_t pos() const;
 
     CloudEvent& operator=(CloudEvent event);
 
@@ -184,10 +258,27 @@ private:
     int publishImpl();
 
     coap_payload* getValidPayload();
-    bool isWritable() const;
 
-    void setStatus(Status status);
-    int setError(int error);
+    void setStatus(Status status, int err = 0);
+
+    int setFailed(int err) {
+        setStatus(Status::FAILED, err);
+        return error();
+    }
+
+    int setInvalid(int err) {
+        setStatus(Status::INVALID, err);
+        return error();
+    }
+
+    bool isReadable() const {
+        return status() != Status::INVALID;
+    }
+
+    bool isWritable() const {
+        auto s = status();
+        return s != Status::SENDING && s != Status::INVALID;
+    }
 
     static void publishComplete(int err, void* arg);
 

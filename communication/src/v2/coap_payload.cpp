@@ -120,7 +120,7 @@ int CoapPayload::read(char* data, size_t size, size_t pos) {
 
 int CoapPayload::write(const char* data, size_t size, size_t pos) {
     if (pos + size > COAP_MAX_PAYLOAD_SIZE) {
-        return SYSTEM_ERROR_TOO_LARGE;
+        return SYSTEM_ERROR_COAP_TOO_LARGE_PAYLOAD;
     }
     size_t p = pos;
     size_t bytesToWrite = size;
@@ -161,7 +161,7 @@ int CoapPayload::write(const char* data, size_t size, size_t pos) {
 
 int CoapPayload::setSize(size_t size) {
     if (size > COAP_MAX_PAYLOAD_SIZE) {
-        return SYSTEM_ERROR_TOO_LARGE;
+        return SYSTEM_ERROR_COAP_TOO_LARGE_PAYLOAD;
     }
     size_t bytesInRam = std::min(size, MAX_PAYLOAD_SIZE_IN_RAM);
     if (!buf_.resize(bytesInRam)) { // The uninitialized data is zero-filled as necessary

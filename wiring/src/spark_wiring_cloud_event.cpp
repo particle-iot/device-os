@@ -24,6 +24,7 @@
 #include "system_cloud.h" // For MAX_EVENT_NAME_LENGTH
 #include "system_task.h"
 
+#include "coap_defs.h"
 #include "coap_util.h"
 
 #include "c_string.h"
@@ -36,20 +37,18 @@ struct CloudEvent::Data: public RefCount {
     CString name;
     CoapPayloadPtr payload;
     std::function<OnStatusChange> onStatusChange;
-    ContentType contentType;
     Status status;
     size_t pos;
+    int contentType;
     int publishResult;
     int error;
-    bool sendFailed; // TODO: Use a separate status?
 
     Data() :
-            contentType(ContentType::TEXT),
             status(Status::NEW),
             pos(0),
+            contentType((int)ContentType::TEXT),
             publishResult(0),
-            error(0),
-            sendFailed(false) {
+            error(0) {
     }
 };
 
@@ -78,12 +77,13 @@ CloudEvent& CloudEvent::name(const char* name) {
     }
     size_t nameLen = std::strlen(name);
     if (!nameLen || nameLen > protocol::MAX_EVENT_NAME_LENGTH) {
-        setError(Error::INVALID_ARGUMENT);
+        LOG(ERROR, "Invalid event name length");
+        setFailed(Error::INVALID_ARGUMENT);
         return *this;
     }
     CString nameCopy(name, nameLen);
     if (!nameCopy) {
-        setError(Error::NO_MEMORY);
+        setInvalid(Error::NO_MEMORY);
         return *this;
     }
     d_->name = std::move(nameCopy);
@@ -101,7 +101,7 @@ CloudEvent& CloudEvent::contentType(ContentType type) {
     if (!isWritable()) {
         return *this;
     }
-    d_->contentType = type;    
+    d_->contentType = (int)type;
     return *this;
 }
 
@@ -109,7 +109,7 @@ ContentType CloudEvent::contentType() const {
     if (!d_) {
         return ContentType::TEXT;
     }
-    return d_->contentType;
+    return (ContentType)d_->contentType;
 }
 
 CloudEvent& CloudEvent::data(const char* data, size_t size) {
@@ -122,12 +122,17 @@ CloudEvent& CloudEvent::data(const char* data, size_t size) {
     }
     int r = coap_write_payload(payload, data, size, 0 /* pos */, nullptr /* reserved */);
     if (r < 0) {
-        setError(r);
+        if (r == Error::COAP_TOO_LARGE_PAYLOAD) {
+            LOG(ERROR, "Event data is too large");
+            setFailed(r);
+        } else {
+            setInvalid(r);
+        }
         return *this;
     }
     r = coap_set_payload_size(payload, size, nullptr /* reserved */);
     if (r < 0) {
-        setError(r);
+        setInvalid(r);
         return *this;
     }
     d_->pos = size;
@@ -146,20 +151,26 @@ CloudEvent& CloudEvent::data(const Variant& data) {
     d_->pos = 0;
     int r = encodeToCBOR(data, *this);
     if (r < 0) {
-        setError(r);
+        if (r == Error::COAP_TOO_LARGE_PAYLOAD) {
+            LOG(ERROR, "Event data is too large");
+            setFailed(r);
+        } else {
+            setInvalid(r);
+        }
         return *this;
     }
     size_t size = r;
     r = coap_set_payload_size(payload, size, nullptr /* reserved */);
     if (r < 0) {
-        setError(r);
+        setInvalid(r);
         return *this;
     }
+    d_->contentType = (int)protocol::CoapContentFormat::PARTICLE_JSON_AS_CBOR;
     return *this;
 }
 
 Buffer CloudEvent::data() const {
-    if (!d_ || !d_->payload) {
+    if (!isReadable() || !d_->payload) {
         return Buffer();
     }
     int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
@@ -179,7 +190,7 @@ Buffer CloudEvent::data() const {
 }
 
 String CloudEvent::dataAsString() const {
-    if (!d_ || !d_->payload) {
+    if (!isReadable() || !d_->payload) {
         return String();
     }
     int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
@@ -199,7 +210,7 @@ String CloudEvent::dataAsString() const {
 }
 
 Variant CloudEvent::dataAsVariant() {
-    if (!d_ || !d_->payload) {
+    if (!isReadable() || !d_->payload) {
         return Variant();
     }
     // TODO: Don't use this stream object directly
@@ -216,36 +227,6 @@ Variant CloudEvent::dataAsVariant() {
     return v;
 }
 
-CloudEvent& CloudEvent::size(size_t size) {
-    if (!isWritable()) {
-        return *this;
-    }
-    auto payload = getValidPayload();
-    if (!payload) {
-        return *this;
-    }
-    int r = coap_set_payload_size(payload, size, nullptr /* reserved */);
-    if (r < 0) {
-        setError(r);
-        return *this;
-    }
-    if (d_->pos > size) {
-        d_->pos = size;
-    }
-    return *this;
-}
-
-size_t CloudEvent::size() const {
-    if (!d_ || !d_->payload) {
-        return 0;
-    }
-    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
-    if (r < 0) {
-        return 0;
-    }
-    return r;
-}
-
 CloudEvent& CloudEvent::onStatusChange(std::function<OnStatusChange> callback) {
     if (!isWritable()) {
         return *this;
@@ -256,85 +237,9 @@ CloudEvent& CloudEvent::onStatusChange(std::function<OnStatusChange> callback) {
 
 CloudEvent::Status CloudEvent::status() const {
     if (!d_) {
-        return Status::FAILED;
+        return Status::INVALID;
     }
     return d_->status;
-}
-
-int CloudEvent::read() {
-    char c;
-    size_t n = readBytes(&c, 1);
-    if (n != 1) {
-        return -1;
-    }
-    return (unsigned char)c;
-}
-
-size_t CloudEvent::readBytes(char* data, size_t size) {
-    if (!d_ || !d_->payload) {
-        return 0;
-    }
-    int r = coap_read_payload(d_->payload.get(), data, size, d_->pos, nullptr /* reserved */);
-    if (r < 0) {
-        return 0;
-    }
-    d_->pos += r;
-    return r;
-}
-
-int CloudEvent::peek() {
-    if (!d_ || !d_->payload) {
-        return 0;
-    }
-    char c;
-    int r = coap_read_payload(d_->payload.get(), &c, 1, d_->pos, nullptr /* reserved */);
-    if (r < 0) {
-        return -1;
-    }
-    return (unsigned char)c;
-}
-
-int CloudEvent::available() {
-    if (!d_ || !d_->payload) {
-        return 0;
-    }
-    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
-    if (r < 0) {
-        return 0;
-    }
-    return r - d_->pos;
-}
-
-size_t CloudEvent::write(const uint8_t* data, size_t size) {
-    if (!isWritable()) {
-        return 0;
-    }
-    auto payload = getValidPayload();
-    if (!payload) {
-        return 0;
-    }
-    int r = coap_write_payload(payload, (const char*)data, size, d_->pos, nullptr /* reserved */);
-    if (r < 0) {
-        setError(r);
-        return 0;
-    }
-    d_->pos += r;
-    return r;
-}
-
-CloudEvent& CloudEvent::pos(size_t pos) {
-    if (!isWritable()) {
-        return *this;
-    }
-    d_->pos = pos;
-    return *this;
-}
-
-size_t CloudEvent::pos() const {
-    if (!d_) {
-        return 0;
-    }
-    return d_->pos;
 }
 
 int CloudEvent::error() const {
@@ -344,25 +249,150 @@ int CloudEvent::error() const {
     return d_->error;
 }
 
+void CloudEvent::reset() {
+    d_ = makeRefCountPtr<Data>();
+}
+
+int CloudEvent::available() {
+    if (!isReadable() || !d_->payload) {
+        return 0;
+    }
+    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
+    if (r < 0) {
+        return 0;
+    }
+    return r - d_->pos;
+}
+
+int CloudEvent::read(char* data, size_t size) {
+    int r = peek(data, size);
+    if (r < 0) {
+        return r;
+    }
+    d_->pos += r;
+    return r;
+}
+
+int CloudEvent::peek(char* data, size_t size) {
+    if (!isReadable()) {
+        return error();
+    }
+    if (!d_->payload) {
+        if (size > 0) {
+            return Error::END_OF_STREAM;
+        }
+        return 0;
+    }
+    int r = coap_read_payload(d_->payload.get(), data, size, d_->pos, nullptr /* reserved */);
+    return r;
+}
+
+int CloudEvent::write(const char* data, size_t size) {
+    if (!isWritable()) {
+        int err = error();
+        if (err < 0) {
+            return err;
+        }
+        return Error::INVALID_STATE;
+    }
+    auto payload = getValidPayload();
+    if (!payload) {
+        return error();
+    }
+    int r = coap_write_payload(payload, data, size, d_->pos, nullptr /* reserved */);
+    if (r < 0) {
+        if (r == Error::COAP_TOO_LARGE_PAYLOAD) {
+            LOG(ERROR, "Event data is too large");
+            return setFailed(r);
+        }
+        return setInvalid(r);
+    }
+    d_->pos += r;
+    return r;
+}
+
+int CloudEvent::size(size_t size) {
+    if (!isWritable()) {
+        int err = error();
+        if (err < 0) {
+            return err;
+        }
+        return Error::INVALID_STATE;
+    }
+    auto payload = getValidPayload();
+    if (!payload) {
+        return error();
+    }
+    int r = coap_set_payload_size(payload, size, nullptr /* reserved */);
+    if (r < 0) {
+        if (r == Error::COAP_TOO_LARGE_PAYLOAD) {
+            LOG(ERROR, "Event data is too large");
+            return setFailed(r);
+        }
+        return setInvalid(r);
+    }
+    if (d_->pos > size) {
+        d_->pos = size;
+    }
+    return 0;
+}
+
+size_t CloudEvent::size() const {
+    if (!isReadable() || !d_->payload) {
+        return 0;
+    }
+    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
+    if (r < 0) {
+        return 0;
+    }
+    return r;
+}
+
+int CloudEvent::pos(size_t pos) {
+    // The current position is used both when reading and writing so using the least restrictive
+    // status check here
+    if (!isReadable()) {
+        return error();
+    }
+    size_t size = 0;
+    if (d_->payload) {
+        int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
+        if (r < 0) {
+            return r;
+        }
+        size = r;
+    }
+    if (pos > size) {
+        pos = size;
+    }
+    d_->pos = pos;
+    return pos;
+}
+
+size_t CloudEvent::pos() const {
+    if (!isReadable()) {
+        return 0;
+    }
+    return d_->pos;
+}
+
 int CloudEvent::publish() {
     auto status = this->status();
-    if (status == Status::SENDING) {
-        return SYSTEM_ERROR_INVALID_STATE;
+    if (status == Status::INVALID) {
+        return error();
     }
-    if (status == Status::FAILED) {
-        if (!d_ || !d_->sendFailed) {
-            return error(); // Irrecoverable error
-        }
-        d_->sendFailed = false;
+    if (status == Status::SENDING) {
+        return Error::INVALID_STATE;
     }
     if (!d_->name) {
-        return setError(SYSTEM_ERROR_INVALID_STATE);
+        LOG(ERROR, "Event name is missing");
+        return setFailed(Error::INVALID_STATE);
     }
     setStatus(Status::SENDING);
     int r = publishImpl();
     if (r < 0) {
-        d_->sendFailed = true;
-        return setError(r);
+        LOG(ERROR, "Failed to publish event: %d", r);
+        return setFailed(r);
     }
     return 0;
 }
@@ -384,7 +414,7 @@ int CloudEvent::publishImpl() {
     if (d_->payload) {
         CHECK(coap_set_payload(msg.get(), d_->payload.get(), nullptr /* reserved */));
     }
-    if (d_->contentType != ContentType::TEXT) {
+    if (d_->contentType != (int)ContentType::TEXT) {
         CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_CONTENT_FORMAT, (unsigned)d_->contentType, nullptr /* reserved */));
     }
     CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_NO_RESPONSE, 26, nullptr /* reserved */)); // RFC 7967, 2.1
@@ -411,7 +441,7 @@ coap_payload* CloudEvent::getValidPayload() {
         coap_payload* p = nullptr;
         int r = coap_create_payload(&p, nullptr /* reserved */);
         if (r < 0) {
-            setError(r);
+            setInvalid(r);
             return nullptr;
         }
         d_->payload.reset(p);
@@ -419,29 +449,19 @@ coap_payload* CloudEvent::getValidPayload() {
     return d_->payload.get();
 }
 
-bool CloudEvent::isWritable() const {
-    return d_ && (d_->status == Status::NEW || d_->status == Status::SENT);
-}
-
-void CloudEvent::setStatus(Status status) {
+void CloudEvent::setStatus(Status status, int err) {
     if (!d_ || d_->status == status) {
         return;
     }
+    d_->error = err;
     d_->status = status;
     if (d_->onStatusChange) {
         d_->onStatusChange(*this);
     }
-}
-
-int CloudEvent::setError(int error) {
-    if (!d_) {
-        return Error::NO_MEMORY;
+    if (status == Status::INVALID) {
+        d_->payload.reset();
+        d_->onStatusChange = nullptr;
     }
-    if (d_->status != Status::FAILED) {
-        d_->error = error;
-        setStatus(Status::FAILED);
-    }
-    return d_->error;
 }
 
 // Called in the system thread
@@ -452,8 +472,7 @@ void CloudEvent::publishComplete(int err, void* arg) {
     int r = application_thread_invoke([](void* arg) {
         CloudEvent event(RefCountPtr<Data>::wrap(static_cast<Data*>(arg)));
         if (event.d_->publishResult < 0) {
-            event.d_->sendFailed = true;
-            event.setError(event.d_->publishResult);
+            event.setFailed(event.d_->publishResult);
         } else {
             event.setStatus(Status::SENT);
         }
