@@ -23,7 +23,7 @@
 
 #include "logging.h"
 
-LOG_SOURCE_CATEGORY("system.coap")
+LOG_SOURCE_CATEGORY("comm.coap")
 
 #include <type_traits>
 #include <algorithm>
