@@ -126,12 +126,14 @@ CloudEvent& CloudEvent::data(const char* data, size_t size) {
             LOG(ERROR, "Event data is too large");
             setFailed(r);
         } else {
+            LOG(ERROR, "coap_write_payload() failed: %d", r);
             setInvalid(r);
         }
         return *this;
     }
     r = coap_set_payload_size(payload, size, nullptr /* reserved */);
     if (r < 0) {
+        LOG(ERROR, "coap_set_payload_size() failed: %d", r);
         setInvalid(r);
         return *this;
     }
@@ -155,6 +157,7 @@ CloudEvent& CloudEvent::data(const Variant& data) {
             LOG(ERROR, "Event data is too large");
             setFailed(r);
         } else {
+            LOG(ERROR, "encodeToCBOR() failed: %d", r);
             setInvalid(r);
         }
         return *this;
@@ -162,6 +165,7 @@ CloudEvent& CloudEvent::data(const Variant& data) {
     size_t size = r;
     r = coap_set_payload_size(payload, size, nullptr /* reserved */);
     if (r < 0) {
+        LOG(ERROR, "coap_set_payload_size() failed: %d", r);
         setInvalid(r);
         return *this;
     }
@@ -175,6 +179,7 @@ Buffer CloudEvent::data() const {
     }
     int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
     if (r < 0) {
+        LOG(ERROR, "coap_get_payload_size() failed: %d", r);
         return Buffer();
     }
     size_t size = r;
@@ -184,6 +189,7 @@ Buffer CloudEvent::data() const {
     }
     r = coap_read_payload(d_->payload.get(), buf.data(), size, 0 /* pos */, nullptr /* reserved */);
     if (r < 0) {
+        LOG(ERROR, "coap_read_payload() failed: %d", r);
         return Buffer();
     }
     return buf;
@@ -195,6 +201,7 @@ String CloudEvent::dataAsString() const {
     }
     int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
     if (r < 0) {
+        LOG(ERROR, "coap_get_payload_size() failed: %d", r);
         return String();
     }
     size_t size = r;
@@ -204,6 +211,7 @@ String CloudEvent::dataAsString() const {
     }
     r = coap_read_payload(d_->payload.get(), &str.operator[](0), size, 0 /* pos */, nullptr /* reserved */);
     if (r < 0) {
+        LOG(ERROR, "coap_read_payload() failed: %d", r);
         return String();
     }
     return str;
@@ -222,6 +230,7 @@ Variant CloudEvent::dataAsVariant() {
     Variant v;
     int r = decodeFromCBOR(v, *this);
     if (r < 0) {
+        LOG(ERROR, "decodeFromCBOR() failed: %d", r);
         return Variant();
     }
     return v;
@@ -259,6 +268,7 @@ int CloudEvent::available() {
     }
     int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
     if (r < 0) {
+        LOG(ERROR, "coap_get_payload_size() failed: %d", r);
         return 0;
     }
     return r - d_->pos;
@@ -284,6 +294,9 @@ int CloudEvent::peek(char* data, size_t size) {
         return 0;
     }
     int r = coap_read_payload(d_->payload.get(), data, size, d_->pos, nullptr /* reserved */);
+    if (r < 0 && r != Error::END_OF_STREAM) {
+        LOG(ERROR, "coap_read_payload() failed: %d", r);
+    }
     return r;
 }
 
@@ -305,6 +318,7 @@ int CloudEvent::write(const char* data, size_t size) {
             LOG(ERROR, "Event data is too large");
             return setFailed(r);
         }
+        LOG(ERROR, "coap_write_payload() failed: %d", r);
         return setInvalid(r);
     }
     d_->pos += r;
@@ -329,6 +343,7 @@ int CloudEvent::size(size_t size) {
             LOG(ERROR, "Event data is too large");
             return setFailed(r);
         }
+        LOG(ERROR, "coap_set_payload_size() failed: %d", r);
         return setInvalid(r);
     }
     if (d_->pos > size) {
@@ -343,6 +358,7 @@ size_t CloudEvent::size() const {
     }
     int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
     if (r < 0) {
+        LOG(ERROR, "coap_get_payload_size() failed: %d", r);
         return 0;
     }
     return r;
@@ -358,6 +374,7 @@ int CloudEvent::pos(size_t pos) {
     if (d_->payload) {
         int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
         if (r < 0) {
+            LOG(ERROR, "coap_get_payload_size() failed: %d", r);
             return r;
         }
         size = r;
@@ -441,6 +458,7 @@ coap_payload* CloudEvent::getValidPayload() {
         coap_payload* p = nullptr;
         int r = coap_create_payload(&p, nullptr /* reserved */);
         if (r < 0) {
+            LOG(ERROR, "coap_create_payload() failed: %d", r);
             setInvalid(r);
             return nullptr;
         }
