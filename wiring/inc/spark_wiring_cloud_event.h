@@ -261,6 +261,7 @@ private:
 
     void setStatus(Status status, int err = 0);
 
+    // Note: Make sure to log an error message when transitioning to a recoverable failed state
     int setFailed(int err) {
         setStatus(Status::FAILED, err);
         return error();

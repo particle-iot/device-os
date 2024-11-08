@@ -472,6 +472,7 @@ void CloudEvent::publishComplete(int err, void* arg) {
     int r = application_thread_invoke([](void* arg) {
         CloudEvent event(RefCountPtr<Data>::wrap(static_cast<Data*>(arg)));
         if (event.d_->publishResult < 0) {
+            LOG(ERROR, "Failed to publish event: %d", event.d_->publishResult);
             event.setFailed(event.d_->publishResult);
         } else {
             event.setStatus(Status::SENT);
