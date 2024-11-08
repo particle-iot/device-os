@@ -19,6 +19,8 @@
 #define NDEBUG // TODO: Define NDEBUG in release builds
 #endif
 
+#undef LOG_COMPILE_TIME_LEVEL
+
 #include "logging.h"
 
 LOG_SOURCE_CATEGORY("system.coap")
@@ -66,6 +68,8 @@ static_assert(COAP_BLOCK_SIZE == 1024); // When changing the block size, make su
 const size_t TAG_SIZE = 4; // Default size of an ETag (RFC 7252) or Request-Tag (RFC 9175) option
 
 const unsigned DEFAULT_REQUEST_TIMEOUT = 60000;
+
+const unsigned MAX_RETRANSMIT_COUNT = 3;
 
 static_assert(COAP_INVALID_REQUEST_ID == 0); // Used by value in the code
 
@@ -1025,7 +1029,8 @@ int CoapChannel::run() {
     }
     removeRefFromList(unackMsgs_, msg);
     auto req = staticPtrCast<RequestMessage>(msg);
-    if (req->transmitCount >= 3) {
+    if (req->transmitCount >= MAX_RETRANSMIT_COUNT + 1) {
+        LOG(ERROR, "CoAP message timeout; ID: %d", req->coapId);
         clearMessage(req);
         if (req->errorCallback) {
             req->errorCallback(SYSTEM_ERROR_COAP_TIMEOUT, req->requestId, req->callbackArg);
@@ -1033,7 +1038,8 @@ int CoapChannel::run() {
         return SYSTEM_ERROR_COAP_TIMEOUT;
     }
     // Retransmit message
-    CHECK(sendPayloadBlock(req));
+    LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %u of %u", req->coapId, req->transmitCount, MAX_RETRANSMIT_COUNT);
+    CHECK(sendPayloadBlock(req, true /* retransmit */));
     // TODO: As of now, the server always replies with piggybacked responses so we don't need to
     // handle separate response timeouts
     return 0;
@@ -1238,6 +1244,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
             req->state = MessageState::WRITE;
             if (req->payload) {
                 req->payloadPos += COAP_BLOCK_SIZE;
+                req->transmitCount = 0;
                 CHECK(sendPayloadBlock(req)); // TODO: Any additional error handling?
             } else {
                 // Invoke the block handler
@@ -1435,10 +1442,13 @@ int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
     return 0;
 }
 
-int CoapChannel::sendMessage(RefCountPtr<Message> msg, bool passthrough) {
+int CoapChannel::sendMessage(RefCountPtr<Message> msg, bool retransmit, bool passthrough) {
     assert(curMsgId_ == msg->id);
     msgBuf_.set_length(msg->pos - (char*)msgBuf_.buf());
     msgBuf_.passthrough(passthrough);
+    if (retransmit) {
+        msgBuf_.set_id(msg->coapId);
+    }
     CHECK_PROTOCOL(protocol_->get_channel().send(msgBuf_));
     msg->coapId = msgBuf_.get_id();
     msg->state = MessageState::WAIT_ACK;
@@ -1448,7 +1458,7 @@ int CoapChannel::sendMessage(RefCountPtr<Message> msg, bool passthrough) {
     return 0;
 }
 
-int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg) {
+int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransmit) {
     assert(msg->type == MessageType::REQUEST && // TODO: Support device-to-cloud blockwise responses
             msg->payload && !curMsgId_);
     size_t bytesToSend = msg->payload->size() - msg->payloadPos;
@@ -1468,7 +1478,7 @@ int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg) {
         *msg->pos++ = 0xff; // Payload marker
         msg->pos += CHECK(msg->payload->read(msg->pos, bytesToSend, msg->payloadPos));
     }
-    CHECK(sendMessage(msg, true /* passthrough */));
+    CHECK(sendMessage(msg, retransmit, true /* passthrough */));
     // TODO: Handle retransmissions for all outgoing messages, not just requests that have a payload object
     auto req = staticPtrCast<RequestMessage>(msg);
     req->transmitTime = millis();

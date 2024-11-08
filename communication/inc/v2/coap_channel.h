@@ -172,8 +172,8 @@ private:
 
     int prepareMessage(const RefCountPtr<Message>& msg);
     int updateMessage(const RefCountPtr<Message>& msg);
-    int sendMessage(RefCountPtr<Message> msg, bool passthrough = false);
-    int sendPayloadBlock(const RefCountPtr<Message>& msg);
+    int sendMessage(RefCountPtr<Message> msg, bool retransmit = false, bool passthrough = false);
+    int sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransmit = false);
     void clearMessage(const RefCountPtr<Message>& msg);
 
     int sendAck(int coapId, bool rst = false);
