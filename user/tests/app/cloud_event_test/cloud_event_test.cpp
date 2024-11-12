@@ -315,6 +315,7 @@ int newApiRun() {
     }
     event.name(EVENT_NAME);
     event.contentType(ContentType::BINARY);
+
     // XXX: The filesystem API fails when writing the entire event data at once
     char buf[128];
     size_t offs = 0;
@@ -324,6 +325,7 @@ int newApiRun() {
         event.write(buf, n);
         offs += n;
     }
+
     bool ok = Particle.publish(event);
     if (!ok) {
         int err = event.ok() ? Error::UNKNOWN : event.error();
@@ -372,16 +374,23 @@ int newApiTwoEventsRun() {
     event2.name(EVENT_NAME);
     event.contentType(ContentType::BINARY);
     event2.contentType(ContentType::BINARY);
-    // XXX: The filesystem API fails when writing the entire event data at once
+    
     char buf[128];
+    auto size1 = eventDataSize / 2; // The amount of data to be sent in the first event
     size_t offs = 0;
+    while (offs < size1) {
+        size_t n = std::min(sizeof(buf), size1 - offs);
+        std::memcpy(buf, eventData + offs, n);
+        event.write(buf, n);
+        offs += n;
+    }
     while (offs < eventDataSize) {
         size_t n = std::min(sizeof(buf), eventDataSize - offs);
         std::memcpy(buf, eventData + offs, n);
-        event.write(buf, n);
         event2.write(buf, n);
         offs += n;
     }
+
     bool ok = Particle.publish(event);
     if (!ok) {
         int err = event.ok() ? Error::UNKNOWN : event.error();
