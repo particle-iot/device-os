@@ -35,6 +35,8 @@ extern "C" {
 #include "scope_guard.h"
 #include <FreeRTOS.h> // for portBYTE_ALIGNMENT
 
+#include <algorithm>
+
 // TODO: move it to header file
 #define HAL_EXFLASH_OTP_MAGIC_NUMBER_ADDR   0x0
 #define HAL_EXFLASH_OTP_MAGIC_NUMBER        0x9A7D5BC6
@@ -134,6 +136,8 @@ private:
 
 #define RTK_SPIC_FIFO_SIZE                  64
 #define RTK_SPIC_FIFO_HALF_SIZE             (RTK_SPIC_FIFO_SIZE / 2)
+
+#define HAL_QSPI_FLASH_PAGE_SIZE            ((size_t)256)
 
 #define RTK_SPIC_BIT_OFFSET_AUTO_LEN_DUM    ((uint32_t)0)
 #define RTK_SPIC_BIT_WIDTH_AUTO_LEN_DUM     ((uint32_t)16)
@@ -386,7 +390,7 @@ private:
     bool threading_;
 };
 
-static int writeInBestMode256(uint32_t addr, uint8_t* buf, size_t size) {
+static int writeInBestModeWithinPageBoundaries(uint32_t addr, uint8_t* buf, size_t size) {
     uint32_t address = addr;
     uint8_t cmd = GENERIC_FLASH_CMD_PP;
     uint32_t mode = RTK_SPIC_DATA_WIDTH_MODE_SINGLE;
@@ -407,8 +411,13 @@ static int writeInBestMode256(uint32_t addr, uint8_t* buf, size_t size) {
         }
     }
 
-    if (size > 256) {
-        size = 256;
+    size_t rem = addr % HAL_QSPI_FLASH_PAGE_SIZE;
+    if (rem == 0) {
+        // Can write the full page up to its size or less
+        size = std::min(HAL_QSPI_FLASH_PAGE_SIZE, size);
+    } else {
+        // Can write only up to page boundary otherwise we'll wrap around
+        size = std::min(HAL_QSPI_FLASH_PAGE_SIZE - rem, size);
     }
 
     size_t written = size;
@@ -460,7 +469,7 @@ static int writeInBestMode(uint32_t addr, uint8_t* buf, size_t size) {
     RtkSpicFlashConfigGuard guard;
 
     while (size > 0) {
-        auto written = writeInBestMode256(address, buf, size);
+        auto written = writeInBestModeWithinPageBoundaries(address, buf, size);
         address += written;
         buf += written;
         size -= written;
