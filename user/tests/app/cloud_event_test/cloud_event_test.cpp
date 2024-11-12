@@ -14,6 +14,7 @@ SYSTEM_THREAD(ENABLED)
 #define TEST_OLD_API 1
 #define TEST_OLD_API_WITH_ACK 1
 #define TEST_NEW_API 1
+#define TEST_NEW_API_TWO_EVENTS 1
 
 namespace {
 
@@ -40,6 +41,11 @@ enum Step {
     NEW_API_RUN,
     NEW_API_DONE,
 #endif // TEST_NEW_API
+#if TEST_NEW_API_TWO_EVENTS
+    NEW_API_TWO_EVENTS_INIT,
+    NEW_API_TWO_EVENTS_RUN,
+    NEW_API_TWO_EVENTS_DONE,
+#endif // TEST_NEW_API_TWO_EVENTS
     PRINT_STATS,
     DONE
 };
@@ -177,7 +183,7 @@ int waitConnect() {
 system_tick_t lastPublishTime = 0;
 
 //
-// OLD_API_*
+// OLD_API
 //
 
 #if TEST_OLD_API
@@ -292,7 +298,7 @@ CloudEvent event;
 int newApiInit() {
     event.reset();
 
-    startTest("New API");
+    startTest("New API with one event");
     return nextStep();
 }
 
@@ -335,6 +341,71 @@ int newApiDone() {
 
 #endif // TEST_NEW_API
 
+//
+// NEW_API_WITH_TWO_EVENTS
+//
+
+#if TEST_NEW_API_TWO_EVENTS
+
+CloudEvent event2;
+
+int newApiTwoEventsInit() {
+    event.reset();
+    event2.reset();
+
+    startTest("New API with two events");
+    return nextStep();
+}
+
+int newApiTwoEventsRun() {
+    if (!event.ok() || !event2.ok()) {
+        return event.ok() ? event2.error() : event.error();
+    }
+    if (event.sent() && event2.sent()) {
+        return nextStep();
+    }
+    if (event.sending() || event2.sending()) {
+        testIdle();
+        return 0;
+    }
+    event.name(EVENT_NAME);
+    event2.name(EVENT_NAME);
+    event.contentType(ContentType::BINARY);
+    event2.contentType(ContentType::BINARY);
+    // XXX: The filesystem API fails when writing the entire event data at once
+    char buf[128];
+    size_t offs = 0;
+    while (offs < eventDataSize) {
+        size_t n = std::min(sizeof(buf), eventDataSize - offs);
+        std::memcpy(buf, eventData + offs, n);
+        event.write(buf, n);
+        event2.write(buf, n);
+        offs += n;
+    }
+    bool ok = Particle.publish(event);
+    if (!ok) {
+        int err = event.ok() ? Error::UNKNOWN : event.error();
+        Log.error("Particle.publish() failed: %d", err);
+        return err;
+    }
+    ok = Particle.publish(event2);
+    if (!ok) {
+        int err = event.ok() ? Error::UNKNOWN : event.error();
+        Log.error("Particle.publish() failed: %d", err);
+        return err;
+    }
+    return 0;
+}
+
+int newApiTwoEventsDone() {
+    event.reset(); // Free the payload data
+    event2.reset();
+    CHECK(finishTest());
+    return nextStep();
+}
+
+#endif // TEST_NEW_API_TWO_EVENTS
+
 int printStats() {
     for (const auto& s: allStats) {
         Log.print("\r\n");
@@ -342,6 +413,8 @@ int printStats() {
         Log.info("Test duration:    %gs", std::round((s.timeEnd - s.timeStart) / 100.0) / 10);
         Log.info("Free heap before: %u", s.freeMemBefore);
         Log.info("Free heap after:  %u", s.freeMemAfter);
+        unsigned notFreedMem = (s.freeMemBefore > s.freeMemAfter) ? (s.freeMemBefore - s.freeMemAfter) : 0;
+        Log.info("Heap not freed:   %u", notFreedMem);
         unsigned maxMemUsed = (s.freeMemBefore > s.minFreeMem) ? (s.freeMemBefore - s.minFreeMem) : 0;
         Log.info("Max heap usage:   %u", maxMemUsed);
     }
@@ -379,6 +452,14 @@ int run() {
     case NEW_API_DONE:
         return newApiDone();
 #endif // TEST_NEW_API
+#if TEST_NEW_API_TWO_EVENTS
+    case NEW_API_TWO_EVENTS_INIT:
+        return newApiTwoEventsInit();
+    case NEW_API_TWO_EVENTS_RUN:
+        return newApiTwoEventsRun();
+    case NEW_API_TWO_EVENTS_DONE:
+        return newApiTwoEventsDone();
+#endif // TEST_NEW_API_TWO_EVENTS
     case PRINT_STATS:
         return printStats();
     default:
