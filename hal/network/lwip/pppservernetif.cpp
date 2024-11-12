@@ -56,6 +56,7 @@ LOG_SOURCE_CATEGORY("net.pppserver");
 #include "network/ncp/cellular/cellular_network_manager.h"
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #include "network/ncp/cellular/ncp.h"
+#include "cellular_hal.h"
 
 
 using namespace particle::net;
@@ -69,6 +70,8 @@ enum PppServerNetifEvent {
 };
 
 constexpr auto DEFAULT_SERIAL_BUFFER_SIZE = 4096;
+
+constexpr auto SIM_FILE_ID_ICCID = 12258;
 
 #if 0
 int pppErrorToSystem(int err) {
@@ -246,7 +249,27 @@ int PppServerNetif::start() {
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+CGACT", "+CGACT: 1,1"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::TEST, "+CMER", "+CMER: (0-3),(0),(0),(0-2),(0,1)"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+CPIN", "+CPIN: READY"));
-    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+CCID", "+CCID: 00000000000000000000"));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+CCID", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
+        CellularDevice dev;
+        CHECK(cellular_device_info(&dev, nullptr));
+        return request->sendResponse("+CCID: %s", dev.iccid);
+    }, nullptr));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CRSM", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
+        unsigned req[5] = {};
+        int r = request->scanf("%u,%u,%u,%u,%u", &req[0], &req[1], &req[2], &req[3], &req[4]);
+        if (r >= 2) {
+            if (req[0] == 176 /* read cmd */) {
+                switch (req[1] /* file id */) {
+                    case SIM_FILE_ID_ICCID: {
+                        CellularDevice dev;
+                        CHECK(cellular_device_info(&dev, nullptr));
+                        return request->sendResponse("+CRSM: 144,0,\"%s\"", dev.iccid);
+                    }
+                }
+            }
+        }
+        return SYSTEM_ERROR_AT_NOT_OK;
+    }, nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::EXEC, "+CIMI", "000000000000000"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::EXEC, "+CNUM", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::EXEC, "PARTICLE1", nullptr));
