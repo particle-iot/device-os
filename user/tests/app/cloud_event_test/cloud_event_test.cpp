@@ -21,7 +21,6 @@ const auto EVENT_NAME = "test";
 const unsigned MEM_USAGE_UPDATE_INTERVAL = 100; // ms
 const unsigned PROGRESS_LOG_INTERVAL = 1000;
 const unsigned CONNECTION_TIMEOUT = 60000;
-const unsigned TEST_DELAY = 3000;
 
 enum Step {
     INIT_TEST,
@@ -77,7 +76,7 @@ size_t lastEventDataOffset = 0;
 int step = Step::INIT_TEST;
 
 void startTest(const char* name) {
-    delay(TEST_DELAY);
+    delay(1000);
 
     curStats.timeStart = millis();
     curStats.freeMemBefore = System.freeMemory();
@@ -98,7 +97,6 @@ void startTest(const char* name) {
 int finishTest() {
     curStats.timeEnd = millis();
     auto freeMem = System.freeMemory();
-    curStats.freeMemAfter = freeMem;
     if (freeMem < curStats.minFreeMem) {
         curStats.minFreeMem = freeMem;
     }
@@ -106,6 +104,11 @@ int finishTest() {
         return Error::NO_MEMORY;
     }
     Log.info("Test succeeded");
+
+    // Wait a few seconds before getting the amount of free memory after the test
+    delay(3000);
+    allStats.last().freeMemAfter = System.freeMemory();
+
     return 0;
 }
 
