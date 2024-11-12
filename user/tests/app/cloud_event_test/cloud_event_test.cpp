@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <limits>
+#include <cstring>
 #include <cmath>
 
 #include "application.h"
@@ -10,8 +11,8 @@
 SYSTEM_MODE(SEMI_AUTOMATIC)
 SYSTEM_THREAD(ENABLED)
 
-#define TEST_OLD_API 0
-#define TEST_OLD_API_WITH_ACK 0
+#define TEST_OLD_API 1
+#define TEST_OLD_API_WITH_ACK 1
 #define TEST_NEW_API 1
 
 namespace {
@@ -305,7 +306,15 @@ int newApiRun() {
     }
     event.name(EVENT_NAME);
     event.contentType(ContentType::BINARY);
-    event.write(eventData, eventDataSize);
+    // XXX: The filesystem API fails when writing the entire event data at once
+    char buf[128];
+    size_t offs = 0;
+    while (offs < eventDataSize) {
+        size_t n = std::min(sizeof(buf), eventDataSize - offs);
+        std::memcpy(buf, eventData + offs, n);
+        event.write(buf, n);
+        offs += n;
+    }
     bool ok = Particle.publish(event);
     if (!ok) {
         int err = event.ok() ? Error::UNKNOWN : event.error();
