@@ -10,8 +10,8 @@
 SYSTEM_MODE(SEMI_AUTOMATIC)
 SYSTEM_THREAD(ENABLED)
 
-#define TEST_OLD_API 1
-#define TEST_OLD_API_WITH_ACK 1
+#define TEST_OLD_API 0
+#define TEST_OLD_API_WITH_ACK 0
 #define TEST_NEW_API 1
 
 namespace {
@@ -19,7 +19,7 @@ namespace {
 const auto EVENT_NAME = "test";
 const unsigned MEM_USAGE_UPDATE_INTERVAL = 100; // ms
 const unsigned PROGRESS_LOG_INTERVAL = 1000;
-const unsigned CONNECTION_TIMEOUT = 30000;
+const unsigned CONNECTION_TIMEOUT = 60000;
 const unsigned TEST_DELAY = 3000;
 
 enum Step {
@@ -86,7 +86,8 @@ void startTest(const char* name) {
     eventDataOffset = 0;
     lastEventDataOffset = 0;
 
-    Log.info("\r\nRunning test: %s", name);
+    Log.print("\r\n");
+    Log.info("Running test: %s", name);
 
     auto t = millis();
     lastMemUsageUpdateTime = t;
@@ -111,7 +112,8 @@ void testIdle(system_tick_t t = millis()) {
         }
         lastMemUsageUpdateTime = millis();
     }
-    if (eventDataOffset != lastEventDataOffset && t - lastProgressLogTime >= PROGRESS_LOG_INTERVAL) {
+    if (eventDataOffset != lastEventDataOffset && (!lastEventDataOffset || eventDataOffset >= eventDataSize ||
+                t - lastProgressLogTime >= PROGRESS_LOG_INTERVAL)) {
         Log.info("Sent %u of %u bytes", (unsigned)eventDataOffset, (unsigned)eventDataSize);
         lastEventDataOffset = eventDataOffset;
         lastProgressLogTime = millis();
@@ -152,6 +154,9 @@ int waitConnect() {
     if (Particle.connected()) {
         Log.info("Connected");
         logFreeHeap();
+
+        Log.info("Maximum event data size (classic API): %d", (int)Particle.maxEventDataSize());
+
         return nextStep();
     }
     if (millis() - connectStartTime >= CONNECTION_TIMEOUT) {
@@ -173,7 +178,7 @@ int oldApiInit() {
     lastPublishTime = 0;
 
     startTest("Old API with 1-second delay");
-    return 0;
+    return nextStep();
 }
 
 int oldApiRun() {
@@ -186,18 +191,23 @@ int oldApiRun() {
         return nextStep();
     }
     size_t n = std::min<size_t>(eventDataSize - eventDataOffset, 1024);
-    bool ok = Particle.publish(EVENT_NAME, (const char*)eventData + eventDataOffset, n, ContentType::BINARY);
-    if (!ok) {
-        Log.error("Particle.publish() failed");
-        return Error::NETWORK;
+    auto f = Particle.publish(EVENT_NAME, (const char*)eventData + eventDataOffset, n, ContentType::BINARY);
+    if (!f.isDone()) {
+        return Error::INVALID_STATE; // Should not happen
     }
+    if (f.isFailed()) {
+        int err = f.error().type();
+        Log.error("Particle.publish() failed: %d", err);
+        return err;
+    }
+    lastPublishTime = millis();
     eventDataOffset += n;
     return 0;
 }
 
 int oldApiDone() {
     CHECK(finishTest());
-    return 0;
+    return nextStep();
 }
 
 #endif // TEST_OLD_API
@@ -221,12 +231,11 @@ void onPublishError(Error err) {
 }
 
 int oldApiWithAckInit() {
-    lastPublishTime = 0;
     publishInProgress = false;
     publishError = 0;
 
     startTest("Old API with completion handling");
-    return 0;
+    return nextStep();
 }
 
 int oldApiWithAckRun() {
@@ -241,21 +250,25 @@ int oldApiWithAckRun() {
         return nextStep();
     }
     size_t n = std::min<size_t>(eventDataSize - eventDataOffset, 1024);
-    auto f = Particle.publish(EVENT_NAME, (const char*)eventData + eventDataOffset, n, ContentType::BINARY);
-    f.onSuccess(onPublishSuccess);
-    f.onError(onPublishError);
-    if (f.isDone() && f.isFailed()) {
+    auto f = Particle.publish(EVENT_NAME, (const char*)eventData + eventDataOffset, n, ContentType::BINARY, WITH_ACK);
+    if (f.isDone()) {
+        if (!f.isFailed()) {
+            return Error::INVALID_STATE; // Should not happen
+        }
         int err = f.error().type();
         Log.error("Particle.publish() failed: %d", err);
         return err;
     }
+    publishInProgress = true;
     eventDataOffset += n;
+    f.onSuccess(onPublishSuccess);
+    f.onError(onPublishError);
     return 0;
 }
 
 int oldApiWithAckDone() {
     CHECK(finishTest());
-    return 0;
+    return nextStep();
 }
 
 #endif // TEST_OLD_API_WITH_ACK
@@ -272,7 +285,7 @@ int newApiInit() {
     event = CloudEvent();
 
     startTest("New API");
-    return 0;
+    return nextStep();
 }
 
 int newApiRun() {
@@ -286,25 +299,29 @@ int newApiRun() {
     if (event.sent()) {
         return nextStep();
     }
+    event.name(EVENT_NAME);
+    event.contentType(ContentType::BINARY);
     event.write(eventData, eventDataSize);
     bool ok = Particle.publish(event);
     if (!ok) {
-        Log.error("Particle.publish() failed");
-        return event.ok() ? Error::NETWORK : event.error();
+        int err = event.ok() ? Error::UNKNOWN : event.error();
+        Log.error("Particle.publish() failed: %d", err);
+        return err;
     }
     return 0;
 }
 
 int newApiDone() {
     CHECK(finishTest());
-    return 0;
+    return nextStep();
 }
 
 #endif // TEST_NEW_API
 
 int printStats() {
     for (const auto& s: allStats) {
-        Log.info("\r\n***** %s", s.testName);
+        Log.print("\r\n");
+        Log.info("***** %s", s.testName);
         Log.info("Test duration:    %gs", std::round((s.timeEnd - s.timeStart) / 100.0) / 10);
         Log.info("Free heap before: %u", s.freeMemBefore);
         Log.info("Free heap after:  %u", s.freeMemAfter);
@@ -364,7 +381,8 @@ void setup() {
 void loop() {
     int r = run();
     if (r < 0) {
-        Log.error("Test failed: %d", r);
+        Log.print("\r\n");
+        Log.error("***** Test failed: %d", r);
         step = Step::DONE;
     }
 }

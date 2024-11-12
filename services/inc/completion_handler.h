@@ -49,6 +49,8 @@ public:
             data_(data) {
     }
 
+    CompletionHandler(const CompletionHandler&) = delete;
+
     CompletionHandler(CompletionHandler&& handler) :
             callback_(handler.callback_),
             data_(handler.data_) {
@@ -76,6 +78,8 @@ public:
             callback_ = nullptr;
         }
     }
+
+    CompletionHandler& operator=(const CompletionHandler&) = delete;
 
     CompletionHandler& operator=(CompletionHandler&& handler) {
         setError(SYSTEM_ERROR_INTERNAL); // Invoke current callback
