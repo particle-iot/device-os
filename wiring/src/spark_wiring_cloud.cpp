@@ -167,7 +167,7 @@ Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishF
 }
 
 bool CloudClass::publish(CloudEvent event) {
-    int r = event.publish();
+    int r = event.send();
     if (r < 0) {
         return false;
     }

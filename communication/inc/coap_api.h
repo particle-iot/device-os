@@ -220,7 +220,7 @@ typedef enum coap_connection_status {
 typedef enum coap_message_flag {
     /**
      * Store the entire payload data of the message prior to notifying the user that an incoming
-     * message is received.
+     * message has been received.
      */
     COAP_MESSAGE_FULL = 0x01
 } coap_message_flag;
@@ -260,8 +260,8 @@ void coap_remove_connection_handler(coap_connection_callback cb, void* reserved)
  * If a handler is already registered for the given combination of base URI path and method code, it
  * will be replaced.
  *
- * @param path Base URI path. If `NULL`, the handler will be invoked for any request not matching
- *        any other handler.
+ * @param path Base URI path. If `NULL` or empty, the handler will be invoked for any request that
+ *        does not match any of the handlers with a non-empty URI path.
  * @param method Method code as defined by the `coap_method` enum.
  * @param flags Flags defined by the `coap_message_flag` enum. Supported flags:
  *        - `COAP_MESSAGE_FULL`.
@@ -487,6 +487,9 @@ int coap_get_payload_size(coap_payload* payload, void* reserved);
 /**
  * Set the payload data of a message.
  *
+ * After calling this function, the caller is still responsible for destroying its reference to
+ * the payload instance via `coap_destroy_payload()`.
+ *
  * @param msg Request or response message.
  * @param payload Payload data instance.
  * @param reserved Reserved argument. Must be set to `NULL`.
@@ -496,6 +499,9 @@ int coap_set_payload(coap_message* msg, coap_payload* payload, void* reserved);
 
 /**
  * Get the payload data of a message.
+ *
+ * The obtained reference to the paylaod instance needs to be destroyed via `coap_destroy_payload()`
+ * when it's no longer needed.
  *
  * @param msg Request or response message.
  * @param[out] payload Payload data instance.

@@ -59,13 +59,13 @@ namespace {
 
 // Maximum supported size of CoAP framing data, i.e. everything preceeding the payload data in a CoAP
 // message including the payload marker
-const size_t MAX_MESSAGE_PREFIX_SIZE = 128;
-static_assert(MAX_MESSAGE_PREFIX_SIZE + COAP_BLOCK_SIZE <= PROTOCOL_BUFFER_SIZE);
+const size_t MAX_COAP_FRAMING_SIZE = 128;
+static_assert(MAX_COAP_FRAMING_SIZE + COAP_BLOCK_SIZE <= PROTOCOL_BUFFER_SIZE);
 
 const unsigned BLOCK_SZX = 6; // Value of the SZX field for 1024-byte blocks (RFC 7959, 2.2)
 static_assert(COAP_BLOCK_SIZE == 1024); // When changing the block size, make sure to update BLOCK_SZX accordingly
 
-const size_t TAG_SIZE = 4; // Default size of an ETag (RFC 7252) or Request-Tag (RFC 9175) option
+const size_t DEFAULT_TAG_SIZE = 4; // Default size of an ETag (RFC 7252) or Request-Tag (RFC 9175) option
 
 const unsigned DEFAULT_REQUEST_TIMEOUT = 60000;
 
@@ -342,7 +342,7 @@ CoapChannel::CoapChannel() :
         blockResps_(nullptr),
         unackMsgs_(nullptr),
         protocol_(spark_protocol_instance()),
-        lastReqTag_(CoapTag::generate(TAG_SIZE)),
+        lastReqTag_(CoapTag::generate(DEFAULT_TAG_SIZE)),
         state_(State::CLOSED),
         lastMsgId_(0),
         curMsgId_(0),
@@ -1379,7 +1379,7 @@ int CoapChannel::prepareMessage(const RefCountPtr<Message>& msg) {
 
 int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
     assert(curMsgId_ == msg->id);
-    char prefix[MAX_MESSAGE_PREFIX_SIZE];
+    char prefix[MAX_COAP_FRAMING_SIZE];
     CoapMessageEncoder e(prefix, sizeof(prefix));
     e.type(CoapType::CON);
     e.id(0); // Will be set by the underlying message channel
@@ -1421,7 +1421,7 @@ int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
 
     auto msgBuf = (char*)msgBuf_.buf();
     size_t newPrefixSize = CHECK(e.encode());
-    if (newPrefixSize > MAX_MESSAGE_PREFIX_SIZE) {
+    if (newPrefixSize > MAX_COAP_FRAMING_SIZE) {
         LOG(ERROR, "Too many CoAP options");
         return SYSTEM_ERROR_TOO_LARGE;
     }
@@ -1539,6 +1539,7 @@ void CoapChannel::clearMessage(const RefCountPtr<Message>& msg) {
     if (curMsgId_ == msg->id) {
         releaseMessageBuffer();
     }
+    msg->payload = nullptr;
     msg->state = MessageState::DONE;
 }
 

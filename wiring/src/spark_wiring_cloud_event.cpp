@@ -40,14 +40,16 @@ struct CloudEvent::Data: public RefCount {
     Status status;
     size_t pos;
     int contentType;
-    int publishResult;
+    int requestId;
+    int sendResult;
     int error;
 
     Data() :
             status(Status::NEW),
             pos(0),
             contentType((int)ContentType::TEXT),
-            publishResult(0),
+            requestId(COAP_INVALID_REQUEST_ID),
+            sendResult(0),
             error(0) {
     }
 };
@@ -258,6 +260,15 @@ int CloudEvent::error() const {
     return d_->error;
 }
 
+void CloudEvent::cancel() {
+    if (!d_ || d_->status != Status::SENDING) {
+        return;
+    }
+    coap_cancel_request(d_->requestId, nullptr /* reserved */);
+    d_->requestId = COAP_INVALID_REQUEST_ID;
+    setFailed(Error::CANCELLED);
+}
+
 void CloudEvent::reset() {
     d_ = makeRefCountPtr<Data>();
 }
@@ -393,12 +404,13 @@ size_t CloudEvent::pos() const {
     return d_->pos;
 }
 
-int CloudEvent::publish() {
+int CloudEvent::send() {
     auto status = this->status();
     if (status == Status::INVALID) {
         return error();
     }
     if (status == Status::SENDING) {
+        LOG(ERROR, "Event is being sent already");
         return Error::INVALID_STATE;
     }
     if (!d_->name) {
@@ -406,9 +418,9 @@ int CloudEvent::publish() {
         return setFailed(Error::INVALID_STATE);
     }
     setStatus(Status::SENDING);
-    int r = publishImpl();
+    int r = sendImpl();
     if (r < 0) {
-        LOG(ERROR, "Failed to publish event: %d", r);
+        LOG(ERROR, "Failed to send event: %d", r);
         return setFailed(r);
     }
     return 0;
@@ -419,14 +431,14 @@ CloudEvent& CloudEvent::operator=(CloudEvent event) {
     return *this;
 }
 
-int CloudEvent::publishImpl() {
+int CloudEvent::sendImpl() {
     char uriPath[COAP_MAX_URI_PATH_LENGTH];
     int r = std::snprintf(uriPath, sizeof(uriPath), "E/%s", (const char*)d_->name);
     if (r < 0 || (size_t)r >= sizeof(uriPath)) {
         return Error::INTERNAL;
     }
     coap_message* apiMsg = nullptr;
-    CHECK(coap_begin_request(&apiMsg, uriPath, COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
+    auto reqId = CHECK(coap_begin_request(&apiMsg, uriPath, COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
     CoapMessagePtr msg(apiMsg);
     if (d_->payload) {
         CHECK(coap_set_payload(msg.get(), d_->payload.get(), nullptr /* reserved */));
@@ -437,16 +449,17 @@ int CloudEvent::publishImpl() {
     CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_NO_RESPONSE, 26, nullptr /* reserved */)); // RFC 7967, 2.1
     CHECK(coap_end_request(msg.get(), nullptr /* resp_cb */,
             [](int reqId, void* arg) { // ack_cb
-                publishComplete(0 /* err */, arg);
+                sendComplete(0 /* err */, arg);
                 return 0;
             },
             [](int err, int reqId, void* arg) { // error_cb
-                publishComplete(err, arg);
+                sendComplete(err, arg);
             }, d_.get(), nullptr /* reserved */));
     // The system now owns the message
     msg.release();
     // Keep the reference around until either the ACK or error callback is called
     d_->addRef();
+    d_->requestId = reqId;
     return 0;
 }
 
@@ -483,15 +496,19 @@ void CloudEvent::setStatus(Status status, int err) {
 }
 
 // Called in the system thread
-void CloudEvent::publishComplete(int err, void* arg) {
+void CloudEvent::sendComplete(int err, void* arg) {
     auto d = RefCountPtr<Data>::wrap(static_cast<Data*>(arg));
-    d->publishResult = err;
+    d->sendResult = err;
     // Run a callback in the application thread to update the status of the event
     int r = application_thread_invoke([](void* arg) {
         CloudEvent event(RefCountPtr<Data>::wrap(static_cast<Data*>(arg)));
-        if (event.d_->publishResult < 0) {
-            LOG(ERROR, "Failed to publish event: %d", event.d_->publishResult);
-            event.setFailed(event.d_->publishResult);
+        if (event.d_->status != Status::SENDING) {
+            return; // The event was cancelled
+        }
+        event.d_->requestId = COAP_INVALID_REQUEST_ID;
+        if (event.d_->sendResult < 0) {
+            LOG(ERROR, "Failed to send event: %d", event.d_->sendResult);
+            event.setFailed(event.d_->sendResult);
         } else {
             event.setStatus(Status::SENT);
         }

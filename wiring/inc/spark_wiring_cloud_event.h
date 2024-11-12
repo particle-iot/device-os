@@ -35,6 +35,9 @@ namespace particle {
 class Buffer;
 class Variant;
 
+/**
+ * A cloud event.
+ */
 class CloudEvent: public Stream {
 public:
     /**
@@ -42,29 +45,30 @@ public:
      */
     enum Status {
         /**
-         * The initial status of a newly created event.
+         * The initial status of a newly created or received event.
          *
-         * The event data is accessible for reading and writing.
+         * An event with this status is accessible for reading and writing.
          */
         NEW,
         /**
          * The event is being sent to the Cloud.
          *
-         * The event data is accessible for reading only.
+         * An event with this status is accessible only for reading.
          */
         SENDING,
         /**
          * The event was successfully sent to the Cloud.
          *
-         * The event data is accessible for reading and writing.
+         * An event with this status is accessible for reading and writing.
          */
         SENT,
         /**
          * An error occured while creating the event or sending it to the Cloud.
          *
-         * The failed operation can be retried when the condition that caused the error is resolved.
+         * This status indicates a recoverable error. The failed operation with the event can be
+         * retried when the condition that caused the error is resolved.
          *
-         * The event data is accessible for reading and writing.
+         * An event with this status is accessible for reading and writing.
          *
          * @see `error()`.
          */
@@ -72,93 +76,226 @@ public:
         /**
          * An irrecoverable error occured while creating the event.
          *
-         * The event data is not accessible for reading or writing.
+         * An event with this status is not accessible for reading or writing.
          *
          * @see `error()`.
          */
         INVALID
     };
 
+    /**
+     * Signature of a callback invoked when the status of an event changes.
+     *
+     * @param event Event instance.
+     */
     typedef void OnStatusChange(CloudEvent event);
 
+    /**
+     * Maximum supported size of event data.
+     */
     static const size_t MAX_DATA_SIZE = COAP_MAX_PAYLOAD_SIZE;
 
+    /**
+     * Default constructor.
+     *
+     * Constructs an empty event.
+     */
     CloudEvent();
 
-    explicit CloudEvent(const char* name) :
-            CloudEvent() {
-        this->name(name);
-    }
-
-    CloudEvent(const char* name, const char* data) :
-            CloudEvent(name) {
-        this->data(data);
-    }
-
-    CloudEvent(const char* name, const char* data, size_t size, ContentType type) :
-            CloudEvent(name) {
-        this->data(data, size, type);
-    }
-
-    CloudEvent(const char* name, const Buffer& data, ContentType type) :
-            CloudEvent(name) {
-        this->data(data, type);
-    }
-
-    CloudEvent(const char* name, const Variant& data) :
-            CloudEvent(name) {
-        this->data(data);
-    }
-
+    /**
+     * Copy constructor.
+     *
+     * Creates a shallow copy of the event that references the same data.
+     *
+     * @param event Event to copy.
+     */
     CloudEvent(const CloudEvent& event);
+
+    /**
+     * Move constructor.
+     *
+     * @param event Event to move from.
+     */
     CloudEvent(CloudEvent&& event);
 
+    /**
+     * Destructor.
+     *
+     * Destroying an event that is being sent to the Cloud does not cancel the sending operation.
+     *
+     * @see `cancel()`.
+     */
     ~CloudEvent();
 
+    /**
+     * Set the event name.
+     *
+     * @param name Event name.
+     * @return This event instance.
+     */
     CloudEvent& name(const char* name);
+
+    /**
+     * Get the event name.
+     *
+     * @return Event name.
+     */
     const char* name() const;
 
+    /**
+     * Set the content type of the event data.
+     *
+     * @param type Content type.
+     * @return This event instance.
+     */
     CloudEvent& contentType(ContentType type);
+
+    /**
+     * Get the content type of the event data.
+     *
+     * @return Content type.
+     */
     ContentType contentType() const;
 
+    /**
+     * Set the event data.
+     *
+     * @param data Event data.
+     * @return This event instance.
+     */
     CloudEvent& data(const char* data) {
         return this->data(data, std::strlen(data));
     }
 
+    /**
+     * Set the event data.
+     *
+     * @param data Event data.
+     * @param data Data size.
+     * @return This event instance.
+     */
     CloudEvent& data(const char* data, size_t size);
 
+    /**
+     * Set the event data.
+     *
+     * @param data Event data.
+     * @param data Data size.
+     * @param type Content type.
+     * @return This event instance.
+     */
     CloudEvent& data(const char* data, size_t size, ContentType type) {
         this->data(data, size);
         contentType(type);
         return *this;
     }
 
+    /**
+     * Set the event data.
+     *
+     * @param data Event data.
+     * @return This event instance.
+     */
     CloudEvent& data(const Buffer& data) {
         return this->data(data.data(), data.size());
     }
 
+    /**
+     * Set the event data.
+     *
+     * @param data Event data.
+     * @param type Content type.
+     * @return This event instance.
+     */
     CloudEvent& data(const Buffer& data, ContentType type) {
         return this->data(data.data(), data.size(), type);
     }
 
+    /**
+     * Set the event data.
+     *
+     * @param data Event data.
+     * @return This event instance.
+     */
     CloudEvent& data(const Variant& data);
 
+    /**
+     * Get the event data.
+     *
+     * This method returns a copy of the event data in a dynamically allocated buffer.
+     *
+     * @return Event data.
+     */
     Buffer data() const;
+
+    /**
+     * Get the event data.
+     *
+     * @return Event data.
+     */
     String dataAsString() const;
+
+    /**
+     * Get the event data.
+     *
+     * @return Event data.
+     */
     Variant dataAsVariant() /* FIXME: const */; // TODO: Rename?
 
+    /**
+     * Load the event data from a file.
+     *
+     * @param path File path.
+     * @return This event instance.
+     */
+    CloudEvent& loadData(const char* path);
+
+    /**
+     * Save the event data to a file.
+     *
+     * @param path File path.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    int saveData(const char* path);
+
+    /**
+     * Set a callback to be invoked when the status of the event changes.
+     *
+     * @param callback Callback.
+     * @return This event instance.
+     */
     CloudEvent& onStatusChange(std::function<OnStatusChange> callback);
 
+    /**
+     * Get the status of the event.
+     *
+     * @return Event status.
+     */
     Status status() const;
 
+    /**
+     * Check if the event is valid.
+     *
+     * @return `true` if the event is valid, otherwise `false`.
+     */
     bool valid() const {
         return status() != Status::INVALID;
     }
 
+    /**
+     * Check if the event is being sent to the Cloud.
+     *
+     * @return `true` if the event is being sent to the Cloud, otherwise `false`.
+     */
     bool sending() {
         return status() == Status::SENDING;
     }
 
+    /**
+     * Check if the event was sent to the Cloud successfully.
+     *
+     * @return `true` if the event was sent successfully, otherwise `false`.
+     */
     bool sent() const {
         return status() == Status::SENT;
     }
@@ -170,7 +307,12 @@ public:
 
     int error() const;
 
-    // TODO: saveData(), loadData()
+    /**
+     * Cancel sending the event.
+     *
+     * Calling this method is no-op if the event is not currently being sent to the Cloud.
+     */
+    void cancel();
 
     void reset();
 
@@ -246,7 +388,7 @@ public:
     }
 
 protected:
-    int publish(); // Called by CloudClass
+    int send(); // Called by CloudClass
 
 private:
     struct Data;
@@ -255,10 +397,8 @@ private:
 
     explicit CloudEvent(RefCountPtr<Data> data);
 
-    int publishImpl();
-
+    int sendImpl();
     coap_payload* getValidPayload();
-
     void setStatus(Status status, int err = 0);
 
     // Note: Make sure to log an error message when transitioning to a recoverable failed state
@@ -281,7 +421,7 @@ private:
         return s != Status::SENDING && s != Status::INVALID;
     }
 
-    static void publishComplete(int err, void* arg);
+    static void sendComplete(int err, void* arg);
 
     friend class ::CloudClass;
 };
