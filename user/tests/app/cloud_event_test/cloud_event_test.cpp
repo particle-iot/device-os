@@ -96,7 +96,11 @@ void startTest(const char* name) {
 
 int finishTest() {
     curStats.timeEnd = millis();
-    curStats.freeMemAfter = System.freeMemory();
+    auto freeMem = System.freeMemory();
+    curStats.freeMemAfter = freeMem;
+    if (freeMem < curStats.minFreeMem) {
+        curStats.minFreeMem = freeMem;
+    }
     if (!allStats.append(std::move(curStats))) {
         return Error::NO_MEMORY;
     }
@@ -282,7 +286,7 @@ int oldApiWithAckDone() {
 CloudEvent event;
 
 int newApiInit() {
-    event = CloudEvent();
+    event.reset();
 
     startTest("New API");
     return nextStep();
@@ -312,6 +316,7 @@ int newApiRun() {
 }
 
 int newApiDone() {
+    event.reset(); // Free the payload data
     CHECK(finishTest());
     return nextStep();
 }
