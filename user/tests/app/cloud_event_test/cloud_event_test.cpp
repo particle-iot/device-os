@@ -390,7 +390,7 @@ int newApiTwoEventsRun() {
     }
     ok = Particle.publish(event2);
     if (!ok) {
-        int err = event.ok() ? Error::UNKNOWN : event.error();
+        int err = event2.ok() ? Error::UNKNOWN : event2.error();
         Log.error("Particle.publish() failed: %d", err);
         return err;
     }
