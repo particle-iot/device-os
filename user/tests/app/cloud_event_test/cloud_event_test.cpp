@@ -11,10 +11,10 @@
 SYSTEM_MODE(SEMI_AUTOMATIC)
 SYSTEM_THREAD(ENABLED)
 
-#define TEST_OLD_API 1
+#define TEST_OLD_API_WITH_DELAY 1
 #define TEST_OLD_API_WITH_ACK 1
-#define TEST_NEW_API 1
-#define TEST_NEW_API_TWO_EVENTS 1
+#define TEST_NEW_API_SINGLE_EVENT 1
+#define TEST_NEW_API_MULTIPLE_EVENTS 1
 
 namespace {
 
@@ -26,26 +26,31 @@ const unsigned CONNECTION_TIMEOUT = 60000;
 enum Step {
     INIT_TEST,
     WAIT_CONNECT,
-#if TEST_OLD_API
-    OLD_API_INIT,
-    OLD_API_RUN,
-    OLD_API_DONE,
-#endif // TEST_OLD_API
+
+#if TEST_OLD_API_WITH_DELAY
+    OLD_API_WITH_DELAY_INIT,
+    OLD_API_WITH_DELAY_RUN,
+    OLD_API_WITH_DELAY_DONE,
+#endif // TEST_OLD_API_WITH_DELAY
+
 #if TEST_OLD_API_WITH_ACK
     OLD_API_WITH_ACK_INIT,
     OLD_API_WITH_ACK_RUN,
     OLD_API_WITH_ACK_DONE,
 #endif // TEST_OLD_API_WITH_ACK
-#if TEST_NEW_API
-    NEW_API_INIT,
-    NEW_API_RUN,
-    NEW_API_DONE,
-#endif // TEST_NEW_API
-#if TEST_NEW_API_TWO_EVENTS
-    NEW_API_TWO_EVENTS_INIT,
-    NEW_API_TWO_EVENTS_RUN,
-    NEW_API_TWO_EVENTS_DONE,
-#endif // TEST_NEW_API_TWO_EVENTS
+
+#if TEST_NEW_API_SINGLE_EVENT
+    NEW_API_SINGLE_EVENT_INIT,
+    NEW_API_SINGLE_EVENT_RUN,
+    NEW_API_SINGLE_EVENT_DONE,
+#endif // TEST_NEW_API_SINGLE_EVENT
+
+#if TEST_NEW_API_MULTIPLE_EVENTS
+    NEW_API_MULTIPLE_EVENTS_INIT,
+    NEW_API_MULTIPLE_EVENTS_RUN,
+    NEW_API_MULTIPLE_EVENTS_DONE,
+#endif // TEST_NEW_API_MULTIPLE_EVENTS
+
     PRINT_STATS,
     DONE
 };
@@ -183,19 +188,19 @@ int waitConnect() {
 system_tick_t lastPublishTime = 0;
 
 //
-// OLD_API
+// OLD_API_WITH_DELAY
 //
 
-#if TEST_OLD_API
+#if TEST_OLD_API_WITH_DELAY
 
-int oldApiInit() {
+int oldApiWithDelayInit() {
     lastPublishTime = 0;
 
     startTest("Old API with 1-second delay");
     return nextStep();
 }
 
-int oldApiRun() {
+int oldApiWithDelayRun() {
     auto t = millis();
     if (t - lastPublishTime < 1000) {
         testIdle(t);
@@ -219,12 +224,12 @@ int oldApiRun() {
     return 0;
 }
 
-int oldApiDone() {
+int oldApiWithDelayDone() {
     CHECK(finishTest());
     return nextStep();
 }
 
-#endif // TEST_OLD_API
+#endif // TEST_OLD_API_WITH_DELAY
 
 //
 // OLD_API_WITH_ACK
@@ -288,21 +293,21 @@ int oldApiWithAckDone() {
 #endif // TEST_OLD_API_WITH_ACK
 
 //
-// NEW_API
+// NEW_API_SINGLE_EVENT
 //
 
-#if TEST_NEW_API
+#if TEST_NEW_API_SINGLE_EVENT
 
 CloudEvent event;
 
-int newApiInit() {
+int newApiSingleEventInit() {
     event.reset();
 
-    startTest("New API with one event");
+    startTest("New API with single event");
     return nextStep();
 }
 
-int newApiRun() {
+int newApiSingleEventRun() {
     if (event.sending()) {
         testIdle();
         return 0;
@@ -335,85 +340,94 @@ int newApiRun() {
     return 0;
 }
 
-int newApiDone() {
+int newApiSingleEventDone() {
     event.reset(); // Free the payload data
     CHECK(finishTest());
     return nextStep();
 }
 
-#endif // TEST_NEW_API
+#endif // TEST_NEW_API_SINGLE_EVENT
 
 //
-// NEW_API_WITH_TWO_EVENTS
+// NEW_API_WITH_MULTIPLE_EVENTS
 //
 
-#if TEST_NEW_API_TWO_EVENTS
+#if TEST_NEW_API_MULTIPLE_EVENTS
 
-CloudEvent event2;
+const unsigned EVENT_COUNT = 2;
 
-int newApiTwoEventsInit() {
-    event.reset();
-    event2.reset();
+Vector<CloudEvent> events;
 
-    startTest("New API with two events");
+int newApiMultipleEventsInit() {
+    events = Vector<CloudEvent>(EVENT_COUNT);
+    if (events.size() != EVENT_COUNT) {
+        return Error::NO_MEMORY;
+    }
+
+    startTest(String::format("New API with %u events", EVENT_COUNT));
     return nextStep();
 }
 
-int newApiTwoEventsRun() {
-    if (!event.ok() || !event2.ok()) {
-        return event.ok() ? event2.error() : event.error();
+int newApiMultipleEventsRun() {
+    // Fail the test if any of the events have failed
+    for (auto& ev: events) {
+        if (!ev.ok()) {
+            return ev.error();
+        }
     }
-    if (event.sent() && event2.sent()) {
+    // Proceed to the next step if all the events have been sent successfully
+    bool allSent = true;
+    for (auto& ev: events) {
+        if (!ev.sent()) {
+            allSent = false;
+            break;
+        }
+    }
+    if (allSent) {
         return nextStep();
     }
-    if (event.sending() || event2.sending()) {
-        testIdle();
-        return 0;
+    // Keep waiting if some of the events are still in progress
+    for (auto& ev: events) {
+        if (ev.sending()) {
+            testIdle();
+            return 0;
+        }
     }
-    event.name(EVENT_NAME);
-    event2.name(EVENT_NAME);
-    event.contentType(ContentType::BINARY);
-    event2.contentType(ContentType::BINARY);
-    
+    // Prepare the events for publishing
     char buf[128];
-    auto size1 = eventDataSize / 2; // The amount of data to be sent in the first event
     size_t offs = 0;
-    while (offs < size1) {
-        size_t n = std::min(sizeof(buf), size1 - offs);
-        std::memcpy(buf, eventData + offs, n);
-        event.write(buf, n);
-        offs += n;
+    size_t bytesPerEvent = eventDataSize / EVENT_COUNT;
+    for (auto& ev: events) {
+        ev.name(EVENT_NAME);
+        ev.contentType(ContentType::BINARY);
+        size_t endOffs = (ev == events.last()) ? eventDataSize : (offs + bytesPerEvent);
+        while (offs < endOffs) {
+            size_t n = std::min(sizeof(buf), endOffs - offs);
+            std::memcpy(buf, eventData + offs, n);
+            event.write(buf, n);
+            offs += n;
+        }
     }
-    while (offs < eventDataSize) {
-        size_t n = std::min(sizeof(buf), eventDataSize - offs);
-        std::memcpy(buf, eventData + offs, n);
-        event2.write(buf, n);
-        offs += n;
-    }
-
-    bool ok = Particle.publish(event);
-    if (!ok) {
-        int err = event.ok() ? Error::UNKNOWN : event.error();
-        Log.error("Particle.publish() failed: %d", err);
-        return err;
-    }
-    ok = Particle.publish(event2);
-    if (!ok) {
-        int err = event2.ok() ? Error::UNKNOWN : event2.error();
-        Log.error("Particle.publish() failed: %d", err);
-        return err;
+    // Publish the events
+    for (auto& ev: events) {
+        bool ok = Particle.publish(ev);
+        if (!ok) {
+            int err = ev.ok() ? Error::UNKNOWN : ev.error();
+            Log.error("Particle.publish() failed: %d", err);
+            return err;
+        }
     }
     return 0;
 }
 
-int newApiTwoEventsDone() {
-    event.reset(); // Free the payload data
-    event2.reset();
+int newApiMultipleEventsDone() {
+    events = Vector<CloudEvent>();
+
     CHECK(finishTest());
     return nextStep();
 }
 
-#endif // TEST_NEW_API_TWO_EVENTS
+#endif // TEST_NEW_API_MULTIPLE_EVENTS
 
 int printStats() {
     for (const auto& s: allStats) {
@@ -427,8 +441,7 @@ int printStats() {
         unsigned maxMemUsed = (s.freeMemBefore > s.minFreeMem) ? (s.freeMemBefore - s.minFreeMem) : 0;
         Log.info("Max heap usage:   %u", maxMemUsed);
     }
-    nextStep();
-    return 0;
+    return nextStep();
 }
 
 int run() {
@@ -437,14 +450,16 @@ int run() {
         return initTest();
     case WAIT_CONNECT:
         return waitConnect();
-#if TEST_OLD_API
-    case OLD_API_INIT:
-        return oldApiInit();
-    case OLD_API_RUN:
-        return oldApiRun();
-    case OLD_API_DONE:
-        return oldApiDone();
-#endif // TEST_OLD_API
+
+#if TEST_OLD_API_WITH_DELAY
+    case OLD_API_WITH_DELAY_INIT:
+        return oldApiWithDelayInit();
+    case OLD_API_WITH_DELAY_RUN:
+        return oldApiWithDelayRun();
+    case OLD_API_WITH_DELAY_DONE:
+        return oldApiWithDelayDone();
+#endif // TEST_OLD_API_WITH_DELAY
+
 #if TEST_OLD_API_WITH_ACK
     case OLD_API_WITH_ACK_INIT:
         return oldApiWithAckInit();
@@ -453,22 +468,25 @@ int run() {
     case OLD_API_WITH_ACK_DONE:
         return oldApiWithAckDone();
 #endif // TEST_OLD_API_WITH_ACK
-#if TEST_NEW_API
-    case NEW_API_INIT:
-        return newApiInit();
-    case NEW_API_RUN:
-        return newApiRun();
-    case NEW_API_DONE:
-        return newApiDone();
-#endif // TEST_NEW_API
-#if TEST_NEW_API_TWO_EVENTS
-    case NEW_API_TWO_EVENTS_INIT:
-        return newApiTwoEventsInit();
-    case NEW_API_TWO_EVENTS_RUN:
-        return newApiTwoEventsRun();
-    case NEW_API_TWO_EVENTS_DONE:
-        return newApiTwoEventsDone();
-#endif // TEST_NEW_API_TWO_EVENTS
+
+#if TEST_NEW_API_SINGLE_EVENT
+    case NEW_API_SINGLE_EVENT_INIT:
+        return newApiSingleEventInit();
+    case NEW_API_SINGLE_EVENT_RUN:
+        return newApiSingleEventRun();
+    case NEW_API_SINGLE_EVENT_DONE:
+        return newApiSingleEventDone();
+#endif // TEST_NEW_API_SINGLE_EVENT
+
+#if TEST_NEW_API_MULTIPLE_EVENTS
+    case NEW_API_MULTIPLE_EVENTS_INIT:
+        return newApiMultipleEventsInit();
+    case NEW_API_MULTIPLE_EVENTS_RUN:
+        return newApiMultipleEventsRun();
+    case NEW_API_MULTIPLE_EVENTS_DONE:
+        return newApiMultipleEventsDone();
+#endif // TEST_NEW_API_MULTIPLE_EVENTS
+
     case PRINT_STATS:
         return printStats();
     default:
