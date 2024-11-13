@@ -406,7 +406,7 @@ int newApiMultipleEventsRun() {
         while (offs < endOffs) {
             size_t n = std::min(sizeof(buf), endOffs - offs);
             std::memcpy(buf, eventData + offs, n);
-            event.write(buf, n);
+            ev.write(buf, n);
             offs += n;
         }
     }
