@@ -174,7 +174,7 @@ int waitConnect() {
         Log.info("Connected");
         logFreeHeap();
 
-        Log.info("Maximum event data size (classic API): %d", (int)Particle.maxEventDataSize());
+        Log.info("Maximum event data size (old API): %d", (int)Particle.maxEventDataSize());
 
         return nextStep();
     }
@@ -364,7 +364,9 @@ int newApiMultipleEventsInit() {
         return Error::NO_MEMORY;
     }
 
-    startTest(String::format("New API with %u events", EVENT_COUNT));
+    startTest("New API with multiple events");
+    Log.info("Number of events: %u", EVENT_COUNT);
+
     return nextStep();
 }
 
