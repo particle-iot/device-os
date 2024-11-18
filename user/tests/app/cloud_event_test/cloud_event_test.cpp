@@ -442,7 +442,7 @@ int run() {
         return newApiRun();
     case NEW_API_FOUR_EVENTS_DONE:
         return newApiDone();
-#endif // TEST_NEW_API_TWO_EVENTS
+#endif // TEST_NEW_API_FOUR_EVENTS
 
     case PRINT_STATS:
         return printStats();
