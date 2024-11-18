@@ -37,12 +37,15 @@ ProtocolError Subscriptions::send_subscription_impl(MessageChannel& channel, con
     e.code(CoapCode::GET);
     e.id(0); // Will be assigned and serialized by the message channel
     // Subscription messages have an empty token
-    e.option(CoapOption::URI_PATH, "e"); // 11
-    e.option(CoapOption::URI_PATH, filter, filterLen); // 11
-    if (flags & SubscriptionFlag::CBOR_DATA) {
-        e.option(CoapOption::URI_QUERY, "c"); // 15
+    e.option(CoapOption::URI_PATH /* 11 */, "e");
+    e.option(CoapOption::URI_PATH /* 11 */, filter, filterLen);
+    if (flags & SubscriptionFlag::CBOR_DATA) { // Mutually exclusive with BINARY_DATA
+        e.option(CoapOption::URI_QUERY /* 15 */, "c");
     } else if (flags & SubscriptionFlag::BINARY_DATA) {
-        e.option(CoapOption::URI_QUERY, "b"); // 15
+        e.option(CoapOption::URI_QUERY /* 15 */, "b");
+    }
+    if (flags & SubscriptionFlag::LARGE_EVENT) {
+        e.option(CoapOption::URI_QUERY /* 15 */, "l");
     }
     int r = e.encode();
     if (r < 0) {
