@@ -23,6 +23,7 @@
 
 #include "spark_wiring_cloud.h"
 #include "spark_wiring_stream.h"
+#include "spark_wiring_vector.h"
 
 #include "coap_api.h"
 
@@ -388,16 +389,26 @@ public:
     }
 
 protected:
-    int send(); // Called by CloudClass
+    typedef void OnEventReceived(CloudEvent event);
+
+    // The methods below are called by CloudClass
+
+    int publish();
+
+    static int subscribe(const char* prefix, std::function<OnEventReceived> callback);
+    static void unsubscribeAll();
 
 private:
     struct Data;
+    struct Subscription;
 
     RefCountPtr<Data> d_;
 
+    static Vector<Subscription> s_subscriptions;
+
     explicit CloudEvent(RefCountPtr<Data> data);
 
-    int sendImpl();
+    int send();
     coap_payload* getValidPayload();
     void setStatus(Status status, int err = 0);
 
@@ -421,6 +432,7 @@ private:
         return s != Status::SENDING && s != Status::INVALID;
     }
 
+    static int coapRequestCallback(coap_message* msg, const char* path, int method, int req_id, void* arg);
     static void sendComplete(int err, void* arg);
 
     friend class ::CloudClass;

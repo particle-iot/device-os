@@ -167,7 +167,7 @@ Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishF
 }
 
 bool CloudClass::publish(CloudEvent event) {
-    int r = event.send();
+    int r = event.publish();
     if (r < 0) {
         return false;
     }
@@ -274,11 +274,28 @@ bool CloudClass::subscribe(const char* name, particle::EventHandlerWithVariantFn
 }
 
 bool CloudClass::subscribe(const char* name, EventHandlerWithCloudEvent* handler) {
-    return true;
+    std::function<EventHandlerWithCloudEvent> fn(handler);
+    if (!fn) {
+        return false;
+    }
+    return subscribe(name, std::move(fn));
 }
 
 bool CloudClass::subscribe(const char* name, std::function<EventHandlerWithCloudEvent> handler) {
+    bool ok = subscribeWithFlags(name, nullptr /* handler */, nullptr /* handlerData */, SUBSCRIBE_FLAG_LARGE_EVENT);
+    if (!ok) {
+        return false;
+    }
+    int r = CloudEvent::subscribe(name, std::move(handler));
+    if (r < 0) {
+        return false;
+    }
     return true;
+}
+
+void CloudClass::unsubscribe() {
+    spark_unsubscribe(nullptr /* reserved */);
+    CloudEvent::unsubscribeAll();
 }
 
 namespace particle {

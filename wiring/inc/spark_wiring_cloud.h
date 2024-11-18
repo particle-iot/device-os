@@ -400,10 +400,7 @@ public:
     bool subscribe(const char* name, particle::EventHandlerWithCloudEvent* handler);
     bool subscribe(const char* name, std::function<particle::EventHandlerWithCloudEvent> handler);
 
-    void unsubscribe()
-    {
-        spark_unsubscribe(NULL);
-    }
+    void unsubscribe();
 
     bool syncTime(void)
     {

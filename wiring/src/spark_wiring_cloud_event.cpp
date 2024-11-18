@@ -16,6 +16,7 @@
  */
 
 #include <cstring>
+#include <cstdio>
 
 #include "spark_wiring_cloud_event.h"
 #include "spark_wiring_variant.h"
@@ -53,6 +54,18 @@ struct CloudEvent::Data: public RefCount {
             error(0) {
     }
 };
+
+struct CloudEvent::Subscription {
+    std::function<OnEventReceived> callback;
+    CString prefix;
+    size_t prefixLen;
+
+    Subscription() :
+            prefixLen(0) {
+    }
+};
+
+Vector<CloudEvent::Subscription> CloudEvent::s_subscriptions;
 
 CloudEvent::CloudEvent() :
         d_(makeRefCountPtr<Data>()) {
@@ -404,7 +417,12 @@ size_t CloudEvent::pos() const {
     return d_->pos;
 }
 
-int CloudEvent::send() {
+CloudEvent& CloudEvent::operator=(CloudEvent event) {
+    swap(*this, event);
+    return *this;
+}
+
+int CloudEvent::publish() {
     auto status = this->status();
     if (status == Status::INVALID) {
         return error();
@@ -418,7 +436,7 @@ int CloudEvent::send() {
         return setFailed(Error::INVALID_STATE);
     }
     setStatus(Status::SENDING);
-    int r = sendImpl();
+    int r = send();
     if (r < 0) {
         LOG(ERROR, "Failed to send event: %d", r);
         return setFailed(r);
@@ -426,12 +444,96 @@ int CloudEvent::send() {
     return 0;
 }
 
-CloudEvent& CloudEvent::operator=(CloudEvent event) {
-    swap(*this, event);
-    return *this;
+int CloudEvent::subscribe(const char* prefix, std::function<OnEventReceived> callback) {
+    Subscription sub;
+    sub.callback = std::move(callback);
+    sub.prefixLen = std::strlen(prefix);
+    sub.prefix = CString(prefix, sub.prefixLen);
+    if (!sub.prefix || s_subscriptions.append(std::move(sub))) {
+        return Error::NO_MEMORY;
+    }
+    NAMED_SCOPE_GUARD(removeSubGuard, { // Removes the newly added subscription on an error
+        s_subscriptions.takeLast();
+    });
+    if (s_subscriptions.size() == 1) {
+        // Register a handler for event requests
+        int r = coap_add_request_handler("/E", COAP_METHOD_POST, COAP_MESSAGE_FULL, coapRequestCallback, nullptr /* arg */,
+                nullptr /* reserved */);
+        if (r < 0) {
+            LOG(ERROR, "coap_add_request_handler() failed: %d", r);
+            return r;
+        }
+    }
+    removeSubGuard.dismiss();
+    return 0;
 }
 
-int CloudEvent::sendImpl() {
+void CloudEvent::unsubscribeAll() {
+    if (s_subscriptions.isEmpty()) {
+        return;
+    }
+    coap_remove_request_handler("/E", COAP_METHOD_POST, nullptr /* reserved */);
+    s_subscriptions.clear();
+}
+
+int CloudEvent::coapRequestCallback(coap_message* apiMsg, const char* path, int method, int reqId, void* arg) {
+    CoapMessagePtr msg(apiMsg);
+
+    size_t pathLen = std::strlen(path);
+    if (pathLen < 3) { // strlen("/E/")
+        return 0; // Ignore the request
+    }
+    auto name = path + 3;
+    auto nameLen = pathLen - 3;
+
+    // Create an event instance
+    auto d = makeRefCountPtr<Data>();
+    if (!d) {
+        return 0;
+    }
+    d->name = CString(name, nameLen);
+    if (!d->name) {
+        return 0;
+    }
+
+    // Get the payload object
+    coap_payload* apiPayload = nullptr;
+    int r = coap_get_payload(msg.get(), &apiPayload, nullptr /* reserved */);
+    if (r < 0) {
+        LOG(ERROR, "coap_get_payload() failed: %d", r);
+        return 0;
+    }
+    d->payload = CoapPayloadPtr(apiPayload);
+
+    // Get the content format option
+    coap_option* opt = nullptr;
+    r = coap_get_option(msg.get(), &opt, COAP_OPTION_CONTENT_FORMAT, nullptr /* reserved */);
+    if (r < 0) {
+        LOG(ERROR, "coap_get_option() failed: %d", r);
+        return 0;
+    }
+    if (opt) {
+        unsigned val = 0;
+        int r = coap_get_uint_option_value(opt, &val, nullptr /* reserved */);
+        if (r < 0) {
+            LOG(ERROR, "coap_get_uint_option_value() failed: %d", r); // Does it need to have a return value?
+            return 0;
+        }
+        d->contentType = val;
+    }
+
+    // Invoke the matching subscription handlers
+    CloudEvent ev(std::move(d));
+    for (auto& sub: s_subscriptions) {
+        if (sub.prefixLen > nameLen || std::memcmp((const char*)sub.prefix, name, sub.prefixLen) != 0) {
+            continue;
+        }
+        sub.callback(ev);
+    }
+    return 0;
+}
+
+int CloudEvent::send() {
     char uriPath[COAP_MAX_URI_PATH_LENGTH];
     int r = std::snprintf(uriPath, sizeof(uriPath), "E/%s", (const char*)d_->name);
     if (r < 0 || (size_t)r >= sizeof(uriPath)) {
