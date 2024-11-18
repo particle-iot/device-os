@@ -38,6 +38,9 @@ class Protocol;
 
 namespace v2 {
 
+class CoapTag;
+typedef CoapTag CoapToken;
+
 class CoapPayload;
 class CoapOptionEntry;
 
@@ -155,6 +158,7 @@ private:
     RequestHandler* reqHandlers_; // List of registered request handlers
     RequestMessage* sentReqs_; // List of requests awaiting a response from the server
     RequestMessage* recvReqs_; // List of requests awaiting a response from the device
+    RequestMessage* recvBlockReqs_; // List of incoming blockwise requests in progress
     ResponseMessage* blockResps_; // List of responses for which the next message block is expected to be received
     Message* unackMsgs_; // List of messages awaiting an ACK from the server
     Protocol* protocol_; // Protocol instance
@@ -167,6 +171,7 @@ private:
     bool openPending_; // If true, the channel needs to be reopened
 
     int handleRequest(CoapMessageDecoder& d);
+    int handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus);
     int handleResponse(CoapMessageDecoder& d);
     int handleAck(CoapMessageDecoder& d);
 
@@ -176,7 +181,16 @@ private:
     int sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransmit = false);
     void clearMessage(const RefCountPtr<Message>& msg);
 
-    int sendAck(int coapId, bool rst = false);
+    int sendResponseAck(int id, const CoapToken& token, CoapCode code);
+    int sendEmptyAckOrRst(int id, CoapType type);
+
+    int sendEmptyAck(int id) {
+        return sendEmptyAckOrRst(id, CoapType::ACK);
+    }
+
+    int sendRst(int id) {
+        return sendEmptyAckOrRst(id, CoapType::RST);
+    }
 
     void encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, const char* data, size_t size);
     void encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, unsigned val);
