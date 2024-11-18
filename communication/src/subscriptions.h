@@ -76,7 +76,7 @@ public:
 		ProtocolError error = NO_ERROR;
 		for (unsigned i = 0; i < NUM_HANDLERS; i++)
 		{
-			if (nullptr != event_handlers[i].handler)
+			if (nullptr != event_handlers[i].handler || (event_handlers[i].flags & SubscriptionFlag::LARGE_EVENT))
 			{
 				error = callback(event_handlers[i]);
 				if (error)

@@ -72,14 +72,6 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
         return ProtocolError::MALFORMED_MESSAGE;
     }
 
-    if (d.type() == CoapType::CON && channel.is_unreliable()) {
-        int r = sendEmptyAckOrRst(channel, msg, CoapType::ACK);
-        if (r < 0) {
-            LOG(ERROR, "Failed to send ACK: %d", r);
-            return ProtocolError::COAP_ERROR;
-        }
-    }
-
     char name[MAX_EVENT_NAME_LENGTH + 1];
     size_t nameLen = 0;
     int contentFmt = (int)CoapContentFormat::TEXT_PLAIN;
@@ -110,7 +102,9 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
         return ProtocolError::NO_ERROR; // Ignore an event without a name
     }
 
+    bool needAck = d.type() == CoapType::CON && channel.is_unreliable();
     handled = false;
+
     for (size_t i = 0; i < MAX_SUBSCRIPTIONS; ++i) {
         auto& eventHandler = event_handlers[i];
         if (!eventHandler.handler) {
@@ -123,6 +117,14 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
         if (((eventHandler.flags & SubscriptionFlag::CBOR_DATA) && contentFmt != CoapContentFormat::APPLICATION_CBOR) ||
                 (!(eventHandler.flags & (SubscriptionFlag::BINARY_DATA | SubscriptionFlag::CBOR_DATA)) && !isCoapTextContentFormat(contentFmt))) {
             continue; // Encoding mismatch
+        }
+        if (needAck) {
+            int r = sendEmptyAckOrRst(channel, msg, CoapType::ACK);
+            if (r < 0) {
+                LOG(ERROR, "Failed to send ACK: %d", r);
+                return ProtocolError::COAP_ERROR;
+            }
+            needAck = false;
         }
         char* data = nullptr;
         size_t dataSize = d.payloadSize();

@@ -503,6 +503,9 @@ int CloudEvent::coapRequestCallback(coap_message* apiMsg, const char* path, int 
         LOG(ERROR, "coap_get_payload() failed: %d", r);
         return 0;
     }
+    if (!apiPayload) {
+        return 0; // Shouldn't happen
+    }
     d->payload = CoapPayloadPtr(apiPayload);
 
     // Get the content format option
