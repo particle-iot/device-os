@@ -1150,7 +1150,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
         });
         if (req) {
             assert(req->state == MessageState::WAIT_BLOCK && req->blockIndex.has_value());
-            if (blockIndex <= req->blockIndex.value()) {
+            if (blockIndex != req->blockIndex.value()) {
                 LOG(WARN, "Received blockwise request with unexpected block number");
                 errStatus = CoapCode::REQUEST_ENTITY_INCOMPLETE;
                 return Result::HANDLED;
@@ -1195,7 +1195,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
             return 0;
         }
         if (hasBlockOpt && !(handler->flags & COAP_MESSAGE_FULL)) {
-            // TODO: Support the block-level API (coap_read_block(), etc.) for incoming blockwise requests
+            // TODO: Support the asynchronous API (coap_read_block(), etc.) for incoming blockwise requests
             LOG(ERROR, "Cannot handle blockwise request using selected handler");
             errStatus = CoapCode::NOT_IMPLEMENTED;
             return Result::HANDLED;
@@ -1230,6 +1230,8 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
             if (!req->payload) {
                 return SYSTEM_ERROR_NO_MEMORY;
             }
+            req->tag = reqTag;
+            req->blockIndex = 0;
             req->state = MessageState::WAIT_BLOCK;
         } else {
             req->pos = const_cast<char*>(d.payload());
@@ -1243,12 +1245,16 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
         req->payloadPos += d.payloadSize();
     }
 
-    // Acknowledge the request
-    if (hasBlockOpt && hasMore) {
-        CHECK(sendResponseAck(d.id(), req->token, CoapCode::CONTINUE));
-        addRefToList(recvBlockReqs_, req);
-        return Result::HANDLED;
+    if (hasBlockOpt) {
+        if (hasMore) {
+            CHECK(sendResponseAck(d.id(), req->token, CoapCode::CONTINUE));
+            ++req->blockIndex.value();
+            addRefToList(recvBlockReqs_, req);
+            return Result::HANDLED;
+        }
+        req->state = MessageState::READ;
     }
+    // Acknowledge the request
     CHECK(sendEmptyAck(d.id()));
     addRefToList(recvReqs_, req); // TODO: Support No-Response option
 

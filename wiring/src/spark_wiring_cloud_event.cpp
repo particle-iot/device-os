@@ -449,7 +449,7 @@ int CloudEvent::subscribe(const char* prefix, std::function<OnEventReceived> cal
     sub.callback = std::move(callback);
     sub.prefixLen = std::strlen(prefix);
     sub.prefix = CString(prefix, sub.prefixLen);
-    if (!sub.prefix || s_subscriptions.append(std::move(sub))) {
+    if (!sub.prefix || !s_subscriptions.append(std::move(sub))) {
         return Error::NO_MEMORY;
     }
     NAMED_SCOPE_GUARD(removeSubGuard, { // Removes the newly added subscription on an error
