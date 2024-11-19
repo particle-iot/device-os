@@ -145,7 +145,9 @@ private:
 #define RTK_SPIC_BIT_OFFSET_SR_BUSY         ((uint32_t)0)
 
 #define RTK_SPIC_DATA_WIDTH_MODE_SINGLE        (0)
+#define RTK_SPIC_DATA_WIDTH_MODE_QUAD_I        (0x00080000)
 #define RTK_SPIC_DATA_WIDTH_MODE_QUAD_II       (0x000a0000)
+#define RTK_SPIC_DATA_WIDTH_MODE_DUAL_I        (0x00040000)
 #define RTK_SPIC_DATA_WIDTH_MODE_DUAL_II       (0x00050000)
 
 #define RTK_SPIC_READ_TUNING_DUMMY_CYCLE    0x2
@@ -399,16 +401,18 @@ static int writeInBestModeWithinPageBoundaries(uint32_t addr, uint8_t* buf, size
         // Quad mode enabled
         if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
             cmd = GD_FLASH_CMD_4PP;
+            mode = RTK_SPIC_DATA_WIDTH_MODE_QUAD_I;
         } else {
             cmd = MXIC_FLASH_CMD_4PP;
+            mode = RTK_SPIC_DATA_WIDTH_MODE_QUAD_II;
         }
-        mode = RTK_SPIC_DATA_WIDTH_MODE_QUAD_II;
     } else if (flash_init_para.FLASH_cur_bitmode == SpicDualBitMode) {
         // Dual mode enabled
-        if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
-            cmd = GD_FLASH_CMD_FPP;
-            mode = RTK_SPIC_DATA_WIDTH_MODE_DUAL_II;
-        }
+        // FIXME: gd25q128ewig doesn't support this looks like?
+        // if (flash_init_para.FLASH_Id == FLASH_ID_GD) {
+        //     cmd = GD_FLASH_CMD_FPP;
+        //     mode = RTK_SPIC_DATA_WIDTH_MODE_DUAL_II;
+        // }
     }
 
     size_t rem = addr % HAL_QSPI_FLASH_PAGE_SIZE;

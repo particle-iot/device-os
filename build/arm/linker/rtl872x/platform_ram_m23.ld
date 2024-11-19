@@ -24,7 +24,7 @@ x                                                                               
 | KM0 part1 static RAM        |            |                                       |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | Heap                                  |
 | KM0 part1 RAM code          |            |                                       |
-+-----------------------------+ 0x00086000 |                                       |
++-----------------------------+ 0x00083400 |                                       |
 |                             |            |                                       |
 | KM0 MBR static RAM          |            |                                       |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
@@ -78,7 +78,7 @@ platform_km0_bootloader_stack_start = platform_km0_bootloader_stack_end - platfo
 
 
 /* Bootloader RAM, contains static data and code */
-platform_km0_mbr_ram_size  = 16K;
+platform_km0_mbr_ram_size  = 5K;
 platform_km0_mbr_ram_start = platform_km0_ram_start;
 platform_km0_mbr_ram_end   = platform_km0_mbr_ram_start + platform_km0_mbr_ram_size;
 
